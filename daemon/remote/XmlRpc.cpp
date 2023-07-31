@@ -1,7 +1,7 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <http://nzbget.com>.
  *
- *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023 nzbget.com <nzbget@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -3319,7 +3319,7 @@ void TestServerXmlCommand::Execute()
 		{
 			id.AppendFmt("%i", rand());
 		}
-		const char* response = connection.Request(BString<1024>("ARTICLE <%s@nzbget.net>\r\n", *id));
+		const char* response = connection.Request(BString<1024>("ARTICLE <%s@nzbget.com>\r\n", *id));
 		ok = response && (*response == '4' || *response == '2');
 	}
 

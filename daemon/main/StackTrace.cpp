@@ -1,7 +1,7 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <http://nzbget.com>.
  *
- *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023 nzbget.com <nzbget@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -150,7 +150,7 @@ LONG __stdcall ExceptionFilter(EXCEPTION_POINTERS* exPtrs)
 	return EXCEPTION_CONTINUE_SEARCH;
 #else
 	info("Detailed crash information can be printed by debug version of NZBGet."
-		" For more info visit http://nzbget.net/crash-dump");
+		" For more info visit http://nzbget.com/crash-dump");
 	return EXCEPTION_EXECUTE_HANDLER;
 #endif
 }
