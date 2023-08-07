@@ -1,0 +1,15 @@
+name: Build and upload NZBGet for Windows 
+
+on:
+  push:
+    branches:
+    - phnzb/windows-build
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
