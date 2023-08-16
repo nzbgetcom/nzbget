@@ -284,7 +284,7 @@ void ScriptController::PrepareArgs()
 					command[bufLen] = '\0';
 					CString scommand(command);
 					scommand.Replace("%L", "%1");// Python 3.x has %L in command instead of %1
-					debug("Command: %s", scommand);
+					debug("Command: %s", scommand.Str());
 					DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
 					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
 						m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
