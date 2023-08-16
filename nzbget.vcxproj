@@ -84,7 +84,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\bin\Debug32;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files (x86)\OpenSSL\include;.\daemon\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\bin\Debug32;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files (x86)\OpenSSL\include;.\lib\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;PACKAGE="nzbget";VERSION="22.0";_DEBUG;_CONSOLE;DEBUG;_WIN32_WINNT=0x0403;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -107,7 +107,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>..\bin\Debug64;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\daemon\regex;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\bin\Debug64;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\regex;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files\OpenSSL\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;PACKAGE="nzbget";VERSION="22.0";_DEBUG;_CONSOLE;DEBUG;_WIN32_WINNT=0x0403;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -134,7 +134,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\bin\Release32;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files (x86)\OpenSSL\include;.\daemon\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\bin\Release32;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files (x86)\OpenSSL\include;.\lib\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;PACKAGE="nzbget";VERSION="22.0";NDEBUG;_CONSOLE;_WIN32_WINNT=0x0403;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -173,7 +173,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>..\bin\Release64;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files\OpenSSL\include;.\daemon\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\bin\Release64;.\daemon\connect;.\daemon\extension;.\daemon\feed;.\daemon\frontend;.\daemon\main;.\daemon\nserv;.\daemon\nntp;.\daemon\postprocess;.\daemon\queue;.\daemon\remote;.\daemon\util;.\daemon\windows;.\lib\par2;.\lib\yencode;.\windows\resources;C:\Program Files (x86)\zlib\include;C:\Program Files\OpenSSL\include;.\lib\regex;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;PACKAGE="nzbget";VERSION="22.0";NDEBUG;_CONSOLE;_WIN32_WINNT=0x0403;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -268,14 +268,6 @@
     <ClCompile Include="daemon\queue\QueueEditor.cpp" />
     <ClCompile Include="daemon\queue\Scanner.cpp" />
     <ClCompile Include="daemon\queue\UrlCoordinator.cpp" />
-    <ClCompile Include="daemon\regex\regex.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </PrecompiledHeaderFile>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="daemon\remote\BinRpc.cpp" />
     <ClCompile Include="daemon\remote\RemoteClient.cpp" />
     <ClCompile Include="daemon\remote\RemoteServer.cpp" />
@@ -311,6 +303,12 @@
     <ClCompile Include="lib\par2\reedsolomon.cpp" />
     <ClCompile Include="lib\par2\verificationhashtable.cpp" />
     <ClCompile Include="lib\par2\verificationpacket.cpp" />
+    <ClCompile Include="lib\regex\regex.c">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="lib\yencode\SimdInit.cpp" />
     <ClCompile Include="lib\yencode\ScalarDecoder.cpp" />
     <ClCompile Include="lib\yencode\Sse2Decoder.cpp" />
@@ -388,7 +386,6 @@
     <ClInclude Include="daemon\queue\QueueEditor.h" />
     <ClInclude Include="daemon\queue\Scanner.h" />
     <ClInclude Include="daemon\queue\UrlCoordinator.h" />
-    <ClInclude Include="daemon\regex\regex.h" />
     <ClInclude Include="daemon\remote\BinRpc.h" />
     <ClInclude Include="daemon\remote\MessageBase.h" />
     <ClInclude Include="daemon\remote\RemoteClient.h" />
@@ -427,6 +424,7 @@
     <ClInclude Include="lib\par2\reedsolomon.h" />
     <ClInclude Include="lib\par2\verificationhashtable.h" />
     <ClInclude Include="lib\par2\verificationpacket.h" />
+    <ClInclude Include="lib\regex\regex.h" />
     <ClInclude Include="lib\yencode\YEncode.h" />
     <ClInclude Include="lib\yencode\SimdDecoder.cpp" />
     <ClInclude Include="windows\resources\resource.h" />
