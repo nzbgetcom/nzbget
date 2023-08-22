@@ -3,7 +3,9 @@ name: Build and upload NZBGet for Windows
 on:
   push:
     branches:
-    - phnzb/windows-build
+    - feature-*
+    - develop
+    - master
 
 jobs:
   build:
