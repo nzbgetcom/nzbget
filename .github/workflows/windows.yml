@@ -6,10 +6,14 @@ on:
     - phnzb/windows-build
 
 jobs:
-  deploy:
+  build:
     runs-on: [self-hosted, windows]
 
     steps:
     
     - name: Checkout
       uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        .\windows\build-nzbget-vs22.bat
