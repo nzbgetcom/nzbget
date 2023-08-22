@@ -43,6 +43,15 @@ set BUILD_SETUP=1
 rem ####################### END OF CONFIG SECTION #######################
 
 title Building NZBGet
+
+rem Try to detect version from nzbget.vcxproj
+for /f "tokens=3 delims=;" %%n in ('findstr VERSION nzbget.vcxproj') do (
+    for /f "tokens=2 delims==" %%m in ("%%n") do (
+        set "VERSION=%%~m"
+    )
+)
+set FULLVERSION=%VERSION%
+
 cd %ROOTDIR%
 set UseEnv=true
 echo Building nzbget
@@ -51,11 +60,6 @@ if exist tmp (rmdir /S /Q tmp)
 if errorlevel 1 goto BUILD_FAILED
 mkdir tmp
 if errorlevel 1 goto BUILD_FAILED
-
-rem Search source distribution archive
-
-set FULLVERSION="21.2-testing"
-set VERSION=%FULLVERSION%
 
 echo Version: [%VERSION%]/[%FULLVERSION%]
 
