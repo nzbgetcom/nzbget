@@ -132,10 +132,10 @@ goto END
 echo ********************************
 echo Build failed
 echo ********************************
+exit 1
 
 :END
-
-exit 1
+exit 0
 
 rem END OF SCRIPT
 
