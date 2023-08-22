@@ -17,3 +17,10 @@ jobs:
     - name: Build
       run: |
         .\windows\build-nzbget-vs22.bat
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-installers
+        path: C:\nzbget\build\output\*.exe
+        retention-days: 5

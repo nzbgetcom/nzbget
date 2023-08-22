@@ -1,4 +1,4 @@
-@echo on
+@echo off
 
 rem
 rem  This file is part of nzbget
@@ -135,7 +135,6 @@ echo ********************************
 
 :END
 
-pause
 exit 1
 
 rem END OF SCRIPT
