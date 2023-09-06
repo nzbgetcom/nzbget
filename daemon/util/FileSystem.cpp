@@ -1013,7 +1013,7 @@ CString FileSystem::MakeExtendedPath(const char* path, bool force)
 		else
 		{
 			// local path
-			longpath.Format("\\\\?\\%s", canonicalPath);
+			longpath.Format("\\\\?\\%s", std::move(canonicalPath));
 		}
 		return *longpath;
 	}
