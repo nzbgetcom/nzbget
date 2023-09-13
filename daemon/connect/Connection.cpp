@@ -23,6 +23,7 @@
 #include "Connection.h"
 #include "Log.h"
 #include "FileSystem.h"
+#include "Options.h"
 
 static const int CONNECTION_READBUFFER_SIZE = 1024;
 #ifndef HAVE_GETADDRINFO
@@ -115,7 +116,7 @@ void Connection::Final()
 }
 
 Connection::Connection(const char* host, int port, bool tls) :
-	m_host(host), m_port(port), m_tls(tls)
+	m_host(host), m_port(port), m_tls(tls), m_certVerifLevel(Options::ECertVerifLevel::cvStrict)
 {
 	debug("Creating Connection");
 
@@ -138,6 +139,7 @@ Connection::Connection(SOCKET socket, bool tls)
 #ifndef DISABLE_TLS
 	m_tlsSocket = nullptr;
 	m_tlsError = false;
+	m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
 #endif
 }
 
@@ -992,7 +994,7 @@ bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFi
 {
 	debug("Starting TLS");
 
-	m_tlsSocket = std::make_unique<ConTlsSocket>(m_socket, isClient, m_host, certFile, keyFile, m_cipher, this);
+	m_tlsSocket = std::make_unique<ConTlsSocket>(m_socket, isClient, m_host, certFile, keyFile, m_cipher, m_certVerifLevel, this);
 	m_tlsSocket->SetSuppressErrors(m_suppressErrors);
 
 	return m_tlsSocket->Start();

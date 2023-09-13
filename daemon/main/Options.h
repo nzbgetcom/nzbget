@@ -98,6 +98,13 @@ public:
 		nfArticle,
 		nfNzb
 	};
+	enum ECertVerifLevel
+	{
+		cvNone,
+		cvMinimal,
+		cvStrict,
+		Count
+	};
 
 	class OptEntry
 	{
@@ -169,7 +176,7 @@ public:
 		virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 			bool tls, const char* cipher, int maxConnections, int retention,
-			int level, int group, bool optional) = 0;
+			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
 		virtual void AddFeed(int id, const char* name, const char* url, int interval,
 			const char* filter, bool backlog, bool pauseNzb, const char* category,
 			int priority, const char* extensions) {}

@@ -35,7 +35,7 @@ public:
 	NewsServer(int id, bool active, const char* name, const char* host, int port, int ipVersion,
 		const char* user, const char* pass, bool joinGroup,
 		bool tls, const char* cipher, int maxConnections, int retention,
-		int level, int group, bool optional);
+		int level, int group, bool optional, unsigned int certVerificationfLevel);
 	int GetId() { return m_id; }
 	int GetStateId() { return m_stateId; }
 	void SetStateId(int stateId) { m_stateId = stateId; }
@@ -59,6 +59,7 @@ public:
 	bool GetOptional() { return m_optional; }
 	time_t GetBlockTime() { return m_blockTime; }
 	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
+	unsigned int GetCertVerificatiionLevel() { return m_certVerificationfLevel; }
 
 private:
 	int m_id;
@@ -80,6 +81,7 @@ private:
 	int m_group;
 	bool m_optional = false;
 	time_t m_blockTime = 0;
+	unsigned int m_certVerificationfLevel;
 };
 
 typedef std::vector<std::unique_ptr<NewsServer>> Servers;

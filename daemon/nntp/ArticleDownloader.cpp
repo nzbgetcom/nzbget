@@ -115,6 +115,7 @@ void ArticleDownloader::Run()
 		level = lastServer->GetNormLevel();
 
 		m_connection->SetSuppressErrors(false);
+		m_connection->SetCertVerifLevel(lastServer->GetCertVerificatiionLevel());
 
 		m_connectionName.Format("%s (%s)",
 			m_connection->GetNewsServer()->GetName(), m_connection->GetHost());
