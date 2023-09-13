@@ -3,9 +3,9 @@ name: Build and upload NZBGet for Linux
 on:
   push:
     branches:
-    - feature-*
     - develop
     - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
         rm -rf /build/nzbget
         cp -r . /build/nzbget
         cd /build
-        docker run -e ALL_ARCHS="i686 x86_64 armhf armel" -v /build:/build -v /build/scripts:/scripts nzbget-build /scripts/build-nzbget-ci.sh
+        docker run -e ALL_ARCHS="i686 x86_64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3

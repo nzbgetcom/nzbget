@@ -3,9 +3,9 @@ name: Build and upload NZBGet for Windows
 on:
   push:
     branches:
-    - feature-*
     - develop
     - master
+  workflow_dispatch:
 
 jobs:
   build:
