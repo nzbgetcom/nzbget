@@ -15,6 +15,8 @@ jobs:
     
     - name: Checkout
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     - name: Build
       run: |
@@ -26,7 +28,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: nzbget-installers
+        name: nzbget-linux-installers
         path: /build/output/*.run
         retention-days: 5
 
