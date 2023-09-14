@@ -1,0 +1,28 @@
+name: Build and upload NZBGet for Windows 
+
+on:
+  push:
+    branches:
+    - develop
+    - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, windows]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        .\windows\build-nzbget-vs22.bat
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-windows-installers
+        path: C:\nzbget\build\output\*.exe
+        retention-days: 5

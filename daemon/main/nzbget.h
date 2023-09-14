@@ -74,7 +74,7 @@ compiled */
 
 #ifndef DISABLE_GZIP
 // Static linking to zlib library
-#define ZLIB_WINAPI
+//#define ZLIB_WINAPI
 #endif
 
 /* Suppress warnings */
