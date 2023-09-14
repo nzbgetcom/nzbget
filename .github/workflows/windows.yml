@@ -3,9 +3,9 @@ name: Build and upload NZBGet for Windows
 on:
   push:
     branches:
-    - feature-*
     - develop
     - master
+  workflow_dispatch:
 
 jobs:
   build:
@@ -23,6 +23,6 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: nzbget-installers
+        name: nzbget-windows-installers
         path: C:\nzbget\build\output\*.exe
         retention-days: 5
