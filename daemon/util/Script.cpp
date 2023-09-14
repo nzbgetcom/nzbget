@@ -530,7 +530,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		}
 		if (wcslen(wideWorkingDir) > 260)
 		{
-			PrintMessage(Message::mkError, "Could not build short path for %s", workingDir);
+			PrintMessage(Message::mkError, "Could not build short path for %s", std::move(workingDir));
 		}
 		CloseHandle(readPipe);
 		CloseHandle(readProcPipe);
