@@ -1207,7 +1207,7 @@ void StatusXmlCommand::Execute()
 		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DownloadLimit</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>ThreadCount</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>ThreadCount</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ParJobCount</name><value><i4>%i</i4></value></member>\n"					// deprecated (renamed to PostJobCount)
 		"<member><name>PostJobCount</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>UrlCount</name><value><i4>%i</i4></value></member>\n"
@@ -1256,7 +1256,7 @@ void StatusXmlCommand::Execute()
 		"\"DownloadRate\" : %i,\n"
 		"\"AverageDownloadRate\" : %i,\n"
 		"\"DownloadLimit\" : %i,\n"
-		"\"ThreadCount\" : %i,\n"
+		"\"ThreadCount\" : %u,\n"
 		"\"ParJobCount\" : %i,\n"			// deprecated (renamed to PostJobCount)
 		"\"PostJobCount\" : %i,\n"
 		"\"UrlCount\" : %i,\n"
