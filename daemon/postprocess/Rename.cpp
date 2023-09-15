@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <http://nzbget.com>.
  *
  *  Copyright (C) 2016-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *
