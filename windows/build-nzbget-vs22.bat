@@ -190,6 +190,8 @@ copy README ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy COPYING ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
+copy pubkey.pem ..\distrib\NZBGet
+if errorlevel 1 goto BUILD_FAILED
 
 mkdir ..\distrib\NZBGet\webui
 xcopy /E webui ..\distrib\NZBGet\webui
