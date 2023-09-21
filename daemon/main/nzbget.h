@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *
@@ -74,7 +74,7 @@ compiled */
 
 #ifndef DISABLE_GZIP
 // Static linking to zlib library
-#define ZLIB_WINAPI
+//#define ZLIB_WINAPI
 #endif
 
 /* Suppress warnings */

@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2008-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *
@@ -189,7 +189,11 @@ void TlsSocket::Final()
 
 #ifdef HAVE_OPENSSL
 #ifndef LIBRESSL_VERSION_NUMBER
+#if OPENSSL_VERSION_NUMBER < 0x30000000L
 	FIPS_mode_set(0);
+#else
+	EVP_default_properties_enable_fips(NULL, 0);
+#endif
 #endif
 #ifdef NEED_CRYPTO_LOCKING
 	CRYPTO_set_locking_callback(nullptr);
@@ -455,7 +459,7 @@ bool TlsSocket::Start()
 		if (verifyRes != X509_V_OK)
 		{
 			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
-				" For more info visit http://nzbget.net/certificate-verification",
+				" For more info visit https://nzbget.com/documentation/certificate-verification/",
 				*m_host, X509_verify_cert_error_string(verifyRes)));
 		}
 		else
@@ -525,7 +529,7 @@ bool TlsSocket::ValidateCert()
 				if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0, dn, &size) == 0)
 				{
 					PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
-						" For more info visit http://nzbget.net/certificate-verification", *m_host, dn));
+						" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, dn));
 					gnutls_x509_crt_deinit(cert);
 					return false;
 				}
@@ -537,13 +541,13 @@ bool TlsSocket::ValidateCert()
 		if (gnutls_certificate_verification_status_print(status, GNUTLS_CRT_X509, &msgdata, 0) == 0)
 		{
 			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
-				" For more info visit http://nzbget.net/certificate-verification", *m_host, msgdata.data));
+				" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, msgdata.data));
 			gnutls_free(&msgdata);
 		}
 		else
 		{
 			ReportError(BString<1024>("TLS certificate verification failed for %s."
-				" For more info visit http://nzbget.net/certificate-verification", *m_host));
+				" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host));
 		}
 		return false;
 	}
@@ -557,7 +561,7 @@ bool TlsSocket::ValidateCert()
 	if (!cert)
 	{
 		PrintError(BString<1024>("TLS certificate verification failed for %s: no certificate provided by server."
-			" For more info visit http://nzbget.net/certificate-verification", *m_host));
+			" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host));
 		return false;
 	}
 
@@ -588,7 +592,7 @@ bool TlsSocket::ValidateCert()
         }
 
 		PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
-			" For more info visit http://nzbget.net/certificate-verification", *m_host, certHost));
+			" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, certHost));
 		X509_free(cert);
 		return false;
 	}

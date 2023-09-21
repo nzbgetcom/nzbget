@@ -1,3 +1,27 @@
+nzbget-22.0
+ - Add NZBGet version to Windows registry during installation so version displays in programm list.
+	https://github.com/nzbgetcom/nzbget/pull/14	
+ - Enabled FIPS servers using OpenSSL 3. 
+	https://github.com/nzbgetcom/nzbget/pull/3	
+ - Change progress bar width to calculated instead of fixed.
+	https://github.com/nzbgetcom/nzbget/pull/17	
+ - Fix Download time with empty minutes and seconds in email sended via EMail.py
+	https://github.com/nzbgetcom/nzbget/pull/16
+ - UI and web links fixes, temporary disable testing/develop update channels
+	https://github.com/nzbgetcom/nzbget/pull/19	
+ - Fixed negative values for ThreadCount in json-rpc
+	https://github.com/nzbget/nzbget/issues/696
+	https://github.com/nzbgetcom/nzbget/pull/10	
+ - Fix python 3.x script execution windows support
+	https://github.com/nzbgetcom/nzbget/pull/8
+ - regex library moved directly to project for windows build
+ - removed one certificate from cacert.pem that caused error message
+ - build scripts files updated
+
+nzbget-21.2-testing:
+  - please see repository change log at
+    https://github.com/nzbget/nzbget/commits/develop
+
 nzbget-21.1:
   - fixed crash on systems with 64-bit time;
   - corrected icon in Windows "uninstall program" list;
@@ -1472,7 +1496,7 @@ nzbget-13.0:
     work well with hibernation mode on synology);
   - pp-script "EMail.py" now takes the status of previous pp-scripts
     into account and report a failure if any of the scripts has failed;
-  - updated all links to go to new domain (nzbget.net);
+  - updated all links to go to new domain (nzbget.com);
   - impoved error reporting if unpacker or par-renamer fail to move files;
   - removed libpar2-patches from NZBGet source tree; the documentation
     now suggests to use the libpar2 version maintained by Debian/Ubuntu
@@ -1626,7 +1650,7 @@ nzbget-12.0:
         - duplicate properties (dupekey, dupescore and dupemode) can now
           be viewed and changed in download-edit-dialog and
           history-edit-dialog via new button "Dupe";
-        - for full documentation see http://nzbget.net/RSS#Duplicates;
+        - for full documentation see https://nzbget.com/documentation/rss/#duplicates;
   - created NZBGet.app - NZBGet is now a user friendly Mac OS X application
           with easy installation and seamless integration into OS UI:
           works in background, is controlled from a web-browser, few
@@ -1662,7 +1686,7 @@ nzbget-12.0:
           for platform;
         - the script is then called by NZBGet when user clicks on install-button;
         - the script must download and install new version;
-        - for more info visit http://nzbget.net/Packaging;
+        - for more info visit https://nzbget.com/documentation/packaging/;
   - news servers can now be temporarily disabled via speed limit dialog
     without reloading of the program:
         - new option "ServerX.Active" to disable servers via settings;

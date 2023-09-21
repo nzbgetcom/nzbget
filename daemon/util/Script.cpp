@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *
@@ -282,10 +282,11 @@ void ScriptController::PrepareArgs()
 					nullptr, command, &bufLen))
 				{
 					command[bufLen] = '\0';
-					debug("Command: %s", command);
-
+					CString scommand(command);
+					scommand.Replace("%L", "%1");// Python 3.x has %L in command instead of %1
+					debug("Command: %s", scommand.Str());
 					DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
-					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, command, 0, 0,
+					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
 						m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
 					{
 						Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
@@ -530,7 +531,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		}
 		if (wcslen(wideWorkingDir) > 260)
 		{
-			PrintMessage(Message::mkError, "Could not build short path for %s", workingDir);
+			PrintMessage(Message::mkError, "Could not build short path for %s", std::move(workingDir));
 		}
 		CloseHandle(readPipe);
 		CloseHandle(readProcPipe);

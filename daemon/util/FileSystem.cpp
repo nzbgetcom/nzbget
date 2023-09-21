@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *
@@ -1013,7 +1013,7 @@ CString FileSystem::MakeExtendedPath(const char* path, bool force)
 		else
 		{
 			// local path
-			longpath.Format("\\\\?\\%s", canonicalPath);
+			longpath.Format("\\\\?\\%s", std::move(canonicalPath));
 		}
 		return *longpath;
 	}

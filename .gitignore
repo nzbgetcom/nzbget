@@ -72,3 +72,4 @@ code_revision.cpp
 *.pyc
 pytest.ini
 .cache
+/.idea
