@@ -1,3 +1,23 @@
+nzbget-22.0
+ - Add NZBGet version to Windows registry during installation so version displays in programm list.
+	https://github.com/nzbgetcom/nzbget/pull/14	
+ - Enabled FIPS servers using OpenSSL 3. 
+	https://github.com/nzbgetcom/nzbget/pull/3	
+ - Change progress bar width to calculated instead of fixed.
+	https://github.com/nzbgetcom/nzbget/pull/17	
+ - Fix Download time with empty minutes and seconds in email sended via EMail.py
+	https://github.com/nzbgetcom/nzbget/pull/16
+ - UI and web links fixes, temporary disable testing/develop update channels
+	https://github.com/nzbgetcom/nzbget/pull/19	
+ - Fixed negative values for ThreadCount in json-rpc
+	https://github.com/nzbget/nzbget/issues/696
+	https://github.com/nzbgetcom/nzbget/pull/10	
+ - Fix python 3.x script execution windows support
+	https://github.com/nzbgetcom/nzbget/pull/8
+ - regex library moved directly to project for windows build
+ - removed one certificate from cacert.pem that caused error message
+ - build scripts files updated
+
 nzbget-21.2-testing:
   - please see repository change log at
     https://github.com/nzbget/nzbget/commits/develop
