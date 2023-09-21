@@ -1,5 +1,5 @@
 #
-#  This file is part of nzbget. See <http://nzbget.com>.
+#  This file is part of nzbget. See <https://nzbget.com>.
 #
 # Copyright (C) 2008-2021 Andrey Prygunkov <hugbug@users.sourceforge.net>
 #
@@ -58,7 +58,7 @@ AC_MSG_RESULT($ENABLECPPCHECK)
 if test "$ENABLECPPCHECK" = "yes"; then
 	AX_CXX_COMPILE_STDCXX(14,,[optional])
 	if test "$HAVE_CXX14" != "1"; then
-		AC_MSG_ERROR("A compiler with support for C++14 language features is required. For details visit http://nzbget.net/cpp14")
+		AC_MSG_ERROR("A compiler with support for C++14 language features is required. For details visit https://nzbget.com/documentation/prerequisites-for-c++-compiler/")
 	fi
 fi
 
