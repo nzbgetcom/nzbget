@@ -14,6 +14,9 @@ nzbget-22.0
 	https://github.com/nzbgetcom/nzbget/pull/10	
  - Fix python 3.x script execution windows support
 	https://github.com/nzbgetcom/nzbget/pull/8
+ - regex library moved directly to project for windows build
+ - removed one certificate from cacert.pem that caused error message
+ - build scripts files updated
 
 nzbget-21.2-testing:
   - please see repository change log at
