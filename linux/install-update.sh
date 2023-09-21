@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-#  This file is part of nzbget. See <http://nzbget.com>.
+#  This file is part of nzbget. See <https://nzbget.com>.
 #
 #  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
 #
