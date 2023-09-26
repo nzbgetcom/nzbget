@@ -204,7 +204,10 @@ FunctionEnd
 
 Function RunAction
 
-${If} ${AtLeastWinVista}
+${If} ${AtLeastWin11}
+  ; Starting NZBGet on win11
+  Exec "$INSTDIR\nzbget.exe"
+${ElseIf} ${AtLeastWinVista}
   ; Starting NZBGet with standard user privileges
   Exec "runas /trustlevel:0x20000 $\"$INSTDIR\nzbget.exe$\""
 ${Else}
