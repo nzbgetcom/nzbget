@@ -47,8 +47,9 @@ Branches naming policy
 Pull requests flow for `develop` and `main` branches:
 
 1. For PRs targeting `develop` branch `Squash and merge` mode must be used.
-2. For release PR (`develop` -> `main`) `Create a merge commit` mode must be used.
-3. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
+2. After merging branch to `develop`, branch must be deleted.
+3. For release PR (`develop` -> `main`) `Create a merge commit` mode must be used.
+4. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
 
 This flow results to the fact that in the PR to master branch we see only the squashed commits that correspond to the PRs in the develop branch in current release cycle.
 
