@@ -7,7 +7,7 @@
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
-[![GitHub Issues](https://img.shields.io/github/issues/anfederico/clairvoyant.svg)](https://github.com/anfederico/clairvoyant/issues)
+[![GitHub issues](https://img.shields.io/github/issues/nzbgetcom/nzbget)](https://github.com/nzbgetcom/nzbget/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/nzbgetcom/nzbget)](https://github.com/nzbgetcom/nzbget/pulls)
 ![GitHub repo size](https://img.shields.io/github/repo-size/nzbgetcom/nzbget)
 
