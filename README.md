@@ -30,10 +30,19 @@ Please follow [instructions](https://nzbget.com/documentation/building-developme
 Branches naming policy
 
 - `main` is a protected branch that constains only release code
-- `develop` is a protected branch 
+- `develop` is a protected branch for development
 - new branches should follow the following convention:
   - `hotfix/brief-description` for any small hotfixes
   - `feature/brief-description` for any new developments
   - `bugfix/brief-description` for bugs
+
+Pull requests flow for `develop` and `main` branches:
+
+1. For PRs targeting `develop` branch `Squash and merge` mode must be used.
+2. For release PR (`develop` -> `main`) `Create a merge commit` mode must be used.
+3. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
+
+This flow results to the fact that in the PR to master branch we see only the squashed commits that correspond to the PRs in the develop branch in current release cycle.
+
 
 We entice our users to participate in the project, please don't hesitate to get involved - create a [new issue](https://github.com/nzbgetcom/nzbget/issues/new) or [pull request](https://github.com/nzbgetcom/nzbget/compare)!
