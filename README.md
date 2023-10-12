@@ -29,7 +29,7 @@ Please follow [instructions](https://nzbget.com/documentation/building-developme
 
 Branches naming policy
 
-- `main` is a protected branch that constains only release code
+- `main` is a protected branch that contains only release code
 - `develop` is a protected branch for development
 - new branches should follow the following convention:
   - `hotfix/brief-description` for any small hotfixes
