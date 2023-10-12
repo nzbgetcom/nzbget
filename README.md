@@ -1,8 +1,16 @@
 # NZBGet - Efficient Usenet downloader #
+
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](http://www.gnu.org/licenses/)
-[![Code Quality: Cpp](https://img.shields.io/lgtm/grade/cpp/g/nzbget/nzbget.svg?label=code%20quality:%20c%2b%2b)](https://lgtm.com/projects/g/nzbget/nzbget/context:cpp)
-[![Code Quality: JavaScript](https://img.shields.io/lgtm/grade/javascript/g/nzbget/nzbget.svg?label=code%20quality:%20js)](https://lgtm.com/projects/g/nzbget/nzbget/context:javascript)
-[![Total Alerts](https://img.shields.io/lgtm/alerts/g/nzbget/nzbget.svg)](https://lgtm.com/projects/g/nzbget/nzbget/alerts)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v22.0/total?label=v22.0)
+[![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
+[![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
+
+
+![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
+[![GitHub Issues](https://img.shields.io/github/issues/anfederico/clairvoyant.svg)](https://github.com/anfederico/clairvoyant/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/nzbgetcom/nzbget)](https://github.com/nzbgetcom/nzbget/pulls)
+![GitHub repo size](https://img.shields.io/github/repo-size/nzbgetcom/nzbget)
+
 
 NZBGet is a binary downloader, which downloads files from Usenet
 based on information given in nzb-files. 

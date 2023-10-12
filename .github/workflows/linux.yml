@@ -1,4 +1,4 @@
-name: Build and upload NZBGet for Linux 
+name: linux build 
 
 on:
   push:
