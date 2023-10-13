@@ -21,22 +21,6 @@
 set -o nounset
 set -o errexit
 
-# install Homebrew package manager (https://brew.sh/)
-/bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# install build tools
-xcode-select --install
-
-# install dependencies
-brew install git
-brew install zlib
-brew install libxml2
-brew install ncurses
-brew install openssl@3 # TODO: try to build without this package
-                       # Without this package, pkg-config swears that it can't find openssl, 
-                       # even when I manually specified all the openssl paths
-brew install pkg-config
-
 RESOURCES_PATH=./osx/Resources
 DESTINATION_PATH=$RESOURCES_PATH/daemon/usr/local
 XCODE_PROJECT=./osx/NZBGet.xcodeproj
@@ -151,7 +135,15 @@ Clean()
     rm -rf $RESOURCES_PATH/daemon
 }
 
+Make_archive()
+{
+    VERSION=`grep "AC_INIT(nzbget, " configure.ac`
+    VERSION=`expr "$VERSION" : '.*, \(.*\),.*)'`
+    (cd osx/build/Release/ && zip -r nzbget-$VERSION-bin-macos.zip NZBGet.app)
+}
+
 Make_OpenSSL_for_arm_and_x86
 Make_tools
 Build
 Clean
+Make_archive
