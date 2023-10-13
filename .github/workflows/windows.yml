@@ -1,4 +1,4 @@
-name: Build and upload NZBGet for Windows 
+name: windows build 
 
 on:
   push:
