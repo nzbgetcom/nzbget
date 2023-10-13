@@ -37,11 +37,54 @@ brew install openssl@3 # TODO: try to build without this package
                        # even when I manually specified all the openssl paths
 brew install pkg-config
 
+RESOURCES_PATH=./osx/Resources
+DESTINATION_PATH=$RESOURCES_PATH/daemon/usr/local
+XCODE_PROJECT=./osx/NZBGet.xcodeproj
 CPUs=$(sysctl -n hw.ncpu)
 
 mkdir -p ./tmp/x86
 mkdir ./tmp/arm
 mkdir ./tmp/bin
+mkdir ./tmp/tools
+mkdir ./tmp/armrar
+mkdir ./tmp/x86rar
+mkdir ./tmp/7zz
+
+Fetch_certificate()
+{
+    curl -o ./tmp/tools/cacert.pem https://curl.se/ca/cacert.pem
+}
+
+Make_7za_universal()
+{
+    curl -o ./tmp/7zz.tar.xz https://www.7-zip.org/a/7z2301-mac.tar.xz
+    tar -xf ./tmp/7zz.tar.xz -C ./tmp/7zz
+    mv ./tmp/7zz/7zz ./tmp/tools/7za 
+}
+
+Make_unrar_universal()
+{
+    curl -o ./tmp/armrar.tar.gz https://www.rarlab.com/rar/rarmacos-arm-624.tar.gz
+    curl -o ./tmp/x86rar.tar.gz https://www.rarlab.com/rar/rarmacos-x64-624.tar.gz
+    tar -xf ./tmp/armrar.tar.gz -C ./tmp/armrar
+    tar -xf ./tmp/x86rar.tar.gz -C ./tmp/x86rar
+    lipo -create ./tmp/armrar/rar/unrar ./tmp/x86rar/rar/unrar -output ./tmp/tools/unrar
+}
+
+Make_tools()
+{
+    Fetch_certificate
+    Make_7za_universal
+    Make_unrar_universal
+}
+
+Create_aliases_to_tools()
+{
+    BIN_DIR=$DESTINATION_PATH/bin
+    ln -s  $RESOURCES_PATH/tools/unrar $BIN_DIR
+    ln -s  $RESOURCES_PATH/tools/7za $BIN_DIR
+    ln -s  $RESOURCES_PATH/tools/cacert.pem $BIN_DIR
+}
 
 Make_OpenSSL_for_arm_and_x86()
 {
@@ -96,8 +139,6 @@ Compile_arm()
 Make_universal()
 {
     lipo -create ./tmp/arm/bin/armnzbget ./tmp/x86/bin/x86nzbget -output ./tmp/bin/nzbget
-    mv ./tmp/x86/share ./tmp/share
-    rm -rf ./tmp/x86 ./tmp/arm
 }
 
 Build()
@@ -105,21 +146,24 @@ Build()
     Compile_x86_64
     Compile_arm
     Make_universal
-    DESTINATION_PATH="./osx/Resources/daemon/usr/local"
-    XCODE_PROJECT="./osx/NZBGet.xcodeproj"
-    PLATFORM="platform=macOS"
+    PLATFORM=platform=macOS
     mkdir -p $DESTINATION_PATH
+    mv ./tmp/tools $RESOURCES_PATH
     mv ./tmp/bin $DESTINATION_PATH
-    mv ./tmp/share $DESTINATION_PATH
+    mv ./tmp/x86/share $DESTINATION_PATH
+    Create_aliases_to_tools
     xcodebuild -project $XCODE_PROJECT -configuration "Release" -destination $PLATFORM build
 }
 
 Clean()
 {
+    make clean
     rm -rf ./tmp
-    rm -rf ./osx/Resources/daemon
+    rm -rf $RESOURCES_PATH/daemon
+    rm -rf $RESOURCES_PATH/tools
 }
 
 Make_OpenSSL_for_arm_and_x86
+Make_tools
 Build
 Clean
