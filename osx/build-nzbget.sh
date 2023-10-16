@@ -33,6 +33,31 @@ mkdir ./tmp/armrar
 mkdir ./tmp/x86rar
 mkdir ./tmp/7zz
 
+Adjust_nzbget_conf()
+{
+    CONF_FILE=$DESTINATION_PATH/share/nzbget/nzbget.conf
+    sed -i '' 's:^MainDir=.*:MainDir=~/Library/Application Support/NZBGet:' $CONF_FILE
+    sed -i '' 's:^DestDir=.*:DestDir=~/Downloads:' $CONF_FILE
+    sed -i '' 's:^InterDir=.*:InterDir=~/Downloads/Intermediate:' $CONF_FILE
+    sed -i '' 's:^WebDir=.*:# NOTE\: option WebDir cannot be changed because it is hardcoded in OSX version.:' $CONF_FILE
+    sed -i '' 's:^LockFile=.*:# NOTE\: option LockFile cannot be changed because it is hardcoded in OSX version.:' $CONF_FILE
+    sed -i '' 's:^LogFile=.*:LogFile=~/Library/Logs/NZBGet.log:' $CONF_FILE
+    sed -i '' '/# example configuration file (installed to/{N;s/.*/# example configuration file (installed to\n# \/usr\/local\/share\/nzbget\/nz    bget.conf)./;}' $CONF_FILE
+    sed -i '' 's:^ConfigTemplate=.*:# NOTE\: option ConfigTemplate cannot be changed because it is hardcoded in OSX version.:' $CONF_FILE
+    sed -i '' 's:^DaemonUsername=.*:# NOTE\: option DaemonUsername cannot be changed because it is hardcoded in OSX version.:' $CONF_FILE
+    sed -i '' 's:^CertStore=.*:CertStore=${AppDir}/cacert.pem:' $CONF_FILE
+    sed -i '' 's:^CertCheck=.*:CertCheck=yes:' $CONF_FILE
+    sed -i '' 's:^AuthorizedIP=.*:AuthorizedIP=127.0.0.1:' $CONF_FILE
+    sed -i '' 's:^ArticleCache=.*:ArticleCache=700:' $CONF_FILE
+    sed -i '' 's:^DirectWrite=.*:DirectWrite=no:' $CONF_FILE
+    sed -i '' 's:^WriteBuffer=.*:WriteBuffer=1024:' $CONF_FILE
+    sed -i '' 's:^ParBuffer=.*:ParBuffer=500:' $CONF_FILE
+    sed -i '' 's:^DirectRename=.*:DirectRename=yes:' $CONF_FILE
+    sed -i '' 's:^DirectUnpack=.*:DirectUnpack=yes:' $CONF_FILE
+    sed -i '' 's:^UnrarCmd=.*:UnrarCmd=${AppDir}/unrar:' $CONF_FILE
+    sed -i '' 's:^SevenZipCmd=.*:SevenZipCmd=${AppDir}/7za:' $CONF_FILE
+}
+
 Fetch_certificate()
 {
     curl -o ./tmp/bin/cacert.pem https://curl.se/ca/cacert.pem
@@ -125,6 +150,7 @@ Build()
     mkdir -p $DESTINATION_PATH
     mv ./tmp/bin $DESTINATION_PATH
     mv ./tmp/x86/share $DESTINATION_PATH
+    Adjust_nzbget_conf
     xcodebuild -project $XCODE_PROJECT -configuration "Release" -destination $PLATFORM build
 }
 
