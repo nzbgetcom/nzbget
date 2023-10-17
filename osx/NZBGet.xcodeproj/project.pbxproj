@@ -320,7 +320,7 @@
 				OTHER_LDFLAGS = "";
 				PRODUCT_NAME = NZBGet;
 				SDKROOT = macosx;
-				VALID_ARCHS = x86_64 arm64;
+				VALID_ARCHS = "x86_64 arm64";
 			};
 			name = Debug;
 		};
@@ -343,7 +343,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				PRODUCT_NAME = NZBGet;
 				SDKROOT = macosx;
-				VALID_ARCHS = x86_64 arm64;
+				VALID_ARCHS = "x86_64 arm64";
 			};
 			name = Release;
 		};
