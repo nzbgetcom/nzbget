@@ -17,11 +17,28 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>15.0-testing</string>
+	<string>22</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+	<dict>
+	<key>CFBundleTypeExtensions</key>
+	<array>
+	<string>nzb</string>
+	</array>
+	<key>CFBundleTypeRole</key>
+	<string>Editor</string>
+	<key>LSHandlerRank</key>
+	<string>Default</string>
+	<key>LSItemContentTypes</key>
+	<array>
+	<string>public.data</string>
+	</array>
+	</dict>
+	</array>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>10.7</string>
+	<string>10.13</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSMainNibFile</key>
