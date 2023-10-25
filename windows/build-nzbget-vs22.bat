@@ -232,8 +232,8 @@ if errorlevel 1 goto BUILD_FAILED
 
 rem Adapt UNIX python3 shebang to Windows specific
 set "SCRIPTS=..\distrib\NZBGet\scripts\EMail.py ..\distrib\NZBGet\scripts\Logger.py"
-for %%SCRIPT in (%SCRIPTS%) do (
-    %SED% -e "s|#!/usr/bin/env python3|#!/usr/bin/env python|" -i %%SCRIPT
+for %%F in (%SCRIPTS%) do (
+    %SED% -e "s|#!/usr/bin/env python3|#!/usr/bin/env python|" -i %%F
 )
 if errorlevel 1 goto BUILD_FAILED
 
