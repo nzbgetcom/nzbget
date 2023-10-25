@@ -5,6 +5,7 @@ on:
     branches:
     - develop
     - main
+    - bugfix/script-shebangs-for-py3
   workflow_dispatch:
 
 jobs:

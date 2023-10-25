@@ -230,6 +230,13 @@ mkdir ..\distrib\NZBGet\scripts
 xcopy /E scripts ..\distrib\NZBGet\scripts
 if errorlevel 1 goto BUILD_FAILED
 
+rem Adapt UNIX python3 shebang to Windows specific
+set "SCRIPTS=..\distrib\NZBGet\scripts\EMail.py ..\distrib\NZBGet\scripts\Logger.py"
+for %%SCRIPT in (%SCRIPTS%) do (
+    %SED% -e "s|#!/usr/bin/env python3|#!/usr/bin/env python|" -i %%SCRIPT
+)
+if errorlevel 1 goto BUILD_FAILED
+
 copy ..\..\image\* ..\distrib\NZBGet
 copy ..\..\image\32\* ..\distrib\NZBGet\32
 copy ..\..\image\64\* ..\distrib\NZBGet\64
