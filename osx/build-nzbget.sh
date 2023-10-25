@@ -115,7 +115,7 @@ Compile_x86_64()
         --build=x86_64-apple-darwin \
         --target=x86_64-apple-darwin \
         --with-tlslib=OpenSSL \
-        --program-prefix=x86 \
+        --program-prefix="" \
         CXXFLAGS="-arch x86_64 -I$(pwd)tmp/openssl/x86/include" \
         LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86"
         
@@ -129,7 +129,7 @@ Compile_arm()
         --build=arm-apple-darwin \
         --target=arm-apple-darwin \
         --with-tlslib=OpenSSL \
-        --program-prefix=arm \
+        --program-prefix="" \
         CXXFLAGS="-arch arm64 -I$(pwd)tmp/openssl/arm/include" \
         LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm"
 
@@ -138,7 +138,7 @@ Compile_arm()
 
 Make_universal()
 {
-    lipo -create ./tmp/arm/bin/armnzbget ./tmp/x86/bin/x86nzbget -output ./tmp/bin/nzbget
+    lipo -create ./tmp/arm/bin/nzbget ./tmp/x86/bin/nzbget -output ./tmp/bin/nzbget
 }
 
 Build()
