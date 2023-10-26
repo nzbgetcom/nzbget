@@ -230,6 +230,15 @@ mkdir ..\distrib\NZBGet\scripts
 xcopy /E scripts ..\distrib\NZBGet\scripts
 if errorlevel 1 goto BUILD_FAILED
 
+rem The default PATH to python changed in most POSIX systems after python2 was deprecated.
+rem On Windows, it remained the same.
+rem Now we need to add Windows specific shebang (#!/usr/bin/env python) to the scripts.
+set "SCRIPTS=..\distrib\NZBGet\scripts\EMail.py ..\distrib\NZBGet\scripts\Logger.py"
+for %%F in (%SCRIPTS%) do (
+    %SED% -e "s|#!/usr/bin/env python3|#!/usr/bin/env python|" -i %%F
+)
+if errorlevel 1 goto BUILD_FAILED
+
 copy ..\..\image\* ..\distrib\NZBGet
 copy ..\..\image\32\* ..\distrib\NZBGet\32
 copy ..\..\image\64\* ..\distrib\NZBGet\64
