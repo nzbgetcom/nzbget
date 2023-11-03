@@ -210,6 +210,7 @@ public:
 	EMessageTarget GetDebugTarget() const { return m_debugTarget; }
 	EMessageTarget GetDetailTarget() const { return m_detailTarget; }
 	int GetArticleTimeout() { return m_articleTimeout; }
+	int GetArticleReadChunkSize() { return m_articleReadChunkSize; }
 	int GetUrlTimeout() { return m_urlTimeout; }
 	int GetRemoteTimeout() { return m_remoteTimeout; }
 	bool GetRawArticle() { return m_rawArticle; };
@@ -345,6 +346,7 @@ private:
 	bool m_rawArticle = false;
 	bool m_nzbLog = false;
 	int m_articleTimeout = 0;
+	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;
 	int m_remoteTimeout = 0;
 	bool m_appendCategoryDir = false;
