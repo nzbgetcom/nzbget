@@ -22,6 +22,7 @@
 
 namespace Json
 {
-	using JSON = boost::json::value;
-	JSON Read(std::istream &is, boost::json::error_code &ec);
+	using namespace boost::json;
+	using JSON = value;
+	JSON Read(std::istream &is, error_code &ec);
 }

@@ -24,6 +24,7 @@
 #include "Options.h"
 #include "Log.h"
 #include "ScriptConfig.h"
+#include "Json.h"
 
 static const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
 static const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
@@ -277,10 +278,30 @@ void ScriptConfig::LoadScripts(Scripts& scripts)
 
 	BuildScriptDisplayNames(scripts);
 }
+#include <iostream>
+#include <fstream>
 
+void FindManifest(const char* directory)
+{
+	DirBrowser dir(directory);
+	const char* manifest = "manifest.json";
+	while (const char* filename = dir.Next()) 
+	{
+		if (strncmp(filename, manifest, sizeof(manifest)) == 0)
+		{
+			BString<1024> fullFilename("%s%c%s", directory, PATH_SEPARATOR, manifest);
+			std::fstream fs(fullFilename);
+			Json::error_code ec1;
+			Json::JSON json = Json::Read(fs, ec1);
+			std::cout << json << std::endl;
+		}
+	}
+}
 void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir)
 {
 	DirBrowser dir(directory);
+	FindManifest(directory);
+
 	while (const char* filename = dir.Next())
 	{
 		if (filename[0] != '.' && filename[0] != '_')

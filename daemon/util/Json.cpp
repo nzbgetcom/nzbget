@@ -20,9 +20,9 @@
 #include "nzbget.h"
 #include "Json.h"
 
-Json::JSON Json::Read(std::istream &is, boost::json::error_code &ec)
+Json::JSON Json::Read(std::istream &is, Json::error_code &ec)
 {
-	boost::json::stream_parser p;
+	Json::stream_parser p;
 	std::string line;
 
 	while (std::getline(is, line))
