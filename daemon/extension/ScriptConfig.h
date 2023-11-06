@@ -34,7 +34,7 @@ public:
 		Script(const char* name, const char* location) :
 			m_name(name), m_location(location), m_displayName(name) {};
 		Script(Script&&) = default;
-		const char* GetName() { return m_name; }
+		const char* GetName() const { return m_name; }
 		const char* GetLocation() { return m_location; }
 		void SetDisplayName(const char* displayName) { m_displayName = displayName; }
 		const char* GetDisplayName() { return m_displayName; }
@@ -97,12 +97,12 @@ private:
 	void InitScripts();
 	void InitConfigTemplates();
 	void CreateTasks();
-	void LoadScriptDir(Scripts* scripts, const char* directory, bool isSubDir);
-	void BuildScriptDisplayNames(Scripts* scripts);
-	void LoadScripts(Scripts* scripts);
-	bool LoadScriptFile(Script* script);
-	BString<1024>BuildScriptName(const char* directory, const char* filename, bool isSubDir);
-	bool ScriptExists(Scripts* scripts, const char* scriptName);
+	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);
+	void BuildScriptDisplayNames(Scripts& scripts);
+	void LoadScripts(Scripts& scripts);
+	bool LoadScriptFile(Script& script);
+	BString<1024>BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
+	bool ScriptExists(const Scripts& scripts, const char* scriptName) const;
 };
 
 extern ScriptConfig* g_ScriptConfig;

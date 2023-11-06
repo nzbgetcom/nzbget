@@ -287,6 +287,7 @@ am__nzbget_SOURCES_DIST = daemon/connect/Connection.cpp \
 	daemon/util/Thread.cpp daemon/util/Thread.h \
 	daemon/util/Service.cpp daemon/util/Service.h \
 	daemon/util/FileSystem.cpp daemon/util/FileSystem.h \
+	daemon/util/Json.cpp daemon/util/Json.h \
 	daemon/util/Util.cpp daemon/util/Util.h \
 	daemon/nserv/NServMain.h daemon/nserv/NServMain.cpp \
 	daemon/nserv/NServFrontend.h daemon/nserv/NServFrontend.cpp \

@@ -168,7 +168,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 	}
 
 	Scripts scriptList;
-	LoadScripts(&scriptList);
+	LoadScripts(scriptList);
 
 	const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
 	const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
@@ -232,10 +232,10 @@ void ScriptConfig::InitConfigTemplates()
 
 void ScriptConfig::InitScripts()
 {
-	LoadScripts(&m_scripts);
+	LoadScripts(m_scripts);
 }
 
-void ScriptConfig::LoadScripts(Scripts* scripts)
+void ScriptConfig::LoadScripts(Scripts& scripts)
 {
 	if (Util::EmptyStr(g_Options->GetScriptDir()))
 	{
@@ -247,7 +247,7 @@ void ScriptConfig::LoadScripts(Scripts* scripts)
 	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
 	while (const char* scriptDir = tokDir.Next())
 	{
-		LoadScriptDir(&tmpScripts, scriptDir, false);
+		LoadScriptDir(tmpScripts, scriptDir, false);
 	}
 
 	tmpScripts.sort(
@@ -268,17 +268,17 @@ void ScriptConfig::LoadScripts(Scripts* scripts)
 
 		if (pos != tmpScripts.end())
 		{
-			scripts->splice(scripts->end(), tmpScripts, pos);
+			scripts.splice(scripts.end(), tmpScripts, pos);
 		}
 	}
 
 	// then add all other scripts from scripts directory
-	scripts->splice(scripts->end(), std::move(tmpScripts));
+	scripts.splice(scripts.end(), std::move(tmpScripts));
 
 	BuildScriptDisplayNames(scripts);
 }
 
-void ScriptConfig::LoadScriptDir(Scripts* scripts, const char* directory, bool isSubDir)
+void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir)
 {
 	DirBrowser dir(directory);
 	while (const char* filename = dir.Next())
@@ -296,9 +296,9 @@ void ScriptConfig::LoadScriptDir(Scripts* scripts, const char* directory, bool i
 				}
 
 				Script script(scriptName, fullFilename);
-				if (LoadScriptFile(&script))
+				if (LoadScriptFile(script))
 				{
-					scripts->push_back(std::move(script));
+					scripts.push_back(std::move(script));
 				}
 			}
 			else if (!isSubDir)
@@ -309,10 +309,10 @@ void ScriptConfig::LoadScriptDir(Scripts* scripts, const char* directory, bool i
 	}
 }
 
-bool ScriptConfig::LoadScriptFile(Script* script)
+bool ScriptConfig::LoadScriptFile(Script& script)
 {
 	DiskFile infile;
-	if (!infile.Open(script->GetLocation(), DiskFile::omRead))
+	if (!infile.Open(script.GetLocation(), DiskFile::omRead))
 	{
 		return false;
 	}
@@ -402,18 +402,18 @@ bool ScriptConfig::LoadScriptFile(Script* script)
 	while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
 	if (taskTime) taskTime = Util::Trim(taskTime);
 
-	script->SetPostScript(postScript);
-	script->SetScanScript(scanScript);
-	script->SetQueueScript(queueScript);
-	script->SetSchedulerScript(schedulerScript);
-	script->SetFeedScript(feedScript);
-	script->SetQueueEvents(queueEvents);
-	script->SetTaskTime(taskTime);
+	script.SetPostScript(postScript);
+	script.SetScanScript(scanScript);
+	script.SetQueueScript(queueScript);
+	script.SetSchedulerScript(schedulerScript);
+	script.SetFeedScript(feedScript);
+	script.SetQueueEvents(queueEvents);
+	script.SetTaskTime(taskTime);
 
 	return true;
 }
 
-BString<1024> ScriptConfig::BuildScriptName(const char* directory, const char* filename, bool isSubDir)
+BString<1024> ScriptConfig::BuildScriptName(const char* directory, const char* filename, bool isSubDir) const
 {
 	if (isSubDir)
 	{
@@ -433,16 +433,16 @@ BString<1024> ScriptConfig::BuildScriptName(const char* directory, const char* f
 	}
 }
 
-bool ScriptConfig::ScriptExists(Scripts* scripts, const char* scriptName)
+bool ScriptConfig::ScriptExists(const Scripts& scripts, const char* scriptName) const
 {
-	return std::find_if(scripts->begin(), scripts->end(),
-		[scriptName](Script& script)
+	return std::find_if(scripts.begin(), scripts.end(),
+		[scriptName](const Script& script)
 		{
 			return !strcmp(script.GetName(), scriptName);
-		}) != scripts->end();
+		}) != scripts.end();
 }
 
-void ScriptConfig::BuildScriptDisplayNames(Scripts* scripts)
+void ScriptConfig::BuildScriptDisplayNames(Scripts& scripts)
 {
 	// trying to use short name without path and extension.
 	// if there are other scripts with the same short name - using a longer name instead (with ot without extension)

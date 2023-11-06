@@ -158,6 +158,8 @@ nzbget_SOURCES = \
 	daemon/util/Service.h \
 	daemon/util/FileSystem.cpp \
 	daemon/util/FileSystem.h \
+	daemon/util/Json.cpp \
+	daemon/util/Json.h \
 	daemon/util/Util.cpp \
 	daemon/util/Util.h \
 	daemon/nserv/NServMain.h \

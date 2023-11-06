@@ -1,0 +1,13 @@
+{
+    "main": "Logger.py",
+    "name": "logger",
+    "kind": "POST-PROCESSING",
+    "displayName": "Logger",
+    "version": "1.0.0",
+    "author": "Andrey Prygunkov",
+    "license": "GNU",
+    "description": "Save nzb log into a file.\nThis script saves the download and post-processing log of nzb-file\ninto file _nzblog.txt in the destination directory.\nNOTE: This script requires Python to be installed on your system.",
+    "options": [],
+    "commands": [],
+    "tasks": []
+}
