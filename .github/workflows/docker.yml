@@ -46,9 +46,7 @@ jobs:
         if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
           TAG="${GITHUB_REF/refs\/tags\//}"
         fi
-        echo $TAG
-        TAGS="nzbgetcom/nzbget:$TAG ghcr.io/nzbgetcom/nzbget:$TAG"
-        echo $TAGS
+        TAGS="nzbgetcom/nzbget:$TAG,ghcr.io/nzbgetcom/nzbget:$TAG"
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
     
     - name: Build and push
