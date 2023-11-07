@@ -17,6 +17,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef JSON_H
+#define JSON_H
+
 #include "nzbget.h"
 #include <iostream>
 
@@ -26,3 +29,5 @@ namespace Json
 	using JSON = value;
 	JSON Read(std::istream &is, error_code &ec);
 }
+
+#endif
