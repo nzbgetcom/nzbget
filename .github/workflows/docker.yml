@@ -46,7 +46,8 @@ jobs:
         if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
           TAGS='["nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'","ghcr.io/nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'"]'
         fi
-        echo '::set-output name=tags::'$TAGS
+        echo $TAGS
+        echo "tags=$TAGS" >> $GITHUB_OUTPUT
     
     - name: Build and push
       uses: docker/build-push-action@v5
@@ -54,7 +55,8 @@ jobs:
         context: docker
         platforms: linux/amd64
         push: true
-        tags: ${{ fromJson(steps.gen_tags.outputs.tags) }}
+        tags: |
+          ${{ fromJson(steps.gen_tags.outputs.tags) }}
         build-args: |
           "NZBGET_RELEASE=${GITHUB_REF_NAME}"
           "MAKE_JOBS=2"
