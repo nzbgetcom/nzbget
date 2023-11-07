@@ -57,5 +57,5 @@ jobs:
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
         build-args: |
-          "NZBGET_RELEASE=${{ env.GITHUB_REF_NAME }}"
+          "NZBGET_RELEASE=${{ github.ref_name }}"
           "MAKE_JOBS=2"
