@@ -6,6 +6,8 @@ on:
     - develop
     - main
     - feature/docker
+    tags:
+    - v*
 
 jobs:
   build:
@@ -55,9 +57,17 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: docker
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64,linux/arm/v7
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
         build-args: |
           "NZBGET_RELEASE=${{ github.ref_name }}"
           "MAKE_JOBS=2"
+
+    - name: Update Docker Hub Description
+      uses: peter-evans/dockerhub-description@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        repository: nzbgetcom/nzbget
+        readme-filepath: ./docker/README.md
