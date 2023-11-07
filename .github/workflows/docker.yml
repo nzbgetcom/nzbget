@@ -27,11 +27,34 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Generate image tags
+      id: gen_tags
+      run: |
+        if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
+          TAGS='["nzbgetcom/nzbget:testing","ghcr.io/nzbgetcom/nzbget:testing"]'
+        else
+          TAGS='["nzbgetcom/nzbget:latest","ghcr.io/nzbgetcom/nzbget:latest"]'
+        fi
+        if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
+          TAGS='["nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'","ghcr.io/nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'"]'
+        fi
+        echo '::set-output name=tags::'$TAGS
     
     - name: Build and push
       uses: docker/build-push-action@v5
       with:
         context: docker
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        platforms: linux/amd64
         push: true
-        tags: user/app:latest
+        tags: ${{ fromJson(steps.gen_tags.outputs.tags) }}
+        build-args: |
+          "NZBGET_RELEASE=${GITHUB_REF_NAME}"
+          "MAKE_JOBS=2"
