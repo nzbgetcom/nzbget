@@ -55,8 +55,7 @@ jobs:
         context: docker
         platforms: linux/amd64
         push: true
-        tags: |
-          ${{ fromJson(steps.gen_tags.outputs.tags) }}
+        tags: ${{ steps.gen_tags.outputs.tags }}
         build-args: |
           "NZBGET_RELEASE=${GITHUB_REF_NAME}"
           "MAKE_JOBS=2"
