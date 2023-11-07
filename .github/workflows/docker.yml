@@ -39,13 +39,15 @@ jobs:
       id: gen_tags
       run: |
         if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
-          TAGS='["nzbgetcom/nzbget:testing","ghcr.io/nzbgetcom/nzbget:testing"]'
+          TAG='testing'
         else
-          TAGS='["nzbgetcom/nzbget:latest","ghcr.io/nzbgetcom/nzbget:latest"]'
+          TAG='latest'
         fi
         if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
-          TAGS='["nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'","ghcr.io/nzbgetcom/nzbget:'${GITHUB_REF/refs\/tags\//}'"]'
+          TAG="${GITHUB_REF/refs\/tags\//}"
         fi
+        echo $TAG
+        TAGS="nzbgetcom/nzbget:$TAG ghcr.io/nzbgetcom/nzbget:$TAG"
         echo $TAGS
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
     
