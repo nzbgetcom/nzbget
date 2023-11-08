@@ -24,6 +24,9 @@
 #include "NString.h"
 #include "Container.h"
 #include "Options.h"
+#include "ManifestFile.h"
+
+class LoadScriptFileStrategy;
 
 class ScriptConfig
 {
@@ -100,9 +103,33 @@ private:
 	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);
 	void BuildScriptDisplayNames(Scripts& scripts);
 	void LoadScripts(Scripts& scripts);
-	bool LoadScriptFile(Script& script);
-	BString<1024>BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
+	bool LoadScriptFile(Script& script, const LoadScriptFileStrategy& strategy);
+	BString<1024> BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
 	bool ScriptExists(const Scripts& scripts, const char* scriptName) const;
+};
+
+class LoadScriptFileStrategy {
+public:
+	virtual bool Load(ScriptConfig::Script& script) const = 0;
+	virtual ~LoadScriptFileStrategy() = default;
+};
+
+class LoadScriptFileHeaderBasedStrategy : public LoadScriptFileStrategy {
+public:
+	bool Load(ScriptConfig::Script& script) const override;
+	 ~LoadScriptFileHeaderBasedStrategy() {}
+};
+
+class LoadScriptFileStrategy : public LoadScriptFileStrategy {
+public:
+	LoadNewScriptFileStrategy() = delete;
+	explicit LoadNewScriptFileStrategy(ManifestFile::Manifest&& manifest_) 
+		: manifest{std::move(manifest_)} 
+	{}
+	bool Load(ScriptConfig::Script& script) const override;
+	~LoadNewScriptFileStrategy() {}
+private:
+	ManifestFile::Manifest manifest;
 };
 
 extern ScriptConfig* g_ScriptConfig;

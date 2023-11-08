@@ -17,26 +17,28 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef MANIFESTFILE_H
+#define MANIFESTFILE_H
+
 #include "nzbget.h"
-#include "Json.h"
+#include "NString.h"
 
-namespace Json {
-	JSON Read(std::istream &is, error_code &ec)
+namespace ManifestFile
+{
+	static const CString MANIFEST_FILE = "manifest.json";
+	struct Manifest
 	{
-		stream_parser p;
-		std::string line;
+		CString author;
+		CString entry;
+		CString kind;
+		CString name;
+		CString displayName;
+		CString version;
+		CString license;
+		CString description;
+	};
 
-		while (std::getline(is, line))
-		{
-			p.write(line, ec);
-			if (ec)
-				return nullptr;
-		}
-
-		p.finish(ec);
-
-		if (ec)
-			return nullptr;
-		return p.release();
-	}
+	bool Load(Manifest& manifest, const char* directory);
 }
+
+#endif
