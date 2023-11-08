@@ -1,5 +1,5 @@
 #
-#  This file is part of nzbget. See <http://nzbget.net>.
+#  This file is part of nzbget. See <https://nzbget.com>.
 #
 # Copyright (C) 2008-2021 Andrey Prygunkov <hugbug@users.sourceforge.net>
 #
@@ -21,7 +21,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.65)
-AC_INIT(nzbget, 21.2-testing, hugbug@users.sourceforge.net)
+AC_INIT(nzbget, 22.0, nzbget@nzbget.com)
 AC_CONFIG_AUX_DIR(posix)
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -58,7 +58,7 @@ AC_MSG_RESULT($ENABLECPPCHECK)
 if test "$ENABLECPPCHECK" = "yes"; then
 	AX_CXX_COMPILE_STDCXX(14,,[optional])
 	if test "$HAVE_CXX14" != "1"; then
-		AC_MSG_ERROR("A compiler with support for C++14 language features is required. For details visit http://nzbget.net/cpp14")
+		AC_MSG_ERROR("A compiler with support for C++14 language features is required. For details visit https://nzbget.com/documentation/prerequisites-for-c++-compiler/")
 	fi
 fi
 

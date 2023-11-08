@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
@@ -336,7 +336,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	m_decoder.SetRawMode(g_Options->GetRawArticle());
 
 	status = adRunning;
-	CharBuffer lineBuf(1024*4);
+	CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
 
 	while (!IsStopped() && !m_decoder.GetEof())
 	{

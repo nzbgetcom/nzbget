@@ -190,6 +190,8 @@ copy README ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy COPYING ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
+copy pubkey.pem ..\distrib\NZBGet
+if errorlevel 1 goto BUILD_FAILED
 
 mkdir ..\distrib\NZBGet\webui
 xcopy /E webui ..\distrib\NZBGet\webui
@@ -226,6 +228,15 @@ rem Hide certain options from web-interface settings page
 
 mkdir ..\distrib\NZBGet\scripts
 xcopy /E scripts ..\distrib\NZBGet\scripts
+if errorlevel 1 goto BUILD_FAILED
+
+rem The default PATH to python changed in most POSIX systems after python2 was deprecated.
+rem On Windows, it remained the same.
+rem Now we need to add Windows specific shebang (#!/usr/bin/env python) to the scripts.
+set "SCRIPTS=..\distrib\NZBGet\scripts\EMail.py ..\distrib\NZBGet\scripts\Logger.py"
+for %%F in (%SCRIPTS%) do (
+    %SED% -e "s|#!/usr/bin/env python3|#!/usr/bin/env python|" -i %%F
+)
 if errorlevel 1 goto BUILD_FAILED
 
 copy ..\..\image\* ..\distrib\NZBGet

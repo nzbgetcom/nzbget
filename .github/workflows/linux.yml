@@ -1,0 +1,38 @@
+name: linux build 
+
+on:
+  push:
+    branches:
+    - develop
+    - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Build
+      run: |
+        rm -rf /build/nzbget
+        cp -r . /build/nzbget
+        cd /build
+        docker run -e ALL_ARCHS="i686 x86_64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-linux-installers
+        path: /build/output/*.run
+        retention-days: 5
+
+    - name: Cleanup
+      run: |
+        rm -rf /build/nzbget
+        rm -rf /build/output

@@ -1,5 +1,5 @@
 /*
- *  This file is part of nzbget. See <http://nzbget.net>.
+ *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
@@ -217,6 +217,7 @@ public:
 	EMessageTarget GetDebugTarget() const { return m_debugTarget; }
 	EMessageTarget GetDetailTarget() const { return m_detailTarget; }
 	int GetArticleTimeout() { return m_articleTimeout; }
+	int GetArticleReadChunkSize() { return m_articleReadChunkSize; }
 	int GetUrlTimeout() { return m_urlTimeout; }
 	int GetRemoteTimeout() { return m_remoteTimeout; }
 	bool GetRawArticle() { return m_rawArticle; };
@@ -352,6 +353,7 @@ private:
 	bool m_rawArticle = false;
 	bool m_nzbLog = false;
 	int m_articleTimeout = 0;
+	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;
 	int m_remoteTimeout = 0;
 	bool m_appendCategoryDir = false;
