@@ -43,12 +43,16 @@ jobs:
       id: gen_tags
       run: |
         if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
-          TAG='testing'
-        else
-          TAG='latest'
+          TAG="testing"
+        fi
+        if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+          TAG="latest"
         fi
         if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
           TAG="${GITHUB_REF/refs\/tags\//}"
+        fi
+        if [[ "$TAG" == "" ]]; then
+          TAG="${GITHUB_REF_NAME/\//-}"
         fi
         TAGS="nzbgetcom/nzbget:$TAG,ghcr.io/nzbgetcom/nzbget:$TAG"
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
@@ -57,7 +61,8 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: docker
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
+#        platforms: linux/amd64,linux/arm64,linux/arm/v7
+        platforms: linux/amd64
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
         build-args: |

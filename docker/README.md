@@ -1,6 +1,6 @@
 ![NZBGet logo](https://nzbget.com/img/logo.svg)
 
-# Official NZBGet builds from [nzbgetcom/nzbget](https://github.com/nzbgetcom/nzbget) repository
+# NZBGet builds from [nzbgetcom/nzbget](https://github.com/nzbgetcom/nzbget) repository
 
 NZBGet is an efficient, open-source Usenet software designed for downloading binary content from Usenet newsgroups.
 
