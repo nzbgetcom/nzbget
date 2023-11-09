@@ -115,3 +115,12 @@ NZBGet docker image bundled with Python 3.11. Some extensions does not work with
 | VideoSort    | https://github.com/nzbgetcom/Extension-VideoSort
 | FakeDetector | https://github.com/nzbgetcom/Extension-FakeDetector
 | FailureLink  | https://github.com/nzbgetcom/Extension-FailureLink
+
+# Known download speed issue
+
+In general - it is not a docker-specific issue. In our tests download speed in docker is almost same as at host machine.
+For some reason, on Linux, a speed of 50% is slow than on Windows with the same number of server connections.
+
+Some tips to increase download speed:
+1. Increase number of server connections (NEWS-SERVERS -> Connections)
+2. For slow hosts - increase article read chunk size from 4 to 64 (CONNECTION -> ArticleReadChunkSize). This is new setting, available only on `testing` images.
