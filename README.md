@@ -31,6 +31,8 @@ More information available at https://nzbget.com
 We provide a easy-to-use installer for each platform we support.
 Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
+We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
+
 ## Building from sources
 
 Please follow [instructions](https://nzbget.com/documentation/building-development-version/) on the website 

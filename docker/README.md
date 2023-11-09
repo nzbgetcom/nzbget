@@ -6,11 +6,11 @@ NZBGet is an efficient, open-source Usenet software designed for downloading bin
 
 # Supported Architectures
 
-| Architecture | Tag
-|:-------------|-
-| x86-64       | amd64-\<version tag\>
-| arm64        | arm64v8-\<version tag\>
-| armhf        | arm32v7-\<version tag\>
+| Architecture 
+|:-
+| x86-64       
+| arm64        
+| armhf        
 
 # Version Tags
 
@@ -101,3 +101,17 @@ Dockerfile supports next build arguments:
 | NZBGET_RELEASE  | Branch name or tag to build from
 | UNRAR_VERSION   | Unrar version
 | MAKE_JOBS       | Number of make jobs for speed up build
+
+# ghcr.io
+
+Docker images also available on [GitHub](https://github.com/nzbgetcom/nzbget/pkgs/container/nzbget). For use - replace `nzbgetcom/nzbget:TAG` with `ghcr.io/nzbgetcom/nzbget:TAG` in above examples.
+
+# Python and extensions
+
+NZBGet docker image bundled with Python 3.11. Some extensions does not work with Python 3.10+. We provide fixes for popular extensions:
+
+| Extension    | Link
+|:-------------|-
+| VideoSort    | https://github.com/nzbgetcom/Extension-VideoSort
+| FakeDetector | https://github.com/nzbgetcom/Extension-FakeDetector
+| FailureLink  | https://github.com/nzbgetcom/Extension-FailureLink
