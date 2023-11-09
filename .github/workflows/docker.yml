@@ -68,7 +68,7 @@ jobs:
         provenance: false
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
-        outputs: type=image,name=${{ env.REGISTRY_IMAGE }},annotation-index.org.opencontainers.image.description="NZBGet from nzbget.com, version ${{ github.ref_name }}"
+        outputs: type=image,name=${{ env.REGISTRY_IMAGE }},annotation-index.org.opencontainers.image.description=NZBGet from nzbget.com, version ${{ github.ref_name }}
         build-args: |
           "NZBGET_RELEASE=${{ github.ref_name }}"
           "MAKE_JOBS=2"
