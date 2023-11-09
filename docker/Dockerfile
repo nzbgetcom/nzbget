@@ -51,6 +51,7 @@ ARG NZBGET_RELEASE=develop
 
 # labels
 LABEL org.opencontainers.image.description="NZBGet from nzbget.com, version ${NZBGET_RELEASE}"
+LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
 LABEL maintainer="nzbget@nzbget.com" 
 
 ENV TERM linux
