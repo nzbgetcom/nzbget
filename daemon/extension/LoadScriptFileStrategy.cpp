@@ -25,106 +25,117 @@
 
 namespace LoadScriptFileStrategy
 {
+	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
+	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
+	const char* SCAN_SCRIPT_SIGNATURE = "SCAN";
+	const char* QUEUE_SCRIPT_SIGNATURE = "QUEUE";
+	const char* SCHEDULER_SCRIPT_SIGNATURE = "SCHEDULER";
+	const char* FEED_SCRIPT_SIGNATURE = "FEED";
+	const char* END_SCRIPT_SIGNATURE = " SCRIPT";
+	const char* QUEUE_EVENTS_SIGNATURE = "### QUEUE EVENTS:";
+	const char* TASK_TIME_SIGNATURE = "### TASK TIME:";
+	const char* DEFINITION_SIGNATURE = "###";
+
 	bool HeaderConfigBased::Load(Script& script) const
 	{
-		// DiskFile infile;
-		// if (!infile.Open(script.GetLocation(), DiskFile::omRead))
-		// {
-		// 	return false;
-		// }
+		DiskFile infile;
+		if (!infile.Open(script.GetLocation(), DiskFile::omRead))
+		{
+			return false;
+		}
 
-		// CharBuffer buffer(1024 * 10 + 1);
+		CharBuffer buffer(1024 * 10 + 1);
 
-		// const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
-		// const int queueEventsSignatureLen = strlen(QUEUE_EVENTS_SIGNATURE);
-		// const int taskTimeSignatureLen = strlen(TASK_TIME_SIGNATURE);
-		// const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
+		const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
+		const int queueEventsSignatureLen = strlen(QUEUE_EVENTS_SIGNATURE);
+		const int taskTimeSignatureLen = strlen(TASK_TIME_SIGNATURE);
+		const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
 
-		// // check if the file contains pp-script-signature
-		// // read first 10KB of the file and look for signature
-		// int readBytes = (int)infile.Read(buffer, buffer.Size() - 1);
-		// infile.Close();
-		// buffer[readBytes] = '\0';
+		// check if the file contains pp-script-signature
+		// read first 10KB of the file and look for signature
+		int readBytes = (int)infile.Read(buffer, buffer.Size() - 1);
+		infile.Close();
+		buffer[readBytes] = '\0';
 
-		// bool postScript = false;
-		// bool scanScript = false;
-		// bool queueScript = false;
-		// bool schedulerScript = false;
-		// bool feedScript = false;
-		// char* queueEvents = nullptr;
-		// char* taskTime = nullptr;
+		bool postScript = false;
+		bool scanScript = false;
+		bool queueScript = false;
+		bool schedulerScript = false;
+		bool feedScript = false;
+		char* queueEvents = nullptr;
+		char* taskTime = nullptr;
 
-		// bool inConfig = false;
-		// bool afterConfig = false;
+		bool inConfig = false;
+		bool afterConfig = false;
 
-		// // Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
-		// // - in script definition body (between opening and closing script signatures);
-		// // - immediately before script definition (before opening script signature);
-		// // - immediately after script definition (after closing script signature).
-		// // The last two pissibilities are provided to increase compatibility of scripts with older
-		// // nzbget versions which do not expect the extra declarations in the script defintion body.
+		// Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
+		// - in script definition body (between opening and closing script signatures);
+		// - immediately before script definition (before opening script signature);
+		// - immediately after script definition (after closing script signature).
+		// The last two pissibilities are provided to increase compatibility of scripts with older
+		// nzbget versions which do not expect the extra declarations in the script defintion body.
 
-		// Tokenizer tok(buffer, "\n\r", true);
-		// while (char* line = tok.Next())
-		// {
-		// 	if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, queueEventsSignatureLen))
-		// 	{
-		// 		queueEvents = line + queueEventsSignatureLen;
-		// 	}
-		// 	else if (!strncmp(line, TASK_TIME_SIGNATURE, taskTimeSignatureLen))
-		// 	{
-		// 		taskTime = line + taskTimeSignatureLen;
-		// 	}
+		Tokenizer tok(buffer, "\n\r", true);
+		while (char* line = tok.Next())
+		{
+			if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, queueEventsSignatureLen))
+			{
+				queueEvents = line + queueEventsSignatureLen;
+			}
+			else if (!strncmp(line, TASK_TIME_SIGNATURE, taskTimeSignatureLen))
+			{
+				taskTime = line + taskTimeSignatureLen;
+			}
 
-		// 	bool header = !strncmp(line, DEFINITION_SIGNATURE, definitionSignatureLen);
-		// 	if (!header && !inConfig)
-		// 	{
-		// 		queueEvents = nullptr;
-		// 		taskTime = nullptr;
-		// 	}
+			bool header = !strncmp(line, DEFINITION_SIGNATURE, definitionSignatureLen);
+			if (!header && !inConfig)
+			{
+				queueEvents = nullptr;
+				taskTime = nullptr;
+			}
 
-		// 	if (!header && afterConfig)
-		// 	{
-		// 		break;
-		// 	}
+			if (!header && afterConfig)
+			{
+				break;
+			}
 
-		// 	if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) && strstr(line, END_SCRIPT_SIGNATURE))
-		// 	{
-		// 		if (!inConfig)
-		// 		{
-		// 			inConfig = true;
-		// 			postScript = strstr(line, POST_SCRIPT_SIGNATURE);
-		// 			scanScript = strstr(line, SCAN_SCRIPT_SIGNATURE);
-		// 			queueScript = strstr(line, QUEUE_SCRIPT_SIGNATURE);
-		// 			schedulerScript = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
-		// 			feedScript = strstr(line, FEED_SCRIPT_SIGNATURE);
-		// 		}
-		// 		else
-		// 		{
-		// 			afterConfig = true;
-		// 		}
-		// 	}
-		// }
+			if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) && strstr(line, END_SCRIPT_SIGNATURE))
+			{
+				if (!inConfig)
+				{
+					inConfig = true;
+					postScript = strstr(line, POST_SCRIPT_SIGNATURE);
+					scanScript = strstr(line, SCAN_SCRIPT_SIGNATURE);
+					queueScript = strstr(line, QUEUE_SCRIPT_SIGNATURE);
+					schedulerScript = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
+					feedScript = strstr(line, FEED_SCRIPT_SIGNATURE);
+				}
+				else
+				{
+					afterConfig = true;
+				}
+			}
+		}
 
-		// if (!(postScript || scanScript || queueScript || schedulerScript || feedScript))
-		// {
-		// 	return false;
-		// }
+		if (!(postScript || scanScript || queueScript || schedulerScript || feedScript))
+		{
+			return false;
+		}
 
-		// // trim decorations
-		// char* p;
-		// while (queueEvents && *queueEvents && *(p = queueEvents + strlen(queueEvents) - 1) == '#') *p = '\0';
-		// if (queueEvents) queueEvents = Util::Trim(queueEvents);
-		// while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
-		// if (taskTime) taskTime = Util::Trim(taskTime);
+		// trim decorations
+		char* p;
+		while (queueEvents && *queueEvents && *(p = queueEvents + strlen(queueEvents) - 1) == '#') *p = '\0';
+		if (queueEvents) queueEvents = Util::Trim(queueEvents);
+		while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
+		if (taskTime) taskTime = Util::Trim(taskTime);
 
-		// script.SetPostScript(postScript);
-		// script.SetScanScript(scanScript);
-		// script.SetQueueScript(queueScript);
-		// script.SetSchedulerScript(schedulerScript);
-		// script.SetFeedScript(feedScript);
-		// script.SetQueueEvents(queueEvents);
-		// script.SetTaskTime(taskTime);
+		script.SetPostScript(postScript);
+		script.SetScanScript(scanScript);
+		script.SetQueueScript(queueScript);
+		script.SetSchedulerScript(schedulerScript);
+		script.SetFeedScript(feedScript);
+		script.SetQueueEvents(queueEvents);
+		script.SetTaskTime(taskTime);
 
 		return true;
 	}

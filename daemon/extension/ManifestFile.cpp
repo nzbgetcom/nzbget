@@ -25,6 +25,8 @@
 
 namespace ManifestFile
 {
+	const char* MANIFEST_FILE = "manifest.json";
+
 	bool Load(Manifest& manifest, const char* directory)
 	{
 		DirBrowser dir(directory);

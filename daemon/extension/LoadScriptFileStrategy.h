@@ -25,16 +25,16 @@
 
 namespace LoadScriptFileStrategy
 {
-	static const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
-	static const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
-	static const char* SCAN_SCRIPT_SIGNATURE = "SCAN";
-	static const char* QUEUE_SCRIPT_SIGNATURE = "QUEUE";
-	static const char* SCHEDULER_SCRIPT_SIGNATURE = "SCHEDULER";
-	static const char* FEED_SCRIPT_SIGNATURE = "FEED";
-	static const char* END_SCRIPT_SIGNATURE = " SCRIPT";
-	static const char* QUEUE_EVENTS_SIGNATURE = "### QUEUE EVENTS:";
-	static const char* TASK_TIME_SIGNATURE = "### TASK TIME:";
-	static const char* DEFINITION_SIGNATURE = "###";
+	extern const char* BEGIN_SCRIPT_SIGNATURE;
+	extern const char* POST_SCRIPT_SIGNATURE;
+	extern const char* SCAN_SCRIPT_SIGNATURE;
+	extern const char* QUEUE_SCRIPT_SIGNATURE;
+	extern const char* SCHEDULER_SCRIPT_SIGNATURE;
+	extern const char* FEED_SCRIPT_SIGNATURE;
+	extern const char* END_SCRIPT_SIGNATURE;
+	extern const char* QUEUE_EVENTS_SIGNATURE;
+	extern const char* TASK_TIME_SIGNATURE;
+	extern const char* DEFINITION_SIGNATURE;
 
 	class Strategy {
 	public:

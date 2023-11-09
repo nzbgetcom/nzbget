@@ -22,7 +22,8 @@
 
 namespace ManifestFile
 {
-	static const char* MANIFEST_FILE = "manifest.json";
+	extern const char* MANIFEST_FILE;
+
 	struct Manifest
 	{
 		const char* author;
