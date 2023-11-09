@@ -2,7 +2,7 @@
 FROM alpine:3.18.4 AS build
 
 # args
-ARG NZBGET_RELEASE=v22.0
+ARG NZBGET_RELEASE=develop
 ARG UNRAR_VERSION=6.2.12
 ARG MAKE_JOBS=1
 
@@ -47,6 +47,11 @@ RUN \
 
 # runtime stage
 FROM alpine:3.18.4
+
+# labels
+LABEL org.opencontainers.image.description="NZBGet from nzbget.com, version ${NZBGET_RELEASE}"
+LABEL maintainer="nzbget@nzbget.com" 
+
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
