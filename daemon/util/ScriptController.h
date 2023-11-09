@@ -18,8 +18,8 @@
  */
 
 
-#ifndef SCRIPT_H
-#define SCRIPT_H
+#ifndef SCRIPTCONTROLLER_H
+#define SCRIPTCONTROLLER_H
 
 #include "NString.h"
 #include "Container.h"

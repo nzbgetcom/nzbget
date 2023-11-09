@@ -20,25 +20,22 @@
 #ifndef MANIFESTFILE_H
 #define MANIFESTFILE_H
 
-#include "nzbget.h"
-#include "NString.h"
-
 namespace ManifestFile
 {
-	static const CString MANIFEST_FILE = "manifest.json";
+	static const char* MANIFEST_FILE = "manifest.json";
 	struct Manifest
 	{
-		CString author;
-		CString entry;
-		CString kind;
-		CString name;
-		CString displayName;
-		CString version;
-		CString license;
-		CString description;
+		const char* author;
+		const char* entry;
+		const char* kind;
+		const char* name;
+		const char* displayName;
+		const char* version;
+		const char* license;
+		const char* description;
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
-}
+};
 
 #endif

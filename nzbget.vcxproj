@@ -217,6 +217,8 @@
     <ClCompile Include="daemon\extension\SchedulerScript.cpp" />
     <ClCompile Include="daemon\extension\ScriptConfig.cpp" />
     <ClCompile Include="daemon\extension\ManifestFile.cpp" />
+    <ClCompile Include="daemon\extension\LoadScriptFileStrategy.cpp" />
+    <ClCompile Include="daemon\extension\Script.cpp" />
     <ClCompile Include="daemon\feed\FeedCoordinator.cpp" />
     <ClCompile Include="daemon\feed\FeedFile.cpp" />
     <ClCompile Include="daemon\feed\FeedFilter.cpp" />
@@ -276,7 +278,7 @@
     <ClCompile Include="daemon\remote\XmlRpc.cpp" />
     <ClCompile Include="daemon\util\Log.cpp" />
     <ClCompile Include="daemon\util\Observer.cpp" />
-    <ClCompile Include="daemon\util\Script.cpp" />
+    <ClCompile Include="daemon\util\ScriptController.cpp" />
     <ClCompile Include="daemon\util\Service.cpp" />
     <ClCompile Include="daemon\util\Thread.cpp" />
     <ClCompile Include="daemon\util\NString.cpp" />
@@ -338,7 +340,9 @@
     <ClInclude Include="daemon\extension\ScanScript.h" />
     <ClInclude Include="daemon\extension\SchedulerScript.h" />
     <ClInclude Include="daemon\extension\ScriptConfig.h" />
-    <ClCompile Include="daemon\extension\ManifestFile.h" />
+    <ClInclude Include="daemon\extension\ManifestFile.h" />
+    <ClInclude Include="daemon\extension\LoadScriptFileStrategy.h" />
+    <ClInclude Include="daemon\extension\Script.h" />
     <ClInclude Include="daemon\feed\FeedCoordinator.h" />
     <ClInclude Include="daemon\feed\FeedFile.h" />
     <ClInclude Include="daemon\feed\FeedFilter.h" />
@@ -397,7 +401,7 @@
     <ClInclude Include="daemon\remote\XmlRpc.h" />
     <ClInclude Include="daemon\util\Log.h" />
     <ClInclude Include="daemon\util\Observer.h" />
-    <ClInclude Include="daemon\util\Script.h" />
+    <ClInclude Include="daemon\util\ScriptController.h" />
     <ClInclude Include="daemon\util\Service.h" />
     <ClInclude Include="daemon\util\Thread.h" />
     <ClInclude Include="daemon\util\NString.h" />

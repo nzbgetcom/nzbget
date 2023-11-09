@@ -20,7 +20,6 @@
 #ifndef JSON_H
 #define JSON_H
 
-#include "nzbget.h"
 #include <iostream>
 
 namespace Json

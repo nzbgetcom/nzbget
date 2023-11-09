@@ -17,59 +17,20 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #ifndef SCRIPTCONFIG_H
 #define SCRIPTCONFIG_H
 
 #include "NString.h"
 #include "Container.h"
 #include "Options.h"
-#include "ManifestFile.h"
-
-class LoadScriptFileStrategy;
+#include "Script.h"
+#include "LoadScriptFileStrategy.h"
 
 class ScriptConfig
 {
 public:
-	class Script
-	{
-	public:
-		Script(const char* name, const char* location) :
-			m_name(name), m_location(location), m_displayName(name) {};
-		Script(Script&&) = default;
-		const char* GetName() const { return m_name; }
-		const char* GetLocation() { return m_location; }
-		void SetDisplayName(const char* displayName) { m_displayName = displayName; }
-		const char* GetDisplayName() { return m_displayName; }
-		bool GetPostScript() { return m_postScript; }
-		void SetPostScript(bool postScript) { m_postScript = postScript; }
-		bool GetScanScript() { return m_scanScript; }
-		void SetScanScript(bool scanScript) { m_scanScript = scanScript; }
-		bool GetQueueScript() { return m_queueScript; }
-		void SetQueueScript(bool queueScript) { m_queueScript = queueScript; }
-		bool GetSchedulerScript() { return m_schedulerScript; }
-		void SetSchedulerScript(bool schedulerScript) { m_schedulerScript = schedulerScript; }
-		bool GetFeedScript() { return m_feedScript; }
-		void SetFeedScript(bool feedScript) { m_feedScript = feedScript; }
-		void SetQueueEvents(const char* queueEvents) { m_queueEvents = queueEvents; }
-		const char* GetQueueEvents() { return m_queueEvents; }
-		void SetTaskTime(const char* taskTime) { m_taskTime = taskTime; }
-		const char* GetTaskTime() { return m_taskTime; }
-
-	private:
-		CString m_name;
-		CString m_location;
-		CString m_displayName;
-		bool m_postScript = false;
-		bool m_scanScript = false;
-		bool m_queueScript = false;
-		bool m_schedulerScript = false;
-		bool m_feedScript = false;
-		CString m_queueEvents;
-		CString m_taskTime;
-	};
-
-	typedef std::list<Script> Scripts;
+	using Script = Script;
+	using Scripts = std::list<Script>;
 
 	class ConfigTemplate
 	{
@@ -103,33 +64,9 @@ private:
 	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);
 	void BuildScriptDisplayNames(Scripts& scripts);
 	void LoadScripts(Scripts& scripts);
-	bool LoadScriptFile(Script& script, const LoadScriptFileStrategy& strategy);
+	bool LoadScriptFile(Script& script, const LoadScriptFileStrategy::Strategy &strategy);
 	BString<1024> BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
 	bool ScriptExists(const Scripts& scripts, const char* scriptName) const;
-};
-
-class LoadScriptFileStrategy {
-public:
-	virtual bool Load(ScriptConfig::Script& script) const = 0;
-	virtual ~LoadScriptFileStrategy() = default;
-};
-
-class LoadScriptFileHeaderBasedStrategy : public LoadScriptFileStrategy {
-public:
-	bool Load(ScriptConfig::Script& script) const override;
-	 ~LoadScriptFileHeaderBasedStrategy() {}
-};
-
-class LoadScriptFileStrategy : public LoadScriptFileStrategy {
-public:
-	LoadNewScriptFileStrategy() = delete;
-	explicit LoadNewScriptFileStrategy(ManifestFile::Manifest&& manifest_) 
-		: manifest{std::move(manifest_)} 
-	{}
-	bool Load(ScriptConfig::Script& script) const override;
-	~LoadNewScriptFileStrategy() {}
-private:
-	ManifestFile::Manifest manifest;
 };
 
 extern ScriptConfig* g_ScriptConfig;

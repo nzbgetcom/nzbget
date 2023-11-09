@@ -24,127 +24,7 @@
 #include "Options.h"
 #include "Log.h"
 #include "ScriptConfig.h"
-//#include "ManifestFile.h"
-
-static const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
-static const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
-static const char* SCAN_SCRIPT_SIGNATURE = "SCAN";
-static const char* QUEUE_SCRIPT_SIGNATURE = "QUEUE";
-static const char* SCHEDULER_SCRIPT_SIGNATURE = "SCHEDULER";
-static const char* FEED_SCRIPT_SIGNATURE = "FEED";
-static const char* END_SCRIPT_SIGNATURE = " SCRIPT";
-static const char* QUEUE_EVENTS_SIGNATURE = "### QUEUE EVENTS:";
-static const char* TASK_TIME_SIGNATURE = "### TASK TIME:";
-static const char* DEFINITION_SIGNATURE = "###";
-
-bool LoadScriptFileHeaderBasedStrategy::Load(ScriptConfig::Script& script) const
-{
-	DiskFile infile;
-	if (!infile.Open(script.GetLocation(), DiskFile::omRead))
-	{
-		return false;
-	}
-
-	CharBuffer buffer(1024 * 10 + 1);
-
-	const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
-	const int queueEventsSignatureLen = strlen(QUEUE_EVENTS_SIGNATURE);
-	const int taskTimeSignatureLen = strlen(TASK_TIME_SIGNATURE);
-	const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
-
-	// check if the file contains pp-script-signature
-	// read first 10KB of the file and look for signature
-	int readBytes = (int)infile.Read(buffer, buffer.Size() - 1);
-	infile.Close();
-	buffer[readBytes] = '\0';
-
-	bool postScript = false;
-	bool scanScript = false;
-	bool queueScript = false;
-	bool schedulerScript = false;
-	bool feedScript = false;
-	char* queueEvents = nullptr;
-	char* taskTime = nullptr;
-
-	bool inConfig = false;
-	bool afterConfig = false;
-
-	// Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
-	// - in script definition body (between opening and closing script signatures);
-	// - immediately before script definition (before opening script signature);
-	// - immediately after script definition (after closing script signature).
-	// The last two pissibilities are provided to increase compatibility of scripts with older
-	// nzbget versions which do not expect the extra declarations in the script defintion body.
-
-	Tokenizer tok(buffer, "\n\r", true);
-	while (char* line = tok.Next())
-	{
-		if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, queueEventsSignatureLen))
-		{
-			queueEvents = line + queueEventsSignatureLen;
-		}
-		else if (!strncmp(line, TASK_TIME_SIGNATURE, taskTimeSignatureLen))
-		{
-			taskTime = line + taskTimeSignatureLen;
-		}
-
-		bool header = !strncmp(line, DEFINITION_SIGNATURE, definitionSignatureLen);
-		if (!header && !inConfig)
-		{
-			queueEvents = nullptr;
-			taskTime = nullptr;
-		}
-
-		if (!header && afterConfig)
-		{
-			break;
-		}
-
-		if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) && strstr(line, END_SCRIPT_SIGNATURE))
-		{
-			if (!inConfig)
-			{
-				inConfig = true;
-				postScript = strstr(line, POST_SCRIPT_SIGNATURE);
-				scanScript = strstr(line, SCAN_SCRIPT_SIGNATURE);
-				queueScript = strstr(line, QUEUE_SCRIPT_SIGNATURE);
-				schedulerScript = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
-				feedScript = strstr(line, FEED_SCRIPT_SIGNATURE);
-			}
-			else
-			{
-				afterConfig = true;
-			}
-		}
-	}
-
-	if (!(postScript || scanScript || queueScript || schedulerScript || feedScript))
-	{
-		return false;
-	}
-
-	// trim decorations
-	char* p;
-	while (queueEvents && *queueEvents && *(p = queueEvents + strlen(queueEvents) - 1) == '#') *p = '\0';
-	if (queueEvents) queueEvents = Util::Trim(queueEvents);
-	while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
-	if (taskTime) taskTime = Util::Trim(taskTime);
-
-	script.SetPostScript(postScript);
-	script.SetScanScript(scanScript);
-	script.SetQueueScript(queueScript);
-	script.SetSchedulerScript(schedulerScript);
-	script.SetFeedScript(feedScript);
-	script.SetQueueEvents(queueEvents);
-	script.SetTaskTime(taskTime);
-
-	return true;
-}
-
-bool LoadScriptFileStrategy::Load(ScriptConfig::Script& script) const
-{
-	return false;
-}
+#include "LoadScriptFileStrategy.h"
 
 void ScriptConfig::InitOptions()
 {
@@ -280,8 +160,8 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 	Scripts scriptList;
 	LoadScripts(scriptList);
 
-	const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
-	const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
+	const int beginSignatureLen = strlen(LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE);
+	const int definitionSignatureLen = strlen(LoadScriptFileStrategy::DEFINITION_SIGNATURE);
 
 	for (Script& script : scriptList)
 	{
@@ -299,13 +179,13 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 
 		while (infile.ReadLine(buf, sizeof(buf) - 1))
 		{
-			if (!strncmp(buf, BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) &&
-				strstr(buf, END_SCRIPT_SIGNATURE) &&
-				(strstr(buf, POST_SCRIPT_SIGNATURE) ||
-				 strstr(buf, SCAN_SCRIPT_SIGNATURE) ||
-				 strstr(buf, QUEUE_SCRIPT_SIGNATURE) ||
-				 strstr(buf, SCHEDULER_SCRIPT_SIGNATURE) ||
-				 strstr(buf, FEED_SCRIPT_SIGNATURE)))
+			if (!strncmp(buf, LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) &&
+				strstr(buf, LoadScriptFileStrategy::END_SCRIPT_SIGNATURE) &&
+				(strstr(buf, LoadScriptFileStrategy::POST_SCRIPT_SIGNATURE) ||
+				 strstr(buf, LoadScriptFileStrategy::SCAN_SCRIPT_SIGNATURE) ||
+				 strstr(buf, LoadScriptFileStrategy::QUEUE_SCRIPT_SIGNATURE) ||
+				 strstr(buf, LoadScriptFileStrategy::SCHEDULER_SCRIPT_SIGNATURE) ||
+				 strstr(buf, LoadScriptFileStrategy::FEED_SCRIPT_SIGNATURE)))
 			{
 				if (inConfig)
 				{
@@ -316,7 +196,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 				continue;
 			}
 
-			inHeader &= !strncmp(buf, DEFINITION_SIGNATURE, definitionSignatureLen);
+			inHeader &= !strncmp(buf, LoadScriptFileStrategy::DEFINITION_SIGNATURE, definitionSignatureLen);
 
 			if (inConfig && !inHeader)
 			{
@@ -407,8 +287,7 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 				}
 
 				Script script(scriptName, fullFilename);
-				LoadOldScriptFileStrategy strategy;
-				if (LoadScriptFile(script, strategy))
+				if (LoadScriptFile(script, LoadScriptFileStrategy::HeaderConfigBased()))
 				{
 					scripts.push_back(std::move(script));
 				}
@@ -422,7 +301,7 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 	}
 }
 
-bool ScriptConfig::LoadScriptFile(Script& script, const LoadScriptFileStrategy& strategy)
+bool ScriptConfig::LoadScriptFile(Script& script, const LoadScriptFileStrategy::Strategy &strategy)
 {
 	return strategy.Load(script);
 }

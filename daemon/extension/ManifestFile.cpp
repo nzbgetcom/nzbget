@@ -18,10 +18,10 @@
  */
 
 #include "nzbget.h"
+#include <fstream>
 #include "ManifestFile.h"
 #include "Json.h"
 #include "FileSystem.h"
-#include <fstream>
 
 namespace ManifestFile
 {

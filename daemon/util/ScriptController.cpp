@@ -19,7 +19,7 @@
 
 
 #include "nzbget.h"
-#include "Script.h"
+#include "ScriptController.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
