@@ -47,6 +47,7 @@ RUN \
 
 # runtime stage
 FROM alpine:3.18.4
+ARG NZBGET_RELEASE=develop
 
 # labels
 LABEL org.opencontainers.image.description="NZBGet from nzbget.com, version ${NZBGET_RELEASE}"
