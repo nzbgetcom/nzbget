@@ -2,7 +2,7 @@ name: release
 
 on:
   workflow_run:
-    workflows: [linux, windows, osx]
+    workflows: ["linux build", "windows build", "osx build"]
     types:
     - completed
 
