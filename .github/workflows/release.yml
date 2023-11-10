@@ -1,10 +1,6 @@
 name: release
 
 on:
-  push:
-    branches:
-    - main
-    - feature/gen-sigs
   workflow_run:
     workflows: [linux, windows, osx]
     types:
