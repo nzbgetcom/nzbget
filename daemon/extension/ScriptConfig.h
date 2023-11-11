@@ -58,7 +58,6 @@ private:
 	Scripts m_scripts;
 	ConfigTemplates m_configTemplates;
 
-	void InitScripts();
 	void InitConfigTemplates();
 	void CreateTasks();
 	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);

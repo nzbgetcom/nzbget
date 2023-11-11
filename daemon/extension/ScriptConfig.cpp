@@ -28,7 +28,7 @@
 
 void ScriptConfig::InitOptions()
 {
-	InitScripts();
+	LoadScripts(m_scripts);
 	InitConfigTemplates();
 	CreateTasks();
 }
@@ -160,9 +160,6 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 	Scripts scriptList;
 	LoadScripts(scriptList);
 
-	const int beginSignatureLen = strlen(LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE);
-	const int definitionSignatureLen = strlen(LoadScriptFileStrategy::DEFINITION_SIGNATURE);
-
 	for (Script& script : scriptList)
 	{
 		DiskFile infile;
@@ -179,7 +176,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 
 		while (infile.ReadLine(buf, sizeof(buf) - 1))
 		{
-			if (!strncmp(buf, LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) &&
+			if (!strncmp(buf, LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE, LoadScriptFileStrategy::BEGIN_SINGNATURE_LEN) &&
 				strstr(buf, LoadScriptFileStrategy::END_SCRIPT_SIGNATURE) &&
 				(strstr(buf, LoadScriptFileStrategy::POST_SCRIPT_SIGNATURE) ||
 				 strstr(buf, LoadScriptFileStrategy::SCAN_SCRIPT_SIGNATURE) ||
@@ -196,7 +193,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 				continue;
 			}
 
-			inHeader &= !strncmp(buf, LoadScriptFileStrategy::DEFINITION_SIGNATURE, definitionSignatureLen);
+			inHeader &= !strncmp(buf, LoadScriptFileStrategy::DEFINITION_SIGNATURE, LoadScriptFileStrategy::DEFINITION_SIGNATURE_LEN);
 
 			if (inConfig && !inHeader)
 			{
@@ -218,11 +215,6 @@ void ScriptConfig::InitConfigTemplates()
 	{
 		error("Could not read configuration templates");
 	}
-}
-
-void ScriptConfig::InitScripts()
-{
-	LoadScripts(m_scripts);
 }
 
 void ScriptConfig::LoadScripts(Scripts& scripts)
@@ -286,8 +278,9 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 					continue;
 				}
 
+				const auto strategy = LoadScriptFileStrategy::Factory::Create(directory);
 				Script script(scriptName, fullFilename);
-				if (LoadScriptFile(script, LoadScriptFileStrategy::HeaderConfigBased()))
+				if (LoadScriptFile(script, *strategy))
 				{
 					scripts.push_back(std::move(script));
 				}

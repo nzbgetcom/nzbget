@@ -19,7 +19,7 @@
 
 #include "nzbget.h"
 #include "LoadScriptFileStrategy.h"
-#include "FileSystem.h"
+#include "ManifestFile.h"
 #include "Util.h"
 #include "ScriptConfig.h"
 
@@ -36,6 +36,11 @@ namespace LoadScriptFileStrategy
 	const char* TASK_TIME_SIGNATURE = "### TASK TIME:";
 	const char* DEFINITION_SIGNATURE = "###";
 
+	const int BEGIN_SINGNATURE_LEN = strlen(BEGIN_SCRIPT_SIGNATURE);
+	const int QUEUE_EVENTS_SIGNATURE_LEN = strlen(QUEUE_EVENTS_SIGNATURE);
+	const int TASK_TIME_SIGNATURE_LEN = strlen(TASK_TIME_SIGNATURE);
+	const int DEFINITION_SIGNATURE_LEN = strlen(DEFINITION_SIGNATURE);
+
 	bool HeaderConfigBased::Load(Script& script) const
 	{
 		DiskFile infile;
@@ -45,11 +50,6 @@ namespace LoadScriptFileStrategy
 		}
 
 		CharBuffer buffer(1024 * 10 + 1);
-
-		const int beginSignatureLen = strlen(BEGIN_SCRIPT_SIGNATURE);
-		const int queueEventsSignatureLen = strlen(QUEUE_EVENTS_SIGNATURE);
-		const int taskTimeSignatureLen = strlen(TASK_TIME_SIGNATURE);
-		const int definitionSignatureLen = strlen(DEFINITION_SIGNATURE);
 
 		// check if the file contains pp-script-signature
 		// read first 10KB of the file and look for signature
@@ -78,16 +78,16 @@ namespace LoadScriptFileStrategy
 		Tokenizer tok(buffer, "\n\r", true);
 		while (char* line = tok.Next())
 		{
-			if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, queueEventsSignatureLen))
+			if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, QUEUE_EVENTS_SIGNATURE_LEN))
 			{
-				queueEvents = line + queueEventsSignatureLen;
+				queueEvents = line + QUEUE_EVENTS_SIGNATURE_LEN;
 			}
-			else if (!strncmp(line, TASK_TIME_SIGNATURE, taskTimeSignatureLen))
+			else if (!strncmp(line, TASK_TIME_SIGNATURE, TASK_TIME_SIGNATURE_LEN))
 			{
-				taskTime = line + taskTimeSignatureLen;
+				taskTime = line + TASK_TIME_SIGNATURE_LEN;
 			}
 
-			bool header = !strncmp(line, DEFINITION_SIGNATURE, definitionSignatureLen);
+			bool header = !strncmp(line, DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN);
 			if (!header && !inConfig)
 			{
 				queueEvents = nullptr;
@@ -99,7 +99,7 @@ namespace LoadScriptFileStrategy
 				break;
 			}
 
-			if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, beginSignatureLen) && strstr(line, END_SCRIPT_SIGNATURE))
+			if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, BEGIN_SINGNATURE_LEN) && strstr(line, END_SCRIPT_SIGNATURE))
 			{
 				if (!inConfig)
 				{
@@ -140,11 +140,21 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	// ManifestBased::ManifestBased(ManifestFile::Manifest&& manifest_)
-	// 	: manifest{std::move(manifest_)} { }
+	ManifestBased::ManifestBased(ManifestFile::Manifest&& manifest_)
+		: manifest{std::move(manifest_)} { }
 
-	// bool ManifestBased::Load(Script& script) const
-	// {
-	// 	return false;
-	// }
+	bool ManifestBased::Load(Script& script) const
+	{
+		script.SetDisplayName(manifest.displayName);
+		return true;
+	}
+
+	std::unique_ptr<const Strategy> Factory::Create(const char* dir)
+	{
+		ManifestFile::Manifest manifest;
+		if (ManifestFile::Load(manifest, dir))
+			return std::make_unique<ManifestBased>(std::move(manifest));
+		
+		return std::make_unique<HeaderConfigBased>();
+	}
 }
