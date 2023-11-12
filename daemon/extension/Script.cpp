@@ -24,7 +24,9 @@
 Script::Script(const char *name, const char *location)
 	: m_name(name), m_location(location), m_displayName(name){};
 
+void Script::SetName(const char *name) { m_name = name; };
 const char *Script::GetName() const { return m_name; }
+void Script::SetLocation(const char *location) { m_location = location; }
 const char *Script::GetLocation() const { return m_location; }
 void Script::SetDisplayName(const char *displayName) { m_displayName = displayName; }
 const char *Script::GetDisplayName() const { return m_displayName; }

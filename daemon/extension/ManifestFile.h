@@ -20,20 +20,22 @@
 #ifndef MANIFESTFILE_H
 #define MANIFESTFILE_H
 
+#include <string>
+
 namespace ManifestFile
 {
 	extern const char* MANIFEST_FILE;
 
 	struct Manifest
 	{
-		const char* author;
-		const char* entry;
-		const char* kind;
-		const char* name;
-		const char* displayName;
-		const char* version;
-		const char* license;
-		const char* description;
+		std::string author;
+		std::string entry;
+		std::string kind;
+		std::string name;
+		std::string displayName;
+		std::string version;
+		std::string license;
+		std::string description;
 	};
 
 	bool Load(Manifest& manifest, const char* directory);

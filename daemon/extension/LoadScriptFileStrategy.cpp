@@ -140,12 +140,13 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	ManifestBased::ManifestBased(ManifestFile::Manifest&& manifest_)
-		: manifest{std::move(manifest_)} { }
+	ManifestBased::ManifestBased(ManifestFile::Manifest& manifest_)
+		: manifest{manifest_} { }
 
 	bool ManifestBased::Load(Script& script) const
 	{
-		script.SetDisplayName(manifest.displayName);
+		script.SetDisplayName(manifest.displayName.c_str());
+		script.SetName(manifest.name.c_str());
 		return true;
 	}
 

@@ -58,7 +58,7 @@ namespace LoadScriptFileStrategy
 	class ManifestBased : public Strategy {
 	public:
 		ManifestBased() = delete;
-		explicit ManifestBased(ManifestFile::Manifest&& manifest_);
+		explicit ManifestBased(ManifestFile::Manifest& manifest_);
 		bool Load(Script& script) const override;
 		~ManifestBased() {}
 	private:

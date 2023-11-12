@@ -257,39 +257,51 @@ void ScriptConfig::LoadScripts(Scripts& scripts)
 	// then add all other scripts from scripts directory
 	scripts.splice(scripts.end(), std::move(tmpScripts));
 
-	BuildScriptDisplayNames(scripts);
+	//BuildScriptDisplayNames(scripts);
 }
 
 void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir)
 {
-	DirBrowser dir(directory);
+	ManifestFile::Manifest manifest;
+	if (ManifestFile::Load(manifest, directory))
+	{
+		LoadScriptFileStrategy::ManifestBased strategy(manifest);
+		Script script;
+		if (strategy.Load(script))
+		{
+			BString<1024> entryPath("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
+			script.SetLocation(entryPath);
+			scripts.push_back(std::move(script));
+		}
+		return;
+	}
 
+	DirBrowser dir(directory);
 	while (const char* filename = dir.Next())
 	{
-		if (filename[0] != '.' && filename[0] != '_')
+		if (filename[0] == '.' || filename[0] == '_')
+			continue;
+
+		BString<1024> fullFilename("%s%c%s", directory, PATH_SEPARATOR, filename);
+
+		if (!FileSystem::DirectoryExists(fullFilename))
 		{
-			BString<1024> fullFilename("%s%c%s", directory, PATH_SEPARATOR, filename);
-
-			if (!FileSystem::DirectoryExists(fullFilename))
+			BString<1024> scriptName = BuildScriptName(directory, filename, isSubDir);
+			if (ScriptExists(scripts, scriptName))
 			{
-				BString<1024> scriptName = BuildScriptName(directory, filename, isSubDir);
-				if (ScriptExists(scripts, scriptName))
-				{
-					continue;
-				}
-
-				const auto strategy = LoadScriptFileStrategy::Factory::Create(directory);
-				Script script(scriptName, fullFilename);
-				if (LoadScriptFile(script, *strategy))
-				{
-					scripts.push_back(std::move(script));
-				}
-
+				continue;
 			}
-			else if (!isSubDir)
+
+			const auto strategy = LoadScriptFileStrategy::Factory::Create(directory);
+			Script script(scriptName, fullFilename);
+			if (LoadScriptFile(script, *strategy))
 			{
-				LoadScriptDir(scripts, fullFilename, true);
+				scripts.push_back(std::move(script));
 			}
+		}
+		else if (!isSubDir)
+		{
+			LoadScriptDir(scripts, fullFilename, true);
 		}
 	}
 }

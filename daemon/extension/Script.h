@@ -25,9 +25,12 @@
 class Script
 {
 public:
-	Script(const char *name, const char *location);;
+	Script() = default;
 	Script(Script &&) = default;
+	Script(const char *name, const char *location);
+	void SetName(const char *name);
 	const char *GetName() const;
+	void SetLocation(const char *location);
 	const char *GetLocation() const;
 	void SetDisplayName(const char *displayName);
 	const char *GetDisplayName() const;
