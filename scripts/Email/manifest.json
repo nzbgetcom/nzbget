@@ -1,0 +1,105 @@
+{
+    "entry": "EMail.py",
+    "name": "email",
+    "kind": "POST-PROCESSING",
+    "displayName": "EMail",
+    "version": "1.0.0",
+    "author": "Andrey Prygunkov",
+    "license": "GNU",
+    "description": "Send E-Mail notification.\nThis script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
+    "options": [
+        {
+            "name": "sendMail",
+            "displayName": "SendMail",
+            "value": "Always",
+            "description": "When to send the message.",
+            "select": ["Always", "OnFailure"]
+        },
+        {
+            "name": "from",
+            "displayName": "From",
+            "value": "\"NZBGet\" <myaccount@gmail.com>",
+            "description": "Email address you want this email to be sent from.",
+            "select": []
+        },
+        {
+            "name": "to",
+            "displayName": "To",
+            "value": "myaccount@gmail.com",
+            "description": "Email address you want this email to be sent to.\nMultiple addresses can be separated with comma.",
+            "select": []
+        },
+        {
+            "name": "server",
+            "displayName": "Server",
+            "value": "smtp.gmail.com",
+            "description": "SMTP server host.",
+            "select": []
+        },
+        {
+            "name": "port",
+            "displayName": "Port",
+            "value": "25",
+            "description": "SMTP server port (1-65535)",
+            "select": []
+        },
+        {
+            "name": "encryption",
+            "displayName": "Encryption",
+            "value": "yes",
+            "description": "Secure communication using TLS/SSL.\nno    - plain text communication (insecure);\nyes   - switch to secure session using StartTLS command;\nforce - start secure session on encrypted socket.",
+            "select": ["no", "yes", "force"]
+        },
+        {
+            "name": "username",
+            "displayName": "Username",
+            "value": "yes",
+            "description": "SMTP server user name, if required.",
+            "select": []
+        },
+        {
+            "name": "password",
+            "displayName": "Password",
+            "value": "mypass",
+            "description": "SMTP server password, if required.",
+            "select": []
+        },
+        {
+            "name": "statistics",
+            "displayName": "Statistics",
+            "value": "yes",
+            "description": "Append statistics to the message.",
+            "select": ["yes", "no"]
+        },
+        {
+            "name": "fileList",
+            "displayName": "FileList",
+            "value": "yes",
+            "description": "Append list of files to the message.\nAdd the list of downloaded files (the content of destination directory)..",
+            "select": ["yes", "no"]
+        },
+        {
+            "name": "brokenLog",
+            "displayName": "BrokenLog",
+            "value": "yes",
+            "description": "Append broken-log to the message.\nAdd the content of file _brokenlog.txt. This file contains the list of damaged\nfiles and the result of par-check/repair. For successful downloads the broken-log\nis usually deleted by cleanup-script and therefore is not sent.",
+            "select": ["yes", "no"]
+        },
+        {
+            "name": "nzbLog",
+            "displayName": "NzbLog",
+            "value": "OnFailure",
+            "description": "Append nzb log to the message.Add the download and post-processing log of active job..",
+            "select": ["Always", "Never", "OnFailure"]
+        }
+    ],
+    "commands": [
+        {
+            "name": "connectionTest",
+            "action": "Send",
+            "displayName": "ConnectionTest",
+            "description": "To check connection parameters click the button."
+        }
+    ],
+    "tasks": ""
+}

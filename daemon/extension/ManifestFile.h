@@ -21,10 +21,28 @@
 #define MANIFESTFILE_H
 
 #include <string>
+#include <vector>
 
 namespace ManifestFile
 {
 	extern const char* MANIFEST_FILE;
+
+	struct Option
+	{
+		std::string name;
+		std::string displayName;
+		std::string description;
+		std::string value;
+		std::vector<std::string> select;
+	};
+
+	struct Command 
+	{
+		std::string name;
+		std::string displayName;
+		std::string description;
+		std::string action;
+	};
 
 	struct Manifest
 	{
@@ -36,6 +54,9 @@ namespace ManifestFile
 		std::string version;
 		std::string license;
 		std::string description;
+		std::string task;
+		std::vector<Option> options;
+		std::vector<Command> commands;
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
