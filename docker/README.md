@@ -106,21 +106,14 @@ Dockerfile supports next build arguments:
 
 Docker images also available on [GitHub](https://github.com/nzbgetcom/nzbget/pkgs/container/nzbget). For use - replace `nzbgetcom/nzbget:TAG` with `ghcr.io/nzbgetcom/nzbget:TAG` in above examples.
 
-# Python and extensions
+# Python version
 
-NZBGet docker image bundled with Python 3.11. Some extensions does not work with Python 3.10+. We provide fixes for popular extensions:
+NZBGet docker image bundled with Python 3.11
 
-| Extension    | Link
-|:-------------|-
-| VideoSort    | https://github.com/nzbgetcom/Extension-VideoSort
-| FakeDetector | https://github.com/nzbgetcom/Extension-FakeDetector
-| FailureLink  | https://github.com/nzbgetcom/Extension-FailureLink
+# Troubleshooting max speed issues
 
-# Known download speed issue
+In case a linux image or docker image is slower than expected, here are some tips to increase download speed:
 
-In general - it is not a docker-specific issue. In our tests download speed in docker is almost same as at host machine.
-For some reason, on Linux, a speed of 50% is slow than on Windows with the same number of server connections.
+1. Increase number of server connections (NEWS-SERVERS -> Connections) - default is 8, and 16 and 32 are worth trying
+2. For slower machines/hosts - increase article read chunk size from 4 to 64 (CONNECTION -> ArticleReadChunkSize). This is new setting, available only on v22 testing images and planned in v23.
 
-Some tips to increase download speed:
-1. Increase number of server connections (NEWS-SERVERS -> Connections)
-2. For slow hosts - increase article read chunk size from 4 to 64 (CONNECTION -> ArticleReadChunkSize). This is new setting, available only on `testing` images.
