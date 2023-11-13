@@ -30,17 +30,15 @@ void Script::SetLocation(const char *location) { m_location = location; }
 const char *Script::GetLocation() const { return m_location; }
 void Script::SetDisplayName(const char *displayName) { m_displayName = displayName; }
 const char *Script::GetDisplayName() const { return m_displayName; }
-bool Script::GetPostScript() const { return m_postScript; }
-void Script::SetPostScript(bool postScript) { m_postScript = postScript; }
-bool Script::GetScanScript() const { return m_scanScript; }
-void Script::SetScanScript(bool scanScript) { m_scanScript = scanScript; }
-bool Script::GetQueueScript() const { return m_queueScript; }
-void Script::SetQueueScript(bool queueScript) { m_queueScript = queueScript; }
-bool Script::GetSchedulerScript() const { return m_schedulerScript; }
-void Script::SetSchedulerScript(bool schedulerScript) { m_schedulerScript = schedulerScript; }
-bool Script::GetFeedScript() const { return m_feedScript; }
-void Script::SetFeedScript(bool feedScript) { m_feedScript = feedScript; }
-void Script::SetQueueEvents(const char *queueEvents) { m_queueEvents = queueEvents; }
+void Script::SetDescription(const char *description) { m_description = description; };
+const char *Script::GetDescription() const { return m_description; };
+void Script::SetScriptKind(ScriptKind&& kind_) { kind = std::move(kind_); };
+bool Script::GetPostScript() const { return kind.post; }
+bool Script::GetScanScript() const { return kind.scan; }
+bool Script::GetQueueScript() const { return kind.queue; }
+bool Script::GetSchedulerScript() const { return kind.scheduler; }
+bool Script::GetFeedScript() const { return kind.feed; }
+void Script::SetQueueEvents(const char *queueEvents) { kind.queue = queueEvents; }
 const char *Script::GetQueueEvents() const { return m_queueEvents; }
 void Script::SetTaskTime(const char *taskTime) { m_taskTime = taskTime; }
 const char *Script::GetTaskTime() const { return m_taskTime; }

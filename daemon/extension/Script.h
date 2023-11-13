@@ -22,6 +22,15 @@
 
 #include "NString.h"
 
+struct ScriptKind
+{
+	bool post = false;
+	bool scan = false;
+	bool queue = false;
+	bool scheduler = false;
+	bool feed = false;
+};
+
 class Script
 {
 public:
@@ -34,30 +43,25 @@ public:
 	const char *GetLocation() const;
 	void SetDisplayName(const char *displayName);
 	const char *GetDisplayName() const;
+	void SetDescription(const char *displayName);
+	const char *GetDescription() const;
+	void SetScriptKind(ScriptKind&& kind);
 	bool GetPostScript() const;
-	void SetPostScript(bool postScript);
 	bool GetScanScript() const;
-	void SetScanScript(bool scanScript);
 	bool GetQueueScript() const;
-	void SetQueueScript(bool queueScript);
 	bool GetSchedulerScript() const;
-	void SetSchedulerScript(bool schedulerScript);
 	bool GetFeedScript() const;
-	void SetFeedScript(bool feedScript);
 	void SetQueueEvents(const char *queueEvents);
 	const char *GetQueueEvents() const;
 	void SetTaskTime(const char *taskTime);
 	const char *GetTaskTime() const;
 
 private:
+	ScriptKind kind;
 	CString m_name;
 	CString m_location;
 	CString m_displayName;
-	bool m_postScript = false;
-	bool m_scanScript = false;
-	bool m_queueScript = false;
-	bool m_schedulerScript = false;
-	bool m_feedScript = false;
+	CString m_description;
 	CString m_queueEvents;
 	CString m_taskTime;
 };

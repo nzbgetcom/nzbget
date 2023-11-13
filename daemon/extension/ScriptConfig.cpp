@@ -202,7 +202,6 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 		}
 
 		infile.Close();
-
 		configTemplates->emplace_back(std::move(script), templ);
 	}
 
@@ -256,8 +255,6 @@ void ScriptConfig::LoadScripts(Scripts& scripts)
 
 	// then add all other scripts from scripts directory
 	scripts.splice(scripts.end(), std::move(tmpScripts));
-
-	//BuildScriptDisplayNames(scripts);
 }
 
 void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir)
@@ -296,6 +293,7 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 			Script script(scriptName, fullFilename);
 			if (LoadScriptFile(script, *strategy))
 			{
+				BuildScriptDisplayName(script);
 				scripts.push_back(std::move(script));
 			}
 		}
@@ -340,41 +338,17 @@ bool ScriptConfig::ScriptExists(const Scripts& scripts, const char* scriptName) 
 		}) != scripts.end();
 }
 
-void ScriptConfig::BuildScriptDisplayNames(Scripts& scripts)
+void ScriptConfig::BuildScriptDisplayName(Script& script)
 {
 	// trying to use short name without path and extension.
 	// if there are other scripts with the same short name - using a longer name instead (with ot without extension)
 
-	for (Script& script : scripts)
-	{
-		BString<1024> shortName = script.GetName();
-		if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
+	BString<1024> shortName = script.GetName();
+	if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
 
-		const char* displayName = FileSystem::BaseFileName(shortName);
+	const char* displayName = FileSystem::BaseFileName(shortName);
 
-		for (Script& script2 : scripts)
-		{
-			BString<1024> shortName2 = script2.GetName();
-			if (char* ext = strrchr(shortName2, '.')) *ext = '\0'; // strip file extension
-
-			const char* displayName2 = FileSystem::BaseFileName(shortName2);
-
-			if (!strcmp(displayName, displayName2) && script.GetName() != script2.GetName())
-			{
-				if (!strcmp(shortName, shortName2))
-				{
-					displayName = script.GetName();
-				}
-				else
-				{
-					displayName = shortName;
-				}
-				break;
-			}
-		}
-
-		script.SetDisplayName(displayName);
-	}
+	script.SetDisplayName(displayName);
 }
 
 void ScriptConfig::CreateTasks()

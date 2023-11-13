@@ -57,10 +57,7 @@ namespace LoadScriptFileStrategy
 		infile.Close();
 		buffer[readBytes] = '\0';
 
-		bool postScript = false;
-		bool scanScript = false;
-		bool queueScript = false;
-		bool schedulerScript = false;
+		ScriptKind kind;
 		bool feedScript = false;
 		char* queueEvents = nullptr;
 		char* taskTime = nullptr;
@@ -104,11 +101,7 @@ namespace LoadScriptFileStrategy
 				if (!inConfig)
 				{
 					inConfig = true;
-					postScript = strstr(line, POST_SCRIPT_SIGNATURE);
-					scanScript = strstr(line, SCAN_SCRIPT_SIGNATURE);
-					queueScript = strstr(line, QUEUE_SCRIPT_SIGNATURE);
-					schedulerScript = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
-					feedScript = strstr(line, FEED_SCRIPT_SIGNATURE);
+					kind = GetScriptKind(line);
 				}
 				else
 				{
@@ -117,7 +110,7 @@ namespace LoadScriptFileStrategy
 			}
 		}
 
-		if (!(postScript || scanScript || queueScript || schedulerScript || feedScript))
+		if (!(kind.post || kind.scan || kind.queue || kind.scheduler || kind.feed))
 		{
 			return false;
 		}
@@ -129,11 +122,7 @@ namespace LoadScriptFileStrategy
 		while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
 		if (taskTime) taskTime = Util::Trim(taskTime);
 
-		script.SetPostScript(postScript);
-		script.SetScanScript(scanScript);
-		script.SetQueueScript(queueScript);
-		script.SetSchedulerScript(schedulerScript);
-		script.SetFeedScript(feedScript);
+		script.SetScriptKind(std::move(kind));
 		script.SetQueueEvents(queueEvents);
 		script.SetTaskTime(taskTime);
 
@@ -147,6 +136,8 @@ namespace LoadScriptFileStrategy
 	{
 		script.SetDisplayName(manifest.displayName.c_str());
 		script.SetName(manifest.name.c_str());
+		script.SetDescription(manifest.description.c_str());
+		script.SetScriptKind(GetScriptKind(manifest.kind.c_str()));
 		return true;
 	}
 
@@ -157,5 +148,16 @@ namespace LoadScriptFileStrategy
 			return std::make_unique<ManifestBased>(std::move(manifest));
 		
 		return std::make_unique<HeaderConfigBased>();
+	}
+
+	ScriptKind GetScriptKind(const char* line)
+	{
+		ScriptKind kind;
+		kind.post = strstr(line, POST_SCRIPT_SIGNATURE);
+		kind.scan = strstr(line, SCAN_SCRIPT_SIGNATURE);
+		kind.queue = strstr(line, QUEUE_SCRIPT_SIGNATURE);
+		kind.scheduler = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
+		kind.feed = strstr(line, FEED_SCRIPT_SIGNATURE);
+		return kind;
 	}
 }

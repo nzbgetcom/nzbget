@@ -45,7 +45,7 @@ public:
 		CString m_template;
 	};
 
-	typedef std::deque<ConfigTemplate> ConfigTemplates;
+	using ConfigTemplates = std::deque<ConfigTemplate>;
 
 	void InitOptions();
 	Scripts* GetScripts() { return &m_scripts; }
@@ -61,7 +61,7 @@ private:
 	void InitConfigTemplates();
 	void CreateTasks();
 	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);
-	void BuildScriptDisplayNames(Scripts& scripts);
+	void BuildScriptDisplayName(Script& script);
 	void LoadScripts(Scripts& scripts);
 	bool LoadScriptFile(Script& script, const LoadScriptFileStrategy::Strategy &strategy);
 	BString<1024> BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
