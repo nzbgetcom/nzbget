@@ -284,14 +284,14 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 		if (!FileSystem::DirectoryExists(fullFilename))
 		{
 			BString<1024> scriptName = BuildScriptName(directory, filename, isSubDir);
-			if (ScriptExists(scripts, scriptName))
+			if (ScriptExists(scripts, filename))
 			{
 				continue;
 			}
 
-			const auto strategy = LoadScriptFileStrategy::Factory::Create(directory);
+			const auto strategy = LoadScriptFileStrategy::HeaderConfigBased();
 			Script script(scriptName, fullFilename);
-			if (LoadScriptFile(script, *strategy))
+			if (strategy.Load(script))
 			{
 				BuildScriptDisplayName(script);
 				scripts.push_back(std::move(script));
@@ -304,24 +304,19 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 	}
 }
 
-bool ScriptConfig::LoadScriptFile(Script& script, const LoadScriptFileStrategy::Strategy &strategy)
-{
-	return strategy.Load(script);
-}
-
-BString<1024> ScriptConfig::BuildScriptName(const char* directory, const char* filename, bool isSubDir) const
+BString<1024> ScriptConfig::BuildScriptName(const char* dir, const char* filename, bool isSubDir) const
 {
 	if (isSubDir)
 	{
-		BString<1024> directory2 = directory;
-		int len = strlen(directory2);
-		if (directory2[len-1] == PATH_SEPARATOR || directory2[len-1] == ALT_PATH_SEPARATOR)
+		BString<1024> directory = dir;
+		int len = strlen(directory);
+		if (directory[len-1] == PATH_SEPARATOR || directory[len-1] == ALT_PATH_SEPARATOR)
 		{
 			// trim last path-separator
-			directory2[len-1] = '\0';
+			directory[len-1] = '\0';
 		}
 
-		return BString<1024>("%s%c%s", FileSystem::BaseFileName(directory2), PATH_SEPARATOR, filename);
+		return BString<1024>("%s%c%s", FileSystem::BaseFileName(directory), PATH_SEPARATOR, filename);
 	}
 	else
 	{
@@ -340,9 +335,6 @@ bool ScriptConfig::ScriptExists(const Scripts& scripts, const char* scriptName) 
 
 void ScriptConfig::BuildScriptDisplayName(Script& script)
 {
-	// trying to use short name without path and extension.
-	// if there are other scripts with the same short name - using a longer name instead (with ot without extension)
-
 	BString<1024> shortName = script.GetName();
 	if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
 

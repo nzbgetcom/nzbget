@@ -141,15 +141,6 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	std::unique_ptr<const Strategy> Factory::Create(const char* dir)
-	{
-		ManifestFile::Manifest manifest;
-		if (ManifestFile::Load(manifest, dir))
-			return std::make_unique<ManifestBased>(std::move(manifest));
-		
-		return std::make_unique<HeaderConfigBased>();
-	}
-
 	ScriptKind GetScriptKind(const char* line)
 	{
 		ScriptKind kind;

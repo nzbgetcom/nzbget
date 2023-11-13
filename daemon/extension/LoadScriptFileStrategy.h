@@ -65,12 +65,6 @@ namespace LoadScriptFileStrategy
 		ManifestFile::Manifest manifest;
 	};
 
-	class Factory
-	{
-	public:
-		static std::unique_ptr<const Strategy> Create(const char* dir);
-	};
-
 	ScriptKind GetScriptKind(const char* line);
 }
 
