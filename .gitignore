@@ -73,3 +73,5 @@ code_revision.cpp
 pytest.ini
 .cache
 /.idea
+docker/downloads
+docker/config
