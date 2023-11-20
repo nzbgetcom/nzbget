@@ -6,6 +6,7 @@ on:
     - develop
     - main
     - feature/gen-sigs
+  workflow_dispatch:
 
 jobs:
   build-windows:
