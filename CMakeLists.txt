@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22)
 
 project(
     nzbget
@@ -9,11 +9,16 @@ project(
 
 option(ENABLE_TESTING "Enable the tests" ON)
 
-add_compile_definitions(VERSION="22")
-add_compile_definitions(PACKAGE="NZBGet")
+add_compile_definitions(VERSION="22" PACKAGE="nzbget")
 
 configure_file(config.h.in config.h)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_C_EXTENSIONS OFF)
 set(BUILD_SHARED_LIBS OFF)
 set(OPENSSL_USE_STATIC_LIBS ON)
 set(ZLIB_USE_STATIC_LIBS ON)
@@ -25,6 +30,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /W4")
+    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib")
 endif()
 
 if (WIN32)
@@ -38,6 +44,8 @@ endif()
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
+include_directories(lib/regex)
+
 add_library(Yencode STATIC
     ${CMAKE_SOURCE_DIR}/lib/yencode/SimdInit.cpp
     ${CMAKE_SOURCE_DIR}/lib/yencode/SimdDecoder.cpp
@@ -50,6 +58,7 @@ add_library(Yencode STATIC
     ${CMAKE_SOURCE_DIR}/lib/yencode/SliceCrc.cpp
 )
 target_include_directories(Yencode PUBLIC 
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/lib/yencode 
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${ZLIB_INCLUDE_DIR}
@@ -78,20 +87,12 @@ add_library(Par2 STATIC
     ${CMAKE_SOURCE_DIR}/lib/par2/verificationpacket.cpp
 )
 target_include_directories(Par2 PUBLIC 
+    ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/lib/par2 
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${CMAKE_SOURCE_DIR}/daemon/util
     ${OPENSSL_INCLUDE_DIR}
 )
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_C_EXTENSIONS OFF)
-
-include_directories(lib/regex)
 
 if(ENABLE_TESTING)
     include(CTest)
