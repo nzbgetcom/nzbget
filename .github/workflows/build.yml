@@ -71,3 +71,11 @@ jobs:
         name: nzbget-installers
         path: builds/*
         retention-days: 5
+
+    - name: Delete unneded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          nzbget-windows-installers
+          nzbget-linux-installers
+          nzbget-osx-installers
