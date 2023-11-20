@@ -5,7 +5,6 @@ on:
     branches:
     - develop
     - main
-    - feature/gen-sigs
   workflow_dispatch:
 
 jobs:
