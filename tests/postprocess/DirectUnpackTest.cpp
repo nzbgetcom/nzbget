@@ -18,14 +18,22 @@
  */
 
 
-#include "nzbget.h"
+#include <nzbget.h>
 
-#include "catch.h"
+#define BOOST_TEST_MODULE "DirectUnpackTest" 
+#include <boost/test/included/unit_test.hpp>
 
-#include "Options.h"
-#include "DirectUnpack.h"
-#include "FileSystem.h"
-#include "TestUtil.h"
+#include <filesystem>
+#include <DirectUnpack.h>
+#include <Log.h>
+#include <Options.h>
+#include <DiskState.h>
+
+Log* g_Log;
+Options* g_Options;
+DiskState* g_DiskState;
+char* (*g_EnvironmentVariables)[] = nullptr;
+char* (*g_Arguments)[] = nullptr;
 
 class DirectUnpackDownloadQueueMock : public DownloadQueue
 {
@@ -39,7 +47,7 @@ public:
 	virtual void SaveChanged() {}
 };
 
-TEST_CASE("Direct-unpack simple", "[Rar][DirectUnpack][Unrar][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("WriteLog=none");
@@ -48,23 +56,32 @@ TEST_CASE("Direct-unpack simple", "[Rar][DirectUnpack][Unrar][Slow][TestData]")
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
-	TestUtil::PrepareWorkingDir("empty");
+	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
 
-	INFO("This test requires working unrar 5 in search path");
+	const std::string testDataDir = std::filesystem::current_path().string() + "/rarrenamer";
+	const std::string workingDir = testDataDir + "/empty";
+	std::filesystem::create_directory(workingDir);
 
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part01.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part01.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part02.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part02.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part03.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part03.rar").c_str()));
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part01.rar").c_str(),
+		(workingDir + "/testfile3.part01.rar").c_str()
+	);
 
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part02.rar").c_str(),
+		(workingDir + "/testfile3.part02.rar").c_str()
+	);
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part03.rar").c_str(),
+		(workingDir + "/testfile3.part03.rar").c_str()
+	);
+	
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("test");
-	nzbInfo->SetDestDir(TestUtil::WorkingDir().c_str());
+	nzbInfo->SetDestDir(workingDir.c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
-
+	
 	DirectUnpack::StartJob(nzbPtr);
 
 	while (true)
@@ -83,11 +100,12 @@ TEST_CASE("Direct-unpack simple", "[Rar][DirectUnpack][Unrar][Slow][TestData]")
 		Util::Sleep(20);
 	}
 
-	REQUIRE(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
-	REQUIRE(FileSystem::FileExists((TestUtil::WorkingDir() + "/_unpack/testfile3.dat").c_str()));
+	BOOST_TEST(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
+	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
+	std::filesystem::remove_all(workingDir);
 }
 
-TEST_CASE("Direct-unpack two archives", "[Rar][DirectUnpack][Unrar][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("WriteLog=none");
@@ -96,28 +114,42 @@ TEST_CASE("Direct-unpack two archives", "[Rar][DirectUnpack][Unrar][Slow][TestDa
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
-	TestUtil::PrepareWorkingDir("empty");
+	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
 
-	INFO("This test requires working unrar 5 in search path");
+	const std::string testDataDir = std::filesystem::current_path().string() + "/testdata";
+	const std::string workingDir = testDataDir + "empty";
+	std::filesystem::create_directory(workingDir);
 
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part01.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part01.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part02.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part02.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile3.part03.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile3.part03.rar").c_str()));
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part01.rar").c_str(),
+		(workingDir + "/testfile3.part01.rar").c_str()
+	);
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part02.rar").c_str(),
+		(workingDir + "/testfile3.part02.rar").c_str()
+	);
+	std::filesystem::copy(
+		(testDataDir + "/testfile3.part03.rar").c_str(),
+		(workingDir + "/testfile3.part03.rar").c_str()
+	);
 
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile5.part01.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile5.part01.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile5.part02.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile5.part02.rar").c_str()));
-	REQUIRE(FileSystem::CopyFile((TestUtil::TestDataDir() + "/rarrenamer/testfile5.part03.rar").c_str(),
-		(TestUtil::WorkingDir() + "/testfile5.part03.rar").c_str()));
+	std::filesystem::copy(
+		(testDataDir + "/testfile5.part01.rar").c_str(),
+		(workingDir + "/testfile5.part01.rar").c_str()
+	);
+	std::filesystem::copy(
+		(testDataDir + "/testfile5.part02.rar").c_str(),
+		(workingDir + "/testfile5.part02.rar").c_str()
+	);
+	std::filesystem::copy(
+		(testDataDir + "/testfile5.part03.rar").c_str(),
+		(workingDir + "/testfile5.part03.rar").c_str()
+	);
 
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("test");
-	nzbInfo->SetDestDir(TestUtil::WorkingDir().c_str());
+	nzbInfo->SetDestDir(workingDir.c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
 
 	DirectUnpack::StartJob(nzbPtr);
@@ -138,7 +170,8 @@ TEST_CASE("Direct-unpack two archives", "[Rar][DirectUnpack][Unrar][Slow][TestDa
 		Util::Sleep(20);
 	}
 
-	REQUIRE(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
-	REQUIRE(FileSystem::FileExists((TestUtil::WorkingDir() + "/_unpack/testfile3.dat").c_str()));
-	REQUIRE(FileSystem::FileExists((TestUtil::WorkingDir() + "/_unpack/testfile5.dat").c_str()));
+	BOOST_TEST(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
+	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
+	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile5.dat").c_str()));
+	std::filesystem::remove_all(workingDir);
 }

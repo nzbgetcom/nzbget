@@ -22,7 +22,6 @@
 
 #ifdef WIN32
 
-//#define snprintf _snprintf
 #define stat _stat
 
 namespace Par2

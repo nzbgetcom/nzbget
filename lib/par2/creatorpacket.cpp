@@ -39,7 +39,7 @@ namespace Par2
 
 bool CreatorPacket::Create(const MD5Hash &setid)
 {
-  string creator = "Created by " PACKAGE " version " VERSION ".";
+  string creator = string("Created by ") + string(PACKAGE) + " version " + string(VERSION) + ".";
 
   // Allocate a packet just large enough for creator name
   CREATORPACKET *packet = (CREATORPACKET *)AllocatePacket(sizeof(*packet) + (~3 & (3+(u32)creator.size())));

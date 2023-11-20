@@ -18,50 +18,59 @@
  */
 
 
-#include "nzbget.h"
+#include <nzbget.h>
 
-#include "catch.h"
+#define BOOST_TEST_MODULE "NzbFileTest" 
+#include <boost/test/included/unit_test.hpp>
 
-#include "NzbFile.h"
-#include "Options.h"
-#include "TestUtil.h"
+#include <filesystem>
+#include <NzbFile.h>
+#include <Log.h>
+#include <Options.h>
+#include <DiskState.h>
+
+Log* g_Log;
+Options* g_Options;
+DiskState* g_DiskState;
 
 void TestNzb(std::string testFilename)
 {
-	INFO(std::string("Filename: ") + testFilename);
+	BOOST_TEST_MESSAGE(std::string("Filename: ") + testFilename);
 
-	std::string nzbFilename(TestUtil::TestDataDir() + "/nzbfile/"+ testFilename + ".nzb");
-	std::string infoFilename(TestUtil::TestDataDir() + "/nzbfile/"+ testFilename + ".txt");
+	const std::string path = std::filesystem::current_path().string();
+
+	std::string nzbFilename(path + "/nzbfile/" + testFilename + ".nzb");
+	std::string infoFilename(path + "/nzbfile/" + testFilename + ".txt");
 
 	NzbFile nzbFile(nzbFilename.c_str(), "");
 	bool parsedOK = nzbFile.Parse();
-	REQUIRE(parsedOK == true);
+	BOOST_TEST(parsedOK == true);
 
 	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
-	REQUIRE(infofile != nullptr);
+	BOOST_TEST(infofile != nullptr);
 	char buffer[1024];
 
 	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-	REQUIRE(*buffer);
+	BOOST_TEST(*buffer);
 
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
-	REQUIRE(nzbInfo->GetFileCount() == fileCount);
+	BOOST_TEST(nzbInfo->GetFileCount() == fileCount);
 
 	for (int i = 0; i < fileCount; i++)
 	{
 		while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-		REQUIRE(*buffer);
+		BOOST_TEST(*buffer);
 		FileInfo* fileInfo = nzbInfo->GetFileList()->at(i).get();
-		REQUIRE(fileInfo != nullptr);
+		BOOST_TEST(fileInfo != nullptr);
 		Util::TrimRight(buffer);
-		REQUIRE(std::string(fileInfo->GetFilename()) == std::string(buffer));
+		BOOST_TEST(std::string(fileInfo->GetFilename()) == std::string(buffer));
 	}
 
 	fclose(infofile);
 }
 
-TEST_CASE("Nzb parser", "[NzbFile][TestData]")
+BOOST_AUTO_TEST_CASE(NZBParser)
 {
 	Options::CmdOptList cmdOpts;
 	Options options(&cmdOpts, nullptr);

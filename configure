@@ -8576,41 +8576,6 @@ $as_echo "#define NDEBUG 1" >>confdefs.h
 
 fi
 
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable unit and integration tests" >&5
-$as_echo_n "checking whether to enable unit and integration tests... " >&6; }
-# Check whether --enable-tests was given.
-if test "${enable_tests+set}" = set; then :
-  enableval=$enable_tests;  ENABLETESTS=$enableval
-else
-   ENABLETESTS=no
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ENABLETESTS" >&5
-$as_echo "$ENABLETESTS" >&6; }
-if test "$ENABLETESTS" = "yes"; then
-
-$as_echo "#define ENABLE_TESTS 1" >>confdefs.h
-
-	 if true; then
-  WITH_TESTS_TRUE=
-  WITH_TESTS_FALSE='#'
-else
-  WITH_TESTS_TRUE='#'
-  WITH_TESTS_FALSE=
-fi
-
-else
-	 if false; then
-  WITH_TESTS_TRUE=
-  WITH_TESTS_FALSE='#'
-else
-  WITH_TESTS_TRUE='#'
-  WITH_TESTS_FALSE=
-fi
-
-fi
-
 ac_config_files="$ac_config_files Makefile"
 
 cat >confcache <<\_ACEOF

@@ -18,16 +18,16 @@
  */
 
 
-#include "nzbget.h"
+#include <nzbget.h>
 
-#define CATCH_CONFIG_RUNNER
-#include "catch.h"
+#define BOOST_TEST_MODULE "MainTest" 
+#include <boost/test/included/unit_test.hpp>
 
-#include "Thread.h"
-#include "Log.h"
-#include "Util.h"
-#include "FileSystem.h"
-#include "TestUtil.h"
+#include <Thread.h>
+#include <Log.h>
+#include <Util.h>
+#include <FileSystem.h>
+#include <TestUtil.h>
 
 int TestMain(int argc, char * argv[])
 {
@@ -54,12 +54,12 @@ int TestMain(int argc, char * argv[])
 	argc--;
 	testsargv[argc] = nullptr;
 
-	int ret = Catch::Session().run(argc, testsargv);
-	
+	//int ret = Catch::Session().run(argc, testsargv);
 	free(testsargv);
+	BOOST_TEST(true);
 	TestUtil::Final();
-
-	return ret;
+	return 0;
+	//return ret;
 }
 
 void TestCleanup()
@@ -67,5 +67,5 @@ void TestCleanup()
 	// If tests were run (via "TestMain") the Catch-framework does clean up automatically.
 	// However, if no tests were run, the global objects remain alive and causing memory leak
 	// detection reports. Therefore we clean up the Catch-framework when we don't run any tests.
-	Catch::cleanUp();
+	//Catch::cleanUp();
 }

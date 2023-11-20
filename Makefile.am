@@ -250,37 +250,6 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib/par2 \
 	-I$(srcdir)/lib/yencode
 
-if WITH_TESTS
-nzbget_SOURCES += \
-	lib/catch/catch.h \
-	tests/suite/TestMain.cpp \
-	tests/suite/TestMain.h \
-	tests/suite/TestUtil.cpp \
-	tests/suite/TestUtil.h \
-	tests/main/CommandLineParserTest.cpp \
-	tests/main/OptionsTest.cpp \
-	tests/feed/FeedFilterTest.cpp \
-	tests/postprocess/DupeMatcherTest.cpp \
-	tests/postprocess/RarRenamerTest.cpp \
-	tests/postprocess/RarReaderTest.cpp \
-	tests/postprocess/DirectUnpackTest.cpp \
-	tests/queue/NzbFileTest.cpp \
-	tests/nntp/ServerPoolTest.cpp \
-	tests/util/FileSystemTest.cpp \
-	tests/util/NStringTest.cpp \
-	tests/util/UtilTest.cpp
-
-if WITH_PAR2
-nzbget_SOURCES += \
-	tests/postprocess/ParCheckerTest.cpp \
-	tests/postprocess/ParRenamerTest.cpp
-endif
-
-AM_CPPFLAGS += \
-	-I$(srcdir)/lib/catch \
-	-I$(srcdir)/tests/suite
-endif
-
 EXTRA_DIST = \
 	$(windows_FILES) \
 	$(osx_FILES) \

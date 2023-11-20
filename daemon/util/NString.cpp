@@ -93,13 +93,13 @@ int BString<size>::FormatV(const char* format, va_list ap)
 	return len;
 }
 
-bool CString::operator==(const CString& other)
+bool CString::operator==(const CString& other) const
 {
 	return (!m_data && !other.m_data) ||
 		(m_data && other.m_data && !strcmp(m_data, other.m_data));
 }
 
-bool CString::operator==(const char* other)
+bool CString::operator==(const char* other) const
 {
 	return (!m_data && !other) ||
 		(m_data && other && !strcmp(m_data, other));

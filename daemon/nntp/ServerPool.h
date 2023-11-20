@@ -22,6 +22,7 @@
 #ifndef SERVERPOOL_H
 #define SERVERPOOL_H
 
+#include <memory>
 #include "Log.h"
 #include "Container.h"
 #include "Thread.h"
@@ -31,7 +32,7 @@
 class ServerPool : public Debuggable
 {
 public:
-	typedef std::vector<NewsServer*> RawServerList;
+	using RawServerList = std::vector<NewsServer*>;
 
 	void SetTimeout(int timeout) { m_timeout = timeout; }
 	void SetRetryInterval(int retryInterval) { m_retryInterval = retryInterval; }
@@ -64,8 +65,8 @@ private:
 		time_t m_freeTime = 0;
 	};
 
-	typedef std::vector<int> Levels;
-	typedef std::vector<std::unique_ptr<PooledConnection>> Connections;
+	using Levels = std::vector<int>;
+	using Connections = std::vector<std::unique_ptr<PooledConnection>>;
 
 	Servers m_servers;
 	RawServerList m_sortedServers;
