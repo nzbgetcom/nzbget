@@ -18,7 +18,7 @@ jobs:
   build-osx:
     uses: ./.github/workflows/osx.yml
   
-  gen-sigs:
+  generate-signatures:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
