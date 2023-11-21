@@ -18,7 +18,6 @@
 //  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 
 #include "nzbget.h"
-#include "config.h"
 #include "par2cmdline.h"
 
 #ifdef _MSC_VER
