@@ -33,6 +33,14 @@ Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget
 
 We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
 
+## Supported platforms for installers
+
+`Windows`: Windows 7 and later, 32 or 64 Bit.
+
+`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64)
+
+`macOS`: macOS 10.13 High Sierra and later, Intel / Apple Silicon.
+
 ## Building from sources
 
 Please follow [instructions](https://nzbget.com/documentation/building-development-version/) on the website 
