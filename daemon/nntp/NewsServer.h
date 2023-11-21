@@ -82,6 +82,6 @@ private:
 	time_t m_blockTime = 0;
 };
 
-using Servers = std::vector<std::unique_ptr<NewsServer>>;
+typedef std::vector<std::unique_ptr<NewsServer>> Servers;
 
 #endif
