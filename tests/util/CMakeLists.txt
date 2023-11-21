@@ -23,6 +23,7 @@ target_include_directories(FileSystemTest PRIVATE
 add_executable(NStringTest
 	NStringTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
+	${CMAKE_BINARY_DIR}/config.h
 )
 target_link_libraries(NStringTest PRIVATE 
 	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE}

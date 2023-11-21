@@ -18,6 +18,7 @@
 //  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
 
 #include "nzbget.h"
+#include "config.h"
 #include "par2cmdline.h"
 
 #ifdef _MSC_VER
@@ -39,7 +40,7 @@ namespace Par2
 
 bool CreatorPacket::Create(const MD5Hash &setid)
 {
-  string creator = string("Created by ") + string(PACKAGE) + " version " + string(VERSION) + ".";
+  string creator = string("Created by ") + PACKAGE + " version " + VERSION + ".";
 
   // Allocate a packet just large enough for creator name
   CREATORPACKET *packet = (CREATORPACKET *)AllocatePacket(sizeof(*packet) + (~3 & (3+(u32)creator.size())));

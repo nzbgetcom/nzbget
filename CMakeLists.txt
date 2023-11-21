@@ -2,16 +2,20 @@ cmake_minimum_required(VERSION 3.22)
 
 project(
     nzbget
-    VERSION 22.0
+    VERSION "22.0"
     DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
     LANGUAGES C CXX
 )
 
-option(ENABLE_TESTING "Enable the tests" ON)
+option(ENABLE_TESTS "Enable tests" ON)
 
-add_compile_definitions(VERSION="22" PACKAGE="nzbget")
+set(VERSION "22")
+set(PACKAGE "nzbget")
 
-configure_file(config.h.in config.h)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/cmake_config.h.in
+    ${CMAKE_BINARY_DIR}/config.h
+)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 17)
@@ -45,6 +49,7 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
 include_directories(lib/regex)
+include_directories(${CMAKE_BINARY_DIR})
 
 add_library(Yencode STATIC
     ${CMAKE_SOURCE_DIR}/lib/yencode/SimdInit.cpp
@@ -57,8 +62,7 @@ add_library(Yencode STATIC
     ${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
     ${CMAKE_SOURCE_DIR}/lib/yencode/SliceCrc.cpp
 )
-target_include_directories(Yencode PUBLIC 
-    ${CMAKE_CURRENT_BINARY_DIR}
+target_include_directories(Yencode PUBLIC
     ${CMAKE_SOURCE_DIR}/lib/yencode 
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${ZLIB_INCLUDE_DIR}
@@ -86,8 +90,7 @@ add_library(Par2 STATIC
     ${CMAKE_SOURCE_DIR}/lib/par2/verificationhashtable.cpp
     ${CMAKE_SOURCE_DIR}/lib/par2/verificationpacket.cpp
 )
-target_include_directories(Par2 PUBLIC 
-    ${CMAKE_CURRENT_BINARY_DIR}
+target_include_directories(Par2 PUBLIC
     ${CMAKE_SOURCE_DIR}/lib/par2 
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${CMAKE_SOURCE_DIR}/daemon/util
