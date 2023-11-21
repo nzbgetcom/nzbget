@@ -50,7 +50,7 @@ if (NOT WIN32)
     include_directories(${LIBXML2_INCLUDE_DIR})
     execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
     execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.sh ${CMAKE_BINARY_DIR})
+    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})
 endif()
 
 find_package(OpenSSL REQUIRED)

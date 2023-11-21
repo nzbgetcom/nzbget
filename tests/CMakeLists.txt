@@ -1,4 +1,4 @@
-find_package(Boost 1.74 COMPONENTS unit_test_framework REQUIRED)
+find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
 add_subdirectory(util)
 add_subdirectory(feed)
