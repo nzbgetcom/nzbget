@@ -1,14 +1,35 @@
-add_executable(FileSystemTest
+file(GLOB FileSystemTestSrc
 	FileSystemTest.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
+
+file(GLOB NStringTestSrc
+	NStringTest.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
+)
+
+file(GLOB UtilTestSrc
+	UtilTest.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
+	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
+	${CMAKE_BINARY_DIR}/code_revision.cpp
+)
+if (NOT WIN32)
+	set(FileSystemTestSrc ${FileSystemTestSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
+	set(NStringTestSrc ${NStringTestSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
+	set(UtilTestSrc ${UtilTestSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
+endif()
+
+add_executable(FileSystemTest ${FileSystemTestSrc})
 target_link_libraries(FileSystemTest PRIVATE 
 	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE} 
 	ZLIB::ZLIB
 	Yencode
+	${LIBXML2_LIBRARIES}
 )
 target_include_directories(FileSystemTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -20,13 +41,10 @@ target_include_directories(FileSystemTest PRIVATE
 	${Boost_INCLUDE_DIR}
 )
 
-add_executable(NStringTest
-	NStringTest.cpp
-	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
-	${CMAKE_BINARY_DIR}/config.h
-)
+add_executable(NStringTest ${NStringTestSrc})
 target_link_libraries(NStringTest PRIVATE 
 	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE}
+	${LIBXML2_LIBRARIES}
 )
 target_include_directories(NStringTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -35,17 +53,12 @@ target_include_directories(NStringTest PRIVATE
 	${Boost_INCLUDE_DIR}
 )
 
-add_executable(UtilTest
-	UtilTest.cpp
-	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
-	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
-	${CMAKE_BINARY_DIR}/code_revision.cpp
-)
+add_executable(UtilTest ${UtilTestSrc})
 target_link_libraries(UtilTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
 	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE}
+	${LIBXML2_LIBRARIES}
 )
 target_include_directories(UtilTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main

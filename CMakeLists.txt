@@ -48,7 +48,9 @@ endif()
 if (NOT WIN32)
     find_package(LibXml2 REQUIRED)
     include_directories(${LIBXML2_INCLUDE_DIR})
-    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh)
+    execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
+    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.sh ${CMAKE_BINARY_DIR})
 endif()
 
 find_package(OpenSSL REQUIRED)
@@ -103,7 +105,7 @@ target_include_directories(Par2 PUBLIC
     ${OPENSSL_INCLUDE_DIR}
 )
 
-if(ENABLE_TESTING)
+if(ENABLE_TESTS)
     include(CTest)
     add_subdirectory(tests)
 endif()
