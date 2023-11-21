@@ -20,9 +20,7 @@
 
 #include <nzbget.h>
 
-#define BOOST_TEST_MODULE "UtilTtest"
-#include <boost/test/included/unit_test.hpp>
-
+#include <boost/test/unit_test.hpp>
 #include <Util.h>
 
 BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
@@ -32,7 +30,7 @@ BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
 	char* testString = strdup(xml);
 	WebUtil::XmlStripTags(testString);
 
-	BOOST_TEST(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
@@ -44,7 +42,7 @@ BOOST_AUTO_TEST_CASE(XmlDecodeTest)
 	char* testString = strdup(xml);
 	WebUtil::XmlDecode(testString);
 
-	BOOST_TEST(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
@@ -56,7 +54,7 @@ BOOST_AUTO_TEST_CASE(XmlRemoveEntitiesTest)
 	char* testString = strdup(xml);
 	WebUtil::XmlRemoveEntities(testString);
 
-	BOOST_TEST(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
@@ -67,17 +65,17 @@ BOOST_AUTO_TEST_CASE(URLEncodeTest)
 	const char* correctedUrl = "http://www.example.com/nzb_get/12344/Debian%20V7%206%2064%20bit%20OS.nzb";
 	CString testString = WebUtil::UrlEncode(badUrl);
 
-	BOOST_TEST(strcmp(testString, correctedUrl) == 0);
+	BOOST_CHECK(strcmp(testString, correctedUrl) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(WildMaskTest)
 {
 	WildMask mask("*.par2", true);
-	BOOST_TEST(mask.Match("Debian V7 6 64 bit OS.nzb") == false);
-	BOOST_TEST(mask.Match("Debian V7 6 64 bit OS.par2.nzb") == false);
-	BOOST_TEST(mask.Match("Debian V7 6 64 bit OS.par2"));
-	BOOST_TEST(mask.Match(".par2"));
-	BOOST_TEST(mask.Match("par2") == false);
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.nzb") == false);
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.par2.nzb") == false);
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.par2"));
+	BOOST_CHECK(mask.Match(".par2"));
+	BOOST_CHECK(mask.Match("par2") == false);
 }
 
 BOOST_AUTO_TEST_CASE(RegExTest)
@@ -87,35 +85,35 @@ BOOST_AUTO_TEST_CASE(RegExTest)
 	RegEx regExSevenZip(".*\\.7z$|.*\\.7z\\.[0-9]+$");
 	RegEx regExNumExt(".*\\.[0-9]+$");
 
-	BOOST_TEST(regExRar.Match("filename.rar"));
-	BOOST_TEST(regExRar.Match("filename.part001.rar"));
-	BOOST_TEST(regExRar.Match("filename.rar.txt") == false);
+	BOOST_CHECK(regExRar.Match("filename.rar"));
+	BOOST_CHECK(regExRar.Match("filename.part001.rar"));
+	BOOST_CHECK(regExRar.Match("filename.rar.txt") == false);
 
-	BOOST_TEST(regExRarMultiSeq.Match("filename.rar") == false);
-	BOOST_TEST(regExRarMultiSeq.Match("filename.r01"));
-	BOOST_TEST(regExRarMultiSeq.Match("filename.r99"));
-	BOOST_TEST(regExRarMultiSeq.Match("filename.r001") == false);
-	BOOST_TEST(regExRarMultiSeq.Match("filename.s01"));
-	BOOST_TEST(regExRarMultiSeq.Match("filename.t99"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.rar") == false);
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r01"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r99"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r001") == false);
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.s01"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.t99"));
 
-	BOOST_TEST(regExSevenZip.Match("filename.7z"));
-	BOOST_TEST(regExSevenZip.Match("filename.7z.rar") == false);
-	BOOST_TEST(regExSevenZip.Match("filename.7z.1"));
-	BOOST_TEST(regExSevenZip.Match("filename.7z.001"));
-	BOOST_TEST(regExSevenZip.Match("filename.7z.123"));
-	BOOST_TEST(regExSevenZip.Match("filename.7z.999"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.rar") == false);
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.1"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.001"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.123"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.999"));
 
-	BOOST_TEST(regExNumExt.Match("filename.7z.1"));
-	BOOST_TEST(regExNumExt.Match("filename.7z.9"));
-	BOOST_TEST(regExNumExt.Match("filename.7z.001"));
-	BOOST_TEST(regExNumExt.Match("filename.7z.123"));
-	BOOST_TEST(regExNumExt.Match("filename.7z.999"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.1"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.9"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.001"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.123"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.999"));
 
 	const char* testStr = "My.Show.Name.S01E02.ABC.720";
 	RegEx seasonEpisode(".*S([0-9]+)E([0-9]+).*");
-	BOOST_TEST(seasonEpisode.IsValid());
-	BOOST_TEST(seasonEpisode.Match(testStr));
-	BOOST_TEST(seasonEpisode.GetMatchCount() == 3);
-	BOOST_TEST(seasonEpisode.GetMatchStart(1) == 14);
-	BOOST_TEST(seasonEpisode.GetMatchLen(1) == 2);
+	BOOST_CHECK(seasonEpisode.IsValid());
+	BOOST_CHECK(seasonEpisode.Match(testStr));
+	BOOST_CHECK(seasonEpisode.GetMatchCount() == 3);
+	BOOST_CHECK(seasonEpisode.GetMatchStart(1) == 14);
+	BOOST_CHECK(seasonEpisode.GetMatchLen(1) == 2);
 }
