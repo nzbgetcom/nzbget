@@ -40,6 +40,7 @@ add_executable(UtilTest
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
+	${CMAKE_BINARY_DIR}/code_revision.cpp
 )
 target_link_libraries(UtilTest PRIVATE
 	ZLIB::ZLIB

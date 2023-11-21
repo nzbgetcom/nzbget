@@ -45,6 +45,12 @@ if (WIN32)
     endif()
 endif()
 
+if (NOT WIN32)
+    find_package(LibXml2 REQUIRED)
+    include_directories(${LIBXML2_INCLUDE_DIR})
+    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh)
+endif()
+
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 
