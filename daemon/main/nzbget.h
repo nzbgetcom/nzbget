@@ -152,8 +152,6 @@ using namespace MSXML;
 
 // POSIX INCLUDES
 
-#include "config.h"
-
 #include <unistd.h>
 #include <pwd.h>
 #include <grp.h>
@@ -233,6 +231,10 @@ using namespace MSXML;
 // is causing fatal problems in SIMD units which must not have static initialization because
 // they contain code with runtime CPU dispatching.
 //#include <iostream>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #ifdef HAVE_LIBGNUTLS
 #ifdef WIN32
@@ -333,12 +335,10 @@ typedef int pid_t;
 #define exit(code) ExitProcess(code)
 #endif
 
-// #ifdef HAVE_OPENSSL
-// FILE _iob[] = {*stdin, *stdout, *stderr};
-// extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
-// // For static linking of OpenSSL libraries:
-// #pragma comment (lib, "legacy_stdio_definitions.lib")
-// #endif /* HAVE_OPENSSL */
+#ifdef HAVE_OPENSSL
+// For static linking of OpenSSL libraries:
+#pragma comment (lib, "legacy_stdio_definitions.lib")
+#endif /* HAVE_OPENSSL */
 
 #else
 

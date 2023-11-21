@@ -58,7 +58,6 @@ target_include_directories(DupeMatcherTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/lib/yencode
 	${Boost_INCLUDE_DIR}
 )
 
