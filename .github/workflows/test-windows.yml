@@ -35,8 +35,8 @@ jobs:
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v3
-      if: success() || failure()
+      if: failure()
       with:
         name: nzbget-test-log
-        path: Testing/Temporary/LastTest.log
+        path: build/Testing/Temporary/LastTest.log
         retention-days: 5
