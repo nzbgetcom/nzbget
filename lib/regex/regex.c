@@ -19,7 +19,7 @@
    02111-1307 USA.  */
 //#include "nzbget.h"
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+#include <config.h>
 #endif
 
 /* Make sure noone compiles this code with a C++ compiler.  */

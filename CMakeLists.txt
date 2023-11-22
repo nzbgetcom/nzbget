@@ -12,6 +12,7 @@ option(ENABLE_TESTS "Enable tests" ON)
 set(VERSION "22")
 set(PACKAGE "nzbget")
 add_compile_definitions(HAVE_CONFIG_H=1)
+
 configure_file(
     ${CMAKE_SOURCE_DIR}/cmake_config.h.in
     ${CMAKE_BINARY_DIR}/config.h
