@@ -1,4 +1,4 @@
-add_executable(PostprocessTests
+file(GLOB PostprocessTestsSrc
 	main.cpp
 	DirectUnpackTest.cpp
 	DupeMatcherTest.cpp
@@ -15,6 +15,12 @@ add_executable(PostprocessTests
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
+
+if (NOT WIN32)
+	set(PostprocessTests ${PostprocessTestsSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
+endif()
+
+add_executable(PostprocessTests ${PostprocessTests})
 target_link_libraries(PostprocessTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
