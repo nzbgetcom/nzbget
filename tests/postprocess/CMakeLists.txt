@@ -20,7 +20,7 @@ if (NOT WIN32)
 	set(PostprocessTests ${PostprocessTestsSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
 endif()
 
-add_executable(PostprocessTests ${PostprocessTests})
+add_executable(PostprocessTests ${PostprocessTestsSrc})
 target_link_libraries(PostprocessTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
