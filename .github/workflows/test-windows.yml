@@ -37,6 +37,6 @@ jobs:
       uses: actions/upload-artifact@v3
       if: failure()
       with:
-        name: nzbget-test-log
+        name: nzbget-windows-test-log
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
