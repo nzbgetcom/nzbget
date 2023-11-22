@@ -1,0 +1,35 @@
+name: windows build 
+
+on:
+  push:
+    branches:
+    - feature/*
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, windows]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+        cmake --build . --config Release -j 2
+
+    - name: Test
+      run: |
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-test-log
+        path: Testing/Temporary/LastTest.log
+        retention-days: 5
