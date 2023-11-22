@@ -22,6 +22,9 @@
    compiled */
 #undef FUNCTION_MACRO_NAME
 
+/* Define to 1 use config.h */
+#undef HAVE_CONFIG_H
+
 /* Define to 1 to create stacktrace on segmentation faults */
 #undef HAVE_BACKTRACE
 
