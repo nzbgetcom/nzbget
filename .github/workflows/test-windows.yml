@@ -12,13 +12,16 @@ jobs:
     runs-on: [self-hosted, windows]
 
     steps:
+
+    - name: Prepare environment
+      run: |
+        echo "C:\Program Files\CMake\bin" >> $GITHUB_PATH
     
     - name: Checkout
       uses: actions/checkout@v3
 
     - name: Build
-      run: |
-        echo "C:\Program Files\CMake\bin" >> $GITHUB_PATH
+      run: |        
         cmake --version
         mkdir build
         cd build
