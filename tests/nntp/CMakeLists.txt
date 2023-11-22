@@ -15,8 +15,7 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
-target_link_libraries(ServerPoolTest PRIVATE 
-	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE}
+target_link_libraries(ServerPoolTest PRIVATE
 	OpenSSL::SSL
 	ZLIB::ZLIB
 	Par2

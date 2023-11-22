@@ -54,10 +54,10 @@ void TestBlockServers(int group)
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con4 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
 	BOOST_CHECK(con1->GetNewsServer()->GetLevel() == 0);
 	BOOST_CHECK(con2->GetNewsServer()->GetLevel() == 0);
 
@@ -69,8 +69,8 @@ void TestBlockServers(int group)
 
 	con1 = pool.GetConnection(0, nullptr, nullptr);
 	con2 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_TEST(con1 == nullptr);
-	BOOST_TEST(con2 == nullptr);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
 }
 
 void TestOptionalBlockServers(int group)
@@ -94,10 +94,10 @@ void TestOptionalBlockServers(int group)
 
 	// all servers on level 0 are optional and blocked;
 	// we should get a connection from level-1 server (server 3)
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
 	BOOST_CHECK(con1->GetNewsServer()->GetLevel() == 1);
 	BOOST_CHECK(con2->GetNewsServer()->GetLevel() == 1);
 }
@@ -123,10 +123,10 @@ void TestBlockOptionalAndNonOptionalServers(int group)
 
 	// all servers on level 0 are blocked but one of them is non-optional
 	// we should NOT get any connections
-	BOOST_TEST(con1 == nullptr);
-	BOOST_TEST(con2 == nullptr);
-	BOOST_TEST(con3 == nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(SimpleLevelsTest)
@@ -134,31 +134,31 @@ BOOST_AUTO_TEST_CASE(SimpleLevelsTest)
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 2, false, 0, 2);
 	pool.InitConnections();
-	BOOST_TEST(pool.GetMaxNormLevel() == 0);
+	BOOST_CHECK(pool.GetMaxNormLevel() == 0);
 
 	AddTestServer(&pool, 2, true, 10, false, 0, 3);
 	pool.InitConnections();
-	BOOST_TEST(pool.GetMaxNormLevel() == 1);
+	BOOST_CHECK(pool.GetMaxNormLevel() == 1);
 
 	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
 
 	pool.FreeConnection(con1, false);
 	con3 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_TEST(con3 != nullptr);
+	BOOST_CHECK(con3 != nullptr);
 
 	con1 = pool.GetConnection(1, nullptr, nullptr);
 	con2 = pool.GetConnection(1, nullptr, nullptr);
 	con3 = pool.GetConnection(1, nullptr, nullptr);
 	NntpConnection* con4 = pool.GetConnection(1, nullptr, nullptr);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 != nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 != nullptr);
+	BOOST_CHECK(con4 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(WantServerTest)
@@ -174,9 +174,9 @@ BOOST_AUTO_TEST_CASE(WantServerTest)
 	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con2 = pool.GetConnection(0, serv1, nullptr);
 	NntpConnection* con3 = pool.GetConnection(0, serv1, nullptr);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(ActiveOnOffTest)
@@ -199,19 +199,19 @@ BOOST_AUTO_TEST_CASE(ActiveOnOffTest)
 	pool.FreeConnection(con2, false);
 	pool.FreeConnection(con3, false);
 
-	BOOST_TEST(pool.GetGeneration() == 1);
+	BOOST_CHECK(pool.GetGeneration() == 1);
 
 	NewsServer* serv1 = pool.GetServers()->at(0).get();
 	serv1->SetActive(false);
 	pool.Changed();
-	BOOST_TEST(pool.GetGeneration() == 2);
+	BOOST_CHECK(pool.GetGeneration() == 2);
 
 	con1 = pool.GetConnection(0, nullptr, nullptr);
 	con2 = pool.GetConnection(0, nullptr, nullptr);
 	con3 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 == nullptr);
-	BOOST_TEST(con3 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(IgnoreServers)
@@ -230,10 +230,10 @@ BOOST_AUTO_TEST_CASE(IgnoreServers)
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
 	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
 
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
@@ -251,10 +251,10 @@ BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, &ignoreServers);
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
 	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
-	BOOST_TEST(con1 == nullptr);
-	BOOST_TEST(con2 == nullptr);
-	BOOST_TEST(con3 == nullptr);
-	BOOST_TEST(con4 == nullptr);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
 
 	AddTestServer(&pool, 3, true, 0, false, 2, 2);
 	pool.InitConnections();
@@ -262,9 +262,9 @@ BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
 	con1 = pool.GetConnection(0, nullptr, &ignoreServers);
 	con2 = pool.GetConnection(0, nullptr, &ignoreServers);
 	con3 = pool.GetConnection(0, nullptr, &ignoreServers);
-	BOOST_TEST(con1 != nullptr);
-	BOOST_TEST(con2 != nullptr);
-	BOOST_TEST(con3 == nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(BlockServersUngrouped)

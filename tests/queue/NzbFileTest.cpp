@@ -37,34 +37,34 @@ void TestNzb(std::string testFilename)
 {
 	BOOST_TEST_MESSAGE(std::string("Filename: ") + testFilename);
 
-	const std::string path = std::filesystem::current_path().string();
+	std::string path = std::filesystem::current_path().string();
 
 	std::string nzbFilename(path + "/nzbfile/" + testFilename + ".nzb");
 	std::string infoFilename(path + "/nzbfile/" + testFilename + ".txt");
 
 	NzbFile nzbFile(nzbFilename.c_str(), "");
 	bool parsedOK = nzbFile.Parse();
-	BOOST_TEST(parsedOK == true);
+	BOOST_CHECK(parsedOK == true);
 
 	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
-	BOOST_TEST(infofile != nullptr);
+	BOOST_CHECK(infofile != nullptr);
 	char buffer[1024];
 
 	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-	BOOST_TEST(*buffer);
+	BOOST_CHECK(*buffer);
 
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
-	BOOST_TEST(nzbInfo->GetFileCount() == fileCount);
+	BOOST_CHECK(nzbInfo->GetFileCount() == fileCount);
 
 	for (int i = 0; i < fileCount; i++)
 	{
 		while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-		BOOST_TEST(*buffer);
+		BOOST_CHECK(*buffer);
 		FileInfo* fileInfo = nzbInfo->GetFileList()->at(i).get();
-		BOOST_TEST(fileInfo != nullptr);
+		BOOST_CHECK(fileInfo != nullptr);
 		Util::TrimRight(buffer);
-		BOOST_TEST(std::string(fileInfo->GetFilename()) == std::string(buffer));
+		BOOST_CHECK(std::string(fileInfo->GetFilename()) == std::string(buffer));
 	}
 
 	fclose(infofile);

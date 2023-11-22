@@ -13,8 +13,7 @@ add_executable(NzbFileTest
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
-target_link_libraries(NzbFileTest PRIVATE 
-	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE}
+target_link_libraries(NzbFileTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
 )

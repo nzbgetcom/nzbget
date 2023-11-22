@@ -20,9 +20,7 @@
 
 #include <nzbget.h>
 
-#define BOOST_TEST_MODULE "DupeMatcherTest" 
-#include <boost/test/included/unit_test.hpp>
-
+#include <boost/test/unit_test.hpp>
 #include <filesystem>
 #include <DupeMatcher.h>
 #include <Log.h>

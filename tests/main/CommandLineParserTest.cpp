@@ -20,9 +20,7 @@
 
 #include <nzbget.h>
 
-#define BOOST_TEST_MODULE "CommandLineParserTest" 
-#include <boost/test/included/unit_test.hpp>
-
+#include <boost/test/unit_test.hpp>
 #include <CommandLineParser.h>
 #include <Log.h>
 #include <Options.h>
@@ -32,13 +30,13 @@ Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
 
-BOOST_AUTO_TEST_CASE(InitializingWithoutConfigurationFile)
+BOOST_AUTO_TEST_CASE(InitWithoutConfigurationFileTest)
 {
 	const char* argv[] = {"nzbget", "-n", "-p", nullptr};
 	CommandLineParser commandLineParser(3, argv);
 
-	BOOST_TEST(commandLineParser.GetConfigFilename() == nullptr);
-	BOOST_TEST(commandLineParser.GetClientOperation() == CommandLineParser::opClientNoOperation);
+	BOOST_CHECK(commandLineParser.GetConfigFilename() == nullptr);
+	BOOST_CHECK(commandLineParser.GetClientOperation() == CommandLineParser::opClientNoOperation);
 }
 
 BOOST_AUTO_TEST_CASE(InitializingWithtConfigurationFile)
@@ -46,9 +44,9 @@ BOOST_AUTO_TEST_CASE(InitializingWithtConfigurationFile)
 	const char* argv[] = {"nzbget", "-c", "/home/user/nzbget.conf", "-p", nullptr};
 	CommandLineParser commandLineParser(4, argv);
 
-	BOOST_TEST(commandLineParser.GetConfigFilename() != nullptr);
-	BOOST_TEST(strcmp(commandLineParser.GetConfigFilename(), "/home/user/nzbget.conf") == 0);
-	BOOST_TEST(commandLineParser.GetClientOperation() == CommandLineParser::opClientNoOperation);
+	BOOST_CHECK(commandLineParser.GetConfigFilename() != nullptr);
+	BOOST_CHECK(strcmp(commandLineParser.GetConfigFilename(), "/home/user/nzbget.conf") == 0);
+	BOOST_CHECK(commandLineParser.GetClientOperation() == CommandLineParser::opClientNoOperation);
 }
 
 BOOST_AUTO_TEST_CASE(ServerMode)
@@ -56,8 +54,8 @@ BOOST_AUTO_TEST_CASE(ServerMode)
 	const char* argv[] = {"nzbget", "-n", "-s", nullptr};
 	CommandLineParser commandLineParser(3, argv);
 
-	BOOST_TEST(commandLineParser.GetServerMode() == true);
-	BOOST_TEST(commandLineParser.GetPauseDownload() == false);
+	BOOST_CHECK(commandLineParser.GetServerMode() == true);
+	BOOST_CHECK(commandLineParser.GetPauseDownload() == false);
 }
 
 BOOST_AUTO_TEST_CASE(PassingPause)
@@ -65,7 +63,7 @@ BOOST_AUTO_TEST_CASE(PassingPause)
 	const char* argv[] = {"nzbget", "-n", "-s", "-P", nullptr};
 	CommandLineParser commandLineParser(4, argv);
 
-	BOOST_TEST(commandLineParser.GetPauseDownload() == true);
+	BOOST_CHECK(commandLineParser.GetPauseDownload() == true);
 }
 
 BOOST_AUTO_TEST_CASE(ExtraOption1)
@@ -73,10 +71,10 @@ BOOST_AUTO_TEST_CASE(ExtraOption1)
 	const char* argv[] = {"nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-p", nullptr};
 	CommandLineParser commandLineParser(7, argv);
 
-	BOOST_TEST(commandLineParser.GetOptionList()->size() == 2);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(0), "myoption1=yes") == 0);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(0), "myoption2=no") != 0);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(1), "myoption2=no") == 0);
+	BOOST_CHECK(commandLineParser.GetOptionList()->size() == 2);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(0), "myoption1=yes") == 0);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(0), "myoption2=no") != 0);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(1), "myoption2=no") == 0);
 }
 
 BOOST_AUTO_TEST_CASE(ExtraOption2)
@@ -84,10 +82,10 @@ BOOST_AUTO_TEST_CASE(ExtraOption2)
 	const char* argv[] = {"nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-o", "myoption1=no", "-p", nullptr};
 	CommandLineParser commandLineParser(9, argv);
 
-	BOOST_TEST(commandLineParser.GetOptionList()->size() == 3);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(0), "myoption1=yes") == 0);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(1), "myoption2=no") == 0);
-	BOOST_TEST(strcmp(commandLineParser.GetOptionList()->at(2), "myoption1=no") == 0);
+	BOOST_CHECK(commandLineParser.GetOptionList()->size() == 3);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(0), "myoption1=yes") == 0);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(1), "myoption2=no") == 0);
+	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(2), "myoption1=no") == 0);
 }
 
 // TESTS: Add more tests for:

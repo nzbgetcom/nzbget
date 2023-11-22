@@ -12,8 +12,7 @@ add_executable(FeedFilterTest
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
-target_link_libraries(FeedFilterTest PRIVATE 
-	${Boost_UNIT_TEST_FRAMEWORK_LIBRARY_RELEASE} 
+target_link_libraries(FeedFilterTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
 )

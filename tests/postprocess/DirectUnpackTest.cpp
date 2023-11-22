@@ -20,20 +20,12 @@
 
 #include <nzbget.h>
 
-#define BOOST_TEST_MODULE "DirectUnpackTest" 
-#include <boost/test/included/unit_test.hpp>
-
+#include <boost/test/unit_test.hpp>
 #include <filesystem>
 #include <DirectUnpack.h>
 #include <Log.h>
 #include <Options.h>
 #include <DiskState.h>
-
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
-char* (*g_EnvironmentVariables)[] = nullptr;
-char* (*g_Arguments)[] = nullptr;
 
 class DirectUnpackDownloadQueueMock : public DownloadQueue
 {

@@ -20,16 +20,8 @@
 
 #include <nzbget.h>
 
-#define BOOST_TEST_MODULE "OptionsTest" 
-#include <boost/test/included/unit_test.hpp>
-
-#include <Log.h>
+#include <boost/test/unit_test.hpp>
 #include <Options.h>
-#include <DiskState.h>
-
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
 
 class OptionsExtenderMock : public Options::Extender
 {
@@ -60,15 +52,15 @@ protected:
 	}
 };
 
-BOOST_AUTO_TEST_CASE(InitializingWithoutConfigurationFile)
+BOOST_AUTO_TEST_CASE(OptionsInitWithoutConfigurationFileTest)
 {
 	Options options(nullptr, nullptr);
 
-	BOOST_TEST(options.GetConfigFilename() == nullptr);
+	BOOST_CHECK(options.GetConfigFilename() == nullptr);
 #ifdef WIN32
-	BOOST_TEST(strcmp(options.GetTempDir(), "nzbget/tmp") == 0);
+	BOOST_CHECK(strcmp(options.GetTempDir(), "nzbget/tmp") == 0);
 #else
-	BOOST_TEST(strcmp(options.GetTempDir(), "~/downloads/tmp") == 0);
+	BOOST_CHECK(strcmp(options.GetTempDir(), "~/downloads/tmp") == 0);
 #endif
 }
 
