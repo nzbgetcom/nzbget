@@ -18,6 +18,8 @@ jobs:
 
     - name: Build
       run: |
+        echo "C:\Program Files\CMake\bin" >> $GITHUB_PATH
+        cmake --version
         mkdir build
         cd build
         cmake .. "-DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" -DVCPKG_TARGET_TRIPLET=x64-windows-static
@@ -25,6 +27,7 @@ jobs:
 
     - name: Test
       run: |
+        cd build
         ctest -C Release
 
     - name: Upload test artifacts
