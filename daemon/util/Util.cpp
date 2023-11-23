@@ -19,7 +19,6 @@
 
 
 #include "nzbget.h"
-
 #include "Util.h"			
 #include "YEncode.h"
 
