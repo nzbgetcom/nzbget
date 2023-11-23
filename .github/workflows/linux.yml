@@ -21,8 +21,10 @@ jobs:
     - name: Build
       run: |
         rm -rf /build/nzbget
+        rm -rf /build/output
         cp -r . /build/nzbget
-        cd /build
+        cd /build/nzbget
+        autoreconf --install
         docker run -e ALL_ARCHS="i686 x86_64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
 
     - name: Upload build artifacts
