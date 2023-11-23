@@ -68,22 +68,25 @@ POSIX platforms.
 NZBGet absolutely needs the following libraries:
 
  - libstdc++     (usually part of compiler)
- - libxml2       (http://www.xmlsoft.org)
+ - libxml2       (https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
 And the following libraries are optional:
 
  - for curses-output-mode (enabled by default):
    - libcurses   (usually part of commercial systems)
      or (better)
-   - libncurses  (http://invisible-island.net/ncurses)
+   - libncurses  (https://invisible-island.net/ncurses)
     
  - for encrypted connections (TLS/SSL):
-   - OpenSSL     (http://www.openssl.org)
+   - OpenSSL     (https://www.openssl.org)
      or
-   - GnuTLS      (http://www.gnu.org/software/gnutls)
+   - GnuTLS      (https://gnutls.org)
 
  - for gzip support in web-server and web-client (enabled by default):
-   - zlib     (http://www.zlib.net)
+   - zlib     (https://www.zlib.net/)
+
+ - for gzip support in web-server and web-client (enabled by default):
+   - zlib     (https://www.zlib.net/)
 
 All these libraries are included in modern POSIX distributions and
 should be available as installable packages. Please note that you also 
