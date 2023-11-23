@@ -21,6 +21,10 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
 
@@ -231,10 +235,6 @@ using namespace MSXML;
 // is causing fatal problems in SIMD units which must not have static initialization because
 // they contain code with runtime CPU dispatching.
 //#include <iostream>
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #ifdef HAVE_LIBGNUTLS
 #ifdef WIN32

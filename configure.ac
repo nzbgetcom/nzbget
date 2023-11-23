@@ -21,13 +21,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.65)
-AC_INIT(nzbget, 22.0, nzbget@nzbget.com)
+AC_INIT(nzbget, 22.0, https://github.com/nzbgetcom/nzbget/issues)
 AC_CONFIG_AUX_DIR(posix)
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR([daemon/main/nzbget.cpp])
 AC_CONFIG_HEADERS([config.h])
-AC_DEFINE([HAVE_CONFIG_H], 1, [Define to 1 use config.h])
+AC_DEFINE(HAVE_CONFIG_H, 1, [Define to 1 use config.h])
 AM_MAINTAINER_MODE
 
 m4_include([posix/ax_cxx_compile_stdcxx.m4])
