@@ -143,6 +143,7 @@ Make_universal()
 
 Build()
 {
+    autoreconf --install
     Compile_x86_64
     Compile_arm
     Make_universal
