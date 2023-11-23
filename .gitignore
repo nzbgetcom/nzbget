@@ -26,10 +26,19 @@
 # GNU Autotools
 .deps/
 config.h
+config.h.in
 config.h.in~
+configure
+configure~
 config.log
 config.status
 Makefile
+aclocal.m4
+posix/config.guess
+posix/config.sub
+posix/depcomp
+posix/install-sh
+posix/missing
 stamp-h1
 autom4te.cache/
 .dirstamp
