@@ -20,9 +20,17 @@
 
 #include "nzbget.h"
 
-#include "catch.h"
+#define BOOST_TEST_MODULE "NNTPTest" 
+#include <boost/test/included/unit_test.hpp>
 
 #include "ServerPool.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
+
+Log* g_Log;
+Options* g_Options;
+DiskState* g_DiskState;
 
 void AddTestServer(ServerPool* pool, int id, bool active, int level, bool optional, int group, int connections)
 {
@@ -30,150 +38,8 @@ void AddTestServer(ServerPool* pool, int id, bool active, int level, bool option
 		"", "", false, false, nullptr, connections, 0, level, group, optional));
 }
 
-TEST_CASE("Server pool: simple levels", "[ServerPool]")
+void TestBlockServers(int group)
 {
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 2, false, 0, 2);
-	pool.InitConnections();
-	REQUIRE(pool.GetMaxNormLevel() == 0);
-
-	AddTestServer(&pool, 2, true, 10, false, 0, 3);
-	pool.InitConnections();
-	REQUIRE(pool.GetMaxNormLevel() == 1);
-
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-
-	pool.FreeConnection(con1, false);
-	con3 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con3 != nullptr);
-
-	con1 = pool.GetConnection(1, nullptr, nullptr);
-	con2 = pool.GetConnection(1, nullptr, nullptr);
-	con3 = pool.GetConnection(1, nullptr, nullptr);
-	NntpConnection* con4 = pool.GetConnection(1, nullptr, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 != nullptr);
-	REQUIRE(con4 == nullptr);
-}
-
-TEST_CASE("Server pool: want server", "[ServerPool]")
-{
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 0, false, 0, 2);
-	AddTestServer(&pool, 2, true, 0, false, 0, 1);
-	AddTestServer(&pool, 3, true, 1, false, 0, 3);
-	pool.InitConnections();
-
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con2 = pool.GetConnection(0, serv1, nullptr);
-	NntpConnection* con3 = pool.GetConnection(0, serv1, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-}
-
-TEST_CASE("Server pool: active on/off", "[ServerPool]")
-{
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 0, false, 0, 2);
-	AddTestServer(&pool, 2, true, 0, false, 0, 1);
-	pool.InitConnections();
-
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
-	NntpConnection* con4 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 != nullptr);
-	REQUIRE(con4 == nullptr);
-
-	pool.FreeConnection(con1, false);
-	pool.FreeConnection(con2, false);
-	pool.FreeConnection(con3, false);
-
-	REQUIRE(pool.GetGeneration() == 1);
-
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-	serv1->SetActive(false);
-	pool.Changed();
-	REQUIRE(pool.GetGeneration() == 2);
-
-	con1 = pool.GetConnection(0, nullptr, nullptr);
-	con2 = pool.GetConnection(0, nullptr, nullptr);
-	con3 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 == nullptr);
-	REQUIRE(con3 == nullptr);
-}
-
-TEST_CASE("Server pool: ignore servers", "[ServerPool]")
-{
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 0, false, 0, 2);
-	AddTestServer(&pool, 2, true, 0, false, 0, 2);
-	pool.InitConnections();
-
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-	ServerPool::RawServerList ignoreServers;
-	ignoreServers.push_back(serv1);
-
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con2 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
-
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-	REQUIRE(con4 == nullptr);
-}
-
-TEST_CASE("Server pool: ignore servers (grouped)", "[ServerPool]")
-{
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 0, false, 1, 2);
-	AddTestServer(&pool, 2, true, 0, false, 1, 2);
-	pool.InitConnections();
-
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-	ServerPool::RawServerList ignoreServers;
-	ignoreServers.push_back(serv1);
-
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con2 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
-	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
-	REQUIRE(con1 == nullptr);
-	REQUIRE(con2 == nullptr);
-	REQUIRE(con3 == nullptr);
-	REQUIRE(con4 == nullptr);
-
-	AddTestServer(&pool, 3, true, 0, false, 2, 2);
-	pool.InitConnections();
-
-	con1 = pool.GetConnection(0, nullptr, &ignoreServers);
-	con2 = pool.GetConnection(0, nullptr, &ignoreServers);
-	con3 = pool.GetConnection(0, nullptr, &ignoreServers);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-}
-
-TEST_CASE("Server pool: block servers", "[ServerPool]")
-{
-	int group;
-	SECTION("ungrouped") { group = 0; }
-	SECTION("grouped") { group = 1; }
-
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, group, 2);
 	AddTestServer(&pool, 2, true, 0, false, group, 2);
@@ -188,12 +54,12 @@ TEST_CASE("Server pool: block servers", "[ServerPool]")
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con4 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-	REQUIRE(con4 == nullptr);
-	CHECK(con1->GetNewsServer()->GetLevel() == 0);
-	CHECK(con2->GetNewsServer()->GetLevel() == 0);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
+	BOOST_CHECK(con1->GetNewsServer()->GetLevel() == 0);
+	BOOST_CHECK(con2->GetNewsServer()->GetLevel() == 0);
 
 	pool.FreeConnection(con1, false);
 	pool.FreeConnection(con2, false);
@@ -203,16 +69,12 @@ TEST_CASE("Server pool: block servers", "[ServerPool]")
 
 	con1 = pool.GetConnection(0, nullptr, nullptr);
 	con2 = pool.GetConnection(0, nullptr, nullptr);
-	REQUIRE(con1 == nullptr);
-	REQUIRE(con2 == nullptr);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
 }
 
-TEST_CASE("Server pool: block optional servers", "[ServerPool]")
+void TestOptionalBlockServers(int group)
 {
-	int group;
-	SECTION("ungrouped") { group = 0; }
-	SECTION("grouped") { group = 1; }
-
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, true, group, 2);
 	AddTestServer(&pool, 2, true, 0, true, group, 2);
@@ -232,20 +94,16 @@ TEST_CASE("Server pool: block optional servers", "[ServerPool]")
 
 	// all servers on level 0 are optional and blocked;
 	// we should get a connection from level-1 server (server 3)
-	REQUIRE(con1 != nullptr);
-	REQUIRE(con2 != nullptr);
-	REQUIRE(con3 == nullptr);
-	REQUIRE(con4 == nullptr);
-	CHECK(con1->GetNewsServer()->GetLevel() == 1);
-	CHECK(con2->GetNewsServer()->GetLevel() == 1);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
+	BOOST_CHECK(con1->GetNewsServer()->GetLevel() == 1);
+	BOOST_CHECK(con2->GetNewsServer()->GetLevel() == 1);
 }
 
-TEST_CASE("Server pool: block optional and non-optional servers", "[ServerPool]")
+void TestBlockOptionalAndNonOptionalServers(int group)
 {
-	int group;
-	SECTION("ungrouped") { group = 0; }
-	SECTION("grouped") { group = 1; }
-
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, true, group, 2);
 	AddTestServer(&pool, 2, true, 0, false, group, 2);
@@ -265,8 +123,176 @@ TEST_CASE("Server pool: block optional and non-optional servers", "[ServerPool]"
 
 	// all servers on level 0 are blocked but one of them is non-optional
 	// we should NOT get any connections
-	REQUIRE(con1 == nullptr);
-	REQUIRE(con2 == nullptr);
-	REQUIRE(con3 == nullptr);
-	REQUIRE(con4 == nullptr);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(SimpleLevelsTest)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 2, false, 0, 2);
+	pool.InitConnections();
+	BOOST_CHECK(pool.GetMaxNormLevel() == 0);
+
+	AddTestServer(&pool, 2, true, 10, false, 0, 3);
+	pool.InitConnections();
+	BOOST_CHECK(pool.GetMaxNormLevel() == 1);
+
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+
+	pool.FreeConnection(con1, false);
+	con3 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_CHECK(con3 != nullptr);
+
+	con1 = pool.GetConnection(1, nullptr, nullptr);
+	con2 = pool.GetConnection(1, nullptr, nullptr);
+	con3 = pool.GetConnection(1, nullptr, nullptr);
+	NntpConnection* con4 = pool.GetConnection(1, nullptr, nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 != nullptr);
+	BOOST_CHECK(con4 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(WantServerTest)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 0, false, 0, 2);
+	AddTestServer(&pool, 2, true, 0, false, 0, 1);
+	AddTestServer(&pool, 3, true, 1, false, 0, 3);
+	pool.InitConnections();
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con2 = pool.GetConnection(0, serv1, nullptr);
+	NntpConnection* con3 = pool.GetConnection(0, serv1, nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(ActiveOnOffTest)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 0, false, 0, 2);
+	AddTestServer(&pool, 2, true, 0, false, 0, 1);
+	pool.InitConnections();
+
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con4 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_TEST(con1 != nullptr);
+	BOOST_TEST(con2 != nullptr);
+	BOOST_TEST(con3 != nullptr);
+	BOOST_TEST(con4 == nullptr);
+
+	pool.FreeConnection(con1, false);
+	pool.FreeConnection(con2, false);
+	pool.FreeConnection(con3, false);
+
+	BOOST_CHECK(pool.GetGeneration() == 1);
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+	serv1->SetActive(false);
+	pool.Changed();
+	BOOST_CHECK(pool.GetGeneration() == 2);
+
+	con1 = pool.GetConnection(0, nullptr, nullptr);
+	con2 = pool.GetConnection(0, nullptr, nullptr);
+	con3 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(IgnoreServers)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 0, false, 0, 2);
+	AddTestServer(&pool, 2, true, 0, false, 0, 2);
+	pool.InitConnections();
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+	ServerPool::RawServerList ignoreServers;
+	ignoreServers.push_back(serv1);
+
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con2 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
+
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 0, false, 1, 2);
+	AddTestServer(&pool, 2, true, 0, false, 1, 2);
+	pool.InitConnections();
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+	ServerPool::RawServerList ignoreServers;
+	ignoreServers.push_back(serv1);
+
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con2 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con3 = pool.GetConnection(0, nullptr, &ignoreServers);
+	NntpConnection* con4 = pool.GetConnection(0, nullptr, &ignoreServers);
+	BOOST_CHECK(con1 == nullptr);
+	BOOST_CHECK(con2 == nullptr);
+	BOOST_CHECK(con3 == nullptr);
+	BOOST_CHECK(con4 == nullptr);
+
+	AddTestServer(&pool, 3, true, 0, false, 2, 2);
+	pool.InitConnections();
+
+	con1 = pool.GetConnection(0, nullptr, &ignoreServers);
+	con2 = pool.GetConnection(0, nullptr, &ignoreServers);
+	con3 = pool.GetConnection(0, nullptr, &ignoreServers);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con2 != nullptr);
+	BOOST_CHECK(con3 == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(BlockServersUngrouped)
+{
+	TestBlockServers(0);
+}
+
+BOOST_AUTO_TEST_CASE(BlockServersGrouped)
+{
+	TestBlockServers(1);
+}
+
+BOOST_AUTO_TEST_CASE(BlockOptionalServersUngrouped)
+{
+	TestOptionalBlockServers(0);
+}
+
+BOOST_AUTO_TEST_CASE(BlockOptionalServersGrouped)
+{
+	TestOptionalBlockServers(1);
+}
+
+BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersUngrouped)
+{
+	TestBlockOptionalAndNonOptionalServers(0);
+}
+
+BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersGrouped)
+{
+	TestBlockOptionalAndNonOptionalServers(1);
 }

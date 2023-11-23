@@ -20,7 +20,7 @@
 
 #include "nzbget.h"
 
-#include "catch.h"
+#include <boost/test/unit_test.hpp>
 
 #include "Options.h"
 #include "ParRenamer.h"
@@ -47,7 +47,7 @@ void ParRenamerMock::Execute()
 	TestUtil::EnableCout();
 }
 
-TEST_CASE("Par-renamer: rename not needed", "[Par][ParRenamer][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(RenameNotNeededTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRename=yes");
@@ -56,10 +56,10 @@ TEST_CASE("Par-renamer: rename not needed", "[Par][ParRenamer][Slow][TestData]")
 	ParRenamerMock parRenamer;
 	parRenamer.Execute();
 
-	REQUIRE(parRenamer.GetRenamedCount() == 0);
+	BOOST_CHECK(parRenamer.GetRenamedCount() == 0);
 }
 
-TEST_CASE("Par-renamer: rename successful", "[Par][ParRenamer][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(RenameSuccessfulTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRename=yes");
@@ -69,11 +69,11 @@ TEST_CASE("Par-renamer: rename successful", "[Par][ParRenamer][Slow][TestData]")
 	FileSystem::MoveFile((TestUtil::WorkingDir() + "/testfile.dat").c_str(), (TestUtil::WorkingDir() + "/123456").c_str());
 	parRenamer.Execute();
 
-	REQUIRE(parRenamer.GetRenamedCount() == 1);
-	REQUIRE_FALSE(parRenamer.HasMissedFiles());
+	BOOST_CHECK(parRenamer.GetRenamedCount() == 1);
+	BOOST_CHECK(parRenamer.HasMissedFiles() == false);
 }
 
-TEST_CASE("Par-renamer: detecting missing", "[Par][ParRenamer][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(DetectingMissingTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRename=yes");
@@ -82,14 +82,14 @@ TEST_CASE("Par-renamer: detecting missing", "[Par][ParRenamer][Slow][TestData]")
 	ParRenamerMock parRenamer;
 	FileSystem::MoveFile((TestUtil::WorkingDir() + "/testfile.dat").c_str(), (TestUtil::WorkingDir() + "/123456").c_str());
 	parRenamer.SetDetectMissing(true);
-	REQUIRE(FileSystem::DeleteFile((TestUtil::WorkingDir() + "/testfile.nfo").c_str()));
+	BOOST_CHECK(FileSystem::DeleteFile((TestUtil::WorkingDir() + "/testfile.nfo").c_str()));
 	parRenamer.Execute();
 
-	REQUIRE(parRenamer.GetRenamedCount() == 1);
-	REQUIRE(parRenamer.HasMissedFiles());
+	BOOST_CHECK(parRenamer.GetRenamedCount() == 1);
+	BOOST_CHECK(parRenamer.HasMissedFiles());
 }
 
-TEST_CASE("Par-renamer: rename dupe par", "[Par][ParRenamer][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(RenameDupeParTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRename=yes");
@@ -101,11 +101,11 @@ TEST_CASE("Par-renamer: rename dupe par", "[Par][ParRenamer][Slow][TestData]")
 	parRenamer.SetDetectMissing(true);
 	parRenamer.Execute();
 
-	REQUIRE(parRenamer.GetRenamedCount() == 5);
-	REQUIRE_FALSE(parRenamer.HasMissedFiles());
+	BOOST_CHECK(parRenamer.GetRenamedCount() == 5);
+	BOOST_CHECK(parRenamer.HasMissedFiles() == false);
 }
 
-TEST_CASE("Par-renamer: no par extension", "[Par][ParRenamer][Slow][TestData]")
+BOOST_AUTO_TEST_CASE(NoParExtensionTest)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRename=yes");
@@ -116,6 +116,6 @@ TEST_CASE("Par-renamer: no par extension", "[Par][ParRenamer][Slow][TestData]")
 	parRenamer.SetDetectMissing(true);
 	parRenamer.Execute();
 
-	REQUIRE(parRenamer.GetRenamedCount() == 4);
-	REQUIRE_FALSE(parRenamer.HasMissedFiles());
+	BOOST_CHECK(parRenamer.GetRenamedCount() == 4);
+	BOOST_CHECK(parRenamer.HasMissedFiles() == false);
 }
