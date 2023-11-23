@@ -18,17 +18,13 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
-#define BOOST_TEST_MODULE "ParCheckerTest" 
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <Options.h>
-#include <ParChecker.h>
-#include <TestUtil.h>
-
-char* (*g_EnvironmentVariables)[] = nullptr;
-char* (*g_Arguments)[] = nullptr;
+#include "Options.h"
+#include "ParChecker.h"
+#include "TestUtil.h"
 
 class ParCheckerMock: public ParChecker
 {
@@ -63,12 +59,12 @@ void ParCheckerMock::CorruptFile(const char* filename, int offset)
 	std::string fullfilename(TestUtil::WorkingDir() + "/" + filename);
 
 	FILE* file = fopen(fullfilename.c_str(), FOPEN_RBP);
-	BOOST_TEST(file != nullptr);
+	BOOST_CHECK(file != nullptr);
 
 	fseek(file, offset, SEEK_SET);
 	char b = 0;
 	int written = fwrite(&b, 1, 1, file);
-	BOOST_TEST(written == 1);
+	BOOST_CHECK(written == 1);
 
 	fclose(file);
 }
@@ -93,7 +89,7 @@ ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, ui
 uint32 ParCheckerMock::CalcFileCrc(const char* filename)
 {
 	FILE* infile = fopen(filename, FOPEN_RB);
-	BOOST_TEST(infile);
+	BOOST_CHECK(infile);
 
 	CharBuffer buffer(1024 * 64);
 	Crc32 downloadCrc;
@@ -119,8 +115,8 @@ BOOST_AUTO_TEST_CASE(RepairNoNeedTest)
 	ParCheckerMock parChecker;
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
-	BOOST_TEST(parChecker.GetParFull() == true);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
+	BOOST_CHECK(parChecker.GetParFull() == true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairPossibleTest)
@@ -133,8 +129,8 @@ BOOST_AUTO_TEST_CASE(RepairPossibleTest)
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepairPossible);
-	BOOST_TEST(parChecker.GetParFull() == true);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairPossible);
+	BOOST_CHECK(parChecker.GetParFull() == true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairSuccessfulTest)
@@ -147,8 +143,8 @@ BOOST_AUTO_TEST_CASE(RepairSuccessfulTest)
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_TEST(parChecker.GetParFull() == true);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
+	BOOST_CHECK(parChecker.GetParFull() == true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairFailed)
@@ -167,8 +163,8 @@ BOOST_AUTO_TEST_CASE(RepairFailed)
 	parChecker.CorruptFile("testfile.dat", 80000);
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psFailed);
-	BOOST_TEST(parChecker.GetParFull() == true);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psFailed);
+	BOOST_CHECK(parChecker.GetParFull() == true);
 }
 
 BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
@@ -181,8 +177,8 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
 	parChecker.SetParQuick(true);
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
-	BOOST_TEST(parChecker.GetParFull() == false);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
+	BOOST_CHECK(parChecker.GetParFull() == false);
 }
 
 BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
@@ -196,8 +192,8 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_TEST(parChecker.GetParFull() == false);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
+	BOOST_CHECK(parChecker.GetParFull() == false);
 }
 
 BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
@@ -214,8 +210,8 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 
 	// All files were damaged, the full verification was performed
 
-	BOOST_TEST(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_TEST(parChecker.GetParFull() == true);
+	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
+	BOOST_CHECK(parChecker.GetParFull() == true);
 }
 
 BOOST_AUTO_TEST_CASE(IgnoringExtensionsTest)
@@ -250,5 +246,5 @@ BOOST_AUTO_TEST_CASE(IgnoringExtensionsTest)
 
 	parChecker.Execute();
 
-	BOOST_TEST(parChecker.GetStatus() == expectedStatus);
+	BOOST_CHECK(parChecker.GetStatus() == expectedStatus);
 }

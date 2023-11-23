@@ -18,10 +18,11 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-#include <Util.h>
+
+#include "Util.h"
 
 BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
 {

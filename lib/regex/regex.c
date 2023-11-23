@@ -19,7 +19,7 @@
    02111-1307 USA.  */
 //#include "nzbget.h"
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#include "config.h"
 #endif
 
 /* Make sure noone compiles this code with a C++ compiler.  */
@@ -52,13 +52,14 @@
 # include "../locale/localeinfo.h"
 #endif
 
-#define strncasecmp strnicmp
-#define strcasecmp stricmp
+#define strncasecmp _strnicmp
+#define strcasecmp _stricmp
 
 /* On some systems, limits.h sets RE_DUP_MAX to a lower value than
    GNU regex allows.  Include it before <regex.h>, which correctly
    #undefs RE_DUP_MAX and sets it to the right value.  */
 #include <limits.h>
+#include <malloc.h>
 #include <regex.h>
 
 //#ifdef __cplusplus

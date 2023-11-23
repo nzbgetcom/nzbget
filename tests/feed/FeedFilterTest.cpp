@@ -17,15 +17,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <nzbget.h>
+#include "nzbget.h"
 
-#define BOOST_TEST_MODULE "FeedFilter"
+#define BOOST_TEST_MODULE "FeedFilterTest"
 #include <boost/test/included/unit_test.hpp>
 
-#include <FeedFilter.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
+#include "FeedFilter.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 Log* g_Log;
 Options* g_Options;

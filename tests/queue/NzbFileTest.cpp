@@ -18,16 +18,17 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #define BOOST_TEST_MODULE "NzbFileTest" 
 #include <boost/test/included/unit_test.hpp>
 
 #include <filesystem>
-#include <NzbFile.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
+
+#include "NzbFile.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 Log* g_Log;
 Options* g_Options;

@@ -18,13 +18,14 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-#include <CommandLineParser.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
+
+#include "CommandLineParser.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 Log* g_Log;
 Options* g_Options;

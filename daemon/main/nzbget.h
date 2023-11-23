@@ -233,7 +233,7 @@ using namespace MSXML;
 //#include <iostream>
 
 #ifdef HAVE_CONFIG_H
-#include <config.h>
+#include "config.h"
 #endif
 
 #ifdef HAVE_LIBGNUTLS
@@ -277,9 +277,6 @@ typedef int pid_t;
 #include <assert.h>
 #include <iomanip>
 #include <cassert>
-#ifdef HAVE_MEMORY_H
-# include <memory.h>
-#endif
 #endif /* NOT DISABLE_PARCHECK */
 
 
