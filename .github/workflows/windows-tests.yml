@@ -4,6 +4,8 @@ on:
   push:
     branches:
     - feature/*
+    - develop
+    - main
   workflow_call:
   workflow_dispatch:
 
