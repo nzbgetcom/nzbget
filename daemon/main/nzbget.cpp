@@ -59,9 +59,6 @@
 #include "WinConsole.h"
 #include "WebDownloader.h"
 #endif
-#ifdef ENABLE_TESTS
-#include "TestMain.h"
-#endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
 #endif
@@ -120,20 +117,6 @@ int main(int argc, char *argv[], char *argp[])
 	g_ArgumentCount = argc;
 	g_Arguments = (char*(*)[])argv;
 	g_EnvironmentVariables = (char*(*)[])argp;
-
-	if (argc > 1 && (!strcmp(argv[1], "-tests") || !strcmp(argv[1], "--tests")))
-	{
-#ifdef ENABLE_TESTS
-		return TestMain(argc, argv);
-#else
-		printf("ERROR: Could not start tests, the program was compiled without tests\n");
-		return 1;
-#endif
-	}
-
-#ifdef ENABLE_TESTS
-	TestCleanup();
-#endif
 
 	if (argc > 1 && (!strcmp(argv[1], "--nserv")))
 	{
