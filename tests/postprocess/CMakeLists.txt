@@ -17,7 +17,7 @@ file(GLOB PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
-	${CMAKE_SOURCE_DIR}/daemon/util/Script.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp

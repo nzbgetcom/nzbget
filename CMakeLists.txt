@@ -34,6 +34,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")

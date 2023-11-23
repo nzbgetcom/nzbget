@@ -150,7 +150,7 @@ nzbget_SOURCES = \
 	daemon/util/Container.h \
 	daemon/util/Observer.cpp \
 	daemon/util/Observer.h \
-	daemon/util/Script.cpp \
+	daemon/util/ScriptController.cpp \
 	daemon/util/Script.h \
 	daemon/util/Thread.cpp \
 	daemon/util/Thread.h \
