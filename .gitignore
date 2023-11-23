@@ -33,6 +33,7 @@ configure~
 config.log
 config.status
 Makefile
+Makefile.in
 aclocal.m4
 posix/config.guess
 posix/config.sub
