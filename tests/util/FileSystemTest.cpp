@@ -18,10 +18,11 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-#include <FileSystem.h>
+
+#include "FileSystem.h"
 
 #ifdef WIN32
 BOOST_AUTO_TEST_CASE(FileSystemTest)

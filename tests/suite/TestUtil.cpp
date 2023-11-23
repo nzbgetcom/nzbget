@@ -18,20 +18,17 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #include <iostream>
 #include <cassert>
-#include <Util.h>
-#include <FileSystem.h>
-#include <TestUtil.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
 
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
+#include "Util.h"
+#include "FileSystem.h"
+#include "TestUtil.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 bool TestUtil::m_usedWorkingDir = false;
 std::string DataDir;

@@ -21,6 +21,10 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
 
@@ -232,10 +236,6 @@ using namespace MSXML;
 // they contain code with runtime CPU dispatching.
 //#include <iostream>
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #ifdef HAVE_LIBGNUTLS
 #ifdef WIN32
 #include <BaseTsd.h>
@@ -277,9 +277,6 @@ typedef int pid_t;
 #include <assert.h>
 #include <iomanip>
 #include <cassert>
-#ifdef HAVE_MEMORY_H
-# include <memory.h>
-#endif
 #endif /* NOT DISABLE_PARCHECK */
 
 

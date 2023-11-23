@@ -12,6 +12,7 @@ option(ENABLE_TESTS "Enable tests" ON)
 set(VERSION "22")
 set(PACKAGE "nzbget")
 add_compile_definitions(HAVE_CONFIG_H=1)
+
 configure_file(
     ${CMAKE_SOURCE_DIR}/cmake_config.h.in
     ${CMAKE_BINARY_DIR}/config.h
@@ -43,6 +44,10 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib")
 endif()
 
+include_directories(lib/regex)
+include_directories(${CMAKE_BINARY_DIR})
+add_subdirectory(lib)
+
 if (NOT WIN32)
     find_package(LibXml2 REQUIRED)
     include_directories(${LIBXML2_INCLUDE_DIR})
@@ -50,55 +55,6 @@ if (NOT WIN32)
     execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})
 endif()
-
-include_directories(lib/regex)
-include_directories(${CMAKE_BINARY_DIR})
-
-add_library(Yencode STATIC
-    ${CMAKE_SOURCE_DIR}/lib/yencode/SimdInit.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/SimdDecoder.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/ScalarDecoder.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/Sse2Decoder.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/Ssse3Decoder.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/PclmulCrc.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/NeonDecoder.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
-    ${CMAKE_SOURCE_DIR}/lib/yencode/SliceCrc.cpp
-)
-target_include_directories(Yencode PUBLIC
-    ${CMAKE_SOURCE_DIR}/lib/yencode 
-    ${CMAKE_SOURCE_DIR}/daemon/main
-    ${ZLIB_INCLUDE_DIR}
-	${OPENSSL_INCLUDE_DIR}
-)
-
-add_library(Par2 STATIC
-    ${CMAKE_SOURCE_DIR}/lib/par2/commandline.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/crc.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/creatorpacket.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/criticalpacket.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/datablock.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/descriptionpacket.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/diskfile.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/filechecksummer.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/galois.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/mainpacket.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/md5.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/par2fileformat.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/par2repairer.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/par2repairersourcefile.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/parheaders.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/recoverypacket.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/reedsolomon.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/verificationhashtable.cpp
-    ${CMAKE_SOURCE_DIR}/lib/par2/verificationpacket.cpp
-)
-target_include_directories(Par2 PUBLIC
-    ${CMAKE_SOURCE_DIR}/lib/par2 
-    ${CMAKE_SOURCE_DIR}/daemon/main
-    ${CMAKE_SOURCE_DIR}/daemon/util
-    ${OPENSSL_INCLUDE_DIR}
-)
 
 if(ENABLE_TESTS)
     include(CTest)

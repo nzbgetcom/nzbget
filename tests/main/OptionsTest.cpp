@@ -18,10 +18,11 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
-#include <boost/test/unit_test.hpp>
-#include <Options.h>
+#include "boost/test/unit_test.hpp"
+
+#include "Options.h"
 
 class OptionsExtenderMock : public Options::Extender
 {

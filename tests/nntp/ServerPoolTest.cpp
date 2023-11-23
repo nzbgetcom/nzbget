@@ -18,15 +18,15 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #define BOOST_TEST_MODULE "NNTPTest" 
 #include <boost/test/included/unit_test.hpp>
 
-#include <ServerPool.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
+#include "ServerPool.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 Log* g_Log;
 Options* g_Options;

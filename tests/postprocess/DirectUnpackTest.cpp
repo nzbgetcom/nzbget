@@ -18,14 +18,15 @@
  */
 
 
-#include <nzbget.h>
+#include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
 #include <filesystem>
-#include <DirectUnpack.h>
-#include <Log.h>
-#include <Options.h>
-#include <DiskState.h>
+
+#include "DirectUnpack.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 class DirectUnpackDownloadQueueMock : public DownloadQueue
 {
@@ -92,8 +93,8 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 		Util::Sleep(20);
 	}
 
-	BOOST_TEST(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
-	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
+	BOOST_CHECK(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
+	BOOST_CHECK(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
 	std::filesystem::remove_all(workingDir);
 }
 
@@ -162,8 +163,8 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 		Util::Sleep(20);
 	}
 
-	BOOST_TEST(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
-	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
-	BOOST_TEST(std::filesystem::exists((workingDir + "/_unpack/testfile5.dat").c_str()));
+	BOOST_CHECK(nzbPtr->GetDirectUnpackStatus() == NzbInfo::nsSuccess);
+	BOOST_CHECK(std::filesystem::exists((workingDir + "/_unpack/testfile3.dat").c_str()));
+	BOOST_CHECK(std::filesystem::exists((workingDir + "/_unpack/testfile5.dat").c_str()));
 	std::filesystem::remove_all(workingDir);
 }
