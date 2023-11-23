@@ -8,12 +8,13 @@ ARG MAKE_JOBS=1
 
 RUN \
   echo "**** install build packages ****" && \
-  apk add g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl && \
+  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl && \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
   git clone https://github.com/nzbgetcom/nzbget.git nzbget && \
   cd nzbget/ && \
   git checkout ${NZBGET_RELEASE} && \
+  autoreconf --install && \
   ./configure bindir='${exec_prefix}' && \
   make -j ${MAKE_JOBS} && \
   make prefix=/app/nzbget install && \

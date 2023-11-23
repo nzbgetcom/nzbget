@@ -594,6 +594,7 @@ ConstructOutputFilename
 # Building
 mkdir -p $OUTPUTDIR
 CleanupIfNecessary
+autoreconf --install
 
 BUILDTARGETS=$TARGETS
 
