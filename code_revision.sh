@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# TODO: Delete this file afterfull migration to CMake
+# TODO: Delete this file after full migration to CMake
 # Determining git revision:
 # 1) If directory ".git" exists we take revision from git log.
 #    File is recreated only if revision number was changed.
