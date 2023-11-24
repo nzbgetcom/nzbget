@@ -65,10 +65,11 @@ public:
 	CString(const char* str, int len = 0) { Set(str, len); }
 	CString(CString&& other) noexcept { m_data = other.m_data; other.m_data = nullptr; }
 	CString(CString& other) = delete;
-	CString& operator=(CString&& other) { free(m_data); m_data = other.m_data; other.m_data = nullptr; return *this; }
+	CString& operator=(const CString& other) = delete;
+	CString& operator=(CString&& other) noexcept { free(m_data); m_data = other.m_data; other.m_data = nullptr; return *this; }
 	CString& operator=(const char* str) { Set(str); return *this; }
-	bool operator==(const CString& other);
-	bool operator==(const char* other);
+	bool operator==(const CString& other) const;
+	bool operator==(const char* other) const;
 	static CString FormatStr(const char* format, ...);
 	operator char*() const { return m_data; }
 	char* operator*() const { return m_data; }

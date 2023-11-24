@@ -1,0 +1,32 @@
+file(GLOB UtilTestSrc
+	main.cpp
+	FileSystemTest.cpp
+	UtilTest.cpp
+	NStringTest.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
+	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
+)
+
+if (NOT WIN32)
+	set(UtilTestSrc ${UtilTestSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
+endif()
+
+add_executable(UtilTests ${UtilTestSrc})
+target_link_libraries(UtilTests PRIVATE
+	ZLIB::ZLIB
+	Yencode
+	${LIBXML2_LIBRARIES}
+)
+target_include_directories(UtilTests PRIVATE
+	${CMAKE_SOURCE_DIR}/daemon/main
+	${CMAKE_SOURCE_DIR}/daemon/util
+	${CMAKE_SOURCE_DIR}/lib/regex
+	${CMAKE_SOURCE_DIR}/lib/yencode
+	${ZLIB_INCLUDE_DIR}
+	${OPENSSL_INCLUDE_DIR}
+	${Boost_INCLUDE_DIR}
+)
+
+add_test(NAME UtilTests COMMAND $<TARGET_FILE:UtilTests> --log_level=message)
