@@ -21,24 +21,25 @@
 #include "Script.h"
 #include "NString.h"
 
-Script::Script(const char *name, const char *location)
-	: m_name(name), m_location(location), m_displayName(name){};
+Script::Script(const char* name, const char* location)
+	: m_name(name), m_location(location)
+	, m_displayName(name) {};
 
-void Script::SetName(const char *name) { m_name = name; };
-const char *Script::GetName() const { return m_name; }
-void Script::SetLocation(const char *location) { m_location = location; }
-const char *Script::GetLocation() const { return m_location; }
-void Script::SetDisplayName(const char *displayName) { m_displayName = displayName; }
-const char *Script::GetDisplayName() const { return m_displayName; }
-void Script::SetDescription(const char *description) { m_description = description; };
-const char *Script::GetDescription() const { return m_description; };
+void Script::SetName(const char* name) { m_name = name; };
+const char* Script::GetName() const { return m_name; }
+void Script::SetLocation(const char* location) { m_location = location; }
+const char* Script::GetLocation() const { return m_location; }
+void Script::SetDisplayName(const char* displayName) { m_displayName = displayName; }
+const char* Script::GetDisplayName() const { return m_displayName; }
+void Script::SetDescription(const char* description) { m_description = description; };
+const char* Script::GetDescription() const { return m_description; };
 void Script::SetScriptKind(ScriptKind&& kind_) { kind = std::move(kind_); };
 bool Script::GetPostScript() const { return kind.post; }
 bool Script::GetScanScript() const { return kind.scan; }
 bool Script::GetQueueScript() const { return kind.queue; }
 bool Script::GetSchedulerScript() const { return kind.scheduler; }
 bool Script::GetFeedScript() const { return kind.feed; }
-void Script::SetQueueEvents(const char *queueEvents) { kind.queue = queueEvents; }
-const char *Script::GetQueueEvents() const { return m_queueEvents; }
-void Script::SetTaskTime(const char *taskTime) { m_taskTime = taskTime; }
-const char *Script::GetTaskTime() const { return m_taskTime; }
+void Script::SetQueueEvents(const char* queueEvents) { kind.queue = queueEvents; }
+const char* Script::GetQueueEvents() const { return m_queueEvents; }
+void Script::SetTaskTime(const char* taskTime) { m_taskTime = taskTime; }
+const char* Script::GetTaskTime() const { return m_taskTime; }

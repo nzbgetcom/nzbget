@@ -35,16 +35,16 @@ class Script
 {
 public:
 	Script() = default;
-	Script(Script &&) = default;
-	Script(const char *name, const char *location);
-	void SetName(const char *name);
-	const char *GetName() const;
+	Script(Script&&) noexcept = default;
+	Script(const char* name, const char* location);
+	void SetName(const char* name);
+	const char* GetName() const;
 	void SetLocation(const char *location);
-	const char *GetLocation() const;
+	const char* GetLocation() const;
 	void SetDisplayName(const char *displayName);
-	const char *GetDisplayName() const;
+	const char* GetDisplayName() const;
 	void SetDescription(const char *displayName);
-	const char *GetDescription() const;
+	const char* GetDescription() const;
 	void SetScriptKind(ScriptKind&& kind);
 	bool GetPostScript() const;
 	bool GetScanScript() const;
@@ -52,9 +52,9 @@ public:
 	bool GetSchedulerScript() const;
 	bool GetFeedScript() const;
 	void SetQueueEvents(const char *queueEvents);
-	const char *GetQueueEvents() const;
+	const char* GetQueueEvents() const;
 	void SetTaskTime(const char *taskTime);
-	const char *GetTaskTime() const;
+	const char* GetTaskTime() const;
 
 private:
 	ScriptKind kind;

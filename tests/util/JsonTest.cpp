@@ -40,6 +40,7 @@ BOOST_AUTO_TEST_CASE(JsonReadTest)
 	std::string invalidJSON = "{\"name\": \"John\", \"secondName\":}";
 
 	is.flush();
+	is << invalidJSON;
 	Json::Read(is, ec);
 	BOOST_CHECK(ec.failed() == true);
 }

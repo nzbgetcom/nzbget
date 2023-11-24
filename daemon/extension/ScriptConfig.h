@@ -35,8 +35,9 @@ public:
 	class ConfigTemplate
 	{
 	public:
-		ConfigTemplate(Script&& script, const char* templ) :
-			m_script(std::move(script)), m_template(templ) {}
+		ConfigTemplate(Script&& script, const char* templ)
+			: m_script(std::move(script))
+			, m_template(templ) {}
 		Script* GetScript() { return &m_script; }
 		const char* GetTemplate() { return m_template; }
 
