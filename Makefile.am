@@ -42,6 +42,12 @@ nzbget_SOURCES = \
 	daemon/extension/SchedulerScript.h \
 	daemon/extension/ScriptConfig.cpp \
 	daemon/extension/ScriptConfig.h \
+	daemon/extension/Script.cpp \
+	daemon/extension/Script.h \
+	daemon/extension/LoadScriptFileStrategy.cpp \
+	daemon/extension/LoadScriptFileStrategy.h \
+	daemon/extension/ManifestFile.cpp \
+	daemon/extension/ManifestFile.h \
 	daemon/feed/FeedCoordinator.cpp \
 	daemon/feed/FeedCoordinator.h \
 	daemon/feed/FeedFile.cpp \
@@ -366,56 +372,6 @@ webui_FILES = \
 	webui/img/transmit-reload-2x.gif \
 	webui/img/favicon-256x256-opaque.png \
 	webui/img/favicon-256x256.png
-
-scripts_FILES = \
-	scripts/EMail.py \
-	scripts/Logger.py
-
-testdata_FILES = \
-	tests/testdata/dupematcher1/testfile.part01.rar \
-	tests/testdata/dupematcher1/testfile.part24.rar \
-	tests/testdata/dupematcher2/testfile.part04.rar \
-	tests/testdata/dupematcher2/testfile.part43.rar \
-	tests/testdata/nzbfile/dotless.nzb \
-	tests/testdata/nzbfile/dotless.txt \
-	tests/testdata/nzbfile/plain.nzb \
-	tests/testdata/nzbfile/plain.txt \
-	tests/testdata/parchecker/crc.txt \
-	tests/testdata/parchecker/testfile.dat \
-	tests/testdata/parchecker/testfile.nfo \
-	tests/testdata/parchecker/testfile.par2 \
-	tests/testdata/parchecker/testfile.vol00+1.PAR2 \
-	tests/testdata/parchecker/testfile.vol01+2.PAR2 \
-	tests/testdata/parchecker/testfile.vol03+3.PAR2 \
-	tests/testdata/parchecker2/crc.txt \
-	tests/testdata/parchecker2/testfile.7z.001 \
-	tests/testdata/parchecker2/testfile.7z.002 \
-	tests/testdata/parchecker2/testfile.7z.003 \
-	tests/testdata/parchecker2/testfile.7z.par2 \
-	tests/testdata/parchecker2/testfile.7z.vol0+1.PAR2 \
-	tests/testdata/parchecker2/testfile.7z.vol1+2.PAR2 \
-	tests/testdata/parchecker2/testfile.7z.vol3+3.PAR2 \
-	tests/testdata/rarrenamer/testfile3.part01.rar \
-	tests/testdata/rarrenamer/testfile3.part02.rar \
-	tests/testdata/rarrenamer/testfile3.part03.rar \
-	tests/testdata/rarrenamer/testfile5.part01.rar \
-	tests/testdata/rarrenamer/testfile5.part02.rar \
-	tests/testdata/rarrenamer/testfile5.part03.rar \
-	tests/testdata/rarrenamer/testfile3oldnam.rar \
-	tests/testdata/rarrenamer/testfile3oldnam.r00 \
-	tests/testdata/rarrenamer/testfile3oldnam.r01 \
-	tests/testdata/rarrenamer/testfile3encdata.part01.rar \
-	tests/testdata/rarrenamer/testfile3encdata.part02.rar \
-	tests/testdata/rarrenamer/testfile3encdata.part03.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part01.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part02.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part03.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part01.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part02.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part03.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part01.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part02.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part03.rar
 
 # Install
 dist_doc_DATA = $(doc_FILES)

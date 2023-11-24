@@ -2,7 +2,7 @@
     "entry": "EMail.py",
     "name": "email",
     "kind": "POST-PROCESSING",
-    "displayName": "EMail",
+    "displayName": "EMail New",
     "version": "1.0.0",
     "author": "Andrey Prygunkov",
     "license": "GNU",

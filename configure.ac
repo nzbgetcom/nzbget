@@ -32,7 +32,6 @@ AM_MAINTAINER_MODE
 
 m4_include([posix/ax_cxx_compile_stdcxx.m4])
 
-
 dnl
 dnl Check for programs.
 dnl
@@ -77,6 +76,7 @@ AC_SEARCH_LIBS([socket], [socket])
 AC_SEARCH_LIBS([inet_addr], [nsl])
 AC_SEARCH_LIBS([hstrerror], [resolv])
 
+AC_CHECK_LIB([boost_json], [main], [], [AC_MSG_ERROR([Could not find Boost.JSON library])])
 
 dnl
 dnl Android NDK restrictions
