@@ -42,8 +42,8 @@ nzbget_SOURCES = \
 	daemon/extension/SchedulerScript.h \
 	daemon/extension/ScriptConfig.cpp \
 	daemon/extension/ScriptConfig.h \
-	daemon/extension/Script.cpp \
-	daemon/extension/Script.h \
+	daemon/extension/Extension.cpp \
+	daemon/extension/Extension.h \
 	daemon/extension/LoadScriptFileStrategy.cpp \
 	daemon/extension/LoadScriptFileStrategy.h \
 	daemon/extension/ManifestFile.cpp \
@@ -157,7 +157,7 @@ nzbget_SOURCES = \
 	daemon/util/Observer.cpp \
 	daemon/util/Observer.h \
 	daemon/util/ScriptController.cpp \
-	daemon/util/Script.h \
+	daemon/util/ScriptController.h \
 	daemon/util/Thread.cpp \
 	daemon/util/Thread.h \
 	daemon/util/Service.cpp \

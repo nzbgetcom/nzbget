@@ -216,7 +216,7 @@
     <ClCompile Include="daemon\extension\ScriptConfig.cpp" />
     <ClCompile Include="daemon\extension\ManifestFile.cpp" />
     <ClCompile Include="daemon\extension\LoadScriptFileStrategy.cpp" />
-    <ClCompile Include="daemon\extension\Script.cpp" />
+    <ClCompile Include="daemon\extension\Extension.cpp" />
     <ClCompile Include="daemon\feed\FeedCoordinator.cpp" />
     <ClCompile Include="daemon\feed\FeedFile.cpp" />
     <ClCompile Include="daemon\feed\FeedFilter.cpp" />
@@ -340,7 +340,7 @@
     <ClInclude Include="daemon\extension\ScriptConfig.h" />
     <ClInclude Include="daemon\extension\ManifestFile.h" />
     <ClInclude Include="daemon\extension\LoadScriptFileStrategy.h" />
-    <ClInclude Include="daemon\extension\Script.h" />
+    <ClInclude Include="daemon\extension\ScriptController.h" />
     <ClInclude Include="daemon\feed\FeedCoordinator.h" />
     <ClInclude Include="daemon\feed\FeedFile.h" />
     <ClInclude Include="daemon\feed\FeedFilter.h" />

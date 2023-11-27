@@ -21,7 +21,7 @@
 #define LOADSCRIPTFILESTRATEGY_H
 
 #include "ManifestFile.h"
-#include "Script.h"
+#include "Extension.h"
 #include "FileSystem.h"
 #include <memory>
 
@@ -45,13 +45,13 @@ namespace LoadScriptFileStrategy
 
 	class Strategy {
 	public:
-		virtual bool Load(Script& script) const = 0;
+		virtual bool Load(extension::Script& script) const = 0;
 		virtual ~Strategy() = default;
 	};
 
 	class HeaderConfigBased : public Strategy {
 	public:
-		bool Load(Script& script) const override;
+		bool Load(extension::Script& script) const override;
 		~HeaderConfigBased() = default;
 	};
 
@@ -59,13 +59,13 @@ namespace LoadScriptFileStrategy
 	public:
 		ManifestBased() = delete;
 		explicit ManifestBased(ManifestFile::Manifest& manifest_);
-		bool Load(Script& script) const override;
+		bool Load(extension::Script& script) const override;
 		~ManifestBased() {}
 	private:
 		ManifestFile::Manifest manifest;
 	};
 
-	ScriptKind GetScriptKind(const char* line);
+	extension::Kind GetScriptKind(const char* line);
 }
 
 #endif

@@ -23,13 +23,13 @@
 #include "NString.h"
 #include "Container.h"
 #include "Options.h"
-#include "Script.h"
+#include "Extension.h"
 #include "LoadScriptFileStrategy.h"
 
 class ScriptConfig
 {
 public:
-	using Script = Script;
+	using Script = extension::Script;
 	using Scripts = std::list<Script>;
 
 	class ConfigTemplate
@@ -49,7 +49,7 @@ public:
 	using ConfigTemplates = std::deque<ConfigTemplate>;
 
 	void InitOptions();
-	Scripts* GetScripts() { return &m_scripts; }
+	Scripts& GetScripts() { return m_scripts; }
 	bool LoadConfig(Options::OptEntries* optEntries);
 	bool SaveConfig(Options::OptEntries* optEntries);
 	bool LoadConfigTemplates(ConfigTemplates* configTemplates);
