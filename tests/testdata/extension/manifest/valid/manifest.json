@@ -1,0 +1,28 @@
+{
+    "entry": "email.py",
+    "name": "email",
+    "kind": "POST-PROCESSING",
+    "displayName": "Email",
+    "version": "1.0.0",
+    "author": "Author's name",
+    "license": "GNU",
+    "description": "Description",
+    "options": [
+        {
+            "name": "sendMail",
+            "displayName": "SendMail",
+            "value": "Always",
+            "description": "When to send the message.",
+            "select": ["Always", "OnFailure"]
+        }
+    ],
+    "commands": [
+        {
+            "name": "connectionTest",
+            "action": "Send",
+            "displayName": "ConnectionTest",
+            "description": "To check connection parameters click the button."
+        }
+    ],
+    "task": "1:00:00"
+}

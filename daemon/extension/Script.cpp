@@ -22,7 +22,8 @@
 #include "NString.h"
 
 Script::Script(const char* name, const char* location)
-	: m_name(name), m_location(location)
+	: m_name(name)
+	, m_location(location)
 	, m_displayName(name) {};
 
 void Script::SetName(const char* name) { m_name = name; };

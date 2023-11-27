@@ -22,6 +22,7 @@
 
 #include <string>
 #include <vector>
+#include "Json.h"
 
 namespace ManifestFile
 {
@@ -60,6 +61,10 @@ namespace ManifestFile
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
+	bool ValidateRequiredAndSet(Json::object& json, Manifest& manifest);
+	bool ValidateCommandsAndSet(Json::object& json, std::vector<Command>& commands);
+	bool ValidateOptionsAndSet(Json::object& json, std::vector<Option>& options);
+	bool CheckKeyAndSet(Json::object& json, const char* key, std::string& property);
 };
 
 #endif
