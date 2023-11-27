@@ -115,12 +115,6 @@ dnl XXXLUKEM
 				done
 
 			fi
-			if test "x$ax_lib" = "x"; then
-				AC_MSG_ERROR(Could not find a version of the Boost::JSON library!)
-			fi
-			if test "x$link_json" = "xno"; then
-				AC_MSG_ERROR(Could not link against $ax_lib !)
-			fi
 		fi
 
 		CPPFLAGS="$CPPFLAGS_SAVED"
