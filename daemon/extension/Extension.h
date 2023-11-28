@@ -22,7 +22,7 @@
 
 #include "NString.h"
 
-namespace extension
+namespace Extension
 {
 	struct Kind
 	{

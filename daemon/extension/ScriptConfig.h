@@ -29,7 +29,7 @@
 class ScriptConfig
 {
 public:
-	using Script = extension::Script;
+	using Script = Extension::Script;
 	using Scripts = std::list<Script>;
 
 	class ConfigTemplate

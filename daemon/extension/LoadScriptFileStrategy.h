@@ -45,13 +45,13 @@ namespace LoadScriptFileStrategy
 
 	class Strategy {
 	public:
-		virtual bool Load(extension::Script& script) const = 0;
+		virtual bool Load(Extension::Script& script) const = 0;
 		virtual ~Strategy() = default;
 	};
 
 	class HeaderConfigBased : public Strategy {
 	public:
-		bool Load(extension::Script& script) const override;
+		bool Load(Extension::Script& script) const override;
 		~HeaderConfigBased() = default;
 	};
 
@@ -59,13 +59,13 @@ namespace LoadScriptFileStrategy
 	public:
 		ManifestBased() = delete;
 		explicit ManifestBased(ManifestFile::Manifest& manifest_);
-		bool Load(extension::Script& script) const override;
+		bool Load(Extension::Script& script) const override;
 		~ManifestBased() {}
 	private:
 		ManifestFile::Manifest manifest;
 	};
 
-	extension::Kind GetScriptKind(const char* line);
+	Extension::Kind GetScriptKind(const char* line);
 }
 
 #endif

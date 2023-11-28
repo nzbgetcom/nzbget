@@ -21,7 +21,7 @@
 #include "Extension.h"
 #include "NString.h"
 
-namespace extension
+namespace Extension
 {
 	Script::Script(const char* name, const char* location)
 		: m_name(name)

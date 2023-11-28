@@ -41,7 +41,7 @@ namespace LoadScriptFileStrategy
 	const int TASK_TIME_SIGNATURE_LEN = strlen(TASK_TIME_SIGNATURE);
 	const int DEFINITION_SIGNATURE_LEN = strlen(DEFINITION_SIGNATURE);
 
-	bool HeaderConfigBased::Load(extension::Script& script) const
+	bool HeaderConfigBased::Load(Extension::Script& script) const
 	{
 		DiskFile infile;
 		if (!infile.Open(script.GetLocation(), DiskFile::omRead))
@@ -57,7 +57,7 @@ namespace LoadScriptFileStrategy
 		infile.Close();
 		buffer[readBytes] = '\0';
 
-		extension::Kind kind;
+		Extension::Kind kind;
 		bool feedScript = false;
 		char* queueEvents = nullptr;
 		char* taskTime = nullptr;
@@ -132,7 +132,7 @@ namespace LoadScriptFileStrategy
 	ManifestBased::ManifestBased(ManifestFile::Manifest& manifest_)
 		: manifest{manifest_} { }
 
-	bool ManifestBased::Load(extension::Script& script) const
+	bool ManifestBased::Load(Extension::Script& script) const
 	{
 		script.SetDisplayName(manifest.displayName.c_str());
 		script.SetName(manifest.name.c_str());
@@ -141,9 +141,9 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	extension::Kind GetScriptKind(const char* line)
+	Extension::Kind GetScriptKind(const char* line)
 	{
-		extension::Kind kind;
+		Extension::Kind kind;
 		kind.post = strstr(line, POST_SCRIPT_SIGNATURE);
 		kind.scan = strstr(line, SCAN_SCRIPT_SIGNATURE);
 		kind.queue = strstr(line, QUEUE_SCRIPT_SIGNATURE);
