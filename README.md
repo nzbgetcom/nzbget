@@ -56,3 +56,4 @@ For more information - see [Contributing](CONTRIBUTING.md).
 ## Donate
 
 Please [donate](https://nzbget.com/donate/) if you like what we are doing. thank you!
+
