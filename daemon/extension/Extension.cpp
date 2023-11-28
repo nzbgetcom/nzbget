@@ -19,23 +19,27 @@
 
 #include "nzbget.h"
 #include "Extension.h"
-#include "NString.h"
 
 namespace Extension
 {
-	Script::Script(const char* name, const char* location)
-		: m_name(name)
-		, m_location(location)
-		, m_displayName(name) {};
-
-	void Script::SetName(const char* name) { m_name = name; };
-	const char* Script::GetName() const { return m_name; }
-	void Script::SetLocation(const char* location) { m_location = location; }
-	const char* Script::GetLocation() const { return m_location; }
-	void Script::SetDisplayName(const char* displayName) { m_displayName = displayName; }
-	const char* Script::GetDisplayName() const { return m_displayName; }
-	void Script::SetDescription(const char* description) { m_description = description; };
-	const char* Script::GetDescription() const { return m_description; };
+	Script::Script(const char* name_, const char* location_)
+		: name(name_)
+		, location(location_)
+		, displayName(name_) {};
+	void Script::SetAuthor(const char* author_) { author = author_; }
+	const char* Script::GetAuthor() const { return author.c_str(); }
+	void Script::SetVersion(const char* version_) { version = version_; }
+	const char* Script::GetVersion() const { return version.c_str(); }
+	void Script::SetLicense(const char* license_) { license = license_; }
+	const char* Script::GetLicense() const { return license.c_str(); }
+	void Script::SetName(const char* name_) { name = name_; }
+	const char* Script::GetName() const { return name.c_str(); }
+	void Script::SetLocation(const char* location_) { location = location_; }
+	const char* Script::GetLocation() const { return location.c_str(); }
+	void Script::SetDisplayName(const char* displayName_) { displayName = displayName_; }
+	const char* Script::GetDisplayName() const { return displayName.c_str(); }
+	void Script::SetDescription(const char* description_) { description = description_; };
+	const char* Script::GetDescription() const { return description.c_str(); }
 	void Script::SetKind(Kind&& kind_) { kind = std::move(kind_); };
 	bool Script::GetPostScript() const { return kind.post; }
 	bool Script::GetScanScript() const { return kind.scan; }
@@ -43,7 +47,11 @@ namespace Extension
 	bool Script::GetSchedulerScript() const { return kind.scheduler; }
 	bool Script::GetFeedScript() const { return kind.feed; }
 	void Script::SetQueueEvents(const char* queueEvents) { kind.queue = queueEvents; }
-	const char* Script::GetQueueEvents() const { return m_queueEvents; }
-	void Script::SetTaskTime(const char* taskTime) { m_taskTime = taskTime; }
-	const char* Script::GetTaskTime() const { return m_taskTime; }
+	const char* Script::GetQueueEvents() const { return queueEvents.c_str(); }
+	void Script::SetTaskTime(const char* taskTime_) { taskTime = taskTime_; }
+	const char* Script::GetTaskTime() const { return taskTime.c_str(); }
+	void Script::SetOptions(std::vector<ManifestFile::Option>&& options_) { options = std::move(options_); }
+	const std::vector<ManifestFile::Option>& Script::GetOptions() const { return options; }
+	void Script::SetCommands(std::vector<ManifestFile::Command>&& commands_) { commands = std::move(commands_); }
+	const std::vector<ManifestFile::Command>& Script::GetCommands() const { return commands; }
 }

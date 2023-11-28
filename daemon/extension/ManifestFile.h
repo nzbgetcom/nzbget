@@ -55,16 +55,17 @@ namespace ManifestFile
 		std::string version;
 		std::string license;
 		std::string description;
+		std::string queueEvents;
 		std::string taskTime;
 		std::vector<Option> options;
 		std::vector<Command> commands;
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
-	bool ValidateRequiredAndSet(Json::object& json, Manifest& manifest);
-	bool ValidateCommandsAndSet(Json::object& json, std::vector<Command>& commands);
-	bool ValidateOptionsAndSet(Json::object& json, std::vector<Option>& options);
-	bool CheckKeyAndSet(Json::object& json, const char* key, std::string& property);
+	bool ValidateRequiredAndSet(const Json::object& json, Manifest& manifest);
+	bool ValidateCommandsAndSet(const Json::object& json, std::vector<Command>& commands);
+	bool ValidateOptionsAndSet(const Json::object& json, std::vector<Option>& options);
+	bool CheckKeyAndSet(const Json::object& json, const char* key, std::string& property);
 };
 
 #endif

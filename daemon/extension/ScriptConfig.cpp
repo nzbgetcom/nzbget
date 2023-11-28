@@ -262,14 +262,14 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 	ManifestFile::Manifest manifest;
 	if (ManifestFile::Load(manifest, directory))
 	{
-		LoadScriptFileStrategy::ManifestBased strategy(manifest);
+		BString<1024> entryPath("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
 		Script script;
+		script.SetLocation(entryPath);
+		auto strategy = LoadScriptFileStrategy::ManifestBased(std::move(manifest));
 		if (strategy.Load(script))
 		{
-			BString<1024> entryPath("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
 			if (!ScriptExists(scripts, script.GetName()))
 			{
-				script.SetLocation(entryPath);
 				scripts.push_back(std::move(script));
 			}
 		}
@@ -292,7 +292,7 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 				continue;
 			}
 
-			const auto strategy = LoadScriptFileStrategy::HeaderConfigBased();
+			auto strategy = LoadScriptFileStrategy::HeaderConfigBased();
 			Script script(scriptName, fullFilename);
 			if (strategy.Load(script))
 			{

@@ -43,12 +43,13 @@ namespace ManifestFile
 			return false;
 
 		CheckKeyAndSet(json, "taskTime", manifest.taskTime);
+		CheckKeyAndSet(json, "queueEvents", manifest.queueEvents);
 		ValidateOptionsAndSet(json, manifest.options);
 		ValidateCommandsAndSet(json, manifest.commands);
 		return true;
 	}
 
-	bool ValidateRequiredAndSet(Json::object& json, Manifest& manifest)
+	bool ValidateRequiredAndSet(const Json::object& json, Manifest& manifest)
 	{
 
 		if (!CheckKeyAndSet(json, "author", manifest.author))
@@ -78,7 +79,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateCommandsAndSet(Json::object& json, std::vector<Command>& commands)
+	bool ValidateCommandsAndSet(const Json::object& json, std::vector<Command>& commands)
 	{
 		auto rawCommands = json.if_contains("commands");
 		if (!rawCommands)
@@ -107,7 +108,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateOptionsAndSet(Json::object& json, std::vector<Option>& options)
+	bool ValidateOptionsAndSet(const Json::object& json, std::vector<Option>& options)
 	{
 		auto rawOptions = json.if_contains("options");
 		if (!rawOptions)
@@ -145,7 +146,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool CheckKeyAndSet(Json::object& json, const char* key, std::string& property)
+	bool CheckKeyAndSet(const Json::object& json, const char* key, std::string& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (!rawProperty)

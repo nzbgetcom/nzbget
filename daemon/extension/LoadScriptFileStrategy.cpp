@@ -41,7 +41,7 @@ namespace LoadScriptFileStrategy
 	const int TASK_TIME_SIGNATURE_LEN = strlen(TASK_TIME_SIGNATURE);
 	const int DEFINITION_SIGNATURE_LEN = strlen(DEFINITION_SIGNATURE);
 
-	bool HeaderConfigBased::Load(Extension::Script& script) const
+	bool HeaderConfigBased::Load(Extension::Script& script)
 	{
 		DiskFile infile;
 		if (!infile.Open(script.GetLocation(), DiskFile::omRead))
@@ -59,8 +59,8 @@ namespace LoadScriptFileStrategy
 
 		Extension::Kind kind;
 		bool feedScript = false;
-		char* queueEvents = nullptr;
-		char* taskTime = nullptr;
+		char* queueEvents = "";
+		char* taskTime = "";
 
 		bool inConfig = false;
 		bool afterConfig = false;
@@ -87,8 +87,8 @@ namespace LoadScriptFileStrategy
 			bool header = !strncmp(line, DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN);
 			if (!header && !inConfig)
 			{
-				queueEvents = nullptr;
-				taskTime = nullptr;
+				queueEvents = "";
+				taskTime = "";
 			}
 
 			if (!header && afterConfig)
@@ -129,15 +129,22 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	ManifestBased::ManifestBased(ManifestFile::Manifest& manifest_)
-		: manifest{manifest_} { }
+	ManifestBased::ManifestBased(ManifestFile::Manifest&& manifest_)
+		: manifest(std::move(manifest_)) { }
 
-	bool ManifestBased::Load(Extension::Script& script) const
+	bool ManifestBased::Load(Extension::Script& script)
 	{
+		script.SetAuthor(manifest.author.c_str());
+		script.SetLicense(manifest.license.c_str());
+		script.SetVersion(manifest.version.c_str());
 		script.SetDisplayName(manifest.displayName.c_str());
 		script.SetName(manifest.name.c_str());
 		script.SetDescription(manifest.description.c_str());
 		script.SetKind(GetScriptKind(manifest.kind.c_str()));
+		script.SetQueueEvents(manifest.queueEvents.c_str());
+		script.SetTaskTime(manifest.taskTime.c_str());
+		script.SetCommands(std::move(manifest.commands));
+		script.SetOptions(std::move(manifest.options));
 		return true;
 	}
 

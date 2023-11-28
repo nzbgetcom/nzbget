@@ -20,7 +20,7 @@
 #ifndef SCRIPT_H
 #define SCRIPT_H
 
-#include "NString.h"
+#include "ManifestFile.h"
 
 namespace Extension
 {
@@ -39,6 +39,12 @@ namespace Extension
 		Script() = default;
 		Script(Script&&) noexcept = default;
 		Script(const char* name, const char* location);
+		void SetAuthor(const char* author);
+		const char* GetAuthor() const;
+		void SetVersion(const char* version);
+		const char* GetVersion() const;
+		void SetLicense(const char* license);
+		const char* GetLicense() const;
 		void SetName(const char* name);
 		const char* GetName() const;
 		void SetLocation(const char* location);
@@ -57,15 +63,24 @@ namespace Extension
 		const char* GetQueueEvents() const;
 		void SetTaskTime(const char* taskTime);
 		const char* GetTaskTime() const;
+		void SetOptions(std::vector<ManifestFile::Option>&& options);
+		const std::vector<ManifestFile::Option>& GetOptions() const;
+		void SetCommands(std::vector<ManifestFile::Command>&& commands);
+		const std::vector<ManifestFile::Command>& GetCommands() const;
 
 	private:
 		Kind kind;
-		CString m_name;
-		CString m_location;
-		CString m_displayName;
-		CString m_description;
-		CString m_queueEvents;
-		CString m_taskTime;
+		std::string author;
+		std::string version;
+		std::string license;
+		std::string name;
+		std::string location;
+		std::string displayName;
+		std::string description;
+		std::string queueEvents;
+		std::string taskTime;
+		std::vector<ManifestFile::Option> options;
+		std::vector<ManifestFile::Command> commands;
 	};
 }
 

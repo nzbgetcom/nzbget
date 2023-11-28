@@ -20,10 +20,10 @@
 #ifndef LOADSCRIPTFILESTRATEGY_H
 #define LOADSCRIPTFILESTRATEGY_H
 
+#include <memory>
 #include "ManifestFile.h"
 #include "Extension.h"
 #include "FileSystem.h"
-#include <memory>
 
 namespace LoadScriptFileStrategy
 {
@@ -45,21 +45,21 @@ namespace LoadScriptFileStrategy
 
 	class Strategy {
 	public:
-		virtual bool Load(Extension::Script& script) const = 0;
+		virtual bool Load(Extension::Script& script) = 0;
 		virtual ~Strategy() = default;
 	};
 
 	class HeaderConfigBased : public Strategy {
 	public:
-		bool Load(Extension::Script& script) const override;
+		bool Load(Extension::Script& script) override;
 		~HeaderConfigBased() = default;
 	};
 
 	class ManifestBased : public Strategy {
 	public:
 		ManifestBased() = delete;
-		explicit ManifestBased(ManifestFile::Manifest& manifest_);
-		bool Load(Extension::Script& script) const override;
+		explicit ManifestBased(ManifestFile::Manifest&& manifest);
+		bool Load(Extension::Script& script) override;
 		~ManifestBased() {}
 	private:
 		ManifestFile::Manifest manifest;

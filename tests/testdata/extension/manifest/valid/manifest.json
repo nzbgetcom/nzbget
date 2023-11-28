@@ -24,5 +24,6 @@
             "description": "To check connection parameters click the button."
         }
     ],
+    "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",
     "taskTime": "1:00:00"
 }
