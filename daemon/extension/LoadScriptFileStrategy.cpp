@@ -144,11 +144,11 @@ namespace LoadScriptFileStrategy
 	Extension::Kind GetScriptKind(const char* line)
 	{
 		Extension::Kind kind;
-		kind.post = strstr(line, POST_SCRIPT_SIGNATURE);
-		kind.scan = strstr(line, SCAN_SCRIPT_SIGNATURE);
-		kind.queue = strstr(line, QUEUE_SCRIPT_SIGNATURE);
-		kind.scheduler = strstr(line, SCHEDULER_SCRIPT_SIGNATURE);
-		kind.feed = strstr(line, FEED_SCRIPT_SIGNATURE);
+		kind.post = strstr(line, POST_SCRIPT_SIGNATURE) != nullptr;
+		kind.scan = strstr(line, SCAN_SCRIPT_SIGNATURE) != nullptr;
+		kind.queue = strstr(line, QUEUE_SCRIPT_SIGNATURE) != nullptr;
+		kind.scheduler = strstr(line, SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
+		kind.feed = strstr(line, FEED_SCRIPT_SIGNATURE) != nullptr;
 		return kind;
 	}
 }

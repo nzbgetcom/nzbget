@@ -267,8 +267,11 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 		if (strategy.Load(script))
 		{
 			BString<1024> entryPath("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
-			script.SetLocation(entryPath);
-			scripts.push_back(std::move(script));
+			if (!ScriptExists(scripts, script.GetName()))
+			{
+				script.SetLocation(entryPath);
+				scripts.push_back(std::move(script));
+			}
 		}
 		return;
 	}
