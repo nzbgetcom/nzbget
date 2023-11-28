@@ -24,7 +24,7 @@
 #include "Options.h"
 #include "Log.h"
 #include "ScriptConfig.h"
-#include "LoadScriptFileStrategy.h"
+#include "ExtensionLoader.h"
 
 void ScriptConfig::InitOptions()
 {
@@ -176,13 +176,13 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 
 		while (infile.ReadLine(buf, sizeof(buf) - 1))
 		{
-			if (!strncmp(buf, LoadScriptFileStrategy::BEGIN_SCRIPT_SIGNATURE, LoadScriptFileStrategy::BEGIN_SINGNATURE_LEN) &&
-				strstr(buf, LoadScriptFileStrategy::END_SCRIPT_SIGNATURE) &&
-				(strstr(buf, LoadScriptFileStrategy::POST_SCRIPT_SIGNATURE) ||
-				 strstr(buf, LoadScriptFileStrategy::SCAN_SCRIPT_SIGNATURE) ||
-				 strstr(buf, LoadScriptFileStrategy::QUEUE_SCRIPT_SIGNATURE) ||
-				 strstr(buf, LoadScriptFileStrategy::SCHEDULER_SCRIPT_SIGNATURE) ||
-				 strstr(buf, LoadScriptFileStrategy::FEED_SCRIPT_SIGNATURE)))
+			if (!strncmp(buf, ExtensionLoader::BEGIN_SCRIPT_SIGNATURE, ExtensionLoader::BEGIN_SINGNATURE_LEN) &&
+				strstr(buf, ExtensionLoader::END_SCRIPT_SIGNATURE) &&
+				(strstr(buf, ExtensionLoader::POST_SCRIPT_SIGNATURE) ||
+					strstr(buf, ExtensionLoader::SCAN_SCRIPT_SIGNATURE) ||
+					strstr(buf, ExtensionLoader::QUEUE_SCRIPT_SIGNATURE) ||
+					strstr(buf, ExtensionLoader::SCHEDULER_SCRIPT_SIGNATURE) ||
+					strstr(buf, ExtensionLoader::FEED_SCRIPT_SIGNATURE)))
 			{
 				if (inConfig)
 				{
@@ -193,7 +193,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 				continue;
 			}
 
-			inHeader &= !strncmp(buf, LoadScriptFileStrategy::DEFINITION_SIGNATURE, LoadScriptFileStrategy::DEFINITION_SIGNATURE_LEN);
+			inHeader &= !strncmp(buf, ExtensionLoader::DEFINITION_SIGNATURE, ExtensionLoader::DEFINITION_SIGNATURE_LEN);
 
 			if (inConfig && !inHeader)
 			{
@@ -259,19 +259,13 @@ void ScriptConfig::LoadScripts(Scripts& scripts)
 
 void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir)
 {
-	ManifestFile::Manifest manifest;
-	if (ManifestFile::Load(manifest, directory))
-	{
-		BString<1024> entryPath("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
-		Script script;
-		script.SetLocation(entryPath);
-		auto strategy = LoadScriptFileStrategy::ManifestBased(std::move(manifest));
-		if (strategy.Load(script))
+	Script script;
+
+	if (ExtensionLoader::V2::Load(script, directory)) {
+
+		if (!ScriptExists(scripts, script.GetName()))
 		{
-			if (!ScriptExists(scripts, script.GetName()))
-			{
-				scripts.push_back(std::move(script));
-			}
+			scripts.push_back(std::move(script));
 		}
 		return;
 	}
@@ -292,9 +286,9 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 				continue;
 			}
 
-			auto strategy = LoadScriptFileStrategy::HeaderConfigBased();
-			Script script(scriptName, fullFilename);
-			if (strategy.Load(script))
+			script.SetName(scriptName);
+			script.SetLocation(fullFilename);
+			if (ExtensionLoader::V1::Load(script))
 			{
 				BuildScriptDisplayName(script);
 				scripts.push_back(std::move(script));
@@ -313,10 +307,10 @@ BString<1024> ScriptConfig::BuildScriptName(const char* dir, const char* filenam
 	{
 		BString<1024> directory = dir;
 		int len = strlen(directory);
-		if (directory[len-1] == PATH_SEPARATOR || directory[len-1] == ALT_PATH_SEPARATOR)
+		if (directory[len - 1] == PATH_SEPARATOR || directory[len - 1] == ALT_PATH_SEPARATOR)
 		{
 			// trim last path-separator
-			directory[len-1] = '\0';
+			directory[len - 1] = '\0';
 		}
 
 		return BString<1024>("%s%c%s", FileSystem::BaseFileName(directory), PATH_SEPARATOR, filename);
@@ -357,7 +351,7 @@ void ScriptConfig::CreateTasks()
 			{
 				if (FileSystem::SameFilename(scriptName, script.GetName()))
 				{
-					g_Options->CreateSchedulerTask(0, script.GetTaskTime(), 
+					g_Options->CreateSchedulerTask(0, script.GetTaskTime(),
 						nullptr, Options::scScript, script.GetName());
 					break;
 				}

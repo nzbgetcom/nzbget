@@ -44,8 +44,8 @@ nzbget_SOURCES = \
 	daemon/extension/ScriptConfig.h \
 	daemon/extension/Extension.cpp \
 	daemon/extension/Extension.h \
-	daemon/extension/LoadScriptFileStrategy.cpp \
-	daemon/extension/LoadScriptFileStrategy.h \
+	daemon/extension/ExtensionLoader.cpp \
+	daemon/extension/ExtensionLoader.h \
 	daemon/extension/ManifestFile.cpp \
 	daemon/extension/ManifestFile.h \
 	daemon/feed/FeedCoordinator.cpp \

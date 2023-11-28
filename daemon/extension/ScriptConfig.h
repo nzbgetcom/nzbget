@@ -24,7 +24,6 @@
 #include "Container.h"
 #include "Options.h"
 #include "Extension.h"
-#include "LoadScriptFileStrategy.h"
 
 class ScriptConfig
 {

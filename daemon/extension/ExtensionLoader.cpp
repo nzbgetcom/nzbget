@@ -18,12 +18,14 @@
  */
 
 #include "nzbget.h"
-#include "LoadScriptFileStrategy.h"
+
+#include "FileSystem.h"
+#include "ExtensionLoader.h"
 #include "ManifestFile.h"
 #include "Util.h"
 #include "ScriptConfig.h"
 
-namespace LoadScriptFileStrategy
+namespace ExtensionLoader
 {
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
@@ -41,7 +43,7 @@ namespace LoadScriptFileStrategy
 	const int TASK_TIME_SIGNATURE_LEN = strlen(TASK_TIME_SIGNATURE);
 	const int DEFINITION_SIGNATURE_LEN = strlen(DEFINITION_SIGNATURE);
 
-	bool HeaderConfigBased::Load(Extension::Script& script)
+	bool V1::Load(Extension::Script& script)
 	{
 		DiskFile infile;
 		if (!infile.Open(script.GetLocation(), DiskFile::omRead))
@@ -129,11 +131,14 @@ namespace LoadScriptFileStrategy
 		return true;
 	}
 
-	ManifestBased::ManifestBased(ManifestFile::Manifest&& manifest_)
-		: manifest(std::move(manifest_)) { }
-
-	bool ManifestBased::Load(Extension::Script& script)
+	bool V2::Load(Extension::Script& script, const char* directory)
 	{
+		ManifestFile::Manifest manifest;
+		if (!ManifestFile::Load(manifest, directory))
+			return false;
+
+		BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
+		script.SetLocation(location);
 		script.SetAuthor(manifest.author.c_str());
 		script.SetLicense(manifest.license.c_str());
 		script.SetVersion(manifest.version.c_str());

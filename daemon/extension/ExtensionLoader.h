@@ -20,12 +20,9 @@
 #ifndef LOADSCRIPTFILESTRATEGY_H
 #define LOADSCRIPTFILESTRATEGY_H
 
-#include <memory>
-#include "ManifestFile.h"
 #include "Extension.h"
-#include "FileSystem.h"
 
-namespace LoadScriptFileStrategy
+namespace ExtensionLoader
 {
 	extern const char* BEGIN_SCRIPT_SIGNATURE;
 	extern const char* POST_SCRIPT_SIGNATURE;
@@ -43,27 +40,15 @@ namespace LoadScriptFileStrategy
 	extern const int TASK_TIME_SIGNATURE_LEN;
 	extern const int DEFINITION_SIGNATURE_LEN;
 
-	class Strategy {
-	public:
-		virtual bool Load(Extension::Script& script) = 0;
-		virtual ~Strategy() = default;
-	};
+	namespace V1
+	{
+		bool Load(Extension::Script& script);
+	}
 
-	class HeaderConfigBased : public Strategy {
-	public:
-		bool Load(Extension::Script& script) override;
-		~HeaderConfigBased() = default;
-	};
-
-	class ManifestBased : public Strategy {
-	public:
-		ManifestBased() = delete;
-		explicit ManifestBased(ManifestFile::Manifest&& manifest);
-		bool Load(Extension::Script& script) override;
-		~ManifestBased() {}
-	private:
-		ManifestFile::Manifest manifest;
-	};
+	namespace V2
+	{
+		bool Load(Extension::Script& script, const char* directory);
+	}
 
 	Extension::Kind GetScriptKind(const char* line);
 }
