@@ -52,3 +52,8 @@ Please follow [instructions](https://nzbget.com/documentation/building-developme
 Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 
 
 For more information - see [Contributing](CONTRIBUTING.md).
+
+## Donate
+
+Please [donate](https://nzbget.com/donate/) if you like what we are doing. thank you!
+
