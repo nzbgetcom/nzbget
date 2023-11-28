@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.author == "Author's name");
 	BOOST_CHECK(manifestFile.license == "GNU");
 	BOOST_CHECK(manifestFile.description == "Description");
-	BOOST_CHECK(manifestFile.task == "1:00:00");
+	BOOST_CHECK(manifestFile.taskTime == "1:00:00");
 	auto& option = manifestFile.options[0];
 	BOOST_CHECK(option.name == "sendMail");
 	BOOST_CHECK(option.displayName == "SendMail");

@@ -42,7 +42,7 @@ namespace ManifestFile
 		if (!ValidateRequiredAndSet(json, manifest))
 			return false;
 
-		CheckKeyAndSet(json, "task", manifest.task);
+		CheckKeyAndSet(json, "taskTime", manifest.taskTime);
 		ValidateOptionsAndSet(json, manifest.options);
 		ValidateCommandsAndSet(json, manifest.commands);
 		return true;
@@ -113,9 +113,9 @@ namespace ManifestFile
 		if (!rawOptions)
 			return false;
 
-		for (auto& value : rawOptions->as_array())
+		for (auto& optionVal : rawOptions->as_array())
 		{
-			Json::object optionJson = value.as_object();
+			Json::object optionJson = optionVal.as_object();
 			auto selectJson = optionJson.if_contains("select");
 			if (!selectJson)
 				continue;
@@ -134,9 +134,9 @@ namespace ManifestFile
 			if (!CheckKeyAndSet(optionJson, "value", option.value))
 				continue;
 
-			for (auto& value : selectJson->as_array())
+			for (auto& selectVal : selectJson->as_array())
 			{
-				option.select.push_back(value.as_string().c_str());
+				option.select.push_back(selectVal.as_string().c_str());
 			}
 
 			options.push_back(std::move(option));

@@ -55,7 +55,7 @@ namespace ManifestFile
 		std::string version;
 		std::string license;
 		std::string description;
-		std::string task;
+		std::string taskTime;
 		std::vector<Option> options;
 		std::vector<Command> commands;
 	};
