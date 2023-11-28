@@ -22,7 +22,6 @@
 #include "FileSystem.h"
 #include "ExtensionLoader.h"
 #include "ManifestFile.h"
-#include "Util.h"
 #include "ScriptConfig.h"
 
 namespace ExtensionLoader
@@ -63,6 +62,8 @@ namespace ExtensionLoader
 		bool feedScript = false;
 		char* queueEvents = "";
 		char* taskTime = "";
+		std::vector<ManifestFile::Option> options;
+		std::vector<ManifestFile::Command> commands;
 
 		bool inConfig = false;
 		bool afterConfig = false;
@@ -127,8 +128,18 @@ namespace ExtensionLoader
 		script.SetKind(std::move(kind));
 		script.SetQueueEvents(queueEvents);
 		script.SetTaskTime(taskTime);
+		script.SetOptions(std::move(options));
+		script.SetCommands(std::move(commands));
 
 		return true;
+	}
+
+	void V1::ParseOptions(
+		const Tokenizer& tok,
+		std::vector<ManifestFile::Option>& options,
+		std::vector<ManifestFile::Command>& commands)
+	{
+
 	}
 
 	bool V2::Load(Extension::Script& script, const char* directory)

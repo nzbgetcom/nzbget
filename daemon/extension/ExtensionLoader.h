@@ -20,7 +20,9 @@
 #ifndef LOADSCRIPTFILESTRATEGY_H
 #define LOADSCRIPTFILESTRATEGY_H
 
+#include <vector>
 #include "Extension.h"
+#include "Util.h"
 
 namespace ExtensionLoader
 {
@@ -43,6 +45,11 @@ namespace ExtensionLoader
 	namespace V1
 	{
 		bool Load(Extension::Script& script);
+		void ParseOptions(
+			const Tokenizer& tok,
+			std::vector<ManifestFile::Option>& options,
+			std::vector<ManifestFile::Command>& commands
+		);
 	}
 
 	namespace V2
