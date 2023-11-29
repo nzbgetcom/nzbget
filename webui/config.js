@@ -159,6 +159,10 @@ var Options = (new function($)
 			scriptConfig.scheduler = serverTemplateData[i].SchedulerScript;
 			scriptConfig.defscheduler = serverTemplateData[i].TaskTime !== '';
 			scriptConfig.feed = serverTemplateData[i].FeedScript;
+			scriptConfig.description = serverTemplateData[i].Description;
+			scriptConfig.author = serverTemplateData[i].Author;
+			scriptConfig.license = serverTemplateData[i].License;
+			scriptConfig.version = serverTemplateData[i].Version;
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -202,7 +206,7 @@ var Options = (new function($)
 
 	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix)
 	{
-		var config = { description: '', nameprefix: nameprefix, sections: [] };
+		var config = { nameprefix: nameprefix, sections: [], };
 		var section = null;
 		var description = '';
 		var firstdescrline = '';
@@ -218,7 +222,6 @@ var Options = (new function($)
 				section.name = line.substr(4, line.length - 8).trim();
 				section.id = Util.makeId(nameprefix + section.name);
 				section.options = [];
-				description = '';
 				section.hidden = !(hiddensections === undefined || (hiddensections.indexOf(section.name) == -1)) ||
 					(visiblesections !== undefined && (visiblesections.indexOf(section.name) == -1));
 				section.postparam = POSTPARAM_SECTIONS.indexOf(section.name) > -1;
@@ -310,11 +313,7 @@ var Options = (new function($)
 			}
 			else
 			{
-				if (!section && firstdescrline !== '')
-				{
-					config.description = firstdescrline + description;
-				}
-				else if (section && section.options.length === 0)
+				if (section && section.options.length === 0)
 				{
 					section.description = firstdescrline + description;
 				}

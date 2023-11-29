@@ -2695,6 +2695,10 @@ void ConfigTemplatesXmlCommand::Execute()
 		"<value><struct>\n"
 		"<member><name>Name</name><value><string>%s</string></value></member>\n"
 		"<member><name>DisplayName</name><value><string>%s</string></value></member>\n"
+		"<member><name>Description</name><value><string>%s</string></value></member>\n"
+		"<member><name>Author</name><value><string>%s</string></value></member>\n"
+		"<member><name>License</name><value><string>%s</string></value></member>\n"
+		"<member><name>Version</name><value><string>%s</string></value></member>\n"
 		"<member><name>PostScript</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>ScanScript</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>QueueScript</name><value><boolean>%s</boolean></value></member>\n"
@@ -2709,6 +2713,10 @@ void ConfigTemplatesXmlCommand::Execute()
 		"{\n"
 		"\"Name\" : \"%s\",\n"
 		"\"DisplayName\" : \"%s\",\n"
+		"\"Description\" : \"%s\",\n"
+		"\"Author\" : \"%s\",\n"
+		"\"License\" : \"%s\",\n"
+		"\"Version\" : \"%s\",\n"
 		"\"PostScript\" : %s,\n"
 		"\"ScanScript\" : %s,\n"
 		"\"QueueScript\" : %s,\n"
@@ -2745,6 +2753,10 @@ void ConfigTemplatesXmlCommand::Execute()
 		AppendFmtResponse(IsJson() ? JSON_CONFIG_ITEM : XML_CONFIG_ITEM,
 			*EncodeStr(configTemplate.GetScript()->GetName()),
 			*EncodeStr(configTemplate.GetScript()->GetDisplayName()),
+			*EncodeStr(configTemplate.GetScript()->GetDescription()),
+			*EncodeStr(configTemplate.GetScript()->GetAuthor()),
+			*EncodeStr(configTemplate.GetScript()->GetLicense()),
+			*EncodeStr(configTemplate.GetScript()->GetVersion()),
 			BoolToStr(configTemplate.GetScript()->GetPostScript()),
 			BoolToStr(configTemplate.GetScript()->GetScanScript()),
 			BoolToStr(configTemplate.GetScript()->GetQueueScript()),

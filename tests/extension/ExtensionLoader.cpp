@@ -49,6 +49,10 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(script.GetQueueScript() == true);
 	BOOST_CHECK(script.GetFeedScript() == false);
 	BOOST_CHECK(script.GetScanScript() == false);
+	BOOST_CHECK(script.GetSchedulerScript() == false);
+	BOOST_CHECK(script.GetAuthor() == std::string(""));
+	BOOST_CHECK(script.GetLicense() == std::string(""));
+	BOOST_CHECK(script.GetVersion() == std::string(""));
 
 	auto command = script.GetCommands()[0];
 	BOOST_CHECK(command.name == std::string("ConnectionTest"));
