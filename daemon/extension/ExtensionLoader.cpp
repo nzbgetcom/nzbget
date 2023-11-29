@@ -135,7 +135,7 @@ namespace ExtensionLoader
 	void V1::RemoveTailAndTrim(std::string& str, const char* tail)
 	{
 		size_t tailIdx = str.find(tail);
-		if (tailIdx)
+		if (tailIdx != std::string::npos)
 		{
 			str = str.substr(0, tailIdx);
 		}
@@ -147,8 +147,113 @@ namespace ExtensionLoader
 		std::vector<ManifestFile::Option>& options,
 		std::vector<ManifestFile::Command>& commands)
 	{
+		std::string description;
 		std::string line;
+		while (getline(file, line))
+		{
+			if (strstr(line.c_str(), END_SCRIPT_SIGNATURE))
+			{
+				break;
+			}
+			if (line.empty())
+			{
+				continue;
+			}
 
+			size_t selectStartIdx = line.find("(");
+			size_t selectEndIdx = line.find(")");
+			if (selectStartIdx != std::string::npos && selectEndIdx != std::string::npos)
+			{
+				if (line.substr(selectStartIdx, selectEndIdx).find(",") == std::string::npos)
+				{
+					description += line.substr(2) + '\n';
+					continue;
+				}
+				ManifestFile::Option option;
+				std::vector<std::string> select;
+				description += line.substr(2, selectStartIdx - 3) + '\n';
+
+				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
+				size_t pos = 0;
+				std::string delimiter = ", ";
+				while ((pos = selectStr.find(delimiter)) != std::string::npos) {
+					std::string option = selectStr.substr(0, pos);
+					select.push_back(option);
+					selectStr.erase(0, pos + delimiter.length());
+				}
+				select.push_back(selectStr);
+				option.select = std::move(select);
+
+				while (std::getline(file, line))
+				{
+					if (line == "#")
+					{
+						continue;;
+					}
+					if (!strncmp(line.c_str(), "# ", 2))
+					{
+						line = line.substr(2);
+						Util::TrimRight(line);
+						if (!line.empty())
+						{
+							description += line + '\n';
+						}
+						continue;
+					}
+
+					if (strncmp(line.c_str(), "# ", 2))
+					{
+						size_t delimPos = line.find("=");
+						if (delimPos != std::string::npos)
+						{
+							std::string name = line.substr(1, delimPos - 1);
+							std::string value = line.substr(delimPos + 1);
+							option.value = std::move(value);
+							option.name = std::move(name);
+							option.displayName = option.name;
+						}
+						option.description = std::move(description);
+						options.push_back(std::move(option));
+						break;
+					}
+				}
+				continue;
+			}
+			if (strncmp(line.c_str(), "# ", 2))
+			{
+				size_t delimPos = line.find("@");
+				if (delimPos != std::string::npos)
+				{
+					ManifestFile::Command command;
+					std::string name = line.substr(1, delimPos - 1);
+					std::string action = line.substr(delimPos + 1);
+					command.action = std::move(action);
+					command.name = std::move(name);
+					command.description = std::move(description);
+					command.displayName = command.name;
+					commands.push_back(std::move(command));
+				}
+				else
+				{
+					size_t delimPos = line.find("=");
+					if (delimPos != std::string::npos)
+					{
+						ManifestFile::Option option;
+						std::string name = line.substr(1, delimPos - 1);
+						std::string value = line.substr(delimPos + 1);
+						option.value = std::move(value);
+						option.name = std::move(name);
+						option.description = std::move(description);
+						option.displayName = option.name;
+						options.push_back(std::move(option));
+					}
+				}
+			}
+			else
+			{
+				description += line.substr(2) + '\n';
+			}
+		}
 	}
 
 	bool V2::Load(Extension::Script& script, const char* directory)
