@@ -171,7 +171,7 @@ namespace ExtensionLoader
 				}
 				ManifestFile::Option option;
 				std::vector<std::string> select;
-				description += line.substr(2, selectStartIdx - 3) + '\n';
+				description += line.substr(2, selectStartIdx - 3) + ".\n";
 
 				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
 				size_t pos = 0;

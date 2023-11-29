@@ -1,7 +1,10 @@
 file(GLOB ExtensionSrc
 	main.cpp
 	ManifestFileTest.cpp
+	ExtensionLoader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ManifestFile.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
@@ -32,4 +35,5 @@ target_include_directories(ExtensionTests PRIVATE
 )
 
 file(COPY ../testdata/extension/manifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ../testdata/extension/V1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME ExtensionTests COMMAND $<TARGET_FILE:ExtensionTests> --log_level=message)
