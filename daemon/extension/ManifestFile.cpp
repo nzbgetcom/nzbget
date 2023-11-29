@@ -30,7 +30,7 @@ namespace ManifestFile
 	bool Load(Manifest& manifest, const char* directory)
 	{
 		BString<1024> path("%s%c%s", directory, PATH_SEPARATOR, MANIFEST_FILE);
-		std::fstream fs(path);
+		std::ifstream fs(path);
 		if (!fs.is_open())
 			return false;
 

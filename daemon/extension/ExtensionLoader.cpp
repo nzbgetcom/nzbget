@@ -19,7 +19,7 @@
 
 #include "nzbget.h"
 
-#include "FileSystem.h"
+#include <fstream>
 #include "ExtensionLoader.h"
 #include "ManifestFile.h"
 #include "ScriptConfig.h"
@@ -27,6 +27,7 @@
 namespace ExtensionLoader
 {
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
+	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS ";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
 	const char* SCAN_SCRIPT_SIGNATURE = "SCAN";
 	const char* QUEUE_SCRIPT_SIGNATURE = "QUEUE";
@@ -37,6 +38,7 @@ namespace ExtensionLoader
 	const char* TASK_TIME_SIGNATURE = "### TASK TIME:";
 	const char* DEFINITION_SIGNATURE = "###";
 
+	const int BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN = strlen(BEGIN_SCRIPT_COMMANDS_AND_OTPIONS);
 	const int BEGIN_SINGNATURE_LEN = strlen(BEGIN_SCRIPT_SIGNATURE);
 	const int QUEUE_EVENTS_SIGNATURE_LEN = strlen(QUEUE_EVENTS_SIGNATURE);
 	const int TASK_TIME_SIGNATURE_LEN = strlen(TASK_TIME_SIGNATURE);
@@ -44,29 +46,23 @@ namespace ExtensionLoader
 
 	bool V1::Load(Extension::Script& script)
 	{
-		DiskFile infile;
-		if (!infile.Open(script.GetLocation(), DiskFile::omRead))
+		std::ifstream file(script.GetLocation());
+		if (!file.is_open())
 		{
 			return false;
 		}
 
-		CharBuffer buffer(1024 * 10 + 1);
-
-		// check if the file contains pp-script-signature
-		// read first 10KB of the file and look for signature
-		int readBytes = (int)infile.Read(buffer, buffer.Size() - 1);
-		infile.Close();
-		buffer[readBytes] = '\0';
+		bool feedScript = false;
+		std::string queueEvents;
+		std::string taskTime;
+		std::string description;
 
 		Extension::Kind kind;
-		bool feedScript = false;
-		char* queueEvents = "";
-		char* taskTime = "";
 		std::vector<ManifestFile::Option> options;
 		std::vector<ManifestFile::Command> commands;
 
+		bool inBeforeConfig = false;
 		bool inConfig = false;
-		bool afterConfig = false;
 
 		// Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
 		// - in script definition body (between opening and closing script signatures);
@@ -75,41 +71,49 @@ namespace ExtensionLoader
 		// The last two pissibilities are provided to increase compatibility of scripts with older
 		// nzbget versions which do not expect the extra declarations in the script defintion body.
 
-		Tokenizer tok(buffer, "\n\r", true);
-		while (char* line = tok.Next())
+		std::string line;
+		while (std::getline(file, line))
 		{
-			if (!strncmp(line, QUEUE_EVENTS_SIGNATURE, QUEUE_EVENTS_SIGNATURE_LEN))
+			if (line.empty())
 			{
-				queueEvents = line + QUEUE_EVENTS_SIGNATURE_LEN;
+				continue;
 			}
-			else if (!strncmp(line, TASK_TIME_SIGNATURE, TASK_TIME_SIGNATURE_LEN))
+			if (!inBeforeConfig && !strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
 			{
-				taskTime = line + TASK_TIME_SIGNATURE_LEN;
+				inBeforeConfig = true;
 			}
-
-			bool header = !strncmp(line, DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN);
-			if (!header && !inConfig)
+			if (!inBeforeConfig && !inConfig)
 			{
-				queueEvents = "";
-				taskTime = "";
+				continue;
 			}
-
-			if (!header && afterConfig)
+			if (!strncmp(line.c_str(), TASK_TIME_SIGNATURE, TASK_TIME_SIGNATURE_LEN))
 			{
+				taskTime = line.substr(TASK_TIME_SIGNATURE_LEN + 1);
+				RemoveTailAndTrim(taskTime, "###");
+			}
+			if (!strncmp(line.c_str(), BEGIN_SCRIPT_SIGNATURE, BEGIN_SINGNATURE_LEN) && strstr(line.c_str(), END_SCRIPT_SIGNATURE))
+			{
+				if (inConfig)
+				{
+					break;
+				}
+				inBeforeConfig = false;
+				inConfig = true;
+				kind = GetScriptKind(line.c_str());
+			}
+			if (!strncmp(line.c_str(), QUEUE_EVENTS_SIGNATURE, QUEUE_EVENTS_SIGNATURE_LEN))
+			{
+				queueEvents = line.substr(QUEUE_EVENTS_SIGNATURE_LEN + 1);
+				RemoveTailAndTrim(queueEvents, "###");
+			}
+			if (inConfig && !strncmp(line.c_str(), "# ", 2))
+			{
+				description.append(line.substr(2)).push_back('\n');
+			}
+			if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
+			{
+				ParseOptionsAndCommands(file, options, commands);
 				break;
-			}
-
-			if (!strncmp(line, BEGIN_SCRIPT_SIGNATURE, BEGIN_SINGNATURE_LEN) && strstr(line, END_SCRIPT_SIGNATURE))
-			{
-				if (!inConfig)
-				{
-					inConfig = true;
-					kind = GetScriptKind(line);
-				}
-				else
-				{
-					afterConfig = true;
-				}
 			}
 		}
 
@@ -118,27 +122,32 @@ namespace ExtensionLoader
 			return false;
 		}
 
-		// trim decorations
-		char* p;
-		while (queueEvents && *queueEvents && *(p = queueEvents + strlen(queueEvents) - 1) == '#') *p = '\0';
-		if (queueEvents) queueEvents = Util::Trim(queueEvents);
-		while (taskTime && *taskTime && *(p = taskTime + strlen(taskTime) - 1) == '#') *p = '\0';
-		if (taskTime) taskTime = Util::Trim(taskTime);
-
 		script.SetKind(std::move(kind));
-		script.SetQueueEvents(queueEvents);
-		script.SetTaskTime(taskTime);
+		script.SetQueueEvents(queueEvents.c_str());
+		script.SetDescription(description.c_str());
+		script.SetTaskTime(taskTime.c_str());
 		script.SetOptions(std::move(options));
 		script.SetCommands(std::move(commands));
 
 		return true;
 	}
 
-	void V1::ParseOptions(
-		const Tokenizer& tok,
+	void V1::RemoveTailAndTrim(std::string& str, const char* tail)
+	{
+		size_t tailIdx = str.find(tail);
+		if (tailIdx)
+		{
+			str = str.substr(0, tailIdx);
+		}
+		Util::TrimRight(str);
+	}
+
+	void V1::ParseOptionsAndCommands(
+		std::ifstream& file,
 		std::vector<ManifestFile::Option>& options,
 		std::vector<ManifestFile::Command>& commands)
 	{
+		std::string line;
 
 	}
 

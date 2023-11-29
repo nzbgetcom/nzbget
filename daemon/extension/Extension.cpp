@@ -46,7 +46,7 @@ namespace Extension
 	bool Script::GetQueueScript() const { return kind.queue; }
 	bool Script::GetSchedulerScript() const { return kind.scheduler; }
 	bool Script::GetFeedScript() const { return kind.feed; }
-	void Script::SetQueueEvents(const char* queueEvents) { kind.queue = queueEvents; }
+	void Script::SetQueueEvents(const char* queueEvents_) { queueEvents = queueEvents_; }
 	const char* Script::GetQueueEvents() const { return queueEvents.c_str(); }
 	void Script::SetTaskTime(const char* taskTime_) { taskTime = taskTime_; }
 	const char* Script::GetTaskTime() const { return taskTime.c_str(); }

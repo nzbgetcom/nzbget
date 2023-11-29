@@ -27,6 +27,7 @@
 namespace ExtensionLoader
 {
 	extern const char* BEGIN_SCRIPT_SIGNATURE;
+	extern const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS;
 	extern const char* POST_SCRIPT_SIGNATURE;
 	extern const char* SCAN_SCRIPT_SIGNATURE;
 	extern const char* QUEUE_SCRIPT_SIGNATURE;
@@ -37,6 +38,7 @@ namespace ExtensionLoader
 	extern const char* TASK_TIME_SIGNATURE;
 	extern const char* DEFINITION_SIGNATURE;
 
+	extern const int BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN;
 	extern const int BEGIN_SINGNATURE_LEN;
 	extern const int QUEUE_EVENTS_SIGNATURE_LEN;
 	extern const int TASK_TIME_SIGNATURE_LEN;
@@ -45,11 +47,12 @@ namespace ExtensionLoader
 	namespace V1
 	{
 		bool Load(Extension::Script& script);
-		void ParseOptions(
-			const Tokenizer& tok,
+		void ParseOptionsAndCommands(
+			std::ifstream& file,
 			std::vector<ManifestFile::Option>& options,
 			std::vector<ManifestFile::Command>& commands
 		);
+		void RemoveTailAndTrim(std::string& str, const char* tail);
 	}
 
 	namespace V2
