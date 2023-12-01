@@ -23,6 +23,7 @@
 #include "ExtensionLoader.h"
 #include "ManifestFile.h"
 #include "ScriptConfig.h"
+#include "FileSystem.h"
 
 namespace ExtensionLoader
 {
@@ -126,6 +127,7 @@ namespace ExtensionLoader
 		script.SetQueueEvents(queueEvents.c_str());
 		script.SetDescription(description.c_str());
 		script.SetTaskTime(taskTime.c_str());
+		BuildDisplayName(script);
 		script.SetOptions(std::move(options));
 		script.SetCommands(std::move(commands));
 
@@ -140,6 +142,16 @@ namespace ExtensionLoader
 			str = str.substr(0, tailIdx);
 		}
 		Util::TrimRight(str);
+	}
+
+	void V1::BuildDisplayName(Extension::Script& script)
+	{
+		BString<1024> shortName = script.GetName();
+		if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
+
+		const char* displayName = FileSystem::BaseFileName(shortName);
+
+		script.SetDisplayName(displayName);
 	}
 
 	void V1::ParseOptionsAndCommands(

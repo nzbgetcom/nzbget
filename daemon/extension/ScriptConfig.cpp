@@ -290,7 +290,6 @@ void ScriptConfig::LoadScriptDir(Scripts& scripts, const char* directory, bool i
 			script.SetLocation(fullFilename);
 			if (ExtensionLoader::V1::Load(script))
 			{
-				BuildScriptDisplayName(script);
 				scripts.push_back(std::move(script));
 			}
 		}
@@ -328,16 +327,6 @@ bool ScriptConfig::ScriptExists(const Scripts& scripts, const char* scriptName) 
 		{
 			return !strcmp(script.GetName(), scriptName);
 		}) != scripts.end();
-}
-
-void ScriptConfig::BuildScriptDisplayName(Script& script)
-{
-	BString<1024> shortName = script.GetName();
-	if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
-
-	const char* displayName = FileSystem::BaseFileName(shortName);
-
-	script.SetDisplayName(displayName);
 }
 
 void ScriptConfig::CreateTasks()

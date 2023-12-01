@@ -53,6 +53,7 @@ namespace ExtensionLoader
 			std::vector<ManifestFile::Command>& commands
 		);
 		void RemoveTailAndTrim(std::string& str, const char* tail);
+		void BuildDisplayName(Extension::Script& script);
 	}
 
 	namespace V2

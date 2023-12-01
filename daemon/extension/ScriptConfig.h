@@ -61,7 +61,6 @@ private:
 	void InitConfigTemplates();
 	void CreateTasks();
 	void LoadScriptDir(Scripts& scripts, const char* directory, bool isSubDir);
-	void BuildScriptDisplayName(Script& script);
 	void LoadScripts(Scripts& scripts);
 	BString<1024> BuildScriptName(const char* directory, const char* filename, bool isSubDir) const;
 	bool ScriptExists(const Scripts& scripts, const char* scriptName) const;
