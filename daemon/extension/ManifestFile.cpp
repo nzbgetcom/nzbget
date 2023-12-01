@@ -57,7 +57,7 @@ namespace ManifestFile
 		if (!CheckKeyAndSet(json, "author", manifest.author))
 			return false;
 
-		if (!CheckKeyAndSet(json, "entry", manifest.entry))
+		if (!CheckKeyAndSet(json, "main", manifest.main))
 			return false;
 
 		if (!CheckKeyAndSet(json, "description", manifest.description))

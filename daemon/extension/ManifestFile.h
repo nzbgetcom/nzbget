@@ -48,7 +48,7 @@ namespace ManifestFile
 	struct Manifest
 	{
 		std::string author;
-		std::string entry;
+		std::string main;
 		std::string kind;
 		std::string name;
 		std::string displayName;

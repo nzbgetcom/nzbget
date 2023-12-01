@@ -1,5 +1,5 @@
 {
-    "entry": "Logger.py",
+    "main": "Logger.py",
     "name": "logger",
     "kind": "POST-PROCESSING",
     "displayName": "Logger New",

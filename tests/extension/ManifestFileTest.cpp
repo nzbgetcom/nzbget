@@ -31,18 +31,18 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	ManifestFile::Manifest manifestFile;
 	const char* noFilePath = "";
 	BOOST_CHECK(ManifestFile::Load(manifestFile, noFilePath) == false);
-	BOOST_CHECK(manifestFile.entry.empty());
+	BOOST_CHECK(manifestFile.main.empty());
 
 	std::string dir = std::filesystem::current_path().string() + "/manifest";
 	std::string invalidFilePath = dir + "/invalid";
 
 	BOOST_CHECK(ManifestFile::Load(manifestFile, invalidFilePath.c_str()) == false);
-	BOOST_CHECK(manifestFile.entry.empty());
+	BOOST_CHECK(manifestFile.main.empty());
 
 	std::string validFilePath = dir + "/valid";
 	BOOST_CHECK(ManifestFile::Load(manifestFile, validFilePath.c_str()) == true);
 
-	BOOST_CHECK(manifestFile.entry == "email.py");
+	BOOST_CHECK(manifestFile.main == "email.py");
 	BOOST_CHECK(manifestFile.name == "email");
 	BOOST_CHECK(manifestFile.kind == "POST-PROCESSING");
 	BOOST_CHECK(manifestFile.displayName == "Email");

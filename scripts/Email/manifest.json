@@ -1,5 +1,5 @@
 {
-    "entry": "EMail.py",
+    "main": "main.py",
     "name": "email",
     "kind": "POST-PROCESSING",
     "displayName": "EMail New",

@@ -463,24 +463,26 @@ var Options = (new function($)
 				option.caption = option.caption.replace(/\\/, ' \\ ').replace(/\//, ' / ');
 
 				option.defvalue = 'no';
-				option.description = (data[i].Template.trim().split('\n')[0].substr(1, 1000).trim() || 'Extension script ' + scriptName + '.');
+				option.description = 'Extension script ' + scriptName + data[i].Description;
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
 				section.options.push(option);
 
 				var templateData = data[i].Template;
-				var postConfig = readConfigTemplate(templateData, POSTPARAM_SECTIONS, undefined, scriptName + ':');
-				for (var j=0; j < postConfig.sections.length; j++)
-				{
-					var sec = postConfig.sections[j];
-					if (!sec.hidden)
+				if (templateData) {
+					var postConfig = readConfigTemplate(templateData, POSTPARAM_SECTIONS, undefined, scriptName + ':');
+					for (var j=0; j < postConfig.sections.length; j++)
 					{
-						for (var n=0; n < sec.options.length; n++)
+						var sec = postConfig.sections[j];
+						if (!sec.hidden)
 						{
-							var option = sec.options[n];
-							option.sectionId = sectionId;
-							section.options.push(option);
+							for (var n=0; n < sec.options.length; n++)
+							{
+								var option = sec.options[n];
+								option.sectionId = sectionId;
+								section.options.push(option);
+							}
 						}
 					}
 				}

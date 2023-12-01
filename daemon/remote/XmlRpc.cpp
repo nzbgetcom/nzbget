@@ -2765,6 +2765,8 @@ void ConfigTemplatesXmlCommand::Execute()
 			*EncodeStr(configTemplate.GetScript()->GetQueueEvents()),
 			*EncodeStr(configTemplate.GetScript()->GetTaskTime()),
 			*EncodeStr(configTemplate.GetTemplate()));
+		// auto script = configTemplate.GetScript();
+		// AppendResponse(Extension::ToJson(*script).c_str());
 	}
 
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");

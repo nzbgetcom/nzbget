@@ -262,7 +262,7 @@ namespace ExtensionLoader
 		if (!ManifestFile::Load(manifest, directory))
 			return false;
 
-		BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, manifest.entry.c_str());
+		BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, manifest.main.c_str());
 		script.SetLocation(location);
 		script.SetAuthor(manifest.author.c_str());
 		script.SetLicense(manifest.license.c_str());

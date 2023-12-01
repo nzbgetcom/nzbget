@@ -1,5 +1,5 @@
 {
-    "entry": "Logger2.exe",
+    "main": "Logger2.exe",
     "name": "logger2",
     "kind": "POST-PROCESSING",
     "displayName": "Supper Logger2",
