@@ -24,6 +24,7 @@ autoreconf --install
 chmod +x scripts/*
 chmod -x scripts/vars
 chmod +x SynoBuildConf/*
+chmod -x SynoBuildConf/depends
 chmod +x INFO.sh
 
 # correct build version in INFO.sh
