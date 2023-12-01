@@ -1,0 +1,31 @@
+name: linux build 
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Build
+      run: |
+        sudo bash synology/build-nzbget.sh
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-synology-packages
+        path: /toolkit/result_spk/nzbget/*.spk
+        retention-days: 5
+
+    - name: Cleanup
+      run: |
+        rm /toolkit/result_spk/nzbget/*.spk
