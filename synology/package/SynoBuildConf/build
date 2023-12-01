@@ -12,6 +12,8 @@ case ${CleanOnly} in
 		;;
 esac
 
+autoreconf --install
+
 # prefix with /usr/local, all files will be installed into /usr/local
 env CC="${CC}" CXX="${CXX}" LD="${LD}" AR=${AR} STRIP=${STRIP} RANLIB=${RANLIB} NM=${NM} \
 	CFLAGS="${CFLAGS} -Os" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" \
