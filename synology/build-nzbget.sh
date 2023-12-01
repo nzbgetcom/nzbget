@@ -22,6 +22,7 @@ cp -r synology/package/* /toolkit/source/nzbget/
 cd /toolkit/source/nzbget/
 autoreconf --install
 chmod +x scripts/*
+chmod -x scripts/vars
 chmod +x SynoBuildConf/*
 chmod +x INFO.sh
 
