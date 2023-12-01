@@ -28,4 +28,4 @@ jobs:
 
     - name: Cleanup
       run: |
-        rm /toolkit/result_spk/nzbget/*.spk
+        sudo rm /toolkit/result_spk/nzbget/*.spk
