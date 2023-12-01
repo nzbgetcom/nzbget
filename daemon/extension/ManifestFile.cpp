@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nzbget.h"
@@ -34,10 +34,12 @@ namespace ManifestFile
 		if (!fs.is_open())
 			return false;
 
-		Json::error_code ec;
-		Json::object json = Json::Read(fs, ec).as_object();
+		Json::ErrorCode ec;
+		Json::JsonValue jsonValue = Json::Deserialize(fs, ec);
 		if (ec)
 			return false;
+
+		Json::JsonObject json = jsonValue.as_object();
 
 		if (!ValidateRequiredAndSet(json, manifest))
 			return false;
@@ -49,7 +51,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateRequiredAndSet(const Json::object& json, Manifest& manifest)
+	bool ValidateRequiredAndSet(const Json::JsonObject& json, Manifest& manifest)
 	{
 
 		if (!CheckKeyAndSet(json, "author", manifest.author))
@@ -79,7 +81,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateCommandsAndSet(const Json::object& json, std::vector<Command>& commands)
+	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
 	{
 		auto rawCommands = json.if_contains("commands");
 		if (!rawCommands)
@@ -87,7 +89,7 @@ namespace ManifestFile
 
 		for (auto& value : rawCommands->as_array())
 		{
-			Json::object cmdJson = value.as_object();
+			Json::JsonObject cmdJson = value.as_object();
 			Command command;
 
 			if (!CheckKeyAndSet(cmdJson, "name", command.name))
@@ -108,7 +110,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateOptionsAndSet(const Json::object& json, std::vector<Option>& options)
+	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
 	{
 		auto rawOptions = json.if_contains("options");
 		if (!rawOptions)
@@ -116,7 +118,7 @@ namespace ManifestFile
 
 		for (auto& optionVal : rawOptions->as_array())
 		{
-			Json::object optionJson = optionVal.as_object();
+			Json::JsonObject optionJson = optionVal.as_object();
 			auto selectJson = optionJson.if_contains("select");
 			if (!selectJson)
 				continue;
@@ -146,7 +148,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool CheckKeyAndSet(const Json::object& json, const char* key, std::string& property)
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (!rawProperty)

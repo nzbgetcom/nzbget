@@ -54,4 +54,58 @@ namespace Extension
 	const std::vector<ManifestFile::Option>& Script::GetOptions() const { return options; }
 	void Script::SetCommands(std::vector<ManifestFile::Command>&& commands_) { commands = std::move(commands_); }
 	const std::vector<ManifestFile::Command>& Script::GetCommands() const { return commands; }
+
+	std::string ToJson(const Script& script)
+	{
+		Json::JsonObject json;
+		Json::JsonArray optionsJson;
+		Json::JsonArray commandsJson;
+
+		json["Name"] = script.GetName();
+		json["DisplayName"] = script.GetDisplayName();
+		json["Description"] = script.GetDescription();
+		json["Author"] = script.GetAuthor();
+		json["License"] = script.GetLicense();
+		json["Version"] = script.GetVersion();
+		json["PostScript"] = script.GetPostScript();
+		json["QueueScript"] = script.GetQueueScript();
+		json["SchedulerScript"] = script.GetSchedulerScript();
+		json["FeedScript"] = script.GetFeedScript();
+		json["QueueEvents"] = script.GetQueueEvents();
+		json["TaskTime"] = script.GetTaskTime();
+
+		for (const auto& option : script.GetOptions())
+		{
+			Json::JsonObject optionJson;
+			Json::JsonArray selectJson;
+
+			optionJson["Name"] = option.name;
+			optionJson["DisplayName"] = option.displayName;
+			optionJson["Description"] = option.description;
+
+			for (const auto& select : option.select)
+			{
+				selectJson.push_back(Json::JsonValue(select));
+			}
+			optionJson["Select"] = std::move(selectJson);
+			optionsJson.push_back(std::move(optionJson));
+		}
+
+		for (const auto& command : script.GetCommands())
+		{
+			Json::JsonObject commandJson;
+
+			commandJson["Name"] = command.name;
+			commandJson["DisplayName"] = command.displayName;
+			commandJson["Description"] = command.description;
+			commandJson["Action"] = command.action;
+
+			commandsJson.push_back(std::move(commandJson));
+		}
+
+		json["Options"] = std::move(optionsJson);
+		json["Commands"] = std::move(commandsJson);
+
+		return Json::Serialize(json);
+	}
 }

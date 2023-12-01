@@ -2,6 +2,7 @@ file(GLOB ExtensionSrc
 	main.cpp
 	ManifestFileTest.cpp
 	ExtensionLoader.cpp
+	ExtensionTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ManifestFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp

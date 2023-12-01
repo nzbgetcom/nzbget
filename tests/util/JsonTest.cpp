@@ -26,20 +26,20 @@
 #include <string>
 #include "Json.h"
 
-BOOST_AUTO_TEST_CASE(JsonReadTest)
+BOOST_AUTO_TEST_CASE(JsonDeserializeTest)
 {
 	std::string validJSON = "{\"name\": \"John\", \"secondName\": \"Doe\"}";	
 	std::stringstream is;
 	is << validJSON;
 
-	Json::error_code ec;
-	Json::Read(is, ec);
+	Json::ErrorCode ec;
+	Json::Deserialize(is, ec);
 	BOOST_CHECK(ec.failed() == false);
 
 	std::string invalidJSON = "{\"name\": \"John\", \"secondName\":}";
 
-	is.flush();
+	is.clear();
 	is << invalidJSON;
-	Json::Read(is, ec);
+	Json::Deserialize(is, ec);
 	BOOST_CHECK(ec.failed() == true);
 }

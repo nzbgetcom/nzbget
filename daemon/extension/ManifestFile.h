@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef MANIFESTFILE_H
@@ -62,10 +62,10 @@ namespace ManifestFile
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
-	bool ValidateRequiredAndSet(const Json::object& json, Manifest& manifest);
-	bool ValidateCommandsAndSet(const Json::object& json, std::vector<Command>& commands);
-	bool ValidateOptionsAndSet(const Json::object& json, std::vector<Option>& options);
-	bool CheckKeyAndSet(const Json::object& json, const char* key, std::string& property);
+	bool ValidateRequiredAndSet(const Json::JsonObject& json, Manifest& manifest);
+	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
+	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 };
 
 #endif

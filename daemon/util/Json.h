@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef JSON_H
@@ -26,8 +26,14 @@
 namespace Json
 {
 	using namespace boost::json;
-	using JSON = value;
-	JSON Read(std::istream &is, error_code &ec);
+	using JsonValue = boost::json::value;
+	using JsonObject = boost::json::object;
+	using JsonArray = boost::json::array;
+	using StreamParser = boost::json::stream_parser;
+	using ErrorCode = boost::json::error_code;
+
+	JsonValue Deserialize(std::istream& is, ErrorCode& ec);
+	std::string Serialize(const JsonObject& json);
 }
 
 #endif

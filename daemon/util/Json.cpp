@@ -14,29 +14,39 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nzbget.h"
 #include "Json.h"
 
 namespace Json {
-	JSON Read(std::istream &is, error_code &ec)
+	JsonValue Deserialize(std::istream& is, ErrorCode& ec)
 	{
-		stream_parser p;
+		StreamParser parser;
 		std::string line;
 
 		while (std::getline(is, line))
 		{
-			p.write(line, ec);
+			parser.write(line, ec);
 			if (ec)
+			{
 				return nullptr;
+			}
 		}
 
-		p.finish(ec);
+		parser.finish(ec);
 
 		if (ec)
+		{
 			return nullptr;
-		return p.release();
+		}
+
+		return parser.release();
+	}
+
+	std::string Serialize(const JsonObject& json)
+	{
+		return serialize(json);
 	}
 }

@@ -82,6 +82,8 @@ namespace Extension
 		std::vector<ManifestFile::Option> options;
 		std::vector<ManifestFile::Command> commands;
 	};
+
+	std::string ToJson(const Script& script);
 }
 
 #endif
