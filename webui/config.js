@@ -70,6 +70,12 @@ var Options = (new function($)
 				initPostParamConfig(data);
 				RPC.next();
 			});
+
+		RPC.call('loadextensions', [false], function(data)
+			{
+				console.warn(data)
+				RPC.next();
+			});
 	}
 
 	this.cleanup = function()

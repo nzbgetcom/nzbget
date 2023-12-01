@@ -214,6 +214,12 @@ public:
 	virtual void Execute();
 };
 
+class LoadExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
 class SaveConfigXmlCommand: public XmlCommand
 {
 public:
@@ -691,6 +697,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "loadconfig"))
 	{
 		command = std::make_unique<LoadConfigXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "loadextensions"))
+	{
+		command = std::make_unique<LoadExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "saveconfig"))
 	{
@@ -2664,6 +2674,38 @@ void LoadConfigXmlCommand::Execute()
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");
 }
 
+void LoadExtensionXmlCommand::Execute()
+{
+	bool loadFromDisk = false;
+	NextParamAsBool(&loadFromDisk);
+
+	ScriptConfig::ConfigTemplates* configTemplates = g_ScriptConfig->GetConfigTemplates();
+
+	ScriptConfig::ConfigTemplates loadedConfigTemplates;
+	if (loadFromDisk)
+	{
+		if (!g_ScriptConfig->LoadConfigTemplates(&loadedConfigTemplates))
+		{
+			BuildErrorResponse(3, "Could not read configuration templates");
+			return;
+		}
+		configTemplates = &loadedConfigTemplates;
+	}
+
+	AppendResponse(IsJson() ? "[\n" : "<array><data>\n");
+
+	int index = 0;
+
+	for (ScriptConfig::ConfigTemplate& configTemplate : configTemplates)
+	{
+		AppendCondResponse(",\n", IsJson() && index++ > 0);
+		auto json = Extension::ToJson(*configTemplate.GetScript());
+		AppendResponse(json.c_str());
+	}
+
+	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");
+}
+
 // bool saveconfig(struct[] data)
 void SaveConfigXmlCommand::Execute()
 {
@@ -2765,8 +2807,6 @@ void ConfigTemplatesXmlCommand::Execute()
 			*EncodeStr(configTemplate.GetScript()->GetQueueEvents()),
 			*EncodeStr(configTemplate.GetScript()->GetTaskTime()),
 			*EncodeStr(configTemplate.GetTemplate()));
-		// auto script = configTemplate.GetScript();
-		// AppendResponse(Extension::ToJson(*script).c_str());
 	}
 
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");

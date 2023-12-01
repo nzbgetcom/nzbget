@@ -750,7 +750,7 @@ var Refresher = (new function($)
 		RPC.next = loadNext;
 		RPC.safeMethods = ['version', 'status', 'listgroups', 'history', 'listfiles',
 			'log', 'loadlog', 'logscript', 'logupdate', 'config', 'loadconfig',
-			'configtemplates', 'readurl', 'servervolumes'];
+			'configtemplates', 'loadextensions', 'readurl', 'servervolumes'];
 
 		$('#RefreshMenu li a').click(refreshIntervalClick);
 		$('#RefreshButton').click(refreshClick);
