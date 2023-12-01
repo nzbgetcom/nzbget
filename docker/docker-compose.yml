@@ -1,0 +1,21 @@
+---
+version: "2.1"
+services:
+  nzbget:
+    build:
+      context: .
+      args:
+        NZBGET_RELEASE: develop
+        MAKE_JOBS: 4
+    environment:      
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - NZBGET_USER=admin
+      - NZBGET_PASS=admin
+    volumes:
+      - ./config:/config
+      - ./downloads:/downloads
+    ports:
+      - 6789:6789
+    restart: unless-stopped

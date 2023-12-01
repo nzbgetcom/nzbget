@@ -21,6 +21,10 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
 
@@ -152,8 +156,6 @@ using namespace MSXML;
 
 // POSIX INCLUDES
 
-#include "config.h"
-
 #include <unistd.h>
 #include <pwd.h>
 #include <grp.h>
@@ -275,9 +277,6 @@ typedef int pid_t;
 #include <assert.h>
 #include <iomanip>
 #include <cassert>
-#ifdef HAVE_MEMORY_H
-# include <memory.h>
-#endif
 #endif /* NOT DISABLE_PARCHECK */
 
 
@@ -287,7 +286,6 @@ typedef int pid_t;
 
 // WINDOWS
 
-#define snprintf _snprintf
 #ifndef strdup
 #define strdup _strdup
 #endif
@@ -298,8 +296,8 @@ typedef int pid_t;
 #define strerror_r(errnum, buffer, size) strerror_s(buffer, size, errnum)
 #define mkdir(dir, flags) _mkdir(dir)
 #define rmdir _rmdir
-#define strcasecmp(a, b) _stricmp(a, b)
-#define strncasecmp(a, b, c) _strnicmp(a, b, c)
+#define strcasecmp(a, b) stricmp(a, b)
+#define strncasecmp(a, b, c) strnicmp(a, b, c)
 #define __S_ISTYPE(mode, mask) (((mode) & _S_IFMT) == (mask))
 #define S_ISDIR(mode) __S_ISTYPE((mode), _S_IFDIR)
 #define S_ISREG(mode) __S_ISTYPE((mode), _S_IFREG)
@@ -335,8 +333,6 @@ typedef int pid_t;
 #endif
 
 #ifdef HAVE_OPENSSL
-FILE _iob[] = {*stdin, *stdout, *stderr};
-extern "C" FILE * __cdecl __iob_func(void) { return _iob; }
 // For static linking of OpenSSL libraries:
 #pragma comment (lib, "legacy_stdio_definitions.lib")
 #endif /* HAVE_OPENSSL */

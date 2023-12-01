@@ -68,22 +68,29 @@ POSIX platforms.
 NZBGet absolutely needs the following libraries:
 
  - libstdc++     (usually part of compiler)
- - libxml2       (http://www.xmlsoft.org)
+ - libxml2       (https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
 And the following libraries are optional:
 
  - for curses-output-mode (enabled by default):
    - libcurses   (usually part of commercial systems)
      or (better)
-   - libncurses  (http://invisible-island.net/ncurses)
+   - libncurses  (https://invisible-island.net/ncurses)
     
  - for encrypted connections (TLS/SSL):
-   - OpenSSL     (http://www.openssl.org)
+   - OpenSSL     (https://www.openssl.org)
      or
-   - GnuTLS      (http://www.gnu.org/software/gnutls)
+   - GnuTLS      (https://gnutls.org)
 
  - for gzip support in web-server and web-client (enabled by default):
-   - zlib     (http://www.zlib.net)
+   - zlib     (https://www.zlib.net/)
+
+ - for configuration:
+   - autotools    (https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+   - autoconf     (https://www.gnu.org/software/autoconf/)
+
+ - for managing package dependencies:
+   - pkg-config   (https://www.freedesktop.org/wiki/Software/pkg-config/)
 
 All these libraries are included in modern POSIX distributions and
 should be available as installable packages. Please note that you also 
@@ -104,6 +111,9 @@ Installation from the source distribution archive (nzbget-VERSION.tar.gz):
      cd nzbget-VERSION
 
  - configure it via
+
+     autoreconf --install
+
      ./configure
 
    (maybe you have to tell configure, where to find some libraries.
@@ -210,13 +220,13 @@ NZBGet is developed using MS Visual Studio 2015 (Community Edition). The project
 file is provided.
 
 To compile the program with TLS/SSL support you need either OpenSSL or GnuTLS:
-   - OpenSSL  (http://www.openssl.org)
+   - OpenSSL  (https://www.openssl.org)
    or
-   - GnuTLS   (http://www.gnu.org/software/gnutls)
+   - GnuTLS   (https://gnutls.org/)
 
 Also required are:
-   - Regex (http://gnuwin32.sourceforge.net/packages/regex.htm)
-   - Zlib (http://gnuwin32.sourceforge.net/packages/zlib.htm)
+   - Regex (https://gnuwin32.sourceforge.net/packages/regex.htm)
+   - Zlib (https://gnuwin32.sourceforge.net/packages/zlib.htm)
 
 =====================================
 6. Configuration
@@ -462,15 +472,12 @@ Par2:
 Par2 library API:
 	Francois Lesueur <flesueur@users.sourceforge.net>
 
-Catch:
-	Two Blue Cubes Ltd <https://github.com/philsquared/Catch>
-
 jQuery:
-	John Resig <http://jquery.com>
-	The Dojo Foundation <http://sizzlejs.com>
+	John Resig <https://jquery.com>
+	The Dojo Foundation <https://github.com/jquery/sizzle/wiki>
 
 Bootstrap:
-	Twitter, Inc <http://twitter.github.com/bootstrap>
+	Twitter, Inc <https://getbootstrap.com>
 
 Raphaël:
 	Dmitry Baranovskiy <http://raphaeljs.com>
@@ -480,7 +487,11 @@ Elycharts:
 	Void Labs s.n.c. <http://void.it>
 
 iconSweets:
-	Yummygum <http://yummygum.com>
+	Yummygum <https://yummygum.com/>
+
+Boost:
+  Boost organization and wider Boost community <https://www.boost.org>
+
 
 =====================================
 9. Copyright
@@ -499,10 +510,5 @@ Additional exemption: compiling, linking, and/or using OpenSSL is allowed.
 10. Contact
 =====================================
 
-If you encounter any problem, feel free to use the forum
-
-    nzbget.com/forum
-
-or contact me at
-
-	hugbug@users.sourceforge.net
+If you encounter any problem, feel free to contact us
+	https://nzbget.com/contact/

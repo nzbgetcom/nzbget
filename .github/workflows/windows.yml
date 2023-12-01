@@ -1,11 +1,6 @@
 name: windows build 
 
 on:
-  push:
-    branches:
-    - develop
-    - main
-    - feature-certificate-verification-level
   workflow_dispatch:
 
 jobs:

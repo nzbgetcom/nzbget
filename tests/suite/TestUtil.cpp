@@ -19,12 +19,16 @@
 
 
 #include "nzbget.h"
+
 #include <iostream>
-#include "catch.h"
+#include <cassert>
 
 #include "Util.h"
 #include "FileSystem.h"
 #include "TestUtil.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
 bool TestUtil::m_usedWorkingDir = false;
 std::string DataDir;
@@ -98,9 +102,9 @@ void TestUtil::PrepareWorkingDir(const std::string templateDir)
 		retries--;
 		FileSystem::DeleteDirectoryWithContent(workDir.c_str(), errmsg);
 	}
-	REQUIRE_FALSE(FileSystem::DirectoryExists(workDir.c_str()));
+	assert(FileSystem::DirectoryExists(workDir.c_str()) == false);
 	FileSystem::CreateDirectory(workDir.c_str());
-	REQUIRE(FileSystem::DirEmpty(workDir.c_str()));
+	assert(FileSystem::DirEmpty(workDir.c_str()));
 
 	CopyAllFiles(workDir, srcDir);
 }
@@ -112,7 +116,7 @@ void TestUtil::CopyAllFiles(const std::string destDir, const std::string srcDir)
 	{
 		std::string srcFile(srcDir + "/" + filename);
 		std::string dstFile(destDir + "/" + filename);
-		REQUIRE(FileSystem::CopyFile(srcFile.c_str(), dstFile.c_str()));
+		assert(FileSystem::CopyFile(srcFile.c_str(), dstFile.c_str()));
 	}
 }
 

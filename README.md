@@ -2,9 +2,12 @@
 
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](http://www.gnu.org/licenses/)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v22.0/total?label=v22.0)
+![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
+
 [![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
 [![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
 [![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
+[![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
@@ -30,29 +33,27 @@ More information available at https://nzbget.com
 We provide a easy-to-use installer for each platform we support.
 Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
+We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
+
+## Supported platforms for installers
+
+`Windows`: Windows 7 and later, 32 or 64 Bit.
+
+`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64)
+
+`macOS`: macOS 10.13 High Sierra and later, Intel / Apple Silicon.
+
 ## Building from sources
 
 Please follow [instructions](https://nzbget.com/documentation/building-development-version/) on the website 
 
 ## Contribution
 
-Branches naming policy
+Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 
 
-- `main` is a protected branch that contains only release code
-- `develop` is a protected branch for development
-- new branches should follow the following convention:
-  - `hotfix/brief-description` for any small hotfixes
-  - `feature/brief-description` for any new developments
-  - `bugfix/brief-description` for bugs
+For more information - see [Contributing](CONTRIBUTING.md).
 
-Pull requests flow for `develop` and `main` branches:
+## Donate
 
-1. For PRs targeting `develop` branch `Squash and merge` mode must be used.
-2. After merging branch to `develop`, branch must be deleted.
-3. For release PR (`develop` -> `main`) `Create a merge commit` mode must be used.
-4. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
+Please [donate](https://nzbget.com/donate/) if you like what we are doing. thank you!
 
-This flow results to the fact that in the PR to master branch we see only the squashed commits that correspond to the PRs in the develop branch in current release cycle.
-
-
-We entice our users to participate in the project, please don't hesitate to get involved - create a [new issue](https://github.com/nzbgetcom/nzbget/issues/new) or [pull request](https://github.com/nzbgetcom/nzbget/compare)!

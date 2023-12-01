@@ -1,0 +1,81 @@
+name: build
+
+on:
+  push:
+    branches:
+    - develop
+    - main
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    uses: ./.github/workflows/windows.yml
+
+  build-linux:
+    uses: ./.github/workflows/linux.yml
+  
+  build-osx:
+    uses: ./.github/workflows/osx.yml
+  
+  generate-signatures:
+    env:
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-osx]
+    steps:
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Generate signatures
+      run: |
+        mkdir -p builds
+        mv nzbget-windows-installers/* builds
+        mv nzbget-linux-installers/* builds
+        mv nzbget-osx-installers/* builds
+        cd builds
+        VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
+        SIGS_FILE="nzbget-$VERSION.sig.txt"
+
+        echo "Generating $SIGS_FILE ..."
+        echo
+
+        echo "nzbget_signatures({" | tee $SIGS_FILE
+        echo | tee -a $SIGS_FILE
+
+        for FILE in *.exe *.run *.zip; do
+            [ -f $FILE ] || continue
+
+            MD5=$(openssl dgst -md5 $FILE | cut -d ' ' -f 2)
+            SHA1=$(openssl dgst -sha1 $FILE | cut -d ' ' -f 2)
+            SHA256=$(openssl dgst -rsa-sha256 $FILE | cut -d ' ' -f 2)
+            RSASHA256=$(openssl dgst -rsa-sha256 -sign <(echo "$PRIVATE_KEY") $FILE | hexdump -ve '1/1 "%.2x"')
+
+            echo "\"MD5($FILE)\" : \"$MD5\"," | tee -a $SIGS_FILE
+            echo "\"SHA1($FILE)\" : \"$SHA1\"," | tee -a $SIGS_FILE
+            echo "\"SHA256($FILE)\" : \"$SHA256\"," | tee -a $SIGS_FILE
+            echo "\"RSA-SHA256($FILE)\" : \"$RSASHA256\"," | tee -a $SIGS_FILE
+
+            echo | tee -a $SIGS_FILE
+        done
+
+        echo "\"\" : \"\"});" | tee -a $SIGS_FILE
+
+        cd ..
+        echo
+        echo "Done."
+    
+    - name: Upload build artifacts with signatures
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-installers
+        path: builds/*
+        retention-days: 5
+
+    - name: Delete unneded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          nzbget-windows-installers
+          nzbget-linux-installers
+          nzbget-osx-installers

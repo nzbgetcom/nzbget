@@ -21,12 +21,13 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.65)
-AC_INIT(nzbget, 22.0, nzbget@nzbget.com)
+AC_INIT(nzbget, 22.0, https://github.com/nzbgetcom/nzbget/issues)
 AC_CONFIG_AUX_DIR(posix)
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AC_CONFIG_SRCDIR([daemon/main/nzbget.cpp])
 AC_CONFIG_HEADERS([config.h])
+AC_DEFINE(HAVE_CONFIG_H, 1, [Define to 1 use config.h])
 AM_MAINTAINER_MODE
 
 m4_include([posix/ax_cxx_compile_stdcxx.m4])
@@ -679,23 +680,6 @@ dnl End of debugging code
 dnl
 else
 AC_DEFINE([NDEBUG],1,Define to 1 to exclude debug-code)
-fi
-
-
-dnl
-dnl Enable test suite. Deafult: no.
-dnl
-AC_MSG_CHECKING(whether to enable unit and integration tests)
-AC_ARG_ENABLE(tests,
-	[AS_HELP_STRING([--enable-tests], [enable unit and integration tests])],
-	[ ENABLETESTS=$enableval ],
-	[ ENABLETESTS=no] )
-AC_MSG_RESULT($ENABLETESTS)
-if test "$ENABLETESTS" = "yes"; then
-	AC_DEFINE([ENABLE_TESTS],1,[Define to 1 to enable unit and integration tests])
-	AM_CONDITIONAL(WITH_TESTS, true)
-else
-	AM_CONDITIONAL(WITH_TESTS, false)
 fi
 
 AC_CONFIG_FILES([Makefile])
