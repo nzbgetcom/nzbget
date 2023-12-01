@@ -32,8 +32,7 @@ VERSION=$(date '+%Y%m%d')-$VERSION
 sed -e "s|version=.*$|version=\"$VERSION\"|g" -i INFO.sh
 
 # build
-cd /toolkit/pkgscripts-ng
-./PkgCreate.py -v 7.0 -c nzbget $BUILD_PARAM
+/toolkit/pkgscripts-ng/PkgCreate.py -v 7.0 -c nzbget $BUILD_PARAM
 
 # remove debug packages and set user perms on packages
 mv /toolkit/result_spk/nzbget-$VERSION/ /toolkit/result_spk/nzbget/
