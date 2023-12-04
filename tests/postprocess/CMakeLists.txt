@@ -5,7 +5,8 @@ file(GLOB PostprocessTestsSrc
 	ParCheckerTest.cpp
 	ParRenamerTest.cpp
 	RarReaderTest.cpp
-	RarReaderTest.cppRarRenamerTest.cpp
+	RarReaderTest.cpp
+	RarRenamerTest.cpp
 	../suite/TestUtil.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
