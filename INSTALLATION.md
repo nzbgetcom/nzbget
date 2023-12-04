@@ -1,5 +1,5 @@
 =====================================
-           NZBGet setup
+           NZBGet installation
 =====================================
 
 This is a short documentation. For more information please
