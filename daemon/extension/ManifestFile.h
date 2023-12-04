@@ -17,8 +17,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef MANIFESTFILE_H
-#define MANIFESTFILE_H
+#ifndef MANIFEST_FILE_H
+#define MANIFEST_FILE_H
 
 #include <string>
 #include <vector>

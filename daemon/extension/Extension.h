@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #ifndef SCRIPT_H
@@ -69,18 +69,18 @@ namespace Extension
 		const std::vector<ManifestFile::Command>& GetCommands() const;
 
 	private:
-		Kind kind;
-		std::string author;
-		std::string version;
-		std::string license;
-		std::string name;
-		std::string location;
-		std::string displayName;
-		std::string description;
-		std::string queueEvents;
-		std::string taskTime;
-		std::vector<ManifestFile::Option> options;
-		std::vector<ManifestFile::Command> commands;
+		Kind m_kind;
+		std::string m_author;
+		std::string m_version;
+		std::string m_license;
+		std::string m_name;
+		std::string m_location;
+		std::string m_displayName;
+		std::string m_description;
+		std::string m_queueEvents;
+		std::string m_taskTime;
+		std::vector<ManifestFile::Option> m_options;
+		std::vector<ManifestFile::Command> m_commands;
 	};
 
 	std::string ToJson(const Script& script);

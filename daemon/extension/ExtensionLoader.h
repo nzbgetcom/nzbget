@@ -14,11 +14,11 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef LOADSCRIPTFILESTRATEGY_H
-#define LOADSCRIPTFILESTRATEGY_H
+#ifndef EXTENSION_LOADER_H
+#define EXTENSION_LOADER_H
 
 #include <vector>
 #include "Extension.h"

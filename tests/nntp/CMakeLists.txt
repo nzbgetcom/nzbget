@@ -20,6 +20,7 @@ target_link_libraries(ServerPoolTest PRIVATE
 	ZLIB::ZLIB
 	Par2
 	Yencode
+	LibXml2::LibXml2
 )
 target_include_directories(ServerPoolTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -33,6 +34,7 @@ target_include_directories(ServerPoolTest PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/par2
 	${OPENSSL_INCLUDE_DIR}
 	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 add_test(NAME ServerPoolTest COMMAND $<TARGET_FILE:ServerPoolTest> --log_level=message)

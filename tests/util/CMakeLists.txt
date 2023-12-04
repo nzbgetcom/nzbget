@@ -19,7 +19,7 @@ add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
-	${LIBXML2_LIBRARIES}
+	LibXml2::LibXml2
 )
 
 target_include_directories(UtilTests PRIVATE
@@ -30,6 +30,7 @@ target_include_directories(UtilTests PRIVATE
 	${ZLIB_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
 	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 add_test(NAME UtilTests COMMAND $<TARGET_FILE:UtilTests> --log_level=message)

@@ -34,6 +34,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -50,8 +51,6 @@ include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
 
 if (NOT WIN32)
-    find_package(LibXml2 REQUIRED)
-    include_directories(${LIBXML2_INCLUDE_DIR})
     execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
     execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
     execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})

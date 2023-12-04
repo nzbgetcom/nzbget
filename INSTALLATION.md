@@ -1,5 +1,5 @@
 =====================================
-           NZBGet ReadMe
+           NZBGet installation
 =====================================
 
 This is a short documentation. For more information please
@@ -68,29 +68,30 @@ POSIX platforms.
 NZBGet absolutely needs the following libraries:
 
  - libstdc++     (usually part of compiler)
- - libxml2       (https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
+ - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
 And the following libraries are optional:
 
  - for curses-output-mode (enabled by default):
    - libcurses   (usually part of commercial systems)
      or (better)
-   - libncurses  (https://invisible-island.net/ncurses)
+   - [libncurses](https://invisible-island.net/ncurses)
     
  - for encrypted connections (TLS/SSL):
-   - OpenSSL     (https://www.openssl.org)
+   - [OpenSSL](https://www.openssl.org)
+
      or
-   - GnuTLS      (https://gnutls.org)
+   - [GnuTLS](https://gnutls.org)
 
  - for gzip support in web-server and web-client (enabled by default):
-   - zlib     (https://www.zlib.net/)
+   - [zlib](https://www.zlib.net/)
 
  - for configuration:
-   - autotools    (https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
-   - autoconf     (https://www.gnu.org/software/autoconf/)
+   - [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+   - [autoconf](https://www.gnu.org/software/autoconf/)
 
  - for managing package dependencies:
-   - pkg-config   (https://www.freedesktop.org/wiki/Software/pkg-config/)
+   - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
 
 All these libraries are included in modern POSIX distributions and
 should be available as installable packages. Please note that you also 
@@ -220,13 +221,17 @@ NZBGet is developed using MS Visual Studio 2015 (Community Edition). The project
 file is provided.
 
 To compile the program with TLS/SSL support you need either OpenSSL or GnuTLS:
-   - OpenSSL  (https://www.openssl.org)
-   or
-   - GnuTLS   (https://gnutls.org/)
+   - [OpenSSL](https://www.openssl.org)
+
+     or
+   - [GnuTLS](https://gnutls.org/)
 
 Also required are:
-   - Regex (https://gnuwin32.sourceforge.net/packages/regex.htm)
-   - Zlib (https://gnuwin32.sourceforge.net/packages/zlib.htm)
+   - [Regex](https://regexlib.com/)
+   - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
+   - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
+
+We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
 
 =====================================
 6. Configuration
