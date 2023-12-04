@@ -18,6 +18,7 @@
  */
 
 #include "nzbget.h"
+
 #include "Extension.h"
 
 namespace Extension

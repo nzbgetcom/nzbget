@@ -18,6 +18,7 @@
  */
 
 #include "nzbget.h"
+
 #include <fstream>
 #include "ManifestFile.h"
 #include "Json.h"

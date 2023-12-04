@@ -54,6 +54,8 @@
 #include "StackTrace.h"
 #include "CommandScript.h"
 #include "YEncode.h"
+#include "ExtensionManager.h"
+
 #ifdef WIN32
 #include "WinService.h"
 #include "WinConsole.h"
@@ -85,10 +87,13 @@ ArticleCache* g_ArticleCache;
 QueueScriptCoordinator* g_QueueScriptCoordinator;
 ServiceCoordinator* g_ServiceCoordinator;
 ScriptConfig* g_ScriptConfig;
-CommandScriptLog* g_CommandScriptLog; 
+CommandScriptLog* g_CommandScriptLog;
+ExtensionManager::Manager* g_extensionManager;
+
 #ifdef WIN32
 WinConsole* g_WinConsole;
 #endif
+
 int g_ArgumentCount;
 char* (*g_EnvironmentVariables)[] = nullptr;
 char* (*g_Arguments)[] = nullptr;
