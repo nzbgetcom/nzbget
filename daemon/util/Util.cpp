@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -23,7 +24,7 @@
 #include "YEncode.h"
 
 #ifndef WIN32
- // function "code_revision" is automatically generated in file "code_revision.cpp" on each build
+// function "code_revision" is automatically generated in file "code_revision.cpp" on each build
 const char* code_revision(void);
 #endif
 
@@ -34,12 +35,12 @@ const char* code_revision(void);
 // Released to public domain from author (thanks)
 // Slightly modified by Andrey Prygunkov
 
-char* optarg;		// global argument pointer
+char	*optarg;		// global argument pointer
 int		optind = 0; 	// global argv index
 
-int getopt(int argc, char* argv[], char* optstring)
+int getopt(int argc, char *argv[], char *optstring)
 {
-	static char* next = nullptr;
+	static char *next = nullptr;
 	if (optind == 0)
 		next = nullptr;
 
@@ -73,7 +74,7 @@ int getopt(int argc, char* argv[], char* optstring)
 	}
 
 	char c = *next++;
-	char* cp = strchr(optstring, c);
+	char *cp = strchr(optstring, c);
 
 	if (cp == nullptr || c == ':')
 	{
@@ -141,7 +142,7 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 *  http://www.codeguru.com/cpp/cpp/algorithms/article.php/c5099/
 */
 
-const static char BASE64_DEALPHABET[128] =
+const static char BASE64_DEALPHABET [128] =
 {
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0, //   0 -   9
 	0,  0,  0,  0,  0,  0,  0,  0,  0,  0, //  10 -  19
@@ -166,38 +167,38 @@ uint32 DecodeByteQuartet(char* inputBuffer, char* outputBuffer)
 	{
 		if (inputBuffer[2] == '=')
 		{
-			buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[0]]) << 6;
-			buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[1]]) << 6;
+			buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[0]]) << 6;
+			buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[1]]) << 6;
 			buffer = buffer << 14;
 
-			outputBuffer[0] = (char)(buffer >> 24);
+			outputBuffer [0] = (char)(buffer >> 24);
 
 			return 1;
 		}
 		else
 		{
-			buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[0]]) << 6;
-			buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[1]]) << 6;
-			buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[2]]) << 6;
+			buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[0]]) << 6;
+			buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[1]]) << 6;
+			buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[2]]) << 6;
 			buffer = buffer << 8;
 
-			outputBuffer[0] = (char)(buffer >> 24);
-			outputBuffer[1] = (char)(buffer >> 16);
+			outputBuffer [0] = (char)(buffer >> 24);
+			outputBuffer [1] = (char)(buffer >> 16);
 
 			return 2;
 		}
 	}
 	else
 	{
-		buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[0]]) << 6;
-		buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[1]]) << 6;
-		buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[2]]) << 6;
-		buffer = (buffer | BASE64_DEALPHABET[(int)inputBuffer[3]]) << 6;
+		buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[0]]) << 6;
+		buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[1]]) << 6;
+		buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[2]]) << 6;
+		buffer = (buffer | BASE64_DEALPHABET [(int)inputBuffer[3]]) << 6;
 		buffer = buffer << 2;
 
-		outputBuffer[0] = (char)(buffer >> 24);
-		outputBuffer[1] = (char)(buffer >> 16);
-		outputBuffer[2] = (char)(buffer >> 8);
+		outputBuffer [0] = (char)(buffer >> 24);
+		outputBuffer [1] = (char)(buffer >> 16);
+		outputBuffer [2] = (char)(buffer >> 8);
 
 		return 3;
 	}
@@ -263,7 +264,7 @@ void Util::FormatTime(time_t timeSec, char* buffer, int bufsize)
 #else
 	ctime_r(&timeSec, buffer);
 #endif
-	buffer[bufsize - 1] = '\0';
+	buffer[bufsize-1] = '\0';
 
 	// trim LF
 	buffer[strlen(buffer) - 1] = '\0';
@@ -421,10 +422,10 @@ char* Util::ReduceStr(char* str, const char* from, const char* to)
 	while (char* p = strstr(str, from))
 	{
 		const char* src = to;
-		while ((*p++ = *src++));
+		while ((*p++ = *src++)) ;
 
 		src = --p - lenTo + lenFrom;
-		while ((*p++ = *src++));
+		while ((*p++ = *src++)) ;
 	}
 
 	return str;
@@ -504,12 +505,12 @@ b -= c; b -= a; b ^= (a<<10); \
 c -= a; c -= b; c ^= (b>>15); \
 }
 
-uint32 hash(uint8* k, uint32 length, uint32 initval)
+uint32 hash(uint8 *k, uint32 length, uint32 initval)
 // register uint8 *k;        /* the key */
 // register uint32  length;   /* the length of the key */
 // register uint32  initval;    /* the previous hash, or an arbitrary value */
 {
-	uint32 a, b, c, len;
+	uint32 a,b,c,len;
 
 	/* Set up the internal state */
 	len = length;
@@ -519,32 +520,32 @@ uint32 hash(uint8* k, uint32 length, uint32 initval)
 	/*---------------------------------------- handle most of the key */
 	while (len >= 12)
 	{
-		a += (k[0] + ((uint32)k[1] << 8) + ((uint32)k[2] << 16) + ((uint32)k[3] << 24));
-		b += (k[4] + ((uint32)k[5] << 8) + ((uint32)k[6] << 16) + ((uint32)k[7] << 24));
-		c += (k[8] + ((uint32)k[9] << 8) + ((uint32)k[10] << 16) + ((uint32)k[11] << 24));
-		mix(a, b, c);
+		a += (k[0] +((uint32)k[1]<<8) +((uint32)k[2]<<16) +((uint32)k[3]<<24));
+		b += (k[4] +((uint32)k[5]<<8) +((uint32)k[6]<<16) +((uint32)k[7]<<24));
+		c += (k[8] +((uint32)k[9]<<8) +((uint32)k[10]<<16)+((uint32)k[11]<<24));
+		mix(a,b,c);
 		k += 12; len -= 12;
 	}
 
 	/*------------------------------------- handle the last 11 bytes */
 	c += length;
-	switch (len)              /* all the case statements fall through */
+	switch(len)              /* all the case statements fall through */
 	{
-	case 11: c += ((uint32)k[10] << 24);
-	case 10: c += ((uint32)k[9] << 16);
-	case 9: c += ((uint32)k[8] << 8);
-		/* the first byte of c is reserved for the length */
-	case 8: b += ((uint32)k[7] << 24);
-	case 7: b += ((uint32)k[6] << 16);
-	case 6: b += ((uint32)k[5] << 8);
-	case 5: b += k[4];
-	case 4: a += ((uint32)k[3] << 24);
-	case 3: a += ((uint32)k[2] << 16);
-	case 2: a += ((uint32)k[1] << 8);
-	case 1: a += k[0];
-		/* case 0: nothing left to add */
+		case 11: c+=((uint32)k[10]<<24);
+		case 10: c+=((uint32)k[9]<<16);
+		case 9 : c+=((uint32)k[8]<<8);
+			/* the first byte of c is reserved for the length */
+		case 8 : b+=((uint32)k[7]<<24);
+		case 7 : b+=((uint32)k[6]<<16);
+		case 6 : b+=((uint32)k[5]<<8);
+		case 5 : b+=k[4];
+		case 4 : a+=((uint32)k[3]<<24);
+		case 3 : a+=((uint32)k[2]<<16);
+		case 2 : a+=((uint32)k[1]<<8);
+		case 1 : a+=k[0];
+			/* case 0: nothing left to add */
 	}
-	mix(a, b, c);
+	mix(a,b,c);
 	/*-------------------------------------------- report the result */
 	return c;
 }
@@ -595,61 +596,61 @@ time_t Util::CurrentTime()
 
 inline int is_leap(int year)
 {
-	if (year % 400 == 0)
-		return 1;
-	if (year % 100 == 0)
-		return 0;
-	if (year % 4 == 0)
-		return 1;
-	return 0;
+  if(year % 400 == 0)
+  return 1;
+  if(year % 100 == 0)
+  return 0;
+  if(year % 4 == 0)
+  return 1;
+  return 0;
 }
 inline int days_from_0(int year)
 {
-	year--;
-	return 365 * year + (year / 400) - (year / 100) + (year / 4);
+  year--;
+  return 365 * year + (year / 400) - (year/100) + (year / 4);
 }
 inline int days_from_1970(int year)
 {
-	static const int days_from_0_to_1970 = 719162; // days_from_0(1970);
-	return days_from_0(year) - days_from_0_to_1970;
+  static const int days_from_0_to_1970 = 719162; // days_from_0(1970);
+  return days_from_0(year) - days_from_0_to_1970;
 }
-inline int days_from_1jan(int year, int month, int day)
+inline int days_from_1jan(int year,int month,int day)
 {
-	static const int days[2][12] =
-	{
-	  { 0,31,59,90,120,151,181,212,243,273,304,334},
-	  { 0,31,60,91,121,152,182,213,244,274,305,335}
-	};
-	return days[is_leap(year)][month - 1] + day - 1;
+  static const int days[2][12] =
+  {
+	{ 0,31,59,90,120,151,181,212,243,273,304,334},
+	{ 0,31,60,91,121,152,182,213,244,274,305,335}
+  };
+  return days[is_leap(year)][month-1] + day - 1;
 }
 
-inline time_t internal_timegm(tm const* t)
+inline time_t internal_timegm(tm const *t)
 {
-	int year = t->tm_year + 1900;
-	int month = t->tm_mon;
-	if (month > 11)
-	{
-		year += month / 12;
-		month %= 12;
-	}
-	else if (month < 0)
-	{
-		int years_diff = (-month + 11) / 12;
-		year -= years_diff;
-		month += 12 * years_diff;
-	}
-	month++;
-	int day = t->tm_mday;
-	int day_of_year = days_from_1jan(year, month, day);
-	int days_since_epoch = days_from_1970(year) + day_of_year;
+  int year = t->tm_year + 1900;
+  int month = t->tm_mon;
+  if(month > 11)
+  {
+	year += month/12;
+	month %= 12;
+  }
+  else if(month < 0)
+  {
+	int years_diff = (-month + 11)/12;
+	year -= years_diff;
+	month+=12 * years_diff;
+  }
+  month++;
+  int day = t->tm_mday;
+  int day_of_year = days_from_1jan(year,month,day);
+  int days_since_epoch = days_from_1970(year) + day_of_year;
 
-	time_t seconds_in_day = 3600 * 24;
-	time_t result = seconds_in_day * days_since_epoch + 3600 * t->tm_hour + 60 * t->tm_min + t->tm_sec;
+  time_t seconds_in_day = 3600 * 24;
+  time_t result = seconds_in_day * days_since_epoch + 3600 * t->tm_hour + 60 * t->tm_min + t->tm_sec;
 
-	return result;
+  return result;
 }
 
-time_t Util::Timegm(tm const* t)
+time_t Util::Timegm(tm const *t)
 {
 	return internal_timegm(t);
 }
@@ -677,7 +678,7 @@ int Util::NumberOfCpuCores()
 int64 Util::CurrentTicks()
 {
 #ifdef WIN32
-	static int64 hz = 0, hzo = 0;
+	static int64 hz=0, hzo=0;
 	if (!hz)
 	{
 		QueryPerformanceFrequency((LARGE_INTEGER*)&hz);
@@ -685,7 +686,7 @@ int64 Util::CurrentTicks()
 	}
 	int64 t;
 	QueryPerformanceCounter((LARGE_INTEGER*)&t);
-	return ((t - hzo) * 1000000) / hz;
+	return ((t-hzo)*1000000)/hz;
 #else
 	timeval t;
 	gettimeofday(&t, nullptr);
@@ -704,23 +705,23 @@ void Util::Sleep(int milliseconds)
 
 uint32 WebUtil::DecodeBase64(char* inputBuffer, int inputBufferLength, char* outputBuffer)
 {
-	uint32 InputBufferIndex = 0;
+	uint32 InputBufferIndex  = 0;
 	uint32 OutputBufferIndex = 0;
 	uint32 InputBufferLength = inputBufferLength > 0 ? inputBufferLength : strlen(inputBuffer);
 
-	char ByteQuartet[4];
+	char ByteQuartet [4];
 	int i = 0;
 	while (InputBufferIndex < InputBufferLength)
 	{
 		// Ignore all characters except the ones in BASE64_ALPHABET
-		if ((inputBuffer[InputBufferIndex] >= 48 && inputBuffer[InputBufferIndex] <= 57) ||
-			(inputBuffer[InputBufferIndex] >= 65 && inputBuffer[InputBufferIndex] <= 90) ||
-			(inputBuffer[InputBufferIndex] >= 97 && inputBuffer[InputBufferIndex] <= 122) ||
-			inputBuffer[InputBufferIndex] == '+' ||
-			inputBuffer[InputBufferIndex] == '/' ||
-			inputBuffer[InputBufferIndex] == '=')
+		if ((inputBuffer [InputBufferIndex] >= 48 && inputBuffer [InputBufferIndex] <=  57) ||
+			(inputBuffer [InputBufferIndex] >= 65 && inputBuffer [InputBufferIndex] <=  90) ||
+			(inputBuffer [InputBufferIndex] >= 97 && inputBuffer [InputBufferIndex] <= 122) ||
+			inputBuffer [InputBufferIndex] == '+' ||
+			inputBuffer [InputBufferIndex] == '/' ||
+			inputBuffer [InputBufferIndex] == '=')
 		{
-			ByteQuartet[i] = inputBuffer[InputBufferIndex];
+			ByteQuartet [i] = inputBuffer [InputBufferIndex];
 			i++;
 		}
 
@@ -750,23 +751,23 @@ CString WebUtil::XmlEncode(const char* raw)
 		uchar ch = *p;
 		switch (ch)
 		{
-		case '>':
-		case '<':
-			reqSize += 4;
-			break;
-		case '&':
-			reqSize += 5;
-			break;
-		case '\'':
-		case '\"':
-			reqSize += 6;
-			break;
-		default:
-			if (ch < 0x20 || ch >= 0x80)
-			{
-				reqSize += 10;
+			case '>':
+			case '<':
+				reqSize += 4;
 				break;
-			}
+			case '&':
+				reqSize += 5;
+				break;
+			case '\'':
+			case '\"':
+				reqSize += 6;
+				break;
+			default:
+				if (ch < 0x20 || ch >= 0x80)
+				{
+					reqSize += 10;
+					break;
+				}
 		}
 	}
 
@@ -780,79 +781,79 @@ CString WebUtil::XmlEncode(const char* raw)
 		uchar ch = *p;
 		switch (ch)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '<':
-			strcpy(output, "&lt;");
-			output += 4;
-			break;
-		case '>':
-			strcpy(output, "&gt;");
-			output += 4;
-			break;
-		case '&':
-			strcpy(output, "&amp;");
-			output += 5;
-			break;
-		case '\'':
-			strcpy(output, "&apos;");
-			output += 6;
-			break;
-		case '\"':
-			strcpy(output, "&quot;");
-			output += 6;
-			break;
-		default:
-			if (ch < 0x20 || ch > 0x80)
-			{
-				uint32 cp = ch;
+			case '\0':
+				goto BreakLoop;
+			case '<':
+				strcpy(output, "&lt;");
+				output += 4;
+				break;
+			case '>':
+				strcpy(output, "&gt;");
+				output += 4;
+				break;
+			case '&':
+				strcpy(output, "&amp;");
+				output += 5;
+				break;
+			case '\'':
+				strcpy(output, "&apos;");
+				output += 6;
+				break;
+			case '\"':
+				strcpy(output, "&quot;");
+				output += 6;
+				break;
+			default:
+				if (ch < 0x20 || ch > 0x80)
+				{
+					uint32 cp = ch;
 
-				// decode utf8
-				if ((cp >> 5) == 0x6 && (p[1] & 0xc0) == 0x80)
-				{
-					// 2 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 6) & 0x7ff) + (ch & 0x3f);
-				}
-				else if ((cp >> 4) == 0xe && (p[1] & 0xc0) == 0x80)
-				{
-					// 3 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 12) & 0xffff) + ((ch << 6) & 0xfff);
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += ch & 0x3f;
-				}
-				else if ((cp >> 3) == 0x1e && (p[1] & 0xc0) == 0x80)
-				{
-					// 4 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 18) & 0x1fffff) + ((ch << 12) & 0x3ffff);
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += (ch << 6) & 0xfff;
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += ch & 0x3f;
-				}
+					// decode utf8
+					if ((cp >> 5) == 0x6 && (p[1] & 0xc0) == 0x80)
+					{
+						// 2 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 6) & 0x7ff) + (ch & 0x3f);
+					}
+					else if ((cp >> 4) == 0xe && (p[1] & 0xc0) == 0x80)
+					{
+						// 3 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 12) & 0xffff) + ((ch << 6) & 0xfff);
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += ch & 0x3f;
+					}
+					else if ((cp >> 3) == 0x1e && (p[1] & 0xc0) == 0x80)
+					{
+						// 4 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 18) & 0x1fffff) + ((ch << 12) & 0x3ffff);
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += (ch << 6) & 0xfff;
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += ch & 0x3f;
+					}
 
-				// accept only valid XML 1.0 characters
-				if (cp == 0x9 || cp == 0xA || cp == 0xD ||
-					(0x20 <= cp && cp <= 0xD7FF) ||
-					(0xE000 <= cp && cp <= 0xFFFD) ||
-					(0x10000 <= cp && cp <= 0x10FFFF))
-				{
-					sprintf(output, "&#x%06x;", cp);
-					output += 10;
+					// accept only valid XML 1.0 characters
+					if (cp == 0x9 || cp == 0xA || cp == 0xD ||
+						(0x20 <= cp && cp <= 0xD7FF) ||
+						(0xE000 <= cp && cp <= 0xFFFD) ||
+						(0x10000 <= cp && cp <= 0x10FFFF))
+					{
+						sprintf(output, "&#x%06x;", cp);
+						output += 10;
+					}
+					else
+					{
+						// replace invalid characters with dots
+						*output++ = '.';
+					}
 				}
 				else
 				{
-					// replace invalid characters with dots
-					*output++ = '.';
+					*output++ = ch;
 				}
-			}
-			else
-			{
-				*output++ = ch;
-			}
-			break;
+				break;
 		}
 	}
 BreakLoop:
@@ -869,53 +870,53 @@ void WebUtil::XmlDecode(char* raw)
 	{
 		switch (*p)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '&':
-		{
-			p++;
-			if (!strncmp(p, "lt;", 3))
-			{
-				*output++ = '<';
-				p += 3;
-			}
-			else if (!strncmp(p, "gt;", 3))
-			{
-				*output++ = '>';
-				p += 3;
-			}
-			else if (!strncmp(p, "amp;", 4))
-			{
-				*output++ = '&';
-				p += 4;
-			}
-			else if (!strncmp(p, "apos;", 5))
-			{
-				*output++ = '\'';
-				p += 5;
-			}
-			else if (!strncmp(p, "quot;", 5))
-			{
-				*output++ = '\"';
-				p += 5;
-			}
-			else if (*p == '#')
-			{
-				int code = atoi((p++) + 1);
-				while (strchr("0123456789;", *p)) p++;
-				*output++ = (char)code;
-			}
-			else
-			{
-				// unknown entity, keep as is
-				*output++ = *(p - 1);
+			case '\0':
+				goto BreakLoop;
+			case '&':
+				{
+					p++;
+					if (!strncmp(p, "lt;", 3))
+					{
+						*output++ = '<';
+						p += 3;
+					}
+					else if (!strncmp(p, "gt;", 3))
+					{
+						*output++ = '>';
+						p += 3;
+					}
+					else if (!strncmp(p, "amp;", 4))
+					{
+						*output++ = '&';
+						p += 4;
+					}
+					else if (!strncmp(p, "apos;", 5))
+					{
+						*output++ = '\'';
+						p += 5;
+					}
+					else if (!strncmp(p, "quot;", 5))
+					{
+						*output++ = '\"';
+						p += 5;
+					}
+					else if (*p == '#')
+					{
+						int code = atoi((p++)+1);
+						while (strchr("0123456789;", *p)) p++;
+						*output++ = (char)code;
+					}
+					else
+					{
+						// unknown entity, keep as is
+						*output++ = *(p-1);
+						*output++ = *p++;
+					}
+					break;
+				}
+			default:
 				*output++ = *p++;
-			}
-			break;
-		}
-		default:
-			*output++ = *p++;
-			break;
+				break;
 		}
 	}
 BreakLoop:
@@ -968,9 +969,9 @@ bool WebUtil::XmlParseTagValue(const char* xml, const char* tag, char* valueBuf,
 
 void WebUtil::XmlStripTags(char* xml)
 {
-	while (char* start = strchr(xml, '<'))
+	while (char *start = strchr(xml, '<'))
 	{
-		char* end = strchr(start, '>');
+		char *end = strchr(start, '>');
 		if (!end)
 		{
 			break;
@@ -987,26 +988,26 @@ void WebUtil::XmlRemoveEntities(char* raw)
 	{
 		switch (*p)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '&':
-		{
-			char* p2 = p + 1;
-			while (isalpha(*p2) || strchr("0123456789#", *p2)) p2++;
-			if (*p2 == ';')
+			case '\0':
+				goto BreakLoop;
+			case '&':
 			{
-				*output++ = ' ';
-				p = p2 + 1;
+				char* p2 = p+1;
+				while (isalpha(*p2) || strchr("0123456789#", *p2)) p2++;
+				if (*p2 == ';')
+				{
+					*output++ = ' ';
+					p = p2+1;
+				}
+				else
+				{
+					*output++ = *p++;
+				}
+				break;
 			}
-			else
-			{
+			default:
 				*output++ = *p++;
-			}
-			break;
-		}
-		default:
-			*output++ = *p++;
-			break;
+				break;
 		}
 	}
 BreakLoop:
@@ -1023,22 +1024,22 @@ CString WebUtil::JsonEncode(const char* raw)
 		uchar ch = *p;
 		switch (ch)
 		{
-		case '\"':
-		case '\\':
-		case '/':
-		case '\b':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-			reqSize++;
-			break;
-		default:
-			if (ch < 0x20 || ch >= 0x80)
-			{
-				reqSize += 6;
+			case '\"':
+			case '\\':
+			case '/':
+			case '\b':
+			case '\f':
+			case '\n':
+			case '\r':
+			case '\t':
+				reqSize++;
 				break;
-			}
+			default:
+				if (ch < 0x20 || ch >= 0x80)
+				{
+					reqSize += 6;
+					break;
+				}
 		}
 	}
 
@@ -1052,80 +1053,80 @@ CString WebUtil::JsonEncode(const char* raw)
 		uchar ch = *p;
 		switch (ch)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '"':
-			strcpy(output, "\\\"");
-			output += 2;
-			break;
-		case '\\':
-			strcpy(output, "\\\\");
-			output += 2;
-			break;
-		case '/':
-			strcpy(output, "\\/");
-			output += 2;
-			break;
-		case '\b':
-			strcpy(output, "\\b");
-			output += 2;
-			break;
-		case '\f':
-			strcpy(output, "\\f");
-			output += 2;
-			break;
-		case '\n':
-			strcpy(output, "\\n");
-			output += 2;
-			break;
-		case '\r':
-			strcpy(output, "\\r");
-			output += 2;
-			break;
-		case '\t':
-			strcpy(output, "\\t");
-			output += 2;
-			break;
-		default:
-			if (ch < 0x20 || ch > 0x80)
-			{
-				uint32 cp = ch;
+			case '\0':
+				goto BreakLoop;
+			case '"':
+				strcpy(output, "\\\"");
+				output += 2;
+				break;
+			case '\\':
+				strcpy(output, "\\\\");
+				output += 2;
+				break;
+			case '/':
+				strcpy(output, "\\/");
+				output += 2;
+				break;
+			case '\b':
+				strcpy(output, "\\b");
+				output += 2;
+				break;
+			case '\f':
+				strcpy(output, "\\f");
+				output += 2;
+				break;
+			case '\n':
+				strcpy(output, "\\n");
+				output += 2;
+				break;
+			case '\r':
+				strcpy(output, "\\r");
+				output += 2;
+				break;
+			case '\t':
+				strcpy(output, "\\t");
+				output += 2;
+				break;
+			default:
+				if (ch < 0x20 || ch > 0x80)
+				{
+					uint32 cp = ch;
 
-				// decode utf8
-				if ((cp >> 5) == 0x6 && (p[1] & 0xc0) == 0x80)
-				{
-					// 2 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 6) & 0x7ff) + (ch & 0x3f);
-				}
-				else if ((cp >> 4) == 0xe && (p[1] & 0xc0) == 0x80)
-				{
-					// 3 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 12) & 0xffff) + ((ch << 6) & 0xfff);
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += ch & 0x3f;
-				}
-				else if ((cp >> 3) == 0x1e && (p[1] & 0xc0) == 0x80)
-				{
-					// 4 bytes
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp = ((cp << 18) & 0x1fffff) + ((ch << 12) & 0x3ffff);
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += (ch << 6) & 0xfff;
-					if (!(ch = *++p)) goto BreakLoop; // read next char
-					cp += ch & 0x3f;
-				}
+					// decode utf8
+					if ((cp >> 5) == 0x6 && (p[1] & 0xc0) == 0x80)
+					{
+						// 2 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 6) & 0x7ff) + (ch & 0x3f);
+					}
+					else if ((cp >> 4) == 0xe && (p[1] & 0xc0) == 0x80)
+					{
+						// 3 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 12) & 0xffff) + ((ch << 6) & 0xfff);
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += ch & 0x3f;
+					}
+					else if ((cp >> 3) == 0x1e && (p[1] & 0xc0) == 0x80)
+					{
+						// 4 bytes
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp = ((cp << 18) & 0x1fffff) + ((ch << 12) & 0x3ffff);
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += (ch << 6) & 0xfff;
+						if (!(ch = *++p)) goto BreakLoop; // read next char
+						cp += ch & 0x3f;
+					}
 
-				// we support only Unicode range U+0000-U+FFFF
-				sprintf(output, "\\u%04x", cp <= 0xFFFF ? cp : '.');
-				output += 6;
-			}
-			else
-			{
-				*output++ = ch;
-			}
-			break;
+					// we support only Unicode range U+0000-U+FFFF
+					sprintf(output, "\\u%04x", cp <= 0xFFFF ? cp : '.');
+					output += 6;
+				}
+				else
+				{
+					*output++ = ch;
+				}
+				break;
 		}
 	}
 BreakLoop:
@@ -1142,52 +1143,52 @@ void WebUtil::JsonDecode(char* raw)
 	{
 		switch (*p)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '\\':
-		{
-			p++;
-			switch (*p)
-			{
-			case '"':
-				*output++ = '"';
-				break;
+			case '\0':
+				goto BreakLoop;
 			case '\\':
-				*output++ = '\\';
-				break;
-			case '/':
-				*output++ = '/';
-				break;
-			case 'b':
-				*output++ = '\b';
-				break;
-			case 'f':
-				*output++ = '\f';
-				break;
-			case 'n':
-				*output++ = '\n';
-				break;
-			case 'r':
-				*output++ = '\r';
-				break;
-			case 't':
-				*output++ = '\t';
-				break;
-			case 'u':
-				*output++ = (char)strtol(p + 1, nullptr, 16);
-				p += 4;
-				break;
+				{
+					p++;
+					switch (*p)
+					{
+						case '"':
+							*output++ = '"';
+							break;
+						case '\\':
+							*output++ = '\\';
+							break;
+						case '/':
+							*output++ = '/';
+							break;
+						case 'b':
+							*output++ = '\b';
+							break;
+						case 'f':
+							*output++ = '\f';
+							break;
+						case 'n':
+							*output++ = '\n';
+							break;
+						case 'r':
+							*output++ = '\r';
+							break;
+						case 't':
+							*output++ = '\t';
+							break;
+						case 'u':
+							*output++ = (char)strtol(p + 1, nullptr, 16);
+							p += 4;
+							break;
+						default:
+							// unknown escape-sequence, should never occur
+							*output++ = *p;
+							break;
+					}
+					p++;
+					break;
+				}
 			default:
-				// unknown escape-sequence, should never occur
-				*output++ = *p;
+				*output++ = *p++;
 				break;
-			}
-			p++;
-			break;
-		}
-		default:
-			*output++ = *p++;
-			break;
 		}
 	}
 BreakLoop:
@@ -1252,21 +1253,21 @@ void WebUtil::HttpUnquote(char* raw)
 		return;
 	}
 
-	char* output = raw;
-	for (char* p = raw + 1;;)
+	char *output = raw;
+	for (char *p = raw+1;;)
 	{
 		switch (*p)
 		{
-		case '\0':
-		case '"':
-			goto BreakLoop;
-		case '\\':
-			p++;
-			*output++ = *p;
-			break;
-		default:
-			*output++ = *p++;
-			break;
+			case '\0':
+			case '"':
+				goto BreakLoop;
+			case '\\':
+				p++;
+				*output++ = *p;
+				break;
+			default:
+				*output++ = *p++;
+				break;
 		}
 	}
 BreakLoop:
@@ -1281,24 +1282,24 @@ void WebUtil::UrlDecode(char* raw)
 	{
 		switch (*p)
 		{
-		case '\0':
-			goto BreakLoop;
-		case '%':
-		{
-			p++;
-			uchar c1 = *p++;
-			uchar c2 = *p++;
-			c1 = '0' <= c1 && c1 <= '9' ? c1 - '0' : 'A' <= c1 && c1 <= 'F' ? c1 - 'A' + 10 :
-				'a' <= c1 && c1 <= 'f' ? c1 - 'a' + 10 : 0;
-			c2 = '0' <= c2 && c2 <= '9' ? c2 - '0' : 'A' <= c2 && c2 <= 'F' ? c2 - 'A' + 10 :
-				'a' <= c2 && c2 <= 'f' ? c2 - 'a' + 10 : 0;
-			uchar ch = (c1 << 4) + c2;
-			*output++ = (char)ch;
-			break;
-		}
-		default:
-			*output++ = *p++;
-			break;
+			case '\0':
+				goto BreakLoop;
+			case '%':
+				{
+					p++;
+					uchar c1 = *p++;
+					uchar c2 = *p++;
+					c1 = '0' <= c1 && c1 <= '9' ? c1 - '0' : 'A' <= c1 && c1 <= 'F' ? c1 - 'A' + 10 :
+						'a' <= c1 && c1 <= 'f' ? c1 - 'a' + 10 : 0;
+					c2 = '0' <= c2 && c2 <= '9' ? c2 - '0' : 'A' <= c2 && c2 <= 'F' ? c2 - 'A' + 10 :
+						'a' <= c2 && c2 <= 'f' ? c2 - 'a' + 10 : 0;
+					uchar ch = (c1 << 4) + c2;
+					*output++ = (char)ch;
+					break;
+				}
+			default:
+				*output++ = *p++;
+				break;
 		}
 	}
 BreakLoop:
@@ -1328,14 +1329,14 @@ CString WebUtil::UrlEncode(const char* raw)
 		uchar ch = *p;
 		switch (ch)
 		{
-		case '\0':
-			goto BreakLoop;
-		case ' ':
-			strcpy(output, "%20");
-			output += 3;
-			break;
-		default:
-			*output++ = ch;
+			case '\0':
+				goto BreakLoop;
+			case ' ':
+				strcpy(output, "%20");
+				output += 3;
+				break;
+			default:
+				*output++ = ch;
 		}
 	}
 BreakLoop:
@@ -1349,8 +1350,8 @@ CString WebUtil::Latin1ToUtf8(const char* str)
 {
 	CString res;
 	res.Reserve(strlen(str) * 2);
-	const uchar* in = (const uchar*)str;
-	uchar* out = (uchar*)(char*)res;
+	const uchar *in = (const uchar*)str;
+	uchar *out = (uchar*)(char*)res;
 	while (*in)
 	{
 		if (*in < 128)
@@ -1500,7 +1501,7 @@ void URL::ParseUrl()
 }
 
 
-RegEx::RegEx(const char* pattern, int matchBufSize) :
+RegEx::RegEx(const char *pattern, int matchBufSize) :
 	m_matchBufSize(matchBufSize)
 {
 #ifdef HAVE_REGEX_H
@@ -1525,7 +1526,7 @@ RegEx::~RegEx()
 #endif
 }
 
-bool RegEx::Match(const char* str)
+bool RegEx::Match(const char *str)
 {
 #ifdef HAVE_REGEX_H
 	return m_valid ? regexec(&m_context, str, m_matchBufSize, m_matches.get(), 0) == 0 : false;
@@ -1589,7 +1590,7 @@ bool WildMask::Match(const char* text)
 
 	const char* pat = m_pattern;
 	const char* str = text;
-	const char* spos, * wpos;
+	const char *spos, *wpos;
 	bool qmark = false;
 	bool star = false;
 
@@ -1601,14 +1602,14 @@ bool WildMask::Match(const char* text)
 			if (!qmark)
 			{
 				ExpandArray();
-				m_wildStart[m_wildCount - 1] = (int)(str - text);
-				m_wildLen[m_wildCount - 1] = 0;
+				m_wildStart[m_wildCount-1] = (int)(str - text);
+				m_wildLen[m_wildCount-1] = 0;
 				qmark = true;
 			}
 		}
 		else if (m_wantsPositions && qmark)
 		{
-			m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+			m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 			qmark = false;
 		}
 
@@ -1623,7 +1624,7 @@ bool WildMask::Match(const char* text)
 
 	if (m_wantsPositions && qmark)
 	{
-		m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+		m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 		qmark = false;
 	}
 
@@ -1633,14 +1634,14 @@ bool WildMask::Match(const char* text)
 		{
 			if (m_wantsPositions && qmark)
 			{
-				m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+				m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 				qmark = false;
 			}
 			if (m_wantsPositions && !star)
 			{
 				ExpandArray();
-				m_wildStart[m_wildCount - 1] = (int)(str - text);
-				m_wildLen[m_wildCount - 1] = 0;
+				m_wildStart[m_wildCount-1] = (int)(str - text);
+				m_wildLen[m_wildCount-1] = 0;
 				star = true;
 			}
 
@@ -1648,7 +1649,7 @@ bool WildMask::Match(const char* text)
 			{
 				if (m_wantsPositions && star)
 				{
-					m_wildLen[m_wildCount - 1] = strlen(str);
+					m_wildLen[m_wildCount-1] = strlen(str);
 				}
 
 				return true;
@@ -1661,8 +1662,8 @@ bool WildMask::Match(const char* text)
 			if (m_wantsPositions && !qmark)
 			{
 				ExpandArray();
-				m_wildStart[m_wildCount - 1] = (int)(str - text);
-				m_wildLen[m_wildCount - 1] = 0;
+				m_wildStart[m_wildCount-1] = (int)(str - text);
+				m_wildLen[m_wildCount-1] = 0;
 				qmark = true;
 			}
 
@@ -1673,12 +1674,12 @@ bool WildMask::Match(const char* text)
 		{
 			if (m_wantsPositions && qmark)
 			{
-				m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+				m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 				qmark = false;
 			}
 			else if (m_wantsPositions && star)
 			{
-				m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+				m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 				star = false;
 			}
 
@@ -1701,14 +1702,14 @@ bool WildMask::Match(const char* text)
 
 	if (m_wantsPositions && qmark)
 	{
-		m_wildLen[m_wildCount - 1] = (int)(str - (text + m_wildStart[m_wildCount - 1]));
+		m_wildLen[m_wildCount-1] = (int)(str - (text + m_wildStart[m_wildCount-1]));
 	}
 
 	if (*pat == '*' && m_wantsPositions && !star)
 	{
 		ExpandArray();
-		m_wildStart[m_wildCount - 1] = (int)(str - text);
-		m_wildLen[m_wildCount - 1] = strlen(str);
+		m_wildStart[m_wildCount-1] = (int)(str - text);
+		m_wildLen[m_wildCount-1] = strlen(str);
 	}
 
 	while (*pat == '*')
@@ -1723,7 +1724,7 @@ bool WildMask::Match(const char* text)
 #ifndef DISABLE_GZIP
 uint32 ZLib::GZipLen(int inputBufferLength)
 {
-	z_stream zstr{ 0 };
+	z_stream zstr{0};
 	return (uint32)deflateBound(&zstr, inputBufferLength);
 }
 
@@ -1773,13 +1774,13 @@ GUnzipStream::~GUnzipStream()
 	}
 }
 
-void GUnzipStream::Write(const void* inputBuffer, int inputBufferLength)
+void GUnzipStream::Write(const void *inputBuffer, int inputBufferLength)
 {
 	m_zStream.next_in = (Bytef*)inputBuffer;
 	m_zStream.avail_in = inputBufferLength;
 }
 
-GUnzipStream::EStatus GUnzipStream::Read(const void** outputBuffer, int* outputBufferLength)
+GUnzipStream::EStatus GUnzipStream::Read(const void **outputBuffer, int *outputBufferLength)
 {
 	m_zStream.next_out = (Bytef*)m_outputBuffer.get();
 	m_zStream.avail_out = m_bufferSize;
@@ -1795,14 +1796,14 @@ GUnzipStream::EStatus GUnzipStream::Read(const void** outputBuffer, int* outputB
 
 	switch (ret)
 	{
-	case Z_STREAM_END:
-	case Z_OK:
-		*outputBufferLength = m_bufferSize - m_zStream.avail_out;
-		*outputBuffer = m_outputBuffer.get();
-		return ret == Z_STREAM_END ? zlFinished : zlOK;
+		case Z_STREAM_END:
+		case Z_OK:
+			*outputBufferLength = m_bufferSize - m_zStream.avail_out;
+			*outputBuffer = m_outputBuffer.get();
+			return ret == Z_STREAM_END ? zlFinished : zlOK;
 
-	case Z_BUF_ERROR:
-		return zlOK;
+		case Z_BUF_ERROR:
+			return zlOK;
 	}
 
 	return zlError;
@@ -1880,7 +1881,7 @@ uint32 Crc32::Finish()
 
 #define GF2_DIM 32      /* dimension of GF(2) vectors (length of CRC) */
 
-uint32 gf2_matrix_times(uint32* mat, uint32 vec)
+uint32 gf2_matrix_times(uint32 *mat, uint32 vec)
 {
 	uint32 sum;
 
@@ -1894,7 +1895,7 @@ uint32 gf2_matrix_times(uint32* mat, uint32 vec)
 	return sum;
 }
 
-void gf2_matrix_square(uint32* square, uint32* mat)
+void gf2_matrix_square(uint32 *square, uint32 *mat)
 {
 	int n;
 
