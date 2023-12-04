@@ -231,6 +231,8 @@ Also required are:
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
+We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
+
 =====================================
 6. Configuration
 =====================================
