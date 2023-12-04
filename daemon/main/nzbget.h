@@ -178,13 +178,6 @@ using namespace MSXML;
 #include <pwd.h>
 #include <dirent.h>
 
-#ifndef DISABLE_LIBXML2
-#include <libxml/parser.h>
-#include <libxml/xmlreader.h>
-#include <libxml/xmlerror.h>
-#include <libxml/entities.h>
-#endif
-
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -229,6 +222,11 @@ using namespace MSXML;
 #include <mutex>
 #include <condition_variable>
 #include <chrono>
+
+#include <libxml/parser.h>
+#include <libxml/xmlreader.h>
+#include <libxml/xmlerror.h>
+#include <libxml/entities.h>
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

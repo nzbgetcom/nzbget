@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nZEDb="https://indexer.com/rss-info/" encoding="utf-8">
+ <channel>
+  <atom:link href="https://indexer.com/rss" rel="self" type="application/rss+xml"/>
+  <title>DS</title>
+  <description>DS RSS Details</description>
+  <link>https://indexer.com/</link>
+  <language>en-gb</language>
+  <webMaster>ds@indexer.com DS</webMaster>
+  <category>indexer, ds, slug</category>
+  <generator>nZEDb</generator>
+  <ttl>10</ttl>
+  <docs>https://indexer.com/rss-info/</docs>
+  <image url="https://indexer.com/themes/shared/img/logo.png" title="DS" link="https://indexer.com/" description="Visit DS - indexer"/>
+  <nZEDb:response offset="0" total="0"/>
+  <nZEDb:apilimits apiCurrent="29" apiMax="1000" grabCurrent="102" grabMax="100"/>
+  <item>
+   <title>Crows.And.Sparrows</title>
+   <guid isPermaLink="true">https://indexer.com/details/9bdef3a6cb1a370598f9af73ba50d40df354b327</guid>
+   <link>https://indexer.com/getnzb/9bdef3a6cb1a370598f9af73ba50d40df354b327.nzb&amp;i=60790&amp;r=4ad82a6e8c985b3060ef8972e6224daa</link>
+   <comments>https://indexer.com/details/9bdef3a6cb1a370598f9af73ba50d40df354b327#comments</comments>
+   <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+   <category>Movies &gt; HD</category>
+   <description>Description</description>
+   <enclosure url="https://indexer.com/getnzb/nzb.nzb" length="7445312955" type="application/x-nzb"/>
+   <nZEDb:attr name="episode" value="1"/>
+   <nZEDb:attr name="tvmazeid" value="33877"/>
+   <nZEDb:attr name="tvdbid" value="33877"/>
+   <nZEDb:attr name="rageid" value="33877"/>
+   <nZEDb:attr name="season" value="S03"/>
+   <nZEDb:attr name="category" value="2040"/>
+   <nZEDb:attr name="size" value="7445312955"/>
+   <nZEDb:attr name="files" value="21"/>
+   <nZEDb:attr name="poster" value="xtgncr0EP0Zf@6Fo1LHDQ.PK9"/>
+   <nZEDb:attr name="imdb" value="0042054"/>
+   <nZEDb:attr name="grabs" value="4"/>
+   <nZEDb:attr name="comments" value="0"/>
+   <nZEDb:attr name="password" value="0"/>
+   <nZEDb:attr name="usenetdate" value="Mon, 04 Dec 2023 05:46:59 +0000"/>
+   <nZEDb:attr name="group" value="alt.binaries.coolkidweb"/>
+  </item>
+ </channel>
+</rss>

@@ -439,172 +439,9 @@ void NzbFile::ReadPassword()
 	}
 }
 
-#ifdef WIN32
-bool NzbFile::Parse()
-{
-	CoInitialize(nullptr);
-
-	HRESULT hr;
-
-	MSXML::IXMLDOMDocumentPtr doc;
-	hr = doc.CreateInstance(MSXML::CLSID_DOMDocument);
-	if (FAILED(hr))
-	{
-		return false;
-	}
-
-	// Load the XML document file...
-	doc->put_resolveExternals(VARIANT_FALSE);
-	doc->put_validateOnParse(VARIANT_FALSE);
-	doc->put_async(VARIANT_FALSE);
-
-	_variant_t vFilename(*WString(*m_fileName));
-
-	// 1. first trying to load via filename without URL-encoding (certain charaters doesn't work when encoded)
-	VARIANT_BOOL success = doc->load(vFilename);
-	if (success == VARIANT_FALSE)
-	{
-		// 2. now trying filename encoded as URL
-		char url[2048];
-		EncodeUrl(m_fileName, url, 2048);
-		debug("url=\"%s\"", url);
-		_variant_t vUrl(url);
-
-		success = doc->load(vUrl);
-	}
-
-	if (success == VARIANT_FALSE)
-	{
-		_bstr_t r(doc->GetparseError()->reason);
-		const char* errMsg = r;
-		m_nzbInfo->AddMessage(Message::mkError, BString<1024>("Error parsing nzb-file %s: %s",
-			FileSystem::BaseFileName(m_fileName), errMsg));
-		return false;
-	}
-
-	if (!ParseNzb(doc))
-	{
-		return false;
-	}
-
-	if (m_nzbInfo->GetFileList()->empty())
-	{
-		m_nzbInfo->AddMessage(Message::mkError, BString<1024>(
-			"Error parsing nzb-file %s: file has no content", FileSystem::BaseFileName(m_fileName)));
-		return false;
-	}
-
-	ProcessFiles();
-
-	return true;
-}
-
-void NzbFile::EncodeUrl(const char* filename, char* url, int bufLen)
-{
-	WString widefilename(filename);
-
-	char* end = url + bufLen;
-	for (wchar_t* p = widefilename; *p && url < end - 3; p++)
-	{
-		wchar_t ch = *p;
-		if (('0' <= ch && ch <= '9') ||
-			('a' <= ch && ch <= 'z') ||
-			('A' <= ch && ch <= 'Z') ||
-			ch == '-' || ch == '.' || ch == '_' || ch == '~')
-		{
-			*url++ = (char)ch;
-		}
-		else
-		{
-			*url++ = '%';
-			uint32 a = (uint32)ch >> 4;
-			*url++ = a > 9 ? a - 10 + 'A' : a + '0';
-			a = ch & 0xF;
-			*url++ = a > 9 ? a - 10 + 'A' : a + '0';
-		}
-	}
-	*url = '\0';
-}
-
-bool NzbFile::ParseNzb(IUnknown* nzb)
-{
-	MSXML::IXMLDOMDocumentPtr doc = nzb;
-	MSXML::IXMLDOMNodePtr root = doc->documentElement;
-
-	MSXML::IXMLDOMNodePtr node = root->selectSingleNode("/nzb/head/meta[@type='password']");
-	if (node)
-	{
-		_bstr_t password(node->Gettext());
-		m_password = password;
-	}
-
-	MSXML::IXMLDOMNodeListPtr fileList = root->selectNodes("/nzb/file");
-	for (int i = 0; i < fileList->Getlength(); i++)
-	{
-		node = fileList->Getitem(i);
-		MSXML::IXMLDOMNodePtr attribute = node->Getattributes()->getNamedItem("subject");
-		if (!attribute) return false;
-		_bstr_t subject(attribute->Gettext());
-
-		std::unique_ptr<FileInfo> fileInfo = std::make_unique<FileInfo>();
-		fileInfo->SetSubject(subject);
-
-		attribute = node->Getattributes()->getNamedItem("date");
-		if (attribute)
-		{
-			_bstr_t date(attribute->Gettext());
-			fileInfo->SetTime(atoi(date));
-		}
-
-		MSXML::IXMLDOMNodeListPtr groupList = node->selectNodes("groups/group");
-		for (int g = 0; g < groupList->Getlength(); g++)
-		{
-			MSXML::IXMLDOMNodePtr node = groupList->Getitem(g);
-			_bstr_t group = node->Gettext();
-			fileInfo->GetGroups()->push_back((const char*)group);
-		}
-
-		MSXML::IXMLDOMNodeListPtr segmentList = node->selectNodes("segments/segment");
-		for (int g = 0; g < segmentList->Getlength(); g++)
-		{
-			MSXML::IXMLDOMNodePtr node = segmentList->Getitem(g);
-			_bstr_t bid = node->Gettext();
-			BString<1024> id("<%s>", (const char*)bid);
-
-			MSXML::IXMLDOMNodePtr attribute = node->Getattributes()->getNamedItem("number");
-			if (!attribute) return false;
-			_bstr_t number(attribute->Gettext());
-
-			attribute = node->Getattributes()->getNamedItem("bytes");
-			if (!attribute) return false;
-			_bstr_t bytes(attribute->Gettext());
-
-			int partNumber = atoi(number);
-			int lsize = atoi(bytes);
-
-			if (partNumber > 0)
-			{
-				std::unique_ptr<ArticleInfo> article = std::make_unique<ArticleInfo>();
-				article->SetPartNumber(partNumber);
-				article->SetMessageId(id);
-				article->SetSize(lsize);
-				AddArticle(fileInfo.get(), std::move(article));
-			}
-		}
-
-		AddFileInfo(std::move(fileInfo));
-	}
-	return true;
-}
-
-#else
 
 bool NzbFile::Parse()
 {
-#ifdef DISABLE_LIBXML2
-	error("Could not parse rss feed, program was compiled without libxml2 support");
-	return false;
-#else
 	xmlSAXHandler SAX_handler = {0};
 	SAX_handler.startElement = reinterpret_cast<startElementSAXFunc>(SAX_StartElement);
 	SAX_handler.endElement = reinterpret_cast<endElementSAXFunc>(SAX_EndElement);
@@ -633,7 +470,6 @@ bool NzbFile::Parse()
 	ProcessFiles();
 
 	return true;
-#endif
 }
 
 void NzbFile::Parse_StartElement(const char *name, const char **atts)
@@ -816,11 +652,8 @@ void NzbFile::SAX_characters(NzbFile* file, const char * xmlstr, int len)
 
 void* NzbFile::SAX_getEntity(NzbFile* file, const char * name)
 {
-#ifdef DISABLE_LIBXML2
-	void* e = nullptr;
-#else
 	xmlEntityPtr e = xmlGetPredefinedEntity((xmlChar* )name);
-#endif
+
 	if (!e)
 	{
 		file->m_nzbInfo->AddMessage(Message::mkWarning, "entity not found");
@@ -850,4 +683,3 @@ void NzbFile::SAX_error(NzbFile* file, const char *msg, ...)
 
 	file->m_nzbInfo->AddMessage(Message::mkError, BString<1024>("Error parsing nzb-file: %s", errMsg));
 }
-#endif
