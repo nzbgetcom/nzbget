@@ -34,9 +34,10 @@ jobs:
     - name: Generate signatures
       run: |
         mkdir -p builds
-        mv nzbget-windows-installers/* builds
-        mv nzbget-linux-installers/* builds
-        mv nzbget-osx-installers/* builds
+        mv nzbget-windows-installers/* builds || true
+        mv nzbget-linux-installers/* builds || true
+        mv nzbget-osx-installers/* builds || true
+        mv nzbget-synology-packages/* builds || true
         cd builds
         VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
         SIGS_FILE="nzbget-$VERSION.sig.txt"

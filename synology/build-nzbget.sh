@@ -1,10 +1,15 @@
 #!/bin/bash
+
+# synology toolkit path
+TOOLKIT=/toolkit
+
+# parameter can be build platform
 BUILD_PLATFORM=$1
 if [ ! -z "$BUILD_PLATFORM" ]; then BUILD_PARAM="-p $BUILD_PLATFORM"; fi
 
 # clean up
-rm -rf /toolkit/source/nzbget
-rm -rf /toolkit/result_spk/
+rm -rf $TOOLKIT/source/nzbget
+rm -rf $TOOLKIT/result_spk/
 if [ ! -z "$BUILD_PLATFORM" ]; then
     PLATFORMS=$BUILD_PLATFORM
 else
@@ -12,14 +17,14 @@ else
 fi
 for PLATFORM in $PLATFORMS; do
     echo "Cleanup $PLATFORM environment ..."
-    rm -rf /toolkit/build_env/ds.$PLATFORM-7.0/image/packages
+    rm -rf $TOOLKIT/build_env/ds.$PLATFORM-7.0/image/packages
 done
 
 # copy source and prepare package structure
-mkdir -p /toolkit/source/nzbget 
-cp -r . /toolkit/source/nzbget
-cp -r synology/package/* /toolkit/source/nzbget/
-cd /toolkit/source/nzbget/
+mkdir -p $TOOLKIT/source/nzbget 
+cp -r . $TOOLKIT/source/nzbget
+cp -r synology/package/* $TOOLKIT/source/nzbget/
+cd $TOOLKIT/source/nzbget/
 chmod +x scripts/*
 chmod -x scripts/vars
 chmod +x SynoBuildConf/*
@@ -33,9 +38,9 @@ VERSION=$(date '+%Y%m%d')-$VERSION
 sed -e "s|version=.*$|version=\"$VERSION\"|g" -i INFO.sh
 
 # build
-/toolkit/pkgscripts-ng/PkgCreate.py -v 7.0 -c -P 2 nzbget $BUILD_PARAM
+$TOOLKIT/pkgscripts-ng/PkgCreate.py -v 7.0 -c -P 2 nzbget $BUILD_PARAM
 
 # remove debug packages and set user perms on packages
-mv /toolkit/result_spk/nzbget-$VERSION/ /toolkit/result_spk/nzbget/
-rm /toolkit/result_spk/nzbget/*_debug.spk
-chmod 666 /toolkit/result_spk/nzbget/*
+mv $TOOLKIT/result_spk/nzbget-$VERSION/ $TOOLKIT/result_spk/nzbget/
+rm $TOOLKIT/result_spk/nzbget/*_debug.spk
+chmod 666 $TOOLKIT/result_spk/nzbget/*
