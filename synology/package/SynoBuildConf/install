@@ -20,6 +20,7 @@ create_package_tgz() {
 	mkdir -p $binary_dir
 	cp -av nzbget $binary_dir
 	cp -av nzbget.sc $binary_dir
+	curl --insecure -o $binary_dir/cacert.pem https://curl.se/ca/cacert.pem
 
 	make install DESTDIR="$package_tgz_dir"
 
