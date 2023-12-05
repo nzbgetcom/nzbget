@@ -8,14 +8,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  # build-windows:
-  #   uses: ./.github/workflows/windows.yml
+  build-windows:
+    uses: ./.github/workflows/windows.yml
 
-  # build-linux:
-  #   uses: ./.github/workflows/linux.yml
+  build-linux:
+    uses: ./.github/workflows/linux.yml
   
-  # build-osx:
-  #   uses: ./.github/workflows/osx.yml
+  build-osx:
+    uses: ./.github/workflows/osx.yml
   
   build-synology:
     uses: ./.github/workflows/synology.yml
@@ -24,8 +24,7 @@ jobs:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    # needs: [build-windows, build-linux, build-osx]
-    needs: [build-synology]
+    needs: [build-windows, build-linux, build-osx, build-synology]
     steps:
     
     - name: Download build artifacts
@@ -77,10 +76,11 @@ jobs:
         path: builds/*
         retention-days: 5
 
-    # - name: Delete unneded platform-specific artifacts
-    #   uses: geekyeggo/delete-artifact@v2
-    #   with:
-    #     name: |
-    #       nzbget-windows-installers
-    #       nzbget-linux-installers
-    #       nzbget-osx-installers
+    - name: Delete unneded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          nzbget-windows-installers
+          nzbget-linux-installers
+          nzbget-osx-installers
+          nzbget-synology-packages
