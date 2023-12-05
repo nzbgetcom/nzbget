@@ -38,7 +38,7 @@ We provide native packages for most Synology platforms (DSM 7.x). To select a co
 ## Installing / upgrading / uninstalling / reinstalling
 
 To install NZBGet package from Synology Package Center press Manual Install and select downloaded package -> Next -> Agree -> Select shared folder and download directory -> Credentials for web interface -> Done.
-After installation NZBGet web interface will be availabe from http://[Synology NAS IP or Hostname]:6789. Also this link avaulable from package center "Open" button on installed NZBGet package icon.
+After installation NZBGet web interface will be availabe from http://[Synology NAS IP or Hostname]:6789 with provided during installation username/password (nzbget/nzbget by default). Also this link available from package center "Open" button on installed NZBGet package icon.
 
 To upgrade nzbget package - do the same thing with new package. NZBGet settings will be keeped.
 
