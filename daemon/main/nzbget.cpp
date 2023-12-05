@@ -88,7 +88,7 @@ QueueScriptCoordinator* g_QueueScriptCoordinator;
 ServiceCoordinator* g_ServiceCoordinator;
 ScriptConfig* g_ScriptConfig;
 CommandScriptLog* g_CommandScriptLog;
-ExtensionManager::Manager* g_extensionManager;
+ExtensionManager::Manager* g_ExtensionManager;
 
 #ifdef WIN32
 WinConsole* g_WinConsole;
@@ -200,6 +200,7 @@ private:
 	std::unique_ptr<ServiceCoordinator> m_serviceCoordinator;
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
+	std::unique_ptr<ExtensionManager::Manager> m_ExtensionManager;
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
 #endif
@@ -383,6 +384,9 @@ void NZBGet::CreateGlobals()
 
 	m_commandScriptLog = std::make_unique<CommandScriptLog>();
 	g_CommandScriptLog = m_commandScriptLog.get();
+
+	m_ExtensionManager = std::make_unique<ExtensionManager::Manager>();
+	g_ExtensionManager = m_ExtensionManager.get();
 
 	m_scheduler = std::make_unique<Scheduler>();
 

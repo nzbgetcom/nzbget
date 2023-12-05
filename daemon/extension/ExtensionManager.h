@@ -32,18 +32,23 @@ namespace ExtensionManager
 	{
 	public:
 		Manager() = default;
-		~Manager() = default;
+		Manager(const Manager&) = delete;
+		Manager& operator=(const Manager&) = delete;
 
+		void LoadExtensions();
 		const Extensions& GetExtensions() const;
 
 	private:
-		void LoadExtensions(const char* directory, bool isSubDir);
-		void CreateTasks();
+		void LoadExtensionDir(const char* directory, bool isSubDir);
+		void CreateTasks() const;
+		bool ExtensionExists(const std::string& name) const;
+		void Sort(const std::vector<std::string>& order);
+		std::string GetExtensionName(const std::string& fileName) const;
 
 		Extensions m_extensions;
 	};
 }
 
-extern ExtensionManager::Manager* g_extensionManager;
+extern ExtensionManager::Manager* g_ExtensionManager;
 
 #endif

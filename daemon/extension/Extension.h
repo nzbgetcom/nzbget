@@ -17,8 +17,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef SCRIPT_H
-#define SCRIPT_H
+#ifndef EXTENSION_H
+#define EXTENSION_H
 
 #include "ManifestFile.h"
 
@@ -37,7 +37,6 @@ namespace Extension
 	{
 	public:
 		Script() = default;
-		Script(Script&&) noexcept = default;
 		Script(const char* name, const char* location);
 		void SetAuthor(const char* author);
 		const char* GetAuthor() const;

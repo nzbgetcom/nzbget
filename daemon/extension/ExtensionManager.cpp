@@ -19,6 +19,7 @@
 
 #include "nzbget.h"
 
+#include <algorithm>
 #include "Util.h"
 #include "FileSystem.h"
 #include "Options.h"
@@ -33,13 +34,37 @@ namespace ExtensionManager
 		return m_extensions;
 	}
 
-	void Manager::LoadExtensions(const char* directory)
+	void Manager::LoadExtensions()
+	{
+		if (Util::EmptyStr(g_Options->GetScriptDir()))
+		{
+			return;
+		}
+
+		Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+		while (const char* extensionDir = tokDir.Next())
+		{
+			LoadExtensionDir(extensionDir, false);
+		}
+
+		// first add all scripts from Extension Order
+		std::vector<std::string> extensionOrder;
+		Tokenizer tokOrder(g_Options->GetScriptOrder(), ",;");
+		while (const char* extensionName = tokOrder.Next())
+		{
+			extensionOrder.push_back(std::string(extensionName));
+		}
+
+		Sort(extensionOrder);
+	}
+
+	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
 	{
 		Extension extension;
 
 		if (ExtensionLoader::V2::Load(extension, directory)) {
 
-			if (!ScriptExists(m_extensions, script.GetName()))
+			if (!Manager::ExtensionExists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
 			}
@@ -52,18 +77,18 @@ namespace ExtensionManager
 			if (filename[0] == '.' || filename[0] == '_')
 				continue;
 
-			BString<1024> fullFilename("%s%c%s", directory, PATH_SEPARATOR, filename);
-
-			if (!FileSystem::DirectoryExists(fullFilename))
+			BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, filename);
+			if (!FileSystem::DirectoryExists(location))
 			{
-				BString<1024> scriptName = BuildScriptName(directory, filename, isSubDir);
-				if (ScriptExists(scripts, filename))
+
+				std::string extensionName = GetExtensionName(filename);
+				if (ExtensionExists(extensionName))
 				{
 					continue;
 				}
 
-				extension.SetName(scriptName);
-				extension.SetLocation(fullFilename);
+				extension.SetName(extensionName.c_str());
+				extension.SetLocation(location);
 				if (ExtensionLoader::V1::Load(extension))
 				{
 					m_extensions.push_back(std::move(extension));
@@ -71,29 +96,100 @@ namespace ExtensionManager
 			}
 			else if (!isSubDir)
 			{
-				LoadScriptDir(scripts, fullFilename, true);
+				LoadExtensionDir(location, true);
 			}
 		}
 	}
 
-	void Manager::CreateTasks()
+	void Manager::CreateTasks() const
 	{
-		for (Extension& extension : m_exensions)
+		for (const Extension& extension : m_extensions)
 		{
 			if (!extension.GetSchedulerScript() || Util::EmptyStr(extension.GetTaskTime()))
 			{
-
+				continue;
 			}
 			Tokenizer tok(g_Options->GetExtensions(), ",;");
 			while (const char* scriptName = tok.Next())
 			{
 				if (FileSystem::SameFilename(scriptName, extension.GetName()))
 				{
-					g_Options->CreateSchedulerTask(0, extension.GetTaskTime(),
-						nullptr, Options::scScript, extension.GetName());
+					g_Options->CreateSchedulerTask(
+						0,
+						extension.GetTaskTime(),
+						nullptr,
+						Options::scScript,
+						extension.GetName()
+					);
 					break;
 				}
 			}
 		}
+	}
+
+	bool Manager::ExtensionExists(const std::string& name) const
+	{
+		bool result = std::find_if(
+			std::cbegin(m_extensions),
+			std::cend(m_extensions),
+			[&name](const Extension& ext) {
+				return name == ext.GetName();
+			}
+		) != std::end(m_extensions);
+		return result;
+	}
+
+	void Manager::Sort(const std::vector<std::string>& order)
+	{
+		auto compare = [](const Extension& a, const Extension& b)
+			{
+				return strcmp(a.GetName(), b.GetName()) < 0;
+			};
+		if (order.empty())
+		{
+			std::sort(
+				std::begin(m_extensions),
+				std::end(m_extensions),
+				compare
+			);
+			return;
+		}
+
+
+		size_t count = 0;
+		for (size_t i = 0; i < order.size(); ++i)
+		{
+			std::string name = order[i];
+			auto it = std::find_if(
+				std::begin(m_extensions),
+				std::end(m_extensions),
+				[&name](const Extension& ext)
+				{
+					return name == ext.GetName();
+				}
+			);
+			if (it != std::end(m_extensions))
+			{
+				++count;
+				std::iter_swap(std::begin(m_extensions) + i, it);
+			}
+		}
+
+		std::sort(
+			std::begin(m_extensions) + count,
+			std::end(m_extensions),
+			compare
+		);
+	}
+
+	std::string Manager::GetExtensionName(const std::string& fileName) const
+	{
+		size_t lastIdx = fileName.find_last_of(".");
+		if (lastIdx != std::string::npos)
+		{
+			return fileName.substr(0, lastIdx);
+		}
+
+		return fileName;
 	}
 }
