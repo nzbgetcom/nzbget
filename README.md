@@ -35,6 +35,8 @@ Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget
 
 We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
 
+Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
+
 ## Supported platforms for installers
 
 `Windows`: Windows 7 and later, 32 or 64 Bit.

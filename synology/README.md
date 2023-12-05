@@ -46,7 +46,7 @@ Uninstall - from Package center select NZBGet package and hit uninstall in actio
 
 ## Shared folders permissions and nzbget
 
-When installed, the package adds all the necessary permissions for the selected Shared folder to work correcty. If you want to change the download path to another shared folder, you must manually add permissions for the nsbget user. For example - you changed MainDir to /volume2/some_shared_folder/some_download_directory. You must add r/w permission to `nzbget` user via Control Panel -> Shared Folder -> Select `some_shared_folder` -> Edit -> Permissions tab -> select from combobox `System internal user` -> nzbget -> Read/Write -> Save.
+When installed, the package adds all the necessary permissions for the selected Shared folder to work correcty. If you want to change the download path to another shared folder, you must manually add permissions for the nzbget user. For example - you changed MainDir to /volume2/some_shared_folder/some_download_directory. You must add r/w permission to `nzbget` user via Control Panel -> Shared Folder -> Select `some_shared_folder` -> Edit -> Permissions tab -> select from combobox `System internal user` -> nzbget -> Read/Write -> Save.
 
 ## Extensions
 
