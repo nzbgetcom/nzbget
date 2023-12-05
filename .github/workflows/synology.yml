@@ -1,4 +1,4 @@
-name: linux build 
+name: synology build 
 
 on:
   workflow_call:
