@@ -44,6 +44,7 @@ var Options = (new function($)
 	var loadConfigError;
 	var loadServerTemplateError;
 	var shortScriptNames = [];
+	let configTemplate = [];
 
 	var HIDDEN_SECTIONS = ['DISPLAY (TERMINAL)', 'POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
 	var POSTPARAM_SECTIONS = ['POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
@@ -64,16 +65,16 @@ var Options = (new function($)
 			});
 
 		// loading config templates and build list of post-processing parameters
-		_this.postParamConfig = [];
 		RPC.call('configtemplates', [false], function(data)
 			{
+				configTemplate = data;
 				initPostParamConfig(data);
 				RPC.next();
 			});
 
 		RPC.call('loadextensions', [false], function(data)
 			{
-				console.warn(data)
+				console.warn(data);
 				RPC.next();
 			});
 	}
@@ -120,12 +121,12 @@ var Options = (new function($)
 	function serverValuesLoaded(data)
 	{
 		serverValues = data;
-		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
+		RPC.call('loadextensions', [true], serverTemplateLoaded, loadServerTemplateError);
 	}
 
 	function serverTemplateLoaded(data)
 	{
-		serverTemplateData = data;
+		serverTemplateData = configTemplate.concat(data);
 		complete();
 	}
 
@@ -149,26 +150,31 @@ var Options = (new function($)
 		config.push(serverConfig);
 
 		// read scripts configs
-		for (var i=1; i < serverTemplateData.length; i++)
+		for (var i = 1; i < serverTemplateData.length; i++)
 		{
-			var scriptName = serverTemplateData[i].Name;
-			var scriptConfig = readConfigTemplate(serverTemplateData[i].Template, undefined, HIDDEN_SECTIONS, scriptName + ':');
-			scriptConfig.scriptName = scriptName;
-			scriptConfig.id = Util.makeId(scriptName);
-			scriptConfig.name = scriptName.substr(0, scriptName.lastIndexOf('.')) || scriptName; // remove file extension
-			scriptConfig.name = scriptConfig.name.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.shortName = shortScriptName(scriptName);
-			scriptConfig.shortName = scriptConfig.shortName.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.post = serverTemplateData[i].PostScript;
-			scriptConfig.scan = serverTemplateData[i].ScanScript;
-			scriptConfig.queue = serverTemplateData[i].QueueScript;
-			scriptConfig.scheduler = serverTemplateData[i].SchedulerScript;
-			scriptConfig.defscheduler = serverTemplateData[i].TaskTime !== '';
-			scriptConfig.feed = serverTemplateData[i].FeedScript;
-			scriptConfig.description = serverTemplateData[i].Description;
-			scriptConfig.author = serverTemplateData[i].Author;
-			scriptConfig.license = serverTemplateData[i].License;
-			scriptConfig.version = serverTemplateData[i].Version;
+			const scriptConfig = { sections: [] };
+			scriptConfig['scriptName'] = serverTemplateData[i].Location;
+			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
+			scriptConfig['name']= serverTemplateData[i].DisplayName;
+			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
+			scriptConfig['post'] = serverTemplateData[i].PostScript;
+			scriptConfig['scan'] = serverTemplateData[i].ScanScript;
+			scriptConfig['queue'] = serverTemplateData[i].QueueScript;
+			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
+			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
+			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
+			scriptConfig['description'] = serverTemplateData[i].Description;
+			scriptConfig['author'] = serverTemplateData[i].Author;
+			scriptConfig['license'] = serverTemplateData[i].License;
+			scriptConfig['version'] = serverTemplateData[i].Version;
+			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) {
+				const command = serverTemplateData[i].Commands[j];
+				//scriptConfig.sections.push(command);
+			}
+			for (let j = 0; j < serverTemplateData[i].Options.length; j++) {
+				const option = serverTemplateData[i].Options[j];
+				//scriptConfig.sections.push(option);
+			}
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -1073,9 +1079,7 @@ var Config = (new function($)
 
 			// create virtual option "About" with scripts description.
 			var option = {};
-			var shortName = conf.scriptName.replace(/^.*[\\\/]/, ''); // leave only file name (remove path)
-			shortName = shortName.substr(0, shortName.lastIndexOf('.')) || shortName; // remove file extension
-			option.caption = 'About ' + shortName;
+			option.caption = 'About ' + conf.shortName;
 			option.name = conf.nameprefix + option.caption;
 			option.value = '';
 			option.defvalue = '';

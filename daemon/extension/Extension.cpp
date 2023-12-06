@@ -62,6 +62,7 @@ namespace Extension
 		Json::JsonArray optionsJson;
 		Json::JsonArray commandsJson;
 
+		json["Location"] = script.GetLocation();
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
 		json["Description"] = script.GetDescription();

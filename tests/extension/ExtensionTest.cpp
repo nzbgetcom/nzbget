@@ -59,7 +59,8 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 	script.SetCommands(std::move(commands));
 
 	std::string result = Extension::ToJson(script);
-	std::string expected = "{\"Name\":\"Name\",\
+	std::string expected = "{\"Location\":\"\",\
+\"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
 \"Description\":\"Description\",\
 \"Author\":\"Author\",\
