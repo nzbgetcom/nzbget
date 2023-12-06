@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	script.SetName(name.c_str());
 	script.SetDisplayName(displayName.c_str());
 
-	BOOST_CHECK(ExtensionLoader::V1::Load(script));
+	BOOST_CHECK(ExtensionLoader::V1::Load(script) == true);
 
 	BOOST_CHECK(script.GetName() == name);
 	BOOST_CHECK(script.GetDisplayName() == displayName);

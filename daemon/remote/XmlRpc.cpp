@@ -2680,7 +2680,7 @@ void LoadExtensionsXmlCommand::Execute()
 	bool loadFromDisk = false;
 	NextParamAsBool(&loadFromDisk);
 
-	g_ExtensionManager->LoadExtensions();
+	g_ExtensionManager->LoadExtensions(*g_Options);
 
 	// ScriptConfig::ConfigTemplates loadedConfigTemplates;
 	// if (loadFromDisk)

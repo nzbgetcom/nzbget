@@ -22,7 +22,6 @@
 #include <algorithm>
 #include "Util.h"
 #include "FileSystem.h"
-#include "Options.h"
 #include "NString.h"
 #include "ExtensionLoader.h"
 #include "ExtensionManager.h"
@@ -34,14 +33,14 @@ namespace ExtensionManager
 		return m_extensions;
 	}
 
-	void Manager::LoadExtensions()
+	bool Manager::LoadExtensions(const IOptions& options)
 	{
-		if (Util::EmptyStr(g_Options->GetScriptDir()))
+		if (Util::EmptyStr(options.GetScriptDir()))
 		{
-			return;
+			return false;
 		}
 
-		Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+		Tokenizer tokDir(options.GetScriptDir(), ",;");
 		while (const char* extensionDir = tokDir.Next())
 		{
 			LoadExtensionDir(extensionDir, false);
@@ -49,13 +48,16 @@ namespace ExtensionManager
 
 		// first add all scripts from Extension Order
 		std::vector<std::string> extensionOrder;
-		Tokenizer tokOrder(g_Options->GetScriptOrder(), ",;");
+		Tokenizer tokOrder(options.GetScriptOrder(), ",;");
 		while (const char* extensionName = tokOrder.Next())
 		{
 			extensionOrder.push_back(std::string(extensionName));
 		}
 
 		Sort(extensionOrder);
+		CreateTasks(options);
+
+		return true;
 	}
 
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
@@ -101,7 +103,7 @@ namespace ExtensionManager
 		}
 	}
 
-	void Manager::CreateTasks() const
+	void Manager::CreateTasks(const IOptions& options) const
 	{
 		for (const Extension& extension : m_extensions)
 		{

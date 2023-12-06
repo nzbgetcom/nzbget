@@ -21,6 +21,7 @@
 #define EXTENSION_MANAGER_H
 
 #include <vector>
+#include "Options.h"
 #include "Extension.h"
 
 namespace ExtensionManager
@@ -35,12 +36,12 @@ namespace ExtensionManager
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
-		void LoadExtensions();
+		bool LoadExtensions(const IOptions& options);
 		const Extensions& GetExtensions() const;
 
 	private:
 		void LoadExtensionDir(const char* directory, bool isSubDir);
-		void CreateTasks() const;
+		void CreateTasks(const IOptions& options) const;
 		bool ExtensionExists(const std::string& name) const;
 		void Sort(const std::vector<std::string>& order);
 		std::string GetExtensionName(const std::string& fileName) const;
