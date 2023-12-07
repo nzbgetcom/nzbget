@@ -162,7 +162,7 @@ var Options = (new function($)
 				caption: serverTemplateData[i].DisplayName,
 			};
 			const scriptConfig = { sections: [section], nameprefix: serverTemplateData[i].Name, };
-			scriptConfig['scriptName'] = serverTemplateData[i].Location;
+			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name']= serverTemplateData[i].DisplayName;
 			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
@@ -184,15 +184,15 @@ var Options = (new function($)
 				const option = serverTemplateData[i].Options[j];
 				section.options.push({
 					caption: option.DisplayName,
-                    name: option.Name,
+                    name: serverTemplateData[i].Name + ':' + option.DisplayName,
                     value: option.Value,
                     defvalue: option.Value,
                     sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
                     select: option.Select,
                     description: option.Description,
-                    nocontent: true,
-                    formId: serverTemplateData[i].Name + '_' + option.name,
-                    type: option.length ? 'switch' : 'info'
+                    nocontent: false,
+                    formId: serverTemplateData[i].Name + '_' + option.DisplayName,
+                    type: option.Select.length ? 'switch' : 'info'
 				});
 			}
 			//mergeValues(scriptConfig.sections, serverValues);
