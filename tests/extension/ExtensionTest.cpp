@@ -67,12 +67,13 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 \"License\":\"License\",\
 \"Version\":\"Version\",\
 \"PostScript\":true,\
+\"ScanScript\":false,\
 \"QueueScript\":false,\
 \"SchedulerScript\":false,\
 \"FeedScript\":false,\
 \"QueueEvents\":\"QueueEvents\",\
 \"TaskTime\":\"TaskTime\",\
-\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Select\":[\"value\",\"value2\"]}],\
+\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Action\":\"action\"}]}";
 
 	BOOST_CHECK(result == expected);

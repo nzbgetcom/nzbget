@@ -152,7 +152,16 @@ var Options = (new function($)
 		// read scripts configs
 		for (var i = 1; i < serverTemplateData.length; i++)
 		{
-			const scriptConfig = { sections: [] };
+			const section = {
+				name: serverTemplateData[i].DisplayName,
+            	id: serverTemplateData[i].Name + '_' + 'OPTIONS',
+				options: [],
+				hidden: false,
+				postparam: false,
+				description: "",
+				caption: serverTemplateData[i].DisplayName,
+			};
+			const scriptConfig = { sections: [section], nameprefix: serverTemplateData[i].Name, };
 			scriptConfig['scriptName'] = serverTemplateData[i].Location;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name']= serverTemplateData[i].DisplayName;
@@ -173,14 +182,26 @@ var Options = (new function($)
 			}
 			for (let j = 0; j < serverTemplateData[i].Options.length; j++) {
 				const option = serverTemplateData[i].Options[j];
-				//scriptConfig.sections.push(option);
+				section.options.push({
+					caption: option.DisplayName,
+                    name: option.Name,
+                    value: option.Value,
+                    defvalue: option.Value,
+                    sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+                    select: option.Select,
+                    description: option.Description,
+                    nocontent: true,
+                    formId: serverTemplateData[i].Name + '_' + option.name,
+                    type: option.length ? 'switch' : 'info'
+				});
 			}
-			mergeValues(scriptConfig.sections, serverValues);
+			//mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
 
 		serverValues = null;
 		loadComplete(config);
+		console.warn(config)
 	}
 
 	function readWebSettings(config)

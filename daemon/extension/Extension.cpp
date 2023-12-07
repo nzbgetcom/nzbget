@@ -70,6 +70,7 @@ namespace Extension
 		json["License"] = script.GetLicense();
 		json["Version"] = script.GetVersion();
 		json["PostScript"] = script.GetPostScript();
+		json["ScanScript"] = script.GetScanScript();
 		json["QueueScript"] = script.GetQueueScript();
 		json["SchedulerScript"] = script.GetSchedulerScript();
 		json["FeedScript"] = script.GetFeedScript();
@@ -84,6 +85,7 @@ namespace Extension
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
 			optionJson["Description"] = option.description;
+			optionJson["Value"] = option.value;
 
 			for (const auto& select : option.select)
 			{
