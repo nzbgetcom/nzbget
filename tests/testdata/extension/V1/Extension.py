@@ -30,5 +30,15 @@
 # To check connection parameters click the button.
 #ConnectionTest@Send Test E-Mail
 
+# Email address you want this email to be sent to.
+#
+# Multiple addresses can be separated with comma.
+#To=myaccount@gmail.com
+
+# Banned extensions.
+#
+# Extensions must be separated by a comma (eg: .wmv, .divx).
+#BannedExtensions=
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################

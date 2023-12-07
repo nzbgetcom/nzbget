@@ -96,7 +96,7 @@
     "commands": [
         {
             "name": "connectionTest",
-            "action": "Send",
+            "action": "Send Test E-Mail",
             "displayName": "ConnectionTest",
             "description": "To check connection parameters click the button."
         }

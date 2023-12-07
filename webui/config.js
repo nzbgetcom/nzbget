@@ -154,14 +154,18 @@ var Options = (new function($)
 		{
 			const section = {
 				name: serverTemplateData[i].DisplayName,
-            	id: serverTemplateData[i].Name + '_' + 'OPTIONS',
+				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
 				options: [],
 				hidden: false,
 				postparam: false,
 				description: "",
 				caption: serverTemplateData[i].DisplayName,
 			};
-			const scriptConfig = { sections: [section], nameprefix: serverTemplateData[i].Name, };
+			const scriptConfig = { 
+				sections: [section], 
+				nameprefix: 
+				serverTemplateData[i].Name, 
+			};
 			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name']= serverTemplateData[i].DisplayName;
@@ -178,24 +182,36 @@ var Options = (new function($)
 			scriptConfig['version'] = serverTemplateData[i].Version;
 			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) {
 				const command = serverTemplateData[i].Commands[j];
-				//scriptConfig.sections.push(command);
+				section.options.push({
+					caption: command.DisplayName,
+					name: serverTemplateData[i].Name + ':' + command.Name,
+					value: null,
+					defvalue: command.Action,
+					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select: [],
+					description: command.Description,
+					nocontent: false,
+					formId: serverTemplateData[i].Name + '_' + command.DisplayName,
+					commandopts: 'settings',
+					type: 'command'
+				});
 			}
 			for (let j = 0; j < serverTemplateData[i].Options.length; j++) {
 				const option = serverTemplateData[i].Options[j];
 				section.options.push({
 					caption: option.DisplayName,
-                    name: serverTemplateData[i].Name + ':' + option.DisplayName,
-                    value: option.Value,
-                    defvalue: option.Value,
-                    sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
-                    select: option.Select,
-                    description: option.Description,
-                    nocontent: false,
-                    formId: serverTemplateData[i].Name + '_' + option.DisplayName,
-                    type: option.Select.length ? 'switch' : 'info'
+					name: serverTemplateData[i].Name + ':' + option.Name,
+					value: option.Value,
+					defvalue: option.Value,
+					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select: option.Select,
+					description: option.Description,
+					nocontent: false,
+					formId: serverTemplateData[i].Name + '_' + option.DisplayName,
+					type: option.Select.length ? 'switch' : 'info'
 				});
 			}
-			//mergeValues(scriptConfig.sections, serverValues);
+			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
 

@@ -176,7 +176,9 @@ namespace ExtensionLoader
 			size_t selectEndIdx = line.find(")");
 			if (selectStartIdx != std::string::npos && selectEndIdx != std::string::npos)
 			{
-				if (line.substr(selectStartIdx, selectEndIdx).find(",") == std::string::npos)
+				std::string delimiter = ", ";
+				bool foundComma = line.substr(selectStartIdx, selectEndIdx).find(delimiter) != std::string::npos;
+				if (!foundComma || !description.empty())
 				{
 					description += line.substr(2) + '\n';
 					continue;
@@ -187,7 +189,7 @@ namespace ExtensionLoader
 
 				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
 				size_t pos = 0;
-				std::string delimiter = ", ";
+	
 				while ((pos = selectStr.find(delimiter)) != std::string::npos) {
 					std::string option = selectStr.substr(0, pos);
 					select.push_back(option);
@@ -232,13 +234,14 @@ namespace ExtensionLoader
 				continue;
 			}
 			if (strncmp(line.c_str(), "# ", 2))
-			{
-				size_t delimPos = line.find("@");
-				if (delimPos != std::string::npos)
+			{	
+				size_t eqPos = line.find("=");
+				size_t atPos = line.find("@");
+				if (atPos != std::string::npos && eqPos == std::string::npos)
 				{
 					ManifestFile::Command command;
-					std::string name = line.substr(1, delimPos - 1);
-					std::string action = line.substr(delimPos + 1);
+					std::string name = line.substr(1, atPos - 1);
+					std::string action = line.substr(atPos + 1);
 					command.action = std::move(action);
 					command.name = std::move(name);
 					command.description = std::move(description);
@@ -247,12 +250,11 @@ namespace ExtensionLoader
 				}
 				else
 				{
-					size_t delimPos = line.find("=");
-					if (delimPos != std::string::npos)
+					if (eqPos != std::string::npos)
 					{
 						ManifestFile::Option option;
-						std::string name = line.substr(1, delimPos - 1);
-						std::string value = line.substr(delimPos + 1);
+						std::string name = line.substr(1, eqPos - 1);
+						std::string value = line.substr(eqPos + 1);
 						option.value = std::move(value);
 						option.name = std::move(name);
 						option.description = std::move(description);
