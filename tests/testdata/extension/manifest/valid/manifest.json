@@ -12,7 +12,7 @@
             "type": "string",
             "name": "sendMail",
             "displayName": "SendMail",
-            "default": "Always",
+            "value": "Always",
             "description": "When to send the message.",
             "select": ["Always", "OnFailure"]
         },
