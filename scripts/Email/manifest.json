@@ -9,6 +9,7 @@
     "description": "Send E-Mail notification.\nThis script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
     "options": [
         {
+            "type": "string",
             "name": "sendMail",
             "displayName": "SendMail",
             "value": "Always",
@@ -16,6 +17,7 @@
             "select": ["Always", "OnFailure"]
         },
         {
+            "type": "string",
             "name": "from",
             "displayName": "From",
             "value": "\"NZBGet\" <myaccount@gmail.com>",
@@ -23,6 +25,7 @@
             "select": []
         },
         {
+            "type": "string",
             "name": "to",
             "displayName": "To",
             "value": "myaccount@gmail.com",
@@ -30,6 +33,7 @@
             "select": []
         },
         {
+            "type": "string",
             "name": "server",
             "displayName": "Server",
             "value": "smtp.gmail.com",
@@ -37,13 +41,15 @@
             "select": []
         },
         {
+            "type": "number",
             "name": "port",
             "displayName": "Port",
             "value": "25",
             "description": "SMTP server port (1-65535)",
-            "select": []
+            "select": ["1", "65535"]
         },
         {
+            "type": "string",
             "name": "encryption",
             "displayName": "Encryption",
             "value": "yes",
@@ -51,6 +57,7 @@
             "select": ["no", "yes", "force"]
         },
         {
+            "type": "string",
             "name": "username",
             "displayName": "Username",
             "value": "yes",
@@ -58,6 +65,7 @@
             "select": []
         },
         {
+            "type": "string",
             "name": "password",
             "displayName": "Password",
             "value": "mypass",
@@ -65,6 +73,7 @@
             "select": []
         },
         {
+            "type": "string",
             "name": "statistics",
             "displayName": "Statistics",
             "value": "yes",
@@ -72,6 +81,7 @@
             "select": ["yes", "no"]
         },
         {
+            "type": "string",
             "name": "fileList",
             "displayName": "FileList",
             "value": "yes",
@@ -79,6 +89,7 @@
             "select": ["yes", "no"]
         },
         {
+            "type": "string",
             "name": "brokenLog",
             "displayName": "BrokenLog",
             "value": "yes",
@@ -86,6 +97,7 @@
             "select": ["yes", "no"]
         },
         {
+            "type": "string",
             "name": "nzbLog",
             "displayName": "NzbLog",
             "value": "OnFailure",

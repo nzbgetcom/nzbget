@@ -55,6 +55,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetVersion() == std::string(""));
 
 	BOOST_CHECK(extension.GetCommands().size() == 1);
+
 	auto command = extension.GetCommands()[0];
 	BOOST_CHECK(command.name == std::string("ConnectionTest"));
 	BOOST_CHECK(command.displayName == std::string("ConnectionTest"));
@@ -62,7 +63,9 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command.description == std::string("To check connection parameters click the button.\n"));
 
 	BOOST_CHECK(extension.GetOptions().size() == 6);
+
 	auto option = extension.GetOptions()[0];
+	BOOST_CHECK(option.type == std::string("string"));
 	BOOST_CHECK(option.name == std::string("FileList"));
 	BOOST_CHECK(option.displayName == std::string("FileList"));
 	BOOST_CHECK(option.description == std::string("Append list of files to the message.\nAdd the list of downloaded files (the content of destination directory).\n"));
@@ -71,13 +74,16 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option.select[1] == std::string("no"));
 
 	auto option2 = extension.GetOptions()[1];
+	BOOST_CHECK(option2.type == std::string("number"));
 	BOOST_CHECK(option2.name == std::string("Port"));
 	BOOST_CHECK(option2.displayName == std::string("Port"));
 	BOOST_CHECK(option2.description == std::string("SMTP server port (1-65535).\n"));
 	BOOST_CHECK(option2.value == std::string("25"));
-	BOOST_CHECK(option2.select.size() == 0);
+	BOOST_CHECK(option2.select[0] == std::string("1"));
+	BOOST_CHECK(option2.select[1] == std::string("65535"));
 
 	auto option3 = extension.GetOptions()[2];
+	BOOST_CHECK(option3.type == std::string("string"));
 	BOOST_CHECK(option3.name == std::string("SendMail"));
 	BOOST_CHECK(option3.displayName == std::string("SendMail"));
 	BOOST_CHECK(option3.description == std::string("When to send the message.\n"));
@@ -86,6 +92,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option3.select[1] == std::string("OnFailure"));
 
 	auto option4 = extension.GetOptions()[3];
+	BOOST_CHECK(option4.type == std::string("string"));
 	BOOST_CHECK(option4.name == std::string("Encryption"));
 	BOOST_CHECK(option4.displayName == std::string("Encryption"));
 	BOOST_CHECK(option4.description == std::string("Secure communication using TLS/SSL.\n no    - plain text communication (insecure);\n yes   - switch to secure session using StartTLS command;\n force - start secure session on encrypted socket.\n"));
@@ -95,6 +102,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option4.select[2] == std::string("force"));
 
 	auto option5 = extension.GetOptions()[4];
+	BOOST_CHECK(option5.type == std::string("string"));
 	BOOST_CHECK(option5.name == std::string("To"));
 	BOOST_CHECK(option5.displayName == std::string("To"));
 	BOOST_CHECK(option5.description == std::string("Email address you want this email to be sent to.\nMultiple addresses can be separated with comma.\n"));
@@ -102,6 +110,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option5.select.size() == 0);
 
 	auto option6 = extension.GetOptions()[5];
+	BOOST_CHECK(option6.type == std::string("string"));
 	BOOST_CHECK(option6.name == std::string("BannedExtensions"));
 	BOOST_CHECK(option6.displayName == std::string("BannedExtensions"));
 	BOOST_CHECK(option6.description == std::string("Banned extensions.\nExtensions must be separated by a comma (eg: .wmv, .divx).\n"));

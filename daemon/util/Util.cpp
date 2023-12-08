@@ -382,6 +382,15 @@ std::vector<CString> Util::SplitCommandLine(const char* commandLine)
 	return result;
 }
 
+bool Util::IsNumber(const std::string& str) {
+	for (char c : str) {
+		if (!std::isdigit(c)) {
+			return false;
+		}
+	}
+	return true;
+}
+
 void Util::TrimRight(char* str)
 {
 	char* end = str + strlen(str) - 1;

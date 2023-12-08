@@ -62,6 +62,7 @@ namespace ExtensionLoader
 	}
 
 	Extension::Kind GetScriptKind(const char* line);
+	std::string GetType(const std::string& value);
 }
 
 #endif

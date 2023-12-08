@@ -85,7 +85,7 @@ namespace ManifestFile
 	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
 	{
 		auto rawCommands = json.if_contains("commands");
-		if (!rawCommands)
+		if (!rawCommands || !rawCommands->is_array())
 			return false;
 
 		for (auto& value : rawCommands->as_array())
@@ -114,17 +114,19 @@ namespace ManifestFile
 	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
 	{
 		auto rawOptions = json.if_contains("options");
-		if (!rawOptions)
+		if (!rawOptions || !rawOptions->is_array())
 			return false;
 
 		for (auto& optionVal : rawOptions->as_array())
 		{
 			Json::JsonObject optionJson = optionVal.as_object();
 			auto selectJson = optionJson.if_contains("select");
-			if (!selectJson)
+			if (!selectJson || !selectJson->is_array())
 				continue;
 
 			Option option;
+			if (!CheckKeyAndSet(optionJson, "type", option.type))
+				continue;
 
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;
@@ -152,7 +154,7 @@ namespace ManifestFile
 	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
-		if (!rawProperty)
+		if (!rawProperty || !rawProperty->is_string())
 			return false;
 
 		property = rawProperty->as_string().c_str();

@@ -123,11 +123,11 @@ namespace ExtensionLoader
 			return false;
 		}
 
+		BuildDisplayName(script);
 		script.SetKind(std::move(kind));
 		script.SetQueueEvents(queueEvents.c_str());
 		script.SetDescription(description.c_str());
 		script.SetTaskTime(taskTime.c_str());
-		BuildDisplayName(script);
 		script.SetOptions(std::move(options));
 		script.SetCommands(std::move(commands));
 
@@ -176,20 +176,29 @@ namespace ExtensionLoader
 			size_t selectEndIdx = line.find(")");
 			if (selectStartIdx != std::string::npos && selectEndIdx != std::string::npos)
 			{
-				std::string delimiter = ", ";
-				bool foundComma = line.substr(selectStartIdx, selectEndIdx).find(delimiter) != std::string::npos;
-				if (!foundComma || !description.empty())
+				std::string comma = ", ";
+				std::string dash = "-";
+				bool foundComma = line.substr(selectStartIdx, selectEndIdx).find(comma) != std::string::npos;
+				bool foundDash  = line.substr(selectStartIdx, selectEndIdx).find(dash) != std::string::npos;
+				if (!foundComma && !foundDash || !description.empty())
 				{
 					description += line.substr(2) + '\n';
 					continue;
 				}
+
+				if (foundDash)
+				{
+					description += line.substr(2) + '\n';
+				}
+				else {
+					description += line.substr(2, selectStartIdx - 3) + ".\n";
+				}
+
 				ManifestFile::Option option;
 				std::vector<std::string> select;
-				description += line.substr(2, selectStartIdx - 3) + ".\n";
-
 				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
 				size_t pos = 0;
-	
+				std::string delimiter = foundDash ? dash : comma;
 				while ((pos = selectStr.find(delimiter)) != std::string::npos) {
 					std::string option = selectStr.substr(0, pos);
 					select.push_back(option);
@@ -222,6 +231,7 @@ namespace ExtensionLoader
 						{
 							std::string name = line.substr(1, delimPos - 1);
 							std::string value = line.substr(delimPos + 1);
+							option.type = GetType(value);
 							option.value = std::move(value);
 							option.name = std::move(name);
 							option.displayName = option.name;
@@ -255,6 +265,7 @@ namespace ExtensionLoader
 						ManifestFile::Option option;
 						std::string name = line.substr(1, eqPos - 1);
 						std::string value = line.substr(eqPos + 1);
+						option.type = GetType(value);
 						option.value = std::move(value);
 						option.name = std::move(name);
 						option.description = std::move(description);
@@ -301,5 +312,14 @@ namespace ExtensionLoader
 		kind.scheduler = strstr(line, SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
 		kind.feed = strstr(line, FEED_SCRIPT_SIGNATURE) != nullptr;
 		return kind;
+	}
+
+	std::string GetType(const std::string& value)
+	{
+		if (value.empty())
+		{
+			return "string";
+		}
+		return Util::IsNumber(value) ? "number" : "string";
 	}
 }

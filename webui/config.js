@@ -198,17 +198,18 @@ var Options = (new function($)
 			}
 			for (let j = 0; j < serverTemplateData[i].Options.length; j++) {
 				const option = serverTemplateData[i].Options[j];
+				const [ type, select ] = GetTypeAndSelect(option);
 				section.options.push({
 					caption: option.DisplayName,
 					name: serverTemplateData[i].Name + ':' + option.Name,
 					value: option.Value,
 					defvalue: option.Value,
 					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
-					select: option.Select,
+					select,
 					description: option.Description,
 					nocontent: false,
 					formId: serverTemplateData[i].Name + '_' + option.DisplayName,
-					type: option.Select.length ? 'switch' : 'info'
+					type
 				});
 			}
 			mergeValues(scriptConfig.sections, serverValues);
@@ -218,6 +219,23 @@ var Options = (new function($)
 		serverValues = null;
 		loadComplete(config);
 		console.warn(config)
+	}
+
+	function GetTypeAndSelect(option)
+	{
+		if (option.Type === 'string')
+		{
+			return ['text', option.Select];
+		}
+		if (option.Type === 'number')
+		{
+			if (option.Select.length > 1)
+			{
+				return ['numeric', [option.Select[0] + '-' + option.Select[1]]];
+			}
+			return ['numeric', option.Select];
+		}
+		return ['info', option.Select];
 	}
 
 	function readWebSettings(config)

@@ -46,6 +46,7 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 	option.name = "name";
 	option.value = "value";
 	option.select = { "value", "value2" };
+	option.type = "string";
 
 	command.action = "action";
 	command.name = "name";
@@ -73,7 +74,7 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 \"FeedScript\":false,\
 \"QueueEvents\":\"QueueEvents\",\
 \"TaskTime\":\"TaskTime\",\
-\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
+\"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Action\":\"action\"}]}";
 
 	BOOST_CHECK(result == expected);

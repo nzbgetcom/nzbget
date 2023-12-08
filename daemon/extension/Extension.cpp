@@ -82,11 +82,12 @@ namespace Extension
 			Json::JsonObject optionJson;
 			Json::JsonArray selectJson;
 
+			optionJson["Type"] = option.type;
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
 			optionJson["Description"] = option.description;
 			optionJson["Value"] = option.value;
-
+			
 			for (const auto& select : option.select)
 			{
 				selectJson.push_back(Json::JsonValue(select));

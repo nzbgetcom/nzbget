@@ -30,6 +30,7 @@ namespace ManifestFile
 
 	struct Option
 	{
+		std::string type;
 		std::string name;
 		std::string displayName;
 		std::string description;

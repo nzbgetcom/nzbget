@@ -9,11 +9,20 @@
     "description": "Description",
     "options": [
         {
+            "type": "string",
             "name": "sendMail",
             "displayName": "SendMail",
-            "value": "Always",
+            "default": "Always",
             "description": "When to send the message.",
             "select": ["Always", "OnFailure"]
+        },
+        {
+            "type": "number",
+            "name": "port",
+            "displayName": "Port",
+            "value": "25",
+            "description": "SMTP server port (1-65535)",
+            "select": ["1", "65535"]
         }
     ],
     "commands": [
