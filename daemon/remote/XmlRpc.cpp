@@ -2736,29 +2736,11 @@ void ConfigTemplatesXmlCommand::Execute()
 {
 	const char* XML_CONFIG_ITEM =
 		"<value><struct>\n"
-		"<member><name>Name</name><value><string>%s</string></value></member>\n"
-		"<member><name>DisplayName</name><value><string>%s</string></value></member>\n"
-		"<member><name>PostScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>ScanScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>SchedulerScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>FeedScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueEvents</name><value><string>%s</string></value></member>\n"
-		"<member><name>TaskTime</name><value><string>%s</string></value></member>\n"
 		"<member><name>Template</name><value><string>%s</string></value></member>\n"
 		"</struct></value>\n";
 
 	const char* JSON_CONFIG_ITEM =
 		"{\n"
-		"\"Name\" : \"%s\",\n"
-		"\"DisplayName\" : \"%s\",\n"
-		"\"PostScript\" : %s,\n"
-		"\"ScanScript\" : %s,\n"
-		"\"QueueScript\" : %s,\n"
-		"\"SchedulerScript\" : %s,\n"
-		"\"FeedScript\" : %s,\n"
-		"\"QueueEvents\" : \"%s\",\n"
-		"\"TaskTime\" : \"%s\",\n"
 		"\"Template\" : \"%s\"\n"
 		"}";
 
@@ -2786,15 +2768,6 @@ void ConfigTemplatesXmlCommand::Execute()
 	{
 		AppendCondResponse(",\n", IsJson() && index++ > 0);
 		AppendFmtResponse(IsJson() ? JSON_CONFIG_ITEM : XML_CONFIG_ITEM,
-			*EncodeStr(configTemplate.GetScript()->GetName()),
-			*EncodeStr(configTemplate.GetScript()->GetDisplayName()),
-			BoolToStr(configTemplate.GetScript()->GetPostScript()),
-			BoolToStr(configTemplate.GetScript()->GetScanScript()),
-			BoolToStr(configTemplate.GetScript()->GetQueueScript()),
-			BoolToStr(configTemplate.GetScript()->GetSchedulerScript()),
-			BoolToStr(configTemplate.GetScript()->GetFeedScript()),
-			*EncodeStr(configTemplate.GetScript()->GetQueueEvents()),
-			*EncodeStr(configTemplate.GetScript()->GetTaskTime()),
 			*EncodeStr(configTemplate.GetTemplate()));
 	}
 
