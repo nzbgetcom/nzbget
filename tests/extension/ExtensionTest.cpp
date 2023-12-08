@@ -25,7 +25,7 @@
 #include <filesystem>
 #include "Extension.h"
 
-BOOST_AUTO_TEST_CASE(ExtensionTest)
+Extension::Script GetExtension()
 {
 	Extension::Script script;
 	ManifestFile::Option option;
@@ -59,6 +59,12 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 	script.SetOptions(std::move(options));
 	script.SetCommands(std::move(commands));
 
+	return script;
+}
+
+BOOST_AUTO_TEST_CASE(ToJsonTest)
+{
+	Extension::Script script = GetExtension();
 	std::string result = Extension::ToJson(script);
 	std::string expected = "{\"Location\":\"\",\
 \"Name\":\"Name\",\
@@ -77,5 +83,30 @@ BOOST_AUTO_TEST_CASE(ExtensionTest)
 \"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Action\":\"action\"}]}";
 
+	BOOST_CHECK(result == expected);
+}
+
+
+BOOST_AUTO_TEST_CASE(ToXmlTest)
+{
+	Extension::Script script = GetExtension();
+	std::string result = Extension::ToXml(script);
+	std::string expected = "<value><struct>\
+<member><name>Name</name><value><string>Name</string></value></member>\
+<member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
+<member><name>Description</name><value><string>Description</string></value></member>\
+<member><name>Author</name><value><string>Author</string></value></member>\
+<member><name>License</name><value><string>License</string></value></member>\
+<member><name>Version</name><value><string>Version</string></value></member>\
+<member><name>PostScript</name><value><boolean>true</boolean></value></member>\
+<member><name>ScanScript</name><value><boolean>false</boolean></value></member>\
+<member><name>QueueScript</name><value><boolean>false</boolean></value></member>\
+<member><name>SchedulerScript</name><value><boolean>false</boolean></value></member>\
+<member><name>FeedScript</name><value><boolean>false</boolean></value></member>\
+<member><name>QueueEvents</name><value><string>QueueEvents</string></value></member>\
+<member><name>TaskTime</name><value><string>TaskTime</string></value></member>\
+</struct></value>";
+	BOOST_TEST_MESSAGE(result);
+	BOOST_TEST_MESSAGE(expected);
 	BOOST_CHECK(result == expected);
 }

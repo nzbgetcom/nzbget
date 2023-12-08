@@ -87,7 +87,7 @@ namespace Extension
 			optionJson["DisplayName"] = option.displayName;
 			optionJson["Description"] = option.description;
 			optionJson["Value"] = option.value;
-			
+
 			for (const auto& select : option.select)
 			{
 				selectJson.push_back(Json::JsonValue(select));
@@ -112,5 +112,72 @@ namespace Extension
 		json["Commands"] = std::move(commandsJson);
 
 		return Json::Serialize(json);
+	}
+
+	std::string ToXml(const Script& script)
+	{
+		xmlNodePtr scriptNode = xmlNewNode(NULL, BAD_CAST "value><struct");
+
+		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
+		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
+		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST "Name");
+		xmlNewChild(valueNode, NULL, BAD_CAST "string", BAD_CAST script.GetName());
+		xmlAddChild(scriptNode, memberNode);
+		xmlAddChild(scriptNode, valueNode);
+		//xmlNewChild(scriptNode, NULL, BAD_CAST "member><name>Author</name><value><string", BAD_CAST script.GetAuthor());
+		////xmlNewChild(scriptNode, NULL, BAD_CAST "Main", BAD_CAST script.GetN);
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "PostScript", BAD_CAST script.GetPostScript());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "ScanScript", BAD_CAST script.GetScanScript());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "QueueScript", BAD_CAST script.GetQueueScript());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "SchedulerScript", BAD_CAST script.GetSchedulerScript());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "FeedScript", BAD_CAST script.GetFeedScript());
+		// 
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "DisplayName", BAD_CAST script.GetDisplayName());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "Version", BAD_CAST script.GetVersion());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "License", BAD_CAST script.GetLicense());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "Description", BAD_CAST script.GetDescription());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "QueueEvents", BAD_CAST script.GetQueueEvents());
+		// xmlNewChild(scriptNode, NULL, BAD_CAST "TaskTime", BAD_CAST script.GetTaskTime());
+
+		// for (const ManifestFile::Option& option : script.GetOptions()) {
+		// 	xmlNodePtr optionNode = xmlNewChild(scriptNode, NULL, BAD_CAST "Options", NULL);
+		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Type", BAD_CAST option.type.c_str());
+		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Name", BAD_CAST option.name.c_str());
+		// 	xmlNewChild(optionNode, NULL, BAD_CAST "DisplayName", BAD_CAST option.displayName.c_str());
+		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Description", BAD_CAST option.description.c_str());
+		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Value", BAD_CAST option.value.c_str());
+
+		// 	for (const std::string& selectOption : option.select) {
+		// 		xmlNewChild(optionNode, NULL, BAD_CAST "Select", BAD_CAST selectOption.c_str());
+		// 	}
+		// }
+
+		// for (const ManifestFile::Command& command : script.GetCommands()) {
+		// 	xmlNodePtr commandNode = xmlNewChild(scriptNode, NULL, BAD_CAST "Commands", NULL);
+		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Name", BAD_CAST command.name.c_str());
+		// 	xmlNewChild(commandNode, NULL, BAD_CAST "DisplayName", BAD_CAST command.displayName.c_str());
+		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Description", BAD_CAST command.description.c_str());
+		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Action", BAD_CAST command.action.c_str());
+		// }
+
+		std::string result;
+
+		xmlBufferPtr buffer = xmlBufferCreate();
+		if (buffer == nullptr) {
+			xmlBufferFree(buffer);
+			xmlFreeNode(scriptNode);
+			return result;
+		}
+
+		int size = xmlNodeDump(buffer, scriptNode->doc, scriptNode, 0, 1);
+		if (size > 0) {
+			result = std::string(reinterpret_cast<const char*>(buffer->content), size);
+		}
+
+		xmlBufferFree(buffer);
+		xmlFreeNode(scriptNode);
+		xmlCleanupParser();
+
+		return result;
 	}
 }

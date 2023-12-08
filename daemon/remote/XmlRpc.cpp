@@ -2682,26 +2682,18 @@ void LoadExtensionsXmlCommand::Execute()
 
 	g_ExtensionManager->LoadExtensions(*g_Options);
 
-	// ScriptConfig::ConfigTemplates loadedConfigTemplates;
-	// if (loadFromDisk)
-	// {
-	// 	if (!g_ScriptConfig->LoadConfigTemplates(&loadedConfigTemplates))
-	// 	{
-	// 		BuildErrorResponse(3, "Could not read configuration templates");
-	// 		return;
-	// 	}
-	// 	configTemplates = &loadedConfigTemplates;
-	// }
-
 	AppendResponse(IsJson() ? "[\n" : "<array><data>\n");
-	
+
 	int index = 0;
 
 	for (const auto& extension : g_ExtensionManager->GetExtensions())
 	{
+		std::string response = IsJson()
+			? Extension::ToJson(extension)
+			: Extension::ToXml(extension);
+
 		AppendCondResponse(",\n", IsJson() && index++ > 0);
-		auto json = Extension::ToJson(extension);
-		AppendResponse(json.c_str());
+		AppendResponse(response.c_str());
 	}
 
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");

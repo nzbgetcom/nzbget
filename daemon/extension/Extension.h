@@ -83,6 +83,7 @@ namespace Extension
 	};
 
 	std::string ToJson(const Script& script);
+	std::string ToXml(const Script& script);
 }
 
 #endif
