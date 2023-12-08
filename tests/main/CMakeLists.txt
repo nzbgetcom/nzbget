@@ -17,6 +17,7 @@ add_executable(MainTests
 target_link_libraries(MainTests PRIVATE 
 	ZLIB::ZLIB
 	Yencode
+	LibXml2::LibXml2
 )
 target_include_directories(MainTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -29,6 +30,7 @@ target_include_directories(MainTests PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${OPENSSL_INCLUDE_DIR}
 	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 add_test(NAME MainTests COMMAND $<TARGET_FILE:MainTests> --log_level=message)

@@ -5,6 +5,8 @@ file(GLOB PostprocessTestsSrc
 	ParCheckerTest.cpp
 	ParRenamerTest.cpp
 	RarReaderTest.cpp
+	RarReaderTest.cpp
+	RarRenamerTest.cpp
 	../suite/TestUtil.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
@@ -12,6 +14,7 @@ file(GLOB PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
@@ -35,6 +38,7 @@ target_link_libraries(PostprocessTests PRIVATE
 	Par2
 	OpenSSL::SSL
 	OpenSSL::Crypto
+	LibXml2::LibXml2
 )
 target_include_directories(PostprocessTests PRIVATE
 	../suite
@@ -49,6 +53,7 @@ target_include_directories(PostprocessTests PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/lib/par2
 	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 file(COPY ../testdata/rarrenamer DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
