@@ -462,6 +462,7 @@ void NZBGet::Cleanup()
 	g_Maintenance = nullptr;
 	g_StatMeter = nullptr;
 	g_CommandScriptLog = nullptr;
+	g_ExtensionManager = nullptr;
 #ifdef WIN32
 	g_WinConsole = nullptr;
 #endif
