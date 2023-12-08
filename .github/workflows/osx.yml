@@ -17,7 +17,22 @@ jobs:
 
     - name: Build
       run: |
-        bash osx/build-nzbget.sh 
+        bash osx/build-nzbget.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main'
+      run: |
+        cd osx/build/Release
+        VERSION=$(ls | grep bin-macos.zip | cut -d - -f 2)
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        if [ "$GITHUB_REF_NAME" != "develop" ]; then
+          NEW_VERSION="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        fi
+        for FILE in *.zip; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
+          mv $FILE $NEW_FILE          
+        done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
