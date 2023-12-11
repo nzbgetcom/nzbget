@@ -32,13 +32,13 @@ public:
 	static void StartJob(PostInfo* postInfo);
 
 protected:
-	virtual void ExecuteScript(ScriptConfig::Script* script);
+	virtual void ExecuteScript(const Extension::Script& script);
 	virtual void AddMessage(Message::EKind kind, const char* text);
 
 private:
 	PostInfo* m_postInfo;
 	int m_prefixLen;
-	ScriptConfig::Script* m_script;
+	const Extension::Script* m_script;
 
 	void PrepareParams(const char* scriptName);
 	ScriptStatus::EStatus AnalyseExitCode(int exitCode, const char* upInfoName);

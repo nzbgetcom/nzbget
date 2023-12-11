@@ -2681,7 +2681,10 @@ void LoadExtensionsXmlCommand::Execute()
 	bool isJson = IsJson();
 	NextParamAsBool(&loadFromDisk);
 
-	g_ExtensionManager->LoadExtensions(*g_Options);
+	if (loadFromDisk)
+	{
+		g_ExtensionManager->LoadExtensions(*g_Options);
+	}
 
 	AppendResponse(isJson ? "[\n" : "<array><data>\n");
 

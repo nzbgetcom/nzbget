@@ -62,9 +62,9 @@ void SchedulerScriptController::Run()
 	}
 }
 
-void SchedulerScriptController::ExecuteScript(ScriptConfig::Script* script)
+void SchedulerScriptController::ExecuteScript(const Extension::Script& script)
 {
-	if (!script->GetSchedulerScript())
+	if (!script.GetSchedulerScript())
 	{
 		return;
 	}
@@ -75,15 +75,15 @@ void SchedulerScriptController::ExecuteScript(ScriptConfig::Script* script)
 		taskName = "";
 	}
 
-	PrintMessage(Message::mkInfo, "Executing scheduler-script %s%s", script->GetName(), *taskName);
+	PrintMessage(Message::mkInfo, "Executing scheduler-script %s%s", script.GetName(), *taskName);
 
-	SetArgs({script->GetLocation()});
+	SetArgs({script.GetLocation()});
 
-	BString<1024> infoName("scheduler-script %s%s", script->GetName(), *taskName);
+	BString<1024> infoName("scheduler-script %s%s", script.GetName(), *taskName);
 	SetInfoName(infoName);
 
-	SetLogPrefix(script->GetDisplayName());
-	PrepareParams(script->GetName());
+	SetLogPrefix(script.GetDisplayName());
+	PrepareParams(script.GetName());
 
 	Execute();
 

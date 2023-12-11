@@ -23,7 +23,7 @@
 
 #include "ScriptController.h"
 #include "DownloadInfo.h"
-#include "ScriptConfig.h"
+#include "ExtensionManager.h"
 
 class NzbScriptController : public ScriptController
 {
@@ -31,7 +31,7 @@ protected:
 	void PrepareEnvParameters(NzbParameterList* parameters, const char* stripPrefix);
 	void PrepareEnvScript(NzbParameterList* parameters, const char* scriptName);
 	void ExecuteScriptList(const char* scriptList);
-	virtual void ExecuteScript(ScriptConfig::Script* script) = 0;
+	virtual void ExecuteScript(const Extension::Script& script) = 0;
 };
 
 #endif

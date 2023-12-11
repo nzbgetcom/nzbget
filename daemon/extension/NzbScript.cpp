@@ -67,7 +67,7 @@ void NzbScriptController::PrepareEnvScript(NzbParameterList* parameters, const c
 
 void NzbScriptController::ExecuteScriptList(const char* scriptList)
 {
-	for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+	for (const auto& script : g_ExtensionManager->GetExtensions())
 	{
 		if (scriptList && *scriptList)
 		{
@@ -77,7 +77,7 @@ void NzbScriptController::ExecuteScriptList(const char* scriptList)
 			{
 				if (FileSystem::SameFilename(scriptName, script.GetName()))
 				{
-					ExecuteScript(&script);
+					ExecuteScript(script);
 					break;
 				}
 			}
