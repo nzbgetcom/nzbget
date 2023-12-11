@@ -61,7 +61,7 @@ namespace ExtensionLoader
 		bool Load(Extension::Script& script, const char* directory);
 	}
 
-	Extension::Kind GetScriptKind(const char* line);
+	Extension::Kind GetScriptKind(const std::string& line);
 	std::string GetType(const std::string& value);
 }
 

@@ -37,20 +37,20 @@ namespace Extension
 	{
 	public:
 		Script() = default;
-		Script(const char* name, const char* location);
-		void SetAuthor(const char* author);
+		Script(std::string&& name, std::string&& location) noexcept;
+		void SetAuthor(std::string&& author);
 		const char* GetAuthor() const;
-		void SetVersion(const char* version);
+		void SetVersion(std::string&& version);
 		const char* GetVersion() const;
-		void SetLicense(const char* license);
+		void SetLicense(std::string&& license);
 		const char* GetLicense() const;
-		void SetName(const char* name);
+		void SetName(std::string&& name);
 		const char* GetName() const;
-		void SetLocation(const char* location);
+		void SetLocation(std::string&& location);
 		const char* GetLocation() const;
-		void SetDisplayName(const char* displayName);
+		void SetDisplayName(std::string&& displayName);
 		const char* GetDisplayName() const;
-		void SetDescription(const char* displayName);
+		void SetDescription(std::string&& displayName);
 		const char* GetDescription() const;
 		void SetKind(Kind&& kind);
 		bool GetPostScript() const;
@@ -58,9 +58,9 @@ namespace Extension
 		bool GetQueueScript() const;
 		bool GetSchedulerScript() const;
 		bool GetFeedScript() const;
-		void SetQueueEvents(const char* queueEvents);
+		void SetQueueEvents(std::string&& queueEvents);
 		const char* GetQueueEvents() const;
-		void SetTaskTime(const char* taskTime);
+		void SetTaskTime(std::string&& taskTime);
 		const char* GetTaskTime() const;
 		void SetOptions(std::vector<ManifestFile::Option>&& options);
 		const std::vector<ManifestFile::Option>& GetOptions() const;
@@ -82,8 +82,11 @@ namespace Extension
 		std::vector<ManifestFile::Command> m_commands;
 	};
 
-	std::string ToJson(const Script& script);
-	std::string ToXml(const Script& script);
+	std::string ToJsonStr(const Script& script);
+	std::string ToXmlStr(const Script& script);
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
+	const char* BooToStr(bool value);
+	void XmlCleanup(xmlBufferPtr buffer, xmlNodePtr rootNode);
 }
 
 #endif

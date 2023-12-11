@@ -71,7 +71,6 @@ namespace ExtensionLoader
 		// - immediately after script definition (after closing script signature).
 		// The last two pissibilities are provided to increase compatibility of scripts with older
 		// nzbget versions which do not expect the extra declarations in the script defintion body.
-
 		std::string line;
 		while (std::getline(file, line))
 		{
@@ -125,9 +124,9 @@ namespace ExtensionLoader
 
 		BuildDisplayName(script);
 		script.SetKind(std::move(kind));
-		script.SetQueueEvents(queueEvents.c_str());
-		script.SetDescription(description.c_str());
-		script.SetTaskTime(taskTime.c_str());
+		script.SetQueueEvents(std::move(queueEvents));
+		script.SetDescription(std::move(description));
+		script.SetTaskTime(std::move(taskTime));
 		script.SetOptions(std::move(options));
 		script.SetCommands(std::move(commands));
 
@@ -288,29 +287,29 @@ namespace ExtensionLoader
 			return false;
 
 		BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, manifest.main.c_str());
-		script.SetLocation(location);
-		script.SetAuthor(manifest.author.c_str());
-		script.SetLicense(manifest.license.c_str());
-		script.SetVersion(manifest.version.c_str());
-		script.SetDisplayName(manifest.displayName.c_str());
-		script.SetName(manifest.name.c_str());
-		script.SetDescription(manifest.description.c_str());
-		script.SetKind(GetScriptKind(manifest.kind.c_str()));
-		script.SetQueueEvents(manifest.queueEvents.c_str());
-		script.SetTaskTime(manifest.taskTime.c_str());
+		script.SetLocation(*location);
+		script.SetAuthor(std::move(manifest.author));
+		script.SetLicense(std::move(manifest.license));
+		script.SetVersion(std::move(manifest.version));
+		script.SetDisplayName(std::move(manifest.displayName));
+		script.SetName(std::move(manifest.name));
+		script.SetDescription(std::move(manifest.description));
+		script.SetKind(GetScriptKind(manifest.kind));
+		script.SetQueueEvents(std::move(manifest.queueEvents));
+		script.SetTaskTime(std::move(manifest.taskTime));
 		script.SetCommands(std::move(manifest.commands));
 		script.SetOptions(std::move(manifest.options));
 		return true;
 	}
 
-	Extension::Kind GetScriptKind(const char* line)
+	Extension::Kind GetScriptKind(const std::string& line)
 	{
 		Extension::Kind kind;
-		kind.post = strstr(line, POST_SCRIPT_SIGNATURE) != nullptr;
-		kind.scan = strstr(line, SCAN_SCRIPT_SIGNATURE) != nullptr;
-		kind.queue = strstr(line, QUEUE_SCRIPT_SIGNATURE) != nullptr;
-		kind.scheduler = strstr(line, SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
-		kind.feed = strstr(line, FEED_SCRIPT_SIGNATURE) != nullptr;
+		kind.post = strstr(line.c_str(), POST_SCRIPT_SIGNATURE) != nullptr;
+		kind.scan = strstr(line.c_str(), SCAN_SCRIPT_SIGNATURE) != nullptr;
+		kind.queue = strstr(line.c_str(), QUEUE_SCRIPT_SIGNATURE) != nullptr;
+		kind.scheduler = strstr(line.c_str(), SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
+		kind.feed = strstr(line.c_str(), FEED_SCRIPT_SIGNATURE) != nullptr;
 		return kind;
 	}
 

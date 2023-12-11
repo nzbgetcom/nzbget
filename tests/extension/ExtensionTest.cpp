@@ -62,10 +62,10 @@ Extension::Script GetExtension()
 	return script;
 }
 
-BOOST_AUTO_TEST_CASE(ToJsonTest)
+BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 {
 	Extension::Script script = GetExtension();
-	std::string result = Extension::ToJson(script);
+	std::string result = Extension::ToJsonStr(script);
 	std::string expected = "{\"Location\":\"\",\
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
@@ -87,10 +87,10 @@ BOOST_AUTO_TEST_CASE(ToJsonTest)
 }
 
 
-BOOST_AUTO_TEST_CASE(ToXmlTest)
+BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 {
 	Extension::Script script = GetExtension();
-	std::string result = Extension::ToXml(script);
+	std::string result = Extension::ToXmlStr(script);
 	std::string expected = "<value><struct>\
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
@@ -105,8 +105,23 @@ BOOST_AUTO_TEST_CASE(ToXmlTest)
 <member><name>FeedScript</name><value><boolean>false</boolean></value></member>\
 <member><name>QueueEvents</name><value><string>QueueEvents</string></value></member>\
 <member><name>TaskTime</name><value><string>TaskTime</string></value></member>\
+<Commands>\
+<member><name>Name</name><value><string>name</string></value></member>\
+<member><name>DisplayName</name><value><string>displayName</string></value></member>\
+<member><name>Description</name><value><string>description</string></value></member>\
+<member><name>Action</name><value><string>action</string></value></member>\
+</Commands>\
+<Options>\
+<member><name>Type</name><value><string>string</string></value></member>\
+<member><name>Name</name><value><string>name</string></value></member>\
+<member><name>DisplayName</name><value><string>displayName</string></value></member>\
+<member><name>Value</name><value><string>value</string></value></member>\
+<Select>\
+<member><name>Value</name><value><string>value</string></value></member>\
+<member><name>Value</name><value><string>value2</string></value></member>\
+</Select>\
+</Options>\
 </struct></value>";
-	BOOST_TEST_MESSAGE(result);
-	BOOST_TEST_MESSAGE(expected);
+
 	BOOST_CHECK(result == expected);
 }

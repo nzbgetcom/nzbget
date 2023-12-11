@@ -2678,25 +2678,26 @@ void LoadConfigXmlCommand::Execute()
 void LoadExtensionsXmlCommand::Execute()
 {
 	bool loadFromDisk = false;
+	bool isJson = IsJson();
 	NextParamAsBool(&loadFromDisk);
 
 	g_ExtensionManager->LoadExtensions(*g_Options);
 
-	AppendResponse(IsJson() ? "[\n" : "<array><data>\n");
+	AppendResponse(isJson ? "[\n" : "<array><data>\n");
 
 	int index = 0;
 
 	for (const auto& extension : g_ExtensionManager->GetExtensions())
 	{
-		std::string response = IsJson()
-			? Extension::ToJson(extension)
-			: Extension::ToXml(extension);
+		std::string response = isJson
+			? Extension::ToJsonStr(extension)
+			: Extension::ToXmlStr(extension);
 
-		AppendCondResponse(",\n", IsJson() && index++ > 0);
+		AppendCondResponse(",\n", isJson && index++ > 0);
 		AppendResponse(response.c_str());
 	}
 
-	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");
+	AppendResponse(isJson ? "\n]" : "</data></array>\n");
 }
 
 // bool saveconfig(struct[] data)

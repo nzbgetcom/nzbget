@@ -23,40 +23,149 @@
 
 namespace Extension
 {
-	Script::Script(const char* name, const char* location)
-		: m_name(name)
-		, m_location(location)
-		, m_displayName(name) {};
-	void Script::SetAuthor(const char* author) { m_author = author; }
-	const char* Script::GetAuthor() const { return m_author.c_str(); }
-	void Script::SetVersion(const char* version) { m_version = version; }
-	const char* Script::GetVersion() const { return m_version.c_str(); }
-	void Script::SetLicense(const char* license) { m_license = license; }
-	const char* Script::GetLicense() const { return m_license.c_str(); }
-	void Script::SetName(const char* name) { m_name = name; }
-	const char* Script::GetName() const { return m_name.c_str(); }
-	void Script::SetLocation(const char* location) { m_location = location; }
-	const char* Script::GetLocation() const { return m_location.c_str(); }
-	void Script::SetDisplayName(const char* displayName) { m_displayName = displayName; }
-	const char* Script::GetDisplayName() const { return m_displayName.c_str(); }
-	void Script::SetDescription(const char* description) { m_description = description; };
-	const char* Script::GetDescription() const { return m_description.c_str(); }
-	void Script::SetKind(Kind&& kind) { m_kind = std::move(kind); };
-	bool Script::GetPostScript() const { return m_kind.post; }
-	bool Script::GetScanScript() const { return m_kind.scan; }
-	bool Script::GetQueueScript() const { return m_kind.queue; }
-	bool Script::GetSchedulerScript() const { return m_kind.scheduler; }
-	bool Script::GetFeedScript() const { return m_kind.feed; }
-	void Script::SetQueueEvents(const char* queueEvents) { m_queueEvents = queueEvents; }
-	const char* Script::GetQueueEvents() const { return m_queueEvents.c_str(); }
-	void Script::SetTaskTime(const char* taskTime) { m_taskTime = taskTime; }
-	const char* Script::GetTaskTime() const { return m_taskTime.c_str(); }
-	void Script::SetOptions(std::vector<ManifestFile::Option>&& options) { m_options = std::move(options); }
-	const std::vector<ManifestFile::Option>& Script::GetOptions() const { return m_options; }
-	void Script::SetCommands(std::vector<ManifestFile::Command>&& commands) { m_commands = std::move(commands); }
-	const std::vector<ManifestFile::Command>& Script::GetCommands() const { return m_commands; }
+	Script::Script(std::string&& name, std::string&& location) noexcept
+		: m_name(std::move(name))
+		, m_location(std::move(location)) {};
 
-	std::string ToJson(const Script& script)
+	void Script::SetAuthor(std::string&& author)
+	{
+		m_author = std::move(author);
+	}
+
+	const char* Script::GetAuthor() const
+	{
+		return m_author.c_str();
+	}
+
+	void Script::SetVersion(std::string&& version) 
+	{
+		m_version = std::move(version);
+	}
+
+	const char* Script::GetVersion() const
+	{
+		return m_version.c_str();
+	}
+
+	void Script::SetLicense(std::string&& license)
+	{
+		m_license = std::move(license);
+	}
+
+	const char* Script::GetLicense() const
+	{
+		return m_license.c_str();
+	}
+
+	void Script::SetName(std::string&& name)
+	{
+		m_name = std::move(name);
+	}
+
+	const char* Script::GetName() const
+	{
+		return m_name.c_str();
+	}
+
+	void Script::SetLocation(std::string&& location)
+	{
+		m_location = std::move(location);
+	}
+
+	const char* Script::GetLocation() const
+	{
+		return m_location.c_str();
+	}
+
+	void Script::SetDisplayName(std::string&& displayName)
+	{
+		m_displayName = std::move(displayName);
+	}
+
+	const char* Script::GetDisplayName() const
+	{
+		return m_displayName.c_str();
+	}
+
+	void Script::SetDescription(std::string&& description)
+	{
+		m_description = std::move(description);
+	};
+
+	const char* Script::GetDescription() const
+	{
+		return m_description.c_str();
+	}
+
+	void Script::SetKind(Kind&& kind)
+	{
+		m_kind = std::move(kind);
+	};
+
+	bool Script::GetPostScript() const
+	{
+		return m_kind.post;
+	}
+
+	bool Script::GetScanScript() const
+	{
+		return m_kind.scan;
+	}
+
+	bool Script::GetQueueScript() const
+	{
+		return m_kind.queue;
+	}
+	bool Script::GetSchedulerScript() const
+	{
+		return m_kind.scheduler;
+	}
+	bool Script::GetFeedScript() const
+	{
+		return m_kind.feed;
+	}
+	void Script::SetQueueEvents(std::string&& queueEvents)
+	{
+		m_queueEvents = std::move(queueEvents);
+	}
+
+	const char* Script::GetQueueEvents() const
+	{
+		return m_queueEvents.c_str();
+	}
+
+
+	void Script::SetTaskTime(std::string&& taskTime)
+	{
+		m_taskTime = std::move(taskTime);
+	}
+
+	const char* Script::GetTaskTime() const
+	{
+		return m_taskTime.c_str();
+	}
+
+	void Script::SetOptions(std::vector<ManifestFile::Option>&& options)
+	{
+		m_options = std::move(options);
+	}
+
+	const std::vector<ManifestFile::Option>& Script::GetOptions() const
+	{
+		return m_options;
+	}
+
+	void Script::SetCommands(std::vector<ManifestFile::Command>&& commands)
+	{
+		m_commands = std::move(commands);
+	}
+
+	const std::vector<ManifestFile::Command>& Script::GetCommands() const
+	{
+		return m_commands;
+	}
+
+	std::string ToJsonStr(const Script& script)
 	{
 		Json::JsonObject json;
 		Json::JsonArray optionsJson;
@@ -114,70 +223,91 @@ namespace Extension
 		return Json::Serialize(json);
 	}
 
-	std::string ToXml(const Script& script)
+	std::string ToXmlStr(const Script& script)
 	{
-		xmlNodePtr scriptNode = xmlNewNode(NULL, BAD_CAST "value><struct");
+		xmlNodePtr rootNode = xmlNewNode(NULL, BAD_CAST "value");
+		xmlNodePtr structNode = xmlNewNode(NULL, BAD_CAST "struct");
 
-		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
-		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
-		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST "Name");
-		xmlNewChild(valueNode, NULL, BAD_CAST "string", BAD_CAST script.GetName());
-		xmlAddChild(scriptNode, memberNode);
-		xmlAddChild(scriptNode, valueNode);
-		//xmlNewChild(scriptNode, NULL, BAD_CAST "member><name>Author</name><value><string", BAD_CAST script.GetAuthor());
-		////xmlNewChild(scriptNode, NULL, BAD_CAST "Main", BAD_CAST script.GetN);
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "PostScript", BAD_CAST script.GetPostScript());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "ScanScript", BAD_CAST script.GetScanScript());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "QueueScript", BAD_CAST script.GetQueueScript());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "SchedulerScript", BAD_CAST script.GetSchedulerScript());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "FeedScript", BAD_CAST script.GetFeedScript());
-		// 
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "DisplayName", BAD_CAST script.GetDisplayName());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "Version", BAD_CAST script.GetVersion());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "License", BAD_CAST script.GetLicense());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "Description", BAD_CAST script.GetDescription());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "QueueEvents", BAD_CAST script.GetQueueEvents());
-		// xmlNewChild(scriptNode, NULL, BAD_CAST "TaskTime", BAD_CAST script.GetTaskTime());
+		AddNewNode(structNode, "Name", "string", script.GetName());
+		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
+		AddNewNode(structNode, "Description", "string", script.GetDescription());
+		AddNewNode(structNode, "Author", "string", script.GetAuthor());
+		AddNewNode(structNode, "License", "string", script.GetLicense());
+		AddNewNode(structNode, "Version", "string", script.GetVersion());
 
-		// for (const ManifestFile::Option& option : script.GetOptions()) {
-		// 	xmlNodePtr optionNode = xmlNewChild(scriptNode, NULL, BAD_CAST "Options", NULL);
-		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Type", BAD_CAST option.type.c_str());
-		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Name", BAD_CAST option.name.c_str());
-		// 	xmlNewChild(optionNode, NULL, BAD_CAST "DisplayName", BAD_CAST option.displayName.c_str());
-		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Description", BAD_CAST option.description.c_str());
-		// 	xmlNewChild(optionNode, NULL, BAD_CAST "Value", BAD_CAST option.value.c_str());
+		AddNewNode(structNode, "PostScript", "boolean", BooToStr(script.GetPostScript()));
+		AddNewNode(structNode, "ScanScript", "boolean", BooToStr(script.GetScanScript()));
+		AddNewNode(structNode, "QueueScript", "boolean", BooToStr(script.GetQueueScript()));
+		AddNewNode(structNode, "SchedulerScript", "boolean", BooToStr(script.GetSchedulerScript()));
+		AddNewNode(structNode, "FeedScript", "boolean", BooToStr(script.GetFeedScript()));
 
-		// 	for (const std::string& selectOption : option.select) {
-		// 		xmlNewChild(optionNode, NULL, BAD_CAST "Select", BAD_CAST selectOption.c_str());
-		// 	}
-		// }
+		AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
+		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
 
-		// for (const ManifestFile::Command& command : script.GetCommands()) {
-		// 	xmlNodePtr commandNode = xmlNewChild(scriptNode, NULL, BAD_CAST "Commands", NULL);
-		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Name", BAD_CAST command.name.c_str());
-		// 	xmlNewChild(commandNode, NULL, BAD_CAST "DisplayName", BAD_CAST command.displayName.c_str());
-		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Description", BAD_CAST command.description.c_str());
-		// 	xmlNewChild(commandNode, NULL, BAD_CAST "Action", BAD_CAST command.action.c_str());
-		// }
+		xmlNodePtr commandsNode = xmlNewNode(NULL, BAD_CAST "Commands");
+		for (const ManifestFile::Command& command : script.GetCommands()) {
+			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
+			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
+			AddNewNode(commandsNode, "Description", "string", command.description.c_str());
+			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
+		}
+
+		xmlNodePtr optionsNode = xmlNewNode(NULL, BAD_CAST "Options");
+		for (const ManifestFile::Option& option : script.GetOptions()) {
+			AddNewNode(optionsNode, "Type", "string", option.type.c_str());
+			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
+			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
+			AddNewNode(optionsNode, "Value", "string", option.value.c_str());
+
+			xmlNodePtr selectNode = xmlNewNode(NULL, BAD_CAST "Select");
+			for (const std::string& selectOption : option.select) {
+				AddNewNode(selectNode, "Value", "string", selectOption.c_str());
+			}
+
+			xmlAddChild(optionsNode, selectNode);
+		}
+
+		xmlAddChild(structNode, commandsNode);
+		xmlAddChild(structNode, optionsNode);
+		xmlAddChild(rootNode, structNode);
 
 		std::string result;
 
 		xmlBufferPtr buffer = xmlBufferCreate();
 		if (buffer == nullptr) {
-			xmlBufferFree(buffer);
-			xmlFreeNode(scriptNode);
+			XmlCleanup(buffer, rootNode);
 			return result;
 		}
 
-		int size = xmlNodeDump(buffer, scriptNode->doc, scriptNode, 0, 1);
+		int size = xmlNodeDump(buffer, rootNode->doc, rootNode, 0, 0);
 		if (size > 0) {
 			result = std::string(reinterpret_cast<const char*>(buffer->content), size);
 		}
 
-		xmlBufferFree(buffer);
-		xmlFreeNode(scriptNode);
-		xmlCleanupParser();
+		XmlCleanup(buffer, rootNode);
 
 		return result;
+	}
+
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+	{
+		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
+		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
+		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
+		xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
+		xmlAddChild(memberNode, valueNode);
+		xmlAddChild(rootNode, memberNode);
+	}
+
+	const char* BooToStr(bool value)
+	{
+		return value ? "true" : "false";
+	}
+
+	void XmlCleanup(xmlBufferPtr buffer, xmlNodePtr rootNode)
+	{
+		xmlBufferFree(buffer);
+		xmlFreeNode(rootNode);
+		xmlCleanupParser();
 	}
 }

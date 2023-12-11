@@ -28,6 +28,11 @@
 
 namespace ExtensionManager
 {
+	Manager::Manager() noexcept
+	{
+		m_extensions.reserve(4);
+	}
+
 	const Extensions& Manager::GetExtensions() const
 	{
 		return m_extensions;
@@ -56,6 +61,7 @@ namespace ExtensionManager
 
 		Sort(extensionOrder);
 		CreateTasks(options);
+		m_extensions.shrink_to_fit();
 
 		return true;
 	}
@@ -66,7 +72,7 @@ namespace ExtensionManager
 
 		if (ExtensionLoader::V2::Load(extension, directory)) {
 
-			if (!Manager::ExtensionExists(extension.GetName()))
+			if (!ExtensionExists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
 			}
@@ -89,8 +95,8 @@ namespace ExtensionManager
 					continue;
 				}
 
-				extension.SetName(extensionName.c_str());
-				extension.SetLocation(location);
+				extension.SetName(std::move(extensionName));
+				extension.SetLocation(*location);
 				if (ExtensionLoader::V1::Load(extension))
 				{
 					m_extensions.push_back(std::move(extension));

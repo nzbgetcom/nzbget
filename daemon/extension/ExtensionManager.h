@@ -32,7 +32,7 @@ namespace ExtensionManager
 	class Manager
 	{
 	public:
-		Manager() = default;
+		Manager() noexcept;
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
