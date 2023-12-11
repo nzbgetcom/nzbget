@@ -13,6 +13,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v3
 
+    - name: Change version for non-release
+      if: github.ref_name != 'main'
+      run: |
+        $Version = ((((Select-String -Path nzbget.vcxproj -Pattern ";VERSION=")[0] -split(';'))[2] -split('='))[1]) -replace '"', ''
+        $Date=Get-Date -Format "yyyyMMdd"
+        $NewVersion = "$Version-testing-$Date"
+        (Get-Content nzbget.vcxproj) | ForEach-Object {$_ -replace "VERSION=`"$Version`"", "VERSION=`"$NewVersion`""} | Set-Content nzbget.vcxproj
+        (Get-Content windows\nzbget-setup.nsi) | ForEach-Object {$_ -replace "`"DisplayVersion`" `"$Version`"", "`"DisplayVersion`" `"$NewVersion`""} | Set-Content windows\nzbget-setup.nsi
+        "NEW_VERSION=$NewVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
     - name: Build
       run: |
         .\windows\build-nzbget-vs22.bat
@@ -21,17 +31,12 @@ jobs:
       if: github.ref_name != 'main'
       run: |
         $Output="c:\nzbget\build\output"
+        $NewVersion=$env:NEW_VERSION
         ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
-            $Version = $File.Name.split("-")[1]
-            If ($env:GITHUB_REF_NAME -ne "main") {
-                $Date=Get-Date -Format "yyyymmdd"
-                $NewVersion = "$Version-testing-$Date"
-                if ($env:GITHUB_REF_NAME -ne "develop") {
-                    $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
-                    $NewVersion = "$NewVersion-$Suffix"
-                }
-                Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace($Version, $NewVersion)
-            }
+          if ($env:GITHUB_REF_NAME -ne "develop") {
+            $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
+            Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace($NewVersion, "$NewVersion-$Suffix")
+          }
         }
 
     - name: Upload build artifacts

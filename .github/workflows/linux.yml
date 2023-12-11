@@ -15,6 +15,14 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Change version for non-release
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i configure.ac
+        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
+
     - name: Build
       run: |
         rm -rf /build/nzbget
@@ -27,14 +35,12 @@ jobs:
       if: github.ref_name != 'main'
       run: |
         cd /build/output
-        VERSION=$(ls | grep bin-linux.run | cut -d - -f 2)
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
         if [ "$GITHUB_REF_NAME" != "develop" ]; then
-          NEW_VERSION="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+          NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
         fi
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
+          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
           mv $FILE $NEW_FILE          
         done
 
