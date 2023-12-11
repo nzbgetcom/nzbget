@@ -200,7 +200,7 @@ private:
 	std::unique_ptr<ServiceCoordinator> m_serviceCoordinator;
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
-	std::unique_ptr<ExtensionManager::Manager> m_ExtensionManager;
+	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
 #endif
@@ -385,8 +385,8 @@ void NZBGet::CreateGlobals()
 	m_commandScriptLog = std::make_unique<CommandScriptLog>();
 	g_CommandScriptLog = m_commandScriptLog.get();
 
-	m_ExtensionManager = std::make_unique<ExtensionManager::Manager>();
-	g_ExtensionManager = m_ExtensionManager.get();
+	m_extensionManager = std::make_unique<ExtensionManager::Manager>();
+	g_ExtensionManager = m_extensionManager.get();
 
 	m_scheduler = std::make_unique<Scheduler>();
 
@@ -435,6 +435,8 @@ void NZBGet::BootConfig()
 	m_serverPool->SetRetryInterval(m_options->GetArticleInterval());
 
 	m_scriptConfig->InitOptions();
+
+	m_extensionManager->LoadExtensions(*m_options);
 }
 
 void NZBGet::Cleanup()
