@@ -68,13 +68,13 @@ var Options = (new function($)
 		RPC.call('configtemplates', [false], function(data)
 			{
 				configTemplate = data;
-				initPostParamConfig(data);
 				RPC.next();
 			});
 
 		RPC.call('loadextensions', [false], function(data)
 			{
 				console.warn(data);
+				initPostParamConfig(data);
 				RPC.next();
 			});
 	}
@@ -518,7 +518,7 @@ var Options = (new function($)
 		section.postparam = true;
 		_this.postParamConfig = [section];
 
-		for (var i=1; i < data.length; i++)
+		for (var i=0; i < data.length; i++)
 		{
 			if (data[i].PostScript || data[i].QueueScript)
 			{

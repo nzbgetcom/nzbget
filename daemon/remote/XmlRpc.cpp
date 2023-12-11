@@ -2683,7 +2683,11 @@ void LoadExtensionsXmlCommand::Execute()
 
 	if (loadFromDisk)
 	{
-		g_ExtensionManager->LoadExtensions(*g_Options);
+		if (!g_ExtensionManager->LoadExtensions(*g_Options))
+		{
+			BuildErrorResponse(3, "Could not load extensions");
+			return;
+		}	
 	}
 
 	AppendResponse(isJson ? "[\n" : "<array><data>\n");
