@@ -35,6 +35,7 @@ jobs:
         mv nzbget-osx-installers/* builds
         cd builds
         VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
+        if [ "$GITHUB_REF_NAME" != "main" ]; then VERSION="$VERSION-testing"; fi
         SIGS_FILE="nzbget-$VERSION.sig.txt"
 
         echo "Generating $SIGS_FILE ..."
