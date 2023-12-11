@@ -320,7 +320,7 @@ linux_FILES = \
 	linux/build-toolchain-freebsd
 
 doc_FILES = \
-	README \
+	INSTALLATION.md \
 	ChangeLog \
 	COPYING
 

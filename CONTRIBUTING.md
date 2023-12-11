@@ -16,7 +16,7 @@ Main documentation is available on the NZBGet.com website - [https://nzbget.com/
 
 NZBGet natively supports for multiple platforms and build options, so each platform has their own development documenation, including:
 
-- [General documentation, including Posix](https://github.com/nzbgetcom/nzbget/blob/develop/README)
+- [General documentation, including Posix](https://github.com/nzbgetcom/nzbget/blob/develop/INSTALLATION.md)
 - [Windows](https://github.com/nzbgetcom/nzbget/blob/develop/windows/README-WINDOWS.txt)
 - [Docker](https://github.com/nzbgetcom/nzbget/blob/develop/docker/README.md)
 

@@ -200,7 +200,7 @@ copy windows\README-WINDOWS.txt ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy ChangeLog ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
-copy README ..\distrib\NZBGet
+copy INSTALLATION.md ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy COPYING ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
