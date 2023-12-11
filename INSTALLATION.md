@@ -219,11 +219,6 @@ Also required are:
    - [Regex](https://regexlib.com/)
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
-<<<<<<< HEAD
-
-We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
-=======
->>>>>>> develop
 
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
 
