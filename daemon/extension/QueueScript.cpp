@@ -248,7 +248,7 @@ void QueueScriptController::AddMessage(Message::EKind kind, const char* text)
 void QueueScriptCoordinator::InitOptions()
 {
 	m_hasQueueScripts = false;
-	for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+	for (const auto& script : g_ExtensionManager->GetExtensions())
 	{
 		if (script.GetQueueScript())
 		{

@@ -23,10 +23,6 @@
 
 namespace Extension
 {
-	Script::Script(std::string&& name, std::string&& location) noexcept
-		: m_name(std::move(name))
-		, m_location(std::move(location)) {};
-
 	void Script::SetAuthor(std::string&& author)
 	{
 		m_author = std::move(author);

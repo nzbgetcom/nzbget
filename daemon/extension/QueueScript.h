@@ -22,7 +22,7 @@
 #define QUEUESCRIPT_H
 
 #include "DownloadInfo.h"
-#include "ScriptConfig.h"
+#include "Extension.h"
 
 class QueueScriptCoordinator
 {

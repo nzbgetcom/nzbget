@@ -23,6 +23,7 @@
 
 #include "ScriptController.h"
 #include "DownloadInfo.h"
+#include "Extension.h"
 #include "ExtensionManager.h"
 
 class NzbScriptController : public ScriptController

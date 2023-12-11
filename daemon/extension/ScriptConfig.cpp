@@ -149,7 +149,7 @@ bool ScriptConfig::LoadConfigTemplates(ConfigTemplates* configTemplates)
 	{
 		return false;
 	}
-	configTemplates->emplace_back(Script("", ""), buffer);
+	configTemplates->emplace_back(ConfigTemplate(buffer));
 
 	return true;
 }

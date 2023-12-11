@@ -24,39 +24,31 @@
 #include "NString.h"
 #include "Container.h"
 #include "Options.h"
-#include "Extension.h"
 
 class ScriptConfig
 {
 public:
-	using Script = Extension::Script;
-	using Scripts = std::list<Script>;
 
 	class ConfigTemplate
 	{
 	public:
-		ConfigTemplate(Script&& script, const char* templ)
-			: m_script(std::move(script))
-			, m_template(templ) {}
-		Script* GetScript() { return &m_script; }
+		ConfigTemplate(const char* templ)
+			: m_template(templ) {}
 		const char* GetTemplate() { return m_template; }
 
 	private:
-		Script m_script;
 		CString m_template;
 	};
 
 	using ConfigTemplates = std::deque<ConfigTemplate>;
 
 	void InitOptions();
-	Scripts& GetScripts() { return m_scripts; }
 	bool LoadConfig(Options::OptEntries* optEntries);
 	bool SaveConfig(Options::OptEntries* optEntries);
 	bool LoadConfigTemplates(ConfigTemplates* configTemplates);
 	ConfigTemplates* GetConfigTemplates() { return &m_configTemplates; }
 
 private:
-	Scripts m_scripts;
 	ConfigTemplates m_configTemplates;
 
 	void InitConfigTemplates();
