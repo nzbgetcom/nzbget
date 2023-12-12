@@ -55,6 +55,7 @@ namespace ManifestFile
 		std::string displayName;
 		std::string version;
 		std::string license;
+		std::string caption;
 		std::string description;
 		std::string queueEvents;
 		std::string taskTime;

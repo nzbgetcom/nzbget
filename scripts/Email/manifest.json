@@ -6,7 +6,8 @@
     "version": "1.0.0",
     "author": "Andrey Prygunkov",
     "license": "GNU",
-    "description": "Send E-Mail notification.\nThis script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
+    "caption": "Send E-Mail notification.",
+    "description": "This script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
     "options": [
         {
             "type": "string",

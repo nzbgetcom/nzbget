@@ -51,6 +51,8 @@ namespace Extension
 		const char* GetLocation() const;
 		void SetDisplayName(std::string&& displayName);
 		const char* GetDisplayName() const;
+		void SetCaption(std::string&& caption);
+		const char* GetCaption() const;
 		void SetDescription(std::string&& displayName);
 		const char* GetDescription() const;
 		void SetKind(Kind&& kind);
@@ -76,6 +78,7 @@ namespace Extension
 		std::string m_name;
 		std::string m_location;
 		std::string m_displayName;
+		std::string m_caption;
 		std::string m_description;
 		std::string m_queueEvents;
 		std::string m_taskTime;

@@ -42,6 +42,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
 	BOOST_CHECK(extension.GetLocation() == location);
+	BOOST_CHECK(extension.GetCaption() == std::string("Caption1.\nCaption2.\n"));
 	BOOST_CHECK(extension.GetDescription() == std::string("Description1\nDescription2\n"));
 	BOOST_CHECK(extension.GetTaskTime() == std::string("*;*:00;*:30"));
 	BOOST_CHECK(extension.GetQueueEvents() == std::string("NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED"));

@@ -182,6 +182,7 @@ var Options = (new function($)
 			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
 			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
 			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
+			scriptConfig['caption'] = serverTemplateData[i].Caption;
 			scriptConfig['description'] = serverTemplateData[i].Description;
 			scriptConfig['author'] = serverTemplateData[i].Author;
 			scriptConfig['license'] = serverTemplateData[i].License;
@@ -533,7 +534,7 @@ var Options = (new function($)
 				option.caption = option.caption.replace(/\\/, ' \\ ').replace(/\//, ' / ');
 
 				option.defvalue = 'no';
-				option.description = 'Extension script ' + scriptName + data[i].Description.split('\n')[0];
+				option.description = data[i].Caption || 'Extension script ' + scriptName + '.';
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
@@ -1127,7 +1128,7 @@ var Config = (new function($)
 			option.sectionId = firstVisibleSection.id;
 			option.select = [];
 			var description = conf.description;
-			option.description = description !== '' ? description : 'No description available.';
+			option.description = description !== '' ? conf.caption + '\n' + description : 'No description available.';
 			option.nocontent = true;
 			firstVisibleSection.options.unshift(option);
 		}

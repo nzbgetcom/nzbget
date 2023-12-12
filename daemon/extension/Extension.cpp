@@ -33,7 +33,7 @@ namespace Extension
 		return m_author.c_str();
 	}
 
-	void Script::SetVersion(std::string&& version) 
+	void Script::SetVersion(std::string&& version)
 	{
 		m_version = std::move(version);
 	}
@@ -81,6 +81,16 @@ namespace Extension
 	const char* Script::GetDisplayName() const
 	{
 		return m_displayName.c_str();
+	}
+
+	void Script::SetCaption(std::string&& caption)
+	{
+		m_caption = std::move(caption);
+	}
+
+	const char* Script::GetCaption() const
+	{
+		return m_caption.c_str();
 	}
 
 	void Script::SetDescription(std::string&& description)
@@ -170,6 +180,7 @@ namespace Extension
 		json["Location"] = script.GetLocation();
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
+		json["Caption"] = script.GetCaption();
 		json["Description"] = script.GetDescription();
 		json["Author"] = script.GetAuthor();
 		json["License"] = script.GetLicense();
@@ -226,6 +237,7 @@ namespace Extension
 
 		AddNewNode(structNode, "Name", "string", script.GetName());
 		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
+		AddNewNode(structNode, "Caption", "string", script.GetCaption());
 		AddNewNode(structNode, "Description", "string", script.GetDescription());
 		AddNewNode(structNode, "Author", "string", script.GetAuthor());
 		AddNewNode(structNode, "License", "string", script.GetLicense());

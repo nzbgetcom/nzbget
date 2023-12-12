@@ -32,6 +32,7 @@ Extension::Script GetExtension()
 	ManifestFile::Command command;
 
 	script.SetAuthor("Author");
+	script.SetCaption("Caption");
 	script.SetDescription("Description");
 	script.SetDisplayName("DisplayName");
 	script.SetKind({ true, false, false, false });
@@ -69,6 +70,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 	std::string expected = "{\"Location\":\"\",\
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
+\"Caption\":\"Caption\",\
 \"Description\":\"Description\",\
 \"Author\":\"Author\",\
 \"License\":\"License\",\
@@ -94,6 +96,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 	std::string expected = "<value><struct>\
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
+<member><name>Caption</name><value><string>Caption</string></value></member>\
 <member><name>Description</name><value><string>Description</string></value></member>\
 <member><name>Author</name><value><string>Author</string></value></member>\
 <member><name>License</name><value><string>License</string></value></member>\

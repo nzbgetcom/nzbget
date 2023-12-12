@@ -4,6 +4,9 @@
 #########################################################
 ### QUEUE EVENTS: NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED		       ###
 
+# Caption1.
+# Caption2.
+#
 # Description1
 # Description2
 

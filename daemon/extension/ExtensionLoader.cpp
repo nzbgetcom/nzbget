@@ -56,6 +56,7 @@ namespace ExtensionLoader
 		bool feedScript = false;
 		std::string queueEvents;
 		std::string taskTime;
+		std::string caption;
 		std::string description;
 
 		Extension::Kind kind;
@@ -64,6 +65,8 @@ namespace ExtensionLoader
 
 		bool inBeforeConfig = false;
 		bool inConfig = false;
+		bool inCaption = false;
+		bool inDescription = false;
 
 		// Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
 		// - in script definition body (between opening and closing script signatures);
@@ -90,6 +93,7 @@ namespace ExtensionLoader
 			{
 				taskTime = line.substr(TASK_TIME_SIGNATURE_LEN + 1);
 				RemoveTailAndTrim(taskTime, "###");
+				continue;
 			}
 			if (!strncmp(line.c_str(), BEGIN_SCRIPT_SIGNATURE, BEGIN_SINGNATURE_LEN) && strstr(line.c_str(), END_SCRIPT_SIGNATURE))
 			{
@@ -105,10 +109,24 @@ namespace ExtensionLoader
 			{
 				queueEvents = line.substr(QUEUE_EVENTS_SIGNATURE_LEN + 1);
 				RemoveTailAndTrim(queueEvents, "###");
+				continue;
 			}
-			if (inConfig && !strncmp(line.c_str(), "# ", 2))
+			if (inConfig && !strncmp(line.c_str(), "# ", 2) && !inDescription)
+			{
+				inCaption = true;
+				caption.append(line.substr(2)).push_back('\n');
+				continue;
+			}
+			if (inConfig && !strncmp(line.c_str(), "#", 1) && inCaption)
+			{
+				inCaption = false;
+				inDescription = true;
+				continue;
+			}
+			if (inConfig && !strncmp(line.c_str(), "# ", 2) && inDescription)
 			{
 				description.append(line.substr(2)).push_back('\n');
+				continue;
 			}
 			if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
 			{
@@ -125,6 +143,7 @@ namespace ExtensionLoader
 		BuildDisplayName(script);
 		script.SetKind(std::move(kind));
 		script.SetQueueEvents(std::move(queueEvents));
+		script.SetCaption(std::move(caption));
 		script.SetDescription(std::move(description));
 		script.SetTaskTime(std::move(taskTime));
 		script.SetOptions(std::move(options));
@@ -178,7 +197,7 @@ namespace ExtensionLoader
 				std::string comma = ", ";
 				std::string dash = "-";
 				bool foundComma = line.substr(selectStartIdx, selectEndIdx).find(comma) != std::string::npos;
-				bool foundDash  = line.substr(selectStartIdx, selectEndIdx).find(dash) != std::string::npos;
+				bool foundDash = line.substr(selectStartIdx, selectEndIdx).find(dash) != std::string::npos;
 				if (!foundComma && !foundDash || !description.empty())
 				{
 					description += line.substr(2) + '\n';
@@ -243,7 +262,7 @@ namespace ExtensionLoader
 				continue;
 			}
 			if (strncmp(line.c_str(), "# ", 2))
-			{	
+			{
 				size_t eqPos = line.find("=");
 				size_t atPos = line.find("@");
 				if (atPos != std::string::npos && eqPos == std::string::npos)
@@ -293,6 +312,7 @@ namespace ExtensionLoader
 		script.SetVersion(std::move(manifest.version));
 		script.SetDisplayName(std::move(manifest.displayName));
 		script.SetName(std::move(manifest.name));
+		script.SetCaption(std::move(manifest.caption));
 		script.SetDescription(std::move(manifest.description));
 		script.SetKind(GetScriptKind(manifest.kind));
 		script.SetQueueEvents(std::move(manifest.queueEvents));
