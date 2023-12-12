@@ -5,8 +5,9 @@
     "displayName": "Email",
     "version": "1.0.0",
     "author": "Author's name",
+    "homepage": "https://github",
     "license": "GNU",
-    "caption": "Caption",
+    "about": "About",
     "description": "Description",
     "options": [
         {

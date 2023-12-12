@@ -42,8 +42,9 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
 	BOOST_CHECK(extension.GetLocation() == location);
-	BOOST_CHECK(extension.GetCaption() == std::string("Caption1.\nCaption2.\n"));
-	BOOST_CHECK(extension.GetDescription() == std::string("Description1\nDescription2\n"));
+	BOOST_CHECK(extension.GetHomepage() == std::string("https://github"));
+	BOOST_CHECK(extension.GetAbout() == std::string("About1.\nAbout2."));
+	BOOST_CHECK(extension.GetDescription() == std::string("Description1\nDescription2"));
 	BOOST_CHECK(extension.GetTaskTime() == std::string("*;*:00;*:30"));
 	BOOST_CHECK(extension.GetQueueEvents() == std::string("NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED"));
 	BOOST_CHECK(extension.GetPostScript() == true);
@@ -61,7 +62,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command.name == std::string("ConnectionTest"));
 	BOOST_CHECK(command.displayName == std::string("ConnectionTest"));
 	BOOST_CHECK(command.action == std::string("Send Test E-Mail"));
-	BOOST_CHECK(command.description == std::string("To check connection parameters click the button.\n"));
+	BOOST_CHECK(command.description == std::string("To check connection parameters click the button."));
 
 	BOOST_CHECK(extension.GetOptions().size() == 6);
 
@@ -69,7 +70,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option.type == std::string("string"));
 	BOOST_CHECK(option.name == std::string("FileList"));
 	BOOST_CHECK(option.displayName == std::string("FileList"));
-	BOOST_CHECK(option.description == std::string("Append list of files to the message.\nAdd the list of downloaded files (the content of destination directory).\n"));
+	BOOST_CHECK(option.description == std::string("Append list of files to the message.\nAdd the list of downloaded files (the content of destination directory)."));
 	BOOST_CHECK(option.value == std::string("yes"));
 	BOOST_CHECK(option.select[0] == std::string("yes"));
 	BOOST_CHECK(option.select[1] == std::string("no"));
@@ -78,7 +79,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option2.type == std::string("number"));
 	BOOST_CHECK(option2.name == std::string("Port"));
 	BOOST_CHECK(option2.displayName == std::string("Port"));
-	BOOST_CHECK(option2.description == std::string("SMTP server port (1-65535).\n"));
+	BOOST_CHECK(option2.description == std::string("SMTP server port (1-65535)."));
 	BOOST_CHECK(option2.value == std::string("25"));
 	BOOST_CHECK(option2.select[0] == std::string("1"));
 	BOOST_CHECK(option2.select[1] == std::string("65535"));
@@ -87,7 +88,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option3.type == std::string("string"));
 	BOOST_CHECK(option3.name == std::string("SendMail"));
 	BOOST_CHECK(option3.displayName == std::string("SendMail"));
-	BOOST_CHECK(option3.description == std::string("When to send the message.\n"));
+	BOOST_CHECK(option3.description == std::string("When to send the message."));
 	BOOST_CHECK(option3.value == std::string("Always"));
 	BOOST_CHECK(option3.select[0] == std::string("Always"));
 	BOOST_CHECK(option3.select[1] == std::string("OnFailure"));
@@ -96,7 +97,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option4.type == std::string("string"));
 	BOOST_CHECK(option4.name == std::string("Encryption"));
 	BOOST_CHECK(option4.displayName == std::string("Encryption"));
-	BOOST_CHECK(option4.description == std::string("Secure communication using TLS/SSL.\n no    - plain text communication (insecure);\n yes   - switch to secure session using StartTLS command;\n force - start secure session on encrypted socket.\n"));
+	BOOST_CHECK(option4.description == std::string("Secure communication using TLS/SSL.\n no    - plain text communication (insecure);\n yes   - switch to secure session using StartTLS command;\n force - start secure session on encrypted socket."));
 	BOOST_CHECK(option4.value == std::string("yes"));
 	BOOST_CHECK(option4.select[0] == std::string("yes"));
 	BOOST_CHECK(option4.select[1] == std::string("no"));
@@ -106,7 +107,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option5.type == std::string("string"));
 	BOOST_CHECK(option5.name == std::string("To"));
 	BOOST_CHECK(option5.displayName == std::string("To"));
-	BOOST_CHECK(option5.description == std::string("Email address you want this email to be sent to.\nMultiple addresses can be separated with comma.\n"));
+	BOOST_CHECK(option5.description == std::string("Email address you want this email to be sent to.\nMultiple addresses can be separated with comma."));
 	BOOST_CHECK(option5.value == std::string("myaccount@gmail.com"));
 	BOOST_CHECK(option5.select.size() == 0);
 
@@ -114,7 +115,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option6.type == std::string("string"));
 	BOOST_CHECK(option6.name == std::string("BannedExtensions"));
 	BOOST_CHECK(option6.displayName == std::string("BannedExtensions"));
-	BOOST_CHECK(option6.description == std::string("Banned extensions.\nExtensions must be separated by a comma (eg: .wmv, .divx).\n"));
+	BOOST_CHECK(option6.description == std::string("Banned extensions.\nExtensions must be separated by a comma (eg: .wmv, .divx)."));
 	BOOST_CHECK(option6.value == std::string(""));
 	BOOST_CHECK(option6.select.size() == 0);
 }

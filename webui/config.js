@@ -138,8 +138,6 @@ var Options = (new function($)
 
 	function complete()
 	{
-		initShortScriptNames(serverTemplateData);
-
 		if (serverTemplateData === null)
 		{
 			// the loading was cancelled and the data was discarded (via method "cleanup()")
@@ -159,22 +157,21 @@ var Options = (new function($)
 		for (var i = 1; i < serverTemplateData.length; i++)
 		{
 			const section = {
-				name: serverTemplateData[i].DisplayName,
+				name: serverTemplateData[i].Name,
 				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
 				options: [],
 				hidden: false,
 				postparam: false,
 				description: "",
-				caption: serverTemplateData[i].DisplayName,
+				caption: serverTemplateData[i].Name,
 			};
 			const scriptConfig = { 
 				sections: [section], 
-				nameprefix: 
-				serverTemplateData[i].Name, 
+				nameprefix: serverTemplateData[i].Name, 
 			};
-			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
+			scriptConfig['scriptName'] = serverTemplateData[i].Name;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
-			scriptConfig['name']= serverTemplateData[i].DisplayName;
+			scriptConfig['name']= serverTemplateData[i].Name;
 			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
 			scriptConfig['post'] = serverTemplateData[i].PostScript;
 			scriptConfig['scan'] = serverTemplateData[i].ScanScript;
@@ -182,7 +179,7 @@ var Options = (new function($)
 			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
 			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
 			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
-			scriptConfig['caption'] = serverTemplateData[i].Caption;
+			scriptConfig['caption'] = serverTemplateData[i].About;
 			scriptConfig['description'] = serverTemplateData[i].Description;
 			scriptConfig['author'] = serverTemplateData[i].Author;
 			scriptConfig['license'] = serverTemplateData[i].License;
@@ -190,7 +187,7 @@ var Options = (new function($)
 			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) {
 				const command = serverTemplateData[i].Commands[j];
 				section.options.push({
-					caption: command.DisplayName,
+					caption: command.Name,
 					name: serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
 					defvalue: command.Action,
@@ -198,7 +195,7 @@ var Options = (new function($)
 					select: [],
 					description: command.Description,
 					nocontent: false,
-					formId: serverTemplateData[i].Name + '_' + command.DisplayName,
+					formId: serverTemplateData[i].Name + '_' + command.Name,
 					commandopts: 'settings',
 					type: 'command'
 				});
@@ -207,7 +204,7 @@ var Options = (new function($)
 				const option = serverTemplateData[i].Options[j];
 				const [ type, select ] = GetTypeAndSelect(option);
 				section.options.push({
-					caption: option.DisplayName,
+					caption: option.Name,
 					name: serverTemplateData[i].Name + ':' + option.Name,
 					value: option.Value,
 					defvalue: option.Value,
@@ -215,7 +212,7 @@ var Options = (new function($)
 					select,
 					description: option.Description,
 					nocontent: false,
-					formId: serverTemplateData[i].Name + '_' + option.DisplayName,
+					formId: serverTemplateData[i].Name + '_' + option.Name,
 					type
 				});
 			}
@@ -495,14 +492,6 @@ var Options = (new function($)
 	}
 	this.mergeValues = mergeValues;
 
-	function initShortScriptNames(configTemplatesData)
-	{
-		for (var i=1; i < configTemplatesData.length; i++)
-		{
-			shortScriptNames[configTemplatesData[i].Name] = configTemplatesData[i].DisplayName;
-		}
-	}
-
 	function shortScriptName(scriptName)
 	{
 		var shortName = shortScriptNames[scriptName];
@@ -531,10 +520,9 @@ var Options = (new function($)
 				var option = {};
 				option.name = scriptName + ':';
 				option.caption = shortScriptName(scriptName);
-				option.caption = option.caption.replace(/\\/, ' \\ ').replace(/\//, ' / ');
 
 				option.defvalue = 'no';
-				option.description = data[i].Caption || 'Extension script ' + scriptName + '.';
+				option.description = data[i].About || 'Extension script ' + scriptName + '.';
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];

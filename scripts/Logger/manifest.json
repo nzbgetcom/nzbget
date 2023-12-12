@@ -1,6 +1,7 @@
 {
     "main": "Logger.py",
     "name": "logger",
+    "homepage": "",
     "kind": "POST-PROCESSING",
     "displayName": "Logger New",
     "version": "1.0.0",

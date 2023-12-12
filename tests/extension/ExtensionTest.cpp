@@ -32,7 +32,8 @@ Extension::Script GetExtension()
 	ManifestFile::Command command;
 
 	script.SetAuthor("Author");
-	script.SetCaption("Caption");
+	script.SetAbout("About");
+	script.SetHomepage("Homepage");
 	script.SetDescription("Description");
 	script.SetDisplayName("DisplayName");
 	script.SetKind({ true, false, false, false });
@@ -70,9 +71,10 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 	std::string expected = "{\"Location\":\"\",\
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
-\"Caption\":\"Caption\",\
+\"About\":\"About\",\
 \"Description\":\"Description\",\
 \"Author\":\"Author\",\
+\"Homepage\":\"Homepage\",\
 \"License\":\"License\",\
 \"Version\":\"Version\",\
 \"PostScript\":true,\
@@ -96,9 +98,10 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 	std::string expected = "<value><struct>\
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
-<member><name>Caption</name><value><string>Caption</string></value></member>\
+<member><name>About</name><value><string>About</string></value></member>\
 <member><name>Description</name><value><string>Description</string></value></member>\
 <member><name>Author</name><value><string>Author</string></value></member>\
+<member><name>Homepage</name><value><string>Homepage</string></value></member>\
 <member><name>License</name><value><string>License</string></value></member>\
 <member><name>Version</name><value><string>Version</string></value></member>\
 <member><name>PostScript</name><value><boolean>true</boolean></value></member>\

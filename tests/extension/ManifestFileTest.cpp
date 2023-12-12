@@ -48,8 +48,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.displayName == "Email");
 	BOOST_CHECK(manifestFile.version == "1.0.0");
 	BOOST_CHECK(manifestFile.author == "Author's name");
+	BOOST_CHECK(manifestFile.homepage == "https://github");
 	BOOST_CHECK(manifestFile.license == "GNU");
-	BOOST_CHECK(manifestFile.caption == "Caption");
+	BOOST_CHECK(manifestFile.about == "About");
 	BOOST_CHECK(manifestFile.description == "Description");
 	BOOST_CHECK(manifestFile.queueEvents == "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED");
 	BOOST_CHECK(manifestFile.taskTime == "1:00:00");

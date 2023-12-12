@@ -52,10 +52,11 @@ namespace ManifestFile
 		std::string main;
 		std::string kind;
 		std::string name;
+		std::string homepage;
 		std::string displayName;
 		std::string version;
 		std::string license;
-		std::string caption;
+		std::string about;
 		std::string description;
 		std::string queueEvents;
 		std::string taskTime;

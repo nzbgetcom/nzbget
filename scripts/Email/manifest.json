@@ -1,6 +1,7 @@
 {
     "main": "main.py",
     "name": "email",
+    "homepage": "",
     "kind": "POST-PROCESSING",
     "displayName": "EMail New",
     "version": "1.0.0",

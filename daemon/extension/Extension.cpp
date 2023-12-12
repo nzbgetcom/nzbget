@@ -33,6 +33,16 @@ namespace Extension
 		return m_author.c_str();
 	}
 
+	void Script::SetHomepage(std::string&& homepage)
+	{
+		m_homepage = std::move(homepage);
+	}
+
+	const char* Script::GetHomepage() const
+	{
+		return m_homepage.c_str();
+	}
+
 	void Script::SetVersion(std::string&& version)
 	{
 		m_version = std::move(version);
@@ -83,14 +93,14 @@ namespace Extension
 		return m_displayName.c_str();
 	}
 
-	void Script::SetCaption(std::string&& caption)
+	void Script::SetAbout(std::string&& about)
 	{
-		m_caption = std::move(caption);
+		m_about = std::move(about);
 	}
 
-	const char* Script::GetCaption() const
+	const char* Script::GetAbout() const
 	{
-		return m_caption.c_str();
+		return m_about.c_str();
 	}
 
 	void Script::SetDescription(std::string&& description)
@@ -180,9 +190,10 @@ namespace Extension
 		json["Location"] = script.GetLocation();
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
-		json["Caption"] = script.GetCaption();
+		json["About"] = script.GetAbout();
 		json["Description"] = script.GetDescription();
 		json["Author"] = script.GetAuthor();
+		json["Homepage"] = script.GetHomepage();
 		json["License"] = script.GetLicense();
 		json["Version"] = script.GetVersion();
 		json["PostScript"] = script.GetPostScript();
@@ -237,9 +248,10 @@ namespace Extension
 
 		AddNewNode(structNode, "Name", "string", script.GetName());
 		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
-		AddNewNode(structNode, "Caption", "string", script.GetCaption());
+		AddNewNode(structNode, "About", "string", script.GetAbout());
 		AddNewNode(structNode, "Description", "string", script.GetDescription());
 		AddNewNode(structNode, "Author", "string", script.GetAuthor());
+		AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
 		AddNewNode(structNode, "License", "string", script.GetLicense());
 		AddNewNode(structNode, "Version", "string", script.GetVersion());
 

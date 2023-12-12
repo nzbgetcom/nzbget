@@ -56,7 +56,7 @@ namespace ExtensionLoader
 		bool feedScript = false;
 		std::string queueEvents;
 		std::string taskTime;
-		std::string caption;
+		std::string about;
 		std::string description;
 
 		Extension::Kind kind;
@@ -65,7 +65,7 @@ namespace ExtensionLoader
 
 		bool inBeforeConfig = false;
 		bool inConfig = false;
-		bool inCaption = false;
+		bool inAbout = false;
 		bool inDescription = false;
 
 		// Declarations "QUEUE EVENT:" and "TASK TIME:" can be placed:
@@ -113,13 +113,13 @@ namespace ExtensionLoader
 			}
 			if (inConfig && !strncmp(line.c_str(), "# ", 2) && !inDescription)
 			{
-				inCaption = true;
-				caption.append(line.substr(2)).push_back('\n');
+				inAbout = true;
+				about.append(line.substr(2)).push_back('\n');
 				continue;
 			}
-			if (inConfig && !strncmp(line.c_str(), "#", 1) && inCaption)
+			if (inConfig && !strncmp(line.c_str(), "#", 1) && inAbout)
 			{
-				inCaption = false;
+				inAbout = false;
 				inDescription = true;
 				continue;
 			}
@@ -141,9 +141,11 @@ namespace ExtensionLoader
 		}
 
 		BuildDisplayName(script);
+		Util::TrimRight(about);
+		Util::TrimRight(description);
 		script.SetKind(std::move(kind));
 		script.SetQueueEvents(std::move(queueEvents));
-		script.SetCaption(std::move(caption));
+		script.SetAbout(std::move(about));
 		script.SetDescription(std::move(description));
 		script.SetTaskTime(std::move(taskTime));
 		script.SetOptions(std::move(options));
@@ -254,6 +256,7 @@ namespace ExtensionLoader
 							option.name = std::move(name);
 							option.displayName = option.name;
 						}
+						Util::TrimRight(description);
 						option.description = std::move(description);
 						options.push_back(std::move(option));
 						break;
@@ -272,6 +275,7 @@ namespace ExtensionLoader
 					std::string action = line.substr(atPos + 1);
 					command.action = std::move(action);
 					command.name = std::move(name);
+					Util::TrimRight(description);
 					command.description = std::move(description);
 					command.displayName = command.name;
 					commands.push_back(std::move(command));
@@ -286,6 +290,7 @@ namespace ExtensionLoader
 						option.type = GetType(value);
 						option.value = std::move(value);
 						option.name = std::move(name);
+						Util::TrimRight(description);
 						option.description = std::move(description);
 						option.displayName = option.name;
 						options.push_back(std::move(option));
@@ -308,11 +313,12 @@ namespace ExtensionLoader
 		BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, manifest.main.c_str());
 		script.SetLocation(*location);
 		script.SetAuthor(std::move(manifest.author));
+		script.SetHomepage(std::move(manifest.homepage));
 		script.SetLicense(std::move(manifest.license));
 		script.SetVersion(std::move(manifest.version));
 		script.SetDisplayName(std::move(manifest.displayName));
 		script.SetName(std::move(manifest.name));
-		script.SetCaption(std::move(manifest.caption));
+		script.SetAbout(std::move(manifest.about));
 		script.SetDescription(std::move(manifest.description));
 		script.SetKind(GetScriptKind(manifest.kind));
 		script.SetQueueEvents(std::move(manifest.queueEvents));
