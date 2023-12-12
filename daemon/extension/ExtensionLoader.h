@@ -54,6 +54,7 @@ namespace ExtensionLoader
 		);
 		void RemoveTailAndTrim(std::string& str, const char* tail);
 		void BuildDisplayName(Extension::Script& script);
+		bool CheckCommaAfterEachWord(const std::string& sentence);
 	}
 
 	namespace V2

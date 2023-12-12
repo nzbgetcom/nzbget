@@ -20,6 +20,7 @@
 #include "nzbget.h"
 
 #include <fstream>
+#include <sstream>
 #include "ExtensionLoader.h"
 #include "ManifestFile.h"
 #include "ScriptConfig.h"
@@ -194,7 +195,11 @@ namespace ExtensionLoader
 
 			size_t selectStartIdx = line.find("(");
 			size_t selectEndIdx = line.find(")");
-			if (selectStartIdx != std::string::npos && selectEndIdx != std::string::npos)
+			bool hasSelectOptions = selectStartIdx != std::string::npos
+				&& selectEndIdx != std::string::npos
+				&& selectEndIdx != std::string::npos
+				&& !strncmp(line.c_str(), "# ", 2);
+			if (hasSelectOptions)
 			{
 				std::string comma = ", ";
 				std::string dash = "-";
@@ -206,17 +211,24 @@ namespace ExtensionLoader
 					continue;
 				}
 
+				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
+
+				if (foundComma && !CheckCommaAfterEachWord(selectStr))
+				{
+					description += line.substr(2) + '\n';
+					continue;
+				}
 				if (foundDash)
 				{
 					description += line.substr(2) + '\n';
 				}
-				else {
+				else
+				{
 					description += line.substr(2, selectStartIdx - 3) + ".\n";
 				}
 
 				ManifestFile::Option option;
 				std::vector<std::string> select;
-				std::string selectStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
 				size_t pos = 0;
 				std::string delimiter = foundDash ? dash : comma;
 				while ((pos = selectStr.find(delimiter)) != std::string::npos) {
@@ -302,6 +314,22 @@ namespace ExtensionLoader
 				description += line.substr(2) + '\n';
 			}
 		}
+
+	}
+
+	bool V1::CheckCommaAfterEachWord(const std::string& sentence)
+	{
+		std::stringstream ss(sentence);
+		std::string word;
+
+		while (ss >> word) {
+			if (!word.empty() && word.back() != ',' && !ss.eof())
+			{
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	bool V2::Load(Extension::Script& script, const char* directory)

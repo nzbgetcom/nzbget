@@ -1,5 +1,5 @@
 {
-    "main": "Logger2.exe",
+    "main": "main.bat",
     "name": "logger2",
     "kind": "POST-PROCESSING",
     "displayName": "Supper Logger2",

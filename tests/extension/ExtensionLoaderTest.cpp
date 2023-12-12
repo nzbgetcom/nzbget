@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
 	BOOST_CHECK(extension.GetLocation() == location);
-	BOOST_CHECK(extension.GetHomepage() == std::string("https://github"));
+	BOOST_CHECK(extension.GetHomepage() == std::string(""));
 	BOOST_CHECK(extension.GetAbout() == std::string("About1.\nAbout2."));
 	BOOST_CHECK(extension.GetDescription() == std::string("Description1\nDescription2"));
 	BOOST_CHECK(extension.GetTaskTime() == std::string("*;*:00;*:30"));
@@ -64,9 +64,10 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command.action == std::string("Send Test E-Mail"));
 	BOOST_CHECK(command.description == std::string("To check connection parameters click the button."));
 
-	BOOST_CHECK(extension.GetOptions().size() == 6);
+	BOOST_CHECK(extension.GetOptions().size() == 7);
 
 	auto option = extension.GetOptions()[0];
+
 	BOOST_CHECK(option.type == std::string("string"));
 	BOOST_CHECK(option.name == std::string("FileList"));
 	BOOST_CHECK(option.displayName == std::string("FileList"));
@@ -118,4 +119,15 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option6.description == std::string("Banned extensions.\nExtensions must be separated by a comma (eg: .wmv, .divx)."));
 	BOOST_CHECK(option6.value == std::string(""));
 	BOOST_CHECK(option6.select.size() == 0);
+
+	auto option7 = extension.GetOptions()[6];
+	BOOST_TEST_MESSAGE(option7.description);
+	BOOST_TEST_MESSAGE(option7.displayName);
+	BOOST_TEST_MESSAGE(option7.name);
+	BOOST_CHECK(option7.type == std::string("string"));
+	BOOST_CHECK(option7.name == std::string("MoviesFormat"));
+	BOOST_CHECK(option7.displayName == std::string("MoviesFormat"));
+	BOOST_CHECK(option7.description == std::string("Common specifiers (for movies, series and dated tv shows):\n{TEXT}          - lowercase the text."));
+	BOOST_CHECK(option7.value == std::string("%t (%y)"));
+	BOOST_CHECK(option7.select.size() == 0);
 }

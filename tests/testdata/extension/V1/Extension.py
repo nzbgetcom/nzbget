@@ -43,5 +43,10 @@
 # Extensions must be separated by a comma (eg: .wmv, .divx).
 #BannedExtensions=
 
+# Common specifiers (for movies, series and dated tv shows):
+#
+# {TEXT}          - lowercase the text.
+#MoviesFormat=%t (%y)
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################
