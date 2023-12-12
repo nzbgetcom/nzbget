@@ -28,16 +28,14 @@ jobs:
         bash osx/build-nzbget.sh
 
     - name: Rename build artifacts
-      if: github.ref_name != 'main'
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd osx/build/Release
-        if [ "$GITHUB_REF_NAME" != "develop" ]; then
-          NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
-        fi
+        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
-          mv $FILE $NEW_FILE          
+          mv $FILE $NEW_FILE
         done
 
     - name: Upload build artifacts

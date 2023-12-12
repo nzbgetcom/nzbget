@@ -28,15 +28,13 @@ jobs:
         .\windows\build-nzbget-vs22.bat
 
     - name: Rename build artifacts
-      if: github.ref_name != 'main'
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         $Output="c:\nzbget\build\output"
         $NewVersion=$env:NEW_VERSION
+        $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
         ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
-          if ($env:GITHUB_REF_NAME -ne "develop") {
-            $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
-            Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace($NewVersion, "$NewVersion-$Suffix")
-          }
+          Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace($NewVersion, "$NewVersion-$Suffix")
         }
 
     - name: Upload build artifacts

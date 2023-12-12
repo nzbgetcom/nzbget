@@ -32,12 +32,10 @@ jobs:
         docker run -e ALL_ARCHS="i686 x86_64 aarch64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
 
     - name: Rename build artifacts
-      if: github.ref_name != 'main'
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd /build/output
-        if [ "$GITHUB_REF_NAME" != "develop" ]; then
-          NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
-        fi
+        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
         for FILE in *.run; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
