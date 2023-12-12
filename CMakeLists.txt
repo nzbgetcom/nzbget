@@ -49,12 +49,6 @@ include_directories(lib/regex)
 include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
 
-if (NOT WIN32)
-    execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
-    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})
-endif()
-
 if(ENABLE_TESTS)
     include(CTest)
     add_subdirectory(tests)

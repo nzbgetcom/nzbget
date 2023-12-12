@@ -27,10 +27,6 @@ file(GLOB PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
-if (NOT WIN32)
-	set(PostprocessTests ${PostprocessTestsSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
-endif()
-
 add_executable(PostprocessTests ${PostprocessTestsSrc})
 target_link_libraries(PostprocessTests PRIVATE
 	ZLIB::ZLIB

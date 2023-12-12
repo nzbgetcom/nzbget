@@ -9,10 +9,6 @@ file(GLOB UtilTestSrc
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
-if (NOT WIN32)
-	set(UtilTestSrc ${UtilTestSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
-endif()
-
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
 	ZLIB::ZLIB
