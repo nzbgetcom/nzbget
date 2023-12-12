@@ -162,11 +162,12 @@ var Options = (new function($)
 				options: [],
 				hidden: false,
 				postparam: false,
-				description: "",
+				description: '',
+				about: serverTemplateData[i].About,
 				caption: serverTemplateData[i].Name,
 			};
 			const scriptConfig = { 
-				sections: [section], 
+				sections: [section],
 				nameprefix: serverTemplateData[i].Name, 
 			};
 			scriptConfig['scriptName'] = serverTemplateData[i].Name;
@@ -179,7 +180,7 @@ var Options = (new function($)
 			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
 			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
 			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
-			scriptConfig['caption'] = serverTemplateData[i].About;
+			scriptConfig['about'] = serverTemplateData[i].About;
 			scriptConfig['description'] = serverTemplateData[i].Description;
 			scriptConfig['author'] = serverTemplateData[i].Author;
 			scriptConfig['license'] = serverTemplateData[i].License;
@@ -193,6 +194,7 @@ var Options = (new function($)
 					defvalue: command.Action,
 					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select: [],
+					about: serverTemplateData[i].About,
 					description: command.Description,
 					nocontent: false,
 					formId: serverTemplateData[i].Name + '_' + command.Name,
@@ -508,6 +510,7 @@ var Options = (new function($)
 		section.id = 'PP-Parameters';
 		section.options = [];
 		section.description = '';
+		section.about = '';
 		section.hidden = false;
 		section.postparam = true;
 
@@ -522,7 +525,8 @@ var Options = (new function($)
 				option.caption = shortScriptName(scriptName);
 
 				option.defvalue = 'no';
-				option.description = data[i].About || 'Extension script ' + scriptName + '.';
+				option.description = '';
+				option.about = data[i].About || 'Extension script ' + scriptName + '.';
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
@@ -907,10 +911,15 @@ var Config = (new function($)
 			option.type = 'text';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editlarge">';
 		}
-
-		if (option.description !== '')
+		let about = option['about'] || '';
+		if (about)
 		{
-			var htmldescr = option.description;
+			about = about.replace('\n', ' ') + '\n';
+		}
+		let description = about + (option['description'] || '');
+		if (description !== '')
+		{
+			var htmldescr = description;
 			htmldescr = htmldescr.replace(/NOTE: do not forget to uncomment the next line.\n/, '');
 
 			// replace option references
@@ -1115,9 +1124,10 @@ var Config = (new function($)
 			option.defvalue = '';
 			option.sectionId = firstVisibleSection.id;
 			option.select = [];
-			var description = conf.description;
-			option.description = description !== '' ? conf.caption + '\n' + description : 'No description available.';
+			option.about = conf.about;
 			option.nocontent = true;
+			option.description = conf.description;
+			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 
