@@ -22,11 +22,6 @@
 #include "Util.h"			
 #include "YEncode.h"
 
-#ifndef WIN32
-// function "code_revision" is automatically generated in file "code_revision.cpp" on each build
-const char* code_revision(void);
-#endif
-
 #ifdef WIN32
 // getopt for WIN32:
 // from http://www.codeproject.com/cpp/xgetopt.asp
@@ -110,17 +105,7 @@ char Util::VersionRevisionBuf[100];
 
 void Util::Init()
 {
-#ifndef WIN32
-	if ((strlen(code_revision()) > 0) && strstr(VERSION, "testing"))
-	{
-		snprintf(VersionRevisionBuf, sizeof(VersionRevisionBuf), "%s-r%s", VERSION, code_revision());
-	}
-	else
-#endif
-	{
-		snprintf(VersionRevisionBuf, sizeof(VersionRevisionBuf), "%s", VERSION);
-	}
-
+	snprintf(VersionRevisionBuf, sizeof(VersionRevisionBuf), "%s", VERSION);
 	// init static vars there
 	CurrentTicks();
 }

@@ -37,3 +37,14 @@ NZBGet natively supports for multiple platforms and build options, so each platf
 4. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
 
 This flow results to the fact that in the PR to master branch we see only the squashed commits that correspond to the PRs in the develop branch in current release cycle.
+
+### Version changes in release cycle
+
+After the release has been published (from the `main` branch), the minor version in the `develop` branch should be increased so that subsequent test builds are a higher version than the release.
+
+List of files to change version:
+
+1. configure.ac - "AC_INIT" macro
+2. CMakeLists.txt - "project" block
+3. nzbget.vcxproj - "PreprocessorDefinitions" blocks - 4 matches
+4. windows/nzbget-setup.nsi - WriteRegStr - "DisplayVersion"
