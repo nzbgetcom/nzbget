@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 #
 # E-Mail post-processing script for NZBGet
 #

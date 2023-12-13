@@ -298,40 +298,47 @@ void ScriptController::PrepareArgs()
 					extension, FileSystem::BaseFileName(m_args[0]));
 			}
 		#else
-			std::string cmd;
+			m_scriptPath = m_args[0];
 			if (strcmp(extension, ".py") == 0) 
 			{
-				if (system("python3 --version > /dev/null 2>&1") == 0) 
+				if (std::system("python3 --version > /dev/null 2>&1") == 0) 
 				{
-					cmd = "python3 ";
-					cmd += *m_args[0];
-					strncpy(m_cmdLine, cmd.c_str(), sizeof(m_cmdLine));
+					strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
+					debug("CmdLine: %s", m_cmdLine);
 					return;
 				}
-				else if (system("python --version > /dev/null 2>&1") == 0) 
+				if (std::system("python --version > /dev/null 2>&1") == 0) 
 				{
-					cmd = "python ";
-					cmd += *m_args[0];
-					strncpy(m_cmdLine, cmd.c_str(), sizeof(m_cmdLine));
+					strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
+					debug("CmdLine: %s", m_cmdLine);
 					return;
 				}
-				else if (system("py --version > /dev/null 2>&1") == 0) 
+				if (std::system("py --version > /dev/null 2>&1") == 0) 
 				{
-					cmd = "py ";
-					cmd += *m_args[0];
-					strncpy(m_cmdLine, cmd.c_str(), sizeof(m_cmdLine));
+					strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
+					debug("CmdLine: %s", m_cmdLine);
 					return;
 				}
 			}
-			else if (strcmp(extension, ".sh") == 0) 
+			if (strcmp(extension, ".sh") == 0) 
 			{
-				cmd = "bash ";
-				cmd += *m_args[0];
-				strncpy(m_cmdLine, cmd.c_str(), sizeof(m_cmdLine));
-				return;
+				if (std::system("bash --version > /dev/null 2>&1") == 0)
+				{
+					strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
+					debug("CmdLine: %s", m_cmdLine);
+					return;
+				}
+				if (std::system("sh --version > /dev/null 2>&1") == 0)
+				{
+					strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
+					debug("CmdLine: %s", m_cmdLine);
+					return;
+				}
 			}
 			warn("Could not find associated program for %s. Trying to execute %s directly",
 				extension, FileSystem::BaseFileName(m_args[0]));
+			strncpy(m_cmdLine, m_scriptPath, sizeof(m_cmdLine));
+			m_scriptPath = nullptr;
 	#endif
 	}
 }
@@ -497,8 +504,6 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		workingDir = FileSystem::GetCurrentDirectory();
 	}
 
-	const char* script = m_args[0];
-
 #ifdef WIN32
 	char* cmdLine = m_cmdLine;
 	char cmdLineBuf[2048];
@@ -614,13 +619,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	std::vector<char*> environmentStrings = m_environmentStrings.GetStrings();
 	char** envdata = environmentStrings.data();
 
-	ArgList args;
-	std::copy(m_args.begin(), m_args.end(), std::back_inserter(args));
-	args.emplace_back(nullptr);
-	char* const* argdata = (char* const*)args.data();
-
 #ifdef DEBUG
-	debug("Starting  process: %s", script);
+	debug("Starting  process: %s", *m_args[0]);
 	for (const char* arg : m_args)
 	{
 		debug("arg: %s", arg);
@@ -675,22 +675,22 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		chdir(workingDir);
 		environ = envdata;
 
-		execvp(script, argdata);
+		execlp(m_cmdLine, m_cmdLine, m_scriptPath, nullptr);
 
 		if (errno == EACCES)
 		{
 			write(1, "[WARNING] Fixing permissions for", 32);
-			write(1, script, strlen(script));
+			write(1, *m_args[0], strlen(*m_args[0]));
 			write(1, "\n", 1);
 			fsync(1);
-			FileSystem::FixExecPermission(script);
-			execvp(script, argdata);
+			FileSystem::FixExecPermission(*m_args[0]);
+			execlp(m_cmdLine, m_cmdLine, m_scriptPath, nullptr);
 		}
 
 		// NOTE: the text "[ERROR] Could not start " is checked later,
 		// by changing adjust the dependent code below.
 		write(1, "[ERROR] Could not start ", 24);
-		write(1, script, strlen(script));
+		write(1, *m_args[0], strlen(*m_args[0]));
 		write(1, ": ", 2);
 		char* errtext = strerror(errno);
 		write(1, errtext, strlen(errtext));

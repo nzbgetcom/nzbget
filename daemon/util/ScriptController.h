@@ -100,10 +100,11 @@ private:
 	bool m_needWrite = false;
 	FILE* m_readpipe = 0;
 	FILE* m_writepipe = 0;
+	char m_cmdLine[2048];
+	char* m_scriptPath;
 #ifdef WIN32
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
-	char m_cmdLine[2048];
 #else
 	pid_t m_processId = 0;
 #endif
