@@ -236,10 +236,11 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 
 void ScriptController::PrepareArgs()
 {
+	*m_cmdLine = '\0';
+	const char *extension = strrchr(m_args[0], '.');
+
 	if (m_args.size() == 1 && !Util::EmptyStr(g_Options->GetShellOverride()))
 	{
-		const char* extension = strrchr(m_args[0], '.');
-
 		Tokenizer tok(g_Options->GetShellOverride(), ",;");
 		while (CString shellover = tok.Next())
 		{
@@ -259,88 +260,97 @@ void ScriptController::PrepareArgs()
 		}
 	}
 
-	*m_cmdLine = '\0';
+#ifdef WIN32
 	if (m_args.size() == 1)
 	{
-		const char* extension = strrchr(m_args[0], '.');
-		#ifdef WIN32
-			// Special support for script languages:
-			// automatically find the app registered for this extension and run it
-			if (extension && strcasecmp(extension, ".exe") && strcasecmp(extension, ".bat") && strcasecmp(extension, ".cmd"))
+		// Special support for script languages:
+		// automatically find the app registered for this extension and run it
+		if (extension && strcasecmp(extension, ".exe") && strcasecmp(extension, ".bat") && strcasecmp(extension, ".cmd"))
+		{
+			debug("Looking for associated program for %s", extension);
+			char command[512];
+			int bufLen = 512 - 1;
+			if (Util::RegReadStr(HKEY_CLASSES_ROOT, extension, nullptr, command, &bufLen))
 			{
-				debug("Looking for associated program for %s", extension);
-				char command[512];
-				int bufLen = 512 - 1;
-				if (Util::RegReadStr(HKEY_CLASSES_ROOT, extension, nullptr, command, &bufLen))
+				command[bufLen] = '\0';
+				debug("Extension: %s", command);
+
+				bufLen = 512 - 1;
+				if (Util::RegReadStr(HKEY_CLASSES_ROOT, BString<1024>("%s\\shell\\open\\command", command),
+									 nullptr, command, &bufLen))
 				{
 					command[bufLen] = '\0';
-					debug("Extension: %s", command);
-
-					bufLen = 512 - 1;
-					if (Util::RegReadStr(HKEY_CLASSES_ROOT, BString<1024>("%s\\shell\\open\\command", command),
-						nullptr, command, &bufLen))
+					CString scommand(command);
+					scommand.Replace("%L", "%1"); // Python 3.x has %L in command instead of %1
+					debug("Command: %s", scommand.Str());
+					DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
+					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
+									  m_cmdLine, sizeof(m_cmdLine), (va_list *)args))
 					{
-						command[bufLen] = '\0';
-						CString scommand(command);
-						scommand.Replace("%L", "%1");// Python 3.x has %L in command instead of %1
-						debug("Command: %s", scommand.Str());
-						DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
-						if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
-							m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
-						{
-							Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
-							debug("CmdLine: %s", m_cmdLine);
-							return;
-						}
+						Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
+						debug("CmdLine: %s", m_cmdLine);
+						return;
 					}
-				}
-				warn("Could not find associated program for %s. Trying to execute %s directly",
-					extension, FileSystem::BaseFileName(m_args[0]));
-			}
-		#else
-			m_scriptPath = m_args[0];
-			if (strcmp(extension, ".py") == 0) 
-			{
-				if (std::system("python3 --version > /dev/null 2>&1") == 0) 
-				{
-					strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
-					debug("CmdLine: %s", m_cmdLine);
-					return;
-				}
-				if (std::system("python --version > /dev/null 2>&1") == 0) 
-				{
-					strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
-					debug("CmdLine: %s", m_cmdLine);
-					return;
-				}
-				if (std::system("py --version > /dev/null 2>&1") == 0) 
-				{
-					strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
-					debug("CmdLine: %s", m_cmdLine);
-					return;
-				}
-			}
-			if (strcmp(extension, ".sh") == 0) 
-			{
-				if (std::system("bash --version > /dev/null 2>&1") == 0)
-				{
-					strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
-					debug("CmdLine: %s", m_cmdLine);
-					return;
-				}
-				if (std::system("sh --version > /dev/null 2>&1") == 0)
-				{
-					strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
-					debug("CmdLine: %s", m_cmdLine);
-					return;
 				}
 			}
 			warn("Could not find associated program for %s. Trying to execute %s directly",
-				extension, FileSystem::BaseFileName(m_args[0]));
-			strncpy(m_cmdLine, m_scriptPath, sizeof(m_cmdLine));
-			m_scriptPath = nullptr;
-	#endif
+				 extension, FileSystem::BaseFileName(m_args[0]));
+		}
 	}
+#else
+	if (m_args.size() == 1)
+	{
+		strncpy(m_scriptPath, m_args[0], sizeof(m_scriptPath));
+		if (strcmp(extension, ".py") == 0)
+		{
+			if (std::system("python3 --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("python --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("py --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+		}
+		if (strcmp(extension, ".sh") == 0)
+		{
+			if (std::system("bash --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("sh --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+		}
+		warn("Could not find associated program for %s. Trying to execute %s directly",
+			extension, FileSystem::BaseFileName(m_args[0]));
+		strncpy(m_cmdLine, m_scriptPath, sizeof(m_cmdLine));
+		*m_scriptPath = '\0';
+	}
+	else
+	{
+		if (m_args.size() > 1)
+		{
+			strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+			strncpy(m_scriptPath, m_args.back(), sizeof(m_scriptPath));
+		}
+	}
+#endif
 }
 
 int ScriptController::Execute()
