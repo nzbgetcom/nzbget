@@ -505,6 +505,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	}
 
 #ifdef WIN32
+	m_scriptPath = m_args[0];
 	char* cmdLine = m_cmdLine;
 	char cmdLineBuf[2048];
 	if (!*m_cmdLine)
@@ -564,9 +565,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		{
 			PrintMessage(Message::mkError, "Could not start %s: error %i", *m_infoName, errCode);
 		}
-		if (!FileSystem::FileExists(script))
+		if (!FileSystem::FileExists(m_scriptPath))
 		{
-			PrintMessage(Message::mkError, "Could not find file %s", script);
+			PrintMessage(Message::mkError, "Could not find file %s", m_scriptPath);
 		}
 		if (wcslen(wideWorkingDir) > 260)
 		{
