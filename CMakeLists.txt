@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 project(
     nzbget
-    VERSION "22.0"
+    VERSION "22.2"
     DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
     LANGUAGES C CXX
 )
@@ -49,12 +49,6 @@ endif()
 include_directories(lib/regex)
 include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
-
-if (NOT WIN32)
-    execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
-    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})
-endif()
 
 if(ENABLE_TESTS)
     include(CTest)

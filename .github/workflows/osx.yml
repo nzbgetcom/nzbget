@@ -14,10 +14,29 @@ jobs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    
+    - name: Change version for non-release
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i '' configure.ac
+        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
 
     - name: Build
       run: |
-        bash osx/build-nzbget.sh 
+        bash osx/build-nzbget.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd osx/build/Release
+        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        for FILE in *.zip; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
+          mv $FILE $NEW_FILE
+        done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
