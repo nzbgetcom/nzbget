@@ -16,6 +16,7 @@ add_executable(NzbFileTest
 target_link_libraries(NzbFileTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
+	LibXml2::LibXml2
 )
 target_include_directories(NzbFileTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -27,6 +28,7 @@ target_include_directories(NzbFileTest PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${OPENSSL_INCLUDE_DIR}
 	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 file(COPY ../testdata/nzbfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

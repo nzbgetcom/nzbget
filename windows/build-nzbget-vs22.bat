@@ -88,11 +88,6 @@ cd ..
 
 cd tmp\nzbget-%VERSION%
 
-rem Activate revision info (using code_revision.cpp)
-rem %SED% -e ":a;N;$!ba;s|void Util::Init()\n{\n#ifndef WIN32|void Util::Init()\n{\n#ifndef WIN32DISABLED|" -i daemon\util\Util.cpp
-rem %SED% -e ":a;N;$!ba;s|#ifndef WIN32\n// function|#ifndef WIN32DISABLED\n// function|" -i daemon\util\Util.cpp
-rem %SED% -e "s|<ClCompile Include=\d034daemon\\util\\Util.cpp\d034 />|<ClCompile Include=\d034daemon\\util\\Util.cpp\d034 /><ClCompile Include=\d034code_revision.cpp\d034 />|" -i nzbget.vcxproj
-
 :TARGET_DEBUG
 rem Build debug binaries
 if %BUILD_DEBUG%==0 goto TARGET_RELEASE
@@ -186,7 +181,7 @@ copy windows\README-WINDOWS.txt ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy ChangeLog ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
-copy README ..\distrib\NZBGet
+copy INSTALLATION.md ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy COPYING ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED

@@ -1,6 +1,4 @@
-=====================================
-           NZBGet ReadMe
-=====================================
+# NZBGet installation      
 
 This is a short documentation. For more information please
 visit NZBGet home page at 
@@ -19,9 +17,8 @@ Contents
 9. Copyright
 10. Contact
 
-=====================================
-1. About NZBGet
-=====================================
+
+## 1. About NZBGet
 
 NZBGet is a binary newsgrabber, which downloads files from usenet
 based on information given in nzb-files. NZBGet can be used in
@@ -40,9 +37,7 @@ Standalone-tool, server and client are all contained in only one
 executable file "nzbget". The mode in which the program works 
 depends on command-line parameters passed to the program.
 
-=====================================
-2. Supported OS
-=====================================
+## 2. Supported OS
 
 NZBGet is written in C++ and works on Windows, OS X, Linux and
 most POSIX-conform OS'es.
@@ -58,9 +53,7 @@ the program yourself.
 If you have downloaded binaries you can just jump to section 
 "Configuration".
 
-=====================================
-3. Prerequisites on POSIX
-=====================================
+## 3. Prerequisites on POSIX
 
 NZBGet is developed on a linux-system, but it runs on other
 POSIX platforms.
@@ -68,29 +61,30 @@ POSIX platforms.
 NZBGet absolutely needs the following libraries:
 
  - libstdc++     (usually part of compiler)
- - libxml2       (https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
+ - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
 And the following libraries are optional:
 
  - for curses-output-mode (enabled by default):
    - libcurses   (usually part of commercial systems)
      or (better)
-   - libncurses  (https://invisible-island.net/ncurses)
+   - [libncurses](https://invisible-island.net/ncurses)
     
  - for encrypted connections (TLS/SSL):
-   - OpenSSL     (https://www.openssl.org)
+   - [OpenSSL](https://www.openssl.org)
+
      or
-   - GnuTLS      (https://gnutls.org)
+   - [GnuTLS](https://gnutls.org)
 
  - for gzip support in web-server and web-client (enabled by default):
-   - zlib     (https://www.zlib.net/)
+   - [zlib](https://www.zlib.net/)
 
  - for configuration:
-   - autotools    (https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
-   - autoconf     (https://www.gnu.org/software/autoconf/)
+   - [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
+   - [autoconf](https://www.gnu.org/software/autoconf/)
 
  - for managing package dependencies:
-   - pkg-config   (https://www.freedesktop.org/wiki/Software/pkg-config/)
+   - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
 
 All these libraries are included in modern POSIX distributions and
 should be available as installable packages. Please note that you also 
@@ -98,9 +92,7 @@ need the developer packages for these libraries too, they package names
 have often suffix "dev" or "devel". On other systems you may need to 
 download the libraries at the given URLs and compile them (see hints below).
 
-=====================================
-4. Installation on POSIX
-=====================================
+## 4. Installation on POSIX
 
 Installation from the source distribution archive (nzbget-VERSION.tar.gz):
 
@@ -140,8 +132,8 @@ Installation from the source distribution archive (nzbget-VERSION.tar.gz):
    (you can skip this step if you intend to store configuration
     files in a non-standard location)
 
-Configure-options
------------------
+### Configure-options
+---------------------
 You may run configure with additional arguments:
 
   --disable-curses - to make without curses-support. Use this option
@@ -162,8 +154,8 @@ You may run configure with additional arguments:
   --enable-debug - to build in debug-mode, if you want to see and log
     debug-messages.
     
-Optional package: par-check
----------------------------
+### Optional package: par-check
+-------------------------------
 NZBGet can check and repair downloaded files for you. For this purpose
 it uses library par2.
 
@@ -175,8 +167,8 @@ can be disabled using configure option "--disable-parcheck":
 
   ./configure --disable-parcheck
 
-Optional package: curses
--------------------------
+### Optional package: curses
+----------------------------
 For curses-outputmode you need ncurses or curses on your system.
 If you do not have one of them you can download and compile ncurses yourself.
 Following configure-parameters may be useful:
@@ -189,7 +181,7 @@ make the program without support for curses using option "--disable-curses":
 
   ./configure --disable-curses
 
-Optional package: TLS
+### Optional package: TLS
 -------------------------
 To enable encrypted server connections (TLS/SSL) you need to build the program
 with TLS/SSL support. NZBGet can use two libraries: OpenSSL or GnuTLS.
@@ -212,25 +204,25 @@ TLS/SSL support using option "--disable-tls":
 
   ./configure --disable-tls
   
-=====================================
-5. Compiling on Windows
-=====================================
+## 5. Compiling on Windows
 
 NZBGet is developed using MS Visual Studio 2015 (Community Edition). The project
 file is provided.
 
 To compile the program with TLS/SSL support you need either OpenSSL or GnuTLS:
-   - OpenSSL  (https://www.openssl.org)
-   or
-   - GnuTLS   (https://gnutls.org/)
+   - [OpenSSL](https://www.openssl.org)
+
+     or
+   - [GnuTLS](https://gnutls.org/)
 
 Also required are:
-   - Regex (https://gnuwin32.sourceforge.net/packages/regex.htm)
-   - Zlib (https://gnuwin32.sourceforge.net/packages/zlib.htm)
+   - [Regex](https://regexlib.com/)
+   - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
+   - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
 
-=====================================
-6. Configuration
-=====================================
+We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
+
+## 6. Configuration
 
 NZBGet needs a configuration file. 
 
@@ -270,9 +262,7 @@ In special cases you can run program without configuration file using
 switch "-n". You need to use switch "-o" to pass required configuration 
 options via command-line.
 
-=====================================
-7. Usage
-=====================================
+## 7. Usage
 
 NZBGet can be used in either standalone mode which downloads a single file 
 or as a server which is able to queue up numerous download requests.
@@ -283,13 +273,13 @@ in "nzbget-shell.bat". Start this script from Windows Explorer and you will
 be running a command shell with PATH adjusted to find NZBGet executable.
 Then you can type all commands without full path to nzbget.exe.
 
-Standalone mode:
-----------------
+### Standalone mode:
+--------------------
 
 nzbget <nzb-file>
 
-Server mode:
-------------
+### Server mode:
+----------------
 
 First start the nzbget-server:
 
@@ -384,8 +374,8 @@ or:
 
   nzbget -o createlog=no -C
   
-Running client & server on seperate machines:
----------------------------------------------
+### Running client & server on seperate machines:
+-------------------------------------------------
 
 Since nzbget communicates via TCP/IP it's possible to have a server running on
 one computer and adding downloads via a client on another computer.
@@ -394,8 +384,8 @@ Do this by setting the "ControlIP" option in the nzbget.conf file to point to th
 IP of the server (default is localhost which means client and server runs on 
 same computer)
 
-Security warning
-----------------
+### Security warning
+--------------------
 
 NZBGet communicates via unsecured socket connections. This makes it vulnerable.
 Although server checks the password passed by client, this password is still 
@@ -406,8 +396,8 @@ If you need to control server from WAN it is better to connect to server's
 terminal via SSH (POSIX) or remote desktop (Windows) and then run
 nzbget-client-commands in this terminal.
 
-Post processing scripts
------------------------
+### Post processing scripts
+---------------------------
 
 After the download of nzb-file is completed nzbget can call post-processing
 scripts, defined in configuration file.
@@ -420,8 +410,8 @@ To use the scripts copy them into your local directory and set options
 For information on writing your own post-processing scripts please
 visit NZBGet web site.
 
-Web-interface
--------------
+### Web-interface
+-----------------
 
 NZBGet has a built-in web-server providing the access to the program
 functions via web-interface.
@@ -450,9 +440,7 @@ Please note, that in this case the password is saved in a bookmark or in
 browser history in plain text and is easy to find by persons having
 access to your computer. 
 
-=====================================
-8. Authors
-=====================================
+## 8. Authors
 
 NZBGet is developed and maintained by Andrey Prygunkov
 (hugbug@users.sourceforge.net).
@@ -493,9 +481,7 @@ Boost:
   Boost organization and wider Boost community <https://www.boost.org>
 
 
-=====================================
-9. Copyright
-=====================================
+## 9. Copyright
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -506,9 +492,7 @@ The complete content of license is provided in file COPYING.
 
 Additional exemption: compiling, linking, and/or using OpenSSL is allowed.
 
-=====================================
-10. Contact
-=====================================
+## 10. Contact
 
 If you encounter any problem, feel free to contact us
 	https://nzbget.com/contact/

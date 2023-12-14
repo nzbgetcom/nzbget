@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.22)
 
 project(
     nzbget
-    VERSION "22.0"
+    VERSION "22.2"
     DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
     LANGUAGES C CXX
 )
@@ -34,6 +34,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
+find_package(LibXml2 REQUIRED)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")
@@ -47,14 +48,6 @@ endif()
 include_directories(lib/regex)
 include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
-
-if (NOT WIN32)
-    find_package(LibXml2 REQUIRED)
-    include_directories(${LIBXML2_INCLUDE_DIR})
-    execute_process(COMMAND chmod +x ${CMAKE_SOURCE_DIR}/code_revision.sh)
-    execute_process(COMMAND ${CMAKE_SOURCE_DIR}/code_revision.sh WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-    execute_process(COMMAND mv ${CMAKE_SOURCE_DIR}/code_revision.cpp ${CMAKE_BINARY_DIR})
-endif()
 
 if(ENABLE_TESTS)
     include(CTest)
