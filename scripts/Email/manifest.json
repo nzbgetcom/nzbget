@@ -7,7 +7,8 @@
     "version": "1.0.0",
     "author": "Andrey Prygunkov",
     "license": "GNU",
-    "caption": "Send E-Mail notification.",
+    "about": "Send E-Mail notification.",
+    "queueEvents": "",
     "description": "This script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
     "options": [
         {

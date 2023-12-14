@@ -42,17 +42,13 @@ namespace ManifestFile
 
 		Json::JsonObject json = jsonValue.as_object();
 
-		if (!ValidateRequiredAndSet(json, manifest))
+		if (!ValidateAndSet(json, manifest))
 			return false;
 
-		CheckKeyAndSet(json, "taskTime", manifest.taskTime);
-		CheckKeyAndSet(json, "queueEvents", manifest.queueEvents);
-		ValidateOptionsAndSet(json, manifest.options);
-		ValidateCommandsAndSet(json, manifest.commands);
 		return true;
 	}
 
-	bool ValidateRequiredAndSet(const Json::JsonObject& json, Manifest& manifest)
+	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
 	{
 
 		if (!CheckKeyAndSet(json, "author", manifest.author))
@@ -83,6 +79,18 @@ namespace ManifestFile
 			return false;
 
 		if (!CheckKeyAndSet(json, "license", manifest.license))
+			return false;
+
+		if (!CheckKeyAndSet(json, "taskTime", manifest.taskTime))
+			return false;
+
+		if (!CheckKeyAndSet(json, "queueEvents", manifest.queueEvents))
+			return false;
+
+		if (!ValidateOptionsAndSet(json, manifest.options))
+			return false;
+
+		if (!ValidateCommandsAndSet(json, manifest.commands))
 			return false;
 
 		return true;
@@ -148,7 +156,10 @@ namespace ManifestFile
 
 			for (auto& selectVal : selectJson->as_array())
 			{
-				option.select.push_back(selectVal.as_string().c_str());
+				if (selectVal.is_string())
+				{
+					option.select.push_back(selectVal.as_string().c_str());
+				}
 			}
 
 			options.push_back(std::move(option));
