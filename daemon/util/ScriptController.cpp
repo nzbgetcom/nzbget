@@ -236,7 +236,6 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 
 void ScriptController::PrepareArgs()
 {
-	*m_cmdLine = '\0';
 	const char *extension = strrchr(m_args[0], '.');
 
 	if (m_args.size() == 1 && !Util::EmptyStr(g_Options->GetShellOverride()))
@@ -260,7 +259,13 @@ void ScriptController::PrepareArgs()
 		}
 	}
 
+	PrepareCmdLine(extension);
+}
+
 #ifdef WIN32
+void ScriptController::PrepareCmdLine(const char* extension)
+{
+	*m_cmdLine = '\0';
 	if (m_args.size() == 1)
 	{
 		// Special support for script languages:
@@ -277,15 +282,15 @@ void ScriptController::PrepareArgs()
 
 				bufLen = 512 - 1;
 				if (Util::RegReadStr(HKEY_CLASSES_ROOT, BString<1024>("%s\\shell\\open\\command", command),
-									 nullptr, command, &bufLen))
+					nullptr, command, &bufLen))
 				{
 					command[bufLen] = '\0';
 					CString scommand(command);
 					scommand.Replace("%L", "%1"); // Python 3.x has %L in command instead of %1
 					debug("Command: %s", scommand.Str());
-					DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
+					DWORD_PTR args[] = { (DWORD_PTR)*m_args[0], (DWORD_PTR)0 };
 					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
-									  m_cmdLine, sizeof(m_cmdLine), (va_list *)args))
+						m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
 					{
 						Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
 						debug("CmdLine: %s", m_cmdLine);
@@ -294,10 +299,16 @@ void ScriptController::PrepareArgs()
 				}
 			}
 			warn("Could not find associated program for %s. Trying to execute %s directly",
-				 extension, FileSystem::BaseFileName(m_args[0]));
+				extension, FileSystem::BaseFileName(m_args[0]));
 		}
 	}
-#else
+}
+#endif
+
+#ifndef WIN32
+void ScriptController::PrepareCmdLine(const char* extension)
+{
+	*m_cmdLine = '\0';
 	if (m_args.size() == 1)
 	{
 		strncpy(m_scriptPath, m_args[0], sizeof(m_scriptPath));
@@ -341,6 +352,7 @@ void ScriptController::PrepareArgs()
 			extension, FileSystem::BaseFileName(m_args[0]));
 		strncpy(m_cmdLine, m_scriptPath, sizeof(m_cmdLine));
 		*m_scriptPath = '\0';
+		return;
 	}
 	else
 	{
@@ -350,8 +362,8 @@ void ScriptController::PrepareArgs()
 			strncpy(m_scriptPath, m_args.back(), sizeof(m_scriptPath));
 		}
 	}
-#endif
 }
+#endif
 
 int ScriptController::Execute()
 {
@@ -515,7 +527,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	}
 
 #ifdef WIN32
-	m_scriptPath = m_args[0];
+	const char* script = m_args[0];
 	char* cmdLine = m_cmdLine;
 	char cmdLineBuf[2048];
 	if (!*m_cmdLine)
@@ -575,9 +587,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		{
 			PrintMessage(Message::mkError, "Could not start %s: error %i", *m_infoName, errCode);
 		}
-		if (!FileSystem::FileExists(m_scriptPath))
+		if (!FileSystem::FileExists(script))
 		{
-			PrintMessage(Message::mkError, "Could not find file %s", m_scriptPath);
+			PrintMessage(Message::mkError, "Could not find file %s", script);
 		}
 		if (wcslen(wideWorkingDir) > 260)
 		{
