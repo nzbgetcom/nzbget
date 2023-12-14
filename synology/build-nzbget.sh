@@ -32,15 +32,21 @@ chmod -x SynoBuildConf/depends
 chmod +x INFO.sh
 
 # correct build version in INFO.sh
-VERSION=$(grep "AC_INIT(nzbget, " configure.ac | cut -d "," -f 2)
-VERSION=${VERSION//[. ]/}
-VERSION=$(date '+%Y%m%d')-$VERSION
-sed -e "s|version=.*$|version=\"$VERSION\"|g" -i INFO.sh
+VERSION=$(grep "AC_INIT(nzbget, " configure.ac | cut -d "," -f 2 | xargs)
+SPK_VERSION=$(date '+%Y%m%d')-${VERSION//./}
+# if running from CI/CD, add testing to builds from non-main branch
+if [ -n "$GITHUB_REF_NAME" ]; then
+    if [ "$GITHUB_REF_NAME" != "main" ]; then
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i configure.ac
+    fi
+fi
+sed -e "s|version=.*$|version=\"$SPK_VERSION\"|g" -i INFO.sh
 
 # build
 $TOOLKIT/pkgscripts-ng/PkgCreate.py -v 7.0 -c -P 2 nzbget $BUILD_PARAM
 
 # remove debug packages and set user perms on packages
-mv $TOOLKIT/result_spk/nzbget-$VERSION/ $TOOLKIT/result_spk/nzbget/
+mv $TOOLKIT/result_spk/nzbget-$SPK_VERSION/ $TOOLKIT/result_spk/nzbget/
 rm $TOOLKIT/result_spk/nzbget/*_debug.spk
 chmod 666 $TOOLKIT/result_spk/nzbget/*

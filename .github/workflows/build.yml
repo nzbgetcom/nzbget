@@ -100,7 +100,7 @@ jobs:
     - name: Create latest artifacts
       run: |
         cp $(find nzbget-installers/ -name *linux.run) nzbget-installers/nzbget-latest-testing-bin-linux.run
-        cp $(find nzbget-installers/ -name *windows-setup.exe) nzbget-installers/nzbget-latest-testing-bin-windows-setup
+        cp $(find nzbget-installers/ -name *windows-setup.exe) nzbget-installers/nzbget-latest-testing-bin-windows-setup.exe
 
     - name: Delete tag and release
       uses: dev-drprasad/delete-tag-and-release@v0.2.1
