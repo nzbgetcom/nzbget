@@ -28,7 +28,7 @@ jobs:
         for FILE in *.spk; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
-          mv $FILE $NEW_FILE          
+          sudo mv $FILE $NEW_FILE          
         done
 
     - name: Upload build artifacts
