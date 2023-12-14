@@ -19,6 +19,7 @@
 
 #include "nzbget.h"
 
+#include "Xml.h"
 #include "Extension.h"
 
 namespace Extension
@@ -272,11 +273,11 @@ namespace Extension
 		AddNewNode(structNode, "License", "string", script.GetLicense());
 		AddNewNode(structNode, "Version", "string", script.GetVersion());
 
-		AddNewNode(structNode, "PostScript", "boolean", BooToStr(script.GetPostScript()));
-		AddNewNode(structNode, "ScanScript", "boolean", BooToStr(script.GetScanScript()));
-		AddNewNode(structNode, "QueueScript", "boolean", BooToStr(script.GetQueueScript()));
-		AddNewNode(structNode, "SchedulerScript", "boolean", BooToStr(script.GetSchedulerScript()));
-		AddNewNode(structNode, "FeedScript", "boolean", BooToStr(script.GetFeedScript()));
+		AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
+		AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));
+		AddNewNode(structNode, "QueueScript", "boolean", BoolToStr(script.GetQueueScript()));
+		AddNewNode(structNode, "SchedulerScript", "boolean", BoolToStr(script.GetSchedulerScript()));
+		AddNewNode(structNode, "FeedScript", "boolean", BoolToStr(script.GetFeedScript()));
 
 		AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
 		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
@@ -314,43 +315,26 @@ namespace Extension
 		xmlAddChild(structNode, optionsNode);
 		xmlAddChild(rootNode, structNode);
 
-		std::string result;
-
-		xmlBufferPtr buffer = xmlBufferCreate();
-		if (buffer == nullptr) {
-			XmlCleanup(buffer, rootNode);
-			return result;
-		}
-
-		int size = xmlNodeDump(buffer, rootNode->doc, rootNode, 0, 0);
-		if (size > 0) {
-			result = std::string(reinterpret_cast<const char*>(buffer->content), size);
-		}
-
-		XmlCleanup(buffer, rootNode);
-
+		std::string result = Xml::Serialize(rootNode);
+		xmlFreeNode(rootNode);
 		return result;
 	}
 
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+	namespace
 	{
-		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
-		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
-		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
-		xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
-		xmlAddChild(memberNode, valueNode);
-		xmlAddChild(rootNode, memberNode);
-	}
+		void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+		{
+			xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
+			xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
+			xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
+			xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
+			xmlAddChild(memberNode, valueNode);
+			xmlAddChild(rootNode, memberNode);
+		}
 
-	const char* BooToStr(bool value)
-	{
-		return value ? "true" : "false";
-	}
-
-	void XmlCleanup(xmlBufferPtr buffer, xmlNodePtr rootNode)
-	{
-		xmlBufferFree(buffer);
-		xmlFreeNode(rootNode);
-		xmlCleanupParser();
+		const char* BoolToStr(bool value)
+		{
+			return value ? "true" : "false";
+		}
 	}
 }

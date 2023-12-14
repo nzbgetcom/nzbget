@@ -284,6 +284,7 @@
     <ClCompile Include="daemon\util\Util.cpp" />
     <ClCompile Include="daemon\util\FileSystem.cpp" />
     <ClCompile Include="daemon\util\Json.cpp" />
+    <ClCompile Include="daemon\util\Xml.cpp" />
     <ClCompile Include="daemon\windows\StdAfx.cpp" />
     <ClCompile Include="daemon\windows\WinService.cpp" />
     <ClCompile Include="daemon\windows\WinConsole.cpp" />
@@ -410,6 +411,7 @@
     <ClInclude Include="daemon\util\Util.h" />
     <ClInclude Include="daemon\util\FileSystem.h" />
     <ClInclude Include="daemon\util\Json.h" />
+    <ClInclude Include="daemon\util\Xml.h" />
     <ClInclude Include="daemon\windows\WinService.h" />
     <ClInclude Include="daemon\windows\WinConsole.h" />
     <ClInclude Include="lib\par2\commandline.h" />

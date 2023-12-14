@@ -48,153 +48,156 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
+	namespace
 	{
-
-		if (!CheckKeyAndSet(json, "author", manifest.author))
-			return false;
-
-		if (!CheckKeyAndSet(json, "main", manifest.main))
-			return false;
-
-		if (!CheckKeyAndSet(json, "homepage", manifest.homepage))
-			return false;
-
-		if (!CheckKeyAndSet(json, "about", manifest.about))
-			return false;
-
-		if (!CheckKeyAndSet(json, "description", manifest.description))
-			return false;
-
-		if (!CheckKeyAndSet(json, "version", manifest.version))
-			return false;
-
-		if (!CheckKeyAndSet(json, "name", manifest.name))
-			return false;
-
-		if (!CheckKeyAndSet(json, "displayName", manifest.displayName))
-			return false;
-
-		if (!CheckKeyAndSet(json, "kind", manifest.kind))
-			return false;
-
-		if (!CheckKeyAndSet(json, "license", manifest.license))
-			return false;
-
-		if (!CheckKeyAndSet(json, "taskTime", manifest.taskTime))
-			return false;
-
-		if (!CheckKeyAndSet(json, "queueEvents", manifest.queueEvents))
-			return false;
-
-		if (!ValidateOptionsAndSet(json, manifest.options))
-			return false;
-
-		if (!ValidateCommandsAndSet(json, manifest.commands))
-			return false;
-
-		if (!ValidateRequirementsAndSet(json, manifest.requirements))
-			return false;
-
-		return true;
-	}
-
-	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
-	{
-		auto rawCommands = json.if_contains("commands");
-		if (!rawCommands || !rawCommands->is_array())
-			return false;
-
-		for (auto& value : rawCommands->as_array())
+		bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
 		{
-			Json::JsonObject cmdJson = value.as_object();
-			Command command;
 
-			if (!CheckKeyAndSet(cmdJson, "name", command.name))
-				continue;
+			if (!CheckKeyAndSet(json, "author", manifest.author))
+				return false;
 
-			if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
-				continue;
+			if (!CheckKeyAndSet(json, "main", manifest.main))
+				return false;
 
-			if (!CheckKeyAndSet(cmdJson, "description", command.description))
-				continue;
+			if (!CheckKeyAndSet(json, "homepage", manifest.homepage))
+				return false;
 
-			if (!CheckKeyAndSet(cmdJson, "action", command.action))
-				continue;
+			if (!CheckKeyAndSet(json, "about", manifest.about))
+				return false;
 
-			commands.push_back(std::move(command));
+			if (!CheckKeyAndSet(json, "description", manifest.description))
+				return false;
+
+			if (!CheckKeyAndSet(json, "version", manifest.version))
+				return false;
+
+			if (!CheckKeyAndSet(json, "name", manifest.name))
+				return false;
+
+			if (!CheckKeyAndSet(json, "displayName", manifest.displayName))
+				return false;
+
+			if (!CheckKeyAndSet(json, "kind", manifest.kind))
+				return false;
+
+			if (!CheckKeyAndSet(json, "license", manifest.license))
+				return false;
+
+			if (!CheckKeyAndSet(json, "taskTime", manifest.taskTime))
+				return false;
+
+			if (!CheckKeyAndSet(json, "queueEvents", manifest.queueEvents))
+				return false;
+
+			if (!ValidateOptionsAndSet(json, manifest.options))
+				return false;
+
+			if (!ValidateCommandsAndSet(json, manifest.commands))
+				return false;
+
+			if (!ValidateRequirementsAndSet(json, manifest.requirements))
+				return false;
+
+			return true;
 		}
 
-		return true;
-	}
-
-	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
-	{
-		auto rawOptions = json.if_contains("options");
-		if (!rawOptions || !rawOptions->is_array())
-			return false;
-
-		for (auto& optionVal : rawOptions->as_array())
+		bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
 		{
-			Json::JsonObject optionJson = optionVal.as_object();
-			auto selectJson = optionJson.if_contains("select");
-			if (!selectJson || !selectJson->is_array())
-				continue;
+			auto rawCommands = json.if_contains("commands");
+			if (!rawCommands || !rawCommands->is_array())
+				return false;
 
-			Option option;
-			if (!CheckKeyAndSet(optionJson, "type", option.type))
-				continue;
-
-			if (!CheckKeyAndSet(optionJson, "name", option.name))
-				continue;
-
-			if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
-				continue;
-
-			if (!CheckKeyAndSet(optionJson, "description", option.description))
-				continue;
-
-			if (!CheckKeyAndSet(optionJson, "value", option.value))
-				continue;
-
-			for (auto& selectVal : selectJson->as_array())
+			for (auto& value : rawCommands->as_array())
 			{
-				if (selectVal.is_string())
+				Json::JsonObject cmdJson = value.as_object();
+				Command command;
+
+				if (!CheckKeyAndSet(cmdJson, "name", command.name))
+					continue;
+
+				if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
+					continue;
+
+				if (!CheckKeyAndSet(cmdJson, "description", command.description))
+					continue;
+
+				if (!CheckKeyAndSet(cmdJson, "action", command.action))
+					continue;
+
+				commands.push_back(std::move(command));
+			}
+
+			return true;
+		}
+
+		bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
+		{
+			auto rawOptions = json.if_contains("options");
+			if (!rawOptions || !rawOptions->is_array())
+				return false;
+
+			for (auto& optionVal : rawOptions->as_array())
+			{
+				Json::JsonObject optionJson = optionVal.as_object();
+				auto selectJson = optionJson.if_contains("select");
+				if (!selectJson || !selectJson->is_array())
+					continue;
+
+				Option option;
+				if (!CheckKeyAndSet(optionJson, "type", option.type))
+					continue;
+
+				if (!CheckKeyAndSet(optionJson, "name", option.name))
+					continue;
+
+				if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
+					continue;
+
+				if (!CheckKeyAndSet(optionJson, "description", option.description))
+					continue;
+
+				if (!CheckKeyAndSet(optionJson, "value", option.value))
+					continue;
+
+				for (auto& selectVal : selectJson->as_array())
 				{
-					option.select.push_back(selectVal.as_string().c_str());
+					if (selectVal.is_string())
+					{
+						option.select.push_back(selectVal.as_string().c_str());
+					}
+				}
+
+				options.push_back(std::move(option));
+			}
+
+			return true;
+		}
+
+		bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
+		{
+			auto rawRequirements = json.if_contains("requirements");
+			if (!rawRequirements || !rawRequirements->is_array())
+				return false;
+
+			for (auto& value : rawRequirements->as_array())
+			{
+				if (value.is_string())
+				{
+					requirements.push_back(value.as_string().c_str());
 				}
 			}
 
-			options.push_back(std::move(option));
+			return true;
 		}
 
-		return true;
-	}
-
-	bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
-	{
-		auto rawRequirements = json.if_contains("requirements");
-		if (!rawRequirements || !rawRequirements->is_array())
-			return false;
-
-		for (auto& value : rawRequirements->as_array())
+		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
 		{
-			if (value.is_string())
-			{
-				requirements.push_back(value.as_string().c_str());
-			}
+			const auto& rawProperty = json.if_contains(key);
+			if (!rawProperty || !rawProperty->is_string())
+				return false;
+
+			property = rawProperty->as_string().c_str();
+			return true;
 		}
-
-		return true;
-	}
-
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
-	{
-		const auto& rawProperty = json.if_contains(key);
-		if (!rawProperty || !rawProperty->is_string())
-			return false;
-
-		property = rawProperty->as_string().c_str();
-		return true;
 	}
 }

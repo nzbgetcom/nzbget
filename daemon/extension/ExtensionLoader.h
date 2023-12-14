@@ -47,14 +47,17 @@ namespace ExtensionLoader
 	namespace V1
 	{
 		bool Load(Extension::Script& script);
-		void ParseOptionsAndCommands(
-			std::ifstream& file,
-			std::vector<ManifestFile::Option>& options,
-			std::vector<ManifestFile::Command>& commands
-		);
-		void RemoveTailAndTrim(std::string& str, const char* tail);
-		void BuildDisplayName(Extension::Script& script);
-		bool CheckCommaAfterEachWord(const std::string& sentence);
+		namespace
+		{
+			void ParseOptionsAndCommands(
+				std::ifstream& file,
+				std::vector<ManifestFile::Option>& options,
+				std::vector<ManifestFile::Command>& commands
+			);
+			void RemoveTailAndTrim(std::string& str, const char* tail);
+			void BuildDisplayName(Extension::Script& script);
+			bool CheckCommaAfterEachWord(const std::string& sentence);
+		}
 	}
 
 	namespace V2
@@ -62,8 +65,11 @@ namespace ExtensionLoader
 		bool Load(Extension::Script& script, const char* directory);
 	}
 
-	Extension::Kind GetScriptKind(const std::string& line);
-	std::string GetType(const std::string& value);
+	namespace
+	{
+		Extension::Kind GetScriptKind(const std::string& line);
+		std::string GetType(const std::string& value);
+	}
 }
 
 #endif

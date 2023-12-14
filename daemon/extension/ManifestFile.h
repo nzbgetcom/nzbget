@@ -38,7 +38,7 @@ namespace ManifestFile
 		std::vector<std::string> select;
 	};
 
-	struct Command 
+	struct Command
 	{
 		std::string name;
 		std::string displayName;
@@ -66,11 +66,14 @@ namespace ManifestFile
 	};
 
 	bool Load(Manifest& manifest, const char* directory);
-	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
-	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
-	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
-	bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements);
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
+	namespace
+	{
+		bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
+		bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
+		bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
+		bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements);
+		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
+	}
 };
 
 #endif

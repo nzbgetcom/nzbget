@@ -17,37 +17,15 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "nzbget.h"
+#ifndef XML_H
+#define XML_H
 
-#include "Json.h"
+#include <iostream>
+#include <libxml/tree.h>
 
-namespace Json {
-	JsonValue Deserialize(std::istream& is, ErrorCode& ec)
-	{
-		StreamParser parser;
-		std::string line;
-
-		while (std::getline(is, line))
-		{
-			parser.write(line, ec);
-			if (ec)
-			{
-				return nullptr;
-			}
-		}
-
-		parser.finish(ec);
-
-		if (ec)
-		{
-			return nullptr;
-		}
-
-		return parser.release();
-	}
-
-	std::string Serialize(const JsonObject& json)
-	{
-		return serialize(json);
-	}
+namespace Xml
+{
+	std::string Serialize(const xmlNodePtr rootNode);
 }
+
+#endif

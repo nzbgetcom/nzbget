@@ -19,35 +19,24 @@
 
 #include "nzbget.h"
 
-#include "Json.h"
+#include "Xml.h"
 
-namespace Json {
-	JsonValue Deserialize(std::istream& is, ErrorCode& ec)
+namespace Xml {
+	std::string Serialize(const xmlNodePtr rootNode)
 	{
-		StreamParser parser;
-		std::string line;
+		std::string result;
 
-		while (std::getline(is, line))
-		{
-			parser.write(line, ec);
-			if (ec)
-			{
-				return nullptr;
-			}
+		xmlBufferPtr buffer = xmlBufferCreate();
+		if (buffer == nullptr) {
+			return result;
 		}
 
-		parser.finish(ec);
-
-		if (ec)
-		{
-			return nullptr;
+		int size = xmlNodeDump(buffer, rootNode->doc, rootNode, 0, 0);
+		if (size > 0) {
+			result = std::string(reinterpret_cast<const char*>(buffer->content), size);
 		}
 
-		return parser.release();
-	}
-
-	std::string Serialize(const JsonObject& json)
-	{
-		return serialize(json);
+		xmlBufferFree(buffer);
+		return result;
 	}
 }

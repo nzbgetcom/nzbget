@@ -135,4 +135,5 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 </struct></value>";
 
 	BOOST_CHECK(result == expected);
+	xmlCleanupParser();
 }
