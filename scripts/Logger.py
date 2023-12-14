@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 #
 # Logger post-processing script for NZBGet
 #
