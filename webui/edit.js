@@ -917,8 +917,28 @@ var ParamTab = (new function($)
 
 		if (!Options.findOption(postParamConfig[0].options, '*Unpack:'))
 		{
-			postParamConfig[0].options.unshift({name: '*Unpack:Password', value: '', defvalue: '', select: [], caption: 'Password', sectionId: '_Unpack_', about: 'Unpack-password for encrypted archives.', description: ''});
-			postParamConfig[0].options.unshift({name: '*Unpack:', value: '', defvalue: 'yes', select: ['yes', 'no'], caption: 'Unpack', sectionId: '_Unpack_', about: 'Unpack rar and 7-zip archives.', description: ''});
+			postParamConfig[0].options.unshift({
+				name: '*Unpack:Password', 
+				value: '', 
+				defvalue: '', 
+				select: [], 
+				caption: 'Password', 
+				sectionId: '_Unpack_', 
+				about: 'Unpack-password for encrypted archives.', 
+				description: '',
+				requirements: [],
+			});
+			postParamConfig[0].options.unshift({
+				name: '*Unpack:', 
+				value: '', 
+				defvalue: 'yes', 
+				select: ['yes', 'no'], 
+				caption: 'Unpack', 
+				sectionId: '_Unpack_', 
+				about: 'Unpack rar and 7-zip archives.', 
+				description: '',
+				requirements: [],
+			});
 		}
 	}
 

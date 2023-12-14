@@ -9,7 +9,10 @@
     "license": "GNU",
     "about": "Send E-Mail notification.",
     "queueEvents": "",
-    "description": "This script sends E-Mail notification when the job is done.\nNOTE: This script requires Python to be installed on your system.",
+    "requirements": [
+        "This script requires Python to be installed on your system."
+    ],
+    "description": "This script sends E-Mail notification when the job is done.",
     "options": [
         {
             "type": "string",

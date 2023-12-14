@@ -136,9 +136,9 @@ var Options = (new function($)
 		complete();
 	}
 
-	function complete()
+	function complete() 
 	{
-		if (serverTemplateData === null)
+		if (serverTemplateData === null) 
 		{
 			// the loading was cancelled and the data was discarded (via method "cleanup()")
 			return;
@@ -154,25 +154,26 @@ var Options = (new function($)
 		config.push(serverConfig);
 
 		// read scripts configs
-		for (var i = 1; i < serverTemplateData.length; i++)
+		for (var i = 1; i < serverTemplateData.length; i++) 
 		{
+			
 			const section = {
 				name: serverTemplateData[i].Name,
 				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
 				options: [],
 				hidden: false,
 				postparam: false,
-				description: '',
-				about: serverTemplateData[i].About,
-				caption: serverTemplateData[i].Name,
 			};
-			const scriptConfig = { 
+			const scriptConfig = {
 				sections: [section],
-				nameprefix: serverTemplateData[i].Name, 
+				nameprefix: serverTemplateData[i].Name,
 			};
+			const requirements = serverTemplateData[i].Requirements;
+			let description = serverTemplateData[i].Description + '\n\n';
+			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n\n', description);
 			scriptConfig['scriptName'] = serverTemplateData[i].Name;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
-			scriptConfig['name']= serverTemplateData[i].Name;
+			scriptConfig['name'] = serverTemplateData[i].Name;
 			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
 			scriptConfig['post'] = serverTemplateData[i].PostScript;
 			scriptConfig['scan'] = serverTemplateData[i].ScanScript;
@@ -181,11 +182,13 @@ var Options = (new function($)
 			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
 			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
 			scriptConfig['about'] = serverTemplateData[i].About;
-			scriptConfig['description'] = serverTemplateData[i].Description;
+			scriptConfig['description'] = description;
 			scriptConfig['author'] = serverTemplateData[i].Author;
 			scriptConfig['license'] = serverTemplateData[i].License;
 			scriptConfig['version'] = serverTemplateData[i].Version;
-			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) {
+
+			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) 
+			{
 				const command = serverTemplateData[i].Commands[j];
 				section.options.push({
 					caption: command.Name,
@@ -202,9 +205,10 @@ var Options = (new function($)
 					type: 'command'
 				});
 			}
-			for (let j = 0; j < serverTemplateData[i].Options.length; j++) {
+			for (let j = 0; j < serverTemplateData[i].Options.length; j++) 
+			{
 				const option = serverTemplateData[i].Options[j];
-				const [ type, select ] = GetTypeAndSelect(option);
+				const [type, select] = GetTypeAndSelect(option);
 				section.options.push({
 					caption: option.Name,
 					name: serverTemplateData[i].Name + ':' + option.Name,
@@ -218,6 +222,7 @@ var Options = (new function($)
 					type
 				});
 			}
+			
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -501,8 +506,8 @@ var Options = (new function($)
 	}
 	this.shortScriptName = shortScriptName;
 
-	function initPostParamConfig(data)
-	{
+	function initPostParamConfig(data) 
+		{
 		// Create one big post-param section. It consists of one item for every post-processing script
 		// and additionally includes all post-param options from post-param section of each script.
 
@@ -514,9 +519,9 @@ var Options = (new function($)
 		section.hidden = false;
 		section.postparam = true;
 
-		for (var i=0; i < data.length; i++)
+		for (var i = 0; i < data.length; i++) 
 		{
-			if (data[i].PostScript || data[i].QueueScript)
+			if (data[i].PostScript || data[i].QueueScript) 
 			{
 				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
@@ -527,6 +532,7 @@ var Options = (new function($)
 				option.defvalue = 'no';
 				option.description = '';
 				option.about = data[i].About || 'Extension script ' + scriptName + '.';
+				option.requirements = [];
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
@@ -916,8 +922,8 @@ var Config = (new function($)
 		{
 			about = about.replace('\n', ' ') + '\n';
 		}
-		let description = about + (option['description'] || '');
-		if (description !== '')
+		let description = about + (option['description'] || '\n');
+		if (description) 
 		{
 			var htmldescr = description;
 			htmldescr = htmldescr.replace(/NOTE: do not forget to uncomment the next line.\n/, '');

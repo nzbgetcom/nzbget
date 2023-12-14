@@ -8,6 +8,7 @@
     "homepage": "https://github",
     "license": "GNU",
     "about": "About",
+    "requirements": [],
     "description": "Description",
     "options": [
         {

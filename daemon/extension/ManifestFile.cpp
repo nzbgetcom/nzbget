@@ -93,6 +93,9 @@ namespace ManifestFile
 		if (!ValidateCommandsAndSet(json, manifest.commands))
 			return false;
 
+		if (!ValidateRequirementsAndSet(json, manifest.requirements))
+			return false;
+
 		return true;
 	}
 
@@ -163,6 +166,23 @@ namespace ManifestFile
 			}
 
 			options.push_back(std::move(option));
+		}
+
+		return true;
+	}
+
+	bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
+	{
+		auto rawRequirements = json.if_contains("requirements");
+		if (!rawRequirements || !rawRequirements->is_array())
+			return false;
+
+		for (auto& value : rawRequirements->as_array())
+		{
+			if (value.is_string())
+			{
+				requirements.push_back(value.as_string().c_str());
+			}
 		}
 
 		return true;

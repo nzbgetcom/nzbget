@@ -61,6 +61,7 @@ namespace ExtensionLoader
 		std::string description;
 
 		Extension::Kind kind;
+		std::vector<std::string> requirements;
 		std::vector<ManifestFile::Option> options;
 		std::vector<ManifestFile::Command> commands;
 
@@ -118,17 +119,27 @@ namespace ExtensionLoader
 				about.append(line.substr(2)).push_back('\n');
 				continue;
 			}
+
 			if (inConfig && !strncmp(line.c_str(), "#", 1) && inAbout)
 			{
 				inAbout = false;
 				inDescription = true;
 				continue;
 			}
+
+			// if requirements: e.g. NOTE: This script requires Python to be installed on your system.
+			if (inConfig && !strncmp(line.c_str(), "# NOTE: ", 8) && inDescription)
+			{
+				requirements.emplace_back(line.substr(strlen("# NOTE: ")));
+				continue;
+			}
+
 			if (inConfig && !strncmp(line.c_str(), "# ", 2) && inDescription)
 			{
 				description.append(line.substr(2)).push_back('\n');
 				continue;
 			}
+
 			if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
 			{
 				ParseOptionsAndCommands(file, options, commands);
@@ -144,6 +155,7 @@ namespace ExtensionLoader
 		BuildDisplayName(script);
 		Util::TrimRight(about);
 		Util::TrimRight(description);
+		script.SetRequirements(std::move(requirements));
 		script.SetKind(std::move(kind));
 		script.SetQueueEvents(std::move(queueEvents));
 		script.SetAbout(std::move(about));
@@ -351,6 +363,7 @@ namespace ExtensionLoader
 		script.SetKind(GetScriptKind(manifest.kind));
 		script.SetQueueEvents(std::move(manifest.queueEvents));
 		script.SetTaskTime(std::move(manifest.taskTime));
+		script.SetRequirements(std::move(manifest.requirements));
 		script.SetCommands(std::move(manifest.commands));
 		script.SetOptions(std::move(manifest.options));
 		return true;

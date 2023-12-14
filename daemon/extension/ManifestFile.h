@@ -60,6 +60,7 @@ namespace ManifestFile
 		std::string description;
 		std::string queueEvents;
 		std::string taskTime;
+		std::vector<std::string> requirements;
 		std::vector<Option> options;
 		std::vector<Command> commands;
 	};
@@ -68,6 +69,7 @@ namespace ManifestFile
 	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
 	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
 	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
+	bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements);
 	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 };
 

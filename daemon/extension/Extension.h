@@ -67,6 +67,8 @@ namespace Extension
 		const char* GetQueueEvents() const;
 		void SetTaskTime(std::string&& taskTime);
 		const char* GetTaskTime() const;
+		void SetRequirements(std::vector<std::string>&& requirements);
+		const std::vector<std::string>& GetRequirements() const;
 		void SetOptions(std::vector<ManifestFile::Option>&& options);
 		const std::vector<ManifestFile::Option>& GetOptions() const;
 		void SetCommands(std::vector<ManifestFile::Command>&& commands);
@@ -85,6 +87,7 @@ namespace Extension
 		std::string m_description;
 		std::string m_queueEvents;
 		std::string m_taskTime;
+		std::vector<std::string> m_requirements;
 		std::vector<ManifestFile::Option> m_options;
 		std::vector<ManifestFile::Command> m_commands;
 	};

@@ -9,6 +9,7 @@
     "license": "GNU",
     "about": "About",
     "description": "Description",
+    "requirements": ["This script requires Python to be installed on your system."],
     "options": [
         {
             "type": "string",

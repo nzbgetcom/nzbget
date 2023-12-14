@@ -55,6 +55,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.queueEvents == "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED");
 	BOOST_CHECK(manifestFile.taskTime == "1:00:00");
 
+	BOOST_CHECK(manifestFile.requirements.size() == 1);
+	BOOST_CHECK(manifestFile.requirements[0] == "This script requires Python to be installed on your system.");
+
 	BOOST_CHECK(manifestFile.options.size() == 2);
 
 	auto& option = manifestFile.options[0];

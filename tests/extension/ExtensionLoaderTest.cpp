@@ -56,6 +56,9 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetLicense() == std::string(""));
 	BOOST_CHECK(extension.GetVersion() == std::string(""));
 
+	BOOST_CHECK(extension.GetRequirements().size() == 1);
+	BOOST_CHECK(extension.GetRequirements()[0] == std::string("This script requires Python to be installed on your system."));
+
 	BOOST_CHECK(extension.GetCommands().size() == 1);
 
 	auto command = extension.GetCommands()[0];
@@ -121,9 +124,6 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option6.select.size() == 0);
 
 	auto option7 = extension.GetOptions()[6];
-	BOOST_TEST_MESSAGE(option7.description);
-	BOOST_TEST_MESSAGE(option7.displayName);
-	BOOST_TEST_MESSAGE(option7.name);
 	BOOST_CHECK(option7.type == std::string("string"));
 	BOOST_CHECK(option7.name == std::string("MoviesFormat"));
 	BOOST_CHECK(option7.displayName == std::string("MoviesFormat"));

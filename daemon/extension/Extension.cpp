@@ -166,6 +166,16 @@ namespace Extension
 		m_options = std::move(options);
 	}
 
+	void Script::SetRequirements(std::vector<std::string>&& requirements)
+	{
+		m_requirements = std::move(requirements);
+	}
+
+	const std::vector<std::string>& Script::GetRequirements() const
+	{
+		return m_requirements;
+	}
+
 	const std::vector<ManifestFile::Option>& Script::GetOptions() const
 	{
 		return m_options;
@@ -184,6 +194,7 @@ namespace Extension
 	std::string ToJsonStr(const Script& script)
 	{
 		Json::JsonObject json;
+		Json::JsonArray requirementsJson;
 		Json::JsonArray optionsJson;
 		Json::JsonArray commandsJson;
 
@@ -203,6 +214,11 @@ namespace Extension
 		json["FeedScript"] = script.GetFeedScript();
 		json["QueueEvents"] = script.GetQueueEvents();
 		json["TaskTime"] = script.GetTaskTime();
+
+		for (const auto& value : script.GetRequirements())
+		{
+			requirementsJson.push_back(Json::JsonValue(value));
+		}
 
 		for (const auto& option : script.GetOptions())
 		{
@@ -235,6 +251,7 @@ namespace Extension
 			commandsJson.push_back(std::move(commandJson));
 		}
 
+		json["Requirements"] = std::move(requirementsJson);
 		json["Options"] = std::move(optionsJson);
 		json["Commands"] = std::move(commandsJson);
 
@@ -264,6 +281,11 @@ namespace Extension
 		AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
 		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
 
+		xmlNodePtr requirementsNode = xmlNewNode(NULL, BAD_CAST "Requirements");
+		for (const std::string& value : script.GetRequirements()) {
+			AddNewNode(requirementsNode, "Value", "string", value.c_str());
+		}
+
 		xmlNodePtr commandsNode = xmlNewNode(NULL, BAD_CAST "Commands");
 		for (const ManifestFile::Command& command : script.GetCommands()) {
 			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
@@ -287,6 +309,7 @@ namespace Extension
 			xmlAddChild(optionsNode, selectNode);
 		}
 
+		xmlAddChild(structNode, requirementsNode);
 		xmlAddChild(structNode, commandsNode);
 		xmlAddChild(structNode, optionsNode);
 		xmlAddChild(rootNode, structNode);

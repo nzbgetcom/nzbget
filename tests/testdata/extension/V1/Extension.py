@@ -9,6 +9,8 @@
 #
 # Description1
 # Description2
+#
+# NOTE: This script requires Python to be installed on your system.
 
 ##############################################################################
 ### OPTIONS    

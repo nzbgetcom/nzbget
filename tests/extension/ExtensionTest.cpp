@@ -39,6 +39,7 @@ Extension::Script GetExtension()
 	script.SetKind({ true, false, false, false });
 	script.SetLicense("License");
 	script.SetName("Name");
+	script.SetRequirements({"Requirements"});
 	script.SetQueueEvents("QueueEvents");
 	script.SetTaskTime("TaskTime");
 	script.SetVersion("Version");
@@ -84,6 +85,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"FeedScript\":false,\
 \"QueueEvents\":\"QueueEvents\",\
 \"TaskTime\":\"TaskTime\",\
+\"Requirements\":[\"Requirements\"],\
 \"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Action\":\"action\"}]}";
 
@@ -111,6 +113,9 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>FeedScript</name><value><boolean>false</boolean></value></member>\
 <member><name>QueueEvents</name><value><string>QueueEvents</string></value></member>\
 <member><name>TaskTime</name><value><string>TaskTime</string></value></member>\
+<Requirements>\
+<member><name>Value</name><value><string>Requirements</string></value></member>\
+</Requirements>\
 <Commands>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
