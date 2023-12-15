@@ -24,7 +24,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 #include "Options.h"
-#include "Script.h"
+#include "ScriptController.h"
 #include "Thread.h"
 
 class RarLister : public Thread, public ScriptController

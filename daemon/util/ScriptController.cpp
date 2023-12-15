@@ -14,12 +14,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include "nzbget.h"
-#include "Script.h"
+#include "ScriptController.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
@@ -236,10 +236,10 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 
 void ScriptController::PrepareArgs()
 {
+	const char* extension = strrchr(m_args[0], '.');
+
 	if (m_args.size() == 1 && !Util::EmptyStr(g_Options->GetShellOverride()))
 	{
-		const char* extension = strrchr(m_args[0], '.');
-
 		Tokenizer tok(g_Options->GetShellOverride(), ",;");
 		while (CString shellover = tok.Next())
 		{
@@ -259,14 +259,17 @@ void ScriptController::PrepareArgs()
 		}
 	}
 
-#ifdef WIN32
-	*m_cmdLine = '\0';
+	PrepareCmdLine(extension);
+}
 
+#ifdef WIN32
+void ScriptController::PrepareCmdLine(const char* extension)
+{
+	*m_cmdLine = '\0';
 	if (m_args.size() == 1)
 	{
 		// Special support for script languages:
 		// automatically find the app registered for this extension and run it
-		const char* extension = strrchr(m_args[0], '.');
 		if (extension && strcasecmp(extension, ".exe") && strcasecmp(extension, ".bat") && strcasecmp(extension, ".cmd"))
 		{
 			debug("Looking for associated program for %s", extension);
@@ -283,9 +286,9 @@ void ScriptController::PrepareArgs()
 				{
 					command[bufLen] = '\0';
 					CString scommand(command);
-					scommand.Replace("%L", "%1");// Python 3.x has %L in command instead of %1
+					scommand.Replace("%L", "%1"); // Python 3.x has %L in command instead of %1
 					debug("Command: %s", scommand.Str());
-					DWORD_PTR args[] = {(DWORD_PTR)*m_args[0], (DWORD_PTR)0};
+					DWORD_PTR args[] = { (DWORD_PTR)*m_args[0], (DWORD_PTR)0 };
 					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
 						m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
 					{
@@ -299,8 +302,68 @@ void ScriptController::PrepareArgs()
 				extension, FileSystem::BaseFileName(m_args[0]));
 		}
 	}
-#endif
 }
+#endif
+
+#ifndef WIN32
+void ScriptController::PrepareCmdLine(const char* extension)
+{
+	*m_cmdLine = '\0';
+	m_cmdArgs.clear();
+	if (m_args.size() == 1)
+	{
+		if (strcmp(extension, ".py") == 0)
+		{
+			if (std::system("python3 --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
+				m_cmdArgs.emplace_back("python3");
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("python --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
+				m_cmdArgs.emplace_back("python");
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("py --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
+				m_cmdArgs.emplace_back("py");
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+		}
+		if (strcmp(extension, ".sh") == 0)
+		{
+			if (std::system("bash --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
+				m_cmdArgs.emplace_back("bash");
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+			if (std::system("sh --version > /dev/null 2>&1") == 0)
+			{
+				strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
+				m_cmdArgs.emplace_back("sh");
+				debug("CmdLine: %s", m_cmdLine);
+				return;
+			}
+		}
+		warn("Could not find associated program for %s. Trying to execute %s directly",
+			extension, FileSystem::BaseFileName(m_args[0]));
+		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+		return;
+	}
+	else
+	{
+		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+	}
+}
+#endif
 
 int ScriptController::Execute()
 {
@@ -580,10 +643,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	std::vector<char*> environmentStrings = m_environmentStrings.GetStrings();
 	char** envdata = environmentStrings.data();
 
-	ArgList args;
-	std::copy(m_args.begin(), m_args.end(), std::back_inserter(args));
-	args.emplace_back(nullptr);
-	char* const* argdata = (char* const*)args.data();
+	std::copy(std::begin(m_args), std::end(m_args), std::back_inserter(m_cmdArgs));
+	m_cmdArgs.emplace_back(nullptr);
+	char* const* argdata = (char* const*)m_cmdArgs.data();
 
 #ifdef DEBUG
 	debug("Starting  process: %s", script);
@@ -641,7 +703,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		chdir(workingDir);
 		environ = envdata;
 
-		execvp(script, argdata);
+		execvp(m_cmdLine, argdata);
 
 		if (errno == EACCES)
 		{
@@ -650,7 +712,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 			write(1, "\n", 1);
 			fsync(1);
 			FileSystem::FixExecPermission(script);
-			execvp(script, argdata);
+			execvp(m_cmdLine, argdata);
 		}
 
 		// NOTE: the text "[ERROR] Could not start " is checked later,

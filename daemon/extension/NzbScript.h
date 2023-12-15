@@ -21,7 +21,7 @@
 #ifndef NZBSCRIPT_H
 #define NZBSCRIPT_H
 
-#include "Script.h"
+#include "ScriptController.h"
 #include "DownloadInfo.h"
 #include "ScriptConfig.h"
 
