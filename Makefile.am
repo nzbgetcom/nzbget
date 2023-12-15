@@ -374,6 +374,14 @@ webui_FILES = \
 	webui/img/favicon-256x256-opaque.png \
 	webui/img/favicon-256x256.png
 
+Email_script_FILES = \
+	scripts/Email/main.py \
+	scripts/Email/manifest.json
+
+Logger_script_FILES = \
+	scripts/Logger/main.py \
+	scripts/Logger/manifest.json
+
 # Install
 dist_doc_DATA = $(doc_FILES)
 exampleconfdir = $(datadir)/nzbget
@@ -381,7 +389,8 @@ dist_exampleconf_DATA = $(exampleconf_FILES)
 webuidir = $(datadir)/nzbget
 nobase_dist_webui_DATA = $(webui_FILES)
 scriptsdir = $(datadir)/nzbget
-nobase_dist_scripts_SCRIPTS = $(scripts_FILES)
+nobase_dist_scripts_Email_SCRIPTS = $(Email_script_FILES)
+nobase_dist_scripts_Logger_SCRIPTS = $(Email_script_FILES)
 
 # Note about "sed": 
 # We need to make some changes in installed files.
