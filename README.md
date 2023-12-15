@@ -8,6 +8,7 @@
 [![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
 [![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
 [![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
+[![synology build](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
@@ -34,6 +35,8 @@ We provide a easy-to-use installer for each platform we support.
 Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
 We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
+
+Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
 
 ## Supported platforms for installers
 

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+case ${MakeClean} in
+	[Yy][Ee][Ss])        
+		make clean
+		;;
+esac
+
+case ${CleanOnly} in
+	[Yy][Ee][Ss])
+		return
+		;;
+esac
+
+autoreconf --install
+
+# prefix with /usr/local, all files will be installed into /usr/local
+env CC="${CC}" CXX="${CXX}" LD="${LD}" AR=${AR} STRIP=${STRIP} RANLIB=${RANLIB} NM=${NM} \
+	CFLAGS="${CFLAGS} -Os" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" \
+	./configure ${ConfigOpt} \
+	--prefix=/usr/local --program-prefix="" --program-suffix=""
+
+make ${MAKE_FLAGS}
+
+make install

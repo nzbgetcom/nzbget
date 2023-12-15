@@ -1,0 +1,8 @@
+#!/bin/sh
+. `dirname $0`/vars
+
+if [ "$wizard_keep_data" != "true" ]; then
+    rm $CFG
+fi
+
+exit 0

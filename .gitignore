@@ -79,6 +79,7 @@ ipch/
 # NZBGet specific
 nzbget
 build
+!synology/package/SynoBuildConf/build
 *.temp
 *.pyc
 pytest.ini
