@@ -712,7 +712,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 			write(1, "\n", 1);
 			fsync(1);
 			FileSystem::FixExecPermission(script);
-			execvp(script, argdata);
+			execvp(m_cmdLine, argdata);
 		}
 
 		// NOTE: the text "[ERROR] Could not start " is checked later,
