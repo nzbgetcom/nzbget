@@ -2786,14 +2786,13 @@ var UpdateDialog = (new function($)
 		}
 	}
 
-	// Version 22.0 : no check for test and develop update. For activate - change links to actual ones
 	function loadGitVerData(callback)
 	{
 		// fetching devel version number from github web-site
-		RPC.call('readurl', ['https://github.com/nzbget/nzbget', 'nzbget git revision info'],
+		RPC.call('readurl', ['https://github.com/nzbgetcom/nzbget', 'nzbget git revision info'],
 			function(gitRevData)
 			{
-				RPC.call('readurl', ['https://raw.githubusercontent.com/nzbget/nzbget/develop/configure.ac', 'nzbget git branch info'],
+				RPC.call('readurl', ['https://raw.githubusercontent.com/nzbgetcom/nzbget/develop/configure.ac', 'nzbget git branch info'],
 					function(gitBranchData)
 					{
 						var html = document.createElement('DIV');
@@ -2871,32 +2870,25 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_InstalledInfo').show();
 
 		$('#UpdateDialog_CurStable').text(VersionInfo['stable-version'] ? VersionInfo['stable-version'] : 'no data');
-		//$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? formatTesting(VersionInfo['testing-version']) : 'no data');
-		//$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
-		$('#UpdateDialog_CurTesting').text('N/A');
-		$('#UpdateDialog_CurDevel').text('N/A');
+		$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? formatTesting(VersionInfo['testing-version']) : 'no data');
+		$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
 
 		$('#UpdateDialog_CurNotesStable').attr('href', VersionInfo['stable-release-notes']);
-		//$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
-		//$('#UpdateDialog_CurNotesDevel').attr('href', VersionInfo['devel-release-notes']);
-		$('#UpdateDialog_CurNotesTesting').attr('href', '');
-		$('#UpdateDialog_CurNotesDevel').attr('href', '');
+		$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
+		$('#UpdateDialog_CurNotesDevel').attr('href', VersionInfo['devel-release-notes']);
 		$('#UpdateDialog_DownloadStable').attr('href', VersionInfo['stable-download']);
-		//$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
-		$('#UpdateDialog_DownloadTesting').attr('href', '');
+		$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
 		Util.show('#UpdateDialog_CurNotesStable', VersionInfo['stable-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesDevel', VersionInfo['devel-release-notes']);
+		Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
+		Util.show('#UpdateDialog_CurNotesDevel', VersionInfo['devel-release-notes']);
 		Util.show('#UpdateDialog_CurNotesTesting', '');
 		Util.show('#UpdateDialog_CurNotesDevel', '');
 
 
 		$('#UpdateDialog_AvailStable').text(UpdateInfo['stable-version'] ? UpdateInfo['stable-version'] : 'not available');
-		//$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? formatTesting(UpdateInfo['testing-version']) : 'not available');
-		//$('#UpdateDialog_AvailDevel').text(UpdateInfo['devel-version'] ? formatTesting(UpdateInfo['devel-version']) : 'not available');
-		$('#UpdateDialog_AvailTesting').text('');
-		$('#UpdateDialog_AvailDevel').text('');
-
+		$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? formatTesting(UpdateInfo['testing-version']) : 'not available');
+		$('#UpdateDialog_AvailDevel').text(UpdateInfo['devel-version'] ? formatTesting(UpdateInfo['devel-version']) : 'not available');
+		
 
 		if (UpdateInfo['stable-version'] === VersionInfo['stable-version'] &&
 			UpdateInfo['testing-version'] === VersionInfo['testing-version'])
@@ -2909,15 +2901,11 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_DownloadRow td').css('border-style', 'none');
 		
 		$('#UpdateDialog_AvailNotesStable').attr('href', UpdateInfo['stable-package-info']);
-		//$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
-		//$('#UpdateDialog_AvailNotesDevel').attr('href', UpdateInfo['devel-package-info']);
-		$('#UpdateDialog_AvailNotesTesting').attr('href', '');
-		$('#UpdateDialog_AvailNotesDevel').attr('href', '');
+		$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
+		$('#UpdateDialog_AvailNotesDevel').attr('href', UpdateInfo['devel-package-info']);
 		Util.show('#UpdateDialog_AvailNotesStableBlock', UpdateInfo['stable-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesDevelBlock', UpdateInfo['devel-package-info']);
-		Util.show('#UpdateDialog_AvailNotesTestingBlock', '');
-		Util.show('#UpdateDialog_AvailNotesDevelBlock', '');
+		Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
+		Util.show('#UpdateDialog_AvailNotesDevelBlock', UpdateInfo['devel-package-info']);
 
 
 		var installedVer = vernumber(installedVersion);
@@ -2936,8 +2924,6 @@ var UpdateDialog = (new function($)
 			 (installedTesting && installedVer === vernumber(UpdateInfo['devel-version'])) &&
 			  installedRev < revision(UpdateInfo['devel-version']));
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canInstallTesting = '';	  
 			  
 		Util.show('#UpdateDialog_InstallStable', canInstallStable);
 		Util.show('#UpdateDialog_InstallTesting', canInstallTesting);
@@ -2951,8 +2937,6 @@ var UpdateDialog = (new function($)
 			 (installedTesting && installedVer === vernumber(VersionInfo['testing-version']) &&
 			  installedRev < revision(VersionInfo['testing-version'])));
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canDownloadTesting = '';
 			  
 		Util.show('#UpdateDialog_DownloadStable', canDownloadStable);
 		Util.show('#UpdateDialog_DownloadTesting', canDownloadTesting);
