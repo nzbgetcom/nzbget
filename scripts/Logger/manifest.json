@@ -1,9 +1,9 @@
 {
-    "main": "Logger.py",
+    "main": "main.py",
     "name": "logger",
     "homepage": "",
     "kind": "POST-PROCESSING",
-    "displayName": "Logger New",
+    "displayName": "Logger",
     "version": "1.0.0",
     "author": "Andrey Prygunkov",
     "license": "GNU",

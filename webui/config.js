@@ -523,7 +523,7 @@ var Options = (new function($)
 		{
 			if (data[i].PostScript || data[i].QueueScript) 
 			{
-				var scriptName = data[i].Name;
+				var scriptName = data[i].DisplayName;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
 				option.name = scriptName + ':';

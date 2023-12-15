@@ -3,7 +3,7 @@
     "name": "email",
     "homepage": "",
     "kind": "POST-PROCESSING",
-    "displayName": "EMail New",
+    "displayName": "EMail",
     "version": "1.0.0",
     "author": "Andrey Prygunkov",
     "license": "GNU",
@@ -113,7 +113,7 @@
     ],
     "commands": [
         {
-            "name": "connectionTest",
+            "name": "ConnectionTest",
             "action": "Send Test E-Mail",
             "displayName": "ConnectionTest",
             "description": "To check connection parameters click the button."
