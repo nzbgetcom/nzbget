@@ -236,7 +236,7 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 
 void ScriptController::PrepareArgs()
 {
-	const char *extension = strrchr(m_args[0], '.');
+	const char* extension = strrchr(m_args[0], '.');
 
 	if (m_args.size() == 1 && !Util::EmptyStr(g_Options->GetShellOverride()))
 	{
@@ -526,8 +526,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		workingDir = FileSystem::GetCurrentDirectory();
 	}
 
-#ifdef WIN32
 	const char* script = m_args[0];
+
+#ifdef WIN32
 	char* cmdLine = m_cmdLine;
 	char cmdLineBuf[2048];
 	if (!*m_cmdLine)
@@ -647,7 +648,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	char* const* argdata = (char* const*)m_cmdArgs.data();
 
 #ifdef DEBUG
-	debug("Starting  process: %s", *m_args[0]);
+	debug("Starting  process: %s", script);
 	for (const char* arg : m_args)
 	{
 		debug("arg: %s", arg);
@@ -707,17 +708,17 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		if (errno == EACCES)
 		{
 			write(1, "[WARNING] Fixing permissions for", 32);
-			write(1, *m_args[0], strlen(*m_args[0]));
+			write(1, script, strlen(script));
 			write(1, "\n", 1);
 			fsync(1);
-			FileSystem::FixExecPermission(*m_args[0]);
-			execvp(m_cmdLine, argdata);
+			FileSystem::FixExecPermission(script);
+			execvp(script, argdata);
 		}
 
 		// NOTE: the text "[ERROR] Could not start " is checked later,
 		// by changing adjust the dependent code below.
 		write(1, "[ERROR] Could not start ", 24);
-		write(1, *m_args[0], strlen(*m_args[0]));
+		write(1, script, strlen(script));
 		write(1, ": ", 2);
 		char* errtext = strerror(errno);
 		write(1, errtext, strlen(errtext));
