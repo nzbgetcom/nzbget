@@ -52,7 +52,6 @@ namespace ManifestFile
 	{
 		bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
 		{
-
 			if (!CheckKeyAndSet(json, "author", manifest.author))
 				return false;
 
