@@ -201,6 +201,7 @@ private:
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
+
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
 #endif
@@ -465,6 +466,7 @@ void NZBGet::Cleanup()
 	g_StatMeter = nullptr;
 	g_CommandScriptLog = nullptr;
 	g_ExtensionManager = nullptr;
+
 #ifdef WIN32
 	g_WinConsole = nullptr;
 #endif
