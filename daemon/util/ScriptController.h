@@ -91,6 +91,7 @@ protected:
 
 private:
 	ArgList m_args;
+	ArgList m_cmdArgs;
 	const char* m_workingDir = nullptr;
 	CString m_infoName;
 	const char* m_logPrefix = nullptr;
@@ -102,7 +103,6 @@ private:
 	FILE* m_readpipe = 0;
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
-	char m_scriptPath[2048];
 #ifdef WIN32
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
