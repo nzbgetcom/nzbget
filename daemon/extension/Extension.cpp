@@ -24,7 +24,7 @@
 
 namespace Extension
 {
-	void Script::SetAuthor(std::string&& author)
+	void Script::SetAuthor(std::string author)
 	{
 		m_author = std::move(author);
 	}
@@ -34,7 +34,7 @@ namespace Extension
 		return m_author.c_str();
 	}
 
-	void Script::SetHomepage(std::string&& homepage)
+	void Script::SetHomepage(std::string homepage)
 	{
 		m_homepage = std::move(homepage);
 	}
@@ -44,7 +44,7 @@ namespace Extension
 		return m_homepage.c_str();
 	}
 
-	void Script::SetVersion(std::string&& version)
+	void Script::SetVersion(std::string version)
 	{
 		m_version = std::move(version);
 	}
@@ -54,7 +54,7 @@ namespace Extension
 		return m_version.c_str();
 	}
 
-	void Script::SetLicense(std::string&& license)
+	void Script::SetLicense(std::string license)
 	{
 		m_license = std::move(license);
 	}
@@ -64,7 +64,7 @@ namespace Extension
 		return m_license.c_str();
 	}
 
-	void Script::SetName(std::string&& name)
+	void Script::SetName(std::string name)
 	{
 		m_name = std::move(name);
 	}
@@ -74,7 +74,7 @@ namespace Extension
 		return m_name.c_str();
 	}
 
-	void Script::SetLocation(std::string&& location)
+	void Script::SetLocation(std::string location)
 	{
 		m_location = std::move(location);
 	}
@@ -84,7 +84,7 @@ namespace Extension
 		return m_location.c_str();
 	}
 
-	void Script::SetDisplayName(std::string&& displayName)
+	void Script::SetDisplayName(std::string displayName)
 	{
 		m_displayName = std::move(displayName);
 	}
@@ -94,7 +94,7 @@ namespace Extension
 		return m_displayName.c_str();
 	}
 
-	void Script::SetAbout(std::string&& about)
+	void Script::SetAbout(std::string about)
 	{
 		m_about = std::move(about);
 	}
@@ -104,7 +104,7 @@ namespace Extension
 		return m_about.c_str();
 	}
 
-	void Script::SetDescription(std::string&& description)
+	void Script::SetDescription(std::string description)
 	{
 		m_description = std::move(description);
 	};
@@ -114,7 +114,7 @@ namespace Extension
 		return m_description.c_str();
 	}
 
-	void Script::SetKind(Kind&& kind)
+	void Script::SetKind(Kind kind)
 	{
 		m_kind = std::move(kind);
 	};
@@ -141,7 +141,7 @@ namespace Extension
 	{
 		return m_kind.feed;
 	}
-	void Script::SetQueueEvents(std::string&& queueEvents)
+	void Script::SetQueueEvents(std::string queueEvents)
 	{
 		m_queueEvents = std::move(queueEvents);
 	}
@@ -152,7 +152,7 @@ namespace Extension
 	}
 
 
-	void Script::SetTaskTime(std::string&& taskTime)
+	void Script::SetTaskTime(std::string taskTime)
 	{
 		m_taskTime = std::move(taskTime);
 	}
@@ -162,12 +162,12 @@ namespace Extension
 		return m_taskTime.c_str();
 	}
 
-	void Script::SetOptions(std::vector<ManifestFile::Option>&& options)
+	void Script::SetOptions(std::vector<ManifestFile::Option> options)
 	{
 		m_options = std::move(options);
 	}
 
-	void Script::SetRequirements(std::vector<std::string>&& requirements)
+	void Script::SetRequirements(std::vector<std::string> requirements)
 	{
 		m_requirements = std::move(requirements);
 	}
@@ -182,7 +182,7 @@ namespace Extension
 		return m_options;
 	}
 
-	void Script::SetCommands(std::vector<ManifestFile::Command>&& commands)
+	void Script::SetCommands(std::vector<ManifestFile::Command> commands)
 	{
 		m_commands = std::move(commands);
 	}

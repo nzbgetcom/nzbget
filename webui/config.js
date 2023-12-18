@@ -74,7 +74,6 @@ var Options = (new function($)
 		// build list of post-processing parameters
 		RPC.call('loadextensions', [false], function(data)
 		{
-			console.warn(data);
 			_this.postParamConfig = initPostParamConfig(data);
 		});
 	}
