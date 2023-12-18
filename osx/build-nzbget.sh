@@ -106,7 +106,7 @@ Make_OpenSSL_for_arm_and_x86()
 Make_Boost_for_arm_and_x86()
 {
     cd ./tmp/boost
-    curl -O https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
+    curl -LO https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
     tar -xzvf boost-1.84.0.tar.gz
     cd boost-1.84.0
     mkdir ./x86
