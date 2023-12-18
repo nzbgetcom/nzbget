@@ -32,6 +32,7 @@ mkdir ./tmp/bin
 mkdir ./tmp/armrar
 mkdir ./tmp/x86rar
 mkdir ./tmp/7zz
+mkdir ./tmp/boost
 
 Adjust_nzbget_conf()
 {
@@ -104,19 +105,17 @@ Make_OpenSSL_for_arm_and_x86()
 
 Make_Boost_for_arm_and_x86()
 {
-    git clone --depth 1 \
-        --recursive \
-        --shallow-submodules \
-        --branch boost-1.84.0 https://github.com/boostorg/boost.git \
-        ./tmp/boost
     cd ./tmp/boost
-    mkdir -p ./build/x86
-    mkdir ./build/arm
-    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/build/x86
+    curl -LO https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
+    tar -xzvf boost-1.84.0.tar.gz
+    cd boost-1.84.0
+    mkdir ./x86
+    mkdir ./arm
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/x86
     ./b2 link=static runtime-link=static address-model=64 architecture=x86 install
-    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/build/arm
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/arm
     ./b2 link=static runtime-link=static address-model=64 architecture=arm install
-    cd ../../
+    cd ../../../
 }
 
 Make()
@@ -133,8 +132,8 @@ Compile_x86_64()
         --target=x86_64-apple-darwin \
         --with-tlslib=OpenSSL \
         --program-prefix="" \
-        CXXFLAGS="-arch x86_64 -I$(pwd)/tmp/openssl/x86/include -I$(pwd)/tmp/boost/build/x86/include" \
-        LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86 -L$(pwd)/tmp/boost/build/x86/lib"
+        CXXFLAGS="-arch x86_64 -I$(pwd)/tmp/openssl/x86/include -I$(pwd)/tmp/boost/boost-1.84.0/x86/include" \
+        LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86 -L$(pwd)/tmp/boost/boost-1.84.0/x86/lib"
         
     Make
 }
@@ -147,8 +146,8 @@ Compile_arm()
         --target=arm-apple-darwin \
         --with-tlslib=OpenSSL \
         --program-prefix="" \
-        CXXFLAGS="-arch arm64 -I$(pwd)/tmp/openssl/arm/include -I$(pwd)/tmp/boost/build/arm/include" \
-        LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm -L$(pwd)/tmp/boost/build/arm/lib"    
+        CXXFLAGS="-arch arm64 -I$(pwd)/tmp/openssl/arm/include -I$(pwd)/tmp/boost/boost-1.84.0/arm/include" \
+        LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm -L$(pwd)/tmp/boost/boost-1.84.0/arm/lib"    
     Make
 }
 
