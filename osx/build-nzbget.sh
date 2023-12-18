@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 # strict error handling for debugging
@@ -88,7 +88,7 @@ Make_tools()
 
 Make_OpenSSL_for_arm_and_x86()
 {
-    git clone --depth 1 --branch openssl-3.1.2 https://github.com/openssl/openssl.git ./tmp/openssl
+    git clone --depth 1 --branch openssl-3.1.4 https://github.com/openssl/openssl.git ./tmp/openssl
     cd tmp/openssl
     mkdir ./x86
     cd ./x86
@@ -100,6 +100,23 @@ Make_OpenSSL_for_arm_and_x86()
     perl ../Configure darwin64-arm64 no-shared
     make -j $CPUs
     cd ../../../
+}
+
+Make_Boost_for_arm_and_x86()
+{
+    git clone --depth 1 \
+        --recursive \
+        --shallow-submodules \
+        --branch boost-1.84.0 https://github.com/boostorg/boost.git \
+        ./tmp/boost
+    cd ./tmp/boost
+    mkdir -p ./build/x86
+    mkdir ./build/arm
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/build/x86
+    ./b2 link=static runtime-link=static address-model=64 architecture=x86 install
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/build/arm
+    ./b2 link=static runtime-link=static address-model=64 architecture=arm install
+    cd ../../
 }
 
 Make()
@@ -170,6 +187,7 @@ Make_archive()
 }
 
 Make_OpenSSL_for_arm_and_x86
+Make_Boost_for_arm_and_x86
 Make_tools
 Build
 Clean
