@@ -195,7 +195,7 @@ var Options = (new function($)
 			{
 				const command = serverTemplateData[i].Commands[j];
 				section.options.push({
-					caption: command.Name,
+					caption: command.DisplayName,
 					name: serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
 					defvalue: command.Action,
@@ -214,7 +214,7 @@ var Options = (new function($)
 				const option = serverTemplateData[i].Options[j];
 				const [type, select] = GetTypeAndSelect(option);
 				section.options.push({
-					caption: option.Name,
+					caption: option.DisplayName,
 					name: serverTemplateData[i].Name + ':' + option.Name,
 					value: option.Value,
 					defvalue: option.Value,
