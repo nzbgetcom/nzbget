@@ -51,12 +51,12 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.homepage == "https://github");
 	BOOST_CHECK(manifestFile.license == "GNU");
 	BOOST_CHECK(manifestFile.about == "About");
-	BOOST_CHECK(manifestFile.description == "Description");
+	BOOST_CHECK(manifestFile.description == std::vector<std::string>({"Description"}));
 	BOOST_CHECK(manifestFile.queueEvents == "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED");
 	BOOST_CHECK(manifestFile.taskTime == "1:00:00");
 
 	BOOST_CHECK(manifestFile.requirements.size() == 1);
-	BOOST_CHECK(manifestFile.requirements[0] == "This script requires Python to be installed on your system.");
+	BOOST_CHECK(manifestFile.requirements == std::vector<std::string>({"This script requires Python to be installed on your system."}));
 
 	BOOST_CHECK(manifestFile.options.size() == 2);
 
@@ -65,22 +65,20 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(option.name == "sendMail");
 	BOOST_CHECK(option.displayName == "SendMail");
 	BOOST_CHECK(option.value == "Always");
-	BOOST_CHECK(option.description == "When to send the message.");
-	BOOST_CHECK(option.select[0] == "Always");
-	BOOST_CHECK(option.select[1] == "OnFailure");
+	BOOST_CHECK(option.description == std::vector<std::string>({"When to send the message."}));
+	BOOST_CHECK(option.select == std::vector<std::string>({"Always", "OnFailure"}));
 
 	auto& option2 = manifestFile.options[1];
 	BOOST_CHECK(option2.type == "number");
 	BOOST_CHECK(option2.name == "port");
 	BOOST_CHECK(option2.displayName == "Port");
 	BOOST_CHECK(option2.value == "25");
-	BOOST_CHECK(option2.description == "SMTP server port (1-65535)");
-	BOOST_CHECK(option2.select[0] == "1");
-	BOOST_CHECK(option2.select[1] == "65535");
+	BOOST_CHECK(option2.description == std::vector<std::string>({"SMTP server port (1-65535)"}));
+	BOOST_CHECK(option2.select == std::vector<std::string>({"1", "65535"}));
 
 	auto& command = manifestFile.commands[0];
 	BOOST_CHECK(command.name == "connectionTest");
 	BOOST_CHECK(command.action == "Send");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
-	BOOST_CHECK(command.description == "To check connection parameters click the button.");
+	BOOST_CHECK(command.description == std::vector<std::string>({"To check connection parameters click the button."}));
 }

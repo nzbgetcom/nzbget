@@ -34,17 +34,17 @@ Extension::Script GetExtension()
 	script.SetAuthor("Author");
 	script.SetAbout("About");
 	script.SetHomepage("Homepage");
-	script.SetDescription("Description");
+	script.SetDescription({ "Description" });
 	script.SetDisplayName("DisplayName");
 	script.SetKind({ true, false, false, false });
 	script.SetLicense("License");
 	script.SetName("Name");
-	script.SetRequirements({"Requirements"});
+	script.SetRequirements({ "Requirements" });
 	script.SetQueueEvents("QueueEvents");
 	script.SetTaskTime("TaskTime");
 	script.SetVersion("Version");
 
-	option.description = "description";
+	option.description = { "description" };
 	option.displayName = "displayName";
 	option.name = "name";
 	option.value = "value";
@@ -54,7 +54,7 @@ Extension::Script GetExtension()
 	command.action = "action";
 	command.name = "name";
 	command.displayName = "displayName";
-	command.description = "description";
+	command.description = { "description" };
 
 	std::vector<ManifestFile::Option> options{ option };
 	std::vector<ManifestFile::Command> commands{ command };
@@ -73,7 +73,6 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
 \"About\":\"About\",\
-\"Description\":\"Description\",\
 \"Author\":\"Author\",\
 \"Homepage\":\"Homepage\",\
 \"License\":\"License\",\
@@ -85,10 +84,13 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"FeedScript\":false,\
 \"QueueEvents\":\"QueueEvents\",\
 \"TaskTime\":\"TaskTime\",\
+\"Description\":[\"Description\"],\
 \"Requirements\":[\"Requirements\"],\
-\"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Value\":\"value\",\"Select\":[\"value\",\"value2\"]}],\
-\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Description\":\"description\",\"Action\":\"action\"}]}";
+\"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Value\":\"value\",\"Description\":[\"description\"],\"Select\":[\"value\",\"value2\"]}],\
+\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Description\":[\"description\"]}]}";
 
+BOOST_TEST_MESSAGE(result);
+BOOST_TEST_MESSAGE(expected);
 	BOOST_CHECK(result == expected);
 }
 
@@ -101,7 +103,6 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
 <member><name>About</name><value><string>About</string></value></member>\
-<member><name>Description</name><value><string>Description</string></value></member>\
 <member><name>Author</name><value><string>Author</string></value></member>\
 <member><name>Homepage</name><value><string>Homepage</string></value></member>\
 <member><name>License</name><value><string>License</string></value></member>\
@@ -113,20 +114,28 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>FeedScript</name><value><boolean>false</boolean></value></member>\
 <member><name>QueueEvents</name><value><string>QueueEvents</string></value></member>\
 <member><name>TaskTime</name><value><string>TaskTime</string></value></member>\
+<Description>\
+<member><name>Value</name><value><string>Description</string></value></member>\
+</Description>\
 <Requirements>\
 <member><name>Value</name><value><string>Requirements</string></value></member>\
 </Requirements>\
 <Commands>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
-<member><name>Description</name><value><string>description</string></value></member>\
 <member><name>Action</name><value><string>action</string></value></member>\
+<Description>\
+<member><name>Value</name><value><string>description</string></value></member>\
+</Description>\
 </Commands>\
 <Options>\
 <member><name>Type</name><value><string>string</string></value></member>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
 <member><name>Value</name><value><string>value</string></value></member>\
+<Description>\
+<member><name>Value</name><value><string>description</string></value></member>\
+</Description>\
 <Select>\
 <member><name>Value</name><value><string>value</string></value></member>\
 <member><name>Value</name><value><string>value2</string></value></member>\

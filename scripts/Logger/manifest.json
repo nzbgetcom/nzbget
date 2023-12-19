@@ -12,7 +12,10 @@
     "requirements": [
         "This script requires Python to be installed on your system."
     ],
-    "description": "This script saves the download and post-processing log of nzb-file\ninto file _nzblog.txt in the destination directory.",
+    "description": [
+        "This script saves the download and post-processing log of nzb-file",
+        "into file _nzblog.txt in the destination directory."
+    ],
     "options": [],
     "commands": [],
     "taskTime": ""

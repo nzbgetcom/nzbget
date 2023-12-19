@@ -55,8 +55,8 @@ namespace Extension
 		const char* GetDisplayName() const;
 		void SetAbout(std::string about);
 		const char* GetAbout() const;
-		void SetDescription(std::string displayName);
-		const char* GetDescription() const;
+		void SetDescription(std::vector<std::string> description);
+		const std::vector<std::string>& GetDescription() const;
 		void SetKind(Kind kind);
 		bool GetPostScript() const;
 		bool GetScanScript() const;
@@ -84,9 +84,9 @@ namespace Extension
 		std::string m_location;
 		std::string m_displayName;
 		std::string m_about;
-		std::string m_description;
 		std::string m_queueEvents;
 		std::string m_taskTime;
+		std::vector<std::string> m_description;
 		std::vector<std::string> m_requirements;
 		std::vector<ManifestFile::Option> m_options;
 		std::vector<ManifestFile::Command> m_commands;

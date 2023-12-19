@@ -9,13 +9,13 @@
     "license": "GNU",
     "about": "About",
     "requirements": [],
-    "description": "Description",
+    "description": ["Description"],
     "options": [
         {
             "name": "sendMail",
             "displayName": "SendMail",
             "value": "Always",
-            "description": "When to send the message.",
+            "description": ["When to send the message."],
             "select": ["Always", "OnFailure"]
         }
     ],
@@ -24,7 +24,7 @@
             "name": "connectionTest",
             "action": "Send Test E-Mail",
             "displayName": "ConnectionTest",
-            "description": "To check connection parameters click the button."
+            "description": ["To check connection parameters click the button."]
         }
     ],
     "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",

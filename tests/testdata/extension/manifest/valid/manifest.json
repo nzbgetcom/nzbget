@@ -8,7 +8,7 @@
     "homepage": "https://github",
     "license": "GNU",
     "about": "About",
-    "description": "Description",
+    "description": ["Description"],
     "requirements": ["This script requires Python to be installed on your system."],
     "options": [
         {
@@ -16,7 +16,7 @@
             "name": "sendMail",
             "displayName": "SendMail",
             "value": "Always",
-            "description": "When to send the message.",
+            "description": ["When to send the message."],
             "select": ["Always", "OnFailure"]
         },
         {
@@ -24,7 +24,7 @@
             "name": "port",
             "displayName": "Port",
             "value": "25",
-            "description": "SMTP server port (1-65535)",
+            "description": ["SMTP server port (1-65535)"],
             "select": ["1", "65535"]
         }
     ],
@@ -33,7 +33,7 @@
             "name": "connectionTest",
             "action": "Send",
             "displayName": "ConnectionTest",
-            "description": "To check connection parameters click the button."
+            "description": ["To check connection parameters click the button."]
         }
     ],
     "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",

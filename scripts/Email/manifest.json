@@ -12,14 +12,14 @@
     "requirements": [
         "This script requires Python to be installed on your system."
     ],
-    "description": "This script sends E-Mail notification when the job is done.",
+    "description": ["This script sends E-Mail notification when the job is done."],
     "options": [
         {
             "type": "string",
             "name": "sendMail",
             "displayName": "SendMail",
             "value": "Always",
-            "description": "When to send the message.",
+            "description": ["When to send the message."],
             "select": ["Always", "OnFailure"]
         },
         {
@@ -27,7 +27,7 @@
             "name": "from",
             "displayName": "From",
             "value": "\"NZBGet\" <myaccount@gmail.com>",
-            "description": "Email address you want this email to be sent from.",
+            "description": ["Email address you want this email to be sent from."],
             "select": []
         },
         {
@@ -35,7 +35,10 @@
             "name": "to",
             "displayName": "To",
             "value": "myaccount@gmail.com",
-            "description": "Email address you want this email to be sent to.\nMultiple addresses can be separated with comma.",
+            "description": [
+                "Email address you want this email to be sent to.",
+                "Multiple addresses can be separated with comma."
+            ],
             "select": []
         },
         {
@@ -43,7 +46,7 @@
             "name": "server",
             "displayName": "Server",
             "value": "smtp.gmail.com",
-            "description": "SMTP server host.",
+            "description": ["SMTP server host."],
             "select": []
         },
         {
@@ -51,7 +54,7 @@
             "name": "port",
             "displayName": "Port",
             "value": "25",
-            "description": "SMTP server port (1-65535)",
+            "description": ["SMTP server port (1-65535)"],
             "select": ["1", "65535"]
         },
         {
@@ -59,7 +62,12 @@
             "name": "encryption",
             "displayName": "Encryption",
             "value": "yes",
-            "description": "Secure communication using TLS/SSL.\nno    - plain text communication (insecure);\nyes   - switch to secure session using StartTLS command;\nforce - start secure session on encrypted socket.",
+            "description": [
+                "Secure communication using TLS/SSL.",
+                "no    - plain text communication (insecure);",
+                "yes   - switch to secure session using StartTLS command;",
+                "force - start secure session on encrypted socket."
+            ],
             "select": ["no", "yes", "force"]
         },
         {
@@ -67,7 +75,7 @@
             "name": "username",
             "displayName": "Username",
             "value": "yes",
-            "description": "SMTP server user name, if required.",
+            "description": ["SMTP server user name, if required."],
             "select": []
         },
         {
@@ -75,7 +83,7 @@
             "name": "password",
             "displayName": "Password",
             "value": "mypass",
-            "description": "SMTP server password, if required.",
+            "description": ["SMTP server password, if required."],
             "select": []
         },
         {
@@ -83,7 +91,7 @@
             "name": "statistics",
             "displayName": "Statistics",
             "value": "yes",
-            "description": "Append statistics to the message.",
+            "description": ["Append statistics to the message."],
             "select": ["yes", "no"]
         },
         {
@@ -91,7 +99,10 @@
             "name": "fileList",
             "displayName": "FileList",
             "value": "yes",
-            "description": "Append list of files to the message.\nAdd the list of downloaded files (the content of destination directory)..",
+            "description": [
+                "Append list of files to the message.",
+                "Add the list of downloaded files (the content of destination directory).."
+            ],
             "select": ["yes", "no"]
         },
         {
@@ -99,7 +110,12 @@
             "name": "brokenLog",
             "displayName": "BrokenLog",
             "value": "yes",
-            "description": "Append broken-log to the message.\nAdd the content of file _brokenlog.txt. This file contains the list of damaged\nfiles and the result of par-check/repair. For successful downloads the broken-log\nis usually deleted by cleanup-script and therefore is not sent.",
+            "description": [
+                "Append broken-log to the message.",
+                "Add the content of file _brokenlog.txt. This file contains the list of damaged",
+                "files and the result of par-check/repair. For successful downloads the broken-log",
+                "is usually deleted by cleanup-script and therefore is not sent."
+            ],
             "select": ["yes", "no"]
         },
         {
@@ -107,7 +123,7 @@
             "name": "nzbLog",
             "displayName": "NzbLog",
             "value": "OnFailure",
-            "description": "Append nzb log to the message.Add the download and post-processing log of active job..",
+            "description": ["Append nzb log to the message.Add the download and post-processing log of active job.."],
             "select": ["Always", "Never", "OnFailure"]
         }
     ],
@@ -116,7 +132,7 @@
             "name": "ConnectionTest",
             "action": "Send Test E-Mail",
             "displayName": "ConnectionTest",
-            "description": "To check connection parameters click the button."
+            "description": ["To check connection parameters click the button."]
         }
     ],
     "taskTime": ""
