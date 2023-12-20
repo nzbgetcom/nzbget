@@ -23,10 +23,6 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
-if (NOT WIN32)
-	set(ExtensionSrc ${ExtensionSrc} ${CMAKE_BINARY_DIR}/code_revision.cpp)
-endif()
-
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE
 	ZLIB::ZLIB
