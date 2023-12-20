@@ -37,6 +37,7 @@
             "value": "myaccount@gmail.com",
             "description": [
                 "Email address you want this email to be sent to.",
+                "",
                 "Multiple addresses can be separated with comma."
             ],
             "select": []
@@ -64,6 +65,7 @@
             "value": "yes",
             "description": [
                 "Secure communication using TLS/SSL.",
+                "",
                 "no    - plain text communication (insecure);",
                 "yes   - switch to secure session using StartTLS command;",
                 "force - start secure session on encrypted socket."
@@ -101,6 +103,7 @@
             "value": "yes",
             "description": [
                 "Append list of files to the message.",
+                "",
                 "Add the list of downloaded files (the content of destination directory).."
             ],
             "select": ["yes", "no"]
@@ -112,6 +115,7 @@
             "value": "yes",
             "description": [
                 "Append broken-log to the message.",
+                "",
                 "Add the content of file _brokenlog.txt. This file contains the list of damaged",
                 "files and the result of par-check/repair. For successful downloads the broken-log",
                 "is usually deleted by cleanup-script and therefore is not sent."
