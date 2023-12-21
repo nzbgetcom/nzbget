@@ -14,6 +14,7 @@ target_include_directories(Yencode PUBLIC
 	${CMAKE_SOURCE_DIR}/daemon/main
     ${ZLIB_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
+    ${LIBXML2_INCLUDE_DIR}
 )
 
 add_library(Par2 STATIC
@@ -42,6 +43,7 @@ target_include_directories(Par2 PUBLIC
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${CMAKE_SOURCE_DIR}/daemon/util
     ${OPENSSL_INCLUDE_DIR}
+    ${LIBXML2_INCLUDE_DIR}
 )
 
 add_library(Regex STATIC
