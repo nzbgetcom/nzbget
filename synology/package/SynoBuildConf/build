@@ -37,6 +37,6 @@ export CXXFLAGS="$CXXFLAGS -I$(pwd)/tmp/boost/build/include"
 export LDFLAGS="$LDFLAGS -L$(pwd)/tmp/boost/build/lib"
 ./configure $ConfigOpt --prefix=/usr/local --program-prefix="" --program-suffix=""
 
-make -j 2 ${MAKE_FLAGS}
+make -j 4 ${MAKE_FLAGS}
 
 make install
