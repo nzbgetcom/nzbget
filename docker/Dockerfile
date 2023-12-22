@@ -23,8 +23,8 @@ RUN \
     -e "s#^ScriptDir=.*#ScriptDir=$\{MainDir\}/scripts#g" \
     -e "s#^WebDir=.*#WebDir=$\{AppDir\}/webui#g" \
     -e "s#^ConfigTemplate=.*#ConfigTemplate=$\{AppDir\}/webui/nzbget.conf.template#g" \
-    -e "s#^UnrarCmd=.*#UnrarCmd=$\{AppDir\}/unrar#g" \
-    -e "s#^SevenZipCmd=.*#SevenZipCmd=$\{AppDir\}/7za#g" \
+    -e "s#^UnrarCmd=.*#UnrarCmd=unrar#g" \
+    -e "s#^SevenZipCmd=.*#SevenZipCmd=7z#g" \
     -e "s#^CertStore=.*#CertStore=$\{AppDir\}/cacert.pem#g" \
     -e "s#^CertCheck=.*#CertCheck=yes#g" \
     -e "s#^DestDir=.*#DestDir=$\{MainDir\}/completed#g" \
