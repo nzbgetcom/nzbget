@@ -60,9 +60,9 @@ namespace ExtensionLoader
 			std::string queueEvents;
 			std::string taskTime;
 			std::string about;
-			std::string description;
 
 			Extension::Kind kind;
+			std::vector<std::string> description;
 			std::vector<std::string> requirements;
 			std::vector<ManifestFile::Option> options;
 			std::vector<ManifestFile::Command> commands;
@@ -140,14 +140,14 @@ namespace ExtensionLoader
 				// if requirements: e.g. NOTE: This script requires Python to be installed on your system.
 				if (inConfig && !strncmp(line.c_str(), "# NOTE: ", 8) && inDescription)
 				{
-					requirements.emplace_back(line.substr(strlen("# NOTE: ")));
+					requirements.push_back(line.substr(strlen("# NOTE: ")));
 					continue;
 				}
 
 				// if description: e.g # This is a script for downloaded TV shows and movies...
 				if (inConfig && !strncmp(line.c_str(), "# ", 2) && inDescription)
 				{
-					description.append(line.substr(2)).push_back('\n');
+					description.push_back(line.substr(2));
 					continue;
 				}
 
@@ -165,7 +165,6 @@ namespace ExtensionLoader
 
 			BuildDisplayName(script);
 			Util::TrimRight(about);
-			Util::TrimRight(description);
 			script.SetRequirements(std::move(requirements));
 			script.SetKind(std::move(kind));
 			script.SetQueueEvents(std::move(queueEvents));
@@ -204,7 +203,7 @@ namespace ExtensionLoader
 				std::vector<ManifestFile::Option>& options,
 				std::vector<ManifestFile::Command>& commands)
 			{
-				std::string description;
+				std::vector<std::string> description;
 				std::string line;
 				while (getline(file, line))
 				{
@@ -233,7 +232,7 @@ namespace ExtensionLoader
 						bool foundDash = line.substr(selectStartIdx, selectEndIdx).find(dash) != std::string::npos;
 						if (!foundComma && !foundDash || !description.empty())
 						{
-							description += line.substr(2) + '\n';
+							description.push_back(line.substr(2));
 							continue;
 						}
 
@@ -241,16 +240,16 @@ namespace ExtensionLoader
 
 						if (foundComma && !CheckCommaAfterEachWord(selectStr))
 						{
-							description += line.substr(2) + '\n';
+							description.push_back(line.substr(2));
 							continue;
 						}
 						if (foundDash)
 						{
-							description += line.substr(2) + '\n';
+							description.push_back(line.substr(2));
 						}
 						else
 						{
-							description += line.substr(2, selectStartIdx - 3) + ".\n";
+							description.push_back(line.substr(2, selectStartIdx - 3) + ".");
 						}
 
 						ManifestFile::Option option;
@@ -277,7 +276,7 @@ namespace ExtensionLoader
 								Util::TrimRight(line);
 								if (!line.empty())
 								{
-									description += line + '\n';
+									description.push_back(line);
 								}
 								continue;
 							}
@@ -294,7 +293,6 @@ namespace ExtensionLoader
 									option.name = std::move(name);
 									option.displayName = option.name;
 								}
-								Util::TrimRight(description);
 								option.description = std::move(description);
 								options.push_back(std::move(option));
 								break;
@@ -314,7 +312,6 @@ namespace ExtensionLoader
 							std::string action = line.substr(atPos + 1);
 							command.action = std::move(action);
 							command.name = std::move(name);
-							Util::TrimRight(description);
 							command.description = std::move(description);
 							command.displayName = command.name;
 							commands.push_back(std::move(command));
@@ -330,7 +327,6 @@ namespace ExtensionLoader
 								option.type = GetType(value);
 								option.value = std::move(value);
 								option.name = std::move(name);
-								Util::TrimRight(description);
 								option.description = std::move(description);
 								option.displayName = option.name;
 								options.push_back(std::move(option));
@@ -339,10 +335,9 @@ namespace ExtensionLoader
 					}
 					else
 					{
-						description += line.substr(2) + '\n';
+						description.push_back(line.substr(2));
 					}
 				}
-
 			}
 
 			bool CheckCommaAfterEachWord(const std::string& sentence)

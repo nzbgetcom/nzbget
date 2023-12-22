@@ -33,8 +33,8 @@ namespace ManifestFile
 		std::string type;
 		std::string name;
 		std::string displayName;
-		std::string description;
 		std::string value;
+		std::vector<std::string> description;
 		std::vector<std::string> select;
 	};
 
@@ -42,8 +42,8 @@ namespace ManifestFile
 	{
 		std::string name;
 		std::string displayName;
-		std::string description;
 		std::string action;
+		std::vector<std::string> description;
 	};
 
 	struct Manifest
@@ -57,9 +57,9 @@ namespace ManifestFile
 		std::string version;
 		std::string license;
 		std::string about;
-		std::string description;
 		std::string queueEvents;
 		std::string taskTime;
+		std::vector<std::string> description;
 		std::vector<std::string> requirements;
 		std::vector<Option> options;
 		std::vector<Command> commands;
@@ -72,6 +72,7 @@ namespace ManifestFile
 		bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
 		bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
 		bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements);
+		bool ValidateDescriptionAndSet(const Json::JsonObject& json, std::vector<std::string>& description);
 		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 	}
 };

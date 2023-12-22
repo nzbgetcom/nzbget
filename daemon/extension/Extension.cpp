@@ -104,14 +104,14 @@ namespace Extension
 		return m_about.c_str();
 	}
 
-	void Script::SetDescription(std::string description)
+	void Script::SetDescription(std::vector<std::string> description)
 	{
 		m_description = std::move(description);
 	};
 
-	const char* Script::GetDescription() const
+	const std::vector<std::string>& Script::GetDescription() const
 	{
-		return m_description.c_str();
+		return m_description;
 	}
 
 	void Script::SetKind(Kind kind)
@@ -195,6 +195,7 @@ namespace Extension
 	std::string ToJsonStr(const Script& script)
 	{
 		Json::JsonObject json;
+		Json::JsonArray descriptionJson;
 		Json::JsonArray requirementsJson;
 		Json::JsonArray optionsJson;
 		Json::JsonArray commandsJson;
@@ -203,7 +204,6 @@ namespace Extension
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
 		json["About"] = script.GetAbout();
-		json["Description"] = script.GetDescription();
 		json["Author"] = script.GetAuthor();
 		json["Homepage"] = script.GetHomepage();
 		json["License"] = script.GetLicense();
@@ -216,6 +216,11 @@ namespace Extension
 		json["QueueEvents"] = script.GetQueueEvents();
 		json["TaskTime"] = script.GetTaskTime();
 
+		for (const auto& value : script.GetDescription())
+		{
+			descriptionJson.push_back(Json::JsonValue(value));
+		}
+
 		for (const auto& value : script.GetRequirements())
 		{
 			requirementsJson.push_back(Json::JsonValue(value));
@@ -224,18 +229,25 @@ namespace Extension
 		for (const auto& option : script.GetOptions())
 		{
 			Json::JsonObject optionJson;
+			Json::JsonArray descriptionJson;
 			Json::JsonArray selectJson;
 
 			optionJson["Type"] = option.type;
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
-			optionJson["Description"] = option.description;
 			optionJson["Value"] = option.value;
 
-			for (const auto& select : option.select)
+			for (const auto& value : option.description)
 			{
-				selectJson.push_back(Json::JsonValue(select));
+				descriptionJson.push_back(Json::JsonValue(value));
 			}
+
+			for (const auto& value : option.select)
+			{
+				selectJson.push_back(Json::JsonValue(value));
+			}
+
+			optionJson["Description"] = std::move(descriptionJson);
 			optionJson["Select"] = std::move(selectJson);
 			optionsJson.push_back(std::move(optionJson));
 		}
@@ -243,15 +255,23 @@ namespace Extension
 		for (const auto& command : script.GetCommands())
 		{
 			Json::JsonObject commandJson;
+			Json::JsonArray descriptionJson;
 
 			commandJson["Name"] = command.name;
 			commandJson["DisplayName"] = command.displayName;
-			commandJson["Description"] = command.description;
 			commandJson["Action"] = command.action;
 
+
+			for (const auto& value : command.description)
+			{
+				descriptionJson.push_back(Json::JsonValue(value));
+			}
+
+			commandJson["Description"] = std::move(descriptionJson);
 			commandsJson.push_back(std::move(commandJson));
 		}
 
+		json["Description"] = std::move(descriptionJson);
 		json["Requirements"] = std::move(requirementsJson);
 		json["Options"] = std::move(optionsJson);
 		json["Commands"] = std::move(commandsJson);
@@ -267,7 +287,6 @@ namespace Extension
 		AddNewNode(structNode, "Name", "string", script.GetName());
 		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
 		AddNewNode(structNode, "About", "string", script.GetAbout());
-		AddNewNode(structNode, "Description", "string", script.GetDescription());
 		AddNewNode(structNode, "Author", "string", script.GetAuthor());
 		AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
 		AddNewNode(structNode, "License", "string", script.GetLicense());
@@ -282,6 +301,11 @@ namespace Extension
 		AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
 		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
 
+		xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+		for (const std::string& value : script.GetDescription()) {
+			AddNewNode(descriptionNode, "Value", "string", value.c_str());
+		}
+
 		xmlNodePtr requirementsNode = xmlNewNode(NULL, BAD_CAST "Requirements");
 		for (const std::string& value : script.GetRequirements()) {
 			AddNewNode(requirementsNode, "Value", "string", value.c_str());
@@ -291,8 +315,13 @@ namespace Extension
 		for (const ManifestFile::Command& command : script.GetCommands()) {
 			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
 			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
-			AddNewNode(commandsNode, "Description", "string", command.description.c_str());
 			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
+
+			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+			for (const std::string& value : command.description) {
+				AddNewNode(descriptionNode, "Value", "string", value.c_str());
+			}
+			xmlAddChild(commandsNode, descriptionNode);
 		}
 
 		xmlNodePtr optionsNode = xmlNewNode(NULL, BAD_CAST "Options");
@@ -307,9 +336,16 @@ namespace Extension
 				AddNewNode(selectNode, "Value", "string", selectOption.c_str());
 			}
 
+			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+			for (const std::string& value : option.description) {
+				AddNewNode(descriptionNode, "Value", "string", value.c_str());
+			}
+
+			xmlAddChild(optionsNode, descriptionNode);
 			xmlAddChild(optionsNode, selectNode);
 		}
 
+		xmlAddChild(structNode, descriptionNode);
 		xmlAddChild(structNode, requirementsNode);
 		xmlAddChild(structNode, commandsNode);
 		xmlAddChild(structNode, optionsNode);

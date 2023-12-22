@@ -135,6 +135,11 @@ var Options = (new function($)
 		complete();
 	}
 
+	function arrToStr(arr)
+	{
+		return arr.reduce((acc, curr) => acc += curr + '\n', '');
+	}
+
 	function complete() 
 	{
 		if (serverTemplateData === null) 
@@ -168,8 +173,8 @@ var Options = (new function($)
 				nameprefix: serverTemplateData[i].Name,
 			};
 			const requirements = serverTemplateData[i].Requirements;
-			let description = serverTemplateData[i].Description + '\n\n';
-			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n\n', description);
+			let description = arrToStr(serverTemplateData[i].Description) + '\n';
+			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
 			scriptConfig['scriptName'] = serverTemplateData[i].Name;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name'] = serverTemplateData[i].Name;
@@ -190,14 +195,14 @@ var Options = (new function($)
 			{
 				const command = serverTemplateData[i].Commands[j];
 				section.options.push({
-					caption: command.Name,
+					caption: command.DisplayName,
 					name: serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
 					defvalue: command.Action,
 					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select: [],
 					about: serverTemplateData[i].About,
-					description: command.Description,
+					description: arrToStr(command.Description),
 					nocontent: false,
 					formId: serverTemplateData[i].Name + '_' + command.Name,
 					commandopts: 'settings',
@@ -209,13 +214,13 @@ var Options = (new function($)
 				const option = serverTemplateData[i].Options[j];
 				const [type, select] = GetTypeAndSelect(option);
 				section.options.push({
-					caption: option.Name,
+					caption: option.DisplayName,
 					name: serverTemplateData[i].Name + ':' + option.Name,
 					value: option.Value,
 					defvalue: option.Value,
 					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select,
-					description: option.Description,
+					description: arrToStr(option.Description),
 					nocontent: false,
 					formId: serverTemplateData[i].Name + '_' + option.Name,
 					type

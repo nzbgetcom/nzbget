@@ -64,9 +64,6 @@ namespace ManifestFile
 			if (!CheckKeyAndSet(json, "about", manifest.about))
 				return false;
 
-			if (!CheckKeyAndSet(json, "description", manifest.description))
-				return false;
-
 			if (!CheckKeyAndSet(json, "version", manifest.version))
 				return false;
 
@@ -94,6 +91,9 @@ namespace ManifestFile
 			if (!ValidateCommandsAndSet(json, manifest.commands))
 				return false;
 
+			if (!ValidateDescriptionAndSet(json, manifest.description))
+				return false;
+
 			if (!ValidateRequirementsAndSet(json, manifest.requirements))
 				return false;
 
@@ -117,13 +117,13 @@ namespace ManifestFile
 				if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
 					continue;
 
-				if (!CheckKeyAndSet(cmdJson, "description", command.description))
+				if (!ValidateDescriptionAndSet(cmdJson, command.description))
 					continue;
 
 				if (!CheckKeyAndSet(cmdJson, "action", command.action))
 					continue;
 
-				commands.push_back(std::move(command));
+				commands.emplace_back(std::move(command));
 			}
 
 			return true;
@@ -152,7 +152,7 @@ namespace ManifestFile
 				if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
 					continue;
 
-				if (!CheckKeyAndSet(optionJson, "description", option.description))
+				if (!ValidateDescriptionAndSet(optionJson, option.description))
 					continue;
 
 				if (!CheckKeyAndSet(optionJson, "value", option.value))
@@ -162,11 +162,11 @@ namespace ManifestFile
 				{
 					if (selectVal.is_string())
 					{
-						option.select.push_back(selectVal.as_string().c_str());
+						option.select.emplace_back(selectVal.as_string().c_str());
 					}
 				}
 
-				options.push_back(std::move(option));
+				options.emplace_back(std::move(option));
 			}
 
 			return true;
@@ -182,7 +182,24 @@ namespace ManifestFile
 			{
 				if (value.is_string())
 				{
-					requirements.push_back(value.as_string().c_str());
+					requirements.emplace_back(value.as_string().c_str());
+				}
+			}
+
+			return true;
+		}
+
+		bool ValidateDescriptionAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
+		{
+			auto rawDescr = json.if_contains("description");
+			if (!rawDescr || !rawDescr->is_array())
+				return false;
+
+			for (auto& value : rawDescr->as_array())
+			{
+				if (value.is_string())
+				{
+					requirements.emplace_back(value.as_string().c_str());
 				}
 			}
 

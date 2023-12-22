@@ -167,7 +167,7 @@ namespace ExtensionManager
 		size_t count = 0;
 		for (size_t i = 0; i < order.size(); ++i)
 		{
-			std::string name = order[i];
+			const std::string& name = order[i];
 			auto it = std::find_if(
 				std::begin(m_extensions),
 				std::end(m_extensions),
