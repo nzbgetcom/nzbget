@@ -373,7 +373,6 @@ namespace ExtensionLoader
 		}
 	}
 
-
 	bool V2::Load(Extension::Script& script, const char* directory)
 	{
 		ManifestFile::Manifest manifest;
