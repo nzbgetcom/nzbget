@@ -91,10 +91,10 @@ namespace ManifestFile
 			if (!ValidateCommandsAndSet(json, manifest.commands))
 				return false;
 
-			if (!ValidateDescriptionAndSet(json, manifest.description))
+			if (!ValidateTxtAndSet(json, manifest.description, "description"))
 				return false;
 
-			if (!ValidateRequirementsAndSet(json, manifest.requirements))
+			if (!ValidateTxtAndSet(json, manifest.requirements, "requirements"))
 				return false;
 
 			return true;
@@ -117,7 +117,7 @@ namespace ManifestFile
 				if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
 					continue;
 
-				if (!ValidateDescriptionAndSet(cmdJson, command.description))
+				if (!ValidateTxtAndSet(cmdJson, command.description, "description"))
 					continue;
 
 				if (!CheckKeyAndSet(cmdJson, "action", command.action))
@@ -143,26 +143,29 @@ namespace ManifestFile
 					continue;
 
 				Option option;
-				if (!CheckKeyAndSet(optionJson, "type", option.type))
-					continue;
-
 				if (!CheckKeyAndSet(optionJson, "name", option.name))
 					continue;
 
 				if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
 					continue;
 
-				if (!ValidateDescriptionAndSet(optionJson, option.description))
+				if (!CheckKeyAndSet(optionJson, "value", option.value))
 					continue;
 
-				if (!CheckKeyAndSet(optionJson, "value", option.value))
+				if (!ValidateTxtAndSet(optionJson, option.description, "description"))
 					continue;
 
 				for (auto& selectVal : selectJson->as_array())
 				{
 					if (selectVal.is_string())
 					{
-						option.select.emplace_back(selectVal.as_string().c_str());
+						option.select.emplace_back(selectVal.get_string().c_str());
+						continue;
+					}
+					if (selectVal.is_number())
+					{
+						option.select.emplace_back(selectVal.to_number<double>());
+						continue;
 					}
 				}
 
@@ -172,34 +175,17 @@ namespace ManifestFile
 			return true;
 		}
 
-		bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
+		bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName)
 		{
-			auto rawRequirements = json.if_contains("requirements");
-			if (!rawRequirements || !rawRequirements->is_array())
+			auto rawProp = json.if_contains(propName);
+			if (!rawProp || !rawProp->is_array())
 				return false;
 
-			for (auto& value : rawRequirements->as_array())
+			for (auto& value : rawProp->as_array())
 			{
 				if (value.is_string())
 				{
-					requirements.emplace_back(value.as_string().c_str());
-				}
-			}
-
-			return true;
-		}
-
-		bool ValidateDescriptionAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements)
-		{
-			auto rawDescr = json.if_contains("description");
-			if (!rawDescr || !rawDescr->is_array())
-				return false;
-
-			for (auto& value : rawDescr->as_array())
-			{
-				if (value.is_string())
-				{
-					requirements.emplace_back(value.as_string().c_str());
+					property.emplace_back(value.get_string().c_str());
 				}
 			}
 
@@ -212,8 +198,29 @@ namespace ManifestFile
 			if (!rawProperty || !rawProperty->is_string())
 				return false;
 
-			property = rawProperty->as_string().c_str();
+			property = rawProperty->get_string().c_str();
 			return true;
+		}
+
+		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
+		{
+			const auto& rawProperty = json.if_contains(key);
+			if (!rawProperty)
+				return false;
+
+			if (rawProperty->is_string())
+			{
+				property = rawProperty->get_string().c_str();
+				return true;
+			}
+
+			if (rawProperty->is_number())
+			{
+				property = rawProperty->to_number<double>();
+				return true;
+			}
+
+			return false;
 		}
 	}
 }

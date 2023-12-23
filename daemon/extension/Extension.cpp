@@ -216,14 +216,14 @@ namespace Extension
 		json["QueueEvents"] = script.GetQueueEvents();
 		json["TaskTime"] = script.GetTaskTime();
 
-		for (const auto& value : script.GetDescription())
+		for (const auto& line : script.GetDescription())
 		{
-			descriptionJson.push_back(Json::JsonValue(value));
+			descriptionJson.push_back(Json::JsonValue(line));
 		}
 
-		for (const auto& value : script.GetRequirements())
+		for (const auto& line : script.GetRequirements())
 		{
-			requirementsJson.push_back(Json::JsonValue(value));
+			requirementsJson.push_back(Json::JsonValue(line));
 		}
 
 		for (const auto& option : script.GetOptions())
@@ -232,19 +232,33 @@ namespace Extension
 			Json::JsonArray descriptionJson;
 			Json::JsonArray selectJson;
 
-			optionJson["Type"] = option.type;
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
-			optionJson["Value"] = option.value;
 
-			for (const auto& value : option.description)
+			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{
-				descriptionJson.push_back(Json::JsonValue(value));
+				optionJson["Value"] = *val;
+			}
+			else if (const double* val = boost::variant2::get_if<double>(&option.value))
+			{
+				optionJson["Value"] = *val;
+			}
+
+			for (const auto& line : option.description)
+			{
+				descriptionJson.push_back(Json::JsonValue(line));
 			}
 
 			for (const auto& value : option.select)
 			{
-				selectJson.push_back(Json::JsonValue(value));
+				if (const std::string* val = boost::variant2::get_if<std::string>(&value))
+				{
+					selectJson.push_back(Json::JsonValue(*val));
+				}
+				else if (const double* val = boost::variant2::get_if<double>(&value))
+				{
+					selectJson.push_back(Json::JsonValue(*val));
+				}
 			}
 
 			optionJson["Description"] = std::move(descriptionJson);
@@ -262,9 +276,9 @@ namespace Extension
 			commandJson["Action"] = command.action;
 
 
-			for (const auto& value : command.description)
+			for (const auto& line : command.description)
 			{
-				descriptionJson.push_back(Json::JsonValue(value));
+				descriptionJson.push_back(Json::JsonValue(line));
 			}
 
 			commandJson["Description"] = std::move(descriptionJson);
@@ -302,43 +316,64 @@ namespace Extension
 		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
 
 		xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
-		for (const std::string& value : script.GetDescription()) {
-			AddNewNode(descriptionNode, "Value", "string", value.c_str());
+		for (const std::string& line : script.GetDescription())
+		{
+			AddNewNode(descriptionNode, "Value", "string", line.c_str());
 		}
 
 		xmlNodePtr requirementsNode = xmlNewNode(NULL, BAD_CAST "Requirements");
-		for (const std::string& value : script.GetRequirements()) {
-			AddNewNode(requirementsNode, "Value", "string", value.c_str());
+		for (const std::string& line : script.GetRequirements())
+		{
+			AddNewNode(requirementsNode, "Value", "string", line.c_str());
 		}
 
 		xmlNodePtr commandsNode = xmlNewNode(NULL, BAD_CAST "Commands");
-		for (const ManifestFile::Command& command : script.GetCommands()) {
+		for (const ManifestFile::Command& command : script.GetCommands())
+		{
 			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
 			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
 			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
 
 			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
-			for (const std::string& value : command.description) {
-				AddNewNode(descriptionNode, "Value", "string", value.c_str());
+			for (const std::string& line : command.description)
+			{
+				AddNewNode(descriptionNode, "Value", "string", line.c_str());
 			}
 			xmlAddChild(commandsNode, descriptionNode);
 		}
 
 		xmlNodePtr optionsNode = xmlNewNode(NULL, BAD_CAST "Options");
-		for (const ManifestFile::Option& option : script.GetOptions()) {
-			AddNewNode(optionsNode, "Type", "string", option.type.c_str());
+		for (const ManifestFile::Option& option : script.GetOptions())
+		{
 			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
 			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
-			AddNewNode(optionsNode, "Value", "string", option.value.c_str());
+
+			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
+			{
+				AddNewNode(optionsNode, "Value", "string", val->c_str());
+			}
+			else if (const double* val = boost::variant2::get_if<double>(&option.value))
+			{
+				AddNewNode(optionsNode, "Value", "number", std::to_string(*val).c_str());
+			}
 
 			xmlNodePtr selectNode = xmlNewNode(NULL, BAD_CAST "Select");
-			for (const std::string& selectOption : option.select) {
-				AddNewNode(selectNode, "Value", "string", selectOption.c_str());
+			for (const auto& selectOption : option.select)
+			{
+				if (const std::string* val = boost::variant2::get_if<std::string>(&selectOption))
+				{
+					AddNewNode(selectNode, "Value", "string", val->c_str());
+				}
+				else if (const double* val = boost::variant2::get_if<double>(&selectOption))
+				{
+					AddNewNode(selectNode, "Value", "number", std::to_string(*val).c_str());
+				}
 			}
 
 			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
-			for (const std::string& value : option.description) {
-				AddNewNode(descriptionNode, "Value", "string", value.c_str());
+			for (const std::string& line : option.description)
+			{
+				AddNewNode(descriptionNode, "Value", "string", line.c_str());
 			}
 
 			xmlAddChild(optionsNode, descriptionNode);

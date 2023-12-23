@@ -47,9 +47,8 @@ Extension::Script GetExtension()
 	option.description = { "description" };
 	option.displayName = "displayName";
 	option.name = "name";
-	option.value = "value";
-	option.select = { "value", "value2" };
-	option.type = "string";
+	option.value = 5.;
+	option.select = { 0., 10. };
 
 	command.action = "action";
 	command.name = "name";
@@ -86,14 +85,11 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"TaskTime\":\"TaskTime\",\
 \"Description\":[\"Description\"],\
 \"Requirements\":[\"Requirements\"],\
-\"Options\":[{\"Type\":\"string\",\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Value\":\"value\",\"Description\":[\"description\"],\"Select\":[\"value\",\"value2\"]}],\
+\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Description\":[\"description\"]}]}";
 
-BOOST_TEST_MESSAGE(result);
-BOOST_TEST_MESSAGE(expected);
 	BOOST_CHECK(result == expected);
 }
-
 
 BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 {
@@ -129,16 +125,15 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 </Description>\
 </Commands>\
 <Options>\
-<member><name>Type</name><value><string>string</string></value></member>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
-<member><name>Value</name><value><string>value</string></value></member>\
+<member><name>Value</name><value><number>5.000000</number></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
 </Description>\
 <Select>\
-<member><name>Value</name><value><string>value</string></value></member>\
-<member><name>Value</name><value><string>value2</string></value></member>\
+<member><name>Value</name><value><number>0.000000</number></value></member>\
+<member><name>Value</name><value><number>10.000000</number></value></member>\
 </Select>\
 </Options>\
 </struct></value>";

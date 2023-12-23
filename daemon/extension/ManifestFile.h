@@ -22,20 +22,22 @@
 
 #include <string>
 #include <vector>
+#include <boost/variant2.hpp>
 #include "Json.h"
 
 namespace ManifestFile
 {
+	using SelectOption = boost::variant2::variant<double, std::string>;
+
 	extern const char* MANIFEST_FILE;
 
 	struct Option
 	{
-		std::string type;
 		std::string name;
 		std::string displayName;
-		std::string value;
 		std::vector<std::string> description;
-		std::vector<std::string> select;
+		SelectOption value;
+		std::vector<SelectOption> select;
 	};
 
 	struct Command
@@ -71,9 +73,9 @@ namespace ManifestFile
 		bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
 		bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
 		bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
-		bool ValidateRequirementsAndSet(const Json::JsonObject& json, std::vector<std::string>& requirements);
-		bool ValidateDescriptionAndSet(const Json::JsonObject& json, std::vector<std::string>& description);
+		bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
 		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
+		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
 	}
 };
 

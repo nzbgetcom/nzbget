@@ -12,7 +12,6 @@
     "requirements": ["This script requires Python to be installed on your system."],
     "options": [
         {
-            "type": "string",
             "name": "sendMail",
             "displayName": "SendMail",
             "value": "Always",
@@ -20,12 +19,11 @@
             "select": ["Always", "OnFailure"]
         },
         {
-            "type": "number",
             "name": "port",
             "displayName": "Port",
-            "value": "25",
+            "value": 25,
             "description": ["SMTP server port (1-65535)"],
-            "select": ["1", "65535"]
+            "select": [1, 65535]
         }
     ],
     "commands": [

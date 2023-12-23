@@ -1,6 +1,6 @@
 {
     "main": "main.py",
-    "name": "email",
+    "name": "EMail",
     "homepage": "",
     "kind": "POST-PROCESSING",
     "displayName": "EMail",
@@ -15,24 +15,21 @@
     "description": ["This script sends E-Mail notification when the job is done."],
     "options": [
         {
-            "type": "string",
-            "name": "sendMail",
+            "name": "SendMail",
             "displayName": "SendMail",
             "value": "Always",
             "description": ["When to send the message."],
             "select": ["Always", "OnFailure"]
         },
         {
-            "type": "string",
-            "name": "from",
+            "name": "From",
             "displayName": "From",
             "value": "\"NZBGet\" <myaccount@gmail.com>",
             "description": ["Email address you want this email to be sent from."],
             "select": []
         },
         {
-            "type": "string",
-            "name": "to",
+            "name": "To",
             "displayName": "To",
             "value": "myaccount@gmail.com",
             "description": [
@@ -43,24 +40,21 @@
             "select": []
         },
         {
-            "type": "string",
-            "name": "server",
+            "name": "Server",
             "displayName": "Server",
             "value": "smtp.gmail.com",
             "description": ["SMTP server host."],
             "select": []
         },
         {
-            "type": "number",
-            "name": "port",
+            "name": "Port",
             "displayName": "Port",
-            "value": "25",
+            "value": 25,
             "description": ["SMTP server port (1-65535)"],
-            "select": ["1", "65535"]
+            "select": [1, 65535]
         },
         {
-            "type": "string",
-            "name": "encryption",
+            "name": "Encryption",
             "displayName": "Encryption",
             "value": "yes",
             "description": [
@@ -73,32 +67,28 @@
             "select": ["no", "yes", "force"]
         },
         {
-            "type": "string",
-            "name": "username",
+            "name": "Username",
             "displayName": "Username",
             "value": "yes",
             "description": ["SMTP server user name, if required."],
             "select": []
         },
         {
-            "type": "string",
-            "name": "password",
+            "name": "Password",
             "displayName": "Password",
             "value": "mypass",
             "description": ["SMTP server password, if required."],
             "select": []
         },
         {
-            "type": "string",
-            "name": "statistics",
+            "name": "Statistics",
             "displayName": "Statistics",
             "value": "yes",
             "description": ["Append statistics to the message."],
             "select": ["yes", "no"]
         },
         {
-            "type": "string",
-            "name": "fileList",
+            "name": "FileList",
             "displayName": "FileList",
             "value": "yes",
             "description": [
@@ -109,8 +99,7 @@
             "select": ["yes", "no"]
         },
         {
-            "type": "string",
-            "name": "brokenLog",
+            "name": "BrokenLog",
             "displayName": "BrokenLog",
             "value": "yes",
             "description": [
@@ -123,8 +112,7 @@
             "select": ["yes", "no"]
         },
         {
-            "type": "string",
-            "name": "nzbLog",
+            "name": "NzbLog",
             "displayName": "NzbLog",
             "value": "OnFailure",
             "description": ["Append nzb log to the message.Add the download and post-processing log of active job.."],

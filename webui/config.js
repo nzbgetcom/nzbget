@@ -175,7 +175,7 @@ var Options = (new function($)
 			const requirements = serverTemplateData[i].Requirements;
 			let description = arrToStr(serverTemplateData[i].Description) + '\n';
 			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
-			scriptConfig['scriptName'] = serverTemplateData[i].Name;
+			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name'] = serverTemplateData[i].Name;
 			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
@@ -216,8 +216,8 @@ var Options = (new function($)
 				section.options.push({
 					caption: option.DisplayName,
 					name: serverTemplateData[i].Name + ':' + option.Name,
-					value: option.Value,
-					defvalue: option.Value,
+					value: String(option.Value),
+					defvalue: String(option.Value),
 					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select,
 					description: arrToStr(option.Description),
@@ -237,11 +237,11 @@ var Options = (new function($)
 
 	function GetTypeAndSelect(option)
 	{
-		if (option.Type === 'string')
+		if (typeof option.Value === 'string')
 		{
 			return ['text', option.Select];
 		}
-		if (option.Type === 'number')
+		if (typeof option.Value === 'number')
 		{
 			if (option.Select.length > 1)
 			{
@@ -527,11 +527,11 @@ var Options = (new function($)
 		{
 			if (data[i].PostScript || data[i].QueueScript) 
 			{
-				var scriptName = data[i].DisplayName;
+				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
 				option.name = scriptName + ':';
-				option.caption = shortScriptName(scriptName);
+				option.caption = data[i].DisplayName;
 
 				option.defvalue = 'no';
 				option.description = '';
