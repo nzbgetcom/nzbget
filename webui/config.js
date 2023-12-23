@@ -160,7 +160,6 @@ var Options = (new function($)
 		// read scripts configs
 		for (var i = 1; i < serverTemplateData.length; i++) 
 		{
-			
 			const section = {
 				name: serverTemplateData[i].Name,
 				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
@@ -530,7 +529,7 @@ var Options = (new function($)
 				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
-				option.name = scriptName + ':';
+				option.name = data[i].DisplayName + ':';
 				option.caption = data[i].DisplayName;
 
 				option.defvalue = 'no';

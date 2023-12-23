@@ -75,7 +75,7 @@ void NzbScriptController::ExecuteScriptList(const char* scriptList)
 			Tokenizer tok(scriptList, ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (FileSystem::SameFilename(scriptName, script.GetName()))
+				if (strcmp(scriptName, script.GetDisplayName()) == 0)
 				{
 					ExecuteScript(script);
 					break;

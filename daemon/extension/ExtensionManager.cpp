@@ -120,7 +120,7 @@ namespace ExtensionManager
 			Tokenizer tok(g_Options->GetExtensions(), ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (FileSystem::SameFilename(scriptName, extension.GetName()))
+				if (strcmp(scriptName, extension.GetDisplayName()) == 0)
 				{
 					g_Options->CreateSchedulerTask(
 						0,
@@ -151,7 +151,7 @@ namespace ExtensionManager
 	{
 		auto compare = [](const Extension& a, const Extension& b)
 			{
-				return strcmp(a.GetName(), b.GetName()) < 0;
+				return strcmp(a.GetDisplayName(), b.GetDisplayName()) == 0;
 			};
 		if (order.empty())
 		{
@@ -173,7 +173,7 @@ namespace ExtensionManager
 				std::end(m_extensions),
 				[&name](const Extension& ext)
 				{
-					return name == ext.GetName();
+					return name == ext.GetDisplayName();
 				}
 			);
 			if (it != std::end(m_extensions))
