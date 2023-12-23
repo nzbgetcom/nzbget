@@ -33,7 +33,7 @@ namespace ExtensionManager
 	{
 	public:
 		Manager() noexcept;
-		~Manager() = default;
+		~Manager() noexcept = default;
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 

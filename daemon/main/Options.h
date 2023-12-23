@@ -32,7 +32,7 @@ public:
 	virtual const char* GetScriptDir() const = 0;
 	virtual const char* GetScriptOrder() const = 0;
 	virtual const char* GetExtensions() const = 0;
-	virtual ~IOptions() = default;
+	virtual ~IOptions() noexcept = default;
 };
 
 class Options : public IOptions

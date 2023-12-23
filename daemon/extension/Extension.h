@@ -36,8 +36,8 @@ namespace Extension
 	class Script
 	{
 	public:
-		Script() = default;
-		~Script() = default;
+		Script() noexcept = default;
+		~Script() noexcept = default;
 
 		void SetAuthor(std::string author);
 		const char* GetAuthor() const;
