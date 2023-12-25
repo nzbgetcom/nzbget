@@ -2775,44 +2775,7 @@ var UpdateDialog = (new function($)
 	function loadedUpstreamInfo(data)
 	{
 		VersionInfo = parseJsonP(data);
-		if (VersionInfo['devel-version'] || !foreground)
-		{
-			loadPackageInfo();
-		}
-		else
-		{
-			loadGitVerData(loadPackageInfo);
-		}
-	}
-
-	function loadGitVerData(callback)
-	{
-		// fetching devel version number from github web-site
-		RPC.call('readurl', ['https://github.com/nzbgetcom/nzbget', 'nzbget git revision info'],
-			function(gitRevData)
-			{
-				RPC.call('readurl', ['https://raw.githubusercontent.com/nzbgetcom/nzbget/develop/configure.ac', 'nzbget git branch info'],
-					function(gitBranchData)
-					{
-						var html = document.createElement('DIV');
-						html.innerHTML = gitRevData;
-						html = html.textContent || html.innerText || '';
-						html = html.replace(/(?:\r\n|\r|\n)/g, ' ');
-						var rev = html.match(/([0-9\,]*)\s*commits/);
-
-						if (rev && rev.length > 1)
-						{
-							rev = rev[1].replace(',', '');
-							var ver = gitBranchData.match(/AC_INIT\(nzbget, (.*), .*/);
-							if (ver && ver.length > 1)
-							{
-								VersionInfo['devel-version'] = ver[1] + '-r' + rev;
-							}
-						}
-
-						callback();
-					}, callback);
-			}, callback);
+		loadPackageInfo();
 	}
 
 	function loadPackageInfo()
@@ -2865,8 +2828,6 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_AvailStable').text(UpdateInfo['stable-version'] ? UpdateInfo['stable-version'] : 'not available');
 		$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? UpdateInfo['testing-version'] : 'not available');
 		
-		console.log(UpdateInfo);
-		console.log(VersionInfo);
 		if (UpdateInfo['stable-version'] === VersionInfo['stable-version'] &&
 			UpdateInfo['testing-version'] === VersionInfo['testing-version'])
 		{
