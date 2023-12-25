@@ -36,6 +36,7 @@ var Options = (new function($)
 	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
+	this.extensions = [];
 
 	// State
 	var _this = this;
@@ -73,7 +74,8 @@ var Options = (new function($)
 
 		// build list of post-processing parameters
 		RPC.call('loadextensions', [false], function(data)
-		{
+		{	
+			_this.extensions = data.slice();
 			_this.postParamConfig = initPostParamConfig(data);
 		});
 	}
@@ -1081,6 +1083,9 @@ var Config = (new function($)
 			filterInput(filterText);
 		}
 
+		$ConfigNav.append('<li class="divider"></li>');
+		$ConfigNav.append('<li><a href="#' + 'extension-manager' + '">' + 'EXTENSION MANAGER' + '</a></li>')
+
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
 	}
@@ -1295,6 +1300,72 @@ var Config = (new function($)
 			$('.config-system', $ConfigData).show();
 			markLastControlGroup();
 			$ConfigTitle.text('SYSTEM');
+			return;
+		}
+
+		if (sectionId === 'extension-manager')
+		{
+			$ConfigData.children().hide();
+			markLastControlGroup();
+			$ConfigTitle.text('EXTENSION MANAGER');
+			$.get(
+				'https://jsonplaceholder.typicode.com/todos/1',
+				(_) => 
+				{
+					const data = [
+						{
+							"displayName": "Fake Detector",
+							"version": "2.0.0",
+							"author": "Andrey Prygunkov",
+							"homepage": "https://github.com/nzbgetcom/Extension-FakeDetector",
+							"about": "Detect nzbs with fake media files.",
+						},
+						{
+							"displayName": "Failure Link",
+							"version": "2.0.0",
+							"author": "Andrey Prygunkov, Clinton Hall",
+							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
+							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+						},
+						{
+							"displayName": "Video Link",
+							"version": "1.0.0",
+							"author": "Andrey Prygunkov",
+							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
+							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+						}
+					];
+
+					const extensions = $('.' + sectionId, $ConfigData);
+					extensions.empty();
+
+					data.forEach((ext, i) => {
+						const alreadyInstalled = Options.extensions.find((installed) => ext.displayName.toLowerCase() === installed.DisplayName.toLowerCase());
+						const btn = alreadyInstalled 
+							? $('<button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button>')
+							: $('<button type="button" class="btn btn-primary" onclick="Config.downloadExtension('+ i + ')">Download</button>');
+						const container = $('<div></div>');
+						const ctrlsContainer = $('<div class="controls"></div>');
+						ctrlsContainer
+							.append('<div class="controls"></div>')
+							.append('<p><strong>About: </strong>' + ext.about + '</p>')
+							.append('<p><strong>Author: </strong>' + ext.author + '</p>')
+							.append('<p><strong>Version: </strong>' + ext.version + '</p>')
+							.append('<p><strong>Homepage: </strong>' + '<a>' + ext.homepage + '</a>' + '</p>')
+							.append(btn);
+							
+						if (i < data.length - 1)
+						{
+							ctrlsContainer.append('<hr></hr>');
+						}
+
+						container.append('<label class="label label-info h4 nowrap">' + ext.displayName +'</label>');
+						container.append(ctrlsContainer);
+						extensions.append(container);
+					});
+					extensions.show();
+				}
+			);
 			return;
 		}
 
@@ -2160,6 +2231,18 @@ var Config = (new function($)
 	this.checkUpdates = function()
 	{
 		UpdateDialog.showModal();
+	}
+
+	/*** EXTENSIONS ****************************************************************/
+
+	this.downloadExtension = function(extensionIdx)
+	{
+		console.warn(Options.extensions[extensionIdx])
+	}
+
+	this.deleteExtension = function(extensionIdx)
+	{
+		console.warn(Options.extensions[extensionIdx])
 	}
 }(jQuery));
 
