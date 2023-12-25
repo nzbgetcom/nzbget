@@ -87,7 +87,7 @@ jobs:
           nzbget-synology-packages
 
   make-testing-release:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     needs: [generate-signatures]
     permissions:
       contents: write
@@ -118,3 +118,7 @@ jobs:
         tag: testing
         allowUpdates: true
         prerelease: true
+
+    - name: Update website info
+      run: |
+        bash /build/update-release-info.sh
