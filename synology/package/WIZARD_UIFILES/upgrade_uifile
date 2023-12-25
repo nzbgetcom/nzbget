@@ -1,0 +1,12 @@
+[{
+  "step_title": "Upgrade package",
+  "items": [{
+    "type": "singleselect",
+    "desc": "Keep package settings.",
+    "subitems": [{
+      "key": "wizard_keep_data",
+      "desc": "Keep existing config files.",
+      "defaultValue": true
+    }]
+  }]
+}]

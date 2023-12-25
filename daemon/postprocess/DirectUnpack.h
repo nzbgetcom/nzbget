@@ -24,7 +24,7 @@
 #include "Log.h"
 #include "Thread.h"
 #include "DownloadInfo.h"
-#include "Script.h"
+#include "ScriptController.h"
 
 class DirectUnpack : public Thread, public ScriptController
 {

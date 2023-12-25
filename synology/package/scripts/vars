@@ -1,0 +1,2 @@
+CFG=/usr/syno/etc/packages/nzbget/nzbget.conf
+NZBGET=/usr/local/bin/nzbget
