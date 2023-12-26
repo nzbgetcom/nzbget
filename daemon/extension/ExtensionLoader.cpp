@@ -380,7 +380,7 @@ namespace ExtensionLoader
 		if (!ManifestFile::Load(manifest, directory))
 			return false;
 
-		std::string entry = std::string() + PATH_SEPARATOR + manifest.main;
+		std::string entry = std::string(directory) + PATH_SEPARATOR + manifest.main;
 		script.SetEntry(std::move(entry));
 		script.SetLocation(directory);
 		script.SetAuthor(std::move(manifest.author));
