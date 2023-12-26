@@ -68,19 +68,36 @@ namespace ExtensionManager
 
 	bool Manager::DeleteExtension(const std::string& name)
 	{
-		// auto extensionIt = m_extensions.erase(
-		// 	std::remove_if(
-		// 		std::begin(m_extensions),
-		// 		std::end(m_extensions),
-		// 		[&name](const Extension& ext)
-		// 		{
-		// 			return ext.GetName() == name;
-		// 		}),
-		// 	m_extensions.end()
-		// );
-		// CString err = "err";
-		// FileSystem::DeleteDirectoryWithContent(extensionIt->GetLocation(), err);
-		return true;
+		auto extIt = std::find_if(
+			std::begin(m_extensions),
+			std::end(m_extensions),
+			[&name](const Extension& ext)
+			{
+				return ext.GetName() == name;
+			}
+		);
+		CString err;
+		if (FileSystem::DeleteDirectoryWithContent(extIt->GetLocation(), err))
+		{
+			if (!err.Empty())
+			{
+				return false;
+			}
+
+			m_extensions.erase(
+				std::remove_if(
+					std::begin(m_extensions),
+					std::end(m_extensions),
+					[&name](const Extension& ext)
+					{
+						return ext.GetName() == name;
+					}
+				),
+				m_extensions.end()
+			);
+			return true;
+		}
+		return false;
 	}
 
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
