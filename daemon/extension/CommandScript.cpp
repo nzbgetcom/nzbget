@@ -60,7 +60,7 @@ void CommandScriptController::ExecuteScript(const Extension::Script& script)
 {
 	PrintMessage(Message::mkInfo, "Executing script %s with command %s", script.GetName(), *m_command);
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("script %s with command %s", script.GetName(), *m_command);
 	SetInfoName(infoName);

@@ -1319,6 +1319,7 @@ var Config = (new function($)
 							"author": "Andrey Prygunkov",
 							"homepage": "https://github.com/nzbgetcom/Extension-FakeDetector",
 							"about": "Detect nzbs with fake media files.",
+							"name": "FakeDetector"
 						},
 						{
 							"displayName": "Failure Link",
@@ -1326,13 +1327,15 @@ var Config = (new function($)
 							"author": "Andrey Prygunkov, Clinton Hall",
 							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
 							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+							"name": "FailureLink"
 						},
 						{
-							"displayName": "Video Link",
+							"displayName": "Video Sort",
 							"version": "1.0.0",
 							"author": "Andrey Prygunkov",
 							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
 							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+							"name": "VideoSort"
 						}
 					];
 
@@ -2238,11 +2241,24 @@ var Config = (new function($)
 	this.downloadExtension = function(extensionIdx)
 	{
 		console.warn(Options.extensions[extensionIdx])
+		RPC.call('downloadextension', [Options.extensions[extensionIdx].Name], (res) => {
+			console.warn(res);
+		});
 	}
 
 	this.deleteExtension = function(extensionIdx)
 	{
 		console.warn(Options.extensions[extensionIdx])
+		RPC.call('deleteextension', [Options.extensions[extensionIdx].Name], 
+			(result) => 
+			{
+				console.warn(result);
+			},
+			(error) => 
+			{
+				console.warn(error);
+			}
+		);
 	}
 }(jQuery));
 

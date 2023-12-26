@@ -86,7 +86,7 @@ void PostScriptController::ExecuteScript(const Extension::Script& script)
 		m_postInfo->SetProgressLabel(progressLabel);
 	}
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("post-process-script %s for %s", script.GetName(), m_postInfo->GetNzbInfo()->GetName());
 	SetInfoName(infoName);

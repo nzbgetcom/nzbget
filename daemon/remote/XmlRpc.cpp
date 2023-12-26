@@ -221,6 +221,12 @@ public:
 	virtual void Execute();
 };
 
+class DeleteExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
 class SaveConfigXmlCommand: public XmlCommand
 {
 public:
@@ -702,6 +708,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "loadextensions"))
 	{
 		command = std::make_unique<LoadExtensionsXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "deleteextension"))
+	{
+		command = std::make_unique<DeleteExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "saveconfig"))
 	{
@@ -2705,6 +2715,27 @@ void LoadExtensionsXmlCommand::Execute()
 	}
 
 	AppendResponse(isJson ? "\n]" : "</data></array>\n");
+}
+
+void DeleteExtensionXmlCommand::Execute()
+{
+	char* extensionName;
+	if (NextParamAsStr(&extensionName))
+	{
+		if (g_ExtensionManager->DeleteExtension(extensionName))
+		{
+			BuildBoolResponse(true);
+			return;
+		}
+		else
+		{
+			std::string errorMsg = "Could not delete the \"";
+			errorMsg += extensionName;
+			errorMsg += "\" extension";
+			BuildErrorResponse(3, errorMsg.c_str());
+			return;
+		}
+	}
 }
 
 // bool saveconfig(struct[] data)

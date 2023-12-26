@@ -66,6 +66,23 @@ namespace ExtensionManager
 		return true;
 	}
 
+	bool Manager::DeleteExtension(const std::string& name)
+	{
+		// auto extensionIt = m_extensions.erase(
+		// 	std::remove_if(
+		// 		std::begin(m_extensions),
+		// 		std::end(m_extensions),
+		// 		[&name](const Extension& ext)
+		// 		{
+		// 			return ext.GetName() == name;
+		// 		}),
+		// 	m_extensions.end()
+		// );
+		// CString err = "err";
+		// FileSystem::DeleteDirectoryWithContent(extensionIt->GetLocation(), err);
+		return true;
+	}
+
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
 	{
 		Extension extension;
@@ -85,26 +102,26 @@ namespace ExtensionManager
 			if (filename[0] == '.' || filename[0] == '_')
 				continue;
 
-			BString<1024> location("%s%c%s", directory, PATH_SEPARATOR, filename);
-			if (!FileSystem::DirectoryExists(location))
+			BString<1024> entry("%s%c%s", directory, PATH_SEPARATOR, filename);
+			if (!FileSystem::DirectoryExists(entry))
 			{
-
-				std::string extensionName = GetExtensionName(filename);
-				if (ExtensionExists(extensionName))
+				std::string name = GetExtensionName(filename);
+				if (ExtensionExists(name))
 				{
 					continue;
 				}
 
-				extension.SetName(std::move(extensionName));
-				extension.SetLocation(*location);
-				if (ExtensionLoader::V1::Load(extension))
+				const char* location = isSubDir ? directory : *entry;
+				extension.SetEntry(*entry);
+				extension.SetName(std::move(name));
+				if (ExtensionLoader::V1::Load(extension, location))
 				{
 					m_extensions.push_back(std::move(extension));
 				}
 			}
 			else if (!isSubDir)
 			{
-				LoadExtensionDir(location, true);
+				LoadExtensionDir(entry, true);
 			}
 		}
 	}
@@ -149,7 +166,7 @@ namespace ExtensionManager
 
 	void Manager::Sort(const std::vector<std::string>& order)
 	{
-		auto compare = [](const Extension& a, const Extension& b)
+		auto compare = [](const Extension& a, const Extension& b) -> bool
 			{
 				return strcmp(a.GetDisplayName(), b.GetDisplayName()) == 0;
 			};
@@ -162,7 +179,6 @@ namespace ExtensionManager
 			);
 			return;
 		}
-
 
 		size_t count = 0;
 		for (size_t i = 0; i < order.size(); ++i)
@@ -178,8 +194,8 @@ namespace ExtensionManager
 			);
 			if (it != std::end(m_extensions))
 			{
+				std::iter_swap(std::begin(m_extensions) + count, it);
 				++count;
-				std::iter_swap(std::begin(m_extensions) + i, it);
 			}
 		}
 

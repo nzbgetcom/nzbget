@@ -31,6 +31,8 @@ Extension::Script GetExtension()
 	ManifestFile::Option option;
 	ManifestFile::Command command;
 
+	script.SetEntry("/v1/main.py");
+	script.SetLocation("/v1");
 	script.SetAuthor("Author");
 	script.SetAbout("About");
 	script.SetHomepage("Homepage");
@@ -68,7 +70,8 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 {
 	Extension::Script script = GetExtension();
 	std::string result = Extension::ToJsonStr(script);
-	std::string expected = "{\"Location\":\"\",\
+	std::string expected = "{\"Entry\":\"/v1/main.py\",\
+\"Location\":\"/v1\",\
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
 \"About\":\"About\",\
@@ -96,6 +99,8 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 	Extension::Script script = GetExtension();
 	std::string result = Extension::ToXmlStr(script);
 	std::string expected = "<value><struct>\
+<member><name>Entry</name><value><string>/v1/main.py</string></value></member>\
+<member><name>Location</name><value><string>/v1</string></value></member>\
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
 <member><name>About</name><value><string>About</string></value></member>\

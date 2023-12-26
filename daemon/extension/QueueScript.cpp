@@ -125,7 +125,7 @@ void QueueScriptController::ExecuteScript(const Extension::Script& script)
 	PrintMessage(m_event == QueueScriptCoordinator::qeFileDownloaded ? Message::mkDetail : Message::mkInfo,
 		"Executing queue-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbName));
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("queue-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbName));
 	SetInfoName(infoName);

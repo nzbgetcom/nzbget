@@ -46,7 +46,7 @@ namespace ExtensionLoader
 
 	namespace V1
 	{
-		bool Load(Extension::Script& script);
+		bool Load(Extension::Script& script, const char* location);
 		namespace
 		{
 			void ParseOptionsAndCommands(

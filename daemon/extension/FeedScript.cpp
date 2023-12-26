@@ -49,7 +49,7 @@ void FeedScriptController::ExecuteScript(const Extension::Script& script)
 
 	PrintMessage(Message::mkInfo, "Executing feed-script %s for Feed%i", script.GetName(), m_feedId);
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("feed-script %s for Feed%i", script.GetName(), m_feedId);
 	SetInfoName(infoName);

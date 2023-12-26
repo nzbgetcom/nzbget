@@ -38,6 +38,7 @@ namespace ExtensionManager
 		Manager& operator=(const Manager&) = delete;
 
 		bool LoadExtensions(const IOptions& options);
+		bool DeleteExtension(const std::string& name);
 		const Extensions& GetExtensions() const;
 
 	private:

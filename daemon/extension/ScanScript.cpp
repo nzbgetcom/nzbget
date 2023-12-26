@@ -84,7 +84,7 @@ void ScanScriptController::ExecuteScript(const Extension::Script& script)
 
 	PrintMessage(Message::mkInfo, "Executing scan-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbFilename));
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("scan-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbFilename));
 	SetInfoName(infoName);

@@ -39,6 +39,10 @@ namespace Extension
 		Script() noexcept = default;
 		~Script() noexcept = default;
 
+		void SetEntry(std::string entry);
+		const char* GetEntry() const;
+		void SetLocation(std::string location);
+		const char* GetLocation() const;
 		void SetAuthor(std::string author);
 		const char* GetAuthor() const;
 		void SetVersion(std::string version);
@@ -49,8 +53,6 @@ namespace Extension
 		const char* GetHomepage() const;
 		void SetName(std::string name);
 		const char* GetName() const;
-		void SetLocation(std::string location);
-		const char* GetLocation() const;
 		void SetDisplayName(std::string displayName);
 		const char* GetDisplayName() const;
 		void SetAbout(std::string about);
@@ -76,12 +78,13 @@ namespace Extension
 
 	private:
 		Kind m_kind;
+		std::string m_entry;
+		std::string m_location;
 		std::string m_author;
 		std::string m_version;
 		std::string m_homepage;
 		std::string m_license;
 		std::string m_name;
-		std::string m_location;
 		std::string m_displayName;
 		std::string m_about;
 		std::string m_queueEvents;

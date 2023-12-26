@@ -31,17 +31,19 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	Extension::Script extension;
 	std::string name = "Extension.py";
 	std::string displayName = "Extension";
-	std::string location = std::filesystem::current_path().string() + "/V1/Extension.py";
+	std::string location = std::filesystem::current_path().string() + "/V1";
+	std::string entry = location + "/Extension.py";
 
-	extension.SetLocation(location.c_str());
-	extension.SetName(name.c_str());
-	extension.SetDisplayName(displayName.c_str());
+	extension.SetEntry(entry);
+	extension.SetName(name);
+	BOOST_TEST_MESSAGE(entry);
+	BOOST_TEST_MESSAGE(location);
+	BOOST_CHECK(ExtensionLoader::V1::Load(extension, location.c_str()) == true);
 
-	BOOST_CHECK(ExtensionLoader::V1::Load(extension) == true);
-
+	BOOST_CHECK(extension.GetEntry() == entry);
+	BOOST_CHECK(extension.GetLocation() == location);
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
-	BOOST_CHECK(extension.GetLocation() == location);
 	BOOST_CHECK(extension.GetHomepage() == std::string(""));
 	BOOST_CHECK(extension.GetAbout() == std::string("About1.\nAbout2."));
 	BOOST_CHECK(extension.GetDescription() == std::vector<std::string>({ "Description1", "Description2" }));

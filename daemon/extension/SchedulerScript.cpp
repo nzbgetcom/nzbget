@@ -77,7 +77,7 @@ void SchedulerScriptController::ExecuteScript(const Extension::Script& script)
 
 	PrintMessage(Message::mkInfo, "Executing scheduler-script %s%s", script.GetName(), *taskName);
 
-	SetArgs({script.GetLocation()});
+	SetArgs({script.GetEntry()});
 
 	BString<1024> infoName("scheduler-script %s%s", script.GetName(), *taskName);
 	SetInfoName(infoName);

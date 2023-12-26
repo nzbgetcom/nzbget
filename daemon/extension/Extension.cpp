@@ -24,6 +24,26 @@
 
 namespace Extension
 {
+	void Script::SetEntry(std::string entry)
+	{
+		m_entry = std::move(entry);
+	}
+
+	const char* Script::GetEntry() const
+	{
+		return m_entry.c_str();
+	}
+
+	void Script::SetLocation(std::string location)
+	{
+		m_location = std::move(location);
+	}
+
+	const char* Script::GetLocation() const
+	{
+		return m_location.c_str();
+	}
+
 	void Script::SetAuthor(std::string author)
 	{
 		m_author = std::move(author);
@@ -72,16 +92,6 @@ namespace Extension
 	const char* Script::GetName() const
 	{
 		return m_name.c_str();
-	}
-
-	void Script::SetLocation(std::string location)
-	{
-		m_location = std::move(location);
-	}
-
-	const char* Script::GetLocation() const
-	{
-		return m_location.c_str();
 	}
 
 	void Script::SetDisplayName(std::string displayName)
@@ -200,6 +210,7 @@ namespace Extension
 		Json::JsonArray optionsJson;
 		Json::JsonArray commandsJson;
 
+		json["Entry"] = script.GetEntry();
 		json["Location"] = script.GetLocation();
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
@@ -298,6 +309,8 @@ namespace Extension
 		xmlNodePtr rootNode = xmlNewNode(NULL, BAD_CAST "value");
 		xmlNodePtr structNode = xmlNewNode(NULL, BAD_CAST "struct");
 
+		AddNewNode(structNode, "Entry", "string", script.GetEntry());
+		AddNewNode(structNode, "Location", "string", script.GetLocation());
 		AddNewNode(structNode, "Name", "string", script.GetName());
 		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
 		AddNewNode(structNode, "About", "string", script.GetAbout());
