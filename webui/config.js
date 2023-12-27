@@ -1084,7 +1084,7 @@ var Config = (new function($)
 		}
 
 		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + 'extension-manager' + '">' + 'EXTENSION MANAGER' + '</a></li>')
+		$ConfigNav.append('<li><a href="#' + ExtensionsSection.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
 
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
@@ -1303,72 +1303,12 @@ var Config = (new function($)
 			return;
 		}
 
-		if (sectionId === 'extension-manager')
+		if (sectionId === ExtensionsSection.Id)
 		{
 			$ConfigData.children().hide();
 			markLastControlGroup();
 			$ConfigTitle.text('EXTENSION MANAGER');
-			$.get(
-				'https://jsonplaceholder.typicode.com/todos/1',
-				(_) => 
-				{
-					const data = [
-						{
-							"displayName": "Fake Detector",
-							"version": "2.0.0",
-							"author": "Andrey Prygunkov",
-							"homepage": "https://github.com/nzbgetcom/Extension-FakeDetector",
-							"about": "Detect nzbs with fake media files.",
-							"name": "FakeDetector"
-						},
-						{
-							"displayName": "Failure Link",
-							"version": "2.0.0",
-							"author": "Andrey Prygunkov, Clinton Hall",
-							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
-							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
-							"name": "FailureLink"
-						},
-						{
-							"displayName": "Video Sort",
-							"version": "1.0.0",
-							"author": "Andrey Prygunkov",
-							"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
-							"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
-							"name": "VideoSort"
-						}
-					];
-
-					const extensions = $('.' + sectionId, $ConfigData);
-					extensions.empty();
-
-					data.forEach((ext, i) => {
-						const alreadyInstalled = Options.extensions.find((installed) => ext.displayName.toLowerCase() === installed.DisplayName.toLowerCase());
-						const btn = alreadyInstalled 
-							? $('<button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button>')
-							: $('<button type="button" class="btn btn-primary" onclick="Config.downloadExtension('+ i + ')">Download</button>');
-						const container = $('<div></div>');
-						const ctrlsContainer = $('<div class="controls"></div>');
-						ctrlsContainer
-							.append('<div class="controls"></div>')
-							.append('<p><strong>About: </strong>' + ext.about + '</p>')
-							.append('<p><strong>Author: </strong>' + ext.author + '</p>')
-							.append('<p><strong>Version: </strong>' + ext.version + '</p>')
-							.append('<p><strong>Homepage: </strong>' + '<a>' + ext.homepage + '</a>' + '</p>')
-							.append(btn);
-							
-						if (i < data.length - 1)
-						{
-							ctrlsContainer.append('<hr></hr>');
-						}
-
-						container.append('<label class="label label-info h4 nowrap">' + ext.displayName +'</label>');
-						container.append(ctrlsContainer);
-						extensions.append(container);
-					});
-					extensions.show();
-				}
-			);
+			Extensions.fetchMasterManifest();
 			return;
 		}
 
@@ -2241,9 +2181,16 @@ var Config = (new function($)
 	this.downloadExtension = function(extensionIdx)
 	{
 		console.warn(Options.extensions[extensionIdx])
-		RPC.call('downloadextension', [Options.extensions[extensionIdx].Name], (res) => {
-			console.warn(res);
-		});
+		RPC.call('downloadextension', [Options.extensions[extensionIdx].Name], 
+			(result) => {
+				console.warn(result);
+				Options.update();
+			},
+			(error) =>
+			{
+				console.warn(error);
+			}
+		);
 	}
 
 	this.deleteExtension = function(extensionIdx)
@@ -2253,6 +2200,12 @@ var Config = (new function($)
 			(result) => 
 			{
 				console.warn(result);
+				//
+				RPC.call('loadextensions', [false], (extensions) => {
+					Options.extensions = extensions;
+					Options.update();
+					Extensions.update();
+				}, loadServerTemplateError);
 			},
 			(error) => 
 			{
@@ -3392,3 +3345,116 @@ var ExecScriptDialog = (new function($)
 	}
 
 }(jQuery));
+
+var Extensions = (new function($)
+{
+	'use strict'
+
+	this.Id = 'extension-manager';
+
+	let masterManifest = [];
+
+	this.fetchMasterManifest = function()
+	{
+		$.get(
+			'https://jsonplaceholder.typicode.com/todos/1',
+			(_) => 
+			{
+				masterManifest = [
+					{
+						"displayName": "Fake Detector",
+						"version": "2.0.0",
+						"author": "Andrey Prygunkov",
+						"homepage": "https://github.com/nzbgetcom/Extension-FakeDetector",
+						"about": "Detect nzbs with fake media files.",
+						"name": "FakeDetector"
+					},
+					{
+						"displayName": "Failure Link",
+						"version": "2.0.0",
+						"author": "Andrey Prygunkov, Clinton Hall",
+						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
+						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+						"name": "FailureLink"
+					},
+					{
+						"displayName": "Video Sort",
+						"version": "1.0.0",
+						"author": "Andrey Prygunkov",
+						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
+						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+						"name": "VideoSort"
+					},
+					{
+						"displayName": "My New Ext",
+						"version": "1.0.0",
+						"author": "Andrey Prygunkov",
+						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
+						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
+						"name": "MyNewExt"
+					}
+				];
+
+				this.render(this.getAllExtensions());
+			}
+		);
+	}
+
+	this.update = function()
+	{
+		this.render(this.getAllExtensions());
+	}
+
+	this.render = function(extensions)
+	{
+		const extensionsSection = $('.' + this.Id);
+		extensionsSection.empty();
+
+		extensions.forEach((ext, i) => {
+			const btn = ext.installed 
+				? $('<button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button>')
+				: $('<button type="button" class="btn btn-primary" onclick="Config.downloadExtension('+ i + ')">Download</button>');
+			const container = $('<div></div>');
+			const ctrlsContainer = $('<div class="controls"></div>');
+			ctrlsContainer
+				.append('<div class="controls"></div>')
+				.append('<p><strong>About: </strong>' + ext.about + '</p>')
+				.append('<p><strong>Author: </strong>' + ext.author + '</p>')
+				.append('<p><strong>Version: </strong>' + ext.version + '</p>')
+				.append('<p><strong>Homepage: </strong>' + '<a>' + ext.homepage + '</a>' + '</p>')
+				.append(btn);
+				
+			if (i < extensions.length - 1)
+			{
+				ctrlsContainer.append('<hr></hr>');
+			}
+
+			container.append('<label class="label label-info h4 nowrap">' + ext.displayName +'</label>');
+			container.append(ctrlsContainer);
+			extensionsSection.append(container);
+		});
+		extensionsSection.show();
+	}
+
+	this.getAllExtensions = function()
+	{
+		const installedExts = Options.extensions
+		.map((ext) => ({ 
+			displayName: ext.DisplayName, 
+			version: ext.Version,
+			author: ext.Author, 
+			homepage: ext.Homepage,
+			about: ext.About,
+			name: ext.Name,
+			installed: true
+		}));
+
+		const notInstalledExts = masterManifest
+			.filter((ext) => !installedExts.find((installedExt) => installedExt.name === ext.name))
+			.map((ext) => ({ ...ext, installed: false }));
+
+		const allExtensions = installedExts.concat(notInstalledExts);
+		return allExtensions;
+	}
+
+}(jQuery))
