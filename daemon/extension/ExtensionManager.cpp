@@ -150,7 +150,7 @@ namespace ExtensionManager
 	{
 		auto compare = [](const Extension& a, const Extension& b)
 			{
-				return strcmp(a.GetDisplayName(), b.GetDisplayName());
+				return strcmp(a.GetDisplayName(), b.GetDisplayName()) < 0;
 			};
 		if (order.empty())
 		{
