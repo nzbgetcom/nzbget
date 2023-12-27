@@ -2736,7 +2736,6 @@ var RestoreSettingsDialog = (new function($)
 
 
 /*** UPDATE DIALOG *******************************************************/
-// Version 22.0 : no check for test and develop update. For activate - uncomment commented lines and delete apropriate added lines.
 var UpdateDialog = (new function($)
 {
 	'use strict'
@@ -2759,7 +2758,7 @@ var UpdateDialog = (new function($)
 	this.init = function()
 	{
 		$UpdateDialog = $('#UpdateDialog');
-		$('#UpdateDialog_InstallStable,#UpdateDialog_InstallTesting,#UpdateDialog_InstallDevel').click(install);
+		$('#UpdateDialog_InstallStable,#UpdateDialog_InstallTesting').click(install);
 		$UpdateProgressDialog = $('#UpdateProgressDialog');
 		$UpdateProgressDialog_Log = $('#UpdateProgressDialog_Log');
 		$UpdateDialog_Close = $('#UpdateDialog_Close');
@@ -2836,45 +2835,7 @@ var UpdateDialog = (new function($)
 	function loadedUpstreamInfo(data)
 	{
 		VersionInfo = parseJsonP(data);
-		if (VersionInfo['devel-version'] || !foreground)
-		{
-			loadPackageInfo();
-		}
-		else
-		{
-			loadGitVerData(loadPackageInfo);
-		}
-	}
-
-	// Version 22.0 : no check for test and develop update. For activate - change links to actual ones
-	function loadGitVerData(callback)
-	{
-		// fetching devel version number from github web-site
-		RPC.call('readurl', ['https://github.com/nzbget/nzbget', 'nzbget git revision info'],
-			function(gitRevData)
-			{
-				RPC.call('readurl', ['https://raw.githubusercontent.com/nzbget/nzbget/develop/configure.ac', 'nzbget git branch info'],
-					function(gitBranchData)
-					{
-						var html = document.createElement('DIV');
-						html.innerHTML = gitRevData;
-						html = html.textContent || html.innerText || '';
-						html = html.replace(/(?:\r\n|\r|\n)/g, ' ');
-						var rev = html.match(/([0-9\,]*)\s*commits/);
-
-						if (rev && rev.length > 1)
-						{
-							rev = rev[1].replace(',', '');
-							var ver = gitBranchData.match(/AC_INIT\(nzbget, (.*), .*/);
-							if (ver && ver.length > 1)
-							{
-								VersionInfo['devel-version'] = ver[1] + '-r' + rev;
-							}
-						}
-
-						callback();
-					}, callback);
-			}, callback);
+		loadPackageInfo();
 	}
 
 	function loadPackageInfo()
@@ -2905,23 +2866,6 @@ var UpdateDialog = (new function($)
 		loadedAll();
 	}
 
-	function formatTesting(str)
-	{
-		return str.replace('-testing-', '-');
-	}
-
-	function revision(version)
-	{
-		var rev = version.match(/.*r(\d+)/);
-		return rev && rev.length > 1 ? parseInt(rev[1]) : 0;
-	}
-
-	function vernumber(version)
-	{
-		var ver = version.match(/([\d.]+).*/);
-		return ver && ver.length > 1 ? parseFloat(ver[1]) : 0;
-	}
-
 	function loadedAll()
 	{
 		var installedVersion = Options.option('Version');
@@ -2931,37 +2875,23 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_InstalledInfo').show();
 
 		$('#UpdateDialog_CurStable').text(VersionInfo['stable-version'] ? VersionInfo['stable-version'] : 'no data');
-		//$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? formatTesting(VersionInfo['testing-version']) : 'no data');
-		//$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
-		$('#UpdateDialog_CurTesting').text('N/A');
-		$('#UpdateDialog_CurDevel').text('N/A');
+		$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? VersionInfo['testing-version'] : 'no data');
 
 		$('#UpdateDialog_CurNotesStable').attr('href', VersionInfo['stable-release-notes']);
-		//$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
-		//$('#UpdateDialog_CurNotesDevel').attr('href', VersionInfo['devel-release-notes']);
-		$('#UpdateDialog_CurNotesTesting').attr('href', '');
-		$('#UpdateDialog_CurNotesDevel').attr('href', '');
+		$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
 		$('#UpdateDialog_DownloadStable').attr('href', VersionInfo['stable-download']);
-		//$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
-		$('#UpdateDialog_DownloadTesting').attr('href', '');
+		$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
 		Util.show('#UpdateDialog_CurNotesStable', VersionInfo['stable-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesDevel', VersionInfo['devel-release-notes']);
-		Util.show('#UpdateDialog_CurNotesTesting', '');
-		Util.show('#UpdateDialog_CurNotesDevel', '');
+		Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
 
 
 		$('#UpdateDialog_AvailStable').text(UpdateInfo['stable-version'] ? UpdateInfo['stable-version'] : 'not available');
-		//$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? formatTesting(UpdateInfo['testing-version']) : 'not available');
-		//$('#UpdateDialog_AvailDevel').text(UpdateInfo['devel-version'] ? formatTesting(UpdateInfo['devel-version']) : 'not available');
-		$('#UpdateDialog_AvailTesting').text('');
-		$('#UpdateDialog_AvailDevel').text('');
-
-
+		$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? UpdateInfo['testing-version'] : 'not available');
+		
 		if (UpdateInfo['stable-version'] === VersionInfo['stable-version'] &&
 			UpdateInfo['testing-version'] === VersionInfo['testing-version'])
 		{
-			$('#UpdateDialog_AvailStableBlock,#UpdateDialog_AvailTestingBlock,#UpdateDialog_AvailDevelBlock').hide();
+			$('#UpdateDialog_AvailStableBlock,#UpdateDialog_AvailTestingBlock').hide();
 			$('#UpdateDialog_AvailRow .update-row-name').text('');
 			$('#UpdateDialog_AvailRow td').css('border-style', 'none');
 		}
@@ -2969,57 +2899,35 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_DownloadRow td').css('border-style', 'none');
 		
 		$('#UpdateDialog_AvailNotesStable').attr('href', UpdateInfo['stable-package-info']);
-		//$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
-		//$('#UpdateDialog_AvailNotesDevel').attr('href', UpdateInfo['devel-package-info']);
-		$('#UpdateDialog_AvailNotesTesting').attr('href', '');
-		$('#UpdateDialog_AvailNotesDevel').attr('href', '');
+		$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
 		Util.show('#UpdateDialog_AvailNotesStableBlock', UpdateInfo['stable-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesDevelBlock', UpdateInfo['devel-package-info']);
-		Util.show('#UpdateDialog_AvailNotesTestingBlock', '');
-		Util.show('#UpdateDialog_AvailNotesDevelBlock', '');
+		Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
 
 
-		var installedVer = vernumber(installedVersion);
-		var installedRev = revision(installedVersion);
-		var installedTesting = installedRev > 0 || installedVersion.indexOf('testing') > -1;
+		var installedVer = installedVersion;
+		var installedTesting = installedVersion.indexOf('testing') > -1;
 
 		var canInstallStable = UpdateInfo['stable-version'] &&
-			((installedVer < vernumber(UpdateInfo['stable-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['stable-version'])));
+			(installedVer < UpdateInfo['stable-version']);
 		var canInstallTesting = UpdateInfo['testing-version'] &&
-			((installedVer < vernumber(UpdateInfo['testing-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['testing-version'])) &&
-			  installedRev < revision(UpdateInfo['testing-version']));
-		var canInstallDevel = UpdateInfo['devel-version'] &&
-			((installedVer < vernumber(UpdateInfo['devel-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['devel-version'])) &&
-			  installedRev < revision(UpdateInfo['devel-version']));
+			(installedVer < UpdateInfo['testing-version']);
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canInstallTesting = '';	  
 			  
 		Util.show('#UpdateDialog_InstallStable', canInstallStable);
 		Util.show('#UpdateDialog_InstallTesting', canInstallTesting);
-		Util.show('#UpdateDialog_InstallDevel', canInstallDevel);
 
 		var canDownloadStable = 
-			((installedVer < vernumber(VersionInfo['stable-version'])) ||
-			 (installedTesting && installedVer === vernumber(VersionInfo['stable-version'])));
+			(installedVer < VersionInfo['stable-version']);
 		var canDownloadTesting = 
-			((installedVer < vernumber(VersionInfo['testing-version'])) ||
-			 (installedTesting && installedVer === vernumber(VersionInfo['testing-version']) &&
-			  installedRev < revision(VersionInfo['testing-version'])));
+			(installedVer < VersionInfo['testing-version']);
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canDownloadTesting = '';
 			  
 		Util.show('#UpdateDialog_DownloadStable', canDownloadStable);
 		Util.show('#UpdateDialog_DownloadTesting', canDownloadTesting);
 
 		var hasUpdateSource = PackageInfo['update-info-link'] || PackageInfo['update-info-script'];
-		var hasUpdateInfo = UpdateInfo['stable-version'] || UpdateInfo['testing-version'] || UpdateInfo['devel-version'];
-		var canUpdate = canInstallStable || canInstallTesting || canInstallDevel;
+		var hasUpdateInfo = UpdateInfo['stable-version'] || UpdateInfo['testing-version'];
+		var canUpdate = canInstallStable || canInstallTesting;
 		var canDownload = canDownloadStable || canDownloadTesting;
 		Util.show('#UpdateDialog_UpdateAvail', canUpdate);
 		Util.show('#UpdateDialog_UpdateNotAvail', !canUpdate && !canDownload);
@@ -3033,19 +2941,6 @@ var UpdateDialog = (new function($)
 			  (canInstallTesting || canDownloadTesting) && notificationAllowed('testing'))))
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
-			loadDevelVersionInfo();
-		}
-	}
-
-	function loadDevelVersionInfo()
-	{
-		if (!VersionInfo['devel-version'])
-		{
-			$('#UpdateDialog_CurDevel').text('loading...');
-			loadGitVerData(function()
-				{
-					$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
-				});
 		}
 	}
 
