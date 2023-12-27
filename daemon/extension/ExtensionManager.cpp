@@ -71,7 +71,6 @@ namespace ExtensionManager
 		Extension extension;
 
 		if (ExtensionLoader::V2::Load(extension, directory)) {
-
 			if (!ExtensionExists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
@@ -151,7 +150,7 @@ namespace ExtensionManager
 	{
 		auto compare = [](const Extension& a, const Extension& b)
 			{
-				return strcmp(a.GetDisplayName(), b.GetDisplayName()) == 0;
+				return strcmp(a.GetDisplayName(), b.GetDisplayName());
 			};
 		if (order.empty())
 		{
@@ -178,8 +177,8 @@ namespace ExtensionManager
 			);
 			if (it != std::end(m_extensions))
 			{
+				std::iter_swap(std::begin(m_extensions) + count, it);
 				++count;
-				std::iter_swap(std::begin(m_extensions) + i, it);
 			}
 		}
 
