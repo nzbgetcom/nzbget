@@ -117,7 +117,6 @@ namespace ExtensionManager
 		Extension extension;
 
 		if (ExtensionLoader::V2::Load(extension, directory)) {
-
 			if (!ExtensionExists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
@@ -197,7 +196,7 @@ namespace ExtensionManager
 	{
 		auto compare = [](const Extension& a, const Extension& b) -> bool
 			{
-				return strcmp(a.GetDisplayName(), b.GetDisplayName()) == 0;
+				return strcmp(a.GetDisplayName(), b.GetDisplayName()) < 0;
 			};
 		if (order.empty())
 		{
