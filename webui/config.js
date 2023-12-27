@@ -1084,7 +1084,7 @@ var Config = (new function($)
 		}
 
 		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + ExtensionsSection.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
+		$ConfigNav.append('<li><a href="#' + Extensions.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
 
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
@@ -1303,7 +1303,7 @@ var Config = (new function($)
 			return;
 		}
 
-		if (sectionId === ExtensionsSection.Id)
+		if (sectionId === Extensions.Id)
 		{
 			$ConfigData.children().hide();
 			markLastControlGroup();
@@ -3351,51 +3351,23 @@ var Extensions = (new function($)
 	'use strict'
 
 	this.Id = 'extension-manager';
+	this.extensionsUrl = 'https://github.com/nzbgetcom/nzbget-extensions/releases/download/0.0.1/extensions.json';
 
 	let masterManifest = [];
 
 	this.fetchMasterManifest = function()
 	{
-		$.get(
-			'https://jsonplaceholder.typicode.com/todos/1',
-			(_) => 
+		RPC.call('readurl', [this.extensionsUrl, 'Fetch available extensions'],
+			(data) =>
 			{
-				masterManifest = [
-					{
-						"displayName": "Fake Detector",
-						"version": "2.0.0",
-						"author": "Andrey Prygunkov",
-						"homepage": "https://github.com/nzbgetcom/Extension-FakeDetector",
-						"about": "Detect nzbs with fake media files.",
-						"name": "FakeDetector"
-					},
-					{
-						"displayName": "Failure Link",
-						"version": "2.0.0",
-						"author": "Andrey Prygunkov, Clinton Hall",
-						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
-						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
-						"name": "FailureLink"
-					},
-					{
-						"displayName": "Video Sort",
-						"version": "1.0.0",
-						"author": "Andrey Prygunkov",
-						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
-						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
-						"name": "VideoSort"
-					},
-					{
-						"displayName": "My New Ext",
-						"version": "1.0.0",
-						"author": "Andrey Prygunkov",
-						"homepage": "https://github.com/nzbgetcom/Extension-FailureLink",
-						"about": "Check videos to determine if they are corrupt. Inform indexer site about failed or corrupt download and request a replacement nzb..",
-						"name": "MyNewExt"
-					}
-				];
+				console.warn(data);
+				masterManifest = JSON.parse(data);
 
 				this.render(this.getAllExtensions());
+			},
+			(error) => 
+			{
+				console.warn(error);
 			}
 		);
 	}
@@ -3421,7 +3393,7 @@ var Extensions = (new function($)
 				.append('<p><strong>About: </strong>' + ext.about + '</p>')
 				.append('<p><strong>Author: </strong>' + ext.author + '</p>')
 				.append('<p><strong>Version: </strong>' + ext.version + '</p>')
-				.append('<p><strong>Homepage: </strong>' + '<a>' + ext.homepage + '</a>' + '</p>')
+				.append('<p><strong>Homepage: </strong>' + '<a href="' + ext.homepage + '" target="_blank">' + ext.homepage + '</a>' + '</p>')
 				.append(btn);
 				
 			if (i < extensions.length - 1)
