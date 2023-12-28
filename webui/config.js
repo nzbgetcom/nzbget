@@ -2181,10 +2181,10 @@ var Config = (new function($)
 	this.downloadExtension = function(extensionIdx)
 	{
 		console.warn(Options.extensions[extensionIdx])
-		RPC.call('downloadextension', [Options.extensions[extensionIdx].Name], 
+		RPC.call('downloadextension', ['https://github.com/nzbgetcom/Extension-FailureLink/releases/download/v2.0/failurelink-2.0-dist.zip', 'Fetch extension'], 
 			(result) => {
 				console.warn(result);
-				Options.update();
+				//Options.update();
 			},
 			(error) =>
 			{
@@ -2200,7 +2200,6 @@ var Config = (new function($)
 			(result) => 
 			{
 				console.warn(result);
-				//
 				RPC.call('loadextensions', [false], (extensions) => {
 					Options.extensions = extensions;
 					Options.update();
@@ -3246,7 +3245,7 @@ var Extensions = (new function($)
 	'use strict'
 
 	this.Id = 'extension-manager';
-	this.extensionsUrl = 'https://github.com/nzbgetcom/nzbget-extensions/releases/download/0.0.1/extensions.json';
+	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/feature/extensions.json/extensions.json';
 
 	let masterManifest = [];
 
@@ -3255,14 +3254,12 @@ var Extensions = (new function($)
 		RPC.call('readurl', [this.extensionsUrl, 'Fetch available extensions'],
 			(data) =>
 			{
-				console.warn(data);
 				masterManifest = JSON.parse(data);
-
 				this.render(this.getAllExtensions());
 			},
 			(error) => 
 			{
-				console.warn(error);
+				console.error(error);
 			}
 		);
 	}

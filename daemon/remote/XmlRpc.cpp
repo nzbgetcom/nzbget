@@ -221,6 +221,12 @@ public:
 	virtual void Execute();
 };
 
+class DownloadExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
 class DeleteExtensionXmlCommand : public SafeXmlCommand
 {
 public:
@@ -708,6 +714,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "loadextensions"))
 	{
 		command = std::make_unique<LoadExtensionsXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "downloadextension"))
+	{
+		command = std::make_unique<DownloadExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "deleteextension"))
 	{
@@ -2715,6 +2725,63 @@ void LoadExtensionsXmlCommand::Execute()
 	}
 
 	AppendResponse(isJson ? "\n]" : "</data></array>\n");
+}
+
+void DownloadExtensionXmlCommand::Execute()
+{
+	char* url;
+	if (!NextParamAsStr(&url))
+	{
+		BuildErrorResponse(2, "Invalid parameter (URL)");
+		return;
+	}
+	DecodeStr(url);
+
+	char* infoName;
+	if (!NextParamAsStr(&infoName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (InfoName)");
+		return;
+	}
+	DecodeStr(infoName);
+
+	// generate temp file name
+	BString<1024> tempFileName;
+	int num = 1;
+	while (num == 1 || FileSystem::FileExists(tempFileName))
+	{
+		tempFileName.Format("%s%creadurl-%i.tmp", g_Options->GetTempDir(), PATH_SEPARATOR, num);
+		num++;
+	}
+
+	std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
+	downloader->SetUrl(url);
+	downloader->SetForce(true);
+	downloader->SetRetry(false);
+	downloader->SetOutputFilename(tempFileName);
+	downloader->SetInfoName(infoName);
+
+	// do sync download
+	WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
+	bool ok = status == WebDownloader::adFinished;
+
+	downloader.reset();
+
+	if (ok)
+	{
+		CharBuffer fileContent;
+		FileSystem::LoadFileIntoBuffer(tempFileName, fileContent, true);
+		CString xmlContent = EncodeStr(fileContent);
+		AppendResponse(IsJson() ? "\"" : "<string>");
+		AppendResponse(xmlContent);
+		AppendResponse(IsJson() ? "\"" : "</string>");
+	}
+	else
+	{
+		BuildErrorResponse(3, "Could not read url");
+	}
+
+	FileSystem::DeleteFile(tempFileName);
 }
 
 void DeleteExtensionXmlCommand::Execute()
