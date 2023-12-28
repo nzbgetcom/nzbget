@@ -2771,17 +2771,14 @@ void DownloadExtensionXmlCommand::Execute()
 	{
 		CharBuffer fileContent;
 		FileSystem::LoadFileIntoBuffer(tempFileName, fileContent, true);
-		CString xmlContent = EncodeStr(fileContent);
-		AppendResponse(IsJson() ? "\"" : "<string>");
-		AppendResponse(xmlContent);
-		AppendResponse(IsJson() ? "\"" : "</string>");
+		BuildBoolResponse(true);
 	}
 	else
 	{
 		BuildErrorResponse(3, "Could not read url");
 	}
 
-	FileSystem::DeleteFile(tempFileName);
+	//FileSystem::DeleteFile(tempFileName);
 }
 
 void DeleteExtensionXmlCommand::Execute()
