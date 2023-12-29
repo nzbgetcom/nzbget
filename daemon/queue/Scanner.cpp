@@ -400,7 +400,7 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 				BString<1024> paramName("%s:", scriptName);
 				if ((script.GetPostScript() || script.GetQueueScript()) &&
 					!parameters->Find(paramName) &&
-					strcmp(scriptName, script.GetDispGetNamelayName()) == 0)
+					strcmp(scriptName, script.GetName()) == 0)
 				{
 					parameters->SetParameter(paramName, "yes");
 				}
