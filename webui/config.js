@@ -176,7 +176,7 @@ var Options = (new function($)
 			const requirements = serverTemplateData[i].Requirements;
 			let description = arrToStr(serverTemplateData[i].Description) + '\n';
 			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
-			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
+			scriptConfig['scriptName'] = serverTemplateData[i].Name;
 			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
 			scriptConfig['name'] = serverTemplateData[i].Name;
 			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
@@ -3276,8 +3276,9 @@ var Extensions = (new function($)
 
 		extensions.forEach((ext, i) => {
 			const btn = ext.installed 
-				? $('<button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button>')
+				? $('<div class="flex-row"><button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button><label class="checkbox"><input type="checkbox" onclick="" /> Delete configuration options</label></div>')
 				: $('<button type="button" class="btn btn-primary" onclick="Config.downloadExtension('+ i + ')">Download</button>');
+
 			const container = $('<div></div>');
 			const ctrlsContainer = $('<div class="controls"></div>');
 			ctrlsContainer

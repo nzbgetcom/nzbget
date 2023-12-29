@@ -22,6 +22,12 @@ body {
 	padding-right: 0;
 }
 
+.flex-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
 /* NAVBAR */
 .navbar-fixed-top {
     margin-bottom: 18px;

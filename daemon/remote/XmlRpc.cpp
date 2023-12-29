@@ -2726,7 +2726,7 @@ void LoadExtensionsXmlCommand::Execute()
 
 	AppendResponse(isJson ? "\n]" : "</data></array>\n");
 }
-
+#include "Unpack.h"
 void DownloadExtensionXmlCommand::Execute()
 {
 	char* url;
@@ -2750,7 +2750,7 @@ void DownloadExtensionXmlCommand::Execute()
 	int num = 1;
 	while (num == 1 || FileSystem::FileExists(tempFileName))
 	{
-		tempFileName.Format("%s%creadurl-%i.tmp", g_Options->GetTempDir(), PATH_SEPARATOR, num);
+		tempFileName.Format("%s%creadurl-%i.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, num);
 		num++;
 	}
 
@@ -2775,9 +2775,17 @@ void DownloadExtensionXmlCommand::Execute()
 	}
 	else
 	{
-		BuildErrorResponse(3, "Could not read url");
+		BuildErrorResponse(3, "Could not download extension");
 	}
 
+	UnpackController up;
+	UnpackController::ArgList al;
+	al.push_back(g_Options->GetSevenZipCmd());
+	al.push_back("x");
+	al.push_back(*tempFileName);
+	al.push_back("-o");
+	al.push_back(g_Options->GetScriptDir());
+	up.SetArgs(std::move(al));
 	//FileSystem::DeleteFile(tempFileName);
 }
 
