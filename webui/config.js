@@ -529,7 +529,7 @@ var Options = (new function($)
 				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
-				option.name = data[i].DisplayName + ':';
+				option.name = data[i].Name + ':';
 				option.caption = data[i].DisplayName;
 
 				option.defvalue = 'no';
