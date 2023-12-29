@@ -31,7 +31,8 @@ create_package_tgz() {
 create_spk(){
 
 	cp -av scripts $PKG_DIR/scripts
-	rm $PKG_DIR/scripts/*.py
+	rm -rf $PKG_DIR/scripts/Email
+	rm -rf $PKG_DIR/scripts/Logger
 	cp -av PACKAGE_ICON*.PNG $PKG_DIR
 	cp -av WIZARD_UIFILES $PKG_DIR
 	cp -av conf $PKG_DIR

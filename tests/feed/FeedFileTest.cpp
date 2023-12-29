@@ -49,4 +49,6 @@ BOOST_AUTO_TEST_CASE(FeedFileTest)
 	BOOST_CHECK(feedInfo.GetFilename() == std::string("Crows.And.Sparrows"));
 	BOOST_CHECK(feedInfo.GetSize() == 7445312955);
 	BOOST_CHECK(feedInfo.GetTitle() == std::string("Crows.And.Sparrows"));
+
+	xmlCleanupParser();
 }

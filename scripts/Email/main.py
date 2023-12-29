@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # E-Mail post-processing script for NZBGet
 #
@@ -15,77 +14,8 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-
-
-##############################################################################
-### NZBGET POST-PROCESSING SCRIPT                                          ###
-
-# Send E-Mail notification.
-#
-# This script sends E-Mail notification when the job is done.
-#
-# NOTE: This script requires Python to be installed on your system.
-
-##############################################################################
-### OPTIONS                                                       ###
-
-# When to send the message (Always, OnFailure).
-#SendMail=Always
-
-# Email address you want this email to be sent from.
-#From="NZBGet" <myaccount@gmail.com>
-
-# Email address you want this email to be sent to.
-#
-# Multiple addresses can be separated with comma.
-#To=myaccount@gmail.com
-
-# SMTP server host.
-#Server=smtp.gmail.com
-
-# SMTP server port (1-65535).
-#Port=25
-
-# Secure communication using TLS/SSL (yes, no, force).
-#  no    - plain text communication (insecure);
-#  yes   - switch to secure session using StartTLS command;
-#  force - start secure session on encrypted socket.
-#Encryption=yes
-
-# SMTP server user name, if required.
-#Username=myaccount
-
-# SMTP server password, if required.
-#Password=mypass
-
-# To check connection parameters click the button.
-#ConnectionTest@Send Test E-Mail
-
-# Append statistics to the message (yes, no).
-#Statistics=yes
-
-# Append list of files to the message (yes, no).
-#
-# Add the list of downloaded files (the content of destination directory).
-#FileList=yes
-
-# Append broken-log to the message (yes, no).
-#
-# Add the content of file _brokenlog.txt. This file contains the list of damaged
-# files and the result of par-check/repair. For successful downloads the broken-log
-# is usually deleted by cleanup-script and therefore is not sent.
-#BrokenLog=yes
-
-# Append nzb log to the message (Always, Never, OnFailure).
-#
-# Add the download and post-processing log of active job.
-#NzbLog=OnFailure
-
-### NZBGET POST-PROCESSING SCRIPT                                          ###
-##############################################################################
-
 
 import os
 import sys

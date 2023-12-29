@@ -1,0 +1,22 @@
+{
+    "main": "main.py",
+    "name": "Logger",
+    "homepage": "",
+    "kind": "POST-PROCESSING",
+    "displayName": "Logger",
+    "version": "1.0.0",
+    "author": "Andrey Prygunkov",
+    "license": "GNU",
+    "about": "Save nzb log into a file.",
+    "queueEvents": "",
+    "requirements": [
+        "This script requires Python to be installed on your system."
+    ],
+    "description": [
+        "This script saves the download and post-processing log of nzb-file",
+        "into file _nzblog.txt in the destination directory."
+    ],
+    "options": [],
+    "commands": [],
+    "taskTime": ""
+}

@@ -41,7 +41,7 @@ bool CommandScriptController::StartScript(const char* scriptName, const char* co
 
 	scriptController->Start();
 
-	for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+	for (const auto& script : g_ExtensionManager->GetExtensions())
 	{
 		if (FileSystem::SameFilename(scriptName, script.GetName()))
 		{
@@ -56,17 +56,17 @@ void CommandScriptController::Run()
 	ExecuteScriptList(m_script);
 }
 
-void CommandScriptController::ExecuteScript(ScriptConfig::Script* script)
+void CommandScriptController::ExecuteScript(const Extension::Script& script)
 {
-	PrintMessage(Message::mkInfo, "Executing script %s with command %s", script->GetName(), *m_command);
+	PrintMessage(Message::mkInfo, "Executing script %s with command %s", script.GetName(), *m_command);
 
-	SetArgs({script->GetLocation()});
+	SetArgs({script.GetLocation()});
 
-	BString<1024> infoName("script %s with command %s", script->GetName(), *m_command);
+	BString<1024> infoName("script %s with command %s", script.GetName(), *m_command);
 	SetInfoName(infoName);
 
-	SetLogPrefix(script->GetDisplayName());
-	PrepareParams(script->GetName());
+	SetLogPrefix(script.GetDisplayName());
+	PrepareParams(script.GetName());
 
 	int exitCode = Execute();
 

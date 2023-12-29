@@ -69,32 +69,32 @@ void PostScriptController::Run()
 	m_postInfo->SetWorking(false);
 }
 
-void PostScriptController::ExecuteScript(ScriptConfig::Script* script)
+void PostScriptController::ExecuteScript(const Extension::Script& script)
 {
 	// if any script has requested par-check, do not execute other scripts
-	if (!script->GetPostScript() || m_postInfo->GetRequestParCheck())
+	if (!script.GetPostScript() || m_postInfo->GetRequestParCheck())
 	{
 		return;
 	}
 
-	PrintMessage(Message::mkInfo, "Executing post-process-script %s for %s", script->GetName(), m_postInfo->GetNzbInfo()->GetName());
+	PrintMessage(Message::mkInfo, "Executing post-process-script %s for %s", script.GetName(), m_postInfo->GetNzbInfo()->GetName());
 
-	BString<1024> progressLabel("Executing post-process-script %s", script->GetName());
+	BString<1024> progressLabel("Executing post-process-script %s", script.GetName());
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		m_postInfo->SetProgressLabel(progressLabel);
 	}
 
-	SetArgs({script->GetLocation()});
+	SetArgs({script.GetLocation()});
 
-	BString<1024> infoName("post-process-script %s for %s", script->GetName(), m_postInfo->GetNzbInfo()->GetName());
+	BString<1024> infoName("post-process-script %s for %s", script.GetName(), m_postInfo->GetNzbInfo()->GetName());
 	SetInfoName(infoName);
 
-	m_script = script;
-	SetLogPrefix(script->GetDisplayName());
-	m_prefixLen = strlen(script->GetDisplayName()) + 2; // 2 = strlen(": ");
-	PrepareParams(script->GetName());
+	m_script = &script;
+	SetLogPrefix(script.GetDisplayName());
+	m_prefixLen = strlen(script.GetDisplayName()) + 2; // 2 = strlen(": ");
+	PrepareParams(script.GetName());
 
 	int exitCode = Execute();
 
@@ -105,7 +105,7 @@ void PostScriptController::ExecuteScript(ScriptConfig::Script* script)
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		m_postInfo->GetNzbInfo()->GetScriptStatuses()->emplace_back(script->GetName(), status);
+		m_postInfo->GetNzbInfo()->GetScriptStatuses()->emplace_back(script.GetName(), status);
 	}
 }
 

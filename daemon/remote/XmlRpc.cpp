@@ -36,6 +36,7 @@
 #include "QueueScript.h"
 #include "CommandScript.h"
 #include "UrlCoordinator.h"
+#include "ExtensionManager.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -209,6 +210,12 @@ public:
 };
 
 class LoadConfigXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class LoadExtensionsXmlCommand : public SafeXmlCommand
 {
 public:
 	virtual void Execute();
@@ -691,6 +698,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "loadconfig"))
 	{
 		command = std::make_unique<LoadConfigXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "loadextensions"))
+	{
+		command = std::make_unique<LoadExtensionsXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "saveconfig"))
 	{
@@ -2664,6 +2675,38 @@ void LoadConfigXmlCommand::Execute()
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");
 }
 
+void LoadExtensionsXmlCommand::Execute()
+{
+	bool loadFromDisk = false;
+	bool isJson = IsJson();
+	NextParamAsBool(&loadFromDisk);
+
+	if (loadFromDisk)
+	{
+		if (!g_ExtensionManager->LoadExtensions(*g_Options))
+		{
+			BuildErrorResponse(3, "Could not load extensions");
+			return;
+		}	
+	}
+
+	AppendResponse(isJson ? "[\n" : "<array><data>\n");
+
+	int index = 0;
+
+	for (const auto& extension : g_ExtensionManager->GetExtensions())
+	{
+		std::string response = isJson
+			? Extension::ToJsonStr(extension)
+			: Extension::ToXmlStr(extension);
+
+		AppendCondResponse(",\n", isJson && index++ > 0);
+		AppendResponse(response.c_str());
+	}
+
+	AppendResponse(isJson ? "\n]" : "</data></array>\n");
+}
+
 // bool saveconfig(struct[] data)
 void SaveConfigXmlCommand::Execute()
 {
@@ -2693,29 +2736,11 @@ void ConfigTemplatesXmlCommand::Execute()
 {
 	const char* XML_CONFIG_ITEM =
 		"<value><struct>\n"
-		"<member><name>Name</name><value><string>%s</string></value></member>\n"
-		"<member><name>DisplayName</name><value><string>%s</string></value></member>\n"
-		"<member><name>PostScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>ScanScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>SchedulerScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>FeedScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueEvents</name><value><string>%s</string></value></member>\n"
-		"<member><name>TaskTime</name><value><string>%s</string></value></member>\n"
 		"<member><name>Template</name><value><string>%s</string></value></member>\n"
 		"</struct></value>\n";
 
 	const char* JSON_CONFIG_ITEM =
 		"{\n"
-		"\"Name\" : \"%s\",\n"
-		"\"DisplayName\" : \"%s\",\n"
-		"\"PostScript\" : %s,\n"
-		"\"ScanScript\" : %s,\n"
-		"\"QueueScript\" : %s,\n"
-		"\"SchedulerScript\" : %s,\n"
-		"\"FeedScript\" : %s,\n"
-		"\"QueueEvents\" : \"%s\",\n"
-		"\"TaskTime\" : \"%s\",\n"
 		"\"Template\" : \"%s\"\n"
 		"}";
 
@@ -2743,15 +2768,6 @@ void ConfigTemplatesXmlCommand::Execute()
 	{
 		AppendCondResponse(",\n", IsJson() && index++ > 0);
 		AppendFmtResponse(IsJson() ? JSON_CONFIG_ITEM : XML_CONFIG_ITEM,
-			*EncodeStr(configTemplate.GetScript()->GetName()),
-			*EncodeStr(configTemplate.GetScript()->GetDisplayName()),
-			BoolToStr(configTemplate.GetScript()->GetPostScript()),
-			BoolToStr(configTemplate.GetScript()->GetScanScript()),
-			BoolToStr(configTemplate.GetScript()->GetQueueScript()),
-			BoolToStr(configTemplate.GetScript()->GetSchedulerScript()),
-			BoolToStr(configTemplate.GetScript()->GetFeedScript()),
-			*EncodeStr(configTemplate.GetScript()->GetQueueEvents()),
-			*EncodeStr(configTemplate.GetScript()->GetTaskTime()),
 			*EncodeStr(configTemplate.GetTemplate()));
 	}
 

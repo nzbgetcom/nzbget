@@ -1,0 +1,9 @@
+{
+    "name": "email",
+    "kind": "POST-PROCESSING",
+    "displayName": "Email",
+    "version": "1.0.0",
+    "author": "Author's name",
+    "license": "GNU",
+    "description": "Description"
+}

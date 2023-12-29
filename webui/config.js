@@ -33,6 +33,7 @@ var Options = (new function($)
 	// Properties (public)
 	this.options;
 	this.postParamConfig = [];
+	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
 
@@ -56,20 +57,25 @@ var Options = (new function($)
 	{
 		// RPC-function "config" returns CURRENT configuration settings loaded in NZBGet
 		RPC.call('config', [], function(_options)
-			{
-				_this.options = _options;
-				initCategories();
-				_this.restricted = _this.option('ControlPort') === '***';
-				RPC.next();
-			});
+		{
+			_this.options = _options;
+			initCategories();
+			_this.restricted = _this.option('ControlPort') === '***';
+			RPC.next();
+		});
 
-		// loading config templates and build list of post-processing parameters
-		_this.postParamConfig = [];
+		// load config templates
 		RPC.call('configtemplates', [false], function(data)
-			{
-				initPostParamConfig(data);
-				RPC.next();
-			});
+		{
+			_this.configtemplates = data;
+			RPC.next();
+		});
+
+		// build list of post-processing parameters
+		RPC.call('loadextensions', [false], function(data)
+		{
+			_this.postParamConfig = initPostParamConfig(data);
+		});
 	}
 
 	this.cleanup = function()
@@ -120,14 +126,23 @@ var Options = (new function($)
 	function serverTemplateLoaded(data)
 	{
 		serverTemplateData = data;
+		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
+	}
+
+	function extensionsLoaded(data)
+	{
+		serverTemplateData = serverTemplateData.concat(data);
 		complete();
 	}
 
-	function complete()
+	function arrToStr(arr)
 	{
-		initShortScriptNames(serverTemplateData);
+		return arr.reduce((acc, curr) => acc += curr + '\n', '');
+	}
 
-		if (serverTemplateData === null)
+	function complete() 
+	{
+		if (serverTemplateData === null) 
 		{
 			// the loading was cancelled and the data was discarded (via method "cleanup()")
 			return;
@@ -143,28 +158,97 @@ var Options = (new function($)
 		config.push(serverConfig);
 
 		// read scripts configs
-		for (var i=1; i < serverTemplateData.length; i++)
+		for (var i = 1; i < serverTemplateData.length; i++) 
 		{
-			var scriptName = serverTemplateData[i].Name;
-			var scriptConfig = readConfigTemplate(serverTemplateData[i].Template, undefined, HIDDEN_SECTIONS, scriptName + ':');
-			scriptConfig.scriptName = scriptName;
-			scriptConfig.id = Util.makeId(scriptName);
-			scriptConfig.name = scriptName.substr(0, scriptName.lastIndexOf('.')) || scriptName; // remove file extension
-			scriptConfig.name = scriptConfig.name.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.shortName = shortScriptName(scriptName);
-			scriptConfig.shortName = scriptConfig.shortName.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.post = serverTemplateData[i].PostScript;
-			scriptConfig.scan = serverTemplateData[i].ScanScript;
-			scriptConfig.queue = serverTemplateData[i].QueueScript;
-			scriptConfig.scheduler = serverTemplateData[i].SchedulerScript;
-			scriptConfig.defscheduler = serverTemplateData[i].TaskTime !== '';
-			scriptConfig.feed = serverTemplateData[i].FeedScript;
+			const section = {
+				name: serverTemplateData[i].Name,
+				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
+				options: [],
+				hidden: false,
+				postparam: false,
+			};
+			const scriptConfig = {
+				sections: [section],
+				nameprefix: serverTemplateData[i].Name,
+			};
+			const requirements = serverTemplateData[i].Requirements;
+			let description = arrToStr(serverTemplateData[i].Description) + '\n';
+			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
+			scriptConfig['scriptName'] = serverTemplateData[i].DisplayName;
+			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
+			scriptConfig['name'] = serverTemplateData[i].Name;
+			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
+			scriptConfig['post'] = serverTemplateData[i].PostScript;
+			scriptConfig['scan'] = serverTemplateData[i].ScanScript;
+			scriptConfig['queue'] = serverTemplateData[i].QueueScript;
+			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
+			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
+			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
+			scriptConfig['about'] = serverTemplateData[i].About;
+			scriptConfig['description'] = description;
+			scriptConfig['author'] = serverTemplateData[i].Author;
+			scriptConfig['license'] = serverTemplateData[i].License;
+			scriptConfig['version'] = serverTemplateData[i].Version;
+
+			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) 
+			{
+				const command = serverTemplateData[i].Commands[j];
+				section.options.push({
+					caption: command.DisplayName,
+					name: serverTemplateData[i].Name + ':' + command.Name,
+					value: null,
+					defvalue: command.Action,
+					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select: [],
+					about: serverTemplateData[i].About,
+					description: arrToStr(command.Description),
+					nocontent: false,
+					formId: serverTemplateData[i].Name + '_' + command.Name,
+					commandopts: 'settings',
+					type: 'command'
+				});
+			}
+			for (let j = 0; j < serverTemplateData[i].Options.length; j++) 
+			{
+				const option = serverTemplateData[i].Options[j];
+				const [type, select] = GetTypeAndSelect(option);
+				section.options.push({
+					caption: option.DisplayName,
+					name: serverTemplateData[i].Name + ':' + option.Name,
+					value: String(option.Value),
+					defvalue: String(option.Value),
+					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select,
+					description: arrToStr(option.Description),
+					nocontent: false,
+					formId: serverTemplateData[i].Name + '_' + option.Name,
+					type
+				});
+			}
+			
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
 
 		serverValues = null;
 		loadComplete(config);
+	}
+
+	function GetTypeAndSelect(option)
+	{
+		if (typeof option.Value === 'string')
+		{
+			return ['text', option.Select];
+		}
+		if (typeof option.Value === 'number')
+		{
+			if (option.Select.length > 1)
+			{
+				return ['numeric', [option.Select[0] + '-' + option.Select[1]]];
+			}
+			return ['numeric', option.Select];
+		}
+		return ['info', option.Select];
 	}
 
 	function readWebSettings(config)
@@ -202,7 +286,7 @@ var Options = (new function($)
 
 	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix)
 	{
-		var config = { description: '', nameprefix: nameprefix, sections: [] };
+		var config = { nameprefix: nameprefix, sections: [], };
 		var section = null;
 		var description = '';
 		var firstdescrline = '';
@@ -310,11 +394,7 @@ var Options = (new function($)
 			}
 			else
 			{
-				if (!section && firstdescrline !== '')
-				{
-					config.description = firstdescrline + description;
-				}
-				else if (section && section.options.length === 0)
+				if (section && section.options.length === 0)
 				{
 					section.description = firstdescrline + description;
 				}
@@ -422,14 +502,6 @@ var Options = (new function($)
 	}
 	this.mergeValues = mergeValues;
 
-	function initShortScriptNames(configTemplatesData)
-	{
-		for (var i=1; i < configTemplatesData.length; i++)
-		{
-			shortScriptNames[configTemplatesData[i].Name] = configTemplatesData[i].DisplayName;
-		}
-	}
-
 	function shortScriptName(scriptName)
 	{
 		var shortName = shortScriptNames[scriptName];
@@ -437,10 +509,8 @@ var Options = (new function($)
 	}
 	this.shortScriptName = shortScriptName;
 
-	function initPostParamConfig(data)
-	{
-		initShortScriptNames(data);
-
+	function initPostParamConfig(data) 
+		{
 		// Create one big post-param section. It consists of one item for every post-processing script
 		// and additionally includes all post-param options from post-param section of each script.
 
@@ -448,45 +518,31 @@ var Options = (new function($)
 		section.id = 'PP-Parameters';
 		section.options = [];
 		section.description = '';
+		section.about = '';
 		section.hidden = false;
 		section.postparam = true;
-		_this.postParamConfig = [section];
 
-		for (var i=1; i < data.length; i++)
+		for (var i = 0; i < data.length; i++) 
 		{
-			if (data[i].PostScript || data[i].QueueScript)
+			if (data[i].PostScript || data[i].QueueScript) 
 			{
 				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
-				option.name = scriptName + ':';
-				option.caption = shortScriptName(scriptName);
-				option.caption = option.caption.replace(/\\/, ' \\ ').replace(/\//, ' / ');
+				option.name = data[i].Name + ':';
+				option.caption = data[i].DisplayName;
 
 				option.defvalue = 'no';
-				option.description = (data[i].Template.trim().split('\n')[0].substr(1, 1000).trim() || 'Extension script ' + scriptName + '.');
+				option.description = '';
+				option.about = data[i].About || 'Extension script ' + scriptName + '.';
+				option.requirements = [];
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
 				section.options.push(option);
-
-				var templateData = data[i].Template;
-				var postConfig = readConfigTemplate(templateData, POSTPARAM_SECTIONS, undefined, scriptName + ':');
-				for (var j=0; j < postConfig.sections.length; j++)
-				{
-					var sec = postConfig.sections[j];
-					if (!sec.hidden)
-					{
-						for (var n=0; n < sec.options.length; n++)
-						{
-							var option = sec.options[n];
-							option.sectionId = sectionId;
-							section.options.push(option);
-						}
-					}
-				}
 			}
 		}
+		return [section];
 	}
 }(jQuery));
 
@@ -864,10 +920,15 @@ var Config = (new function($)
 			option.type = 'text';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editlarge">';
 		}
-
-		if (option.description !== '')
+		let about = option['about'] || '';
+		if (about)
 		{
-			var htmldescr = option.description;
+			about = about.replace('\n', ' ') + '\n';
+		}
+		let description = about + (option['description'] || '\n');
+		if (description) 
+		{
+			var htmldescr = description;
 			htmldescr = htmldescr.replace(/NOTE: do not forget to uncomment the next line.\n/, '');
 
 			// replace option references
@@ -1066,17 +1127,16 @@ var Config = (new function($)
 
 			// create virtual option "About" with scripts description.
 			var option = {};
-			var shortName = conf.scriptName.replace(/^.*[\\\/]/, ''); // leave only file name (remove path)
-			shortName = shortName.substr(0, shortName.lastIndexOf('.')) || shortName; // remove file extension
-			option.caption = 'About ' + shortName;
+			option.caption = 'About ' + conf.shortName;
 			option.name = conf.nameprefix + option.caption;
 			option.value = '';
 			option.defvalue = '';
 			option.sectionId = firstVisibleSection.id;
 			option.select = [];
-			var description = conf.description;
-			option.description = description !== '' ? description : 'No description available.';
+			option.about = conf.about;
 			option.nocontent = true;
+			option.description = conf.description;
+			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 

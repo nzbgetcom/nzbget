@@ -1,0 +1,39 @@
+{
+    "main": "email.py",
+    "name": "email",
+    "kind": "POST-PROCESSING",
+    "displayName": "Email",
+    "version": "1.0.0",
+    "author": "Author's name",
+    "homepage": "https://github",
+    "license": "GNU",
+    "about": "About",
+    "description": ["Description"],
+    "requirements": ["This script requires Python to be installed on your system."],
+    "options": [
+        {
+            "name": "sendMail",
+            "displayName": "SendMail",
+            "value": "Always",
+            "description": ["When to send the message."],
+            "select": ["Always", "OnFailure"]
+        },
+        {
+            "name": "port",
+            "displayName": "Port",
+            "value": 25,
+            "description": ["SMTP server port (1-65535)"],
+            "select": [1, 65535]
+        }
+    ],
+    "commands": [
+        {
+            "name": "connectionTest",
+            "action": "Send",
+            "displayName": "ConnectionTest",
+            "description": ["To check connection parameters click the button."]
+        }
+    ],
+    "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",
+    "taskTime": "1:00:00"
+}

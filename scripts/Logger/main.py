@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # Logger post-processing script for NZBGet
 #
@@ -15,23 +14,8 @@
 # GNU General Public License for more details.
 # 
 # You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-
-
-##############################################################################
-### NZBGET POST-PROCESSING SCRIPT                                          ###
-
-# Save nzb log into a file.
-#
-# This script saves the download and post-processing log of nzb-file
-# into file _nzblog.txt in the destination directory.
-#
-# NOTE: This script requires Python to be installed on your system.
-
-### NZBGET POST-PROCESSING SCRIPT                                          ###
-##############################################################################
-
 
 import os
 import sys

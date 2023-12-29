@@ -8,7 +8,7 @@ ARG MAKE_JOBS=1
 
 RUN \
   echo "**** install build packages ****" && \
-  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl && \
+  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl && \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
   git clone https://github.com/nzbgetcom/nzbget.git nzbget && \
@@ -58,7 +58,7 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 boost1.82-json && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*

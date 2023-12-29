@@ -27,10 +27,8 @@ fi
 
 # copy default scripts if not exists
 mkdir -p /downloads/scripts
-for SCRIPT in EMail.py Logger.py; do
-  if [ ! -f /downloads/scripts/$SCRIPT ]; then
-    cp /app/nzbget/share/nzbget/scripts/$SCRIPT /downloads/scripts/
-  fi
+for SCRIPT in /app/nzbget/share/nzbget/scripts/*/; do
+  cp -r $SCRIPT /downloads/scripts/
 done
 
 # change userid and groupid

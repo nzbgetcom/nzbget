@@ -96,7 +96,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libcrypto.lib;libssl.lib;zlibd.lib;libxml2.lib;lzma.lib;iconv.lib;Dbghelp.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>boost_json-vc140-mt-gd.lib;libcrypto.lib;libssl.lib;zlibd.lib;libxml2.lib;lzma.lib;iconv.lib;Dbghelp.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <AdditionalLibraryDirectories>C:\vcpkg\installed\x86-windows-static\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -121,7 +121,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <AdditionalLibraryDirectories>C:\vcpkg\installed\x64-windows-static\debug\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libcrypto.lib;libssl.lib;zlibd.lib;libxml2.lib;lzma.lib;iconv.lib;Dbghelp.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>boost_json-vc140-mt-gd.lib;libcrypto.lib;libssl.lib;zlibd.lib;libxml2.lib;lzma.lib;iconv.lib;Dbghelp.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>msvcrt.lib; libcmt.lib; msvcrtd.lib</IgnoreSpecificDefaultLibraries>
       <AdditionalOptions>-s %(AdditionalOptions)</AdditionalOptions>
@@ -154,7 +154,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libcrypto.lib;libssl.lib;zlib.lib;libxml2.lib;lzma.lib;iconv.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>boost_json-vc140-mt.lib;libcrypto.lib;libssl.lib;zlib.lib;libxml2.lib;lzma.lib;iconv.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -190,7 +190,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>libcrypto.lib;libssl.lib;zlib.lib;libxml2.lib;lzma.lib;iconv.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>boost_json-vc140-mt.lib;libcrypto.lib;libssl.lib;zlib.lib;libxml2.lib;lzma.lib;iconv.lib;WS2_32.lib;ole32.lib;OleAut32.Lib;comsuppwd.lib;Advapi32.lib;gdi32.lib;shell32.lib;Winmm.lib;crypt32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -214,6 +214,10 @@
     <ClCompile Include="daemon\extension\ScanScript.cpp" />
     <ClCompile Include="daemon\extension\SchedulerScript.cpp" />
     <ClCompile Include="daemon\extension\ScriptConfig.cpp" />
+    <ClCompile Include="daemon\extension\ManifestFile.cpp" />
+    <ClCompile Include="daemon\extension\ExtensionLoader.cpp" />
+    <ClCompile Include="daemon\extension\Extension.cpp" />
+    <ClCompile Include="daemon\extension\ExtensionManager.cpp" />
     <ClCompile Include="daemon\feed\FeedCoordinator.cpp" />
     <ClCompile Include="daemon\feed\FeedFile.cpp" />
     <ClCompile Include="daemon\feed\FeedFilter.cpp" />
@@ -279,6 +283,8 @@
     <ClCompile Include="daemon\util\NString.cpp" />
     <ClCompile Include="daemon\util\Util.cpp" />
     <ClCompile Include="daemon\util\FileSystem.cpp" />
+    <ClCompile Include="daemon\util\Json.cpp" />
+    <ClCompile Include="daemon\util\Xml.cpp" />
     <ClCompile Include="daemon\windows\StdAfx.cpp" />
     <ClCompile Include="daemon\windows\WinService.cpp" />
     <ClCompile Include="daemon\windows\WinConsole.cpp" />
@@ -334,6 +340,11 @@
     <ClInclude Include="daemon\extension\ScanScript.h" />
     <ClInclude Include="daemon\extension\SchedulerScript.h" />
     <ClInclude Include="daemon\extension\ScriptConfig.h" />
+    <ClInclude Include="daemon\extension\ManifestFile.h" />
+    <ClInclude Include="daemon\extension\ExtensionLoader.h" />
+    <ClInclude Include="daemon\extension\Extension.h" />
+    <ClInclude Include="daemon\extension\ExtensionManager.h" />
+    <ClInclude Include="daemon\extension\ScriptController.h" />
     <ClInclude Include="daemon\feed\FeedCoordinator.h" />
     <ClInclude Include="daemon\feed\FeedFile.h" />
     <ClInclude Include="daemon\feed\FeedFilter.h" />
@@ -399,6 +410,8 @@
     <ClInclude Include="daemon\util\Container.h" />
     <ClInclude Include="daemon\util\Util.h" />
     <ClInclude Include="daemon\util\FileSystem.h" />
+    <ClInclude Include="daemon\util\Json.h" />
+    <ClInclude Include="daemon\util\Xml.h" />
     <ClInclude Include="daemon\windows\WinService.h" />
     <ClInclude Include="daemon\windows\WinConsole.h" />
     <ClInclude Include="lib\par2\commandline.h" />
