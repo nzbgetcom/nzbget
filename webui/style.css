@@ -14,7 +14,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 body {
@@ -24,7 +24,7 @@ body {
 
 .flex-row {
     display: flex;
-    gap: 15px;
+    gap: 10px;
     align-items: center;
 }
 

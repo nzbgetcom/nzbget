@@ -2792,21 +2792,37 @@ void DownloadExtensionXmlCommand::Execute()
 void DeleteExtensionXmlCommand::Execute()
 {
 	char* extensionName;
-	if (NextParamAsStr(&extensionName))
+	bool shouldDeleteConf = false;
+
+	if (!NextParamAsStr(&extensionName))
 	{
-		if (g_ExtensionManager->DeleteExtension(extensionName))
-		{
-			BuildBoolResponse(true);
-			return;
-		}
-		else
-		{
 			std::string errorMsg = "Could not delete the \"";
 			errorMsg += extensionName;
 			errorMsg += "\" extension";
 			BuildErrorResponse(3, errorMsg.c_str());
 			return;
-		}
+	}
+
+	if (!NextParamAsBool(&shouldDeleteConf))
+	{
+			std::string errorMsg = "Could not delete the \"";
+			errorMsg += extensionName;
+			errorMsg += "\" extension";
+			BuildErrorResponse(3, errorMsg.c_str());
+			return;
+	}
+	if (g_ExtensionManager->DeleteExtension(extensionName))
+	{
+		BuildBoolResponse(true);
+		return;
+	}
+	else
+	{
+		std::string errorMsg = "Could not delete the \"";
+		errorMsg += extensionName;
+		errorMsg += "\" extension";
+		BuildErrorResponse(3, errorMsg.c_str());
+		return;
 	}
 }
 

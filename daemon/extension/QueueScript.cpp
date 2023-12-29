@@ -348,7 +348,7 @@ bool QueueScriptCoordinator::UsableScript(const Extension::Script& script, NzbIn
 		{
 			BString<1024> scriptName = varname;
 			scriptName[strlen(scriptName)-1] = '\0'; // remove trailing ':'
-			if (strcmp(scriptName, script.GetDisplayName()) == 0)
+			if (strcmp(scriptName, script.GetName()) == 0)
 			{
 				return true;
 			}
@@ -374,7 +374,7 @@ bool QueueScriptCoordinator::UsableScript(const Extension::Script& script, NzbIn
 			Tokenizer tok(postScript, ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (strcmp(scriptName, script.GetDisplayName()) == 0)
+				if (strcmp(scriptName, script.GetName()) == 0)
 				{
 					return true;
 				}

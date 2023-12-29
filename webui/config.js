@@ -36,7 +36,6 @@ var Options = (new function($)
 	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
-	this.extensions = [];
 
 	// State
 	var _this = this;
@@ -75,7 +74,7 @@ var Options = (new function($)
 		// build list of post-processing parameters
 		RPC.call('loadextensions', [false], function(data)
 		{	
-			_this.extensions = data.slice();
+			ExtensionManager.setExtensions(data.slice());
 			_this.postParamConfig = initPostParamConfig(data);
 		});
 	}
@@ -133,6 +132,7 @@ var Options = (new function($)
 
 	function extensionsLoaded(data)
 	{
+		ExtensionManager.setExtensions(data.slice());
 		serverTemplateData = serverTemplateData.concat(data);
 		complete();
 	}
@@ -1084,7 +1084,7 @@ var Config = (new function($)
 		}
 
 		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + Extensions.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
+		$ConfigNav.append('<li><a href="#' + ExtensionManager.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
 
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
@@ -1303,12 +1303,12 @@ var Config = (new function($)
 			return;
 		}
 
-		if (sectionId === Extensions.Id)
+		if (sectionId === ExtensionManager.Id)
 		{
 			$ConfigData.children().hide();
 			markLastControlGroup();
 			$ConfigTitle.text('EXTENSION MANAGER');
-			Extensions.fetchMasterManifest();
+			ExtensionManager.downloadRemoteExtensions();
 			return;
 		}
 
@@ -2174,43 +2174,6 @@ var Config = (new function($)
 	this.checkUpdates = function()
 	{
 		UpdateDialog.showModal();
-	}
-
-	/*** EXTENSIONS ****************************************************************/
-
-	this.downloadExtension = function(extensionIdx)
-	{
-		console.warn(Options.extensions[extensionIdx])
-		RPC.call('downloadextension', ['https://github.com/nzbgetcom/Extension-FailureLink/releases/download/v2.0/failurelink-2.0-dist.zip', 'Fetch extension'], 
-			(result) => {
-				console.warn(result);
-				//Options.update();
-			},
-			(error) =>
-			{
-				console.warn(error);
-			}
-		);
-	}
-
-	this.deleteExtension = function(extensionIdx)
-	{
-		console.warn(Options.extensions[extensionIdx])
-		RPC.call('deleteextension', [Options.extensions[extensionIdx].Name], 
-			(result) => 
-			{
-				console.warn(result);
-				RPC.call('loadextensions', [false], (extensions) => {
-					Options.extensions = extensions;
-					Options.update();
-					Extensions.update();
-				}, loadServerTemplateError);
-			},
-			(error) => 
-			{
-				console.warn(error);
-			}
-		);
 	}
 }(jQuery));
 
@@ -3240,21 +3203,70 @@ var ExecScriptDialog = (new function($)
 
 }(jQuery));
 
-var Extensions = (new function($)
+function Extension()
+{
+	this.name = '';
+	this.displayName = '', 
+	this.version = '';
+	this.author = '';
+	this.homepage = '';
+	this.about = '';
+	this.installed = false;
+	this.deleteConf = false;
+
+	this.deleteConfToggle = function()
+	{
+		this.deleteConf = !this.deleteCon;
+	}
+}
+
+var ExtensionManager = (new function($)
 {
 	'use strict'
 
 	this.Id = 'extension-manager';
 	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/feature/extensions.json/extensions.json';
 
-	let masterManifest = [];
+	let extensions = {};
+	let remoteExtensions = {};
 
-	this.fetchMasterManifest = function()
+	this.setExtensions = function(exts)
 	{
-		RPC.call('readurl', [this.extensionsUrl, 'Fetch available extensions'],
+		extensions = {};
+		exts.forEach((ext) => 
+		{
+			const extension = new Extension();
+			extension.displayName = ext.DisplayName;
+			extension.version = ext.Version;
+			extension.author = ext.Author;
+			extension.homepage = ext.Homepage;
+			extension.about = ext.About;
+			extension.name = ext.Name;
+			extension.installed = true;
+			extension.deleteConf = false;
+			extensions[extension.name] = extension;
+		});
+	}
+
+	this.downloadRemoteExtensions = function()
+	{
+		RPC.call('readurl', [this.extensionsUrl, 'Download list of available extensions.'],
 			(data) =>
 			{
-				masterManifest = JSON.parse(data);
+				remoteExtensions = {};
+				JSON.parse(data).forEach((ext) => 
+				{
+					const extension = new Extension();
+					extension.displayName = ext.displayName;
+					extension.version = ext.version;
+					extension.author = ext.author;
+					extension.homepage = ext.homepage;
+					extension.about = ext.about;
+					extension.name = ext.name;
+					extension.installed = false;
+					extension.deleteConf = false;
+					remoteExtensions[extension.name] = extension;
+				});
 				this.render(this.getAllExtensions());
 			},
 			(error) => 
@@ -3269,15 +3281,16 @@ var Extensions = (new function($)
 		this.render(this.getAllExtensions());
 	}
 
-	this.render = function(extensions)
+	this.render = function()
 	{
+		const allExtensions = this.getAllExtensions();
 		const extensionsSection = $('.' + this.Id);
 		extensionsSection.empty();
 
-		extensions.forEach((ext, i) => {
+		allExtensions.forEach((ext, i) => {
 			const btn = ext.installed 
-				? $('<div class="flex-row"><button type="button" class="btn btn-danger" onclick="Config.deleteExtension('+ i + ')">Delete</button><label class="checkbox"><input type="checkbox" onclick="" /> Delete configuration options</label></div>')
-				: $('<button type="button" class="btn btn-primary" onclick="Config.downloadExtension('+ i + ')">Download</button>');
+				? getDeleteBtn(ext)
+				: getDownloadBtn(ext);
 
 			const container = $('<div></div>');
 			const ctrlsContainer = $('<div class="controls"></div>');
@@ -3289,7 +3302,7 @@ var Extensions = (new function($)
 				.append('<p><strong>Homepage: </strong>' + '<a href="' + ext.homepage + '" target="_blank">' + ext.homepage + '</a>' + '</p>')
 				.append(btn);
 				
-			if (i < extensions.length - 1)
+			if (i < allExtensions.length - 1)
 			{
 				ctrlsContainer.append('<hr></hr>');
 			}
@@ -3303,23 +3316,81 @@ var Extensions = (new function($)
 
 	this.getAllExtensions = function()
 	{
-		const installedExts = Options.extensions
-		.map((ext) => ({ 
-			displayName: ext.DisplayName, 
-			version: ext.Version,
-			author: ext.Author, 
-			homepage: ext.Homepage,
-			about: ext.About,
-			name: ext.Name,
-			installed: true
-		}));
+		const allExtensions = [];
+		for (const extension of Object.values(remoteExtensions)) 
+		{
+			if (extensions[extension.name])
+			{
+				allExtensions.push(extensions[extension.name]);
+			}
+			else
+			{
+				allExtensions.push(extension);
+			}
+		}
 
-		const notInstalledExts = masterManifest
-			.filter((ext) => !installedExts.find((installedExt) => installedExt.name === ext.name))
-			.map((ext) => ({ ...ext, installed: false }));
-
-		const allExtensions = installedExts.concat(notInstalledExts);
+		for (const extension of Object.values(extensions)) 
+		{
+			if (!allExtensions[extension.name])
+			{
+				allExtensions.push(extension);
+			}
+		}
+		allExtensions.sort((a, b) => a.installed - b.installed);
 		return allExtensions;
 	}
 
+	this.downloadExtension = function(name)
+	{
+		console.warn(extensions[name])
+		// RPC.call('downloadextension', ['https://github.com/nzbgetcom/Extension-FailureLink/releases/download/v2.0/failurelink-2.0-dist.zip', 'Download ' + extName + ' extension.'], 
+		// 	(result) => {
+		// 		console.warn(result);
+		// 		//Options.update();
+		// 	},
+		// 	(error) =>
+		// 	{
+		// 		console.warn(error);
+		// 	}
+		// );
+	}
+
+	this.deleteExtension = function(name)
+	{
+		console.warn(extensions[name])
+		const extension = extensions[name];
+		RPC.call('deleteextension', [extension.name, extension.deleteConf], 
+			(result) => 
+			{
+				console.warn(result);
+				RPC.call('loadextensions', [false], (extensions) => {
+					ExtensionManager.setExtensions(extensions);
+					ExtensionManager.update();
+				}, (err) => console.warn(err));
+			},
+			(error) => 
+			{
+				console.warn(error);
+			}
+		);
+	}
+
+	function getDeleteBtn(ext)
+	{
+		const container = $('<div class="flex-row">')
+		const btn = $('<button type="button" class="btn btn-danger"">Delete</button>')
+			.on('click', () => ExtensionManager.deleteExtension(ext.name));
+		const label = $('<label class="checkbox"><input type="checkbox" /> Delete configuration options</label></div>')
+			.on('click', () => ext.deleteConfToggle());
+		container.append(btn);
+		container.append(label);
+		return container;
+	}
+
+	function getDownloadBtn(ext)
+	{
+		const btn = $('<button type="button" class="btn btn-primary">Download</button>')
+			.on('click', () => ExtensionManager.downloadExtension(ext.name));
+		return btn;
+	}
 }(jQuery))
