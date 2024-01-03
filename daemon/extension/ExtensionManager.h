@@ -45,7 +45,7 @@ namespace ExtensionManager
 		void LoadExtensionDir(const char* directory, bool isSubDir);
 		void CreateTasks(const IOptions& options) const;
 		Extensions::const_iterator GetByName(const std::string& name) const;
-		bool ExtensionExists(const std::string& name) const;
+		bool Exists(const std::string& name) const;
 		void Sort(const std::vector<std::string>& order);
 		std::string GetExtensionName(const std::string& fileName) const;
 

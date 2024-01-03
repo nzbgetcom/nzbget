@@ -101,7 +101,7 @@ namespace ExtensionManager
 		Extension extension;
 
 		if (ExtensionLoader::V2::Load(extension, directory)) {
-			if (!ExtensionExists(extension.GetName()))
+			if (!Exists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
 			}
@@ -118,7 +118,7 @@ namespace ExtensionManager
 			if (!FileSystem::DirectoryExists(entry))
 			{
 				std::string name = GetExtensionName(filename);
-				if (ExtensionExists(name))
+				if (Exists(name))
 				{
 					continue;
 				}
@@ -164,7 +164,7 @@ namespace ExtensionManager
 		}
 	}
 
-	bool Manager::ExtensionExists(const std::string& name) const
+	bool Manager::Exists(const std::string& name) const
 	{
 		return GetByName(name) != std::end(m_extensions);
 	}

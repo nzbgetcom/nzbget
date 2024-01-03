@@ -116,14 +116,16 @@ BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
 	fs.close();
 	fs.clear();
 
-	BOOST_TEST_MESSAGE(nzbgetConf);
-	BOOST_TEST_MESSAGE(options.GetConfigFilename());
-
 	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
-	BOOST_TEST_MESSAGE(manager.GetExtensions().size());
 	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
 
 	BOOST_REQUIRE(manager.DeleteExtension("email", false, options) == true);
+	auto extIt = std::find_if(
+		std::begin(manager.GetExtensions()), 
+		std::end(manager.GetExtensions()),
+		[](const ExtensionManager::Extension& ext) { return ext.GetName() == "email"; }
+	);
+	BOOST_REQUIRE(extIt == std::end(manager.GetExtensions()));
 	BOOST_REQUIRE(manager.GetExtensions().size() == 3);
 
 	BOOST_REQUIRE(std::fstream(std::string(options.GetScriptDir()) + "/Email").is_open() == false);
