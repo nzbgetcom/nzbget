@@ -87,13 +87,21 @@ jobs:
           nzbget-synology-packages
 
   make-testing-release:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux]
     needs: [generate-signatures]
     permissions:
       contents: write
     if: github.ref_name == 'develop'
     steps:
     
+    - name: Delete tag and release
+      uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      with:
+        delete_release: true
+        tag_name: testing
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
     - name: Download build artifacts
       uses: actions/download-artifact@v3
 
@@ -102,14 +110,6 @@ jobs:
         cp $(find nzbget-installers/ -name *linux.run) nzbget-installers/nzbget-latest-testing-bin-linux.run
         cp $(find nzbget-installers/ -name *windows-setup.exe) nzbget-installers/nzbget-latest-testing-bin-windows-setup.exe
 
-    - name: Delete tag and release
-      uses: dev-drprasad/delete-tag-and-release@v0.2.1
-      with:
-        delete_release: true
-        tag_name: testing
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-    
     - name: Make release
       uses: ncipollo/release-action@v1
       with:
@@ -118,3 +118,7 @@ jobs:
         tag: testing
         allowUpdates: true
         prerelease: true
+
+    - name: Update website info
+      run: |
+        bash /build/update-release-info.sh
