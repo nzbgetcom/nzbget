@@ -52,14 +52,14 @@
 # include "../locale/localeinfo.h"
 #endif
 
-#define strncasecmp strnicmp
-#define strcasecmp stricmp
+#define strncasecmp strncmp
+#define strcasecmp strcmp
 
 /* On some systems, limits.h sets RE_DUP_MAX to a lower value than
    GNU regex allows.  Include it before <regex.h>, which correctly
    #undefs RE_DUP_MAX and sets it to the right value.  */
 #include <limits.h>
-#include <malloc.h>
+//#include <malloc.h>
 #include <regex.h>
 
 //#ifdef __cplusplus

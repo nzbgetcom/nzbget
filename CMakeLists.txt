@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(VERSION "22.2")
+
 project(
 	nzbget
-	VERSION "22.2"
+	VERSION ${VERSION}
 	DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
 	LANGUAGES C CXX
 )
 
 option(ENABLE_TESTS "Enable tests" ON)
 
-set(VERSION "22")
 set(PACKAGE "nzbget")
 add_compile_definitions(HAVE_CONFIG_H=1)
 
@@ -118,7 +119,6 @@ if (WIN32)
 	set(SOURCES ${SOURCES} ${WIN32_SOURCES})
 endif()
 
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -137,7 +137,11 @@ find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(LibXml2 REQUIRED)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if (NOT WIN32)
+	find_package(Curses REQUIRED)
+endif()
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang|AppleClang")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall")
@@ -168,6 +172,7 @@ target_include_directories(nzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${Boost_INCLUDE_DIR}
 	${LIBXML2_INCLUDE_DIR}
+	${CURSES_INCLUDE_DIR}
 )
 if (WIN32)
 	target_include_directories(nzbget PRIVATE
@@ -175,7 +180,7 @@ if (WIN32)
 		${CMAKE_SOURCE_DIR}/windows/resources
 	)
 	target_sources(nzbget PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
-endif(WIN32)
+endif()
 
 target_link_libraries(nzbget PRIVATE
 	Yencode
@@ -185,6 +190,7 @@ target_link_libraries(nzbget PRIVATE
 	OpenSSL::Crypto
 	ZLIB::ZLIB
 	LibXml2::LibXml2
+	${CURSES_LIBRARIES}
 )
 
 if(ENABLE_TESTS)
