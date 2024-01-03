@@ -66,50 +66,34 @@ namespace ExtensionManager
 		return true;
 	}
 
-	bool Manager::DeleteExtension(const std::string& name)
+	bool Manager::DeleteExtension(const std::string& name, bool withOptions, const IOptions& options)
 	{
-		m_extensions.erase(
-			std::remove_if(
-				std::begin(m_extensions),
-				std::end(m_extensions),
-				[&name](const Extension& ext)
-				{
-					return ext.GetName() == name;
-				}
-			),
-			m_extensions.end()
-		);
-		return true;
-		// auto extIt = std::find_if(
-		// 	std::begin(m_extensions),
-		// 	std::end(m_extensions),
-		// 	[&name](const Extension& ext)
-		// 	{
-		// 		return ext.GetName() == name;
-		// 	}
-		// );
-		// CString err;
-		// if (FileSystem::DeleteDirectoryWithContent(extIt->GetLocation(), err))
-		// {
-		// 	if (!err.Empty())
-		// 	{
-		// 		return false;
-		// 	}
+		auto extensionIt = GetByName(name);
+		if (extensionIt == std::end(m_extensions))
+		{
+			return false;
+		}
 
-		// 	m_extensions.erase(
-		// 		std::remove_if(
-		// 			std::begin(m_extensions),
-		// 			std::end(m_extensions),
-		// 			[&name](const Extension& ext)
-		// 			{
-		// 				return ext.GetName() == name;
-		// 			}
-		// 		),
-		// 		m_extensions.end()
-		// 	);
-		// 	return true;
-		// }
-		// return false;
+		const char* location = extensionIt->GetLocation();
+
+		CString err;
+		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
+		{
+			if (!err.Empty())
+			{
+				return false;
+			}
+
+			m_extensions.erase(extensionIt);
+			return true;
+		}
+		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
+		{
+			m_extensions.erase(extensionIt);
+			return true;
+		}
+
+		return false;
 	}
 
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
@@ -182,19 +166,12 @@ namespace ExtensionManager
 
 	bool Manager::ExtensionExists(const std::string& name) const
 	{
-		bool result = std::find_if(
-			std::cbegin(m_extensions),
-			std::cend(m_extensions),
-			[&name](const Extension& ext) {
-				return name == ext.GetName();
-			}
-		) != std::end(m_extensions);
-		return result;
+		return GetByName(name) != std::end(m_extensions);
 	}
 
 	void Manager::Sort(const std::vector<std::string>& order)
 	{
-		auto compare = [](const Extension& a, const Extension& b) -> bool
+		auto comparator = [](const Extension& a, const Extension& b) -> bool
 			{
 				return strcmp(a.GetName(), b.GetName()) < 0;
 			};
@@ -203,7 +180,7 @@ namespace ExtensionManager
 			std::sort(
 				std::begin(m_extensions),
 				std::end(m_extensions),
-				compare
+				comparator
 			);
 			return;
 		}
@@ -230,7 +207,7 @@ namespace ExtensionManager
 		std::sort(
 			std::begin(m_extensions) + count,
 			std::end(m_extensions),
-			compare
+			comparator
 		);
 	}
 
@@ -243,5 +220,17 @@ namespace ExtensionManager
 		}
 
 		return fileName;
+	}
+
+	Extensions::const_iterator Manager::GetByName(const std::string& name) const
+	{
+		return std::find_if(
+			std::begin(m_extensions),
+			std::end(m_extensions),
+			[&name](const Extension& ext)
+			{
+				return ext.GetName() == name;
+			}
+		);
 	}
 }

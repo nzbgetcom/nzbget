@@ -39,7 +39,7 @@ var Options = (new function($)
 
 	// State
 	var _this = this;
-	var serverTemplateData = null;
+	this.serverTemplateData = null;
 	var serverValues;
 	var loadComplete;
 	var loadConfigError;
@@ -81,7 +81,7 @@ var Options = (new function($)
 
 	this.cleanup = function()
 	{
-		serverTemplateData = null;
+		this.serverTemplateData = null;
 		serverValues = null;
 	}
 
@@ -118,33 +118,9 @@ var Options = (new function($)
 		RPC.call('loadconfig', [], serverValuesLoaded, loadConfigError);
 	}
 
-	function serverValuesLoaded(data)
+	this.complete = function() 
 	{
-		serverValues = data;
-		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
-	}
-
-	function serverTemplateLoaded(data)
-	{
-		serverTemplateData = data;
-		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
-	}
-
-	function extensionsLoaded(data)
-	{
-		ExtensionManager.setExtensions(data.slice());
-		serverTemplateData = serverTemplateData.concat(data);
-		complete();
-	}
-
-	function arrToStr(arr)
-	{
-		return arr.reduce((acc, curr) => acc += curr + '\n', '');
-	}
-
-	function complete() 
-	{
-		if (serverTemplateData === null) 
+		if (this.serverTemplateData === null) 
 		{
 			// the loading was cancelled and the data was discarded (via method "cleanup()")
 			return;
@@ -155,75 +131,75 @@ var Options = (new function($)
 
 		readWebSettings(config);
 
-		var serverConfig = readConfigTemplate(serverTemplateData[0].Template, undefined, HIDDEN_SECTIONS, '');
+		var serverConfig = readConfigTemplate(this.serverTemplateData[0].Template, undefined, HIDDEN_SECTIONS, '');
 		mergeValues(serverConfig.sections, serverValues);
 		config.push(serverConfig);
 
 		// read scripts configs
-		for (var i = 1; i < serverTemplateData.length; i++) 
+		for (var i = 1; i < this.serverTemplateData.length; i++) 
 		{
 			const section = {
-				name: serverTemplateData[i].Name,
-				id: serverTemplateData[i].Name + '_' + 'OPTIONS',
+				name: this.serverTemplateData[i].Name,
+				id: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
 				options: [],
 				hidden: false,
 				postparam: false,
 			};
 			const scriptConfig = {
 				sections: [section],
-				nameprefix: serverTemplateData[i].Name,
+				nameprefix: this.serverTemplateData[i].Name,
 			};
-			const requirements = serverTemplateData[i].Requirements;
-			let description = arrToStr(serverTemplateData[i].Description) + '\n';
+			const requirements = this.serverTemplateData[i].Requirements;
+			let description = arrToStr(this.serverTemplateData[i].Description) + '\n';
 			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
-			scriptConfig['scriptName'] = serverTemplateData[i].Name;
-			scriptConfig['id'] = Util.makeId(serverTemplateData[i].Name);
-			scriptConfig['name'] = serverTemplateData[i].Name;
-			scriptConfig['shortName'] = serverTemplateData[i].DisplayName;
-			scriptConfig['post'] = serverTemplateData[i].PostScript;
-			scriptConfig['scan'] = serverTemplateData[i].ScanScript;
-			scriptConfig['queue'] = serverTemplateData[i].QueueScript;
-			scriptConfig['scheduler'] = serverTemplateData[i].SchedulerScript;
-			scriptConfig['defscheduler'] = serverTemplateData[i].TaskTime !== '';
-			scriptConfig['feed'] = serverTemplateData[i].FeedScript;
-			scriptConfig['about'] = serverTemplateData[i].About;
+			scriptConfig['scriptName'] = this.serverTemplateData[i].Name;
+			scriptConfig['id'] = Util.makeId(this.serverTemplateData[i].Name);
+			scriptConfig['name'] = this.serverTemplateData[i].Name;
+			scriptConfig['shortName'] = this.serverTemplateData[i].DisplayName;
+			scriptConfig['post'] = this.serverTemplateData[i].PostScript;
+			scriptConfig['scan'] = this.serverTemplateData[i].ScanScript;
+			scriptConfig['queue'] = this.serverTemplateData[i].QueueScript;
+			scriptConfig['scheduler'] = this.serverTemplateData[i].SchedulerScript;
+			scriptConfig['defscheduler'] = this.serverTemplateData[i].TaskTime !== '';
+			scriptConfig['feed'] = this.serverTemplateData[i].FeedScript;
+			scriptConfig['about'] = this.serverTemplateData[i].About;
 			scriptConfig['description'] = description;
-			scriptConfig['author'] = serverTemplateData[i].Author;
-			scriptConfig['license'] = serverTemplateData[i].License;
-			scriptConfig['version'] = serverTemplateData[i].Version;
+			scriptConfig['author'] = this.serverTemplateData[i].Author;
+			scriptConfig['license'] = this.serverTemplateData[i].License;
+			scriptConfig['version'] = this.serverTemplateData[i].Version;
 
-			for (let j = 0; j < serverTemplateData[i].Commands.length; j++) 
+			for (let j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
-				const command = serverTemplateData[i].Commands[j];
+				const command = this.serverTemplateData[i].Commands[j];
 				section.options.push({
 					caption: command.DisplayName,
-					name: serverTemplateData[i].Name + ':' + command.Name,
+					name: this.serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
 					defvalue: command.Action,
-					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select: [],
-					about: serverTemplateData[i].About,
+					about: this.serverTemplateData[i].About,
 					description: arrToStr(command.Description),
 					nocontent: false,
-					formId: serverTemplateData[i].Name + '_' + command.Name,
+					formId: this.serverTemplateData[i].Name + '_' + command.Name,
 					commandopts: 'settings',
 					type: 'command'
 				});
 			}
-			for (let j = 0; j < serverTemplateData[i].Options.length; j++) 
+			for (let j = 0; j < this.serverTemplateData[i].Options.length; j++) 
 			{
-				const option = serverTemplateData[i].Options[j];
+				const option = this.serverTemplateData[i].Options[j];
 				const [type, select] = GetTypeAndSelect(option);
 				section.options.push({
 					caption: option.DisplayName,
-					name: serverTemplateData[i].Name + ':' + option.Name,
+					name: this.serverTemplateData[i].Name + ':' + option.Name,
 					value: String(option.Value),
 					defvalue: String(option.Value),
-					sectionId: serverTemplateData[i].Name + '_' + 'OPTIONS',
+					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select,
 					description: arrToStr(option.Description),
 					nocontent: false,
-					formId: serverTemplateData[i].Name + '_' + option.Name,
+					formId: this.serverTemplateData[i].Name + '_' + option.Name,
 					type
 				});
 			}
@@ -234,6 +210,30 @@ var Options = (new function($)
 
 		serverValues = null;
 		loadComplete(config);
+	}
+
+	function serverValuesLoaded(data)
+	{
+		serverValues = data;
+		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
+	}
+
+	function serverTemplateLoaded(data)
+	{
+		Options.serverTemplateData = data;
+		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
+	}
+
+	function extensionsLoaded(data)
+	{
+		ExtensionManager.setExtensions(data.slice());
+		Options.serverTemplateData = Options.serverTemplateData.concat(data);
+		Options.complete();
+	}
+
+	function arrToStr(arr)
+	{
+		return arr.reduce((acc, curr) => acc += curr + '\n', '');
 	}
 
 	function GetTypeAndSelect(option)
@@ -1076,7 +1076,7 @@ var Config = (new function($)
 
 		$ConfigNav.toggleClass('long-list', $ConfigNav.children().length > 20);
 
-		showSection('Config-Info', false);
+		Config.showSection('Config-Info', false);
 
 		if (filterText !== '')
 		{
@@ -1211,7 +1211,7 @@ var Config = (new function($)
 		var option = findOptionById(optFormId);
 
 		// switch to tab and scroll the option into view
-		showSection(option.sectionId, false);
+		Config.showSection(option.sectionId, false);
 
 		var element = $('#' + option.formId);
 		var parent = $('html,body');
@@ -1265,10 +1265,10 @@ var Config = (new function($)
 	{
 		event.preventDefault();
 		var sectionId = $(this).attr('href').substr(1);
-		showSection(sectionId, true);
+		Config.showSection(sectionId, true);
 	}
 
-	function showSection(sectionId, animateScroll)
+	this.showSection = function(sectionId, animateScroll)
 	{
 		var link = $('a[href="#' + sectionId + '"]', $ConfigNav);
 		$('li', $ConfigNav).removeClass('active');
@@ -1977,7 +1977,7 @@ var Config = (new function($)
 		if (filterText.trim() !== '')
 		{
 			$('.ConfigSearch').show();
-			showSection('Search', true);
+			Config.showSection('Search', true);
 		}
 		else
 		{
@@ -1988,7 +1988,7 @@ var Config = (new function($)
 	function filterClear()
 	{
 		filterText = '';
-		showSection(lastSection, true);
+		Config.showSection(lastSection, true);
 		$('.ConfigSearch').hide();
 		$ConfigTabBadge.hide();
 		$ConfigTabBadgeEmpty.show();
@@ -3342,7 +3342,7 @@ var ExtensionManager = (new function($)
 
 	this.downloadExtension = function(name)
 	{
-		console.warn(extensions[name])
+		console.warn(remoteExtensions[name])
 		// RPC.call('downloadextension', ['https://github.com/nzbgetcom/Extension-FailureLink/releases/download/v2.0/failurelink-2.0-dist.zip', 'Download ' + extName + ' extension.'], 
 		// 	(result) => {
 		// 		console.warn(result);
@@ -3360,13 +3360,13 @@ var ExtensionManager = (new function($)
 		console.warn(extensions[name])
 		const extension = extensions[name];
 		RPC.call('deleteextension', [extension.name, extension.deleteConf], 
-			(result) => 
+			(_) => 
 			{
-				console.warn(result);
-				RPC.call('loadextensions', [false], (extensions) => {
-					ExtensionManager.setExtensions(extensions);
-					ExtensionManager.update();
-				}, (err) => console.warn(err));
+				delete extensions[name];
+				ExtensionManager.update();
+				Options.serverTemplateData = Options.serverTemplateData.filter((templ) => templ['Name'] !== name);
+				Options.complete();
+				Config.showSection(ExtensionManager.Id, true);
 			},
 			(error) => 
 			{

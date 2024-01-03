@@ -23,11 +23,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include <filesystem>
-#include <locale>
 #include <iostream>
+#include <fstream>
 #include <string>
-#include <codecvt>
-#include <cstdint>
 
 #include "ExtensionManager.h"
 #include "Options.h"
@@ -38,32 +36,62 @@ Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
 
+static std::string nzbgetConf = "Extensions=EMail, Logger\n\
+ScriptOrder=EMail, Logger\n\
+EMail:SendMail=Always\n\
+EMail:Port=25\n\
+Logger:SendMail=Always\n\
+Logger:Port=25\n\
+Category1.Extensions=EMail\n\
+Feed1.Extensions=EMail\n";
 static std::string currentPath = std::filesystem::current_path().string();
 static std::string testDir = currentPath + "/scripts";
+static std::string configPath = currentPath + "/nzbget.conf";
 
 class MockOptions : public IOptions {
 public:
-	const char* GetScriptDir() const override {
+	const char* GetScriptDir() const override
+	{
 		return testDir.c_str();
 	}
 
-	const char* GetScriptOrder() const override {
-		return "Extension2;Extension1;email;";
+	const char* GetScriptOrder() const override
+	{
+		return "Extension2, Extension1, email;";
 	}
 
-	const char* GetExtensions() const override {
-		return "Extension2;Extension3;Extension1;email;";
+	const char* GetExtensions() const override
+	{
+		return "Extension2, Extension3, Extension1, email;";
+	}
+
+	const char* GetConfigFilename() const override
+	{
+		return configPath.c_str();
 	}
 };
 
-BOOST_AUTO_TEST_CASE(ExtensionManagerTest)
+class MockOptions2 : public MockOptions {
+public:
+	const char* GetScriptOrder() const override
+	{
+		return "Email, Logger";
+	}
+
+	const char* GetExtensions() const override
+	{
+		return "Email, Logger";
+	}
+};
+
+BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 {
 	MockOptions options;
 
 	std::vector<std::string> order = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
-	BOOST_CHECK(manager.LoadExtensions(options) == true);
+	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
 	BOOST_CHECK(manager.GetExtensions().size() == 4);
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
@@ -73,4 +101,57 @@ BOOST_AUTO_TEST_CASE(ExtensionManagerTest)
 			BOOST_CHECK(order[i] == manager.GetExtensions()[i].GetName());
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
+{
+	MockOptions2 options;
+	ExtensionManager::Manager manager;
+
+	std::fstream fs(options.GetConfigFilename(), std::ios::out);
+
+	BOOST_REQUIRE(fs.is_open());
+
+	fs.write(nzbgetConf.c_str(), nzbgetConf.size());
+	fs.close();
+	fs.clear();
+
+	BOOST_TEST_MESSAGE(nzbgetConf);
+	BOOST_TEST_MESSAGE(options.GetConfigFilename());
+
+	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
+	BOOST_TEST_MESSAGE(manager.GetExtensions().size());
+	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
+
+	BOOST_REQUIRE(manager.DeleteExtension("email", false, options) == true);
+	BOOST_REQUIRE(manager.GetExtensions().size() == 3);
+
+	BOOST_REQUIRE(std::fstream(std::string(options.GetScriptDir()) + "/Email").is_open() == false);
+
+	fs.open(options.GetConfigFilename(), std::ios::in);
+	std::string line;
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "Extensions=Logger");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "ScriptOrder=Logger");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "EMail:SendMail=Always");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "EMail:Port=25");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "Logger:SendMail=Always");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "Logger:Port=25");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "Category1.Extensions=");
+	std::getline(fs, line);
+	BOOST_TEST_MESSAGE(line);
+	BOOST_CHECK(line == "Feed1.Extensions=");
 }

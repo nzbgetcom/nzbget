@@ -2811,7 +2811,7 @@ void DeleteExtensionXmlCommand::Execute()
 			BuildErrorResponse(3, errorMsg.c_str());
 			return;
 	}
-	if (g_ExtensionManager->DeleteExtension(extensionName))
+	if (g_ExtensionManager->DeleteExtension(extensionName, shouldDeleteConf, *g_Options))
 	{
 		BuildBoolResponse(true);
 		return;
@@ -2836,7 +2836,7 @@ void SaveConfigXmlCommand::Execute()
 	char* dummy;
 	while ((IsJson() && NextParamAsStr(&dummy) && NextParamAsStr(&name) &&
 			NextParamAsStr(&dummy) && NextParamAsStr(&value)) ||
-		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value)))
+		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value))) 
 	{
 		DecodeStr(name);
 		DecodeStr(value);

@@ -32,6 +32,7 @@ public:
 	virtual const char* GetScriptDir() const = 0;
 	virtual const char* GetScriptOrder() const = 0;
 	virtual const char* GetExtensions() const = 0;
+	virtual const char* GetConfigFilename() const = 0;
 	virtual ~IOptions() noexcept = default;
 };
 
@@ -200,7 +201,7 @@ public:
 		ESchedulerCommand command, const char* param);
 
 	// Options
-	const char* GetConfigFilename() { return m_configFilename; }
+	const char* GetConfigFilename() const override { return m_configFilename; }
 	bool GetConfigErrors() { return m_configErrors; }
 	const char* GetAppDir() { return m_appDir; }
 	const char* GetDestDir() { return m_destDir; }
