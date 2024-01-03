@@ -23,7 +23,7 @@
 
 #include "Thread.h"
 #include "DownloadInfo.h"
-#include "Script.h"
+#include "ScriptController.h"
 #include "RarRenamer.h"
 
 #ifndef DISABLE_PARCHECK

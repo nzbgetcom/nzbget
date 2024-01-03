@@ -39,10 +39,7 @@ private:
 	CString m_infoName;
 
 	void ParseSubject(FeedItemInfo& feedItemInfo);
-#ifdef WIN32
-	bool ParseFeed(IUnknown* nzb);
-	static void EncodeUrl(const char* filename, char* url, int bufLen);
-#else
+
 	FeedItemInfo* m_feedItemInfo;
 	StringBuilder m_tagContent;
 	bool m_ignoreNextError;
@@ -56,7 +53,6 @@ private:
 	void Parse_EndElement(const char *name);
 	void Parse_Content(const char *buf, int len);
 	void ResetTagContent();
-#endif
 };
 
 #endif

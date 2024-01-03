@@ -14,12 +14,12 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
-#ifndef SCRIPT_H
-#define SCRIPT_H
+#ifndef SCRIPTCONTROLLER_H
+#define SCRIPTCONTROLLER_H
 
 #include "NString.h"
 #include "Container.h"
@@ -78,6 +78,7 @@ protected:
 	void ResetEnv();
 	void PrepareEnvOptions(const char* stripPrefix);
 	void PrepareArgs();
+	void PrepareCmdLine(const char* extension);
 	virtual const char* GetOptValue(const char* name, const char* value) { return value; }
 	void StartProcess(int* pipein, int* pipeout);
 	int WaitProcess();
@@ -90,6 +91,7 @@ protected:
 
 private:
 	ArgList m_args;
+	ArgList m_cmdArgs;
 	const char* m_workingDir = nullptr;
 	CString m_infoName;
 	const char* m_logPrefix = nullptr;
@@ -100,10 +102,10 @@ private:
 	bool m_needWrite = false;
 	FILE* m_readpipe = 0;
 	FILE* m_writepipe = 0;
+	char m_cmdLine[2048];
 #ifdef WIN32
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
-	char m_cmdLine[2048];
 #else
 	pid_t m_processId = 0;
 #endif

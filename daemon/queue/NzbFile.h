@@ -49,10 +49,7 @@ private:
 	void CalcHashes();
 	bool HasDuplicateFilenames();
 	void ReadPassword();
-#ifdef WIN32
-	bool ParseNzb(IUnknown* nzb);
-	static void EncodeUrl(const char* filename, char* url, int bufLen);
-#else
+
 	std::unique_ptr<FileInfo> m_fileInfo;
 	ArticleInfo* m_article = nullptr;
 	StringBuilder m_tagContent;
@@ -67,7 +64,6 @@ private:
 	void Parse_StartElement(const char *name, const char **atts);
 	void Parse_EndElement(const char *name);
 	void Parse_Content(const char *buf, int len);
-#endif
 };
 
 #endif

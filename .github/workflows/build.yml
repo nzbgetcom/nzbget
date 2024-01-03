@@ -17,11 +17,14 @@ jobs:
   build-osx:
     uses: ./.github/workflows/osx.yml
   
+  build-synology:
+    uses: ./.github/workflows/synology.yml
+  
   generate-signatures:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-osx]
+    needs: [build-windows, build-linux, build-osx, build-synology]
     steps:
     
     - name: Download build artifacts
@@ -30,11 +33,13 @@ jobs:
     - name: Generate signatures
       run: |
         mkdir -p builds
-        mv nzbget-windows-installers/* builds
-        mv nzbget-linux-installers/* builds
-        mv nzbget-osx-installers/* builds
+        mv nzbget-windows-installers/* builds || true
+        mv nzbget-linux-installers/* builds || true
+        mv nzbget-osx-installers/* builds || true
+        mv nzbget-synology-packages/* builds || true
         cd builds
         VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
+        if [ "$GITHUB_REF_NAME" != "main" ]; then VERSION="$VERSION-testing"; fi
         SIGS_FILE="nzbget-$VERSION.sig.txt"
 
         echo "Generating $SIGS_FILE ..."
@@ -43,7 +48,7 @@ jobs:
         echo "nzbget_signatures({" | tee $SIGS_FILE
         echo | tee -a $SIGS_FILE
 
-        for FILE in *.exe *.run *.zip; do
+        for FILE in *.exe *.run *.zip *.spk; do
             [ -f $FILE ] || continue
 
             MD5=$(openssl dgst -md5 $FILE | cut -d ' ' -f 2)
@@ -79,3 +84,41 @@ jobs:
           nzbget-windows-installers
           nzbget-linux-installers
           nzbget-osx-installers
+          nzbget-synology-packages
+
+  make-testing-release:
+    runs-on: [self-hosted, linux]
+    needs: [generate-signatures]
+    permissions:
+      contents: write
+    if: github.ref_name == 'develop'
+    steps:
+    
+    - name: Delete tag and release
+      uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      with:
+        delete_release: true
+        tag_name: testing
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create latest artifacts
+      run: |
+        cp $(find nzbget-installers/ -name *linux.run) nzbget-installers/nzbget-latest-testing-bin-linux.run
+        cp $(find nzbget-installers/ -name *windows-setup.exe) nzbget-installers/nzbget-latest-testing-bin-windows-setup.exe
+
+    - name: Make release
+      uses: ncipollo/release-action@v1
+      with:
+        artifacts: "nzbget-installers/*"
+        generateReleaseNotes: true
+        tag: testing
+        allowUpdates: true
+        prerelease: true
+
+    - name: Update website info
+      run: |
+        bash /build/update-release-info.sh

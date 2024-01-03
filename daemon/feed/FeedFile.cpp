@@ -31,11 +31,8 @@ FeedFile::FeedFile(const char* fileName, const char* infoName) :
 	debug("Creating FeedFile");
 
 	m_feedItems = std::make_unique<FeedItemList>();
-
-#ifndef WIN32
 	m_feedItemInfo = nullptr;
 	m_tagContent.Clear();
-#endif
 }
 
 void FeedFile::LogDebugInfo()
@@ -75,295 +72,9 @@ void FeedFile::ParseSubject(FeedItemInfo& feedItemInfo)
 	feedItemInfo.SetFilename(feedItemInfo.GetTitle());
 }
 
-#ifdef WIN32
-bool FeedFile::Parse()
-{
-	CoInitialize(nullptr);
-
-	HRESULT hr;
-
-	MSXML::IXMLDOMDocumentPtr doc;
-	hr = doc.CreateInstance(MSXML::CLSID_DOMDocument);
-	if (FAILED(hr))
-	{
-		return false;
-	}
-
-	// Load the XML document file...
-	doc->put_resolveExternals(VARIANT_FALSE);
-	doc->put_validateOnParse(VARIANT_FALSE);
-	doc->put_async(VARIANT_FALSE);
-
-	_variant_t vFilename(*WString(m_fileName));
-
-	// 1. first trying to load via filename without URL-encoding (certain charaters doesn't work when encoded)
-	VARIANT_BOOL success = doc->load(vFilename);
-	if (success == VARIANT_FALSE)
-	{
-		// 2. now trying filename encoded as URL
-		char url[2048];
-		EncodeUrl(m_fileName, url, 2048);
-		debug("url=\"%s\"", url);
-		_variant_t vUrl(url);
-
-		success = doc->load(vUrl);
-	}
-
-	if (success == VARIANT_FALSE)
-	{
-		_bstr_t r(doc->GetparseError()->reason);
-		const char* errMsg = r;
-		error("Error parsing rss feed %s: %s", *m_infoName, errMsg);
-		return false;
-	}
-
-	bool ok = ParseFeed(doc);
-
-	return ok;
-}
-
-void FeedFile::EncodeUrl(const char* filename, char* url, int bufLen)
-{
-	WString widefilename(filename);
-
-	char* end = url + bufLen;
-	for (wchar_t* p = widefilename; *p && url < end - 3; p++)
-	{
-		wchar_t ch = *p;
-		if (('0' <= ch && ch <= '9') ||
-			('a' <= ch && ch <= 'z') ||
-			('A' <= ch && ch <= 'Z') ||
-			ch == '-' || ch == '.' || ch == '_' || ch == '~')
-		{
-			*url++ = (char)ch;
-		}
-		else
-		{
-			*url++ = '%';
-			uint32 a = (uint32)ch >> 4;
-			*url++ = a > 9 ? a - 10 + 'A' : a + '0';
-			a = ch & 0xF;
-			*url++ = a > 9 ? a - 10 + 'A' : a + '0';
-		}
-	}
-	*url = '\0';
-}
-
-bool FeedFile::ParseFeed(IUnknown* nzb)
-{
-	MSXML::IXMLDOMDocumentPtr doc = nzb;
-	MSXML::IXMLDOMNodePtr root = doc->documentElement;
-
-	MSXML::IXMLDOMNodeListPtr itemList = root->selectNodes("/rss/channel/item");
-	for (int i = 0; i < itemList->Getlength(); i++)
-	{
-		MSXML::IXMLDOMNodePtr node = itemList->Getitem(i);
-
-		m_feedItems->emplace_back();
-		FeedItemInfo& feedItemInfo = m_feedItems->back();
-
-		MSXML::IXMLDOMNodePtr tag;
-		MSXML::IXMLDOMNodePtr attr;
-
-		// <title>Debian 6</title>
-		tag = node->selectSingleNode("title");
-		if (!tag)
-		{
-			// bad rss feed
-			return false;
-		}
-		_bstr_t title(tag->Gettext());
-		feedItemInfo.SetTitle(title);
-		ParseSubject(feedItemInfo);
-
-		// <pubDate>Wed, 26 Jun 2013 00:02:54 -0600</pubDate>
-		tag = node->selectSingleNode("pubDate");
-		if (tag)
-		{
-			_bstr_t time(tag->Gettext());
-			time_t unixtime = WebUtil::ParseRfc822DateTime(time);
-			if (unixtime > 0)
-			{
-				feedItemInfo.SetTime(unixtime);
-			}
-		}
-
-		// <category>Movies &gt; HD</category>
-		tag = node->selectSingleNode("category");
-		if (tag)
-		{
-			_bstr_t category(tag->Gettext());
-			feedItemInfo.SetCategory(category);
-		}
-
-		// <description>long text</description>
-		tag = node->selectSingleNode("description");
-		if (tag)
-		{
-			_bstr_t bdescription(tag->Gettext());
-			// cleanup CDATA
-			CString description = (const char*)bdescription;
-			WebUtil::XmlStripTags(description);
-			WebUtil::XmlDecode(description);
-			WebUtil::XmlRemoveEntities(description);
-			feedItemInfo.SetDescription(description);
-		}
-
-		//<enclosure url="http://myindexer.com/fetch/9eeb264aecce961a6e0d" length="150263340" type="application/x-nzb" />
-		tag = node->selectSingleNode("enclosure");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("url");
-			if (attr)
-			{
-				_bstr_t url(attr->Gettext());
-				feedItemInfo.SetUrl(url);
-			}
-
-			attr = tag->Getattributes()->getNamedItem("length");
-			if (attr)
-			{
-				_bstr_t bsize(attr->Gettext());
-				int64 size = atoll(bsize);
-				feedItemInfo.SetSize(size);
-			}
-		}
-
-		if (!feedItemInfo.GetUrl())
-		{
-			// <link>https://nzb.org/fetch/334534ce/4364564564</link>
-			tag = node->selectSingleNode("link");
-			if (!tag)
-			{
-				// bad rss feed
-				return false;
-			}
-			_bstr_t link(tag->Gettext());
-			feedItemInfo.SetUrl(link);
-		}
-
-
-		// newznab special
-
-		//<newznab:attr name="size" value="5423523453534" />
-		if (feedItemInfo.GetSize() == 0)
-		{
-			tag = node->selectSingleNode("newznab:attr[@name='size'] | nZEDb:attr[@name='size']");
-			if (tag)
-			{
-				attr = tag->Getattributes()->getNamedItem("value");
-				if (attr)
-				{
-					_bstr_t bsize(attr->Gettext());
-					int64 size = atoll(bsize);
-					feedItemInfo.SetSize(size);
-				}
-			}
-		}
-
-		//<newznab:attr name="imdb" value="1588173"/>
-		tag = node->selectSingleNode("newznab:attr[@name='imdb'] | nZEDb:attr[@name='imdb']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t bval(attr->Gettext());
-				int val = atoi(bval);
-				feedItemInfo.SetImdbId(val);
-			}
-		}
-
-		//<newznab:attr name="rageid" value="33877"/>
-		tag = node->selectSingleNode("newznab:attr[@name='rageid'] | nZEDb:attr[@name='rageid']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t bval(attr->Gettext());
-				int val = atoi(bval);
-				feedItemInfo.SetRageId(val);
-			}
-		}
-
-		//<newznab:attr name="tdvdbid" value="33877"/>
-		tag = node->selectSingleNode("newznab:attr[@name='tvdbid'] | nZEDb:attr[@name='tvdbid']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t bval(attr->Gettext());
-				int val = atoi(bval);
-				feedItemInfo.SetTvdbId(val);
-			}
-		}
-
-		//<newznab:attr name="tvmazeid" value="33877"/>
-		tag = node->selectSingleNode("newznab:attr[@name='tvmazeid'] | nZEDb:attr[@name='tvmazeid']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t bval(attr->Gettext());
-				int val = atoi(bval);
-				feedItemInfo.SetTvmazeId(val);
-			}
-		}
-
-		//<newznab:attr name="episode" value="E09"/>
-		//<newznab:attr name="episode" value="9"/>
-		tag = node->selectSingleNode("newznab:attr[@name='episode'] | nZEDb:attr[@name='episode']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t val(attr->Gettext());
-				feedItemInfo.SetEpisode(val);
-			}
-		}
-
-		//<newznab:attr name="season" value="S03"/>
-		//<newznab:attr name="season" value="3"/>
-		tag = node->selectSingleNode("newznab:attr[@name='season'] | nZEDb:attr[@name='season']");
-		if (tag)
-		{
-			attr = tag->Getattributes()->getNamedItem("value");
-			if (attr)
-			{
-				_bstr_t val(attr->Gettext());
-				feedItemInfo.SetSeason(val);
-			}
-		}
-
-		MSXML::IXMLDOMNodeListPtr itemList = node->selectNodes("newznab:attr | nZEDb:attr");
-		for (int i = 0; i < itemList->Getlength(); i++)
-		{
-			MSXML::IXMLDOMNodePtr node = itemList->Getitem(i);
-			MSXML::IXMLDOMNodePtr name = node->Getattributes()->getNamedItem("name");
-			MSXML::IXMLDOMNodePtr value = node->Getattributes()->getNamedItem("value");
-			if (name && value)
-			{
-				_bstr_t bname(name->Gettext());
-				_bstr_t bval(value->Gettext());
-				feedItemInfo.GetAttributes()->emplace_back(bname, bval);
-			}
-		}
-	}
-	return true;
-}
-
-#else
 
 bool FeedFile::Parse()
 {
-#ifdef DISABLE_LIBXML2
-	error("Could not parse rss feed, program was compiled without libxml2 support");
-	return false;
-#else
 	xmlSAXHandler SAX_handler = {0};
 	SAX_handler.startElement = reinterpret_cast<startElementSAXFunc>(SAX_StartElement);
 	SAX_handler.endElement = reinterpret_cast<endElementSAXFunc>(SAX_EndElement);
@@ -382,7 +93,6 @@ bool FeedFile::Parse()
 	}
 
 	return true;
-#endif
 }
 
 void FeedFile::Parse_StartElement(const char *name, const char **atts)
@@ -571,11 +281,8 @@ void FeedFile::SAX_characters(FeedFile* file, const char * xmlstr, int len)
 
 void* FeedFile::SAX_getEntity(FeedFile* file, const char * name)
 {
-#ifdef DISABLE_LIBXML2
-	void* e = nullptr;
-#else
 	xmlEntityPtr e = xmlGetPredefinedEntity((xmlChar* )name);
-#endif
+
 	if (!e)
 	{
 		warn("entity not found");
@@ -604,4 +311,3 @@ void FeedFile::SAX_error(FeedFile* file, const char *msg, ...)
 	for (char* pend = errMsg + strlen(errMsg) - 1; pend >= errMsg && (*pend == '\n' || *pend == '\r' || *pend == ' '); pend--) *pend = '\0';
 	error("Error parsing rss feed %s: %s", *file->m_infoName, errMsg);
 }
-#endif
