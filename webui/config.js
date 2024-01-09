@@ -218,10 +218,15 @@ var Options = (new function($)
 		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
 	}
 
+	this.loadExtensions = function()
+	{
+		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
+	}
+
 	function serverTemplateLoaded(data)
 	{
 		Options.serverTemplateData = data;
-		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
+		Options.loadExtensions();
 	}
 
 	function extensionsLoaded(data)
@@ -633,9 +638,9 @@ var Config = (new function($)
 	this.shown = function()
 	{
 		Options.loadConfig({
-			complete: buildPage,
-			configError: loadConfigError,
-			serverTemplateError: loadServerTemplateError
+			complete: Config.buildPage,
+			configError: Config.loadConfigError,
+			serverTemplateError: Config.loadServerTemplateError
 			});
 	}
 
@@ -647,7 +652,7 @@ var Config = (new function($)
 		$ConfigData.children().not('.config-static').remove();
 	}
 
-	function loadConfigError(message, resultObj)
+	this.loadConfigError = function(message, resultObj)
 	{
 		$('#ConfigLoadInfo').hide();
 		$('#ConfigLoadError').show();
@@ -658,7 +663,7 @@ var Config = (new function($)
 		$('#ConfigLoadErrorText').text(message);
 	}
 
-	function loadServerTemplateError()
+	this.loadServerTemplateError = function()
 	{
 		$('#ConfigLoadInfo').hide();
 		$('#ConfigLoadServerTemplateError').show();
@@ -1033,7 +1038,7 @@ var Config = (new function($)
 		return html;
 	}
 
-	function buildPage(_config)
+	this.buildPage = function(_config)
 	{
 		config = _config;
 
@@ -3211,6 +3216,7 @@ function Extension()
 	this.author = '';
 	this.homepage = '';
 	this.about = '';
+	this.url = '';
 	this.installed = false;
 	this.deleteConf = false;
 
@@ -3263,6 +3269,7 @@ var ExtensionManager = (new function($)
 					extension.homepage = ext.homepage;
 					extension.about = ext.about;
 					extension.name = ext.name;
+					extension.url = ext.url;
 					extension.installed = false;
 					extension.deleteConf = false;
 					remoteExtensions[extension.name] = extension;
@@ -3331,7 +3338,7 @@ var ExtensionManager = (new function($)
 
 		for (const extension of Object.values(extensions)) 
 		{
-			if (!allExtensions[extension.name])
+			if (!remoteExtensions[extension.name])
 			{
 				allExtensions.push(extension);
 			}
@@ -3342,35 +3349,46 @@ var ExtensionManager = (new function($)
 
 	this.downloadExtension = function(name)
 	{
-		console.warn(remoteExtensions[name])
-		// RPC.call('downloadextension', ['https://github.com/nzbgetcom/Extension-FailureLink/releases/download/v2.0/failurelink-2.0-dist.zip', 'Download ' + extName + ' extension.'], 
-		// 	(result) => {
-		// 		console.warn(result);
-		// 		//Options.update();
-		// 	},
-		// 	(error) =>
-		// 	{
-		// 		console.warn(error);
-		// 	}
-		// );
+		const extension = remoteExtensions[name];
+		RPC.call('downloadextension', [extension.url, 'Download ' + name + ' extension'], 
+			(result) => {
+				Options.loadConfig({
+					complete: (conf) => {
+						Options.update();
+						Config.buildPage(conf);
+						Config.showSection(ExtensionManager.Id, true);
+					},
+					configError: Config.loadConfigError,
+					serverTemplateError: Config.loadServerTemplateError,
+				});
+			},
+			(error) =>
+			{
+				console.error(error);
+			}
+		);
 	}
 
 	this.deleteExtension = function(name)
 	{
-		console.warn(extensions[name])
 		const extension = extensions[name];
 		RPC.call('deleteextension', [extension.name, extension.deleteConf], 
 			(_) => 
 			{
-				delete extensions[name];
-				ExtensionManager.update();
-				Options.serverTemplateData = Options.serverTemplateData.filter((templ) => templ['Name'] !== name);
-				Options.complete();
-				Config.showSection(ExtensionManager.Id, true);
+				Options.loadConfig({
+					complete: (conf) => {
+						Options.update();
+						Config.buildPage(conf);
+						Config.showSection(ExtensionManager.Id, true);
+					},
+					configError: Config.loadConfigError,
+					serverTemplateError: Config.loadServerTemplateError,
+				});
+				Options.update();
 			},
 			(error) => 
 			{
-				console.warn(error);
+				console.error(error);
 			}
 		);
 	}

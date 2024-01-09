@@ -37,13 +37,14 @@ namespace ExtensionManager
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
+		bool InstallExtension(const std::string& name);
 		bool LoadExtensions(const IOptions& options);
-		bool DeleteExtension(const std::string& name, bool withOptions, const IOptions& options);
+		bool DeleteExtension(const std::string& name, bool withOptions);
 		const Extensions& GetExtensions() const;
 
 	private:
 		void LoadExtensionDir(const char* directory, bool isSubDir);
-		void CreateTasks(const IOptions& options) const;
+		void CreateTasks() const;
 		Extensions::const_iterator GetByName(const std::string& name) const;
 		bool Exists(const std::string& name) const;
 		void Sort(const std::vector<std::string>& order);

@@ -20,6 +20,10 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
@@ -38,6 +42,7 @@ target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/queue
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/nntp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${ZLIB_INCLUDE_DIR}

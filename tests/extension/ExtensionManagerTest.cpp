@@ -32,6 +32,7 @@
 #include "Log.h"
 #include "DiskState.h"
 
+char* (*g_EnvironmentVariables)[] = nullptr;
 Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
@@ -119,7 +120,7 @@ BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
 	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
 	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
 
-	BOOST_REQUIRE(manager.DeleteExtension("email", false, options) == true);
+	BOOST_REQUIRE(manager.DeleteExtension("email", false) == true);
 	auto extIt = std::find_if(
 		std::begin(manager.GetExtensions()), 
 		std::end(manager.GetExtensions()),

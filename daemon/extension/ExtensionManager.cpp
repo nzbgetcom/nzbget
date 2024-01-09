@@ -23,6 +23,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 #include "NString.h"
+#include "Unpack.h"
 #include "ExtensionLoader.h"
 #include "ExtensionManager.h"
 
@@ -36,6 +37,27 @@ namespace ExtensionManager
 	const Extensions& Manager::GetExtensions() const
 	{
 		return m_extensions;
+	}
+
+	bool Manager::InstallExtension(const std::string& filename)
+	{
+		UnpackController unpacker;
+		std::string outputDir = std::string("-o") + g_Options->GetScriptDir();
+		UnpackController::ArgList args = {
+			g_Options->GetSevenZipCmd(),
+			"x",
+			filename.c_str(),
+			outputDir.c_str(),
+		};
+		unpacker.SetArgs(std::move(args));
+		int res = unpacker.Execute();
+		if (res == 0)
+		{
+			FileSystem::DeleteFile(filename.c_str());
+			return true;
+		}
+		
+		return false;
 	}
 
 	bool Manager::LoadExtensions(const IOptions& options)
@@ -60,13 +82,13 @@ namespace ExtensionManager
 		}
 
 		Sort(extensionOrder);
-		CreateTasks(options);
+		CreateTasks();
 		m_extensions.shrink_to_fit();
 
 		return true;
 	}
 
-	bool Manager::DeleteExtension(const std::string& name, bool withOptions, const IOptions& options)
+	bool Manager::DeleteExtension(const std::string& name, bool withOptions)
 	{
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
@@ -138,7 +160,7 @@ namespace ExtensionManager
 		}
 	}
 
-	void Manager::CreateTasks(const IOptions& options) const
+	void Manager::CreateTasks() const
 	{
 		for (const Extension& extension : m_extensions)
 		{

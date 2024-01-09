@@ -2726,7 +2726,7 @@ void LoadExtensionsXmlCommand::Execute()
 
 	AppendResponse(isJson ? "\n]" : "</data></array>\n");
 }
-#include "Unpack.h"
+
 void DownloadExtensionXmlCommand::Execute()
 {
 	char* url;
@@ -2750,7 +2750,7 @@ void DownloadExtensionXmlCommand::Execute()
 	int num = 1;
 	while (num == 1 || FileSystem::FileExists(tempFileName))
 	{
-		tempFileName.Format("%s%creadurl-%i.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, num);
+		tempFileName.Format("%s%cextension-%i.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, num);
 		num++;
 	}
 
@@ -2778,15 +2778,7 @@ void DownloadExtensionXmlCommand::Execute()
 		BuildErrorResponse(3, "Could not download extension");
 	}
 
-	UnpackController up;
-	UnpackController::ArgList al;
-	al.push_back(g_Options->GetSevenZipCmd());
-	al.push_back("x");
-	al.push_back(*tempFileName);
-	al.push_back("-o");
-	al.push_back(g_Options->GetScriptDir());
-	up.SetArgs(std::move(al));
-	//FileSystem::DeleteFile(tempFileName);
+	g_ExtensionManager->InstallExtension(*tempFileName);
 }
 
 void DeleteExtensionXmlCommand::Execute()
@@ -2794,34 +2786,31 @@ void DeleteExtensionXmlCommand::Execute()
 	char* extensionName;
 	bool shouldDeleteConf = false;
 
+	std::string errMsg = "Couldn't delete an extension. ";
 	if (!NextParamAsStr(&extensionName))
 	{
-			std::string errorMsg = "Could not delete the \"";
-			errorMsg += extensionName;
-			errorMsg += "\" extension";
-			BuildErrorResponse(3, errorMsg.c_str());
-			return;
+		errMsg += "Extension name was't passed";
+		BuildErrorResponse(1, errMsg.c_str());
+		return;
 	}
 
 	if (!NextParamAsBool(&shouldDeleteConf))
 	{
-			std::string errorMsg = "Could not delete the \"";
-			errorMsg += extensionName;
-			errorMsg += "\" extension";
-			BuildErrorResponse(3, errorMsg.c_str());
-			return;
+		errMsg += "`Delete conf` bool arg wasn't passed";
+		BuildErrorResponse(1, errMsg.c_str());
+		return;
 	}
-	if (g_ExtensionManager->DeleteExtension(extensionName, shouldDeleteConf, *g_Options))
+	if (g_ExtensionManager->DeleteExtension(extensionName, shouldDeleteConf))
 	{
 		BuildBoolResponse(true);
 		return;
 	}
 	else
 	{
-		std::string errorMsg = "Could not delete the \"";
-		errorMsg += extensionName;
-		errorMsg += "\" extension";
-		BuildErrorResponse(3, errorMsg.c_str());
+		errMsg += "The extension '";
+		errMsg += extensionName;
+		errMsg += "' was not found";
+		BuildErrorResponse(1, errMsg.c_str());
 		return;
 	}
 }
