@@ -3438,7 +3438,7 @@ var ExtensionManager = (new function($)
 	function getUpdateBtn(ext)
 	{
 		const container = $('<div class="flex-row">')
-		const btn = $('<button type="button" class="btn btn-warn">Update</button>')
+		const btn = $('<button type="button" class="btn btn-primary">Update</button>')
 			.on('click', () => ExtensionManager.updateExtension(ext.name));
 		container.append(btn);
 		return container;
