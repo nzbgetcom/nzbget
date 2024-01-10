@@ -3405,7 +3405,7 @@ var ExtensionManager = (new function($)
 	{
 		if (ext.installed && ext.outdated)
 		{
-			return getUpdateBtn(ext);
+			return getUpdateBtn(ext).append(getDeleteBtn(ext));
 		}
 
 		if (ext.installed)
@@ -3437,8 +3437,10 @@ var ExtensionManager = (new function($)
 
 	function getUpdateBtn(ext)
 	{
+		const container = $('<div class="flex-row">')
 		const btn = $('<button type="button" class="btn btn-warn">Update</button>')
 			.on('click', () => ExtensionManager.updateExtension(ext.name));
-		return btn;
+		container.append(btn);
+		return container;
 	}
 }(jQuery))
