@@ -3218,6 +3218,7 @@ function Extension()
 	this.about = '';
 	this.url = '';
 	this.installed = false;
+	this.outdated = false;
 	this.deleteConf = false;
 
 	this.deleteConfToggle = function()
@@ -3295,9 +3296,7 @@ var ExtensionManager = (new function($)
 		extensionsSection.empty();
 
 		allExtensions.forEach((ext, i) => {
-			const btn = ext.installed 
-				? getDeleteBtn(ext)
-				: getDownloadBtn(ext);
+			const actionBtn = getActionBtn(ext);
 
 			const container = $('<div></div>');
 			const ctrlsContainer = $('<div class="controls"></div>');
@@ -3307,7 +3306,7 @@ var ExtensionManager = (new function($)
 				.append('<p><strong>Author: </strong>' + ext.author + '</p>')
 				.append('<p><strong>Version: </strong>' + ext.version + '</p>')
 				.append('<p><strong>Homepage: </strong>' + '<a href="' + ext.homepage + '" target="_blank">' + ext.homepage + '</a>' + '</p>')
-				.append(btn);
+				.append(actionBtn);
 				
 			if (i < allExtensions.length - 1)
 			{
@@ -3328,6 +3327,10 @@ var ExtensionManager = (new function($)
 		{
 			if (extensions[extension.name])
 			{
+				if (extensions[extension.name].version !== extension.version)
+				{
+					extensions[extension.name].outdated = true;	
+				}
 				allExtensions.push(extensions[extension.name]);
 			}
 			else
@@ -3369,6 +3372,11 @@ var ExtensionManager = (new function($)
 		);
 	}
 
+	this.updateExtension = function(name)
+	{
+		this.downloadExtension(name);
+	}
+
 	this.deleteExtension = function(name)
 	{
 		const extension = extensions[name];
@@ -3393,6 +3401,21 @@ var ExtensionManager = (new function($)
 		);
 	}
 
+	function getActionBtn(ext)
+	{
+		if (ext.installed && ext.outdated)
+		{
+			return getUpdateBtn(ext);
+		}
+
+		if (ext.installed)
+		{
+			return getDeleteBtn(ext);
+		}
+
+		return getDownloadBtn(ext);
+	}
+
 	function getDeleteBtn(ext)
 	{
 		const container = $('<div class="flex-row">')
@@ -3409,6 +3432,13 @@ var ExtensionManager = (new function($)
 	{
 		const btn = $('<button type="button" class="btn btn-primary">Download</button>')
 			.on('click', () => ExtensionManager.downloadExtension(ext.name));
+		return btn;
+	}
+
+	function getUpdateBtn(ext)
+	{
+		const btn = $('<button type="button" class="btn btn-warn">Update</button>')
+			.on('click', () => ExtensionManager.updateExtension(ext.name));
 		return btn;
 	}
 }(jQuery))

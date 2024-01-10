@@ -40,6 +40,7 @@ namespace ExtensionManager
 		bool InstallExtension(const std::string& name);
 		bool LoadExtensions(const IOptions& options);
 		bool DeleteExtension(const std::string& name, bool withOptions);
+		void DeleteAllExtensions();
 		const Extensions& GetExtensions() const;
 
 	private:

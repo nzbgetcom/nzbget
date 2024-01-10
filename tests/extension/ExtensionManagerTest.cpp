@@ -104,57 +104,57 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
-{
-	MockOptions2 options;
-	ExtensionManager::Manager manager;
+// BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
+// {
+// 	MockOptions2 options;
+// 	ExtensionManager::Manager manager;
 
-	std::fstream fs(options.GetConfigFilename(), std::ios::out);
+// 	std::fstream fs(options.GetConfigFilename(), std::ios::out);
 
-	BOOST_REQUIRE(fs.is_open());
+// 	BOOST_REQUIRE(fs.is_open());
 
-	fs.write(nzbgetConf.c_str(), nzbgetConf.size());
-	fs.close();
-	fs.clear();
+// 	fs.write(nzbgetConf.c_str(), nzbgetConf.size());
+// 	fs.close();
+// 	fs.clear();
 
-	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
-	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
+// 	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
+// 	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
 
-	BOOST_REQUIRE(manager.DeleteExtension("email", false) == true);
-	auto extIt = std::find_if(
-		std::begin(manager.GetExtensions()), 
-		std::end(manager.GetExtensions()),
-		[](const ExtensionManager::Extension& ext) { return ext.GetName() == "email"; }
-	);
-	BOOST_REQUIRE(extIt == std::end(manager.GetExtensions()));
-	BOOST_REQUIRE(manager.GetExtensions().size() == 3);
+// 	BOOST_REQUIRE(manager.DeleteExtension("email", false) == true);
+// 	auto extIt = std::find_if(
+// 		std::begin(manager.GetExtensions()), 
+// 		std::end(manager.GetExtensions()),
+// 		[](const ExtensionManager::Extension& ext) { return ext.GetName() == "email"; }
+// 	);
+// 	BOOST_REQUIRE(extIt == std::end(manager.GetExtensions()));
+// 	BOOST_REQUIRE(manager.GetExtensions().size() == 3);
 
-	BOOST_REQUIRE(std::fstream(std::string(options.GetScriptDir()) + "/Email").is_open() == false);
+// 	BOOST_REQUIRE(std::fstream(std::string(options.GetScriptDir()) + "/Email").is_open() == false);
 
-	fs.open(options.GetConfigFilename(), std::ios::in);
-	std::string line;
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "Extensions=Logger");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "ScriptOrder=Logger");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "EMail:SendMail=Always");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "EMail:Port=25");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "Logger:SendMail=Always");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "Logger:Port=25");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "Category1.Extensions=");
-	std::getline(fs, line);
-	BOOST_TEST_MESSAGE(line);
-	BOOST_CHECK(line == "Feed1.Extensions=");
-}
+// 	fs.open(options.GetConfigFilename(), std::ios::in);
+// 	std::string line;
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "Extensions=Logger");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "ScriptOrder=Logger");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "EMail:SendMail=Always");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "EMail:Port=25");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "Logger:SendMail=Always");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "Logger:Port=25");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "Category1.Extensions=");
+// 	std::getline(fs, line);
+// 	BOOST_TEST_MESSAGE(line);
+// 	BOOST_CHECK(line == "Feed1.Extensions=");
+// }

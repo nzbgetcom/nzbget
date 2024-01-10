@@ -2699,13 +2699,19 @@ void LoadExtensionsXmlCommand::Execute()
 {
 	bool loadFromDisk = false;
 	bool isJson = IsJson();
-	NextParamAsBool(&loadFromDisk);
+
+	if (!NextParamAsBool(&loadFromDisk))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Load from disk)");
+		return;
+	}
 
 	if (loadFromDisk)
 	{
+		g_ExtensionManager->DeleteAllExtensions();
 		if (!g_ExtensionManager->LoadExtensions(*g_Options))
 		{
-			BuildErrorResponse(3, "Could not load extensions");
+			BuildErrorResponse(3, "Couldn't load extensions");
 			return;
 		}	
 	}
@@ -2767,37 +2773,37 @@ void DownloadExtensionXmlCommand::Execute()
 
 	downloader.reset();
 
-	if (ok)
+	if (!ok)
 	{
-		CharBuffer fileContent;
-		FileSystem::LoadFileIntoBuffer(tempFileName, fileContent, true);
-		BuildBoolResponse(true);
-	}
-	else
-	{
-		BuildErrorResponse(3, "Could not download extension");
+		BuildErrorResponse(3, "Couldn't download extension");
+		return;
 	}
 
-	g_ExtensionManager->InstallExtension(*tempFileName);
+	CharBuffer fileContent;
+	FileSystem::LoadFileIntoBuffer(tempFileName, fileContent, true);
+
+	if (g_ExtensionManager->InstallExtension(*tempFileName))
+	{
+		BuildBoolResponse(true);
+		return;
+	}
+
+	BuildErrorResponse(3, "Couldn't install extension");
 }
 
 void DeleteExtensionXmlCommand::Execute()
 {
 	char* extensionName;
 	bool shouldDeleteConf = false;
-
-	std::string errMsg = "Couldn't delete an extension. ";
 	if (!NextParamAsStr(&extensionName))
 	{
-		errMsg += "Extension name was't passed";
-		BuildErrorResponse(1, errMsg.c_str());
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
 		return;
 	}
 
 	if (!NextParamAsBool(&shouldDeleteConf))
 	{
-		errMsg += "`Delete conf` bool arg wasn't passed";
-		BuildErrorResponse(1, errMsg.c_str());
+		BuildErrorResponse(2, "Invalid parameter (Delete conf)");
 		return;
 	}
 	if (g_ExtensionManager->DeleteExtension(extensionName, shouldDeleteConf))
@@ -2807,10 +2813,7 @@ void DeleteExtensionXmlCommand::Execute()
 	}
 	else
 	{
-		errMsg += "The extension '";
-		errMsg += extensionName;
-		errMsg += "' was not found";
-		BuildErrorResponse(1, errMsg.c_str());
+		BuildErrorResponse(3, "Couldn't delete extension");
 		return;
 	}
 }

@@ -48,6 +48,7 @@ namespace ExtensionManager
 			"x",
 			filename.c_str(),
 			outputDir.c_str(),
+			"-y",
 		};
 		unpacker.SetArgs(std::move(args));
 		int res = unpacker.Execute();
@@ -254,5 +255,10 @@ namespace ExtensionManager
 				return ext.GetName() == name;
 			}
 		);
+	}
+
+	void Manager::DeleteAllExtensions()
+	{
+		m_extensions.clear();
 	}
 }
