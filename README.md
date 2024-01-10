@@ -41,6 +41,7 @@ Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
 ## Migration from older NZBGet versions
 
 [Migrating from NZBGet v21 or older](https://github.com/nzbgetcom/nzbget/discussions/100#discussioncomment-8080102) 
+
 [Migrating from older Docker images](https://github.com/nzbgetcom/nzbget/issues/84#issuecomment-1884846500)
 
 ## Supported platforms for installers
