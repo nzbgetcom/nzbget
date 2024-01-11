@@ -3,6 +3,7 @@
 
 if [ "$wizard_keep_data" != "true" ]; then
     rm $CFG
+    rm $SYNOPKG_PKGVAR/*
 fi
 
 exit 0
