@@ -310,7 +310,7 @@ void ScriptController::PrepareCmdLine(const char* extension)
 {
 	*m_cmdLine = '\0';
 	m_cmdArgs.clear();
-	if (m_args.size() == 1)
+	if (extension && m_args.size() == 1)
 	{
 		if (strcmp(extension, ".py") == 0)
 		{
@@ -353,8 +353,6 @@ void ScriptController::PrepareCmdLine(const char* extension)
 				return;
 			}
 		}
-		warn("Could not find associated program for %s. Trying to execute %s directly",
-			extension, FileSystem::BaseFileName(m_args[0]));
 		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
 		return;
 	}
