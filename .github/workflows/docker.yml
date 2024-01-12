@@ -5,6 +5,7 @@ on:
     branches:
     - develop
     - main
+    - bugfix/docker-disable-oci-mediatypes
     tags:
     - v*
 
@@ -68,7 +69,7 @@ jobs:
         provenance: false
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
-        outputs: "type=image,name=${{ env.REGISTRY_IMAGE }},annotation-index.org.opencontainers.image.description=NZBGet from nzbget.com - version ${{ steps.gen_tags.outputs.version }}"
+        outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},annotation-index.org.opencontainers.image.description=NZBGet from nzbget.com - version ${{ steps.gen_tags.outputs.version }}"
         build-args: |
           "NZBGET_RELEASE=${{ github.ref_name }}"
           "MAKE_JOBS=2"
