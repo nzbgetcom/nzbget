@@ -316,21 +316,21 @@ void ScriptController::PrepareCmdLine(const char* extension)
 		{
 			if (std::system("python3 --version > /dev/null 2>&1") == 0)
 			{
-				strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
+				strncpy(m_cmdLine, "python3", sizeof(m_cmdLine) - 1);
 				m_cmdArgs.emplace_back("python3");
 				debug("CmdLine: %s", m_cmdLine);
 				return;
 			}
 			if (std::system("python --version > /dev/null 2>&1") == 0)
 			{
-				strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
+				strncpy(m_cmdLine, "python", sizeof(m_cmdLine) - 1);
 				m_cmdArgs.emplace_back("python");
 				debug("CmdLine: %s", m_cmdLine);
 				return;
 			}
 			if (std::system("py --version > /dev/null 2>&1") == 0)
 			{
-				strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
+				strncpy(m_cmdLine, "py", sizeof(m_cmdLine) - 1);
 				m_cmdArgs.emplace_back("py");
 				debug("CmdLine: %s", m_cmdLine);
 				return;
@@ -340,25 +340,25 @@ void ScriptController::PrepareCmdLine(const char* extension)
 		{
 			if (std::system("bash --version > /dev/null 2>&1") == 0)
 			{
-				strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
+				strncpy(m_cmdLine, "bash", sizeof(m_cmdLine) - 1);
 				m_cmdArgs.emplace_back("bash");
 				debug("CmdLine: %s", m_cmdLine);
 				return;
 			}
 			if (std::system("sh --version > /dev/null 2>&1") == 0)
 			{
-				strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
+				strncpy(m_cmdLine, "sh", sizeof(m_cmdLine) - 1);
 				m_cmdArgs.emplace_back("sh");
 				debug("CmdLine: %s", m_cmdLine);
 				return;
 			}
 		}
-		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);
 		return;
 	}
 	else
 	{
-		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);
 	}
 }
 #endif
