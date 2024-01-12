@@ -54,7 +54,13 @@ Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
 
 ## Building from sources
 
-Please follow [instructions](https://nzbget.com/documentation/building-development-version/) on the website 
+[General instructions](INSTALLATION.md)
+
+[Linux cross-compiling / buildroot](linux/build-info.txt)
+
+[macOS](osx/build-info.md)
+
+[Synology](synology/build-info.md)
 
 ## Contribution
 
