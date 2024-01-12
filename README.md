@@ -56,7 +56,7 @@ Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
 
 [General instructions](INSTALLATION.md)
 
-[Linux cross-compiling / buildroot](linux/build-info.txt)
+[Linux cross-compiling / buildroot](linux/build-info.md)
 
 [macOS](osx/build-info.md)
 
