@@ -1841,6 +1841,11 @@ var Config = (new function($)
 			}
 		}
 
+		if (!webSettings)
+		{
+			addSavedSettingsOfDeletedExtensions(request);
+		}
+
 		return modified || (!onlyUserChanges && invalidOptionsExist()) || restored ? request : [];
 	}
 
@@ -1876,6 +1881,20 @@ var Config = (new function($)
 			// only web-settings were changed, refresh page
 			document.location.reload(true);
 		}
+	}
+
+	function addSavedSettingsOfDeletedExtensions(request)
+	{
+		config.values.forEach((val) =>
+		{
+			const extName = val.Name.split(":")[0];
+			const alreadyExist = request.find((opt) => opt.Name === val.Name);
+			if (!alreadyExist && ExtensionManager.getRemoteExtensions()[extName])
+			{
+				const extraOpt = { Name: val.Name, Value: val.Value };
+				request.push(extraOpt);
+			}
+		});
 	}
 
 	function showSaveBanner()
@@ -3237,6 +3256,11 @@ var ExtensionManager = (new function($)
 	let extensions = {};
 	let remoteExtensions = {};
 
+	this.getRemoteExtensions = function()
+	{
+		return remoteExtensions;
+	}
+
 	this.setExtensions = function(exts)
 	{
 		extensions = {};
@@ -3350,10 +3374,9 @@ var ExtensionManager = (new function($)
 		return allExtensions;
 	}
 
-	this.downloadExtension = function(name)
+	this.downloadExtension = function(ext)
 	{
-		const extension = remoteExtensions[name];
-		RPC.call('downloadextension', [extension.url, 'Download ' + name + ' extension'], 
+		RPC.call('downloadextension', [ext.url, 'Download ' + ext.name + ' extension'], 
 			(result) => {
 				Options.loadConfig({
 					complete: (conf) => {
@@ -3372,33 +3395,68 @@ var ExtensionManager = (new function($)
 		);
 	}
 
-	this.updateExtension = function(name)
+	this.updateExtension = function(ext)
 	{
-		this.downloadExtension(name);
+		this.downloadExtension(ext);
 	}
 
-	this.deleteExtension = function(name)
+	this.deleteExtension = function(ext)
 	{
-		const extension = extensions[name];
-		RPC.call('deleteextension', [extension.name, extension.deleteConf], 
+		if (ext.deleteConf)
+		{
+			deleteSettings(ext.name);
+		}
+		deleteGlobalSettings(ext.name);
+
+		RPC.call('deleteextension', [ext.name, ext.deleteConf], 
 			(_) => 
 			{
-				Options.loadConfig({
-					complete: (conf) => {
-						Options.update();
-						Config.buildPage(conf);
-						Config.showSection(ExtensionManager.Id, true);
-					},
-					configError: Config.loadConfigError,
-					serverTemplateError: Config.loadServerTemplateError,
+				RPC.call('saveconfig', [Config.config().values], (res) => 
+				{
+					Options.loadConfig({
+						complete: (conf) => {
+							Options.update();
+							Config.buildPage(conf);
+							Config.showSection(ExtensionManager.Id, true);
+						},
+						configError: Config.loadConfigError,
+						serverTemplateError: Config.loadServerTemplateError,
+					});
 				});
-				Options.update();
 			},
 			(error) => 
 			{
 				console.error(error);
 			}
 		);
+	}
+
+	function deleteGlobalSettings(extName)
+	{
+		const values = Config.config().values;
+		values.forEach((value, i) =>
+		{
+			if (value.Name == "Extensions" || 
+				value.Name == "ScriptOrder" ||
+				value.Name.match(/(Feed)\d+.Extensions/i) ||
+				value.Name.match(/(Category)\d+.Extensions/i))
+			{
+				values[i].Value = value.Value.split(", ").filter((name) => name !== extName).join(", ");
+			}
+		});
+	}
+
+	function deleteSettings(extName)
+	{
+		const values = Config.config().values;
+		values.forEach((value, i) =>
+		{
+			if (value.Name.startsWith(extName + ":"))
+			{
+				values[i] = null;
+			}
+		});
+		Config.config().values = values.filter(Boolean);
 	}
 
 	function getActionBtn(ext)
@@ -3420,7 +3478,7 @@ var ExtensionManager = (new function($)
 	{
 		const container = $('<div class="flex-row">')
 		const btn = $('<button type="button" class="btn btn-danger"">Delete</button>')
-			.on('click', () => ExtensionManager.deleteExtension(ext.name));
+			.on('click', () => ExtensionManager.deleteExtension(ext));
 		const label = $('<label class="checkbox"><input type="checkbox" /> Delete configuration options</label></div>')
 			.on('click', () => ext.deleteConfToggle());
 		container.append(btn);
@@ -3431,7 +3489,7 @@ var ExtensionManager = (new function($)
 	function getDownloadBtn(ext)
 	{
 		const btn = $('<button type="button" class="btn btn-primary">Download</button>')
-			.on('click', () => ExtensionManager.downloadExtension(ext.name));
+			.on('click', () => ExtensionManager.downloadExtension(ext));
 		return btn;
 	}
 
@@ -3439,7 +3497,7 @@ var ExtensionManager = (new function($)
 	{
 		const container = $('<div class="flex-row">')
 		const btn = $('<button type="button" class="btn btn-primary">Update</button>')
-			.on('click', () => ExtensionManager.updateExtension(ext.name));
+			.on('click', () => ExtensionManager.updateExtension(ext));
 		container.append(btn);
 		return container;
 	}

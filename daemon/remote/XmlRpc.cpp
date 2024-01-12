@@ -2806,6 +2806,7 @@ void DeleteExtensionXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid parameter (Delete conf)");
 		return;
 	}
+
 	if (g_ExtensionManager->DeleteExtension(extensionName, shouldDeleteConf))
 	{
 		BuildBoolResponse(true);
