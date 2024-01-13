@@ -2,9 +2,9 @@
 FROM alpine:3.18.4 AS build
 
 # args
-ARG NZBGET_RELEASE=develop
+ARG NZBGET_RELEASE=v22.0
 ARG UNRAR_VERSION=6.2.12
-ARG MAKE_JOBS=1
+ARG MAKE_JOBS=32
 
 RUN \
   echo "**** install build packages ****" && \
@@ -58,8 +58,22 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 && \
+  apk add --no-cache --update shadow libxml2 libxslt openjdk17-jre-headless openssl p7zip py3-pip python3 && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
+  echo "**** install python packages ****" && \
+  pip3 install --no-cache-dir -U \
+    pip \
+    wheel && \
+  pip install --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.18/ \
+    apprise \
+    beets \
+    chardet \
+    jellyfish==0.10.0 \
+    lxml \
+    py7zr \
+    pynzbget \
+    rarfile \
+    six && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
 COPY --from=build /usr/bin/unrar /usr/bin/unrar
