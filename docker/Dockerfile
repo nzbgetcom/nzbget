@@ -58,7 +58,7 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update gcc shadow libxml2 libxslt musl-dev openjdk17-jre-headless openssl p7zip py3-pip python3 python3-dev && \
+  apk add --no-cache --update build-base gcc shadow libxml2 libxslt linux-headers musl-dev openjdk17-jre-headless openssl p7zip py3-pip python3 python3-dev && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** install python packages ****" && \
   pip3 install --no-cache-dir -U \
