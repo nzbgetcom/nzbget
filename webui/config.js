@@ -1089,7 +1089,7 @@ var Config = (new function($)
 		}
 
 		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + ExtensionManager.Id + '">' + 'EXTENSION MANAGER' + '</a></li>')
+		$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>')
 
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
@@ -1308,7 +1308,7 @@ var Config = (new function($)
 			return;
 		}
 
-		if (sectionId === ExtensionManager.Id)
+		if (sectionId === ExtensionManager.id)
 		{
 			$ConfigData.children().hide();
 			markLastControlGroup();
@@ -3242,6 +3242,7 @@ function Extension()
 
 	this.deleteConfToggle = function()
 	{
+		console.warn("Toggle")
 		this.deleteConf = !this.deleteCon;
 	}
 }
@@ -3250,7 +3251,9 @@ var ExtensionManager = (new function($)
 {
 	'use strict'
 
-	this.Id = 'extension-manager';
+	this.id = 'extension-manager';
+	this.table = 'ExtensionManagerTable';
+	this.tbody = 'ExtensionManagerTBody';
 	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/feature/extensions.json/extensions.json';
 
 	let extensions = {};
@@ -3316,32 +3319,27 @@ var ExtensionManager = (new function($)
 	this.render = function()
 	{
 		const allExtensions = this.getAllExtensions();
-		const extensionsSection = $('.' + this.Id);
-		extensionsSection.empty();
+		const section = $('.' + this.id);
+		const table = $('#' + this.table);
+		const tbody = $('#' + this.tbody);
+		tbody.empty();
 
 		allExtensions.forEach((ext, i) => {
-			const actionBtn = getActionBtn(ext);
+			const actionBtnsTd = $('<td class="extension-manager__td"></td>');
+			const actionBtns = getActionBtns(ext);
+			actionBtnsTd.append(actionBtns);
+			const raw = $('<tr></tr>')
+				.append('<td class="extension-manager__td text-center">' + ext.displayName + '</td>')
+				.append('<td class="extension-manager__td">' + ext.about + '</td>')
+				.append('<td class="extension-manager__td text-center">' + ext.version + '</td>')
+				.append('<td class="extension-manager__td text-center">' + '<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>' + '</td>')
+				.append(actionBtnsTd);
 
-			const container = $('<div></div>');
-			const ctrlsContainer = $('<div class="controls"></div>');
-			ctrlsContainer
-				.append('<div class="controls"></div>')
-				.append('<p><strong>About: </strong>' + ext.about + '</p>')
-				.append('<p><strong>Author: </strong>' + ext.author + '</p>')
-				.append('<p><strong>Version: </strong>' + ext.version + '</p>')
-				.append('<p><strong>Homepage: </strong>' + '<a href="' + ext.homepage + '" target="_blank">' + ext.homepage + '</a>' + '</p>')
-				.append(actionBtn);
-				
-			if (i < allExtensions.length - 1)
-			{
-				ctrlsContainer.append('<hr></hr>');
-			}
-
-			container.append('<label class="label label-info h4 nowrap">' + ext.displayName +'</label>');
-			container.append(ctrlsContainer);
-			extensionsSection.append(container);
+			tbody.append(raw);
 		});
-		extensionsSection.show();
+		table.append(tbody);
+		section.append(table);
+		section.show();
 	}
 
 	this.getAllExtensions = function()
@@ -3353,8 +3351,9 @@ var ExtensionManager = (new function($)
 			{
 				if (extensions[extension.name].version !== extension.version)
 				{
-					extensions[extension.name].outdated = true;	
+					extensions[extension.name].outdated = true;
 				}
+				extensions[extension.name].url = extension.url;
 				allExtensions.push(extensions[extension.name]);
 			}
 			else
@@ -3370,7 +3369,7 @@ var ExtensionManager = (new function($)
 				allExtensions.push(extension);
 			}
 		}
-		allExtensions.sort((a, b) => a.installed - b.installed);
+		allExtensions.sort((a, b) => (a.installed - b.installed) - (a.outdated - b.outdated));
 		return allExtensions;
 	}
 
@@ -3382,7 +3381,7 @@ var ExtensionManager = (new function($)
 					complete: (conf) => {
 						Options.update();
 						Config.buildPage(conf);
-						Config.showSection(ExtensionManager.Id, true);
+						Config.showSection(ExtensionManager.id, true);
 					},
 					configError: Config.loadConfigError,
 					serverTemplateError: Config.loadServerTemplateError,
@@ -3417,7 +3416,7 @@ var ExtensionManager = (new function($)
 						complete: (conf) => {
 							Options.update();
 							Config.buildPage(conf);
-							Config.showSection(ExtensionManager.Id, true);
+							Config.showSection(ExtensionManager.id, true);
 						},
 						configError: Config.loadConfigError,
 						serverTemplateError: Config.loadServerTemplateError,
@@ -3459,7 +3458,7 @@ var ExtensionManager = (new function($)
 		Config.config().values = values.filter(Boolean);
 	}
 
-	function getActionBtn(ext)
+	function getActionBtns(ext)
 	{
 		if (ext.installed && ext.outdated)
 		{
@@ -3476,27 +3475,31 @@ var ExtensionManager = (new function($)
 
 	function getDeleteBtn(ext)
 	{
-		const container = $('<div class="flex-row">')
-		const btn = $('<button type="button" class="btn btn-danger"">Delete</button>')
+		const container = $('<div class="flex-row"></div>')
+		const btn = $('<button type="button" class="btn btn-danger" title="Delete"><i class="icon-trash-white"></i></button>')
 			.on('click', () => ExtensionManager.deleteExtension(ext));
-		const label = $('<label class="checkbox"><input type="checkbox" /> Delete configuration options</label></div>')
+		const label = $('<label class="checkbox"><input type="checkbox" />Delete configuration options</label>')
 			.on('click', () => ext.deleteConfToggle());
-		container.append(btn);
-		container.append(label);
+		container
+		 	.append(btn)
+		 	.append(label);
+		
 		return container;
 	}
 
 	function getDownloadBtn(ext)
 	{
-		const btn = $('<button type="button" class="btn btn-primary">Download</button>')
-			.on('click', () => ExtensionManager.downloadExtension(ext));
-		return btn;
+		const container = $('<div class="flex-row"></div>')
+		const btn = $('<button type="button" class="btn btn-primary" title="Download"><img src="img/download-16.ico"></button>')
+			btn.on('click', () => ExtensionManager.downloadExtension(ext));
+		container.append(btn);
+		return container;
 	}
 
 	function getUpdateBtn(ext)
 	{
-		const container = $('<div class="flex-row">')
-		const btn = $('<button type="button" class="btn btn-primary">Update</button>')
+		const container = $('<div class="flex-row"></div>')
+		const btn = $('<button type="button" class="btn btn-info" title="Update"><i class="icon-refresh"></i></button>')
 			.on('click', () => ExtensionManager.updateExtension(ext));
 		container.append(btn);
 		return container;

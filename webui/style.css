@@ -22,10 +22,18 @@ body {
 	padding-right: 0;
 }
 
+/* EXTENSION MANAGER */
 .flex-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 10px;
+}
+
+.extension-manager__td {
+	vertical-align: middle !important;
+	font-weight: bold;
+	max-width: 350px;
 }
 
 /* NAVBAR */
