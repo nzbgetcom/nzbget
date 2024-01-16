@@ -36,7 +36,7 @@ Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget
 
 We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
 
-Synology DSM 7.x packages also available. [Synology readme](synology/README.md)
+Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
 
 ## Migration from older NZBGet versions
 
