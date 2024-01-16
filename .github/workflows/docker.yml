@@ -42,16 +42,6 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Cleanup ghcr.io from outdated images
-      uses: miklinux/ghcr-cleanup-action@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        package-owner: nzbgetcom
-        package-name: nzbget
-        keep-versions: 10
-        delete-orphans: true
-        dry-run: true
-
     # - name: Generate image tags
     #   id: gen_tags
     #   run: |
@@ -91,3 +81,12 @@ jobs:
     #     password: ${{ secrets.DOCKERHUB_TOKEN }}
     #     repository: ${{ env.REGISTRY_IMAGE }}
     #     readme-filepath: ./docker/README.md
+
+    - name: Cleanup ghcr.io from outdated images
+      uses: miklinux/ghcr-cleanup-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        package-owner: nzbgetcom
+        package-name: nzbget
+        delete-orphans: true
+        dry-run: false
