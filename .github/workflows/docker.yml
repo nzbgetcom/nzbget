@@ -48,7 +48,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         package-owner: nzbgetcom
         package-name: nzbget
-        keep-versions: -1
+        keep-versions: 10
         delete-orphans: true
         dry-run: true
 
