@@ -42,14 +42,14 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Prune old untaggged images
-      uses: vlaurin/action-ghcr-prune@main
+    - name: Cleanup ghcr.io from outdated images
+      uses: miklinux/ghcr-cleanup-action@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        organization: nzbgetcom
-        container: nzbget
+        package-owner: nzbgetcom
+        package-name: nzbget
+        delete-orphans: true
         dry-run: true
-        prune-untagged: true
 
     # - name: Generate image tags
     #   id: gen_tags
