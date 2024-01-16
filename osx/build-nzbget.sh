@@ -89,7 +89,7 @@ Make_tools()
 
 Make_OpenSSL_for_arm_and_x86()
 {
-    git clone --depth 1 --branch openssl-3.1.4 https://github.com/openssl/openssl.git ./tmp/openssl
+    git clone --depth 1 --branch openssl-3.1.2 https://github.com/openssl/openssl.git ./tmp/openssl
     cd tmp/openssl
     mkdir ./x86
     cd ./x86

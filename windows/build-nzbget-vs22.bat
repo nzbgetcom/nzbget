@@ -221,9 +221,6 @@ rem Hide certain options from web-interface settings page
 %SED% -e "s|DaemonUsername=.*|# DaemonUsername=|" -i %CONFFILE%
 %SED% -e "s|UMask=.*|# UMask=|" -i %CONFFILE%
 
-mkdir ..\distrib\NZBGet\scripts
-if errorlevel 1 goto BUILD_FAILED
-
 copy ..\..\image\* ..\distrib\NZBGet
 copy ..\..\image\32\* ..\distrib\NZBGet\32
 copy ..\..\image\64\* ..\distrib\NZBGet\64
