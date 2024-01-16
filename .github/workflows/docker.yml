@@ -42,42 +42,51 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Generate image tags
-      id: gen_tags
-      run: |
-        if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
-          TAG="testing"
-        fi
-        if [[ "$GITHUB_REF_NAME" == "main" ]]; then
-          TAG="latest"
-        fi
-        if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
-          TAG="${GITHUB_REF/refs\/tags\//}"
-        fi
-        if [[ "$TAG" == "" ]]; then
-          TAG="${GITHUB_REF_NAME/\//-}"
-        fi
-        TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
-        echo "tags=$TAGS" >> $GITHUB_OUTPUT
-        echo "version=$TAG" >> $GITHUB_OUTPUT
-    
-    - name: Build and push
-      uses: docker/build-push-action@v5
+    - name: Prune old untaggged images
+      uses: vlaurin/action-ghcr-prune@main
       with:
-        context: docker
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
-        provenance: false
-        push: true
-        tags: ${{ steps.gen_tags.outputs.tags }}
-        outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }}"
-        build-args: |
-          "NZBGET_RELEASE=${{ github.ref_name }}"
-          "MAKE_JOBS=2"
+        token: ${{ secrets.GITHUB_TOKEN }}
+        organization: nzbgetcom
+        container: nzbget
+        dry-run: true
+        prune-untagged: true
 
-    - name: Update Docker Hub Description
-      uses: peter-evans/dockerhub-description@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-        repository: ${{ env.REGISTRY_IMAGE }}
-        readme-filepath: ./docker/README.md
+    # - name: Generate image tags
+    #   id: gen_tags
+    #   run: |
+    #     if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
+    #       TAG="testing"
+    #     fi
+    #     if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+    #       TAG="latest"
+    #     fi
+    #     if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
+    #       TAG="${GITHUB_REF/refs\/tags\//}"
+    #     fi
+    #     if [[ "$TAG" == "" ]]; then
+    #       TAG="${GITHUB_REF_NAME/\//-}"
+    #     fi
+    #     TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
+    #     echo "tags=$TAGS" >> $GITHUB_OUTPUT
+    #     echo "version=$TAG" >> $GITHUB_OUTPUT
+    
+    # - name: Build and push
+    #   uses: docker/build-push-action@v5
+    #   with:
+    #     context: docker
+    #     platforms: linux/amd64,linux/arm64,linux/arm/v7
+    #     provenance: false
+    #     push: true
+    #     tags: ${{ steps.gen_tags.outputs.tags }}
+    #     outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }}"
+    #     build-args: |
+    #       "NZBGET_RELEASE=${{ github.ref_name }}"
+    #       "MAKE_JOBS=2"
+
+    # - name: Update Docker Hub Description
+    #   uses: peter-evans/dockerhub-description@v3
+    #   with:
+    #     username: ${{ secrets.DOCKERHUB_USERNAME }}
+    #     password: ${{ secrets.DOCKERHUB_TOKEN }}
+    #     repository: ${{ env.REGISTRY_IMAGE }}
+    #     readme-filepath: ./docker/README.md
