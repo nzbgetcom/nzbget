@@ -88,7 +88,7 @@ namespace ExtensionManager
 		return true;
 	}
 
-	bool Manager::DeleteExtension(const std::string& name, bool withOptions)
+	bool Manager::DeleteExtension(const std::string& name)
 	{
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))

@@ -3411,7 +3411,7 @@ var ExtensionManager = (new function($)
 		deleteGlobalSettings(ext.name);
 
 		disableDeleteBtn(ext, true);
-		RPC.call('deleteextension', [ext.name, ext.deleteConf], 
+		RPC.call('deleteextension', [ext.name], 
 			(_) => 
 			{
 				RPC.call('saveconfig', [Config.config().values], 
