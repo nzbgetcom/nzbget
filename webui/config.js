@@ -3242,7 +3242,6 @@ function Extension()
 
 	this.deleteConfToggle = function()
 	{
-		console.warn("Toggle")
 		this.deleteConf = !this.deleteCon;
 	}
 }
@@ -3284,6 +3283,8 @@ var ExtensionManager = (new function($)
 
 	this.downloadRemoteExtensions = function()
 	{
+		showLoadingBanner();
+		this.showSection();
 		RPC.call('readurl', [this.extensionsUrl, 'Download list of available extensions.'],
 			(data) =>
 			{
@@ -3302,11 +3303,14 @@ var ExtensionManager = (new function($)
 					extension.deleteConf = false;
 					remoteExtensions[extension.name] = extension;
 				});
+				removeLoadingBanner();
+				this.hideSection();
 				this.render(this.getAllExtensions());
 			},
 			(error) => 
 			{
-				console.error(error);
+				hideLoadingBanner();
+				showErrorBanner("Couldn't download extensions", error);
 			}
 		);
 	}
@@ -3369,33 +3373,32 @@ var ExtensionManager = (new function($)
 				allExtensions.push(extension);
 			}
 		}
-		allExtensions.sort((a, b) => (a.installed - b.installed) - (a.outdated - b.outdated));
+		allExtensions.sort((a, b) => (a.installed - b.installed));
 		return allExtensions;
 	}
 
 	this.downloadExtension = function(ext)
 	{
+		disableDownloadBtn(ext, true);
 		RPC.call('downloadextension', [ext.url, 'Download ' + ext.name + ' extension'], 
-			(result) => {
-				Options.loadConfig({
-					complete: (conf) => {
-						Options.update();
-						Config.buildPage(conf);
-						Config.showSection(ExtensionManager.id, true);
-					},
-					configError: Config.loadConfigError,
-					serverTemplateError: Config.loadServerTemplateError,
-				});
+			(_) => 
+			{
+				updatePage();
 			},
 			(error) =>
 			{
-				console.error(error);
+				disableUpdateBtn(ext, false);
+				disableDownloadBtn(ext, false);
+				disableDeleteBtn(ext, false);
+				showErrorBanner("Couldn't download " + ext.name, error);
 			}
 		);
 	}
 
 	this.updateExtension = function(ext)
 	{
+		disableUpdateBtn(ext, true);
+		disableDeleteBtn(ext, true);
 		this.downloadExtension(ext);
 	}
 
@@ -3407,27 +3410,50 @@ var ExtensionManager = (new function($)
 		}
 		deleteGlobalSettings(ext.name);
 
+		disableDeleteBtn(ext, true);
 		RPC.call('deleteextension', [ext.name, ext.deleteConf], 
 			(_) => 
 			{
-				RPC.call('saveconfig', [Config.config().values], (res) => 
+				RPC.call('saveconfig', [Config.config().values], 
+				(_) => 
 				{
-					Options.loadConfig({
-						complete: (conf) => {
-							Options.update();
-							Config.buildPage(conf);
-							Config.showSection(ExtensionManager.id, true);
-						},
-						configError: Config.loadConfigError,
-						serverTemplateError: Config.loadServerTemplateError,
-					});
-				});
+					updatePage();
+				}),
+				(error) => 
+				{
+					disableDeleteBtn(ext, false);
+					showErrorBanner("Couldn't save the config", error);
+				}
 			},
 			(error) => 
 			{
-				console.error(error);
+				disableDeleteBtn(ext, false);
+				showErrorBanner("Couldn't delete " + ext.name, error);
 			}
 		);
+	}
+
+	this.showSection = function()
+	{
+		$('.' + this.id).show();
+	}
+
+	this.hideSection = function()
+	{
+		$('.' + this.id).hide();
+	}
+
+	function updatePage()
+	{
+		Options.loadConfig({
+			complete: (conf) => {
+				Options.update();
+				Config.buildPage(conf);
+				Config.showSection(ExtensionManager.id, true);
+			},
+			configError: Config.loadConfigError,
+			serverTemplateError: Config.loadServerTemplateError,
+		});
 	}
 
 	function deleteGlobalSettings(extName)
@@ -3443,6 +3469,50 @@ var ExtensionManager = (new function($)
 				values[i].Value = value.Value.split(", ").filter((name) => name !== extName).join(", ");
 			}
 		});
+	}
+
+	function showErrorBanner(title, message)
+	{
+		const banner = $('#ExtensionsErrorAlert');
+		$('#ExtensionsErrorAlert-title').text(title);
+		$('#ExtensionsErrorAlert-text').html(message);
+		banner
+			.show()
+			.off('click')
+			.on('click', () => {
+			console.log('click')
+			banner.hide();
+		});
+	}
+
+	function disableDeleteBtn(ext, disabled)
+	{
+		$('#DeleteBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableDownloadBtn(ext, disabled)
+	{
+		$('#DownloadBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableUpdateBtn(ext, disabled)
+	{
+		$('#UpdateBtn_' + ext.name).prop({ disabled });
+	}
+
+	function showLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').show();
+	}
+
+	function removeLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').remove();
+	}
+
+	function hideLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').hide();
 	}
 
 	function deleteSettings(extName)
@@ -3476,9 +3546,11 @@ var ExtensionManager = (new function($)
 	function getDeleteBtn(ext)
 	{
 		const container = $('<div class="flex-row"></div>')
-		const btn = $('<button type="button" class="btn btn-danger" title="Delete"><i class="icon-trash-white"></i></button>')
+		const btn = $('<button type="button" class="btn btn-danger" id="DeleteBtn_' + ext.name +'" title="Delete"><i class="icon-trash-white"></i></button>')
+			.off('click')
 			.on('click', () => ExtensionManager.deleteExtension(ext));
 		const label = $('<label class="checkbox"><input type="checkbox" />Delete configuration options</label>')
+			.off('click')
 			.on('click', () => ext.deleteConfToggle());
 		container
 		 	.append(btn)
@@ -3490,8 +3562,9 @@ var ExtensionManager = (new function($)
 	function getDownloadBtn(ext)
 	{
 		const container = $('<div class="flex-row"></div>')
-		const btn = $('<button type="button" class="btn btn-primary" title="Download"><img src="img/download-16.ico"></button>')
-			btn.on('click', () => ExtensionManager.downloadExtension(ext));
+		const btn = $('<button type="button" class="btn btn-primary" id="DownloadBtn_' + ext.name +'" title="Download"><img src="img/download-16.ico"></button>')
+			.off('click')
+			.on('click', () => ExtensionManager.downloadExtension(ext));
 		container.append(btn);
 		return container;
 	}
@@ -3499,7 +3572,8 @@ var ExtensionManager = (new function($)
 	function getUpdateBtn(ext)
 	{
 		const container = $('<div class="flex-row"></div>')
-		const btn = $('<button type="button" class="btn btn-info" title="Update"><i class="icon-refresh"></i></button>')
+		const btn = $('<button type="button" class="btn btn-info" id="UpdateBtn_' + ext.name +'" title="Update"><i class="icon-refresh"></i></button>')
+			.off('click')
 			.on('click', () => ExtensionManager.updateExtension(ext));
 		container.append(btn);
 		return container;

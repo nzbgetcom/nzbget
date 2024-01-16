@@ -13,7 +13,7 @@ Install homebrew:
 ```
 Install dependencies:
 ```
-brew install git zlib libxml2 ncurses openssl@3 pkg-config
+brew install git zlib libxml2 ncurses openssl@3 pkg-config boost
 ```
 
 - Xcode build tools

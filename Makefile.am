@@ -365,6 +365,8 @@ webui_FILES = \
 	webui/lib/raphael.min.js \
 	webui/lib/elycharts.js \
 	webui/lib/elycharts.min.js \
+	webui/img/house-16.ico \
+	webui/img/download-16.ico \
 	webui/img/icons.png \
 	webui/img/icons-2x.png \
 	webui/img/transmit.gif \
@@ -376,20 +378,12 @@ webui_FILES = \
 	webui/img/favicon-256x256-opaque.png \
 	webui/img/favicon-256x256.png
 
-extension_FILES = \
-	scripts/Email/main.py \
-	scripts/Email/manifest.json \
-	scripts/Logger/main.py \
-	scripts/Logger/manifest.json
-
 # Install
 dist_doc_DATA = $(doc_FILES)
 exampleconfdir = $(datadir)/nzbget
 dist_exampleconf_DATA = $(exampleconf_FILES)
 webuidir = $(datadir)/nzbget
 nobase_dist_webui_DATA = $(webui_FILES)
-scriptsdir = $(datadir)/nzbget
-nobase_dist_scripts_SCRIPTS = $(extension_FILES)
 
 # Note about "sed": 
 # We need to make some changes in installed files.

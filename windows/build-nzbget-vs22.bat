@@ -222,7 +222,6 @@ rem Hide certain options from web-interface settings page
 %SED% -e "s|UMask=.*|# UMask=|" -i %CONFFILE%
 
 mkdir ..\distrib\NZBGet\scripts
-xcopy /E scripts ..\distrib\NZBGet\scripts
 if errorlevel 1 goto BUILD_FAILED
 
 copy ..\..\image\* ..\distrib\NZBGet

@@ -57,7 +57,6 @@ namespace ExtensionManager
 			FileSystem::DeleteFile(filename.c_str());
 			return true;
 		}
-		
 		return false;
 	}
 
