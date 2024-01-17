@@ -72,10 +72,12 @@ namespace ExtensionManager
 			return false;
 		}
 
-		if (InstallExtension(filename, extensionIt->GetRootDir()))
+		const auto& rootDir = extensionIt->GetRootDir();
+		if (DeleteExtension(extName) && InstallExtension(filename, rootDir))
 		{
 			return true;
 		}
+
 		return false;
 	}
 
