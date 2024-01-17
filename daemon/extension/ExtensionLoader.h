@@ -46,7 +46,7 @@ namespace ExtensionLoader
 
 	namespace V1
 	{
-		bool Load(Extension::Script& script, const char* location);
+		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 		namespace
 		{
 			void ParseOptionsAndCommands(
@@ -69,7 +69,7 @@ namespace ExtensionLoader
 
 	namespace V2
 	{
-		bool Load(Extension::Script& script, const char* directory);
+		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 	}
 
 	namespace

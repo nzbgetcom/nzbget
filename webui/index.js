@@ -762,8 +762,9 @@ var Refresher = (new function($)
 			'loadconfig',
 			'configtemplates', 
 			'loadextensions', 
-			'downloadextension', 
-			'deleteextension', 
+			'downloadextension',
+			'updateextension',
+			'deleteextension',
 			'readurl', 
 			'servervolumes'
 		];

@@ -9,7 +9,8 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionManager.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
-	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.cpp
+	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
+	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
@@ -22,8 +23,12 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
+	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
+	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
@@ -31,6 +36,7 @@ add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
+	OpenSSL::SSL
 	${LIBXML2_LIBRARIES}
 )
 
@@ -43,6 +49,7 @@ target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess
+	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${ZLIB_INCLUDE_DIR}

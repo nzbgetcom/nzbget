@@ -43,6 +43,8 @@ namespace Extension
 		const char* GetEntry() const;
 		void SetLocation(std::string location);
 		const char* GetLocation() const;
+		void SetRootDir(std::string dir);
+		const char* GetRootDir() const;
 		void SetAuthor(std::string author);
 		const char* GetAuthor() const;
 		void SetVersion(std::string version);
@@ -80,6 +82,7 @@ namespace Extension
 		Kind m_kind;
 		std::string m_entry;
 		std::string m_location;
+		std::string m_rootDir;
 		std::string m_author;
 		std::string m_version;
 		std::string m_homepage;

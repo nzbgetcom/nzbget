@@ -220,7 +220,7 @@ var Options = (new function($)
 
 	this.loadExtensions = function()
 	{
-		RPC.call('loadextensions', [true], extensionsLoaded, loadServerTemplateError);
+		RPC.call('loadextensions', [true], extensionsLoaded, () => Options.complete());
 	}
 
 	function serverTemplateLoaded(data)
@@ -3380,16 +3380,14 @@ var ExtensionManager = (new function($)
 	this.downloadExtension = function(ext)
 	{
 		disableDownloadBtn(ext, true);
-		RPC.call('downloadextension', [ext.url, 'Download ' + ext.name + ' extension'], 
+		RPC.call('downloadextension', [ext.url, ext.name, 'Download ' + ext.name + ' extension'], 
 			(_) => 
 			{
 				updatePage();
 			},
 			(error) =>
 			{
-				disableUpdateBtn(ext, false);
 				disableDownloadBtn(ext, false);
-				disableDeleteBtn(ext, false);
 				showErrorBanner("Couldn't download " + ext.name, error);
 			}
 		);
@@ -3399,7 +3397,18 @@ var ExtensionManager = (new function($)
 	{
 		disableUpdateBtn(ext, true);
 		disableDeleteBtn(ext, true);
-		this.downloadExtension(ext);
+		RPC.call('updateextension', [ext.url, ext.name, 'Update ' + ext.name + ' extension'], 
+			(_) => 
+			{
+				updatePage();
+			},
+			(error) =>
+			{
+				disableUpdateBtn(ext, false);
+				disableDeleteBtn(ext, false);
+				showErrorBanner("Couldn't update " + ext.name, error);
+			}
+		);
 	}
 
 	this.deleteExtension = function(ext)

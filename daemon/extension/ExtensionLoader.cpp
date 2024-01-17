@@ -48,7 +48,7 @@ namespace ExtensionLoader
 
 	namespace V1
 	{
-		bool Load(Extension::Script& script, const char* location)
+		bool Load(Extension::Script& script, const char* location, const char* rootDir)
 		{
 			std::ifstream file(script.GetEntry());
 			if (!file.is_open())
@@ -166,6 +166,7 @@ namespace ExtensionLoader
 			BuildDisplayName(script);
 			Util::TrimRight(about);
 			script.SetLocation(location);
+			script.SetRootDir(rootDir);
 			script.SetRequirements(std::move(requirements));
 			script.SetKind(std::move(kind));
 			script.SetQueueEvents(std::move(queueEvents));
@@ -374,15 +375,16 @@ namespace ExtensionLoader
 		}
 	}
 
-	bool V2::Load(Extension::Script& script, const char* directory)
+	bool V2::Load(Extension::Script& script, const char* location, const char* rootDir)
 	{
 		ManifestFile::Manifest manifest;
-		if (!ManifestFile::Load(manifest, directory))
+		if (!ManifestFile::Load(manifest, location))
 			return false;
 
-		std::string entry = std::string(directory) + PATH_SEPARATOR + manifest.main;
+		std::string entry = std::string(location) + PATH_SEPARATOR + manifest.main;
 		script.SetEntry(std::move(entry));
-		script.SetLocation(directory);
+		script.SetLocation(location);
+		script.SetRootDir(rootDir);
 		script.SetAuthor(std::move(manifest.author));
 		script.SetHomepage(std::move(manifest.homepage));
 		script.SetLicense(std::move(manifest.license));

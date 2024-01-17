@@ -227,6 +227,12 @@ public:
 	virtual void Execute();
 };
 
+class UpdateExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
 class DeleteExtensionXmlCommand : public SafeXmlCommand
 {
 public:
@@ -718,6 +724,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "downloadextension"))
 	{
 		command = std::make_unique<DownloadExtensionXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "updateextension"))
+	{
+		command = std::make_unique<UpdateExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "deleteextension"))
 	{
@@ -2697,6 +2707,14 @@ void LoadConfigXmlCommand::Execute()
 
 void LoadExtensionsXmlCommand::Execute()
 {
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "Couldn't load extensions. \"ScriptDir\" is not specified");
+		return;
+	}
+
 	bool loadFromDisk = false;
 	bool isJson = IsJson();
 
@@ -2735,6 +2753,14 @@ void LoadExtensionsXmlCommand::Execute()
 
 void DownloadExtensionXmlCommand::Execute()
 {
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
 	char* url;
 	if (!NextParamAsStr(&url))
 	{
@@ -2743,74 +2769,110 @@ void DownloadExtensionXmlCommand::Execute()
 	}
 	DecodeStr(url);
 
+	char* extName;
+	if (!NextParamAsStr(&extName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
+		return;
+	}
+	DecodeStr(extName);
+
 	char* infoName;
 	if (!NextParamAsStr(&infoName))
 	{
-		BuildErrorResponse(2, "Invalid parameter (InfoName)");
+		BuildErrorResponse(2, "Invalid parameter (Info)");
 		return;
 	}
 	DecodeStr(infoName);
 
-	// generate temp file name
-	BString<1024> tempFileName;
-	int num = 1;
-	while (num == 1 || FileSystem::FileExists(tempFileName))
-	{
-		tempFileName.Format("%s%cextension-%i.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, num);
-		num++;
-	}
-
-	std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
-	downloader->SetUrl(url);
-	downloader->SetForce(true);
-	downloader->SetRetry(false);
-	downloader->SetOutputFilename(tempFileName);
-	downloader->SetInfoName(infoName);
-
-	// do sync download
-	WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
-	bool ok = status == WebDownloader::adFinished;
-
-	downloader.reset();
-
+	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
+	bool ok = std::get<0>(result) == WebDownloader::adFinished;
 	if (!ok)
 	{
-		BuildErrorResponse(3, "Couldn't download extension");
+		BuildErrorResponse(3, "Failed to read url");
 		return;
 	}
 
-	CharBuffer fileContent;
-	FileSystem::LoadFileIntoBuffer(tempFileName, fileContent, true);
-
-	if (g_ExtensionManager->InstallExtension(*tempFileName))
+	const std::string filename = std::get<1>(result);
+	if (g_ExtensionManager->InstallExtension(filename, scriptDir))
 	{
 		BuildBoolResponse(true);
 		return;
 	}
 
-	BuildErrorResponse(3, "Couldn't install extension");
+	FileSystem::DeleteFile(filename.c_str());
+	BuildErrorResponse(3, "Failed to install");
+}
+
+void UpdateExtensionXmlCommand::Execute()
+{
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
+	char* url;
+	if (!NextParamAsStr(&url))
+	{
+		BuildErrorResponse(2, "Invalid parameter (URL)");
+		return;
+	}
+	DecodeStr(url);
+
+	char* extName;
+	if (!NextParamAsStr(&extName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
+		return;
+	}
+	DecodeStr(extName);
+
+	char* infoName;
+	if (!NextParamAsStr(&infoName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Info)");
+		return;
+	}
+	DecodeStr(infoName);
+
+	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
+	bool ok = std::get<0>(result) == WebDownloader::adFinished;
+	if (!ok)
+	{
+		BuildErrorResponse(3, "Failed to read url");
+		return;
+	}
+
+	const std::string& filename = std::get<1>(result);
+	if (g_ExtensionManager->UpdateExtension(filename, extName))
+	{
+		BuildBoolResponse(true);
+		return;
+	}
+
+	FileSystem::DeleteFile(filename.c_str());
+	BuildErrorResponse(3, "Faield to update");
 }
 
 void DeleteExtensionXmlCommand::Execute()
 {
-	char* extensionName;
-	bool shouldDeleteConf = false;
-	if (!NextParamAsStr(&extensionName))
+	char* extName;
+	if (!NextParamAsStr(&extName))
 	{
 		BuildErrorResponse(2, "Invalid parameter (Extension name)");
 		return;
 	}
 
-	if (g_ExtensionManager->DeleteExtension(extensionName))
+	if (g_ExtensionManager->DeleteExtension(extName))
 	{
 		BuildBoolResponse(true);
 		return;
 	}
-	else
-	{
-		BuildErrorResponse(3, "Couldn't delete extension");
-		return;
-	}
+
+	BuildErrorResponse(3, "Failed to delete extension");
 }
 
 // bool saveconfig(struct[] data)

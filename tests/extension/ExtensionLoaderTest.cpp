@@ -24,24 +24,29 @@
 
 #include <filesystem>
 #include "Extension.h"
+#include "WorkState.h"
 #include "ExtensionLoader.h"
+
+WorkState* g_WorkState;
 
 BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 {
 	Extension::Script extension;
 	std::string name = "Extension.py";
 	std::string displayName = "Extension";
-	std::string location = std::filesystem::current_path().string() + "/V1";
+	std::string rootDir = std::filesystem::current_path().string();
+	std::string location = rootDir + "/V1";
 	std::string entry = location + "/Extension.py";
 
 	extension.SetEntry(entry);
 	extension.SetName(name);
 	BOOST_TEST_MESSAGE(entry);
 	BOOST_TEST_MESSAGE(location);
-	BOOST_CHECK(ExtensionLoader::V1::Load(extension, location.c_str()) == true);
+	BOOST_CHECK(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
 
 	BOOST_CHECK(extension.GetEntry() == entry);
 	BOOST_CHECK(extension.GetLocation() == location);
+	BOOST_CHECK(extension.GetRootDir() == rootDir);
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
 	BOOST_CHECK(extension.GetHomepage() == std::string(""));

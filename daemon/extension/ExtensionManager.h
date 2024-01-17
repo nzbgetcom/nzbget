@@ -21,6 +21,8 @@
 #define EXTENSION_MANAGER_H
 
 #include <vector>
+#include <tuple>
+#include "WebDownloader.h"
 #include "Options.h"
 #include "Extension.h"
 
@@ -37,14 +39,17 @@ namespace ExtensionManager
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
-		bool InstallExtension(const std::string& name);
+		bool InstallExtension(const std::string& filename, const std::string& dest);
+		bool UpdateExtension(const std::string& filename, const std::string& extName);
 		bool LoadExtensions(const IOptions& options);
 		bool DeleteExtension(const std::string& name);
+		std::tuple<WebDownloader::EStatus, std::string>
+		DownloadExtension(const std::string& url, const std::string& info);
 		void DeleteAllExtensions();
 		const Extensions& GetExtensions() const;
 
 	private:
-		void LoadExtensionDir(const char* directory, bool isSubDir);
+		void LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir);
 		void CreateTasks() const;
 		Extensions::const_iterator GetByName(const std::string& name) const;
 		bool Exists(const std::string& name) const;

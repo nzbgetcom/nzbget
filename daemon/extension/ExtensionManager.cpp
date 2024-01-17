@@ -39,10 +39,50 @@ namespace ExtensionManager
 		return m_extensions;
 	}
 
-	bool Manager::InstallExtension(const std::string& filename)
+	std::tuple<WebDownloader::EStatus, std::string>
+	Manager::DownloadExtension(const std::string& url, const std::string& info)
+	{
+		BString<1024> tempFileName;
+		int num = 1;
+		while (num == 1 || FileSystem::FileExists(tempFileName))
+		{
+			tempFileName.Format("%s%cextension-%i.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, num);
+			num++;
+		}
+
+		std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
+		downloader->SetUrl(url.c_str());
+		downloader->SetForce(true);
+		downloader->SetRetry(false);
+		downloader->SetOutputFilename(tempFileName);
+		downloader->SetInfoName(info.c_str());
+
+		// do sync download
+		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
+		downloader.reset();
+
+		return std::tuple<WebDownloader::EStatus, std::string>(status, tempFileName);
+	}
+
+	bool Manager::UpdateExtension(const std::string& filename, const std::string& extName)
+	{
+		auto extensionIt = GetByName(extName);
+		if (extensionIt == std::end(m_extensions))
+		{
+			return false;
+		}
+
+		if (InstallExtension(filename, extensionIt->GetRootDir()))
+		{
+			return true;
+		}
+		return false;
+	}
+
+	bool Manager::InstallExtension(const std::string& filename, const std::string& dest)
 	{
 		UnpackController unpacker;
-		std::string outputDir = std::string("-o") + g_Options->GetScriptDir();
+		std::string outputDir = "-o" + dest;
 		UnpackController::ArgList args = {
 			g_Options->GetSevenZipCmd(),
 			"x",
@@ -52,9 +92,8 @@ namespace ExtensionManager
 		};
 		unpacker.SetArgs(std::move(args));
 		int res = unpacker.Execute();
-		if (res == 0)
+		if (res == 0 && FileSystem::DeleteFile(filename.c_str()))
 		{
-			FileSystem::DeleteFile(filename.c_str());
 			return true;
 		}
 		return false;
@@ -70,7 +109,7 @@ namespace ExtensionManager
 		Tokenizer tokDir(options.GetScriptDir(), ",;");
 		while (const char* extensionDir = tokDir.Next())
 		{
-			LoadExtensionDir(extensionDir, false);
+			LoadExtensionDir(extensionDir, false, extensionDir);
 		}
 
 		// first add all scripts from Extension Order
@@ -118,16 +157,16 @@ namespace ExtensionManager
 		return false;
 	}
 
-	void Manager::LoadExtensionDir(const char* directory, bool isSubDir)
+	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)
 	{
 		Extension extension;
 
-		if (ExtensionLoader::V2::Load(extension, directory)) {
+		if (ExtensionLoader::V2::Load(extension, directory, rootDir)) {
 			if (!Exists(extension.GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
+				return;
 			}
-			return;
 		}
 
 		DirBrowser dir(directory);
@@ -148,14 +187,14 @@ namespace ExtensionManager
 				const char* location = isSubDir ? directory : *entry;
 				extension.SetEntry(*entry);
 				extension.SetName(std::move(name));
-				if (ExtensionLoader::V1::Load(extension, location))
+				if (ExtensionLoader::V1::Load(extension, location, rootDir))
 				{
 					m_extensions.push_back(std::move(extension));
 				}
 			}
 			else if (!isSubDir)
 			{
-				LoadExtensionDir(entry, true);
+				LoadExtensionDir(entry, true, rootDir);
 			}
 		}
 	}

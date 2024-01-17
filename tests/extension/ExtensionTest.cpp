@@ -33,6 +33,7 @@ Extension::Script GetExtension()
 
 	script.SetEntry("/v1/main.py");
 	script.SetLocation("/v1");
+	script.SetRootDir("/");
 	script.SetAuthor("Author");
 	script.SetAbout("About");
 	script.SetHomepage("Homepage");
@@ -72,6 +73,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 	std::string result = Extension::ToJsonStr(script);
 	std::string expected = "{\"Entry\":\"/v1/main.py\",\
 \"Location\":\"/v1\",\
+\"RootDir\":\"/\",\
 \"Name\":\"Name\",\
 \"DisplayName\":\"DisplayName\",\
 \"About\":\"About\",\
@@ -101,6 +103,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 	std::string expected = "<value><struct>\
 <member><name>Entry</name><value><string>/v1/main.py</string></value></member>\
 <member><name>Location</name><value><string>/v1</string></value></member>\
+<member><name>RootDir</name><value><string>/</string></value></member>\
 <member><name>Name</name><value><string>Name</string></value></member>\
 <member><name>DisplayName</name><value><string>DisplayName</string></value></member>\
 <member><name>About</name><value><string>About</string></value></member>\

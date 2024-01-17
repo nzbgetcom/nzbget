@@ -39,6 +39,16 @@ namespace Extension
 		m_location = std::move(location);
 	}
 
+	void Script::SetRootDir(std::string dir)
+	{
+		m_rootDir = std::move(dir);
+	}
+
+	const char* Script::GetRootDir() const
+	{
+		return m_rootDir.c_str();
+	}
+
 	const char* Script::GetLocation() const
 	{
 		return m_location.c_str();
@@ -212,6 +222,7 @@ namespace Extension
 
 		json["Entry"] = script.GetEntry();
 		json["Location"] = script.GetLocation();
+		json["RootDir"] = script.GetRootDir();
 		json["Name"] = script.GetName();
 		json["DisplayName"] = script.GetDisplayName();
 		json["About"] = script.GetAbout();
@@ -311,6 +322,7 @@ namespace Extension
 
 		AddNewNode(structNode, "Entry", "string", script.GetEntry());
 		AddNewNode(structNode, "Location", "string", script.GetLocation());
+		AddNewNode(structNode, "RootDir", "string", script.GetRootDir());
 		AddNewNode(structNode, "Name", "string", script.GetName());
 		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
 		AddNewNode(structNode, "About", "string", script.GetAbout());
