@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <tuple>
+#include <boost/optional.hpp>
 #include "WebDownloader.h"
 #include "Options.h"
 #include "Extension.h"
@@ -43,13 +44,22 @@ namespace ExtensionManager
 		Manager(Manager&&) noexcept = default;
 		Manager& operator=(Manager&&) noexcept = default;
 
-		bool InstallExtension(const std::string& filename, const std::string& dest);
-		bool UpdateExtension(const std::string& filename, const std::string& extName);
+		boost::optional<std::string> 
+		InstallExtension(const std::string& filename, const std::string& dest);
+
+		boost::optional<std::string> 
+		UpdateExtension(const std::string& filename, const std::string& extName);
+
+		boost::optional<std::string>
+		DeleteExtension(const std::string& name);
+
 		bool LoadExtensions(const IOptions& options);
-		bool DeleteExtension(const std::string& name);
+
 		std::tuple<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
+
 		void DeleteAllExtensions();
+		
 		const Extensions& GetExtensions() const;
 
 	private:

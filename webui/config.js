@@ -3380,7 +3380,7 @@ var ExtensionManager = (new function($)
 	this.downloadExtension = function(ext)
 	{
 		disableDownloadBtn(ext, true);
-		RPC.call('downloadextension', [ext.url, ext.name, 'Download ' + ext.name + ' extension'], 
+		RPC.call('downloadextension', [ext.url, 'Download ' + ext.name + ' extension'], 
 			(_) => 
 			{
 				updatePage();
@@ -3388,7 +3388,7 @@ var ExtensionManager = (new function($)
 			(error) =>
 			{
 				disableDownloadBtn(ext, false);
-				showErrorBanner("Couldn't download " + ext.name, error);
+				showErrorBanner("Failed to download " + ext.name, error);
 			}
 		);
 	}
@@ -3406,7 +3406,7 @@ var ExtensionManager = (new function($)
 			{
 				disableUpdateBtn(ext, false);
 				disableDeleteBtn(ext, false);
-				showErrorBanner("Couldn't update " + ext.name, error);
+				showErrorBanner("Failed to update " + ext.name, error);
 			}
 		);
 	}
@@ -3431,13 +3431,13 @@ var ExtensionManager = (new function($)
 				(error) => 
 				{
 					disableDeleteBtn(ext, false);
-					showErrorBanner("Couldn't save the config", error);
+					showErrorBanner("Failed to save the config file", error);
 				}
 			},
 			(error) => 
 			{
 				disableDeleteBtn(ext, false);
-				showErrorBanner("Couldn't delete " + ext.name, error);
+				showErrorBanner("Failed to delete " + ext.name, error);
 			}
 		);
 	}

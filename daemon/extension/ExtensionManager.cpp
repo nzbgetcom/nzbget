@@ -64,24 +64,39 @@ namespace ExtensionManager
 		return std::tuple<WebDownloader::EStatus, std::string>(status, tempFileName);
 	}
 
-	bool Manager::UpdateExtension(const std::string& filename, const std::string& extName)
+	boost::optional<std::string>
+	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
 	{
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
 		{
-			return false;
+			return "Failed to find " + extName;
 		}
 
-		const auto& rootDir = extensionIt->GetRootDir();
-		if (DeleteExtension(extName) && InstallExtension(filename, rootDir))
+		const std::string& rootDir = extensionIt->GetRootDir();
+
+		const auto deleteExtError = DeleteExtension(extName);
+		if (deleteExtError)
 		{
-			return true;
+			if (!FileSystem::DeleteFile(filename.c_str()))
+			{
+				return "Failed to delete extension and temp file: " + filename;
+			}
+
+			return deleteExtError;
+		}
+		
+		const auto installExtError = InstallExtension(filename, rootDir);
+		if (installExtError)
+		{
+			return installExtError;
 		}
 
-		return false;
+		return boost::none;
 	}
 
-	bool Manager::InstallExtension(const std::string& filename, const std::string& dest)
+	boost::optional<std::string> 
+	Manager::InstallExtension(const std::string& filename, const std::string& dest)
 	{
 		UnpackController unpacker;
 		std::string outputDir = "-o" + dest;
@@ -93,12 +108,61 @@ namespace ExtensionManager
 			"-y",
 		};
 		unpacker.SetArgs(std::move(args));
+		
 		int res = unpacker.Execute();
-		if (res == 0 && FileSystem::DeleteFile(filename.c_str()))
+
+		if (res != 0)
 		{
-			return true;
+			if (!FileSystem::DeleteFile(filename.c_str()))
+			{
+				return "Failed to unpack and delete temp file: " + filename;
+			}
+
+			return "Failed to unpack " + filename;
 		}
-		return false;
+
+		if (!FileSystem::DeleteFile(filename.c_str()))
+		{
+			return "Failed to delete temp file: " + filename;
+		}
+
+		return boost::none;
+	}
+
+	boost::optional<std::string>
+	Manager::DeleteExtension(const std::string& name)
+	{
+		auto extensionIt = GetByName(name);
+		if (extensionIt == std::end(m_extensions))
+		{
+			return "Failed to find " + name;
+		}
+
+		if (extensionIt->Busy())
+		{
+			return name + " is executing";
+		}
+
+		const char* location = extensionIt->GetLocation();
+
+		CString err;
+		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
+		{
+			if (!err.Empty())
+			{
+				return *err;
+			}
+
+			m_extensions.erase(extensionIt);
+			return boost::none;
+		}
+		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
+		{
+			m_extensions.erase(extensionIt);
+			return boost::none;
+		}
+
+		return std::string("Failed to delete ") + location;
 	}
 
 	bool Manager::LoadExtensions(const IOptions& options)
@@ -127,41 +191,6 @@ namespace ExtensionManager
 		m_extensions.shrink_to_fit();
 
 		return true;
-	}
-
-	bool Manager::DeleteExtension(const std::string& name)
-	{
-		auto extensionIt = GetByName(name);
-		if (extensionIt == std::end(m_extensions))
-		{
-			return false;
-		}
-
-		if (extensionIt->Busy())
-		{
-			return false;
-		}
-
-		const char* location = extensionIt->GetLocation();
-
-		CString err;
-		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
-		{
-			if (!err.Empty())
-			{
-				return false;
-			}
-
-			m_extensions.erase(extensionIt);
-			return true;
-		}
-		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
-		{
-			m_extensions.erase(extensionIt);
-			return true;
-		}
-
-		return false;
 	}
 
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)

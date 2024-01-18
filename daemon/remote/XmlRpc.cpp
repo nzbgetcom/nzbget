@@ -2769,14 +2769,6 @@ void DownloadExtensionXmlCommand::Execute()
 	}
 	DecodeStr(url);
 
-	char* extName;
-	if (!NextParamAsStr(&extName))
-	{
-		BuildErrorResponse(2, "Invalid parameter (Extension name)");
-		return;
-	}
-	DecodeStr(extName);
-
 	char* infoName;
 	if (!NextParamAsStr(&infoName))
 	{
@@ -2789,19 +2781,19 @@ void DownloadExtensionXmlCommand::Execute()
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
 	if (!ok)
 	{
-		BuildErrorResponse(3, "Failed to read url");
+		BuildErrorResponse(3, "Failed to read URL");
 		return;
 	}
 
-	const std::string filename = std::get<1>(result);
-	if (g_ExtensionManager->InstallExtension(filename, scriptDir))
+	const std::string& filename = std::get<1>(result);
+	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
+	if (error)
 	{
-		BuildBoolResponse(true);
+		BuildErrorResponse(3, error.get().c_str());
 		return;
 	}
 
-	FileSystem::DeleteFile(filename.c_str());
-	BuildErrorResponse(3, "Failed to install");
+	BuildBoolResponse(true);
 }
 
 void UpdateExtensionXmlCommand::Execute()
@@ -2831,7 +2823,7 @@ void UpdateExtensionXmlCommand::Execute()
 	char* infoName;
 	if (!NextParamAsStr(&infoName))
 	{
-		BuildErrorResponse(2, "Invalid parameter (Info).");
+		BuildErrorResponse(2, "Invalid parameter (Info)");
 		return;
 	}
 	DecodeStr(infoName);
@@ -2840,19 +2832,19 @@ void UpdateExtensionXmlCommand::Execute()
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
 	if (!ok)
 	{
-		BuildErrorResponse(3, "Failed to read url");
+		BuildErrorResponse(3, "Failed to read URL");
 		return;
 	}
 
 	const std::string& filename = std::get<1>(result);
-	if (g_ExtensionManager->UpdateExtension(filename, extName))
+	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
+	if (error)
 	{
-		BuildBoolResponse(true);
+		BuildErrorResponse(3, error.get().c_str());
 		return;
 	}
 
-	FileSystem::DeleteFile(filename.c_str());
-	BuildErrorResponse(3, "Failed to update. The extension may be busy");
+	BuildBoolResponse(true);
 }
 
 void DeleteExtensionXmlCommand::Execute()
@@ -2864,13 +2856,14 @@ void DeleteExtensionXmlCommand::Execute()
 		return;
 	}
 
-	if (g_ExtensionManager->DeleteExtension(extName))
+	const auto error = g_ExtensionManager->DeleteExtension(extName);
+	if (error)
 	{
-		BuildBoolResponse(true);
+		BuildErrorResponse(2, error.get().c_str());
 		return;
 	}
 
-	BuildErrorResponse(3, "Failed to delete. The extension may be busy");
+	BuildBoolResponse(true);
 }
 
 // bool saveconfig(struct[] data)
