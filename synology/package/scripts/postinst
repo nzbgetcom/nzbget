@@ -26,7 +26,7 @@ if [ ! -f $CFG ]; then
         -i $CFG
     # copy bundled scripts
     mkdir -p /var/packages/nzbget/shares/$DOWNLOAD_PATH/scripts/
-    cp -r $SYNOPKG_PKGDEST/usr/local/share/nzbget/scripts/* /var/packages/nzbget/shares/$DOWNLOAD_PATH/scripts/
+    cp $SYNOPKG_PKGDEST/usr/local/share/nzbget/scripts/* /var/packages/nzbget/shares/$DOWNLOAD_PATH/scripts/
 fi
 
 exit 0

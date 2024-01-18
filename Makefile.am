@@ -384,6 +384,7 @@ exampleconfdir = $(datadir)/nzbget
 dist_exampleconf_DATA = $(exampleconf_FILES)
 webuidir = $(datadir)/nzbget
 nobase_dist_webui_DATA = $(webui_FILES)
+scriptsdir = $(datadir)/nzbget
 
 # Note about "sed": 
 # We need to make some changes in installed files.

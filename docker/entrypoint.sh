@@ -25,12 +25,6 @@ if [ ! -z "${NZBGET_PASS}" ]; then
   OPTIONS="${OPTIONS}-o ControlPassword=${NZBGET_PASS} "
 fi
 
-# copy default scripts if not exists
-mkdir -p /downloads/scripts
-for SCRIPT in /app/nzbget/share/nzbget/scripts/*/; do
-  cp -r $SCRIPT /downloads/scripts/
-done
-
 # change userid and groupid
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
