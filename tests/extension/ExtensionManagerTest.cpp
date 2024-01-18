@@ -91,16 +91,18 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfItIsBusyTest)
+BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 {
 	MockOptions options;
 	ExtensionManager::Manager manager;
 
 	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
-	
+
 	auto& extIt = std::begin(manager.GetExtensions());
 	extIt->EncProcessCount();
+
 	auto error = manager.DeleteExtension(extIt->GetName());
+
 	BOOST_CHECK(error.has_value() == true);
 	BOOST_CHECK(error.get() == extIt->GetName() + std::string(" is executing"));
 }
