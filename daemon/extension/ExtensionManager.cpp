@@ -150,7 +150,7 @@ namespace ExtensionManager
 		{
 			if (!err.Empty())
 			{
-				return *err;
+				return boost::optional<std::string>(err.Str());
 			}
 
 			m_extensions.erase(extensionIt);

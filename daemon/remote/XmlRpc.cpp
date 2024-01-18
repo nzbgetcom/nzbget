@@ -2760,6 +2760,12 @@ void DownloadExtensionXmlCommand::Execute()
 		return;
 	}
 
+	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+	{
+		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
+		return;
+	}
+
 	char* url;
 	if (!NextParamAsStr(&url))
 	{
@@ -2800,6 +2806,12 @@ void UpdateExtensionXmlCommand::Execute()
 	if (Util::EmptyStr(g_Options->GetScriptDir()))
 	{
 		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
+	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+	{
+		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
 		return;
 	}
 
