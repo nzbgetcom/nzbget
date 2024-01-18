@@ -378,6 +378,8 @@ webui_FILES = \
 	webui/img/favicon-256x256-opaque.png \
 	webui/img/favicon-256x256.png
 
+scripts_DIR = scripts/
+
 # Install
 dist_doc_DATA = $(doc_FILES)
 exampleconfdir = $(datadir)/nzbget
@@ -385,6 +387,7 @@ dist_exampleconf_DATA = $(exampleconf_FILES)
 webuidir = $(datadir)/nzbget
 nobase_dist_webui_DATA = $(webui_FILES)
 scriptsdir = $(datadir)/nzbget
+nobase_dist_scripts_SCRIPTS = $(scripts_DIR)
 
 # Note about "sed": 
 # We need to make some changes in installed files.
