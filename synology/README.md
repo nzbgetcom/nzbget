@@ -73,7 +73,7 @@ When installed, the package adds all the necessary permissions for the selected 
 
 ## Extensions
 
-You can put custom extension in `ScriptDir` directory. During installation this directory appears in `selected_shared_folder\selected_download_directory\scripts` and populates with default scripts (Email and Logger). Synology DSM 7.x bundled with python 3.8, so you must make sure that the script you are installing supports it. Our forks of VideoSort/FailureLink/FakeDetector are tested and working.
+You can put custom extension in `ScriptDir` directory. During installation this directory appears in `selected_shared_folder\selected_download_directory\scripts`. Synology DSM 7.x bundled with python 3.8, so you must make sure that the script you are installing supports it. Our forks of VideoSort/FailureLink/FakeDetector are tested and working.
 
 # Switch between SynoCommunity package and SPK
 
