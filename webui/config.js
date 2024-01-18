@@ -3253,7 +3253,7 @@ var ExtensionManager = (new function($)
 	this.id = 'extension-manager';
 	this.table = 'ExtensionManagerTable';
 	this.tbody = 'ExtensionManagerTBody';
-	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/feature/extensions.json/extensions.json';
+	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
 
 	let extensions = {};
 	let remoteExtensions = {};
