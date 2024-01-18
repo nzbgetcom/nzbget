@@ -330,9 +330,4 @@ namespace ExtensionManager
 			}
 		);
 	}
-
-	void Manager::DeleteAllExtensions()
-	{
-		m_extensions.clear();
-	}
 }

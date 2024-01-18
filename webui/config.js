@@ -3558,9 +3558,11 @@ var ExtensionManager = (new function($)
 		const btn = $('<button type="button" class="btn btn-danger" id="DeleteBtn_' + ext.name +'" title="Delete"><i class="icon-trash-white"></i></button>')
 			.off('click')
 			.on('click', () => ExtensionManager.deleteExtension(ext));
-		const label = $('<label class="checkbox"><input type="checkbox" />Delete configuration options</label>')
+		const label = $('<label class="checkbox">Delete configuration options</label>')
 			.off('click')
 			.on('click', () => ext.deleteConfToggle());
+		const checkbox = $('<input type="checkbox"/>').prop('checked', ext.deleteConf)
+		label.append(checkbox);
 		container
 		 	.append(btn)
 		 	.append(label);

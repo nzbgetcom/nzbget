@@ -2726,7 +2726,6 @@ void LoadExtensionsXmlCommand::Execute()
 
 	if (loadFromDisk)
 	{
-		g_ExtensionManager->DeleteAllExtensions();
 		if (!g_ExtensionManager->LoadExtensions(*g_Options))
 		{
 			BuildErrorResponse(3, "Couldn't load extensions");

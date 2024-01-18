@@ -57,8 +57,6 @@ namespace ExtensionManager
 
 		std::tuple<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
-
-		void DeleteAllExtensions();
 		
 		const Extensions& GetExtensions() const;
 
