@@ -36,8 +36,12 @@ namespace ExtensionManager
 	public:
 		Manager() noexcept;
 		~Manager() noexcept = default;
+
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
+
+		Manager(Manager&&) noexcept = default;
+		Manager& operator=(Manager&&) noexcept = default;
 
 		bool InstallExtension(const std::string& filename, const std::string& dest);
 		bool UpdateExtension(const std::string& filename, const std::string& extName);

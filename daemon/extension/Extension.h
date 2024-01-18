@@ -20,6 +20,7 @@
 #ifndef EXTENSION_H
 #define EXTENSION_H
 
+#include <atomic>
 #include "ManifestFile.h"
 
 namespace Extension
@@ -38,6 +39,12 @@ namespace Extension
 	public:
 		Script() noexcept = default;
 		~Script() noexcept = default;
+
+		Script& operator=(const Script&) = delete;
+		Script(const Script&) = delete;
+
+		Script(Script&& other) noexcept;
+		Script& operator=(Script&& other) noexcept;
 
 		void SetEntry(std::string entry);
 		const char* GetEntry() const;
@@ -77,8 +84,13 @@ namespace Extension
 		const std::vector<ManifestFile::Option>& GetOptions() const;
 		void SetCommands(std::vector<ManifestFile::Command> commands);
 		const std::vector<ManifestFile::Command>& GetCommands() const;
+		bool Busy() const;
+		void EncProcessCount() const;
+		void DecProcessCount() const;
 
 	private:
+		void Swap(Script& other) noexcept;
+		mutable std::atomic<size_t> m_procs;
 		Kind m_kind;
 		std::string m_entry;
 		std::string m_location;

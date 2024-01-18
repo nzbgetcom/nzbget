@@ -165,6 +165,11 @@ namespace ExtensionLoader
 
 			BuildDisplayName(script);
 			Util::TrimRight(about);
+
+			requirements.shrink_to_fit();
+			options.shrink_to_fit();
+			commands.shrink_to_fit();
+
 			script.SetLocation(location);
 			script.SetRootDir(rootDir);
 			script.SetRequirements(std::move(requirements));

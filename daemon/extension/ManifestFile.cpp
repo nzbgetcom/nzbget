@@ -126,6 +126,8 @@ namespace ManifestFile
 				commands.emplace_back(std::move(command));
 			}
 
+			commands.shrink_to_fit();
+
 			return true;
 		}
 
@@ -172,6 +174,8 @@ namespace ManifestFile
 				options.emplace_back(std::move(option));
 			}
 
+			options.shrink_to_fit();
+
 			return true;
 		}
 
@@ -188,6 +192,8 @@ namespace ManifestFile
 					property.emplace_back(value.get_string().c_str());
 				}
 			}
+
+			property.shrink_to_fit();
 
 			return true;
 		}

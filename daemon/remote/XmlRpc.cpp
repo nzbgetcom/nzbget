@@ -2806,9 +2806,7 @@ void DownloadExtensionXmlCommand::Execute()
 
 void UpdateExtensionXmlCommand::Execute()
 {
-	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
-	const char* scriptDir = tokDir.Next();
-	if (Util::EmptyStr(scriptDir))
+	if (Util::EmptyStr(g_Options->GetScriptDir()))
 	{
 		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
 		return;
@@ -2833,7 +2831,7 @@ void UpdateExtensionXmlCommand::Execute()
 	char* infoName;
 	if (!NextParamAsStr(&infoName))
 	{
-		BuildErrorResponse(2, "Invalid parameter (Info)");
+		BuildErrorResponse(2, "Invalid parameter (Info).");
 		return;
 	}
 	DecodeStr(infoName);
@@ -2854,7 +2852,7 @@ void UpdateExtensionXmlCommand::Execute()
 	}
 
 	FileSystem::DeleteFile(filename.c_str());
-	BuildErrorResponse(3, "Faield to update");
+	BuildErrorResponse(3, "Failed to update. The extension may be busy");
 }
 
 void DeleteExtensionXmlCommand::Execute()
@@ -2872,7 +2870,7 @@ void DeleteExtensionXmlCommand::Execute()
 		return;
 	}
 
-	BuildErrorResponse(3, "Failed to delete extension");
+	BuildErrorResponse(3, "Failed to delete. The extension may be busy");
 }
 
 // bool saveconfig(struct[] data)

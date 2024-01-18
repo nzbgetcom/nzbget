@@ -137,6 +137,11 @@ namespace ExtensionManager
 			return false;
 		}
 
+		if (extensionIt->Busy())
+		{
+			return false;
+		}
+
 		const char* location = extensionIt->GetLocation();
 
 		CString err;
