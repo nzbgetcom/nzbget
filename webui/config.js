@@ -286,7 +286,7 @@ var Options = (new function($)
 	{
 		loadComplete = _complete;
 		serverValues = _serverValues;
-		complete();
+		Options.complete();
 	}
 
 	/*** PARSE CONFIG AND BUILD INTERNAL STRUCTURES **********************************************/
@@ -641,7 +641,7 @@ var Config = (new function($)
 			complete: Config.buildPage,
 			configError: Config.loadConfigError,
 			serverTemplateError: Config.loadServerTemplateError
-			});
+		});
 	}
 
 	this.hide = function()
@@ -2160,7 +2160,7 @@ var Config = (new function($)
 
 	this.applyReloadedValues = function(values)
 	{
-		Options.reloadConfig(values, buildPage);
+		Options.reloadConfig(values, Config.buildPage);
 		restored = true;
 	}
 
@@ -3246,7 +3246,7 @@ function Extension()
 	}
 }
 
-var ExtensionManager = (new function($)
+const ExtensionManager = (new function($)
 {
 	'use strict'
 
