@@ -3309,7 +3309,6 @@ const ExtensionManager = (new function($)
 					extension.name = ext.name;
 					extension.url = ext.url;
 					extension.installed = false;
-					extension.deleteConf = false;
 					remoteExtensions[extension.name] = extension;
 				});
 				removeLoadingBanner();
@@ -3427,9 +3426,9 @@ const ExtensionManager = (new function($)
 		);
 	}
 
-	this.deleteExtension = function(ext)
+	this.deleteExtension = function(ext, deleteWithSettings)
 	{
-		if (ext.deleteConf)
+		if (deleteWithSettings)
 		{
 			deleteSettings(ext.name);
 		}
@@ -3466,6 +3465,23 @@ const ExtensionManager = (new function($)
 	this.hideSection = function()
 	{
 		$('.' + this.id).hide();
+	}
+
+	this.showDeleteExtensionDropdown = function(ext)
+	{
+		const delBtn = $('#DeleteBtn_' + ext.name);
+		const dropdown = $('#DeleteExtensionMenu');
+		const deleteExtItem = $('#DeleteExtensionItem');
+		const deleteExtWithSettingsItem = $('#DeleteExtensionWithSettingsItem');
+		deleteExtItem.off('click').on('click', () => this.deleteExtension(ext, false));
+		deleteExtWithSettingsItem.off('click').on('click', () => this.deleteExtension(ext, true));
+		Frontend.showPopupMenu(dropdown, 'bottom-left',
+		{ 
+			left: delBtn.offset().left - 30, 
+			top: delBtn.offset().top,
+			width: delBtn.width() + 30, 
+			height: delBtn.outerHeight() - 2 
+		});
 	}
 
 	function updatePage()
@@ -3571,18 +3587,10 @@ const ExtensionManager = (new function($)
 	function getDeleteBtn(ext)
 	{
 		const container = $('<div class="flex-row"></div>')
-		const btn = $('<button type="button" class="btn btn-danger" id="DeleteBtn_' + ext.name +'" title="Delete"><i class="icon-trash-white"></i></button>')
+		const btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' + ext.name +'" title="Delete"><i class="icon-trash-white"></i></button>')
 			.off('click')
-			.on('click', () => ExtensionManager.deleteExtension(ext));
-		const label = $('<label class="checkbox">Delete configuration options</label>')
-			.off('click')
-			.on('click', () => ext.deleteConfToggle());
-		const checkbox = $('<input type="checkbox"/>').prop('checked', ext.deleteConf)
-		label.append(checkbox);
-		container
-		 	.append(btn)
-		 	.append(label);
-		
+			.on('click', () => ExtensionManager.showDeleteExtensionDropdown(ext));
+		container.append(btn);
 		return container;
 	}
 
