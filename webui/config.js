@@ -151,7 +151,13 @@ var Options = (new function($)
 			};
 			const requirements = this.serverTemplateData[i].Requirements;
 			let description = arrToStr(this.serverTemplateData[i].Description) + '\n';
-			description = requirements.reduce((acc, curr) => acc += 'NOTE: ' + curr + '\n', description);
+			description = requirements.reduce((acc, curr) => {
+				if (curr)
+				{
+					return acc += 'NOTE: ' + curr + '\n';
+				}
+				return acc += '\n';
+			}, description);
 			scriptConfig['scriptName'] = this.serverTemplateData[i].Name;
 			scriptConfig['id'] = Util.makeId(this.serverTemplateData[i].Name);
 			scriptConfig['name'] = this.serverTemplateData[i].Name;
@@ -3229,6 +3235,7 @@ var ExecScriptDialog = (new function($)
 
 function Extension()
 {
+	this.id = '';
 	this.name = '';
 	this.displayName = '', 
 	this.version = '';
@@ -3269,6 +3276,7 @@ const ExtensionManager = (new function($)
 		exts.forEach((ext) => 
 		{
 			const extension = new Extension();
+			extension.id = ext.Name + "_OPTIONS";
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
 			extension.author = ext.Author;
@@ -3292,6 +3300,7 @@ const ExtensionManager = (new function($)
 				JSON.parse(data).forEach((ext) => 
 				{
 					const extension = new Extension();
+					extension.id = ext.name + "_OPTIONS";
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
 					extension.author = ext.author;
@@ -3335,10 +3344,17 @@ const ExtensionManager = (new function($)
 			const raw = $('<tr></tr>')
 				.append('<td class="extension-manager__td text-center">' + ext.displayName + '</td>')
 				.append('<td class="extension-manager__td">' + ext.about + '</td>')
-				.append('<td class="extension-manager__td text-center">' + ext.version + '</td>')
-				.append('<td class="extension-manager__td text-center">' + '<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>' + '</td>')
-				.append(actionBtnsTd);
-
+				.append('<td class="extension-manager__td text-center">' + ext.version + '</td>');
+				
+			if (ext.homepage)
+			{
+				raw.append('<td class="extension-manager__td text-center">' + '<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>' + '</td>');
+			}
+			else
+			{
+				raw.append('<td class="extension-manager__td text-center"></td>');
+			}
+			raw.append(actionBtnsTd);
 			tbody.append(raw);
 		});
 		table.append(tbody);
@@ -3541,12 +3557,12 @@ const ExtensionManager = (new function($)
 	{
 		if (ext.installed && ext.outdated)
 		{
-			return getUpdateBtn(ext).append(getDeleteBtn(ext));
+			return getUpdateBtn(ext).append(getDeleteBtn(ext)).append(getConfigureBtn(ext));
 		}
 
 		if (ext.installed)
 		{
-			return getDeleteBtn(ext);
+			return getDeleteBtn(ext).append(getConfigureBtn(ext));
 		}
 
 		return getDownloadBtn(ext);
@@ -3586,6 +3602,16 @@ const ExtensionManager = (new function($)
 		const btn = $('<button type="button" class="btn btn-info" id="UpdateBtn_' + ext.name +'" title="Update"><i class="icon-refresh"></i></button>')
 			.off('click')
 			.on('click', () => ExtensionManager.updateExtension(ext));
+		container.append(btn);
+		return container;
+	}
+
+	function getConfigureBtn(ext)
+	{
+		const container = $('<div class="flex-row"></div>')
+		const btn = $('<button type="button" class="btn btn-secondary" id="ConfigBtn_' + ext.name +'" title="Conifgure"><i class="icon-settings"></i></button>')
+			.off('click')
+			.on('click', () => Config.showSection(ext.id, true));
 		container.append(btn);
 		return container;
 	}
