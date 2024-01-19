@@ -1055,8 +1055,14 @@ var Config = (new function($)
 
 		for (var k=0; k < config.length; k++)
 		{
-			if (k == 1 || k == 2)
+			if (k == 1)
 			{
+				$ConfigNav.append('<li class="divider"></li>');
+			}
+			if (k == 2)
+			{
+				$ConfigNav.append('<li class="divider"></li>');
+				$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
 				$ConfigNav.append('<li class="divider"></li>');
 			}
 			var conf = config[k];
@@ -1093,9 +1099,6 @@ var Config = (new function($)
 		{
 			filterInput(filterText);
 		}
-
-		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>')
 
 		$('#ConfigLoadInfo').hide();
 		$ConfigContent.show();
@@ -3243,14 +3246,9 @@ function Extension()
 	this.homepage = '';
 	this.about = '';
 	this.url = '';
+	this.isActive = true;
 	this.installed = false;
 	this.outdated = false;
-	this.deleteConf = false;
-
-	this.deleteConfToggle = function()
-	{
-		this.deleteConf = !this.deleteCon;
-	}
 }
 
 const ExtensionManager = (new function($)
@@ -3272,7 +3270,10 @@ const ExtensionManager = (new function($)
 
 	this.setExtensions = function(exts)
 	{
-		extensions = {};
+		// extensions = {};
+		// const extensionsSection = Config.config().values.find((value) => value.Name == "Extensions");
+		// const activeExtensions = extensionsSection.Value.split(", ");
+		// console.warn(Config.config())
 		exts.forEach((ext) => 
 		{
 			const extension = new Extension();
@@ -3284,7 +3285,7 @@ const ExtensionManager = (new function($)
 			extension.about = ext.About;
 			extension.name = ext.Name;
 			extension.installed = true;
-			extension.deleteConf = false;
+			//extension.isActive = !!activeExtensions.find((activeExtName) => activeExtName === ext.Name);
 			extensions[extension.name] = extension;
 		});
 	}
@@ -3341,6 +3342,7 @@ const ExtensionManager = (new function($)
 			const actionBtns = getActionBtns(ext);
 			actionBtnsTd.append(actionBtns);
 			const raw = $('<tr></tr>')
+				.append('<td class="extension-manager__td text-center">' + ext.isActive + '</td>')
 				.append('<td class="extension-manager__td text-center">' + ext.displayName + '</td>')
 				.append('<td class="extension-manager__td">' + ext.about + '</td>')
 				.append('<td class="extension-manager__td text-center">' + ext.version + '</td>');
