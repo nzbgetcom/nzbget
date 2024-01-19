@@ -2752,20 +2752,6 @@ void LoadExtensionsXmlCommand::Execute()
 
 void DownloadExtensionXmlCommand::Execute()
 {
-	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
-	const char* scriptDir = tokDir.Next();
-	if (Util::EmptyStr(scriptDir))
-	{
-		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
-		return;
-	}
-
-	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
-	{
-		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
-		return;
-	}
-
 	char* url;
 	if (!NextParamAsStr(&url))
 	{
@@ -2781,6 +2767,20 @@ void DownloadExtensionXmlCommand::Execute()
 		return;
 	}
 	DecodeStr(infoName);
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
+	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+	{
+		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
+		return;
+	}
 
 	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
@@ -2803,18 +2803,6 @@ void DownloadExtensionXmlCommand::Execute()
 
 void UpdateExtensionXmlCommand::Execute()
 {
-	if (Util::EmptyStr(g_Options->GetScriptDir()))
-	{
-		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
-		return;
-	}
-
-	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
-	{
-		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
-		return;
-	}
-
 	char* url;
 	if (!NextParamAsStr(&url))
 	{
@@ -2838,6 +2826,18 @@ void UpdateExtensionXmlCommand::Execute()
 		return;
 	}
 	DecodeStr(infoName);
+
+	if (Util::EmptyStr(g_Options->GetScriptDir()))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
+	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+	{
+		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
+		return;
+	}
 
 	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
