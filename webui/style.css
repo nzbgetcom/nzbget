@@ -30,6 +30,10 @@ body {
 	gap: 10px;
 }
 
+.flex-center {
+	justify-content: center;
+}
+
 .extension-manager__td {
 	vertical-align: middle !important;
 	max-width: 350px;
