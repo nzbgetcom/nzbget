@@ -98,6 +98,12 @@ namespace ExtensionManager
 	boost::optional<std::string> 
 	Manager::InstallExtension(const std::string& filename, const std::string& dest)
 	{
+		if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+		{
+
+			return "\"SevenZipCmd\" is not specified";
+		}
+
 		UnpackController unpacker;
 		std::string outputDir = "-o" + dest;
 		UnpackController::ArgList args = {
@@ -164,12 +170,13 @@ namespace ExtensionManager
 
 		return std::string("Failed to delete ") + location;
 	}
-
-	bool Manager::LoadExtensions(const IOptions& options)
+	
+	boost::optional<std::string>
+	Manager::LoadExtensions(const IOptions& options)
 	{
 		if (Util::EmptyStr(options.GetScriptDir()))
 		{
-			return false;
+			return "\"ScriptDir\" is not specified";
 		}
 
 		Tokenizer tokDir(options.GetScriptDir(), ",;");
@@ -190,7 +197,7 @@ namespace ExtensionManager
 		CreateTasks();
 		m_extensions.shrink_to_fit();
 
-		return true;
+		return boost::none;
 	}
 
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)

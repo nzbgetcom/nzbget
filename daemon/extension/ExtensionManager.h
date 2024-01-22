@@ -53,9 +53,10 @@ namespace ExtensionManager
 		boost::optional<std::string>
 		DeleteExtension(const std::string& name);
 
-		bool LoadExtensions(const IOptions& options);
+		boost::optional<std::string>
+		LoadExtensions(const IOptions& options);
 
-		std::tuple<WebDownloader::EStatus, std::string>
+		std::std::tuple<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
 		
 		const Extensions& GetExtensions() const;

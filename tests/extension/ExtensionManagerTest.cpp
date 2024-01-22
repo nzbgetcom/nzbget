@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	std::vector<std::string> order = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
+	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
 	BOOST_CHECK(manager.GetExtensions().size() == 4);
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 	MockOptions options;
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions(options) == true);
+	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
 
 	const auto& extIt = std::begin(manager.GetExtensions());
 	extIt->EncProcessCount();

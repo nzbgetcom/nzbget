@@ -649,6 +649,16 @@ var Config = (new function($)
 		});
 	}
 
+	this.hideSaveAllChangesBtn = function()
+	{
+		$('#Config_Save').hide();
+	}
+
+	this.showSaveAllChangesBtn = function()
+	{
+		$('#Config_Save').show();
+	}
+
 	this.hide = function()
 	{
 		Options.cleanup();
@@ -1318,6 +1328,7 @@ var Config = (new function($)
 
 		if (sectionId === ExtensionManager.id)
 		{
+			Config.hideSaveAllChangesBtn();
 			$ConfigData.children().hide();
 			markLastControlGroup();
 			$ConfigTitle.text('EXTENSION MANAGER');
@@ -1325,6 +1336,7 @@ var Config = (new function($)
 			return;
 		}
 
+		Config.showSaveAllChangesBtn();
 		$ConfigData.children().hide();
 		var opts = $('.' + sectionId, $ConfigData);
 		opts.show();

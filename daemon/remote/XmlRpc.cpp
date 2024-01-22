@@ -2707,14 +2707,6 @@ void LoadConfigXmlCommand::Execute()
 
 void LoadExtensionsXmlCommand::Execute()
 {
-	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
-	const char* scriptDir = tokDir.Next();
-	if (Util::EmptyStr(scriptDir))
-	{
-		BuildErrorResponse(3, "Couldn't load extensions. \"ScriptDir\" is not specified");
-		return;
-	}
-
 	bool loadFromDisk = false;
 	bool isJson = IsJson();
 
@@ -2726,9 +2718,10 @@ void LoadExtensionsXmlCommand::Execute()
 
 	if (loadFromDisk)
 	{
-		if (!g_ExtensionManager->LoadExtensions(*g_Options))
+		const auto& error = g_ExtensionManager->LoadExtensions(*g_Options);
+		if (error)
 		{
-			BuildErrorResponse(3, "Couldn't load extensions");
+			BuildErrorResponse(3, error.get().c_str());
 			return;
 		}	
 	}
@@ -2768,17 +2761,9 @@ void DownloadExtensionXmlCommand::Execute()
 	}
 	DecodeStr(infoName);
 
-	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
-	const char* scriptDir = tokDir.Next();
-	if (Util::EmptyStr(scriptDir))
+	if (Util::EmptyStr(g_Options->GetTempDir()))
 	{
-		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
-		return;
-	}
-
-	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
-	{
-		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
+		BuildErrorResponse(3, "\"TempDir\" is not specified");
 		return;
 	}
 
@@ -2787,6 +2772,14 @@ void DownloadExtensionXmlCommand::Execute()
 	if (!ok)
 	{
 		BuildErrorResponse(3, "Failed to read URL");
+		return;
+	}
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
 		return;
 	}
 
@@ -2826,18 +2819,6 @@ void UpdateExtensionXmlCommand::Execute()
 		return;
 	}
 	DecodeStr(infoName);
-
-	if (Util::EmptyStr(g_Options->GetScriptDir()))
-	{
-		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
-		return;
-	}
-
-	if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
-	{
-		BuildErrorResponse(3, "\"SevenZipCmd\" is not specified");
-		return;
-	}
 
 	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
