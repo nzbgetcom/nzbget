@@ -3541,7 +3541,6 @@ const ExtensionManager = (new function($)
 			.show()
 			.off('click')
 			.on('click', () => {
-			console.log('click')
 			banner.hide();
 		});
 	}
