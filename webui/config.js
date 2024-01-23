@@ -3348,7 +3348,7 @@ const ExtensionManager = (new function($)
 
 		extensions.forEach((ext, i) => {
 			const raw = $('<tr></tr>')
-				.append(getActivateExtBtn(ext))
+				.append(getExtActiveStatus(ext))
 				.append(getCeneteredTextCell(ext.displayName))
 				.append(getTextCell(ext.about))
 				.append(getCeneteredTextCell(ext.version))
@@ -3588,15 +3588,15 @@ const ExtensionManager = (new function($)
 		Config.config().values = values.filter(Boolean);
 	}
 
-	function activateExtToggle(ext, activated)
+	function activateExtToggle(ext)
 	{
-		ext.isActive = activated;
+		ext.isActive = !ext.isActive;
 		const values = Config.config().values;
 
 		for (let i = 0; i < values.length; i++) {
 			if (values[i].Name == "Extensions")
 			{
-				if (activated)
+				if (ext.isActive)
 				{
 					addExensionToProp(values[i], ext.name);
 					break;
@@ -3608,14 +3608,14 @@ const ExtensionManager = (new function($)
 				}
 			}
 		}
-		RPC.call('saveconfig', [Config.config().values], 
+
+		RPC.call('saveconfig', [values], 
 		(_) => 
 		{
 			updatePage();
 		}),
 		(error) => 
 		{
-			disableDeleteBtn(ext, false);
 			showErrorBanner("Failed to save settings", error);
 		}
 	}
@@ -3625,12 +3625,12 @@ const ExtensionManager = (new function($)
 		const cell = $('<td class="extension-manager__td"></td>');
 		if (ext.installed && ext.outdated)
 		{
-			return cell.append(getUpdateBtn(ext).append(getDeleteBtn(ext)).append(getConfigureBtn(ext)));
+			return cell.append(getUpdateBtn(ext).append(getConfigureBtn(ext)).append(getActivateExtBtn(ext)).append(getDeleteBtn(ext)));
 		}
 
 		if (ext.installed)
 		{
-			return cell.append(getDeleteBtn(ext).append(getConfigureBtn(ext)));
+			return cell.append(getConfigureBtn(ext).append(getActivateExtBtn(ext)).append(getDeleteBtn(ext)));
 		}
 
 		return cell.append(getDownloadBtn(ext));
@@ -3681,7 +3681,7 @@ const ExtensionManager = (new function($)
 		return $('<td class="extension-manager__td text-center"><span>-</span></td>');
 	}
 
-	function getActivateExtBtn(ext)
+	function getExtActiveStatus(ext)
 	{
 		if (!ext.installed)
 		{
@@ -3689,18 +3689,46 @@ const ExtensionManager = (new function($)
 		}
 		const cell = $('<td class="extension-manager__td text-center"></td>');
 		const container = $('<div class="flex-row flex-center"></div>');
-		const label = $('<label class="checkbox"></label>');
-		const checkbox = $('<input type="checkbox">')
-			.off('click')
-			.on('click', (ev) => activateExtToggle(ext, ev.currentTarget.checked));
+		const btn = $('<div>');
 		if (ext.isActive)
 		{	
-			checkbox.attr({ checked: true })
+			btn.addClass("green-circle");
+			btn.attr({ title: "Active" });
 		}
-		label.append(checkbox);
-		container.append(label);
+		else
+		{
+			btn.addClass("red-circle");
+			btn.attr({ title: "Not active" });
+		}
+		container.append(btn);
 		cell.append(container);
 		return cell;
+	}
+
+	function getActivateExtBtn(ext)
+	{
+		if (!ext.installed)
+		{
+			return getEmptyCell();
+		}
+
+		const btn = $('<button type="button" class="btn btn-primary"></button>')
+			.off('click')
+			.on('click', () => activateExtToggle(ext));
+		if (ext.isActive)
+		{	
+			btn.append('<i class="icon-pause"></i>');
+			btn.attr({ title: "Deactivate" });
+			btn.addClass('btn-warning');
+		}
+		else
+		{
+			btn.append('<i class="icon-play"></i>');
+			btn.attr({ title: "Activate" });
+			btn.addClass('btn-success');
+		}
+
+		return btn;
 	}
 
 	function getHomepageCell(ext)

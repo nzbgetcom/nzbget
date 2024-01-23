@@ -39,6 +39,25 @@ body {
 	max-width: 350px;
 }
 
+.red-circle {
+	border-radius: 50%;
+	border: none;
+	background-color: #da4f49;
+}
+
+.green-circle {
+
+	border-radius: 50%;
+	border: none;
+	background-color: #468847;
+}
+
+.red-circle,
+.green-circle {
+	height: 12px;
+	width: 12px;
+}
+
 /* NAVBAR */
 .navbar-fixed-top {
     margin-bottom: 18px;

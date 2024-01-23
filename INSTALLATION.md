@@ -225,6 +225,7 @@ Also required are:
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
    - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+   - [Boost.Optional](https://www.boost.org/doc/libs/1_84_0/libs/optional/doc/html/index.html)
 
 For tests:
    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
