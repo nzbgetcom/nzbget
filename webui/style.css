@@ -25,6 +25,7 @@ body {
 /* EXTENSION MANAGER */
 .flex-row {
 	display: flex;
+	flex-wrap: wrap;
 	flex-direction: row;
 	align-items: center;
 	gap: 10px;
@@ -46,7 +47,6 @@ body {
 }
 
 .green-circle {
-
 	border-radius: 50%;
 	border: none;
 	background-color: #468847;
@@ -56,6 +56,11 @@ body {
 .green-circle {
 	height: 12px;
 	width: 12px;
+}
+
+.btn--disabled
+{
+	opacity: 0.2 !important;
 }
 
 /* NAVBAR */
