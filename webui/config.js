@@ -3282,8 +3282,8 @@ const ExtensionManager = (new function($)
 	this.setExtensions = function(exts)
 	{
 		extensions = {};
-		const extensionsSection = Config.config().values.find((value) => value.Name == "Extensions");
-		const activeExtensions = extensionsSection.Value.split(", ");
+		const value = Config.findOptionByName("Extensions").value;
+		const activeExtensions = splitString(value);
 		exts.forEach((ext) => 
 		{
 			const extension = new Extension();
@@ -3323,6 +3323,7 @@ const ExtensionManager = (new function($)
 					remoteExtensions[extension.name] = extension;
 				});
 				removeLoadingBanner();
+				showHelpBlock();
 				this.hideSection();
 				this.render(this.getAllExtensions());
 			},
@@ -3346,6 +3347,8 @@ const ExtensionManager = (new function($)
 		const tbody = $('#' + this.tbody);
 		tbody.empty();
 
+		const firstIntalledIdx = extensions.findIndex((ext) => ext.installed);
+		const lastInstalledIdx = extensions.length - 1;
 		extensions.forEach((ext, i) => {
 			const raw = $('<tr></tr>')
 				.append(getExtActiveStatus(ext))
@@ -3353,7 +3356,8 @@ const ExtensionManager = (new function($)
 				.append(getTextCell(ext.about))
 				.append(getCeneteredTextCell(ext.version))
 				.append(getHomepageCell(ext))
-				.append(getActionBtnsCell(ext));
+				.append(getActionBtnsCell(ext))
+				.append(getSortExtensionsBtnsCell(ext, i === firstIntalledIdx, i === lastInstalledIdx));
 			tbody.append(raw);
 		});
 		table.append(tbody);
@@ -3363,7 +3367,8 @@ const ExtensionManager = (new function($)
 
 	this.getAllExtensions = function()
 	{
-		const allExtensions = [];
+		const remote = [];
+		const installed = [];
 		for (const extension of Object.values(remoteExtensions)) 
 		{
 			if (extensions[extension.name])
@@ -3373,11 +3378,11 @@ const ExtensionManager = (new function($)
 					extensions[extension.name].outdated = true;
 				}
 				extensions[extension.name].url = extension.url;
-				allExtensions.push(extensions[extension.name]);
+				installed.push(extensions[extension.name]);
 			}
 			else
 			{
-				allExtensions.push(extension);
+				remote.push(extension);
 			}
 		}
 
@@ -3385,11 +3390,14 @@ const ExtensionManager = (new function($)
 		{
 			if (!remoteExtensions[extension.name])
 			{
-				allExtensions.push(extension);
+				installed.push(extension);
 			}
 		}
-		allExtensions.sort((a, b) => (a.installed - b.installed));
-		return allExtensions;
+
+		const order = Config.findOptionByName("ScriptOrder").value;
+		sortExtensionsByOrder(remote, '');
+		sortExtensionsByOrder(installed, order ? splitString(order) : '');
+		return remote.concat(installed);
 	}
 
 	this.downloadExtension = function(ext)
@@ -3485,6 +3493,11 @@ const ExtensionManager = (new function($)
 		});
 	}
 
+	function splitString(str)
+	{
+		return str.split(/[,\s;]+/);
+	}
+
 	function updatePage()
 	{
 		extensions = {};
@@ -3493,7 +3506,7 @@ const ExtensionManager = (new function($)
 			complete: (conf) => {
 				Options.update();
 				Config.buildPage(conf);
-				Config.showSection(ExtensionManager.id, true);
+				Config.showSection(ExtensionManager.id, false);
 			},
 			configError: Config.loadConfigError,
 			serverTemplateError: Config.loadServerTemplateError,
@@ -3517,7 +3530,7 @@ const ExtensionManager = (new function($)
 
 	function deleteExtensionFromProp(property, extName)
 	{
-		property.Value = property.Value.split(", ").filter((name) => name !== extName).join(", ");
+		property.Value = splitString(property.Value).filter((name) => name !== extName).join(", ");
 	}
 
 	function addExensionToProp(property, extName)
@@ -3530,6 +3543,32 @@ const ExtensionManager = (new function($)
 		{
 			property.Value += extName;
 		}
+	}
+
+	function sortExtensionsByOrder(extensions, order)
+	{
+		if (!order)
+		{
+			extensions.sort((a, b) => a.name === b.name);
+			return;
+		}
+
+		extensions.sort((a, b) => {
+			const idxA = order.indexOf(a.name);
+			const idxB = order.indexOf(b.name);
+		  
+			if (idxA === -1) 
+			{
+				return 1;
+			}
+
+			if (idxB === -1) 
+			{
+				return -1;
+			}
+		  
+			return idxA - idxB;
+		});
 	}
 
 	function showErrorBanner(title, message)
@@ -3558,6 +3597,11 @@ const ExtensionManager = (new function($)
 	function disableUpdateBtn(ext, disabled)
 	{
 		$('#UpdateBtn_' + ext.name).prop({ disabled });
+	}
+
+	function showHelpBlock()
+	{
+		$('#ExtensionsHelpBlock').show();
 	}
 
 	function showLoadingBanner()
@@ -3609,15 +3653,7 @@ const ExtensionManager = (new function($)
 			}
 		}
 
-		RPC.call('saveconfig', [values], 
-		(_) => 
-		{
-			updatePage();
-		}),
-		(error) => 
-		{
-			showErrorBanner("Failed to save settings", error);
-		}
+		saveConfig(values);
 	}
 
 	function getActionBtnsCell(ext)
@@ -3765,5 +3801,156 @@ const ExtensionManager = (new function($)
 		}
 		
 		return getEmptyCell();
+	}
+
+	function getSortExtensionsBtnsCell(ext, isFirst, isLast)
+	{
+		if (!ext.installed)
+		{
+			return getEmptyCell();
+		}
+		const cell = $('<td class="extension-manager__td text-center">');
+		const container = $('<div class="btn-row-order-block">');
+		const mvTop = $('<div class="btn-row-order icon-top"></div>')
+			.off('click')
+			.on('click',() => moveTop(ext));
+		const mvUp = $('<div class="btn-row-order icon-up"></div>')
+			.off('click')
+			.on('click',() => moveUp(ext));
+		const mvDown = $('<div class="btn-row-order icon-down"></div>')
+			.off('click')
+			.on('click',() => moveDown(ext));
+		const mvBottom = $('<div class="btn-row-order icon-bottom"></div>')
+			.off('click')
+			.on('click',() => moveBottom(ext));
+
+		if (isFirst)
+		{
+			mvTop.addClass('mv-item-arrow-btn--disabled').off('click');
+			mvUp.addClass('mv-item-arrow-btn--disabled').off('click');
+		}
+
+		if (isLast)
+		{
+			mvDown.addClass('mv-item-arrow-btn--disabled').off('click');
+			mvBottom.addClass('mv-item-arrow-btn--disabled').off('click');
+		}
+
+		container.append(mvTop).append(mvUp).append(mvDown).append(mvBottom);
+		cell.append(container);
+		return cell;
+	}
+
+	function saveConfig(values)
+	{
+		RPC.call('saveconfig', [values], 
+		(_) => 
+		{
+			updatePage();
+		}),
+		(error) => 
+		{
+			showErrorBanner("Failed to save the config file", error);
+		}
+	}
+
+	function getCurrentInstalledExtsOrder()
+	{
+		const value = Config.findOptionByName('ScriptOrder').value;
+		if (value)
+		{
+			const order = splitString(value);
+			ExtensionManager.getAllExtensions().forEach((ext) => {
+				if (ext.installed && !order.find((name) => name === ext.name))
+				{
+					order.push(ext.name);
+				}
+			});
+			return order;
+		}
+		const order = [];
+		ExtensionManager.getAllExtensions().forEach((ext) => {
+			if (ext.installed)
+			{
+				order.push(ext.name);
+			}
+		});
+		return order;
+	}
+
+	function setNewExtensionsOrder(order)
+	{
+		const option = Config.config().values.find((option) => option.Name === "ScriptOrder");
+		if (option)
+		{
+			option.Value = order;
+			saveConfig(Config.config().values);
+		}
+	}
+
+	function moveTop(ext)
+	{
+		const oldOrder = getCurrentInstalledExtsOrder();
+		const newOrder = [ext.name];
+		oldOrder.forEach((name) => {
+			if (name !== ext.name)
+			{
+				newOrder.push(name);
+			}
+		});
+		setNewExtensionsOrder(newOrder.join(", "));
+	}
+
+	function moveUp(ext)
+	{
+		const oldOrder = getCurrentInstalledExtsOrder();
+		const newOrder = [];
+		oldOrder.forEach((name, i) => {
+			if (name === ext.name)
+			{
+				newOrder[i] = newOrder[i - 1];
+				newOrder[i - 1] = ext.name;
+			}
+			else
+			{
+				newOrder.push(name);
+			}
+		});
+		setNewExtensionsOrder(newOrder.join(", "));
+	}
+
+	function moveDown(ext)
+	{
+		const oldOrder = getCurrentInstalledExtsOrder();
+		const newOrder = [];
+		let prev = '';
+		oldOrder.forEach((name, i) => {
+			if (ext.name === prev)
+			{
+				newOrder[i - 1] = name;
+				prev = '';
+				newOrder.push(ext.name);
+			}
+			else
+			{
+				prev = name;
+				newOrder.push(name);
+			}
+		});
+		setNewExtensionsOrder(newOrder.join(", "));
+	}
+
+	function moveBottom(ext)
+	{
+		const oldOrder = getCurrentInstalledExtsOrder();
+		const newOrder = [];
+		oldOrder.forEach((name) => {
+			if (name !== ext.name)
+			{
+				newOrder.push(name);
+			}
+		});
+		newOrder.push(ext.name);
+		setNewExtensionsOrder(newOrder.join(", "));
 	}
 }(jQuery))

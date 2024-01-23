@@ -1900,6 +1900,7 @@ div.multiset-toolbar button {
 	cursor: pointer;
 }
 
+.mv-item-arrow-btn--disabled,
 #ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:first-child,
 #ScriptListDialog_ScriptTable tbody > tr:last-child div.btn-row-order:last-child,
 #ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:nth-child(2),
