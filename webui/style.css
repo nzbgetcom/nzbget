@@ -23,18 +23,6 @@ body {
 }
 
 /* EXTENSION MANAGER */
-.flex-row {
-	display: flex;
-	flex-wrap: wrap;
-	flex-direction: row;
-	align-items: center;
-	gap: 10px;
-}
-
-.flex-center {
-	justify-content: center;
-}
-
 .extension-manager__td {
 	vertical-align: middle !important;
 	max-width: 350px;
@@ -58,10 +46,14 @@ body {
 	width: 12px;
 }
 
-.btn--disabled
-{
+.btn--disabled {
 	opacity: 0.2 !important;
 }
+
+.list-item--nested {
+	margin-left: 10px;
+}
+
 
 /* NAVBAR */
 .navbar-fixed-top {
