@@ -388,7 +388,6 @@ void Util::TrimRight(char* str)
 
 void Util::TrimRight(std::string& str)
 {
-
 	while (
 		!str.empty() &&
 		(str.back() == '\n' || str.back() == '\r' || str.back() == ' ' || str.back() == '\t'))

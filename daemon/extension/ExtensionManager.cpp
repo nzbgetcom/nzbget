@@ -185,15 +185,7 @@ namespace ExtensionManager
 			LoadExtensionDir(extensionDir, false, extensionDir);
 		}
 
-		// first add all scripts from Extension Order
-		std::vector<std::string> extensionOrder;
-		Tokenizer tokOrder(options.GetScriptOrder(), ",;");
-		while (const char* extensionName = tokOrder.Next())
-		{
-			extensionOrder.push_back(std::string(extensionName));
-		}
-
-		Sort(extensionOrder);
+		Sort(options.GetScriptOrder());
 		CreateTasks();
 		m_extensions.shrink_to_fit();
 
@@ -273,12 +265,20 @@ namespace ExtensionManager
 		return GetByName(name) != std::end(m_extensions);
 	}
 
-	void Manager::Sort(const std::vector<std::string>& order)
+	void Manager::Sort(const char* orderStr)
 	{
 		auto comparator = [](const Extension& a, const Extension& b) -> bool
-			{
-				return strcmp(a.GetName(), b.GetName()) < 0;
-			};
+		{
+			return strcmp(a.GetName(), b.GetName()) < 0;
+		};
+
+		std::vector<std::string> order;
+		Tokenizer tokOrder(orderStr, ",;");
+		while (const char* extensionName = tokOrder.Next())
+		{
+			order.push_back(std::string(extensionName));
+		}
+
 		if (order.empty())
 		{
 			std::sort(

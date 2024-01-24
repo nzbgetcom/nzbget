@@ -66,7 +66,7 @@ namespace ExtensionManager
 		void CreateTasks() const;
 		Extensions::const_iterator GetByName(const std::string& name) const;
 		bool Exists(const std::string& name) const;
-		void Sort(const std::vector<std::string>& order);
+		void Sort(const char* order);
 		std::string GetExtensionName(const std::string& fileName) const;
 
 		Extensions m_extensions;
