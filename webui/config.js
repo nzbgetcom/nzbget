@@ -3485,8 +3485,6 @@ var ExtensionManager = (new function($)
 
 	function updatePage()
 	{
-		installedExtensions = {};
-		remoteExtensions = {};
 		Options.loadConfig({
 			complete: function(conf) {
 				Options.update();
