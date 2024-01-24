@@ -1902,8 +1902,9 @@ var Config = (new function($)
 		config.values.forEach(function(val)
 		{
 			var extName = val.Name.split(":")[0];
-			var alreadyExist = request.indexOf(function(opt) { return opt.Name === val.Name; }) != -1;
-			if (!alreadyExist && ExtensionManager.getRemoteExtensions()[extName])
+			var alreadyExists = request.map(function(opt) { return opt.Name; }).indexOf(val.Name) != -1;
+			var remoteExtExists = ExtensionManager.getRemoteExtensions().map(function(ext) { return ext.name; }).indexOf(extName) != -1;
+			if (!alreadyExists && remoteExtExists)
 			{
 				var extraOpt = { Name: val.Name, Value: val.Value };
 				request.push(extraOpt);
