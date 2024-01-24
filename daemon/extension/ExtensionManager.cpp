@@ -274,9 +274,18 @@ namespace ExtensionManager
 
 		std::vector<std::string> order;
 		Tokenizer tokOrder(orderStr, ",;");
-		while (const char* extensionName = tokOrder.Next())
-		{
-			order.push_back(std::string(extensionName));
+		while (const char* extName = tokOrder.Next())
+		{	
+			bool alreadyExists = std::find(
+				std::begin(order), 
+				std::end(order), 
+				extName
+			) == std::end(order);
+
+			if (!alreadyExists)
+			{
+				order.push_back(std::string(extName));
+			}
 		}
 
 		if (order.empty())
