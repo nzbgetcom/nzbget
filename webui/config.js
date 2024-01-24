@@ -1062,7 +1062,7 @@ var Config = (new function($)
 			{
 				$ConfigNav.append('<li class="divider"></li>');
 				$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
-				$ConfigNav.append('<li class="divider"></li>');
+				$ConfigNav.append('<br>');
 			}
 			var conf = config[k];
 			var added = false;
@@ -3722,7 +3722,7 @@ const ExtensionManager = (new function($)
 		else
 		{
 			btn.append('<i class="icon-play"></i>');
-			btn.attr({ title: "Activate" });
+			btn.attr({ title: "Activate for new downloads" });
 			btn.addClass('btn-success');
 		}
 
