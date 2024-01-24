@@ -280,7 +280,7 @@ namespace ExtensionManager
 				std::begin(order), 
 				std::end(order), 
 				extName
-			) == std::end(order);
+			) != std::end(order);
 
 			if (!alreadyExists)
 			{

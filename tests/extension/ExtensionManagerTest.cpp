@@ -58,12 +58,12 @@ public:
 
 	const char* GetScriptOrder() const override
 	{
-		return "Extension2, Extension1, email;";
+		return "Extension2, Extension1, email; Extension1; Extension1";
 	}
 
 	const char* GetExtensions() const override
 	{
-		return "Extension2, Extension3, Extension1, email;";
+		return "Extension2, Extension3, Extension1, email";
 	}
 
 	const char* GetConfigFilename() const override
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 {
 	MockOptions options;
 
-	std::vector<std::string> order = { "Extension2", "Extension1", "email" };
+	std::vector<std::string> correctOrder = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
 	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
@@ -84,9 +84,10 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
 	{
-		if (i < order.size())
+		if (i < correctOrder.size())
 		{
-			BOOST_CHECK(order[i] == manager.GetExtensions()[i].GetName());
+			BOOST_TEST_MESSAGE(manager.GetExtensions()[i].GetName());
+			BOOST_CHECK(correctOrder[i] == manager.GetExtensions()[i].GetName());
 		}
 	}
 }
