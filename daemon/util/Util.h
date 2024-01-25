@@ -21,6 +21,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <boost/optional.hpp>
 #include "NString.h"
 
 #ifdef WIN32
@@ -33,6 +34,7 @@ class Util
 {
 public:
 	static bool MatchFileExt(const char* filename, const char* extensionList, const char* listSeparator);
+	static boost::optional<std::string> FindInterpreter(const std::string& filename);
 
 	/*
 	* Split command line into arguments.

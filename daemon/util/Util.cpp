@@ -111,6 +111,82 @@ void Util::Init()
 	CurrentTicks();
 }
 
+boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
+{
+	size_t idx = filename.find_last_of(".");
+	if (idx == std::string::npos)
+	{
+		return filename;
+	}
+
+	const std::string fileExt = filename.substr(idx);
+
+	if (fileExt == ".exe")
+	{
+		return filename;
+	}
+
+	#ifdef _WIN32
+    	const std::string null = " > nul 2>&1";
+	#else
+		const std::string null = " > /dev/null 2>&1";
+	#endif
+
+	if (fileExt == ".py")
+	{
+		std::string cmd = "python3 --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "python3";
+		}
+		cmd = "python --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "python";
+		}
+		cmd = "py --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "py";
+		}
+		return boost::none;
+	}
+	if (fileExt == ".sh")
+	{
+		std::string cmd = "bash --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "bash";
+		}
+		cmd = "sh --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "sh";
+		}
+		return boost::none;
+	}
+	if (fileExt == ".js")
+	{
+		const std::string cmd = "node --version" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return "node";
+		}
+		return boost::none;
+	}
+	if (fileExt == ".cmd" || fileExt == ".bat")
+	{
+		const std::string cmd = "cmd.exe /c" + null;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return filename;
+		}
+		return boost::none;
+	}
+
+	return filename;
+}
+ 
 int64 Util::JoinInt64(uint32 Hi, uint32 Lo)
 {
 	return (((int64)Hi) << 32) + Lo;

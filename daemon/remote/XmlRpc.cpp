@@ -239,6 +239,12 @@ public:
 	virtual void Execute();
 };
 
+class TestExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
 class SaveConfigXmlCommand: public XmlCommand
 {
 public:
@@ -732,6 +738,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "deleteextension"))
 	{
 		command = std::make_unique<DeleteExtensionXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testextension"))
+	{
+		command = std::make_unique<TestExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "saveconfig"))
 	{
@@ -2847,11 +2857,32 @@ void DeleteExtensionXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid parameter (Extension name)");
 		return;
 	}
+	DecodeStr(extName);
 
 	const auto error = g_ExtensionManager->DeleteExtension(extName);
 	if (error)
 	{
 		BuildErrorResponse(2, error.get().c_str());
+		return;
+	}
+
+	BuildBoolResponse(true);
+}
+
+void TestExtensionXmlCommand::Execute()
+{
+	char* extEntryFileName;
+	if (!NextParamAsStr(&extEntryFileName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension entry file name)");
+		return;
+	}
+	DecodeStr(extEntryFileName);
+
+	const auto found = Util::FindInterpreter(extEntryFileName);
+	if (!found)
+	{
+		BuildErrorResponse(2, "Failed to find the corresponding executor");
 		return;
 	}
 

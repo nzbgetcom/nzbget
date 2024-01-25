@@ -3246,12 +3246,14 @@ function Extension()
 {
 	this.id = '';
 	this.name = '';
+	this.entry = '';
 	this.displayName = '', 
 	this.version = '';
 	this.author = '';
 	this.homepage = '';
 	this.about = '';
 	this.url = '';
+	this.testError = '';
 	this.isActive = false;
 	this.installed = false;
 	this.outdated = false;
@@ -3285,6 +3287,7 @@ var ExtensionManager = (new function($)
 		{
 			var extension = new Extension();
 			extension.id = ext.Name + "_OPTIONS";
+			extension.entry = ext.Entry;
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
 			extension.author = ext.Author;
@@ -3625,25 +3628,38 @@ var ExtensionManager = (new function($)
 	function activateExt(ext)
 	{
 		ext.isActive = !ext.isActive;
-		var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
-
-		if (ext.isActive)
+		if (!ext.isActive)
 		{
-			if (value)
-			{
-				value += ", " + ext.name
-			}
-			else
-			{
-				value = ext.name;
-			}
-		}
-		else
-		{
+			var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
 			value = deleteExtFromPropVal(value, ext.name);
+			Config.setOptionValue(Config.findOptionByName(extensionsId), value);
+			update();
+			return;
 		}
-		Config.setOptionValue(Config.findOptionByName(extensionsId), value);
-		update();
+
+		RPC.call('testextension', [ext.entry], 
+			function(_)
+			{
+				ext.testError = '';
+				var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
+				if (value)
+				{
+					value += ", " + ext.name
+				}
+				else
+				{
+					value = ext.name;
+				}
+				Config.setOptionValue(Config.findOptionByName(extensionsId), value);
+				update();
+			},
+			function (err)
+			{
+				ext.isActive = false;
+				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry;
+				update();
+			}
+		);
 	}
 
 	function getActionBtnsCell(ext)
@@ -3704,19 +3720,25 @@ var ExtensionManager = (new function($)
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="ActivateBtn_' + ext.name +'"></button>')
 			.off('click')
 			.on('click', function() { activateExt(ext); });
-		if (ext.isActive)
+		if (ext.isActive && !ext.testError)
 		{	
 			btn.append('<i class="icon-pause"></i>');
 			btn.attr({ title: "Deactivate" });
 			btn.addClass('btn-warning');
 		}
-		else
+		else if(!ext.isActive && !ext.testError)
 		{
 			btn.append('<i class="icon-play"></i>');
 			btn.attr({ title: "Activate for new downloads" });
 			btn.addClass('btn-success');
 		}
-
+		else
+		{
+			btn.append('<img src="img/warning-16.ico">');
+			btn.attr({ title: ext.testError });
+			btn.addClass('btn-warning');
+		}
+		
 		return btn;
 	}
 
