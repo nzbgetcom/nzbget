@@ -213,12 +213,12 @@ namespace ExtensionManager
 	
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)
 	{
-		auto extension = std::make_shared<Extension::Script>();
+		Extension::Script extension;
 
-		if (ExtensionLoader::V2::Load(*extension, directory, rootDir)) {
-			if (!Exists(extension->GetName()))
+		if (ExtensionLoader::V2::Load(extension, directory, rootDir)) {
+			if (!Exists(extension.GetName()))
 			{
-				m_extensions.push_back(std::move(extension));
+				m_extensions.emplace_back(std::make_shared<Extension::Script>(std::move(extension)));
 				return;
 			}
 		}
@@ -239,11 +239,11 @@ namespace ExtensionManager
 				}
 
 				const char* location = isSubDir ? directory : *entry;
-				extension->SetEntry(*entry);
-				extension->SetName(std::move(name));
-				if (ExtensionLoader::V1::Load(*extension, location, rootDir))
+				extension.SetEntry(*entry);
+				extension.SetName(std::move(name));
+				if (ExtensionLoader::V1::Load(extension, location, rootDir))
 				{
-					m_extensions.push_back(std::move(extension));
+					m_extensions.emplace_back(std::make_shared<Extension::Script>(std::move(extension)));
 				}
 			}
 			else if (!isSubDir)
@@ -291,19 +291,29 @@ namespace ExtensionManager
 			return strcmp(a->GetName(), b->GetName()) < 0;
 		};
 
+		if (Util::EmptyStr(orderStr))
+		{
+			std::sort(
+				std::begin(m_extensions),
+				std::end(m_extensions),
+				comparator
+			);
+			return;	
+		}
+
 		std::vector<std::string> order;
 		Tokenizer tokOrder(orderStr, ",;");
 		while (const char* extName = tokOrder.Next())
 		{	
-			bool alreadyExists = std::find(
+			auto pos = std::find(
 				std::begin(order), 
 				std::end(order), 
 				extName
-			) != std::end(order);
+			);
 
-			if (!alreadyExists)
+			if (pos == std::end(order))
 			{
-				order.push_back(std::string(extName));
+				order.push_back(extName);
 			}
 		}
 

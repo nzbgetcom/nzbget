@@ -56,7 +56,6 @@ namespace ExtensionLoader
 				return false;
 			}
 
-			bool feedScript = false;
 			std::string queueEvents;
 			std::string taskTime;
 			std::string about;

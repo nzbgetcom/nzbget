@@ -86,8 +86,7 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	{
 		if (i < correctOrder.size())
 		{
-			BOOST_TEST_MESSAGE(manager.GetExtensions()[i].GetName());
-			BOOST_CHECK(correctOrder[i] == manager.GetExtensions()[i].GetName());
+			BOOST_CHECK(correctOrder[i] == manager.GetExtensions()[i]->GetName());
 		}
 	}
 }
@@ -99,10 +98,10 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 
 	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
 
-	const auto& extIt = std::begin(manager.GetExtensions());
+	const auto busyExt = manager.GetExtensions()[0];
 
-	auto error = manager.DeleteExtension(extIt->GetName());
+	auto error = manager.DeleteExtension(busyExt->GetName());
 
 	BOOST_CHECK(error.has_value() == true);
-	BOOST_CHECK(error.get() == extIt->GetName() + std::string(" is executing"));
+	BOOST_CHECK(error.get() == "Failed to delete: " + std::string(busyExt->GetName()) + " is executing");
 }
