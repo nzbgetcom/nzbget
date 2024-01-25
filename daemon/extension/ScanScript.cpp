@@ -28,7 +28,7 @@
 class ScanScriptCheck : public NzbScriptController
 {
 protected:
-	virtual void ExecuteScript(const Extension::Script& script) { has |= script.GetScanScript(); }
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script) { has |= script->GetScanScript(); }
 	bool has = false;
 	friend class ScanScriptController;
 };
@@ -75,23 +75,23 @@ void ScanScriptController::ExecuteScripts(const char* nzbFilename,
 	scriptController.ExecuteScriptList(extensions);
 }
 
-void ScanScriptController::ExecuteScript(const Extension::Script& script)
+void ScanScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
 {
-	if (!script.GetScanScript() || !FileSystem::FileExists(m_nzbFilename))
+	if (!script->GetScanScript() || !FileSystem::FileExists(m_nzbFilename))
 	{
 		return;
 	}
 
-	PrintMessage(Message::mkInfo, "Executing scan-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbFilename));
+	PrintMessage(Message::mkInfo, "Executing scan-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbFilename));
 
-	SetArgs({script.GetEntry()});
+	SetArgs({script->GetEntry()});
 
-	BString<1024> infoName("scan-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbFilename));
+	BString<1024> infoName("scan-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbFilename));
 	SetInfoName(infoName);
 
-	SetLogPrefix(script.GetDisplayName());
-	m_prefixLen = strlen(script.GetDisplayName()) + 2; // 2 = strlen(": ");
-	PrepareParams(script.GetName());
+	SetLogPrefix(script->GetDisplayName());
+	m_prefixLen = strlen(script->GetDisplayName()) + 2; // 2 = strlen(": ");
+	PrepareParams(script->GetName());
 
 	Execute();
 

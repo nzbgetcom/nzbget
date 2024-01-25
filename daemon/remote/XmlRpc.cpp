@@ -2740,11 +2740,11 @@ void LoadExtensionsXmlCommand::Execute()
 
 	int index = 0;
 
-	for (const auto& extension : g_ExtensionManager->GetExtensions())
+	for (const auto extension : g_ExtensionManager->GetExtensions())
 	{
 		std::string response = isJson
-			? Extension::ToJsonStr(extension)
-			: Extension::ToXmlStr(extension);
+			? Extension::ToJsonStr(*extension)
+			: Extension::ToXmlStr(*extension);
 
 		AppendCondResponse(",\n", isJson && index++ > 0);
 		AppendResponse(response.c_str());

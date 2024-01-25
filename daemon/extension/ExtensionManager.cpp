@@ -71,7 +71,12 @@ namespace ExtensionManager
 			return "Failed to find " + extName;
 		}
 
-		const auto deleteExtError = DeleteExtension(*extensionIt);
+		if (extensionIt->use_count() > 1)
+		{
+			return "Failed to update: " + filename + " is executing";
+		}
+
+		const auto deleteExtError = DeleteExtension(*(*extensionIt));
 		if (deleteExtError)
 		{
 			if (!FileSystem::DeleteFile(filename.c_str()))
@@ -82,7 +87,7 @@ namespace ExtensionManager
 			return deleteExtError;
 		}
 		
-		const auto installExtError = InstallExtension(filename, extensionIt->GetRootDir());
+		const auto installExtError = InstallExtension(filename, (*extensionIt)->GetRootDir());
 		if (installExtError)
 		{
 			return installExtError;
@@ -143,7 +148,12 @@ namespace ExtensionManager
 			return "Failed to find " + name;
 		}
 
-		const auto err = DeleteExtension(*extensionIt);
+		if (extensionIt->use_count() > 1)
+		{
+			return "Failed to delete: " + name + " is executing";
+		}
+
+		const auto err = DeleteExtension(*(*extensionIt));
 		if (err)
 		{
 			return err;
@@ -179,7 +189,7 @@ namespace ExtensionManager
 	}
 
 	boost::optional<std::string>
-	Manager::DeleteExtension(const Extension& ext)
+	Manager::DeleteExtension(const Extension::Script& ext)
 	{
 		const char* location = ext.GetLocation();
 
@@ -203,10 +213,10 @@ namespace ExtensionManager
 	
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)
 	{
-		Extension extension;
+		auto extension = std::make_shared<Extension::Script>();
 
-		if (ExtensionLoader::V2::Load(extension, directory, rootDir)) {
-			if (!Exists(extension.GetName()))
+		if (ExtensionLoader::V2::Load(*extension, directory, rootDir)) {
+			if (!Exists(extension->GetName()))
 			{
 				m_extensions.push_back(std::move(extension));
 				return;
@@ -229,9 +239,9 @@ namespace ExtensionManager
 				}
 
 				const char* location = isSubDir ? directory : *entry;
-				extension.SetEntry(*entry);
-				extension.SetName(std::move(name));
-				if (ExtensionLoader::V1::Load(extension, location, rootDir))
+				extension->SetEntry(*entry);
+				extension->SetName(std::move(name));
+				if (ExtensionLoader::V1::Load(*extension, location, rootDir))
 				{
 					m_extensions.push_back(std::move(extension));
 				}
@@ -245,23 +255,23 @@ namespace ExtensionManager
 
 	void Manager::CreateTasks() const
 	{
-		for (const Extension& extension : m_extensions)
+		for (const auto extension : m_extensions)
 		{
-			if (!extension.GetSchedulerScript() || Util::EmptyStr(extension.GetTaskTime()))
+			if (!extension->GetSchedulerScript() || Util::EmptyStr(extension->GetTaskTime()))
 			{
 				continue;
 			}
 			Tokenizer tok(g_Options->GetExtensions(), ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (strcmp(scriptName, extension.GetName()) == 0)
+				if (strcmp(scriptName, extension->GetName()) == 0)
 				{
 					g_Options->CreateSchedulerTask(
 						0,
-						extension.GetTaskTime(),
+						extension->GetTaskTime(),
 						nullptr,
 						Options::scScript,
-						extension.GetName()
+						extension->GetName()
 					);
 					break;
 				}
@@ -276,9 +286,9 @@ namespace ExtensionManager
 
 	void Manager::Sort(const char* orderStr)
 	{
-		auto comparator = [](const Extension& a, const Extension& b) -> bool
+		auto comparator = [](const auto& a, const auto& b) -> bool
 		{
-			return strcmp(a.GetName(), b.GetName()) < 0;
+			return strcmp(a->GetName(), b->GetName()) < 0;
 		};
 
 		std::vector<std::string> order;
@@ -314,9 +324,9 @@ namespace ExtensionManager
 			auto it = std::find_if(
 				std::begin(m_extensions),
 				std::end(m_extensions),
-				[&name](const Extension& ext)
+				[&name](const auto& ext)
 				{
-					return name == ext.GetName();
+					return name == ext->GetName();
 				}
 			);
 			if (it != std::end(m_extensions))
@@ -349,9 +359,9 @@ namespace ExtensionManager
 		return std::find_if(
 			std::begin(m_extensions),
 			std::end(m_extensions),
-			[&name](const Extension& ext)
+			[&name](const auto& ext)
 			{
-				return ext.GetName() == name;
+				return ext->GetName() == name;
 			}
 		);
 	}

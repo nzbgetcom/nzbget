@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <tuple>
+#include <memory>
 #include <shared_mutex>
 #include <boost/optional.hpp>
 #include "WebDownloader.h"
@@ -30,8 +31,7 @@
 
 namespace ExtensionManager
 {
-	using Extension = Extension::Script;
-	using Extensions = std::vector<Extension>;
+	using Extensions = std::vector<std::shared_ptr<Extension::Script>>;
 
 	class Manager
 	{
@@ -70,7 +70,7 @@ namespace ExtensionManager
 		void Sort(const char* order);
 		std::string GetExtensionName(const std::string& fileName) const;
 		boost::optional<std::string>
-		DeleteExtension(const Extension& ext);
+		DeleteExtension(const Extension::Script& ext);
 
 		Extensions m_extensions;
 		mutable std::shared_mutex m_write;

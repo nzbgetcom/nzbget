@@ -29,7 +29,7 @@ public:
 	static void ExecuteScripts(const char* feedScript, const char* feedFile, int feedId, bool* success);
 
 protected:
-	virtual void ExecuteScript(const Extension::Script& script);
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
 
 private:
 	const char* m_feedFile;

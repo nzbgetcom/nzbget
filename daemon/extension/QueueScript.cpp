@@ -40,10 +40,10 @@ class QueueScriptController : public Thread, public NzbScriptController
 {
 public:
 	virtual void Run();
-	static void StartScript(NzbInfo* nzbInfo, const Extension::Script& script, QueueScriptCoordinator::EEvent event);
+	static void StartScript(NzbInfo* nzbInfo, std::shared_ptr<Extension::Script> script, QueueScriptCoordinator::EEvent event);
 
 protected:
-	virtual void ExecuteScript(const Extension::Script& script);
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
 	virtual void AddMessage(Message::EKind kind, const char* text);
 
 private:
@@ -60,7 +60,7 @@ private:
 	int m_dupeScore;
 	NzbParameterList m_parameters;
 	int m_prefixLen;
-	const Extension::Script* m_script;
+	std::shared_ptr<Extension::Script> m_script;
 	QueueScriptCoordinator::EEvent m_event;
 	bool m_markBad;
 	NzbInfo::EDeleteStatus m_deleteStatus;
@@ -71,7 +71,7 @@ private:
 };
 
 
-void QueueScriptController::StartScript(NzbInfo* nzbInfo, const Extension::Script& script, QueueScriptCoordinator::EEvent event)
+void QueueScriptController::StartScript(NzbInfo* nzbInfo, std::shared_ptr<Extension::Script> script, QueueScriptCoordinator::EEvent event)
 {
 	QueueScriptController* scriptController = new QueueScriptController();
 
@@ -87,7 +87,7 @@ void QueueScriptController::StartScript(NzbInfo* nzbInfo, const Extension::Scrip
 	scriptController->m_dupeMode = nzbInfo->GetDupeMode();
 	scriptController->m_dupeScore = nzbInfo->GetDupeScore();
 	scriptController->m_parameters.CopyFrom(nzbInfo->GetParameters());
-	scriptController->m_script = &script;
+	scriptController->m_script = std::move(script);
 	scriptController->m_event = event;
 	scriptController->m_prefixLen = 0;
 	scriptController->m_markBad = false;
@@ -101,7 +101,7 @@ void QueueScriptController::StartScript(NzbInfo* nzbInfo, const Extension::Scrip
 
 void QueueScriptController::Run()
 {
-	ExecuteScript(*m_script);
+	ExecuteScript(m_script);
 
 	SetLogPrefix(nullptr);
 
@@ -120,19 +120,19 @@ void QueueScriptController::Run()
 	g_QueueScriptCoordinator->CheckQueue();
 }
 
-void QueueScriptController::ExecuteScript(const Extension::Script& script)
+void QueueScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
 {
 	PrintMessage(m_event == QueueScriptCoordinator::qeFileDownloaded ? Message::mkDetail : Message::mkInfo,
-		"Executing queue-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbName));
+		"Executing queue-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbName));
 
-	SetArgs({script.GetEntry()});
+	SetArgs({script->GetEntry()});
 
-	BString<1024> infoName("queue-script %s for %s", script.GetName(), FileSystem::BaseFileName(m_nzbName));
+	BString<1024> infoName("queue-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbName));
 	SetInfoName(infoName);
 
-	SetLogPrefix(script.GetDisplayName());
-	m_prefixLen = strlen(script.GetDisplayName()) + 2; // 2 = strlen(": ");
-	PrepareParams(script.GetName());
+	SetLogPrefix(script->GetDisplayName());
+	m_prefixLen = strlen(script->GetDisplayName()) + 2; // 2 = strlen(": ");
+	PrepareParams(script->GetName());
 
 	Execute();
 
@@ -248,9 +248,9 @@ void QueueScriptController::AddMessage(Message::EKind kind, const char* text)
 void QueueScriptCoordinator::InitOptions()
 {
 	m_hasQueueScripts = false;
-	for (const auto& script : g_ExtensionManager->GetExtensions())
+	for (const auto script : g_ExtensionManager->GetExtensions())
 	{
-		if (script.GetQueueScript())
+		if (script->GetQueueScript())
 		{
 			m_hasQueueScripts = true;
 			break;
@@ -288,7 +288,7 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 		return;
 	}
 
-	for (const auto& script : g_ExtensionManager->GetExtensions())
+	for (const auto script : g_ExtensionManager->GetExtensions())
 	{
 		if (UsableScript(script, nzbInfo, event))
 		{
@@ -298,7 +298,7 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 				// check if this script is already queued for this nzb
 				for (QueueItem* queueItem : &m_queue)
 				{
-					if (queueItem->GetNzbId() == nzbInfo->GetId() && queueItem->GetScript() == &script)
+					if (queueItem->GetNzbId() == nzbInfo->GetId() && queueItem->GetScript() == script)
 					{
 						alreadyQueued = true;
 						break;
@@ -316,7 +316,7 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 				else
 				{
 					m_curItem = std::move(queueItem);
-					QueueScriptController::StartScript(nzbInfo, *m_curItem->GetScript(), m_curItem->GetEvent());
+					QueueScriptController::StartScript(nzbInfo, m_curItem->GetScript(), m_curItem->GetEvent());
 				}
 			}
 
@@ -325,14 +325,14 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 	}
 }
 
-bool QueueScriptCoordinator::UsableScript(const Extension::Script& script, NzbInfo* nzbInfo, EEvent event)
+bool QueueScriptCoordinator::UsableScript(std::shared_ptr<Extension::Script> script, NzbInfo* nzbInfo, EEvent event)
 {
-	if (!script.GetQueueScript())
+	if (!script->GetQueueScript())
 	{
 		return false;
 	}
 
-	if (!Util::EmptyStr(script.GetQueueEvents()) && !strstr(script.GetQueueEvents(), QUEUE_EVENT_NAMES[event]))
+	if (!Util::EmptyStr(script->GetQueueEvents()) && !strstr(script->GetQueueEvents(), QUEUE_EVENT_NAMES[event]))
 	{
 		return false;
 	}
@@ -348,7 +348,7 @@ bool QueueScriptCoordinator::UsableScript(const Extension::Script& script, NzbIn
 		{
 			BString<1024> scriptName = varname;
 			scriptName[strlen(scriptName)-1] = '\0'; // remove trailing ':'
-			if (strcmp(scriptName, script.GetName()) == 0)
+			if (strcmp(scriptName, script->GetName()) == 0)
 			{
 				return true;
 			}
@@ -374,7 +374,7 @@ bool QueueScriptCoordinator::UsableScript(const Extension::Script& script, NzbIn
 			Tokenizer tok(postScript, ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (strcmp(scriptName, script.GetName()) == 0)
+				if (strcmp(scriptName, script->GetName()) == 0)
 				{
 					return true;
 				}
@@ -453,7 +453,7 @@ void QueueScriptCoordinator::CheckQueue()
 	{
 		m_curItem = std::move(*itCurItem);
 		m_queue.erase(itCurItem);
-		QueueScriptController::StartScript(curNzbInfo, *m_curItem->GetScript(), m_curItem->GetEvent());
+		QueueScriptController::StartScript(curNzbInfo, m_curItem->GetScript(), m_curItem->GetEvent());
 	}
 }
 

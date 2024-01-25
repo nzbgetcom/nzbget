@@ -40,22 +40,22 @@ void FeedScriptController::ExecuteScripts(const char* feedScript, const char* fe
 	}
 }
 
-void FeedScriptController::ExecuteScript(const Extension::Script& script)
+void FeedScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
 {
-	if (!script.GetFeedScript())
+	if (!script->GetFeedScript())
 	{
 		return;
 	}
 
-	PrintMessage(Message::mkInfo, "Executing feed-script %s for Feed%i", script.GetName(), m_feedId);
+	PrintMessage(Message::mkInfo, "Executing feed-script %s for Feed%i", script->GetName(), m_feedId);
 
-	SetArgs({script.GetEntry()});
+	SetArgs({script->GetEntry()});
 
-	BString<1024> infoName("feed-script %s for Feed%i", script.GetName(), m_feedId);
+	BString<1024> infoName("feed-script %s for Feed%i", script->GetName(), m_feedId);
 	SetInfoName(infoName);
 
-	SetLogPrefix(script.GetDisplayName());
-	PrepareParams(script.GetName());
+	SetLogPrefix(script->GetDisplayName());
+	PrepareParams(script->GetName());
 
 	int exitCode = Execute();
 

@@ -31,7 +31,7 @@ public:
 	static bool StartScript(const char* scriptName, const char* command, std::unique_ptr<Options::OptEntries> modifiedOptions);
 
 protected:
-	virtual void ExecuteScript(const Extension::Script& script);
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
 	virtual void AddMessage(Message::EKind kind, const char* text);
 	virtual const char* GetOptValue(const char* name, const char* value);
 

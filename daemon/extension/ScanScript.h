@@ -33,7 +33,7 @@ public:
 	static bool HasScripts();
 
 protected:
-	virtual void ExecuteScript(const Extension::Script& script);
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
 	virtual void AddMessage(Message::EKind kind, const char* text);
 
 private:

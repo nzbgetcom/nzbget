@@ -31,7 +31,7 @@ public:
 	static void StartScript(const char* param, bool externalProcess, int taskId);
 
 protected:
-	virtual void ExecuteScript(const Extension::Script& script);
+	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
 
 private:
 	CString m_script;

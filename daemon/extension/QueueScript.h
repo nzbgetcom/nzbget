@@ -50,14 +50,14 @@ private:
 	class QueueItem
 	{
 	public:
-		QueueItem(int nzbId, const Extension::Script& script, EEvent event) :
-			m_nzbId(nzbId), m_script(&script), m_event(event) {}
+		QueueItem(int nzbId, std::shared_ptr<Extension::Script> script, EEvent event) :
+			m_nzbId(nzbId), m_script(std::move(script)), m_event(event) {}
 		int GetNzbId() { return m_nzbId; }
-		const Extension::Script* GetScript() const { return m_script; }
+		const std::shared_ptr<Extension::Script>& GetScript() const { return m_script; }
 		EEvent GetEvent() { return m_event; }
 	private:
 		int m_nzbId;
-		const Extension::Script* m_script;
+		std::shared_ptr<Extension::Script> m_script;
 		EEvent m_event;
 	};
 
@@ -69,7 +69,7 @@ private:
 	bool m_hasQueueScripts = false;
 	bool m_stopped = false;
 
-	bool UsableScript(const Extension::Script& script, NzbInfo* nzbInfo, EEvent event);
+	bool UsableScript(std::shared_ptr<Extension::Script> script, NzbInfo* nzbInfo, EEvent event);
 };
 
 extern QueueScriptCoordinator* g_QueueScriptCoordinator;
