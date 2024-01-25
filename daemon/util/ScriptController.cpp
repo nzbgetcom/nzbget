@@ -309,19 +309,19 @@ void ScriptController::PrepareCmdLine(const char* extension)
 void ScriptController::PrepareCmdLine(const char*)
 {
 	*m_cmdLine = '\0';
+	m_cmdArgs.clear();
 
 	if (m_args.size() == 1)
 	{
-		m_cmdArgs.clear();
-		const auto res = Util::FindInterpreter(m_args[0].Str());
-		if (!res || res.get().empty())
+		const auto found = Util::FindInterpreter(m_args[0].Str());
+		if (!found)
 		{
 			strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);
 		}
 		else
 		{
-			strncpy(m_cmdLine, res.get().c_str(), sizeof(m_cmdLine) - 1);
-			m_cmdArgs.emplace_back(res.get().c_str());
+			strncpy(m_cmdLine, found.get().c_str(), sizeof(m_cmdLine) - 1);
+			m_cmdArgs.emplace_back(found.get().c_str());
 		}
 	}
 	else
