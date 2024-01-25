@@ -24,22 +24,6 @@
 
 namespace Extension
 {
-	Script::Script(Script&& other) noexcept
-	{
-		Swap(other);
-	}
-
-	Script& Script::operator=(Script&& other) noexcept
-	{
-		if (this == &other)
-		{
-			return *this;
-		}
-
-		Swap(other);
-		return *this;
-	}
-
 	void Script::SetEntry(std::string entry)
 	{
 		m_entry = std::move(entry);
@@ -226,43 +210,6 @@ namespace Extension
 	const std::vector<ManifestFile::Command>& Script::GetCommands() const
 	{
 		return m_commands;
-	}
-
-	bool Script::Busy() const
-	{
-		return m_procs > 0;
-	}
-
-	void Script::EncProcessCount() const
-	{
-		++m_procs;
-	}
-
-	void Script::DecProcessCount() const
-	{
-		--m_procs;
-	}
-
-	void Script::Swap(Script& other) noexcept
-	{
-		m_procs.store(other.m_procs.load());
-		std::swap(m_about, other.m_about);
-		std::swap(m_author, other.m_author);
-		std::swap(m_commands, other.m_commands);
-		std::swap(m_description, other.m_description);
-		std::swap(m_displayName, other.m_displayName);
-		std::swap(m_entry, other.m_entry);
-		std::swap(m_homepage, other.m_homepage);
-		std::swap(m_kind, other.m_kind);
-		std::swap(m_license, other.m_license);
-		std::swap(m_location, other.m_location);
-		std::swap(m_name, other.m_name);
-		std::swap(m_options, other.m_options);
-		std::swap(m_queueEvents, other.m_queueEvents);
-		std::swap(m_requirements, other.m_requirements);
-		std::swap(m_rootDir, other.m_rootDir);
-		std::swap(m_taskTime, other.m_taskTime);
-		std::swap(m_version, other.m_version);
 	}
 
 	std::string ToJsonStr(const Script& script)

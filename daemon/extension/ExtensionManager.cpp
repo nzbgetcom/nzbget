@@ -29,13 +29,9 @@
 
 namespace ExtensionManager
 {
-	Manager::Manager() noexcept
-	{
-		m_extensions.reserve(4);
-	}
-
 	const Extensions& Manager::GetExtensions() const
 	{
+		std::shared_lock<std::shared_mutex> lock(m_write);
 		return m_extensions;
 	}
 
@@ -67,15 +63,15 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
 	{
+		std::unique_lock<std::shared_mutex> lock(m_write);
+
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
 		{
 			return "Failed to find " + extName;
 		}
 
-		const std::string& rootDir = extensionIt->GetRootDir();
-
-		const auto deleteExtError = DeleteExtension(extName);
+		const auto deleteExtError = DeleteExtension(*extensionIt);
 		if (deleteExtError)
 		{
 			if (!FileSystem::DeleteFile(filename.c_str()))
@@ -86,12 +82,13 @@ namespace ExtensionManager
 			return deleteExtError;
 		}
 		
-		const auto installExtError = InstallExtension(filename, rootDir);
+		const auto installExtError = InstallExtension(filename, extensionIt->GetRootDir());
 		if (installExtError)
 		{
 			return installExtError;
 		}
 
+		m_extensions.erase(extensionIt);
 		return boost::none;
 	}
 
@@ -138,37 +135,22 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::DeleteExtension(const std::string& name)
 	{
+		std::unique_lock<std::shared_mutex> lock(m_write);
+
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
 		{
 			return "Failed to find " + name;
 		}
 
-		if (extensionIt->Busy())
+		const auto err = DeleteExtension(*extensionIt);
+		if (err)
 		{
-			return name + " is executing";
+			return err;
 		}
 
-		const char* location = extensionIt->GetLocation();
-
-		CString err;
-		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
-		{
-			if (!err.Empty())
-			{
-				return boost::optional<std::string>(err.Str());
-			}
-
-			m_extensions.erase(extensionIt);
-			return boost::none;
-		}
-		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
-		{
-			m_extensions.erase(extensionIt);
-			return boost::none;
-		}
-
-		return std::string("Failed to delete ") + location;
+		m_extensions.erase(extensionIt);
+		return boost::none;
 	}
 	
 	boost::optional<std::string>
@@ -178,6 +160,10 @@ namespace ExtensionManager
 		{
 			return "\"ScriptDir\" is not specified";
 		}
+
+		std::unique_lock<std::shared_mutex> lock(m_write);
+
+		m_extensions.clear();
 
 		Tokenizer tokDir(options.GetScriptDir(), ",;");
 		while (const char* extensionDir = tokDir.Next())
@@ -192,6 +178,29 @@ namespace ExtensionManager
 		return boost::none;
 	}
 
+	boost::optional<std::string>
+	Manager::DeleteExtension(const Extension& ext)
+	{
+		const char* location = ext.GetLocation();
+
+		CString err;
+		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
+		{
+			if (!err.Empty())
+			{
+				return boost::optional<std::string>(err.Str());
+			}
+
+			return boost::none;
+		}
+		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
+		{
+			return boost::none;
+		}
+
+		return std::string("Failed to delete ") + location;
+	}
+	
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)
 	{
 		Extension extension;

@@ -3480,6 +3480,8 @@ var ExtensionManager = (new function($)
 
 	function splitString(str)
 	{
+		if (!str)
+			return [];
 		return str.split(/[,\s;]+/);
 	}
 

@@ -22,6 +22,7 @@
 
 #include <vector>
 #include <tuple>
+#include <shared_mutex>
 #include <boost/optional.hpp>
 #include "WebDownloader.h"
 #include "Options.h"
@@ -35,7 +36,7 @@ namespace ExtensionManager
 	class Manager
 	{
 	public:
-		Manager() noexcept;
+		Manager() noexcept = default;
 		~Manager() noexcept = default;
 
 		Manager(const Manager&) = delete;
@@ -68,8 +69,11 @@ namespace ExtensionManager
 		bool Exists(const std::string& name) const;
 		void Sort(const char* order);
 		std::string GetExtensionName(const std::string& fileName) const;
+		boost::optional<std::string>
+		DeleteExtension(const Extension& ext);
 
 		Extensions m_extensions;
+		mutable std::shared_mutex m_write;
 	};
 }
 

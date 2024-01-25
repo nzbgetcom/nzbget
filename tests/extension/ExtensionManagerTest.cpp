@@ -100,7 +100,6 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
 
 	const auto& extIt = std::begin(manager.GetExtensions());
-	extIt->EncProcessCount();
 
 	auto error = manager.DeleteExtension(extIt->GetName());
 

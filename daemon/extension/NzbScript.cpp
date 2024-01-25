@@ -77,9 +77,7 @@ void NzbScriptController::ExecuteScriptList(const char* scriptList)
 			{
 				if (strcmp(scriptName, script.GetName()) == 0)
 				{
-					script.EncProcessCount();
 					ExecuteScript(script);
-					script.DecProcessCount();
 					break;
 				}
 			}
