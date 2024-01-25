@@ -132,7 +132,7 @@ Compile_x86_64()
         --target=x86_64-apple-darwin \
         --with-tlslib=OpenSSL \
         --program-prefix="" \
-        CXXFLAGS="-arch x86_64 -I$(pwd)/tmp/openssl/x86/include -I$(pwd)/tmp/boost/boost-1.84.0/x86/include" \
+        CXXFLAGS="-arch x86_64 -std=c++14 -O2 -I$(pwd)/tmp/openssl/x86/include -I$(pwd)/tmp/boost/boost-1.84.0/x86/include" \
         LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86 -L$(pwd)/tmp/boost/boost-1.84.0/x86/lib"
         
     Make
@@ -146,7 +146,7 @@ Compile_arm()
         --target=arm-apple-darwin \
         --with-tlslib=OpenSSL \
         --program-prefix="" \
-        CXXFLAGS="-arch arm64 -I$(pwd)/tmp/openssl/arm/include -I$(pwd)/tmp/boost/boost-1.84.0/arm/include" \
+        CXXFLAGS="-arch arm64 -std=c++14 -O2 -I$(pwd)/tmp/openssl/arm/include -I$(pwd)/tmp/boost/boost-1.84.0/arm/include" \
         LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm -L$(pwd)/tmp/boost/boost-1.84.0/arm/lib"    
     Make
 }
