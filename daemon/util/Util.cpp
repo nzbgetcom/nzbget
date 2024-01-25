@@ -127,56 +127,56 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 	}
 
 	#ifdef _WIN32
-    	const std::string null = " > nul 2>&1";
+    	const std::string nullOutput = " > nul 2>&1";
 	#else
-		const std::string null = " > /dev/null 2>&1";
+		const std::string nullOutput = " > /dev/null 2>&1";
 	#endif
 
 	if (fileExt == ".py")
 	{
-		std::string cmd = "python3 --version" + null;
+		std::string cmd = "python3 --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "python3";
+			return std::string("python3");
 		}
-		cmd = "python --version" + null;
+		cmd = "python --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "python";
+			return std::string("python");
 		}
-		cmd = "py --version" + null;
+		cmd = "py --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "py";
+			return std::string("py");
 		}
 		return boost::none;
 	}
 	if (fileExt == ".sh")
 	{
-		std::string cmd = "bash --version" + null;
+		std::string cmd = "bash --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "bash";
+			return std::string("bash");
 		}
-		cmd = "sh --version" + null;
+		cmd = "sh --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "sh";
+			return std::string("sh");
 		}
 		return boost::none;
 	}
 	if (fileExt == ".js")
 	{
-		const std::string cmd = "node --version" + null;
+		const std::string cmd = "node --version" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
-			return "node";
+			return std::string("node");
 		}
 		return boost::none;
 	}
 	if (fileExt == ".cmd" || fileExt == ".bat")
 	{
-		const std::string cmd = "cmd.exe /c" + null;
+		const std::string cmd = "cmd.exe /c" + nullOutput;
 		if (std::system(cmd.c_str()) == 0)
 		{
 			return filename;

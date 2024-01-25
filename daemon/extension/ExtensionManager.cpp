@@ -31,7 +31,7 @@ namespace ExtensionManager
 {
 	const Extensions& Manager::GetExtensions() const
 	{
-		std::shared_lock<std::shared_mutex> lock(m_write);
+		std::shared_lock<std::shared_timed_mutex> lock(m_write);
 		return m_extensions;
 	}
 
@@ -63,7 +63,7 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
 	{
-		std::unique_lock<std::shared_mutex> lock(m_write);
+		std::unique_lock<std::shared_timed_mutex> lock(m_write);
 
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
@@ -103,7 +103,7 @@ namespace ExtensionManager
 		if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
 		{
 
-			return "\"SevenZipCmd\" is not specified";
+			return std::string("\"SevenZipCmd\" is not specified");
 		}
 
 		UnpackController unpacker;
@@ -140,7 +140,7 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::DeleteExtension(const std::string& name)
 	{
-		std::unique_lock<std::shared_mutex> lock(m_write);
+		std::unique_lock<std::shared_timed_mutex> lock(m_write);
 
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
@@ -168,10 +168,10 @@ namespace ExtensionManager
 	{
 		if (Util::EmptyStr(options.GetScriptDir()))
 		{
-			return "\"ScriptDir\" is not specified";
+			return std::string("\"ScriptDir\" is not specified");
 		}
 
-		std::unique_lock<std::shared_mutex> lock(m_write);
+		std::unique_lock<std::shared_timed_mutex> lock(m_write);
 
 		m_extensions.clear();
 

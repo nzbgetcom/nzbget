@@ -42,8 +42,8 @@ namespace ExtensionManager
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
-		Manager(Manager&&) noexcept = default;
-		Manager& operator=(Manager&&) noexcept = default;
+		Manager(Manager&&) noexcept = delete;
+		Manager& operator=(Manager&&) noexcept = delete;
 
 		boost::optional<std::string> 
 		InstallExtension(const std::string& filename, const std::string& dest);
@@ -73,7 +73,7 @@ namespace ExtensionManager
 		DeleteExtension(const Extension::Script& ext);
 
 		Extensions m_extensions;
-		mutable std::shared_mutex m_write;
+		mutable std::shared_timed_mutex m_write;
 	};
 }
 
