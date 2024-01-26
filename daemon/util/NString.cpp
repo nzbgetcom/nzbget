@@ -154,8 +154,9 @@ void CString::AppendFmtV(const char* format, va_list ap)
 	if (addLen < 0) return; // error
 
 	int curLen = Length();
-	char* newData = (char*)realloc(m_data, curLen + addLen + 1);
+	int newLen = curLen + addLen;
 
+	char* newData = (char*)realloc(m_data, newLen + 1);
 	if (newData == nullptr) 
 	{
 		return;
@@ -163,7 +164,7 @@ void CString::AppendFmtV(const char* format, va_list ap)
 
 	m_data = newData;
 
-	vsnprintf(m_data + curLen, addLen, format, ap2);
+	vsnprintf(m_data + curLen, newLen + 1, format, ap2);
 
 	va_end(ap2);
 }
