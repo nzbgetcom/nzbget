@@ -3696,14 +3696,16 @@ var ExtensionManager = (new function($)
 
 	function getUpdateBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' + ext.name +'" title="Update"><i class="icon-refresh"></i></button>');
+		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' + ext.name +'"><i class="icon-refresh"></i></button>');
 		if (ext.outdated)
 		{
+			btn.attr({ title: "Update to new version" });
 			btn.off('click').on('click', function() { updateExtension(ext); });
 		}
 		else
 		{
 			btn.attr({ disabled: true });
+			btn.attr({ title: "Extension up-to-date!" });
 			btn.addClass('btn--disabled');
 		}
 		return btn;
@@ -3711,7 +3713,7 @@ var ExtensionManager = (new function($)
 
 	function getConfigureBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' + ext.name +'" title="Conifgure"><i class="icon-settings"></i></button>')
+		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' + ext.name +'" title="Configure"><i class="icon-settings"></i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 		return btn;
@@ -3725,13 +3727,13 @@ var ExtensionManager = (new function($)
 		if (ext.isActive && !ext.testError)
 		{	
 			btn.append('<i class="icon-pause"></i>');
-			btn.attr({ title: "Deactivate" });
+			btn.attr({ title: "Deactivate (restart needed)" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
 			btn.append('<i class="icon-play"></i>');
-			btn.attr({ title: "Activate for new downloads" });
+			btn.attr({ title: "Activate for new downloads (restart needed)" });
 			btn.addClass('btn-success');
 		}
 		else
@@ -3817,6 +3819,7 @@ var ExtensionManager = (new function($)
 		}
 		var cell = $('<td class="extension-manager__td text-center">');
 		var container = $('<div class="btn-row-order-block">');
+		var title = "Modify execution order (restart needed)";
 		var mvTop = $('<div class="btn-row-order icon-top"></div>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
@@ -3829,6 +3832,11 @@ var ExtensionManager = (new function($)
 		var mvBottom = $('<div class="btn-row-order icon-bottom"></div>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
+		
+		mvTop.attr({ title: title});
+		mvUp.attr({ title: title});
+		mvDown.attr({ title: title});
+		mvBottom.attr({ title: title});
 
 		if (isFirst)
 		{
