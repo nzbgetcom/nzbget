@@ -2879,7 +2879,7 @@ void TestExtensionXmlCommand::Execute()
 	}
 	DecodeStr(extEntryFileName);
 
-	const auto found = Util::FindInterpreter(extEntryFileName);
+	const auto found = Util::FindExecutorProgram(extEntryFileName, g_Options->GetShellOverride());
 	if (!found)
 	{
 		BuildErrorResponse(2, "Failed to find the corresponding executor");

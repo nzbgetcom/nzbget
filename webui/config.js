@@ -3628,35 +3628,34 @@ var ExtensionManager = (new function($)
 	function activateExt(ext)
 	{
 		ext.isActive = !ext.isActive;
+		var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
 		if (!ext.isActive)
 		{
-			var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
 			value = deleteExtFromPropVal(value, ext.name);
 			Config.setOptionValue(Config.findOptionByName(extensionsId), value);
 			update();
 			return;
 		}
 
+		if (value)
+		{
+			value += ", " + ext.name
+		}
+		else
+		{
+			value = ext.name;
+		}
+		Config.setOptionValue(Config.findOptionByName(extensionsId), value);
+
 		RPC.call('testextension', [ext.entry], 
 			function(_)
 			{
 				ext.testError = '';
-				var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
-				if (value)
-				{
-					value += ", " + ext.name
-				}
-				else
-				{
-					value = ext.name;
-				}
-				Config.setOptionValue(Config.findOptionByName(extensionsId), value);
 				update();
 			},
 			function (err)
 			{
-				ext.isActive = false;
-				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry;
+				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry + '.\nThe extension may not work';
 				update();
 			}
 		);

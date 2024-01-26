@@ -34,7 +34,8 @@ class Util
 {
 public:
 	static bool MatchFileExt(const char* filename, const char* extensionList, const char* listSeparator);
-	static boost::optional<std::string> FindInterpreter(const std::string& filename);
+	static boost::optional<std::string> 
+	FindExecutorProgram(const std::string& filename, const std::string& customPath);
 
 	/*
 	* Split command line into arguments.

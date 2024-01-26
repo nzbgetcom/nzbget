@@ -234,6 +234,7 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 	}
 }
 
+#ifdef WIN32
 void ScriptController::PrepareArgs()
 {
 	const char* extension = strrchr(m_args[0], '.');
@@ -259,12 +260,6 @@ void ScriptController::PrepareArgs()
 		}
 	}
 
-	PrepareCmdLine(extension);
-}
-
-#ifdef WIN32
-void ScriptController::PrepareCmdLine(const char* extension)
-{
 	*m_cmdLine = '\0';
 	if (m_args.size() == 1)
 	{
@@ -306,14 +301,14 @@ void ScriptController::PrepareCmdLine(const char* extension)
 #endif
 
 #ifndef WIN32
-void ScriptController::PrepareCmdLine(const char*)
+void ScriptController::PrepareArgs()
 {
 	*m_cmdLine = '\0';
 	m_cmdArgs.clear();
 
 	if (m_args.size() == 1)
 	{
-		const auto found = Util::FindInterpreter(m_args[0].Str());
+		const auto found = Util::FindExecutorProgram(m_args[0].Str(), g_Options->GetShellOverride());
 		if (!found)
 		{
 			strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);

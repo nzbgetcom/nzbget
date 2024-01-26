@@ -111,7 +111,8 @@ void Util::Init()
 	CurrentTicks();
 }
 
-boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
+boost::optional<std::string> 
+Util::FindExecutorProgram(const std::string& filename, const std::string& customPath)
 {
 	size_t idx = filename.find_last_of(".");
 	if (idx == std::string::npos)
@@ -121,9 +122,20 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 
 	const std::string fileExt = filename.substr(idx);
 
-	if (fileExt == ".exe")
+	Tokenizer tok(customPath.c_str(), ",;");
+	while (char* shellover = tok.Next())
 	{
-		return filename;
+		char* shellcmd = strchr(shellover, '=');
+		if (shellcmd)
+		{
+			*shellcmd = '\0';
+			shellcmd++;
+
+			if (fileExt == shellover)
+			{
+				return shellcmd;
+			}
+		}
 	}
 
 	#ifdef _WIN32
@@ -151,6 +163,7 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 		}
 		return boost::none;
 	}
+
 	if (fileExt == ".sh")
 	{
 		std::string cmd = "bash --version" + nullOutput;
@@ -165,6 +178,7 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 		}
 		return boost::none;
 	}
+
 	if (fileExt == ".js")
 	{
 		const std::string cmd = "node --version" + nullOutput;
@@ -174,6 +188,7 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 		}
 		return boost::none;
 	}
+
 	if (fileExt == ".cmd" || fileExt == ".bat")
 	{
 		const std::string cmd = "cmd.exe /c" + nullOutput;
@@ -182,6 +197,11 @@ boost::optional<std::string> Util::FindInterpreter(const std::string& filename)
 			return filename;
 		}
 		return boost::none;
+	}
+
+	if (fileExt == ".exe")
+	{
+		return filename;
 	}
 
 	return filename;
