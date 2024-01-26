@@ -133,7 +133,7 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 
 			if (fileExt == shellover)
 			{
-				return shellcmd;
+				return std::string(shellcmd);
 			}
 		}
 	}
