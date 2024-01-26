@@ -3627,6 +3627,7 @@ var ExtensionManager = (new function($)
 
 	function activateExt(ext)
 	{
+		disableAllBtns(ext, true);
 		ext.isActive = !ext.isActive;
 		var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
 		if (!ext.isActive)
@@ -3651,11 +3652,13 @@ var ExtensionManager = (new function($)
 			function(_)
 			{
 				ext.testError = '';
+				disableAllBtns(ext, false);
 				update();
 			},
-			function (err)
+			function (_)
 			{
 				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry + '.\nThe extension may not work';
+				disableAllBtns(ext, false);
 				update();
 			}
 		);
