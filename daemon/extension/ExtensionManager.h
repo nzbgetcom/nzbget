@@ -21,7 +21,7 @@
 #define EXTENSION_MANAGER_H
 
 #include <vector>
-#include <tuple>
+#include <utility>
 #include <memory>
 #include <shared_mutex>
 #include <boost/optional.hpp>
@@ -57,7 +57,7 @@ namespace ExtensionManager
 		boost::optional<std::string>
 		LoadExtensions(const IOptions& options);
 
-		std::tuple<WebDownloader::EStatus, std::string>
+		std::pair<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
 		
 		const Extensions& GetExtensions() const;
