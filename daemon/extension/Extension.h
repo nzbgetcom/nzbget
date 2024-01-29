@@ -20,7 +20,6 @@
 #ifndef EXTENSION_H
 #define EXTENSION_H
 
-#include <atomic>
 #include "ManifestFile.h"
 
 namespace Extension
