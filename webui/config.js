@@ -183,7 +183,6 @@ var Options = (new function($)
 					defvalue: command.Action,
 					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
 					select: [],
-					about: this.serverTemplateData[i].About,
 					description: arrToStr(command.Description),
 					nocontent: false,
 					formId: this.serverTemplateData[i].Name + '_' + command.Name,
