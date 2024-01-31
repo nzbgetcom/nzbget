@@ -2763,13 +2763,13 @@ void DownloadExtensionXmlCommand::Execute()
 	}
 	DecodeStr(url);
 
-	char* infoName;
-	if (!NextParamAsStr(&infoName))
+	char* extName;
+	if (!NextParamAsStr(&extName))
 	{
-		BuildErrorResponse(2, "Invalid parameter (Info)");
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
 		return;
 	}
-	DecodeStr(infoName);
+	DecodeStr(extName);
 
 	if (Util::EmptyStr(g_Options->GetTempDir()))
 	{
@@ -2777,7 +2777,7 @@ void DownloadExtensionXmlCommand::Execute()
 		return;
 	}
 
-	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
+	const auto result = g_ExtensionManager->DownloadExtension(url, extName);
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
 	if (!ok)
 	{
@@ -2822,15 +2822,7 @@ void UpdateExtensionXmlCommand::Execute()
 	}
 	DecodeStr(extName);
 
-	char* infoName;
-	if (!NextParamAsStr(&infoName))
-	{
-		BuildErrorResponse(2, "Invalid parameter (Info)");
-		return;
-	}
-	DecodeStr(infoName);
-
-	const auto result = g_ExtensionManager->DownloadExtension(url, infoName);
+	const auto result = g_ExtensionManager->DownloadExtension(url, extName);
 	bool ok = std::get<0>(result) == WebDownloader::adFinished;
 	if (!ok)
 	{

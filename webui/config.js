@@ -3393,7 +3393,7 @@ var ExtensionManager = (new function($)
 	function downloadExtension(ext)
 	{
 		disableDownloadBtn(ext, true);
-		RPC.call('downloadextension', [ext.url, 'Download ' + ext.name + ' extension'], 
+		RPC.call('downloadextension', [ext.url, ext.name], 
 			function(_) 
 			{
 				updatePage();
@@ -3410,7 +3410,7 @@ var ExtensionManager = (new function($)
 	{
 		disableAllBtns(ext, true);
 
-		RPC.call('updateextension', [ext.url, ext.name, 'Update ' + ext.name + ' extension'], 
+		RPC.call('updateextension', [ext.url, ext.name], 
 			function(_) 
 			{
 				updatePage();
@@ -3510,6 +3510,10 @@ var ExtensionManager = (new function($)
 	function deleteGlobalSettings(extName)
 	{
 		var values = Config.config().values;
+		if (!values)
+		{
+			return;
+		}
 		values.forEach(function(value, i)
 		{
 			if (value.Name == extensionsId || 
