@@ -34,7 +34,7 @@ RUN \
   /app/nzbget/share/nzbget/nzbget.conf && \
   mv /app/nzbget/share/nzbget/webui /app/nzbget/ && \
   cp /app/nzbget/share/nzbget/nzbget.conf /app/nzbget/webui/nzbget.conf.template && \
-  ln -s /usr/bin/7za /app/nzbget/7za && \
+  ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
   cp /nzbget/pubkey.pem /app/nzbget/pubkey.pem && \
   curl -o /app/nzbget/cacert.pem -L "https://curl.se/ca/cacert.pem" && \
