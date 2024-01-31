@@ -38,6 +38,7 @@ namespace ExtensionManager
 	std::pair<WebDownloader::EStatus, std::string>
 	Manager::DownloadExtension(const std::string& url, const std::string& info)
 	{
+		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
 		BString<1024> tempFileName;
 		int num = 1;
 		while (num == 1 || FileSystem::FileExists(tempFileName))

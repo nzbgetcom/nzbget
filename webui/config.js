@@ -1073,7 +1073,7 @@ var Config = (new function($)
 				if (!section.hidden)
 				{
 					var html = $('<li><a href="#' + section.id + '">' + section.name + '</a></li>');
-					if (inExtensioMangerSection)
+					if (haveExtensions)
 					{
 						html.addClass('list-item--nested');
 					}
