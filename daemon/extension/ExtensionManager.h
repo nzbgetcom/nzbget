@@ -23,7 +23,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <boost/optional.hpp>
 #include "WebDownloader.h"
 #include "Options.h"
