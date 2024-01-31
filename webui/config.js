@@ -1051,7 +1051,7 @@ var Config = (new function($)
 		$ConfigNav.children().not('.config-static').remove();
 		$ConfigData.children().not('.config-static').remove();
 
-		var inExtensioMangerSection = false;
+		var haveExtensions = false;
 
 		for (var k=0; k < config.length; k++)
 		{
@@ -1059,11 +1059,11 @@ var Config = (new function($)
 			{
 				$ConfigNav.append('<li class="divider"></li>');
 			}
-			if (k == 2)
+			if (k == 2) // Extensions section
 			{
 				$ConfigNav.append('<li class="divider"></li>');
 				$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
-				inExtensioMangerSection = true;
+				haveExtensions = true;
 			}
 			var conf = config[k];
 			var added = false;
@@ -1088,6 +1088,13 @@ var Config = (new function($)
 				var html = $('<li><a href="#' + conf.id + '">' + conf.name + '</a></li>');
 				$ConfigNav.append(html);
 			}
+		}
+
+		// Show extensions manager even if there are no extensions
+		if (!haveExtensions)
+		{
+			$ConfigNav.append('<li class="divider"></li>');
+			$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
 		}
 
 		notifyChanges();
