@@ -1,120 +1,172 @@
 #!/bin/bash
+set -e
 
-TOOLCHAIN_PATH=/home/ph/nzbgetcom/qnap/toolchains/x86_64
-CC="$TOOLCHAIN_PATH/cross-tools/bin/x86_64-QNAP-linux-gnu-gcc"
-CPP="$TOOLCHAIN_PATH/cross-tools/bin/x86_64-QNAP-linux-gnu-cpp"
-CXX="$TOOLCHAIN_PATH/cross-tools/bin/x86_64-QNAP-linux-gnu-g++"
-STRIP="$TOOLCHAIN_PATH/cross-tools/bin/x86_64-QNAP-linux-gnu-strip"
-INCLUDE="$TOOLCHAIN_PATH/fs/include"
-LIB="$TOOLCHAIN_PATH/fs/lib"
+# config variables
+QNAP_ROOT=/qnap
+TOOLCHAIN_PATH=$QNAP_ROOT/toolchain
+LIB_SRC_PATH=$QNAP_ROOT/source
+LIB_PATH=$QNAP_ROOT/lib
+ALL_ARCHS="i686 x86_64 aarch64"
+COREX=4
 
-export CXX=$CXX
-export CPP=$CPP
-export CC=$CC
-export STRIP=$STRIP
-export CXXFLAGS="$CXXFLAGS -I$INCLUDE"
-export LDFLAGS="-L$LIB"
+download_lib_source()
+{
+    LIB=$1
+    URL=$2
+    LIB_SRC_FILE=${URL##*/}
+    if [ ! -f "$LIB_SRC_PATH/$LIB_SRC_FILE" ]; then
+        echo "Downloading $LIB_SRC_FILE ..."
+        mkdir -p "$LIB_SRC_PATH"
+        curl -o "$LIB_SRC_PATH/$LIB_SRC_FILE" -lL $URL
+    fi
+}
 
-# build dependent libs
-mkdir -p tmp
-cd tmp
+build_lib()
+{
+    URL=$1
+    LIB_SRC_FILE=${URL##*/}
+    LIB=$(echo $LIB_SRC_FILE | cut -d- -f 1)
+    download_lib_source $LIB $URL
+    if [ ! -d "$LIB_PATH/$ARCH/$LIB" ]; then
+        mkdir -p "$LIB_PATH/$ARCH"
+        cp "$LIB_SRC_PATH/$LIB_SRC_FILE" "$LIB_PATH/$ARCH"
+        cd "$LIB_PATH/$ARCH"
+        tar zxf "$LIB_SRC_FILE"
+        rm $LIB_SRC_FILE
+        cd ${LIB_SRC_FILE/.tar.gz/}
+        case $LIB in
+            "ncurses")
+                export > /tmp/export.txt
+                ./configure --with-termlib --without-progs --host=$HOST --prefix="$PWD/../$LIB"
+                ;;
+            "zlib")
+                ./configure --static --prefix="$PWD/../$LIB"
+                ;;
+            "libxml2")
+                ./autogen.sh --host=$HOST --enable-static --disable-shared --without-python --prefix="$PWD/../$LIB"
+                ;;
+            "musl")
+                ./configure --prefix="$PWD/../$LIB"
+                ;;
+            "openssl")
+                case $ARCH in
+                    "i686")
+                        OPENSSL_ARCH=generic32
+                        ;;
+                    *)
+                        OPENSSL_ARCH=$ARCH
+                        ;;
+                esac                
+                perl Configure linux-$OPENSSL_ARCH no-shared --prefix="$PWD/../$LIB"
+                ;;
+            "boost")
+                ./bootstrap.sh --with-libraries=json --prefix="$PWD/../$LIB"
+                echo "using gcc : qnap : $CXX ; " >>  project-config.jam
+                ./b2 --toolset=gcc-qnap cxxstd=14 link=static runtime-link=static install
+                ;;
+        esac
+        if [ "$LIB" != "boost" ]; then
+            make -j $COREX
+            make install
+        fi
+        cd ..
+        rm -rf ${LIB_SRC_FILE/.tar.gz/}
+    fi
+    if [ "$LIB" == "libxml2" ]; then
+        export CXXFLAGS="$CXXFLAGS -I$LIB_PATH/$ARCH/$LIB/include/libxml2"
+    else
+        export CXXFLAGS="$CXXFLAGS -I$LIB_PATH/$ARCH/$LIB/include"
+    fi
+    export CPPFLAGS="$CXXFLAGS"
+    if [ "$LIB" == "openssl" ]; then
+        export LDFLAGS="$LDFLAGS -L$LIB_PATH/$ARCH/$LIB/lib -L$LIB_PATH/$ARCH/$LIB/lib64"
+    else
+        export LDFLAGS="$LDFLAGS -L$LIB_PATH/$ARCH/$LIB/lib"
+    fi
+    cd $NZBGET_ROOT
+}
 
-# build ncurses
-if [ ! -d "ncurses" ]; then
-    NCURSES="ncurses-5.9"
-    cp /toolkit/source/$NCURSES.tar.gz .
-    tar zxf $NCURSES.tar.gz
-    rm $NCURSES.tar.gz
-    cd $NCURSES
-    ./configure --host=x86_64-QNAP-linux-gnu --prefix=$PWD/../ncurses
-    make
-    make install
-    cd ..
-    rm -rf $NCURSES
-fi
-export CXXFLAGS="$CXXFLAGS -I$PWD/ncurses/include"
-export CPPFLAGS="$CXXFLAGS"
-export LDFLAGS="$LDFLAGS -L$PWD/ncurses/lib"
+# cleanup shared and build directories
+rm -rf $QNAP_ROOT/nzbget
+cp -r qnap/package $QNAP_ROOT/nzbget
+NZBGET_ROOT=$PWD
 
-# # build boost library
-# BOOST="boost-1.84.0"
-# if [ -f /toolkit/source/$BOOST.tar.gz ]; then
-#     cp /toolkit/source/$BOOST.tar.gz .
-# else
-#     wget https://github.com/boostorg/boost/releases/download/$BOOST/$BOOST.tar.gz
-# fi
-# tar zxf $BOOST.tar.gz
-# mv $BOOST boost
-# rm $BOOST.tar.gz
-# cd ..
+for ARCH in $ALL_ARCHS; do
 
-# cd ./tmp/boost
-# ./bootstrap.sh --with-libraries=json --prefix=$(pwd)/build
-# echo "using gcc : qnap : $CXX ; " >>  project-config.jam
-# ./b2 --toolset=gcc-qnap cxxstd=14 link=static runtime-link=static install
-# cd ../..
+    # toolchain variables
+    export ARCH=$ARCH
+    export HOST="$ARCH-QNAP-linux-gnu"
+    export CC="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-gcc"
+    export CPP="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-cpp"
+    export CXX="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-g++"
+    export STRIP="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-strip"
 
-# build zlib
-if [ ! -d "zlib" ]; then
-    ZLIB="zlib-1.3.1"
-    cp /toolkit/source/$ZLIB.tar.gz .
-    tar zxf $ZLIB.tar.gz
-    rm $ZLIB.tar.gz
+    # clean build flags
+    export CXXFLAGS=""
+    export CPPFLAGS=""
+    export LDFLAGS=""
+    export LIBS=""
 
-    cd $ZLIB
-    ./configure --static --prefix=../zlib
-    make
-    make install
-    cd ..
-    rm -rf $ZLIB
-fi
-export CXXFLAGS="$CXXFLAGS -I$PWD/zlib/include"
-export CPPFLAGS="$CXXFLAGS"
-export LDFLAGS="$LDFLAGS -L$PWD/zlib/lib"
+    case $ARCH in
+        "i686")
+            QPKG_ARCH=x86
+            ;;
+        "aarch64")
+            QPKG_ARCH=arm_64
+            ;;
+        *)
+            QPKG_ARCH=$ARCH
+            ;;
+    esac
 
-# build libxml2
-if [ ! -d "libxml2" ]; then
-    LIBXML2="libxml2-v2.12.4"
-    cp /toolkit/source/$LIBXML2.tar.gz .
-    tar zxf $LIBXML2.tar.gz
-    rm $LIBXML2.tar.gz
-    cd $LIBXML2
-    ./autogen.sh --host=x86_64-QNAP-linux-gnu --enable-static --disable-shared --without-python --prefix=$PWD/../libxml2
-    make
-    make install
-    cd ..
-    rm -rf $LIBXML2
-fi
-export CXXFLAGS="$CXXFLAGS -I$PWD/libxml2/include/libxml2"
-export CPPFLAGS="$CXXFLAGS"
-export LDFLAGS="$LDFLAGS -L$PWD/libxml2/lib"
+    build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.4.tar.gz"
+    build_lib "https://zlib.net/zlib-1.3.1.tar.gz"
+    build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v2.12.4.tar.gz"
+    build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
+    build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
 
-# build openssl
-if [ ! -d "openssl" ]; then
-    OPENSSL="openssl-3.1.2"
-    cp /toolkit/source/$OPENSSL.tar.gz .
-    tar zxf $OPENSSL.tar.gz
-    rm $OPENSSL.tar.gz
-    cd $OPENSSL
-    perl Configure linux-x86_64 no-shared
-    make
-    make install DESTDIR=$PWD/../openssl
-    cd ..
-    rm -rf $OPENSSL
-fi
-export CXXFLAGS="$CXXFLAGS -I$PWD/openssl/usr/local/include"
-export CPPFLAGS="$CXXFLAGS"
-export LDFLAGS="$LDFLAGS -L$PWD/openssl/usr/local/lib64"
+    autoreconf --install
 
-cd ..
-autoreconf --install
-export LDFLAGS="$LDFLAGS -static -s"
-export CXXFLAGS="$CXXFLAGS -std=c++14 -O2"
-export LIBS="-lncurses -lxml2 -lz -lm -lcrypto -ldl -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-echo $CXXFLAGS
-./configure --disable-cpp-check --disable-dependency-tracking --host=x86_64-QNAP-linux-gnu
+    # we want to static link to all libs except libc
+    export CXXFLAGS="$CXXFLAGS -std=c++14 -O2"
+    export LIBS="-lncurses -lxml2 -lz -lm -lcrypto -ldl -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    ./configure --disable-cpp-check --disable-dependency-tracking --host=$HOST
+    make clean
+    make -j $COREX
 
-echo "export CC=$CC"
-echo "export CXX=$CXX"
-echo "export CPP=$CPP"
-echo "export LDFLAGS=\"$LDFLAGS\""
+    SHARED=$QNAP_ROOT/nzbget/shared
+    if [ ! -d "$SHARED/nzbget" ]; then
+        # populate shared folder
+        rm -rf $SHARED/install
+        make install DESTDIR=$SHARED/install
+        cd $SHARED
+        rm -rf nzbget
+        mkdir -p nzbget
+        mv install/usr/local/share/doc/nzbget/* nzbget
+        mv install/usr/local/share/nzbget/webui nzbget
+        mv install/usr/local/share/nzbget/scripts nzbget
+        CONFTEMPLATE=nzbget/webui/nzbget.conf.template
+        mv install/usr/local/share/nzbget/nzbget.conf $CONFTEMPLATE
+
+        rm -rf install
+
+        # adjusting nzbget.conf
+        sed 's:^MainDir=.*:MainDir=${AppDir}/downloads:' -i $CONFTEMPLATE
+        sed 's:^DestDir=.*:DestDir=${MainDir}/completed:' -i $CONFTEMPLATE
+        sed 's:^InterDir=.*:InterDir=${MainDir}/intermediate:' -i $CONFTEMPLATE
+        sed 's:^WebDir=.*:WebDir=${AppDir}/webui:' -i $CONFTEMPLATE
+        sed 's:^ScriptDir=.*:ScriptDir=${AppDir}/scripts:' -i $CONFTEMPLATE
+        sed 's:^LogFile=.*:LogFile=${MainDir}/nzbget.log:' -i $CONFTEMPLATE
+        sed 's:^ConfigTemplate=.*:ConfigTemplate=${AppDir}/webui/nzbget.conf.template:' -i $CONFTEMPLATE
+        sed 's:^AuthorizedIP=.*:AuthorizedIP=127.0.0.1:' -i $CONFTEMPLATE
+
+        cp $CONFTEMPLATE nzbget/nzbget.conf        
+    fi
+    
+    cd $NZBGET_ROOT
+    mkdir -p $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget
+    cp nzbget $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget/
+    cd $QNAP_ROOT/nzbget
+    qbuild --build-arch $QPKG_ARCH
+    cd $NZBGET_ROOT
+done
