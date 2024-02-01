@@ -3307,7 +3307,16 @@ void TestServerXmlCommand::Execute()
 		return;
 	}
 
-	NewsServer server(0, true, "test server", host, port, 0, username, password, false, encryption, cipher, 1, 0, 0, 0, false, certVerifLevel);
+	if (certVerifLevel < 0 || certVerifLevel > 2)
+	{
+		BuildErrorResponse(2, 
+			"Invalid parameter (Certificate Verification Level). Should be in the range [0, 2]."
+		);
+		return;
+	}
+
+	NewsServer server(0, true, "test server", host, port, 0, username, password, false, 
+					encryption, cipher, 1, 0, 0, 0, false, certVerifLevel);
 	TestConnection connection(&server, this);
 	connection.SetTimeout(timeout == 0 ? g_Options->GetArticleTimeout() : timeout);
 	connection.SetSuppressErrors(false);
