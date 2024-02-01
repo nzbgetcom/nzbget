@@ -33,7 +33,7 @@ public:
 	virtual const char* GetScriptOrder() const = 0;
 	virtual const char* GetExtensions() const = 0;
 	virtual const char* GetConfigFilename() const = 0;
-	virtual ~IOptions() noexcept = default;
+	virtual ~IOptions() = default;
 };
 
 class Options : public IOptions

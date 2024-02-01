@@ -36,14 +36,14 @@ namespace Extension
 	class Script
 	{
 	public:
-		Script() noexcept = default;
-		~Script() noexcept = default;
+		Script() = default;
+		~Script() = default;
 
 		Script& operator=(const Script&) = delete;
 		Script(const Script&) = delete;
 
-		Script(Script&& other) noexcept = default;
-		Script& operator=(Script&& other) noexcept = default;
+		Script(Script&& other) = default;
+		Script& operator=(Script&& other) = default;
 
 		void SetEntry(std::string entry);
 		const char* GetEntry() const;

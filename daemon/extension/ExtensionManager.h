@@ -36,14 +36,14 @@ namespace ExtensionManager
 	class Manager
 	{
 	public:
-		Manager() noexcept = default;
-		~Manager() noexcept = default;
+		Manager() = default;
+		~Manager() = default;
 
 		Manager(const Manager&) = delete;
 		Manager& operator=(const Manager&) = delete;
 
-		Manager(Manager&&) noexcept = delete;
-		Manager& operator=(Manager&&) noexcept = delete;
+		Manager(Manager&&) = delete;
+		Manager& operator=(Manager&&) = delete;
 
 		boost::optional<std::string> 
 		InstallExtension(const std::string& filename, const std::string& dest);
