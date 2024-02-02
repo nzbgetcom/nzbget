@@ -1680,6 +1680,7 @@ var Config = (new function($)
 		$('#Notif_Config_TestConnectionProgress').fadeIn(function() {
 			var multiid = parseInt($(control).attr('data-multiid'));
 			var timeout = Math.min(parseInt(getOptionValue(findOptionByName('ArticleTimeout'))), 10);
+			var certVerifLevel = getCertVerifLevel(getOptionValue(findOptionByName('Server' + multiid + '.CertVerification')));
 			RPC.call('testserver', [
 				getOptionValue(findOptionByName('Server' + multiid + '.Host')),
 				parseInt(getOptionValue(findOptionByName('Server' + multiid + '.Port'))),
@@ -1687,7 +1688,8 @@ var Config = (new function($)
 				getOptionValue(findOptionByName('Server' + multiid + '.Password')),
 				getOptionValue(findOptionByName('Server' + multiid + '.Encryption')) === 'yes',
 				getOptionValue(findOptionByName('Server' + multiid + '.Cipher')),
-				timeout
+				timeout,
+				certVerifLevel
 				],
 				function(errtext) {
 					$('#Notif_Config_TestConnectionProgress').fadeOut(function() {
@@ -1916,6 +1918,18 @@ var Config = (new function($)
 				request.push(extraOpt);
 			}
 		});
+	}
+
+	function getCertVerifLevel(verifLevel)
+	{
+		var level = verifLevel.toLowerCase();
+		switch(level)
+		{
+			case "none": return 0;
+			case "minimal": return 1;
+			case "strict": return 2;
+			default: return 2;
+		}
 	}
 
 	function showSaveBanner()
