@@ -3309,9 +3309,7 @@ void TestServerXmlCommand::Execute()
 
 	if (certVerifLevel < 0 || certVerifLevel >= Options::ECertVerifLevel::Count)
 	{
-		BuildErrorResponse(2, 
-			"Invalid parameter (Certificate Verification Level)."
-		);
+		BuildErrorResponse(2, "Invalid parameter (Certificate Verification Level).");
 		return;
 	}
 
