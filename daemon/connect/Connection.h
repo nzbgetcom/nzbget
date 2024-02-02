@@ -105,7 +105,9 @@ protected:
 	int m_totalBytesRead = 0;
 	bool m_gracefull = false;
 	bool m_forceClose = false;
+#ifndef DISABLE_TLS
 	unsigned int m_certVerifLevel;
+#endif
 
 	struct SockAddr
 	{

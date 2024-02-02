@@ -116,11 +116,14 @@ void Connection::Final()
 }
 
 Connection::Connection(const char* host, int port, bool tls) :
-	m_host(host), m_port(port), m_tls(tls), m_certVerifLevel(Options::ECertVerifLevel::cvStrict)
+	m_host(host), m_port(port), m_tls(tls)
 {
 	debug("Creating Connection");
 
 	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1);
+#ifndef DISABLE_TLS
+	m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
+#endif
 }
 
 Connection::Connection(SOCKET socket, bool tls)

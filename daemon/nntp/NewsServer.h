@@ -59,7 +59,7 @@ public:
 	bool GetOptional() { return m_optional; }
 	time_t GetBlockTime() { return m_blockTime; }
 	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
-	unsigned int GetCertVerificatiionLevel() { return m_certVerificationfLevel; }
+	unsigned int GetCertVerificationLevel() { return m_certVerificationfLevel; }
 
 private:
 	int m_id;

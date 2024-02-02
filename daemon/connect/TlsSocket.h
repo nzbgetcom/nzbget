@@ -30,7 +30,7 @@ public:
 	TlsSocket(SOCKET socket, bool isClient, const char* host,
 		const char* certFile, const char* keyFile, const char* cipher, int certVerifLevel) :
 		m_socket(socket), m_isClient(isClient), m_host(host),
-		m_certFile(certFile), m_keyFile(keyFile), m_cipher(cipher), m_CertVerifLevel(certVerifLevel) {}
+		m_certFile(certFile), m_keyFile(keyFile), m_cipher(cipher), m_certVerifLevel(certVerifLevel) {}
 	virtual ~TlsSocket();
 	static void Init();
 	static void InitOptions(const char* certStore) { m_certStore = certStore; }
@@ -56,7 +56,7 @@ private:
 	bool m_connected = false;
 	int m_retCode;
 	static CString m_certStore;
-	int m_CertVerifLevel;
+	int m_certVerifLevel;
 
 	// using "void*" to prevent the including of GnuTLS/OpenSSL header files into TlsSocket.h
 	void* m_context = nullptr;
