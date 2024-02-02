@@ -1012,13 +1012,13 @@ void Options::InitServers()
 		}
 
 		const char* ncertveriflevel = GetOption(BString<100>("Server%i.CertVerification", n));
-		int icertveriflevel = ECertVerifLevel::cvStrict;
+		int certveriflevel = ECertVerifLevel::cvStrict;
 		if (ncertveriflevel)
 		{
 			const char* CertVerifNames[] = { "none", "minimal", "strict" };
 			const int CertVerifValues[] = { ECertVerifLevel::cvNone, ECertVerifLevel::cvMinimal, ECertVerifLevel::cvStrict };
 			const int CertVerifCount = ECertVerifLevel::Count;
-			icertveriflevel = ParseEnumValue(BString<100>("Server%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
+			certveriflevel = ParseEnumValue(BString<100>("Server%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
 		}
 
 		const char* nipversion = GetOption(BString<100>("Server%i.IpVersion", n));
@@ -1058,7 +1058,7 @@ void Options::InitServers()
 					nretention ? atoi(nretention) : 0,
 					nlevel ? atoi(nlevel) : 0,
 					ngroup ? atoi(ngroup) : 0,
-					optional, icertveriflevel);
+					optional, certveriflevel);
 			}
 		}
 		else
