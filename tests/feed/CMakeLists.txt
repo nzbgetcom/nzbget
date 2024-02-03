@@ -13,11 +13,11 @@ add_executable(FeedTest
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 target_link_libraries(FeedTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
+	Regex
 	LibXml2::LibXml2
 )
 target_include_directories(FeedTest PRIVATE

@@ -21,12 +21,12 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <filesystem>
+#include "FileSystem.h"
 #include "FeedFile.h"
 
 BOOST_AUTO_TEST_CASE(FeedFileTest)
 {
-	std::string path = std::filesystem::current_path().string();
+	std::string path = FileSystem::GetCurrentDirectory().Str();
 	std::string testFile = path + "/feed/feed.xml";
 	FeedFile file(testFile.c_str(), "feedName");
 

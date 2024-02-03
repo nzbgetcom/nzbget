@@ -21,9 +21,7 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32

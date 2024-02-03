@@ -13,13 +13,13 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 target_link_libraries(ServerPoolTest PRIVATE
 	OpenSSL::SSL
 	ZLIB::ZLIB
 	Par2
 	Yencode
+	Regex
 	LibXml2::LibXml2
 )
 target_include_directories(ServerPoolTest PRIVATE

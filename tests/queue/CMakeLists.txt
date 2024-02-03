@@ -11,11 +11,11 @@ add_executable(NzbFileTest
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 target_link_libraries(NzbFileTest PRIVATE
 	ZLIB::ZLIB
 	Yencode
+	Regex
 	LibXml2::LibXml2
 )
 target_include_directories(NzbFileTest PRIVATE

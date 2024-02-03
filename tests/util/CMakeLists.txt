@@ -6,13 +6,13 @@ file(GLOB UtilTestSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
+	Regex
 	LibXml2::LibXml2
 )
 target_include_directories(UtilTests PRIVATE
