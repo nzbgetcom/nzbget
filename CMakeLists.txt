@@ -95,7 +95,6 @@ if (NOT WIN32)
 	find_package(Curses REQUIRED)
 endif()
 
-include_directories(lib/regex)
 include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(lib)
 
@@ -137,7 +136,6 @@ target_link_libraries(${PACKAGE} PRIVATE
 	LibXml2::LibXml2
 	${CURSES_LIBRARIES}
 )
-target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 
 if(ENABLE_TESTS)
 	include(CTest)

@@ -24,7 +24,6 @@ file(GLOB PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
 add_executable(PostprocessTests ${PostprocessTestsSrc})
@@ -32,6 +31,7 @@ target_link_libraries(PostprocessTests PRIVATE
 	ZLIB::ZLIB
 	Yencode
 	Par2
+	Regex
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	LibXml2::LibXml2

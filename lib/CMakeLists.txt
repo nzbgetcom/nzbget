@@ -43,3 +43,10 @@ target_include_directories(Par2 PUBLIC
     ${CMAKE_SOURCE_DIR}/daemon/util
     ${OPENSSL_INCLUDE_DIR}
 )
+
+add_library(Regex STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex/regex.c
+)
+target_include_directories(Regex PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex
+)
