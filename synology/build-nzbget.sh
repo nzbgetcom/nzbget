@@ -43,8 +43,22 @@ if [ -n "$GITHUB_REF_NAME" ]; then
 fi
 sed -e "s|version=.*$|version=\"$SPK_VERSION\"|g" -i INFO.sh
 
+# download boost sources or take it locally
+mkdir -p tmp
+cd tmp
+BOOST="boost-1.84.0"
+if [ -f /toolkit/source/$BOOST.tar.gz ]; then
+    cp /toolkit/source/$BOOST.tar.gz .
+else
+    wget https://github.com/boostorg/boost/releases/download/$BOOST/$BOOST.tar.gz
+fi
+tar zxf $BOOST.tar.gz
+mv $BOOST boost
+rm $BOOST.tar.gz
+cd ..
+
 # build
-$TOOLKIT/pkgscripts-ng/PkgCreate.py -v 7.0 -c -P 2 nzbget $BUILD_PARAM
+$TOOLKIT/pkgscripts-ng/PkgCreate.py -v 7.0 -c -P 1 nzbget $BUILD_PARAM
 
 # remove debug packages and set user perms on packages
 mv $TOOLKIT/result_spk/nzbget-$SPK_VERSION/ $TOOLKIT/result_spk/nzbget/

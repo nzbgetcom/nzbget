@@ -164,7 +164,6 @@ ${Else}
   Pop $0
   SetShellVarContext current
 ${EndIf}
-File "NZBGet\scripts\*"
 
 !endif
 
