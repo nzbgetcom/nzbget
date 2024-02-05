@@ -157,11 +157,12 @@ namespace ExtensionManager
 		m_extensions.erase(extensionIt);
 		return boost::none;
 	}
-	
+
 	boost::optional<std::string>
-	Manager::LoadExtensions(const IOptions& options)
+	Manager::LoadExtensions()
 	{
-		if (Util::EmptyStr(options.GetScriptDir()))
+		const char* scriptDir = g_Options->GetScriptDir();
+		if (Util::EmptyStr(scriptDir))
 		{
 			return std::string("\"ScriptDir\" is not specified");
 		}
@@ -170,13 +171,13 @@ namespace ExtensionManager
 
 		m_extensions.clear();
 
-		Tokenizer tokDir(options.GetScriptDir(), ",;");
+		Tokenizer tokDir(scriptDir, ",;");
 		while (const char* extensionDir = tokDir.Next())
 		{
 			LoadExtensionDir(extensionDir, false, extensionDir);
 		}
 
-		Sort(options.GetScriptOrder());
+		Sort(g_Options->GetScriptOrder());
 		CreateTasks();
 		m_extensions.shrink_to_fit();
 

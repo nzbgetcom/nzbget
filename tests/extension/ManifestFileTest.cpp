@@ -22,8 +22,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <filesystem>
 #include <string>
+#include "FileSystem.h"
 #include "ManifestFile.h"
 
 BOOST_AUTO_TEST_CASE(ManifestFileTest)
@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(ManifestFile::Load(manifestFile, noFilePath) == false);
 	BOOST_CHECK(manifestFile.main.empty());
 
-	std::string dir = std::filesystem::current_path().string() + "/manifest";
+	std::string dir = FileSystem::GetCurrentDirectory().Str() + std::string("/manifest");
 	std::string invalidFilePath = dir + "/invalid";
 
 	BOOST_CHECK(ManifestFile::Load(manifestFile, invalidFilePath.c_str()) == false);

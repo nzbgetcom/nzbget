@@ -22,7 +22,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <filesystem>
 #include "Extension.h"
 
 Extension::Script GetExtension()

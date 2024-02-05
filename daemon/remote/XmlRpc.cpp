@@ -2728,7 +2728,7 @@ void LoadExtensionsXmlCommand::Execute()
 
 	if (loadFromDisk)
 	{
-		const auto& error = g_ExtensionManager->LoadExtensions(*g_Options);
+		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
 			BuildErrorResponse(3, error.get().c_str());

@@ -22,12 +22,12 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <filesystem>
 #include <iostream>
 #include <fstream>
 #include <string>
 
 #include "ExtensionManager.h"
+#include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
 #include "DiskState.h"
@@ -37,49 +37,25 @@ Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
 
-static std::string nzbgetConf = "Extensions=EMail, Logger\n\
-ScriptOrder=EMail, Logger\n\
-EMail:SendMail=Always\n\
-EMail:Port=25\n\
-Logger:SendMail=Always\n\
-Logger:Port=25\n\
-Category1.Extensions=EMail\n\
-Feed1.Extensions=EMail\n";
-static std::string currentPath = std::filesystem::current_path().string();
-static std::string testDir = currentPath + "/scripts";
-static std::string configPath = currentPath + "/nzbget.conf";
-
-class MockOptions : public IOptions {
-public:
-	const char* GetScriptDir() const override
-	{
-		return testDir.c_str();
-	}
-
-	const char* GetScriptOrder() const override
-	{
-		return "Extension2, Extension1, email; Extension1; Extension1";
-	}
-
-	const char* GetExtensions() const override
-	{
-		return "Extension2, Extension3, Extension1, email";
-	}
-
-	const char* GetConfigFilename() const override
-	{
-		return configPath.c_str();
-	}
-};
+static std::string currentPath = FileSystem::GetCurrentDirectory().Str();
+static std::string testDir = "ScriptDir=" + currentPath + "/scripts";
+static std::string extensions = std::string("Extensions=") + "Extension2, Extension1, email; Extension1; Extension1";
+static std::string scriptOrder = std::string("ScriptOrder=") + "Extension2, Extension1, email; Extension1; Extension1";
 
 BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 {
-	MockOptions options;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back(testDir.c_str());
+	cmdOpts.push_back(extensions.c_str());
+	cmdOpts.push_back(scriptOrder.c_str());
+	cmdOpts.push_back("NzbLog=no");
+	Options options(&cmdOpts, nullptr);
+	g_Options = &options;
 
 	std::vector<std::string> correctOrder = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
+	BOOST_REQUIRE(manager.LoadExtensions() == boost::none);
 	BOOST_CHECK(manager.GetExtensions().size() == 4);
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
@@ -93,10 +69,16 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 
 BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 {
-	MockOptions options;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back(testDir.c_str());
+	cmdOpts.push_back(extensions.c_str());
+	cmdOpts.push_back(scriptOrder.c_str());
+	cmdOpts.push_back("NzbLog=no");
+	Options options(&cmdOpts, nullptr);
+	g_Options = &options;
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions(options) == boost::none);
+	BOOST_REQUIRE(manager.LoadExtensions() == boost::none);
 
 	const auto busyExt = manager.GetExtensions()[0];
 

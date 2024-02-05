@@ -437,7 +437,7 @@ void NZBGet::BootConfig()
 
 	m_scriptConfig->InitOptions();
 
-	m_extensionManager->LoadExtensions(*m_options);
+	m_extensionManager->LoadExtensions();
 }
 
 void NZBGet::Cleanup()
