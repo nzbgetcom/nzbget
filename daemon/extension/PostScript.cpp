@@ -69,7 +69,7 @@ void PostScriptController::Run()
 	m_postInfo->SetWorking(false);
 }
 
-void PostScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
+void PostScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	// if any script has requested par-check, do not execute other scripts
 	if (!script->GetPostScript() || m_postInfo->GetRequestParCheck())

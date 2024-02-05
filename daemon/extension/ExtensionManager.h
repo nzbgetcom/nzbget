@@ -31,7 +31,7 @@
 
 namespace ExtensionManager
 {
-	using Extensions = std::vector<std::shared_ptr<Extension::Script>>;
+	using Extensions = std::vector<std::shared_ptr<const Extension::Script>>;
 
 	class Manager
 	{

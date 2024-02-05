@@ -40,10 +40,10 @@ class QueueScriptController : public Thread, public NzbScriptController
 {
 public:
 	virtual void Run();
-	static void StartScript(NzbInfo* nzbInfo, std::shared_ptr<Extension::Script> script, QueueScriptCoordinator::EEvent event);
+	static void StartScript(NzbInfo* nzbInfo, std::shared_ptr<const Extension::Script> script, QueueScriptCoordinator::EEvent event);
 
 protected:
-	virtual void ExecuteScript(std::shared_ptr<Extension::Script> script);
+	virtual void ExecuteScript(std::shared_ptr<const Extension::Script> script);
 	virtual void AddMessage(Message::EKind kind, const char* text);
 
 private:
@@ -60,7 +60,7 @@ private:
 	int m_dupeScore;
 	NzbParameterList m_parameters;
 	int m_prefixLen;
-	std::shared_ptr<Extension::Script> m_script;
+	std::shared_ptr<const Extension::Script> m_script;
 	QueueScriptCoordinator::EEvent m_event;
 	bool m_markBad;
 	NzbInfo::EDeleteStatus m_deleteStatus;
@@ -71,7 +71,7 @@ private:
 };
 
 
-void QueueScriptController::StartScript(NzbInfo* nzbInfo, std::shared_ptr<Extension::Script> script, QueueScriptCoordinator::EEvent event)
+void QueueScriptController::StartScript(NzbInfo* nzbInfo, std::shared_ptr<const Extension::Script> script, QueueScriptCoordinator::EEvent event)
 {
 	QueueScriptController* scriptController = new QueueScriptController();
 
@@ -120,7 +120,7 @@ void QueueScriptController::Run()
 	g_QueueScriptCoordinator->CheckQueue();
 }
 
-void QueueScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
+void QueueScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	PrintMessage(m_event == QueueScriptCoordinator::qeFileDownloaded ? Message::mkDetail : Message::mkInfo,
 		"Executing queue-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbName));
@@ -325,7 +325,7 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 	}
 }
 
-bool QueueScriptCoordinator::UsableScript(std::shared_ptr<Extension::Script> script, NzbInfo* nzbInfo, EEvent event)
+bool QueueScriptCoordinator::UsableScript(std::shared_ptr<const Extension::Script> script, NzbInfo* nzbInfo, EEvent event)
 {
 	if (!script->GetQueueScript())
 	{

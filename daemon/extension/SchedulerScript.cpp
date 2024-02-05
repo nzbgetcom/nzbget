@@ -62,7 +62,7 @@ void SchedulerScriptController::Run()
 	}
 }
 
-void SchedulerScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
+void SchedulerScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	if (!script->GetSchedulerScript())
 	{

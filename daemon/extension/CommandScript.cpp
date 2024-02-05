@@ -56,7 +56,7 @@ void CommandScriptController::Run()
 	ExecuteScriptList(m_script);
 }
 
-void CommandScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
+void CommandScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	PrintMessage(Message::mkInfo, "Executing script %s with command %s", script->GetName(), *m_command);
 

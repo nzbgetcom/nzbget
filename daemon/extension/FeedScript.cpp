@@ -40,7 +40,7 @@ void FeedScriptController::ExecuteScripts(const char* feedScript, const char* fe
 	}
 }
 
-void FeedScriptController::ExecuteScript(std::shared_ptr<Extension::Script> script)
+void FeedScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	if (!script->GetFeedScript())
 	{
