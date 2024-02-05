@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 # config variables
 QNAP_ROOT=/qnap
@@ -7,6 +8,8 @@ TOOLCHAIN_PATH=$QNAP_ROOT/toolchain
 LIB_SRC_PATH=$QNAP_ROOT/source
 LIB_PATH=$QNAP_ROOT/lib
 ALL_ARCHS="i686 x86_64 aarch64"
+UNRAR_VERSION=6.2.12
+P7ZIP_VERSION=16.02
 COREX=4
 
 download_lib_source()
@@ -86,10 +89,59 @@ build_lib()
     cd $NZBGET_ROOT
 }
 
+build_unrar()
+{
+    if [ ! -d "$LIB_PATH/$ARCH/unrar" ]; then
+        curl -o /tmp/unrar.tar.gz https://www.rarlab.com/rar/unrarsrc-$UNRAR_VERSION.tar.gz
+        cd /tmp
+        tar zxf unrar.tar.gz
+        rm unrar.tar.gz
+        cd unrar
+        sed "s|^CXX=.*|CXX=$CXX|" -i makefile
+        sed "s|^AR=.*|AR=$AR|" -i makefile
+        sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
+        sed "s|^LDFLAGS=.*|LDFLAGS=-lm -lpthread|" -i makefile
+        sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
+        make clean
+        make -j $COREX
+        mkdir -p $LIB_PATH/$ARCH/unrar
+        cp unrar $LIB_PATH/$ARCH/unrar/unrar
+        cp license.txt $LIB_PATH/$ARCH/unrar/license-unrar.txt
+        rm -rf /tmp/unrar
+        cd $NZBGET_ROOT
+    fi    
+}
+
+build_7zip()
+{
+    if [ ! -d "$LIB_PATH/$ARCH/7zip" ]; then
+        curl -o /tmp/p7zip.tar.bz2 -lL https://sourceforge.net/projects/p7zip/files/p7zip/${P7ZIP_VERSION}/p7zip_${P7ZIP_VERSION}_src_all.tar.bz2    
+        cd /tmp
+        tar jxf p7zip.tar.bz2
+        rm p7zip.tar.bz2
+        cd p7zip_$P7ZIP_VERSION
+        rm makefile.machine
+        cp makefile.linux_any_cpu_gcc_4.X makefile.machine
+        sed "s|^CXX=.*|CXX=$CXX|" -i makefile.machine
+        sed "s|^CC=.*|CC=$CC|" -i makefile.machine
+        make clean
+        make -j $COREX
+        mkdir -p $LIB_PATH/$ARCH/7zip
+        cp bin/7za $LIB_PATH/$ARCH/7zip/7za
+        cp DOC/License.txt $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        rm -rf /tmp/p7zip_$P7ZIP_VERSION
+        cd $NZBGET_ROOT
+    fi
+}
+
 # cleanup shared and build directories
 rm -rf $QNAP_ROOT/nzbget
 cp -r qnap/package $QNAP_ROOT/nzbget
 NZBGET_ROOT=$PWD
+
+# extract version and correct version in qpkg.cfg
+VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+sed "s|^QPKG_VER=.*|QPKG_VER=\"$VERSION\"|" -i $QNAP_ROOT/nzbget/qpkg.cfg
 
 for ARCH in $ALL_ARCHS; do
 
@@ -99,6 +151,7 @@ for ARCH in $ALL_ARCHS; do
     export CC="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-gcc"
     export CPP="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-cpp"
     export CXX="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-g++"
+    export AR="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-ar"
     export STRIP="$TOOLCHAIN_PATH/$ARCH/cross-tools/bin/$HOST-strip"
 
     # clean build flags
@@ -125,6 +178,9 @@ for ARCH in $ALL_ARCHS; do
     build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
     build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
 
+    build_7zip
+    build_unrar
+
     autoreconf --install
 
     # we want to static link to all libs except libc
@@ -134,10 +190,6 @@ for ARCH in $ALL_ARCHS; do
     make clean
     make -j $COREX
     
-    # extract version and correct version in qpkg.cfg
-    VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
-    sed "s|^QPKG_VER=.*|QPKG_VER=\"$VERSION\"|" -i $QNAP_ROOT/nzbget/qpkg.cfg
-
     SHARED=$QNAP_ROOT/nzbget/shared
     if [ ! -d "$SHARED/nzbget" ]; then
         # populate shared folder
@@ -169,7 +221,12 @@ for ARCH in $ALL_ARCHS; do
     
     cd $NZBGET_ROOT
     mkdir -p $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget
+    # copy main executable
     cp nzbget $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget/
+    # copy unrar / 7zip
+    cp nzbget $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget/
+    cp $LIB_PATH/$ARCH/7zip/* $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget/
+    cp $LIB_PATH/$ARCH/unrar/* $QNAP_ROOT/nzbget/$QPKG_ARCH/nzbget/
     cd $QNAP_ROOT/nzbget
     qbuild --build-arch $QPKG_ARCH
     cd $NZBGET_ROOT
