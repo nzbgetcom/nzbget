@@ -133,6 +133,10 @@ for ARCH in $ALL_ARCHS; do
     ./configure --disable-cpp-check --disable-dependency-tracking --host=$HOST
     make clean
     make -j $COREX
+    
+    # extract version and correct version in qpkg.cfg
+    VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+    sed "s|^QPKG_VER=.*|QPKG_VER=\"$VERSION\"|" -i $QNAP_ROOT/nzbget/qpkg.cfg
 
     SHARED=$QNAP_ROOT/nzbget/shared
     if [ ! -d "$SHARED/nzbget" ]; then
@@ -151,14 +155,14 @@ for ARCH in $ALL_ARCHS; do
         rm -rf install
 
         # adjusting nzbget.conf
-        sed 's:^MainDir=.*:MainDir=${AppDir}/downloads:' -i $CONFTEMPLATE
-        sed 's:^DestDir=.*:DestDir=${MainDir}/completed:' -i $CONFTEMPLATE
-        sed 's:^InterDir=.*:InterDir=${MainDir}/intermediate:' -i $CONFTEMPLATE
-        sed 's:^WebDir=.*:WebDir=${AppDir}/webui:' -i $CONFTEMPLATE
-        sed 's:^ScriptDir=.*:ScriptDir=${AppDir}/scripts:' -i $CONFTEMPLATE
-        sed 's:^LogFile=.*:LogFile=${MainDir}/nzbget.log:' -i $CONFTEMPLATE
-        sed 's:^ConfigTemplate=.*:ConfigTemplate=${AppDir}/webui/nzbget.conf.template:' -i $CONFTEMPLATE
-        sed 's:^AuthorizedIP=.*:AuthorizedIP=127.0.0.1:' -i $CONFTEMPLATE
+        sed 's|^MainDir=.*|MainDir=${AppDir}/downloads|' -i $CONFTEMPLATE
+        sed 's|^DestDir=.*|DestDir=${MainDir}/completed|' -i $CONFTEMPLATE
+        sed 's|^InterDir=.*|InterDir=${MainDir}/intermediate|' -i $CONFTEMPLATE
+        sed 's|^WebDir=.*|WebDir=${AppDir}/webui|' -i $CONFTEMPLATE
+        sed 's|^ScriptDir=.*|ScriptDir=${AppDir}/scripts|' -i $CONFTEMPLATE
+        sed 's|^LogFile=.*|LogFile=${MainDir}/nzbget.log|' -i $CONFTEMPLATE
+        sed 's|^ConfigTemplate=.*|ConfigTemplate=${AppDir}/webui/nzbget.conf.template|' -i $CONFTEMPLATE
+        sed 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' -i $CONFTEMPLATE
 
         cp $CONFTEMPLATE nzbget/nzbget.conf        
     fi
