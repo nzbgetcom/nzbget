@@ -67,7 +67,7 @@ void NzbScriptController::PrepareEnvScript(NzbParameterList* parameters, const c
 
 void NzbScriptController::ExecuteScriptList(const char* scriptList)
 {
-	for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+	for (const auto script : g_ExtensionManager->GetExtensions())
 	{
 		if (scriptList && *scriptList)
 		{
@@ -75,9 +75,9 @@ void NzbScriptController::ExecuteScriptList(const char* scriptList)
 			Tokenizer tok(scriptList, ",;");
 			while (const char* scriptName = tok.Next())
 			{
-				if (FileSystem::SameFilename(scriptName, script.GetName()))
+				if (strcmp(scriptName, script->GetName()) == 0)
 				{
-					ExecuteScript(&script);
+					ExecuteScript(std::move(script));
 					break;
 				}
 			}

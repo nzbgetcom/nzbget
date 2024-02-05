@@ -78,7 +78,6 @@ protected:
 	void ResetEnv();
 	void PrepareEnvOptions(const char* stripPrefix);
 	void PrepareArgs();
-	void PrepareCmdLine(const char* extension);
 	virtual const char* GetOptValue(const char* name, const char* value) { return value; }
 	void StartProcess(int* pipein, int* pipeout);
 	int WaitProcess();

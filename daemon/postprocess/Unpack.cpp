@@ -857,9 +857,12 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		msgText.Format("Unrar: Extracting %s", text + 19 + strlen(m_unpackExtendedDir) + 1);
 	}
 
-	m_postInfo->GetNzbInfo()->AddMessage(kind, msgText);
+	if (m_postInfo)
+	{
+		m_postInfo->GetNzbInfo()->AddMessage(kind, msgText);
+	}
 
-	if (m_unpacker == upUnrar && !strncmp(msgText, "Unrar: UNRAR ", 6) &&
+	if (m_postInfo && m_unpacker == upUnrar && !strncmp(msgText, "Unrar: UNRAR ", 6) &&
 		strstr(msgText, " Copyright ") && strstr(msgText, " Alexander Roshal"))
 	{
 		// reset start time for a case if user uses unpack-script to do some things
@@ -907,8 +910,14 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		(len > 18 && !strncmp(text + len - 18, " - checksum failed", 18)) ||
 		!strncmp(text, "Unrar: WARNING: You need to start extraction from a previous volume", 67)))
 	{
-		m_postInfo->GetNzbInfo()->AddMessage(Message::mkWarning,
-			BString<1024>("Cancelling %s due to errors", *m_infoName));
+		if (m_postInfo)
+		{
+			m_postInfo->GetNzbInfo()->AddMessage(
+				Message::mkWarning,
+				BString<1024>("Cancelling %s due to errors", *m_infoName)
+			);
+		}
+
 		m_autoTerminated = true;
 		Stop();
 	}

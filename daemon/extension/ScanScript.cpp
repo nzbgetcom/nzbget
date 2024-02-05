@@ -28,7 +28,7 @@
 class ScanScriptCheck : public NzbScriptController
 {
 protected:
-	virtual void ExecuteScript(ScriptConfig::Script* script) { has |= script->GetScanScript(); }
+	virtual void ExecuteScript(std::shared_ptr<const Extension::Script> script) { has |= script->GetScanScript(); }
 	bool has = false;
 	friend class ScanScriptController;
 };
@@ -75,7 +75,7 @@ void ScanScriptController::ExecuteScripts(const char* nzbFilename,
 	scriptController.ExecuteScriptList(extensions);
 }
 
-void ScanScriptController::ExecuteScript(ScriptConfig::Script* script)
+void ScanScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	if (!script->GetScanScript() || !FileSystem::FileExists(m_nzbFilename))
 	{
@@ -84,7 +84,7 @@ void ScanScriptController::ExecuteScript(ScriptConfig::Script* script)
 
 	PrintMessage(Message::mkInfo, "Executing scan-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbFilename));
 
-	SetArgs({script->GetLocation()});
+	SetArgs({script->GetEntry()});
 
 	BString<1024> infoName("scan-script %s for %s", script->GetName(), FileSystem::BaseFileName(m_nzbFilename));
 	SetInfoName(infoName);

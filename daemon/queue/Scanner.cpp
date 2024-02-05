@@ -378,9 +378,9 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 
 	if (reset)
 	{
-		for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+		for (const auto script : g_ExtensionManager->GetExtensions())
 		{
-			parameters->SetParameter(BString<1024>("%s:", script.GetName()), nullptr);
+			parameters->SetParameter(BString<1024>("%s:", script->GetName()), nullptr);
 		}
 	}
 
@@ -395,12 +395,12 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 		Tokenizer tok(extensions, ",;");
 		while (const char* scriptName = tok.Next())
 		{
-			for (ScriptConfig::Script& script : g_ScriptConfig->GetScripts())
+			for (const auto script : g_ExtensionManager->GetExtensions())
 			{
 				BString<1024> paramName("%s:", scriptName);
-				if ((script.GetPostScript() || script.GetQueueScript()) &&
+				if ((script->GetPostScript() || script->GetQueueScript()) &&
 					!parameters->Find(paramName) &&
-					FileSystem::SameFilename(scriptName, script.GetName()))
+					strcmp(scriptName, script->GetName()) == 0)
 				{
 					parameters->SetParameter(paramName, "yes");
 				}

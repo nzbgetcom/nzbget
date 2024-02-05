@@ -1,4 +1,4 @@
-# NZBGet installation      
+# NZBGet installation
 
 This is a short documentation. For more information please
 visit NZBGet home page at 
@@ -62,29 +62,34 @@ NZBGet absolutely needs the following libraries:
 
  - libstdc++     (usually part of compiler)
  - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
+ - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+ - [Boost.Optional](https://www.boost.org/doc/libs/1_84_0/libs/optional/doc/html/index.html)
 
 And the following libraries are optional:
 
- - for curses-output-mode (enabled by default):
+  For curses-output-mode (enabled by default):
    - libcurses   (usually part of commercial systems)
      or (better)
    - [libncurses](https://invisible-island.net/ncurses)
     
- - for encrypted connections (TLS/SSL):
+  For encrypted connections (TLS/SSL):
    - [OpenSSL](https://www.openssl.org)
 
      or
    - [GnuTLS](https://gnutls.org)
 
- - for gzip support in web-server and web-client (enabled by default):
+  For gzip support in web-server and web-client (enabled by default):
    - [zlib](https://www.zlib.net/)
 
- - for configuration:
+  For configuration:
    - [autotools](https://www.gnu.org/software/automake/manual/html_node/Autotools-Introduction.html)
    - [autoconf](https://www.gnu.org/software/autoconf/)
 
- - for managing package dependencies:
+  For managing package dependencies:
    - [pkg-config](https://www.freedesktop.org/wiki/Software/pkg-config/)
+  
+  For tests:
+   - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
 
 All these libraries are included in modern POSIX distributions and
 should be available as installable packages. Please note that you also 
@@ -219,6 +224,11 @@ Also required are:
    - [Regex](https://regexlib.com/)
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
+   - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+   - [Boost.Optional](https://www.boost.org/doc/libs/1_84_0/libs/optional/doc/html/index.html)
+
+For tests:
+   - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
 
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies.
 

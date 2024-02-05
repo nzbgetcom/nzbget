@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -110,6 +111,102 @@ void Util::Init()
 	CurrentTicks();
 }
 
+boost::optional<std::string> 
+Util::FindExecutorProgram(const std::string& filename, const std::string& customPath)
+{
+	size_t idx = filename.find_last_of(".");
+	if (idx == std::string::npos)
+	{
+		return filename;
+	}
+
+	const std::string fileExt = filename.substr(idx);
+
+	Tokenizer tok(customPath.c_str(), ",;");
+	while (char* shellover = tok.Next())
+	{
+		char* shellcmd = strchr(shellover, '=');
+		if (shellcmd)
+		{
+			*shellcmd = '\0';
+			shellcmd++;
+
+			if (fileExt == shellover)
+			{
+				return std::string(shellcmd);
+			}
+		}
+	}
+
+	#ifdef _WIN32
+    	const std::string nullOutput = " > nul 2>&1";
+	#else
+		const std::string nullOutput = " > /dev/null 2>&1";
+	#endif
+
+	if (fileExt == ".py")
+	{
+		std::string cmd = "python3 --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("python3");
+		}
+		cmd = "python --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("python");
+		}
+		cmd = "py --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("py");
+		}
+		return boost::none;
+	}
+
+	if (fileExt == ".sh")
+	{
+		std::string cmd = "bash --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("bash");
+		}
+		cmd = "sh --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("sh");
+		}
+		return boost::none;
+	}
+
+	if (fileExt == ".js")
+	{
+		const std::string cmd = "node --version" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return std::string("node");
+		}
+		return boost::none;
+	}
+
+	if (fileExt == ".cmd" || fileExt == ".bat")
+	{
+		const std::string cmd = "cmd.exe /c" + nullOutput;
+		if (std::system(cmd.c_str()) == 0)
+		{
+			return filename;
+		}
+		return boost::none;
+	}
+
+	if (fileExt == ".exe")
+	{
+		return filename;
+	}
+
+	return filename;
+}
+ 
 int64 Util::JoinInt64(uint32 Hi, uint32 Lo)
 {
 	return (((int64)Hi) << 32) + Lo;
@@ -373,6 +470,16 @@ void Util::TrimRight(char* str)
 	{
 		*end = '\0';
 		end--;
+	}
+}
+
+void Util::TrimRight(std::string& str)
+{
+	while (
+		!str.empty() &&
+		(str.back() == '\n' || str.back() == '\r' || str.back() == ' ' || str.back() == '\t'))
+	{
+		str.pop_back();
 	}
 }
 

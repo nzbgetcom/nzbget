@@ -21,6 +21,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <boost/optional.hpp>
 #include "NString.h"
 
 #ifdef WIN32
@@ -33,6 +34,8 @@ class Util
 {
 public:
 	static bool MatchFileExt(const char* filename, const char* extensionList, const char* listSeparator);
+	static boost::optional<std::string> 
+	FindExecutorProgram(const std::string& filename, const std::string& customPath);
 
 	/*
 	* Split command line into arguments.
@@ -45,6 +48,7 @@ public:
 	static void SplitInt64(int64 Int64, uint32* Hi, uint32* Lo);
 
 	static void TrimRight(char* str);
+	static void TrimRight(std::string& str);
 	static char* Trim(char* str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);

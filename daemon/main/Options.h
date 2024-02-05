@@ -198,7 +198,7 @@ public:
 		ESchedulerCommand command, const char* param);
 
 	// Options
-	const char* GetConfigFilename() { return m_configFilename; }
+	const char* GetConfigFilename() const { return m_configFilename; }
 	bool GetConfigErrors() { return m_configErrors; }
 	const char* GetAppDir() { return m_appDir; }
 	const char* GetDestDir() { return m_destDir; }
@@ -208,7 +208,7 @@ public:
 	const char* GetNzbDir() { return m_nzbDir; }
 	const char* GetWebDir() { return m_webDir; }
 	const char* GetConfigTemplate() { return m_configTemplate; }
-	const char* GetScriptDir() { return m_scriptDir; }
+	const char* GetScriptDir() const { return m_scriptDir; }
 	const char* GetRequiredDir() { return m_requiredDir; }
 	bool GetNzbLog() const { return m_nzbLog; }
 	EMessageTarget GetInfoTarget() const { return m_infoTarget; }
@@ -264,8 +264,8 @@ public:
 	int GetParThreads() { return m_parThreads; }
 	bool GetRarRename() { return m_rarRename; }
 	EHealthCheck GetHealthCheck() { return m_healthCheck; }
-	const char* GetScriptOrder() { return m_scriptOrder; }
-	const char* GetExtensions() { return m_extensions; }
+	const char* GetScriptOrder() const { return m_scriptOrder; }
+	const char* GetExtensions() const { return m_extensions; }
 	int GetUMask() { return m_umask; }
 	int GetUpdateInterval() {return m_updateInterval; }
 	bool GetCursesNzbName() { return m_cursesNzbName; }

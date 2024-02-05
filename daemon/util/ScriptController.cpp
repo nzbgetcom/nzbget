@@ -234,6 +234,7 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 	}
 }
 
+#ifdef WIN32
 void ScriptController::PrepareArgs()
 {
 	const char* extension = strrchr(m_args[0], '.');
@@ -259,12 +260,6 @@ void ScriptController::PrepareArgs()
 		}
 	}
 
-	PrepareCmdLine(extension);
-}
-
-#ifdef WIN32
-void ScriptController::PrepareCmdLine(const char* extension)
-{
 	*m_cmdLine = '\0';
 	if (m_args.size() == 1)
 	{
@@ -306,61 +301,27 @@ void ScriptController::PrepareCmdLine(const char* extension)
 #endif
 
 #ifndef WIN32
-void ScriptController::PrepareCmdLine(const char* extension)
+void ScriptController::PrepareArgs()
 {
 	*m_cmdLine = '\0';
 	m_cmdArgs.clear();
+
 	if (m_args.size() == 1)
 	{
-		if (strcmp(extension, ".py") == 0)
+		const auto found = Util::FindExecutorProgram(m_args[0].Str(), g_Options->GetShellOverride());
+		if (!found)
 		{
-			if (std::system("python3 --version > /dev/null 2>&1") == 0)
-			{
-				strncpy(m_cmdLine, "python3", sizeof(m_cmdLine));
-				m_cmdArgs.emplace_back("python3");
-				debug("CmdLine: %s", m_cmdLine);
-				return;
-			}
-			if (std::system("python --version > /dev/null 2>&1") == 0)
-			{
-				strncpy(m_cmdLine, "python", sizeof(m_cmdLine));
-				m_cmdArgs.emplace_back("python");
-				debug("CmdLine: %s", m_cmdLine);
-				return;
-			}
-			if (std::system("py --version > /dev/null 2>&1") == 0)
-			{
-				strncpy(m_cmdLine, "py", sizeof(m_cmdLine));
-				m_cmdArgs.emplace_back("py");
-				debug("CmdLine: %s", m_cmdLine);
-				return;
-			}
+			strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);
 		}
-		if (strcmp(extension, ".sh") == 0)
+		else
 		{
-			if (std::system("bash --version > /dev/null 2>&1") == 0)
-			{
-				strncpy(m_cmdLine, "bash", sizeof(m_cmdLine));
-				m_cmdArgs.emplace_back("bash");
-				debug("CmdLine: %s", m_cmdLine);
-				return;
-			}
-			if (std::system("sh --version > /dev/null 2>&1") == 0)
-			{
-				strncpy(m_cmdLine, "sh", sizeof(m_cmdLine));
-				m_cmdArgs.emplace_back("sh");
-				debug("CmdLine: %s", m_cmdLine);
-				return;
-			}
+			strncpy(m_cmdLine, found.get().c_str(), sizeof(m_cmdLine) - 1);
+			m_cmdArgs.emplace_back(found.get().c_str());
 		}
-		warn("Could not find associated program for %s. Trying to execute %s directly",
-			extension, FileSystem::BaseFileName(m_args[0]));
-		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
-		return;
 	}
 	else
 	{
-		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine));
+		strncpy(m_cmdLine, m_args[0], sizeof(m_cmdLine) - 1);
 	}
 }
 #endif
