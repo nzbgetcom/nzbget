@@ -48,7 +48,6 @@ namespace ExtensionManager
 		downloader->SetOutputFilename(tmpFileName);
 		downloader->SetInfoName(extName.c_str());
 
-		// do sync download
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
 		downloader.reset();
 
