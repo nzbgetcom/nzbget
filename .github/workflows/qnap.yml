@@ -20,6 +20,7 @@ jobs:
 
     - name: Build
       run: |
+        export PATH="$PATH:/usr/share/QDK/bin"
         bash qnap/build-nzbget.sh
 
     - name: Rename build artifacts
