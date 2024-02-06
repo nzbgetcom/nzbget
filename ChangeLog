@@ -40,7 +40,7 @@ nzbget-23.0
     - possible memory corruption [#148](https://github.com/nzbgetcom/nzbget/commit/16ab25d5780c8100309c44eb60d505afe5c528db);
   - For developers:
     - fixed unit tests (Windows only for now) and started migration to CMake [#64](https://github.com/nzbgetcom/nzbget/commit/73e8c00d29f21a44de8fd3d979e4f74628d99e1e);
-      * We are going to completely migrate to CMake as a more universal one for cross-platform development and drop autotools and MSBuild in v24;
+      * We are going to completely migrate to CMake as a more universal one for cross-platform development and drop autotools and MSBuild;
     - using libxml2 on Windows and vcpkg package manager to install dependencies [#70](https://github.com/nzbgetcom/nzbget/commit/f8cb2bda415fb6167e8aa7e9d596bb583dc0b1c1);
       * libxml2 library is now used on Windows to work with xml in the same way we already do on Linux and macOS;
       * removed platform-dependent code for working with xml on Windows;
