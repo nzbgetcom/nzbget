@@ -1,17 +1,26 @@
 nzbget-23.0
   - Features:
-    - Extension Manager [#76](https://github.com/nzbgetcom/nzbget/commit/7348b19cf8a81739922303e3f9047d06e59670d0);
-        * The new nzbget extension system, which makes it easy to download/update/delete extensions with backward compatibility with the old system;
-        * extensions [master list](https://github.com/nzbgetcom/nzbget-extensions/);
+    - Extension Manager 
+    [#76](https://github.com/nzbgetcom/nzbget/commit/7348b19cf8a81739922303e3f9047d06e59670d0);
+        * The new nzbget extension system, which makes it easy to download/update/delete 
+        extensions with backward compatibility with the old system;
+        * extensions 
+        [master list](https://github.com/nzbgetcom/nzbget-extensions/);
         * changed:
           -  RPC request "configtemplates" -  no longer returns script templates, but only the config template;
         * added:
           - new RPC requests:
-            - "loadextensions" - loads all extensions from {ScriptDIR} and returns an array of structures in JSON/XML formats;
-            - "updateextension" - downloads by url and name and installs the extension. Returns 'true' or error response in JSON/XML formats;
-            - "deleteextension" - deletes extension by name. Returns 'true' or error response in JSON/XML formats;
-            - "downloadextension" - downloads by url and installs the extension. Returns 'true' or error response in JSON/XML formats;
-            - "testextension" - tries to find the right executor program for the extension, e.g. Python. Returns 'true' or error response in JSON/XML formats;
+            - "loadextensions" - 
+            loads all extensions from {ScriptDIR} and returns an array of structures in JSON/XML formats;
+            - "updateextension" - 
+            downloads by url and name and installs the extension. Returns 'true' or error response in JSON/XML formats;
+            - "deleteextension" - 
+            deletes extension by name. Returns 'true' or error response in JSON/XML formats;
+            - "downloadextension" - 
+            downloads by url and installs the extension. Returns 'true' or error response in JSON/XML formats;
+            - "testextension" - 
+            tries to find the right executor program for the extension, e.g. Python. 
+            Returns 'true' or error response in JSON/XML formats;
           - "EXTENSION MANAGER" section in webui to download/delete/update extensions;
           - Boost.Json library to work with JSON;
           - more unit tests;
@@ -20,14 +29,23 @@ nzbget-23.0
         * removed:
           - testdata_FILES from Makefile.am;
           - EMail and Logger scripts;
-    - Docker support [#55](https://github.com/nzbgetcom/nzbget/commit/1913e331bb87cdd592048b37fd57507f82a17144);
-    - Synology support (spk) [#72](https://github.com/nzbgetcom/nzbget/commit/3f8fd6d433b38ed9f18ab7ffe25fd7a4a0c5c246);
-    - aarch64 mipseb mipsel ppc6xx ppc500 architectures to linux build [#61](https://github.com/nzbgetcom/nzbget/commit/959985473cdfcf51d88e6a49770650b4edced043) [#146](https://github.com/nzbgetcom/nzbget/commit/fcc104dc294a905155f65e93483de4a1f40d843e);
-    - article read chunk size [#52](https://github.com/nzbgetcom/nzbget/commit/1aa42f2df9a9148d3a79e17694381de873557fce);
-      * Added ArticleReadChunkSize config option which allows to adjust the buffer size for customization on different platforms, which can lead to increased performance;
-    - increased the number of default connections to 8 [#54](https://github.com/nzbgetcom/nzbget/commit/55eca4ce57cc119b51acc2e6915f6c0547dd8123);
-    - automatic search for a suitable interpreter on POSIX [#74](https://github.com/nzbgetcom/nzbget/commit/ec0756d5f63137d879f56a6bc60cab6b81238eaf);
-    - certificate verification levels [#150](https://github.com/nzbgetcom/nzbget/commit/5956a17e2618480dbbc423e6a515313165f817db);
+    - Docker support 
+    [#55](https://github.com/nzbgetcom/nzbget/commit/1913e331bb87cdd592048b37fd57507f82a17144);
+    - Synology support (spk) 
+    [#72](https://github.com/nzbgetcom/nzbget/commit/3f8fd6d433b38ed9f18ab7ffe25fd7a4a0c5c246);
+    - aarch64 mipseb mipsel ppc6xx ppc500 architectures to linux build 
+    [#61](https://github.com/nzbgetcom/nzbget/commit/959985473cdfcf51d88e6a49770650b4edced043) 
+    [#146](https://github.com/nzbgetcom/nzbget/commit/fcc104dc294a905155f65e93483de4a1f40d843e);
+    - article read chunk size 
+    [#52](https://github.com/nzbgetcom/nzbget/commit/1aa42f2df9a9148d3a79e17694381de873557fce);
+      * Added ArticleReadChunkSize config option which allows to adjust 
+      the buffer size for customization on different platforms, which can lead to increased performance;
+    - increased the number of default connections to 8 
+    [#54](https://github.com/nzbgetcom/nzbget/commit/55eca4ce57cc119b51acc2e6915f6c0547dd8123);
+    - automatic search for a suitable interpreter on POSIX 
+    [#74](https://github.com/nzbgetcom/nzbget/commit/ec0756d5f63137d879f56a6bc60cab6b81238eaf);
+    - certificate verification levels 
+    [#150](https://github.com/nzbgetcom/nzbget/commit/5956a17e2618480dbbc423e6a515313165f817db);
         * levels:
           - None: NO certificate signing check, NO certificate hostname check;
           - Minimal: certificate signing check, NO certificate hostname check;
@@ -37,11 +55,14 @@ nzbget-23.0
           - "Minimal" -> test failed;
           - "None" -> test passed";
   - Bug fixies:
-    - possible memory corruption [#148](https://github.com/nzbgetcom/nzbget/commit/16ab25d5780c8100309c44eb60d505afe5c528db);
+    - possible memory corruption 
+    [#148](https://github.com/nzbgetcom/nzbget/commit/16ab25d5780c8100309c44eb60d505afe5c528db);
   - For developers:
-    - fixed unit tests (Windows only for now) and started migration to CMake [#64](https://github.com/nzbgetcom/nzbget/commit/73e8c00d29f21a44de8fd3d979e4f74628d99e1e);
+    - fixed unit tests (Windows only for now) and started migration to CMake 
+    [#64](https://github.com/nzbgetcom/nzbget/commit/73e8c00d29f21a44de8fd3d979e4f74628d99e1e);
       * We are going to completely migrate to CMake as a more universal one for cross-platform development and drop autotools and MSBuild;
-    - using libxml2 on Windows and vcpkg package manager to install dependencies [#70](https://github.com/nzbgetcom/nzbget/commit/f8cb2bda415fb6167e8aa7e9d596bb583dc0b1c1);
+    - using libxml2 on Windows and vcpkg package manager to install dependencies 
+    [#70](https://github.com/nzbgetcom/nzbget/commit/f8cb2bda415fb6167e8aa7e9d596bb583dc0b1c1);
       * libxml2 library is now used on Windows to work with xml in the same way we already do on Linux and macOS;
       * removed platform-dependent code for working with xml on Windows;
 
