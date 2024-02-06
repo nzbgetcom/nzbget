@@ -31,4 +31,4 @@ QNAP packaged with python2. To support python3 extensions, need to install Pytho
 
 ## Known issues:
 
-- Some extensions (VideoSort) does not work correctly with above setting until ntsbget is fully restarted. From AppCenter select NZBGet - from drop-down menu select stop and then start.
+- Some extensions (VideoSort) does not work correctly with above setting until NZBGet is fully restarted. From AppCenter select NZBGet - from drop-down menu select stop and then start.

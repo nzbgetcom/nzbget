@@ -31,13 +31,13 @@ sed 's|python|python3|' -i InstallToUbuntu.sh
 sudo ./InstallToUbuntu.sh install
 ```
 
-## Building NZBGet
+# Building NZBGet
 
 From cloned repository run
 ```
 bash qnap/build-nzbget.sh
 ```
 
-## Output files
+# Output files
 
 - /qnap/nzbget/build/*.qpkg - one file per platform
