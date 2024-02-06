@@ -1,6 +1,5 @@
 #!/bin/bash
 set -e
-set -x
 
 # config variables
 QNAP_ROOT=/qnap
@@ -230,4 +229,11 @@ for ARCH in $ALL_ARCHS; do
     cd $QNAP_ROOT/nzbget
     qbuild --build-arch $QPKG_ARCH
     cd $NZBGET_ROOT
+done
+
+# rename qpkgs
+for FILE in $QNAP_ROOT/nzbget/build/*.qpkg; do
+    [ -f $FILE ] || continue
+    NEW_FILE=${FILE/.qpkg/_native.qpkg}
+    mv $FILE $NEW_FILE
 done

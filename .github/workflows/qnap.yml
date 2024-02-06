@@ -1,0 +1,39 @@
+name: qnap build 
+
+on:
+  push:
+    branches:
+      - feature/qnap
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Build
+      run: |
+        bash qnap/build-nzbget.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main'
+      run: |
+        cd /qnap/nzbget/build/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: nzbget-qnap-native-packages
+        path: /qnap/nzbget/build/*.qpkg
+        retention-days: 5
+
+    - name: Cleanup
+      run: |
+        rm -rf /qnap/nzbget/
