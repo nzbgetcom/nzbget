@@ -59,7 +59,7 @@ private:
 		bool Exists(const char* param);
 	};
 
-	PostInfo* m_postInfo;
+	PostInfo* m_postInfo = nullptr;
 	CString m_name;
 	CString m_infoName;
 	CString m_infoNameUp;

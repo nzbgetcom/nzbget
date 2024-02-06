@@ -6,6 +6,10 @@ on:
     - feature/*
     - develop
     - main
+  pull_request:
+    branches:
+    - develop
+    - main
   workflow_call:
   workflow_dispatch:
 

@@ -31,7 +31,9 @@ AC_DEFINE(HAVE_CONFIG_H, 1, [Define to 1 use config.h])
 AM_MAINTAINER_MODE
 
 m4_include([posix/ax_cxx_compile_stdcxx.m4])
+m4_include([posix/ax_boost_json.m4])
 
+AX_BOOST_JSON
 
 dnl
 dnl Check for programs.
@@ -77,6 +79,7 @@ AC_SEARCH_LIBS([socket], [socket])
 AC_SEARCH_LIBS([inet_addr], [nsl])
 AC_SEARCH_LIBS([hstrerror], [resolv])
 
+AC_CHECK_LIB([boost_json], [main], [], [AC_MSG_ERROR([Could not find Boost.JSON library])])
 
 dnl
 dnl Android NDK restrictions
