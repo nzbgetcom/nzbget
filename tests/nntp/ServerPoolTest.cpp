@@ -28,14 +28,14 @@
 #include "Options.h"
 #include "DiskState.h"
 
-Log* g_Log;
+Log* g_Log = new Log();
 Options* g_Options;
 DiskState* g_DiskState;
 
 void AddTestServer(ServerPool* pool, int id, bool active, int level, bool optional, int group, int connections)
 {
 	pool->AddServer(std::make_unique<NewsServer>(id, active, nullptr, "", 119, 0,
-		"", "", false, false, nullptr, connections, 0, level, group, optional));
+		"", "", false, false, nullptr, connections, 0, level, group, optional, Options::cvStrict));
 }
 
 void TestBlockServers(int group)
