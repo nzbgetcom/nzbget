@@ -21,7 +21,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.65)
-AC_INIT(nzbget, 22.2, https://github.com/nzbgetcom/nzbget/issues)
+AC_INIT(nzbget, 23, https://github.com/nzbgetcom/nzbget/issues)
 AC_CONFIG_AUX_DIR(posix)
 AC_CANONICAL_TARGET
 AM_INIT_AUTOMAKE([foreign subdir-objects])

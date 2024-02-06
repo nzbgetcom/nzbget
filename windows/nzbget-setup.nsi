@@ -178,7 +178,7 @@ WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "U
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "InstallLocation" "$INSTDIR"
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "Publisher" "nzbget.com"
 WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "DisplayIcon" "$\"$INSTDIR\nzbget.exe$\",0"
-WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "DisplayVersion" "22.2"
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "DisplayVersion" "23"
 
 ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
 IntFmt $0 "0x%08X" $0
