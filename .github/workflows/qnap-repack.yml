@@ -34,6 +34,7 @@ jobs:
 
     - name: Repack linux installer for QNAP
       run: |
+        export PATH="$PATH:/usr/share/QDK/bin"
         bash qnap/repack-nzbget.sh
 
     - name: Rename build artifacts
