@@ -188,7 +188,7 @@ namespace ExtensionLoader
 				size_t tailIdx = str.find(tail);
 				if (tailIdx != std::string::npos)
 				{
-					str = std::move(str.substr(0, tailIdx));
+					str.erase(tailIdx);
 				}
 				Util::TrimRight(str);
 			}
