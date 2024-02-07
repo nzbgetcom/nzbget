@@ -20,11 +20,18 @@ jobs:
   build-synology:
     uses: ./.github/workflows/synology.yml
   
+  build-qnap:
+    uses: ./.github/workflows/qnap.yml
+
+  repack-qnap:
+    uses: ./.github/workflows/qnap.yml
+    needs: [build-linux]
+  
   generate-signatures:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-osx, build-synology]
+    needs: [build-windows, build-linux, build-osx, build-synology, build-qnap, repack-qnap]
     steps:
     
     - name: Download build artifacts
@@ -37,6 +44,8 @@ jobs:
         mv nzbget-linux-installers/* builds || true
         mv nzbget-osx-installers/* builds || true
         mv nzbget-synology-packages/* builds || true
+        mv nzbget-qnap-packages/* builds || true
+        mv nzbget-qnap-native-packages/* builds || true
         cd builds
         VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
         if [ "$GITHUB_REF_NAME" != "main" ]; then VERSION="$VERSION-testing"; fi
@@ -48,7 +57,7 @@ jobs:
         echo "nzbget_signatures({" | tee $SIGS_FILE
         echo | tee -a $SIGS_FILE
 
-        for FILE in *.exe *.run *.zip *.spk; do
+        for FILE in *.exe *.run *.zip *.spk *.qpkg; do
             [ -f $FILE ] || continue
 
             MD5=$(openssl dgst -md5 $FILE | cut -d ' ' -f 2)
@@ -85,6 +94,8 @@ jobs:
           nzbget-linux-installers
           nzbget-osx-installers
           nzbget-synology-packages
+          nzbget-qnap-packages
+          nzbget-qnap-native-packages
 
   make-testing-release:
     runs-on: [self-hosted, linux]
