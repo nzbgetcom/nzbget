@@ -54,16 +54,13 @@ namespace ExtensionLoader
 				std::vector<ManifestFile::Option>& options,
 				std::vector<ManifestFile::Command>& commands
 			);
-			void ParseSelectOptions(
-				std::string& line,
-				const std::string& delimiter,
-				std::vector<ManifestFile::SelectOption>& selectOpts,
-				bool isDash
-			);
-			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool isNumber);
+			std::vector<ManifestFile::SelectOption> 
+			GetSelectOptions(const std::vector<std::string>& opts, bool isDashDelim);
+			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
 			void RemoveTailAndTrim(std::string& str, const char* tail);
 			void BuildDisplayName(Extension::Script& script);
-			bool CheckCommaAfterEachWord(const std::string& sentence);
+			std::pair<std::vector<std::string>, std::string> 
+			ExtractElements(const std::string& str);
 		}
 	}
 

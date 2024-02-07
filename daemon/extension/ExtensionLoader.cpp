@@ -20,7 +20,6 @@
 #include "nzbget.h"
 
 #include <fstream>
-#include <sstream>
 #include "ExtensionLoader.h"
 #include "ManifestFile.h"
 #include "ScriptConfig.h"
@@ -29,7 +28,7 @@
 namespace ExtensionLoader
 {
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
-	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS ";
+	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
 	const char* SCAN_SCRIPT_SIGNATURE = "SCAN";
 	const char* QUEUE_SCRIPT_SIGNATURE = "QUEUE";
@@ -121,7 +120,7 @@ namespace ExtensionLoader
 					continue;
 				}
 
-				// if about, e.g. # Sort movies and tv shows.
+				// if about, e.g. # Sorts movies and tv shows.
 				if (inConfig && !strncmp(line.c_str(), "# ", 2) && !inDescription)
 				{
 					inAbout = true;
@@ -189,7 +188,7 @@ namespace ExtensionLoader
 				size_t tailIdx = str.find(tail);
 				if (tailIdx != std::string::npos)
 				{
-					str = str.substr(0, tailIdx);
+					str.swap(str.substr(0, tailIdx));
 				}
 				Util::TrimRight(str);
 			}
@@ -209,47 +208,46 @@ namespace ExtensionLoader
 				std::vector<ManifestFile::Option>& options,
 				std::vector<ManifestFile::Command>& commands)
 			{
+				std::vector<ManifestFile::SelectOption> selectOpts;
 				std::vector<std::string> description;
+
 				std::string line;
-				while (getline(file, line))
+				while (std::getline(file, line))
 				{
 					if (strstr(line.c_str(), END_SCRIPT_SIGNATURE))
 					{
 						break;
 					}
+
 					if (line.empty())
 					{
 						continue;
 					}
 
-					size_t selectStartIdx = line.find("(");
-					size_t selectEndIdx = line.find(")");
+					size_t selectStartIdx = line.rfind("(");
+					size_t selectEndIdx = line.rfind(")");
 					bool hasSelectOptions = selectStartIdx != std::string::npos
+						&& description.empty()
 						&& selectEndIdx != std::string::npos
 						&& selectEndIdx != std::string::npos
 						&& !strncmp(line.c_str(), "# ", 2);
 
-					// e.g. # When to send the message (Always, OnFailure) or # SMTP server port (1-65535).
+					// e.g. # Description (Always, OnFailure) or # Description (1-65535) or # Description (1, 2-5, 10).
 					if (hasSelectOptions)
 					{
-						std::string comma = ", ";
-						std::string dash = "-";
-						bool foundComma = line.substr(selectStartIdx, selectEndIdx).find(comma) != std::string::npos;
-						bool foundDash = line.substr(selectStartIdx, selectEndIdx).find(dash) != std::string::npos;
-						if (!foundComma && !foundDash || !description.empty())
-						{
-							description.push_back(line.substr(2));
-							continue;
-						}
-
 						std::string selectOptionsStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
-
-						if (foundComma && !CheckCommaAfterEachWord(selectOptionsStr))
+						auto result = ExtractElements(selectOptionsStr);
+						auto& selectOptions = result.first;
+						auto& delimiter = result.second;
+						bool canBeNum = delimiter == "-";
+						
+						if (delimiter.empty()) // doesn't have
 						{
 							description.push_back(line.substr(2));
 							continue;
 						}
-						if (foundDash)
+
+						if (canBeNum)
 						{
 							description.push_back(line.substr(2));
 						}
@@ -258,123 +256,161 @@ namespace ExtensionLoader
 							description.push_back(line.substr(2, selectStartIdx - 3) + ".");
 						}
 
-						ManifestFile::Option option;
-						std::vector<ManifestFile::SelectOption> selectOpts;
-						std::string delimiter = foundDash ? dash : comma;
-						ParseSelectOptions(selectOptionsStr, delimiter, selectOpts, foundDash);
-						option.select = std::move(selectOpts);
-
-						while (std::getline(file, line))
-						{
-							if (line == "#")
-							{
-								continue;
-							}
-							if (!strncmp(line.c_str(), "# ", 2))
-							{
-								line = line.substr(2);
-								Util::TrimRight(line);
-								if (!line.empty())
-								{
-									description.push_back(std::move(line));
-								}
-								continue;
-							}
-
-							if (strncmp(line.c_str(), "# ", 2))
-							{
-								size_t delimPos = line.find("=");
-								if (delimPos != std::string::npos)
-								{
-									std::string name = line.substr(1, delimPos - 1);
-									std::string value = line.substr(delimPos + 1);
-									option.value = std::move(GetSelectOpt(value, foundDash));
-									option.name = std::move(name);
-									option.displayName = option.name;
-								}
-								option.description = std::move(description);
-								options.push_back(std::move(option));
-								break;
-							}
-						}
+						selectOpts = GetSelectOptions(selectOptions, canBeNum);
 						continue;
 					}
+
+					if (!strncmp(line.c_str(), "# ", 2))
+					{
+						description.push_back(line.substr(2));
+						continue;
+					}
+
 					if (strncmp(line.c_str(), "# ", 2))
 					{
-						// if command, e.g. #ConnectionTest@Send Test E-Mail
+						// if option, e.g. #ConnectionTest=Send
 						size_t eqPos = line.find("=");
+						// if command, e.g. #ConnectionTest@Send Test E-Mail
 						size_t atPos = line.find("@");
+
 						if (atPos != std::string::npos && eqPos == std::string::npos)
 						{
 							ManifestFile::Command command;
 							std::string name = line.substr(1, atPos - 1);
 							std::string action = line.substr(atPos + 1);
+							Util::Trim(action);
+							Util::Trim(name);
 							command.action = std::move(action);
 							command.name = std::move(name);
 							command.description = std::move(description);
 							command.displayName = command.name;
 							commands.push_back(std::move(command));
+							description.clear();
+							continue;
 						}
-						else
+
+						if (eqPos != std::string::npos)
 						{
-							if (eqPos != std::string::npos)
-							{
-								// if option, e.g. #Username=myaccount
-								ManifestFile::Option option;
-								std::string name = line.substr(1, eqPos - 1);
-								std::string value = line.substr(eqPos + 1);
-								option.value = std::move(value);
-								option.name = std::move(name);
-								option.description = std::move(description);
-								option.displayName = option.name;
-								options.push_back(std::move(option));
-							}
+							ManifestFile::Option option;
+							std::string name = line.substr(1, eqPos - 1);
+							std::string value = line.substr(eqPos + 1);
+							Util::Trim(value);
+							Util::Trim(name);
+							bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
+							option.value = std::move(GetSelectOpt(value, canBeNum));
+							option.name = std::move(name);
+							option.description = std::move(description);
+							option.select = std::move(selectOpts);
+							option.displayName = option.name;
+							options.push_back(std::move(option));
+							description.clear();
+							selectOpts.clear();
+							continue;
 						}
 					}
-					else
-					{
-						description.push_back(line.substr(2));
-					}
 				}
 			}
 
-			void ParseSelectOptions(
-				std::string& line,
-				const std::string& delimiter,
-				std::vector<ManifestFile::SelectOption>& selectOpts,
-				bool isDash)
+			std::vector<ManifestFile::SelectOption> 
+			GetSelectOptions(const std::vector<std::string>& opts, bool canBeNum)
 			{
-				size_t pos = 0;
-				while ((pos = line.find(delimiter)) != std::string::npos)
+				std::vector<ManifestFile::SelectOption> selectOpts;
+
+				for (const auto& option : opts)
 				{
-					std::string selectOpt = line.substr(0, pos);
-					selectOpts.push_back(std::move(GetSelectOpt(selectOpt, isDash)));
-					line.erase(0, pos + delimiter.length());
+					selectOpts.push_back(GetSelectOpt(option, canBeNum));
 				}
-				selectOpts.push_back(std::move(GetSelectOpt(line, isDash)));
+				return selectOpts;
 			}
 
-			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool isNumber)
+			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum)
 			{
-				if (isNumber)
-					return ManifestFile::SelectOption(std::stod(val));
+				if (!canBeNum)
+				{
+					return ManifestFile::SelectOption(val);
+				}
+
+				auto result = Util::StrToNum(val);
+				if (result.has_value())
+				{
+					return ManifestFile::SelectOption(result.get());
+				}
 
 				return ManifestFile::SelectOption(val);
 			}
 
-			bool CheckCommaAfterEachWord(const std::string& sentence)
+			std::pair<std::vector<std::string>, std::string>
+			ExtractElements(const std::string& str)
 			{
-				std::stringstream ss(sentence);
+				std::vector<std::string> elements;
 				std::string word;
+	
+				for (size_t i = 0; i < str.size(); ++i)
+				{
+					if (i == str.size() - 1)
+				    {
+				        word += str[i];
+				        elements.push_back(std::move(word));
+				        break;
+				    }
 
-				while (ss >> word) {
-					if (!word.empty() && word.back() != ',' && !ss.eof())
+					if (str[i] == ',')
 					{
-						return false;
+						elements.push_back(std::move(word));
+						word.clear();
+						continue;
 					}
+
+					if (str[i] == ' ' && word.empty())
+					{
+						continue;
+					}
+
+					if (str[i] == ' ' && !word.empty())
+					{
+						elements.clear();
+						elements.push_back(str);
+						return std::make_pair(std::move(elements), "");
+					}
+
+					if (str[i] == '-' && elements.empty())
+					{
+						std::string restWord;
+						for (size_t j = i + 1; j < str.size(); ++j)
+						{
+							if (j >= str.size() - 1)
+							{
+								restWord += str[j];
+								elements.push_back(std::move(word));
+								elements.push_back(std::move(restWord));
+								return std::make_pair(std::move(elements), "-");
+							}
+
+							if (str[j] == ' ')
+							{
+								elements.push_back(str);
+								return std::make_pair(std::move(elements), "");
+							}
+
+							if (str[j] == ',')
+							{
+								word += '-' + restWord;
+								elements.push_back(std::move(word));
+								word.clear();
+								i = j;
+								break;
+							}
+
+							restWord += str[j];
+						}
+
+						continue;
+					}
+
+					word += str[i];
 				}
 
-				return true;
+				return std::make_pair(std::move(elements), ",");
 			}
 		}
 	}
