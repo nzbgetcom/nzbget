@@ -55,3 +55,10 @@ jobs:
         name: nzbget-qnap-packages
         path: /qnap/nzbget/build/*.qpkg
         retention-days: 5
+
+    - name: Delete unneded linux artifacts
+      if: not ${{ inputs.external_call }}
+      uses: geekyeggo/delete-artifact@v2
+      with:
+        name: |
+          nzbget-linux-installers

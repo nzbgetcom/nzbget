@@ -24,7 +24,9 @@ jobs:
     uses: ./.github/workflows/qnap.yml
 
   repack-qnap:
-    uses: ./.github/workflows/qnap.yml
+    uses: ./.github/workflows/qnap-repack.yml
+    with:
+      external_call: true
     needs: [build-linux]
   
   generate-signatures:
