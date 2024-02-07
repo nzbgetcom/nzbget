@@ -141,6 +141,13 @@ NZBGET_ROOT=$PWD
 # extract version and correct version in qpkg.cfg
 VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
 sed "s|^QPKG_VER=.*|QPKG_VER=\"$VERSION\"|" -i $QNAP_ROOT/nzbget/qpkg.cfg
+# if running from CI/CD, add testing to builds from non-main branch
+if [ -n "$GITHUB_REF_NAME" ]; then
+    if [ "$GITHUB_REF_NAME" != "main" ]; then
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i configure.ac
+    fi
+fi
 
 for ARCH in $ALL_ARCHS; do
 

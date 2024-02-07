@@ -18,6 +18,12 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Save version for non-release to env
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        echo VERSION=$VERSION >> $GITHUB_ENV
+
     - name: Build
       run: |
         export PATH="$PATH:/usr/share/QDK/bin"
@@ -27,6 +33,12 @@ jobs:
       if: github.ref_name != 'main'
       run: |
         cd /qnap/nzbget/build/
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        for FILE in *.qpkg; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
+          sudo mv $FILE $NEW_FILE          
+        done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
