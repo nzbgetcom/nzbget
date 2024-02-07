@@ -286,6 +286,7 @@ namespace ExtensionLoader
 							command.displayName = command.name;
 							commands.push_back(std::move(command));
 							description.clear();
+							selectOpts.clear();
 							continue;
 						}
 

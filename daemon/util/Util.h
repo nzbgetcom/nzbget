@@ -52,7 +52,7 @@ public:
 	static void TrimRight(std::string& str);
 	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
-	static void Util::Trim(std::string& str);
+	static void Trim(std::string& str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);

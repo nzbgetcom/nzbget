@@ -65,13 +65,19 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetRequirements().size() == 1);
 	BOOST_CHECK(extension.GetRequirements() == std::vector<std::string>({ "This script requires Python to be installed on your system." }));
 
-	BOOST_CHECK(extension.GetCommands().size() == 1);
+	BOOST_CHECK(extension.GetCommands().size() == 2);
 
 	auto command = extension.GetCommands()[0];
 	BOOST_CHECK(command.name == "ConnectionTest");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
 	BOOST_CHECK(command.action == "Send Test E-Mail");
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
+
+	auto command2 = extension.GetCommands()[1];
+	BOOST_CHECK(command2.name == "Test");
+	BOOST_CHECK(command2.displayName == "Test");
+	BOOST_CHECK(command2.action == "Send Test");
+	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
 
 	BOOST_CHECK(extension.GetOptions().size() == 14);
 

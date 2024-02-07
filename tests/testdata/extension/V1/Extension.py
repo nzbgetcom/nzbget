@@ -83,5 +83,10 @@
 # Set the ionice scheduling class (0, 1, 2, 3).
 #ionice_class=2
 
+# Test (0, 1).
+#
+# description.
+#Test@Send Test 
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################
