@@ -28,6 +28,8 @@ jobs:
     with:
       external_call: true
     needs: [build-linux]
+    permissions:
+      actions: write
   
   generate-signatures:
     env:

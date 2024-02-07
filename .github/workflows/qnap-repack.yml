@@ -1,9 +1,6 @@
 name: qnap repack
 
 on:
-  push:
-    branches:
-      feature/qnap    
   workflow_call:
     inputs:
       external_call:
