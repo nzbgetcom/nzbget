@@ -936,7 +936,7 @@ var Config = (new function($)
 		{
 			about = about.replace('\n', ' ') + '\n';
 		}
-		var description = about + (option['description'] || '\n');
+		var description = about + (option['description'] || '');
 		if (description) 
 		{
 			var htmldescr = description;
@@ -3393,7 +3393,7 @@ var ExtensionManager = (new function($)
 			else
 			{
 				var installedExt = installedExtensions[idx];
-				if (installedExt.version !== extension.version)
+				if (installedExt.version.localeCompare(extension.version, undefined, { numeric: true, sensitivity: 'base' }) < 0)
 				{
 					installedExt.outdated = true;
 				}

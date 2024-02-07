@@ -51,7 +51,7 @@ namespace ExtensionManager
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
 		downloader.reset();
 
-		return std::pair<WebDownloader::EStatus, std::string>(status, tmpFileName.Str());
+		return std::make_pair(status, tmpFileName.Str());
 	}
 
 	boost::optional<std::string>
