@@ -32,9 +32,13 @@ jobs:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
 
-    - name: Repack linux installer for QNAP and rename build artifacts
+    - name: Repack linux installer for QNAP
       run: |
         bash qnap/repack-nzbget.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main'
+      run: |
         VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
         NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
         cd /qnap/nzbget/build/
