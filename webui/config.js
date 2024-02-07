@@ -936,7 +936,7 @@ var Config = (new function($)
 		{
 			about = about.replace('\n', ' ') + '\n';
 		}
-		var description = about + (option['description']);
+		var description = about + (option['description'] || '');
 		if (description) 
 		{
 			var htmldescr = description;
