@@ -89,7 +89,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v2
+      uses: geekyeggo/delete-artifact@v4
       with:
         name: |
           nzbget-windows-installers

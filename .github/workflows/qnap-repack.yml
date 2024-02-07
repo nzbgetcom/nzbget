@@ -1,9 +1,6 @@
 name: qnap repack
 
 on:
-  push:
-    branches:
-    - feature/qnap
   workflow_call:
     inputs:
       external_call:
@@ -58,7 +55,7 @@ jobs:
 
     - name: Delete unneded linux artifacts
       if: not ${{ inputs.external_call }}
-      uses: geekyeggo/delete-artifact@v2
+      uses: geekyeggo/delete-artifact@v4
       with:
         name: |
           nzbget-linux-installers
