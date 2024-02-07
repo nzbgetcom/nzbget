@@ -18,6 +18,7 @@ jobs:
   repack:
     runs-on: [self-hosted, linux]
     needs: [build-linux]
+    if: always()
     permissions:
       actions: write
 
