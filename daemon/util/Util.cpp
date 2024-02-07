@@ -20,6 +20,9 @@
 
 
 #include "nzbget.h"
+
+#include <sstream>
+
 #include "Util.h"			
 #include "YEncode.h"
 
@@ -216,6 +219,25 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 {
 	*Hi = (uint32)(Int64 >> 32);
 	*Lo = (uint32)(Int64 & 0xFFFFFFFF);
+}
+
+boost::optional<double> 
+Util::StrToNum(const std::string& str)
+{
+	std::istringstream ss(str);
+	double num;
+
+	if (ss >> num)
+	{
+		if (!ss.eof()) 
+		{
+			return boost::none;
+		}
+
+		return boost::optional<double>{ num };
+	}
+
+	return boost::none;
 }
 
 /* Base64 decryption is taken from
@@ -483,6 +505,17 @@ void Util::TrimRight(std::string& str)
 	}
 }
 
+void Util::TrimLeft(std::string& str)
+{
+	str.erase(
+		std::begin(str),
+		std::find_if(
+			std::begin(str),
+			std::end(str),
+			[](unsigned char ch){ return !std::isspace(ch); })
+	);
+}
+
 char* Util::Trim(char* str)
 {
 	TrimRight(str);
@@ -491,6 +524,12 @@ char* Util::Trim(char* str)
 		str++;
 	}
 	return str;
+}
+
+void Util::Trim(std::string& str)
+{
+	TrimLeft(str);
+	TrimRight(str);
 }
 
 char* Util::ReduceStr(char* str, const char* from, const char* to)

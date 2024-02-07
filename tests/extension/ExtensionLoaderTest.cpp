@@ -65,7 +65,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetRequirements().size() == 1);
 	BOOST_CHECK(extension.GetRequirements() == std::vector<std::string>({ "This script requires Python to be installed on your system." }));
 
-	BOOST_CHECK(extension.GetCommands().size() == 1);
+	BOOST_CHECK(extension.GetCommands().size() == 2);
 
 	auto command = extension.GetCommands()[0];
 	BOOST_CHECK(command.name == "ConnectionTest");
@@ -73,7 +73,13 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command.action == "Send Test E-Mail");
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
-	BOOST_CHECK(extension.GetOptions().size() == 7);
+	auto command2 = extension.GetCommands()[1];
+	BOOST_CHECK(command2.name == "Test");
+	BOOST_CHECK(command2.displayName == "Test");
+	BOOST_CHECK(command2.action == "Send Test");
+	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
+
+	BOOST_CHECK(extension.GetOptions().size() == 14);
 
 	auto option = extension.GetOptions()[0];
 
@@ -91,7 +97,6 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option2.name == "Port");
 	BOOST_CHECK(option2.displayName == "Port");
 	BOOST_CHECK(option2.description == std::vector<std::string>({ "SMTP server port (1-65535)." }));
-
 	BOOST_CHECK(boost::variant2::get<double>(option2.value) == 25.);
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[0]) == 1.);
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
@@ -126,7 +131,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 			"Multiple addresses can be separated with comma."
 		}));
 	BOOST_CHECK(boost::variant2::get<std::string>(option5.value) == "myaccount@gmail.com");
-	BOOST_CHECK(option5.select.size() == 0);
+	BOOST_CHECK(option5.select.empty());
 
 	auto option6 = extension.GetOptions()[5];
 	BOOST_CHECK(option6.name == "BannedExtensions");
@@ -136,7 +141,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 			"Extensions must be separated by a comma (eg: .wmv, .divx)."
 		}));
 	BOOST_CHECK(boost::variant2::get<std::string>(option6.value) == "");
-	BOOST_CHECK(option6.select.size() == 0);
+	BOOST_CHECK(option6.select.empty());
 
 	auto option7 = extension.GetOptions()[6];
 	BOOST_CHECK(option7.name == "MoviesFormat");
@@ -146,5 +151,75 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 			"{TEXT}          - lowercase the text."
 		}));
 	BOOST_CHECK(boost::variant2::get<std::string>(option7.value) == "%t (%y)");
-	BOOST_CHECK(option7.select.size() == 0);
+	BOOST_CHECK(option7.select.empty());
+
+	auto option8 = extension.GetOptions()[7];
+	BOOST_CHECK(option8.name == "outputVideoExtension");
+	BOOST_CHECK(option8.displayName == "outputVideoExtension");
+	BOOST_CHECK(option8.description == std::vector<std::string>({ "ffmpeg output settings." }));
+	BOOST_CHECK(boost::variant2::get<std::string>(option8.value) == ".mp4");
+	BOOST_CHECK(option8.select.empty());
+
+	auto option9 = extension.GetOptions()[8];
+	BOOST_CHECK(option9.name == "outputVideoCodec");
+	BOOST_CHECK(option9.displayName == "outputVideoCodec");
+	BOOST_CHECK(option9.description.empty());
+	BOOST_CHECK(boost::variant2::get<std::string>(option9.value) == "libx264");
+	BOOST_CHECK(option9.select.empty());
+
+	auto option10 = extension.GetOptions()[9];
+	BOOST_CHECK(option10.name == "outputDefault");
+	BOOST_CHECK(option10.displayName == "outputDefault");
+	BOOST_CHECK(option10.description == std::vector<std::string>({ "Output Default.", "description" }));
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.value) == "None");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[0]) == "None");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[1]) == "iPad");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[2]) == "iPad-1080p");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[3]) == "iPad-720p");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[4]) == "Apple-TV2");
+	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[5]) == "iPod");
+
+	auto option11 = extension.GetOptions()[10];
+	BOOST_CHECK(option11.name == "auto_update");
+	BOOST_CHECK(option11.displayName == "auto_update");
+	BOOST_CHECK(option11.description == std::vector<std::string>({
+		"Auto Update nzbToMedia.",
+		"description"
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option11.value) == "0");
+	BOOST_CHECK(boost::variant2::get<std::string>(option11.select[0]) == "0");
+	BOOST_CHECK(boost::variant2::get<std::string>(option11.select[1]) == "1");
+
+	auto option12 = extension.GetOptions()[11];
+	BOOST_CHECK(option12.name == "niceness");
+	BOOST_CHECK(option12.displayName == "niceness");
+	BOOST_CHECK(option12.description == std::vector<std::string>({
+		"Niceness for external extraction process.",
+		"Set the Niceness value for the nice command (Linux). These range from -20 (most favorable to the process) to 19 (least favorable to the process)."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option12.value) == "10");
+	BOOST_CHECK(option12.select.empty());
+
+	auto option13 = extension.GetOptions()[12];
+	BOOST_CHECK(option13.name == "ionice_class");
+	BOOST_CHECK(option13.displayName == "ionice_class");
+	BOOST_CHECK(option13.description == std::vector<std::string>({
+		"ionice scheduling class.",
+		"Set the ionice scheduling class (Linux). 0 for none, 1 for real time, 2 for best-effort, 3 for idle."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.value) == "2");
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[0]) == "0");
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[1]) == "1");
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[2]) == "2");
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[3]) == "3");
+
+	auto option14 = extension.GetOptions()[13];
+	BOOST_CHECK(option14.name == "ionice_class");
+	BOOST_CHECK(option14.displayName == "ionice_class");
+	BOOST_CHECK(option14.description == std::vector<std::string>({
+		"ionice scheduling class.",
+		"Set the ionice scheduling class (0, 1, 2, 3)."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option13.value) == "2");
+	BOOST_CHECK(option14.select.empty());
 }
