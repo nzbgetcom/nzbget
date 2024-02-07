@@ -1,13 +1,16 @@
 name: qnap repack
 
 on:
+  push:
+    branches:
+      feature/qnap    
   workflow_call:
     inputs:
       external_call:
         description: 'To distinguish workflow_call from regular push / workflow_dispatch'
         type: boolean
         required: false
-        default: true
+        default: false
   workflow_dispatch:
 
 jobs:
