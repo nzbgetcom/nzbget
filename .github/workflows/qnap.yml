@@ -1,9 +1,6 @@
 name: qnap build 
 
 on:
-  push:
-    branches:
-      - feature/qnap
   workflow_call:
   workflow_dispatch:
 

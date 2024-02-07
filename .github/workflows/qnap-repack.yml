@@ -20,6 +20,7 @@ jobs:
 
   repack:
     runs-on: [self-hosted, linux]
+    needs: [build-linux]
 
     steps:
 
