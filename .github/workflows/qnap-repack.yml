@@ -13,7 +13,7 @@ on:
 jobs:
   build-linux:
     uses: ./.github/workflows/linux.yml
-    if: not ${{ inputs.external_call }}
+    if: ! ${{ inputs.external_call }}
 
   repack:
     runs-on: [self-hosted, linux]
@@ -56,7 +56,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneded linux artifacts
-      if: not ${{ inputs.external_call }}
+      if: ! ${{ inputs.external_call }}
       uses: geekyeggo/delete-artifact@v4
       with:
         name: |
