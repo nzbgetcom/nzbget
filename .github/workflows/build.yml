@@ -34,6 +34,8 @@ jobs:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux, build-osx, build-synology, build-qnap, repack-qnap]
+    permissions:
+      actions: write
     steps:
     
     - name: Download build artifacts
