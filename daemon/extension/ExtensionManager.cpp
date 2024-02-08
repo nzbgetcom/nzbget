@@ -202,10 +202,10 @@ namespace ExtensionManager
 			location = ext.GetEntry();
 		}
 
-		CString err;
-		if (FileSystem::DeleteDirectoryWithContent(location, err))
+		if (FileSystem::DirectoryExists(location))
 		{
-			if (!err.Empty())
+			CString err;
+			if (!FileSystem::DeleteDirectoryWithContent(location, err))
 			{
 				return boost::optional<std::string>(err.Str());
 			}
