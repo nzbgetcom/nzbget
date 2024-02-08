@@ -3536,11 +3536,10 @@ var ExtensionManager = (new function($)
 
 	function deleteGlobalSettings(extName)
 	{
-		var values = Config.config().values;
-		if (!values)
-		{
+		if (!Config.config() || !Config.config()['values'])
 			return;
-		}
+
+		var values = Config.config().values;
 		values.forEach(function(value, i)
 		{
 			if (value.Name == extensionsId)
@@ -3559,11 +3558,10 @@ var ExtensionManager = (new function($)
 
 	function syncGlobalSettings()
 	{
-		var values = Config.config().values;
-		if (!values)
-		{
+		if (!Config.config() || !Config.config()['values'])
 			return;
-		}
+
+		var values = Config.config().values;
 		var changed = false;
 		values.forEach(function(value, i)
 		{
@@ -3728,6 +3726,9 @@ var ExtensionManager = (new function($)
 
 	function deleteSettings(extName)
 	{
+		if (!Config.config() || !Config.config()['values'])
+			return;
+
 		var values = Config.config().values;
 		values.forEach(function(value, i) {
 		{
