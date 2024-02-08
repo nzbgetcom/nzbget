@@ -221,8 +221,13 @@ for ARCH in $ALL_ARCHS; do
         sed 's|^LogFile=.*|LogFile=${MainDir}/nzbget.log|' -i $CONFTEMPLATE
         sed 's|^ConfigTemplate=.*|ConfigTemplate=${AppDir}/webui/nzbget.conf.template|' -i $CONFTEMPLATE
         sed 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' -i $CONFTEMPLATE
+        sed 's|^CertCheck=.*|CertCheck=yes|' -i $CONFTEMPLATE
+        sed 's|^CertStore=.*|CertStore=${AppDir}/cacert.pem|' -i $CONFTEMPLATE
+        sed 's|^UnrarCmd=.*|UnrarCmd=${AppDir}/unrar|' -i $CONFTEMPLATE
+        sed 's|^SevenZipCmd=.*|SevenZipCmd=${AppDir}/7za|' -i $CONFTEMPLATE
 
-        cp $CONFTEMPLATE nzbget/nzbget.conf        
+        cp $CONFTEMPLATE nzbget/nzbget.conf
+        curl -o nzbget/cacert.pem -L "https://curl.se/ca/cacert.pem"
     fi
     
     cd $NZBGET_ROOT

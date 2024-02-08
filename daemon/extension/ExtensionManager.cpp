@@ -189,8 +189,8 @@ namespace ExtensionManager
 		const char* location = ext.GetLocation();
 
 		ptrdiff_t count = std::count_if(
-			std::cbegin(m_extensions),
-			std::cend(m_extensions),
+			std::begin(m_extensions),
+			std::end(m_extensions),
 			[&location](const auto& ext) { return strcmp(location, ext->GetLocation()) == 0; }
 		);
 

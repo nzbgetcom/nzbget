@@ -12,6 +12,7 @@ case "$1" in
         echo "$QPKG_NAME is disabled."
         exit 1
     fi
+    cd $QPKG_ROOT/nzbget
     $QPKG_ROOT/nzbget/nzbget -c $QPKG_ROOT/nzbget/nzbget.conf -D
     ;;
 
