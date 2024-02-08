@@ -51,7 +51,7 @@ namespace ExtensionManager
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
 		downloader.reset();
 
-		return std::pair<WebDownloader::EStatus, std::string>(status, tmpFileName.Str());
+		return std::make_pair(status, tmpFileName.Str());
 	}
 
 	boost::optional<std::string>
@@ -188,10 +188,24 @@ namespace ExtensionManager
 	{
 		const char* location = ext.GetLocation();
 
-		CString err;
-		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
+		ptrdiff_t count = std::count_if(
+			std::cbegin(m_extensions),
+			std::cend(m_extensions),
+			[&location](const auto& ext) { return strcmp(location, ext->GetLocation()) == 0; }
+		);
+
+		if (count > 1)
 		{
-			if (!err.Empty())
+			// for backward compatibility, when multiple V1 extensions placed 
+			// in the same directory in which case we have to delete an entry file, 
+			// not the entire directory.
+			location = ext.GetEntry();
+		}
+
+		if (FileSystem::DirectoryExists(location))
+		{
+			CString err;
+			if (!FileSystem::DeleteDirectoryWithContent(location, err))
 			{
 				return boost::optional<std::string>(err.Str());
 			}

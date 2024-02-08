@@ -46,10 +46,13 @@ public:
 
 	static int64 JoinInt64(uint32 Hi, uint32 Lo);
 	static void SplitInt64(int64 Int64, uint32* Hi, uint32* Lo);
+	static boost::optional<double> StrToNum(const std::string& str);
 
 	static void TrimRight(char* str);
 	static void TrimRight(std::string& str);
+	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
+	static void Trim(std::string& str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
