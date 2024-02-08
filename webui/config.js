@@ -3443,6 +3443,7 @@ var ExtensionManager = (new function($)
 			},
 			function(error)
 			{
+				disableAllBtns(ext, false);
 				showErrorBanner("Failed to update " + ext.name, error);
 			}
 		);
