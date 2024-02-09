@@ -1,4 +1,4 @@
-name: synology build 
+name: qnap build 
 
 on:
   workflow_call:
@@ -15,17 +15,23 @@ jobs:
       with:
         fetch-depth: 0
 
+    - name: Save version for non-release to env
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        echo VERSION=$VERSION >> $GITHUB_ENV
+
     - name: Build
       run: |
-        sudo -E bash synology/build-nzbget.sh
+        export PATH="$PATH:/usr/share/QDK/bin"
+        bash qnap/build-nzbget.sh
 
     - name: Rename build artifacts
       if: github.ref_name != 'main'
       run: |
-        cd /toolkit/result_spk/nzbget/
-        VERSION=$(date '+%Y%m%d')
-        NEW_VERSION="$VERSION-testing"
-        for FILE in *.spk; do
+        cd /qnap/nzbget/build/
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        for FILE in *.qpkg; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
           sudo mv $FILE $NEW_FILE          
@@ -34,10 +40,10 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-synology-packages
-        path: /toolkit/result_spk/nzbget/*.spk
+        name: nzbget-qnap-native-packages
+        path: /qnap/nzbget/build/*.qpkg
         retention-days: 5
 
     - name: Cleanup
       run: |
-        sudo rm /toolkit/result_spk/nzbget/*.spk
+        rm -rf /qnap/nzbget/

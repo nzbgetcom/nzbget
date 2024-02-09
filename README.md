@@ -9,6 +9,7 @@
 [![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
 [![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
 [![synology build](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml)
+[![qnap build](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
@@ -37,6 +38,8 @@ Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget
 We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
+
+QNAP packages are available as native packages and buildroot packages. [QNAP readme](qnap/README.md)
 
 ## Migration from older NZBGet versions
 
