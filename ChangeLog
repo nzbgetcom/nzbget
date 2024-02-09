@@ -33,6 +33,8 @@ nzbget-23.0
     [#55](https://github.com/nzbgetcom/nzbget/commit/1913e331bb87cdd592048b37fd57507f82a17144);
     - Synology support (spk) 
     [#72](https://github.com/nzbgetcom/nzbget/commit/3f8fd6d433b38ed9f18ab7ffe25fd7a4a0c5c246);
+    - QNAP support
+    [#158](https://github.com/nzbgetcom/nzbget/commit/9676c77dc8f9e9498a99a6e774e7bf23ca4be537);
     - aarch64 mipseb mipsel ppc6xx ppc500 architectures to linux build 
     [#61](https://github.com/nzbgetcom/nzbget/commit/959985473cdfcf51d88e6a49770650b4edced043) 
     [#146](https://github.com/nzbgetcom/nzbget/commit/fcc104dc294a905155f65e93483de4a1f40d843e);
