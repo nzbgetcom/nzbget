@@ -68,6 +68,7 @@ static const char* OPTION_CERTSTORE				= "CertStore";
 static const char* OPTION_CERTCHECK				= "CertCheck";
 static const char* OPTION_AUTHORIZEDIP			= "AuthorizedIP";
 static const char* OPTION_ARTICLETIMEOUT		= "ArticleTimeout";
+static const char* OPTION_ARTICLEREADCHUNKSIZE	= "ArticleReadChunkSize";
 static const char* OPTION_URLTIMEOUT			= "UrlTimeout";
 static const char* OPTION_REMOTETIMEOUT			= "RemoteTimeout";
 static const char* OPTION_FLUSHQUEUE			= "FlushQueue";
@@ -447,6 +448,7 @@ void Options::InitDefaults()
 	SetOption(OPTION_CERTCHECK, "no");
 	SetOption(OPTION_AUTHORIZEDIP, "");
 	SetOption(OPTION_ARTICLETIMEOUT, "60");
+	SetOption(OPTION_ARTICLEREADCHUNKSIZE, "4");
 	SetOption(OPTION_URLTIMEOUT, "60");
 	SetOption(OPTION_REMOTETIMEOUT, "90");
 	SetOption(OPTION_FLUSHQUEUE, "yes");
@@ -694,6 +696,7 @@ void Options::InitOptions()
 
 	m_downloadRate			= ParseIntValue(OPTION_DOWNLOADRATE, 10) * 1024;
 	m_articleTimeout		= ParseIntValue(OPTION_ARTICLETIMEOUT, 10);
+	m_articleReadChunkSize  = ParseIntValue(OPTION_ARTICLEREADCHUNKSIZE, 10) * 1024;
 	m_urlTimeout			= ParseIntValue(OPTION_URLTIMEOUT, 10);
 	m_remoteTimeout			= ParseIntValue(OPTION_REMOTETIMEOUT, 10);
 	m_articleRetries		= ParseIntValue(OPTION_ARTICLERETRIES, 10);
@@ -1008,6 +1011,16 @@ void Options::InitServers()
 			m_tls |= tls;
 		}
 
+		const char* ncertveriflevel = GetOption(BString<100>("Server%i.CertVerification", n));
+		int certveriflevel = ECertVerifLevel::cvStrict;
+		if (ncertveriflevel)
+		{
+			const char* CertVerifNames[] = { "none", "minimal", "strict" };
+			const int CertVerifValues[] = { ECertVerifLevel::cvNone, ECertVerifLevel::cvMinimal, ECertVerifLevel::cvStrict };
+			const int CertVerifCount = ECertVerifLevel::Count;
+			certveriflevel = ParseEnumValue(BString<100>("Server%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
+		}
+
 		const char* nipversion = GetOption(BString<100>("Server%i.IpVersion", n));
 		int ipversion = 0;
 		if (nipversion)
@@ -1045,7 +1058,7 @@ void Options::InitServers()
 					nretention ? atoi(nretention) : 0,
 					nlevel ? atoi(nlevel) : 0,
 					ngroup ? atoi(ngroup) : 0,
-					optional);
+					optional, certveriflevel);
 			}
 		}
 		else
@@ -1536,7 +1549,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 			!strcasecmp(p, ".encryption") || !strcasecmp(p, ".connections") ||
 			!strcasecmp(p, ".cipher") || !strcasecmp(p, ".group") ||
 			!strcasecmp(p, ".retention") || !strcasecmp(p, ".optional") ||
-			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion")))
+			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion") ||
+			!strcasecmp(p, ".certverification")))
 		{
 			return true;
 		}

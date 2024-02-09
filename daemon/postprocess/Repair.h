@@ -23,7 +23,7 @@
 
 #include "DownloadInfo.h"
 #include "Thread.h"
-#include "Script.h"
+#include "ScriptController.h"
 
 #ifndef DISABLE_PARCHECK
 #include "ParChecker.h"

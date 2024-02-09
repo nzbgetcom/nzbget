@@ -1,0 +1,64 @@
+name: qnap repack
+
+on:
+  workflow_call:
+    inputs:
+      external_call:
+        description: 'To distinguish workflow_call from regular push / workflow_dispatch'
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    uses: ./.github/workflows/linux.yml
+    if: ${{ inputs.external_call == false }}
+
+  repack:
+    runs-on: [self-hosted, linux]
+    needs: [build-linux]
+    if: always()
+    permissions:
+      actions: write
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Repack linux installer for QNAP
+      run: |
+        export PATH="$PATH:/usr/share/QDK/bin"
+        bash qnap/repack-nzbget.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        cd /qnap/nzbget/build/
+        for FILE in *.qpkg; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
+          sudo mv $FILE $NEW_FILE          
+        done
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-qnap-packages
+        path: /qnap/nzbget/build/*.qpkg
+        retention-days: 5
+
+    - name: Delete unneded linux artifacts
+      if: ${{ inputs.external_call == false }}
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
+          nzbget-linux-installers

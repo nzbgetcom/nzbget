@@ -3,6 +3,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2023 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -602,11 +603,7 @@
 									<h4>Par2</h4>
 									<p>NZBGet uses <a href="http://parchive.sourceforge.net">Par2</a> by Peter Brian Clements with library interface by Francois Lesueur.</p>
 									<p>Par2 is licensed under the <a href="http://github.com/jquery/jquery/blob/master/GPL-LICENSE.txt">GPL license</a>.</p>
-							
-									<h4>Catch</h4>
-									<p>NZBGet uses C++ testing framework <a href="https://github.com/philsquared/Catch">Catch</a>  by Two Blue Cubes Ltd.</p>
-									<p>Catch is licensed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License</a>.</p>
-							
+
 									<h4>jQuery</h4>
 									<p>NZBGet web-interface uses <a href="http://jquery.com">jQuery</a>. The jQuery Project is run by a distributed group of volunteers that all want to see jQuery become the best JavaScript tool possible.</p>
 									<p>jQuery is licensed under the <a href="http://github.com/jquery/jquery/blob/master/MIT-LICENSE.txt">MIT</a> and <a href="http://github.com/jquery/jquery/blob/master/GPL-LICENSE.txt">GPL</a> licenses.</p>
@@ -626,6 +623,10 @@
 									<h4>iconSweets</h4>
 									<p>NZBGet web-interface includes selected icons from collections <a href="http://www.iconsweets.com/">iconSweets</a> and <a href="http://www.iconsweets2.com/">iconSweets2</a> by <a href="http://yummygum.com">Yummygum</a>.</p>
 									<p>The icons are generally licensed under a custom license but used in NZBGet with author's permission.</p>
+
+									<h4>Boost</h4>
+									<p>NZBGet uses <a href="https://www.boost.org/">Boost</a> by Boost organization and wider Boost community</p>
+									<p>Boost is licensed under the <a href="https://www.boost.org/users/license.html">Boost Software License</a>.</p>
 								</div>
 
 								<div>
@@ -693,6 +694,55 @@
 												</div>
 											</div>
 
+											<section class="control-group config-static extension-manager">
+												<div class="alert alert-info alert-block" style="display:none;" id="ExtensionsLoadingBanner">
+													<h4 class="alert-heading">Loading...</h4>
+													Please wait.
+												</div>
+												<div class="alert alert-danger alert-block" style="display:none;" id="ExtensionsErrorAlert">
+													<h4 class="alert-heading" id="ExtensionsErrorAlert-title"></h4>
+													<p id="ExtensionsErrorAlert-text"></p>
+												</div>
+
+												<p class="help-block" id="ExtensionsHelpBlock" style="display:none;" >
+													<span class="help-option-title"><strong>The Extension Manager</strong> is a tool for downloading, updating and deleting NZBGet extensions with backwards compatibility with extensions based on header configuration definition.</span>
+													<br>
+													<br>
+													<span class="help-option-title">If you want to add support for your extension by the Extension Manager, you can follow this 
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/README.md" target="_blank"> instruction.</a>
+													</span>
+													<br>
+													<br>
+													<span class="label label-warning">NOTE:</span>
+													<span class="help-option-title">If you delete your extension that is not on this
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/extensions.json" target="_blank"> list</a>, 
+														it will be removed without the possibility of reinstalling it.
+													</span>
+												</p>
+
+												<br>
+
+												<table class="table table-striped table-bordered" id="ExtensionManagerTable">
+													<thead>
+														<tr>
+															<th class="text-center">ON/OFF</th>
+															<th class="text-center">Name</th>
+															<th class="text-center">About</th>
+															<th class="text-center">Version</th>
+															<th class="text-center">Homepage</th>
+															<th></th>
+															<th class="text-center"></th>
+														</tr>
+													</thead>
+													<tbody id="ExtensionManagerTBody"></tbody>
+												</table>
+												
+												<!-- *** DELETE EXTENSION MENU -->
+												<ul class="dropdown-menu" id="DeleteExtensionMenu">
+													<li><a href="#" id="DeleteExtensionItem" onclick="" title="Delete extension"> Delete</a></li>
+													<li><a href="#" id="DeleteExtensionWithSettingsItem" onclick="" title="Delete extension with saved settings">Delete with saved settings</a></li>
+												</ul>
+											</section>
 										</fieldset>
 										</form>
 									</div>
@@ -2598,7 +2648,7 @@
 
 	<div class="modal-footer">
 		<a href="#" class="btn btn-danger pull-left" onclick="Config.discardChanges()">Discard changes</a>
-		<a href="#" class="btn" data-dismiss="modal">Stop</a>
+		<a href="#" class="btn" data-dismiss="modal">Cancel</a>
 		<a href="#" class="btn btn-primary" onclick="Config.saveChanges()">Save changes</a>
 	</div>
 </div>
@@ -2639,9 +2689,8 @@
 	<thead>
 		<tr>
 			<th></th>
-			<th class="text-center" width="110">Stable</th>
-			<th class="text-center" width="110">Testing</th>
-			<th class="text-center" width="110">Development</th>
+			<th class="text-center" width="150">Stable</th>
+			<th class="text-center" width="150">Testing</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -2651,8 +2700,6 @@
 			<a class="update-release-notes" id="UpdateDialog_CurNotesStable" href="#" target="_blank">release notes</a></td>
 			<td class="text-center"><span id="UpdateDialog_CurTesting">12.0-r870</span><br>
 			<a class="update-release-notes" id="UpdateDialog_CurNotesTesting" href="#" target="_blank">release notes</a></td>
-			<td class="text-center"><span id="UpdateDialog_CurDevel">12.0-r880</span><br>
-			<a class="update-release-notes" id="UpdateDialog_CurNotesDevel" href="#" target="_blank">code log</a></td>
 		</tr>
 		<tr id="UpdateDialog_AvailRow">
 			<td class="update-row-name">For your platform</td>
@@ -2662,15 +2709,11 @@
 			<td class="text-center"><span id="UpdateDialog_AvailTestingBlock"><span id="UpdateDialog_AvailTesting"></span><br></span>
 			<span id="UpdateDialog_AvailNotesTestingBlock"><a class="update-release-notes" id="UpdateDialog_AvailNotesTesting" href="#" target="_blank">package info</a><br></span>
 			<a class="btn btn-success" id="UpdateDialog_InstallTesting" data-kind="testing" href="#">Install</a></td>
-			<td class="text-center"><span id="UpdateDialog_AvailDevelBlock"><span id="UpdateDialog_AvailDevel"></span><br></span>
-			<span id="UpdateDialog_AvailNotesDevelBlock"><a class="update-release-notes" id="UpdateDialog_AvailNotesDevel" href="#" target="_blank">package info</a><br></span>
-			<a class="btn btn-success" id="UpdateDialog_InstallDevel" data-kind="devel" href="#">Install</a></td>
 		</tr>
 		<tr id="UpdateDialog_DownloadRow">
 			<td class="update-row-name"></td>
 			<td class="text-center"><a class="btn btn-success" id="UpdateDialog_DownloadStable" href="https://nzbget.com/download/" target="_blank">Download</a></td>
-			<td class="text-center"><a class="btn btn-success" id="UpdateDialog_DownloadTesting" href="https://nzbget.com/download/" target="_blank">Download</a></td>
-			<td class="text-center"></td>
+			<td class="text-center"><a class="btn btn-success" id="UpdateDialog_DownloadTesting" href="https://nzbget.com/download/" target="_blank">Download</a></td>			
 		</tr>
 	</tbody></table>
 

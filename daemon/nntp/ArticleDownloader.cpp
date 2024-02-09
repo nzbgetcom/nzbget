@@ -116,6 +116,10 @@ void ArticleDownloader::Run()
 
 		m_connection->SetSuppressErrors(false);
 
+#ifndef DISABLE_TLS
+		m_connection->SetCertVerifLevel(lastServer->GetCertVerificationLevel());
+#endif
+
 		m_connectionName.Format("%s (%s)",
 			m_connection->GetNewsServer()->GetName(), m_connection->GetHost());
 
@@ -335,7 +339,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	m_decoder.SetRawMode(g_Options->GetRawArticle());
 
 	status = adRunning;
-	CharBuffer lineBuf(1024*4);
+	CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
 
 	while (!IsStopped() && !m_decoder.GetEof())
 	{

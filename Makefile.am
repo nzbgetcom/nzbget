@@ -42,6 +42,14 @@ nzbget_SOURCES = \
 	daemon/extension/SchedulerScript.h \
 	daemon/extension/ScriptConfig.cpp \
 	daemon/extension/ScriptConfig.h \
+	daemon/extension/Extension.cpp \
+	daemon/extension/Extension.h \
+	daemon/extension/ExtensionManager.cpp \
+	daemon/extension/ExtensionManager.h \
+	daemon/extension/ExtensionLoader.cpp \
+	daemon/extension/ExtensionLoader.h \
+	daemon/extension/ManifestFile.cpp \
+	daemon/extension/ManifestFile.h \
 	daemon/feed/FeedCoordinator.cpp \
 	daemon/feed/FeedCoordinator.h \
 	daemon/feed/FeedFile.cpp \
@@ -150,14 +158,18 @@ nzbget_SOURCES = \
 	daemon/util/Container.h \
 	daemon/util/Observer.cpp \
 	daemon/util/Observer.h \
-	daemon/util/Script.cpp \
-	daemon/util/Script.h \
+	daemon/util/ScriptController.cpp \
+	daemon/util/ScriptController.h \
 	daemon/util/Thread.cpp \
 	daemon/util/Thread.h \
 	daemon/util/Service.cpp \
 	daemon/util/Service.h \
 	daemon/util/FileSystem.cpp \
 	daemon/util/FileSystem.h \
+	daemon/util/Json.cpp \
+	daemon/util/Json.h \
+	daemon/util/Xml.cpp \
+	daemon/util/Xml.h \
 	daemon/util/Util.cpp \
 	daemon/util/Util.h \
 	daemon/nserv/NServMain.h \
@@ -169,8 +181,7 @@ nzbget_SOURCES = \
 	daemon/nserv/NzbGenerator.h \
 	daemon/nserv/NzbGenerator.cpp \
 	daemon/nserv/YEncoder.h \
-	daemon/nserv/YEncoder.cpp \
-	code_revision.cpp
+	daemon/nserv/YEncoder.cpp
 
 if WITH_PAR2
 nzbget_SOURCES += \
@@ -250,37 +261,6 @@ AM_CPPFLAGS = \
 	-I$(srcdir)/lib/par2 \
 	-I$(srcdir)/lib/yencode
 
-if WITH_TESTS
-nzbget_SOURCES += \
-	lib/catch/catch.h \
-	tests/suite/TestMain.cpp \
-	tests/suite/TestMain.h \
-	tests/suite/TestUtil.cpp \
-	tests/suite/TestUtil.h \
-	tests/main/CommandLineParserTest.cpp \
-	tests/main/OptionsTest.cpp \
-	tests/feed/FeedFilterTest.cpp \
-	tests/postprocess/DupeMatcherTest.cpp \
-	tests/postprocess/RarRenamerTest.cpp \
-	tests/postprocess/RarReaderTest.cpp \
-	tests/postprocess/DirectUnpackTest.cpp \
-	tests/queue/NzbFileTest.cpp \
-	tests/nntp/ServerPoolTest.cpp \
-	tests/util/FileSystemTest.cpp \
-	tests/util/NStringTest.cpp \
-	tests/util/UtilTest.cpp
-
-if WITH_PAR2
-nzbget_SOURCES += \
-	tests/postprocess/ParCheckerTest.cpp \
-	tests/postprocess/ParRenamerTest.cpp
-endif
-
-AM_CPPFLAGS += \
-	-I$(srcdir)/lib/catch \
-	-I$(srcdir)/tests/suite
-endif
-
 EXTRA_DIST = \
 	$(windows_FILES) \
 	$(osx_FILES) \
@@ -351,7 +331,7 @@ linux_FILES = \
 	linux/build-toolchain-freebsd
 
 doc_FILES = \
-	README \
+	INSTALLATION.md \
 	ChangeLog \
 	COPYING
 
@@ -385,6 +365,8 @@ webui_FILES = \
 	webui/lib/raphael.min.js \
 	webui/lib/elycharts.js \
 	webui/lib/elycharts.min.js \
+	webui/img/house-16.ico \
+	webui/img/download-16.ico \
 	webui/img/icons.png \
 	webui/img/icons-2x.png \
 	webui/img/transmit.gif \
@@ -396,64 +378,13 @@ webui_FILES = \
 	webui/img/favicon-256x256-opaque.png \
 	webui/img/favicon-256x256.png
 
-scripts_FILES = \
-	scripts/EMail.py \
-	scripts/Logger.py
-
-testdata_FILES = \
-	tests/testdata/dupematcher1/testfile.part01.rar \
-	tests/testdata/dupematcher1/testfile.part24.rar \
-	tests/testdata/dupematcher2/testfile.part04.rar \
-	tests/testdata/dupematcher2/testfile.part43.rar \
-	tests/testdata/nzbfile/dotless.nzb \
-	tests/testdata/nzbfile/dotless.txt \
-	tests/testdata/nzbfile/plain.nzb \
-	tests/testdata/nzbfile/plain.txt \
-	tests/testdata/parchecker/crc.txt \
-	tests/testdata/parchecker/testfile.dat \
-	tests/testdata/parchecker/testfile.nfo \
-	tests/testdata/parchecker/testfile.par2 \
-	tests/testdata/parchecker/testfile.vol00+1.PAR2 \
-	tests/testdata/parchecker/testfile.vol01+2.PAR2 \
-	tests/testdata/parchecker/testfile.vol03+3.PAR2 \
-	tests/testdata/parchecker2/crc.txt \
-	tests/testdata/parchecker2/testfile.7z.001 \
-	tests/testdata/parchecker2/testfile.7z.002 \
-	tests/testdata/parchecker2/testfile.7z.003 \
-	tests/testdata/parchecker2/testfile.7z.par2 \
-	tests/testdata/parchecker2/testfile.7z.vol0+1.PAR2 \
-	tests/testdata/parchecker2/testfile.7z.vol1+2.PAR2 \
-	tests/testdata/parchecker2/testfile.7z.vol3+3.PAR2 \
-	tests/testdata/rarrenamer/testfile3.part01.rar \
-	tests/testdata/rarrenamer/testfile3.part02.rar \
-	tests/testdata/rarrenamer/testfile3.part03.rar \
-	tests/testdata/rarrenamer/testfile5.part01.rar \
-	tests/testdata/rarrenamer/testfile5.part02.rar \
-	tests/testdata/rarrenamer/testfile5.part03.rar \
-	tests/testdata/rarrenamer/testfile3oldnam.rar \
-	tests/testdata/rarrenamer/testfile3oldnam.r00 \
-	tests/testdata/rarrenamer/testfile3oldnam.r01 \
-	tests/testdata/rarrenamer/testfile3encdata.part01.rar \
-	tests/testdata/rarrenamer/testfile3encdata.part02.rar \
-	tests/testdata/rarrenamer/testfile3encdata.part03.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part01.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part02.rar \
-	tests/testdata/rarrenamer/testfile3encnam.part03.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part01.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part02.rar \
-	tests/testdata/rarrenamer/testfile5encdata.part03.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part01.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part02.rar \
-	tests/testdata/rarrenamer/testfile5encnam.part03.rar
-
 # Install
 dist_doc_DATA = $(doc_FILES)
 exampleconfdir = $(datadir)/nzbget
 dist_exampleconf_DATA = $(exampleconf_FILES)
 webuidir = $(datadir)/nzbget
 nobase_dist_webui_DATA = $(webui_FILES)
-scriptsdir = $(datadir)/nzbget
-nobase_dist_scripts_SCRIPTS = $(scripts_FILES)
+scriptsdir = $(datadir)/nzbget/scripts
 
 # Note about "sed": 
 # We need to make some changes in installed files.
@@ -466,6 +397,7 @@ nobase_dist_scripts_SCRIPTS = $(scripts_FILES)
 
 # Prepare example configuration file
 install-data-hook:
+	mkdir -p "$(DESTDIR)$(scriptsdir)"
 	rm -f "$(DESTDIR)$(exampleconfdir)/nzbget.conf.temp"
 	cp "$(DESTDIR)$(exampleconfdir)/nzbget.conf" "$(DESTDIR)$(exampleconfdir)/nzbget.conf.temp"
 	sed 's:^ConfigTemplate=:ConfigTemplate=$(exampleconfdir)/nzbget.conf:' < "$(DESTDIR)$(exampleconfdir)/nzbget.conf.temp" > "$(DESTDIR)$(exampleconfdir)/nzbget.conf"
@@ -486,59 +418,6 @@ install-conf:
 uninstall-conf:
 	rm -f "$(DESTDIR)$(sysconfdir)/nzbget.conf"
 
-# Determining git revision:
-# 1) If directory ".git" exists we take revision from git log.
-#    File is recreated only if revision number was changed.
-# 2) If directory ".git" doesn't exists we keep and reuse file "code_revision.cpp",
-#    which was possibly created early.
-# 3) If neither directory ".git" nor file "code_revision.cpp" are available
-#    we create new file "code_revision.c" with empty revision number.
-code_revision.cpp: FORCE
-	@ if test -d ./.git ; then \
-		B=`git branch | sed -n -e 's/^\* \(.*\)/\1/p'`; \
-		M=`git status --porcelain` ; \
-		if test "$$M" != "" ; then \
-			M="M" ; \
-		fi ; \
-		if test "$$B" = "master" ; then \
-			V="$$M" ; \
-		elif test "$$B" = "develop" ; then \
-			V=`git rev-list HEAD | wc -l | xargs` ; \
-			V="$${V}$$M" ; \
-		else \
-			V=`git rev-list HEAD | wc -l | xargs` ; \
-			V="$${V}$$M ($$B)" ; \
-		fi ; \
-		H=`test -f ./code_revision.cpp && head -n 1 code_revision.cpp`; \
-		if test "/* $$V */" != "$$H" ; then \
-			( \
-			echo "/* $$V */" ;\
-			echo "/* This file is automatically regenerated on each build. Do not edit it. */" ;\
-			echo "#include \"nzbget.h\"" ;\
-			echo "const char* code_revision(void)" ;\
-			echo "{" ;\
-			echo "	const char* revision = \"$$V\";" ;\
-			echo "	return revision;" ;\
-			echo "}" ;\
-			) > code_revision.cpp ; \
-		fi \
-	elif test -f ./code_revision.cpp ; then \
-		test "ok, reuse existing file"; \
-	else \
-		( \
-		echo "/*  */" ;\
-		echo "/* This file is automatically regenerated on each build. Do not edit it. */" ;\
-		echo "#include \"nzbget.h\"" ;\
-		echo "const char* code_revision(void)" ;\
-		echo "{" ;\
-		echo "	const char* revision = \"\";" ;\
-		echo "	return revision;" ;\
-		echo "}" ;\
-		) > code_revision.cpp ; \
-	fi
-FORCE:
-
-# Ignore "code_revision.cpp" in distcleancheck
 distcleancheck_listfiles = \
 	find . -type f -exec sh -c 'test -f $(srcdir)/$$1 || echo $$1' \
 	sh '{}' ';'

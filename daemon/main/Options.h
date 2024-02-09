@@ -98,6 +98,13 @@ public:
 		nfArticle,
 		nfNzb
 	};
+	enum ECertVerifLevel
+	{
+		cvNone,
+		cvMinimal,
+		cvStrict,
+		Count
+	};
 
 	class OptEntry
 	{
@@ -169,7 +176,7 @@ public:
 		virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 			bool tls, const char* cipher, int maxConnections, int retention,
-			int level, int group, bool optional) = 0;
+			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
 		virtual void AddFeed(int id, const char* name, const char* url, int interval,
 			const char* filter, bool backlog, bool pauseNzb, const char* category,
 			int priority, const char* extensions) {}
@@ -191,7 +198,7 @@ public:
 		ESchedulerCommand command, const char* param);
 
 	// Options
-	const char* GetConfigFilename() { return m_configFilename; }
+	const char* GetConfigFilename() const { return m_configFilename; }
 	bool GetConfigErrors() { return m_configErrors; }
 	const char* GetAppDir() { return m_appDir; }
 	const char* GetDestDir() { return m_destDir; }
@@ -201,7 +208,7 @@ public:
 	const char* GetNzbDir() { return m_nzbDir; }
 	const char* GetWebDir() { return m_webDir; }
 	const char* GetConfigTemplate() { return m_configTemplate; }
-	const char* GetScriptDir() { return m_scriptDir; }
+	const char* GetScriptDir() const { return m_scriptDir; }
 	const char* GetRequiredDir() { return m_requiredDir; }
 	bool GetNzbLog() const { return m_nzbLog; }
 	EMessageTarget GetInfoTarget() const { return m_infoTarget; }
@@ -210,6 +217,7 @@ public:
 	EMessageTarget GetDebugTarget() const { return m_debugTarget; }
 	EMessageTarget GetDetailTarget() const { return m_detailTarget; }
 	int GetArticleTimeout() { return m_articleTimeout; }
+	int GetArticleReadChunkSize() { return m_articleReadChunkSize; }
 	int GetUrlTimeout() { return m_urlTimeout; }
 	int GetRemoteTimeout() { return m_remoteTimeout; }
 	bool GetRawArticle() { return m_rawArticle; };
@@ -256,8 +264,8 @@ public:
 	int GetParThreads() { return m_parThreads; }
 	bool GetRarRename() { return m_rarRename; }
 	EHealthCheck GetHealthCheck() { return m_healthCheck; }
-	const char* GetScriptOrder() { return m_scriptOrder; }
-	const char* GetExtensions() { return m_extensions; }
+	const char* GetScriptOrder() const { return m_scriptOrder; }
+	const char* GetExtensions() const { return m_extensions; }
 	int GetUMask() { return m_umask; }
 	int GetUpdateInterval() {return m_updateInterval; }
 	bool GetCursesNzbName() { return m_cursesNzbName; }
@@ -345,6 +353,7 @@ private:
 	bool m_rawArticle = false;
 	bool m_nzbLog = false;
 	int m_articleTimeout = 0;
+	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;
 	int m_remoteTimeout = 0;
 	bool m_appendCategoryDir = false;

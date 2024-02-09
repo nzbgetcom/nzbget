@@ -21,9 +21,10 @@
 #ifndef NZBSCRIPT_H
 #define NZBSCRIPT_H
 
-#include "Script.h"
+#include "ScriptController.h"
 #include "DownloadInfo.h"
-#include "ScriptConfig.h"
+#include "Extension.h"
+#include "ExtensionManager.h"
 
 class NzbScriptController : public ScriptController
 {
@@ -31,7 +32,7 @@ protected:
 	void PrepareEnvParameters(NzbParameterList* parameters, const char* stripPrefix);
 	void PrepareEnvScript(NzbParameterList* parameters, const char* scriptName);
 	void ExecuteScriptList(const char* scriptList);
-	virtual void ExecuteScript(ScriptConfig::Script* script) = 0;
+	virtual void ExecuteScript(std::shared_ptr<const Extension::Script> script) = 0;
 };
 
 #endif

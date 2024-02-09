@@ -27,6 +27,7 @@
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "Options.h"
 
 CString TlsSocket::m_certStore;
 
@@ -419,8 +420,14 @@ bool TlsSocket::Start()
 			Close();
 			return false;
 		}
-
-		SSL_CTX_set_verify((SSL_CTX*)m_context, SSL_VERIFY_PEER, nullptr);
+		if (m_certVerifLevel > Options::ECertVerifLevel::cvNone)
+		{
+			SSL_CTX_set_verify((SSL_CTX*)m_context, SSL_VERIFY_PEER, nullptr);
+		}
+		else
+		{
+			SSL_CTX_set_verify((SSL_CTX*)m_context, SSL_VERIFY_NONE, nullptr);
+		}
 	}
 
 	m_session = SSL_new((SSL_CTX*)m_context);
@@ -453,7 +460,7 @@ bool TlsSocket::Start()
 	}
 
 	int error_code = m_isClient ? SSL_connect((SSL*)m_session) : SSL_accept((SSL*)m_session);
-	if (error_code < 1)
+	if (error_code < 1 && m_certVerifLevel > Options::ECertVerifLevel::cvNone)
 	{
 		long verifyRes = SSL_get_verify_result((SSL*)m_session);
 		if (verifyRes != X509_V_OK)
@@ -567,7 +574,7 @@ bool TlsSocket::ValidateCert()
 
 #ifdef HAVE_X509_CHECK_HOST
 	// hostname verification
-	if (!m_host.Empty() && X509_check_host(cert, m_host, m_host.Length(), 0, nullptr) != 1)
+	if (m_certVerifLevel > Options::ECertVerifLevel::cvMinimal && !m_host.Empty() && X509_check_host(cert, m_host, m_host.Length(), 0, nullptr) != 1)
 	{
 		const unsigned char* certHost = nullptr;
         // Find the position of the CN field in the Subject field of the certificate

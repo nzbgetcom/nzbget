@@ -84,6 +84,7 @@ public:
 	void SetForceClose(bool forceClose) { m_forceClose = forceClose; }
 #ifndef DISABLE_TLS
 	bool StartTls(bool isClient, const char* certFile, const char* keyFile);
+	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
 #endif
 	int FetchTotalBytesRead();
 
@@ -104,6 +105,9 @@ protected:
 	int m_totalBytesRead = 0;
 	bool m_gracefull = false;
 	bool m_forceClose = false;
+#ifndef DISABLE_TLS
+	unsigned int m_certVerifLevel;
+#endif
 
 	struct SockAddr
 	{
@@ -119,8 +123,9 @@ protected:
 	{
 	public:
 		ConTlsSocket(SOCKET socket, bool isClient, const char* host,
-			const char* certFile, const char* keyFile, const char* cipher, Connection* owner) :
-			TlsSocket(socket, isClient, host, certFile, keyFile, cipher), m_owner(owner) {}
+			const char* certFile, const char* keyFile, const char* cipher,
+			unsigned int certVerifLevel, Connection* owner) :
+			TlsSocket(socket, isClient, host, certFile, keyFile, cipher, certVerifLevel), m_owner(owner) {}
 	protected:
 		virtual void PrintError(const char* errMsg) { m_owner->PrintError(errMsg); }
 	private:

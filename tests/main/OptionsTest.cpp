@@ -20,7 +20,7 @@
 
 #include "nzbget.h"
 
-#include "catch.h"
+#include "boost/test/unit_test.hpp"
 
 #include "Options.h"
 
@@ -34,38 +34,39 @@ public:
 	OptionsExtenderMock() : m_newsServers(0), m_feeds(0), m_tasks(0) {}
 
 protected:
-	virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
+	void AddNewsServer(int id, bool active, const char* name, const char* host,
 		int port, int ipVersion, const char* user, const char* pass, bool joinGroup, bool tls,
-		const char* cipher, int maxConnections, int retention, int level, int group, bool optional)
+		const char* cipher, int maxConnections, int retention, 
+		int level, int group, bool optional, unsigned int certVerificationfLevel) override
 	{
 		m_newsServers++;
 	}
 
-	virtual void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript)
+	void AddFeed(int id, const char* name, const char* url, int interval,
+		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript) override
 	{
 		m_feeds++;
 	}
 
-	virtual void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param)
+	void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param) override
 	{
 		m_tasks++;
 	}
 };
 
-TEST_CASE("Options: initializing without configuration file", "[Options][Quick]")
+BOOST_AUTO_TEST_CASE(OptionsInitWithoutConfigurationFileTest)
 {
 	Options options(nullptr, nullptr);
 
-	REQUIRE(options.GetConfigFilename() == nullptr);
+	BOOST_CHECK(options.GetConfigFilename() == nullptr);
 #ifdef WIN32
-	REQUIRE(strcmp(options.GetTempDir(), "nzbget/tmp") == 0);
+	BOOST_CHECK(strcmp(options.GetTempDir(), "nzbget/tmp") == 0);
 #else
-	REQUIRE(strcmp(options.GetTempDir(), "~/downloads/tmp") == 0);
+	BOOST_CHECK(strcmp(options.GetTempDir(), "~/downloads/tmp") == 0);
 #endif
 }
 
-TEST_CASE("Options: passing command line options", "[Options][Quick]")
+BOOST_AUTO_TEST_CASE(PassingCommandLineOptions)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ControlUsername=my-user-name-1");
@@ -73,11 +74,11 @@ TEST_CASE("Options: passing command line options", "[Options][Quick]")
 
 	Options options(&cmdOpts, nullptr);
 
-	REQUIRE(options.GetConfigFilename() == nullptr);
-	REQUIRE(strcmp(options.GetControlUsername(), "my-user-name-2") == 0);
+	BOOST_TEST(options.GetConfigFilename() == nullptr);
+	BOOST_TEST(strcmp(options.GetControlUsername(), "my-user-name-2") == 0);
 }
 
-TEST_CASE("Options: calling extender", "[Options][Quick]")
+BOOST_AUTO_TEST_CASE(CallingExtender)
 {
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("Server1.Host=news.mynewsserver.com");
@@ -97,7 +98,7 @@ TEST_CASE("Options: calling extender", "[Options][Quick]")
 	OptionsExtenderMock extender;
 	Options options(&cmdOpts, &extender);
 
-	REQUIRE(extender.m_newsServers == 2);
-	REQUIRE(extender.m_feeds == 1);
-	REQUIRE(extender.m_tasks == 24);
+	BOOST_TEST(extender.m_newsServers == 2);
+	BOOST_TEST(extender.m_feeds == 1);
+	BOOST_TEST(extender.m_tasks == 24);
 }

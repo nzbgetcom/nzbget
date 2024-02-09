@@ -93,13 +93,13 @@ int BString<size>::FormatV(const char* format, va_list ap)
 	return len;
 }
 
-bool CString::operator==(const CString& other)
+bool CString::operator==(const CString& other) const
 {
 	return (!m_data && !other.m_data) ||
 		(m_data && other.m_data && !strcmp(m_data, other.m_data));
 }
 
-bool CString::operator==(const char* other)
+bool CString::operator==(const char* other) const
 {
 	return (!m_data && !other) ||
 		(m_data && other && !strcmp(m_data, other));
@@ -155,7 +155,14 @@ void CString::AppendFmtV(const char* format, va_list ap)
 
 	int curLen = Length();
 	int newLen = curLen + addLen;
-	m_data = (char*)realloc(m_data, newLen + 1);
+
+	char* newData = (char*)realloc(m_data, newLen + 1);
+	if (newData == nullptr) 
+	{
+		return;
+	}
+
+	m_data = newData;
 
 	vsnprintf(m_data + curLen, newLen + 1, format, ap2);
 

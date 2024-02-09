@@ -20,77 +20,86 @@
 
 #include "nzbget.h"
 
-#include "catch.h"
+#include <boost/test/unit_test.hpp>
+#include <filesystem>
 
-#include "Options.h"
 #include "DupeMatcher.h"
-#include "FileSystem.h"
-#include "TestUtil.h"
+#include "Log.h"
+#include "Options.h"
+#include "DiskState.h"
 
-TEST_CASE("Dupe matcher", "[Par][DupeMatcher][Unrar][Slow][TestData]")
+Log* g_Log;
+Options* g_Options;
+DiskState* g_DiskState;
+char* (*g_EnvironmentVariables)[] = nullptr;
+char* (*g_Arguments)[] = nullptr;
+
+BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
 	Options options(nullptr, nullptr);
 
-	TestUtil::PrepareWorkingDir("DupeMatcher");
+	const std::string testDataDir = std::filesystem::current_path().string() + "/rarrenamer";
+	const std::string workingDir = testDataDir + "/DupeMatcher";
+	std::filesystem::create_directory(workingDir);
 
 	CString errmsg;
 
 	// prepare directories
 
-	std::string dupe1(TestUtil::WorkingDir() + "/dupe1");
-	REQUIRE(FileSystem::ForceDirectories(dupe1.c_str(), errmsg));
-	TestUtil::CopyAllFiles(dupe1, TestUtil::TestDataDir() + "/parchecker");
+	std::string dupe1(workingDir + "/dupe1");
+	BOOST_CHECK(FileSystem::ForceDirectories(dupe1.c_str(), errmsg));
+	std::filesystem::copy(dupe1, testDataDir + "/parchecker");
 
-	std::string dupe2(TestUtil::WorkingDir() + "/dupe2");
-	REQUIRE(FileSystem::ForceDirectories(dupe2.c_str(), errmsg));
-	TestUtil::CopyAllFiles(dupe2, TestUtil::TestDataDir() + "/parchecker");
+	std::string dupe2(workingDir + "/dupe2");
+	BOOST_CHECK(FileSystem::ForceDirectories(dupe2.c_str(), errmsg));
+	std::filesystem::copy(dupe2, testDataDir + "/parchecker");
 	FileSystem::DeleteFile((dupe2 + "/testfile.nfo").c_str());
 
-	std::string rardupe1(TestUtil::TestDataDir() + "/dupematcher1");
-	std::string rardupe2(TestUtil::TestDataDir() + "/dupematcher2");
+	std::string rardupe1(testDataDir + "/dupematcher1");
+	std::string rardupe2(testDataDir + "/dupematcher2");
 
-	std::string nondupe(TestUtil::WorkingDir() + "/nondupe");
-	REQUIRE(FileSystem::ForceDirectories(nondupe.c_str(), errmsg));
-	TestUtil::CopyAllFiles(nondupe, TestUtil::TestDataDir() + "/parchecker");
+	std::string nondupe(workingDir + "/nondupe");
+	BOOST_CHECK(FileSystem::ForceDirectories(nondupe.c_str(), errmsg));
+	std::filesystem::copy(nondupe, testDataDir + "/parchecker");
 	remove((nondupe + "/testfile.dat").c_str());
 
 	// now test
 	int64 expectedSize = FileSystem::FileSize((dupe1 + "/testfile.dat").c_str());
 
-	INFO("This test requires working unrar 5 in search path");
+	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
 
 	DupeMatcher dupe1Matcher(dupe1.c_str(), expectedSize);
-	CHECK(dupe1Matcher.Prepare());
-	CHECK(dupe1Matcher.MatchDupeContent(dupe2.c_str()));
-	CHECK(dupe1Matcher.MatchDupeContent(rardupe1.c_str()));
-	CHECK(dupe1Matcher.MatchDupeContent(rardupe2.c_str()));
-	CHECK_FALSE(dupe1Matcher.MatchDupeContent(nondupe.c_str()));
+	BOOST_CHECK(dupe1Matcher.Prepare());
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(dupe2.c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe1.c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe2.c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(nondupe.c_str()) == false);
 	
 	DupeMatcher dupe2Matcher(dupe2.c_str(), expectedSize);
-	CHECK(dupe2Matcher.Prepare());
-	CHECK(dupe2Matcher.MatchDupeContent(dupe1.c_str()));
-	CHECK(dupe2Matcher.MatchDupeContent(rardupe1.c_str()));
-	CHECK(dupe2Matcher.MatchDupeContent(rardupe2.c_str()));
-	CHECK_FALSE(dupe2Matcher.MatchDupeContent(nondupe.c_str()));
+	BOOST_CHECK(dupe2Matcher.Prepare());
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(dupe1.c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe1.c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe2.c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(nondupe.c_str()) == false);
 
 	DupeMatcher nonDupeMatcher(nondupe.c_str(), expectedSize);
-	CHECK_FALSE(nonDupeMatcher.Prepare());
-	CHECK_FALSE(nonDupeMatcher.MatchDupeContent(dupe1.c_str()));
-	CHECK_FALSE(nonDupeMatcher.MatchDupeContent(dupe2.c_str()));
-	CHECK_FALSE(nonDupeMatcher.MatchDupeContent(rardupe1.c_str()));
-	CHECK_FALSE(nonDupeMatcher.MatchDupeContent(rardupe2.c_str()));
+	BOOST_CHECK(nonDupeMatcher.Prepare() == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe1.c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe2.c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe1.c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe2.c_str()) == false);
 
 	DupeMatcher rardupe1matcher(rardupe1.c_str(), expectedSize);
-	CHECK(rardupe1matcher.Prepare());
-	CHECK(rardupe1matcher.MatchDupeContent(dupe1.c_str()));
-	CHECK(rardupe1matcher.MatchDupeContent(dupe2.c_str()));		    
-	CHECK(rardupe1matcher.MatchDupeContent(rardupe2.c_str()));
-	CHECK_FALSE(rardupe1matcher.MatchDupeContent(nondupe.c_str()));
+	BOOST_CHECK(rardupe1matcher.Prepare());
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe1.c_str()));
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe2.c_str()));		    
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(rardupe2.c_str()));
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(nondupe.c_str()) == false);
 
 	DupeMatcher rardupe2matcher(rardupe2.c_str(), expectedSize);
-	CHECK(rardupe2matcher.Prepare());
-	CHECK(rardupe2matcher.MatchDupeContent(rardupe1.c_str()));
-	CHECK(rardupe2matcher.MatchDupeContent(dupe1.c_str()));
-	CHECK(rardupe2matcher.MatchDupeContent(dupe2.c_str()));
-	CHECK_FALSE(rardupe2matcher.MatchDupeContent(nondupe.c_str()));
+	BOOST_CHECK(rardupe2matcher.Prepare());
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(rardupe1.c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe1.c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe2.c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(nondupe.c_str()) == false);
 }

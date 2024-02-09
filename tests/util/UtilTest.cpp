@@ -20,101 +20,110 @@
 
 #include "nzbget.h"
 
-#include "catch.h"
+#include <boost/test/unit_test.hpp>
 
 #include "Util.h"
 
-TEST_CASE("WebUtil: XmlStripTags", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
 {
 	const char* xml  = "<div><img style=\"margin-left:10px;margin-bottom:10px;float:right;\" src=\"https://xxx/cover.jpg\"/><ul><li>ID: 12345678</li><li>Name: <a href=\"https://xxx/12344\">Show name</a></li><li>Size: 3.00 GB </li><li>Attributes: Category - <a href=\"https://xxx/2040\">Movies > HD</a></li></li></ul></div>";
 	const char* text = "                                                                                                        ID: 12345678         Name:                             Show name             Size: 3.00 GB          Attributes: Category -                            Movies > HD                         ";
 	char* testString = strdup(xml);
 	WebUtil::XmlStripTags(testString);
 
-	REQUIRE(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
 
-TEST_CASE("WebUtil: XmlDecode", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(XmlDecodeTest)
 {
 	const char* xml  = "Poster: Bob &lt;bob@home&gt; bad&mdash;and there&#039;s one thing";
 	const char* text = "Poster: Bob <bob@home> bad&mdash;and there's one thing";
 	char* testString = strdup(xml);
 	WebUtil::XmlDecode(testString);
 
-	REQUIRE(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
 
-TEST_CASE("WebUtil: XmlRemoveEntities", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(XmlRemoveEntitiesTest)
 {
 	const char* xml  = "Poster: Bob &lt;bob@home&gt; bad&mdash;and there&#039;s one thing";
 	const char* text = "Poster: Bob  bob@home  bad and there s one thing";
 	char* testString = strdup(xml);
 	WebUtil::XmlRemoveEntities(testString);
 
-	REQUIRE(strcmp(testString, text) == 0);
+	BOOST_CHECK(strcmp(testString, text) == 0);
 
 	free(testString);
 }
 
-TEST_CASE("WebUtil: URLEncode", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(URLEncodeTest)
 {
 	const char* badUrl = "http://www.example.com/nzb_get/12344/Debian V7 6 64 bit OS.nzb";
 	const char* correctedUrl = "http://www.example.com/nzb_get/12344/Debian%20V7%206%2064%20bit%20OS.nzb";
 	CString testString = WebUtil::UrlEncode(badUrl);
 
-	REQUIRE(strcmp(testString, correctedUrl) == 0);
+	BOOST_CHECK(strcmp(testString, correctedUrl) == 0);
 }
 
-TEST_CASE("Util: WildMask", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(WildMaskTest)
 {
 	WildMask mask("*.par2", true);
-	REQUIRE_FALSE(mask.Match("Debian V7 6 64 bit OS.nzb"));
-	REQUIRE_FALSE(mask.Match("Debian V7 6 64 bit OS.par2.nzb"));
-	REQUIRE(mask.Match("Debian V7 6 64 bit OS.par2"));
-	REQUIRE(mask.Match(".par2"));
-	REQUIRE_FALSE(mask.Match("par2"));
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.nzb") == false);
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.par2.nzb") == false);
+	BOOST_CHECK(mask.Match("Debian V7 6 64 bit OS.par2"));
+	BOOST_CHECK(mask.Match(".par2"));
+	BOOST_CHECK(mask.Match("par2") == false);
 }
 
-TEST_CASE("Util: RegEx", "[Util][Quick]")
+BOOST_AUTO_TEST_CASE(RegExTest)
 {
 	RegEx regExRar(".*\\.rar$");
 	RegEx regExRarMultiSeq(".*\\.[r-z][0-9][0-9]$");
 	RegEx regExSevenZip(".*\\.7z$|.*\\.7z\\.[0-9]+$");
 	RegEx regExNumExt(".*\\.[0-9]+$");
 
-	REQUIRE(regExRar.Match("filename.rar"));
-	REQUIRE(regExRar.Match("filename.part001.rar"));
-	REQUIRE_FALSE(regExRar.Match("filename.rar.txt"));
+	BOOST_CHECK(regExRar.Match("filename.rar"));
+	BOOST_CHECK(regExRar.Match("filename.part001.rar"));
+	BOOST_CHECK(regExRar.Match("filename.rar.txt") == false);
 
-	REQUIRE_FALSE(regExRarMultiSeq.Match("filename.rar"));
-	REQUIRE(regExRarMultiSeq.Match("filename.r01"));
-	REQUIRE(regExRarMultiSeq.Match("filename.r99"));
-	REQUIRE_FALSE(regExRarMultiSeq.Match("filename.r001"));
-	REQUIRE(regExRarMultiSeq.Match("filename.s01"));
-	REQUIRE(regExRarMultiSeq.Match("filename.t99"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.rar") == false);
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r01"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r99"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.r001") == false);
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.s01"));
+	BOOST_CHECK(regExRarMultiSeq.Match("filename.t99"));
 
-	REQUIRE(regExSevenZip.Match("filename.7z"));
-	REQUIRE_FALSE(regExSevenZip.Match("filename.7z.rar"));
-	REQUIRE(regExSevenZip.Match("filename.7z.1"));
-	REQUIRE(regExSevenZip.Match("filename.7z.001"));
-	REQUIRE(regExSevenZip.Match("filename.7z.123"));
-	REQUIRE(regExSevenZip.Match("filename.7z.999"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.rar") == false);
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.1"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.001"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.123"));
+	BOOST_CHECK(regExSevenZip.Match("filename.7z.999"));
 
-	REQUIRE(regExNumExt.Match("filename.7z.1"));
-	REQUIRE(regExNumExt.Match("filename.7z.9"));
-	REQUIRE(regExNumExt.Match("filename.7z.001"));
-	REQUIRE(regExNumExt.Match("filename.7z.123"));
-	REQUIRE(regExNumExt.Match("filename.7z.999"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.1"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.9"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.001"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.123"));
+	BOOST_CHECK(regExNumExt.Match("filename.7z.999"));
 
 	const char* testStr = "My.Show.Name.S01E02.ABC.720";
 	RegEx seasonEpisode(".*S([0-9]+)E([0-9]+).*");
-	REQUIRE(seasonEpisode.IsValid());
-	REQUIRE(seasonEpisode.Match(testStr));
-	REQUIRE(seasonEpisode.GetMatchCount() == 3);
-	REQUIRE(seasonEpisode.GetMatchStart(1) == 14);
-	REQUIRE(seasonEpisode.GetMatchLen(1) == 2);
+	BOOST_CHECK(seasonEpisode.IsValid());
+	BOOST_CHECK(seasonEpisode.Match(testStr));
+	BOOST_CHECK(seasonEpisode.GetMatchCount() == 3);
+	BOOST_CHECK(seasonEpisode.GetMatchStart(1) == 14);
+	BOOST_CHECK(seasonEpisode.GetMatchLen(1) == 2);
+}
+
+BOOST_AUTO_TEST_CASE(StrToNumTest)
+{
+	BOOST_CHECK(Util::StrToNum("3.14").get() == 3.14);
+	BOOST_CHECK(Util::StrToNum("3.").get() == 3.0);
+	BOOST_CHECK(Util::StrToNum("3").get() == 3);
+	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
+	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
 }

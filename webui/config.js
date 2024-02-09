@@ -33,12 +33,13 @@ var Options = (new function($)
 	// Properties (public)
 	this.options;
 	this.postParamConfig = [];
+	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
 
 	// State
 	var _this = this;
-	var serverTemplateData = null;
+	this.serverTemplateData = null;
 	var serverValues;
 	var loadComplete;
 	var loadConfigError;
@@ -56,25 +57,30 @@ var Options = (new function($)
 	{
 		// RPC-function "config" returns CURRENT configuration settings loaded in NZBGet
 		RPC.call('config', [], function(_options)
-			{
-				_this.options = _options;
-				initCategories();
-				_this.restricted = _this.option('ControlPort') === '***';
-				RPC.next();
-			});
+		{
+			_this.options = _options;
+			initCategories();
+			_this.restricted = _this.option('ControlPort') === '***';
+			RPC.next();
+		});
 
-		// loading config templates and build list of post-processing parameters
-		_this.postParamConfig = [];
+		// load config templates
 		RPC.call('configtemplates', [false], function(data)
-			{
-				initPostParamConfig(data);
-				RPC.next();
-			});
+		{
+			_this.configtemplates = data;
+			RPC.next();
+		});
+
+		// build list of post-processing parameters
+		RPC.call('loadextensions', [false], function(data)
+		{
+			_this.postParamConfig = initPostParamConfig(data);
+		});
 	}
 
 	this.cleanup = function()
 	{
-		serverTemplateData = null;
+		this.serverTemplateData = null;
 		serverValues = null;
 	}
 
@@ -111,23 +117,9 @@ var Options = (new function($)
 		RPC.call('loadconfig', [], serverValuesLoaded, loadConfigError);
 	}
 
-	function serverValuesLoaded(data)
+	this.complete = function() 
 	{
-		serverValues = data;
-		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
-	}
-
-	function serverTemplateLoaded(data)
-	{
-		serverTemplateData = data;
-		complete();
-	}
-
-	function complete()
-	{
-		initShortScriptNames(serverTemplateData);
-
-		if (serverTemplateData === null)
+		if (this.serverTemplateData === null) 
 		{
 			// the loading was cancelled and the data was discarded (via method "cleanup()")
 			return;
@@ -138,33 +130,136 @@ var Options = (new function($)
 
 		readWebSettings(config);
 
-		var serverConfig = readConfigTemplate(serverTemplateData[0].Template, undefined, HIDDEN_SECTIONS, '');
+		var serverConfig = readConfigTemplate(this.serverTemplateData[0].Template, undefined, HIDDEN_SECTIONS, '');
 		mergeValues(serverConfig.sections, serverValues);
 		config.push(serverConfig);
 
 		// read scripts configs
-		for (var i=1; i < serverTemplateData.length; i++)
+		for (var i = 1; i < this.serverTemplateData.length; i++) 
 		{
-			var scriptName = serverTemplateData[i].Name;
-			var scriptConfig = readConfigTemplate(serverTemplateData[i].Template, undefined, HIDDEN_SECTIONS, scriptName + ':');
-			scriptConfig.scriptName = scriptName;
-			scriptConfig.id = Util.makeId(scriptName);
-			scriptConfig.name = scriptName.substr(0, scriptName.lastIndexOf('.')) || scriptName; // remove file extension
-			scriptConfig.name = scriptConfig.name.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.shortName = shortScriptName(scriptName);
-			scriptConfig.shortName = scriptConfig.shortName.replace(/\\/, ' \\ ').replace(/\//, ' / ');
-			scriptConfig.post = serverTemplateData[i].PostScript;
-			scriptConfig.scan = serverTemplateData[i].ScanScript;
-			scriptConfig.queue = serverTemplateData[i].QueueScript;
-			scriptConfig.scheduler = serverTemplateData[i].SchedulerScript;
-			scriptConfig.defscheduler = serverTemplateData[i].TaskTime !== '';
-			scriptConfig.feed = serverTemplateData[i].FeedScript;
+			var section = {
+				name: this.serverTemplateData[i].Name,
+				id: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
+				options: [],
+				hidden: false,
+				postparam: false,
+			};
+			var scriptConfig = {
+				sections: [section],
+				nameprefix: this.serverTemplateData[i].Name,
+			};
+			var requirements = this.serverTemplateData[i].Requirements;
+			var description = arrToStr(this.serverTemplateData[i].Description) + '\n';
+			description = requirements.reduce(function(acc, curr) {
+				if (curr)
+				{
+					return acc += 'NOTE: ' + curr + '\n';
+				}
+				return acc += '\n';
+			}, description);
+			scriptConfig['scriptName'] = this.serverTemplateData[i].Name;
+			scriptConfig['id'] = Util.makeId(this.serverTemplateData[i].Name);
+			scriptConfig['name'] = this.serverTemplateData[i].Name;
+			scriptConfig['shortName'] = this.serverTemplateData[i].DisplayName;
+			scriptConfig['post'] = this.serverTemplateData[i].PostScript;
+			scriptConfig['scan'] = this.serverTemplateData[i].ScanScript;
+			scriptConfig['queue'] = this.serverTemplateData[i].QueueScript;
+			scriptConfig['scheduler'] = this.serverTemplateData[i].SchedulerScript;
+			scriptConfig['defscheduler'] = this.serverTemplateData[i].TaskTime !== '';
+			scriptConfig['feed'] = this.serverTemplateData[i].FeedScript;
+			scriptConfig['about'] = this.serverTemplateData[i].About;
+			scriptConfig['description'] = description;
+			scriptConfig['author'] = this.serverTemplateData[i].Author;
+			scriptConfig['license'] = this.serverTemplateData[i].License;
+			scriptConfig['version'] = this.serverTemplateData[i].Version;
+
+			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
+			{
+				var command = this.serverTemplateData[i].Commands[j];
+				section.options.push({
+					caption: command.DisplayName,
+					name: this.serverTemplateData[i].Name + ':' + command.Name,
+					value: null,
+					defvalue: command.Action,
+					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select: [],
+					description: arrToStr(command.Description),
+					nocontent: false,
+					formId: this.serverTemplateData[i].Name + '_' + command.Name,
+					commandopts: 'settings',
+					type: 'command'
+				});
+			}
+			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
+			{
+				var option = this.serverTemplateData[i].Options[j];
+				var [type, select] = GetTypeAndSelect(option);
+				section.options.push({
+					caption: option.DisplayName,
+					name: this.serverTemplateData[i].Name + ':' + option.Name,
+					value: String(option.Value),
+					defvalue: String(option.Value),
+					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
+					select,
+					description: arrToStr(option.Description),
+					nocontent: false,
+					formId: this.serverTemplateData[i].Name + '_' + option.Name,
+					type
+				});
+			}
+			
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
 
 		serverValues = null;
 		loadComplete(config);
+	}
+
+	function serverValuesLoaded(data)
+	{
+		serverValues = data;
+		RPC.call('configtemplates', [true], serverTemplateLoaded, loadServerTemplateError);
+	}
+
+	this.loadExtensions = function()
+	{
+		RPC.call('loadextensions', [true], extensionsLoaded, function() { Options.complete(); });
+	}
+
+	function serverTemplateLoaded(data)
+	{
+		Options.serverTemplateData = data;
+		Options.loadExtensions();
+	}
+
+	function extensionsLoaded(data)
+	{
+		Options.serverTemplateData = Options.serverTemplateData.concat(data);
+		Options.complete();
+		ExtensionManager.setExtensions(data.slice());
+	}
+
+	function arrToStr(arr)
+	{
+		return arr.reduce(function(acc, curr) { return acc += curr + '\n'; }, '');
+	}
+
+	function GetTypeAndSelect(option)
+	{
+		if (typeof option.Value === 'string')
+		{
+			return ['text', option.Select];
+		}
+		if (typeof option.Value === 'number')
+		{
+			if (option.Select.length > 1)
+			{
+				return ['numeric', [option.Select[0] + '-' + option.Select[1]]];
+			}
+			return ['numeric', option.Select];
+		}
+		return ['info', option.Select];
 	}
 
 	function readWebSettings(config)
@@ -195,14 +290,14 @@ var Options = (new function($)
 	{
 		loadComplete = _complete;
 		serverValues = _serverValues;
-		complete();
+		Options.complete();
 	}
 
 	/*** PARSE CONFIG AND BUILD INTERNAL STRUCTURES **********************************************/
 
 	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix)
 	{
-		var config = { description: '', nameprefix: nameprefix, sections: [] };
+		var config = { nameprefix: nameprefix, sections: [], };
 		var section = null;
 		var description = '';
 		var firstdescrline = '';
@@ -310,11 +405,7 @@ var Options = (new function($)
 			}
 			else
 			{
-				if (!section && firstdescrline !== '')
-				{
-					config.description = firstdescrline + description;
-				}
-				else if (section && section.options.length === 0)
+				if (section && section.options.length === 0)
 				{
 					section.description = firstdescrline + description;
 				}
@@ -422,14 +513,6 @@ var Options = (new function($)
 	}
 	this.mergeValues = mergeValues;
 
-	function initShortScriptNames(configTemplatesData)
-	{
-		for (var i=1; i < configTemplatesData.length; i++)
-		{
-			shortScriptNames[configTemplatesData[i].Name] = configTemplatesData[i].DisplayName;
-		}
-	}
-
 	function shortScriptName(scriptName)
 	{
 		var shortName = shortScriptNames[scriptName];
@@ -437,10 +520,8 @@ var Options = (new function($)
 	}
 	this.shortScriptName = shortScriptName;
 
-	function initPostParamConfig(data)
-	{
-		initShortScriptNames(data);
-
+	function initPostParamConfig(data) 
+		{
 		// Create one big post-param section. It consists of one item for every post-processing script
 		// and additionally includes all post-param options from post-param section of each script.
 
@@ -448,45 +529,31 @@ var Options = (new function($)
 		section.id = 'PP-Parameters';
 		section.options = [];
 		section.description = '';
+		section.about = '';
 		section.hidden = false;
 		section.postparam = true;
-		_this.postParamConfig = [section];
 
-		for (var i=1; i < data.length; i++)
+		for (var i = 0; i < data.length; i++) 
 		{
-			if (data[i].PostScript || data[i].QueueScript)
+			if (data[i].PostScript || data[i].QueueScript) 
 			{
 				var scriptName = data[i].Name;
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
-				option.name = scriptName + ':';
-				option.caption = shortScriptName(scriptName);
-				option.caption = option.caption.replace(/\\/, ' \\ ').replace(/\//, ' / ');
+				option.name = data[i].Name + ':';
+				option.caption = data[i].DisplayName;
 
 				option.defvalue = 'no';
-				option.description = (data[i].Template.trim().split('\n')[0].substr(1, 1000).trim() || 'Extension script ' + scriptName + '.');
+				option.description = '';
+				option.about = data[i].About || 'Extension script ' + scriptName + '.';
+				option.requirements = [];
 				option.value = null;
 				option.sectionId = sectionId;
 				option.select = ['yes', 'no'];
 				section.options.push(option);
-
-				var templateData = data[i].Template;
-				var postConfig = readConfigTemplate(templateData, POSTPARAM_SECTIONS, undefined, scriptName + ':');
-				for (var j=0; j < postConfig.sections.length; j++)
-				{
-					var sec = postConfig.sections[j];
-					if (!sec.hidden)
-					{
-						for (var n=0; n < sec.options.length; n++)
-						{
-							var option = sec.options[n];
-							option.sectionId = sectionId;
-							section.options.push(option);
-						}
-					}
-				}
 			}
 		}
+		return [section];
 	}
 }(jQuery));
 
@@ -520,6 +587,7 @@ var Config = (new function($)
 	var compactMode = false;
 	var configSaved = false;
 	var leaveTarget;
+	this.currentSectionID = '';
 
 	this.init = function(options)
 	{
@@ -575,10 +643,10 @@ var Config = (new function($)
 	this.shown = function()
 	{
 		Options.loadConfig({
-			complete: buildPage,
-			configError: loadConfigError,
-			serverTemplateError: loadServerTemplateError
-			});
+			complete: Config.buildPage,
+			configError: Config.loadConfigError,
+			serverTemplateError: Config.loadServerTemplateError
+		});
 	}
 
 	this.hide = function()
@@ -589,7 +657,7 @@ var Config = (new function($)
 		$ConfigData.children().not('.config-static').remove();
 	}
 
-	function loadConfigError(message, resultObj)
+	this.loadConfigError = function(message, resultObj)
 	{
 		$('#ConfigLoadInfo').hide();
 		$('#ConfigLoadError').show();
@@ -600,7 +668,7 @@ var Config = (new function($)
 		$('#ConfigLoadErrorText').text(message);
 	}
 
-	function loadServerTemplateError()
+	this.loadServerTemplateError = function()
 	{
 		$('#ConfigLoadInfo').hide();
 		$('#ConfigLoadServerTemplateError').show();
@@ -864,10 +932,15 @@ var Config = (new function($)
 			option.type = 'text';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editlarge">';
 		}
-
-		if (option.description !== '')
+		var about = option['about'] || '';
+		if (about)
 		{
-			var htmldescr = option.description;
+			about = about.replace('\n', ' ') + '\n';
+		}
+		var description = about + (option['description'] || '');
+		if (description) 
+		{
+			var htmldescr = description;
 			htmldescr = htmldescr.replace(/NOTE: do not forget to uncomment the next line.\n/, '');
 
 			// replace option references
@@ -970,7 +1043,7 @@ var Config = (new function($)
 		return html;
 	}
 
-	function buildPage(_config)
+	this.buildPage = function(_config)
 	{
 		config = _config;
 
@@ -979,11 +1052,19 @@ var Config = (new function($)
 		$ConfigNav.children().not('.config-static').remove();
 		$ConfigData.children().not('.config-static').remove();
 
+		var haveExtensions = false;
+
 		for (var k=0; k < config.length; k++)
 		{
-			if (k == 1 || k == 2)
+			if (k == 1)
 			{
 				$ConfigNav.append('<li class="divider"></li>');
+			}
+			if (k == 2) // Extensions section
+			{
+				$ConfigNav.append('<li class="divider"></li>');
+				$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
+				haveExtensions = true;
 			}
 			var conf = config[k];
 			var added = false;
@@ -993,6 +1074,10 @@ var Config = (new function($)
 				if (!section.hidden)
 				{
 					var html = $('<li><a href="#' + section.id + '">' + section.name + '</a></li>');
+					if (haveExtensions)
+					{
+						html.addClass('list-item--nested');
+					}
 					$ConfigNav.append(html);
 					var content = buildOptionsContent(section, k > 1);
 					$ConfigData.append(content);
@@ -1006,6 +1091,13 @@ var Config = (new function($)
 			}
 		}
 
+		// Show extensions manager even if there are no extensions
+		if (!haveExtensions)
+		{
+			$ConfigNav.append('<li class="divider"></li>');
+			$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
+		}
+
 		notifyChanges();
 
 		$ConfigNav.append('<li class="divider hide ConfigSearch"></li>');
@@ -1013,7 +1105,7 @@ var Config = (new function($)
 
 		$ConfigNav.toggleClass('long-list', $ConfigNav.children().length > 20);
 
-		showSection('Config-Info', false);
+		Config.showSection('Config-Info', false);
 
 		if (filterText !== '')
 		{
@@ -1066,17 +1158,16 @@ var Config = (new function($)
 
 			// create virtual option "About" with scripts description.
 			var option = {};
-			var shortName = conf.scriptName.replace(/^.*[\\\/]/, ''); // leave only file name (remove path)
-			shortName = shortName.substr(0, shortName.lastIndexOf('.')) || shortName; // remove file extension
-			option.caption = 'About ' + shortName;
+			option.caption = 'About ' + conf.shortName;
 			option.name = conf.nameprefix + option.caption;
 			option.value = '';
 			option.defvalue = '';
 			option.sectionId = firstVisibleSection.id;
 			option.select = [];
-			var description = conf.description;
-			option.description = description !== '' ? description : 'No description available.';
+			option.about = conf.about;
 			option.nocontent = true;
+			option.description = conf.description;
+			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 
@@ -1146,7 +1237,7 @@ var Config = (new function($)
 		var option = findOptionById(optFormId);
 
 		// switch to tab and scroll the option into view
-		showSection(option.sectionId, false);
+		Config.showSection(option.sectionId, false);
 
 		var element = $('#' + option.formId);
 		var parent = $('html,body');
@@ -1200,11 +1291,12 @@ var Config = (new function($)
 	{
 		event.preventDefault();
 		var sectionId = $(this).attr('href').substr(1);
-		showSection(sectionId, true);
+		Config.showSection(sectionId, true);
 	}
 
-	function showSection(sectionId, animateScroll)
+	this.showSection = function(sectionId, animateScroll)
 	{
+		this.currentSectionID = sectionId;
 		var link = $('a[href="#' + sectionId + '"]', $ConfigNav);
 		$('li', $ConfigNav).removeClass('active');
 		link.closest('li').addClass('active');
@@ -1235,6 +1327,15 @@ var Config = (new function($)
 			$('.config-system', $ConfigData).show();
 			markLastControlGroup();
 			$ConfigTitle.text('SYSTEM');
+			return;
+		}
+
+		if (sectionId === ExtensionManager.id)
+		{
+			$ConfigData.children().hide();
+			markLastControlGroup();
+			$ConfigTitle.text('EXTENSION MANAGER');
+			ExtensionManager.downloadRemoteExtensions();
 			return;
 		}
 
@@ -1581,6 +1682,7 @@ var Config = (new function($)
 		$('#Notif_Config_TestConnectionProgress').fadeIn(function() {
 			var multiid = parseInt($(control).attr('data-multiid'));
 			var timeout = Math.min(parseInt(getOptionValue(findOptionByName('ArticleTimeout'))), 10);
+			var certVerifLevel = getCertVerifLevel(getOptionValue(findOptionByName('Server' + multiid + '.CertVerification')));
 			RPC.call('testserver', [
 				getOptionValue(findOptionByName('Server' + multiid + '.Host')),
 				parseInt(getOptionValue(findOptionByName('Server' + multiid + '.Port'))),
@@ -1588,7 +1690,8 @@ var Config = (new function($)
 				getOptionValue(findOptionByName('Server' + multiid + '.Password')),
 				getOptionValue(findOptionByName('Server' + multiid + '.Encryption')) === 'yes',
 				getOptionValue(findOptionByName('Server' + multiid + '.Cipher')),
-				timeout
+				timeout,
+				certVerifLevel
 				],
 				function(errtext) {
 					$('#Notif_Config_TestConnectionProgress').fadeOut(function() {
@@ -1762,6 +1865,11 @@ var Config = (new function($)
 			}
 		}
 
+		if (!webSettings)
+		{
+			addSavedSettingsOfDeletedExtensions(request);
+		}
+
 		return modified || (!onlyUserChanges && invalidOptionsExist()) || restored ? request : [];
 	}
 
@@ -1796,6 +1904,33 @@ var Config = (new function($)
 		{
 			// only web-settings were changed, refresh page
 			document.location.reload(true);
+		}
+	}
+
+	function addSavedSettingsOfDeletedExtensions(request)
+	{
+		config.values.forEach(function(val)
+		{
+			var extName = val.Name.split(":")[0];
+			var alreadyExists = request.map(function(opt) { return opt.Name; }).indexOf(val.Name) != -1;
+			var remoteExtExists = ExtensionManager.getRemoteExtensions().map(function(ext) { return ext.name; }).indexOf(extName) != -1;
+			if (!alreadyExists && remoteExtExists)
+			{
+				var extraOpt = { Name: val.Name, Value: val.Value };
+				request.push(extraOpt);
+			}
+		});
+	}
+
+	function getCertVerifLevel(verifLevel)
+	{
+		var level = verifLevel.toLowerCase();
+		switch(level)
+		{
+			case "none": return 0;
+			case "minimal": return 1;
+			case "strict": return 2;
+			default: return 2;
 		}
 	}
 
@@ -1903,7 +2038,7 @@ var Config = (new function($)
 		if (filterText.trim() !== '')
 		{
 			$('.ConfigSearch').show();
-			showSection('Search', true);
+			Config.showSection('Search', true);
 		}
 		else
 		{
@@ -1914,7 +2049,7 @@ var Config = (new function($)
 	function filterClear()
 	{
 		filterText = '';
-		showSection(lastSection, true);
+		Config.showSection(lastSection, true);
 		$('.ConfigSearch').hide();
 		$ConfigTabBadge.hide();
 		$ConfigTabBadgeEmpty.show();
@@ -2062,7 +2197,7 @@ var Config = (new function($)
 
 	this.applyReloadedValues = function(values)
 	{
-		Options.reloadConfig(values, buildPage);
+		Options.reloadConfig(values, Config.buildPage);
 		restored = true;
 	}
 
@@ -2676,7 +2811,6 @@ var RestoreSettingsDialog = (new function($)
 
 
 /*** UPDATE DIALOG *******************************************************/
-// Version 22.0 : no check for test and develop update. For activate - uncomment commented lines and delete apropriate added lines.
 var UpdateDialog = (new function($)
 {
 	'use strict'
@@ -2699,7 +2833,7 @@ var UpdateDialog = (new function($)
 	this.init = function()
 	{
 		$UpdateDialog = $('#UpdateDialog');
-		$('#UpdateDialog_InstallStable,#UpdateDialog_InstallTesting,#UpdateDialog_InstallDevel').click(install);
+		$('#UpdateDialog_InstallStable,#UpdateDialog_InstallTesting').click(install);
 		$UpdateProgressDialog = $('#UpdateProgressDialog');
 		$UpdateProgressDialog_Log = $('#UpdateProgressDialog_Log');
 		$UpdateDialog_Close = $('#UpdateDialog_Close');
@@ -2776,45 +2910,7 @@ var UpdateDialog = (new function($)
 	function loadedUpstreamInfo(data)
 	{
 		VersionInfo = parseJsonP(data);
-		if (VersionInfo['devel-version'] || !foreground)
-		{
-			loadPackageInfo();
-		}
-		else
-		{
-			loadGitVerData(loadPackageInfo);
-		}
-	}
-
-	// Version 22.0 : no check for test and develop update. For activate - change links to actual ones
-	function loadGitVerData(callback)
-	{
-		// fetching devel version number from github web-site
-		RPC.call('readurl', ['https://github.com/nzbget/nzbget', 'nzbget git revision info'],
-			function(gitRevData)
-			{
-				RPC.call('readurl', ['https://raw.githubusercontent.com/nzbget/nzbget/develop/configure.ac', 'nzbget git branch info'],
-					function(gitBranchData)
-					{
-						var html = document.createElement('DIV');
-						html.innerHTML = gitRevData;
-						html = html.textContent || html.innerText || '';
-						html = html.replace(/(?:\r\n|\r|\n)/g, ' ');
-						var rev = html.match(/([0-9\,]*)\s*commits/);
-
-						if (rev && rev.length > 1)
-						{
-							rev = rev[1].replace(',', '');
-							var ver = gitBranchData.match(/AC_INIT\(nzbget, (.*), .*/);
-							if (ver && ver.length > 1)
-							{
-								VersionInfo['devel-version'] = ver[1] + '-r' + rev;
-							}
-						}
-
-						callback();
-					}, callback);
-			}, callback);
+		loadPackageInfo();
 	}
 
 	function loadPackageInfo()
@@ -2845,23 +2941,6 @@ var UpdateDialog = (new function($)
 		loadedAll();
 	}
 
-	function formatTesting(str)
-	{
-		return str.replace('-testing-', '-');
-	}
-
-	function revision(version)
-	{
-		var rev = version.match(/.*r(\d+)/);
-		return rev && rev.length > 1 ? parseInt(rev[1]) : 0;
-	}
-
-	function vernumber(version)
-	{
-		var ver = version.match(/([\d.]+).*/);
-		return ver && ver.length > 1 ? parseFloat(ver[1]) : 0;
-	}
-
 	function loadedAll()
 	{
 		var installedVersion = Options.option('Version');
@@ -2871,37 +2950,23 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_InstalledInfo').show();
 
 		$('#UpdateDialog_CurStable').text(VersionInfo['stable-version'] ? VersionInfo['stable-version'] : 'no data');
-		//$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? formatTesting(VersionInfo['testing-version']) : 'no data');
-		//$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
-		$('#UpdateDialog_CurTesting').text('N/A');
-		$('#UpdateDialog_CurDevel').text('N/A');
+		$('#UpdateDialog_CurTesting').text(VersionInfo['testing-version'] ? VersionInfo['testing-version'] : 'no data');
 
 		$('#UpdateDialog_CurNotesStable').attr('href', VersionInfo['stable-release-notes']);
-		//$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
-		//$('#UpdateDialog_CurNotesDevel').attr('href', VersionInfo['devel-release-notes']);
-		$('#UpdateDialog_CurNotesTesting').attr('href', '');
-		$('#UpdateDialog_CurNotesDevel').attr('href', '');
+		$('#UpdateDialog_CurNotesTesting').attr('href', VersionInfo['testing-release-notes']);
 		$('#UpdateDialog_DownloadStable').attr('href', VersionInfo['stable-download']);
-		//$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
-		$('#UpdateDialog_DownloadTesting').attr('href', '');
+		$('#UpdateDialog_DownloadTesting').attr('href', VersionInfo['testing-download']);
 		Util.show('#UpdateDialog_CurNotesStable', VersionInfo['stable-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
-		//Util.show('#UpdateDialog_CurNotesDevel', VersionInfo['devel-release-notes']);
-		Util.show('#UpdateDialog_CurNotesTesting', '');
-		Util.show('#UpdateDialog_CurNotesDevel', '');
+		Util.show('#UpdateDialog_CurNotesTesting', VersionInfo['testing-release-notes']);
 
 
 		$('#UpdateDialog_AvailStable').text(UpdateInfo['stable-version'] ? UpdateInfo['stable-version'] : 'not available');
-		//$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? formatTesting(UpdateInfo['testing-version']) : 'not available');
-		//$('#UpdateDialog_AvailDevel').text(UpdateInfo['devel-version'] ? formatTesting(UpdateInfo['devel-version']) : 'not available');
-		$('#UpdateDialog_AvailTesting').text('');
-		$('#UpdateDialog_AvailDevel').text('');
-
-
+		$('#UpdateDialog_AvailTesting').text(UpdateInfo['testing-version'] ? UpdateInfo['testing-version'] : 'not available');
+		
 		if (UpdateInfo['stable-version'] === VersionInfo['stable-version'] &&
 			UpdateInfo['testing-version'] === VersionInfo['testing-version'])
 		{
-			$('#UpdateDialog_AvailStableBlock,#UpdateDialog_AvailTestingBlock,#UpdateDialog_AvailDevelBlock').hide();
+			$('#UpdateDialog_AvailStableBlock,#UpdateDialog_AvailTestingBlock').hide();
 			$('#UpdateDialog_AvailRow .update-row-name').text('');
 			$('#UpdateDialog_AvailRow td').css('border-style', 'none');
 		}
@@ -2909,57 +2974,35 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_DownloadRow td').css('border-style', 'none');
 		
 		$('#UpdateDialog_AvailNotesStable').attr('href', UpdateInfo['stable-package-info']);
-		//$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
-		//$('#UpdateDialog_AvailNotesDevel').attr('href', UpdateInfo['devel-package-info']);
-		$('#UpdateDialog_AvailNotesTesting').attr('href', '');
-		$('#UpdateDialog_AvailNotesDevel').attr('href', '');
+		$('#UpdateDialog_AvailNotesTesting').attr('href', UpdateInfo['testing-package-info']);
 		Util.show('#UpdateDialog_AvailNotesStableBlock', UpdateInfo['stable-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
-		//Util.show('#UpdateDialog_AvailNotesDevelBlock', UpdateInfo['devel-package-info']);
-		Util.show('#UpdateDialog_AvailNotesTestingBlock', '');
-		Util.show('#UpdateDialog_AvailNotesDevelBlock', '');
+		Util.show('#UpdateDialog_AvailNotesTestingBlock', UpdateInfo['testing-package-info']);
 
 
-		var installedVer = vernumber(installedVersion);
-		var installedRev = revision(installedVersion);
-		var installedTesting = installedRev > 0 || installedVersion.indexOf('testing') > -1;
+		var installedVer = installedVersion;
+		var installedTesting = installedVersion.indexOf('testing') > -1;
 
 		var canInstallStable = UpdateInfo['stable-version'] &&
-			((installedVer < vernumber(UpdateInfo['stable-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['stable-version'])));
+			(installedVer < UpdateInfo['stable-version']);
 		var canInstallTesting = UpdateInfo['testing-version'] &&
-			((installedVer < vernumber(UpdateInfo['testing-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['testing-version'])) &&
-			  installedRev < revision(UpdateInfo['testing-version']));
-		var canInstallDevel = UpdateInfo['devel-version'] &&
-			((installedVer < vernumber(UpdateInfo['devel-version'])) ||
-			 (installedTesting && installedVer === vernumber(UpdateInfo['devel-version'])) &&
-			  installedRev < revision(UpdateInfo['devel-version']));
+			(installedVer < UpdateInfo['testing-version']);
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canInstallTesting = '';	  
 			  
 		Util.show('#UpdateDialog_InstallStable', canInstallStable);
 		Util.show('#UpdateDialog_InstallTesting', canInstallTesting);
-		Util.show('#UpdateDialog_InstallDevel', canInstallDevel);
 
 		var canDownloadStable = 
-			((installedVer < vernumber(VersionInfo['stable-version'])) ||
-			 (installedTesting && installedVer === vernumber(VersionInfo['stable-version'])));
+			(installedVer < VersionInfo['stable-version']);
 		var canDownloadTesting = 
-			((installedVer < vernumber(VersionInfo['testing-version'])) ||
-			 (installedTesting && installedVer === vernumber(VersionInfo['testing-version']) &&
-			  installedRev < revision(VersionInfo['testing-version'])));
+			(installedVer < VersionInfo['testing-version']);
 			  
-		// Version 22.0 : no check for test and develop update. For activate - delete the following line
-		canDownloadTesting = '';
 			  
 		Util.show('#UpdateDialog_DownloadStable', canDownloadStable);
 		Util.show('#UpdateDialog_DownloadTesting', canDownloadTesting);
 
 		var hasUpdateSource = PackageInfo['update-info-link'] || PackageInfo['update-info-script'];
-		var hasUpdateInfo = UpdateInfo['stable-version'] || UpdateInfo['testing-version'] || UpdateInfo['devel-version'];
-		var canUpdate = canInstallStable || canInstallTesting || canInstallDevel;
+		var hasUpdateInfo = UpdateInfo['stable-version'] || UpdateInfo['testing-version'];
+		var canUpdate = canInstallStable || canInstallTesting;
 		var canDownload = canDownloadStable || canDownloadTesting;
 		Util.show('#UpdateDialog_UpdateAvail', canUpdate);
 		Util.show('#UpdateDialog_UpdateNotAvail', !canUpdate && !canDownload);
@@ -2973,19 +3016,6 @@ var UpdateDialog = (new function($)
 			  (canInstallTesting || canDownloadTesting) && notificationAllowed('testing'))))
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
-			loadDevelVersionInfo();
-		}
-	}
-
-	function loadDevelVersionInfo()
-	{
-		if (!VersionInfo['devel-version'])
-		{
-			$('#UpdateDialog_CurDevel').text('loading...');
-			loadGitVerData(function()
-				{
-					$('#UpdateDialog_CurDevel').text(VersionInfo['devel-version'] ? formatTesting(VersionInfo['devel-version']) : 'no data');
-				});
 		}
 	}
 
@@ -3233,3 +3263,825 @@ var ExecScriptDialog = (new function($)
 	}
 
 }(jQuery));
+
+function Extension()
+{
+	this.id = '';
+	this.name = '';
+	this.entry = '';
+	this.displayName = '', 
+	this.version = '';
+	this.author = '';
+	this.homepage = '';
+	this.about = '';
+	this.url = '';
+	this.testError = '';
+	this.isActive = false;
+	this.installed = false;
+	this.outdated = false;
+}
+
+var ExtensionManager = (new function($)
+{
+	'use strict'
+
+	this.id = 'extension-manager';
+	this.table = 'ExtensionManagerTable';
+	this.tbody = 'ExtensionManagerTBody';
+	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
+
+	var scriptOrderId = "ScriptOrder";
+	var extensionsId = "Extensions";
+	
+	var installedExtensions = [];
+	var remoteExtensions = [];
+
+	this.getRemoteExtensions = function()
+	{
+		return remoteExtensions;
+	}
+
+	this.setExtensions = function(exts)
+	{
+		var value = Config.findOptionByName(extensionsId).value;
+		var activeExtensions = splitString(value);
+		installedExtensions = exts.map(function(ext) 
+		{
+			var extension = new Extension();
+			extension.id = ext.Name + "_OPTIONS";
+			extension.entry = ext.Entry;
+			extension.displayName = ext.DisplayName;
+			extension.version = ext.Version;
+			extension.author = ext.Author;
+			extension.homepage = ext.Homepage;
+			extension.about = ext.About;
+			extension.name = ext.Name;
+			extension.installed = true;
+			extension.isActive = activeExtensions.indexOf(ext.Name) != -1;
+			return extension;
+		});
+		sortExtensions();
+	}
+
+	this.downloadRemoteExtensions = function()
+	{
+		showLoadingBanner();
+		showSection();
+		hideErrorBanner();
+		RPC.call('readurl', [this.extensionsUrl, 'Fetch list of available extensions.'],
+			function(data)
+			{
+				remoteExtensions = JSON.parse(data).map(function(ext) 
+				{
+					var extension = new Extension();
+					extension.id = ext.name + "_OPTIONS";
+					extension.displayName = ext.displayName;
+					extension.version = ext.version;
+					extension.author = ext.author;
+					extension.homepage = ext.homepage;
+					extension.about = ext.about;
+					extension.name = ext.name;
+					extension.url = ext.url;
+					extension.installed = false;
+					return extension;
+				});
+				removeLoadingBanner();
+				showHelpBlock();
+				hideSection();
+				render(getAllExtensions());
+			},
+			function(error) 
+			{
+				hideLoadingBanner();
+				render(getAllExtensions());
+				showErrorBanner("Failed to download extensions", error);
+			}
+		);
+	}
+
+	function render(extensions)
+	{
+		if (Config.currentSectionID !== ExtensionManager.id)
+		{
+			return;
+		}
+
+		var section = $('.' + ExtensionManager.id);
+		var table = $('#' + ExtensionManager.table);
+		var tbody = $('#' + ExtensionManager.tbody);
+		tbody.empty();
+
+		var firstIntalledIdx = extensions.findIndex(function(ext) { return ext.installed; });
+		var lastInstalledIdx = extensions.length - 1;
+		extensions.forEach(function(ext, i) {
+			var raw = $('<tr></tr>')
+				.append(getExtActiveStatusCell(ext))
+				.append(getCeneteredTextCell(ext.displayName))
+				.append(getTextCell(ext.about))
+				.append(getCeneteredTextCell(ext.version))
+				.append(getHomepageCell(ext))
+				.append(getActionBtnsCell(ext))
+				.append(getSortExtensionsBtnsCell(ext, i === firstIntalledIdx, i === lastInstalledIdx));
+			tbody.append(raw);
+		});
+		table.append(tbody);
+		section.append(table);
+		section.show();
+	}
+
+	function getAllExtensions()
+	{
+		var remote = [];
+		for (var i = 0; i < remoteExtensions.length; i++) {
+			var extension = remoteExtensions[i];
+			var idx = installedExtensions.map(function(ext) { return ext.name; }).indexOf(extension.name);
+			if (idx == -1)
+			{
+				remote.push(extension);
+			}
+			else
+			{
+				var installedExt = installedExtensions[idx];
+				if (installedExt.version.localeCompare(extension.version, undefined, { numeric: true, sensitivity: 'base' }) < 0)
+				{
+					installedExt.outdated = true;
+				}
+				installedExt.url = extension.url;
+			}
+		}
+
+		return remote.concat(installedExtensions);
+	}
+
+	function downloadExtension(ext)
+	{
+		hideErrorBanner();
+		disableAllBtns(ext, true);
+
+		RPC.call('downloadextension', [ext.url, ext.name], 
+			function(_) 
+			{
+				syncSettingsAndSaveConfig();
+			},
+			function(error)
+			{
+				disableAllBtns(ext, false);
+				showErrorBanner("Failed to download " + ext.name, error);
+			}
+		);
+	}
+
+	function updateExtension(ext)
+	{
+		hideErrorBanner();
+		disableAllBtns(ext, true);
+
+		RPC.call('updateextension', [ext.url, ext.name], 
+			function(_) 
+			{
+				syncSettingsAndSaveConfig();
+			},
+			function(error)
+			{
+				disableAllBtns(ext, false);
+				showErrorBanner("Failed to update " + ext.name, error);
+			}
+		);
+	}
+
+	function deleteExtension(ext, deleteWithSettings)
+	{
+		hideErrorBanner();
+		disableAllBtns(ext, true);
+
+		RPC.call('deleteextension', [ext.name], 
+			function(_) 
+			{
+				if (deleteWithSettings)
+				{
+					deleteSettings(ext.name);
+				}
+				deleteGlobalSettings(ext.name);
+
+				RPC.call('saveconfig', [Config.config().values], 
+				function(_) 
+				{
+					updatePage();
+				}),
+				function(error) 
+				{
+					updatePage();
+					showErrorBanner("Failed to save the config file", error);
+				}
+			},
+			function(error) 
+			{
+				disableAllBtns(ext, false);
+				showErrorBanner("Failed to delete " + ext.name, error);
+			}
+		);
+	}
+
+	function update()
+	{
+		render(getAllExtensions());
+	}
+
+	function showSection()
+	{
+		$('.' + ExtensionManager.id).show();
+	}
+
+	function hideSection()
+	{
+		$('.' + ExtensionManager.id).hide();
+	}
+
+	function showDeleteExtensionDropdown(ext)
+	{
+		var delBtn = $('#DeleteBtn_' + ext.name);
+		var dropdown = $('#DeleteExtensionMenu');
+		var deleteExtItem = $('#DeleteExtensionItem');
+		var deleteExtWithSettingsItem = $('#DeleteExtensionWithSettingsItem');
+		deleteExtItem.off('click').on('click', function() { deleteExtension(ext, false); });
+		deleteExtWithSettingsItem.off('click').on('click', function() { deleteExtension(ext, true); });
+		Frontend.showPopupMenu(dropdown, 'bottom-left',
+		{ 
+			left: delBtn.offset().left - 30, 
+			top: delBtn.offset().top,
+			width: delBtn.width() + 30, 
+			height: delBtn.outerHeight() - 2 
+		});
+	}
+
+	function splitString(str)
+	{
+		if (!str)
+			return [];
+		return str.split(/[,\s;]+/);
+	}
+
+	function updatePage()
+	{
+		Options.loadConfig({
+			complete: function(conf) {
+				Options.update();
+				Config.buildPage(conf);
+				Config.showSection(ExtensionManager.id, false);
+			},
+			configError: Config.loadConfigError,
+			serverTemplateError: Config.loadServerTemplateError,
+		});
+	}
+
+	function deleteGlobalSettings(extName)
+	{
+		if (!Config.config() || !Config.config()['values'])
+			return;
+
+		var values = Config.config().values;
+		values.forEach(function(value, i)
+		{
+			if (value.Name == extensionsId)
+			{
+				var newVal = Config.getOptionValue(Config.findOptionByName(extensionsId));
+				values[i].Value = deleteExtFromPropVal(newVal, extName);
+			}
+
+			if (value.Name == scriptOrderId)
+			{
+				var newVal = Config.getOptionValue(Config.findOptionByName(scriptOrderId));
+				values[i].Value = deleteExtFromPropVal(newVal, extName);
+			}
+		});
+	}
+
+	function syncGlobalSettings()
+	{
+		if (!Config.config() || !Config.config()['values'])
+			return;
+
+		var values = Config.config().values;
+		var changed = false;
+		values.forEach(function(value, i)
+		{
+			if (value.Name == extensionsId)
+			{
+				var newVal = Config.getOptionValue(Config.findOptionByName(extensionsId));
+				if (values[i].Value !== newVal)
+				{
+					values[i].Value = newVal;
+					changed = true;
+				}
+			}
+
+			if (value.Name == scriptOrderId)
+			{
+				var newVal = Config.getOptionValue(Config.findOptionByName(scriptOrderId));
+				if (values[i].Value !== newVal)
+				{
+					values[i].Value = newVal;
+					changed = true;
+				}
+			}
+		});
+
+		return changed;
+	}
+
+	function syncSettingsAndSaveConfig()
+	{
+		var changed = syncGlobalSettings();
+		if (changed)
+		{
+			RPC.call('saveconfig', [Config.config().values], 
+			function(_) 
+			{
+				updatePage();
+			}),
+			function(error) 
+			{
+				showErrorBanner("Failed to save the config file", error);
+			}
+		}
+		else
+		{
+			updatePage();
+		}
+	}
+
+	function deleteExtFromPropVal(propVal, extName)
+	{
+		return splitString(propVal).filter(function(name) { return name !== extName; }).join(", ");
+	}
+
+	function sortExtensionsByOrder(extensions, order)
+	{
+		if (!order)
+		{
+			extensions.sort(function(a, b) { return a.name - b.name; });
+			return;
+		}
+
+		extensions.sort(function(a, b) {
+			var idxA = order.indexOf(a.name);
+			var idxB = order.indexOf(b.name);
+		  
+			if (idxA === -1) 
+			{
+				return 1;
+			}
+
+			if (idxB === -1) 
+			{
+				return -1;
+			}
+		  
+			return idxA - idxB;
+		});
+	}
+
+	function showErrorBanner(title, message)
+	{
+		var banner = $('#ExtensionsErrorAlert');
+		$('#ExtensionsErrorAlert-title').text(title);
+		$('#ExtensionsErrorAlert-text').html(message);
+		banner
+			.show()
+			.off('click')
+			.on('click', function() { banner.hide(); });
+	}
+
+	function hideErrorBanner()
+	{
+		$('#ExtensionsErrorAlert').hide();
+	}
+
+	function disableAllBtns(ext, disable)
+	{
+		disableDownloadBtn(ext, disable);
+		disableDeleteBtn(ext, disable);
+		disableUpdateBtn(ext, disable);
+		disableDeleteBtn(ext, disable);
+		disableConfigureBtn(ext, disable);
+		disableActivateBtn(ext, disable);
+		disableOrderingBtns(ext, disable);
+	}
+
+	function disableDeleteBtn(ext, disabled)
+	{
+		$('#DeleteBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableDownloadBtn(ext, disabled)
+	{
+		$('#DownloadBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableUpdateBtn(ext, disabled)
+	{
+		$('#UpdateBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableConfigureBtn(ext, disabled)
+	{
+		$('#ConfigureBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableActivateBtn(ext, disabled)
+	{
+		$('#ActivateBtn_' + ext.name).prop({ disabled });
+	}
+
+	function disableOrderingBtns(ext, disabled)
+	{
+		if (disabled)
+		{
+			$('#MvTopBtn_' + ext.name).off('click');
+			$('#MvUpBtn_' + ext.name).off('click');
+			$('#MvDownBtn_' + ext.name).off('click');
+			$('#MvBottomBtn_' + ext.name).off('click');
+		}
+	}
+
+	function showHelpBlock()
+	{
+		$('#ExtensionsHelpBlock').show();
+	}
+
+	function showLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').show();
+	}
+
+	function removeLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').remove();
+	}
+
+	function hideLoadingBanner()
+	{
+		$('#ExtensionsLoadingBanner').hide();
+	}
+
+	function deleteSettings(extName)
+	{
+		if (!Config.config() || !Config.config()['values'])
+			return;
+
+		var values = Config.config().values;
+		values.forEach(function(value, i) {
+		{
+			if (value.Name.startsWith(extName + ":"))
+			{
+				values[i] = null;
+			}
+		}});
+		Config.config().values = values.filter(Boolean);
+	}
+
+	function activateExt(ext)
+	{
+		disableAllBtns(ext, true);
+		ext.isActive = !ext.isActive;
+		var value = Config.getOptionValue(Config.findOptionByName(extensionsId));
+		if (!ext.isActive)
+		{
+			value = deleteExtFromPropVal(value, ext.name);
+			Config.setOptionValue(Config.findOptionByName(extensionsId), value);
+			update();
+			return;
+		}
+
+		if (value)
+		{
+			value += ", " + ext.name
+		}
+		else
+		{
+			value = ext.name;
+		}
+		Config.setOptionValue(Config.findOptionByName(extensionsId), value);
+
+		RPC.call('testextension', [ext.entry], 
+			function(_)
+			{
+				ext.testError = '';
+				disableAllBtns(ext, false);
+				update();
+			},
+			function (_)
+			{
+				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry + '.\nThe extension may not work';
+				disableAllBtns(ext, false);
+				update();
+			}
+		);
+	}
+
+	function getActionBtnsCell(ext)
+	{
+		var cell = $('<td class="extension-manager__td btn-toolbar"></td>');
+		if (!ext.installed)
+		{
+			return cell.append(getDownloadBtn(ext));
+		}
+		return cell
+			.append(getUpdateBtn(ext))
+			.append(getConfigureBtn(ext))
+			.append(getActivateBtn(ext))
+			.append(getDeleteBtn(ext));
+	}
+
+	function getDeleteBtn(ext)
+	{
+		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
+			+ ext.name 
+			+ '" title="Delete"><i class="icon-trash-white"></i></button>')
+			.off('click')
+			.on('click', function() { showDeleteExtensionDropdown(ext); });
+
+		return btn;
+	}
+
+	function getDownloadBtn(ext)
+	{
+		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
+			+ ext.name 
+			+ '" title="Download"><img src="img/download-16.ico"></button>')
+			.off('click')
+			.on('click', function() { downloadExtension(ext); });
+
+		return btn;
+	}
+
+	function getUpdateBtn(ext)
+	{
+		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
+			+ ext.name 
+			+ '"><i class="icon-refresh"></i></button>');
+		if (ext.outdated)
+		{
+			btn.attr({ title: "Update to new version" });
+			btn.off('click').on('click', function() { updateExtension(ext); });
+		}
+		else
+		{
+			btn.attr({ disabled: true });
+			btn.attr({ title: "Extension up-to-date!" });
+			btn.addClass('btn--disabled');
+		}
+
+		return btn;
+	}
+
+	function getConfigureBtn(ext)
+	{
+		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' 
+			+ ext.name 
+			+ '" title="Configure"><i class="icon-settings"></i></button>')
+			.off('click')
+			.on('click', function() { Config.showSection(ext.id, true); });
+
+		return btn;
+	}
+
+	function getActivateBtn(ext)
+	{
+		var btn = $('<button type="button" class="btn btn-primary btn-group" id="ActivateBtn_' 
+			+ ext.name 
+			+ '"></button>')
+			.off('click')
+			.on('click', function() { activateExt(ext); });
+		if (ext.isActive && !ext.testError)
+		{	
+			btn.append('<i class="icon-pause"></i>');
+			btn.attr({ title: "Deactivate (restart needed)" });
+			btn.addClass('btn-warning');
+		}
+		else if(!ext.isActive && !ext.testError)
+		{
+			btn.append('<i class="icon-play"></i>');
+			btn.attr({ title: "Activate for new downloads (restart needed)" });
+			btn.addClass('btn-success');
+		}
+		else
+		{
+			btn.append('<img src="img/warning-16.ico">');
+			btn.attr({ title: ext.testError });
+			btn.addClass('btn-warning');
+		}
+		
+		return btn;
+	}
+
+	function getEmptyCell()
+	{
+		return $('<td class="extension-manager__td text-center"><span>-</span></td>');
+	}
+
+	function getExtActiveStatusCell(ext)
+	{
+		if (!ext.installed)
+		{
+			return getEmptyCell();
+		}
+		var cell = $('<td class="extension-manager__td"></td>');
+		var container = $('<div></div>');
+		var circle = $('<div style="margin: auto;">');
+		if (ext.isActive)
+		{	
+			circle.addClass("green-circle");
+			circle.attr({ title: "Active" });
+		}
+		else
+		{
+			circle.addClass("red-circle");
+			circle.attr({ title: "Not active" });
+		}
+		container.append(circle);
+		cell.append(container);
+		return cell;
+	}
+
+	function getHomepageCell(ext)
+	{
+		if (ext.homepage)
+		{
+			var cell = $('<td class="extension-manager__td text-center">');
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>'));
+			return cell;
+		}
+		
+		return getEmptyCell();
+	}
+
+	function getCeneteredTextCell(text)
+	{
+		if (text)
+		{
+			var cell = $('<td class="extension-manager__td text-center">');
+			cell.append(text);
+			return cell;
+		}
+		
+		return getEmptyCell();
+	}
+
+	function getTextCell(text)
+	{
+		if (text)
+		{
+			var cell = $('<td class="extension-manager__td">');
+			cell.append(text);
+			return cell;
+		}
+		
+		return getEmptyCell();
+	}
+
+	function getSortExtensionsBtnsCell(ext, isFirst, isLast)
+	{
+		if (!ext.installed)
+		{
+			return getEmptyCell();
+		}
+		var cell = $('<td class="extension-manager__td text-center">');
+		var container = $('<div class="btn-row-order-block">');
+		var title = "Modify execution order (restart needed)";
+		var mvTop = $('<div class="btn-row-order icon-top" id="MvTopBtn_' + ext.name +'"></div>')
+			.off('click')
+			.on('click', function() { moveTop(ext); });
+		var mvUp = $('<div class="btn-row-order icon-up id="MvUpBtn_' + ext.name +'"></div>')
+			.off('click')
+			.on('click', function() { moveUp(ext); });
+		var mvDown = $('<div class="btn-row-order icon-down id="MvDownBtn_' + ext.name +'"></div>')
+			.off('click')
+			.on('click', function() { moveDown(ext); });
+		var mvBottom = $('<div class="btn-row-order icon-bottom id="MvBottomBtn_' + ext.name +'"></div>')
+			.off('click')
+			.on('click', function() { moveBottom(ext); });
+		
+		mvTop.attr({ title: title});
+		mvUp.attr({ title: title});
+		mvDown.attr({ title: title});
+		mvBottom.attr({ title: title});
+
+		if (isFirst)
+		{
+			mvTop.addClass('mv-item-arrow-btn--disabled').off('click');
+			mvUp.addClass('mv-item-arrow-btn--disabled').off('click');
+		}
+
+		if (isLast)
+		{
+			mvDown.addClass('mv-item-arrow-btn--disabled').off('click');
+			mvBottom.addClass('mv-item-arrow-btn--disabled').off('click');
+		}
+
+		container.append(mvTop).append(mvUp).append(mvDown).append(mvBottom);
+		cell.append(container);
+		return cell;
+	}
+
+	function getCurrentInstalledExtsOrder()
+	{
+		var value = Config.getOptionValue(Config.findOptionByName(scriptOrderId));
+		if (value)
+		{
+			var order = splitString(value);
+			installedExtensions.forEach(function(ext) {
+				if (order.indexOf(ext.name) == -1)
+				{
+					order.push(ext.name);
+				}
+			});
+			return order;
+		}
+		var order = installedExtensions.map(function(ext) { return ext.name; });
+		return order;
+	}
+
+	function moveTop(ext)
+	{
+		var oldOrder = getCurrentInstalledExtsOrder();
+		var newOrder = [ext.name];
+		oldOrder.forEach(function(name) {
+			if (name !== ext.name)
+			{
+				newOrder.push(name);
+			}
+		});
+		Config.setOptionValue(Config.findOptionByName(scriptOrderId), newOrder.join(", "));
+		sortExtensions();
+		update();
+	}
+
+	function moveUp(ext)
+	{
+		var oldOrder = getCurrentInstalledExtsOrder();
+		var newOrder = [];
+		oldOrder.forEach(function(name, i) {
+			if (name === ext.name)
+			{
+				newOrder[i] = newOrder[i - 1];
+				newOrder[i - 1] = ext.name;
+			}
+			else
+			{
+				newOrder.push(name);
+			}
+		});
+		Config.setOptionValue(Config.findOptionByName(scriptOrderId), newOrder.join(", "));
+		sortExtensions();
+		update();
+	}
+
+	function moveDown(ext)
+	{
+		var oldOrder = getCurrentInstalledExtsOrder();
+		var newOrder = [];
+		var prev = '';
+		oldOrder.forEach(function(name, i) {
+			if (ext.name === prev)
+			{
+				newOrder[i - 1] = name;
+				prev = '';
+				newOrder.push(ext.name);
+			}
+			else
+			{
+				prev = name;
+				newOrder.push(name);
+			}
+		});
+		Config.setOptionValue(Config.findOptionByName(scriptOrderId), newOrder.join(", "));
+		sortExtensions();
+		update();
+	}
+
+	function moveBottom(ext)
+	{
+		var oldOrder = getCurrentInstalledExtsOrder();
+		var newOrder = [];
+		oldOrder.forEach(function(name) {
+			if (name !== ext.name)
+			{
+				newOrder.push(name);
+			}
+		});
+		newOrder.push(ext.name);
+		Config.setOptionValue(Config.findOptionByName(scriptOrderId), newOrder.join(", "));
+		sortExtensions();
+		update();
+	}
+
+	function sortExtensions()
+	{
+		var order = Config.getOptionValue(Config.findOptionByName(scriptOrderId));
+		if (order)
+		{
+			sortExtensionsByOrder(installedExtensions, splitString(order));
+		}
+	}
+}(jQuery))

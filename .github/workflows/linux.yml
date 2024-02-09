@@ -1,10 +1,7 @@
 name: linux build 
 
 on:
-  push:
-    branches:
-    - develop
-    - main
+  workflow_call:
   workflow_dispatch:
 
 jobs:
@@ -14,19 +11,39 @@ jobs:
     steps:
     
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: Change version for non-release
+      if: github.ref_name != 'main'
+      run: |
+        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i configure.ac
+        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
 
     - name: Build
       run: |
         rm -rf /build/nzbget
+        rm -rf /build/output
         cp -r . /build/nzbget
         cd /build
-        docker run -e ALL_ARCHS="i686 x86_64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
+        docker run -e ALL_ARCHS="i686 x86_64 aarch64 armhf armel mipseb mipsel ppc6xx ppc500" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd /build/output
+        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        for FILE in *.run; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
+          mv $FILE $NEW_FILE          
+        done
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nzbget-linux-installers
         path: /build/output/*.run

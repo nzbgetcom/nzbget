@@ -14,7 +14,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 # strict error handling for debugging
@@ -32,6 +32,7 @@ mkdir ./tmp/bin
 mkdir ./tmp/armrar
 mkdir ./tmp/x86rar
 mkdir ./tmp/7zz
+mkdir ./tmp/boost
 
 Adjust_nzbget_conf()
 {
@@ -102,6 +103,21 @@ Make_OpenSSL_for_arm_and_x86()
     cd ../../../
 }
 
+Make_Boost_for_arm_and_x86()
+{
+    cd ./tmp/boost
+    curl -LO https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
+    tar -xzvf boost-1.84.0.tar.gz
+    cd boost-1.84.0
+    mkdir ./x86
+    mkdir ./arm
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/x86
+    ./b2 link=static runtime-link=static address-model=64 architecture=x86 install
+    ./bootstrap.sh --with-libraries=json,test --prefix=$(pwd)/arm
+    ./b2 link=static runtime-link=static address-model=64 architecture=arm install
+    cd ../../../
+}
+
 Make()
 {
     make -j $CPUs
@@ -115,9 +131,9 @@ Compile_x86_64()
         --build=x86_64-apple-darwin \
         --target=x86_64-apple-darwin \
         --with-tlslib=OpenSSL \
-        --program-prefix=x86 \
-        CXXFLAGS="-arch x86_64 -I$(pwd)tmp/openssl/x86/include" \
-        LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86"
+        --program-prefix="" \
+        CXXFLAGS="-arch x86_64 -std=c++14 -O2 -I$(pwd)/tmp/openssl/x86/include -I$(pwd)/tmp/boost/boost-1.84.0/x86/include" \
+        LDFLAGS="-arch x86_64 -L$(pwd)/tmp/openssl/x86 -L$(pwd)/tmp/boost/boost-1.84.0/x86/lib"
         
     Make
 }
@@ -129,20 +145,20 @@ Compile_arm()
         --build=arm-apple-darwin \
         --target=arm-apple-darwin \
         --with-tlslib=OpenSSL \
-        --program-prefix=arm \
-        CXXFLAGS="-arch arm64 -I$(pwd)tmp/openssl/arm/include" \
-        LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm"
-
+        --program-prefix="" \
+        CXXFLAGS="-arch arm64 -std=c++14 -O2 -I$(pwd)/tmp/openssl/arm/include -I$(pwd)/tmp/boost/boost-1.84.0/arm/include" \
+        LDFLAGS="-arch arm64 -L$(pwd)/tmp/openssl/arm -L$(pwd)/tmp/boost/boost-1.84.0/arm/lib"    
     Make
 }
 
 Make_universal()
 {
-    lipo -create ./tmp/arm/bin/armnzbget ./tmp/x86/bin/x86nzbget -output ./tmp/bin/nzbget
+    lipo -create ./tmp/arm/bin/nzbget ./tmp/x86/bin/nzbget -output ./tmp/bin/nzbget
 }
 
 Build()
 {
+    autoreconf --install
     Compile_x86_64
     Compile_arm
     Make_universal
@@ -169,6 +185,7 @@ Make_archive()
 }
 
 Make_OpenSSL_for_arm_and_x86
+Make_Boost_for_arm_and_x86
 Make_tools
 Build
 Clean

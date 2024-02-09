@@ -36,6 +36,7 @@
 #include "QueueScript.h"
 #include "CommandScript.h"
 #include "UrlCoordinator.h"
+#include "ExtensionManager.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -209,6 +210,36 @@ public:
 };
 
 class LoadConfigXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class LoadExtensionsXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class DownloadExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class UpdateExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class DeleteExtensionXmlCommand : public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class TestExtensionXmlCommand : public SafeXmlCommand
 {
 public:
 	virtual void Execute();
@@ -691,6 +722,26 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "loadconfig"))
 	{
 		command = std::make_unique<LoadConfigXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "loadextensions"))
+	{
+		command = std::make_unique<LoadExtensionsXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "downloadextension"))
+	{
+		command = std::make_unique<DownloadExtensionXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "updateextension"))
+	{
+		command = std::make_unique<UpdateExtensionXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "deleteextension"))
+	{
+		command = std::make_unique<DeleteExtensionXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testextension"))
+	{
+		command = std::make_unique<TestExtensionXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "saveconfig"))
 	{
@@ -2664,6 +2715,172 @@ void LoadConfigXmlCommand::Execute()
 	AppendResponse(IsJson() ? "\n]" : "</data></array>\n");
 }
 
+void LoadExtensionsXmlCommand::Execute()
+{
+	bool loadFromDisk = false;
+	bool isJson = IsJson();
+
+	if (!NextParamAsBool(&loadFromDisk))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Load from disk)");
+		return;
+	}
+
+	if (loadFromDisk)
+	{
+		const auto& error = g_ExtensionManager->LoadExtensions();
+		if (error)
+		{
+			BuildErrorResponse(3, error.get().c_str());
+			return;
+		}	
+	}
+
+	AppendResponse(isJson ? "[\n" : "<array><data>\n");
+
+	int index = 0;
+
+	for (const auto extension : g_ExtensionManager->GetExtensions())
+	{
+		std::string response = isJson
+			? Extension::ToJsonStr(*extension)
+			: Extension::ToXmlStr(*extension);
+
+		AppendCondResponse(",\n", isJson && index++ > 0);
+		AppendResponse(response.c_str());
+	}
+
+	AppendResponse(isJson ? "\n]" : "</data></array>\n");
+}
+
+void DownloadExtensionXmlCommand::Execute()
+{
+	char* url;
+	if (!NextParamAsStr(&url))
+	{
+		BuildErrorResponse(2, "Invalid parameter (URL)");
+		return;
+	}
+	DecodeStr(url);
+
+	char* extName;
+	if (!NextParamAsStr(&extName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
+		return;
+	}
+	DecodeStr(extName);
+
+	if (Util::EmptyStr(g_Options->GetTempDir()))
+	{
+		BuildErrorResponse(3, "\"TempDir\" is not specified");
+		return;
+	}
+
+	const auto result = g_ExtensionManager->DownloadExtension(url, extName);
+	bool ok = std::get<0>(result) == WebDownloader::adFinished;
+	if (!ok)
+	{
+		BuildErrorResponse(3, "Failed to read URL");
+		return;
+	}
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	const char* scriptDir = tokDir.Next();
+	if (Util::EmptyStr(scriptDir))
+	{
+		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
+		return;
+	}
+
+	const std::string& filename = std::get<1>(result);
+	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
+	if (error)
+	{
+		BuildErrorResponse(3, error.get().c_str());
+		return;
+	}
+
+	BuildBoolResponse(true);
+}
+
+void UpdateExtensionXmlCommand::Execute()
+{
+	char* url;
+	if (!NextParamAsStr(&url))
+	{
+		BuildErrorResponse(2, "Invalid parameter (URL)");
+		return;
+	}
+	DecodeStr(url);
+
+	char* extName;
+	if (!NextParamAsStr(&extName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
+		return;
+	}
+	DecodeStr(extName);
+
+	const auto result = g_ExtensionManager->DownloadExtension(url, extName);
+	bool ok = std::get<0>(result) == WebDownloader::adFinished;
+	if (!ok)
+	{
+		BuildErrorResponse(3, "Failed to read URL");
+		return;
+	}
+
+	const std::string& filename = std::get<1>(result);
+	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
+	if (error)
+	{
+		BuildErrorResponse(3, error.get().c_str());
+		return;
+	}
+
+	BuildBoolResponse(true);
+}
+
+void DeleteExtensionXmlCommand::Execute()
+{
+	char* extName;
+	if (!NextParamAsStr(&extName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension name)");
+		return;
+	}
+	DecodeStr(extName);
+
+	const auto error = g_ExtensionManager->DeleteExtension(extName);
+	if (error)
+	{
+		BuildErrorResponse(2, error.get().c_str());
+		return;
+	}
+
+	BuildBoolResponse(true);
+}
+
+void TestExtensionXmlCommand::Execute()
+{
+	char* extEntryFileName;
+	if (!NextParamAsStr(&extEntryFileName))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Extension entry file name)");
+		return;
+	}
+	DecodeStr(extEntryFileName);
+
+	const auto found = Util::FindExecutorProgram(extEntryFileName, g_Options->GetShellOverride());
+	if (!found)
+	{
+		BuildErrorResponse(2, "Failed to find the corresponding executor");
+		return;
+	}
+
+	BuildBoolResponse(true);
+}
+
 // bool saveconfig(struct[] data)
 void SaveConfigXmlCommand::Execute()
 {
@@ -2674,7 +2891,7 @@ void SaveConfigXmlCommand::Execute()
 	char* dummy;
 	while ((IsJson() && NextParamAsStr(&dummy) && NextParamAsStr(&name) &&
 			NextParamAsStr(&dummy) && NextParamAsStr(&value)) ||
-		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value)))
+		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value))) 
 	{
 		DecodeStr(name);
 		DecodeStr(value);
@@ -2693,29 +2910,11 @@ void ConfigTemplatesXmlCommand::Execute()
 {
 	const char* XML_CONFIG_ITEM =
 		"<value><struct>\n"
-		"<member><name>Name</name><value><string>%s</string></value></member>\n"
-		"<member><name>DisplayName</name><value><string>%s</string></value></member>\n"
-		"<member><name>PostScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>ScanScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>SchedulerScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>FeedScript</name><value><boolean>%s</boolean></value></member>\n"
-		"<member><name>QueueEvents</name><value><string>%s</string></value></member>\n"
-		"<member><name>TaskTime</name><value><string>%s</string></value></member>\n"
 		"<member><name>Template</name><value><string>%s</string></value></member>\n"
 		"</struct></value>\n";
 
 	const char* JSON_CONFIG_ITEM =
 		"{\n"
-		"\"Name\" : \"%s\",\n"
-		"\"DisplayName\" : \"%s\",\n"
-		"\"PostScript\" : %s,\n"
-		"\"ScanScript\" : %s,\n"
-		"\"QueueScript\" : %s,\n"
-		"\"SchedulerScript\" : %s,\n"
-		"\"FeedScript\" : %s,\n"
-		"\"QueueEvents\" : \"%s\",\n"
-		"\"TaskTime\" : \"%s\",\n"
 		"\"Template\" : \"%s\"\n"
 		"}";
 
@@ -2743,15 +2942,6 @@ void ConfigTemplatesXmlCommand::Execute()
 	{
 		AppendCondResponse(",\n", IsJson() && index++ > 0);
 		AppendFmtResponse(IsJson() ? JSON_CONFIG_ITEM : XML_CONFIG_ITEM,
-			*EncodeStr(configTemplate.GetScript()->GetName()),
-			*EncodeStr(configTemplate.GetScript()->GetDisplayName()),
-			BoolToStr(configTemplate.GetScript()->GetPostScript()),
-			BoolToStr(configTemplate.GetScript()->GetScanScript()),
-			BoolToStr(configTemplate.GetScript()->GetQueueScript()),
-			BoolToStr(configTemplate.GetScript()->GetSchedulerScript()),
-			BoolToStr(configTemplate.GetScript()->GetFeedScript()),
-			*EncodeStr(configTemplate.GetScript()->GetQueueEvents()),
-			*EncodeStr(configTemplate.GetScript()->GetTaskTime()),
 			*EncodeStr(configTemplate.GetTemplate()));
 	}
 
@@ -3296,16 +3486,25 @@ void TestServerXmlCommand::Execute()
 	bool encryption;
 	char* cipher;
 	int timeout;
+	int certVerifLevel;
 
 	if (!NextParamAsStr(&host) || !NextParamAsInt(&port) || !NextParamAsStr(&username) ||
 		!NextParamAsStr(&password) || !NextParamAsBool(&encryption) ||
-		!NextParamAsStr(&cipher) || !NextParamAsInt(&timeout))
+		!NextParamAsStr(&cipher) || !NextParamAsInt(&timeout) ||
+		!NextParamAsInt(&certVerifLevel))
 	{
 		BuildErrorResponse(2, "Invalid parameter");
 		return;
 	}
 
-	NewsServer server(0, true, "test server", host, port, 0, username, password, false, encryption, cipher, 1, 0, 0, 0, false);
+	if (certVerifLevel < 0 || certVerifLevel >= Options::ECertVerifLevel::Count)
+	{
+		BuildErrorResponse(2, "Invalid parameter (Certificate Verification Level).");
+		return;
+	}
+
+	NewsServer server(0, true, "test server", host, port, 0, username, password, false, 
+					encryption, cipher, 1, 0, 0, 0, false, certVerifLevel);
 	TestConnection connection(&server, this);
 	connection.SetTimeout(timeout == 0 ? g_Options->GetArticleTimeout() : timeout);
 	connection.SetSuppressErrors(false);
