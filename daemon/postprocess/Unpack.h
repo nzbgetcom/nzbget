@@ -33,6 +33,7 @@ public:
 	virtual void Stop();
 	static void StartJob(PostInfo* postInfo);
 	static bool HasCompletedArchiveFiles(NzbInfo* nzbInfo);
+	static const char* DecodeSevenZipExitCode(int ec);
 
 protected:
 	virtual bool ReadLine(char* buf, int bufSize, FILE* stream);
@@ -43,6 +44,16 @@ private:
 	{
 		upUnrar,
 		upSevenZip
+	};
+
+	enum SevenZipExitCodes
+	{
+		NoError = 0,
+		Warning = 1,
+		FatalError = 2,
+		CmdLineError = 7,
+		NotEnoughMemoryError = 8,
+		CanceledByUser = 255,
 	};
 
 	typedef std::vector<CString> FileListBase;
