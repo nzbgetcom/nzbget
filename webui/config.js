@@ -3354,7 +3354,7 @@ var ExtensionManager = (new function($)
 			{
 				hideLoadingBanner();
 				render(getAllExtensions());
-				showErrorBanner("Failed to download extensions", error);
+				showErrorBanner("Failed to fetch the list of available extensions", error);
 			}
 		);
 	}

@@ -111,16 +111,16 @@ namespace ExtensionManager
 		};
 		unpacker.SetArgs(std::move(args));
 		
-		int res = unpacker.Execute();
+		int code = unpacker.Execute();
 
-		if (res != 0)
+		if (code < 0)
 		{
-			if (!FileSystem::DeleteFile(filename.c_str()))
-			{
-				return "Failed to unpack and delete temp file: " + filename;
-			}
+			return "Failed to unpack " + filename + ". Make sure that path to 7-Zip is valid.";
+		}
 
-			return "Failed to unpack " + filename;
+		if (code > 0)
+		{
+			return "Failed to unpack " + filename + ". 7-Zip exit code: " + std::to_string(code);
 		}
 
 		if (!FileSystem::DeleteFile(filename.c_str()))
