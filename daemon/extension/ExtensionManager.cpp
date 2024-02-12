@@ -115,7 +115,7 @@ namespace ExtensionManager
 
 		if (ec < 0)
 		{
-			return "Failed to unpack " + filename + ". Make sure that path to 7-Zip is valid.";
+			return "Failed to unpack " + filename + ". Make sure that the path to 7-Zip is valid.";
 		}
 
 		if (ec > 0)
