@@ -4,9 +4,7 @@ on:
   push:
     branches:
     - develop
-    - main
-    tags:
-    - v*
+  workflow_dispatch:
 
 env:
   REGISTRY_IMAGE: nzbgetcom/nzbget

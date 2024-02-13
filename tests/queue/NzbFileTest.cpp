@@ -66,6 +66,8 @@ void TestNzb(std::string testFilename)
 	}
 
 	fclose(infofile);
+
+	xmlCleanupParser();
 }
 
 BOOST_AUTO_TEST_CASE(NZBParserTest)

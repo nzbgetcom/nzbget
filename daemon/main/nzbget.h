@@ -138,8 +138,6 @@ compiled */
 #include <winreg.h>
 
 #include <comutil.h>
-#import <msxml.tlb> named_guids
-using namespace MSXML;
 
 #if _MSC_VER >= 1600
 #include <stdint.h>
@@ -218,6 +216,7 @@ using namespace MSXML;
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <chrono>
 
@@ -226,7 +225,11 @@ using namespace MSXML;
 #include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
+<<<<<<< HEAD
 #endif
+=======
+#include <libxml/tree.h>
+>>>>>>> develop
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

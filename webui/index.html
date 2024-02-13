@@ -3,6 +3,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2023 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -693,6 +694,62 @@
 												</div>
 											</div>
 
+											<section class="control-group config-static extension-manager">
+												<div class="alert alert-info alert-block" style="display:none;" id="ExtensionsLoadingBanner">
+													<h4 class="alert-heading">Loading...</h4>
+													Please wait.
+												</div>
+												<div class="alert alert-danger alert-block" style="display:none;" id="ExtensionsErrorAlert">
+													<h4 class="alert-heading" id="ExtensionsErrorAlert-title"></h4>
+													<p id="ExtensionsErrorAlert-text"></p>
+												</div>
+
+												<p class="help-block" id="ExtensionsHelpBlock" style="display:none;" >
+													<span class="help-option-title"><strong>The Extension Manager</strong> is a tool for downloading, updating and deleting NZBGet extensions with backwards compatibility with extensions based on header configuration definition.</span>
+													<br>
+													<br>
+													<span class="help-option-title">If you want to add support for your extension by the Extension Manager, you can follow this 
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/README.md" target="_blank"> instruction.</a>
+													</span>
+													<br>
+													<br>
+													<span class="label label-warning">NOTE:</span>
+													<span class="help-option-title">If you delete your extension that is not on this
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/extensions.json" target="_blank"> list</a>, 
+														it will be removed without the possibility of reinstalling it.
+													</span>
+													<br>
+													<br>
+													<span class="label label-warning">NOTE:</span>
+													<span class="help-option-title">Extension Manager requires 7-Zip to unpack downloaded extensions.
+														If you are having issues with Extension Manager downloads - please check 
+														<a href="#" onclick="Config.scrollToOption(event, this)">SevenZipCmd</a>.
+													</span>
+												</p>
+
+												<br>
+
+												<table class="table table-striped table-bordered" id="ExtensionManagerTable">
+													<thead>
+														<tr>
+															<th class="text-center">ON/OFF</th>
+															<th class="text-center">Name</th>
+															<th class="text-center">About</th>
+															<th class="text-center">Version</th>
+															<th class="text-center">Homepage</th>
+															<th></th>
+															<th class="text-center"></th>
+														</tr>
+													</thead>
+													<tbody id="ExtensionManagerTBody"></tbody>
+												</table>
+												
+												<!-- *** DELETE EXTENSION MENU -->
+												<ul class="dropdown-menu" id="DeleteExtensionMenu">
+													<li><a href="#" id="DeleteExtensionItem" onclick="" title="Delete extension"> Delete</a></li>
+													<li><a href="#" id="DeleteExtensionWithSettingsItem" onclick="" title="Delete extension with saved settings">Delete with saved settings</a></li>
+												</ul>
+											</section>
 										</fieldset>
 										</form>
 									</div>
@@ -2598,7 +2655,7 @@
 
 	<div class="modal-footer">
 		<a href="#" class="btn btn-danger pull-left" onclick="Config.discardChanges()">Discard changes</a>
-		<a href="#" class="btn" data-dismiss="modal">Stop</a>
+		<a href="#" class="btn" data-dismiss="modal">Cancel</a>
 		<a href="#" class="btn btn-primary" onclick="Config.saveChanges()">Save changes</a>
 	</div>
 </div>

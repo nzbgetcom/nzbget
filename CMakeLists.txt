@@ -1,12 +1,19 @@
 cmake_minimum_required(VERSION 3.22)
-
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed.")
 endif()
 
-set(VERSION "22.2")
+set(VERSION "23.0")
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
+
+project(
+    nzbget
+    VERSION ${VERSION}
+    DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
+    LANGUAGES C CXX
+)
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
