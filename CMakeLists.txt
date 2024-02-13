@@ -6,6 +6,7 @@ endif()
 
 set(VERSION "22.2")
 set(PACKAGE "nzbget")
+set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -24,78 +25,62 @@ project(
 	LANGUAGES C CXX
 )
 
-option(ENABLE_SHARED "Enable shared" ON)
-option(ENABLE_TESTS "Enable tests" ON)
+option(ENABLE_TESTS "Enable tests")
+option(BUILD_SHARED_LIBS "Build shared libs")
+option(DISABLE_TLS "Disable TLS")
+option(DISABLE_LIBXML2 "Disable libxml2")
+option(DISABLE_CURSES "Disable curses")
+option(DISABLE_GZIP "Disable gzip")
+option(DISABLE_PARCHECK "Disable parcheck")
+option(DISABLE_SIGCHLD_HANDLER "Do not use sigchld-handler")
+if (NOT DISABLE_TLS)
+	option(USE_OPENSSL "Use OpenSSL" ON)
+	option(USE_GNUTLS "Use GnuTLS" OFF)
+endif()
 
 message(STATUS "Options:")
-message(STATUS "  BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
-message(STATUS "  ENABLE_SHARED: ${ENABLE_SHARED} (Use shared linking)")
-message(STATUS "  ENABLE_TESTS: ${ENABLE_TESTS} (Build tests)")
+message(STATUS "  BUILD_TYPE:              ${CMAKE_BUILD_TYPE}")
+message(STATUS "  ENABLE_TESTS:            ${ENABLE_TESTS}")
+message(STATUS "  DISABLE_TLS:             ${DISABLE_TLS}")
+message(STATUS "  DISABLE_LIBXML2:         ${DISABLE_LIBXML2}")
+message(STATUS "  DISABLE_CURSES:          ${DISABLE_CURSES}")
+message(STATUS "  DISABLE_GZIP:            ${DISABLE_GZIP}")
+message(STATUS "  DISABLE_PARCHECK:        ${DISABLE_PARCHECK}")
+message(STATUS "  DISABLE_SIGCHLD_HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
 
-set(TEST_SOURCE "${CMAKE_BINARY_DIR}/test.cpp")
-file(WRITE ${TEST_SOURCE}
-    "#include <time.h>\n"
-    "int main() {\n"
-    "  char buffer[26];\n"
-    "  time_t currentTime;\n"
-    "  ctime_r(&currentTime, buffer, 26);\n"
-    "  return 0;\n"
-    "}")
-
-# Try compiling and linking the test program
-try_compile(HAVE_CTIME_R_3 ${CMAKE_BINARY_DIR}/ctime_r_test
-    SOURCES ${TEST_SOURCE}
-)
-
-if(HAVE_CTIME_R_3)
-	set(HAVE_CTIME_R_3 1)
-else()
-	set(HAVE_CTIME_R_2 1)
-endif()
-
-# configure_file(
-# 	${CMAKE_SOURCE_DIR}/config.h.in
-# 	${CMAKE_BINARY_DIR}/config.h
-# )
-
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -Weverything")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -g -Wall -Wextra")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Od /W4")
-        set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib" CACHE STRING "")
-    endif()
-elseif(CMAKE_BUILD_TYPE MATCHES "Release")
-    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall -Wextra")
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /W4")
-        set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib" CACHE STRING "")
-    endif()
-endif()
-
-add_subdirectory(daemon)
-
-set(BUILD_SHARED_LIBS OFF)
-set(OPENSSL_USE_STATIC_LIBS ON)
-set(ZLIB_USE_STATIC_LIBS ON)
 set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 
-find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(LibXml2 REQUIRED)
+if(NOT DISABLE_GZIP)
+	find_package(ZLIB REQUIRED)
+endif()
 
-if (NOT WIN32)
+if(USE_OPENSSL)
+	find_package(OpenSSL REQUIRED)
+endif()
+
+if(USE_GNUTLS)
+	find_package(GnuTLS REQUIRED)
+endif()
+
+if(NOT DISABLE_LIBXML2)
+	find_package(LibXml2 REQUIRED)
+endif()
+
+if(NOT DISABLE_CURSES)
 	find_package(Curses REQUIRED)
 endif()
 
+include(cmake/config.cmake)
+
+configure_file(
+	${CMAKE_SOURCE_DIR}/cmake/config.h.in
+	${CMAKE_BINARY_DIR}/config.h
+)
+
 include_directories(${CMAKE_BINARY_DIR})
+add_subdirectory(daemon)
 add_subdirectory(lib)
 
 add_executable(${PACKAGE} ${SRC})
@@ -128,7 +113,6 @@ endif()
 
 target_link_libraries(${PACKAGE} PRIVATE
 	Yencode
-	Par2
 	Regex
 	OpenSSL::SSL
 	OpenSSL::Crypto
@@ -136,6 +120,10 @@ target_link_libraries(${PACKAGE} PRIVATE
 	LibXml2::LibXml2
 	${CURSES_LIBRARIES}
 )
+
+if(NOT DISABLE_PARCHECK)
+	target_link_libraries(${PACKAGE} PRIVATE Par2)
+endif()
 
 if(ENABLE_TESTS)
 	include(CTest)

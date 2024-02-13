@@ -221,10 +221,12 @@ using namespace MSXML;
 #include <condition_variable>
 #include <chrono>
 
+#ifndef DISABLE_LIBXML2
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
+#endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

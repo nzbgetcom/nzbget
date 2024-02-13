@@ -17,10 +17,8 @@
    License along with the GNU C Library; if not, write to the Free
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
-//#include "nzbget.h"
-#ifdef HAVE_CONFIG_H
+
 #include "config.h"
-#endif
 
 /* Make sure noone compiles this code with a C++ compiler.  */
 #ifdef __cplusplus
