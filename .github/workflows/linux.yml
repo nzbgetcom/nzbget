@@ -29,7 +29,7 @@ jobs:
         rm -rf /build/output
         cp -r . /build/nzbget
         cd /build
-        docker run -e ALL_ARCHS="i686 x86_64 aarch64 armhf armel mipseb mipsel ppc6xx ppc500" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
+        ALL_ARCHS="i686 x86_64 aarch64 armhf armel mipseb mipsel ppc6xx ppc500 riscv64" /build/scripts/build-nzbget-ci.sh
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
