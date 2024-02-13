@@ -97,6 +97,7 @@ PrintHelp()
     PrintArch "mipseb"   "    mipseb   - MIPS (big endian)"
     PrintArch "ppc6xx"   "    ppc6xx   - PowerPC 6xx (603e series)"
     PrintArch "ppc500"   "    ppc500   - PowerPC e500 (core e500v1/e500v2)"
+    PrintArch "riscv64"  "    riscv64  - RISC-V 64-bit"
     Info ""
 
     # Check if command 'basename' is available and fallback to full path if it's not
@@ -197,6 +198,9 @@ DetectArch()
                 ;;
             ppc)
                 ARCH=ppcx
+                ;;
+            riscv64)
+                ARCH=riscv64
                 ;;
         esac
     fi
