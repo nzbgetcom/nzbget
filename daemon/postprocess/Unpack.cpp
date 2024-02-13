@@ -987,6 +987,7 @@ const char* UnpackController::DecodeSevenZipExitCode(int ec)
 	case SevenZipExitCodes::CanceledByUser:
 		return "User stopped the process";
 
-	default: "Unknown 7-Zip error";
+	default: 
+		return "Unknown 7-Zip error";
 	};
 }
