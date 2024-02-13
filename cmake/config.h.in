@@ -1,0 +1,159 @@
+/* Name of package */
+#cmakedefine PACKAGE "@PACKAGE@"
+
+/* Version number of package */
+#cmakedefine VERSION "@VERSION@"
+
+/* Define to the address where bug reports for this package should be sent. */
+#cmakedefine PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
+
+/* Define to 1 to not use curses */
+#cmakedefine DISABLE_CURSES @DISABLE_CURSES@
+
+/* Define to 1 to disable gzip-support */
+#cmakedefine DISABLE_GZIP @DISABLE_GZIP@
+
+/* Define to 1 to not use libxml2, only for development purposes */
+#cmakedefine DISABLE_LIBXML2 @DISABLE_LIBXML2@
+
+/* Define to 1 to disable par-verification and repair */
+#cmakedefine DISABLE_PARCHECK @DISABLE_PARCHECK@
+
+/* Define to 1 to not use TLS/SSL */
+#cmakedefine DISABLE_TLS @DISABLE_TLS@
+
+/* Define to the name of macro which returns the name of function being
+   compiled */
+#cmakedefine FUNCTION_MACRO_NAME @FUNCTION_MACRO_NAME@
+
+/* Define to 1 to create stacktrace on segmentation faults */
+#cmakedefine HAVE_BACKTRACE @HAVE_BACKTRACE@
+
+/* Define to 1 if ctime_r takes 2 arguments */
+#cmakedefine HAVE_CTIME_R_2 @HAVE_CTIME_R_2@
+
+/* Define to 1 if ctime_r takes 3 arguments */
+#cmakedefine HAVE_CTIME_R_3 @HAVE_CTIME_R_3@
+
+/* Define to 1 if you have the <curses.h> header file. */
+#cmakedefine HAVE_CURSES_H @HAVE_CURSES_H@
+
+/* Define to 1 if you have the <endian.h> header file. */
+#cmakedefine HAVE_ENDIAN_H @HAVE_ENDIAN_H@
+
+/* Define to 1 if fdatasync is supported */
+#cmakedefine HAVE_FDATASYNC @HAVE_FDATASYNC@
+
+/* Define to 1 if fseeko (and presumably ftello) exists and is declared. */
+#cmakedefine HAVE_FSEEKO @HAVE_FSEEKO@
+
+/* Define to 1 if F_FULLFSYNC is supported */
+#cmakedefine HAVE_FULLFSYNC @HAVE_FULLFSYNC@
+
+/* Define to 1 if getaddrinfo is supported */
+#cmakedefine HAVE_GETADDRINFO @HAVE_GETADDRINFO@
+
+/* Define to 1 if gethostbyname_r is supported */
+#cmakedefine HAVE_GETHOSTBYNAME_R @HAVE_GETHOSTBYNAME_R@
+
+/* Define to 1 if gethostbyname_r takes 3 arguments */
+#cmakedefine HAVE_GETHOSTBYNAME_R_3 @HAVE_GETHOSTBYNAME_R_3@
+
+/* Define to 1 if gethostbyname_r takes 5 arguments */
+#cmakedefine HAVE_GETHOSTBYNAME_R_5 @HAVE_GETHOSTBYNAME_R_5@
+
+/* Define to 1 if gethostbyname_r takes 6 arguments */
+#cmakedefine HAVE_GETHOSTBYNAME_R_6 @HAVE_GETHOSTBYNAME_R_6@
+
+/* Define to 1 if you have the `getopt' function. */
+#cmakedefine HAVE_GETOPT @HAVE_GETOPT@
+
+/* Define to 1 if you have the <getopt.h> header file. */
+#cmakedefine HAVE_GETOPT_H @HAVE_GETOPT_H@
+
+/* Define to 1 if getopt_long is supported */
+#cmakedefine HAVE_GETOPT_LONG @HAVE_GETOPT_LONG@
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#cmakedefine HAVE_INTTYPES_H @HAVE_INTTYPES_H@
+
+/* Define to 1 to use GnuTLS library for TLS/SSL-support. */
+#cmakedefine HAVE_LIBGNUTLS @HAVE_LIBGNUTLS@
+
+/* Define to 1 if lockf is supported */
+#cmakedefine HAVE_LOCKF @HAVE_LOCKF@
+
+/* Define to 1 if you have the <ncurses.h> header file. */
+#cmakedefine HAVE_NCURSES_H @HAVE_NCURSES_H@
+
+/* Define to 1 if you have the <ncurses/ncurses.h> header file. */
+#cmakedefine HAVE_NCURSES_NCURSES_H @HAVE_NCURSES_NCURSES_H@
+
+/* Define to 1 to use Nettle library for decryption. */
+#cmakedefine HAVE_NETTLE @HAVE_NETTLE@
+
+/* Define to 1 to use OpenSSL library for TLS/SSL-support and decryption. */
+#cmakedefine HAVE_OPENSSL @HAVE_OPENSSL@
+
+/* Define to 1 if pthread_cancel is supported */
+#cmakedefine HAVE_PTHREAD_CANCEL @HAVE_PTHREAD_CANCEL@
+
+/* Define to 1 if you have the <regex.h> header file. */
+#cmakedefine HAVE_REGEX_H @HAVE_REGEX_H@
+
+/* Define to 1 if _SC_NPROCESSORS_ONLN is present in unistd.h */
+#cmakedefine HAVE_SC_NPROCESSORS_ONLN @HAVE_SC_NPROCESSORS_ONLN@
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#cmakedefine HAVE_STDIO_H @HAVE_STDIO_H@
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#cmakedefine HAVE_STDLIB_H @HAVE_STDLIB_H@
+
+/* Define to 1 if you have the `stricmp' function. */
+#cmakedefine HAVE_STRICMP @HAVE_STRICMP@
+
+/* Define to 1 if you have the <strings.h> header file. */
+#cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@
+
+/* Define to 1 if you have the <string.h> header file. */
+#cmakedefine HAVE_STRING_H @HAVE_STRING_H@
+
+/* Define to 1 if you have the <sys/prctl.h> header file. */
+#cmakedefine HAVE_SYS_PRCTL_H @HAVE_SYS_PRCTL_H@
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#cmakedefine HAVE_SYS_STAT_H @HAVE_SYS_STAT_H@
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#cmakedefine HAVE_SYS_TYPES_H @HAVE_SYS_TYPES_H@
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#cmakedefine HAVE_UNISTD_H @HAVE_UNISTD_H@
+
+/* Define to 1 if variadic macros are supported */
+#cmakedefine HAVE_VARIADIC_MACROS @HAVE_VARIADIC_MACROS@
+
+/* Define to 1 if OpenSSL supports function "X509_check_host" */
+#cmakedefine HAVE_X509_CHECK_HOST @HAVE_X509_CHECK_HOST@
+
+/* Define to 1 to install an empty signal handler for SIGCHLD */
+#cmakedefine SIGCHLD_HANDLER @SIGCHLD_HANDLER@
+
+/* Determine what socket length (socklen_t) data type is */
+#cmakedefine SOCKLEN_T @SOCKLEN_T@
+
+/* Number of bits in a file offset, on hosts where this is settable. */
+#cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
+
+/* Define to 1 to make fseeko visible on some hosts (e.g. glibc 2.2). */
+#cmakedefine _LARGEFILE_SOURCE @_LARGEFILE_SOURCE@
+
+/* Define for large files, on AIX-style hosts. */
+#cmakedefine _LARGE_FILES @_LARGE_FILES@
+
+/* Define to `unsigned int' if <sys/types.h> does not define. */
+#cmakedefine size_t @size_t@
