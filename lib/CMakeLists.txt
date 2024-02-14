@@ -12,6 +12,7 @@ add_library(Yencode STATIC
 target_include_directories(Yencode PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/yencode 
 	${CMAKE_SOURCE_DIR}/daemon/main
+    ${LIBXML2_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
 )

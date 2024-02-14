@@ -88,7 +88,7 @@ endif()
 find_package(Boost REQUIRED COMPONENTS json)
 
 include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/lib/regex)
+include_directories(${CMAKE_SOURCE_DIR})
 
 include(cmake/config.cmake)
 configure_file(
