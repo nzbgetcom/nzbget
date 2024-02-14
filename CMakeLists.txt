@@ -80,6 +80,7 @@ if(NOT DISABLE_CURSES)
 	find_package(Curses REQUIRED)
 endif()
 
+find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
@@ -126,6 +127,7 @@ endif()
 target_link_libraries(${PACKAGE} PRIVATE
 	Yencode
 	Regex
+	Threads::Threads
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	ZLIB::ZLIB
