@@ -25,13 +25,8 @@ if [ ! -z "${NZBGET_PASS}" ]; then
   OPTIONS="${OPTIONS}-o ControlPassword=${NZBGET_PASS} "
 fi
 
-# copy default scripts if not exists
+# create scripts dir
 mkdir -p /downloads/scripts
-for SCRIPT in EMail.py Logger.py; do
-  if [ ! -f /downloads/scripts/$SCRIPT ]; then
-    cp /app/nzbget/share/nzbget/scripts/$SCRIPT /downloads/scripts/
-  fi
-done
 
 # change userid and groupid
 PUID=${PUID:-1000}
