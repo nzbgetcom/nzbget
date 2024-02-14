@@ -21,7 +21,7 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
-#include "config.h"
+//#include "config.h"
 
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
@@ -225,11 +225,8 @@ compiled */
 #include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
-<<<<<<< HEAD
-#endif
-=======
 #include <libxml/tree.h>
->>>>>>> develop
+#endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

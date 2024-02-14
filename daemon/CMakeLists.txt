@@ -13,6 +13,10 @@ set(SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/extension/SchedulerScript.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/extension/ScriptConfig.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/extension/ScriptConfig.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/extension/Extension.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/extension/ExtensionLoader.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/extension/ExtensionManager.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/extension/ManifestFile.cpp
 
 	${CMAKE_CURRENT_SOURCE_DIR}/feed/FeedCoordinator.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/feed/FeedFile.cpp
@@ -86,6 +90,8 @@ set(SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Service.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Thread.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Util.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/util/Json.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/util/Xml.cpp
 
     PARENT_SCOPE
 )

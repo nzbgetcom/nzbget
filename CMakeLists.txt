@@ -45,6 +45,14 @@ if (NOT DISABLE_TLS)
 	option(USE_GNUTLS "Use GnuTLS" OFF)
 endif()
 
+if(NOT BUILD_SHARED_LIBS)
+	set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a" ".lib")
+endif()
+
+set(Boost_USE_STATIC_LIBS ON)
+set(Boost_USE_MULTITHREADED ON)
+set(Boost_USE_STATIC_RUNTIME OFF)
+
 message(STATUS "Options:")
 message(STATUS "  BUILD_TYPE:              ${CMAKE_BUILD_TYPE}")
 message(STATUS "  ENABLE_TESTS:            ${ENABLE_TESTS}")
@@ -54,10 +62,6 @@ message(STATUS "  DISABLE_CURSES:          ${DISABLE_CURSES}")
 message(STATUS "  DISABLE_GZIP:            ${DISABLE_GZIP}")
 message(STATUS "  DISABLE_PARCHECK:        ${DISABLE_PARCHECK}")
 message(STATUS "  DISABLE_SIGCHLD_HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
-
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
 
 if(NOT DISABLE_GZIP)
 	find_package(ZLIB REQUIRED)
@@ -79,14 +83,17 @@ if(NOT DISABLE_CURSES)
 	find_package(Curses REQUIRED)
 endif()
 
-include(cmake/config.cmake)
+find_package(Boost REQUIRED COMPONENTS json)
 
+include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/lib/regex)
+
+include(cmake/config.cmake)
 configure_file(
 	${CMAKE_SOURCE_DIR}/cmake/config.h.in
 	${CMAKE_BINARY_DIR}/config.h
 )
 
-include_directories(${CMAKE_BINARY_DIR})
 add_subdirectory(daemon)
 add_subdirectory(lib)
 
@@ -110,7 +117,7 @@ target_include_directories(${PACKAGE} PRIVATE
 	${LIBXML2_INCLUDE_DIR}
 	${CURSES_INCLUDE_DIR}
 )
-if (WIN32)
+if(WIN32)
 	target_include_directories(${PACKAGE} PRIVATE
 		${CMAKE_SOURCE_DIR}/daemon/windows
 		${CMAKE_SOURCE_DIR}/windows/resources
@@ -124,7 +131,8 @@ target_link_libraries(${PACKAGE} PRIVATE
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	ZLIB::ZLIB
-	LibXml2::LibXml2
+	Boost::json
+	${LIBXML2_LIBRARIES}
 	${CURSES_LIBRARIES}
 )
 

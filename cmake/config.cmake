@@ -16,7 +16,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         set(CMAKE_C_FLAGS_DEBUG "/Od /W4 /_DEBUG /DEBUG /_CONSOLE /_WIN32_WINNT=0x0403" CACHE STRING "" FORCE)
         set(CMAKE_CXX_FLAGS_DEBUG "/Od /W4 /_DEBUG /DEBUG /_CONSOLE /_WIN32_WINNT=0x0403" CACHE STRING "" FORCE)
-        set(CMAKE_STATIC_LINKER_FLAGS "winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib" CACHE STRING "" FORCE)
+        set(CMAKE_STATIC_LINKER_FLAGS "/NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrtd.lib" CACHE STRING "" FORCE)
     endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
@@ -27,8 +27,8 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
         set(CMAKE_CXX_FLAGS_RELEASE "-O2 -NDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         set(CMAKE_C_FLAGS_RELEASE "/O2 /W4 /NDEBUG /_CONSOLE /_WIN32_WINNT=0x0403" CACHE STRING "" FORCE)
-        set(CMAKE_CXX_FLAGS_RELEASE "/O2 /W4 /NDEBUG /_CONSOLE /_WIN32_WINNT=0x0403" CACHE STRING "" FORCE)
-        set(CMAKE_STATIC_LINKER_FLAGS "winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib" CACHE STRING "" FORCE)
+        set(CMAKE_CXX_FLAGS_RELEASE "/O2 /W4 /NDEBUG /_CONSOLE /_WIN32_WINNT=0x0403 -static" CACHE STRING "" FORCE)
+        set(CMAKE_STATIC_LINKER_FLAGS "/NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrtd.lib" CACHE STRING "" FORCE)
     endif()
 endif()
 
@@ -44,7 +44,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
     set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive" CACHE STRING "" FORCE)
 endif()
 
-check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H) 
+check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H) 
 check_include_files(endian.h HAVE_ENDIAN_H) 
 check_include_files(getopt.h HAVE_GETOPT_H)
@@ -116,10 +116,9 @@ if(NOT HAVE_CTIME_R_3)
         ctime_r(&clock, buf); 
         return 0; 
     }" HAVE_CTIME_R_2)
-
+endif()
 if(NOT HAVE_CTIME_R_2) 
     message(FATAL_ERROR "ctime_r function not found") 
-endif() 
 endif()
 
 check_function_exists(getaddrinfo HAVE_GETADDRINFO) 
@@ -223,13 +222,13 @@ check_cxx_source_compiles("
     }" HAVE_SC_NPROCESSORS_ONLN)
 
 # Check TLS/SSL
-if(NOT DISABLE_TLS AND OPENSSL_FOUND)    
+if(USE_OPENSSL)    
     set(HAVE_OPENSSL 1 CACHE STRING "" FORCE)
     
     # Check if OpenSSL supports function "X509_check_host"
     check_symbol_exists(X509_check_host openssl/ssl.h HAVE_X509_CHECK_HOST)
 
-elseif(NOT DISABLE_TLS AND GNUTLS_FOUND)
+elseif(USE_GNUTLS)
     # Check GnuTLS library
     check_library_exists(gnutls gnutls_global_init "" HAVE_LIBGNUTLS)
 
