@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
+
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed.")
 endif()
@@ -6,6 +7,7 @@ endif()
 set(VERSION "23.0")
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
+set(CMAKE_CONFIGURATION_TYPES "Release" "Debug") 
 
 project(
     nzbget
@@ -42,7 +44,7 @@ option(DISABLE_PARCHECK "Disable parcheck")
 option(DISABLE_SIGCHLD_HANDLER "Do not use sigchld-handler")
 if(NOT DISABLE_TLS)
 	option(USE_OPENSSL "Use OpenSSL" ON)
-	option(USE_GNUTLS "Use GnuTLS" OFF)
+	option(USE_GNUTLS "Use GnuTLS")
 endif()
 
 if(NOT BUILD_SHARED_LIBS)

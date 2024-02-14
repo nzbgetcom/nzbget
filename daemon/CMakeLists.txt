@@ -92,16 +92,16 @@ set(SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Util.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Json.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Xml.cpp
-
-    PARENT_SCOPE
 )
 
 set(WIN32_SRC
-	${CMAKE_SOURCE_DIR}/windows/StdAfx.cpp
-	${CMAKE_SOURCE_DIR}/windows/WinConsole.cpp
-	${CMAKE_SOURCE_DIR}/windows/WinService.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/windows/StdAfx.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/windows/WinConsole.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/windows/WinService.cpp
 )
 
-if (WIN32)
-	set(SRC ${SRC} ${WIN32_SRC})
+if(WIN32)
+	set(SRC ${SRC} ${WIN32_SRC} PARENT_SCOPE)
 endif()
+
+set_property(GLOBAL PROPERTY SRC ${SRC})

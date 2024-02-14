@@ -1,3 +1,10 @@
+add_library(Regex STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex/regex.c
+)
+target_include_directories(Regex PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex
+)
+
 add_library(Yencode STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/yencode/SimdInit.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/yencode/SimdDecoder.cpp
@@ -10,7 +17,8 @@ add_library(Yencode STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/yencode/SliceCrc.cpp
 )
 target_include_directories(Yencode PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/yencode 
+    ${CMAKE_CURRENT_SOURCE_DIR}/yencode
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex
 	${CMAKE_SOURCE_DIR}/daemon/main
     ${LIBXML2_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIR}
@@ -39,16 +47,10 @@ add_library(Par2 STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/par2/verificationpacket.cpp
 )
 target_include_directories(Par2 PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/par2 
+    ${CMAKE_CURRENT_SOURCE_DIR}/par2
+    ${CMAKE_CURRENT_SOURCE_DIR}/regex
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${CMAKE_SOURCE_DIR}/daemon/util
     ${LIBXML2_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
-)
-
-add_library(Regex STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/regex/regex.c
-)
-target_include_directories(Regex PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/regex
 )
