@@ -46,10 +46,10 @@ if(NOT DISABLE_TLS)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
+	set(Boost_USE_STATIC_LIBS ON)
 	set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".a" ".lib")
 endif()
 
-set(Boost_USE_STATIC_LIBS ON)
 set(Boost_USE_MULTITHREADED ON)
 set(Boost_USE_STATIC_RUNTIME OFF)
 

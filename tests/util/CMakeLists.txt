@@ -14,6 +14,7 @@ file(GLOB UtilTestSrc
 
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
+	Threads::Threads
 	ZLIB::ZLIB
 	Yencode
 	Regex

@@ -34,6 +34,7 @@ file(GLOB ExtensionSrc
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE
+	Threads::Threads
 	ZLIB::ZLIB
 	Yencode
 	OpenSSL::SSL
