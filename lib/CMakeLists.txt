@@ -42,6 +42,7 @@ target_include_directories(Par2 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/par2 
     ${CMAKE_SOURCE_DIR}/daemon/main
     ${CMAKE_SOURCE_DIR}/daemon/util
+    ${LIBXML2_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
 )
 
