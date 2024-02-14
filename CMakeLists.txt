@@ -59,7 +59,6 @@ message(STATUS "  ENABLE_TESTS:            ${ENABLE_TESTS}")
 message(STATUS "  DISABLE_TLS:             ${DISABLE_TLS}")
 message(STATUS "  - OPENSSL:               ${USE_OPENSSL}")
 message(STATUS "  - GNUTLS:                ${USE_GNUTLS}")
-message(STATUS "  DISABLE_LIBXML2:         ${DISABLE_LIBXML2}")
 message(STATUS "  DISABLE_CURSES:          ${DISABLE_CURSES}")
 message(STATUS "  DISABLE_GZIP:            ${DISABLE_GZIP}")
 message(STATUS "  DISABLE_PARCHECK:        ${DISABLE_PARCHECK}")
@@ -77,14 +76,11 @@ if(USE_GNUTLS)
 	find_package(GnuTLS REQUIRED)
 endif()
 
-if(NOT DISABLE_LIBXML2)
-	find_package(LibXml2 REQUIRED)
-endif()
-
 if(NOT DISABLE_CURSES)
 	find_package(Curses REQUIRED)
 endif()
 
+find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
 include_directories(${CMAKE_BINARY_DIR})
