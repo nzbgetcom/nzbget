@@ -92,6 +92,8 @@ set(SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Util.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Json.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Xml.cpp
+
+	PARENT_SCOPE
 )
 
 set(WIN32_SRC

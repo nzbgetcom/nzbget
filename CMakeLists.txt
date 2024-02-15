@@ -31,7 +31,7 @@ project(
 include(cmake/common.cmake)
 if(WIN32)
 	include(cmake/windows.cmake)
-elseif()
+else()
 	include(cmake/posix.cmake)
 endif()
 configure_file(
