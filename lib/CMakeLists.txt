@@ -27,27 +27,27 @@ target_include_directories(Yencode PUBLIC
 
 set_source_files_properties(
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode/Sse2Decoder.cpp
-	PROPERTIES ${SSE2_CXXFLAGS}
+	PROPERTIES COMPILE_FLAGS ${SSE2_CXXFLAGS}
 )
 
 set_source_files_properties(
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode/Ssse3Decoder.cpp
-	PROPERTIES ${SSSE3_CXXFLAGS}
+	PROPERTIES COMPILE_FLAGS ${SSSE3_CXXFLAGS}
 )
 
 set_source_files_properties(
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode/PclmulCrc.cpp
-	PROPERTIES ${PCLMUL_CXXFLAGS}
+	PROPERTIES COMPILE_FLAGS ${PCLMUL_CXXFLAGS}
 )
 
 set_source_files_properties(
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode/NeonDecoder.cpp
-	PROPERTIES ${NEON_CXXFLAGS}
+	PROPERTIES COMPILE_FLAGS ${NEON_CXXFLAGS}
 )
 
 set_source_files_properties(
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode/AcleCrc.cpp
-	PROPERTIES ${ACLECRC_CXXFLAGS}
+	PROPERTIES COMPILE_FLAGS ${ACLECRC_CXXFLAGS}
 )
 
 add_library(Par2 STATIC
