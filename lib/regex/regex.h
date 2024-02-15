@@ -23,7 +23,7 @@
 //#define _REGEX_H 1
 #pragma once
 #include <sys/types.h>
-
+#include <malloc.h>
 
 /* Allow the use in C++ code.  */
 #ifdef __cplusplus

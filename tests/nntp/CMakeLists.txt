@@ -15,12 +15,12 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
 target_link_libraries(ServerPoolTest PRIVATE
-	Threads::Threads
-	OpenSSL::SSL
-	ZLIB::ZLIB
 	Par2
 	Yencode
 	Regex
+	Threads::Threads
+	OpenSSL::SSL
+	ZLIB::ZLIB
 	LibXml2::LibXml2
 )
 target_include_directories(ServerPoolTest PRIVATE

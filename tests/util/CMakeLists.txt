@@ -9,11 +9,11 @@ file(GLOB UtilTestSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp 
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
+	Regex
 	Threads::Threads
 	ZLIB::ZLIB
 	Yencode

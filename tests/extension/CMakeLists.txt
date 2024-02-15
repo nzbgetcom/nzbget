@@ -29,15 +29,16 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE
+	Regex
 	Threads::Threads
 	ZLIB::ZLIB
 	Yencode
 	OpenSSL::SSL
+	Boost::json
 	${LIBXML2_LIBRARIES}
 )
 
@@ -54,6 +55,7 @@ target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${ZLIB_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
 	${Boost_INCLUDE_DIR}
 )

@@ -103,5 +103,3 @@ set(WIN32_SRC
 if(WIN32)
 	set(SRC ${SRC} ${WIN32_SRC} PARENT_SCOPE)
 endif()
-
-set_property(GLOBAL PROPERTY SRC ${SRC})

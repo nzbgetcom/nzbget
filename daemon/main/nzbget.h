@@ -23,98 +23,9 @@
 
 #include "config.h"
 
-/***************** DEFINES FOR WINDOWS *****************/
-#ifdef WIN32
-
-/* Define to 1 to not use curses */
-//#define DISABLE_CURSES
-
-/* Define to 1 to disable smart par-verification and restoration */
-//#define DISABLE_PARCHECK
-
-/* Define to 1 to disable TLS/SSL-support. */
-//#define DISABLE_TLS
-
-#ifndef DISABLE_TLS
-/* Define to 1 to use OpenSSL library for TLS/SSL-support */
-#define HAVE_OPENSSL
-/* Define to 1 to use GnuTLS library for TLS/SSL-support */
-//#define HAVE_LIBGNUTLS
-#endif
-
-/* Define to 1 if OpenSSL supports function "X509_check_host". */
-#define HAVE_X509_CHECK_HOST 1
-
-/* Define to the name of macro which returns the name of function being
-compiled */
-#define FUNCTION_MACRO_NAME __FUNCTION__
-
-/* Define to 1 if ctime_r takes 2 arguments */
-#undef HAVE_CTIME_R_2
-
-/* Define to 1 if ctime_r takes 3 arguments */
-#define HAVE_CTIME_R_3
-
-/* Define to 1 if getopt_long is supported */
-#undef HAVE_GETOPT_LONG
-
-/* Define to 1 if variadic macros are supported */
-#define HAVE_VARIADIC_MACROS
-
-/* Define to 1 if function GetAddrInfo is supported */
-#define HAVE_GETADDRINFO
-
-/* Determine what socket length (socklen_t) data type is */
-#define SOCKLEN_T socklen_t
-
-/* Define to 1 if you have the <regex.h> header file. */
-#ifndef DISABLE_REGEX
-#define HAVE_REGEX_H 1
-// Static linking to regex library
-#define REGEX_STATIC
-#endif
-
-#ifndef DISABLE_GZIP
-// Static linking to zlib library
-//#define ZLIB_WINAPI
-#endif
-
-/* Suppress warnings */
-#define _CRT_SECURE_NO_DEPRECATE
-
-/* Suppress warnings */
-#define _CRT_NONSTDC_NO_WARNINGS
-
-#ifndef _WIN64
-#define _USE_32BIT_TIME_T
-#endif
-
-#if _WIN32_WINNT < 0x0501
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501
-#endif
-
-#ifdef _WIN64
-#define __amd64__
-#else
-#define __i686__
-#endif
-
-#ifdef _DEBUG
-// detection of memory leaks
-#define _CRTDBG_MAP_ALLOC
-#endif
-
-#pragma warning(disable:4800) // 'type' : forcing value to bool 'true' or 'false' (performance warning)
-#pragma warning(disable:4267) // 'var' : conversion from 'size_t' to 'type', possible loss of data
-
-#endif
-
-
 /***************** GLOBAL INCLUDES *****************/
 
 #ifdef WIN32
-
 // WINDOWS INCLUDES
 
 // Using "WIN32_LEAN_AND_MEAN" to disable including of many unneeded headers
@@ -201,6 +112,7 @@ compiled */
 #include <time.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <malloc.h>
 
 #include <string>
 #include <vector>

@@ -1,3 +1,67 @@
+option(ENABLE_TESTS "Enable tests")
+option(BUILD_SHARED_LIBS "Build shared libs")
+option(DISABLE_TLS "Disable TLS")
+option(DISABLE_CURSES "Disable curses" ON)
+option(DISABLE_GZIP "Disable gzip")
+option(DISABLE_PARCHECK "Disable parcheck")
+option(DISABLE_SIGCHLD_HANDLER "Do not use sigchld-handler")
+if(NOT DISABLE_TLS)
+	option(USE_OPENSSL "Use OpenSSL" ON)
+	option(USE_GNUTLS "Use GnuTLS")
+endif()
+
+message(STATUS "Options:")
+message(STATUS "  BUILD_TYPE:              ${CMAKE_BUILD_TYPE}")
+message(STATUS "  ENABLE_TESTS:            ${ENABLE_TESTS}")
+message(STATUS "  DISABLE_TLS:             ${DISABLE_TLS}")
+message(STATUS "  - OPENSSL:               ${USE_OPENSSL}")
+message(STATUS "  - GNUTLS:                ${USE_GNUTLS}")
+message(STATUS "  DISABLE_CURSES:          ${DISABLE_CURSES}")
+message(STATUS "  DISABLE_PARCHECK:        ${DISABLE_PARCHECK}")
+message(STATUS "  DISABLE_SIGCHLD_HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
+
+# Determine if CPU supports SIMD instructions
+if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "i?86|x86_64")
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-msse2" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-mssse3" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-msse4.1 -mpclmul" CACHE STRING "" FORCE)
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-mfpu=neon" CACHE STRING "" FORCE)
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-march=armv8-a+crc -fpermissive" CACHE STRING "" FORCE)
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
+	set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "-march=armv8-a+crc -fpermissive" CACHE STRING "" FORCE)
+endif()
+
+if(NOT DISABLE_TLS)
+	if(USE_OPENSSL AND NOT USE_GNUTLS)
+		find_package(OpenSSL REQUIRED)
+		target_link_libraries(${PACKAGE} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
+		target_include_directories(${PACKAGE} PRIVATE ${OPENSSL_INCLUDE_DIR})
+	endif()
+	elseif(USE_GNUTLS)
+		find_package(GnuTLS REQUIRED)
+		target_link_libraries(${PACKAGE} PRIVATE ${GNUTLS_LIBRARIES})
+		target_include_directories(${PACKAGE} PRIVATE ${GNUTLS_INCLUDE_DIR})
+	endif()
+endif()
+
+if(NOT DISABLE_CURSES)
+	find_package(Curses REQUIRED)
+	target_link_libraries(${PACKAGE} PRIVATE ${CURSES_LIBRARIES})
+	target_include_directories(${PACKAGE} PRIVATE ${CURSES_INCLUDE_DIRS})
+endif()
+
+if(NOT DISABLE_PARCHECK)
+	target_link_libraries(${PACKAGE} PRIVATE Par2)
+	target_include_directories(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/lib/par2)
+endif()
+
+if(BUILD_SHARED_LIBS)
+	set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".dll" ".dylib")
+else()
+	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+endif()
+
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
@@ -6,42 +70,8 @@ include(CheckTypeSize)
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Weverything" CACHE STRING "" FORCE)
-	elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra" CACHE STRING "" FORCE)
-	elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-		set(CMAKE_CXX_FLAGS_DEBUG "/Od /W4 /Zi /D_DEBUG" CACHE STRING "" FORCE)
-		set(CMAKE_STATIC_LINKER_FLAGS "winmm.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrtd.lib" CACHE STRING "" FORCE)
-		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug" CACHE STRING "" FORCE)
-	endif()
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-	if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -Weverything" CACHE STRING "" FORCE)
-	elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
-	elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-		set(CMAKE_CXX_FLAGS_RELEASE "/O2 /W4 /GL /DNDEBUG" CACHE STRING "" FORCE)
-		set(CMAKE_STATIC_LINKER_FLAGS "winmm.lib /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:libcmt.lib /NODEFAULTLIB:msvcrtd.lib" CACHE STRING "" FORCE)
-		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
-	endif()
-endif()
-
-# Determine if CPU supports SIMD instructions
-if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "i?86|x86_64")
-	set(SSE2_CXXFLAGS "-msse2" CACHE STRING "" FORCE)
-	set(SSSE3_CXXFLAGS "-mssse3" CACHE STRING "" FORCE)
-	set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul" CACHE STRING "" FORCE)
-elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
-	set(NEON_CXXFLAGS "-mfpu=neon" CACHE STRING "" FORCE)
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive" CACHE STRING "" FORCE)
-elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive" CACHE STRING "" FORCE)
-endif()
-
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
-check_include_files(regex.h HAVE_REGEX_H) 
+check_include_files(regex.h HAVE_REGEX_H)
 check_include_files(endian.h HAVE_ENDIAN_H) 
 check_include_files(getopt.h HAVE_GETOPT_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
@@ -66,7 +96,7 @@ check_function_exists(getopt_long HAVE_GETOPT_LONG)
 check_function_exists(fdatasync HAVE_FDATASYNC) 
 
 if(NOT DISABLE_SIGCHLD_HANDLER)
-	set(SIGCHLD_HANDLER 1 CACHE STRING "" FORCE) 
+	set(SIGCHLD_HANDLER 1) 
 endif()
 
 if(NOT DISABLED_PARCHECK)
@@ -75,7 +105,7 @@ if(NOT DISABLED_PARCHECK)
 	check_function_exists(stricmp HAVE_STRICMP)
 	check_function_exists(getopt HAVE_GETOPT)
 else() 
-  set(DISABLED_PARCHECK 1 CACHE STRING "" FORCE)
+  set(DISABLED_PARCHECK 1)
 endif()
 
 if(NOT DISABLE_CURSES)
@@ -165,7 +195,7 @@ endif()
 endif() 
 endif() 
 if (NOT HAVE_GETHOSTBYNAME_R_3) 
-	set(HAVE_GETHOSTBYNAME_R 1 CACHE STRING "" FORCE) 
+	set(HAVE_GETHOSTBYNAME_R 1) 
 	check_library_exists(nsl gethostbyname_r "" HAVE_GETHOSTBYNAME_R) 
 endif() 
 endif()
@@ -180,7 +210,7 @@ check_cxx_source_compiles("
 		(void)getsockopt (1, 1, 1, NULL, (socklen_t*)NULL);
 	}" SOCKLEN)
 if(SOCKLEN)
-  set(SOCKLEN_T socklen_t CACHE STRING "" FORCE)
+  set(SOCKLEN_T socklen_t)
 else() 
   check_cxx_source_compiles("
 	#include <stddef.h>
@@ -191,7 +221,7 @@ else()
 		(void)getsockopt (1, 1, 1, NULL, (size_t*)NULL);
 	}" SOCKLEN)
 if(SOCKLEN)
-  set(SOCKLEN_T size_t CACHE STRING "" FORCE)
+  set(SOCKLEN_T size_t)
 else() 
 	check_cxx_source_compiles("
 	#include <stddef.h>
@@ -202,9 +232,9 @@ else()
 		(void)getsockopt (1, 1, 1, NULL, (int*)NULL);
 	}" SOCKLEN)
 if(SOCKLEN)
-  set(SOCKLEN_T int CACHE STRING "" FORCE)
+  set(SOCKLEN_T int)
 else()
-  set(SOCKLEN_T int CACHE STRING "" FORCE)
+  set(SOCKLEN_T int)
 endif()
 endif() 
 endif()
@@ -219,7 +249,7 @@ check_cxx_source_compiles("
 
 # Check TLS/SSL
 if(USE_OPENSSL)   
-	set(HAVE_OPENSSL 1 CACHE STRING "" FORCE)
+	set(HAVE_OPENSSL 1)
 			
 	# Check if OpenSSL supports function "X509_check_host"
 	check_symbol_exists(X509_check_host openssl/ssl.h HAVE_X509_CHECK_HOST)
@@ -249,9 +279,9 @@ check_cxx_source_compiles("
 	}" FUNCTION_MACRO_NAME_TWO)
 
 if(FUNCTION_MACRO_NAME_ONE)
-	set(FUNCTION_MACRO_NAME __FUNCTION__ CACHE STRING "" FORCE)
+	set(FUNCTION_MACRO_NAME __FUNCTION__)
 elseif (FUNCTION_MACRO_NAME_TWO)
-	set(FUNCTION_MACRO_NAME __func__ CACHE STRING "" FORCE)
+	set(FUNCTION_MACRO_NAME __func__)
 endif()
 
 check_cxx_source_compiles("
@@ -264,7 +294,7 @@ check_cxx_source_compiles("
 	}" HAVE_VARIADIC_MACROS)
 
 if(HAVE_VARIADIC_MACROS)
-	set(DHAVE_VARIADIC_MACROS 1 CACHE STRING "" FORCE)
+	set(DHAVE_VARIADIC_MACROS 1)
 endif()
 
 check_cxx_source_compiles("
@@ -280,13 +310,3 @@ check_cxx_source_compiles("
 		strings = backtrace_symbols(array, size);
 		return 0; 
 	}" HAVE_BACKTRACE)
-
-check_cxx_source_compiles("
-	int main() 
-	{
-		return 0;
-	}" HAVE_RDYNAMIC)
-
-if(NOT HAVE_RDYNAMIC)
-	set(LDFLAGS "${LDFLAGS} -rdynamic" CACHE STRING "" FORCE)
-endif()

@@ -8,19 +8,22 @@
 #cmakedefine PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
 
 /* Define to 1 to not use curses */
-#cmakedefine DISABLE_CURSES @DISABLE_CURSES@
+#cmakedefine DISABLE_CURSES
 
 /* Define to 1 to disable gzip-support */
-#cmakedefine DISABLE_GZIP @DISABLE_GZIP@
+#cmakedefine DISABLE_GZIP
 
 /* Define to 1 to not use libxml2, only for development purposes */
-#cmakedefine DISABLE_LIBXML2 @DISABLE_LIBXML2@
+#cmakedefine DISABLE_LIBXML2
 
 /* Define to 1 to disable par-verification and repair */
-#cmakedefine DISABLE_PARCHECK @DISABLE_PARCHECK@
+#cmakedefine DISABLE_PARCHECK
 
 /* Define to 1 to not use TLS/SSL */
-#cmakedefine DISABLE_TLS @DISABLE_TLS@
+#cmakedefine DISABLE_TLS
+
+/* Define to 1 to install an empty signal handler for SIGCHLD */
+#cmakedefine SIGCHLD_HANDLER @SIGCHLD_HANDLER@
 
 /* Define to the name of macro which returns the name of function being
    compiled */
@@ -140,9 +143,6 @@
 /* Define to 1 if OpenSSL supports function "X509_check_host" */
 #cmakedefine HAVE_X509_CHECK_HOST @HAVE_X509_CHECK_HOST@
 
-/* Define to 1 to install an empty signal handler for SIGCHLD */
-#cmakedefine SIGCHLD_HANDLER @SIGCHLD_HANDLER@
-
 /* Determine what socket length (socklen_t) data type is */
 #cmakedefine SOCKLEN_T @SOCKLEN_T@
 
@@ -157,3 +157,15 @@
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 #cmakedefine size_t @size_t@
+
+/* Define if AMD64 */
+#cmakedefine __amd64__
+
+/* Define if i686 */
+#cmakedefine __i686__
+
+/* Use 32BIT TIME_T */
+#cmakedefine _USE_32BIT_TIME_T
+
+/* detection of memory leaks */
+#cmakedefine _CRTDBG_MAP_ALLOC
