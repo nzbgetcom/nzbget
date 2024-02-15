@@ -1,0 +1,36 @@
+name: Feature Request
+description: 'Feature requests or small enhancements'
+labels: ['enhancement']
+body:
+- type: checkboxes
+  attributes:
+    label: Is there already an issue for this request?
+    description: Please make sure you are not creating an already submitted <a href="https://github.com/nzbgetcom/nzbget/issues">Issue</a>. Check closed issues as well, because your issue could have been resolved and waiting to be released.
+    options:
+      - label: I have checked older issues, open and closed
+        required: true
+- type: dropdown
+  attributes:
+    label: Platform
+    description: Select a specific platform for this request, choose Any if it applies to all platforms
+    options:
+    - All
+    - Windows
+    - macOS
+    - NAS/Synology/QNAP
+    - Linux/Docker
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Describe the enhancement you'd like
+    description: A clear and concise description of what you want to happen.
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Extra information
+    description: |
+      Please refer to any extra information - competing product(s) and/or features, extra documentation, attach files or images
+  validations:
+    required: false

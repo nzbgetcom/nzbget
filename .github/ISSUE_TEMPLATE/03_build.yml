@@ -1,0 +1,71 @@
+name: Building, compiling, contributing
+description: 'Problems building nzbget or questions about contributing'
+labels: ['question']
+body:
+- type: dropdown
+  attributes:
+    label: NZBGet Version
+    description: Version of NZBGet for the scope of this issue
+    options:
+    - v21 or earlier (orignal nzbget)
+    - v22-testing (nzbgetcom takeover)
+    - v22-stable (nzbgetcom takeover)
+    - v23-testing
+    - v23-stable
+  validations:
+    required: true
+- type: dropdown
+  attributes:
+    label: Platform
+    description: Select a specific platform for this issue, choose Any if it applies to all platforms
+    options:
+    - All
+    - Windows
+    - macOS
+    - NAS/Synology/QNAP
+    - Linux/Docker
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Environment
+    description: Please provide the details of the system where the issue is observed
+    placeholder: |
+      Device:
+      OS version: platform n.nn (32bit/64bit)
+      CPU architecture: (32bit/64bit)
+      Includes libs or tool that apply: 7zip x.x, unrar x.x, python3.11
+    render: markdown
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Problem or Question
+    description: Describe the problem, expected behavior
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Steps To Reproduce
+    description: Steps to reproduce the behavior.
+    placeholder: |
+      1. In this environment...
+      2. With this config...
+      3. Run '...'
+      4. See error...
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Logs
+    description: |
+      Any logs or messages that apply
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Extra information
+    description: |
+      Please refer to any extra information - extra documentation, attach files or images
+  validations:
+    required: false
