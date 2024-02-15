@@ -92,8 +92,6 @@ set(SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Util.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Json.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Xml.cpp
-
-	PARENT_SCOPE
 )
 
 set(WIN32_SRC
@@ -103,5 +101,7 @@ set(WIN32_SRC
 )
 
 if(WIN32)
-	set(SRC ${SRC} ${WIN32_SRC} PARENT_SCOPE)
+	set(SRC ${SRC} ${WIN32_SRC})
 endif()
+
+add_executable(${PACKAGE} ${SRC})

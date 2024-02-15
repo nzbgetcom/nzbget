@@ -18,14 +18,14 @@ set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CONFIGURATION_TYPES "Release" "Debug")
 
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 endif()
 
 project(
-    nzbget
-    VERSION ${VERSION}
-    DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
-    LANGUAGES C CXX
+	nzbget
+	VERSION ${VERSION}
+	DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
+	LANGUAGES C CXX
 )
 
 include(cmake/common.cmake)

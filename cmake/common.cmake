@@ -22,11 +22,14 @@ endif()
 
 if(NOT MSVC)
 	if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "i?86|x86_64")
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -msse2 -mssse3 -msse4.1 -mpclmul")
+		set(SSE2_CXXFLAGS "-msse2")
+		set(SSSE3_CXXFLAGS "-mssse3")
+		set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul")
 	elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=armv8-a+crc -mfpu=neon -march=armv8-a+crc -fpermissive")
+		set(NEON_CXXFLAGS "-mfpu=neon")
+		set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
 	elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-		set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=armv8-a+crc -fpermissive")
+		set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
 	endif()
 endif()
 
@@ -41,7 +44,6 @@ include_directories(${CMAKE_SOURCE_DIR})
 add_subdirectory(${CMAKE_SOURCE_DIR}/daemon)
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
 
-add_executable(${PACKAGE} ${SRC})
 
 target_link_libraries(${PACKAGE} PRIVATE
 	Yencode 
