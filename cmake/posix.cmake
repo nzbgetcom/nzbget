@@ -239,7 +239,7 @@ if(USE_OPENSSL)
 	set(HAVE_OPENSSL 1)
 			
 	# Check if OpenSSL supports function "X509_check_host"
-	check_symbol_exists(X509_check_host openssl/ssl.h HAVE_X509_CHECK_HOST)
+	check_library_exists(crypto X509_check_host "" HAVE_X509_CHECK_HOST)
 
 elseif(USE_GNUTLS)
 	# Check GnuTLS library
