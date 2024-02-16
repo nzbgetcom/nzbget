@@ -17,6 +17,10 @@ if(NOT DISABLE_TLS)
 	target_include_directories(${PACKAGE} PRIVATE ${OPENSSL_INCLUDE_DIR})
 endif()
 
+find_package(ZLIB REQUIRED)
+target_link_libraries(${PACKAGE} PRIVATE ZLIB::ZLIB)
+target_include_directories(${PACKAGE} PRIVATE ${ZLIB_INCLUDE_DIRS})
+
 target_include_directories(${PACKAGE} PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/windows
 	${CMAKE_SOURCE_DIR}/windows/resources

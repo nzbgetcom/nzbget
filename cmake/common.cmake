@@ -33,7 +33,6 @@ if(NOT MSVC)
 	endif()
 endif()
 
-find_package(ZLIB REQUIRED)
 find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
@@ -155,8 +154,7 @@ target_link_libraries(${PACKAGE} PRIVATE
 	Yencode 
 	Regex 
 	Threads::Threads 
-	Boost::json 
-	ZLIB::ZLIB 
+	Boost::json
 	LibXml2::LibXml2
 )
 target_include_directories(${PACKAGE} PRIVATE
@@ -175,5 +173,4 @@ target_include_directories(${PACKAGE} PRIVATE
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${Boost_INCLUDE_DIR}
 	${LIBXML2_INCLUDE_DIR}
-	${ZLIB_INCLUDE_DIRS}
 )
