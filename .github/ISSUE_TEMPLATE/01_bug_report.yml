@@ -24,7 +24,7 @@ body:
 - type: dropdown
   attributes:
     label: Platform
-    description: Select a specific platform for this bug report, choose Any if it applies to all platforms
+    description: Select a specific platform for this bug report, choose All if it applies to all platforms
     options:
     - All
     - Windows
