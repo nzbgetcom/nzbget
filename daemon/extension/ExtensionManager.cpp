@@ -51,7 +51,7 @@ namespace ExtensionManager
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
 		downloader.reset();
 
-		return std::pair<WebDownloader::EStatus, std::string>(status, tmpFileName.Str());
+		return std::make_pair(status, tmpFileName.Str());
 	}
 
 	boost::optional<std::string>
@@ -111,16 +111,16 @@ namespace ExtensionManager
 		};
 		unpacker.SetArgs(std::move(args));
 		
-		int res = unpacker.Execute();
+		int ec = unpacker.Execute();
 
-		if (res != 0)
+		if (ec < 0)
 		{
-			if (!FileSystem::DeleteFile(filename.c_str()))
-			{
-				return "Failed to unpack and delete temp file: " + filename;
-			}
+			return "Failed to unpack " + filename + ". Make sure that the path to 7-Zip is valid.";
+		}
 
-			return "Failed to unpack " + filename;
+		if (ec > 0)
+		{
+			return "Failed to unpack " + filename + ". " + UnpackController::DecodeSevenZipExitCode(ec);
 		}
 
 		if (!FileSystem::DeleteFile(filename.c_str()))
@@ -188,10 +188,24 @@ namespace ExtensionManager
 	{
 		const char* location = ext.GetLocation();
 
-		CString err;
-		if (FileSystem::DirectoryExists(location) && FileSystem::DeleteDirectoryWithContent(location, err))
+		ptrdiff_t count = std::count_if(
+			std::begin(m_extensions),
+			std::end(m_extensions),
+			[&location](const auto& ext) { return strcmp(location, ext->GetLocation()) == 0; }
+		);
+
+		if (count > 1)
 		{
-			if (!err.Empty())
+			// for backward compatibility, when multiple V1 extensions placed 
+			// in the same directory in which case we have to delete an entry file, 
+			// not the entire directory.
+			location = ext.GetEntry();
+		}
+
+		if (FileSystem::DirectoryExists(location))
+		{
+			CString err;
+			if (!FileSystem::DeleteDirectoryWithContent(location, err))
 			{
 				return boost::optional<std::string>(err.Str());
 			}

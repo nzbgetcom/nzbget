@@ -961,3 +961,33 @@ bool UnpackController::HasCompletedArchiveFiles(NzbInfo* nzbInfo)
 
 	return false;
 }
+
+const char* UnpackController::DecodeSevenZipExitCode(int ec)
+{
+	// 7-Zip exit codes according to https://documentation.help/7-Zip/exit_codes.htm
+	switch (ec)
+	{
+	case SevenZipExitCodes::NoError:
+		return "No error";
+
+	case SevenZipExitCodes::Warning:
+		return "Warning (Non fatal error(s)). \
+		For example, one or more files were locked by some other application, \
+		so they were not compressed.";
+
+	case SevenZipExitCodes::FatalError:
+		return "Fatal error";
+
+	case SevenZipExitCodes::CmdLineError:
+		return "Command line error";
+
+	case SevenZipExitCodes::NotEnoughMemoryError:
+		return "Not enough memory for operation";
+
+	case SevenZipExitCodes::CanceledByUser:
+		return "User stopped the process";
+
+	default: 
+		return "Unknown 7-Zip error";
+	};
+}

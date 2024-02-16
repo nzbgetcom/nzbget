@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(VERSION "23.0")
+
 project(
     nzbget
-    VERSION "22.2"
+    VERSION ${VERSION}
     DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
     LANGUAGES C CXX
 )
 
 option(ENABLE_TESTS "Enable tests" ON)
 
-set(VERSION "22")
 set(PACKAGE "nzbget")
 add_compile_definitions(HAVE_CONFIG_H=1)
 
