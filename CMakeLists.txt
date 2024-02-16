@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(VERSION "23.0")
+set(VERSION "23.1")
 
 project(
     nzbget
