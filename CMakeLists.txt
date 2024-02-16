@@ -28,15 +28,51 @@ project(
 	LANGUAGES C CXX
 )
 
-include(cmake/common.cmake)
+find_package(Threads REQUIRED)
+find_package(LibXml2 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
+
+include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR})
+
+include(daemon/src.cmake)
+
+add_executable(${PACKAGE} ${SRC})
+
 if(WIN32)
 	include(cmake/windows.cmake)
 else()
 	include(cmake/posix.cmake)
 endif()
+
 configure_file(
 	${CMAKE_SOURCE_DIR}/cmake/config.h.in
 	${CMAKE_BINARY_DIR}/config.h
+)
+
+target_link_libraries(${PACKAGE} PRIVATE
+	Yencode 
+	Regex 
+	Threads::Threads 
+	Boost::json
+	LibXml2::LibXml2
+)
+target_include_directories(${PACKAGE} PRIVATE
+	${CMAKE_SOURCE_DIR}/daemon/connect
+	${CMAKE_SOURCE_DIR}/daemon/extension
+	${CMAKE_SOURCE_DIR}/daemon/feed
+	${CMAKE_SOURCE_DIR}/daemon/frontend
+	${CMAKE_SOURCE_DIR}/daemon/main
+	${CMAKE_SOURCE_DIR}/daemon/nntp
+	${CMAKE_SOURCE_DIR}/daemon/nserv
+	${CMAKE_SOURCE_DIR}/daemon/postprocess
+	${CMAKE_SOURCE_DIR}/daemon/queue
+	${CMAKE_SOURCE_DIR}/daemon/remote
+	${CMAKE_SOURCE_DIR}/daemon/util
+	${CMAKE_SOURCE_DIR}/lib/regex
+	${CMAKE_SOURCE_DIR}/lib/yencode
+	${Boost_INCLUDE_DIR}
+	${LIBXML2_INCLUDE_DIR}
 )
 
 if(ENABLE_TESTS)
