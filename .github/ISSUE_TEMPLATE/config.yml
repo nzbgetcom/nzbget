@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discussions
+    url: https://github.com/nzbgetcom/nzbget/discussions
+    about: Discuss, suggest. Any questions, including performance issues.
+  - name: NZBGet.com Website
+    url: https://nzbget.com/contact/
+    about: Contact Us via Email

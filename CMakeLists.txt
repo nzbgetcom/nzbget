@@ -6,7 +6,8 @@ endif()
 
 set_property(GLOBAL PROPERTY PACKAGE)
 
-set(VERSION "23.0")
+set(VERSION "23.1")
+
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 14)
