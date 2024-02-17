@@ -7,7 +7,6 @@ endif()
 set_property(GLOBAL PROPERTY PACKAGE)
 
 set(VERSION "23.1")
-
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 14)
@@ -39,6 +38,8 @@ include_directories(${CMAKE_SOURCE_DIR})
 include(daemon/src.cmake)
 
 add_executable(${PACKAGE} ${SRC})
+
+include(cmake/common.cmake)
 
 if(WIN32)
 	include(cmake/windows.cmake)

@@ -112,7 +112,6 @@
 #include <time.h>
 #include <ctype.h>
 #include <inttypes.h>
-#include <malloc.h>
 
 #include <string>
 #include <vector>

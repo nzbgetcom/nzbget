@@ -5,12 +5,15 @@ option(DISABLE_CURSES "Disable curses")
 option(DISABLE_GZIP "Disable gzip")
 option(DISABLE_PARCHECK "Disable parcheck")
 option(DISABLE_SIGCHLD_HANDLER "Do not use sigchld-handler")
-if(NOT DISABLE_TLS)
-	option(USE_OPENSSL "Use OpenSSL" ON)
-	option(USE_GNUTLS "Use GnuTLS" OFF)
-endif()
+option(USE_OPENSSL "Use OpenSSL" ON)
+option(USE_GNUTLS "Use GnuTLS" OFF)
 
 if(NOT DISABLE_TLS AND USE_GNUTLS)
+	set(USE_OPENSSL OFF)
+endif()
+
+if(DISABLE_TLS)
+	set(USE_GNUTLS OFF)
 	set(USE_OPENSSL OFF)
 endif()
 
@@ -25,44 +28,21 @@ message(STATUS "  DISABLE_GZIP:            ${DISABLE_GZIP}")
 message(STATUS "  DISABLE_PARCHECK:        ${DISABLE_PARCHECK}")
 message(STATUS "  DISABLE_SIGCHLD_HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Weverything" CACHE STRING "" FORCE)
-	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall -Wextra" CACHE STRING "" FORCE)
-	endif()
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -Weverything" CACHE STRING "" FORCE)
-	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
-	endif()
-endif()
-
-if (${CMAKE_SYSTEM_PROCESSOR} MATCHES "i?86|x86_64")
-	set(SSE2_CXXFLAGS "-msse2")
-	set(SSSE3_CXXFLAGS "-mssse3")
-	set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul")
-elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
-	set(NEON_CXXFLAGS "-mfpu=neon")
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
-elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "aarch64")
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
-endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
-
 if(NOT DISABLE_TLS)
 	if(USE_OPENSSL AND NOT USE_GNUTLS)
 		find_package(OpenSSL REQUIRED)
+		set(HAVE_OPENSSL 1)
 		target_link_libraries(${PACKAGE} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 		target_include_directories(${PACKAGE} PRIVATE ${OPENSSL_INCLUDE_DIR})
 	elseif(USE_GNUTLS)
 		find_package(GnuTLS REQUIRED)
-		target_link_libraries(${PACKAGE} PRIVATE ${GNUTLS_LIBRARIES} nettle)
-		target_include_directories(${PACKAGE} PRIVATE ${GNUTLS_INCLUDE_DIR})
+		set(HAVE_LIBGNUTLS 1)
+		find_library(NETTLE_LIBRARY NAMES nettle libnettle)
+		if(NETTLE_LIBRARY)
+			set(HAVE_NETTLE 1)
+		endif()
+		target_link_libraries(${PACKAGE} PRIVATE GnuTLS::GnuTLS ${NETTLE_LIBRARY})
+		target_include_directories(${PACKAGE} PRIVATE ${GNUTLS_INCLUDE_DIRS})
 	endif()
 endif()
 
@@ -83,11 +63,7 @@ if(NOT DISABLE_PARCHECK)
 	target_include_directories(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/lib/par2)
 endif()
 
-if(BUILD_SHARED_LIBS)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ".so" ".dll" ".dylib")
-else()
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-endif()
+add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
@@ -108,7 +84,7 @@ check_include_file(stdlib.h HAVE_STDLIB_H)
 check_include_file(strings.h HAVE_STRINGS_H)
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(sys/stat.h HAVE_SYS_STAT_H)
-check_include_file(unvimistd.h HAVE_UNISTD_H)
+check_include_file(unistd.h HAVE_UNISTD_H)
 
 check_library_exists(pthread pthread_create "" HAVE_PTHREAD_CREATE) 
 check_library_exists(socket socket "" HAVE_SOCKET) 
@@ -275,18 +251,8 @@ check_cxx_source_compiles("
 	}" HAVE_SC_NPROCESSORS_ONLN)
 
 # Check TLS/SSL
-if(USE_OPENSSL)   
-	set(HAVE_OPENSSL 1)
-			
-	# Check if OpenSSL supports function "X509_check_host"
-	check_library_exists(crypto X509_check_host "" HAVE_X509_CHECK_HOST)
-
-elseif(USE_GNUTLS)
-	# Check GnuTLS library
-	check_library_exists(gnutls gnutls_global_init "" HAVE_LIBGNUTLS)
-
-	# Check Nettle library
-	check_library_exists(nettle nettle_pbkdf2_hmac_sha256 "" HAVE_NETTLE)
+if(USE_OPENSSL)
+	check_library_exists(OpenSSL::Crypto X509_check_host "" HAVE_X509_CHECK_HOST)
 endif()
 
 check_cxx_source_compiles("
@@ -312,7 +278,7 @@ elseif (FUNCTION_MACRO_NAME_TWO)
 endif()
 
 check_cxx_source_compiles("
-	#define macro(...)   macrofunc(__VA_ARGS__) 
+	#define macro(...) macrofunc(__VA_ARGS__) 
 	int macrofunc(int a, int b) { return a + b; }
 	int main() 
 	{ 

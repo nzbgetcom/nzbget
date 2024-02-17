@@ -23,6 +23,7 @@ target_include_directories(Yencode PUBLIC
 	${LIBXML2_INCLUDE_DIR}
 	${ZLIB_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
+	${PC_GNUTLS_INCLUDE_DIRS}
 )
 
 set_source_files_properties(
@@ -79,6 +80,8 @@ if(NOT DISABLE_PARCHECK)
 		${CMAKE_SOURCE_DIR}/daemon/util
 		${LIBXML2_INCLUDE_DIR}
 		${Iconv_INCLUDE_DIR}
+		${Boost_INCLUDE_DIR}
 		${OPENSSL_INCLUDE_DIR}
+		${GNUTLS_INCLUDE_DIR}
 	)
 endif()
