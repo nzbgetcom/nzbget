@@ -23,7 +23,7 @@ target_include_directories(Yencode PUBLIC
 	${LIBXML2_INCLUDE_DIR}
 	${ZLIB_INCLUDE_DIR}
 	${OPENSSL_INCLUDE_DIR}
-	${PC_GNUTLS_INCLUDE_DIRS}
+	${GNUTLS_INCLUDE_DIR}
 )
 
 set_source_files_properties(

@@ -28,6 +28,31 @@ project(
 	LANGUAGES C CXX
 )
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(CMAKE_CXX_FLAGS "-O0 -g -Wall -Wextra" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set(CMAKE_CXX_FLAGS "/Od /Zi /MP /W4 /EHs /DDEBUG /D_DEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib Dbghelp.lib libcpmtd.lib" CACHE STRING "" FORCE)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug" CACHE STRING "" FORCE)
+	endif()
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		set(CMAKE_CXX_FLAGS "-O2 -DNDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(CMAKE_CXX_FLAGS "-O2 -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set(CMAKE_CXX_FLAGS "/O2 /MP /W4 /EHs /DNDEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib" CACHE STRING "" FORCE)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+	endif()
+endif()
+
+set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+
 find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
@@ -35,11 +60,22 @@ find_package(Boost REQUIRED COMPONENTS json)
 include_directories(${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
-include(daemon/src.cmake)
+include(daemon/sources.cmake)
 
 add_executable(${PACKAGE} ${SRC})
 
-include(cmake/common.cmake)
+if(NOT WIN32)
+	if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86_64")
+		set(SSE2_CXXFLAGS "-msse2")
+		set(SSSE3_CXXFLAGS "-mssse3")
+		set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul")
+	elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
+		set(NEON_CXXFLAGS "-mfpu=neon")
+		set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
+	elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+		set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
+	endif()
+endif()
 
 if(WIN32)
 	include(cmake/windows.cmake)
@@ -53,8 +89,6 @@ configure_file(
 )
 
 target_link_libraries(${PACKAGE} PRIVATE
-	Yencode 
-	Regex 
 	Threads::Threads 
 	Boost::json
 	LibXml2::LibXml2
@@ -71,8 +105,6 @@ target_include_directories(${PACKAGE} PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/queue
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/lib/regex
-	${CMAKE_SOURCE_DIR}/lib/yencode
 	${Boost_INCLUDE_DIR}
 	${LIBXML2_INCLUDE_DIR}
 )

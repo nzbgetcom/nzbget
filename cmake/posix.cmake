@@ -64,6 +64,11 @@ if(NOT DISABLE_PARCHECK)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
+target_link_libraries(${PACKAGE} PRIVATE Regex Yencode)
+target_include_directories(${PACKAGE} PRIVATE 
+	${CMAKE_SOURCE_DIR}/lib/regex
+	${CMAKE_SOURCE_DIR}/lib/yencode
+)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
