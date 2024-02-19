@@ -1,15 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
+set(VERSION "23.0")
+
 project(
     nzbget
-    VERSION "22.2"
+    VERSION ${VERSION}
     DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
     LANGUAGES C CXX
 )
 
 option(ENABLE_TESTS "Enable tests" ON)
 
-set(VERSION "22")
 set(PACKAGE "nzbget")
 add_compile_definitions(HAVE_CONFIG_H=1)
 
@@ -35,6 +36,7 @@ set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 find_package(OpenSSL REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(LibXml2 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")

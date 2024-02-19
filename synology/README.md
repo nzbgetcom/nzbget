@@ -1,5 +1,28 @@
 # Synology nzbget packages
 
+We support Synology via SynoCommunity package (DSM 3.x / 6.x / 7.x) and native SPK package (DSM 7.x) for manual installation.
+
+* [SynoCommunity package (DSM 3.x / 6.x / 7.x)](#synocommunity-package)
+* [SPK package (DSM 7.x)](#spk-package)
+* [Switch between SynoCommunity package and SPK](#switch-between-synocommunity-package-and-spk)
+
+
+# SynoCommunity package
+
+DSM versions: 3.x / 6.x / 7.x
+
+https://synocommunity.com/package/nzbget
+
+If you don't have SynoCommunity repository added on your device - please follow easy install instructions https://synocommunity.com/
+
+If you have SynoCommunity added on your device - please simply install NZBGet under `Packages` - `Community`
+
+If you have installed original NZBGet version (package version `20220406-29` and below) - upgrade to nzbgetcom version (latest / `20240115-30`)
+
+# SPK package
+
+DSM versions: 7.x
+
 ## Package versions
 
 We provide native packages for most Synology platforms (DSM 7.x). To select a correct package for yours platform please find Synology model in [Synology NAS list](https://kb.synology.com/en-us/DSM/tutorial/What_kind_of_CPU_does_my_NAS_have) and select package based on `Package Arch` field:
@@ -50,4 +73,16 @@ When installed, the package adds all the necessary permissions for the selected 
 
 ## Extensions
 
-You can put custom extension in `ScriptDir` directory. During installation this directory appears in `selected_shared_folder\selected_download_directory\scripts` and populates with default scripts (Email and Logger). Synology DSM 7.x bundled with python 3.8, so you must make sure that the script you are installing supports it. Our forks of VideoSort/FailureLink/FakeDetector are tested and working.
+You can put custom extension in `ScriptDir` directory. During installation this directory appears in `selected_shared_folder\selected_download_directory\scripts`. Synology DSM 7.x bundled with python 3.8, so you must make sure that the script you are installing supports it. Our forks of VideoSort/FailureLink/FakeDetector are tested and working.
+
+# Switch between SynoCommunity package and SPK
+
+- backup settings via WebUI
+- remove old package completely (with wipe settings)
+- install new version
+- restore needeed settings
+- fix download directory permissions (if needed)
+
+## Known issues:
+
+- if you switch from our old native SPK package to SynoCommunity, you may get an error running the package. To fix - install latest testing SPK for your platform and remove it completely (this error fixed in latest SPK) OR uninstall SynoCommunity package completely (with wipe settings) and reinstall again.

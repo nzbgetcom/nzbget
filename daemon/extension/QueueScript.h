@@ -22,7 +22,7 @@
 #define QUEUESCRIPT_H
 
 #include "DownloadInfo.h"
-#include "ScriptConfig.h"
+#include "Extension.h"
 
 class QueueScriptCoordinator
 {
@@ -50,14 +50,14 @@ private:
 	class QueueItem
 	{
 	public:
-		QueueItem(int nzbId, ScriptConfig::Script* script, EEvent event) :
-			m_nzbId(nzbId), m_script(script), m_event(event) {}
+		QueueItem(int nzbId, std::shared_ptr<const Extension::Script> script, EEvent event) :
+			m_nzbId(nzbId), m_script(std::move(script)), m_event(event) {}
 		int GetNzbId() { return m_nzbId; }
-		ScriptConfig::Script* GetScript() { return m_script; }
+		const std::shared_ptr<const Extension::Script>& GetScript() const { return m_script; }
 		EEvent GetEvent() { return m_event; }
 	private:
 		int m_nzbId;
-		ScriptConfig::Script* m_script;
+		std::shared_ptr<const Extension::Script> m_script;
 		EEvent m_event;
 	};
 
@@ -69,7 +69,7 @@ private:
 	bool m_hasQueueScripts = false;
 	bool m_stopped = false;
 
-	bool UsableScript(ScriptConfig::Script& script, NzbInfo* nzbInfo, EEvent event);
+	bool UsableScript(std::shared_ptr<const Extension::Script> script, NzbInfo* nzbInfo, EEvent event);
 };
 
 extern QueueScriptCoordinator* g_QueueScriptCoordinator;

@@ -62,7 +62,7 @@ void SchedulerScriptController::Run()
 	}
 }
 
-void SchedulerScriptController::ExecuteScript(ScriptConfig::Script* script)
+void SchedulerScriptController::ExecuteScript(std::shared_ptr<const Extension::Script> script)
 {
 	if (!script->GetSchedulerScript())
 	{
@@ -77,7 +77,7 @@ void SchedulerScriptController::ExecuteScript(ScriptConfig::Script* script)
 
 	PrintMessage(Message::mkInfo, "Executing scheduler-script %s%s", script->GetName(), *taskName);
 
-	SetArgs({script->GetLocation()});
+	SetArgs({script->GetEntry()});
 
 	BString<1024> infoName("scheduler-script %s%s", script->GetName(), *taskName);
 	SetInfoName(infoName);

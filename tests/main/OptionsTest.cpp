@@ -34,20 +34,21 @@ public:
 	OptionsExtenderMock() : m_newsServers(0), m_feeds(0), m_tasks(0) {}
 
 protected:
-	virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
+	void AddNewsServer(int id, bool active, const char* name, const char* host,
 		int port, int ipVersion, const char* user, const char* pass, bool joinGroup, bool tls,
-		const char* cipher, int maxConnections, int retention, int level, int group, bool optional)
+		const char* cipher, int maxConnections, int retention, 
+		int level, int group, bool optional, unsigned int certVerificationfLevel) override
 	{
 		m_newsServers++;
 	}
 
-	virtual void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript)
+	void AddFeed(int id, const char* name, const char* url, int interval,
+		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript) override
 	{
 		m_feeds++;
 	}
 
-	virtual void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param)
+	void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param) override
 	{
 		m_tasks++;
 	}

@@ -4,9 +4,7 @@ on:
   push:
     branches:
     - develop
-    - main
-    tags:
-    - v*
+  workflow_dispatch:
 
 env:
   REGISTRY_IMAGE: nzbgetcom/nzbget
@@ -68,7 +66,7 @@ jobs:
         provenance: false
         push: true
         tags: ${{ steps.gen_tags.outputs.tags }}
-        outputs: "type=image,name=${{ env.REGISTRY_IMAGE }},annotation-index.org.opencontainers.image.description=NZBGet from nzbget.com - version ${{ steps.gen_tags.outputs.version }}"
+        outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }}"
         build-args: |
           "NZBGET_RELEASE=${{ github.ref_name }}"
           "MAKE_JOBS=2"
@@ -80,3 +78,12 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         repository: ${{ env.REGISTRY_IMAGE }}
         readme-filepath: ./docker/README.md
+
+    - name: Cleanup ghcr.io from outdated images
+      uses: miklinux/ghcr-cleanup-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        package-owner: nzbgetcom
+        package-name: nzbget
+        delete-orphans: true
+        dry-run: false
