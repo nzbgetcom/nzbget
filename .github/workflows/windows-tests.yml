@@ -31,7 +31,7 @@ jobs:
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DENABLE_TESTS=ON
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 2
 
     - name: Test

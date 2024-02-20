@@ -5,6 +5,8 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 endif()
 
 set_property(GLOBAL PROPERTY PACKAGE)
+set_property(GLOBAL PROPERTY LIBS)
+set_property(GLOBAL PROPERTY INCLUDES)
 
 set(VERSION "23.1")
 set(PACKAGE "nzbget")
@@ -20,6 +22,8 @@ set(CMAKE_CONFIGURATION_TYPES "Release" "Debug")
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 endif()
+
+option(BUILD_ONLY_TESTS "Build only tests (for CI)")
 
 project(
 	nzbget
@@ -57,12 +61,16 @@ find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
+set(LIBS Threads::Threads Boost::json LibXml2::LibXml2)
+set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+
 include_directories(${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
-include(daemon/sources.cmake)
-
-add_executable(${PACKAGE} ${SRC})
+if(NOT BUILD_ONLY_TESTS)
+	include(daemon/sources.cmake)
+	add_executable(${PACKAGE} ${SRC})
+endif()
 
 if(NOT WIN32)
 	if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86_64")
@@ -79,6 +87,9 @@ endif()
 
 if(WIN32)
 	include(cmake/windows.cmake)
+	if(NOT BUILD_ONLY_TESTS)
+		target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
+	endif()
 else()
 	include(cmake/posix.cmake)
 endif()
@@ -88,28 +99,25 @@ configure_file(
 	${CMAKE_BINARY_DIR}/config.h
 )
 
-target_link_libraries(${PACKAGE} PRIVATE
-	Threads::Threads 
-	Boost::json
-	LibXml2::LibXml2
-)
-target_include_directories(${PACKAGE} PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/connect
-	${CMAKE_SOURCE_DIR}/daemon/extension
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/frontend
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/daemon/nserv
-	${CMAKE_SOURCE_DIR}/daemon/postprocess
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
-)
+if(NOT BUILD_ONLY_TESTS)
+	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
+	target_include_directories(${PACKAGE} PRIVATE
+		${CMAKE_SOURCE_DIR}/daemon/connect
+		${CMAKE_SOURCE_DIR}/daemon/extension
+		${CMAKE_SOURCE_DIR}/daemon/feed
+		${CMAKE_SOURCE_DIR}/daemon/frontend
+		${CMAKE_SOURCE_DIR}/daemon/main
+		${CMAKE_SOURCE_DIR}/daemon/nntp
+		${CMAKE_SOURCE_DIR}/daemon/nserv
+		${CMAKE_SOURCE_DIR}/daemon/postprocess
+		${CMAKE_SOURCE_DIR}/daemon/queue
+		${CMAKE_SOURCE_DIR}/daemon/remote
+		${CMAKE_SOURCE_DIR}/daemon/util
+		${INCLUDES}
+	)
+endif()
 
-if(ENABLE_TESTS)
+if(ENABLE_TESTS OR BUILD_ONLY_TESTS)
 	include(CTest)
 	add_subdirectory(tests)
 endif()

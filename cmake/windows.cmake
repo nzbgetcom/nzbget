@@ -10,25 +10,23 @@ if(NOT DISABLE_TLS)
 	find_package(OpenSSL REQUIRED)
 	set(HAVE_OPENSSL 1)
 	set(HAVE_X509_CHECK_HOST 1)
-	target_link_libraries(${PACKAGE} PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-	target_include_directories(${PACKAGE} PRIVATE ${OPENSSL_INCLUDE_DIR})
+	set(LIBS ${LIBS} OpenSSL::SSL OpenSSL::Crypto)
+	set(INCLUDES ${INCLUDES} ${OPENSSL_INCLUDE_DIR})
 endif()
 
 find_package(ZLIB REQUIRED)
-target_link_libraries(${PACKAGE} PRIVATE ZLIB::ZLIB)
-target_include_directories(${PACKAGE} PRIVATE ${ZLIB_INCLUDE_DIRS})
+set(LIBS ${LIBS} ZLIB::ZLIB)
+set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
-target_link_libraries(${PACKAGE} PRIVATE Par2 Regex Yencode)
-target_include_directories(${PACKAGE} PRIVATE 
+set(LIBS ${LIBS} Par2 Regex Yencode)
+set(INCLUDES ${INCLUDES} 
 	${CMAKE_SOURCE_DIR}/lib/par2
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/daemon/windows
 	${CMAKE_SOURCE_DIR}/windows/resources
 )
-
-target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)
 set(HAVE_CTIME_R_3 1)
