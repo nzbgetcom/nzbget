@@ -1,10 +1,10 @@
 option(ENABLE_TESTS "Enable tests")
 option(DISABLE_TLS "Disable TLS")
 
-message(STATUS "Options:")
-message(STATUS "  BUILD_TYPE:   ${CMAKE_BUILD_TYPE}")
-message(STATUS "  ENABLE_TESTS: ${ENABLE_TESTS}")
-message(STATUS "  DISABLE_TLS:  ${DISABLE_TLS}")
+message(STATUS "BUILD OPTIONS:")
+message(STATUS "  BUILD TYPE:   ${CMAKE_BUILD_TYPE}")
+message(STATUS "  ENABLE TESTS: ${ENABLE_TESTS}")
+message(STATUS "  DISABLE TLS:  ${DISABLE_TLS}")
 
 if(NOT DISABLE_TLS)
 	find_package(OpenSSL REQUIRED)
