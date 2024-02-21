@@ -85,6 +85,8 @@ add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
 set(LIBS ${LIBS} Regex Yencode)
 set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/lib/regex ${CMAKE_SOURCE_DIR}/lib/yencode)
 
+include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
+
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
