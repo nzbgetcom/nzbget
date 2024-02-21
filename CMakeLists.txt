@@ -92,6 +92,9 @@ if(WIN32)
 	endif()
 else()
 	include(cmake/posix.cmake)
+	if(NOT BUILD_ONLY_TESTS)
+		include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
+	endif()
 endif()
 
 configure_file(
