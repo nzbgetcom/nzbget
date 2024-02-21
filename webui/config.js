@@ -2980,7 +2980,6 @@ var UpdateDialog = (new function($)
 
 
 		var installedVer = installedVersion;
-		var installedTesting = installedVersion.indexOf('testing') > -1;
 
 		var canInstallStable = UpdateInfo['stable-version'] &&
 			(installedVer < UpdateInfo['stable-version']);
@@ -3009,11 +3008,9 @@ var UpdateDialog = (new function($)
 		Util.show('#UpdateDialog_CheckFailed', hasUpdateSource && !hasUpdateInfo);
 		Util.show('#UpdateDialog_DownloadRow,#UpdateDialog_DownloadAvail', canDownload && !canUpdate);
 		$('#UpdateDialog_AvailRow').toggleClass('hide', !hasUpdateInfo);
-
-		if (!foreground &&
-			(((canInstallStable || canDownloadStable) && notificationAllowed('stable')) ||
-			 (Options.option('UpdateCheck') === 'testing' && installedRev > 0 &&
-			  (canInstallTesting || canDownloadTesting) && notificationAllowed('testing'))))
+		var canUpdateStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
+		var canUpdateTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
+		if (canUpdateStable || canUpdateTesting)
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
 		}
