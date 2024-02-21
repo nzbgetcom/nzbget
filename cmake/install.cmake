@@ -29,4 +29,7 @@ install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CONF_FILE_DEST})
 
 if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf)
 	install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
+else()
+	message(STATUS "nzbget.conf is already installed in ${CMAKE_INSTALL_PREFIX}/etc")
+	message(STATUS "If you want to overwrite it, then do it manually with caution")
 endif()
