@@ -38,6 +38,6 @@ endif()
 add_custom_target(uninstall
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${DOC_FILES_DEST}
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${SHARE_DIR}
-	COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_FILE_DEST}/${PACKAGE}
+	COMMAND ${CMAKE_COMMAND} -E remove ${BIN_FILE_DEST}/${PACKAGE}
 	COMMENT "Uninstalling" ${PACKAGE}
 )
