@@ -2,11 +2,12 @@ set(DOC_FILES
 	${CMAKE_SOURCE_DIR}/ChangeLog	
 	${CMAKE_SOURCE_DIR}/COPYING
 )
+set(SHARE_DIR ${CMAKE_INSTALL_PREFIX}/share/${PACKAGE})
 set(CONF_FILE ${CMAKE_SOURCE_DIR}/nzbget.conf)
 set(WEBUI_DIR ${CMAKE_SOURCE_DIR}/webui)
-set(DOC_FILES_DEST ${CMAKE_INSTALL_PREFIX}/share/doc)
-set(CONF_FILE_DEST ${CMAKE_INSTALL_PREFIX}/share/nzbget)
-set(WEBUI_DIR_DEST ${CMAKE_INSTALL_PREFIX}/share/nzbget)
+set(DOC_FILES_DEST ${SHARE_DIR}/doc)
+set(CONF_FILE_DEST ${SHARE_DIR})
+set(WEBUI_DIR_DEST ${SHARE_DIR})
 set(BIN_FILE_DEST ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(TARGETS ${PACKAGE} PERMISSIONS 
@@ -33,3 +34,10 @@ else()
 	message(STATUS "nzbget.conf is already installed in ${CMAKE_INSTALL_PREFIX}/etc")
 	message(STATUS "If you want to overwrite it, then do it manually with caution")
 endif()
+
+add_custom_target(uninstall
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${DOC_FILES_DEST}
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${SHARE_DIR}
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${BIN_FILE_DEST}/${PACKAGE}
+	COMMENT "Uninstalling" ${PACKAGE}
+)
