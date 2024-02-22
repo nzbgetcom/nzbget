@@ -97,7 +97,7 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
+  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev liblzma-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
 ```
 ### FreeBSD: 
 ```
