@@ -37,9 +37,30 @@ message(STATUS "  DISABLE SIGCHLD HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
 
 if(ENABLE_STATIC)
 	set(BUILD_SHARED_LIBS OFF)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" CACHE STRING "" FORCE)
-	set(CMAKE_EXE_LINKER_FLAGS "-static -static-libgcc -static-libstdc++" CACHE STRING "" FORCE)
+	set(Boost_USE_STATIC_LIBS ON)
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
+	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_START_STATIC ON)
+    set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_END_STATIC ON)
+	target_link_options(${PACKAGE} PRIVATE "-static -static-libgcc -static-libstdc++")
+endif()
+
+find_package(Threads REQUIRED)
+find_package(LibXml2 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS json)
+
+set(LIBS Threads::Threads Boost::json)
+set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+
+if(ENABLE_STATIC)
+	set(LIBS ${LIBS} 
+		${LIBXML2_INCLUDE_DIR}/libxml2  
+		${LIBXML2_INCLUDE_DIR}/libicuuc.a
+		${LIBXML2_INCLUDE_DIR}/libicudata.a
+		${LIBXML2_INCLUDE_DIR}/libm.a
+		${LIBXML2_INCLUDE_DIR}/lz.a
+	)
+elseif()
+	set(LIBS ${LIBS} LibXml2::LibXml2)
 endif()
 
 if(NOT DISABLE_TLS)
@@ -55,8 +76,12 @@ if(NOT DISABLE_TLS)
 		if(NETTLE_LIBRARY)
 			set(HAVE_NETTLE 1)
 		endif()
-		set(LIBS ${LIBS} GnuTLS::GnuTLS ${NETTLE_LIBRARY})
 		set(INCLUDES ${INCLUDES} ${GNUTLS_INCLUDE_DIRS})
+		if(ENABLE_STATIC)
+
+		elseif()
+			set(LIBS ${LIBS} GnuTLS::GnuTLS ${NETTLE_LIBRARY})
+		endif()
 	endif()
 endif()
 
@@ -69,14 +94,23 @@ if(NOT DISABLE_CURSES)
 	if(CURSES_HAVE_NCURSES_NCURSES_H)
 		set(HAVE_NCURSES_NCURSES_H 1)
 	endif()
-	set(LIBS ${LIBS} ${CURSES_LIBRARIES})
 	set(INCLUDES ${INCLUDES} ${CURSES_INCLUDE_DIRS})
+	if(ENABLE_STATIC)
+		set(LIBS ${LIBS} ${CURSES_INCLUDE_DIRS}/libncurses.a ${CURSES_INCLUDE_DIRS}/libtinfo.a)
+	elseif()
+		set(LIBS ${LIBS} ${CURSES_LIBRARIES})
+	endif()
 endif()
 
 if(NOT DISABLE_GZIP)
 	find_package(ZLIB REQUIRED)
 	set(LIBS ${LIBS} ZLIB::ZLIB)
 	set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
+	if(ENABLE_STATIC)
+		set(LIBS ${LIBS} ${CURSES_INCLUDE_DIRS}/libz.a)
+	elseif()
+		set(LIBS ${LIBS} ${CURSES_LIBRARIES})
+	endif()
 endif()
 
 if(NOT DISABLE_PARCHECK)

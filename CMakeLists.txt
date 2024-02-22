@@ -59,13 +59,6 @@ set(CMAKE_C_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
 
-find_package(Threads REQUIRED)
-find_package(LibXml2 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
-
-set(LIBS Threads::Threads Boost::json LibXml2::LibXml2)
-set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
-
 include_directories(${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
