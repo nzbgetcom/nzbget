@@ -139,6 +139,10 @@ Installation from the source distribution archive (nzbget-VERSION.tar.gz):
 ```
   cmake --install .
 ```
+  - Uninstall:
+```
+  cmake --build . --target uninstall
+```
 
 ### Configure-options
 ---------------------
