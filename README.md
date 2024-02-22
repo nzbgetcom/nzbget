@@ -36,7 +36,7 @@ More information available at https://nzbget.com
 We provide a easy-to-use installer for each platform we support.
 Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
-We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
+Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
 
@@ -52,7 +52,7 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 `Windows`: Windows 7 and later, 32 or 64 Bit.
 
-`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64)
+`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), MIPS (mipseb mipsel), PowerPC (ppc6xx ppc500), RISC-V 64-bit (riscv64)
 
 `macOS`: macOS 10.13 High Sierra and later, Intel / Apple Silicon.
 
@@ -60,11 +60,7 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 [General instructions](INSTALLATION.md)
 
-[Linux cross-compiling / buildroot](linux/build-info.md)
-
-[macOS](osx/build-info.md)
-
-[Synology](synology/build-info.md)
+[Linux](linux/build-info.md) [macOS](osx/build-info.md) [Synology](synology/build-info.md) [QNAP](qnap/build-info.md)
 
 ## Contribution
 
