@@ -40,8 +40,8 @@ if(ENABLE_STATIC)
 	set(Boost_USE_STATIC_LIBS ON)
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
 	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_START_STATIC ON)
-    set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_END_STATIC ON)
-	target_link_options(${PACKAGE} PRIVATE "-static -static-libgcc -static-libstdc++")
+	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_END_STATIC ON)
+	target_link_options(${PACKAGE} PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
 
 find_package(Threads REQUIRED)
@@ -52,13 +52,7 @@ set(LIBS Threads::Threads Boost::json)
 set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
 if(ENABLE_STATIC)
-	set(LIBS ${LIBS} 
-		${LIBXML2_INCLUDE_DIR}/libxml2  
-		${LIBXML2_INCLUDE_DIR}/libicuuc.a
-		${LIBXML2_INCLUDE_DIR}/libicudata.a
-		${LIBXML2_INCLUDE_DIR}/libm.a
-		${LIBXML2_INCLUDE_DIR}/lz.a
-	)
+	set(LIBS ${LIBS} libxml2.a libicuuc.a libicudata.a libicudata.a liblzma.a)
 elseif()
 	set(LIBS ${LIBS} LibXml2::LibXml2)
 endif()
@@ -78,7 +72,7 @@ if(NOT DISABLE_TLS)
 		endif()
 		set(INCLUDES ${INCLUDES} ${GNUTLS_INCLUDE_DIRS})
 		if(ENABLE_STATIC)
-
+			set(LIBS ${LIBS} libnettle.a libgnutls.a)
 		elseif()
 			set(LIBS ${LIBS} GnuTLS::GnuTLS ${NETTLE_LIBRARY})
 		endif()
@@ -96,7 +90,7 @@ if(NOT DISABLE_CURSES)
 	endif()
 	set(INCLUDES ${INCLUDES} ${CURSES_INCLUDE_DIRS})
 	if(ENABLE_STATIC)
-		set(LIBS ${LIBS} ${CURSES_INCLUDE_DIRS}/libncurses.a ${CURSES_INCLUDE_DIRS}/libtinfo.a)
+		set(LIBS ${LIBS} libncurses.a libtinfo.a)
 	elseif()
 		set(LIBS ${LIBS} ${CURSES_LIBRARIES})
 	endif()
@@ -104,12 +98,11 @@ endif()
 
 if(NOT DISABLE_GZIP)
 	find_package(ZLIB REQUIRED)
-	set(LIBS ${LIBS} ZLIB::ZLIB)
 	set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
 	if(ENABLE_STATIC)
-		set(LIBS ${LIBS} ${CURSES_INCLUDE_DIRS}/libz.a)
+		set(LIBS ${LIBS} libz.a)
 	elseif()
-		set(LIBS ${LIBS} ${CURSES_LIBRARIES})
+		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 endif()
 
