@@ -97,15 +97,16 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-  # apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
+  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
 ```
 ### FreeBSD: 
 ```
-  # pkg install cmake ncurses openssl libxml2 zlib boost-libs
+  pkg install cmake ncurses openssl libxml2 zlib boost-libs
 ```
 ### macOS:
 ```
-  # brew install cmake ncurses openssl libxml2 zlib boost
+  xcode-select --install
+  brew install cmake ncurses openssl libxml2 zlib boost
 ```
 
 ## 4. Installation on POSIX
