@@ -17,7 +17,6 @@ target_link_libraries(UtilTests PRIVATE
 	Threads::Threads
 	ZLIB::ZLIB
 	Yencode
-	Regex
 	LibXml2::LibXml2
 )
 

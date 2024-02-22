@@ -58,7 +58,7 @@ If you have downloaded binaries you can just jump to section
 NZBGet is developed on a linux-system, but it runs on other
 POSIX platforms.
 
-NZBGet absolutely needs the following libraries:
+To build NZBGet you will need:
 
 For configuring and building:
  - [CMake](https://cmake.org/)
@@ -90,8 +90,7 @@ And the following libraries are optional:
   For tests:
    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
 
-All these libraries are included in modern POSIX distributions and
-should be available as installable packages. Please note that you also 
+Please note that you also 
 need the developer packages for these libraries too, they package names 
 have often suffix "dev" or "devel". On other systems you may need to 
 download the libraries at the given URLs and compile them (see hints below).
@@ -172,7 +171,7 @@ You may run configure with additional arguments:
 ```
   cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
 ``` 
-  - Build in debug-mode, if you want to see and log debug-messages.
+  - For debug build.
 ```
   cmake .. -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -209,21 +208,25 @@ We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
 ``` 
   mkdir build
   cd build
-  cmake ..
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
-  - Build:
+  - For debug build.
 ```
-  cmake --build . --config Release
+  cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+  - If (Debug):
+```
+  cmake --build . --config Debug
 ```
 
 You may run configure with additional arguments:
   - Enable tests:
 ```
-  cmake .. -DENABLE_TESTS=ON
+  cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
   - Disable TLS. Use this option if you can not neither OpenSSL nor GnuTLS.
 ```
-  cmake .. -DDISABLE_TLS=ON
+  cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
 
 ## 6. Configuration
