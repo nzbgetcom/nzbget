@@ -44,6 +44,7 @@ if(ENABLE_STATIC)
 	set(INCLUDES $ENV{INCLUDES})
 	set(HAVE_NCURSES_H 1)
 	set(HAVE_X509_CHECK_HOST 1)
+	set(HAVE_OPENSSL 1)
 else()
 
 	find_package(Threads REQUIRED)
