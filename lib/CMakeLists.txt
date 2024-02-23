@@ -20,10 +20,7 @@ target_include_directories(Yencode PUBLIC
 	${CMAKE_CURRENT_SOURCE_DIR}/yencode
 	${CMAKE_CURRENT_SOURCE_DIR}/regex
 	${CMAKE_SOURCE_DIR}/daemon/main
-	${LIBXML2_INCLUDE_DIR}
-	${ZLIB_INCLUDE_DIR}
-	${OPENSSL_INCLUDE_DIR}
-	${GNUTLS_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 set_source_files_properties(
@@ -78,10 +75,6 @@ if(NOT DISABLE_PARCHECK)
 		${CMAKE_CURRENT_SOURCE_DIR}/regex
 		${CMAKE_SOURCE_DIR}/daemon/main
 		${CMAKE_SOURCE_DIR}/daemon/util
-		${LIBXML2_INCLUDE_DIR}
-		${Iconv_INCLUDE_DIR}
-		${Boost_INCLUDE_DIR}
-		${OPENSSL_INCLUDE_DIR}
-		${GNUTLS_INCLUDE_DIR}
+		${INCLUDES}
 	)
 endif()

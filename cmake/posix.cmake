@@ -37,13 +37,13 @@ message(STATUS "  DISABLE SIGCHLD HANDLER: ${DISABLE_SIGCHLD_HANDLER}")
 
 if(ENABLE_STATIC)
 	set(BUILD_SHARED_LIBS OFF)
-	set(Boost_USE_STATIC_LIBS ON)
-	set(OPENSSL_USE_STATIC_LIBS TRUE)
 	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_START_STATIC ON)
 	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_END_STATIC ON)
 	target_link_options(${PACKAGE} PRIVATE -static)
 	set(LIBS $ENV{STATIC_LIBS})
 	set(INCLUDES $ENV{INCLUDES})
+	set(HAVE_NCURSES_H 1)
+	set(HAVE_X509_CHECK_HOST 1)
 else()
 
 	find_package(Threads REQUIRED)
@@ -272,7 +272,7 @@ check_cxx_source_compiles("
 	}" HAVE_SC_NPROCESSORS_ONLN)
 
 # Check TLS/SSL
-if(USE_OPENSSL)
+if(USE_OPENSSL AND NOT ENABLE_STATIC)
 	check_library_exists(OpenSSL::Crypto X509_check_host "" HAVE_X509_CHECK_HOST)
 endif()
 
