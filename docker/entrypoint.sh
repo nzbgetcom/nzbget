@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 set -e
 
+# default values
+: "${NZBGET_CHMOD_DOWNLOADS:=1}"
+
 # create downloads if not exist
 if [ ! -d /downloads ]; then
     mkdir -p /downloads
@@ -35,5 +38,7 @@ groupmod -o -g "$PGID" users
 usermod -o -u "$PUID" user
 
 chown -R user:users /config
-chown -R user:users /downloads
+if [[ "${NZBGET_CHMOD_DOWNLOADS}" == "1" ]]; then
+  chown -R user:users /downloads
+fi
 su -p user -c "/app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}"
