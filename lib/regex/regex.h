@@ -22,7 +22,6 @@
 
 #pragma once
 #include <sys/types.h>
-#include <stdlib.h>
 
 /* Allow the use in C++ code.  */
 #ifdef __cplusplus

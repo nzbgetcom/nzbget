@@ -58,6 +58,9 @@
    #undefs RE_DUP_MAX and sets it to the right value.  */
 #include <limits.h>
 #include <regex.h>
+#ifdef WIN32
+#include <malloc.h>
+#endif
 
 //#ifdef __cplusplus
 //extern "C" {
