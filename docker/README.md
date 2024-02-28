@@ -36,7 +36,6 @@ services:
       - TZ=Europe/London
       - NZBGET_USER=nzbget        #optional
       - NZBGET_PASS=tegbzn6789    #optional
-      - NZBGET_CHOWN_DOWNLOADS=0  #optional
     volumes:
       - /path/to/config:/config
       - /path/to/downloads:/downloads #optional
@@ -54,7 +53,6 @@ docker run -d \
   -e TZ=Europe/London \
   -e NZBGET_USER=nzbget `#optional` \
   -e NZBGET_PASS=tegbzn6789 `#optional` \
-  -e NZBGET_CHOWN_DOWNLOADS=0  `optional` \
   -p 6789:6789 \
   -v /path/to/config:/config \
   -v /path/to/downloads:/downloads `#optional` \
@@ -66,14 +64,13 @@ docker run -d \
 
 NZBGet container can be configured by passing environment variables to it. This can be done in docker-compose mode by specifying `environment:` and in cli mode by using -e switch.
 
-| Parameter	             | Description
-|:-----------------------|-
-| PUID                   | UserID (see below)
-| PGID                   | GroupID (see below)
-| TZ                     | Timezone
-| NZBGET_USER            | User name for web auth
-| NZBGET_PASS            | Password for web auth
-| NZBGET_CHOWN_DOWNLOADS | On start-up, the container will `chown` the files in the `/downloads` folder. To skip this, set `NZB_CHMOD_DOWNLOADS` to `0` (Default value is `1`)
+| Parameter	   | Description
+|:-------------|-
+| PUID         | UserID (see below)
+| PGID         | GroupID (see below)
+| TZ           | Timezone
+| NZBGET_USER  | User name for web auth
+| NZBGET_PASS  | Password for web auth
 
 # User / Group Identifiers
 
