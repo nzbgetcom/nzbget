@@ -34,8 +34,8 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/London
-      - NZBGET_USER=nzbget        #optional
-      - NZBGET_PASS=tegbzn6789    #optional
+      - NZBGET_USER=nzbget     #optional
+      - NZBGET_PASS=tegbzn6789 #optional
     volumes:
       - /path/to/config:/config
       - /path/to/downloads:/downloads #optional
@@ -64,13 +64,13 @@ docker run -d \
 
 NZBGet container can be configured by passing environment variables to it. This can be done in docker-compose mode by specifying `environment:` and in cli mode by using -e switch.
 
-| Parameter	   | Description
-|:-------------|-
-| PUID         | UserID (see below)
-| PGID         | GroupID (see below)
-| TZ           | Timezone
-| NZBGET_USER  | User name for web auth
-| NZBGET_PASS  | Password for web auth
+| Parameter	  | Description
+|:------------|-
+| PUID        | UserID (see below)
+| PGID        | GroupID (see below)
+| TZ          | Timezone
+| NZBGET_USER | User name for web auth
+| NZBGET_PASS | Password for web auth
 
 # User / Group Identifiers
 
