@@ -49,10 +49,13 @@ else()
 	if(NOT Boost_FOUND)
 		message(STATUS "Boost JSON is not found. Fetching from github...")
 		include(FetchContent)
+		set(FETCHCONTENT_QUIET FALSE)
 		FetchContent_Declare(
 			boost
 			GIT_REPOSITORY https://github.com/boostorg/boost.git
 			GIT_TAG boost-1.84.0
+			GIT_PROGRESS TRUE
+			GIT_SHALLOW  TRUE
 		)
 		FetchContent_MakeAvailable(boost)
 	endif()
