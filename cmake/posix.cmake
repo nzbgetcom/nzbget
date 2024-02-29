@@ -33,10 +33,8 @@ message(STATUS "  DISABLE GZIP:     ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK: ${DISABLE_PARCHECK}")
 
 if(ENABLE_STATIC)
-	set(BUILD_SHARED_LIBS OFF)
-	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_START_STATIC ON)
-	set_target_properties(${PACKAGE} PROPERTIES LINK_SEARCH_END_STATIC ON)
 	target_link_options(${PACKAGE} PRIVATE -static -s)
+	set(BUILD_SHARED_LIBS OFF)
 	set(LIBS $ENV{LIBS})
 	set(INCLUDES $ENV{INCLUDES})
 	set(HAVE_NCURSES_H 1)
@@ -46,10 +44,21 @@ else()
 
 	find_package(Threads REQUIRED)
 	find_package(LibXml2 REQUIRED)
-	find_package(Boost REQUIRED COMPONENTS json)
 
-	set(LIBS Threads::Threads Boost::json LibXml2::LibXml2)
-	set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+	find_package(Boost COMPONENTS json)
+	if(NOT Boost_FOUND)
+		message(STATUS "Boost JSON is not found. Fetching from github...")
+		include(FetchContent)
+		FetchContent_Declare(
+			boost
+			GIT_REPOSITORY https://github.com/boostorg/boost.git
+			GIT_TAG boost-1.84.0
+		)
+		FetchContent_MakeAvailable(boost)
+	endif()
+
+	set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2)
+	set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
 	if(NOT DISABLE_TLS)
 		if(USE_OPENSSL AND NOT USE_GNUTLS)
