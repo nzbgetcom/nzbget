@@ -54,10 +54,6 @@ else()
 	set(_USE_32BIT_TIME_T 1) 
 endif()
 
-if(NOT DISABLE_SIGCHLD_HANDLER)
-	set(SIGCHLD_HANDLER 1) 
-endif()
-
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(_CRTDBG_MAP_ALLOC 1) 
 endif()
