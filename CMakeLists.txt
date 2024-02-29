@@ -19,6 +19,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CONFIGURATION_TYPES "Release" "Debug")
 
+add_compile_definitions(HAVE_CONFIG_H=1)
+
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 endif()

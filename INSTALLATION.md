@@ -97,7 +97,7 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev liblzma-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
+  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
 ```
 ### FreeBSD: 
 ```
@@ -194,17 +194,21 @@ Also required are:
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
    - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+   - [Boost.Optional](https://www.boost.org/doc/libs/1_84_0/libs/optional/doc/html/index.html)
 For tests:
    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
 
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
 
 ```
-  vcpkg install openssl:x64-windows-static
-  vcpkg install libxml2:x64-windows-static
-  vcpkg install zlib:x64-windows-static
-  vcpkg install boost-json:x64-windows-static
-  vcpkg install boost-test:x64-windows-static
+  vcpkg install openssl:<x64|x86>-windows-static
+  vcpkg install libxml2:<x64|x86>-windows-static
+  vcpkg install zlib:<x64|x86>-windows-static
+  vcpkg install boost-json:<x64|x86>-windows-static
+  vcpkg install boost-optional:<x64|x86>-windows-static
+
+  // For tests
+  vcpkg install boost-test:<x64|x86>-windows-static
 ```
 
   - Unzip the nzbget-source:
@@ -215,7 +219,11 @@ We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
   cd build
   cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
-  - For debug build.
+  - For Win32:
+```
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static -A Win32
+```
+  - For debug build:
 ```
   cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
