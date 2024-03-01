@@ -5,9 +5,6 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 endif()
 
 set_property(GLOBAL PROPERTY PACKAGE)
-set_property(GLOBAL PROPERTY Yencode)
-set_property(GLOBAL PROPERTY Par2)
-set_property(GLOBAL PROPERTY Regex)
 set_property(GLOBAL PROPERTY LIBS)
 set_property(GLOBAL PROPERTY INCLUDES)
 
