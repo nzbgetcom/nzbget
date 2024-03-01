@@ -10,6 +10,8 @@ message(STATUS "  BUILD TYPE:   ${CMAKE_BUILD_TYPE}")
 message(STATUS "  ENABLE TESTS: ${ENABLE_TESTS}")
 message(STATUS "  DISABLE TLS:  ${DISABLE_TLS}")
 
+set(Boost_USE_STATIC_LIBS ON)
+
 find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
