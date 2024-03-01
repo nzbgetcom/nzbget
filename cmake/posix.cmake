@@ -32,14 +32,13 @@ message(STATUS "  DISABLE CURSES:   ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:     ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK: ${DISABLE_PARCHECK}")
 
-set(LIBS $ENV{LIBS})
-set(INCLUDES $ENV{INCLUDES})
-
 if(ENABLE_STATIC)
 	set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-static" CACHE STRING "" FORCE)
 	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-static -s" CACHE STRING "" FORCE)
 	set(BUILD_SHARED_LIBS OFF)
-	add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
+	set(LIBS $ENV{LIBS})
+	set(INCLUDES $ENV{INCLUDES})
+	include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 else()
 	find_package(Threads REQUIRED)
 	find_package(LibXml2 REQUIRED)
@@ -73,8 +72,7 @@ else()
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
-
+	include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 	find_package(Boost COMPONENTS json)
 
 	if(NOT Boost_JSON_FOUND)
