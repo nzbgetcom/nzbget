@@ -29,9 +29,9 @@ file(GLOB PostprocessTestsSrc
 add_executable(PostprocessTests ${PostprocessTestsSrc})
 target_link_libraries(PostprocessTests PRIVATE
 	ZLIB::ZLIB
-	Yencode
-	Par2
-	Regex
+	yencode
+	par2
+	regex
 	OpenSSL::SSL
 	OpenSSL::Crypto
 	LibXml2::LibXml2

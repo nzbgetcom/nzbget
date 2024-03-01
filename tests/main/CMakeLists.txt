@@ -15,8 +15,8 @@ add_executable(MainTests
 )
 target_link_libraries(MainTests PRIVATE 
 	ZLIB::ZLIB
-	Yencode
-	Regex
+	yencode
+	regex
 	LibXml2::LibXml2
 )
 target_include_directories(MainTests PRIVATE

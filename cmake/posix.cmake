@@ -72,20 +72,25 @@ else()
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 	find_package(Boost COMPONENTS json)
 
 	if(NOT Boost_JSON_FOUND)
 		message(STATUS "The Boost library will be installed from github")
 		include(ExternalProject)
+
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
+
+		include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+
 		add_dependencies(${PACKAGE} boost)
-		add_dependencies(Yencode boost)
-		add_dependencies(Par2 boost)
-		add_dependencies(Regex boost)
+		add_dependencies(yencode boost)
+		add_dependencies(par2 boost)
+		add_dependencies(regex boost)
 	elseif()
 		set(LIBS ${LIBS} Boost::json)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
+
+		include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 	endif()
 endif()
 

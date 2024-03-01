@@ -16,8 +16,8 @@ add_executable(FeedTest
 )
 target_link_libraries(FeedTest PRIVATE
 	ZLIB::ZLIB
-	Yencode
-	Regex
+	yencode
+	regex
 	LibXml2::LibXml2
 )
 target_include_directories(FeedTest PRIVATE

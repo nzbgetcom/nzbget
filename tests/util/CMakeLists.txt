@@ -13,10 +13,10 @@ file(GLOB UtilTestSrc
 
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE
-	Regex
+	regex
 	Threads::Threads
 	ZLIB::ZLIB
-	Yencode
+	yencode
 	LibXml2::LibXml2
 )
 

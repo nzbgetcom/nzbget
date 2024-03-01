@@ -33,10 +33,10 @@ file(GLOB ExtensionSrc
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE
-	Regex
+	regex
 	Threads::Threads
 	ZLIB::ZLIB
-	Yencode
+	yencode
 	OpenSSL::SSL
 	Boost::json
 	${LIBXML2_LIBRARIES}

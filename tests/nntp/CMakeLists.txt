@@ -15,9 +15,9 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
 target_link_libraries(ServerPoolTest PRIVATE
-	Par2
-	Yencode
-	Regex
+	par2
+	yencode
+	regex
 	Threads::Threads
 	OpenSSL::SSL
 	ZLIB::ZLIB

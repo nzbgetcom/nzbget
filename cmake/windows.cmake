@@ -32,11 +32,7 @@ set(LIBS ${LIBS} ZLIB::ZLIB)
 set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
-set(LIBS ${LIBS} Par2 Regex Yencode)
 set(INCLUDES ${INCLUDES} 
-	${CMAKE_SOURCE_DIR}/lib/par2
-	${CMAKE_SOURCE_DIR}/lib/regex
-	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/daemon/windows
 	${CMAKE_SOURCE_DIR}/windows/resources
 )

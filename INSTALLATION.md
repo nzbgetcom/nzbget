@@ -70,12 +70,11 @@ For configuring and building:
 Libraries:
  - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
  - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+> If you can't install Boost.Json on your system, jsut skip it. CMake will take care of it.
 
 And the following libraries are optional:
 
   For curses-output-mode (enabled by default):
-   - libcurses   (usually part of commercial systems)
-     or (better)
    - [ncurses](https://invisible-island.net/ncurses)
     
   For encrypted connections (TLS/SSL):
@@ -180,6 +179,17 @@ You may run configure with additional arguments:
 ```
   cmake .. -DCMAKE_BUILD_TYPE=Debug
 ```
+  - To get a static binary, 
+```
+  cmake .. -DENABLE_STATIC=ON
+```
+  `LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default
+```
+  export LIBS="-lncurses -ltinfo -lboost_json -lxml2 -lz -lm -lssl -lcrypto -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+  export INCLUDES="/usr/include/;/usr/include/libxml2/"
+  cmake .. -DENABLE_STATIC=ON
+```
+
 
 ## 5. Compiling on Windows
 
@@ -206,18 +216,16 @@ We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
   vcpkg install zlib:<x64|x86>-windows-static
   vcpkg install boost-json:<x64|x86>-windows-static
   vcpkg install boost-optional:<x64|x86>-windows-static
-
-  // For tests
+```
+  - For tests:
+```
   vcpkg install boost-test:<x64|x86>-windows-static
 ```
-
-  - Unzip the nzbget-source:
-
   - Configure:
 ``` 
   mkdir build
   cd build
-  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -A x64
 ```
   - For Win32:
 ```
@@ -225,9 +233,9 @@ We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
 ```
   - For debug build:
 ```
-  cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Debug 
 ```
-  - If (Debug):
+  - If Debug:
 ```
   cmake --build . --config Debug
 ```

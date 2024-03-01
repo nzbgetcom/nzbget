@@ -16,4 +16,4 @@ ExternalProject_add(
 )
 
 set(LIBS ${LIBS} ${ROOT}build/lib/libboost_json.a)
-set(INCLUDES ${INCLUDES} ${ROOT}build/include)
+set(INCLUDES ${INCLUDES} ${ROOT}build/include/)

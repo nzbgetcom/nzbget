@@ -14,8 +14,8 @@ add_executable(NzbFileTest
 )
 target_link_libraries(NzbFileTest PRIVATE
 	ZLIB::ZLIB
-	Yencode
-	Regex
+	yencode
+	regex
 	LibXml2::LibXml2
 )
 target_include_directories(NzbFileTest PRIVATE
