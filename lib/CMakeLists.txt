@@ -1,3 +1,14 @@
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86_64")
+	set(SSE2_CXXFLAGS "-msse2")
+	set(SSSE3_CXXFLAGS "-mssse3")
+	set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul")
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "arm*")
+	set(NEON_CXXFLAGS "-mfpu=neon")
+	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
+elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive")
+endif()
+
 add_library(Regex STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/regex/regex.c
 )
