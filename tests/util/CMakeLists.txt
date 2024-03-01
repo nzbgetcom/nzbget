@@ -12,23 +12,8 @@ file(GLOB UtilTestSrc
 )
 
 add_executable(UtilTests ${UtilTestSrc})
-target_link_libraries(UtilTests PRIVATE
-	regex
-	Threads::Threads
-	ZLIB::ZLIB
-	yencode
-	LibXml2::LibXml2
-)
+target_link_libraries(UtilTests PRIVATE	${LIBS})
 
-target_include_directories(UtilTests PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/lib/regex
-	${CMAKE_SOURCE_DIR}/lib/yencode
-	${ZLIB_INCLUDE_DIR}
-	${OPENSSL_INCLUDE_DIR}
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
-)
+target_include_directories(UtilTests PRIVATE ${INCLUDES})
 
 add_test(NAME UtilTests COMMAND $<TARGET_FILE:UtilTests> --log_level=message)

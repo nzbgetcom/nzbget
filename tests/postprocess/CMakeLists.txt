@@ -27,15 +27,7 @@ file(GLOB PostprocessTestsSrc
 )
 
 add_executable(PostprocessTests ${PostprocessTestsSrc})
-target_link_libraries(PostprocessTests PRIVATE
-	ZLIB::ZLIB
-	yencode
-	par2
-	regex
-	OpenSSL::SSL
-	OpenSSL::Crypto
-	LibXml2::LibXml2
-)
+target_link_libraries(PostprocessTests PRIVATE ${LIBS})
 target_include_directories(PostprocessTests PRIVATE
 	../suite
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -48,8 +40,7 @@ target_include_directories(PostprocessTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/lib/par2
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 file(COPY ../testdata/rarrenamer DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -14,15 +14,7 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
-target_link_libraries(ServerPoolTest PRIVATE
-	par2
-	yencode
-	regex
-	Threads::Threads
-	OpenSSL::SSL
-	ZLIB::ZLIB
-	LibXml2::LibXml2
-)
+target_link_libraries(ServerPoolTest PRIVATE ${LIBS})
 target_include_directories(ServerPoolTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
 	${CMAKE_SOURCE_DIR}/daemon/nntp
@@ -33,9 +25,7 @@ target_include_directories(ServerPoolTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/lib/par2
-	${OPENSSL_INCLUDE_DIR}
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 add_test(NAME ServerPoolTest COMMAND $<TARGET_FILE:ServerPoolTest> --log_level=message)

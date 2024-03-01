@@ -13,12 +13,7 @@ add_executable(MainTests
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 )
-target_link_libraries(MainTests PRIVATE 
-	ZLIB::ZLIB
-	yencode
-	regex
-	LibXml2::LibXml2
-)
+target_link_libraries(MainTests PRIVATE ${LIBS})
 target_include_directories(MainTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
 	${CMAKE_SOURCE_DIR}/daemon/util
@@ -28,9 +23,7 @@ target_include_directories(MainTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/lib/regex
-	${OPENSSL_INCLUDE_DIR}
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 add_test(NAME MainTests COMMAND $<TARGET_FILE:MainTests> --log_level=message)

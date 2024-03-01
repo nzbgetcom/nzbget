@@ -12,12 +12,7 @@ add_executable(NzbFileTest
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 )
-target_link_libraries(NzbFileTest PRIVATE
-	ZLIB::ZLIB
-	yencode
-	regex
-	LibXml2::LibXml2
-)
+target_link_libraries(NzbFileTest PRIVATE ${LIBS})
 target_include_directories(NzbFileTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
 	${CMAKE_SOURCE_DIR}/daemon/util
@@ -26,9 +21,7 @@ target_include_directories(NzbFileTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/lib/yencode
-	${OPENSSL_INCLUDE_DIR}
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 file(COPY ../testdata/nzbfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

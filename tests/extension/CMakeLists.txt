@@ -32,15 +32,7 @@ file(GLOB ExtensionSrc
 )
 
 add_executable(ExtensionTests ${ExtensionSrc})
-target_link_libraries(ExtensionTests PRIVATE
-	regex
-	Threads::Threads
-	ZLIB::ZLIB
-	yencode
-	OpenSSL::SSL
-	Boost::json
-	${LIBXML2_LIBRARIES}
-)
+target_link_libraries(ExtensionTests PRIVATE ${LIBS})
 
 target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -54,10 +46,7 @@ target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
-	${ZLIB_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
-	${OPENSSL_INCLUDE_DIR}
-	${Boost_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 file(COPY ../testdata/extension/manifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
