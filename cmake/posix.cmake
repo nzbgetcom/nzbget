@@ -86,7 +86,7 @@ else()
 		add_dependencies(yencode boost)
 		add_dependencies(par2 boost)
 		add_dependencies(regex boost)
-	elseif()
+	else()
 		set(LIBS ${LIBS} Boost::json)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
 
