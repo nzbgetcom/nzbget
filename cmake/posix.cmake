@@ -32,6 +32,8 @@ message(STATUS "  DISABLE CURSES:   ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:     ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK: ${DISABLE_PARCHECK}")
 
+include(ExternalProject)
+
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86_64")
 	set(SSE2_CXXFLAGS "-msse2")
 	set(SSSE3_CXXFLAGS "-mssse3")
