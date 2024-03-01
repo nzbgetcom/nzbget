@@ -31,7 +31,7 @@ find_package(ZLIB REQUIRED)
 set(LIBS ${LIBS} ZLIB::ZLIB)
 set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/lib)
+include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 set(LIBS ${LIBS} Par2 Regex Yencode)
 set(INCLUDES ${INCLUDES} 
 	${CMAKE_SOURCE_DIR}/lib/par2
