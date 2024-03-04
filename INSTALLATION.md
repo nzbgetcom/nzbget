@@ -89,6 +89,9 @@ And the following libraries are optional:
   For tests:
    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
 
+  For static code analysis:
+   - [Clang-Tidy](https://clang.llvm.org/extra/clang-tidy/)
+
 Please note that you also 
 need the developer packages for these libraries too, they package names 
 have often suffix "dev" or "devel". On other systems you may need to 
@@ -96,7 +99,15 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev libboost-test1.81-dev
+  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev
+```
+  - For tests:
+```
+  apt install libboost-test1.81-dev
+```
+  - For static code analysis:
+```
+  apt install clang-tidy
 ```
 ### FreeBSD: 
 ```
