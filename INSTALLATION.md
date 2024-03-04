@@ -204,7 +204,117 @@ You may run configure with additional arguments:
   export INCLUDES="/usr/include/;/usr/include/libxml2/"
   cmake .. -DENABLE_STATIC=ON
 ```
+## Building using autotools (depricated)
 
+  - configure it via
+```
+  autoreconf --install
+  ./configure
+```
+   (maybe you have to tell configure, where to find some libraries then is your friend!
+```
+  ./configure --help
+```
+  also see "Configure-options" later)
+
+ - in a case you don't have root access or want to install the program
+   in your home directory use the configure parameter --prefix, e. g.:
+```
+  ./configure --prefix ~/usr
+```
+ - compile it via
+```
+  make
+```
+ - to install system wide become root via:
+```
+  su
+```
+ - install it via:
+```
+  make install
+```
+ - install configuration files into <prefix>/etc via:
+```
+  make install-conf
+```
+   (you can skip this step if you intend to store configuration
+    files in a non-standard location)
+
+### Configure-options
+---------------------
+You may run configure with additional arguments:
+
+  --disable-curses - to make without curses-support. Use this option
+    if you can not use curses/ncurses.
+
+  --disable-parcheck - to make without parcheck-support. Use this option
+    if you have troubles when compiling par2-module.
+
+  --with-tlslib=(OpenSSL, GnuTLS) - to select which TLS/SSL library
+    should be used for encrypted server connections.
+
+  --disable-tls - to make without TLS/SSL support. Use this option if
+    you can not neither OpenSSL nor GnuTLS.
+
+  --disable-gzip - to make without gzip support. Use this option
+    if you can not use zlib.
+
+  --enable-debug - to build in debug-mode, if you want to see and log
+    debug-messages.
+
+### Optional package: par-check
+-------------------------------
+NZBGet can check and repair downloaded files for you. For this purpose
+it uses library par2.
+
+For your convenience the source code of libpar2 is integrated into
+NZBGet’s source tree and is compiled automatically when you make NZBGet.
+
+In a case errors occur during this process the inclusion of par2-module
+can be disabled using configure option "--disable-parcheck":
+```
+  ./configure --disable-parcheck
+```
+
+### Optional package: curses
+----------------------------
+For curses-outputmode you need ncurses or curses on your system.
+If you do not have one of them you can download and compile ncurses yourself.
+Following configure-parameters may be useful:
+
+  --with-libcurses-includes=/path/to/curses/includes
+  --with-libcurses-libraries=/path/to/curses/libraries
+
+If you are not able to use curses or ncurses or do not want them you can
+make the program without support for curses using option "--disable-curses":
+```
+  ./configure --disable-curses
+```
+
+### Optional package: TLS
+-------------------------
+To enable encrypted server connections (TLS/SSL) you need to build the program
+with TLS/SSL support. NZBGet can use two libraries: OpenSSL or GnuTLS.
+Configure-script checks which library is installed and use it. If both are
+available it gives the precedence to OpenSSL. You may override that with
+the option --with-tlslib=(OpenSSL, GnuTLS). For example to build with GnuTLS:
+```
+  ./configure --with-tlslib= GnuTLS
+```
+
+Following configure-parameters may be useful:
+
+  --with-libtls-includess=/path/to/gnutls/includes
+  --with-libtls-libraries=/path/to/gnutls/libraries
+
+  --with-openssl-includess=/path/to/openssl/includes
+  --with-openssl-libraries=/path/to/openssl/libraries
+
+If none of these libraries is available you can make the program without 
+TLS/SSL support using option "--disable-tls":
+
+  ./configure --disable-tls
 
 ## 5. Compiling on Windows
 
