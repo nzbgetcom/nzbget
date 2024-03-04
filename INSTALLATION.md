@@ -162,6 +162,10 @@ You may run configure with additional arguments:
 ```
   cmake .. -DENABLE_TESTS=ON
 ```
+  - Enable Clang-Tidy static code analizer:
+```
+  cmake .. -DENABLE_CLANG_TIDY=ON
+```
   - Disable ncurses. Use this option if you can not use ncurses.
 ```
   cmake .. -DDISABLE_CURSES=ON
