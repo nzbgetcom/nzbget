@@ -379,12 +379,12 @@ webui_FILES = \
 	webui/img/favicon-256x256.png \
 	webui/img/downloading-icon-default-48px.png \
 	webui/img/downloading-icon-hover-48px.png \
-	webui/img/paused-download-icon-default-48px.png \
-	webui/img/paused-download-icon-hover-48px.png \
 	webui/img/downloading-icon-default-96px.png \
 	webui/img/downloading-icon-hover-96px.png \
+	webui/img/paused-download-icon-default-48px.png \
+	webui/img/paused-download-icon-hover-48px.png \
 	webui/img/paused-download-icon-default-96px.png \
-	webui/img/paused-download-icon-hover-96px.png \
+	webui/img/paused-download-icon-hover-96px.png
 
 # Install
 dist_doc_DATA = $(doc_FILES)
