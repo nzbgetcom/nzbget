@@ -150,8 +150,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	margin-left: 0px;
 	margin-top: 0px;
 	cursor: pointer;
-	top: 6px;
-	left: 6px;
 	position: absolute;
 	-webkit-border-radius: 18px;
 	-moz-border-radius: 18px;
@@ -234,8 +232,8 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	-moz-background-size: 70px 70px;
 	background-size: 70px 70px;
 	background-position: center;
-	width: 60px;
-	height: 60px;
+	width: 48px;
+	height: 48px;
 	cursor: pointer;
 	pointer-events: none;
     -webkit-animation: play-rotate 1s linear infinite;
