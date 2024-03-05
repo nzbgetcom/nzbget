@@ -1,0 +1,25 @@
+# this flow should definitely be impoved with a form - separate suggestions,
+# extensions master list and actual extensions questions, TBD
+
+name: Extension
+description: 'Questions, bugs, requests related to Extensions'
+labels: ['extension']
+body:
+- type: checkboxes
+  attributes:
+    label: Is there already an issue for this request?
+    description: Please make sure you are not creating an already submitted <a href="https://github.com/nzbgetcom/nzbget/issues?q=label%3Aextension">Issue</a>. Check closed issues as well, because your issue could have been resolved and waiting to be released.
+    options:
+      - label: I have checked older issues, open and closed
+        required: true
+- type: textarea
+  attributes:
+    label: Describe your issue
+    description: Describe the issue with the extension. Provide as much information as possible
+    placeholder: |
+      Existing extension - details about environment - version of nzbget - version of extension - related libs or tools if any.
+      Please provide as much useful information as possible
+      ..
+      Or suggest new extension to be supported with Extension Manager
+  validations:
+    required: true
