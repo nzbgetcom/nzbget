@@ -158,19 +158,19 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	border-radius: 18px;
 }
 
-.img-download-btn {
-	background-position: -16px -80px;
-	width: 21px;
-	height: 21px;
-	margin-left: 9px;
-	margin-top: 8px;
+.paused-download-icon {
+    position: relative;
+    display: inline-block;
+    background-image: url('img/paused-download-icon-default-48px.png');
+    background-size: cover;
+	width: 48px; /* Adjust the width for smaller screens */
+	height: 48px; /* Adjust the height for smaller screens */
+    transition: background-image 0.3s ease;
 }
 
-.PlayBlockInner:hover .img-download-btn,
-.PlayBlockInner:hover .img-download-btn {
-	/* white */
-	background-position: -16px -112px;
-	opacity: 0.9;
+.paused-download-icon:hover {
+	cursor: pointer;
+    background-image: url('img/paused-download-icon-hover-48px.png');
 }
 
 #PlayCaretBlock {

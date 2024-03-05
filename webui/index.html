@@ -103,17 +103,26 @@
 			<div id="PlayBlock">
 				<div id="PlayButton" style="display:none;">
 					<div id="PlayPauseButton" class="PlayBlockInner" onclick="Status.playClick()" title="Download paused (click to resume) [Shift+P]">
-						<img
-							src="downloading-icon-default-96px.png"
-							alt="Downloading"
-							srcset="img/downloading-icon-default-48px.png 200w, img/downloading-icon-default-96px.png 400w"
-							sizes="(max-width: 700px) 48px, 50vw" 
-						/>
+						<div class="paused-download-icon">
+							<!-- <img
+								src="paused-download-icon-default-96px.png"
+								alt="Download"
+								srcset="img/paused-download-icon-default-48px.png 48w, img/paused-download-icon-default-96px.png 96w"
+								sizes="(max-width: 700px) 48px, 96px" 
+							/> -->
+						</div>
 					</div>
 				</div>
-				<div id="PauseButton" class="img-download-green">
+				<div id="PauseButton">
 					<div class="PlayBlockInner" onclick="Status.playClick()" title="Download active (click to pause) [Shift+P]">
-						<div class="img-download-btn"></div>
+						<div class="downloading-icon">
+							<img 
+								src="downloading-icon-default-96px.png"
+								alt="Pause"
+								srcset="img/downloading-icon-default-48px.png 48w, img/downloading-icon-default-96px.png 96w"
+								sizes="(max-width: 700px) 48px, 96px" 
+							/>
+						</div>
 					</div>
 				</div>
 				<div id="PlayAnimation" style="display:none;" onclick="Status.playClick()"></div>
