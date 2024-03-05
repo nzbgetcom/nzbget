@@ -130,20 +130,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	z-index: 3;
 }
 
-.img-download-orange {
-	background-position: -176px -80px;
-}
-
-.img-download-green {
-	background-position: -112px -80px;
-}
-
-.img-download-bg {
-	background-position: -240px -80px;
-	width: 50px;
-	height: 50px;
-}
-
 .PlayBlockInner {
 	width: 38px;
 	height: 38px;
@@ -158,29 +144,47 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 
 .download-status-icon {
 	background-size: cover;
+	cursor: pointer;
 	width: 48px;
 	height: 48px;
 	transition: background-image 0.3s ease;
 }
 
-.downloading-icon {
-	background-image: url('img/downloading-icon-default-48px.png');
+@media only screen and (min-resolution: 1dppx) {
+	.downloading-icon {
+		background-image: url('img/downloading-icon-default-48px.png');
+	}
+	
+	.downloading-icon:hover {
+		background-image: url('img/downloading-icon-hover-48px.png');
+	}
+	
+	.paused-download-icon {
+		background-image: url('img/paused-download-icon-default-48px.png');
+	}
+	
+	.paused-download-icon:hover {
+		background-image: url('img/paused-download-icon-hover-48px.png');
+	}
 }
 
-.downloading-icon:hover {
-	cursor: pointer;
-	background-image: url('img/downloading-icon-hover-48px.png');
+@media only screen and (min-resolution: 2dppx) {
+	.downloading-icon {
+		background-image: url('img/downloading-icon-default-96px.png');
+	}
+	
+	.downloading-icon:hover {
+		background-image: url('img/downloading-icon-hover-96px.png');
+	}
+	
+	.paused-download-icon {
+		background-image: url('img/paused-download-icon-default-96px.png');
+	}
+	
+	.paused-download-icon:hover {
+		background-image: url('img/paused-download-icon-hover-96px.png');
+	}
 }
-
-.paused-download-icon {
-	background-image: url('img/paused-download-icon-default-48px.png');
-}
-
-.paused-download-icon:hover {
-	cursor: pointer;
-	background-image: url('img/paused-download-icon-hover-48px.png');
-}
-
 
 #PlayCaretBlock {
 	left: 37px;
