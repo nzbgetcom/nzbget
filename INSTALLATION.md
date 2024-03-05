@@ -70,7 +70,7 @@ For configuring and building:
 Libraries:
  - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
  - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
-> If you can't install Boost.Json on your system, jsut skip it. CMake will take care of it.
+> If you face issues with Boost.Json on your system, you can skip it - CMake will take care of it.
 
 And the following libraries are optional:
 
