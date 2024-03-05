@@ -230,8 +230,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 #PlayAnimation {
 	position: absolute;
 	z-index: 4;
-	left: -5px;
-	top: -5px;
 	-webkit-background-size: 70px 70px;
 	-moz-background-size: 70px 70px;
 	background-size: 70px 70px;
