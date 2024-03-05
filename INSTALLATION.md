@@ -204,7 +204,7 @@ You may run configure with additional arguments:
   export INCLUDES="/usr/include/;/usr/include/libxml2/"
   cmake .. -DENABLE_STATIC=ON
 ```
-## Building using autotools (depricated)
+## Building using autotools (deprecated)
 
   - configure it via
 ```
