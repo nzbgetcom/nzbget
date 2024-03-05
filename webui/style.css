@@ -158,20 +158,31 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	border-radius: 18px;
 }
 
+.download-status-icon {
+	background-size: cover;
+	width: 48px;
+	height: 48px;
+	transition: background-image 0.3s ease;
+}
+
+.downloading-icon {
+	background-image: url('img/downloading-icon-default-48px.png');
+}
+
+.downloading-icon:hover {
+	cursor: pointer;
+	background-image: url('img/downloading-icon-hover-48px.png');
+}
+
 .paused-download-icon {
-    position: relative;
-    display: inline-block;
-    background-image: url('img/paused-download-icon-default-48px.png');
-    background-size: cover;
-	width: 48px; /* Adjust the width for smaller screens */
-	height: 48px; /* Adjust the height for smaller screens */
-    transition: background-image 0.3s ease;
+	background-image: url('img/paused-download-icon-default-48px.png');
 }
 
 .paused-download-icon:hover {
 	cursor: pointer;
-    background-image: url('img/paused-download-icon-hover-48px.png');
+	background-image: url('img/paused-download-icon-hover-48px.png');
 }
+
 
 #PlayCaretBlock {
 	left: 37px;
