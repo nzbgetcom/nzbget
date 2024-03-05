@@ -1,57 +1,112 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.13)
+
+if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
+endif()
+
+set_property(GLOBAL PROPERTY PACKAGE)
+set_property(GLOBAL PROPERTY LIBS)
+set_property(GLOBAL PROPERTY INCLUDES)
 
 set(VERSION "23.1")
-
-project(
-    nzbget
-    VERSION ${VERSION}
-    DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
-    LANGUAGES C CXX
-)
-
-option(ENABLE_TESTS "Enable tests" ON)
-
 set(PACKAGE "nzbget")
-add_compile_definitions(HAVE_CONFIG_H=1)
-
-configure_file(
-    ${CMAKE_SOURCE_DIR}/cmake_config.h.in
-    ${CMAKE_BINARY_DIR}/config.h
-)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_C_STANDARD 17)
+set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_EXTENSIONS OFF)
-set(BUILD_SHARED_LIBS OFF)
-set(OPENSSL_USE_STATIC_LIBS ON)
-set(ZLIB_USE_STATIC_LIBS ON)
-set(Boost_USE_STATIC_LIBS ON)
-set(Boost_USE_MULTITHREADED ON)
-set(Boost_USE_STATIC_RUNTIME OFF)
-set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
+set(CMAKE_CONFIGURATION_TYPES "Release" "Debug")
 
-find_package(OpenSSL REQUIRED)
-find_package(ZLIB REQUIRED)
-find_package(LibXml2 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
+add_compile_definitions(HAVE_CONFIG_H=1)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Weverything")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wall")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /O2 /W4")
-    set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} winmm.lib /NODEFAULTLIB:msvcrt.lib;libcmt.lib;msvcrtd.lib")
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE "Release" CACHE STRING "")
 endif()
 
-include_directories(lib/regex)
-include_directories(${CMAKE_BINARY_DIR})
-add_subdirectory(lib)
+option(BUILD_ONLY_TESTS "Build only tests (for CI)")
 
-if(ENABLE_TESTS)
-    include(CTest)
-    add_subdirectory(tests)
+project(
+	nzbget
+	VERSION ${VERSION}
+	DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
+	LANGUAGES C CXX
+)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g0 -pthread -g -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(CMAKE_CXX_FLAGS "-O0 -g0 -pthread -g -Wall -Wextra" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set(CMAKE_CXX_FLAGS "/Od /Zi /MP /W4 /EHs /DDEBUG /D_DEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib Dbghelp.lib libcpmtd.lib" CACHE STRING "" FORCE)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug" CACHE STRING "" FORCE)
+	endif()
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+		set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
+		set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" CACHE STRING "" FORCE)
+	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+		set(CMAKE_CXX_FLAGS "/O2 /MP /W4 /EHs /DNDEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib" CACHE STRING "" FORCE)
+		set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded" CACHE STRING "" FORCE)
+	endif()
+endif()
+
+set(CMAKE_C_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
+
+include_directories(${CMAKE_BINARY_DIR})
+include_directories(${CMAKE_SOURCE_DIR})
+
+if(NOT BUILD_ONLY_TESTS)
+	include(daemon/sources.cmake)
+	add_executable(${PACKAGE} ${SRC})
+endif()
+
+if(WIN32)
+	include(cmake/windows.cmake)
+	if(NOT BUILD_ONLY_TESTS)
+		target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
+	endif()
+else()
+	include(cmake/posix.cmake)
+	if(NOT BUILD_ONLY_TESTS)
+		include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
+	endif()
+endif()
+
+configure_file(
+	${CMAKE_SOURCE_DIR}/cmake/config.h.in
+	${CMAKE_BINARY_DIR}/config.h
+)
+
+if(NOT BUILD_ONLY_TESTS)
+	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
+	target_include_directories(${PACKAGE} PRIVATE
+		${CMAKE_SOURCE_DIR}/daemon/connect
+		${CMAKE_SOURCE_DIR}/daemon/extension
+		${CMAKE_SOURCE_DIR}/daemon/feed
+		${CMAKE_SOURCE_DIR}/daemon/frontend
+		${CMAKE_SOURCE_DIR}/daemon/main
+		${CMAKE_SOURCE_DIR}/daemon/nntp
+		${CMAKE_SOURCE_DIR}/daemon/nserv
+		${CMAKE_SOURCE_DIR}/daemon/postprocess
+		${CMAKE_SOURCE_DIR}/daemon/queue
+		${CMAKE_SOURCE_DIR}/daemon/remote
+		${CMAKE_SOURCE_DIR}/daemon/util
+		${INCLUDES}
+	)
+endif()
+
+if(ENABLE_TESTS OR BUILD_ONLY_TESTS)
+	include(CTest)
+	add_subdirectory(tests)
 endif()

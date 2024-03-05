@@ -187,6 +187,7 @@ const char* PossibleConfigLocations[] =
 		"/usr/etc/nzbget.conf",
 		"/usr/local/etc/nzbget.conf",
 		"/opt/etc/nzbget.conf",
+		"~/usr/etc/nzbget.conf",
 		nullptr
 	};
 #endif

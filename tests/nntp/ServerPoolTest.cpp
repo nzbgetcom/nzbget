@@ -214,7 +214,7 @@ BOOST_AUTO_TEST_CASE(ActiveOnOffTest)
 	BOOST_CHECK(con3 == nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(IgnoreServers)
+BOOST_AUTO_TEST_CASE(IgnoreServersTest)
 {
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, 0, 2);
@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(IgnoreServers)
 	BOOST_CHECK(con4 == nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
+BOOST_AUTO_TEST_CASE(IgnoreServersGroupedTest)
 {
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, 1, 2);
@@ -267,17 +267,17 @@ BOOST_AUTO_TEST_CASE(IgnoreServersGrouped)
 	BOOST_CHECK(con3 == nullptr);
 }
 
-BOOST_AUTO_TEST_CASE(BlockServersUngrouped)
+BOOST_AUTO_TEST_CASE(BlockServersUngroupedTest)
 {
 	TestBlockServers(0);
 }
 
-BOOST_AUTO_TEST_CASE(BlockServersGrouped)
+BOOST_AUTO_TEST_CASE(BlockServersGroupedTest)
 {
 	TestBlockServers(1);
 }
 
-BOOST_AUTO_TEST_CASE(BlockOptionalServersUngrouped)
+BOOST_AUTO_TEST_CASE(BlockOptionalServersUngroupedTest)
 {
 	TestOptionalBlockServers(0);
 }
@@ -287,12 +287,12 @@ BOOST_AUTO_TEST_CASE(BlockOptionalServersGrouped)
 	TestOptionalBlockServers(1);
 }
 
-BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersUngrouped)
+BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersUngroupedTest)
 {
 	TestBlockOptionalAndNonOptionalServers(0);
 }
 
-BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersGrouped)
+BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersGroupedTest)
 {
 	TestBlockOptionalAndNonOptionalServers(1);
 }
