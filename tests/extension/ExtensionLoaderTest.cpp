@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command2.action == "Send Test");
 	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
 
-	BOOST_CHECK(extension.GetOptions().size() == 14);
+	BOOST_CHECK(extension.GetOptions().size() == 16);
 
 	auto option = extension.GetOptions()[0];
 
@@ -220,6 +220,26 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"ionice scheduling class.",
 		"Set the ionice scheduling class (0, 1, 2, 3)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.value) == "2");
+	BOOST_CHECK(boost::variant2::get<std::string>(option14.value) == "2");
 	BOOST_CHECK(option14.select.empty());
+
+	auto option15 = extension.GetOptions()[14];
+	BOOST_CHECK(option15.name == "customPlexSection");
+	BOOST_CHECK(option15.displayName == "customPlexSection");
+	BOOST_CHECK(option15.description == std::vector<std::string>({
+		"Custom Plex Section(s) you would like to update [Optional].",
+		"Section Number(s) corresponding to your Plex library (comma separated)."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option15.value) == "");
+	BOOST_CHECK(option15.select.empty());
+
+	auto option16 = extension.GetOptions()[15];
+	BOOST_CHECK(option16.name == "test2");
+	BOOST_CHECK(option16.displayName == "test2");
+	BOOST_CHECK(option16.description == std::vector<std::string>({
+		"(Test2).",
+		"description."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option16.value) == "");
+	BOOST_CHECK(option16.select.empty());
 }
