@@ -226,11 +226,11 @@ namespace ExtensionLoader
 
 					size_t selectStartIdx = line.rfind("(");
 					size_t selectEndIdx = line.rfind(")");
-					bool hasSelectOptions = selectStartIdx != std::string::npos
-						&& description.empty()
+					bool hasSelectOptions = description.empty()
+						&& !strncmp(line.c_str(), "# ", 2)
+						&& selectStartIdx != std::string::npos
 						&& selectEndIdx != std::string::npos
-						&& selectEndIdx != std::string::npos
-						&& !strncmp(line.c_str(), "# ", 2);
+						&& selectEndIdx == line.length() - 2;
 
 					// e.g. # Description (Always, OnFailure) or # Description (1-65535) or # Description (1, 2-5, 10).
 					if (hasSelectOptions)
@@ -409,6 +409,11 @@ namespace ExtensionLoader
 					}
 
 					word += str[i];
+				}
+
+				if (elements.size() == 1)
+				{
+					return std::make_pair(std::move(elements), "");
 				}
 
 				return std::make_pair(std::move(elements), ",");
