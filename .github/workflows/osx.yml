@@ -19,8 +19,7 @@ jobs:
       if: github.ref_name != 'main'
       run: |
         VERSION=$(grep "set(VERSION" CMakeLists.txt | cut -d '"' -f 2)
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
-        sed -e "s|set(VERSION.*|set(VERSION "$NEW_VERSION")|g" -i '' CMakeLists.txt
+        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"        
         echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
 
     - name: Build
@@ -65,7 +64,7 @@ jobs:
 
     - name: Build
       run: |
-        bash osx/build-nzbget.sh
+        bash osx/build-nzbget-universal.sh
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
