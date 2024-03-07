@@ -1,7 +1,6 @@
 #!/bin/sh
 
 # strict error handling for debugging
-set -o nounset
 set -o errexit
 
 # config variables
