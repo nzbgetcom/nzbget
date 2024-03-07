@@ -34,8 +34,8 @@ cmake .. -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX="$PWD/../tmp/$DAEMON_PATH"
 # if running from CI/CD, add testing to builds from non-main branch
 if [ -n "$GITHUB_REF_NAME" ]; then
     if [ "$GITHUB_REF_NAME" != "main" ]; then
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
-        sed -e "s|#define VERSION.*|#define VERSION \"$NEW_VERSION\"|g" -i '' config.h
+        VERSION="$VERSION-testing-$(date '+%Y%m%d')"
+        sed -e "s|#define VERSION.*|#define VERSION \"$VERSION\"|g" -i '' config.h
     fi
 fi
 cmake --build . -j $JOBS
