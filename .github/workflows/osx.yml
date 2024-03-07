@@ -29,7 +29,7 @@ jobs:
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd osx/build/Release
+        cd tmp
         NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
@@ -80,7 +80,36 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-osx-installers
+        name: nzbget-osx-installers-universal
         path: osx/build/Release/*.zip
         retention-days: 5
-      
+
+  combine-osx-artifacts:
+    runs-on: ubuntu-latest
+    needs: [build-x64, build-universal]
+    permissions:
+      actions: write
+    steps:
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+    
+    - name: Combine artifacts
+      run: |
+        mkdir -p nzbget-osx-installers
+        mv nzbget-osx-installers-x64/* nzbget-osx-installers
+        mv nzbget-osx-installers-universal/* nzbget-osx-installers
+
+    - name: Upload build artifacts with signatures
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-osx-installers
+        path: nzbget-osx-installers/*
+        retention-days: 5
+
+    - name: Delete unneded artifacts
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
+          nzbget-osx-installers-x64
+          nzbget-osx-installers-universal
