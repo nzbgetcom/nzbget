@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-x64:
-    runs-on: [self-hosted, macos, arm64]
+    runs-on: [self-hosted, macos, x64]
 
     steps:
     
@@ -46,7 +46,7 @@ jobs:
         retention-days: 5
 
   build-universal:
-    runs-on: [self-hosted, macos, x64]
+    runs-on: [self-hosted, macos, arm64]
 
     steps:
     
