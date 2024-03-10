@@ -29,7 +29,7 @@
 
 namespace ExtensionManager
 {
-	const Extensions& Manager::GetExtensions() const
+	const Extensions& Manager::GetExtensions() const &
 	{
 		std::shared_lock<std::shared_timed_mutex> lock{m_mutex};
 		return m_extensions;
