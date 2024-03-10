@@ -347,7 +347,7 @@ namespace ExtensionLoader
 
 			for (size_t i = 0; i < str.size(); ++i)
 			{
-				if (i == str.size() - 1)
+				if (i == (str.size() - 1))
 				{
 					word += str[i];
 					elements.push_back(std::move(word));
