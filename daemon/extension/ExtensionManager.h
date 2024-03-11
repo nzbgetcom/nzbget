@@ -60,7 +60,7 @@ namespace ExtensionManager
 		std::pair<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
 		
-		const Extensions& GetExtensions() const;
+		const Extensions& GetExtensions() const &;
 
 	private:
 		void LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir);
