@@ -11,7 +11,6 @@ For configuring and building:
 
         `C:\Users\asus\AppData\Local\Programs\Microsoft VS Code\bin\`
 
-
 To compile the program with TLS/SSL support you need OpenSSL:
    - [OpenSSL](https://www.openssl.org)
 
