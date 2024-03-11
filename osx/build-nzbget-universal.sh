@@ -181,7 +181,7 @@ Make_archive()
 {
     VERSION=`grep "AC_INIT(nzbget, " configure.ac`
     VERSION=`expr "$VERSION" : '.*, \(.*\),.*)'`
-    (cd osx/build/Release/ && zip -r nzbget-$VERSION-bin-macos.zip NZBGet.app)
+    (cd osx/build/Release/ && zip -r nzbget-$VERSION-bin-macos-universal.zip NZBGet.app)
 }
 
 Make_OpenSSL_for_arm_and_x86
