@@ -142,7 +142,7 @@ For more detailed description of the extension.
 To describe the events that could be used by the extension, e.g.:
 
 ```json
-"queueEvents": NZB_ADDED, NZB_DOWNLOADED
+"queueEvents": "NZB_ADDED, NZB_DOWNLOADED"
 ```
 
 More information can be found at [QUEUE](https://nzbget.com/documentation/queue-scripts/).
