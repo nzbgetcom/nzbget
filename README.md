@@ -67,6 +67,9 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
  - [V1 (NZBGet v22 and below)](https://nzbget.com/documentation/extension-scripts/)
  - [V2 (NZBGet v23 and above)](docs/EXTENSIONS.md)
 
+## Brief introduction on how to use NZBGet
+ - [How to use](docs/HOW_TO_USE.md)
+
 ## Contribution
 
 Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 

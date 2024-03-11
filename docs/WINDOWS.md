@@ -78,7 +78,9 @@ You may run configure with additional arguments:
 ```
 cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
-  - Disable TLS. Use this option if you can not use OpenSSL.
+  - Disable TLS. Use this option if you can not use OpenSSL but 
+  some features of nzbget will stop working, such as Extension Manager:
+
 ```
 cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```

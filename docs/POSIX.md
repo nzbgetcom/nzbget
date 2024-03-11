@@ -271,7 +271,8 @@ Following configure-parameters may be useful:
   - --with-openssl-libraries=/path/to/openssl/libraries
 
 If none of these libraries is available you can make the program without 
-TLS/SSL support using option "--disable-tls":
+TLS/SSL support using option "--disable-tls", but 
+  some features of nzbget will stop working, such as Extension Manager:
 ```
 ./configure --disable-tls
 ```
