@@ -1,4 +1,5 @@
-For configuring and building:
+## To build NZBGet you will need:
+
  - [CMake](https://cmake.org/)
  - [MS C++ Build tools](https://visualstudio.microsoft.com/downloads/?q=build+tools#build-tools-for-visual-studio-2022)
    - Download `Build Tools for Visual Studio 2022` and install it

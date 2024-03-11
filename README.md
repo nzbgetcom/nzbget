@@ -58,13 +58,10 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 ## Building from sources
 
- - [POSIX](docs/POSIX.md)
- - [Windows](docs/WINDOWS.md)
- - [Synology](synology/build-info.md) 
- - [QNAP](qnap/build-info.md)
+[General instructions](INSTALLATION.md)
 
 ## Extensions
- - [V1 (NZBGet v22 and below)](https://nzbget.com/documentation/extension-scripts/)
+ - [V1 (NZBGet v22 and below)](docs/EXTENSIONS_LEGACY.md)
  - [V2 (NZBGet v23 and above)](docs/EXTENSIONS.md)
 
 ## Brief introduction on how to use NZBGet
