@@ -22,18 +22,18 @@ locations (in this order):
 
 On POSIX systems:
 ```
-  <EXE-DIR>/nzbget.conf
-  ~/.nzbget
-  /etc/nzbget.conf
-  /usr/etc/nzbget.conf
-  /usr/local/etc/nzbget.conf
-  /opt/etc/nzbget.conf
-  ~/usr/etc/nzbget.conf
+<EXE-DIR>/nzbget.conf
+~/.nzbget
+/etc/nzbget.conf
+/usr/etc/nzbget.conf
+/usr/local/etc/nzbget.conf
+/opt/etc/nzbget.conf
+~/usr/etc/nzbget.conf
 ```
 
 On Windows:
 ```
-  <EXE-DIR>\nzbget.conf
+<EXE-DIR>\nzbget.conf
 ```
 
 If you put the configuration file in other place, you can use command-
@@ -57,7 +57,7 @@ Then you can type all commands without full path to nzbget.exe.
 ### Standalone mode:
 --------------------
 ```
-  nzbget <nzb-file>
+nzbget <nzb-file>
 ```
 ### Server mode:
 ----------------
@@ -66,7 +66,7 @@ First start the nzbget-server:
 
   - in console mode:
 ```
- nzbget -s
+nzbget -s
 ```
   - or in daemon mode (POSIX only):
 ```
@@ -78,13 +78,13 @@ First start the nzbget-server:
 ``` 
 To stop server use:
 ```
-  nzbget -Q  
+nzbget -Q  
 ```
 TIP for POSIX users: with included script "nzbgetd" you can use standard
 commands to control daemon:
 ```
-  nzbgetd start
-  nzbgetd stop
+nzbgetd start
+nzbgetd stop
 ```
 
 When NZBGet is started in console server mode it displays a message that
@@ -97,61 +97,61 @@ a nzb-file into server's monitor-directory (<MAINDIR>/nzb by default).
 
 To check the status of server start client and connect it to server:
 ```
-  nzbget -C
+nzbget -C
 ```
 The client have three different (display) outputmodes, which you can select
 in configuration file (on client computer) or in command line. Try them:
 ```
-  nzbget -o outputmode=log -C
-  nzbget -o outputmode=color -C
-  nzbget -o outputmode=curses -C
+nzbget -o outputmode=log -C
+nzbget -o outputmode=color -C
+nzbget -o outputmode=curses -C
 ```
 To list files in server's queue:
 ```
-  nzbget -L
+nzbget -L
 ```
 It prints something like:
 ```
-  [1] nzbname\filename1.rar (50.00 MB)
-  [2] nzbname\filename1.r01 (50.00 MB)
-  [3] another-nzb\filename3.r01 (100.00 MB)
-  [4] another-nzb\filename3.r02 (100.00 MB)
+[1] nzbname\filename1.rar (50.00 MB)
+[2] nzbname\filename1.r01 (50.00 MB)
+[3] another-nzb\filename3.r01 (100.00 MB)
+[4] another-nzb\filename3.r02 (100.00 MB)
 ```
 This is the list of individual files listed within nzb-file. To print
 the list of nzb-files (without content) add G-modifier to the list command:
 ```
-  [1] nzbname (4.56 GB)
-  [2] another-nzb (4.20 GB)
+[1] nzbname (4.56 GB)
+[2] another-nzb (4.20 GB)
 ```
 The numbers in square braces are ID's of files or groups in queue.
 They can be used in edit-command. For example to move file with
 ID 2 to the top of queue:
 ```
-  nzbget -E T 2
+nzbget -E T 2
 ```  
 or to pause files with IDs from 10 to 20:
 ```
-  nzbget -E P 10-20
+nzbget -E P 10-20
 ```
 or to delete files from queue:
 ```
-  nzbget -E D 3 10-15 20-21 16
+nzbget -E D 3 10-15 20-21 16
 ```
 
 The edit-command has also a group-mode which affects all files from the
 same nzb-file. You need to pass an ID of the group. For example to delete
 the whole group 1:
 ```
-  nzbget -E G D 1
+nzbget -E G D 1
 ```
 The switch "o" is useful to override options in configuration files. 
 For example:
 ```
-  nzbget -o reloadqueue=no -o dupecheck=no -o parcheck=yes -s
+nzbget -o reloadqueue=no -o dupecheck=no -o parcheck=yes -s
 ```  
 or:
 ```
-  nzbget -o createlog=no -C
+nzbget -o createlog=no -C
 ```
 
 ### Running client & server on seperate machines:
@@ -191,7 +191,7 @@ To access web-interface from your web-browser use the server address
 and port defined in NZBGet configuration file in options "ControlIP" and
 "ControlPort". For example:
 ```
-  http://localhost:6789/
+http://localhost:6789/
 ```
 
 For login credentials type username and the password defined by
@@ -201,7 +201,7 @@ options "ControlUsername" (default `"nzbget"`) and "ControlPassword"
 In a case your browser forget credentials, to prevent typing them each
 time, there is a workaround - use URL in the form:
 ```
-  http://localhost:6789/username:password/
+http://localhost:6789/username:password/
 ```
 Please note, that in this case the password is saved in a bookmark or in
 browser history in plain text and is easy to find by persons having

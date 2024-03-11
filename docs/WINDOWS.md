@@ -27,49 +27,49 @@ For tests:
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
  - Clone the repository to the recommended `C:\` disk:
 ```
-  git clone --depth 1 https://github.com/microsoft/vcpkg.git
+git clone --depth 1 https://github.com/microsoft/vcpkg.git
 ```
  - Run the `bootstrap` script:
 ```
-  .\vcpkg\bootstrap-vcpkg.bat
+.\vcpkg\bootstrap-vcpkg.bat
 ```
  - Edit the `Path` enviroment variable and append the folder's path: `C:\vcpkg`
  - Install all the dependencies:
 ```
-  vcpkg install openssl:x64-windows-static
-  vcpkg install libxml2:x64-windows-static
-  vcpkg install zlib:x64-windows-static
-  vcpkg install boost-json:x64-windows-static
-  vcpkg install boost-optional:x64-windows-static
+vcpkg install openssl:x64-windows-static
+vcpkg install libxml2:x64-windows-static
+vcpkg install zlib:x64-windows-static
+vcpkg install boost-json:x64-windows-static
+vcpkg install boost-optional:x64-windows-static
 ```
   - For tests:
 ```
-  vcpkg install boost-test:x64-windows-static
+vcpkg install boost-test:x64-windows-static
 ```
 
 For `Win32`, instead of `:x64-windows-static`, use `:x86-windows-static`.
 
   - Configure:
 ``` 
-  mkdir build
-  cd build
-  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -A x64
+mkdir build
+cd build
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -A x64
 ```
   - Or for Win32:
 ```
-  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static -A Win32
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static -A Win32
 ```
   - Release build:
 ```
-  cmake --build . --config Release
+cmake --build . --config Release
 ```
   - Or for debug build:
 ```
-  cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Debug 
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Debug 
 ```
   - Debug build:
 ```
-  cmake --build . --config Debug
+cmake --build . --config Debug
 ```
   - Now, you can find the binary in the `Release/Debug` directory.
 
@@ -77,9 +77,9 @@ For `Win32`, instead of `:x64-windows-static`, use `:x86-windows-static`.
 You may run configure with additional arguments:
   - Enable tests:
 ```
-  cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
   - Disable TLS. Use this option if you can not use OpenSSL.
 ```
-  cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```

@@ -40,24 +40,24 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-  apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev
+apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev
 ```
   - For tests:
 ```
-  apt install libboost-test1.81-dev
+apt install libboost-test1.81-dev
 ```
   - For static code analysis:
 ```
-  apt install clang-tidy
+apt install clang-tidy
 ```
 ### FreeBSD: 
 ```
-  pkg install cmake ncurses openssl libxml2 zlib boost-libs
+pkg install cmake ncurses openssl libxml2 zlib boost-libs
 ```
 ### macOS:
 ```
-  xcode-select --install
-  brew install cmake ncurses openssl libxml2 zlib boost
+xcode-select --install
+brew install cmake ncurses openssl libxml2 zlib boost
 ```
 
 ## 4. Installation on POSIX
@@ -66,34 +66,34 @@ Installation from the source distribution archive (nzbget-VERSION.tar.gz):
 
   - Untar the nzbget-source:
 ```
-  tar -zxf nzbget-VERSION.tar.gz
+tar -zxf nzbget-VERSION.tar.gz
 ```
   - Change into nzbget-directory:
 ```
-  cd nzbget-VERSION
+cd nzbget-VERSION
 ```
   - Configure:
 ``` 
-  mkdir build
-  cd build
-  cmake ..
+mkdir build
+cd build
+cmake ..
 ```
   - In a case you don't have root access or want to install the program
     in your home directory use the configure parameter -DCMAKE_INSTALL_PREFIX:
 ```
-  cmake .. -DCMAKE_INSTALL_PREFIX=~/usr
+cmake .. -DCMAKE_INSTALL_PREFIX=~/usr
 ```
   - Build, specifying (-j 8) how many CPU cores to use to speed up compilation:
 ```
-  cmake --build . -j 8 
+cmake --build . -j 8 
 ```
   - Install:
 ```
-  cmake --install .
+cmake --install .
 ```
   - Uninstall:
 ```
-  cmake --build . --target uninstall
+cmake --build . --target uninstall
 ```
 
 ### Configure-options
@@ -101,85 +101,103 @@ Installation from the source distribution archive (nzbget-VERSION.tar.gz):
 You may run configure with additional arguments:
   - Enable tests:
 ```
-  cmake .. -DENABLE_TESTS=ON
+cmake .. -DENABLE_TESTS=ON
 ```
   - Enable Clang-Tidy static code analizer:
 ```
-  cmake .. -DENABLE_CLANG_TIDY=ON
+cmake .. -DENABLE_CLANG_TIDY=ON
 ```
   - Disable ncurses. Use this option if you can not use ncurses.
 ```
-  cmake .. -DDISABLE_CURSES=ON
+cmake .. -DDISABLE_CURSES=ON
 ```
   - Disable parcheck. Use this option if you have troubles when compiling par2-module.
 ```
-  cmake .. -DDISABLE_PARCHECK=ON
+cmake .. -DDISABLE_PARCHECK=ON
 ```
   - Use GnuTLS. Use this option if you want to use GnuTLS instead of OpenSSL.
 ```
-  cmake .. -DUSE_GNUTLS=ON
+cmake .. -DUSE_GNUTLS=ON
 ```
   - Disable TLS. Use this option if you can not neither OpenSSL nor GnuTLS.
 ```
-  cmake .. -DDISABLE_TLS=ON
+cmake .. -DDISABLE_TLS=ON
 ```
   - Disable gzip. Use this option if you can not use zlib.
 ```
-  cmake .. -DDISABLE_GZIP=ON
+cmake .. -DDISABLE_GZIP=ON
 ``` 
   - Disable sigchld-handler. The disabling may be neccessary on 32-Bit BSD.
 ```
-  cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
+cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
 ``` 
   - For debug build.
 ```
-  cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 ```
   - To get a static binary, 
 ```
-  cmake .. -DENABLE_STATIC=ON
+cmake .. -DENABLE_STATIC=ON
 ```
-  `LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default
+`LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default
 ```
-  export LIBS="-lncurses -ltinfo -lboost_json -lxml2 -lz -lm -lssl -lcrypto -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-  export INCLUDES="/usr/include/;/usr/include/libxml2/"
-  cmake .. -DENABLE_STATIC=ON
+export LIBS="-lncurses -ltinfo -lboost_json -lxml2 -lz -lm -lssl -lcrypto -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+export INCLUDES="/usr/include/;/usr/include/libxml2/"
+cmake .. -DENABLE_STATIC=ON
 ```
+## Cppcheck
+  - Install Cppcheck
+```
+apt install cppcheck
+```
+  - Generate a compile database:
+```
+cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
+```
+  - The file compile_commands.json is created in the current folder. Now run Cppcheck like this:
+```
+cppcheck --project=compile_commands.json
+```
+ - To ignore certain folders you can use -i. This will skip analysis of source files in
+the foo folder.
+```
+cppcheck --project=compile_commands.json -ifoo
+```
+
 ## Building using autotools (deprecated)
 
   - configure it via
 ```
-  autoreconf --install
-  ./configure
+autoreconf --install./configure
 ```
    (maybe you have to tell configure, where to find some libraries then is your friend!
 ```
-  ./configure --help
+./configure --help
 ```
   also see "Configure-options" later)
 
   - in a case you don't have root access or want to install the program
    in your home directory use the configure parameter --prefix, e. g.:
 ```
-  ./configure --prefix ~/usr
+./configure --prefix ~/usr
 ```
   - compile it via
 ```
-  make
+make -j 4
 ```
   - to install system wide become root via:
 ```
-  su
+su
 ```
  - install it via:
 ```
-  make install
+make install
 ```
  - install configuration files into <prefix>/etc via:
 ```
-  make install-conf
+make install-conf
 ```
-   (you can skip this step if you intend to store configuration
+(you can skip this step if you intend to store configuration
     files in a non-standard location)
 
 ### Configure-options
@@ -215,7 +233,7 @@ NZBGet’s source tree and is compiled automatically when you make NZBGet.
 In a case errors occur during this process the inclusion of par2-module
 can be disabled using configure option "--disable-parcheck":
 ```
-  ./configure --disable-parcheck
+./configure --disable-parcheck
 ```
 
 ### Optional package: curses
@@ -230,7 +248,7 @@ Following configure-parameters may be useful:
 If you are not able to use curses or ncurses or do not want them you can
 make the program without support for curses using option "--disable-curses":
 ```
-  ./configure --disable-curses
+./configure --disable-curses
 ```
 
 ### Optional package: TLS
@@ -241,7 +259,7 @@ Configure-script checks which library is installed and use it. If both are
 available it gives the precedence to OpenSSL. You may override that with
 the option --with-tlslib=(OpenSSL, GnuTLS). For example to build with GnuTLS:
 ```
-  ./configure --with-tlslib= GnuTLS
+./configure --with-tlslib= GnuTLS
 ```
 
 Following configure-parameters may be useful:
@@ -255,5 +273,5 @@ Following configure-parameters may be useful:
 If none of these libraries is available you can make the program without 
 TLS/SSL support using option "--disable-tls":
 ```
-  ./configure --disable-tls
+./configure --disable-tls
 ```
