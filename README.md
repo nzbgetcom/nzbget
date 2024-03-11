@@ -61,8 +61,8 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 [General instructions](INSTALLATION.md)
 
 ## Extensions
- - [V1 (NZBGet v22 and below)](docs/EXTENSIONS_LEGACY.md)
- - [V2 (NZBGet v23 and above)](docs/EXTENSIONS.md)
+ - [V1 (NZBGet v22 and below)](docs/extensions/EXTENSIONS_LEGACY.md)
+ - [V2 (NZBGet v23 and above)](docs/extensions/EXTENSIONS.md)
 
 ## Brief introduction on how to use NZBGet
  - [How to use](docs/HOW_TO_USE.md)
