@@ -80,3 +80,38 @@ if [ "$NZBPP_TOTALSTATUS" != "SUCCESS" ]; then
     exit 95
 fi
 ```
+
+## Exit codes
+For post-processing extensions NZBGet checks the exit code of the script and sets the status in history item accordingly. 
+Extensions can use following exit codes:
+ - 93 - Post-process successful (status = SUCCESS).
+ - 94 - Post-process failed (status = FAILURE).
+ - 95 - Post-process skipped (status = NONE). Use this code when you script terminates immediately without doing any 
+ job and when this is not a failure termination.
+ - 92 - Request NZBGet to do par-check/repair for current nzb-file. This code can be used by pp-scripts doing unpack on their own.
+Extensions MUST return one of the listed status codes. 
+If any other code (including 0) is returned the history item is marked with status `FAILURE`.
+
+Example: exit code
+```sh
+POSTPROCESS_SUCCESS=93
+POSTPROCESS_ERROR=94
+echo "Hello from test script";
+exit $POSTPROCESS_SUCCESS
+```
+
+## Control commands
+
+pp-extensions which move downloaded files can inform NZBGet about that by printing special 
+messages into standard output (which is processed by NZBGet). 
+This allows the extensions called thereafter to process the files in the new location. Use command DIRECTORY:
+```sh
+echo "[NZB] DIRECTORY=/path/to/new/location";
+```
+The extensions executed after your script assume the files in the directory belong to the current download. 
+If your extension moves files into a non empty directory which already contains other files, your should not use that command. 
+Otherwise the other extensions may process all files in the directory, even the files existed before. 
+In that case use command `FINALDIR` instead (which has less consequences):
+```sh
+echo "[NZB] FINALDIR=/path/to/new/location";
+```
