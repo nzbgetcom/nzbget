@@ -99,6 +99,7 @@ Depending on the purpose of the extension, can be:
 "kind": "SCAN"
 "kind": "QUEUE"
 "kind": "SCHEDULER"
+"kind": "FEED"
 ```
 
 If the extension can be used for multiple purposes the `kind` can be mixed, for example:
@@ -111,6 +112,7 @@ More information about extension kinds can be found at:
  - [SCAN](SCAN.md)
  - [QUEUE](QUEUE.md)
  - [SCHEDULER](SCHEDULER.md)
+ - [FEED](FEED.md)
 
 ### `"displayName"`
 

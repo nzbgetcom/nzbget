@@ -6,18 +6,16 @@ send an e-mail notification, transfer the files to other application and do any 
 Please note that the par-check/repair and unpack are performed by NZBGet internally and are not part of 
 post-processing extensions. You can activate par-check/repair and unpack without using of any post-processing extensions.
 
-Please note that these settings define "defaults" for nzb-file. When you change option Extensions (PostScript) 
+Please note that these settings define "defaults" for nzb-file. When you deactivate/activate the extension in the Extension Manager
 this has no effect on already enqueued downloads. However it’s possible to alter the assigned pp-extensions 
 for each nzb-file individually. To do so click on the nzb-file in the list of downloads, then click on Postprocess.
 
 If you use more than one extension for one nzb-file it can be important to set the correct order of execution 
-in the Extension Maanager.
+in the Extension Manager.
 
 ## Writing post-processing extensions
 
 > Please read [Extensions](EXTENSIONS.md) for general information about extensions first!
-
-> This document describes the unique features of post-processing extensions.
 
 ## Nzb-file information
 
