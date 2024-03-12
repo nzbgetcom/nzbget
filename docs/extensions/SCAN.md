@@ -71,8 +71,8 @@ To assign post-processing parameters:
 ```sh
 echo "[NZB] NZBPR_myvar=my value";
 ```
-The prefix `NZBPR_` will be removed. In this example a post-processing parameter with name `"myvar"` 
-and value `"my value"` will be associated with nzb-file.
+The prefix `NZBPR_` will be removed. In this example a post-processing parameter with name `myvar` 
+and value `my value` will be associated with nzb-file.
 
 To change top-flag (nzb-file will be added to the top of queue):
 To assign post-processing parameters:
@@ -85,11 +85,11 @@ echo "[NZB] PAUSED=1";
 ```
 Scan extensions can delete processed file, rename it or move somewhere. After the calling of the extension the file will be 
 either added to 
-queue (if it was an nzb-file) or renamed by adding the extension `".processed"`.
+queue (if it was an nzb-file) or renamed by adding the extension `.processed`.
 
-> Files with extensions `".processed"`, `".queued"` and `".error"` are skipped during the directory scanning.
+> Files with extensions `.processed`, `.queued` and `.error` are skipped during the directory scanning.
 
-> Files with extension `".nzb_processed"` are not passed to scan-extension before adding to queue. This feature allows scan-extension
+> Files with extension `.nzb_processed` are not passed to scan-extension before adding to queue. This feature allows scan-extension
 to prevent the scanning of nzb-files extracted from archives, if they were already processed by the extension.
 
 > Files added via RPC calls in particular from web-interface are saved into incoming nzb-directory and then processed by the extension.
