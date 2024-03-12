@@ -30,7 +30,7 @@ Select an extension to review or change its options (if it has any).
 
 In general, an extension consists of 2 files: `manifest.json` - 
 with all the meta-data describing the extension 
-and the `executable file`, like `main.py`.
+and the `executable` file, like `main.py`.
 
 `manifest.json` example:
 ```json
@@ -63,7 +63,14 @@ and the `executable file`, like `main.py`.
       "value": 25,
       "description": ["SMTP server port (1-65535)"],
       "select": [1, 65535]
-    }
+    },
+    {
+      "name": "SendMail",
+      "displayName": "SendMail",
+      "value": "Always",
+      "description": ["When to send the message."],
+      "select": ["Always", "OnFailure"]
+    },
   ],
   "commands": [
     {
@@ -210,7 +217,12 @@ There are two env-vars for each option:
 For example, for pp-option `Server.Name` two env-vars are passed: 
 `NZBPO_Server.Name` and `NZBPO_SERVER_NAME`.
 
-> In a case the user has installed the extension but have not saved the configuration, the options are not saved to configuration file yet. The extension will not get the options passed. This is a situation your extension must handle. You can either use a default settings or terminate the extension with a proper message asking the user to check and save configuration in web-interface. Example (python):
+> In a case the user has installed the extension but have not saved the configuration, the options are not saved to 
+configuration file yet. The extension will not get the options passed. 
+This is a situation your extension must handle. You can either use a default settings or terminate the extension with 
+a proper message asking the user to check and save configuration in web-interface. 
+
+Example (python):
 ```python
 required_options = ('NZBPO_FROM', 'NZBPO_TO', 'NZBPO_SERVER', 'NZBPO_PORT', 'NZBPO_ENCRYPTION',
 'NZBPO_USERNAME', 'NZBPO_PASSWORD', 'NZBPO_FILELIST', 'NZBPO_BROKENLOG', 'NZBPO_POSTPROCESSLOG')
@@ -222,12 +234,12 @@ if (not optname in os.environ):
 
 ### `"commands"`
 
-Sometimes it may be helpful to be able to execute extension scripts from settings page. For example pp-script EMail could use a button 
-"Send test email". For other extensions something like "Validate settings" or "Cleanup database" may be useful too.
+Sometimes it may be helpful to be able to execute extension extensions from settings page. 
+For example pp-extension EMail could use a button "Send test email". For other extensions something like 
+"Validate settings" or "Cleanup database" may be useful too.
 
-Starting from v19 it is possible to put buttons on the script settings page. The buttons are defined as part of script configuration, 
-almost similar to extension configuration options:
-
+Starting from v19 it is possible to put buttons on the extension settings page. The buttons are defined as 
+part of extension configuration, almost similar to extension configuration options:
 ```json
 "commands": [
   {
@@ -273,7 +285,7 @@ All messages printed by the extension are saved to NZBGet log and are seen in we
 
 ### `"taskTime"`
 
-For [SCHEDULER](https://nzbget.com/documentation/scheduler-scripts/) extensions.
+For [SCHEDULER](SCHEDULER.md) extensions.
 
 Example:
 ```json
@@ -299,7 +311,8 @@ if NZBGetVersion[0:5] < '11.1':
 
 ## Communication with NZBGet via RPC-API
 
-With RPC-API more things can be done than using command line. For documentation on available RPC-methods see [API](https://nzbget.com/documentation/api).
+With RPC-API more things can be done than using command line. For documentation on available 
+RPC-methods see [API](https://nzbget.com/documentation/api).
 
 Example: obtaining post-processing log of current nzb-file (this is a short version of script Logger.py supplied with NZBGet):
 

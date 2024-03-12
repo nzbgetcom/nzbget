@@ -3,7 +3,7 @@ Queue extensions are called after the download queue was changed.
 In the current version the queue extensions are called on defined events, described later. 
 In the future they can be called on other events too.
 
-## Writing post-processing extensions
+## Writing queue extensions
 
 > Please read [Extensions](EXTENSIONS.md) for general information about extensions first.
 
