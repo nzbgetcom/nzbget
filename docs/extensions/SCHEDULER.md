@@ -4,7 +4,7 @@ Scheduler extensions are called by scheduler tasks (setup by the user).
 
 ## Writing post-processing extensions
 
-> Please read [Extensions](EXTENSIONS.md) for general information about extensions first!
+> Please read [Extensions](EXTENSIONS.md) for general information about extensions first.
 
 ## Schedule
 

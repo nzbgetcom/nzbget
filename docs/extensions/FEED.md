@@ -7,7 +7,7 @@ global option Extensions (FeedScript in older NZBGet versions) or per feed optio
 
 ## Writing post-processing extensions
 
-> Please read [Extensions](EXTENSIONS.md) for general information about extensions first!
+> Please read [Extensions](EXTENSIONS.md) for general information about extensions first
 
 ## Feed information
 >TODO

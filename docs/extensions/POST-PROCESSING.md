@@ -15,7 +15,7 @@ in the Extension Manager.
 
 ## Writing post-processing extensions
 
-> Please read [Extensions](EXTENSIONS.md) for general information about extensions first!
+> Please read [Extensions](EXTENSIONS.md) for general information about extensions first.
 
 ## Nzb-file information
 
