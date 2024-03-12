@@ -276,3 +276,5 @@ TLS/SSL support using option "--disable-tls", but
 ```
 ./configure --disable-tls
 ```
+## Known issues:
+- does not compile on `armhf` hosts due to `yencode` library optimizations for vfp fpu hosts;
