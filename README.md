@@ -60,13 +60,18 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 [General instructions](INSTALLATION.md)
 
-[Linux](linux/build-info.md) [macOS](osx/build-info.md) [Synology](synology/build-info.md) [QNAP](qnap/build-info.md)
+## Extensions
+ - [V1 (NZBGet v22 and below)](docs/extensions/EXTENSIONS_LEGACY.md)
+ - [V2 (NZBGet v23 and above)](docs/extensions/EXTENSIONS.md)
+
+## Brief introduction on how to use NZBGet
+ - [How to use](docs/HOW_TO_USE.md)
 
 ## Contribution
 
 Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 
 
-For more information - see [Contributing](CONTRIBUTING.md).
+For more information - see [Contributing](docs/CONTRIBUTING.md).
 
 ## Donate
 
