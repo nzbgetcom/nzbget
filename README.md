@@ -54,7 +54,7 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 `Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), MIPS (mipseb mipsel), PowerPC (ppc6xx ppc500), RISC-V 64-bit (riscv64)
 
-`macOS`: macOS 10.13 High Sierra and later, Intel / Apple Silicon.
+`macOS`: X64 binary: macOS Mojave 10.14+, Universal (Intel / Apple Silicon) binary: macOS Monterey 12+
 
 ## Building from sources
 

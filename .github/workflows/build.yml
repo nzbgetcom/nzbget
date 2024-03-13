@@ -16,6 +16,8 @@ jobs:
   
   build-osx:
     uses: ./.github/workflows/osx.yml
+    permissions:
+      actions: write
   
   build-synology:
     uses: ./.github/workflows/synology.yml

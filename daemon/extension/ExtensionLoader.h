@@ -47,21 +47,19 @@ namespace ExtensionLoader
 	namespace V1
 	{
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
-		namespace
-		{
-			void ParseOptionsAndCommands(
-				std::ifstream& file,
-				std::vector<ManifestFile::Option>& options,
-				std::vector<ManifestFile::Command>& commands
-			);
-			std::vector<ManifestFile::SelectOption> 
-			GetSelectOptions(const std::vector<std::string>& opts, bool isDashDelim);
-			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
-			void RemoveTailAndTrim(std::string& str, const char* tail);
-			void BuildDisplayName(Extension::Script& script);
-			std::pair<std::vector<std::string>, std::string> 
-			ExtractElements(const std::string& str);
-		}
+
+		static void ParseOptionsAndCommands(
+			std::ifstream& file,
+			std::vector<ManifestFile::Option>& options,
+			std::vector<ManifestFile::Command>& commands
+		);
+		static std::vector<ManifestFile::SelectOption>
+		GetSelectOptions(const std::vector<std::string>& opts, bool isDashDelim);
+		static ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
+		static void RemoveTailAndTrim(std::string& str, const char* tail);
+		static void BuildDisplayName(Extension::Script& script);
+		static std::pair<std::vector<std::string>, std::string>
+		ExtractElements(const std::string& str);
 	}
 
 	namespace V2
@@ -69,10 +67,7 @@ namespace ExtensionLoader
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 	}
 
-	namespace
-	{
-		Extension::Kind GetScriptKind(const std::string& line);
-	}
+	static Extension::Kind GetScriptKind(const std::string& line);
 }
 
 #endif
