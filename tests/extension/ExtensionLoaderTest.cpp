@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	extension.SetEntry(entry);
 	extension.SetName(name);
 
-	BOOST_CHECK(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
+	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
 
 	BOOST_CHECK(extension.GetEntry() == entry);
 	BOOST_CHECK(extension.GetLocation() == location);

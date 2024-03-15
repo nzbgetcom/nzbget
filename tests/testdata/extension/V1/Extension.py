@@ -98,5 +98,14 @@
 # description.
 #test2=
 
+##############################################################################
+### CATEGORIES                                                             ###
+
+# Name of the category to monitor.
+#Category1.Name=
+
+# Speed limit for that category (KB).
+#Category1.DownloadRate=0
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################

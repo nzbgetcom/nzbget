@@ -90,12 +90,12 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(command.name == "connectionTest");
 	BOOST_CHECK(command.action == "Send");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
-	BOOST_CHECK(command.description == std::vector<std::string>({"To check connection parameters click the button."}));
+	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto& command2 = manifestFile.commands[1];
 	BOOST_CHECK(command2.section.get() == "TASKS");
 	BOOST_CHECK(command2.name == "connectionTestTask");
 	BOOST_CHECK(command2.action == "SendToTask");
 	BOOST_CHECK(command2.displayName == "ConnectionTestTask");
-	BOOST_CHECK(command2.description == std::vector<std::string>({"TASKS command"}));
+	BOOST_CHECK(command2.description == std::vector<std::string>({ "TASKS command" }));
 }
