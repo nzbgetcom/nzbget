@@ -24,6 +24,15 @@
             "value": 25,
             "description": ["SMTP server port (1-65535)"],
             "select": [1, 65535]
+        },
+        {
+            "enumeration": 1,
+            "section": "TASKS",
+            "name": "Task",
+            "displayName": "Task",
+            "value": 25,
+            "description": ["Tasks section"],
+            "select": []
         }
     ],
     "commands": [
@@ -32,6 +41,13 @@
             "action": "Send",
             "displayName": "ConnectionTest",
             "description": ["To check connection parameters click the button."]
+        },
+        {
+            "section": "TASKS",
+            "name": "connectionTestTask",
+            "action": "SendToTask",
+            "displayName": "ConnectionTestTask",
+            "description": ["TASKS command"]
         }
     ],
     "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",

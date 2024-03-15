@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <boost/variant2.hpp>
+#include <boost/optional.hpp>
 #include "Json.h"
 
 namespace ManifestFile
@@ -33,6 +34,8 @@ namespace ManifestFile
 
 	struct Option
 	{
+		boost::optional<int8_t> enumeration;
+		boost::optional<std::string> section;
 		std::string name;
 		std::string displayName;
 		std::vector<std::string> description;
@@ -42,6 +45,7 @@ namespace ManifestFile
 
 	struct Command
 	{
+		boost::optional<std::string> section;
 		std::string name;
 		std::string displayName;
 		std::string action;
@@ -75,6 +79,8 @@ namespace ManifestFile
 	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<std::string>& property);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<int8_t>& property);
 };
 
 #endif

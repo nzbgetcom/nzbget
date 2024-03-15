@@ -109,6 +109,8 @@ namespace ManifestFile
 			Json::JsonObject cmdJson = value.as_object();
 			Command command;
 
+			CheckKeyAndSet(cmdJson, "section", command.section);
+
 			if (!CheckKeyAndSet(cmdJson, "name", command.name))
 				continue;
 
@@ -143,6 +145,10 @@ namespace ManifestFile
 				continue;
 
 			Option option;
+
+			CheckKeyAndSet(optionJson, "enumeration", option.enumeration);
+			CheckKeyAndSet(optionJson, "section", option.section);
+
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;
 
@@ -225,5 +231,31 @@ namespace ManifestFile
 		}
 
 		return false;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<std::string>& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (rawProperty && rawProperty->is_string())
+		{
+			property = rawProperty->get_string().c_str();
+			return true;
+		}
+
+		property = boost::none;
+		return true;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<int8_t>& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (rawProperty && rawProperty->is_number())
+		{
+			property = rawProperty->to_number<int8_t>();
+			return true;
+		}
+
+		property = boost::none;
+		return true;
 	}
 }

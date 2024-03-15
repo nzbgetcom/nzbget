@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.requirements.size() == 1);
 	BOOST_CHECK(manifestFile.requirements == std::vector<std::string>({ "This script requires Python to be installed on your system." }));
 
-	BOOST_CHECK(manifestFile.options.size() == 2);
+	BOOST_REQUIRE(manifestFile.options.size() == 3);
 
 	auto& option = manifestFile.options[0];
 	BOOST_CHECK(option.name == "sendMail");
@@ -76,9 +76,26 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[0]) == 1.);
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
 
+	auto& option3 = manifestFile.options[2];
+	BOOST_CHECK(option3.enumeration.get() == 1);
+	BOOST_CHECK(option3.section.get() == "TASKS");
+	BOOST_CHECK(option3.name == "Task");
+	BOOST_CHECK(option3.displayName == "Task");
+	BOOST_CHECK(option3.description == std::vector<std::string>({ "Tasks section" }));
+	BOOST_CHECK(boost::variant2::get<double>(option2.value) == 25.);
+
+	BOOST_REQUIRE(manifestFile.commands.size() == 2);
+
 	auto& command = manifestFile.commands[0];
 	BOOST_CHECK(command.name == "connectionTest");
 	BOOST_CHECK(command.action == "Send");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
 	BOOST_CHECK(command.description == std::vector<std::string>({"To check connection parameters click the button."}));
+
+	auto& command2 = manifestFile.commands[1];
+	BOOST_CHECK(command2.section.get() == "TASKS");
+	BOOST_CHECK(command2.name == "connectionTestTask");
+	BOOST_CHECK(command2.action == "SendToTask");
+	BOOST_CHECK(command2.displayName == "ConnectionTestTask");
+	BOOST_CHECK(command2.description == std::vector<std::string>({"TASKS command"}));
 }
