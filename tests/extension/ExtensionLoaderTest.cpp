@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(command2.action == "Send Test");
 	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
 
-	BOOST_CHECK(extension.GetOptions().size() == 16);
+	BOOST_CHECK(extension.GetOptions().size() == 18);
 
 	auto option = extension.GetOptions()[0];
 
@@ -242,4 +242,24 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		}));
 	BOOST_CHECK(boost::variant2::get<std::string>(option16.value) == "");
 	BOOST_CHECK(option16.select.empty());
+
+	auto option17 = extension.GetOptions()[16];
+	BOOST_CHECK(option17.name == "test2");
+	BOOST_CHECK(option17.displayName == "test2");
+	BOOST_CHECK(option17.description == std::vector<std::string>({
+		"(Test2).",
+		"description."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option17.value) == "");
+	BOOST_CHECK(option17.select.empty());
+
+	auto option18 = extension.GetOptions()[17];
+	BOOST_CHECK(option18.name == "test2");
+	BOOST_CHECK(option18.displayName == "test2");
+	BOOST_CHECK(option18.description == std::vector<std::string>({
+		"(Test2).",
+		"description."
+		}));
+	BOOST_CHECK(boost::variant2::get<std::string>(option18.value) == "");
+	BOOST_CHECK(option18.select.empty());
 }

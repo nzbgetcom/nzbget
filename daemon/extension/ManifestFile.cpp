@@ -233,29 +233,14 @@ namespace ManifestFile
 		return false;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<std::string>& property)
-	{
-		const auto& rawProperty = json.if_contains(key);
-		if (rawProperty && rawProperty->is_string())
-		{
-			property = rawProperty->get_string().c_str();
-			return true;
-		}
-
-		property = boost::none;
-		return true;
-	}
-
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, boost::optional<int8_t>& property)
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, uint8_t& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (rawProperty && rawProperty->is_number())
 		{
-			property = rawProperty->to_number<int8_t>();
-			return true;
+			property = rawProperty->to_number<uint8_t>();
 		}
 
-		property = boost::none;
 		return true;
 	}
 }

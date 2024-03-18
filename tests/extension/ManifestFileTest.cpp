@@ -77,8 +77,8 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
 
 	auto& option3 = manifestFile.options[2];
-	BOOST_CHECK(option3.enumeration.get() == 1);
-	BOOST_CHECK(option3.section.get() == "TASKS");
+	BOOST_CHECK(option3.enumeration == 1);
+	BOOST_CHECK(option3.section == "TASKS");
 	BOOST_CHECK(option3.name == "Task");
 	BOOST_CHECK(option3.displayName == "Task");
 	BOOST_CHECK(option3.description == std::vector<std::string>({ "Tasks section" }));
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto& command2 = manifestFile.commands[1];
-	BOOST_CHECK(command2.section.get() == "TASKS");
+	BOOST_CHECK(command2.section == "TASKS");
 	BOOST_CHECK(command2.name == "connectionTestTask");
 	BOOST_CHECK(command2.action == "SendToTask");
 	BOOST_CHECK(command2.displayName == "ConnectionTestTask");
