@@ -29,7 +29,7 @@
 
 namespace ExtensionManager
 {
-	const Extensions& Manager::GetExtensions() const
+	const Extensions& Manager::GetExtensions() const &
 	{
 		std::shared_lock<std::shared_timed_mutex> lock{m_mutex};
 		return m_extensions;
@@ -38,20 +38,21 @@ namespace ExtensionManager
 	std::pair<WebDownloader::EStatus, std::string>
 	Manager::DownloadExtension(const std::string& url, const std::string& extName)
 	{
-		BString<1024> tmpFileName;
-		tmpFileName.Format("%s%cextension-%s.tmp.zip", g_Options->GetTempDir(), PATH_SEPARATOR, extName.c_str());
+		std::string tmpFileName = std::string(g_Options->GetTempDir()) 
+			+ PATH_SEPARATOR 
+			+ "extension-" + extName + ".tmp.zip";
 
 		std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
 		downloader->SetUrl(url.c_str());
 		downloader->SetForce(true);
 		downloader->SetRetry(false);
-		downloader->SetOutputFilename(tmpFileName);
+		downloader->SetOutputFilename(tmpFileName.c_str());
 		downloader->SetInfoName(extName.c_str());
 
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
 		downloader.reset();
 
-		return std::make_pair(status, tmpFileName.Str());
+		return std::make_pair(status, std::move(tmpFileName));
 	}
 
 	boost::optional<std::string>

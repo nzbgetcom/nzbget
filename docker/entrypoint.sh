@@ -34,6 +34,14 @@ PGID=${PGID:-1000}
 groupmod -o -g "$PGID" users
 usermod -o -u "$PUID" user
 
-chown -R user:users /config
-chown -R user:users /downloads
+chown -R user:users /config || CONFIG_CHOWN_STATUS=$?
+if [ ! -z $CONFIG_CHOWN_STATUS ]; then
+  echo "*** Could not set permissions on /config ; this container may not work as expected ***"
+fi
+
+chown -R user:users /downloads || DOWNLOADS_CHOWN_STATUS=$?
+if [ ! -z $DOWNLOADS_CHOWN_STATUS ]; then
+  echo "*** Could not set permissions on /downloads ; this container may not work as expected ***"
+fi
+
 su -p user -c "/app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}"

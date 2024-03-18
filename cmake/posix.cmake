@@ -285,6 +285,8 @@ check_cxx_source_compiles("
 # Check TLS/SSL
 if(USE_OPENSSL AND NOT ENABLE_STATIC)
 	check_library_exists(OpenSSL::Crypto X509_check_host "" HAVE_X509_CHECK_HOST)
+elseif(USE_OPENSSL AND ENABLE_STATIC)
+	set(HAVE_X509_CHECK_HOST 1)
 endif()
 
 check_cxx_source_compiles("

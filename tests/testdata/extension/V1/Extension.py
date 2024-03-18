@@ -88,5 +88,15 @@
 # description.
 #Test@Send Test 
 
+# Custom Plex Section(s) you would like to update [Optional].
+#
+# Section Number(s) corresponding to your Plex library (comma separated).
+#customPlexSection=
+
+# (Test2).
+#
+# description.
+#test2=
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################

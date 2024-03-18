@@ -416,21 +416,18 @@ namespace Extension
 		return result;
 	}
 
-	namespace
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
 	{
-		void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
-		{
-			xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
-			xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
-			xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
-			xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
-			xmlAddChild(memberNode, valueNode);
-			xmlAddChild(rootNode, memberNode);
-		}
+		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
+		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
+		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
+		xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
+		xmlAddChild(memberNode, valueNode);
+		xmlAddChild(rootNode, memberNode);
+	}
 
-		const char* BoolToStr(bool value)
-		{
-			return value ? "true" : "false";
-		}
+	const char* BoolToStr(bool value)
+	{
+		return value ? "true" : "false";
 	}
 }
