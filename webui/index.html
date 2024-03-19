@@ -3,6 +3,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2023 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -600,27 +601,27 @@
 									<p>Additional exemption: compiling, linking, and/or using OpenSSL is allowed.</p>
 														
 									<h4>Par2</h4>
-									<p>NZBGet uses <a href="http://parchive.sourceforge.net">Par2</a> by Peter Brian Clements with library interface by Francois Lesueur.</p>
-									<p>Par2 is licensed under the <a href="http://github.com/jquery/jquery/blob/master/GPL-LICENSE.txt">GPL license</a>.</p>
+									<p>NZBGet uses <a href="https://parchive.sourceforge.net/">Par2</a> by Peter Brian Clements with library interface by Francois Lesueur.</p>
+									<p>Par2 is licensed under the <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html">GPLv2 license</a>.</p>
 
 									<h4>jQuery</h4>
 									<p>NZBGet web-interface uses <a href="http://jquery.com">jQuery</a>. The jQuery Project is run by a distributed group of volunteers that all want to see jQuery become the best JavaScript tool possible.</p>
-									<p>jQuery is licensed under the <a href="http://github.com/jquery/jquery/blob/master/MIT-LICENSE.txt">MIT</a> and <a href="http://github.com/jquery/jquery/blob/master/GPL-LICENSE.txt">GPL</a> licenses.</p>
+									<p>jQuery is licensed under the <a href="https://jquery.com/license/">MIT</a> license.</p>
 							
 									<h4>Bootstrap</h4>
-									<p>NZBGet web-interface uses <a href="http://twitter.github.com/bootstrap/">Twitter Bootstrap</a>. Designed and built with all the love in the world @twitter by @mdo and @fat.</p>
-									<p>Bootstrap code is licensed under the <a href="http://www.apache.org/licenses/LICENSE-2.0">Apache License v2.0</a>.</p>
+									<p>NZBGet web-interface uses <a href="https://getbootstrap.com/2.3.2/">Bootstrap</a>. Designed and built with all the love in the world @twitter by @mdo and @fat.</p>
+									<p>Bootstrap code is licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License v2.0</a>.</p>
 							
 									<h4>Raphaël</h4>
-									<p>NZBGet web-interface makes use of <a href="http://raphaeljs.com">Raphaël</a> built by Dmitry Baranovskiy.</p>
-									<p>Raphaël code is licensed under the <a href="http://raphaeljs.com/license.html">MIT license</a>.</p>
+									<p>NZBGet web-interface makes use of <a href="https://dmitrybaranovskiy.github.io/raphael/">Raphaël</a> built by Dmitry Baranovskiy.</p>
+									<p>Raphaël code is licensed under the <a href="https://dmitrybaranovskiy.github.io/raphael/license.html">MIT license</a>.</p>
 							
 									<h4>Elycharts</h4>
-									<p>For charts NZBGet relies on <a href="http://elycharts.com">Elycharts</a> by Void Labs s.n.c.</p>
-									<p>Elycharts code is licensed under the <a href="http://creativecommons.org/licenses/MIT/">MIT license</a>.</p>
+									<p>For charts NZBGet relies on <a href="https://elycharts.com/">Elycharts</a> by Void Labs s.n.c.</p>
+									<p>Elycharts code is licensed under the <a href="https://elycharts.com/license/">MIT license</a>.</p>
 							
 									<h4>iconSweets</h4>
-									<p>NZBGet web-interface includes selected icons from collections <a href="http://www.iconsweets.com/">iconSweets</a> and <a href="http://www.iconsweets2.com/">iconSweets2</a> by <a href="http://yummygum.com">Yummygum</a>.</p>
+									<p>NZBGet web-interface includes selected icons from collections <a href="https://designbombs.com/iconsweets/">iconSweets</a> and <a href="https://www.designbombs.com/iconsweets2/">iconSweets2</a> by <a href="https://yummygum.com/">Yummygum</a>.</p>
 									<p>The icons are generally licensed under a custom license but used in NZBGet with author's permission.</p>
 
 									<h4>Boost</h4>
@@ -693,6 +694,62 @@
 												</div>
 											</div>
 
+											<section class="control-group config-static extension-manager">
+												<div class="alert alert-info alert-block" style="display:none;" id="ExtensionsLoadingBanner">
+													<h4 class="alert-heading">Loading...</h4>
+													Please wait.
+												</div>
+												<div class="alert alert-danger alert-block" style="display:none;" id="ExtensionsErrorAlert">
+													<h4 class="alert-heading" id="ExtensionsErrorAlert-title"></h4>
+													<p id="ExtensionsErrorAlert-text"></p>
+												</div>
+
+												<p class="help-block" id="ExtensionsHelpBlock" style="display:none;" >
+													<span class="help-option-title"><strong>The Extension Manager</strong> is a tool for downloading, updating and deleting NZBGet extensions with backwards compatibility with extensions based on header configuration definition.</span>
+													<br>
+													<br>
+													<span class="help-option-title">If you want to add support for your extension by the Extension Manager, you can follow this 
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/README.md" target="_blank"> instruction.</a>
+													</span>
+													<br>
+													<br>
+													<span class="label label-warning">NOTE:</span>
+													<span class="help-option-title">If you delete your extension that is not on this
+														<a href="https://github.com/nzbgetcom/nzbget-extensions/blob/main/extensions.json" target="_blank"> list</a>, 
+														it will be removed without the possibility of reinstalling it.
+													</span>
+													<br>
+													<br>
+													<span class="label label-warning">NOTE:</span>
+													<span class="help-option-title">Extension Manager requires 7-Zip to unpack downloaded extensions.
+														If you are having issues with Extension Manager downloads - please check 
+														<a href="#" onclick="Config.scrollToOption(event, this)">SevenZipCmd</a>.
+													</span>
+												</p>
+
+												<br>
+
+												<table class="table table-striped table-bordered" id="ExtensionManagerTable">
+													<thead>
+														<tr>
+															<th class="text-center">ON/OFF</th>
+															<th class="text-center">Name</th>
+															<th class="text-center">About</th>
+															<th class="text-center">Version</th>
+															<th class="text-center">Homepage</th>
+															<th></th>
+															<th class="text-center"></th>
+														</tr>
+													</thead>
+													<tbody id="ExtensionManagerTBody"></tbody>
+												</table>
+												
+												<!-- *** DELETE EXTENSION MENU -->
+												<ul class="dropdown-menu" id="DeleteExtensionMenu">
+													<li><a href="#" id="DeleteExtensionItem" onclick="" title="Delete extension"> Delete</a></li>
+													<li><a href="#" id="DeleteExtensionWithSettingsItem" onclick="" title="Delete extension with saved settings">Delete with saved settings</a></li>
+												</ul>
+											</section>
 										</fieldset>
 										</form>
 									</div>
@@ -2598,7 +2655,7 @@
 
 	<div class="modal-footer">
 		<a href="#" class="btn btn-danger pull-left" onclick="Config.discardChanges()">Discard changes</a>
-		<a href="#" class="btn" data-dismiss="modal">Stop</a>
+		<a href="#" class="btn" data-dismiss="modal">Cancel</a>
 		<a href="#" class="btn btn-primary" onclick="Config.saveChanges()">Save changes</a>
 	</div>
 </div>

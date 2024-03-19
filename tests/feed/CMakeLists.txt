@@ -13,13 +13,8 @@ add_executable(FeedTest
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
-target_link_libraries(FeedTest PRIVATE
-	ZLIB::ZLIB
-	Yencode
-	LibXml2::LibXml2
-)
+target_link_libraries(FeedTest PRIVATE ${LIBS})
 target_include_directories(FeedTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/main
@@ -28,8 +23,7 @@ target_include_directories(FeedTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/lib/regex
-	${Boost_INCLUDE_DIR}
-	${LIBXML2_INCLUDE_DIR}
+	${INCLUDES}
 )
 
 file(COPY ../testdata/feed DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

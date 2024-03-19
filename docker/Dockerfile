@@ -8,7 +8,7 @@ ARG MAKE_JOBS=1
 
 RUN \
   echo "**** install build packages ****" && \
-  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl && \
+  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl && \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
   git clone https://github.com/nzbgetcom/nzbget.git nzbget && \
@@ -34,7 +34,7 @@ RUN \
   /app/nzbget/share/nzbget/nzbget.conf && \
   mv /app/nzbget/share/nzbget/webui /app/nzbget/ && \
   cp /app/nzbget/share/nzbget/nzbget.conf /app/nzbget/webui/nzbget.conf.template && \
-  ln -s /usr/bin/7za /app/nzbget/7za && \
+  ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
   cp /nzbget/pubkey.pem /app/nzbget/pubkey.pem && \
   curl -o /app/nzbget/cacert.pem -L "https://curl.se/ca/cacert.pem" && \
@@ -58,7 +58,7 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 boost1.82-json && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*

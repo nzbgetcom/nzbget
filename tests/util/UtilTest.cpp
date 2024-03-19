@@ -118,3 +118,12 @@ BOOST_AUTO_TEST_CASE(RegExTest)
 	BOOST_CHECK(seasonEpisode.GetMatchStart(1) == 14);
 	BOOST_CHECK(seasonEpisode.GetMatchLen(1) == 2);
 }
+
+BOOST_AUTO_TEST_CASE(StrToNumTest)
+{
+	BOOST_CHECK(Util::StrToNum("3.14").get() == 3.14);
+	BOOST_CHECK(Util::StrToNum("3.").get() == 3.0);
+	BOOST_CHECK(Util::StrToNum("3").get() == 3);
+	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
+	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
+}

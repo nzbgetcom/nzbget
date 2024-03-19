@@ -520,6 +520,7 @@ bool FileSystem::CopyFile(const char* srcFilename, const char* dstFilename)
 bool FileSystem::DeleteFile(const char* filename)
 {
 #ifdef WIN32
+	SetFileAttributes(filename, FILE_ATTRIBUTE_NORMAL);
 	return _wremove(UtfPathToWidePath(filename)) == 0;
 #else
 	return remove(filename) == 0;

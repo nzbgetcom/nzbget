@@ -23,12 +23,11 @@
 #define BOOST_TEST_MODULE "NzbFileTest" 
 #include <boost/test/included/unit_test.hpp>
 
-#include <filesystem>
-
 #include "NzbFile.h"
 #include "Log.h"
 #include "Options.h"
 #include "DiskState.h"
+#include "FileSystem.h"
 
 Log* g_Log;
 Options* g_Options;
@@ -36,9 +35,7 @@ DiskState* g_DiskState;
 
 void TestNzb(std::string testFilename)
 {
-	BOOST_TEST_MESSAGE(std::string("Filename: ") + testFilename);
-
-	std::string path = std::filesystem::current_path().string();
+	std::string path = FileSystem::GetCurrentDirectory().Str();
 
 	std::string nzbFilename(path + "/nzbfile/" + testFilename + ".nzb");
 	std::string infoFilename(path + "/nzbfile/" + testFilename + ".txt");
@@ -69,9 +66,11 @@ void TestNzb(std::string testFilename)
 	}
 
 	fclose(infofile);
+
+	xmlCleanupParser();
 }
 
-BOOST_AUTO_TEST_CASE(NZBParser)
+BOOST_AUTO_TEST_CASE(NZBParserTest)
 {
 	Options::CmdOptList cmdOpts;
 	Options options(&cmdOpts, nullptr);

@@ -54,6 +54,8 @@
 #include "StackTrace.h"
 #include "CommandScript.h"
 #include "YEncode.h"
+#include "ExtensionManager.h"
+
 #ifdef WIN32
 #include "WinService.h"
 #include "WinConsole.h"
@@ -85,10 +87,13 @@ ArticleCache* g_ArticleCache;
 QueueScriptCoordinator* g_QueueScriptCoordinator;
 ServiceCoordinator* g_ServiceCoordinator;
 ScriptConfig* g_ScriptConfig;
-CommandScriptLog* g_CommandScriptLog; 
+CommandScriptLog* g_CommandScriptLog;
+ExtensionManager::Manager* g_ExtensionManager;
+
 #ifdef WIN32
 WinConsole* g_WinConsole;
 #endif
+
 int g_ArgumentCount;
 char* (*g_EnvironmentVariables)[] = nullptr;
 char* (*g_Arguments)[] = nullptr;
@@ -164,7 +169,7 @@ public:
 	virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
 		int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 		bool tls, const char* cipher, int maxConnections, int retention,
-		int level, int group, bool optional);
+		int level, int group, bool optional, unsigned int certVerificationfLevel);
 	virtual void AddFeed(int id, const char* name, const char* url, int interval,
 		const char* filter, bool backlog, bool pauseNzb, const char* category,
 		int priority, const char* feedScript);
@@ -195,6 +200,8 @@ private:
 	std::unique_ptr<ServiceCoordinator> m_serviceCoordinator;
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
+	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
+
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
 #endif
@@ -379,6 +386,9 @@ void NZBGet::CreateGlobals()
 	m_commandScriptLog = std::make_unique<CommandScriptLog>();
 	g_CommandScriptLog = m_commandScriptLog.get();
 
+	m_extensionManager = std::make_unique<ExtensionManager::Manager>();
+	g_ExtensionManager = m_extensionManager.get();
+
 	m_scheduler = std::make_unique<Scheduler>();
 
 	m_diskService = std::make_unique<DiskService>();
@@ -426,6 +436,8 @@ void NZBGet::BootConfig()
 	m_serverPool->SetRetryInterval(m_options->GetArticleInterval());
 
 	m_scriptConfig->InitOptions();
+
+	m_extensionManager->LoadExtensions();
 }
 
 void NZBGet::Cleanup()
@@ -453,6 +465,8 @@ void NZBGet::Cleanup()
 	g_Maintenance = nullptr;
 	g_StatMeter = nullptr;
 	g_CommandScriptLog = nullptr;
+	g_ExtensionManager = nullptr;
+
 #ifdef WIN32
 	g_WinConsole = nullptr;
 #endif
@@ -991,10 +1005,11 @@ void NZBGet::Daemonize()
 
 void NZBGet::AddNewsServer(int id, bool active, const char* name, const char* host,
 	int port, int ipVersion, const char* user, const char* pass, bool joinGroup, bool tls,
-	const char* cipher, int maxConnections, int retention, int level, int group, bool optional)
+	const char* cipher, int maxConnections, int retention, int level, int group, bool optional,
+	unsigned int certVerificationfLevel)
 {
 	m_serverPool->AddServer(std::make_unique<NewsServer>(id, active, name, host, port, ipVersion, user, pass, joinGroup,
-		tls, cipher, maxConnections, retention, level, group, optional));
+		tls, cipher, maxConnections, retention, level, group, optional, certVerificationfLevel));
 }
 
 void NZBGet::AddFeed(int id, const char* name, const char* url, int interval, const char* filter,

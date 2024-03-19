@@ -17,7 +17,7 @@
    License along with the GNU C Library; if not, write to the Free
    Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
    02111-1307 USA.  */
-//#include "nzbget.h"
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -52,15 +52,17 @@
 # include "../locale/localeinfo.h"
 #endif
 
-#define strncasecmp strnicmp
-#define strcasecmp stricmp
+#define strncasecmp strncmp
+#define strcasecmp strcmp
 
 /* On some systems, limits.h sets RE_DUP_MAX to a lower value than
    GNU regex allows.  Include it before <regex.h>, which correctly
    #undefs RE_DUP_MAX and sets it to the right value.  */
 #include <limits.h>
-#include <malloc.h>
 #include <regex.h>
+#ifdef WIN32
+#include <malloc.h>
+#endif
 
 //#ifdef __cplusplus
 //extern "C" {

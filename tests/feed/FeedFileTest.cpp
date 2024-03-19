@@ -21,12 +21,12 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <filesystem>
+#include "FileSystem.h"
 #include "FeedFile.h"
 
 BOOST_AUTO_TEST_CASE(FeedFileTest)
 {
-	std::string path = std::filesystem::current_path().string();
+	std::string path = FileSystem::GetCurrentDirectory().Str();
 	std::string testFile = path + "/feed/feed.xml";
 	FeedFile file(testFile.c_str(), "feedName");
 
@@ -49,4 +49,6 @@ BOOST_AUTO_TEST_CASE(FeedFileTest)
 	BOOST_CHECK(feedInfo.GetFilename() == std::string("Crows.And.Sparrows"));
 	BOOST_CHECK(feedInfo.GetSize() == 7445312955);
 	BOOST_CHECK(feedInfo.GetTitle() == std::string("Crows.And.Sparrows"));
+
+	xmlCleanupParser();
 }

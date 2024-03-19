@@ -748,9 +748,26 @@ var Refresher = (new function($)
 		RPC.connectErrorMessage = 'Cannot establish connection to NZBGet.'
 		RPC.defaultFailureCallback = rpcFailure;
 		RPC.next = loadNext;
-		RPC.safeMethods = ['version', 'status', 'listgroups', 'history', 'listfiles',
-			'log', 'loadlog', 'logscript', 'logupdate', 'config', 'loadconfig',
-			'configtemplates', 'readurl', 'servervolumes'];
+		RPC.safeMethods = [
+			'version', 
+			'status', 
+			'listgroups', 
+			'history', 
+			'listfiles',
+			'log', 
+			'loadlog', 
+			'logscript', 
+			'logupdate', 
+			'config', 
+			'loadconfig',
+			'configtemplates', 
+			'loadextensions', 
+			'downloadextension',
+			'updateextension',
+			'deleteextension',
+			'readurl', 
+			'servervolumes'
+		];
 
 		$('#RefreshMenu li a').click(refreshIntervalClick);
 		$('#RefreshButton').click(refreshClick);

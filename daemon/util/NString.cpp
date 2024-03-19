@@ -155,7 +155,14 @@ void CString::AppendFmtV(const char* format, va_list ap)
 
 	int curLen = Length();
 	int newLen = curLen + addLen;
-	m_data = (char*)realloc(m_data, newLen + 1);
+
+	char* newData = (char*)realloc(m_data, newLen + 1);
+	if (newData == nullptr) 
+	{
+		return;
+	}
+
+	m_data = newData;
 
 	vsnprintf(m_data + curLen, newLen + 1, format, ap2);
 

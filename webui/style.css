@@ -14,13 +14,46 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 body {
 	padding-left: 0;
 	padding-right: 0;
 }
+
+/* EXTENSION MANAGER */
+.extension-manager__td {
+	vertical-align: middle !important;
+	max-width: 350px;
+}
+
+.red-circle {
+	border-radius: 50%;
+	border: none;
+	background-color: #da4f49;
+}
+
+.green-circle {
+	border-radius: 50%;
+	border: none;
+	background-color: #468847;
+}
+
+.red-circle,
+.green-circle {
+	height: 12px;
+	width: 12px;
+}
+
+.btn--disabled {
+	opacity: 0.2 !important;
+}
+
+.list-item--nested {
+	margin-left: 10px;
+}
+
 
 /* NAVBAR */
 .navbar-fixed-top {
@@ -1864,6 +1897,7 @@ div.multiset-toolbar button {
 	cursor: pointer;
 }
 
+.mv-item-arrow-btn--disabled,
 #ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:first-child,
 #ScriptListDialog_ScriptTable tbody > tr:last-child div.btn-row-order:last-child,
 #ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:nth-child(2),

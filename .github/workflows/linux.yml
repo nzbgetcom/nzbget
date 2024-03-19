@@ -6,12 +6,12 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, nzbget-linux]
 
     steps:
     
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -29,7 +29,12 @@ jobs:
         rm -rf /build/output
         cp -r . /build/nzbget
         cd /build
-        docker run -e ALL_ARCHS="i686 x86_64 aarch64 armhf armel" -v /build:/build nzbget-build /build/scripts/build-nzbget-ci.sh
+        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
+          DEBUG=yes
+        else
+          DEBUG=no
+        fi
+        ALL_ARCHS="i686 x86_64 aarch64 armhf armel mipseb mipsel ppc6xx ppc500 riscv64" DEBUG=$DEBUG /build/scripts/build-nzbget-ci.sh
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
@@ -43,7 +48,7 @@ jobs:
         done
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: nzbget-linux-installers
         path: /build/output/*.run

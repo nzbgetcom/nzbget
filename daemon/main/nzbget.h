@@ -112,11 +112,9 @@ compiled */
 
 #endif
 
-
 /***************** GLOBAL INCLUDES *****************/
 
 #ifdef WIN32
-
 // WINDOWS INCLUDES
 
 // Using "WIN32_LEAN_AND_MEAN" to disable including of many unneeded headers
@@ -138,15 +136,7 @@ compiled */
 #include <wincon.h>
 #include <shellapi.h>
 #include <winreg.h>
-
 #include <comutil.h>
-#import <msxml.tlb> named_guids
-using namespace MSXML;
-
-#if _MSC_VER >= 1600
-#include <stdint.h>
-#define HAVE_STDINT_H
-#endif
 
 #ifdef _DEBUG
 #include <crtdbg.h>
@@ -161,9 +151,7 @@ using namespace MSXML;
 #include <grp.h>
 #include <signal.h>
 #include <netdb.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -174,8 +162,6 @@ using namespace MSXML;
 #include <sys/file.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdint.h>
-#include <pwd.h>
 #include <dirent.h>
 
 #ifdef HAVE_SYS_PRCTL_H
@@ -202,6 +188,7 @@ using namespace MSXML;
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <time.h>
 #include <ctype.h>
 #include <inttypes.h>
@@ -220,6 +207,7 @@ using namespace MSXML;
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <shared_mutex>
 #include <condition_variable>
 #include <chrono>
 
@@ -227,6 +215,7 @@ using namespace MSXML;
 #include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
+#include <libxml/tree.h>
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

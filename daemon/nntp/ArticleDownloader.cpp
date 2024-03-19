@@ -116,6 +116,10 @@ void ArticleDownloader::Run()
 
 		m_connection->SetSuppressErrors(false);
 
+#ifndef DISABLE_TLS
+		m_connection->SetCertVerifLevel(lastServer->GetCertVerificationLevel());
+#endif
+
 		m_connectionName.Format("%s (%s)",
 			m_connection->GetNewsServer()->GetName(), m_connection->GetHost());
 

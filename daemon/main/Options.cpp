@@ -187,6 +187,7 @@ const char* PossibleConfigLocations[] =
 		"/usr/etc/nzbget.conf",
 		"/usr/local/etc/nzbget.conf",
 		"/opt/etc/nzbget.conf",
+		"~/usr/etc/nzbget.conf",
 		nullptr
 	};
 #endif
@@ -1011,6 +1012,16 @@ void Options::InitServers()
 			m_tls |= tls;
 		}
 
+		const char* ncertveriflevel = GetOption(BString<100>("Server%i.CertVerification", n));
+		int certveriflevel = ECertVerifLevel::cvStrict;
+		if (ncertveriflevel)
+		{
+			const char* CertVerifNames[] = { "none", "minimal", "strict" };
+			const int CertVerifValues[] = { ECertVerifLevel::cvNone, ECertVerifLevel::cvMinimal, ECertVerifLevel::cvStrict };
+			const int CertVerifCount = ECertVerifLevel::Count;
+			certveriflevel = ParseEnumValue(BString<100>("Server%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
+		}
+
 		const char* nipversion = GetOption(BString<100>("Server%i.IpVersion", n));
 		int ipversion = 0;
 		if (nipversion)
@@ -1048,7 +1059,7 @@ void Options::InitServers()
 					nretention ? atoi(nretention) : 0,
 					nlevel ? atoi(nlevel) : 0,
 					ngroup ? atoi(ngroup) : 0,
-					optional);
+					optional, certveriflevel);
 			}
 		}
 		else
@@ -1539,7 +1550,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 			!strcasecmp(p, ".encryption") || !strcasecmp(p, ".connections") ||
 			!strcasecmp(p, ".cipher") || !strcasecmp(p, ".group") ||
 			!strcasecmp(p, ".retention") || !strcasecmp(p, ".optional") ||
-			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion")))
+			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion") ||
+			!strcasecmp(p, ".certverification")))
 		{
 			return true;
 		}
