@@ -83,10 +83,12 @@ namespace ExtensionLoader
 				{
 					continue;
 				}
+
 				if (!inBeforeConfig && !strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
 				{
 					inBeforeConfig = true;
 				}
+
 				if (!inBeforeConfig && !inConfig)
 				{
 					continue;
@@ -149,6 +151,7 @@ namespace ExtensionLoader
 					continue;
 				}
 
+				// if "OPTIONS" and other sections, e.g.: ### OPTIONS or ### CATEGORIES
 				if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
 				{
 					ParseOptionsAndCommands(file, options, commands);
@@ -209,6 +212,7 @@ namespace ExtensionLoader
 		{
 			std::vector<ManifestFile::SelectOption> selectOpts;
 			std::vector<std::string> description;
+			std::string currSectionName = "OPTIONS";
 
 			std::string line;
 			while (std::getline(file, line))
@@ -221,6 +225,12 @@ namespace ExtensionLoader
 				if (line.empty())
 				{
 					continue;
+				}
+
+				if (!strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
+				{
+					currSectionName = line.substr(DEFINITION_SIGNATURE_LEN + 1);
+					RemoveTailAndTrim(currSectionName, "###");
 				}
 
 				size_t selectStartIdx = line.rfind("(");
@@ -279,6 +289,7 @@ namespace ExtensionLoader
 						std::string action = line.substr(atPos + 1);
 						Util::Trim(action);
 						Util::Trim(name);
+						command.section = currSectionName;
 						command.action = std::move(action);
 						command.name = std::move(name);
 						command.description = std::move(description);
@@ -297,6 +308,7 @@ namespace ExtensionLoader
 						Util::Trim(value);
 						Util::Trim(name);
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
+						option.section = currSectionName;
 						option.value = std::move(GetSelectOpt(value, canBeNum));
 						option.name = std::move(name);
 						option.description = std::move(description);
