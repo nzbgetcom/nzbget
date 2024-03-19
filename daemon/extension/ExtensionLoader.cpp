@@ -308,15 +308,17 @@ namespace ExtensionLoader
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
 						Util::Trim(name);
+
 						size_t digitPos = name.find("1.");
 						if (digitPos != std::string::npos)
 						{
-							// Extract the label and number
-							std::string label = name.substr(0, digitPos);
-							uint8_t num = static_cast<uint8_t>(Util::StrToNum(name.substr(digitPos, 1)).get()); // Convert the digit character to an integer
-							// Extract the name
-							name = name.substr(digitPos + 2);
-							option.enumeration = num;
+							auto result = Util::StrToNum(name.substr(digitPos, 1));
+
+							if (result.has_value())
+							{
+								name = name.substr(digitPos + 2);
+								option.enumeration = static_cast<uint8_t>(result.get());
+							}
 						}
 						
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
