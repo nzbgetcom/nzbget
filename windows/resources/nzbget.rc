@@ -17,7 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-#pragma code_page(1251)
+#pragma code_page(1252)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -192,6 +192,45 @@ BEGIN
     0
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Version
+//
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION 23,1,0,0
+ PRODUCTVERSION 23,1,0,0
+ FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+ FILEFLAGS 0x1L
+#else
+ FILEFLAGS 0x0L
+#endif
+ FILEOS 0x40004L
+ FILETYPE 0x1L
+ FILESUBTYPE 0x0L
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "000004b0"
+        BEGIN
+            VALUE "CompanyName", "The nzbgetcom Team"
+            VALUE "FileDescription", "nzbget"
+            VALUE "FileVersion", "23.1-testing-20240320"
+            VALUE "InternalName", "nzbget.rc"
+            VALUE "LegalCopyright", "(c) The nzbgetcom Team"
+            VALUE "OriginalFilename", "nzbget.rc"
+            VALUE "ProductName", "nzbget"
+            VALUE "ProductVersion", "23.1-testing-20240320"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0, 1200
+    END
+END
+
 #endif    // Neutral resources
 /////////////////////////////////////////////////////////////////////////////
 
@@ -229,54 +268,6 @@ END
 #endif    // German (Germany) resources
 /////////////////////////////////////////////////////////////////////////////
 
-
-/////////////////////////////////////////////////////////////////////////////
-// English resources
-
-#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENG)
-LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-#pragma code_page(1252)
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Version
-//
-
-VS_VERSION_INFO VERSIONINFO
- FILEVERSION 23,1,0,0
- PRODUCTVERSION 23,1,0,0
- FILEFLAGSMASK 0x3fL
-#ifdef _DEBUG
- FILEFLAGS 0x1L
-#else
- FILEFLAGS 0x0L
-#endif
- FILEOS 0x40004L
- FILETYPE 0x0L
- FILESUBTYPE 0x0L
-BEGIN
-    BLOCK "StringFileInfo"
-    BEGIN
-        BLOCK "040904b0"
-        BEGIN
-            VALUE "CompanyName", "The nzbgetcom Team"
-            VALUE "FileDescription", "nzbget"
-            VALUE "FileVersion", "23.1-testing-20240320"
-            VALUE "InternalName", "nzbget.rc"
-            VALUE "LegalCopyright", "� The nzbgetcom Team"
-            VALUE "OriginalFilename", "nzbget.rc"
-            VALUE "ProductName", "nzbget"
-            VALUE "ProductVersion", "23.1-testing-20240320"
-        END
-    END
-    BLOCK "VarFileInfo"
-    BEGIN
-        VALUE "Translation", 0x409, 1200
-    END
-END
-
-#endif    // English resources
-/////////////////////////////////////////////////////////////////////////////
 
 
 #ifndef APSTUDIO_INVOKED
