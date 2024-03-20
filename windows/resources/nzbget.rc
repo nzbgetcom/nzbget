@@ -219,7 +219,7 @@ BEGIN
             VALUE "FileVersion", "23.1"
             VALUE "InternalName", "nzbget.exe"
             VALUE "OriginalFilename", "nzbget.exe"
-            VALUE "ProductName", "nzbget"
+            VALUE "ProductName", "NZBGet"
             VALUE "ProductVersion", "23.1"
         END
     END
