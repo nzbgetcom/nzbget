@@ -48,3 +48,4 @@ List of files to change version:
 2. CMakeLists.txt - "project" block
 3. nzbget.vcxproj - "PreprocessorDefinitions" blocks - 4 matches
 4. windows/nzbget-setup.nsi - WriteRegStr - "DisplayVersion"
+5. windows/resources/nzbget.rc - VS_VERSION_INFO block - 4 matches
