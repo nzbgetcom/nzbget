@@ -77,8 +77,10 @@ namespace ManifestFile
 	static bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
 	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property, bool defValue);
 };
 
 #endif

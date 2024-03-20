@@ -146,8 +146,8 @@ namespace ManifestFile
 
 			Option option{};
 
-			CheckKeyAndSet(optionJson, "multi", option.multi);
-			CheckKeyAndSet(optionJson, "section", option.section);
+			CheckKeyAndSet(optionJson, "multi", option.multi, false);
+			CheckKeyAndSet(optionJson, "section", option.section, "OPTIONS");
 
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;
@@ -212,6 +212,19 @@ namespace ManifestFile
 		return true;
 	}
 
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (!rawProperty || !rawProperty->is_string())
+		{
+			property = std::move(defValue);
+			return false;
+		}
+
+		property = rawProperty->get_string().c_str();
+		return true;
+	}
+
 	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
@@ -239,8 +252,22 @@ namespace ManifestFile
 		if (rawProperty && rawProperty->is_bool())
 		{
 			property = rawProperty->as_bool();
+			return true;
 		}
 
-		return true;
+		return false;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property, bool defValue)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (rawProperty && rawProperty->is_bool())
+		{
+			property = rawProperty->as_bool();
+			return true;
+		}
+
+		property = defValue;
+		return false;
 	}
 }

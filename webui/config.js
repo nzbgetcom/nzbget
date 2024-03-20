@@ -181,13 +181,13 @@ var Options = (new function($)
 					name: this.serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
 					defvalue: command.Action,
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
+					sectionId: this.serverTemplateData[i].Name + '_' + command.Section,
 					select: [],
 					description: arrToStr(command.Description),
 					nocontent: false,
 					formId: this.serverTemplateData[i].Name + '_' + command.Name,
 					commandopts: 'settings',
-					type: 'command'
+					type: 'command',
 				});
 			}
 			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
@@ -199,15 +199,17 @@ var Options = (new function($)
 					name: this.serverTemplateData[i].Name + ':' + option.Name,
 					value: String(option.Value),
 					defvalue: String(option.Value),
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
+					sectionId: this.serverTemplateData[i].Name + '_' + option.Section,
 					select,
 					description: arrToStr(option.Description),
 					nocontent: false,
 					formId: this.serverTemplateData[i].Name + '_' + option.Name,
-					type
+					multi: option.Multi,
+					multiprefix: option.Name,
+					type,
 				});
 			}
-			
+
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
