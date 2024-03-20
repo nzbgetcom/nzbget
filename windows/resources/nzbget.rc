@@ -198,8 +198,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 23,1,0,0
- PRODUCTVERSION 23,1,0,0
+ FILEVERSION 23,1
+ PRODUCTVERSION 23,1
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -216,12 +216,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "The nzbgetcom Team"
             VALUE "FileDescription", "nzbget"
-            VALUE "FileVersion", "23.1-testing-20240320"
-            VALUE "InternalName", "nzbget.rc"
-            VALUE "LegalCopyright", "(c) The nzbgetcom Team"
-            VALUE "OriginalFilename", "nzbget.rc"
+            VALUE "FileVersion", "23.1"
+            VALUE "InternalName", "nzbget.exe"
+            VALUE "OriginalFilename", "nzbget.exe"
             VALUE "ProductName", "nzbget"
-            VALUE "ProductVersion", "23.1-testing-20240320"
+            VALUE "ProductVersion", "23.1"
         END
     END
     BLOCK "VarFileInfo"
