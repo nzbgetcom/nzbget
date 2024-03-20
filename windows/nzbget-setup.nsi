@@ -91,8 +91,8 @@ RequestExecutionLevel admin
 ;Languages
 
 !insertmacro MUI_LANGUAGE "English"
-VIProductVersion "23.1"
-VIFileVersion "23.1"
+VIProductVersion "23.1.0.0"
+VIFileVersion "23.1.0.0"
 VIAddVersionKey "CompanyName" "The nzbgetcom Team"
 VIAddVersionKey "FileDescription" "NZBGet installer"
 VIAddVersionKey "FileVersion" "23.1"
