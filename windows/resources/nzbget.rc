@@ -215,7 +215,7 @@ BEGIN
         BLOCK "000004b0"
         BEGIN
             VALUE "CompanyName", "The nzbgetcom Team"
-            VALUE "FileDescription", "nzbget"
+            VALUE "FileDescription", "NZBGet"
             VALUE "FileVersion", "23.1"
             VALUE "InternalName", "nzbget.exe"
             VALUE "OriginalFilename", "nzbget.exe"
