@@ -144,9 +144,9 @@ namespace ManifestFile
 			if (!selectJson || !selectJson->is_array())
 				continue;
 
-			Option option;
+			Option option{};
 
-			CheckKeyAndSet(optionJson, "enumeration", option.enumeration);
+			CheckKeyAndSet(optionJson, "multi", option.multi);
 			CheckKeyAndSet(optionJson, "section", option.section);
 
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
@@ -233,12 +233,12 @@ namespace ManifestFile
 		return false;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, uint8_t& property)
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
-		if (rawProperty && rawProperty->is_number())
+		if (rawProperty && rawProperty->is_bool())
 		{
-			property = rawProperty->to_number<uint8_t>();
+			property = rawProperty->as_bool();
 		}
 
 		return true;

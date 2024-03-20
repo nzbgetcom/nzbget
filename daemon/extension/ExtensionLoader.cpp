@@ -303,7 +303,7 @@ namespace ExtensionLoader
 
 					if (eqPos != std::string::npos)
 					{
-						ManifestFile::Option option;
+						ManifestFile::Option option{};
 						std::string name = line.substr(1, eqPos - 1);
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
@@ -312,13 +312,8 @@ namespace ExtensionLoader
 						size_t digitPos = name.find("1.");
 						if (digitPos != std::string::npos)
 						{
-							auto result = Util::StrToNum(name.substr(digitPos, 1));
-
-							if (result.has_value())
-							{
-								name = name.substr(digitPos + 2);
-								option.enumeration = static_cast<uint8_t>(result.get());
-							}
+							name = name.substr(digitPos + 2);
+							option.multi = true;
 						}
 						
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
@@ -447,7 +442,7 @@ namespace ExtensionLoader
 
 	bool V2::Load(Extension::Script& script, const char* location, const char* rootDir)
 	{
-		ManifestFile::Manifest manifest;
+		ManifestFile::Manifest manifest{};
 		if (!ManifestFile::Load(manifest, location))
 			return false;
 

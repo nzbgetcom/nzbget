@@ -26,7 +26,7 @@
             "select": [1, 65535]
         },
         {
-            "enumeration": 1,
+            "multi": true,
             "section": "TASKS",
             "name": "Task",
             "displayName": "Task",

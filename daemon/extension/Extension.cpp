@@ -257,7 +257,7 @@ namespace Extension
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
 			optionJson["Section"] = option.section;
-			optionJson["Enumeration"] = std::to_string(option.enumeration);
+			optionJson["Multi"] = option.multi;
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{
@@ -376,7 +376,7 @@ namespace Extension
 			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
 			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
 			AddNewNode(optionsNode, "Section", "string", option.section.c_str());
-			AddNewNode(optionsNode, "Enumeration", "number", std::to_string(option.enumeration).c_str());
+			AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.multi));
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{

@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 
 	auto option17 = extension.GetOptions()[16];
 	BOOST_CHECK(option17.section == "CATEGORIES");
-	BOOST_CHECK(option17.enumeration == 1);
+	BOOST_CHECK(option17.multi == true);
 	BOOST_CHECK(option17.name == "Name");
 	BOOST_CHECK(option17.displayName == "Name");
 	BOOST_CHECK(option17.description == std::vector<std::string>({ "Name of the category to monitor." }));
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 
 	auto option18 = extension.GetOptions()[17];
 	BOOST_CHECK(option18.section == "CATEGORIES");
-	BOOST_CHECK(option18.enumeration == 1);
+	BOOST_CHECK(option18.multi == true);
 	BOOST_CHECK(option18.name == "DownloadRate");
 	BOOST_CHECK(option18.displayName == "DownloadRate");
 	BOOST_CHECK(option18.description == std::vector<std::string>({ "Speed limit for that category (KB)." }));
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 
 	auto option19 = extension.GetOptions()[18];
 	BOOST_CHECK(option19.section == "FEEDS");
-	BOOST_CHECK(option19.enumeration == 1);
+	BOOST_CHECK(option19.multi == true);
 	BOOST_CHECK(option19.name == "Name");
 	BOOST_CHECK(option19.displayName == "Name");
 	BOOST_CHECK(option19.description == std::vector<std::string>({ "Feed." }));

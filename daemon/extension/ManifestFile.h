@@ -33,7 +33,7 @@ namespace ManifestFile
 
 	struct Option
 	{
-		uint8_t enumeration;
+		bool multi;
 		std::string section;
 		std::string name;
 		std::string displayName;
@@ -78,7 +78,7 @@ namespace ManifestFile
 	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
-	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, uint8_t& property);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property);
 };
 
 #endif

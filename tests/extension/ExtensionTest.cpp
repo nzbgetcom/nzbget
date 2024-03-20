@@ -51,7 +51,7 @@ Extension::Script GetExtension()
 	option.name = "name";
 	option.value = 5.;
 	option.select = { 0., 10. };
-	option.enumeration = 0;
+	option.multi = false;
 
 	command.action = "action";
 	command.name = "name";
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"TaskTime\":\"TaskTime\",\
 \"Description\":[\"Description\"],\
 \"Requirements\":[\"Requirements\"],\
-\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Section\":\"\",\"Enumeration\":\"0\",\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
+\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Section\":\"\",\"Multi\":false,\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
 \"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Section\":\"\",\"Description\":[\"description\"]}]}";
 
 	BOOST_CHECK(result == expected);
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
 <member><name>Section</name><value><string/></value></member>\
-<member><name>Enumeration</name><value><number>0</number></value></member>\
+<member><name>Multi</name><value><boolean>false</boolean></value></member>\
 <member><name>Value</name><value><number>5.000000</number></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
