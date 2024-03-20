@@ -21,6 +21,7 @@ jobs:
         $NewVersion = "$Version-testing-$Date"
         (Get-Content nzbget.vcxproj) | ForEach-Object {$_ -replace "VERSION=`"$Version`"", "VERSION=`"$NewVersion`""} | Set-Content nzbget.vcxproj
         (Get-Content windows\nzbget-setup.nsi) | ForEach-Object {$_ -replace "`"DisplayVersion`" `"$Version`"", "`"DisplayVersion`" `"$NewVersion`""} | Set-Content windows\nzbget-setup.nsi
+        (Get-Content windows\resources\nzbget.rc) | ForEach-Object {$_ -replace "VALUE `"ProductVersion`", `"$Version`"", "VALUE `"ProductVersion`", `"$NewVersion`""} | Set-Content windows\resources\nzbget.rc
         "NEW_VERSION=$NewVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build
