@@ -8,6 +8,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
+
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -16,7 +17,7 @@
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_NEU)
 LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
-#pragma code_page(1252)
+#pragma code_page(1251)
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -242,8 +243,8 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 23,1
- PRODUCTVERSION 23,1
+ FILEVERSION 23,1,0,0
+ PRODUCTVERSION 23,1,0,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -262,7 +263,7 @@ BEGIN
             VALUE "FileDescription", "nzbget"
             VALUE "FileVersion", "23.1-testing-20240320"
             VALUE "InternalName", "nzbget.rc"
-            VALUE "LegalCopyright", "© The nzbgetcom Team"
+            VALUE "LegalCopyright", "� The nzbgetcom Team"
             VALUE "OriginalFilename", "nzbget.rc"
             VALUE "ProductName", "nzbget"
             VALUE "ProductVersion", "23.1-testing-20240320"
