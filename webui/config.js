@@ -173,7 +173,7 @@ var Options = (new function($)
 				var [type, select] = GetTypeAndSelect(option);
 				var opt = {
 					caption: option.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + option.Name,
+					name: this.serverTemplateData[i].Name + (option.Multi ? ':' + option.Section + '1.' : ':') + option.Name,
 					value: String(option.Value),
 					defvalue: String(option.Value),
 					sectionId: this.serverTemplateData[i].Name + '_' + option.Section,
@@ -208,7 +208,7 @@ var Options = (new function($)
 				var command = this.serverTemplateData[i].Commands[j];
 				var cmd = {
 					caption: command.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + command.Name,
+					name: this.serverTemplateData[i].Name + (option.Multi ? '1.' + command.Section : ':') + command.Name,
 					value: null,
 					defvalue: command.Action,
 					sectionId: this.serverTemplateData[i].Name + '_' + command.Section,
