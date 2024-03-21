@@ -137,15 +137,9 @@ var Options = (new function($)
 		// read scripts configs
 		for (var i = 1; i < this.serverTemplateData.length; i++) 
 		{
-			var section = {
-				name: this.serverTemplateData[i].Name,
-				id: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-				options: [],
-				hidden: false,
-				postparam: false,
-			};
+			var sections = {};
 			var scriptConfig = {
-				sections: [section],
+				sections: [],
 				nameprefix: this.serverTemplateData[i].Name,
 			};
 			var requirements = this.serverTemplateData[i].Requirements;
@@ -173,10 +167,46 @@ var Options = (new function($)
 			scriptConfig['license'] = this.serverTemplateData[i].License;
 			scriptConfig['version'] = this.serverTemplateData[i].Version;
 
+			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
+			{
+				var option = this.serverTemplateData[i].Options[j];
+				var [type, select] = GetTypeAndSelect(option);
+				var opt = {
+					caption: option.DisplayName,
+					name: this.serverTemplateData[i].Name + ':' + option.Name,
+					value: String(option.Value),
+					defvalue: String(option.Value),
+					sectionId: this.serverTemplateData[i].Name + '_' + option.Section,
+					select,
+					description: arrToStr(option.Description),
+					nocontent: false,
+					formId: this.serverTemplateData[i].Name + '_' + option.Name,
+					multiid: 1,
+					template: option.Multi,
+					type,
+				};
+				if (sections[option.Section])
+				{
+					sections[option.Section].options.push(opt);
+				}
+				else
+				{
+					sections[option.Section] = {
+						name: option.Section,
+						id: this.serverTemplateData[i].Name + '_' + option.Section,
+						options: [opt],
+						hidden: false,
+						postparam: false,
+						multi: option.Multi,
+						multiprefix: option.Section + i,
+					};
+				}
+			}
+
 			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
 				var command = this.serverTemplateData[i].Commands[j];
-				section.options.push({
+				var cmd = {
 					caption: command.DisplayName,
 					name: this.serverTemplateData[i].Name + ':' + command.Name,
 					value: null,
@@ -187,29 +217,28 @@ var Options = (new function($)
 					nocontent: false,
 					formId: this.serverTemplateData[i].Name + '_' + command.Name,
 					commandopts: 'settings',
+					multiid: 1,
+					template: option.Multi,
 					type: 'command',
-				});
-			}
-			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
-			{
-				var option = this.serverTemplateData[i].Options[j];
-				var [type, select] = GetTypeAndSelect(option);
-				section.options.push({
-					caption: option.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + option.Name,
-					value: String(option.Value),
-					defvalue: String(option.Value),
-					sectionId: this.serverTemplateData[i].Name + '_' + option.Section,
-					select,
-					description: arrToStr(option.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + option.Name,
-					multi: option.Multi,
-					multiprefix: option.Name,
-					type,
-				});
+				};
+				if (sections[command.Section])
+				{
+					sections[command.Section].options.push(cmd);
+				}
+				else
+				{
+					sections[command.Section] = {
+						name: option.Section,
+						id: this.serverTemplateData[i].Name + '_' + command.Section,
+						options: [cmd],
+						template: option.Multi,
+						hidden: false,
+						postparam: false,
+					};
+				}
 			}
 
+			scriptConfig.sections = Object.values(sections);
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -998,7 +1027,7 @@ var Config = (new function($)
 	function buildMultiRowStart(section, multiid, option)
 	{
 		var name = option.caption;
-		var setname = name.substr(0, name.indexOf('.'));
+		var setname = name.substr(0, name.indexOf('.')) || 'No. '+ option.multiid;
 		var html = '<div class="config-settitle ' + section.id + ' multiid' + multiid + ' multiset">' + setname + '</div>';
 		return html;
 	}
