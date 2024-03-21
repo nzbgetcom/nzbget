@@ -51,10 +51,15 @@ Extension::Script GetExtension()
 	option.name = "name";
 	option.value = 5.;
 	option.select = { 0., 10. };
-	option.multi = false;
+	option.multi = true;
+	option.prefix = "Prefix";
+	option.section = "Section";
 
 	command.action = "action";
 	command.name = "name";
+	command.multi = true;
+	command.prefix = "Prefix";
+	command.section = "Section";
 	command.displayName = "displayName";
 	command.description = { "description" };
 
@@ -90,8 +95,10 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"TaskTime\":\"TaskTime\",\
 \"Description\":[\"Description\"],\
 \"Requirements\":[\"Requirements\"],\
-\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Section\":\"\",\"Multi\":false,\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
-\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Section\":\"\",\"Description\":[\"description\"]}]}";
+\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Section\":\"Section\",\
+\"Multi\":true,\"Prefix\":\"Prefix\",\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
+\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Section\":\"Section\",\
+\"Multi\":true,\"Prefix\":\"Prefix\",\"Description\":[\"description\"]}]}";
 
 	BOOST_CHECK(result == expected);
 }
@@ -128,7 +135,9 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
 <member><name>Action</name><value><string>action</string></value></member>\
-<member><name>Section</name><value><string/></value></member>\
+<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Section</name><value><string>Section</string></value></member>\
+<member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
 </Description>\
@@ -136,8 +145,9 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <Options>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
-<member><name>Section</name><value><string/></value></member>\
-<member><name>Multi</name><value><boolean>false</boolean></value></member>\
+<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Section</name><value><string>Section</string></value></member>\
+<member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <member><name>Value</name><value><number>5.000000</number></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\

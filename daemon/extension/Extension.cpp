@@ -258,6 +258,7 @@ namespace Extension
 			optionJson["DisplayName"] = option.displayName;
 			optionJson["Section"] = option.section;
 			optionJson["Multi"] = option.multi;
+			optionJson["Prefix"] = option.prefix;
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{
@@ -299,6 +300,8 @@ namespace Extension
 			commandJson["DisplayName"] = command.displayName;
 			commandJson["Action"] = command.action;
 			commandJson["Section"] = command.section;
+			commandJson["Multi"] = command.multi;
+			commandJson["Prefix"] = command.prefix;
 
 			for (const auto& line : command.description)
 			{
@@ -360,7 +363,9 @@ namespace Extension
 			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
 			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
 			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
+			AddNewNode(commandsNode, "Multi", "boolean", BoolToStr(command.multi));
 			AddNewNode(commandsNode, "Section", "string", command.section.c_str());
+			AddNewNode(commandsNode, "Prefix", "string", command.prefix.c_str());
 
 			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
 			for (const std::string& line : command.description)
@@ -375,8 +380,9 @@ namespace Extension
 		{
 			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
 			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
-			AddNewNode(optionsNode, "Section", "string", option.section.c_str());
 			AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.multi));
+			AddNewNode(optionsNode, "Section", "string", option.section.c_str());
+			AddNewNode(optionsNode, "Prefix", "string", option.prefix.c_str());
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{

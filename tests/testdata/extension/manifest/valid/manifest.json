@@ -27,11 +27,12 @@
         },
         {
             "multi": true,
-            "section": "TASKS",
-            "name": "Task",
-            "displayName": "Task",
+            "prefix": "Category",
+            "section": "CATEGORIES",
+            "name": "Category",
+            "displayName": "Category",
             "value": 25,
-            "description": ["Tasks section"],
+            "description": ["Categories section"],
             "select": []
         }
     ],
@@ -43,11 +44,13 @@
             "description": ["To check connection parameters click the button."]
         },
         {
-            "section": "TASKS",
+            "multi": true,
+            "prefix": "Category",
+            "section": "CATEGORIES",
             "name": "connectionTestTask",
             "action": "SendToTask",
             "displayName": "ConnectionTestTask",
-            "description": ["TASKS command"]
+            "description": ["Categories command"]
         }
     ],
     "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",

@@ -285,11 +285,20 @@ namespace ExtensionLoader
 
 					if (atPos != std::string::npos && eqPos == std::string::npos)
 					{
-						ManifestFile::Command command;
+						ManifestFile::Command command{};
 						std::string name = line.substr(1, atPos - 1);
 						std::string action = line.substr(atPos + 1);
 						Util::Trim(action);
 						Util::Trim(name);
+
+						size_t digitPos = name.find("1.");
+						if (digitPos != std::string::npos)
+						{
+							command.prefix = name.substr(0, digitPos);
+							command.multi = true;
+							name = name.substr(digitPos + 2);
+						}
+
 						command.section = currSectionName;
 						command.action = std::move(action);
 						command.name = std::move(name);
@@ -312,8 +321,9 @@ namespace ExtensionLoader
 						size_t digitPos = name.find("1.");
 						if (digitPos != std::string::npos)
 						{
-							name = name.substr(digitPos + 2);
+							option.prefix = name.substr(0, digitPos);
 							option.multi = true;
+							name = name.substr(digitPos + 2);
 						}
 						
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);

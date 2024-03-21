@@ -35,6 +35,7 @@ namespace ManifestFile
 	{
 		bool multi;
 		std::string section;
+		std::string prefix;
 		std::string name;
 		std::string displayName;
 		std::vector<std::string> description;
@@ -44,7 +45,9 @@ namespace ManifestFile
 
 	struct Command
 	{
+		bool multi;
 		std::string section;
+		std::string prefix;
 		std::string name;
 		std::string displayName;
 		std::string action;
