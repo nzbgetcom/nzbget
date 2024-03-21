@@ -85,7 +85,7 @@ CAPTION "About NZBGet"
 FONT 8, "Tahoma", 400, 0, 0x0
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,63,161,50,14
-    CTEXT           "Version 23.1",IDC_ABOUT_VERSION,16,70,145,8
+    CTEXT           "Version",IDC_ABOUT_VERSION,16,70,145,8
     CTEXT           "Lightweight usenet downloader",IDC_STATIC,16,83,145,8
     CTEXT           "https://nzbget.com",IDC_ABOUT_HOMEPAGE,55,144,64,9,SS_NOTIFY
     ICON            "",IDC_ABOUT_ICON,67,7,21,20
@@ -189,44 +189,6 @@ END
 IDD_ABOUTBOX AFX_DIALOG_LAYOUT
 BEGIN
     0
-END
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// Version
-//
-
-VS_VERSION_INFO VERSIONINFO
- FILEVERSION 23,1
- PRODUCTVERSION 23,1
- FILEFLAGSMASK 0x3fL
-#ifdef _DEBUG
- FILEFLAGS 0x1L
-#else
- FILEFLAGS 0x0L
-#endif
- FILEOS 0x40004L
- FILETYPE 0x1L
- FILESUBTYPE 0x0L
-BEGIN
-    BLOCK "StringFileInfo"
-    BEGIN
-        BLOCK "000004b0"
-        BEGIN
-            VALUE "CompanyName", "The nzbgetcom Team"
-            VALUE "FileDescription", "NZBGet"
-            VALUE "FileVersion", "23.1"
-            VALUE "InternalName", "nzbget.exe"
-            VALUE "OriginalFilename", "nzbget.exe"
-            VALUE "ProductName", "NZBGet"
-            VALUE "ProductVersion", "23.1"
-        END
-    END
-    BLOCK "VarFileInfo"
-    BEGIN
-        VALUE "Translation", 0x0, 1200
-    END
 END
 
 #endif    // Neutral resources

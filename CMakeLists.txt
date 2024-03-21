@@ -19,6 +19,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CONFIGURATION_TYPES "Release" "Debug")
 
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)" VERSION_MATCH ${VERSION})
+set(VERSION_MAJOR ${CMAKE_MATCH_1})
+set(VERSION_MINOR ${CMAKE_MATCH_2})
+
 add_compile_definitions(HAVE_CONFIG_H=1)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -73,6 +77,11 @@ if(WIN32)
 	include(cmake/windows.cmake)
 	if(NOT BUILD_ONLY_TESTS)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
+		configure_file(
+			${CMAKE_SOURCE_DIR}/windows/resources/version.rc.in
+			${CMAKE_BINARY_DIR}/version.rc
+		)
+		target_sources(${PACKAGE} PRIVATE ${CMAKE_BINARY_DIR}/version.rc)
 	endif()
 else()
 	include(cmake/posix.cmake)
