@@ -57,7 +57,7 @@ Function PrepareFiles {
     Copy-Item windows\package-info.json $PackageDir\webui
 
     Write-Host "Updating root certificates"
-    & $Curl -s -o "$DistribDir\cacert.pem" https://curl.se/ca/cacert.pem
+    & $Curl -s -o "$PackageDir\cacert.pem" https://curl.se/ca/cacert.pem
     If (-not $?) { Exit 1 }
 
     Write-Host "Adjusting config file"
@@ -141,6 +141,7 @@ Function BuildSetup($Type) {
     }
     Copy-Item "windows\nzbget-setup.nsi" $DistribDir
     Copy-Item "$BuildDir\$Type$Bits\version.nsi" $DistribDir
+    Copy-Item "$BuildDir\$Type$Bits\version-uninstall.nsi" $DistribDir
     Set-Location $DistribDir
     & $Nsis\makensis.exe nzbget-setup.nsi
     If (-not $?) { Set-Location $SrcDir; Exit 1 }

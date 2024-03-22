@@ -86,6 +86,11 @@ if(WIN32)
 			${CMAKE_BINARY_DIR}/version.nsi
 			@ONLY
 		)
+		configure_file(
+			${CMAKE_SOURCE_DIR}/windows/version-uninstall.nsi.in
+			${CMAKE_BINARY_DIR}/version-uninstall.nsi
+			@ONLY
+		)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_BINARY_DIR}/version.rc)
 	endif()
 else()
