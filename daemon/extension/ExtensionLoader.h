@@ -63,7 +63,7 @@ namespace ExtensionLoader
 		template <typename T,
 			typename = std::enable_if_t<std::is_same_v<T, ManifestFile::Option> || std::is_same_v<T, ManifestFile::Command>>
 		>
-		static void ParseName(T& opt, const std::string& line, size_t sepPos)
+		static void ParseNameAndPrefix(T& opt, const std::string& line, size_t sepPos)
 		{
 			opt.name = line.substr(1, sepPos - 1);
 			Util::Trim(opt.name);
@@ -74,7 +74,6 @@ namespace ExtensionLoader
 				opt.prefix = opt.name.substr(0, digitPos);
 				opt.multi = true;
 				opt.name = opt.name.substr(digitPos + 2);
-				opt.displayName = opt.name;
 			}
 
 			opt.displayName = opt.name;

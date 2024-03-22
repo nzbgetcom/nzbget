@@ -288,7 +288,7 @@ namespace ExtensionLoader
 						ManifestFile::Command command{};
 						std::string action = line.substr(atPos + 1);
 						Util::Trim(action);
-						ParseName<ManifestFile::Command>(command, line, atPos);
+						ParseNameAndPrefix<ManifestFile::Command>(command, line, atPos);
 						command.section = currSectionName;
 						command.action = std::move(action);
 						command.description = std::move(description);
@@ -301,7 +301,7 @@ namespace ExtensionLoader
 					if (eqPos != std::string::npos)
 					{
 						ManifestFile::Option option{};
-						ParseName<ManifestFile::Option>(option, line, eqPos);
+						ParseNameAndPrefix<ManifestFile::Option>(option, line, eqPos);
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
