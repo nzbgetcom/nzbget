@@ -30,6 +30,7 @@ namespace ManifestFile
 	using SelectOption = boost::variant2::variant<double, std::string>;
 
 	extern const char* MANIFEST_FILE;
+	extern const char* DEFAULT_SECTION;
 
 	struct Section
 	{
@@ -81,11 +82,12 @@ namespace ManifestFile
 	static bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
 	static bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
 	static bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
+	static bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands);
 	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue);
 	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
-	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property, bool defValue);
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property);
 };
 
 #endif

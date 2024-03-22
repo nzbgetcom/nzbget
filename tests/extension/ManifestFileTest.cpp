@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	auto& option3 = manifestFile.options[2];
 	BOOST_CHECK(option3.section.multi == true);
 	BOOST_CHECK(option3.section.prefix == "Category");
-	BOOST_CHECK(option3.section.name == "CATEGORIES");
+	BOOST_CHECK(option3.section.name == "Categories");
 	BOOST_CHECK(option3.name == "Category");
 	BOOST_CHECK(option3.displayName == "Category");
 	BOOST_CHECK(option3.description == std::vector<std::string>({ "Categories section" }));
@@ -103,11 +103,11 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto& command2 = manifestFile.commands[1];
-	BOOST_CHECK(command2.section.multi == true);
-	BOOST_CHECK(command2.section.prefix == "Category");
-	BOOST_CHECK(command2.section.name == "CATEGORIES");
+	BOOST_CHECK(command2.section.multi == false);
+	BOOST_CHECK(command2.section.prefix == "Feed");
+	BOOST_CHECK(command2.section.name == "Feeds");
 	BOOST_CHECK(command2.name == "connectionTestTask");
 	BOOST_CHECK(command2.action == "SendToTask");
 	BOOST_CHECK(command2.displayName == "ConnectionTestTask");
-	BOOST_CHECK(command2.description == std::vector<std::string>({ "Categories command" }));
+	BOOST_CHECK(command2.description == std::vector<std::string>({ "Feeds command" }));
 }
