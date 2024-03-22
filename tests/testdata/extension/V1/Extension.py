@@ -118,6 +118,9 @@
 # Feed.
 #Feed1.Name=
 
+# Feed Test.
+#Feed1.TestFeed@Test Test 
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################
 

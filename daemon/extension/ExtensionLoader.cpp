@@ -286,24 +286,12 @@ namespace ExtensionLoader
 					if (atPos != std::string::npos && eqPos == std::string::npos)
 					{
 						ManifestFile::Command command{};
-						std::string name = line.substr(1, atPos - 1);
 						std::string action = line.substr(atPos + 1);
 						Util::Trim(action);
-						Util::Trim(name);
-
-						size_t digitPos = name.find("1.");
-						if (digitPos != std::string::npos)
-						{
-							command.prefix = name.substr(0, digitPos);
-							command.multi = true;
-							name = name.substr(digitPos + 2);
-						}
-
+						ParseName<ManifestFile::Command>(command, line, atPos);
 						command.section = currSectionName;
 						command.action = std::move(action);
-						command.name = std::move(name);
 						command.description = std::move(description);
-						command.displayName = command.name;
 						commands.push_back(std::move(command));
 						description.clear();
 						selectOpts.clear();
@@ -313,26 +301,14 @@ namespace ExtensionLoader
 					if (eqPos != std::string::npos)
 					{
 						ManifestFile::Option option{};
-						std::string name = line.substr(1, eqPos - 1);
+						ParseName<ManifestFile::Option>(option, line, eqPos);
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
-						Util::Trim(name);
-
-						size_t digitPos = name.find("1.");
-						if (digitPos != std::string::npos)
-						{
-							option.prefix = name.substr(0, digitPos);
-							option.multi = true;
-							name = name.substr(digitPos + 2);
-						}
-						
 						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
 						option.section = currSectionName;
 						option.value = std::move(GetSelectOpt(value, canBeNum));
-						option.name = std::move(name);
 						option.description = std::move(description);
 						option.select = std::move(selectOpts);
-						option.displayName = option.name;
 						options.push_back(std::move(option));
 						description.clear();
 						selectOpts.clear();

@@ -65,19 +65,34 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetRequirements().size() == 1);
 	BOOST_CHECK(extension.GetRequirements() == std::vector<std::string>({ "This script requires Python to be installed on your system." }));
 
-	BOOST_REQUIRE(extension.GetCommands().size() == 2);
+	BOOST_REQUIRE(extension.GetCommands().size() == 3);
 
 	auto command = extension.GetCommands()[0];
 	BOOST_CHECK(command.name == "ConnectionTest");
+	BOOST_CHECK(command.multi == false);
+	BOOST_CHECK(command.section == "OPTIONS");
+	BOOST_CHECK(command.prefix == "");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
 	BOOST_CHECK(command.action == "Send Test E-Mail");
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto command2 = extension.GetCommands()[1];
 	BOOST_CHECK(command2.name == "Test");
+	BOOST_CHECK(command2.multi == false);
+	BOOST_CHECK(command2.section == "OPTIONS");
+	BOOST_CHECK(command2.prefix == "");
 	BOOST_CHECK(command2.displayName == "Test");
 	BOOST_CHECK(command2.action == "Send Test");
 	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
+
+	auto command3 = extension.GetCommands()[2];
+	BOOST_CHECK(command3.name == "TestFeed");
+	BOOST_CHECK(command3.prefix == "Feed");
+	BOOST_CHECK(command3.multi == true);
+	BOOST_CHECK(command3.section == "FEEDS");
+	BOOST_CHECK(command3.displayName == "TestFeed");
+	BOOST_CHECK(command3.action == "Test Test");
+	BOOST_CHECK(command3.description == std::vector<std::string>({ "Feed Test." }));
 
 	BOOST_REQUIRE(extension.GetOptions().size() == 19);
 

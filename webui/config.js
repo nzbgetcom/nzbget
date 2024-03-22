@@ -1045,8 +1045,9 @@ var Config = (new function($)
 
 	function buildMultiRowEnd(section, multiid, hasmore, hasoptions)
 	{
-		var name = section.options[0].caption;
-		var setname = name.substr(0, name.indexOf('1'));
+		var option = section.options[0];
+		var name = option.caption;
+		var setname = name.substr(0, name.indexOf('1')) || option['prefix'];
 		var html = '';
 
 		if (hasoptions)
@@ -1209,7 +1210,6 @@ var Config = (new function($)
 			option.about = conf.about;
 			option.nocontent = true;
 			option.description = conf.description;
-			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 
