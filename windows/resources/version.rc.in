@@ -37,6 +37,7 @@ BEGIN
             VALUE "OriginalFilename", "nzbget.exe"
             VALUE "ProductName", "NZBGet"
             VALUE "ProductVersion", FULLVERSION
+            VALUE "LegalCopyright", ""
         END
     END
     BLOCK "VarFileInfo"

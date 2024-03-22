@@ -81,6 +81,11 @@ if(WIN32)
 			${CMAKE_SOURCE_DIR}/windows/resources/version.rc.in
 			${CMAKE_BINARY_DIR}/version.rc
 		)
+		configure_file(
+			${CMAKE_SOURCE_DIR}/windows/version.nsi.in
+			${CMAKE_BINARY_DIR}/version.nsi
+			@ONLY
+		)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_BINARY_DIR}/version.rc)
 	endif()
 else()
