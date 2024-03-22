@@ -103,6 +103,62 @@ var Options = (new function($)
 		}
 	}
 
+	function makeOption(extensionConf, rawOption)
+	{
+		var [type, select] = GetTypeAndSelect(rawOption);
+		return {
+			caption: rawOption.DisplayName,
+			name: extensionConf.Name + (rawOption.Multi ? ':' + rawOption.Prefix + '1.' : ':') + rawOption.Name,
+			value: String(rawOption.Value),
+			defvalue: String(rawOption.Value),
+			sectionId: extensionConf.Name + '_' + rawOption.Section,
+			select,
+			description: arrToStr(rawOption.Description),
+			nocontent: false,
+			formId: extensionConf.Name + '_' + rawOption.Name,
+			multiid: 1,
+			multi: rawOption.Multi,
+			prefix: rawOption.Prefix,
+			template: rawOption.Multi,
+			section: rawOption.Section,
+			type,
+		};
+	}
+
+	function makeCommandOption(extConf, rawCommand)
+	{
+		return {
+			caption: rawCommand.DisplayName,
+			name: extConf.Name + (rawCommand.Multi ? ':' + rawCommand.Prefix + '1.' : ':') + rawCommand.Name,
+			value: null,
+			defvalue: rawCommand.Action,
+			sectionId: extConf.Name + '_' + rawCommand.Section,
+			select: [],
+			description: arrToStr(rawCommand.Description),
+			nocontent: false,
+			formId: extConf.Name + '_' + rawCommand.Name,
+			commandopts: 'settings',
+			multiid: 1,
+			template: rawCommand.Multi,
+			prefix: rawCommand.Prefix,
+			section: rawCommand.Section,
+			multi: rawCommand.Multi,
+			type: 'command',
+		};
+	}
+
+	function makeSection(extConf, option)
+	{
+		return {
+			name: option.section,
+			id: extConf.Name + '_' + option.section,
+			options: [option],
+			multi: option.multi,
+			hidden: false,
+			postparam: false,
+		};
+	}
+
 	/*** LOADING CONFIG ********************************************************************/
 
 	this.loadConfig = function(callbacks)
@@ -169,72 +225,27 @@ var Options = (new function($)
 
 			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
 			{
-				var option = this.serverTemplateData[i].Options[j];
-				var [type, select] = GetTypeAndSelect(option);
-				var opt = {
-					caption: option.DisplayName,
-					name: this.serverTemplateData[i].Name + (option.Multi ? ':' + option.Prefix + '1.' : ':') + option.Name,
-					value: String(option.Value),
-					defvalue: String(option.Value),
-					sectionId: this.serverTemplateData[i].Name + '_' + option.Section,
-					select,
-					description: arrToStr(option.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + option.Name,
-					multiid: 1,
-					template: option.Multi,
-					type,
-				};
-				if (sections[option.Section])
+				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
+				if (sections[option.section])
 				{
-					sections[option.Section].options.push(opt);
+					sections[option.section].options.push(option);
 				}
 				else
 				{
-					sections[option.Section] = {
-						name: option.Section,
-						id: this.serverTemplateData[i].Name + '_' + option.Section,
-						options: [opt],
-						hidden: false,
-						postparam: false,
-						multi: option.Multi,
-						multiprefix: option.Section + i,
-					};
+					sections[option.section] = makeSection(this.serverTemplateData[i], option);
 				}
 			}
 
 			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
-				var command = this.serverTemplateData[i].Commands[j];
-				var cmd = {
-					caption: command.DisplayName,
-					name: this.serverTemplateData[i].Name + (option.Multi ? '1.' + command.Prefix : ':') + command.Name,
-					value: null,
-					defvalue: command.Action,
-					sectionId: this.serverTemplateData[i].Name + '_' + command.Section,
-					select: [],
-					description: arrToStr(command.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + command.Name,
-					commandopts: 'settings',
-					multiid: 1,
-					template: option.Multi,
-					type: 'command',
-				};
-				if (sections[command.Section])
+				var command = makeCommandOption(this.serverTemplateData[i], this.serverTemplateData[i].Commands[j]);
+				if (sections[command.section])
 				{
-					sections[command.Section].options.push(cmd);
+					sections[command.section].options.push(command);
 				}
 				else
 				{
-					sections[command.Section] = {
-						name: option.Section,
-						id: this.serverTemplateData[i].Name + '_' + command.Section,
-						options: [cmd],
-						template: option.Multi,
-						hidden: false,
-						postparam: false,
-					};
+					sections[command.section] = makeSection(this.serverTemplateData[i], command);
 				}
 			}
 
@@ -1027,7 +1038,7 @@ var Config = (new function($)
 	function buildMultiRowStart(section, multiid, option)
 	{
 		var name = option.caption;
-		var setname = name.substr(0, name.indexOf('.')) || 'No. '+ option.multiid;
+		var setname = name.substr(0, name.indexOf('.')) || option.prefix + option.multiid;
 		var html = '<div class="config-settitle ' + section.id + ' multiid' + multiid + ' multiset">' + setname + '</div>';
 		return html;
 	}
