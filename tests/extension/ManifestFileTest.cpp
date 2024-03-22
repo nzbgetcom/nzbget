@@ -61,8 +61,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_REQUIRE(manifestFile.options.size() == 3);
 
 	auto& option = manifestFile.options[0];
-	BOOST_CHECK(option.multi == false);
-	BOOST_CHECK(option.prefix == "");
+	BOOST_CHECK(option.section.multi == false);
+	BOOST_CHECK(option.section.prefix == "");
+	BOOST_CHECK(option.section.name == "options");
 	BOOST_CHECK(option.name == "sendMail");
 	BOOST_CHECK(option.displayName == "SendMail");
 	BOOST_CHECK(option.description == std::vector<std::string>({ "When to send the message." }));
@@ -71,8 +72,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(boost::variant2::get<std::string>(option.select[1]) == "OnFailure");
 
 	auto& option2 = manifestFile.options[1];
-	BOOST_CHECK(option2.multi == false);
-	BOOST_CHECK(option2.prefix == "");
+	BOOST_CHECK(option2.section.multi == false);
+	BOOST_CHECK(option2.section.prefix == "");
+	BOOST_CHECK(option2.section.name == "options");
 	BOOST_CHECK(option2.name == "port");
 	BOOST_CHECK(option2.displayName == "Port");
 	BOOST_CHECK(option2.description == std::vector<std::string>({ "SMTP server port (1-65535)" }));
@@ -81,9 +83,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
 
 	auto& option3 = manifestFile.options[2];
-	BOOST_CHECK(option3.multi == true);
-	BOOST_CHECK(option3.prefix == "Category");
-	BOOST_CHECK(option3.section == "CATEGORIES");
+	BOOST_CHECK(option3.section.multi == true);
+	BOOST_CHECK(option3.section.prefix == "Category");
+	BOOST_CHECK(option3.section.name == "CATEGORIES");
 	BOOST_CHECK(option3.name == "Category");
 	BOOST_CHECK(option3.displayName == "Category");
 	BOOST_CHECK(option3.description == std::vector<std::string>({ "Categories section" }));
@@ -92,17 +94,18 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_REQUIRE(manifestFile.commands.size() == 2);
 
 	auto& command = manifestFile.commands[0];
-	BOOST_CHECK(command.multi == false);
-	BOOST_CHECK(command.prefix == "");
+	BOOST_CHECK(command.section.multi == false);
+	BOOST_CHECK(command.section.prefix == "");
+	BOOST_CHECK(command.section.name == "options");
 	BOOST_CHECK(command.name == "connectionTest");
 	BOOST_CHECK(command.action == "Send");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto& command2 = manifestFile.commands[1];
-	BOOST_CHECK(command2.multi == true);
-	BOOST_CHECK(command2.prefix == "Category");
-	BOOST_CHECK(command2.section == "CATEGORIES");
+	BOOST_CHECK(command2.section.multi == true);
+	BOOST_CHECK(command2.section.prefix == "Category");
+	BOOST_CHECK(command2.section.name == "CATEGORIES");
 	BOOST_CHECK(command2.name == "connectionTestTask");
 	BOOST_CHECK(command2.action == "SendToTask");
 	BOOST_CHECK(command2.displayName == "ConnectionTestTask");

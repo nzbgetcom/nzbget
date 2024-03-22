@@ -63,19 +63,24 @@ namespace ExtensionLoader
 		template <typename T,
 			typename = std::enable_if_t<std::is_same_v<T, ManifestFile::Option> || std::is_same_v<T, ManifestFile::Command>>
 		>
-		static void ParseNameAndPrefix(T& opt, const std::string& line, size_t sepPos)
+		static void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
 		{
 			opt.name = line.substr(1, sepPos - 1);
 			Util::Trim(opt.name);
 
+			ManifestFile::Section section{};
+			section.name = std::move(sectionName);
+
 			size_t digitPos = opt.name.find("1.");
 			if (digitPos != std::string::npos)
 			{
-				opt.prefix = opt.name.substr(0, digitPos);
-				opt.multi = true;
+				section.prefix = opt.name.substr(0, digitPos);
+				section.multi = true;
 				opt.name = opt.name.substr(digitPos + 2);
+				
 			}
-
+			
+			opt.section = std::move(section);
 			opt.displayName = opt.name;
 		}
 	}

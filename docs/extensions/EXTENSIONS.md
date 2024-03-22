@@ -192,6 +192,9 @@ In the provided `manifest.json` example we defined three options:
     "select": [1, 65535]
   },
   {
+    "section": "Categories", // optional, default value is "OPTIONS"
+    "prefix": "Category",    // optional, default value is ""
+    "multi": true,           // optional, default value is false
     "name": "SendMail",
     "displayName": "SendMail",
     "value": "Always",
@@ -200,6 +203,11 @@ In the provided `manifest.json` example we defined three options:
   },
 ],
 ```
+
+ - `section` is used to divide options into logical sections in `webui`
+ - `prefix` helps to avoid name collisions when saving extension settings in `nzbget.conf`, e.g. `Email:Category1.SendMail=Always`
+ - `multi`
+
 
 When the user saves settings in web-interface the extension configuration 
 options are saved to NZBGet configuration file using the extension name as prefix. For example:
@@ -243,6 +251,9 @@ part of extension configuration, almost similar to extension configuration optio
 ```json
 "commands": [
   {
+    "section": "Categories",
+    "prefix": "Category",
+    "multi": true,
     "name": "ConnectionTest",
     "action": "Send Test E-Mail",
     "displayName": "ConnectionTest",

@@ -31,11 +31,16 @@ namespace ManifestFile
 
 	extern const char* MANIFEST_FILE;
 
-	struct Option
+	struct Section
 	{
 		bool multi;
-		std::string section;
+		std::string name;
 		std::string prefix;
+	};
+
+	struct Option
+	{
+		Section section;
 		std::string name;
 		std::string displayName;
 		std::vector<std::string> description;
@@ -45,9 +50,7 @@ namespace ManifestFile
 
 	struct Command
 	{
-		bool multi;
-		std::string section;
-		std::string prefix;
+		Section section;
 		std::string name;
 		std::string displayName;
 		std::string action;

@@ -109,10 +109,6 @@ namespace ManifestFile
 			Json::JsonObject cmdJson = value.as_object();
 			Command command;
 
-			CheckKeyAndSet(cmdJson, "multi", command.multi, false);
-			CheckKeyAndSet(cmdJson, "section", command.section, "OPTIONS");
-			CheckKeyAndSet(cmdJson, "prefix", command.prefix, "");
-
 			if (!CheckKeyAndSet(cmdJson, "name", command.name))
 				continue;
 
@@ -146,11 +142,7 @@ namespace ManifestFile
 			if (!selectJson || !selectJson->is_array())
 				continue;
 
-			Option option{};
-
-			CheckKeyAndSet(optionJson, "multi", option.multi, false);
-			CheckKeyAndSet(optionJson, "section", option.section, "OPTIONS");
-			CheckKeyAndSet(optionJson, "prefix", option.prefix, "");
+			Option option;
 
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;

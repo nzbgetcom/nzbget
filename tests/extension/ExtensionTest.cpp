@@ -51,15 +51,15 @@ Extension::Script GetExtension()
 	option.name = "name";
 	option.value = 5.;
 	option.select = { 0., 10. };
-	option.multi = true;
-	option.prefix = "Prefix";
-	option.section = "Section";
+	option.section.multi = true;
+	option.section.prefix = "Prefix";
+	option.section.name = "Section";
 
 	command.action = "action";
 	command.name = "name";
-	command.multi = true;
-	command.prefix = "Prefix";
-	command.section = "Section";
+	command.section.multi = true;
+	command.section.prefix = "Prefix";
+	command.section.name = "Section";
 	command.displayName = "displayName";
 	command.description = { "description" };
 

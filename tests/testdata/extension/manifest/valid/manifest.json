@@ -26,9 +26,7 @@
             "select": [1, 65535]
         },
         {
-            "multi": true,
-            "prefix": "Category",
-            "section": "CATEGORIES",
+            "section": "Categories",
             "name": "Category",
             "displayName": "Category",
             "value": 25,
@@ -44,15 +42,25 @@
             "description": ["To check connection parameters click the button."]
         },
         {
-            "multi": true,
-            "prefix": "Category",
-            "section": "CATEGORIES",
+            "section": "Feeds",
             "name": "connectionTestTask",
             "action": "SendToTask",
             "displayName": "ConnectionTestTask",
-            "description": ["Categories command"]
+            "description": ["Feeds command"]
         }
     ],
+    "sections": [
+		{
+			"name": "Categories",
+			"prefix": "Category",
+			"multi": true
+		},
+		{
+			"name": "Feeds",
+			"prefix": "Feed",
+			"multi": false
+		}
+	],
     "queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",
     "taskTime": "1:00:00"
 }

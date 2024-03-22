@@ -103,19 +103,37 @@ var Options = (new function($)
 		}
 	}
 
-	function makeOption(extensionConf, rawOption)
+	function getOptionName(extConf, rawOption)
+	{
+		var name = extConf.Name;
+
+		if (rawOption.Prefix)
+		{
+			name += ':' + rawOption.Prefix;
+		}
+
+		if (rawOption.Multi)
+		{
+			name += '1'
+		}
+		name += '.' + rawOption.Name;
+
+		return name;
+	}
+
+	function makeOption(extConf, rawOption)
 	{
 		var [type, select] = GetTypeAndSelect(rawOption);
 		return {
 			caption: rawOption.DisplayName,
-			name: extensionConf.Name + (rawOption.Multi ? ':' + rawOption.Prefix + '1.' : ':') + rawOption.Name,
+			name: getOptionName(extConf, rawOption),
 			value: String(rawOption.Value),
 			defvalue: String(rawOption.Value),
-			sectionId: extensionConf.Name + '_' + rawOption.Section,
+			sectionId: extConf.Name + '_' + rawOption.Section,
 			select,
 			description: arrToStr(rawOption.Description),
 			nocontent: false,
-			formId: extensionConf.Name + '_' + rawOption.Name,
+			formId: extConf.Name + '_' + rawOption.Name,
 			multiid: 1,
 			multi: rawOption.Multi,
 			prefix: rawOption.Prefix,
@@ -129,7 +147,7 @@ var Options = (new function($)
 	{
 		return {
 			caption: rawCommand.DisplayName,
-			name: extConf.Name + (rawCommand.Multi ? ':' + rawCommand.Prefix + '1.' : ':') + rawCommand.Name,
+			name: getOptionName(extConf, rawCommand),
 			value: null,
 			defvalue: rawCommand.Action,
 			sectionId: extConf.Name + '_' + rawCommand.Section,
@@ -1047,7 +1065,7 @@ var Config = (new function($)
 	{
 		var option = section.options[0];
 		var name = option.caption;
-		var setname = name.substr(0, name.indexOf('1')) || option['prefix'];
+		var setname = name.substr(0, name.indexOf('1')) || option['prefix'] || '';
 		var html = '';
 
 		if (hasoptions)
