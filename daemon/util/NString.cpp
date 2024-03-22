@@ -164,7 +164,7 @@ void CString::AppendFmtV(const char* format, va_list ap)
 
 	m_data = newData;
 
-	vsnprintf(m_data + curLen, newLen + 1, format, ap2);
+	vsnprintf(m_data + curLen, addLen + 1, format, ap2);
 
 	va_end(ap2);
 }
