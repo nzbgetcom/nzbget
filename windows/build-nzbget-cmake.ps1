@@ -170,7 +170,9 @@ $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -sp
 Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
 
 # clean build folder
-Remove-Item $BuildDir -Force -Recurse
+If (Test-Path $BuildDir) {
+    Remove-Item $BuildDir -Force -Recurse
+}
 New-Item -ItemType Directory $PackageDir | Out-Null
 
 # release actions
