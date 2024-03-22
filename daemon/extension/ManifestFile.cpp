@@ -285,8 +285,7 @@ namespace ManifestFile
 			{
 				if (option.section.name == section.name)
 				{
-					option.section.prefix = section.prefix;
-					option.section.multi = section.multi;
+					option.section = section;
 				}
 			}
 
@@ -294,8 +293,7 @@ namespace ManifestFile
 			{
 				if (command.section.name == section.name)
 				{
-					command.section.prefix = section.prefix;
-					command.section.multi = section.multi;
+					command.section = section;
 				}
 			}
 		}

@@ -105,18 +105,18 @@ var Options = (new function($)
 
 	function getOptionName(extConf, rawOption)
 	{
-		var name = extConf.Name;
+		var name = extConf.Name + ':';
 
 		if (rawOption.Prefix)
 		{
-			name += ':' + rawOption.Prefix;
+			name += rawOption.Prefix;
 		}
 
 		if (rawOption.Multi)
 		{
-			name += '1'
+			name += '1.'
 		}
-		name += '.' + rawOption.Name;
+		name += rawOption.Name;
 
 		return name;
 	}

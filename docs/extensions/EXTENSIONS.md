@@ -45,6 +45,7 @@ and the `executable` file, like `main.py`.
   "license": "GNU",
   "about": "Sends E-Mail notification.",
   "queueEvents": "",
+  "taskTime": "",
   "requirements": [
     "This script requires Python3.8 to be installed on your system."
   ],
@@ -65,6 +66,7 @@ and the `executable` file, like `main.py`.
       "select": [1, 65535]
     },
     {
+      "section": "Categories",
       "name": "SendMail",
       "displayName": "SendMail",
       "value": "Always",
@@ -78,9 +80,27 @@ and the `executable` file, like `main.py`.
       "action": "Send Test E-Mail",
       "displayName": "ConnectionTest",
       "description": ["To check connection parameters click the button."]
+    },
+    {
+      "section": "Feeds",
+      "name": "ConnectionTest",
+      "action": "Send Test E-Mail",
+      "displayName": "ConnectionTest",
+      "description": ["To check connection parameters click the button."]
     }
   ],
-  "taskTime": ""
+  "sections": [
+		{
+			"name": "Categories",
+			"prefix": "Category",
+			"multi": true
+		},
+		{
+			"name": "Feeds",
+			"prefix": "Feed",
+			"multi": false
+		}
+	]
 }
 ```
 
@@ -185,29 +205,15 @@ In the provided `manifest.json` example we defined three options:
     "select": []
   },
   {
+    "section": "Categories",
     "name": "Port",
     "displayName": "Port",
     "value": 25,
     "description": ["SMTP server port (1-65535)"],
     "select": [1, 65535]
-  },
-  {
-    "section": "Categories", // optional, default value is "OPTIONS"
-    "prefix": "Category",    // optional, default value is ""
-    "multi": true,           // optional, default value is false
-    "name": "SendMail",
-    "displayName": "SendMail",
-    "value": "Always",
-    "description": ["When to send the message."],
-    "select": ["Always", "OnFailure"]
-  },
+  }
 ],
 ```
-
- - `section` is used to divide options into logical sections in `webui`
- - `prefix` helps to avoid name collisions when saving extension settings in `nzbget.conf`, e.g. `Email:Category1.SendMail=Always`
- - `multi`
-
 
 When the user saves settings in web-interface the extension configuration 
 options are saved to NZBGet configuration file using the extension name as prefix. For example:
