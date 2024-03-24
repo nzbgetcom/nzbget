@@ -156,6 +156,20 @@ Function BuildSetup($Type) {
     Move-Item "$DistribDir\nzbget-setup.exe" "$BuildDir\$InstallerFile" -Force
 }
 
+# build package release/debug
+Function Build($Type) {
+    PrepareFiles
+    if ($Build32) {
+        BuildTarget $Type "32"
+    }
+    if ($Build64) {
+        BuildTarget $Type "64"
+    }
+    if ($BuildSetup) {
+        BuildSetup $Type
+    }
+}
+
 # script begins here
 $SrcDir=Get-Location | Select-Object -ExpandProperty Path
 $BuildDir="build"
@@ -175,30 +189,11 @@ If (Test-Path $BuildDir) {
 }
 New-Item -ItemType Directory $PackageDir | Out-Null
 
-# release actions
+# build
 if ($BuildRelease) {
-    PrepareFiles
-    if ($Build32) {
-        BuildTarget "Release" "32"
-    }
-    if ($Build64) {
-        BuildTarget "Release" "64"
-    }
-    if ($BuildSetup) {
-        BuildSetup "Release"
-    }
+    Build("Release")
 }
 
-# debug actions
 if ($BuildDebug) {
-    PrepareFiles
-    if ($Build32) {
-        BuildTarget "Debug" "32"
-    }
-    if ($Build64) {
-        BuildTarget "Debug" "64"
-    }
-    if ($BuildSetup) {
-        BuildSetup "Debug"
-    }
+    Build("Debug")
 }
