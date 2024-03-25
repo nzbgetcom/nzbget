@@ -205,7 +205,7 @@ In the provided `manifest.json` example we defined three options:
     "select": []
   },
   {
-    "section": "Categories",  // optional, default value is "options"
+    "section": "Categories",
     "name": "Port",
     "displayName": "Port",
     "value": 25,
@@ -214,6 +214,7 @@ In the provided `manifest.json` example we defined three options:
   }
 ],
 ```
+>`"section"` property is optional. Default value is `"options"`.
 
 When the user saves settings in web-interface the extension configuration 
 options are saved to NZBGet configuration file using the extension name as prefix. For example:
@@ -257,7 +258,7 @@ part of extension configuration, almost similar to extension configuration optio
 ```json
 "commands": [
   {
-    "section": "Categories", // optional, default value is "options"
+    "section": "Categories",
     "multi": true,
     "name": "ConnectionTest",
     "action": "Send Test E-Mail",
@@ -266,6 +267,7 @@ part of extension configuration, almost similar to extension configuration optio
   }
 ],
 ```
+>`"section"` property is optional. Default value is `"options"`.
 
 This example creates a button with text "Send Test E-Mail" and description 
 "To check connection parameters click the button.".
@@ -302,7 +304,7 @@ All messages printed by the extension are saved to NZBGet log and are seen in we
 ### `"sections" (optional)`
 
 `Sections` are used to logically organize options and commands in `web-interface`.
->`Sections` with the reserved name `"options"` will be ignored!
+>`Sections` with the reserved name `"options"` will be ignored.
 
 ```json
 "sections": [
