@@ -302,6 +302,7 @@ All messages printed by the extension are saved to NZBGet log and are seen in we
 ### `"sections" (optional)`
 
 `Sections` are used to logically organize options and commands in `web-interface`.
+>`Sections` with the reserved name `"options"` will be ignored!
 
 ```json
 "sections": [
@@ -321,9 +322,13 @@ All messages printed by the extension are saved to NZBGet log and are seen in we
 
 `"multi"` means that `options` or `commands` can be added dynamically in `web-intefrace.`
 
-`"prefix"` 
-```
+`"prefix"` is relevant for `multi` sections to avoid name conflicts of `options` saved in `nzbget.conf`.
+
+Example of a `Name` option saved in `nzbget.conf` that refers to the `"Categories"` section with the prefix `"Category"`:
+
+```conf
 SpeedControl:Category1.Name=
+SpeedControl:Category2.Name=
 ```
 
 ### `"taskTime"`
