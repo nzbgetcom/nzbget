@@ -60,6 +60,7 @@ namespace ExtensionLoader
 		void BuildDisplayName(Extension::Script& script);
 		std::pair<std::vector<std::string>, std::string>
 		ExtractElements(const std::string& str);
+		template <typename T>
 		void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
 		{
 			opt.name = line.substr(1, sepPos - 1);
