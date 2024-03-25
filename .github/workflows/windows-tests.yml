@@ -1,14 +1,14 @@
-name: windows tests
+name: windows tests 
 
 on:
   push:
     branches:
-#    - feature/*
+    - feature/*
     - develop
     - main
   pull_request:
     branches:
-#    - develop
+    - develop
     - main
   workflow_call:
   workflow_dispatch:
@@ -22,12 +22,12 @@ jobs:
     - name: Prepare environment
       run: |
         "C:\Program Files\CMake\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
+    
     - name: Checkout
       uses: actions/checkout@v4
 
     - name: Build
-      run: |
+      run: |        
         cmake --version
         mkdir build
         cd build
