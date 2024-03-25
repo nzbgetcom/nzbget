@@ -49,7 +49,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
+	static bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
 	{
 		if (!CheckKeyAndSet(json, "author", manifest.author))
 			return false;
@@ -101,7 +101,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
+	static bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
 	{
 		auto rawCommands = json.if_contains("commands");
 		if (!rawCommands || !rawCommands->is_array())
@@ -134,7 +134,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
+	static bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
 	{
 		auto rawOptions = json.if_contains("options");
 		if (!rawOptions || !rawOptions->is_array())
@@ -185,7 +185,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName)
+	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName)
 	{
 		auto rawProp = json.if_contains(propName);
 		if (!rawProp || !rawProp->is_array())
@@ -204,7 +204,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (!rawProperty || !rawProperty->is_string())
@@ -214,7 +214,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue)
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (!rawProperty || !rawProperty->is_string())
@@ -227,7 +227,7 @@ namespace ManifestFile
 		return true;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (!rawProperty)
@@ -248,7 +248,7 @@ namespace ManifestFile
 		return false;
 	}
 
-	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property)
+	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
 		if (rawProperty && rawProperty->is_bool())
@@ -260,7 +260,7 @@ namespace ManifestFile
 		return false;
 	}
 
-	bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands)
+	static bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands)
 	{
 		auto rawSections = json.if_contains("sections");
 		if (!rawSections || !rawSections->is_array())

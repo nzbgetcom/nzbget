@@ -427,7 +427,7 @@ namespace Extension
 		return result;
 	}
 
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+	static void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
 	{
 		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
 		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
@@ -437,7 +437,7 @@ namespace Extension
 		xmlAddChild(rootNode, memberNode);
 	}
 
-	const char* BoolToStr(bool value)
+	static const char* BoolToStr(bool value)
 	{
 		return value ? "true" : "false";
 	}
