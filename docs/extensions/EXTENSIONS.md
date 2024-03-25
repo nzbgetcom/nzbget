@@ -90,17 +90,17 @@ and the `executable` file, like `main.py`.
     }
   ],
   "sections": [
-		{
-			"name": "Categories",
-			"prefix": "Category",
-			"multi": true
-		},
-		{
-			"name": "Feeds",
-			"prefix": "Feed",
-			"multi": false
-		}
-	]
+   {
+      "name": "Categories",
+      "prefix": "Category",
+      "multi": true
+    },
+    {
+      "name": "Feeds",
+      "prefix": "Feed",
+      "multi": false
+    }
+  ]
 }
 ```
 >`"sections"` property is optional.
