@@ -50,16 +50,16 @@ Function DownloadUnpackers {
 
     # download unrar64
     Invoke-WebRequest -Uri $UrlUnrar64 -OutFile $UnpackDir\unrarw64.exe
-    & "$UnpackDir\unrarw64.exe" -d"$UnpackDir\unrar64" -s
+    Start-Process -NoNewWindow -Wait "$UnpackDir\unrarw64.exe" -ArgumentList -d"$UnpackDir\unrar64",-s
 
     # download specific releases of winrar 32/64 bit
     Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\rar32.exe
     New-Item -ItemType Directory "$UnpackDir\rar32" | Out-Null
-    & "$UnpackDir\unrar64\unrar.exe" x "$UnpackDir\rar32.exe" "$UnpackDir\rar32"
+    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar32.exe","$UnpackDir\rar32\"
 
     Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\rar64.exe
     New-Item -ItemType Directory "$UnpackDir\rar64" | Out-Null
-    & "$UnpackDir\unrar64\unrar.exe" x "$UnpackDir\rar64.exe" "$UnpackDir\rar64"
+    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar64.exe","$UnpackDir\rar64\"
 
     # 7zip
     Invoke-WebRequest -Uri $Url7Z -OutFile $UnpackDir\7zip.7z

@@ -15,11 +15,14 @@ jobs:
 
     - name: Build
       run: |
-        $BuildParams="-BuildRelease -BuildDebug -Build32 -Build64 -BuildSetup"
+        $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
         If (-not $env:GITHUB_REF_NAME -eq "main") {
           $BuildParams="$BuildParams -BuildTesting"
         }
-        windows/build-nzbget-cmake.ps1 $BuildParams
+        If ($env:GITHUB_REF_NAME -eq "main" -or $env:GITHUB_REF_NAME -eq "develop") {
+          $BuildParams="$BuildParams -BuildDebug"
+        }
+        windows\build-nzbget.ps1 $BuildParams
 
     # - name: Rename build artifacts
     #   if: github.ref_name != 'main' && github.ref_name != 'develop'
