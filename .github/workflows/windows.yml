@@ -16,10 +16,10 @@ jobs:
     - name: Build
       run: |
         $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
-        If (-not $env:GITHUB_REF_NAME -eq "main") {
+        If (-not ($env:GITHUB_REF_NAME -eq "main")) {
           $BuildParams="$BuildParams -BuildTesting"
         }
-        If ($env:GITHUB_REF_NAME -eq "main" -or $env:GITHUB_REF_NAME -eq "develop") {
+        If (($env:GITHUB_REF_NAME -eq "main") -or ($env:GITHUB_REF_NAME -eq "develop")) {
           $BuildParams="$BuildParams -BuildDebug"
         }
         Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
