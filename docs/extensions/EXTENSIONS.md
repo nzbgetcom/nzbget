@@ -89,7 +89,7 @@ and the `executable` file, like `main.py`.
       "description": ["To check connection parameters click the button."]
     }
   ],
-  "sections": [ // optional
+  "sections": [
 		{
 			"name": "Categories",
 			"prefix": "Category",
