@@ -212,6 +212,13 @@ In the provided `manifest.json` example we defined three options:
     "value": 25,
     "description": ["SMTP server port (1-65535)"],
     "select": [1, 65535]
+  },
+  {
+    "name": "SendMail",
+    "displayName": "SendMail",
+    "value": "Always",
+    "description": ["When to send the message."],
+    "select": ["Always", "OnFailure"]
   }
 ],
 ```
@@ -260,7 +267,6 @@ part of extension configuration, almost similar to extension configuration optio
 "commands": [
   {
     "section": "Categories",
-    "multi": true,
     "name": "ConnectionTest",
     "action": "Send Test E-Mail",
     "displayName": "ConnectionTest",
