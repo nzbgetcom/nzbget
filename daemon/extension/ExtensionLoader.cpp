@@ -27,6 +27,7 @@
 
 namespace ExtensionLoader
 {
+	const char* DEFAULT_SECTION_NAME = "options";
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
 	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
@@ -212,7 +213,7 @@ namespace ExtensionLoader
 		{
 			std::vector<ManifestFile::SelectOption> selectOpts;
 			std::vector<std::string> description;
-			std::string currSectionName = "options";
+			std::string currSectionName = DEFAULT_SECTION_NAME;
 
 			std::string line;
 			while (std::getline(file, line))

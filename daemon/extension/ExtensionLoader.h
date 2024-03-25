@@ -26,6 +26,7 @@
 
 namespace ExtensionLoader
 {
+	extern const char* DEFAULT_SECTION_NAME;
 	extern const char* BEGIN_SCRIPT_SIGNATURE;
 	extern const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS;
 	extern const char* POST_SCRIPT_SIGNATURE;
