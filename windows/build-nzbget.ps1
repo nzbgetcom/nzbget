@@ -5,10 +5,17 @@ Param (
     [switch]$Build32=$False,
     [switch]$Build64=$False,
     [switch]$BuildSetup=$False,
-    [switch]$BuildTesting=$False
+    [switch]$BuildTesting=$False,
+    [switch]$DownloadUnpackers=$False
 )
 
-If (-not $BuildDebug -and -not $BuildRelease -and -not $Build32 -and -not $Build64 -and -not $BuildSetup -and -not $BuildTesting) {
+If (-not $BuildDebug -and
+    -not $BuildRelease -and
+    -not $Build32 -and
+    -not $Build64 -and
+    -not $BuildSetup -and
+    -not $BuildTesting -and
+    -not $DownloadUnpackers) {
     # script running without params
     $BuildRelease=$True
     $Build32=$True
@@ -17,18 +24,66 @@ If (-not $BuildDebug -and -not $BuildRelease -and -not $Build32 -and -not $Build
 }
 
 # tools locations
-$Root="C:\nzbget\build"
-$Sed="$Root\tools\sed\sed.exe"
-$Curl="$Root\tools\curl\curl.exe"
-$Nsis="$Root\tools\nsis"
+$ToolsRoot="C:\nzbget"
+$Sed="$ToolsRoot\sed\sed.exe"
+$Nsis="$ToolsRoot\nsis"
 $VcpkgDir="c:\vcpkg"
 
+# global ps params
 # stop on error
 $ErrorActionPreference = "Stop"
+#  do not display progress bars
+$ProgressPreference = "SilentlyContinue"
+
+# download 7z/unrar 32/64 bit to $ToolsRoot\image
+Function DownloadUnpackers {
+    $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
+    $UrlRar32="https://www.rarlab.com/rar/winrar-x32-700.exe"
+    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-700.exe"
+    $Url7Z="https://www.7-zip.org/a/7z2301-extra.7z"
+
+    $ImageDir="$ToolsRoot\image"
+    Write-Host "Downloading unpackers to $ImageDir"
+
+    $UnpackDir="$BuildDir\unpack"
+    New-Item -ItemType Directory $UnpackDir | Out-Null
+
+    # download unrar64
+    Invoke-WebRequest -Uri $UrlUnrar64 -OutFile $UnpackDir\unrarw64.exe
+    & "$UnpackDir\unrarw64.exe" -d"$UnpackDir\unrar64" -s
+
+    # download specific releases of winrar 32/64 bit
+    Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\rar32.exe
+    New-Item -ItemType Directory "$UnpackDir\rar32" | Out-Null
+    & "$UnpackDir\unrar64\unrar.exe" x "$UnpackDir\rar32.exe" "$UnpackDir\rar32"
+
+    Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\rar64.exe
+    New-Item -ItemType Directory "$UnpackDir\rar64" | Out-Null
+    & "$UnpackDir\unrar64\unrar.exe" x "$UnpackDir\rar64.exe" "$UnpackDir\rar64"
+
+    # 7zip
+    Invoke-WebRequest -Uri $Url7Z -OutFile $UnpackDir\7zip.7z
+    New-Item -ItemType Directory "$UnpackDir\7zip" | Out-Null
+    Start-Process -NoNewWindow -Wait "$UnpackDir\rar64\winrar.exe" -ArgumentList x,"$UnpackDir\7zip.7z","$UnpackDir\7zip"
+
+    # copy needed files
+    If (Test-Path $ImageDir) {
+        Remove-Item $ImageDir -Force -Recurse
+    }
+    New-Item -ItemType Directory "$ImageDir\32" | Out-Null
+    New-Item -ItemType Directory "$ImageDir\64" | Out-Null
+    Copy-Item "$UnpackDir\rar32\unrar.exe" "$ImageDir\32\unrar.exe"
+    Copy-Item "$UnpackDir\rar64\unrar.exe" "$ImageDir\64\unrar.exe"
+    Copy-Item "$UnpackDir\7zip\7za.exe" "$ImageDir\32\7za.exe"
+    Copy-Item "$UnpackDir\7zip\x64\7za.exe" "$ImageDir\64\7za.exe"
+
+    # cleanup
+    Remove-Item $UnpackDir -Force -Recurse
+}
 
 # prepare package files
 Function PrepareFiles {
-    If (-not (Test-Path "$Root\image")) {
+    If (-not (Test-Path "$ToolsRoot\image")) {
         Write-Host "Cannot find extra files for setup. Exiting ..."
         Exit 1
     }
@@ -57,8 +112,7 @@ Function PrepareFiles {
     Copy-Item windows\package-info.json $PackageDir\webui
 
     Write-Host "Updating root certificates"
-    & $Curl -s -o "$PackageDir\cacert.pem" https://curl.se/ca/cacert.pem
-    If (-not $?) { Exit 1 }
+    Invoke-WebRequest -Uri "https://curl.se/ca/cacert.pem" -OutFile "$PackageDir\cacert.pem"
 
     Write-Host "Adjusting config file"
     $Config="$PackageDir\nzbget.conf.template"
@@ -88,8 +142,8 @@ Function PrepareFiles {
     New-Item -ItemType Directory "$PackageDir\scripts" | Out-Null
     Copy-Item "scripts\*" "$PackageDir\scripts"
 
-    Copy-Item "$Root\image\32\*" "$PackageDir\32"
-    Copy-Item "$Root\image\64\*" "$PackageDir\64"
+    Copy-Item "$ToolsRoot\image\32\*" "$PackageDir\32"
+    Copy-Item "$ToolsRoot\image\64\*" "$PackageDir\64"
 }
 
 # build nzbget binary - release/debug 32/64 bit
@@ -181,13 +235,22 @@ If ($BuildTesting) {
 }
 
 $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -split('"'))[1]
-Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
 
 # clean build folder
 If (Test-Path $BuildDir) {
     Remove-Item $BuildDir -Force -Recurse
 }
-New-Item -ItemType Directory $PackageDir | Out-Null
+New-Item -ItemType Directory $BuildDir | Out-Null
+
+# download 7z/unrar
+if ($DownloadUnpackers) {
+    DownloadUnpackers
+}
+
+if ($BuildRelease -or $BuildDebug) {
+    Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
+    New-Item -ItemType Directory $PackageDir | Out-Null
+}
 
 # build
 if ($BuildRelease) {
