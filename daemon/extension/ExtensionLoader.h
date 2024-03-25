@@ -48,22 +48,19 @@ namespace ExtensionLoader
 	{
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 
-		static void ParseOptionsAndCommands(
+		void ParseOptionsAndCommands(
 			std::ifstream& file,
 			std::vector<ManifestFile::Option>& options,
 			std::vector<ManifestFile::Command>& commands
 		);
-		static std::vector<ManifestFile::SelectOption>
+		std::vector<ManifestFile::SelectOption>
 		GetSelectOptions(const std::vector<std::string>& opts, bool isDashDelim);
-		static ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
-		static void RemoveTailAndTrim(std::string& str, const char* tail);
-		static void BuildDisplayName(Extension::Script& script);
-		static std::pair<std::vector<std::string>, std::string>
+		ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
+		void RemoveTailAndTrim(std::string& str, const char* tail);
+		void BuildDisplayName(Extension::Script& script);
+		std::pair<std::vector<std::string>, std::string>
 		ExtractElements(const std::string& str);
-		template <typename T,
-			typename = std::enable_if_t<std::is_same_v<T, ManifestFile::Option> || std::is_same_v<T, ManifestFile::Command>>
-		>
-		static void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
+		void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
 		{
 			opt.name = line.substr(1, sepPos - 1);
 			Util::Trim(opt.name);
@@ -90,7 +87,7 @@ namespace ExtensionLoader
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 	}
 
-	static Extension::Kind GetScriptKind(const std::string& line);
+	Extension::Kind GetScriptKind(const std::string& line);
 }
 
 #endif
