@@ -24,15 +24,14 @@ jobs:
         }
         Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
 
-    # - name: Rename build artifacts
-    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
-    #   run: |
-    #     $Output="build"
-    #     $NewVersion=$env:NEW_VERSION
-    #     $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
-    #     ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
-    #       Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace($NewVersion, "$NewVersion-$Suffix")
-    #     }
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        $Output="build"
+        $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
+        ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
+          Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
+        }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
