@@ -22,7 +22,7 @@ jobs:
         If ($env:GITHUB_REF_NAME -eq "main" -or $env:GITHUB_REF_NAME -eq "develop") {
           $BuildParams="$BuildParams -BuildDebug"
         }
-        windows\build-nzbget.ps1 $BuildParams
+        Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
 
     # - name: Rename build artifacts
     #   if: github.ref_name != 'main' && github.ref_name != 'develop'
