@@ -774,6 +774,23 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
+bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+{
+	auto comparator = [](unsigned char a, unsigned char b)
+	{
+		if (std::isalpha(a) && std::isalpha(b))
+		{
+			return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+		}
+		else
+		{
+			return a == b;
+		}
+	};
+
+    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+}
+
 // prevent PC from going to sleep
 void Util::SetStandByMode(bool standBy)
 {

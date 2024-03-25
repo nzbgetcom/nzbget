@@ -89,7 +89,7 @@ and the `executable` file, like `main.py`.
       "description": ["To check connection parameters click the button."]
     }
   ],
-  "sections": [
+  "sections": [ // optional
 		{
 			"name": "Categories",
 			"prefix": "Category",
@@ -205,7 +205,7 @@ In the provided `manifest.json` example we defined three options:
     "select": []
   },
   {
-    "section": "Categories",
+    "section": "Categories",  // optional, default value is "options"
     "name": "Port",
     "displayName": "Port",
     "value": 25,
@@ -257,8 +257,7 @@ part of extension configuration, almost similar to extension configuration optio
 ```json
 "commands": [
   {
-    "section": "Categories",
-    "prefix": "Category",
+    "section": "Categories", // optional, default value is "options"
     "multi": true,
     "name": "ConnectionTest",
     "action": "Send Test E-Mail",
@@ -299,6 +298,33 @@ The extension must exit with one of predefined exit codes indicating success
 
 User may close the progress dialog but the extension continues running in the background. 
 All messages printed by the extension are saved to NZBGet log and are seen in web-interface on Messages tab.
+
+### `"sections" (optional)`
+
+`Sections` are used to logically organize options and commands in `web-interface`.
+
+```json
+"sections": [
+	{
+		"name": "Categories",
+		"prefix": "Category",
+		"multi": true
+	},
+	{
+		"name": "Feeds",
+		"prefix": "Feed",
+		"multi": false
+	}
+]
+
+```
+
+`"multi"` means that `options` or `commands` can be added dynamically in `web-intefrace.`
+
+`"prefix"` 
+```
+SpeedControl:Category1.Name=
+```
 
 ### `"taskTime"`
 

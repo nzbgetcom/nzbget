@@ -59,6 +59,11 @@
 			"name": "Feeds",
 			"prefix": "Feed",
 			"multi": false
+		},
+		{
+			"name": "options",
+			"prefix": "option",
+			"multi": true
 		}
 	],
 	"queueEvents": "NZB_ADDED, NZB_DOWNLOADED, FILE_DOWNLOADED",

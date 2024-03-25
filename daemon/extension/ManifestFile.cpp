@@ -27,7 +27,7 @@
 namespace ManifestFile
 {
 	const char* MANIFEST_FILE = "manifest.json";
-	const char* DEFAULT_SECTION = "options";
+	const char* DEFAULT_SECTION_NAME = "options";
 
 	bool Load(Manifest& manifest, const char* directory)
 	{
@@ -112,7 +112,7 @@ namespace ManifestFile
 			Json::JsonObject cmdJson = value.as_object();
 			Command command{};
 
-			CheckKeyAndSet(cmdJson, "section", command.section.name, DEFAULT_SECTION);
+			CheckKeyAndSet(cmdJson, "section", command.section.name, DEFAULT_SECTION_NAME);
 
 			if (!CheckKeyAndSet(cmdJson, "name", command.name))
 				continue;
@@ -149,7 +149,7 @@ namespace ManifestFile
 
 			Option option{};
 
-			CheckKeyAndSet(optionJson, "section", option.section.name, DEFAULT_SECTION);
+			CheckKeyAndSet(optionJson, "section", option.section.name, DEFAULT_SECTION_NAME);
 
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;
@@ -273,6 +273,9 @@ namespace ManifestFile
 			Section section;
 
 			if (!CheckKeyAndSet(sectionJson, "name", section.name))
+				continue;
+
+			if (Util::StrCaseCmp(section.name, DEFAULT_SECTION_NAME))
 				continue;
 
 			if (!CheckKeyAndSet(sectionJson, "prefix", section.prefix))
