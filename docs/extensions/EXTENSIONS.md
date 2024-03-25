@@ -103,6 +103,7 @@ and the `executable` file, like `main.py`.
 	]
 }
 ```
+>`"sections"` property is optional.
 
 ### `"main"`
 
