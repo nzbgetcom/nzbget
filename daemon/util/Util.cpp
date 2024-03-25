@@ -778,7 +778,7 @@ bool Util::StrCaseCmp(const std::string& a, const std::string& b)
 {
 	auto comparator = [](unsigned char a, unsigned char b)
 	{
-		return std::tolower(static_cast<unsigned char>(a)) == std::tolower(static_cast<unsigned char>(b));
+		return std::tolower(a) == std::tolower(b);
 	};
 
     return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
