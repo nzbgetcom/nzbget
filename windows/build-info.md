@@ -3,6 +3,18 @@
 
 # Prerequisites
 
+## Execution policy
+
+To run PowerShell scripts check ExecutionPolicy on yours system. From PowerShell prompt run:
+```
+Get-ExecutionPolicy
+```
+It should be minimum at `RemoteSigned` level. `Unrestricted` works too. To set desired policy, run as an Administrator from PowerShell prompt:
+```
+Set-ExecutionPolicy RemoteSigned
+```
+
+
 ## Build package
 
 - [vcpkg](https://vcpkg.io) with all needeed libraries (32-bit/64-bit must be installer separately)
@@ -25,9 +37,24 @@
     - download unicode version and place `SimpleSC.dll` to NSIS's `Plugins\x86-unicode`
 
 ## Unpackers
-For building nzbget package you must have downloaded 7zip/unrar unpackers to `$ToolsRoot\image` (default to `c:\nzbget\image`). This can be done by running `build-nzbget.ps1` with `-DownloadUnpackers` parameter:
+For building nzbget package you must have downloaded 7zip/unrar unpackers to `$ToolsRoot\image` (default to `c:\nzbget\image`). 32/64 bit unpackers should be placed in `$ToolsRoot\image\32` and `$ToolsRoot\image\64` folders respectively. This can be done by running `build-nzbget.ps1` with `-DownloadUnpackers` parameter:
 ```
 .\windows\build-nzbget.ps1 -DownloadUnpackers
+```
+Full `$ToolsRoot` layout:
+```
+nzbget
+├── image
+│   ├── 32
+│   │   ├── 7za.exe
+│   │   └── unrar.exe
+│   └── 64
+│       ├── 7za.exe
+│       └── unrar.exe
+├── nsis
+│   ├── NSIS home
+└── sed
+    └── sed.exe
 ```
 
 # Building NZBGet
