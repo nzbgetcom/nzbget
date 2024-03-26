@@ -157,6 +157,19 @@ var UISettings = (new function($)
 $(document).ready(function()
 {
 	Frontend.init();
+
+	var themeToggle = document.getElementById('ThemeToggle');
+	var themeLink = document.getElementById('theme-link');
+
+	themeToggle.addEventListener('click', function() {
+		if (themeLink.getAttribute('href') === 'light-theme.css') {
+			themeLink.setAttribute('href', 'dark-theme.css');
+			themeToggle.innerText = 'Dark';
+		} else {
+			themeLink.setAttribute('href', 'light-theme.css');
+			themeToggle.innerText = 'Light';
+		}
+	});
 });
 
 

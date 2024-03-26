@@ -31,6 +31,7 @@
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="mobile-web-app-capable" content="yes">
 	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	
 
 	<!-- Libraries -->
 	<!-- %if-debug%
@@ -64,10 +65,11 @@
 	<!-- %if-debug%
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap.css" />
 	<link rel="stylesheet" type="text/css" href="style.css" />
+	<link id="theme-link" rel="stylesheet" href="light-theme.css">
 	%end% -->
 	<!-- Loading all css files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<link rel="stylesheet" type="text/css" href="combined.css?lib/bootstrap.css+style.css" />
+	<link rel="stylesheet" type="text/css" href="combined.css?lib/bootstrap.css+style.css+light-theme.css" /> 
 	<!-- %end% -->
 
 	<!-- fav and touch icons -->
@@ -87,7 +89,7 @@
 
 </head>
 
-<body>
+<body class="dark-theme">
 
 <!-- *** NAVBAR ************************************************************ -->
 
@@ -136,6 +138,9 @@
 				<div href="#" onclick="LimitDialog.clicked(event)" title="Current speed (click to set speed limit) [Shift+L]"><i class="icon-plane" id="StatusSpeedIcon"></i> <span id="StatusSpeed">--- KB/s</span></div>
 				<div href="#" onclick="Status.statDialogClick()" title="Remaining time (click for more statistics) [Shift+A]"><i class="icon-time" id="StatusTimeIcon"></i> <span id="StatusTime">--h --m</span></div>
 			</div>
+
+			<!-- DARK/LIGHT THEME TOGGLE BUTTON -->
+			<button class="btn pull-right" id="ThemeToggle">Light</button>
 
 			<!-- REFRESH MENU -->
 			<div id="RefreshBlockDesktop" class="pull-right phone-hide">
