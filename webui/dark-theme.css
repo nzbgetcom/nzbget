@@ -12,11 +12,15 @@ body {
 }
 
 .table tbody tr:hover td, .table-hover tbody tr:hover th {
-	background-color: #212529;
+	background-color: #333;
 }
 
 .table a:hover {
 	color: #fff;
+}
+
+.table th, .table td {
+	border: 0.5px solid #999;
 }
 
 .table-striped tbody tr:nth-child(odd) td, .table-striped tbody tr:nth-child(odd) th {
@@ -25,6 +29,35 @@ body {
 
 .progress-block {
 	color: #212529;
+}
+
+.modal,
+.modal-body,
+.modal-footer {
+	background-color: #212529;
+	color: #fff;
+}
+
+.modal-header {
+	border-bottom: 1px solid #999;
+}
+
+.modal-footer {
+	border-top: 1px solid #999;
+}
+
+.nav-list .divider {
+	background-color: #999;
+    border-bottom: 1px solid #999;
+}
+
+label,
+.control-label {
+	color: #fff;
+}
+
+.icon-close {
+	background-position: -48px -17px;
 }
 
 .navbar-fixed-top .navbar-inner {
@@ -39,8 +72,8 @@ body {
 #PlayCaret {
 	margin-top: 3px;
 	margin-left: 9px;
-	border-top-color: #ffffff;
-	border-bottom-color: #ffffff;
+	border-top-color: #999;
+	border-bottom-color: #999;
 	opacity: 0.75;
 	filter: alpha(opacity=75);
 }
@@ -98,7 +131,8 @@ body {
 }
 
 .table-bordered {
-	border-left: 1px solid #dee2e6;
+	border-left: 1px solid #999999;
+	border-collapse: collapse;
 }
 
 .table-striped tbody tr:nth-child(odd) {
@@ -111,7 +145,7 @@ body {
 
 table > thead > tr > th.table-selector {
 	text-align: center;
-	background: repeating-linear-gradient(-45deg, #FFFFD8, #FFFFD8 6px, #E7E8D1 6px, #E7E8D1 12px);
+	background: repeating-linear-gradient(-45deg, #333, #FFFFD8 6px, #E7E8D1 6px, #E7E8D1 12px);
 	padding: 2px;
 	font-size: 12px;
 	line-height: 14px;
@@ -122,7 +156,7 @@ table > thead > tr > th.table-selector {
 div.check {
 	width: 12px;
 	height: 12px;
-	border: 1px solid #DDDDDD;
+	border: 1px solid #999999;
 	margin-top: 2px;
 	margin-bottom: 3px;
 	-webkit-border-radius: 2px;
@@ -135,23 +169,23 @@ div.check:hover {
 
 tr.checked,
 tr.checked td,
-tr.checked:nth-child(odd) .progress {
-	background-color: #FFFFE8;
+tr.checked:nth-child(odd) {
+	background-color: #032838;
 }
 
 .table-striped tbody tr.checked:nth-child(odd) td,
 .checked .progress {
-	background-color: #FFFFD8;
+	background-color: #032840;
 }
 
 .table tbody tr.checked:hover,
 .table tbody tr.checked:hover td {
-	background-color: #FFFFC0;
+	background-color: #032840;
 }
 
 .table.check-simple tbody tr.checked:hover,
 .table.check-simple tbody tr.checked:hover td {
-  background-color: #f5f5f5;
+  background-color: #032840;
 }
 
 .checked .progress {
@@ -176,7 +210,7 @@ tr.checked:nth-child(odd) .progress {
 }
 
 td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
-	border-top: 4px solid #888;
+	border-top: 4px solid #999;
 	border-right: 4px solid transparent;
 	border-left: 4px solid transparent;
 	content: "";
@@ -197,8 +231,8 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
 	line-height: 14px;
 	color: #966C38;
 	text-shadow: 0 -1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.75), -1px 0 0 rgba(255, 255, 255, 0.75);
-	border-top: solid 1px #ccc;
-	border-bottom: solid 1px #ccc;
+	border-top: solid 1px #999;
+	border-bottom: solid 1px #999;
 	margin-bottom: 1px;
 }
 
@@ -213,7 +247,7 @@ td:hover span.none-category {
 	cursor: not-allowed;
 	background-color: #ffffff;
 	border-color: #eee;
-	border: 1px solid #eee;
+	border: 1px solid #999;
 	padding: 4px;
 	padding-right: 20px;
 	-webkit-border-radius: 3px;
@@ -236,7 +270,7 @@ td:hover span.none-category {
 }
 
 .confirm-help-block {
-	color: #555555;
+	color: #f5f5f5;
 	font-size: 13px;
 	line-height: 16px;
 	margin-bottom: 0;
@@ -256,7 +290,7 @@ td:hover span.none-category {
 }
 
 #ConfigNav.nav-list a {
-    color: #000;
+    color: #fff;
     text-decoration: none;
 	padding-top: 5px;
 	padding-bottom: 5px;
@@ -266,16 +300,16 @@ td:hover span.none-category {
 #ConfigNav.nav-list > .active > a,
 #ConfigNav.nav-list > .active > a:hover {
     color: #ffffff;
-    background-color: #505050;
+    background-color: #333;
 }
 
 #ConfigNav {
 	-webkit-border-radius: 3px;
 	-moz-border-radius: 3px;
 	border-radius: 3px;
-	border: 1px solid #eeeeee;
+	border: 1px solid #999999;
 	padding: 8px 15px;
-	background-color: #F7F7F9;
+	background-color: #212529;
 	margin-bottom: 15px;
 }
 
@@ -287,7 +321,7 @@ td:hover span.none-category {
 	margin-bottom: 20px;
 	padding-right: 0;
 	padding-top: 0;
-	border-bottom: 1px solid #eeeeee;
+	border-bottom: 1px solid #999999;
 }
 
 .config-header .btn {
@@ -319,7 +353,7 @@ span.help-option-title {
 	-moz-border-radius: 3px;
 	border-radius: 3px;
 	margin-bottom: 20px;
-	border-bottom: 1px solid #eeeeee;
+	border-bottom: 1px solid #999999;
 }
 
 .config-multicaption {
@@ -331,7 +365,7 @@ span.help-option-title {
 #HistoryEdit_ParamTab div.control-group.wants-divider,
 #ConfigContent div.control-group,
 #ConfigContent.search div.control-group.multiset {
-	border-bottom: 1px solid #eeeeee;
+	border-bottom: 1px solid #999999;
 	margin-bottom: 15px;
 	padding-bottom: 12px;
 }
@@ -394,7 +428,7 @@ span.help-option-title {
 	padding: 0;
 	font-size: 12px;
 	line-height: 18px;
-	border: 1px solid #ccc;
+	border: 1px solid #999999;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	-webkit-border-radius: 4px;
 	 -moz-border-radius: 4px;
@@ -407,7 +441,7 @@ span.help-option-title {
 	margin-top: 5px;
 	padding-left: 6px;
 	height: 23px;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid #999999;
 	border-bottom: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -420,7 +454,7 @@ span.help-option-title {
 	height: auto;
 	overflow: hidden;
 	background-color: #ffffff;
-	border-right: 1px solid #ccc;
+	border-right: 1px solid #999999;
 	border-right: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -450,7 +484,7 @@ span.help-option-title {
 	left: 100px;
 	top: 100px;
 	text-align: center;
-	border: 1px solid #ccc;
+	border: 1px solid #999999;
 	background-color: #f8f8f8;
 	display: none;
 	cursor: grabbing;
