@@ -27,10 +27,10 @@ jobs:
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
+          NEW_FILE=${FILE/-bin-macos-x64.zip/-$SUFFIX-bin-macos-x64.zip}
           mv $FILE $NEW_FILE
         done
 
