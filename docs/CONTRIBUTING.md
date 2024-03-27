@@ -47,4 +47,3 @@ List of files to change version:
 1. configure.ac - "AC_INIT" macro
 2. CMakeLists.txt - "project" block
 3. nzbget.vcxproj - "PreprocessorDefinitions" blocks - 4 matches
-4. windows/nzbget-setup.nsi - WriteRegStr - "DisplayVersion"
