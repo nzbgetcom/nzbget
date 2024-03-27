@@ -9,7 +9,7 @@ fi
 VERSION=$(bash nzbget-latest-testing-bin-linux.run --help | grep 'Installer for' | cut -d ' ' -f 3 | sed -r 's/nzbget-//')
 RPM_VERSION=${VERSION//-/}
 
-for ARCH in i686 x86_64 armel armhf aarch64; do
+for ARCH in x86_64 i686 armel armhf aarch64; do
     bash $INSTALLER --arch "$ARCH" --destdir "$PWD/$ARCH" --silent    
     case $ARCH in
         i686)
@@ -43,15 +43,7 @@ for ARCH in i686 x86_64 armel armhf aarch64; do
     SHARE="$CONTENTS/usr/local/share/nzbget/"
     SHAREDOC="$CONTENTS/usr/local/share/doc/nzbget/"
     mkdir -p $CONTENTS/DEBIAN/
-    cat << EOF > "$CONTENTS/DEBIAN/control"
-Package: nzbget
-Version: $VERSION
-Section: web
-Priority: optional
-Architecture: $DPKG_ARCH
-Maintainer: nzbgetcom <nzbget@nzbget.com>
-Description: NZBGet is a command-line based binary newsgrabber for nzb files, written in C++.
-EOF
+    eval "echo \"$(cat deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
     mkdir -p $CONTENTS/usr/local/bin
     mkdir -p $CONTENTS/usr/local/share/doc/nzbget
     mkdir -p $CONTENTS/usr/local/share/nzbget
@@ -84,30 +76,8 @@ EOF
 
     # make rpm package
     # prepare spec
-    cat << EOF > "$ARCH/nzbget.spec"
-Name: nzbget
-Version: $RPM_VERSION
-Release: 1
-Group: Applications/Internet
-Summary: NZBGet is a command-line based binary newsgrabber for nzb files, written in C++.
-License: GPLv2
+    eval "echo \"$(cat rpm/nzbget.spec)\"" > "$ARCH/nzbget.spec"
 
-%description
-NZBGet is a command-line based binary newsgrabber for nzb files, written in C++. It supports client/server mode, automatic par-check/-repair, unpack and web-interface. NZBGet requires low system resources.
-
-%define __spec_install_pre /bin/true
-
-%prep
-
-%build
-
-%install
-
-%files
-/usr/local/bin/nzbget
-/usr/local/share/doc/nzbget/
-/usr/local/share/nzbget/
-EOF
     # prepare directories
     if [ "$ARCH" == "armel" ] || [ "$ARCH" == "armhf" ]; then
         ARCH_PATH="arm"

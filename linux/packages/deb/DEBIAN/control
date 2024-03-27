@@ -1,0 +1,7 @@
+Package: nzbget
+Version: $VERSION
+Section: web
+Priority: optional
+Architecture: $DPKG_ARCH
+Maintainer: nzbget.com <nzbget@nzbget.com>
+Description: NZBGet is a command-line based binary newsgrabber for nzb files, written in C++.
