@@ -160,16 +160,42 @@ $(document).ready(function()
 
 	var themeToggle = document.getElementById('ThemeToggle');
 	var themeLink = document.getElementById('theme-link');
+	var theme = window.localStorage.getItem('Theme');
+
+	if (!theme)
+	{
+		if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+			themeLink.setAttribute('href', 'dark-theme.css');
+			themeToggle.innerText = 'Dark';
+		} else {
+			themeToggle.innerText = 'Light';
+			window.localStorage.setItem('Theme', 'light');
+		}
+	}
+
 
 	themeToggle.addEventListener('click', function() {
 		if (themeLink.getAttribute('href') === 'light-theme.css') {
 			themeLink.setAttribute('href', 'dark-theme.css');
 			themeToggle.innerText = 'Dark';
+			window.localStorage.setItem('Theme', 'dark');
 		} else {
 			themeLink.setAttribute('href', 'light-theme.css');
 			themeToggle.innerText = 'Light';
+			window.localStorage.setItem('Theme', 'light');
 		}
 	});
+
+	if (theme == 'light')
+	{
+		themeToggle.innerText = 'Light';
+		window.localStorage.setItem('theme', 'light');
+	}
+	else
+	{
+		themeLink.setAttribute('href', 'dark-theme.css');
+		themeToggle.innerText = 'Dark';
+	}
 });
 
 
