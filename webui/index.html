@@ -65,11 +65,12 @@
 	<!-- %if-debug%
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap.css" />
 	<link rel="stylesheet" type="text/css" href="style.css" />
-	<link id="theme-link" rel="stylesheet" href="light-theme.css">
+	<link id="theme-link" rel="stylesheet" type="text/css" href="light-theme.css">
 	%end% -->
 	<!-- Loading all css files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<link rel="stylesheet" type="text/css" href="combined.css?lib/bootstrap.css+style.css+light-theme.css" /> 
+	<link rel="stylesheet" type="text/css" href="combined.css?lib/bootstrap.css+style.css" />
+	<link id="theme-link" rel="stylesheet" type="text/css" href="light-theme.css"> 
 	<!-- %end% -->
 
 	<!-- fav and touch icons -->

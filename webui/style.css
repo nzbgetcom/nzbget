@@ -16,6 +16,29 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+ @font-face {
+	font-family: 'Material Icons';
+	font-style: normal;
+	src: local('material-icons'),
+		 url(/lib/material-icons.woff2) format('woff2'),
+}
+
+.material-icons {
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+}
+
+.material-icons {
+    font-family: 'Material Icons';
+}
 
 body {
 	padding-left: 0;
