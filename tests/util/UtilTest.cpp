@@ -127,3 +127,12 @@ BOOST_AUTO_TEST_CASE(StrToNumTest)
 	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
 	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
 }
+
+BOOST_AUTO_TEST_CASE(StrCaseCmpTest)
+{
+	BOOST_CHECK(Util::StrCaseCmp("OPTIONS", "options"));
+	BOOST_CHECK(Util::StrCaseCmp("OPTIONS", "opt1ons") == false);
+	BOOST_CHECK(Util::StrCaseCmp("0PTIONS", "0ptions"));
+	BOOST_CHECK(Util::StrCaseCmp("", ""));
+	BOOST_CHECK(Util::StrCaseCmp("3.14", "3.12") == false);
+}

@@ -24,15 +24,25 @@
 #include <vector>
 #include <boost/variant2.hpp>
 #include "Json.h"
+#include "Util.h"
 
 namespace ManifestFile
 {
 	using SelectOption = boost::variant2::variant<double, std::string>;
 
 	extern const char* MANIFEST_FILE;
+	extern const char* DEFAULT_SECTION_NAME;
+
+	struct Section
+	{
+		bool multi;
+		std::string name;
+		std::string prefix;
+	};
 
 	struct Option
 	{
+		Section section;
 		std::string name;
 		std::string displayName;
 		std::vector<std::string> description;
@@ -42,6 +52,7 @@ namespace ManifestFile
 
 	struct Command
 	{
+		Section section;
 		std::string name;
 		std::string displayName;
 		std::string action;
@@ -69,12 +80,15 @@ namespace ManifestFile
 
 	bool Load(Manifest& manifest, const char* directory);
 
-	static bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
-	static bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
-	static bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
-	static bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
-	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
-	static bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
+	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest);
+	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands);
+	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options);
+	bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands);
+	bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName);
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property);
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue);
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property);
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property);
 };
 
 #endif

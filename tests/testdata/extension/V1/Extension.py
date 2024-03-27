@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+#
+# Test extension script for NZBGet.
+#
+
 ### TASK TIME: *;*:00;*:30                           					   ###
 ##############################################################################
 ### NZBGET QUEUE/POST-PROCESSING SCRIPT                                    ###
@@ -98,5 +103,26 @@
 # description.
 #test2=
 
+##############################################################################
+### CATEGORIES                                                             ###
+
+# Name of the category to monitor.
+#Category1.Name=
+
+# Speed limit for that category (KB).
+#Category1.DownloadRate=0
+
+##############################################################################
+### FEEDS                                                                  ###
+
+# Feed.
+#Feed1.Name=
+
+# Feed Test.
+#Feed1.TestFeed@Test Test 
+
 ### NZBGET POST-PROCESSING SCRIPT                                          ###
 ##############################################################################
+
+
+print("TEST")

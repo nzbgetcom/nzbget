@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	extension.SetEntry(entry);
 	extension.SetName(name);
 
-	BOOST_CHECK(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
+	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
 
 	BOOST_CHECK(extension.GetEntry() == entry);
 	BOOST_CHECK(extension.GetLocation() == location);
@@ -65,21 +65,36 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(extension.GetRequirements().size() == 1);
 	BOOST_CHECK(extension.GetRequirements() == std::vector<std::string>({ "This script requires Python to be installed on your system." }));
 
-	BOOST_CHECK(extension.GetCommands().size() == 2);
+	BOOST_REQUIRE(extension.GetCommands().size() == 3);
 
 	auto command = extension.GetCommands()[0];
 	BOOST_CHECK(command.name == "ConnectionTest");
+	BOOST_CHECK(command.section.multi == false);
+	BOOST_CHECK(command.section.name == "options");
+	BOOST_CHECK(command.section.prefix == "");
 	BOOST_CHECK(command.displayName == "ConnectionTest");
 	BOOST_CHECK(command.action == "Send Test E-Mail");
 	BOOST_CHECK(command.description == std::vector<std::string>({ "To check connection parameters click the button." }));
 
 	auto command2 = extension.GetCommands()[1];
 	BOOST_CHECK(command2.name == "Test");
+	BOOST_CHECK(command2.section.multi == false);
+	BOOST_CHECK(command2.section.name == "options");
+	BOOST_CHECK(command2.section.prefix == "");
 	BOOST_CHECK(command2.displayName == "Test");
 	BOOST_CHECK(command2.action == "Send Test");
 	BOOST_CHECK(command2.description == std::vector<std::string>({ "Test (0 1).", "description." }));
 
-	BOOST_CHECK(extension.GetOptions().size() == 16);
+	auto command3 = extension.GetCommands()[2];
+	BOOST_CHECK(command3.name == "TestFeed");
+	BOOST_CHECK(command3.section.prefix == "Feed");
+	BOOST_CHECK(command3.section.multi == true);
+	BOOST_CHECK(command3.section.name == "FEEDS");
+	BOOST_CHECK(command3.displayName == "TestFeed");
+	BOOST_CHECK(command3.action == "Test Test");
+	BOOST_CHECK(command3.description == std::vector<std::string>({ "Feed Test." }));
+
+	BOOST_REQUIRE(extension.GetOptions().size() == 19);
 
 	auto option = extension.GetOptions()[0];
 
@@ -242,4 +257,34 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		}));
 	BOOST_CHECK(boost::variant2::get<std::string>(option16.value) == "");
 	BOOST_CHECK(option16.select.empty());
+
+	auto option17 = extension.GetOptions()[16];
+	BOOST_CHECK(option17.section.name == "CATEGORIES");
+	BOOST_CHECK(option17.section.multi == true);
+	BOOST_CHECK(option17.section.prefix == "Category");
+	BOOST_CHECK(option17.name == "Name");
+	BOOST_CHECK(option17.displayName == "Name");
+	BOOST_CHECK(option17.description == std::vector<std::string>({ "Name of the category to monitor." }));
+	BOOST_CHECK(boost::variant2::get<std::string>(option17.value) == "");
+	BOOST_CHECK(option17.select.empty());
+
+	auto option18 = extension.GetOptions()[17];
+	BOOST_CHECK(option18.section.name == "CATEGORIES");
+	BOOST_CHECK(option18.section.multi == true);
+	BOOST_CHECK(option18.section.prefix == "Category");
+	BOOST_CHECK(option18.name == "DownloadRate");
+	BOOST_CHECK(option18.displayName == "DownloadRate");
+	BOOST_CHECK(option18.description == std::vector<std::string>({ "Speed limit for that category (KB)." }));
+	BOOST_CHECK(boost::variant2::get<std::string>(option18.value) == "0");
+	BOOST_CHECK(option18.select.empty());
+
+	auto option19 = extension.GetOptions()[18];
+	BOOST_CHECK(option19.section.name == "FEEDS");
+	BOOST_CHECK(option19.section.multi == true);
+	BOOST_CHECK(option19.section.prefix == "Feed");
+	BOOST_CHECK(option19.name == "Name");
+	BOOST_CHECK(option19.displayName == "Name");
+	BOOST_CHECK(option19.description == std::vector<std::string>({ "Feed." }));
+	BOOST_CHECK(boost::variant2::get<std::string>(option19.value) == "");
+	BOOST_CHECK(option19.select.empty());
 }

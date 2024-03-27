@@ -27,6 +27,7 @@
 namespace ManifestFile
 {
 	const char* MANIFEST_FILE = "manifest.json";
+	const char* DEFAULT_SECTION_NAME = "options";
 
 	bool Load(Manifest& manifest, const char* directory)
 	{
@@ -89,6 +90,8 @@ namespace ManifestFile
 		if (!ValidateCommandsAndSet(json, manifest.commands))
 			return false;
 
+		ValidateSectionsAndSet(json, manifest.options, manifest.commands);
+
 		if (!ValidateTxtAndSet(json, manifest.description, "description"))
 			return false;
 
@@ -107,7 +110,9 @@ namespace ManifestFile
 		for (auto& value : rawCommands->as_array())
 		{
 			Json::JsonObject cmdJson = value.as_object();
-			Command command;
+			Command command{};
+
+			CheckKeyAndSet(cmdJson, "section", command.section.name, DEFAULT_SECTION_NAME);
 
 			if (!CheckKeyAndSet(cmdJson, "name", command.name))
 				continue;
@@ -142,7 +147,10 @@ namespace ManifestFile
 			if (!selectJson || !selectJson->is_array())
 				continue;
 
-			Option option;
+			Option option{};
+
+			CheckKeyAndSet(optionJson, "section", option.section.name, DEFAULT_SECTION_NAME);
+
 			if (!CheckKeyAndSet(optionJson, "name", option.name))
 				continue;
 
@@ -206,6 +214,19 @@ namespace ManifestFile
 		return true;
 	}
 
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (!rawProperty || !rawProperty->is_string())
+		{
+			property = std::move(defValue);
+			return false;
+		}
+
+		property = rawProperty->get_string().c_str();
+		return true;
+	}
+
 	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
 	{
 		const auto& rawProperty = json.if_contains(key);
@@ -225,5 +246,61 @@ namespace ManifestFile
 		}
 
 		return false;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (rawProperty && rawProperty->is_bool())
+		{
+			property = rawProperty->as_bool();
+			return true;
+		}
+
+		return false;
+	}
+
+	bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands)
+	{
+		auto rawSections = json.if_contains("sections");
+		if (!rawSections || !rawSections->is_array())
+			return false;
+
+		for (auto& sectionVal : rawSections->as_array())
+		{
+			Json::JsonObject sectionJson = sectionVal.as_object();
+
+			Section section;
+
+			if (!CheckKeyAndSet(sectionJson, "name", section.name))
+				continue;
+
+			if (Util::StrCaseCmp(section.name, DEFAULT_SECTION_NAME))
+				continue;
+
+			if (!CheckKeyAndSet(sectionJson, "prefix", section.prefix))
+				continue;
+
+			if (!CheckKeyAndSet(sectionJson, "multi", section.multi))
+				continue;
+
+			for (auto& option : options)
+			{
+				if (option.section.name == section.name)
+				{
+					option.section = section;
+				}
+			}
+
+			for (auto& command : commands)
+			{
+				if (command.section.name == section.name)
+				{
+					command.section = section;
+				}
+			}
+		}
+
+		return true;
 	}
 }

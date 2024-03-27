@@ -27,6 +27,7 @@
 
 namespace ExtensionLoader
 {
+	const char* DEFAULT_SECTION_NAME = "options";
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
 	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
@@ -83,10 +84,12 @@ namespace ExtensionLoader
 				{
 					continue;
 				}
+
 				if (!inBeforeConfig && !strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
 				{
 					inBeforeConfig = true;
 				}
+
 				if (!inBeforeConfig && !inConfig)
 				{
 					continue;
@@ -149,6 +152,7 @@ namespace ExtensionLoader
 					continue;
 				}
 
+				// if "OPTIONS" and other sections, e.g.: ### OPTIONS or ### CATEGORIES
 				if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
 				{
 					ParseOptionsAndCommands(file, options, commands);
@@ -209,6 +213,7 @@ namespace ExtensionLoader
 		{
 			std::vector<ManifestFile::SelectOption> selectOpts;
 			std::vector<std::string> description;
+			std::string currSectionName = DEFAULT_SECTION_NAME;
 
 			std::string line;
 			while (std::getline(file, line))
@@ -220,6 +225,13 @@ namespace ExtensionLoader
 
 				if (line.empty())
 				{
+					continue;
+				}
+
+				if (!strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
+				{
+					currSectionName = line.substr(DEFINITION_SIGNATURE_LEN + 1);
+					RemoveTailAndTrim(currSectionName, "###");
 					continue;
 				}
 
@@ -274,15 +286,11 @@ namespace ExtensionLoader
 
 					if (atPos != std::string::npos && eqPos == std::string::npos)
 					{
-						ManifestFile::Command command;
-						std::string name = line.substr(1, atPos - 1);
-						std::string action = line.substr(atPos + 1);
-						Util::Trim(action);
-						Util::Trim(name);
-						command.action = std::move(action);
-						command.name = std::move(name);
+						ManifestFile::Command command{};
+						command.action = line.substr(atPos + 1);
+						Util::Trim(command.action);
+						ParseSectionAndSet<ManifestFile::Command>(command, currSectionName, line, atPos);
 						command.description = std::move(description);
-						command.displayName = command.name;
 						commands.push_back(std::move(command));
 						description.clear();
 						selectOpts.clear();
@@ -291,17 +299,14 @@ namespace ExtensionLoader
 
 					if (eqPos != std::string::npos)
 					{
-						ManifestFile::Option option;
-						std::string name = line.substr(1, eqPos - 1);
+						ManifestFile::Option option{};
+						ParseSectionAndSet<ManifestFile::Option>(option, currSectionName, line, eqPos);
+						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
-						Util::Trim(name);
-						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
-						option.value = std::move(GetSelectOpt(value, canBeNum));
-						option.name = std::move(name);
+						option.value = GetSelectOpt(value, canBeNum);
 						option.description = std::move(description);
 						option.select = std::move(selectOpts);
-						option.displayName = option.name;
 						options.push_back(std::move(option));
 						description.clear();
 						selectOpts.clear();
@@ -421,7 +426,7 @@ namespace ExtensionLoader
 
 	bool V2::Load(Extension::Script& script, const char* location, const char* rootDir)
 	{
-		ManifestFile::Manifest manifest;
+		ManifestFile::Manifest manifest{};
 		if (!ManifestFile::Load(manifest, location))
 			return false;
 
