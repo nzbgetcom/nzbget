@@ -15,21 +15,18 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Change version for non-release
-      if: github.ref_name != 'main'
-      run: |
-        VERSION=$(grep "set(VERSION" CMakeLists.txt | cut -d '"' -f 2)
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"        
-        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
-
     - name: Build
       run: |
-        bash osx/build-nzbget-x64.sh
+        if [ "$GITHUB_REF_NAME" != "main" ]; then
+          bash osx/build-nzbget-x64.sh testing
+        else
+          bash osx/build-nzbget-x64.sh
+        fi
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd tmp
+        cd build
         NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
@@ -41,7 +38,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers-x64
-        path: tmp/*.zip
+        path: build/*.zip
         retention-days: 5
 
   build-universal:

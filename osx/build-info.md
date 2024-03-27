@@ -52,9 +52,10 @@ xcode-select --install
 ### Building NZBGet
 From cloned repository run
 ```
-bash osx/build-nzbget-x64.sh
+bash osx/build-nzbget-x64.sh [testing]
 ```
+- `testing` - build testing package (add VersionSuffix=`-testing-$yyyyMMdd` to package version)
 
 ### Output files
-- tmp/osx/build/Release/NZBGet.app - application
-- tmp/nzbget-$VERSION-bin-macos-x64.zip - release archive
+- build/nzbget/osx/build/Release/NZBGet.app - application
+- build/nzbget-$VERSION-bin-macos-x64.zip - release archive
