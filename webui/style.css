@@ -28,6 +28,7 @@
 	font-weight: normal;
 	font-style: normal;
 	font-size: 16px;
+	color: inherit;
 	display: inline-block;
 	line-height: 1;
 	text-transform: none;
@@ -36,6 +37,7 @@
 	white-space: nowrap;
 	direction: ltr;
 	padding: 5px;
+	cursor: pointer;
 }
 
 body {

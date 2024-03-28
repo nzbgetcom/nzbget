@@ -19,6 +19,10 @@ body {
 	color: #fff;
 }
 
+.help-block {
+	color: #f5f5f5;
+}
+
 .table th, .table td {
 	border: 0.5px solid #999;
 }
@@ -46,6 +50,14 @@ body {
 	border-top: 1px solid #999;
 }
 
+.dropdown-menu li a {
+	color: #fff;
+}
+
+.nav > li > a:hover {
+	background-color: #005580;
+}
+
 .nav-list .divider {
 	background-color: #999;
     border-bottom: 1px solid #999;
@@ -53,6 +65,16 @@ body {
 
 label,
 .control-label {
+	color: #fff;
+}
+
+select {
+	color: #fff;
+	background-color: #212529;
+}
+
+.dropdown-menu  {
+	background-color: #212529;
 	color: #fff;
 }
 
@@ -104,8 +126,8 @@ label,
 	font-size: 11px;
 	font-weight: bold;
 	line-height: 18px;
-	color: #999999;
-	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+	color: #fff;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 	text-transform: uppercase;
 }
 
@@ -170,22 +192,22 @@ div.check:hover {
 tr.checked,
 tr.checked td,
 tr.checked:nth-child(odd) {
-	background-color: #032838;
+	background-color: #005580;
 }
 
 .table-striped tbody tr.checked:nth-child(odd) td,
 .checked .progress {
-	background-color: #032840;
+	background-color: #005580;
 }
 
 .table tbody tr.checked:hover,
 .table tbody tr.checked:hover td {
-	background-color: #032840;
+	background-color: #005580;
 }
 
 .table.check-simple tbody tr.checked:hover,
 .table.check-simple tbody tr.checked:hover td {
-  background-color: #032840;
+  background-color: #005580;
 }
 
 .checked .progress {
@@ -300,7 +322,7 @@ td:hover span.none-category {
 #ConfigNav.nav-list > .active > a,
 #ConfigNav.nav-list > .active > a:hover {
     color: #ffffff;
-    background-color: #333;
+    background-color: #005580;
 }
 
 #ConfigNav {
@@ -335,12 +357,9 @@ td:hover span.none-category {
           box-shadow: none;
 }
 
+.failure-message,
 span.help-option-title {
-	color: #8D1212;
-}
-
-.failure-message {
-	color: #8D1212;
+	color: #FFC107;
 }
 
 .config-settitle {
