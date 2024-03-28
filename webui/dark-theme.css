@@ -3,6 +3,33 @@ body {
 	color: #fff;
 }
 
+.btn {
+	color: #fff;
+	background-image: none;
+	background-color: #414141;
+}
+
+.btn:hover {
+	color: #fff;
+	background-color: #212529;
+}
+
+.btn-primary {
+	background-color: #0074CC;
+}
+
+.btn-primary:hover {
+	background-color: #0055CC;
+}
+
+.btn-danger {
+	background-color: #da4f49;
+}
+
+.btn-danger:hover {
+	background-color: #bd362f;
+}
+
 .table a {
 	color: #fff;
 }
@@ -24,7 +51,7 @@ body {
 }
 
 .table th, .table td {
-	border: 0.5px solid #999;
+	border: 0.5px solid #626262;
 }
 
 .table-striped tbody tr:nth-child(odd) td, .table-striped tbody tr:nth-child(odd) th {
@@ -35,6 +62,20 @@ body {
 	color: #212529;
 }
 
+.input-prepend .add-on, .input-append .add-on,
+.add-on {
+	background-color: #626262;
+	color: #fff;
+	text-shadow: none;
+	border: 1px solid #626262;
+}
+
+input {
+	background-color: #212529;
+    color: #fff;
+	border: 1px solid #626262;
+}
+
 .modal,
 .modal-body,
 .modal-footer {
@@ -43,11 +84,11 @@ body {
 }
 
 .modal-header {
-	border-bottom: 1px solid #999;
+	border-bottom: 1px solid #626262;
 }
 
 .modal-footer {
-	border-top: 1px solid #999;
+	border-top: 1px solid #626262;
 }
 
 .dropdown-menu li a {
@@ -59,8 +100,8 @@ body {
 }
 
 .nav-list .divider {
-	background-color: #999;
-    border-bottom: 1px solid #999;
+	background-color: #626262;
+    border: 1px solid #626262;
 }
 
 label,
@@ -68,9 +109,12 @@ label,
 	color: #fff;
 }
 
+.btn-group.open .btn.dropdown-toggle,
+.config-header .btn,
 select {
 	color: #fff;
 	background-color: #212529;
+	border: 1px solid #626262;
 }
 
 .dropdown-menu  {
@@ -94,8 +138,8 @@ select {
 #PlayCaret {
 	margin-top: 3px;
 	margin-left: 9px;
-	border-top-color: #999;
-	border-bottom-color: #999;
+	border-top-color: #626262;
+	border-bottom-color: #626262;
 	opacity: 0.75;
 	filter: alpha(opacity=75);
 }
@@ -153,7 +197,7 @@ select {
 }
 
 .table-bordered {
-	border-left: 1px solid #999999;
+	border: 1px solid #626262;
 	border-collapse: collapse;
 }
 
@@ -163,6 +207,10 @@ select {
   
 .table tbody tr:hover  {
 	background-color: #f5f5f5;
+}
+
+hr {
+	border: 1px solid #626262;
 }
 
 table > thead > tr > th.table-selector {
@@ -178,7 +226,7 @@ table > thead > tr > th.table-selector {
 div.check {
 	width: 12px;
 	height: 12px;
-	border: 1px solid #999999;
+	border: 1px solid #626262;
 	margin-top: 2px;
 	margin-bottom: 3px;
 	-webkit-border-radius: 2px;
@@ -232,7 +280,7 @@ tr.checked:nth-child(odd) {
 }
 
 td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
-	border-top: 4px solid #999;
+	border-top: 4px solid #626262;
 	border-right: 4px solid transparent;
 	border-left: 4px solid transparent;
 	content: "";
@@ -253,8 +301,8 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
 	line-height: 14px;
 	color: #966C38;
 	text-shadow: 0 -1px 0 rgba(255, 255, 255, 0.75), 0 1px 0 rgba(255, 255, 255, 0.75), -1px 0 0 rgba(255, 255, 255, 0.75);
-	border-top: solid 1px #999;
-	border-bottom: solid 1px #999;
+	border-top: solid 1px #626262;
+	border-bottom: solid 1px #626262;
 	margin-bottom: 1px;
 }
 
@@ -269,7 +317,7 @@ td:hover span.none-category {
 	cursor: not-allowed;
 	background-color: #ffffff;
 	border-color: #eee;
-	border: 1px solid #999;
+	border: 1px solid #626262;
 	padding: 4px;
 	padding-right: 20px;
 	-webkit-border-radius: 3px;
@@ -329,7 +377,7 @@ td:hover span.none-category {
 	-webkit-border-radius: 3px;
 	-moz-border-radius: 3px;
 	border-radius: 3px;
-	border: 1px solid #999999;
+	border: 1px solid #626262;
 	padding: 8px 15px;
 	background-color: #212529;
 	margin-bottom: 15px;
@@ -343,13 +391,12 @@ td:hover span.none-category {
 	margin-bottom: 20px;
 	padding-right: 0;
 	padding-top: 0;
-	border-bottom: 1px solid #999999;
+	border-bottom: 1px solid #626262;
 }
 
 .config-header .btn {
 	margin-top: 7px;
 	margin-right: 0;
-	background-color: #ffffff;
 	background-image: none;
 	border: none;
   -webkit-box-shadow: none;
@@ -372,7 +419,7 @@ span.help-option-title {
 	-moz-border-radius: 3px;
 	border-radius: 3px;
 	margin-bottom: 20px;
-	border-bottom: 1px solid #999999;
+	border-bottom: 1px solid #626262;
 }
 
 .config-multicaption {
@@ -384,7 +431,7 @@ span.help-option-title {
 #HistoryEdit_ParamTab div.control-group.wants-divider,
 #ConfigContent div.control-group,
 #ConfigContent.search div.control-group.multiset {
-	border-bottom: 1px solid #999999;
+	border-bottom: 1px solid #626262;
 	margin-bottom: 15px;
 	padding-bottom: 12px;
 }
@@ -447,7 +494,7 @@ span.help-option-title {
 	padding: 0;
 	font-size: 12px;
 	line-height: 18px;
-	border: 1px solid #999999;
+	border: 1px solid #626262;
 	border: 1px solid rgba(0, 0, 0, 0.15);
 	-webkit-border-radius: 4px;
 	 -moz-border-radius: 4px;
@@ -460,7 +507,7 @@ span.help-option-title {
 	margin-top: 5px;
 	padding-left: 6px;
 	height: 23px;
-	border-bottom: 1px solid #999999;
+	border-bottom: 1px solid #626262;
 	border-bottom: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -473,7 +520,7 @@ span.help-option-title {
 	height: auto;
 	overflow: hidden;
 	background-color: #ffffff;
-	border-right: 1px solid #999999;
+	border-right: 1px solid #626262;
 	border-right: 1px solid rgba(0, 0, 0, 0.15);
 }
 
@@ -503,7 +550,7 @@ span.help-option-title {
 	left: 100px;
 	top: 100px;
 	text-align: center;
-	border: 1px solid #999999;
+	border: 1px solid #626262;
 	background-color: #f8f8f8;
 	display: none;
 	cursor: grabbing;

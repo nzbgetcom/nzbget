@@ -36,8 +36,8 @@
 	word-wrap: normal;
 	white-space: nowrap;
 	direction: ltr;
-	padding: 5px;
 	cursor: pointer;
+	vertical-align: middle;
 }
 
 body {
