@@ -23,21 +23,19 @@
 		 url(/lib/material-icons.woff2) format('woff2'),
 }
 
-.material-icons {
-    font-weight: normal;
-    font-style: normal;
-    font-size: 24px;
-    display: inline-block;
-    line-height: 1;
-    text-transform: none;
-    letter-spacing: normal;
-    word-wrap: normal;
-    white-space: nowrap;
-    direction: ltr;
-}
-
-.material-icons {
-    font-family: 'Material Icons';
+.material-icon {
+	font-family: 'Material Icons';
+	font-weight: normal;
+	font-style: normal;
+	font-size: 16px;
+	display: inline-block;
+	line-height: 1;
+	text-transform: none;
+	letter-spacing: normal;
+	word-wrap: normal;
+	white-space: nowrap;
+	direction: ltr;
+	padding: 5px;
 }
 
 body {
@@ -80,7 +78,7 @@ body {
 
 /* NAVBAR */
 .navbar-fixed-top {
-    margin-bottom: 18px;
+	margin-bottom: 18px;
 	margin-left: 0px;
 	margin-right: 0px;
 	position: static;
@@ -210,16 +208,16 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 }
 
 @-webkit-keyframes play-rotate {
-    0%   { -webkit-transform: rotate(0); }
-    100% { -webkit-transform: rotate(360deg); }
+	0%   { -webkit-transform: rotate(0); }
+	100% { -webkit-transform: rotate(360deg); }
 }
 @-moz-keyframes play-rotate {
-    0%   { -moz-transform: rotate(0); }
-    100% { -moz-transform: rotate(360deg); }
+	0%   { -moz-transform: rotate(0); }
+	100% { -moz-transform: rotate(360deg); }
 }
 @-ms-keyframes play-rotate {
-    0%   { -ms-transform: rotate(0); }
-    100% { -ms-transform: rotate(360deg); }
+	0%   { -ms-transform: rotate(0); }
+	100% { -ms-transform: rotate(360deg); }
 }
 
 #PlayAnimation {
@@ -235,9 +233,9 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	height: 60px;
 	cursor: pointer;
 	pointer-events: none;
-    -webkit-animation: play-rotate 1s linear infinite;
-    -moz-animation: play-rotate 1s linear infinite;
-    -ms-animation: play-rotate 1s linear infinite;
+	-webkit-animation: play-rotate 1s linear infinite;
+	-moz-animation: play-rotate 1s linear infinite;
+	-ms-animation: play-rotate 1s linear infinite;
 }
 
 #PlayAnimation.play {
@@ -301,7 +299,7 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 }
 
 .navbar .btn-group {
-    padding: 0;
+	padding: 0;
 }
 
 /* needed for Safari 4 */
@@ -424,7 +422,7 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 
 .menu-with-button a {
 	padding-right: 70px;
-    overflow: hidden;
+	overflow: hidden;
 }
 
 .menu-with-button a .btn,
@@ -458,13 +456,13 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 }
 
 #FilterMenu::after {
-    left: 13px;
-    right: auto;
+	left: 13px;
+	right: auto;
 }
 
 #FilterMenu::before {
-    left: 12px;
-    right: auto;
+	left: 12px;
+	right: auto;
 }
 
 #DownloadsEdit_ActionsMenu,
@@ -779,7 +777,7 @@ table.datatable > tbody > tr > td {
 
 #MainTabContent {
 	margin-top: 0;
-    overflow: visible; /* fix problem with dropdown menus */
+	overflow: visible; /* fix problem with dropdown menus */
 }
 
 /* top toolbox (length-combo and pager) for tables */
@@ -928,7 +926,7 @@ form {
 	left: 0;
 	right: 0;
 	max-height: inherit;
-	/* top: 46px;      // must be calculated at runtime */
+	/* top: 46px;	  // must be calculated at runtime */
 	/* bottom: 58px;   // must be calculated at runtime */
 }
 
@@ -970,7 +968,7 @@ form {
 
 /* BEGIN: Tables */
 .table {
-    margin-bottom: 0px;
+	margin-bottom: 0px;
 }
 
 .table-bordered th,
@@ -1093,9 +1091,9 @@ td.dropdown-cell > div {
 }
 
 td.dropdown-cell > div:hover {
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
 	user-select: none;
 }
 
@@ -1193,7 +1191,7 @@ textarea[readonly],
 }
 
 .modal .form-horizontal .control-group:last-child {
-    margin-bottom: 0;
+	margin-bottom: 0;
 }
 
 .modal .form-horizontal .retain-margin .control-group:last-child {
@@ -1451,7 +1449,7 @@ ul.help > li {
 }
 
 #ConfigNav.nav .nav-header {
-    font-size: 12px;
+	font-size: 12px;
 }
 
 #ConfigTitle {
@@ -1764,7 +1762,7 @@ body.phone {
 }
 
 .phone .navbar-fixed-top {
-    position: static;
+	position: static;
 }
 
 .phone #PlayBlock {
@@ -1841,8 +1839,8 @@ body.phone,
 }
 
 .phone .menu-header {
-    font-size: 18px;
-    line-height: 24px;
+	font-size: 18px;
+	line-height: 24px;
 }
 
 /* SECTION MARGINGS */
@@ -1878,13 +1876,13 @@ body.phone,
 }
 
 .phone .toolbox-top {
-    margin-top: 0;
-    margin-bottom: 8px;
+	margin-top: 0;
+	margin-bottom: 8px;
 }
 
 /* NAVBAR */
 .phone .navbar-fixed-top {
-    margin-bottom: 8px;
+	margin-bottom: 8px;
 }
 
 .phone .navbar-container {
@@ -1906,7 +1904,7 @@ body.phone,
 }
 
 .phone .navbar .nav > li > a {
-    padding: 4px 4px 6px;
+	padding: 4px 4px 6px;
 }
 
 .phone .navbar .nav > li.active > #DownloadsTabLink > i {
@@ -1978,19 +1976,19 @@ body.phone,
 }
 
 .phone table.datatable > tbody > tr > td:first-child {
-    border-top: 1px solid #DDDDDD;
+	border-top: 1px solid #DDDDDD;
 }
 
 .phone table.datatable > tbody > tr:last-child > td:last-child {
-    border-bottom: 1px solid #DDDDDD;
+	border-bottom: 1px solid #DDDDDD;
 }
 
 .phone table.datatable > tbody > tr > td:first-child {
-    padding-top: 10px;
+	padding-top: 10px;
 }
 
 .phone table.datatable > tbody > tr > td:last-child {
-    padding-bottom: 10px;
+	padding-bottom: 10px;
 }
 
 .phone table.table-check > tbody > tr > td {
@@ -2112,7 +2110,7 @@ body.phone,
 
 /* MENUS */
 .phone .dropdown-menu a {
-    padding: 7px 15px;
+	padding: 7px 15px;
 }
 
 .phone .dropdown-toggle {
@@ -2180,18 +2178,18 @@ body.phone,
 .phone input,
 .phone textarea,
 .phone .uneditable-input {
-    height: 24px;
+	height: 24px;
 }
 
 .phone input.btn {
-    height: inherit;
+	height: inherit;
 }
 
 .phone .input-prepend .add-on,
 .phone .input-append .add-on {
-    height: 24px;
-    line-height: 22px;
-    min-width: 16px;
+	height: 24px;
+	line-height: 22px;
+	min-width: 16px;
 }
 
 .phone select {
@@ -2199,12 +2197,12 @@ body.phone,
 }
 
 .phone [class^="icon-"] {
-    line-height: 24px;
+	line-height: 24px;
 	vertical-align: baseline;
 }
 
 .phone .caret {
-    line-height: 24px;
+	line-height: 24px;
 	margin-top: -2px;
 	vertical-align: middle;
 }
@@ -2294,7 +2292,7 @@ body.phone,
 }
 
 .phone #ConfigNav.nav .nav-header {
-    font-size: 20px;
+	font-size: 20px;
 }
 
 .phone #ConfigContent .config-header {

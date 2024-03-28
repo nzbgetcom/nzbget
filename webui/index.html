@@ -65,12 +65,12 @@
 	<!-- %if-debug%
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap.css" />
 	<link rel="stylesheet" type="text/css" href="style.css" />
-	<link id="theme-link" rel="stylesheet" type="text/css" href="light-theme.css">
+	<link id="ThemeStyleSheet" rel="stylesheet" type="text/css" href="light-theme.css">
 	%end% -->
 	<!-- Loading all css files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
 	<link rel="stylesheet" type="text/css" href="combined.css?lib/bootstrap.css+style.css" />
-	<link id="theme-link" rel="stylesheet" type="text/css" href="light-theme.css"> 
+	<link id="ThemeStyleSheet" rel="stylesheet" type="text/css" href="light-theme.css"> 
 	<!-- %end% -->
 
 	<!-- fav and touch icons -->
@@ -141,8 +141,10 @@
 			</div>
 
 			<!-- DARK/LIGHT THEME TOGGLE BUTTON -->
-			<button class="btn pull-right" id="ThemeToggle">Light</button>
-
+			<button class="btn pull-right" id="ThemeToggle">
+				<i class="material-icon">light_mode</i>
+			</button>
+			
 			<!-- REFRESH MENU -->
 			<div id="RefreshBlockDesktop" class="pull-right phone-hide">
 				<div class="btn-toolbar" id="RefreshBlock">

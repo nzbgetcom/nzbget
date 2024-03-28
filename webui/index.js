@@ -158,44 +158,44 @@ $(document).ready(function()
 {
 	Frontend.init();
 
-	var themeToggle = document.getElementById('ThemeToggle');
-	var themeLink = document.getElementById('theme-link');
-	var theme = window.localStorage.getItem('Theme');
+	var themeToggle = $('#ThemeToggle');
+	var themeStyleSheet = $('#ThemeStyleSheet');
+	var savedTheme = window.localStorage.getItem('Theme');
 
-	if (!theme)
+	if (!savedTheme)
 	{
 		if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-			themeLink.setAttribute('href', 'dark-theme.css');
-			themeToggle.innerText = 'Dark';
+			themeStyleSheet.attr('href') = 'dark-theme.css';
+			window.localStorage.setItem('Theme', 'dark');
+			themeToggle.children().replaceWith('<i class="material-icon">light_mode</i>');
 		} else {
-			themeToggle.innerText = 'Light';
 			window.localStorage.setItem('Theme', 'light');
+			themeToggle.children().replaceWith('<i class="material-icon">dark_mode</i>');
 		}
 	}
 
-
-	themeToggle.addEventListener('click', function() {
-		if (themeLink.getAttribute('href') === 'light-theme.css') {
-			themeLink.setAttribute('href', 'dark-theme.css');
-			themeToggle.innerText = 'Dark';
-			window.localStorage.setItem('Theme', 'dark');
-		} else {
-			themeLink.setAttribute('href', 'light-theme.css');
-			themeToggle.innerText = 'Light';
-			window.localStorage.setItem('Theme', 'light');
-		}
-	});
-
-	if (theme == 'light')
+	if (savedTheme == 'light')
 	{
-		themeToggle.innerText = 'Light';
-		window.localStorage.setItem('theme', 'light');
+		window.localStorage.setItem('Theme', 'light');
+		themeToggle.children().replaceWith('<i class="material-icon">dark_mode</i>');
 	}
 	else
 	{
-		themeLink.setAttribute('href', 'dark-theme.css');
-		themeToggle.innerText = 'Dark';
+		themeStyleSheet.attr('href', 'dark-theme.css');
+		themeToggle.children().replaceWith('<i class="material-icon">light_mode</i>');
 	}
+
+	themeToggle.on('click', function() {
+		if (themeStyleSheet.attr('href') === 'light-theme.css') {
+			themeStyleSheet.attr('href', 'dark-theme.css');
+			window.localStorage.setItem('Theme', 'dark');
+			themeToggle.children().replaceWith('<i class="material-icon">light_mode</i>');
+		} else {
+			themeStyleSheet.attr('href', 'light-theme.css');
+			window.localStorage.setItem('Theme', 'light');
+			themeToggle.children().replaceWith('<i class="material-icon">dark_mode</i>');
+		}
+	});
 });
 
 
