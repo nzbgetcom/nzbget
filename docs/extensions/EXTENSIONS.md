@@ -45,6 +45,7 @@ and the `executable` file, like `main.py`.
   "license": "GNU",
   "about": "Sends E-Mail notification.",
   "queueEvents": "",
+  "taskTime": "",
   "requirements": [
     "This script requires Python3.8 to be installed on your system."
   ],
@@ -65,6 +66,7 @@ and the `executable` file, like `main.py`.
       "select": [1, 65535]
     },
     {
+      "section": "Categories",
       "name": "SendMail",
       "displayName": "SendMail",
       "value": "Always",
@@ -78,11 +80,30 @@ and the `executable` file, like `main.py`.
       "action": "Send Test E-Mail",
       "displayName": "ConnectionTest",
       "description": ["To check connection parameters click the button."]
+    },
+    {
+      "section": "Feeds",
+      "name": "ConnectionTest",
+      "action": "Send Test E-Mail",
+      "displayName": "ConnectionTest",
+      "description": ["To check connection parameters click the button."]
     }
   ],
-  "taskTime": ""
+  "sections": [
+   {
+      "name": "Categories",
+      "prefix": "Category",
+      "multi": true
+    },
+    {
+      "name": "Feeds",
+      "prefix": "Feed",
+      "multi": false
+    }
+  ]
 }
 ```
+>`"sections"` property is optional.
 
 ### `"main"`
 
@@ -185,6 +206,7 @@ In the provided `manifest.json` example we defined three options:
     "select": []
   },
   {
+    "section": "Categories",
     "name": "Port",
     "displayName": "Port",
     "value": 25,
@@ -197,9 +219,10 @@ In the provided `manifest.json` example we defined three options:
     "value": "Always",
     "description": ["When to send the message."],
     "select": ["Always", "OnFailure"]
-  },
+  }
 ],
 ```
+>`"section"` property is optional. Default value is `"options"`.
 
 When the user saves settings in web-interface the extension configuration 
 options are saved to NZBGet configuration file using the extension name as prefix. For example:
@@ -243,6 +266,7 @@ part of extension configuration, almost similar to extension configuration optio
 ```json
 "commands": [
   {
+    "section": "Categories",
     "name": "ConnectionTest",
     "action": "Send Test E-Mail",
     "displayName": "ConnectionTest",
@@ -250,6 +274,7 @@ part of extension configuration, almost similar to extension configuration optio
   }
 ],
 ```
+>`"section"` property is optional. Default value is `"options"`.
 
 This example creates a button with text "Send Test E-Mail" and description 
 "To check connection parameters click the button.".
@@ -282,6 +307,38 @@ The extension must exit with one of predefined exit codes indicating success
 
 User may close the progress dialog but the extension continues running in the background. 
 All messages printed by the extension are saved to NZBGet log and are seen in web-interface on Messages tab.
+
+### `"sections" (optional)`
+
+`Sections` are used to logically organize options and commands in `web-interface`.
+>`Sections` with the reserved name `"options"` will be ignored.
+
+```json
+"sections": [
+	{
+		"name": "Categories",
+		"prefix": "Category",
+		"multi": true
+	},
+	{
+		"name": "Feeds",
+		"prefix": "Feed",
+		"multi": false
+	}
+]
+
+```
+
+`"multi"` means that `options` or `commands` can be added dynamically in `web-intefrace.`
+
+`"prefix"` is relevant for `multi` sections to avoid name conflicts of `options` saved in `nzbget.conf`.
+
+Example of a `Name` option saved in `nzbget.conf` that refers to the `"Categories"` section with the prefix `"Category"`:
+
+```conf
+SpeedControl:Category1.Name=
+SpeedControl:Category2.Name=
+```
 
 ### `"taskTime"`
 

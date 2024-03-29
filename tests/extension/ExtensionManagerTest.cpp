@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	ExtensionManager::Manager manager;
 
 	BOOST_REQUIRE(manager.LoadExtensions() == boost::none);
-	BOOST_CHECK(manager.GetExtensions().size() == 4);
+	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
 	{

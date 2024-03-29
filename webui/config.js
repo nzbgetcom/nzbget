@@ -103,6 +103,80 @@ var Options = (new function($)
 		}
 	}
 
+	function getOptionName(extConf, rawOption)
+	{
+		var name = extConf.Name + ':';
+
+		if (rawOption.Prefix)
+		{
+			name += rawOption.Prefix;
+		}
+
+		if (rawOption.Multi)
+		{
+			name += '1.'
+		}
+		name += rawOption.Name;
+
+		return name;
+	}
+
+	function makeOption(extConf, rawOption)
+	{
+		var [type, select] = GetTypeAndSelect(rawOption);
+		return {
+			caption: rawOption.DisplayName,
+			name: getOptionName(extConf, rawOption),
+			value: String(rawOption.Value),
+			defvalue: String(rawOption.Value),
+			sectionId: extConf.Name + '_' + rawOption.Section,
+			select,
+			description: arrToStr(rawOption.Description),
+			nocontent: false,
+			formId: extConf.Name + '_' + rawOption.Name,
+			multiid: 1,
+			multi: rawOption.Multi,
+			prefix: rawOption.Prefix,
+			template: rawOption.Multi,
+			section: rawOption.Section,
+			type,
+		};
+	}
+
+	function makeCommandOption(extConf, rawCommand)
+	{
+		return {
+			caption: rawCommand.DisplayName,
+			name: getOptionName(extConf, rawCommand),
+			value: null,
+			defvalue: rawCommand.Action,
+			sectionId: extConf.Name + '_' + rawCommand.Section,
+			select: [],
+			description: arrToStr(rawCommand.Description),
+			nocontent: false,
+			formId: extConf.Name + '_' + rawCommand.Name,
+			commandopts: 'settings',
+			multiid: 1,
+			template: rawCommand.Multi,
+			prefix: rawCommand.Prefix,
+			section: rawCommand.Section,
+			multi: rawCommand.Multi,
+			type: 'command',
+		};
+	}
+
+	function makeSection(extConf, option)
+	{
+		return {
+			name: option.section,
+			id: extConf.Name + '_' + option.section,
+			options: [option],
+			multi: option.multi,
+			hidden: false,
+			postparam: false,
+		};
+	}
+
 	/*** LOADING CONFIG ********************************************************************/
 
 	this.loadConfig = function(callbacks)
@@ -137,15 +211,9 @@ var Options = (new function($)
 		// read scripts configs
 		for (var i = 1; i < this.serverTemplateData.length; i++) 
 		{
-			var section = {
-				name: this.serverTemplateData[i].Name,
-				id: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-				options: [],
-				hidden: false,
-				postparam: false,
-			};
+			var sections = {};
 			var scriptConfig = {
-				sections: [section],
+				sections: [],
 				nameprefix: this.serverTemplateData[i].Name,
 			};
 			var requirements = this.serverTemplateData[i].Requirements;
@@ -173,41 +241,33 @@ var Options = (new function($)
 			scriptConfig['license'] = this.serverTemplateData[i].License;
 			scriptConfig['version'] = this.serverTemplateData[i].Version;
 
-			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
-			{
-				var command = this.serverTemplateData[i].Commands[j];
-				section.options.push({
-					caption: command.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + command.Name,
-					value: null,
-					defvalue: command.Action,
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-					select: [],
-					description: arrToStr(command.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + command.Name,
-					commandopts: 'settings',
-					type: 'command'
-				});
-			}
 			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
 			{
-				var option = this.serverTemplateData[i].Options[j];
-				var [type, select] = GetTypeAndSelect(option);
-				section.options.push({
-					caption: option.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + option.Name,
-					value: String(option.Value),
-					defvalue: String(option.Value),
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-					select,
-					description: arrToStr(option.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + option.Name,
-					type
-				});
+				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
+				if (sections[option.section])
+				{
+					sections[option.section].options.push(option);
+				}
+				else
+				{
+					sections[option.section] = makeSection(this.serverTemplateData[i], option);
+				}
 			}
-			
+
+			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
+			{
+				var command = makeCommandOption(this.serverTemplateData[i], this.serverTemplateData[i].Commands[j]);
+				if (sections[command.section])
+				{
+					sections[command.section].options.push(command);
+				}
+				else
+				{
+					sections[command.section] = makeSection(this.serverTemplateData[i], command);
+				}
+			}
+
+			scriptConfig.sections = Object.values(sections);
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -996,15 +1056,16 @@ var Config = (new function($)
 	function buildMultiRowStart(section, multiid, option)
 	{
 		var name = option.caption;
-		var setname = name.substr(0, name.indexOf('.'));
+		var setname = name.substr(0, name.indexOf('.')) || option.prefix + option.multiid;
 		var html = '<div class="config-settitle ' + section.id + ' multiid' + multiid + ' multiset">' + setname + '</div>';
 		return html;
 	}
 
 	function buildMultiRowEnd(section, multiid, hasmore, hasoptions)
 	{
-		var name = section.options[0].caption;
-		var setname = name.substr(0, name.indexOf('1'));
+		var option = section.options[0];
+		var name = option.caption;
+		var setname = name.substr(0, name.indexOf('1')) || option['prefix'] || '';
 		var html = '';
 
 		if (hasoptions)
@@ -1167,7 +1228,6 @@ var Config = (new function($)
 			option.about = conf.about;
 			option.nocontent = true;
 			option.description = conf.description;
-			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 
