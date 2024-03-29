@@ -450,15 +450,10 @@ span.help-option-title {
 }
 
 .table .update-release-notes {
-	color: #005580;
+	color: #0074cc;
 	font-size: 11px;
 	height: 10px;
 	outline: none;
-}
-
-#UpdateDialog_Versions #UpdateDialog_AvailRow td:hover,
-#UpdateDialog_Versions tr:hover td {
-	background-color: #ffffff;
 }
 
 #UpdateDialog_Hint p {

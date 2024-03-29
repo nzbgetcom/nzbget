@@ -327,11 +327,6 @@ span.help-option-title {
 	outline: none;
 }
 
-#UpdateDialog_Versions #UpdateDialog_AvailRow td:hover,
-#UpdateDialog_Versions tr:hover td {
-	background-color: #ffffff;
-}
-
 #UpdateDialog_Hint p {
 	color: #555;
 	margin-bottom: 3px;
