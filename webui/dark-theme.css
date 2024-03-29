@@ -40,7 +40,15 @@ body {
 	background-color: #212529;
 }
 
+.back {
+	color: inherit;
+}
+
 .pagination a:hover {
+	background-color: #212529;
+}
+
+.modal .input-xlarge {
 	background-color: #212529;
 }
 
@@ -107,6 +115,10 @@ a:hover {
 
 .caret {
 	border-top: 4px solid #f5f5f5;
+}
+
+.dropup .caret {
+	border-bottom: 4px solid #f5f5f5;
 }
 
 .input-prepend .add-on, .input-append .add-on,
@@ -330,7 +342,7 @@ tr.checked:nth-child(odd) {
 }
 
 td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
-	border-top: 4px solid #626262;
+	border-top: 4px solid #f5f5f5;
 	border-right: 4px solid transparent;
 	border-left: 4px solid transparent;
 	content: "";

@@ -1253,6 +1253,7 @@ var Config = (new function($)
 	this.switchClick = function(control)
 	{
 		$('.btn', $(control).parent()).removeClass('btn-primary');
+		$('.btn', $(control).parent()).removeClass('btn-default');
 		$(control).addClass('btn-primary');
 
 		// not for page Postprocess in download details
