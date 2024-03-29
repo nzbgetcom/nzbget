@@ -19,6 +19,7 @@
  @font-face {
 	font-family: 'Material Icons';
 	font-style: normal;
+	font-weight: 100 700;
 	src: local('material-icons'),
 		 url(/lib/material-icons.woff2) format('woff2'),
 }
@@ -67,6 +68,10 @@ body {
 .green-circle {
 	height: 12px;
 	width: 12px;
+}
+
+.btn {
+	text-shadow: none;
 }
 
 .btn--disabled {
@@ -1408,7 +1413,7 @@ ul.help > li {
 
 #StatDialog_Chart {
 	height: 100%;
-	*width: 670px;
+	width: 670px;
 	width: 100%;
 }
 

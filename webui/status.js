@@ -1046,7 +1046,7 @@ var StatDialog = (new function($)
 				serie2: {
 					dotProps: {
 						stroke: '#F21860',
-						fill: '#F21860',
+						fill: 'ew',
 						size: 3.5,
 						'stroke-width': 2.5
 					},
@@ -1058,14 +1058,15 @@ var StatDialog = (new function($)
 			defaultAxis: {
 				labels: true,
 				labelsProps: {
-					'font-size': 13
+					'font-size': 13,
+					'fill': '#3a87ad'
 				},
 				labelsDistance: 12
 			},
 			axis: {
 				l: {
 					labels: true,
-					suffix: units
+					suffix: units,
 				}
 			},
 			features: {

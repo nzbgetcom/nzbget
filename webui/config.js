@@ -873,7 +873,7 @@ var Config = (new function($)
 				}
 				else
 				{
-					html += '<input type="button" class="btn" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
+					html += '<input type="button" class="btn btn-default" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
 				}
 			}
 			if (!valfound)
@@ -917,7 +917,7 @@ var Config = (new function($)
 			html += '<table class="editor"><tr><td>';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '">';
 			html += '</td><td>';
-			html += '<button type="button" id="' + option.formId + '_Editor" class="btn" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
+			html += '<button type="button" id="' + option.formId + '_Editor" class="btn btn-default" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
 			html += '</td></tr></table>';
 		}
 		else if (option.commandopts)
@@ -1010,22 +1010,22 @@ var Config = (new function($)
 		if (hasoptions)
 		{
 			html += '<div class="' + section.id + ' multiid' + multiid + ' multiset multiset-toolbar">';
-			html += '<button type="button" class="btn config-button config-delete" data-multiid="' + multiid + '" ' +
+			html += '<button type="button" class="btn btn-default config-button config-delete" data-multiid="' + multiid + '" ' +
 				'onclick="Config.deleteSet(this, \'' + setname + '\',\'' + section.id + '\')">Delete ' + setname + multiid + '</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'up\')">Move Up</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'down\')">Move Down</button>';
 			if (setname.toLowerCase() === 'feed')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.previewFeed(this, \'' + setname + '\',\'' + section.id + '\')">Preview Feed</button>';
 			}
 			if (setname.toLowerCase() === 'server')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.testConnection(this, \'' + setname + '\',\'' + section.id + '\')">Test Connection</button>';
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.serverStats(this, \'' + setname + '\',\'' + section.id + '\')">Volume Statistics</button>';
 			}
 			html += '<hr>';
@@ -1035,7 +1035,7 @@ var Config = (new function($)
 		if (!hasmore)
 		{
 			html += '<div class="' + section.id + '">';
-			html += '<button type="button" class="btn config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
+			html += '<button type="button" class="btn btn-default config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
 			  '\')">Add ' + (hasoptions ? 'another ' : '') + setname + '</button>';
 			html += '</div>';
 		}
@@ -3839,7 +3839,7 @@ var ExtensionManager = (new function($)
 
 	function getConfigureBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' 
+		var btn = $('<button type="button" class="btn btn-default btn-group" id="ConfigureBtn_' 
 			+ ext.name 
 			+ '" title="Configure"><i class="material-icon">settings</i></button>')
 			.off('click')
@@ -3850,7 +3850,7 @@ var ExtensionManager = (new function($)
 
 	function getActivateBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-primary btn-group" id="ActivateBtn_' 
+		var btn = $('<button type="button" class="btn btn-group" id="ActivateBtn_' 
 			+ ext.name 
 			+ '"></button>')
 			.off('click')
@@ -3858,18 +3858,18 @@ var ExtensionManager = (new function($)
 		if (ext.isActive && !ext.testError)
 		{	
 			btn.append('<i class="material-icon">pause</i>');
-			btn.attr({ title: "Deactivate (restart needed)" });
+			btn.attr({ title: "Deactivate" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
 			btn.append('<i class="material-icon">play_arrow</i>');
-			btn.attr({ title: "Activate for new downloads (restart needed)" });
+			btn.attr({ title: "Activate for new downloads" });
 			btn.addClass('btn-success');
 		}
 		else
 		{
-			btn.append('<img src="img/warning-16.ico">');
+			btn.append('<i class="material-icon">warning</i>');
 			btn.attr({ title: ext.testError });
 			btn.addClass('btn-warning');
 		}
