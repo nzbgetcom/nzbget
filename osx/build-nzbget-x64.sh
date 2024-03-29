@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # strict error handling for debugging
+set -o nounset
 set -o errexit
 
 # config variables
@@ -15,34 +16,36 @@ JOBS=$(sysctl -n hw.ncpu)
 
 # create directories and cleanup
 mkdir -p build
-mkdir -p tmp
 rm -rf build/*
-rm -rf tmp/*
+NZBGET_PATH=build/nzbget
+BUILD_PATH=build/release64
+mkdir $NZBGET_PATH
+mkdir $BUILD_PATH
 
 export LIBS="-liconv -lncurses $LIB_PATH/libboost_json.a $LIB_PATH/libxml2.a $LIB_PATH/libz.a $LIB_PATH/libssl.a $LIB_PATH/libcrypto.a $LIB_PATH/liblzma.a"
 export INCLUDES="$INCLUDE_PATH/;$INCLUDE_PATH/libxml2/"
-VERSION=$(grep "set(VERSION" CMakeLists.txt | cut -d '"' -f 2)
+VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
+VERSION_SUFFIX=""
+if [ $# -gt 0 ]; then
+    if [ "$1" == "testing" ]; then
+        VERSION_SUFFIX="-testing-$(date '+%Y%m%d')"
+    fi
+fi
 
-# copy macOS project to tmp
-cp -r osx tmp/
+# copy macOS project to package
+cp -r osx "$NZBGET_PATH/"
 DAEMON_PATH=osx/Resources/daemon/usr/local
 
 # make static daemon binary
-cd build
-cmake .. -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX="$PWD/../tmp/$DAEMON_PATH"
-# if running from CI/CD, add testing to builds from non-main branch
-if [ -n "$GITHUB_REF_NAME" ]; then
-    if [ "$GITHUB_REF_NAME" != "main" ]; then
-        VERSION="$VERSION-testing-$(date '+%Y%m%d')"
-        sed -e "s|#define VERSION.*|#define VERSION \"$VERSION\"|g" -i '' config.h
-    fi
-fi
+cd $BUILD_PATH
+cmake ../.. -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX="$PWD/../../$NZBGET_PATH/$DAEMON_PATH" -DVERSION_SUFFIX="$VERSION_SUFFIX"
 cmake --build . -j $JOBS
 strip nzbget
 cmake --install .
+cd ../..
 
 # fetch tools and root certificates
-cd ../tmp
+cd $NZBGET_PATH
 mkdir -p $DAEMON_PATH/bin
 rm -rf $DAEMON_PATH/etc
 
@@ -87,6 +90,6 @@ sed -i '' 's:^SevenZipCmd=.*:SevenZipCmd=${AppDir}/7za:' $CONF_FILE
 xcodebuild -project osx/NZBGet.xcodeproj -configuration "Release" -destination "platform=macOS" build
 
 # create build archive
-ARCHIVE_NAME=nzbget-$VERSION-bin-macos-x64.zip
+ARCHIVE_NAME=nzbget-$VERSION$VERSION_SUFFIX-bin-macos-x64.zip
 (cd osx/build/Release/ && zip -r $ARCHIVE_NAME NZBGet.app)
-mv osx/build/Release/$ARCHIVE_NAME .
+mv osx/build/Release/$ARCHIVE_NAME ..
