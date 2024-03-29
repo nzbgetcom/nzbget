@@ -71,6 +71,7 @@ body {
 
 .btn--disabled {
 	opacity: 0.2 !important;
+	pointer-events: none;
 }
 
 .list-item--nested {
