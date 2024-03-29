@@ -319,8 +319,8 @@ var FeedDialog = (new function($)
 			$('#FeedDialog_Badge_BACKLOG,#FeedDialog_Badge_BACKLOG2').text(countBacklog);
 		}
 
-		$('#FeedDialog_Toolbar .btn').removeClass('btn-inverse');
-		$('#FeedDialog_Badge_' + curFilter + ',#FeedDialog_Badge_' + curFilter + '2').closest('.btn').addClass('btn-inverse');
+		$('#FeedDialog_Toolbar .btn').removeClass('btn-active');
+		$('#FeedDialog_Badge_' + curFilter + ',#FeedDialog_Badge_' + curFilter + '2').closest('.btn').addClass('btn-active');
 		$('#FeedDialog_Toolbar .badge').removeClass('badge-active');
 		$('#FeedDialog_Badge_' + curFilter + ',#FeedDialog_Badge_' + curFilter + '2').addClass('badge-active');
 
@@ -330,8 +330,8 @@ var FeedDialog = (new function($)
 			tableInitialized = true;
 		}
 
-		$('#FeedDialog_Titles,#FeedDialog_Titles2').toggleClass('btn-inverse', !filenameMode);
-		$('#FeedDialog_Filenames,#FeedDialog_Filenames2').toggleClass('btn-inverse', filenameMode);
+		$('#FeedDialog_Titles,#FeedDialog_Titles2').toggleClass('btn-active', !filenameMode);
+		$('#FeedDialog_Filenames,#FeedDialog_Filenames2').toggleClass('btn-active', filenameMode);
 		$('#FeedDialog_ItemTable_Name').text(filenameMode ? 'Filename' : 'Title');
 	}
 
@@ -715,8 +715,8 @@ var FeedFilterDialog = (new function($)
 			$('#FeedFilterDialog_Badge_IGNORED,#FeedFilterDialog_Badge_IGNORED2').text(countIgnored);
 		}
 
-		$('#FeedFilterDialog_Toolbar .FeedFilterDialog-filter .btn').removeClass('btn-inverse');
-		$('#FeedFilterDialog_Badge_' + curFilter + ',#FeedFilterDialog_Badge_' + curFilter + '2').closest('.btn').addClass('btn-inverse');
+		$('#FeedFilterDialog_Toolbar .FeedFilterDialog-filter .btn').removeClass('btn-active');
+		$('#FeedFilterDialog_Badge_' + curFilter + ',#FeedFilterDialog_Badge_' + curFilter + '2').closest('.btn').addClass('btn-active');
 		$('#FeedFilterDialog_Toolbar .badge').removeClass('badge-active');
 		$('#FeedFilterDialog_Badge_' + curFilter + ',#FeedFilterDialog_Badge_' + curFilter + '2').addClass('badge-active');
 
@@ -726,8 +726,8 @@ var FeedFilterDialog = (new function($)
 			tableInitialized = true;
 		}
 
-		$('#FeedFilterDialog_Titles,#FeedFilterDialog_Titles2').toggleClass('btn-inverse', !filenameMode);
-		$('#FeedFilterDialog_Filenames,#FeedFilterDialog_Filenames2').toggleClass('btn-inverse', filenameMode);
+		$('#FeedFilterDialog_Titles,#FeedFilterDialog_Titles2').toggleClass('btn-active', !filenameMode);
+		$('#FeedFilterDialog_Filenames,#FeedFilterDialog_Filenames2').toggleClass('btn-active', filenameMode);
 		$('#FeedFilterDialog_ItemTable_Name').text(filenameMode ? 'Filename' : 'Title');
 	}
 

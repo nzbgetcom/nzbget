@@ -1145,8 +1145,8 @@ var StatDialog = (new function($)
 
 	function updateRangeButtons()
 	{
-		$('#StatDialog_Toolbar .volume-range').removeClass('btn-inverse');
-		$('#StatDialog_Volume_' + curRange + ',#StatDialog_Volume_' + curRange + '2,#StatDialog_Volume_' + curRange + '3').addClass('btn-inverse');
+		$('#StatDialog_Toolbar .volume-range').removeClass('btn-active');
+		$('#StatDialog_Volume_' + curRange + ',#StatDialog_Volume_' + curRange + '2,#StatDialog_Volume_' + curRange + '3').addClass('btn-active');
 	}
 
 	function updateServerList()

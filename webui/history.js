@@ -519,8 +519,8 @@ var History = (new function($)
 		$('#History_Badge_DELETED,#History_Badge_DELETED2').text(countDeleted);
 		$('#History_Badge_DUPE,#History_Badge_DUPE2').text(countDupe);
 
-		$('#HistoryTab_Toolbar .history-filter').removeClass('btn-inverse');
-		$('#History_Badge_' + curFilter + ',#History_Badge_' + curFilter + '2').closest('.history-filter').addClass('btn-inverse');
+		$('#HistoryTab_Toolbar .history-filter').removeClass('btn-active');
+		$('#History_Badge_' + curFilter + ',#History_Badge_' + curFilter + '2').closest('.history-filter').addClass('btn-active');
 		$('#HistoryTab_Toolbar .badge').removeClass('badge-active');
 		$('#History_Badge_' + curFilter + ',#History_Badge_' + curFilter + '2').addClass('badge-active');
 	}
@@ -534,7 +534,7 @@ var History = (new function($)
 	this.dupClick = function()
 	{
 		showDup = !showDup;
-		$('#History_Dup').toggleClass('btn-inverse', showDup);
+		$('#History_Dup').toggleClass('btn-active', showDup);
 		$('#History_DupIcon').toggleClass('icon-mask', !showDup).toggleClass('icon-mask-white', showDup);
 		Refresher.update();
 	}

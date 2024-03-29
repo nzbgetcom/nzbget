@@ -924,7 +924,7 @@ var Config = (new function($)
 		{
 			option.type = 'command';
 			html += '<button type="button" id="' + option.formId + '" class="btn ' + 
-				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-inverse') + 
+				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-active') + 
 				'" onclick="Config.commandClick(this)">' + value +  '</button>';
 		}
 		else
