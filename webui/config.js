@@ -2310,7 +2310,12 @@ var ScriptListDialog = (new function($)
 
 	function updateTable(selectedList)
 	{
-		var reorderButtons = '<div class="btn-row-order-block"><div class="btn-row-order icon-top" onclick="ScriptListDialog.move(this, \'top\')"></div><div class="btn-row-order icon-up" onclick="ScriptListDialog.move(this, \'up\')"></div><div class="btn-row-order icon-down" onclick="ScriptListDialog.move(this, \'down\')"></div><div class="btn-row-order icon-bottom" onclick="ScriptListDialog.move(this, \'bottom\')"></div></div>';
+		var reorderButtons = '<div class="btn-row-order-block"><span class="btn-row-order" onclick="ScriptListDialog.move(this, \'top\')">' +
+		'<i class="material-icon">vertical_align_top</i></span>' + 
+		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'up\')"><i class="material-icon">north</i></span>' + 
+		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'down\')"><i class="material-icon">south</i></span>' +
+		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'bottom\')"><i class="material-icon">vertical_align_bottom</i></span>' + 
+		'</div>';
 		var data = [];
 		for (var i=0; i < scriptList.length; i++)
 		{
@@ -3794,7 +3799,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
 			+ ext.name 
-			+ '" title="Delete"><i class="icon-trash-white"></i></button>')
+			+ '" title="Delete"><i class="material-icon">delete</i></button>')
 			.off('click')
 			.on('click', function() { showDeleteExtensionDropdown(ext); });
 
@@ -3805,7 +3810,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
 			+ ext.name 
-			+ '" title="Download"><img src="img/download-16.ico"></button>')
+			+ '" title="Download"><i class="material-icon">download</i></button>')
 			.off('click')
 			.on('click', function() { downloadExtension(ext); });
 
@@ -3816,7 +3821,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
 			+ ext.name 
-			+ '"><i class="icon-refresh"></i></button>');
+			+ '"><i class="material-icon">update</i></button>');
 		if (ext.outdated)
 		{
 			btn.attr({ title: "Update to new version" });
@@ -3836,7 +3841,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' 
 			+ ext.name 
-			+ '" title="Configure"><i class="icon-settings"></i></button>')
+			+ '" title="Configure"><i class="material-icon">settings</i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 
@@ -3852,13 +3857,13 @@ var ExtensionManager = (new function($)
 			.on('click', function() { activateExt(ext); });
 		if (ext.isActive && !ext.testError)
 		{	
-			btn.append('<i class="icon-pause"></i>');
+			btn.append('<i class="material-icon">pause</i>');
 			btn.attr({ title: "Deactivate (restart needed)" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
-			btn.append('<i class="icon-play"></i>');
+			btn.append('<i class="material-icon">play_arrow</i>');
 			btn.attr({ title: "Activate for new downloads (restart needed)" });
 			btn.addClass('btn-success');
 		}
@@ -3906,7 +3911,7 @@ var ExtensionManager = (new function($)
 		if (ext.homepage)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append($('<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>'));
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" title="Homepage">home</i></a>'));
 			return cell;
 		}
 		
@@ -3946,16 +3951,16 @@ var ExtensionManager = (new function($)
 		var cell = $('<td class="extension-manager__td text-center">');
 		var container = $('<div class="btn-row-order-block">');
 		var title = "Modify execution order (restart needed)";
-		var mvTop = $('<div class="btn-row-order icon-top" id="MvTopBtn_' + ext.name +'"></div>')
+		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon">vertical_align_top</i></span>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
-		var mvUp = $('<div class="btn-row-order icon-up id="MvUpBtn_' + ext.name +'"></div>')
+		var mvUp = $('<span class="btn-row-order id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
 			.off('click')
 			.on('click', function() { moveUp(ext); });
-		var mvDown = $('<div class="btn-row-order icon-down id="MvDownBtn_' + ext.name +'"></div>')
+		var mvDown = $('<span class="btn-row-order id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
 			.off('click')
 			.on('click', function() { moveDown(ext); });
-		var mvBottom = $('<div class="btn-row-order icon-bottom id="MvBottomBtn_' + ext.name +'"></div>')
+		var mvBottom = $('<span class="btn-row-order id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
 		

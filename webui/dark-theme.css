@@ -1,16 +1,16 @@
 body {
     background-color: #333;
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .btn {
-	color: #fff;
+	color: #f5f5f5;
 	background-image: none;
 	background-color: #414141;
 }
 
 .btn:hover {
-	color: #fff;
+	color: #f5f5f5;
 	background-color: #212529;
 }
 
@@ -31,7 +31,7 @@ body {
 }
 
 .table a {
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .table td:hover {
@@ -43,7 +43,7 @@ body {
 }
 
 .table a:hover {
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .help-block {
@@ -65,14 +65,18 @@ body {
 .input-prepend .add-on, .input-append .add-on,
 .add-on {
 	background-color: #626262;
-	color: #fff;
+	color: #f5f5f5;
 	text-shadow: none;
 	border: 1px solid #626262;
 }
 
+#AddDialog_URLProp {
+	color: #f5f5f5;
+}
+
 input {
 	background-color: #212529;
-    color: #fff;
+    color: #f5f5f5;
 	border: 1px solid #626262;
 }
 
@@ -80,7 +84,7 @@ input {
 .modal-body,
 .modal-footer {
 	background-color: #212529;
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .modal-header {
@@ -92,7 +96,7 @@ input {
 }
 
 .dropdown-menu li a {
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .nav > li > a:hover {
@@ -106,24 +110,19 @@ input {
 
 label,
 .control-label {
-	color: #fff;
+	color: #f5f5f5;
 }
 
 .btn-group.open .btn.dropdown-toggle,
 .config-header .btn,
 select {
-	color: #fff;
+	color: #f5f5f5;
 	background-color: #212529;
-	border: 1px solid #626262;
 }
 
 .dropdown-menu  {
 	background-color: #212529;
-	color: #fff;
-}
-
-.icon-close {
-	background-position: -48px -17px;
+	color: #f5f5f5;
 }
 
 .navbar-fixed-top .navbar-inner {
@@ -145,6 +144,14 @@ select {
 }
 
 #InfoBlock div:hover {
+	color: #f5f5f5;
+}
+
+.close {
+	color: #f5f5f5;
+}
+
+.close:hover {
 	color: #fff;
 }
 
@@ -160,7 +167,7 @@ select {
 	background: -o-linear-gradient(top,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* Opera 11.10+ */
 	background: -ms-linear-gradient(top,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* IE10+ */
 	background: linear-gradient(to bottom,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* W3C */
-	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#ffffff',GradientType=0 ); /* IE6-9 */
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f5f5f5', endColorstr='#f5f5f5',GradientType=0 ); /* IE6-9 */
 }
 
 /* headers in navbar menu */
@@ -170,7 +177,7 @@ select {
 	font-size: 11px;
 	font-weight: bold;
 	line-height: 18px;
-	color: #fff;
+	color: #f5f5f5;
 	text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
 	text-transform: uppercase;
 }
@@ -178,8 +185,8 @@ select {
 .search-caret-button .caret {
 	margin-top: 3px;
 	margin-left: 9px;
-	border-top-color: #ffffff;
-	border-bottom-color: #ffffff;
+	border-top-color: #f5f5f5;
+	border-bottom-color: #f5f5f5;
 	opacity: 0.75;
 	filter: alpha(opacity=75);
 }
@@ -191,7 +198,7 @@ select {
 }
 
 .badge-active {
-	background-color: #FFFFFF;
+	background-color: #f5f5f5;
 	color: #000000;
 	text-shadow: none;
 }
@@ -215,7 +222,7 @@ hr {
 
 table > thead > tr > th.table-selector {
 	text-align: center;
-	background: repeating-linear-gradient(-45deg, #333, #FFFFD8 6px, #E7E8D1 6px, #E7E8D1 12px);
+	background: repeating-linear-gradient(-45deg, #333, #f5f5f5FD8 6px, #E7E8D1 6px, #E7E8D1 12px);
 	padding: 2px;
 	font-size: 12px;
 	line-height: 14px;
@@ -259,7 +266,7 @@ tr.checked:nth-child(odd) {
 }
 
 .checked .progress {
-	background-color: #FFFFE1;
+	background-color: #f5f5f5FE1;
 }
 
 .progress {
@@ -295,7 +302,7 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
 
 .dropdown-warning {
 	text-align: center;
-	background: repeating-linear-gradient(-45deg, #FFFFD8, #FFFFD8 6px, #E7E8D1 6px, #E7E8D1 12px);
+	background: repeating-linear-gradient(-45deg, #f5f5f5FD8, #f5f5f5FD8 6px, #E7E8D1 6px, #E7E8D1 12px);
 	padding: 2px;
 	font-size: 12px;
 	line-height: 14px;
@@ -315,7 +322,7 @@ td:hover span.none-category {
 	width: 340px;
 	overflow: hidden;
 	cursor: not-allowed;
-	background-color: #ffffff;
+	background-color: #f5f5f5;
 	border-color: #eee;
 	border: 1px solid #626262;
 	padding: 4px;
@@ -333,7 +340,7 @@ td:hover span.none-category {
 }
 
 .alert-inverse {
-	color: #ffffff;
+	color: #f5f5f5;
 	text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
 	background-color: #414141;
 	border-color: #222222;
@@ -348,7 +355,7 @@ td:hover span.none-category {
 
 .table .btn-success,
 .table .btn-success:hover {
-	color: #ffffff;
+	color: #f5f5f5;
 }
 
 #StatDialog_Custom a,
@@ -360,7 +367,7 @@ td:hover span.none-category {
 }
 
 #ConfigNav.nav-list a {
-    color: #fff;
+    color: #f5f5f5;
     text-decoration: none;
 	padding-top: 5px;
 	padding-bottom: 5px;
@@ -369,7 +376,7 @@ td:hover span.none-category {
 
 #ConfigNav.nav-list > .active > a,
 #ConfigNav.nav-list > .active > a:hover {
-    color: #ffffff;
+    color: #f5f5f5;
     background-color: #005580;
 }
 
@@ -413,7 +420,7 @@ span.help-option-title {
 	font-size: 14px;
 	font-weight: bold;
 	background-color: #505050;
-	color: #ffffff;
+	color: #f5f5f5;
 	padding: 7px;
 	-webkit-border-radius: 3px;
 	-moz-border-radius: 3px;
@@ -514,7 +521,7 @@ span.help-option-title {
 	width: 32px;
 	height: auto;
 	overflow: hidden;
-	background-color: #ffffff;
+	background-color: #f5f5f5;
 	border-right: 1px solid #626262;
 	border-right: 1px solid rgba(0, 0, 0, 0.15);
 }
@@ -537,7 +544,7 @@ span.help-option-title {
 	width: auto;
 	padding-left: 3px;
 	height: auto;
-	background-color: #ffffff;
+	background-color: #f5f5f5;
 }
 
 #TableDragBox {
@@ -559,13 +566,13 @@ span.help-option-title {
 	top: -12px;
 	text-align: center;
 	padding: 1px 6px;
-	color: #fff;
+	color: #f5f5f5;
 	background-color: #D70015;
 }
 
 tr.drag-source > td {
-	background-color: #fff !important;
-	color: #fff !important;
+	background-color: #f5f5f5 !important;
+	color: #f5f5f5 !important;
 	visibility: visible;
 }
 
