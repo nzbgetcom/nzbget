@@ -1162,14 +1162,32 @@ var StatDialog = (new function($)
 			var name = server.ID + '. ' + Status.serverName(server);
 			var item = menuItemTemplate.clone().removeClass('volume-server-template hide').addClass('volume-server');
 			var a = $('a', item);
-			a.html('<i class="' + (i === curServer-1 ? 'icon-ok' : 'icon-empty') + '"></i>' + Util.textToHtml(name));
+
+			if (i === curServer-1)
+			{
+				a.html('<i class="material-icon">done</i>' + Util.textToHtml(name));
+			}
+			else
+			{
+				a.html('<i class="material-icon"></i>' + Util.textToHtml(name));
+			}
+
 			a.attr('data-id', server.ID);
 			a.click(chooseServer);
 			insertPos.before(item);
 		}
 
 		$('#StatDialog_ServerCap').text(curServer > 0 ? Status.serverName(Status.status.NewsServers[curServer-1]) : 'All news servers');
-		$('#StatDialog_ServerMenuAll i').toggleClass('icon-ok', curServer === 0).toggleClass('icon-empty', curServer !== 0);
+
+		var serverMenuAllBtn = $('#StatDialog_ServerMenuAll i');
+		if (curServer === 0)
+		{
+			serverMenuAllBtn.text('done');
+		}
+		else
+		{
+			serverMenuAllBtn.text('');
+		}
 	}
 
 	function chooseServer(server)
@@ -1237,7 +1255,16 @@ var StatDialog = (new function($)
 
 			var item = menuItemTemplate.clone().removeClass('volume-month-template hide').addClass('volume-month');
 			var a = $('a', item);
-			a.html('<i class="' + (monId === curMonth ? 'icon-ok' : 'icon-empty') + '"></i>' + name);
+
+			if (monId === curMonth)
+			{
+				a.html('<i class="material-icon">done</i>' + name);
+			}
+			else
+			{
+				a.html('<i class="material-icon"></i>' + name);
+			}
+
 			a.attr('data-id', monId);
 			a.click(chooseMonth);
 			insertPos.before(item);
@@ -1263,7 +1290,16 @@ var StatDialog = (new function($)
 
 			var item = menuItemTemplate.clone().removeClass('volume-month-template hide').addClass('volume-month');
 			var a = $('a', item);
-			a.html('<i class="' + (monId === curMonth  ? 'icon-ok' : 'icon-empty') + '"></i>' + name);
+
+			if (monId === curMonth)
+			{
+				a.html('<i class="material-icon">done</i>' + name);
+			}
+			else
+			{
+				a.html('<i class="material-icon"></i>' + name);
+			}
+
 			a.attr('data-id', monId);
 			a.click(chooseMonth);
 			insertPos.before(item);
