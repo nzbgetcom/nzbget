@@ -16,7 +16,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
- @font-face {
+  
+::-webkit-scrollbar {
+	width: 8px;
+}
+
+@font-face {
 	font-family: 'Material Icons';
 	font-style: normal;
 	font-weight: 100 700;
