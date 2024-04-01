@@ -185,7 +185,7 @@ label,
 	color: #f5f5f5;
 }
 
-.btn-group.open .btn.dropdown-toggle,
+.btn-group.open .btn.dropdown-toggle:not(.btn-active),
 .config-header .btn,
 select {
 	color: #f5f5f5;
