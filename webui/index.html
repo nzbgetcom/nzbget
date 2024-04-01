@@ -162,7 +162,7 @@
 							<li data="30"><a href="#"><table><tr><td></td><td>30</td><td>Seconds</td></tr></table></a></li>
 							<li data="60"><a href="#"><table><tr><td></td><td>1</td><td>Minute</td></tr></table></a></li>
 							<li data="0"><a href="#"><table><tr><td></td><td style="width:0"></td><td>Off</td></tr></table></a></li>
-							<li data="mark" style="display: none;"><i class="icon-ok"></i></li>
+							<li data="mark" style="display: none;"><i class="material-icon">done</i></li>
 						</ul>
 					</div>
 				</div>
@@ -201,10 +201,10 @@
 			<!-- TABS -->
 			<div class="nav" id="NavLinks">
 				<ul class="nav">
-					<li class="active"><a data-toggle="tab" href="#DownloadsTab" id="DownloadsTabLink"><span class="phone-hide" title="Downloads [Shift+D]">Downloads </span><i class="icon-downloads-white phone-only inline"></i><br class="phone-only"><span class="badge" id="DownloadsTabBadge" style="display: none;"></span><span class="badge badge-empty" id="DownloadsTabBadgeEmpty">&nbsp;</span></a></li>
-					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="icon-history-white phone-only inline"></i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
-					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="icon-messages-white phone-only inline"></i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
-					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="icon-settings-white phone-only inline"></i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
+					<li class="active"><a data-toggle="tab" href="#DownloadsTab" id="DownloadsTabLink"><span class="phone-hide" title="Downloads [Shift+D]">Downloads </span><i class="material-icon phone-only inline">download</i><br class="phone-only"><span class="badge" id="DownloadsTabBadge" style="display: none;"></span><span class="badge badge-empty" id="DownloadsTabBadgeEmpty">&nbsp;</span></a></li>
+					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="material-icon phone-only inline">calendar_today</i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
+					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="material-icon phone-only inline">mail</i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
+					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
 				</ul>
 			</div>
 
@@ -285,7 +285,7 @@
 				</div>
 				<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="Downloads.moveClick('top')" title="Move selected nzb-files to the top"><i class="material-icon">vertical_align_top</i></button></div>
 				<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="Downloads.moveClick('up')" title="Move selected nzb-files up"><i class="material-icon">north</i></button></div>
-				<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="Downloads.moveClick('down')" title="Move selected nzb-files down"><i class="material-icon">south</i><</button></div>
+				<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="Downloads.moveClick('down')" title="Move selected nzb-files down"><i class="material-icon">south</i></button></div>
 				<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="Downloads.moveClick('bottom')" title="Move selected nzb-files to the bottom"><i class="material-icon">vertical_align_bottom</i></button></div>
 
 				<div class="btn-group" id="RssMenuBlock">
@@ -560,7 +560,7 @@
 										<a class="btn dropdown-toggle" id="Config_ViewButton" data-toggle="dropdown">View <span class="caret"></span></a>
 										<ul class="dropdown-menu footer-button-menu" id="Config_ViewMenu">
 											<li class="menu-header">View Options</li>
-											<li><a href="#" id="Config_ViewCompact" onclick="Config.viewMode()"><i class="icon-ok"></i> Compact Mode</a></li>
+											<li><a href="#" id="Config_ViewCompact" onclick="Config.viewMode()"><i class="material-icon">done</i> Compact Mode</a></li>
 										</ul>
 									</div>
 								</div>
@@ -867,7 +867,7 @@
 					<div class="span3" id="StatDialog_Today">Today: <span id="StatDialog_TodaySize" class="stat-size">1.5 GB</span></div>
 					<div class="span3" id="StatDialog_Month"><span id="StatDialog_MonthTitle">This month:</span> <span id="StatDialog_MonthSize" class="stat-size">200 GB</span></div>
 					<div class="span3" id="StatDialog_AllTime">All-time: <span id="StatDialog_AllTimeSize" class="stat-size">20.3 TB</span></div>
-					<div class="span3" id="StatDialog_Custom" title="reset on Fri Apr 04 2014 09:32:24">Custom: <span id="StatDialog_CustomSize" class="stat-size">10.3 TB</span>, <a onclick="StatDialog.resetCounter()">reset</a></div>
+					<div class="span3" id="StatDialog_Custom" title="reset on Fri Apr 04 2014 09:32:24">Custom: <span id="StatDialog_CustomSize" class="stat-size">10.3 TB</span>, <a onclick="StatDialog.resetCounter()"><i class="material-icon">restart_alt</i></a></div>
 				</div>
 				</div>
 			</div>
@@ -1230,12 +1230,12 @@
 							<div class="btn-group phone-hide">
 								<button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('top')" title="Move selected files to the top"><i class="material-icon">vertical_align_top</i></button>
 								<button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('up')" title="Move selected files up"><i class="material-icon">north</i></button>
-								<button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('down')" title="Move selected files down"><i class="material-icon">south</i><</button>
+								<button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('down')" title="Move selected files down"><i class="material-icon">south</i></button>
 								<button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('bottom')" title="Move selected files to the bottom"><i class="material-icon">vertical_align_bottom</i></button>
 							</div>
 							<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('top')" title="Move selected files to the top"><i class="material-icon">vertical_align_top</i></button></div>
 							<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('up')" title="Move selected files up"><i class="material-icon">north</i></button></div>
-							<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('down')" title="Move selected files down"><i class="material-icon">south</i><</button></div>
+							<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('down')" title="Move selected files down"><i class="material-icon">south</i></button></div>
 							<div class="btn-group phone-only inline"><button class="btn btn-default" onclick="DownloadsEditDialog.editActionClick('bottom')" title="Move selected files to the bottom"><i class="material-icon">vertical_align_bottom</i></button></div>
 						</div>
 						<div class="pull-right" style="margin-bottom:10px;"><input id="DownloadsEdit_FileTable_filter" class="search-query" placeholder="Search" type="text"></div>
@@ -1361,12 +1361,12 @@
 <ul class="dropdown-menu" id="PriorityMenu">
 	<li class="menu-header">Priority</li>
 	<li class="dropdown-warning">XX records selected</li>
-	<li data="900"><a href="#"><table><tr><td><i class="icon-empty"></i></td><td>Force</td></tr></table></a></li>
-	<li data="100"><a href="#"><table><tr><td><i class="icon-empty"></i></td><td>Very High</td></tr></table></a></li>
-	<li data="50"><a href="#"><table><tr><td><i class="icon-empty"></i></td><td>High</td></tr></table></a></li>
-	<li data="0"><a href="#"><table><tr><td><i class="icon-ok"></i></td><td>Normal</td></tr></table></a></li>
-	<li data="-50"><a href="#"><table><tr><td><i class="icon-empty"></i></td><td>Low</td></tr></table></a></li>
-	<li data="-100"><a href="#"><table><tr><td><i class="icon-emptyok"></i></td><td>Very Low</td></tr></table></a></li>
+	<li data="900"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>Force</td></tr></table></a></li>
+	<li data="100"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>Very High</td></tr></table></a></li>
+	<li data="50"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>High</td></tr></table></a></li>
+	<li data="0"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>Normal</td></tr></table></a></li>
+	<li data="-50"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>Low</td></tr></table></a></li>
+	<li data="-100"><a href="#"><table><tr><td><i class="material-icon">done</i></td><td>Very Low</td></tr></table></a></li>
 </ul>
 
 <!-- *** DOWNLOADS ACTIONS DROP DOWN MENU -->
@@ -1376,7 +1376,7 @@
 	<li><a href="#" id="DownloadsActions_Resume"><i class="material-icon">play_arrow</i> Resume</a></li>
 	<li><a href="#" id="DownloadsActions_Pause"><i class="material-icon">pause</i> Pause</a></li>
 	<li><a href="#" id="DownloadsActions_Delete"><i class="material-icon">delete</i> Delete</a></li>
-	<li><a href="#" id="DownloadsActions_CancelPP"><i class="icon-remove"></i> Cancel Post-Processing</a></li>
+	<li><a href="#" id="DownloadsActions_CancelPP"><i class="material-icon">cancel</i> Cancel Post-Processing</a></li>
 	<li class="menu-header" id="DownloadsActions_DNZB_Section">Indexer Links</li>
 	<li><a href="#" target="_blank" class="DownloadsActions_DNZB" id="DownloadsActions_DNZB_Details"><i class="icon-postcard"></i> Details</a></li>
 	<li><a href="#" target="_blank" class="DownloadsActions_DNZB" id="DownloadsActions_DNZB_MoreInfo"><i class="icon-link"></i> More Info</a></li>
@@ -1857,10 +1857,10 @@
 
 						<!-- FILTER INPUT BUTTONS -->
 						<div class="btn-group">
-							<button class="btn btn-default" onclick="FeedFilterDialog.rematch()"><i class="icon-process" id="FeedFilterDialog_RematchIcon"></i> Rematch</button>
+							<button class="btn btn-default" onclick="FeedFilterDialog.rematch()"><i class="material-icon" id="FeedFilterDialog_RematchIcon">sync</i> Rematch</button>
 							<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span class="caret"></span></button>
 							<ul class="dropdown-menu menu-check">
-								<li><a href="#" onclick="FeedFilterDialog.autoRematch()"><table><tr><td><i class="icon-ok" id="FeedFilterDialog_CHAutoRematch"></td><td>Automatic</td></tr></table></a></li>
+								<li><a href="#" onclick="FeedFilterDialog.autoRematch()"><table><tr><td><i class="material-icon" id="FeedFilterDialog_CHAutoRematch">done</i></td><td>Automatic</td></tr></table></a></li>
 							</ul>
 						</div>
 

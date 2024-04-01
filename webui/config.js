@@ -968,13 +968,13 @@ var Config = (new function($)
 
 			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
 			if (htmldescr.indexOf('MORE INFO:') > -1)
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
@@ -1558,7 +1558,15 @@ var Config = (new function($)
 
 	function setViewMode()
 	{
-		$('#Config_ViewCompact i').toggleClass('icon-ok', compactMode).toggleClass('icon-empty', !compactMode);
+		if (!compactMode)
+		{
+			$('#Config_ViewCompact > .material-icon').hide();
+		}
+		else
+		{
+			$('#Config_ViewCompact > .material-icon').show();
+		}
+		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);
 	}
 

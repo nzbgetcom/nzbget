@@ -35,6 +35,7 @@ body {
 	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+textarea,
 .btn-default:hover:not(.btn-active) {
 	color: #f5f5f5;
 	background-color: #212529;
@@ -415,7 +416,6 @@ td:hover span.none-category {
 #StatDialog_Custom a:hover,
 #AddDialog_Files a,
 #AddDialog_Files a:hover {
-	color: #000000;
 	cursor: pointer;
 }
 
@@ -549,8 +549,7 @@ span.help-option-title {
 	padding: 0;
 	font-size: 12px;
 	line-height: 18px;
-	border: 1px solid #626262;
-	border: 1px solid rgba(0, 0, 0, 0.15);
+	border: 1px solid #626262;;
 	-webkit-border-radius: 4px;
 	 -moz-border-radius: 4px;
 		  border-radius: 4px;
@@ -574,9 +573,7 @@ span.help-option-title {
 	width: 32px;
 	height: auto;
 	overflow: hidden;
-	background-color: #f5f5f5;
 	border-right: 1px solid #626262;
-	border-right: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 #FeedFilterDialog_FilterNumbers .lineno {
@@ -597,7 +594,6 @@ span.help-option-title {
 	width: auto;
 	padding-left: 3px;
 	height: auto;
-	background-color: #f5f5f5;
 }
 
 #TableDragBox {

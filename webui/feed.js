@@ -798,8 +798,14 @@ var FeedFilterDialog = (new function($)
 	function updateRematchState()
 	{
 		Util.show($CHAutoRematch, autoUpdate);
-		$RematchIcon.toggleClass('icon-process', !autoUpdate);
-		$RematchIcon.toggleClass('icon-process-auto', autoUpdate);
+
+		if (autoUpdate)
+		{
+			$RematchIcon.text('sync');
+			return;
+		}
+
+		$RematchIcon.text('sync_disabled');
 	}
 
 	function filterKeyPress(event)
