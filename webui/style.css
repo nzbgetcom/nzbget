@@ -156,47 +156,60 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	z-index: 3;
 }
 
-.img-download-orange {
-	background-position: -176px -80px;
-}
-
-.img-download-green {
-	background-position: -112px -80px;
-}
-
-.img-download-bg {
-	background-position: -240px -80px;
-	width: 50px;
-	height: 50px;
-}
-
 .PlayBlockInner {
 	width: 38px;
 	height: 38px;
 	margin-left: 0px;
 	margin-top: 0px;
 	cursor: pointer;
-	top: 6px;
-	left: 6px;
 	position: absolute;
 	-webkit-border-radius: 18px;
 	-moz-border-radius: 18px;
 	border-radius: 18px;
 }
 
-.img-download-btn {
-	background-position: -16px -80px;
-	width: 21px;
-	height: 21px;
-	margin-left: 9px;
-	margin-top: 8px;
+.download-status-icon {
+	background-size: cover;
+	cursor: pointer;
+	width: 48px;
+	height: 48px;
+	transition: background-image 0.3s ease;
 }
 
-.PlayBlockInner:hover .img-download-btn,
-.PlayBlockInner:hover .img-download-btn {
-	/* white */
-	background-position: -16px -112px;
-	opacity: 0.9;
+@media only screen and (min-resolution: 1dppx) {
+	.downloading-icon {
+		background-image: url("img/downloading-icon-default-48px.png");
+	}
+	
+	.downloading-icon:hover {
+		background-image: url("img/downloading-icon-hover-48px.png");
+	}
+	
+	.paused-download-icon {
+		background-image: url("img/paused-download-icon-default-48px.png");
+	}
+	
+	.paused-download-icon:hover {
+		background-image: url("img/paused-download-icon-hover-48px.png");
+	}
+}
+
+@media only screen and (min-resolution: 2dppx) {
+	.downloading-icon {
+		background-image: url("img/downloading-icon-default-96px.png");
+	}
+	
+	.downloading-icon:hover {
+		background-image: url("img/downloading-icon-hover-96px.png");
+	}
+	
+	.paused-download-icon {
+		background-image: url("img/paused-download-icon-default-96px.png");
+	}
+	
+	.paused-download-icon:hover {
+		background-image: url("img/paused-download-icon-hover-96px.png");
+	}
 }
 
 #PlayCaretBlock {
@@ -236,14 +249,12 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 #PlayAnimation {
 	position: absolute;
 	z-index: 4;
-	left: -5px;
-	top: -5px;
 	-webkit-background-size: 70px 70px;
 	-moz-background-size: 70px 70px;
 	background-size: 70px 70px;
 	background-position: center;
-	width: 60px;
-	height: 60px;
+	width: 48px;
+	height: 48px;
 	cursor: pointer;
 	pointer-events: none;
 	-webkit-animation: play-rotate 1s linear infinite;
