@@ -365,6 +365,7 @@ webui_FILES = \
 	webui/lib/raphael.min.js \
 	webui/lib/elycharts.js \
 	webui/lib/elycharts.min.js \
+	webui/lib/material-icons.woff2 \
 	webui/img/icons.png \
 	webui/img/icons-2x.png \
 	webui/img/transmit.gif \

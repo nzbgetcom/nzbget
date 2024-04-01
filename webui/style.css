@@ -173,24 +173,25 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	cursor: pointer;
 	width: 48px;
 	height: 48px;
-	transition: background-image 0.3s ease;
 }
 
 @media only screen and (min-resolution: 1dppx) {
 	.downloading-icon {
-		background-image: url("img/downloading-icon-default-48px.png");
+		background-image: url('img/downloading-icon-default-48px.png');
 	}
 	
 	.downloading-icon:hover {
-		background-image: url("img/downloading-icon-hover-48px.png");
+		transition: background-image 0.3s ease;
+		background-image: url('img/downloading-icon-hover-48px.png');
 	}
 	
 	.paused-download-icon {
-		background-image: url("img/paused-download-icon-default-48px.png");
+		background-image: url('img/paused-download-icon-default-48px.png');
 	}
 	
 	.paused-download-icon:hover {
-		background-image: url("img/paused-download-icon-hover-48px.png");
+		transition: background-image 0.3s ease;
+		background-image: url('img/paused-download-icon-hover-48px.png');
 	}
 }
 
@@ -200,15 +201,17 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	}
 	
 	.downloading-icon:hover {
-		background-image: url("img/downloading-icon-hover-96px.png");
+		transition: background-image 0.3s ease;
+		background-image: url('img/downloading-icon-hover-96px.png');
 	}
 	
 	.paused-download-icon {
-		background-image: url("img/paused-download-icon-default-96px.png");
+		background-image: url('img/paused-download-icon-default-96px.png');
 	}
 	
 	.paused-download-icon:hover {
-		background-image: url("img/paused-download-icon-hover-96px.png");
+		transition: background-image 0.3s ease;
+		background-image: url('img/paused-download-icon-hover-96px.png');
 	}
 }
 
