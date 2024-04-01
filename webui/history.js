@@ -535,7 +535,6 @@ var History = (new function($)
 	{
 		showDup = !showDup;
 		$('#History_Dup').toggleClass('btn-active', showDup);
-		$('#History_DupIcon').toggleClass('icon-mask', !showDup).toggleClass('icon-mask-white', showDup);
 		Refresher.update();
 	}
 
