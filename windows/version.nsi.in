@@ -1,0 +1,8 @@
+VIFileVersion "@VERSION_MAJOR@.@VERSION_MINOR@.0.0"
+VIProductVersion "@VERSION_MAJOR@.@VERSION_MINOR@.0.0"
+VIAddVersionKey "CompanyName" "nzbget.com"
+VIAddVersionKey "FileDescription" "NZBGet Installer (@CMAKE_BUILD_TYPE@ build)"
+VIAddVersionKey "FileVersion" "@VERSION@"
+VIAddVersionKey "ProductName" "NZBGet"
+VIAddVersionKey "ProductVersion" "@VERSION@@VERSION_SUFFIX@"
+VIAddVersionKey "LegalCopyright" ""

@@ -1,0 +1,1 @@
+WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\NZBGet" "DisplayVersion" "@VERSION@@VERSION_SUFFIX@"
