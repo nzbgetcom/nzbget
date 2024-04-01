@@ -104,14 +104,15 @@
 
 			<!-- PLAY/PAUSE-BUTTON -->
 			<div id="PlayBlock">
+				<div id="PlayPauseBg"><div class="img-download-bg"></div></div>
 				<div id="PlayButton" style="display:none;">
 					<div id="PlayPauseButton" class="PlayBlockInner" onclick="Status.playClick()" title="Download paused (click to resume) [Shift+P]">
-						<div class="download-status-icon paused-download-icon"></div>
+						<div class="img-download-btn-pause"></div>
 					</div>
 				</div>
 				<div id="PauseButton">
 					<div class="PlayBlockInner" onclick="Status.playClick()" title="Download active (click to pause) [Shift+P]">
-						<div class="download-status-icon downloading-icon"></div>
+						<div class="img-download-btn-active"></div>
 					</div>
 				</div>
 				<div id="PlayAnimation" style="display:none;" onclick="Status.playClick()"></div>
