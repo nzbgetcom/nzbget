@@ -26,6 +26,7 @@
 
 namespace ExtensionLoader
 {
+	extern const char* DEFAULT_SECTION_NAME;
 	extern const char* BEGIN_SCRIPT_SIGNATURE;
 	extern const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS;
 	extern const char* POST_SCRIPT_SIGNATURE;
@@ -48,18 +49,39 @@ namespace ExtensionLoader
 	{
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 
-		static void ParseOptionsAndCommands(
+		void ParseOptionsAndCommands(
 			std::ifstream& file,
 			std::vector<ManifestFile::Option>& options,
 			std::vector<ManifestFile::Command>& commands
 		);
-		static std::vector<ManifestFile::SelectOption>
+		std::vector<ManifestFile::SelectOption>
 		GetSelectOptions(const std::vector<std::string>& opts, bool isDashDelim);
-		static ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
-		static void RemoveTailAndTrim(std::string& str, const char* tail);
-		static void BuildDisplayName(Extension::Script& script);
-		static std::pair<std::vector<std::string>, std::string>
+		ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum);
+		void RemoveTailAndTrim(std::string& str, const char* tail);
+		void BuildDisplayName(Extension::Script& script);
+		std::pair<std::vector<std::string>, std::string>
 		ExtractElements(const std::string& str);
+		template <typename T>
+		void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
+		{
+			opt.name = line.substr(1, sepPos - 1);
+			Util::Trim(opt.name);
+
+			ManifestFile::Section section{};
+			section.name = std::move(sectionName);
+
+			size_t digitPos = opt.name.find("1.");
+			if (digitPos != std::string::npos)
+			{
+				section.prefix = opt.name.substr(0, digitPos);
+				section.multi = true;
+				opt.name = opt.name.substr(digitPos + 2);
+				
+			}
+			
+			opt.section = std::move(section);
+			opt.displayName = opt.name;
+		}
 	}
 
 	namespace V2
@@ -67,7 +89,7 @@ namespace ExtensionLoader
 		bool Load(Extension::Script& script, const char* location, const char* rootDir);
 	}
 
-	static Extension::Kind GetScriptKind(const std::string& line);
+	Extension::Kind GetScriptKind(const std::string& line);
 }
 
 #endif
