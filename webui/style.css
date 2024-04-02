@@ -17,8 +17,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
   
-::-webkit-scrollbar {
-	width: 8px;
+html {
+	scrollbar-width: thin;
 }
 
 @font-face {
@@ -44,6 +44,8 @@
 	direction: ltr;
 	cursor: pointer;
 	vertical-align: baseline;
+	width: 16px;
+    height: 16px;
 }
 
 body {

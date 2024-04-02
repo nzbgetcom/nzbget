@@ -627,8 +627,8 @@ var Downloads = (new function($)
 		var editIds = buildContextIdList(group);
 		$PriorityMenu.data('nzbids', editIds);
 		DownloadsUI.updateContextWarning($PriorityMenu, editIds);
-		$('i', $PriorityMenu).hide();
-		$('li[data=' + group.MaxPriority + '] i', $PriorityMenu).show();
+		$('i', $PriorityMenu).css('visibility','hidden');
+		$('li[data=' + group.MaxPriority + '] i', $PriorityMenu).css('visibility','visible');
 		Frontend.showPopupMenu($PriorityMenu, 'left',
 			{ left: $(this).offset().left - 30, top: $(this).offset().top,
 				width: $(this).width() + 30, height: $(this).outerHeight() - 2});

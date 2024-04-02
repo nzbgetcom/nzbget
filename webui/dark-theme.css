@@ -1,9 +1,25 @@
-::-webkit-scrollbar-track {
-	background-color: #333;
-}
+/*!
+ * This file is part of nzbget. See <https://nzbget.com>.
+ *
+ * Copyright (C) 2024 dnzbk <dnzbk@nzbget.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
-::-webkit-scrollbar-thumb {
-	background-color: #626262;
+ 
+html {
+	scrollbar-color: #333 #626262;
 }
 
 body {
@@ -89,11 +105,20 @@ textarea,
 	background-color: #2f96b4;
 }
 
+#InfoBlock div:hover,
+.close,
+label,
+.control-label,
+.dropdown-menu li a,
+#AddDialog_URLProp,
+.help-block,
+.table a:hover,
 #StatDialog_Back,
 .table a {
 	color: #f5f5f5;
 }
 
+.close:hover,
 a:hover {
 	color: #fff;
 }
@@ -104,14 +129,6 @@ a:hover {
 
 .table tbody tr:hover td, .table-hover tbody tr:hover th {
 	background-color: #333;
-}
-
-.table a:hover {
-	color: #f5f5f5;
-}
-
-.help-block {
-	color: #f5f5f5;
 }
 
 .table th, .table td {
@@ -126,12 +143,9 @@ a:hover {
 	color: #212529;
 }
 
-.caret {
-	border-top: 4px solid #f5f5f5;
-}
-
+.caret,
 .dropup .caret {
-	border-bottom: 4px solid #f5f5f5;
+	border-top: 4px solid #f5f5f5;
 }
 
 .input-prepend .add-on, .input-append .add-on,
@@ -140,10 +154,6 @@ a:hover {
 	color: #f5f5f5;
 	text-shadow: none;
 	border: 1px solid #626262;
-}
-
-#AddDialog_URLProp {
-	color: #f5f5f5;
 }
 
 input {
@@ -175,10 +185,6 @@ table.table-cancheck tr.checkremove div.img-check {
 	border-top: 1px solid #626262;
 }
 
-.dropdown-menu li a {
-	color: #f5f5f5;
-}
-
 .nav > li > a:hover {
 	background-color: #005580;
 }
@@ -188,21 +194,12 @@ table.table-cancheck tr.checkremove div.img-check {
 	border: 1px solid #626262;
 }
 
-label,
-.control-label {
-	color: #f5f5f5;
-}
-
 .btn-group.open .btn.dropdown-toggle:not(.btn-active),
 .config-header .btn,
+.dropdown-menu,
 select {
 	color: #f5f5f5;
 	background-color: #212529;
-}
-
-.dropdown-menu  {
-	background-color: #212529;
-	color: #f5f5f5;
 }
 
 .navbar-fixed-top .navbar-inner {
@@ -219,18 +216,6 @@ select {
 	margin-left: 9px;
 	opacity: 0.75;
 	filter: alpha(opacity=75);
-}
-
-#InfoBlock div:hover {
-	color: #f5f5f5;
-}
-
-.close {
-	color: #f5f5f5;
-}
-
-.close:hover {
-	color: #fff;
 }
 
 .navbar .nav .active > a,
