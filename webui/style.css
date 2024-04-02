@@ -146,25 +146,9 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 	z-index: 2;
 }
 
-#PlayButton,
-#PauseButton,
-#PlayPauseBg {
-	width: 50px;
-	height: 50px;
-	position: absolute;
-	padding: 0;
-	z-index: 3;
-}
-
-.img-download-bg {
-	background-position: -241px -80px;
+.PlayBlockInner {
 	width: 48px;
 	height: 48px;
-}
-
-.PlayBlockInner {
-	width: 38px;
-	height: 38px;
 	margin-left: 0px;
 	margin-top: 0px;
 	cursor: pointer;
@@ -175,26 +159,26 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 }
 
 .img-download-btn-active {
-	background-position: -113px -81px;
+	background-position: -113px -80px;
 	width: 50px;
 	height: 50px;
 }
 
 .img-download-btn-pause {
-	background-position: -176px -81px;
+	background-position: -177px -80px;
 	width: 50px;
 	height: 50px;
 }
 
 .PlayBlockInner:hover .img-download-btn-active,
 .PlayBlockInner:hover .img-download-btn-active {
-	background-position: -113px -132px;
+	background-position: -113px -133px;
 	opacity: 0.9;
 }
 
 .PlayBlockInner:hover .img-download-btn-pause,
 .PlayBlockInner:hover .img-download-btn-pause {
-	background-position: -176px -132px;
+	background-position: -177px -133px;
 	opacity: 0.9;
 }
 
@@ -235,14 +219,12 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 #PlayAnimation {
 	position: absolute;
 	z-index: 4;
-	left: -5px;
-	top: -5px;
 	-webkit-background-size: 70px 70px;
 	-moz-background-size: 70px 70px;
 	background-size: 70px 70px;
 	background-position: center;
-	width: 60px;
-	height: 60px;
+	width: 50px;
+	height: 50px;
 	cursor: pointer;
 	pointer-events: none;
     -webkit-animation: play-rotate 1s linear infinite;

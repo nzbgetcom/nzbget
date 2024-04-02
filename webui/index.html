@@ -104,7 +104,6 @@
 
 			<!-- PLAY/PAUSE-BUTTON -->
 			<div id="PlayBlock">
-				<div id="PlayPauseBg"><div class="img-download-bg"></div></div>
 				<div id="PlayButton" style="display:none;">
 					<div id="PlayPauseButton" class="PlayBlockInner" onclick="Status.playClick()" title="Download paused (click to resume) [Shift+P]">
 						<div class="img-download-btn-pause"></div>
@@ -120,9 +119,9 @@
 					<button id="PlayCaretButton" class="dropdown-toggle" data-toggle="dropdown"><span id="PlayCaret" class="caret"></span></button>
 					<ul class="dropdown-menu menu-check" id="PlayMenu">
 						<li class="menu-header">Pause activities</li>
-						<li><a href="#" onclick="Status.pauseClick('download')"><table><tr><td><i class="icon-ok" id="CHPauseDownload"></td><td>Pause Download</td></tr></table></a></li>
-						<li><a href="#" onclick="Status.pauseClick('post')"><table><tr><td><i class="icon-ok" id="CHPausePostProcess"></td><td>Pause Post-Processing</td></tr></table></a></li>
-						<li><a href="#" onclick="Status.pauseClick('scan')"><table><tr><td><i class="icon-ok" id="CHPauseScan"></td><td>Pause NZB Scan</td></tr></table></a></li>
+						<li><a href="#" onclick="Status.pauseClick('download')"><table><tr><td><i class="material-icon" id="CHPauseDownload">done</i></td><td>Pause Download</td></tr></table></a></li>
+						<li><a href="#" onclick="Status.pauseClick('post')"><table><tr><td><i class="material-icon" id="CHPausePostProcess">done</i></td><td>Pause Post-Processing</td></tr></table></a></li>
+						<li><a href="#" onclick="Status.pauseClick('scan')"><table><tr><td><i class="material-icon" id="CHPauseScan">done</i></td><td>Pause NZB Scan</td></tr></table></a></li>
 						<li class="divider"></li>
 						<li class="menu-header">Pause for</li>
 						<li><a href="#" onclick="Status.scheduledPauseClick(30*60)"><table><tr><td></td><td>30 Minutes</td></tr></table></a></li>
