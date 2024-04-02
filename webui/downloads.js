@@ -671,8 +671,8 @@ var Downloads = (new function($)
 		var editIds = buildContextIdList(group);
 		$CategoryMenu.data('nzbids', editIds);
 		DownloadsUI.updateContextWarning($CategoryMenu, editIds);
-		$('i', $CategoryMenu).removeClass('icon-ok').addClass('icon-empty');
-		$('li[data="' + group.Category + '"] i', $CategoryMenu).addClass('icon-ok');
+		$('i', $CategoryMenu).text('');
+		$('li[data="' + group.Category + '"] i', $CategoryMenu).text('done');
 
 		Frontend.showPopupMenu($CategoryMenu, 'left',
 			{ left: $(this).offset().left - 30, top: $(this).offset().top,
