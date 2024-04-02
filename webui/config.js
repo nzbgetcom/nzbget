@@ -129,7 +129,7 @@ var Options = (new function($)
 			name: getOptionName(extConf, rawOption),
 			value: String(rawOption.Value),
 			defvalue: String(rawOption.Value),
-			sectionId: extConf.Name + '_' + rawOption.Section,
+			sectionId: extConf.Name + '_' + rawOption.Section.toUpperCase(),
 			select,
 			description: arrToStr(rawOption.Description),
 			nocontent: false,
@@ -138,7 +138,7 @@ var Options = (new function($)
 			multi: rawOption.Multi,
 			prefix: rawOption.Prefix,
 			template: rawOption.Multi,
-			section: rawOption.Section,
+			section: rawOption.Section.toUpperCase(),
 			type,
 		};
 	}
@@ -150,7 +150,7 @@ var Options = (new function($)
 			name: getOptionName(extConf, rawCommand),
 			value: null,
 			defvalue: rawCommand.Action,
-			sectionId: extConf.Name + '_' + rawCommand.Section,
+			sectionId: extConf.Name + '_' + rawCommand.Section.toUpperCase(),
 			select: [],
 			description: arrToStr(rawCommand.Description),
 			nocontent: false,
@@ -159,7 +159,7 @@ var Options = (new function($)
 			multiid: 1,
 			template: rawCommand.Multi,
 			prefix: rawCommand.Prefix,
-			section: rawCommand.Section,
+			section: rawCommand.Section.toUpperCase(),
 			multi: rawCommand.Multi,
 			type: 'command',
 		};
@@ -3743,27 +3743,38 @@ var ExtensionManager = (new function($)
 
 	function disableDeleteBtn(ext, disabled)
 	{
-		$('#DeleteBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DeleteBtn_' + ext.name, disabled);
 	}
 
 	function disableDownloadBtn(ext, disabled)
 	{
-		$('#DownloadBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DownloadBtn_' + ext.name, disabled);
 	}
 
 	function disableUpdateBtn(ext, disabled)
 	{
-		$('#UpdateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#UpdateBtn_' + ext.name, disabled);
 	}
 
 	function disableConfigureBtn(ext, disabled)
 	{
-		$('#ConfigureBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ConfigureBtn_' + ext.name, disabled);
 	}
 
 	function disableActivateBtn(ext, disabled)
 	{
-		$('#ActivateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ActivateBtn_' + ext.name, disabled);
+	}
+
+	function disableBtnToggle(id, disabled)
+	{
+		if (disabled)
+		{
+			$(id).addClass('btn--disabled');
+			return;
+		}
+
+		$(id).removeClass('btn--disabled');
 	}
 
 	function disableOrderingBtns(ext, disabled)
