@@ -1046,7 +1046,7 @@ var StatDialog = (new function($)
 				serie2: {
 					dotProps: {
 						stroke: '#F21860',
-						fill: 'ew',
+						fill: '#F21860',
 						size: 3.5,
 						'stroke-width': 2.5
 					},
