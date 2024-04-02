@@ -740,7 +740,7 @@ var StatDialog = (new function($)
 
 		if (status.ResumeTime > 0)
 		{
-			content += '<tr><td>Autoresume</td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="icon-empty"/></td></tr>';
+			content += '<tr><td>Autoresume</td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"/></td></tr>';
 		}
 
 		$('#StatusTable tbody').html(content);

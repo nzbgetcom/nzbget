@@ -1403,7 +1403,7 @@ var DownloadsMergeDialog = (new function($)
 			if (nzbIdList.indexOf(group.NZBID) > -1)
 			{
 				mergeEditIDList.push(group.NZBID);
-				var html = '<table><tr><td width="18px" valign="top"><i class="icon-file" style="vertical-align:top;margin-top:2px;"></i></td><td>' +
+				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;">draft</i></td><td>' +
 					Util.formatNZBName(group.NZBName) + '</td></tr></table>';
 				$('#DownloadsMerge_Files').append(html);
 			}
