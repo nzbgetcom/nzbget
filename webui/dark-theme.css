@@ -217,8 +217,6 @@ select {
 #PlayCaret {
 	margin-top: 3px;
 	margin-left: 9px;
-	border-top-color: #626262;
-	border-bottom-color: #626262;
 	opacity: 0.75;
 	filter: alpha(opacity=75);
 }

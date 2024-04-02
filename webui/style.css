@@ -43,7 +43,7 @@
 	white-space: nowrap;
 	direction: ltr;
 	cursor: pointer;
-	vertical-align: sub;
+	vertical-align: baseline;
 }
 
 body {
@@ -2271,6 +2271,10 @@ body.phone,
 
 .phone .btn-caption {
 	display: none;
+}
+
+.btn-caption:not(.phone) {
+	vertical-align: text-bottom;
 }
 
 .phone div.toolbox-length select {

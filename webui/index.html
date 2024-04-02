@@ -832,7 +832,7 @@
 							<li class="volume-month-template hide"><a href="#"></a></li>
 							<li class="menu-header" id="StatDialog_MonthMenuYears">Years</li>
 							<li class="divider" id="StatDialog_MonthMenuDivider"></li>
-							<li><a href="#" onclick="StatDialog.chooseOtherMonth()"><i class="icon-empty"></i>Older Periods...</a></li>
+							<li><a href="#" onclick="StatDialog.chooseOtherMonth()"><i class="material-icon"></i>Older Periods...</a></li>
 							<li class="volume-menu-template hide"><a href="#"></a></li>
 						</ul>
 					</div>
@@ -1548,7 +1548,7 @@
 	<div class="modal-header">
 		<a class="close" href='#' data-dismiss="modal"><i class="material-icon">close</i></a>
 		<a class="back" id="HistoryEdit_Back" href="#" title="Back"><i class="material-icon">arrow_left_alt</i></a>
-		<a class="back back-hidden" id="HistoryEdit_BackSpace"><i class="icon-hidden"></i></a>
+		<a class="back back-hidden" id="HistoryEdit_BackSpace"><i class="material-icon">visibility_off</i></a>
 		<h3 id="HistoryEdit_Title"></h3>
 	</div>
 
@@ -1760,14 +1760,14 @@
 	<li><a href="#" id="HistoryActions_Return"><i class="material-icon">download</i> Download Remaining Files</a></li>
 	<li><a href="#" id="HistoryActions_ReturnURL"><i class="material-icon">replay</i> Download Again</a></li>
 	<li><a href="#" id="HistoryActions_Redownload"><i class="material-icon">replay</i> Download Again</a></li>
-	<li><a href="#" id="HistoryActions_RetryFailed"><i class="icon-downloads"></i> Retry Failed Articles</a></li>
+	<li><a href="#" id="HistoryActions_RetryFailed"><i class="material-icon">replay</i> Retry Failed Articles</a></li>
 	<li><a href="#" id="HistoryActions_MarkSuccess"><i class="material-icon">done</i> Mark as Success</a></li>
 	<li><a href="#" id="HistoryActions_MarkGood"><i class="material-icon">add</i> Mark as Good</a></li>
 	<li><a href="#" id="HistoryActions_MarkBad"><i class="material-icon">delete</i> Mark as Bad</a></li>
 	<li class="menu-header" id="HistoryActions_DNZB_Section">Indexer Links</li>
-	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_Details"><i class="icon-postcard"></i> Details</a></li>
-	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_MoreInfo"><i class="icon-link"></i> More Info</a></li>
-	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_Report"><i class="icon-alert"></i> Report This NZB</a></li>
+	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_Details"><i class="icon-postcard">info</i> Details</a></li>
+	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_MoreInfo"><i class="material-icon">description</i> More Info</a></li>
+	<li><a href="#" target="_blank" class="HistoryActions_DNZB" id="HistoryActions_DNZB_Report"><i class="material-icon">report</i> Report This NZB</a></li>
 </ul>
 
 <!-- *** HISTORY CATEGORY DROP DOWN MENU -->
@@ -2409,7 +2409,7 @@
 			<fieldset>
 
 				<div class="control-group">
-					<label class="control-label" for="AddDialog_URL" id="AddDialog_URLLabel"><i class="icon-remove"></i><img class="hide" src="img/transmit-file.gif" width="16px" height="16px"> Add from URL</label>
+					<label class="control-label" for="AddDialog_URL" id="AddDialog_URLLabel"><i class="material-icon">delete</i><img class="hide" src="img/transmit-file.gif" width="16px" height="16px"> Add from URL</label>
 					<div class="controls">
 						<input type="text" class="input-xblarge" id="AddDialog_URL" />&nbsp;
 						<a href="#" id="AddDialog_URLProp" title="Set name or password" onclick="Upload.renameURLClick()"><i class="material-icon">edit</i></a>
