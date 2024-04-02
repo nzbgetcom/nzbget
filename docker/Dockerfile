@@ -1,9 +1,9 @@
 # build stage
-FROM alpine:3.18.4 AS build
+FROM alpine:3.18.6 AS build
 
 # args
 ARG NZBGET_RELEASE=develop
-ARG UNRAR_VERSION=6.2.12
+ARG UNRAR_VERSION=7.0.7
 ARG MAKE_JOBS=1
 
 RUN \
@@ -47,7 +47,7 @@ RUN \
   install -v -m755 unrar /usr/bin
 
 # runtime stage
-FROM alpine:3.18.4
+FROM alpine:3.18.6
 ARG NZBGET_RELEASE=develop
 
 # labels
@@ -58,7 +58,7 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 boost1.82-json && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
