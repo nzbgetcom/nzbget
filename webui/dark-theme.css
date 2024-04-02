@@ -152,6 +152,14 @@ input {
 	border: 1px solid #626262;
 }
 
+table.table-cancheck tr.checked div.img-check {
+    background-position: -467px -19px;
+}
+
+table.table-cancheck tr.checkremove div.img-check {
+	background-position: -466px -114px;
+}
+
 .modal,
 .modal-body,
 .modal-footer {
