@@ -76,6 +76,7 @@ jobs:
           "MAKE_JOBS=2"
 
     - name: Update Docker Hub Description
+      if: github.ref_name == 'main'
       uses: peter-evans/dockerhub-description@v3
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
