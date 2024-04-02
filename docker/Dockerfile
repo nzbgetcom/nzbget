@@ -1,5 +1,5 @@
 # build stage
-FROM alpine:3.18.6 AS build
+FROM alpine:3.19.1 AS build
 
 # args
 ARG NZBGET_RELEASE=develop
@@ -8,16 +8,20 @@ ARG MAKE_JOBS=1
 
 RUN \
   echo "**** install build packages ****" && \
-  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl && \
+  apk add g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake && \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
   git clone https://github.com/nzbgetcom/nzbget.git nzbget && \
   cd nzbget/ && \
   git checkout ${NZBGET_RELEASE} && \
-  autoreconf --install && \
-  ./configure bindir='${exec_prefix}' && \
-  make -j ${MAKE_JOBS} && \
-  make prefix=/app/nzbget install && \
+  mkdir -p build && \
+  cd build && \
+  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget && \
+  cmake --build . -j ${MAKE_JOBS} && \
+  cmake --install . && \
+  mv /app/nzbget/bin/nzbget /app/nzbget/ && \
+  rm -rf /app/nzbget/bin/ && \
+  rm -rf /app/nzbget/etc/ && \
   sed -i \
     -e "s#^MainDir=.*#MainDir=/downloads#g" \
     -e "s#^ScriptDir=.*#ScriptDir=$\{MainDir\}/scripts#g" \
@@ -47,7 +51,7 @@ RUN \
   install -v -m755 unrar /usr/bin
 
 # runtime stage
-FROM alpine:3.18.6
+FROM alpine:3.19.1
 ARG NZBGET_RELEASE=develop
 
 # labels
