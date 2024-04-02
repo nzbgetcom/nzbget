@@ -3,5 +3,6 @@ Version: $VERSION
 Section: web
 Priority: optional
 Architecture: $DPKG_ARCH
+Depends: adduser, init-system-helpers, systemd, 7zip, unrar
 Maintainer: nzbget.com <nzbget@nzbget.com>
 Description: NZBGet is a command-line based binary newsgrabber for nzb files, written in C++.

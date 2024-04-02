@@ -1,0 +1,17 @@
+[Unit]
+Description=NZBGet Daemon
+Documentation=http://nzbget.com/documentation/
+After=network.target
+
+[Service]
+Type=simple
+User=nzbget
+Group=nzbget
+WorkingDirectory=/var/lib/nzbget
+ExecStart=/usr/bin/nzbget -s -c /var/lib/nzbget/nzbget.conf -o OutputMode=log -o WriteLog=none
+ExecReload=/usr/bin/nzbget -O
+ExecStop=/usr/bin/nzbget -Q
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

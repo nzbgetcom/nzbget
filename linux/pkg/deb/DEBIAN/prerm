@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+
+# stop nzbget service
+if [ "$1" = remove ]; then
+    deb-systemd-invoke stop 'nzbget.service' >/dev/null || true
+fi
