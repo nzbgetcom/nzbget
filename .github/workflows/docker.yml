@@ -54,7 +54,7 @@ jobs:
         if [[ "$TAG" == "" ]]; then
           TAG="${GITHUB_REF_NAME/\//-}"
         fi
-        if [[ "$GITHUB_REF_NAME" == "develop" ]] && [[ "$GITHUB_REF_NAME" == "main" ]] && [[ $GITHUB_REF == 'refs/tags/'* ]]; then
+        if [[ "$GITHUB_REF_NAME" == "develop" ]] || [[ "$GITHUB_REF_NAME" == "main" ]] || [[ $GITHUB_REF == 'refs/tags/'* ]]; then
           TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
         else
           TAGS="${{ env.REGISTRY_IMAGE }}:$TAG"
