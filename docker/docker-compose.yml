@@ -10,8 +10,8 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/London
-      - NZBGET_USER=admin
-      - NZBGET_PASS=admin
+      - NZBGET_USER=nzbget
+      - NZBGET_PASS=tegbzn6789
     volumes:
       - ./config:/config
       - ./downloads:/downloads
