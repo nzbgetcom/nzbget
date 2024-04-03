@@ -1640,7 +1640,7 @@ var HistoryEditDialog = (new function($)
 
 			var table = '';
 			table += '<tr><td><a href="#" id="HistoryEdit_TimeStats" data-tab="HistoryEdit_TimeStatsTab" title="Size and time statistics">Total '+
-				' <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' +
+				'<i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' +
 				'</td><td class="text-center">' + size + '</td></tr>';
 			table += '<tr><td>Files (total/remaining)</td><td class="text-center">' + hist.FileCount + ' / ' + hist.RemainingFileCount + '</td></tr>';
 			table += '<tr><td>' +

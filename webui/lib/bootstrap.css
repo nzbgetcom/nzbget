@@ -2599,7 +2599,7 @@ button.close {
 .btn.disabled,
 .btn[disabled] {
   background-color: #e6e6e6;
-  background-color: #d9d9d9;
+  *background-color: #d9d9d9;
 }
 
 .btn:active,
