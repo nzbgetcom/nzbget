@@ -1620,11 +1620,11 @@ var Config = (new function($)
 	{
 		if (!compactMode)
 		{
-			$('#Config_ViewCompact > .material-icon').hide();
+			$('#Config_ViewCompact > .material-icon').text('');
 		}
 		else
 		{
-			$('#Config_ViewCompact > .material-icon').show();
+			$('#Config_ViewCompact > .material-icon').text('done');
 		}
 		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);

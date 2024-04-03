@@ -34,18 +34,19 @@ html {
 	font-weight: normal;
 	font-style: normal;
 	font-size: 16px;
-	color: inherit;
+	line-height: 16px;
+	width: 16px;
+	height: 16px;
 	display: inline-block;
-	line-height: 1;
+	color: inherit;
 	text-transform: none;
 	letter-spacing: normal;
 	word-wrap: normal;
 	white-space: nowrap;
 	direction: ltr;
 	cursor: pointer;
-	vertical-align: baseline;
-	width: 16px;
-    height: 16px;
+	vertical-align: top;
+
 }
 
 body {
