@@ -1599,11 +1599,12 @@ div.multiset-toolbar button {
 }
 
 .mv-item-arrow-btn--disabled,
-#ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:first-child,
-#ScriptListDialog_ScriptTable tbody > tr:last-child div.btn-row-order:last-child,
-#ScriptListDialog_ScriptTable tbody > tr:first-child div.btn-row-order:nth-child(2),
-#ScriptListDialog_ScriptTable tbody > tr:last-child div.btn-row-order:nth-child(3) {
+#ScriptListDialog_ScriptTable tbody > tr:first-child .btn-row-order:first-child,
+#ScriptListDialog_ScriptTable tbody > tr:last-child .btn-row-order:last-child,
+#ScriptListDialog_ScriptTable tbody > tr:first-child .btn-row-order:nth-child(2),
+#ScriptListDialog_ScriptTable tbody > tr:last-child .btn-row-order:nth-child(3) {
 	opacity: 0.4;
+	pointer-events: none;
 }
 
 /* UPDATE DIALOG */

@@ -2381,11 +2381,11 @@ var ScriptListDialog = (new function($)
 
 	function updateTable(selectedList)
 	{
-		var reorderButtons = '<div class="btn-row-order-block"><span class="btn-row-order" onclick="ScriptListDialog.move(this, \'top\')">' +
-		'<i class="material-icon">vertical_align_top</i></span>' + 
-		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'up\')"><i class="material-icon">north</i></span>' + 
-		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'down\')"><i class="material-icon">south</i></span>' +
-		'<span class="btn-row-order" onclick="ScriptListDialog.move(this, \'bottom\')"><i class="material-icon">vertical_align_bottom</i></span>' + 
+		var reorderButtons = '<div class="btn-row-order-block">' +
+		'<i onclick="ScriptListDialog.move(this, \'top\')" class="material-icon btn-row-order">vertical_align_top</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'up\')" class="material-icon btn-row-order">north</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'down\')" class="material-icon btn-row-order">south</i>' +
+		'<i onclick="ScriptListDialog.move(this, \'bottom\')" class="material-icon btn-row-order">vertical_align_bottom</i>' + 
 		'</div>';
 		var data = [];
 		for (var i=0; i < scriptList.length; i++)
