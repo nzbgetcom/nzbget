@@ -31,8 +31,8 @@ mkdir -p /downloads/scripts
 # change userid and groupid
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
-groupmod -o -g "$PGID" users
-usermod -o -u "$PUID" user
+groupmod -o -g "$PGID" users >/dev/null
+usermod -o -u "$PUID" user >/dev/null
 
 chown -R user:users /config || CONFIG_CHOWN_STATUS=$?
 if [ ! -z $CONFIG_CHOWN_STATUS ]; then

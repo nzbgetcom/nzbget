@@ -1,36 +1,41 @@
 # build stage
-FROM alpine:3.18.4 AS build
+FROM alpine:3.19.1 AS build
 
 # args
 ARG NZBGET_RELEASE=develop
-ARG UNRAR_VERSION=6.2.12
+ARG UNRAR_VERSION=7.0.7
 ARG MAKE_JOBS=1
+ARG TARGETPLATFORM
 
 RUN \
   echo "**** install build packages ****" && \
-  apk add autoconf automake g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl && \
+  apk add g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake && \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
   git clone https://github.com/nzbgetcom/nzbget.git nzbget && \
   cd nzbget/ && \
   git checkout ${NZBGET_RELEASE} && \
-  autoreconf --install && \
-  ./configure bindir='${exec_prefix}' && \
-  make -j ${MAKE_JOBS} && \
-  make prefix=/app/nzbget install && \
+  mkdir -p build && \
+  cd build && \
+  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget && \
+  cmake --build . -j ${MAKE_JOBS} && \
+  cmake --install . && \
+  mv /app/nzbget/bin/nzbget /app/nzbget/ && \
+  rm -rf /app/nzbget/bin/ && \
+  rm -rf /app/nzbget/etc/ && \
   sed -i \
-    -e "s#^MainDir=.*#MainDir=/downloads#g" \
-    -e "s#^ScriptDir=.*#ScriptDir=$\{MainDir\}/scripts#g" \
-    -e "s#^WebDir=.*#WebDir=$\{AppDir\}/webui#g" \
-    -e "s#^ConfigTemplate=.*#ConfigTemplate=$\{AppDir\}/webui/nzbget.conf.template#g" \
-    -e "s#^UnrarCmd=.*#UnrarCmd=unrar#g" \
-    -e "s#^SevenZipCmd=.*#SevenZipCmd=7z#g" \
-    -e "s#^CertStore=.*#CertStore=$\{AppDir\}/cacert.pem#g" \
-    -e "s#^CertCheck=.*#CertCheck=yes#g" \
-    -e "s#^DestDir=.*#DestDir=$\{MainDir\}/completed#g" \
-    -e "s#^InterDir=.*#InterDir=$\{MainDir\}/intermediate#g" \
-    -e "s#^LogFile=.*#LogFile=$\{MainDir\}/nzbget.log#g" \
-    -e "s#^AuthorizedIP=.*#AuthorizedIP=127.0.0.1#g" \
+    -e "s|^MainDir=.*|MainDir=/downloads|g" \
+    -e "s|^ScriptDir=.*|ScriptDir=$\{MainDir\}/scripts|g" \
+    -e "s|^WebDir=.*|WebDir=$\{AppDir\}/webui|g" \
+    -e "s|^ConfigTemplate=.*|ConfigTemplate=$\{AppDir\}/webui/nzbget.conf.template|g" \
+    -e "s|^UnrarCmd=.*|UnrarCmd=unrar|g" \
+    -e "s|^SevenZipCmd=.*|SevenZipCmd=7z|g" \
+    -e "s|^CertStore=.*|CertStore=$\{AppDir\}/cacert.pem|g" \
+    -e "s|^CertCheck=.*|CertCheck=yes|g" \
+    -e "s|^DestDir=.*|DestDir=$\{MainDir\}/completed|g" \
+    -e "s|^InterDir=.*|InterDir=$\{MainDir\}/intermediate|g" \
+    -e "s|^LogFile=.*|LogFile=$\{MainDir\}/nzbget.log|g" \
+    -e "s|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|g" \
   /app/nzbget/share/nzbget/nzbget.conf && \
   mv /app/nzbget/share/nzbget/webui /app/nzbget/ && \
   cp /app/nzbget/share/nzbget/nzbget.conf /app/nzbget/webui/nzbget.conf.template && \
@@ -43,11 +48,14 @@ RUN \
   curl -o /tmp/unrar.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR_VERSION}.tar.gz" && \  
   tar xf /tmp/unrar.tar.gz -C /tmp/unrar --strip-components=1 && \
   cd /tmp/unrar && \
+  if [ "${TARGETPLATFORM}" == "linux/amd64" ]; then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64-v2|" makefile; fi && \
+  if [ "${TARGETPLATFORM}" == "linux/arm64" ]; then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a|" makefile; fi && \
+  if [ "${TARGETPLATFORM}" == "linux/arm/v7" ]; then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" makefile; fi && \
   make -j ${MAKE_JOBS} && \
   install -v -m755 unrar /usr/bin
 
 # runtime stage
-FROM alpine:3.18.4
+FROM alpine:3.19.1
 ARG NZBGET_RELEASE=develop
 
 # labels
@@ -58,7 +66,7 @@ LABEL maintainer="nzbget@nzbget.com"
 ENV TERM linux
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl p7zip python3 boost1.82-json && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
