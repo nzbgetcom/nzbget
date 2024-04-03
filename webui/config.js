@@ -1211,7 +1211,7 @@ var Config = (new function($)
 				var section = {};
 				section.name = conf.shortName.toUpperCase();
 				section.caption = conf.name.toUpperCase();
-				section.id = conf.id + '_';
+				section.id = conf.id + '_OPTIONS';
 				section.options = [];
 				firstVisibleSection = section;
 				conf.sections.push(section);
@@ -3340,6 +3340,7 @@ var ExecScriptDialog = (new function($)
 function Extension()
 {
 	this.id = '';
+	this.section = '';
 	this.name = '';
 	this.entry = '';
 	this.displayName = '', 
@@ -3363,8 +3364,10 @@ var ExtensionManager = (new function($)
 	this.tbody = 'ExtensionManagerTBody';
 	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
 
-	var scriptOrderId = "ScriptOrder";
-	var extensionsId = "Extensions";
+	var scriptOrderId = 'ScriptOrder';
+	var extensionsId = 'Extensions';
+
+	var defaultSectionName = 'OPTIONS';
 	
 	var installedExtensions = [];
 	var remoteExtensions = [];
@@ -3381,7 +3384,8 @@ var ExtensionManager = (new function($)
 		installedExtensions = exts.map(function(ext) 
 		{
 			var extension = new Extension();
-			extension.id = ext.Name + "_OPTIONS";
+			extension.id = ext.Name + '_' + defaultSectionName;
+			extension.section = defaultSectionName;
 			extension.entry = ext.Entry;
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
@@ -3407,7 +3411,8 @@ var ExtensionManager = (new function($)
 				remoteExtensions = JSON.parse(data).map(function(ext) 
 				{
 					var extension = new Extension();
-					extension.id = ext.name + "_OPTIONS";
+					extension.id = ext.Name + '_' + defaultSectionName;
+					extension.section = defaultSectionName;
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
 					extension.author = ext.author;
