@@ -241,19 +241,6 @@ var Options = (new function($)
 			scriptConfig['license'] = this.serverTemplateData[i].License;
 			scriptConfig['version'] = this.serverTemplateData[i].Version;
 
-			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
-			{
-				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
-				if (sections[option.section])
-				{
-					sections[option.section].options.push(option);
-				}
-				else
-				{
-					sections[option.section] = makeSection(this.serverTemplateData[i], option);
-				}
-			}
-
 			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
 				var command = makeCommandOption(this.serverTemplateData[i], this.serverTemplateData[i].Commands[j]);
@@ -264,6 +251,19 @@ var Options = (new function($)
 				else
 				{
 					sections[command.section] = makeSection(this.serverTemplateData[i], command);
+				}
+			}
+
+			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
+			{
+				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
+				if (sections[option.section])
+				{
+					sections[option.section].options.push(option);
+				}
+				else
+				{
+					sections[option.section] = makeSection(this.serverTemplateData[i], option);
 				}
 			}
 
