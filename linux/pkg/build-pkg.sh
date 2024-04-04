@@ -99,7 +99,8 @@ for ARCH in $ARCHS; do
     if [ "$DEB" == "yes" ]; then
         mkdir -p $CONTENTS/DEBIAN/
         cp $NZBGET_ROOT/linux/pkg/deb/DEBIAN/* "$CONTENTS/DEBIAN/"
-        cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/"
+        # copy additional CONTENTS files
+        cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" || true
         eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"        
         mkdir -p "$CONTENTS/lib/systemd/system/"
         cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
