@@ -26,6 +26,7 @@ if [ "$1" = "configure" ]; then
                 --system \
                 --ingroup $NZBGET_GROUP \
                 --no-create-home \
+                --home $NZBGET_HOME \
                 --disabled-password \
                 $NZBGET_USER 2>/dev/null || true
         echo "..done"
@@ -36,10 +37,10 @@ if [ "$1" = "configure" ]; then
 
     # copy default config if not exist
     if [ ! -f /var/lib/nzbget/nzbget.conf ]; then
-        cp /usr/share/nzbget/nzbget.conf /var/lib/nzbget/nzbget.conf
+        cp /usr/share/nzbget/nzbget.conf $NZBGET_HOME/nzbget.conf
     fi
     
-    mkdir -p /var/lib/nzbget/scripts
+    mkdir -p $NZBGET_HOME/scripts
 
     # adjust file and directory permissions
     if ! dpkg-statoverride --list $NZBGET_HOME >/dev/null
