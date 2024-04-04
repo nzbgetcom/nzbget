@@ -3,7 +3,7 @@ Version: $VERSION
 Architecture: $DPKG_ARCH
 Maintainer: nzbget.com <nzbget@nzbget.com>
 Depends: adduser, init-system-helpers, systemd
-Recommends: python3, unrar-free | unrar
+Recommends: python3, 7zip, unrar
 Section: net
 Priority: optional
 Homepage: https://nzbget.com
