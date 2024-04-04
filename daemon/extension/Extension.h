@@ -107,8 +107,8 @@ namespace Extension
 	std::string ToJsonStr(const Script& script);
 	std::string ToXmlStr(const Script& script);
 
-	static void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	static const char* BoolToStr(bool value);
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
+	const char* BoolToStr(bool value);
 }
 
 #endif

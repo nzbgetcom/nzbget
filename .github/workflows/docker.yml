@@ -54,7 +54,11 @@ jobs:
         if [[ "$TAG" == "" ]]; then
           TAG="${GITHUB_REF_NAME/\//-}"
         fi
-        TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
+        if [[ "$GITHUB_REF_NAME" == "develop" ]] || [[ "$GITHUB_REF_NAME" == "main" ]] || [[ $GITHUB_REF == 'refs/tags/'* ]]; then
+          TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
+        else
+          TAGS="${{ env.REGISTRY_IMAGE }}:$TAG"
+        fi
         echo "tags=$TAGS" >> $GITHUB_OUTPUT
         echo "version=$TAG" >> $GITHUB_OUTPUT
     
@@ -72,7 +76,8 @@ jobs:
           "MAKE_JOBS=2"
 
     - name: Update Docker Hub Description
-      uses: peter-evans/dockerhub-description@v3
+      if: github.ref_name == 'main'
+      uses: peter-evans/dockerhub-description@v4
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}

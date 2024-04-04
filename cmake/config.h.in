@@ -2,7 +2,7 @@
 #cmakedefine PACKAGE "@PACKAGE@"
 
 /* Version number of package */
-#cmakedefine VERSION "@VERSION@"
+#cmakedefine VERSION "@VERSION@@VERSION_SUFFIX@"
 
 /* Define to the address where bug reports for this package should be sent. */
 #cmakedefine PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
