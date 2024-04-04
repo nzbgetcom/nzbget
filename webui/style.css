@@ -54,6 +54,11 @@ body {
 	padding-right: 0;
 }
 
+#AddDialog_URLProp {
+	vertical-align: sub;
+	color: inherit;
+}
+
 /* EXTENSION MANAGER */
 .extension-manager__td {
 	vertical-align: middle !important;
@@ -752,16 +757,6 @@ ul.dropdown-menu > li > a > i {
 
 .invisible {
 	visibility: hidden;
-}
-
-/* links in black color */
-.table a {
-	color: #000000;
-}
-
-/* links in black color */
-.table a:hover {
-	color: #000000;
 }
 
 .table a.badge-link:hover {

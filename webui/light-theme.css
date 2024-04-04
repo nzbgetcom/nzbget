@@ -1,7 +1,7 @@
 /*!
  * This file is part of nzbget. See <https://nzbget.com>.
  *
- * Copyright (C) 2024 dnzbk <dnzbk@nzbget.com>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,9 +31,10 @@ html {
 	background-image: -o-linear-gradient(top, #ffffff, #e6e6e6);
 	background-image: linear-gradient(top, #ffffff, #e6e6e6);
 	background-image: -moz-linear-gradient(top, #ffffff, #e6e6e6);
+	background-origin: border-box;
 	background-repeat: repeat-x;
-	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
 	border-color: #e6e6e6 #e6e6e6 #bfbfbf;
+	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
 	border-bottom-color: #b3b3b3;
 	-webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
 	-moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
@@ -200,6 +201,16 @@ tr.checked:nth-child(odd) .progress {
 .progress {
 	margin-bottom: 0px;
 	background: #f0f0f0;
+}
+
+/* links in black color */
+.table a {
+	color: #000000;
+}
+
+/* links in black color */
+.table a:hover {
+	color: #000000;
 }
 
 /* style for queued downloads, based on ".progress-success.progress-striped .bar" from bootstrap.css */
