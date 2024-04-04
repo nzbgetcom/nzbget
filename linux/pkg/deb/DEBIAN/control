@@ -2,7 +2,8 @@ Package: nzbget
 Version: $VERSION
 Architecture: $DPKG_ARCH
 Maintainer: nzbget.com <nzbget@nzbget.com>
-Depends: adduser, init-system-helpers, systemd, 7zip, unrar
+Depends: adduser, init-system-helpers, systemd
+Recommends: python3, unrar-free | unrar
 Section: net
 Priority: optional
 Homepage: https://nzbget.com
