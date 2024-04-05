@@ -3340,7 +3340,6 @@ var ExecScriptDialog = (new function($)
 function Extension()
 {
 	this.id = '';
-	this.section = '';
 	this.name = '';
 	this.entry = '';
 	this.displayName = '', 
@@ -3385,7 +3384,6 @@ var ExtensionManager = (new function($)
 		{
 			var extension = new Extension();
 			extension.id = ext.Name + '_' + defaultSectionName;
-			extension.section = defaultSectionName;
 			extension.entry = ext.Entry;
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
@@ -3412,7 +3410,6 @@ var ExtensionManager = (new function($)
 				{
 					var extension = new Extension();
 					extension.id = ext.Name + '_' + defaultSectionName;
-					extension.section = defaultSectionName;
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
 					extension.author = ext.author;

@@ -218,6 +218,11 @@ select {
 	filter: alpha(opacity=75);
 }
 
+.dropup .caret, .navbar-fixed-bottom .dropdown .caret {
+	border-top: none;
+	border-bottom: 4px solid #f5f5f5;
+}
+
 .navbar .nav .active > a,
 .navbar .nav .active > a:hover {
 	outline: 0;
