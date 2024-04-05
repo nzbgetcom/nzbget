@@ -7,7 +7,7 @@ services:
         NZBGET_RELEASE: develop
         MAKE_JOBS: 4
         UNRAR_NATIVE: true
-    environment:      
+    environment:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/London
