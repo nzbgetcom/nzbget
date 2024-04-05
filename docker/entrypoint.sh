@@ -24,7 +24,7 @@ if [ ! -f /config/nzbget.conf ]; then
 fi
 
 # create scripts dir
-if [ ! -d /downloads ]; then
+if [ ! -d /downloads/scripts ]; then
     mkdir -p /downloads/scripts
     chown user:users /downloads/scripts
 fi
