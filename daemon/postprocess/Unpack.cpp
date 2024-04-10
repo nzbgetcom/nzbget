@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -724,10 +724,6 @@ bool UnpackController::Cleanup()
 			// silently overwrite existing files
 			FileSystem::DeleteFile(dstFile);
 
-#ifndef WIN32
-			FileSystem::SetFilePermissionsWithUmask(dstFile.Str(), g_Options->GetUMask());
-#endif
-
 			bool hiddenFile = filename[0] == '.';
 
 			if (!FileSystem::MoveFile(srcFile, dstFile) && !hiddenFile)
@@ -736,6 +732,10 @@ bool UnpackController::Cleanup()
 					*FileSystem::GetLastErrorMessage());
 				ok = false;
 			}
+
+#ifndef WIN32
+			FileSystem::SetFilePermissionsWithUmask(dstFile.Str(), g_Options->GetUMask());
+#endif
 
 			extractedFiles.push_back(filename);
 		}
