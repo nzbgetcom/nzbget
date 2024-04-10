@@ -961,7 +961,7 @@ void FileSystem::FixExecPermission(const char* filename)
 void SetFilePermissionsWithUmask(const char* filename, mode_t umask)
 {
 	struct stat buffer;
-	if (!stat(filename, &buf))
+	if (!stat(filename, &buffer))
 	{
 		mode_t permissions = buffer.st_mode & ~umask;
 		chmod(filename, permissions);
