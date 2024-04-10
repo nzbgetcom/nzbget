@@ -17,6 +17,6 @@ NZBGet is a command-line based binary newsgrabber for nzb files, written in C++.
 %install
 
 %files
-/usr/local/bin/nzbget
-/usr/local/share/doc/nzbget/
-/usr/local/share/nzbget/
+/usr/bin/nzbget
+/usr/share/doc/nzbget/
+/usr/share/nzbget/

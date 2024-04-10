@@ -5,7 +5,7 @@ set -e
 
 NZBGET_ROOT=$PWD
 
-# installer - first param
+# $1 - installer
 # if empty - find installer file in artifacts dir
 INSTALLER="$1"
 if [ -z $INSTALLER ]; then
@@ -16,23 +16,47 @@ if [ -z $INSTALLER ]; then
     exit 1
 fi
 
-# config variables
-DEB=yes
-RPM=no
-ARCHS="i686 x86_64 armel armhf aarch64"
+# $2 - type of package(s) deb/rpm
+# if empty - build deb and rpm
+PKG_TYPE="$2"
+if [ -z $PKG_TYPE ]; then
+    DEB=yes
+    RPM=yes
+fi
+if [ "$PKG_TYPE" == "deb" ]; then
+    DEB=yes
+    RPM=no
+fi
+if [ "$PKG_TYPE" == "rpm" ]; then
+    DEB=no
+    RPM=yes
+fi
+
+# $3 - architectures
+# if empty - use all available architectures
+ARCHS="$3"
+if [ -z $ARCHS ]; then
+    ARCHS="i686 x86_64 armel armhf aarch64"
+fi
 
 # prepare directories
 mkdir -p build
-rm -rf build/*
 cd build
-mkdir -p deb
-mkdir -p rpm
+if [ "$DEB" == "yes" ]; then
+    rm -rf deb
+    mkdir -p deb
+fi
+if [ "$RPM" == "yes" ]; then
+    rm -rf rpm
+    mkdir -p rpm
+fi
 
 # extract version
 VERSION=$(bash "$INSTALLER" --help | grep 'Installer for' | cut -d ' ' -f 3 | sed -r 's/nzbget-//')
 RPM_VERSION=${VERSION//-/}
 
 for ARCH in $ARCHS; do
+    rm -rf $PWD/$ARCH
     bash "$INSTALLER" --arch "$ARCH" --destdir "$PWD/$ARCH" --silent    
     case $ARCH in
         i686)
