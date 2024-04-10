@@ -195,8 +195,8 @@ var Upload = (new function($)
 			var file = selectedFiles[i];
 			var filename = file.name.replace(/\.queued$/g, '');
 			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="Click to rename">'+
-				'<table><tr><td width="18px" valign="top"><i class="icon-file" style="vertical-align:top;margin-top:2px;">'+
-				'</i><img class="hide" style="vertical-align:top;margin-top:1px;" src="img/transmit-file.gif" width="16px" height="16px"></td>'+
+				'<table><tr><td width="18px" valign="top"><i class="material-icon">'+
+				'draft</i><img class="hide" style="vertical-align:top;margin-top:1px;" src="img/transmit-file.gif" width="16px" height="16px"></td>'+
 				'<td id="AddDialog_File' + files.length + '">' + Util.formatNZBName(filename) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);

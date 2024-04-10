@@ -129,7 +129,7 @@ var Options = (new function($)
 			name: getOptionName(extConf, rawOption),
 			value: String(rawOption.Value),
 			defvalue: String(rawOption.Value),
-			sectionId: extConf.Name + '_' + rawOption.Section,
+			sectionId: extConf.Name + '_' + rawOption.Section.toUpperCase(),
 			select,
 			description: arrToStr(rawOption.Description),
 			nocontent: false,
@@ -138,7 +138,7 @@ var Options = (new function($)
 			multi: rawOption.Multi,
 			prefix: rawOption.Prefix,
 			template: rawOption.Multi,
-			section: rawOption.Section,
+			section: rawOption.Section.toUpperCase(),
 			type,
 		};
 	}
@@ -150,7 +150,7 @@ var Options = (new function($)
 			name: getOptionName(extConf, rawCommand),
 			value: null,
 			defvalue: rawCommand.Action,
-			sectionId: extConf.Name + '_' + rawCommand.Section,
+			sectionId: extConf.Name + '_' + rawCommand.Section.toUpperCase(),
 			select: [],
 			description: arrToStr(rawCommand.Description),
 			nocontent: false,
@@ -159,7 +159,7 @@ var Options = (new function($)
 			multiid: 1,
 			template: rawCommand.Multi,
 			prefix: rawCommand.Prefix,
-			section: rawCommand.Section,
+			section: rawCommand.Section.toUpperCase(),
 			multi: rawCommand.Multi,
 			type: 'command',
 		};
@@ -241,19 +241,6 @@ var Options = (new function($)
 			scriptConfig['license'] = this.serverTemplateData[i].License;
 			scriptConfig['version'] = this.serverTemplateData[i].Version;
 
-			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
-			{
-				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
-				if (sections[option.section])
-				{
-					sections[option.section].options.push(option);
-				}
-				else
-				{
-					sections[option.section] = makeSection(this.serverTemplateData[i], option);
-				}
-			}
-
 			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
 				var command = makeCommandOption(this.serverTemplateData[i], this.serverTemplateData[i].Commands[j]);
@@ -264,6 +251,19 @@ var Options = (new function($)
 				else
 				{
 					sections[command.section] = makeSection(this.serverTemplateData[i], command);
+				}
+			}
+
+			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
+			{
+				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
+				if (sections[option.section])
+				{
+					sections[option.section].options.push(option);
+				}
+				else
+				{
+					sections[option.section] = makeSection(this.serverTemplateData[i], option);
 				}
 			}
 
@@ -933,7 +933,7 @@ var Config = (new function($)
 				}
 				else
 				{
-					html += '<input type="button" class="btn" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
+					html += '<input type="button" class="btn btn-default" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
 				}
 			}
 			if (!valfound)
@@ -977,14 +977,14 @@ var Config = (new function($)
 			html += '<table class="editor"><tr><td>';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '">';
 			html += '</td><td>';
-			html += '<button type="button" id="' + option.formId + '_Editor" class="btn" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
+			html += '<button type="button" id="' + option.formId + '_Editor" class="btn btn-default" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
 			html += '</td></tr></table>';
 		}
 		else if (option.commandopts)
 		{
 			option.type = 'command';
 			html += '<button type="button" id="' + option.formId + '" class="btn ' + 
-				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-inverse') + 
+				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-default') + 
 				'" onclick="Config.commandClick(this)">' + value +  '</button>';
 		}
 		else
@@ -1028,13 +1028,13 @@ var Config = (new function($)
 
 			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
 			if (htmldescr.indexOf('MORE INFO:') > -1)
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
@@ -1071,22 +1071,22 @@ var Config = (new function($)
 		if (hasoptions)
 		{
 			html += '<div class="' + section.id + ' multiid' + multiid + ' multiset multiset-toolbar">';
-			html += '<button type="button" class="btn config-button config-delete" data-multiid="' + multiid + '" ' +
+			html += '<button type="button" class="btn btn-default config-button config-delete" data-multiid="' + multiid + '" ' +
 				'onclick="Config.deleteSet(this, \'' + setname + '\',\'' + section.id + '\')">Delete ' + setname + multiid + '</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'up\')">Move Up</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'down\')">Move Down</button>';
 			if (setname.toLowerCase() === 'feed')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.previewFeed(this, \'' + setname + '\',\'' + section.id + '\')">Preview Feed</button>';
 			}
 			if (setname.toLowerCase() === 'server')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.testConnection(this, \'' + setname + '\',\'' + section.id + '\')">Test Connection</button>';
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.serverStats(this, \'' + setname + '\',\'' + section.id + '\')">Volume Statistics</button>';
 			}
 			html += '<hr>';
@@ -1096,7 +1096,7 @@ var Config = (new function($)
 		if (!hasmore)
 		{
 			html += '<div class="' + section.id + '">';
-			html += '<button type="button" class="btn config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
+			html += '<button type="button" class="btn btn-default config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
 			  '\')">Add ' + (hasoptions ? 'another ' : '') + setname + '</button>';
 			html += '</div>';
 		}
@@ -1211,7 +1211,7 @@ var Config = (new function($)
 				var section = {};
 				section.name = conf.shortName.toUpperCase();
 				section.caption = conf.name.toUpperCase();
-				section.id = conf.id + '_';
+				section.id = conf.id + '_OPTIONS';
 				section.options = [];
 				firstVisibleSection = section;
 				conf.sections.push(section);
@@ -1312,8 +1312,11 @@ var Config = (new function($)
 
 	this.switchClick = function(control)
 	{
-		$('.btn', $(control).parent()).removeClass('btn-primary');
+		var btn  = $('.btn', $(control).parent());
+		btn.removeClass('btn-primary');
+		btn.addClass('btn-default');
 		$(control).addClass('btn-primary');
+		$(control).removeClass('btn-default');
 
 		// not for page Postprocess in download details
 		if (config)
@@ -1615,7 +1618,15 @@ var Config = (new function($)
 
 	function setViewMode()
 	{
-		$('#Config_ViewCompact i').toggleClass('icon-ok', compactMode).toggleClass('icon-empty', !compactMode);
+		if (!compactMode)
+		{
+			$('#Config_ViewCompact > .material-icon').text('');
+		}
+		else
+		{
+			$('#Config_ViewCompact > .material-icon').text('done');
+		}
+		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);
 	}
 
@@ -2370,7 +2381,12 @@ var ScriptListDialog = (new function($)
 
 	function updateTable(selectedList)
 	{
-		var reorderButtons = '<div class="btn-row-order-block"><div class="btn-row-order icon-top" onclick="ScriptListDialog.move(this, \'top\')"></div><div class="btn-row-order icon-up" onclick="ScriptListDialog.move(this, \'up\')"></div><div class="btn-row-order icon-down" onclick="ScriptListDialog.move(this, \'down\')"></div><div class="btn-row-order icon-bottom" onclick="ScriptListDialog.move(this, \'bottom\')"></div></div>';
+		var reorderButtons = '<div class="btn-row-order-block">' +
+		'<i onclick="ScriptListDialog.move(this, \'top\')" class="material-icon btn-row-order">vertical_align_top</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'up\')" class="material-icon btn-row-order">north</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'down\')" class="material-icon btn-row-order">south</i>' +
+		'<i onclick="ScriptListDialog.move(this, \'bottom\')" class="material-icon btn-row-order">vertical_align_bottom</i>' + 
+		'</div>';
 		var data = [];
 		for (var i=0; i < scriptList.length; i++)
 		{
@@ -3347,8 +3363,10 @@ var ExtensionManager = (new function($)
 	this.tbody = 'ExtensionManagerTBody';
 	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
 
-	var scriptOrderId = "ScriptOrder";
-	var extensionsId = "Extensions";
+	var scriptOrderId = 'ScriptOrder';
+	var extensionsId = 'Extensions';
+
+	var defaultSectionName = 'OPTIONS';
 	
 	var installedExtensions = [];
 	var remoteExtensions = [];
@@ -3365,7 +3383,7 @@ var ExtensionManager = (new function($)
 		installedExtensions = exts.map(function(ext) 
 		{
 			var extension = new Extension();
-			extension.id = ext.Name + "_OPTIONS";
+			extension.id = ext.Name + '_' + defaultSectionName;
 			extension.entry = ext.Entry;
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
@@ -3391,7 +3409,7 @@ var ExtensionManager = (new function($)
 				remoteExtensions = JSON.parse(data).map(function(ext) 
 				{
 					var extension = new Extension();
-					extension.id = ext.name + "_OPTIONS";
+					extension.id = ext.Name + '_' + defaultSectionName;
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
 					extension.author = ext.author;
@@ -3727,27 +3745,38 @@ var ExtensionManager = (new function($)
 
 	function disableDeleteBtn(ext, disabled)
 	{
-		$('#DeleteBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DeleteBtn_' + ext.name, disabled);
 	}
 
 	function disableDownloadBtn(ext, disabled)
 	{
-		$('#DownloadBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DownloadBtn_' + ext.name, disabled);
 	}
 
 	function disableUpdateBtn(ext, disabled)
 	{
-		$('#UpdateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#UpdateBtn_' + ext.name, disabled);
 	}
 
 	function disableConfigureBtn(ext, disabled)
 	{
-		$('#ConfigureBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ConfigureBtn_' + ext.name, disabled);
 	}
 
 	function disableActivateBtn(ext, disabled)
 	{
-		$('#ActivateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ActivateBtn_' + ext.name, disabled);
+	}
+
+	function disableBtnToggle(id, disabled)
+	{
+		if (disabled)
+		{
+			$(id).addClass('btn--disabled');
+			return;
+		}
+
+		$(id).removeClass('btn--disabled');
 	}
 
 	function disableOrderingBtns(ext, disabled)
@@ -3854,7 +3883,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
 			+ ext.name 
-			+ '" title="Delete"><i class="icon-trash-white"></i></button>')
+			+ '" title="Delete"><i class="material-icon">delete</i></button>')
 			.off('click')
 			.on('click', function() { showDeleteExtensionDropdown(ext); });
 
@@ -3865,7 +3894,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
 			+ ext.name 
-			+ '" title="Download"><img src="img/download-16.ico"></button>')
+			+ '" title="Download"><i class="material-icon">download</i></button>')
 			.off('click')
 			.on('click', function() { downloadExtension(ext); });
 
@@ -3876,7 +3905,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
 			+ ext.name 
-			+ '"><i class="icon-refresh"></i></button>');
+			+ '"><i class="material-icon">update</i></button>');
 		if (ext.outdated)
 		{
 			btn.attr({ title: "Update to new version" });
@@ -3894,9 +3923,9 @@ var ExtensionManager = (new function($)
 
 	function getConfigureBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' 
+		var btn = $('<button type="button" class="btn btn-default btn-group" id="ConfigureBtn_' 
 			+ ext.name 
-			+ '" title="Configure"><i class="icon-settings"></i></button>')
+			+ '" title="Configure"><i class="material-icon">settings</i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 
@@ -3905,26 +3934,26 @@ var ExtensionManager = (new function($)
 
 	function getActivateBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-primary btn-group" id="ActivateBtn_' 
+		var btn = $('<button type="button" class="btn btn-group" id="ActivateBtn_' 
 			+ ext.name 
 			+ '"></button>')
 			.off('click')
 			.on('click', function() { activateExt(ext); });
 		if (ext.isActive && !ext.testError)
 		{	
-			btn.append('<i class="icon-pause"></i>');
-			btn.attr({ title: "Deactivate (restart needed)" });
+			btn.append('<i class="material-icon">pause</i>');
+			btn.attr({ title: "Deactivate" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
-			btn.append('<i class="icon-play"></i>');
-			btn.attr({ title: "Activate for new downloads (restart needed)" });
+			btn.append('<i class="material-icon">play_arrow</i>');
+			btn.attr({ title: "Activate for new downloads" });
 			btn.addClass('btn-success');
 		}
 		else
 		{
-			btn.append('<img src="img/warning-16.ico">');
+			btn.append('<i class="material-icon">warning</i>');
 			btn.attr({ title: ext.testError });
 			btn.addClass('btn-warning');
 		}
@@ -3966,7 +3995,7 @@ var ExtensionManager = (new function($)
 		if (ext.homepage)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append($('<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>'));
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" title="Homepage">home</i></a>'));
 			return cell;
 		}
 		
@@ -4006,16 +4035,16 @@ var ExtensionManager = (new function($)
 		var cell = $('<td class="extension-manager__td text-center">');
 		var container = $('<div class="btn-row-order-block">');
 		var title = "Modify execution order (restart needed)";
-		var mvTop = $('<div class="btn-row-order icon-top" id="MvTopBtn_' + ext.name +'"></div>')
+		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon">vertical_align_top</i></span>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
-		var mvUp = $('<div class="btn-row-order icon-up id="MvUpBtn_' + ext.name +'"></div>')
+		var mvUp = $('<span class="btn-row-order id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
 			.off('click')
 			.on('click', function() { moveUp(ext); });
-		var mvDown = $('<div class="btn-row-order icon-down id="MvDownBtn_' + ext.name +'"></div>')
+		var mvDown = $('<span class="btn-row-order id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
 			.off('click')
 			.on('click', function() { moveDown(ext); });
-		var mvBottom = $('<div class="btn-row-order icon-bottom id="MvBottomBtn_' + ext.name +'"></div>')
+		var mvBottom = $('<span class="btn-row-order id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
 		
