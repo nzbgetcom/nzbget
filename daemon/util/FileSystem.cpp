@@ -958,7 +958,7 @@ void FileSystem::FixExecPermission(const char* filename)
 	}
 }
 
-void SetFilePermissionsWithUmask(const char* filename, mode_t umask)
+void FileSystem::SetFilePermissionsWithUmask(const char* filename, mode_t umask)
 {
 	struct stat buffer;
 	if (!stat(filename, &buffer))
