@@ -2,7 +2,8 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -722,6 +723,10 @@ bool UnpackController::Cleanup()
 
 			// silently overwrite existing files
 			FileSystem::DeleteFile(dstFile);
+
+#ifndef WIN32
+			FileSystem::SetFilePermissionsWithUmask(dstFile.Str(), g_Options->GetUMask());
+#endif
 
 			bool hiddenFile = filename[0] == '.';
 

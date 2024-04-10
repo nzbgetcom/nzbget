@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -61,6 +62,7 @@ public:
 #ifndef WIN32
 	static CString ExpandHomePath(const char* filename);
 	static void FixExecPermission(const char* filename);
+	static void SetFilePermissionsWithUmask(const char* filename, mode_t umask);
 #endif
 	static CString ExpandFileName(const char* filename);
 	static CString GetExeFileName(const char* argv0);

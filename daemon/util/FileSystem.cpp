@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -954,6 +955,16 @@ void FileSystem::FixExecPermission(const char* filename)
 	{
 		buffer.st_mode = buffer.st_mode | S_IXUSR | S_IXGRP | S_IXOTH;
 		chmod(filename, buffer.st_mode);
+	}
+}
+
+void SetFilePermissionsWithUmask(const char* filename, mode_t umask)
+{
+	struct stat buffer;
+	if (!stat(filename, &buf))
+	{
+		mode_t permissions = buffer.st_mode & ~umask;
+		chmod(filename, permissions);
 	}
 }
 #endif
