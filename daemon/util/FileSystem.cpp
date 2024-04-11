@@ -22,6 +22,7 @@
 #include "nzbget.h"
 #include "FileSystem.h"
 #include "Util.h"
+#include "Log.h"
 
 const char* RESERVED_DEVICE_NAMES[] = { "CON", "PRN", "AUX", "NUL",
 	"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -960,11 +961,15 @@ void FileSystem::FixExecPermission(const char* filename)
 
 void FileSystem::SetFilePermissionsWithUmask(const char* filename, mode_t umask)
 {
-	struct stat buffer;
-	if (!stat(filename, &buffer))
+	mode_t permissions = buffer.st_mode & ~umask;
+	info("%s %o %s %s", "Setting permissons ", permissions, "on", filename);
+	if (!chmod(filename, permissions))
 	{
-		mode_t permissions = buffer.st_mode & ~umask;
-		chmod(filename, permissions);
+		info("%s", "Success");
+	}
+	else
+	{
+		error("%s", "Failure");
 	}
 }
 #endif
