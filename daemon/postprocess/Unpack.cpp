@@ -741,7 +741,7 @@ bool UnpackController::Cleanup()
 		}
 
 #ifndef WIN32
-			FileSystem::SetFilePermissionsWithUmask(destDir.Str(), g_Options->GetUMask());
+			FileSystem::SetFilePermissionsWithUmask(destDir, g_Options->GetUMask());
 #endif
 
 	}
