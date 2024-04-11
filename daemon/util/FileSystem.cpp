@@ -961,15 +961,19 @@ void FileSystem::FixExecPermission(const char* filename)
 
 void FileSystem::SetFilePermissionsWithUmask(const char* filename, mode_t umask)
 {
-	mode_t permissions = buffer.st_mode & ~umask;
-	info("%s %o %s %s", "Setting permissons ", permissions, "on", filename);
-	if (!chmod(filename, permissions))
+	struct stat buffer;
+	if (!stat(filename, &buffer))
 	{
-		info("%s", "Success");
-	}
-	else
-	{
-		error("%s", "Failure");
+		mode_t permissions = buffer.st_mode & ~umask;
+		info("%s %o %s %s", "Setting permissons ", permissions, "on", filename);
+		if (!chmod(filename, permissions))
+		{
+			info("%s", "Success");
+		}
+		else
+		{
+			error("%s", "Failure");
+		}
 	}
 }
 #endif
