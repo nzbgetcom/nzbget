@@ -352,6 +352,8 @@ webui_FILES = \
 	webui/messages.js \
 	webui/status.js \
 	webui/style.css \
+	webui/light-theme.css \
+	webui/dark-theme.css \
 	webui/upload.js \
 	webui/util.js \
 	webui/config.js \
