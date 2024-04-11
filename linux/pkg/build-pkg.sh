@@ -124,7 +124,7 @@ for ARCH in $ARCHS; do
         mkdir -p $CONTENTS/DEBIAN/
         cp $NZBGET_ROOT/linux/pkg/deb/DEBIAN/* "$CONTENTS/DEBIAN/"
         # copy additional CONTENTS files
-        cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" || true
+        cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
         eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"        
         mkdir -p "$CONTENTS/lib/systemd/system/"
         cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
