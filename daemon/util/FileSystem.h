@@ -62,7 +62,7 @@ public:
 #ifndef WIN32
 	static CString ExpandHomePath(const char* filename);
 	static void FixExecPermission(const char* filename);
-	static void SetFilePermissionsWithUmask(const char* filename, mode_t umask);
+	static void SetFilePermissionsWithUmask(const char* filename, int umask);
 #endif
 	static CString ExpandFileName(const char* filename);
 	static CString GetExeFileName(const char* argv0);
