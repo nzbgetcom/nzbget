@@ -959,37 +959,59 @@ void FileSystem::FixExecPermission(const char* filename)
 	}
 }
 
-void FileSystem::SetFilePermissionsWithUmask(const char* filename, int umask)
+bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umask) 
 {
 	struct stat buffer;
-	mode_t permissions = 0;
+	int ec = stat(filename, &buffer);
+	if (ec != 0) 
+	{
 
-	if (stat(filename, &buffer) != 0)
-	{
-		info("%s", "Couldn't stat");
-		return;
-	}
+#ifdef DEBUG
+		debug("Failed to read information for %s. Errno: %i", filename, ec);
+#endif
 
-	if (S_ISDIR(buffer.st_mode) == 0)
-	{
-		mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH;
-		permissions = mode & ~umask;
-	}
-	else
-	{
-		mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO;
-		permissions = mode & ~umask;
+		return false;
 	}
 
-	info("%s %o %s %s", "Setting permissons ", permissions, "on", filename);
-	if (chmod(filename, permissions) == 0)
+	if (S_ISDIR(buffer.st_mode)) 
 	{
-		info("%s", "Success");
-	}
-	else
+		return SetDirPermissionsWithUMask(filename, umask);
+	} 
+
+	return SetFilePermissionsWithUMask(filename, umask);
+}
+
+bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, int umask)
+{
+	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
+	return SetPermissionsWithUMask(filepath, mode, umask);
+}
+
+bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
+{
+	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
+	return SetPermissionsWithUMask(filename, mode, umask);
+}
+
+bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
+{
+	mode_t permissions = mode & ~umask;
+	int ec = chmod(filename, permissions);
+	if (ec == 0)
 	{
-		error("%s", "Failure");
-	}
+
+#ifdef DEBUG
+		debug("Permissions %o was set for %s", permissions, filename);
+#endif
+
+		return true;
+	} 
+
+#ifdef DEBUG
+	debug("Failed to set permissions for %s. Errno %i", filename, ec);
+#endif
+
+	return false;
 }
 #endif
 
