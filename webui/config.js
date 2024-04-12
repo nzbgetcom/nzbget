@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1323,6 +1324,26 @@ var Config = (new function($)
 		{
 			var optFormId = $(control).parent().attr('id');
 			var option = findOptionById(optFormId);
+
+			var suffixStartIdx = optFormId.indexOf('_Encryption');
+			if (suffixStartIdx !== -1)
+			{
+				
+				var prefix = optFormId.substring(0, suffixStartIdx);
+				var portOption = findOptionById(prefix + '_Port');
+				var prevVal = getOptionValue(option);
+				var newValue = getOptionValue(portOption);
+				var input = $('#' + prefix + '_Port')[0];
+				if (prevVal === 'no' && newValue === '563')
+				{
+					input.value = '119';
+				}
+				else if (prevVal === 'yes' && newValue === '119')
+				{
+					input.value = '563';
+				}
+			}
+			
 			if (option.onchange)
 			{
 				option.onchange(option);
