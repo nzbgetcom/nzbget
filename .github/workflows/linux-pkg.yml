@@ -37,7 +37,7 @@ jobs:
 
     - name: Build DEB and RPM packages
       run: |
-        apt update && apt install rpm
+        sudo apt-get update && sudo apt-get install rpm -y
         bash linux/pkg/build-pkg.sh
 
     - name: Upload build artifacts
