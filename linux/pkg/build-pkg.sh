@@ -133,7 +133,7 @@ for ARCH in $ARCHS; do
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/usr"
         # remove unneeded files
         find $PWD/$ARCH/ -maxdepth 1 -type f -delete        
-        fakeroot dpkg-deb --build $CONTENTS $PWD/deb/nzbget-$VERSION-$DPKG_ARCH.deb
+        fakeroot dpkg-deb -Zxz --build $CONTENTS $PWD/deb/nzbget-$VERSION-$DPKG_ARCH.deb
     fi
 
     # build rpm package
