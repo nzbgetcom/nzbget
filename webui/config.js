@@ -1324,30 +1324,66 @@ var Config = (new function($)
 		{
 			var optFormId = $(control).parent().attr('id');
 			var option = findOptionById(optFormId);
-
-			var suffixStartIdx = optFormId.indexOf('_Encryption');
-			if (suffixStartIdx !== -1)
-			{
-				
-				var prefix = optFormId.substring(0, suffixStartIdx);
-				var portOption = findOptionById(prefix + '_Port');
-				var prevVal = getOptionValue(option);
-				var newValue = getOptionValue(portOption);
-				var input = $('#' + prefix + '_Port')[0];
-				if (prevVal === 'no' && newValue === '563')
-				{
-					input.value = '119';
-				}
-				else if (prevVal === 'yes' && newValue === '119')
-				{
-					input.value = '563';
-				}
-			}
 			
 			if (option.onchange)
 			{
 				option.onchange(option);
 			}
+
+			tlsSwitchHelper(option)
+		}
+	}
+
+	function tlsSwitchHelper(option)
+	{
+		var defaultPort = '119';
+		var defaultTlsPort = '563';
+
+		var defaultPort2 = '80';
+		var defaultTlsPort2 = '443';
+		
+		var suffixStartIdx = option.formId.indexOf('_Encryption');
+		if (suffixStartIdx < 0)
+		{
+			return;
+		}
+
+		var portOptionId = option.formId.substring(0, suffixStartIdx) + '_Port';
+		var portOption = findOptionById(portOptionId);
+		var useTls = getOptionValue(option) === 'yes';
+		var currentPort = getOptionValue(portOption);
+		var inputField = $('#' + portOptionId)[0];
+
+		if (useTls)
+		{
+			if (currentPort === defaultPort)
+			{
+				inputField.value = defaultTlsPort;
+				return;
+			}
+
+			if (currentPort === defaultPort2)
+			{
+				inputField.value = defaultTlsPort2;
+			}
+
+			return;
+		}
+
+		if (!useTls)
+		{
+			if (currentPort === defaultTlsPort)
+			{
+				inputField.value = defaultPort;
+				return;
+			}
+
+			if (currentPort === defaultTlsPort2)
+			{
+				inputField.value = defaultPort2;
+			}
+
+			return;
 		}
 	}
 
