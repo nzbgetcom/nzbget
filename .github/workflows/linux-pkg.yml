@@ -40,11 +40,18 @@ jobs:
         sudo apt-get update && sudo apt-get install rpm -y
         bash linux/pkg/build-pkg.sh
 
-    - name: Upload build artifacts
+    - name: Upload DEB build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-deb-packages
         path: build/deb/*.deb
+        retention-days: 5
+
+    - name: Upload RPM build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-rpm-packages
+        path: build/rpm/*.rpm
         retention-days: 5
 
     - name: Delete unneded linux artifacts

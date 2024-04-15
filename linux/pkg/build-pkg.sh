@@ -36,7 +36,7 @@ fi
 # if empty - use all available architectures
 ARCHS="$3"
 if [ -z $ARCHS ]; then
-    ARCHS="i686 x86_64 armel armhf aarch64"
+    ARCHS="i686 x86_64 armel armhf aarch64 riscv64"
 fi
 
 # prepare directories
@@ -125,22 +125,22 @@ for ARCH in $ARCHS; do
         cp $NZBGET_ROOT/linux/pkg/deb/DEBIAN/* "$CONTENTS/DEBIAN/"
         # copy additional CONTENTS files
         cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
-        eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"        
+        eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
         mkdir -p "$CONTENTS/lib/systemd/system/"
         cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
         # fix permissions
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/lib"
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/usr"
         # remove unneeded files
-        find $PWD/$ARCH/ -maxdepth 1 -type f -delete        
+        find $PWD/$ARCH/ -maxdepth 1 -type f -delete
         fakeroot dpkg-deb -Zxz --build $CONTENTS $PWD/deb/nzbget-$VERSION-$DPKG_ARCH.deb
     fi
 
     # build rpm package
     if [ "$RPM" == "yes" ]; then
+        if [ "$ARCH" == "riscv64" ]; then continue; fi
         # prepare spec
-        eval "echo \"$(cat ../linux/pkg/rpm/nzbget.spec)\"" > "$ARCH/nzbget.spec"
-
+        cat ../linux/pkg/rpm/nzbget.spec | sed "s|^Version:.*|Version: $RPM_VERSION|" > "$ARCH/nzbget.spec"
         # prepare directories
         if [ "$ARCH" == "armel" ] || [ "$ARCH" == "armhf" ]; then
             ARCH_PATH="arm"
@@ -149,10 +149,16 @@ for ARCH in $ARCHS; do
         fi
         RPM_SRC="$PWD/$ARCH/BUILDROOT/nzbget-$RPM_VERSION-1.$ARCH_PATH"
         mkdir -p $RPM_SRC
-        cp -r $CONTENTS/usr/ $RPM_SRC    
+        cp -r $CONTENTS/usr/ $RPM_SRC
+        # replace 7zz with 7za (p7zip-full)
+        sed -i -e "s|^SevenZipCmd=.*|SevenZipCmd=7za|g" "$RPM_SRC/usr/share/nzbget/nzbget.conf"
+        mkdir -p "$RPM_SRC/lib/systemd/system/"
+        cp ../linux/pkg/nzbget.service "$RPM_SRC/lib/systemd/system/"
+        # remove unneeded files
+        find $PWD/$ARCH/ -maxdepth 1 -type f ! -name "nzbget.spec" -delete
         rpmbuild --define "_topdir $PWD/$ARCH" -bb $PWD/$ARCH/nzbget.spec --target $RPM_ARCH
         cp $PWD/$ARCH/RPMS/$RPM_ARCH/*.rpm rpm/
     fi
-
+    # cleanup
     rm -rf $PWD/$ARCH
 done
