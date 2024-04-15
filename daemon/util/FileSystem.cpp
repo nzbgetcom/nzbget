@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 #include "nzbget.h"
 #include "FileSystem.h"
 #include "Util.h"
+#include "Log.h"
 
 const char* RESERVED_DEVICE_NAMES[] = { "CON", "PRN", "AUX", "NUL",
 	"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
@@ -955,6 +957,61 @@ void FileSystem::FixExecPermission(const char* filename)
 		buffer.st_mode = buffer.st_mode | S_IXUSR | S_IXGRP | S_IXOTH;
 		chmod(filename, buffer.st_mode);
 	}
+}
+
+bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umask) 
+{
+	struct stat buffer;
+	int ec = stat(filename, &buffer);
+	if (ec != 0) 
+	{
+
+#ifdef DEBUG
+		debug("Failed to read information for %s. Errno: %i", filename, ec);
+#endif
+
+		return false;
+	}
+
+	if (S_ISDIR(buffer.st_mode)) 
+	{
+		return SetDirPermissionsWithUMask(filename, umask);
+	} 
+
+	return SetFilePermissionsWithUMask(filename, umask);
+}
+
+bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, int umask)
+{
+	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
+	return SetPermissionsWithUMask(filepath, mode, umask);
+}
+
+bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
+{
+	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
+	return SetPermissionsWithUMask(filename, mode, umask);
+}
+
+bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
+{
+	mode_t permissions = mode & ~umask;
+	int ec = chmod(filename, permissions);
+	if (ec == 0)
+	{
+
+#ifdef DEBUG
+		debug("Permissions %o was set for %s", permissions, filename);
+#endif
+
+		return true;
+	} 
+
+#ifdef DEBUG
+	debug("Failed to set permissions for %s. Errno %i", filename, ec);
+#endif
+
+	return false;
 }
 #endif
 
