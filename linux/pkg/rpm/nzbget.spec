@@ -98,5 +98,15 @@ if [ $1 == 0 ]; then # remove
     # reload systemd
     systemctl --system daemon-reload >/dev/null || true
     # purge nzbget home directory
-    rm -rf /var/lib/nzbget/*
+    rm -rf /var/lib/nzbget/scripts
+    rm -rf /var/lib/nzbget/tmp
+    rm -rf /var/lib/nzbget/nzbget.conf
+    rm -rf /var/lib/nzbget/downloads/intermediate
+    rm -rf /var/lib/nzbget/downloads/queue
+    # remove completed only if empty
+    if [ -d /var/lib/nzbget/downloads/completed ]; then
+        if [ -z "$(ls -A var/lib/nzbget/downloads/completed)" ]; then
+            rm -rf /var/lib/nzbget/downloads
+        fi
+    fi
 fi
