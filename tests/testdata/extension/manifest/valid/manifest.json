@@ -4,6 +4,7 @@
 	"kind": "POST-PROCESSING",
 	"displayName": "Email",
 	"version": "1.0.0",
+	"nzbgetMinVersion": "23.1",
 	"author": "Author's name",
 	"homepage": "https://github",
 	"license": "GNU",

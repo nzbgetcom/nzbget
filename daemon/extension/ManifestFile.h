@@ -68,6 +68,7 @@ namespace ManifestFile
 		std::string homepage;
 		std::string displayName;
 		std::string version;
+		std::string nzbgetMinVersion;
 		std::string license;
 		std::string about;
 		std::string queueEvents;

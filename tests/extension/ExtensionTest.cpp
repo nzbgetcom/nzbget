@@ -45,6 +45,7 @@ Extension::Script GetExtension()
 	script.SetQueueEvents("QueueEvents");
 	script.SetTaskTime("TaskTime");
 	script.SetVersion("Version");
+	script.SetNzbgetMinVersion("23.1");
 
 	option.description = { "description" };
 	option.displayName = "displayName";
@@ -86,6 +87,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"Homepage\":\"Homepage\",\
 \"License\":\"License\",\
 \"Version\":\"Version\",\
+\"NZBGetMinVersion\":\"23.1\",\
 \"PostScript\":true,\
 \"ScanScript\":false,\
 \"QueueScript\":false,\
@@ -118,6 +120,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Homepage</name><value><string>Homepage</string></value></member>\
 <member><name>License</name><value><string>License</string></value></member>\
 <member><name>Version</name><value><string>Version</string></value></member>\
+<member><name>NZBGetMinVersion</name><value><string>23.1</string></value></member>\
 <member><name>PostScript</name><value><boolean>true</boolean></value></member>\
 <member><name>ScanScript</name><value><boolean>false</boolean></value></member>\
 <member><name>QueueScript</name><value><boolean>false</boolean></value></member>\
