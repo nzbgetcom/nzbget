@@ -3472,6 +3472,7 @@ var ExtensionManager = (new function($)
 		var remote = [];
 		for (var i = 0; i < remoteExtensions.length; i++) {
 			var extension = remoteExtensions[i];
+
 			if (!checkNzbgetMinRequiredVersion(extension.nzbgetMinVersion))
 			{
 				continue;
