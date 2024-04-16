@@ -114,6 +114,11 @@ jobs:
           nzbget-synology-packages
           nzbget-qnap-packages
           nzbget-qnap-native-packages
+
+    - name: Delete unneded linux packages artifacts
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
           nzbget-deb-packages
           nzbget-rpm-packages
 
