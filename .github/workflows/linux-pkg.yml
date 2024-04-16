@@ -9,9 +9,6 @@ on:
         required: false
         default: false
   workflow_dispatch:
-  push:
-    branches:
-    - feature/*
 
 jobs:
   build-linux:

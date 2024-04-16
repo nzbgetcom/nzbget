@@ -4,7 +4,7 @@ Release: 1
 Group: Applications/Internet
 Provides: nzbget
 Requires: systemd
-Recommends: p7zip unrar
+Recommends: p7zip unrar >= 6
 Summary: Command-line based binary newsgrabber for nzb files, written in C++
 License: GPLv2
 
@@ -26,7 +26,7 @@ unpack and web-interface. NZBGet requires low system resources.
 /usr/bin/nzbget
 /usr/share/doc/nzbget/
 /usr/share/nzbget/
-/lib/systemd/system/nzbget.service
+/usr/lib/systemd/system/nzbget.service
 
 %post
 if [ $1 == 1 ]; then # install

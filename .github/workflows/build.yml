@@ -25,6 +25,14 @@ jobs:
   build-qnap:
     uses: ./.github/workflows/qnap.yml
 
+  build-linux-pkg:
+    uses: ./.github/workflows/linux-pkg.yml
+    with:
+      external_call: true
+    needs: [build-linux]
+    permissions:
+      actions: write
+
   repack-qnap:
     uses: ./.github/workflows/qnap-repack.yml
     with:
@@ -54,6 +62,8 @@ jobs:
         mv nzbget-synology-packages/* builds || true
         mv nzbget-qnap-packages/* builds || true
         mv nzbget-qnap-native-packages/* builds || true
+        mv nzbget-deb-packages/* builds || true
+        mv nzbget-rpm-packages/* builds || true
         cd builds
         VERSION=$(ls | grep bin-windows-setup | cut -d - -f 2)
         if [ "$GITHUB_REF_NAME" != "main" ]; then VERSION="$VERSION-testing"; fi
@@ -65,7 +75,7 @@ jobs:
         echo "nzbget_signatures({" | tee $SIGS_FILE
         echo | tee -a $SIGS_FILE
 
-        for FILE in *.exe *.run *.zip *.spk *.qpkg; do
+        for FILE in *.exe *.run *.zip *.spk *.qpkg *.deb *.rpm; do
             [ -f $FILE ] || continue
 
             MD5=$(openssl dgst -md5 $FILE | cut -d ' ' -f 2)
@@ -104,9 +114,11 @@ jobs:
           nzbget-synology-packages
           nzbget-qnap-packages
           nzbget-qnap-native-packages
+          nzbget-deb-packages
+          nzbget-rpm-packages
 
   make-testing-release:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, nzbget-linux]
     needs: [generate-signatures]
     permissions:
       contents: write
