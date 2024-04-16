@@ -3472,7 +3472,7 @@ var ExtensionManager = (new function($)
 		var remote = [];
 		for (var i = 0; i < remoteExtensions.length; i++) {
 			var extension = remoteExtensions[i];
-			if (!checkMinRequiredVersion(extension.nzbgetMinVersion))
+			if (!checkNzbgetMinRequiredVersion(extension.nzbgetMinVersion))
 			{
 				continue;
 			}
@@ -3498,7 +3498,7 @@ var ExtensionManager = (new function($)
 		return v1.localeCompare(v2, undefined, { numeric: true, sensitivity: 'base' }) < 0;
 	}
 
-	function checkMinRequiredVersion(extVersion)
+	function checkNzbgetMinRequiredVersion(extVersion)
 	{
 		var nzbgetVersion = Options.option('Version');
 		return isOutdated(extVersion, nzbgetVersion);
