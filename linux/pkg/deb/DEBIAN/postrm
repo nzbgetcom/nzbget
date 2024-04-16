@@ -27,5 +27,7 @@ if [ "$1" = "purge" ]; then
         if [ -z "$(ls -A var/lib/nzbget/downloads/completed)" ]; then
             rm -rf /var/lib/nzbget/downloads
         fi
+    else
+        rm -rf /var/lib/nzbget/downloads
     fi
 fi

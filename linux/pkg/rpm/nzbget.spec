@@ -90,7 +90,7 @@ echo $1
 if [ $1 == 0 ]; then # remove
     # stop and disable nzbget service
     systemctl stop nzbget >/dev/null || true
-    systemctl disable nzbget >/dev/null || true    
+    systemctl disable nzbget >/dev/null || true
 fi
 
 %postun
@@ -109,5 +109,7 @@ if [ $1 == 0 ]; then # remove
         if [ -z "$(ls -A var/lib/nzbget/downloads/completed)" ]; then
             rm -rf /var/lib/nzbget/downloads
         fi
+    else
+        rm -rf /var/lib/nzbget/downloads
     fi
 fi
