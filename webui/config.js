@@ -3362,8 +3362,7 @@ var ExtensionManager = (new function($)
 	this.id = 'extension-manager';
 	this.table = 'ExtensionManagerTable';
 	this.tbody = 'ExtensionManagerTBody';
-	//this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
-	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/feature/SpeedControl/extensions.json';
+	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
 
 	var scriptOrderId = 'ScriptOrder';
 	var extensionsId = 'Extensions';
