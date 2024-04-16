@@ -127,9 +127,10 @@ for ARCH in $ARCHS; do
         cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
         eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
         mkdir -p "$CONTENTS/usr/lib/systemd/system/"
-        cp ../linux/pkg/nzbget.service "$CONTENTS/usr/lib/systemd/system/"
+        cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
         # fix permissions
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/usr"
+        chmod -R u+rwX,go+rX,go-w "$CONTENTS/lib"
         # remove unneeded files
         find $PWD/$ARCH/ -maxdepth 1 -type f -delete
         fakeroot dpkg-deb -Zxz --build $CONTENTS $PWD/deb/nzbget-$VERSION-$DPKG_ARCH.deb
