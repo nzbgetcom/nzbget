@@ -103,6 +103,7 @@ if [ $1 == 0 ]; then # remove
     rm -rf /var/lib/nzbget/nzbget.conf
     rm -rf /var/lib/nzbget/downloads/intermediate
     rm -rf /var/lib/nzbget/downloads/queue
+    rm -rf /var/lib/nzbget/downloads/nzb
     # remove completed only if empty
     if [ -d /var/lib/nzbget/downloads/completed ]; then
         if [ -z "$(ls -A var/lib/nzbget/downloads/completed)" ]; then
