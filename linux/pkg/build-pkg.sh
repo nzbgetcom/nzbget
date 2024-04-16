@@ -126,7 +126,7 @@ for ARCH in $ARCHS; do
         # copy additional CONTENTS files
         cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
         eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
-        mkdir -p "$CONTENTS/usr/lib/systemd/system/"
+        mkdir -p "$CONTENTS/lib/systemd/system/"
         cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
         # fix permissions
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/usr"
