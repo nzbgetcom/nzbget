@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -1323,10 +1324,66 @@ var Config = (new function($)
 		{
 			var optFormId = $(control).parent().attr('id');
 			var option = findOptionById(optFormId);
+			
 			if (option.onchange)
 			{
 				option.onchange(option);
 			}
+
+			tlsSwitchHelper(option)
+		}
+	}
+
+	function tlsSwitchHelper(option)
+	{
+		var defaultPort = '119';
+		var defaultTlsPort = '563';
+
+		var defaultPort2 = '80';
+		var defaultTlsPort2 = '443';
+		
+		var suffixStartIdx = option.formId.indexOf('_Encryption');
+		if (suffixStartIdx < 0)
+		{
+			return;
+		}
+
+		var portOptionId = option.formId.substring(0, suffixStartIdx) + '_Port';
+		var portOption = findOptionById(portOptionId);
+		var useTls = getOptionValue(option) === 'yes';
+		var currentPort = getOptionValue(portOption);
+		var inputField = $('#' + portOptionId)[0];
+
+		if (useTls)
+		{
+			if (currentPort === defaultPort)
+			{
+				inputField.value = defaultTlsPort;
+				return;
+			}
+
+			if (currentPort === defaultPort2)
+			{
+				inputField.value = defaultTlsPort2;
+			}
+
+			return;
+		}
+
+		if (!useTls)
+		{
+			if (currentPort === defaultTlsPort)
+			{
+				inputField.value = defaultPort;
+				return;
+			}
+
+			if (currentPort === defaultTlsPort2)
+			{
+				inputField.value = defaultPort2;
+			}
+
+			return;
 		}
 	}
 
