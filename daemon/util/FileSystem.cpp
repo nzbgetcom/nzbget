@@ -1016,9 +1016,9 @@ bool FileSystem::RestorePermissions(const char* filename, mode_t mode)
 
 mode_t FileSystem::GetSysUMask()
 {
-	mode_t sysUmask = umask(0);
-	umask(sysUmask); // Restore the original umask value
-	return sysUmask;
+	mode_t currUmask = umask(0);
+	umask(currUmask); // Restore the original umask value
+	return currUmask;
 }
 #endif
 
