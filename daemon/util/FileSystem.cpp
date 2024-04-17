@@ -995,7 +995,7 @@ bool FileSystem::RestoreDirPermissions(const char* filename)
 
 bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
 {
-	mode_t permissions = mode & ~m_umask;
+	mode_t permissions = mode & ~uMask;
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
 	{
