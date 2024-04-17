@@ -995,7 +995,7 @@ bool FileSystem::SetDirPermissionsWithUMask(const char* filename, mode_t umask)
 
 bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, mode_t umask) 
 {
-	if (umask >= 01000)
+	if (umask == 0000 || umask >= 01000)
 	{
 		umask = GetCurrentUMask();
 	}
