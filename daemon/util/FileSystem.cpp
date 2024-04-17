@@ -1024,7 +1024,7 @@ void FileSystem::SetUMask(mode_t uMask)
 
 }
 
-mode_t FileSystem::GetUMask() const
+mode_t FileSystem::GetUMask()
 {
 	return m_umask;
 }
