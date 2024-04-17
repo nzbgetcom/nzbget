@@ -959,7 +959,7 @@ void FileSystem::FixExecPermission(const char* filename)
 	}
 }
 
-bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umask) 
+bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, mode_t umask) 
 {
 	struct stat buffer;
 	int ec = stat(filename, &buffer);
@@ -981,20 +981,25 @@ bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umas
 	return SetFilePermissionsWithUMask(filename, umask);
 }
 
-bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, int umask)
+bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, mode_t umask)
 {
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
 	return SetPermissionsWithUMask(filepath, mode, umask);
 }
 
-bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
+bool FileSystem::SetDirPermissionsWithUMask(const char* filename, mode_t umask)
 {
 	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
 	return SetPermissionsWithUMask(filename, mode, umask);
 }
 
-bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
+bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, mode_t umask) 
 {
+	if (umask >= 01000)
+	{
+		umask = GetCurrentUMask();
+	}
+
 	mode_t permissions = mode & ~umask;
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
@@ -1012,6 +1017,13 @@ bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int 
 #endif
 
 	return false;
+}
+
+mode_t FileSystem::GetCurrentUMask()
+{
+	mode_t currUMask = umask(0);
+    umask(currUMask); // Restore the original umask value
+	return currUMask;
 }
 #endif
 
