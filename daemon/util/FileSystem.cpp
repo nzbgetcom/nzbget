@@ -949,7 +949,7 @@ bool FileSystem::FlushDirBuffers(const char* filename, CString& errmsg)
 
 #ifndef WIN32
 
-mode_t FileSystem::uMask
+mode_t FileSystem::uMask;
 
 void FileSystem::FixExecPermission(const char* filename)
 {

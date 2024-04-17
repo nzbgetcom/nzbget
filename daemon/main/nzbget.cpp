@@ -272,8 +272,8 @@ void NZBGet::Init()
 	BootConfig();
 
 #ifndef WIN32
-	int uMask = m_options->GetUMask();
-	if (uMask > 0 && uMask < 1000)
+	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
+	if (uMask > 0 && uMask < 01000)
 	{
 		/* set newly created file permissions */
 		FileSystem::uMask = uMask;
@@ -284,6 +284,11 @@ void NZBGet::Init()
 		FileSystem::uMask = umask(022);
 		umask(FileSystem::uMask);
 	}
+
+#ifdef DEBUG
+	debug("Using %o umask", FileSystem::uMask);
+#endif
+
 #endif
 
 	m_scanner->InitOptions();
