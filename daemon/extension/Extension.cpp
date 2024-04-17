@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -79,9 +79,19 @@ namespace Extension
 		m_version = std::move(version);
 	}
 
+	void Script::SetNzbgetMinVersion(std::string version)
+	{
+		m_nzbgetMinVersion = std::move(version);
+	}
+
 	const char* Script::GetVersion() const
 	{
 		return m_version.c_str();
+	}
+
+	const char* Script::GetNzbgetMinVersion() const
+	{
+		return m_nzbgetMinVersion.c_str();
 	}
 
 	void Script::SetLicense(std::string license)
@@ -230,6 +240,7 @@ namespace Extension
 		json["Homepage"] = script.GetHomepage();
 		json["License"] = script.GetLicense();
 		json["Version"] = script.GetVersion();
+		json["NZBGetMinVersion"] = script.GetNzbgetMinVersion();
 		json["PostScript"] = script.GetPostScript();
 		json["ScanScript"] = script.GetScanScript();
 		json["QueueScript"] = script.GetQueueScript();
@@ -335,6 +346,7 @@ namespace Extension
 		AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
 		AddNewNode(structNode, "License", "string", script.GetLicense());
 		AddNewNode(structNode, "Version", "string", script.GetVersion());
+		AddNewNode(structNode, "NZBGetMinVersion", "string", script.GetNzbgetMinVersion());
 
 		AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
 		AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));

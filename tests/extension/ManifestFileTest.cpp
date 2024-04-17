@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(manifestFile.kind == "POST-PROCESSING");
 	BOOST_CHECK(manifestFile.displayName == "Email");
 	BOOST_CHECK(manifestFile.version == "1.0.0");
+	BOOST_CHECK(manifestFile.nzbgetMinVersion == "23.1");
 	BOOST_CHECK(manifestFile.author == "Author's name");
 	BOOST_CHECK(manifestFile.homepage == "https://github");
 	BOOST_CHECK(manifestFile.license == "GNU");

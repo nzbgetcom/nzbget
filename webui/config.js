@@ -3406,6 +3406,7 @@ function Extension()
 	this.about = '';
 	this.url = '';
 	this.testError = '';
+	this.nzbgetMinVersion = '';
 	this.isActive = false;
 	this.installed = false;
 	this.outdated = false;
@@ -3448,6 +3449,7 @@ var ExtensionManager = (new function($)
 			extension.homepage = ext.Homepage;
 			extension.about = ext.About;
 			extension.name = ext.Name;
+			extension.nzbgetMinVersion = ext.NZBGetMinVersion;
 			extension.installed = true;
 			extension.isActive = activeExtensions.indexOf(ext.Name) != -1;
 			return extension;
@@ -3469,6 +3471,7 @@ var ExtensionManager = (new function($)
 					extension.id = ext.Name + '_' + defaultSectionName;
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
+					extension.nzbgetMinVersion = ext['nzbgetMinVersion'] || '';
 					extension.author = ext.author;
 					extension.homepage = ext.homepage;
 					extension.about = ext.about;
@@ -3526,6 +3529,12 @@ var ExtensionManager = (new function($)
 		var remote = [];
 		for (var i = 0; i < remoteExtensions.length; i++) {
 			var extension = remoteExtensions[i];
+
+			if (!checkNzbgetMinRequiredVersion(extension.nzbgetMinVersion))
+			{
+				continue;
+			}
+
 			var idx = installedExtensions.map(function(ext) { return ext.name; }).indexOf(extension.name);
 			if (idx == -1)
 			{
@@ -3534,15 +3543,23 @@ var ExtensionManager = (new function($)
 			else
 			{
 				var installedExt = installedExtensions[idx];
-				if (installedExt.version.localeCompare(extension.version, undefined, { numeric: true, sensitivity: 'base' }) < 0)
-				{
-					installedExt.outdated = true;
-				}
+				installedExt.outdated = isOutdated(installedExt.version, extension.version);
 				installedExt.url = extension.url;
 			}
 		}
 
 		return remote.concat(installedExtensions);
+	}
+
+	function isOutdated(v1, v2)
+	{
+		return v1.localeCompare(v2, undefined, { numeric: true, sensitivity: 'base' }) < 0;
+	}
+
+	function checkNzbgetMinRequiredVersion(extVersion)
+	{
+		var nzbgetVersion = Options.option('Version');
+		return isOutdated(extVersion, nzbgetVersion);
 	}
 
 	function downloadExtension(ext)

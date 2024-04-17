@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -438,6 +438,7 @@ namespace ExtensionLoader
 		script.SetHomepage(std::move(manifest.homepage));
 		script.SetLicense(std::move(manifest.license));
 		script.SetVersion(std::move(manifest.version));
+		script.SetNzbgetMinVersion(std::move(manifest.nzbgetMinVersion));
 		script.SetDisplayName(std::move(manifest.displayName));
 		script.SetName(std::move(manifest.name));
 		script.SetAbout(std::move(manifest.about));
