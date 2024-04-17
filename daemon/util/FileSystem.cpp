@@ -995,7 +995,7 @@ bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
 
 bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
 {
-	if (umask == 0 || (umask == 01000)
+	if (umask < 0 || umask >= 1000)
 	{
 
 #ifdef DEBUG
