@@ -276,13 +276,13 @@ void NZBGet::Init()
 	if (uMask > 0 && uMask < 1000)
 	{
 		/* set newly created file permissions */
-		umask(uMask);
-		FileSystem::SetUMask(uMask);
+		FileSystem::uMask = uMask;
+		umask(FileSystem::uMask);
 	}
 	else
 	{
-		mode_t currUMask = umask(umask(022));
-		FileSystem::SetUMask(currUMask);
+		FileSystem::uMask = umask(022);
+		umask(FileSystem::uMask);
 	}
 #endif
 

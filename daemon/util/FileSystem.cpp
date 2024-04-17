@@ -1014,21 +1014,6 @@ bool FileSystem::RestorePermissions(const char* filename, mode_t mode)
 	return false;
 }
 
-void FileSystem::SetUMask(mode_t uMask)
-{
-	m_umask = uMask;
-
-#ifdef DEBUG
-	debug("umask %o was set", uMask);
-#endif
-
-}
-
-mode_t FileSystem::GetUMask()
-{
-	return m_umask;
-}
-
 #endif
 
 #ifdef WIN32
