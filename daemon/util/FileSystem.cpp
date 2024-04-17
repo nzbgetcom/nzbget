@@ -978,19 +978,19 @@ bool FileSystem::RestoreFileOrDirPermissions(const char* filename)
 		return RestoreDirPermissions(filename);
 	} 
 
-	return RestoreFilePermissionsk(filename);
+	return RestoreFilePermissions(filename);
 }
 
 bool FileSystem::RestoreFilePermissions(const char* filepath)
 {
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
-	return RestorePermissions(filepath, mode, umask);
+	return RestorePermissions(filepath, mode);
 }
 
 bool FileSystem::RestoreDirPermissions(const char* filename)
 {
 	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
-	return RestorePermissions(filename, mode, umask);
+	return RestorePermissions(filename, mode);
 }
 
 bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
