@@ -948,6 +948,9 @@ bool FileSystem::FlushDirBuffers(const char* filename, CString& errmsg)
 }
 
 #ifndef WIN32
+
+mode_t FileSystem::uMask
+
 void FileSystem::FixExecPermission(const char* filename)
 {
 	struct stat buffer;
@@ -995,7 +998,7 @@ bool FileSystem::RestoreDirPermissions(const char* filename)
 
 bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
 {
-	mode_t permissions = mode & ~uMask;
+	mode_t permissions = mode & ~FileSystem::uMask;
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
 	{
