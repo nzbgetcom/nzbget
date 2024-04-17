@@ -277,6 +277,12 @@ void NZBGet::Init()
 	{
 		/* set newly created file permissions */
 		umask(uMask);
+		FileSystem::SetUMask(uMask);
+	}
+	else
+	{
+		mode_t currUMask = umask(umask(022));
+		FileSystem::SetUMask(currUMask);
 	}
 #endif
 

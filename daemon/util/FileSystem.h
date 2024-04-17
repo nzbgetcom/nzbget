@@ -66,7 +66,10 @@ public:
 	static bool RestoreFilePermissions(const char* filename);
 	static bool RestoreDirPermissions(const char* filename);
 	static bool RestorePermissions(const char* filename, mode_t mode);
-	static mode_t GetSysUMask();
+	static void SetUMask(mode_t uMask);
+	static mode_t GetUMask() const;
+private:
+	mode_t m_umask = 022;
 #endif
 	static CString ExpandFileName(const char* filename);
 	static CString GetExeFileName(const char* argv0);

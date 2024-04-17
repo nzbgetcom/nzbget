@@ -995,7 +995,7 @@ bool FileSystem::RestoreDirPermissions(const char* filename)
 
 bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
 {
-	mode_t permissions = mode & ~GetSysUMask();
+	mode_t permissions = mode & ~m_umask;
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
 	{
@@ -1014,12 +1014,21 @@ bool FileSystem::RestorePermissions(const char* filename, mode_t mode)
 	return false;
 }
 
-mode_t FileSystem::GetSysUMask()
+void FileSystem::SetUMask(mode_t uMask)
 {
-	mode_t currUmask = umask(0);
-	umask(currUmask); // Restore the original umask value
-	return currUmask;
+	m_umask = uMask;
+
+#ifdef DEBUG
+	debug("umask %o was set", uMask);
+#endif
+
 }
+
+mode_t FileSystem::GetUMask() const
+{
+	return m_umask;
+}
+
 #endif
 
 #ifdef WIN32
