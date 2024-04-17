@@ -735,7 +735,7 @@ bool UnpackController::Cleanup()
 
 #ifndef WIN32
 			// Fixing file or directory permissions overridden by the unpacker
-			FileSystem::SetFileOrDirPermissionsWithUMask(dstFile.Str(), g_Options->GetUMask());
+			FileSystem::RestoreFileOrDirPermissions(dstFile.Str());
 #endif
 
 			extractedFiles.push_back(filename);
@@ -743,7 +743,7 @@ bool UnpackController::Cleanup()
 
 #ifndef WIN32
 		// Fixing directory permissions overridden by the unpacker
-		FileSystem::SetDirPermissionsWithUMask(destDir, g_Options->GetUMask());
+		FileSystem::RestoreDirPermissions(destDir);
 #endif
 
 	}

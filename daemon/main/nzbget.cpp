@@ -272,10 +272,11 @@ void NZBGet::Init()
 	BootConfig();
 
 #ifndef WIN32
-	if (m_options->GetUMask() < 01000)
+	int umask = m_options->GetUMask();
+	if (umask > 0 && umask < 1000)
 	{
 		/* set newly created file permissions */
-		umask(m_options->GetUMask());
+		umask(umask);
 	}
 #endif
 

@@ -959,7 +959,7 @@ void FileSystem::FixExecPermission(const char* filename)
 	}
 }
 
-bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umask) 
+bool FileSystem::RestoreFileOrDirPermissions(const char* filename) 
 {
 	struct stat buffer;
 	int ec = stat(filename, &buffer);
@@ -975,36 +975,27 @@ bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umas
 
 	if (S_ISDIR(buffer.st_mode)) 
 	{
-		return SetDirPermissionsWithUMask(filename, umask);
+		return RestoreDirPermissions(filename);
 	} 
 
-	return SetFilePermissionsWithUMask(filename, umask);
+	return RestoreFilePermissionsk(filename);
 }
 
-bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, int umask)
+bool FileSystem::RestoreFilePermissions(const char* filepath)
 {
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
-	return SetPermissionsWithUMask(filepath, mode, umask);
+	return RestorePermissions(filepath, mode, umask);
 }
 
-bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
+bool FileSystem::RestoreDirPermissions(const char* filename)
 {
 	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
-	return SetPermissionsWithUMask(filename, mode, umask);
+	return RestorePermissions(filename, mode, umask);
 }
 
-bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
+bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
 {
-	if (umask <= 0 || umask >= 1000)
-	{
-
-#ifdef DEBUG
-		debug("umask is equal to  %o. Setting umask from a user system...");
-#endif
-		umask = GetCurrentUMask();
-	}
-
-	mode_t permissions = mode & ~umask;
+	mode_t permissions = mode & ~GetSysUMask();
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
 	{
@@ -1023,11 +1014,11 @@ bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int 
 	return false;
 }
 
-mode_t FileSystem::GetCurrentUMask()
+mode_t FileSystem::GetSysUMask()
 {
-	mode_t currUMask = umask(0);
-	umask(currUMask); // Restore the original umask value
-	return currUMask;
+	mode_t sysUmask = umask(0);
+	umask(sysUmask); // Restore the original umask value
+	return sysUmask;
 }
 #endif
 
