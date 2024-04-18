@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ namespace Extension
 		bool feed = false;
 	};
 
-	class Script
+	class Script final
 	{
 	public:
 		Script() = default;
@@ -54,7 +54,9 @@ namespace Extension
 		void SetAuthor(std::string author);
 		const char* GetAuthor() const;
 		void SetVersion(std::string version);
+		void SetNzbgetMinVersion(std::string version);
 		const char* GetVersion() const;
+		const char* GetNzbgetMinVersion() const;
 		void SetLicense(std::string license);
 		const char* GetLicense() const;
 		void SetHomepage(std::string homepage);
@@ -91,6 +93,7 @@ namespace Extension
 		std::string m_rootDir;
 		std::string m_author;
 		std::string m_version;
+		std::string m_nzbgetMinVersion;
 		std::string m_homepage;
 		std::string m_license;
 		std::string m_name;
