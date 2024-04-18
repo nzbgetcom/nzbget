@@ -41,6 +41,7 @@ and the `executable` file, like `main.py`.
   "kind": "POST-PROCESSING",
   "displayName": "My EMail Extension",
   "version": "2.0.0",
+  "nzbgetMinVersion": "23",
   "author": "John Doe",
   "license": "GNU",
   "about": "Sends E-Mail notification.",
@@ -149,6 +150,10 @@ The name that will be displayed in the web interface.
 ### `"version"`
 
 Extension version.
+
+### `"nzbgetMinVersion" (optional)`
+
+NZBGet minimum required version.
 
 ### `"author"`
 

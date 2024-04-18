@@ -155,7 +155,7 @@ var DownloadsEditDialog = (new function($)
 		table += '<tr><td>' +
 			(group.ServerStats.length > 0 ? '<a href="#" id="DownloadsEdit_ServStats" data-tab="DownloadsEdit_ServStatsTab" title="Per-server statistics">' : '') +
 			'Articles (total/completion)' +
-			(group.ServerStats.length > 0 ? ' <i class="icon-forward" style="opacity:0.6;"></i></a>' : '') +
+			(group.ServerStats.length > 0 ? ' <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 			'</td><td class="text-right">' + group.TotalArticles + ' / ' + completion + '</td></tr>';
 		$('#DownloadsEdit_Statistics').html(table);
 
@@ -1403,7 +1403,7 @@ var DownloadsMergeDialog = (new function($)
 			if (nzbIdList.indexOf(group.NZBID) > -1)
 			{
 				mergeEditIDList.push(group.NZBID);
-				var html = '<table><tr><td width="18px" valign="top"><i class="icon-file" style="vertical-align:top;margin-top:2px;"></i></td><td>' +
+				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;">draft</i></td><td>' +
 					Util.formatNZBName(group.NZBName) + '</td></tr></table>';
 				$('#DownloadsMerge_Files').append(html);
 			}
@@ -1640,13 +1640,13 @@ var HistoryEditDialog = (new function($)
 
 			var table = '';
 			table += '<tr><td><a href="#" id="HistoryEdit_TimeStats" data-tab="HistoryEdit_TimeStatsTab" title="Size and time statistics">Total '+
-				'<i class="icon-forward" style="opacity:0.6;"></i></a>' +
+				'<i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' +
 				'</td><td class="text-center">' + size + '</td></tr>';
 			table += '<tr><td>Files (total/remaining)</td><td class="text-center">' + hist.FileCount + ' / ' + hist.RemainingFileCount + '</td></tr>';
 			table += '<tr><td>' +
 				(hist.ServerStats.length > 0 ? '<a href="#" id="HistoryEdit_ServStats" data-tab="HistoryEdit_ServStatsTab" title="Per-server statistics">' : '') +
 				'Articles (total/completion)' +
-				(hist.ServerStats.length > 0 ? ' <i class="icon-forward" style="opacity:0.6;"></i></a>' : '') +
+				(hist.ServerStats.length > 0 ? '  <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 				'</td><td class="text-center">' + hist.TotalArticles + ' / ' + completion + '</td></tr>';
 			$('#HistoryEdit_Statistics').html(table);
 
