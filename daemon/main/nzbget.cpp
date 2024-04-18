@@ -281,7 +281,7 @@ void NZBGet::Init()
 	}
 	else
 	{
-		FileSystem::uMask = umask(022);
+		FileSystem::uMask = umask(0);
 		umask(FileSystem::uMask);
 	}
 
