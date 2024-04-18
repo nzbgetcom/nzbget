@@ -948,6 +948,9 @@ bool FileSystem::FlushDirBuffers(const char* filename, CString& errmsg)
 }
 
 #ifndef WIN32
+
+mode_t FileSystem::uMask;
+
 void FileSystem::FixExecPermission(const char* filename)
 {
 	struct stat buffer;
@@ -959,7 +962,7 @@ void FileSystem::FixExecPermission(const char* filename)
 	}
 }
 
-bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umask) 
+bool FileSystem::RestoreFileOrDirPermissions(const char* filename) 
 {
 	struct stat buffer;
 	int ec = stat(filename, &buffer);
@@ -975,27 +978,27 @@ bool FileSystem::SetFileOrDirPermissionsWithUMask(const char* filename, int umas
 
 	if (S_ISDIR(buffer.st_mode)) 
 	{
-		return SetDirPermissionsWithUMask(filename, umask);
+		return RestoreDirPermissions(filename);
 	} 
 
-	return SetFilePermissionsWithUMask(filename, umask);
+	return RestoreFilePermissions(filename);
 }
 
-bool FileSystem::SetFilePermissionsWithUMask(const char* filepath, int umask)
+bool FileSystem::RestoreFilePermissions(const char* filepath)
 {
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH; // 0666
-	return SetPermissionsWithUMask(filepath, mode, umask);
+	return RestorePermissions(filepath, mode);
 }
 
-bool FileSystem::SetDirPermissionsWithUMask(const char* filename, int umask)
+bool FileSystem::RestoreDirPermissions(const char* filename)
 {
 	mode_t mode = S_IRWXU | S_IRWXG | S_IRWXO; // 0777
-	return SetPermissionsWithUMask(filename, mode, umask);
+	return RestorePermissions(filename, mode);
 }
 
-bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int umask) 
+bool FileSystem::RestorePermissions(const char* filename, mode_t mode) 
 {
-	mode_t permissions = mode & ~umask;
+	mode_t permissions = mode & ~FileSystem::uMask;
 	int ec = chmod(filename, permissions);
 	if (ec == 0)
 	{
@@ -1013,6 +1016,7 @@ bool FileSystem::SetPermissionsWithUMask(const char* filename, mode_t mode, int 
 
 	return false;
 }
+
 #endif
 
 #ifdef WIN32
