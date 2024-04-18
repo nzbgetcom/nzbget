@@ -23,12 +23,8 @@ locations (in this order):
 On POSIX systems:
 ```
 <EXE-DIR>/nzbget.conf
-~/.nzbget
+~/.config/nzbget.conf
 /etc/nzbget.conf
-/usr/etc/nzbget.conf
-/usr/local/etc/nzbget.conf
-/opt/etc/nzbget.conf
-~/usr/etc/nzbget.conf
 ```
 
 On Windows:

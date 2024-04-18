@@ -182,12 +182,9 @@ const int BoolCount = 12;
 #ifndef WIN32
 const char* PossibleConfigLocations[] =
 	{
-		"~/.nzbget",
+		"~/.nzbget", // backwards compatibility
+		"~/.config/nzbget.conf",
 		"/etc/nzbget.conf",
-		"/usr/etc/nzbget.conf",
-		"/usr/local/etc/nzbget.conf",
-		"/opt/etc/nzbget.conf",
-		"~/usr/etc/nzbget.conf",
 		nullptr
 	};
 #endif
