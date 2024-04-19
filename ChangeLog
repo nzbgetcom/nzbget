@@ -1,3 +1,63 @@
+nzbget-24.0
+  - Features:
+    - Dark theme and new icons 
+    [#214](https://github.com/nzbgetcom/nzbget/commit/16ecaa5c3eb2efc43e965b796a4c75cdf1d959da);
+    - Added macOS x64 build support (macOS Mojave 10.14+) 
+    [#194](https://github.com/nzbgetcom/nzbget/commit/90a89f8fb3b81432e192203e8a66419cfd3cd723);
+    - DEB/RPM packages support 
+    [#230](https://github.com/nzbgetcom/nzbget/commit/1de712a428c031513431d0d75db7ca5ac51d3caa);
+      * [Instructions](https://nzbgetcom.github.io/).
+    - NewsServer Add UI - Default encryption and ports 
+    [#225](https://github.com/nzbgetcom/nzbget/commit/cd1cab44b6052c3b02f14689fbafb65505f67a4e):
+      * moved "Server.Encryption" between Server.Host and "Server.Port";
+      * made "Server.Encryption" to "ON" by default;
+      * made port depend on "Server.Encryption" value unless user has put something up:
+        - 563/443 for secure;
+        - 119/80 for unsecure.
+    - Improved error messages and help text in Extension Manager 
+    [#166](https://github.com/nzbgetcom/nzbget/commit/d11ed84912fc486e6f717e56ccd973526920c0db):
+      * added "7-Zip" exit codes decoder according to 7-Zip 
+      [doc](https://documentation.help/7-Zip/exit_codes.htm);
+      * added a warning that "SevenZipCmd" may not be valid, in case of extension installation problems.
+    - Fixed stable/test release notifications 
+    [#181](https://github.com/nzbgetcom/nzbget/commit/1c03b719f88ece7d67ad348f3aca0d3800ab4d54):
+      * added automatic checking for new testing releases;
+      * fixed notifications about the new stable/testing release;
+      * fixed "Uncaught ReferenceError: installedRev" error.
+
+    - Fixed and update links in webui 
+    [#177](https://github.com/nzbgetcom/nzbget/commit/0cc6023bfdf7a1d22311dea7d81b8a6ea7a7d880):
+      * fixed license links;
+      * fixed links from nzbget.conf.
+
+  - For developers:
+    - Moved to CMake. Autotools and MSBuild are deprecated now and may be removed in future versions.
+    [#182](https://github.com/nzbgetcom/nzbget/commit/56e4225fc73a6d1c7cdc6f647a4cac297e28e9f3):
+      * switched to CMake from autotools and MSBuild, which will simplify cross-platform development;
+      * fixed installing/uninstalling on FreeBSD and macOS via autotools/CMake;
+      * added automatic installation of Boost.Json;
+      * added support for static code analyzer Clang-Tidy.
+    - Revised and updated documentation 
+    [#199](https://github.com/nzbgetcom/nzbget/commit/c93b551b1fa0afae458c1e78485c6d3eb6410514):
+      * moved CONTRIBUTING.md to docs/;
+      * split INSTALLATION.md to POSIX.md, WINDOWS.md and HOW_TO_USE.md;
+      * added Extensions docs;
+      * added an instruction on how CPPCheck can be used with CMake.
+    - Docker: support native unrar building
+    [#231](https://github.com/nzbgetcom/nzbget/commit/cc6fb8b21a0332aac81b94e466c909e06743235b).
+
+  - Bug fixies:
+    - Fixed buffer overflow in CString::AppendFmtV 
+    [#208](https://github.com/nzbgetcom/nzbget/commit/c8c59277cfcf085596e124209a3b07e56ada00dc);
+    - Fixed files/dirs permissions overridden by the unpacker
+    [#229](https://github.com/nzbgetcom/nzbget/commit/4c92e423fe54a9194b84a9dcd7942865a7df72ec);
+    - Fixed dynamic addition of extension options 
+    [#209](https://github.com/nzbgetcom/nzbget/commit/d49dc6dc426f71d87626820afd45348643a41458);
+    - Removed changing ownership at the beginning of container start 
+    [#218](https://github.com/nzbgetcom/nzbget/commit/36dad2f793a5503871f39eca3d7dbdfa945824ee);
+    - Docker: fixed fresh install 
+    [#219](https://github.com/nzbgetcom/nzbget/commit/a95269e8e15f42196a1314603fb802f3bedd4fa8);
+
 nzbget-23.0
   - Features:
     - Extension Manager 
@@ -1989,7 +2049,7 @@ nzbget-11.0:
     selected files of source download;
         - new command <Split> in web-interface in edit download dialog
           on page <Files>;
-        - new action <S> in remote command <--edit/-E>;
+        - new action `<S>` in remote command <--edit/-E>;
         - new action <FileSplit> in JSON-/XML-RPC method <editqueue>;
   - added support for manual par-check:
         - if option <ParCheck> is set to <Manual> and a damaged download
@@ -2551,7 +2611,7 @@ nzbget-0.7.0:
     post-processing parameters for nzb-file;
   - redesigned server pool and par-checker to avoid using of semaphores
     (which are very platform specific);
-  - added subcommand <S> to remote commands <--pause/-P> and <--unpause/-U> to
+  - added subcommand `<S>` to remote commands <--pause/-P> and <--unpause/-U> to
     pause/unpause the scanning of incoming nzb-directory;
   - added commands <PauseScan> and <UnpauseScan> for scheduler option 
     <TaskX.Command>;
@@ -2668,7 +2728,7 @@ nzbget-0.6.0:
     the same purpose; updated example configuration file and example
     postprocess-script to indicate new method of passing arguments via
     environment variables;
-  - added subcommands <F>, <G> and <S> to command line switch <-L/--list>,
+  - added subcommands <F>, <G> and `<S>` to command line switch <-L/--list>,
     which prints list of files, groups or only status info respectively;
     extended binary communication protocol to transfer nzb-infos in addition
     to file-infos;
