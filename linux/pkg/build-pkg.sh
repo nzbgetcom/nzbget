@@ -111,7 +111,7 @@ for ARCH in $ARCHS; do
     mkdir -p $CONTENTS/usr/share/doc/nzbget
     mkdir -p $CONTENTS/usr/share/nzbget
     cp $PWD/$ARCH/nzbget $CONTENTS/usr/bin
-    for DOCFILE in ChangeLog COPYING; do
+    for DOCFILE in ChangeLog.md COPYING; do
         cp $PWD/$ARCH/$DOCFILE $SHAREDOC
     done
     mv $PWD/$ARCH/scripts $SHARE

@@ -332,7 +332,7 @@ linux_FILES = \
 
 doc_FILES = \
 	INSTALLATION.md \
-	ChangeLog \
+	ChangeLog.md \
 	COPYING
 
 par2doc_FILES = \

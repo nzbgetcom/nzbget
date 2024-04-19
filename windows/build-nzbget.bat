@@ -193,7 +193,7 @@ copy windows\install-update.bat ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy windows\README-WINDOWS.txt ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
-copy ChangeLog ..\distrib\NZBGet
+copy ChangeLog.md ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
 copy INSTALLATION.md ..\distrib\NZBGet
 if errorlevel 1 goto BUILD_FAILED
