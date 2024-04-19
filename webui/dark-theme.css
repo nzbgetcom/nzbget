@@ -1,0 +1,639 @@
+/*!
+ * This file is part of nzbget. See <https://nzbget.com>.
+ *
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
+html {
+	scrollbar-color: #333 #626262;
+}
+
+body {
+	background-color: #333;
+	color: #f5f5f5;
+}
+
+.btn-default {
+	color: #f5f5f5;
+	background-color: #414141;
+	background-image: -ms-linear-gradient(top, #555555, #222222);
+	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#555555), to(#222222));
+	background-image: -webkit-linear-gradient(top, #555555, #222222);
+	background-image: -o-linear-gradient(top, #555555, #222222);
+	background-image: -moz-linear-gradient(top, #555555, #222222);
+	background-image: linear-gradient(top, #555555, #222222);
+	background-repeat: repeat-x;
+	border-color: #222222 #222222 #000000;
+}
+
+.btn-active {
+	color: #333;
+	background-color: #bbb;
+	background-image: -ms-linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: -webkit-gradient(linear, 0 0, 0 100%, from(#ffffff), to(#e6e6e6));
+	background-image: -webkit-linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: -o-linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: linear-gradient(top, #ffffff, #e6e6e6);
+	background-image: -moz-linear-gradient(top, #ffffff, #e6e6e6);
+	background-repeat: repeat-x;
+	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+	border-bottom-color: #b3b3b3;
+	-webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+	-moz-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+	box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-active .caret {
+	border-top: 4px solid #333;
+	opacity: unset;
+}
+
+textarea,
+.btn-default:hover:not(.btn-active) {
+	color: inherit;
+	background-color: #212529;
+	background-origin: border-box;
+}
+
+.back {
+	color: inherit;
+}
+
+.pagination a:hover {
+	background-color: #212529;
+}
+
+.modal .input-xlarge {
+	background-color: #212529;
+}
+
+.btn-primary {
+	background-color: #0074CC;
+}
+
+.btn-primary:hover {
+	background-color: #0055CC;
+}
+
+.btn-danger {
+	background-color: #da4f49;
+}
+
+.btn-danger:hover {
+	background-color: #bd362f;
+}
+
+.btn-info {
+	background-color: #5bc0de;
+}
+
+.btn-info:hover {
+	background-color: #2f96b4;
+}
+
+#InfoBlock div:hover,
+.close,
+label,
+.control-label,
+.dropdown-menu li a,
+#AddDialog_URLProp,
+.help-block,
+.table a:hover,
+#StatDialog_Back,
+.table a {
+	color: inherit;
+}
+
+.close:hover,
+a:hover {
+	color: #fff;
+}
+
+.table td:hover {
+	background-color: #212529;
+}
+
+.table tbody tr:hover td, .table-hover tbody tr:hover th {
+	background-color: #333;
+}
+
+.table th, .table td {
+	border: 0.5px solid #626262;
+}
+
+.table-striped tbody tr:nth-child(odd) td, .table-striped tbody tr:nth-child(odd) th {
+	background-color: #212529;
+}
+
+.progress-block {
+	color: #212529;
+}
+
+.caret,
+.dropup .caret {
+	border-top: 4px solid #f5f5f5;
+}
+
+.input-prepend .add-on, .input-append .add-on,
+.add-on {
+	background-color: #626262;
+	color: inherit;
+	text-shadow: none;
+	border: 1px solid #626262;
+}
+
+input {
+	background-color: #212529;
+	color: inherit;
+	border: 1px solid #626262;
+}
+
+table.table-cancheck tr.checked div.img-check {
+    background-position: -467px -19px;
+}
+
+table.table-cancheck tr.checkremove div.img-check {
+	background-position: -466px -114px;
+}
+
+.modal,
+.modal-body,
+.modal-footer {
+	background-color: #212529;
+	color: inherit;
+}
+
+.modal-header {
+	border-bottom: 1px solid #626262;
+}
+
+.modal-footer {
+	border-top: 1px solid #626262;
+}
+
+.nav > li > a:hover {
+	background-color: #005580;
+}
+
+.nav-list .divider {
+	background-color: #626262;
+	border: 1px solid #626262;
+}
+
+.btn-group.open .btn.dropdown-toggle:not(.btn-active),
+.config-header .btn,
+.dropdown-menu,
+select {
+	color: inherit;
+	background-color: #212529;
+}
+
+.navbar-fixed-top .navbar-inner {
+	padding: 0;
+	min-height: 0;
+	-webkit-box-shadow: none;
+	-moz-box-shadow: none;
+	box-shadow: none;
+	color: #bbb;
+}
+
+#PlayCaret {
+	margin-top: 3px;
+	margin-left: 9px;
+	opacity: 0.75;
+	filter: alpha(opacity=75);
+}
+
+.dropup .caret, .navbar-fixed-bottom .dropdown .caret {
+	border-top: none;
+	border-bottom: 4px solid #f5f5f5;
+}
+
+.navbar .nav .active > a,
+.navbar .nav .active > a:hover {
+	outline: 0;
+	color: #000;
+	text-shadow: none;
+	background: rgb(255,255,255); /* Old browsers */
+	background: -moz-linear-gradient(top,  rgb(255,255,255) 0%, rgb(238,238,238) 45%, rgb(231,231,231) 55%, rgb(255,255,255) 100%); /* FF3.6+ */
+	background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,rgb(255,255,255)), color-stop(45%,rgb(238,238,238)), color-stop(55%,rgb(231,231,231)), color-stop(100%,rgb(255,255,255))); /* Chrome,Safari4+ */
+	background: -webkit-linear-gradient(top,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* Chrome10+,Safari5.1+ */
+	background: -o-linear-gradient(top,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* Opera 11.10+ */
+	background: -ms-linear-gradient(top,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* IE10+ */
+	background: linear-gradient(to bottom,  rgb(255,255,255) 0%,rgb(238,238,238) 45%,rgb(231,231,231) 55%,rgb(255,255,255) 100%); /* W3C */
+	filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#f5f5f5', endColorstr='#f5f5f5',GradientType=0 ); /* IE6-9 */
+}
+
+/* headers in navbar menu */
+.menu-header {
+	display: block;
+	padding: 3px 15px;
+	font-size: 11px;
+	font-weight: bold;
+	line-height: 18px;
+	color: #f5f5f5;
+	text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+	text-transform: uppercase;
+}
+
+.search-caret-button .caret {
+	margin-top: 3px;
+	margin-left: 9px;
+	border-top-color: #f5f5f5;
+	border-bottom-color: #f5f5f5;
+	opacity: 0.75;
+	filter: alpha(opacity=75);
+}
+
+.focused .search-caret-button .caret {
+	margin-left: 5px;
+	border-top-color: #f5f5f5;
+	border-bottom-color: #f5f5f5;
+}
+
+.badge-active {
+	background-color: #3a87ad;
+	color: #fff;
+	text-shadow: none;
+}
+
+.table-bordered {
+	border: 1px solid #626262;
+	border-collapse: collapse;
+}
+
+.table tbody tr:hover  {
+	background-color: #f5f5f5;
+}
+
+hr {
+	border: 1px solid #626262;
+}
+
+table > thead > tr > th.table-selector {
+    text-align: center;
+    background: repeating-linear-gradient(-45deg, #1a1a1a, #333 6px, #666 6px, #666 12px);
+    padding: 2px;
+    font-size: 12px;
+    line-height: 14px;
+}
+
+div.check {
+	width: 12px;
+	height: 12px;
+	border: 1px solid #626262;
+	margin-top: 2px;
+	margin-bottom: 3px;
+	-webkit-border-radius: 2px;
+	-moz-border-radius: 2px;
+	border-radius: 2px;
+}
+div.check:hover {
+	border: 1px solid #0088cc;
+}
+
+tr.checked,
+tr.checked td,
+tr.checked:nth-child(odd) {
+	background-color: #005580;
+}
+
+.table-striped tbody tr.checked:nth-child(odd) td,
+.checked .progress {
+	background-color: #005580;
+}
+
+.table tbody tr.checked:hover,
+.table tbody tr.checked:hover td {
+	background-color: #005580;
+}
+
+.table.check-simple tbody tr.checked:hover,
+.table.check-simple tbody tr.checked:hover td {
+  background-color: #005580;
+}
+
+.checked .progress {
+	background-color: #f5f5f5;
+}
+
+.progress {
+	margin-bottom: 0px;
+	background: #f0f0f0;
+}
+
+/* style for queued downloads, based on ".progress-success.progress-striped .bar" from bootstrap.css */
+.progress-none.progress-striped .bar {
+	background-color: #c0c0c0;
+	background-image: -webkit-gradient(linear, 0 100%, 100% 0, color-stop(0.25, rgba(255, 255, 255, 0.15)), color-stop(0.25, transparent), color-stop(0.5, transparent), color-stop(0.5, rgba(255, 255, 255, 0.15)), color-stop(0.75, rgba(255, 255, 255, 0.15)), color-stop(0.75, transparent), to(transparent));
+	background-image: -webkit-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+	background-image: -moz-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+	background-image: -ms-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+	background-image: -o-linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+	background-image: linear-gradient(-45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent);
+	filter: progid:dximagetransform.microsoft.gradient(startColorstr='#d0d0d0', endColorstr='#c0c0c0', GradientType=0);
+}
+
+td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
+	border-top: 4px solid #f5f5f5;
+	border-right: 4px solid transparent;
+	border-left: 4px solid transparent;
+	content: "";
+	position: absolute;
+	margin-bottom: 8px;
+	margin-left: 2px;
+}
+
+.dropdown-menu li:not(:hover) .empty-item {
+	color: #bbb;
+}
+
+.dropdown-warning {
+	text-align: center;
+	background: repeating-linear-gradient(-45deg, #1a1a1a, #333 6px, #666 6px, #666 12px);
+	padding: 2px;
+	font-size: 12px;
+	line-height: 14px;
+	border-top: solid 1px #626262;
+	border-bottom: solid 1px #626262;
+	margin-bottom: 1px;
+}
+
+td:hover span.none-category {
+	color: #aaa;
+}
+
+.uneditable-mulitline-input {
+	display: inline-block;
+	width: 340px;
+	overflow: hidden;
+	cursor: not-allowed;
+	background-color: #f5f5f5;
+	border-color: #eee;
+	border: 1px solid #626262;
+	padding: 4px;
+	padding-right: 20px;
+	-webkit-border-radius: 3px;
+	   -moz-border-radius: 3px;
+			border-radius: 3px;
+	-webkit-box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.025);
+	   -moz-box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.025);
+			box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.025);
+}
+
+.dragover, .dragover .table-striped tbody tr:nth-child(odd) td, .dragover .table-striped tbody tr:nth-child(odd) th {
+	background-color: #414141;
+}
+
+.alert-inverse {
+	color: #f5f5f5;
+	text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.25);
+	background-color: #414141;
+	border-color: #222222;
+}
+
+.confirm-help-block {
+	color: #f5f5f5;
+	font-size: 13px;
+	line-height: 16px;
+	margin-bottom: 0;
+}
+
+.table .btn-success,
+.table .btn-success:hover {
+	color: #f5f5f5;
+}
+
+#StatDialog_Custom a,
+#StatDialog_Custom a:hover,
+#AddDialog_Files a,
+#AddDialog_Files a:hover {
+	cursor: pointer;
+}
+
+#ConfigNav.nav-list a {
+	color: #f5f5f5;
+	text-decoration: none;
+	padding-top: 5px;
+	padding-bottom: 5px;
+	font-size: 12px;
+}
+
+#ConfigNav.nav-list > .active > a,
+#ConfigNav.nav-list > .active > a:hover {
+	color: #f5f5f5;
+	background-color: #005580;
+}
+
+#ConfigNav {
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius: 3px;
+	border: 1px solid #626262;
+	padding: 8px 15px;
+	background-color: #212529;
+	margin-bottom: 15px;
+}
+
+#ConfigContent .config-header {
+	padding: 7px;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius: 3px;
+	margin-bottom: 20px;
+	padding-right: 0;
+	padding-top: 0;
+	border-bottom: 1px solid #626262;
+}
+
+.config-header .btn {
+	margin-top: 7px;
+	margin-right: 0;
+	background-image: none;
+	border: none;
+  -webkit-box-shadow: none;
+	 -moz-box-shadow: none;
+		  box-shadow: none;
+}
+
+.failure-message,
+span.help-option-title {
+	color: #ffda6a;
+}
+
+.config-settitle {
+	font-size: 14px;
+	font-weight: bold;
+	background-color: #505050;
+	color: #f5f5f5;
+	padding: 7px;
+	-webkit-border-radius: 3px;
+	-moz-border-radius: 3px;
+	border-radius: 3px;
+	margin-bottom: 20px;
+	border-bottom: 1px solid #626262;
+}
+
+.config-multicaption {
+	color: #c0c0c0;
+	font-weight: normal;
+}
+
+#DownloadsEdit_ParamTab div.control-group.wants-divider,
+#HistoryEdit_ParamTab div.control-group.wants-divider,
+#ConfigContent div.control-group,
+#ConfigContent.search div.control-group.multiset {
+	border-bottom: 1px solid #626262;
+	margin-bottom: 15px;
+	padding-bottom: 12px;
+}
+
+.btn-switch input:focus {
+	border-color: rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.1) rgba(0, 0, 0, 0.25);
+	-webkit-box-shadow: none;
+	   -moz-box-shadow: none;
+			box-shadow: none;
+}
+
+.search .option-name:hover {
+	cursor: pointer;
+	text-decoration: underline;
+	color: #005580;
+}
+
+.table .update-release-notes {
+	color: #0074cc;
+	font-size: 11px;
+	height: 10px;
+	outline: none;
+}
+
+#UpdateDialog_Hint p {
+	color: #555;
+	margin-bottom: 3px;
+}
+
+.log-dialog .modal-body pre {
+	min-height: 270px;
+	background-color: #222222;
+	border: 1px solid #626262;
+	color: #cccccc;
+	padding: 3px 6px;
+	margin-bottom: 0px;
+	position: absolute;
+	top: 15px;
+	bottom: 15px;
+	left: 15px;
+	right: 15px;
+	overflow-y: auto;
+	-webkit-border-radius: 3px;
+	 -moz-border-radius: 3px;
+		  border-radius: 3px;
+}
+
+#FeedFilterDialog_FilterBlock {
+	position: absolute;
+	left: 15px;
+	width: 300px;
+	bottom: 0;
+	height: auto;
+	padding-top: 0;
+	margin-bottom: 12px;
+	padding: 0;
+	font-size: 12px;
+	line-height: 18px;
+	border: 1px solid #626262;;
+	-webkit-border-radius: 4px;
+	 -moz-border-radius: 4px;
+		  border-radius: 4px;
+}
+
+#FeedFilterDialog_FilterHeader {
+	font-size: 13px;
+	font-weight: bold;
+	margin-top: 5px;
+	padding-left: 6px;
+	height: 23px;
+	border-bottom: 1px solid #626262;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+#FeedFilterDialog_FilterLines {
+	position: absolute;
+	left: 0;
+	top: 29px;
+	bottom: 0px;
+	width: 32px;
+	height: auto;
+	overflow: hidden;
+	border-right: 1px solid #626262;
+}
+
+#FeedFilterDialog_FilterNumbers .lineno {
+	color: #3A87AD;
+	padding-right: 5px;
+	padding-top: 0;
+	text-align: right;
+	font-weight: bold;
+	white-space: nowrap;
+}
+
+#FeedFilterDialog_FilterClient {
+	position: absolute;
+	left: 33px;
+	right: 0px;
+	top: 29px;
+	bottom: 0px;
+	width: auto;
+	padding-left: 3px;
+	height: auto;
+}
+
+#TableDragBox {
+	position: absolute;
+	left: 100px;
+	top: 100px;
+	text-align: center;
+	border: 1px solid #626262;
+	background-color: #f8f8f8;
+	display: none;
+	cursor: grabbing;
+	cursor: -webkit-grabbing;
+	z-index: 5000;
+}
+
+#TableDragBox .badge {
+	position: absolute;
+	left: 0px;
+	top: -12px;
+	text-align: center;
+	padding: 1px 6px;
+	color: #f5f5f5;
+	background-color: #D70015;
+}
+
+tr.drag-source > td {
+	background-color: #f5f5f5 !important;
+	color: #f5f5f5 !important;
+	visibility: visible;
+}
+
+.table-striped tbody tr.drag-finish td,
+.table-striped tbody tr.drag-finish .progress,
+.table-striped tbody tr.drag-finish td a {
+	background-color: #E6FAE4 !important;
+}
