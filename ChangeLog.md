@@ -9,16 +9,16 @@ nzbget-24.0
       * [Instructions](https://nzbgetcom.github.io/).
     - NewsServer Add UI - Default encryption and ports 
     [#225](https://github.com/nzbgetcom/nzbget/commit/cd1cab44b6052c3b02f14689fbafb65505f67a4e):
-      * moved "Server.Encryption" between Server.Host and "Server.Port";
-      * made "Server.Encryption" to "ON" by default;
-      * made port depend on "Server.Encryption" value unless user has put something up:
+      * moved Server.Encryption between Server.Host and Server.Port;
+      * made Server.Encryption to ON by default;
+      * made port depend on Server.Encryption value unless user has put something up:
         - 563/443 for secure;
         - 119/80 for unsecure.
     - Improved error messages and help text in Extension Manager 
     [#166](https://github.com/nzbgetcom/nzbget/commit/d11ed84912fc486e6f717e56ccd973526920c0db):
-      * added "7-Zip" exit codes decoder according to 7-Zip 
+      * added 7-Zip exit codes decoder according to 7-Zip 
       [doc](https://documentation.help/7-Zip/exit_codes.htm);
-      * added a warning that "SevenZipCmd" may not be valid, in case of extension installation problems.
+      * added a warning that SevenZipCmd may not be valid, in case of extension installation problems.
     - Fixed stable/test release notifications 
     [#181](https://github.com/nzbgetcom/nzbget/commit/1c03b719f88ece7d67ad348f3aca0d3800ab4d54):
       * added automatic checking for new testing releases;
@@ -31,7 +31,7 @@ nzbget-24.0
       * fixed links from nzbget.conf.
 
   - For developers:
-    - Moved to CMake. Autotools and MSBuild are deprecated now and may be removed in future versions.
+    - Moved to CMake. Autotools and MSBuild are deprecated now and may be removed in future versions
     [#182](https://github.com/nzbgetcom/nzbget/commit/56e4225fc73a6d1c7cdc6f647a4cac297e28e9f3):
       * switched to CMake from autotools and MSBuild, which will simplify cross-platform development;
       * fixed installing/uninstalling on FreeBSD and macOS via autotools/CMake;
@@ -56,7 +56,7 @@ nzbget-24.0
     - Removed changing ownership at the beginning of container start 
     [#218](https://github.com/nzbgetcom/nzbget/commit/36dad2f793a5503871f39eca3d7dbdfa945824ee);
     - Docker: fixed fresh install 
-    [#219](https://github.com/nzbgetcom/nzbget/commit/a95269e8e15f42196a1314603fb802f3bedd4fa8);
+    [#219](https://github.com/nzbgetcom/nzbget/commit/a95269e8e15f42196a1314603fb802f3bedd4fa8).
 
 nzbget-23.0
   - Features:
