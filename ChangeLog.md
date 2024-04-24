@@ -46,7 +46,7 @@ nzbget-24.0
     - Docker: support native unrar building
     [#231](https://github.com/nzbgetcom/nzbget/commit/cc6fb8b21a0332aac81b94e466c909e06743235b).
 
-  - Bug fixies:
+  - Bug fixes:
     - Fixed buffer overflow in CString::AppendFmtV 
     [#208](https://github.com/nzbgetcom/nzbget/commit/c8c59277cfcf085596e124209a3b07e56ada00dc);
     - Fixed files/dirs permissions overridden by the unpacker
