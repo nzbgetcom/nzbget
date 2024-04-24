@@ -103,7 +103,7 @@ Function PrepareFiles {
     Copy-Item windows\nzbget-command-shell.bat $PackageDir
     Copy-Item windows\install-update.bat $PackageDir
     Copy-Item windows\README-WINDOWS.txt $PackageDir
-    Copy-Item ChangeLog $PackageDir
+    Copy-Item ChangeLog.md $PackageDir
     # not needeed anymore
     # Copy-Item INSTALLATION.md $PackageDir
     Copy-Item COPYING $PackageDir
