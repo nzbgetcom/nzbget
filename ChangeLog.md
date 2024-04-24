@@ -116,7 +116,7 @@ nzbget-23.0
           - "Strict" -> test failed;
           - "Minimal" -> test failed;
           - "None" -> test passed";
-  - Bug fixies:
+  - Bug fixes:
     - possible memory corruption 
     [#148](https://github.com/nzbgetcom/nzbget/commit/16ab25d5780c8100309c44eb60d505afe5c528db);
   - For developers:
