@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 namespace ManifestFile
 {
 	const char* MANIFEST_FILE = "manifest.json";
+	const char* DEFAULT_SECTION_NAME = "options";
 
 	bool Load(Manifest& manifest, const char* directory)
 	{
@@ -45,188 +46,263 @@ namespace ManifestFile
 		if (!ValidateAndSet(json, manifest))
 			return false;
 
+		CheckKeyAndSet(json, "nzbgetMinVersion", manifest.nzbgetMinVersion);
+
 		return true;
 	}
 
-	namespace
+	bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
 	{
-		bool ValidateAndSet(const Json::JsonObject& json, Manifest& manifest)
+		if (!CheckKeyAndSet(json, "author", manifest.author))
+			return false;
+
+		if (!CheckKeyAndSet(json, "main", manifest.main))
+			return false;
+
+		if (!CheckKeyAndSet(json, "homepage", manifest.homepage))
+			return false;
+
+		if (!CheckKeyAndSet(json, "about", manifest.about))
+			return false;
+
+		if (!CheckKeyAndSet(json, "version", manifest.version))
+			return false;
+
+		if (!CheckKeyAndSet(json, "name", manifest.name))
+			return false;
+
+		if (!CheckKeyAndSet(json, "displayName", manifest.displayName))
+			return false;
+
+		if (!CheckKeyAndSet(json, "kind", manifest.kind))
+			return false;
+
+		if (!CheckKeyAndSet(json, "license", manifest.license))
+			return false;
+
+		if (!CheckKeyAndSet(json, "taskTime", manifest.taskTime))
+			return false;
+
+		if (!CheckKeyAndSet(json, "queueEvents", manifest.queueEvents))
+			return false;
+
+		if (!ValidateOptionsAndSet(json, manifest.options))
+			return false;
+
+		if (!ValidateCommandsAndSet(json, manifest.commands))
+			return false;
+
+		ValidateSectionsAndSet(json, manifest.options, manifest.commands);
+
+		if (!ValidateTxtAndSet(json, manifest.description, "description"))
+			return false;
+
+		if (!ValidateTxtAndSet(json, manifest.requirements, "requirements"))
+			return false;
+
+		return true;
+	}
+
+	bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
+	{
+		auto rawCommands = json.if_contains("commands");
+		if (!rawCommands || !rawCommands->is_array())
+			return false;
+
+		for (auto& value : rawCommands->as_array())
 		{
-			if (!CheckKeyAndSet(json, "author", manifest.author))
-				return false;
+			Json::JsonObject cmdJson = value.as_object();
+			Command command{};
 
-			if (!CheckKeyAndSet(json, "main", manifest.main))
-				return false;
+			CheckKeyAndSet(cmdJson, "section", command.section.name, DEFAULT_SECTION_NAME);
 
-			if (!CheckKeyAndSet(json, "homepage", manifest.homepage))
-				return false;
+			if (!CheckKeyAndSet(cmdJson, "name", command.name))
+				continue;
 
-			if (!CheckKeyAndSet(json, "about", manifest.about))
-				return false;
+			if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
+				continue;
 
-			if (!CheckKeyAndSet(json, "version", manifest.version))
-				return false;
+			if (!ValidateTxtAndSet(cmdJson, command.description, "description"))
+				continue;
 
-			if (!CheckKeyAndSet(json, "name", manifest.name))
-				return false;
+			if (!CheckKeyAndSet(cmdJson, "action", command.action))
+				continue;
 
-			if (!CheckKeyAndSet(json, "displayName", manifest.displayName))
-				return false;
-
-			if (!CheckKeyAndSet(json, "kind", manifest.kind))
-				return false;
-
-			if (!CheckKeyAndSet(json, "license", manifest.license))
-				return false;
-
-			if (!CheckKeyAndSet(json, "taskTime", manifest.taskTime))
-				return false;
-
-			if (!CheckKeyAndSet(json, "queueEvents", manifest.queueEvents))
-				return false;
-
-			if (!ValidateOptionsAndSet(json, manifest.options))
-				return false;
-
-			if (!ValidateCommandsAndSet(json, manifest.commands))
-				return false;
-
-			if (!ValidateTxtAndSet(json, manifest.description, "description"))
-				return false;
-
-			if (!ValidateTxtAndSet(json, manifest.requirements, "requirements"))
-				return false;
-
-			return true;
+			commands.emplace_back(std::move(command));
 		}
 
-		bool ValidateCommandsAndSet(const Json::JsonObject& json, std::vector<Command>& commands)
+		commands.shrink_to_fit();
+
+		return true;
+	}
+
+	bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
+	{
+		auto rawOptions = json.if_contains("options");
+		if (!rawOptions || !rawOptions->is_array())
+			return false;
+
+		for (auto& optionVal : rawOptions->as_array())
 		{
-			auto rawCommands = json.if_contains("commands");
-			if (!rawCommands || !rawCommands->is_array())
-				return false;
+			Json::JsonObject optionJson = optionVal.as_object();
+			auto selectJson = optionJson.if_contains("select");
+			if (!selectJson || !selectJson->is_array())
+				continue;
 
-			for (auto& value : rawCommands->as_array())
+			Option option{};
+
+			CheckKeyAndSet(optionJson, "section", option.section.name, DEFAULT_SECTION_NAME);
+
+			if (!CheckKeyAndSet(optionJson, "name", option.name))
+				continue;
+
+			if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
+				continue;
+
+			if (!CheckKeyAndSet(optionJson, "value", option.value))
+				continue;
+
+			if (!ValidateTxtAndSet(optionJson, option.description, "description"))
+				continue;
+
+			for (auto& selectVal : selectJson->as_array())
 			{
-				Json::JsonObject cmdJson = value.as_object();
-				Command command;
-
-				if (!CheckKeyAndSet(cmdJson, "name", command.name))
-					continue;
-
-				if (!CheckKeyAndSet(cmdJson, "displayName", command.displayName))
-					continue;
-
-				if (!ValidateTxtAndSet(cmdJson, command.description, "description"))
-					continue;
-
-				if (!CheckKeyAndSet(cmdJson, "action", command.action))
-					continue;
-
-				commands.emplace_back(std::move(command));
-			}
-
-			commands.shrink_to_fit();
-
-			return true;
-		}
-
-		bool ValidateOptionsAndSet(const Json::JsonObject& json, std::vector<Option>& options)
-		{
-			auto rawOptions = json.if_contains("options");
-			if (!rawOptions || !rawOptions->is_array())
-				return false;
-
-			for (auto& optionVal : rawOptions->as_array())
-			{
-				Json::JsonObject optionJson = optionVal.as_object();
-				auto selectJson = optionJson.if_contains("select");
-				if (!selectJson || !selectJson->is_array())
-					continue;
-
-				Option option;
-				if (!CheckKeyAndSet(optionJson, "name", option.name))
-					continue;
-
-				if (!CheckKeyAndSet(optionJson, "displayName", option.displayName))
-					continue;
-
-				if (!CheckKeyAndSet(optionJson, "value", option.value))
-					continue;
-
-				if (!ValidateTxtAndSet(optionJson, option.description, "description"))
-					continue;
-
-				for (auto& selectVal : selectJson->as_array())
+				if (selectVal.is_string())
 				{
-					if (selectVal.is_string())
-					{
-						option.select.emplace_back(selectVal.get_string().c_str());
-						continue;
-					}
-					if (selectVal.is_number())
-					{
-						option.select.emplace_back(selectVal.to_number<double>());
-						continue;
-					}
+					option.select.emplace_back(selectVal.get_string().c_str());
+					continue;
 				}
-
-				options.emplace_back(std::move(option));
-			}
-
-			options.shrink_to_fit();
-
-			return true;
-		}
-
-		bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName)
-		{
-			auto rawProp = json.if_contains(propName);
-			if (!rawProp || !rawProp->is_array())
-				return false;
-
-			for (auto& value : rawProp->as_array())
-			{
-				if (value.is_string())
+				if (selectVal.is_number())
 				{
-					property.emplace_back(value.get_string().c_str());
+					option.select.emplace_back(selectVal.to_number<double>());
+					continue;
 				}
 			}
 
-			property.shrink_to_fit();
-
-			return true;
+			options.emplace_back(std::move(option));
 		}
 
-		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
-		{
-			const auto& rawProperty = json.if_contains(key);
-			if (!rawProperty || !rawProperty->is_string())
-				return false;
+		options.shrink_to_fit();
 
+		return true;
+	}
+
+	bool ValidateTxtAndSet(const Json::JsonObject& json, std::vector<std::string>& property, const char* propName)
+	{
+		auto rawProp = json.if_contains(propName);
+		if (!rawProp || !rawProp->is_array())
+			return false;
+
+		for (auto& value : rawProp->as_array())
+		{
+			if (value.is_string())
+			{
+				property.emplace_back(value.get_string().c_str());
+			}
+		}
+
+		property.shrink_to_fit();
+
+		return true;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (!rawProperty || !rawProperty->is_string())
+			return false;
+
+		property = rawProperty->get_string().c_str();
+		return true;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, std::string& property, std::string defValue)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (!rawProperty || !rawProperty->is_string())
+		{
+			property = std::move(defValue);
+			return false;
+		}
+
+		property = rawProperty->get_string().c_str();
+		return true;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (!rawProperty)
+			return false;
+
+		if (rawProperty->is_string())
+		{
 			property = rawProperty->get_string().c_str();
 			return true;
 		}
 
-		bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, SelectOption& property)
+		if (rawProperty->is_number())
 		{
-			const auto& rawProperty = json.if_contains(key);
-			if (!rawProperty)
-				return false;
-
-			if (rawProperty->is_string())
-			{
-				property = rawProperty->get_string().c_str();
-				return true;
-			}
-
-			if (rawProperty->is_number())
-			{
-				property = rawProperty->to_number<double>();
-				return true;
-			}
-
-			return false;
+			property = rawProperty->to_number<double>();
+			return true;
 		}
+
+		return false;
+	}
+
+	bool CheckKeyAndSet(const Json::JsonObject& json, const char* key, bool& property)
+	{
+		const auto& rawProperty = json.if_contains(key);
+		if (rawProperty && rawProperty->is_bool())
+		{
+			property = rawProperty->as_bool();
+			return true;
+		}
+
+		return false;
+	}
+
+	bool ValidateSectionsAndSet(const Json::JsonObject& json, std::vector<Option>& options, std::vector<Command>& commands)
+	{
+		auto rawSections = json.if_contains("sections");
+		if (!rawSections || !rawSections->is_array())
+			return false;
+
+		for (auto& sectionVal : rawSections->as_array())
+		{
+			Json::JsonObject sectionJson = sectionVal.as_object();
+
+			Section section;
+
+			if (!CheckKeyAndSet(sectionJson, "name", section.name))
+				continue;
+
+			if (Util::StrCaseCmp(section.name, DEFAULT_SECTION_NAME))
+				continue;
+
+			if (!CheckKeyAndSet(sectionJson, "prefix", section.prefix))
+				continue;
+
+			if (!CheckKeyAndSet(sectionJson, "multi", section.multi))
+				continue;
+
+			for (auto& option : options)
+			{
+				if (option.section.name == section.name)
+				{
+					option.section = section;
+				}
+			}
+
+			for (auto& command : commands)
+			{
+				if (command.section.name == section.name)
+				{
+					command.section = section;
+				}
+			}
+		}
+
+		return true;
 	}
 }

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -79,9 +79,19 @@ namespace Extension
 		m_version = std::move(version);
 	}
 
+	void Script::SetNzbgetMinVersion(std::string version)
+	{
+		m_nzbgetMinVersion = std::move(version);
+	}
+
 	const char* Script::GetVersion() const
 	{
 		return m_version.c_str();
+	}
+
+	const char* Script::GetNzbgetMinVersion() const
+	{
+		return m_nzbgetMinVersion.c_str();
 	}
 
 	void Script::SetLicense(std::string license)
@@ -230,6 +240,7 @@ namespace Extension
 		json["Homepage"] = script.GetHomepage();
 		json["License"] = script.GetLicense();
 		json["Version"] = script.GetVersion();
+		json["NZBGetMinVersion"] = script.GetNzbgetMinVersion();
 		json["PostScript"] = script.GetPostScript();
 		json["ScanScript"] = script.GetScanScript();
 		json["QueueScript"] = script.GetQueueScript();
@@ -256,6 +267,9 @@ namespace Extension
 
 			optionJson["Name"] = option.name;
 			optionJson["DisplayName"] = option.displayName;
+			optionJson["Section"] = option.section.name;
+			optionJson["Multi"] = option.section.multi;
+			optionJson["Prefix"] = option.section.prefix;
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{
@@ -296,7 +310,9 @@ namespace Extension
 			commandJson["Name"] = command.name;
 			commandJson["DisplayName"] = command.displayName;
 			commandJson["Action"] = command.action;
-
+			commandJson["Section"] = command.section.name;
+			commandJson["Multi"] = command.section.multi;
+			commandJson["Prefix"] = command.section.prefix;
 
 			for (const auto& line : command.description)
 			{
@@ -330,6 +346,7 @@ namespace Extension
 		AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
 		AddNewNode(structNode, "License", "string", script.GetLicense());
 		AddNewNode(structNode, "Version", "string", script.GetVersion());
+		AddNewNode(structNode, "NZBGetMinVersion", "string", script.GetNzbgetMinVersion());
 
 		AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
 		AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));
@@ -358,6 +375,9 @@ namespace Extension
 			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
 			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
 			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
+			AddNewNode(commandsNode, "Multi", "boolean", BoolToStr(command.section.multi));
+			AddNewNode(commandsNode, "Section", "string", command.section.name.c_str());
+			AddNewNode(commandsNode, "Prefix", "string", command.section.prefix.c_str());
 
 			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
 			for (const std::string& line : command.description)
@@ -372,6 +392,9 @@ namespace Extension
 		{
 			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
 			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
+			AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.section.multi));
+			AddNewNode(optionsNode, "Section", "string", option.section.name.c_str());
+			AddNewNode(optionsNode, "Prefix", "string", option.section.prefix.c_str());
 
 			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
 			{
@@ -416,21 +439,18 @@ namespace Extension
 		return result;
 	}
 
-	namespace
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
 	{
-		void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
-		{
-			xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
-			xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
-			xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
-			xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
-			xmlAddChild(memberNode, valueNode);
-			xmlAddChild(rootNode, memberNode);
-		}
+		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
+		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
+		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
+		xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
+		xmlAddChild(memberNode, valueNode);
+		xmlAddChild(rootNode, memberNode);
+	}
 
-		const char* BoolToStr(bool value)
-		{
-			return value ? "true" : "false";
-		}
+	const char* BoolToStr(bool value)
+	{
+		return value ? "true" : "false";
 	}
 }

@@ -11,9 +11,22 @@ if [ -f /downloads/nzbget.lock ]; then
     rm /downloads/nzbget.lock
 fi
 
+# change userid and groupid
+PUID=${PUID:-1000}
+PGID=${PGID:-1000}
+groupmod -o -g "$PGID" users >/dev/null
+usermod -o -u "$PUID" user >/dev/null
+
 # create default config if not exist
 if [ ! -f /config/nzbget.conf ]; then
     cp /app/nzbget/share/nzbget/nzbget.conf /config/nzbget.conf
+    chown user:users /config/nzbget.conf
+fi
+
+# create scripts dir
+if [ ! -d /downloads/scripts ]; then
+    mkdir -p /downloads/scripts
+    chown user:users /downloads/scripts
 fi
 
 # parse env vars to options
@@ -25,20 +38,14 @@ if [ ! -z "${NZBGET_PASS}" ]; then
   OPTIONS="${OPTIONS}-o ControlPassword=${NZBGET_PASS} "
 fi
 
-# copy default scripts if not exists
-mkdir -p /downloads/scripts
-for SCRIPT in EMail.py Logger.py; do
-  if [ ! -f /downloads/scripts/$SCRIPT ]; then
-    cp /app/nzbget/share/nzbget/scripts/$SCRIPT /downloads/scripts/
-  fi
-done
+chown user:users /config || CONFIG_CHOWN_STATUS=$?
+if [ ! -z $CONFIG_CHOWN_STATUS ]; then
+  echo "*** Could not set permissions on /config ; this container may not work as expected ***"
+fi
 
-# change userid and groupid
-PUID=${PUID:-1000}
-PGID=${PGID:-1000}
-groupmod -o -g "$PGID" users
-usermod -o -u "$PUID" user
+chown user:users /downloads || DOWNLOADS_CHOWN_STATUS=$?
+if [ ! -z $DOWNLOADS_CHOWN_STATUS ]; then
+  echo "*** Could not set permissions on /downloads ; this container may not work as expected ***"
+fi
 
-chown -R user:users /config
-chown -R user:users /downloads
 su -p user -c "/app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}"

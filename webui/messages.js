@@ -267,8 +267,8 @@ var Messages = (new function($)
 		$('#Messages_Badge_WARNING,#Messages_Badge_WARNING2').text(countWarning);
 		$('#Messages_Badge_ERROR,#Messages_Badge_ERROR2').text(countError);
 
-		$('#MessagesTab_Toolbar .btn').removeClass('btn-inverse');
-		$('#Messages_Badge_' + curFilter + ',#Messages_Badge_' + curFilter + '2').closest('.btn').addClass('btn-inverse');
+		$('#MessagesTab_Toolbar .btn').removeClass('btn-active');
+		$('#Messages_Badge_' + curFilter + ',#Messages_Badge_' + curFilter + '2').closest('.btn').addClass('btn-active');
 		$('#MessagesTab_Toolbar .badge').removeClass('badge-active');
 		$('#Messages_Badge_' + curFilter + ',#Messages_Badge_' + curFilter + '2').addClass('badge-active');
 	}

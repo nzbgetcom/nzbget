@@ -627,8 +627,8 @@ var Downloads = (new function($)
 		var editIds = buildContextIdList(group);
 		$PriorityMenu.data('nzbids', editIds);
 		DownloadsUI.updateContextWarning($PriorityMenu, editIds);
-		$('i', $PriorityMenu).removeClass('icon-ok').addClass('icon-empty');
-		$('li[data=' + group.MaxPriority + '] i', $PriorityMenu).addClass('icon-ok');
+		$('i', $PriorityMenu).css('visibility','hidden');
+		$('li[data=' + group.MaxPriority + '] i', $PriorityMenu).css('visibility','visible');
 		Frontend.showPopupMenu($PriorityMenu, 'left',
 			{ left: $(this).offset().left - 30, top: $(this).offset().top,
 				width: $(this).width() + 30, height: $(this).outerHeight() - 2});
@@ -671,8 +671,8 @@ var Downloads = (new function($)
 		var editIds = buildContextIdList(group);
 		$CategoryMenu.data('nzbids', editIds);
 		DownloadsUI.updateContextWarning($CategoryMenu, editIds);
-		$('i', $CategoryMenu).removeClass('icon-ok').addClass('icon-empty');
-		$('li[data="' + group.Category + '"] i', $CategoryMenu).addClass('icon-ok');
+		$('i', $CategoryMenu).text('');
+		$('li[data="' + group.Category + '"] i', $CategoryMenu).text('done');
 
 		Frontend.showPopupMenu($CategoryMenu, 'left',
 			{ left: $(this).offset().left - 30, top: $(this).offset().top,

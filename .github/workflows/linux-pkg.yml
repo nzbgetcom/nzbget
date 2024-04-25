@@ -1,0 +1,59 @@
+name: linux packages
+
+on:
+  workflow_call:
+    inputs:
+      external_call:
+        description: 'To distinguish workflow_call from regular push / workflow_dispatch'
+        type: boolean
+        required: false
+        default: false
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    uses: ./.github/workflows/linux.yml
+    if: ${{ inputs.external_call == false }}
+
+  build-pkg:
+    runs-on: [self-hosted, nzbget-linux]
+    needs: [build-linux]
+    if: always()
+    permissions:
+      actions: write
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Build DEB and RPM packages
+      run: |
+        sudo apt-get update && sudo apt-get install rpm -y
+        bash linux/pkg/build-pkg.sh
+
+    - name: Upload DEB build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-deb-packages
+        path: build/deb/*.deb
+        retention-days: 5
+
+    - name: Upload RPM build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-rpm-packages
+        path: build/rpm/*.rpm
+        retention-days: 5
+
+    - name: Delete unneded linux artifacts
+      if: ${{ inputs.external_call == false }}
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
+          nzbget-linux-installers

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ namespace ExtensionManager
 {
 	using Extensions = std::vector<std::shared_ptr<const Extension::Script>>;
 
-	class Manager
+	class Manager final
 	{
 	public:
 		Manager() = default;
@@ -60,7 +60,7 @@ namespace ExtensionManager
 		std::pair<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
 		
-		const Extensions& GetExtensions() const;
+		const Extensions& GetExtensions() const &;
 
 	private:
 		void LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir);

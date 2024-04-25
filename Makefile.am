@@ -332,7 +332,7 @@ linux_FILES = \
 
 doc_FILES = \
 	INSTALLATION.md \
-	ChangeLog \
+	ChangeLog.md \
 	COPYING
 
 par2doc_FILES = \
@@ -352,6 +352,8 @@ webui_FILES = \
 	webui/messages.js \
 	webui/status.js \
 	webui/style.css \
+	webui/light-theme.css \
+	webui/dark-theme.css \
 	webui/upload.js \
 	webui/util.js \
 	webui/config.js \
@@ -365,8 +367,7 @@ webui_FILES = \
 	webui/lib/raphael.min.js \
 	webui/lib/elycharts.js \
 	webui/lib/elycharts.min.js \
-	webui/img/house-16.ico \
-	webui/img/download-16.ico \
+	webui/lib/material-icons.woff2 \
 	webui/img/icons.png \
 	webui/img/icons-2x.png \
 	webui/img/transmit.gif \

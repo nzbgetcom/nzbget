@@ -3,6 +3,7 @@
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](http://www.gnu.org/licenses/)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v22.0/total?label=v22.0)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v23.0/total?label=v23.0)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.0/total?label=v24.0)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
@@ -36,7 +37,9 @@ More information available at https://nzbget.com
 We provide a easy-to-use installer for each platform we support.
 Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
-We also provide a docker image for popular architectures. [Docker readme](docker/README.md)
+Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
+
+Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
 
@@ -52,25 +55,26 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 `Windows`: Windows 7 and later, 32 or 64 Bit.
 
-`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64)
+`Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), MIPS (mipseb mipsel), PowerPC (ppc6xx ppc500), RISC-V 64-bit (riscv64)
 
-`macOS`: macOS 10.13 High Sierra and later, Intel / Apple Silicon.
+`macOS`: X64 binary: macOS Mojave 10.14+, Universal (Intel / Apple Silicon) binary: macOS Monterey 12+
 
 ## Building from sources
 
 [General instructions](INSTALLATION.md)
 
-[Linux cross-compiling / buildroot](linux/build-info.md)
+## Extensions
+ - [V1 (NZBGet v22 and below)](docs/extensions/EXTENSIONS_LEGACY.md)
+ - [V2 (NZBGet v23 and above)](docs/extensions/EXTENSIONS.md)
 
-[macOS](osx/build-info.md)
-
-[Synology](synology/build-info.md)
+## Brief introduction on how to use NZBGet
+ - [How to use](docs/HOW_TO_USE.md)
 
 ## Contribution
 
 Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 
 
-For more information - see [Contributing](CONTRIBUTING.md).
+For more information - see [Contributing](docs/CONTRIBUTING.md).
 
 ## Donate
 

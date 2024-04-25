@@ -2,7 +2,8 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -714,11 +715,11 @@ bool UnpackController::Cleanup()
 	{
 		// moving files back
 		DirBrowser dir(m_unpackDir);
+		const char* destDir = !m_finalDir.Empty() ? *m_finalDir : *m_destDir;
 		while (const char* filename = dir.Next())
 		{
 			BString<1024> srcFile("%s%c%s", *m_unpackDir, PATH_SEPARATOR, filename);
-			BString<1024> dstFile("%s%c%s", !m_finalDir.Empty() ? *m_finalDir : *m_destDir,
-				PATH_SEPARATOR, *FileSystem::MakeValidFilename(filename));
+			BString<1024> dstFile("%s%c%s", destDir, PATH_SEPARATOR, *FileSystem::MakeValidFilename(filename));
 
 			// silently overwrite existing files
 			FileSystem::DeleteFile(dstFile);
@@ -732,8 +733,19 @@ bool UnpackController::Cleanup()
 				ok = false;
 			}
 
+#ifndef WIN32
+			// Fixing file or directory permissions overridden by the unpacker
+			FileSystem::RestoreFileOrDirPermissions(dstFile.Str());
+#endif
+
 			extractedFiles.push_back(filename);
 		}
+
+#ifndef WIN32
+		// Fixing directory permissions overridden by the unpacker
+		FileSystem::RestoreDirPermissions(destDir);
+#endif
+
 	}
 
 	CString errmsg;
@@ -960,4 +972,34 @@ bool UnpackController::HasCompletedArchiveFiles(NzbInfo* nzbInfo)
 	}
 
 	return false;
+}
+
+const char* UnpackController::DecodeSevenZipExitCode(int ec)
+{
+	// 7-Zip exit codes according to https://documentation.help/7-Zip/exit_codes.htm
+	switch (ec)
+	{
+	case SevenZipExitCodes::NoError:
+		return "No error";
+
+	case SevenZipExitCodes::Warning:
+		return "Warning (Non fatal error(s)). \
+		For example, one or more files were locked by some other application, \
+		so they were not compressed.";
+
+	case SevenZipExitCodes::FatalError:
+		return "Fatal error";
+
+	case SevenZipExitCodes::CmdLineError:
+		return "Command line error";
+
+	case SevenZipExitCodes::NotEnoughMemoryError:
+		return "Not enough memory for operation";
+
+	case SevenZipExitCodes::CanceledByUser:
+		return "User stopped the process";
+
+	default: 
+		return "Unknown 7-Zip error";
+	};
 }

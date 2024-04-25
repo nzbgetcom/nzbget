@@ -16,7 +16,7 @@ jobs:
     if: ${{ inputs.external_call == false }}
 
   repack:
-    runs-on: [self-hosted, linux]
+    runs-on: [self-hosted, nzbget-qnap]
     needs: [build-linux]
     if: always()
     permissions:

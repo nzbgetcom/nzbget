@@ -45,15 +45,22 @@ Extension::Script GetExtension()
 	script.SetQueueEvents("QueueEvents");
 	script.SetTaskTime("TaskTime");
 	script.SetVersion("Version");
+	script.SetNzbgetMinVersion("23.1");
 
 	option.description = { "description" };
 	option.displayName = "displayName";
 	option.name = "name";
 	option.value = 5.;
 	option.select = { 0., 10. };
+	option.section.multi = true;
+	option.section.prefix = "Prefix";
+	option.section.name = "Section";
 
 	command.action = "action";
 	command.name = "name";
+	command.section.multi = true;
+	command.section.prefix = "Prefix";
+	command.section.name = "Section";
 	command.displayName = "displayName";
 	command.description = { "description" };
 
@@ -80,6 +87,7 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"Homepage\":\"Homepage\",\
 \"License\":\"License\",\
 \"Version\":\"Version\",\
+\"NZBGetMinVersion\":\"23.1\",\
 \"PostScript\":true,\
 \"ScanScript\":false,\
 \"QueueScript\":false,\
@@ -89,8 +97,10 @@ BOOST_AUTO_TEST_CASE(ToJsonStrTest)
 \"TaskTime\":\"TaskTime\",\
 \"Description\":[\"Description\"],\
 \"Requirements\":[\"Requirements\"],\
-\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
-\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Description\":[\"description\"]}]}";
+\"Options\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Section\":\"Section\",\
+\"Multi\":true,\"Prefix\":\"Prefix\",\"Value\":5E0,\"Description\":[\"description\"],\"Select\":[0E0,1E1]}],\
+\"Commands\":[{\"Name\":\"name\",\"DisplayName\":\"displayName\",\"Action\":\"action\",\"Section\":\"Section\",\
+\"Multi\":true,\"Prefix\":\"Prefix\",\"Description\":[\"description\"]}]}";
 
 	BOOST_CHECK(result == expected);
 }
@@ -110,6 +120,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Homepage</name><value><string>Homepage</string></value></member>\
 <member><name>License</name><value><string>License</string></value></member>\
 <member><name>Version</name><value><string>Version</string></value></member>\
+<member><name>NZBGetMinVersion</name><value><string>23.1</string></value></member>\
 <member><name>PostScript</name><value><boolean>true</boolean></value></member>\
 <member><name>ScanScript</name><value><boolean>false</boolean></value></member>\
 <member><name>QueueScript</name><value><boolean>false</boolean></value></member>\
@@ -127,6 +138,9 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
 <member><name>Action</name><value><string>action</string></value></member>\
+<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Section</name><value><string>Section</string></value></member>\
+<member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
 </Description>\
@@ -134,6 +148,9 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <Options>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
+<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Section</name><value><string>Section</string></value></member>\
+<member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <member><name>Value</name><value><number>5.000000</number></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
