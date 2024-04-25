@@ -26,7 +26,7 @@ html {
 	font-style: normal;
 	font-weight: 100 700;
 	src: local('material-icons'),
-		 url(/lib/material-icons.woff2) format('woff2'),
+		 url(lib/material-icons.woff2) format('woff2'),
 }
 
 .material-icon {
