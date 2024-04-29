@@ -20,22 +20,19 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/nzbgetcom/nzbget)
 
 
-NZBGet is a binary downloader, which downloads files from Usenet
-based on information given in nzb-files. 
+NZBGet is a binary downloader, which downloads files from Usenet based-on information given in nzb files.
 
 NZBGet is written in C++ and is known for its performance and efficiency.
 
-NZBGet can run on almost any device - classic PC, NAS, media player, SAT-receiver, WLAN-router, etc.
-The download area provides precompiled binaries for Windows, macOS, and Linux. For other platforms the program can be compiled from sources.
+NZBGet can run on almost any device - classic PC, NAS, media player, SAT-receiver, WLAN-router, etc. The download area provides precompiled binaries for Windows, macOS, and Linux. For other platforms, the program can be compiled from source.
 
-This is a fork of the original NZBGet project formerly maintained by [hugbug](https://github.com/hugbug). The nzbget.com project is an extension of the original, and is maintained in honor of and with respect to its maintainer of many years.  We hope to continue where the [hugbug](https://github.com/hugbug) left off by providing a useful downloader for the benefit of the Usenet community.
+This is a fork of the original NZBGet project, formerly maintained by [hugbug](https://github.com/hugbug). The nzbget.com project is an extension of the original, and is maintained in honor-of and with respect-to its maintainer of many years.  We hope to continue where the [hugbug](https://github.com/hugbug) left-off by providing a useful downloader for the benefit of the Usenet community.
 
-More information available at https://nzbget.com 
+More information available at https://nzbget.com
 
 ## Installation and Documentation
 
-We provide a easy-to-use installer for each platform we support.
-Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
+We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
 Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
 
@@ -47,7 +44,7 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 ## Migration from older NZBGet versions
 
-[Migrating from NZBGet v21 or older](https://github.com/nzbgetcom/nzbget/discussions/100#discussioncomment-8080102) 
+[Migrating from NZBGet v21 or older](https://github.com/nzbgetcom/nzbget/discussions/100#discussioncomment-8080102)
 
 [Migrating from older Docker images](https://github.com/nzbgetcom/nzbget/issues/84#issuecomment-1884846500)
 
@@ -72,11 +69,11 @@ QNAP packages are available as native packages and buildroot packages. [QNAP rea
 
 ## Contribution
 
-Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) 
+Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose)
 
 For more information - see [Contributing](docs/CONTRIBUTING.md).
 
 ## Donate
 
-Please [donate](https://nzbget.com/donate/) if you like what we are doing. thank you!
+Please [donate](https://nzbget.com/donate/) if you like what we are doing. Thank you!
 
