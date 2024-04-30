@@ -4,10 +4,23 @@ We support QNAP via native qpkg packages, built with QNAP toolchains (only x86/x
 
 ## Installing
 
+### Manual install
+
 Prerequsites: Enable installation of applications without digital signature (`AppCenter` - `Settings` - `Allow installation of applications without a valid digital signature`)
 
 To install nzbget for QNAP download qpkg for your architecture, then from QNAP AppCenter select `Install Manually` - browse for downloaded qpkg and press `Install`
 For digital signature warning select `I understand the risks and want to install this application` and press `Install`.
+
+### Install via sherpa package manager
+
+- [Install](https://github.com/OneCDOnly/sherpa?tab=readme-ov-file#installation) sherpa package manager
+- From SSH command-prompt, run
+```
+sudo sherpa install nzbget
+```
+
+## Post-install
+
 After installation - Press `Open` in AppCenter or click NZBGet icon on desktop. Default login/password for WebUI
 ```
 Login: nzbget

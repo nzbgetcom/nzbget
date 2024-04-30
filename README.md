@@ -40,7 +40,7 @@ Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker re
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
 
-QNAP packages are available as native packages and buildroot packages. [QNAP readme](qnap/README.md)
+QNAP packages are available as native / buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
 
 ## Migration from older NZBGet versions
 
