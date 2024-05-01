@@ -6,7 +6,7 @@ services:
       args:
         NZBGET_RELEASE: develop
         MAKE_JOBS: 4
-        UNRAR_NATIVE: true
+        UNRAR7_NATIVE: true
     environment:
       - PUID=1000
       - PGID=1000
