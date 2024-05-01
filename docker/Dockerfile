@@ -4,6 +4,7 @@ FROM alpine:3.19.1 AS build
 # args
 ARG NZBGET_RELEASE=develop
 ARG UNRAR_VERSION=7.0.7
+ARG UNRAR6_VERSION=6.2.12
 ARG UNRAR_NATIVE=false
 ARG MAKE_JOBS=1
 ARG TARGETPLATFORM
@@ -46,7 +47,7 @@ RUN \
   curl -o /app/nzbget/cacert.pem -L "https://curl.se/ca/cacert.pem" && \
   echo "**** install unrar from source ****" && \
   mkdir /tmp/unrar && \
-  curl -o /tmp/unrar.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR_VERSION}.tar.gz" && \  
+  curl -o /tmp/unrar.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR_VERSION}.tar.gz" && \
   tar xf /tmp/unrar.tar.gz -C /tmp/unrar --strip-components=1 && \
   cd /tmp/unrar && \
   if [ "${UNRAR_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/amd64" ]; \
@@ -56,7 +57,14 @@ RUN \
   if [ "${UNRAR_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm/v7" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" makefile; fi && \
   make -j ${MAKE_JOBS} && \
-  install -v -m755 unrar /usr/bin
+  install -v -m755 unrar /usr/bin && \
+  echo "**** install unrar6 from source ****" && \
+  mkdir /tmp/unrar6 && \
+  curl -o /tmp/unrar6.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR6_VERSION}.tar.gz" && \
+  tar xf /tmp/unrar6.tar.gz -C /tmp/unrar6 --strip-components=1 && \
+  cd /tmp/unrar6 && \
+  make -j ${MAKE_JOBS} && \
+  install -v -m755 unrar /usr/bin/unrar6
 
 # runtime stage
 FROM alpine:3.19.1
@@ -75,6 +83,7 @@ RUN \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
 COPY --from=build /usr/bin/unrar /usr/bin/unrar
+COPY --from=build /usr/bin/unrar6 /usr/bin/unrar6
 COPY --from=build /app/nzbget/ /app/nzbget/
 ADD entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && \

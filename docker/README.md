@@ -156,3 +156,7 @@ services:
       - 6789:6789
     restart: unless-stopped
 ```
+
+# Unrar 6 support
+
+The NZBGet docker image contains the unrar6 binary for systems that do not support unrar7. To use unrar6, change in settings UNPACK - UnrarCmd to `unrar6`.
