@@ -53,7 +53,7 @@ RUN \
   if [ "${UNRAR_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/amd64" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64-v2|" makefile; fi && \
   if [ "${UNRAR_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm64" ]; \
-    then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a|" makefile; fi && \
+    then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|" makefile; fi && \
   if [ "${UNRAR_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm/v7" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" makefile; fi && \
   make -j ${MAKE_JOBS} && \
