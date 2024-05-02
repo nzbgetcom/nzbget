@@ -180,7 +180,7 @@ void DirectUnpack::ExecuteUnrar(const char* archiveName)
 		params.emplace_back("-p-");
 	}
 
-	if (!params.Exists("-o+") && !params.Exists("-o-"))
+	if (!params.Exists("-o+") && !params.Exists("-o-") && !params.Exists("-or"))
 	{
 		params.emplace_back("-o+");
 	}
