@@ -128,6 +128,8 @@ Unrar 7 built with next march parameters:
 - arm64:  armv8-a+crypto+crc
 - armhf:  armv7-a
 
+More information about unrar performance: [Performance tips](https://github.com/nzbgetcom/nzbget/blob/develop/docs/PERFORMANCE.md#unrar)
+
 # Native unrar 7 build support
 
 To build image on hardware which support crypto acceleration with native-optimized unrar can be used docker-compose like this (also needed entrypoint.sh and Dockerfile from [official repository](https://github.com/nzbgetcom/nzbget/tree/develop/docker)):
