@@ -33,7 +33,7 @@ Several tests (`time unrar -p<password> x <archive>`, archive size ~1.6Gb):
     user    0m 12.08s
     sys     0m 1.27s
     ```
-  - unrar7 (march=x86-64-v2)
+  - unrar 7.0 march=x86-64-v2
     ```
     real    0m 6.13s
     user    0m 5.34s
