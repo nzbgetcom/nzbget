@@ -36,7 +36,7 @@ build_lib()
         cd ${LIB_SRC_FILE/.tar.gz/}
         case $LIB in
             "ncurses")                
-                ./configure --with-termlib --without-progs --host=$HOST --prefix="$PWD/../$LIB"
+                ./configure --without-progs --without-manpages --with-fallbacks="xterm xterm-color xterm-256color xterm-16color linux vt100 vt200" --host=$HOST --prefix="$PWD/../$LIB"
                 ;;
             "zlib")
                 ./configure --static --prefix="$PWD/../$LIB"
@@ -87,11 +87,11 @@ build_lib()
         fi
     fi
     if [ "$LIB" == "libxml2" ]; then
-        export INCLUDES="$INCLUDES$LIB_PATH/$ARCH/$LIB/include/libxml2/;"
+        export NZBGET_INCLUDES="$NZBGET_INCLUDES$LIB_PATH/$ARCH/$LIB/include/libxml2/;"
     elif [ "$LIB" == "ncurses" ]; then
-        export INCLUDES="$INCLUDES$LIB_PATH/$ARCH/$LIB/include/;$INCLUDES$LIB_PATH/$ARCH/$LIB/include/ncurses/;"
+        export NZBGET_INCLUDES="$NZBGET_INCLUDES$LIB_PATH/$ARCH/$LIB/include/;$LIB_PATH/$ARCH/$LIB/include/ncurses/;"
     else
-        export INCLUDES="$INCLUDES$LIB_PATH/$ARCH/$LIB/include/;"
+        export NZBGET_INCLUDES="$NZBGET_INCLUDES$LIB_PATH/$ARCH/$LIB/include/;"
     fi
     cd $NZBGET_ROOT
 }
@@ -113,11 +113,10 @@ for ARCH in $ALL_ARCHS; do
     export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
 
     # clean build flags
-    export CXXFLAGS=""
-    export CPPFLAGS=""
+    export CXXFLAGS="-Os"
+    export CPPFLAGS="-Os"
     export LDFLAGS=""
-    export LIBS=""
-    export INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
+    export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
 
     build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.4.tar.gz"
     build_lib "https://zlib.net/zlib-1.3.1.tar.gz"
@@ -128,7 +127,8 @@ for ARCH in $ALL_ARCHS; do
     # build_7zip
     # build_unrar
 
-    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -ltinfo -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    export INCLUDES="$NZBGET_INCLUDES"
     unset CXXFLAGS
     unset CPPFLAGS
     unset LDFLAGS
