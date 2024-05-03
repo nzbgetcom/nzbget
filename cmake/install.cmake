@@ -39,3 +39,9 @@ add_custom_target(install-conf
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
     COMMENT "Installing nzbget.conf"
 )
+
+add_custom_target(uninstall-conf
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_INSTALL_PREFIX}/etc
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/nzbget.conf
+    COMMENT "Uninstalling nzbget.conf"
+)
