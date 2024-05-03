@@ -27,14 +27,6 @@ string(REPLACE "WebDir=" "WebDir=${WEBUI_DIR_DEST}/webui" MODIFIED_CONFIG_CONTEN
 string(REPLACE "ConfigTemplate=" "ConfigTemplate=${CONF_TEMPLATE_FILE_DEST}/nzbget.conf" MODIFIED_CONFIG_CONTENT "${MODIFIED_CONFIG_CONTENT}")
 file(WRITE ${CMAKE_BINARY_DIR}/nzbget.conf "${MODIFIED_CONFIG_CONTENT}")
 
-if(NOT ${DISABLE_CONF_INSTALLATION} AND NOT EXISTS ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf)
-	install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CONF_TEMPLATE_FILE_DEST})
-	install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
-else()
-	message(STATUS "nzbget.conf is already installed in ${CMAKE_INSTALL_PREFIX}/etc")
-	message(STATUS "If you want to overwrite it, then do it manually with caution")
-endif()
-
 add_custom_target(uninstall
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${DOC_FILES_DEST}
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${SHARE_DIR}
@@ -43,15 +35,15 @@ add_custom_target(uninstall
 )
 
 add_custom_target(install-conf
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/etc
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CONF_TEMPLATE_FILE_DEST}/nzbget.conf
-    COMMENT "Installing nzbget.conf"
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/etc
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CONF_TEMPLATE_FILE_DEST}/nzbget.conf
+	COMMENT "Installing nzbget.conf"
 )
 
 add_custom_target(uninstall-conf
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/etc
-    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
-    COMMAND ${CMAKE_COMMAND} -E remove ${CONF_TEMPLATE_FILE_DEST}/nzbget.conf
-    COMMENT "Unstalling nzbget.conf"
+	COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/etc
+	COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
+	COMMAND ${CMAKE_COMMAND} -E remove ${CONF_TEMPLATE_FILE_DEST}/nzbget.conf
+	COMMENT "Unstalling nzbget.conf"
 )

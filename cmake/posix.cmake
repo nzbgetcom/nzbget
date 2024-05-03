@@ -7,8 +7,6 @@ option(DISABLE_GZIP "Disable gzip")
 option(DISABLE_PARCHECK "Disable parcheck")
 option(USE_OPENSSL "Use OpenSSL" ON)
 option(USE_GNUTLS "Use GnuTLS" OFF)
-# "homebrew" specific temporary option. 
-option(DISABLE_CONF_INSTALLATION "Disable installation of nzbget.conf" OFF)
 
 if(NOT DISABLE_TLS AND USE_GNUTLS)
 	set(USE_OPENSSL OFF)
@@ -32,7 +30,6 @@ message(STATUS "  - GNUTLS:         ${USE_GNUTLS}")
 message(STATUS "  DISABLE CURSES:   ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:     ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK: ${DISABLE_PARCHECK}")
-message(STATUS "  DISABLE INSTALLATION OF 'nzbget.conf': ${DISABLE_CONF_INSTALLATION}")
 
 if(ENABLE_CLANG_TIDY)
 	set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=-*,readability-*)
