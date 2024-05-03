@@ -36,6 +36,8 @@ We provide an easy-to-use installer for each platform we support. Please downloa
 
 Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
 
+macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
+
 Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
