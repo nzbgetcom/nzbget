@@ -50,12 +50,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
 		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
-		add_custom_command(
-			TARGET ${PACKAGE} POST_BUILD
-			DEPENDS ${PACKAGE}
-			COMMAND ${CMAKE_STRIP}
-			ARGS --strip-all ${PACKAGE}>
-		)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
 		set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" CACHE STRING "" FORCE)
@@ -76,6 +70,15 @@ include_directories(${CMAKE_SOURCE_DIR})
 if(NOT BUILD_ONLY_TESTS)
 	include(daemon/sources.cmake)
 	add_executable(${PACKAGE} ${SRC})
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release" AND CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		add_custom_command(
+			TARGET ${PACKAGE} POST_BUILD
+			DEPENDS ${PACKAGE}
+			COMMAND ${CMAKE_STRIP}
+			ARGS ${PACKAGE}>
+		)
+	endif()
 endif()
 
 if(WIN32)
