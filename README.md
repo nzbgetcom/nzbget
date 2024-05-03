@@ -66,6 +66,7 @@ QNAP packages are available as native / buildroot packages or via [sherpa](https
 
 ## Brief introduction on how to use NZBGet
  - [How to use](docs/HOW_TO_USE.md)
+ - [Performance tips](docs/PERFORMANCE.md)
 
 ## Contribution
 
