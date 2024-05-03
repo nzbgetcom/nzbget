@@ -26,18 +26,16 @@ file(READ ${CONF_FILE} CONFIG_CONTENT)
 string(REPLACE "WebDir=" "WebDir=${WEBUI_DIR_DEST}/webui" MODIFIED_CONFIG_CONTENT "${CONFIG_CONTENT}")
 string(REPLACE "ConfigTemplate=" "ConfigTemplate=${CONF_FILE_DEST}/nzbget.conf" MODIFIED_CONFIG_CONTENT "${MODIFIED_CONFIG_CONTENT}")
 file(WRITE ${CMAKE_BINARY_DIR}/nzbget.conf "${MODIFIED_CONFIG_CONTENT}")
-install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CONF_FILE_DEST})
-
-if(NOT EXISTS ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf)
-	install(FILES ${CMAKE_BINARY_DIR}/nzbget.conf DESTINATION ${CMAKE_INSTALL_PREFIX}/etc)
-else()
-	message(STATUS "nzbget.conf is already installed in ${CMAKE_INSTALL_PREFIX}/etc")
-	message(STATUS "If you want to overwrite it, then do it manually with caution")
-endif()
 
 add_custom_target(uninstall
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${DOC_FILES_DEST}
 	COMMAND ${CMAKE_COMMAND} -E remove_directory ${SHARE_DIR}
 	COMMAND ${CMAKE_COMMAND} -E remove ${BIN_FILE_DEST}/${PACKAGE}
 	COMMENT "Uninstalling" ${PACKAGE}
+)
+
+add_custom_target(install-conf
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_INSTALL_PREFIX}/etc
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/nzbget.conf ${CMAKE_INSTALL_PREFIX}/etc/nzbget.conf
+    COMMENT "Installing nzbget.conf"
 )
