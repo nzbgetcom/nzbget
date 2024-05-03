@@ -80,7 +80,7 @@ You may run configure with additional arguments:
 cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
   - Run tests:
 ```
-ctest -C Debug
+ctest -C Release
 ```
 ```
   - Disable TLS. Use this option if you can not use OpenSSL but 
