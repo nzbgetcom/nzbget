@@ -7,6 +7,7 @@ option(DISABLE_GZIP "Disable gzip")
 option(DISABLE_PARCHECK "Disable parcheck")
 option(USE_OPENSSL "Use OpenSSL" ON)
 option(USE_GNUTLS "Use GnuTLS" OFF)
+# "homebrew" specific temporary option. 
 option(DISABLE_CONF_INSTALLATION "Disable installation of nzbget.conf" OFF)
 
 if(NOT DISABLE_TLS AND USE_GNUTLS)
