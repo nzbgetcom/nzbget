@@ -68,24 +68,17 @@ LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
 LABEL maintainer="nzbget@nzbget.com" 
 
 ENV TERM linux
+COPY beets-1.6.0.tar.gz /tmp 
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata build-base gcc linux-headers musl-dev openjdk17-jre-headless openssl py3-pip python3 python3-dev && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata build-base gcc linux-headers musl-dev openjdk17-jre-headless openssl py3-pip python3 python3-dev py3-wheel && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** install python packages ****" && \
-  pip3 install --no-cache-dir -U \
-    pip \
-    wheel && \
-  pip install --no-cache-dir --find-links https://wheel-index.linuxserver.io/alpine-3.18/ \
-    apprise \
-    beets \
-    chardet \
-    jellyfish==0.10.0 \
-    lxml \
-    py7zr \
-    pynzbget \
-    rarfile \
-    six && \
+  cd /tmp && \
+  tar xzvf beets-1.6.0.tar.gz && \
+  cd beets-1.6.0 && \
+  touch `find . -type f` && \
+  python setup.py install && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
 COPY --from=build /usr/bin/unrar /usr/bin/unrar
