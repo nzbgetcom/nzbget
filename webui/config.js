@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -103,6 +104,80 @@ var Options = (new function($)
 		}
 	}
 
+	function getOptionName(extConf, rawOption)
+	{
+		var name = extConf.Name + ':';
+
+		if (rawOption.Prefix)
+		{
+			name += rawOption.Prefix;
+		}
+
+		if (rawOption.Multi)
+		{
+			name += '1.'
+		}
+		name += rawOption.Name;
+
+		return name;
+	}
+
+	function makeOption(extConf, rawOption)
+	{
+		var [type, select] = GetTypeAndSelect(rawOption);
+		return {
+			caption: rawOption.DisplayName,
+			name: getOptionName(extConf, rawOption),
+			value: String(rawOption.Value),
+			defvalue: String(rawOption.Value),
+			sectionId: extConf.Name + '_' + rawOption.Section.toUpperCase(),
+			select,
+			description: arrToStr(rawOption.Description),
+			nocontent: false,
+			formId: extConf.Name + '_' + rawOption.Name,
+			multiid: 1,
+			multi: rawOption.Multi,
+			prefix: rawOption.Prefix,
+			template: rawOption.Multi,
+			section: rawOption.Section.toUpperCase(),
+			type,
+		};
+	}
+
+	function makeCommandOption(extConf, rawCommand)
+	{
+		return {
+			caption: rawCommand.DisplayName,
+			name: getOptionName(extConf, rawCommand),
+			value: null,
+			defvalue: rawCommand.Action,
+			sectionId: extConf.Name + '_' + rawCommand.Section.toUpperCase(),
+			select: [],
+			description: arrToStr(rawCommand.Description),
+			nocontent: false,
+			formId: extConf.Name + '_' + rawCommand.Name,
+			commandopts: 'settings',
+			multiid: 1,
+			template: rawCommand.Multi,
+			prefix: rawCommand.Prefix,
+			section: rawCommand.Section.toUpperCase(),
+			multi: rawCommand.Multi,
+			type: 'command',
+		};
+	}
+
+	function makeSection(extConf, option)
+	{
+		return {
+			name: option.section,
+			id: extConf.Name + '_' + option.section,
+			options: [option],
+			multi: option.multi,
+			hidden: false,
+			postparam: false,
+		};
+	}
+
 	/*** LOADING CONFIG ********************************************************************/
 
 	this.loadConfig = function(callbacks)
@@ -137,15 +212,9 @@ var Options = (new function($)
 		// read scripts configs
 		for (var i = 1; i < this.serverTemplateData.length; i++) 
 		{
-			var section = {
-				name: this.serverTemplateData[i].Name,
-				id: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-				options: [],
-				hidden: false,
-				postparam: false,
-			};
+			var sections = {};
 			var scriptConfig = {
-				sections: [section],
+				sections: [],
 				nameprefix: this.serverTemplateData[i].Name,
 			};
 			var requirements = this.serverTemplateData[i].Requirements;
@@ -175,39 +244,31 @@ var Options = (new function($)
 
 			for (var j = 0; j < this.serverTemplateData[i].Commands.length; j++) 
 			{
-				var command = this.serverTemplateData[i].Commands[j];
-				section.options.push({
-					caption: command.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + command.Name,
-					value: null,
-					defvalue: command.Action,
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-					select: [],
-					description: arrToStr(command.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + command.Name,
-					commandopts: 'settings',
-					type: 'command'
-				});
+				var command = makeCommandOption(this.serverTemplateData[i], this.serverTemplateData[i].Commands[j]);
+				if (sections[command.section])
+				{
+					sections[command.section].options.push(command);
+				}
+				else
+				{
+					sections[command.section] = makeSection(this.serverTemplateData[i], command);
+				}
 			}
+
 			for (var j = 0; j < this.serverTemplateData[i].Options.length; j++) 
 			{
-				var option = this.serverTemplateData[i].Options[j];
-				var [type, select] = GetTypeAndSelect(option);
-				section.options.push({
-					caption: option.DisplayName,
-					name: this.serverTemplateData[i].Name + ':' + option.Name,
-					value: String(option.Value),
-					defvalue: String(option.Value),
-					sectionId: this.serverTemplateData[i].Name + '_' + 'OPTIONS',
-					select,
-					description: arrToStr(option.Description),
-					nocontent: false,
-					formId: this.serverTemplateData[i].Name + '_' + option.Name,
-					type
-				});
+				var option = makeOption(this.serverTemplateData[i], this.serverTemplateData[i].Options[j]);
+				if (sections[option.section])
+				{
+					sections[option.section].options.push(option);
+				}
+				else
+				{
+					sections[option.section] = makeSection(this.serverTemplateData[i], option);
+				}
 			}
-			
+
+			scriptConfig.sections = Object.values(sections);
 			mergeValues(scriptConfig.sections, serverValues);
 			config.push(scriptConfig);
 		}
@@ -873,7 +934,7 @@ var Config = (new function($)
 				}
 				else
 				{
-					html += '<input type="button" class="btn" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
+					html += '<input type="button" class="btn btn-default" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
 				}
 			}
 			if (!valfound)
@@ -917,14 +978,14 @@ var Config = (new function($)
 			html += '<table class="editor"><tr><td>';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '">';
 			html += '</td><td>';
-			html += '<button type="button" id="' + option.formId + '_Editor" class="btn" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
+			html += '<button type="button" id="' + option.formId + '_Editor" class="btn btn-default" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
 			html += '</td></tr></table>';
 		}
 		else if (option.commandopts)
 		{
 			option.type = 'command';
 			html += '<button type="button" id="' + option.formId + '" class="btn ' + 
-				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-inverse') + 
+				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-default') + 
 				'" onclick="Config.commandClick(this)">' + value +  '</button>';
 		}
 		else
@@ -955,7 +1016,7 @@ var Config = (new function($)
 			});
 
 			// replace URLs
-			exp = /(http:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+			exp = /(https?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
 			htmldescr = htmldescr.replace(exp, "<a href='$1'>$1</a>");
 
 			// highlight first line
@@ -968,13 +1029,13 @@ var Config = (new function($)
 
 			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
 			if (htmldescr.indexOf('MORE INFO:') > -1)
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
@@ -996,36 +1057,37 @@ var Config = (new function($)
 	function buildMultiRowStart(section, multiid, option)
 	{
 		var name = option.caption;
-		var setname = name.substr(0, name.indexOf('.'));
+		var setname = name.substr(0, name.indexOf('.')) || option.prefix + option.multiid;
 		var html = '<div class="config-settitle ' + section.id + ' multiid' + multiid + ' multiset">' + setname + '</div>';
 		return html;
 	}
 
 	function buildMultiRowEnd(section, multiid, hasmore, hasoptions)
 	{
-		var name = section.options[0].caption;
-		var setname = name.substr(0, name.indexOf('1'));
+		var option = section.options[0];
+		var name = option.caption;
+		var setname = name.substr(0, name.indexOf('1')) || option['prefix'] || '';
 		var html = '';
 
 		if (hasoptions)
 		{
 			html += '<div class="' + section.id + ' multiid' + multiid + ' multiset multiset-toolbar">';
-			html += '<button type="button" class="btn config-button config-delete" data-multiid="' + multiid + '" ' +
+			html += '<button type="button" class="btn btn-default config-button config-delete" data-multiid="' + multiid + '" ' +
 				'onclick="Config.deleteSet(this, \'' + setname + '\',\'' + section.id + '\')">Delete ' + setname + multiid + '</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'up\')">Move Up</button>';
-			html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'down\')">Move Down</button>';
 			if (setname.toLowerCase() === 'feed')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.previewFeed(this, \'' + setname + '\',\'' + section.id + '\')">Preview Feed</button>';
 			}
 			if (setname.toLowerCase() === 'server')
 			{
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.testConnection(this, \'' + setname + '\',\'' + section.id + '\')">Test Connection</button>';
-				html += ' <button type="button" class="btn config-button" data-multiid="' + multiid + '" ' +
+				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
 					'onclick="Config.serverStats(this, \'' + setname + '\',\'' + section.id + '\')">Volume Statistics</button>';
 			}
 			html += '<hr>';
@@ -1035,7 +1097,7 @@ var Config = (new function($)
 		if (!hasmore)
 		{
 			html += '<div class="' + section.id + '">';
-			html += '<button type="button" class="btn config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
+			html += '<button type="button" class="btn btn-default config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
 			  '\')">Add ' + (hasoptions ? 'another ' : '') + setname + '</button>';
 			html += '</div>';
 		}
@@ -1150,7 +1212,7 @@ var Config = (new function($)
 				var section = {};
 				section.name = conf.shortName.toUpperCase();
 				section.caption = conf.name.toUpperCase();
-				section.id = conf.id + '_';
+				section.id = conf.id + '_OPTIONS';
 				section.options = [];
 				firstVisibleSection = section;
 				conf.sections.push(section);
@@ -1167,7 +1229,6 @@ var Config = (new function($)
 			option.about = conf.about;
 			option.nocontent = true;
 			option.description = conf.description;
-			option.about = conf.about;
 			firstVisibleSection.options.unshift(option);
 		}
 
@@ -1252,18 +1313,77 @@ var Config = (new function($)
 
 	this.switchClick = function(control)
 	{
-		$('.btn', $(control).parent()).removeClass('btn-primary');
+		var btn  = $('.btn', $(control).parent());
+		btn.removeClass('btn-primary');
+		btn.addClass('btn-default');
 		$(control).addClass('btn-primary');
+		$(control).removeClass('btn-default');
 
 		// not for page Postprocess in download details
 		if (config)
 		{
 			var optFormId = $(control).parent().attr('id');
 			var option = findOptionById(optFormId);
+			
 			if (option.onchange)
 			{
 				option.onchange(option);
 			}
+
+			tlsSwitchHelper(option)
+		}
+	}
+
+	function tlsSwitchHelper(option)
+	{
+		var defaultPort = '119';
+		var defaultTlsPort = '563';
+
+		var defaultPort2 = '80';
+		var defaultTlsPort2 = '443';
+		
+		var suffixStartIdx = option.formId.indexOf('_Encryption');
+		if (suffixStartIdx < 0)
+		{
+			return;
+		}
+
+		var portOptionId = option.formId.substring(0, suffixStartIdx) + '_Port';
+		var portOption = findOptionById(portOptionId);
+		var useTls = getOptionValue(option) === 'yes';
+		var currentPort = getOptionValue(portOption);
+		var inputField = $('#' + portOptionId)[0];
+
+		if (useTls)
+		{
+			if (currentPort === defaultPort)
+			{
+				inputField.value = defaultTlsPort;
+				return;
+			}
+
+			if (currentPort === defaultPort2)
+			{
+				inputField.value = defaultTlsPort2;
+			}
+
+			return;
+		}
+
+		if (!useTls)
+		{
+			if (currentPort === defaultTlsPort)
+			{
+				inputField.value = defaultPort;
+				return;
+			}
+
+			if (currentPort === defaultTlsPort2)
+			{
+				inputField.value = defaultPort2;
+			}
+
+			return;
 		}
 	}
 
@@ -1555,7 +1675,15 @@ var Config = (new function($)
 
 	function setViewMode()
 	{
-		$('#Config_ViewCompact i').toggleClass('icon-ok', compactMode).toggleClass('icon-empty', !compactMode);
+		if (!compactMode)
+		{
+			$('#Config_ViewCompact > .material-icon').text('');
+		}
+		else
+		{
+			$('#Config_ViewCompact > .material-icon').text('done');
+		}
+		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);
 	}
 
@@ -2310,7 +2438,12 @@ var ScriptListDialog = (new function($)
 
 	function updateTable(selectedList)
 	{
-		var reorderButtons = '<div class="btn-row-order-block"><div class="btn-row-order icon-top" onclick="ScriptListDialog.move(this, \'top\')"></div><div class="btn-row-order icon-up" onclick="ScriptListDialog.move(this, \'up\')"></div><div class="btn-row-order icon-down" onclick="ScriptListDialog.move(this, \'down\')"></div><div class="btn-row-order icon-bottom" onclick="ScriptListDialog.move(this, \'bottom\')"></div></div>';
+		var reorderButtons = '<div class="btn-row-order-block">' +
+		'<i onclick="ScriptListDialog.move(this, \'top\')" class="material-icon btn-row-order">vertical_align_top</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'up\')" class="material-icon btn-row-order">north</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'down\')" class="material-icon btn-row-order">south</i>' +
+		'<i onclick="ScriptListDialog.move(this, \'bottom\')" class="material-icon btn-row-order">vertical_align_bottom</i>' + 
+		'</div>';
 		var data = [];
 		for (var i=0; i < scriptList.length; i++)
 		{
@@ -2980,7 +3113,6 @@ var UpdateDialog = (new function($)
 
 
 		var installedVer = installedVersion;
-		var installedTesting = installedVersion.indexOf('testing') > -1;
 
 		var canInstallStable = UpdateInfo['stable-version'] &&
 			(installedVer < UpdateInfo['stable-version']);
@@ -3009,11 +3141,9 @@ var UpdateDialog = (new function($)
 		Util.show('#UpdateDialog_CheckFailed', hasUpdateSource && !hasUpdateInfo);
 		Util.show('#UpdateDialog_DownloadRow,#UpdateDialog_DownloadAvail', canDownload && !canUpdate);
 		$('#UpdateDialog_AvailRow').toggleClass('hide', !hasUpdateInfo);
-
-		if (!foreground &&
-			(((canInstallStable || canDownloadStable) && notificationAllowed('stable')) ||
-			 (Options.option('UpdateCheck') === 'testing' && installedRev > 0 &&
-			  (canInstallTesting || canDownloadTesting) && notificationAllowed('testing'))))
+		var canUpdateStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
+		var canUpdateTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
+		if (canUpdateStable || canUpdateTesting)
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
 		}
@@ -3276,6 +3406,7 @@ function Extension()
 	this.about = '';
 	this.url = '';
 	this.testError = '';
+	this.nzbgetMinVersion = '';
 	this.isActive = false;
 	this.installed = false;
 	this.outdated = false;
@@ -3290,8 +3421,10 @@ var ExtensionManager = (new function($)
 	this.tbody = 'ExtensionManagerTBody';
 	this.extensionsUrl = 'https://raw.githubusercontent.com/nzbgetcom/nzbget-extensions/main/extensions.json';
 
-	var scriptOrderId = "ScriptOrder";
-	var extensionsId = "Extensions";
+	var scriptOrderId = 'ScriptOrder';
+	var extensionsId = 'Extensions';
+
+	var defaultSectionName = 'OPTIONS';
 	
 	var installedExtensions = [];
 	var remoteExtensions = [];
@@ -3308,7 +3441,7 @@ var ExtensionManager = (new function($)
 		installedExtensions = exts.map(function(ext) 
 		{
 			var extension = new Extension();
-			extension.id = ext.Name + "_OPTIONS";
+			extension.id = ext.Name + '_' + defaultSectionName;
 			extension.entry = ext.Entry;
 			extension.displayName = ext.DisplayName;
 			extension.version = ext.Version;
@@ -3316,6 +3449,7 @@ var ExtensionManager = (new function($)
 			extension.homepage = ext.Homepage;
 			extension.about = ext.About;
 			extension.name = ext.Name;
+			extension.nzbgetMinVersion = ext.NZBGetMinVersion;
 			extension.installed = true;
 			extension.isActive = activeExtensions.indexOf(ext.Name) != -1;
 			return extension;
@@ -3334,9 +3468,10 @@ var ExtensionManager = (new function($)
 				remoteExtensions = JSON.parse(data).map(function(ext) 
 				{
 					var extension = new Extension();
-					extension.id = ext.name + "_OPTIONS";
+					extension.id = ext.Name + '_' + defaultSectionName;
 					extension.displayName = ext.displayName;
 					extension.version = ext.version;
+					extension.nzbgetMinVersion = ext['nzbgetMinVersion'] || '';
 					extension.author = ext.author;
 					extension.homepage = ext.homepage;
 					extension.about = ext.about;
@@ -3354,7 +3489,7 @@ var ExtensionManager = (new function($)
 			{
 				hideLoadingBanner();
 				render(getAllExtensions());
-				showErrorBanner("Failed to download extensions", error);
+				showErrorBanner("Failed to fetch the list of available extensions", error);
 			}
 		);
 	}
@@ -3394,6 +3529,12 @@ var ExtensionManager = (new function($)
 		var remote = [];
 		for (var i = 0; i < remoteExtensions.length; i++) {
 			var extension = remoteExtensions[i];
+
+			if (!checkNzbgetMinRequiredVersion(extension.nzbgetMinVersion))
+			{
+				continue;
+			}
+
 			var idx = installedExtensions.map(function(ext) { return ext.name; }).indexOf(extension.name);
 			if (idx == -1)
 			{
@@ -3402,15 +3543,23 @@ var ExtensionManager = (new function($)
 			else
 			{
 				var installedExt = installedExtensions[idx];
-				if (installedExt.version.localeCompare(extension.version, undefined, { numeric: true, sensitivity: 'base' }) < 0)
-				{
-					installedExt.outdated = true;
-				}
+				installedExt.outdated = isOutdated(installedExt.version, extension.version);
 				installedExt.url = extension.url;
 			}
 		}
 
 		return remote.concat(installedExtensions);
+	}
+
+	function isOutdated(v1, v2)
+	{
+		return v1.localeCompare(v2, undefined, { numeric: true, sensitivity: 'base' }) < 0;
+	}
+
+	function checkNzbgetMinRequiredVersion(extVersion)
+	{
+		var nzbgetVersion = Options.option('Version');
+		return isOutdated(extVersion, nzbgetVersion);
 	}
 
 	function downloadExtension(ext)
@@ -3670,27 +3819,38 @@ var ExtensionManager = (new function($)
 
 	function disableDeleteBtn(ext, disabled)
 	{
-		$('#DeleteBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DeleteBtn_' + ext.name, disabled);
 	}
 
 	function disableDownloadBtn(ext, disabled)
 	{
-		$('#DownloadBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#DownloadBtn_' + ext.name, disabled);
 	}
 
 	function disableUpdateBtn(ext, disabled)
 	{
-		$('#UpdateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#UpdateBtn_' + ext.name, disabled);
 	}
 
 	function disableConfigureBtn(ext, disabled)
 	{
-		$('#ConfigureBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ConfigureBtn_' + ext.name, disabled);
 	}
 
 	function disableActivateBtn(ext, disabled)
 	{
-		$('#ActivateBtn_' + ext.name).prop({ disabled });
+		disableBtnToggle('#ActivateBtn_' + ext.name, disabled);
+	}
+
+	function disableBtnToggle(id, disabled)
+	{
+		if (disabled)
+		{
+			$(id).addClass('btn--disabled');
+			return;
+		}
+
+		$(id).removeClass('btn--disabled');
 	}
 
 	function disableOrderingBtns(ext, disabled)
@@ -3797,7 +3957,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
 			+ ext.name 
-			+ '" title="Delete"><i class="icon-trash-white"></i></button>')
+			+ '" title="Delete"><i class="material-icon">delete</i></button>')
 			.off('click')
 			.on('click', function() { showDeleteExtensionDropdown(ext); });
 
@@ -3808,7 +3968,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
 			+ ext.name 
-			+ '" title="Download"><img src="img/download-16.ico"></button>')
+			+ '" title="Download"><i class="material-icon">download</i></button>')
 			.off('click')
 			.on('click', function() { downloadExtension(ext); });
 
@@ -3819,7 +3979,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
 			+ ext.name 
-			+ '"><i class="icon-refresh"></i></button>');
+			+ '"><i class="material-icon">update</i></button>');
 		if (ext.outdated)
 		{
 			btn.attr({ title: "Update to new version" });
@@ -3837,9 +3997,9 @@ var ExtensionManager = (new function($)
 
 	function getConfigureBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-secondary btn-group" id="ConfigureBtn_' 
+		var btn = $('<button type="button" class="btn btn-default btn-group" id="ConfigureBtn_' 
 			+ ext.name 
-			+ '" title="Configure"><i class="icon-settings"></i></button>')
+			+ '" title="Configure"><i class="material-icon">settings</i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 
@@ -3848,26 +4008,26 @@ var ExtensionManager = (new function($)
 
 	function getActivateBtn(ext)
 	{
-		var btn = $('<button type="button" class="btn btn-primary btn-group" id="ActivateBtn_' 
+		var btn = $('<button type="button" class="btn btn-group" id="ActivateBtn_' 
 			+ ext.name 
 			+ '"></button>')
 			.off('click')
 			.on('click', function() { activateExt(ext); });
 		if (ext.isActive && !ext.testError)
 		{	
-			btn.append('<i class="icon-pause"></i>');
-			btn.attr({ title: "Deactivate (restart needed)" });
+			btn.append('<i class="material-icon">pause</i>');
+			btn.attr({ title: "Deactivate" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
-			btn.append('<i class="icon-play"></i>');
-			btn.attr({ title: "Activate for new downloads (restart needed)" });
+			btn.append('<i class="material-icon">play_arrow</i>');
+			btn.attr({ title: "Activate for new downloads" });
 			btn.addClass('btn-success');
 		}
 		else
 		{
-			btn.append('<img src="img/warning-16.ico">');
+			btn.append('<i class="material-icon">warning</i>');
 			btn.attr({ title: ext.testError });
 			btn.addClass('btn-warning');
 		}
@@ -3909,7 +4069,7 @@ var ExtensionManager = (new function($)
 		if (ext.homepage)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append($('<a href="' + ext.homepage + '" target="_blank"><img src="img/house-16.ico"></a>'));
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" title="Homepage">home</i></a>'));
 			return cell;
 		}
 		
@@ -3949,16 +4109,16 @@ var ExtensionManager = (new function($)
 		var cell = $('<td class="extension-manager__td text-center">');
 		var container = $('<div class="btn-row-order-block">');
 		var title = "Modify execution order (restart needed)";
-		var mvTop = $('<div class="btn-row-order icon-top" id="MvTopBtn_' + ext.name +'"></div>')
+		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon">vertical_align_top</i></span>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
-		var mvUp = $('<div class="btn-row-order icon-up id="MvUpBtn_' + ext.name +'"></div>')
+		var mvUp = $('<span class="btn-row-order id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
 			.off('click')
 			.on('click', function() { moveUp(ext); });
-		var mvDown = $('<div class="btn-row-order icon-down id="MvDownBtn_' + ext.name +'"></div>')
+		var mvDown = $('<span class="btn-row-order id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
 			.off('click')
 			.on('click', function() { moveDown(ext); });
-		var mvBottom = $('<div class="btn-row-order icon-bottom id="MvBottomBtn_' + ext.name +'"></div>')
+		var mvBottom = $('<span class="btn-row-order id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
 		

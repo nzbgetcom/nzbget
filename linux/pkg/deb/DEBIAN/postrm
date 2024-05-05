@@ -1,0 +1,33 @@
+#!/bin/sh
+set -e
+
+# reload systemd
+if [ "$1" = "remove" ]; then
+    systemctl --system daemon-reload >/dev/null || true
+fi
+
+# mask nzbget service
+if [ "$1" = "remove" ]; then
+    deb-systemd-helper mask 'nzbget.service' >/dev/null || true
+fi
+
+if [ "$1" = "purge" ]; then
+    # purge nzbget service
+    deb-systemd-helper purge 'nzbget.service' >/dev/null || true
+    deb-systemd-helper unmask 'nzbget.service' >/dev/null || true
+    # purge nzbget home directory
+    rm -rf /var/lib/nzbget/scripts
+    rm -rf /var/lib/nzbget/tmp
+    rm -rf /var/lib/nzbget/nzbget.conf
+    rm -rf /var/lib/nzbget/downloads/intermediate
+    rm -rf /var/lib/nzbget/downloads/queue
+    rm -rf /var/lib/nzbget/downloads/nzb
+    # remove completed only if empty
+    if [ -d /var/lib/nzbget/downloads/completed ]; then
+        if [ -z "$(ls -A var/lib/nzbget/downloads/completed)" ]; then
+            rm -rf /var/lib/nzbget/downloads
+        fi
+    else
+        rm -rf /var/lib/nzbget/downloads
+    fi
+fi

@@ -112,11 +112,9 @@ compiled */
 
 #endif
 
-
 /***************** GLOBAL INCLUDES *****************/
 
 #ifdef WIN32
-
 // WINDOWS INCLUDES
 
 // Using "WIN32_LEAN_AND_MEAN" to disable including of many unneeded headers
@@ -138,13 +136,7 @@ compiled */
 #include <wincon.h>
 #include <shellapi.h>
 #include <winreg.h>
-
 #include <comutil.h>
-
-#if _MSC_VER >= 1600
-#include <stdint.h>
-#define HAVE_STDINT_H
-#endif
 
 #ifdef _DEBUG
 #include <crtdbg.h>
@@ -159,9 +151,7 @@ compiled */
 #include <grp.h>
 #include <signal.h>
 #include <netdb.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <getopt.h>
 #include <sys/socket.h>
 #include <sys/time.h>
@@ -172,8 +162,6 @@ compiled */
 #include <sys/file.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <stdint.h>
-#include <pwd.h>
 #include <dirent.h>
 
 #ifdef HAVE_SYS_PRCTL_H
@@ -200,6 +188,7 @@ compiled */
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <time.h>
 #include <ctype.h>
 #include <inttypes.h>

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 
 namespace ExtensionLoader
 {
+	const char* DEFAULT_SECTION_NAME = "options";
 	const char* BEGIN_SCRIPT_SIGNATURE = "### NZBGET ";
 	const char* BEGIN_SCRIPT_COMMANDS_AND_OTPIONS = "### OPTIONS";
 	const char* POST_SCRIPT_SIGNATURE = "POST-PROCESSING";
@@ -83,10 +84,12 @@ namespace ExtensionLoader
 				{
 					continue;
 				}
+
 				if (!inBeforeConfig && !strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
 				{
 					inBeforeConfig = true;
 				}
+
 				if (!inBeforeConfig && !inConfig)
 				{
 					continue;
@@ -149,6 +152,7 @@ namespace ExtensionLoader
 					continue;
 				}
 
+				// if "OPTIONS" and other sections, e.g.: ### OPTIONS or ### CATEGORIES
 				if (!strncmp(line.c_str(), BEGIN_SCRIPT_COMMANDS_AND_OTPIONS, BEGIN_SCRIPT_COMMANDS_AND_OTPIONS_LEN))
 				{
 					ParseOptionsAndCommands(file, options, commands);
@@ -181,244 +185,248 @@ namespace ExtensionLoader
 
 			return true;
 		}
-		namespace
+
+		void RemoveTailAndTrim(std::string& str, const char* tail)
 		{
-			void RemoveTailAndTrim(std::string& str, const char* tail)
+			size_t tailIdx = str.find(tail);
+			if (tailIdx != std::string::npos)
 			{
-				size_t tailIdx = str.find(tail);
-				if (tailIdx != std::string::npos)
+				str.erase(tailIdx);
+			}
+			Util::TrimRight(str);
+		}
+
+		void BuildDisplayName(Extension::Script& script)
+		{
+			BString<1024> shortName = script.GetName();
+			if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
+
+			const char* displayName = FileSystem::BaseFileName(shortName);
+
+			script.SetDisplayName(displayName);
+		}
+
+		void ParseOptionsAndCommands(
+			std::ifstream& file,
+			std::vector<ManifestFile::Option>& options,
+			std::vector<ManifestFile::Command>& commands)
+		{
+			std::vector<ManifestFile::SelectOption> selectOpts;
+			std::vector<std::string> description;
+			std::string currSectionName = DEFAULT_SECTION_NAME;
+
+			std::string line;
+			while (std::getline(file, line))
+			{
+				if (strstr(line.c_str(), END_SCRIPT_SIGNATURE))
 				{
-					str.erase(tailIdx);
+					break;
 				}
-				Util::TrimRight(str);
-			}
 
-			void BuildDisplayName(Extension::Script& script)
-			{
-				BString<1024> shortName = script.GetName();
-				if (char* ext = strrchr(shortName, '.')) *ext = '\0'; // strip file extension
-
-				const char* displayName = FileSystem::BaseFileName(shortName);
-
-				script.SetDisplayName(displayName);
-			}
-
-			void ParseOptionsAndCommands(
-				std::ifstream& file,
-				std::vector<ManifestFile::Option>& options,
-				std::vector<ManifestFile::Command>& commands)
-			{
-				std::vector<ManifestFile::SelectOption> selectOpts;
-				std::vector<std::string> description;
-
-				std::string line;
-				while (std::getline(file, line))
+				if (line.empty())
 				{
-					if (strstr(line.c_str(), END_SCRIPT_SIGNATURE))
-					{
-						break;
-					}
+					continue;
+				}
 
-					if (line.empty())
-					{
-						continue;
-					}
+				if (!strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
+				{
+					currSectionName = line.substr(DEFINITION_SIGNATURE_LEN + 1);
+					RemoveTailAndTrim(currSectionName, "###");
+					continue;
+				}
 
-					size_t selectStartIdx = line.rfind("(");
-					size_t selectEndIdx = line.rfind(")");
-					bool hasSelectOptions = selectStartIdx != std::string::npos
-						&& description.empty()
-						&& selectEndIdx != std::string::npos
-						&& selectEndIdx != std::string::npos
-						&& !strncmp(line.c_str(), "# ", 2);
+				size_t selectStartIdx = line.rfind("(");
+				size_t selectEndIdx = line.rfind(")");
+				bool hasSelectOptions = description.empty()
+					&& !strncmp(line.c_str(), "# ", 2)
+					&& selectStartIdx != std::string::npos
+					&& selectEndIdx != std::string::npos
+					&& selectEndIdx == line.length() - 2;
 
-					// e.g. # Description (Always, OnFailure) or # Description (1-65535) or # Description (1, 2-5, 10).
-					if (hasSelectOptions)
-					{
-						std::string selectOptionsStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
-						auto result = ExtractElements(selectOptionsStr);
-						auto& selectOptions = result.first;
-						auto& delimiter = result.second;
-						bool canBeNum = delimiter == "-";
-						
-						if (delimiter.empty()) // doesn't have
-						{
-							description.push_back(line.substr(2));
-							continue;
-						}
+				// e.g. # Description (Always, OnFailure) or # Description (1-65535) or # Description (1, 2-5, 10).
+				if (hasSelectOptions)
+				{
+					std::string selectOptionsStr = line.substr(selectStartIdx + 1, selectEndIdx - selectStartIdx - 1);
+					auto result = ExtractElements(selectOptionsStr);
+					auto& selectOptions = result.first;
+					auto& delimiter = result.second;
+					bool canBeNum = delimiter == "-";
 
-						if (canBeNum)
-						{
-							description.push_back(line.substr(2));
-						}
-						else
-						{
-							description.push_back(line.substr(2, selectStartIdx - 3) + ".");
-						}
-
-						selectOpts = GetSelectOptions(selectOptions, canBeNum);
-						continue;
-					}
-
-					if (!strncmp(line.c_str(), "# ", 2))
+					if (delimiter.empty()) // doesn't have
 					{
 						description.push_back(line.substr(2));
 						continue;
 					}
 
-					if (strncmp(line.c_str(), "# ", 2))
+					if (canBeNum)
 					{
-						// if option, e.g. #ConnectionTest=Send
-						size_t eqPos = line.find("=");
-						// if command, e.g. #ConnectionTest@Send Test E-Mail
-						size_t atPos = line.find("@");
+						description.push_back(line.substr(2));
+					}
+					else
+					{
+						description.push_back(line.substr(2, selectStartIdx - 3) + ".");
+					}
 
-						if (atPos != std::string::npos && eqPos == std::string::npos)
-						{
-							ManifestFile::Command command;
-							std::string name = line.substr(1, atPos - 1);
-							std::string action = line.substr(atPos + 1);
-							Util::Trim(action);
-							Util::Trim(name);
-							command.action = std::move(action);
-							command.name = std::move(name);
-							command.description = std::move(description);
-							command.displayName = command.name;
-							commands.push_back(std::move(command));
-							description.clear();
-							selectOpts.clear();
-							continue;
-						}
+					selectOpts = GetSelectOptions(selectOptions, canBeNum);
+					continue;
+				}
 
-						if (eqPos != std::string::npos)
-						{
-							ManifestFile::Option option;
-							std::string name = line.substr(1, eqPos - 1);
-							std::string value = line.substr(eqPos + 1);
-							Util::Trim(value);
-							Util::Trim(name);
-							bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
-							option.value = std::move(GetSelectOpt(value, canBeNum));
-							option.name = std::move(name);
-							option.description = std::move(description);
-							option.select = std::move(selectOpts);
-							option.displayName = option.name;
-							options.push_back(std::move(option));
-							description.clear();
-							selectOpts.clear();
-							continue;
-						}
+				if (!strncmp(line.c_str(), "# ", 2))
+				{
+					description.push_back(line.substr(2));
+					continue;
+				}
+
+				if (strncmp(line.c_str(), "# ", 2))
+				{
+					// if option, e.g. #ConnectionTest=Send
+					size_t eqPos = line.find("=");
+					// if command, e.g. #ConnectionTest@Send Test E-Mail
+					size_t atPos = line.find("@");
+
+					if (atPos != std::string::npos && eqPos == std::string::npos)
+					{
+						ManifestFile::Command command{};
+						command.action = line.substr(atPos + 1);
+						Util::Trim(command.action);
+						ParseSectionAndSet<ManifestFile::Command>(command, currSectionName, line, atPos);
+						command.description = std::move(description);
+						commands.push_back(std::move(command));
+						description.clear();
+						selectOpts.clear();
+						continue;
+					}
+
+					if (eqPos != std::string::npos)
+					{
+						ManifestFile::Option option{};
+						ParseSectionAndSet<ManifestFile::Option>(option, currSectionName, line, eqPos);
+						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
+						std::string value = line.substr(eqPos + 1);
+						Util::Trim(value);
+						option.value = GetSelectOpt(value, canBeNum);
+						option.description = std::move(description);
+						option.select = std::move(selectOpts);
+						options.push_back(std::move(option));
+						description.clear();
+						selectOpts.clear();
+						continue;
 					}
 				}
 			}
+		}
 
-			std::vector<ManifestFile::SelectOption> 
-			GetSelectOptions(const std::vector<std::string>& opts, bool canBeNum)
+		std::vector<ManifestFile::SelectOption>
+		GetSelectOptions(const std::vector<std::string>& opts, bool canBeNum)
+		{
+			std::vector<ManifestFile::SelectOption> selectOpts;
+
+			for (const auto& option : opts)
 			{
-				std::vector<ManifestFile::SelectOption> selectOpts;
-
-				for (const auto& option : opts)
-				{
-					selectOpts.push_back(GetSelectOpt(option, canBeNum));
-				}
-				return selectOpts;
+				selectOpts.push_back(GetSelectOpt(option, canBeNum));
 			}
+			return selectOpts;
+		}
 
-			ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum)
+		ManifestFile::SelectOption GetSelectOpt(const std::string& val, bool canBeNum)
+		{
+			if (!canBeNum)
 			{
-				if (!canBeNum)
-				{
-					return ManifestFile::SelectOption(val);
-				}
-
-				auto result = Util::StrToNum(val);
-				if (result.has_value())
-				{
-					return ManifestFile::SelectOption(result.get());
-				}
-
 				return ManifestFile::SelectOption(val);
 			}
 
-			std::pair<std::vector<std::string>, std::string>
-			ExtractElements(const std::string& str)
+			auto result = Util::StrToNum(val);
+			if (result.has_value())
 			{
-				std::vector<std::string> elements;
-				std::string word;
-	
-				for (size_t i = 0; i < str.size(); ++i)
+				return ManifestFile::SelectOption(result.get());
+			}
+
+			return ManifestFile::SelectOption(val);
+		}
+
+		std::pair<std::vector<std::string>, std::string>
+		ExtractElements(const std::string& str)
+		{
+			std::vector<std::string> elements;
+			std::string word;
+
+			for (size_t i = 0; i < str.size(); ++i)
+			{
+				if (i == (str.size() - 1))
 				{
-					if (i == str.size() - 1)
-				    {
-				        word += str[i];
-				        elements.push_back(std::move(word));
-				        break;
-				    }
-
-					if (str[i] == ',')
-					{
-						elements.push_back(std::move(word));
-						word.clear();
-						continue;
-					}
-
-					if (str[i] == ' ' && word.empty())
-					{
-						continue;
-					}
-
-					if (str[i] == ' ' && !word.empty())
-					{
-						elements.clear();
-						elements.push_back(str);
-						return std::make_pair(std::move(elements), "");
-					}
-
-					if (str[i] == '-' && elements.empty())
-					{
-						std::string restWord;
-						for (size_t j = i + 1; j < str.size(); ++j)
-						{
-							if (j >= str.size() - 1)
-							{
-								restWord += str[j];
-								elements.push_back(std::move(word));
-								elements.push_back(std::move(restWord));
-								return std::make_pair(std::move(elements), "-");
-							}
-
-							if (str[j] == ' ')
-							{
-								elements.push_back(str);
-								return std::make_pair(std::move(elements), "");
-							}
-
-							if (str[j] == ',')
-							{
-								word += '-' + restWord;
-								elements.push_back(std::move(word));
-								word.clear();
-								i = j;
-								break;
-							}
-
-							restWord += str[j];
-						}
-
-						continue;
-					}
-
 					word += str[i];
+					elements.push_back(std::move(word));
+					break;
 				}
 
-				return std::make_pair(std::move(elements), ",");
+				if (str[i] == ',')
+				{
+					elements.push_back(std::move(word));
+					word.clear();
+					continue;
+				}
+
+				if (str[i] == ' ' && word.empty())
+				{
+					continue;
+				}
+
+				if (str[i] == ' ' && !word.empty())
+				{
+					elements.clear();
+					elements.push_back(str);
+					return std::make_pair(std::move(elements), "");
+				}
+
+				if (str[i] == '-' && elements.empty())
+				{
+					std::string restWord;
+					for (size_t j = i + 1; j < str.size(); ++j)
+					{
+						if (j >= str.size() - 1)
+						{
+							restWord += str[j];
+							elements.push_back(std::move(word));
+							elements.push_back(std::move(restWord));
+							return std::make_pair(std::move(elements), "-");
+						}
+
+						if (str[j] == ' ')
+						{
+							elements.push_back(str);
+							return std::make_pair(std::move(elements), "");
+						}
+
+						if (str[j] == ',')
+						{
+							word += '-' + restWord;
+							elements.push_back(std::move(word));
+							word.clear();
+							i = j;
+							break;
+						}
+
+						restWord += str[j];
+					}
+
+					continue;
+				}
+
+				word += str[i];
 			}
+
+			if (elements.size() == 1)
+			{
+				return std::make_pair(std::move(elements), "");
+			}
+
+			return std::make_pair(std::move(elements), ",");
 		}
 	}
 
 	bool V2::Load(Extension::Script& script, const char* location, const char* rootDir)
 	{
-		ManifestFile::Manifest manifest;
+		ManifestFile::Manifest manifest{};
 		if (!ManifestFile::Load(manifest, location))
 			return false;
 
@@ -430,6 +438,7 @@ namespace ExtensionLoader
 		script.SetHomepage(std::move(manifest.homepage));
 		script.SetLicense(std::move(manifest.license));
 		script.SetVersion(std::move(manifest.version));
+		script.SetNzbgetMinVersion(std::move(manifest.nzbgetMinVersion));
 		script.SetDisplayName(std::move(manifest.displayName));
 		script.SetName(std::move(manifest.name));
 		script.SetAbout(std::move(manifest.about));
@@ -443,17 +452,14 @@ namespace ExtensionLoader
 		return true;
 	}
 
-	namespace
+	Extension::Kind GetScriptKind(const std::string& line)
 	{
-		Extension::Kind GetScriptKind(const std::string& line)
-		{
-			Extension::Kind kind;
-			kind.post = strstr(line.c_str(), POST_SCRIPT_SIGNATURE) != nullptr;
-			kind.scan = strstr(line.c_str(), SCAN_SCRIPT_SIGNATURE) != nullptr;
-			kind.queue = strstr(line.c_str(), QUEUE_SCRIPT_SIGNATURE) != nullptr;
-			kind.scheduler = strstr(line.c_str(), SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
-			kind.feed = strstr(line.c_str(), FEED_SCRIPT_SIGNATURE) != nullptr;
-			return kind;
-		}
+		Extension::Kind kind;
+		kind.post = strstr(line.c_str(), POST_SCRIPT_SIGNATURE) != nullptr;
+		kind.scan = strstr(line.c_str(), SCAN_SCRIPT_SIGNATURE) != nullptr;
+		kind.queue = strstr(line.c_str(), QUEUE_SCRIPT_SIGNATURE) != nullptr;
+		kind.scheduler = strstr(line.c_str(), SCHEDULER_SCRIPT_SIGNATURE) != nullptr;
+		kind.feed = strstr(line.c_str(), FEED_SCRIPT_SIGNATURE) != nullptr;
+		return kind;
 	}
 }
