@@ -273,7 +273,7 @@ void NZBGet::Init()
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
-	if (uMask > 0 && uMask < 01000)
+	if (uMask < 01000)
 	{
 		/* set newly created file permissions */
 		FileSystem::uMask = uMask;
