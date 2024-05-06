@@ -150,7 +150,7 @@ endif()
 
 if(NOT DISABLE_PARCHECK)
 	check_type_size(size_t SIZE_T)
-	check_symbol_exists(fseeko "stdio.h" HAVE_FSEEKO)
+	check_function_exists(fseeko HAVE_FSEEKO)
 	check_function_exists(getopt HAVE_GETOPT)
 else() 
   set(DISABLE_PARCHECK 1)
