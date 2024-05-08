@@ -124,7 +124,7 @@ protected:
 
 private:
 	static std::unique_ptr<Mutex> m_threadMutex;
-	static int m_threadCount;
+	static std::atomic<int> m_threadCount;
 	std::thread::native_handle_type m_threadObj = 0;
 	bool m_running = false;
 	bool m_stopped = false;

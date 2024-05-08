@@ -22,7 +22,7 @@
 #include "Log.h"
 #include "Thread.h"
 
-int Thread::m_threadCount = 1; // take the main program thread into account
+std::atomic<int> Thread::m_threadCount{1}; // take the main program thread into account
 std::unique_ptr<Mutex> Thread::m_threadMutex;
 
 
@@ -129,6 +129,5 @@ void Thread::thread_handler()
 
 int Thread::GetThreadCount()
 {
-	Guard guard(m_threadMutex);
-	return m_threadCount;
+	return m_threadCount.load();
 }
