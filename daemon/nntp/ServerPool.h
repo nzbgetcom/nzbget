@@ -39,6 +39,7 @@ public:
 	void InitConnections();
 	int GetMaxNormLevel() { return m_maxNormLevel; }
 	Servers* GetServers() { return &m_servers; } // Only for read access (no lockings)
+	NewsServer* GetServerById(int id);
 	NntpConnection* GetConnection(int level, NewsServer* wantServer, RawServerList* ignoreServers);
 	void FreeConnection(NntpConnection* connection, bool used);
 	void CloseUnusedConnections();

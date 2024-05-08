@@ -38,6 +38,7 @@
 #include "CommandScript.h"
 #include "UrlCoordinator.h"
 #include "ExtensionManager.h"
+#include "SystemInfo.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -117,6 +118,12 @@ public:
 };
 
 class StatusXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class SysInfoXmlCommand: public SafeXmlCommand
 {
 public:
 	virtual void Execute();
@@ -346,6 +353,12 @@ private:
 	};
 
 	void PrintError(const char* errMsg);
+};
+
+class TestServerSpeedXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
 };
 
 class StartScriptXmlCommand : public XmlCommand
@@ -648,6 +661,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	{
 		command = std::make_unique<StatusXmlCommand>();
 	}
+	else if (!strcasecmp(methodName, "sysinfo"))
+	{
+		command = std::make_unique<SysInfoXmlCommand>();
+	}
 	else if (!strcasecmp(methodName, "log"))
 	{
 		command = std::make_unique<LogXmlCommand>();
@@ -795,6 +812,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "testserver"))
 	{
 		command = std::make_unique<TestServerXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testserverspeed"))
+	{
+		command = std::make_unique<TestServerSpeedXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "startscript"))
 	{
@@ -1279,6 +1300,9 @@ void StatusXmlCommand::Execute()
 		"<member><name>FreeDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>FreeDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>FreeDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceMB</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ServerTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ResumeTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FeedActive</name><value><boolean>%s</boolean></value></member>\n"
@@ -1332,6 +1356,9 @@ void StatusXmlCommand::Execute()
 		"\"FreeDiskSpaceLo\" : %u,\n"
 		"\"FreeDiskSpaceHi\" : %u,\n"
 		"\"FreeDiskSpaceMB\" : %i,\n"
+		"\"TotalDiskSpaceLo\" : %u,\n"
+		"\"TotalDiskSpaceHi\" : %u,\n"
+		"\"TotalDiskSpaceMB\" : %u,\n"
 		"\"ServerTime\" : %i,\n"
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
@@ -1414,9 +1441,21 @@ void StatusXmlCommand::Execute()
 	Util::SplitInt64(dayBytes, &daySizeHi, &daySizeLo);
 
 	uint32 freeDiskSpaceHi, freeDiskSpaceLo;
-	int64 freeDiskSpace = FileSystem::FreeDiskSize(g_Options->GetDestDir());
+	uint32 totalDiskSpaceHi, totalDiskSpaceLo;
+	int64 freeDiskSpace = 0;
+	size_t totalDiskSpace = 0;
+	auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
+	if (res.has_value())
+	{
+		const auto& value = res.value();
+		freeDiskSpace = static_cast<int64>(value.available);
+		totalDiskSpace = value.total;
+		
+	}
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
-	int freeDiskSpaceMB = (int)(freeDiskSpace / 1024 / 1024);
+	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);
+	int freeDiskSpaceMB = static_cast<int>(freeDiskSpace / 1024 / 1024);
+	uint32 totalDiskSpaceMB = static_cast<uint32>(totalDiskSpace / 1024 / 1024);
 
 	int serverTime = (int)Util::CurrentTime();
 	int resumeTime = (int)g_WorkState->GetResumeTime();
@@ -1438,8 +1477,8 @@ void StatusXmlCommand::Execute()
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, freeDiskSpaceHi,	freeDiskSpaceMB, serverTime, resumeTime,
-		BoolToStr(feedActive), queuedScripts);
+		freeDiskSpaceLo, freeDiskSpaceHi, freeDiskSpaceMB, totalDiskSpaceLo, totalDiskSpaceHi, totalDiskSpaceMB,
+		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -1450,6 +1489,15 @@ void StatusXmlCommand::Execute()
 	}
 
 	AppendResponse(IsJson() ? JSON_STATUS_END : XML_STATUS_END);
+}
+
+void SysInfoXmlCommand::Execute()
+{
+	std::string response = IsJson()
+		? System::ToJsonStr(*g_SystemInfo)
+		: System::ToXmlStr(*g_SystemInfo);
+
+	AppendResponse(response.c_str());
 }
 
 // struct[] log(idfrom, entries)
@@ -3555,6 +3603,37 @@ void TestServerXmlCommand::PrintError(const char* errMsg)
 	{
 		m_errText = EncodeStr(errMsg);
 	}
+}
+
+void TestServerSpeedXmlCommand::Execute()
+{
+	char* nzbFileUrl;
+	if (!NextParamAsStr(&nzbFileUrl))
+	{
+		BuildErrorResponse(2, "Invalid parameter: NZB file url");
+		return;
+	}
+
+	int serverId;
+	if (!NextParamAsInt(&serverId))
+	{
+		BuildErrorResponse(2, "Invalid parameter: Server ID");
+		return;
+	}
+
+	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
+	nzbInfo->SetKind(NzbInfo::nkUrl);
+	nzbInfo->SetUrl(nzbFileUrl);
+	nzbInfo->SetFilename(nzbFileUrl);
+	nzbInfo->SetPriority(NzbInfo::FORCE_PRIORITY);
+	nzbInfo->SetExtraPriority(NzbInfo::FORCE_PRIORITY);
+	nzbInfo->SetAddUrlPaused(false);
+	nzbInfo->SetDupeMode(EDupeMode::dmForce);
+	nzbInfo->SetDesiredServerId(serverId);
+
+	g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), true);
+
+	BuildBoolResponse(true);
 }
 
 // bool startscript(string script, string command, string context, struct[] options);

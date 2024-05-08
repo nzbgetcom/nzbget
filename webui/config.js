@@ -27,6 +27,15 @@
 
 /*** OPTIONS AND CONFIGS (FROM CONFIG FILES) **************************************/
 
+function Server()
+{
+	this.id = 0;
+	this.host = '';
+	this.name = '';
+	this.port = 0;
+	this.connections = 0;
+}
+
 var Options = (new function($)
 {
 	'use strict';
@@ -49,10 +58,6 @@ var Options = (new function($)
 
 	var HIDDEN_SECTIONS = ['DISPLAY (TERMINAL)', 'POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
 	var POSTPARAM_SECTIONS = ['POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
-
-	this.init = function()
-	{
-	}
 
 	this.update = function()
 	{
@@ -89,6 +94,20 @@ var Options = (new function($)
 	{
 		var opt = findOption(this.options, name);
 		return opt ? opt.Value : null;
+	}
+
+	this.getServerById = function(id)
+	{
+		var server = new Server();
+
+		server.id = id;
+		var serverId = 'Server' + id;
+		server.host = findOption(this.options, serverId + '.Host').Value;
+		server.name = findOption(this.options, serverId + '.Name').Value;
+		server.port = findOption(this.options, serverId + '.Port').Value;
+		server.connections = findOption(this.options, serverId + '.Connections').Value;
+
+		return server;
 	}
 
 	function initCategories()
@@ -1438,6 +1457,15 @@ var Config = (new function($)
 			$ConfigInfo.show();
 			$ConfigData.children().hide();
 			$ConfigTitle.text('INFO');
+			return;
+		}
+
+		if (sectionId === SystemInfo.id)
+		{
+			$ConfigData.children().hide();
+			$('.config-status', $ConfigData).show();
+			SystemInfo.loadSystemInfo();
+			$ConfigTitle.text('STATUS');
 			return;
 		}
 
@@ -3393,6 +3421,8 @@ var ExecScriptDialog = (new function($)
 	}
 
 }(jQuery));
+
+/*** EXTENSION MANAGET *******************************************************/
 
 function Extension()
 {

@@ -37,6 +37,7 @@ target_include_directories(PostprocessTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/connect
+	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${CMAKE_SOURCE_DIR}/lib/par2

@@ -30,6 +30,25 @@ void ServerPool::PooledConnection::SetFreeTimeNow()
 	m_freeTime = Util::CurrentTime();
 }
 
+NewsServer* ServerPool::GetServerById(int id)
+{
+	auto serverIt = std::find_if(
+		begin(m_servers),
+		end(m_servers),
+		[&](const std::unique_ptr<NewsServer>& server)
+		{
+			return server->GetId() == id;
+		}
+	);
+
+	if (serverIt != end(m_servers))
+	{
+		return serverIt->get();
+	}
+
+	return nullptr;
+}
+
 
 void ServerPool::AddServer(std::unique_ptr<NewsServer> newsServer)
 {

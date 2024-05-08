@@ -38,6 +38,9 @@ public:
 	static bool MatchFileExt(const char* filename, const char* extensionList, const char* listSeparator);
 	static std::optional<std::string> 
 	FindExecutorProgram(const std::string& filename, const std::string& customPath);
+	static std::optional<std::string> 
+	FindShellOverriddenExecutor(const std::string& fileExt, const std::string& customPath);
+	static std::optional<std::string> FindPython();
 
 	/*
 	* Split command line into arguments.
@@ -83,8 +86,15 @@ public:
 	/* Calculate Hash using Bob Jenkins (1996) algorithm */
 	static uint32 HashBJ96(const char* buffer, int bufSize, uint32 initValue);
 
+	static std::unique_ptr<FILE, std::function<void(FILE*)>> MakePipe(const std::string& cmd);
+
+	static const char* NULL_OUTPUT;
+	static const char* FIND_CMD;
+
 #ifdef WIN32
 	static bool RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, char* buffer, int* bufLen);
+#else
+	static std::optional<std::string> Uname(const char* key);
 #endif
 
 	static void SetStandByMode(bool standBy);

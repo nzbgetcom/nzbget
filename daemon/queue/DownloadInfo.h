@@ -24,6 +24,7 @@
 #define DOWNLOADINFO_H
 
 #include <atomic>
+#include "NewsServer.h"
 #include "NString.h"
 #include "Container.h"
 #include "Observer.h"
@@ -650,6 +651,8 @@ public:
 	void UpdateCompletedStats(FileInfo* fileInfo);
 	void UpdateDeletedStats(FileInfo* fileInfo);
 	bool IsDownloadCompleted(bool ignorePausedPars);
+	void SetDesiredServerId(int id) { m_desiredServerId = id; }
+	int GetDesiredServerId() { return m_desiredServerId; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -746,6 +749,7 @@ private:
 	bool m_waitingPar = false;
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
+	int m_desiredServerId = 0;
 
 	static int m_idGen;
 	static int m_idMax;

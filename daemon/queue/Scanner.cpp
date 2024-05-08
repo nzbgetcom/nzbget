@@ -453,6 +453,7 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 		nzbInfo->SetUrlStatus(urlInfo->GetUrlStatus());
 		nzbInfo->SetFeedId(urlInfo->GetFeedId());
 		nzbInfo->SetDupeHint(urlInfo->GetDupeHint());
+		nzbInfo->SetDesiredServerId(urlInfo->GetDesiredServerId());
 	}
 
 	if (nzbFile.GetPassword())

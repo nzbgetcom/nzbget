@@ -2,6 +2,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/connect/HttpClient.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/extension/CommandScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/FeedScript.cpp
@@ -92,6 +93,11 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp
+
+	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
+	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp
+	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp
+	${CMAKE_SOURCE_DIR}/daemon/system/Network.cpp
 )
 
 set(WIN32_SRC

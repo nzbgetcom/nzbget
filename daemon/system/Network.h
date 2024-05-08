@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,16 +17,20 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#ifndef NETWORK_H
+#define NETWORK_H
 
-#include <iostream>
-#include <libxml/tree.h>
+#include <string>
 
-namespace Xml
+namespace System
 {
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
+	struct Network
+	{
+		std::string publicIP;
+		std::string privateIP;
+	};
+
+	Network GetNetwork();
 }
 
 #endif

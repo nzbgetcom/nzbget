@@ -27,7 +27,7 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 62;
+const int DISKSTATE_QUEUE_VERSION = 63;
 const int DISKSTATE_FILE_VERSION = 6;
 const int DISKSTATE_STATS_VERSION = 3;
 const int DISKSTATE_FEEDS_VERSION = 3;
@@ -627,6 +627,8 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 				(int)fileInfo->GetExtraPriority());
 		}
 	}
+
+	outfile.PrintLine("%i", nzbInfo->GetDesiredServerId());
 }
 
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -970,6 +972,13 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		fileInfo->SetExtraPriority((bool)extraPriority);
 		fileInfo->SetNzbInfo(nzbInfo);
 		nzbInfo->GetFileList()->Add(std::move(fileInfo));
+	}
+
+	if (formatVersion >= 63)
+	{
+		int serverId;
+		if (infile.ScanLine("%i", &serverId) != 1) goto error;
+		nzbInfo->SetDesiredServerId(serverId);
 	}
 
 	return true;

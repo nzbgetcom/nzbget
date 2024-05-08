@@ -111,6 +111,9 @@ compiled */
 #pragma warning(disable:4800) // 'type' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning(disable:4267) // 'var' : conversion from 'size_t' to 'type', possible loss of data
 
+#define popen _popen
+#define pclose _pclose
+
 #endif
 
 /***************** GLOBAL INCLUDES *****************/
@@ -164,6 +167,12 @@ compiled */
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <dirent.h>
+
+#ifndef __linux__
+#include <sys/sysctl.h>
+#endif
+
+#define __BSD__ (__FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__)
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>

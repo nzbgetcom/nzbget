@@ -44,6 +44,7 @@ target_include_directories(ExtensionTests PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess
 	${CMAKE_SOURCE_DIR}/daemon/connect
+	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/lib/regex
 	${CMAKE_SOURCE_DIR}/lib/yencode
 	${INCLUDES}
