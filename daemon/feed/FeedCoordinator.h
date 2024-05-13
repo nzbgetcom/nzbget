@@ -21,6 +21,7 @@
 #ifndef FEEDCOORDINATOR_H
 #define FEEDCOORDINATOR_H
 
+#include <atomic>
 #include "NString.h"
 #include "Log.h"
 #include "Thread.h"
@@ -114,7 +115,7 @@ private:
 	Mutex m_downloadsMutex;
 	DownloadQueueObserver m_downloadQueueObserver;
 	WorkStateObserver m_workStateObserver;
-	bool m_force = false;
+	std::atomic<bool> m_force{false};
 	bool m_save = false;
 	FeedCache m_feedCache;
 	ConditionVar m_waitCond;
