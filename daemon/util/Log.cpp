@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,7 +74,9 @@ void Log::Filelog(const char* msg, ...)
 	char time[50];
 	Util::FormatTime(rawtime, time, 50);
 
-	if ((int)rawtime/86400 != (int)m_lastWritten/86400 && g_Options->GetWriteLog() == Options::wlRotate)
+	const int day = 86400;
+	if (static_cast<int>(rawtime) / day != static_cast<int>(m_lastWritten.load()) / day 
+		&& g_Options->GetWriteLog() == Options::wlRotate)
 	{
 		if (m_logFile)
 		{
