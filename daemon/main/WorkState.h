@@ -42,7 +42,7 @@ public:
 	void SetTempPauseDownload(bool tempPauseDownload) { m_tempPauseDownload = tempPauseDownload; Changed(); }
 	bool GetTempPauseDownload() const { return m_tempPauseDownload.load(); }
 	void SetTempPausePostprocess(bool tempPausePostprocess) { m_tempPausePostprocess = tempPausePostprocess; Changed(); }
-	bool GetTempPausePostprocess() const { return m_tempPausePostprocess; }
+	bool GetTempPausePostprocess() const { return m_tempPausePostprocess.load(); }
 	void SetPauseFrontend(bool pauseFrontend) { m_pauseFrontend = pauseFrontend; Changed(); }
 	bool GetPauseFrontend() const { return m_pauseFrontend; }
 	void SetSpeedLimit(int speedLimit) { m_speedLimit = speedLimit; Changed(); }
@@ -61,7 +61,7 @@ private:
 	bool m_pausePostProcess = false;
 	bool m_pauseScan = false;
 	std::atomic<bool> m_tempPauseDownload{true};
-	bool m_tempPausePostprocess = true;
+	std::atomic<bool> m_tempPausePostprocess{true};
 	bool m_pauseFrontend = false;
 	int m_downloadRate = 0;
 	time_t m_resumeTime = 0;
