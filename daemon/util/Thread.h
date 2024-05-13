@@ -116,9 +116,9 @@ public:
 	virtual void Resume();
 	bool Kill();
 
-	bool IsStopped() { return m_stopped; };
-	bool IsRunning() const { return m_running; }
-	bool GetAutoDestroy() { return m_autoDestroy; }
+	bool IsStopped() { return m_stopped.load(); };
+	bool IsRunning() const { return m_running.load(); }
+	bool GetAutoDestroy() { return m_autoDestroy.load(); }
 	void SetAutoDestroy(bool autoDestroy) { m_autoDestroy = autoDestroy; }
 	static int GetThreadCount();
 
@@ -129,9 +129,9 @@ private:
 	static std::unique_ptr<Mutex> m_threadMutex;
 	static std::atomic<int> m_threadCount;
 	std::thread::native_handle_type m_threadObj = 0;
-	bool m_running = false;
-	bool m_stopped = false;
-	bool m_autoDestroy = false;
+	std::atomic<bool> m_running{false};
+	std::atomic<bool> m_stopped{false};
+	std::atomic<bool> m_autoDestroy{false};
 
 	void thread_handler();
 };
