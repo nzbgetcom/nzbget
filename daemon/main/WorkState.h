@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 #ifndef WORKSTATE_H
 #define WORKSTATE_H
 
+#include <atomic>
 #include "Observer.h"
 
 // WorkState is observable but notifications are not 100% reliable.
@@ -38,7 +40,7 @@ public:
 	void SetPauseScan(bool pauseScan) { m_pauseScan = pauseScan; Changed(); }
 	bool GetPauseScan() const { return m_pauseScan; }
 	void SetTempPauseDownload(bool tempPauseDownload) { m_tempPauseDownload = tempPauseDownload; Changed(); }
-	bool GetTempPauseDownload() const { return m_tempPauseDownload; }
+	bool GetTempPauseDownload() const { return m_tempPauseDownload.load(); }
 	void SetTempPausePostprocess(bool tempPausePostprocess) { m_tempPausePostprocess = tempPausePostprocess; Changed(); }
 	bool GetTempPausePostprocess() const { return m_tempPausePostprocess; }
 	void SetPauseFrontend(bool pauseFrontend) { m_pauseFrontend = pauseFrontend; Changed(); }
@@ -58,7 +60,7 @@ private:
 	bool m_pauseDownload = false;
 	bool m_pausePostProcess = false;
 	bool m_pauseScan = false;
-	bool m_tempPauseDownload = true;
+	std::atomic<bool> m_tempPauseDownload{true};
 	bool m_tempPausePostprocess = true;
 	bool m_pauseFrontend = false;
 	int m_downloadRate = 0;
