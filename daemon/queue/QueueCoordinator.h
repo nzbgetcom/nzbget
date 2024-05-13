@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +23,7 @@
 #ifndef QUEUECOORDINATOR_H
 #define QUEUECOORDINATOR_H
 
+#include <atomic>
 #include "Log.h"
 #include "Thread.h"
 #include "NzbFile.h"
@@ -92,7 +94,7 @@ private:
 	ActiveDownloads m_activeDownloads;
 	QueueEditor m_queueEditor;
 	CoordinatorDirectRenamer m_directRenamer{this};
-	bool m_hasMoreJobs = true;
+	std::atomic<bool> m_hasMoreJobs{true};
 	int m_downloadsLimit;
 	int m_serverConfigGeneration = 0;
 	Mutex m_waitMutex;
