@@ -25,26 +25,21 @@
 #include <atomic>
 #include "Observer.h"
 
-// WorkState is observable but notifications are not 100% reliable.
-// The changes via Set-methods and readings via Get-methods are not synchronized throughout the program.
-// As result race conditions may occur and some changes may go unnoticed.
-// When waiting for changes don't wait too long to avoid lock ups.
-
 class WorkState : public Subject
 {
 public:
 	void SetPauseDownload(bool pauseDownload) { m_pauseDownload = pauseDownload; Changed(); }
-	bool GetPauseDownload() const { return m_pauseDownload; }
+	bool GetPauseDownload() const { return m_pauseDownload.load(); }
 	void SetPausePostProcess(bool pausePostProcess) { m_pausePostProcess = pausePostProcess; Changed(); }
-	bool GetPausePostProcess() const { return m_pausePostProcess; }
+	bool GetPausePostProcess() const { return m_pausePostProcess.load(); }
 	void SetPauseScan(bool pauseScan) { m_pauseScan = pauseScan; Changed(); }
-	bool GetPauseScan() const { return m_pauseScan; }
+	bool GetPauseScan() const { return m_pauseScan.load(); }
 	void SetTempPauseDownload(bool tempPauseDownload) { m_tempPauseDownload = tempPauseDownload; Changed(); }
 	bool GetTempPauseDownload() const { return m_tempPauseDownload.load(); }
 	void SetTempPausePostprocess(bool tempPausePostprocess) { m_tempPausePostprocess = tempPausePostprocess; Changed(); }
 	bool GetTempPausePostprocess() const { return m_tempPausePostprocess.load(); }
 	void SetPauseFrontend(bool pauseFrontend) { m_pauseFrontend = pauseFrontend; Changed(); }
-	bool GetPauseFrontend() const { return m_pauseFrontend; }
+	bool GetPauseFrontend() const { return m_pauseFrontend.load(); }
 	void SetSpeedLimit(int speedLimit) { m_speedLimit = speedLimit; Changed(); }
 	int GetSpeedLimit() const { return m_speedLimit; }
 	void SetResumeTime(time_t resumeTime) { m_resumeTime = resumeTime; Changed(); }
@@ -52,23 +47,22 @@ public:
 	void SetLocalTimeOffset(int localTimeOffset) { m_localTimeOffset = localTimeOffset; Changed(); }
 	int GetLocalTimeOffset() { return m_localTimeOffset; }
 	void SetQuotaReached(bool quotaReached) { m_quotaReached = quotaReached; Changed(); }
-	bool GetQuotaReached() { return m_quotaReached; }
+	bool GetQuotaReached() { return m_quotaReached.load(); }
 	void SetDownloading(bool downloading) { m_downloading = downloading; Changed(); }
-	bool GetDownloading() { return m_downloading; }
+	bool GetDownloading() { return m_downloading.load(); }
 
 private:
-	bool m_pauseDownload = false;
-	bool m_pausePostProcess = false;
-	bool m_pauseScan = false;
 	std::atomic<bool> m_tempPauseDownload{true};
 	std::atomic<bool> m_tempPausePostprocess{true};
-	bool m_pauseFrontend = false;
-	int m_downloadRate = 0;
+	std::atomic<bool> m_pauseDownload{false};
+	std::atomic<bool> m_pausePostProcess{false};
+	std::atomic<bool> m_pauseScan{false};
+	std::atomic<bool> m_pauseFrontend{false};
+	std::atomic<bool> m_downloading{false};
+	std::atomic<bool> m_quotaReached{false};
 	time_t m_resumeTime = 0;
 	int m_localTimeOffset = 0;
-	bool m_quotaReached = false;
 	int m_speedLimit = 0;
-	bool m_downloading = false;
 
 	void Changed();
 };
