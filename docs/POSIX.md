@@ -98,6 +98,7 @@ cmake --build . --target uninstall
   - Install configuration files into <prefix>/etc via:
 ```
 cmake --build . --target install-conf
+```
   - Uninstall configuration files into <prefix>/etc via:
 ```
 cmake --build . --target uninstall-conf
