@@ -12,6 +12,12 @@ case "$1" in
         echo "$QPKG_NAME is disabled."
         exit 1
     fi
+
+    if /bin/pidof nzbget &>/dev/null; then
+        echo "$QPKG_NAME is already running."
+        exit 0
+    fi
+
     cd $QPKG_ROOT/nzbget
     $QPKG_ROOT/nzbget/nzbget -c $QPKG_ROOT/nzbget/nzbget.conf -D
     ;;
