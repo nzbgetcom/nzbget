@@ -4,6 +4,7 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v22.0/total?label=v22.0)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v23.0/total?label=v23.0)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.0/total?label=v24.0)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.1/total?label=v24.1)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
@@ -35,6 +36,8 @@ More information available at https://nzbget.com
 We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
 Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
+
+macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
 
 Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
 
