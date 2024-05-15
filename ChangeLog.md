@@ -1,3 +1,16 @@
+nzbget-24.1
+  - Bug fixes:
+      - Fixed: don't override user preference in unrar
+      [#251](https://github.com/nzbgetcom/nzbget/commit/483702814e4d3b0c950e1ad2a48471e6c99bf624);
+      - Fixed (Docker): unable to unpack rar files
+      [#256](https://github.com/nzbgetcom/nzbget/commit/62aa1d900a9e9d2051301ef27beb672c4ce1e4b5);
+      - Fixed: possibility to use `0` for umask
+      [#264](https://github.com/nzbgetcom/nzbget/commit/f87a24b6f0d83608e15662967e76b96850537199);
+      - Fixed: `fseeko` not found
+      [#262](https://github.com/nzbgetcom/nzbget/commit/b9e51d482bd0e54bf917d0497c0736bfd12fefbf);
+      - Fixed: icons in webui in old browser versions
+      [#268](https://github.com/nzbgetcom/nzbget/commit/03916079949cebfb780d2a23c8667db31f57fae9).
+
 nzbget-24.0
   - Features:
     - Dark theme and new icons 
