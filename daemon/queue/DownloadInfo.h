@@ -114,7 +114,7 @@ private:
 	int m_segmentSize = 0;
 	EStatus m_status = aiUndefined;
 	CString m_resultFilename;
-	uint32 m_crc = 0;
+	std::atomic<uint32> m_crc{0};
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -236,7 +236,7 @@ private:
 	bool m_extraPriority = false;
 	int m_activeDownloads = 0;
 	bool m_dupeDeleted = false;
-	int m_cachedArticles = 0;
+	std::atomic<int> m_cachedArticles{0};
 	bool m_partialChanged = false;
 	bool m_forceDirectWrite = false;
 	EPartialState m_partialState = psNone;
@@ -822,7 +822,7 @@ public:
 
 private:
 	NzbInfo* m_nzbInfo = nullptr;
-	bool m_working = false;
+	std::atomic<bool> m_working{false};
 	bool m_deleted = false;
 	bool m_requestParCheck = false;
 	bool m_forceParFull = false;

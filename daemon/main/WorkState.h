@@ -25,7 +25,7 @@
 #include <atomic>
 #include "Observer.h"
 
-class WorkState : public Subject
+class WorkState final : public Subject
 {
 public:
 	void SetPauseDownload(bool pauseDownload) { m_pauseDownload = pauseDownload; Changed(); }
@@ -52,6 +52,9 @@ public:
 	bool GetDownloading() { return m_downloading.load(); }
 
 private:
+	std::atomic<time_t> m_resumeTime{0};
+	std::atomic<int> m_localTimeOffset{0};
+	std::atomic<int> m_speedLimit{0};
 	std::atomic<bool> m_tempPauseDownload{true};
 	std::atomic<bool> m_tempPausePostprocess{true};
 	std::atomic<bool> m_pauseDownload{false};
@@ -60,9 +63,6 @@ private:
 	std::atomic<bool> m_pauseFrontend{false};
 	std::atomic<bool> m_downloading{false};
 	std::atomic<bool> m_quotaReached{false};
-	time_t m_resumeTime = 0;
-	int m_localTimeOffset = 0;
-	int m_speedLimit = 0;
 
 	void Changed();
 };
