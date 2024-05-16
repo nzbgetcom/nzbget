@@ -381,7 +381,7 @@ void StatMeter::LogDebugInfo()
 	info("      Speed: %i", speed);
 	info("      SpeedStartTime: %i", m_speedStartTime.load());
 	info("      SpeedTotalBytes: %" PRIi64, m_speedTotalBytes.load());
-	info("      SpeedBytesIndex: %i", m_speedBytesIndex);
+	info("      SpeedBytesIndex: %i", m_speedBytesIndex.load());
 	info("      AllBytes: %" PRIi64, m_allBytes.load());
 	info("      Time: %i", (int)Util::CurrentTime());
 	info("      TimeDiff: %i", timeDiff);
