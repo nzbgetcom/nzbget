@@ -101,15 +101,15 @@ private:
 	static const int SPEEDMETER_SLOTSIZE = 1; //Split elapsed time into this number of secs.
 	int m_speedBytes[SPEEDMETER_SLOTS];
 	int m_speedTime[SPEEDMETER_SLOTS];
-	std::atomic<time_t> m_speedCorrection;
-	std::atomic<time_t> m_curSecTime;
-	std::atomic<int64> m_speedTotalBytes;
-	std::atomic<int> m_speedBytesIndex;
-	std::atomic<int> m_curSecBytes;
-	std::atomic<int> m_speedStartTime;
+	std::atomic<time_t> m_speedCorrection{0};
+	std::atomic<time_t> m_curSecTime{0};
+	std::atomic<int64> m_speedTotalBytes{0};
+	std::atomic<int> m_speedBytesIndex{0};
+	std::atomic<int> m_curSecBytes{0};
+	std::atomic<int> m_speedStartTime{0};
 
 	// time
-	std::atomic<int64> m_allBytes = 0;
+	std::atomic<int64> m_allBytes{0};
 	time_t m_startServer = 0;
 	time_t m_lastCheck = 0;
 	time_t m_lastTimeOffset = 0;

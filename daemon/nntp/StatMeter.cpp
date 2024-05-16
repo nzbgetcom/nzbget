@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -300,7 +301,7 @@ int StatMeter::CalcCurrentDownloadSpeed()
 int StatMeter::CalcMomentaryDownloadSpeed()
 {
 	time_t curTime = Util::CurrentTime();
-	int speed = curTime == m_curSecTime ? m_curSecBytes : 0;
+	int speed = curTime == m_curSecTime ? m_curSecBytes.load() : 0;
 	return speed;
 }
 
@@ -380,10 +381,10 @@ void StatMeter::LogDebugInfo()
 	int speed = CalcCurrentDownloadSpeed() / 1024;
 	int timeDiff = (int)Util::CurrentTime() - m_speedStartTime * SPEEDMETER_SLOTSIZE;
 	info("      Speed: %i", speed);
-	info("      SpeedStartTime: %i", m_speedStartTime);
-	info("      SpeedTotalBytes: %" PRIi64, m_speedTotalBytes);
-	info("      SpeedBytesIndex: %i", m_speedBytesIndex);
-	info("      AllBytes: %" PRIi64, m_allBytes);
+	info("      SpeedStartTime: %i", m_speedStartTime.load());
+	info("      SpeedTotalBytes: %" PRIi64, m_speedTotalBytes.load());
+	info("      SpeedBytesIndex: %i", m_speedBytesIndex.load());
+	info("      AllBytes: %" PRIi64, m_allBytes.load());
 	info("      Time: %i", (int)Util::CurrentTime());
 	info("      TimeDiff: %i", timeDiff);
 	for (int i=0; i < SPEEDMETER_SLOTS; i++)
