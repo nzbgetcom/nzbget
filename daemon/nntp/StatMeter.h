@@ -23,6 +23,7 @@
 #define STATMETER_H
 
 #include <atomic>
+#include <array>
 #include "Log.h"
 #include "Thread.h"
 #include "Util.h"
@@ -99,24 +100,24 @@ private:
 	// speed meter
 	static const int SPEEDMETER_SLOTS = 30;
 	static const int SPEEDMETER_SLOTSIZE = 1; //Split elapsed time into this number of secs.
-	int m_speedBytes[SPEEDMETER_SLOTS];
-	int m_speedTime[SPEEDMETER_SLOTS];
+	std::array<std::atomic<int>, SPEEDMETER_SLOTS> m_speedBytes;
+	std::array<std::atomic<int>, SPEEDMETER_SLOTS> m_speedTime;
 	std::atomic<time_t> m_speedCorrection{0};
 	std::atomic<time_t> m_curSecTime{0};
 	std::atomic<int64> m_speedTotalBytes{0};
 	std::atomic<int> m_speedBytesIndex{0};
 	std::atomic<int> m_curSecBytes{0};
 	std::atomic<int> m_speedStartTime{0};
+	std::mutex m_speedTotalBytesMtx;
 
 	// time
 	std::atomic<int64> m_allBytes{0};
-	time_t m_startServer = 0;
+	std::atomic<time_t> m_startServer{0};
+	std::atomic<time_t> m_pausedFrom{0};
+	std::atomic<time_t> m_startDownload{0};
+	std::atomic<bool> m_standBy{true};
 	time_t m_lastCheck = 0;
 	time_t m_lastTimeOffset = 0;
-	time_t m_startDownload = 0;
-	time_t m_pausedFrom = 0;
-	bool m_standBy = true;
-	Mutex m_statMutex;
 
 	// data volume
 	std::atomic<bool> m_statChanged{false};

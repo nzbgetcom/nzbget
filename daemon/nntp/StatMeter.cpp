@@ -176,7 +176,7 @@ StatMeter::StatMeter()
 void StatMeter::Init()
 {
 	m_startServer = Util::CurrentTime();
-	m_lastCheck = m_startServer;
+	m_lastCheck = m_startServer.load();
 	AdjustTimeOffset();
 
 	m_serverVolumes.resize(1 + g_ServerPool->GetServers()->size());
@@ -236,7 +236,6 @@ void StatMeter::IntervalCheck()
 
 void StatMeter::EnterLeaveStandBy(bool enter)
 {
-	Guard guard(m_statMutex);
 	m_standBy = enter;
 	if (enter)
 	{
@@ -244,14 +243,12 @@ void StatMeter::EnterLeaveStandBy(bool enter)
 	}
 	else
 	{
-		if (m_startDownload == 0)
-		{
-			m_startDownload = Util::CurrentTime();
-		}
-		else
+		time_t startDownload = 0;
+		if (!m_startDownload.compare_exchange_strong(startDownload, Util::CurrentTime()))
 		{
 			m_startDownload += Util::CurrentTime() - m_pausedFrom;
 		}
+
 		m_pausedFrom = 0;
 		ResetSpeedStat();
 	}
@@ -259,23 +256,23 @@ void StatMeter::EnterLeaveStandBy(bool enter)
 
 void StatMeter::CalcTotalStat(int* upTimeSec, int* dnTimeSec, int64* allBytes, bool* standBy)
 {
-	Guard guard(m_statMutex);
-	if (m_startServer > 0)
+	time_t startServer = m_startServer.load();
+	if (startServer > 0)
 	{
-		*upTimeSec = (int)(Util::CurrentTime() - m_startServer);
+		*upTimeSec = static_cast<int>(Util::CurrentTime() - startServer);
 	}
 	else
 	{
 		*upTimeSec = 0;
 	}
 	*standBy = m_standBy;
-	if (m_standBy)
+	if (*standBy)
 	{
-		*dnTimeSec = (int)(m_pausedFrom - m_startDownload);
+		*dnTimeSec = static_cast<int>(m_pausedFrom - m_startDownload);
 	}
 	else
 	{
-		*dnTimeSec = (int)(Util::CurrentTime() - m_startDownload);
+		*dnTimeSec = static_cast<int>(Util::CurrentTime() - m_startDownload);
 	}
 	*allBytes = m_allBytes;
 }
@@ -308,7 +305,7 @@ int StatMeter::CalcMomentaryDownloadSpeed()
 void StatMeter::AddSpeedReading(int bytes)
 {
 	time_t curTime = Util::CurrentTime();
-	int nowSlot = (int)curTime / SPEEDMETER_SLOTSIZE;
+	int nowSlot = static_cast<int>(curTime) / SPEEDMETER_SLOTSIZE;
 
 	if (curTime != m_curSecTime)
 	{
@@ -320,18 +317,19 @@ void StatMeter::AddSpeedReading(int bytes)
 	while (nowSlot > m_speedTime[m_speedBytesIndex])
 	{
 		//record bytes in next slot
-		m_speedBytesIndex++;
+		++m_speedBytesIndex;
 		if (m_speedBytesIndex >= SPEEDMETER_SLOTS)
 		{
 			m_speedBytesIndex = 0;
 		}
+
 		//Adjust counters with outgoing information.
-		m_speedTotalBytes = m_speedTotalBytes - (int64)m_speedBytes[m_speedBytesIndex];
+		m_speedTotalBytes = m_speedTotalBytes - static_cast<int64>(m_speedBytes[m_speedBytesIndex]);
 
 		//Note we should really use the start time of the next slot
 		//but its easier to just use the outgoing slot time. This
 		//will result in a small error.
-		m_speedStartTime = m_speedTime[m_speedBytesIndex];
+		m_speedStartTime = m_speedTime[m_speedBytesIndex].load();
 
 		//Now reset.
 		m_speedBytes[m_speedBytesIndex] = 0;
@@ -366,7 +364,7 @@ void StatMeter::ResetSpeedStat()
 	for (int i = 0; i < SPEEDMETER_SLOTS; i++)
 	{
 		m_speedBytes[i] = 0;
-		m_speedTime[i] = m_speedStartTime;
+		m_speedTime[i] = m_speedStartTime.load();
 	}
 	m_speedBytesIndex = 0;
 	m_speedTotalBytes = 0;
@@ -383,13 +381,13 @@ void StatMeter::LogDebugInfo()
 	info("      Speed: %i", speed);
 	info("      SpeedStartTime: %i", m_speedStartTime.load());
 	info("      SpeedTotalBytes: %" PRIi64, m_speedTotalBytes.load());
-	info("      SpeedBytesIndex: %i", m_speedBytesIndex.load());
+	info("      SpeedBytesIndex: %i", m_speedBytesIndex);
 	info("      AllBytes: %" PRIi64, m_allBytes.load());
 	info("      Time: %i", (int)Util::CurrentTime());
 	info("      TimeDiff: %i", timeDiff);
 	for (int i=0; i < SPEEDMETER_SLOTS; i++)
 	{
-		info("      Bytes[%i]: %i, Time[%i]: %i", i, m_speedBytes[i], i, m_speedTime[i]);
+		info("      Bytes[%i]: %i, Time[%i]: %i", i, m_speedBytes[i].load(), i, m_speedTime[i].load());
 	}
 
 	Guard guard(m_volumeMutex);
