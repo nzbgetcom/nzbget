@@ -130,5 +130,5 @@ void Thread::thread_handler()
 
 int Thread::GetThreadCount()
 {
-	return m_threadCount.load();
+	return m_threadCount;
 }

@@ -1016,7 +1016,7 @@ public:
 		mmRegEx
 	};
 
-	static bool IsLoaded() { return g_Loaded.load(); }
+	static bool IsLoaded() { return g_Loaded; }
 	static GuardedDownloadQueue Guard() { return GuardedDownloadQueue(g_DownloadQueue, &g_DownloadQueue->m_lockMutex); }
 	NzbList* GetQueue() { return &m_queue; }
 	HistoryList* GetHistory() { return &m_history; }
@@ -1031,7 +1031,7 @@ protected:
 	DownloadQueue() {}
 	static void Init(DownloadQueue* globalInstance) { g_DownloadQueue = globalInstance; }
 	static void Final() { g_DownloadQueue = nullptr; }
-	static void Loaded() { g_Loaded.store(true); }
+	static void Loaded() { g_Loaded = true; }
 
 private:
 	NzbList m_queue;

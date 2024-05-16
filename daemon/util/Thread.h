@@ -116,9 +116,9 @@ public:
 	virtual void Resume();
 	bool Kill();
 
-	bool IsStopped() { return m_stopped.load(); };
-	bool IsRunning() const { return m_running.load(); }
-	bool GetAutoDestroy() { return m_autoDestroy.load(); }
+	bool IsStopped() { return m_stopped; };
+	bool IsRunning() const { return m_running; }
+	bool GetAutoDestroy() { return m_autoDestroy; }
 	void SetAutoDestroy(bool autoDestroy) { m_autoDestroy = autoDestroy; }
 	static int GetThreadCount();
 

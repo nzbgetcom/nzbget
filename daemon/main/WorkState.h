@@ -29,17 +29,17 @@ class WorkState final : public Subject
 {
 public:
 	void SetPauseDownload(bool pauseDownload) { m_pauseDownload = pauseDownload; Changed(); }
-	bool GetPauseDownload() const { return m_pauseDownload.load(); }
+	bool GetPauseDownload() const { return m_pauseDownload; }
 	void SetPausePostProcess(bool pausePostProcess) { m_pausePostProcess = pausePostProcess; Changed(); }
-	bool GetPausePostProcess() const { return m_pausePostProcess.load(); }
+	bool GetPausePostProcess() const { return m_pausePostProcess; }
 	void SetPauseScan(bool pauseScan) { m_pauseScan = pauseScan; Changed(); }
-	bool GetPauseScan() const { return m_pauseScan.load(); }
+	bool GetPauseScan() const { return m_pauseScan; }
 	void SetTempPauseDownload(bool tempPauseDownload) { m_tempPauseDownload = tempPauseDownload; Changed(); }
-	bool GetTempPauseDownload() const { return m_tempPauseDownload.load(); }
+	bool GetTempPauseDownload() const { return m_tempPauseDownload; }
 	void SetTempPausePostprocess(bool tempPausePostprocess) { m_tempPausePostprocess = tempPausePostprocess; Changed(); }
-	bool GetTempPausePostprocess() const { return m_tempPausePostprocess.load(); }
+	bool GetTempPausePostprocess() const { return m_tempPausePostprocess; }
 	void SetPauseFrontend(bool pauseFrontend) { m_pauseFrontend = pauseFrontend; Changed(); }
-	bool GetPauseFrontend() const { return m_pauseFrontend.load(); }
+	bool GetPauseFrontend() const { return m_pauseFrontend; }
 	void SetSpeedLimit(int speedLimit) { m_speedLimit = speedLimit; Changed(); }
 	int GetSpeedLimit() const { return m_speedLimit; }
 	void SetResumeTime(time_t resumeTime) { m_resumeTime = resumeTime; Changed(); }
@@ -47,9 +47,9 @@ public:
 	void SetLocalTimeOffset(int localTimeOffset) { m_localTimeOffset = localTimeOffset; Changed(); }
 	int GetLocalTimeOffset() { return m_localTimeOffset; }
 	void SetQuotaReached(bool quotaReached) { m_quotaReached = quotaReached; Changed(); }
-	bool GetQuotaReached() { return m_quotaReached.load(); }
+	bool GetQuotaReached() { return m_quotaReached; }
 	void SetDownloading(bool downloading) { m_downloading = downloading; Changed(); }
-	bool GetDownloading() { return m_downloading.load(); }
+	bool GetDownloading() { return m_downloading; }
 
 private:
 	std::atomic<time_t> m_resumeTime{0};
