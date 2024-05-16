@@ -24,7 +24,6 @@
 #define DOWNLOADINFO_H
 
 #include <atomic>
-
 #include "NString.h"
 #include "Container.h"
 #include "Observer.h"
@@ -110,8 +109,8 @@ private:
 	CString m_messageId;
 	int m_size = 0;
 	std::unique_ptr<SegmentData> m_segmentContent;
-	int64 m_segmentOffset = 0;
-	int m_segmentSize = 0;
+	std::atomic<int64> m_segmentOffset{0};
+	std::atomic<int> m_segmentSize{0};
 	EStatus m_status = aiUndefined;
 	CString m_resultFilename;
 	std::atomic<uint32> m_crc{0};
