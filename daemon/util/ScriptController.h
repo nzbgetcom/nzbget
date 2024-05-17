@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -95,10 +96,10 @@ private:
 	CString m_infoName;
 	const char* m_logPrefix = nullptr;
 	EnvironmentStrings m_environmentStrings;
-	bool m_terminated = false;
-	bool m_completed = false;
-	bool m_detached = false;
-	bool m_needWrite = false;
+	std::atomic<bool> m_terminated{false};
+	std::atomic<bool> m_completed{false};
+	std::atomic<bool> m_detached{false};
+	std::atomic<bool> m_needWrite{false};
 	FILE* m_readpipe = 0;
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
