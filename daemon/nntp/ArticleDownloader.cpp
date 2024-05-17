@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -556,7 +557,7 @@ void ArticleDownloader::SetLastUpdateTimeNow()
 void ArticleDownloader::LogDebugInfo()
 {
 	info("      Download: status=%i, LastUpdateTime=%s, InfoName=%s", m_status,
-		 *Util::FormatTime(m_lastUpdateTime), *m_infoName);
+		 *Util::FormatTime(m_lastUpdateTime.load()), *m_infoName);
 }
 
 void ArticleDownloader::Stop()

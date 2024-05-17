@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -635,7 +636,7 @@ bool WebDownloader::PrepareFile()
 void WebDownloader::LogDebugInfo()
 {
 	info("      Web-Download: status=%i, LastUpdateTime=%s, filename=%s", m_status,
-		*Util::FormatTime(m_lastUpdateTime), FileSystem::BaseFileName(m_outputFilename));
+		*Util::FormatTime(m_lastUpdateTime.load()), FileSystem::BaseFileName(m_outputFilename));
 }
 
 void WebDownloader::Stop()

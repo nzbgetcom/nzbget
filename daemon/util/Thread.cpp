@@ -102,14 +102,14 @@ bool Thread::Kill()
 
 	if (terminated)
 	{
-		m_threadCount--;
+		--m_threadCount;
 	}
 	return terminated;
 }
 
 void Thread::thread_handler()
 {
-	m_threadCount++;
+	++m_threadCount;
 
 	debug("Entering Thread-func");
 
@@ -119,7 +119,7 @@ void Thread::thread_handler()
 
 	m_running = false;
 
-	m_threadCount--;
+	--m_threadCount;
 
 	if (m_autoDestroy)
 	{
