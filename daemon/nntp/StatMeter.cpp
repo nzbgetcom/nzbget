@@ -304,6 +304,8 @@ int StatMeter::CalcMomentaryDownloadSpeed()
 
 void StatMeter::AddSpeedReading(int bytes)
 {
+	std::lock_guard<std::mutex> guard{m_speedTotalBytesMtx};
+
 	time_t curTime = Util::CurrentTime();
 	int nowSlot = static_cast<int>(curTime) / SPEEDMETER_SLOTSIZE;
 
