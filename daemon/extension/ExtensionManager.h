@@ -23,7 +23,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
-#include <mutex>
+#include <shared_mutex>
 #include <boost/optional.hpp>
 #include "WebDownloader.h"
 #include "Options.h"
@@ -73,7 +73,7 @@ namespace ExtensionManager
 		DeleteExtension(const Extension::Script& ext);
 
 		Extensions m_extensions;
-		mutable std::mutex m_mutex;
+		mutable std::shared_timed_mutex m_mutex;
 	};
 }
 
