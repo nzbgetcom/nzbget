@@ -24,12 +24,18 @@ case "$1" in
 
   stop)
     $QPKG_ROOT/nzbget/nzbget -c $QPKG_ROOT/nzbget/nzbget.conf -Q
+
+    for ((i=0; i<=10; i++)); do
+        /bin/pidof nzbget &>/dev/null || break
+        sleep 1
+    done
     ;;
 
   restart)
     $0 stop
     $0 start
     ;;
+
   remove)
     ;;
 
