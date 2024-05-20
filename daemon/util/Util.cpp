@@ -1853,7 +1853,7 @@ bool WildMask::Match(const char* text)
 #ifndef DISABLE_GZIP
 uint32 ZLib::GZipLen(int inputBufferLength)
 {
-	z_stream zstr{0};
+	z_stream zstr{};
 	return (uint32)deflateBound(&zstr, inputBufferLength);
 }
 
