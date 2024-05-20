@@ -167,7 +167,7 @@ namespace ExtensionManager
 			return std::string("\"ScriptDir\" is not specified");
 		}
 
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::lock_guard<std::mutex> guard{m_mutex};
 
 		m_extensions.clear();
 
