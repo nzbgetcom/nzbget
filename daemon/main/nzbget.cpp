@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -273,7 +274,7 @@ void NZBGet::Init()
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
-	if (uMask >= 0 && uMask < 01000)
+	if (uMask < 01000)
 	{
 		/* set newly created file permissions */
 		FileSystem::uMask = uMask;
