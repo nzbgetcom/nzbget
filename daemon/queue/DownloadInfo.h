@@ -105,15 +105,15 @@ public:
 	void SetCrc(uint32 crc) { m_crc = crc; }
 
 private:
-	int m_partNumber;
-	CString m_messageId;
-	int m_size = 0;
 	std::unique_ptr<SegmentData> m_segmentContent;
 	std::atomic<int64> m_segmentOffset{0};
 	std::atomic<int> m_segmentSize{0};
-	EStatus m_status = aiUndefined;
-	CString m_resultFilename;
 	std::atomic<uint32> m_crc{0};
+	CString m_messageId;
+	CString m_resultFilename;
+	EStatus m_status = aiUndefined;
+	int m_partNumber;
+	int m_size = 0;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
