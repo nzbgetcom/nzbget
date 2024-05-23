@@ -7,7 +7,7 @@ export QNAP_QPKG=$QPKG_NAME
 DEFAULT_CONF_FILE=$QPKG_ROOT/nzbget/nzbget.conf
 CONF_FILE=$DEFAULT_CONF_FILE.qnap
 
-[[ -e $CONF_FILE ]] || cp "$DEFAULT_CONF_FILE" "$CONF_FILE"
+[[ ! -e $CONF_FILE && -e $DEFAULT_CONF_FILE ]] && cp "$DEFAULT_CONF_FILE" "$CONF_FILE"
 
 case "$1" in
   start)
