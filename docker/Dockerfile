@@ -79,7 +79,7 @@ ENV TERM linux
 COPY beets-1.6.0.tar.gz /tmp 
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata build-base gcc linux-headers musl-dev openjdk17-jre-headless openssl python3 python3-dev && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip boost1.82-json tzdata build-base gcc linux-headers musl-dev openjdk17-jre-headless py3-pip python3 python3-dev py3-wheel && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   echo "**** install python packages ****" && \
   cd /tmp && \
