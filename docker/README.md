@@ -99,8 +99,9 @@ Dockerfile supports next build arguments:
 | Argument	      | Description
 |:----------------|-
 | NZBGET_RELEASE  | Branch name or tag to build from
-| UNRAR_VERSION   | Unrar version
-| UNRAR_NATIVE    | Build native unrar (see below)
+| UNRAR6_VERSION  | Unrar 6 version
+| UNRAR7_VERSION  | Unrar 7 version
+| UNRAR7_NATIVE   | Build native unrar (see below)
 | MAKE_JOBS       | Number of make jobs for speed up build
 
 # ghcr.io
@@ -118,14 +119,18 @@ In case a linux image or docker image is slower than expected, here are some tip
 1. Increase number of server connections (NEWS-SERVERS -> Connections) - default is 8, and 16 and 32 are worth trying
 2. For slower machines/hosts - increase article read chunk size from 4 to 64 (CONNECTION -> ArticleReadChunkSize). This is new setting available in v23.
 
-# Native unrar build support
+# Unrar 7 support
 
-Unrar from version 7.0 supports hardware crypto acceleration for unpacking encrypted archives.
-For compatibility with most hardware nzbgetcom image unrar built with next march parameters:
+The NZBGet docker image contains the optimized unrar7 binary. To use unrar7, change in settings UNPACK - UnrarCmd to `unrar7`.
+Unrar 7 built with next march parameters:
 
 - x86_64: x86-64-v2
-- arm64:  armv8-a
+- arm64:  armv8-a+crypto+crc
 - armhf:  armv7-a
+
+More information about unrar performance: [Performance tips](https://github.com/nzbgetcom/nzbget/blob/develop/docs/PERFORMANCE.md#unrar)
+
+# Native unrar 7 build support
 
 To build image on hardware which support crypto acceleration with native-optimized unrar can be used docker-compose like this (also needed entrypoint.sh and Dockerfile from [official repository](https://github.com/nzbgetcom/nzbget/tree/develop/docker)):
 
@@ -142,7 +147,7 @@ services:
         # make jobs == host cpu cores
         MAKE_JOBS: 4
         # build native unrar
-        UNRAR_NATIVE: "true"
+        UNRAR7_NATIVE: "true"
     environment:
       - PUID=1000
       - PGID=1000
