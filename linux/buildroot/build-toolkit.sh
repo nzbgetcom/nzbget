@@ -23,3 +23,8 @@ cp $NZBGET_ROOT/linux/buildroot/config/.config-$ARCH .config
 patch package/musl/musl.mk $NZBGET_ROOT/linux/buildroot/patch/musl.mk.patch
 patch package/musl/musl.hash $NZBGET_ROOT/linux/buildroot/patch/musl.hash.patch
 time make
+
+# post-build patches
+if [ "$ARCH" == "aarch64" ]; then
+    patch $BUILDROOT_PREFIX/$ARCH/output/host/lib/gcc/aarch64-buildroot-linux-musl/9.4.0/include/arm_acle.h $NZBGET_ROOT/linux/buildroot/patch/arm_acle.h.aarch64.patch
+fi

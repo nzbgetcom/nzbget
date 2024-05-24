@@ -2,12 +2,20 @@
 set -e
 
 # config variables
+OUTPUTDIR=build
+CONFIG=release
 BUILDROOT_HOME=/build
 TOOLCHAIN_PATH=$BUILDROOT_HOME/buildroot
 LIB_SRC_PATH=$BUILDROOT_HOME/source
 LIB_PATH=$BUILDROOT_HOME/lib
-ALL_ARCHS="armhf"
+ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx"
+ARCHS=$ALL_ARCHS
 COREX=4
+
+# unpackers versions
+UNRAR6_VERSION=6.2.12
+UNRAR7_VERSION=7.0.7
+ZIP7_VERSION=2405
 
 download_lib_source()
 {
@@ -76,18 +84,38 @@ build_lib()
                 --prefix="$PWD/../$LIB"
                 ;;
             "openssl")
+                OPENSSL_OPT=""
                 case $ARCH in
                     "i686")
-                        OPENSSL_ARCH=generic32
+                        OPENSSL_ARCH=linux-generic32
+                        ;;
+                    "armel")
+                        OPENSSL_ARCH=linux-armv4
                         ;;
                     "armhf")
-                        OPENSSL_ARCH=armv4
+                        OPENSSL_ARCH=linux-armv4
+                        ;;
+                    "riscv64")
+                        OPENSSL_ARCH=linux64-riscv64
+                        ;;
+                    "mipseb")
+                        OPENSSL_ARCH=linux-mips32
+                        ;;
+                    "mipsel")
+                        OPENSSL_ARCH=linux-mips32
+                        ;;
+                    "ppc6xx")
+                        OPENSSL_ARCH=linux-ppc
+                        ;;
+                    "ppc500")
+                        OPENSSL_ARCH=linux-ppc
+                        OPENSSL_OPTS=no-async
                         ;;
                     *)
-                        OPENSSL_ARCH=$ARCH
+                        OPENSSL_ARCH=linux-$ARCH
                         ;;
                 esac                
-                perl Configure linux-$OPENSSL_ARCH \
+                perl Configure $OPENSSL_ARCH \
                 no-shared \
                 threads \
 			    no-rc5 \
@@ -98,6 +126,7 @@ build_lib()
 			    no-afalgeng \
 			    zlib \
 			    no-dso \
+                $OPENSSL_OPTS \
                 --prefix="$PWD/../$LIB"
                 ;;
             "boost")
@@ -138,13 +167,115 @@ build_lib()
     cd $NZBGET_ROOT
 }
 
+build_7zip()
+{
+    if [ ! -d "$LIB_PATH/$ARCH/7zip" ]; then
+        mkdir -p /tmp/7z
+        curl -o /tmp/7z/7z.tar.xz -lL https://www.7-zip.org/a/7z$ZIP7_VERSION-src.tar.xz
+        cd /tmp/7z
+        tar xf 7z.tar.xz
+        rm 7z.tar.xz
+        cd CPP/7zip
+        sed "s|^LDFLAGS_STATIC =.*|LDFLAGS_STATIC = -static|" -i 7zip_gcc.mak
+        cd Bundles/Alone
+        make -j $COREX -f makefile.gcc
+        mkdir -p $LIB_PATH/$ARCH/7zip
+        cp _o/7za $LIB_PATH/$ARCH/7zip/7za
+        cd /tmp/7z
+        cp DOC/License.txt $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        cd $NZBGET_ROOT
+        rm -rf /tmp/7z
+    fi
+}
+
+build_unrar_version()
+{
+    UNRAR_VERSION=$1
+    if [ "$UNRAR_VERSION" == "6" ]; then
+        UNRARSRC=https://www.rarlab.com/rar/unrarsrc-$UNRAR6_VERSION.tar.gz
+    else
+        UNRARSRC=https://www.rarlab.com/rar/unrarsrc-$UNRAR7_VERSION.tar.gz
+    fi
+    curl -o /tmp/unrar.tar.gz $UNRARSRC
+    cd /tmp
+    tar zxf unrar.tar.gz
+    rm unrar.tar.gz
+    cd unrar
+    sed "s|^CXX=.*|CXX=$CXX|" -i makefile
+    sed "s|^AR=.*|AR=$AR|" -i makefile
+    sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
+    sed "s|^LDFLAGS=.*|LDFLAGS=-static|" -i makefile
+    sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
+    make clean
+    make -j $COREX
+    mkdir -p $LIB_PATH/$ARCH/unrar
+    if [ "$UNRAR_VERSION" == "6" ]; then
+        cp unrar $LIB_PATH/$ARCH/unrar/unrar
+        cp license.txt $LIB_PATH/$ARCH/unrar/license-unrar.txt
+    else
+        cp unrar $LIB_PATH/$ARCH/unrar/unrar7
+        cp license.txt $LIB_PATH/$ARCH/unrar/license-unrar7.txt
+    fi
+    rm -rf /tmp/unrar
+    cd $NZBGET_ROOT
+}
+
+build_unrar()
+{
+    if [ ! -d "$LIB_PATH/$ARCH/unrar" ]; then
+        for UNRAR_VERSION in 6 7; do
+            build_unrar_version $UNRAR_VERSION
+        done
+    fi    
+}
+
 build_bin()
 {
-    for ARCH in $ALL_ARCHS; do
-    
+    for ARCH in $ARCHS; do
         # toolchain variables
         export ARCH=$ARCH
-        export HOST="arm-buildroot-linux-musleabihf"
+        case $ARCH in
+            armel)
+                export HOST="arm-buildroot-linux-musleabi"
+                CMAKE_SYSTEM_PROCESSOR=arm
+                ;;
+            armhf)
+                export HOST="arm-buildroot-linux-musleabihf"
+                CMAKE_SYSTEM_PROCESSOR=arm
+                ;;
+            aarch64)
+                export HOST="aarch64-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="aarch64"
+                ;;
+            i686)
+                export HOST="i686-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="i686"
+                ;;
+            x86_64)
+                export HOST="x86_64-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="x86_64"
+                ;;
+            riscv64)
+                export HOST="riscv64-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="riscv64"
+                ;;
+            mipseb)
+                export HOST="mips-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="mips"
+                ;;
+            mipsel)
+                export HOST="mipsel-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="mips"
+                ;;
+            ppc6xx)
+                export HOST="powerpc-buildroot-linux-musl"
+                CMAKE_SYSTEM_PROCESSOR="powerpc"
+                ;;
+            ppc500)
+                export HOST="powerpc-buildroot-linux-uclibcspe"
+                CMAKE_SYSTEM_PROCESSOR="powerpc"
+                ;;
+        esac
         export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-gcc"
         export CPP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-cpp"
         export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-g++"
@@ -163,30 +294,36 @@ build_bin()
         build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
         build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
 
-        # build_7zip
-        # build_unrar
+        build_7zip
+        build_unrar
 
         export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
         export INCLUDES="$NZBGET_INCLUDES"
+
         unset CXXFLAGS
         unset CPPFLAGS
         unset LDFLAGS
-    
-        mkdir -p build/$ARCH
-        cmake -S . -B build/$ARCH \
+
+        mkdir -p $OUTPUTDIR/$ARCH
+        cmake -S . -B $OUTPUTDIR/$ARCH \
             -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=arm \
+            -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR \
             -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
             -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
             -DENABLE_STATIC=ON \
-            -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/build/install/$ARCH
-        cmake --build build/$ARCH -j $COREX 2>/dev/null
-        cmake --install build/$ARCH
+            -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
+        BUILD_STATUS=""
+        cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?        
+        if [ ! -z $BUILD_STATUS ]; then
+            tail -20 $OUTPUTDIR/$ARCH/build.log
+            exit 1
+        fi
+        cmake --install $OUTPUTDIR/$ARCH
         
-        cd build/install/$ARCH
+        cd $OUTPUTDIR/install/$ARCH
         
         mkdir -p nzbget
-        mv bin/nzbget nzbget/nzbget    
+        mv bin/nzbget nzbget/nzbget
         mv share/nzbget/webui nzbget
         mv share/nzbget/doc/* nzbget
 
@@ -204,10 +341,10 @@ build_bin()
 
         rm -rf etc bin share
         tar -czf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz nzbget
-        mv *.tar.gz $NZBGET_ROOT/build    
+        mv *.tar.gz $NZBGET_ROOT/$OUTPUTDIR
         cd $NZBGET_ROOT
-        rm -rf build/$ARCH
-        rm -rf build/install
+        rm -rf $OUTPUTDIR/$ARCH
+        rm -rf $OUTPUTDIR/install
     done
 }
 
@@ -216,16 +353,12 @@ build_installer()
     echo "Creating installer for $PLATFORM $CONFIG..."
 
     cd $OUTPUTDIR
-
     # checking if all targets exists
-    for TARGET in $TARGETS
-    do
+    for ARCH in $ARCHS; do
         ALLEXISTS="yes"
-        if [ $TARGET != "dist" ]; then
-            if [ ! -f $BASENAME-bin-$PLATFORM-$TARGET$SUFFIX.tar.gz ]; then
-                echo "Could not find $BASENAME-bin-$PLATFORM-$TARGET$SUFFIX.tar.gz"
-                ALLEXISTS="no"
-            fi
+        if [ ! -f $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz ]; then
+            echo "Could not find $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz"
+            ALLEXISTS="no"
         fi
     done
 
@@ -235,15 +368,12 @@ build_installer()
 
     echo "Unpacking targets..."
     rm -r -f nzbget
-    for TARGET in $TARGETS
-    do
+    for ARCH in $ARCHS; do
         ALLEXISTS="yes"
-        if [ "$TARGET" != "dist" ]; then
-            tar -xzf $BASENAME-bin-$PLATFORM-$TARGET$SUFFIX.tar.gz
-            mv nzbget/nzbget nzbget/nzbget-$TARGET
-            cp ../setup/unrar-$TARGET$PLATSUFF nzbget/unrar-$TARGET
-            cp ../setup/7za-$TARGET$PLATSUFF nzbget/7za-$TARGET
-        fi
+        tar zxf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz
+        mv nzbget/nzbget nzbget/nzbget-$ARCH
+        cp $LIB_PATH/$ARCH/unrar/unrar nzbget/unrar-$ARCH
+        cp $LIB_PATH/$ARCH/7zip/7za nzbget/7za-$ARCH
     done
 
     # adjusting nzbget.conf
@@ -255,13 +385,13 @@ build_installer()
     INSTFILE=$BASENAME-bin-$PLATFORM$SUFFIX.run
 
     echo "Building installer package..."
-    cp $BUILDDIR/linux/installer.sh $INSTFILE
-    cp $BUILDDIR/linux/package-info.json nzbget/webui
-    cp $BUILDDIR/linux/install-update.sh nzbget
-    cp $BUILDDIR/pubkey.pem nzbget
-    cp ../setup/license-unrar.txt nzbget
-    cp ../setup/license-7zip.txt nzbget
-    cp ../setup/cacert.pem nzbget
+    cp $NZBGET_ROOT/linux/installer.sh $INSTFILE
+    cp $NZBGET_ROOT/linux/package-info.json nzbget/webui
+    cp $NZBGET_ROOT/linux/install-update.sh nzbget
+    cp $NZBGET_ROOT/pubkey.pem nzbget
+    cp $LIB_PATH/$ARCH/unrar/license-unrar.txt nzbget
+    cp $LIB_PATH/$ARCH/7zip/license-7zip.txt nzbget
+    curl -o nzbget/cacert.pem https://curl.se/ca/cacert.pem
 
     # adjusting update config file
     sed "s:linux:$PLATFORM:" -i nzbget/webui/package-info.json
@@ -275,7 +405,7 @@ build_installer()
     # creating installer script
     sed "s:^TITLE=$:TITLE=\"$BASENAME$SUFFIX\":" -i $INSTFILE
     sed "s:^PLATFORM=$:PLATFORM=\"$PLATFORM\":" -i $INSTFILE
-    DISTTARGETS="${TARGETS/dist/}"
+    DISTTARGETS="${ARCHS/dist/}"
     DISTTARGETS=`echo "$DISTTARGETS" | xargs`
     sed "s:^DISTARCHS=$:DISTARCHS=\"$DISTTARGETS\":" -i $INSTFILE
 
@@ -306,10 +436,10 @@ build_installer()
     rm -r nzbget
 }
 
-# cleanup shared and build directories
-mkdir -p build
-rm -rf build/*
 NZBGET_ROOT=$PWD
+# cleanup shared and build directories
+mkdir -p $OUTPUTDIR
+rm -rf $OUTPUTDIR/*
 
 VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
 BASENAME="nzbget-$VERSION"
