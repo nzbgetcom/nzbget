@@ -130,8 +130,16 @@
 # Define any package specific operations that shall be performed when
 # the package is installed.
 ######################################################################
-#pkg_pre_install(){
-#}
+pkg_pre_install(){
+
+DEFAULT_CONF_FILE=$SYS_QPKG_INSTALL_PATH/nzbget/nzbget.conf
+CONF_FILE=$DEFAULT_CONF_FILE.qnap
+
+[[ ! -e $CONF_FILE && -e $DEFAULT_CONF_FILE ]] && cp "$DEFAULT_CONF_FILE" "$CONF_FILE"
+
+true
+
+}
 #
 #pkg_install(){
 #}
