@@ -1,21 +1,102 @@
 #!/bin/bash
 set -e
 
-# config variables
+# config varibles (defaults, can be overrided from command-line)
+ARCHS=""
+OUTPUTS=""
+CONFIGS=""
+COREX=4
+
+# build variables
+ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx"
+PLATFORM=linux
 OUTPUTDIR=build
-CONFIG=release
 BUILDROOT_HOME=/build
 TOOLCHAIN_PATH=$BUILDROOT_HOME/buildroot
 LIB_SRC_PATH=$BUILDROOT_HOME/source
 LIB_PATH=$BUILDROOT_HOME/lib
-ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx"
-ARCHS=$ALL_ARCHS
-COREX=4
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
 UNRAR7_VERSION=7.0.7
 ZIP7_VERSION=2405
+
+help()
+{
+    echo "Usage:"
+    echo "  $(basename $0) [architectures] [output] [configs] [corex]"
+    echo "    targets   : all (default) $ALL_ARCHS"
+    echo "    output    : bin installer"
+    echo "    configs   : release (default) debug"
+    echo "    corex     : multicore make (x is a number of threads) 4 is default"
+    echo
+}
+
+parse_args()
+{
+    for PARAM in "$@"
+    do
+        case $PARAM in
+            release|debug)
+                CONFIGS=`echo "$CONFIGS $PARAM" | xargs`
+                ;;
+            core[1-9])
+                COREX="${PARAM:4}"
+                ;;
+            bin|installer)
+                OUTPUTS=`echo "$OUTPUTS $PARAM" | xargs`
+                ;;
+            help)
+                help
+                exit 0
+                ;;
+            *)
+                if [[ " $ALL_ARCHS " == *" $PARAM "* ]]; then
+                    ARCHS=`echo "$ARCHS $PARAM" | xargs`
+                    if [ "$PARAM" == "all" ]; then
+                        PARAM=$ALL_ARCHS
+                    fi
+                else
+                    echo "Invalid parameter: $PARAM"
+                    help
+                    exit 1
+                fi
+                ;;
+        esac
+    done
+
+    if [ "$ARCHS" == "" ]; then
+        ARCHS="$ALL_ARCHS"
+    fi
+
+    if [ "$OUTPUTS" == "" ]; then
+        OUTPUTS="bin installer"
+    fi
+
+    if [ "$CONFIGS" == "" ]; then
+        CONFIGS="release debug"
+    fi
+}
+
+print_config()
+{
+    echo "Active configuration:"
+    echo "  platform       : $PLATFORM"
+    echo "  architectures  : $ARCHS"
+    echo "  outputs        : $OUTPUTS"
+    echo "  configs        : $CONFIGS"
+    echo "  cores          : $COREX"
+    echo 
+}
+
+construct_suffix()
+{
+    if [ "$CONFIG" == "debug" ]; then
+        SUFFIX="-debug"
+    else
+        SUFFIX=""
+    fi
+}
 
 download_lib_source()
 {
@@ -231,121 +312,126 @@ build_unrar()
 
 build_bin()
 {
-    for ARCH in $ARCHS; do
-        # toolchain variables
-        export ARCH=$ARCH
-        case $ARCH in
-            armel)
-                export HOST="arm-buildroot-linux-musleabi"
-                CMAKE_SYSTEM_PROCESSOR=arm
-                ;;
-            armhf)
-                export HOST="arm-buildroot-linux-musleabihf"
-                CMAKE_SYSTEM_PROCESSOR=arm
-                ;;
-            aarch64)
-                export HOST="aarch64-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="aarch64"
-                ;;
-            i686)
-                export HOST="i686-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="i686"
-                ;;
-            x86_64)
-                export HOST="x86_64-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="x86_64"
-                ;;
-            riscv64)
-                export HOST="riscv64-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="riscv64"
-                ;;
-            mipseb)
-                export HOST="mips-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="mips"
-                ;;
-            mipsel)
-                export HOST="mipsel-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="mips"
-                ;;
-            ppc6xx)
-                export HOST="powerpc-buildroot-linux-musl"
-                CMAKE_SYSTEM_PROCESSOR="powerpc"
-                ;;
-            ppc500)
-                export HOST="powerpc-buildroot-linux-uclibcspe"
-                CMAKE_SYSTEM_PROCESSOR="powerpc"
-                ;;
-        esac
-        export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-gcc"
-        export CPP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-cpp"
-        export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-g++"
-        export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
-        export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
+    # toolchain variables
+    export ARCH=$ARCH
+    case $ARCH in
+        armel)
+            export HOST="arm-buildroot-linux-musleabi"
+            CMAKE_SYSTEM_PROCESSOR=arm
+            ;;
+        armhf)
+            export HOST="arm-buildroot-linux-musleabihf"
+            CMAKE_SYSTEM_PROCESSOR=arm
+            ;;
+        aarch64)
+            export HOST="aarch64-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="aarch64"
+            ;;
+        i686)
+            export HOST="i686-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="i686"
+            ;;
+        x86_64)
+            export HOST="x86_64-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="x86_64"
+            ;;
+        riscv64)
+            export HOST="riscv64-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="riscv64"
+            ;;
+        mipseb)
+            export HOST="mips-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="mips"
+            ;;
+        mipsel)
+            export HOST="mipsel-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="mips"
+            ;;
+        ppc6xx)
+            export HOST="powerpc-buildroot-linux-musl"
+            CMAKE_SYSTEM_PROCESSOR="powerpc"
+            ;;
+        ppc500)
+            export HOST="powerpc-buildroot-linux-uclibcspe"
+            CMAKE_SYSTEM_PROCESSOR="powerpc"
+            ;;
+    esac
+    export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-gcc"
+    export CPP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-cpp"
+    export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-g++"
+    export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
+    export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
 
-        # clean build flags
-        export CXXFLAGS="-Os"
-        export CPPFLAGS="-Os"
-        export LDFLAGS=""
-        export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
+    # clean build flags
+    export CXXFLAGS="-Os"
+    export CPPFLAGS="-Os"
+    export LDFLAGS=""
+    export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
 
-        build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.4.tar.gz"
-        build_lib "https://zlib.net/zlib-1.3.1.tar.gz"
-        build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v2.12.4.tar.gz"
-        build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
-        build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
+    build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.4.tar.gz"
+    build_lib "https://zlib.net/zlib-1.3.1.tar.gz"
+    build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v2.12.4.tar.gz"
+    build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
+    build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
 
-        build_7zip
-        build_unrar
+    build_7zip
+    build_unrar
 
-        export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-        export INCLUDES="$NZBGET_INCLUDES"
+    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    export INCLUDES="$NZBGET_INCLUDES"
 
-        unset CXXFLAGS
-        unset CPPFLAGS
-        unset LDFLAGS
+    unset CXXFLAGS
+    unset CPPFLAGS
+    unset LDFLAGS
 
-        mkdir -p $OUTPUTDIR/$ARCH
-        cmake -S . -B $OUTPUTDIR/$ARCH \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR \
-            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
-            -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
-            -DENABLE_STATIC=ON \
-            -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
-        BUILD_STATUS=""
-        cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?        
-        if [ ! -z $BUILD_STATUS ]; then
-            tail -20 $OUTPUTDIR/$ARCH/build.log
-            exit 1
-        fi
-        cmake --install $OUTPUTDIR/$ARCH
-        
-        cd $OUTPUTDIR/install/$ARCH
-        
-        mkdir -p nzbget
-        mv bin/nzbget nzbget/nzbget
-        mv share/nzbget/webui nzbget
-        mv share/nzbget/doc/* nzbget
+    if [ "$CONFIG" == "debug" ]; then
+        CMAKE_BUILD_TYPE="Debug"
+    else
+        CMAKE_BUILD_TYPE="Release"
+    fi
 
-        CONFTEMPLATE=nzbget/webui/nzbget.conf.template
-        mv etc/nzbget.conf $CONFTEMPLATE
-        # adjusting nzbget.conf
-        sed 's|^MainDir=.*|MainDir=${AppDir}/downloads|' -i $CONFTEMPLATE
-        sed 's|^DestDir=.*|DestDir=${MainDir}/completed|' -i $CONFTEMPLATE
-        sed 's|^InterDir=.*|InterDir=${MainDir}/intermediate|' -i $CONFTEMPLATE
-        sed 's|^WebDir=.*|WebDir=${AppDir}/webui|' -i $CONFTEMPLATE
-        sed 's|^ScriptDir=.*|ScriptDir=${AppDir}/scripts|' -i $CONFTEMPLATE
-        sed 's|^LogFile=.*|LogFile=${MainDir}/nzbget.log|' -i $CONFTEMPLATE
-        sed 's|^ConfigTemplate=.*|ConfigTemplate=${AppDir}/webui/nzbget.conf.template|' -i $CONFTEMPLATE
-        sed 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' -i $CONFTEMPLATE
+    mkdir -p $OUTPUTDIR/$ARCH
+    cmake -S . -B $OUTPUTDIR/$ARCH \
+        -DCMAKE_SYSTEM_NAME=Linux \
+        -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR \
+        -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
+        -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
+        -DENABLE_STATIC=ON \
+        -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+        -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
+    BUILD_STATUS=""
+    cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?        
+    if [ ! -z $BUILD_STATUS ]; then
+        tail -20 $OUTPUTDIR/$ARCH/build.log
+        exit 1
+    fi
+    cmake --install $OUTPUTDIR/$ARCH
+    
+    cd $OUTPUTDIR/install/$ARCH
+    
+    mkdir -p nzbget
+    mv bin/nzbget nzbget/nzbget
+    mv share/nzbget/webui nzbget
+    mv share/nzbget/doc/* nzbget
 
-        rm -rf etc bin share
-        tar -czf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz nzbget
-        mv *.tar.gz $NZBGET_ROOT/$OUTPUTDIR
-        cd $NZBGET_ROOT
-        rm -rf $OUTPUTDIR/$ARCH
-        rm -rf $OUTPUTDIR/install
-    done
+    CONFTEMPLATE=nzbget/webui/nzbget.conf.template
+    mv etc/nzbget.conf $CONFTEMPLATE
+    # adjusting nzbget.conf
+    sed 's|^MainDir=.*|MainDir=${AppDir}/downloads|' -i $CONFTEMPLATE
+    sed 's|^DestDir=.*|DestDir=${MainDir}/completed|' -i $CONFTEMPLATE
+    sed 's|^InterDir=.*|InterDir=${MainDir}/intermediate|' -i $CONFTEMPLATE
+    sed 's|^WebDir=.*|WebDir=${AppDir}/webui|' -i $CONFTEMPLATE
+    sed 's|^ScriptDir=.*|ScriptDir=${AppDir}/scripts|' -i $CONFTEMPLATE
+    sed 's|^LogFile=.*|LogFile=${MainDir}/nzbget.log|' -i $CONFTEMPLATE
+    sed 's|^ConfigTemplate=.*|ConfigTemplate=${AppDir}/webui/nzbget.conf.template|' -i $CONFTEMPLATE
+    sed 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' -i $CONFTEMPLATE
+
+    rm -rf etc bin share
+    tar -czf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz nzbget
+    mv *.tar.gz $NZBGET_ROOT/$OUTPUTDIR
+    cd $NZBGET_ROOT
+    rm -rf $OUTPUTDIR/$ARCH
+    rm -rf $OUTPUTDIR/install
 }
 
 build_installer()
@@ -434,16 +520,34 @@ build_installer()
     chmod +x $INSTFILE
 
     rm -r nzbget
+    cd $NZBGET_ROOT
 }
 
 NZBGET_ROOT=$PWD
+
 # cleanup shared and build directories
 mkdir -p $OUTPUTDIR
 rm -rf $OUTPUTDIR/*
 
+# version handling
 VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
 BASENAME="nzbget-$VERSION"
-PLATFORM="linux"
 
-build_bin
-build_installer
+parse_args $@
+print_config
+
+if [[ $OUTPUTS == *"bin"* ]]; then
+    for CONFIG in $CONFIGS; do
+        construct_suffix
+        for ARCH in $ARCHS; do
+            build_bin
+        done
+    done
+fi
+
+if [[ $OUTPUTS == *"installer"* ]]; then
+    for CONFIG in $CONFIGS; do
+        construct_suffix
+        build_installer
+    done
+fi
