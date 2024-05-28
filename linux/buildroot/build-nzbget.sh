@@ -6,6 +6,7 @@ ARCHS=""
 OUTPUTS=""
 CONFIGS=""
 COREX=4
+TESTING="no"
 
 # build variables
 ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx"
@@ -24,9 +25,10 @@ ZIP7_VERSION=2405
 help()
 {
     echo "Usage:"
-    echo "  $(basename $0) [architectures] [output] [configs] [corex]"
+    echo "  $(basename $0) [architectures] [output] [configs] [testing] [corex]"
     echo "    targets   : all (default) $ALL_ARCHS"
     echo "    output    : bin installer"
+    echo "    testing   : build testing image"
     echo "    configs   : release (default) debug"
     echo "    corex     : multicore make (x is a number of threads) 4 is default"
     echo
@@ -40,11 +42,14 @@ parse_args()
             release|debug)
                 CONFIGS=`echo "$CONFIGS $PARAM" | xargs`
                 ;;
-            core[1-9])
-                COREX="${PARAM:4}"
+            testing)
+                TESTING=yes
                 ;;
             bin|installer)
                 OUTPUTS=`echo "$OUTPUTS $PARAM" | xargs`
+                ;;
+            core[1-9])
+                COREX="${PARAM:4}"
                 ;;
             help)
                 help
@@ -85,6 +90,7 @@ print_config()
     echo "  architectures  : $ARCHS"
     echo "  outputs        : $OUTPUTS"
     echo "  configs        : $CONFIGS"
+    echo "  testing        : $TESTING"
     echo "  cores          : $COREX"
     echo 
 }
@@ -398,6 +404,7 @@ build_bin()
         -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
         -DENABLE_STATIC=ON \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+        -DVERSION_SUFFIX=$VERSION_SUFFIX \
         -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
     BUILD_STATUS=""
     cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?        
@@ -529,12 +536,16 @@ NZBGET_ROOT=$PWD
 mkdir -p $OUTPUTDIR
 rm -rf $OUTPUTDIR/*
 
-# version handling
-VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
-BASENAME="nzbget-$VERSION"
-
 parse_args $@
 print_config
+
+# version handling
+VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
+VERSION_SUFFIX=""
+if [ "$TESTING" == "yes" ]; then
+    VERSION_SUFFIX="-testing-$(date '+%Y%m%d')"
+fi
+BASENAME="nzbget-$VERSION$VERSION_SUFFIX"
 
 if [[ $OUTPUTS == *"bin"* ]]; then
     for CONFIG in $CONFIGS; do
