@@ -201,7 +201,7 @@ build_lib()
                     *)
                         OPENSSL_ARCH=linux-$ARCH
                         ;;
-                esac                
+                esac
                 perl Configure $OPENSSL_ARCH \
                 no-shared \
                 threads \
@@ -270,6 +270,7 @@ build_7zip()
         cp _o/7za $LIB_PATH/$ARCH/7zip/7za
         cd /tmp/7z
         cp DOC/License.txt $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        chmod -x $LIB_PATH/$ARCH/7zip/license-7zip.txt
         cd $NZBGET_ROOT
         rm -rf /tmp/7z
     fi
@@ -291,8 +292,27 @@ build_unrar_version()
     sed "s|^CXX=.*|CXX=$CXX|" -i makefile
     sed "s|^AR=.*|AR=$AR|" -i makefile
     sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
-    sed "s|^LDFLAGS=.*|LDFLAGS=-static|" -i makefile
-    sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
+    # some unrar7 optimizations
+    if [ "$UNRAR_VERSION" == "7" ]; then
+        sed "s|LDFLAGS=-pthread|LDFLAGS=-pthread -static|" -i makefile
+        case $ARCH in
+            x86_64)
+                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64|" -i makefile
+                ;;
+            aarch64)
+                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|" -i makefile
+                ;;
+            armhf)
+                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" -i makefile
+                ;;
+            *)                
+                sed "s|CXXFLAGS=-march=native |CXXFLAGS=|" -i makefile
+                ;;
+        esac
+    else
+        sed "s|^LDFLAGS=.*|LDFLAGS=-static|" -i makefile
+        sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
+    fi
     make clean
     make -j $COREX
     mkdir -p $LIB_PATH/$ARCH/unrar
@@ -318,6 +338,10 @@ build_unrar()
 
 build_bin()
 {
+    # clean nzbget cmake variables
+    unset LIBS
+    unset INCLUDES
+
     # toolchain variables
     export ARCH=$ARCH
     case $ARCH in
@@ -423,6 +447,7 @@ build_bin()
 
     CONFTEMPLATE=nzbget/webui/nzbget.conf.template
     mv etc/nzbget.conf $CONFTEMPLATE
+
     # adjusting nzbget.conf
     sed 's|^MainDir=.*|MainDir=${AppDir}/downloads|' -i $CONFTEMPLATE
     sed 's|^DestDir=.*|DestDir=${MainDir}/completed|' -i $CONFTEMPLATE
@@ -466,6 +491,7 @@ build_installer()
         tar zxf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz
         mv nzbget/nzbget nzbget/nzbget-$ARCH
         cp $LIB_PATH/$ARCH/unrar/unrar nzbget/unrar-$ARCH
+        cp $LIB_PATH/$ARCH/unrar/unrar7 nzbget/unrar7-$ARCH
         cp $LIB_PATH/$ARCH/7zip/7za nzbget/7za-$ARCH
     done
 
@@ -547,6 +573,7 @@ if [ "$TESTING" == "yes" ]; then
 fi
 BASENAME="nzbget-$VERSION$VERSION_SUFFIX"
 
+# build binary packages
 if [[ $OUTPUTS == *"bin"* ]]; then
     for CONFIG in $CONFIGS; do
         construct_suffix
@@ -556,6 +583,7 @@ if [[ $OUTPUTS == *"bin"* ]]; then
     done
 fi
 
+# build installers
 if [[ $OUTPUTS == *"installer"* ]]; then
     for CONFIG in $CONFIGS; do
         construct_suffix
