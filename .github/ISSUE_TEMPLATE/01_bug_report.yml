@@ -14,11 +14,17 @@ body:
     label: NZBGet Version
     description: Which version of NZBGet has this bug?
     options:
+    - v24.1-stable
+    - v24.1-testing
+    - v24-stable
+    - v24-testing
     - v23-stable
     - v23-testing
     - v22-stable (nzbgetcom takeover)
     - v22-testing (nzbgetcom takeover)
     - v21 or earlier (orignal nzbget)
+    - latest-stable (if not listed here)
+    - latest-testing (if not listed here)
   validations:
     required: true
 - type: dropdown
