@@ -26,11 +26,11 @@ help()
 {
     echo "Usage:"
     echo "  $(basename $0) [architectures] [output] [configs] [testing] [corex]"
-    echo "    targets   : all (default) $ALL_ARCHS"
-    echo "    output    : bin installer"
-    echo "    testing   : build testing image"
-    echo "    configs   : release (default) debug"
-    echo "    corex     : multicore make (x is a number of threads) 4 is default"
+    echo "    architectures : all (default) $ALL_ARCHS"
+    echo "    output        : bin installer"
+    echo "    testing       : build testing image"
+    echo "    configs       : release (default) debug"
+    echo "    corex         : multicore make (x is a number of threads) 4 is default"
     echo
 }
 
