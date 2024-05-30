@@ -22,6 +22,13 @@ UNRAR6_VERSION=6.2.12
 UNRAR7_VERSION=7.0.7
 ZIP7_VERSION=2405
 
+# libs versions
+NCURSES_VERSION=6.4
+ZLIB_VERSION=1.3.1
+LIBXML2_VERSION=2.12.4
+OPENSSL_VERSION=3.1.2
+BOOST_VERSION=1.84.0
+
 help()
 {
     echo "Usage:"
@@ -171,7 +178,7 @@ build_lib()
                 --prefix="$PWD/../$LIB"
                 ;;
             "openssl")
-                OPENSSL_OPT=""
+                OPENSSL_OPTS=""
                 case $ARCH in
                     "i686")
                         OPENSSL_ARCH=linux-generic32
@@ -205,14 +212,14 @@ build_lib()
                 perl Configure $OPENSSL_ARCH \
                 no-shared \
                 threads \
-			    no-rc5 \
-			    enable-camellia \
-			    no-tests \
-			    no-fuzz-libfuzzer \
-			    no-fuzz-afl \
-			    no-afalgeng \
-			    zlib \
-			    no-dso \
+                no-rc5 \
+                enable-camellia \
+                no-tests \
+                no-fuzz-libfuzzer \
+                no-fuzz-afl \
+                no-afalgeng \
+                zlib \
+                no-dso \
                 $OPENSSL_OPTS \
                 --prefix="$PWD/../$LIB"
                 ;;
@@ -398,11 +405,11 @@ build_bin()
     export LDFLAGS=""
     export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
 
-    build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-6.4.tar.gz"
-    build_lib "https://zlib.net/zlib-1.3.1.tar.gz"
-    build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v2.12.4.tar.gz"
-    build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-3.1.2.tar.gz"
-    build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz"
+    build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
+    build_lib "https://zlib.net/zlib-$ZLIB_VERSION.tar.gz"
+    build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v$LIBXML2_VERSION.tar.gz"
+    build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-$OPENSSL_VERSION.tar.gz"
+    build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-$BOOST_VERSION.tar.gz"
 
     build_7zip
     build_unrar
@@ -431,7 +438,7 @@ build_bin()
         -DVERSION_SUFFIX=$VERSION_SUFFIX \
         -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
     BUILD_STATUS=""
-    cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?        
+    cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?
     if [ ! -z $BUILD_STATUS ]; then
         tail -20 $OUTPUTDIR/$ARCH/build.log
         exit 1

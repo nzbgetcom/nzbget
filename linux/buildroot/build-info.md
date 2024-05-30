@@ -78,8 +78,10 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
 - Make extra modifications:
     - package/musl/musl.mk: change MUSL_VERSION to 1.1.24
     - package/musl/musl.hash: change hashes and musl source filename
-        - sha256  1370c9a812b2cf2a7d92802510cca0058cc37e66a7bedd70051f0a34015022a3  musl-1.1.24.tar.gz
-        - sha256  3520d478bccbdf68d9dc0c03984efb0fa4b99868ab2599f5b5f72f3fb3b07a49  COPYRIGHT
+        ```
+        sha256  1370c9a812b2cf2a7d92802510cca0058cc37e66a7bedd70051f0a34015022a3  musl-1.1.24.tar.gz
+        sha256  3520d478bccbdf68d9dc0c03984efb0fa4b99868ab2599f5b5f72f3fb3b07a49  COPYRIGHT
+        ```
 - Run `make` to build the toolchain
 - After build is finished:
     - aarch64 - patch output/host/lib/gcc/aarch64-buildroot-linux-musl/9.4.0/include/arm_acle.h file:
