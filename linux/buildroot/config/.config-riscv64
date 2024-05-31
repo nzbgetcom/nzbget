@@ -1,6 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-# Buildroot -g0cf6857c Configuration
+# Buildroot -g6044b125-dirty Configuration
 #
 BR2_HAVE_DOT_CONFIG=y
 BR2_HOST_GCC_AT_LEAST_4_9=y
@@ -219,14 +219,7 @@ BR2_PACKAGE_HOST_GDB_ARCH_SUPPORTS=y
 #
 # Host GDB Options
 #
-BR2_PACKAGE_HOST_GDB=y
-# BR2_PACKAGE_HOST_GDB_TUI is not set
-# BR2_PACKAGE_HOST_GDB_PYTHON3 is not set
-# BR2_PACKAGE_HOST_GDB_SIM is not set
-BR2_GDB_VERSION_10=y
-# BR2_GDB_VERSION_11 is not set
-BR2_GDB_VERSION="10.2"
-BR2_PACKAGE_GDB_TOPLEVEL=y
+# BR2_PACKAGE_HOST_GDB is not set
 
 #
 # Toolchain Generic Options

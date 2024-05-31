@@ -50,9 +50,9 @@ Script assumes that buildroot toolchains is installed in `/build/buildroot/` - o
 
 ## Manual setup
 
-Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
+Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24` due to defining time_t from 32 to 64 bits, which may cause compatibility issues.
 
-- Download Buildroot archive from http://buildroot.uclibc.org/download.html
+- Download Buildroot archive from https://buildroot.uclibc.org/download.html
 - Unpack the tarball into /build/buildroot/ directory
 - Rename the buildroot-directory according to the target architecture name
 - Run from renamed buildroot-directory `make menuconfig`
@@ -79,7 +79,7 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
                         - Custom kernel headers series (2.6.x)
         - GCC compiler Version (gcc 9.x)
         - Enable C++ support
-        - Build cross gdb for the host
+        - (Optional) Build cross gdb for the host
 - Save config and exit
 - Make extra modifications:
     - package/musl/musl.mk: change MUSL_VERSION to 1.1.24

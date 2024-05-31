@@ -159,6 +159,7 @@ build_lib()
                 --without-gpm \
                 --enable-ext-colors \
                 --without-debug \
+                --enable-widec \
                 --host=$HOST \
                 --prefix="$PWD/../$LIB"
                 ;;
@@ -414,7 +415,7 @@ build_bin()
     build_7zip
     build_unrar
 
-    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncurses -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
     export INCLUDES="$NZBGET_INCLUDES"
 
     unset CXXFLAGS
