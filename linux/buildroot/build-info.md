@@ -70,7 +70,13 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
                 - Linux 4.19.x kernel headers
             - all others:
                 - Manually specified Linux version
-                - Linux version: 2.6.32
+                - Linux version:
+                    - aarch64:
+                        - 3.10.6
+                        - Custom kernel headers series (3.10.x)
+                    - all others:
+                        - 2.6.32
+                        - Custom kernel headers series (2.6.x)
         - GCC compiler Version (gcc 9.x)
         - Enable C++ support
         - Build cross gdb for the host
