@@ -7,7 +7,11 @@ Supported architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mi
 # Prerequisites
 
 1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
-2. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
+2. Installed build dependencies (Ubuntu/Debian example):
+```
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget
+```
+3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
 
 # Building NZBGet
 
