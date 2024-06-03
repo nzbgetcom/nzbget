@@ -15,35 +15,27 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Change version for non-release
-      if: github.ref_name != 'main'
-      run: |
-        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
-        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i configure.ac
-        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
-
     - name: Build
       run: |
-        rm -rf /build/nzbget
-        rm -rf /build/output
-        cp -r . /build/nzbget
-        cd /build
+        BUILD_PARAMS="bin installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
-          DEBUG=yes
+          BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
-          DEBUG=no
+          BUILD_PARAMS="$BUILD_PARAMS release"
         fi
-        ALL_ARCHS="i686 x86_64 aarch64 armhf armel mipseb mipsel ppc6xx ppc500 riscv64" DEBUG=$DEBUG /build/scripts/build-nzbget-ci.sh
+        if [ "$GITHUB_REF_NAME" != "main" ]; then
+          BUILD_PARAMS="$BUILD_PARAMS testing"
+        fi
+        bash linux/buildroot/build-nzbget.sh $BUILD_PARAMS
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd /build/output
-        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        cd build
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
+          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
           mv $FILE $NEW_FILE          
         done
 
@@ -51,10 +43,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-linux-installers
-        path: /build/output/*.run
+        path: build/*.run
         retention-days: 5
 
-    - name: Cleanup
-      run: |
-        rm -rf /build/nzbget
-        rm -rf /build/output
