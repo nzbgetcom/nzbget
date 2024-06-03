@@ -105,6 +105,11 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
 
 ## Automatic setup
 
+Make /build directory and add necessary permissions:
+```
+sudo mkdir -p /build
+sudo chmod 777 /build
+```
 From cloned repository run:
 ```
 bash linux/buildroot/build-toolchain.sh [architecture]
