@@ -305,26 +305,26 @@ ConfigureTarget()
     case "$TOOLKIND-$CONFIG" in
         buildroot-debug|buildroot-debug-strip)
             LDFLAGS="-static $STRIP" \
-                CXXFLAGS="-std=c++17 -g -fasynchronous-unwind-tables" \
+                CXXFLAGS="-std=c++14 -g -fasynchronous-unwind-tables" \
                 LIBS="-lcrypto -ldl -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive $LUBACKTRACE" \
                 ./configure --disable-dependency-tracking --host=$ARCH --enable-debug
             ;;
         buildroot-release|buildroot-release-nostrip)
             LDFLAGS="-static $STRIP" \
-                CXXFLAGS="-std=c++17 -O2 $DEBUG" \
+                CXXFLAGS="-std=c++14 -O2 $DEBUG" \
                 LIBS="-lcrypto -ldl -lz -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" \
                 ./configure --disable-dependency-tracking --host=$ARCH
             ;;
         ndk-debug|ndk-debug-strip)
             LDFLAGS="-static -static-libstdc++ $STRIP" \
-                CXXFLAGS="-std=c++17 -g -fasynchronous-unwind-tables" \
+                CXXFLAGS="-std=c++14 -g -fasynchronous-unwind-tables" \
                 CXX="$ARCH-clang++" \
                 PKG_CONFIG_LIBDIR="$STAGING/usr/lib/pkgconfig" \
                 ./configure --disable-dependency-tracking --disable-largefile --host=$ARCH --enable-debug
             ;;
         ndk-release|ndk-release-nostrip)
             LDFLAGS="-static -static-libstdc++ $STRIP" \
-                CXXFLAGS="-std=c++17 -O2 $DEBUG" \
+                CXXFLAGS="-std=c++14 -O2 $DEBUG" \
                 CXX="$ARCH-clang++" \
                 PKG_CONFIG_LIBDIR="$STAGING/usr/lib/pkgconfig" \
                 ./configure --disable-dependency-tracking --disable-largefile --host=$ARCH
@@ -356,13 +356,13 @@ PrecompileHeaders()
     fi
 
     if [ $PCH == "yes" -a $TOOLKIND == "buildroot" ]; then
-        $ARCH-g++ -std=c++17 -DHAVE_CONFIG_H \
+        $ARCH-g++ -std=c++14 -DHAVE_CONFIG_H \
             -I. -I$STAGING/usr/include -I$STAGING/usr/include/libxml2 \
             -g $OPTIM daemon/main/nzbget.h -o nzbget.h.gch
     fi
 
     if [ $PCH == "yes" -a $TOOLKIND == "ndk" ]; then
-        $ARCH-clang++ -std=c++17 -DHAVE_CONFIG_H \
+        $ARCH-clang++ -std=c++14 -DHAVE_CONFIG_H \
             -I. -I$STAGING/usr/include -I$STAGING/usr/include/libxml2 \
             -g $OPTIM -x c++-header daemon/main/nzbget.h -o nzbget.h.pch
         CXXFLAGS=`sed -n 's:^CXXFLAGS =.\(.*\):\1:p' Makefile`

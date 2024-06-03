@@ -190,7 +190,7 @@ for ARCH in $ALL_ARCHS; do
     autoreconf --install
 
     # we want to static link to all libs except libc
-    export CXXFLAGS="$CXXFLAGS -std=c++17 -O2"
+    export CXXFLAGS="$CXXFLAGS -std=c++14 -O2"
     export LIBS="-lncurses -lxml2 -lz -lm -lcrypto -ldl -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
     ./configure --disable-cpp-check --disable-dependency-tracking --host=$HOST
     make clean
