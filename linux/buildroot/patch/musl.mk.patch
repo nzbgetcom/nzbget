@@ -1,0 +1,11 @@
+--- musl.mk	2024-05-01 08:12:56.472927188 +0000
++++ musl.mk	2024-05-01 08:13:46.008924961 +0000
+@@ -4,7 +4,7 @@
+ #
+ ################################################################################
+ 
+-MUSL_VERSION = 1.2.3
++MUSL_VERSION = 1.1.24
+ MUSL_SITE = http://www.musl-libc.org/releases
+ MUSL_LICENSE = MIT
+ MUSL_LICENSE_FILES = COPYRIGHT

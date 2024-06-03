@@ -39,7 +39,7 @@ Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetco
 
 macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
 
-Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
+Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md). LinuxServer.io version is also available: [docker-nzbget](https://github.com/linuxserver/docker-nzbget)
 
 Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
 
