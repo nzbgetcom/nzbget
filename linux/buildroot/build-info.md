@@ -1,6 +1,6 @@
 # About
 
-"build-nzbget.sh" is a bash script which is used to build linux nzbget packages.
+`build-nzbget.sh` is a bash script which is used to build linux nzbget packages.
 
 Supported architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
 
@@ -17,7 +17,7 @@ sudo apt install autoconf automake bc build-essential cmake cpio curl file git l
 
 From cloned repository run
 ```
-bash build-nzbget.sh [architectures] [output] [configs] [testing] [corex]
+bash linux/buildroot/build-nzbget.sh [architectures] [output] [configs] [testing] [corex]
 ```
 
 Build options:
