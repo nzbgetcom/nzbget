@@ -40,9 +40,9 @@ project(
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS "-O0 -g0 -pthread -g -DDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "-O0 -pthread -g -DDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 		set(CMAKE_CXX_FLAGS "/Od /Zi /MTd /MP /W4 /EHs /DDEBUG /D_DEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
 		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib Dbghelp.lib libcpmtd.lib" CACHE STRING "" FORCE)
