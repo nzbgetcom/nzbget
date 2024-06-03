@@ -15,7 +15,7 @@ sudo apt install autoconf automake bc build-essential cmake cpio curl file git l
 
 # Building NZBGet
 
-From cloned repository run
+From the cloned repository, run:
 ```
 bash linux/buildroot/build-nzbget.sh [architectures] [output] [configs] [testing] [corex]
 ```
@@ -105,16 +105,16 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
 
 ## Automatic setup
 
-Make /build directory and add necessary permissions:
+Make the /build directory and add the necessary permissions.
 ```
 sudo mkdir -p /build
 sudo chmod 777 /build
 ```
-From cloned repository run:
+From the cloned repository, run:
 ```
 bash linux/buildroot/build-toolchain.sh [architecture]
 ```
-It will download and build buildroot with needeed options and patches.
+It will download and build buildroot with needed options and patches
 
 If you want to build all supported toolchains, run
 ```
