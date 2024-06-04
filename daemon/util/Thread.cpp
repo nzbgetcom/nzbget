@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,14 +16,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nzbget.h"
 #include "Log.h"
 #include "Thread.h"
 
-int Thread::m_threadCount = 1; // take the main program thread into account
+std::atomic<int> Thread::m_threadCount{1}; // take the main program thread into account
 std::unique_ptr<Mutex> Thread::m_threadMutex;
 
 
@@ -101,14 +102,14 @@ bool Thread::Kill()
 
 	if (terminated)
 	{
-		m_threadCount--;
+		--m_threadCount;
 	}
 	return terminated;
 }
 
 void Thread::thread_handler()
 {
-	m_threadCount++;
+	++m_threadCount;
 
 	debug("Entering Thread-func");
 
@@ -118,7 +119,7 @@ void Thread::thread_handler()
 
 	m_running = false;
 
-	m_threadCount--;
+	--m_threadCount;
 
 	if (m_autoDestroy)
 	{
@@ -129,6 +130,5 @@ void Thread::thread_handler()
 
 int Thread::GetThreadCount()
 {
-	Guard guard(m_threadMutex);
 	return m_threadCount;
 }

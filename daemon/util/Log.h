@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -96,7 +97,7 @@ private:
 	CString m_logFilename;
 	std::unique_ptr<DiskFile> m_logFile;
 	uint32 m_idGen = 0;
-	time_t m_lastWritten = 0;
+	std::atomic<time_t> m_lastWritten{0};
 	bool m_optInit = false;
 #ifdef DEBUG
 	bool m_extraDebug;

@@ -30,7 +30,7 @@ namespace Json
 	using JsonObject = boost::json::object;
 	using JsonArray = boost::json::array;
 	using StreamParser = boost::json::stream_parser;
-	using ErrorCode = boost::json::error_code;
+	using ErrorCode = boost::system::error_code;
 
 	JsonValue Deserialize(std::istream& is, ErrorCode& ec);
 	std::string Serialize(const JsonObject& json);

@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 
@@ -22,12 +23,13 @@
 #ifndef SCANNER_H
 #define SCANNER_H
 
+#include <mutex>
 #include "NString.h"
 #include "DownloadInfo.h"
 #include "Thread.h"
 #include "Service.h"
 
-class Scanner : public Service
+class Scanner final : public Service
 {
 public:
 	enum EAddStatus
@@ -106,15 +108,16 @@ private:
 
 	typedef std::deque<QueueData> QueueList;
 
-	bool m_requestedNzbDirScan = false;
-	int m_nzbDirInterval = 0;
-	bool m_scanScript = false;
-	int m_pass = 0;
 	FileList m_fileList;
 	QueueList m_queueList;
-	bool m_scanning = false;
-	Mutex m_scanMutex;
+	std::mutex m_scanMutex;
+	std::atomic<bool> m_requestedNzbDirScan{false};
+	std::atomic<bool> m_scanning{false};
 	static int m_idGen;
+	int m_nzbDirInterval = 0;
+	int m_pass = 0;
+	bool m_scanScript = false;
+	
 
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
 	bool AddFileToQueue(const char* filename, const char* nzbName, const char* category,
