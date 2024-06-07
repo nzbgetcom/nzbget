@@ -39,9 +39,14 @@ DAEMON_PATH=osx/Resources/daemon/usr/local
 # make static daemon binary
 cd $BUILD_PATH
 cmake ../.. -DENABLE_STATIC=ON -DCMAKE_INSTALL_PREFIX="$PWD/../../$NZBGET_PATH/$DAEMON_PATH" -DVERSION_SUFFIX="$VERSION_SUFFIX"
-cmake --build . -j $JOBS
-strip nzbget
+BUILD_STATUS=""
+cmake --build . -j $JOBS 2>build.log || BUILD_STATUS=$?
+if [ ! -z $BUILD_STATUS ]; then
+    tail -20 $OUTPUTDIR/$ARCH/build.log
+    exit 1
+fi
 cmake --install .
+cmake --build . --target install-conf
 cd ../..
 
 # fetch tools and root certificates
