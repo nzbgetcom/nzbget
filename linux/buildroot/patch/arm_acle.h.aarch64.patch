@@ -1,0 +1,13 @@
+--- arm_acle.h	2024-05-23 10:14:52.156099665 +0300
++++ arm_acle.h	2024-05-23 10:15:05.920079054 +0300
+@@ -98,10 +98,6 @@
+ 
+ #pragma GCC target ("+nothing+crc")
+ 
+-#ifdef __cplusplus
+-extern "C" {
+-#endif
+-
+ __extension__ static __inline uint32_t __attribute__ ((__always_inline__))
+ __crc32b (uint32_t __a, uint8_t __b)
+ {

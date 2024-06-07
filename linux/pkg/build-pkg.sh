@@ -113,8 +113,7 @@ for ARCH in $ARCHS; do
     cp $PWD/$ARCH/nzbget $CONTENTS/usr/bin
     for DOCFILE in ChangeLog.md COPYING; do
         cp $PWD/$ARCH/$DOCFILE $SHAREDOC
-    done
-    mv $PWD/$ARCH/scripts $SHARE
+    done    
     mv $PWD/$ARCH/webui $SHARE
     cp $PWD/$ARCH/nzbget.conf $SHARE
     cp $PWD/$ARCH/cacert.pem $SHARE

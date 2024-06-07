@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -104,7 +105,7 @@ void Scanner::ServiceWork()
 
 	debug("Scanner service work: doing work");
 
-	Guard guard(m_scanMutex);
+	std::lock_guard<std::mutex> guard{m_scanMutex};
 
 	// check nzbdir every g_pOptions->GetNzbDirInterval() seconds or if requested
 	bool checkStat = !m_requestedNzbDirScan;
@@ -496,7 +497,7 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 void Scanner::ScanNzbDir(bool syncMode)
 {
 	{
-		Guard guard(m_scanMutex);
+		std::lock_guard<std::mutex> guard{m_scanMutex};
 		m_scanning = true;
 		m_requestedNzbDirScan = true;
 		WakeUp();
@@ -578,7 +579,7 @@ Scanner::EAddStatus Scanner::AddExternalFile(const char* nzbName, const char* ca
 	EAddStatus addStatus;
 
 	{
-		Guard guard(m_scanMutex);
+		std::lock_guard<std::mutex> guard{m_scanMutex};
 
 		if (!FileSystem::MoveFile(tempFileName, scanFileName))
 		{

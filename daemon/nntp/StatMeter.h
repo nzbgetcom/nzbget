@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,13 +15,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef STATMETER_H
 #define STATMETER_H
 
+#include <atomic>
+#include <array>
 #include "Log.h"
 #include "Thread.h"
 #include "Util.h"
@@ -97,27 +100,27 @@ private:
 	// speed meter
 	static const int SPEEDMETER_SLOTS = 30;
 	static const int SPEEDMETER_SLOTSIZE = 1; //Split elapsed time into this number of secs.
-	int m_speedBytes[SPEEDMETER_SLOTS];
-	int64 m_speedTotalBytes;
-	int m_speedTime[SPEEDMETER_SLOTS];
-	int m_speedStartTime;
-	time_t m_speedCorrection;
-	int m_speedBytesIndex;
-	int m_curSecBytes;
-	time_t m_curSecTime;
+	std::array<std::atomic<int>, SPEEDMETER_SLOTS> m_speedBytes;
+	std::array<std::atomic<int>, SPEEDMETER_SLOTS> m_speedTime;
+	std::atomic<time_t> m_speedCorrection{0};
+	std::atomic<time_t> m_curSecTime{0};
+	std::atomic<int64> m_speedTotalBytes{0};
+	std::atomic<int> m_speedBytesIndex{0};
+	std::atomic<int> m_curSecBytes{0};
+	std::atomic<int> m_speedStartTime{0};
+	std::mutex m_speedTotalBytesMtx;
 
 	// time
-	int64 m_allBytes = 0;
-	time_t m_startServer = 0;
+	std::atomic<int64> m_allBytes{0};
+	std::atomic<time_t> m_startServer{0};
+	std::atomic<time_t> m_pausedFrom{0};
+	std::atomic<time_t> m_startDownload{0};
+	std::atomic<bool> m_standBy{true};
 	time_t m_lastCheck = 0;
 	time_t m_lastTimeOffset = 0;
-	time_t m_startDownload = 0;
-	time_t m_pausedFrom = 0;
-	bool m_standBy = true;
-	Mutex m_statMutex;
 
 	// data volume
-	bool m_statChanged = false;
+	std::atomic<bool> m_statChanged{false};
 	ServerVolumes m_serverVolumes;
 	Mutex m_volumeMutex;
 

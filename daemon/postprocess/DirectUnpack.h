@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 #ifndef DIRECTUNPACK_H
 #define DIRECTUNPACK_H
 
+#include <atomic>
 #include "Log.h"
 #include "Thread.h"
 #include "DownloadInfo.h"
@@ -61,17 +63,16 @@ private:
 	CString m_password;
 	CString m_waitingFile;
 	CString m_progressLabel;
+	std::atomic<bool> m_nzbCompleted{false};
+	Mutex m_volumeMutex;
+	ArchiveList m_archives;
+	time_t m_extraStartTime = 0;
+	ArchiveList m_extractedArchives;
 	bool m_allOkMessageReceived = false;
 	bool m_unpackOk = false;
 	bool m_finalDirCreated = false;
-	bool m_nzbCompleted = false;
-	Mutex m_volumeMutex;
-	ArchiveList m_archives;
 	bool m_processed = false;
 	bool m_unpacking = false;
-	time_t m_extraStartTime = 0;
-	ArchiveList m_extractedArchives;
-
 	void CreateUnpackDir();
 	void FindArchiveFiles();
 	void ExecuteUnrar(const char* archiveName);
