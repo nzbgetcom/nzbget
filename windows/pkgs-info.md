@@ -1,7 +1,7 @@
-# Install NZBGet foe WIndows via package manages
+# Install NZBGet for WIndows via package managers
 
-- [winget](#winget)
-- [chocolatey](#chocolatey)
+- [Winget](#winget)
+- [Chocolatey](#chocolatey)
 
 ## Winget
 
@@ -13,7 +13,7 @@ winget install nzbget
 
 ## Chocolatey
 
-1. Install chocolatey package manager. Installation instructions can be found [here](https://docs.chocolatey.org/en-us/choco/setup/).
+1. Install `chocolatey` package manager. Installation instructions can be found [here](https://docs.chocolatey.org/en-us/choco/setup/).
 2. To install nzbget, run from an elevated Command Prompt:
 ```
 choco install nzbgetcom
