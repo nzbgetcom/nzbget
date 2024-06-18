@@ -1,47 +1,21 @@
 # About
-"build-nzbget-*.sh" is a bash scripts which is used to build macOS nzbget binaries
-- [build-nzbget-universal.sh](#build-nzbget-universalsh) - universal (Intel/Apple Silicon) application  (macOS Monterey 12+)
-- [build-macos-x64.sh](#build-nzbget-x64sh) - x64 application (macOS Mojave 10.14+)
+`build-nzbget.sh` is a bash scripts which is used to build macOS nzbget binaries
 
-## build-nzbget-universal.sh
-
-### Prerequisites
-- Homebrew package manager (https://brew.sh/) and several dependencies:
-
-Install homebrew:
-```
-/bin/sh -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-Install dependencies:
-```
-brew install git zlib libxml2 ncurses openssl@3 pkg-config boost
-```
-
-- Xcode build tools
-```
-xcode-select --install
-```
-
-### Building NZBGet
-From cloned repository run
-```
-bash osx/build-nzbget-universal.sh
-```
-
-### Output files
-- osx/build/Release/NZBGet.app - application
-- osx/build/Release/nzbget-$VERSION-bin-macos-universal.zip - release archive
-
-## build-nzbget-x64.sh
-
-### Prerequisites
+## Prerequisites
 - vcpkg package manager (https://vcpkg.io/) and several dependencies:
 ```
 cd $HOME
 git clone https://github.com/microsoft/vcpkg
 cd vcpkg
 ./bootstrap-vcpkg.sh
-./vcpkg install boost-json boost-optional libxml2 zlib openssl
+```
+For x64 builds:
+```
+./vcpkg install boost-json:x64-osx boost-optional:x64-osx libxml2:x64-osx zlib:x64-osx openssl:x64-osx
+```
+For arm64 builds:
+```
+./vcpkg install boost-json:arm64-osx boost-optional:arm64-osx libxml2:arm64-osx zlib:arm64-osx openssl:arm64-osx
 ```
 - Xcode build tools
 ```
@@ -50,12 +24,15 @@ xcode-select --install
 - cmake 3.13+
 
 ### Building NZBGet
-From cloned repository run
+From the cloned repository, run:
 ```
-bash osx/build-nzbget-x64.sh [testing]
+bash osx/build-nzbget.sh [arch] [testing]
 ```
+- `arch` - can be
+    - x64
+    - arm64
+    - universal (default value)
 - `testing` - build testing package (add VersionSuffix=`-testing-$yyyyMMdd` to package version)
 
 ### Output files
-- build/nzbget/osx/build/Release/NZBGet.app - application
-- build/nzbget-$VERSION-bin-macos-x64.zip - release archive
+- build/nzbget-$VERSION-bin-macos-$ARCH.zip - release archive
