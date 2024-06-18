@@ -39,7 +39,7 @@ jobs:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-osx, build-synology, build-qnap, repack-qnap, build-linux-pkg]
+    needs: [build-windows, build-linux, build-osx, repack-qnap, build-linux-pkg]
     permissions:
       actions: write
     steps:
