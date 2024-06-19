@@ -35,6 +35,8 @@ More information available at https://nzbget.com
 
 We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
 
+Windows packages are also available via `winget` and `chocolatey` package managers. Package managers [readme](windows/pkgs-info.md)
+
 Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
 
 macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
