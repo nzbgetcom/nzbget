@@ -11,8 +11,7 @@
 [![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
 [![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
 [![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
-[![synology build](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml)
-[![qnap build](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml)
+[![qnap repack](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
@@ -33,11 +32,11 @@ More information available at https://nzbget.com
 
 ## Installation and Documentation
 
-We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
+We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/releases) page.
 
 Windows packages are also available via `winget` and `chocolatey` package managers. Package managers [readme](windows/pkgs-info.md)
 
-Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
+Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
 
 macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
 
