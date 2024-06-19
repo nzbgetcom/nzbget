@@ -43,9 +43,9 @@ macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget
 
 Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md). LinuxServer.io version is also available: [docker-nzbget](https://github.com/linuxserver/docker-nzbget)
 
-Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
+Synology package are available as SynoCommunity package. [Synology readme](docs/SYNOLOGY.md)
 
-QNAP packages are available as native / buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
+QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
 
 ## Migration from older NZBGet versions
 

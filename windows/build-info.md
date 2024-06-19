@@ -1,5 +1,5 @@
 # About
-"build-nzbget.ps1" is a PowerShell script which is used to build Windows nzbget binaries and installer
+`build-nzbget.ps1` is a PowerShell script which is used to build Windows nzbget binaries and installer
 
 # Prerequisites
 

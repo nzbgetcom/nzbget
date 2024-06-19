@@ -1,12 +1,12 @@
 # QNAP nzbget packages
 
-We support QNAP via native qpkg packages, built with QNAP toolchains (only x86/x86_64/arm_64 QNAP architectures) and buildroot qpkg, repacked from linux installer (all QNAP architectures)
+We support QNAP via buildroot qpkg, repacked from linux installer.
 
 ## Installing
 
 ### Manual install
 
-Prerequsites: Enable installation of applications without digital signature (`AppCenter` - `Settings` - `Allow installation of applications without a valid digital signature`)
+Prerequisites: Enable installation of applications without digital signature (`AppCenter` - `Settings` - `Allow installation of applications without a valid digital signature`)
 
 To install nzbget for QNAP download qpkg for your architecture, then from QNAP AppCenter select `Install Manually` - browse for downloaded qpkg and press `Install`
 For digital signature warning select `I understand the risks and want to install this application` and press `Install`.
