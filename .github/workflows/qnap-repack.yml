@@ -40,7 +40,7 @@ jobs:
     - name: Rename build artifacts
       if: github.ref_name != 'main'
       run: |
-        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
+        VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
         NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
         cd /qnap/nzbget/build/
         for FILE in *.qpkg; do
