@@ -22,7 +22,7 @@ If you have installed original NZBGet version (package version `20220406-29` and
 
 DSM versions: 7.x
 
-SPK packages is now deprecated and no longer supported due to old GCC in native Synology toolchains, which does not support C++17. Latest SPK packages release version: `24.1`
+SPK packages are now deprecated and no longer supported due to old GCC in native Synology toolchains. Latest SPK packages release version: `24.1`
 
 ## Package versions
 
