@@ -11,8 +11,8 @@ set_property(GLOBAL PROPERTY INCLUDES)
 set(VERSION "24.2")
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -37,6 +37,29 @@ project(
 	DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
 	LANGUAGES C CXX
 )
+
+if(APPLE)
+	# On macOS Cmake, when cross-compiling, sometimes CMAKE_SYSTEM_PROCESSOR wrongfully stays
+	# the same as CMAKE_HOST_SYSTEM_PROCESSOR regardless the target CPU.
+	# The manual call to set(CMAKE_SYSTEM_PROCESSOR) has to be set after the project() call.
+	# because project() might reset CMAKE_SYSTEM_PROCESSOR back to the value of CMAKE_HOST_SYSTEM_PROCESSOR.
+	# Check if CMAKE_SYSTEM_PROCESSOR is not equal to CMAKE_OSX_ARCHITECTURES
+	if(NOT CMAKE_OSX_ARCHITECTURES STREQUAL "")
+		if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_OSX_ARCHITECTURES)
+			# Split CMAKE_OSX_ARCHITECTURES into a list
+			string(REPLACE ";" " " ARCH_LIST ${CMAKE_OSX_ARCHITECTURES})
+			separate_arguments(ARCH_LIST UNIX_COMMAND ${ARCH_LIST})
+			# Count the number of architectures
+			list(LENGTH ARCH_LIST ARCH_COUNT)
+			# Ensure that exactly one architecture is specified
+			if(NOT ARCH_COUNT EQUAL 1)
+				message(FATAL_ERROR "CMAKE_OSX_ARCHITECTURES must have exactly one value. Current value: ${CMAKE_OSX_ARCHITECTURES}")
+			endif()
+			set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_OSX_ARCHITECTURES})
+			message(STATUS "CMAKE_SYSTEM_PROCESSOR is manually set to ${CMAKE_SYSTEM_PROCESSOR}")
+		endif()
+	endif()
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")

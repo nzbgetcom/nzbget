@@ -1,11 +1,10 @@
 # Synology nzbget packages
 
-We support Synology via SynoCommunity package (DSM 3.x / 6.x / 7.x) and native SPK package (DSM 7.x) for manual installation.
+We support Synology via SynoCommunity package (DSM 3.x / 6.x / 7.x)
 
 * [SynoCommunity package (DSM 3.x / 6.x / 7.x)](#synocommunity-package)
-* [SPK package (DSM 7.x)](#spk-package)
+* [SPK package (DSM 7.x) (deprecated)](#spk-package-deprecated)
 * [Switch between SynoCommunity package and SPK](#switch-between-synocommunity-package-and-spk)
-
 
 # SynoCommunity package
 
@@ -19,13 +18,15 @@ If you have SynoCommunity added on your device - please simply install NZBGet un
 
 If you have installed original NZBGet version (package version `20220406-29` and below) - upgrade to nzbgetcom version (latest / `20240115-30`)
 
-# SPK package
+# SPK package (deprecated)
 
 DSM versions: 7.x
 
+SPK packages are now deprecated and no longer supported due to old GCC in native Synology toolchains. Latest SPK packages release version: `24.1`
+
 ## Package versions
 
-We provide native packages for most Synology platforms (DSM 7.x). To select a correct package for yours platform please find Synology model in [Synology NAS list](https://kb.synology.com/en-us/DSM/tutorial/What_kind_of_CPU_does_my_NAS_have) and select package based on `Package Arch` field:
+To select a correct package for yours platform please find Synology model in [Synology NAS list](https://kb.synology.com/en-us/DSM/tutorial/What_kind_of_CPU_does_my_NAS_have) and select package based on `Package Arch` field:
 
 | Package Arch   | NZBGet package name
 |:---------------|:-
@@ -61,7 +62,7 @@ We provide native packages for most Synology platforms (DSM 7.x). To select a co
 ## Installing / upgrading / uninstalling / reinstalling
 
 To install NZBGet package from Synology Package Center press Manual Install and select downloaded package -> Next -> Agree -> Select shared folder and download directory -> Credentials for web interface -> Done.
-After installation NZBGet web interface will be availabe from http://[Synology NAS IP or Hostname]:6789 with provided during installation username/password (nzbget/nzbget by default). Also this link available from package center "Open" button on installed NZBGet package icon.
+After installation NZBGet web interface will be available from http://[Synology NAS IP or Hostname]:6789 with provided during installation username/password (nzbget/nzbget by default). Also this link available from package center "Open" button on installed NZBGet package icon.
 
 To upgrade nzbget package - do the same thing with new package. NZBGet settings will be keeped.
 
@@ -69,7 +70,7 @@ Uninstall - from Package center select NZBGet package and hit uninstall in actio
 
 ## Shared folders permissions and nzbget
 
-When installed, the package adds all the necessary permissions for the selected Shared folder to work correcty. If you want to change the download path to another shared folder, you must manually add permissions for the nzbget user. For example - you changed MainDir to /volume2/some_shared_folder/some_download_directory. You must add r/w permission to `nzbget` user via Control Panel -> Shared Folder -> Select `some_shared_folder` -> Edit -> Permissions tab -> select from combobox `System internal user` -> nzbget -> Read/Write -> Save.
+When installed, the package adds all the necessary permissions for the selected Shared folder to work correctly. If you want to change the download path to another shared folder, you must manually add permissions for the nzbget user. For example - you changed MainDir to /volume2/some_shared_folder/some_download_directory. You must add r/w permission to `nzbget` user via Control Panel -> Shared Folder -> Select `some_shared_folder` -> Edit -> Permissions tab -> select from combobox `System internal user` -> nzbget -> Read/Write -> Save.
 
 ## Extensions
 
@@ -80,7 +81,7 @@ You can put custom extension in `ScriptDir` directory. During installation this 
 - backup settings via WebUI
 - remove old package completely (with wipe settings)
 - install new version
-- restore needeed settings
+- restore needed settings
 - fix download directory permissions (if needed)
 
 ## Known issues:

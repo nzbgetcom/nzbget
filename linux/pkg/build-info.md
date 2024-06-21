@@ -1,6 +1,6 @@
 # About
 
-"build-pkg.sh" is a bash script which is used to build nzbget Linux DEB/RPM packages.
+`build-pkg.sh` is a bash script which is used to build nzbget Linux DEB/RPM packages.
 
 
 # Prerequisites

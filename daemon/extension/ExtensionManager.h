@@ -73,7 +73,7 @@ namespace ExtensionManager
 		DeleteExtension(const Extension::Script& ext);
 
 		Extensions m_extensions;
-		mutable std::shared_timed_mutex m_mutex;
+		mutable std::shared_mutex m_mutex;
 	};
 }
 

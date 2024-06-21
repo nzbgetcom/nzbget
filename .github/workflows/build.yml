@@ -19,12 +19,6 @@ jobs:
     permissions:
       actions: write
   
-  build-synology:
-    uses: ./.github/workflows/synology.yml
-  
-  build-qnap:
-    uses: ./.github/workflows/qnap.yml
-
   build-linux-pkg:
     uses: ./.github/workflows/linux-pkg.yml
     with:
@@ -45,7 +39,7 @@ jobs:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-osx, build-synology, build-qnap, repack-qnap, build-linux-pkg]
+    needs: [build-windows, build-linux, build-osx, repack-qnap, build-linux-pkg]
     permissions:
       actions: write
     steps:
@@ -59,9 +53,7 @@ jobs:
         mv nzbget-windows-installers/* builds || true
         mv nzbget-linux-installers/* builds || true
         mv nzbget-osx-installers/* builds || true
-        mv nzbget-synology-packages/* builds || true
         mv nzbget-qnap-packages/* builds || true
-        mv nzbget-qnap-native-packages/* builds || true
         mv nzbget-deb-packages/* builds || true
         mv nzbget-rpm-packages/* builds || true
         cd builds
@@ -111,9 +103,7 @@ jobs:
           nzbget-windows-installers
           nzbget-linux-installers
           nzbget-osx-installers
-          nzbget-synology-packages
           nzbget-qnap-packages
-          nzbget-qnap-native-packages
 
     - name: Delete unneded linux packages artifacts
       uses: geekyeggo/delete-artifact@v4

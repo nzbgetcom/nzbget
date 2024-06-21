@@ -31,7 +31,7 @@ namespace ExtensionManager
 {
 	const Extensions& Manager::GetExtensions() const &
 	{
-		std::shared_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::shared_lock<std::shared_mutex> lock{m_mutex};
 		return m_extensions;
 	}
 
@@ -58,7 +58,7 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
 	{
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
@@ -135,7 +135,7 @@ namespace ExtensionManager
 	boost::optional<std::string>
 	Manager::DeleteExtension(const std::string& name)
 	{
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
@@ -167,7 +167,7 @@ namespace ExtensionManager
 			return std::string("\"ScriptDir\" is not specified");
 		}
 
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		m_extensions.clear();
 
