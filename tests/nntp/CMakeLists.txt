@@ -20,6 +20,7 @@ target_include_directories(ServerPoolTest PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/util
 	${CMAKE_SOURCE_DIR}/daemon/connect
+	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/daemon/queue
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/remote

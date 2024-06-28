@@ -834,6 +834,7 @@ var Refresher = (new function($)
 		RPC.safeMethods = [
 			'version', 
 			'status', 
+			'sysinfo',
 			'listgroups', 
 			'history', 
 			'listfiles',

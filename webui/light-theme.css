@@ -139,6 +139,7 @@ html {
 
 .table-bordered {
 	border-left: 1px solid #dddddd;
+	border-collapse: collapse;
 }
 
 .table-striped tbody tr:nth-child(odd) {

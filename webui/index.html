@@ -544,8 +544,9 @@
 					<div class="row-fluid">
 						<div class="span3">
 							<ul class="nav nav-list" id="ConfigNav">
-							<li class="config-static"><a href="#Config-Info">INFO</a></li>
-							<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
+								<li class="config-static"><a href="#Config-Info">INFO</a></li>
+								<li class="config-static"><a href="#Config-SystemInfo">STATUS</a></li>
+								<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
 							</ul>
 						</div>
 
@@ -642,6 +643,98 @@
 									<div class="form-horizontal">
 										<form>
 										<fieldset id="ConfigData">
+
+											<section id="Config-SystemInfo" class="control-group config-static config-status">
+												<table class="table table-striped table-condensed table-bordered table-fixed">
+													<tbody>
+														<tr>
+															<td width="50%">Version</td>
+															<td id="SysInfo_AppVersion" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Uptime</td>
+															<td id="SysInfo_Uptime" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Config path</td>
+															<td id="SysInfo_ConfPath" width="50%"></td>
+														</tr>
+													</tbody>
+												</table>
+
+												<br>
+
+												<h4>Tools</h4>
+												<table class="table table-striped table-condensed table-bordered table-fixed">
+													<thead>
+														<th width="25%">Name</th>
+														<th width="25%">Version</th>
+														<th width="50%">Path</th>
+													</thead>
+													<tbody id="SysInfo_ToolsTable"></tbody>
+												</table>
+
+												<br>
+
+												<h4>News Servers</h4>
+												<div class="news-servers-table-container">
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<thead>
+															<th width="25%">Host (Connections)</th>
+															<th width="25%">Active</th>
+															<th width="50%">Tests</th>
+														</thead>
+														<tbody id="SysInfo_NewsServersTable"> </tbody>
+													</table>
+												</div>
+
+												<br>
+
+												<h4>System</h4>
+												<table class="table table-striped table-condensed table-bordered table-fixed">
+													<tbody>
+														<tr>
+															<td width="50%">OS</td>
+															<td id="SysInfo_OS" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">CPU</td>
+															<td id="SysInfo_CPUModel" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Arch</td>
+															<td id="SysInfo_Arch" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Free disk space</td>
+															<td id="SysInfo_FreeDiskSpace" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Total disk space</td>
+															<td id="SysInfo_TotalDiskSpace" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Article Cache</td>
+															<td id="SysInfo_ArticleCache" width="50%"></td>
+														</tr>
+														<tr>
+															<td width="50%">Private / Public IP</td>
+															<td id="SysInfo_IP" width="50%"></td>
+														</tr>
+													</tbody>
+												</table>
+
+												<br>
+
+												<h4>Libraries</h4>
+												<table class="table table-striped table-condensed table-bordered table-fixed">
+													<thead>
+														<th width="50%">Name</th>
+														<th width="50%">Version</th>
+													</thead>
+													<tbody id="SysInfo_LibrariesTable"></tbody>
+												</table>
+											</section>
 
 											<!-- *** SYSTEM -->
 											<div class="control-group config-static config-system">

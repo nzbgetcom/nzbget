@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -121,9 +122,9 @@ BOOST_AUTO_TEST_CASE(RegExTest)
 
 BOOST_AUTO_TEST_CASE(StrToNumTest)
 {
-	BOOST_CHECK(Util::StrToNum("3.14").get() == 3.14);
-	BOOST_CHECK(Util::StrToNum("3.").get() == 3.0);
-	BOOST_CHECK(Util::StrToNum("3").get() == 3);
+	BOOST_CHECK(Util::StrToNum("3.14").value() == 3.14);
+	BOOST_CHECK(Util::StrToNum("3.").value() == 3.0);
+	BOOST_CHECK(Util::StrToNum("3").value() == 3);
 	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
 	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
 }

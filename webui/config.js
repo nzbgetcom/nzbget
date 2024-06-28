@@ -27,6 +27,15 @@
 
 /*** OPTIONS AND CONFIGS (FROM CONFIG FILES) **************************************/
 
+function Server()
+{
+	this.id = 0;
+	this.host = '';
+	this.name = '';
+	this.port = 0;
+	this.connections = 0;
+}
+
 var Options = (new function($)
 {
 	'use strict';
@@ -52,6 +61,7 @@ var Options = (new function($)
 
 	this.init = function()
 	{
+		SystemInfo.init();
 	}
 
 	this.update = function()
@@ -89,6 +99,20 @@ var Options = (new function($)
 	{
 		var opt = findOption(this.options, name);
 		return opt ? opt.Value : null;
+	}
+
+	this.getServerById = function(id)
+	{
+		var server = new Server();
+
+		server.id = id;
+		var serverId = 'Server' + id;
+		server.host = findOption(this.options, serverId + '.Host').Value;
+		server.name = findOption(this.options, serverId + '.Name').Value;
+		server.port = findOption(this.options, serverId + '.Port').Value;
+		server.connections = findOption(this.options, serverId + '.Connections').Value;
+
+		return server;
 	}
 
 	function initCategories()
@@ -1438,6 +1462,15 @@ var Config = (new function($)
 			$ConfigInfo.show();
 			$ConfigData.children().hide();
 			$ConfigTitle.text('INFO');
+			return;
+		}
+
+		if (sectionId === SystemInfo.id)
+		{
+			$ConfigData.children().hide();
+			$('.config-status', $ConfigData).show();
+			SystemInfo.loadSystemInfo();
+			$ConfigTitle.text('STATUS');
 			return;
 		}
 
@@ -3394,6 +3427,8 @@ var ExecScriptDialog = (new function($)
 
 }(jQuery));
 
+/*** EXTENSION MANAGET *******************************************************/
+
 function Extension()
 {
 	this.id = '';
@@ -4244,4 +4279,196 @@ var ExtensionManager = (new function($)
 			sortExtensionsByOrder(installedExtensions, splitString(order));
 		}
 	}
+}(jQuery))
+
+
+/*** STATUS PAGE *******************************************************/
+
+var SystemInfo = (new function($)
+{
+	this.id = "Config-SystemInfo";
+
+	var $SysInfo_OS;
+	var $SysInfo_AppVersion;
+	var $SysInfo_Uptime;
+	var $SysInfo_ConfPath;
+	var $SysInfo_CPUModel;
+	var $SysInfo_Arch;
+	var $SysInfo_IP;
+	var $SysInfo_FreeDiskSpace;
+	var $SysInfo_TotalDiskSpace;
+	var $SysInfo_ArticleCache;
+	var $SysInfo_ToolsTable;
+	var $SysInfo_LibrariesTable;
+	var $SysInfo_NewsServersTable;
+
+	var _this = this;
+
+	this.init = function()
+	{
+		$SysInfo_OS = $('#SysInfo_OS');
+		$SysInfo_AppVersion = $('#SysInfo_AppVersion');
+		$SysInfo_Uptime = $('#SysInfo_Uptime');
+		$SysInfo_ConfPath = $('#SysInfo_ConfPath');
+		$SysInfo_CPUModel = $('#SysInfo_CPUModel');
+		$SysInfo_Arch = $('#SysInfo_Arch');
+		$SysInfo_IP = $('#SysInfo_IP');
+		$SysInfo_FreeDiskSpace = $('#SysInfo_FreeDiskSpace');
+		$SysInfo_TotalDiskSpace = $('#SysInfo_TotalDiskSpace');
+		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
+		$SysInfo_ToolsTable = $('#SysInfo_ToolsTable');
+		$SysInfo_LibrariesTable = $('#SysInfo_LibrariesTable');
+		$SysInfo_NewsServersTable = $('#SysInfo_NewsServersTable');
+		Status.addStatusSub(this);
+	}
+
+	this.loadSystemInfo = function()
+	{
+		RPC.call('sysinfo', [], 
+			function (sysInfo)
+			{
+				render(sysInfo);
+			},
+			function (err)
+			{
+				console.error(err);
+			}
+		);
+	}
+
+	this.update = function(status)
+	{
+		$SysInfo_Uptime.text(Util.formatTimeHMS(status['UpTimeSec']));
+		renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'])
+	}
+
+	function render(sysInfo)
+	{
+		$SysInfo_ToolsTable.empty();
+		$SysInfo_LibrariesTable.empty();
+		$SysInfo_NewsServersTable.empty();
+
+		if (sysInfo['OS'].Name)
+		{
+			$SysInfo_OS.text(sysInfo['OS'].Name + ' ' + sysInfo['OS'].Version);
+		}
+		else
+		{
+			$SysInfo_OS.text('N/A');
+		}
+		
+		$SysInfo_CPUModel.text(sysInfo['CPU'].Model || 'Unknown');
+		$SysInfo_Arch.text(sysInfo['CPU'].Arch || 'Unknown');
+		$SysInfo_ConfPath.text(Options.option('ConfigFile'));
+		$SysInfo_ArticleCache.text(Util.formatSizeMB(+Options.option('ArticleCache')));
+
+		_this.update(Status.getStatus());
+
+		renderIP(sysInfo['Network']);
+		renderAppVersion(Options.option('Version'));
+		renderTools(sysInfo['Tools']);
+		renderLibraries(sysInfo['Libraries']);
+		renderNewsServers(Status.getStatus()['NewsServers']);
+	}
+
+	function renderDiskSpace(free, total)
+	{
+		var percents = total !== 0 ? (free / total * 100).toFixed(1) + '%' : '0.0%';
+		$SysInfo_FreeDiskSpace.text(Util.formatSizeMB(free) + ' / ' + percents);
+		$SysInfo_TotalDiskSpace.text(Util.formatSizeMB(total));
+	}
+
+	function renderIP(network)
+	{
+		var privateIP = network.PrivateIP ? network.PrivateIP : 'N/A';
+		var publicIP = network.PublicIP ? network.PublicIP : 'N/A';
+		$SysInfo_IP.text(privateIP + ' / ' + publicIP);
+	}
+
+	function renderAppVersion(version)
+	{
+		$SysInfo_AppVersion.text(version);
+		var updateIcon = $('<i class="material-icon">update</i>');
+		var updateBtn = $('<button type="button" title="Check for Updates" class="btn btn-default" style="margin: 0 10px;"></>');
+		updateBtn.on('click', function() { Config.checkUpdates(); });
+		updateBtn.append(updateIcon);
+		$SysInfo_AppVersion.append(updateBtn);
+	}
+
+	function renderTools(tools)
+	{
+		tools.forEach(function(tool)
+			{
+				var tr = $('<tr>');
+				var tdName = $('<td>');
+				var tdVersion = $('<td>');
+				var tdPath = $('<td>');
+				tdName.text(tool.Name);
+				tdVersion.text(tool.Version ? tool.Version : 'N/A');
+				tdPath.text(tool.Path ? tool.Path : 'Not found');
+				tr.append(tdName);
+				tr.append(tdVersion);
+				tr.append(tdPath);
+				$SysInfo_ToolsTable.append(tr);
+			}
+		);
+	}
+
+	function renderLibraries(libs)
+	{
+		libs.forEach(function(lib)
+			{
+				var tr = $('<tr>');
+				var tdName = $('<td>');
+				var tdVersion = $('<td>');
+				tdName.text(lib.Name);
+				tdVersion.text(lib.Version);
+				tr.append(tdName);
+				tr.append(tdVersion);
+				$SysInfo_LibrariesTable.append(tr);
+			}
+		);
+	}
+
+	function renderNewsServers(newsServers)
+	{
+		newsServers.forEach(function(newsServer)
+			{
+			var server = Options.getServerById(newsServer.ID);
+			var tr = $('<tr>');
+			var tdName = $('<td>');
+			var tdActive = $('<td>');
+			var tdTests = $('<td>');
+			var testConnectionBtn = $('<button type="button" title="Test connection" class="btn btn-default"></>');
+			var testConnectionIcon = $('<i class="material-icon">cell_tower</i>');
+			testConnectionBtn.append(testConnectionIcon);
+			testConnectionBtn.attr({ 'data-multiid': server.id });
+			testConnectionBtn.on('click', function () 
+				{
+					Config.testConnection(this, "Server", server.id);
+				}
+			);
+
+			tdName.text(server.host + ':' + server.port + '(' + server.connections + ')');
+			tdName.attr({ title: server.name });
+			if (newsServer.Active) 
+			{
+				tdActive.text('Yes');
+				tdActive.css('color', '#468847');
+			}
+			else 
+			{
+				tdActive.text('No');
+				tdActive.css('color', '#da4f49');
+			}
+
+			tdTests.append(testConnectionBtn);
+			tr.append(tdName);
+			tr.append(tdActive);
+			tr.append(tdTests);
+			$SysInfo_NewsServersTable.append(tr);
+			}
+		);
+	}
+
 }(jQuery))

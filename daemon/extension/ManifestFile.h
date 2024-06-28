@@ -22,13 +22,13 @@
 
 #include <string>
 #include <vector>
-#include <boost/variant2.hpp>
+#include <variant>
 #include "Json.h"
 #include "Util.h"
 
 namespace ManifestFile
 {
-	using SelectOption = boost::variant2::variant<double, std::string>;
+	using SelectOption = std::variant<double, std::string>;
 
 	extern const char* MANIFEST_FILE;
 	extern const char* DEFAULT_SECTION_NAME;

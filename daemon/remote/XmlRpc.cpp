@@ -37,6 +37,7 @@
 #include "CommandScript.h"
 #include "UrlCoordinator.h"
 #include "ExtensionManager.h"
+#include "SystemInfo.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -116,6 +117,12 @@ public:
 };
 
 class StatusXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class SysInfoXmlCommand: public SafeXmlCommand
 {
 public:
 	virtual void Execute();
@@ -646,6 +653,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "status"))
 	{
 		command = std::make_unique<StatusXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "sysinfo"))
+	{
+		command = std::make_unique<SysInfoXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "log"))
 	{
@@ -1323,6 +1334,9 @@ void StatusXmlCommand::Execute()
 		"\"FreeDiskSpaceLo\" : %u,\n"
 		"\"FreeDiskSpaceHi\" : %u,\n"
 		"\"FreeDiskSpaceMB\" : %i,\n"
+		"\"TotalDiskSpaceLo\" : %u,\n"
+		"\"TotalDiskSpaceHi\" : %u,\n"
+		"\"TotalDiskSpaceMB\" : %u,\n"
 		"\"ServerTime\" : %i,\n"
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
@@ -1399,9 +1413,21 @@ void StatusXmlCommand::Execute()
 	Util::SplitInt64(dayBytes, &daySizeHi, &daySizeLo);
 
 	uint32 freeDiskSpaceHi, freeDiskSpaceLo;
-	int64 freeDiskSpace = FileSystem::FreeDiskSize(g_Options->GetDestDir());
+	uint32 totalDiskSpaceHi, totalDiskSpaceLo;
+	int64 freeDiskSpace = 0;
+	size_t totalDiskSpace = 0;
+	auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
+	if (res.has_value())
+	{
+		const auto& value = res.value();
+		freeDiskSpace = static_cast<int64>(value.available);
+		totalDiskSpace = value.total;
+		
+	}
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
-	int freeDiskSpaceMB = (int)(freeDiskSpace / 1024 / 1024);
+	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);
+	int freeDiskSpaceMB = static_cast<int>(freeDiskSpace / 1024 / 1024);
+	uint32 totalDiskSpaceMB = static_cast<uint32>(totalDiskSpace / 1024 / 1024);
 
 	int serverTime = (int)Util::CurrentTime();
 	int resumeTime = (int)g_WorkState->GetResumeTime();
@@ -1417,8 +1443,8 @@ void StatusXmlCommand::Execute()
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, freeDiskSpaceHi,	freeDiskSpaceMB, serverTime, resumeTime,
-		BoolToStr(feedActive), queuedScripts);
+		freeDiskSpaceLo, freeDiskSpaceHi, freeDiskSpaceMB, totalDiskSpaceLo, totalDiskSpaceHi, totalDiskSpaceMB,
+		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -1429,6 +1455,15 @@ void StatusXmlCommand::Execute()
 	}
 
 	AppendResponse(IsJson() ? JSON_STATUS_END : XML_STATUS_END);
+}
+
+void SysInfoXmlCommand::Execute()
+{
+	std::string response = IsJson()
+		? SystemInfo::ToJsonStr(*g_SystemInfo)
+		: SystemInfo::ToXmlStr(*g_SystemInfo);
+
+	AppendResponse(response.c_str());
 }
 
 // struct[] log(idfrom, entries)
@@ -2731,7 +2766,7 @@ void LoadExtensionsXmlCommand::Execute()
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
-			BuildErrorResponse(3, error.get().c_str());
+			BuildErrorResponse(3, error.value().c_str());
 			return;
 		}	
 	}
@@ -2797,7 +2832,7 @@ void DownloadExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2834,7 +2869,7 @@ void UpdateExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2854,7 +2889,7 @@ void DeleteExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->DeleteExtension(extName);
 	if (error)
 	{
-		BuildErrorResponse(2, error.get().c_str());
+		BuildErrorResponse(2, error.value().c_str());
 		return;
 	}
 

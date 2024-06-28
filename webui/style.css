@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
   
-html {
+* {
 	scrollbar-width: thin;
 }
 
@@ -56,6 +56,28 @@ body {
 #AddDialog_URLProp {
 	vertical-align: sub;
 	color: inherit;
+}
+
+.config-status {
+	max-width: 1024px;
+}
+
+.table-fixed
+{
+	table-layout: fixed;
+}
+
+.table-fixed td, th 
+{
+	vertical-align: middle;
+	overflow: auto;
+	white-space: nowrap;
+}
+
+.news-servers-table-container
+{
+	max-height: 190px;
+	overflow-y: auto;
 }
 
 /* EXTENSION MANAGER */
@@ -962,8 +984,8 @@ form {
 	margin-bottom: 0px;
 }
 
-.table-bordered th,
-.table-bordered td {
+.table-bordered:not(.table-fixed) th,
+.table-bordered:not(.table-fixed) td {
 	border-left: none;
 }
 

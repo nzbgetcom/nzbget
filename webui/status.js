@@ -57,6 +57,7 @@ var Status = (new function($)
 	var playInitialized = false;
 	var modalShown = false;
 	var titleGen = [];
+	var statusSubs = [];
 
 	var validTimePatterns = [
 		/^=\d{1,2}(:[0-5][0-9])?$/, // 24h exact
@@ -64,6 +65,11 @@ var Status = (new function($)
 		/^\d+(:[0-5][0-9])?$/, // 24h relative
 		/^\d+(h|m)?$/i, // relative minutes or hours
 	];
+
+	this.getStatus = function()
+	{
+		return status;
+	}
 
 	this.init = function()
 	{
@@ -115,6 +121,7 @@ var Status = (new function($)
 			{
 				status = curStatus;
 				_this.status = status;
+				notifyStatusSubs(status);
 				StatDialog.update();
 			});
 	}
@@ -123,6 +130,16 @@ var Status = (new function($)
 	{
 		redrawInfo();
 		StatDialog.redraw();
+	}
+
+	this.addStatusSub = function(sub)
+	{
+		statusSubs.push(sub);
+	}
+
+	function notifyStatusSubs(status)
+	{
+		statusSubs.forEach(function(sub) { sub.update(status); });
 	}
 
 	function redrawInfo()

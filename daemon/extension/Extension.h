@@ -110,7 +110,6 @@ namespace Extension
 	std::string ToJsonStr(const Script& script);
 	std::string ToXmlStr(const Script& script);
 
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
 	const char* BoolToStr(bool value);
 }
 
