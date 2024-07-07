@@ -84,7 +84,7 @@ uid=1000(user) gid=1000(users) groups=1000(users)
 
 # Building locally
 
-For development purposes the Docker Image can be build using the localy cloned repository (`docker` folder): 
+For development purposes the Docker Image can be build using the locally cloned repository (`docker` folder): 
 
 ```
 git clone https://github.com/nzbgetcom/nzbget.git
