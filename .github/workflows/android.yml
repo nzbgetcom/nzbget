@@ -38,7 +38,7 @@ jobs:
         SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+          NEW_FILE=${FILE/-bin-android.run/$SUFFIX}
           mv $FILE $NEW_FILE
         done
 
