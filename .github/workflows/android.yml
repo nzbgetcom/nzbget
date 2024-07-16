@@ -3,9 +3,6 @@ name: android build
 on:
   workflow_call:
   workflow_dispatch:
-  push:
-    branches:
-    - feature/*
 
 jobs:
   build:
@@ -35,7 +32,7 @@ jobs:
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android.run"
         for FILE in *.run; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/-bin-android.run/$SUFFIX}
