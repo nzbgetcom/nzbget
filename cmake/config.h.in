@@ -134,6 +134,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #cmakedefine HAVE_UNISTD_H @HAVE_UNISTD_H@
 
+/* Define to 1 if you have the <alloca.h> header file. */
+#cmakedefine HAVE_ALLOCA_H @HAVE_ALLOCA_H@
+
 /* Define to 1 if variadic macros are supported */
 #cmakedefine HAVE_VARIADIC_MACROS @HAVE_VARIADIC_MACROS@
 
