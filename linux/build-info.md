@@ -135,7 +135,15 @@ for ARCH in aarch64 armel armhf i686 x86_64 riscv64 mipseb mipsel ppc500 ppc6xx;
 
 # NDK setup
 
-Script assumes that /build directory exists with appropriate permissions (at least rw).
+Script assumes that andriod toolchains is installed in `/build/android/` - one folder per architecture.
+
+To install Android toolchain and NDK:
+
+Make the /build directory and add the necessary permissions.
+```
+sudo mkdir -p /build
+sudo chmod 777 /build
+```
 
 From the cloned repository, run:
 ```
@@ -144,5 +152,5 @@ bash linux/android/build-toolchain.sh [architecture]
 
 If you want to build all supported toolchains, run
 ```
-for ARCH in i686-ndk x86_64-ndk armhf-ndk aarch64-ndk; do bash linux/buildroot/build-toolchain.sh $ARCH; done
+for ARCH in i686-ndk x86_64-ndk armhf-ndk aarch64-ndk; do bash linux/android/build-toolchain.sh $ARCH; done
 ```
