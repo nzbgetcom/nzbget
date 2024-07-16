@@ -11,7 +11,7 @@ Supported android architectures: `i686-ndk` `x86_64-ndk` `armhf-ndk` `aarch64-nd
 1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
 2. Installed build dependencies (Ubuntu/Debian example):
 ```
-sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 ```
 3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
 4. Installed Android NDK and standalone Android toolkits - one per architecture (see [NDK setup](#ndk-setup) below)
