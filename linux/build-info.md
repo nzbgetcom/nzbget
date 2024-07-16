@@ -152,5 +152,5 @@ bash linux/android/build-toolchain.sh [architecture]
 
 If you want to build all supported toolchains, run
 ```
-for ARCH in i686-ndk x86_64-ndk armhf-ndk aarch64-ndk; do bash linux/android/build-toolchain.sh $ARCH; done
+for ARCH in i686 x86_64 armhf aarch64; do bash linux/android/build-toolchain.sh $ARCH; done
 ```
