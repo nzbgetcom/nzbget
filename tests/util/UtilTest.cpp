@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,14 +15,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-
+#include <limits>
 #include "Util.h"
 
 BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
@@ -135,4 +136,31 @@ BOOST_AUTO_TEST_CASE(StrCaseCmpTest)
 	BOOST_CHECK(Util::StrCaseCmp("0PTIONS", "0ptions"));
 	BOOST_CHECK(Util::StrCaseCmp("", ""));
 	BOOST_CHECK(Util::StrCaseCmp("3.14", "3.12") == false);
+}
+
+BOOST_AUTO_TEST_CASE(SplintInt64Test)
+{
+	{
+		uint32 hi, lo;
+		int64 value = std::numeric_limits<int64>::max();
+		Util::SplitInt64(value, &hi, &lo);
+		int64 res = Util::JoinInt64(hi, lo);
+		BOOST_CHECK(res == value);
+	}
+
+	{
+		uint32 hi, lo;
+		int64 value = std::numeric_limits<int64>::min();
+		Util::SplitInt64(value, &hi, &lo);
+		int64 res = Util::JoinInt64(hi, lo);
+		BOOST_CHECK(res == value);
+	}
+
+	{
+		uint32 hi, lo;
+		int64 value = 0;
+		Util::SplitInt64(value, &hi, &lo);
+		int64 res = Util::JoinInt64(hi, lo);
+		BOOST_CHECK(res == value);
+	}
 }

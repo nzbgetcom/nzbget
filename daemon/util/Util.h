@@ -83,7 +83,7 @@ public:
 	static void FormatTime(time_t timeSec, char* buffer, int bufsize);
 	static CString FormatTime(time_t timeSec);
 
-	static CString FormatSpeed(int bytesPerSecond);
+	static CString FormatSpeed(int64 bytesPerSecond);
 	static CString FormatSize(int64 fileSize);
 	static CString FormatBuffer(const char* buf, int len);
 
