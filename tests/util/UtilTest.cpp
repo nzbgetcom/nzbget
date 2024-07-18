@@ -164,3 +164,33 @@ BOOST_AUTO_TEST_CASE(SplintInt64Test)
 		BOOST_CHECK(res == value);
 	}
 }
+
+BOOST_AUTO_TEST_CASE(FormatSpeedTest)
+{
+	int64 speed1GB = 1024ll * 1024 * 1024;
+	BOOST_CHECK(Util::FormatSpeed(speed1GB) == "1.00 GB/s");
+
+	int64 speed10GB = 1024ll * 1024 * 1024 * 10;
+	BOOST_CHECK(Util::FormatSpeed(speed10GB) == "10.0 GB/s");
+
+	int64 speed100GB = 1024ll * 1024 * 1024 * 100;
+	BOOST_CHECK(Util::FormatSpeed(speed100GB) == "100 GB/s");
+
+	int64 speed1MB = 1024ll * 1024;
+	BOOST_CHECK(Util::FormatSpeed(speed1MB) == "1.00 MB/s");
+
+	int64 speed10MB = 1024ll * 1024 * 10;
+	BOOST_CHECK(Util::FormatSpeed(speed10MB) == "10.0 MB/s");
+
+	int64 speed100MB = 1024ll * 1024 * 100;
+	BOOST_CHECK(Util::FormatSpeed(speed100MB) == "100 MB/s");
+
+	int64 speed1KB = 1024;
+	BOOST_CHECK(Util::FormatSpeed(speed1KB) == "1 KB/s");
+
+	int64 speed10KB = 1024 * 10;
+	BOOST_CHECK(Util::FormatSpeed(speed10KB) == "10 KB/s");
+
+	int64 speed100KB = 1024 * 100;
+	BOOST_CHECK(Util::FormatSpeed(speed100KB) == "100 KB/s");
+}
