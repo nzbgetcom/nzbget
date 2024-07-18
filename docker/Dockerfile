@@ -82,15 +82,17 @@ LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
 LABEL maintainer="nzbget@nzbget.com" 
 
 ENV TERM linux
+COPY --from=build /usr/bin/unrar /usr/bin/unrar
+COPY --from=build /usr/bin/unrar7 /usr/bin/unrar7
+COPY --from=build /app/nzbget/ /app/nzbget/
 RUN \
   echo "**** install packages ****" && \
   apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.82-json tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
+  ln -s /usr/bin/7z /app/nzbget/7za && \
+  ln -s /usr/bin/unrar /app/nzbget/unrar && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
-COPY --from=build /usr/bin/unrar /usr/bin/unrar
-COPY --from=build /usr/bin/unrar7 /usr/bin/unrar7
-COPY --from=build /app/nzbget/ /app/nzbget/
 ADD docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && \
   echo "**** create non-root user ****" && \
