@@ -301,7 +301,7 @@ namespace ExtensionLoader
 					{
 						ManifestFile::Option option{};
 						ParseSectionAndSet<ManifestFile::Option>(option, currSectionName, line, eqPos);
-						bool canBeNum = !selectOpts.empty() && boost::variant2::get_if<double>(&selectOpts[0]);
+						bool canBeNum = !selectOpts.empty() && std::get_if<double>(&selectOpts[0]);
 						std::string value = line.substr(eqPos + 1);
 						Util::Trim(value);
 						option.value = GetSelectOpt(value, canBeNum);
@@ -338,7 +338,7 @@ namespace ExtensionLoader
 			auto result = Util::StrToNum(val);
 			if (result.has_value())
 			{
-				return ManifestFile::SelectOption(result.get());
+				return ManifestFile::SelectOption(result.value());
 			}
 
 			return ManifestFile::SelectOption(val);
