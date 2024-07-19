@@ -68,9 +68,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(option.name == "sendMail");
 	BOOST_CHECK(option.displayName == "SendMail");
 	BOOST_CHECK(option.description == std::vector<std::string>({ "When to send the message." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option.value) == "Always");
-	BOOST_CHECK(boost::variant2::get<std::string>(option.select[0]) == "Always");
-	BOOST_CHECK(boost::variant2::get<std::string>(option.select[1]) == "OnFailure");
+	BOOST_CHECK(std::get<std::string>(option.value) == "Always");
+	BOOST_CHECK(std::get<std::string>(option.select[0]) == "Always");
+	BOOST_CHECK(std::get<std::string>(option.select[1]) == "OnFailure");
 
 	auto& option2 = manifestFile.options[1];
 	BOOST_CHECK(option2.section.multi == false);
@@ -79,9 +79,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(option2.name == "port");
 	BOOST_CHECK(option2.displayName == "Port");
 	BOOST_CHECK(option2.description == std::vector<std::string>({ "SMTP server port (1-65535)" }));
-	BOOST_CHECK(boost::variant2::get<double>(option2.value) == 25.);
-	BOOST_CHECK(boost::variant2::get<double>(option2.select[0]) == 1.);
-	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
+	BOOST_CHECK(std::get<double>(option2.value) == 25.);
+	BOOST_CHECK(std::get<double>(option2.select[0]) == 1.);
+	BOOST_CHECK(std::get<double>(option2.select[1]) == 65535.);
 
 	auto& option3 = manifestFile.options[2];
 	BOOST_CHECK(option3.section.multi == true);
@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(option3.name == "Category");
 	BOOST_CHECK(option3.displayName == "Category");
 	BOOST_CHECK(option3.description == std::vector<std::string>({ "Categories section" }));
-	BOOST_CHECK(boost::variant2::get<double>(option2.value) == 25.);
+	BOOST_CHECK(std::get<double>(option2.value) == 25.);
 
 	BOOST_REQUIRE(manifestFile.commands.size() == 2);
 

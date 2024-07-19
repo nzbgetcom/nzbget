@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -114,7 +114,7 @@ void Util::Init()
 	CurrentTicks();
 }
 
-boost::optional<std::string> 
+std::optional<std::string> 
 Util::FindExecutorProgram(const std::string& filename, const std::string& customPath)
 {
 	size_t idx = filename.find_last_of(".");
@@ -164,7 +164,7 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 		{
 			return std::string("py");
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".sh")
@@ -179,7 +179,7 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 		{
 			return std::string("sh");
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".js")
@@ -189,7 +189,7 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 		{
 			return std::string("node");
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".cmd" || fileExt == ".bat")
@@ -199,7 +199,7 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 		{
 			return filename;
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".exe")
@@ -221,7 +221,7 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 	*Lo = (uint32)(Int64 & 0xFFFFFFFF);
 }
 
-boost::optional<double> 
+std::optional<double> 
 Util::StrToNum(const std::string& str)
 {
 	std::istringstream ss(str);
@@ -231,13 +231,13 @@ Util::StrToNum(const std::string& str)
 	{
 		if (!ss.eof()) 
 		{
-			return boost::none;
+			return std::nullopt;
 		}
 
-		return boost::optional<double>{ num };
+		return { num };
 	}
 
-	return boost::none;
+	return std::nullopt;
 }
 
 /* Base64 decryption is taken from
