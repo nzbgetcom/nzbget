@@ -433,6 +433,7 @@ var SystemInfo = (new function($)
 			var li = $('<li></>');
 			li.css('display', 'flex');
 			li.css('align-items', 'center');
+			li.css('padding', '1px 0');
 			var btn = $('<a href="#">' + name + '</a>').on('click', function(e) 
 				{
 					e.preventDefault();
@@ -466,10 +467,16 @@ var SystemInfo = (new function($)
 
 	function makeStatisticsBtn(stats)
 	{
-		var statsBtn = $('<i class="material-icon" data-toggle="modal" data-target="#SpeedTest_Stats" title="Statistics">analytics</>');
-		statsBtn.css('font-size', '22px');
+		var statsBtn = $('<button '
+			+ 'type="button" class="btn btn-default" data-toggle="modal" data-target="#SpeedTest_Stats" title="Statistics">' 
+			+ getSpeed(stats)
+			+ '</>'
+		);
+		statsBtn.css('font-size', '12px');
+		statsBtn.css('padding', '3px');
 		statsBtn.css('position', 'absolute');
-		statsBtn.css('right', '20px');
+		statsBtn.css('right', '5px');
+
 		statsBtn.on('click', function(e) 
 		{ 
 			e.preventDefault();
