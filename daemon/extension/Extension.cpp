@@ -271,11 +271,11 @@ namespace Extension
 			optionJson["Multi"] = option.section.multi;
 			optionJson["Prefix"] = option.section.prefix;
 
-			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
+			if (const std::string* val = std::get_if<std::string>(&option.value))
 			{
 				optionJson["Value"] = *val;
 			}
-			else if (const double* val = boost::variant2::get_if<double>(&option.value))
+			else if (const double* val = std::get_if<double>(&option.value))
 			{
 				optionJson["Value"] = *val;
 			}
@@ -287,11 +287,11 @@ namespace Extension
 
 			for (const auto& value : option.select)
 			{
-				if (const std::string* val = boost::variant2::get_if<std::string>(&value))
+				if (const std::string* val = std::get_if<std::string>(&value))
 				{
 					selectJson.push_back(Json::JsonValue(*val));
 				}
-				else if (const double* val = boost::variant2::get_if<double>(&value))
+				else if (const double* val = std::get_if<double>(&value))
 				{
 					selectJson.push_back(Json::JsonValue(*val));
 				}
@@ -396,11 +396,11 @@ namespace Extension
 			AddNewNode(optionsNode, "Section", "string", option.section.name.c_str());
 			AddNewNode(optionsNode, "Prefix", "string", option.section.prefix.c_str());
 
-			if (const std::string* val = boost::variant2::get_if<std::string>(&option.value))
+			if (const std::string* val = std::get_if<std::string>(&option.value))
 			{
 				AddNewNode(optionsNode, "Value", "string", val->c_str());
 			}
-			else if (const double* val = boost::variant2::get_if<double>(&option.value))
+			else if (const double* val = std::get_if<double>(&option.value))
 			{
 				AddNewNode(optionsNode, "Value", "number", std::to_string(*val).c_str());
 			}
@@ -408,11 +408,11 @@ namespace Extension
 			xmlNodePtr selectNode = xmlNewNode(NULL, BAD_CAST "Select");
 			for (const auto& selectOption : option.select)
 			{
-				if (const std::string* val = boost::variant2::get_if<std::string>(&selectOption))
+				if (const std::string* val = std::get_if<std::string>(&selectOption))
 				{
 					AddNewNode(selectNode, "Value", "string", val->c_str());
 				}
-				else if (const double* val = boost::variant2::get_if<double>(&selectOption))
+				else if (const double* val = std::get_if<double>(&selectOption))
 				{
 					AddNewNode(selectNode, "Value", "number", std::to_string(*val).c_str());
 				}

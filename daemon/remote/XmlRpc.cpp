@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -2731,7 +2732,7 @@ void LoadExtensionsXmlCommand::Execute()
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
-			BuildErrorResponse(3, error.get().c_str());
+			BuildErrorResponse(3, error.value().c_str());
 			return;
 		}	
 	}
@@ -2797,7 +2798,7 @@ void DownloadExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2834,7 +2835,7 @@ void UpdateExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2854,7 +2855,7 @@ void DeleteExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->DeleteExtension(extName);
 	if (error)
 	{
-		BuildErrorResponse(2, error.get().c_str());
+		BuildErrorResponse(2, error.value().c_str());
 		return;
 	}
 
