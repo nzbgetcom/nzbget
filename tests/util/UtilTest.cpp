@@ -121,9 +121,9 @@ BOOST_AUTO_TEST_CASE(RegExTest)
 
 BOOST_AUTO_TEST_CASE(StrToNumTest)
 {
-	BOOST_CHECK(Util::StrToNum("3.14").get() == 3.14);
-	BOOST_CHECK(Util::StrToNum("3.").get() == 3.0);
-	BOOST_CHECK(Util::StrToNum("3").get() == 3);
+	BOOST_CHECK(Util::StrToNum("3.14").value() == 3.14);
+	BOOST_CHECK(Util::StrToNum("3.").value() == 3.0);
+	BOOST_CHECK(Util::StrToNum("3").value() == 3);
 	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
 	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
 }

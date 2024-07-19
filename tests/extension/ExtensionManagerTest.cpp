@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	std::vector<std::string> correctOrder = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions() == boost::none);
+	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
 	BOOST_REQUIRE(manager.GetExtensions().size() == 4);
 
 	for (size_t i = 0; i < manager.GetExtensions().size(); ++i)
@@ -78,12 +78,12 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 	g_Options = &options;
 	ExtensionManager::Manager manager;
 
-	BOOST_REQUIRE(manager.LoadExtensions() == boost::none);
+	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
 
 	const auto busyExt = manager.GetExtensions()[0];
 
 	auto error = manager.DeleteExtension(busyExt->GetName());
 
 	BOOST_CHECK(error.has_value() == true);
-	BOOST_CHECK(error.get() == "Failed to delete: " + std::string(busyExt->GetName()) + " is executing");
+	BOOST_CHECK(error.value() == "Failed to delete: " + std::string(busyExt->GetName()) + " is executing");
 }
