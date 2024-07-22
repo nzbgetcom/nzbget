@@ -56,7 +56,7 @@ esac
 echo "Creating toolchain for $ARCH"
 
 # Android NDK
-NDK_VERSION="r19"
+NDK_VERSION="r19c"
 NDK_DIRNAME="android-ndk-$NDK_VERSION"
 NDK_ARCHIVE="$NDK_DIRNAME-linux-x86_64.zip"
 NDK_URL="https://dl.google.com/android/repository/$NDK_ARCHIVE"

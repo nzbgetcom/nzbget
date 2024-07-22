@@ -398,15 +398,7 @@ build_7zip()
         if [ "$PLATFORM" == "android" ]; then
             sed "s|^#if defined(TIME_UTC)|#if defined(_TIME_UTC)|g" -i ../Windows/TimeUtils.cpp
             sed "s|^LIB2 =.*|LIB2 = |g" -i 7zip_gcc.mak
-            if [ "$ARCH_SHORT" == "armhf" ]; then
-                sed "s|^.*#define USE_HW_AES||g" -i Crypto/MyAes.cpp
-                sed "s|^.*#define USE_HW_AES||g" -i ../../C/AesOpt.c
-                sed "s|^.*#define USE_HW_AES||g" -i ../../C/Aes.c
-                sed "s|^.*#define Z7_COMPILER_SHA1_SUPPORTED||g" -i ../../C/Sha1.c
-                sed "s|^.*#define USE_HW_SHA||g" -i ../../C/Sha1Opt.c
-                sed "s|^.*#define Z7_COMPILER_SHA256_SUPPORTED||g" -i ../../C/Sha256.c
-                sed "s|^.*#define USE_HW_SHA||g" -i ../../C/Sha256Opt.c
-            fi
+            sed "s|^CFLAGS_WARN_WALL =.*|CFLAGS_WARN_WALL = -Wall -Wextra|" -i 7zip_gcc.mak
         fi
         cd Bundles/Alone
         make -j $COREX -f makefile.gcc
