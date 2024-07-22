@@ -140,7 +140,7 @@ parse_args()
         done
         if [ $ARCH_NEED -eq 1 ]; then
             FILTERED_ARCHS=`echo "$FILTERED_ARCHS $ARCH" | xargs`
-        fi        
+        fi
     done
     ARCHS=$FILTERED_ARCHS
 }
@@ -154,7 +154,7 @@ print_config()
     echo "  configs        : $CONFIGS"
     echo "  testing        : $TESTING"
     echo "  cores          : $COREX"
-    echo 
+    echo
 }
 
 construct_suffix()
@@ -312,12 +312,12 @@ build_lib()
                                 ;;
                         esac
                         _PATH=$PATH
-                        export PATH="$ANDROID_NDK_ROOT/toolchains/$ANDROID_TOOLCHAIN/prebuilt/linux-x86_64/bin:$PATH"
-                        ;;                    
+                        export PATH="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_NDK_ROOT/toolchains/$ANDROID_TOOLCHAIN/prebuilt/linux-x86_64/bin:$PATH"
+                        ;;
                     *)
                         OPENSSL_ARCH=linux-$ARCH
                         ;;
-                esac                
+                esac
                 perl Configure $OPENSSL_ARCH \
                     no-shared \
                     threads \
@@ -340,7 +340,11 @@ build_lib()
         esac
         if [ "$LIB" != "boost" ]; then
             make -j $COREX
-            make install
+            if [ "$LIB" == "openssl" ]; then
+                make install_sw
+            else
+                make install
+            fi
         fi
         # restore vars after android openssl build
         if [ "$LIB" == "openssl" ]  && [ "$PLATFORM" == "android" ] ; then
@@ -392,9 +396,16 @@ build_7zip()
         cd CPP/7zip
         sed "s|^LDFLAGS_STATIC =.*|LDFLAGS_STATIC = -static|" -i 7zip_gcc.mak
         if [ "$PLATFORM" == "android" ]; then
+            sed "s|^#if defined(TIME_UTC)|#if defined(_TIME_UTC)|g" -i ../Windows/TimeUtils.cpp
             sed "s|^LIB2 =.*|LIB2 = |g" -i 7zip_gcc.mak
-            if [ "$ARCH_SHORT" == "i686" ] || [ "$ARCH_SHORT" == "x86_64" ]; then
-                sed "s|^  #define USE_HW_AES||" -i Crypto/MyAes.cpp
+            if [ "$ARCH_SHORT" == "armhf" ]; then
+                sed "s|^.*#define USE_HW_AES||g" -i Crypto/MyAes.cpp
+                sed "s|^.*#define USE_HW_AES||g" -i ../../C/AesOpt.c
+                sed "s|^.*#define USE_HW_AES||g" -i ../../C/Aes.c
+                sed "s|^.*#define Z7_COMPILER_SHA1_SUPPORTED||g" -i ../../C/Sha1.c
+                sed "s|^.*#define USE_HW_SHA||g" -i ../../C/Sha1Opt.c
+                sed "s|^.*#define Z7_COMPILER_SHA256_SUPPORTED||g" -i ../../C/Sha256.c
+                sed "s|^.*#define USE_HW_SHA||g" -i ../../C/Sha256Opt.c
             fi
         fi
         cd Bundles/Alone
@@ -426,7 +437,6 @@ build_unrar_version()
     sed "s|^CXX=.*|CXX=$CXX|" -i makefile
     sed "s|^AR=.*|AR=$AR|" -i makefile
     sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
-    echo $CXX    
     if [ "$PLATFORM" == "android" ] ; then
         if [ "$UNRAR_VERSION" == "6" ]; then
             sed 's:^#if defined(_EMX) || defined (__VMS)$:#if defined(_EMX) || defined (__VMS) || defined (__ANDROID__):' -i consio.cpp
@@ -448,7 +458,7 @@ build_unrar_version()
             armhf)
                 sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" -i makefile
                 ;;
-            *)                
+            *)
                 sed "s|CXXFLAGS=-march=native |CXXFLAGS=|" -i makefile
                 ;;
         esac
@@ -476,7 +486,7 @@ build_unrar()
         for UNRAR_VERSION in 6 7; do
             build_unrar_version $UNRAR_VERSION
         done
-    fi    
+    fi
 }
 
 build_bin()
@@ -581,7 +591,7 @@ build_bin()
     build_7zip
     build_unrar
 
-    case $PLATFORM in        
+    case $PLATFORM in
         android)
             export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -latomic"
             CMAKE_TOOLCHAIN_FILE="cmake/android.cmake"
@@ -620,9 +630,9 @@ build_bin()
         exit 1
     fi
     cmake --install $OUTPUTDIR/$ARCH
-    
+
     cd $OUTPUTDIR/install/$ARCH
-    
+
     mkdir -p nzbget
     mv bin/nzbget nzbget/nzbget
     mv share/nzbget/webui nzbget
@@ -660,7 +670,7 @@ build_installer()
     # checking if all targets exists
     for ARCH in $PLATFORM_ARCHS; do
         get_short_arch
-        ALLEXISTS="yes"        
+        ALLEXISTS="yes"
         if [ ! -f $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz ]; then
             echo "Could not find $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz"
             ALLEXISTS="no"

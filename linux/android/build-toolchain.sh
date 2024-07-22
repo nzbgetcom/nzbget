@@ -26,7 +26,7 @@
 set -e
 
 # Android API level
-APILEVEL=24
+APILEVEL=21
 
 # Architecture
 ARCH=$1
@@ -56,7 +56,7 @@ esac
 echo "Creating toolchain for $ARCH"
 
 # Android NDK
-NDK_VERSION="r17"
+NDK_VERSION="r22"
 NDK_DIRNAME="android-ndk-$NDK_VERSION"
 NDK_ARCHIVE="$NDK_DIRNAME-linux-x86_64.zip"
 NDK_URL="https://dl.google.com/android/repository/$NDK_ARCHIVE"
