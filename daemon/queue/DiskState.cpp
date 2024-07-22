@@ -611,6 +611,8 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 		outfile.PrintLine("%i,%s", scriptStatus.GetStatus(), scriptStatus.GetName());
 	}
 
+	outfile.PrintLine("%i", nzbInfo->GetDesiredServerId());
+
 	SaveServerStats(nzbInfo->GetServerStats(), outfile);
 
 	// save file-infos
@@ -908,7 +910,7 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	if (formatVersion >= 63)
 	{
 		int scriptsDisabled;
-		if (infile.ScanLine("%i,%i", &parameterCount, &scriptsDisabled) != 1) goto error;
+		if (infile.ScanLine("%i,%i", &parameterCount, &scriptsDisabled) != 2) goto error;
 		nzbInfo->SetScriptProcessingDisabled(static_cast<bool>(scriptsDisabled));
 	}
 	else
@@ -944,6 +946,13 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 			if (status > 1 && formatVersion < 25) status--;
 			nzbInfo->GetScriptStatuses()->emplace_back(scriptName, (ScriptStatus::EStatus)status);
 		}
+	}
+
+	if (formatVersion >= 63)
+	{
+		int desiredServerId;
+		if (infile.ScanLine("%i", &desiredServerId) != 1) goto error;
+		nzbInfo->SetDesiredServerId(desiredServerId);
 	}
 
 	if (!LoadServerStats(nzbInfo->GetServerStats(), servers, infile)) goto error;
@@ -985,13 +994,6 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		fileInfo->SetExtraPriority((bool)extraPriority);
 		fileInfo->SetNzbInfo(nzbInfo);
 		nzbInfo->GetFileList()->Add(std::move(fileInfo));
-	}
-
-	if (formatVersion >= 63)
-	{
-		int serverId;
-		if (infile.ScanLine("%i", &serverId) != 1) goto error;
-		nzbInfo->SetDesiredServerId(serverId);
 	}
 
 	return true;
