@@ -653,6 +653,8 @@ public:
 	bool IsDownloadCompleted(bool ignorePausedPars);
 	void SetDesiredServerId(int id) { m_desiredServerId = id; }
 	int GetDesiredServerId() { return m_desiredServerId; }
+	bool GetScriptProcessingDisabled() { return m_scriptProcessingDisabled; }
+	void SetScriptProcessingDisabled(bool dissabled) { m_scriptProcessingDisabled = dissabled; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -750,6 +752,7 @@ private:
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
 	int m_desiredServerId = 0;
+	bool m_scriptProcessingDisabled = false;
 
 	static int m_idGen;
 	static int m_idMax;

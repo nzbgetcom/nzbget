@@ -3628,8 +3628,10 @@ void TestServerSpeedXmlCommand::Execute()
 	nzbInfo->SetPriority(NzbInfo::FORCE_PRIORITY);
 	nzbInfo->SetExtraPriority(NzbInfo::FORCE_PRIORITY);
 	nzbInfo->SetAddUrlPaused(false);
+	nzbInfo->SetCleanupDisk(true);
 	nzbInfo->SetDupeMode(EDupeMode::dmForce);
 	nzbInfo->SetDesiredServerId(serverId);
+	nzbInfo->SetScriptProcessingDisabled(true);
 
 	g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), true);
 

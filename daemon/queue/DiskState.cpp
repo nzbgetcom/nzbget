@@ -595,7 +595,11 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 		outfile.PrintLine("%s", completedFile.GetOrigname() ? completedFile.GetOrigname() : "");
 	}
 
-	outfile.PrintLine("%i", (int)nzbInfo->GetParameters()->size());
+	outfile.PrintLine(
+		"%i,%i", 
+		static_cast<int>(nzbInfo->GetParameters()->size()), 
+		static_cast<int>(nzbInfo->GetScriptProcessingDisabled())
+	);
 	for (NzbParameter& parameter : nzbInfo->GetParameters())
 	{
 		outfile.PrintLine("%s=%s", parameter.GetName(), parameter.GetValue());
@@ -627,8 +631,6 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 				(int)fileInfo->GetExtraPriority());
 		}
 	}
-
-	outfile.PrintLine("%i", nzbInfo->GetDesiredServerId());
 }
 
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -902,7 +904,18 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	nzbInfo->GetParameters()->clear();
 	int parameterCount;
-	if (infile.ScanLine("%i", &parameterCount) != 1) goto error;
+	
+	if (formatVersion >= 63)
+	{
+		int scriptsDisabled;
+		if (infile.ScanLine("%i,%i", &parameterCount, &scriptsDisabled) != 1) goto error;
+		nzbInfo->SetScriptProcessingDisabled(static_cast<bool>(scriptsDisabled));
+	}
+	else
+	{
+		if (infile.ScanLine("%i", &parameterCount) != 1) goto error;
+	}
+
 	for (int i = 0; i < parameterCount; i++)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
