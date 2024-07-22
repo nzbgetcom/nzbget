@@ -194,3 +194,36 @@ BOOST_AUTO_TEST_CASE(FormatSpeedTest)
 	int64 speed100KB = 1024 * 100;
 	BOOST_CHECK(Util::FormatSpeed(speed100KB) == "100 KB/s");
 }
+
+BOOST_AUTO_TEST_CASE(SafeIntCastTest)
+{
+	{
+		int64 max = std::numeric_limits<int64>::max();
+		int32 res = Util::SafeIntCast<int64, int32>(max);
+		BOOST_CHECK(res == 0);
+	}
+
+	{
+		int64 min = std::numeric_limits<int64>::min();
+		int32 res = Util::SafeIntCast<int64, int32>(min);
+		BOOST_CHECK(res == 0);
+	}
+
+	{
+		int64 max = std::numeric_limits<int32>::max();
+		int32 res = Util::SafeIntCast<int64, int32>(max);
+		BOOST_CHECK(res == std::numeric_limits<int32>::max());
+	}
+
+	{
+		int64 min = std::numeric_limits<int32>::min();
+		int32 res = Util::SafeIntCast<int64, int32>(min);
+		BOOST_CHECK(res == 0);
+	}
+
+	{
+		int64 min = std::numeric_limits<int32>::min();
+		int32 res = Util::SafeIntCast<int64, int32>(min);
+		BOOST_CHECK(res == 0);
+	}
+}

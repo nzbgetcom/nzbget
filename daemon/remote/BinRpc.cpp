@@ -671,7 +671,7 @@ void ListBinCommand::Execute()
 		}
 
 		uint32 sizeHi, sizeLo;
-		ListResponse.m_downloadRate = htonl(g_StatMeter->CalcCurrentDownloadSpeed());
+		ListResponse.m_downloadRate = htonl(Util::SafeIntCast<int64, uint32>(g_StatMeter->CalcCurrentDownloadSpeed()));
 		Util::SplitInt64(remainingSize, &sizeHi, &sizeLo);
 		ListResponse.m_remainingSizeHi = htonl(sizeHi);
 		ListResponse.m_remainingSizeLo = htonl(sizeLo);

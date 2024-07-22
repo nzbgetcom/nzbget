@@ -1256,10 +1256,10 @@ void StatusXmlCommand::Execute()
 		"<member><name>ArticleCacheLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheMB</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"				// deprecated (can be overflowed)
+		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"				// deprecated
 		"<member><name>DownloadRateLo</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DownloadRateHi</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"			// deprecated (can be overflowed)
+		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"			// deprecated
 		"<member><name>AverageDownloadRateLo</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>AverageDownloadRateHi</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DownloadLimit</name><value><i4>%i</i4></value></member>\n"
@@ -1309,10 +1309,10 @@ void StatusXmlCommand::Execute()
 		"\"ArticleCacheLo\" : %u,\n"
 		"\"ArticleCacheHi\" : %u,\n"
 		"\"ArticleCacheMB\" : %i,\n"
-		"\"DownloadRate\" : %i,\n"				// deprecated (can be overflowed)
+		"\"DownloadRate\" : %i,\n"				// deprecated
 		"\"DownloadRateLo\" : %u,\n"
 		"\"DownloadRateHi\" : %u,\n"
-		"\"AverageDownloadRate\" : %i,\n"		// deprecated (can be overflowed)
+		"\"AverageDownloadRate\" : %i,\n"		// deprecated
 		"\"AverageDownloadRateLo\" : %u,\n"
 		"\"AverageDownloadRateHi\" : %u,\n"
 		"\"DownloadLimit\" : %i,\n"
@@ -1428,10 +1428,10 @@ void StatusXmlCommand::Execute()
 		forcedSizeHi, forcedMBytes, downloadedSizeLo, downloadedSizeHi, downloadedMBytes,
 		monthSizeLo, monthSizeHi, monthMBytes, daySizeLo, daySizeHi, dayMBytes,
 		articleCacheLo, articleCacheHi, articleCacheMBytes,
-		static_cast<int32>(downloadRate),
+		Util::SafeIntCast<int64, int32>(downloadRate),
 		downloadRateLo,
 		downloadRateHi,
-		static_cast<int32>(averageDownloadRate),
+		Util::SafeIntCast<int64, int32>(averageDownloadRate),
 		averageDownloadRateLo,
 		averageDownloadRateHi,
 		downloadLimit, threadCount,
