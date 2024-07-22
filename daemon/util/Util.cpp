@@ -336,21 +336,38 @@ CString Util::FormatSize(int64 fileSize)
 	return result;
 }
 
-CString Util::FormatSpeed(int bytesPerSecond)
+CString Util::FormatSpeed(int64 bytesPerSecond)
 {
 	CString result;
 
-	if (bytesPerSecond >= 100 * 1024 * 1024)
+	if (bytesPerSecond <= 0)
+	{
+		return result;
+	}
+
+	if (bytesPerSecond >= 100ll * 1024 * 1024 * 1024)
+	{
+		result.Format("%i GB/s", bytesPerSecond / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 10ll * 1024 * 1024 * 1024)
+	{
+		result.Format("%0.1f GB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 1024 * 1024 * 1024)
+	{
+		result.Format("%0.2f GB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 100 * 1024 * 1024)
 	{
 		result.Format("%i MB/s", bytesPerSecond / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 10 * 1024 * 1024)
 	{
-		result.Format("%0.1f MB/s", (float)bytesPerSecond / 1024.0 / 1024.0);
+		result.Format("%0.1f MB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 1024 * 1000)
 	{
-		result.Format("%0.2f MB/s", (float)bytesPerSecond / 1024.0 / 1024.0);
+		result.Format("%0.2f MB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024);
 	}
 	else
 	{
