@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -1256,8 +1256,12 @@ void StatusXmlCommand::Execute()
 		"<member><name>ArticleCacheLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheMB</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"				// deprecated
+		"<member><name>DownloadRateLo</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DownloadRateHi</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"			// deprecated
+		"<member><name>AverageDownloadRateLo</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>AverageDownloadRateHi</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DownloadLimit</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ThreadCount</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ParJobCount</name><value><i4>%i</i4></value></member>\n"					// deprecated (renamed to PostJobCount)
@@ -1305,18 +1309,22 @@ void StatusXmlCommand::Execute()
 		"\"ArticleCacheLo\" : %u,\n"
 		"\"ArticleCacheHi\" : %u,\n"
 		"\"ArticleCacheMB\" : %i,\n"
-		"\"DownloadRate\" : %i,\n"
-		"\"AverageDownloadRate\" : %i,\n"
+		"\"DownloadRate\" : %i,\n"				// deprecated
+		"\"DownloadRateLo\" : %u,\n"
+		"\"DownloadRateHi\" : %u,\n"
+		"\"AverageDownloadRate\" : %i,\n"		// deprecated
+		"\"AverageDownloadRateLo\" : %u,\n"
+		"\"AverageDownloadRateHi\" : %u,\n"
 		"\"DownloadLimit\" : %i,\n"
 		"\"ThreadCount\" : %u,\n"
-		"\"ParJobCount\" : %i,\n"			// deprecated (renamed to PostJobCount)
+		"\"ParJobCount\" : %i,\n"				// deprecated (renamed to PostJobCount)
 		"\"PostJobCount\" : %i,\n"
 		"\"UrlCount\" : %i,\n"
 		"\"UpTimeSec\" : %i,\n"
 		"\"DownloadTimeSec\" : %i,\n"
-		"\"ServerPaused\" : %s,\n"			// deprecated (renamed to DownloadPaused)
+		"\"ServerPaused\" : %s,\n"				// deprecated (renamed to DownloadPaused)
 		"\"DownloadPaused\" : %s,\n"
-		"\"Download2Paused\" : %s,\n"		// deprecated (same as DownloadPaused)
+		"\"Download2Paused\" : %s,\n"			// deprecated (same as DownloadPaused)
 		"\"ServerStandBy\" : %s,\n"
 		"\"PostPaused\" : %s,\n"
 		"\"ScanPaused\" : %s,\n"
@@ -1372,7 +1380,10 @@ void StatusXmlCommand::Execute()
 	Util::SplitInt64(articleCache, &articleCacheHi, &articleCacheLo);
 	int articleCacheMBytes = (int)(articleCache / 1024 / 1024);
 
-	int downloadRate = (int)(g_StatMeter->CalcCurrentDownloadSpeed());
+	int64 downloadRate = g_StatMeter->CalcCurrentDownloadSpeed();
+	uint32 downloadRateHi, downloadRateLo;
+	Util::SplitInt64(downloadRate, &downloadRateHi, &downloadRateLo);
+
 	int downloadLimit = (int)(g_WorkState->GetSpeedLimit());
 	bool downloadPaused = g_WorkState->GetPauseDownload();
 	bool postPaused = g_WorkState->GetPausePostProcess();
@@ -1387,7 +1398,10 @@ void StatusXmlCommand::Execute()
 	g_StatMeter->CalcTotalStat(&upTimeSec, &downloadTimeSec, &allBytes, &serverStandBy);
 	int downloadedMBytes = (int)(allBytes / 1024 / 1024);
 	Util::SplitInt64(allBytes, &downloadedSizeHi, &downloadedSizeLo);
-	int averageDownloadRate = (int)(downloadTimeSec > 0 ? allBytes / downloadTimeSec : 0);
+
+	int64 averageDownloadRate = downloadTimeSec > 0 ? allBytes / downloadTimeSec : 0;
+	uint32 averageDownloadRateHi, averageDownloadRateLo;
+	Util::SplitInt64(averageDownloadRate, &averageDownloadRateHi, &averageDownloadRateLo);
 
 	int64 monthBytes, dayBytes;
 	g_StatMeter->CalcQuotaUsage(monthBytes, dayBytes);
@@ -1414,7 +1428,13 @@ void StatusXmlCommand::Execute()
 		forcedSizeHi, forcedMBytes, downloadedSizeLo, downloadedSizeHi, downloadedMBytes,
 		monthSizeLo, monthSizeHi, monthMBytes, daySizeLo, daySizeHi, dayMBytes,
 		articleCacheLo, articleCacheHi, articleCacheMBytes,
-		downloadRate, averageDownloadRate, downloadLimit, threadCount,
+		Util::SafeIntCast<int64, int32>(downloadRate),
+		downloadRateLo,
+		downloadRateHi,
+		Util::SafeIntCast<int64, int32>(averageDownloadRate),
+		averageDownloadRateLo,
+		averageDownloadRateHi,
+		downloadLimit, threadCount,
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
