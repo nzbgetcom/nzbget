@@ -81,8 +81,8 @@ class StatMeter : public Debuggable
 public:
 	StatMeter();
 	void Init();
-	int CalcCurrentDownloadSpeed();
-	int CalcMomentaryDownloadSpeed();
+	int64 CalcCurrentDownloadSpeed();
+	int64 CalcMomentaryDownloadSpeed();
 	void AddSpeedReading(int bytes);
 	void AddServerData(int bytes, int serverId);
 	void CalcTotalStat(int* upTimeSec, int* dnTimeSec, int64* allBytes, bool* standBy);

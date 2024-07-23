@@ -213,6 +213,8 @@ compiled */
 #include <chrono>
 #include <optional>
 #include <variant>
+#include <limits>
+#include <type_traits>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>

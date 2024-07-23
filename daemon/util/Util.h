@@ -23,6 +23,7 @@
 #define UTIL_H
 
 #include <optional>
+#include <type_traits>
 #include "NString.h"
 
 #ifdef WIN32
@@ -59,6 +60,23 @@ public:
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
 	static bool AlphaNum(const char* str);
 
+	template <typename From, typename To,
+	 	typename std::enable_if_t<std::is_integral_v<From> && std::is_integral_v<To>, bool> = true>
+	static To SafeIntCast(From num)
+	{
+		if (num > std::numeric_limits<To>::max())
+		{
+			return 0;
+		}
+
+		if (num < std::numeric_limits<To>::min())
+		{
+			return 0;
+		}
+
+		return static_cast<To>(num);
+	}
+
 	/* replace all occurences of szFrom to szTo in string szStr with a limitation that szTo must be shorter than szFrom */
 	static char* ReduceStr(char* str, const char* from, const char* to);
 
@@ -83,7 +101,7 @@ public:
 	static void FormatTime(time_t timeSec, char* buffer, int bufsize);
 	static CString FormatTime(time_t timeSec);
 
-	static CString FormatSpeed(int bytesPerSecond);
+	static CString FormatSpeed(int64 bytesPerSecond);
 	static CString FormatSize(int64 fileSize);
 	static CString FormatBuffer(const char* buf, int len);
 

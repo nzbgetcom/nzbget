@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -51,7 +52,7 @@ void ColoredFrontend::BeforePrint()
 void ColoredFrontend::PrintStatus()
 {
 	BString<100> timeString;
-	int currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
+	int64 currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
 
 	if (currentDownloadSpeed > 0 && !m_pauseDownload)
 	{

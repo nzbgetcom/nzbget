@@ -2,7 +2,8 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -14,7 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -136,24 +137,39 @@ var Util = (new function($)
 		}
 	}
 
-	this.formatSpeed = function(bytesPerSec)
+	this.formatSpeed = function (bytesPerSec) 
 	{
-		if (bytesPerSec >= 100 * 1024 * 1024)
+		if (bytesPerSec <= 0)
 		{
-			return Util.round0(bytesPerSec / 1024.0 / 1024.0) + '&nbsp;MB/s';
+			return 0;
 		}
-		else if (bytesPerSec >= 10 * 1024 * 1024)
+
+		if (bytesPerSec >= 100 * 1024 * 1024 * 1024) 
 		{
-			return Util.round1(bytesPerSec / 1024.0 / 1024.0) + '&nbsp;MB/s';
+			return Util.round0(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
 		}
-		else if (bytesPerSec >= 1024 * 1000)
+		else if (bytesPerSec >= 10 * 1024 * 1024 * 1024) 
 		{
-			return Util.round2(bytesPerSec / 1024.0 / 1024.0) + '&nbsp;MB/s';
+			return Util.round1(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
 		}
-		else
+		else if (bytesPerSec >= 1024 * 1024 * 1024) 
 		{
-			return Util.round0(bytesPerSec / 1024.0) + '&nbsp;KB/s';
+			return Util.round2(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
 		}
+		if (bytesPerSec >= 100 * 1024 * 1024) 
+		{
+			return Util.round0(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+		}
+		else if (bytesPerSec >= 10 * 1024 * 1024) 
+		{
+			return Util.round1(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+		}
+		else if (bytesPerSec >= 1024 * 1000) 
+		{
+			return Util.round2(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+		}
+
+		return Util.round0(bytesPerSec / 1024.0) + '&nbsp;KB/s';
 	}
 
 	this.formatAge = function(time)
@@ -344,6 +360,11 @@ var Util = (new function($)
 	this.makeId = function(text)
 	{
 		return text.replace(/ |\/|\\|\.|\$|\:|\*/g, '_');
+	}
+
+	this.joinInt64 = function(hi, lo)
+	{
+		return (hi << 32) + lo;
 	}
 
 }(jQuery));
