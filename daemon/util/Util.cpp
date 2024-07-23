@@ -253,7 +253,7 @@ Util::StrToNum(const std::string& str)
 			return std::nullopt;
 		}
 
-		return std::optional<double>{ num };
+		return { num };
 	}
 
 	return std::nullopt;
