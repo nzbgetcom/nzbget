@@ -655,6 +655,8 @@ public:
 	int GetDesiredServerId() { return m_desiredServerId; }
 	bool GetScriptProcessingDisabled() { return m_scriptProcessingDisabled; }
 	void SetScriptProcessingDisabled(bool dissabled) { m_scriptProcessingDisabled = dissabled; }
+	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
+	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -753,6 +755,7 @@ private:
 	Thread* m_unpackThread = nullptr;
 	int m_desiredServerId = 0;
 	bool m_scriptProcessingDisabled = false;
+	bool m_scipDiskWrite = false;
 
 	static int m_idGen;
 	static int m_idMax;

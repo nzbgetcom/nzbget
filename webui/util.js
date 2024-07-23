@@ -141,7 +141,7 @@ var Util = (new function($)
 	{
 		if (bytesPerSec <= 0)
 		{
-			return 0;
+			return '';
 		}
 
 		if (bytesPerSec >= 100 * 1024 * 1024 * 1024) 
@@ -169,7 +169,7 @@ var Util = (new function($)
 			return Util.round2(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
 		}
 
-		return Util.round0(bytesPerSec / 1024.0) + '&nbsp;KB/s';
+		return Util.round0(bytesPerSec / 1024.0) + ' KB/s';
 	}
 
 	this.formatAge = function(time)

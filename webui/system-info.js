@@ -513,14 +513,8 @@ var SystemInfo = (new function($)
 		var table = '';
 		table += '<tr><td>Download speed</td><td class="text-center">' + speed + '</td></tr>';
 		table += '<tr><td>Downloaded size</td><td class="text-center">' + downloaded + '</td></tr>';
-		table += '<tr><td>Date</td><td class="text-center">' + date + '</td></tr>';
-		table += '<tr><td>Total time</td><td class="text-center">' + Util.formatTimeHMS(stats.DownloadTimeSec + stats.PostTotalTimeSec) + '</td></tr>';
 		table += '<tr><td>Download time</td><td class="text-center">' + Util.formatTimeHMS(stats.DownloadTimeSec) + '</td></tr>';
-		table += '<tr><td>Verification time </td><td class="text-center">' + Util.formatTimeHMS(stats.ParTimeSec - stats.RepairTimeSec) + '</td></tr>';
-		table += '<tr><td>Repair time</td><td class="text-center">' + Util.formatTimeHMS(stats.RepairTimeSec) + '</td></tr>';
-		table += '<tr><td>Unpack time</td><td class="text-center">' + Util.formatTimeHMS(stats.UnpackTimeSec) + '</td></tr>';
-		table += stats.ExtraParBlocks > 0 ? '<tr><td>Received extra par-blocks</td><td class="text-center">' + stats.ExtraParBlocks + '</td></tr>' :
-		stats.ExtraParBlocks < 0 ? '<tr><td>Donated par-blocks</td><td class="text-center">' + - stats.ExtraParBlocks + '</td></tr>' : '';
+		table += '<tr><td>Date</td><td class="text-center">' + date + '</td></tr>';
 
 		return table;
 	}

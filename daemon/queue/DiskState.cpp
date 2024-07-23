@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -596,9 +597,10 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	}
 
 	outfile.PrintLine(
-		"%i,%i", 
+		"%i,%i,%i", 
 		static_cast<int>(nzbInfo->GetParameters()->size()), 
-		static_cast<int>(nzbInfo->GetScriptProcessingDisabled())
+		static_cast<int>(nzbInfo->GetScriptProcessingDisabled()),
+		static_cast<int>(nzbInfo->GetSkipDiskWrite())
 	);
 	for (NzbParameter& parameter : nzbInfo->GetParameters())
 	{
@@ -910,8 +912,10 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	if (formatVersion >= 63)
 	{
 		int scriptsDisabled;
-		if (infile.ScanLine("%i,%i", &parameterCount, &scriptsDisabled) != 2) goto error;
+		int skipDiskWrite;
+		if (infile.ScanLine("%i,%i,%i", &parameterCount, &scriptsDisabled, &skipDiskWrite) != 3) goto error;
 		nzbInfo->SetScriptProcessingDisabled(static_cast<bool>(scriptsDisabled));
+		nzbInfo->SetSkipDiskWrite(static_cast<bool>(skipDiskWrite));
 	}
 	else
 	{
