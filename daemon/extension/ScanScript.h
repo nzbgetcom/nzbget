@@ -26,7 +26,7 @@
 class ScanScriptController : public NzbScriptController
 {
 public:
-	static void ExecuteScripts(const char* nzbFilename, NzbInfo* nzbInfo,
+	static void ExecuteScripts(const char* nzbFilename, const char* url,
 		const char* directory, CString* nzbName, CString* category, int* priority,
 		NzbParameterList* parameters, bool* addTop, bool* addPaused,
 		CString* dupeKey, int* dupeScore, EDupeMode* dupeMode);
