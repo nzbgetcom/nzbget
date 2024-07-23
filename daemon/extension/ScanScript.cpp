@@ -43,13 +43,18 @@ bool ScanScriptController::HasScripts()
 }
 
 void ScanScriptController::ExecuteScripts(const char* nzbFilename,
-	const char* url, const char* directory, CString* nzbName, CString* category,
+	NzbInfo* nzbInfo, const char* directory, CString* nzbName, CString* category,
 	int* priority, NzbParameterList* parameters, bool* addTop, bool* addPaused,
 	CString* dupeKey, int* dupeScore, EDupeMode* dupeMode)
 {
+	if (nzbInfo && nzbInfo->GetScriptProcessingDisabled())
+	{
+		return;
+	}
+
 	ScanScriptController scriptController;
 	scriptController.m_nzbFilename = nzbFilename;
-	scriptController.m_url = url;
+	scriptController.m_url = nzbInfo ? nzbInfo->GetUrl() : "";
 	scriptController.m_directory = directory;
 	scriptController.m_nzbName = nzbName;
 	scriptController.m_category = category;
