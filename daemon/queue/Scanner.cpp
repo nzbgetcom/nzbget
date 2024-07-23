@@ -284,7 +284,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	EDupeMode dupeMode = dmScore;
 	EAddStatus addStatus = asSkipped;
 	QueueData* queueData = nullptr;
-	NzbInfo* nzbInfo = nullptr;
+	NzbInfo* urlInfo = nullptr;
 	int nzbId = 0;
 
 	for (QueueData& queueData1 : m_queueList)
@@ -301,21 +301,18 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 			addTop = queueData->GetAddTop();
 			addPaused = queueData->GetAddPaused();
 			parameters.CopyFrom(queueData->GetParameters());
-			nzbInfo = queueData->GetUrlInfo();
+			urlInfo = queueData->GetUrlInfo();
 		}
 	}
 
-	if (nzbInfo && !nzbInfo->GetScriptProcessingDisabled())
-	{
-		InitPPParameters(nzbCategory, &parameters, false);
-	}
+	InitPPParameters(nzbCategory, &parameters, false);
 
 	bool exists = true;
 
 	if (m_scanScript && strcasecmp(extension, ".nzb_processed"))
 	{
 		ScanScriptController::ExecuteScripts(fullFilename,
-			nzbInfo, directory,
+			urlInfo ? urlInfo->GetUrl() : "", directory,
 			&nzbName, &nzbCategory, &priority, &parameters, &addTop,
 			&addPaused, &dupeKey, &dupeScore, &dupeMode);
 		exists = FileSystem::FileExists(fullFilename);
@@ -338,7 +335,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 		if (renameOK)
 		{
 			bool added = AddFileToQueue(renamedName, nzbName, nzbCategory, priority,
-				dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
+				dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, urlInfo, &nzbId);
 			addStatus = added ? asSuccess : asFailed;
 		}
 		else
@@ -351,7 +348,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	else if (exists && !strcasecmp(extension, ".nzb"))
 	{
 		bool added = AddFileToQueue(fullFilename, nzbName, nzbCategory, priority,
-			dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
+			dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, urlInfo, &nzbId);
 		addStatus = added ? asSuccess : asFailed;
 	}
 
