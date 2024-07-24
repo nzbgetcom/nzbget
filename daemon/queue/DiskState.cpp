@@ -28,7 +28,7 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 63;
+const int DISKSTATE_QUEUE_VERSION = 62;
 const int DISKSTATE_FILE_VERSION = 6;
 const int DISKSTATE_STATS_VERSION = 3;
 const int DISKSTATE_FEEDS_VERSION = 3;
@@ -597,10 +597,11 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	}
 
 	outfile.PrintLine(
-		"%i,%i,%i", 
-		static_cast<int>(nzbInfo->GetParameters()->size()), 
-		static_cast<int>(nzbInfo->GetScriptProcessingDisabled()),
-		static_cast<int>(nzbInfo->GetSkipDiskWrite())
+		"%i,%i,%i,%i", 
+		static_cast<int>(nzbInfo->GetParameters()->size()),
+		static_cast<int>(nzbInfo->GetSkipScriptProcessing()),
+		static_cast<int>(nzbInfo->GetSkipDiskWrite()),
+		nzbInfo->GetDesiredServerId()
 	);
 	for (NzbParameter& parameter : nzbInfo->GetParameters())
 	{
@@ -612,8 +613,6 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	{
 		outfile.PrintLine("%i,%s", scriptStatus.GetStatus(), scriptStatus.GetName());
 	}
-
-	outfile.PrintLine("%i", nzbInfo->GetDesiredServerId());
 
 	SaveServerStats(nzbInfo->GetServerStats(), outfile);
 
@@ -908,18 +907,21 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	nzbInfo->GetParameters()->clear();
 	int parameterCount;
-	
-	if (formatVersion >= 63)
+	int skipScriptProcessing;
+	int skipDiskWrite;
+	int desiredServerId;
+	int numItems = infile.ScanLine("%i,%i,%i,%i", 
+		&parameterCount, 
+		&skipScriptProcessing, 
+		&skipDiskWrite,
+		&desiredServerId);
+
+	if (numItems == 0) goto error;
+	if (numItems == 4)
 	{
-		int scriptsDisabled;
-		int skipDiskWrite;
-		if (infile.ScanLine("%i,%i,%i", &parameterCount, &scriptsDisabled, &skipDiskWrite) != 3) goto error;
-		nzbInfo->SetScriptProcessingDisabled(static_cast<bool>(scriptsDisabled));
+		nzbInfo->SetSkipScriptProcessing(static_cast<bool>(skipScriptProcessing));
 		nzbInfo->SetSkipDiskWrite(static_cast<bool>(skipDiskWrite));
-	}
-	else
-	{
-		if (infile.ScanLine("%i", &parameterCount) != 1) goto error;
+		nzbInfo->SetDesiredServerId(desiredServerId);
 	}
 
 	for (int i = 0; i < parameterCount; i++)
@@ -950,13 +952,6 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 			if (status > 1 && formatVersion < 25) status--;
 			nzbInfo->GetScriptStatuses()->emplace_back(scriptName, (ScriptStatus::EStatus)status);
 		}
-	}
-
-	if (formatVersion >= 63)
-	{
-		int desiredServerId;
-		if (infile.ScanLine("%i", &desiredServerId) != 1) goto error;
-		nzbInfo->SetDesiredServerId(desiredServerId);
 	}
 
 	if (!LoadServerStats(nzbInfo->GetServerStats(), servers, infile)) goto error;

@@ -454,7 +454,7 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 		nzbInfo->SetFeedId(urlInfo->GetFeedId());
 		nzbInfo->SetDupeHint(urlInfo->GetDupeHint());
 		nzbInfo->SetDesiredServerId(urlInfo->GetDesiredServerId());
-		nzbInfo->SetScriptProcessingDisabled(urlInfo->GetScriptProcessingDisabled());
+		nzbInfo->SetSkipScriptProcessing(urlInfo->GetSkipScriptProcessing());
 		nzbInfo->SetSkipDiskWrite(urlInfo->GetSkipDiskWrite());
 	}
 

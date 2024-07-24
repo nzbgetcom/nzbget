@@ -1448,8 +1448,8 @@ void StatusXmlCommand::Execute()
 	if (res.has_value())
 	{
 		const auto& value = res.value();
-		freeDiskSpace = static_cast<int64>(value.available);
-		totalDiskSpace = static_cast<int64>(value.total);
+		freeDiskSpace = Util::SafeIntCast<size_t, int64>(value.available);
+		totalDiskSpace = Util::SafeIntCast<size_t, int64>(value.total);
 	}
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
 	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);
@@ -1476,7 +1476,12 @@ void StatusXmlCommand::Execute()
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, freeDiskSpaceHi, freeDiskSpaceMB, totalDiskSpaceLo, totalDiskSpaceHi, totalDiskSpaceMB,
+		freeDiskSpaceLo, 
+		freeDiskSpaceHi, 
+		freeDiskSpaceMB, 
+		totalDiskSpaceLo, 
+		totalDiskSpaceHi, 
+		totalDiskSpaceMB,
 		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
 
 	int index = 0;
@@ -3629,7 +3634,7 @@ void TestServerSpeedXmlCommand::Execute()
 	nzbInfo->SetAddUrlPaused(false);
 	nzbInfo->SetDupeMode(EDupeMode::dmForce);
 	nzbInfo->SetDesiredServerId(serverId);
-	nzbInfo->SetScriptProcessingDisabled(true);
+	nzbInfo->SetSkipScriptProcessing(true);
 	nzbInfo->SetSkipDiskWrite(true);
 
 	g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), true);

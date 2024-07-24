@@ -33,9 +33,9 @@ static const int POSTPROCESS_NONE = 95;
 
 void PostScriptController::StartJob(PostInfo* postInfo)
 {
-	if (postInfo && postInfo->GetNzbInfo() && postInfo->GetNzbInfo()->GetScriptProcessingDisabled())
+	if (postInfo && postInfo->GetNzbInfo() && postInfo->GetNzbInfo()->GetSkipScriptProcessing())
 	{
-		// TODO
+		return;
 	}
 
 	PostScriptController* scriptController = new PostScriptController();

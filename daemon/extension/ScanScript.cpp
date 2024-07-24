@@ -47,7 +47,7 @@ void ScanScriptController::ExecuteScripts(const char* nzbFilename,
 	int* priority, NzbParameterList* parameters, bool* addTop, bool* addPaused,
 	CString* dupeKey, int* dupeScore, EDupeMode* dupeMode)
 {
-	if (nzbInfo && nzbInfo->GetScriptProcessingDisabled())
+	if (nzbInfo && nzbInfo->GetSkipScriptProcessing())
 	{
 		return;
 	}

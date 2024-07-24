@@ -74,7 +74,7 @@ private:
 
 void QueueScriptController::StartScript(NzbInfo* nzbInfo, std::shared_ptr<const Extension::Script> script, QueueScriptCoordinator::EEvent event)
 {
-	if (!nzbInfo || nzbInfo->GetScriptProcessingDisabled())
+	if (!nzbInfo || nzbInfo->GetSkipScriptProcessing())
 	{
 		return;
 	}
@@ -266,7 +266,7 @@ void QueueScriptCoordinator::InitOptions()
 
 void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 {
-	if (!m_hasQueueScripts || !nzbInfo || nzbInfo->GetScriptProcessingDisabled())
+	if (!m_hasQueueScripts || !nzbInfo || nzbInfo->GetSkipScriptProcessing())
 	{
 		return;
 	}

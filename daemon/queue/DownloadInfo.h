@@ -653,8 +653,8 @@ public:
 	bool IsDownloadCompleted(bool ignorePausedPars);
 	void SetDesiredServerId(int id) { m_desiredServerId = id; }
 	int GetDesiredServerId() { return m_desiredServerId; }
-	bool GetScriptProcessingDisabled() { return m_scriptProcessingDisabled; }
-	void SetScriptProcessingDisabled(bool dissabled) { m_scriptProcessingDisabled = dissabled; }
+	bool GetSkipScriptProcessing() { return m_skipScriptProcessing; }
+	void SetSkipScriptProcessing(bool skip) { m_skipScriptProcessing = skip; }
 	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
 	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 
@@ -754,7 +754,7 @@ private:
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
 	int m_desiredServerId = 0;
-	bool m_scriptProcessingDisabled = false;
+	bool m_skipScriptProcessing = false;
 	bool m_scipDiskWrite = false;
 
 	static int m_idGen;
