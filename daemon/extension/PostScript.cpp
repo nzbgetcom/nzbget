@@ -35,7 +35,7 @@ void PostScriptController::StartJob(PostInfo* postInfo)
 {
 	if (postInfo && postInfo->GetNzbInfo() && postInfo->GetNzbInfo()->GetScriptProcessingDisabled())
 	{
-		return;
+		// TODO
 	}
 
 	PostScriptController* scriptController = new PostScriptController();
