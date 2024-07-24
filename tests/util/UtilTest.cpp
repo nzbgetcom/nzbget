@@ -218,12 +218,42 @@ BOOST_AUTO_TEST_CASE(SafeIntCastTest)
 	{
 		int64 min = std::numeric_limits<int32>::min();
 		int32 res = Util::SafeIntCast<int64, int32>(min);
+		BOOST_CHECK(res == std::numeric_limits<int32>::min());
+	}
+
+	{
+		uint64 max = std::numeric_limits<uint64>::max();
+		int32 res = Util::SafeIntCast<uint64, int32>(max);
 		BOOST_CHECK(res == 0);
 	}
 
 	{
-		int64 min = std::numeric_limits<int32>::min();
-		int32 res = Util::SafeIntCast<int64, int32>(min);
+		uint64 min = std::numeric_limits<uint64>::min();
+		int32 res = Util::SafeIntCast<uint64, int32>(min);
+		BOOST_CHECK(res == 0);
+	}
+
+	{
+		uint64 max = std::numeric_limits<int32>::max();
+		int32 res = Util::SafeIntCast<uint64, int32>(max);
+		BOOST_CHECK(res == std::numeric_limits<int32>::max());
+	}
+
+	{
+		uint64 min = std::numeric_limits<int32>::min();
+		int32 res = Util::SafeIntCast<uint64, int32>(min);
+		BOOST_CHECK(res == 0);
+	}
+
+	{
+		int32 max = std::numeric_limits<int32>::max();
+		uint32 res = Util::SafeIntCast<int32, uint32>(max);
+		BOOST_CHECK(res == std::numeric_limits<int32>::max());
+	}
+
+	{
+		int32 min = std::numeric_limits<int32>::min();
+		uint32 res = Util::SafeIntCast<int32, uint32>(min);
 		BOOST_CHECK(res == 0);
 	}
 }

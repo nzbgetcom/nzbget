@@ -64,12 +64,27 @@ public:
 	 	typename std::enable_if_t<std::is_integral_v<From> && std::is_integral_v<To>, bool> = true>
 	static To SafeIntCast(From num)
 	{
-		if (num > std::numeric_limits<To>::max())
+		if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>)
 		{
-			return 0;
+			if (num > std::numeric_limits<To>::max())
+			{
+				return 0;
+			}
+
+			return static_cast<To>(num);
 		}
 
-		if (num < std::numeric_limits<To>::min())
+		if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>)
+		{
+			if (num < 0)
+			{
+				return 0;
+			}
+
+			return static_cast<To>(num);
+		}
+
+		if (num > std::numeric_limits<To>::max() || num < std::numeric_limits<To>::min())
 		{
 			return 0;
 		}
