@@ -639,6 +639,11 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
 {
 	char buf[10240];
+	int parameterCount = 0;
+	int skipScriptProcessing = 0;
+	int skipDiskWrite = 0;
+	int desiredServerId = 0;
+	int numItems = 0;
 
 	int id;
 	if (infile.ScanLine("%i", &id) != 1) goto error;
@@ -907,11 +912,6 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	nzbInfo->GetParameters()->clear();
 
-	int parameterCount = 0;
-	int skipScriptProcessing = 0;
-	int skipDiskWrite = 0;
-	int desiredServerId = 0;
-	int numItems = 0;
 	numItems = infile.ScanLine("%i,%i,%i,%i", 
 		&parameterCount, 
 		&skipScriptProcessing, 
