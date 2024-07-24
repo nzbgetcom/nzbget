@@ -340,6 +340,11 @@ CString Util::FormatSpeed(int64 bytesPerSecond)
 {
 	CString result;
 
+	if (bytesPerSecond <= 0)
+	{
+		return result;
+	}
+
 	if (bytesPerSecond >= 100ll * 1024 * 1024 * 1024)
 	{
 		result.Format("%i GB/s", bytesPerSecond / 1024 / 1024 / 1024);
