@@ -907,10 +907,10 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	nzbInfo->GetParameters()->clear();
 
-	int parameterCount;
-	int skipScriptProcessing;
-	int skipDiskWrite;
-	int desiredServerId;
+	int parameterCount = 0;
+	int skipScriptProcessing = 0;
+	int skipDiskWrite = 0;
+	int desiredServerId = 0;
 	int numItems = 0;
 	numItems = infile.ScanLine("%i,%i,%i,%i", 
 		&parameterCount, 
