@@ -906,17 +906,19 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	}
 
 	nzbInfo->GetParameters()->clear();
+
 	int parameterCount;
 	int skipScriptProcessing;
 	int skipDiskWrite;
 	int desiredServerId;
-	int numItems = infile.ScanLine("%i,%i,%i,%i", 
+	int numItems = 0;
+	numItems = infile.ScanLine("%i,%i,%i,%i", 
 		&parameterCount, 
 		&skipScriptProcessing, 
 		&skipDiskWrite,
 		&desiredServerId);
 
-	if (numItems == 0) goto error;
+	if (numItems < 1) goto error;
 	if (numItems == 4)
 	{
 		nzbInfo->SetSkipScriptProcessing(static_cast<bool>(skipScriptProcessing));

@@ -2065,6 +2065,11 @@ var Config = (new function($)
 
 	function addSavedSettingsOfDeletedExtensions(request)
 	{
+		if (!config.values)
+		{
+			return;
+		}
+
 		config.values.forEach(function(val)
 		{
 			var extName = val.Name.split(":")[0];
