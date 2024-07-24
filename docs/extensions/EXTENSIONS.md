@@ -73,7 +73,7 @@ and the `executable` file, like `main.py`.
       "value": "Always",
       "description": ["When to send the message."],
       "select": ["Always", "OnFailure"]
-    },
+    }
   ],
   "commands": [
     {
