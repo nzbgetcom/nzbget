@@ -10,6 +10,7 @@ nzbget-25.0
         - TotalDiskSpaceHi - Total disk space on ‘DestDir’, in bytes. This field contains the high 32-bits of 64-bit value
         - TotalDiskSpaceMB - Total disk space on ‘DestDir’, in megabytes.`
       * fixed NZB generator: the last segment was incorrect
+      * added Boost.Asio - cross-platform library for network
     - Multithreading Improvements
     [#282](https://github.com/nzbgetcom/nzbget/commit/a98e6d11cf5e862e3bfc4819b26492348c4506be)
       * noticeable improvements in download speed - it became more stable
