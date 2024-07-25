@@ -118,7 +118,7 @@ namespace System
 			}
 			else
 			{
-				debug("Failed to find Python: '%s' doesn't exist", result.value().c_str());
+				detail("Failed to find Python: '%s' doesn't exist", result.value().c_str());
 				return tool;
 			}
 		}
@@ -127,7 +127,7 @@ namespace System
 			result = FindPython();
 			if (!result.has_value())
 			{
-				debug("Failed to find Python");
+				detail("Failed to find Python");
 				return tool;
 			}
 
@@ -138,7 +138,7 @@ namespace System
 		result = GetPythonVersion(tool.path);
 		if (!result.has_value())
 		{
-			debug("Failed to get Python version");
+			detail("Failed to get Python version");
 			return tool;
 		}
 
@@ -191,9 +191,9 @@ namespace System
 		auto pipe = Util::MakePipe(cmd);
 		if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
 		{
-			std::string path{ buffer };
-			Util::Trim(path);
-			return path;
+			std::string resultPath{ buffer };
+			Util::Trim(resultPath);
+			return resultPath;
 		}
 
 		return "";

@@ -45,7 +45,7 @@ namespace System
 		}
 		catch (const std::exception& e)
 		{
-			debug("Failed to get public and private IP: %s", e.what());
+			detail("Failed to get public and private IP: %s", e.what());
 		}
 
 		return network;

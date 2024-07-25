@@ -58,7 +58,7 @@ namespace System
 			buildBuffer,
 			&len))
 		{
-			debug("Failed to get OS version. Couldn't read from Windows Registry");
+			detail("Failed to get OS version. Couldn't read from Windows Registry");
 
 			return;
 		}
@@ -66,7 +66,7 @@ namespace System
 		long buildNum = std::atol(buildBuffer);
 		if (buildNum == 0)
 		{
-			debug("Got invalid Windows version: %s", buildBuffer);
+			detail("Got invalid Windows version: %s", buildBuffer);
 
 			return;
 		}
@@ -77,7 +77,7 @@ namespace System
 		else if (buildNum >= m_winXPBuildVersion) m_version = "XP";
 		else
 		{
-			debug("Unsupported Windows version");
+			detail("Unsupported Windows version");
 			return;
 		}
 
@@ -94,7 +94,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get OS update version. Couldn't read from Windows Registry");
+			detail("Failed to get OS update version. Couldn't read from Windows Registry");
 		}
 
 		m_version += std::string(" (") + buildBuffer + ")";
@@ -134,7 +134,7 @@ namespace System
 			}
 			else
 			{
-				debug("Failed to get OS name. Couldn't read 'uname -o'");
+				detail("Failed to get OS name. Couldn't read 'uname -o'");
 			}
 		}
 
@@ -147,7 +147,7 @@ namespace System
 			}
 			else
 			{
-				debug("Failed to get OS name. Couldn't read 'uname -o'");
+				detail("Failed to get OS name. Couldn't read 'uname -o'");
 			}
 		}
 
@@ -214,7 +214,7 @@ namespace System
 		auto pipe = Util::MakePipe(cmd);
 		if (!pipe)
 		{
-			debug("Failed to get OS info. Couldn't read 'sw_vers'");
+			detail("Failed to get OS info. Couldn't read 'sw_vers'");
 			return;
 		}
 
@@ -238,7 +238,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get OS name. Couldn't find 'ProductName'");
+			detail("Failed to get OS name. Couldn't find 'ProductName'");
 		}
 
 		std::string productVersion = "ProductVersion:";
@@ -251,7 +251,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get OS version. Couldn't find 'ProductVersion'");
+			detail("Failed to get OS version. Couldn't find 'ProductVersion'");
 		}
 	}
 #endif
@@ -268,7 +268,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get OS name. Couldn't read 'kern.ostype'");
+			detail("Failed to get OS name. Couldn't read 'kern.ostype'");
 		}
 
 		len = BUFFER_SIZE;
@@ -280,7 +280,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get OS version. Couldn't to read 'kern.osrelease'");
+			detail("Failed to get OS version. Couldn't to read 'kern.osrelease'");
 		}
 	}
 #endif

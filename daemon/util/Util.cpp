@@ -361,7 +361,7 @@ CString Util::FormatSpeed(int64 bytesPerSecond)
 
 	if (bytesPerSecond >= 100ll * 1024 * 1024 * 1024)
 	{
-		result.Format("%i GB/s", bytesPerSecond / 1024 / 1024 / 1024);
+		result.Format("%li GB/s", bytesPerSecond / 1024 / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 10ll * 1024 * 1024 * 1024)
 	{
@@ -373,7 +373,7 @@ CString Util::FormatSpeed(int64 bytesPerSecond)
 	}
 	else if (bytesPerSecond >= 100 * 1024 * 1024)
 	{
-		result.Format("%i MB/s", bytesPerSecond / 1024 / 1024);
+		result.Format("%li MB/s", bytesPerSecond / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 10 * 1024 * 1024)
 	{
@@ -385,7 +385,7 @@ CString Util::FormatSpeed(int64 bytesPerSecond)
 	}
 	else
 	{
-		result.Format("%i KB/s", bytesPerSecond / 1024);
+		result.Format("%li KB/s", bytesPerSecond / 1024);
 	}
 
 	return result;

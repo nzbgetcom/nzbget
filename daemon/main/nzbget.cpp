@@ -336,7 +336,7 @@ void NZBGet::Init()
 	std::string line;
 	while (std::getline(ss, line))
 	{
-		info("%s", line.c_str());
+		detail("%s", line.c_str());
 	}
 #endif
 

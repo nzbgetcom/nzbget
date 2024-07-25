@@ -73,7 +73,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get CPU model. Couldn't read Windows Registry");
+			detail("Failed to get CPU model. Couldn't read Windows Registry");
 		}
 
 		result = GetCPUArch();
@@ -83,7 +83,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get CPU arch. Couldn't read Windows Registry");
+			detail("Failed to get CPU arch. Couldn't read Windows Registry");
 		}
 	}
 
@@ -143,7 +143,7 @@ namespace System
 			return;
 		}
 
-		debug("Failed to get CPU model from '/proc/cpuinfo'");
+		detail("Failed to get CPU model from '/proc/cpuinfo'");
 
 		result = GetCPUModelFromLSCPU();
 		if (result.has_value())
@@ -152,7 +152,7 @@ namespace System
 			return;
 		}
 
-		debug("Failed to get CPU model from 'lscpu'");
+		detail("Failed to get CPU model from 'lscpu'");
 	}
 
 	std::optional<std::string> CPU::GetCPUModelFromCPUInfo() const
@@ -213,7 +213,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get CPU model. Couldn't read 'hw.model'");
+			detail("Failed to get CPU model. Couldn't read 'hw.model'");
 		}
 
 		auto result = GetCPUArch();
@@ -237,7 +237,7 @@ namespace System
 		}
 		else
 		{
-			debug("Failed to get CPU model. Couldn't read 'machdep.cpu.brand_string'");
+			detail("Failed to get CPU model. Couldn't read 'machdep.cpu.brand_string'");
 		}
 
 		auto result = GetCPUArch();
@@ -254,7 +254,7 @@ namespace System
 		auto res = Util::Uname("-m");
 		if (!res.has_value())
 		{
-			debug("Failed to get CPU arch from 'uname-m'");
+			detail("Failed to get CPU arch from 'uname-m'");
 
 			return std::nullopt;
 		}
