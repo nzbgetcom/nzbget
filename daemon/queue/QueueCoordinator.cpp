@@ -202,14 +202,17 @@ void QueueCoordinator::Run()
 		ArticleInfo* articleInfo;
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+
 			bool hasMoreArticles = GetNextArticle(downloadQueue, fileInfo, articleInfo);
 			articeDownloadsRunning = !m_activeDownloads.empty();
 			m_hasMoreJobs = hasMoreArticles || articeDownloadsRunning;
-			if (hasMoreArticles && !IsStopped() && (int)m_activeDownloads.size() < m_downloadsLimit &&
-				(!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
+			bool canProceed = !IsStopped() && Util::SafeIntCast<size_t, int>(m_activeDownloads.size()) < m_downloadsLimit;
+
+			if (hasMoreArticles && canProceed && (!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
 			{
 				NntpConnection* connection = nullptr;
 				NewsServer* desiredServer = g_ServerPool->GetServerById(fileInfo->GetNzbInfo()->GetDesiredServerId());
+
 				if (desiredServer)
 				{
 					connection = g_ServerPool->GetConnection(desiredServer->GetLevel(), desiredServer, nullptr);

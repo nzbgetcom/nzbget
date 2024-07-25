@@ -334,7 +334,12 @@ void PrePostProcessor::NzbAdded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 
 void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
-	if (!nzbInfo || nzbInfo->GetSkipScriptProcessing())
+	if (!nzbInfo)
+	{
+		return;
+	}
+
+	if (nzbInfo->GetSkipScriptProcessing() && nzbInfo->GetSkipDiskWrite())
 	{
 		NzbCompleted(downloadQueue, nzbInfo, true);
 		nzbInfo->SetCleanupDisk(true);
