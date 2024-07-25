@@ -586,11 +586,11 @@ build_bin()
     case $PLATFORM in
         android)
             export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -latomic"
-            CMAKE_TOOLCHAIN_FILE="cmake/android.cmake"
+            CMAKE_EXTRA_ARGS="-DCOMPILER=clang"
             ;;
         *)
             export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-            CMAKE_TOOLCHAIN_FILE="cmake/toolchain.cmake"
+            CMAKE_EXTRA_ARGS=""
             ;;
     esac
     export INCLUDES="$NZBGET_INCLUDES"
@@ -609,12 +609,13 @@ build_bin()
     cmake -S . -B $OUTPUTDIR/$ARCH \
         -DCMAKE_SYSTEM_NAME=Linux \
         -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR \
-        -DCMAKE_TOOLCHAIN_FILE=$CMAKE_TOOLCHAIN_FILE \
+        -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
         -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
         -DENABLE_STATIC=ON \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DVERSION_SUFFIX=$VERSION_SUFFIX \
-        -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
+        -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH \
+        $CMAKE_EXTRA_ARGS
     BUILD_STATUS=""
     cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?
     if [ ! -z $BUILD_STATUS ]; then
