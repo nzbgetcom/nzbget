@@ -402,7 +402,7 @@ namespace Extension
 			}
 			else if (const double* val = std::get_if<double>(&option.value))
 			{
-				AddNewNode(optionsNode, "Value", "number", std::to_string(*val).c_str());
+				AddNewNode(optionsNode, "Value", "double", std::to_string(*val).c_str());
 			}
 
 			xmlNodePtr selectNode = xmlNewNode(NULL, BAD_CAST "Select");
@@ -414,7 +414,7 @@ namespace Extension
 				}
 				else if (const double* val = std::get_if<double>(&selectOption))
 				{
-					AddNewNode(selectNode, "Value", "number", std::to_string(*val).c_str());
+					AddNewNode(selectNode, "Value", "double", std::to_string(*val).c_str());
 				}
 			}
 
