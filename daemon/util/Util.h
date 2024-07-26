@@ -63,21 +63,78 @@ public:
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
 	static bool AlphaNum(const char* str);
 
+	template<typename T, typename U>
+	static constexpr bool Equal(T t, U u) noexcept
+	{
+		if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
+		{
+			return t == u;
+		}
+		else if constexpr (std::is_signed_v<T>)
+		{
+			return t >= 0 && std::make_unsigned_t<T>(t) == u;
+		}
+		else
+		{
+			return u >= 0 && std::make_unsigned_t<U>(u) == t;
+		}
+	}
+	
+	template<typename T, typename U>
+	static constexpr bool NotEqual(T t, U u) noexcept
+	{
+		return !Equal(t, u);
+	}
+	
+	template<typename T, typename U>
+	static constexpr bool Less(T t, U u) noexcept
+	{
+		if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
+		{
+			return t < u;
+		}
+		else if constexpr (std::is_signed_v<T>)
+		{
+			return t < 0 || std::make_unsigned_t<T>(t) < u;
+		}
+		else
+		{
+			return u >= 0 && t < std::make_unsigned_t<U>(u);
+		}
+	}
+	
+	template<typename T, typename U>
+	static constexpr bool Greater(T t, U u) noexcept
+	{
+		return Less(u, t);
+	}
+	
+	template<typename T, typename U>
+	static constexpr bool LessEqual(T t, U u) noexcept
+	{
+		return !Less(u, t);
+	}
+	
+	template<typename T, typename U>
+	static constexpr bool GreaterEqual(T t, U u) noexcept
+	{
+		return !Less(t, u);
+	}
+	
 	template <typename From, typename To,
 	 	typename std::enable_if_t<std::is_integral_v<From> && std::is_integral_v<To>, bool> = true>
-	static To SafeIntCast(From num)
+	static constexpr To SafeIntCast(From num) noexcept
 	{
 		if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>)
 		{
-			if (num > std::numeric_limits<To>::max())
+			if (Greater(num, std::numeric_limits<To>::max()))
 			{
 				return 0;
 			}
 
 			return static_cast<To>(num);
 		}
-
-		if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>)
+		else if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>)
 		{
 			if (num < 0)
 			{
@@ -86,14 +143,16 @@ public:
 
 			return static_cast<To>(num);
 		}
-
-		if (num > std::numeric_limits<To>::max() || num < std::numeric_limits<To>::min())
+		else if (Greater(num, std::numeric_limits<To>::max()) || Less(num, std::numeric_limits<To>::min()))
 		{
 			return 0;
 		}
-
-		return static_cast<To>(num);
+		else
+		{
+			return static_cast<To>(num);
+		}
 	}
+	
 
 	/* replace all occurences of szFrom to szTo in string szStr with a limitation that szTo must be shorter than szFrom */
 	static char* ReduceStr(char* str, const char* from, const char* to);
