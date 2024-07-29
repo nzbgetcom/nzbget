@@ -72,7 +72,9 @@ void TestNzb(std::string testFilename)
 	if(strcmp(lastBuffer, buffer) == 0)
 	{
 		BOOST_CHECK(nzbFile.GetPassword() == nullptr);
-	}else{
+	}
+	else
+	{
 		BOOST_CHECK(std::string(nzbFile.GetPassword()) == std::string(buffer));
 	}
 

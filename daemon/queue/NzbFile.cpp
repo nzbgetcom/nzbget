@@ -392,7 +392,9 @@ void NzbFile::ProcessFiles()
 	if (m_password)
 	{
 		ReadPasswordFromNzb();
-	}else{
+	}
+	else
+	{
 		ReadPasswordFromFilename();
 	}
 }
