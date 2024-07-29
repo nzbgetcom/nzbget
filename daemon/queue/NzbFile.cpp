@@ -391,15 +391,34 @@ void NzbFile::ProcessFiles()
 
 	if (m_password)
 	{
-		ReadPassword();
+		ReadPasswordFromNzb();
+	}
+	else
+	{
+		ReadPasswordFromFilename();
 	}
 }
-
+/*
+* Attempt to Read the Password from the Filename encoded in {{ Bracets }}
+*/
+void NzbFile::ReadPasswordFromFilename()
+{
+	int startDelimiter = m_fileName.Find("{{") + 2;
+	int stopDelimiter = m_fileName.Find("}}");
+	int lengthDelimiter = stopDelimiter - startDelimiter;
+	if (lengthDelimiter > 0)
+	{
+		CString namepassword(m_fileName, m_fileName.Length());
+		namepassword.Replace(stopDelimiter, m_fileName.Length() - stopDelimiter, "", 0);
+		namepassword.Replace(0, startDelimiter, "", 0);
+		m_password = namepassword.Str();
+	}
+}
 /**
  * Password read using XML-parser may have special characters (such as TAB) stripped.
  * This function rereads password directly from file to keep all characters intact.
  */
-void NzbFile::ReadPassword()
+void NzbFile::ReadPasswordFromNzb()
 {
 	DiskFile file;
 	if (!file.Open(m_fileName, DiskFile::omRead))

@@ -54,6 +54,7 @@ void TestNzb(std::string testFilename)
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
 	BOOST_CHECK(nzbInfo->GetFileCount() == fileCount);
+	char lastBuffer[1024];
 
 	for (int i = 0; i < fileCount; i++)
 	{
@@ -63,6 +64,18 @@ void TestNzb(std::string testFilename)
 		BOOST_CHECK(fileInfo != nullptr);
 		Util::TrimRight(buffer);
 		BOOST_CHECK(std::string(fileInfo->GetFilename()) == std::string(buffer));
+		memcpy(lastBuffer, buffer, sizeof(buffer));
+	}
+
+	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
+
+	if(strcmp(lastBuffer, buffer) == 0)
+	{
+		BOOST_CHECK(nzbFile.GetPassword() == nullptr);
+	}
+	else
+	{
+		BOOST_CHECK(std::string(nzbFile.GetPassword()) == std::string(buffer));
 	}
 
 	fclose(infofile);
@@ -77,4 +90,6 @@ BOOST_AUTO_TEST_CASE(NZBParserTest)
 
 	TestNzb("dotless");
 	TestNzb("plain");
+	TestNzb("passwd{{thisisthepassword}}");
+	TestNzb("passwdMeta");
 }
