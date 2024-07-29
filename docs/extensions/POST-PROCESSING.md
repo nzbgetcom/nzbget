@@ -92,8 +92,8 @@ If any other code (including 0) is returned the history item is marked with stat
 
 Example: exit code
 ```sh
-POSTPROCESS_SUCCESS=93
-POSTPROCESS_ERROR=94
+POSTPROCESS_SUCCESS = 93
+POSTPROCESS_ERROR = 94
 echo "Hello from test script"
 exit $POSTPROCESS_SUCCESS
 ```

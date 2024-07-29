@@ -40,8 +40,8 @@ and the `executable` file, like `main.py`.
   "homepage": "https://github.com/nzbgetcom/Extension-EMail",
   "kind": "POST-PROCESSING",
   "displayName": "My EMail Extension",
-  "version": "2.0.0",
-  "nzbgetMinVersion": "23",
+  "version": "2.0",
+  "nzbgetMinVersion": "24",
   "author": "John Doe",
   "license": "GNU",
   "about": "Sends E-Mail notification.",
@@ -104,7 +104,6 @@ and the `executable` file, like `main.py`.
   ]
 }
 ```
->`"sections"` property is optional.
 
 ### `"main"`
 
@@ -227,7 +226,8 @@ In the provided `manifest.json` example we defined three options:
   }
 ],
 ```
->`"section"` property is optional. Default value is `"options"`.
+>`"section"` property is optional. Default value is `"options"`. 
+> Required `"nzbgetMinVersion"`: `"24"`.
 
 When the user saves settings in web-interface the extension configuration 
 options are saved to NZBGet configuration file using the extension name as prefix. For example:
@@ -279,7 +279,6 @@ part of extension configuration, almost similar to extension configuration optio
   }
 ],
 ```
->`"section"` property is optional. Default value is `"options"`.
 
 This example creates a button with text "Send Test E-Mail" and description 
 "To check connection parameters click the button.".
@@ -289,8 +288,8 @@ button name via env. var NZBCP_COMMAND.
 The extension can check if it runs in command mode by examining this variable (python example):
 ```python
 # Exit codes used by NZBGet
-COMMAND_SUCCESS=93
-COMMAND_ERROR=94
+COMMAND_SUCCESS = 93
+COMMAND_ERROR = 94
 
 # Check if the script is executed from settings page with a custom command
 command = os.environ.get('NZBCP_COMMAND')
@@ -313,7 +312,8 @@ The extension must exit with one of predefined exit codes indicating success
 User may close the progress dialog but the extension continues running in the background. 
 All messages printed by the extension are saved to NZBGet log and are seen in web-interface on Messages tab.
 
-### `"sections" (optional)`
+### `"sections" (optional)`. 
+>Required `"nzbgetMinVersion"`: `"24"`.
 
 `Sections` are used to logically organize options and commands in `web-interface`.
 >`Sections` with the reserved name `"options"` will be ignored.
@@ -385,8 +385,8 @@ import datetime
 from xmlrpclib import ServerProxy
 
 ## Exit codes used by NZBGet
-POSTPROCESS_SUCCESS=93
-POSTPROCESS_ERROR=94
+POSTPROCESS_SUCCESS = 93
+POSTPROCESS_ERROR = 94
 
 # To get the post-processing log we connect to NZBGet via XML-RPC
 # and call method "postqueue", which returns the list of post-processing job.
@@ -397,15 +397,15 @@ POSTPROCESS_ERROR=94
 # First we need to know connection info: host, port, username and password of NZBGet server.
 # NZBGet passes all configuration options to post-processing script as
 # environment variables.
-host = os.environ['NZBOP_CONTROLIP'];
-port = os.environ['NZBOP_CONTROLPORT'];
-username = os.environ['NZBOP_CONTROLUSERNAME'];
-password = os.environ['NZBOP_CONTROLPASSWORD'];
+host = os.environ['NZBOP_CONTROLIP']
+port = os.environ['NZBOP_CONTROLPORT']
+username = os.environ['NZBOP_CONTROLUSERNAME']
+password = os.environ['NZBOP_CONTROLPASSWORD']
 
 if host ## '0.0.0.0': host = '127.0.0.1'
 
 # Build an URL for XML-RPC requests
-rpcUrl = 'http://%s:%s@%s:%s/xmlrpc' % (username, password, host, port);
+rpcUrl = 'http://%s:%s@%s:%s/xmlrpc' % (username, password, host, port)
 
 # Create remote server object
 server = ServerProxy(rpcUrl)
