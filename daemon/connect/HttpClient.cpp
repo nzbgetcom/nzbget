@@ -46,9 +46,9 @@ namespace HttpClient
 		return m_localIP;
 	}
 
-	std::future<Response> HttpClient::GET(const std::string& host)
+	std::future<Response> HttpClient::GET(std::string host_)
 	{
-		return std::async(std::launch::async, [&]
+		return std::async(std::launch::async, [this, host = std::move(host_)]
 			{
 				auto endpoints = m_resolver.resolve(host, GetProtocol());
 				auto socket = GetSocket();
@@ -99,9 +99,8 @@ namespace HttpClient
 	std::string HttpClient::ReadBody(Socket& socket, boost::asio::streambuf& buf)
 	{
 		boost::system::error_code ec;
-		asio::read(socket, buf, ec);
-
-		if (ec != asio::error::eof)
+		asio::read_until(socket, buf, "\0", ec);
+		if (ec)
 		{
 			throw std::runtime_error("Failed to read the response body: " + ec.message());
 		}

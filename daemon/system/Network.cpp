@@ -35,12 +35,12 @@ namespace System
 
 		try
 		{
-			auto httpClient = std::make_unique<HttpClient::HttpClient>();
-			auto result = httpClient->GET(IP_SERVICE).get();
+			HttpClient::HttpClient httpClient;
+			auto result = httpClient.GET(IP_SERVICE).get();
 			if (result.statusCode == 200)
 			{
 				network.publicIP = std::move(result.body);
-				network.privateIP = httpClient->GetLocalIP();
+				network.privateIP = httpClient.GetLocalIP();
 			}
 		}
 		catch (const std::exception& e)

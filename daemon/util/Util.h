@@ -64,7 +64,7 @@ public:
 	static bool AlphaNum(const char* str);
 
 	template<typename T, typename U>
-	static constexpr bool Equal(T t, U u) noexcept
+	static constexpr bool CmpEqual(T t, U u) noexcept
 	{
 		if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
 		{
@@ -81,13 +81,13 @@ public:
 	}
 	
 	template<typename T, typename U>
-	static constexpr bool NotEqual(T t, U u) noexcept
+	static constexpr bool CmpNotEqual(T t, U u) noexcept
 	{
-		return !Equal(t, u);
+		return !CmpEqual(t, u);
 	}
 	
 	template<typename T, typename U>
-	static constexpr bool Less(T t, U u) noexcept
+	static constexpr bool CmpLess(T t, U u) noexcept
 	{
 		if constexpr (std::is_signed_v<T> == std::is_signed_v<U>)
 		{
@@ -104,21 +104,21 @@ public:
 	}
 	
 	template<typename T, typename U>
-	static constexpr bool Greater(T t, U u) noexcept
+	static constexpr bool CmpGreater(T t, U u) noexcept
 	{
-		return Less(u, t);
+		return CmpLess(u, t);
 	}
 	
 	template<typename T, typename U>
-	static constexpr bool LessEqual(T t, U u) noexcept
+	static constexpr bool CmpLessEqual(T t, U u) noexcept
 	{
-		return !Less(u, t);
+		return !CmpLess(u, t);
 	}
 	
 	template<typename T, typename U>
-	static constexpr bool GreaterEqual(T t, U u) noexcept
+	static constexpr bool CmpGreaterEqual(T t, U u) noexcept
 	{
-		return !Less(t, u);
+		return !CmpLess(t, u);
 	}
 	
 	template <typename From, typename To,
@@ -127,7 +127,7 @@ public:
 	{
 		if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>)
 		{
-			if (Greater(num, std::numeric_limits<To>::max()))
+			if (CmpGreater(num, std::numeric_limits<To>::max()))
 			{
 				return 0;
 			}
@@ -143,7 +143,7 @@ public:
 
 			return static_cast<To>(num);
 		}
-		else if (Greater(num, std::numeric_limits<To>::max()) || Less(num, std::numeric_limits<To>::min()))
+		else if (CmpGreater(num, std::numeric_limits<To>::max()) || CmpLess(num, std::numeric_limits<To>::min()))
 		{
 			return 0;
 		}

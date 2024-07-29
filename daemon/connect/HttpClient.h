@@ -55,7 +55,7 @@ namespace HttpClient
 		HttpClient operator=(const HttpClient&) = delete;
 		~HttpClient() = default;
 
-		std::future<Response> GET(const std::string& host);
+		std::future<Response> GET(std::string host);
 		const std::string GetLocalIP() const;
 
 	private:
