@@ -25,7 +25,7 @@ Example (explained below):
   "homepage": "https://github.com/nzbgetcom/Extension-MyExtension",
   "kind": "QUEUE/SCHEDULER/POST-PROCESSING",
   "displayName": "My Extension",
-  "version": "2.0.0",
+  "version": "2.0",
   "author": "John Doe",
   "license": "GNU",
   "about": "Test script.",
