@@ -101,39 +101,39 @@ var Util = (new function($)
 
 		if (sizeMB >= 1024 * 1024 * 100)
 		{
-			return this.round0(sizeMB / 1024.0 / 1024.0) + '&nbsp;TB';
+			return Math.floor(sizeMB / 1024.0 / 1024.0) + ' TB';
 		}
 		else if (sizeMB >= 1024 * 1024 * 10)
 		{
-			return this.round1(sizeMB / 1024.0 / 1024.0) + '&nbsp;TB';
+			return this.round1(sizeMB / 1024.0 / 1024.0) + ' TB';
 		}
 		else if (sizeMB >= 1024 * 1000)
 		{
-			return this.round2(sizeMB / 1024.0 / 1024.0) + '&nbsp;TB';
+			return this.round2(sizeMB / 1024.0 / 1024.0) + ' TB';
 		}
 		else if (sizeMB >= 1024 * 100)
 		{
-			return this.round0(sizeMB / 1024.0) + '&nbsp;GB';
+			return Math.floor(sizeMB / 1024.0) + ' GB';
 		}
 		else if (sizeMB >= 1024 * 10)
 		{
-			return this.round1(sizeMB / 1024.0) + '&nbsp;GB';
+			return this.round1(sizeMB / 1024.0) + ' GB';
 		}
 		else if (sizeMB >= 1000)
 		{
-			return this.round2(sizeMB / 1024.0) + '&nbsp;GB';
+			return this.round2(sizeMB / 1024.0) + ' GB';
 		}
 		else if (sizeMB >= 100)
 		{
-			return this.round0(sizeMB) + '&nbsp;MB';
+			return Math.floor(sizeMB) + ' MB';
 		}
 		else if (sizeMB >= 10)
 		{
-			return this.round1(sizeMB) + '&nbsp;MB';
+			return this.round1(sizeMB) + ' MB';
 		}
 		else
 		{
-			return this.round2(sizeMB) + '&nbsp;MB';
+			return this.round2(sizeMB) + ' MB';
 		}
 	}
 
@@ -141,7 +141,7 @@ var Util = (new function($)
 	{
 		if (bytesPerSec <= 0)
 		{
-			return 0;
+			return '';
 		}
 
 		if (bytesPerSec >= 100 * 1024 * 1024 * 1024) 
@@ -169,7 +169,7 @@ var Util = (new function($)
 			return Util.round2(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
 		}
 
-		return Util.round0(bytesPerSec / 1024.0) + '&nbsp;KB/s';
+		return Util.round0(bytesPerSec / 1024.0) + ' KB/s';
 	}
 
 	this.formatAge = function(time)

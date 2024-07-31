@@ -194,41 +194,41 @@ void QueueCoordinator::Run()
 	time_t lastReset = 0;
 	g_StatMeter->IntervalCheck();
 	int waitInterval = 100;
-
 	while (!IsStopped())
 	{
 		bool downloadsChecked = false;
 		bool downloadStarted = false;
-		NntpConnection* connection = g_ServerPool->GetConnection(0, nullptr, nullptr);
-		if (connection)
+		FileInfo* fileInfo;
+		ArticleInfo* articleInfo;
 		{
-			// start download for next article
-			FileInfo* fileInfo;
-			ArticleInfo* articleInfo;
-			bool freeConnection = false;
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
+			bool hasMoreArticles = GetNextArticle(downloadQueue, fileInfo, articleInfo);
+			articeDownloadsRunning = !m_activeDownloads.empty();
+			m_hasMoreJobs = hasMoreArticles || articeDownloadsRunning;
+			bool canProceed = !IsStopped() && Util::SafeIntCast<size_t, int>(m_activeDownloads.size()) < m_downloadsLimit;
+
+			if (hasMoreArticles && canProceed && (!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
 			{
-				GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-				bool hasMoreArticles = GetNextArticle(downloadQueue, fileInfo, articleInfo);
-				articeDownloadsRunning = !m_activeDownloads.empty();
-				downloadsChecked = true;
-				m_hasMoreJobs = hasMoreArticles || articeDownloadsRunning;
-				if (hasMoreArticles && !IsStopped() && (int)m_activeDownloads.size() < m_downloadsLimit &&
-					(!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
+				NntpConnection* connection = nullptr;
+				NewsServer* desiredServer = g_ServerPool->GetServerById(fileInfo->GetNzbInfo()->GetDesiredServerId());
+
+				if (desiredServer)
 				{
-					StartArticleDownload(fileInfo, articleInfo, connection);
-					articeDownloadsRunning = true;
-					downloadStarted = true;
+					connection = g_ServerPool->GetConnection(desiredServer->GetLevel(), desiredServer, nullptr);
 				}
 				else
 				{
-					freeConnection = true;
+					connection = g_ServerPool->GetConnection(0, nullptr, nullptr);
 				}
-			}
-
-			if (freeConnection)
-			{
-				g_ServerPool->FreeConnection(connection, false);
+				 
+				if (connection)
+				{
+					downloadsChecked = true;
+					articeDownloadsRunning = true;
+					downloadStarted = true;
+					StartArticleDownload(fileInfo, articleInfo, connection);
+				}
 			}
 		}
 
@@ -511,8 +511,6 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 	// ignoring all files which were previously marked as not having any articles.
 
 	// special case: if the file has ExtraPriority-flag set, it has the highest priority.
-
-	//debug("QueueCoordinator::GetNextArticle()");
 
 	bool ok = false;
 

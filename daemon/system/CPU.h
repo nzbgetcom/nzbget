@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,16 +17,35 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#ifndef CPU_H
+#define CPU_H
 
-#include <iostream>
-#include <libxml/tree.h>
+#include <string>
+#include <optional>
 
-namespace Xml
+namespace System
 {
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
+	class CPU final
+	{
+	public:
+		CPU();
+		const std::string& GetModel() const;
+		const std::string& GetArch() const;
+
+	private:
+		void Init();
+		std::optional<std::string> GetCPUArch() const;
+		std::optional<std::string> GetCPUModel() const;
+		std::string GetCanonicalCPUArch(const std::string& arch) const;
+
+#ifndef WIN32
+		std::optional<std::string> GetCPUModelFromCPUInfo() const;
+		std::optional<std::string> GetCPUModelFromLSCPU() const;
+#endif
+
+		std::string m_model;
+		std::string m_arch;
+	};
 }
 
 #endif

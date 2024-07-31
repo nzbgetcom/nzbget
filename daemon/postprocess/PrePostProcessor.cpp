@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -333,13 +334,26 @@ void PrePostProcessor::NzbAdded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 
 void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
+	if (!nzbInfo)
+	{
+		return;
+	}
+
+	if (nzbInfo->GetSkipScriptProcessing() && nzbInfo->GetSkipDiskWrite())
+	{
+		NzbCompleted(downloadQueue, nzbInfo, true);
+		nzbInfo->SetCleanupDisk(true);
+		DeleteCleanup(nzbInfo);
+		return;
+	}
+
 	if (nzbInfo->GetDeleteStatus() == NzbInfo::dsHealth ||
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsBad)
 	{
 		g_QueueScriptCoordinator->EnqueueScript(nzbInfo, QueueScriptCoordinator::qeNzbDeleted);
 	}
 
-	if (!nzbInfo->GetPostInfo() && !g_Options->GetRawArticle() && !g_Options->GetSkipWrite())
+	if (!nzbInfo->GetPostInfo() && !g_Options->GetRawArticle() && !g_Options->GetSkipWrite() && !nzbInfo->GetSkipDiskWrite())
 	{
 		nzbInfo->PrintMessage(Message::mkInfo, "Queueing %s for post-processing", nzbInfo->GetName());
 
@@ -452,6 +466,18 @@ void PrePostProcessor::DeleteCleanup(NzbInfo* nzbInfo)
 	if (nzbInfo->GetCleanupDisk() ||
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsDupe)
 	{
+		if (nzbInfo->GetSkipDiskWrite())
+		{
+			CString errmsg;
+			detail("Deleting dir %s", nzbInfo->GetDestDir());
+			if (!FileSystem::DeleteDirectoryWithContent(nzbInfo->GetDestDir(), errmsg))
+			{
+				error("Could not delete directory %s: %s", nzbInfo->GetDestDir(), *errmsg);
+			}
+
+			return;
+		}
+
 		// download was cancelled, deleting already downloaded files from disk
 		for (CompletedFile& completedFile: nzbInfo->GetCompletedFiles())
 		{
@@ -987,7 +1013,7 @@ void PrePostProcessor::FileDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzb
 		g_QueueScriptCoordinator->EnqueueScript(nzbInfo, QueueScriptCoordinator::qeFileDownloaded);
 	}
 
-	if (g_Options->GetDirectUnpack() && !g_Options->GetRawArticle() && !g_Options->GetSkipWrite())
+	if (g_Options->GetDirectUnpack() && !g_Options->GetRawArticle() && !g_Options->GetSkipWrite() && !nzbInfo->GetSkipDiskWrite())
 	{
 		bool allowPar;
 		if (nzbInfo->GetDirectUnpackStatus() == NzbInfo::nsNone &&

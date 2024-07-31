@@ -142,6 +142,7 @@ if(NOT BUILD_ONLY_TESTS)
 		${CMAKE_SOURCE_DIR}/daemon/queue
 		${CMAKE_SOURCE_DIR}/daemon/remote
 		${CMAKE_SOURCE_DIR}/daemon/util
+		${CMAKE_SOURCE_DIR}/daemon/system
 		${INCLUDES}
 	)
 endif()

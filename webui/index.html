@@ -53,11 +53,12 @@
 	<script language="javascript" type="text/javascript" src="upload.js"></script>
 	<script language="javascript" type="text/javascript" src="config.js"></script>
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
+	<script language="javascript" type="text/javascript" src="system-info.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -544,8 +545,9 @@
 					<div class="row-fluid">
 						<div class="span3">
 							<ul class="nav nav-list" id="ConfigNav">
-							<li class="config-static"><a href="#Config-Info">INFO</a></li>
-							<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
+								<li class="config-static"><a href="#Config-Info">INFO</a></li>
+								<li class="config-static"><a href="#Config-SystemInfo">STATUS</a></li>
+								<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
 							</ul>
 						</div>
 
@@ -642,6 +644,122 @@
 									<div class="form-horizontal">
 										<form>
 										<fieldset id="ConfigData">
+
+											<section id="Config-SystemInfo" class="control-group config-static config-status">
+												<div class="modal hide in" id="SpeedTest_Stats">
+													<div>
+														<div class="modal-header">
+															<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+															<h3 id="SpeedTest_StatsHeader"></h3>
+														</div>
+														<div class="modal-body">
+															<table class="table table-striped table-bordered datatable" id="SpeedTest_StatsTable">
+																<thead><tr><th>Statistics</th><th class="text-center">Data</th></tr></thead>
+																<tbody></tbody>
+															</table>
+														</div>
+													</div>
+												</div>
+
+												<div id="SystemInfo_Spinner" class="system-info__spinner-container ">
+													<i class="material-icon spinner system-info__spinner ">progress_activity</i>
+												</div>
+
+												<div class="alert alert-danger alert-block" style="display:none;" id="SystemInfoErrorAlert">
+													<h4 class="alert-heading">Error</h4>
+													<em id="SystemInfoAlert-text"></em>
+												</div>
+
+												<div id="SystemInfo_MainContent">
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<tbody>
+															<tr>
+																<td width="50%">Version</td>
+																<td id="SysInfo_AppVersion" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Uptime</td>
+																<td id="SysInfo_Uptime" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Config path</td>
+																<td id="SysInfo_ConfPath" width="50%"></td>
+															</tr>
+														</tbody>
+													</table>
+
+													<br>
+
+													<h4>Tools</h4>
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<thead>
+															<th width="25%">Name</th>
+															<th width="25%">Version</th>
+															<th width="50%">Path</th>
+														</thead>
+														<tbody id="SysInfo_ToolsTable"></tbody>
+													</table>
+
+													<br>
+
+													<h4>News Servers</h4>
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<thead>
+															<th width="25%">Host (Connections)</th>
+															<th width="25%">Active</th>
+															<th width="50%">Tests</th>
+														</thead>
+														<tbody id="SysInfo_NewsServersTable"> </tbody>
+													</table>
+
+													<br>
+
+													<h4>System</h4>
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<tbody>
+															<tr>
+																<td width="50%">OS</td>
+																<td id="SysInfo_OS" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">CPU</td>
+																<td id="SysInfo_CPUModel" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Arch</td>
+																<td id="SysInfo_Arch" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Free disk space</td>
+																<td id="SysInfo_FreeDiskSpace" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Total disk space</td>
+																<td id="SysInfo_TotalDiskSpace" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Article Cache</td>
+																<td id="SysInfo_ArticleCache" width="50%"></td>
+															</tr>
+															<tr>
+																<td width="50%">Private / Public IP</td>
+																<td id="SysInfo_IP" width="50%"></td>
+															</tr>
+														</tbody>
+													</table>
+
+													<br>
+
+													<h4>Libraries</h4>
+													<table class="table table-striped table-condensed table-bordered table-fixed">
+														<thead>
+															<th width="50%">Name</th>
+															<th width="50%">Version</th>
+														</thead>
+														<tbody id="SysInfo_LibrariesTable"></tbody>
+													</table>
+												</div>
+											</section>
 
 											<!-- *** SYSTEM -->
 											<div class="control-group config-static config-system">

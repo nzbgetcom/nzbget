@@ -333,95 +333,95 @@ namespace Extension
 
 	std::string ToXmlStr(const Script& script)
 	{
-		xmlNodePtr rootNode = xmlNewNode(NULL, BAD_CAST "value");
-		xmlNodePtr structNode = xmlNewNode(NULL, BAD_CAST "struct");
+		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
+		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
 
-		AddNewNode(structNode, "Entry", "string", script.GetEntry());
-		AddNewNode(structNode, "Location", "string", script.GetLocation());
-		AddNewNode(structNode, "RootDir", "string", script.GetRootDir());
-		AddNewNode(structNode, "Name", "string", script.GetName());
-		AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
-		AddNewNode(structNode, "About", "string", script.GetAbout());
-		AddNewNode(structNode, "Author", "string", script.GetAuthor());
-		AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
-		AddNewNode(structNode, "License", "string", script.GetLicense());
-		AddNewNode(structNode, "Version", "string", script.GetVersion());
-		AddNewNode(structNode, "NZBGetMinVersion", "string", script.GetNzbgetMinVersion());
+		Xml::AddNewNode(structNode, "Entry", "string", script.GetEntry());
+		Xml::AddNewNode(structNode, "Location", "string", script.GetLocation());
+		Xml::AddNewNode(structNode, "RootDir", "string", script.GetRootDir());
+		Xml::AddNewNode(structNode, "Name", "string", script.GetName());
+		Xml::AddNewNode(structNode, "DisplayName", "string", script.GetDisplayName());
+		Xml::AddNewNode(structNode, "About", "string", script.GetAbout());
+		Xml::AddNewNode(structNode, "Author", "string", script.GetAuthor());
+		Xml::AddNewNode(structNode, "Homepage", "string", script.GetHomepage());
+		Xml::AddNewNode(structNode, "License", "string", script.GetLicense());
+		Xml::AddNewNode(structNode, "Version", "string", script.GetVersion());
+		Xml::AddNewNode(structNode, "NZBGetMinVersion", "string", script.GetNzbgetMinVersion());
 
-		AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
-		AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));
-		AddNewNode(structNode, "QueueScript", "boolean", BoolToStr(script.GetQueueScript()));
-		AddNewNode(structNode, "SchedulerScript", "boolean", BoolToStr(script.GetSchedulerScript()));
-		AddNewNode(structNode, "FeedScript", "boolean", BoolToStr(script.GetFeedScript()));
+		Xml::AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
+		Xml::AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));
+		Xml::AddNewNode(structNode, "QueueScript", "boolean", BoolToStr(script.GetQueueScript()));
+		Xml::AddNewNode(structNode, "SchedulerScript", "boolean", BoolToStr(script.GetSchedulerScript()));
+		Xml::AddNewNode(structNode, "FeedScript", "boolean", BoolToStr(script.GetFeedScript()));
 
-		AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
-		AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
+		Xml::AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
+		Xml::AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
 
-		xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+		xmlNodePtr descriptionNode = xmlNewNode(nullptr, BAD_CAST "Description");
 		for (const std::string& line : script.GetDescription())
 		{
-			AddNewNode(descriptionNode, "Value", "string", line.c_str());
+			Xml::AddNewNode(descriptionNode, "Value", "string", line.c_str());
 		}
 
-		xmlNodePtr requirementsNode = xmlNewNode(NULL, BAD_CAST "Requirements");
+		xmlNodePtr requirementsNode = xmlNewNode(nullptr, BAD_CAST "Requirements");
 		for (const std::string& line : script.GetRequirements())
 		{
-			AddNewNode(requirementsNode, "Value", "string", line.c_str());
+			Xml::AddNewNode(requirementsNode, "Value", "string", line.c_str());
 		}
 
-		xmlNodePtr commandsNode = xmlNewNode(NULL, BAD_CAST "Commands");
+		xmlNodePtr commandsNode = xmlNewNode(nullptr, BAD_CAST "Commands");
 		for (const ManifestFile::Command& command : script.GetCommands())
 		{
-			AddNewNode(commandsNode, "Name", "string", command.name.c_str());
-			AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
-			AddNewNode(commandsNode, "Action", "string", command.action.c_str());
-			AddNewNode(commandsNode, "Multi", "boolean", BoolToStr(command.section.multi));
-			AddNewNode(commandsNode, "Section", "string", command.section.name.c_str());
-			AddNewNode(commandsNode, "Prefix", "string", command.section.prefix.c_str());
+			Xml::AddNewNode(commandsNode, "Name", "string", command.name.c_str());
+			Xml::AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
+			Xml::AddNewNode(commandsNode, "Action", "string", command.action.c_str());
+			Xml::AddNewNode(commandsNode, "Multi", "boolean", BoolToStr(command.section.multi));
+			Xml::AddNewNode(commandsNode, "Section", "string", command.section.name.c_str());
+			Xml::AddNewNode(commandsNode, "Prefix", "string", command.section.prefix.c_str());
 
-			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+			xmlNodePtr descriptionNode = xmlNewNode(nullptr, BAD_CAST "Description");
 			for (const std::string& line : command.description)
 			{
-				AddNewNode(descriptionNode, "Value", "string", line.c_str());
+				Xml::AddNewNode(descriptionNode, "Value", "string", line.c_str());
 			}
 			xmlAddChild(commandsNode, descriptionNode);
 		}
 
-		xmlNodePtr optionsNode = xmlNewNode(NULL, BAD_CAST "Options");
+		xmlNodePtr optionsNode = xmlNewNode(nullptr, BAD_CAST "Options");
 		for (const ManifestFile::Option& option : script.GetOptions())
 		{
-			AddNewNode(optionsNode, "Name", "string", option.name.c_str());
-			AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
-			AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.section.multi));
-			AddNewNode(optionsNode, "Section", "string", option.section.name.c_str());
-			AddNewNode(optionsNode, "Prefix", "string", option.section.prefix.c_str());
+			Xml::AddNewNode(optionsNode, "Name", "string", option.name.c_str());
+			Xml::AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
+			Xml::AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.section.multi));
+			Xml::AddNewNode(optionsNode, "Section", "string", option.section.name.c_str());
+			Xml::AddNewNode(optionsNode, "Prefix", "string", option.section.prefix.c_str());
 
 			if (const std::string* val = std::get_if<std::string>(&option.value))
 			{
-				AddNewNode(optionsNode, "Value", "string", val->c_str());
+				Xml::AddNewNode(optionsNode, "Value", "string", val->c_str());
 			}
 			else if (const double* val = std::get_if<double>(&option.value))
 			{
-				AddNewNode(optionsNode, "Value", "double", std::to_string(*val).c_str());
+				Xml::AddNewNode(optionsNode, "Value", "double", std::to_string(*val).c_str());
 			}
 
-			xmlNodePtr selectNode = xmlNewNode(NULL, BAD_CAST "Select");
+			xmlNodePtr selectNode = xmlNewNode(nullptr, BAD_CAST "Select");
 			for (const auto& selectOption : option.select)
 			{
 				if (const std::string* val = std::get_if<std::string>(&selectOption))
 				{
-					AddNewNode(selectNode, "Value", "string", val->c_str());
+					Xml::AddNewNode(selectNode, "Value", "string", val->c_str());
 				}
 				else if (const double* val = std::get_if<double>(&selectOption))
 				{
-					AddNewNode(selectNode, "Value", "double", std::to_string(*val).c_str());
+					Xml::AddNewNode(selectNode, "Value", "double", std::to_string(*val).c_str());
 				}
 			}
 
-			xmlNodePtr descriptionNode = xmlNewNode(NULL, BAD_CAST "Description");
+			xmlNodePtr descriptionNode = xmlNewNode(nullptr, BAD_CAST "Description");
 			for (const std::string& line : option.description)
 			{
-				AddNewNode(descriptionNode, "Value", "string", line.c_str());
+				Xml::AddNewNode(descriptionNode, "Value", "string", line.c_str());
 			}
 
 			xmlAddChild(optionsNode, descriptionNode);
@@ -435,18 +435,10 @@ namespace Extension
 		xmlAddChild(rootNode, structNode);
 
 		std::string result = Xml::Serialize(rootNode);
-		xmlFreeNode(rootNode);
-		return result;
-	}
 
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
-	{
-		xmlNodePtr memberNode = xmlNewNode(NULL, BAD_CAST "member");
-		xmlNodePtr valueNode = xmlNewNode(NULL, BAD_CAST "value");
-		xmlNewChild(memberNode, NULL, BAD_CAST "name", BAD_CAST name);
-		xmlNewChild(valueNode, NULL, BAD_CAST type, BAD_CAST value);
-		xmlAddChild(memberNode, valueNode);
-		xmlAddChild(rootNode, memberNode);
+		xmlFreeNode(rootNode);
+
+		return result;
 	}
 
 	const char* BoolToStr(bool value)

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,16 +17,37 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
 
-#include <iostream>
-#include <libxml/tree.h>
+#include "nzbget.h"
 
-namespace Xml
+#include "Network.h"
+#include "Util.h"
+#include "Log.h"
+#include "HttpClient.h"
+
+namespace System
 {
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-}
+	static const char* IP_SERVICE = "ip.nzbget.com";
 
-#endif
+	Network GetNetwork()
+	{
+		Network network{};
+
+		try
+		{
+			HttpClient::HttpClient httpClient;
+			auto result = httpClient.GET(IP_SERVICE).get();
+			if (result.statusCode == 200)
+			{
+				network.publicIP = std::move(result.body);
+				network.privateIP = httpClient.GetLocalIP();
+			}
+		}
+		catch (const std::exception& e)
+		{
+			detail("Failed to get public and private IP: %s", e.what());
+		}
+
+		return network;
+	}
+}

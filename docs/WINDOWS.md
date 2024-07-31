@@ -19,6 +19,7 @@ Also required are:
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
    - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+   - [Boost.Asio](https://www.boost.org/doc/libs/1_85_0/doc/html/boost_asio.html)
 
 For tests:
    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
@@ -39,6 +40,7 @@ vcpkg install openssl:x64-windows-static
 vcpkg install libxml2:x64-windows-static
 vcpkg install zlib:x64-windows-static
 vcpkg install boost-json:x64-windows-static
+vcpkg install boost-asio:x64-windows-static
 ```
   - For tests:
 ```

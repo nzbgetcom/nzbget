@@ -56,6 +56,7 @@
 #include "CommandScript.h"
 #include "YEncode.h"
 #include "ExtensionManager.h"
+#include "SystemInfo.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -64,6 +65,11 @@
 #endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
+#endif
+
+#ifdef DEBUG
+#include <sstream>
+#include <iostream>
 #endif
 
 // Prototypes
@@ -90,6 +96,7 @@ ServiceCoordinator* g_ServiceCoordinator;
 ScriptConfig* g_ScriptConfig;
 CommandScriptLog* g_CommandScriptLog;
 ExtensionManager::Manager* g_ExtensionManager;
+System::SystemInfo* g_SystemInfo;
 
 #ifdef WIN32
 WinConsole* g_WinConsole;
@@ -202,6 +209,7 @@ private:
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
+	std::unique_ptr<System::SystemInfo> m_systemInfo;
 
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
@@ -319,6 +327,19 @@ void NZBGet::Init()
 		info("nzbget %s remote-mode", Util::VersionRevision());
 	}
 
+	info("using %s", m_options->GetConfigFilename());
+	info("nzbget runs on %s:%i", m_options->GetControlIp(), m_options->GetControlPort());
+
+#ifdef DEBUG
+	std::stringstream ss;
+	ss << *m_systemInfo;
+	std::string line;
+	while (std::getline(ss, line))
+	{
+		detail("%s", line.c_str());
+	}
+#endif
+
 	m_reloading = false;
 
 	if (!m_commandLineParser->GetRemoteClientMode())
@@ -401,6 +422,9 @@ void NZBGet::CreateGlobals()
 
 	m_extensionManager = std::make_unique<ExtensionManager::Manager>();
 	g_ExtensionManager = m_extensionManager.get();
+
+	m_systemInfo = std::make_unique<System::SystemInfo>();
+	g_SystemInfo = m_systemInfo.get();
 
 	m_scheduler = std::make_unique<Scheduler>();
 

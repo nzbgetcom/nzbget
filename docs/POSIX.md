@@ -10,6 +10,7 @@
   - Libraries:
     - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
     - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
+    - [Boost.Asio](https://www.boost.org/doc/libs/1_85_0/doc/html/boost_asio.html)
     
 > If you face issues with Boost.JSON on your system, you can skip it - CMake will take care of it.
 

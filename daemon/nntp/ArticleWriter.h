@@ -63,6 +63,7 @@ public:
 	void FlushCache();
 
 private:
+	bool GetSkipDiskWrite();
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;
 	DiskFile m_outFile;

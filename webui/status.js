@@ -58,6 +58,7 @@ var Status = (new function($)
 	var playInitialized = false;
 	var modalShown = false;
 	var titleGen = [];
+	var subscribers = [];
 
 	var validTimePatterns = [
 		/^=\d{1,2}(:[0-5][0-9])?$/, // 24h exact
@@ -65,6 +66,11 @@ var Status = (new function($)
 		/^\d+(:[0-5][0-9])?$/, // 24h relative
 		/^\d+(h|m)?$/i, // relative minutes or hours
 	];
+
+	this.getStatus = function()
+	{
+		return status;
+	}
 
 	this.init = function()
 	{
@@ -118,6 +124,7 @@ var Status = (new function($)
 				status.DownloadRate = Util.joinInt64(status.DownloadRateHi, status.DownloadRateLo);
 				status.AverageDownloadRate = Util.joinInt64(status.AverageDownloadRateHi, status.AverageDownloadRateLo);
 				_this.status = status;
+				notifyStatusSubs(status);
 				StatDialog.update();
 			});
 	}
@@ -126,6 +133,16 @@ var Status = (new function($)
 	{
 		redrawInfo();
 		StatDialog.redraw();
+	}
+
+	this.subscribe = function(sub)
+	{
+		subscribers.push(sub);
+	}
+
+	function notifyStatusSubs(status)
+	{
+		subscribers.forEach(function(sub) { sub.update(status); });
 	}
 
 	function redrawInfo()

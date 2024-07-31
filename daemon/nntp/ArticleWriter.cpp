@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -145,6 +146,16 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 	return true;
 }
 
+bool ArticleWriter::GetSkipDiskWrite()
+{
+	if (m_fileInfo && m_fileInfo->GetNzbInfo() && m_fileInfo->GetNzbInfo()->GetSkipDiskWrite())
+	{
+		return true;
+	}
+
+	return g_Options->GetSkipWrite();
+}
+
 bool ArticleWriter::Write(char* buffer, int len)
 {
 	if (!g_Options->GetRawArticle())
@@ -167,7 +178,7 @@ bool ArticleWriter::Write(char* buffer, int len)
 		return true;
 	}
 
-	if (g_Options->GetSkipWrite())
+	if (GetSkipDiskWrite())
 	{
 		return true;
 	}
@@ -417,7 +428,7 @@ void ArticleWriter::CompleteFileParts()
 				pa->GetSegmentOffset() > outfile.Position() && outfile.Position() > -1)
 			{
 				memset(buffer, 0, buffer.Size());
-				if (!g_Options->GetSkipWrite())
+				if (!GetSkipDiskWrite())
 				{
 					while (pa->GetSegmentOffset() > outfile.Position() && outfile.Position() > -1 &&
 						outfile.Write(buffer, std::min((int)(pa->GetSegmentOffset() - outfile.Position()), buffer.Size())));
@@ -426,14 +437,14 @@ void ArticleWriter::CompleteFileParts()
 
 			if (pa->GetSegmentContent())
 			{
-				if (!g_Options->GetSkipWrite())
+				if (!GetSkipDiskWrite())
 				{
 					outfile.Seek(pa->GetSegmentOffset());
 					outfile.Write(pa->GetSegmentContent(), pa->GetSegmentSize());
 				}
 				pa->DiscardSegment();
 			}
-			else if (!g_Options->GetRawArticle() && !directWrite && !g_Options->GetSkipWrite())
+			else if (!g_Options->GetRawArticle() && !directWrite && !GetSkipDiskWrite())
 			{
 				DiskFile infile;
 				if (pa->GetResultFilename() && infile.Open(pa->GetResultFilename(), DiskFile::omRead))
@@ -655,7 +666,7 @@ void ArticleWriter::FlushCache()
 				outfile.Seek(pa->GetSegmentOffset());
 			}
 
-			if (!g_Options->GetSkipWrite())
+			if (!GetSkipDiskWrite())
 			{
 				outfile.Write(pa->GetSegmentContent(), pa->GetSegmentSize());
 			}
