@@ -48,7 +48,9 @@ private:
 	void ProcessFiles();
 	void CalcHashes();
 	bool HasDuplicateFilenames();
-	void ReadPassword();
+	void ReadPasswordFromNzb();
+	void ReadPasswordFromFilename();
+	
 
 	std::unique_ptr<FileInfo> m_fileInfo;
 	ArticleInfo* m_article = nullptr;

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 namespace Xml
 {
 	std::string Serialize(const xmlNodePtr rootNode);
+	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
 }
 
 #endif

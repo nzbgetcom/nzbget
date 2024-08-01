@@ -56,6 +56,26 @@ void FileSystem::NormalizePathSeparators(char* path)
 	}
 }
 
+std::optional<std::string> FileSystem::GetFileRealPath(const std::string& path)
+{
+	char buffer[256];
+
+#ifdef WIN32
+	DWORD len = GetFullPathName(path.c_str(), 256, buffer, nullptr);
+	if (len != 0)
+	{
+		return std::optional<std::string>{ buffer };
+	}
+#else
+	if (realpath(path.c_str(), buffer) != nullptr)
+	{
+		return std::optional<std::string>{ buffer };
+	}
+#endif
+
+	return std::nullopt;
+}
+
 #ifdef WIN32
 bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 {
@@ -595,6 +615,38 @@ bool FileSystem::RemoveDirectory(const char* dirFilename)
 #endif
 }
 
+
+std::string FileSystem::ExtractFilePathFromCmd(const std::string& path)
+{
+	if (path.empty())
+	{
+		return std::string(path);
+	}
+
+	size_t lastSeparatorPos = path.find_last_of(PATH_SEPARATOR);
+	if (lastSeparatorPos != std::string::npos)
+	{
+		size_t possibleKeysPos = path.find(" ", lastSeparatorPos);
+
+		if (possibleKeysPos != std::string::npos)
+		{
+			return path.substr(0, possibleKeysPos);
+		}
+	}
+
+	return path;
+}
+
+std::string FileSystem::EscapePathForShell(const std::string& path)
+{
+	if (path.empty())
+	{
+		return path;
+	}
+
+	return "\"" + path + "\"";
+}
+
 /* Delete directory which is empty or contains only hidden files or directories (whose names start with dot) */
 bool FileSystem::DeleteDirectory(const char* dirFilename)
 {
@@ -685,22 +737,28 @@ int64 FileSystem::FileSize(const char* filename)
 #endif
 }
 
-int64 FileSystem::FreeDiskSize(const char* path)
+std::optional<FileSystem::DiskState> FileSystem::GetDiskState(const char* path)
 {
 #ifdef WIN32
-	ULARGE_INTEGER free, dummy;
-	if (GetDiskFreeSpaceEx(path, &free, &dummy, &dummy))
+	ULARGE_INTEGER freeBytesAvailable;
+	ULARGE_INTEGER totalNumberOfBytes;
+
+	if (GetDiskFreeSpaceEx(path, &freeBytesAvailable, &totalNumberOfBytes, nullptr))
 	{
-		return free.QuadPart;
+		size_t available = freeBytesAvailable.QuadPart;
+		size_t total = totalNumberOfBytes.QuadPart;
+		return FileSystem::DiskState{ available, total };
 	}
 #else
 	struct statvfs diskdata;
 	if (!statvfs(path, &diskdata))
 	{
-		return (int64)diskdata.f_frsize * (int64)diskdata.f_bavail;
+		size_t available = diskdata.f_bavail * diskdata.f_frsize;
+		size_t total = diskdata.f_blocks * diskdata.f_frsize;
+		return FileSystem::DiskState{ available, total };
 	}
 #endif
-	return -1;
+	return std::nullopt;
 }
 
 bool FileSystem::RenameBak(const char* filename, const char* bakPart, bool removeOldExtension, CString& newName)

@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 /*
@@ -47,6 +48,7 @@ var Downloads = (new function($)
 	var nameColumnWidth = null;
 	var cached = false;
 	var lastDownloadRate;
+	var listGroupsSubs = [];
 
 	var statusData = {
 		'QUEUED': { Text: 'QUEUED', PostProcess: false },
@@ -114,6 +116,7 @@ var Downloads = (new function($)
 
 		DownloadsActionsMenu.init();
 	}
+	
 
 	this.applyTheme = function()
 	{
@@ -125,6 +128,19 @@ var Downloads = (new function($)
 	this.update = function()
 	{
 		RPC.call('listgroups', [], groups_loaded, null, { prefer_cached: true });
+	}
+
+	this.subscribe = function(sub)
+	{
+		listGroupsSubs.push(sub);
+	}
+
+	function notifyAll(data)
+	{
+		listGroupsSubs.forEach(function(sub)
+		{
+			sub.update(data);
+		});
 	}
 
 	function groups_loaded(_groups, _cached)
@@ -141,6 +157,7 @@ var Downloads = (new function($)
 			Downloads.groups = groups;
 			prepare();
 		}
+		notifyAll(groups);
 		RPC.next();
 	}
 

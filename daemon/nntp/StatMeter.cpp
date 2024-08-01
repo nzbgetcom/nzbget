@@ -278,27 +278,27 @@ void StatMeter::CalcTotalStat(int* upTimeSec, int* dnTimeSec, int64* allBytes, b
 }
 
 // Average speed in last 30 seconds
-int StatMeter::CalcCurrentDownloadSpeed()
+int64 StatMeter::CalcCurrentDownloadSpeed()
 {
 	if (m_standBy)
 	{
 		return 0;
 	}
 
-	int timeDiff = (int)Util::CurrentTime() - m_speedStartTime * SPEEDMETER_SLOTSIZE;
+	int64 timeDiff = static_cast<int64>(Util::CurrentTime()) - m_speedStartTime * SPEEDMETER_SLOTSIZE;
 	if (timeDiff == 0)
 	{
 		return 0;
 	}
 
-	return (int)(m_speedTotalBytes / timeDiff);
+	return m_speedTotalBytes / timeDiff;
 }
 
 // Amount of data downloaded in current second
-int StatMeter::CalcMomentaryDownloadSpeed()
+int64 StatMeter::CalcMomentaryDownloadSpeed()
 {
 	time_t curTime = Util::CurrentTime();
-	int speed = curTime == m_curSecTime ? m_curSecBytes.load() : 0;
+	int64 speed = curTime == m_curSecTime ? m_curSecBytes.load() : 0;
 	return speed;
 }
 

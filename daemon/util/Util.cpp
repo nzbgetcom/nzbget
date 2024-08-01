@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "nzbget.h"
 
 #include <sstream>
-
+#include <array>
 #include "Util.h"			
 #include "YEncode.h"
 
@@ -104,6 +104,13 @@ int getopt(int argc, char *argv[], char *optstring)
 }
 #endif
 
+#ifdef WIN32
+const char* Util::NULL_OUTPUT = " >nul 2>nul";
+const char* Util::FIND_CMD = "where ";
+#else
+const char* Util::NULL_OUTPUT = " > /dev/null 2> /dev/null";
+const char* Util::FIND_CMD = "which ";
+#endif
 
 char Util::VersionRevisionBuf[100];
 
@@ -114,7 +121,7 @@ void Util::Init()
 	CurrentTicks();
 }
 
-boost::optional<std::string> 
+std::optional<std::string> 
 Util::FindExecutorProgram(const std::string& filename, const std::string& customPath)
 {
 	size_t idx = filename.find_last_of(".");
@@ -125,81 +132,50 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 
 	const std::string fileExt = filename.substr(idx);
 
-	Tokenizer tok(customPath.c_str(), ",;");
-	while (char* shellover = tok.Next())
+	auto res = FindShellOverriddenExecutor(fileExt, customPath);
+	if (res.has_value())
 	{
-		char* shellcmd = strchr(shellover, '=');
-		if (shellcmd)
-		{
-			*shellcmd = '\0';
-			shellcmd++;
-
-			if (fileExt == shellover)
-			{
-				return std::string(shellcmd);
-			}
-		}
+		return res;
 	}
-
-	#ifdef _WIN32
-    	const std::string nullOutput = " > nul 2>&1";
-	#else
-		const std::string nullOutput = " > /dev/null 2>&1";
-	#endif
 
 	if (fileExt == ".py")
 	{
-		std::string cmd = "python3 --version" + nullOutput;
-		if (std::system(cmd.c_str()) == 0)
-		{
-			return std::string("python3");
-		}
-		cmd = "python --version" + nullOutput;
-		if (std::system(cmd.c_str()) == 0)
-		{
-			return std::string("python");
-		}
-		cmd = "py --version" + nullOutput;
-		if (std::system(cmd.c_str()) == 0)
-		{
-			return std::string("py");
-		}
-		return boost::none;
+		return FindPython();
 	}
 
 	if (fileExt == ".sh")
 	{
-		std::string cmd = "bash --version" + nullOutput;
+		std::string cmd = std::string("bash --version") + NULL_OUTPUT;
 		if (std::system(cmd.c_str()) == 0)
 		{
 			return std::string("bash");
 		}
-		cmd = "sh --version" + nullOutput;
+		cmd = std::string("sh --version") + NULL_OUTPUT;
 		if (std::system(cmd.c_str()) == 0)
 		{
 			return std::string("sh");
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".js")
 	{
-		const std::string cmd = "node --version" + nullOutput;
+		const std::string cmd = std::string("node --version") + NULL_OUTPUT;
 		if (std::system(cmd.c_str()) == 0)
 		{
 			return std::string("node");
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".cmd" || fileExt == ".bat")
 	{
-		const std::string cmd = "cmd.exe /c" + nullOutput;
+		const std::string cmd = std::string("cmd.exe /c") + NULL_OUTPUT;
 		if (std::system(cmd.c_str()) == 0)
 		{
 			return filename;
 		}
-		return boost::none;
+		return std::nullopt;
 	}
 
 	if (fileExt == ".exe")
@@ -208,6 +184,49 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 	}
 
 	return filename;
+}
+
+std::optional<std::string>
+Util::FindShellOverriddenExecutor(const std::string& fileExt, const std::string& customPath)
+{
+	if (fileExt.empty() || customPath.empty())
+	{
+		return std::nullopt;
+	}
+
+	Tokenizer tok(customPath.c_str(), ",;");
+	while (char* shellover = tok.Next())
+	{
+		char* shellcmd = strchr(shellover, '=');
+		if (shellcmd)
+		{
+			*shellcmd = '\0';
+			++shellcmd;
+
+			if (fileExt == shellover)
+			{
+				return std::string(shellcmd);
+			}
+		}
+	}
+
+	return std::nullopt;
+}
+
+std::optional<std::string> Util::FindPython()
+{
+	std::array<std::string, 3> pythonExecutables{ "python3", "python", "py" }; 
+
+	for (const auto& executable : pythonExecutables) 
+	{
+		std::string cmd = executable + " --version" + NULL_OUTPUT;
+		if (std::system(cmd.c_str()) == 0) 
+		{
+			return executable;
+		}
+	}
+
+	return std::nullopt;
 }
  
 int64 Util::JoinInt64(uint32 Hi, uint32 Lo)
@@ -221,7 +240,7 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 	*Lo = (uint32)(Int64 & 0xFFFFFFFF);
 }
 
-boost::optional<double> 
+std::optional<double> 
 Util::StrToNum(const std::string& str)
 {
 	std::istringstream ss(str);
@@ -231,13 +250,13 @@ Util::StrToNum(const std::string& str)
 	{
 		if (!ss.eof()) 
 		{
-			return boost::none;
+			return std::nullopt;
 		}
 
-		return boost::optional<double>{ num };
+		return { num };
 	}
 
-	return boost::none;
+	return std::nullopt;
 }
 
 /* Base64 decryption is taken from
@@ -336,25 +355,37 @@ CString Util::FormatSize(int64 fileSize)
 	return result;
 }
 
-CString Util::FormatSpeed(int bytesPerSecond)
+CString Util::FormatSpeed(int64 bytesPerSecond)
 {
 	CString result;
 
-	if (bytesPerSecond >= 100 * 1024 * 1024)
+	if (bytesPerSecond >= 100ll * 1024 * 1024 * 1024)
 	{
-		result.Format("%i MB/s", bytesPerSecond / 1024 / 1024);
+		result.Format("%li GB/s", bytesPerSecond / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 10ll * 1024 * 1024 * 1024)
+	{
+		result.Format("%0.1f GB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 1024 * 1024 * 1024)
+	{
+		result.Format("%0.2f GB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024 / 1024);
+	}
+	else if (bytesPerSecond >= 100 * 1024 * 1024)
+	{
+		result.Format("%li MB/s", bytesPerSecond / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 10 * 1024 * 1024)
 	{
-		result.Format("%0.1f MB/s", (float)bytesPerSecond / 1024.0 / 1024.0);
+		result.Format("%0.1f MB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024);
 	}
 	else if (bytesPerSecond >= 1024 * 1000)
 	{
-		result.Format("%0.2f MB/s", (float)bytesPerSecond / 1024.0 / 1024.0);
+		result.Format("%0.2f MB/s", static_cast<double>(bytesPerSecond) / 1024 / 1024);
 	}
 	else
 	{
-		result.Format("%i KB/s", bytesPerSecond / 1024);
+		result.Format("%li KB/s", bytesPerSecond / 1024);
 	}
 
 	return result;
@@ -674,6 +705,19 @@ uint32 Util::HashBJ96(const char* buffer, int bufSize, uint32 initValue)
 	return (uint32)hash((uint8*)buffer, (uint32)bufSize, (uint32)initValue);
 }
 
+std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::string& cmd)
+{
+	FILE* pipe = popen(cmd.c_str(), "r");
+	return std::unique_ptr<FILE, std::function<void(FILE*)>>(pipe, [](FILE* pipe)
+		{
+			if (pipe)
+			{
+				std::ignore = pclose(pipe);
+			}
+		}
+	);
+}
+
 #ifdef WIN32
 bool Util::RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, char* buffer, int* bufLen)
 {
@@ -687,6 +731,23 @@ bool Util::RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, 
 		return ret == 0;
 	}
 	return false;
+}
+#else
+std::optional<std::string> Util::Uname(const char* key)
+{
+	std::string cmd = std::string("uname ") + key;
+
+	const size_t BUFFER_SIZE = 256;
+	auto pipe = Util::MakePipe(cmd);
+	char buffer[BUFFER_SIZE];
+	if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
+	{
+		std::string res{ buffer };
+		Util::Trim(res);
+		return res;
+	}
+
+	return std::nullopt;
 }
 #endif
 

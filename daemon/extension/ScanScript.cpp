@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -42,13 +43,18 @@ bool ScanScriptController::HasScripts()
 }
 
 void ScanScriptController::ExecuteScripts(const char* nzbFilename,
-	const char* url, const char* directory, CString* nzbName, CString* category,
+	NzbInfo* nzbInfo, const char* directory, CString* nzbName, CString* category,
 	int* priority, NzbParameterList* parameters, bool* addTop, bool* addPaused,
 	CString* dupeKey, int* dupeScore, EDupeMode* dupeMode)
 {
+	if (nzbInfo && nzbInfo->GetSkipScriptProcessing())
+	{
+		return;
+	}
+
 	ScanScriptController scriptController;
 	scriptController.m_nzbFilename = nzbFilename;
-	scriptController.m_url = url;
+	scriptController.m_url = nzbInfo ? nzbInfo->GetUrl() : "";
 	scriptController.m_directory = directory;
 	scriptController.m_nzbName = nzbName;
 	scriptController.m_category = category;

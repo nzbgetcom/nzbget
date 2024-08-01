@@ -17,7 +17,7 @@ jobs:
 
     - name: Build
       run: |
-        BUILD_PARAMS="bin installer"
+        BUILD_PARAMS="linux bin installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
@@ -26,7 +26,7 @@ jobs:
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
         fi
-        bash linux/buildroot/build-nzbget.sh $BUILD_PARAMS
+        bash linux/build-nzbget.sh $BUILD_PARAMS
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
@@ -36,7 +36,7 @@ jobs:
         for FILE in *.run; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
-          mv $FILE $NEW_FILE          
+          mv $FILE $NEW_FILE
         done
 
     - name: Upload build artifacts
@@ -45,4 +45,3 @@ jobs:
         name: nzbget-linux-installers
         path: build/*.run
         retention-days: 5
-

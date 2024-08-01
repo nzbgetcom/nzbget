@@ -44,6 +44,5 @@ After the release has been published (from the `main` branch), the minor version
 
 List of files to change version:
 
-1. configure.ac - "AC_INIT" macro
-2. CMakeLists.txt - "project" block
-3. nzbget.vcxproj - "PreprocessorDefinitions" blocks - 4 matches
+1. CMakeLists.txt - `project` block
+2. osx/NZBGet-Info.plist - `CFBundleShortVersionString` block

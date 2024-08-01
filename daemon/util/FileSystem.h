@@ -22,15 +22,25 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
+
+#include <optional>
 #include "NString.h"
+#include "Options.h"
 
 class FileSystem
 {
+	struct DiskState
+	{
+		size_t available;
+		size_t total;
+	};
+
 public:
 	static CString GetLastErrorMessage();
 	static char* BaseFileName(const char* filename);
 	static bool SameFilename(const char* filename1, const char* filename2);
 	static void NormalizePathSeparators(char* path);
+	static std::optional<std::string> GetFileRealPath(const std::string& path);
 	static bool LoadFileIntoBuffer(const char* filename, CharBuffer& buffer, bool addTrailingNull);
 	static bool SaveBufferIntoFile(const char* filename, const char* buffer, int bufLen);
 	static bool AllocateFile(const char* filename, int64 size, bool sparse, CString& errmsg);
@@ -44,6 +54,8 @@ public:
 	static bool FileExists(const char* filename);
 	static bool DirectoryExists(const char* dirFilename);
 	static bool CreateDirectory(const char* dirFilename);
+	static std::string ExtractFilePathFromCmd(const std::string& path);
+	static std::string EscapePathForShell(const std::string& path);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);
@@ -56,7 +68,7 @@ public:
 	static CString GetCurrentDirectory();
 	static bool SetCurrentDirectory(const char* dirFilename);
 	static int64 FileSize(const char* filename);
-	static int64 FreeDiskSize(const char* path);
+	static std::optional<DiskState> GetDiskState(const char* path);
 	static bool DirEmpty(const char* dirFilename);
 	static bool RenameBak(const char* filename, const char* bakPart, bool removeOldExtension, CString& newName);
 #ifndef WIN32

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ namespace ExtensionManager
 {
 	const Extensions& Manager::GetExtensions() const &
 	{
-		std::shared_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::shared_lock<std::shared_mutex> lock{m_mutex};
 		return m_extensions;
 	}
 
@@ -55,10 +55,10 @@ namespace ExtensionManager
 		return std::make_pair(status, std::move(tmpFileName));
 	}
 
-	boost::optional<std::string>
+	std::optional<std::string>
 	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
 	{
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
@@ -89,10 +89,10 @@ namespace ExtensionManager
 		}
 
 		m_extensions.erase(extensionIt);
-		return boost::none;
+		return std::nullopt;
 	}
 
-	boost::optional<std::string> 
+	std::optional<std::string> 
 	Manager::InstallExtension(const std::string& filename, const std::string& dest)
 	{
 		if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
@@ -129,13 +129,13 @@ namespace ExtensionManager
 			return "Failed to delete temp file: " + filename;
 		}
 
-		return boost::none;
+		return std::nullopt;
 	}
 
-	boost::optional<std::string>
+	std::optional<std::string>
 	Manager::DeleteExtension(const std::string& name)
 	{
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
@@ -155,10 +155,10 @@ namespace ExtensionManager
 		}
 
 		m_extensions.erase(extensionIt);
-		return boost::none;
+		return std::nullopt;
 	}
 
-	boost::optional<std::string>
+	std::optional<std::string>
 	Manager::LoadExtensions()
 	{
 		const char* scriptDir = g_Options->GetScriptDir();
@@ -167,7 +167,7 @@ namespace ExtensionManager
 			return std::string("\"ScriptDir\" is not specified");
 		}
 
-		std::unique_lock<std::shared_timed_mutex> lock{m_mutex};
+		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		m_extensions.clear();
 
@@ -181,10 +181,10 @@ namespace ExtensionManager
 		CreateTasks();
 		m_extensions.shrink_to_fit();
 
-		return boost::none;
+		return std::nullopt;
 	}
 
-	boost::optional<std::string>
+	std::optional<std::string>
 	Manager::DeleteExtension(const Extension::Script& ext)
 	{
 		const char* location = ext.GetLocation();
@@ -208,14 +208,14 @@ namespace ExtensionManager
 			CString err;
 			if (!FileSystem::DeleteDirectoryWithContent(location, err))
 			{
-				return boost::optional<std::string>(err.Str());
+				return std::optional<std::string>(err.Str());
 			}
 
-			return boost::none;
+			return std::nullopt;
 		}
 		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
 		{
-			return boost::none;
+			return std::nullopt;
 		}
 
 		return std::string("Failed to delete ") + location;
