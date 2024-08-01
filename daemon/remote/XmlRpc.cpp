@@ -1448,8 +1448,8 @@ void StatusXmlCommand::Execute()
 	if (res.has_value())
 	{
 		const auto& value = res.value();
-		freeDiskSpace = Util::SafeIntCast<size_t, int64>(value.available);
-		totalDiskSpace = Util::SafeIntCast<size_t, int64>(value.total);
+		freeDiskSpace = value.available;
+		totalDiskSpace = value.total;
 	}
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
 	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);

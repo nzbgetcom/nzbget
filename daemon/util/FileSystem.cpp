@@ -745,16 +745,16 @@ std::optional<FileSystem::DiskState> FileSystem::GetDiskState(const char* path)
 
 	if (GetDiskFreeSpaceEx(path, &freeBytesAvailable, &totalNumberOfBytes, nullptr))
 	{
-		size_t available = freeBytesAvailable.QuadPart;
-		size_t total = totalNumberOfBytes.QuadPart;
+		int64 available = Util::SafeIntCast<uint64, int64>(freeBytesAvailable.QuadPart);
+		int64 total = Util::SafeIntCast<uint64, int64>(totalNumberOfBytes.QuadPart);
 		return FileSystem::DiskState{ available, total };
 	}
 #else
 	struct statvfs diskdata;
 	if (!statvfs(path, &diskdata))
 	{
-		size_t available = diskdata.f_bavail * diskdata.f_frsize;
-		size_t total = diskdata.f_blocks * diskdata.f_frsize;
+		int64 available = Util::SafeIntCast<uint64, int64>(diskdata.f_bavail * diskdata.f_frsize);
+		int64 total = Util::SafeIntCast<uint64, int64>(diskdata.f_blocks * diskdata.f_frsize);
 		return FileSystem::DiskState{ available, total };
 	}
 #endif
