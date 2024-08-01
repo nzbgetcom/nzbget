@@ -21,6 +21,7 @@
 set -e
 
 # config varibles (defaults, can be overrided from command-line)
+PLATFORMS=""
 ARCHS=""
 OUTPUTS=""
 CONFIGS=""
@@ -28,11 +29,10 @@ COREX=4
 TESTING="no"
 
 # build variables
-ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx"
-PLATFORM=linux
+ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx i686-ndk x86_64-ndk armhf-ndk aarch64-ndk"
+ALL_PLATFORMS="linux android"
 OUTPUTDIR=build
 BUILDROOT_HOME=/build
-TOOLCHAIN_PATH=$BUILDROOT_HOME/buildroot
 LIB_SRC_PATH=$BUILDROOT_HOME/source
 LIB_PATH=$BUILDROOT_HOME/lib
 
@@ -51,8 +51,9 @@ BOOST_VERSION=1.84.0
 help()
 {
     echo "Usage:"
-    echo "  $(basename $0) [architectures] [output] [configs] [testing] [corex]"
-    echo "    architectures : all (default) $ALL_ARCHS"
+    echo "  $(basename $0) [platform] [architectures] [output] [configs] [testing] [corex]"
+    echo "    platform      : all (default) $ALL_ARCHS"
+    echo "    architectures : all (default) $ALL_PLATFORMS"
     echo "    output        : bin installer"
     echo "    testing       : build testing image"
     echo "    configs       : release (default) debug"
@@ -65,6 +66,9 @@ parse_args()
     for PARAM in "$@"
     do
         case $PARAM in
+            android|linux)
+                PLATFORMS=`echo "$PLATFORMS $PARAM" | xargs`
+                ;;
             release|debug)
                 CONFIGS=`echo "$CONFIGS $PARAM" | xargs`
                 ;;
@@ -96,6 +100,10 @@ parse_args()
         esac
     done
 
+    if [ "$PLATFORMS" == "" ]; then
+        PLATFORMS="$ALL_PLATFORMS"
+    fi
+
     if [ "$ARCHS" == "" ]; then
         ARCHS="$ALL_ARCHS"
     fi
@@ -107,18 +115,46 @@ parse_args()
     if [ "$CONFIGS" == "" ]; then
         CONFIGS="release debug"
     fi
+
+    # filter unneeded platforms
+    FILTERED_PLATFORMS=""
+    for PLATFORM in $PLATFORMS; do
+        filter_archs
+        if [ "$PLATFORM_ARCHS" != "" ]; then
+            FILTERED_PLATFORMS=`echo "$FILTERED_PLATFORMS $PLATFORM" | xargs`
+        fi
+    done
+    PLATFORMS=$FILTERED_PLATFORMS
+
+    # filter unneeded archs
+    FILTERED_ARCHS=""
+    for ARCH in $ARCHS; do
+        ARCH_NEED=0
+        for PLATFORM in $PLATFORMS; do
+            if [[ $ARCH == *-ndk ]] && [ "$PLATFORM" == "android" ]; then
+                ARCH_NEED=1
+            fi
+            if [[ $ARCH != *-ndk ]] && [ "$PLATFORM" == "linux" ]; then
+                ARCH_NEED=1
+            fi
+        done
+        if [ $ARCH_NEED -eq 1 ]; then
+            FILTERED_ARCHS=`echo "$FILTERED_ARCHS $ARCH" | xargs`
+        fi
+    done
+    ARCHS=$FILTERED_ARCHS
 }
 
 print_config()
 {
     echo "Active configuration:"
-    echo "  platform       : $PLATFORM"
+    echo "  platforms      : $PLATFORMS"
     echo "  architectures  : $ARCHS"
     echo "  outputs        : $OUTPUTS"
     echo "  configs        : $CONFIGS"
     echo "  testing        : $TESTING"
     echo "  cores          : $COREX"
-    echo 
+    echo
 }
 
 construct_suffix()
@@ -128,6 +164,25 @@ construct_suffix()
     else
         SUFFIX=""
     fi
+}
+
+filter_archs()
+{
+    PLATFORM_ARCHS=""
+    for ARCH in $ARCHS
+    do
+        if [[ $ARCH == *-ndk ]] && [ "$PLATFORM" == "android" ]; then
+            PLATFORM_ARCHS=`echo "$PLATFORM_ARCHS $ARCH" | xargs`
+        fi
+        if [[ $ARCH != *-ndk ]] && [ "$PLATFORM" == "linux" ]; then
+            PLATFORM_ARCHS=`echo "$PLATFORM_ARCHS $ARCH" | xargs`
+        fi
+    done
+}
+
+get_short_arch()
+{
+    ARCH_SHORT="${ARCH/-ndk/}"
 }
 
 download_lib_source()
@@ -156,7 +211,7 @@ build_lib()
         rm $LIB_SRC_FILE
         cd ${LIB_SRC_FILE/.tar.gz/}
         case $LIB in
-            "ncurses")                
+            ncurses)
                 ./configure \
               	--without-cxx \
                 --without-cxx-binding \
@@ -171,7 +226,7 @@ build_lib()
                 --enable-overwrite \
                 --enable-pc-files \
                 --disable-stripping \
-            	--without-manpages \
+                --without-manpages \
                 --with-fallbacks="xterm xterm-color xterm-256color xterm-16color linux vt100 vt200" \
                 --without-shared \
                 --with-normal \
@@ -182,10 +237,10 @@ build_lib()
                 --host=$HOST \
                 --prefix="$PWD/../$LIB"
                 ;;
-            "zlib")
+            zlib)
                 ./configure --static --prefix="$PWD/../$LIB"
                 ;;
-            "libxml2")
+            libxml2)
                 ./autogen.sh --host=$HOST \
                 --enable-static \
                 --disable-shared \
@@ -197,53 +252,87 @@ build_lib()
                 --without-iconv \
                 --prefix="$PWD/../$LIB"
                 ;;
-            "openssl")
+            openssl)
                 OPENSSL_OPTS=""
                 case $ARCH in
-                    "i686")
+                    i686)
                         OPENSSL_ARCH=linux-generic32
                         ;;
-                    "armel")
+                    armel)
                         OPENSSL_ARCH=linux-armv4
                         ;;
-                    "armhf")
+                    armhf)
                         OPENSSL_ARCH=linux-armv4
                         ;;
-                    "riscv64")
+                    riscv64)
                         OPENSSL_ARCH=linux64-riscv64
                         ;;
-                    "mipseb")
+                    mipseb)
                         OPENSSL_ARCH=linux-mips32
                         ;;
-                    "mipsel")
+                    mipsel)
                         OPENSSL_ARCH=linux-mips32
                         ;;
-                    "ppc6xx")
+                    ppc6xx)
                         OPENSSL_ARCH=linux-ppc
                         ;;
-                    "ppc500")
+                    ppc500)
                         OPENSSL_ARCH=linux-ppc
                         OPENSSL_OPTS=no-async
+                        ;;
+                    *-ndk)
+                        _CC=$CC
+                        unset CC
+                        _CPP=$CPP
+                        unset CPP
+                        _CXX=$CXX
+                        unset CXX
+                        _AR=$AR
+                        unset AR
+                        _STRIP=$STRIP
+                        unset STRIP
+                        OPENSSL_OPTS="-D__ANDROID_API__=21 no-asm"
+                        export ANDROID_NDK_ROOT="$TOOLCHAIN_PATH/android-ndk"
+                        case $ARCH in
+                            i686-ndk)
+                                OPENSSL_ARCH=android-x86
+                                ANDROID_TOOLCHAIN=x86-4.9
+                                ;;
+                            x86_64-ndk)
+                                OPENSSL_ARCH=android-x86_64
+                                ANDROID_TOOLCHAIN=x86_64-4.9
+                                ;;
+                            armhf-ndk)
+                                OPENSSL_ARCH=android-arm
+                                ANDROID_TOOLCHAIN=arm-linux-androideabi-4.9
+                                ;;
+                            aarch64-ndk)
+                                OPENSSL_ARCH=android-arm64
+                                ANDROID_TOOLCHAIN=aarch64-linux-android-4.9
+                                ;;
+                        esac
+                        _PATH=$PATH
+                        export PATH="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$ANDROID_NDK_ROOT/toolchains/$ANDROID_TOOLCHAIN/prebuilt/linux-x86_64/bin:$PATH"
                         ;;
                     *)
                         OPENSSL_ARCH=linux-$ARCH
                         ;;
                 esac
                 perl Configure $OPENSSL_ARCH \
-                no-shared \
-                threads \
-                no-rc5 \
-                enable-camellia \
-                no-tests \
-                no-fuzz-libfuzzer \
-                no-fuzz-afl \
-                no-afalgeng \
-                zlib \
-                no-dso \
-                $OPENSSL_OPTS \
-                --prefix="$PWD/../$LIB"
+                    no-shared \
+                    threads \
+                    no-rc5 \
+                    enable-camellia \
+                    no-tests \
+                    no-fuzz-libfuzzer \
+                    no-fuzz-afl \
+                    no-afalgeng \
+                    zlib \
+                    no-dso \
+                    $OPENSSL_OPTS \
+                    --prefix="$PWD/../$LIB"
                 ;;
-            "boost")
+            boost)
                 ./bootstrap.sh --with-libraries=json --prefix="$PWD/../$LIB"
                 echo "using gcc : buildroot : $CXX ; " >>  project-config.jam
                 ./b2 --toolset=gcc-buildroot cxxstd=14 link=static runtime-link=static install
@@ -251,7 +340,21 @@ build_lib()
         esac
         if [ "$LIB" != "boost" ]; then
             make -j $COREX
-            make install
+            if [ "$LIB" == "openssl" ]; then
+                make install_sw
+            else
+                make install
+            fi
+        fi
+        # restore vars after android openssl build
+        if [ "$LIB" == "openssl" ]  && [ "$PLATFORM" == "android" ] ; then
+            export CC=$_CC
+            export CPP=$_CPP
+            export CXX=$_CXX
+            export AR=$_AR
+            export STRIP=$_STRIP
+            export PATH=$_PATH
+            unset ANDROID_NDK_ROOT
         fi
         cd ..
         rm -rf ${LIB_SRC_FILE/.tar.gz/}
@@ -284,6 +387,7 @@ build_lib()
 build_7zip()
 {
     if [ ! -d "$LIB_PATH/$ARCH/7zip" ]; then
+        rm -rf /tmp/7z
         mkdir -p /tmp/7z
         curl -o /tmp/7z/7z.tar.xz -lL https://www.7-zip.org/a/7z$ZIP7_VERSION-src.tar.xz
         cd /tmp/7z
@@ -291,6 +395,11 @@ build_7zip()
         rm 7z.tar.xz
         cd CPP/7zip
         sed "s|^LDFLAGS_STATIC =.*|LDFLAGS_STATIC = -static|" -i 7zip_gcc.mak
+        if [ "$PLATFORM" == "android" ]; then
+            sed "s|^#if defined(TIME_UTC)|#if defined(_TIME_UTC)|g" -i ../Windows/TimeUtils.cpp
+            sed "s|^LIB2 =.*|LIB2 = |g" -i 7zip_gcc.mak
+            sed "s|^CFLAGS_WARN_WALL =.*|CFLAGS_WARN_WALL = -Wall -Wextra|" -i 7zip_gcc.mak
+        fi
         cd Bundles/Alone
         make -j $COREX -f makefile.gcc
         mkdir -p $LIB_PATH/$ARCH/7zip
@@ -311,6 +420,7 @@ build_unrar_version()
     else
         UNRARSRC=https://www.rarlab.com/rar/unrarsrc-$UNRAR7_VERSION.tar.gz
     fi
+    echo "Building unrar version $UNRAR_VERSION for $ARCH"
     curl -o /tmp/unrar.tar.gz $UNRARSRC
     cd /tmp
     tar zxf unrar.tar.gz
@@ -319,6 +429,14 @@ build_unrar_version()
     sed "s|^CXX=.*|CXX=$CXX|" -i makefile
     sed "s|^AR=.*|AR=$AR|" -i makefile
     sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
+    if [ "$PLATFORM" == "android" ] ; then
+        if [ "$UNRAR_VERSION" == "6" ]; then
+            sed 's:^#if defined(_EMX) || defined (__VMS)$:#if defined(_EMX) || defined (__VMS) || defined (__ANDROID__):' -i consio.cpp
+        else
+            sed 's:#ifdef __VMS$:#if defined (__VMS) || defined (__ANDROID__):' -i consio.cpp
+        fi
+        sed 's:^#define USE_LUTIMES$:#undef USE_LUTIMES:' -i os.hpp
+    fi
     # some unrar7 optimizations
     if [ "$UNRAR_VERSION" == "7" ]; then
         sed "s|LDFLAGS=-pthread|LDFLAGS=-pthread -static|" -i makefile
@@ -332,7 +450,7 @@ build_unrar_version()
             armhf)
                 sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" -i makefile
                 ;;
-            *)                
+            *)
                 sed "s|CXXFLAGS=-march=native |CXXFLAGS=|" -i makefile
                 ;;
         esac
@@ -360,7 +478,7 @@ build_unrar()
         for UNRAR_VERSION in 6 7; do
             build_unrar_version $UNRAR_VERSION
         done
-    fi    
+    fi
 }
 
 build_bin()
@@ -374,11 +492,11 @@ build_bin()
     case $ARCH in
         armel)
             export HOST="arm-buildroot-linux-musleabi"
-            CMAKE_SYSTEM_PROCESSOR=arm
+            CMAKE_SYSTEM_PROCESSOR="arm"
             ;;
         armhf)
             export HOST="arm-buildroot-linux-musleabihf"
-            CMAKE_SYSTEM_PROCESSOR=arm
+            CMAKE_SYSTEM_PROCESSOR="arm"
             ;;
         aarch64)
             export HOST="aarch64-buildroot-linux-musl"
@@ -412,12 +530,43 @@ build_bin()
             export HOST="powerpc-buildroot-linux-uclibcspe"
             CMAKE_SYSTEM_PROCESSOR="powerpc"
             ;;
+        i686-ndk)
+            export HOST="i686-linux-android"
+            CMAKE_SYSTEM_PROCESSOR="i686"
+            ;;
+        x86_64-ndk)
+            export HOST="x86_64-linux-android"
+            CMAKE_SYSTEM_PROCESSOR="x86_64"
+            ;;
+        armhf-ndk)
+            export HOST="arm-linux-androideabi"
+            CMAKE_SYSTEM_PROCESSOR="arm"
+            ;;
+        aarch64-ndk)
+            export HOST="aarch64-linux-android"
+            CMAKE_SYSTEM_PROCESSOR="aarch64"
+            ;;
     esac
-    export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-gcc"
-    export CPP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-cpp"
-    export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-g++"
-    export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
-    export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
+
+
+    case $PLATFORM in
+        android)
+            TOOLCHAIN_PATH=$BUILDROOT_HOME/android
+            unset CPP
+            export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-clang"
+            export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-clang++"
+            export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
+            export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
+            ;;
+        *)
+            TOOLCHAIN_PATH=$BUILDROOT_HOME/buildroot
+            export CC="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-gcc"
+            export CPP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-cpp"
+            export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-g++"
+            export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
+            export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
+            ;;
+    esac
 
     # clean build flags
     export CXXFLAGS="-Os"
@@ -434,7 +583,16 @@ build_bin()
     build_7zip
     build_unrar
 
-    export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+    case $PLATFORM in
+        android)
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -latomic"
+            CMAKE_EXTRA_ARGS="-DCOMPILER=clang"
+            ;;
+        *)
+            export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            CMAKE_EXTRA_ARGS=""
+            ;;
+    esac
     export INCLUDES="$NZBGET_INCLUDES"
 
     unset CXXFLAGS
@@ -456,7 +614,8 @@ build_bin()
         -DENABLE_STATIC=ON \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DVERSION_SUFFIX=$VERSION_SUFFIX \
-        -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH
+        -DCMAKE_INSTALL_PREFIX=$NZBGET_ROOT/$OUTPUTDIR/install/$ARCH \
+        $CMAKE_EXTRA_ARGS
     BUILD_STATUS=""
     cmake --build $OUTPUTDIR/$ARCH -j $COREX 2>$OUTPUTDIR/$ARCH/build.log || BUILD_STATUS=$?
     if [ ! -z $BUILD_STATUS ]; then
@@ -464,9 +623,9 @@ build_bin()
         exit 1
     fi
     cmake --install $OUTPUTDIR/$ARCH
-    
+
     cd $OUTPUTDIR/install/$ARCH
-    
+
     mkdir -p nzbget
     mv bin/nzbget nzbget/nzbget
     mv share/nzbget/webui nzbget
@@ -486,7 +645,7 @@ build_bin()
     sed 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' -i $CONFTEMPLATE
 
     rm -rf etc bin share
-    tar -czf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz nzbget
+    tar -czf $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz nzbget
     mv *.tar.gz $NZBGET_ROOT/$OUTPUTDIR
     cd $NZBGET_ROOT
     rm -rf $OUTPUTDIR/$ARCH
@@ -495,14 +654,18 @@ build_bin()
 
 build_installer()
 {
+    filter_archs
+    if [ "$PLATFORM_ARCHS" == "" ]; then return; fi
+
     echo "Creating installer for $PLATFORM $CONFIG..."
 
     cd $OUTPUTDIR
     # checking if all targets exists
-    for ARCH in $ARCHS; do
+    for ARCH in $PLATFORM_ARCHS; do
+        get_short_arch
         ALLEXISTS="yes"
-        if [ ! -f $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz ]; then
-            echo "Could not find $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz"
+        if [ ! -f $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz ]; then
+            echo "Could not find $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz"
             ALLEXISTS="no"
         fi
     done
@@ -513,13 +676,14 @@ build_installer()
 
     echo "Unpacking targets..."
     rm -r -f nzbget
-    for ARCH in $ARCHS; do
+    for ARCH in $PLATFORM_ARCHS; do
+        get_short_arch
         ALLEXISTS="yes"
-        tar zxf $BASENAME-bin-$PLATFORM-$ARCH$SUFFIX.tar.gz
-        mv nzbget/nzbget nzbget/nzbget-$ARCH
-        cp $LIB_PATH/$ARCH/unrar/unrar nzbget/unrar-$ARCH
-        cp $LIB_PATH/$ARCH/unrar/unrar7 nzbget/unrar7-$ARCH
-        cp $LIB_PATH/$ARCH/7zip/7za nzbget/7za-$ARCH
+        tar zxf $BASENAME-bin-$PLATFORM-$ARCH_SHORT$SUFFIX.tar.gz
+        mv nzbget/nzbget nzbget/nzbget-$ARCH_SHORT
+        cp $LIB_PATH/$ARCH/unrar/unrar nzbget/unrar-$ARCH_SHORT
+        cp $LIB_PATH/$ARCH/unrar/unrar7 nzbget/unrar7-$ARCH_SHORT
+        cp $LIB_PATH/$ARCH/7zip/7za nzbget/7za-$ARCH_SHORT
     done
 
     # adjusting nzbget.conf
@@ -551,8 +715,11 @@ build_installer()
     # creating installer script
     sed "s:^TITLE=$:TITLE=\"$BASENAME$SUFFIX\":" -i $INSTFILE
     sed "s:^PLATFORM=$:PLATFORM=\"$PLATFORM\":" -i $INSTFILE
-    DISTTARGETS="${ARCHS/dist/}"
-    DISTTARGETS=`echo "$DISTTARGETS" | xargs`
+    DISTTARGETS=""
+    for ARCH in $PLATFORM_ARCHS; do
+        get_short_arch
+        DISTTARGETS=`echo "$DISTTARGETS $ARCH_SHORT" | xargs`
+    done
     sed "s:^DISTARCHS=$:DISTARCHS=\"$DISTTARGETS\":" -i $INSTFILE
 
     MD5=`md5sum "$INSTFILE.data" | cut -b-32`
@@ -604,16 +771,22 @@ BASENAME="nzbget-$VERSION$VERSION_SUFFIX"
 if [[ $OUTPUTS == *"bin"* ]]; then
     for CONFIG in $CONFIGS; do
         construct_suffix
-        for ARCH in $ARCHS; do
-            build_bin
+        for PLATFORM in $PLATFORMS; do
+            filter_archs
+            for ARCH in $PLATFORM_ARCHS; do
+                get_short_arch
+                build_bin
+            done
         done
     done
 fi
 
 # build installers
 if [[ $OUTPUTS == *"installer"* ]]; then
-    for CONFIG in $CONFIGS; do
-        construct_suffix
-        build_installer
+    for PLATFORM in $PLATFORMS; do
+        for CONFIG in $CONFIGS; do
+            construct_suffix
+            build_installer
+        done
     done
 fi

@@ -46,6 +46,8 @@ Synology package are available as SynoCommunity package. [Synology readme](docs/
 
 QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
 
+Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.md)
+
 ## Migration from older NZBGet versions
 
 [Migrating from NZBGet v21 or older](https://github.com/nzbgetcom/nzbget/discussions/100#discussioncomment-8080102)
