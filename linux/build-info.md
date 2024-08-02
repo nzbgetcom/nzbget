@@ -1,37 +1,49 @@
 # About
 
-`build-nzbget.sh` is a bash script which is used to build linux nzbget packages.
+`build-nzbget.sh` is a bash script which is used to build linux and android nzbget packages.
 
-Supported architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
+Supported linux architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
+
+Supported android architectures: `i686-ndk` `x86_64-ndk` `armhf-ndk` `aarch64-ndk`
 
 # Prerequisites
 
 1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
 2. Installed build dependencies (Ubuntu/Debian example):
 ```
-sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 ```
 3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
+4. Installed Android NDK and standalone Android toolkits - one per architecture (see [NDK setup](#ndk-setup) below)
 
 # Building NZBGet
 
 From the cloned repository, run:
 ```
-bash linux/buildroot/build-nzbget.sh [architectures] [output] [configs] [testing] [corex]
+bash linux/build-nzbget.sh [platforms] [architectures] [output] [configs] [testing] [corex]
 ```
 
 Build options:
+- platforms: default value `linux android`
+    - linux: build linux packages
+    - android: build android packages
 - architectures: default value `all`
-    - armel
-    - armhf
-    - aarch64
-    - i686
-    - x86_64
-    - riscv64
-    - mipsel
-    - mipseb
-    - ppc500
-    - ppc6xx
+    - linux:
+        - armel
+        - armhf
+        - aarch64
+        - i686
+        - x86_64
+        - riscv64
+        - mipsel
+        - mipseb
+        - ppc500
+        - ppc6xx
+    - android:
+        - i686-ndk
+        - x86_64-ndk
+        - armhf-ndk
+        - aarch64-ndk
 - output: default value `bin installer`
     - bin: build binary package
     - installer: build installer package
@@ -45,8 +57,8 @@ Build options:
 
 # Output files
 
-- build/*.tar.gz - one file per platform - binary package
-- build/*.run - installer package
+- build/*.tar.gz - one file per architecture - binary package
+- build/*.run - one file per platform - installer package
 
 # Buildroot setup
 
@@ -119,4 +131,26 @@ It will download and build buildroot with needed options and patches
 If you want to build all supported toolchains, run
 ```
 for ARCH in aarch64 armel armhf i686 x86_64 riscv64 mipseb mipsel ppc500 ppc6xx; do bash linux/buildroot/build-toolchain.sh $ARCH; done
+```
+
+# NDK setup
+
+Script assumes that andriod toolchains is installed in `/build/android/` - one folder per architecture.
+
+To install Android toolchain and NDK:
+
+Make the /build directory and add the necessary permissions.
+```
+sudo mkdir -p /build
+sudo chmod 777 /build
+```
+
+From the cloned repository, run:
+```
+bash linux/android/build-toolchain.sh [architecture]
+```
+
+If you want to build all supported toolchains, run
+```
+for ARCH in i686 x86_64 armhf aarch64; do bash linux/android/build-toolchain.sh $ARCH; done
 ```

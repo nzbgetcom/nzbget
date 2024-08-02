@@ -13,7 +13,10 @@ jobs:
 
   build-linux:
     uses: ./.github/workflows/linux.yml
-  
+
+  build-android:
+    uses: ./.github/workflows/android.yml
+
   build-osx:
     uses: ./.github/workflows/osx.yml
     permissions:
@@ -34,12 +37,12 @@ jobs:
     needs: [build-linux]
     permissions:
       actions: write
-  
+
   generate-signatures:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
     runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-osx, repack-qnap, build-linux-pkg]
+    needs: [build-windows, build-linux, build-osx, build-android, repack-qnap, build-linux-pkg]
     permissions:
       actions: write
     steps:
@@ -52,6 +55,7 @@ jobs:
         mkdir -p builds
         mv nzbget-windows-installers/* builds || true
         mv nzbget-linux-installers/* builds || true
+        mv nzbget-android-installers/* builds || true
         mv nzbget-osx-installers/* builds || true
         mv nzbget-qnap-packages/* builds || true
         mv nzbget-deb-packages/* builds || true
@@ -102,6 +106,7 @@ jobs:
         name: |
           nzbget-windows-installers
           nzbget-linux-installers
+          nzbget-android-installers
           nzbget-osx-installers
           nzbget-qnap-packages
 

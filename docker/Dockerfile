@@ -47,6 +47,7 @@ RUN \
   cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget && \
   cmake --build . -j ${MAKE_JOBS} && \
   cmake --install . && \
+  cmake --build . --target install-conf && \
   mv /app/nzbget/bin/nzbget /app/nzbget/ && \
   rm -rf /app/nzbget/bin/ && \
   rm -rf /app/nzbget/etc/ && \

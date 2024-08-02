@@ -1,4 +1,4 @@
-name: linux build 
+name: android build 
 
 on:
   workflow_call:
@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, nzbget-linux]
+    runs-on: [self-hosted, nzbget-android]
 
     steps:
     
@@ -17,7 +17,7 @@ jobs:
 
     - name: Build
       run: |
-        BUILD_PARAMS="linux bin installer"
+        BUILD_PARAMS="android bin installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
@@ -32,16 +32,16 @@ jobs:
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android.run"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+          NEW_FILE=${FILE/-bin-android.run/$SUFFIX}
           mv $FILE $NEW_FILE
         done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-linux-installers
+        name: nzbget-android-installers
         path: build/*.run
         retention-days: 5

@@ -113,6 +113,7 @@ for ARCH in $ARCHS; do
     
     strip nzbget
     cmake --install . >/dev/null
+    cmake --build . --target install-conf
     cd ../..
 
     # fetch tools and root certificates

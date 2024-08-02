@@ -31,8 +31,8 @@ class FileSystem
 {
 	struct DiskState
 	{
-		size_t available;
-		size_t total;
+		int64 available;
+		int64 total;
 	};
 
 public:
