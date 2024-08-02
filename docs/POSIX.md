@@ -96,6 +96,18 @@ cmake --install .
 ```
 cmake --build . --target uninstall
 ```
+  - Install configuration files into <prefix>/etc via:
+```
+cmake --build . --target install-conf
+```
+  - Uninstall configuration files into <prefix>/etc via:
+```
+cmake --build . --target uninstall-conf
+```
+  - Run tests:
+```
+ctest
+```
 
 ### Configure-options
 ---------------------
@@ -260,7 +272,7 @@ Configure-script checks which library is installed and use it. If both are
 available it gives the precedence to OpenSSL. You may override that with
 the option --with-tlslib=(OpenSSL, GnuTLS). For example to build with GnuTLS:
 ```
-./configure --with-tlslib= GnuTLS
+./configure --with-tlslib=GnuTLS
 ```
 
 Following configure-parameters may be useful:
