@@ -63,7 +63,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "-O0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "-O0 -pthread -g -DDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
