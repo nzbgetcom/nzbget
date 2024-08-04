@@ -259,9 +259,13 @@ namespace System
 #if __BSD__
 	void OS::Init()
 	{
+		int mib[2];
 		size_t len = BUFFER_SIZE;
 		char buffer[BUFFER_SIZE];
-		if (sysctlbyname("kern.ostype", &buffer, &len, nullptr, 0) == 0)
+
+		mib[0] = CTL_KERN;
+		mib[1] = KERN_OSTYPE;
+		if (sysctl(mib, 2, buffer, &len, nullptr, 0) != -1)
 		{
 			m_name = buffer;
 			Util::Trim(m_name);
@@ -273,7 +277,8 @@ namespace System
 
 		len = BUFFER_SIZE;
 
-		if (sysctlbyname("kern.osrelease", &buffer, &len, nullptr, 0) == 0)
+		mib[1] = KERN_OSRELEASE;
+		if (sysctl(mib, 2, buffer, &len, nullptr, 0) != -1)
 		{
 			m_version = buffer;
 			Util::Trim(m_version);
