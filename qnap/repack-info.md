@@ -1,6 +1,6 @@
 # About
 
-"repack-nzbget.sh" is a bash script which is used to repack nzbget linux installer to QNAP packages (all platforms).
+`repack-nzbget.sh` is a bash script which is used to repack nzbget linux installer to QNAP packages.
 
 
 # Prerequisites

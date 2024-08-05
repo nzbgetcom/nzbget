@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -110,6 +111,9 @@ compiled */
 #pragma warning(disable:4800) // 'type' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning(disable:4267) // 'var' : conversion from 'size_t' to 'type', possible loss of data
 
+#define popen _popen
+#define pclose _pclose
+
 #endif
 
 /***************** GLOBAL INCLUDES *****************/
@@ -164,6 +168,12 @@ compiled */
 #include <netinet/in.h>
 #include <dirent.h>
 
+#ifndef __linux__
+#include <sys/sysctl.h>
+#endif
+
+#define __BSD__ (__FreeBSD__ || __NetBSD__ || __OpenBSD__ || __DragonFly__)
+
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -210,6 +220,10 @@ compiled */
 #include <shared_mutex>
 #include <condition_variable>
 #include <chrono>
+#include <optional>
+#include <variant>
+#include <limits>
+#include <type_traits>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>
@@ -353,7 +367,7 @@ typedef int pid_t;
 typedef uint8_t uint8;
 typedef int16_t int16;
 typedef uint16_t uint16;
-typedef uint32_t int32;
+typedef int32_t int32;
 typedef uint32_t uint32;
 typedef int64_t int64;
 typedef uint64_t uint64;

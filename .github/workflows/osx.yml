@@ -18,9 +18,9 @@ jobs:
     - name: Build
       run: |
         if [ "$GITHUB_REF_NAME" != "main" ]; then
-          bash osx/build-nzbget-x64.sh testing
+          bash osx/build-nzbget.sh x64 testing
         else
-          bash osx/build-nzbget-x64.sh
+          bash osx/build-nzbget.sh x64
         fi
 
     - name: Rename build artifacts
@@ -51,26 +51,22 @@ jobs:
       with:
         fetch-depth: 0
     
-    - name: Change version for non-release
-      if: github.ref_name != 'main'
-      run: |
-        VERSION=$(cat configure.ac | grep AC_INIT | cut -d , -f 2 | xargs)
-        NEW_VERSION="$VERSION-testing-$(date '+%Y%m%d')"
-        sed -e "s|AC_INIT(nzbget.*|AC_INIT(nzbget, $NEW_VERSION, https://github.com/nzbgetcom/nzbget/issues)|g" -i '' configure.ac
-        echo NEW_VERSION=$NEW_VERSION >> $GITHUB_ENV
-
     - name: Build
       run: |
-        bash osx/build-nzbget-universal.sh
+        if [ "$GITHUB_REF_NAME" != "main" ]; then
+          bash osx/build-nzbget.sh universal testing
+        else
+          bash osx/build-nzbget.sh universal
+        fi
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd osx/build/Release
-        NEW_VERSION_FEATURE="$NEW_VERSION-${GITHUB_REF_NAME/\//-}"
+        cd build
+        SUFFIX="${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/$NEW_VERSION/$NEW_VERSION_FEATURE}
+          NEW_FILE=${FILE/-bin-macos-universal.zip/-$SUFFIX-bin-macos-universal.zip}
           mv $FILE $NEW_FILE
         done
 
@@ -78,7 +74,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers-universal
-        path: osx/build/Release/*.zip
+        path: build/*-universal.zip
         retention-days: 5
 
   combine-osx-artifacts:

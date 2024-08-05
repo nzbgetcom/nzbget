@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,7 +18,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
   
-html {
+* {
 	scrollbar-width: thin;
 }
 
@@ -33,9 +34,6 @@ html {
 	font-weight: normal;
 	font-style: normal;
 	font-size: 16px;
-	line-height: 16px;
-	width: 16px;
-	height: 16px;
 	display: inline-block;
 	color: inherit;
 	text-transform: none;
@@ -57,6 +55,47 @@ body {
 	vertical-align: sub;
 	color: inherit;
 }
+
+.config-status {
+	max-width: 1024px;
+}
+
+.table-fixed {
+	table-layout: fixed;
+}
+
+.table-fixed td, th {
+	vertical-align: middle;
+	overflow: auto;
+	white-space: nowrap;
+}
+
+.test-server-dropdwon-menu
+{
+	width: 150px;
+	min-width: auto;
+}
+
+.system-info__spinner-container {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 60vh;
+}
+
+.system-info__spinner {
+	font-size: 128px;
+}
+
+.spinner {
+	color: #0088cc;
+    -webkit-animation:spin 1s linear infinite;
+    -moz-animation:spin 1s linear infinite;
+    animation:spin 1s linear infinite;
+}
+@-moz-keyframes spin { 100% { -moz-transform: rotate(360deg); } }
+@-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }
 
 /* EXTENSION MANAGER */
 .extension-manager__td {
@@ -962,8 +1001,8 @@ form {
 	margin-bottom: 0px;
 }
 
-.table-bordered th,
-.table-bordered td {
+.table-bordered:not(.table-fixed) th,
+.table-bordered:not(.table-fixed) td {
 	border-left: none;
 }
 
@@ -2161,10 +2200,6 @@ body.phone,
 .phone .btn-toolbar .input-append .add-on {
 	padding: 6px;
 	min-width: 45px;
-}
-
-.phone .btn {
-	min-width: 40px;
 }
 
 .phone input,

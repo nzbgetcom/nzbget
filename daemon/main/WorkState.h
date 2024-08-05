@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,21 +15,17 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef WORKSTATE_H
 #define WORKSTATE_H
 
+#include <atomic>
 #include "Observer.h"
 
-// WorkState is observable but notifications are not 100% reliable.
-// The changes via Set-methods and readings via Get-methods are not synchronized throughout the program.
-// As result race conditions may occur and some changes may go unnoticed.
-// When waiting for changes don't wait too long to avoid lock ups.
-
-class WorkState : public Subject
+class WorkState final : public Subject
 {
 public:
 	void SetPauseDownload(bool pauseDownload) { m_pauseDownload = pauseDownload; Changed(); }
@@ -55,18 +52,17 @@ public:
 	bool GetDownloading() { return m_downloading; }
 
 private:
-	bool m_pauseDownload = false;
-	bool m_pausePostProcess = false;
-	bool m_pauseScan = false;
-	bool m_tempPauseDownload = true;
-	bool m_tempPausePostprocess = true;
-	bool m_pauseFrontend = false;
-	int m_downloadRate = 0;
-	time_t m_resumeTime = 0;
-	int m_localTimeOffset = 0;
-	bool m_quotaReached = false;
-	int m_speedLimit = 0;
-	bool m_downloading = false;
+	std::atomic<time_t> m_resumeTime{0};
+	std::atomic<int> m_localTimeOffset{0};
+	std::atomic<int> m_speedLimit{0};
+	std::atomic<bool> m_tempPauseDownload{true};
+	std::atomic<bool> m_tempPausePostprocess{true};
+	std::atomic<bool> m_pauseDownload{false};
+	std::atomic<bool> m_pausePostProcess{false};
+	std::atomic<bool> m_pauseScan{false};
+	std::atomic<bool> m_pauseFrontend{false};
+	std::atomic<bool> m_downloading{false};
+	std::atomic<bool> m_quotaReached{false};
 
 	void Changed();
 };

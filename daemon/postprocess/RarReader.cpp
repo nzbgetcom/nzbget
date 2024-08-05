@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -249,19 +250,19 @@ bool RarVolume::ReadRar3Volume(DiskFile& file)
 
 RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
 {
-	RarBlock block {0};
+	RarBlock block{};
 	uint8 salt[8];
 
 	if (m_encrypted &&
 		!(file.Read(salt, sizeof(salt)) == sizeof(salt) &&
 		  DecryptRar3Prepare(salt) && DecryptInit(128)))
 	{
-		return {0};
+		return {};
 	}
 
 	uint8 buf[7];
 
-	if (!Read(file, nullptr, &buf, sizeof(buf))) return {0};
+	if (!Read(file, nullptr, &buf, sizeof(buf))) return {};
 	block.crc = ((uint16)buf[1] << 8) + buf[0];
 	block.type = buf[2];
 	block.flags = ((uint16)buf[4] << 8) + buf[3];
@@ -279,7 +280,7 @@ RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
 	uint8 addbuf[4];
 	if ((block.flags & RAR3_BLOCK_ADDSIZE) && !Read(file, nullptr, &addbuf, sizeof(addbuf)))
 	{
-		return {0};
+		return {};
 	}
 	block.addsize = ((uint32)addbuf[3] << 24) + ((uint32)addbuf[2] << 16) + ((uint32)addbuf[1] << 8) + addbuf[0];
 
@@ -423,33 +424,33 @@ bool RarVolume::ReadRar5Volume(DiskFile& file)
 
 RarVolume::RarBlock RarVolume::ReadRar5Block(DiskFile& file)
 {
-	RarBlock block {0};
+	RarBlock block{};
 	uint64 buf = 0;
 
 	if (m_encrypted &&
 		!(file.Read(m_decryptIV, sizeof(m_decryptIV)) == sizeof(m_decryptIV) &&
 		  DecryptInit(256)))
 	{
-		return {0};
+		return {};
 	}
 
-	if (!Read32(file, nullptr, &block.crc)) return {0};
+	if (!Read32(file, nullptr, &block.crc)) return {};
 
-	if (!ReadV(file, nullptr, &buf)) return {0};
+	if (!ReadV(file, nullptr, &buf)) return {};
 	uint32 size = (uint32)buf;
 	block.trailsize = size;
 
-	if (!ReadV(file, &block, &buf)) return {0};
+	if (!ReadV(file, &block, &buf)) return {};
 	block.type = (uint8)buf;
 
-	if (!ReadV(file, &block, &buf)) return {0};
+	if (!ReadV(file, &block, &buf)) return {};
 	block.flags = (uint16)buf;
 
 	block.addsize = 0;
-	if ((block.flags & RAR5_BLOCK_EXTRADATA) && !ReadV(file, &block, &block.addsize)) return {0};
+	if ((block.flags & RAR5_BLOCK_EXTRADATA) && !ReadV(file, &block, &block.addsize)) return {};
 
 	uint64 datasize = 0;
-	if ((block.flags & RAR5_BLOCK_DATAAREA) && !ReadV(file, &block, &datasize)) return {0};
+	if ((block.flags & RAR5_BLOCK_DATAAREA) && !ReadV(file, &block, &datasize)) return {};
 	block.trailsize += datasize;
 
 #ifdef DEBUG

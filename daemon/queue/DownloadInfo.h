@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,13 +16,15 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef DOWNLOADINFO_H
 #define DOWNLOADINFO_H
 
+#include <atomic>
+#include "NewsServer.h"
 #include "NString.h"
 #include "Container.h"
 #include "Observer.h"
@@ -103,15 +106,15 @@ public:
 	void SetCrc(uint32 crc) { m_crc = crc; }
 
 private:
-	int m_partNumber;
-	CString m_messageId;
-	int m_size = 0;
 	std::unique_ptr<SegmentData> m_segmentContent;
-	int64 m_segmentOffset = 0;
-	int m_segmentSize = 0;
-	EStatus m_status = aiUndefined;
+	std::atomic<int64> m_segmentOffset{0};
+	std::atomic<int> m_segmentSize{0};
+	std::atomic<uint32> m_crc{0};
+	CString m_messageId;
 	CString m_resultFilename;
-	uint32 m_crc = 0;
+	EStatus m_status = aiUndefined;
+	int m_partNumber;
+	int m_size = 0;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -233,7 +236,7 @@ private:
 	bool m_extraPriority = false;
 	int m_activeDownloads = 0;
 	bool m_dupeDeleted = false;
-	int m_cachedArticles = 0;
+	std::atomic<int> m_cachedArticles{0};
 	bool m_partialChanged = false;
 	bool m_forceDirectWrite = false;
 	EPartialState m_partialState = psNone;
@@ -648,6 +651,12 @@ public:
 	void UpdateCompletedStats(FileInfo* fileInfo);
 	void UpdateDeletedStats(FileInfo* fileInfo);
 	bool IsDownloadCompleted(bool ignorePausedPars);
+	void SetDesiredServerId(int id) { m_desiredServerId = id; }
+	int GetDesiredServerId() { return m_desiredServerId; }
+	bool GetSkipScriptProcessing() { return m_skipScriptProcessing; }
+	void SetSkipScriptProcessing(bool skip) { m_skipScriptProcessing = skip; }
+	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
+	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -744,6 +753,9 @@ private:
 	bool m_waitingPar = false;
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
+	int m_desiredServerId = 0;
+	bool m_skipScriptProcessing = false;
+	bool m_scipDiskWrite = false;
 
 	static int m_idGen;
 	static int m_idMax;
@@ -819,7 +831,7 @@ public:
 
 private:
 	NzbInfo* m_nzbInfo = nullptr;
-	bool m_working = false;
+	std::atomic<bool> m_working{false};
 	bool m_deleted = false;
 	bool m_requestParCheck = false;
 	bool m_forceParFull = false;
@@ -1036,7 +1048,7 @@ private:
 	Mutex m_lockMutex;
 
 	static DownloadQueue* g_DownloadQueue;
-	static bool g_Loaded;
+	static std::atomic<bool> g_Loaded;
 };
 
 #endif

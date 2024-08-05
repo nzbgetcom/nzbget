@@ -5,14 +5,15 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v23.0/total?label=v23.0)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.0/total?label=v24.0)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.1/total?label=v24.1)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.2/total?label=v24.2)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
 [![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
 [![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
+[![Android build](https://github.com/nzbgetcom/nzbget/actions/workflows/android.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/android.yml)
 [![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
-[![synology build](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/synology.yml)
-[![qnap build](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap.yml)
+[![qnap repack](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)
@@ -33,17 +34,21 @@ More information available at https://nzbget.com
 
 ## Installation and Documentation
 
-We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/tags) page.
+We provide an easy-to-use installer for each platform we support. Please download binaries from our [releases](https://github.com/nzbgetcom/nzbget/releases) page.
 
-Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/tags) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
+Windows packages are also available via `winget` and `chocolatey` package managers. Package managers [readme](windows/pkgs-info.md)
+
+Linux DEB/RPM packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or from DEB/RPM [repositories](https://nzbgetcom.github.io).
 
 macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget/releases) page or via [Homebrew](https://brew.sh) package manager. [Homebrew readme](osx/brew-info.md)
 
-Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md)
+Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md). LinuxServer.io version is also available: [docker-nzbget](https://github.com/linuxserver/docker-nzbget)
 
-Synology packages are available as SynoCommunity packages and SPK packages. [Synology readme](synology/README.md)
+Synology package are available as SynoCommunity package. [Synology readme](docs/SYNOLOGY.md)
 
-QNAP packages are available as native / buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
+QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
+
+Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.md)
 
 ## Migration from older NZBGet versions
 

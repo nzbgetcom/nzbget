@@ -315,8 +315,8 @@ void ScriptController::PrepareArgs()
 		}
 		else
 		{
-			strncpy(m_cmdLine, found.get().c_str(), sizeof(m_cmdLine) - 1);
-			m_cmdArgs.emplace_back(found.get().c_str());
+			strncpy(m_cmdLine, found.value().c_str(), sizeof(m_cmdLine) - 1);
+			m_cmdArgs.emplace_back(found.value().c_str());
 		}
 	}
 	else

@@ -151,13 +151,13 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Multi</name><value><boolean>true</boolean></value></member>\
 <member><name>Section</name><value><string>Section</string></value></member>\
 <member><name>Prefix</name><value><string>Prefix</string></value></member>\
-<member><name>Value</name><value><number>5.000000</number></value></member>\
+<member><name>Value</name><value><double>5.000000</double></value></member>\
 <Description>\
 <member><name>Value</name><value><string>description</string></value></member>\
 </Description>\
 <Select>\
-<member><name>Value</name><value><number>0.000000</number></value></member>\
-<member><name>Value</name><value><number>10.000000</number></value></member>\
+<member><name>Value</name><value><double>0.000000</double></value></member>\
+<member><name>Value</name><value><double>10.000000</double></value></member>\
 </Select>\
 </Options>\
 </struct></value>";

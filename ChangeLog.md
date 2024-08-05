@@ -1,3 +1,63 @@
+nzbget-24.2
+  - Features:
+    - System info tab and Server Speed Tests
+    [#303](https://github.com/nzbgetcom/nzbget/commit/c5dce755226f359ca106bb70615d7d999a060660);
+      * new API-methods:
+        - struct sysinfo() - returns information about the user's environment and hardware
+        - bool testserverspeed(url, serverId) - puts nzb file to be downloaded by the target server
+      * API-method "status" now has 3 extra fields:
+        - TotalDiskSpaceLo - Total disk space on ‘DestDir’, in bytes. This field contains the low 32-bits of 64-bit value
+        - TotalDiskSpaceHi - Total disk space on ‘DestDir’, in bytes. This field contains the high 32-bits of 64-bit value
+        - TotalDiskSpaceMB - Total disk space on ‘DestDir’, in megabytes.`
+      * fixed NZB generator: the last segment was incorrect
+      * added Boost.Asio - cross-platform library for network
+    - Multithreading Improvements
+    [#282](https://github.com/nzbgetcom/nzbget/commit/a98e6d11cf5e862e3bfc4819b26492348c4506be)
+      * noticeable improvements in download speed - it became more stable
+      * the download speed dropping to 0 MB/s has gone away
+      * the application became more stable, resulting in fewer crashe
+    - Android support
+    [#325](https://github.com/nzbgetcom/nzbget/commit/7f8360c03eb26f2dda62980b76db39fd6d3c67ab)
+    - Read nzbpassword from filename
+    [#310](https://github.com/nzbgetcom/nzbget/commit/cf1eb073b1640f2ba351538918cfb69e2625136a)
+
+  - Bug fixes:
+    - Fixed speed value overflows if the download speed is greater than 2 GB/s
+    [#314](https://github.com/nzbgetcom/nzbget/commit/6d6d973c5d53f72cfd05f40a7feb8f291d881432)
+      * the Status xml-rpc response now has 4 extra fields:
+        - DownloadRateLo - Download rate in bytes. This field contains the low 32-bits of 64-bit value
+        - DownloadRateHi - Download rate in bytes. This field contains the high 32-bits of 64-bit value
+        - AverageDownloadRateLo - Average download rate in bytes. This field contains the low 32-bits of 64-bit value
+        - AverageDownloadRateHi - Average download rate in bytes. This field contains the high 32-bits of 64-bit value
+      * DownloadRate and AverageDownloadRate fields are deprecated now
+    - Fixed potential int32 overflow issues
+    [#321](https://github.com/nzbgetcom/nzbget/commit/5c00f580a0690f7a3410059b711c6c89a86b1d6a)
+
+    - QNAP:
+        * added shutdown delay check for daemon process
+        [#281](https://github.com/nzbgetcom/nzbget/commit/cb88ac9c94cfb98c6705e9403f9d8d462885659e)
+        * fixed overwritting existing config file when upgrading QPKG
+        [#285](https://github.com/nzbgetcom/nzbget/commit/c200293473e87d505b76b9e669fa5d0c368552a1)
+        * improved package icons
+        [#287](https://github.com/nzbgetcom/nzbget/commit/68ddad570786e7de15cef2cfc1dc425e9e258711)
+
+  - For developers:
+    - Complete migration to CMake
+    [#301](https://github.com/nzbgetcom/nzbget/commit/515cd1081f3bee32913c48436c16e845346309db):
+      * removed QNAP native packages build scripts and workflow
+      * removed Synology build scripts / package sources / workflow
+      * POSIX: removed autotools related files
+      * WINDOWS: removed Visual Studio project file
+      * removed obsoleted build scripts and documentation
+      * updated CMakeLists.txt with C++17 config and cross-build support for macOS builds
+    - Removed the use of Boost.Variant and Boost.Optional since they are no longer relevant after moving to C++17 and GCC 9+/Clang 8+
+    [#317](https://github.com/nzbgetcom/nzbget/commit/a7ac9a9b061c140f7f688840be633ca8b780face)
+    - Added missing HAVE_ALLOCA_H definition for regex and GCC 14+
+    [#308](https://github.com/nzbgetcom/nzbget/commit/412d9e5b732c1cf39aac266dcf97bf097f85bc58)
+    - Dockerfile optimized for local repo builds
+    [#305](https://github.com/nzbgetcom/nzbget/commit/6fdc4fb90f910469c5568871e16d6437f5a9f395)
+    - GnuTLS is deprecated now and will be removed in future releases
+
 nzbget-24.1
   - Bug fixes:
       - Fixed: don't override user preference in unrar

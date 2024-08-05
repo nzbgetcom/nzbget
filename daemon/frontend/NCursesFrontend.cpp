@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -539,10 +540,10 @@ void NCursesFrontend::PrintStatus()
 
 	BString<100> timeString;
 
-	int currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
+	int64 currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
 	if (currentDownloadSpeed > 0 && !m_pauseDownload)
 	{
-		int64 remain_sec = (int64)(m_remainingSize / currentDownloadSpeed);
+		int64 remain_sec = m_remainingSize / currentDownloadSpeed;
 		int h = (int)(remain_sec / 3600);
 		int m = (int)((remain_sec % 3600) / 60);
 		int s = (int)(remain_sec % 60);
@@ -561,7 +562,7 @@ void NCursesFrontend::PrintStatus()
 		postStatus.Format(", %i post-job%s", m_postJobCount, m_postJobCount > 1 ? "s" : "");
 	}
 
-	int averageSpeed = (int)(m_dnTimeSec > 0 ? m_allBytes / m_dnTimeSec : 0);
+	int64 averageSpeed = m_dnTimeSec > 0 ? (m_allBytes / m_dnTimeSec) : 0;
 
 	BString<1024> status(" %d threads, %s, %s remaining%s%s%s%s, Avg. %s",
 		m_threadCount, *Util::FormatSpeed(currentDownloadSpeed),
@@ -920,7 +921,7 @@ void NCursesFrontend::PrintGroupname(NzbInfo* nzbInfo, int row, bool selected, b
 		CString total = Util::FormatSize(nzbInfo->GetSize());
 
 		BString<100> time;
-		int currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
+		int64 currentDownloadSpeed = m_standBy ? 0 : m_currentDownloadSpeed;
 		if (nzbInfo->GetPausedSize() > 0 && unpausedRemainingSize == 0)
 		{
 			time = "[paused]";
@@ -928,7 +929,7 @@ void NCursesFrontend::PrintGroupname(NzbInfo* nzbInfo, int row, bool selected, b
 		}
 		else if (currentDownloadSpeed > 0 && !m_pauseDownload)
 		{
-			int64 remain_sec = (int64)(unpausedRemainingSize / currentDownloadSpeed);
+			int64 remain_sec = unpausedRemainingSize / currentDownloadSpeed;
 			int h = (int)(remain_sec / 3600);
 			int m = (int)((remain_sec % 3600) / 60);
 			int s = (int)(remain_sec % 60);

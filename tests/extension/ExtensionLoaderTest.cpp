@@ -104,25 +104,25 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Append list of files to the message.",
 			"Add the list of downloaded files (the content of destination directory)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option.value) == "yes");
-	BOOST_CHECK(boost::variant2::get<std::string>(option.select[0]) == "yes");
-	BOOST_CHECK(boost::variant2::get<std::string>(option.select[1]) == "no");
+	BOOST_CHECK(std::get<std::string>(option.value) == "yes");
+	BOOST_CHECK(std::get<std::string>(option.select[0]) == "yes");
+	BOOST_CHECK(std::get<std::string>(option.select[1]) == "no");
 
 	auto option2 = extension.GetOptions()[1];
 	BOOST_CHECK(option2.name == "Port");
 	BOOST_CHECK(option2.displayName == "Port");
 	BOOST_CHECK(option2.description == std::vector<std::string>({ "SMTP server port (1-65535)." }));
-	BOOST_CHECK(boost::variant2::get<double>(option2.value) == 25.);
-	BOOST_CHECK(boost::variant2::get<double>(option2.select[0]) == 1.);
-	BOOST_CHECK(boost::variant2::get<double>(option2.select[1]) == 65535.);
+	BOOST_CHECK(std::get<double>(option2.value) == 25.);
+	BOOST_CHECK(std::get<double>(option2.select[0]) == 1.);
+	BOOST_CHECK(std::get<double>(option2.select[1]) == 65535.);
 
 	auto option3 = extension.GetOptions()[2];
 	BOOST_CHECK(option3.name == "SendMail");
 	BOOST_CHECK(option3.displayName == "SendMail");
 	BOOST_CHECK(option3.description == std::vector<std::string>({ "When to send the message." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option3.value) == "Always");
-	BOOST_CHECK(boost::variant2::get<std::string>(option3.select[0]) == "Always");
-	BOOST_CHECK(boost::variant2::get<std::string>(option3.select[1]) == "OnFailure");
+	BOOST_CHECK(std::get<std::string>(option3.value) == "Always");
+	BOOST_CHECK(std::get<std::string>(option3.select[0]) == "Always");
+	BOOST_CHECK(std::get<std::string>(option3.select[1]) == "OnFailure");
 
 	auto option4 = extension.GetOptions()[3];
 	BOOST_CHECK(option4.name == "Encryption");
@@ -133,10 +133,10 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 			" yes   - switch to secure session using StartTLS command;",
 			" force - start secure session on encrypted socket."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option4.value) == "yes");
-	BOOST_CHECK(boost::variant2::get<std::string>(option4.select[0]) == "yes");
-	BOOST_CHECK(boost::variant2::get<std::string>(option4.select[1]) == "no");
-	BOOST_CHECK(boost::variant2::get<std::string>(option4.select[2]) == "force");
+	BOOST_CHECK(std::get<std::string>(option4.value) == "yes");
+	BOOST_CHECK(std::get<std::string>(option4.select[0]) == "yes");
+	BOOST_CHECK(std::get<std::string>(option4.select[1]) == "no");
+	BOOST_CHECK(std::get<std::string>(option4.select[2]) == "force");
 
 	auto option5 = extension.GetOptions()[4];
 	BOOST_CHECK(option5.name == "To");
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Email address you want this email to be sent to.",
 			"Multiple addresses can be separated with comma."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option5.value) == "myaccount@gmail.com");
+	BOOST_CHECK(std::get<std::string>(option5.value) == "myaccount@gmail.com");
 	BOOST_CHECK(option5.select.empty());
 
 	auto option6 = extension.GetOptions()[5];
@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Banned extensions.",
 			"Extensions must be separated by a comma (eg: .wmv, .divx)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option6.value) == "");
+	BOOST_CHECK(std::get<std::string>(option6.value) == "");
 	BOOST_CHECK(option6.select.empty());
 
 	auto option7 = extension.GetOptions()[6];
@@ -165,34 +165,34 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Common specifiers (for movies, series and dated tv shows):",
 			"{TEXT}          - lowercase the text."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option7.value) == "%t (%y)");
+	BOOST_CHECK(std::get<std::string>(option7.value) == "%t (%y)");
 	BOOST_CHECK(option7.select.empty());
 
 	auto option8 = extension.GetOptions()[7];
 	BOOST_CHECK(option8.name == "outputVideoExtension");
 	BOOST_CHECK(option8.displayName == "outputVideoExtension");
 	BOOST_CHECK(option8.description == std::vector<std::string>({ "ffmpeg output settings." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option8.value) == ".mp4");
+	BOOST_CHECK(std::get<std::string>(option8.value) == ".mp4");
 	BOOST_CHECK(option8.select.empty());
 
 	auto option9 = extension.GetOptions()[8];
 	BOOST_CHECK(option9.name == "outputVideoCodec");
 	BOOST_CHECK(option9.displayName == "outputVideoCodec");
 	BOOST_CHECK(option9.description.empty());
-	BOOST_CHECK(boost::variant2::get<std::string>(option9.value) == "libx264");
+	BOOST_CHECK(std::get<std::string>(option9.value) == "libx264");
 	BOOST_CHECK(option9.select.empty());
 
 	auto option10 = extension.GetOptions()[9];
 	BOOST_CHECK(option10.name == "outputDefault");
 	BOOST_CHECK(option10.displayName == "outputDefault");
 	BOOST_CHECK(option10.description == std::vector<std::string>({ "Output Default.", "description" }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.value) == "None");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[0]) == "None");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[1]) == "iPad");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[2]) == "iPad-1080p");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[3]) == "iPad-720p");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[4]) == "Apple-TV2");
-	BOOST_CHECK(boost::variant2::get<std::string>(option10.select[5]) == "iPod");
+	BOOST_CHECK(std::get<std::string>(option10.value) == "None");
+	BOOST_CHECK(std::get<std::string>(option10.select[0]) == "None");
+	BOOST_CHECK(std::get<std::string>(option10.select[1]) == "iPad");
+	BOOST_CHECK(std::get<std::string>(option10.select[2]) == "iPad-1080p");
+	BOOST_CHECK(std::get<std::string>(option10.select[3]) == "iPad-720p");
+	BOOST_CHECK(std::get<std::string>(option10.select[4]) == "Apple-TV2");
+	BOOST_CHECK(std::get<std::string>(option10.select[5]) == "iPod");
 
 	auto option11 = extension.GetOptions()[10];
 	BOOST_CHECK(option11.name == "auto_update");
@@ -201,9 +201,9 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Auto Update nzbToMedia.",
 		"description"
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option11.value) == "0");
-	BOOST_CHECK(boost::variant2::get<std::string>(option11.select[0]) == "0");
-	BOOST_CHECK(boost::variant2::get<std::string>(option11.select[1]) == "1");
+	BOOST_CHECK(std::get<std::string>(option11.value) == "0");
+	BOOST_CHECK(std::get<std::string>(option11.select[0]) == "0");
+	BOOST_CHECK(std::get<std::string>(option11.select[1]) == "1");
 
 	auto option12 = extension.GetOptions()[11];
 	BOOST_CHECK(option12.name == "niceness");
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Niceness for external extraction process.",
 		"Set the Niceness value for the nice command (Linux). These range from -20 (most favorable to the process) to 19 (least favorable to the process)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option12.value) == "10");
+	BOOST_CHECK(std::get<std::string>(option12.value) == "10");
 	BOOST_CHECK(option12.select.empty());
 
 	auto option13 = extension.GetOptions()[12];
@@ -222,11 +222,11 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"ionice scheduling class.",
 		"Set the ionice scheduling class (Linux). 0 for none, 1 for real time, 2 for best-effort, 3 for idle."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.value) == "2");
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[0]) == "0");
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[1]) == "1");
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[2]) == "2");
-	BOOST_CHECK(boost::variant2::get<std::string>(option13.select[3]) == "3");
+	BOOST_CHECK(std::get<std::string>(option13.value) == "2");
+	BOOST_CHECK(std::get<std::string>(option13.select[0]) == "0");
+	BOOST_CHECK(std::get<std::string>(option13.select[1]) == "1");
+	BOOST_CHECK(std::get<std::string>(option13.select[2]) == "2");
+	BOOST_CHECK(std::get<std::string>(option13.select[3]) == "3");
 
 	auto option14 = extension.GetOptions()[13];
 	BOOST_CHECK(option14.name == "ionice_class");
@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"ionice scheduling class.",
 		"Set the ionice scheduling class (0, 1, 2, 3)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option14.value) == "2");
+	BOOST_CHECK(std::get<std::string>(option14.value) == "2");
 	BOOST_CHECK(option14.select.empty());
 
 	auto option15 = extension.GetOptions()[14];
@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"Custom Plex Section(s) you would like to update [Optional].",
 		"Section Number(s) corresponding to your Plex library (comma separated)."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option15.value) == "");
+	BOOST_CHECK(std::get<std::string>(option15.value) == "");
 	BOOST_CHECK(option15.select.empty());
 
 	auto option16 = extension.GetOptions()[15];
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 		"(Test2).",
 		"description."
 		}));
-	BOOST_CHECK(boost::variant2::get<std::string>(option16.value) == "");
+	BOOST_CHECK(std::get<std::string>(option16.value) == "");
 	BOOST_CHECK(option16.select.empty());
 
 	auto option17 = extension.GetOptions()[16];
@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option17.name == "Name");
 	BOOST_CHECK(option17.displayName == "Name");
 	BOOST_CHECK(option17.description == std::vector<std::string>({ "Name of the category to monitor." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option17.value) == "");
+	BOOST_CHECK(std::get<std::string>(option17.value) == "");
 	BOOST_CHECK(option17.select.empty());
 
 	auto option18 = extension.GetOptions()[17];
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option18.name == "DownloadRate");
 	BOOST_CHECK(option18.displayName == "DownloadRate");
 	BOOST_CHECK(option18.description == std::vector<std::string>({ "Speed limit for that category (KB)." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option18.value) == "0");
+	BOOST_CHECK(std::get<std::string>(option18.value) == "0");
 	BOOST_CHECK(option18.select.empty());
 
 	auto option19 = extension.GetOptions()[18];
@@ -285,6 +285,6 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	BOOST_CHECK(option19.name == "Name");
 	BOOST_CHECK(option19.displayName == "Name");
 	BOOST_CHECK(option19.description == std::vector<std::string>({ "Feed." }));
-	BOOST_CHECK(boost::variant2::get<std::string>(option19.value) == "");
+	BOOST_CHECK(std::get<std::string>(option19.value) == "");
 	BOOST_CHECK(option19.select.empty());
 }

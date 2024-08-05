@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -104,7 +105,7 @@ void Scanner::ServiceWork()
 
 	debug("Scanner service work: doing work");
 
-	Guard guard(m_scanMutex);
+	std::lock_guard<std::mutex> guard{m_scanMutex};
 
 	// check nzbdir every g_pOptions->GetNzbDirInterval() seconds or if requested
 	bool checkStat = !m_requestedNzbDirScan;
@@ -283,7 +284,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	EDupeMode dupeMode = dmScore;
 	EAddStatus addStatus = asSkipped;
 	QueueData* queueData = nullptr;
-	NzbInfo* urlInfo = nullptr;
+	NzbInfo* nzbInfo = nullptr;
 	int nzbId = 0;
 
 	for (QueueData& queueData1 : m_queueList)
@@ -300,7 +301,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 			addTop = queueData->GetAddTop();
 			addPaused = queueData->GetAddPaused();
 			parameters.CopyFrom(queueData->GetParameters());
-			urlInfo = queueData->GetUrlInfo();
+			nzbInfo = queueData->GetUrlInfo();
 		}
 	}
 
@@ -311,7 +312,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	if (m_scanScript && strcasecmp(extension, ".nzb_processed"))
 	{
 		ScanScriptController::ExecuteScripts(fullFilename,
-			urlInfo ? urlInfo->GetUrl() : "", directory,
+			nzbInfo, directory,
 			&nzbName, &nzbCategory, &priority, &parameters, &addTop,
 			&addPaused, &dupeKey, &dupeScore, &dupeMode);
 		exists = FileSystem::FileExists(fullFilename);
@@ -334,7 +335,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 		if (renameOK)
 		{
 			bool added = AddFileToQueue(renamedName, nzbName, nzbCategory, priority,
-				dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, urlInfo, &nzbId);
+				dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
 			addStatus = added ? asSuccess : asFailed;
 		}
 		else
@@ -347,7 +348,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	else if (exists && !strcasecmp(extension, ".nzb"))
 	{
 		bool added = AddFileToQueue(fullFilename, nzbName, nzbCategory, priority,
-			dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, urlInfo, &nzbId);
+			dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
 		addStatus = added ? asSuccess : asFailed;
 	}
 
@@ -452,6 +453,9 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 		nzbInfo->SetUrlStatus(urlInfo->GetUrlStatus());
 		nzbInfo->SetFeedId(urlInfo->GetFeedId());
 		nzbInfo->SetDupeHint(urlInfo->GetDupeHint());
+		nzbInfo->SetDesiredServerId(urlInfo->GetDesiredServerId());
+		nzbInfo->SetSkipScriptProcessing(urlInfo->GetSkipScriptProcessing());
+		nzbInfo->SetSkipDiskWrite(urlInfo->GetSkipDiskWrite());
 	}
 
 	if (nzbFile.GetPassword())
@@ -496,7 +500,7 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 void Scanner::ScanNzbDir(bool syncMode)
 {
 	{
-		Guard guard(m_scanMutex);
+		std::lock_guard<std::mutex> guard{m_scanMutex};
 		m_scanning = true;
 		m_requestedNzbDirScan = true;
 		WakeUp();
@@ -578,7 +582,7 @@ Scanner::EAddStatus Scanner::AddExternalFile(const char* nzbName, const char* ca
 	EAddStatus addStatus;
 
 	{
-		Guard guard(m_scanMutex);
+		std::lock_guard<std::mutex> guard{m_scanMutex};
 
 		if (!FileSystem::MoveFile(tempFileName, scanFileName))
 		{

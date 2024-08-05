@@ -1,199 +1,156 @@
-About
------
-"build-nzbget" is a bash script which is used to build universal installer
-for Linux and installer for FreeBSD. The script compiles NZBGet for each
-supported platform and CPU-architecture and then packs all produced files
-into two installer packages: one for Linux and another for FreeBSD. In
-addition the packages with debug binaries are created too.
+# About
 
-Prerequisites
--------------
-To use the script you need a Linux (virtual) machine.
+`build-nzbget.sh` is a bash script which is used to build linux and android nzbget packages.
 
-Script 'build-nzbget' supports two kind of toolchains:
-  - toolchain from uClibc's Buildroot-project;
-  - cross-compiling toolchain built with GCC.
+Supported linux architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
 
+Supported android architectures: `i686-ndk` `x86_64-ndk` `armhf-ndk` `aarch64-ndk`
 
-Building toolchains
--------------------
+# Prerequisites
 
-1. Create directory where you want to keep your files to compile NZBGet. Choose
-   the path wisely because it cannot be changed later without rebuilding all
-   toolchains again;
-
-2. Put the build script 'build-nzbget' into that directory;
-
-3. Create subdirectories:
-    - toolchain - for toolchains;
-    - nzbget    - for source code of NZBGet;
-    - output    - to store the results of build script;
-    - setup     - for extra files required for installer;
-
-4. Build buildroot-toolchain for one CPU-architecture:
-    - Download Buildroot distribution archive 'buildroot-2015.08.01' from
-         http://buildroot.uclibc.org/download.html.
-         If you choose other version the instructions may not apply exactly;
-    - Unpack the tarball into 'toolchain'-directory;
-    - Rename the buildroot-directory according to the target CPU-architecture name,
-         for example 'x86_64' or 'armhf'; Be careful here, after the toolchain is
-         built the directory cannot be renamed or moved, you will have to rebuild
-         the toolchain if you want another name;
-    - Run 'make menuconfig';
-    - Configure toolchain:
-         - Target architecture:
-             - choose your target architecture;
-         - Build options:
-             - libraries (both static and shared);
-         - Toolchain:
-             - Kernel Headers (Manually specified Linux version);
-             - (2.6.32) linux version;
-             - Custom kernel headers series (2.6.x);
-             - C library: glibc (for x86_64 and armhf) or uClibc (for all other architectures);
-             - uClibc library version (uClibc-ng);
-             - Enable large file (files > 2 GB) support;
-             - Enable IPv6 support;
-             - Enable toolchain locale/i18n support;
-             - GCC compiler Version (gcc 5.x);
-             - Enable C++ support;
-             - Build cross gdb for the host;
-         - Target packages:
-              - Libraries:
-                  - Compression and decompression: zlib;
-                  - Crypto: openssl;
-                  - JSON/XML: libxml2;
-                  - Text and terminal handling: ncurses;
-         - Save configuration and exit;
-    - Do few extra manual adjustments:
-         - in 'packages/ncurses/ncurses.mk' add extra configure parameters to
-           option 'NCURSES_CONF_OPTS‘ (with quotation marks):
-           "--with-fallbacks=xterm xterm-color xterm-256color xterm-16color linux vt100 vt200";
-         - in 'packages/openssl/openssl.mk' replace 'zlib-dynamic' with 'zlib';
-         - in 'packages/glibc/glibc.mk' add extra configure parameter
-           '--enable-static-nss';
-         - in directory 'packages/glibc/2.20' create new file with name 'allocatestack-pax.patch'
-           with the following content; the patch fixes incompatibility with hardened kernels:
-     ```
-     >>> START OF 'allocatestack-pax.patch' - this line marker is not part of the file >>>
-     --- a/nptl/allocatestack.c	2014-09-07 10:09:09.000000000 +0200
-     +++ b/nptl/allocatestack.c	2017-11-02 18:02:47.165016000 +0100
-     @@ -78,6 +78,7 @@
-     #ifndef STACK_ALIGN
-     # define STACK_ALIGN __alignof__ (long double)
-     #endif
-     +#define PF_X 0
-     
-     /* Default value for minimal stack size after allocating thread
-     descriptor and guard.  */
-     <<< END OF 'allocatestack-pax.patch' - this line marker is not part of the file <<<
-     ```
-    - Run 'make' to build the toolchain. It may take an hour or less depending
-         on your hardware;
-    - If C library 'glibc' was chosen extra steps are needed to build proper
-         static libraries of OpenSSL in addition to already built dynamic
-         libraries (which are also required):
-         - delete directory 'output/build/openssl-x.x.x';
-         - in 'packages/openssl/openssl.mk' replace 
-
-           `'$(if $(BR2_STATIC_LIBS),no-shared,shared)'` with
-
-           `'$(if $(BR2_STATIC_LIBS),no-shared,no-shared)'`
-           
-           and replace
-
-           `'$(if $(BR2_STATIC_LIBS),no-dso,dso)'` with
-
-           `'$(if $(BR2_STATIC_LIBS),no-dso,no-dso)'`
-         - from root directory of toolchain run 'make' again;
-         - openssl will be rebuilt without shared libraries support;
-         - installation step of openssl fails with message:
-
-           `"chmod: cannot access ‘../lib/engines/lib*.so’: No such file or directory";`
-
-         - ignore the error, static libraries of openssl are already installed
-           and will be used by NZBGet;
-
-5. Now you should have a working toolchain for one CPU-architecture, let's
-   test it.
-    - Change to the ROOTBUILD-directory and run the build script:
-     ```
-         ./build-nzbget release bin <CPU-Architecture>
-     ```
-    - The script creates subdirectory 'nzbget/trunk' and checkouts the source
-         code of NZBGet from subversion repository;
-    - Then the source code is compiled for chosen CPU-architecture;
-    - After the compiling a distribution binary archive for the chosen
-         CPU-architecture is put into output-directory;
-
-6. Build unrar and 7za for the CPU-architecture:
-    - Download source of unrar; Compile for target, either manually or
-         using script 'build-unpack';
-    - Put the compiled binaries of unrar and 7za into setup-directory, add
-         suffix '-arch' to unrar and 7za names, for example 'unrar-armel';
-    - Copy license-files from unrar and 7-Zip projects using names
-         'license-unrar.txt' and 'license-7zip.txt';
-
-7. Now you can build installer for that one CPU-architecture:
-    - If you build for CPU-architecture which is not supported by NZBGet's
-         universal installer you have to edit the script 'build-nzbget' and
-         add the architecture name into variable 'ALLTARGETS';
-    - Run the build script with:
-     ```
-         ./build-nzbget release installer <CPU-Architecture>
-     ```
-    - The created installer supports only one CPU-Architecture;
-    - Run the installer on the target machine (with target CPU-Architecture);
-
-8. Repeat step for each CPU-Architecture you intend to build the installer for;
-
-9. To build installer for FreeBSD we need a cross-compiling toolhcain:
-    - Create directory 'x86_64-bsd' inside your toolchain-directory;
-    - Copy file 'build-toolchain-freebsd' into that directory;
-    - Execute the script build script:
-     ```
-         ./build-toolchain-freebsd
-     ```
-     The script downloads and build the full cross-compiling toolchain.
-
-    - To test the FreeBSD toolchain start 'build-nzbget' with following parameters:
-     ```
-        ./build-nzbget x86_64-bsd release
-     ```
-10. To build installer for all CPU-Architectures listed in variable 'ALLTARGETS'
-    of the script run the script without choosing CPU-Architecture:
-     ```
-       ./build-nzbget release
-     ```
-11. When the script is run without any parameters:
-   - NZBGet is compiled twice for each CPU-Architecture listed in
-         'ALLTARGETS': once in release mode and once in debug mode;
-   - Four installers are built: one for release and another for debug for
-         each supported platform - Linux and FreeBSD.
-
-
-Special functions
------------------
-By default the script builds from HEAD of develop branch. To specify another
-tag or branch pass it to the script, for example to build a tagged version 14.2:
-
+1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
+2. Installed build dependencies (Ubuntu/Debian example):
 ```
-./build-nzbget release bin tags/v16.0
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
+```
+3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
+4. Installed Android NDK and standalone Android toolkits - one per architecture (see [NDK setup](#ndk-setup) below)
+
+# Building NZBGet
+
+From the cloned repository, run:
+```
+bash linux/build-nzbget.sh [platforms] [architectures] [output] [configs] [testing] [corex]
 ```
 
-Installers can be built only for version 15.0 and newer. Distribution archives
-can be built for older versions too.
+Build options:
+- platforms: default value `linux android`
+    - linux: build linux packages
+    - android: build android packages
+- architectures: default value `all`
+    - linux:
+        - armel
+        - armhf
+        - aarch64
+        - i686
+        - x86_64
+        - riscv64
+        - mipsel
+        - mipseb
+        - ppc500
+        - ppc6xx
+    - android:
+        - i686-ndk
+        - x86_64-ndk
+        - armhf-ndk
+        - aarch64-ndk
+- output: default value `bin installer`
+    - bin: build binary package
+    - installer: build installer package
+- testing:
+    - build testing image
+- configs: default value `release debug`
+    - release: build release package
+    - debug: build debug package
+- corex: default value `core4`
+    - multicore make (x is a number of threads)
 
-To build on certain history point pass commit SHA to the script, for example
+# Output files
+
+- build/*.tar.gz - one file per architecture - binary package
+- build/*.run - one file per platform - installer package
+
+# Buildroot setup
+
+Script assumes that buildroot toolchains is installed in `/build/buildroot/` - one folder per architecture.
+
+## Manual setup
+
+Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24` due to defining time_t from 32 to 64 bits, which may cause compatibility issues.
+
+- Download Buildroot archive from https://buildroot.uclibc.org/download.html
+- Unpack the tarball into /build/buildroot/ directory
+- Rename the buildroot-directory according to the target architecture name
+- Run from renamed buildroot-directory `make menuconfig`
+- Configure buildroot:
+    - Target architecture:
+        - choose your target architecture
+    - Build options:
+        - Libraries (both static and shared)
+    - Toolchain:
+        - C library
+            - ppc500: uClibc-ng
+            - all others: musl
+        - Kernel Headers
+            - risc-v64:
+                - Linux 4.19.x kernel headers
+            - all others:
+                - Manually specified Linux version
+                - Linux version:
+                    - aarch64:
+                        - 3.10.6
+                        - Custom kernel headers series (3.10.x)
+                    - all others:
+                        - 2.6.32
+                        - Custom kernel headers series (2.6.x)
+        - GCC compiler Version (gcc 9.x)
+        - Enable C++ support
+        - (Optional) Build cross gdb for the host
+- Save config and exit
+- Make extra modifications:
+    - package/musl/musl.mk: change MUSL_VERSION to 1.1.24
+    - package/musl/musl.hash: change hashes and musl source filename
+        ```
+        sha256  1370c9a812b2cf2a7d92802510cca0058cc37e66a7bedd70051f0a34015022a3  musl-1.1.24.tar.gz
+        sha256  3520d478bccbdf68d9dc0c03984efb0fa4b99868ab2599f5b5f72f3fb3b07a49  COPYRIGHT
+        ```
+- Run `make` to build the toolchain
+- After build is finished:
+    - aarch64 - patch output/host/lib/gcc/aarch64-buildroot-linux-musl/9.4.0/include/arm_acle.h file:
+        - comment out or remove second block
+            ```
+            #ifdef __cplusplus
+            extern "C" {
+            #endif
+            ```
+- Repeat all steps for all needeed architectures
+
+## Automatic setup
+
+Make the /build directory and add the necessary permissions.
 ```
-./build-nzbget release bin 13f5ab738880671a8d8381ef0fabc625e269eeef
+sudo mkdir -p /build
+sudo chmod 777 /build
+```
+From the cloned repository, run:
+```
+bash linux/buildroot/build-toolchain.sh [architecture]
+```
+It will download and build buildroot with needed options and patches
+
+If you want to build all supported toolchains, run
+```
+for ARCH in aarch64 armel armhf i686 x86_64 riscv64 mipseb mipsel ppc500 ppc6xx; do bash linux/buildroot/build-toolchain.sh $ARCH; done
 ```
 
-To cleanup the output directory before building pass parameter 'cleanup':
+# NDK setup
+
+Script assumes that andriod toolchains is installed in `/build/android/` - one folder per architecture.
+
+To install Android toolchain and NDK:
+
+Make the /build directory and add the necessary permissions.
 ```
-./build-nzbget release cleanup
+sudo mkdir -p /build
+sudo chmod 777 /build
 ```
 
-To improve compilation speed activate pre-compiled headers and multicore make:
+From the cloned repository, run:
 ```
-./build-nzbget release pch core4
+bash linux/android/build-toolchain.sh [architecture]
+```
+
+If you want to build all supported toolchains, run
+```
+for ARCH in i686 x86_64 armhf aarch64; do bash linux/android/build-toolchain.sh $ARCH; done
 ```

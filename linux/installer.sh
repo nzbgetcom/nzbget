@@ -3,6 +3,7 @@
 #  This file is part of nzbget. See <https://nzbget.com>.
 #
 #  Copyright (C) 2015-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+#  Copyright (C) 2024 phnzb <pavel@nzbget.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -255,6 +256,7 @@ Unpack()
             if test "$TARG" != "$ARCH"; then
                 echo "nzbget-$TARG" >> "$OUTDIR/installer.tmp"
                 echo "unrar-$TARG" >> "$OUTDIR/installer.tmp"
+                echo "unrar7-$TARG" >> "$OUTDIR/installer.tmp"
                 echo "7za-$TARG" >> "$OUTDIR/installer.tmp"
                 EXARCHS="-X installer.tmp"
             fi
@@ -274,9 +276,11 @@ Unpack()
         cd "$OUTDIR"
         rm -f nzbget
         rm -f unrar
+        rm -f unrar7
         rm -f 7za
         mv nzbget-$ARCH nzbget
         mv unrar-$ARCH unrar
+        mv unrar7-$ARCH unrar7
         mv 7za-$ARCH 7za
         echo "arch=$ARCH" > "installer.cfg"
         echo "select=$SELECT" >> "installer.cfg"
@@ -431,6 +435,7 @@ Linux2FreeBSD()
             Info "  Branding Linux binaries for use on FreeBSD"
             brandelf -t Linux nzbget
             brandelf -t Linux unrar
+            brandelf -t Linux unrar7
             brandelf -t Linux 7za
         fi
 

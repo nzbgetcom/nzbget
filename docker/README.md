@@ -84,13 +84,13 @@ uid=1000(user) gid=1000(users) groups=1000(users)
 
 # Building locally
 
-For development purposes can be used Dockerfile or docker-compose file from official repository (`docker` folder): 
+For development purposes the Docker Image can be build using the locally cloned repository (`docker` folder): 
 
 ```
 git clone https://github.com/nzbgetcom/nzbget.git
-cd docker
-docker compose up
+docker compose -f docker/docker-compose.yml up --build
 -or-
+cd docker
 docker build . -t nzbget-local
 ```
 

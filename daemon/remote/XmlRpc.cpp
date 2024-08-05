@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -37,6 +38,7 @@
 #include "CommandScript.h"
 #include "UrlCoordinator.h"
 #include "ExtensionManager.h"
+#include "SystemInfo.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -116,6 +118,12 @@ public:
 };
 
 class StatusXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
+};
+
+class SysInfoXmlCommand: public SafeXmlCommand
 {
 public:
 	virtual void Execute();
@@ -345,6 +353,12 @@ private:
 	};
 
 	void PrintError(const char* errMsg);
+};
+
+class TestServerSpeedXmlCommand: public SafeXmlCommand
+{
+public:
+	virtual void Execute();
 };
 
 class StartScriptXmlCommand : public XmlCommand
@@ -647,6 +661,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	{
 		command = std::make_unique<StatusXmlCommand>();
 	}
+	else if (!strcasecmp(methodName, "sysinfo"))
+	{
+		command = std::make_unique<SysInfoXmlCommand>();
+	}
 	else if (!strcasecmp(methodName, "log"))
 	{
 		command = std::make_unique<LogXmlCommand>();
@@ -794,6 +812,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "testserver"))
 	{
 		command = std::make_unique<TestServerXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testserverspeed"))
+	{
+		command = std::make_unique<TestServerSpeedXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "startscript"))
 	{
@@ -1255,8 +1277,12 @@ void StatusXmlCommand::Execute()
 		"<member><name>ArticleCacheLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ArticleCacheMB</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"
-		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DownloadRate</name><value><i4>%i</i4></value></member>\n"				// deprecated
+		"<member><name>DownloadRateLo</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DownloadRateHi</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>AverageDownloadRate</name><value><i4>%i</i4></value></member>\n"			// deprecated
+		"<member><name>AverageDownloadRateLo</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>AverageDownloadRateHi</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DownloadLimit</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ThreadCount</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>ParJobCount</name><value><i4>%i</i4></value></member>\n"					// deprecated (renamed to PostJobCount)
@@ -1274,6 +1300,9 @@ void StatusXmlCommand::Execute()
 		"<member><name>FreeDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>FreeDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>FreeDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ServerTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ResumeTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FeedActive</name><value><boolean>%s</boolean></value></member>\n"
@@ -1304,18 +1333,22 @@ void StatusXmlCommand::Execute()
 		"\"ArticleCacheLo\" : %u,\n"
 		"\"ArticleCacheHi\" : %u,\n"
 		"\"ArticleCacheMB\" : %i,\n"
-		"\"DownloadRate\" : %i,\n"
-		"\"AverageDownloadRate\" : %i,\n"
+		"\"DownloadRate\" : %i,\n"				// deprecated
+		"\"DownloadRateLo\" : %u,\n"
+		"\"DownloadRateHi\" : %u,\n"
+		"\"AverageDownloadRate\" : %i,\n"		// deprecated
+		"\"AverageDownloadRateLo\" : %u,\n"
+		"\"AverageDownloadRateHi\" : %u,\n"
 		"\"DownloadLimit\" : %i,\n"
 		"\"ThreadCount\" : %u,\n"
-		"\"ParJobCount\" : %i,\n"			// deprecated (renamed to PostJobCount)
+		"\"ParJobCount\" : %i,\n"				// deprecated (renamed to PostJobCount)
 		"\"PostJobCount\" : %i,\n"
 		"\"UrlCount\" : %i,\n"
 		"\"UpTimeSec\" : %i,\n"
 		"\"DownloadTimeSec\" : %i,\n"
-		"\"ServerPaused\" : %s,\n"			// deprecated (renamed to DownloadPaused)
+		"\"ServerPaused\" : %s,\n"				// deprecated (renamed to DownloadPaused)
 		"\"DownloadPaused\" : %s,\n"
-		"\"Download2Paused\" : %s,\n"		// deprecated (same as DownloadPaused)
+		"\"Download2Paused\" : %s,\n"			// deprecated (same as DownloadPaused)
 		"\"ServerStandBy\" : %s,\n"
 		"\"PostPaused\" : %s,\n"
 		"\"ScanPaused\" : %s,\n"
@@ -1323,6 +1356,9 @@ void StatusXmlCommand::Execute()
 		"\"FreeDiskSpaceLo\" : %u,\n"
 		"\"FreeDiskSpaceHi\" : %u,\n"
 		"\"FreeDiskSpaceMB\" : %i,\n"
+		"\"TotalDiskSpaceLo\" : %u,\n"
+		"\"TotalDiskSpaceHi\" : %u,\n"
+		"\"TotalDiskSpaceMB\" : %i,\n"
 		"\"ServerTime\" : %i,\n"
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
@@ -1371,7 +1407,10 @@ void StatusXmlCommand::Execute()
 	Util::SplitInt64(articleCache, &articleCacheHi, &articleCacheLo);
 	int articleCacheMBytes = (int)(articleCache / 1024 / 1024);
 
-	int downloadRate = (int)(g_StatMeter->CalcCurrentDownloadSpeed());
+	int64 downloadRate = g_StatMeter->CalcCurrentDownloadSpeed();
+	uint32 downloadRateHi, downloadRateLo;
+	Util::SplitInt64(downloadRate, &downloadRateHi, &downloadRateLo);
+
 	int downloadLimit = (int)(g_WorkState->GetSpeedLimit());
 	bool downloadPaused = g_WorkState->GetPauseDownload();
 	bool postPaused = g_WorkState->GetPausePostProcess();
@@ -1386,7 +1425,10 @@ void StatusXmlCommand::Execute()
 	g_StatMeter->CalcTotalStat(&upTimeSec, &downloadTimeSec, &allBytes, &serverStandBy);
 	int downloadedMBytes = (int)(allBytes / 1024 / 1024);
 	Util::SplitInt64(allBytes, &downloadedSizeHi, &downloadedSizeLo);
-	int averageDownloadRate = (int)(downloadTimeSec > 0 ? allBytes / downloadTimeSec : 0);
+
+	int64 averageDownloadRate = downloadTimeSec > 0 ? allBytes / downloadTimeSec : 0;
+	uint32 averageDownloadRateHi, averageDownloadRateLo;
+	Util::SplitInt64(averageDownloadRate, &averageDownloadRateHi, &averageDownloadRateLo);
 
 	int64 monthBytes, dayBytes;
 	g_StatMeter->CalcQuotaUsage(monthBytes, dayBytes);
@@ -1399,9 +1441,20 @@ void StatusXmlCommand::Execute()
 	Util::SplitInt64(dayBytes, &daySizeHi, &daySizeLo);
 
 	uint32 freeDiskSpaceHi, freeDiskSpaceLo;
-	int64 freeDiskSpace = FileSystem::FreeDiskSize(g_Options->GetDestDir());
+	uint32 totalDiskSpaceHi, totalDiskSpaceLo;
+	int64 freeDiskSpace = 0;
+	int64 totalDiskSpace = 0;
+	auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
+	if (res.has_value())
+	{
+		const auto& value = res.value();
+		freeDiskSpace = value.available;
+		totalDiskSpace = value.total;
+	}
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
-	int freeDiskSpaceMB = (int)(freeDiskSpace / 1024 / 1024);
+	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);
+	int freeDiskSpaceMB = static_cast<int>(freeDiskSpace / 1024 / 1024);
+	int totalDiskSpaceMB = static_cast<int>(totalDiskSpace / 1024 / 1024);
 
 	int serverTime = (int)Util::CurrentTime();
 	int resumeTime = (int)g_WorkState->GetResumeTime();
@@ -1413,12 +1466,23 @@ void StatusXmlCommand::Execute()
 		forcedSizeHi, forcedMBytes, downloadedSizeLo, downloadedSizeHi, downloadedMBytes,
 		monthSizeLo, monthSizeHi, monthMBytes, daySizeLo, daySizeHi, dayMBytes,
 		articleCacheLo, articleCacheHi, articleCacheMBytes,
-		downloadRate, averageDownloadRate, downloadLimit, threadCount,
+		Util::SafeIntCast<int64, int32>(downloadRate),
+		downloadRateLo,
+		downloadRateHi,
+		Util::SafeIntCast<int64, int32>(averageDownloadRate),
+		averageDownloadRateLo,
+		averageDownloadRateHi,
+		downloadLimit, threadCount,
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, freeDiskSpaceHi,	freeDiskSpaceMB, serverTime, resumeTime,
-		BoolToStr(feedActive), queuedScripts);
+		freeDiskSpaceLo, 
+		freeDiskSpaceHi, 
+		freeDiskSpaceMB, 
+		totalDiskSpaceLo, 
+		totalDiskSpaceHi, 
+		totalDiskSpaceMB,
+		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -1429,6 +1493,15 @@ void StatusXmlCommand::Execute()
 	}
 
 	AppendResponse(IsJson() ? JSON_STATUS_END : XML_STATUS_END);
+}
+
+void SysInfoXmlCommand::Execute()
+{
+	std::string response = IsJson()
+		? System::ToJsonStr(*g_SystemInfo)
+		: System::ToXmlStr(*g_SystemInfo);
+
+	AppendResponse(response.c_str());
 }
 
 // struct[] log(idfrom, entries)
@@ -2731,7 +2804,7 @@ void LoadExtensionsXmlCommand::Execute()
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
-			BuildErrorResponse(3, error.get().c_str());
+			BuildErrorResponse(3, error.value().c_str());
 			return;
 		}	
 	}
@@ -2797,7 +2870,7 @@ void DownloadExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2834,7 +2907,7 @@ void UpdateExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
 	if (error)
 	{
-		BuildErrorResponse(3, error.get().c_str());
+		BuildErrorResponse(3, error.value().c_str());
 		return;
 	}
 
@@ -2854,7 +2927,7 @@ void DeleteExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->DeleteExtension(extName);
 	if (error)
 	{
-		BuildErrorResponse(2, error.get().c_str());
+		BuildErrorResponse(2, error.value().c_str());
 		return;
 	}
 
@@ -3534,6 +3607,39 @@ void TestServerXmlCommand::PrintError(const char* errMsg)
 	{
 		m_errText = EncodeStr(errMsg);
 	}
+}
+
+void TestServerSpeedXmlCommand::Execute()
+{
+	char* nzbFileUrl;
+	if (!NextParamAsStr(&nzbFileUrl))
+	{
+		BuildErrorResponse(2, "Invalid parameter: NZB file url");
+		return;
+	}
+
+	int serverId;
+	if (!NextParamAsInt(&serverId))
+	{
+		BuildErrorResponse(2, "Invalid parameter: Server ID");
+		return;
+	}
+
+	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
+	nzbInfo->SetKind(NzbInfo::nkUrl);
+	nzbInfo->SetUrl(nzbFileUrl);
+	nzbInfo->SetFilename(nzbFileUrl);
+	nzbInfo->SetPriority(NzbInfo::FORCE_PRIORITY);
+	nzbInfo->SetExtraPriority(NzbInfo::FORCE_PRIORITY);
+	nzbInfo->SetAddUrlPaused(false);
+	nzbInfo->SetDupeMode(EDupeMode::dmForce);
+	nzbInfo->SetDesiredServerId(serverId);
+	nzbInfo->SetSkipScriptProcessing(true);
+	nzbInfo->SetSkipDiskWrite(true);
+
+	g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), true);
+
+	BuildBoolResponse(true);
 }
 
 // bool startscript(string script, string command, string context, struct[] options);

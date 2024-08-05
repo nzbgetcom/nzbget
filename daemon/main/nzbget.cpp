@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -55,6 +56,7 @@
 #include "CommandScript.h"
 #include "YEncode.h"
 #include "ExtensionManager.h"
+#include "SystemInfo.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -63,6 +65,11 @@
 #endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
+#endif
+
+#ifdef DEBUG
+#include <sstream>
+#include <iostream>
 #endif
 
 // Prototypes
@@ -89,6 +96,7 @@ ServiceCoordinator* g_ServiceCoordinator;
 ScriptConfig* g_ScriptConfig;
 CommandScriptLog* g_CommandScriptLog;
 ExtensionManager::Manager* g_ExtensionManager;
+System::SystemInfo* g_SystemInfo;
 
 #ifdef WIN32
 WinConsole* g_WinConsole;
@@ -201,6 +209,7 @@ private:
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
+	std::unique_ptr<System::SystemInfo> m_systemInfo;
 
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
@@ -273,7 +282,7 @@ void NZBGet::Init()
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
-	if (uMask >= 0 && uMask < 01000)
+	if (uMask < 01000)
 	{
 		/* set newly created file permissions */
 		FileSystem::uMask = uMask;
@@ -317,6 +326,19 @@ void NZBGet::Init()
 	{
 		info("nzbget %s remote-mode", Util::VersionRevision());
 	}
+
+	info("using %s", m_options->GetConfigFilename());
+	info("nzbget runs on %s:%i", m_options->GetControlIp(), m_options->GetControlPort());
+
+#ifdef DEBUG
+	std::stringstream ss;
+	ss << *m_systemInfo;
+	std::string line;
+	while (std::getline(ss, line))
+	{
+		detail("%s", line.c_str());
+	}
+#endif
 
 	m_reloading = false;
 
@@ -400,6 +422,9 @@ void NZBGet::CreateGlobals()
 
 	m_extensionManager = std::make_unique<ExtensionManager::Manager>();
 	g_ExtensionManager = m_extensionManager.get();
+
+	m_systemInfo = std::make_unique<System::SystemInfo>();
+	g_SystemInfo = m_systemInfo.get();
 
 	m_scheduler = std::make_unique<Scheduler>();
 

@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -595,7 +596,13 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 		outfile.PrintLine("%s", completedFile.GetOrigname() ? completedFile.GetOrigname() : "");
 	}
 
-	outfile.PrintLine("%i", (int)nzbInfo->GetParameters()->size());
+	outfile.PrintLine(
+		"%i,%i,%i,%i", 
+		static_cast<int>(nzbInfo->GetParameters()->size()),
+		static_cast<int>(nzbInfo->GetSkipScriptProcessing()),
+		static_cast<int>(nzbInfo->GetSkipDiskWrite()),
+		nzbInfo->GetDesiredServerId()
+	);
 	for (NzbParameter& parameter : nzbInfo->GetParameters())
 	{
 		outfile.PrintLine("%s=%s", parameter.GetName(), parameter.GetValue());
@@ -632,6 +639,11 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
 {
 	char buf[10240];
+	int parameterCount = 0;
+	int skipScriptProcessing = 0;
+	int skipDiskWrite = 0;
+	int desiredServerId = 0;
+	int numItems = 0;
 
 	int id;
 	if (infile.ScanLine("%i", &id) != 1) goto error;
@@ -899,8 +911,21 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	}
 
 	nzbInfo->GetParameters()->clear();
-	int parameterCount;
-	if (infile.ScanLine("%i", &parameterCount) != 1) goto error;
+
+	numItems = infile.ScanLine("%i,%i,%i,%i", 
+		&parameterCount, 
+		&skipScriptProcessing, 
+		&skipDiskWrite,
+		&desiredServerId);
+
+	if (numItems < 1) goto error;
+	if (numItems == 4)
+	{
+		nzbInfo->SetSkipScriptProcessing(static_cast<bool>(skipScriptProcessing));
+		nzbInfo->SetSkipDiskWrite(static_cast<bool>(skipDiskWrite));
+		nzbInfo->SetDesiredServerId(desiredServerId);
+	}
+
 	for (int i = 0; i < parameterCount; i++)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;

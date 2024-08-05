@@ -120,6 +120,7 @@ check_include_file(strings.h HAVE_STRINGS_H)
 check_include_file(string.h HAVE_STRING_H)
 check_include_file(sys/stat.h HAVE_SYS_STAT_H)
 check_include_file(unistd.h HAVE_UNISTD_H)
+check_include_file(alloca.h HAVE_ALLOCA_H)
 
 check_library_exists(pthread pthread_create "" HAVE_PTHREAD_CREATE) 
 check_library_exists(socket socket "" HAVE_SOCKET) 
