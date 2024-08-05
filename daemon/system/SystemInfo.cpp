@@ -66,8 +66,10 @@ namespace System
 #ifdef HAVE_OPENSSL
 #ifdef LIBRESSL_VERSION_TEXT
 		std::string str = LIBRESSL_VERSION_TEXT;
-		m_libraries.push_back({ "LibreSSL",
-				str.substr(str.find(" ") + 1) });
+		size_t pos = str.find(" ");
+
+		str = pos != std::string::npos ? str.substr(pos + 1) : "unknown";
+		m_libraries.push_back({ "LibreSSL", str });
 #else
 		m_libraries.push_back({ "OpenSSL", OPENSSL_FULL_VERSION_STR });
 #endif
