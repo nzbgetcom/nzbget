@@ -28,22 +28,22 @@
 #include "Log.h"
 #include "DiskState.h"
 
-Log* g_Log = new Log();
+Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
 
-std::string GetToolsJsonStr(const std::vector<System::Tool> tools)
+std::string GetToolsJsonStr(const std::vector<System::Tool>& tools)
 {
 	std::string json = "\"Tools\":[";
 
 	for (size_t i = 0; i < tools.size(); ++i)
 	{
 		std::string path = tools[i].path;
-		for (size_t i = 0; i < path.length(); ++i) {
-			if (path[i] == '\\')
+		for (size_t j = 0; j < path.length(); ++j) {
+			if (path[j] == '\\')
 			{
-				path.insert(i, "\\");
-				++i;
+				path.insert(j, "\\");
+				++j;
 			}
 		}
 
@@ -62,7 +62,7 @@ std::string GetToolsJsonStr(const std::vector<System::Tool> tools)
 	return json;
 }
 
-std::string GetLibrariesJsonStr(const std::vector<System::Library> libs)
+std::string GetLibrariesJsonStr(const std::vector<System::Library>& libs)
 {
 	std::string json = "\"Libraries\":[";
 
@@ -82,7 +82,7 @@ std::string GetLibrariesJsonStr(const std::vector<System::Library> libs)
 	return json;
 }
 
-std::string GetToolsXmlStr(const std::vector<System::Tool> tools)
+std::string GetToolsXmlStr(const std::vector<System::Tool>& tools)
 {
 	std::string xml = "<Tools>";
 
@@ -110,7 +110,7 @@ std::string GetToolsXmlStr(const std::vector<System::Tool> tools)
 	return xml;
 }
 
-std::string GetLibrariesXmlStr(const std::vector<System::Library> libs)
+std::string GetLibrariesXmlStr(const std::vector<System::Library>& libs)
 {
 	std::string xml = "<Libraries>";
 
@@ -126,13 +126,32 @@ std::string GetLibrariesXmlStr(const std::vector<System::Library> libs)
 	return xml;
 }
 
+std::string GetNetworkXmlStr(const System::Network& network)
+{
+	std::string res = "<Network>";
+	res += network.publicIP.empty()
+		? "<member><name>PublicIP</name><value><string/></value></member>"
+		: "<member><name>PublicIP</name><value><string>" + network.publicIP + "</string></value></member>";
+		
+	res += network.privateIP.empty()
+		? "<member><name>PrivateIP</name><value><string/></value></member>"
+		: "<member><name>PrivateIP</name><value><string>" + network.privateIP + "</string></value></member>";
+
+	res += "</Network>";
+	return res;
+}
+
 BOOST_AUTO_TEST_CASE(SystemInfoTest)
 {
-	BOOST_CHECK(0 == 0);
+	Log log;
+	DiskState ds;
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("SevenZipCmd=7z");
 	cmdOpts.push_back("UnrarCmd=unrar");
 	Options options(&cmdOpts, nullptr);
+
+	g_Log = &log;
+	g_DiskState = &ds;
 	g_Options = &options;
 
 	auto sysInfo = std::make_unique<System::SystemInfo>();
@@ -157,14 +176,25 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 		"</string></value></member>" +
 		"<member><name>Arch</name><value><string>" + sysInfo->GetCPUInfo().GetArch() +
 		"</string></value></member></CPU>" +
-		"<Network><member><name>PublicIP</name><value><string>" + sysInfo->GetNetworkInfo().publicIP +
-		"</string></value></member>"
-		"<member><name>PrivateIP</name><value><string>" + sysInfo->GetNetworkInfo().privateIP +
-		"</string></value></member></Network>" +
+		GetNetworkXmlStr(sysInfo->GetNetworkInfo()) +
 		GetToolsXmlStr(sysInfo->GetTools()) +
 		GetLibrariesXmlStr(sysInfo->GetLibraries()) +
 		"</struct></value>";
 
+	BOOST_TEST_MESSAGE("EXPECTED JSON STR: ");
+	BOOST_TEST_MESSAGE(jsonStrExpected);
+
+	BOOST_TEST_MESSAGE("RESULT JSON STR: ");
+	BOOST_TEST_MESSAGE(jsonStrResult);
+
+	BOOST_TEST_MESSAGE("EXPECTED XML STR: ");
+	BOOST_TEST_MESSAGE(xmlStrExpected);
+
+	BOOST_TEST_MESSAGE("RESULT XML STR: ");
+	BOOST_TEST_MESSAGE(xmlStrResult);
+
 	BOOST_CHECK(jsonStrResult == jsonStrExpected);
 	BOOST_CHECK(xmlStrResult == xmlStrExpected);
+
+	xmlCleanupParser();
 }
