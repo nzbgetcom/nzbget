@@ -45,3 +45,12 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [version](VERSION.md)
 - [shutdown](SHUTDOWN.md)
 - [reload](RELOAD.md)
+
+## Queue and history
+
+- [listgroups](LISTGROUPS.md)
+- [listfiles](LISTFILES.md)
+- [history](HISTORY.md)
+- [append](APPEND.md)
+- [editqueue](EDITQUEUE.md)
+- [scan](SCAN.md)

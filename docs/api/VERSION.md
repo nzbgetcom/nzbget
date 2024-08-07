@@ -1,6 +1,6 @@
 ## API-method `version`
 
-### Synta
+### Signature
 `string version()`
 
 _Request the version-string of the program_

@@ -1,7 +1,6 @@
 ## API-method `reload`
 
-### Syntax
-
+### Signature
 `bool shutdown()` 
 
 _Shutdown the program_

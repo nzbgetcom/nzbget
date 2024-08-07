@@ -1,7 +1,6 @@
 ## API-method `shutdown`
 
-### Syntax
-
+### Signature
 `bool reload()` 
 
 _Stop all activities and reinitialize the program. This method must be called after changing of program options for them to have effect_
