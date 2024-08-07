@@ -1,9 +1,9 @@
 ## API-method `version`
 
-### Syntax
+### Synta
+`string version()`
 
-`string version() `
-> Request the version-string of the program.
+_Request the version-string of the program_
 
 ### Return value
-Version `string`.
+Version `string`

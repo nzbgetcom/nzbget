@@ -30,7 +30,7 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 
 - `http://localhost:6789/username:password/xmlrpc`
 
-`Security warning:` HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS (needs to be explicitly enabled in NZBGet settings by user).
+`Security warning`: HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS (needs to be explicitly enabled in NZBGet settings by user).
 
 ## Features and limitations
 

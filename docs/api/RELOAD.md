@@ -2,7 +2,9 @@
 
 ### Syntax
 
-`bool shutdown()` - <em>Shutdown the program</em>
+`bool shutdown()` 
+
+_Shutdown the program_
 
 ### Return value
-Always `true`.
+Always `true`
