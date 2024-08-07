@@ -327,6 +327,8 @@ void NZBGet::Init()
 		info("nzbget %s remote-mode", Util::VersionRevision());
 	}
 
+	m_options->CheckDirs();
+
 	info("using %s", m_options->GetConfigFilename());
 	info("nzbget runs on %s:%i", m_options->GetControlIp(), m_options->GetControlPort());
 
@@ -1012,8 +1014,9 @@ void NZBGet::Daemonize()
 		struct passwd *pw = getpwnam(m_options->GetDaemonUsername());
 		if (pw)
 		{
-			// Change owner of lock file
-			fchown(lfp, pw->pw_uid, pw->pw_gid);
+			// Change owner of lock- and logfile
+			chown(m_options->GetLockFile(), pw->pw_uid, pw->pw_gid);
+			chown(m_options->GetLogFile(), pw->pw_uid, pw->pw_gid);
 			// Set aux groups to null.
 			setgroups(0, (const gid_t*)0);
 			// Set primary group.
