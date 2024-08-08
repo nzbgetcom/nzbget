@@ -1,0 +1,13 @@
+## API-method `shutdown`
+
+### Signature
+`bool scan(bool SyncMode)` 
+
+_Request rescanning of incoming directory for nzb-files (option `NzbDir`)_
+
+### Arguments
+- `SyncMode (bool)` - `Optional`. waits for completing of scan
+    before reporting the status.
+
+### Return value
+Always `true`
