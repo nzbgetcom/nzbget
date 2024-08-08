@@ -36,7 +36,7 @@ This method returns array of structures with following fields:
 - `RemainingParCount (int)` - Remaining (current) number of par-files in group.
 - `MinPostTime (int)` - Date/time when the oldest file in the group was posted to newsgroup (Time is in C/Unix format).
 - `MaxPostTime (int)` - Date/time when the newest file in the group was posted to newsgroup (Time is in C/Unix format).
-- `MinPriority (int)` - ~~v13.0~~ Deprecated, use MaxPriority instead.
+- `MinPriority (int)` - ~~v13.0~~ Deprecated, use `MaxPriority` instead.
 - `MaxPriority (int)` - Priority of the group. “Max” in the field name has historical reasons.
 - `ActiveDownloads (int)` - Number of active downloads in the group. With this filed can be determined what group(s) is (are) being currently downloaded. In most cases only one group is downloaded at a time however more that one group can be downloaded simultaneously when the first group is almost completely downloaded.
 - `Status (string)`- Status of the group:
@@ -64,9 +64,9 @@ This method returns array of structures with following fields:
 - `DownloadedSizeMB (int)` - `v14.0` Amount of downloaded data for group in MiB.
 - `DownloadTimeSec (int)` - `v14.0` Download time in seconds.
 - `MessageCount (int)` - `v15.0` Number of messages stored in the item log. Messages can be retrieved with method [loadlog](LOADLOG.md).
-- `DupeKey (string)` - Duplicate key. See RSS.
-- `DupeScore (int)` - Duplicate score. See RSS.
-- `DupeMode (string)` - Duplicate mode. One of SCORE, ALL, FORCE. See RSS.
+- `DupeKey (string)` - Duplicate key. See RSS _(comming soon)_.
+- `DupeScore (int)` - Duplicate score. See RSS _(comming soon)_.
+- `DupeMode (string)` - Duplicate mode. One of SCORE, ALL, FORCE. See RSS _(comming soon)_.
 - `Parameters (struct[])` - Post-processing parameters for group. An array of structures with following fields:
   - `Name (string)`- Name of post-processing parameter.
   - `Value (string)` - Value of post-processing parameter.
