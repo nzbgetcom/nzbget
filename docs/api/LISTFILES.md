@@ -22,13 +22,13 @@ This method returns an array of structures with following fields:
 - `NZBNicename (string)` - ~~v12.0~~ Deprecated, use `NZBName` instead.
 - `Subject (string)` - Subject of article (read from nzb-file).
 - `Filename (string)` - Filename parsed from subject. It could be incorrect since the subject not always correct formated. After the first article for file is read, the correct filename is read from article body.
-- `FilenameConfirmed (bool)` - `True` if filename was already read from article’s body. `False` if the name was parsed from subject. For confirmed filenames the destination file on disk will be exactly as specified in field `filename`. For unconfirmed filenames the name could change later.
+- `FilenameConfirmed (bool)` - `true` if filename was already read from article’s body. `false` if the name was parsed from subject. For confirmed filenames the destination file on disk will be exactly as specified in field `filename`. For unconfirmed filenames the name could change later.
 - `DestDir (string)` - Destination directory for output file.
 - `FileSizeLo (int)` - Filesize in bytes, Low 32-bits of 64-bit value.
 - `FileSizeHi (int)` - Filesize in bytes, High 32-bits of 64-bit value.
 - `RemainingSizeLo (int)` - Remaining size in bytes, Low 32-bits of 64-bit value.
 - `RemainingSizeHi (int)` - Remaining size in bytes, High 32-bits of 64-bit value.
-- `Paused (bool)` - `True` if file is paused.
+- `Paused (bool)` - `true` if file is paused.
 - `PostTime (int)` - Date/time when the file was posted to newsgroup (Time is in C/Unix format).
 - `Category (string)` - Category for group or empty string if none category is assigned.
 - `Priority (int)` - ~~v13.0~~ Deprecated, use MaxPriority of the group (method [listgroups](LISTGROUPS.md)) instead.
