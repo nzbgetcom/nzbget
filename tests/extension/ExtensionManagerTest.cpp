@@ -52,6 +52,8 @@ BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 	Options options(&cmdOpts, nullptr);
 	g_Options = &options;
 
+	options.CheckDirs();
+
 	std::vector<std::string> correctOrder = { "Extension2", "Extension1", "email" };
 	ExtensionManager::Manager manager;
 
@@ -77,6 +79,8 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 	Options options(&cmdOpts, nullptr);
 	g_Options = &options;
 	ExtensionManager::Manager manager;
+
+	options.CheckDirs();
 
 	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
 
