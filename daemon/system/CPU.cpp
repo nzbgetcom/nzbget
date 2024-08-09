@@ -204,9 +204,13 @@ namespace System
 #if __BSD__
 	void CPU::Init()
 	{
+		int mib[2];
 		size_t len = BUFFER_SIZE;
 		char model[BUFFER_SIZE];
-		if (sysctlbyname("hw.model", &model, &len, nullptr, 0) == 0)
+
+		mib[0] = CTL_HW;
+		mib[1] = HW_MODEL;
+		if (sysctl(mib, 2, model, &len, nullptr, 0) != -1)
 		{
 			m_model = model;
 			Util::Trim(m_model);

@@ -623,7 +623,7 @@ build_bin()
         exit 1
     fi
     cmake --install $OUTPUTDIR/$ARCH
-
+    cmake --build $OUTPUTDIR/$ARCH --target install-conf
     cd $OUTPUTDIR/install/$ARCH
 
     mkdir -p nzbget

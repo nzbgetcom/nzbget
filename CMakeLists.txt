@@ -8,7 +8,7 @@ set_property(GLOBAL PROPERTY PACKAGE)
 set_property(GLOBAL PROPERTY LIBS)
 set_property(GLOBAL PROPERTY INCLUDES)
 
-set(VERSION "24.2")
+set(VERSION "24.3")
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 17)
@@ -63,7 +63,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS_DEBUG "-O0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "-O0 -pthread -g -DDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "-O0 -pthread -g -DDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -73,10 +73,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
 		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
-		set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
-		set(CMAKE_EXE_LINKER_FLAGS_RELEASE "-s" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 		set(CMAKE_CXX_FLAGS "/O2 /MT /MP /W4 /EHs /DNDEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
 		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib" CACHE STRING "" FORCE)
@@ -94,6 +92,15 @@ include_directories(${CMAKE_SOURCE_DIR})
 if(NOT BUILD_ONLY_TESTS)
 	include(daemon/sources.cmake)
 	add_executable(${PACKAGE} ${SRC})
+
+	if(CMAKE_BUILD_TYPE STREQUAL "Release")
+		add_custom_command(
+			TARGET ${PACKAGE} POST_BUILD
+			DEPENDS ${PACKAGE}
+			COMMAND ${CMAKE_STRIP}
+			ARGS ${PACKAGE}
+		)
+	endif()
 endif()
 
 if(WIN32)
