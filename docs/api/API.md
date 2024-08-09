@@ -54,3 +54,13 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [append](APPEND.md)
 - [editqueue](EDITQUEUE.md)
 - [scan](SCAN.md)
+
+## Status, logging and statistics
+
+- [status](STATUS.md)
+- [sysinfo](STATUS.md)
+- [log](LOG.md)
+- [writelog](WRITELOG.md)
+- [loadlog](LOADLOG.md)
+- [servervolumes](SERVERVOLUMES.md)
+- [resetservervolume](RESETSERVERVOLUME.md)
