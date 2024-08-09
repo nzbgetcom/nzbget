@@ -29,8 +29,6 @@
 #include "Json.h"
 #include "Xml.h"
 
-namespace System
-{
 #ifdef HAVE_NCURSES_H
 #include <ncurses.h>
 #endif
@@ -38,6 +36,8 @@ namespace System
 #include <ncurses/ncurses.h>
 #endif
 
+namespace System
+{
 	static const size_t BUFFER_SIZE = 512;
 
 	SystemInfo::SystemInfo()
@@ -52,7 +52,7 @@ namespace System
 
 	void SystemInfo::InitLibsInfo()
 	{
-		m_libraries.reserve(4);
+		m_libraries.reserve(5);
 		m_libraries.push_back({ "LibXML2", LIBXML_DOTTED_VERSION });
 
 #if defined(HAVE_NCURSES_H) || defined(HAVE_NCURSES_NCURSES_H)
@@ -66,10 +66,12 @@ namespace System
 #ifdef HAVE_OPENSSL
 #ifdef LIBRESSL_VERSION_TEXT
 		std::string str = LIBRESSL_VERSION_TEXT;
-		m_libraries.push_back({ "LibreSSL",
-				str.substr(str.find(" ") + 1) });
-#else
+		m_libraries.push_back({ "LibreSSL", str.substr(str.find(" ") + 1) });
+#elif defined(OPENSSL_FULL_VERSION_STR)
 		m_libraries.push_back({ "OpenSSL", OPENSSL_FULL_VERSION_STR });
+#else 
+		std::string str = OPENSSL_VERSION_TEXT;
+		m_libraries.push_back({ "OpenSSL", str.substr(str.find(" ") + 1) });
 #endif
 #endif
 
@@ -80,6 +82,8 @@ namespace System
 #ifdef BOOST_LIB_VERSION
 		m_libraries.push_back({ "Boost", BOOST_LIB_VERSION });
 #endif
+
+		m_libraries.shrink_to_fit();
 	}
 
 	const CPU& SystemInfo::GetCPUInfo() const
