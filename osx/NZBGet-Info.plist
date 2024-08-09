@@ -9,7 +9,7 @@
 	<key>CFBundleIconFile</key>
 	<string>mainicon.icns</string>
 	<key>CFBundleIdentifier</key>
-	<string>net.sourceforge.nzbget</string>
+	<string>com.nzbget</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
