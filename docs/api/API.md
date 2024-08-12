@@ -64,3 +64,14 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [loadlog](LOADLOG.md)
 - [servervolumes](SERVERVOLUMES.md)
 - [resetservervolume](RESETSERVERVOLUME.md)
+
+## Pause and speed limit
+
+- [rate](RATE.md)
+- [pausedownload](PAUSEDOWNLOAD.md)
+- [resumedownload](RESUMEDOWNLOAD.md)
+- [pausepost](PAUSEPOST.md)
+- [resumepost](RESUMEPOST.md)
+- [pausescan](PAUSESCAN.md)
+- [resumescan](RESUMESCAN.md)
+- [scheduleresume](SCHEDULERESUME.md)
