@@ -9,7 +9,7 @@ _Request rescanning of incoming directory for nzb-files (option `NzbDir`)_
 
 ### Arguments
 - `SyncMode (bool)` - `Optional`. waits for completing of scan
-    before reporting the status.
+  before reporting the status.
 
 ### Return value
 Always `true`
