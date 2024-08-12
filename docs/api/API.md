@@ -58,7 +58,7 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 ## Status, logging and statistics
 
 - [status](STATUS.md)
-- [sysinfo](STATUS.md)
+- [sysinfo](SYSINFO.md)
 - [log](LOG.md)
 - [writelog](WRITELOG.md)
 - [loadlog](LOADLOG.md)
