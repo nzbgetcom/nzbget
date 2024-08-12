@@ -1,10 +1,11 @@
 ## API-method `sysinfo`
 
-## Since 
-`v24.2`
+## Since `v24.2`
 
 ### Signature
-`struct sysinfo()` 
+``` c++
+struct sysinfo();
+```
 
 _returns information about the user's environment and hardware_
 

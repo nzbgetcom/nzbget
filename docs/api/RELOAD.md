@@ -1,7 +1,9 @@
 ## API-method `reload`
 
 ### Signature
-`bool shutdown()` 
+``` c++
+bool shutdown();
+```
 
 _Shutdown the program_
 

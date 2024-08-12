@@ -1,7 +1,9 @@
 ## API-method `history`
 
 ### Signature
-`struct[] history(bool Hidden)  ` 
+``` c++
+struct[] history(bool Hidden);
+```
 
 _Request for list of items in history-list_
 

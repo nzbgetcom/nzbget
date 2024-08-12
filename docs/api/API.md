@@ -82,3 +82,16 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [loadconfig](LOADCONFIG.md)
 - [saveconfig](SAVECONFIG.md)
 - [configtemplates](CONFIGTEMPLATES.md)
+
+## Extensions
+
+- [loadextensions](LOADEXTENSIONS.md)
+- [donwloadextension](DOWNLOADEXTENSION.md)
+- [updateextension](UPDATEEXTENSION.md)
+- [deleteextension](DELETEEXTENSION.md)
+
+## Tests
+
+- [testextension](TESTEXTENSION.md)
+- [testserver](TESTSERVER.md)
+- [testserverspeed](TESTSERVERSPEED.md)

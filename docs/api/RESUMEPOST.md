@@ -1,7 +1,9 @@
 ## API-method `resumepost`
 
 ### Signature
-`bool resumepost()` 
+``` c++
+bool resumepost();
+```
 
 _Resume (previously paused) post-processing_
 

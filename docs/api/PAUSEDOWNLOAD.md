@@ -1,7 +1,9 @@
 ## API-method `pausedownload`
 
 ### Signature
-`bool pausedownload()` 
+``` c++
+bool pausedownload();
+```
 
 _Pause download queue_
 

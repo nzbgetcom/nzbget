@@ -1,7 +1,9 @@
 ## API-method `loadconfig`
 
 ### Signature
-`struct[] loadconfig()` 
+``` c++
+struct[] loadconfig();
+```
 
 _Reads configuration file from the disk_
 

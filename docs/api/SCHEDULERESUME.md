@@ -1,7 +1,9 @@
 ## API-method `scheduleresume`
 
 ### Signature
-`bool scheduleresume(int Seconds)` 
+``` c++
+bool scheduleresume(int Seconds);
+```
 
 _Schedule resuming of all activities after expiring of wait interval_
 

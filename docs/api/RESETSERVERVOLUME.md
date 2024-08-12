@@ -1,7 +1,9 @@
 ## API-method `resetservervolume`
 
 ### Signature
-`bool resetservervolume(int ServerId, string Sounter)` 
+``` c++
+bool resetservervolume(int ServerId, string Sounter);
+```
 
 _Reset download volume statistics for a specified news-server_
 

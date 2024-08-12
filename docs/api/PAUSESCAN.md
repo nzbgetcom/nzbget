@@ -1,7 +1,9 @@
 ## API-method `pausescan`
 
 ### Signature
-`bool pausescan()` 
+``` c++
+bool pausescan();
+```
 
 _Pause scanning of directory with incoming nzb-files (option `NzbDir`)_
 

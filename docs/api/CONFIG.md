@@ -1,7 +1,9 @@
 ## API-method `config`
 
 ### Signature
-`struct[] config()` 
+``` c++
+struct[] config();
+```
 
 _Returns current configuration loaded into program. Please note that the configuration file on disk may differ from the loaded configuration. This may occur if the configuration file on disk was changed after the program was launched or the program may get some options passed via command line_
 

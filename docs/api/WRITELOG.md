@@ -1,7 +1,9 @@
 ## API-method `writelog`
 
 ### Signature
-`bool writelog(string Kind, string Text)` 
+``` c++
+bool writelog(string Kind, string Text);
+```
 
 _Append log-entry into server’s log-file and on-screen log-buffer_
 

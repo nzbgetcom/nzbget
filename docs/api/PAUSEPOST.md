@@ -1,7 +1,9 @@
 ## API-method `pausepost`
 
 ### Signature
-`bool pausepost()` 
+``` c++
+bool pausepost();
+```
 
 _Pause post-processing_
 

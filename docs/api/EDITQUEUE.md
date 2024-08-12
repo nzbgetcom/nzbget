@@ -2,8 +2,9 @@
 
 ### Signature
 ### `v18.0`:
-
-`bool editqueue(string Command, string Param, int[] IDs)`
+``` c++
+bool editqueue(string Command, string Param, int[] IDs);
+```
 
 ### ~~v18.0~~:
 

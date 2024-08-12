@@ -1,9 +1,20 @@
 ## API-method `append`
 
 ### Signature
-`int append(string NZBFilename, string NZBContent, string Category,
-    int Priority, bool AddToTop, bool AddPaused, string DupeKey,
-    int DupeScore, string DupeMode, struct[] PPParameters)`
+``` c++
+int append(
+  string NZBFilename, 
+  string NZBContent, 
+  string Category,
+  int Priority, 
+  bool AddToTop, 
+  bool AddPaused, 
+  string DupeKey,
+  int DupeScore, 
+  string DupeMode, 
+  struct[] PPParameters
+);
+```
 
 _Add nzb-file or URL to download queue_
 

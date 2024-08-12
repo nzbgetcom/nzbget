@@ -1,7 +1,9 @@
 ## API-method `log`
 
 ### Signature
-`struct[] log(int IDFrom, int NumberOfEntries)` 
+``` c++
+struct[] log(int IDFrom, int NumberOfEntries);
+```
 
 _This method returns entries from screen’s log-buffer. The size of this buffer is limited and can be set via option LogBufferSize. Which messages should be saved to screen-log and which should be saved to log-file can be set via options `DetailTarget`, `InfoTarget`, `WarningTarget`, `ErrorTarget` and `DebugTarget`_
 

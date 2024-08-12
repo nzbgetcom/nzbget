@@ -1,7 +1,9 @@
 ## API-method `rate`
 
 ### Signature
-`bool rate(int Limit)` 
+``` c++
+bool rate(int Limit);
+```
 
 _Set download speed limit_
 

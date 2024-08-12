@@ -1,7 +1,9 @@
 ## API-method `listfiles`
 
 ### Signature
-`struct[] listfiles(int IDFrom, int IDTo, int NZBID)` 
+``` c++
+struct[] listfiles(int IDFrom, int IDTo, int NZBID);
+```
 
 _Request for file's list of a group (nzb-file)_
 

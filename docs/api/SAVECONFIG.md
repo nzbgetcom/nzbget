@@ -1,7 +1,9 @@
 ## API-method `saveconfig`
 
 ### Signature
-`bool saveconfig(struct[] Options)` 
+``` c++
+bool saveconfig(struct[] Options);
+```
 
 _Saves configuration file to the disk_
 

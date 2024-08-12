@@ -1,7 +1,9 @@
 ## API-method `status`
 
 ### Signature
-`struct status()`
+``` c++
+struct status();
+```
 
 _Request for current status (summary) information_
 

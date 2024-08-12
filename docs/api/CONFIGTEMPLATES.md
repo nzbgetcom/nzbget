@@ -1,14 +1,16 @@
 ## API-method `configtemplates`
 
 ### Signature
-`struct[] configtemplates(bool LoadFromDisk)` 
+``` c++
+struct[] configtemplates(bool LoadFromDisk)
+```
 
-_Returns NZBGet configuration file template and also extracts configuration sections from all post-processing files. This information is for example used by web-interface to build settings page or page “Postprocess” in download details dialog_
+_Returns NZBGet configuration file template and also extracts configuration sections from all post-processing files. This information is for example used by web-interface to build settings page or page `Postprocess` in download details dialog_
 
 ### Arguments
-- LoadFromDisk (bool) - `v15.0` `true` - load templates from disk, `false` - give templates loaded on program start.
+- `LoadFromDisk (bool)` - `v15.0` `true` - load templates from disk, `false` - give templates loaded on program start.
 
-## Till v23.0
+## Till `v23.0`
 
 ### Return value
 This method returns array of structures with following fields:
@@ -21,7 +23,7 @@ This method returns array of structures with following fields:
 - `SchedulerScript (bool)` - `true` for scheduler scripts.
 - `Template (string)` - Content of the configuration template (multiple lines).
 
-## Since v23.0
+## Since `v23.0`
 
 ### Return value
 This method returns array of structures with a field:

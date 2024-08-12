@@ -1,7 +1,9 @@
 ## API-method `shutdown`
 
 ### Signature
-`bool scan(bool SyncMode)` 
+``` c++
+bool scan(bool SyncMode);
+```
 
 _Request rescanning of incoming directory for nzb-files (option `NzbDir`)_
 

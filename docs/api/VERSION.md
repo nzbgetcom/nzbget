@@ -1,7 +1,9 @@
 ## API-method `version`
 
 ### Signature
-`string version()`
+``` c++
+string version();
+```
 
 _Request the version-string of the program_
 

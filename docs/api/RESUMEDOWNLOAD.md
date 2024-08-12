@@ -1,7 +1,9 @@
 ## API-method `resumedownload`
 
 ### Signature
-`bool resumedownload()` 
+``` c++
+bool resumedownload();
+```
 
 _Resume (previously paused) download queue_
 

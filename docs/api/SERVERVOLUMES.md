@@ -1,7 +1,9 @@
 ## API-method `servervolumes`
 
 ### Signature
-`struct[] servervolumes()` 
+``` c++
+struct[] servervolumes();
+```
 
 _Returns download volume statistics per news-server_
 

@@ -1,7 +1,9 @@
 ## API-method `resumescan`
 
 ### Signature
-`bool resumescan()` 
+``` c++
+bool resumescan();
+```
 
 _Resume (previously paused) scanning of directory with incoming nzb-files (option `NzbDir`)_
 

@@ -1,7 +1,9 @@
 ## API-method `listgroups`
 
 ### Signature
-`struct[] listgroups(int NumberOfLogEntries)` 
+``` c++
+struct[] listgroups(int NumberOfLogEntries);
+```
 
 _Request for list of downloads (nzb-files). This method returns summary information for each group (nzb-file)_
 
