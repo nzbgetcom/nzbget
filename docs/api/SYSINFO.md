@@ -1,6 +1,7 @@
 ## API-method `sysinfo`
 
-## Since `v24.2`
+## Since 
+`v24.2`
 
 ### Signature
 ``` c++
