@@ -75,3 +75,10 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [pausescan](PAUSESCAN.md)
 - [resumescan](RESUMESCAN.md)
 - [scheduleresume](SCHEDULERESUME.md)
+
+## Configuration
+
+- [config](CONFIG.md)
+- [loadconfig](LOADCONFIG.md)
+- [saveconfig](SAVECONFIG.md)
+- [configtemplates](CONFIGTEMPLATES.md)
