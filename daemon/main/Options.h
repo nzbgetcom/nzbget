@@ -196,6 +196,7 @@ public:
 	GuardedOptEntries GuardOptEntries() { return GuardedOptEntries(&m_optEntries, &m_optEntriesMutex); }
 	void CreateSchedulerTask(int id, const char* time, const char* weekDays,
 		ESchedulerCommand command, const char* param);
+	void CheckDirs();
 
 	// Options
 	const char* GetConfigFilename() const { return m_configFilename; }
