@@ -64,7 +64,7 @@ namespace ExtensionLoader
 		template <typename T>
 		void ParseSectionAndSet(T& opt, std::string sectionName, const std::string& line, size_t sepPos)
 		{
-			opt.name = line.substr(1, sepPos - 1);
+			opt.name = line.substr(0, sepPos);
 			Util::Trim(opt.name);
 
 			ManifestFile::Section section{};
@@ -76,9 +76,8 @@ namespace ExtensionLoader
 				section.prefix = opt.name.substr(0, digitPos);
 				section.multi = true;
 				opt.name = opt.name.substr(digitPos + 2);
-				
 			}
-			
+
 			opt.section = std::move(section);
 			opt.displayName = opt.name;
 		}
