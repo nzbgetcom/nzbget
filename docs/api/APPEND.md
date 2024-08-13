@@ -34,3 +34,31 @@ DupeKey (string) - duplicate key for nzb-file. See RSS _(comming soon)_.
 
 ### Return value
 Positive number representing `NZBID` of the queue item. `0` and negative numbers represent error codes. Current version uses only error code `0`, newer versions may use other error codes for detailed information about error.
+
+### Example
+
+```python
+from xmlrpc.client import ServerProxy
+from base64 import standard_b64encode
+
+server = ServerProxy("http://nzbget:tegbzn6789@localhost:6789/xmlrpc")
+filename = "/tmp/test.nzb"
+with open(filename, "rb") as f:
+    nzb_content = f.read()
+base64_nzb_content = standard_b64encode(nzb_content).decode()
+server.append(
+    filename,
+    base64_nzb_content,
+    "software",
+    0,
+    False,
+    False,
+    "",
+    0,
+    "SCORE",
+    [
+      ("*unpack:", "yes"), 
+      ("EMail.py:", "yes")
+    ],
+)
+```
