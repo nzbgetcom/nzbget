@@ -8,11 +8,12 @@
 bool updateextension(string URL, string ExtName);
 ```
 
-_Updates an extension_
+### Description
+Updates an extension.
 
 ### Arguments
-- `URL` - URL to download an extension.
-- `ExtName` - Extension name.
+- **URL** `(string)` - URL to download an extension.
+- **ExtName** `(string)` - Extension name.
 
 ### Return value
-`true` on success or `false` on failure.
+`true` on success or `failure` result on error.

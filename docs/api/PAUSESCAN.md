@@ -5,7 +5,8 @@
 bool pausescan();
 ```
 
-_Pause scanning of directory with incoming nzb-files (option `NzbDir`)_
+### Description
+Pause scanning of directory with incoming nzb-files (option `NzbDir`).
 
 ### Return value
 Always `true`.

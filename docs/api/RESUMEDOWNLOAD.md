@@ -5,7 +5,8 @@
 bool resumedownload();
 ```
 
-_Resume (previously paused) download queue_
+### Description
+Resume (previously paused) download queue.
 
 ### Return value
 Always `true`.

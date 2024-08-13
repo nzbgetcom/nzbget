@@ -8,10 +8,11 @@
 bool deleteextension(string ExtName);
 ```
 
-_Deletes an extension_
+### Description
+Deletes an extension.
 
 ### Arguments
-- `ExtName` - Extension name.
+- **ExtName** - Extension name.
 
 ### Return value
 `true` on success or `false` on failure.

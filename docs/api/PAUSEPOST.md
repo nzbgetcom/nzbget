@@ -5,7 +5,8 @@
 bool pausepost();
 ```
 
-_Pause post-processing_
+### Description
+Pause post-processing.
 
 ### Return value
 Always `true`.

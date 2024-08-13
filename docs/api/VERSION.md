@@ -5,7 +5,8 @@
 string version();
 ```
 
-_Request the version-string of the program_
+### Description
+Request the version-string of the program.
 
 ### Return value
 Version `string`

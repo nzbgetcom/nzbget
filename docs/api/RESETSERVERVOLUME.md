@@ -5,11 +5,12 @@
 bool resetservervolume(int ServerId, string Sounter);
 ```
 
-_Reset download volume statistics for a specified news-server_
+### Description
+Reset download volume statistics for a specified news-server.
 
 ### Arguments
-- `ServerId (int)` - Server ID to reset.
-- `Counter (string)` - The custom counter.
+- **ServerId** `(int)` - Server ID to reset.
+- **Counter** `(string)` - The custom counter.
 
 ### Return value
-`true/false`
+`true` on success or `false` on failure.

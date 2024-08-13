@@ -8,11 +8,12 @@
 bool downloadextension(string URL, string ExtName);
 ```
 
-_Downloads and installs the extension_
+### Description
+Downloads and installs the extension.
 
 ### Arguments
-- `URL` - URL to download an extension.
-- `ExtName` - Extension name.
+- **URL** - URL to download an extension.
+- **ExtName** - Extension name.
 
 ### Return value
 `true` on success or `false` on failure.

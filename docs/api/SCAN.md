@@ -5,10 +5,11 @@
 bool scan(bool SyncMode);
 ```
 
-_Request rescanning of incoming directory for nzb-files (option `NzbDir`)_
+### Description
+Request rescanning of incoming directory for nzb-files (option `NzbDir`).
 
 ### Arguments
-- `SyncMode (bool)` - `Optional`. waits for completing of scan
+- **SyncMode** `(bool)` - `Optional`. waits for completing of scan
   before reporting the status.
 
 ### Return value

@@ -5,7 +5,8 @@
 bool pausedownload();
 ```
 
-_Pause download queue_
+### Description
+Pause download queue.
 
 ### Return value
 Always `true`.

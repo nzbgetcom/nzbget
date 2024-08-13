@@ -5,7 +5,8 @@
 bool resumepost();
 ```
 
-_Resume (previously paused) post-processing_
+### Description
+Resume (previously paused) post-processing.
 
 ### Return value
 Always `true`.

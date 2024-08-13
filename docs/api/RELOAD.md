@@ -5,7 +5,8 @@
 bool shutdown();
 ```
 
-_Shutdown the program_
+### Description
+Shutdown the program.
 
 ### Return value
 Always `true`

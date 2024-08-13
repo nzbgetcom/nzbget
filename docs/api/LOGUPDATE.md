@@ -5,6 +5,7 @@
 struct[] logupdate(int idfrom, int entries);
 ```
 
-_Loads from disk and returns an update log_
+### Description
+Loads from disk and returns an update log.
 
 **NOTE** For the arguments and return values see method [log](LOG.md)

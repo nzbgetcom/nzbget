@@ -5,6 +5,7 @@
 struct[] logscript(int idfrom, int entries);
 ```
 
-_Loads from disk and returns the log of a specific extension script_
+### Description
+Loads from disk and returns the log of a specific extension script.
 
 **NOTE** For the arguments and return values see method [log](LOG.md)

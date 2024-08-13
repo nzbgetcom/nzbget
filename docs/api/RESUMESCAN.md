@@ -5,7 +5,8 @@
 bool resumescan();
 ```
 
-_Resume (previously paused) scanning of directory with incoming nzb-files (option `NzbDir`)_
+### Description
+Resume (previously paused) scanning of directory with incoming nzb-files (option `NzbDir`).
 
 ### Return value
 Always `true`.

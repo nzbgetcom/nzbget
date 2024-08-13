@@ -8,7 +8,8 @@
 bool testextension(string ExtEntryName);
 ```
 
-_Tries to find an executor program, e.g. Pytohn for the extension_
+### Description
+Tries to find an executor program, e.g. Pytohn for the extension.
 
 ### Arguments
 - `ExtEntryName` - Extension entry filename.
