@@ -75,6 +75,7 @@ Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.m
 ## Brief introduction on how to use NZBGet
  - [How to use](docs/HOW_TO_USE.md)
  - [Performance tips](docs/PERFORMANCE.md)
+ - [API reference](docs/api/API.md)
 
 ## Contribution
 

@@ -1,6 +1,5 @@
 ## Status of this document
 
-
 The document describes methods available in NZBGet `version 13.0 and later`. The document is updated after a new stable version is out. Current testing version may have methods or fields not described here; these methods or fields may change before getting stable.
 
 ## Protocols
