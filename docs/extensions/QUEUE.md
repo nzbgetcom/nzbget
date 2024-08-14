@@ -9,26 +9,26 @@ In the future they can be called on other events too.
 
 ## Queue event information
 
- - NZBNA_DIRECTORY - Destination directory for downloaded files.
- - NZBNA_FILENAME - Filename of the nzb-file. If the file was added from nzb-directory this is the fullname with path. 
+ - **NZBNA_DIRECTORY** - Destination directory for downloaded files.
+ - **NZBNA_FILENAME** - Filename of the nzb-file. If the file was added from nzb-directory this is the fullname with path. 
  If the file was added via web-interface it contains only filename without path.
- - NZBNA_NZBNAME - Nzb-name as displayed in web-interface.
- - NZBNA_URL - URL if the nzb-file was fetched from an URL.
- - NZBNA_CATEGORY - Category of nzb-file.
- - NZBNA_PRIORITY - Priority of nzb-file.
- - NZBNA_NZBID - ID of queue entry, can be used in RPC-calls.
- - NZBNA_EVENT - Describes why the extension was called. See below.
- - NZBNA_URLSTATUS - Details for event type URL_COMPLETED. One of `FAILURE`, `SCAN_SKIPPED`, `SCAN_FAILURE`.
- - NZBNA_DELETESTATUS - Details for event type NZB_DELETED. One of `MANUAL`, `DUPE`, `BAD`, `GOOD`, `COPY`, `SCAN`.
+ - **NZBNA_NZBNAME** - Nzb-name as displayed in web-interface.
+ - **NZBNA_URL** - URL if the nzb-file was fetched from an URL.
+ - **NZBNA_CATEGORY** - Category of nzb-file.
+ - **NZBNA_PRIORITY** - Priority of nzb-file.
+ - **NZBNA_NZBID** - ID of queue entry, can be used in RPC-calls.
+ - **NZBNA_EVENT** - Describes why the extension was called. See below.
+ - **NZBNA_URLSTATUS** - Details for event type URL_COMPLETED. One of `FAILURE`, `SCAN_SKIPPED`, `SCAN_FAILURE`.
+ - **NZBNA_DELETESTATUS** - Details for event type NZB_DELETED. One of `MANUAL`, `DUPE`, `BAD`, `GOOD`, `COPY`, `SCAN`.
 
 ## Queue event type
 
 The event type is passed with env. var NZBNA_EVENT and can have following values:
- - NZB_ADDED - after adding of nzb-file to queue;
- - FILE_DOWNLOADED - after a file included in nzb is downloaded;
- - NZB_DOWNLOADED - after all files in nzb are downloaded (before post-processing);
- - NZB_DELETED - after nzb-file is deleted from queue, by duplicate check or manually by user;
- - URL_COMPLETED - after an nzb-file queued with URL is fetched but could no be added for download.
+ - **NZB_ADDED** - after adding of nzb-file to queue;
+ - **FILE_DOWNLOADED** - after a file included in nzb is downloaded;
+ - **NZB_DOWNLOADED** - after all files in nzb are downloaded (before post-processing);
+ - **NZB_DELETED** - after nzb-file is deleted from queue, by duplicate check or manually by user;
+ - **URL_COMPLETED** - after an nzb-file queued with URL is fetched but could no be added for download.
 In the future the list of supported events may be extended. To avoid conflicts with future NZBGet versions the extension 
 must exit if the parameter has a value unknown to the extension:
 ```python

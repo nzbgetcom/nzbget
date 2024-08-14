@@ -382,7 +382,7 @@ Example: obtaining post-processing log of current nzb-file (this is a short vers
 import os
 import sys
 import datetime
-from xmlrpclib import ServerProxy
+from xmlrpc.client import ServerProxy
 
 ## Exit codes used by NZBGet
 POSTPROCESS_SUCCESS = 93
@@ -397,31 +397,38 @@ POSTPROCESS_ERROR = 94
 # First we need to know connection info: host, port, username and password of NZBGet server.
 # NZBGet passes all configuration options to post-processing script as
 # environment variables.
-host = os.environ['NZBOP_CONTROLIP']
-port = os.environ['NZBOP_CONTROLPORT']
-username = os.environ['NZBOP_CONTROLUSERNAME']
-password = os.environ['NZBOP_CONTROLPASSWORD']
+host = os.environ["NZBOP_CONTROLIP"]
+port = os.environ["NZBOP_CONTROLPORT"]
+username = os.environ["NZBOP_CONTROLUSERNAME"]
+password = os.environ["NZBOP_CONTROLPASSWORD"]
 
-if host ## '0.0.0.0': host = '127.0.0.1'
+if host == "0.0.0.0":
+    host = "127.0.0.1"
 
 # Build an URL for XML-RPC requests
-rpcUrl = 'http://%s:%s@%s:%s/xmlrpc' % (username, password, host, port)
+rpcUrl = f"http://{username}:{password}@{host}:{port}/xmlrpc"
 
 # Create remote server object
 server = ServerProxy(rpcUrl)
 
-# Call remote method 'postqueue'. The only parameter tells how many log-entries to return as maximum.
+# # Call remote method 'postqueue'. The only parameter tells how many log-entries to return as maximum.
 postqueue = server.postqueue(10000)
 
-# Get field 'Log' from the first post-processing job
-log = postqueue[0]['Log']
+# # Get field 'Log' from the first post-processing job
+log = postqueue[0]["Log"]
 
-# Now iterate through entries and save them to the output file
+# post proccessing log file
+pplog_file = f"{os.environ["NZBPP_DIRECTORY"]}/_postprocesslog.txt"
+
+# # Now iterate through entries and save them to the output file
 if len(log) > 0:
-f = open('%s/_postprocesslog.txt' % os.environ['NZBPP_DIRECTORY'], 'w')
-for entry in log:
-    f.write('%s\t%s\t%s\n' % (entry['Kind'], datetime.datetime.fromtimestamp(int(entry['Time'])), entry['Text']))
-    f.close()
+    with open(pplog_file, "w") as f:
+        for entry in log:
+            timestamp = datetime.datetime.fromtimestamp(int(entry["Time"]))
+            output_file = f"{entry["Kind"]}\t{timestamp}\t{entry["Text"]}\n"
+            f.write(output_file)
+    
+        f.close()
 
 sys.exit(POSTPROCESS_SUCCESS)
 ```
