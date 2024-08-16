@@ -52,9 +52,9 @@ This method returns an array of structures with following fields:
 - **RepairTimeSec** `(int)` - `v14.0` Par-repair time in seconds.
 - **UnpackTimeSec** `(int)` - `v14.0` Unpack time in seconds.
 - **MessageCount** `(int)` - `v15.0` Number of messages stored in the item log. Messages can be retrieved with method loadlog.
-- **DupeKey** `(string)` - Duplicate key. See RSS _(comming soon)_.
-- **DupeScore** `(int)` - Duplicate score. See RSS _(comming soon)_.
-- **DupeMode** `(string)` - Duplicate mode. One of **SCORE**, **ALL**, **FORCE**. See RSS _(comming soon)_.
+- **DupeKey** `(string)` - Duplicate key. See [RSS](../usage/RSS.md).
+- **DupeScore** `(int)` - Duplicate score. See [RSS](../usage/RSS.md).
+- **DupeMode** `(string)` - Duplicate mode. One of **SCORE**, **ALL**, **FORCE**. See [RSS](../usage/RSS.md).
 - **Status** `(string)` - Total status of the download. One of the predefined text constants such as `SUCCESS/ALL` or `FAILURE/UNPACK`, etc. For the complete list see below.
 - **ParStatus** `(string)` - Result of par-check/repair:
   - **NONE** - par-check wasn’t performed;
