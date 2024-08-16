@@ -67,9 +67,9 @@ This method returns array of structures with following fields:
 - **DownloadedSizeMB** `(int)` - `v14.0` Amount of downloaded data for group in MiB.
 - **DownloadTimeSec** `(int)` - `v14.0` Download time in seconds.
 - **MessageCount** `(int)` - `v15.0` Number of messages stored in the item log. Messages can be retrieved with method [loadlog](LOADLOG.md).
-- **DupeKey** `(string)` - Duplicate key. See RSS _(comming soon)_.
-- **DupeScore** `(int)` - Duplicate score. See RSS _(comming soon)_.
-- **DupeMode** `(string)` - Duplicate mode. One of SCORE, ALL, FORCE. See RSS _(comming soon)_.
+- **DupeKey** `(string)` - Duplicate key. [RSS](../usage/RSS.md).
+- **DupeScore** `(int)` - Duplicate score. [RSS](../usage/RSS.md).
+- **DupeMode** `(string)` - Duplicate mode. One of SCORE, ALL, FORCE. [RSS](../usage/RSS.md).
 - **Parameters** `(struct[])` - Post-processing parameters for group. An array of structures with following fields:
   - **Name** `(string)`- Name of post-processing parameter.
   - **Value** `(string)` - Value of post-processing parameter.

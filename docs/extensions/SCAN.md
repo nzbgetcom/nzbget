@@ -17,9 +17,9 @@ This allows for example for scan extensions which unpack zip-files containing nz
  - NZBNP_PRIORITY - Priority of nzb-file. The extension can change this setting (see later).
  - NZBNP_TOP - Flag indicating that the file will be added to the top of queue: 0 or 1. The extension can change this setting (see later).
  - NZBNP_PAUSED - Flag indicating that the file will be added as paused: 0 or 1. The extension can change this setting (see later).
- - NZBNP_DUPEKEY - Duplicate key (see RSS). The extension can change this setting (see later).
- - NZBNP_DUPESCORE - Duplicate score (see RSS). The extension can change this setting (see later).
- - NZBNP_DUPEMODE - Duplicate mode, one of SCORE, ALL, FORCE (see RSS). The extension can change this setting (see later).
+ - NZBNP_DUPEKEY - Duplicate key (see [RSS](../usage/RSS.md)). The extension can change this setting (see later).
+ - NZBNP_DUPESCORE - Duplicate score (see [RSS](../usage/RSS.md)). The extension can change this setting (see later).
+ - NZBNP_DUPEMODE - Duplicate mode, one of SCORE, ALL, FORCE (see [RSS](../usage/RSS.md)). The extension can change this setting (see later).
 
 
 ## Control commands

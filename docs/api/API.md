@@ -87,7 +87,7 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 ## Extensions
 
 - [loadextensions](LOADEXTENSIONS.md)
-- [donwloadextension](DOWNLOADEXTENSION.md)
+- [downloadextension](DOWNLOADEXTENSION.md)
 - [updateextension](UPDATEEXTENSION.md)
 - [deleteextension](DELETEEXTENSION.md)
 
