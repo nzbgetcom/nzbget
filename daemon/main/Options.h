@@ -196,7 +196,6 @@ public:
 	GuardedOptEntries GuardOptEntries() { return GuardedOptEntries(&m_optEntries, &m_optEntriesMutex); }
 	void CreateSchedulerTask(int id, const char* time, const char* weekDays,
 		ESchedulerCommand command, const char* param);
-	void CheckDirs();
 
 	// Options
 	const char* GetConfigFilename() const { return m_configFilename; }
@@ -323,6 +322,8 @@ public:
 	bool GetRemoteClientMode() { return m_remoteClientMode; }
 
 private:
+	void CheckDirs();
+
 	OptEntries m_optEntries;
 	Mutex m_optEntriesMutex;
 	Categories m_categories;

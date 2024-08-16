@@ -349,6 +349,8 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 	}
 
 	ConvertOldOptions(&m_optEntries);
+
+	CheckDirs();
 	InitOptions();
 	CheckOptions();
 
