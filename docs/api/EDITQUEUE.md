@@ -70,7 +70,7 @@ Edit items in download queue or in history.
   - **HistoryMarkGood** - Mark history item as good. See RSS _(comming soon)_.
   - **HistoryMarkSuccess** - `v15.0` Mark history item as success. See RSS _(comming soon)_.
 - **Offset (int)** - ~~`v18.0`~~ offset for commands `FileMoveOffset` and `GroupMoveOffset`. For all other commands must be `0`. `v18.0` Offset is passed in `Param` and parameter `Offset` should not be passed at all.
-- **Param `(string)` - additional parameter if mentioned in the command description, otherwise an empty string.
+- **Param** `(string)` - additional parameter if mentioned in the command description, otherwise an empty string.
 - **IDs** `(struct[])` - array of IDs (as integers).
   - File-commands (FileXXX) need ID of file.
   - All other commands need `NZBID`.

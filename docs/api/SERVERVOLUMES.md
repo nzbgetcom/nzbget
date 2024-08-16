@@ -19,7 +19,7 @@ This method returns an array of structures with following fields:
 - **CustomSizeLo** `(int)` - Amount of downloaded data since last reset of custom counter, low 32-bits of 64-bit value.
 - **CustomSizeHi** `(int)` - Amount of downloaded data since last reset of custom counter, high 32-bits of 64-bit value.
 - **CustomSizeMB** `(int)` - Amount of downloaded data since last reset of custom counter, in MiB.
-- **CustomTime `(int)` - Date/time of the last reset of custom counter (time is in C/Unix format).
+- **CustomTime** `(int)` - Date/time of the last reset of custom counter (time is in C/Unix format).
 - **BytesPerSeconds** `(struct[])` - Per-second amount of data downloaded in last 60 seconds. See below.
 - **BytesPerMinutes** `(struct[])` - Per-minute amount of data downloaded in last 60 minutes. See below.
 - **BytesPerHours** `(struct[])` - Per-hour amount of data downloaded in last 24 hours. See below.

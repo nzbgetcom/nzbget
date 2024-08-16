@@ -374,7 +374,7 @@ if NZBGetVersion[0:5] < '11.1':
 ## Communication with NZBGet via RPC-API
 
 With RPC-API more things can be done than using command line. For documentation on available 
-RPC-methods see [API](https://nzbget.com/documentation/api).
+RPC-methods see [API](../api/API.md).
 
 Example: obtaining post-processing log of current nzb-file (this is a short version of script Logger.py supplied with NZBGet):
 
