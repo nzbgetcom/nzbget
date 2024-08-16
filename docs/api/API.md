@@ -37,7 +37,7 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - Introspection is not supported.
 - Only positional parameters are supported in `JSON-RPC`. Named parameters are not supported. Therefore parameter names are ignored but the order of parameters is important. All parameters are mandatory.
 - Each call to `JSON-P-RPC` has one additional parameter - the name of callback-function. This parameter must be named `callback` and must be passed first (before any other parameters).
-- 64 bit integers are returned in two separate fields `Hi` and `Lo` (for example `FileSizeHi` and `FileSizeLo`). These fields are unsigned 32 bit integers. Although dynamic languages such as PHP or Python have no problems with these fields the `XML-RPC` specification does not allow unsigned integers. This may cause troubles in statically typed languages such as Java or C++ if `XML-RPC`-parser expects only signed integers in 32 bit range. As a solution use `JSON-RPC` instead (which does allow unsigned integers) instead of `XML-RPC`.
+- 64 bit integers are returned in two separate fields `Hi` and `Lo` (for example `FileSizeHi` and `FileSizeLo`). These fields are unsigned 32 bit integers. Although dynamic languages such as PHP or Python have no problems with these fields the `XML-RPC` specification does not allow unsigned integers. This may cause troubles in statically typed languages such as Java or C++ if `XML-RPC`-parser expects only signed integers in 32 bit range. As a solution use `JSON-RPC` (which does allow unsigned integers) instead of `XML-RPC`.
 
 ## Program control
 
