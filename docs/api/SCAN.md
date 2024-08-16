@@ -1,4 +1,4 @@
-## API-method `shutdown`
+## API-method `scan`
 
 ### Signature
 ``` c++
