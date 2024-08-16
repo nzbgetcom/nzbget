@@ -52,9 +52,9 @@ This method returns an array of structures with following fields:
 - **RepairTimeSec** `(int)` - `v14.0` Par-repair time in seconds.
 - **UnpackTimeSec** `(int)` - `v14.0` Unpack time in seconds.
 - **MessageCount** `(int)` - `v15.0` Number of messages stored in the item log. Messages can be retrieved with method loadlog.
-- **DupeKey** `(string)` - Duplicate key. See RSS __(comming soon)__.
-- **DupeScore** `(int)` - Duplicate score. See RSS __(comming soon)__.
-- **DupeMode** `(string)` - Duplicate mode. One of **SCORE**, **ALL**, **FORCE**. See RSS __(comming soon)__.
+- **DupeKey** `(string)` - Duplicate key. See [RSS](../usage/RSS.md).
+- **DupeScore** `(int)` - Duplicate score. See [RSS](../usage/RSS.md).
+- **DupeMode** `(string)` - Duplicate mode. One of **SCORE**, **ALL**, **FORCE**. See [RSS](../usage/RSS.md).
 - **Status** `(string)` - Total status of the download. One of the predefined text constants such as `SUCCESS/ALL` or `FAILURE/UNPACK`, etc. For the complete list see below.
 - **ParStatus** `(string)` - Result of par-check/repair:
   - **NONE** - par-check wasn’t performed;
@@ -133,7 +133,7 @@ Field `Status` can be set to one of the following values:
 **For history items with `Kind=URL`**
 
 - **DELETED/MANUAL** - The download was manually deleted by user.
-- **DELETED/DUPE - The download was deleted by duplicate check.
+- **DELETED/DUPE** - The download was deleted by duplicate check.
 - **WARNING/SKIPPED** - The URL was fetched successfully but downloaded file was not nzb-file and was skipped by the scanner.
 - **FAILURE/FETCH** - Fetching of the URL has failed.
 - **FAILURE/SCAN** - The URL was fetched successfully but an error occurred during scanning of the downloaded file. The downloaded file isn’t a proper nzb-file. This status usually means the web-server has returned an error page (HTML page) instead of the nzb-file.

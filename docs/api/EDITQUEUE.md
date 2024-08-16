@@ -46,9 +46,9 @@ Edit items in download queue or in history.
   - **GroupMerge** - Merge groups.
   - **GroupSetParameter** - Set post-processing parameter for group. `Param` contains string in form of `Paramname=Paramvalue`.
   - **GroupSetName** - Rename group. Param contains new name.
-  - **GroupSetDupeKey** - Set duplicate key. Param contains duplicate key. See RSS _(comming soon)_.
-  - **GroupSetDupeScore** - Set duplicate score. Param contains duplicate score. See RSS _(comming soon)_.
-  - **GroupSetDupeMode** - Set duplicate mode. Param contains one of `SCORE`, `ALL`, `FORCE`. See RSS _(comming soon)_.
+  - **GroupSetDupeKey** - Set duplicate key. Param contains duplicate key. See [RSS](../usage/RSS.md).
+  - **GroupSetDupeScore** - Set duplicate score. Param contains duplicate score. See [RSS](../usage/RSS.md).
+  - **GroupSetDupeMode** - Set duplicate mode. Param contains one of `SCORE`, `ALL`, `FORCE`. See [RSS](../usage/RSS.md).
   - **GroupSort** - `v15.0` Sort selected or all groups. Parameter `Param` must be one of: `name`, `priority`, `category`, `size`, `left`; add character `+` or `-` to sort to explicitly define ascending or descending order (for example `name-`); if none of these characters is used the auto-mode is active: the items are sorted in ascending order first, if nothing changed - they are sorted again in descending order. `Parameter IDs` contains the list of groups to sort; pass empty array to sort all groups.
   - **PostMoveOffset** - ~~`v13.0`~~ Deprecated, use `GroupMoveOffset` instead.
   - **PostMoveTop** - ~~`v13.0`~~ Deprecated, use `GroupMoveTop` instead.
@@ -62,15 +62,15 @@ Edit items in download queue or in history.
   - **HistorySetName** - `v15.0` Rename history item. `Param` contains new name.
   - **HistorySetCategory** - `v15.0` Set category for history item. Param contains category name.
   - **HistorySetParameter** - Set post-processing parameter for history items. `Param` contains string in form of `Paramname=Paramvalue`.
-  - **HistorySetDupeKey** - Set duplicate key. `Param` contains duplicate key. See RSS _(comming soon)_.
-  - **HistorySetDupeScore** - Set duplicate score. `Param` contains duplicate score. See RSS _(comming soon)_.
-  - **HistorySetDupeMode** - Set duplicate mode. `Param` contains one of `SCORE`, `ALL`, `FORCE`. See RSS _(comming soon)_.
-  - **HistorySetDupeBackup** - Set `use as duplicate backup-flag` for history items. `Param` contains `0` or `1`. See RSS _(comming soon)_.
-  - **HistoryMarkBad** - Mark history item as bad (and download other duplicate). See RSS _(comming soon)_.
-  - **HistoryMarkGood** - Mark history item as good. See RSS _(comming soon)_.
-  - **HistoryMarkSuccess** - `v15.0` Mark history item as success. See RSS _(comming soon)_.
+  - **HistorySetDupeKey** - Set duplicate key. `Param` contains duplicate key. See [RSS](../usage/RSS.md).
+  - **HistorySetDupeScore** - Set duplicate score. `Param` contains duplicate score. See [RSS](../usage/RSS.md).
+  - **HistorySetDupeMode** - Set duplicate mode. `Param` contains one of `SCORE`, `ALL`, `FORCE`. See [RSS](../usage/RSS.md).
+  - **HistorySetDupeBackup** - Set `use as duplicate backup-flag` for history items. `Param` contains `0` or `1`. See [RSS](../usage/RSS.md).
+  - **HistoryMarkBad** - Mark history item as bad (and download other duplicate). See [RSS](../usage/RSS.md).
+  - **HistoryMarkGood** - Mark history item as good. See [RSS](../usage/RSS.md).
+  - **HistoryMarkSuccess** - `v15.0` Mark history item as success. See [RSS](../usage/RSS.md).
 - **Offset (int)** - ~~`v18.0`~~ offset for commands `FileMoveOffset` and `GroupMoveOffset`. For all other commands must be `0`. `v18.0` Offset is passed in `Param` and parameter `Offset` should not be passed at all.
-- **Param `(string)` - additional parameter if mentioned in the command description, otherwise an empty string.
+- **Param** `(string)` - additional parameter if mentioned in the command description, otherwise an empty string.
 - **IDs** `(struct[])` - array of IDs (as integers).
   - File-commands (FileXXX) need ID of file.
   - All other commands need `NZBID`.

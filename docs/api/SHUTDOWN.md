@@ -2,7 +2,7 @@
 
 ### Signature
 ``` c++
-bool reload();
+bool shutdown();
 ```
 
 ### Description
