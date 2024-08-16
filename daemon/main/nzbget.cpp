@@ -327,8 +327,6 @@ void NZBGet::Init()
 		info("nzbget %s remote-mode", Util::VersionRevision());
 	}
 
-	m_options->CheckDirs();
-
 	info("using %s", m_options->GetConfigFilename());
 	info("nzbget runs on %s:%i", m_options->GetControlIp(), m_options->GetControlPort());
 
