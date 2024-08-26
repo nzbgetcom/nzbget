@@ -32,6 +32,7 @@ var SystemInfo = (new function($)
 	var $SysInfo_FreeDiskSpace;
 	var $SysInfo_TotalDiskSpace;
 	var $SysInfo_ArticleCache;
+	var $SysInfo_WriteBuffer;
 	var $SysInfo_ToolsTable;
 	var $SysInfo_LibrariesTable;
 	var $SysInfo_NewsServersTable;
@@ -98,6 +99,7 @@ var SystemInfo = (new function($)
 		$SysInfo_FreeDiskSpace = $('#SysInfo_FreeDiskSpace');
 		$SysInfo_TotalDiskSpace = $('#SysInfo_TotalDiskSpace');
 		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
+		$SysInfo_WriteBuffer = $('#SysInfo_WriteBuffer');
 		$SysInfo_ToolsTable = $('#SysInfo_ToolsTable');
 		$SysInfo_LibrariesTable = $('#SysInfo_LibrariesTable');
 		$SysInfo_NewsServersTable = $('#SysInfo_NewsServersTable');
@@ -207,6 +209,7 @@ var SystemInfo = (new function($)
 		$SysInfo_Arch.text(sysInfo['CPU'].Arch || 'Unknown');
 		$SysInfo_ConfPath.text(Options.option('ConfigFile'));
 		$SysInfo_ArticleCache.text(Util.formatSizeMB(+Options.option('ArticleCache')));
+		$SysInfo_WriteBuffer.text(Util.formatSizeMB(+Options.option('WriteBuffer')));
 
 		renderIP(sysInfo['Network']);
 		renderAppVersion(Options.option('Version'));
