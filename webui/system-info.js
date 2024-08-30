@@ -75,8 +75,10 @@ var SystemInfo = (new function($)
 
 			if (destDirOpt && interDirOpt)
 			{
-				renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDirOpt.Value);
-				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDirOpt.Value);
+				var destDirPath = destDirOpt.Value;
+				var interDistPath = interDirOpt.Value ? interDirOpt : destDirPath;
+				renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDirPath);
+				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDistPath);
 			}
 		}
 	}

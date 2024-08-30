@@ -1462,20 +1462,36 @@ void StatusXmlCommand::Execute()
 	int64 freeInterDiskSpace = 0;
 	int64 totalInterDiskSpace = 0;
 
-	auto destDirRes = FileSystem::GetDiskState(g_Options->GetDestDir());
-	if (destDirRes.has_value())
+	if (Util::EmptyStr(g_Options->GetDestDir()))
 	{
-		const auto& value = destDirRes.value();
-		freeDiskSpace = value.available;
-		totalDiskSpace = value.total;
+		freeDiskSpace = 0;
+		totalDiskSpace = 0;
+	}
+	else
+	{
+		auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
+		if (res.has_value())
+		{
+			const auto& value = res.value();
+			freeDiskSpace = value.available;
+			totalDiskSpace = value.total;
+		}
 	}
 
-	auto interDirRes = FileSystem::GetDiskState(g_Options->GetInterDir());
-	if (interDirRes.has_value())
+	if (Util::EmptyStr(g_Options->GetInterDir()))
 	{
-		const auto& value = interDirRes.value();
-		freeInterDiskSpace = value.available;
-		totalInterDiskSpace = value.total;
+		freeInterDiskSpace = freeDiskSpace;
+		totalInterDiskSpace = totalDiskSpace;
+	}
+	else
+	{
+		auto res = FileSystem::GetDiskState(g_Options->GetInterDir());
+		if (res.has_value())
+		{
+			const auto& value = res.value();
+			freeInterDiskSpace = value.available;
+			totalInterDiskSpace = value.total;
+		}
 	}
 
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
