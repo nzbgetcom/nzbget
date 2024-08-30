@@ -348,11 +348,11 @@ namespace Extension
 		Xml::AddNewNode(structNode, "Version", "string", script.GetVersion());
 		Xml::AddNewNode(structNode, "NZBGetMinVersion", "string", script.GetNzbgetMinVersion());
 
-		Xml::AddNewNode(structNode, "PostScript", "boolean", BoolToStr(script.GetPostScript()));
-		Xml::AddNewNode(structNode, "ScanScript", "boolean", BoolToStr(script.GetScanScript()));
-		Xml::AddNewNode(structNode, "QueueScript", "boolean", BoolToStr(script.GetQueueScript()));
-		Xml::AddNewNode(structNode, "SchedulerScript", "boolean", BoolToStr(script.GetSchedulerScript()));
-		Xml::AddNewNode(structNode, "FeedScript", "boolean", BoolToStr(script.GetFeedScript()));
+		Xml::AddNewNode(structNode, "PostScript", "boolean", Xml::BoolToStr(script.GetPostScript()));
+		Xml::AddNewNode(structNode, "ScanScript", "boolean", Xml::BoolToStr(script.GetScanScript()));
+		Xml::AddNewNode(structNode, "QueueScript", "boolean", Xml::BoolToStr(script.GetQueueScript()));
+		Xml::AddNewNode(structNode, "SchedulerScript", "boolean", Xml::BoolToStr(script.GetSchedulerScript()));
+		Xml::AddNewNode(structNode, "FeedScript", "boolean", Xml::BoolToStr(script.GetFeedScript()));
 
 		Xml::AddNewNode(structNode, "QueueEvents", "string", script.GetQueueEvents());
 		Xml::AddNewNode(structNode, "TaskTime", "string", script.GetTaskTime());
@@ -375,7 +375,7 @@ namespace Extension
 			Xml::AddNewNode(commandsNode, "Name", "string", command.name.c_str());
 			Xml::AddNewNode(commandsNode, "DisplayName", "string", command.displayName.c_str());
 			Xml::AddNewNode(commandsNode, "Action", "string", command.action.c_str());
-			Xml::AddNewNode(commandsNode, "Multi", "boolean", BoolToStr(command.section.multi));
+			Xml::AddNewNode(commandsNode, "Multi", "boolean", Xml::BoolToStr(command.section.multi));
 			Xml::AddNewNode(commandsNode, "Section", "string", command.section.name.c_str());
 			Xml::AddNewNode(commandsNode, "Prefix", "string", command.section.prefix.c_str());
 
@@ -392,7 +392,7 @@ namespace Extension
 		{
 			Xml::AddNewNode(optionsNode, "Name", "string", option.name.c_str());
 			Xml::AddNewNode(optionsNode, "DisplayName", "string", option.displayName.c_str());
-			Xml::AddNewNode(optionsNode, "Multi", "boolean", BoolToStr(option.section.multi));
+			Xml::AddNewNode(optionsNode, "Multi", "boolean", Xml::BoolToStr(option.section.multi));
 			Xml::AddNewNode(optionsNode, "Section", "string", option.section.name.c_str());
 			Xml::AddNewNode(optionsNode, "Prefix", "string", option.section.prefix.c_str());
 
@@ -441,10 +441,5 @@ namespace Extension
 		xmlFreeNode(rootNode);
 
 		return result;
-	}
-
-	const char* BoolToStr(bool value)
-	{
-		return value ? "true" : "false";
 	}
 }
