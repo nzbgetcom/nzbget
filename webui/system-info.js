@@ -29,12 +29,10 @@ var SystemInfo = (new function($)
 	var $SysInfo_CPUModel;
 	var $SysInfo_Arch;
 	var $SysInfo_IP;
-	var $SysInfo_FreeDiskSpace;
-	var $SysInfo_TotalDiskSpace;
-	var $SysInfo_FreeInterDiskSpace;
-	var $SysInfo_TotalInterDiskSpace;
-	var $SysInfo_FreeInterDiskSpaceTr;
-	var $SysInfo_TotalInterDiskSpaceTr;
+	var $SysInfo_DestDiskSpace;
+	var $SysInfo_InterDiskSpace;
+	var $SysInfo_DestDiskSpaceContainer;
+	var $SysInfo_InterDiskSpaceContainer;
 	var $SysInfo_ArticleCache;
 	var $SysInfo_WriteBuffer;
 	var $SysInfo_ToolsTable;
@@ -73,18 +71,12 @@ var SystemInfo = (new function($)
 			var destDirOpt = Options.findOption(Options.options, 'DestDir');
 			var interDirOpt = Options.findOption(Options.options, 'InterDir');
 
-			renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB']);
+			
 
-			if (destDirOpt && interDirOpt && !pathsOnSameDisk(destDirOpt.Value, interDirOpt.Value))
+			if (destDirOpt && interDirOpt)
 			{
-				$SysInfo_FreeInterDiskSpaceTr.show();
-				$SysInfo_TotalInterDiskSpaceTr.show();
-				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB']);
-			}
-			else
-			{
-				$SysInfo_FreeInterDiskSpaceTr.hide();
-				$SysInfo_TotalInterDiskSpaceTr.hide();
+				renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDirOpt.Value);
+				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDirOpt.Value);
 			}
 		}
 	}
@@ -116,12 +108,10 @@ var SystemInfo = (new function($)
 		$SysInfo_CPUModel = $('#SysInfo_CPUModel');
 		$SysInfo_Arch = $('#SysInfo_Arch');
 		$SysInfo_IP = $('#SysInfo_IP');
-		$SysInfo_FreeDiskSpace = $('#SysInfo_FreeDiskSpace');
-		$SysInfo_TotalDiskSpace = $('#SysInfo_TotalDiskSpace');
-		$SysInfo_FreeInterDiskSpace = $('#SysInfo_FreeInterDiskSpace');
-		$SysInfo_TotalInterDiskSpace = $('#SysInfo_TotalInterDiskSpace');
-		$SysInfo_FreeInterDiskSpaceTr = $('#SysInfo_FreeInterDiskSpaceTr');
-		$SysInfo_TotalInterDiskSpaceTr = $('#SysInfo_TotalInterDiskSpaceTr');
+		$SysInfo_DestDiskSpace = $('#SysInfo_DestDiskSpace');
+		$SysInfo_InterDiskSpace = $('#SysInfo_InterDiskSpace');
+		$SysInfo_InterDiskSpaceContainer = $('#SysInfo_InterDiskSpaceContainer');
+		$SysInfo_DestDiskSpaceContainer = $('#SysInfo_DestDiskSpaceContainer');
 		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
 		$SysInfo_WriteBuffer = $('#SysInfo_WriteBuffer');
 		$SysInfo_ToolsTable = $('#SysInfo_ToolsTable');
@@ -292,18 +282,22 @@ var SystemInfo = (new function($)
 		});
 	}
 
-	function renderDiskSpace(free, total)
+	function renderDiskSpace(free, total, path)
 	{
-		var percents = total !== 0 ? (free / total * 100).toFixed(1) + '%' : '0.0%';
-		$SysInfo_FreeDiskSpace.text(Util.formatSizeMB(free) + ' / ' + percents);
-		$SysInfo_TotalDiskSpace.text(Util.formatSizeMB(total));
+		$SysInfo_DestDiskSpace.text(formatDiskInfo(free, total));
+		$SysInfo_DestDiskSpaceContainer.attr('title', path);
 	}
 
-	function renderInterDiskSpace(free, total)
+	function renderInterDiskSpace(free, total, path)
+	{
+		$SysInfo_InterDiskSpace.text(formatDiskInfo(free, total));
+		$SysInfo_InterDiskSpaceContainer.attr('title', path);
+	}
+
+	function formatDiskInfo(free, total)
 	{
 		var percents = total !== 0 ? (free / total * 100).toFixed(1) + '%' : '0.0%';
-		$SysInfo_FreeInterDiskSpace.text(Util.formatSizeMB(free) + ' / ' + percents);
-		$SysInfo_TotalInterDiskSpace.text(Util.formatSizeMB(total));
+		return Util.formatSizeMB(free) + ' (' + percents + ') / ' + Util.formatSizeMB(total);
 	}
 
 	function renderIP(network)
