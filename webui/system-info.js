@@ -29,8 +29,10 @@ var SystemInfo = (new function($)
 	var $SysInfo_CPUModel;
 	var $SysInfo_Arch;
 	var $SysInfo_IP;
-	var $SysInfo_FreeDiskSpace;
-	var $SysInfo_TotalDiskSpace;
+	var $SysInfo_DestDiskSpace;
+	var $SysInfo_InterDiskSpace;
+	var $SysInfo_DestDiskSpaceContainer;
+	var $SysInfo_InterDiskSpaceContainer;
 	var $SysInfo_ArticleCache;
 	var $SysInfo_WriteBuffer;
 	var $SysInfo_ToolsTable;
@@ -65,7 +67,19 @@ var SystemInfo = (new function($)
 		update: function(status) 
 		{
 			$SysInfo_Uptime.text(Util.formatTimeHMS(status['UpTimeSec']));
-			renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB']);
+
+			var destDirOpt = Options.findOption(Options.options, 'DestDir');
+			var interDirOpt = Options.findOption(Options.options, 'InterDir');
+
+			
+
+			if (destDirOpt && interDirOpt)
+			{
+				var destDirPath = destDirOpt.Value;
+				var interDistPath = interDirOpt.Value ? interDirOpt.Value : destDirPath;
+				renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDirPath);
+				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDistPath);
+			}
 		}
 	}
 
@@ -96,8 +110,10 @@ var SystemInfo = (new function($)
 		$SysInfo_CPUModel = $('#SysInfo_CPUModel');
 		$SysInfo_Arch = $('#SysInfo_Arch');
 		$SysInfo_IP = $('#SysInfo_IP');
-		$SysInfo_FreeDiskSpace = $('#SysInfo_FreeDiskSpace');
-		$SysInfo_TotalDiskSpace = $('#SysInfo_TotalDiskSpace');
+		$SysInfo_DestDiskSpace = $('#SysInfo_DestDiskSpace');
+		$SysInfo_InterDiskSpace = $('#SysInfo_InterDiskSpace');
+		$SysInfo_InterDiskSpaceContainer = $('#SysInfo_InterDiskSpaceContainer');
+		$SysInfo_DestDiskSpaceContainer = $('#SysInfo_DestDiskSpaceContainer');
 		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
 		$SysInfo_WriteBuffer = $('#SysInfo_WriteBuffer');
 		$SysInfo_ToolsTable = $('#SysInfo_ToolsTable');
@@ -134,6 +150,17 @@ var SystemInfo = (new function($)
 			},
 			errorHandler
 		);
+	}
+
+	function pathsOnSameDisk(path1, path2) 
+	{
+		path1 = path1.replace(/\\/g, '/');
+		path2 = path2.replace(/\\/g, '/');
+	  
+		var drive1 = path1.match(/^[a-zA-Z]:\//i) ? path1.match(/^[a-zA-Z]:\//i)[0] : '/';
+		var drive2 = path2.match(/^[a-zA-Z]:\//i) ? path2.match(/^[a-zA-Z]:\//i)[0] : '/';
+
+		return drive1 === drive2;
 	}
 
 	function hideSpinner()
@@ -257,11 +284,22 @@ var SystemInfo = (new function($)
 		});
 	}
 
-	function renderDiskSpace(free, total)
+	function renderDiskSpace(free, total, path)
+	{
+		$SysInfo_DestDiskSpace.text(formatDiskInfo(free, total));
+		$SysInfo_DestDiskSpaceContainer.attr('title', path);
+	}
+
+	function renderInterDiskSpace(free, total, path)
+	{
+		$SysInfo_InterDiskSpace.text(formatDiskInfo(free, total));
+		$SysInfo_InterDiskSpaceContainer.attr('title', path);
+	}
+
+	function formatDiskInfo(free, total)
 	{
 		var percents = total !== 0 ? (free / total * 100).toFixed(1) + '%' : '0.0%';
-		$SysInfo_FreeDiskSpace.text(Util.formatSizeMB(free) + ' / ' + percents);
-		$SysInfo_TotalDiskSpace.text(Util.formatSizeMB(total));
+		return Util.formatSizeMB(free) + ' (' + percents + ') / ' + Util.formatSizeMB(total);
 	}
 
 	function renderIP(network)

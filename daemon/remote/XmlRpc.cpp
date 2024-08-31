@@ -1303,6 +1303,12 @@ void StatusXmlCommand::Execute()
 		"<member><name>TotalDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>TotalDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
 		"<member><name>TotalDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>FreeInterDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>FreeInterDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>FreeInterDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>TotalInterDiskSpaceLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalInterDiskSpaceHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>TotalInterDiskSpaceMB</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ServerTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>ResumeTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FeedActive</name><value><boolean>%s</boolean></value></member>\n"
@@ -1359,6 +1365,12 @@ void StatusXmlCommand::Execute()
 		"\"TotalDiskSpaceLo\" : %u,\n"
 		"\"TotalDiskSpaceHi\" : %u,\n"
 		"\"TotalDiskSpaceMB\" : %i,\n"
+		"\"FreeInterDiskSpaceLo\" : %u,\n"
+		"\"FreeInterDiskSpaceHi\" : %u,\n"
+		"\"FreeInterDiskSpaceMB\" : %i,\n"
+		"\"TotalInterDiskSpaceLo\" : %u,\n"
+		"\"TotalInterDiskSpaceHi\" : %u,\n"
+		"\"TotalInterDiskSpaceMB\" : %i,\n"
 		"\"ServerTime\" : %i,\n"
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
@@ -1442,19 +1454,55 @@ void StatusXmlCommand::Execute()
 
 	uint32 freeDiskSpaceHi, freeDiskSpaceLo;
 	uint32 totalDiskSpaceHi, totalDiskSpaceLo;
+	uint32 freeInterDiskSpaceHi, freeInterDiskSpaceLo;
+	uint32 totalInterDiskSpaceHi, totalInterDiskSpaceLo;
+
 	int64 freeDiskSpace = 0;
 	int64 totalDiskSpace = 0;
-	auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
-	if (res.has_value())
+	int64 freeInterDiskSpace = 0;
+	int64 totalInterDiskSpace = 0;
+
+	if (Util::EmptyStr(g_Options->GetDestDir()))
 	{
-		const auto& value = res.value();
-		freeDiskSpace = value.available;
-		totalDiskSpace = value.total;
+		freeDiskSpace = 0;
+		totalDiskSpace = 0;
 	}
+	else
+	{
+		auto res = FileSystem::GetDiskState(g_Options->GetDestDir());
+		if (res.has_value())
+		{
+			const auto& value = res.value();
+			freeDiskSpace = value.available;
+			totalDiskSpace = value.total;
+		}
+	}
+
+	if (Util::EmptyStr(g_Options->GetInterDir()))
+	{
+		freeInterDiskSpace = freeDiskSpace;
+		totalInterDiskSpace = totalDiskSpace;
+	}
+	else
+	{
+		auto res = FileSystem::GetDiskState(g_Options->GetInterDir());
+		if (res.has_value())
+		{
+			const auto& value = res.value();
+			freeInterDiskSpace = value.available;
+			totalInterDiskSpace = value.total;
+		}
+	}
+
 	Util::SplitInt64(freeDiskSpace, &freeDiskSpaceHi, &freeDiskSpaceLo);
 	Util::SplitInt64(totalDiskSpace, &totalDiskSpaceHi, &totalDiskSpaceLo);
+	Util::SplitInt64(freeInterDiskSpace, &freeInterDiskSpaceHi, &freeInterDiskSpaceLo);
+	Util::SplitInt64(totalInterDiskSpace, &totalInterDiskSpaceHi, &totalInterDiskSpaceLo);
+
 	int freeDiskSpaceMB = static_cast<int>(freeDiskSpace / 1024 / 1024);
 	int totalDiskSpaceMB = static_cast<int>(totalDiskSpace / 1024 / 1024);
+	int freeInterDiskSpaceMB = static_cast<int>(freeInterDiskSpace / 1024 / 1024);
+	int totalInterDiskSpaceMB = static_cast<int>(totalInterDiskSpace / 1024 / 1024);
 
 	int serverTime = (int)Util::CurrentTime();
 	int resumeTime = (int)g_WorkState->GetResumeTime();
@@ -1482,6 +1530,12 @@ void StatusXmlCommand::Execute()
 		totalDiskSpaceLo, 
 		totalDiskSpaceHi, 
 		totalDiskSpaceMB,
+		freeInterDiskSpaceLo, 
+		freeInterDiskSpaceHi, 
+		freeInterDiskSpaceMB, 
+		totalInterDiskSpaceLo, 
+		totalInterDiskSpaceHi, 
+		totalInterDiskSpaceMB,
 		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
 
 	int index = 0;
