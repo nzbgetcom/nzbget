@@ -27,6 +27,7 @@ namespace Xml
 {
 	std::string Serialize(const xmlNodePtr rootNode);
 	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
+	const char* BoolToStr(bool value) noexcept;
 }
 
 #endif

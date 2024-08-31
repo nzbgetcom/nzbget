@@ -121,11 +121,11 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>License</name><value><string>License</string></value></member>\
 <member><name>Version</name><value><string>Version</string></value></member>\
 <member><name>NZBGetMinVersion</name><value><string>23.1</string></value></member>\
-<member><name>PostScript</name><value><boolean>true</boolean></value></member>\
-<member><name>ScanScript</name><value><boolean>false</boolean></value></member>\
-<member><name>QueueScript</name><value><boolean>false</boolean></value></member>\
-<member><name>SchedulerScript</name><value><boolean>false</boolean></value></member>\
-<member><name>FeedScript</name><value><boolean>false</boolean></value></member>\
+<member><name>PostScript</name><value><boolean>1</boolean></value></member>\
+<member><name>ScanScript</name><value><boolean>0</boolean></value></member>\
+<member><name>QueueScript</name><value><boolean>0</boolean></value></member>\
+<member><name>SchedulerScript</name><value><boolean>0</boolean></value></member>\
+<member><name>FeedScript</name><value><boolean>0</boolean></value></member>\
 <member><name>QueueEvents</name><value><string>QueueEvents</string></value></member>\
 <member><name>TaskTime</name><value><string>TaskTime</string></value></member>\
 <Description>\
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
 <member><name>Action</name><value><string>action</string></value></member>\
-<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Multi</name><value><boolean>1</boolean></value></member>\
 <member><name>Section</name><value><string>Section</string></value></member>\
 <member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <Description>\
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(ToXmlStrTest)
 <Options>\
 <member><name>Name</name><value><string>name</string></value></member>\
 <member><name>DisplayName</name><value><string>displayName</string></value></member>\
-<member><name>Multi</name><value><boolean>true</boolean></value></member>\
+<member><name>Multi</name><value><boolean>1</boolean></value></member>\
 <member><name>Section</name><value><string>Section</string></value></member>\
 <member><name>Prefix</name><value><string>Prefix</string></value></member>\
 <member><name>Value</name><value><double>5.000000</double></value></member>\
