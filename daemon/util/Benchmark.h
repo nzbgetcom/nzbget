@@ -41,7 +41,7 @@ namespace Benchmark
 			const std::string& filename,
 			const std::vector<char>& data,
 			uint64_t maxFileSizeBytes,
-			std::chrono::seconds timeout) const noexcept(false);
+			std::chrono::nanoseconds timeoutNS) const noexcept(false);
 
 		void DeleteFile(const std::string& filename) const noexcept(false);
 

@@ -366,25 +366,25 @@ public:
 class TestDiskSpeedXmlCommand final : public SafeXmlCommand
 {
 public:
-	void Execute();
+	void Execute() override;
 
-	std::string ToJsonStr(const std::pair<uint64_t, double>& res)
+	std::string ToJsonStr(uint64_t size, double time)
 	{
 		Json::JsonObject json;
 
-		json["SizeMB"] = res.first / 1024ull / 1024ull;
-		json["DurationMS"] = res.second;
+		json["SizeMB"] = size / 1024ull / 1024ull;
+		json["DurationMS"] = time;
 
 		return Json::Serialize(json);
 	}
 
-	std::string ToXmlStr(const std::pair<uint64_t, double>& res)
+	std::string ToXmlStr(uint64_t size, double time)
 	{
 		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
 		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
 
-		std::string sizeMB = std::to_string(res.first / 1024ull / 1024ull);
-		std::string durationMS = std::to_string(res.second);
+		std::string sizeMB = std::to_string(size / 1024ull / 1024ull);
+		std::string durationMS = std::to_string(time);
 
 		Xml::AddNewNode(structNode, "SizeMB", "i4", sizeMB.c_str());
 		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
@@ -3795,7 +3795,7 @@ void TestDiskSpeedXmlCommand::Execute()
 		uint64_t maxFileSizeBytes = maxFileSizeGiB * 1024ull * 1024ull * 1024ull;
 		 
 		Benchmark::DiskBenchmark db;
-		auto res = db.Run(
+		auto [size, time] = db.Run(
 			dirPath, 
 			bufferSizeBytes, 
 			maxFileSizeBytes, 
@@ -3803,8 +3803,8 @@ void TestDiskSpeedXmlCommand::Execute()
 		);
 
 		std::string jsonStr = IsJson() ?
-			ToJsonStr(res) :
-			ToXmlStr(res);
+			ToJsonStr(size, time) :
+			ToXmlStr(size, time);
 
 		AppendResponse(jsonStr.c_str());
 	}

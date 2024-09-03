@@ -45,7 +45,9 @@ namespace Benchmark
 		size_t dataSize = bufferSizeBytes > 0 ? bufferSizeBytes : 1024;
 		std::vector<char> data = GenerateRandomCharsVec(dataSize);
 
-		return RunBench(file, filename, data, maxFileSizeBytes, timeout);
+		nanoseconds timeoutNS = duration_cast<nanoseconds>(timeout);
+
+		return RunBench(file, filename, data, maxFileSizeBytes, timeoutNS);
 	}
 
 	std::pair<uint64_t, double> DiskBenchmark::RunBench(
@@ -53,11 +55,10 @@ namespace Benchmark
 		const std::string& filename,
 		const std::vector<char>& data,
 		uint64_t maxFileSizeBytes,
-		std::chrono::seconds timeout) const noexcept(false)
+		std::chrono::nanoseconds timeoutNS) const noexcept(false)
 	{
 		uint64_t totalWritten = 0;
 
-		auto timeoutNS = duration_cast<nanoseconds>(timeout);
 		auto start = steady_clock::now();
 		try
 		{
