@@ -23,5 +23,5 @@ The function writes data to a file until either the maximum file size is reached
 - **timeout** `(int)` - Test timeout (in seconds).
 
 ### Return value
-- **SizeMB** `(int)` - Written data size (in MiB)`.
-- **DurationMS** `(int)` - Test duration (in miliseconds).
+- **SizeMB** `(int)` - Written data size (in MiB).
+- **DurationMS** `(int)` - Test duration (in milliseconds).
