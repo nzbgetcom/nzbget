@@ -55,19 +55,16 @@ namespace Benchmark
 		uint64_t maxFileSizeBytes,
 		std::chrono::seconds timeout) const noexcept(false)
 	{
-		const char* dataToWrite = data.data();
-		size_t dataSize = data.size();
 		uint64_t totalWritten = 0;
 
-		auto start = high_resolution_clock::now();
+		auto timeoutNS = duration_cast<nanoseconds>(timeout);
+		auto start = steady_clock::now();
 		try
 		{
-			while (
-				totalWritten < maxFileSizeBytes &&
-				duration_cast<seconds>(high_resolution_clock::now() - start) < timeout)
+			while (totalWritten < maxFileSizeBytes && (steady_clock::now() - start) < timeoutNS)
 			{
-				file.write(dataToWrite, dataSize);
-				totalWritten += dataSize;
+				file.write(data.data(), data.size());
+				totalWritten += data.size();
 			}
 		}
 		catch (const std::exception& e)
@@ -77,11 +74,10 @@ namespace Benchmark
 			std::string errMsg = "Failed to write data to file " + filename + ". " + e.what();
 			throw std::runtime_error(errMsg);
 		}
-		auto finish = high_resolution_clock::now();
+		auto finish = steady_clock::now();
+		double elapsed = duration<double, std::milli>(finish - start).count();
 
 		CleanUp(file, filename);
-
-		double elapsed = duration<double, std::milli>(finish - start).count();
 
 		return { totalWritten, elapsed };
 	}

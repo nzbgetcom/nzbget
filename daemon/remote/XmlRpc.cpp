@@ -363,10 +363,10 @@ public:
 	virtual void Execute();
 };
 
-class TestDiskSpeedXmlCommand: public SafeXmlCommand
+class TestDiskSpeedXmlCommand final : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute();
 
 	std::string ToJsonStr(const std::pair<uint64_t, double>& res)
 	{
@@ -855,7 +855,7 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	{
 		command = std::make_unique<TestServerSpeedXmlCommand>();
 	}
-		else if (!strcasecmp(methodName, "testdiskspeed"))
+	else if (!strcasecmp(methodName, "testdiskspeed"))
 	{
 		command = std::make_unique<TestDiskSpeedXmlCommand>();
 	}
