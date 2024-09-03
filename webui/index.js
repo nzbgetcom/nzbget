@@ -853,6 +853,7 @@ var Refresher = (new function($)
 			'readurl', 
 			'servervolumes',
 			'testserverspeed',
+			'testdiskspeed',
 		];
 
 		$('#RefreshMenu li a').click(refreshIntervalClick);

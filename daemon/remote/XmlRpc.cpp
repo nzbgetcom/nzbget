@@ -39,6 +39,8 @@
 #include "UrlCoordinator.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
+#include "Benchmark.h"
+#include "Xml.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -359,6 +361,42 @@ class TestServerSpeedXmlCommand: public SafeXmlCommand
 {
 public:
 	virtual void Execute();
+};
+
+class TestDiskSpeedXmlCommand final : public SafeXmlCommand
+{
+public:
+	void Execute() override;
+
+	std::string ToJsonStr(uint64_t size, double time)
+	{
+		Json::JsonObject json;
+
+		json["SizeMB"] = size / 1024ull / 1024ull;
+		json["DurationMS"] = time;
+
+		return Json::Serialize(json);
+	}
+
+	std::string ToXmlStr(uint64_t size, double time)
+	{
+		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
+		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
+
+		std::string sizeMB = std::to_string(size / 1024ull / 1024ull);
+		std::string durationMS = std::to_string(time);
+
+		Xml::AddNewNode(structNode, "SizeMB", "i4", sizeMB.c_str());
+		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
+
+		xmlAddChild(rootNode, structNode);
+		
+		std::string result = Xml::Serialize(rootNode);
+
+		xmlFreeNode(rootNode);
+
+		return result;
+	}
 };
 
 class StartScriptXmlCommand : public XmlCommand
@@ -816,6 +854,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "testserverspeed"))
 	{
 		command = std::make_unique<TestServerSpeedXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testdiskspeed"))
+	{
+		command = std::make_unique<TestDiskSpeedXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "startscript"))
 	{
@@ -3694,6 +3736,82 @@ void TestServerSpeedXmlCommand::Execute()
 	g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), true);
 
 	BuildBoolResponse(true);
+}
+
+
+
+void TestDiskSpeedXmlCommand::Execute()
+{
+	char* dirPath;
+	int writeBufferKiB;
+	int maxFileSizeGiB;
+	int timeoutSec;
+
+	if (!NextParamAsStr(&dirPath))
+	{
+		BuildErrorResponse(2, "Invalid argument (Path)");
+		return;
+	}
+
+	if (!NextParamAsInt(&writeBufferKiB))
+	{
+		BuildErrorResponse(2, "Invalid argument (Write Buffer)");
+		return;
+	}
+
+	if (writeBufferKiB < 0)
+	{
+		BuildErrorResponse(2, "Write Buffer cannot be negative");
+		return;
+	}
+
+	if (!NextParamAsInt(&maxFileSizeGiB))
+	{
+		BuildErrorResponse(2, "Invalid argument (Max file size)");
+		return;
+	}
+
+	if (maxFileSizeGiB < 1)
+	{
+		BuildErrorResponse(2, "Max file size must be positive");
+		return;
+	}
+
+	if (!NextParamAsInt(&timeoutSec))
+	{
+		BuildErrorResponse(2, "Invalid argument (Timeout)");
+		return;
+	}
+
+	if (timeoutSec < 1)
+	{
+		BuildErrorResponse(2, "Timeout must be positive");
+		return;
+	}
+
+	try
+	{
+		size_t bufferSizeBytes = writeBufferKiB * 1024;
+		uint64_t maxFileSizeBytes = maxFileSizeGiB * 1024ull * 1024ull * 1024ull;
+		 
+		Benchmark::DiskBenchmark db;
+		auto [size, time] = db.Run(
+			dirPath, 
+			bufferSizeBytes, 
+			maxFileSizeBytes, 
+			std::chrono::seconds(timeoutSec)
+		);
+
+		std::string jsonStr = IsJson() ?
+			ToJsonStr(size, time) :
+			ToXmlStr(size, time);
+
+		AppendResponse(jsonStr.c_str());
+	}
+	catch (const std::exception& e)
+	{
+		BuildErrorResponse(2, e.what());
+	}
 }
 
 // bool startscript(string script, string command, string context, struct[] options);

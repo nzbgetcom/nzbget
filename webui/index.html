@@ -661,13 +661,86 @@
 													</div>
 												</div>
 
+												<div class="modal hide in" id="DiskSpeedTest_Modal">
+													<div>
+														<div class="modal-header">
+															<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+															<h3>Disk speed test</h3>
+														</div>
+														<div class="modal-body">
+															<div class="control-group">
+																<div>
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestTimeout">
+																			Timeout
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestTimeout">
+																					<option value="1" selected>1</option>
+																					<option value="2">2</option>
+																					<option value="3">3</option>
+																					<option value="4">4</option>
+																					<option value="5">5</option>
+																				</select>
+																				<span class="add-on">Seconds</span>
+																			</div>
+																		</div>
+																	</p>
+
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestMaxSize">
+																			Max size
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestMaxSize">
+																					<option value="1">1</option>
+																					<option value="2">2</option>
+																					<option value="4" selected>4</option>
+																					<option value="8">8</option>
+																					<option value="16">16</option>
+																				</select>
+																				<span class="add-on">GiB</span>
+																			</div>
+																		</div>
+																	</p>
+
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestWriteBufferInput">
+																			WriteBuffer
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<input type="text" id="SysInfo_DiskSpeedTestWriteBufferInput" class="editnumeric" required>
+																				<span class="add-on">KiB</span>
+																			</div>
+																		</div>
+																	</p>
+																</div>
+
+																<hr>
+
+																<label class="control-label" for="SysInfo_DiskSpeedTestInput" id="SysInfo_DiskSpeedTestInputLabel"></label>
+																<div class="controls">
+																	<div class="dist-speedtest__controls">
+																		<input type="text" id="SysInfo_DiskSpeedTestInput" class="editlarge" required>
+																		<button type="button" style="width: 115px;" class="btn btn-default" id="SysInfo_DiskSpeedTestBtn"></button>
+																	</div>
+																	<p class="help-text-error" id="SysInfo_DiskSpeedTestErrorTxt"></p>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+
 												<div id="SystemInfo_Spinner" class="system-info__spinner-container ">
 													<i class="material-icon spinner system-info__spinner ">progress_activity</i>
 												</div>
 
 												<div class="alert alert-danger alert-block" style="display:none;" id="SystemInfoErrorAlert">
 													<h4 class="alert-heading">Error</h4>
-													<em id="SystemInfoAlert-text"></em>
+													<em id="SystemInfo_alertText"></em>
 												</div>
 
 												<div id="SystemInfo_MainContent">
@@ -731,11 +804,21 @@
 															</tr>
 															<tr id="SysInfo_DestDiskSpaceContainer">
 																<td width="50%">Free / Total disk space (DestDir)</td>
-																<td id="SysInfo_DestDiskSpace" width="50%"></td>
+																<td width="50%" class="flex-center">
+																	<span id="SysInfo_DestDiskSpace"></span>
+																	<button type="button" id="SysInfo_DestDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																		Speed
+																	</button>
+																</td>
 															</tr>
 															<tr id="SysInfo_InterDiskSpaceContainer">
 																<td width="50%">Free / Total disk space (InterDir)</td>
-																<td id="SysInfo_InterDiskSpace" width="50%"></td>
+																<td width="50%" class="flex-center">
+																	<span id="SysInfo_InterDiskSpace"></span>
+																	<button type="button" id="SysInfo_InterDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																		Speed
+																	</button>
+																</td>
 															</tr>
 															<tr>
 																<td width="50%">Write buffer</td>

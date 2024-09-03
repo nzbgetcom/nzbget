@@ -18,6 +18,142 @@
  */
 
 
+function DiskSpeedTestsForm()
+{
+	var _512MiB = 1024 * 1024 * 512;
+	var $timeout;
+	var $maxSize;
+	var $writeBufferInput;
+	var $diskSpeedTestInputLabel;
+	var $diskSpeedTestInput;
+	var $diskSpeedTestBtn;
+	var $diskSpeedTestErrorTxt
+	
+	var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
+	var TEST_BTN_DEFAULT_TEXT = 'Run test';
+
+	this.init = function(writeBuffer, dirPath, label, lsKey)
+	{
+		$timeout = $('#SysInfo_DiskSpeedTestTimeout');
+		$maxSize = $('#SysInfo_DiskSpeedTestMaxSize');
+		$writeBufferInput = $('#SysInfo_DiskSpeedTestWriteBufferInput');
+		$diskSpeedTestInputLabel  = $('#SysInfo_DiskSpeedTestInputLabel');
+		$diskSpeedTestInput  = $('#SysInfo_DiskSpeedTestInput');
+		$diskSpeedTestBtn = $('#SysInfo_DiskSpeedTestBtn');
+		$diskSpeedTestErrorTxt = $('#SysInfo_DiskSpeedTestErrorTxt');
+
+		disableBtnToggle(false);
+
+		$diskSpeedTestBtn.text(getSpeedResFromLS(lsKey) || TEST_BTN_DEFAULT_TEXT);
+
+		$writeBufferInput.val(writeBuffer);
+		$diskSpeedTestInputLabel.text(label);
+		$diskSpeedTestInput.val(dirPath);
+
+		$diskSpeedTestBtn
+			.off('click')
+			.on('click', function()
+		{	
+			var writeBufferVal = + $writeBufferInput.val();
+			var path = $diskSpeedTestInput.val();
+			var maxSize = + $maxSize.val();
+			var timeout = + $timeout.val();
+			runDiskSpeedTest(path, writeBufferVal, maxSize, timeout, lsKey);
+		});
+
+		$writeBufferInput
+			.off('change paste keyup')
+			.on('change paste keyup', function(event)
+		{
+			if (isValidWriteBuffer(event.target.value))
+				disableBtnToggle(false);
+			else
+				disableBtnToggle(true);
+		});
+
+		$diskSpeedTestInput
+			.off('change paste keyup')
+			.on('change paste keyup', function(event)
+		{
+			if (isValidPath(event.target.value))
+				disableBtnToggle(false);
+			else
+				disableBtnToggle(true);
+		});
+	}
+
+	function runDiskSpeedTest(path, writeBufferSize, maxFileSize, timeout, lsKey)
+	{
+		$diskSpeedTestErrorTxt.empty();
+		$diskSpeedTestBtn.html(SPINNER);
+		disableBtnToggle(true);
+
+		RPC.call('testdiskspeed', [path, writeBufferSize, maxFileSize, timeout], 
+			function(rawRes) 
+			{
+				var res = makeResults(rawRes);
+				saveSpeedResToLS(lsKey, res);
+				$diskSpeedTestBtn.html(makeResults(rawRes));
+				disableBtnToggle(false);
+			}, 
+			function(res) 
+			{
+				$diskSpeedTestBtn.html(getSpeedResFromLS(lsKey) || TEST_BTN_DEFAULT_TEXT);
+				disableBtnToggle(false);
+
+				var errTxt = res.split('<br>')[0];
+				$diskSpeedTestErrorTxt.html(errTxt);
+			},
+		);
+	}
+
+	function makeResults(res)
+	{
+		var r = res.SizeMB / (res.DurationMS / 1000);
+		return Util.formatSizeMB(r) + '/s';
+	}
+
+	function disableBtnToggle(disable)
+	{
+		if (disable)
+		{
+			$diskSpeedTestBtn.addClass('btn--disabled');
+		}
+		else
+		{
+			$diskSpeedTestBtn.removeClass('btn--disabled');
+		}
+	}
+
+	function isValidWriteBuffer(input)
+	{
+		var val = input.trim();
+		if (!val)
+			return false;
+
+		var num = Number(val);
+
+		return !isNaN(num) && num >= 0 && num < _512MiB;
+	}
+
+	function isValidPath(input)
+	{
+		var path = input.trim();
+
+		return path !== '';
+	}
+
+	function saveSpeedResToLS(key, res)
+	{
+		localStorage.setItem(key, res);
+	}
+
+	function getSpeedResFromLS(key)
+	{
+		return localStorage.getItem(key) || '';
+	}
+}
+
 var SystemInfo = (new function($)
 {
 	this.id = "Config-SystemInfo";
@@ -31,6 +167,8 @@ var SystemInfo = (new function($)
 	var $SysInfo_IP;
 	var $SysInfo_DestDiskSpace;
 	var $SysInfo_InterDiskSpace;
+	var $SysInfo_DestDirDiskTestBtn;
+	var $SysInfo_InterDirDiskTestBtn;
 	var $SysInfo_DestDiskSpaceContainer;
 	var $SysInfo_InterDiskSpaceContainer;
 	var $SysInfo_ArticleCache;
@@ -43,6 +181,7 @@ var SystemInfo = (new function($)
 	var $SpeedTest_Stats;
 	var $SpeedTest_StatsHeader;
 	var $SpeedTest_StatsTable;
+	var $DiskSpeedTest_Modal;
 	var $SystemInfo_Spinner;
 	var $SystemInfo_MainContent;
 
@@ -58,6 +197,10 @@ var SystemInfo = (new function($)
 	var testNZBListId = 'dropdown_test_nzb_list_';
 	var lastTestStatsId = 'last_test_stats_';
 	var serverTestSpinnerId = 'server_test_spinner_';
+
+	var DEST_DIR_LS_KEY = 'DestDirSpeedResults';
+	var INTER_DIR_LS_KEY = 'InterDirSpeedResults';
+
 	var lastTestStatsBtns = {};
 	var spinners = {};
 	var allStats = [];
@@ -68,18 +211,12 @@ var SystemInfo = (new function($)
 		{
 			$SysInfo_Uptime.text(Util.formatTimeHMS(status['UpTimeSec']));
 
-			var destDirOpt = Options.findOption(Options.options, 'DestDir');
-			var interDirOpt = Options.findOption(Options.options, 'InterDir');
+			var writeBufferKB = Options.option('WriteBuffer');
+			var destDir = Options.option('DestDir');
+			var interDir = Options.option('InterDir') || destDir;
 
-			
-
-			if (destDirOpt && interDirOpt)
-			{
-				var destDirPath = destDirOpt.Value;
-				var interDistPath = interDirOpt.Value ? interDirOpt.Value : destDirPath;
-				renderDiskSpace(+status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDirPath);
-				renderInterDiskSpace(+status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDistPath);
-			}
+			renderDestDiskSpace(writeBufferKB, +status['FreeDiskSpaceMB'], +status['TotalDiskSpaceMB'], destDir);
+			renderInterDiskSpace(writeBufferKB, +status['FreeInterDiskSpaceMB'], +status['TotalInterDiskSpaceMB'], interDir);
 		}
 	}
 
@@ -112,6 +249,8 @@ var SystemInfo = (new function($)
 		$SysInfo_IP = $('#SysInfo_IP');
 		$SysInfo_DestDiskSpace = $('#SysInfo_DestDiskSpace');
 		$SysInfo_InterDiskSpace = $('#SysInfo_InterDiskSpace');
+		$SysInfo_DestDirDiskTestBtn = $('#SysInfo_DestDirDiskTestBtn');
+		$SysInfo_InterDirDiskTestBtn = $('#SysInfo_InterDirDiskTestBtn');
 		$SysInfo_InterDiskSpaceContainer = $('#SysInfo_InterDiskSpaceContainer');
 		$SysInfo_DestDiskSpaceContainer = $('#SysInfo_DestDiskSpaceContainer');
 		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
@@ -120,10 +259,11 @@ var SystemInfo = (new function($)
 		$SysInfo_LibrariesTable = $('#SysInfo_LibrariesTable');
 		$SysInfo_NewsServersTable = $('#SysInfo_NewsServersTable');
 		$SysInfo_ErrorAlert = $('#SystemInfoErrorAlert');
-		$SysInfo_ErrorAlertText = $('#SystemInfoAlert-text');
+		$SysInfo_ErrorAlertText = $('#SystemInfo_alertText');
 		$SpeedTest_Stats = $('#SpeedTest_Stats');
 		$SpeedTest_StatsHeader = $('#SpeedTest_StatsHeader');
 		$SpeedTest_StatsTable = $('#SpeedTest_StatsTable tbody');
+		$DiskSpeedTest_Modal = $('#DiskSpeedTest_Modal');
 		$SystemInfo_Spinner = $('#SystemInfo_Spinner');
 		$SystemInfo_MainContent = $('#SystemInfo_MainContent');
 
@@ -150,17 +290,6 @@ var SystemInfo = (new function($)
 			},
 			errorHandler
 		);
-	}
-
-	function pathsOnSameDisk(path1, path2) 
-	{
-		path1 = path1.replace(/\\/g, '/');
-		path2 = path2.replace(/\\/g, '/');
-	  
-		var drive1 = path1.match(/^[a-zA-Z]:\//i) ? path1.match(/^[a-zA-Z]:\//i)[0] : '/';
-		var drive2 = path2.match(/^[a-zA-Z]:\//i) ? path2.match(/^[a-zA-Z]:\//i)[0] : '/';
-
-		return drive1 === drive2;
 	}
 
 	function hideSpinner()
@@ -236,13 +365,19 @@ var SystemInfo = (new function($)
 		$SysInfo_Arch.text(sysInfo['CPU'].Arch || 'Unknown');
 		$SysInfo_ConfPath.text(Options.option('ConfigFile'));
 		$SysInfo_ArticleCache.text(Util.formatSizeMB(+Options.option('ArticleCache')));
-		$SysInfo_WriteBuffer.text(Util.formatSizeMB(+Options.option('WriteBuffer')));
 
+		renderWriteBuffer(+Options.option('WriteBuffer'));
 		renderIP(sysInfo['Network']);
 		renderAppVersion(Options.option('Version'));
 		renderTools(sysInfo['Tools']);
 		renderLibraries(sysInfo['Libraries']);
 		renderNewsServers(Status.getStatus()['NewsServers']);
+	}
+
+	function renderWriteBuffer(writeBufferKB)
+	{
+		var writeBufferMB = writeBufferKB / 1024;
+		$SysInfo_WriteBuffer.text(Util.formatSizeMB(writeBufferMB));
 	}
 
 	function renderSpinners(downloads)
@@ -284,16 +419,36 @@ var SystemInfo = (new function($)
 		});
 	}
 
-	function renderDiskSpace(free, total, path)
+	function renderDestDiskSpace(writeBufferKB, free, total, dirPath)
 	{
 		$SysInfo_DestDiskSpace.text(formatDiskInfo(free, total));
-		$SysInfo_DestDiskSpaceContainer.attr('title', path);
+		$SysInfo_DestDiskSpaceContainer.attr('title', dirPath);
+		$SysInfo_DestDirDiskTestBtn.off('click').on('click', function()
+		{
+			showDiskSpeedModal(writeBufferKB, dirPath, 'DestDir', DEST_DIR_LS_KEY);
+		});
+
+		var savedResults = localStorage.getItem(DEST_DIR_LS_KEY);
+		if (savedResults)
+		{
+			$SysInfo_DestDirDiskTestBtn.text(savedResults);
+		}
 	}
 
-	function renderInterDiskSpace(free, total, path)
+	function renderInterDiskSpace(writeBufferKB, free, total, dirPath)
 	{
 		$SysInfo_InterDiskSpace.text(formatDiskInfo(free, total));
-		$SysInfo_InterDiskSpaceContainer.attr('title', path);
+		$SysInfo_InterDiskSpaceContainer.attr('title', dirPath);
+		$SysInfo_InterDirDiskTestBtn.off('click').on('click', function()
+		{
+			showDiskSpeedModal(writeBufferKB, dirPath, 'InterDir', INTER_DIR_LS_KEY);
+		});
+
+		var savedResults = localStorage.getItem(INTER_DIR_LS_KEY);
+		if (savedResults)
+		{
+			$SysInfo_InterDirDiskTestBtn.text(savedResults);
+		}
 	}
 
 	function formatDiskInfo(free, total)
@@ -536,6 +691,12 @@ var SystemInfo = (new function($)
 			function() { }, 
 			errorHandler,
 		);
+	}
+
+	function showDiskSpeedModal(writeBuffer, dirPath, label, lsKey)
+	{
+		$DiskSpeedTest_Modal.show();
+		(new DiskSpeedTestsForm()).init(writeBuffer, dirPath, label, lsKey);
 	}
 
 	function showStatsTable(stats)
