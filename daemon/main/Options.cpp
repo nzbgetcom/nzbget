@@ -431,7 +431,11 @@ void Options::InitDefaults()
 	SetOption(OPTION_WRITELOG, "append");
 	SetOption(OPTION_ROTATELOG, "3");
 	SetOption(OPTION_APPENDCATEGORYDIR, "yes");
+#ifdef DISABLE_CURSES
+	SetOption(OPTION_OUTPUTMODE, "color");
+#else
 	SetOption(OPTION_OUTPUTMODE, "curses");
+#endif
 	SetOption(OPTION_DUPECHECK, "yes");
 	SetOption(OPTION_DOWNLOADRATE, "0");
 	SetOption(OPTION_CONTROLIP, "0.0.0.0");
