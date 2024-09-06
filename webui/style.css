@@ -79,8 +79,14 @@ body {
 
 .test-server-dropdwon-menu
 {
-	width: 150px;
+	width: 195px;
 	min-width: auto;
+}
+
+.approx-speed-txt {
+	padding-left: 3px;
+	color: darkgray;
+	font-style: italic;
 }
 
 .system-info__spinner-container {
