@@ -172,6 +172,12 @@ var Util = (new function($)
 		return Util.round0(bytesPerSec / 1024.0) + ' KB/s';
 	}
 
+	this.formatSpeedWithCustomUnit = function (bytesPerSec, unit) 
+	{
+		var res = this.formatSpeed(bytesPerSec);
+		return res.replace('B', unit);
+	}
+
 	this.formatAge = function(time)
 	{
 		if (time == 0)

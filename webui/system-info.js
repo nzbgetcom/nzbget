@@ -184,6 +184,12 @@ var SystemInfo = (new function($)
 	var $DiskSpeedTest_Modal;
 	var $SystemInfo_Spinner;
 	var $SystemInfo_MainContent;
+	var $SpeedTest_Stats;
+	var $SpeedTest_StatsHeader;
+	var $SpeedTest_StatsSpeed;
+	var $SpeedTest_StatsSize;
+	var $SpeedTest_StatsTime;
+	var $SpeedTest_StatsDate;
 
 	var nzbFileTestPrefix = 'NZBGet Speed Test ';
 	var testNZBUrl = 'https://nzbget.com/nzb/';
@@ -262,7 +268,10 @@ var SystemInfo = (new function($)
 		$SysInfo_ErrorAlertText = $('#SystemInfo_alertText');
 		$SpeedTest_Stats = $('#SpeedTest_Stats');
 		$SpeedTest_StatsHeader = $('#SpeedTest_StatsHeader');
-		$SpeedTest_StatsTable = $('#SpeedTest_StatsTable tbody');
+		$SpeedTest_StatsSpeed = $('#SpeedTest_StatsSpeed');
+		$SpeedTest_StatsSize = $('#SpeedTest_StatsSize');
+		$SpeedTest_StatsTime = $('#SpeedTest_StatsTime');
+		$SpeedTest_StatsDate = $('#SpeedTest_StatsDate');
 		$DiskSpeedTest_Modal = $('#DiskSpeedTest_Modal');
 		$SystemInfo_Spinner = $('#SystemInfo_Spinner');
 		$SystemInfo_MainContent = $('#SystemInfo_MainContent');
@@ -405,8 +414,9 @@ var SystemInfo = (new function($)
 			var id = lastTestStatsId + stats['ServerStats'][0]['ServerID'];
 			if (lastTestStatsBtns[id] && !alreadyRendered[id])
 			{
+				lastTestStatsBtns[id].empty();
 				alreadyRendered[id] = true;
-				lastTestStatsBtns[id].text(getSpeed(stats));
+				lastTestStatsBtns[id].append(makeSpeed(stats));
 				lastTestStatsBtns[id].show();
 				lastTestStatsBtns[id]
 					.off('click')
@@ -576,7 +586,7 @@ var SystemInfo = (new function($)
 	{
 		var btn = $('<button id="' 
 			+ id + 
-			'type="button" class="btn btn-default" data-toggle="modal" data-target="#SpeedTest_Stats" title="Statistics">' 
+			'type="button" class="btn btn-default" data-toggle="modal" data-target="#SpeedTest_Stats">' 
 			+ '</>'
 		);
 		btn.css('display', 'none');
@@ -663,11 +673,15 @@ var SystemInfo = (new function($)
 
 	function makeStatisticsBtn(stats)
 	{
+		var speedEl = makeSpeed(stats);
 		var statsBtn = $('<button '
-			+ 'type="button" class="btn btn-default" data-toggle="modal" data-target="#SpeedTest_Stats" title="Statistics">' 
-			+ getSpeed(stats)
+			+ 'type="button" class="btn btn-default"'
+			+ 'data-toggle="modal" data-target="#SpeedTest_Stats">' 
 			+ '</>'
 		);
+
+		statsBtn.append(speedEl);
+
 		statsBtn.css('font-size', '12px');
 		statsBtn.css('padding', '3px');
 		statsBtn.css('position', 'absolute');
@@ -701,32 +715,46 @@ var SystemInfo = (new function($)
 
 	function showStatsTable(stats)
 	{
-		$($SpeedTest_Stats).show();
-		$($SpeedTest_StatsHeader).text(stats.NZBName);
-		var table = makeStatistics(stats);
-		$($SpeedTest_StatsTable).html(table);
+		$SpeedTest_Stats.show();
+		$SpeedTest_StatsHeader.text(stats.NZBName);
+		fillStatsTable(stats);
 	}
 
-	function makeStatistics(stats)
+	function fillStatsTable(stats)
 	{
-		var downloaded = Util.formatSizeMB(stats.DownloadedSizeMB, stats.DownloadedSizeLo);
-		var speed = getSpeed(stats);
+		var speed = makeSpeed(stats);
+		var size = Util.formatSizeMB(stats.DownloadedSizeMB, stats.DownloadedSizeLo);
+		var timeHMS = Util.formatTimeHMS(stats.DownloadTimeSec);
 		var date = Util.formatDateTime(stats.HistoryTime + UISettings.timeZoneCorrection * 60 * 60);
-		var table = '';
-		table += '<tr><td>Download speed</td><td class="text-center">' + speed + '</td></tr>';
-		table += '<tr><td>Downloaded size</td><td class="text-center">' + downloaded + '</td></tr>';
-		table += '<tr><td>Download time</td><td class="text-center">' + Util.formatTimeHMS(stats.DownloadTimeSec) + '</td></tr>';
-		table += '<tr><td>Date</td><td class="text-center">' + date + '</td></tr>';
 
-		return table;
+		$SpeedTest_StatsSpeed.empty();
+		$SpeedTest_StatsSpeed.append(speed);
+		$SpeedTest_StatsSize.text(size);
+		$SpeedTest_StatsTime.text(timeHMS);
+		$SpeedTest_StatsDate.text(date);
 	}
 
-	function getSpeed(stats)
+	function makeSpeed(stats)
 	{
 		var bytes = stats.DownloadedSizeMB > 1024 ? stats.DownloadedSizeMB * 1024.0 * 1024.0 : stats.DownloadedSizeLo;
-		var speed = stats.DownloadTimeSec > 0 ? Util.formatSpeed(bytes / stats.DownloadTimeSec) : '--';
+		var bytesPerSec = bytes / stats.DownloadTimeSec;
+		var bitsPerSec = bytes * 8 / stats.DownloadTimeSec;
+		var speedBytes = stats.DownloadTimeSec > 0 ? Util.formatSpeed(bytesPerSec) : '--';
+		var speedBits = stats.DownloadTimeSec > 0 ? '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'b') : '--';
+		
+		var speedContainer = $('<span></span>');
+	
+		var speedBitsContainer = $('<span class="approx-speed-txt"></span>');
+		speedBitsContainer.text(speedBits);
+		
+		speedContainer.text(speedBytes);
+		speedContainer.append(speedBitsContainer);
 
-		return speed;
+		speedContainer.attr('title', Util.formatSpeedWithCustomUnit(bytesPerSec, 'Bytes') 
+		+ '\nApprox. ' 
+		+  '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'bits'));
+
+		return speedContainer;
 	}
 
 }(jQuery))
