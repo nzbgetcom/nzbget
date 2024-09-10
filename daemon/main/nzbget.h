@@ -356,6 +356,7 @@ typedef int pid_t;
 #define FOPEN_WB "wb"
 #define FOPEN_AB "ab"
 #define CHILD_WATCHDOG 1
+#define fseek fseeko
 
 #endif /* POSIX */
 
