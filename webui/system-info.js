@@ -463,7 +463,12 @@ var SystemInfo = (new function($)
 
 	function formatDiskInfo(free, total)
 	{
-		var percents = total !== 0 ? (free / total * 100).toFixed(1) + '%' : '0.0%';
+		if (free === 0 || total === 0)
+		{
+			return 'N/A';
+		}
+
+		var percents = (free / total * 100).toFixed(1) + '%';
 		return Util.formatSizeMB(free) + ' (' + percents + ') / ' + Util.formatSizeMB(total);
 	}
 
