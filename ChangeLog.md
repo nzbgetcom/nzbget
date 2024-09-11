@@ -13,7 +13,7 @@ nzbget-24.3
     - Bits/s units are now also displayed in server speed test results
 
   - Bug fixes:
-    -Fixed a critical bug related to corrupt downloaded files exceeding 2.6 GB on all x32 POSIX systems using `DirectWrite`
+    - Fixed a critical bug related to corrupt downloaded files exceeding 2.6 GB on all x32 POSIX systems using `DirectWrite`
     [#378](https://github.com/nzbgetcom/nzbget/commit/a59edac8bfbaf75d4f262909ef71026241b7bddc)
     - Fixed a potential buffer overflow using `getrealpath` function
     [#346](https://github.com/nzbgetcom/nzbget/commit/f89978f7479cbb0ff2f96c8632d9d2f31834e6c8)
