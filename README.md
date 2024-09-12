@@ -23,6 +23,9 @@
 ![GitHub repo size](https://img.shields.io/github/repo-size/nzbgetcom/nzbget)
 
 
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.gg/mV9Vn9sM7C)
+
+
 NZBGet is a binary downloader, which downloads files from Usenet based-on information given in nzb files.
 
 NZBGet is written in C++ and is known for its performance and efficiency.
@@ -80,7 +83,7 @@ Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.m
 
 ## Contribution
 
-Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose)
+Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) or [join our Discord server](https://discord.gg/mV9Vn9sM7C).
 
 For more information - see [Contributing](docs/CONTRIBUTING.md).
 
