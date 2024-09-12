@@ -49,4 +49,9 @@ namespace Xml {
 		xmlAddChild(memberNode, valueNode);
 		xmlAddChild(rootNode, memberNode);
 	}
+
+	const char* BoolToStr(bool value) noexcept
+	{
+		return value ? "1" : "0";
+	}
 }

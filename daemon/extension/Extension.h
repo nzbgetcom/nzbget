@@ -109,8 +109,6 @@ namespace Extension
 
 	std::string ToJsonStr(const Script& script);
 	std::string ToXmlStr(const Script& script);
-
-	const char* BoolToStr(bool value);
 }
 
 #endif

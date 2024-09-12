@@ -18,7 +18,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
   
-* {
+ * {
 	scrollbar-width: thin;
 }
 
@@ -51,6 +51,13 @@ body {
 	padding-right: 0;
 }
 
+.flex-center {
+	display: flex;
+	align-items: center;
+	width: inherit;
+	gap: 5px;
+}
+
 #AddDialog_URLProp {
 	vertical-align: sub;
 	color: inherit;
@@ -72,8 +79,14 @@ body {
 
 .test-server-dropdwon-menu
 {
-	width: 150px;
+	width: 195px;
 	min-width: auto;
+}
+
+.approx-speed-txt {
+	padding-left: 3px;
+	color: darkgray;
+	font-style: italic;
 }
 
 .system-info__spinner-container {
@@ -85,6 +98,23 @@ body {
 
 .system-info__spinner {
 	font-size: 128px;
+}
+
+.dist-speedtest__controls {
+	display: flex;
+	gap: 10px;
+}
+
+#ConfigContent select.dist-speedtest__select--width {
+	width: 80px;
+}
+
+.help-text-error {
+	color: #b94a48;
+}
+
+#SysInfo_DiskSpeedTestBtn.btn--disabled {
+	opacity: 0.6 !important;
 }
 
 .spinner {

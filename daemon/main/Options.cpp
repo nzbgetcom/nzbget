@@ -349,6 +349,8 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 	}
 
 	ConvertOldOptions(&m_optEntries);
+
+	CheckDirs();
 	InitOptions();
 	CheckOptions();
 
@@ -429,7 +431,11 @@ void Options::InitDefaults()
 	SetOption(OPTION_WRITELOG, "append");
 	SetOption(OPTION_ROTATELOG, "3");
 	SetOption(OPTION_APPENDCATEGORYDIR, "yes");
+#ifdef DISABLE_CURSES
+	SetOption(OPTION_OUTPUTMODE, "color");
+#else
 	SetOption(OPTION_OUTPUTMODE, "curses");
+#endif
 	SetOption(OPTION_DUPECHECK, "yes");
 	SetOption(OPTION_DOWNLOADRATE, "0");
 	SetOption(OPTION_CONTROLIP, "0.0.0.0");
@@ -656,7 +662,7 @@ void Options::CheckDir(CString& dir, const char* optionName,
 	}
 }
 
-void Options::InitOptions()
+void Options::CheckDirs()
 {
 	const char* mainDir = GetOption(OPTION_MAINDIR);
 
@@ -667,7 +673,10 @@ void Options::InitOptions()
 	CheckDir(m_webDir, OPTION_WEBDIR, nullptr, true, false);
 	CheckDir(m_scriptDir, OPTION_SCRIPTDIR, mainDir, true, false);
 	CheckDir(m_nzbDir, OPTION_NZBDIR, mainDir, false, true);
+}
 
+void Options::InitOptions()
+{
 	m_requiredDir = GetOption(OPTION_REQUIREDDIR);
 
 	m_configTemplate		= GetOption(OPTION_CONFIGTEMPLATE);

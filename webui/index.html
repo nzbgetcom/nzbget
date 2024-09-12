@@ -655,8 +655,98 @@
 														<div class="modal-body">
 															<table class="table table-striped table-bordered datatable" id="SpeedTest_StatsTable">
 																<thead><tr><th>Statistics</th><th class="text-center">Data</th></tr></thead>
-																<tbody></tbody>
+																<tbody>
+																	<tr>
+																		<td>Download speed</td>
+																		<td class="text-center" id="SpeedTest_StatsSpeed"></td>
+																	</tr>
+																	<tr>
+																		<td>Download size</td>
+																		<td class="text-center" id="SpeedTest_StatsSize"></td>
+																	</tr>
+																	<tr>
+																		<td>Download time</td>
+																		<td class="text-center" id="SpeedTest_StatsTime"></td>
+																	</tr>
+																	<tr>
+																		<td>Date</td>
+																		<td class="text-center" id="SpeedTest_StatsDate"></td>
+																	</tr>
+																</tbody>
 															</table>
+														</div>
+													</div>
+												</div>
+
+												<div class="modal hide in" id="DiskSpeedTest_Modal">
+													<div>
+														<div class="modal-header">
+															<button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+															<h3>Disk speed test</h3>
+														</div>
+														<div class="modal-body">
+															<div class="control-group">
+																<div>
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestTimeout">
+																			Timeout
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestTimeout">
+																					<option value="1" selected>1</option>
+																					<option value="2">2</option>
+																					<option value="3">3</option>
+																					<option value="4">4</option>
+																					<option value="5">5</option>
+																				</select>
+																				<span class="add-on">Seconds</span>
+																			</div>
+																		</div>
+																	</p>
+
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestMaxSize">
+																			Max size
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestMaxSize">
+																					<option value="1">1</option>
+																					<option value="2">2</option>
+																					<option value="4" selected>4</option>
+																					<option value="8">8</option>
+																					<option value="16">16</option>
+																				</select>
+																				<span class="add-on">GiB</span>
+																			</div>
+																		</div>
+																	</p>
+
+																	<p>
+																		<label class="control-label" for="SysInfo_DiskSpeedTestWriteBufferInput">
+																			WriteBuffer
+																		</label>
+																		<div class="controls">
+																			<div class="input-append">
+																				<input type="text" id="SysInfo_DiskSpeedTestWriteBufferInput" class="editnumeric" required>
+																				<span class="add-on">KiB</span>
+																			</div>
+																		</div>
+																	</p>
+																</div>
+
+																<hr>
+
+																<label class="control-label" for="SysInfo_DiskSpeedTestInput" id="SysInfo_DiskSpeedTestInputLabel"></label>
+																<div class="controls">
+																	<div class="dist-speedtest__controls">
+																		<input type="text" id="SysInfo_DiskSpeedTestInput" class="editlarge" required>
+																		<button type="button" style="width: 115px;" class="btn btn-default" id="SysInfo_DiskSpeedTestBtn"></button>
+																	</div>
+																	<p class="help-text-error" id="SysInfo_DiskSpeedTestErrorTxt"></p>
+																</div>
+															</div>
 														</div>
 													</div>
 												</div>
@@ -667,7 +757,7 @@
 
 												<div class="alert alert-danger alert-block" style="display:none;" id="SystemInfoErrorAlert">
 													<h4 class="alert-heading">Error</h4>
-													<em id="SystemInfoAlert-text"></em>
+													<em id="SystemInfo_alertText"></em>
 												</div>
 
 												<div id="SystemInfo_MainContent">
@@ -729,16 +819,30 @@
 																<td width="50%">Arch</td>
 																<td id="SysInfo_Arch" width="50%"></td>
 															</tr>
-															<tr>
-																<td width="50%">Free disk space</td>
-																<td id="SysInfo_FreeDiskSpace" width="50%"></td>
+															<tr id="SysInfo_DestDiskSpaceContainer">
+																<td width="50%">Free / Total disk space (DestDir)</td>
+																<td width="50%" class="flex-center">
+																	<span id="SysInfo_DestDiskSpace"></span>
+																	<button type="button" id="SysInfo_DestDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																		Speed
+																	</button>
+																</td>
+															</tr>
+															<tr id="SysInfo_InterDiskSpaceContainer">
+																<td width="50%">Free / Total disk space (InterDir)</td>
+																<td width="50%" class="flex-center">
+																	<span id="SysInfo_InterDiskSpace"></span>
+																	<button type="button" id="SysInfo_InterDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																		Speed
+																	</button>
+																</td>
 															</tr>
 															<tr>
-																<td width="50%">Total disk space</td>
-																<td id="SysInfo_TotalDiskSpace" width="50%"></td>
+																<td width="50%">Write buffer</td>
+																<td id="SysInfo_WriteBuffer" width="50%"></td>
 															</tr>
 															<tr>
-																<td width="50%">Article Cache</td>
+																<td width="50%">Article cache</td>
 																<td id="SysInfo_ArticleCache" width="50%"></td>
 															</tr>
 															<tr>

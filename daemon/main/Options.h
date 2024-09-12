@@ -322,6 +322,8 @@ public:
 	bool GetRemoteClientMode() { return m_remoteClientMode; }
 
 private:
+	void CheckDirs();
+
 	OptEntries m_optEntries;
 	Mutex m_optEntriesMutex;
 	Categories m_categories;
