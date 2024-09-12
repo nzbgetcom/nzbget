@@ -56,17 +56,17 @@ void FileSystem::NormalizePathSeparators(char* path)
 	}
 }
 
-std::optional<std::string> FileSystem::GetFileRealPath(std::string_view path)
+std::optional<std::string> FileSystem::GetFileRealPath(const std::string& path)
 {
 #ifdef WIN32
 	char buffer[MAX_PATH];
-	DWORD len = GetFullPathName(path.data(), MAX_PATH, buffer, nullptr);
+	DWORD len = GetFullPathName(path.c_str(), MAX_PATH, buffer, nullptr);
 	if (len != 0)
 	{
 		return std::optional{ buffer };
 	}
 #else
-	if (char* realPath = realpath(path.data(), nullptr))
+	if (char* realPath = realpath(path.c_str(), nullptr))
 	{
 		std::string res = realPath;
 		free(realPath);

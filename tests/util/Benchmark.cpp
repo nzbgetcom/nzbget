@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,17 +17,32 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#include "nzbget.h"
 
-#include <iostream>
-#include <libxml/tree.h>
+#include <boost/test/unit_test.hpp>
 
-namespace Xml
+#include <exception>
+#include "Benchmark.h"
+
+BOOST_AUTO_TEST_CASE(BenchmarkTest)
 {
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	const char* BoolToStr(bool value) noexcept;
-}
+	Benchmark::DiskBenchmark db;
+	{
+		size_t tooBigBuffer = 1024ul * 1024ul * 1024ul;
+		BOOST_CHECK_THROW(
+			db.Run("./", tooBigBuffer, 1024, std::chrono::seconds(1)), std::invalid_argument
+		);
+	}
 
-#endif
+	{
+		BOOST_CHECK_THROW(
+			db.Run("InvalidPath", 1024, 1024, std::chrono::seconds(1)), std::runtime_error
+		);
+	}
+
+	{
+		uint64_t  maxFileSize = 1024 * 1024;
+		auto [size, duration] = db.Run("./", 1024, maxFileSize, std::chrono::seconds(1));
+		BOOST_CHECK(size >= maxFileSize || duration < 1.3);
+	}
+}

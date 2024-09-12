@@ -8,7 +8,7 @@ set_property(GLOBAL PROPERTY PACKAGE)
 set_property(GLOBAL PROPERTY LIBS)
 set_property(GLOBAL PROPERTY INCLUDES)
 
-set(VERSION "24.3")
+set(VERSION "24.4")
 set(PACKAGE "nzbget")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 17)

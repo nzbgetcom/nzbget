@@ -1,3 +1,31 @@
+nzbget-24.3
+  - Features:
+    - Disk performance tests for better analysis of user environment performance
+    [#375](https://github.com/nzbgetcom/nzbget/commit/220e842ad5181f6911a6b1796fdc01d0091d0c71)
+    - The `STATUS` page now displays `WriteBuffer` and `InterDir` disk information
+      - the API method `status` now returns 6 additional properties:
+        - FreeInterDiskSpaceLo `(int)` - Free disk space on `InterDir`, in bytes. This field contains the low 32-bits of 64-bit value
+        - FreeInterDiskSpaceHi `(int)` - Free disk space on `InterDir`, in bytes. This field contains the high 32-bits of 64-bit value
+        - FreeInterDiskSpaceMB `(int)` - Free disk space on `InterDir`, in MiB.
+        - TotalInterDiskSpaceLo `(int)` - Total disk space on `InterDir`, in bytes. This field contains the low 32-bits of 64-bit value
+        - TotalInterDiskSpaceHi `(int)` - Total disk space on `InterDir`, in bytes. This field contains the high 32-bits of 64-bit value
+        - TotalInterDiskSpaceMB `(int)` - Total disk space on `InterDir`, in MiB.
+    - Bits/s units are now also displayed in server speed test results
+
+  - Bug fixes:
+    - Fixed a critical bug related to corrupt downloaded files exceeding 2.6 GB on all x32 POSIX systems using `DirectWrite`
+    [#378](https://github.com/nzbgetcom/nzbget/commit/a59edac8bfbaf75d4f262909ef71026241b7bddc)
+    - Fixed a potential buffer overflow using `getrealpath` function
+    [#346](https://github.com/nzbgetcom/nzbget/commit/f89978f7479cbb0ff2f96c8632d9d2f31834e6c8)
+    - Added removal of unnecessary privileges if the nzbget daemon is run as root and an invalid `DaemonUsername` is specified
+    [#345](https://github.com/nzbgetcom/nzbget/commit/61585fac12e697baafa547012ed2970135de687f)
+
+  - For developers:
+    - Fixed omission in `CMAKE_CXX_FLAGS_DEBUG` using CLang that caused a wrong debug build
+    [#338](https://github.com/nzbgetcom/nzbget/commit/8d2c00e8d69503858a1ee0414dc6825b30508a92)
+    - Fixed failed unit tests on POSIX systems built without ncurses
+    [#376](https://github.com/nzbgetcom/nzbget/commit/b5c3068803f037984eba4f493ba38c71852a3073)
+
 nzbget-24.2
   - Features:
     - System info tab and Server Speed Tests

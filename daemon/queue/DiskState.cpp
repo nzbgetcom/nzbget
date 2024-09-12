@@ -1233,8 +1233,12 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	outfile.PrintLine("%i", (int)fileInfo->GetArticles()->size());
 	for (ArticleInfo* articleInfo : fileInfo->GetArticles())
 	{
-		outfile.PrintLine("%i,%u,%i,%u", (int)articleInfo->GetStatus(), (uint32)articleInfo->GetSegmentOffset(),
-			articleInfo->GetSegmentSize(), (uint32)articleInfo->GetCrc());
+		outfile.PrintLine("%i,%" PRIi64 ",%i,%u", 
+			(int)articleInfo->GetStatus(), 
+			articleInfo->GetSegmentOffset(),
+			articleInfo->GetSegmentSize(), 
+			articleInfo->GetCrc()
+		);
 	}
 
 	outfile.Close();
@@ -1313,9 +1317,10 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 
 		if (formatVersion >= 2)
 		{
-			uint32 segmentOffset, crc;
+			int64 segmentOffset;
+			uint32 crc;
 			int segmentSize;
-			if (infile.ScanLine("%i,%u,%i,%u", &statusInt, &segmentOffset, &segmentSize, &crc) != 4) goto error;
+			if (infile.ScanLine("%i,%" PRIi64 ",%i,%u", &statusInt, &segmentOffset, &segmentSize, &crc) != 4) goto error;
 			pa->SetSegmentOffset(segmentOffset);
 			pa->SetSegmentSize(segmentSize);
 			pa->SetCrc(crc);
