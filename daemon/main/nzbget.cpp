@@ -1006,8 +1006,13 @@ void NZBGet::Daemonize()
 		}
 	}
 
+	/* Backward compatibility with QNAP which doesn't have a "root" user,
+	but for historical reasons in nzbget.conf we use "root" as the default value in DaemonUsername
+	which causes problems when running nzbget as a daemon on QNAP. */
+	bool backwardCompRoot = strcmp(m_options->GetDaemonUsername(), "root") == 0;
+
 	/* Drop user if there is one, and we were run as root */
-	if (getuid() == 0 || geteuid() == 0)
+	if (!backwardCompRoot && (getuid() == 0 || geteuid() == 0))
 	{
 		struct passwd *pw = getpwnam(m_options->GetDaemonUsername());
 		if (pw == nullptr)
