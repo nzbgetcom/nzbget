@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,17 +24,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include "CommandLineParser.h"
-#include "Log.h"
-#include "Options.h"
-#include "DiskState.h"
-
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
 
 BOOST_AUTO_TEST_CASE(InitWithoutConfigurationFileTest)
 {
-	const char* argv[] = {"nzbget", "-n", "-p", nullptr};
+	const char* argv[] = { "nzbget", "-n", "-p", nullptr };
 	CommandLineParser commandLineParser(3, argv);
 
 	BOOST_CHECK(commandLineParser.GetConfigFilename() == nullptr);
@@ -42,7 +36,7 @@ BOOST_AUTO_TEST_CASE(InitWithoutConfigurationFileTest)
 
 BOOST_AUTO_TEST_CASE(InitializingWithtConfigurationFile)
 {
-	const char* argv[] = {"nzbget", "-c", "/home/user/nzbget.conf", "-p", nullptr};
+	const char* argv[] = { "nzbget", "-c", "/home/user/nzbget.conf", "-p", nullptr };
 	CommandLineParser commandLineParser(4, argv);
 
 	BOOST_CHECK(commandLineParser.GetConfigFilename() != nullptr);
@@ -52,7 +46,7 @@ BOOST_AUTO_TEST_CASE(InitializingWithtConfigurationFile)
 
 BOOST_AUTO_TEST_CASE(ServerMode)
 {
-	const char* argv[] = {"nzbget", "-n", "-s", nullptr};
+	const char* argv[] = { "nzbget", "-n", "-s", nullptr };
 	CommandLineParser commandLineParser(3, argv);
 
 	BOOST_CHECK(commandLineParser.GetServerMode() == true);
@@ -61,7 +55,7 @@ BOOST_AUTO_TEST_CASE(ServerMode)
 
 BOOST_AUTO_TEST_CASE(PassingPause)
 {
-	const char* argv[] = {"nzbget", "-n", "-s", "-P", nullptr};
+	const char* argv[] = { "nzbget", "-n", "-s", "-P", nullptr };
 	CommandLineParser commandLineParser(4, argv);
 
 	BOOST_CHECK(commandLineParser.GetPauseDownload() == true);
@@ -69,7 +63,7 @@ BOOST_AUTO_TEST_CASE(PassingPause)
 
 BOOST_AUTO_TEST_CASE(ExtraOption1)
 {
-	const char* argv[] = {"nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-p", nullptr};
+	const char* argv[] = { "nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-p", nullptr };
 	CommandLineParser commandLineParser(7, argv);
 
 	BOOST_CHECK(commandLineParser.GetOptionList()->size() == 2);
@@ -80,7 +74,7 @@ BOOST_AUTO_TEST_CASE(ExtraOption1)
 
 BOOST_AUTO_TEST_CASE(ExtraOption2)
 {
-	const char* argv[] = {"nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-o", "myoption1=no", "-p", nullptr};
+	const char* argv[] = { "nzbget", "-n", "-o", "myoption1=yes", "-o", "myoption2=no", "-o", "myoption1=no", "-p", nullptr };
 	CommandLineParser commandLineParser(9, argv);
 
 	BOOST_CHECK(commandLineParser.GetOptionList()->size() == 3);

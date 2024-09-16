@@ -24,11 +24,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "FileSystem.h"
-#include "Options.h"
-#include "Log.h"
 
-Log* g_Log = new Log();
-Options* g_Options;
 
 #ifdef WIN32
 BOOST_AUTO_TEST_CASE(FileSystemTest)

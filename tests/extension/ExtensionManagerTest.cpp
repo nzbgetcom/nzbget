@@ -29,18 +29,11 @@
 #include "ExtensionManager.h"
 #include "FileSystem.h"
 #include "Options.h"
-#include "Log.h"
-#include "DiskState.h"
 
-char* (*g_EnvironmentVariables)[] = nullptr;
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
-
-static std::string currentPath = FileSystem::GetCurrentDirectory().Str();
-static std::string testDir = "ScriptDir=" + currentPath + "/scripts";
-static std::string extensions = std::string("Extensions=") + "Extension2, Extension1, email; Extension1; Extension1";
-static std::string scriptOrder = std::string("ScriptOrder=") + "Extension2, Extension1, email; Extension1; Extension1";
+const std::string currentPath = FileSystem::GetCurrentDirectory().Str();
+const std::string testDir = "ScriptDir=" + currentPath + "/scripts";
+const std::string extensions = std::string("Extensions=") + "Extension2, Extension1, email; Extension1; Extension1";
+const std::string scriptOrder = std::string("ScriptOrder=") + "Extension2, Extension1, email; Extension1; Extension1";
 
 BOOST_AUTO_TEST_CASE(LoadExtesionsTest)
 {

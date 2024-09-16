@@ -24,20 +24,9 @@
 #include <filesystem>
 
 #include "DupeMatcher.h"
-#include "Log.h"
-#include "Options.h"
-#include "DiskState.h"
-
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
-char* (*g_EnvironmentVariables)[] = nullptr;
-char* (*g_Arguments)[] = nullptr;
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
-	Options options(nullptr, nullptr);
-
 	const std::string testDataDir = std::filesystem::current_path().string() + "/rarrenamer";
 	const std::string workingDir = testDataDir + "/DupeMatcher";
 	std::filesystem::create_directory(workingDir);

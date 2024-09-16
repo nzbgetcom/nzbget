@@ -91,10 +91,7 @@ if(NOT DISABLE_PARCHECK)
 endif()
 
 set(LIBS ${LIBS} regex yencode)
-set(INCLUDES ${INCLUDES} 
-	${CMAKE_SOURCE_DIR}/lib/regex 
-	${CMAKE_SOURCE_DIR}/lib/yencode 
-)
+set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/lib/regex ${CMAKE_SOURCE_DIR}/lib/yencode)
 
 if(NOT DISABLE_PARCHECK)
 	set(LIBS ${LIBS} par2)
