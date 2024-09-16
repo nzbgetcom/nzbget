@@ -120,6 +120,7 @@ static const char* OPTION_KEEPHISTORY			= "KeepHistory";
 static const char* OPTION_UNPACK				= "Unpack";
 static const char* OPTION_DIRECTUNPACK			= "DirectUnpack";
 static const char* OPTION_UNPACKCLEANUPDISK		= "UnpackCleanupDisk";
+static const char* OPTION_PARCMD				= "ParCmd";
 static const char* OPTION_UNRARCMD				= "UnrarCmd";
 static const char* OPTION_SEVENZIPCMD			= "SevenZipCmd";
 static const char* OPTION_UNPACKPASSFILE		= "UnpackPassFile";
@@ -513,9 +514,11 @@ void Options::InitDefaults()
 #ifdef WIN32
 	SetOption(OPTION_UNRARCMD, "unrar.exe");
 	SetOption(OPTION_SEVENZIPCMD, "7z.exe");
+	SetOption(OPTION_PARCMD, "par2.exe");
 #else
 	SetOption(OPTION_UNRARCMD, "unrar");
 	SetOption(OPTION_SEVENZIPCMD, "7z");
+	SetOption(OPTION_PARCMD, "par2");
 #endif
 	SetOption(OPTION_UNPACKPASSFILE, "");
 	SetOption(OPTION_UNPACKPAUSEQUEUE, "no");
@@ -698,6 +701,7 @@ void Options::InitOptions()
 	m_logFile				= GetOption(OPTION_LOGFILE);
 	m_unrarCmd				= GetOption(OPTION_UNRARCMD);
 	m_sevenZipCmd			= GetOption(OPTION_SEVENZIPCMD);
+	m_parCmd				= GetOption(OPTION_PARCMD);
 	m_unpackPassFile		= GetOption(OPTION_UNPACKPASSFILE);
 	m_extCleanupDisk		= GetOption(OPTION_EXTCLEANUPDISK);
 	m_parIgnoreExt			= GetOption(OPTION_PARIGNOREEXT);
