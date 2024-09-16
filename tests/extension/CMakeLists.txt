@@ -33,22 +33,7 @@ file(GLOB ExtensionSrc
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE ${LIBS})
-
-target_include_directories(ExtensionTests PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/daemon/extension
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess
-	${CMAKE_SOURCE_DIR}/daemon/connect
-	${CMAKE_SOURCE_DIR}/daemon/system
-	${CMAKE_SOURCE_DIR}/lib/regex
-	${CMAKE_SOURCE_DIR}/lib/yencode
-	${INCLUDES}
-)
+target_include_directories(ExtensionTests PRIVATE ${INCLUDES})
 
 file(COPY ../testdata/extension/manifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/extension/V1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

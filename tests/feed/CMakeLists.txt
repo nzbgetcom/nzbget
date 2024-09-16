@@ -1,4 +1,4 @@
-add_executable(FeedTest
+add_executable(FeedTests
 	FeedFilterTest.cpp
 	FeedFileTest.cpp
 	main.cpp
@@ -14,17 +14,8 @@ add_executable(FeedTest
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 )
-target_link_libraries(FeedTest PRIVATE ${LIBS})
-target_include_directories(FeedTest PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/lib/regex
-	${INCLUDES}
-)
+target_link_libraries(FeedTests PRIVATE ${LIBS})
+target_include_directories(FeedTests PRIVATE ${INCLUDES})
 
 file(COPY ../testdata/feed DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-add_test(NAME FeedTest COMMAND $<TARGET_FILE:FeedTest> --log_level=message)
+add_test(NAME FeedTests COMMAND $<TARGET_FILE:FeedTests> --log_level=message)

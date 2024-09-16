@@ -16,8 +16,8 @@ find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
-set(LIBS Threads::Threads Boost::json LibXml2::LibXml2)
-set(INCLUDES ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2)
+set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
 if(NOT DISABLE_TLS)
 	find_package(OpenSSL REQUIRED)
@@ -30,8 +30,6 @@ endif()
 find_package(ZLIB REQUIRED)
 set(LIBS ${LIBS} ZLIB::ZLIB)
 set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
-
-include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 set(INCLUDES ${INCLUDES} 
 	${CMAKE_SOURCE_DIR}/daemon/windows
 	${CMAKE_SOURCE_DIR}/windows/resources

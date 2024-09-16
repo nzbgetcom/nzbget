@@ -16,7 +16,6 @@ file(GLOB UtilTestSrc
 
 add_executable(UtilTests ${UtilTestSrc})
 target_link_libraries(UtilTests PRIVATE	${LIBS})
-
 target_include_directories(UtilTests PRIVATE ${INCLUDES})
 
 add_test(NAME UtilTests COMMAND $<TARGET_FILE:UtilTests> --log_level=message)
