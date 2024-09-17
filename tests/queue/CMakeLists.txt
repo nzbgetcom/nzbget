@@ -1,4 +1,4 @@
-add_executable(NzbFileTest
+add_executable(QueueTests
 	NzbFileTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
@@ -12,17 +12,8 @@ add_executable(NzbFileTest
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 )
-target_link_libraries(NzbFileTest PRIVATE ${LIBS})
-target_include_directories(NzbFileTest PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/lib/yencode
-	${INCLUDES}
-)
+target_link_libraries(QueueTests PRIVATE ${LIBS})
+target_include_directories(QueueTests PRIVATE ${INCLUDES})
 
 file(COPY ../testdata/nzbfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-add_test(NAME NzbFileTest COMMAND $<TARGET_FILE:NzbFileTest> --log_level=message)
+add_test(NAME QueueTests COMMAND $<TARGET_FILE:QueueTests> --log_level=message)

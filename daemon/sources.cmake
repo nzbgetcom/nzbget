@@ -109,4 +109,20 @@ set(WIN32_SRC
 
 if(WIN32) 
 	set(SRC ${SRC} ${WIN32_SRC})
+	set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/windows)
 endif()
+
+set(INCLUDES ${INCLUDES} 
+	${CMAKE_SOURCE_DIR}/daemon/connect
+	${CMAKE_SOURCE_DIR}/daemon/extension
+	${CMAKE_SOURCE_DIR}/daemon/feed
+	${CMAKE_SOURCE_DIR}/daemon/frontend
+	${CMAKE_SOURCE_DIR}/daemon/main
+	${CMAKE_SOURCE_DIR}/daemon/nntp
+	${CMAKE_SOURCE_DIR}/daemon/nserv
+	${CMAKE_SOURCE_DIR}/daemon/postprocess
+	${CMAKE_SOURCE_DIR}/daemon/queue
+	${CMAKE_SOURCE_DIR}/daemon/remote
+	${CMAKE_SOURCE_DIR}/daemon/system
+	${CMAKE_SOURCE_DIR}/daemon/util
+)

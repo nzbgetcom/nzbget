@@ -28,21 +28,7 @@ file(GLOB PostprocessTestsSrc
 
 add_executable(PostprocessTests ${PostprocessTestsSrc})
 target_link_libraries(PostprocessTests PRIVATE ${LIBS})
-target_include_directories(PostprocessTests PRIVATE
-	../suite
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/postprocess
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/daemon/connect
-	${CMAKE_SOURCE_DIR}/daemon/system
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/lib/yencode
-	${CMAKE_SOURCE_DIR}/lib/par2
-	${INCLUDES}
-)
+target_include_directories(PostprocessTests PRIVATE ${INCLUDES})
 
 file(COPY ../testdata/rarrenamer DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME PostprocessTests COMMAND $<TARGET_FILE:PostprocessTests> --log_level=message)

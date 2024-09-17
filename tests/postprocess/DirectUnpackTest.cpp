@@ -28,14 +28,6 @@
 #include "Options.h"
 #include "DiskState.h"
 
-Log* g_Log = new Log();
-Options* g_Options;
-DiskState* g_DiskState;
-
-char* envVars[] = {"NZBXX_YYYY", 0};
-char* (*g_EnvironmentVariables)[2] = &envVars;
-char* (*g_Arguments)[] = nullptr;
-
 class DirectUnpackDownloadQueueMock : public DownloadQueue
 {
 public:

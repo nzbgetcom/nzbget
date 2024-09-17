@@ -1,4 +1,4 @@
-add_executable(ServerPoolTest
+add_executable(NNTPTests
 	ServerPoolTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ServerPool.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
@@ -14,19 +14,7 @@ add_executable(ServerPoolTest
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
-target_link_libraries(ServerPoolTest PRIVATE ${LIBS})
-target_include_directories(ServerPoolTest PRIVATE
-	${CMAKE_SOURCE_DIR}/daemon/main
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/daemon/util
-	${CMAKE_SOURCE_DIR}/daemon/connect
-	${CMAKE_SOURCE_DIR}/daemon/system
-	${CMAKE_SOURCE_DIR}/daemon/queue
-	${CMAKE_SOURCE_DIR}/daemon/feed
-	${CMAKE_SOURCE_DIR}/daemon/remote
-	${CMAKE_SOURCE_DIR}/lib/yencode
-	${CMAKE_SOURCE_DIR}/lib/par2
-	${INCLUDES}
-)
+target_link_libraries(NNTPTests PRIVATE ${LIBS})
+target_include_directories(NNTPTests PRIVATE ${INCLUDES})
 
-add_test(NAME ServerPoolTest COMMAND $<TARGET_FILE:ServerPoolTest> --log_level=message)
+add_test(NAME NNTPTests COMMAND $<TARGET_FILE:NNTPTests> --log_level=message)

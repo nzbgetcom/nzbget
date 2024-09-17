@@ -22,15 +22,6 @@ file(GLOB SystemTestsSrc
 
 add_executable(SystemTests ${SystemTestsSrc})
 target_link_libraries(SystemTests PRIVATE ${LIBS})
-
-target_include_directories(SystemTests PRIVATE 
-	${CMAKE_SOURCE_DIR}/daemon/connect 
-	${CMAKE_SOURCE_DIR}/daemon/remote 
-	${CMAKE_SOURCE_DIR}/daemon/queue 
-	${CMAKE_SOURCE_DIR}/daemon/feed 
-	${CMAKE_SOURCE_DIR}/daemon/nntp
-	${CMAKE_SOURCE_DIR}/daemon/system
-	${INCLUDES}
-)
+target_include_directories(SystemTests PRIVATE ${INCLUDES})
 
 add_test(NAME SystemTests COMMAND $<TARGET_FILE:SystemTests> --log_level=message)

@@ -4,12 +4,10 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()
 
-set_property(GLOBAL PROPERTY PACKAGE)
-set_property(GLOBAL PROPERTY LIBS)
-set_property(GLOBAL PROPERTY INCLUDES)
-
 set(VERSION "24.4")
-set(PACKAGE "nzbget")
+set(PACKAGE "nzbget" CACHE INTERNAL "")
+set(LIBS "" CACHE INTERNAL "")
+set(INCLUDES "" CACHE INTERNAL "")
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 17)
@@ -72,11 +70,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	endif()
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
-		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Weverything -Wno-c++98-compat" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Wno-c++98-compat" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG -Wall -Wextra" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "-O2 -g0 -pthread -DNDEBUG" CACHE STRING "" FORCE)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-		set(CMAKE_CXX_FLAGS "/O2 /MT /MP /W4 /EHs /DNDEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
+		set(CMAKE_CXX_FLAGS "/O2 /MT /MP /EHs /DNDEBUG /DWIN32 /wd4800 /wd4267" CACHE STRING "" FORCE)
 		set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} winmm.lib" CACHE STRING "" FORCE)
 	endif()
 endif()
@@ -89,8 +87,9 @@ set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS} CACHE STRING "" FORCE)
 include_directories(${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR})
 
+include(daemon/sources.cmake)
+
 if(NOT BUILD_ONLY_TESTS)
-	include(daemon/sources.cmake)
 	add_executable(${PACKAGE} ${SRC})
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -105,6 +104,7 @@ endif()
 
 if(WIN32)
 	include(cmake/windows.cmake)
+
 	if(NOT BUILD_ONLY_TESTS)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
 		configure_file(
@@ -125,10 +125,13 @@ if(WIN32)
 	endif()
 else()
 	include(cmake/posix.cmake)
+
 	if(NOT BUILD_ONLY_TESTS)
 		include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
 	endif()
 endif()
+
+include(lib/sources.cmake)
 
 configure_file(
 	${CMAKE_SOURCE_DIR}/cmake/config.h.in
@@ -137,21 +140,7 @@ configure_file(
 
 if(NOT BUILD_ONLY_TESTS)
 	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
-	target_include_directories(${PACKAGE} PRIVATE
-		${CMAKE_SOURCE_DIR}/daemon/connect
-		${CMAKE_SOURCE_DIR}/daemon/extension
-		${CMAKE_SOURCE_DIR}/daemon/feed
-		${CMAKE_SOURCE_DIR}/daemon/frontend
-		${CMAKE_SOURCE_DIR}/daemon/main
-		${CMAKE_SOURCE_DIR}/daemon/nntp
-		${CMAKE_SOURCE_DIR}/daemon/nserv
-		${CMAKE_SOURCE_DIR}/daemon/postprocess
-		${CMAKE_SOURCE_DIR}/daemon/queue
-		${CMAKE_SOURCE_DIR}/daemon/remote
-		${CMAKE_SOURCE_DIR}/daemon/util
-		${CMAKE_SOURCE_DIR}/daemon/system
-		${INCLUDES}
-	)
+	target_include_directories(${PACKAGE} PRIVATE ${INCLUDES})
 endif()
 
 if(ENABLE_TESTS OR BUILD_ONLY_TESTS)
