@@ -148,6 +148,7 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("SevenZipCmd=7z");
 	cmdOpts.push_back("UnrarCmd=unrar");
+	cmdOpts.push_back("ParCnd=par2");
 	Options options(&cmdOpts, nullptr);
 
 	g_Log = &log;
@@ -186,12 +187,6 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 
 	BOOST_TEST_MESSAGE("RESULT JSON STR: ");
 	BOOST_TEST_MESSAGE(jsonStrResult);
-
-	BOOST_TEST_MESSAGE("EXPECTED XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrExpected);
-
-	BOOST_TEST_MESSAGE("RESULT XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrResult);
 
 	BOOST_CHECK(jsonStrResult == jsonStrExpected);
 	BOOST_CHECK(xmlStrResult == xmlStrExpected);

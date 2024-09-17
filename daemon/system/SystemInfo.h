@@ -56,10 +56,13 @@ namespace System
 		Tool GetPython() const;
 		Tool GetSevenZip() const;
 		Tool GetUnrar() const;
+		Tool GetPar() const;
 		void InitLibsInfo();
 		std::string ParseUnpackerVersion(const std::string& line) const;
-		std::string GetUnpackerPath(const char* unpackerCmd) const;
+		std::string ParseParVersion(const std::string& line) const;
+		std::string GetToolPath(const char* cmd) const;
 		std::string GetUnpackerVersion(const std::string& path, const char* marker) const;
+		std::string GetParVersion(const std::string& path) const;
 		std::optional<std::string> FindPython() const;
 		std::optional<std::string> GetPythonVersion(const std::string path) const;
 
