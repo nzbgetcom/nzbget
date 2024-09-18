@@ -43,5 +43,6 @@ add_custom_target(install-conf
 
 add_custom_target(uninstall-conf
 	COMMAND ${CMAKE_COMMAND} -E remove ${CONF_FILE_DEST}/${CONF_FILE}
+	COMMAND ${CMAKE_COMMAND} -E remove_directory ${CONF_FILE_DEST}
 	COMMENT "Unstalling nzbget.conf"
 )

@@ -157,7 +157,7 @@ private:
 	typedef std::vector<bool> ValidBlocks;
 
 	CString m_infoName;
-	CString m_destDir;
+	std::string m_destDir;
 	CString m_nzbName;
 	const char* m_parFilename = nullptr;
 	EStatus m_status = psFailed;
@@ -216,7 +216,7 @@ private:
 	EFileStatus VerifyDataFile(void* diskfile, void* sourcefile, int* availableBlocks);
 	bool VerifySuccessDataFile(void* diskfile, void* sourcefile, uint32 downloadCrc);
 	bool VerifyPartialDataFile(void* diskfile, void* sourcefile, SegmentList* segments, ValidBlocks* validBlocks);
-	void SortExtraFiles(void* extrafiles);
+	void SortExtraFiles(std::vector<std::string>& extrafiles);
 	bool SmartCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, SegmentList* segments,
 		uint32* downloadCrc);
 	bool DumbCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, uint32* downloadCrc);

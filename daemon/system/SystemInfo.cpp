@@ -35,6 +35,9 @@
 #ifdef HAVE_NCURSES_NCURSES_H
 #include <ncurses/ncurses.h>
 #endif
+#ifndef DISABLE_PARCHECK
+#include <par2/version.h>
+#endif
 
 namespace System
 {
@@ -79,6 +82,10 @@ namespace System
 		m_libraries.push_back({ "GnuTLS", GNUTLS_VERSION });
 #endif
 
+#ifndef DISABLE_PARCHECK 
+		m_libraries.push_back({ "par2cmdline-turbo", PAR2_LIB_VERSION });
+#endif
+
 #ifdef BOOST_LIB_VERSION
 		m_libraries.push_back({ "Boost", BOOST_LIB_VERSION });
 #endif
@@ -107,7 +114,6 @@ namespace System
 			GetPython(),
 			GetSevenZip(),
 			GetUnrar(),
-			GetPar(),
 		};
 
 		return tools;
@@ -180,17 +186,6 @@ namespace System
 		return tool;
 	}
 
-	Tool SystemInfo::GetPar() const
-	{
-		Tool tool;
-
-		tool.name = "Par2";
-		tool.path = GetToolPath(g_Options->GetParCmd());
-		tool.version = GetParVersion(tool.path);
-
-		return tool;
-	}
-
 	std::string SystemInfo::GetToolPath(const char* cmd) const
 	{
 		if (Util::EmptyStr(cmd))
@@ -252,35 +247,6 @@ namespace System
 					version = ParseUnpackerVersion(buffer);
 					break;
 				}
-			}
-		}
-
-		return version;
-	}
-
-	std::string SystemInfo::GetParVersion(const std::string& path) const
-	{
-		if (path.empty())
-		{
-			return "";
-		}
-
-		std::string cmd = FileSystem::EscapePathForShell(path + " -V");
-
-		auto pipe = Util::MakePipe(cmd);
-		if (!pipe)
-		{
-			return "";
-		}
-
-		std::string version;
-		char buffer[BUFFER_SIZE];
-		while (!feof(pipe.get()))
-		{
-			if (fgets(buffer, BUFFER_SIZE, pipe.get()) != nullptr)
-			{
-				version = ParseParVersion(buffer);
-				break;
 			}
 		}
 

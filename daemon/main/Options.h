@@ -289,7 +289,6 @@ public:
 	bool GetDirectUnpack() { return m_directUnpack; }
 	bool GetUnpackCleanupDisk() { return m_unpackCleanupDisk; }
 	const char* GetUnrarCmd() { return m_unrarCmd; }
-	const char* GetParCmd() { return m_parCmd; }
 	const char* GetSevenZipCmd() { return m_sevenZipCmd; }
 	const char* GetUnpackPassFile() { return m_unpackPassFile; }
 	bool GetUnpackPauseQueue() { return m_unpackPauseQueue; }
@@ -428,7 +427,6 @@ private:
 	bool m_unpackCleanupDisk = false;
 	CString m_unrarCmd;
 	CString m_sevenZipCmd;
-	CString m_parCmd;
 	CString m_unpackPassFile;
 	bool m_unpackPauseQueue;
 	CString m_extCleanupDisk;

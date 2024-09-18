@@ -12,6 +12,10 @@ if(NOT DISABLE_TLS AND USE_GNUTLS)
 	set(USE_OPENSSL OFF)
 endif()
 
+if(NOT DISABLE_PARCHECK)
+	include(${CMAKE_SOURCE_DIR}/cmake/par2.cmake)
+endif()
+
 if(DISABLE_TLS)
 	set(USE_GNUTLS OFF)
 	set(USE_OPENSSL OFF)
@@ -81,13 +85,11 @@ else()
 
 	if(NOT Boost_JSON_FOUND)
 		message(STATUS "The Boost library will be installed from github")
-		include(ExternalProject)
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 
 		add_dependencies(${PACKAGE} boost)
 		add_dependencies(yencode boost)
-		add_dependencies(par2 boost)
 		add_dependencies(regex boost)
 	else()
 		set(LIBS ${LIBS} Boost::json)

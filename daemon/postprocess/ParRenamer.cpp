@@ -22,9 +22,9 @@
 
 #ifndef DISABLE_PARCHECK
 
-#include "par2cmdline.h"
-#include "par2repairer.h"
-#include "md5.h"
+#include <par2/libpar2.h>
+#include <par2/par2repairer.h>
+#include <par2/md5.h>
 
 #include "ParRenamer.h"
 #include "ParParser.h"
@@ -36,7 +36,7 @@
 class ParRenamerRepairer : public Par2::Par2Repairer
 {
 public:
-	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout) {};
+	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlQuiet) {};
 	friend class ParRenamer;
 private:
 	class NullStreamBuf : public std::streambuf {};
@@ -177,7 +177,7 @@ void ParRenamer::LoadParFile(const char* parFilename)
 			m_hasDamagedParFiles = true;
 			continue;
 		}
-		std::string filename = Par2::DiskFile::TranslateFilename(sourceFile->GetDescriptionPacket()->FileName());
+		std::string filename = sourceFile->GetDescriptionPacket()->FileName();
 		std::string hash = sourceFile->GetDescriptionPacket()->Hash16k().print();
 
 		bool exists = std::find_if(m_fileHashList.begin(), m_fileHashList.end(),

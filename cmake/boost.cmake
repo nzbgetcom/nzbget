@@ -1,4 +1,4 @@
-set(ROOT ${CMAKE_BINARY_DIR}/boost/)
+set(ROOT ${CMAKE_BINARY_DIR}/boost)
 
 ExternalProject_add(
 	boost
@@ -8,12 +8,12 @@ ExternalProject_add(
 	BUILD_IN_SOURCE TRUE
 	GIT_SHALLOW TRUE
 	DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-	CONFIGURE_COMMAND ${ROOT}src/boost/bootstrap.sh 
+	CONFIGURE_COMMAND ${ROOT}/src/boost/bootstrap.sh 
 		--with-libraries=json 
-		--prefix=${ROOT}build
-	BUILD_COMMAND ${ROOT}src/boost/b2 link=static
-	INSTALL_COMMAND ${ROOT}src/boost/b2 install
+		--prefix=${ROOT}/build
+	BUILD_COMMAND ${ROOT}/src/boost/b2 link=static
+	INSTALL_COMMAND ${ROOT}/src/boost/b2 install
 )
 
-set(LIBS ${LIBS} ${ROOT}build/lib/libboost_json.a)
-set(INCLUDES ${INCLUDES} ${ROOT}build/include/)
+set(LIBS ${LIBS} ${ROOT}/build/lib/libboost_json.a)
+set(INCLUDES ${INCLUDES} ${ROOT}/build/include/)

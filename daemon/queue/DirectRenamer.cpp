@@ -19,15 +19,17 @@
 
 
 #include "nzbget.h"
+
 #include "DirectRenamer.h"
 #include "Options.h"
 #include "FileSystem.h"
 #include "ParParser.h"
 
 #ifndef DISABLE_PARCHECK
-#include "par2cmdline.h"
-#include "par2fileformat.h"
-#include "md5.h"
+#include <par2/libpar2.h>
+#include <par2/par2repairer.h>
+#include <par2/par2fileformat.h>
+#include <par2/md5.h>
 #endif
 
 class RenameContentAnalyzer : public ArticleContentAnalyzer
@@ -55,7 +57,7 @@ private:
 class DirectParRepairer : public Par2::Par2Repairer
 {
 public:
-	DirectParRepairer() : Par2::Par2Repairer(m_nout, m_nout) {};
+	DirectParRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlQuiet) {};
 	friend class DirectParLoader;
 
 private:
@@ -155,7 +157,7 @@ void DirectParLoader::LoadParFile(const char* parFile)
 			nzbInfo->PrintMessage(Message::mkWarning, "Damaged par2-file detected: %s", FileSystem::BaseFileName(parFile));
 			return;
 		}
-		std::string filename = Par2::DiskFile::TranslateFilename(sourceFile->GetDescriptionPacket()->FileName());
+		std::string filename = sourceFile->GetDescriptionPacket()->FileName();
 		std::string hash = sourceFile->GetDescriptionPacket()->Hash16k().print();
 
 		debug("file: %s, hash-16k: %s", filename.c_str(), hash.c_str());
