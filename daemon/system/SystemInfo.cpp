@@ -83,7 +83,7 @@ namespace System
 #endif
 
 #ifndef DISABLE_PARCHECK 
-		m_libraries.push_back({ "par2cmdline-turbo", PAR2_LIB_VERSION });
+		m_libraries.push_back({ "Par2-turbo", PAR2_TURBO_LIB_VERSION });
 #endif
 
 #ifdef BOOST_LIB_VERSION

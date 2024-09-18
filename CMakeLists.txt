@@ -7,7 +7,8 @@ endif()
 set(VERSION "24.4")
 set(PACKAGE "nzbget")
 set(LIBS "")
-set(INCLUDES "")
+set(INCLUDES ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
+
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 17)
@@ -33,9 +34,6 @@ project(
 	DESCRIPTION "NZBGet is a binary downloader, which downloads files from Usenet"
 	LANGUAGES C CXX
 )
-
-include_directories(${CMAKE_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR})
 
 include(cmake/common.cmake)
 include(daemon/sources.cmake)
