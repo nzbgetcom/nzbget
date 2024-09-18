@@ -39,7 +39,7 @@ const char* Par2CmdLineErrStr[] = { "OK",
 	"there was something wrong with the command line arguments",
 	"the PAR2 files did not contain sufficient information about the data files to be able to verify them",
 	"repair completed but the data files still appear to be damaged",
-	"an error occured when accessing files",
+	"an error occurred when accessing files",
 	"internal error occurred",
 	"out of memory" };
 
