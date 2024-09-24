@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -91,11 +91,11 @@ void TestNzb(std::string testFilename)
 
 	if(strcmp(lastBuffer, buffer) == 0)
 	{
-		BOOST_CHECK(nzbFile.GetPassword() == nullptr);
+		BOOST_CHECK(nzbFile.GetPassword().empty());
 	}
 	else
 	{
-		BOOST_CHECK(std::string(nzbFile.GetPassword()) == std::string(buffer));
+		BOOST_CHECK(nzbFile.GetPassword() == std::string(buffer));
 	}
 
 	fclose(infofile);
