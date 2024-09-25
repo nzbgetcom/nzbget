@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -41,7 +42,7 @@ NzbFile::NzbFile(const char* fileName, const char* category) :
 
 void NzbFile::LogDebugInfo()
 {
-	info(" NZBFile %s", *m_fileName);
+	info(" NZBFile %s", m_fileName.c_str());
 }
 
 void NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo)
@@ -389,11 +390,7 @@ void NzbFile::ProcessFiles()
 		}
 	}
 
-	if (m_password)
-	{
-		ReadPasswordFromNzb();
-	}
-	else
+	if (m_password.empty())
 	{
 		ReadPasswordFromFilename();
 	}
@@ -403,61 +400,17 @@ void NzbFile::ProcessFiles()
 */
 void NzbFile::ReadPasswordFromFilename()
 {
-	int startDelimiter = m_fileName.Find("{{") + 2;
-	int stopDelimiter = m_fileName.Find("}}");
-	int lengthDelimiter = stopDelimiter - startDelimiter;
-	if (lengthDelimiter > 0)
-	{
-		CString namepassword(m_fileName, m_fileName.Length());
-		namepassword.Replace(stopDelimiter, m_fileName.Length() - stopDelimiter, "", 0);
-		namepassword.Replace(0, startDelimiter, "", 0);
-		m_password = namepassword.Str();
-	}
+	size_t start = m_fileName.find("{{");
+	if (start == std::string::npos) return;
+	
+	start += 2;
+
+	size_t end = m_fileName.find("}}", start);
+	if (end == std::string::npos) return;
+
+	if (start < end)
+	    m_password = m_fileName.substr(start, end - start);
 }
-/**
- * Password read using XML-parser may have special characters (such as TAB) stripped.
- * This function rereads password directly from file to keep all characters intact.
- */
-void NzbFile::ReadPasswordFromNzb()
-{
-	DiskFile file;
-	if (!file.Open(m_fileName, DiskFile::omRead))
-	{
-		return;
-	}
-
-	// obtain file size.
-	file.Seek(0, DiskFile::soEnd);
-	int size  = (int)file.Position();
-	file.Seek(0, DiskFile::soSet);
-
-	// reading first 4KB of the file
-
-	CharBuffer buf(4096);
-
-	size = size < 4096 ? size : 4096;
-
-	// copy the file into the buffer.
-	file.Read(buf, size);
-
-	file.Close();
-
-	buf[size-1] = '\0';
-
-	char* metaPassword = strstr(buf, "<meta type=\"password\">");
-	if (metaPassword)
-	{
-		metaPassword += 22; // length of '<meta type="password">'
-		char* end = strstr(metaPassword, "</meta>");
-		if (end)
-		{
-			*end = '\0';
-			WebUtil::XmlDecode(metaPassword);
-			m_password = metaPassword;
-		}
-	}
-}
-
 
 bool NzbFile::Parse()
 {
@@ -470,19 +423,19 @@ bool NzbFile::Parse()
 
 	m_ignoreNextError = false;
 
-	int ret = xmlSAXUserParseFile(&SAX_handler, this, m_fileName);
+	int ret = xmlSAXUserParseFile(&SAX_handler, this, m_fileName.c_str());
 
 	if (ret != 0)
 	{
 		m_nzbInfo->AddMessage(Message::mkError, BString<1024>(
-			"Error parsing nzb-file %s", FileSystem::BaseFileName(m_fileName)));
+			"Error parsing nzb-file %s", FileSystem::BaseFileName(m_fileName.c_str())));
 		return false;
 	}
 
 	if (m_nzbInfo->GetFileList()->empty())
 	{
 		m_nzbInfo->AddMessage(Message::mkError, BString<1024>(
-			"Error parsing nzb-file %s: file has no content", FileSystem::BaseFileName(m_fileName)));
+			"Error parsing nzb-file %s: file has no content", FileSystem::BaseFileName(m_fileName.c_str())));
 		return false;
 	}
 
@@ -500,7 +453,7 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 	if (!strcmp("file", name))
 	{
 		m_fileInfo = std::make_unique<FileInfo>();
-		m_fileInfo->SetFilename(m_fileName);
+		m_fileInfo->SetFilename(m_fileName.c_str());
 
 		if (!atts)
 		{
