@@ -194,14 +194,8 @@ bool NntpConnection::Connect()
 	{
 		return true;
 	}
-	auto now = std::chrono::steady_clock::now();
 
-	bool connected = Connection::Connect();
-
-	double elapsedMS = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - now).count();
-
-	detail("Connection elapsed time: %f", elapsedMS);
-	if (!connected)
+	if (!Connection::Connect())
 	{
 		return false;
 	}

@@ -56,6 +56,7 @@ private:
 	bool m_connected = false;
 	int m_retCode;
 	static CString m_certStore;
+	static X509_STORE* m_X509Store;
 	int m_certVerifLevel;
 
 	// using "void*" to prevent the including of GnuTLS/OpenSSL header files into TlsSocket.h

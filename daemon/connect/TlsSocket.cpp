@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2008-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -30,6 +31,7 @@
 #include "Options.h"
 
 CString TlsSocket::m_certStore;
+X509_STORE* TlsSocket::m_X509Store;
 
 #ifdef HAVE_LIBGNUTLS
 #ifdef NEED_GCRYPT_LOCKING
@@ -179,6 +181,24 @@ void TlsSocket::Init()
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 
+	if (!m_X509Store)
+	{
+		m_X509Store = X509_STORE_new();
+		if (!m_X509Store) 
+		{
+			PrintError("Could not load certificate store");
+			return;
+		}
+
+		if (!X509_STORE_load_locations(m_X509Store, m_certStore, nullptr)) 
+		{
+			X509_STORE_free(m_X509Store);
+			PrintError("Could not load certificate store location");
+			return;
+		}
+	}
+
+
 #endif /* HAVE_OPENSSL */
 }
 
@@ -189,6 +209,8 @@ void TlsSocket::Final()
 #endif /* HAVE_LIBGNUTLS */
 
 #ifdef HAVE_OPENSSL
+	X509_STORE_free(m_X509Store);
+
 #ifndef LIBRESSL_VERSION_NUMBER
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	FIPS_mode_set(0);
@@ -413,13 +435,8 @@ bool TlsSocket::Start()
 
 	if (m_isClient && !m_certStore.Empty())
 	{
-		// Enable certificate validation
-		if (SSL_CTX_load_verify_locations((SSL_CTX*)m_context, m_certStore, nullptr) != 1)
-		{
-			ReportError("Could not set certificate store location", false);
-			Close();
-			return false;
-		}
+		SSL_CTX_set1_cert_store((SSL_CTX*)m_context, m_X509Store);
+
 		if (m_certVerifLevel > Options::ECertVerifLevel::cvNone)
 		{
 			SSL_CTX_set_verify((SSL_CTX*)m_context, SSL_VERIFY_PEER, nullptr);
