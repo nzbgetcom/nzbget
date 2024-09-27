@@ -36,10 +36,10 @@ public:
 		int certVerifLevel)
 		: m_socket(socket)
 		, m_isClient(isClient)
-		, m_host(std::string(host))
-		, m_certFile(std::string(certFile))
-		, m_keyFile(std::string(keyFile))
-		, m_cipher(std::string(cipher))
+		, m_host(host ? host : "")
+		, m_certFile(certFile ? certFile : "")
+		, m_keyFile(keyFile ? keyFile : "")
+		, m_cipher(cipher ? cipher : "")
 		, m_certVerifLevel(certVerifLevel) {}
 
 	virtual ~TlsSocket();
