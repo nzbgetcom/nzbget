@@ -675,6 +675,12 @@ void NZBGet::ProcessStandalone()
 		return;
 	}
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
+
+	if (!nzbFile.GetPassword().empty())
+	{
+		nzbInfo->GetParameters()->SetParameter("*Unpack:Password", nzbFile.GetPassword().c_str());
+	}
+
 	m_scanner->InitPPParameters(category, nzbInfo->GetParameters(), false);
 	m_queueCoordinator->AddNzbFileToQueue(std::move(nzbInfo), nullptr, false);
 }
