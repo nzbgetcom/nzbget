@@ -30,7 +30,7 @@
 #include "FileSystem.h"
 #include "Options.h"
 
-CString TlsSocket::m_certStore;
+std::string TlsSocket::m_certStore;
 X509_STORE* TlsSocket::m_X509Store;
 
 #ifdef HAVE_LIBGNUTLS
@@ -181,25 +181,33 @@ void TlsSocket::Init()
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
 
+#endif /* HAVE_OPENSSL */
+}
+
+void TlsSocket::InitOptions(const char* certStore)
+{
+	m_certStore = certStore;
+
+	InitX509Store(m_certStore);
+}
+
+void TlsSocket::InitX509Store(const std::string& certStore)
+{
+	if (m_X509Store || certStore.empty()) return;
+
+	m_X509Store = X509_STORE_new();
 	if (!m_X509Store)
 	{
-		m_X509Store = X509_STORE_new();
-		if (!m_X509Store) 
-		{
-			PrintError("Could not load certificate store");
-			return;
-		}
-
-		if (!X509_STORE_load_locations(m_X509Store, m_certStore, nullptr)) 
-		{
-			X509_STORE_free(m_X509Store);
-			PrintError("Could not load certificate store location");
-			return;
-		}
+		error("Could not load certificate store");
+		return;
 	}
 
-
-#endif /* HAVE_OPENSSL */
+	if (!X509_STORE_load_locations(m_X509Store, certStore.c_str(), nullptr))
+	{
+		X509_STORE_free(m_X509Store);
+		error("Could not load certificate store location");
+		return;
+	}
 }
 
 void TlsSocket::Final()
@@ -309,10 +317,10 @@ bool TlsSocket::Start()
 
 	m_context = cred;
 
-	if (m_certFile && m_keyFile)
+	if (!m_certFile.empty() && !m_keyFile.empty())
 	{
 		m_retCode = gnutls_certificate_set_x509_key_file((gnutls_certificate_credentials_t)m_context,
-			m_certFile, m_keyFile, GNUTLS_X509_FMT_PEM);
+			m_certFile.c_str(), m_keyFile.c_str(), GNUTLS_X509_FMT_PEM);
 		if (m_retCode != 0)
 		{
 			ReportError("Could not load certificate or key file", false);
@@ -334,8 +342,8 @@ bool TlsSocket::Start()
 
 	m_initialized = true;
 
-	const char* priority = !m_cipher.Empty() ? m_cipher.Str() :
-		(m_certFile && m_keyFile ? "NORMAL:!VERS-SSL3.0" : "NORMAL");
+	const char* priority = !m_cipher.empty() ? m_cipher.c_str() :
+		(!m_certFile.empty() && !m_keyFile.empty() ? "NORMAL:!VERS-SSL3.0" : "NORMAL");
 
 	m_retCode = gnutls_priority_set_direct((gnutls_session_t)m_session, priority, nullptr);
 	if (m_retCode != 0)
@@ -345,9 +353,9 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	if (m_host)
+	if (!m_host.empty())
 	{
-		m_retCode = gnutls_server_name_set((gnutls_session_t)m_session, GNUTLS_NAME_DNS, m_host, m_host.Length());
+		m_retCode = gnutls_server_name_set((gnutls_session_t)m_session, GNUTLS_NAME_DNS, m_host.c_str(), m_host.size());
 		if (m_retCode != 0)
 		{
 			ReportError("Could not set hostname for TLS");
@@ -370,7 +378,7 @@ bool TlsSocket::Start()
 	m_retCode = gnutls_handshake((gnutls_session_t)m_session);
 	if (m_retCode != 0)
 	{
-		ReportError(BString<1024>("TLS handshake failed for %s", *m_host));
+		ReportError(BString<1024>("TLS handshake failed for %s", m_host.c_str()));
 		Close();
 		return false;
 	}
@@ -394,15 +402,15 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	if (m_certFile && m_keyFile)
+	if (!m_certFile.empty() && !m_keyFile.empty())
 	{
-		if (SSL_CTX_use_certificate_chain_file((SSL_CTX*)m_context, m_certFile) != 1)
+		if (SSL_CTX_use_certificate_chain_file((SSL_CTX*)m_context, m_certFile.c_str()) != 1)
 		{
 			ReportError("Could not load certificate file", false);
 			Close();
 			return false;
 		}
-		if (SSL_CTX_use_PrivateKey_file((SSL_CTX*)m_context, m_keyFile, SSL_FILETYPE_PEM) != 1)
+		if (SSL_CTX_use_PrivateKey_file((SSL_CTX*)m_context, m_keyFile.c_str(), SSL_FILETYPE_PEM) != 1)
 		{
 			ReportError("Could not load key file", false);
 			Close();
@@ -433,7 +441,7 @@ bool TlsSocket::Start()
 		EC_KEY_free(ecdh);
 	}
 
-	if (m_isClient && !m_certStore.Empty())
+	if (m_isClient && !m_certStore.empty())
 	{
 		SSL_CTX_set1_cert_store((SSL_CTX*)m_context, m_X509Store);
 
@@ -455,14 +463,14 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	if (!m_cipher.Empty() && !SSL_set_cipher_list((SSL*)m_session, m_cipher))
+	if (!m_cipher.empty() && !SSL_set_cipher_list((SSL*)m_session, m_cipher.c_str()))
 	{
 		ReportError("Could not select cipher for TLS", false);
 		Close();
 		return false;
 	}
 
-	if (m_isClient && m_host && !SSL_set_tlsext_host_name((SSL*)m_session, m_host))
+	if (m_isClient && !m_host.empty() && !SSL_set_tlsext_host_name((SSL*)m_session, m_host.c_str()))
 	{
 		ReportError("Could not set host name for TLS");
 		Close();
@@ -484,17 +492,17 @@ bool TlsSocket::Start()
 		{
 			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
 				" For more info visit https://nzbget.com/documentation/certificate-verification/",
-				*m_host, X509_verify_cert_error_string(verifyRes)));
+				m_host.c_str(), X509_verify_cert_error_string(verifyRes)));
 		}
 		else
 		{
-			ReportError(BString<1024>("TLS handshake failed for %s", *m_host));
+			ReportError(BString<1024>("TLS handshake failed for %s", m_host.c_str()));
 		}
 		Close();
 		return false;
 	}
 
-	if (m_isClient && !m_certStore.Empty() && !ValidateCert())
+	if (m_isClient && !m_certStore.empty() && !ValidateCert())
 	{
 		Close();
 		return false;
@@ -529,7 +537,7 @@ bool TlsSocket::ValidateCert()
 	}
 
 	unsigned int status = 0;
-	if (gnutls_certificate_verify_peers3((gnutls_session_t)m_session, m_host, &status) != 0 ||
+	if (gnutls_certificate_verify_peers3((gnutls_session_t)m_session, m_host.c_str(), &status) != 0 ||
 		gnutls_certificate_type_get((gnutls_session_t)m_session) != GNUTLS_CRT_X509)
 	{
 		ReportError("Could not verify TLS certificate");
@@ -553,7 +561,7 @@ bool TlsSocket::ValidateCert()
 				if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0, dn, &size) == 0)
 				{
 					PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
-						" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, dn));
+						" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), dn));
 					gnutls_x509_crt_deinit(cert);
 					return false;
 				}
@@ -565,13 +573,13 @@ bool TlsSocket::ValidateCert()
 		if (gnutls_certificate_verification_status_print(status, GNUTLS_CRT_X509, &msgdata, 0) == 0)
 		{
 			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
-				" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, msgdata.data));
+				" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), msgdata.data));
 			gnutls_free(&msgdata);
 		}
 		else
 		{
 			ReportError(BString<1024>("TLS certificate verification failed for %s."
-				" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host));
+				" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str()));
 		}
 		return false;
 	}
@@ -585,13 +593,13 @@ bool TlsSocket::ValidateCert()
 	if (!cert)
 	{
 		PrintError(BString<1024>("TLS certificate verification failed for %s: no certificate provided by server."
-			" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host));
+			" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str()));
 		return false;
 	}
 
 #ifdef HAVE_X509_CHECK_HOST
 	// hostname verification
-	if (m_certVerifLevel > Options::ECertVerifLevel::cvMinimal && !m_host.Empty() && X509_check_host(cert, m_host, m_host.Length(), 0, nullptr) != 1)
+	if (m_certVerifLevel > Options::ECertVerifLevel::cvMinimal && !m_host.empty() && X509_check_host(cert, m_host.c_str(), m_host.size(), 0, nullptr) != 1)
 	{
 		const unsigned char* certHost = nullptr;
         // Find the position of the CN field in the Subject field of the certificate
@@ -616,7 +624,7 @@ bool TlsSocket::ValidateCert()
         }
 
 		PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
-			" For more info visit https://nzbget.com/documentation/certificate-verification/", *m_host, certHost));
+			" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), certHost));
 		X509_free(cert);
 		return false;
 	}
