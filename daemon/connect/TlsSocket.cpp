@@ -31,7 +31,10 @@
 #include "Options.h"
 
 std::string TlsSocket::m_certStore;
+
+#ifdef HAVE_OPENSSL
 X509_STORE* TlsSocket::m_X509Store = nullptr;
+#endif
 
 #ifdef HAVE_LIBGNUTLS
 #ifdef NEED_GCRYPT_LOCKING
@@ -188,9 +191,12 @@ void TlsSocket::InitOptions(const char* certStore)
 {
 	m_certStore = certStore;
 
+#ifdef HAVE_OPENSSL
 	InitX509Store(m_certStore);
+#endif
 }
 
+#ifdef HAVE_OPENSSL
 void TlsSocket::InitX509Store(const std::string& certStore)
 {
 	if (m_X509Store || certStore.empty()) return;
@@ -210,6 +216,7 @@ void TlsSocket::InitX509Store(const std::string& certStore)
 		return;
 	}
 }
+#endif
 
 void TlsSocket::Final()
 {
@@ -384,7 +391,7 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	if (m_isClient && !m_certStore.Empty() && !ValidateCert())
+	if (m_isClient && !m_certStore.empty() && !ValidateCert())
 	{
 		Close();
 		return false;
@@ -442,8 +449,15 @@ bool TlsSocket::Start()
 		EC_KEY_free(ecdh);
 	}
 
-	if (m_isClient && m_X509Store && !m_certStore.empty())
+	if (m_isClient && !m_certStore.empty())
 	{
+		if (!m_X509Store)
+		{
+			error("Could not set certificate store location. Make sure the CertPath option is correct.");
+			Close();
+			return false;
+		}
+
 		SSL_CTX_set1_cert_store((SSL_CTX*)m_context, m_X509Store);
 
 		if (m_certVerifLevel > Options::ECertVerifLevel::cvNone)
@@ -519,9 +533,9 @@ bool TlsSocket::ValidateCert()
 #ifdef HAVE_LIBGNUTLS
 #if	GNUTLS_VERSION_NUMBER >= 0x030104
 #if	GNUTLS_VERSION_NUMBER >= 0x030306
-	if (FileSystem::DirectoryExists(m_certStore))
+	if (FileSystem::DirectoryExists(m_certStore.c_str()))
 	{
-		if (gnutls_certificate_set_x509_trust_dir((gnutls_certificate_credentials_t)m_context, m_certStore, GNUTLS_X509_FMT_PEM) < 0)
+		if (gnutls_certificate_set_x509_trust_dir((gnutls_certificate_credentials_t)m_context, m_certStore.c_str(), GNUTLS_X509_FMT_PEM) < 0)
 		{
 			ReportError("Could not set certificate store location");
 			return false;
@@ -530,7 +544,7 @@ bool TlsSocket::ValidateCert()
 	else
 #endif
 	{
-		if (gnutls_certificate_set_x509_trust_file((gnutls_certificate_credentials_t)m_context, m_certStore, GNUTLS_X509_FMT_PEM) < 0)
+		if (gnutls_certificate_set_x509_trust_file((gnutls_certificate_credentials_t)m_context, m_certStore.c_str(), GNUTLS_X509_FMT_PEM) < 0)
 		{
 			ReportError("Could not set certificate store location");
 			return false;

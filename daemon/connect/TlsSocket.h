@@ -58,9 +58,12 @@ protected:
 	virtual void PrintError(const char* errMsg);
 
 private:
+#ifdef HAVE_OPENSSL
 	static void InitX509Store(const std::string& certStore);
-	static std::string m_certStore;
+
 	static X509_STORE* m_X509Store;
+#endif
+	static std::string m_certStore;
 
 	SOCKET m_socket;
 
