@@ -31,7 +31,7 @@
 #include "Options.h"
 
 std::string TlsSocket::m_certStore;
-X509_STORE* TlsSocket::m_X509Store;
+X509_STORE* TlsSocket::m_X509Store = nullptr;
 
 #ifdef HAVE_LIBGNUTLS
 #ifdef NEED_GCRYPT_LOCKING
@@ -198,13 +198,14 @@ void TlsSocket::InitX509Store(const std::string& certStore)
 	m_X509Store = X509_STORE_new();
 	if (!m_X509Store)
 	{
-		error("Could not load certificate store");
+		error("Could not create certificate store");
 		return;
 	}
 
 	if (!X509_STORE_load_locations(m_X509Store, certStore.c_str(), nullptr))
 	{
 		X509_STORE_free(m_X509Store);
+		m_X509Store = nullptr;
 		error("Could not load certificate store location");
 		return;
 	}
@@ -441,7 +442,7 @@ bool TlsSocket::Start()
 		EC_KEY_free(ecdh);
 	}
 
-	if (m_isClient && !m_certStore.empty())
+	if (m_isClient && m_X509Store && !m_certStore.empty())
 	{
 		SSL_CTX_set1_cert_store((SSL_CTX*)m_context, m_X509Store);
 
