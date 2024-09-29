@@ -199,7 +199,10 @@ void TlsSocket::InitOptions(const char* certStore)
 #ifdef HAVE_OPENSSL
 void TlsSocket::InitX509Store(const std::string& certStore)
 {
-	if (m_X509Store || certStore.empty()) return;
+	if (m_X509Store) 
+	{
+		FreeX509Store(m_X509Store);
+	}
 
 	m_X509Store = X509_STORE_new();
 	if (!m_X509Store)
@@ -210,11 +213,16 @@ void TlsSocket::InitX509Store(const std::string& certStore)
 
 	if (!X509_STORE_load_locations(m_X509Store, certStore.c_str(), nullptr))
 	{
-		X509_STORE_free(m_X509Store);
-		m_X509Store = nullptr;
+		FreeX509Store(m_X509Store);
 		error("Could not load certificate store location");
 		return;
 	}
+}
+
+void TlsSocket::FreeX509Store(X509_STORE* store)
+{
+	X509_STORE_free(m_X509Store);
+	m_X509Store = nullptr;
 }
 #endif
 
