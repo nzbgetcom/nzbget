@@ -884,13 +884,9 @@ int64 Util::CurrentTicks()
 #endif
 }
 
-void Util::Sleep(int milliseconds)
+void Util::Sleep(int ms)
 {
-#ifdef WIN32
-	::Sleep(milliseconds);
-#else
-	usleep(milliseconds * 1000);
-#endif
+	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 uint32 WebUtil::DecodeBase64(char* inputBuffer, int inputBufferLength, char* outputBuffer)
