@@ -24,10 +24,26 @@
 
 #ifndef DISABLE_CURSES
 
+#include <string>
 #include "NString.h"
 #include "Frontend.h"
 #include "Log.h"
 #include "DownloadInfo.h"
+
+extern const int NCURSES_COLORPAIR_TEXT;
+extern const int NCURSES_COLORPAIR_INFO;
+extern const int NCURSES_COLORPAIR_WARNING;
+extern const int NCURSES_COLORPAIR_ERROR;
+extern const int NCURSES_COLORPAIR_DEBUG;
+extern const int NCURSES_COLORPAIR_DETAIL;
+extern const int NCURSES_COLORPAIR_STATUS;
+extern const int NCURSES_COLORPAIR_KEYBAR;
+extern const int NCURSES_COLORPAIR_INFOLINE;
+extern const int NCURSES_COLORPAIR_TEXTHIGHL;
+extern const int NCURSES_COLORPAIR_CURSOR;
+extern const int NCURSES_COLORPAIR_HINT;
+
+extern const int MAX_SCREEN_WIDTH;
 
 class NCursesFrontend : public Frontend
 {
@@ -70,6 +86,30 @@ private:
 	// Inputting numbers
 	int m_inputNumberIndex = 0;
 	int m_inputValue;
+#ifdef WIN32
+	const wchar_t* m_messageTypes[5] = {
+		L"INFO    ",
+		L"WARNING ",
+		L"ERROR   ",
+		L"DEBUG   ",
+		L"DETAIL  "
+	};
+#else
+	const char* m_messageTypes[5] = {
+		"INFO    ",
+		"WARNING ",
+		"ERROR   ",
+		"DEBUG   ",
+		"DETAIL  "
+	};
+#endif
+	const int m_messageColorTypes[5] = { 
+		NCURSES_COLORPAIR_INFO, 
+		NCURSES_COLORPAIR_WARNING,
+		NCURSES_COLORPAIR_ERROR, 
+		NCURSES_COLORPAIR_DEBUG, 
+		NCURSES_COLORPAIR_DETAIL 
+	};
 
 #ifdef WIN32
 	std::vector<CHAR_INFO> m_screenBuffer;
@@ -87,9 +127,11 @@ private:
 
 #ifdef WIN32
 	void init_pair(int colorNumber, WORD wForeColor, WORD wBackColor);
+	void PlotText(const wchar_t* string, int row, int pos, int colorPair, bool blink);
+#else
+	void PlotText(const char *  string, int row, int pos, int colorPair, bool blink);
 #endif
 	void PlotLine(const char *  string, int row, int pos, int colorPair);
-	void PlotText(const char *  string, int row, int pos, int colorPair, bool blink);
 	void PrintMessages();
 	void PrintQueue();
 	void PrintFileQueue();
