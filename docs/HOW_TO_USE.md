@@ -151,7 +151,7 @@ nzbget -o createlog=no -C
 ### Running nzbget as systemd service (Linux only)
 
 It is possible to run nzbget as a systemd service under modern Linux distributions.
-To achieve this, create in `/etc/systemd/system/` `nzbget.service`. Example service files (replace `/path/to/nzbget` with real path, and `nzbget_user`/`nzbget_group` with real user/group):
+To do that, create in `nzbget.service` file in `/etc/systemd/system/`. Example service files (replace `/path/to/nzbget` with real path, and `nzbget_user`/`nzbget_group` with real user/group):
 
 - nzbget runs as a daemon and logs to own log file:
 ```
