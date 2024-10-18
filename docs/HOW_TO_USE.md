@@ -80,12 +80,6 @@ To stop server use:
 ```
 nzbget -Q  
 ```
-TIP for POSIX users: with included script "nzbgetd" you can use standard
-commands to control daemon:
-```
-nzbgetd start
-nzbgetd stop
-```
 
 When NZBGet is started in console server mode it displays a message that
 it is ready to receive download requests. In daemon mode it doesn't print any
@@ -152,6 +146,54 @@ nzbget -o reloadqueue=no -o dupecheck=no -o parcheck=yes -s
 or:
 ```
 nzbget -o createlog=no -C
+```
+
+### Running nzbget as systemd service (Linux only)
+
+It is possible to run nzbget as a systemd service under modern Linux distributions.
+To do that, create `nzbget.service` file in `/etc/systemd/system/`. Example service files (replace `/path/to/nzbget` with real path, and `nzbget_user`/`nzbget_group` with real user/group):
+
+- nzbget runs as a daemon and logs to own log file:
+```
+[Unit]
+Description=NZBGet Service
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/path/to/nzbget -D
+ExecStop=/path/to/nzbget -Q
+User=nzbget_user
+Group=nzbget_group
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+- nzbget runs as a server with logging to stdout, logs are forwarded to journald
+```
+[Unit]
+Description=NZBGet Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/path/to/nzbget -s -o OutputMode=log
+ExecStop=/path/to/nzbget -Q
+User=nzbget_user
+Group=nzbget_group
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Then run (start nzbget and enable autostart):
+```
+sudo systemctl daemon-reload
+sudo systemctl enable nzbget
+sudo systemctl start nzbget
 ```
 
 ### Running client & server on seperate machines:
