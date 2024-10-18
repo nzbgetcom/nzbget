@@ -25,7 +25,6 @@
 #ifndef DISABLE_CURSES
 
 #include <string>
-#include "NString.h"
 #include "Frontend.h"
 #include "Log.h"
 #include "DownloadInfo.h"
@@ -77,7 +76,7 @@ private:
 	int m_lastEditEntry = -1;
 	bool m_lastPausePars = false;
 	int m_queueScrollOffset = 0;
-	CString m_hint;
+	std::string m_hint;
 	time_t m_startHint;
 	int m_colWidthFiles;
 	int m_colWidthTotal;

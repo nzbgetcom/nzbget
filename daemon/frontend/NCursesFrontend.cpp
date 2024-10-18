@@ -62,7 +62,7 @@ const int NCURSES_COLORPAIR_DETAIL		= 6;
 const int NCURSES_COLORPAIR_STATUS		= 7;
 const int NCURSES_COLORPAIR_KEYBAR		= 8;
 const int NCURSES_COLORPAIR_INFOLINE	= 9;
-const int NCURSES_COLORPAIR_TEXTHIGHL	= 10;
+const int NCURSES_COLORPAIR_TEXTHIGHL 	= 10;
 const int NCURSES_COLORPAIR_CURSOR		= 11;
 const int NCURSES_COLORPAIR_HINT		= 12;
 
@@ -601,12 +601,12 @@ void NCursesFrontend::PrintKeyInputBar()
 	int queueSize = CalcQueueSize();
 	int inputBarRow = m_screenHeight - 1;
 
-	if (!m_hint.Empty())
+	if (!m_hint.empty())
 	{
 		time_t time = Util::CurrentTime();
 		if (time - m_startHint < 5)
 		{
-			PlotLine(m_hint, inputBarRow, 0, NCURSES_COLORPAIR_HINT);
+			PlotLine(m_hint.c_str(), inputBarRow, 0, NCURSES_COLORPAIR_HINT);
 			return;
 		}
 		else
@@ -667,11 +667,8 @@ void NCursesFrontend::PrintKeyInputBar()
 
 void NCursesFrontend::SetHint(const char* hint)
 {
-	m_hint = hint;
-	if (!m_hint.Empty())
-	{
-		m_startHint = Util::CurrentTime();
-	}
+	if (hint) m_hint = hint;
+	if (!m_hint.empty()) m_startHint = Util::CurrentTime();
 }
 
 void NCursesFrontend::PrintQueue()
