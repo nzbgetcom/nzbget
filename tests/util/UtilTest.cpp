@@ -23,6 +23,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <limits>
+#include <locale>
 #include "Util.h"
 
 BOOST_AUTO_TEST_CASE(XmlStripTagsTest)
@@ -167,7 +168,10 @@ BOOST_AUTO_TEST_CASE(SplintInt64Test)
 
 BOOST_AUTO_TEST_CASE(FormatSpeedTest)
 {
+	std::locale::global(std::locale("C"));
+
 	int64 speed1GB = 1024ll * 1024 * 1024;
+	BOOST_TEST_MESSAGE(Util::FormatSpeed(speed1GB));
 	BOOST_CHECK(Util::FormatSpeed(speed1GB) == "1.00 GB/s");
 
 	int64 speed10GB = 1024ll * 1024 * 1024 * 10;
@@ -193,6 +197,8 @@ BOOST_AUTO_TEST_CASE(FormatSpeedTest)
 
 	int64 speed100KB = 1024 * 100;
 	BOOST_CHECK(Util::FormatSpeed(speed100KB) == "100 KB/s");
+
+	std::locale::global(std::locale(""));
 }
 
 BOOST_AUTO_TEST_CASE(SafeIntCastTest)
