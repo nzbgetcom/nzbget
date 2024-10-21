@@ -139,7 +139,7 @@ int main(int argc, char* argv[], char* argp[])
 
 #endif
 
-	std::locale::global(std::locale(""));
+	setlocale(LC_CTYPE, "");
 
 	Util::Init();
 	YEncode::init();
