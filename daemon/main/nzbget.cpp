@@ -62,6 +62,7 @@
 #include "WinService.h"
 #include "WinConsole.h"
 #include "WebDownloader.h"
+#include "Utf8.h"
 #endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
@@ -71,6 +72,8 @@
 #include <sstream>
 #include <iostream>
 #endif
+
+#include <locale>
 
 // Prototypes
 void RunMain();
@@ -106,13 +109,13 @@ int g_ArgumentCount;
 char* (*g_EnvironmentVariables)[] = nullptr;
 char* (*g_Arguments)[] = nullptr;
 
-
-/*
- * Main entry point
- */
-int main(int argc, char *argv[], char *argp[])
-{
 #ifdef WIN32
+
+#include "Utf8.h"
+
+int wmain(int argc, wchar_t* wargv[], wchar_t* wargp[])
+{
+
 #ifdef _DEBUG
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE | _CRTDBG_MODE_DEBUG);
 	_CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
@@ -122,7 +125,21 @@ int main(int argc, char *argv[], char *argp[])
 #endif
 		);
 #endif
+
+	SetConsoleOutputCP(CP_UTF8);
+
+	Utf8::WideToUtf8ArgsAdapter wargvAdapter{ argc, wargv };
+	Utf8::WideToUtf8ArgsAdapter wargpAdapter{ argc, wargp };
+	auto argv = wargvAdapter.GetUtf8Args();
+	auto argp = wargpAdapter.GetUtf8Args();
+#else
+
+int main(int argc, char* argv[], char* argp[])
+{
+
 #endif
+
+	setlocale(LC_ALL, "");
 
 	Util::Init();
 	YEncode::init();

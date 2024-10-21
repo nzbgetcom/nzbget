@@ -23,6 +23,8 @@
 #include <boost/test/included/unit_test.hpp>
 #include <boost/json/src.hpp>
 
+#include <locale>
+
 #include "Log.h"
 #include "Options.h"
 #include "WorkState.h"
@@ -38,6 +40,8 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
+		setlocale(LC_ALL, "");
+
 		g_EnvironmentVariables = nullptr;
 		g_Log = new Log();
 		g_WorkState = new WorkState();
