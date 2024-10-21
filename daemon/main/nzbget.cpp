@@ -62,6 +62,7 @@
 #include "WinService.h"
 #include "WinConsole.h"
 #include "WebDownloader.h"
+#include "Utf8.h"
 #endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
@@ -71,6 +72,8 @@
 #include <sstream>
 #include <iostream>
 #endif
+
+#include <locale>
 
 // Prototypes
 void RunMain();
@@ -106,7 +109,6 @@ int g_ArgumentCount;
 char* (*g_EnvironmentVariables)[] = nullptr;
 char* (*g_Arguments)[] = nullptr;
 
-
 /*
  * Main entry point
  */
@@ -122,7 +124,11 @@ int main(int argc, char *argv[], char *argp[])
 #endif
 		);
 #endif
+
+	SetConsoleOutputCP(CP_UTF8);
 #endif
+
+	setlocale(LC_CTYPE, "");
 
 	Util::Init();
 	YEncode::init();
