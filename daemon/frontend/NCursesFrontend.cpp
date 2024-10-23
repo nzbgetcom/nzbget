@@ -391,9 +391,16 @@ void NCursesFrontend::PlotText(const char * string, int row, int pos, int colorP
 
 #else
 
-void NCursesFrontend::PlotLine(const char * string, int row, int pos, int colorPair)
+void NCursesFrontend::PlotLine(const char * str, int row, int pos, int colorPair)
 {
-	std::wstring wstr = Utf8::Utf8ToWide(string);
+	auto res = Utf8::Utf8ToWide(str);
+	if (!res.has_value())
+	{
+		warn("Failed to convert %s to wide string", str);
+		return;
+	}
+
+	std::wstring wstr = std::move(res.value());
 	std::wstring buffer(m_screenWidth + 1, '\0');
 	swprintf(buffer.data(), buffer.size(), L"%-*s", m_screenWidth, wstr.c_str());
 

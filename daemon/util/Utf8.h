@@ -22,11 +22,12 @@
 #define UTF8_H
 
 #include <string>
+#include <optional>
 
 namespace Utf8
 {
-	std::wstring Utf8ToWide(const std::string& str) noexcept;
-	std::string WideToUtf8(const std::wstring& wstr) noexcept;
+	std::optional<std::wstring> Utf8ToWide(const std::string& str) noexcept;
+	std::optional<std::string> WideToUtf8(const std::wstring& wstr) noexcept;
 
 	class WideToUtf8ArgsAdapter final
 	{

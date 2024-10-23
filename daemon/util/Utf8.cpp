@@ -31,22 +31,34 @@ namespace Utf8
 {
 	constexpr int MAX_ARGS = 128;
 
-	std::wstring Utf8ToWide(const std::string& utf8Str) noexcept
+	std::optional<std::wstring> Utf8ToWide(const std::string& str) noexcept
 	{
-		int requiredSize = MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, nullptr, 0);
-		std::wstring wideStr(requiredSize, L'\0');
-		MultiByteToWideChar(CP_UTF8, 0, utf8Str.c_str(), -1, wideStr.data(), requiredSize);
+		if (str.empty()) return L"";
 
-		return wideStr;
+		int requiredSize = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+		if (requiredSize <= 0) return std::nullopt;
+
+		std::wstring wstr(requiredSize, '\0');
+
+		requiredSize = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, wstr.data(), requiredSize);
+		if (requiredSize <= 0) return std::nullopt;
+
+		return wstr;
 	}
 
-	std::string WideToUtf8(const std::wstring& wideStr) noexcept
+	std::optional<std::string> WideToUtf8(const std::wstring& wstr) noexcept
 	{
-		int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-		std::string utf8Str(requiredSize, '\0');
-		WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, utf8Str.data(), requiredSize, nullptr, nullptr);
+		if (wstr.empty()) return "";
 
-		return utf8Str;
+		int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+		if (requiredSize <= 0) return std::nullopt;
+
+		std::string str(requiredSize, '\0');
+
+		requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, str.data(), requiredSize, nullptr, nullptr);
+		if (requiredSize <= 0) return std::nullopt;
+
+		return str;
 	}
 
 	WideToUtf8ArgsAdapter::WideToUtf8ArgsAdapter(int argc, wchar_t* wargv[]) noexcept(false)
@@ -74,7 +86,7 @@ namespace Utf8
 				continue;
 			}
 
-			std::string arg = WideToUtf8(wargv[i]);
+			std::string arg = WideToUtf8(wargv[i]).value();
 			size_t size = arg.size() + 1;
 			m_argv[i] = new char[size];
 			strcpy(m_argv[i], arg.c_str());
