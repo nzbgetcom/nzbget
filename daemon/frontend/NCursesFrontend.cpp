@@ -53,22 +53,25 @@ void curses_clear()
 
 extern void ExitProc();
 
-static const int NCURSES_COLORPAIR_TEXT			= 1;
-static const int NCURSES_COLORPAIR_INFO			= 2;
-static const int NCURSES_COLORPAIR_WARNING		= 3;
-static const int NCURSES_COLORPAIR_ERROR		= 4;
-static const int NCURSES_COLORPAIR_DEBUG		= 5;
-static const int NCURSES_COLORPAIR_DETAIL		= 6;
-static const int NCURSES_COLORPAIR_STATUS		= 7;
-static const int NCURSES_COLORPAIR_KEYBAR		= 8;
-static const int NCURSES_COLORPAIR_INFOLINE		= 9;
-static const int NCURSES_COLORPAIR_TEXTHIGHL	= 10;
-static const int NCURSES_COLORPAIR_CURSOR		= 11;
-static const int NCURSES_COLORPAIR_HINT			= 12;
+const int NCURSES_COLORPAIR_TEXT		= 1;
+const int NCURSES_COLORPAIR_INFO		= 2;
+const int NCURSES_COLORPAIR_WARNING		= 3;
+const int NCURSES_COLORPAIR_ERROR		= 4;
+const int NCURSES_COLORPAIR_DEBUG		= 5;
+const int NCURSES_COLORPAIR_DETAIL		= 6;
+const int NCURSES_COLORPAIR_STATUS		= 7;
+const int NCURSES_COLORPAIR_KEYBAR		= 8;
+const int NCURSES_COLORPAIR_INFOLINE	= 9;
+const int NCURSES_COLORPAIR_TEXTHIGHL 	= 10;
+const int NCURSES_COLORPAIR_CURSOR		= 11;
+const int NCURSES_COLORPAIR_HINT		= 12;
 
-static const int MAX_SCREEN_WIDTH				= 512;
+const int MAX_SCREEN_WIDTH				= 512;
 
 #ifdef WIN32
+
+#include "Utf8.h"
+
 static const int COLOR_BLACK	= 0;
 static const int COLOR_BLUE		= FOREGROUND_BLUE;
 static const int COLOR_RED		= FOREGROUND_RED;
@@ -350,31 +353,23 @@ int NCursesFrontend::CalcQueueSize()
 	return queueSize;
 }
 
+#ifndef WIN32
+
 void NCursesFrontend::PlotLine(const char * string, int row, int pos, int colorPair)
 {
-	BString<1024> buffer("%-*s", m_screenWidth, string);
-	int len = buffer.Length();
-	if (len > m_screenWidth - pos && m_screenWidth - pos < MAX_SCREEN_WIDTH)
+	std::string buffer(m_screenWidth + 1, '\0');
+	snprintf(buffer.data(), buffer.size(), "%-*s", m_screenWidth, string);
+
+	if (Util::CmpGreater(buffer.size(), m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
 	{
 		buffer[m_screenWidth - pos] = '\0';
 	}
 
-	PlotText(buffer, row, pos, colorPair, false);
+	PlotText(buffer.data(), row, pos, colorPair, false);
 }
 
 void NCursesFrontend::PlotText(const char * string, int row, int pos, int colorPair, bool blink)
 {
-#ifdef WIN32
-	int bufPos = row * m_screenWidth + pos;
-	int len = strlen(string);
-	for (int i = 0; i < len; i++)
-	{
-		char c = string[i];
-		CharToOemBuff(&c, &c, 1);
-		m_screenBuffer[bufPos + i].Char.AsciiChar = c;
-		m_screenBuffer[bufPos + i].Attributes = m_colorAttr[colorPair];
-	}
-#else
 	if( m_useColor )
 	{
 		attron(COLOR_PAIR(colorPair));
@@ -392,8 +387,43 @@ void NCursesFrontend::PlotText(const char * string, int row, int pos, int colorP
 			attroff(A_BLINK);
 		}
 	}
-#endif
 }
+
+#else
+
+void NCursesFrontend::PlotLine(const char * str, int row, int pos, int colorPair)
+{
+	auto res = Utf8::Utf8ToWide(str);
+	if (!res.has_value())
+	{
+		warn("Failed to convert %s to wide string", str);
+		return;
+	}
+
+	std::wstring wstr = std::move(res.value());
+	std::wstring buffer(m_screenWidth + 1, '\0');
+	swprintf(buffer.data(), buffer.size(), L"%-*s", m_screenWidth, wstr.c_str());
+
+	if (Util::CmpGreater(buffer.size(), m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
+	{
+		buffer[m_screenWidth - pos] = '\0';
+	}
+
+	PlotText(buffer.data(), row, pos, colorPair, false);
+}
+
+void NCursesFrontend::PlotText(const wchar_t* wstr, int row, int pos, int colorPair, bool blink)
+{
+	int bufPos = row * m_screenWidth + pos;
+	size_t len = wcslen(wstr);
+	for (size_t i = 0; i < len; ++i)
+	{
+		m_screenBuffer[bufPos + i].Char.UnicodeChar = wstr[i];
+		m_screenBuffer[bufPos + i].Attributes = m_colorAttr[colorPair];
+	}
+}
+
+#endif
 
 void NCursesFrontend::RefreshScreen()
 {
@@ -401,7 +431,7 @@ void NCursesFrontend::RefreshScreen()
 	bool bufChanged = !std::equal(m_screenBuffer.begin(), m_screenBuffer.end(), m_oldScreenBuffer.begin(), m_oldScreenBuffer.end(),
 		[](CHAR_INFO& a, CHAR_INFO& b)
 		{
-			return a.Char.AsciiChar == b.Char.AsciiChar && a.Attributes == b.Attributes;
+			return a.Char.UnicodeChar == b.Char.UnicodeChar && a.Attributes == b.Attributes;
 		});
 
 	if (bufChanged)
@@ -417,7 +447,7 @@ void NCursesFrontend::RefreshScreen()
 		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 		CONSOLE_SCREEN_BUFFER_INFO BufInfo;
 		GetConsoleScreenBufferInfo(hConsole, &BufInfo);
-		WriteConsoleOutput(hConsole, m_screenBuffer.data(), BufSize, BufCoord, &BufInfo.srWindow);
+		WriteConsoleOutputW(hConsole, m_screenBuffer.data(), BufSize, BufCoord, &BufInfo.srWindow);
 
 		BufInfo.dwCursorPosition.X = BufInfo.srWindow.Right;
 		BufInfo.dwCursorPosition.Y = BufInfo.srWindow.Bottom;
@@ -446,8 +476,8 @@ void NCursesFrontend::PrintMessages()
 {
 	int lineNr = m_messagesWinTop;
 
-	BString<1024> buffer("%s Messages", m_useColor ? "" : "*** ");
-	PlotLine(buffer, lineNr++, 0, NCURSES_COLORPAIR_INFOLINE);
+	std::string buffer = (m_useColor ? "" : "*** ") + std::string(" Messages");
+	PlotLine(buffer.c_str(), lineNr++, 0, NCURSES_COLORPAIR_INFOLINE);
 
 	int line = lineNr + m_messagesWinClientHeight - 1;
 	int linesToPrint = m_messagesWinClientHeight;
@@ -482,10 +512,6 @@ void NCursesFrontend::PrintMessages()
 
 int NCursesFrontend::PrintMessage(Message& msg, int row, int maxLines)
 {
-	const char* messageType[] = { "INFO    ", "WARNING ", "ERROR   ", "DEBUG   ", "DETAIL  "};
-	const int messageTypeColor[] = { NCURSES_COLORPAIR_INFO, NCURSES_COLORPAIR_WARNING,
-		NCURSES_COLORPAIR_ERROR, NCURSES_COLORPAIR_DEBUG, NCURSES_COLORPAIR_DETAIL };
-
 	CString text;
 
 	if (m_showTimestamp)
@@ -522,11 +548,15 @@ int NCursesFrontend::PrintMessage(Message& msg, int row, int maxLines)
 		PlotLine(text + winWidth * i, r, 8, NCURSES_COLORPAIR_TEXT);
 		if (i == 0)
 		{
-			PlotText(messageType[msg.GetKind()], r, 0, messageTypeColor[msg.GetKind()], false);
+			PlotText(m_messageTypes[msg.GetKind()], r, 0, m_messageColorTypes[msg.GetKind()], false);
 		}
 		else
 		{
-			PlotText("        ", r, 0, messageTypeColor[msg.GetKind()], false);
+#ifdef WIN32
+  			PlotText(L"        ", r, 0, m_messageColorTypes[msg.GetKind()], false);
+#else
+  			PlotText("        ", r, 0, m_messageColorTypes[msg.GetKind()], false);
+#endif
 		}
 		lines++;
 	}
@@ -577,12 +607,12 @@ void NCursesFrontend::PrintKeyInputBar()
 	int queueSize = CalcQueueSize();
 	int inputBarRow = m_screenHeight - 1;
 
-	if (!m_hint.Empty())
+	if (!m_hint.empty())
 	{
 		time_t time = Util::CurrentTime();
 		if (time - m_startHint < 5)
 		{
-			PlotLine(m_hint, inputBarRow, 0, NCURSES_COLORPAIR_HINT);
+			PlotLine(m_hint.c_str(), inputBarRow, 0, NCURSES_COLORPAIR_HINT);
 			return;
 		}
 		else
@@ -627,21 +657,24 @@ void NCursesFrontend::PrintKeyInputBar()
 		break;
 	}
 	case downloadRate:
-		BString<100> hint("Download rate: %i", m_inputValue);
-		PlotLine(hint, inputBarRow, 0, NCURSES_COLORPAIR_KEYBAR);
+		std::string hint = "Download rate: " + std::to_string(m_inputValue);
+		PlotLine(hint.c_str(), inputBarRow, 0, NCURSES_COLORPAIR_KEYBAR);
+
 		// Print the cursor
+#ifdef WIN32
+		PlotText(L" ", inputBarRow, 15 + m_inputNumberIndex, NCURSES_COLORPAIR_CURSOR, true);
+#else
+		
 		PlotText(" ", inputBarRow, 15 + m_inputNumberIndex, NCURSES_COLORPAIR_CURSOR, true);
+#endif
 		break;
 	}
 }
 
 void NCursesFrontend::SetHint(const char* hint)
 {
-	m_hint = hint;
-	if (!m_hint.Empty())
-	{
-		m_startHint = Util::CurrentTime();
-	}
+	if (hint) m_hint = hint;
+	if (!m_hint.empty()) m_startHint = Util::CurrentTime();
 }
 
 void NCursesFrontend::PrintQueue()
