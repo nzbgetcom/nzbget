@@ -13,7 +13,7 @@ add_library(regex STATIC
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 target_include_directories(regex PUBLIC
-	${CMAKE_BINARY_DIR}
+	${INCLUDES}
 	${CMAKE_SOURCE_DIR}/lib/regex
 )
 

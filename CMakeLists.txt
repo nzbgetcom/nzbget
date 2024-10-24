@@ -21,7 +21,6 @@ string(REGEX MATCH "^([0-9]+)\\.([0-9]+)" VERSION_MATCH ${VERSION})
 set(VERSION_MAJOR ${CMAKE_MATCH_1})
 set(VERSION_MINOR ${CMAKE_MATCH_2})
 
-add_compile_definitions(HAVE_CONFIG_H=1)
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -40,6 +39,7 @@ include(daemon/sources.cmake)
 
 if(NOT BUILD_ONLY_TESTS)
 	add_executable(${PACKAGE} ${SRC})
+	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 
 	if(CMAKE_BUILD_TYPE STREQUAL "Release")
 		add_custom_command(

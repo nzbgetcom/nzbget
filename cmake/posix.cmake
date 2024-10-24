@@ -12,10 +12,6 @@ if(NOT DISABLE_TLS AND USE_GNUTLS)
 	set(USE_OPENSSL OFF)
 endif()
 
-if(NOT DISABLE_PARCHECK)
-	include(${CMAKE_SOURCE_DIR}/cmake/par2.cmake)
-endif()
-
 if(DISABLE_TLS)
 	set(USE_GNUTLS OFF)
 	set(USE_OPENSSL OFF)
@@ -35,8 +31,35 @@ message(STATUS "  DISABLE CURSES:   ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:     ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK: ${DISABLE_PARCHECK}")
 
+if(APPLE)
+	# On macOS Cmake, when cross-compiling, sometimes CMAKE_SYSTEM_PROCESSOR wrongfully stays
+	# the same as CMAKE_HOST_SYSTEM_PROCESSOR regardless the target CPU.
+	# The manual call to set(CMAKE_SYSTEM_PROCESSOR) has to be set after the project() call.
+	# because project() might reset CMAKE_SYSTEM_PROCESSOR back to the value of CMAKE_HOST_SYSTEM_PROCESSOR.
+	# Check if CMAKE_SYSTEM_PROCESSOR is not equal to CMAKE_OSX_ARCHITECTURES
+	if(NOT CMAKE_OSX_ARCHITECTURES STREQUAL "")
+		if(NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_OSX_ARCHITECTURES)
+			# Split CMAKE_OSX_ARCHITECTURES into a list
+			string(REPLACE ";" " " ARCH_LIST ${CMAKE_OSX_ARCHITECTURES})
+			separate_arguments(ARCH_LIST UNIX_COMMAND ${ARCH_LIST})
+			# Count the number of architectures
+			list(LENGTH ARCH_LIST ARCH_COUNT)
+			# Ensure that exactly one architecture is specified
+			if(NOT ARCH_COUNT EQUAL 1)
+				message(FATAL_ERROR "CMAKE_OSX_ARCHITECTURES must have exactly one value. Current value: ${CMAKE_OSX_ARCHITECTURES}")
+			endif()
+			set(CMAKE_SYSTEM_PROCESSOR ${CMAKE_OSX_ARCHITECTURES})
+			message(STATUS "CMAKE_SYSTEM_PROCESSOR is manually set to ${CMAKE_SYSTEM_PROCESSOR}")
+		endif()
+	endif()
+endif()
+
 if(ENABLE_CLANG_TIDY)
 	set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=-*,readability-*)
+endif()
+
+if(NOT DISABLE_PARCHECK)
+	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
 endif()
 
 if(ENABLE_STATIC)

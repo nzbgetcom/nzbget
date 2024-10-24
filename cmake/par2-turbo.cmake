@@ -8,20 +8,10 @@ FetchContent_Declare(
 	GIT_PROGRESS    TRUE
 )
 
-# FetchContent_Declare(
-#     par2-turbo
-#     SOURCE_DIR   "D:/Dev/par2cmdline-turbo"
-#     # GIT_TAG         cmake
-#     # TLS_VERIFY      TRUE
-# 	# GIT_SHALLOW     TRUE
-# 	# GIT_PROGRESS    TRUE
-# )
-
 add_compile_definitions(HAVE_CONFIG_H PARPAR_ENABLE_HASHER_MD5CRC)
 set(BUILD_TOOL OFF CACHE BOOL "")
 set(BUILD_LIB ON CACHE BOOL "")
 FetchContent_MakeAvailable(par2-turbo)
 
-add_dependencies(${PACKAGE} par2-turbo)
 set(LIBS ${LIBS} par2-turbo gf16 hasher)
 set(INCLUDES ${INCLUDES} ${par2_SOURCE_DIR}/include)
