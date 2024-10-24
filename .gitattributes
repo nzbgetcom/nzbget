@@ -9,6 +9,7 @@ nzbget-setup.nsi                eol=crlf
 windows/package-info.json       eol=crlf
 windows/resources/resource.h    eol=crlf
 windows/resources/nzbget.rc     eol=crlf
+tests/testdata/**/*             binary
 
 # Configure GitHub's language detector
 lib/*               linguist-vendored linguist-language=C++
