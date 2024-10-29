@@ -29,12 +29,15 @@ COREX=4
 TESTING="no"
 
 # build variables
-ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx i686-ndk x86_64-ndk armhf-ndk aarch64-ndk"
-ALL_PLATFORMS="linux android"
+ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx i686-ndk x86_64-ndk armhf-ndk aarch64-ndk x86_64-bsd"
+ALL_PLATFORMS="linux android freebsd"
 OUTPUTDIR=build
 BUILDROOT_HOME=/build
 LIB_SRC_PATH=$BUILDROOT_HOME/source
 LIB_PATH=$BUILDROOT_HOME/lib
+# freebsd variables
+FREEBSD_SYSROOT=/build/freebsd/sysroot
+FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
@@ -66,7 +69,7 @@ parse_args()
     for PARAM in "$@"
     do
         case $PARAM in
-            android|linux)
+            android|linux|freebsd)
                 PLATFORMS=`echo "$PLATFORMS $PARAM" | xargs`
                 ;;
             release|debug)
@@ -134,7 +137,10 @@ parse_args()
             if [[ $ARCH == *-ndk ]] && [ "$PLATFORM" == "android" ]; then
                 ARCH_NEED=1
             fi
-            if [[ $ARCH != *-ndk ]] && [ "$PLATFORM" == "linux" ]; then
+            if [[ $ARCH == *-bsd ]] && [ "$PLATFORM" == "freebsd" ]; then
+                ARCH_NEED=1
+            fi
+            if [[ $ARCH != *-ndk ]] && [[ $ARCH != *-bsd ]] && [ "$PLATFORM" == "linux" ]; then
                 ARCH_NEED=1
             fi
         done
@@ -174,7 +180,10 @@ filter_archs()
         if [[ $ARCH == *-ndk ]] && [ "$PLATFORM" == "android" ]; then
             PLATFORM_ARCHS=`echo "$PLATFORM_ARCHS $ARCH" | xargs`
         fi
-        if [[ $ARCH != *-ndk ]] && [ "$PLATFORM" == "linux" ]; then
+        if [[ $ARCH == *-bsd ]] && [ "$PLATFORM" == "freebsd" ]; then
+            PLATFORM_ARCHS=`echo "$PLATFORM_ARCHS $ARCH" | xargs`
+        fi
+        if [[ $ARCH != *-ndk ]] && [[ $ARCH != *-bsd ]] && [ "$PLATFORM" == "linux" ]; then
             PLATFORM_ARCHS=`echo "$PLATFORM_ARCHS $ARCH" | xargs`
         fi
     done
@@ -183,6 +192,7 @@ filter_archs()
 get_short_arch()
 {
     ARCH_SHORT="${ARCH/-ndk/}"
+    ARCH_SHORT="${ARCH_SHORT/-bsd/}"
 }
 
 download_lib_source()
@@ -238,7 +248,11 @@ build_lib()
                 --prefix="$PWD/../$LIB"
                 ;;
             zlib)
-                ./configure --static --prefix="$PWD/../$LIB"
+                if [ "$PLATFORM" == "freebsd" ]; then
+                    LIBS="$FREEBSD_SYSROOT/libs" ./configure --static --prefix="$PWD/../$LIB"
+                else
+                    ./configure --static --prefix="$PWD/../$LIB"
+                fi
                 ;;
             libxml2)
                 ./autogen.sh --host=$HOST \
@@ -279,6 +293,9 @@ build_lib()
                     ppc500)
                         OPENSSL_ARCH=linux-ppc
                         OPENSSL_OPTS=no-async
+                        ;;
+                    x86_64-bsd)
+                        OPENSSL_ARCH=BSD-x86_64
                         ;;
                     *-ndk)
                         _CC=$CC
@@ -334,8 +351,12 @@ build_lib()
                 ;;
             boost)
                 ./bootstrap.sh --with-libraries=json --prefix="$PWD/../$LIB"
-                echo "using gcc : buildroot : $CXX ; " >>  project-config.jam
-                ./b2 --toolset=gcc-buildroot cxxstd=14 link=static runtime-link=static install
+                if [ "$PLATFORM" == "freebsd" ]; then
+                    ./b2 --toolset=clang cxxflags="--target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1" cxxstd=14 link=static runtime-link=static install
+                else
+                    echo "using gcc : buildroot : $CXX ; " >>  project-config.jam
+                    ./b2 --toolset=gcc-buildroot cxxstd=14 link=static runtime-link=static install
+                fi
                 ;;
         esac
         if [ "$LIB" != "boost" ]; then
@@ -400,6 +421,9 @@ build_7zip()
             sed "s|^LIB2 =.*|LIB2 = |g" -i 7zip_gcc.mak
             sed "s|^CFLAGS_WARN_WALL =.*|CFLAGS_WARN_WALL = -Wall -Wextra|" -i 7zip_gcc.mak
         fi
+        if [ "$PLATFORM" == "freebsd" ]; then
+            sed "s|^MY_ARCH_2 = .*|MY_ARCH_2 = \$(MY_ARCH) --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1|" -i 7zip_gcc.mak
+        fi
         cd Bundles/Alone
         make -j $COREX -f makefile.gcc
         mkdir -p $LIB_PATH/$ARCH/7zip
@@ -457,6 +481,10 @@ build_unrar_version()
     else
         sed "s|^LDFLAGS=.*|LDFLAGS=-static|" -i makefile
         sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
+    fi
+    if [ "$PLATFORM" == "freebsd" ]; then
+        sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2 -nostdlib --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1|" -i makefile
+        sed "s|^LDFLAGS=.*|LDFLAGS=-static --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -pthread -lc++ -lm -fuse-ld=lld|" -i makefile
     fi
     make clean
     make -j $COREX
@@ -546,6 +574,10 @@ build_bin()
             export HOST="aarch64-linux-android"
             CMAKE_SYSTEM_PROCESSOR="aarch64"
             ;;
+        x86_64-bsd)
+            export HOST="x86_64-bsd"
+            CMAKE_SYSTEM_PROCESSOR="x86_64"
+            ;;
     esac
 
 
@@ -557,6 +589,13 @@ build_bin()
             export CXX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-clang++"
             export AR="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-ar"
             export STRIP="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST-strip"
+            ;;
+        freebsd)
+            export CC="clang-$FREEBSD_CLANG_VER"
+            export CPP="clang-cpp-$FREEBSD_CLANG_VER"
+            export CXX="clang++-$FREEBSD_CLANG_VER"
+            unset AR
+            unset STRIP
             ;;
         *)
             TOOLCHAIN_PATH=$BUILDROOT_HOME/buildroot
@@ -574,6 +613,12 @@ build_bin()
     export LDFLAGS=""
     export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
 
+    if [ $PLATFORM == "freebsd" ]; then
+        export CXXFLAGS="-Os --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1"
+        export CFLAGS=$CXXFLAGS
+        export CPPFLAGS=$CXXFLAGS
+    fi
+
     build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
     build_lib "https://zlib.net/zlib-$ZLIB_VERSION.tar.gz"
     build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v$LIBXML2_VERSION.tar.gz"
@@ -583,17 +628,26 @@ build_bin()
     build_7zip
     build_unrar
 
+    export INCLUDES="$NZBGET_INCLUDES"
+    CMAKE_SYSTEM_NAME="Linux"
+    CMAKE_EXTRA_ARGS=""
+    TOOLCHAIN_PREFIX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST"
     case $PLATFORM in
         android)
             export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -latomic"
-            CMAKE_EXTRA_ARGS="-DCOMPILER=clang"
+            CMAKE_EXTRA_ARGS="-DCOMPILER=clang -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
+            ;;
+        freebsd)
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -lc++"
+            export INCLUDES="$NZBGET_INCLUDES;$FREEBSD_SYSROOT/usr/include/c++/v1"
+            CMAKE_SYSTEM_NAME="FreeBSD"
+            CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT"
             ;;
         *)
             export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-            CMAKE_EXTRA_ARGS=""
+            CMAKE_EXTRA_ARGS="-DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
     esac
-    export INCLUDES="$NZBGET_INCLUDES"
 
     unset CXXFLAGS
     unset CPPFLAGS
@@ -607,10 +661,9 @@ build_bin()
 
     mkdir -p $OUTPUTDIR/$ARCH
     cmake -S . -B $OUTPUTDIR/$ARCH \
-        -DCMAKE_SYSTEM_NAME=Linux \
+        -DCMAKE_SYSTEM_NAME=$CMAKE_SYSTEM_NAME \
         -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_SYSTEM_PROCESSOR \
         -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
-        -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST \
         -DENABLE_STATIC=ON \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
         -DVERSION_SUFFIX=$VERSION_SUFFIX \

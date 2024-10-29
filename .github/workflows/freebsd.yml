@@ -1,4 +1,4 @@
-name: android build
+name: freebsd build 
 
 on:
   workflow_call:
@@ -6,10 +6,10 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, nzbget-android]
+    runs-on: [self-hosted, nzbget-freebsd]
 
     steps:
-
+    
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -17,7 +17,7 @@ jobs:
 
     - name: Build
       run: |
-        BUILD_PARAMS="android bin installer"
+        BUILD_PARAMS="freebsd bin installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
@@ -32,16 +32,16 @@ jobs:
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android.run"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-freebsd.run"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-android.run/$SUFFIX}
+          NEW_FILE=${FILE/-bin-freebsd.run/$SUFFIX}
           mv $FILE $NEW_FILE
         done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-android-installers
+        name: nzbget-freebsd-installers
         path: build/*.run
         retention-days: 5
