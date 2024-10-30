@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,22 +15,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-#include <filesystem>
-
+#include "FileSystem.h"
 #include "DupeMatcher.h"
+#include "TestUtil.h"
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
-	const std::string testDataDir = std::filesystem::current_path().string() + "/rarrenamer";
+	const std::string testDataDir = TestUtil::WorkingDir() + "/rarrenamer";
 	const std::string workingDir = testDataDir + "/DupeMatcher";
-	std::filesystem::create_directory(workingDir);
+	FileSystem::CreateDirectory(workingDir.c_str());
 
 	CString errmsg;
 
@@ -37,11 +38,11 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 
 	std::string dupe1(workingDir + "/dupe1");
 	BOOST_CHECK(FileSystem::ForceDirectories(dupe1.c_str(), errmsg));
-	std::filesystem::copy(dupe1, testDataDir + "/parchecker");
+	FileSystem::CopyFile(dupe1.c_str(), (testDataDir + "/parchecker").c_str());
 
 	std::string dupe2(workingDir + "/dupe2");
 	BOOST_CHECK(FileSystem::ForceDirectories(dupe2.c_str(), errmsg));
-	std::filesystem::copy(dupe2, testDataDir + "/parchecker");
+	FileSystem::CopyFile(dupe2.c_str(), (testDataDir + "/parchecker").c_str());
 	FileSystem::DeleteFile((dupe2 + "/testfile.nfo").c_str());
 
 	std::string rardupe1(testDataDir + "/dupematcher1");
@@ -49,7 +50,7 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 
 	std::string nondupe(workingDir + "/nondupe");
 	BOOST_CHECK(FileSystem::ForceDirectories(nondupe.c_str(), errmsg));
-	std::filesystem::copy(nondupe, testDataDir + "/parchecker");
+	FileSystem::CopyFile(nondupe.c_str(), (testDataDir + "/parchecker").c_str());
 	remove((nondupe + "/testfile.dat").c_str());
 
 	// now test
