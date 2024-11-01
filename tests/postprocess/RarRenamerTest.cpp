@@ -30,7 +30,7 @@
 #include "TestUtil.h"
 
 static std::string currDir = FileSystem::GetCurrentDirectory().Str();
-static std::string testDataDir = currDir + "/" + "rarrenamer";
+static std::string testDataDir = currDir + PATH_SEPARATOR + "rarrenamer";
 
 class RarRenamerMock : public RarRenamer
 {
@@ -54,7 +54,7 @@ RarRenamerMock::RarRenamerMock(std::string workingDir) : m_workingDir(std::move(
 
 BOOST_AUTO_TEST_CASE(RarRenameNotNeededTest)
 {
-	RarRenamerMock rarRenamer(currDir + "/" + "RarRenameNotNeededTest");
+	RarRenamerMock rarRenamer(currDir + PATH_SEPARATOR + "RarRenameNotNeededTest");
 
 	rarRenamer.Execute();
 
@@ -63,12 +63,12 @@ BOOST_AUTO_TEST_CASE(RarRenameNotNeededTest)
 
 BOOST_AUTO_TEST_CASE(RarRenameNotNeeded2Test)
 {
-	std::string workingDir = currDir + "/" + "RarRenameNotNeeded2Test";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RarRenameNotNeeded2Test";
 
-	std::string testFile = workingDir + "/testfile5.part02.rar";
-	std::string testFile2 = workingDir + "/testfile3oldnam.r00";
-	std::string renamedTestFile = workingDir + "/12348";
-	std::string renamedTestFile2 = workingDir + "/testfile3oldnamB.r00";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile5.part02.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3oldnam.r00";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "testfile3oldnamB.r00";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -82,14 +82,14 @@ BOOST_AUTO_TEST_CASE(RarRenameNotNeeded2Test)
 
 BOOST_AUTO_TEST_CASE(RarRenameSlowDataTest)
 {
-	std::string workingDir = currDir + "/" + "RarRenameSlowDataTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RarRenameSlowDataTest";
 
-	std::string testFile = workingDir + "/testfile3.part01.rar";
-	std::string testFile2 = workingDir + "/testfile3.part02.rar";
-	std::string testFile3 = workingDir + "/testfile3.part03.rar";
-	std::string renamedTestFile = workingDir + "/12348";
-	std::string renamedTestFile2 = workingDir + "/12342";
-	std::string renamedTestFile3 = workingDir + "/12346";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile3.part03.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12342";
+	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12346";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -104,14 +104,14 @@ BOOST_AUTO_TEST_CASE(RarRenameSlowDataTest)
 
 BOOST_AUTO_TEST_CASE(RenameRar5Test)
 {
-	std::string workingDir = currDir + "/" + "RarRenameSlowDataTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RarRenameSlowDataTest";
 
-	std::string testFile = workingDir + "/testfile5.part01.rar";
-	std::string testFile2 = workingDir + "/testfile5.part02.rar";
-	std::string testFile3 = workingDir + "/testfile5.part03.rar";
-	std::string renamedTestFile = workingDir + "/12348";
-	std::string renamedTestFile2 = workingDir + "/12342";
-	std::string renamedTestFile3 = workingDir + "/12346";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile5.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile5.part02.rar";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile5.part03.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12342";
+	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12346";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -126,13 +126,13 @@ BOOST_AUTO_TEST_CASE(RenameRar5Test)
 
 BOOST_AUTO_TEST_CASE(MissingPartsTest)
 {
-	std::string workingDir = currDir + "/" + "RarRenameSlowDataTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RarRenameSlowDataTest";
 
-	std::string testFile = workingDir + "/testfile5.part01.rar";
-	std::string testFile2 = workingDir + "/testfile5.part02.rar";
-	std::string testFile3 = workingDir + "/testfile5.part03.rar";
-	std::string renamedTestFile = workingDir + "/12348";
-	std::string renamedTestFile2 = workingDir + "/12343";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile5.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile5.part02.rar";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile5.part03.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12343";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -147,12 +147,12 @@ BOOST_AUTO_TEST_CASE(MissingPartsTest)
 
 BOOST_AUTO_TEST_CASE(RenameRar3BadNamingTest)
 {
-	std::string workingDir = currDir + "/" + "RenameRar3BadNamingTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3BadNamingTest";
 
-	std::string testFile = workingDir + "/testfile3.part01.rar";
-	std::string testFile2 = workingDir + "/testfile3.part02.rar";
-	std::string renamedTestFile = workingDir + "/testfile3.part04.rar";
-	std::string renamedTestFile2 = workingDir + "/testfile3.part01.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfile3.part04.rar";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "testfile3.part01.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -166,10 +166,10 @@ BOOST_AUTO_TEST_CASE(RenameRar3BadNamingTest)
 
 BOOST_AUTO_TEST_CASE(Rar3BadNaming2)
 {
-	std::string workingDir = currDir + "/" + "Rar3BadNaming2";
+	std::string workingDir = currDir + PATH_SEPARATOR + "Rar3BadNaming2";
 
-	std::string testFile = workingDir + "/testfile3.part02.rar";
-	std::string renamedTestFile = workingDir + "/testfile3.part2.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfile3.part2.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -182,10 +182,10 @@ BOOST_AUTO_TEST_CASE(Rar3BadNaming2)
 
 BOOST_AUTO_TEST_CASE(RenameRar3BadNaming3Test)
 {
-	std::string workingDir = currDir + "/" + "RenameRar3BadNaming3Test";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3BadNaming3Test";
 
-	std::string testFile = workingDir + "/testfile3.part02.rar";
-	std::string renamedTestFile = workingDir + "/testfile3-1.part02.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfile3-1.part02.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -198,10 +198,10 @@ BOOST_AUTO_TEST_CASE(RenameRar3BadNaming3Test)
 
 BOOST_AUTO_TEST_CASE(RenameRar3BadNaming4Test)
 {
-	std::string workingDir = currDir + "/" + "RenameRar3BadNaming4Test";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3BadNaming4Test";
 
-	std::string testFile = workingDir + "/testfile3.part02.rar";
-	std::string renamedTestFile = workingDir + "/testfil-3.part02.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfil-3.part02.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -214,10 +214,10 @@ BOOST_AUTO_TEST_CASE(RenameRar3BadNaming4Test)
 
 BOOST_AUTO_TEST_CASE(RenameRar3BadNaming5Test)
 {
-	std::string workingDir = currDir + "/" + "RenameRar3BadNaming5Test";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3BadNaming5Test";
 
-	std::string testFile = workingDir + "/testfile3oldnam.rar";
-	std::string renamedTestFile = workingDir + "/testfile3oldnamA.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3oldnam.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfile3oldnamA.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -230,14 +230,14 @@ BOOST_AUTO_TEST_CASE(RenameRar3BadNaming5Test)
 
 BOOST_AUTO_TEST_CASE(RenameRar3BadNaming6Test)
 {
-	std::string workingDir = currDir + "/" + "RenameRar3BadNaming6Test";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3BadNaming6Test";
 
-	std::string testFile = workingDir + "/testfile3oldnam.rar";
-	std::string testFile2 = workingDir + "/testfile3oldnam.r00";
-	std::string testFile3 = workingDir + "/testfile3oldnam.r01";
-	std::string renamedTestFile = workingDir + "/testfile3oldnamA.rar";
-	std::string renamedTestFile2 = workingDir + "/testfile3oldnamB.r00";
-	std::string renamedTestFile3 = workingDir + "/testfile3oldnamA.r01";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3oldnam.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3oldnam.r00";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile3oldnam.r01";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "testfile3oldnamA.rar";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "testfile3oldnamB.r00";
+	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "testfile3oldnamA.r01";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -252,20 +252,20 @@ BOOST_AUTO_TEST_CASE(RenameRar3BadNaming6Test)
 
 BOOST_AUTO_TEST_CASE(RenameTwoSetsTest)
 {
-	std::string workingDir = currDir + "/" + "RenameTwoSetsTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameTwoSetsTest";
 
-	std::string testFile = workingDir + "/testfile3.part01.rar";
-	std::string testFile2 = workingDir + "/testfile3.part02.rar";
-	std::string testFile3 = workingDir + "/testfile3.part03.rar";
-	std::string testFile4 = workingDir + "/testfile5.part01.rar";
-	std::string testFile5 = workingDir + "/testfile5.part02.rar";
-	std::string testFile6 = workingDir + "/testfile5.part03.rar";
-	std::string renamedTestFile = workingDir + "/12345";
-	std::string renamedTestFile2 = workingDir + "/12342";
-	std::string renamedTestFile3 = workingDir + "/12346";
-	std::string renamedTestFile4 = workingDir + "/12348";
-	std::string renamedTestFile5 = workingDir + "/12343";
-	std::string renamedTestFile6 = workingDir + "/12344";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile3.part03.rar";
+	std::string testFile4 = workingDir + PATH_SEPARATOR + "testfile5.part01.rar";
+	std::string testFile5 = workingDir + PATH_SEPARATOR + "testfile5.part02.rar";
+	std::string testFile6 = workingDir + PATH_SEPARATOR + "testfile5.part03.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12345";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12342";
+	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12346";
+	std::string renamedTestFile4 = workingDir + PATH_SEPARATOR + "12348";
+	std::string renamedTestFile5 = workingDir + PATH_SEPARATOR + "12343";
+	std::string renamedTestFile6 = workingDir + PATH_SEPARATOR + "12344";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -283,18 +283,18 @@ BOOST_AUTO_TEST_CASE(RenameTwoSetsTest)
 
 BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 {
-	std::string workingDir = currDir + "/" + "RenameTwoSetsTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameTwoSetsTest";
 
-	std::string testFile = workingDir + "/testfile3.part01.rar";
-	std::string testFile2 = workingDir + "/testfile3.part02.rar";
-	std::string testFile3 = workingDir + "/testfile3.part03.rar";
-	std::string testFile4 = workingDir + "/testfile5.part01.rar";
-	std::string testFile5 = workingDir + "/testfile5.part02.rar";
-	std::string testFile6 = workingDir + "/testfile5.part03.rar";
-	std::string renamedTestFile = workingDir + "/12345";
-	std::string renamedTestFile2 = workingDir + "/12342";
-	std::string renamedTestFile3 = workingDir + "/12346";
-	std::string renamedTestFile4 = workingDir + "/testfile3.dat.part0001.rar";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3.part01.rar";
+	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3.part02.rar";
+	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile3.part03.rar";
+	std::string testFile4 = workingDir + PATH_SEPARATOR + "testfile5.part01.rar";
+	std::string testFile5 = workingDir + PATH_SEPARATOR + "testfile5.part02.rar";
+	std::string testFile6 = workingDir + PATH_SEPARATOR + "testfile5.part03.rar";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12345";
+	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12342";
+	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12346";
+	std::string renamedTestFile4 = workingDir + PATH_SEPARATOR + "testfile3.dat.part0001.rar";
 
 	RarRenamerMock rarRenamer(workingDir);
 
@@ -314,14 +314,14 @@ BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 
 // BOOST_AUTO_TEST_CASE(RenameRar5EncryptedTest)
 // {
-// 	std::string workingDir = currDir + "/" + "RenameRar5EncryptedTest";
+// 	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar5EncryptedTest";
 
-// 	std::string testFile = workingDir + "/testfile5encnam.part01.rar";
-// 	std::string testFile2 = workingDir + "/testfile5encnam.part02.rar";
-// 	std::string testFile3 = workingDir + "/testfile5encnam.part03.rar";
-// 	std::string renamedTestFile = workingDir + "/12348";
-// 	std::string renamedTestFile2 = workingDir + "/12343";
-// 	std::string renamedTestFile3 = workingDir + "/12344";
+// 	std::string testFile = workingDir + PATH_SEPARATOR + "testfile5encnam.part01.rar";
+// 	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile5encnam.part02.rar";
+// 	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile5encnam.part03.rar";
+// 	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+// 	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12343";
+// 	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12344";
 
 // 	RarRenamerMock rarRenamer(workingDir);
 // 	rarRenamer.SetPassword("123");
@@ -337,14 +337,14 @@ BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 
 // BOOST_AUTO_TEST_CASE(RenameRar3EncryptedTest)
 // {
-// 	std::string workingDir = currDir + "/" + "RenameRar3EncryptedTest";
+// 	std::string workingDir = currDir + PATH_SEPARATOR + "RenameRar3EncryptedTest";
 
-// 	std::string testFile = workingDir + "/testfile3encnam.part01.rar";
-// 	std::string testFile2 = workingDir + "/testfile3encnam.part02.rar";
-// 	std::string testFile3 = workingDir + "/testfile3encnam.part03.rar";
-// 	std::string renamedTestFile = workingDir + "/12348";
-// 	std::string renamedTestFile2 = workingDir + "/12343";
-// 	std::string renamedTestFile3 = workingDir + "/12344";
+// 	std::string testFile = workingDir + PATH_SEPARATOR + "testfile3encnam.part01.rar";
+// 	std::string testFile2 = workingDir + PATH_SEPARATOR + "testfile3encnam.part02.rar";
+// 	std::string testFile3 = workingDir + PATH_SEPARATOR + "testfile3encnam.part03.rar";
+// 	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "12348";
+// 	std::string renamedTestFile2 = workingDir + PATH_SEPARATOR + "12343";
+// 	std::string renamedTestFile3 = workingDir + PATH_SEPARATOR + "12344";
 
 // 	RarRenamerMock rarRenamer(workingDir);
 // 	rarRenamer.SetPassword("123");

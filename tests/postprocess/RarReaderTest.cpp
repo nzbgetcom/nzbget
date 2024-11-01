@@ -27,12 +27,12 @@
 #include "FileSystem.h"
 
 static std::string currDir = FileSystem::GetCurrentDirectory().Str();
-static std::string testDataDir = currDir + "/" + "rarrenamer";
+static std::string testDataDir = currDir + PATH_SEPARATOR + "rarrenamer";
 
 BOOST_AUTO_TEST_CASE(Rar3Test)
 {
 	{
-		RarVolume volume((testDataDir + "/testfile3.part01.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3.part01.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(Rar3Test)
 		BOOST_CHECK(volume.GetVolumeNo() == 0);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile3.part02.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3.part02.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(Rar3Test)
 		BOOST_CHECK(volume.GetVolumeNo() == 1);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile3.part03.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3.part03.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(Rar3Test)
 BOOST_AUTO_TEST_CASE(Rar5Test)
 {
 	{
-		RarVolume volume((testDataDir + "/testfile5.part01.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5.part01.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 5);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(Rar5Test)
 		BOOST_CHECK(volume.GetVolumeNo() == 1);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile5.part03.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5.part03.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 5);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(Rar3OldNamingTest)
 		BOOST_CHECK(volume.GetVolumeNo() == 0);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile3oldnam.r00").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3oldnam.r00").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -118,7 +118,7 @@ BOOST_AUTO_TEST_CASE(Rar3OldNamingTest)
 BOOST_AUTO_TEST_CASE(Rar3EncryptedDataTest)
 {
 	{
-		RarVolume volume((testDataDir + "/testfile3encdata.part01.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encdata.part01.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(Rar3EncryptedDataTest)
 		BOOST_CHECK(volume.GetVolumeNo() == 1);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile3encdata.part03.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encdata.part03.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(Rar3EncryptedDataTest)
 BOOST_AUTO_TEST_CASE(Rar5EncryptedDataTest)
 {
 	{
-		RarVolume volume((testDataDir + "/testfile5encdata.part01.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encdata.part01.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 5);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(Rar5EncryptedDataTest)
 		BOOST_CHECK(volume.GetVolumeNo() == 0);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile5encdata.part02.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encdata.part02.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 5);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(Rar5EncryptedDataTest)
 		BOOST_CHECK(volume.GetVolumeNo() == 1);
 	}
 	{
-		RarVolume volume((testDataDir + "/testfile5encdata.part03.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encdata.part03.rar").c_str());
 		BOOST_CHECK(volume.Read() == true);
 		BOOST_CHECK(volume.GetVersion() == 5);
 		BOOST_CHECK(volume.GetMultiVolume() == true);
@@ -174,14 +174,14 @@ BOOST_AUTO_TEST_CASE(Rar5EncryptedDataTest)
 BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 {
 	{
-		RarVolume volume((testDataDir + "/testfile3encnam.part01.rar").c_str());
+		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encnam.part01.rar").c_str());
 		BOOST_CHECK(volume.Read() == false);
 		BOOST_CHECK(volume.GetVersion() == 3);
 		BOOST_CHECK(volume.GetEncrypted() == true);
 	}
 
 	// {
-	// 	RarVolume volume((testDataDir + "/testfile3encnam.part01.rar").c_str());
+	// 	RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encnam.part01.rar").c_str());
 	// 	volume.SetPassword("123");
 	// 	BOOST_CHECK(volume.Read() == true);
 	// 	BOOST_CHECK(volume.GetVersion() == 3);
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 	// 	BOOST_CHECK(volume.GetVolumeNo() == 0);
 	// }
 	// {
-	// 	RarVolume volume((testDataDir + "/testfile3encnam.part02.rar").c_str());
+	// 	RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encnam.part02.rar").c_str());
 	// 	volume.SetPassword("123");
 	// 	BOOST_CHECK(volume.Read() == true);
 	// 	BOOST_CHECK(volume.GetVersion() == 3);
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 // BOOST_AUTO_TEST_CASE(Rar5EncryptedNames)
 // {
 // 	{
-// 		RarVolume volume((testDataDir + "/testfile5encnam.part01.rar").c_str());
+// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part01.rar").c_str());
 // 		volume.SetPassword("123");
 // 		BOOST_CHECK(volume.Read() == true);
 // 		BOOST_CHECK(volume.GetVersion() == 5);
@@ -221,7 +221,7 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 // 		BOOST_CHECK(volume.GetVolumeNo() == 0);
 // 	}
 // 	{
-// 		RarVolume volume((testDataDir + "/testfile5encnam.part02.rar").c_str());
+// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part02.rar").c_str());
 // 		volume.SetPassword("123");
 // 		BOOST_CHECK(volume.Read() == true);
 // 		BOOST_CHECK(volume.GetVersion() == 5);
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 // 	}
 
 // 	{
-// 		RarVolume volume((testDataDir + "/testfile5encnam.part01.rar").c_str());
+// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part01.rar").c_str());
 // 		BOOST_CHECK(volume.Read() == false);
 // 		BOOST_CHECK(volume.GetVersion() == 5);
 // 		BOOST_CHECK(volume.GetEncrypted() == true);
