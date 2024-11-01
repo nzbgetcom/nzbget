@@ -30,7 +30,7 @@
 #include "TestUtil.h"
 
 static std::string currDir = FileSystem::GetCurrentDirectory().Str();
-static std::string testDataDir = currDir + "/" + "parchecker";
+static std::string testDataDir = currDir + PATH_SEPARATOR + "parchecker";
 
 class ParRenamerMock : public ParRenamer
 {
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(RenameNotNeededTest)
 	cmdOpts.push_back("ParRename=yes");
 	Options options(&cmdOpts, nullptr);
 
-	ParRenamerMock parRenamer(currDir + "/" + "RenameNotNeededTest");
+	ParRenamerMock parRenamer(currDir + PATH_SEPARATOR + "RenameNotNeededTest");
 	parRenamer.Execute();
 
 	BOOST_CHECK(parRenamer.GetRenamedCount() == 0);
@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(RenameSuccessfulTest)
 	cmdOpts.push_back("ParRename=yes");
 	Options options(&cmdOpts, nullptr);
 
-	std::string workingDir = currDir + "/" + "RenameSuccessfulTest";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameSuccessfulTest";
 	std::string testFile = workingDir + "/testfile.dat";
 	std::string renamedTestFile = workingDir + "/123456";
 
@@ -98,10 +98,10 @@ BOOST_AUTO_TEST_CASE(DetectingMissingTest)
 	cmdOpts.push_back("ParRename=yes");
 	Options options(&cmdOpts, nullptr);
 
-	std::string workingDir = currDir + "/" + "DetectingMissingTest";
-	std::string testFile = workingDir + "/testfile.dat";
-	std::string testFileNfo = workingDir + "/testfile.nfo";
-	std::string renamedTestFile = workingDir + "/123456";
+	std::string workingDir = currDir + PATH_SEPARATOR + "DetectingMissingTest";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile.dat";
+	std::string testFileNfo = workingDir + PATH_SEPARATOR + "testfile.nfo";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "123456";
 
 	ParRenamerMock parRenamer(workingDir);
 
@@ -121,11 +121,11 @@ BOOST_AUTO_TEST_CASE(RenameDupeParTest)
 	cmdOpts.push_back("ParRename=yes");
 	Options options(&cmdOpts, nullptr);
 
-	std::string workingDir = currDir + "/" + "RenameDupeParTest";
-	std::string testFile = workingDir + "/testfile.dat";
-	std::string renamedTestFile = workingDir + "/123456";
-	std::string testFilePar = workingDir + "/testfile.vol00+1.PAR2";
-	std::string renamedTestFilePar = workingDir + "/testfil2.par2";
+	std::string workingDir = currDir + PATH_SEPARATOR + "RenameDupeParTest";
+	std::string testFile = workingDir + PATH_SEPARATOR + "testfile.dat";
+	std::string renamedTestFile = workingDir + PATH_SEPARATOR + "123456";
+	std::string testFilePar = workingDir + PATH_SEPARATOR + "testfile.vol00+1.PAR2";
+	std::string renamedTestFilePar = workingDir + PATH_SEPARATOR + "testfil2.par2";
 	
 	ParRenamerMock parRenamer(workingDir);
 
@@ -145,9 +145,9 @@ BOOST_AUTO_TEST_CASE(NoParExtensionTest)
 	cmdOpts.push_back("ParRename=yes");
 	Options options(&cmdOpts, nullptr);
 
-	std::string workingDir = currDir + "/" + "NoParExtensionTest";
-	std::string testFilePar = workingDir + "/testfile.par2";
-	std::string renamedTestFilePar = workingDir + "/testfile";
+	std::string workingDir = currDir + PATH_SEPARATOR + "NoParExtensionTest";
+	std::string testFilePar = workingDir + PATH_SEPARATOR + "testfile.par2";
+	std::string renamedTestFilePar = workingDir + PATH_SEPARATOR + "testfile";
 
 	ParRenamerMock parRenamer(workingDir);
 	BOOST_CHECK(FileSystem::MoveFile(testFilePar.c_str(), renamedTestFilePar.c_str()));

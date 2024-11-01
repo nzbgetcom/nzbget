@@ -30,7 +30,7 @@
 #include "YEncode.h"
 
 static std::string currDir = FileSystem::GetCurrentDirectory().Str();
-static std::string testDataDir = currDir + "/" + "parchecker";
+static std::string testDataDir = currDir + PATH_SEPARATOR + "parchecker";
 
 class ParCheckerMock : public ParChecker
 {
@@ -67,7 +67,7 @@ void ParCheckerMock::Execute()
 
 void ParCheckerMock::CorruptFile(const char* filename, int offset)
 {
-	std::string fullfilename(m_workingDir + "/" + filename);
+	std::string fullfilename(m_workingDir + PATH_SEPARATOR + filename);
 
 	FILE* file = fopen(fullfilename.c_str(), FOPEN_RBP);
 	BOOST_REQUIRE(file != nullptr);
@@ -82,7 +82,7 @@ void ParCheckerMock::CorruptFile(const char* filename, int offset)
 
 ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, uint32* crc, SegmentList* segments)
 {
-	std::string crcFileName = m_workingDir + "/crc.txt";
+	std::string crcFileName = m_workingDir + PATH_SEPARATOR + "crc.txt";
 	std::ifstream sm(crcFileName);
 	std::string smfilename, smcrc;
 	while (!sm.eof())
@@ -91,7 +91,7 @@ ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, ui
 		if (smfilename == filename)
 		{
 			*crc = strtoul(smcrc.c_str(), nullptr, 16);
-			uint32 realCrc = CalcFileCrc((m_workingDir + "/" + filename).c_str());
+			uint32 realCrc = CalcFileCrc((m_workingDir + PATH_SEPARATOR + filename).c_str());
 			return *crc == realCrc ? ParChecker::fsSuccess : ParChecker::fsUnknown;
 		}
 	}
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(RepairNoNeedTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "RepairNoNeedTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairNoNeedTest");
 	parChecker.Execute();
 
 	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(RepairPossibleTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "RepairPossibleTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairPossibleTest");
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(RepairSuccessfulTest)
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "RepairSuccessfulTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairSuccessfulTest");
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(RepairFailedTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "RepairSuccessfulTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairSuccessfulTest");
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + "/" + "QuickVerificationRepairNotNeededTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickVerificationRepairNotNeededTest");
 	parChecker.SetParQuick(true);
 	parChecker.Execute();
 
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + "/" + "QuickVerificationRepairSuccessfulTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickVerificationRepairSuccessfulTest");
 	parChecker.SetParQuick(true);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + "/" + "QuickFullVerificationRepairSuccessfulTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickFullVerificationRepairSuccessfulTest");
 	parChecker.SetParQuick(true);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.nfo", 100);
@@ -244,7 +244,7 @@ BOOST_AUTO_TEST_CASE(ParIgnoreExtDatTest)
 
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "ParIgnoreExtDatTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "ParIgnoreExtDatTest");
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(ExtCleanupDiskDatTest)
 
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + "/" + "ExtCleanupDiskDatTest");
+	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "ExtCleanupDiskDatTest");
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
