@@ -66,6 +66,8 @@ Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.m
 
 `Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), MIPS (mipseb mipsel), PowerPC (ppc6xx ppc500), RISC-V 64-bit (riscv64)
 
+`FreeBSD`: FreeBSD 13.0+ x86_64
+
 `macOS`: X64 binary: macOS Mojave 10.14+, Universal (Intel / Apple Silicon) binary: macOS Monterey 12+
 
 ## Building from sources
