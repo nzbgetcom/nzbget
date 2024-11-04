@@ -16,7 +16,9 @@ find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
-set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2)
+include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
+
+set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2 winmm.lib)
 set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
 if(NOT DISABLE_TLS)

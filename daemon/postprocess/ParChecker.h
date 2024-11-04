@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -22,6 +23,11 @@
 #define PARCHECKER_H
 
 #ifndef DISABLE_PARCHECK
+
+#include <string>
+#include <vector>
+
+#include <par2/par2repairer.h>
 
 #include "NString.h"
 #include "Container.h"
@@ -33,6 +39,8 @@ class Repairer;
 class ParChecker
 {
 public:
+	virtual ~ParChecker() = default;
+
 	enum EStatus
 	{
 		psFailed,
@@ -57,11 +65,11 @@ public:
 	};
 
 	void Execute();
-	void SetDestDir(const char* destDir) { m_destDir = destDir; }
-	const char* GetParFilename() { return m_parFilename; }
-	const char* GetInfoName() { return m_infoName; }
-	void SetInfoName(const char* infoName) { m_infoName = infoName; }
-	void SetNzbName(const char* nzbName) { m_nzbName = nzbName; }
+	void SetDestDir(const char* destDir) { m_destDir = destDir ? destDir : ""; }
+	const char* GetParFilename() { return m_parFilename.c_str(); }
+	const char* GetInfoName() { return m_infoName.c_str(); }
+	void SetInfoName(const char* infoName) { m_infoName = infoName ? infoName : ""; }
+	void SetNzbName(const char* nzbName) { m_nzbName = nzbName ? nzbName : ""; }
 	void SetParQuick(bool parQuick) { m_parQuick = parQuick; }
 	bool GetParQuick() { return m_parQuick; }
 	void SetForceRepair(bool forceRepair) { m_forceRepair = forceRepair; }
@@ -77,8 +85,12 @@ protected:
 	class Segment
 	{
 	public:
-		Segment(bool success, int64 offset, int size, uint32 crc) :
-			m_success(success), m_offset(offset), m_size(size), m_crc(crc) {}
+		Segment(bool success, int64 offset, int size, uint32 crc) 
+			: m_success(success)
+			, m_offset(offset)
+			, m_size(size)
+			, m_crc(crc) 
+		{}
 		bool GetSuccess() { return m_success; }
 		int64 GetOffset() { return m_offset; }
 		int GetSize() { return m_size; }
@@ -96,16 +108,18 @@ protected:
 	class DupeSource
 	{
 	public:
-		DupeSource(int id, const char* directory) :
-			m_id(id), m_directory(directory) {}
+		DupeSource(int id, const char* directory) 
+			: m_id(id)
+			, m_directory(directory ? directory : "") 
+		{}
 		int GetId() { return m_id; }
-		const char* GetDirectory() { return m_directory; }
+		const char* GetDirectory() { return m_directory.c_str(); }
 		int GetUsedBlocks() { return m_usedBlocks; }
 		void SetUsedBlocks(int usedBlocks) { m_usedBlocks = usedBlocks; }
 
 	private:
 		int m_id;
-		CString m_directory;
+		std::string m_directory;
 		int m_usedBlocks = 0;
 	};
 
@@ -136,7 +150,7 @@ protected:
 	virtual void RequestDupeSources(DupeSourceList* dupeSourceList) {}
 	virtual void StatDupeSources(DupeSourceList* dupeSourceList) {}
 	EStage GetStage() { return m_stage; }
-	const char* GetProgressLabel() { return m_progressLabel; }
+	const char* GetProgressLabel() { return m_progressLabel.c_str(); }
 	int GetFileProgress() { return m_fileProgress; }
 	int GetStageProgress() { return m_stageProgress; }
 
@@ -149,45 +163,47 @@ private:
 	private:
 		ParChecker* m_owner;
 		Message::EKind m_kind;
-		StringBuilder m_buffer;
+		std::string m_buffer;
 	};
 
-	typedef std::deque<CString> FileList;
+	typedef std::deque<std::string> FileList;
 	typedef std::deque<void*> SourceList;
 	typedef std::vector<bool> ValidBlocks;
 
-	CString m_infoName;
-	CString m_destDir;
-	CString m_nzbName;
-	const char* m_parFilename = nullptr;
-	EStatus m_status = psFailed;
-	EStage m_stage;
-	CString m_errMsg;
-	FileList m_queuedParFiles;
-	Mutex m_queuedParFilesMutex;
 	bool m_queuedParFilesChanged;
-	FileList m_processedFiles;
-	int m_processedCount;
-	int m_filesToRepair;
-	int m_extraFiles;
-	int m_quickFiles;
 	bool m_verifyingExtraFiles;
-	CString m_progressLabel;
-	int m_fileProgress;
-	int m_stageProgress;
 	bool m_cancelled;
-	SourceList m_sourceFiles;
-	std::string m_lastFilename;
 	bool m_hasDamagedFiles;
 	bool m_parQuick = false;
 	bool m_forceRepair = false;
 	bool m_parFull = false;
+	int m_processedCount;
+	int m_filesToRepair;
+	int m_extraFiles;
+	int m_quickFiles;
+	int m_fileProgress;
+	int m_stageProgress;
+	std::string m_infoName;
+	std::string m_destDir;
+	std::string m_nzbName;
+	std::string m_parFilename;
+	std::string m_progressLabel;
+	std::string m_errMsg;
+	EStatus m_status = psFailed;
+	EStage m_stage;
+	FileList m_queuedParFiles;
+	FileList m_processedFiles;
+	SourceList m_sourceFiles;
 	DupeSourceList m_dupeSources;
 	StreamBuf m_parOutStream{this, Message::mkDetail};
 	StreamBuf m_parErrStream{this, Message::mkError};
 	std::ostream m_parCout{&m_parOutStream};
 	std::ostream m_parCerr{&m_parErrStream};
-	Mutex m_repairerMutex;
+	std::mutex m_queuedParFilesMtx;
+	std::mutex m_repairerMtx;
+	std::mutex m_sigFileNameMtx;
+	std::mutex m_sigProgressMtx;
+	std::mutex m_sigDoneMtx;
 
 	// "m_repairer" should be of type "Par2::Par2Repairer", however to prevent the
 	// including of libpar2-headers into this header-file we use an empty abstract class.
@@ -208,20 +224,17 @@ private:
 	bool IsProcessedFile(const char* filename);
 	void SaveSourceList();
 	void DeleteLeftovers();
-	void signal_filename(std::string str);
-	void signal_progress(int progress);
-	void signal_done(std::string str, int available, int total);
-	// declared as void* to prevent the including of libpar2-headers into this header-file
-	// Par2::DiskFile* pDiskfile, Par2::Par2RepairerSourceFile* pSourcefile
-	EFileStatus VerifyDataFile(void* diskfile, void* sourcefile, int* availableBlocks);
-	bool VerifySuccessDataFile(void* diskfile, void* sourcefile, uint32 downloadCrc);
-	bool VerifyPartialDataFile(void* diskfile, void* sourcefile, SegmentList* segments, ValidBlocks* validBlocks);
-	void SortExtraFiles(void* extrafiles);
-	bool SmartCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, SegmentList* segments,
-		uint32* downloadCrc);
-	bool DumbCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, uint32* downloadCrc);
+	void SignalFilename(std::string str);
+	void SignalProgress(int progress);
+	void SignalDone(std::string str, int available, int total);
+	EFileStatus VerifyDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, int& availableBlocks);
+	bool VerifySuccessDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, uint32 downloadCrc);
+	bool VerifyPartialDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, SegmentList& segments, ValidBlocks& validBlocks);
+	void SortExtraFiles(std::vector<std::string>& extrafiles);
+	bool SmartCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, SegmentList& segments, uint32& downloadCrc);
+	bool DumbCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, uint32& downloadCrc);
 	void CheckEmptyFiles();
-	CString GetPacketCreator();
+	std::string GetPacketCreator();
 	bool MaybeSplittedFragement(const char* filename1, const char* filename2);
 
 	friend class Repairer;

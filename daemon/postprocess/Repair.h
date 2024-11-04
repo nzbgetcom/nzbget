@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -48,7 +49,7 @@ protected:
 	bool RequestMorePars(NzbInfo* nzbInfo, const char* parFilename, int blockNeeded, int* blockFound);
 
 private:
-	class PostParChecker: public ParChecker
+	class PostParChecker final : public ParChecker
 	{
 	public:
 		PostInfo* GetPostInfo() { return m_postInfo; }
@@ -67,7 +68,7 @@ private:
 		virtual void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3);
 		virtual void RegisterParredFile(const char* filename);
 		virtual bool IsParredFile(const char* filename);
-		virtual EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments);
+		EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments) override;
 		virtual const char* FindFileOrigname(const char* filename);
 		virtual void RequestDupeSources(DupeSourceList* dupeSourceList);
 		virtual void StatDupeSources(DupeSourceList* dupeSourceList);

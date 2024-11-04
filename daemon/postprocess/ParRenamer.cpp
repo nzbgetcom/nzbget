@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -22,9 +23,9 @@
 
 #ifndef DISABLE_PARCHECK
 
-#include "par2cmdline.h"
-#include "par2repairer.h"
-#include "md5.h"
+#include <par2/libpar2.h>
+#include <par2/par2repairer.h>
+#include <par2/md5.h>
 
 #include "ParRenamer.h"
 #include "ParParser.h"
@@ -33,10 +34,10 @@
 #include "Util.h"
 #include "FileSystem.h"
 
-class ParRenamerRepairer : public Par2::Par2Repairer
+class ParRenamerRepairer final : public Par2::Par2Repairer
 {
 public:
-	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout) {};
+	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlQuiet) {};
 	friend class ParRenamer;
 private:
 	class NullStreamBuf : public std::streambuf {};
@@ -112,9 +113,9 @@ void ParRenamer::LoadMainParFiles(const char* destDir)
 	ParParser::ParFileList parFileList;
 	ParParser::FindMainPars(destDir, &parFileList);
 
-	for (CString& parFilename : parFileList)
+	for (std::string& parFilename : parFileList)
 	{
-		BString<1024> fullParFilename("%s%c%s", destDir, PATH_SEPARATOR, *parFilename);
+		BString<1024> fullParFilename("%s%c%s", destDir, PATH_SEPARATOR, parFilename.c_str());
 		LoadParFile(fullParFilename);
 	}
 }
@@ -177,7 +178,7 @@ void ParRenamer::LoadParFile(const char* parFilename)
 			m_hasDamagedParFiles = true;
 			continue;
 		}
-		std::string filename = Par2::DiskFile::TranslateFilename(sourceFile->GetDescriptionPacket()->FileName());
+		std::string filename = sourceFile->GetDescriptionPacket()->FileName();
 		std::string hash = sourceFile->GetDescriptionPacket()->Hash16k().print();
 
 		bool exists = std::find_if(m_fileHashList.begin(), m_fileHashList.end(),

@@ -13,7 +13,33 @@ add_library(regex STATIC
 	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
 )
 target_include_directories(regex PUBLIC
+	${INCLUDES}
 	${CMAKE_SOURCE_DIR}/lib/regex
+)
+
+set_source_files_properties(
+	${CMAKE_SOURCE_DIR}/lib/yencode/Sse2Decoder.cpp
+	PROPERTIES COMPILE_FLAGS "${SSE2_CXXFLAGS}"
+)
+
+set_source_files_properties(
+	${CMAKE_SOURCE_DIR}/lib/yencode/Ssse3Decoder.cpp
+	PROPERTIES COMPILE_FLAGS "${SSSE3_CXXFLAGS}"
+)
+
+set_source_files_properties(
+	${CMAKE_SOURCE_DIR}/lib/yencode/PclmulCrc.cpp
+	PROPERTIES COMPILE_FLAGS "${PCLMUL_CXXFLAGS}"
+)
+
+set_source_files_properties(
+	${CMAKE_SOURCE_DIR}/lib/yencode/NeonDecoder.cpp
+	PROPERTIES COMPILE_FLAGS "${NEON_CXXFLAGS}"
+)
+
+set_source_files_properties(
+	${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
+	PROPERTIES COMPILE_FLAGS "${ACLECRC_CXXFLAGS}"
 )
 
 add_library(yencode STATIC
@@ -34,66 +60,5 @@ target_include_directories(yencode PUBLIC
 	${INCLUDES}
 )
 
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/Sse2Decoder.cpp
-	PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${SSE2_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/Ssse3Decoder.cpp
-	PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${SSSE3_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/PclmulCrc.cpp
-	PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${PCLMUL_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/NeonDecoder.cpp
-	PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS_RELEASE} ${NEON_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
-	PROPERTIES COMPILE_FLAGS "${CMAKE_CXX_FLAGS} ${ACLECRC_CXXFLAGS}"
-)
-
-if(NOT DISABLE_PARCHECK)
-	add_library(par2 STATIC
-		${CMAKE_SOURCE_DIR}/lib/par2/commandline.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/crc.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/creatorpacket.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/criticalpacket.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/datablock.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/descriptionpacket.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/diskfile.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/filechecksummer.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/galois.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/mainpacket.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/md5.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/par2fileformat.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/par2repairer.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/par2repairersourcefile.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/parheaders.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/recoverypacket.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/reedsolomon.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/verificationhashtable.cpp
-		${CMAKE_SOURCE_DIR}/lib/par2/verificationpacket.cpp
-	)
-	target_include_directories(par2 PUBLIC
-		${CMAKE_SOURCE_DIR}/lib/par2
-		${CMAKE_SOURCE_DIR}/lib/regex
-		${CMAKE_SOURCE_DIR}/daemon/main
-		${CMAKE_SOURCE_DIR}/daemon/util
-		${INCLUDES}
-	)
-endif()
-
 set(LIBS ${LIBS} regex yencode)
 set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/lib/regex ${CMAKE_SOURCE_DIR}/lib/yencode)
-
-if(NOT DISABLE_PARCHECK)
-	set(LIBS ${LIBS} par2)
-	set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/lib/par2)
-endif()
