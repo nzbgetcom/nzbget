@@ -74,6 +74,7 @@ namespace System
 		if (buildNum >= m_win11BuildVersion) m_version = "11";
 		else if (buildNum >= m_win10BuildVersion) m_version = "10";
 		else if (buildNum >= m_win8BuildVersion) m_version = "8";
+		else if (buildNum >= m_win7BuildVersion) m_version = "7";
 		else if (buildNum >= m_winXPBuildVersion) m_version = "XP";
 		else
 		{
