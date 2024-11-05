@@ -1,20 +1,23 @@
 # About
 
-`build-nzbget.sh` is a bash script which is used to build linux and android nzbget packages.
+`build-nzbget.sh` is a bash script which is used to build linux, android and freebsd nzbget packages.
 
 Supported linux architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
 
 Supported android architectures: `i686-ndk` `x86_64-ndk` `armhf-ndk` `aarch64-ndk`
+
+Supported freebsd architectures: `x86_64-bsd`
 
 # Prerequisites
 
 1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
 2. Installed build dependencies (Ubuntu/Debian example):
 ```
-sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5 clang ldd
 ```
 3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
 4. Installed Android NDK and standalone Android toolkits - one per architecture (see [NDK setup](#ndk-setup) below)
+5. Installed FreeBSD x86_64 sysroot (see [FreeBSD sysroot setup](#freebsd-sysroot-setup) below)
 
 # Building NZBGet
 
@@ -24,9 +27,10 @@ bash linux/build-nzbget.sh [platforms] [architectures] [output] [configs] [testi
 ```
 
 Build options:
-- platforms: default value `linux android`
+- platforms: default value `linux android freebsd`
     - linux: build linux packages
     - android: build android packages
+    - freebsd: build freebsd packages
 - architectures: default value `all`
     - linux:
         - armel
@@ -44,6 +48,8 @@ Build options:
         - x86_64-ndk
         - armhf-ndk
         - aarch64-ndk
+    - freebsd:
+        - x86_64-bsd
 - output: default value `bin installer`
     - bin: build binary package
     - installer: build installer package
@@ -135,7 +141,7 @@ for ARCH in aarch64 armel armhf i686 x86_64 riscv64 mipseb mipsel ppc500 ppc6xx;
 
 # NDK setup
 
-Script assumes that andriod toolchains is installed in `/build/android/` - one folder per architecture.
+Script assumes that android toolchains is installed in `/build/android/` - one folder per architecture.
 
 To install Android toolchain and NDK:
 
@@ -153,4 +159,21 @@ bash linux/android/build-toolchain.sh [architecture]
 If you want to build all supported toolchains, run
 ```
 for ARCH in i686 x86_64 armhf aarch64; do bash linux/android/build-toolchain.sh $ARCH; done
+```
+
+# FreeBSD sysroot setup
+
+Script assumes that FreeBSD sysroot is installed in `/build/freebsd/sysroot`
+
+To install FreeBSD sysroot:
+
+Make the /build directory and add the necessary permissions.
+```
+sudo mkdir -p /build
+sudo chmod 777 /build
+```
+
+From the cloned repository, run:
+```
+bash linux/freebsd/build-toolchain.sh
 ```
