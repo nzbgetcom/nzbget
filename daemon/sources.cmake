@@ -105,6 +105,7 @@ set(WIN32_SRC
 	${CMAKE_SOURCE_DIR}/daemon/windows/StdAfx.cpp
 	${CMAKE_SOURCE_DIR}/daemon/windows/WinConsole.cpp
 	${CMAKE_SOURCE_DIR}/daemon/windows/WinService.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp
 )
 
 if(WIN32) 
