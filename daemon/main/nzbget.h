@@ -22,65 +22,10 @@
 #ifndef NZBGET_H
 #define NZBGET_H
 
-#ifdef HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
-
-/* Define to 1 to not use curses */
-//#define DISABLE_CURSES
-
-/* Define to 1 to disable smart par-verification and restoration */
-//#define DISABLE_PARCHECK
-
-/* Define to 1 to disable TLS/SSL-support. */
-//#define DISABLE_TLS
-
-#ifndef DISABLE_TLS
-/* Define to 1 to use OpenSSL library for TLS/SSL-support */
-#define HAVE_OPENSSL
-/* Define to 1 to use GnuTLS library for TLS/SSL-support */
-//#define HAVE_LIBGNUTLS
-#endif
-
-/* Define to 1 if OpenSSL supports function "X509_check_host". */
-#define HAVE_X509_CHECK_HOST 1
-
-/* Define to the name of macro which returns the name of function being
-compiled */
-#define FUNCTION_MACRO_NAME __FUNCTION__
-
-/* Define to 1 if ctime_r takes 2 arguments */
-#undef HAVE_CTIME_R_2
-
-/* Define to 1 if ctime_r takes 3 arguments */
-#define HAVE_CTIME_R_3
-
-/* Define to 1 if getopt_long is supported */
-#undef HAVE_GETOPT_LONG
-
-/* Define to 1 if variadic macros are supported */
-#define HAVE_VARIADIC_MACROS
-
-/* Define to 1 if function GetAddrInfo is supported */
-#define HAVE_GETADDRINFO
-
-/* Determine what socket length (socklen_t) data type is */
-#define SOCKLEN_T socklen_t
-
-/* Define to 1 if you have the <regex.h> header file. */
-#ifndef DISABLE_REGEX
-#define HAVE_REGEX_H 1
-// Static linking to regex library
-#define REGEX_STATIC
-#endif
-
-#ifndef DISABLE_GZIP
-// Static linking to zlib library
-//#define ZLIB_WINAPI
-#endif
 
 /* Suppress warnings */
 #define _CRT_SECURE_NO_DEPRECATE
@@ -204,6 +149,7 @@ compiled */
 #include <inttypes.h>
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <deque>
 #include <list>
@@ -216,6 +162,9 @@ compiled */
 #include <memory>
 #include <functional>
 #include <thread>
+#include <atomic>
+#include <utility>
+#include <future>
 #include <mutex>
 #include <shared_mutex>
 #include <condition_variable>
@@ -225,12 +174,15 @@ compiled */
 #include <limits>
 #include <type_traits>
 #include <random>
+#include <exception>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
 #include <libxml/tree.h>
+
+#include <boost/asio.hpp>
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular

@@ -482,7 +482,7 @@ void Options::InitDefaults()
 	SetOption(OPTION_FILENAMING, "article");
 	SetOption(OPTION_PARRENAME, "yes");
 	SetOption(OPTION_PARBUFFER, "16");
-	SetOption(OPTION_PARTHREADS, "1");
+	SetOption(OPTION_PARTHREADS, "0");
 	SetOption(OPTION_RARRENAME, "yes");
 	SetOption(OPTION_HEALTHCHECK, "none");
 	SetOption(OPTION_DIRECTRENAME, "no");

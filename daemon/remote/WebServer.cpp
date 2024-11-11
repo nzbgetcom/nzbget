@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -25,11 +26,6 @@
 #include "Options.h"
 #include "Util.h"
 #include "FileSystem.h"
-
-#ifndef DISABLE_PARCHECK
-#include "par2cmdline.h"
-#include "md5.h"
-#endif
 
 static const char* ERR_HTTP_OK = "200 OK";
 static const char* ERR_HTTP_NOT_MODIFIED = "304 Not Modified";
@@ -475,16 +471,8 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 	{
 		BString<1024> newETag;
 
-#ifndef DISABLE_PARCHECK
-		Par2::MD5Hash hash;
-		Par2::MD5Context md5;
-		md5.Update(body, bodyLen);
-		md5.Final(hash);
-		newETag.Format("\"%s\"", hash.print().c_str());
-#else
-		uint32 hash = Util::HashBJ96(body, bodyLen, 0);
+		size_t hash = m_hasher(body);
 		newETag.Format("\"%x\"", hash);
-#endif
 
 		unchanged = m_oldETag && !strcmp(newETag, m_oldETag);
 		if (unchanged)

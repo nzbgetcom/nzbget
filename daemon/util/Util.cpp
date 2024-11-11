@@ -855,14 +855,7 @@ void Util::SetStandByMode(bool standBy)
 
 int Util::NumberOfCpuCores()
 {
-#ifdef WIN32
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo(&sysinfo);
-	return sysinfo.dwNumberOfProcessors;
-#elif HAVE_SC_NPROCESSORS_ONLN
-	return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-	return -1;
+	return std::thread::hardware_concurrency();
 }
 
 int64 Util::CurrentTicks()
