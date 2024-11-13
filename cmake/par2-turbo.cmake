@@ -2,7 +2,7 @@ set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
 	par2-turbo
 	GIT_REPOSITORY  https://github.com/nzbgetcom/par2cmdline-turbo.git
-	GIT_TAG         nzbget
+	GIT_TAG         v1.1.1-nzbget
 	TLS_VERIFY	    TRUE
 	GIT_SHALLOW     TRUE
 	GIT_PROGRESS	TRUE
