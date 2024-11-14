@@ -1,3 +1,31 @@
+nzbget-24.4
+  - Features:
+    - Replaced the `Par2` library with `Par2-turbo` which provides faster file recovery on x86/ARM platforms 
+    [#420](https://github.com/nzbgetcom/nzbget/pull/420)
+    - Better UTF-8 support
+    [#412](https://github.com/nzbgetcom/nzbget/pull/412)
+    - FreeBSD packaging support
+    [#417](https://github.com/nzbgetcom/nzbget/pull/416)
+
+  - Bug fixes:
+    - Fixed excessive CPU usage by decreasing `cert.pem` certificate loading for TLS connections
+    [#400](https://github.com/nzbgetcom/nzbget/pull/400)
+    - Fixed password-protected unpacking when the nzb file was added to the queue via command line
+    [#398](https://github.com/nzbgetcom/nzbget/pull/398)
+    - STATUS page now shows the correct Windows version Windows 7 instead of incorrectly showing Windows XP
+    [#419](https://github.com/nzbgetcom/nzbget/pull/419)
+    - Fixed duplications on the STATUS page
+    [#407](https://github.com/nzbgetcom/nzbget/pull/407)
+    - Fixed `nzbget.conf.template` installation path on POSIX
+    [#405](https://github.com/nzbgetcom/nzbget/pull/405)
+    - Fixed `DaemonUsername` check on QNAP
+    [#391](https://github.com/nzbgetcom/nzbget/pull/391)
+
+  - For developers:
+    - Fixed `postprocess` tests
+    [#413](https://github.com/nzbgetcom/nzbget/pull/413)
+    - Removed `Par2` source files from the repository. `CMake` now pulls and builds `Par2-turbo` directly from its repository
+
 nzbget-24.3
   - Features:
     - Disk performance tests for better analysis of user environment performance
