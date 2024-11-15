@@ -100,5 +100,5 @@ rm -rf NZBGet.app
 # > spctl -a -vvv -t install "$DMG_NAME"
 if [ "$NOTARIZE" == "true" ]; then
     xcrun notarytool submit "$DMG_NAME" --key "$HOME/.private_keys/AuthKey_$NOTARY_KEY_ID.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_KEY_ISSUER" --wait
-    xcrun stapler staple NZBGet.dmg
+    xcrun stapler staple "$DMG_NAME"
 fi
