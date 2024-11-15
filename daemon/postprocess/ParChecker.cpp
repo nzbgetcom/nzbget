@@ -59,7 +59,7 @@ class Repairer final : public Par2::Par2Repairer, public ParChecker::AbstractRep
 {
 public:
 	Repairer(ParChecker* owner)
-		: Par2::Par2Repairer(owner->m_parCout, owner->m_parCerr, Par2::nlQuiet)
+		: Par2::Par2Repairer(owner->m_parCout, owner->m_parCerr, Par2::nlNormal)
 		, m_owner(owner)
 		, m_commandLine() 
 	{
