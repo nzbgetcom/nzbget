@@ -57,7 +57,7 @@ private:
 class DirectParRepairer : public Par2::Par2Repairer
 {
 public:
-	DirectParRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlQuiet) {};
+	DirectParRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlNormal) {};
 	friend class DirectParLoader;
 
 private:
