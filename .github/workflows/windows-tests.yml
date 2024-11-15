@@ -3,7 +3,6 @@ name: windows tests
 on:
   push:
     branches:
-    - feature/*
     - develop
     - main
   pull_request:
