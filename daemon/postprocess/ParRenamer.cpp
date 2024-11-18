@@ -37,7 +37,7 @@
 class ParRenamerRepairer final : public Par2::Par2Repairer
 {
 public:
-	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlQuiet) {};
+	ParRenamerRepairer() : Par2::Par2Repairer(m_nout, m_nout, Par2::nlNormal) {};
 	friend class ParRenamer;
 private:
 	class NullStreamBuf : public std::streambuf {};

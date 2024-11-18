@@ -9,12 +9,12 @@ jobs:
     runs-on: [self-hosted, macos, x64]
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Build
       run: |
         if [ "$GITHUB_REF_NAME" != "main" ]; then
@@ -45,12 +45,12 @@ jobs:
     runs-on: [self-hosted, macos, arm64]
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Build
       run: |
         if [ "$GITHUB_REF_NAME" != "main" ]; then
@@ -76,13 +76,13 @@ jobs:
         name: nzbget-osx-installers-universal
         path: build/*-universal.zip
         retention-days: 5
-  
+
   sign-universal:
     runs-on: [self-hosted, macos, arm64]
     needs: [build-universal]
-    
+
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -104,13 +104,13 @@ jobs:
         cp nzbget-osx-installers-universal/*.zip build/
         cd build
         bash nzbget-sign.sh *.zip
-    
+
     - name: Upload signed build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers-universal-signed
         path: build/*.dmg
-        retention-days: 5  
+        retention-days: 5
 
   combine-osx-artifacts:
     runs-on: ubuntu-latest
@@ -118,10 +118,10 @@ jobs:
     permissions:
       actions: write
     steps:
-    
+
     - name: Download build artifacts
       uses: actions/download-artifact@v4
-    
+
     - name: Combine artifacts
       run: |
         mkdir -p nzbget-osx-installers

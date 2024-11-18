@@ -24,6 +24,7 @@ jobs:
     uses: ./.github/workflows/osx.yml
     permissions:
       actions: write
+    secrets: inherit
   
   build-linux-pkg:
     uses: ./.github/workflows/linux-pkg.yml
