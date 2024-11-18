@@ -24,6 +24,7 @@ jobs:
     uses: ./.github/workflows/osx.yml
     permissions:
       actions: write
+    secrets: inherit
   
   build-linux-pkg:
     uses: ./.github/workflows/linux-pkg.yml
@@ -75,7 +76,7 @@ jobs:
         echo "nzbget_signatures({" | tee $SIGS_FILE
         echo | tee -a $SIGS_FILE
 
-        for FILE in *.exe *.run *.zip *.spk *.qpkg *.deb *.rpm; do
+        for FILE in *.exe *.run *.zip *.spk *.qpkg *.deb *.rpm *.dmg; do
             [ -f $FILE ] || continue
 
             MD5=$(openssl dgst -md5 $FILE | cut -d ' ' -f 2)
