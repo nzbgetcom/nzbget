@@ -31,5 +31,6 @@ target_include_directories(PostprocessTests PRIVATE ${INCLUDES} ../suite)
 
 file(COPY ../testdata/dupematcher1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/parchecker DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+file(COPY ../testdata/parcheckerUtf8 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/rarrenamer DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME PostprocessTests COMMAND $<TARGET_FILE:PostprocessTests> --log_level=message)
