@@ -30,6 +30,8 @@ body:
     - macOS
     - NAS/Synology/QNAP
     - Linux/Docker
+    - FreeBSD
+    - Android
   validations:
     required: true
 - type: textarea
