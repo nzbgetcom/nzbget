@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -32,6 +33,25 @@
 Log* g_Log;
 Options* g_Options;
 DiskState* g_DiskState;
+
+struct InitGlobals
+{
+	InitGlobals() 
+	{
+		g_Log = new Log();
+		g_Options = new Options(nullptr, nullptr);
+		g_DiskState = new DiskState();
+	}
+
+	~InitGlobals() 
+	{
+		delete g_Log;
+		delete g_Options;
+		delete g_DiskState;
+	}
+};
+
+BOOST_GLOBAL_FIXTURE(InitGlobals);
 
 void TestNzb(std::string testFilename)
 {
@@ -71,11 +91,11 @@ void TestNzb(std::string testFilename)
 
 	if(strcmp(lastBuffer, buffer) == 0)
 	{
-		BOOST_CHECK(nzbFile.GetPassword() == nullptr);
+		BOOST_CHECK(nzbFile.GetPassword().empty());
 	}
 	else
 	{
-		BOOST_CHECK(std::string(nzbFile.GetPassword()) == std::string(buffer));
+		BOOST_CHECK(nzbFile.GetPassword() == std::string(buffer));
 	}
 
 	fclose(infofile);

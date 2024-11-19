@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -42,9 +43,9 @@ bool ParParser::FindMainPars(const char* path, ParFileList* fileList)
 
 			// check if the base file already added to list
 			bool exists = false;
-			for (CString& filename2 : fileList)
+			for (std::string& filename2 : *fileList)
 			{
-				exists = SameParCollection(filename, filename2, true);
+				exists = SameParCollection(filename, filename2.c_str(), true);
 				if (exists)
 				{
 					break;

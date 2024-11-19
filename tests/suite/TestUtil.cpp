@@ -116,7 +116,7 @@ void TestUtil::CopyAllFiles(const std::string destDir, const std::string srcDir)
 	{
 		std::string srcFile(srcDir + "/" + filename);
 		std::string dstFile(destDir + "/" + filename);
-		assert(FileSystem::CopyFile(srcFile.c_str(), dstFile.c_str()));
+		FileSystem::CopyFile(srcFile.c_str(), dstFile.c_str());
 	}
 }
 

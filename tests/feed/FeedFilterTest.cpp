@@ -23,13 +23,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include "FeedFilter.h"
-#include "Log.h"
-#include "Options.h"
-#include "DiskState.h"
-
-Log* g_Log;
-Options* g_Options;
-DiskState* g_DiskState;
 
 void TestFilter(FeedItemInfo* feedItemInfo, const char* filterDef, FeedItemInfo::EMatchStatus expectedMatch)
 {

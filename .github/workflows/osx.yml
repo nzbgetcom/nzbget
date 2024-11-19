@@ -9,12 +9,12 @@ jobs:
     runs-on: [self-hosted, macos, x64]
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Build
       run: |
         if [ "$GITHUB_REF_NAME" != "main" ]; then
@@ -45,12 +45,12 @@ jobs:
     runs-on: [self-hosted, macos, arm64]
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    
+
     - name: Build
       run: |
         if [ "$GITHUB_REF_NAME" != "main" ]; then
@@ -77,23 +77,58 @@ jobs:
         path: build/*-universal.zip
         retention-days: 5
 
+  sign-universal:
+    runs-on: [self-hosted, macos, arm64]
+    needs: [build-universal]
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Sign and notarize
+      env:
+        NOTARIZE: ${{ vars.OSX_NOTARIZE }}
+        KEYCHAIN_PASSWORD: ${{ secrets.OSX_KEYCHAIN_PASSWORD }}
+        DEVELOPER_IDENTITY: ${{ secrets.OSX_DEVELOPER_IDENTITY }}
+        NOTARY_KEY_ID: ${{ secrets.OSX_NOTARY_KEY_ID }}
+        NOTARY_KEY_ISSUER: ${{ secrets.OSX_NOTARY_KEY_ISSUER }}
+      run: |
+        mkdir -p build
+        cp osx/sign/* build
+        cp nzbget-osx-installers-universal/*.zip build/
+        cd build
+        bash nzbget-sign.sh *.zip
+
+    - name: Upload signed build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-osx-installers-universal-signed
+        path: build/*.dmg
+        retention-days: 5
+
   combine-osx-artifacts:
     runs-on: ubuntu-latest
-    needs: [build-x64, build-universal]
+    needs: [build-x64, sign-universal]
     permissions:
       actions: write
     steps:
-    
+
     - name: Download build artifacts
       uses: actions/download-artifact@v4
-    
+
     - name: Combine artifacts
       run: |
         mkdir -p nzbget-osx-installers
         mv nzbget-osx-installers-x64/* nzbget-osx-installers
-        mv nzbget-osx-installers-universal/* nzbget-osx-installers
+        mv nzbget-osx-installers-universal-signed/* nzbget-osx-installers
 
-    - name: Upload build artifacts with signatures
+    - name: Upload combined build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers
@@ -106,3 +141,4 @@ jobs:
         name: |
           nzbget-osx-installers-x64
           nzbget-osx-installers-universal
+          nzbget-osx-installers-universal-signed

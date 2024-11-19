@@ -458,9 +458,9 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 		nzbInfo->SetSkipDiskWrite(urlInfo->GetSkipDiskWrite());
 	}
 
-	if (nzbFile.GetPassword())
+	if (!nzbFile.GetPassword().empty())
 	{
-		nzbInfo->GetParameters()->SetParameter("*Unpack:Password", nzbFile.GetPassword());
+		nzbInfo->GetParameters()->SetParameter("*Unpack:Password", nzbFile.GetPassword().c_str());
 	}
 
 	nzbInfo->GetParameters()->CopyFrom(parameters);

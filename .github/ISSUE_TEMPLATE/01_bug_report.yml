@@ -14,7 +14,8 @@ body:
     label: NZBGet Version
     description: Which version of NZBGet has this bug?
     options:
-    - v24.4-testing
+    - v24.5-testing
+    - v24.4-stable
     - v24.3-stable
     - v24.2-stable
     - v24.1-stable

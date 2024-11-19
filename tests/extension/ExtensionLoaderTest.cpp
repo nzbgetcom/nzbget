@@ -24,10 +24,7 @@
 
 #include "FileSystem.h"
 #include "Extension.h"
-#include "WorkState.h"
 #include "ExtensionLoader.h"
-
-WorkState* g_WorkState;
 
 BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 {

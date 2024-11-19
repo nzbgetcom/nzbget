@@ -35,10 +35,13 @@
 #ifdef HAVE_NCURSES_NCURSES_H
 #include <ncurses/ncurses.h>
 #endif
+#ifndef DISABLE_PARCHECK
+#include <par2/version.h>
+#endif
 
 namespace System
 {
-	static const size_t BUFFER_SIZE = 512;
+	constexpr size_t BUFFER_SIZE = 512;
 
 	SystemInfo::SystemInfo()
 	{
@@ -77,6 +80,10 @@ namespace System
 
 #ifdef HAVE_LIBGNUTLS
 		m_libraries.push_back({ "GnuTLS", GNUTLS_VERSION });
+#endif
+
+#ifndef DISABLE_PARCHECK 
+		m_libraries.push_back({ "Par2-turbo", PAR2_TURBO_LIB_VERSION });
 #endif
 
 #ifdef BOOST_LIB_VERSION
@@ -162,7 +169,7 @@ namespace System
 		Tool tool;
 
 		tool.name = "UnRAR";
-		tool.path = GetUnpackerPath(g_Options->GetUnrarCmd());
+		tool.path = GetToolPath(g_Options->GetUnrarCmd());
 		tool.version = GetUnpackerVersion(tool.path, "UNRAR");
 
 		return tool;
@@ -173,20 +180,20 @@ namespace System
 		Tool tool;
 
 		tool.name = "7-Zip";
-		tool.path = GetUnpackerPath(g_Options->GetSevenZipCmd());
+		tool.path = GetToolPath(g_Options->GetSevenZipCmd());
 		tool.version = GetUnpackerVersion(tool.path, tool.name.c_str());
 
 		return tool;
 	}
 
-	std::string SystemInfo::GetUnpackerPath(const char* unpackerCmd) const
+	std::string SystemInfo::GetToolPath(const char* cmd) const
 	{
-		if (Util::EmptyStr(unpackerCmd))
+		if (Util::EmptyStr(cmd))
 		{
 			return "";
 		}
 
-		std::string path = FileSystem::ExtractFilePathFromCmd(unpackerCmd);
+		std::string path = FileSystem::ExtractFilePathFromCmd(cmd);
 
 		auto result = FileSystem::GetFileRealPath(path);
 
@@ -195,11 +202,16 @@ namespace System
 			return result.value();
 		}
 
-		std::string cmd = Util::FIND_CMD + std::string(unpackerCmd);
+		std::string fullCmd = Util::FIND_CMD + std::string(cmd);
+
+		auto pipe = Util::MakePipe(fullCmd);
+		if (!pipe)
+		{
+			return "";
+		}
 
 		char buffer[BUFFER_SIZE];
-		auto pipe = Util::MakePipe(cmd);
-		if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
+		if (fgets(buffer, BUFFER_SIZE, pipe.get()))
 		{
 			std::string resultPath{ buffer };
 			Util::Trim(resultPath);
@@ -251,9 +263,14 @@ namespace System
 
 		std::string cmd = Util::FIND_CMD + result.value();
 
-		char buffer[BUFFER_SIZE];
 		auto pipe = Util::MakePipe(cmd);
-		if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
+		if (!pipe)
+		{
+			return std::nullopt;
+		}
+
+		char buffer[BUFFER_SIZE];
+		if (fgets(buffer, BUFFER_SIZE, pipe.get()))
 		{
 			std::string path{ buffer };
 			Util::Trim(path);
@@ -268,8 +285,13 @@ namespace System
 		std::string cmd = FileSystem::EscapePathForShell(path) + " --version 2>&1";
 		{
 			auto pipe = Util::MakePipe(cmd);
+			if (!pipe)
+			{
+				return "";
+			}
+
 			char buffer[BUFFER_SIZE];
-			if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
+			if (fgets(buffer, BUFFER_SIZE, pipe.get()))
 			{
 				// e.g. Python 3.12.3
 				std::string version{ buffer };
@@ -298,7 +320,18 @@ namespace System
 			return match[0].str();
 		}
 
-		return std::string("");
+		return "";
+	};
+
+	std::string SystemInfo::ParseParVersion(const std::string& line) const
+	{
+		// e.g. par2cmdline-turbo version 1.1.1
+		if (size_t pos = line.find_last_of(" "); pos != std::string::npos)
+		{
+			return line.substr(pos);
+		}
+
+		return "";
 	};
 
 	std::ostream& operator<<(std::ostream& os, const SystemInfo& sysinfo)

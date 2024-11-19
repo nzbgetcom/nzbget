@@ -855,14 +855,7 @@ void Util::SetStandByMode(bool standBy)
 
 int Util::NumberOfCpuCores()
 {
-#ifdef WIN32
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo(&sysinfo);
-	return sysinfo.dwNumberOfProcessors;
-#elif HAVE_SC_NPROCESSORS_ONLN
-	return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-	return -1;
+	return std::thread::hardware_concurrency();
 }
 
 int64 Util::CurrentTicks()
@@ -884,13 +877,9 @@ int64 Util::CurrentTicks()
 #endif
 }
 
-void Util::Sleep(int milliseconds)
+void Util::Sleep(int ms)
 {
-#ifdef WIN32
-	::Sleep(milliseconds);
-#else
-	usleep(milliseconds * 1000);
-#endif
+	std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
 uint32 WebUtil::DecodeBase64(char* inputBuffer, int inputBufferLength, char* outputBuffer)

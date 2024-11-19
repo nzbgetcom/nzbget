@@ -62,6 +62,7 @@
 #include "WinService.h"
 #include "WinConsole.h"
 #include "WebDownloader.h"
+#include "Utf8.h"
 #endif
 #ifndef DISABLE_NSERV
 #include "NServMain.h"
@@ -71,6 +72,8 @@
 #include <sstream>
 #include <iostream>
 #endif
+
+#include <locale>
 
 // Prototypes
 void RunMain();
@@ -106,7 +109,6 @@ int g_ArgumentCount;
 char* (*g_EnvironmentVariables)[] = nullptr;
 char* (*g_Arguments)[] = nullptr;
 
-
 /*
  * Main entry point
  */
@@ -122,7 +124,11 @@ int main(int argc, char *argv[], char *argp[])
 #endif
 		);
 #endif
+
+	SetConsoleOutputCP(CP_UTF8);
 #endif
+
+	setlocale(LC_CTYPE, "");
 
 	Util::Init();
 	YEncode::init();
@@ -303,7 +309,7 @@ void NZBGet::Init()
 	m_scanner->InitOptions();
 	m_queueScriptCoordinator->InitOptions();
 #ifndef DISABLE_TLS
-	TlsSocket::InitOptions(g_Options->GetCertCheck() ? g_Options->GetCertStore() : nullptr);
+	TlsSocket::InitOptions(g_Options->GetCertCheck() ? g_Options->GetCertStore() : "");
 #endif
 
 	if (m_commandLineParser->GetDaemonMode())
@@ -675,6 +681,12 @@ void NZBGet::ProcessStandalone()
 		return;
 	}
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
+
+	if (!nzbFile.GetPassword().empty())
+	{
+		nzbInfo->GetParameters()->SetParameter("*Unpack:Password", nzbFile.GetPassword().c_str());
+	}
+
 	m_scanner->InitPPParameters(category, nzbInfo->GetParameters(), false);
 	m_queueCoordinator->AddNzbFileToQueue(std::move(nzbInfo), nullptr, false);
 }
@@ -1006,8 +1018,13 @@ void NZBGet::Daemonize()
 		}
 	}
 
+	/* Backward compatibility with QNAP which doesn't have a "root" user,
+	but for historical reasons in nzbget.conf we use "root" as the default value in DaemonUsername
+	which causes problems when running nzbget as a daemon on QNAP. */
+	bool backwardCompRoot = strcmp(m_options->GetDaemonUsername(), "root") == 0;
+
 	/* Drop user if there is one, and we were run as root */
-	if (getuid() == 0 || geteuid() == 0)
+	if (!backwardCompRoot && (getuid() == 0 || geteuid() == 0))
 	{
 		struct passwd *pw = getpwnam(m_options->GetDaemonUsername());
 		if (pw == nullptr)

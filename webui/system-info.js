@@ -27,7 +27,7 @@ function DiskSpeedTestsForm()
 	var $diskSpeedTestInputLabel;
 	var $diskSpeedTestInput;
 	var $diskSpeedTestBtn;
-	var $diskSpeedTestErrorTxt
+	var $diskSpeedTestErrorTxt;
 	
 	var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
 	var TEST_BTN_DEFAULT_TEXT = 'Run test';
@@ -191,6 +191,8 @@ var SystemInfo = (new function($)
 	var $SpeedTest_StatsTime;
 	var $SpeedTest_StatsDate;
 
+	var sysInfoLoading = false;
+
 	var nzbFileTestPrefix = 'NZBGet Speed Test ';
 	var testNZBUrl = 'https://nzbget.com/nzb/';
 	var testNZBFiles = [
@@ -283,7 +285,9 @@ var SystemInfo = (new function($)
 
 	this.loadSystemInfo = function()
 	{
-		cleanUp();
+		if (sysInfoLoading) return;
+		sysInfoLoading = true;
+
 		hideError();
 		hideMainContent();
 		showSpinner();
@@ -291,13 +295,20 @@ var SystemInfo = (new function($)
 		RPC.call('sysinfo', [], 
 			function (sysInfo)
 			{
+				cleanUp();
 				hideSpinner();
 				showMainContent();
 				render(sysInfo);
 				renderLastTestBtns(allStats);
 				renderSpinners(downloads);
+				sysInfoLoading = false;
 			},
-			errorHandler
+			function(err)
+			{
+				hideSpinner();
+				errorHandler(err);
+				sysInfoLoading = false;
+			}
 		);
 	}
 

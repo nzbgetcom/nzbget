@@ -21,13 +21,13 @@
 #ifndef PARPARSER_H
 #define PARPARSER_H
 
-#include "NString.h"
+#include <string>
 #include "Container.h"
 
 class ParParser
 {
 public:
-	typedef std::vector<CString> ParFileList;
+	typedef std::vector<std::string> ParFileList;
 
 	static bool FindMainPars(const char* path, ParFileList* fileList);
 	static bool ParseParFilename(const char* parFilename, bool confirmedFilename, int* baseNameLen, int* blocks);

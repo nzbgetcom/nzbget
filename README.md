@@ -7,6 +7,7 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.1/total?label=v24.1)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.2/total?label=v24.2)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.3/total?label=v24.3)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.4/total?label=v24.4)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
@@ -21,6 +22,9 @@
 [![GitHub issues](https://img.shields.io/github/issues/nzbgetcom/nzbget)](https://github.com/nzbgetcom/nzbget/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/nzbgetcom/nzbget)](https://github.com/nzbgetcom/nzbget/pulls)
 ![GitHub repo size](https://img.shields.io/github/repo-size/nzbgetcom/nzbget)
+
+
+[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?&logo=discord&logoColor=white)](https://discord.gg/mV9Vn9sM7C)
 
 
 NZBGet is a binary downloader, which downloads files from Usenet based-on information given in nzb files.
@@ -63,6 +67,8 @@ Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.m
 
 `Linux`: Linux kernel 2.6 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), MIPS (mipseb mipsel), PowerPC (ppc6xx ppc500), RISC-V 64-bit (riscv64)
 
+`FreeBSD`: FreeBSD 13.0+ x86_64
+
 `macOS`: X64 binary: macOS Mojave 10.14+, Universal (Intel / Apple Silicon) binary: macOS Monterey 12+
 
 ## Building from sources
@@ -80,7 +86,7 @@ Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.m
 
 ## Contribution
 
-Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose)
+Contributions are very welcome - not only from developers, but from our users too - please don't hesitate to participate in [discussions](https://github.com/nzbgetcom/nzbget/discussions) or [create a new discussion](https://github.com/nzbgetcom/nzbget/discussions/new/choose) or [join our Discord server](https://discord.gg/mV9Vn9sM7C).
 
 For more information - see [Contributing](docs/CONTRIBUTING.md).
 
