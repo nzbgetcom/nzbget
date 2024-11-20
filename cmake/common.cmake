@@ -21,4 +21,4 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	endif()
 endif()
 
-include(FetchContent)
+include(ExternalProject)
