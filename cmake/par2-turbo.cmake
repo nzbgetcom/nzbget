@@ -24,7 +24,7 @@ if(WIN32)
 else()
 	set(LIBS ${LIBS} 
 		${ROOT}/src/par2-turbo-build/libpar2-turbo.a
-		${ROOT}/src/par2-turbo-build/libf16.a
+		${ROOT}/src/par2-turbo-build/libgf16.a
 		${ROOT}/src/par2-turbo-build/libhasher.a
 	)
 endif()
