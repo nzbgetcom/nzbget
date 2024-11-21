@@ -18,6 +18,9 @@ jobs:
     runs-on: windows-2022
 
     steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v4
 
     - name: Prepare environment
       uses: johnwason/vcpkg-action@v6
@@ -27,9 +30,6 @@ jobs:
         triplet: x64-windows-static
         token: ${{ github.token }}
         github-binarycache: true
-
-    - name: Checkout
-      uses: actions/checkout@v4
 
     - name: Build
       run: |
