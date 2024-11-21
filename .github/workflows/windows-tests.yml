@@ -1,4 +1,4 @@
-name: windows tests 
+name: windows tests
 
 on:
   push:
@@ -16,17 +16,27 @@ on:
 jobs:
   test:
     runs-on: windows-2019
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
 
-    - name: Setup build environment
-      uses: ilammy/msvc-dev-cmd@v1
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v7
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Install vcpkg packages
+      run: |
+        vcpkg install openssl:x64-windows-static libxml2:x64-windows-static zlib:x64-windows-static boost-json:x64-windows-static boost-asio:x64-windows-static boost-test:x64-windows-static
+
     - name: Build
-      run: |        
+      run: |
         cmake --version
         mkdir build
         cd build
