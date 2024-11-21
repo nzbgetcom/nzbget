@@ -5,6 +5,7 @@ on:
     branches:
     - develop
     - main
+    - feature/*
   pull_request:
     branches:
     - develop
@@ -14,14 +15,13 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, windows]
+    runs-on: windows-2019
 
     steps:
 
-    - name: Prepare environment
-      run: |
-        "C:\Program Files\CMake\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-    
+    - name: Setup build environment
+      uses: ilammy/msvc-dev-cmd@v1
+
     - name: Checkout
       uses: actions/checkout@v4
 
