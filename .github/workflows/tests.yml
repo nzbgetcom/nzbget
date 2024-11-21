@@ -18,37 +18,22 @@ jobs:
   windows-tests:
     runs-on: windows-2022
     env:
-      USERNAME: nzbgetcom
-      FEED_URL: https://nuget.pkg.github.com/nzbgetcom/nzbget-vcpkg-x64-windows-static-minimal/index.json
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/nzbgetcom/nzbget-vcpkg-x64-windows-static-minimal/index.json"
       VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
     steps:
     
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Add NuGet sources
+    - name: Download and extract vcpkg cache
       run: |
-        .$(vcpkg fetch nuget) `
-          sources add `
-          -Source "${{ env.FEED_URL }}" `
-          -StorePasswordInClearText `
-          -Name GitHubPackages `
-          -UserName "${{ env.USERNAME }}" `
-          -Password "${{ github.token }}"
-        .$(vcpkg fetch nuget) `
-          setapikey "${{ github.token }}" `
-          -Source "${{ env.FEED_URL }}"
-
-    - name: Setup vcpkg packages
-      run: |
-        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test --binarysource="${{ env.VCPKG_BINARY_SOURCES }}"
+        Invoke-WebRequest https://nzbget.com/info/vcpkg-export-nzbget.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
 
     - name: Build
       run: |
         mkdir build
         cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_DEFAULT_TRIPLET }} -DBUILD_ONLY_TESTS=ON
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_DEFAULT_TRIPLET }} -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 4
 
     - name: Test
