@@ -16,32 +16,28 @@ on:
 jobs:
   test:
     runs-on: windows-2022
-    env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
 
     steps:
 
-    - name: Export GitHub Actions cache environment variables
-      uses: actions/github-script@v7
+    - name: Prepare environment
+      uses: johnwason/vcpkg-action@v6
+      id: vcpkg
       with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+        pkgs: openssl libxml2 zlib boost-json boost-asio boost-test
+        triplet: x64-windows-static
+        token: ${{ github.token }}
+        github-binarycache: true
 
     - name: Checkout
       uses: actions/checkout@v4
-
-    - name: Install vcpkg packages
-      run: |
-        vcpkg install openssl:x64-windows-static libxml2:x64-windows-static zlib:x64-windows-static boost-json:x64-windows-static boost-asio:x64-windows-static boost-test:x64-windows-static
 
     - name: Build
       run: |
         cmake --version
         mkdir build
         cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
-        cmake --build . --config Release -j 2
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
 
     - name: Test
       run: |
