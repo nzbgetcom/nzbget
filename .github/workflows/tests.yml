@@ -19,7 +19,6 @@ jobs:
     runs-on: windows-2022
     env:
       USERNAME: nzbgetcom
-      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
       FEED_URL: https://nuget.pkg.github.com/nzbgetcom/index.json
       VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/nzbgetcom/index.json,read"
       VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
@@ -28,21 +27,16 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Bootstrap vcpkg
-      shell: pwsh
-      run: ${{ github.workspace }}/vcpkg/bootstrap-vcpkg.bat
-
     - name: Add NuGet sources
-      shell: pwsh
       run: |
-        .$(${{ env.VCPKG_EXE }} fetch nuget) `
+        .$(vcpkg fetch nuget) `
           sources add `
           -Source "${{ env.FEED_URL }}" `
           -StorePasswordInClearText `
           -Name GitHubPackages `
           -UserName "${{ env.USERNAME }}" `
           -Password "${{ github.token }}"
-        .$(${{ env.VCPKG_EXE }} fetch nuget) `
+        .$(vcpkg fetch nuget) `
           setapikey "${{ github.token }}" `
           -Source "${{ env.FEED_URL }}"
 
