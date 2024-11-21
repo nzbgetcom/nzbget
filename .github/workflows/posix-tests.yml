@@ -1,0 +1,48 @@
+name: windows tests
+
+on:
+  push:
+    branches:
+    - develop
+    - main
+    - feature/*
+  pull_request:
+    branches:
+    - develop
+    - main
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [ubuntu-latest]
+
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get install cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        cmake --version
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-windows-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
