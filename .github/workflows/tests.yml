@@ -17,8 +17,6 @@ jobs:
 
   windows-tests:
     runs-on: windows-2022
-    env:
-      VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
     steps:
     
     - name: Checkout
@@ -33,7 +31,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=${{ env.VCPKG_DEFAULT_TRIPLET }} -DBUILD_ONLY_TESTS=ON
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 4
 
     - name: Test
@@ -50,13 +48,12 @@ jobs:
         retention-days: 5
 
   linux-tests:
-    if: false
     runs-on: ubuntu-24.04
     steps:
 
     - name: Prepare environment
       run: |
-        sudo apt-get install cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -82,13 +79,12 @@ jobs:
         retention-days: 5
 
   macos-tests:
-    if: false
     runs-on: macos-14
     steps:
 
     - name: Install dependencies
       run:
-        brew install boost openssl@3 cmake
+        brew install --formula --reinstall boost openssl@3 cmake
 
     - name: Checkout
       uses: actions/checkout@v4
