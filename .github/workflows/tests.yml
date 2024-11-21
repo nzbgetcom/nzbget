@@ -104,7 +104,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake .. -DBUILD_ONLY_TESTS=ON -DDISABLE_CURSES=ON
         cmake --build . --config Release -j 4
 
     - name: Test
