@@ -88,12 +88,12 @@ jobs:
         retention-days: 5
 
   macos-tests:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
 
     - uses: tecolicom/actions-use-homebrew-tools@v1
       with:
-        tools: "cmake boost openssl@3 ncurses"
+        tools: "cmake boost openssl@3"
         cache: yes
         verbose: false
 
