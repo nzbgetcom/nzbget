@@ -19,8 +19,8 @@ jobs:
     runs-on: windows-2022
     env:
       USERNAME: nzbgetcom
-      FEED_URL: https://nuget.pkg.github.com/nzbgetcom/index.json
-      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/nzbgetcom/index.json,read"
+      FEED_URL: https://nuget.pkg.github.com/nzbgetcom/nzbget-vcpkg-x64-windows-static-minimal/index.json
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/nzbgetcom/nzbget-vcpkg-x64-windows-static-minimal/index.json"
       VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
     steps:
     
