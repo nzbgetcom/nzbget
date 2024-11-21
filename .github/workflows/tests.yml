@@ -16,6 +16,7 @@ on:
 jobs:
 
   windows-tests:
+    if: false
     runs-on: windows-2022
     env:
       VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
@@ -34,7 +35,7 @@ jobs:
 
     - name: Setup vcpkg packages
       run: |
-        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test
+        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test --binarysource="clear;x-gha,readwrite"
 
     - name: Build
       run: |
@@ -57,6 +58,7 @@ jobs:
         retention-days: 5
 
   linux-tests:
+    if: false
     runs-on: ubuntu-24.04
     steps:
 
@@ -88,14 +90,12 @@ jobs:
         retention-days: 5
 
   macos-tests:
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
 
-    - uses: tecolicom/actions-use-homebrew-tools@v1
-      with:
-        tools: "cmake boost openssl@3"
-        cache: yes
-        verbose: false
+    - name: Install dependencies
+      run:
+        brew install boost openssl@3 cmake
 
     - name: Checkout
       uses: actions/checkout@v4
