@@ -16,26 +16,39 @@ on:
 jobs:
 
   windows-tests:
-    if: false
     runs-on: windows-2022
     env:
-      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      USERNAME: nzbgetcom
+      VCPKG_EXE: ${{ github.workspace }}/vcpkg/vcpkg
+      FEED_URL: https://nuget.pkg.github.com/nzbgetcom/index.json
+      VCPKG_BINARY_SOURCES: "clear;nuget,https://nuget.pkg.github.com/nzbgetcom/index.json,read"
       VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
     steps:
     
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Setup vcpkg environment
-      uses: actions/github-script@v7
-      with:
-        script: |
-          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
-          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+    - name: Bootstrap vcpkg
+      shell: pwsh
+      run: ${{ github.workspace }}/vcpkg/bootstrap-vcpkg.bat
+
+    - name: Add NuGet sources
+      shell: pwsh
+      run: |
+        .$(${{ env.VCPKG_EXE }} fetch nuget) `
+          sources add `
+          -Source "${{ env.FEED_URL }}" `
+          -StorePasswordInClearText `
+          -Name GitHubPackages `
+          -UserName "${{ env.USERNAME }}" `
+          -Password "${{ github.token }}"
+        .$(${{ env.VCPKG_EXE }} fetch nuget) `
+          setapikey "${{ github.token }}" `
+          -Source "${{ env.FEED_URL }}"
 
     - name: Setup vcpkg packages
       run: |
-        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test --binarysource="clear;x-gha,readwrite"
+        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test --binarysource="${{ env.VCPKG_BINARY_SOURCES }}"
 
     - name: Build
       run: |
@@ -90,6 +103,7 @@ jobs:
         retention-days: 5
 
   macos-tests:
+    if: false
     runs-on: macos-14
     steps:
 
