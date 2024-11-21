@@ -1,0 +1,88 @@
+name: tests
+
+on:
+  push:
+    branches:
+    - develop
+    - main
+    - feature/*
+  pull_request:
+    branches:
+    - develop
+    - main
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+
+  windows-tests:
+    runs-on: windows-2022
+    env:
+      VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      VCPKG_DEFAULT_TRIPLET: "x64-windows-static"
+    steps:
+    
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup vcpkg environment
+      uses: actions/github-script@v6
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+    - name: Setup vcpkg packages
+      run: |
+        vcpkg install openssl libxml2 zlib boost-json boost-asio boost-test
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$VCPKG_DEFAULT_TRIPLET -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-windows-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  linux-tests:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get install cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-windows-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
