@@ -1,4 +1,4 @@
-set(ROOT ${CMAKE_BINARY_DIR}/par2-turbo)
+set(PAR2_ROOT ${CMAKE_BINARY_DIR}/par2-turbo/src)
 
 add_compile_definitions(HAVE_CONFIG_H PARPAR_ENABLE_HASHER_MD5CRC)
 ExternalProject_add(
@@ -17,21 +17,25 @@ ExternalProject_add(
 				-DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
 				-DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
 				-DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+				-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+				-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+				-DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM}
+				-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
 	INSTALL_COMMAND ""
 )
 
 if(WIN32) 
 	set(LIBS ${LIBS} 
-		${ROOT}/src/par2-turbo-build/${CMAKE_BUILD_TYPE}/par2-turbo.lib
-		${ROOT}/src/par2-turbo-build/${CMAKE_BUILD_TYPE}/gf16.lib
-		${ROOT}/src/par2-turbo-build/${CMAKE_BUILD_TYPE}/hasher.lib
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/par2-turbo.lib
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/gf16.lib
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/hasher.lib
 	)
 else()
 	set(LIBS ${LIBS} 
-		${ROOT}/src/par2-turbo-build/libpar2-turbo.a
-		${ROOT}/src/par2-turbo-build/libgf16.a
-		${ROOT}/src/par2-turbo-build/libhasher.a
+		${PAR2_ROOT}/par2-turbo-build/libpar2-turbo.a
+		${PAR2_ROOT}/par2-turbo-build/libgf16.a
+		${PAR2_ROOT}/par2-turbo-build/libhasher.a
 	)
 endif()
 
-set(INCLUDES ${INCLUDES} ${ROOT}/src/par2-turbo/include)
+set(INCLUDES ${INCLUDES} ${PAR2_ROOT}/par2-turbo/include)
