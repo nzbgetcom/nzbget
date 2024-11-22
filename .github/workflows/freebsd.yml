@@ -33,7 +33,7 @@ jobs:
       if: failure()
       with:
         name: nzbget-freebsd-build-log
-        path: build/build.log
+        path: build/*/build.log
         retention-days: 5
 
     - name: Rename build artifacts
