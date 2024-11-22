@@ -84,7 +84,7 @@ jobs:
 
     - name: Install dependencies
       run:
-        brew install --formula --reinstall boost openssl@3 cmake
+        brew reinstall --formula boost openssl@3 cmake
 
     - name: Checkout
       uses: actions/checkout@v4
