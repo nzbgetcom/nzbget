@@ -83,8 +83,9 @@ jobs:
     steps:
 
     - name: Install dependencies
-      run:
-        brew reinstall --formula boost openssl@3 cmake
+      uses: ConorMacBride/install-package@v1
+      with:
+        brew: boost openssl@3 cmake
 
     - name: Checkout
       uses: actions/checkout@v4
