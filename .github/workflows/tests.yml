@@ -84,7 +84,7 @@ jobs:
 
     - name: Install dependencies
       run:
-        brew install --formula boost
+        brew install --formula boost ncurses
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -93,7 +93,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DBUILD_ONLY_TESTS=ON -DDISABLE_CURSES=ON
+        cmake .. -DCURSES_INCLUDE_PATH=/opt/homebrew/opt/ncurses/include -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 4
 
     - name: Test
