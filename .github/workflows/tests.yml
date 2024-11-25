@@ -24,6 +24,7 @@ jobs:
 
     - name: Download and extract vcpkg cache
       run: |
+        $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.nzbget.com/vcpkg-nzbget-windows-tests.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
 
