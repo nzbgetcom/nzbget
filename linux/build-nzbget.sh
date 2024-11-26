@@ -804,10 +804,7 @@ build_installer()
 }
 
 NZBGET_ROOT=$PWD
-
-# cleanup shared and build directories
 mkdir -p $OUTPUTDIR
-rm -rf $OUTPUTDIR/*
 
 parse_args $@
 print_config
