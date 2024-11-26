@@ -118,6 +118,12 @@ jobs:
           NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
           mv $FILE $NEW_FILE
         done
+    
+    - name: Delete unneded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: |
+          nzbget-*-bin
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
