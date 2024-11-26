@@ -20,11 +20,12 @@ jobs:
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
         mkdir -p /build/buildroot
-        mkdir -p /build/libs
+        mkdir -p /build/lib
         curl -L https://github.nzbget.com/buildroot-aarch64.tar.gz -o /build/buildroot/buildroot.tar.gz
-        curl -L https://github.nzbget.com/libs-aarch64.tar.gz -o /build/libs/libs.tar.gz
+        curl -L https://github.nzbget.com/libs-aarch64.tar.gz -o /build/lib/libs.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
-        tar zxf /build/libs/libs.tar.gz -C /build/lib
+        tar zxf /build/lib/libs.tar.gz -C /build/lib
+        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 
     - name: Build
       run: |
