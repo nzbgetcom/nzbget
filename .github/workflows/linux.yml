@@ -27,11 +27,6 @@ jobs:
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-
     - name: Prepare ${{ matrix.arch }} environment
       run: |
         sudo mkdir -p /build
@@ -43,6 +38,11 @@ jobs:
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Build
       run: |
@@ -69,6 +69,17 @@ jobs:
     needs: build-bin
 
     steps:
+    
+    - name: Prepare build environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        mkdir -p /build/lib
+        for ARCH in ${{ env.archs }}; do
+          curl -L https://github.nzbget.com/lib-$ARCH.tar.gz -o /build/lib/lib.tar.gz
+          tar zxf /build/lib/lib.tar.gz -C /build/lib
+          rm /build/lib/lib.tar.gz
+        done
 
     - name: Checkout
       uses: actions/checkout@v4
