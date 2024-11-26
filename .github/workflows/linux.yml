@@ -50,7 +50,7 @@ jobs:
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
-          BUILD_PARAMS="$BUILD_PARAMS release"
+          BUILD_PARAMS="$BUILD_PARAMS debug release"
         fi
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
@@ -89,15 +89,13 @@ jobs:
       run: |
         mkdir -p build
         for ARCH in ${{ env.archs }}; do
-          ls -l nzbget-$ARCH-bin/
           cp nzbget-$ARCH-bin/*.tar.gz build/
         done
-        ls -l build/
         BUILD_PARAMS="linux installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
-          BUILD_PARAMS="$BUILD_PARAMS release"
+          BUILD_PARAMS="$BUILD_PARAMS debug release"
         fi
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
