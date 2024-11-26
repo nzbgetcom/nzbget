@@ -74,12 +74,8 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        mkdir -p /build/lib
-        for ARCH in ${{ env.archs }}; do
-          curl -L https://github.nzbget.com/lib-$ARCH.tar.gz -o /build/lib/lib.tar.gz
-          tar zxf /build/lib/lib.tar.gz -C /build/lib
-          rm /build/lib/lib.tar.gz
-        done
+        curl -L https://github.nzbget.com/unpack.tar.gz -o /build/unpack.tar.gz
+        tar zxf /build/unpack.tar.gz -C /build
 
     - name: Checkout
       uses: actions/checkout@v4
