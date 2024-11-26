@@ -50,7 +50,7 @@ jobs:
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
+          BUILD_PARAMS="$BUILD_PARAMS release"
         fi
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
@@ -95,7 +95,7 @@ jobs:
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
+          BUILD_PARAMS="$BUILD_PARAMS release"
         fi
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
