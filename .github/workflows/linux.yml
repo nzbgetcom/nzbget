@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, nzbget-linux]
+    runs-on: ubuntu-latest
 
     steps:
     
@@ -14,6 +14,17 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: Prepare environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        mkdir -p /build/buildroot
+        mkdir -p /build/libs
+        curl -L https://github.nzbget.com/buildroot-aarch64.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.nzbget.com/libs-aarch64.tar.gz -o /build/libs/libs.tar.gz
+        tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
+        tar zxf /build/libs/libs.tar.gz -C /build/lib
 
     - name: Build
       run: |
@@ -26,22 +37,22 @@ jobs:
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
         fi
-        bash linux/build-nzbget.sh $BUILD_PARAMS
+        bash linux/build-nzbget.sh bin aarch64
 
-    - name: Rename build artifacts
-      if: github.ref_name != 'main' && github.ref_name != 'develop'
-      run: |
-        cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
-        for FILE in *.run; do
-          [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
-          mv $FILE $NEW_FILE
-        done
+    # - name: Rename build artifacts
+    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
+    #   run: |
+    #     cd build
+    #     SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+    #     for FILE in *.run; do
+    #       [ -f $FILE ] || continue
+    #       NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+    #       mv $FILE $NEW_FILE
+    #     done
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-linux-installers
-        path: build/*.run
+        path: build/*.tar.gz
         retention-days: 5
