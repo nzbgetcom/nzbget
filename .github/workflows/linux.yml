@@ -4,6 +4,9 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  archs: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
+
 jobs:
 
   build-bin:
@@ -11,16 +14,16 @@ jobs:
     strategy:
       matrix:
         include:
-        - platform: aarch64
-        - platform: armel
-        - platform: armhf
-        - platform: i686
-        - platform: mipseb
-        - platform: mipsel
-        - platform: ppc500
-        - platform: ppc6xx
-        - platform: riscv64
-        - platform: x86_64
+        - arch: aarch64
+        - arch: armel
+        - arch: armhf
+        - arch: i686
+        - arch: mipseb
+        - arch: mipsel
+        - arch: ppc500
+        - arch: ppc6xx
+        - arch: riscv64
+        - arch: x86_64
 
     steps:
 
@@ -29,21 +32,21 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Prepare ${{ matrix.platform }} environment
+    - name: Prepare ${{ matrix.arch }} environment
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
         mkdir -p /build/buildroot
         mkdir -p /build/lib
-        curl -L https://github.nzbget.com/buildroot-${{ matrix.platform }}.tar.gz -o /build/buildroot/buildroot.tar.gz
-        curl -L https://github.nzbget.com/lib-${{ matrix.platform }}.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.nzbget.com/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.nzbget.com/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 
     - name: Build
       run: |
-        BUILD_PARAMS="${{ matrix.platform }} bin"
+        BUILD_PARAMS="${{ matrix.arch }} bin"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
@@ -57,7 +60,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-${{ matrix.platform }}-bin
+        name: nzbget-${{ matrix.arch }}-bin
         path: build/*.tar.gz
         retention-days: 5
 
@@ -78,9 +81,11 @@ jobs:
     - name: Build installer
       run: |
         mkdir -p build
-        for ARCH in aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64; do
+        for ARCH in ${{ env.archs }}; do
+          ls -l nzbget-$ARCH-bin/
           cp nzbget-$ARCH-bin/*.tar.gz build/
         done
+        ls -l build/
         BUILD_PARAMS="linux installer"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
