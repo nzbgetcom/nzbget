@@ -7,6 +7,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+        - platform: aarch64
+        - platform: armel
+        - platform: armhf
+        - platform: i686
+        - platform: mipseb
+        - platform: mipsel
+        - platform: ppc500
+        - platform: ppc6xx
+        - platform: riscv64
+        - platform: x86_64
 
     steps:
     
@@ -15,21 +28,21 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Prepare environment
+    - name: Prepare ${{ matrix.platform }} environment
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
         mkdir -p /build/buildroot
         mkdir -p /build/lib
-        curl -L https://github.nzbget.com/buildroot-aarch64.tar.gz -o /build/buildroot/buildroot.tar.gz
-        curl -L https://github.nzbget.com/libs-aarch64.tar.gz -o /build/lib/libs.tar.gz
+        curl -L https://github.nzbget.com/buildroot-${{ matrix.platform }}.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.nzbget.com/lib-${{ matrix.platform }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
-        tar zxf /build/lib/libs.tar.gz -C /build/lib
+        tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 
     - name: Build
       run: |
-        BUILD_PARAMS="linux bin installer"
+        BUILD_PARAMS="${{ matrix.platform }} bin"
         if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS debug release"
         else
@@ -38,7 +51,7 @@ jobs:
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
         fi
-        bash linux/build-nzbget.sh bin aarch64
+        bash linux/build-nzbget.sh $BUILD_PARAMS
 
     # - name: Rename build artifacts
     #   if: github.ref_name != 'main' && github.ref_name != 'develop'
@@ -54,6 +67,6 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-linux-installers
+        name: nzbget-${{ matrix.platform }}-bin
         path: build/*.tar.gz
         retention-days: 5

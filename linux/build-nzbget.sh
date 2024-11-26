@@ -212,8 +212,8 @@ build_lib()
     URL=$1
     LIB_SRC_FILE=${URL##*/}
     LIB=$(echo $LIB_SRC_FILE | cut -d- -f 1)
-    download_lib_source $LIB $URL
     if [ ! -d "$LIB_PATH/$ARCH/$LIB" ]; then
+        download_lib_source $LIB $URL
         mkdir -p "$LIB_PATH/$ARCH"
         cp "$LIB_SRC_PATH/$LIB_SRC_FILE" "$LIB_PATH/$ARCH"
         cd "$LIB_PATH/$ARCH"
