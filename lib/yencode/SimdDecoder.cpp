@@ -19,6 +19,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "nzbget.h"
 
 #ifdef SIMD_DECODER
 
