@@ -1,11 +1,12 @@
-name: linux build 
+name: linux build
 
 on:
   workflow_call:
   workflow_dispatch:
 
 jobs:
-  build:
+
+  build-bin:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,7 +23,7 @@ jobs:
         - platform: x86_64
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
       with:
@@ -53,20 +54,58 @@ jobs:
         fi
         bash linux/build-nzbget.sh $BUILD_PARAMS
 
-    # - name: Rename build artifacts
-    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
-    #   run: |
-    #     cd build
-    #     SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
-    #     for FILE in *.run; do
-    #       [ -f $FILE ] || continue
-    #       NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
-    #       mv $FILE $NEW_FILE
-    #     done
-
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-${{ matrix.platform }}-bin
         path: build/*.tar.gz
+        retention-days: 5
+
+  build-installer:
+    runs-on: ubuntu-latest
+    needs: build-bin
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Build installer
+      run: |
+        mkdir -p build
+        for ARCH in aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64; do
+          cp nzbget-$ARCH-bin/*.tar.gz build/
+        done
+        BUILD_PARAMS="linux installer"
+        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
+          BUILD_PARAMS="$BUILD_PARAMS debug release"
+        else
+          BUILD_PARAMS="$BUILD_PARAMS release"
+        fi
+        if [ "$GITHUB_REF_NAME" != "main" ]; then
+          BUILD_PARAMS="$BUILD_PARAMS testing"
+        fi
+        bash linux/build-nzbget.sh $BUILD_PARAMS
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd build
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+        for FILE in *.run; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+          mv $FILE $NEW_FILE
+        done
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-linux-installers
+        path: build/*.run
         retention-days: 5
