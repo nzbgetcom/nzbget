@@ -16,8 +16,6 @@ find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
-include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-
 set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2 winmm.lib)
 set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
@@ -36,6 +34,12 @@ set(INCLUDES ${INCLUDES}
 	${CMAKE_SOURCE_DIR}/daemon/windows
 	${CMAKE_SOURCE_DIR}/windows/resources
 )
+
+include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+
+include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
+add_dependencies(yencode par2-turbo)
+add_dependencies(regex par2-turbo)
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)
 set(HAVE_CTIME_R_3 1)
