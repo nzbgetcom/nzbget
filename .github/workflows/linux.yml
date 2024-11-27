@@ -33,8 +33,8 @@ jobs:
         sudo chown $USER:$USER /build
         mkdir -p /build/buildroot
         mkdir -p /build/lib
-        curl -L https://github.nzbget.com/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
-        curl -L https://github.nzbget.com/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
@@ -74,7 +74,7 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        curl -L https://github.nzbget.com/unpack.tar.gz -o /build/unpack.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/unpack.tar.gz -o /build/unpack.tar.gz
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Checkout
