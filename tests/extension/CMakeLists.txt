@@ -1,4 +1,4 @@
-file(GLOB ExtensionSrc
+set(ExtensionSrc
 	main.cpp
 	ManifestFileTest.cpp
 	ExtensionLoaderTest.cpp

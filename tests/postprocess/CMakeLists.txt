@@ -1,4 +1,4 @@
-file(GLOB PostprocessTestsSrc
+set(PostprocessTestsSrc
 	main.cpp
 	# DirectUnpackTest.cpp
 	# DupeMatcherTest.cpp
