@@ -30,7 +30,7 @@ jobs:
 
     - name: Build
       run: |
-        mkdir build
+        New-Item build -ItemType Directory -Force | Out-Null
         cd build
         cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 4
@@ -94,7 +94,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DCURSES_INCLUDE_PATH=/opt/homebrew/opt/ncurses/include -DBUILD_ONLY_TESTS=ON
+        cmake .. -DBUILD_ONLY_TESTS=ON
         cmake --build . --config Release -j 4
 
     - name: Test
