@@ -105,7 +105,7 @@ jobs:
         path: builds/*
         retention-days: 5
 
-    - name: Delete unneded platform-specific artifacts
+    - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v4
       with:
         name: |
@@ -116,7 +116,7 @@ jobs:
           nzbget-osx-installers
           nzbget-qnap-packages
 
-    - name: Delete unneded linux packages artifacts
+    - name: Delete unneeded linux packages artifacts
       uses: geekyeggo/delete-artifact@v4
       with:
         name: |

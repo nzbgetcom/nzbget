@@ -51,7 +51,7 @@ jobs:
         path: build/rpm/*.rpm
         retention-days: 5
 
-    - name: Delete unneded linux artifacts
+    - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
       uses: geekyeggo/delete-artifact@v4
       with:

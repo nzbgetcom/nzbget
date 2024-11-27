@@ -135,7 +135,7 @@ jobs:
         path: nzbget-osx-installers/*
         retention-days: 5
 
-    - name: Delete unneded artifacts
+    - name: Delete unneeded artifacts
       uses: geekyeggo/delete-artifact@v4
       with:
         name: |

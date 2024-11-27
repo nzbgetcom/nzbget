@@ -113,7 +113,7 @@ jobs:
           mv $FILE $NEW_FILE
         done
     
-    - name: Delete unneded platform-specific artifacts
+    - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v5
       with:
         name: |
