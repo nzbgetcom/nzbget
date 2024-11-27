@@ -6,12 +6,21 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, windows]
+    runs-on: windows-2022
 
     steps:
     
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Prepare build environment
+      run: |
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-full.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
+        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
 
     - name: Build
       run: |

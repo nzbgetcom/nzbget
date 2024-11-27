@@ -195,7 +195,7 @@ Function BuildTarget($Type, $Bits) {
     Invoke-Expression "& $CMakeCmd"
     If (-not $?) { Set-Location $SrcDir; Exit 1 }
 
-    & cmake --build . --config $Type
+    & cmake --build . --config $Type -j 4
     If (-not $?) { Set-Location $SrcDir; Exit 1 }
 
     Copy-Item "$Type\nzbget.exe" "$SrcDir\$PackageDir\$Bits\"
