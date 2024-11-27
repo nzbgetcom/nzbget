@@ -38,7 +38,6 @@ set(INCLUDES ${INCLUDES}
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-add_dependencies(${PACKAGE} par2-turbo)
 add_dependencies(yencode par2-turbo)
 add_dependencies(regex par2-turbo)
 
