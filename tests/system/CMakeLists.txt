@@ -1,4 +1,4 @@
-file(GLOB SystemTestsSrc
+set(SystemTestsSrc
 	main.cpp
 	SystemInfoTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp 
@@ -7,7 +7,6 @@ file(GLOB SystemTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/connect/HttpClient.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
-	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp 

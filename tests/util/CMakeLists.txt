@@ -1,4 +1,4 @@
-file(GLOB UtilTestSrc
+set(UtilTestSrc
 	main.cpp
 	FileSystemTest.cpp
 	UtilTest.cpp
