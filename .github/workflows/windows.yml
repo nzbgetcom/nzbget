@@ -51,5 +51,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-${{ matrix.bits }}-bin
-        path: build\distrib\nzbget\${{ matrix.bits }}\*.exe
+        path: |
+          build\distrib\nzbget\${{ matrix.bits }}\nzbget.exe
+          build\Release*\*.nsi
         retention-days: 5
