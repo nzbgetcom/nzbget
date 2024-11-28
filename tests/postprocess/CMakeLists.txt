@@ -25,7 +25,12 @@ set(PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 )
 
+if(WIN32)
+	set(PostprocessTestsSrc ${PostprocessTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
+
 add_executable(PostprocessTests ${PostprocessTestsSrc})
+
 target_link_libraries(PostprocessTests PRIVATE ${LIBS})
 target_include_directories(PostprocessTests PRIVATE ${INCLUDES} ../suite)
 

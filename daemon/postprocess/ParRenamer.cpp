@@ -178,7 +178,12 @@ void ParRenamer::LoadParFile(const char* parFilename)
 			m_hasDamagedParFiles = true;
 			continue;
 		}
-		std::string filename = sourceFile->GetDescriptionPacket()->FileName();
+		std::string filename = Par2::DescriptionPacket::TranslateFilenameFromPar2ToLocal(
+			m_nout, 
+			m_nout,
+			Par2::nlNormal,
+			sourceFile->GetDescriptionPacket()->FileName()
+		);
 		std::string hash = sourceFile->GetDescriptionPacket()->Hash16k().print();
 
 		bool exists = std::find_if(m_fileHashList.begin(), m_fileHashList.end(),

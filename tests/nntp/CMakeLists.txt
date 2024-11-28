@@ -1,4 +1,4 @@
-add_executable(NNTPTests
+set(NNTPTestsSrc
 	ServerPoolTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ServerPool.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
@@ -14,6 +14,13 @@ add_executable(NNTPTests
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
+
+if(WIN32)
+	set(NNTPTestsSrc ${NNTPTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
+
+add_executable(NNTPTests ${NNTPTestsSrc})
+
 target_link_libraries(NNTPTests PRIVATE ${LIBS})
 target_include_directories(NNTPTests PRIVATE ${INCLUDES})
 

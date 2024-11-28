@@ -48,6 +48,10 @@ protected:
 	int GetStageProgress() { return m_stageProgress; }
 
 private:
+	class NullStreamBuf final : public std::streambuf {};
+	NullStreamBuf m_nullbuf;
+	std::ostream m_nout{&m_nullbuf};
+
 	class FileHash
 	{
 	public:

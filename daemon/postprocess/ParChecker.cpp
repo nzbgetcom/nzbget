@@ -71,7 +71,7 @@ public:
 			? g_Options->GetParBuffer()
 			: 0;
 	}
-	Par2::Result PreProcess(const char *parFilename);
+	Par2::Result PreProcess(const std::string& parFilename);
 	Par2::Result Process(bool dorepair);
 	virtual Repairer* GetRepairer() { return this; }
 
@@ -108,14 +108,14 @@ class RepairCreatorPacket : public Par2::CreatorPacket
 	friend class ParChecker;
 };
 
-Par2::Result Repairer::PreProcess(const char *parFilename)
+Par2::Result Repairer::PreProcess(const std::string& parFilename)
 {
 	std::string memParam = "-m" + std::to_string(m_memToUse);
 	std::string threadsParam = "-t" + std::to_string(m_threadsToUse);
 
 	if (g_Options->GetParScan() == Options::psFull)
 	{
-		BString<1024> wildcardParam(parFilename, 1024);
+		BString<1024> wildcardParam(parFilename.c_str(), 1024);
 		char* basename = FileSystem::BaseFileName(wildcardParam);
 		if (basename != wildcardParam && strlen(basename) > 0)
 		{
@@ -123,7 +123,7 @@ Par2::Result Repairer::PreProcess(const char *parFilename)
 			basename[1] = '\0';
 		}
 
-		const char* argv[] = { "par2", "r", "-v", memParam.c_str(), threadsParam.c_str(), parFilename, wildcardParam };
+		const char* argv[] = { "par2", "r", "-v", memParam.c_str(), threadsParam.c_str(), parFilename.c_str(), wildcardParam };
 		if (!m_commandLine.Parse(7, (char**)argv))
 		{
 			return Par2::eInvalidCommandLineArguments;
@@ -131,7 +131,7 @@ Par2::Result Repairer::PreProcess(const char *parFilename)
 	}
 	else
 	{
-		const char* argv[] = { "par2", "r", "-v", memParam.c_str(), threadsParam.c_str(), parFilename };
+		const char* argv[] = { "par2", "r", "-v", memParam.c_str(), threadsParam.c_str(), parFilename.c_str() };
 		if (!m_commandLine.Parse(6, (char**)argv))
 		{
 			return Par2::eInvalidCommandLineArguments;
@@ -294,7 +294,9 @@ ParChecker::EStatus ParChecker::RunParCheckAll()
 
 		if (!IsStopped())
 		{
-			BString<1024> fullParFilename( "%s%c%s", m_destDir.c_str(), PATH_SEPARATOR, parFilename.c_str());
+			std::string path = m_destDir + PATH_SEPARATOR + parFilename;
+			std::string fullParFilename = FileSystem::GetRealPath(path)
+				.value_or(std::move(path));
 
 			int baseLen = 0;
 			ParParser::ParseParFilename(parFilename.c_str(), true, &baseLen, nullptr);
@@ -304,7 +306,7 @@ ParChecker::EStatus ParChecker::RunParCheckAll()
 			BString<1024> parInfoName("%s%c%s", m_nzbName.c_str(), PATH_SEPARATOR, *infoName);
 			SetInfoName(parInfoName);
 
-			EStatus status = RunParCheck(fullParFilename);
+			EStatus status = RunParCheck(std::move(fullParFilename));
 
 			// accumulate total status, the worst status has priority
 			if (allStatus > status)
@@ -317,10 +319,10 @@ ParChecker::EStatus ParChecker::RunParCheckAll()
 	return allStatus;
 }
 
-ParChecker::EStatus ParChecker::RunParCheck(const char* parFilename)
+ParChecker::EStatus ParChecker::RunParCheck(std::string parFilename)
 {
 	Cleanup();
-	m_parFilename = parFilename ? parFilename : "";
+	m_parFilename = std::move(parFilename);
 	m_stage = ptLoadingPars;
 	m_processedCount = 0;
 	m_extraFiles = 0;
@@ -484,7 +486,7 @@ int ParChecker::PreProcessPar()
 			m_repairer = std::make_unique<Repairer>(this);
 		}
 
-		res = GetRepairer()->PreProcess(m_parFilename.c_str());
+		res = GetRepairer()->PreProcess(m_parFilename);
 		debug("ParChecker: PreProcess-result=%i", res);
 
 		if (IsStopped())
@@ -1081,7 +1083,12 @@ void ParChecker::CheckEmptyFiles()
 		if (sourcefile && sourcefile->GetDescriptionPacket())
 		{
 			// GetDescriptionPacket()->FileName() returns a temp string object, which we need to hold for a while
-			std::string filenameObj = sourcefile->GetDescriptionPacket()->FileName();
+			std::string filenameObj = Par2::DescriptionPacket::TranslateFilenameFromPar2ToLocal(
+				m_parCout, 
+				m_parCerr, 
+				Par2::nlNormal,
+				sourcefile->GetDescriptionPacket()->FileName()
+			);
 			if (!filenameObj.empty() && !IsProcessedFile(filenameObj.c_str()))
 			{
 				bool ignore = Util::MatchFileExt(filenameObj.c_str(), g_Options->GetParIgnoreExt(), ",;");

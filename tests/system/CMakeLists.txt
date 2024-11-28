@@ -19,7 +19,12 @@ set(SystemTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 )
 
+if(WIN32)
+	set(SystemTestsSrc ${SystemTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
+
 add_executable(SystemTests ${SystemTestsSrc})
+
 target_link_libraries(SystemTests PRIVATE ${LIBS})
 target_include_directories(SystemTests PRIVATE ${INCLUDES})
 
