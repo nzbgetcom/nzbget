@@ -5,8 +5,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-bin:
     runs-on: windows-2022
+    strategy:
+      matrix:
+        include:
+        - bits: 32
+        - bits: 64
 
     steps:
     
@@ -16,7 +21,7 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-full.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-windows-x${{ matrix.bits }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
@@ -24,7 +29,7 @@ jobs:
 
     - name: Build
       run: |
-        $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
+        $BuildParams="-BuildRelease -Build${{ matrix.bits }}"
         If (-not ($env:GITHUB_REF_NAME -eq "main")) {
           $BuildParams="$BuildParams -BuildTesting"
         }
@@ -33,18 +38,18 @@ jobs:
         }
         Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
 
-    - name: Rename build artifacts
-      if: github.ref_name != 'main' && github.ref_name != 'develop'
-      run: |
-        $Output="build"
-        $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
-        ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
-          Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
-        }
+    # - name: Rename build artifacts
+    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
+    #   run: |
+    #     $Output="build"
+    #     $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
+    #     ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
+    #       Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
+    #     }
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-windows-installers
-        path: build\*.exe
+        name: nzbget-${{ matrix.bits }}-bin
+        path: build\distrib\nzbget\${{ matrix.bits }}\*.exe
         retention-days: 5
