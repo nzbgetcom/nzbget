@@ -26,8 +26,8 @@
 
 namespace Utf8
 {
-	std::optional<std::wstring> Utf8ToWide(const std::string& str) noexcept;
-	std::optional<std::string> WideToUtf8(const std::wstring& wstr) noexcept;
+	std::optional<std::wstring> Utf8ToWide(const std::string& str);
+	std::optional<std::string> WideToUtf8(const std::wstring& wstr);
 }
 
 #endif

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,32 +21,37 @@
 
 #include "Json.h"
 
-namespace Json {
-	JsonValue Deserialize(std::istream& is, ErrorCode& ec)
+namespace Json
+{
+	std::optional<JsonValue> Deserialize(std::basic_istream<char>& is) noexcept
 	{
+		ErrorCode ec;
 		StreamParser parser;
 		std::string line;
-
 		while (std::getline(is, line))
 		{
 			parser.write(line, ec);
-			if (ec)
-			{
-				return nullptr;
-			}
+			if (ec) return std::nullopt;
 		}
 
 		parser.finish(ec);
 
-		if (ec)
-		{
-			return nullptr;
-		}
+		if (ec) return std::nullopt;
 
 		return parser.release();
 	}
 
-	std::string Serialize(const JsonObject& json)
+	std::optional<JsonValue> Deserialize(const std::string& jsonStr) noexcept
+	{
+		ErrorCode ec;
+		JsonValue value = parse(jsonStr, ec);
+
+		if (ec) return std::nullopt;
+
+		return value;
+	}
+
+	std::string Serialize(const JsonObject& json) noexcept
 	{
 		return serialize(json);
 	}

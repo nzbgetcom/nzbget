@@ -212,7 +212,7 @@ private:
 
 	void Cleanup();
 	EStatus RunParCheckAll();
-	EStatus RunParCheck(const char* parFilename);
+	EStatus RunParCheck(std::string parFilename);
 	int PreProcessPar();
 	bool LoadMainParBak();
 	int ProcessMorePars();

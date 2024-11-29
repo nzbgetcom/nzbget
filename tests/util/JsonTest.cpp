@@ -28,18 +28,34 @@
 
 BOOST_AUTO_TEST_CASE(JsonDeserializeTest)
 {
-	std::string validJSON = "{\"name\": \"John\", \"secondName\": \"Doe\"}";	
-	std::stringstream is;
-	is << validJSON;
+	{
+		std::string validJSON = "{\"name\": \"John\", \"secondName\": \"Doe\"}";
+		std::stringstream is;
+		is << validJSON;
 
-	Json::ErrorCode ec;
-	Json::Deserialize(is, ec);
-	BOOST_CHECK(ec.failed() == false);
+		{
+			auto res = Json::Deserialize(is);
+			BOOST_CHECK(res.has_value());
+		}
 
-	std::string invalidJSON = "{\"name\": \"John\", \"secondName\":}";
+		{
+			auto res = Json::Deserialize(validJSON);
+			BOOST_CHECK(res.has_value());
+		}
 
-	is.clear();
-	is << invalidJSON;
-	Json::Deserialize(is, ec);
-	BOOST_CHECK(ec.failed() == true);
+		std::string invalidJSON = "{\"name\": \"John\", \"secondName\":}";
+
+		is.clear();
+		is << invalidJSON;
+
+		{
+			auto res = Json::Deserialize(is);
+			BOOST_CHECK(!res.has_value());
+		}
+
+		{
+			auto res = Json::Deserialize(invalidJSON);
+			BOOST_CHECK(!res.has_value());
+		}
+	}
 }

@@ -1,0 +1,110 @@
+name: tests
+
+on:
+  push:
+    branches:
+    - develop
+    - main
+  pull_request:
+    branches:
+    - develop
+    - main
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+
+  windows-tests:
+    runs-on: windows-2022
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Download and extract vcpkg cache
+      run: |
+        $ProgressPreference = "SilentlyContinue"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-windows-tests.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
+
+    - name: Build
+      run: |
+        New-Item build -ItemType Directory -Force | Out-Null
+        cd build
+        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-windows-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  linux-tests:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-linux-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  macos-tests:
+    runs-on: macos-14
+    steps:
+
+    - name: Install dependencies
+      run:
+        brew install --formula boost
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-linux-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
