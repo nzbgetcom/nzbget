@@ -27,6 +27,8 @@
 #include "YEncode.h"
 
 #ifdef WIN32
+#include "utf8.h"
+
 // getopt for WIN32:
 // from http://www.codeproject.com/cpp/xgetopt.asp
 // Original Author:  Hans Dietrich (hdietrich2@hotmail.com)
@@ -707,7 +709,15 @@ uint32 Util::HashBJ96(const char* buffer, int bufSize, uint32 initValue)
 
 std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::string& cmd)
 {
+#ifdef WIN32
+	auto res = Utf8::Utf8ToWide(cmd);
+	if (!res.has_value()) return nullptr;
+
+	FILE* pipe = popen(res.value().c_str(), L"r");
+#else
 	FILE* pipe = popen(cmd.c_str(), "r");
+#endif
+
 	return std::unique_ptr<FILE, std::function<void(FILE*)>>(pipe, [](FILE* pipe)
 		{
 			if (pipe)

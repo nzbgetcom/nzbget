@@ -195,7 +195,7 @@ namespace System
 
 		std::string path = FileSystem::ExtractFilePathFromCmd(cmd);
 
-		auto result = FileSystem::GetFileRealPath(path);
+		auto result = FileSystem::GetRealPath(path);
 
 		if (result.has_value() && FileSystem::FileExists(result.value().c_str()))
 		{

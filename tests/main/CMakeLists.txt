@@ -1,4 +1,4 @@
-add_executable(MainTests
+set(MainTestsSrc
 	main.cpp
 	OptionsTest.cpp
 	CommandLineParserTest.cpp
@@ -13,6 +13,13 @@ add_executable(MainTests
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 )
+
+if(WIN32)
+	set(MainTestsSrc ${MainTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
+
+add_executable(MainTests ${MainTestsSrc})
+
 target_link_libraries(MainTests PRIVATE ${LIBS})
 target_include_directories(MainTests PRIVATE ${INCLUDES})
 
