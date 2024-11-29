@@ -821,7 +821,7 @@ void FileInfo::SetExtraPriority(bool extraPriority)
 
 void FileInfo::MakeValidFilename()
 {
-	m_filename = FileSystem::MakeValidFilename(m_filename);
+	m_filename = FileSystem::MakeValidFilename(m_filename.c_str()).Str();
 }
 
 void FileInfo::SetActiveDownloads(int activeDownloads)

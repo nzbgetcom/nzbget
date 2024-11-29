@@ -362,39 +362,39 @@ void DirectRenamer::RenameFiles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, 
 	// rename in-progress files
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
-		CString newName;
+		std::string newName;
 		if (fileInfo->GetParFile() && renamePars)
 		{
-			newName = BuildNewParName(fileInfo->GetFilename(), nzbInfo->GetDestDir(), fileInfo->GetParSetId(), vol);
+			newName = BuildNewParName(fileInfo->GetFilename(), nzbInfo->GetDestDir(), fileInfo->GetParSetId(), vol).Str();
 		}
 		else if (!fileInfo->GetParFile())
 		{
-			newName = BuildNewRegularName(fileInfo->GetFilename(), parHashes, fileInfo->GetHash16k());
+			newName = BuildNewRegularName(fileInfo->GetFilename(), parHashes, fileInfo->GetHash16k()).Str();
 		}
 
-		if (newName)
+		if (!newName.empty())
 		{
 			bool written = fileInfo->GetOutputFilename() &&
 				!Util::EndsWith(fileInfo->GetOutputFilename(), ".out.tmp", true);
 			if (!written)
 			{
 				nzbInfo->PrintMessage(Message::mkInfo, "Renaming in-progress file %s to %s",
-					fileInfo->GetFilename(), *newName);
+					fileInfo->GetFilename(), newName.c_str());
 				if (Util::EmptyStr(fileInfo->GetOrigname()))
 				{
 					fileInfo->SetOrigname(fileInfo->GetFilename());
 				}
-				fileInfo->SetFilename(newName);
+				fileInfo->SetFilename(std::move(newName));
 				fileInfo->SetFilenameConfirmed(true);
 				renamedCount++;
 			}
-			else if (RenameCompletedFile(nzbInfo, fileInfo->GetFilename(), newName))
+			else if (RenameCompletedFile(nzbInfo, fileInfo->GetFilename(), newName.c_str()))
 			{
 				if (Util::EmptyStr(fileInfo->GetOrigname()))
 				{
 					fileInfo->SetOrigname(fileInfo->GetFilename());
 				}
-				fileInfo->SetFilename(newName);
+				fileInfo->SetFilename(std::move(newName));
 				fileInfo->SetFilenameConfirmed(true);
 				renamedCount++;
 			}
