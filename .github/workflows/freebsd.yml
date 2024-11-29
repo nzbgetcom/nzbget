@@ -6,14 +6,24 @@ on:
 
 jobs:
   build:
-    runs-on: [self-hosted, nzbget-freebsd]
+    runs-on: ubuntu-22.04
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+
+    - name: Prepare freebsd build environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        mkdir -p /build/freebsd
+        mkdir -p /build/lib
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/freebsd-sysroot.tar.gz -o /build/freebsd/sysroot.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-x86_64-bsd.tar.gz -o /build/lib/lib.tar.gz
+        tar zxf /build/freebsd/sysroot.tar.gz -C /build/freebsd
+        tar zxf /build/lib/lib.tar.gz -C /build/lib
+        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5 clang-14
 
     - name: Build
       run: |
