@@ -4,25 +4,44 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  BUILD_ARCHS: "aarch64-ndk armhf-ndk i686-ndk x86_64-ndk"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+
 jobs:
-  build:
-    runs-on: [self-hosted, nzbget-android]
+
+  build-bin:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [aarch64-ndk, armhf-ndk, i686-ndk, x86_64-ndk]
+        type: [release, debug]
+        build-only-release:
+          - ${{ github.ref_name != 'develop' && github.ref_name != 'main' }}
+        exclude:
+          - build-only-release: true
+            type: debug
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+
+    - name: Prepare ${{ matrix.arch }} / ${{ matrix.type }} environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        mkdir -p /build/android
+        mkdir -p /build/lib
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/android-${{ matrix.arch }}.tar.gz -o /build/android/ndk.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        tar zxf /build/android/ndk.tar.gz -C /build/android
+        tar zxf /build/lib/lib.tar.gz -C /build/lib
+        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 
     - name: Build
       run: |
-        BUILD_PARAMS="android bin installer"
-        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
-        else
-          BUILD_PARAMS="$BUILD_PARAMS release"
-        fi
+        BUILD_PARAMS="${{ matrix.arch }} ${{ matrix.type }} bin"
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
         fi
@@ -32,20 +51,66 @@ jobs:
       uses: actions/upload-artifact@v4
       if: failure()
       with:
-        name: nzbget-android-build-log
+        name: nzbget-android-${{ matrix.arch }}-${{ matrix.type }}-build-log
         path: build/*/build.log
         retention-days: 5
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-${{ matrix.arch }}-${{ matrix.type }}-bin
+        path: build/*.tar.gz
+        retention-days: 5
+
+  build-installer:
+    runs-on: ubuntu-latest
+    needs: build-bin
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Prepare build environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/android-unpack.tar.gz -o /build/unpack.tar.gz
+        tar zxf /build/unpack.tar.gz -C /build
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Build installer
+      run: |
+        mkdir -p build
+        for ARCH in ${{ env.BUILD_ARCHS }}; do
+          for TYPE in ${{ env.BUILD_TYPES }}; do
+            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/
+          done
+        done
+        BUILD_PARAMS="android installer ${{ env.BUILD_TYPES }}"
+        if [ "$GITHUB_REF_NAME" != "main" ]; then
+          BUILD_PARAMS="$BUILD_PARAMS testing"
+        fi
+        bash linux/build-nzbget.sh $BUILD_PARAMS
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android.run"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-android.run/$SUFFIX}
+          NEW_FILE=${FILE/-bin-android/$SUFFIX}
           mv $FILE $NEW_FILE
         done
+
+    - name: Delete unneeded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: |
+          nzbget-*-*-*-bin
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
