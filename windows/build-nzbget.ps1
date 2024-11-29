@@ -108,6 +108,7 @@ Function PrepareFiles {
     }
 
     Write-Host "Preparing files for setup"
+    Remove-Item $DistribDir -Force -Recurse -ErrorAction Ignore
     New-Item -Path $DistribDir -ItemType Directory -Force | Out-Null
     New-Item -Path "$PackageDir\32" -ItemType Directory -Force | Out-Null
     New-Item -Path "$PackageDir\64" -ItemType Directory -Force | Out-Null
@@ -194,7 +195,7 @@ Function BuildTarget($Type, $Bits) {
     Invoke-Expression "& $CMakeCmd"
     If (-not $?) { Set-Location $SrcDir; Exit 1 }
 
-    & cmake --build . --config $Type -j 4
+    & cmake --build . --config $Type
     If (-not $?) { Set-Location $SrcDir; Exit 1 }
 
     Copy-Item "$Type\nzbget.exe" "$SrcDir\$PackageDir\$Bits\"
@@ -230,18 +231,12 @@ Function BuildSetup($Type) {
 
 # build package release/debug
 Function Build($Type) {
-    If (-not (Test-Path "$PackageDir\32\unrar.exe")) {
-        PrepareFiles
-    }
+    PrepareFiles
     if ($Build32) {
-        If (-not (Test-Path "$PackageDir\32\nzbget.exe")) {
-            BuildTarget $Type "32"
-        }
+        BuildTarget $Type "32"
     }
     if ($Build64) {
-        If (-not (Test-Path "$PackageDir\64\nzbget.exe")) {
-            BuildTarget $Type "64"
-        }
+        BuildTarget $Type "64"
     }
     if ($BuildSetup) {
         BuildSetup $Type
@@ -259,7 +254,12 @@ If ($BuildTesting) {
 }
 
 $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -split('"'))[1]
-New-Item -ItemType Directory $BuildDir -ErrorAction SilentlyContinue | Out-Null
+
+# clean build folder
+If (Test-Path $BuildDir) {
+    Remove-Item $BuildDir -Force -Recurse
+}
+New-Item -ItemType Directory $BuildDir | Out-Null
 
 # download 7z/unrar
 if ($DownloadUnpackers) {
@@ -268,7 +268,7 @@ if ($DownloadUnpackers) {
 
 if ($BuildRelease -or $BuildDebug) {
     Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
-    New-Item -ItemType Directory $PackageDir -ErrorAction SilentlyContinue | Out-Null
+    New-Item -ItemType Directory $PackageDir | Out-Null
 }
 
 # build
