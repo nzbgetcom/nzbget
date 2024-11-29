@@ -5,7 +5,8 @@ on:
   workflow_dispatch:
 
 env:
-  archs: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
+  BUILD_ARCHS: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
 
 jobs:
 
@@ -15,10 +16,11 @@ jobs:
       matrix:
         arch: [aarch64, armel, armhf, i686, mipseb, mipsel, ppc500, ppc6xx, riscv64, x86_64]
         type: [release, debug]
-        # build-only-release: false${{ contains(github.ref, 'develop') || contains(github.ref, 'main') }}
-        # exclude:
-        #   - build-only-release: true
-        #     type: debug
+        build-only-release: 
+          - ${{ github.ref_name != 'develop' && github.ref_name != 'main' }}
+        exclude:
+          - build-only-release: true
+            type: debug
 
     steps:
 
@@ -65,7 +67,7 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/unpack.tar.gz -o /build/unpack.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/linux-unpack.tar.gz -o /build/unpack.tar.gz
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
@@ -74,17 +76,12 @@ jobs:
     - name: Build installer
       run: |
         mkdir -p build
-        for ARCH in ${{ env.archs }}; do
-          for TYPE in release debug; do
-            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/ || true
+        for ARCH in ${{ env.BUILD_ARCHS }}; do
+          for TYPE in ${{ env.BUILD_TYPES }}; do
+            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/
           done
         done
-        BUILD_PARAMS="linux installer"
-        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
-        else
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
-        fi
+        BUILD_PARAMS="linux installer ${{ env.BUILD_TYPES }}"
         if [ "$GITHUB_REF_NAME" != "main" ]; then
           BUILD_PARAMS="$BUILD_PARAMS testing"
         fi
