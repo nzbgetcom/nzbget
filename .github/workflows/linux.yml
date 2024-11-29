@@ -15,10 +15,10 @@ jobs:
       matrix:
         arch: [aarch64, armel, armhf, i686, mipseb, mipsel, ppc500, ppc6xx, riscv64, x86_64]
         type: [release, debug]
-        build-only-release: ${{ contains(github.ref, 'develop') || contains(github.ref, 'main') }}
-        exclude:
-          - build-only-release: true
-            type: debug
+        # build-only-release: false${{ contains(github.ref, 'develop') || contains(github.ref, 'main') }}
+        # exclude:
+        #   - build-only-release: true
+        #     type: debug
 
     steps:
 
@@ -76,7 +76,7 @@ jobs:
         mkdir -p build
         for ARCH in ${{ env.archs }}; do
           for TYPE in release debug; do
-            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/
+            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/ || true
           done
         done
         BUILD_PARAMS="linux installer"
@@ -98,16 +98,16 @@ jobs:
         path: build/*/build.log
         retention-days: 5
 
-    - name: Rename build artifacts
-      if: github.ref_name != 'main' && github.ref_name != 'develop'
-      run: |
-        cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
-        for FILE in *.run; do
-          [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
-          mv $FILE $NEW_FILE
-        done
+    # - name: Rename build artifacts
+    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
+    #   run: |
+    #     cd build
+    #     SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+    #     for FILE in *.run; do
+    #       [ -f $FILE ] || continue
+    #       NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+    #       mv $FILE $NEW_FILE
+    #     done
 
     - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v5
