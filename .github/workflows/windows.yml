@@ -43,8 +43,10 @@ jobs:
       with:
         name: nzbget-${{ matrix.bits }}-bin
         path: |
-          build\distrib\nzbget\${{ matrix.bits }}\nzbget.exe
+          build\Release*\Release\*.exe
+          build\Debug*\Debug\*.exe
           build\Release*\*.nsi
+          build\Debug*\*.nsi
         retention-days: 5
   
   build-installer:
@@ -87,6 +89,12 @@ jobs:
         ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
           Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
         }
+
+    - name: Delete unneeded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: |
+          nzbget-*-bin
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
