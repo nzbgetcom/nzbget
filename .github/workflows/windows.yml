@@ -9,9 +9,13 @@ jobs:
     runs-on: windows-2022
     strategy:
       matrix:
-        include:
-        - bits: 32
-        - bits: 64
+        arch: [32, 64]
+        type: [Release, Debug]
+        build-only-release: 
+          - ${{ github.ref_name != 'develop' && github.ref_name != 'main' }}
+        # exclude:
+        #   - build-only-release: true
+        #     type: debug
 
     steps:
     
@@ -21,84 +25,79 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-windows-x${{ matrix.bits }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
 
-    - name: Build nzbget ${{ matrix.bits }}-bit binary
+    - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
       run: |
-        $BuildParams="-BuildRelease -Build${{ matrix.bits }}"
+        $BuildParams="-Build${{ matrix.type }} -Build${{ matrix.arch }}"
         If (-not ($env:GITHUB_REF_NAME -eq "main")) {
           $BuildParams="$BuildParams -BuildTesting"
-        }
-        If (($env:GITHUB_REF_NAME -eq "main") -or ($env:GITHUB_REF_NAME -eq "develop")) {
-          $BuildParams="$BuildParams -BuildDebug"
         }
         Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-${{ matrix.bits }}-bin
+        name: nzbget-${{ matrix.arch }}-${{ matrix.type }}-bin
         path: |
-          build\Release*\Release\*.exe
-          build\Debug*\Debug\*.exe
-          build\Release*\*.nsi
-          build\Debug*\*.nsi
+          build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
+          build\${{ matrix.type }}\*.nsi
         retention-days: 5
   
-  build-installer:
-    runs-on: windows-2022
-    needs: build-bin
+  # build-installer:
+  #   runs-on: windows-2022
+  #   needs: build-bin
 
-    steps:
+  #   steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
+  #   - name: Checkout
+  #     uses: actions/checkout@v4
 
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
+  #   - name: Download build artifacts
+  #     uses: actions/download-artifact@v4
 
-    - name: Prepare build environment
-      run: |
-        $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
-        Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
-        New-Item build -ItemType Directory -Force | Out-Null
-        Copy-Item nzbget-32-bin\* build -Recurse -ErrorAction SilentlyContinue
-        Copy-Item nzbget-64-bin\* build -Recurse -ErrorAction SilentlyContinue
+  #   - name: Prepare build environment
+  #     run: |
+  #       $ProgressPreference = "SilentlyContinue"
+  #       Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+  #       Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
+  #       New-Item build -ItemType Directory -Force | Out-Null
+  #       Copy-Item nzbget-32-bin\* build -Recurse -ErrorAction SilentlyContinue
+  #       Copy-Item nzbget-64-bin\* build -Recurse -ErrorAction SilentlyContinue
 
-    - name: Build nzbget windows installer
-      run: |
-        $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
-        If (-not ($env:GITHUB_REF_NAME -eq "main")) {
-          $BuildParams="$BuildParams -BuildTesting"
-        }
-        If (($env:GITHUB_REF_NAME -eq "main") -or ($env:GITHUB_REF_NAME -eq "develop")) {
-          $BuildParams="$BuildParams -BuildDebug"
-        }
-        Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
+  #   - name: Build nzbget windows installer
+  #     run: |
+  #       $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
+  #       If (-not ($env:GITHUB_REF_NAME -eq "main")) {
+  #         $BuildParams="$BuildParams -BuildTesting"
+  #       }
+  #       If (($env:GITHUB_REF_NAME -eq "main") -or ($env:GITHUB_REF_NAME -eq "develop")) {
+  #         $BuildParams="$BuildParams -BuildDebug"
+  #       }
+  #       Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
 
-    - name: Rename build artifacts
-      if: github.ref_name != 'main' && github.ref_name != 'develop'
-      run: |
-        $Output="build"
-        $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
-        ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
-          Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
-        }
+  #   - name: Rename build artifacts
+  #     if: github.ref_name != 'main' && github.ref_name != 'develop'
+  #     run: |
+  #       $Output="build"
+  #       $Suffix = $env:GITHUB_REF_NAME.Replace("/","-")
+  #       ForEach ($File In Get-ChildItem -Path $Output -Filter "*.exe") {
+  #         Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-setup.exe", "-$Suffix-bin-windows-setup.exe")
+  #       }
 
-    - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v5
-      with:
-        name: |
-          nzbget-*-bin
+  #   - name: Delete unneeded platform-specific artifacts
+  #     uses: geekyeggo/delete-artifact@v5
+  #     with:
+  #       name: |
+  #         nzbget-*-bin
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nzbget-windows-installers
-        path: build\*.exe
-        retention-days: 5
+  #   - name: Upload build artifacts
+  #     uses: actions/upload-artifact@v4
+  #     with:
+  #       name: nzbget-windows-installers
+  #       path: build\*.exe
+  #       retention-days: 5
