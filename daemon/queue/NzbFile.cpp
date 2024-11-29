@@ -28,6 +28,7 @@
 #include "DiskState.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "Deobfuscation.h"
 
 NzbFile::NzbFile(const char* fileName, const char* category) :
 	m_fileName(fileName)
@@ -116,128 +117,139 @@ void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 
 void NzbFile::ParseSubject(FileInfo* fileInfo, bool TryQuotes)
 {
-	// Example subject: some garbage "title" yEnc (10/99)
+	if (!fileInfo) return;
 
 	if (!fileInfo->GetSubject())
 	{
 		// Malformed file element without subject. We generate subject using internal element id.
 		fileInfo->SetSubject(CString::FormatStr("%d", fileInfo->GetId()));
+		return;
 	}
 
-	// strip the "yEnc (10/99)"-suffix
-	BString<1024> subject = fileInfo->GetSubject();
-	char* end = subject + strlen(subject) - 1;
-	if (*end == ')')
-	{
-		end--;
-		while (strchr("0123456789", *end) && end > subject) end--;
-		if (*end == '/')
-		{
-			end--;
-			while (strchr("0123456789", *end) && end > subject) end--;
-			if (end - 6 > subject && !strncmp(end - 6, " yEnc (", 7))
-			{
-				end[-6] = '\0';
-			}
-		}
-	}
+	detail("Extracting a filename from Subject %s", fileInfo->GetSubject());
 
-	if (TryQuotes)
-	{
-		// try to use the filename in quatation marks
-		char* p = subject;
-		char* start = strchr(p, '\"');
-		if (start)
-		{
-			start++;
-			char* end = strchr(start + 1, '\"');
-			if (end)
-			{
-				int len = (int)(end - start);
-				char* point = strchr(start + 1, '.');
-				if (point && point < end)
-				{
-					BString<1024> filename;
-					filename.Set(start, len);
-					fileInfo->SetFilename(filename);
-					return;
-				}
-			}
-		}
-	}
+	std::string subject = Deobfuscation::Deobfuscate(fileInfo->GetSubject());
 
-	// tokenize subject, considering spaces as separators and quotation
-	// marks as non separatable token delimiters.
-	// then take the last token containing dot (".") as a filename
+	detail("Extracted Filename: %s", subject.c_str());
 
-	typedef std::vector<CString> TokenList;
-	TokenList tokens;
+	fileInfo->SetFilename(std::move(subject));
 
-	// tokenizing
-	char* p = subject;
-	char* start = p;
-	bool quot = false;
-	while (true)
-	{
-		char ch = *p;
-		bool sep = (ch == '\"') || (!quot && ch == ' ') || (ch == '\0');
-		if (sep)
-		{
-			// end of token
-			int len = (int)(p - start);
-			if (len > 0)
-			{
-				tokens.emplace_back(start, len);
-			}
-			start = p;
-			if (ch != '\"' || quot)
-			{
-				start++;
-			}
-			quot = *start == '\"';
-			if (quot)
-			{
-				start++;
-				char* q = strchr(start, '\"');
-				if (q)
-				{
-					p = q - 1;
-				}
-				else
-				{
-					quot = false;
-				}
-			}
-		}
-		if (ch == '\0')
-		{
-			break;
-		}
-		p++;
-	}
+	// return;
 
-	if (!tokens.empty())
-	{
-		// finding the best candidate for being a filename
-		char* besttoken = tokens.back();
-		for (TokenList::reverse_iterator it = tokens.rbegin(); it != tokens.rend(); it++)
-		{
-			char* s = *it;
-			char* p = strchr(s, '.');
-			if (p && (p[1] != '\0'))
-			{
-				besttoken = s;
-				break;
-			}
-		}
-		fileInfo->SetFilename(besttoken);
-	}
-	else
-	{
-		// subject is empty or contains only separators?
-		debug("Could not extract Filename from Subject: %s. Using Subject as Filename", fileInfo->GetSubject());
-		fileInfo->SetFilename(fileInfo->GetSubject());
-	}
+	// // strip the "yEnc (10/99)"-suffix
+	// BString<1024> subject = fileInfo->GetSubject();
+	// char* end = subject + strlen(subject) - 1;
+	// if (*end == ')')
+	// {
+	// 	end--;
+	// 	while (strchr("0123456789", *end) && end > subject) end--;
+	// 	if (*end == '/')
+	// 	{
+	// 		end--;
+	// 		while (strchr("0123456789", *end) && end > subject) end--;
+	// 		if (end - 6 > subject && !strncmp(end - 6, " yEnc (", 7))
+	// 		{
+	// 			end[-6] = '\0';
+	// 		}
+	// 	}
+	// }
+
+	// if (TryQuotes)
+	// {
+	// 	// try to use the filename in quatation marks
+	// 	char* p = subject;
+	// 	char* start = strchr(p, '\"');
+	// 	if (start)
+	// 	{
+	// 		start++;
+	// 		char* end = strchr(start + 1, '\"');
+	// 		if (end)
+	// 		{
+	// 			int len = (int)(end - start);
+	// 			char* point = strchr(start + 1, '.');
+	// 			if (point && point < end)
+	// 			{
+	// 				BString<1024> filename;
+	// 				filename.Set(start, len);
+	// 				fileInfo->SetFilename(filename);
+	// 				return;
+	// 			}
+	// 		}
+	// 	}
+	// }
+
+	// // tokenize subject, considering spaces as separators and quotation
+	// // marks as non separatable token delimiters.
+	// // then take the last token containing dot (".") as a filename
+
+	// typedef std::vector<CString> TokenList;
+	// TokenList tokens;
+
+	// // tokenizing
+	// char* p = subject;
+	// char* start = p;
+	// bool quot = false;
+	// while (true)
+	// {
+	// 	char ch = *p;
+	// 	bool sep = (ch == '\"') || (!quot && ch == ' ') || (ch == '\0');
+	// 	if (sep)
+	// 	{
+	// 		// end of token
+	// 		int len = (int)(p - start);
+	// 		if (len > 0)
+	// 		{
+	// 			tokens.emplace_back(start, len);
+	// 		}
+	// 		start = p;
+	// 		if (ch != '\"' || quot)
+	// 		{
+	// 			start++;
+	// 		}
+	// 		quot = *start == '\"';
+	// 		if (quot)
+	// 		{
+	// 			start++;
+	// 			char* q = strchr(start, '\"');
+	// 			if (q)
+	// 			{
+	// 				p = q - 1;
+	// 			}
+	// 			else
+	// 			{
+	// 				quot = false;
+	// 			}
+	// 		}
+	// 	}
+	// 	if (ch == '\0')
+	// 	{
+	// 		break;
+	// 	}
+	// 	p++;
+	// }
+
+	// if (!tokens.empty())
+	// {
+	// 	// finding the best candidate for being a filename
+	// 	char* besttoken = tokens.back();
+	// 	for (TokenList::reverse_iterator it = tokens.rbegin(); it != tokens.rend(); it++)
+	// 	{
+	// 		char* s = *it;
+	// 		char* p = strchr(s, '.');
+	// 		if (p && (p[1] != '\0'))
+	// 		{
+	// 			besttoken = s;
+	// 			break;
+	// 		}
+	// 	}
+	// 	fileInfo->SetFilename(besttoken);
+	// }
+	// else
+	// {
+	// 	// subject is empty or contains only separators?
+	// 	debug("Could not extract Filename from Subject: %s. Using Subject as Filename", fileInfo->GetSubject());
+	// 	fileInfo->SetFilename(fileInfo->GetSubject());
+	// }
 }
 
 bool NzbFile::HasDuplicateFilenames()

@@ -1,8 +1,10 @@
 set(QueueTestsSrc
 	NzbFileTest.cpp
+	DeobfuscationTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/Deobfuscation.cpp
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 

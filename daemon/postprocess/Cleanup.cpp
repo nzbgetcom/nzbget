@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -25,6 +26,7 @@
 #include "FileSystem.h"
 #include "ParParser.h"
 #include "Options.h"
+#include "Deobfuscation.h"
 
 void MoveController::StartJob(PostInfo* postInfo)
 {
@@ -39,23 +41,22 @@ void MoveController::StartJob(PostInfo* postInfo)
 
 void MoveController::Run()
 {
-	BString<1024> nzbName;
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		nzbName = m_postInfo->GetNzbInfo()->GetName();
+		m_nzbName = m_postInfo->GetNzbInfo()->GetName();
 		m_interDir = m_postInfo->GetNzbInfo()->GetDestDir();
 		m_destDir = m_postInfo->GetNzbInfo()->GetFinalDir();
 	}
 
-	BString<1024> infoName("move for %s", *nzbName);
+	BString<1024> infoName("move for %s", m_nzbName.c_str());
 	SetInfoName(infoName);
 
-	if (m_destDir.Empty())
+	if (m_destDir.empty())
 	{
-		m_destDir = m_postInfo->GetNzbInfo()->BuildFinalDirName();
+		m_destDir = m_postInfo->GetNzbInfo()->BuildFinalDirName().Str();
 	}
 
-	PrintMessage(Message::mkInfo, "Moving completed files for %s", *nzbName);
+	PrintMessage(Message::mkInfo, "Moving completed files for %s", m_nzbName.c_str());
 
 	bool ok = MoveFiles();
 
@@ -66,7 +67,7 @@ void MoveController::Run()
 		PrintMessage(Message::mkInfo, "%s successful", *infoName);
 		// save new dest dir
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		m_postInfo->GetNzbInfo()->SetDestDir(m_destDir);
+		m_postInfo->GetNzbInfo()->SetDestDir(m_destDir.c_str());
 		m_postInfo->GetNzbInfo()->SetFinalDir("");
 		m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msSuccess);
 	}
@@ -82,25 +83,25 @@ void MoveController::Run()
 bool MoveController::MoveFiles()
 {
 	CString errmsg;
-	if (!FileSystem::ForceDirectories(m_destDir, errmsg))
+	if (!FileSystem::ForceDirectories(m_destDir.c_str(), errmsg))
 	{
-		PrintMessage(Message::mkError, "Could not create directory %s: %s", *m_destDir, *errmsg);
+		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir.c_str(), *errmsg);
 		return false;
 	}
 
 	bool ok = true;
 
 	{
-		DirBrowser dir(m_interDir);
+		DirBrowser dir(m_interDir.c_str());
 		while (const char* filename = dir.Next())
 		{
-			BString<1024> srcFile("%s%c%s",* m_interDir, PATH_SEPARATOR, filename);
-			CString dstFile = FileSystem::MakeUniqueFilename(m_destDir, FileSystem::MakeValidFilename(filename));
+			BString<1024> srcFile("%s%c%s", m_interDir.c_str(), PATH_SEPARATOR, filename);
+			CString dstFile = FileSystem::MakeUniqueFilename(m_destDir.c_str(), FileSystem::MakeValidFilename(filename));
 			bool hiddenFile = filename[0] == '.';
 
 			if (!hiddenFile)
 			{
-				PrintMessage(Message::mkInfo, "Moving file %s to %s", FileSystem::BaseFileName(srcFile), *m_destDir);
+				PrintMessage(Message::mkInfo, "Moving file %s to %s", FileSystem::BaseFileName(srcFile), m_destDir.c_str());
 			}
 
 			if (!FileSystem::MoveFile(srcFile, dstFile) && !hiddenFile)
@@ -112,9 +113,9 @@ bool MoveController::MoveFiles()
 		}
 	} // make sure "DirBrowser dir" is destroyed (and has closed its handle) before we trying to delete the directory
 
-	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir, errmsg))
+	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
-		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", *m_interDir, *errmsg);
+		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
 	}
 
 	return ok;

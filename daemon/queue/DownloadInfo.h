@@ -141,8 +141,8 @@ public:
 	Groups* GetGroups() { return &m_groups; }
 	const char* GetSubject() { return m_subject; }
 	void SetSubject(const char* subject) { m_subject = subject; }
-	const char* GetFilename() { return m_filename; }
-	void SetFilename(const char* filename) { m_filename = filename; }
+	const char* GetFilename() { return m_filename.c_str(); }
+	void SetFilename(std::string filename) { m_filename = std::move(filename); }
 	void SetOrigname(const char* origname) { m_origname = origname; }
 	const char* GetOrigname() { return m_origname; }
 	void MakeValidFilename();
@@ -213,7 +213,7 @@ private:
 	Groups m_groups;
 	ServerStatList m_serverStats;
 	CString m_subject;
-	CString m_filename;
+	std::string m_filename;
 	CString m_origname;
 	int64 m_size = 0;
 	int64 m_remainingSize = 0;
@@ -418,6 +418,13 @@ public:
 		msSuccess
 	};
 
+	enum class PostUnpackRenamingStatus
+	{
+		None,
+		Failure,
+		Success
+	};
+
 	enum EDeleteStatus
 	{
 		dsNone,
@@ -560,6 +567,8 @@ public:
 	EMarkStatus GetMarkStatus() { return m_markStatus; }
 	void SetMarkStatus(EMarkStatus markStatus) { m_markStatus = markStatus; }
 	EUrlStatus GetUrlStatus() { return m_urlStatus; }
+	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
+	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
 	int GetExtraParBlocks() { return m_extraParBlocks; }
 	void SetExtraParBlocks(int extraParBlocks) { m_extraParBlocks = extraParBlocks; }
 	void SetUrlStatus(EUrlStatus urlStatus) { m_urlStatus = urlStatus; }
@@ -707,6 +716,7 @@ private:
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;
+	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
 	int m_extraParBlocks = 0;
 	bool m_addUrlPaused = false;
 	bool m_deletePaused = false;
@@ -783,6 +793,7 @@ public:
 		ptUnpacking,
 		ptCleaningUp,
 		ptMoving,
+		ptPostUnpackRenaming,
 		ptExecutingScript,
 		ptFinished
 	};

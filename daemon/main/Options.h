@@ -294,6 +294,8 @@ public:
 	bool GetUnpackPauseQueue() { return m_unpackPauseQueue; }
 	const char* GetExtCleanupDisk() { return m_extCleanupDisk; }
 	const char* GetParIgnoreExt() { return m_parIgnoreExt; }
+	const char* GetIgnoreExtsAndDirsToRename() { return m_ignoreExtensionsAndDirs; }
+	bool GetRenameAfterUnpack() { return m_renameAfterUnpack; }
 	const char* GetUnpackIgnoreExt() { return m_unpackIgnoreExt; }
 	int GetFeedHistory() { return m_feedHistory; }
 	bool GetUrlForce() { return m_urlForce; }
@@ -444,6 +446,8 @@ private:
 	int m_dailyQuota = 0;
 	bool m_reorderFiles = false;
 	EFileNaming m_fileNaming = nfArticle;
+	bool m_renameAfterUnpack = true;
+	CString m_ignoreExtensionsAndDirs;
 	int m_downloadRate = 0;
 
 	// Application mode
