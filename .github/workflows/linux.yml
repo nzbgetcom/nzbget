@@ -98,16 +98,16 @@ jobs:
         path: build/*/build.log
         retention-days: 5
 
-    # - name: Rename build artifacts
-    #   if: github.ref_name != 'main' && github.ref_name != 'develop'
-    #   run: |
-    #     cd build
-    #     SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
-    #     for FILE in *.run; do
-    #       [ -f $FILE ] || continue
-    #       NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
-    #       mv $FILE $NEW_FILE
-    #     done
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd build
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux"
+        for FILE in *.run; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/-bin-linux/$SUFFIX}
+          mv $FILE $NEW_FILE
+        done
 
     - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v5
