@@ -31,6 +31,7 @@
 #include "FileSystem.h"
 #include "Decoder.h"
 #include "StatMeter.h"
+#include "Deobfuscation.h"
 
 bool QueueCoordinator::CoordinatorDownloadQueue::EditEntry(
 	int ID, EEditAction action, const char* args)
@@ -741,7 +742,7 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			// if the name from article seems to be obfuscated
 			bool useFilenameFromArticle = g_Options->GetFileNaming() == Options::nfArticle ||
 				(g_Options->GetFileNaming() == Options::nfAuto &&
-				 !Util::AlphaNum(articleDownloader->GetArticleFilename()) &&
+				 !Deobfuscation::IsStronglyObfuscated(articleDownloader->GetArticleFilename()) &&
 				 !nzbInfo->GetManyDupeFiles());
 			if (useFilenameFromArticle)
 			{

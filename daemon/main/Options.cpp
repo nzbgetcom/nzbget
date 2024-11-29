@@ -93,6 +93,8 @@ static const char* OPTION_PARSCAN				= "ParScan";
 static const char* OPTION_PARQUICK				= "ParQuick";
 static const char* OPTION_POSTSTRATEGY			= "PostStrategy";
 static const char* OPTION_FILENAMING			= "FileNaming";
+static const char* OPTION_RENAMEAFTERUNPACK	    = "RenameAfterUnpack";
+static const char* OPTION_IGNOREEXTSANDDIRS	    = "IgnoreExtensionsAndDirs";
 static const char* OPTION_PARRENAME				= "ParRename";
 static const char* OPTION_PARBUFFER				= "ParBuffer";
 static const char* OPTION_PARTHREADS			= "ParThreads";
@@ -480,6 +482,8 @@ void Options::InitDefaults()
 	SetOption(OPTION_PARQUICK, "yes");
 	SetOption(OPTION_POSTSTRATEGY, "sequential");
 	SetOption(OPTION_FILENAMING, "article");
+	SetOption(OPTION_RENAMEAFTERUNPACK, "yes");
+	SetOption(OPTION_IGNOREEXTSANDDIRS, ".vob, .rar, .par2, .mts, .m2ts, .cpi, .clpi, .mpl, .mpls, .bdm, .bdmv, video_ts, audio_ts, bdmv");
 	SetOption(OPTION_PARRENAME, "yes");
 	SetOption(OPTION_PARBUFFER, "16");
 	SetOption(OPTION_PARTHREADS, "0");
@@ -703,6 +707,7 @@ void Options::InitOptions()
 	m_parIgnoreExt			= GetOption(OPTION_PARIGNOREEXT);
 	m_unpackIgnoreExt		= GetOption(OPTION_UNPACKIGNOREEXT);
 	m_shellOverride			= GetOption(OPTION_SHELLOVERRIDE);
+	m_ignoreExtensionsAndDirs = GetOption(OPTION_IGNOREEXTSANDDIRS);
 
 	m_downloadRate			= ParseIntValue(OPTION_DOWNLOADRATE, 10) * 1024;
 	m_articleTimeout		= ParseIntValue(OPTION_ARTICLETIMEOUT, 10);
@@ -773,6 +778,9 @@ void Options::InitOptions()
 	m_urlForce				= (bool)ParseEnumValue(OPTION_URLFORCE, BoolCount, BoolNames, BoolValues);
 	m_certCheck				= (bool)ParseEnumValue(OPTION_CERTCHECK, BoolCount, BoolNames, BoolValues);
 	m_reorderFiles			= (bool)ParseEnumValue(OPTION_REORDERFILES, BoolCount, BoolNames, BoolValues);
+	m_renameAfterUnpack     = (bool)ParseEnumValue(OPTION_RENAMEAFTERUNPACK, BoolCount, BoolNames, BoolValues);
+
+	//m_ignoreFileExtsToRename = 
 
 	const char* OutputModeNames[] = { "loggable", "logable", "log", "colored", "color", "ncurses", "curses" };
 	const int OutputModeValues[] = { omLoggable, omLoggable, omLoggable, omColored, omColored, omNCurses, omNCurses };
