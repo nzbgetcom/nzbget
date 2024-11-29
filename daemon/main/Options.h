@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -294,6 +295,8 @@ public:
 	bool GetUnpackPauseQueue() { return m_unpackPauseQueue; }
 	const char* GetExtCleanupDisk() { return m_extCleanupDisk; }
 	const char* GetParIgnoreExt() { return m_parIgnoreExt; }
+	const char* GetRenameIgnoreExt() { return m_renameIgnoreExt; }
+	bool GetRenameAfterUnpack() { return m_renameAfterUnpack; }
 	const char* GetUnpackIgnoreExt() { return m_unpackIgnoreExt; }
 	int GetFeedHistory() { return m_feedHistory; }
 	bool GetUrlForce() { return m_urlForce; }
@@ -444,6 +447,8 @@ private:
 	int m_dailyQuota = 0;
 	bool m_reorderFiles = false;
 	EFileNaming m_fileNaming = nfArticle;
+	bool m_renameAfterUnpack = true;
+	CString m_renameIgnoreExt;
 	int m_downloadRate = 0;
 
 	// Application mode

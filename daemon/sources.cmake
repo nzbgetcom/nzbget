@@ -64,6 +64,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
@@ -75,6 +76,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/QueueEditor.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/Scanner.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/UrlCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/Deobfuscation.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/remote/BinRpc.cpp
 	${CMAKE_SOURCE_DIR}/daemon/remote/RemoteClient.cpp
