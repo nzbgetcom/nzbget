@@ -6,7 +6,8 @@ on:
 
 env:
   BUILD_ARCHS: "aarch64-ndk armhf-ndk i686-ndk x86_64-ndk"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release debug' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
 jobs:
 
@@ -22,7 +23,6 @@ jobs:
         run: |
           echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
           echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
-          cat "$GITHUB_OUTPUT"
 
   build-bin:
     runs-on: ubuntu-latest
@@ -50,12 +50,7 @@ jobs:
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
 
     - name: Build
-      run: |
-        BUILD_PARAMS="${{ matrix.arch }} ${{ matrix.type }} bin"
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS testing"
-        fi
-        bash linux/build-nzbget.sh $BUILD_PARAMS
+      run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
@@ -100,10 +95,7 @@ jobs:
           done
         done
         BUILD_PARAMS="android installer ${{ env.BUILD_TYPES }}"
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS testing"
-        fi
-        bash linux/build-nzbget.sh $BUILD_PARAMS
+        bash linux/build-nzbget.sh android installer ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'

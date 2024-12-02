@@ -4,6 +4,11 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  BUILD_ARCHS: "x86_64-bsd"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
+
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -27,16 +32,7 @@ jobs:
 
     - name: Build
       run: |
-        BUILD_PARAMS="freebsd bin installer"
-        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
-        else
-          BUILD_PARAMS="$BUILD_PARAMS release"
-        fi
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS testing"
-        fi
-        bash linux/build-nzbget.sh $BUILD_PARAMS
+        bash linux/build-nzbget.sh bin installer ${{ env.BUILD_ARCHS }} ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
