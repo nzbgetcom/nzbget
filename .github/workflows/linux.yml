@@ -6,7 +6,7 @@ on:
 
 env:
   BUILD_ARCHS: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release debug' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
 
 jobs:
 
