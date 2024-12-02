@@ -32,10 +32,13 @@ jobs:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
 
-    - name: Download QDK
+    - name: Download QDK and prepare environment
       run: |
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/QDK.tar.gz -o $HOME/QDK.tar.gz
         tar zxf $HOME/QDK.tar.gz -C $HOME
+        sudo mkdir -p /qnap
+        sudo chown $USER:$USER /qnap
+        mkdir -p /qnap/nzbget
 
     - name: Repack linux installer for QNAP
       run: |
