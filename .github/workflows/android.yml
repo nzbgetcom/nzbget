@@ -6,21 +6,31 @@ on:
 
 env:
   BUILD_ARCHS: "aarch64-ndk armhf-ndk i686-ndk x86_64-ndk"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release debug' }}
 
 jobs:
 
+  prepare-build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      archs: ${{ steps.matrix-vars.outputs.ARCHS }}
+      types: ${{ steps.matrix-vars.outputs.TYPES }}
+    steps:
+
+      - name: Calculate matrix variables
+        id: matrix-vars
+        run: |
+          echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+          echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
   build-bin:
     runs-on: ubuntu-latest
+    needs: prepare-build-matrix
     strategy:
       matrix:
-        arch: [aarch64-ndk, armhf-ndk, i686-ndk, x86_64-ndk]
-        type: [release, debug]
-        build-only-release:
-          - ${{ github.ref_name != 'develop' && github.ref_name != 'main' }}
-        exclude:
-          - build-only-release: true
-            type: debug
+        arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
+        type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
 
     steps:
 
