@@ -16,7 +16,7 @@ jobs:
     if: ${{ inputs.external_call == false }}
 
   build-pkg:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [build-linux]
     if: always()
     permissions:

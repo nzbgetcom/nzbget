@@ -1,4 +1,4 @@
-name: windows build 
+name: windows build
 
 on:
   workflow_call:
@@ -11,7 +11,7 @@ env:
 
 jobs:
   prepare-build-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
@@ -38,7 +38,7 @@ jobs:
         type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
 
     steps:
-    
+
     - name: Checkout
       uses: actions/checkout@v4
 
@@ -62,7 +62,7 @@ jobs:
           build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
           build\${{ matrix.type }}${{ matrix.arch }}\*.nsi
         retention-days: 5
-  
+
   build-installer:
     runs-on: windows-2022
     needs: [build-bin, prepare-build-matrix]

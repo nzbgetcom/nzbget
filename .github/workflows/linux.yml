@@ -12,7 +12,7 @@ env:
 jobs:
 
   prepare-build-matrix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
@@ -25,7 +25,7 @@ jobs:
           echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
 
   build-bin:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: prepare-build-matrix
     strategy:
       matrix:
@@ -46,7 +46,7 @@ jobs:
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
-        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5
+        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6
 
     - name: Build
       run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
@@ -67,7 +67,7 @@ jobs:
         retention-days: 5
 
   build-installer:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build-bin
 
     steps:
