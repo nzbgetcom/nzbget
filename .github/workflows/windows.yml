@@ -54,7 +54,7 @@ jobs:
         name: nzbget-${{ matrix.arch }}-${{ matrix.type }}-bin
         path: |
           build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
-          build\${{ matrix.type }}\*.nsi
+          build\${{ matrix.type }}${{ matrix.arch }}\*.nsi
         retention-days: 5
   
   # build-installer:
