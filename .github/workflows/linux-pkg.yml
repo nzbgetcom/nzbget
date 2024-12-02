@@ -16,7 +16,7 @@ jobs:
     if: ${{ inputs.external_call == false }}
 
   build-pkg:
-    runs-on: [self-hosted, nzbget-linux]
+    runs-on: ubuntu-latest
     needs: [build-linux]
     if: always()
     permissions:
@@ -34,7 +34,7 @@ jobs:
 
     - name: Build DEB and RPM packages
       run: |
-        sudo apt-get update && sudo apt-get install rpm -y
+        sudo apt-get install rpm -y
         bash linux/pkg/build-pkg.sh
 
     - name: Upload DEB build artifacts
