@@ -20,8 +20,8 @@ jobs:
       - name: Calculate matrix variables
         id: matrix-vars
         run: |
-          echo ARCHS=["$BUILD_ARCHS"] | sed 's| |,|g' >> "$GITHUB_OUTPUT"
-          echo TYPES=["$BUILD_TYPES"] | sed 's| |,|g' >> "$GITHUB_OUTPUT"
+          echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+          echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
 
   build-bin:
@@ -29,8 +29,8 @@ jobs:
     needs: prepare-build-matrix
     strategy:
       matrix:
-        arch: ${{ needs.prepare-build-matrix.outputs.archs }}
-        type: ${{ needs.prepare-build-matrix.outputs.types }}
+        arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
+        type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
     steps:
 
     - name: Checkout
