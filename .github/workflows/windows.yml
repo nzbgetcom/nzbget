@@ -15,6 +15,7 @@ jobs:
     outputs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
+      build-args: ${{ steps.matrix-vars.outputs.BUILD_ARGS }}
     steps:
 
       - name: Calculate matrix variables
@@ -26,8 +27,7 @@ jobs:
           for BUILD_PARAM in $BUILD_ARCHS $BUILD_TYPES; do
             BUILD_ARGS=$(echo $BUILD_ARGS -Build$BUILD_PARAM | xargs)
           done
-          echo "\"$BUILD_ARGS\""
-          exit 1
+          echo BUILD_ARGS=$BUILD_ARGS >> "$GITHUB_OUTPUT"
 
   build-bin:
     runs-on: windows-2022
@@ -65,7 +65,7 @@ jobs:
   
   build-installer:
     runs-on: windows-2022
-    needs: build-bin
+    needs: [build-bin, prepare-build-matrix]
 
     steps:
 
@@ -85,15 +85,7 @@ jobs:
         Copy-Item Debug* build -Recurse -ErrorAction SilentlyContinue
 
     - name: Build nzbget windows installer
-      run: |
-        $BuildParams="-BuildRelease -Build32 -Build64 -BuildSetup"
-        If (-not ($env:GITHUB_REF_NAME -eq "main")) {
-          $BuildParams="$BuildParams -BuildTesting"
-        }
-        If (($env:GITHUB_REF_NAME -eq "main") -or ($env:GITHUB_REF_NAME -eq "develop")) {
-          $BuildParams="$BuildParams -BuildDebug"
-        }
-        Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
+      run: Invoke-Expression "windows\build-nzbget.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
@@ -108,7 +100,8 @@ jobs:
       uses: geekyeggo/delete-artifact@v5
       with:
         name: |
-          nzbget-*-bin
+          Release*
+          Debug*
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
