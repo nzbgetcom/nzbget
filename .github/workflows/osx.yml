@@ -12,8 +12,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Build
       run: |
@@ -56,8 +54,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Build
       run: |
@@ -101,8 +97,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
