@@ -6,7 +6,7 @@ on:
 
 env:
   BUILD_ARCHS: "x86_64-bsd"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release debug' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
 jobs:

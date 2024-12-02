@@ -4,18 +4,32 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  BUILD_ARCHS: "32 64"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release' }}
+  BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
+
 jobs:
+  prepare-build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      archs: ${{ steps.matrix-vars.outputs.ARCHS }}
+      types: ${{ steps.matrix-vars.outputs.TYPES }}
+    steps:
+
+      - name: Calculate matrix variables
+        id: matrix-vars
+        run: |
+          echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+          echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+
   build-bin:
     runs-on: windows-2022
+    needs: prepare-build-matrix
     strategy:
       matrix:
-        arch: [32, 64]
-        type: [Release, Debug]
-        build-only-release: 
-          - ${{ github.ref_name != 'develop' && github.ref_name != 'main' }}
-        # exclude:
-        #   - build-only-release: true
-        #     type: debug
+        arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
+        type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
 
     steps:
     
@@ -32,12 +46,7 @@ jobs:
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
 
     - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
-      run: |
-        $BuildParams="-Build${{ matrix.type }} -Build${{ matrix.arch }}"
-        If (-not ($env:GITHUB_REF_NAME -eq "main")) {
-          $BuildParams="$BuildParams -BuildTesting"
-        }
-        Invoke-Expression "windows\build-nzbget.ps1 $BuildParams"
+      run: Invoke-Expression "windows\build-nzbget.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}"
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
