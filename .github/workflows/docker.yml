@@ -131,8 +131,8 @@ jobs:
           docker manifest create ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} $(printf -- '--amend ${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
           docker manifest push ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
-          # docker buildx imagetools create -t ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
-          # docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          docker buildx imagetools create -t ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
 
   # build:
   #   runs-on: ubuntu-24.04
