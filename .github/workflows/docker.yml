@@ -34,7 +34,7 @@ jobs:
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV     
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -42,15 +42,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_SUMMARY: false
         with:
           context: .
           file: docker/Dockerfile
@@ -63,6 +62,7 @@ jobs:
 
       - name: Export digest
         run: |
+          rm -rf /tmp/digests
           mkdir -p /tmp/digests
           digest="${{ steps.build.outputs.digest }}"
           touch "/tmp/digests/${digest#sha256:}"
@@ -78,6 +78,8 @@ jobs:
   merge:
     runs-on: ubuntu-24.04
     needs: build
+    permissions:
+      packages: write
     steps:
 
       - name: Download digests
@@ -93,8 +95,15 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Generate image tags
-        id: gen-tags
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate image tag
+        id: gen-tag
         run: |
           case $GITHUB_REF_NAME in
             develop)
@@ -109,14 +118,8 @@ jobs:
             *)
               TAG="${GITHUB_REF_NAME/\//-}"
               ;;
-          esac
-          if [[ "$GITHUB_REF_NAME" == "develop" ]] || [[ "$GITHUB_REF_NAME" == "main" ]] || [[ $GITHUB_REF == 'refs/tags/'* ]]; then
-            TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
-          else
-            TAGS="${{ env.REGISTRY_IMAGE }}:$TAG"
-          fi
-          echo "tags=$TAGS" >> $GITHUB_OUTPUT
-          echo "version=$TAG" >> $GITHUB_OUTPUT
+          esac          
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -124,11 +127,13 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create -t ${{ steps.gen-tags.outputs.tags }} $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker buildx imagetools create --append -t ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker buildx imagetools create -t ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tags.outputs.version }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
 
   # build:
   #   runs-on: ubuntu-24.04
