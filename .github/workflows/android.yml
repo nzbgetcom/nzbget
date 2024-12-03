@@ -47,6 +47,7 @@ jobs:
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/android/ndk.tar.gz -C /build/android
         tar zxf /build/lib/lib.tar.gz -C /build/lib
+        sudo apt-get update
         sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6
 
     - name: Build
