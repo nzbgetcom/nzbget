@@ -1,4 +1,4 @@
-nzbget-25.5
+nzbget-24.5
   - Features:
     - ASUSTOR support
       - the package (ADM 4.3+) is available from the 
