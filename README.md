@@ -49,7 +49,9 @@ macOS packages are available from [releases](https://github.com/nzbgetcom/nzbget
 
 Docker images are available for x86-64 / arm64 / armv7 architectures. [Docker readme](docker/README.md). LinuxServer.io version is also available: [docker-nzbget](https://github.com/linuxserver/docker-nzbget)
 
-Synology package are available as SynoCommunity package. [Synology readme](docs/SYNOLOGY.md)
+Synology package is available as SynoCommunity package. [Synology readme](docs/SYNOLOGY.md)
+
+ASUSTOR NAS package (ADM 4.3+) is available from the [nzbget-asustor](https://github.com/nzbgetcom/nzbget-asustor) repository and from the ASUSTOR [App Central](https://www.asustor.com/app_central/app_detail?id=1671&type=). [ASUSTOR readme](https://github.com/nzbgetcom/nzbget-asustor/blob/main/README.md)
 
 QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
 

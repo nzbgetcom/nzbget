@@ -1,12 +1,41 @@
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "i?86|x86_64")
-	set(SSE2_CXXFLAGS "-msse2")
-	set(SSSE3_CXXFLAGS "-mssse3")
-	set(PCLMUL_CXXFLAGS "-msse4.1 -mpclmul")
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "arm64") 
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive") 
-elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm.*") 
-	set(NEON_CXXFLAGS "-mfpu=neon") 
-	set(ACLECRC_CXXFLAGS "-march=armv8-a+crc -fpermissive") 
+if(IS_ARM)
+	CHECK_CXX_COMPILER_FLAG("-mfpu=neon" COMPILER_SUPPORTS_ARM32_NEON)
+	if(COMPILER_SUPPORTS_ARM32_NEON)
+		set_source_files_properties(
+			${CMAKE_SOURCE_DIR}/lib/yencode/NeonDecoder.cpp
+			PROPERTIES COMPILE_FLAGS "-mfpu=neon"
+		)
+	else()
+		CHECK_CXX_COMPILER_FLAG("-march=armv8-a+crc" COMPILER_SUPPORTS_ARM_CRC)
+		set_source_files_properties(
+			${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
+			PROPERTIES COMPILE_FLAGS "-march=armv8-a+crc"
+		)
+	endif()
+endif()
+
+if(IS_X86)
+	CHECK_CXX_COMPILER_FLAG("-msse2" COMPILER_SUPPORTS_SSE2)
+	if(COMPILER_SUPPORTS_SSE2)
+		set_source_files_properties(
+			${CMAKE_SOURCE_DIR}/lib/yencode/Sse2Decoder.cpp
+			PROPERTIES COMPILE_FLAGS "-msse2"
+		)
+	endif()
+	CHECK_CXX_COMPILER_FLAG("-mssse3" COMPILER_SUPPORTS_SSSE3)
+	if(COMPILER_SUPPORTS_SSSE3)
+		set_source_files_properties(
+			${CMAKE_SOURCE_DIR}/lib/yencode/Ssse3Decoder.cpp
+			PROPERTIES COMPILE_FLAGS "-mssse3"
+		)
+	endif()
+	CHECK_CXX_COMPILER_FLAG("-msse4.1 -mpclmul" COMPILER_SUPPORTS_SSE41_PCLMUL)
+	if(COMPILER_SUPPORTS_SSE41_PCLMUL)
+		set_source_files_properties(
+			${CMAKE_SOURCE_DIR}/lib/yencode/PclmulCrc.cpp
+			PROPERTIES COMPILE_FLAGS "-msse4.1 -mpclmul"
+		)
+	endif()
 endif()
 
 add_library(regex STATIC
@@ -15,31 +44,6 @@ add_library(regex STATIC
 target_include_directories(regex PUBLIC
 	${INCLUDES}
 	${CMAKE_SOURCE_DIR}/lib/regex
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/Sse2Decoder.cpp
-	PROPERTIES COMPILE_FLAGS "${SSE2_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/Ssse3Decoder.cpp
-	PROPERTIES COMPILE_FLAGS "${SSSE3_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/PclmulCrc.cpp
-	PROPERTIES COMPILE_FLAGS "${PCLMUL_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/NeonDecoder.cpp
-	PROPERTIES COMPILE_FLAGS "${NEON_CXXFLAGS}"
-)
-
-set_source_files_properties(
-	${CMAKE_SOURCE_DIR}/lib/yencode/AcleCrc.cpp
-	PROPERTIES COMPILE_FLAGS "${ACLECRC_CXXFLAGS}"
 )
 
 add_library(yencode STATIC
