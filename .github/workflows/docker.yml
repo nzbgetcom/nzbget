@@ -22,9 +22,9 @@ jobs:
           - platform: linux/amd64
             runner: ubuntu-24.04
           - platform: linux/arm/v7
-            runner: [ self-hosted, docker-armv7 ]
+            runner: nzbget-arm64
           - platform: linux/arm64
-            runner: [ self-hosted, docker-arm64 ]
+            runner: nzbget-arm64
     runs-on: ${{ matrix.runner }}
     steps:
 
