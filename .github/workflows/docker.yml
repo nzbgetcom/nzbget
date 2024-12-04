@@ -22,9 +22,9 @@ jobs:
           - platform: linux/amd64
             runner: ubuntu-24.04
           - platform: linux/arm/v7
-            runner: [ self-hosted, macos, arm64 ]
+            runner: [ self-hosted, docker-armv7 ]
           - platform: linux/arm64
-            runner: [ self-hosted, macos, arm64 ]
+            runner: [ self-hosted, docker-arm64 ]
     runs-on: ${{ matrix.runner }}
     steps:
 
@@ -59,20 +59,20 @@ jobs:
           outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
           build-args: |
             "NZBGET_RELEASE=${{ github.ref_name }}"
-            "MAKE_JOBS=4"
+            "MAKE_JOBS=8"
 
       - name: Export digest
         run: |
-          rm -rf /tmp/digests
-          mkdir -p /tmp/digests
+          rm -rf digests
+          mkdir -p digests
           digest="${{ steps.build.outputs.digest }}"
-          touch "/tmp/digests/${digest#sha256:}"
+          touch "digests/${digest#sha256:}"
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
           name: digests-${{ steps.prepare.outputs.platform-slug }}
-          path: /tmp/digests/*
+          path: digests/*
           if-no-files-found: error
           retention-days: 1
 
@@ -86,7 +86,7 @@ jobs:
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
-          path: /tmp/digests
+          path: digests
           pattern: digests-*
           merge-multiple: true
 
@@ -126,8 +126,8 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Create manifest list, push and inspect
-        working-directory: /tmp/digests
         run: |
+          cd digests
           docker manifest create ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} $(printf -- '--amend ${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
           docker manifest push ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
