@@ -1,3 +1,20 @@
+nzbget-25.5
+  - Features:
+    - ASUSTOR support
+      - the package (ADM 4.3+) is available from the 
+      [nzbget-asustor](https://github.com/nzbgetcom/nzbget-asustor) repository 
+      and from the ASUSTOR App Central
+
+  - Bug fixes:
+    - Fixed multiple bugs related to bad support of long-paths on Windows
+    [#441](https://github.com/nzbgetcom/nzbget/pull/441)
+    - Fixed ARMv5 arch support
+    [#451](https://github.com/nzbgetcom/nzbget/pull/451)
+
+  - For developers:
+    - Fixed homebrew CI build, macOS ARM64 with Xcode 16, Boost.JSON build via CMake
+    [#444](https://github.com/nzbgetcom/nzbget/pull/444)
+
 nzbget-24.4
   - Features:
     - Replaced the `Par2` library with `Par2-turbo` which provides faster file recovery on x86/ARM platforms 
