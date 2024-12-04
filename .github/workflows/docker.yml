@@ -22,7 +22,7 @@ jobs:
           - platform: linux/amd64
             runner: ubuntu-24.04
           - platform: linux/arm/v7
-            runner: ubuntu-24.04
+            runner: [ self-hosted, macos, arm64 ]
           - platform: linux/arm64
             runner: [ self-hosted, macos, arm64 ]
     runs-on: ${{ matrix.runner }}
