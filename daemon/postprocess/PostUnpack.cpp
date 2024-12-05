@@ -25,13 +25,12 @@
 
 namespace PostUnpack
 {
-
 	void Controller::StartJob(PostInfo* postInfo)
 	{
 		Controller* controller = new Controller();
 
 		controller->m_postInfo = postInfo;
-		controller->SetAutoDestroy(true);
+		controller->SetAutoDestroy(false);
 
 		postInfo->SetPostThread(controller);
 
@@ -40,16 +39,17 @@ namespace PostUnpack
 
 	void Controller::Run()
 	{
-		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		{
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
 
-		std::string name = m_postInfo->GetNzbInfo()->GetName();
-		std::string infoName = "Renaming for " + name;
+			m_name = m_postInfo->GetNzbInfo()->GetName();
+			m_dstDir = m_postInfo->GetNzbInfo()->GetDestDir();
+		}
+
+		std::string infoName = "Post-unpack renaming for " + m_name;
 		SetInfoName(infoName.c_str());
 
-		bool ok = RenameFiles(
-			m_postInfo->GetNzbInfo()->GetDestDir(),
-			name
-		);
+		bool ok = RenameFiles(m_dstDir, m_name);
 
 		if (ok)
 		{
@@ -83,7 +83,14 @@ namespace PostUnpack
 				continue;
 			}
 
-			if (!Deobfuscation::IsStronglyObfuscated(fileOrDir)) continue;
+			if (!Deobfuscation::IsStronglyObfuscated(fileOrDir))
+			{
+				PrintMessage(Message::mkInfo,
+					"%s doesn't need to be renamed.",
+					srcFileOrDir.c_str()
+				);
+				continue;
+			}
 
 			std::string dstFile = dir + PATH_SEPARATOR + nameToRename;
 			size_t lastindex = srcFileOrDir.find_last_of(".");
@@ -96,13 +103,21 @@ namespace PostUnpack
 				continue;
 			}
 
-			if (!FileSystem::MoveFile(srcFileOrDir.c_str(), dstFile.c_str()))
+			if (FileSystem::MoveFile(srcFileOrDir.c_str(), dstFile.c_str()))
+			{
+				PrintMessage(Message::mkInfo,
+					"%s renamed to %s",
+					srcFileOrDir.c_str(),
+					dstFile.c_str()
+				);
+			}
+			else
 			{
 				PrintMessage(Message::mkError,
 					"Could not rename file %s to %s: %s",
 					srcFileOrDir.c_str(),
-					dstFile.c_str(), *
-					FileSystem::GetLastErrorMessage()
+					dstFile.c_str(),
+					*FileSystem::GetLastErrorMessage()
 				);
 			}
 		}

@@ -27,18 +27,26 @@ namespace
 	std::string ParseWithoutQuotes(const std::string& str) noexcept
 	{
 		if (str.size() < 8) return str;
-
+		
 		const std::string start = "Re: ";
 		size_t startPos = str.find(start);
-		if (startPos == std::string::npos) return str;
+		size_t endPos = str.rfind(" (");
+		if (endPos == std::string::npos)
+		{
+			return str;
+		}
 
-		startPos += start.size();
-		size_t endPos = str.rfind(" ");
+		if (startPos != std::string::npos)
+		{
+			startPos += start.size();
 
-		size_t distance = endPos - startPos;
-		if (distance < 1) return str;
+			size_t distance = endPos - startPos;
+			if (distance < 1) return str;
 
-		return str.substr(startPos, distance);
+			return str.substr(startPos, distance);
+		}
+
+		return str.substr(0, endPos);
 	}
 
 	std::string ParseWtfNzb(const std::string& str) noexcept
@@ -48,7 +56,7 @@ namespace
 		if (beginPos == std::string::npos) return str;
 		beginPos += begin.size();
 
-		const std::string end = " - \"\"";
+		std::string end = " - \"\"";
 		size_t endPos = str.rfind(end);
 		if (endPos == std::string::npos) return str;
 

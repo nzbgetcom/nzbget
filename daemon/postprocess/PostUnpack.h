@@ -39,9 +39,10 @@ namespace PostUnpack
 
 	private:
 		PostInfo* m_postInfo;
+		std::string m_name;
+		std::string m_dstDir;
 		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
 	};
 } // namespace PostUnpack
-
 
 #endif
