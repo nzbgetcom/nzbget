@@ -836,12 +836,6 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		!strncmp(nzbInfo->GetDestDir(), g_Options->GetInterDir(), strlen(g_Options->GetInterDir())) &&
 		nzbInfo->GetDestDir()[strlen(g_Options->GetInterDir())] == PATH_SEPARATOR;
 
-	bool postUnpack = g_Options->GetRenameAfterUnpack() &&
-		nzbInfo->GetDestDir() && 
-		nzbInfo->GetPostInfo()->GetStage() != PostInfo::ptPostUnpackRenaming && 
-		nzbInfo->GetCleanupStatus() == NzbInfo::csSuccess &&
-		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
-
 	if (unpack && parFailed)
 	{
 		nzbInfo->PrintMessage(Message::mkWarning,
@@ -850,6 +844,14 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		nzbInfo->SetUnpackStatus(NzbInfo::usSkipped);
 		unpack = false;
 	}
+
+	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
+		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
+		nzbInfo->GetDestDir() && 
+		nzbInfo->GetName() &&  
+		nzbInfo->GetUnpackStatus() == NzbInfo::usSuccess &&
+		nzbInfo->GetCleanupStatus() == NzbInfo::csSuccess &&
+		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
 
 	if (unpack)
 	{
@@ -866,7 +868,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		EnterStage(downloadQueue, postInfo, PostInfo::ptMoving);
 		MoveController::StartJob(postInfo);
 	}
-	else if (postUnpack)
+	else if (postUnpackRenaming)
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptPostUnpackRenaming);
 		PostUnpack::Controller::StartJob(postInfo);

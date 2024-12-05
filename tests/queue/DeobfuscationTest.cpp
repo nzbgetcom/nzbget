@@ -24,7 +24,7 @@
 
 using namespace Deobfuscation;
 
-BOOST_AUTO_TEST_CASE(IsObfuscatedTest)
+BOOST_AUTO_TEST_CASE(IsStronglyObfuscatedTest)
 {
 	BOOST_CHECK(IsStronglyObfuscated("2c0837e5fa42c8cfb5d5e583168a2af4.10"));
 	BOOST_CHECK(IsStronglyObfuscated("5KzdcWdGVGUG83Q9jv8KXht4O2k57w.mkv"));
@@ -45,13 +45,18 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	BOOST_CHECK_EQUAL(Deobfuscate("Not obfuscated"), "Not obfuscated");
 
 	BOOST_CHECK_EQUAL(
+		Deobfuscate("Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2 (1/0)"), 
+		"Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2"
+	);
+
+	BOOST_CHECK_EQUAL(
 		Deobfuscate("[PRiVATE]-[WtFnZb]-[setup_spellforce_3_-_reforced_161554.339115__54385_-1.bin]-[1/10] - \"\" yEnc  4288754174 (1/8377)"),
 		"setup_spellforce_3_-_reforced_161554.339115__54385_-1.bin"
 	);
 
 	BOOST_CHECK_EQUAL(
-		Deobfuscate("[PRiVATE]-[WtFnZb]-[1/series/American.Dad.S01E01.Pilot.1080p.DSNP.WEBRip.DDP.5.1.H.265.-EDGE2020.mkv]-[1/7] - \"\" yEnc  225628476 (1/315)"),
-		"American.Dad.S01E01.Pilot.1080p.DSNP.WEBRip.DDP.5.1.H.265.-EDGE2020.mkv"
+		Deobfuscate("[PRiVATE]-[WtFnZb]-[1/series/Any.Show.S01E01.Pilot.1080p.DSNP.WEBRip.DDP.5.1.H.265.-EDGE2020.mkv]-[1/7] - \"\" yEnc  225628476 (1/315)"),
+		"Any.Show.S01E01.Pilot.1080p.DSNP.WEBRip.DDP.5.1.H.265.-EDGE2020.mkv"
 	);
 
 	BOOST_CHECK_EQUAL(

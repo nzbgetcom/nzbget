@@ -1,4 +1,5 @@
 set(QueueTestsSrc
+	main.cpp
 	NzbFileTest.cpp
 	DeobfuscationTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
