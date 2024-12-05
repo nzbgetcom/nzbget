@@ -28,6 +28,14 @@ jobs:
         fi
         bash linux/build-nzbget.sh $BUILD_PARAMS
 
+    - name: Upload full build log on failure
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-linux-build-log
+        path: build/*/build.log
+        retention-days: 5
+
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |

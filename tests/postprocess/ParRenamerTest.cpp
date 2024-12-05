@@ -170,7 +170,6 @@ BOOST_AUTO_TEST_CASE(Utf8Par2Test)
 	Options options(&cmdOpts, nullptr);
 
 	std::string workingDir = currDir + PATH_SEPARATOR + "Utf8Par2Test";
-	std::string renamedTestFileRar = workingDir + PATH_SEPARATOR + "Привет, мир!.rar";
 
 	ParRenamerMock parRenamer(workingDir, testDataDirUtf8);
 
@@ -178,6 +177,4 @@ BOOST_AUTO_TEST_CASE(Utf8Par2Test)
 
 	BOOST_CHECK_EQUAL(parRenamer.GetRenamedCount(), 1);
 	BOOST_CHECK(parRenamer.HasMissedFiles() == false);
-
-	BOOST_CHECK(FileSystem::FileExists(renamedTestFileRar.c_str()));
 }

@@ -613,7 +613,7 @@ build_bin()
     export LDFLAGS=""
     export NZBGET_INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/staging/usr/include/;"
 
-    if [ $PLATFORM == "freebsd" ]; then
+    if [ "$PLATFORM" == "freebsd" ]; then
         export CXXFLAGS="-Os --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1"
         export CFLAGS=$CXXFLAGS
         export CPPFLAGS=$CXXFLAGS
@@ -649,6 +649,7 @@ build_bin()
             ;;
     esac
 
+    unset CFLAGS
     unset CXXFLAGS
     unset CPPFLAGS
     unset LDFLAGS

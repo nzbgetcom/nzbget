@@ -19,28 +19,34 @@
 
 #include "nzbget.h"
 
-#include <fstream>
 #include "ManifestFile.h"
 #include "Json.h"
 #include "FileSystem.h"
+#include "Log.h"
 
 namespace ManifestFile
 {
-	const char* MANIFEST_FILE = "manifest.json";
-	const char* DEFAULT_SECTION_NAME = "options";
-
 	bool Load(Manifest& manifest, const char* directory)
 	{
-		BString<1024> path("%s%c%s", directory, PATH_SEPARATOR, MANIFEST_FILE);
-		std::ifstream fs(path);
-		if (!fs.is_open())
-			return false;
+		std::string path = std::string(directory) + PATH_SEPARATOR + MANIFEST_FILE;
+		DiskFile file;
+		if (!file.Open(path.c_str(), DiskFile::omRead)) return false;
 
-		Json::ErrorCode ec;
-		Json::JsonValue jsonValue = Json::Deserialize(fs, ec);
-		if (ec)
+		std::string jsonStr;
+		char buffer[BUFFER_SIZE];
+		while (file.ReadLine(buffer, BUFFER_SIZE))
+		{
+			jsonStr += buffer;
+		}
+		
+		auto desRes = Json::Deserialize(jsonStr);
+		if (!desRes.has_value())
+		{
+			error("Failed to parse %s. Syntax error.", path.c_str());
 			return false;
+		}
 
+		Json::JsonValue jsonValue = std::move(desRes.value());
 		Json::JsonObject json = jsonValue.as_object();
 
 		if (!ValidateAndSet(json, manifest))

@@ -30,8 +30,9 @@ namespace ManifestFile
 {
 	using SelectOption = std::variant<double, std::string>;
 
-	extern const char* MANIFEST_FILE;
-	extern const char* DEFAULT_SECTION_NAME;
+	inline constexpr size_t BUFFER_SIZE = 4096;
+	inline const char* MANIFEST_FILE = "manifest.json";
+	inline const char* DEFAULT_SECTION_NAME = "options";
 
 	struct Section
 	{

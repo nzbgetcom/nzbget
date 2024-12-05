@@ -4,7 +4,7 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()
 
-set(VERSION "24.4")
+set(VERSION "24.5")
 set(PACKAGE "nzbget")
 set(LIBS "")
 set(INCLUDES ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
@@ -79,8 +79,6 @@ else()
 		include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
 	endif()
 endif()
-
-include(lib/sources.cmake)
 
 configure_file(
 	${CMAKE_SOURCE_DIR}/cmake/config.h.in

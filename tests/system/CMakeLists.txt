@@ -1,4 +1,4 @@
-file(GLOB SystemTestsSrc
+set(SystemTestsSrc
 	main.cpp
 	SystemInfoTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp 
@@ -7,7 +7,6 @@ file(GLOB SystemTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/connect/HttpClient.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
-	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp 
@@ -20,7 +19,12 @@ file(GLOB SystemTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 )
 
+if(WIN32)
+	set(SystemTestsSrc ${SystemTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
+
 add_executable(SystemTests ${SystemTestsSrc})
+
 target_link_libraries(SystemTests PRIVATE ${LIBS})
 target_include_directories(SystemTests PRIVATE ${INCLUDES})
 

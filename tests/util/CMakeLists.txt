@@ -1,4 +1,4 @@
-file(GLOB UtilTestSrc
+set(UtilTestSrc
 	main.cpp
 	FileSystemTest.cpp
 	UtilTest.cpp
@@ -22,6 +22,7 @@ if(WIN32)
 endif()
 
 add_executable(UtilTests ${UtilTestSrc})
+
 target_link_libraries(UtilTests PRIVATE	${LIBS})
 target_include_directories(UtilTests PRIVATE ${INCLUDES})
 

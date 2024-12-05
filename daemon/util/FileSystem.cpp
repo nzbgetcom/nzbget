@@ -24,6 +24,10 @@
 #include "Util.h"
 #include "Log.h"
 
+#ifdef WIN32
+#include "utf8.h"
+#endif
+
 const char* RESERVED_DEVICE_NAMES[] = { "CON", "PRN", "AUX", "NUL",
 	"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
 	"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", NULL };
@@ -56,21 +60,39 @@ void FileSystem::NormalizePathSeparators(char* path)
 	}
 }
 
-std::optional<std::string> FileSystem::GetFileRealPath(const std::string& path)
+std::optional<std::string> FileSystem::GetRealPath(const std::string& path)
 {
+	if (path.empty()) return std::nullopt;
+
 #ifdef WIN32
-	char buffer[MAX_PATH];
-	DWORD len = GetFullPathName(path.c_str(), MAX_PATH, buffer, nullptr);
-	if (len != 0)
+	auto res = Utf8::Utf8ToWide(path);
+	if (!res.has_value()) return std::nullopt;
+
+	std::wstring wpath = std::move(res.value());
+
+	if (wpath.size() > MAX_DIR_PATH && std::wcsncmp(wpath.c_str(), L"\\\\", 2) == 0)
 	{
-		return std::optional{ buffer };
+		wpath = L"\\\\?\\UNC" + wpath;
 	}
+	else if (wpath.size() > MAX_DIR_PATH)
+	{
+		wpath = L"\\\\?\\" + wpath;
+	}
+
+	DWORD len = GetFullPathNameW(wpath.c_str(), 0, nullptr, nullptr);
+	if (len == 0) return std::nullopt;
+
+	std::wstring buffer(len, '\0');
+	len = GetFullPathNameW(wpath.c_str(), len, &buffer[0], nullptr);
+	if (len == 0) return std::nullopt;
+
+	return Utf8::WideToUtf8(buffer);
 #else
 	if (char* realPath = realpath(path.c_str(), nullptr))
 	{
 		std::string res = realPath;
 		free(realPath);
-		return std::optional(std::move(res));
+		return res;
 	}
 #endif
 
@@ -78,6 +100,9 @@ std::optional<std::string> FileSystem::GetFileRealPath(const std::string& path)
 }
 
 #ifdef WIN32
+
+const size_t FileSystem::MAX_DIR_PATH = 248;
+
 bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 {
 	errmsg.Clear();
@@ -621,7 +646,7 @@ std::string FileSystem::ExtractFilePathFromCmd(const std::string& path)
 {
 	if (path.empty())
 	{
-		return std::string(path);
+		return path;
 	}
 
 	size_t lastSeparatorPos = path.find_last_of(PATH_SEPARATOR);

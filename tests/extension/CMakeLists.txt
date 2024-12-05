@@ -1,4 +1,4 @@
-file(GLOB ExtensionSrc
+set(ExtensionSrc
 	main.cpp
 	ManifestFileTest.cpp
 	ExtensionLoaderTest.cpp
@@ -30,6 +30,10 @@ file(GLOB ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 )
+
+if(WIN32)
+	set(ExtensionSrc ${ExtensionSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+endif()
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE ${LIBS})

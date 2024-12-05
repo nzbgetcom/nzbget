@@ -56,7 +56,7 @@
 #pragma warning(disable:4800) // 'type' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning(disable:4267) // 'var' : conversion from 'size_t' to 'type', possible loss of data
 
-#define popen _popen
+#define popen _wpopen
 #define pclose _pclose
 
 #endif
@@ -183,6 +183,9 @@
 #include <libxml/tree.h>
 
 #include <boost/asio.hpp>
+#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#include <boost/asio/ssl.hpp>
+#endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // intialization, causing every unit in nzbget to have initialization routine. This in particular
