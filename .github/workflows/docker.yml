@@ -22,9 +22,9 @@ jobs:
           - platform: linux/amd64
             runner: ubuntu-24.04
           - platform: linux/arm/v7
-            runner: nzbget-arm64
+            runner: ubuntu-24.04
           - platform: linux/arm64
-            runner: nzbget-arm64
+            runner: ubuntu-24.04
     runs-on: ${{ matrix.runner }}
     steps:
 
@@ -59,7 +59,7 @@ jobs:
           outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
           build-args: |
             "NZBGET_RELEASE=${{ github.ref_name }}"
-            "MAKE_JOBS=8"
+            "MAKE_JOBS=4"
 
       - name: Export digest
         run: |
