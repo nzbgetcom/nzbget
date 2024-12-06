@@ -43,6 +43,6 @@ namespace PostUnpack
 		std::string m_dstDir;
 		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
 	};
-} // namespace PostUnpack
+}
 
 #endif
