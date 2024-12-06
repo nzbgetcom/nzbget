@@ -450,6 +450,20 @@ bool Util::MatchFileExt(const char* filename, const char* extensionList, const c
 	return false;
 }
 
+bool Util::MatchFilename(const char* filename, const char* filenameList, const char* listSeparator)
+{
+	Tokenizer tok(filenameList, listSeparator);
+	while (const char* filename_ = tok.Next())
+	{
+		if (strcasecmp(filename, filename_) == 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 std::vector<CString> Util::SplitCommandLine(const char* commandLine)
 {
 	std::vector<CString> result;

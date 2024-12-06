@@ -79,7 +79,17 @@ namespace PostUnpack
 
 			if (FileSystem::DirectoryExists(srcFileOrDir.c_str()))
 			{
-				RenameFiles(fileOrDir, nameToRename);
+				bool ignore = Util::MatchFilename(
+					fileOrDir, 
+					g_Options->GetIgnoreDirToBeRenamed(), 
+					","
+				);
+				if (ignore)
+				{
+					continue;
+				}
+
+				RenameFiles(srcFileOrDir, nameToRename);
 				continue;
 			}
 
@@ -93,11 +103,14 @@ namespace PostUnpack
 			}
 
 			std::string dstFile = dir + PATH_SEPARATOR + nameToRename;
-			size_t lastindex = srcFileOrDir.find_last_of(".");
-			std::string ext = srcFileOrDir.substr(lastindex);
+			std::string ext = FileSystem::GetFileExtension(srcFileOrDir).value();
 			dstFile += ext;
 
-			bool ignore = Util::MatchFileExt(dstFile.c_str(), g_Options->GetIgnoreExtsAndDirsToRename(), ",;");
+			bool ignore = Util::MatchFileExt(
+				dstFile.c_str(), 
+				g_Options->GetIgnoreExtToBeRenamed(), 
+				","
+			);
 			if (ignore)
 			{
 				continue;
