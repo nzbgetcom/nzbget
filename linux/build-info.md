@@ -13,7 +13,7 @@ Supported freebsd architectures: `x86_64-bsd`
 1. Linux x86_64 host (Ubuntu 22.04 LTS for example)
 2. Installed build dependencies (Ubuntu/Debian example):
 ```
-sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo5 clang ldd
+sudo apt install autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6 clang-14
 ```
 3. Installed buildroot - one per architecture (see [Buildroot setup](#buildroot-setup) below)
 4. Installed Android NDK and standalone Android toolkits - one per architecture (see [NDK setup](#ndk-setup) below)

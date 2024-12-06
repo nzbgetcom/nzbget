@@ -16,7 +16,7 @@ jobs:
     if: ${{ inputs.external_call == false }}
 
   repack:
-    runs-on: [self-hosted, nzbget-qnap]
+    runs-on: ubuntu-24.04
     needs: [build-linux]
     if: always()
     permissions:
@@ -26,15 +26,20 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
 
+    - name: Download QDK and prepare environment
+      run: |
+        sudo mkdir -p /qnap
+        sudo chown $USER:$USER /qnap
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/QDK.tar.gz -o $HOME/QDK.tar.gz
+        tar zxf $HOME/QDK.tar.gz -C $HOME
+
     - name: Repack linux installer for QNAP
       run: |
-        export PATH="$PATH:/usr/share/QDK/bin"
+        export PATH="$PATH:$HOME/QDK/bin"
         bash qnap/repack-nzbget.sh
 
     - name: Rename build artifacts
@@ -46,7 +51,7 @@ jobs:
         for FILE in *.qpkg; do
           [ -f $FILE ] || continue
           NEW_FILE=${FILE/$VERSION/$NEW_VERSION}
-          sudo mv $FILE $NEW_FILE          
+          sudo mv $FILE $NEW_FILE
         done
 
     - name: Upload build artifacts
@@ -56,7 +61,7 @@ jobs:
         path: /qnap/nzbget/build/*.qpkg
         retention-days: 5
 
-    - name: Delete unneded linux artifacts
+    - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
       uses: geekyeggo/delete-artifact@v4
       with:

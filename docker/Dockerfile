@@ -82,7 +82,7 @@ LABEL org.opencontainers.image.description="NZBGet from nzbget.com, version ${NZ
 LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
 LABEL maintainer="nzbget@nzbget.com" 
 
-ENV TERM linux
+ENV TERM=linux
 COPY --from=build /usr/bin/unrar /usr/bin/unrar
 COPY --from=build /usr/bin/unrar7 /usr/bin/unrar7
 COPY --from=build /app/nzbget/ /app/nzbget/

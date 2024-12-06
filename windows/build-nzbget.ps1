@@ -179,24 +179,26 @@ Function BuildTarget($Type, $Bits) {
     New-Item -Path "$BuildDir\$Type$Bits" -ItemType Directory -Force | Out-Null
     Set-Location "$BuildDir\$Type$Bits"
 
-    $CMakeCmd="cmake ..\.. -DCMAKE_TOOLCHAIN_FILE=$VcpkgDir\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$Arch-windows-static -A $Platform"
+    If (-not (Test-Path "$Type\nzbget.exe")) {
+        $CMakeCmd="cmake ..\.. -DCMAKE_TOOLCHAIN_FILE=$VcpkgDir\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$Arch-windows-static -A $Platform"
 
-    If ($Type -eq "Debug" ) {
-        $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=Debug"
+        If ($Type -eq "Debug" ) {
+            $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=Debug"
+        }
+
+        if ($BuildTesting) {
+            $CMakeCmd="$CMakeCmd -DVERSION_SUFFIX=$VersionSuffix"
+        }
+
+        Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix"
+        Write-Host $CMakeCmd
+
+        Invoke-Expression "& $CMakeCmd"
+        If (-not $?) { Set-Location $SrcDir; Exit 1 }
+
+        & cmake --build . --config $Type -j $Jobs
+        If (-not $?) { Set-Location $SrcDir; Exit 1 }
     }
-
-    if ($BuildTesting) {
-        $CMakeCmd="$CMakeCmd -DVERSION_SUFFIX=$VersionSuffix"
-    }
-
-    Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix"
-    Write-Host $CMakeCmd
-
-    Invoke-Expression "& $CMakeCmd"
-    If (-not $?) { Set-Location $SrcDir; Exit 1 }
-
-    & cmake --build . --config $Type
-    If (-not $?) { Set-Location $SrcDir; Exit 1 }
 
     Copy-Item "$Type\nzbget.exe" "$SrcDir\$PackageDir\$Bits\"
     Set-Location $SrcDir
@@ -248,6 +250,7 @@ $SrcDir=Get-Location | Select-Object -ExpandProperty Path
 $BuildDir="build"
 $DistribDir="$BuildDir\distrib"
 $PackageDir="$DistribDir\nzbget"
+$Jobs=(Get-ComputerInfo).CsProcessors.NumberOfCores
 
 If ($BuildTesting) {
     $VersionSuffix="-testing-$(Get-Date -Format "yyyyMMdd")"
@@ -256,10 +259,10 @@ If ($BuildTesting) {
 $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -split('"'))[1]
 
 # clean build folder
-If (Test-Path $BuildDir) {
-    Remove-Item $BuildDir -Force -Recurse
+If (Test-Path $DistribDir) {
+    Remove-Item $DistribDir -Force -Recurse
 }
-New-Item -ItemType Directory $BuildDir | Out-Null
+New-Item -ItemType Directory $BuildDir -ErrorAction SilentlyContinue | Out-Null
 
 # download 7z/unrar
 if ($DownloadUnpackers) {

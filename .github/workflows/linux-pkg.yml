@@ -16,7 +16,7 @@ jobs:
     if: ${{ inputs.external_call == false }}
 
   build-pkg:
-    runs-on: [self-hosted, nzbget-linux]
+    runs-on: ubuntu-24.04
     needs: [build-linux]
     if: always()
     permissions:
@@ -26,15 +26,14 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
 
     - name: Build DEB and RPM packages
       run: |
-        sudo apt-get update && sudo apt-get install rpm -y
+        sudo apt-get update
+        sudo apt-get install rpm -y
         bash linux/pkg/build-pkg.sh
 
     - name: Upload DEB build artifacts
@@ -51,7 +50,7 @@ jobs:
         path: build/rpm/*.rpm
         retention-days: 5
 
-    - name: Delete unneded linux artifacts
+    - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
       uses: geekyeggo/delete-artifact@v4
       with:

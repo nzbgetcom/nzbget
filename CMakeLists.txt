@@ -41,13 +41,15 @@ if(NOT BUILD_ONLY_TESTS)
 	add_executable(${PACKAGE} ${SRC})
 	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-		add_custom_command(
-			TARGET ${PACKAGE} POST_BUILD
-			DEPENDS ${PACKAGE}
-			COMMAND ${CMAKE_STRIP}
-			ARGS ${PACKAGE}
-		)
+	if(NOT WIN32)
+		if(CMAKE_BUILD_TYPE STREQUAL "Release")
+			add_custom_command(
+				TARGET ${PACKAGE} POST_BUILD
+				DEPENDS ${PACKAGE}
+				COMMAND ${CMAKE_STRIP}
+				ARGS ${PACKAGE}
+			)
+		endif()
 	endif()
 endif()
 

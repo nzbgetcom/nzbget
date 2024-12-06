@@ -1,51 +1,117 @@
-name: linux build 
+name: linux build
 
 on:
   workflow_call:
   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: [self-hosted, nzbget-linux]
+env:
+  BUILD_ARCHS: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
+jobs:
+
+  prepare-build-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      archs: ${{ steps.matrix-vars.outputs.ARCHS }}
+      types: ${{ steps.matrix-vars.outputs.TYPES }}
     steps:
-    
+
+      - name: Calculate matrix variables
+        id: matrix-vars
+        run: |
+          echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+          echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+
+  build-bin:
+    runs-on: ubuntu-24.04
+    needs: prepare-build-matrix
+    strategy:
+      matrix:
+        arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
+        type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
+    steps:
+
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+
+    - name: Prepare ${{ matrix.arch }} / ${{ matrix.type }} environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        mkdir -p /build/buildroot
+        mkdir -p /build/lib
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
+        tar zxf /build/lib/lib.tar.gz -C /build/lib
+        sudo apt-get update
+        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6
 
     - name: Build
-      run: |
-        BUILD_PARAMS="linux bin installer"
-        if [ "$GITHUB_REF_NAME" == "develop" ] || [ "$GITHUB_REF_NAME" == "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS debug release"
-        else
-          BUILD_PARAMS="$BUILD_PARAMS release"
-        fi
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          BUILD_PARAMS="$BUILD_PARAMS testing"
-        fi
-        bash linux/build-nzbget.sh $BUILD_PARAMS
+      run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
       if: failure()
       with:
-        name: nzbget-linux-build-log
+        name: nzbget-linux-${{ matrix.arch }}-${{ matrix.type }}-build-log
         path: build/*/build.log
         retention-days: 5
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-${{ matrix.arch }}-${{ matrix.type }}-bin
+        path: build/*.tar.gz
+        retention-days: 5
+
+  build-installer:
+    runs-on: ubuntu-24.04
+    needs: build-bin
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Prepare build environment
+      run: |
+        sudo mkdir -p /build
+        sudo chown $USER:$USER /build
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/linux-unpack.tar.gz -o /build/unpack.tar.gz
+        tar zxf /build/unpack.tar.gz -C /build
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+
+    - name: Build installer
+      run: |
+        mkdir -p build
+        for ARCH in ${{ env.BUILD_ARCHS }}; do
+          for TYPE in ${{ env.BUILD_TYPES }}; do
+            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/
+          done
+        done
+        bash linux/build-nzbget.sh linux installer ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
         cd build
-        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux.run"
+        SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-linux"
         for FILE in *.run; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-linux.run/$SUFFIX}
+          NEW_FILE=${FILE/-bin-linux/$SUFFIX}
           mv $FILE $NEW_FILE
         done
+
+    - name: Delete unneeded platform-specific artifacts
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: |
+          nzbget-*-*-bin
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
