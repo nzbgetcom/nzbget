@@ -64,7 +64,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp

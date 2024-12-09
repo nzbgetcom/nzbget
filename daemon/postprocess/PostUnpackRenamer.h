@@ -26,7 +26,7 @@
 #include "ScriptController.h"
 #include "DownloadInfo.h"
 
-namespace PostUnpack
+namespace PostUnpackRenamer
 {
 	class Controller final : public Thread, public ScriptController
 	{

@@ -19,11 +19,11 @@
 
 #include "nzbget.h"
 
-#include "PostUnpack.h"
+#include "PostUnpackRenamer.h"
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 
-namespace PostUnpack
+namespace PostUnpackRenamer
 {
 	void Controller::StartJob(PostInfo* postInfo)
 	{
@@ -51,10 +51,10 @@ namespace PostUnpack
 
 		bool ok = RenameFiles(m_dstDir, m_name);
 
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		if (ok)
 		{
 			PrintMessage(Message::mkInfo, "%s successful", infoName.c_str());
-			GuardedDownloadQueue guard = DownloadQueue::Guard();
 			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
 				NzbInfo::PostUnpackRenamingStatus::Success
 			);

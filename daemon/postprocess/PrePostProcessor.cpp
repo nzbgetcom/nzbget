@@ -37,7 +37,7 @@
 #include "QueueScript.h"
 #include "ParParser.h"
 #include "DirectUnpack.h"
-#include "PostUnpack.h"
+#include "PostUnpackRenamer.h"
 
 PrePostProcessor::PrePostProcessor()
 {
@@ -871,7 +871,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	else if (postUnpackRenaming)
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptPostUnpackRenaming);
-		PostUnpack::Controller::StartJob(postInfo);
+		PostUnpackRenamer::Controller::StartJob(postInfo);
 	}
 	else
 	{
