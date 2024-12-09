@@ -45,7 +45,7 @@ jobs:
   generate-signatures:
     env:
       PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: [build-windows, build-linux, build-osx, build-android, build-freebsd, repack-qnap, build-linux-pkg]
     permissions:
       actions: write
