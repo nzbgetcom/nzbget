@@ -131,6 +131,9 @@ jobs:
     if: github.ref_name == 'develop'
     steps:
 
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: Delete tag and release
       uses: dev-drprasad/delete-tag-and-release@v0.2.1
       with:
