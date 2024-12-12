@@ -71,10 +71,8 @@ fi
 # version handling
 VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
 VERSION_SUFFIX=""
-if [ $# -gt 1 ]; then
-    if [ "$2" == "testing" ]; then
-        VERSION_SUFFIX="-testing-$(date '+%Y%m%d')"
-    fi
+if [ "$TESTING" == "yes" ]; then
+    VERSION_SUFFIX="-testing-$(date '+%Y%m%d')"
 fi
 
 # create directories and cleanup
@@ -84,7 +82,7 @@ rm -rf build/*
 NZBGET_ROOT=$PWD
 for CONFIG in $CONFIGS; do
     for ARCH in $ARCHS; do
-        
+
         echo "Make $ARCH nzbget package..."
         cd $NZBGET_ROOT
 
@@ -129,14 +127,14 @@ for CONFIG in $CONFIGS; do
             -DVERSION_SUFFIX="$VERSION_SUFFIX" \
             -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_ARCH \
             -DCMAKE_OSX_ARCHITECTURES=$CMAKE_ARCH
-        
+
         BUILD_STATUS=""
         cmake --build . -j $JOBS 2>build.log || BUILD_STATUS=$?
         if [ ! -z $BUILD_STATUS ]; then
             tail -20 build.log
             exit 1
         fi
-        
+
         strip nzbget
         cmake --install . >/dev/null
         cmake --build . --target install-conf
@@ -218,7 +216,7 @@ for CONFIG in $CONFIGS; do
         DAEMON_PATH=Contents/Resources/daemon/usr/local/bin/
         # nzbget universal binary
         lipo -create NZBGet.x64.app/$DAEMON_PATH/nzbget NZBGet.arm64.app/$DAEMON_PATH/nzbget -output nzbget
-        # unrar universal binary    
+        # unrar universal binary
         lipo -create NZBGet.x64.app/$DAEMON_PATH/unrar NZBGet.arm64.app/$DAEMON_PATH/unrar -output unrar
         rm -rf NZBGet.x64.app
         mv NZBGet.arm64.app NZBGet.app

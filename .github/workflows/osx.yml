@@ -4,6 +4,10 @@ on:
   workflow_call:
   workflow_dispatch:
 
+env:
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
+
 jobs:
   build-x64:
     runs-on: [self-hosted, macos, x64]
@@ -14,12 +18,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Build
-      run: |
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          bash osx/build-nzbget.sh x64 testing
-        else
-          bash osx/build-nzbget.sh x64
-        fi
+      run: bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
@@ -36,7 +35,7 @@ jobs:
         SUFFIX="${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-macos-x64.zip/-$SUFFIX-bin-macos-x64.zip}
+          NEW_FILE=${FILE/-bin-macos-x64/-$SUFFIX-bin-macos-x64}
           mv $FILE $NEW_FILE
         done
 
@@ -56,12 +55,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Build
-      run: |
-        if [ "$GITHUB_REF_NAME" != "main" ]; then
-          bash osx/build-nzbget.sh universal testing
-        else
-          bash osx/build-nzbget.sh universal
-        fi
+      run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
@@ -78,7 +72,7 @@ jobs:
         SUFFIX="${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-macos-universal.zip/-$SUFFIX-bin-macos-universal.zip}
+          NEW_FILE=${FILE/-bin-macos-universal/-$SUFFIX-bin-macos-universal}
           mv $FILE $NEW_FILE
         done
 
@@ -86,7 +80,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers-universal
-        path: build/*-universal.zip
+        path: build/*-universal*.zip
         retention-days: 5
 
   sign-universal:
@@ -109,17 +103,24 @@ jobs:
         NOTARY_KEY_ID: ${{ secrets.OSX_NOTARY_KEY_ID }}
         NOTARY_KEY_ISSUER: ${{ secrets.OSX_NOTARY_KEY_ISSUER }}
       run: |
-        mkdir -p build
-        cp osx/sign/* build
-        cp nzbget-osx-installers-universal/*.zip build/
-        cd build
-        bash nzbget-sign.sh *.zip
+        mkdir -p build_signed
+        for FILE in nzbget-osx-installers-universal/*.zip; do
+          [ -f $FILE ] || continue
+          mkdir -p build
+          cp osx/sign/* build
+          cp $FILE build/
+          cd build
+          bash nzbget-sign.sh *.zip
+          cd ..
+          cp build/*.dmg build_signed
+          rm -rf build
+        done
 
     - name: Upload signed build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nzbget-osx-installers-universal-signed
-        path: build/*.dmg
+        path: build_signed/*.dmg
         retention-days: 5
 
   combine-osx-artifacts:
