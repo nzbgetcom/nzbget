@@ -1,3 +1,6 @@
+/* Define to 1 to include debug-code */
+#cmakedefine DEBUG
+
 /* Name of package */
 #cmakedefine PACKAGE "@PACKAGE@"
 
