@@ -15,6 +15,8 @@ if (CMAKE_SYSTEM_PROCESSOR MATCHES "riscv32|rv32")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(DEBUG 1)
+
 	if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
 		add_compile_options(-Weverything -Wno-c++98-compat)
 	elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

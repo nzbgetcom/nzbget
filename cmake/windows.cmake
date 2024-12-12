@@ -16,6 +16,10 @@ find_package(Threads REQUIRED)
 find_package(LibXml2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS json)
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(LIBS ${LIBS} dbghelp.lib)
+endif()
+
 set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2 winmm.lib)
 set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
 
