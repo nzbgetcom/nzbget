@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -93,6 +94,8 @@ static const char* OPTION_PARSCAN				= "ParScan";
 static const char* OPTION_PARQUICK				= "ParQuick";
 static const char* OPTION_POSTSTRATEGY			= "PostStrategy";
 static const char* OPTION_FILENAMING			= "FileNaming";
+static const char* OPTION_RENAMEAFTERUNPACK	    = "RenameAfterUnpack";
+static const char* OPTION_RENAMEIGNOREEXT       = "RenameIgnoreExt";
 static const char* OPTION_PARRENAME				= "ParRename";
 static const char* OPTION_PARBUFFER				= "ParBuffer";
 static const char* OPTION_PARTHREADS			= "ParThreads";
@@ -480,6 +483,8 @@ void Options::InitDefaults()
 	SetOption(OPTION_PARQUICK, "yes");
 	SetOption(OPTION_POSTSTRATEGY, "sequential");
 	SetOption(OPTION_FILENAMING, "article");
+	SetOption(OPTION_RENAMEAFTERUNPACK, "yes");
+	SetOption(OPTION_RENAMEIGNOREEXT, ".zip, .7z, .rar, .par2");
 	SetOption(OPTION_PARRENAME, "yes");
 	SetOption(OPTION_PARBUFFER, "16");
 	SetOption(OPTION_PARTHREADS, "0");
@@ -703,6 +708,7 @@ void Options::InitOptions()
 	m_parIgnoreExt			= GetOption(OPTION_PARIGNOREEXT);
 	m_unpackIgnoreExt		= GetOption(OPTION_UNPACKIGNOREEXT);
 	m_shellOverride			= GetOption(OPTION_SHELLOVERRIDE);
+	m_renameIgnoreExt 	    = GetOption(OPTION_RENAMEIGNOREEXT);
 
 	m_downloadRate			= ParseIntValue(OPTION_DOWNLOADRATE, 10) * 1024;
 	m_articleTimeout		= ParseIntValue(OPTION_ARTICLETIMEOUT, 10);
@@ -773,6 +779,7 @@ void Options::InitOptions()
 	m_urlForce				= (bool)ParseEnumValue(OPTION_URLFORCE, BoolCount, BoolNames, BoolValues);
 	m_certCheck				= (bool)ParseEnumValue(OPTION_CERTCHECK, BoolCount, BoolNames, BoolValues);
 	m_reorderFiles			= (bool)ParseEnumValue(OPTION_REORDERFILES, BoolCount, BoolNames, BoolValues);
+	m_renameAfterUnpack     = (bool)ParseEnumValue(OPTION_RENAMEAFTERUNPACK, BoolCount, BoolNames, BoolValues);
 
 	const char* OutputModeNames[] = { "loggable", "logable", "log", "colored", "color", "ncurses", "curses" };
 	const int OutputModeValues[] = { omLoggable, omLoggable, omLoggable, omColored, omColored, omNCurses, omNCurses };

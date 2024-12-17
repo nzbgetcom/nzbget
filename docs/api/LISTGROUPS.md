@@ -55,6 +55,7 @@ This method returns array of structures with following fields:
   - **RENAMING** - processed by par-renamer;
   - **UNPACKING** - being unpacked;
   - **MOVING** - moving files from intermediate directory into destination directory;
+  - **POST_UNPACK_RENAMING** - renaming excessively obfuscated downloaded files after unpacking;
   - **EXECUTING_SCRIPT** - executing post-processing script;
   - **PP_FINISHED** - post-processing is finished, the item is about to be moved to history.
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.

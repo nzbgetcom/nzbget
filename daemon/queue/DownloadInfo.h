@@ -141,8 +141,8 @@ public:
 	Groups* GetGroups() { return &m_groups; }
 	const char* GetSubject() { return m_subject; }
 	void SetSubject(const char* subject) { m_subject = subject; }
-	const char* GetFilename() { return m_filename; }
-	void SetFilename(const char* filename) { m_filename = filename; }
+	const char* GetFilename() { return m_filename.c_str(); }
+	void SetFilename(std::string filename) { m_filename = std::move(filename); }
 	void SetOrigname(const char* origname) { m_origname = origname; }
 	const char* GetOrigname() { return m_origname; }
 	void MakeValidFilename();
@@ -213,7 +213,7 @@ private:
 	Groups m_groups;
 	ServerStatList m_serverStats;
 	CString m_subject;
-	CString m_filename;
+	std::string m_filename;
 	CString m_origname;
 	int64 m_size = 0;
 	int64 m_remainingSize = 0;
@@ -418,6 +418,14 @@ public:
 		msSuccess
 	};
 
+	enum class PostUnpackRenamingStatus
+	{
+		None,
+		Failure,
+		Success,
+		Skipped
+	};
+
 	enum EDeleteStatus
 	{
 		dsNone,
@@ -554,6 +562,8 @@ public:
 	ECleanupStatus GetCleanupStatus() { return m_cleanupStatus; }
 	void SetCleanupStatus(ECleanupStatus cleanupStatus) { m_cleanupStatus = cleanupStatus; }
 	EMoveStatus GetMoveStatus() { return m_moveStatus; }
+	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
+	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
 	void SetMoveStatus(EMoveStatus moveStatus) { m_moveStatus = moveStatus; }
 	EDeleteStatus GetDeleteStatus() { return m_deleteStatus; }
 	void SetDeleteStatus(EDeleteStatus deleteStatus) { m_deleteStatus = deleteStatus; }
@@ -704,6 +714,7 @@ private:
 	EPostUnpackStatus m_unpackStatus = usNone;
 	ECleanupStatus m_cleanupStatus = csNone;
 	EMoveStatus m_moveStatus = msNone;
+	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;
@@ -783,6 +794,7 @@ public:
 		ptUnpacking,
 		ptCleaningUp,
 		ptMoving,
+		ptPostUnpackRenaming,
 		ptExecutingScript,
 		ptFinished
 	};

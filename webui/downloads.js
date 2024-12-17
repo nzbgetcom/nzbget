@@ -64,6 +64,7 @@ var Downloads = (new function($)
 		'VERIFYING_REPAIRED': { Text: 'VERIFYING', PostProcess: true },
 		'RENAMING': { Text: 'RENAMING', PostProcess: true },
 		'MOVING': { Text: 'MOVING', PostProcess: true },
+		'POST_UNPACK_RENAMING': { Text: 'POST-UNPACK-RENAMING', PostProcess: true },
 		'UNPACKING': { Text: 'UNPACKING', PostProcess: true },
 		'EXECUTING_SCRIPT': { Text: 'PROCESSING', PostProcess: true },
 		'PP_FINISHED': { Text: 'FINISHED', PostProcess: false }
