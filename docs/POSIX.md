@@ -41,11 +41,17 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```
-apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev libboost-json1.81-dev
+apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev
 ```
-  - For tests:
+  - Debian 12 (bookworm)
+```bash
+apt install libboost-json1.81-dev
+apt install libboost-test1.81-dev #(optional: for testing)
 ```
-apt install libboost-test1.81-dev
+  - Debian 13 (trixie)
+```bash
+apt install libboost-json-dev 
+apt install libboost-test-dev #(optional: for testing)
 ```
   - For static code analysis:
 ```
