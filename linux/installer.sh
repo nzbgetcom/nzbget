@@ -87,7 +87,7 @@ PrintHelp()
         Info "This installer supports Linux kernel 2.6 or newer and the following CPU architectures:"
     fi
     if test "$PLATFORM" = "freebsd"; then
-        Info "This installer supports FreeBSD 9.1 or newer and the following CPU architectures:"
+        Info "This installer supports FreeBSD 13 or newer and the following CPU architectures:"
     fi
     PrintArch "i686"     "    i686     - x86, 32 or 64 Bit"
     PrintArch "x86_64"   "    x86_64   - x86, 64 Bit"
