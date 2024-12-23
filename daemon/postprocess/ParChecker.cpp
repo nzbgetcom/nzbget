@@ -1040,9 +1040,13 @@ void ParChecker::SignalDone(std::string fileName, int available, int total)
 			bool fileExists = true;
 			for (Par2::Par2RepairerSourceFile* sourcefile : GetRepairer()->sourcefiles)
 			{
+				if (!sourcefile) 
+				{
+					continue;
+				}
+
 				std::string targetFileName = sourcefile->TargetFileName();
-				if (sourcefile && !strcmp(fileName.c_str(), FileSystem::BaseFileName(targetFileName.c_str())) &&
-					!sourcefile->GetTargetExists())
+				if (!sourcefile->GetTargetExists() && fileName == FileSystem::BaseFileName(targetFileName.c_str()))
 				{
 					fileExists = false;
 					break;
@@ -1124,6 +1128,11 @@ void ParChecker::SaveSourceList()
 
 	for (Par2::Par2RepairerSourceFile* sourcefile : GetRepairer()->sourcefiles)
 	{
+		if (!sourcefile)
+		{
+			continue;
+		}
+
 		std::vector<Par2::DataBlock>::iterator it2 = sourcefile->SourceBlocks();
 		for (int i = 0; i < (int)sourcefile->BlockCount(); i++, it2++)
 		{
@@ -1144,14 +1153,17 @@ void ParChecker::DeleteLeftovers()
 	// corresponding target-files. If not - the source file was replaced. In this case
 	// the DiskFile-object points to the renamed bak-file, which we can delete.
 
-	for (void* sf : m_sourceFiles)
+	for (Par2::DiskFile* sourceFile : m_sourceFiles)
 	{
-		Par2::DiskFile* sourceFile = (Par2::DiskFile*)sf;
+		if (!sourceFile)
+		{
+			continue;
+		}
 
 		bool found = false;
 		for (Par2::Par2RepairerSourceFile* sourcefile : GetRepairer()->sourcefiles)
 		{
-			if (sourcefile->GetTargetFile() == sourceFile)
+			if (sourcefile && sourcefile->GetTargetFile() == sourceFile)
 			{
 				found = true;
 				break;

@@ -167,7 +167,7 @@ private:
 	};
 
 	typedef std::deque<std::string> FileList;
-	typedef std::deque<void*> SourceList;
+	typedef std::deque<Par2::DiskFile*> SourceList;
 	typedef std::vector<bool> ValidBlocks;
 
 	bool m_queuedParFilesChanged;
