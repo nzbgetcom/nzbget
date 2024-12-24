@@ -189,6 +189,9 @@ void TlsSocket::Init()
 
 void TlsSocket::InitOptions(const char* certStore)
 {
+	if (Util::EmptyStr(certStore)) 
+		return;
+
 	m_certStore = certStore;
 
 #ifdef HAVE_OPENSSL
