@@ -2,16 +2,11 @@ set(PostprocessTestsSrc
 	main.cpp
 	# DirectUnpackTest.cpp
 	# DupeMatcherTest.cpp
-	ParCheckerTest.cpp
-	ParRenamerTest.cpp
 	RarReaderTest.cpp
 	RarRenamerTest.cpp
 	../suite/TestUtil.cpp
 	# ${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	# ${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
@@ -24,6 +19,16 @@ set(PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 )
+
+if(NOT DISABLE_PARCHECK)
+	set(PostprocessTestsSrc ${PostprocessTestsSrc} 
+		ParCheckerTest.cpp
+		ParRenamerTest.cpp
+		${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
+		${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
+		${CMAKE_SOURCE_DIR}/daemon/postprocess/ParRenamer.cpp
+	)
+endif()
 
 if(WIN32)
 	set(PostprocessTestsSrc ${PostprocessTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
