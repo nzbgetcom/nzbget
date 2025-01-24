@@ -10,12 +10,20 @@ env:
 
 jobs:
   build-x64:
-    runs-on: [self-hosted, macos, x64]
+    runs-on: macos-13
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Prepare build environment
+      run: |
+        cd $HOME
+        git clone https://github.com/microsoft/vcpkg
+        cd vcpkg
+        ./bootstrap-vcpkg.sh
+        ./vcpkg install boost-json:x64-osx boost-optional:x64-osx libxml2:x64-osx zlib:x64-osx openssl:x64-osx
 
     - name: Build
       run: bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
