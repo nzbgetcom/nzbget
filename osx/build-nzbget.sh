@@ -107,10 +107,8 @@ for CONFIG in $CONFIGS; do
         cd $BUILD_PATH
         if [ "$ARCH" == "x64" ]; then
             CMAKE_ARCH="x86_64"
-            CMAKE_EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
         else
             CMAKE_ARCH=$ARCH
-            CMAKE_EXTRA_ARGS=""
         fi
 
         if [ "$CONFIG" == "debug" ]; then
@@ -120,6 +118,9 @@ for CONFIG in $CONFIGS; do
             CMAKE_BUILD_TYPE="Release"
             SUFFIX=""
         fi
+
+        # extra args from environment
+        CMAKE_EXTRA_ARGS=${EXTRA_ARGS:-}
 
         cmake ../.. \
             -DENABLE_STATIC=ON \

@@ -23,7 +23,9 @@ jobs:
         tar zxf $HOME/vcpkg.tar.gz -C $HOME
 
     - name: Build
-      run: bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+      run: |
+        export EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
+        bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4
@@ -51,110 +53,110 @@ jobs:
         path: build/*.zip
         retention-days: 5
 
-  # build-universal:
-  #   runs-on: [self-hosted, macos, arm64]
+  build-universal:
+    runs-on: [self-hosted, macos, arm64]
 
-  #   steps:
+    steps:
 
-  #   - name: Checkout
-  #     uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-  #   - name: Build
-  #     run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+    - name: Build
+      run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
-  #   - name: Upload full build log on failure
-  #     uses: actions/upload-artifact@v4
-  #     if: failure()
-  #     with:
-  #       name: nzbget-osx-universal-build-log
-  #       path: build/*/build.log
-  #       retention-days: 5
+    - name: Upload full build log on failure
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-osx-universal-build-log
+        path: build/*/build.log
+        retention-days: 5
 
-  #   - name: Rename build artifacts
-  #     if: github.ref_name != 'main' && github.ref_name != 'develop'
-  #     run: |
-  #       cd build
-  #       SUFFIX="${GITHUB_REF_NAME/\//-}"
-  #       for FILE in *.zip; do
-  #         [ -f $FILE ] || continue
-  #         NEW_FILE=${FILE/-bin-macos-universal/-$SUFFIX-bin-macos-universal}
-  #         mv $FILE $NEW_FILE
-  #       done
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd build
+        SUFFIX="${GITHUB_REF_NAME/\//-}"
+        for FILE in *.zip; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/-bin-macos-universal/-$SUFFIX-bin-macos-universal}
+          mv $FILE $NEW_FILE
+        done
 
-  #   - name: Upload build artifacts
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: nzbget-osx-installers-universal
-  #       path: build/*-universal*.zip
-  #       retention-days: 5
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-osx-installers-universal
+        path: build/*-universal*.zip
+        retention-days: 5
 
-  # sign-universal:
-  #   runs-on: [self-hosted, macos, arm64]
-  #   needs: [build-universal]
+  sign-universal:
+    runs-on: [self-hosted, macos, arm64]
+    needs: [build-universal]
 
-  #   steps:
+    steps:
 
-  #   - name: Checkout
-  #     uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-  #   - name: Download build artifacts
-  #     uses: actions/download-artifact@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
 
-  #   - name: Sign and notarize
-  #     env:
-  #       NOTARIZE: ${{ vars.OSX_NOTARIZE }}
-  #       KEYCHAIN_PASSWORD: ${{ secrets.OSX_KEYCHAIN_PASSWORD }}
-  #       DEVELOPER_IDENTITY: ${{ secrets.OSX_DEVELOPER_IDENTITY }}
-  #       NOTARY_KEY_ID: ${{ secrets.OSX_NOTARY_KEY_ID }}
-  #       NOTARY_KEY_ISSUER: ${{ secrets.OSX_NOTARY_KEY_ISSUER }}
-  #     run: |
-  #       mkdir -p build_signed
-  #       for FILE in nzbget-osx-installers-universal/*.zip; do
-  #         [ -f $FILE ] || continue
-  #         mkdir -p build
-  #         cp osx/sign/* build
-  #         cp $FILE build/
-  #         cd build
-  #         bash nzbget-sign.sh *.zip
-  #         cd ..
-  #         cp build/*.dmg build_signed
-  #         rm -rf build
-  #       done
+    - name: Sign and notarize
+      env:
+        NOTARIZE: ${{ vars.OSX_NOTARIZE }}
+        KEYCHAIN_PASSWORD: ${{ secrets.OSX_KEYCHAIN_PASSWORD }}
+        DEVELOPER_IDENTITY: ${{ secrets.OSX_DEVELOPER_IDENTITY }}
+        NOTARY_KEY_ID: ${{ secrets.OSX_NOTARY_KEY_ID }}
+        NOTARY_KEY_ISSUER: ${{ secrets.OSX_NOTARY_KEY_ISSUER }}
+      run: |
+        mkdir -p build_signed
+        for FILE in nzbget-osx-installers-universal/*.zip; do
+          [ -f $FILE ] || continue
+          mkdir -p build
+          cp osx/sign/* build
+          cp $FILE build/
+          cd build
+          bash nzbget-sign.sh *.zip
+          cd ..
+          cp build/*.dmg build_signed
+          rm -rf build
+        done
 
-  #   - name: Upload signed build artifacts
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: nzbget-osx-installers-universal-signed
-  #       path: build_signed/*.dmg
-  #       retention-days: 5
+    - name: Upload signed build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-osx-installers-universal-signed
+        path: build_signed/*.dmg
+        retention-days: 5
 
-  # combine-osx-artifacts:
-  #   runs-on: ubuntu-24.04
-  #   needs: [build-x64, sign-universal]
-  #   permissions:
-  #     actions: write
-  #   steps:
+  combine-osx-artifacts:
+    runs-on: ubuntu-24.04
+    needs: [build-x64, sign-universal]
+    permissions:
+      actions: write
+    steps:
 
-  #   - name: Download build artifacts
-  #     uses: actions/download-artifact@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
 
-  #   - name: Combine artifacts
-  #     run: |
-  #       mkdir -p nzbget-osx-installers
-  #       mv nzbget-osx-installers-x64/* nzbget-osx-installers
-  #       mv nzbget-osx-installers-universal-signed/* nzbget-osx-installers
+    - name: Combine artifacts
+      run: |
+        mkdir -p nzbget-osx-installers
+        mv nzbget-osx-installers-x64/* nzbget-osx-installers
+        mv nzbget-osx-installers-universal-signed/* nzbget-osx-installers
 
-  #   - name: Upload combined build artifacts
-  #     uses: actions/upload-artifact@v4
-  #     with:
-  #       name: nzbget-osx-installers
-  #       path: nzbget-osx-installers/*
-  #       retention-days: 5
+    - name: Upload combined build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-osx-installers
+        path: nzbget-osx-installers/*
+        retention-days: 5
 
-  #   - name: Delete unneeded artifacts
-  #     uses: geekyeggo/delete-artifact@v4
-  #     with:
-  #       name: |
-  #         nzbget-osx-installers-x64
-  #         nzbget-osx-installers-universal
-  #         nzbget-osx-installers-universal-signed
+    - name: Delete unneeded artifacts
+      uses: geekyeggo/delete-artifact@v4
+      with:
+        name: |
+          nzbget-osx-installers-x64
+          nzbget-osx-installers-universal
+          nzbget-osx-installers-universal-signed
