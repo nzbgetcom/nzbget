@@ -107,8 +107,10 @@ for CONFIG in $CONFIGS; do
         cd $BUILD_PATH
         if [ "$ARCH" == "x64" ]; then
             CMAKE_ARCH="x86_64"
+            CMAKE_EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
         else
             CMAKE_ARCH=$ARCH
+            CMAKE_EXTRA_ARGS=""
         fi
 
         if [ "$CONFIG" == "debug" ]; then
@@ -126,7 +128,7 @@ for CONFIG in $CONFIGS; do
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DVERSION_SUFFIX="$VERSION_SUFFIX" \
             -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_ARCH \
-            -DCMAKE_OSX_ARCHITECTURES=$CMAKE_ARCH
+            -DCMAKE_OSX_ARCHITECTURES=$CMAKE_ARCH $CMAKE_EXTRA_ARGS
 
         BUILD_STATUS=""
         cmake --build . -j $JOBS 2>build.log || BUILD_STATUS=$?
