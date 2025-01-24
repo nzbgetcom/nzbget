@@ -10,15 +10,22 @@ env:
 
 jobs:
   build-x64:
-    runs-on: [self-hosted, macos, x64]
+    runs-on: macos-13
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Prepare build environment
+      run: |
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-osx-x64.tar.gz -o $HOME/vcpkg.tar.gz
+        tar zxf $HOME/vcpkg.tar.gz -C $HOME
+
     - name: Build
-      run: bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+      run: |
+        export EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
+        bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v4

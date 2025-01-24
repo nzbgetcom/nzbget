@@ -119,6 +119,9 @@ for CONFIG in $CONFIGS; do
             SUFFIX=""
         fi
 
+        # extra args from environment
+        CMAKE_EXTRA_ARGS=${EXTRA_ARGS:-}
+
         cmake ../.. \
             -DENABLE_STATIC=ON \
             -DCMAKE_INSTALL_PREFIX="$PWD/../../$NZBGET_PATH/$DAEMON_PATH" \
@@ -126,7 +129,7 @@ for CONFIG in $CONFIGS; do
             -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DVERSION_SUFFIX="$VERSION_SUFFIX" \
             -DCMAKE_SYSTEM_PROCESSOR=$CMAKE_ARCH \
-            -DCMAKE_OSX_ARCHITECTURES=$CMAKE_ARCH
+            -DCMAKE_OSX_ARCHITECTURES=$CMAKE_ARCH $CMAKE_EXTRA_ARGS
 
         BUILD_STATUS=""
         cmake --build . -j $JOBS 2>build.log || BUILD_STATUS=$?
