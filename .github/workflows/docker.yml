@@ -24,7 +24,7 @@ jobs:
           - platform: linux/arm/v7
             runner: ubuntu-24.04
           - platform: linux/arm64
-            runner: ubuntu-24.04
+            runner: ubuntu-22.04
     runs-on: ${{ matrix.runner }}
     steps:
 
