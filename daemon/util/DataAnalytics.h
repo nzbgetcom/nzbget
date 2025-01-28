@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,35 +17,34 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <vector>
 
-#include "nzbget.h"
-
-#include "Network.h"
-#include "Util.h"
-#include "Log.h"
-#include "HttpClient.h"
-
-namespace System
+class DataAnalytics final
 {
-	Network GetNetwork()
-	{
-		Network network;
+public:
+	DataAnalytics() = default;
+	~DataAnalytics() = default;
 
-		try
-		{
-			::Network::HttpClient httpClient;
-			auto result = httpClient.GET(IP_SERVICE).get();
-			if (result.statusCode == 200)
-			{
-				network.publicIP = std::move(result.body);
-				network.privateIP = httpClient.GetLocalIP();
-			}
-		}
-		catch (const std::exception& e)
-		{
-			detail("Failed to get public and private IP: %s", e.what());
-		}
+	double GetMin() const;
+	double GetMax() const;
+	double GetAvg() const;
+	double GetMedian() const;
+	double GetPercentile25() const;
+	double GetPercentile75() const;
+	double GetPercentile90() const;
 
-		return network;
-	}
-}
+	void Compute();
+	void AddMeasurement(double measuremen);
+
+private:
+	double CalculatePercentile(double percentile);
+
+	double m_min = 0.0;
+	double m_max = 0.0;
+	double m_avg = 0.0;
+	double m_median = 0.0;
+	double m_percentile25 = 0.0;
+	double m_percentile75 = 0.0;
+	double m_percentile90 = 0.0;
+	std::vector<double> m_measurements;
+};

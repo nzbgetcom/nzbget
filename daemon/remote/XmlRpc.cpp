@@ -40,6 +40,7 @@
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "Benchmark.h"
+#include "NetworkSpeedTest.h"
 #include "Xml.h"
 
 extern void ExitProc();
@@ -388,6 +389,39 @@ public:
 
 		Xml::AddNewNode(structNode, "SizeMB", "i4", sizeMB.c_str());
 		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
+
+		xmlAddChild(rootNode, structNode);
+		
+		std::string result = Xml::Serialize(rootNode);
+
+		xmlFreeNode(rootNode);
+
+		return result;
+	}
+};
+
+class TestNetworkSpeedXmlCommand final : public SafeXmlCommand
+{
+public:
+	void Execute() override;
+
+	std::string ToJsonStr(double speedMbps)
+	{
+		Json::JsonObject json;
+
+		json["SpeedMbps"] = speedMbps;
+
+		return Json::Serialize(json);
+	}
+
+	std::string ToXmlStr(double speedMbps)
+	{
+		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
+		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
+
+		std::string speedMbpsStr = std::to_string(speedMbps);
+
+		Xml::AddNewNode(structNode, "SpeedMbps", "double", speedMbpsStr.c_str());
 
 		xmlAddChild(rootNode, structNode);
 		
@@ -858,6 +892,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "testdiskspeed"))
 	{
 		command = std::make_unique<TestDiskSpeedXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "testnetworkspeed"))
+	{
+		command = std::make_unique<TestNetworkSpeedXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "startscript"))
 	{
@@ -3812,6 +3850,29 @@ void TestDiskSpeedXmlCommand::Execute()
 	catch (const std::exception& e)
 	{
 		BuildErrorResponse(2, e.what());
+	}
+}
+
+void TestNetworkSpeedXmlCommand::Execute()
+{
+	try
+	{
+		g_WorkState->SetPauseDownload(true);
+
+		Network::SpeedTest sp;
+		double speedMbps = sp.RunTest();
+		std::string respStr = IsJson() ?
+			ToJsonStr(speedMbps) :
+			ToXmlStr(speedMbps);
+
+		AppendResponse(respStr.c_str());
+
+		g_WorkState->SetPauseDownload(false);
+	}
+	catch (const std::exception& e)
+	{
+		BuildErrorResponse(2, e.what());
+		g_WorkState->SetPauseDownload(false);
 	}
 }
 

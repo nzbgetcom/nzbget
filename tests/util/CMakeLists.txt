@@ -5,6 +5,7 @@ set(UtilTestSrc
 	NStringTest.cpp
 	JsonTest.cpp
 	BenchmarkTest.cpp
+	DataAnalyticsTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
@@ -12,6 +13,7 @@ set(UtilTestSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Benchmark.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/DataAnalytics.cpp
 )
 
 if(WIN32)

@@ -17,6 +17,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
+var TEST_BTN_DEFAULT_TEXT = 'Run test';
+var NETWORK_SPEED_TEST_RUNNING = false;
 
 function DiskSpeedTestsForm()
 {
@@ -28,9 +31,6 @@ function DiskSpeedTestsForm()
 	var $diskSpeedTestInput;
 	var $diskSpeedTestBtn;
 	var $diskSpeedTestErrorTxt;
-	
-	var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
-	var TEST_BTN_DEFAULT_TEXT = 'Run test';
 
 	this.init = function(writeBuffer, dirPath, label, lsKey)
 	{
@@ -44,7 +44,7 @@ function DiskSpeedTestsForm()
 
 		disableBtnToggle(false);
 
-		$diskSpeedTestBtn.text(getSpeedResFromLS(lsKey) || TEST_BTN_DEFAULT_TEXT);
+		$diskSpeedTestBtn.text(Util.getFromLocalStorage(lsKey) || TEST_BTN_DEFAULT_TEXT);
 
 		$writeBufferInput.val(writeBuffer);
 		$diskSpeedTestInputLabel.text(label);
@@ -92,8 +92,8 @@ function DiskSpeedTestsForm()
 			function(rawRes) 
 			{
 				var res = makeResults(rawRes);
-				saveSpeedResToLS(lsKey, res);
-				$diskSpeedTestBtn.html(makeResults(rawRes));
+				Util.saveToLocalStorage(lsKey, res);
+				$diskSpeedTestBtn.html(res);
 				disableBtnToggle(false);
 			}, 
 			function(res) 
@@ -142,16 +142,6 @@ function DiskSpeedTestsForm()
 
 		return path !== '';
 	}
-
-	function saveSpeedResToLS(key, res)
-	{
-		localStorage.setItem(key, res);
-	}
-
-	function getSpeedResFromLS(key)
-	{
-		return localStorage.getItem(key) || '';
-	}
 }
 
 var SystemInfo = (new function($)
@@ -169,6 +159,8 @@ var SystemInfo = (new function($)
 	var $SysInfo_InterDiskSpace;
 	var $SysInfo_DestDirDiskTestBtn;
 	var $SysInfo_InterDirDiskTestBtn;
+	var $SysInfo_NetworkSpeedTestBtn;
+	var $SysInfo_NetworkSpeedTestErrorTxt;
 	var $SysInfo_DestDiskSpaceContainer;
 	var $SysInfo_InterDiskSpaceContainer;
 	var $SysInfo_ArticleCache;
@@ -180,7 +172,6 @@ var SystemInfo = (new function($)
 	var $SysInfo_ErrorAlertText;
 	var $SpeedTest_Stats;
 	var $SpeedTest_StatsHeader;
-	var $SpeedTest_StatsTable;
 	var $DiskSpeedTest_Modal;
 	var $SystemInfo_Spinner;
 	var $SystemInfo_MainContent;
@@ -208,6 +199,8 @@ var SystemInfo = (new function($)
 
 	var DEST_DIR_LS_KEY = 'DestDirSpeedResults';
 	var INTER_DIR_LS_KEY = 'InterDirSpeedResults';
+	var NETWORK_SPEED_TEST_LS_KEY = 'NetworkSpeedResults';
+	var NETWORK_SPEED_TEST_DATE_LS_KEY = 'NetworkSpeedDate';
 
 	var lastTestStatsBtns = {};
 	var spinners = {};
@@ -259,6 +252,8 @@ var SystemInfo = (new function($)
 		$SysInfo_InterDiskSpace = $('#SysInfo_InterDiskSpace');
 		$SysInfo_DestDirDiskTestBtn = $('#SysInfo_DestDirDiskTestBtn');
 		$SysInfo_InterDirDiskTestBtn = $('#SysInfo_InterDirDiskTestBtn');
+		$SysInfo_NetworkSpeedTestBtn = $('#SysInfo_NetworkSpeedTestBtn');
+		$SysInfo_NetworkSpeedTestErrorTxt = $('#SysInfo_NetworkSpeedTestErrorTxt');
 		$SysInfo_InterDiskSpaceContainer = $('#SysInfo_InterDiskSpaceContainer');
 		$SysInfo_DestDiskSpaceContainer = $('#SysInfo_DestDiskSpaceContainer');
 		$SysInfo_ArticleCache = $('#SysInfo_ArticleCache');
@@ -275,6 +270,7 @@ var SystemInfo = (new function($)
 		$SpeedTest_StatsTime = $('#SpeedTest_StatsTime');
 		$SpeedTest_StatsDate = $('#SpeedTest_StatsDate');
 		$DiskSpeedTest_Modal = $('#DiskSpeedTest_Modal');
+		$NetworkSpeedTest_Modal = $('#NetworkSpeedTest_Modal');
 		$SystemInfo_Spinner = $('#SystemInfo_Spinner');
 		$SystemInfo_MainContent = $('#SystemInfo_MainContent');
 
@@ -449,7 +445,7 @@ var SystemInfo = (new function($)
 			showDiskSpeedModal(writeBufferKB, dirPath, 'DestDir', DEST_DIR_LS_KEY);
 		});
 
-		var savedResults = localStorage.getItem(DEST_DIR_LS_KEY);
+		var savedResults = Util.getFromLocalStorage(DEST_DIR_LS_KEY);
 		if (savedResults)
 		{
 			$SysInfo_DestDirDiskTestBtn.text(savedResults);
@@ -465,7 +461,7 @@ var SystemInfo = (new function($)
 			showDiskSpeedModal(writeBufferKB, dirPath, 'InterDir', INTER_DIR_LS_KEY);
 		});
 
-		var savedResults = localStorage.getItem(INTER_DIR_LS_KEY);
+		var savedResults = Util.getFromLocalStorage(INTER_DIR_LS_KEY);
 		if (savedResults)
 		{
 			$SysInfo_InterDirDiskTestBtn.text(savedResults);
@@ -488,6 +484,82 @@ var SystemInfo = (new function($)
 		var privateIP = network.PrivateIP ? network.PrivateIP : 'N/A';
 		var publicIP = network.PublicIP ? network.PublicIP : 'N/A';
 		$SysInfo_IP.text(privateIP + ' / ' + publicIP);
+
+		renderNetworkSpeedTestBtn();
+	}
+
+	function renderNetworkSpeedTestBtn()
+	{
+		var savedResults = Number(Util.getFromLocalStorage(NETWORK_SPEED_TEST_LS_KEY));
+		if (savedResults && !NETWORK_SPEED_TEST_RUNNING)
+		{
+			renderNetworkSpeedTestResults(savedResults);
+		}
+		else if (savedResults && NETWORK_SPEED_TEST_RUNNING)
+		{
+			$SysInfo_NetworkSpeedTestBtn.html(SPINNER);
+		}
+
+		var savedDate = Number(Util.getFromLocalStorage(NETWORK_SPEED_TEST_DATE_LS_KEY));
+		if (savedDate)
+		{
+			renderNetworkSpeedTestBtnTitle(savedDate);
+		}
+
+		$SysInfo_NetworkSpeedTestBtn.off('click').on('click', function()
+		{
+			$SysInfo_NetworkSpeedTestBtn.html(SPINNER);
+			$SysInfo_NetworkSpeedTestBtn.addClass('btn--disabled');
+			$SysInfo_NetworkSpeedTestErrorTxt.empty();
+			NETWORK_SPEED_TEST_RUNNING = true;
+
+			RPC.call('testnetworkspeed', [], 
+				function(rawRes) 
+				{
+					var date = Date.now();
+					Util.saveToLocalStorage(NETWORK_SPEED_TEST_LS_KEY, rawRes.SpeedMbps);
+					Util.saveToLocalStorage(NETWORK_SPEED_TEST_DATE_LS_KEY, date);
+					$SysInfo_NetworkSpeedTestBtn
+						.html(Util.formatNetworkSpeed(rawRes.SpeedMbps))
+						.removeClass('btn--disabled');
+					renderNetworkSpeedTestBtnTitle(date);
+					NETWORK_SPEED_TEST_RUNNING = false;
+				}, 
+				function(res) 
+				{
+					$SysInfo_NetworkSpeedTestBtn
+						.text(TEST_BTN_DEFAULT_TEXT)
+						.removeClass('btn--disabled');
+					removeNetworkSpeedTestBtnTitle();
+					var errTxt = res.split('<br>')[0];
+					$SysInfo_NetworkSpeedTestErrorTxt.html(errTxt);
+					NETWORK_SPEED_TEST_RUNNING = false;
+				},
+			);
+		});
+	}
+
+	function renderNetworkSpeedTestBtnTitle(date)
+	{
+		var formatted = Util.formatDateTime(date / 1000);
+		if (formatted)
+		{
+			$SysInfo_NetworkSpeedTestBtn.attr('title', 'Date: ' + formatted);
+		}
+	}
+
+	function removeNetworkSpeedTestBtnTitle()
+	{
+		$SysInfo_NetworkSpeedTestBtn.removeAttr('title');
+	}
+
+	function renderNetworkSpeedTestResults(results)
+	{
+		var formatted = Util.formatNetworkSpeed(results);
+		if (formatted)
+		{
+			$SysInfo_NetworkSpeedTestBtn.text(formatted);
+		}
 	}
 
 	function renderAppVersion(version)

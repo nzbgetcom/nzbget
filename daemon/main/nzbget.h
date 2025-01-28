@@ -158,6 +158,7 @@
 #include <unordered_map>
 #include <iterator>
 #include <algorithm>
+#include <numeric>
 #include <fstream>
 #include <memory>
 #include <functional>

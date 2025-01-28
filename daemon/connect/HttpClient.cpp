@@ -23,7 +23,7 @@
 #include "HttpClient.h"
 #include "Util.h"
 
-namespace HttpClient
+namespace Network
 {
 	namespace asio = boost::asio;
 	using tcp = boost::asio::ip::tcp;

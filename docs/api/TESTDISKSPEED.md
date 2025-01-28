@@ -5,7 +5,7 @@
 
 ### Signature
 ``` c++
-bool testdiskspeed(
+struct testdiskspeed(
     string dirPath, 
     int writeBufferSize, 
     int maxFileSize,
