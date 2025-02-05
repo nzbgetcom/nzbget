@@ -427,18 +427,38 @@ void ParRenamer::RenameParFile(const char* destDir, const char* filename, const 
 
 void ParRenamer::RenameFile(const char* srcFilename, const char* destFileName)
 {
-	PrintMessage(Message::mkInfo, "Renaming %s to %s", FileSystem::BaseFileName(srcFilename), FileSystem::BaseFileName(destFileName));
+	const auto [oldPath, oldName] = FileSystem::SplitPathAndFilename(srcFilename);
+	const auto [newPath, newName] = FileSystem::SplitPathAndFilename(destFileName);
+
+	PrintMessage(Message::mkInfo, "Renaming %s to %s", oldName.c_str(), newName.c_str());
+
+	if (oldPath != newPath)
+	{
+		CString errmsg;
+		if (!FileSystem::ForceDirectories(newPath.c_str(), errmsg))
+		{
+			PrintMessage(Message::mkError, 
+				"Failed to rename file %s to %s. Could not create the target directory \"%s\"",
+				oldName.c_str(), newName.c_str(), newPath.c_str()
+			);
+
+			return;
+		}
+	}
+
 	if (!FileSystem::MoveFile(srcFilename, destFileName))
 	{
-		PrintMessage(Message::mkError, "Could not rename %s to %s: %s", srcFilename, destFileName,
-			*FileSystem::GetLastErrorMessage());
+		PrintMessage(Message::mkError, 
+			"Failed to rename file %s to %s: %s", 
+			srcFilename, destFileName, *FileSystem::GetLastErrorMessage()
+		);
 		return;
 	}
 
-	m_renamedCount++;
+	++m_renamedCount;
 
 	// notify about new file name
-	RegisterRenamedFile(FileSystem::BaseFileName(srcFilename), FileSystem::BaseFileName(destFileName));
+	RegisterRenamedFile(oldName.c_str(), newName.c_str());
 }
 
 void ParRenamer::RenameBadParFiles()

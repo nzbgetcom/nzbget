@@ -414,6 +414,21 @@ char* FileSystem::BaseFileName(const char* filename)
 	}
 }
 
+std::pair<std::string, std::string> FileSystem::SplitPathAndFilename(const std::string& fullPath)
+{
+	size_t lastSlashPos = fullPath.find_last_of("/\\");
+
+	if (lastSlashPos == std::string::npos)
+	{
+		return std::make_pair(fullPath, "");
+	}
+
+	std::string path = fullPath.substr(0, lastSlashPos);
+	std::string filename = fullPath.substr(lastSlashPos + 1);
+
+	return std::make_pair(std::move(path), std::move(filename));
+}
+
 bool FileSystem::ReservedChar(char ch)
 {
 	if ((unsigned char)ch < 32)

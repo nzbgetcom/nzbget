@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,3 +68,82 @@ BOOST_AUTO_TEST_CASE(EscapePathForShellTest)
 
 #endif
 
+BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)
+{
+	{
+		std::string fullPath = "/path/to/filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "/path/to");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "/path/to/";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "/path/to");
+		BOOST_TEST(result.second == "");
+	}
+
+	{
+		std::string fullPath = "C:\\path\\to\\filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "C:\\path\\to");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "C:\\path\\to\\";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "C:\\path\\to");
+		BOOST_TEST(result.second == "");
+	}
+
+	{
+		std::string fullPath = "/path\\to/filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "/path\\to");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "");
+		BOOST_TEST(result.second == "");
+	}
+
+	{
+		std::string fullPath = "/filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "\\filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "/path/to\\a/b\\c/filename.txt";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "/path/to\\a/b\\c");
+		BOOST_TEST(result.second == "filename.txt");
+	}
+
+	{
+		std::string fullPath = "/";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "");
+		BOOST_TEST(result.second == "");
+	}
+
+	{
+		std::string fullPath = "\\";
+		std::pair<std::string, std::string> result = FileSystem::SplitPathAndFilename(fullPath);
+		BOOST_TEST(result.first == "");
+		BOOST_TEST(result.second == "");
+	}
+}

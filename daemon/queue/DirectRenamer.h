@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 #ifndef DIRECTRENAMER_H
 #define DIRECTRENAMER_H
 
+#include <string>
 #include "ArticleDownloader.h"
 
 class DirectRenamer
@@ -72,11 +74,13 @@ private:
 	void CheckState(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void UnpausePars(NzbInfo* nzbInfo);
 	void RenameFiles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, FileHashList* parHashes);
-	bool RenameCompletedFile(NzbInfo* nzbInfo, const char* oldName, const char* newName);
+	bool RenameCompletedFile(NzbInfo* nzbInfo, const std::string& oldFullFilename, const std::string& newFullFilename);
 	bool NeedRenamePars(NzbInfo* nzbInfo);
 	void CollectPars(NzbInfo* nzbInfo, ParFileList* parFiles);
-	CString BuildNewRegularName(const char* oldName, FileHashList* parHashes, const char* hash16k);
-	CString BuildNewParName(const char* oldName, const char* destDir, const char* setId, int& vol);
+	std::string BuildNewRegularName(const char* oldName, FileHashList* parHashes, const char* hash16k);
+	std::string BuildNewParName(const char* oldName, const char* destDir, const char* setId, int& vol);
+	int RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
+	int RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
 
 	friend class DirectParLoader;
 };
