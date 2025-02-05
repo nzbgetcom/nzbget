@@ -847,7 +847,13 @@
 															</tr>
 															<tr>
 																<td width="50%">Private / Public IP</td>
-																<td id="SysInfo_IP" width="50%"></td>
+																<td width="50%" class="flex-center">
+																	<span id="SysInfo_IP"></span>
+																	<button class="system-info__network-speed-test-btn btn btn-default" type="button" id="SysInfo_NetworkSpeedTestBtn">
+																		Run test
+																	</button>
+																	<span class="help-text-error" id="SysInfo_NetworkSpeedTestErrorTxt"></span>
+																</td>
 															</tr>
 														</tbody>
 													</table>

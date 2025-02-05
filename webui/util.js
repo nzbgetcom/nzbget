@@ -31,6 +31,27 @@ var Util = (new function($)
 {
 	'use strict';
 
+	this.saveToLocalStorage = function(key, val)
+	{
+		try 
+		{
+			localStorage.setItem(key, val);
+		} catch (error) 
+		{
+			console.error(error);
+		}
+	}
+
+	this.getFromLocalStorage = function(key)
+	{
+		return localStorage.getItem(key);
+	}
+
+	this.removeFromLocalStorage = function(key)
+	{
+		return localStorage.removeItem(key);
+	}
+
 	this.formatTimeHMS = function(sec)
 	{
 		var hms = '';
@@ -83,8 +104,18 @@ var Util = (new function($)
 		return seconds + 's';
 	}
 
+	this.isNumber = function(value)
+	{
+		return typeof value === 'number';
+	}
+
 	this.formatDateTime = function(unixTime)
 	{
+		if (!Util.isNumber(unixTime) || unixTime < 0)
+		{
+			return '';
+		}
+
 		var dt = new Date(unixTime * 1000);
 		var h = dt.getHours();
 		var m = dt.getMinutes();
@@ -139,7 +170,7 @@ var Util = (new function($)
 
 	this.formatSpeed = function (bytesPerSec) 
 	{
-		if (bytesPerSec <= 0)
+		if (!Util.isNumber(bytesPerSec) || bytesPerSec <= 0) 
 		{
 			return '';
 		}
@@ -170,6 +201,42 @@ var Util = (new function($)
 		}
 
 		return Util.round0(bytesPerSec / 1024.0) + ' KB/s';
+	}
+
+	this.formatNetworkSpeed = function(speedMbps) 
+	{
+		if (!Util.isNumber(speedMbps))
+		{
+			return '';
+		}
+
+		if (!speedMbps || speedMbps < 0)
+		{
+			return '';
+		}
+
+		if (speedMbps >= 10000) 
+		{
+			return Util.round1(speedMbps / 10000) + ' Gbps';
+		}
+		if (speedMbps >= 1000) 
+		{
+			return Util.round1(speedMbps / 1000) + ' Gbps';
+		} 
+		else if (speedMbps >= 100) 
+		{
+			return Util.round0(speedMbps) + ' Mbps';
+		} 
+		else if (speedMbps >= 10) 
+		{
+			return Util.round1(speedMbps) + ' Mbps';
+		} 
+		else if (speedMbps >= 1) 
+		{
+			return Util.round2(speedMbps) + ' Mbps';
+		}
+
+		return Util.round0(speedMbps * 1000) + ' Kbps';
 	}
 
 	this.formatSpeedWithCustomUnit = function (bytesPerSec, unit) 
