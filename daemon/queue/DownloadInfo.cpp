@@ -839,10 +839,16 @@ void FileInfo::SetActiveDownloads(int activeDownloads)
 }
 
 
-CompletedFile::CompletedFile(int id, const char* filename, const char* origname, EStatus status,
-	uint32 crc, bool parFile, const char* hash16k, const char* parSetId) :
-	m_id(id), m_filename(filename), m_origname(origname), m_status(status),
-	m_crc(crc), m_parFile(parFile), m_hash16k(hash16k), m_parSetId(parSetId)
+CompletedFile::CompletedFile(int id, std::string filename, std::string origname, EStatus status,
+	uint32 crc, bool parFile, std::string hash16k, std::string parSetId) 
+	: m_id(id)
+	, m_filename(std::move(filename))
+	, m_origname(std::move(origname))
+	, m_status(status)
+	, m_crc(crc)
+	, m_parFile(parFile)
+	, m_hash16k(std::move(hash16k))
+	, m_parSetId(std::move(parSetId))
 {
 	if (FileInfo::m_idMax < m_id)
 	{

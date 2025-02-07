@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -861,13 +862,21 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 
 	if (completed || parking)
 	{
+		const std::string& outputFilename = fileInfo->GetOutputFilename();
+		std::string filename = (completed && !outputFilename.empty())
+			? FileSystem::BaseFileName(outputFilename.c_str())
+			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
+
 		fileInfo->GetNzbInfo()->GetCompletedFiles()->emplace_back(
 			fileInfo->GetId(),
-			completed && fileInfo->GetOutputFilename() ?
-			FileSystem::BaseFileName(fileInfo->GetOutputFilename()) : fileInfo->GetFilename(),
-			fileInfo->GetOrigname(), fileStatus,
+			std::move(filename),
+			fileInfo->GetOrigname() ? fileInfo->GetOrigname() : "", 
+			fileStatus,
 			fileStatus == CompletedFile::cfSuccess ? fileInfo->GetCrc() : 0,
-			fileInfo->GetParFile(), fileInfo->GetHash16k(), fileInfo->GetParSetId());
+			fileInfo->GetParFile(), 
+			fileInfo->GetHash16k() ? fileInfo->GetHash16k() : "", 
+			fileInfo->GetParSetId() ? fileInfo->GetParSetId() : ""
+		);
 	}
 
 	if (g_Options->GetDirectRename())
@@ -905,9 +914,10 @@ void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 		}
 	}
 
-	if (g_Options->GetDirectWrite() && fileInfo->GetOutputFilename() && !fileInfo->GetForceDirectWrite())
+	const std::string& outputFilename = fileInfo->GetOutputFilename();
+	if (g_Options->GetDirectWrite() && !outputFilename.empty() && !fileInfo->GetForceDirectWrite())
 	{
-		FileSystem::DeleteFile(fileInfo->GetOutputFilename());
+		FileSystem::DeleteFile(outputFilename.c_str());
 	}
 }
 

@@ -38,6 +38,7 @@ class FileSystem
 public:
 	static CString GetLastErrorMessage();
 	static char* BaseFileName(const char* filename);
+	static std::pair<std::string, std::string> SplitPathAndFilename(const std::string& fullPath);
 	static bool SameFilename(const char* filename1, const char* filename2);
 	static void NormalizePathSeparators(char* path);
 	static std::optional<std::string> GetRealPath(const std::string& path);

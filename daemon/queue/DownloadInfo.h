@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -177,8 +177,9 @@ public:
 	bool GetParFile() { return m_parFile; }
 	void SetParFile(bool parFile) { m_parFile = parFile; }
 	Guard GuardOutputFile() { return Guard(m_outputFileMutex); }
-	const char* GetOutputFilename() { return m_outputFilename; }
-	void SetOutputFilename(const char* outputFilename) { m_outputFilename = outputFilename; }
+	const std::string& GetOutputFilename() const { return m_outputFilename; }
+	void SetOutputFilename(const char* outputFilename) { m_outputFilename = outputFilename ? outputFilename : ""; }
+	void SetOutputFilename(std::string outputFilename) { m_outputFilename = std::move(outputFilename); }
 	bool GetOutputInitialized() { return m_outputInitialized; }
 	void SetOutputInitialized(bool outputInitialized) { m_outputInitialized = outputInitialized; }
 	bool GetExtraPriority() { return m_extraPriority; }
@@ -231,7 +232,7 @@ private:
 	bool m_parFile = false;
 	int m_completedArticles = 0;
 	bool m_outputInitialized = false;
-	CString m_outputFilename;
+	std::string m_outputFilename;
 	std::unique_ptr<Mutex> m_outputFileMutex;
 	bool m_extraPriority = false;
 	int m_activeDownloads = 0;
@@ -265,30 +266,30 @@ public:
 		cfFailure
 	};
 
-	CompletedFile(int id, const char* filename, const char* oldname, EStatus status,
-		uint32 crc, bool parFile, const char* hash16k, const char* parSetId);
+	CompletedFile(int id, std::string filename, std::string oldname, EStatus status,
+		uint32 crc, bool parFile, std::string hash16k, std::string parSetId);
 	int GetId() { return m_id; }
-	void SetFilename(const char* filename) { m_filename = filename; }
-	const char* GetFilename() { return m_filename; }
-	void SetOrigname(const char* origname) { m_origname = origname; }
-	const char* GetOrigname() { return m_origname; }
+	void SetFilename(std::string filename) { m_filename = std::move(filename); }
+	const char* GetFilename() { return m_filename.c_str(); }
+	void SetOrigname(std::string origname) { m_origname = std::move(origname); }
+	const char* GetOrigname() { return m_origname.c_str(); }
 	bool GetParFile() { return m_parFile; }
 	EStatus GetStatus() { return m_status; }
 	uint32 GetCrc() { return m_crc; }
-	const char* GetHash16k() { return m_hash16k; }
-	void SetHash16k(const char* hash16k) { m_hash16k = hash16k; }
-	const char* GetParSetId() { return m_parSetId; }
-	void SetParSetId(const char* parSetId) { m_parSetId = parSetId; }
+	const char* GetHash16k() { return m_hash16k.c_str(); }
+	void SetHash16k(std::string hash16k) { m_hash16k = std::move(hash16k); }
+	const char* GetParSetId() { return m_parSetId.c_str(); }
+	void SetParSetId(std::string parSetId) { m_parSetId = std::move(parSetId); }
 
 private:
 	int m_id;
-	CString m_filename;
-	CString m_origname;
 	EStatus m_status;
 	uint32 m_crc;
 	bool m_parFile;
-	CString m_hash16k;
-	CString m_parSetId;
+	std::string m_filename;
+	std::string m_origname;
+	std::string m_hash16k;
+	std::string m_parSetId;
 };
 
 typedef std::deque<CompletedFile> CompletedFileList;

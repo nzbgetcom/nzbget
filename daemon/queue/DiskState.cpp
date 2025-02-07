@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -903,11 +903,15 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 			}
 		}
 
-		nzbInfo->GetCompletedFiles()->emplace_back(id, fileName,
-			Util::EmptyStr(origName) ? nullptr : origName,
-			(CompletedFile::EStatus)status, crc, (bool)parFile,
-			Util::EmptyStr(hash16k) ? nullptr : hash16k,
-			Util::EmptyStr(parSetId) ? nullptr : parSetId);
+		nzbInfo->GetCompletedFiles()->emplace_back(
+			id, 
+			Util::EmptyStr(fileName) ? "" : fileName,
+			Util::EmptyStr(origName) ? "" : origName,
+			static_cast<CompletedFile::EStatus>(status), 
+			crc, 
+			static_cast<bool>(parFile),
+			Util::EmptyStr(hash16k) ? "" : hash16k,
+			Util::EmptyStr(parSetId) ? "" : parSetId);
 	}
 
 	nzbInfo->GetParameters()->clear();

@@ -130,9 +130,16 @@ void HistoryCoordinator::AddToHistory(DownloadQueue* downloadQueue, NzbInfo* nzb
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
 		nzbInfo->UpdateCompletedStats(fileInfo);
-		nzbInfo->GetCompletedFiles()->emplace_back(fileInfo->GetId(), fileInfo->GetFilename(),
-			fileInfo->GetOrigname(), CompletedFile::cfNone, 0, fileInfo->GetParFile(),
-			fileInfo->GetHash16k(), fileInfo->GetParSetId());
+		nzbInfo->GetCompletedFiles()->emplace_back(
+			fileInfo->GetId(),
+			fileInfo->GetFilename() ? fileInfo->GetFilename() : "",
+			fileInfo->GetOrigname() ? fileInfo->GetOrigname() : "",
+			CompletedFile::cfNone,
+			0,
+			fileInfo->GetParFile(),
+			fileInfo->GetHash16k() ? fileInfo->GetHash16k() : "",
+			fileInfo->GetParSetId() ? fileInfo->GetParSetId() : ""
+		);
 	}
 
 	// Cleaning up parked files if par-check was successful or unpack was successful or
