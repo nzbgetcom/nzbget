@@ -97,3 +97,4 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [testserver](TESTSERVER.md)
 - [testserverspeed](TESTSERVERSPEED.md)
 - [testdiskspeed](TESTDISKSPEED.md)
+- [testnetworkspeed](TESTNETWORKSPEED.md)
