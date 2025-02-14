@@ -74,7 +74,7 @@ private:
 	void CheckState(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void UnpausePars(NzbInfo* nzbInfo);
 	void RenameFiles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, FileHashList* parHashes);
-	bool RenameCompletedFile(NzbInfo* nzbInfo, const std::string& oldFullFilename, const std::string& newFullFilename);
+	bool RenameFile(NzbInfo* nzbInfo, const std::string& oldFullFilename, const std::string& newFullFilename);
 	bool NeedRenamePars(NzbInfo* nzbInfo);
 	void CollectPars(NzbInfo* nzbInfo, ParFileList* parFiles);
 	std::string BuildNewRegularName(const char* oldName, FileHashList* parHashes, const char* hash16k);

@@ -851,6 +851,24 @@ void ParChecker::SortExtraFiles(std::vector<std::string>& extrafiles)
 	);
 }
 
+void ParChecker::FindExtraFiles(std::vector<std::string> extrafiles, const char* directory, bool externalDir)
+{
+	DirBrowser dir(directory);
+	while (const char* filename = dir.Next())
+	{
+		BString<1024> fullFilename("%s%c%s", directory, PATH_SEPARATOR, filename);
+
+		if (FileSystem::DirectoryExists(fullFilename))
+		{
+			FindExtraFiles(extrafiles, fullFilename, externalDir);
+		}
+		else if (externalDir || (!IsParredFile(filename) && !IsProcessedFile(filename)))
+		{
+			extrafiles.push_back(std::string(directory) + PATH_SEPARATOR + filename);
+		}
+	}
+}
+
 bool ParChecker::AddExtraFiles(bool onlyMissing, bool externalDir, const char* directory)
 {
 	if (externalDir)
@@ -864,14 +882,7 @@ bool ParChecker::AddExtraFiles(bool onlyMissing, bool externalDir, const char* d
 
 	std::vector<std::string> extrafiles;
 
-	DirBrowser dir(directory);
-	while (const char* filename = dir.Next())
-	{
-		if (externalDir || (!IsParredFile(filename) && !IsProcessedFile(filename)))
-		{
-			extrafiles.push_back(std::string(directory) + PATH_SEPARATOR + filename);
-		}
-	}
+	FindExtraFiles(extrafiles, directory, externalDir);
 
 	SortExtraFiles(extrafiles);
 

@@ -282,11 +282,16 @@ bool ArticleWriter::CreateOutputFile(int64 size)
 
 void ArticleWriter::BuildOutputFilename()
 {
-	if (!m_fileInfo || !m_articleInfo || Util::EmptyStr(g_Options->GetTempDir()))
+	if (!m_fileInfo || !m_articleInfo)
+		return;
+
+	const char* tmpDir = g_Options->GetTempDir();
+	const char* destDir = m_fileInfo->GetNzbInfo()->GetDestDir();
+	if (Util::EmptyStr(tmpDir) || Util::EmptyStr(destDir))
 		return;
 
 	std::stringstream ss;
-	ss << g_Options->GetTempDir();
+	ss << tmpDir;
 	ss << PATH_SEPARATOR;
 	ss << m_fileInfo->GetId();
 	ss << ".";
@@ -296,22 +301,22 @@ void ArticleWriter::BuildOutputFilename()
 
 	m_articleInfo->SetResultFilename(filename.c_str());
 	m_tempFilename = filename + ".tmp";
-
-	const std::string& outputFilename = m_fileInfo->GetOutputFilename();
+	
 	if (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite())
 	{
 		Guard guard = m_fileInfo->GuardOutputFile();
+		const std::string& outputFilename = m_fileInfo->GetOutputFilename();
 
 		if (!outputFilename.empty())
 		{
 			filename = outputFilename;
 		}
-		else if (!Util::EmptyStr(m_fileInfo->GetNzbInfo()->GetDestDir()))
+		else
 		{
 			ss.str("");
 			ss.clear();
 
-			ss << m_fileInfo->GetNzbInfo()->GetDestDir();
+			ss << destDir;
 			ss << PATH_SEPARATOR;
 			ss << m_fileInfo->GetId();
 			ss << ".out.tmp";
@@ -322,7 +327,7 @@ void ArticleWriter::BuildOutputFilename()
 
 		m_outputFilename = std::move(filename);
 	}
-}
+ }
 
 void ArticleWriter::CompleteFileParts()
 {
@@ -331,67 +336,82 @@ void ArticleWriter::CompleteFileParts()
 
 	bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) && m_fileInfo->GetOutputInitialized();
 
-	BString<1024> nzbName;
-	BString<1024> nzbDestDir;
-	BString<1024> filename;
+	std::string nzbDestDir;
+	std::string nzbName;
+	std::string destDir;
+	std::string filename;
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_fileInfo->GetNzbInfo()->GetName();
 		nzbDestDir = m_fileInfo->GetNzbInfo()->GetDestDir();
-		filename = m_fileInfo->GetFilename();
+		m_outputFilename = m_fileInfo->GetOutputFilename();
+		if (m_outputFilename.empty())
+		{
+			destDir = nzbDestDir;
+			filename = m_fileInfo->GetFilename();
+		}
+		else
+		{
+			auto [destDir_, filename_] = FileSystem::SplitPathAndFilename(m_outputFilename);
+			destDir.swap(destDir_);
+			filename.swap(filename_);
+		}
 	}
 
-	BString<1024> infoFilename("%s%c%s", *nzbName, PATH_SEPARATOR, *filename);
+	std::string infoFilename = nzbName + PATH_SEPARATOR + filename;
 
 	bool cached = m_fileInfo->GetCachedArticles() > 0;
 
 	if (g_Options->GetRawArticle())
 	{
-		detail("Moving articles for %s", *infoFilename);
+		detail("Moving articles for %s", infoFilename.c_str());
 	}
 	else if (directWrite && cached)
 	{
-		detail("Writing articles for %s", *infoFilename);
+		detail("Writing articles for %s", infoFilename.c_str());
 	}
 	else if (directWrite)
 	{
-		detail("Checking articles for %s", *infoFilename);
+		detail("Checking articles for %s", infoFilename.c_str());
 	}
 	else
 	{
-		detail("Joining articles for %s", *infoFilename);
+		detail("Joining articles for %s", infoFilename.c_str());
 	}
 
 	// Ensure the DstDir is created
 	CString errmsg;
-	if (!FileSystem::ForceDirectories(nzbDestDir, errmsg))
+	if (!FileSystem::ForceDirectories(destDir.c_str(), errmsg))
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-			"Could not create directory %s: %s", *nzbDestDir, *errmsg);
+			"Could not create directory %s: %s", destDir.c_str(), *errmsg);
 		return;
 	}
 
-	CString ofn;
+	std::string ofn;
 	if (m_fileInfo->GetForceDirectWrite())
 	{
-		ofn.Format("%s%c%s", *nzbDestDir, PATH_SEPARATOR, *filename);
+		ofn = destDir + PATH_SEPARATOR + infoFilename;
 	}
 	else
 	{
-		ofn = FileSystem::MakeUniqueFilename(nzbDestDir, *filename);
+		ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), filename.c_str());
 	}
 
 	DiskFile outfile;
-	BString<1024> tmpdestfile("%s.tmp", *ofn);
+	std::string tmpdestfile = ofn + ".tmp";
 
 	if (!g_Options->GetRawArticle() && !directWrite)
 	{
-		FileSystem::DeleteFile(tmpdestfile);
-		if (!outfile.Open(tmpdestfile, DiskFile::omWrite))
+		FileSystem::DeleteFile(tmpdestfile.c_str());
+		if (!outfile.Open(tmpdestfile.c_str(), DiskFile::omWrite))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not create file %s: %s", *tmpdestfile, *FileSystem::GetLastErrorMessage());
+				"Could not create file %s: %s",
+				tmpdestfile.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
 	}
@@ -400,18 +420,24 @@ void ArticleWriter::CompleteFileParts()
 		if (!outfile.Open(m_outputFilename.c_str(), DiskFile::omReadWrite))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not open file %s: %s", m_outputFilename.c_str(), *FileSystem::GetLastErrorMessage());
+				"Could not open file %s: %s",
+				m_outputFilename.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
-		tmpdestfile = m_outputFilename.c_str();
+		tmpdestfile = m_outputFilename;
 	}
 	else if (g_Options->GetRawArticle())
 	{
-		FileSystem::DeleteFile(tmpdestfile);
-		if (!FileSystem::CreateDirectory(ofn))
+		FileSystem::DeleteFile(tmpdestfile.c_str());
+		if (!FileSystem::CreateDirectory(ofn.c_str()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not create directory %s: %s", *ofn, *FileSystem::GetLastErrorMessage());
+				"Could not create directory %s: %s",
+				ofn.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
 	}
@@ -484,13 +510,13 @@ void ArticleWriter::CompleteFileParts()
 					m_fileInfo->SetSuccessArticles(m_fileInfo->GetSuccessArticles() - 1);
 					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
 						"Could not find file %s for %s [%i/%i]",
-						pa->GetResultFilename(), *infoFilename, pa->GetPartNumber(),
+						pa->GetResultFilename(), infoFilename.c_str(), pa->GetPartNumber(),
 						(int)m_fileInfo->GetArticles()->size());
 				}
 			}
 			else if (g_Options->GetRawArticle())
 			{
-				BString<1024> dstFileName("%s%c%03i", *ofn, PATH_SEPARATOR, pa->GetPartNumber());
+				BString<1024> dstFileName("%s%c%03i", ofn.c_str(), PATH_SEPARATOR, pa->GetPartNumber());
 				if (!FileSystem::MoveFile(pa->GetResultFilename(), dstFileName))
 				{
 					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
@@ -512,37 +538,14 @@ void ArticleWriter::CompleteFileParts()
 	if (outfile.Active())
 	{
 		outfile.Close();
-		if (!directWrite && !FileSystem::MoveFile(tmpdestfile, ofn))
+		if (!directWrite && !FileSystem::MoveFile(tmpdestfile.c_str(), ofn.c_str()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s", *tmpdestfile, *ofn,
-				*FileSystem::GetLastErrorMessage());
-		}
-	}
-
-	if (directWrite)
-	{
-		if (!FileSystem::SameFilename(m_outputFilename.c_str(), ofn) &&
-			!FileSystem::MoveFile(m_outputFilename.c_str(), ofn))
-		{
-			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s", m_outputFilename.c_str(), *ofn,
-				*FileSystem::GetLastErrorMessage());
-		}
-
-		// if destination directory was changed delete the old directory (if empty)
-		int len = strlen(nzbDestDir);
-		if (!(!strncmp(nzbDestDir, m_outputFilename.c_str(), len) &&
-			(m_outputFilename[len] == PATH_SEPARATOR || m_outputFilename[len] == ALT_PATH_SEPARATOR)))
-		{
-			debug("Checking old dir for: %s", m_outputFilename.c_str());
-			BString<1024> oldDestDir;
-			oldDestDir.Set(m_outputFilename.c_str(), (int)(FileSystem::BaseFileName(m_outputFilename.c_str()) - m_outputFilename.c_str()));
-			if (FileSystem::DirEmpty(oldDestDir))
-			{
-				debug("Deleting old dir: %s", *oldDestDir);
-				FileSystem::RemoveDirectory(oldDestDir);
-			}
+				"Could not move file %s to %s: %s",
+				tmpdestfile.c_str(),
+				ofn.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 		}
 	}
 
@@ -559,44 +562,47 @@ void ArticleWriter::CompleteFileParts()
 
 	if (m_fileInfo->GetTotalArticles() == m_fileInfo->GetSuccessArticles())
 	{
-		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Successfully downloaded %s", *infoFilename);
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Successfully downloaded %s", infoFilename.c_str());
 	}
 	else if (m_fileInfo->GetMissedArticles() + m_fileInfo->GetFailedArticles() > 0)
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkWarning,
 			"%i of %i article downloads failed for \"%s\"",
 			m_fileInfo->GetMissedArticles() + m_fileInfo->GetFailedArticles(),
-			m_fileInfo->GetTotalArticles(), *infoFilename);
+			m_fileInfo->GetTotalArticles(),
+			infoFilename.c_str()
+		);
 	}
 	else
 	{
-		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Partially downloaded %s", *infoFilename);
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Partially downloaded %s", infoFilename.c_str());
 	}
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 
 		m_fileInfo->SetCrc(crc);
-		m_fileInfo->SetOutputFilename(ofn);
 
-		if (strcmp(m_fileInfo->GetFilename(), filename))
+		if (filename != m_fileInfo->GetFilename())
 		{
 			// file was renamed during completion, need to move the file
-			ofn = FileSystem::MakeUniqueFilename(nzbDestDir, m_fileInfo->GetFilename());
-			const std::string& outputFilename = m_fileInfo->GetOutputFilename();
-			if (!FileSystem::MoveFile(outputFilename.c_str(), ofn))
+			ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), m_fileInfo->GetFilename());
+			if (!FileSystem::MoveFile(m_outputFilename.c_str(), ofn.c_str()))
 			{
 				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-					"Could not rename file %s to %s: %s", outputFilename.c_str(),
-					*ofn, *FileSystem::GetLastErrorMessage());
+					"Could not rename file %s to %s: %s",
+					m_outputFilename.c_str(),
+					ofn.c_str(),
+					*FileSystem::GetLastErrorMessage()
+				);
 			}
-			m_fileInfo->SetOutputFilename(ofn);
+			m_fileInfo->SetOutputFilename(std::move(ofn));
 		}
 
-		if (strcmp(m_fileInfo->GetNzbInfo()->GetDestDir(), nzbDestDir))
+		if (nzbDestDir != m_fileInfo->GetNzbInfo()->GetDestDir())
 		{
 			// destination directory was changed during completion, need to move the file
-			MoveCompletedFiles(m_fileInfo->GetNzbInfo(), nzbDestDir);
+			MoveCompletedFiles(m_fileInfo->GetNzbInfo(), nzbDestDir.c_str());
 		}
 	}
 }
@@ -862,7 +868,7 @@ void ArticleCache::Run()
 	while (!IsStopped() || m_allocated > 0)
 	{
 		if ((justFlushed || resetCounter >= 1000 || IsStopped() ||
-			 (g_Options->GetDirectWrite() && m_allocated >= fillThreshold)) &&
+			(g_Options->GetDirectWrite() && m_allocated >= fillThreshold)) &&
 			m_allocated > 0)
 		{
 			justFlushed = CheckFlush(m_allocated >= fillThreshold);
@@ -871,7 +877,7 @@ void ArticleCache::Run()
 		else if (!m_allocated)
 		{
 			Guard guard(m_allocMutex);
-			m_allocCond.Wait(m_allocMutex, [&]{ return IsStopped() || m_allocated > 0; });
+			m_allocCond.Wait(m_allocMutex, [&] { return IsStopped() || m_allocated > 0; });
 			resetCounter = 0;
 		}
 		else
