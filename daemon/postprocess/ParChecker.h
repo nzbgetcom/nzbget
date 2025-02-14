@@ -230,6 +230,7 @@ private:
 	EFileStatus VerifyDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, int& availableBlocks);
 	bool VerifySuccessDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, uint32 downloadCrc);
 	bool VerifyPartialDataFile(Par2::DiskFile& diskFile, Par2::Par2RepairerSourceFile& sourceFile, SegmentList& segments, ValidBlocks& validBlocks);
+	void FindExtraFiles(std::vector<std::string> extrafiles, const char* directory, bool externalDir);
 	void SortExtraFiles(std::vector<std::string>& extrafiles);
 	bool SmartCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, SegmentList& segments, uint32& downloadCrc);
 	bool DumbCalcFileRangeCrc(DiskFile& file, int64 start, int64 end, uint32& downloadCrc);

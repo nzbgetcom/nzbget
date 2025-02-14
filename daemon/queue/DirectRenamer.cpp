@@ -414,42 +414,31 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 			continue;
 		}
 
-		const std::string destDir = fileInfo->GetNzbInfo()->GetDestDir();
-		const std::string outputFilename = destDir + PATH_SEPARATOR + newName;
-		const auto [newPath, newBaseName] = FileSystem::SplitPathAndFilename(outputFilename);
-		const std::string& oldOutputFilename = fileInfo->GetOutputFilename();
-		const bool written = !destDir.empty() && !Util::EndsWith(destDir.c_str(), ".out.tmp", true);
-		if (!written)
-		{
-			nzbInfo->PrintMessage(Message::mkInfo, 
-				"Renaming in-progress file %s to %s", 
-				oldOutputFilename.c_str(), outputFilename.c_str()
-			);
+		const std::string& currOutputFilename = fileInfo->GetOutputFilename();
+		const std::string nzbDestDir = fileInfo->GetNzbInfo()->GetDestDir();
+		const std::string newOutputFilename = nzbDestDir + PATH_SEPARATOR + newName;
+		const std::string oldOutputFilename = currOutputFilename.empty()
+			? nzbDestDir + PATH_SEPARATOR + fileInfo->GetFilename()
+			: currOutputFilename;
+		const auto [_, newFilename] = FileSystem::SplitPathAndFilename(newOutputFilename);
 
-			if (Util::EmptyStr(fileInfo->GetOrigname()))
-			{
-				fileInfo->SetOrigname(fileInfo->GetFilename());
-			}
-			fileInfo->SetOutputFilename(std::move(outputFilename));
-			fileInfo->SetFilename(std::move(newBaseName));
-			fileInfo->SetFilenameConfirmed(true);
-			++renamedFiles;
-			continue;
-		}
-
-		nzbInfo->PrintMessage(Message::mkInfo, 
-			"Renaming completed file %s to %s", 
-			oldOutputFilename.c_str(), outputFilename.c_str()
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Renaming in-progress file %s to %s",
+			oldOutputFilename.c_str(), newOutputFilename.c_str()
 		);
 
-		if(RenameCompletedFile(nzbInfo, oldOutputFilename, outputFilename))
+		bool renamed = (g_Options->GetDirectWrite() || fileInfo->GetForceDirectWrite())
+			? RenameFile(nzbInfo, oldOutputFilename, newOutputFilename)
+			: true;
+
+		if (renamed)
 		{
 			if (Util::EmptyStr(fileInfo->GetOrigname()))
 			{
 				fileInfo->SetOrigname(fileInfo->GetFilename());
 			}
-			fileInfo->SetFilename(std::move(newBaseName));
-			fileInfo->SetOutputFilename(std::move(outputFilename));
+			fileInfo->SetOutputFilename(std::move(newOutputFilename));
+			fileInfo->SetFilename(std::move(newFilename));
 			fileInfo->SetFilenameConfirmed(true);
 			++renamedFiles;
 		}
@@ -484,12 +473,12 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 		const std::string outputFilename = destDir + PATH_SEPARATOR + newName;
 		const auto [_, newBaseName] = FileSystem::SplitPathAndFilename(outputFilename);
 
-		nzbInfo->PrintMessage(Message::mkInfo, 
-			"Renaming completed file %s to %s", 
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Renaming completed file %s to %s",
 			oldOutputFilename.c_str(), outputFilename.c_str()
 		);
 
-		if (RenameCompletedFile(nzbInfo, oldOutputFilename, outputFilename))
+		if (RenameFile(nzbInfo, oldOutputFilename, outputFilename))
 		{
 			if (Util::EmptyStr(completedFile.GetOrigname()))
 			{
@@ -590,7 +579,7 @@ bool DirectRenamer::NeedRenamePars(NzbInfo* nzbInfo)
 }
 
 
-bool DirectRenamer::RenameCompletedFile(NzbInfo* nzbInfo, const std::string& oldFullFilename, const std::string& newFullFilename)
+bool DirectRenamer::RenameFile(NzbInfo* nzbInfo, const std::string& oldFullFilename, const std::string& newFullFilename)
 {
 	const auto [oldPath, oldName] = FileSystem::SplitPathAndFilename(oldFullFilename);
 	const auto [newPath, newName] = FileSystem::SplitPathAndFilename(newFullFilename);
