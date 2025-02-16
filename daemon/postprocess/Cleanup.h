@@ -42,6 +42,7 @@ private:
 	CString m_destDir;
 
 	bool MoveFiles();
+	void MoveFiles(const char* src, const char* dest);
 };
 
 class CleanupController : public Thread, public ScriptController

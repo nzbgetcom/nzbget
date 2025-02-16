@@ -120,6 +120,36 @@ bool MoveController::MoveFiles()
 	return ok;
 }
 
+void MoveController::MoveFiles(const char* srcDir, const char* destDir)
+{
+	DirBrowser dir(srcDir);
+	while (const char* filename = dir.Next())
+	{
+		BString<1024> fullFilename("%s%c%s", srcDir, PATH_SEPARATOR, filename);
+		if (FileSystem::DirectoryExists(fullFilename))
+		{
+			CString errmsg;
+			if (FileSystem::ForceDirectories()
+			MoveFiles(fullFilename, externalDir);
+		}
+
+		BString<1024> srcFile("%s%c%s",* m_interDir, PATH_SEPARATOR, filename);
+		CString dstFile = FileSystem::MakeUniqueFilename(destDir, FileSystem::MakeValidFilename(filename));
+		bool hiddenFile = filename[0] == '.';
+
+		if (!hiddenFile)
+		{
+			PrintMessage(Message::mkInfo, "Moving file %s to %s", FileSystem::BaseFileName(srcFile), destDir);
+		}
+
+		if (!FileSystem::MoveFile(srcFile, dstFile) && !hiddenFile)
+		{
+			PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
+				*srcFile, *dstFile, *FileSystem::GetLastErrorMessage());
+		}
+	}
+}
+
 void MoveController::AddMessage(Message::EKind kind, const char* text)
 {
 	m_postInfo->GetNzbInfo()->AddMessage(kind, text);
