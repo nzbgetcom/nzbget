@@ -50,7 +50,6 @@ public:
 	static bool ReservedChar(char ch);
 	static CString MakeUniqueFilename(const char* destDir, const char* basename);
 	static bool MoveFile(const char* srcFilename, const char* dstFilename);
-	static bool MoveFileForce(const char* srcFilename, const char* dstFilename);
 	static bool CopyFile(const char* srcFilename, const char* dstFilename);
 	static bool DeleteFile(const char* filename);
 	static bool FileExists(const char* filename);
