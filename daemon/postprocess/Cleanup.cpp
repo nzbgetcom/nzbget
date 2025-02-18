@@ -85,10 +85,16 @@ bool MoveController::MoveFiles()
 	if (m_interDir == m_destDir)
 		return true;
 
+	CString errmsg;
+	if (!FileSystem::ForceDirectories(m_destDir.c_str(), errmsg))
+	{
+		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir, *errmsg);
+		return false;
+	}
+
 	bool ok = true;
 	MoveFiles(m_interDir, m_destDir, ok);
 	
-	CString errmsg;
 	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
 		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
