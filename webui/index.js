@@ -396,6 +396,8 @@ var Frontend = (new function($)
 			link = 'MessagesTabLink';
 		else if (location.indexOf('#settings') > -1)
 			link = 'ConfigTabLink';
+		else if (location.indexOf('#statistics') > -1)
+			link = 'CtatisticsTabLink';
 		if (link)
 		{
 			$('#DownloadsTab').removeClass('fade');
@@ -504,6 +506,7 @@ var Frontend = (new function($)
 				case 'Shift+H': $('#HistoryTabLink').click(); return false;
 				case 'Shift+M': $('#MessagesTabLink').click(); return false;
 				case 'Shift+S': $('#ConfigTabLink').click(); return false;
+				case 'Shift+I': $('#StatisticsTabLink').click(); return false;
 				case 'Shift+L': $('#StatusSpeed').click(); return false;
 				case 'Shift+A': $('#StatusTime').click(); return false;
 				case 'Shift+R': $('#RefreshButton').click(); return false;
