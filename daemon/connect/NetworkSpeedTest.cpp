@@ -41,8 +41,8 @@ namespace Network
 
 		if (m_dataset.empty())
 		{
-			error(m_errMsg);
-			throw std::runtime_error(m_errMsg);
+			error("%s", m_errMsg.data());
+			throw std::runtime_error(m_errMsg.data());
 		}
 
 		double finalSpeed = GetFinalSpeed();
