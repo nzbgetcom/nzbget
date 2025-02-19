@@ -17,9 +17,27 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-var Stats = (new function($)
+var Statistics = (new function($)
 {
 	'use strict';
 
+	var $StatisticsTable;
+
+	this.init = function()
+	{
+		$('#StatisticsTable_filter').val('');
+
+		$StatisticsTable = $('#StatisticsTable');
+		$StatisticsTable.fasttable(
+			{
+				filterInput: $('#StatisticsTable_filter'),
+				filterClearButton: $("#StatisticsTable_clearfilter"),
+				filterInputCallback: filterInput,
+				filterClearCallback: filterClear
+			});
+	}
+
+	function filterInput() {}
+	function filterClear() {}
 
 }(jQuery));

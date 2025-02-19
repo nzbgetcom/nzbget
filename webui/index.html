@@ -54,11 +54,12 @@
 	<script language="javascript" type="text/javascript" src="config.js"></script>
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
 	<script language="javascript" type="text/javascript" src="system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="statistics.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -194,6 +195,9 @@
 
 					<input id="ConfigTable_filter" class="search-query" type="text" placeholder="Search settings" title="Search settings [Shift+F]">
 					<i id="ConfigTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
+					
+					<input id="StatisticsTable_filter" class="search-query" disabled type="text" placeholder="Search statistics" title="Search">
+					<i id="StatisticsTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
 				</div>
 			</div>
 
@@ -1002,6 +1006,13 @@
 						<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()">Save all changes</button>
 					</div>
 				</div>
+			</div>
+		</div>
+
+<!-- *** STATISTICS ************************************************************ -->
+		<div id="StatisticsTab" class="tab-pane fade">
+			<div id="StatisticsTabData">
+				<div id="StatisticsTable" class=hide></div>
 			</div>
 		</div>
 

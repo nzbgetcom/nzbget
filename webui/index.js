@@ -296,6 +296,7 @@ var Frontend = (new function($)
 		RestoreSettingsDialog.init();
 		LimitDialog.init();
 		SystemInfo.init();
+		Statistics.init();
 
 		DownloadsEditDialog.init();
 		DownloadsMultiDialog.init();
@@ -397,7 +398,7 @@ var Frontend = (new function($)
 		else if (location.indexOf('#settings') > -1)
 			link = 'ConfigTabLink';
 		else if (location.indexOf('#statistics') > -1)
-			link = 'CtatisticsTabLink';
+			link = 'StatisticsTabLink';
 		if (link)
 		{
 			$('#DownloadsTab').removeClass('fade');
@@ -484,7 +485,7 @@ var Frontend = (new function($)
 			return;
 		}
 
-		var filterBox = $('#DownloadsTable_filter, #HistoryTable_filter, #MessagesTable_filter, #ConfigTable_filter');
+		var filterBox = $('#DownloadsTable_filter, #HistoryTable_filter, #MessagesTable_filter, #ConfigTable_filter', '#StatisticsTable_filter');
 		if (filterBox.is(':focus') && (key === 'Escape' || key === 'Enter'))
 		{
 			filterBox.blur();
@@ -499,6 +500,7 @@ var Frontend = (new function($)
 				case 'History': if (History.processShortcut(key)) return false;
 				case 'Messages': if (Messages.processShortcut(key)) return false;
 				case 'Config': if (Config.processShortcut(key)) return false;
+				case 'Statistics': if (Config.processShortcut(key)) return false;
 			}
 			switch (key)
 			{
