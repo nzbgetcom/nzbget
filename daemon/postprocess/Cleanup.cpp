@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,7 +40,7 @@ void MoveController::StartJob(PostInfo* postInfo)
 
 void MoveController::Run()
 {
-	BString<1024> nzbName;
+	std::string nzbName;
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_postInfo->GetNzbInfo()->GetName();
@@ -47,15 +48,15 @@ void MoveController::Run()
 		m_destDir = m_postInfo->GetNzbInfo()->GetFinalDir();
 	}
 
-	BString<1024> infoName("move for %s", *nzbName);
-	SetInfoName(infoName);
+	std::string infoName = "move for " + nzbName;
+	SetInfoName(infoName.c_str());
 
-	if (m_destDir.Empty())
+	if (m_destDir.empty())
 	{
 		m_destDir = m_postInfo->GetNzbInfo()->BuildFinalDirName();
 	}
 
-	PrintMessage(Message::mkInfo, "Moving completed files for %s", *nzbName);
+	PrintMessage(Message::mkInfo, "Moving completed files for %s", nzbName.c_str());
 
 	bool ok = MoveFiles();
 
@@ -63,16 +64,16 @@ void MoveController::Run()
 
 	if (ok)
 	{
-		PrintMessage(Message::mkInfo, "%s successful", *infoName);
+		PrintMessage(Message::mkInfo, "%s successful", infoName.c_str());
 		// save new dest dir
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		m_postInfo->GetNzbInfo()->SetDestDir(m_destDir);
+		m_postInfo->GetNzbInfo()->SetDestDir(m_destDir.c_str());
 		m_postInfo->GetNzbInfo()->SetFinalDir("");
 		m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msSuccess);
 	}
 	else
 	{
-		PrintMessage(Message::mkError, "%s failed", *infoName);
+		PrintMessage(Message::mkError, "%s failed", infoName.c_str());
 		m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msFailure);
 	}
 
@@ -81,43 +82,63 @@ void MoveController::Run()
 
 bool MoveController::MoveFiles()
 {
+	if (m_interDir == m_destDir)
+		return true;
+
 	CString errmsg;
-	if (!FileSystem::ForceDirectories(m_destDir, errmsg))
+	if (!FileSystem::ForceDirectories(m_destDir.c_str(), errmsg))
 	{
-		PrintMessage(Message::mkError, "Could not create directory %s: %s", *m_destDir, *errmsg);
+		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir, *errmsg);
 		return false;
 	}
 
 	bool ok = true;
-
+	MoveFiles(m_interDir, m_destDir, ok);
+	
+	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
-		DirBrowser dir(m_interDir);
-		while (const char* filename = dir.Next())
-		{
-			BString<1024> srcFile("%s%c%s",* m_interDir, PATH_SEPARATOR, filename);
-			CString dstFile = FileSystem::MakeUniqueFilename(m_destDir, FileSystem::MakeValidFilename(filename));
-			bool hiddenFile = filename[0] == '.';
-
-			if (!hiddenFile)
-			{
-				PrintMessage(Message::mkInfo, "Moving file %s to %s", FileSystem::BaseFileName(srcFile), *m_destDir);
-			}
-
-			if (!FileSystem::MoveFile(srcFile, dstFile) && !hiddenFile)
-			{
-				PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
-					*srcFile, *dstFile, *FileSystem::GetLastErrorMessage());
-				ok = false;
-			}
-		}
-	} // make sure "DirBrowser dir" is destroyed (and has closed its handle) before we trying to delete the directory
-
-	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir, errmsg))
-	{
-		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", *m_interDir, *errmsg);
+		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
 	}
 
 	return ok;
+}
+
+void MoveController::MoveFiles(const std::string& src, const std::string& dest, bool& isOk)
+{
+	DirBrowser dir(src.c_str());
+	while (const char* filename = dir.Next())
+	{
+		const std::string srcFile = src + PATH_SEPARATOR + filename;
+		const std::string dstFile = dest + PATH_SEPARATOR + filename;
+		if (FileSystem::DirectoryExists(srcFile.c_str()))
+		{
+			CString errmsg;
+			if (FileSystem::ForceDirectories(dstFile.c_str(), errmsg))
+			{
+				MoveFiles(srcFile, dstFile, isOk);
+			}
+			else
+			{
+				isOk = false;
+				PrintMessage(Message::mkError, "Could not create directory %s: %s", dest.c_str(), *errmsg);
+			}
+		}
+		else
+		{
+			bool hiddenFile = srcFile[0] == '.';
+			if (hiddenFile)
+				continue;
+
+			PrintMessage(Message::mkInfo, "Moving file %s to %s", filename, dest.c_str());
+
+			if (!FileSystem::MoveFile(srcFile.c_str(), dstFile.c_str()))
+			{
+				isOk = false;
+				PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
+					srcFile.c_str(), dstFile.c_str(), *FileSystem::GetLastErrorMessage());
+			}
+		}
+	}
 }
 
 void MoveController::AddMessage(Message::EKind kind, const char* text)
