@@ -88,7 +88,7 @@ bool MoveController::MoveFiles()
 	CString errmsg;
 	if (!FileSystem::ForceDirectories(m_destDir.c_str(), errmsg))
 	{
-		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir, *errmsg);
+		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir.c_str(), *errmsg);
 		return false;
 	}
 
