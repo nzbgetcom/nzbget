@@ -35,7 +35,7 @@ var Messages = (new function($)
 	var $MessagesRecordsPerPage;
 
 	// State
-	var messages;
+	var messages = [];
 	var maxMessages = null;
 	var lastID = 0;
 	var updateTabInfo;

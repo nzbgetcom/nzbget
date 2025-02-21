@@ -98,7 +98,7 @@ function DiskSpeedTestsForm()
 			}, 
 			function(res) 
 			{
-				$diskSpeedTestBtn.html(getSpeedResFromLS(lsKey) || TEST_BTN_DEFAULT_TEXT);
+				$diskSpeedTestBtn.html(Util.getFromLocalStorage(lsKey) || TEST_BTN_DEFAULT_TEXT);
 				disableBtnToggle(false);
 
 				var errTxt = res.split('<br>')[0];
