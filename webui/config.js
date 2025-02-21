@@ -313,11 +313,14 @@ var Options = (new function($)
 		Options.loadExtensions();
 	}
 
-	function extensionsLoaded(data)
+	function extensionsLoaded(data) 
 	{
-		Options.serverTemplateData = Options.serverTemplateData.concat(data);
-		Options.complete();
-		ExtensionManager.setExtensions(data.slice());
+		if (Options.serverTemplateData) 
+		{
+			Options.serverTemplateData = Options.serverTemplateData.concat(data);
+			Options.complete();
+			ExtensionManager.setExtensions(data.slice());
+		}
 	}
 
 	function arrToStr(arr)
