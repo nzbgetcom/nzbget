@@ -1,3 +1,45 @@
+nzbget-24.6
+  - Features:
+    - Improved deobfuscation
+    [#469](https://github.com/nzbgetcom/nzbget/pull/469)
+      - enhanced parsing of the subject field in NZB files and improved validation of downloaded article filenames 
+      - added a check for filename obfuscation after unpacking; excessively obfuscated filenames are renamed to the NZB filename 
+      - added new options:
+        - `RenameAfterUnpack` - enables/disables renaming of extracted and obfuscated files using the NZB filename
+        - `RenameIgnoreExt` - a comma-separated list of file extensions to ignore when renaming files after unpacking
+      - added a new value for the `Status` field in the `listgroups` API method: `POST_UNPACK_RENAMING`
+    - Network speed tests
+      - the new API-method:
+        - `struct testnetworkspeed()` - returns the measured network speed in `Mbps`
+    [#489](https://github.com/nzbgetcom/nzbget/pull/489)
+    - Added support by `DirectRename` and `ParRename` of nested file paths found in par files
+    [#497](https://github.com/nzbgetcom/nzbget/pull/497)
+    - Added a filter to the nzb manual upload dialog
+    [#505](https://github.com/nzbgetcom/nzbget/pull/505)
+  - Bug fixes:
+    - Fixed: `HealthCheck=None` with `ParCheck=Force` can cause a segmentation fault on unhealthy downloads
+    [#475](https://github.com/nzbgetcom/nzbget/pull/475)
+    - Fixed: Attempting to load the certificate even if CertCheck is turned off
+    [#479](https://github.com/nzbgetcom/nzbget/pull/479)
+    - Fixed: Loading icon display for NZB uploads in light and dark modes
+    [#486](https://github.com/nzbgetcom/nzbget/pull/486)
+    - Fixed PowerPC (ppc500) support
+    [#491](https://github.com/nzbgetcom/nzbget/pull/491)
+
+  - For developers:
+    - Improved pipelines performance 
+    [#457](https://github.com/nzbgetcom/nzbget/pull/457)
+    - Printing stacktrace at segmentation fault in debug build
+    [#465](https://github.com/nzbgetcom/nzbget/pull/465)
+    - Upgraded par2-turbo to v1.2.0
+    [#478](https://github.com/nzbgetcom/nzbget/pull/478)
+    - Fixed build using CMake Ninja generator and the tests build failure with `-DDISABLE_PARCHECK=yes`
+    [#481](https://github.com/nzbgetcom/nzbget/pull/481)
+    - Added extra format string compiler security flags
+    [#503](https://github.com/nzbgetcom/nzbget/pull/503)
+
+
+
 nzbget-24.5
   - Features:
     - ASUSTOR support
