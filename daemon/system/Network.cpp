@@ -27,15 +27,13 @@
 
 namespace System
 {
-	static const char* IP_SERVICE = "ip.nzbget.com";
-
 	Network GetNetwork()
 	{
-		Network network{};
+		Network network;
 
 		try
 		{
-			HttpClient::HttpClient httpClient;
+			::Network::HttpClient httpClient;
 			auto result = httpClient.GET(IP_SERVICE).get();
 			if (result.statusCode == 200)
 			{

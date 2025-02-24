@@ -37,6 +37,7 @@
 #include "QueueScript.h"
 #include "ParParser.h"
 #include "DirectUnpack.h"
+#include "PostUnpackRenamer.h"
 
 PrePostProcessor::PrePostProcessor()
 {
@@ -844,6 +845,17 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		unpack = false;
 	}
 
+	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
+		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
+		nzbInfo->GetDestDir() &&
+		nzbInfo->GetName() &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
+		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
+		nzbInfo->GetParStatus() != NzbInfo::psManual &&
+		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
+
 	if (unpack)
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptUnpacking);
@@ -858,6 +870,11 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptMoving);
 		MoveController::StartJob(postInfo);
+	}
+	else if (postUnpackRenaming)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptPostUnpackRenaming);
+		PostUnpackRenamer::Controller::StartJob(postInfo);
 	}
 	else
 	{

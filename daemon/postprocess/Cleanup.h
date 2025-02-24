@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 #ifndef CLEANUP_H
 #define CLEANUP_H
 
+#include <string>
 #include "NString.h"
 #include "Log.h"
 #include "Thread.h"
@@ -38,10 +40,11 @@ protected:
 
 private:
 	PostInfo* m_postInfo;
-	CString m_interDir;
-	CString m_destDir;
+	std::string m_interDir;
+	std::string m_destDir;
 
 	bool MoveFiles();
+	void MoveFiles(const std::string& src, const std::string& dest, bool& isOk);
 };
 
 class CleanupController : public Thread, public ScriptController

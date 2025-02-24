@@ -4,7 +4,7 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()
 
-set(VERSION "24.5")
+set(VERSION "24.6")
 set(PACKAGE "nzbget")
 set(LIBS "")
 set(INCLUDES ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
@@ -41,13 +41,15 @@ if(NOT BUILD_ONLY_TESTS)
 	add_executable(${PACKAGE} ${SRC})
 	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 
-	if(CMAKE_BUILD_TYPE STREQUAL "Release")
-		add_custom_command(
-			TARGET ${PACKAGE} POST_BUILD
-			DEPENDS ${PACKAGE}
-			COMMAND ${CMAKE_STRIP}
-			ARGS ${PACKAGE}
-		)
+	if(NOT WIN32)
+		if(CMAKE_BUILD_TYPE STREQUAL "Release")
+			add_custom_command(
+				TARGET ${PACKAGE} POST_BUILD
+				DEPENDS ${PACKAGE}
+				COMMAND ${CMAKE_STRIP}
+				ARGS ${PACKAGE}
+			)
+		endif()
 	endif()
 endif()
 

@@ -38,6 +38,7 @@ class FileSystem
 public:
 	static CString GetLastErrorMessage();
 	static char* BaseFileName(const char* filename);
+	static std::pair<std::string, std::string> SplitPathAndFilename(const std::string& fullPath);
 	static bool SameFilename(const char* filename1, const char* filename2);
 	static void NormalizePathSeparators(char* path);
 	static std::optional<std::string> GetRealPath(const std::string& path);
@@ -56,6 +57,7 @@ public:
 	static bool CreateDirectory(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
+	static std::optional<std::string> GetFileExtension(const std::string& filename);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);

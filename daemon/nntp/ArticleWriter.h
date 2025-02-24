@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -50,7 +50,8 @@ private:
 class ArticleWriter
 {
 public:
-	void SetInfoName(const char* infoName) { m_infoName = infoName; }
+	void SetInfoName(const char* infoName) { m_infoName = infoName ? infoName : ""; }
+	void SetInfoName(std::string infoName) { m_infoName = std::move(infoName); }
 	void SetFileInfo(FileInfo* fileInfo) { m_fileInfo = fileInfo; }
 	void SetArticleInfo(ArticleInfo* articleInfo) { m_articleInfo = articleInfo; }
 	void Prepare();
@@ -67,16 +68,16 @@ private:
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;
 	DiskFile m_outFile;
-	CString m_tempFilename;
-	CString m_outputFilename;
-	const char* m_resultFilename = nullptr;
+	std::string m_tempFilename;
+	std::string m_outputFilename;
+	std::string m_resultFilename;
+	std::string m_infoName;
 	Decoder::EFormat m_format = Decoder::efUnknown;
 	CachedSegmentData m_articleData;
 	int64 m_articleOffset;
 	int m_articleSize;
 	int m_articlePtr;
 	bool m_duplicate = false;
-	CString m_infoName;
 
 	bool CreateOutputFile(int64 size);
 	void BuildOutputFilename();

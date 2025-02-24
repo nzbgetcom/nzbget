@@ -13,86 +13,143 @@ env:
   REGISTRY_IMAGE: nzbgetcom/nzbget
 
 jobs:
+
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm/v7
+            runner: ubuntu-24.04-arm
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare
+        id: prepare
+        run: |
+          platform=${{ matrix.platform }}
+          echo "platform-slug=${platform//\//-}" >> $GITHUB_OUTPUT
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: ${{ matrix.platform }}
+          provenance: false
+          outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
+          build-args: |
+            "NZBGET_RELEASE=${{ github.ref_name }}"
+            "MAKE_JOBS=4"
+
+      - name: Export digest
+        run: |
+          rm -rf digests
+          mkdir -p digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ steps.prepare.outputs.platform-slug }}
+          path: digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    runs-on: ubuntu-24.04
+    needs: build
     permissions:
       packages: write
-
     steps:
-    
-    - name: Checkout
-      uses: actions/checkout@v4
-    
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Login to GitHub Container Registry
-      uses: docker/login-action@v3
-      with:
-        registry: ghcr.io
-        username: ${{ github.repository_owner }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: digests
+          pattern: digests-*
+          merge-multiple: true
 
-    - name: Generate image tags
-      id: gen_tags
-      run: |
-        if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
-          TAG="testing"
-        fi
-        if [[ "$GITHUB_REF_NAME" == "main" ]]; then
-          TAG="latest"
-        fi
-        if [[ $GITHUB_REF == 'refs/tags/'* ]]; then
-          TAG="${GITHUB_REF/refs\/tags\//}"
-        fi
-        if [[ "$TAG" == "" ]]; then
-          TAG="${GITHUB_REF_NAME/\//-}"
-        fi
-        if [[ "$GITHUB_REF_NAME" == "develop" ]] || [[ "$GITHUB_REF_NAME" == "main" ]] || [[ $GITHUB_REF == 'refs/tags/'* ]]; then
-          TAGS="${{ env.REGISTRY_IMAGE }}:$TAG,ghcr.io/${{ env.REGISTRY_IMAGE }}:$TAG"
-        else
-          TAGS="${{ env.REGISTRY_IMAGE }}:$TAG"
-        fi
-        echo "tags=$TAGS" >> $GITHUB_OUTPUT
-        echo "version=$TAG" >> $GITHUB_OUTPUT
-    
-    - name: Build and push
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        file: docker/Dockerfile
-        platforms: linux/amd64,linux/arm64,linux/arm/v7
-        provenance: false
-        push: true
-        tags: ${{ steps.gen_tags.outputs.tags }}
-        outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }}"
-        build-args: |
-          "NZBGET_RELEASE=${{ github.ref_name }}"
-          "MAKE_JOBS=2"
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Update Docker Hub Description
-      if: github.ref_name == 'main'
-      uses: peter-evans/dockerhub-description@v4
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-        repository: ${{ env.REGISTRY_IMAGE }}
-        readme-filepath: ./docker/README.md
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Cleanup ghcr.io from outdated images
-      uses: miklinux/ghcr-cleanup-action@v1
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        package-owner: nzbgetcom
-        package-name: nzbget
-        delete-orphans: true
-        dry-run: false
+      - name: Generate image tag
+        id: gen-tag
+        run: |
+          case $GITHUB_REF_NAME in
+            develop)
+              TAG="testing"
+              ;;
+            main)
+              TAG="latest"
+              ;;
+            refs/tags/*)
+              TAG="${GITHUB_REF/refs\/tags\//}"
+              ;;
+            *)
+              TAG="${GITHUB_REF_NAME/\//-}"
+              ;;
+          esac
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list, push and inspect
+        run: |
+          cd digests
+          docker manifest create ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} $(printf -- '--amend ${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+          docker manifest push ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          if [[ "$GITHUB_REF_NAME" == "develop" ]] || [[ "$GITHUB_REF_NAME" == "main" ]] || [[ $GITHUB_REF == 'refs/tags/'* ]]; then
+            docker buildx imagetools create -t ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }} ${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+            docker buildx imagetools inspect ghcr.io/${{ env.REGISTRY_IMAGE }}:${{ steps.gen-tag.outputs.tag }}
+          fi
+
+      - name: Update Docker Hub Description
+        if: github.ref_name == 'main'
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.REGISTRY_IMAGE }}
+          readme-filepath: ./docker/README.md
+
+      - name: Cleanup ghcr.io from outdated images
+        uses: miklinux/ghcr-cleanup-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          package-owner: nzbgetcom
+          package-name: nzbget
+          delete-orphans: true
+          dry-run: false

@@ -1,0 +1,11 @@
+--- ncurses.mk	2025-01-29 16:22:31.963757659 +0300
++++ ncurses.mk	2025-01-29 16:23:00.391780258 +0300
+@@ -32,6 +32,8 @@
+ 	--enable-overwrite \
+ 	--enable-pc-files \
+ 	--disable-stripping \
++	--with-termlib \
++ 	--with-fallbacks="xterm xterm-color xterm-256color linux vt100 vt200" \
+ 	--with-pkg-config-libdir="/usr/lib/pkgconfig" \
+ 	$(if $(BR2_PACKAGE_NCURSES_TARGET_PROGS),,--without-progs) \
+ 	--without-manpages

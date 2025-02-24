@@ -53,6 +53,7 @@ jobs:
 
     - name: Prepare environment
       run: |
+        sudo apt-get update
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout

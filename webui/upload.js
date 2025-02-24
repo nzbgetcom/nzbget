@@ -195,9 +195,12 @@ var Upload = (new function($)
 			var file = selectedFiles[i];
 			var filename = file.name.replace(/\.queued$/g, '');
 			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="Click to rename">'+
-				'<table><tr><td width="18px" valign="top"><i class="material-icon">'+
-				'draft</i><img class="hide" style="vertical-align:top;margin-top:1px;" src="img/transmit-file.gif" width="16px" height="16px"></td>'+
-				'<td id="AddDialog_File' + files.length + '">' + Util.formatNZBName(filename) + '</td></tr></table></a>';
+				'<table><tr><td width="18px" valign="top">'+
+				'<i class="material-icon material-icon--draft">draft</i>'+
+				'<i class="material-icon material-icon--success hide">check_circle</i>'+
+				'<i class="material-icon material-icon--error hide">error</i>'+
+				'<i class="material-icon material-icon--progress spinner hide">progress_activity</i>'+
+				'</td><td id="AddDialog_File' + files.length + '">' + Util.formatNZBName(filename) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);
 
@@ -334,8 +337,8 @@ var Upload = (new function($)
 			return;
 		}
 
-		$('#AddDialog_Files table:eq(' + index + ') img').show();
-		$('#AddDialog_Files table:eq(' + index + ') i').hide();
+		$('#AddDialog_Files table:eq(' + index + ') i.material-icon--progress').toggleClass('hide');
+		$('#AddDialog_Files table:eq(' + index + ') i.material-icon--draft').toggleClass('hide');
 
 		var reader = new FileReader();
 		reader.onload = function (event)
@@ -376,10 +379,13 @@ var Upload = (new function($)
 		if (result)
 		{
 			filesSuccess.push(files[index]);
+			$('#AddDialog_Files table:eq(' + index + ') i.material-icon--success').toggleClass('hide');
 		}
-		$('#AddDialog_Files table:eq(' + index + ') img').hide();
-		$('#AddDialog_Files table:eq(' + index + ') i').removeClass('icon-file').addClass(
-			result ? 'icon-ok' : 'icon-remove').show();
+		else
+		{
+			$('#AddDialog_Files table:eq(' + index + ') i.material-icon--error').toggleClass('hide');
+		}
+		$('#AddDialog_Files table:eq(' + index + ') i.material-icon--progress').toggleClass('hide');
 		index++;
 		fileNext();
 	}

@@ -128,7 +128,7 @@ void PrintBacktrace(PCONTEXT context)
 			srcFileName = "<filename not available>";
 		}
 
-		info("%s (%i) : %s", *srcFileName, lineNumber, *symName);
+		error("Stacktrace: %s (%i) : %s", *srcFileName, lineNumber, *symName);
 
 		if (sfStackFrame.AddrReturn.Offset == 0)
 		{
@@ -209,7 +209,7 @@ void PrintBacktrace()
 	error("Obtained %zd stack frames", size);
 	for (i = 0; i < size; i++)
 	{
-		error("%s", strings[i]);
+		error("Stacktrace: %s", strings[i]);
 	}
 
 	free(strings);

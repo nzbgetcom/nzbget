@@ -3,6 +3,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/HttpClient.cpp
+	${CMAKE_SOURCE_DIR}/daemon/connect/NetworkSpeedTest.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/extension/CommandScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/FeedScript.cpp
@@ -64,6 +65,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
@@ -75,6 +77,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/QueueEditor.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/Scanner.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/UrlCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/Deobfuscation.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/remote/BinRpc.cpp
 	${CMAKE_SOURCE_DIR}/daemon/remote/RemoteClient.cpp
@@ -94,6 +97,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Benchmark.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/DataAnalytics.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp

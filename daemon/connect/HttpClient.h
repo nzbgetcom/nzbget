@@ -29,7 +29,7 @@
 #include <boost/asio/ssl.hpp>
 #endif
 
-namespace HttpClient
+namespace Network
 {
 #if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
 	using Socket = boost::asio::ssl::stream<boost::asio::ip::tcp::socket>;

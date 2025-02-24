@@ -24,6 +24,8 @@
 
 namespace System
 {
+	inline const char* IP_SERVICE = "ip.nzbget.com";
+
 	struct Network
 	{
 		std::string publicIP;

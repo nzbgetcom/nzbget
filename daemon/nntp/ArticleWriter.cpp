@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,8 @@
 
 
 #include "nzbget.h"
+
+#include <sstream>
 #include "ArticleWriter.h"
 #include "DiskState.h"
 #include "Options.h"
@@ -55,7 +57,9 @@ void ArticleWriter::SetWriteBuffer(DiskFile& outFile, int recSize)
 void ArticleWriter::Prepare()
 {
 	BuildOutputFilename();
-	m_resultFilename = m_articleInfo->GetResultFilename();
+	m_resultFilename = m_articleInfo->GetResultFilename()
+		? m_articleInfo->GetResultFilename()
+		: "";
 }
 
 bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 fileSize,
@@ -120,14 +124,14 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 
 		if (!m_articleData.GetData())
 		{
-			detail("Article cache is full, using disk for %s", *m_infoName);
+			detail("Article cache is full, using disk for %s", m_infoName.c_str());
 		}
 	}
 
 	if (!m_articleData.GetData())
 	{
 		bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) && m_format == Decoder::efYenc;
-		const char* outFilename = directWrite ? m_outputFilename : m_tempFilename;
+		const char* outFilename = directWrite ? m_outputFilename.c_str() : m_tempFilename.c_str();
 		if (!m_outFile.Open(outFilename, directWrite ? DiskFile::omReadWrite : DiskFile::omWrite))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
@@ -192,8 +196,8 @@ void ArticleWriter::Finish(bool success)
 
 	if (!success)
 	{
-		FileSystem::DeleteFile(m_tempFilename);
-		FileSystem::DeleteFile(m_resultFilename);
+		FileSystem::DeleteFile(m_tempFilename.c_str());
+		FileSystem::DeleteFile(m_resultFilename.c_str());
 		return;
 	}
 
@@ -203,13 +207,13 @@ void ArticleWriter::Finish(bool success)
 	{
 		if (!directWrite && !m_articleData.GetData())
 		{
-			if (!FileSystem::MoveFile(m_tempFilename, m_resultFilename))
+			if (!FileSystem::MoveFile(m_tempFilename.c_str(), m_resultFilename.c_str()))
 			{
 				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-					"Could not rename file %s to %s: %s", *m_tempFilename, m_resultFilename,
+					"Could not rename file %s to %s: %s", m_tempFilename.c_str(), m_resultFilename.c_str(),
 					*FileSystem::GetLastErrorMessage());
 			}
-			FileSystem::DeleteFile(m_tempFilename);
+			FileSystem::DeleteFile(m_tempFilename.c_str());
 		}
 
 		if (m_articleData.GetData())
@@ -231,10 +235,10 @@ void ArticleWriter::Finish(bool success)
 	else
 	{
 		// rawmode
-		if (!FileSystem::MoveFile(m_tempFilename, m_resultFilename))
+		if (!FileSystem::MoveFile(m_tempFilename.c_str(), m_resultFilename.c_str()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s", *m_tempFilename, m_resultFilename,
+				"Could not move file %s to %s: %s", m_tempFilename.c_str(), m_resultFilename.c_str(),
 				*FileSystem::GetLastErrorMessage());
 		}
 	}
@@ -243,20 +247,20 @@ void ArticleWriter::Finish(bool success)
 /* creates output file and subdirectores */
 bool ArticleWriter::CreateOutputFile(int64 size)
 {
-	if (FileSystem::FileExists(m_outputFilename))
+	if (FileSystem::FileExists(m_outputFilename.c_str()))
 	{
-		if (FileSystem::FileSize(m_outputFilename) == size)
+		if (FileSystem::FileSize(m_outputFilename.c_str()) == size)
 		{
 			// keep existing old file from previous program session
 			return true;
 		}
 		// delete existing old file from previous program session
-		FileSystem::DeleteFile(m_outputFilename);
+		FileSystem::DeleteFile(m_outputFilename.c_str());
 	}
 
 	// ensure the directory exist
 	BString<1024> destDir;
-	destDir.Set(m_outputFilename, (int)(FileSystem::BaseFileName(m_outputFilename) - m_outputFilename));
+	destDir.Set(m_outputFilename.c_str(), (int)(FileSystem::BaseFileName(m_outputFilename.c_str()) - m_outputFilename.c_str()));
 	CString errmsg;
 
 	if (!FileSystem::ForceDirectories(destDir, errmsg))
@@ -266,10 +270,10 @@ bool ArticleWriter::CreateOutputFile(int64 size)
 		return false;
 	}
 
-	if (!FileSystem::AllocateFile(m_outputFilename, size, g_Options->GetArticleCache() == 0, errmsg))
+	if (!FileSystem::AllocateFile(m_outputFilename.c_str(), size, g_Options->GetArticleCache() == 0, errmsg))
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-			"Could not create file %s: %s", *m_outputFilename, *errmsg);
+			"Could not create file %s: %s", m_outputFilename.c_str(), *errmsg);
 		return false;
 	}
 
@@ -278,30 +282,52 @@ bool ArticleWriter::CreateOutputFile(int64 size)
 
 void ArticleWriter::BuildOutputFilename()
 {
-	BString<1024> filename("%s%c%i.%03i", g_Options->GetTempDir(), PATH_SEPARATOR,
-		m_fileInfo->GetId(), m_articleInfo->GetPartNumber());
+	if (!m_fileInfo || !m_articleInfo)
+		return;
 
-	m_articleInfo->SetResultFilename(filename);
-	m_tempFilename.Format("%s.tmp", *filename);
+	const char* tmpDir = g_Options->GetTempDir();
+	const char* destDir = m_fileInfo->GetNzbInfo()->GetDestDir();
+	if (Util::EmptyStr(tmpDir) || Util::EmptyStr(destDir))
+		return;
 
+	std::stringstream ss;
+	ss << tmpDir;
+	ss << PATH_SEPARATOR;
+	ss << m_fileInfo->GetId();
+	ss << ".";
+	ss << std::setfill('0') << std::setw(3) << m_articleInfo->GetPartNumber();
+
+	std::string filename = ss.str();
+
+	m_articleInfo->SetResultFilename(filename.c_str());
+	m_tempFilename = filename + ".tmp";
+	
 	if (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite())
 	{
 		Guard guard = m_fileInfo->GuardOutputFile();
+		const std::string& outputFilename = m_fileInfo->GetOutputFilename();
 
-		if (m_fileInfo->GetOutputFilename())
+		if (!outputFilename.empty())
 		{
-			filename = m_fileInfo->GetOutputFilename();
+			filename = outputFilename;
 		}
 		else
 		{
-			filename.Format("%s%c%i.out.tmp", m_fileInfo->GetNzbInfo()->GetDestDir(),
-				PATH_SEPARATOR, m_fileInfo->GetId());
+			ss.str("");
+			ss.clear();
+
+			ss << destDir;
+			ss << PATH_SEPARATOR;
+			ss << m_fileInfo->GetId();
+			ss << ".out.tmp";
+
+			filename = ss.str();
 			m_fileInfo->SetOutputFilename(filename);
 		}
 
-		m_outputFilename = *filename;
+		m_outputFilename = std::move(filename);
 	}
-}
+ }
 
 void ArticleWriter::CompleteFileParts()
 {
@@ -310,87 +336,108 @@ void ArticleWriter::CompleteFileParts()
 
 	bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) && m_fileInfo->GetOutputInitialized();
 
-	BString<1024> nzbName;
-	BString<1024> nzbDestDir;
-	BString<1024> filename;
+	std::string nzbDestDir;
+	std::string nzbName;
+	std::string destDir;
+	std::string filename;
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_fileInfo->GetNzbInfo()->GetName();
 		nzbDestDir = m_fileInfo->GetNzbInfo()->GetDestDir();
-		filename = m_fileInfo->GetFilename();
+		m_outputFilename = m_fileInfo->GetOutputFilename();
+		if (m_outputFilename.empty())
+		{
+			destDir = nzbDestDir;
+			filename = m_fileInfo->GetFilename();
+		}
+		else
+		{
+			auto [destDir_, filename_] = FileSystem::SplitPathAndFilename(m_outputFilename);
+			destDir.swap(destDir_);
+			filename.swap(filename_);
+		}
 	}
 
-	BString<1024> infoFilename("%s%c%s", *nzbName, PATH_SEPARATOR, *filename);
+	std::string infoFilename = nzbName + PATH_SEPARATOR + filename;
 
 	bool cached = m_fileInfo->GetCachedArticles() > 0;
 
 	if (g_Options->GetRawArticle())
 	{
-		detail("Moving articles for %s", *infoFilename);
+		detail("Moving articles for %s", infoFilename.c_str());
 	}
 	else if (directWrite && cached)
 	{
-		detail("Writing articles for %s", *infoFilename);
+		detail("Writing articles for %s", infoFilename.c_str());
 	}
 	else if (directWrite)
 	{
-		detail("Checking articles for %s", *infoFilename);
+		detail("Checking articles for %s", infoFilename.c_str());
 	}
 	else
 	{
-		detail("Joining articles for %s", *infoFilename);
+		detail("Joining articles for %s", infoFilename.c_str());
 	}
 
 	// Ensure the DstDir is created
 	CString errmsg;
-	if (!FileSystem::ForceDirectories(nzbDestDir, errmsg))
+	if (!FileSystem::ForceDirectories(destDir.c_str(), errmsg))
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-			"Could not create directory %s: %s", *nzbDestDir, *errmsg);
+			"Could not create directory %s: %s", destDir.c_str(), *errmsg);
 		return;
 	}
 
-	CString ofn;
+	std::string ofn;
 	if (m_fileInfo->GetForceDirectWrite())
 	{
-		ofn.Format("%s%c%s", *nzbDestDir, PATH_SEPARATOR, *filename);
+		ofn = destDir + PATH_SEPARATOR + infoFilename;
 	}
 	else
 	{
-		ofn = FileSystem::MakeUniqueFilename(nzbDestDir, *filename);
+		ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), filename.c_str());
 	}
 
 	DiskFile outfile;
-	BString<1024> tmpdestfile("%s.tmp", *ofn);
+	std::string tmpdestfile = ofn + ".tmp";
 
 	if (!g_Options->GetRawArticle() && !directWrite)
 	{
-		FileSystem::DeleteFile(tmpdestfile);
-		if (!outfile.Open(tmpdestfile, DiskFile::omWrite))
+		FileSystem::DeleteFile(tmpdestfile.c_str());
+		if (!outfile.Open(tmpdestfile.c_str(), DiskFile::omWrite))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not create file %s: %s", *tmpdestfile, *FileSystem::GetLastErrorMessage());
+				"Could not create file %s: %s",
+				tmpdestfile.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
 	}
 	else if (directWrite && cached)
 	{
-		if (!outfile.Open(m_outputFilename, DiskFile::omReadWrite))
+		if (!outfile.Open(m_outputFilename.c_str(), DiskFile::omReadWrite))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not open file %s: %s", *m_outputFilename, *FileSystem::GetLastErrorMessage());
+				"Could not open file %s: %s",
+				m_outputFilename.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
-		tmpdestfile = *m_outputFilename;
+		tmpdestfile = m_outputFilename;
 	}
 	else if (g_Options->GetRawArticle())
 	{
-		FileSystem::DeleteFile(tmpdestfile);
-		if (!FileSystem::CreateDirectory(ofn))
+		FileSystem::DeleteFile(tmpdestfile.c_str());
+		if (!FileSystem::CreateDirectory(ofn.c_str()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not create directory %s: %s", *ofn, *FileSystem::GetLastErrorMessage());
+				"Could not create directory %s: %s",
+				ofn.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 			return;
 		}
 	}
@@ -463,13 +510,13 @@ void ArticleWriter::CompleteFileParts()
 					m_fileInfo->SetSuccessArticles(m_fileInfo->GetSuccessArticles() - 1);
 					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
 						"Could not find file %s for %s [%i/%i]",
-						pa->GetResultFilename(), *infoFilename, pa->GetPartNumber(),
+						pa->GetResultFilename(), infoFilename.c_str(), pa->GetPartNumber(),
 						(int)m_fileInfo->GetArticles()->size());
 				}
 			}
 			else if (g_Options->GetRawArticle())
 			{
-				BString<1024> dstFileName("%s%c%03i", *ofn, PATH_SEPARATOR, pa->GetPartNumber());
+				BString<1024> dstFileName("%s%c%03i", ofn.c_str(), PATH_SEPARATOR, pa->GetPartNumber());
 				if (!FileSystem::MoveFile(pa->GetResultFilename(), dstFileName))
 				{
 					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
@@ -491,37 +538,14 @@ void ArticleWriter::CompleteFileParts()
 	if (outfile.Active())
 	{
 		outfile.Close();
-		if (!directWrite && !FileSystem::MoveFile(tmpdestfile, ofn))
+		if (!directWrite && !FileSystem::MoveFile(tmpdestfile.c_str(), ofn.c_str()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s", *tmpdestfile, *ofn,
-				*FileSystem::GetLastErrorMessage());
-		}
-	}
-
-	if (directWrite)
-	{
-		if (!FileSystem::SameFilename(m_outputFilename, ofn) &&
-			!FileSystem::MoveFile(m_outputFilename, ofn))
-		{
-			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s", *m_outputFilename, *ofn,
-				*FileSystem::GetLastErrorMessage());
-		}
-
-		// if destination directory was changed delete the old directory (if empty)
-		int len = strlen(nzbDestDir);
-		if (!(!strncmp(nzbDestDir, m_outputFilename, len) &&
-			(m_outputFilename[len] == PATH_SEPARATOR || m_outputFilename[len] == ALT_PATH_SEPARATOR)))
-		{
-			debug("Checking old dir for: %s", *m_outputFilename);
-			BString<1024> oldDestDir;
-			oldDestDir.Set(m_outputFilename, (int)(FileSystem::BaseFileName(m_outputFilename) - m_outputFilename));
-			if (FileSystem::DirEmpty(oldDestDir))
-			{
-				debug("Deleting old dir: %s", *oldDestDir);
-				FileSystem::RemoveDirectory(oldDestDir);
-			}
+				"Could not move file %s to %s: %s",
+				tmpdestfile.c_str(),
+				ofn.c_str(),
+				*FileSystem::GetLastErrorMessage()
+			);
 		}
 	}
 
@@ -538,50 +562,31 @@ void ArticleWriter::CompleteFileParts()
 
 	if (m_fileInfo->GetTotalArticles() == m_fileInfo->GetSuccessArticles())
 	{
-		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Successfully downloaded %s", *infoFilename);
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Successfully downloaded %s", infoFilename.c_str());
 	}
 	else if (m_fileInfo->GetMissedArticles() + m_fileInfo->GetFailedArticles() > 0)
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkWarning,
 			"%i of %i article downloads failed for \"%s\"",
 			m_fileInfo->GetMissedArticles() + m_fileInfo->GetFailedArticles(),
-			m_fileInfo->GetTotalArticles(), *infoFilename);
+			m_fileInfo->GetTotalArticles(),
+			infoFilename.c_str()
+		);
 	}
 	else
 	{
-		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Partially downloaded %s", *infoFilename);
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkInfo, "Partially downloaded %s", infoFilename.c_str());
 	}
 
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
-
 		m_fileInfo->SetCrc(crc);
-		m_fileInfo->SetOutputFilename(ofn);
-
-		if (strcmp(m_fileInfo->GetFilename(), filename))
-		{
-			// file was renamed during completion, need to move the file
-			ofn = FileSystem::MakeUniqueFilename(nzbDestDir, m_fileInfo->GetFilename());
-			if (!FileSystem::MoveFile(m_fileInfo->GetOutputFilename(), ofn))
-			{
-				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-					"Could not rename file %s to %s: %s", m_fileInfo->GetOutputFilename(),
-					*ofn, *FileSystem::GetLastErrorMessage());
-			}
-			m_fileInfo->SetOutputFilename(ofn);
-		}
-
-		if (strcmp(m_fileInfo->GetNzbInfo()->GetDestDir(), nzbDestDir))
-		{
-			// destination directory was changed during completion, need to move the file
-			MoveCompletedFiles(m_fileInfo->GetNzbInfo(), nzbDestDir);
-		}
 	}
 }
 
 void ArticleWriter::FlushCache()
 {
-	detail("Flushing cache for %s", *m_infoName);
+	detail("Flushing cache for %s", m_infoName.c_str());
 
 	bool directWrite = g_Options->GetDirectWrite() && m_fileInfo->GetOutputInitialized();
 	DiskFile outfile;
@@ -624,10 +629,11 @@ void ArticleWriter::FlushCache()
 
 			if (directWrite && !outfile.Active())
 			{
-				if (!outfile.Open(m_fileInfo->GetOutputFilename(), DiskFile::omReadWrite))
+				const std::string& outputFilename = m_fileInfo->GetOutputFilename();
+				if (!outfile.Open(outputFilename.c_str(), DiskFile::omReadWrite))
 				{
 					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
-						"Could not open file %s: %s", m_fileInfo->GetOutputFilename(),
+						"Could not open file %s: %s", outputFilename.c_str(),
 						*FileSystem::GetLastErrorMessage());
 					// prevent multiple error messages
 					pa->DiscardSegment();
@@ -699,7 +705,7 @@ void ArticleWriter::FlushCache()
 	}
 
 	detail("Saved %i articles (%.2f MB) from cache into disk for %s", flushedArticles,
-		(float)(flushedSize / 1024.0 / 1024.0), *m_infoName);
+		(float)(flushedSize / 1024.0 / 1024.0), m_infoName.c_str());
 }
 
 bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
@@ -750,14 +756,15 @@ bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 				break;
 			}
 
+			const std::string& outputFilename = fileInfo->GetOutputFilename();
 			if (fileInfo->GetActiveDownloads() > 0)
 			{
 				Guard guard = fileInfo->GuardOutputFile();
-				pendingWrites = fileInfo->GetOutputInitialized() && !Util::EmptyStr(fileInfo->GetOutputFilename());
+				pendingWrites = fileInfo->GetOutputInitialized() && !outputFilename.empty();
 			}
 			else
 			{
-				pendingWrites = fileInfo->GetOutputInitialized() && !Util::EmptyStr(fileInfo->GetOutputFilename());
+				pendingWrites = fileInfo->GetOutputInitialized() && !outputFilename.empty();
 			}
 		}
 
@@ -838,7 +845,7 @@ void ArticleCache::Run()
 	while (!IsStopped() || m_allocated > 0)
 	{
 		if ((justFlushed || resetCounter >= 1000 || IsStopped() ||
-			 (g_Options->GetDirectWrite() && m_allocated >= fillThreshold)) &&
+			(g_Options->GetDirectWrite() && m_allocated >= fillThreshold)) &&
 			m_allocated > 0)
 		{
 			justFlushed = CheckFlush(m_allocated >= fillThreshold);
@@ -847,7 +854,7 @@ void ArticleCache::Run()
 		else if (!m_allocated)
 		{
 			Guard guard(m_allocMutex);
-			m_allocCond.Wait(m_allocMutex, [&]{ return IsStopped() || m_allocated > 0; });
+			m_allocCond.Wait(m_allocMutex, [&] { return IsStopped() || m_allocated > 0; });
 			resetCounter = 0;
 		}
 		else

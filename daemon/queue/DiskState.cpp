@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
 const int DISKSTATE_QUEUE_VERSION = 62;
-const int DISKSTATE_FILE_VERSION = 6;
+const int DISKSTATE_FILE_VERSION = 7;
 const int DISKSTATE_STATS_VERSION = 3;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
@@ -903,11 +903,15 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 			}
 		}
 
-		nzbInfo->GetCompletedFiles()->emplace_back(id, fileName,
-			Util::EmptyStr(origName) ? nullptr : origName,
-			(CompletedFile::EStatus)status, crc, (bool)parFile,
-			Util::EmptyStr(hash16k) ? nullptr : hash16k,
-			Util::EmptyStr(parSetId) ? nullptr : parSetId);
+		nzbInfo->GetCompletedFiles()->emplace_back(
+			id, 
+			Util::EmptyStr(fileName) ? "" : fileName,
+			Util::EmptyStr(origName) ? "" : origName,
+			static_cast<CompletedFile::EStatus>(status), 
+			crc, 
+			static_cast<bool>(parFile),
+			Util::EmptyStr(hash16k) ? "" : hash16k,
+			Util::EmptyStr(parSetId) ? "" : parSetId);
 	}
 
 	nzbInfo->GetParameters()->clear();
@@ -1063,6 +1067,7 @@ bool DiskState::SaveFileInfo(FileInfo* fileInfo, StateDiskFile& outfile, bool ar
 	outfile.PrintLine("%s", fileInfo->GetSubject());
 	outfile.PrintLine("%s", fileInfo->GetFilename());
 	outfile.PrintLine("%s", fileInfo->GetOrigname() ? fileInfo->GetOrigname() : "");
+	outfile.PrintLine("%s", fileInfo->GetOutputFilename().c_str());
 
 	outfile.PrintLine("%i,%i", (int)fileInfo->GetFilenameConfirmed(), (int)fileInfo->GetTime());
 
@@ -1130,6 +1135,15 @@ bool DiskState::LoadFileInfo(FileInfo* fileInfo, StateDiskFile& infile, int form
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 		if (fileSummary) fileInfo->SetOrigname(Util::EmptyStr(buf) ? nullptr : buf);
+	}
+
+	if (formatVersion >= 7)
+	{
+		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+		if (!Util::EmptyStr(buf))
+		{
+			fileInfo->SetOutputFilename(buf);
+		}
 	}
 
 	if (formatVersion >= 5)
