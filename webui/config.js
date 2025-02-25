@@ -46,6 +46,7 @@ var Options = (new function($)
 	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
+	this.loaded = false;
 
 	// State
 	var _this = this;
@@ -67,6 +68,7 @@ var Options = (new function($)
 			_this.options = _options;
 			initCategories();
 			_this.restricted = _this.option('ControlPort') === '***';
+			_this.loaded = true;
 			RPC.next();
 		});
 
