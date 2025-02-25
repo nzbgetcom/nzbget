@@ -22,6 +22,7 @@
 #include "nzbget.h"
 
 #include <sstream>
+#include <iomanip>
 #include "ArticleWriter.h"
 #include "DiskState.h"
 #include "Options.h"

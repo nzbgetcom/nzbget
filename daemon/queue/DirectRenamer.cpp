@@ -23,6 +23,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include "DirectRenamer.h"
 #include "Options.h"
 #include "FileSystem.h"
