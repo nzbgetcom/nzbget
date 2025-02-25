@@ -89,13 +89,22 @@ body {
 	font-style: italic;
 }
 
+.statistics__spinner-container,
 .system-info__spinner-container {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.system-info__spinner-container {
 	height: 60vh;
 }
 
+.statistics__spinner-container {
+	height: 90vh;
+}
+
+.statistics__spinner,
 .system-info__spinner {
 	font-size: 128px;
 }
