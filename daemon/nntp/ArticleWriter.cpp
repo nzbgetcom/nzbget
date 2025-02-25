@@ -360,7 +360,7 @@ void ArticleWriter::CompleteFileParts()
 		}
 	}
 
-	std::string infoFilename = nzbName + PATH_SEPARATOR + filename;
+	std::string infoFilename = nzbName + PATH_SEPARATOR + m_fileInfo->GetFilename();
 
 	bool cached = m_fileInfo->GetCachedArticles() > 0;
 
