@@ -58,6 +58,8 @@ var Statistics = (new function ($) {
 	var $StatisticsTable;
 	var serverStats = {};
 	var dataLen = 0;
+	var curMonth = null;
+	var monYear = false;
 
 	var historyHandler =
 	{
@@ -122,51 +124,138 @@ var Statistics = (new function ($) {
 		History.subscribe(historyHandler);
 	}
 
+	this.setPeriod = function () {
+
+	}
+
 	function filterInput() { }
 	function filterClear() { }
-
-	function cleanUpServerStats(serverStats) {
-		for (var key in serverStats) {
-			if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
-				serverStats[key].successArticles = [];
-				serverStats[key].failedArticles = [];
-			}
-		}
-	}
 
 	function renderServers(servers) {
 		for (const key in servers) {
 			if (Object.prototype.hasOwnProperty.call(servers, key)) {
-				renderServerDetails(servers[key]);
+				renderServer(servers[key])
 			}
 		}
 	}
 
-	function renderServerDetails(serverData) {
-		var html = '';
+	function renderServer(serverStats) {
+		var serverDetailHtml = $(makeServerDetails(serverStats));
+		var statsChartHtml = $(makeStatsChart(serverStats));
+		var container = $('<div class="flex-center">');
 
-		html += '<div class="server-property"><strong>Name:</strong> ' + serverData.name + '</div>';
-		html += '<div class="server-property"><strong>Host:</strong> ' + serverData.host + '</div>';
-		html += '<div class="server-property"><strong>Connections:</strong> ' + serverData.connections + '</div>';
+		container.css('flex-wrap', 'wrap');
+		serverDetailHtml.css('flex-grow', '1');
+		statsChartHtml.css('flex-grow', '3');
 
+		container.append(serverDetailHtml);
+		container.append(statsChartHtml);
+
+		$StatisticsTable.append(container);
+		$StatisticsTable.append('<hr>');
+	}
+
+	function makeServerDetails(serverData) {
 		var successSum = serverData.successArticles.reduce((a, b) => a + b, 0);
 		var failedSum = serverData.failedArticles.reduce((a, b) => a + b, 0);
-		var completion = successSum + failedSum > 0 ? Util.round0(successSum * 100.0 / (successSum +  failedSum)) + '%' : '--';
-		if (failedSum > 0 && completion === '100%')
-		{
+		var completion = successSum + failedSum > 0 ? Util.round0(successSum * 100.0 / (successSum + failedSum)) + '%' : '--';
+		if (failedSum > 0 && completion === '100%') {
 			completion = '99.9%';
 		}
 
-        var completionHtml = '<h4>Completion: <span class="label label-info">' + completion + '</h4>';
+		var html = '<table class="table table-condensed table-bordered table-fixed">';
+		html += '<tr><td><h4>Name:</h4></th><td>' + serverData.name + '</td></tr>';
+		html += '<tr><td><h4>Host:</h4></td><td>' + serverData.host + '</td></tr>';
+		html += '<tr><td><h4>Connections:</h4></td><td>' + serverData.connections + '</td></tr>';
+		html += '<tr><td><h4>Success Articles:</h4></td><td>' + Util.formatNumber(successSum) + '</td></tr>';
+		html += '<tr><td><h4>Failed Articles:</h4></td><td>' + Util.formatNumber(failedSum) + '</td></tr>';
+		html += '<tr><td><h4>Completion:</h4></td><td>' + completion + '</td></tr>';
+		html += '</table>';
 
-		html += '<div class="flex-center">';
-		html += '<strong>Success Articles:</strong> <span class="label label-success">' + Util.formatNumber(successSum) + '</span>';
-		html += '<strong>Failed Articles:</strong> <span class="label label-important">' + Util.formatNumber(failedSum) + '</span>';
-		html += '</div>';
-		html += completionHtml;
-		html += '<hr>';
+		return html;
+	}
 
-		$StatisticsTable.append(html);
+	function makeStatsChart(serverStats) {
+		var html = `<div class="" id="StatDialog_VolumesTab">`;
+		html += `<div class="btn-toolbar form-inline section-toolbar" id="StatDialog_Toolbar">`;
+		html += `<div class="btn-group phone-hide" id="StatDialog_MonthBlockTop">`;
+		html += `<button class="btn btn-default btn-active volume-range" id="StatDialog_Volume_MIN" onclick="${chooseRange(serverStats, 'MIN')}" title="Show last 60 seconds">60 seconds</button>`;
+		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_HOUR" onclick="${chooseRange(serverStats, 'HOUR')}" title="Show last 60 minutes">60 minutes</button>`;
+		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_DAY" onclick="${chooseRange(serverStats, 'DAY')}" title="Show last 24 hours">24 hours</button>`;
+		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_MONTH" onclick="${chooseRange(serverStats, 'MONTH')}" title="Show a month or a whole year">January 2000</button>`;
+		html += `<button class="btn btn-default volume-range dropdown-toggle" id="StatDialog_Volume_MONTH3" data-toggle="dropdown"><span class="caret"></span></button>`;
+		html += `<ul class="dropdown-menu menu-check pull-right" id="StatDialog_MonthMenu">
+					<li class="menu-header">Months</li>
+					<li class="volume-month-template hide"><a href="#"></a></li>
+					<li class="menu-header" id="StatDialog_MonthMenuYears">Years</li>
+					<li class="divider" id="StatDialog_MonthMenuDivider"></li>
+					<li><a href="#" onclick="${chooseOtherMonth()}"><i class="material-icon"></i>Older Periods...</a></li>
+					<li class="volume-menu-template hide"><a href="#"></a></li>
+				</ul>`;
+		html += `</div>`;
+
+		html += `<div class="btn-group phone-only inline"><button class="btn btn-default btn-active volume-range" id="StatDialog_Volume_MIN2" onclick="${chooseRange(serverStats, 'MIN')}" title="Show last 60 seconds">60 s</button></div>`;
+		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_HOUR2" onclick="${chooseRange(serverStats, 'HOUR')}" title="Show last 60 minutes">60 m</button></div>`;
+		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_DAY2" onclick="${chooseRange(serverStats, 'DAY')}" title="Show last 24 hours">24 h</button></div>`;
+		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_MONTH2" onclick="${chooseRange(serverStats, 'MONTH')}" title="Show one month">Jan 2000</button></div>`;
+		html += `</div>`
+
+		html += `<div id="StatDialog_Tooltip">Total</div>`;
+		html += `<div id="StatDialog_ChartBlock"></div>`;
+
+		html += `<hr>`;
+		html += `<div id="StatDialog_CountersBlock">`;
+		html += `<div class="row-fluid" id="StatDialog_Counters">`;
+		html += `<div class="span3" id="StatDialog_Today">Today: <span id="StatDialog_TodaySize" class="stat-size">1.5 GB</span></div>`;
+		html += `<div class="span3" id="StatDialog_Month"><span id="StatDialog_MonthTitle">This month:</span> <span id="StatDialog_MonthSize" class="stat-size">200 GB</span></div>`;
+		html += `<div class="span3" id="StatDialog_AllTime">All-time: <span id="StatDialog_AllTimeSize" class="stat-size">20.3 TB</span></div>`;
+		html += `<div class="span3" id="StatDialog_Custom" title="reset on Fri Apr 04 2014 09:32:24">Custom: <span id="StatDialog_CustomSize" class="stat-size">10.3 TB</span>, <a onclick="StatDialog.resetCounter()"><i class="material-icon">restart_alt</i></a></div>`;
+		html += `</div>`;
+		html += `</div>`;
+		html += `</div>`;
+
+		return html;
+
+
+		// const container = $('#StatDialog_TimeRangeControls');
+
+		// // Delegated event handler for all volume-range buttons
+		// container.on('click', '.volume-range', function () {
+		// 	const range = $(this).data('range');
+		// 	// Remove active class from all buttons in the container
+		// 	container.find('.volume-range').removeClass('btn-active');
+		// 	// Add active class to the clicked button
+		// 	$(this).addClass('btn-active');
+		// 	${ serverStats.name }.chooseRange(range);
+		// });
+
+		// // Delegated event handler for the "Older Periods..." link
+		// container.on('click', '#chooseOtherMonthLink', function (e) {
+		// 	e.preventDefault(); // Prevent the link from navigating
+		// 	${ serverStats.name }.chooseOtherMonth();
+		// });
+
+		// // Initial setup to handle default active button (if needed)
+		// // Example: If you want '60 seconds' to be active on page load
+		// container.find('[data-range="MIN"]').addClass('btn-active');
+
+	}
+
+	function chooseRange(serverStats, range) {
+		console.log(serverStats, range)
+	}
+
+	function chooseOtherMonth(serverStats) {
+		console.log(serverStats)
+	}
+
+	function setMonth(month)
+	{
+		curRange = 'MONTH';
+		curMonth = month;
+		updateRangeButtons();
+		updateMonthList();
+		redrawChart();
 	}
 
 }(jQuery));
