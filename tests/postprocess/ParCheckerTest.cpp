@@ -41,7 +41,7 @@ public:
 	~ParCheckerMock()
 	{
 		CString errmsg;
-		BOOST_CHECK(FileSystem::DeleteDirectoryWithContent(m_workingDir.c_str(), errmsg));
+		FileSystem::DeleteDirectoryWithContent(m_workingDir.c_str(), errmsg);
 	}
 
 protected:

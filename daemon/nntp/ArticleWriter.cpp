@@ -360,7 +360,7 @@ void ArticleWriter::CompleteFileParts()
 		}
 	}
 
-	std::string infoFilename = nzbName + PATH_SEPARATOR + filename;
+	std::string infoFilename = nzbName + PATH_SEPARATOR + m_fileInfo->GetFilename();
 
 	bool cached = m_fileInfo->GetCachedArticles() > 0;
 
@@ -582,6 +582,20 @@ void ArticleWriter::CompleteFileParts()
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		m_fileInfo->SetCrc(crc);
+
+		if (filename != m_fileInfo->GetFilename())
+		{
+			// file was renamed during completion, need to move the file
+			ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), m_fileInfo->GetFilename());
+			if (!FileSystem::MoveFile(m_outputFilename.c_str(), ofn.c_str()))
+			{
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+					"Could not rename file %s to %s: %s",
+					m_outputFilename.c_str(), ofn.c_str(), *FileSystem::GetLastErrorMessage()
+				);
+			}
+			m_fileInfo->SetOutputFilename(std::move(ofn));
+		}
 	}
 }
 
