@@ -39,7 +39,8 @@ public:
 	~RarRenamerMock()
 	{
 		CString errmsg;
-		BOOST_CHECK(FileSystem::DeleteDirectoryWithContent(m_workingDir.c_str(), errmsg));
+		BOOST_TEST_MESSAGE(m_workingDir);
+		FileSystem::DeleteDirectoryWithContent(m_workingDir.c_str(), errmsg);
 	}
 private:
 	std::string m_workingDir;
