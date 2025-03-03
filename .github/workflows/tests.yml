@@ -15,7 +15,6 @@ on:
 jobs:
 
   windows-tests:
-    if: false
     runs-on: windows-2022
     steps:
 
@@ -49,7 +48,6 @@ jobs:
         retention-days: 5
 
   linux-tests:
-    if: false
     runs-on: ubuntu-24.04
     steps:
 
@@ -82,7 +80,6 @@ jobs:
         retention-days: 5
 
   macos-tests:
-    if: false
     runs-on: macos-14
     steps:
 
@@ -114,7 +111,6 @@ jobs:
         retention-days: 5
 
   build-with-disabled-parcheck:
-    if: false
     runs-on: ubuntu-24.04
     steps:
 
@@ -151,3 +147,12 @@ jobs:
           cd build
           cmake .. -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
+
+  build-macos-brew-head:
+    runs-on: macos-latest
+    if: github.ref_name == 'feature/more-tests'
+    steps:
+
+    - name: Build
+      run: |
+        brew install nzbget --head
