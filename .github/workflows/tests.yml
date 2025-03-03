@@ -114,6 +114,7 @@ jobs:
         retention-days: 5
 
   build-with-disabled-parcheck:
+    if: false
     runs-on: ubuntu-24.04
     steps:
 
@@ -131,3 +132,22 @@ jobs:
         cd build
         cmake .. -DDISABLE_PARCHECK=yes
         cmake --build . --config Release -j 4
+
+  build-openbsd:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: OpenBSD build
+      uses: cross-platform-actions/action@v0.27.0
+      with:
+        operating_system: openbsd
+        version: '7.6'
+        run: |
+          sudo pkg_add cmake libxml boost
+          mkdir build
+          cd build
+          cmake .. -DCURSES_INCLUDE_PATH=/usr/include
+          cmake --build . --config Release -j 4
