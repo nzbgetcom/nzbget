@@ -146,7 +146,7 @@ jobs:
         operating_system: openbsd
         version: '7.6'
         run: |
-          sudo pkg_add cmake libxml boost
+          sudo pkg_add git cmake libxml boost
           mkdir build
           cd build
           cmake .. -DCURSES_INCLUDE_PATH=/usr/include
