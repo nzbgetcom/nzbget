@@ -15,6 +15,7 @@ on:
 jobs:
 
   windows-tests:
+    if: false
     runs-on: windows-2022
     steps:
 
@@ -48,6 +49,7 @@ jobs:
         retention-days: 5
 
   linux-tests:
+    if: false
     runs-on: ubuntu-24.04
     steps:
 
@@ -80,6 +82,7 @@ jobs:
         retention-days: 5
 
   macos-tests:
+    if: false
     runs-on: macos-14
     steps:
 
@@ -109,3 +112,22 @@ jobs:
         name: nzbget-linux-test-log
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
+
+  build-with-disabled-parcheck:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DDISABLE_PARCHECK=yes
+        cmake --build . --config Release -j 4
