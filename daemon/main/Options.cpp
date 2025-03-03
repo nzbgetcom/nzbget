@@ -707,7 +707,10 @@ void Options::InitOptions()
 	m_extCleanupDisk		= GetOption(OPTION_EXTCLEANUPDISK);
 	m_parIgnoreExt			= GetOption(OPTION_PARIGNOREEXT);
 	m_unpackIgnoreExt		= GetOption(OPTION_UNPACKIGNOREEXT);
-	m_shellOverride			= GetOption(OPTION_SHELLOVERRIDE);
+
+	const char* shellOverride = GetOption(OPTION_SHELLOVERRIDE);
+	m_shellOverride	= shellOverride ? shellOverride : "";
+
 	m_renameIgnoreExt 	    = GetOption(OPTION_RENAMEIGNOREEXT);
 
 	m_downloadRate			= ParseIntValue(OPTION_DOWNLOADRATE, 10) * 1024;

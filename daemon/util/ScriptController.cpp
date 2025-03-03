@@ -237,64 +237,36 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 #ifdef WIN32
 void ScriptController::PrepareArgs()
 {
-	const char* extension = strrchr(m_args[0], '.');
+	const std::string& shellOverride = g_Options->GetShellOverride();
+	const auto res = Util::FindExecutorProgram(m_args[0].Str(), shellOverride);
 
-	if (m_args.size() == 1 && !Util::EmptyStr(g_Options->GetShellOverride()))
+	if (!res)
 	{
-		Tokenizer tok(g_Options->GetShellOverride(), ",;");
-		while (CString shellover = tok.Next())
-		{
-			char* shellcmd = strchr(shellover, '=');
-			if (shellcmd)
-			{
-				*shellcmd = '\0';
-				shellcmd++;
-
-				if (!strcasecmp(extension, shellover))
-				{
-					debug("Using shell override for %s: %s", extension, shellcmd);
-					m_args.emplace(m_args.begin(), shellcmd);
-					break;
-				}
-			}
-		}
+		return;
 	}
 
 	*m_cmdLine = '\0';
+
+	const std::string& exeProgram = res.value();
+
 	if (m_args.size() == 1)
 	{
-		// Special support for script languages:
-		// automatically find the app registered for this extension and run it
-		if (extension && strcasecmp(extension, ".exe") && strcasecmp(extension, ".bat") && strcasecmp(extension, ".cmd"))
-		{
-			debug("Looking for associated program for %s", extension);
-			char command[512];
-			int bufLen = 512 - 1;
-			if (Util::RegReadStr(HKEY_CLASSES_ROOT, extension, nullptr, command, &bufLen))
-			{
-				command[bufLen] = '\0';
-				debug("Extension: %s", command);
+		m_args.emplace(m_args.begin(), exeProgram.c_str());
+	}
 
-				bufLen = 512 - 1;
-				if (Util::RegReadStr(HKEY_CLASSES_ROOT, BString<1024>("%s\\shell\\open\\command", command),
-					nullptr, command, &bufLen))
-				{
-					command[bufLen] = '\0';
-					CString scommand(command);
-					scommand.Replace("%L", "%1"); // Python 3.x has %L in command instead of %1
-					debug("Command: %s", scommand.Str());
-					DWORD_PTR args[] = { (DWORD_PTR)*m_args[0], (DWORD_PTR)0 };
-					if (FormatMessage(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, scommand, 0, 0,
-						m_cmdLine, sizeof(m_cmdLine), (va_list*)args))
-					{
-						Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
-						debug("CmdLine: %s", m_cmdLine);
-						return;
-					}
-				}
-			}
-			warn("Could not find associated program for %s. Trying to execute %s directly",
-				extension, FileSystem::BaseFileName(m_args[0]));
+	if (m_args.size() == 1)
+	{
+		debug("Command: %s", exeProgram.c_str());
+		DWORD_PTR args[] = { (DWORD_PTR)*m_args[0], (DWORD_PTR)0 };
+		if (FormatMessage(
+			FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, 
+			exeProgram.c_str(), 0, 0,
+			m_cmdLine, sizeof(m_cmdLine), 
+			(va_list*)args))
+		{
+			Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
+			debug("CmdLine: %s", m_cmdLine);
+			return;
 		}
 	}
 }
@@ -318,6 +290,8 @@ void ScriptController::PrepareArgs()
 			strncpy(m_cmdLine, found.value().c_str(), sizeof(m_cmdLine) - 1);
 			m_cmdArgs.emplace_back(found.value().c_str());
 		}
+
+		debug("CmdLine: %s", m_cmdLine);
 	}
 	else
 	{
