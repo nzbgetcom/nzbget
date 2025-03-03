@@ -150,7 +150,7 @@ jobs:
 
   build-macos-brew-head:
     runs-on: macos-latest
-    if: github.ref_name == 'feature/more-tests'
+    if: github.ref_name == 'develop'
     steps:
 
     - name: Build
