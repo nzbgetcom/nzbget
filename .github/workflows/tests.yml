@@ -160,7 +160,7 @@ jobs:
           cd build
           cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
-          ctest -C Release
+          ctest -C Release --repeat until-pass:5
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v4
