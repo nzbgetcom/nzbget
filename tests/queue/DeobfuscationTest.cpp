@@ -89,6 +89,11 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	);
 
 	BOOST_CHECK_EQUAL(
+		Deobfuscate("[N3wZ] _mC3M3U14246___[PRiVATE]-[EnCrYpTnZb]-[[SubsPlease].Some.file.name.-.20.(1080p).[64032D13].mkv]-[1_1] - \"\" yEnc  1454715270 (1/2030)"),
+		"[SubsPlease].Some.file.name.-.20.(1080p).[64032D13].mkv"
+	);
+
+	BOOST_CHECK_EQUAL(
 		Deobfuscate("\"2c0837e5fa42c8cfb5d5e583168a2af4.10\" yEnc (1/111)"),
 		"2c0837e5fa42c8cfb5d5e583168a2af4.10"
 	);

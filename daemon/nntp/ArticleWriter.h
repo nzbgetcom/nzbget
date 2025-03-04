@@ -23,6 +23,7 @@
 #define ARTICLEWRITER_H
 
 #include <atomic>
+#include <string_view>
 #include "NString.h"
 #include "DownloadInfo.h"
 #include "Decoder.h"
@@ -65,6 +66,19 @@ public:
 
 private:
 	bool GetSkipDiskWrite();
+
+	/**
+	 *  @brief Renames the temporary `.out` output file to its original filename.
+	 *  
+	 * 	This is necessary when Direct/Par renaming is disabled or the download fails due to health checks.
+	 *  Or there are no par files at all.
+	 *  No action is taken if the filename matches the current filename.
+	 *
+	 * @param filename The desired final filename (without path).
+	 * @param destDir  The destination directory for the file.
+	 */
+	void RenameOutputFile(std::string_view filename, std::string_view destDir);
+
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;
 	DiskFile m_outFile;
