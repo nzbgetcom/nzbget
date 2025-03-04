@@ -14,7 +14,7 @@ on:
 
 jobs:
 
-  windows-tests:
+  tests-windows:
     runs-on: windows-2022
     steps:
 
@@ -47,7 +47,7 @@ jobs:
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
 
-  linux-tests:
+  tests-linux:
     runs-on: ubuntu-24.04
     steps:
 
@@ -79,7 +79,39 @@ jobs:
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
 
-  macos-tests:
+  tests-linux-disabled-parcheck:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON -DDISABLE_PARCHECK=yes
+        cmake --build . --config Release -j 4
+
+    - name: Test
+      run: |
+        cd build
+        ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-linux-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  tests-macos:
     runs-on: macos-14
     steps:
 
@@ -110,7 +142,63 @@ jobs:
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
 
-  build-with-disabled-parcheck:
+  tests-openbsd:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: OpenBSD build and test
+      uses: cross-platform-actions/action@v0.27.0
+      with:
+        operating_system: openbsd
+        version: '7.6'
+        run: |
+          sudo pkg_add git cmake libxml boost
+          mkdir build
+          cd build
+          cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+          cmake --build . --config Release -j 4
+          ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-openbsd-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  tests-freebsd:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: OpenBSD build and test
+      uses: cross-platform-actions/action@v0.27.0
+      with:
+        operating_system: freebsd
+        version: '14.2'
+        run: |
+          sudo pkg install -y git cmake libxml2 boost-all
+          mkdir build
+          cd build
+          cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+          cmake --build . --config Release -j 4
+          ctest -C Release
+
+    - name: Upload test artifacts
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: nzbget-freebsd-test-log
+        path: build/Testing/Temporary/LastTest.log
+        retention-days: 5
+
+  build-disabled-parcheck:
     runs-on: ubuntu-24.04
     steps:
 
