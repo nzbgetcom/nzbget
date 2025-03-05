@@ -120,7 +120,7 @@ jobs:
     steps:
 
     - name: Install dependencies
-      run:
+      run: |
         brew install --formula boost sevenzip
         brew install --cask rar
 
