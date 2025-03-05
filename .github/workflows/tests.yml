@@ -21,11 +21,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Download and extract vcpkg cache
+    - name: Download and extract vcpkg cache and unpackers
       run: |
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-windows-tests.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v1.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
+        Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
+        Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
 
     - name: Build
       run: |
@@ -54,7 +58,7 @@ jobs:
     - name: Prepare environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -86,7 +90,7 @@ jobs:
     - name: Prepare environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -117,7 +121,8 @@ jobs:
 
     - name: Install dependencies
       run:
-        brew install --formula boost
+        brew install --formula boost sevenzip
+        brew install --cask rar
 
     - name: Checkout
       uses: actions/checkout@v4
@@ -155,7 +160,7 @@ jobs:
         operating_system: openbsd
         version: '7.6'
         run: |
-          sudo pkg_add git cmake libxml boost
+          sudo pkg_add git cmake libxml boost unrar p7zip
           mkdir build
           cd build
           cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
@@ -177,13 +182,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: OpenBSD build and test
+    - name: FreeBSD build and test
       uses: cross-platform-actions/action@v0.27.0
       with:
         operating_system: freebsd
         version: '14.2'
         run: |
-          sudo pkg install -y git cmake libxml2 boost-all
+          sudo pkg install -y git cmake libxml2 boost-all unrar 7-zip
           mkdir build
           cd build
           cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
