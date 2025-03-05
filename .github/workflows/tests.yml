@@ -116,7 +116,7 @@ jobs:
         retention-days: 5
 
   tests-macos:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
 
     - name: Install dependencies
