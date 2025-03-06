@@ -43,7 +43,7 @@
 var Statistics = (new function ($) {
 	'use strict';
 
-	function ServerStats() {
+	function Server() {
 		this.id = 0;
 		this.connections = 0;
 		this.host = "";
@@ -51,15 +51,20 @@ var Statistics = (new function ($) {
 		this.port = "";
 		this.successArticles = [];
 		this.failedArticles = [];
+		this.chartData = {
+			range: "MIN"
+		};
 	}
 
-	var optionsAlreadyLoaded = false;
 	var $StatisticsSpinner;
 	var $StatisticsTable;
+
 	var serverStats = {};
 	var dataLen = 0;
-	var curMonth = null;
-	var monYear = false;
+	var optionsAlreadyLoaded = false;
+	var servervolumes = null;
+	var prevServervolumes = null;
+	var mouseOverIndex = -1;
 
 	var historyHandler =
 	{
@@ -78,7 +83,7 @@ var Statistics = (new function ($) {
 						serverStats[stats.ServerID].failedArticles.push(stats.FailedArticles);
 					}
 					else {
-						var serverStatsNew = new ServerStats();
+						var serverStatsNew = new Server();
 						serverStatsNew.id = stats.ServerID;
 						serverStatsNew.successArticles.push(stats.SuccessArticles);
 						serverStatsNew.failedArticles.push(stats.FailedArticles);
@@ -99,13 +104,16 @@ var Statistics = (new function ($) {
 						}
 					}
 				}
-
-				$StatisticsSpinner.hide();
-				$StatisticsTable.show();
 				optionsAlreadyLoaded = true;
 			}
-			console.log(serverStats)
-			renderServers(serverStats);
+
+			if (optionsAlreadyLoaded) {
+				$StatisticsSpinner.hide();
+				$StatisticsTable.show();
+
+				renderServers(serverStats);
+				RPC.call('servervolumes', [], servervolumesLoaded);
+			}
 		}
 	}
 
@@ -124,35 +132,32 @@ var Statistics = (new function ($) {
 		History.subscribe(historyHandler);
 	}
 
-	this.setPeriod = function () {
-
+	this.redraw = function() {
+		if (servervolumes)
+			redrawCharts(serverStats);
 	}
 
 	function filterInput() { }
 	function filterClear() { }
 
 	function renderServers(servers) {
-		for (const key in servers) {
+		for (var key in servers) {
 			if (Object.prototype.hasOwnProperty.call(servers, key)) {
-				renderServer(servers[key])
+				renderServer(servers[key]);
 			}
 		}
 	}
 
-	function renderServer(serverStats) {
-		var serverDetailHtml = $(makeServerDetails(serverStats));
-		var statsChartHtml = $(makeStatsChart(serverStats));
-		var container = $('<div class="flex-center">');
+	function renderServer(server) {
+		var $serverDetailHtml = $(makeServerDetails(server));
+		var $statsChartHtml = makeStatsChart(server);
 
-		container.css('flex-wrap', 'wrap');
-		serverDetailHtml.css('flex-grow', '1');
-		statsChartHtml.css('flex-grow', '3');
+		var $container = $('<div>', { class: 'flex-center' }).css('flex-wrap', 'wrap');
+		$serverDetailHtml.css('flex-grow', '1');
+		$statsChartHtml.css('flex-grow', '3');
 
-		container.append(serverDetailHtml);
-		container.append(statsChartHtml);
-
-		$StatisticsTable.append(container);
-		$StatisticsTable.append('<hr>');
+		$container.append($serverDetailHtml, $statsChartHtml);
+		$StatisticsTable.append($container, '<hr>');
 	}
 
 	function makeServerDetails(serverData) {
@@ -163,7 +168,7 @@ var Statistics = (new function ($) {
 			completion = '99.9%';
 		}
 
-		var html = '<table class="table table-condensed table-bordered table-fixed">';
+		var html = '<table class="statistics__server-details table table-condensed table-bordered table-fixed">';
 		html += '<tr><td><h4>Name:</h4></th><td>' + serverData.name + '</td></tr>';
 		html += '<tr><td><h4>Host:</h4></td><td>' + serverData.host + '</td></tr>';
 		html += '<tr><td><h4>Connections:</h4></td><td>' + serverData.connections + '</td></tr>';
@@ -175,87 +180,375 @@ var Statistics = (new function ($) {
 		return html;
 	}
 
-	function makeStatsChart(serverStats) {
-		var html = `<div class="" id="StatDialog_VolumesTab">`;
-		html += `<div class="btn-toolbar form-inline section-toolbar" id="StatDialog_Toolbar">`;
-		html += `<div class="btn-group phone-hide" id="StatDialog_MonthBlockTop">`;
-		html += `<button class="btn btn-default btn-active volume-range" id="StatDialog_Volume_MIN" onclick="${chooseRange(serverStats, 'MIN')}" title="Show last 60 seconds">60 seconds</button>`;
-		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_HOUR" onclick="${chooseRange(serverStats, 'HOUR')}" title="Show last 60 minutes">60 minutes</button>`;
-		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_DAY" onclick="${chooseRange(serverStats, 'DAY')}" title="Show last 24 hours">24 hours</button>`;
-		html += `<button class="btn btn-default volume-range" id="StatDialog_Volume_MONTH" onclick="${chooseRange(serverStats, 'MONTH')}" title="Show a month or a whole year">January 2000</button>`;
-		html += `<button class="btn btn-default volume-range dropdown-toggle" id="StatDialog_Volume_MONTH3" data-toggle="dropdown"><span class="caret"></span></button>`;
-		html += `<ul class="dropdown-menu menu-check pull-right" id="StatDialog_MonthMenu">
-					<li class="menu-header">Months</li>
-					<li class="volume-month-template hide"><a href="#"></a></li>
-					<li class="menu-header" id="StatDialog_MonthMenuYears">Years</li>
-					<li class="divider" id="StatDialog_MonthMenuDivider"></li>
-					<li><a href="#" onclick="${chooseOtherMonth()}"><i class="material-icon"></i>Older Periods...</a></li>
-					<li class="volume-menu-template hide"><a href="#"></a></li>
-				</ul>`;
-		html += `</div>`;
+	function makeStatsChart(server) {
+		var $container = $('<div>', {
+			class: 'statistics',
+			id: `${server.id}_VolumesTab`
+		});
 
-		html += `<div class="btn-group phone-only inline"><button class="btn btn-default btn-active volume-range" id="StatDialog_Volume_MIN2" onclick="${chooseRange(serverStats, 'MIN')}" title="Show last 60 seconds">60 s</button></div>`;
-		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_HOUR2" onclick="${chooseRange(serverStats, 'HOUR')}" title="Show last 60 minutes">60 m</button></div>`;
-		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_DAY2" onclick="${chooseRange(serverStats, 'DAY')}" title="Show last 24 hours">24 h</button></div>`;
-		html += `<div class="btn-group phone-only inline"><button class="btn btn-default volume-range" id="StatDialog_Volume_MONTH2" onclick="${chooseRange(serverStats, 'MONTH')}" title="Show one month">Jan 2000</button></div>`;
-		html += `</div>`
+		var $toolbar = $('<div>', {
+			class: 'btn-toolbar form-inline section-toolbar',
+			id: `${server.id}_Toolbar`
+		});
 
-		html += `<div id="StatDialog_Tooltip">Total</div>`;
-		html += `<div id="StatDialog_ChartBlock"></div>`;
+		var $timeBlockTop = $('<div>', {
+			class: 'btn-group phone-hide',
+			id: `${server.id}_TimeBlockTop`
+		});
 
-		html += `<hr>`;
-		html += `<div id="StatDialog_CountersBlock">`;
-		html += `<div class="row-fluid" id="StatDialog_Counters">`;
-		html += `<div class="span3" id="StatDialog_Today">Today: <span id="StatDialog_TodaySize" class="stat-size">1.5 GB</span></div>`;
-		html += `<div class="span3" id="StatDialog_Month"><span id="StatDialog_MonthTitle">This month:</span> <span id="StatDialog_MonthSize" class="stat-size">200 GB</span></div>`;
-		html += `<div class="span3" id="StatDialog_AllTime">All-time: <span id="StatDialog_AllTimeSize" class="stat-size">20.3 TB</span></div>`;
-		html += `<div class="span3" id="StatDialog_Custom" title="reset on Fri Apr 04 2014 09:32:24">Custom: <span id="StatDialog_CustomSize" class="stat-size">10.3 TB</span>, <a onclick="StatDialog.resetCounter()"><i class="material-icon">restart_alt</i></a></div>`;
-		html += `</div>`;
-		html += `</div>`;
-		html += `</div>`;
+		var $minButton = $('<button>', {
+			class: 'btn btn-default btn-active volume-range',
+			id: `${server.id}_Volume_MIN`,
+			title: 'Show last 5 minutes',
+			text: '5 Minutes'
+		}).on('click', function () { chooseRange(server, 'MIN') });
 
-		return html;
+		var $hourButton = $('<button>', {
+			class: 'btn btn-default volume-range',
+			id: `${server.id}_Volume_HOUR`,
+			title: 'Show last hour',
+			text: '1 Hour'
+		}).on('click', function () { chooseRange(server, 'HOUR') });
+
+		var $dayButton = $('<button>', {
+			class: 'btn btn-default volume-range',
+			id: `${server.id}_Volume_DAY`,
+			title: 'Show last 24 hours',
+			text: '24 Hours'
+		}).on('click', function () { chooseRange(server, 'DAY') });
 
 
-		// const container = $('#StatDialog_TimeRangeControls');
+		$timeBlockTop.append($minButton, $hourButton, $dayButton);
+		$toolbar.append($timeBlockTop);
 
-		// // Delegated event handler for all volume-range buttons
-		// container.on('click', '.volume-range', function () {
-		// 	const range = $(this).data('range');
-		// 	// Remove active class from all buttons in the container
-		// 	container.find('.volume-range').removeClass('btn-active');
-		// 	// Add active class to the clicked button
-		// 	$(this).addClass('btn-active');
-		// 	${ serverStats.name }.chooseRange(range);
-		// });
+		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
+			$('<button>', {
+				class: 'btn btn-default btn-active volume-range',
+				id: `${server.id}_Volume_MIN2`,
+				title: 'Show last 5 minutes',
+				text: '5 m'
+			}).on('click', function () { chooseRange(server, 'MIN') }),
+			$('<button>', {
+				class: 'btn btn-default volume-range',
+				id: `${server.id}_Volume_HOUR2`,
+				title: 'Show last hour',
+				text: '1 h'
+			}).on('click', function () { chooseRange(server, 'HOUR') }),
+			$('<button>', {
+				class: 'btn btn-default volume-range',
+				id: `${server.id}_Volume_DAY2`,
+				title: 'Show last 24 hours',
+				text: '24 h'
+			}).on('click', function () { chooseRange(server, 'DAY') }),
+		);
 
-		// // Delegated event handler for the "Older Periods..." link
-		// container.on('click', '#chooseOtherMonthLink', function (e) {
-		// 	e.preventDefault(); // Prevent the link from navigating
-		// 	${ serverStats.name }.chooseOtherMonth();
-		// });
+		$toolbar.append($phoneButtons);
 
-		// // Initial setup to handle default active button (if needed)
-		// // Example: If you want '60 seconds' to be active on page load
-		// container.find('[data-range="MIN"]').addClass('btn-active');
+		var $tooltip = $('<div>', {
+			class: 'statistics__tooltip',
+			id: `${server.id}_Tooltip`,
+			text: 'Total'
+		});
 
+		var $chartBlock = $('<div>', {
+			class: 'statistics_chartblock',
+			id: `${server.id}_ChartBlock`
+		});
+
+		$container.append($toolbar, $tooltip, $chartBlock);
+
+		return $container;
 	}
 
-	function chooseRange(serverStats, range) {
-		console.log(serverStats, range)
+	function servervolumesLoaded(volumes) {
+		prevServervolumes = servervolumes;
+		servervolumes = volumes;
+		redrawCharts(serverStats);
+		RPC.next();
 	}
 
-	function chooseOtherMonth(serverStats) {
-		console.log(serverStats)
+	function redrawCharts(serverStats) {
+
+		for (var key in serverStats) {
+			if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
+				var server = serverStats[key];
+				redrawChart(server);
+			}
+		}
 	}
 
-	function setMonth(month)
-	{
-		curRange = 'MONTH';
-		curMonth = month;
-		updateRangeButtons();
-		updateMonthList();
-		redrawChart();
+	function size64(size) {
+		return size.SizeMB < 2000 ? size.SizeLo / 1024.0 / 1024.0 : size.SizeMB;
 	}
 
+	function redrawChart(server) {
+		if (!server)
+			return;
+
+		var serverNo = server.id;
+		var curRange = server.chartData.range;
+
+		var lineLabels = [];
+		var dataLabels = [];
+		var chartDataTB = [];
+		var chartDataGB = [];
+		var chartDataMB = [];
+		var chartDataKB = [];
+		var chartDataB = [];
+		var curPoint = null;
+		var sumMB = 0;
+		var sumLo = 0;
+		var maxSizeMB = 0;
+		var maxSizeLo = 0;
+
+		function addData(bytes, dataLab, lineLab) {
+			dataLabels.push(dataLab);
+			lineLabels.push(lineLab);
+
+			if (bytes === null) {
+				chartDataTB.push(null);
+				chartDataGB.push(null);
+				chartDataMB.push(null);
+				chartDataKB.push(null);
+				chartDataB.push(null);
+				return;
+			}
+			chartDataTB.push(bytes.SizeMB / 1024.0 / 1024.0);
+			chartDataGB.push(bytes.SizeMB / 1024.0);
+			chartDataMB.push(size64(bytes));
+			chartDataKB.push(bytes.SizeLo / 1024.0);
+			chartDataB.push(bytes.SizeLo);
+			if (bytes.SizeMB > maxSizeMB) {
+				maxSizeMB = bytes.SizeMB;
+			}
+			if (bytes.SizeLo > maxSizeLo) {
+				maxSizeLo = bytes.SizeLo;
+			}
+			sumMB += bytes.SizeMB;
+			sumLo += bytes.SizeLo;
+		}
+
+		function draw5MinuteGraph() {
+			// the current slot may be not fully filled yet,
+			// to make the chart smoother for current slot we use the data from the previous reading
+			// and we show the previous slot as current.
+			curPoint = servervolumes[serverNo].SecSlot;
+			for (var i = 0; i < 60; i++)
+			{
+				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
+					i + 's', i % 10 == 0 || i == 59 ? i : '');
+			}
+			if (prevServervolumes !== null)
+			{
+				curPoint = curPoint > 0 ? curPoint-1 : 59;
+			}
+		}
+
+		function drawHourGraph() {
+			for (var i = 0; i < 60; i++) {
+				addData(servervolumes[serverNo].BytesPerMinutes[i],
+					i + 'm', i % 10 == 0 || i == 59 ? i : '');
+			}
+			curPoint = servervolumes[serverNo].MinSlot;
+		}
+
+		function drawDayGraph() {
+			for (var i = 0; i < 24; i++) {
+				addData(servervolumes[serverNo].BytesPerHours[i],
+					i + 'h', i % 3 == 0 || i == 23 ? i : '');
+			}
+			curPoint = servervolumes[serverNo].HourSlot;
+		}
+
+		if (curRange === 'MIN') {
+			draw5MinuteGraph();
+		}
+		else if (curRange === 'HOUR') {
+			drawHourGraph();
+		}
+		else if (curRange === 'DAY') {
+			drawDayGraph();
+		}
+
+		var serieData = maxSizeMB > 1024 * 1024 ? chartDataTB :
+			maxSizeMB > 1024 ? chartDataGB :
+				maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
+					maxSizeLo > 1024 ? chartDataKB : chartDataB;
+
+		var units = maxSizeMB > 1024 * 1024 ? ' TB' :
+			maxSizeMB > 1024 ? ' GB' :
+				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
+					maxSizeLo > 1024 ? ' KB' : ' B';
+
+		var curPointData = [];
+		for (var i = 0; i < serieData.length; i++) {
+			curPointData.push(i === curPoint ? serieData[i] : null);
+		}
+
+		server.chartData = {
+			serieData: serieData,
+			serieDataMB: chartDataMB,
+			serieDataLo: chartDataB,
+			sumMB: sumMB,
+			sumLo: sumLo,
+			dataLabels: dataLabels,
+			range: curRange
+		};
+
+		var chartBlock = $(`#${server.id}_ChartBlock`);
+		if (!chartBlock)
+			return;
+
+		chartBlock.empty();
+		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart"></div>`);
+		$(`#${server.id}_Chart`).chart({
+			values: { serie1: serieData, serie2: curPointData },
+			labels: lineLabels,
+			type: 'line',
+			margins: [10, 15, 20, 60],
+			defaultSeries: {
+				rounded: 0.5,
+				fill: true,
+				plotProps: {
+					'stroke-width': 3.0
+				},
+				dot: true,
+				dotProps: {
+					stroke: '#FFF',
+					size: 3.0,
+					'stroke-width': 1.0,
+					fill: '#5AF'
+				},
+				highlight: {
+					scaleSpeed: 0,
+					scaleEasing: '>',
+					scale: 2.0
+				},
+				tooltip: {
+					active: false,
+				},
+				color: '#5AF'
+			},
+			series: {
+				serie2: {
+					dotProps: {
+						stroke: '#F21860',
+						fill: '#F21860',
+						size: 3.5,
+						'stroke-width': 2.5
+					},
+					highlight: {
+						scale: 1.5
+					},
+				}
+			},
+			defaultAxis: {
+				labels: true,
+				labelsProps: {
+					'font-size': 13,
+					'fill': '#3a87ad'
+				},
+				labelsDistance: 12
+			},
+			axis: {
+				l: {
+					labels: true,
+					suffix: units,
+				}
+			},
+			features: {
+				grid: {
+					draw: [true, false],
+					forceBorder: true,
+					props: {
+						stroke: '#e0e0e0',
+						'stroke-width': 1
+					},
+					ticks: {
+						active: [true, false, false],
+						size: [6, 0],
+						props: {
+							stroke: '#e0e0e0'
+						}
+					}
+				},
+				mousearea: {
+					type: 'axis',
+					onMouseOver: function (env, serie, index, mouseAreaData) {
+						chartMouseOver(server, env, serie, index, mouseAreaData);
+					},
+					onMouseExit: function (env, serie, index, mouseAreaData) {
+						chartMouseExit(server, env, serie, index, mouseAreaData);
+					},
+					onMouseOut: function (env, serie, index, mouseAreaData) {
+						chartMouseExit(server, env, serie, index, mouseAreaData);
+					},
+				},
+			}
+		});
+
+		simulateMouseEvent(server);
+	}
+
+	function chartMouseOver(server, env, serie, index, mouseAreaData) {
+		if (mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
+		}
+
+		var tooltip = $(`#${server.id}_Tooltip`);
+		if (!tooltip)
+			return;
+
+		mouseOverIndex = index;
+		tooltip.html(server.chartData.dataLabels[index] + ': <span class="stat-size">' +
+			Util.formatSizeMB(server.chartData.serieDataMB[index], server.chartData.serieDataLo[index]) + '</span>');
+	}
+
+	function chartMouseExit(server, env, serie, index, mouseAreaData) {
+		var tooltip = $(`#${server.id}_Tooltip`);
+		if (!tooltip)
+			return;
+
+		mouseOverIndex = -1;
+		var title = server.curRange === 'MIN' ? '5 minutes' :
+			server.curRange === 'HOUR' ? '60 minutes' :
+				server.curRange === 'DAY' ? '24 hours' : 'Sum';
+
+		tooltip.html(title + ': <span class="stat-size">' + Util.formatSizeMB(server.chartData.sumMB, server.chartData.sumLo) + '</span>');
+	}
+
+	function simulateMouseEvent(server) {
+		if (mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			$.elycharts.mousemanager.onMouseOverArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
+		}
+		else {
+			chartMouseExit(server)
+		}
+	}
+
+	function chooseRange(server, range) {
+		updateRangeButtons(server, range);
+		server.chartData.range = range;
+		mouseOverIndex = -1;
+		redrawChart(server);
+	}
+
+	function updateRangeButtons(server, range) {
+		var id = server.id;
+		var prevRange = server.chartData.range;
+		var prevTab = $(`#${id}_Volume_${prevRange}, #${id}_Volume_${prevRange}2`);
+		var newTab = $(`#${id}_Volume_${range}, #${id}_Volume_${range}2`);
+		prevTab.removeClass('btn-active');
+		newTab.addClass('btn-active');
+	}
 }(jQuery));
