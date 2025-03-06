@@ -1,3 +1,21 @@
+nzbget-24.7
+  - Bug fixes:
+    - Renaming of the temporary `*.out.tmp` output file to its original filename
+    - Improved deobfuscation of `[PRiVATE]-...` groups
+    [#516](https://github.com/nzbgetcom/nzbget/pull/516)
+    - Build with `-DDISABLE_PARCHECK=yes`
+    [#514](https://github.com/nzbgetcom/nzbget/pull/514)
+    - Installed Python on Windows could not be found, despite being accessible in the console
+    [#515](https://github.com/nzbgetcom/nzbget/pull/515)
+
+  - For developers:
+    - Added more test workflows
+        - OpenBSD build/tests
+        - FreeBSD tests
+        - Linux build/tests with disabled parcheck
+        - macOS brew install from head (develop branch only)
+    [#519](https://github.com/nzbgetcom/nzbget/pull/519)
+
 nzbget-24.6
   - Features:
     - Improved deobfuscation
@@ -37,8 +55,6 @@ nzbget-24.6
     [#481](https://github.com/nzbgetcom/nzbget/pull/481)
     - Added extra format string compiler security flags
     [#503](https://github.com/nzbgetcom/nzbget/pull/503)
-
-
 
 nzbget-24.5
   - Features:

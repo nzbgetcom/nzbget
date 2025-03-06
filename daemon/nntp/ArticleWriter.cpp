@@ -22,6 +22,7 @@
 #include "nzbget.h"
 
 #include <sstream>
+#include <iomanip>
 #include "ArticleWriter.h"
 #include "DiskState.h"
 #include "Options.h"
@@ -359,7 +360,7 @@ void ArticleWriter::CompleteFileParts()
 		}
 	}
 
-	std::string infoFilename = nzbName + PATH_SEPARATOR + filename;
+	std::string infoFilename = nzbName + PATH_SEPARATOR + m_fileInfo->GetFilename();
 
 	bool cached = m_fileInfo->GetCachedArticles() > 0;
 
@@ -396,7 +397,7 @@ void ArticleWriter::CompleteFileParts()
 	}
 	else
 	{
-		ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), filename.c_str());
+		ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), filename.c_str()).Str();
 	}
 
 	DiskFile outfile;
@@ -581,7 +582,25 @@ void ArticleWriter::CompleteFileParts()
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		m_fileInfo->SetCrc(crc);
+
+		RenameOutputFile(filename, destDir);
 	}
+}
+
+void ArticleWriter::RenameOutputFile(std::string_view filename, std::string_view destDir)
+{
+	if (filename == m_fileInfo->GetFilename())
+		return;
+
+	std::string ofn = FileSystem::MakeUniqueFilename(destDir.data(), m_fileInfo->GetFilename()).Str();
+	if (!FileSystem::MoveFile(m_outputFilename.c_str(), ofn.c_str()))
+	{
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+			"Could not rename file %s to %s: %s",
+			m_outputFilename.c_str(), ofn.c_str(), *FileSystem::GetLastErrorMessage()
+		);
+	}
+	m_fileInfo->SetOutputFilename(std::move(ofn));
 }
 
 void ArticleWriter::FlushCache()

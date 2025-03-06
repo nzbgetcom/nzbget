@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,14 +49,22 @@ namespace
 		return str.substr(0, endPos);
 	}
 
-	std::string ParseWtfNzb(const std::string& str) noexcept
+	std::string ParsePRiVATEnzb(const std::string& str) noexcept
 	{
-		const std::string begin = "[PRiVATE]-[WtFnZb]-";
-		size_t beginPos = str.find(begin);
-		if (beginPos == std::string::npos) return str;
-		beginPos += begin.size();
+		const std::string signature = "[PRiVATE]-[";
+		const std::string endOfSignature = "]-";
 
-		std::string end = " - \"\"";
+		size_t beginPos = str.find(signature);
+		if (beginPos == std::string::npos) return str;
+
+		beginPos += signature.size();
+
+		beginPos = str.find("]-[", beginPos);
+		if (beginPos == std::string::npos) return str;
+
+		beginPos += endOfSignature.size();
+
+		const std::string end = " - \"\"";
 		size_t endPos = str.rfind(end);
 		if (endPos == std::string::npos) return str;
 
@@ -65,7 +73,8 @@ namespace
 		// or
 		// [1/10]-[path/something[123].bin]
 		size_t distance = endPos - beginPos;
-		std::string middle = str.substr(beginPos, distance);
+		const std::string middle = str.substr(beginPos, distance);
+
 		std::string result;
 		result.reserve(middle.size());
 
@@ -139,7 +148,7 @@ namespace Deobfuscation
 		size_t distance = secondQuotPos - firstQuotPos;
 
 		if (distance == 0)
-			return ParseWtfNzb(str);
+			return ParsePRiVATEnzb(str);
 
 		if (distance > 0)
 			return str.substr(firstQuotPos, distance);

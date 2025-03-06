@@ -10,14 +10,12 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.4/total?label=v24.4)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.5/total?label=v24.5)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.6/total?label=v24.6)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.7/total?label=v24.7)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
-[![linux build](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/linux.yml)
-[![windows build](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml/badge.svg?branch=main)](https://github.com/nzbgetcom/nzbget/actions/workflows/windows.yml)
-[![osx build](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/osx.yml)
-[![Android build](https://github.com/nzbgetcom/nzbget/actions/workflows/android.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/android.yml)
-[![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
-[![qnap repack](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml/badge.svg)](https://github.com/nzbgetcom/nzbget/actions/workflows/qnap-repack.yml)
+[![tests](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml)
+[![build](https://github.com/nzbgetcom/nzbget/actions/workflows/build.yml/badge.svg?branch=develop)](https://github.com/nzbgetcom/nzbget/actions/workflows/build.yml)
+[![docker build](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml/badge.svg?branch=develop)](https://github.com/nzbgetcom/nzbget/actions/workflows/docker.yml)
 
 
 ![Contributions welcome](https://img.shields.io/badge/contributions-welcome-blue.svg)

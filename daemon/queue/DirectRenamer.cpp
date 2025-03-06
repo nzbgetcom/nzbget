@@ -23,6 +23,7 @@
 
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include "DirectRenamer.h"
 #include "Options.h"
 #include "FileSystem.h"
@@ -424,7 +425,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 
 		nzbInfo->PrintMessage(Message::mkInfo,
 			"Renaming in-progress file %s to %s",
-			oldOutputFilename.c_str(), newOutputFilename.c_str()
+			fileInfo->GetFilename(), newOutputFilename.c_str()
 		);
 
 		bool renamed = (g_Options->GetDirectWrite() || fileInfo->GetForceDirectWrite())

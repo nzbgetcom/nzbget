@@ -304,7 +304,7 @@ public:
 	int GetPropagationDelay() { return m_propagationDelay; }
 	int GetArticleCache() { return m_articleCache; }
 	int GetEventInterval() { return m_eventInterval; }
-	const char* GetShellOverride() { return m_shellOverride; }
+	const std::string& GetShellOverride() { return m_shellOverride; }
 	int GetMonthlyQuota() { return m_monthlyQuota; }
 	int GetQuotaStartDay() { return m_quotaStartDay; }
 	int GetDailyQuota() { return m_dailyQuota; }
@@ -441,7 +441,7 @@ private:
 	int m_propagationDelay = 0;
 	int m_articleCache = 0;
 	int m_eventInterval = 0;
-	CString m_shellOverride;
+	std::string m_shellOverride;
 	int m_monthlyQuota = 0;
 	int m_quotaStartDay = 0;
 	int m_dailyQuota = 0;
