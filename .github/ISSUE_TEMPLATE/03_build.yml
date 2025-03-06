@@ -7,7 +7,8 @@ body:
     label: NZBGet Version
     description: Version of NZBGet for the scope of this issue
     options:
-    - v24.7-testing
+    - v24.8-testing
+    - v24.7-stable
     - v24.6-stable
     - v24.5-stable
     - v24.4-stable
