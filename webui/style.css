@@ -1457,30 +1457,32 @@ ul.help > li {
 	margin-top: 0;
 }
 
-/*** STATISTICS DIALOG */
+/*** STATISTICS */
 
-#StatisticsTab table {
+.statistics__server-details {
+	height: 255px;
 	width: 350px;
+	font-size: medium;
 }
 
 #StatDialog_VolumesBlock {
 	text-align: center;
 }
 
-#StatDialog_ChartBlock {
+#StatDialog_ChartBlock, .statistics__chartblock {
 	height: 300px;
 	width: 100%;
 	margin-top: 15px;
 	margin-bottom: 15px;
 }
 
-#StatDialog_Chart {
+#StatDialog_Chart, .statistics__chart {
 	height: 100%;
 	width: 670px;
 	width: 100%;
 }
 
-#StatDialog_Tooltip {
+#StatDialog_Tooltip, .statistics__tooltip {
 	float: right;
 	margin-top: -3px;
 	margin-bottom: -6px;
@@ -1496,16 +1498,17 @@ ul.help > li {
 	font-weight: bold;
 }
 
-#StatDialog_CountersBlock {
+#StatDialog_CountersBlock, .statistics__counter-block {
 	padding-right: 20px;
 }
 
-#StatDialog_Counters {
+#StatDialog_Counters, .statistics__counters {
 	margin-top: 8px;
 	text-align: center;
 }
 
-#StatDialog_Counters .span3 {
+#StatDialog_Counters .span3,
+.statistics__counters .span3 {
 	min-height: 0;
 }
 

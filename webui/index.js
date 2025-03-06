@@ -368,6 +368,7 @@ var Frontend = (new function($)
 	{
 		Downloads.redraw();
 		Status.redraw();
+		Statistics.redraw();
 		Messages.redraw();
 		History.redraw();
 
