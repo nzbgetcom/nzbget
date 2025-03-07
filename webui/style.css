@@ -1459,8 +1459,14 @@ ul.help > li {
 
 /*** STATISTICS */
 
+#StatisticsTab {
+	max-width: 1280px;
+	padding: 5px;
+	margin: auto;
+}
+
 .statistics__server-details {
-	height: 255px;
+	height: 300px;
 	width: 350px;
 	font-size: medium;
 }
@@ -1469,11 +1475,17 @@ ul.help > li {
 	text-align: center;
 }
 
-#StatDialog_ChartBlock, .statistics__chartblock {
+#StatDialog_ChartBlock {
 	height: 300px;
 	width: 100%;
 	margin-top: 15px;
 	margin-bottom: 15px;
+}
+
+.statistics__chartblock {
+	height: 240px;
+	margin-top: 15px;
+	margin-bottom: 10px;
 }
 
 #StatDialog_Chart, .statistics__chart {
