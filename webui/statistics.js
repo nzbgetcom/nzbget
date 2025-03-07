@@ -18,28 +18,6 @@
  */
 
 
-
-// var HistoryItem =
-// {
-// 	HistoryTime: 0,
-// 	FileSizeLo: 0,
-// 	FileSizeHi: 0,
-// 	FileSizeMB: 0,
-// 	TotalArticles: 0,
-// 	SuccessArticles: 0,
-// 	FailedArticles: 0,
-// 	Health: 0,
-// 	CriticalHealth: 0,
-// 	DownloadedSizeLo: 0,
-// 	DownloadedSizeHi: 0,
-// 	DownloadedSizeMB: 0,
-// 	DownloadTimeSec: 0,
-// 	ServerStats: [],
-// 	sizemb: 0,
-// 	sizegb: 0,
-// }
-
-
 var Statistics = (new function ($) {
 	'use strict';
 
@@ -49,6 +27,8 @@ var Statistics = (new function ($) {
 		this.host = "";
 		this.name = "";
 		this.port = "";
+		this.active = false;
+		this.totalSizeMB = 0;
 		this.successArticles = [];
 		this.failedArticles = [];
 		this.chartData = {
@@ -60,60 +40,73 @@ var Statistics = (new function ($) {
 	var $StatisticsTable;
 
 	var serverStats = {};
-	var dataLen = 0;
-	var optionsAlreadyLoaded = false;
+	var historyLen = null;
+	var optionsLoaded = false;
 	var servervolumes = null;
 	var prevServervolumes = null;
+	var serverVolumesLoaded = false;
 	var mouseOverIndex = -1;
 
+	var optionsHandler = {
+		update: function () {
+			if (optionsLoaded)
+				return;
+
+			optionsLoaded = true;
+			RPC.call('servervolumes', [], fistServervolumesLoaded);
+		}
+	}
 	var historyHandler =
 	{
 		update: function (data) {
-			if (dataLen == data.length && optionsAlreadyLoaded)
+			if (historyLen === data.length || (!optionsLoaded || !serverVolumesLoaded))
 				return;
 
-			dataLen = data.length;
 			$StatisticsTable.empty();
 			serverStats = {};
+			historyLen = data.length;
 
 			data.forEach(el => {
 				el.ServerStats.forEach((stats) => {
 					if (serverStats[stats.ServerID]) {
 						serverStats[stats.ServerID].successArticles.push(stats.SuccessArticles);
 						serverStats[stats.ServerID].failedArticles.push(stats.FailedArticles);
-					}
-					else {
-						var serverStatsNew = new Server();
-						serverStatsNew.id = stats.ServerID;
-						serverStatsNew.successArticles.push(stats.SuccessArticles);
-						serverStatsNew.failedArticles.push(stats.FailedArticles);
-						serverStats[serverStatsNew.id] = serverStatsNew;
+					} else {
+						var server = new Server();
+						server.id = stats.ServerID;
+						server.successArticles.push(stats.SuccessArticles);
+						server.failedArticles.push(stats.FailedArticles);
+						serverStats[server.id] = server;
 					}
 				});
 			});
-			if (Options.loaded && !optionsAlreadyLoaded) {
-				for (var key in serverStats) {
-					if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
-						var stats = serverStats[key];
-						var server = Options.getServerById(stats.id)
-						if (server) {
-							stats.connections = server.connections;
-							stats.host = server.host;
-							stats.name = server.name;
-							stats.port = server.port;
-						}
+			for (var key in serverStats) {
+				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
+					var stats = serverStats[key];
+					var server = Options.getServerById(stats.id)
+					if (server) {
+						stats.connections = server.connections;
+						stats.host = server.host;
+						stats.name = server.name;
+						stats.port = server.port;
+						stats.active = server.active;
 					}
 				}
-				optionsAlreadyLoaded = true;
 			}
 
-			if (optionsAlreadyLoaded) {
-				$StatisticsSpinner.hide();
-				$StatisticsTable.show();
-
-				renderServers(serverStats);
-				RPC.call('servervolumes', [], servervolumesLoaded);
+			for (var key in serverStats) {
+				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
+					var server = serverStats[key];
+					if (servervolumes[server.id]) {
+						server.totalSizeMB = servervolumes[server.id].TotalSizeMB;
+					}
+				}
 			}
+
+			$StatisticsSpinner.hide();
+			$StatisticsTable.show();
+
+			renderServers(serverStats);
 		}
 	}
 
@@ -129,16 +122,27 @@ var Statistics = (new function ($) {
 				filterClearCallback: filterClear
 			});
 
+		Options.subscribe(optionsHandler);
 		History.subscribe(historyHandler);
 	}
 
-	this.redraw = function() {
-		if (servervolumes)
-			redrawCharts(serverStats);
+	this.update = function () {
+		if (optionsLoaded) {
+			RPC.call('servervolumes', [], servervolumesLoaded);
+		}
 	}
 
 	function filterInput() { }
 	function filterClear() { }
+
+	function fistServervolumesLoaded(volumes) {
+		if (serverVolumesLoaded)
+			return;
+
+		prevServervolumes = volumes;
+		servervolumes = volumes;
+		serverVolumesLoaded = true;
+	}
 
 	function renderServers(servers) {
 		for (var key in servers) {
@@ -174,6 +178,7 @@ var Statistics = (new function ($) {
 		html += '<tr><td><h4>Connections:</h4></td><td>' + serverData.connections + '</td></tr>';
 		html += '<tr><td><h4>Success Articles:</h4></td><td>' + Util.formatNumber(successSum) + '</td></tr>';
 		html += '<tr><td><h4>Failed Articles:</h4></td><td>' + Util.formatNumber(failedSum) + '</td></tr>';
+		html += '<tr><td><h4>Total downloaded:</h4></td><td>' + Util.formatSizeMB(serverData.totalSizeMB) + '</td></tr>';
 		html += '<tr><td><h4>Completion:</h4></td><td>' + completion + '</td></tr>';
 		html += '</table>';
 
@@ -251,7 +256,7 @@ var Statistics = (new function ($) {
 		});
 
 		var $chartBlock = $('<div>', {
-			class: 'statistics_chartblock',
+			class: 'statistics__chartblock',
 			id: `${server.id}_ChartBlock`
 		});
 
@@ -264,7 +269,6 @@ var Statistics = (new function ($) {
 		prevServervolumes = servervolumes;
 		servervolumes = volumes;
 		redrawCharts(serverStats);
-		RPC.next();
 	}
 
 	function redrawCharts(serverStats) {
@@ -328,19 +332,17 @@ var Statistics = (new function ($) {
 			sumLo += bytes.SizeLo;
 		}
 
-		function draw5MinuteGraph() {
+		function drawFiveMinuteGraph() {
 			// the current slot may be not fully filled yet,
 			// to make the chart smoother for current slot we use the data from the previous reading
 			// and we show the previous slot as current.
 			curPoint = servervolumes[serverNo].SecSlot;
-			for (var i = 0; i < 60; i++)
-			{
+			for (var i = 0; i < 60; i++) {
 				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
 					i + 's', i % 10 == 0 || i == 59 ? i : '');
 			}
-			if (prevServervolumes !== null)
-			{
-				curPoint = curPoint > 0 ? curPoint-1 : 59;
+			if (prevServervolumes !== null) {
+				curPoint = curPoint > 0 ? curPoint - 1 : 59;
 			}
 		}
 
@@ -361,7 +363,7 @@ var Statistics = (new function ($) {
 		}
 
 		if (curRange === 'MIN') {
-			draw5MinuteGraph();
+			drawFiveMinuteGraph();
 		}
 		else if (curRange === 'HOUR') {
 			drawHourGraph();
@@ -517,9 +519,9 @@ var Statistics = (new function ($) {
 		mouseOverIndex = -1;
 		var title = server.curRange === 'MIN' ? '5 minutes' :
 			server.curRange === 'HOUR' ? '60 minutes' :
-				server.curRange === 'DAY' ? '24 hours' : 'Sum';
+				server.curRange === 'DAY' ? '24 hours' : '';
 
-		tooltip.html(title + ': <span class="stat-size">' + Util.formatSizeMB(server.chartData.sumMB, server.chartData.sumLo) + '</span>');
+		tooltip.html(title + '<span class="stat-size">' + Util.formatSizeMB(server.chartData.sumMB, server.chartData.sumLo) + '</span>');
 	}
 
 	function simulateMouseEvent(server) {

@@ -368,7 +368,6 @@ var Frontend = (new function($)
 	{
 		Downloads.redraw();
 		Status.redraw();
-		Statistics.redraw();
 		Messages.redraw();
 		History.redraw();
 
@@ -875,6 +874,7 @@ var Refresher = (new function($)
 
 		loadQueue = 4;
 		Status.update();
+		Statistics.update();
 		Downloads.update();
 		Messages.update();
 		History.update();
