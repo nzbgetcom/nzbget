@@ -32,7 +32,7 @@ var Statistics = (new function ($) {
 		this.successArticles = [];
 		this.failedArticles = [];
 		this.chartData = {
-			range: "MIN"
+			range: "5MIN"
 		};
 	}
 
@@ -202,17 +202,24 @@ var Statistics = (new function ($) {
 		});
 
 		var $minButton = $('<button>', {
-			class: 'btn btn-default btn-active volume-range',
+			class: 'btn btn-default volume-range',
 			id: `${server.id}_Volume_MIN`,
+			title: 'Show last 60 seconds',
+			text: '60 Seconds'
+		}).on('click', function () { chooseRange(server, 'MIN') });
+
+		var $5minButton = $('<button>', {
+			class: 'btn btn-default btn-active volume-range',
+			id: `${server.id}_Volume_5MIN`,
 			title: 'Show last 5 minutes',
 			text: '5 Minutes'
-		}).on('click', function () { chooseRange(server, 'MIN') });
+		}).on('click', function () { chooseRange(server, '5MIN') });
 
 		var $hourButton = $('<button>', {
 			class: 'btn btn-default volume-range',
 			id: `${server.id}_Volume_HOUR`,
-			title: 'Show last hour',
-			text: '1 Hour'
+			title: 'Show 60 minutes',
+			text: '60 Minutes'
 		}).on('click', function () { chooseRange(server, 'HOUR') });
 
 		var $dayButton = $('<button>', {
@@ -223,21 +230,27 @@ var Statistics = (new function ($) {
 		}).on('click', function () { chooseRange(server, 'DAY') });
 
 
-		$timeBlockTop.append($minButton, $hourButton, $dayButton);
+		$timeBlockTop.append($minButton, $5minButton, $hourButton, $dayButton);
 		$toolbar.append($timeBlockTop);
 
 		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
 			$('<button>', {
-				class: 'btn btn-default btn-active volume-range',
+				class: 'btn btn-default volume-range',
 				id: `${server.id}_Volume_MIN2`,
+				title: 'Show last 60 seconds',
+				text: '60 s'
+			}).on('click', function () { chooseRange(server, 'MIN') }),
+			$('<button>', {
+				class: 'btn btn-default btn-active volume-range',
+				id: `${server.id}_Volume_5MIN2`,
 				title: 'Show last 5 minutes',
 				text: '5 m'
-			}).on('click', function () { chooseRange(server, 'MIN') }),
+			}).on('click', function () { chooseRange(server, '5MIN') }),
 			$('<button>', {
 				class: 'btn btn-default volume-range',
 				id: `${server.id}_Volume_HOUR2`,
-				title: 'Show last hour',
-				text: '1 h'
+				title: 'Show last 60 minutes',
+				text: '60 m'
 			}).on('click', function () { chooseRange(server, 'HOUR') }),
 			$('<button>', {
 				class: 'btn btn-default volume-range',
@@ -249,18 +262,12 @@ var Statistics = (new function ($) {
 
 		$toolbar.append($phoneButtons);
 
-		var $tooltip = $('<div>', {
-			class: 'statistics__tooltip',
-			id: `${server.id}_Tooltip`,
-			text: 'Total'
-		});
-
 		var $chartBlock = $('<div>', {
 			class: 'statistics__chartblock',
 			id: `${server.id}_ChartBlock`
 		});
 
-		$container.append($toolbar, $tooltip, $chartBlock);
+		$container.append($toolbar, $chartBlock);
 
 		return $container;
 	}
@@ -332,30 +339,47 @@ var Statistics = (new function ($) {
 			sumLo += bytes.SizeLo;
 		}
 
-		function drawFiveMinuteGraph() {
+		function drawMinuteGraph()
+		{
 			// the current slot may be not fully filled yet,
 			// to make the chart smoother for current slot we use the data from the previous reading
 			// and we show the previous slot as current.
 			curPoint = servervolumes[serverNo].SecSlot;
-			for (var i = 0; i < 60; i++) {
+			for (var i = 0; i < 60; i++)
+			{
 				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
 					i + 's', i % 10 == 0 || i == 59 ? i : '');
 			}
-			if (prevServervolumes !== null) {
-				curPoint = curPoint > 0 ? curPoint - 1 : 59;
+			if (prevServervolumes !== null)
+			{
+				curPoint = curPoint > 0 ? curPoint-1 : 59;
 			}
 		}
 
-		function drawHourGraph() {
-			for (var i = 0; i < 60; i++) {
+		function drawFiveMinuteGraph() {
+			var minSlot = servervolumes[serverNo].MinSlot;
+			for (var i = 0; i < 5; i++) {
+				var index = minSlot - (minSlot % 5) + i;
+				addData(servervolumes[serverNo].BytesPerMinutes[index], i, i);
+			}
+
+			curPoint = minSlot % 5;
+		}
+
+		function drawHourGraph()
+		{
+			for (var i = 0; i < 60; i++)
+			{
 				addData(servervolumes[serverNo].BytesPerMinutes[i],
 					i + 'm', i % 10 == 0 || i == 59 ? i : '');
 			}
 			curPoint = servervolumes[serverNo].MinSlot;
 		}
 
-		function drawDayGraph() {
-			for (var i = 0; i < 24; i++) {
+		function drawDayGraph()
+		{
+			for (var i = 0; i < 24; i++)
+			{
 				addData(servervolumes[serverNo].BytesPerHours[i],
 					i + 'h', i % 3 == 0 || i == 23 ? i : '');
 			}
@@ -363,6 +387,9 @@ var Statistics = (new function ($) {
 		}
 
 		if (curRange === 'MIN') {
+			drawMinuteGraph();
+		}
+		else if (curRange === '5MIN') {
 			drawFiveMinuteGraph();
 		}
 		else if (curRange === 'HOUR') {
@@ -474,68 +501,8 @@ var Statistics = (new function ($) {
 						}
 					}
 				},
-				mousearea: {
-					type: 'axis',
-					onMouseOver: function (env, serie, index, mouseAreaData) {
-						chartMouseOver(server, env, serie, index, mouseAreaData);
-					},
-					onMouseExit: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-					onMouseOut: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-				},
 			}
 		});
-
-		simulateMouseEvent(server);
-	}
-
-	function chartMouseOver(server, env, serie, index, mouseAreaData) {
-		if (mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
-		}
-
-		var tooltip = $(`#${server.id}_Tooltip`);
-		if (!tooltip)
-			return;
-
-		mouseOverIndex = index;
-		tooltip.html(server.chartData.dataLabels[index] + ': <span class="stat-size">' +
-			Util.formatSizeMB(server.chartData.serieDataMB[index], server.chartData.serieDataLo[index]) + '</span>');
-	}
-
-	function chartMouseExit(server, env, serie, index, mouseAreaData) {
-		var tooltip = $(`#${server.id}_Tooltip`);
-		if (!tooltip)
-			return;
-
-		mouseOverIndex = -1;
-		var title = server.curRange === 'MIN' ? '5 minutes' :
-			server.curRange === 'HOUR' ? '60 minutes' :
-				server.curRange === 'DAY' ? '24 hours' : '';
-
-		tooltip.html(title + '<span class="stat-size">' + Util.formatSizeMB(server.chartData.sumMB, server.chartData.sumLo) + '</span>');
-	}
-
-	function simulateMouseEvent(server) {
-		if (mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOverArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
-		}
-		else {
-			chartMouseExit(server)
-		}
 	}
 
 	function chooseRange(server, range) {
