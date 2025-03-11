@@ -45,7 +45,6 @@ var Statistics = (new function ($) {
 	var servervolumes = null;
 	var prevServervolumes = null;
 	var serverVolumesLoaded = false;
-	var mouseOverIndex = -1;
 
 	var optionsHandler = {
 		update: function () {
@@ -288,10 +287,6 @@ var Statistics = (new function ($) {
 		}
 	}
 
-	function size64(size) {
-		return size.SizeMB < 2000 ? size.SizeLo / 1024.0 / 1024.0 : size.SizeMB;
-	}
-
 	function redrawChart(server) {
 		if (!server)
 			return;
@@ -301,22 +296,22 @@ var Statistics = (new function ($) {
 
 		var lineLabels = [];
 		var dataLabels = [];
-		var chartDataTB = [];
-		var chartDataGB = [];
-		var chartDataMB = [];
-		var chartDataKB = [];
-		var chartDataB = [];
+		var chartSpeedTb = [];
+		var chartSpeedGb = [];
+		var chartSpeedMb = [];
+		var chartSpeedKb = [];
+		var chartSpeedB = [];
 		var curPoint = null;
-		var sumMB = 0;
+		var sumMb = 0;
 		var sumLo = 0;
-		var maxSizeMB = 0;
+		var maxSizeMb = 0;
 		var maxSizeLo = 0;
 
-		function addData(bytes, dataLab, lineLab) {
+		function addData(data, dataLab, lineLab, timeIntervalSeconds) {
 			dataLabels.push(dataLab);
 			lineLabels.push(lineLab);
 
-			if (bytes === null) {
+			if (data === null) {
 				chartDataTB.push(null);
 				chartDataGB.push(null);
 				chartDataMB.push(null);
@@ -324,35 +319,35 @@ var Statistics = (new function ($) {
 				chartDataB.push(null);
 				return;
 			}
-			chartDataTB.push(bytes.SizeMB / 1024.0 / 1024.0);
-			chartDataGB.push(bytes.SizeMB / 1024.0);
-			chartDataMB.push(size64(bytes));
-			chartDataKB.push(bytes.SizeLo / 1024.0);
-			chartDataB.push(bytes.SizeLo);
-			if (bytes.SizeMB > maxSizeMB) {
-				maxSizeMB = bytes.SizeMB;
+			var speedMb = (data.SizeMB / timeIntervalSeconds) * 8;
+			var speedLoMb = (data.SizeLo / timeIntervalSeconds) * 8;
+
+			chartSpeedTb.push(speedMb / 1024.0 / 1024.0);
+			chartSpeedGb.push(speedMb / 1024.0);
+			chartSpeedMb.push(speedMb);
+			chartSpeedKb.push(speedMb * 1024.0);
+			chartSpeedB.push(speedMb * 1024.0 * 1024.0);
+			if (speedMb > maxSizeMb) {
+				maxSizeMb = speedMb;
 			}
-			if (bytes.SizeLo > maxSizeLo) {
-				maxSizeLo = bytes.SizeLo;
+			if (speedLoMb > maxSizeLo) {
+				maxSizeLo = speedLoMb;
 			}
-			sumMB += bytes.SizeMB;
-			sumLo += bytes.SizeLo;
+			sumMb += speedMb;
+			sumLo += speedLoMb;
 		}
 
-		function drawMinuteGraph()
-		{
+		function drawMinuteGraph() {
 			// the current slot may be not fully filled yet,
 			// to make the chart smoother for current slot we use the data from the previous reading
 			// and we show the previous slot as current.
 			curPoint = servervolumes[serverNo].SecSlot;
-			for (var i = 0; i < 60; i++)
-			{
+			for (var i = 0; i < 60; i++) {
 				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
-					i + 's', i % 10 == 0 || i == 59 ? i : '');
+					i + 's', i % 10 == 0 || i == 59 ? i : '', 1);
 			}
-			if (prevServervolumes !== null)
-			{
-				curPoint = curPoint > 0 ? curPoint-1 : 59;
+			if (prevServervolumes !== null) {
+				curPoint = curPoint > 0 ? curPoint - 1 : 59;
 			}
 		}
 
@@ -360,28 +355,24 @@ var Statistics = (new function ($) {
 			var minSlot = servervolumes[serverNo].MinSlot;
 			for (var i = 0; i < 5; i++) {
 				var index = minSlot - (minSlot % 5) + i;
-				addData(servervolumes[serverNo].BytesPerMinutes[index], i, i);
+				addData(servervolumes[serverNo].BytesPerMinutes[index], i, i, 60);
 			}
 
 			curPoint = minSlot % 5;
 		}
 
-		function drawHourGraph()
-		{
-			for (var i = 0; i < 60; i++)
-			{
+		function drawHourGraph() {
+			for (var i = 0; i < 60; i++) {
 				addData(servervolumes[serverNo].BytesPerMinutes[i],
-					i + 'm', i % 10 == 0 || i == 59 ? i : '');
+					i, i % 10 == 0 || i == 59 ? i : '', 60);
 			}
 			curPoint = servervolumes[serverNo].MinSlot;
 		}
 
-		function drawDayGraph()
-		{
-			for (var i = 0; i < 24; i++)
-			{
+		function drawDayGraph() {
+			for (var i = 0; i < 24; i++) {
 				addData(servervolumes[serverNo].BytesPerHours[i],
-					i + 'h', i % 3 == 0 || i == 23 ? i : '');
+					i, i % 3 == 0 || i == 23 ? i : '', 3600);
 			}
 			curPoint = servervolumes[serverNo].HourSlot;
 		}
@@ -399,26 +390,26 @@ var Statistics = (new function ($) {
 			drawDayGraph();
 		}
 
-		var serieData = maxSizeMB > 1024 * 1024 ? chartDataTB :
-			maxSizeMB > 1024 ? chartDataGB :
-				maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
-					maxSizeLo > 1024 ? chartDataKB : chartDataB;
+		var serieData = maxSizeMb >= 1024 * 1024 ? chartSpeedTb :
+			maxSizeMb >= 1024 ? chartSpeedGb :
+				maxSizeMb >= 1 ? chartSpeedMb :
+					chartSpeedKb;
 
-		var units = maxSizeMB > 1024 * 1024 ? ' TB' :
-			maxSizeMB > 1024 ? ' GB' :
-				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
-					maxSizeLo > 1024 ? ' KB' : ' B';
+		var units = maxSizeMb >= 1024 * 1024 ? ' Tb/s' :
+			maxSizeMb >= 1024 ? ' Gb/s' :
+				maxSizeMb >= 1 ? ' Mb/s' :
+					' Kb/s';
 
 		var curPointData = [];
-		for (var i = 0; i < serieData.length; i++) {
+		for (var i = 0; i < serieData.length; ++i) {
 			curPointData.push(i === curPoint ? serieData[i] : null);
 		}
 
 		server.chartData = {
 			serieData: serieData,
-			serieDataMB: chartDataMB,
-			serieDataLo: chartDataB,
-			sumMB: sumMB,
+			serieDataMB: chartSpeedMb,
+			serieDataLo: chartSpeedB,
+			sumMB: sumMb,
 			sumLo: sumLo,
 			dataLabels: dataLabels,
 			range: curRange
@@ -434,7 +425,7 @@ var Statistics = (new function ($) {
 			values: { serie1: serieData, serie2: curPointData },
 			labels: lineLabels,
 			type: 'line',
-			margins: [10, 15, 20, 60],
+			margins: [10, 15, 20, 70],
 			defaultSeries: {
 				rounded: 0.5,
 				fill: true,
@@ -508,7 +499,6 @@ var Statistics = (new function ($) {
 	function chooseRange(server, range) {
 		updateRangeButtons(server, range);
 		server.chartData.range = range;
-		mouseOverIndex = -1;
 		redrawChart(server);
 	}
 
