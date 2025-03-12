@@ -389,7 +389,7 @@ var Statistics = (new function ($) {
 			curPoint = servervolumes[serverNo].SecSlot;
 			for (var i = 0; i < 60; i++) {
 				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
-					i + 's', i % 10 == 0 || i == 59 ? i : '', 1);
+					'', '', 1);
 			}
 			if (prevServervolumes !== null) {
 				curPoint = curPoint > 0 ? curPoint - 1 : 59;
@@ -400,7 +400,7 @@ var Statistics = (new function ($) {
 			var minSlot = servervolumes[serverNo].MinSlot;
 			for (var i = 0; i < 5; i++) {
 				var index = minSlot - (minSlot % 5) + i;
-				addData(servervolumes[serverNo].BytesPerMinutes[index], i, i, 60);
+				addData(servervolumes[serverNo].BytesPerMinutes[index], '', '', 60);
 			}
 
 			curPoint = minSlot % 5;
@@ -408,16 +408,14 @@ var Statistics = (new function ($) {
 
 		function drawHourGraph() {
 			for (var i = 0; i < 60; i++) {
-				addData(servervolumes[serverNo].BytesPerMinutes[i],
-					i, i % 10 == 0 || i == 59 ? i : '', 60);
+				addData(servervolumes[serverNo].BytesPerMinutes[i], '', '', 60);
 			}
 			curPoint = servervolumes[serverNo].MinSlot;
 		}
 
 		function drawDayGraph() {
 			for (var i = 0; i < 24; i++) {
-				addData(servervolumes[serverNo].BytesPerHours[i],
-					i, i % 3 == 0 || i == 23 ? i : '', 3600);
+				addData(servervolumes[serverNo].BytesPerHours[i], '', '', 3600);
 			}
 			curPoint = servervolumes[serverNo].HourSlot;
 		}
@@ -480,7 +478,7 @@ var Statistics = (new function ($) {
 				dot: true,
 				dotProps: {
 					stroke: '#FFF',
-					size: 3.0,
+					size: 0.0,
 					'stroke-width': 1.0,
 					fill: '#5AF'
 				},
