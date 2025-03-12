@@ -32,7 +32,7 @@ var Statistics = (new function ($) {
 		this.successArticles = [];
 		this.failedArticles = [];
 		this.chartData = {
-			range: "5MIN"
+			range: "MIN"
 		};
 	}
 
@@ -51,8 +51,26 @@ var Statistics = (new function ($) {
 			if (optionsLoaded)
 				return;
 
+			var id = 1;
+			var server = Options.getServerById(id);
+
+			while (server) {
+				var newServer = new Server();
+				newServer.id = id;
+				newServer.connections = server.connections;
+				newServer.host = server.host;
+				newServer.name = server.name;
+				newServer.port = server.port;
+				newServer.active = server.active;
+				serverStats[newServer.id] = newServer;
+				++id;
+				server = Options.getServerById(id);
+			}
+
 			optionsLoaded = true;
 			RPC.call('servervolumes', [], fistServervolumesLoaded);
+
+			renderServers(serverStats);
 		}
 	}
 	var historyHandler =
@@ -61,9 +79,15 @@ var Statistics = (new function ($) {
 			if (historyLen === data.length || (!optionsLoaded || !serverVolumesLoaded))
 				return;
 
-			$StatisticsTable.empty();
-			serverStats = {};
 			historyLen = data.length;
+
+			for (var key in serverStats) {
+				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
+					var stats = serverStats[key];
+					stats.successArticles = [];
+					stats.failedArticles = [];
+				}
+			}
 
 			data.forEach(el => {
 				el.ServerStats.forEach((stats) => {
@@ -102,10 +126,7 @@ var Statistics = (new function ($) {
 				}
 			}
 
-			$StatisticsSpinner.hide();
-			$StatisticsTable.show();
-
-			renderServers(serverStats);
+			updateRenderedServers(serverStats);
 		}
 	}
 
@@ -141,6 +162,9 @@ var Statistics = (new function ($) {
 		prevServervolumes = volumes;
 		servervolumes = volumes;
 		serverVolumesLoaded = true;
+
+		$StatisticsSpinner.hide();
+		$StatisticsTable.show();
 	}
 
 	function renderServers(servers) {
@@ -152,8 +176,8 @@ var Statistics = (new function ($) {
 	}
 
 	function renderServer(server) {
-		var $serverDetailHtml = $(makeServerDetails(server));
-		var $statsChartHtml = makeStatsChart(server);
+		var $serverDetailHtml = $(makeServerDetailsTemplate(server));
+		var $statsChartHtml = $(makeChartTemplate(server));
 
 		var $container = $('<div>', { class: 'flex-center' }).css('flex-wrap', 'wrap');
 		$serverDetailHtml.css('flex-grow', '1');
@@ -163,31 +187,52 @@ var Statistics = (new function ($) {
 		$StatisticsTable.append($container, '<hr>');
 	}
 
-	function makeServerDetails(serverData) {
-		var successSum = serverData.successArticles.reduce((a, b) => a + b, 0);
-		var failedSum = serverData.failedArticles.reduce((a, b) => a + b, 0);
-		var completion = successSum + failedSum > 0 ? Util.round0(successSum * 100.0 / (successSum + failedSum)) + '%' : '--';
-		if (failedSum > 0 && completion === '100%') {
-			completion = '99.9%';
-		}
-
+	function makeServerDetailsTemplate(server) {
 		var html = '<table class="statistics__server-details table table-condensed table-bordered table-fixed">';
-		html += '<tr><td><h4>Name:</h4></th><td>' + serverData.name + '</td></tr>';
-		html += '<tr><td><h4>Host:</h4></td><td>' + serverData.host + '</td></tr>';
-		html += '<tr><td><h4>Connections:</h4></td><td>' + serverData.connections + '</td></tr>';
-		html += '<tr><td><h4>Success Articles:</h4></td><td>' + Util.formatNumber(successSum) + '</td></tr>';
-		html += '<tr><td><h4>Failed Articles:</h4></td><td>' + Util.formatNumber(failedSum) + '</td></tr>';
-		html += '<tr><td><h4>Total downloaded:</h4></td><td>' + Util.formatSizeMB(serverData.totalSizeMB) + '</td></tr>';
-		html += '<tr><td><h4>Completion:</h4></td><td>' + completion + '</td></tr>';
+		html += `<tr><td><h4>Name:</h4></th><td>${server.name}</td></tr>`;
+		html += `<tr><td><h4>Host:</h4></td><td>${server.host}</td></tr>`;
+		html += `<tr><td><h4>Active:</h4></td><td>${server.active ? "Yes" : "No"}</td></tr>`;
+		html += `<tr><td><h4>Connections:</h4></td><td>${server.connections}</td></tr>`;
+		html += `<tr><td><h4>Success Articles:</h4></td><td id="${server.id}_SuccessArticles"></td></tr>`;
+		html += `<tr><td><h4>Failed Articles:</h4></td><td id="${server.id}_FailedArticles"></td></tr>`;
+		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownlaoded"></td></tr>`;
+		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion"></td></tr>`;
 		html += '</table>';
 
 		return html;
 	}
 
-	function makeStatsChart(server) {
+	function updateRenderedServers(servers) {
+		for (var key in servers) {
+			if (Object.prototype.hasOwnProperty.call(servers, key)) {
+				updateServerDetails(servers[key]);
+			}
+		}
+	}
+
+	function updateServerDetails(server) {
+		var successSum = 0;
+		var failedSum = 0;
+		var len = server.successArticles.length;
+		for (var i = 0; i < len; i++) {
+			successSum += server.successArticles[i];
+			failedSum += server.failedArticles[i];
+		}
+
+		var completion = successSum + failedSum > 0 ? Util.round0(successSum * 100.0 / (successSum + failedSum)) + '%' : '--';
+		if (failedSum > 0 && completion === '100%') {
+			completion = '99.9%';
+		}
+
+		$(`#${server.id}_SuccessArticles`).text(Util.formatNumber(successSum));
+		$(`#${server.id}_FailedArticles`).text(Util.formatNumber(failedSum));
+		$(`#${server.id}_TotalDownlaoded`).text(Util.formatSizeMB(server.totalSizeMB));
+		$(`#${server.id}_Completion`).text(completion);
+	}
+
+	function makeChartTemplate(server) {
 		var $container = $('<div>', {
 			class: 'statistics',
-			id: `${server.id}_VolumesTab`
 		});
 
 		var $toolbar = $('<div>', {
@@ -201,14 +246,14 @@ var Statistics = (new function ($) {
 		});
 
 		var $minButton = $('<button>', {
-			class: 'btn btn-default volume-range',
+			class: 'btn btn-default btn-active volume-range',
 			id: `${server.id}_Volume_MIN`,
 			title: 'Show last 60 seconds',
 			text: '60 Seconds'
 		}).on('click', function () { chooseRange(server, 'MIN') });
 
 		var $5minButton = $('<button>', {
-			class: 'btn btn-default btn-active volume-range',
+			class: 'btn btn-default volume-range',
 			id: `${server.id}_Volume_5MIN`,
 			title: 'Show last 5 minutes',
 			text: '5 Minutes'
@@ -234,13 +279,13 @@ var Statistics = (new function ($) {
 
 		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
 			$('<button>', {
-				class: 'btn btn-default volume-range',
+				class: 'btn btn-default btn-active volume-range',
 				id: `${server.id}_Volume_MIN2`,
 				title: 'Show last 60 seconds',
 				text: '60 s'
 			}).on('click', function () { chooseRange(server, 'MIN') }),
 			$('<button>', {
-				class: 'btn btn-default btn-active volume-range',
+				class: 'btn btn-default volume-range',
 				id: `${server.id}_Volume_5MIN2`,
 				title: 'Show last 5 minutes',
 				text: '5 m'

@@ -107,7 +107,11 @@ var Options = (new function($)
 
 		server.id = id;
 		var serverId = 'Server' + id;
-		server.host = findOption(this.options, serverId + '.Host').Value;
+		var hostOpt = findOption(this.options, serverId + '.Host');
+		if (!hostOpt)
+			return null;
+
+		server.host = hostOpt.Value;
 		server.name = findOption(this.options, serverId + '.Name').Value;
 		server.port = findOption(this.options, serverId + '.Port').Value;
 		server.active = findOption(this.options, serverId + '.Active').Value == 'yes';
