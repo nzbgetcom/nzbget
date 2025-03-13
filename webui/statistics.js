@@ -43,8 +43,8 @@ var Statistics = (new function ($) {
 	var historyLen = null;
 	var optionsLoaded = false;
 	var servervolumes = null;
-	var prevServervolumes = null;
 	var serverVolumesLoaded = false;
+	var mouseOverIndex = -1;
 
 	var optionsHandler = {
 		update: function () {
@@ -81,41 +81,16 @@ var Statistics = (new function ($) {
 
 			historyLen = data.length;
 
-			for (var key in serverStats) {
-				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
-					var stats = serverStats[key];
-					stats.successArticles = [];
-					stats.failedArticles = [];
-				}
-			}
+			clearArticles(serverStats);
 
 			data.forEach(el => {
 				el.ServerStats.forEach((stats) => {
 					if (serverStats[stats.ServerID]) {
 						serverStats[stats.ServerID].successArticles.push(stats.SuccessArticles);
 						serverStats[stats.ServerID].failedArticles.push(stats.FailedArticles);
-					} else {
-						var server = new Server();
-						server.id = stats.ServerID;
-						server.successArticles.push(stats.SuccessArticles);
-						server.failedArticles.push(stats.FailedArticles);
-						serverStats[server.id] = server;
 					}
 				});
 			});
-			for (var key in serverStats) {
-				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
-					var stats = serverStats[key];
-					var server = Options.getServerById(stats.id)
-					if (server) {
-						stats.connections = server.connections;
-						stats.host = server.host;
-						stats.name = server.name;
-						stats.port = server.port;
-						stats.active = server.active;
-					}
-				}
-			}
 
 			for (var key in serverStats) {
 				if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
@@ -155,11 +130,20 @@ var Statistics = (new function ($) {
 	function filterInput() { }
 	function filterClear() { }
 
+	function clearArticles(serverStats) {
+		for (var key in serverStats) {
+			if (Object.prototype.hasOwnProperty.call(serverStats, key)) {
+				var stats = serverStats[key];
+				stats.successArticles = [];
+				stats.failedArticles = [];
+			}
+		}
+	}
+
 	function fistServervolumesLoaded(volumes) {
 		if (serverVolumesLoaded)
 			return;
 
-		prevServervolumes = volumes;
 		servervolumes = volumes;
 		serverVolumesLoaded = true;
 
@@ -193,8 +177,7 @@ var Statistics = (new function ($) {
 		html += `<tr><td><h4>Host:</h4></td><td>${server.host}</td></tr>`;
 		html += `<tr><td><h4>Active:</h4></td><td>${server.active ? "Yes" : "No"}</td></tr>`;
 		html += `<tr><td><h4>Connections:</h4></td><td>${server.connections}</td></tr>`;
-		html += `<tr><td><h4>Success Articles:</h4></td><td id="${server.id}_SuccessArticles"></td></tr>`;
-		html += `<tr><td><h4>Failed Articles:</h4></td><td id="${server.id}_FailedArticles"></td></tr>`;
+		html += `<tr><td><h4>Articles Success/Failed:</h4></td><td id="${server.id}_Articles"></td></tr>`;
 		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownlaoded"></td></tr>`;
 		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion"></td></tr>`;
 		html += '</table>';
@@ -224,8 +207,15 @@ var Statistics = (new function ($) {
 			completion = '99.9%';
 		}
 
-		$(`#${server.id}_SuccessArticles`).text(Util.formatNumber(successSum));
-		$(`#${server.id}_FailedArticles`).text(Util.formatNumber(failedSum));
+		var $successArticles = $(`<span>${Util.formatNumber(successSum)}</span>`);
+		$successArticles.addClass('txt-success');
+		var $failedArticles = $(`<span>${Util.formatNumber(failedSum)}</span>`);
+		$failedArticles.addClass('txt-important');
+		var $articles = $(`#${server.id}_Articles`);
+		$articles.empty();
+		$articles.append($successArticles, " / ", $failedArticles);
+
+		$(`#${server.id}_FailedArticles`).text();
 		$(`#${server.id}_TotalDownlaoded`).text(Util.formatSizeMB(server.totalSizeMB));
 		$(`#${server.id}_Completion`).text(completion);
 	}
@@ -306,20 +296,27 @@ var Statistics = (new function ($) {
 
 		$toolbar.append($phoneButtons);
 
+
+		var $tooltip = $('<div>', {
+			class: 'statistics__tooltip',
+			id: `${server.id}_Tooltip`,
+			text: '--'
+		});
+
 		var $chartBlock = $('<div>', {
 			class: 'statistics__chartblock',
 			id: `${server.id}_ChartBlock`
 		});
 
-		$container.append($toolbar, $chartBlock);
+		$container.append($toolbar, $tooltip, $chartBlock);
 
 		return $container;
 	}
 
 	function servervolumesLoaded(volumes) {
-		prevServervolumes = servervolumes;
 		servervolumes = volumes;
 		redrawCharts(serverStats);
+		updateRenderedServers(serverStats);
 	}
 
 	function redrawCharts(serverStats) {
@@ -330,6 +327,10 @@ var Statistics = (new function ($) {
 				redrawChart(server);
 			}
 		}
+	}
+
+	function size64(size) {
+		return size.SizeMB < 2000 ? size.SizeLo / 1024.0 / 1024.0 : size.SizeMB;
 	}
 
 	function redrawChart(server) {
@@ -352,10 +353,7 @@ var Statistics = (new function ($) {
 		var maxSizeMb = 0;
 		var maxSizeLo = 0;
 
-		function addData(data, dataLab, lineLab, timeIntervalSeconds) {
-			dataLabels.push(dataLab);
-			lineLabels.push(lineLab);
-
+		function addData(data, timeIntervalSeconds) {
 			if (data === null) {
 				chartDataTB.push(null);
 				chartDataGB.push(null);
@@ -364,7 +362,8 @@ var Statistics = (new function ($) {
 				chartDataB.push(null);
 				return;
 			}
-			var speedMb = (data.SizeMB / timeIntervalSeconds) * 8;
+			var sizeMB = size64(data);
+			var speedMb = (sizeMB / timeIntervalSeconds) * 8;
 			var speedLoMb = (data.SizeLo / timeIntervalSeconds) * 8;
 
 			chartSpeedTb.push(speedMb / 1024.0 / 1024.0);
@@ -378,46 +377,56 @@ var Statistics = (new function ($) {
 			if (speedLoMb > maxSizeLo) {
 				maxSizeLo = speedLoMb;
 			}
+
 			sumMb += speedMb;
 			sumLo += speedLoMb;
 		}
+		function rerangeCircularBuffer(buffer, currentSlot) {
+			const rearranged = [];
+
+			for (var i = currentSlot + 1; i < buffer.length; i++) {
+				rearranged.push(buffer[i]);
+			}
+
+			for (var i = 0; i <= currentSlot; i++) {
+				rearranged.push(buffer[i]);
+			}
+
+			return rearranged;
+		}
 
 		function drawMinuteGraph() {
-			// the current slot may be not fully filled yet,
-			// to make the chart smoother for current slot we use the data from the previous reading
-			// and we show the previous slot as current.
-			curPoint = servervolumes[serverNo].SecSlot;
-			for (var i = 0; i < 60; i++) {
-				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
-					'', '', 1);
+			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerSeconds, servervolumes[serverNo].SecSlot);
+			for (var i = 0; i < buffer.length; i++) {
+				addData(buffer[i], 1);
 			}
-			if (prevServervolumes !== null) {
-				curPoint = curPoint > 0 ? curPoint - 1 : 59;
-			}
+
+			curPoint = 59;
 		}
 
 		function drawFiveMinuteGraph() {
-			var minSlot = servervolumes[serverNo].MinSlot;
-			for (var i = 0; i < 5; i++) {
-				var index = minSlot - (minSlot % 5) + i;
-				addData(servervolumes[serverNo].BytesPerMinutes[index], '', '', 60);
+			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerMinutes, servervolumes[serverNo].MinSlot);
+			for (var i = buffer.length - 5; i < buffer.length; i++) {
+				addData(buffer[i], 60);
 			}
 
-			curPoint = minSlot % 5;
+			curPoint = 4;
 		}
 
 		function drawHourGraph() {
-			for (var i = 0; i < 60; i++) {
-				addData(servervolumes[serverNo].BytesPerMinutes[i], '', '', 60);
+			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerMinutes, servervolumes[serverNo].MinSlot);
+			for (var i = 0; i < buffer.length; i++) {
+				addData(buffer[i], 60 * 60);
 			}
-			curPoint = servervolumes[serverNo].MinSlot;
+			curPoint = 59;
 		}
 
 		function drawDayGraph() {
-			for (var i = 0; i < 24; i++) {
-				addData(servervolumes[serverNo].BytesPerHours[i], '', '', 3600);
+			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerDays, servervolumes[serverNo].DaySlot);
+			for (var i = 0; i < buffer.length; i++) {
+				addData(buffer[i], 60 * 60 * 24);
 			}
-			curPoint = servervolumes[serverNo].HourSlot;
+			curPoint = buffer.length - 1;
 		}
 
 		if (curRange === 'MIN') {
@@ -435,13 +444,11 @@ var Statistics = (new function ($) {
 
 		var serieData = maxSizeMb >= 1024 * 1024 ? chartSpeedTb :
 			maxSizeMb >= 1024 ? chartSpeedGb :
-				maxSizeMb >= 1 ? chartSpeedMb :
-					chartSpeedKb;
+				maxSizeMb >= 1 ? chartSpeedMb : chartSpeedKb;
 
-		var units = maxSizeMb >= 1024 * 1024 ? ' Tb/s' :
-			maxSizeMb >= 1024 ? ' Gb/s' :
-				maxSizeMb >= 1 ? ' Mb/s' :
-					' Kb/s';
+		var units = maxSizeMb >= 1024 * 1024 ? ' Tbit/s' :
+			maxSizeMb >= 1024 ? ' Gbit/s' :
+				maxSizeMb >= 1 ? ' Mbit/s' : ' Kbit/s';
 
 		var curPointData = [];
 		for (var i = 0; i < serieData.length; ++i) {
@@ -455,7 +462,9 @@ var Statistics = (new function ($) {
 			sumMB: sumMb,
 			sumLo: sumLo,
 			dataLabels: dataLabels,
-			range: curRange
+			range: curRange,
+			currSpeed: chartSpeedMb[curPoint] * 1024 * 1024,
+			units: units
 		};
 
 		var chartBlock = $(`#${server.id}_ChartBlock`);
@@ -497,7 +506,7 @@ var Statistics = (new function ($) {
 					dotProps: {
 						stroke: '#F21860',
 						fill: '#F21860',
-						size: 3.5,
+						size: 1.5,
 						'stroke-width': 2.5
 					},
 					highlight: {
@@ -535,13 +544,71 @@ var Statistics = (new function ($) {
 						}
 					}
 				},
-			}
+			},
+			mousearea: {
+				type: 'axis',
+				onMouseOver: function (env, serie, index, mouseAreaData) {
+					//chartMouseOver(server, env, serie, index, mouseAreaData);
+				},
+				onMouseExit: function (env, serie, index, mouseAreaData) {
+					chartMouseExit(server, env, serie, index, mouseAreaData);
+				},
+				onMouseOut: function (env, serie, index, mouseAreaData) {
+					chartMouseExit(server, env, serie, index, mouseAreaData);
+				},
+			},
 		});
+
+		simulateMouseEvent(server);
+	}
+
+	// function chartMouseOver(server, env, serie, index, mouseAreaData) {
+	// 	if (mouseOverIndex > -1) {
+	// 		var chart = $(`#${server.id}_Chart`);
+	// 		if (!chart)
+	// 			return;
+
+	// 		var env = chart.data('elycharts_env');
+	// 		$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
+	// 	}
+
+	// 	var tooltip = $(`#${server.id}_Tooltip`);
+	// 	if (!tooltip)
+	// 		return;
+
+	// 	mouseOverIndex = index;
+	// 	tooltip.html('<span class="stat-size">' + 'test' + '</span>');
+	// }
+
+	function chartMouseExit(server, env, serie, index, mouseAreaData) {
+		var tooltip = $(`#${server.id}_Tooltip`);
+		if (!tooltip)
+			return;
+
+		mouseOverIndex = -1;
+
+		var title = server.chartData.currSpeed > 0 ? Util.formatSpeedWithCustomUnit(server.chartData.currSpeed, 'bit') : "0.0" + server.chartData.units;
+		tooltip.html('<span class="stat-size">' + title + '</span>');
+	}
+
+	function simulateMouseEvent(server) {
+		if (mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			$.elycharts.mousemanager.onMouseOverArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
+		}
+		else {
+			chartMouseExit(server)
+		}
 	}
 
 	function chooseRange(server, range) {
 		updateRangeButtons(server, range);
 		server.chartData.range = range;
+		mouseOverIndex = -1;
 		redrawChart(server);
 	}
 

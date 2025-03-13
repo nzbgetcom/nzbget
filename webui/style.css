@@ -51,6 +51,14 @@ body {
 	padding-right: 0;
 }
 
+.txt-success {
+	color: #468847;
+}
+
+.txt-important {
+	color: #b94a48;
+}
+
 .flex-center {
 	display: flex;
 	align-items: center;
