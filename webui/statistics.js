@@ -256,15 +256,7 @@ var Statistics = (new function ($) {
 			text: '60 Minutes'
 		}).on('click', function () { chooseRange(server, 'HOUR') });
 
-		var $dayButton = $('<button>', {
-			class: 'btn btn-default volume-range',
-			id: `${server.id}_Volume_DAY`,
-			title: 'Show last 24 hours',
-			text: '24 Hours'
-		}).on('click', function () { chooseRange(server, 'DAY') });
-
-
-		$timeBlockTop.append($minButton, $5minButton, $hourButton, $dayButton);
+		$timeBlockTop.append($minButton, $5minButton, $hourButton);
 		$toolbar.append($timeBlockTop);
 
 		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
@@ -286,12 +278,6 @@ var Statistics = (new function ($) {
 				title: 'Show last 60 minutes',
 				text: '60 m'
 			}).on('click', function () { chooseRange(server, 'HOUR') }),
-			$('<button>', {
-				class: 'btn btn-default volume-range',
-				id: `${server.id}_Volume_DAY2`,
-				title: 'Show last 24 hours',
-				text: '24 h'
-			}).on('click', function () { chooseRange(server, 'DAY') }),
 		);
 
 		$toolbar.append($phoneButtons);
@@ -396,7 +382,10 @@ var Statistics = (new function ($) {
 		}
 
 		function drawMinuteGraph() {
-			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerSeconds, servervolumes[serverNo].SecSlot);
+			var buffer = rerangeCircularBuffer(
+				servervolumes[serverNo].BytesPerSeconds,
+				servervolumes[serverNo].SecSlot
+			);
 			for (var i = 0; i < buffer.length; i++) {
 				addData(buffer[i], 1);
 			}
@@ -405,8 +394,12 @@ var Statistics = (new function ($) {
 		}
 
 		function drawFiveMinuteGraph() {
-			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerMinutes, servervolumes[serverNo].MinSlot);
-			for (var i = buffer.length - 5; i < buffer.length; i++) {
+			var buffer = rerangeCircularBuffer(
+				servervolumes[serverNo].BytesPerMinutes,
+				servervolumes[serverNo].MinSlot
+			);
+
+			for (var i = 55; i < buffer.length; i++) {
 				addData(buffer[i], 60);
 			}
 
@@ -414,19 +407,14 @@ var Statistics = (new function ($) {
 		}
 
 		function drawHourGraph() {
-			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerMinutes, servervolumes[serverNo].MinSlot);
+			var buffer = rerangeCircularBuffer(
+				servervolumes[serverNo].BytesPerMinutes,
+				servervolumes[serverNo].MinSlot
+			);
 			for (var i = 0; i < buffer.length; i++) {
-				addData(buffer[i], 60 * 60);
+				addData(buffer[i], 60);
 			}
 			curPoint = 59;
-		}
-
-		function drawDayGraph() {
-			var buffer = rerangeCircularBuffer(servervolumes[serverNo].BytesPerDays, servervolumes[serverNo].DaySlot);
-			for (var i = 0; i < buffer.length; i++) {
-				addData(buffer[i], 60 * 60 * 24);
-			}
-			curPoint = buffer.length - 1;
 		}
 
 		if (curRange === 'MIN') {
@@ -437,9 +425,6 @@ var Statistics = (new function ($) {
 		}
 		else if (curRange === 'HOUR') {
 			drawHourGraph();
-		}
-		else if (curRange === 'DAY') {
-			drawDayGraph();
 		}
 
 		var serieData = maxSizeMb >= 1024 * 1024 ? chartSpeedTb :
@@ -456,14 +441,9 @@ var Statistics = (new function ($) {
 		}
 
 		server.chartData = {
-			serieData: serieData,
-			serieDataMB: chartSpeedMb,
-			serieDataLo: chartSpeedB,
-			sumMB: sumMb,
-			sumLo: sumLo,
-			dataLabels: dataLabels,
+			data: serieData,
+			currPoint: serieData[curPoint],
 			range: curRange,
-			currSpeed: chartSpeedMb[curPoint] * 1024 * 1024,
 			units: units
 		};
 
@@ -487,7 +467,7 @@ var Statistics = (new function ($) {
 				dot: true,
 				dotProps: {
 					stroke: '#FFF',
-					size: 0.0,
+					size: 3.0,
 					'stroke-width': 1.0,
 					fill: '#5AF'
 				},
@@ -506,7 +486,7 @@ var Statistics = (new function ($) {
 					dotProps: {
 						stroke: '#F21860',
 						fill: '#F21860',
-						size: 1.5,
+						size: 3.5,
 						'stroke-width': 2.5
 					},
 					highlight: {
@@ -544,17 +524,17 @@ var Statistics = (new function ($) {
 						}
 					}
 				},
-			},
-			mousearea: {
-				type: 'axis',
-				onMouseOver: function (env, serie, index, mouseAreaData) {
-					//chartMouseOver(server, env, serie, index, mouseAreaData);
-				},
-				onMouseExit: function (env, serie, index, mouseAreaData) {
-					chartMouseExit(server, env, serie, index, mouseAreaData);
-				},
-				onMouseOut: function (env, serie, index, mouseAreaData) {
-					chartMouseExit(server, env, serie, index, mouseAreaData);
+				mousearea: {
+					type: 'axis',
+					onMouseOver: function (env, serie, index, mouseAreaData) {
+						chartMouseOver(server, env, serie, index, mouseAreaData);
+					},
+					onMouseExit: function (env, serie, index, mouseAreaData) {
+						chartMouseExit(server, env, serie, index, mouseAreaData);
+					},
+					onMouseOut: function (env, serie, index, mouseAreaData) {
+						chartMouseExit(server, env, serie, index, mouseAreaData);
+					},
 				},
 			},
 		});
@@ -562,32 +542,38 @@ var Statistics = (new function ($) {
 		simulateMouseEvent(server);
 	}
 
-	// function chartMouseOver(server, env, serie, index, mouseAreaData) {
-	// 	if (mouseOverIndex > -1) {
-	// 		var chart = $(`#${server.id}_Chart`);
-	// 		if (!chart)
-	// 			return;
+	function chartMouseOver(server, env, serie, index, mouseAreaData) {
+		if (index === undefined)
+			return;
 
-	// 		var env = chart.data('elycharts_env');
-	// 		$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
-	// 	}
+		if (mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart`);
+			if (!chart)
+				return;
 
-	// 	var tooltip = $(`#${server.id}_Tooltip`);
-	// 	if (!tooltip)
-	// 		return;
+			var env = chart.data('elycharts_env');
+			$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
+		}
 
-	// 	mouseOverIndex = index;
-	// 	tooltip.html('<span class="stat-size">' + 'test' + '</span>');
-	// }
+		var tooltip = $(`#${server.id}_Tooltip`);
+		if (!tooltip)
+			return;
+
+		mouseOverIndex = index;
+		var title = server.chartData.units + " " + server.chartData.data[index].toFixed(1);
+		tooltip.html('<span class="stat-size">' + title + '</span>');
+	}
 
 	function chartMouseExit(server, env, serie, index, mouseAreaData) {
+		if (index === undefined)
+			return;
+
 		var tooltip = $(`#${server.id}_Tooltip`);
 		if (!tooltip)
 			return;
 
 		mouseOverIndex = -1;
-
-		var title = server.chartData.currSpeed > 0 ? Util.formatSpeedWithCustomUnit(server.chartData.currSpeed, 'bit') : "0.0" + server.chartData.units;
+		var title = server.chartData.units + " " + server.chartData.data[index].toFixed(1);
 		tooltip.html('<span class="stat-size">' + title + '</span>');
 	}
 
