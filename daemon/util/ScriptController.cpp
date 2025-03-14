@@ -237,38 +237,23 @@ void ScriptController::SetEnvVarSpecial(const char* prefix, const char* name, co
 #ifdef WIN32
 void ScriptController::PrepareArgs()
 {
-	const std::string& shellOverride = g_Options->GetShellOverride();
-	const auto res = Util::FindExecutorProgram(m_args[0].Str(), shellOverride);
+	if (m_args.empty()) return;
 
-	if (!res)
+	const std::string script = m_args[0].Str();
+	const std::string& shellOverride = g_Options->GetShellOverride();
+	const auto found = Util::FindExecutorProgram(script, shellOverride);
+	if (!found)
 	{
+		PrintMessage(Message::mkError, "No executor found for %s", script.c_str());
 		return;
 	}
 
-	*m_cmdLine = '\0';
+	const std::string exeProgram = std::move(found.value());
 
-	const std::string& exeProgram = res.value();
+	bool isDirectlyExecutable = exeProgram == script;
+	if (isDirectlyExecutable) return;
 
-	if (m_args.size() == 1)
-	{
-		m_args.emplace(m_args.begin(), exeProgram.c_str());
-	}
-
-	if (m_args.size() == 1)
-	{
-		debug("Command: %s", exeProgram.c_str());
-		DWORD_PTR args[] = { (DWORD_PTR)*m_args[0], (DWORD_PTR)0 };
-		if (FormatMessage(
-			FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY, 
-			exeProgram.c_str(), 0, 0,
-			m_cmdLine, sizeof(m_cmdLine), 
-			(va_list*)args))
-		{
-			Util::TrimRight(Util::ReduceStr(m_cmdLine, "*", ""));
-			debug("CmdLine: %s", m_cmdLine);
-			return;
-		}
-	}
+	m_args.emplace(m_args.begin(), exeProgram.c_str());
 }
 #endif
 
@@ -466,11 +451,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 #ifdef WIN32
 	char* cmdLine = m_cmdLine;
 	char cmdLineBuf[2048];
-	if (!*m_cmdLine)
-	{
-		BuildCommandLine(cmdLineBuf, sizeof(cmdLineBuf));
-		cmdLine = cmdLineBuf;
-	}
+	BuildCommandLine(cmdLineBuf, sizeof(cmdLineBuf));
+	cmdLine = cmdLineBuf;
 
 	debug("Starting process: %s", cmdLine);
 
