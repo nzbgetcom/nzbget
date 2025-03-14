@@ -55,6 +55,8 @@ ASUSTOR NAS package (ADM 4.3+) is available from the [nzbget-asustor](https://gi
 
 QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
 
+TrueNAS SCALE packages are available from the TrueNAS App catalog (community train).
+
 Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.md)
 
 ## Migration from older NZBGet versions
