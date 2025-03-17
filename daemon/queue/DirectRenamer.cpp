@@ -394,6 +394,11 @@ void DirectRenamer::RenameFiles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, 
 	RenameCompleted(downloadQueue, nzbInfo);
 }
 
+/**
+ * @brief Renames (metadata only) partially downloaded files using info from PAR files.
+ * Doesn't rename the files themselves. The actual renaming happens only when the download is complete.
+ * Renaming incomplete files can cause DirectUnpack to fail, as it may try to unpack incomplete .rar files.
+*/
 int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol)
 {
 	int renamedFiles = 0;
@@ -425,24 +430,17 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 
 		nzbInfo->PrintMessage(Message::mkInfo,
 			"Renaming in-progress file %s to %s",
-			fileInfo->GetFilename(), newOutputFilename.c_str()
+			oldOutputFilename.c_str(), newOutputFilename.c_str()
 		);
 
-		bool renamed = (g_Options->GetDirectWrite() || fileInfo->GetForceDirectWrite())
-			? RenameFile(nzbInfo, oldOutputFilename, newOutputFilename)
-			: true;
-
-		if (renamed)
+		if (Util::EmptyStr(fileInfo->GetOrigname()))
 		{
-			if (Util::EmptyStr(fileInfo->GetOrigname()))
-			{
-				fileInfo->SetOrigname(fileInfo->GetFilename());
-			}
-			fileInfo->SetOutputFilename(std::move(newOutputFilename));
-			fileInfo->SetFilename(std::move(newFilename));
-			fileInfo->SetFilenameConfirmed(true);
-			++renamedFiles;
+			fileInfo->SetOrigname(fileInfo->GetFilename());
 		}
+
+		fileInfo->SetFilename(std::move(newFilename));
+		fileInfo->SetFilenameConfirmed(true);
+		++renamedFiles;
 	}
 
 	return renamedFiles;
