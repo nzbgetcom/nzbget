@@ -1,3 +1,14 @@
+nzbget-24.8
+  - Features:
+    - TrueNAS Scale support
+    [#494](https://github.com/nzbgetcom/nzbget/issues/494)
+
+  - Bug fixes:
+    - Fixed application updates on Windows
+    [#528](https://github.com/nzbgetcom/nzbget/pull/528)
+    - Fixed DirectUnpack cancellation
+    [#530](https://github.com/nzbgetcom/nzbget/pull/530)
+
 nzbget-24.7
   - Bug fixes:
     - Renaming of the temporary `*.out.tmp` output file to its original filename
