@@ -11,6 +11,7 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.5/total?label=v24.5)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.6/total?label=v24.6)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.7/total?label=v24.7)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.8/total?label=v24.8)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![tests](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml)
