@@ -32,7 +32,7 @@ var Statistics = (new function ($) {
 		this.successArticles = [];
 		this.failedArticles = [];
 		this.chartData = {
-			range: "MIN"
+			range: "MIN",
 		};
 	}
 
@@ -164,8 +164,8 @@ var Statistics = (new function ($) {
 		var $statsChartHtml = $(makeChartTemplate(server));
 
 		var $container = $('<div>', { class: 'flex-center' }).css('flex-wrap', 'wrap');
-		$serverDetailHtml.css('flex-grow', '1');
-		$statsChartHtml.css('flex-grow', '3');
+		$serverDetailHtml.css('flex-grow', '1').css("flex-basis", "460px");
+		$statsChartHtml.css('flex-grow', '3').css("flex-basis", "540px");
 
 		$container.append($serverDetailHtml, $statsChartHtml);
 		$StatisticsTable.append($container, '<hr>');
@@ -224,6 +224,18 @@ var Statistics = (new function ($) {
 		var $container = $('<div>', {
 			class: 'statistics',
 		});
+
+		var $chartContainer = $('<div>', {
+			class: "hide",
+			id: `${server.id}_ChartContainer`
+		});
+
+		var $chartSpinner = $('<div>', {
+			class: "statistics__chart-block-spinner",
+			id: `${server.id}_ChartSpinner`
+		});
+
+		$chartSpinner.append($('<i class="material-icon spinner chart">progress_activity</i>'));
 
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
@@ -294,7 +306,8 @@ var Statistics = (new function ($) {
 			id: `${server.id}_ChartBlock`
 		});
 
-		$container.append($toolbar, $tooltip, $chartBlock);
+		$chartContainer.append($toolbar, $tooltip, $chartBlock);
+		$container.append($chartSpinner, $chartContainer);
 
 		return $container;
 	}
@@ -327,7 +340,6 @@ var Statistics = (new function ($) {
 		var curRange = server.chartData.range;
 
 		var lineLabels = [];
-		var dataLabels = [];
 		var chartSpeedTb = [];
 		var chartSpeedGb = [];
 		var chartSpeedMb = [];
@@ -444,8 +456,13 @@ var Statistics = (new function ($) {
 			data: serieData,
 			currPoint: serieData[curPoint],
 			range: curRange,
-			units: units
+			units: units,
 		};
+
+		var $chartContainer = $(`#${server.id}_ChartContainer`);
+		var $chartSpinner = $(`#${server.id}_ChartSpinner`);
+		$chartContainer.show();
+		$chartSpinner.hide();
 
 		var chartBlock = $(`#${server.id}_ChartBlock`);
 		if (!chartBlock)

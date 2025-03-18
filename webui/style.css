@@ -1510,6 +1510,16 @@ ul.help > li {
 	font-style: italic;
 }
 
+.statistics__chart-block-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.statistics__chart-block-spinner .spinner {
+	font-size: 100px;
+}
+
 .stat-size {
 	font-weight: bold;
 }
