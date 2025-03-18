@@ -123,7 +123,18 @@ void Util::Init()
 	CurrentTicks();
 }
 
-std::optional<std::string> 
+/**
+ * @brief Determines the appropriate program to execute a given file.
+ *
+ * @param filename    The name of the file to be executed.
+ * @param customPath  A custom path for finding the executor.
+ *
+ * @return std::optional<std::string>
+ * The path to the executor program if found,
+ * std::nullopt otherwise.  If the file is directly
+ * executable, the original filename is returned.
+ */
+std::optional<std::string>
 Util::FindExecutorProgram(const std::string& filename, const std::string& customPath)
 {
 	size_t idx = filename.find_last_of(".");
@@ -168,21 +179,6 @@ Util::FindExecutorProgram(const std::string& filename, const std::string& custom
 			return std::string("node");
 		}
 		return std::nullopt;
-	}
-
-	if (fileExt == ".cmd" || fileExt == ".bat")
-	{
-		const std::string cmd = std::string("cmd.exe /c") + NULL_OUTPUT;
-		if (std::system(cmd.c_str()) == 0)
-		{
-			return filename;
-		}
-		return std::nullopt;
-	}
-
-	if (fileExt == ".exe")
-	{
-		return filename;
 	}
 
 	return filename;

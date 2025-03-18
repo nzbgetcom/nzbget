@@ -11,6 +11,7 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.5/total?label=v24.5)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.6/total?label=v24.6)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.7/total?label=v24.7)
+![GitHub release (by tag)](https://img.shields.io/github/downloads/nzbgetcom/nzbget/v24.8/total?label=v24.8)
 ![docker pulls](https://img.shields.io/docker/pulls/nzbgetcom/nzbget.svg)
 
 [![tests](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml/badge.svg?branch=develop)](https://github.com/nzbgetcom/nzbget/actions/workflows/tests.yml)
@@ -54,6 +55,8 @@ Synology package is available as SynoCommunity package. [Synology readme](docs/S
 ASUSTOR NAS package (ADM 4.3+) is available from the [nzbget-asustor](https://github.com/nzbgetcom/nzbget-asustor) repository and from the ASUSTOR [App Central](https://www.asustor.com/app_central/app_detail?id=1671&type=). [ASUSTOR readme](https://github.com/nzbgetcom/nzbget-asustor/blob/main/README.md)
 
 QNAP packages are available as buildroot packages or via [sherpa](https://github.com/OneCDOnly/sherpa) package manager. [QNAP readme](qnap/README.md)
+
+TrueNAS SCALE packages are available from the TrueNAS App catalog (community train).
 
 Android packages are available for Android 5.0+. [Android readme](docs/ANDROID.md)
 
