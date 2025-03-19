@@ -22,6 +22,9 @@ var Statistics = (new function ($) {
 	'use strict';
 
 	function Server() {
+		this.DOWNLOAD_SPEED_CHART = 0;
+		this.DOWMLOADED_VOLUME_CHART = 1;
+
 		this.id = 0;
 		this.connections = 0;
 		this.host = "";
@@ -31,9 +34,69 @@ var Statistics = (new function ($) {
 		this.totalSizeMB = 0;
 		this.successArticles = [];
 		this.failedArticles = [];
-		this.chartData = {
-			range: "MIN",
+
+		this.$details = null;
+		this.$downloadSpeedChart = null;
+		this.$downloadVolumeChart = null;
+		this.$spinner = null;
+		this.$chartToggleBtn = null;
+		this.activeChart = this.DOWNLOAD_SPEED_CHART;
+
+		this.speedChartData = {
+			range: "MIN"
 		};
+
+		this.volumeChartData = {
+			range: "MONTH"
+		};
+
+		this.getChartData = function () {
+			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+				return this.speedChartData;
+			}
+
+			return this.volumeChartData;
+		}
+
+		this.setChartData = function (data) {
+			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+				this.speedChartData = data;
+				return;
+			}
+
+			this.volumeChartData = data;
+		}
+
+		this.showChart = function () {
+			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+				this.$downloadSpeedChart.show();
+				this.$downloadVolumeChart.hide();
+			}
+			else {
+				this.$downloadSpeedChart.hide();
+				this.$downloadVolumeChart.show();
+			}
+		}
+
+		this.hideSpinner = function () {
+			this.$spinner.hide();
+		}
+
+		this.showSpinner = function () {
+			this.$spinner.show();
+		}
+
+		this.toggleChart = function () {
+			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+				this.$downloadSpeedChart.hide();
+				this.$downloadVolumeChart.show();
+			}
+			else {
+				this.activeChart = this.DOWMLOADED_VOLUME_CHART;
+				this.$downloadSpeedChart.hide();
+				this.$downloadVolumeChart.show();
+			}
+		}
 	}
 
 	var $StatisticsSpinner;
@@ -160,29 +223,38 @@ var Statistics = (new function ($) {
 	}
 
 	function renderServer(server) {
-		var $serverDetailHtml = $(makeServerDetailsTemplate(server));
-		var $statsChartHtml = $(makeChartTemplate(server));
-
 		var $container = $('<div>', { class: 'flex-center' }).css('flex-wrap', 'wrap');
-		$serverDetailHtml.css('flex-grow', '1').css("flex-basis", "460px");
-		$statsChartHtml.css('flex-grow', '3').css("flex-basis", "540px");
 
-		$container.append($serverDetailHtml, $statsChartHtml);
+		server.$chartToggleBtn = makeToggleChartBtn(server);
+		server.$details = makeServerDetails(server);
+		server.$spinner = makeSpinner(server);
+		server.$downloadSpeedChart = makeDownloadSpeedChart(server);
+		server.$downloadVolumeChart = makeDownloadVolumeChart(server);
+
+		server.$details.css('flex-grow', '1').css("flex-basis", "460px");
+		server.$spinner.css('flex-grow', '3').css("flex-basis", "540px");
+		server.$downloadSpeedChart.css('flex-grow', '3').css("flex-basis", "540px");
+		server.$downloadVolumeChart.css('flex-grow', '3').css("flex-basis", "540px");
+
+		server.$downloadSpeedChart.hide();
+		server.$downloadVolumeChart.hide();
+
+		$container.append(server.$details, server.$chartToggleBtn, server.$spinner, server.$downloadSpeedChart, server.$downloadVolumeChart);
 		$StatisticsTable.append($container, '<hr>');
 	}
 
-	function makeServerDetailsTemplate(server) {
+	function makeServerDetails(server) {
 		var html = '<table class="statistics__server-details table table-condensed table-bordered table-fixed">';
 		html += `<tr><td><h4>Name:</h4></th><td>${server.name}</td></tr>`;
 		html += `<tr><td><h4>Host:</h4></td><td>${server.host}</td></tr>`;
 		html += `<tr><td><h4>Active:</h4></td><td>${server.active ? "Yes" : "No"}</td></tr>`;
 		html += `<tr><td><h4>Connections:</h4></td><td>${server.connections}</td></tr>`;
-		html += `<tr><td><h4>Articles Success/Failed:</h4></td><td id="${server.id}_Articles"></td></tr>`;
-		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownlaoded"></td></tr>`;
-		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion"></td></tr>`;
+		html += `<tr><td><h4>Articles Success/Failed:</h4></td><td id="${server.id}_Articles-${server.activeChart}"></td></tr>`;
+		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownlaoded-${server.activeChart}"></td></tr>`;
+		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion-${server.activeChart}"></td></tr>`;
 		html += '</table>';
 
-		return html;
+		return $(html);
 	}
 
 	function updateRenderedServers(servers) {
@@ -211,59 +283,82 @@ var Statistics = (new function ($) {
 		$successArticles.addClass('txt-success');
 		var $failedArticles = $(`<span>${Util.formatNumber(failedSum)}</span>`);
 		$failedArticles.addClass('txt-important');
-		var $articles = $(`#${server.id}_Articles`);
+		var $articles = $(`#${server.id}_Articles-${server.activeChart}`);
 		$articles.empty();
 		$articles.append($successArticles, " / ", $failedArticles);
 
-		$(`#${server.id}_FailedArticles`).text();
-		$(`#${server.id}_TotalDownlaoded`).text(Util.formatSizeMB(server.totalSizeMB));
-		$(`#${server.id}_Completion`).text(completion);
+		$(`#${server.id}_FailedArticles-${server.activeChart}`).text();
+		$(`#${server.id}_TotalDownlaoded-${server.activeChart}`).text(Util.formatSizeMB(server.totalSizeMB));
+		$(`#${server.id}_Completion-${server.activeChart}`).text(completion);
 	}
 
-	function makeChartTemplate(server) {
+	function makeSpinner(server) {
+		var html = '<div class="statistics__chart-block-spinner">';
+		html += `<i class="statistics__chart-block-spinner material-icon spinner"`;
+		html += `id="${server.id}_ChartSpinner-${server.activeChart}">progress_activity</i>`;
+		html += '</div>';
+
+		return $(html);
+	}
+
+	function makeToggleChartBtn(server) {
+		var $container = $('<div>', {
+			class: 'flex-center',
+		});
+
+		var $speedChartBtn = $('<button>', {
+			class: 'btn btn-default btn-active',
+			id: `${server.id}_TEST-${server.DOWNLOAD_SPEED_CHART}`,
+			title: 'Show the Download Speed chart',
+			text: 'Download Speed'
+		}).on('click', function () {  });
+
+		var $volumeChart = $('<button>', {
+			class: 'btn btn-default',
+			id: `${server.id}_TEST2-${server.DOWNLOAD_SPEED_CHART}`,
+			title: 'Show the Downloaded Volume chart',
+			text: 'Downloaded Volume'
+		}).on('click', function () {  });
+
+		$container.append($speedChartBtn, $volumeChart);
+
+		return $container;
+	}
+
+	function makeDownloadSpeedChart(server) {
 		var $container = $('<div>', {
 			class: 'statistics',
 		});
 
-		var $chartContainer = $('<div>', {
-			class: "hide",
-			id: `${server.id}_ChartContainer`
-		});
-
-		var $chartSpinner = $('<div>', {
-			class: "statistics__chart-block-spinner",
-			id: `${server.id}_ChartSpinner`
-		});
-
-		$chartSpinner.append($('<i class="material-icon spinner chart">progress_activity</i>'));
+		var $title = $('<h3>Download speed</h3>');
 
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
-			id: `${server.id}_Toolbar`
+			id: `${server.id}_Toolbar-${server.DOWNLOAD_SPEED_CHART}`
 		});
 
 		var $timeBlockTop = $('<div>', {
 			class: 'btn-group phone-hide',
-			id: `${server.id}_TimeBlockTop`
+			id: `${server.id}_TimeBlockTop-${server.DOWNLOAD_SPEED_CHART}`
 		});
 
 		var $minButton = $('<button>', {
 			class: 'btn btn-default btn-active volume-range',
-			id: `${server.id}_Volume_MIN`,
+			id: `${server.id}_Volume_MIN-${server.DOWNLOAD_SPEED_CHART}`,
 			title: 'Show last 60 seconds',
 			text: '60 Seconds'
 		}).on('click', function () { chooseRange(server, 'MIN') });
 
 		var $5minButton = $('<button>', {
 			class: 'btn btn-default volume-range',
-			id: `${server.id}_Volume_5MIN`,
+			id: `${server.id}_Volume_5MIN-${server.DOWNLOAD_SPEED_CHART}`,
 			title: 'Show last 5 minutes',
 			text: '5 Minutes'
 		}).on('click', function () { chooseRange(server, '5MIN') });
 
 		var $hourButton = $('<button>', {
 			class: 'btn btn-default volume-range',
-			id: `${server.id}_Volume_HOUR`,
+			id: `${server.id}_Volume_HOUR-${server.DOWNLOAD_SPEED_CHART}`,
 			title: 'Show 60 minutes',
 			text: '60 Minutes'
 		}).on('click', function () { chooseRange(server, 'HOUR') });
@@ -274,19 +369,19 @@ var Statistics = (new function ($) {
 		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
 			$('<button>', {
 				class: 'btn btn-default btn-active volume-range',
-				id: `${server.id}_Volume_MIN2`,
+				id: `${server.id}_Volume_MIN2-${server.DOWNLOAD_SPEED_CHART}`,
 				title: 'Show last 60 seconds',
 				text: '60 s'
 			}).on('click', function () { chooseRange(server, 'MIN') }),
 			$('<button>', {
 				class: 'btn btn-default volume-range',
-				id: `${server.id}_Volume_5MIN2`,
+				id: `${server.id}_Volume_5MIN2-${server.DOWNLOAD_SPEED_CHART}`,
 				title: 'Show last 5 minutes',
 				text: '5 m'
 			}).on('click', function () { chooseRange(server, '5MIN') }),
 			$('<button>', {
 				class: 'btn btn-default volume-range',
-				id: `${server.id}_Volume_HOUR2`,
+				id: `${server.id}_Volume_HOUR2-${server.DOWNLOAD_SPEED_CHART}`,
 				title: 'Show last 60 minutes',
 				text: '60 m'
 			}).on('click', function () { chooseRange(server, 'HOUR') }),
@@ -294,20 +389,129 @@ var Statistics = (new function ($) {
 
 		$toolbar.append($phoneButtons);
 
-
 		var $tooltip = $('<div>', {
 			class: 'statistics__tooltip',
-			id: `${server.id}_Tooltip`,
+			id: `${server.id}_Tooltip-${server.DOWNLOAD_SPEED_CHART}`,
 			text: '--'
 		});
 
-		var $chartBlock = $('<div>', {
+		var $chart = $('<div>', {
 			class: 'statistics__chartblock',
-			id: `${server.id}_ChartBlock`
+			id: `${server.id}_ChartBlock-${server.DOWNLOAD_SPEED_CHART}`
 		});
 
-		$chartContainer.append($toolbar, $tooltip, $chartBlock);
-		$container.append($chartSpinner, $chartContainer);
+		$container.append($title, $toolbar, $tooltip, $chart);
+
+		return $container;
+	}
+
+	function makeDownloadVolumeChart(server) {
+		var $container = $('<div>', {
+			class: 'statistics',
+		});
+
+		var $title = $('<h3>Downloaded volume</h3>');
+
+		var $toolbar = $('<div>', {
+			class: 'btn-toolbar form-inline section-toolbar',
+			id: `${server.id}_Toolbar-${server.DOWMLOADED_VOLUME_CHART}`
+		});
+
+		var $timeBlockTop = $('<div>', {
+			class: 'btn-group phone-hide',
+			id: `${server.id}_TimeBlockTop-${server.DOWMLOADED_VOLUME_CHART}`
+		});
+
+		var $minButton = $('<button>', {
+			class: 'btn btn-default volume-range',
+			id: `${server.id}_Volume_MIN-${server.DOWMLOADED_VOLUME_CHART}`,
+			title: 'Show last 60 seconds',
+			text: '60 Seconds'
+		}).on('click', function () { chooseRange(server, 'MIN') });
+
+		var $hourButton = $('<button>', {
+			class: 'btn btn-default volume-range',
+			id: `${server.id}_Volume_HOUR-${server.DOWMLOADED_VOLUME_CHART}`,
+			title: 'Show 60 minutes',
+			text: '60 Minutes'
+		}).on('click', function () { chooseRange(server, 'HOUR') })
+
+		var $dayButton = $('<button>', {
+			class: 'btn btn-default volume-range',
+			id: `${server.id}_Volume_DAY-${server.DOWMLOADED_VOLUME_CHART}`,
+			title: 'Show 24 hours',
+			text: '24 Hours'
+		}).on('click', function () { chooseRange(server, 'DAY') });
+
+		var $monthButton = $('<button>', {
+			class: 'btn btn-default btn-active volume-range',
+			id: `${server.id}_Volume_MONTH-${server.DOWMLOADED_VOLUME_CHART}`,
+			title: 'Show a month or a whole year',
+			text: 'Month'
+		}).on('click', function () { chooseRange(server, 'MONTH') });
+
+		var $monthMenu = $("ul", {
+			class: "dropdown-menu menu-check pull-righ",
+			id: `${server.id}_MonthMenu-${server.activeChart}`,
+		});
+
+		$monthMenu.append($('<li class="menu-header">Months</li>'));
+		$monthMenu.append($('<li class="volume-month-template hide"><a href="#"></a></li>'));
+		$monthMenu.append($(`<li class="menu-header" id="${server.id}_MonthMenuYears-${server.DOWMLOADED_VOLUME_CHART}"></li>`));
+		$monthMenu.append($(`<li class="divider" id="${server.id}_MonthMenuDivider-${server.DOWMLOADED_VOLUME_CHART}"></li>`));
+		$monthMenu.append($(`<li class="divider" id="${server.id}_MonthMenuDivider-${server.DOWMLOADED_VOLUME_CHART}"></li>`));
+
+		var $olderPeriods = $(`<li><a href="#"><i class="material-icon"></i>Older Periods...</a></li>`);
+		$olderPeriods.on('click', function () {
+			chooseOtherMonth();
+		});
+		$monthMenu.append($olderPeriods);
+		$monthMenu.append($(`<li class="volume-menu-template hide"><a href="#"></a></li>`));
+
+		$timeBlockTop.append($minButton, $hourButton, $dayButton, $monthButton, $monthMenu);
+		$toolbar.append($timeBlockTop);
+
+		var $phoneButtons = $('<div>', { class: 'btn-group phone-only inline' }).append(
+			$('<button>', {
+				class: 'btn btn-default volume-range',
+				id: `${server.id}_Volume_MIN2-${server.DOWMLOADED_VOLUME_CHART}`,
+				title: 'Show last 60 seconds',
+				text: '60 s'
+			}).on('click', function () { chooseRange(server, 'MIN') }),
+			$('<button>', {
+				class: 'btn btn-default volume-range',
+				id: `${server.id}_Volume_HOUR2-${server.DOWMLOADED_VOLUME_CHART}`,
+				title: 'Show last 60 minutes',
+				text: '60 m'
+			}).on('click', function () { chooseRange(server, 'HOUR') }),
+			$('<button>', {
+				class: 'btn btn-default volume-range',
+				id: `${server.id}_Volume_DAYR2-${server.DOWMLOADED_VOLUME_CHART}`,
+				title: 'Show last 24 hours',
+				text: '24 h'
+			}).on('click', function () { chooseRange(server, 'DAY') }),
+			$('<button>', {
+				class: 'btn btn-default btn-active volume-range',
+				id: `${server.id}_Volume_MONTH2-${server.DOWMLOADED_VOLUME_CHART}`,
+				title: 'Show last 24 hours',
+				text: 'Month'
+			}).on('click', function () { chooseRange(server, 'MONTH') }),
+		);
+
+		$toolbar.append($phoneButtons);
+
+		var $tooltip = $('<div>', {
+			class: 'statistics__tooltip',
+			id: `${server.id}_Tooltip-${server.DOWMLOADED_VOLUME_CHART}`,
+			text: '--'
+		});
+
+		var $chart = $('<div>', {
+			class: 'statistics__chartblock',
+			id: `${server.id}_ChartBlock-${server.DOWMLOADED_VOLUME_CHART}`
+		});
+
+		$container.append($title, $toolbar, $tooltip, $chart);
 
 		return $container;
 	}
@@ -336,8 +540,9 @@ var Statistics = (new function ($) {
 		if (!server)
 			return;
 
+		var serverData = server.getChartData();
 		var serverNo = server.id;
-		var curRange = server.chartData.range;
+		var curRange = serverData.range;
 
 		var lineLabels = [];
 		var chartSpeedTb = [];
@@ -438,6 +643,9 @@ var Statistics = (new function ($) {
 		else if (curRange === 'HOUR') {
 			drawHourGraph();
 		}
+		else if (curRange === 'MONTH') {
+			drawMinuteGraph();
+		}
 
 		var serieData = maxSizeMb >= 1024 * 1024 ? chartSpeedTb :
 			maxSizeMb >= 1024 ? chartSpeedGb :
@@ -452,25 +660,24 @@ var Statistics = (new function ($) {
 			curPointData.push(i === curPoint ? serieData[i] : null);
 		}
 
-		server.chartData = {
+		server.setChartData({
 			data: serieData,
 			currPoint: serieData[curPoint],
 			range: curRange,
 			units: units,
-		};
+		});
 
-		var $chartContainer = $(`#${server.id}_ChartContainer`);
-		var $chartSpinner = $(`#${server.id}_ChartSpinner`);
-		$chartContainer.show();
-		$chartSpinner.hide();
+		server.hideSpinner();
+		server.showChart();
 
-		var chartBlock = $(`#${server.id}_ChartBlock`);
+		var chartBlock = $(`#${server.id}_ChartBlock-${server.activeChart}`);
 		if (!chartBlock)
 			return;
 
 		chartBlock.empty();
-		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart"></div>`);
-		$(`#${server.id}_Chart`).chart({
+		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart-${server.activeChart}"></div>`);
+		var $chart = $(`#${server.id}_Chart-${server.activeChart}`);
+		$chart.chart({
 			values: { serie1: serieData, serie2: curPointData },
 			labels: lineLabels,
 			type: 'line',
@@ -541,22 +748,22 @@ var Statistics = (new function ($) {
 						}
 					}
 				},
-				mousearea: {
-					type: 'axis',
-					onMouseOver: function (env, serie, index, mouseAreaData) {
-						chartMouseOver(server, env, serie, index, mouseAreaData);
-					},
-					onMouseExit: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-					onMouseOut: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-				},
+				// mousearea: {
+				// 	type: 'axis',
+				// 	onMouseOver: function (env, serie, index, mouseAreaData) {
+				// 		chartMouseOver(server, env, serie, index, mouseAreaData);
+				// 	},
+				// 	onMouseExit: function (env, serie, index, mouseAreaData) {
+				// 		chartMouseExit(server, env, serie, index, mouseAreaData);
+				// 	},
+				// 	onMouseOut: function (env, serie, index, mouseAreaData) {
+				// 		chartMouseExit(server, env, serie, index, mouseAreaData);
+				// 	},
+				// },
 			},
 		});
 
-		simulateMouseEvent(server);
+		//simulateMouseEvent(server);
 	}
 
 	function chartMouseOver(server, env, serie, index, mouseAreaData) {
@@ -564,7 +771,7 @@ var Statistics = (new function ($) {
 			return;
 
 		if (mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart`);
+			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
 			if (!chart)
 				return;
 
@@ -572,12 +779,13 @@ var Statistics = (new function ($) {
 			$.elycharts.mousemanager.onMouseOutArea(env, false, mouseOverIndex, env.mouseAreas[mouseOverIndex]);
 		}
 
-		var tooltip = $(`#${server.id}_Tooltip`);
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
 		if (!tooltip)
 			return;
 
 		mouseOverIndex = index;
-		var title = server.chartData.units + " " + server.chartData.data[index].toFixed(1);
+		var data = server.getChartData();
+		var title = data.units + " " + data.data[index].toFixed(1);
 		tooltip.html('<span class="stat-size">' + title + '</span>');
 	}
 
@@ -585,18 +793,19 @@ var Statistics = (new function ($) {
 		if (index === undefined)
 			return;
 
-		var tooltip = $(`#${server.id}_Tooltip`);
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
 		if (!tooltip)
 			return;
 
 		mouseOverIndex = -1;
-		var title = server.chartData.units + " " + server.chartData.data[index].toFixed(1);
+		var data = server.getChartData();
+		var title = data.units + " " + data.data[index].toFixed(1);
 		tooltip.html('<span class="stat-size">' + title + '</span>');
 	}
 
 	function simulateMouseEvent(server) {
 		if (mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart`);
+			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
 			if (!chart)
 				return;
 
@@ -609,17 +818,17 @@ var Statistics = (new function ($) {
 	}
 
 	function chooseRange(server, range) {
-		updateRangeButtons(server, range);
-		server.chartData.range = range;
+		updateRangeButtons(server, range, server.getChartData().range);
+		server.getChartData().range = range;
 		mouseOverIndex = -1;
 		redrawChart(server);
 	}
 
-	function updateRangeButtons(server, range) {
+	function updateRangeButtons(server, range, prevRange) {
 		var id = server.id;
-		var prevRange = server.chartData.range;
-		var prevTab = $(`#${id}_Volume_${prevRange}, #${id}_Volume_${prevRange}2`);
-		var newTab = $(`#${id}_Volume_${range}, #${id}_Volume_${range}2`);
+		var chartId = server.activeChart;
+		var prevTab = $(`#${id}_Volume_${prevRange}-${chartId}, #${id}_Volume_${prevRange}2-${chartId}`);
+		var newTab = $(`#${id}_Volume_${range}-${chartId}, #${id}_Volume_${range}2-${chartId}`);
 		prevTab.removeClass('btn-active');
 		newTab.addClass('btn-active');
 	}
