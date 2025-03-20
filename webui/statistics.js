@@ -40,6 +40,9 @@ var Statistics = (new function ($) {
 		this.$downloadVolumeChart = null;
 		this.$spinner = null;
 		this.$chartToggleBtn = null;
+		this.$speedChartBtn = null;
+		this.$volumeChartBtn = null;
+
 		this.activeChart = this.DOWNLOAD_SPEED_CHART;
 
 		this.speedChartData = {
@@ -88,13 +91,23 @@ var Statistics = (new function ($) {
 
 		this.toggleChart = function () {
 			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+
+				this.activeChart = this.DOWMLOADED_VOLUME_CHART;
+
 				this.$downloadSpeedChart.hide();
 				this.$downloadVolumeChart.show();
+
+				this.$speedChartBtn.removeClass('btn-active');
+				this.$volumeChartBtn.addClass('btn-active');
 			}
 			else {
-				this.activeChart = this.DOWMLOADED_VOLUME_CHART;
+				this.activeChart = this.DOWNLOAD_SPEED_CHART;
+
 				this.$downloadSpeedChart.hide();
 				this.$downloadVolumeChart.show();
+
+				this.$speedChartBtn.addClass('btn-active');
+				this.$volumeChartBtn.removeClass('btn-active');
 			}
 		}
 	}
@@ -225,7 +238,6 @@ var Statistics = (new function ($) {
 	function renderServer(server) {
 		var $container = $('<div>', { class: 'flex-center' }).css('flex-wrap', 'wrap');
 
-		server.$chartToggleBtn = makeToggleChartBtn(server);
 		server.$details = makeServerDetails(server);
 		server.$spinner = makeSpinner(server);
 		server.$downloadSpeedChart = makeDownloadSpeedChart(server);
@@ -239,7 +251,7 @@ var Statistics = (new function ($) {
 		server.$downloadSpeedChart.hide();
 		server.$downloadVolumeChart.hide();
 
-		$container.append(server.$details, server.$chartToggleBtn, server.$spinner, server.$downloadSpeedChart, server.$downloadVolumeChart);
+		$container.append(server.$details, server.$spinner, server.$downloadSpeedChart, server.$downloadVolumeChart);
 		$StatisticsTable.append($container, '<hr>');
 	}
 
@@ -303,24 +315,33 @@ var Statistics = (new function ($) {
 
 	function makeToggleChartBtn(server) {
 		var $container = $('<div>', {
-			class: 'flex-center',
-		});
+			class: 'btn-group',
+		})
+			.css("padding", "10px 0");
 
 		var $speedChartBtn = $('<button>', {
 			class: 'btn btn-default btn-active',
-			id: `${server.id}_TEST-${server.DOWNLOAD_SPEED_CHART}`,
 			title: 'Show the Download Speed chart',
-			text: 'Download Speed'
-		}).on('click', function () {  });
+			text: 'Speed'
+		}).on('click', function () {
+			server.toggleChart();
+			redrawChart(server);
+		});
 
-		var $volumeChart = $('<button>', {
+
+		var $volumeChartBtn = $('<button>', {
 			class: 'btn btn-default',
-			id: `${server.id}_TEST2-${server.DOWNLOAD_SPEED_CHART}`,
 			title: 'Show the Downloaded Volume chart',
-			text: 'Downloaded Volume'
-		}).on('click', function () {  });
+			text: 'Volume'
+		}).on('click', function () {
+			server.toggleChart();
+			redrawChart(server);
+		});
 
-		$container.append($speedChartBtn, $volumeChart);
+		server.$speedChartBtn = $speedChartBtn;
+		server.$volumeChartBtn = $volumeChartBtn;
+
+		$container.append($speedChartBtn, $volumeChartBtn);
 
 		return $container;
 	}
@@ -330,7 +351,7 @@ var Statistics = (new function ($) {
 			class: 'statistics',
 		});
 
-		var $title = $('<h3>Download speed</h3>');
+		var $title = makeToggleChartBtn(server);
 
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
@@ -410,7 +431,7 @@ var Statistics = (new function ($) {
 			class: 'statistics',
 		});
 
-		var $title = $('<h3>Downloaded volume</h3>');
+		var $title = makeToggleChartBtn(server);
 
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
