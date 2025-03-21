@@ -50,7 +50,9 @@ var Statistics = (new function ($) {
 		};
 
 		this.volumeChartData = {
-			range: "MONTH"
+			range: "MONTH",
+			monYear: false,
+			curMonth: false,
 		};
 
 		this.getChartData = function () {
@@ -118,6 +120,7 @@ var Statistics = (new function ($) {
 	var serverStats = {};
 	var historyLen = null;
 	var optionsLoaded = false;
+	var prevServervolumes = null;
 	var servervolumes = null;
 	var serverVolumesLoaded = false;
 	var mouseOverIndex = -1;
@@ -220,6 +223,7 @@ var Statistics = (new function ($) {
 		if (serverVolumesLoaded)
 			return;
 
+		prevServervolumes = volumes;
 		servervolumes = volumes;
 		serverVolumesLoaded = true;
 
@@ -538,6 +542,7 @@ var Statistics = (new function ($) {
 	}
 
 	function servervolumesLoaded(volumes) {
+		prevServervolumes = servervolumes;
 		servervolumes = volumes;
 		redrawCharts(serverStats);
 		updateRenderedServers(serverStats);
@@ -557,10 +562,7 @@ var Statistics = (new function ($) {
 		return size.SizeMB < 2000 ? size.SizeLo / 1024.0 / 1024.0 : size.SizeMB;
 	}
 
-	function redrawChart(server) {
-		if (!server)
-			return;
-
+	function redrawChartSpeedChart(server) {
 		var serverData = server.getChartData();
 		var serverNo = server.id;
 		var curRange = serverData.range;
@@ -785,6 +787,291 @@ var Statistics = (new function ($) {
 		});
 
 		//simulateMouseEvent(server);
+	}
+
+	function redrawChartVolumeChart(server) {
+
+		var serverData = server.getChartData();
+		var serverNo = server.id;
+		var curRange = serverData.range;
+		var monYear = serverData.monYear;
+		var curMonth = serverData.curMonth;
+		var lineLabels = [];
+		var dataLabels = [];
+		var chartDataTB = [];
+		var chartDataGB = [];
+		var chartDataMB = [];
+		var chartDataKB = [];
+		var chartDataB = [];
+		var curPoint = null;
+		var sumMB = 0;
+		var sumLo = 0;
+		var maxSizeMB = 0;
+		var maxSizeLo = 0;
+
+		function addData(bytes, dataLab, lineLab) {
+			dataLabels.push(dataLab);
+			lineLabels.push(lineLab);
+
+			if (bytes === null) {
+				chartDataTB.push(null);
+				chartDataGB.push(null);
+				chartDataMB.push(null);
+				chartDataKB.push(null);
+				chartDataB.push(null);
+				return;
+			}
+			chartDataTB.push(bytes.SizeMB / 1024.0 / 1024.0);
+			chartDataGB.push(bytes.SizeMB / 1024.0);
+			chartDataMB.push(size64(bytes));
+			chartDataKB.push(bytes.SizeLo / 1024.0);
+			chartDataB.push(bytes.SizeLo);
+			if (bytes.SizeMB > maxSizeMB) {
+				maxSizeMB = bytes.SizeMB;
+			}
+			if (bytes.SizeLo > maxSizeLo) {
+				maxSizeLo = bytes.SizeLo;
+			}
+			sumMB += bytes.SizeMB;
+			sumLo += bytes.SizeLo;
+		}
+
+		function drawMinuteGraph() {
+			// the current slot may be not fully filled yet,
+			// to make the chart smoother for current slot we use the data from the previous reading
+			// and we show the previous slot as current.
+			curPoint = servervolumes[serverNo].SecSlot;
+			for (var i = 0; i < 60; i++) {
+				addData((i == curPoint && prevServervolumes !== null ? prevServervolumes : servervolumes)[serverNo].BytesPerSeconds[i],
+					i + 's', i % 10 == 0 || i == 59 ? i : '');
+			}
+			if (prevServervolumes !== null) {
+				curPoint = curPoint > 0 ? curPoint - 1 : 59;
+			}
+		}
+
+		function drawHourGraph() {
+			for (var i = 0; i < 60; i++) {
+				addData(servervolumes[serverNo].BytesPerMinutes[i],
+					i + 'm', i % 10 == 0 || i == 59 ? i : '');
+			}
+			curPoint = servervolumes[serverNo].MinSlot;
+		}
+
+		function drawDayGraph() {
+			for (var i = 0; i < 24; i++) {
+				addData(servervolumes[serverNo].BytesPerHours[i],
+					i + 'h', i % 3 == 0 || i == 23 ? i : '');
+			}
+			curPoint = servervolumes[serverNo].HourSlot;
+		}
+
+		function drawMonthGraph() {
+			var len = servervolumes[serverNo].BytesPerDays.length;
+			var daySlot = servervolumes[serverNo].DaySlot;
+			var slotDelta = servervolumes[0].FirstDay - servervolumes[serverNo].FirstDay;
+			var dt = new Date(monStartDate.getTime());
+			var day = 1;
+			for (var i = monStartIndex; i <= monEndIndex; i++, day++) {
+				dt.setDate(day);
+				var slot = i + slotDelta;
+				addData((slot >= 0 && slot < len ? servervolumes[serverNo].BytesPerDays[slot] : null),
+					dt.toDateString(), (day == 1 || day % 5 == 0 || (day < 30 && i === monEndIndex) ? day : ''));
+				if (slot === daySlot) {
+					curPoint = day - 1;
+				}
+			}
+			// ensure the line has always the same length (looks nicer)
+			for (; day < 32; day++) {
+				addData(null, null, null);
+			}
+		}
+
+		function drawYearGraph() {
+			var firstMon = -1;
+			var lastMon = -1;
+			var monDataMB = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+			var monDataLo = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+
+			// aggregate daily volumes into months
+			var daySlot = servervolumes[serverNo].DaySlot;
+			var slotDelta = servervolumes[0].FirstDay - servervolumes[serverNo].FirstDay;
+			var day = 0;
+			for (var i = monStartIndex; i <= monEndIndex; i++, day++) {
+				var dt = new Date(monStartDate.getTime() + day * 24 * 60 * 60 * 1000);
+				var slot = i + slotDelta;
+				var bytes = servervolumes[serverNo].BytesPerDays[slot];
+				if (bytes) {
+					var mon = dt.getMonth();
+					monDataMB[mon] += bytes.SizeMB;
+					monDataLo[mon] += bytes.SizeLo;
+					if (firstMon === -1) {
+						firstMon = mon;
+					}
+					if (mon > lastMon) {
+						lastMon = mon;
+					}
+					if (slot === daySlot) {
+						curPoint = mon;
+					}
+				}
+			}
+
+			for (var i = 0; i < 12; i++) {
+				addData(firstMon > -1 && i >= firstMon && i <= lastMon ? { SizeMB: monDataMB[i], SizeLo: monDataLo[i] } : null,
+					monthNames[i] + ' ' + curMonth, monthNames[i].substr(0, 3));
+			}
+		}
+
+		if (curRange === 'MIN') {
+			drawMinuteGraph();
+		}
+		else if (curRange === 'HOUR') {
+			drawHourGraph();
+		}
+		else if (curRange === 'DAY') {
+			drawDayGraph();
+		}
+		else if (curRange === 'MONTH' && !monYear) {
+			//drawMonthGraph();
+		}
+		else if (curRange === 'MONTH' && monYear) {
+			//drawYearGraph();
+		}
+
+		var serieData = maxSizeMB > 1024 * 1024 ? chartDataTB :
+			maxSizeMB > 1024 ? chartDataGB :
+				maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
+					maxSizeLo > 1024 ? chartDataKB : chartDataB;
+
+		var units = maxSizeMB > 1024 * 1024 ? ' TB' :
+			maxSizeMB > 1024 ? ' GB' :
+				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
+					maxSizeLo > 1024 ? ' KB' : ' B';
+
+		var curPointData = [];
+		for (var i = 0; i < serieData.length; i++) {
+			curPointData.push(i === curPoint ? serieData[i] : null);
+		}
+
+		server.volumeChartData = {
+			serieData: serieData,
+			serieDataMB: chartDataMB,
+			serieDataLo: chartDataB,
+			range: curRange,
+			monYear: monYear,
+			curMonth: curMonth,
+			sumMB: sumMB,
+			sumLo: sumLo,
+			dataLabels: dataLabels
+		};
+
+		server.hideSpinner();
+		server.showChart();
+
+		var chartBlock = $(`#${server.id}_ChartBlock-${server.activeChart}`);
+		if (!chartBlock)
+			return;
+
+		chartBlock.empty();
+		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart-${server.activeChart}"></div>`);
+		var $chart = $(`#${server.id}_Chart-${server.activeChart}`);
+		$chart.chart({
+			values: { serie1: serieData, serie2: curPointData },
+			labels: lineLabels,
+			type: 'line',
+			margins: [10, 15, 20, 60],
+			defaultSeries: {
+				rounded: 0.5,
+				fill: true,
+				plotProps: {
+					'stroke-width': 3.0
+				},
+				dot: true,
+				dotProps: {
+					stroke: '#FFF',
+					size: 3.0,
+					'stroke-width': 1.0,
+					fill: '#5AF'
+				},
+				highlight: {
+					scaleSpeed: 0,
+					scaleEasing: '>',
+					scale: 2.0
+				},
+				tooltip: {
+					active: false,
+				},
+				color: '#5AF'
+			},
+			series: {
+				serie2: {
+					dotProps: {
+						stroke: '#F21860',
+						fill: '#F21860',
+						size: 3.5,
+						'stroke-width': 2.5
+					},
+					highlight: {
+						scale: 1.5
+					},
+				}
+			},
+			defaultAxis: {
+				labels: true,
+				labelsProps: {
+					'font-size': 13,
+					'fill': '#3a87ad'
+				},
+				labelsDistance: 12
+			},
+			axis: {
+				l: {
+					labels: true,
+					suffix: units,
+				}
+			},
+			features: {
+				grid: {
+					draw: [true, false],
+					forceBorder: true,
+					props: {
+						stroke: '#e0e0e0',
+						'stroke-width': 1
+					},
+					ticks: {
+						active: [true, false, false],
+						size: [6, 0],
+						props: {
+							stroke: '#e0e0e0'
+						}
+					}
+				},
+				mousearea: {
+					//type: 'axis',
+					// onMouseOver: chartMouseOver,
+					// onMouseExit: chartMouseExit,
+					// onMouseOut: chartMouseExit
+				},
+			}
+		});
+
+		//simulateMouseEvent();
+
+		//updateCounters();
+	}
+
+	function redrawChart(server) {
+		if (!server)
+			return;
+
+
+		if (server.activeChart === server.DOWNLOAD_SPEED_CHART) {
+			redrawChartSpeedChart(server);
+		}
+		else {
+			redrawChartVolumeChart(server);
+		}
 	}
 
 	function chartMouseOver(server, env, serie, index, mouseAreaData) {
