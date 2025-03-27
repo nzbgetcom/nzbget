@@ -17,6 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 var DateHelper = (function () {
 	function DateHelper() {
 		this.now = new Date();
@@ -115,8 +116,6 @@ var Statistics = (new function ($) {
 
 		this.volumeChartData = {
 			range: "MONTH",
-			monYear: false,
-			curMonth: null,
 			data: null,
 			dataMB: null,
 			dataLo: null,
@@ -125,10 +124,6 @@ var Statistics = (new function ($) {
 			sumMB: null,
 			sumLo: null,
 			labels: null,
-			monStartDate: null,
-			monStartIndex: 0,
-			monEndIndex: 0,
-			clockOK: false,
 			mouseOverIndex: -1,
 		};
 
@@ -451,7 +446,7 @@ var Statistics = (new function ($) {
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
 			id: `${server.id}_Toolbar-${server.DOWNLOAD_SPEED_CHART}`
-		}).css('margin-bottom', '0px');
+		}).css('margin-bottom', '0');
 
 		var $timeBlockTop = $('<div>', {
 			class: 'btn-group phone-hide',
@@ -531,7 +526,7 @@ var Statistics = (new function ($) {
 		var $toolbar = $('<div>', {
 			class: 'btn-toolbar form-inline section-toolbar',
 			id: `${server.id}_Toolbar-${server.DOWMLOADED_VOLUME_CHART}`
-		});
+		}).css('margin-bottom', '5px');
 
 		var size = IS_MOBILE ? '120px' : '90px';
 
@@ -745,7 +740,292 @@ var Statistics = (new function ($) {
 		chartBlock.empty();
 		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart-${server.activeChart}"></div>`);
 		var $chart = $(`#${server.id}_Chart-${server.activeChart}`);
-		$chart.chart({
+		$chart.chart(makeChart(serieData, curPointData, lineLabels, units,
+			{
+				type: 'axis',
+				onMouseOver: function (env, serie, index, mouseAreaData) {
+					chartMouseOver(server, env, serie, index, mouseAreaData);
+				},
+				onMouseExit: function (env, serie, index, mouseAreaData) {
+					chartMouseExit(server, env, serie, index, mouseAreaData);
+				},
+				onMouseOut: function (env, serie, index, mouseAreaData) {
+					chartMouseExit(server, env, serie, index, mouseAreaData);
+				},
+			}
+		));
+
+		simulateMouseEvent(server, chartMouseExit);
+	}
+
+	function redrawVolumeChart(server) {
+		var serverNo = server.id;
+		var startDate = server.dateHelper.getStartDate();
+		var endDate = server.dateHelper.getEndDate();
+		var lineLabels = [];
+		var dataLabels = [];
+		var chartDataTB = [];
+		var chartDataGB = [];
+		var chartDataMB = [];
+		var chartDataKB = [];
+		var chartDataB = [];
+		var curPoint = null;
+		var sumMB = 0;
+		var sumLo = 0;
+		var maxSizeMB = 0;
+		var maxSizeLo = 0;
+
+		var dates = [];
+		var currentDate = new Date(startDate);
+		while (currentDate <= endDate)
+		{
+			dates.push(new Date(currentDate));
+			currentDate.setDate(currentDate.getDate() + 1);
+		}
+
+		function addData(bytes, dataLab, lineLab) {
+			dataLabels.push(dataLab);
+			lineLabels.push(lineLab);
+
+			if (bytes === null) {
+				chartDataTB.push(null);
+				chartDataGB.push(null);
+				chartDataMB.push(null);
+				chartDataKB.push(null);
+				chartDataB.push(null);
+				return;
+			}
+			chartDataTB.push(bytes.SizeMB / 1024.0 / 1024.0);
+			chartDataGB.push(bytes.SizeMB / 1024.0);
+			chartDataMB.push(size64(bytes));
+			chartDataKB.push(bytes.SizeLo / 1024.0);
+			chartDataB.push(bytes.SizeLo);
+			if (bytes.SizeMB > maxSizeMB) {
+				maxSizeMB = bytes.SizeMB;
+			}
+			if (bytes.SizeLo > maxSizeLo) {
+				maxSizeLo = bytes.SizeLo;
+			}
+			sumMB += bytes.SizeMB;
+			sumLo += bytes.SizeLo;
+		}
+
+		function drawGraph() {
+			var bytesPerDays = servervolumes[serverNo].BytesPerDays;
+			var firstDay = servervolumes[serverNo].FirstDay;
+			var daySlot = servervolumes[serverNo].DaySlot;
+			for (var i = 0; i < dates.length; ++i) {
+				var date = dates[i];
+				var label = date.toDateString();
+				var slot = Math.ceil(date.getTime() / 86400 / 1000);
+				if (slot >= firstDay) {
+					var idx = slot - firstDay;
+					if (idx <= daySlot)
+						addData(bytesPerDays[idx], label, '');
+					else
+						addData({SizeMB: 0, SizeLo: 0 }, label, '');
+				}
+				else {
+					addData({SizeMB: 0, SizeLo: 0 }, label, '');
+				}
+			}
+		}
+
+		drawGraph();
+
+		var serieData = maxSizeMB > 1024 * 1024 ? chartDataTB :
+			maxSizeMB > 1024 ? chartDataGB :
+				maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
+					maxSizeLo > 1024 ? chartDataKB : chartDataB;
+
+		if (serieData.length === 0) 
+			return;
+
+		var units = maxSizeMB > 1024 * 1024 ? ' TB' :
+			maxSizeMB > 1024 ? ' GB' :
+				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
+					maxSizeLo > 1024 ? ' KB' : ' B';
+
+		var curPointData = [];
+		for (var i = 0; i < serieData.length; i++) {
+			curPointData.push(i === curPoint ? serieData[i] : null);
+		}
+
+		server.setChartData({
+			data: serieData,
+			dataMB: chartDataMB,
+			dataLo: chartDataB,
+			units: units,
+			curPoint: curPoint,
+			labels: dataLabels,
+			sumMB: sumMB,
+			sumLo: sumLo,
+		});
+
+		server.hideSpinner();
+		server.showChart();
+
+		var chartBlock = $(`#${server.id}_ChartBlock-${server.activeChart}`);
+		if (!chartBlock)
+			return;
+
+		chartBlock.empty();
+		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart-${server.activeChart}"></div>`);
+		var $chart = $(`#${server.id}_Chart-${server.activeChart}`);
+		$chart.chart(makeChart(serieData, curPointData, lineLabels, units,
+			{
+				type: 'axis',
+				onMouseOver: function (env, serie, index, mouseAreaData) {
+					chartMouseOver2(server, env, serie, index, mouseAreaData);
+				},
+				onMouseExit: function (env, serie, index, mouseAreaData) {
+					chartMouseExit2(server, env, serie, index, mouseAreaData);
+				},
+				onMouseOut: function (env, serie, index, mouseAreaData) {
+					chartMouseExit2(server, env, serie, index, mouseAreaData);
+				},
+			}
+		));
+
+		simulateMouseEvent(server, chartMouseExit2);
+	}
+
+	function redrawChart(server) {
+		if (!server)
+			return;
+
+
+		if (server.activeChart === server.DOWNLOAD_SPEED_CHART) {
+			redrawSpeedChart(server);
+		}
+		else {
+			redrawVolumeChart(server);
+		}
+	}
+
+	function chartMouseOver(server, env, serie, index, mouseAreaData) {
+		var data = server.getChartData();
+
+		if (data.mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			if (env.mouseAreas[data.mouseOverIndex])
+				$.elycharts.mousemanager.onMouseOutArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
+		}
+
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
+		if (!tooltip)
+			return;
+
+		var data = server.getChartData();
+		var value = data.data[index];
+		if (value === undefined || value === null) {
+			value = "0.0"
+		}
+		else {
+			value = value.toFixed(1);
+		}
+		var title = value + data.units;
+		tooltip.html('<span class="stat-size">' + title + '</span>');
+		tooltip.html(data.labels[index] + ': <span class="stat-size">' + title + '</span>');
+	}
+
+	function chartMouseOver2(server, env, serie, index, mouseAreaData)
+	{
+		var data = server.getChartData();
+
+		if (data.mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			if (env.mouseAreas[data.mouseOverIndex])
+				$.elycharts.mousemanager.onMouseOutArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
+		}
+
+		data.mouseOverIndex = index;
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
+		if (!tooltip)
+			return;
+
+		var data = server.getChartData();
+		tooltip.html(data.labels[index] + ': <span class="stat-size">' +
+			Util.formatSizeMB(data.dataMB[index], data.dataLo[index]) + '</span>');
+	}
+
+	function chartMouseExit(server, env, serie, index, mouseAreaData) {
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
+		if (!tooltip)
+			return;
+		
+		var data = server.getChartData();
+
+		data.mouseOverIndex = -1;
+		var value = data.data[data.curPoint];
+		if (value === undefined || value === null) {
+			value = "0.0"
+		}
+		else {
+			value = value.toFixed(1);
+		}
+		var title = value + data.units;
+		tooltip.html('<span class="stat-size">' + title + '</span>');
+	}
+
+	function chartMouseExit2(server, env, serie, index, mouseAreaData) {
+		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
+		if (!tooltip)
+			return;
+
+		var data = server.getChartData();
+
+		data.mouseOverIndex = -1;
+
+		var title = Util.formatSizeMB(data.sumMB, data.sumLo);
+		tooltip.html('All-time:' + ' ' + '<span class="stat-size">' + title + '</span>');
+	}
+
+	function simulateMouseEvent(server, onExitFn) {
+		var data = server.getChartData();
+
+		if (data.mouseOverIndex > -1) {
+			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
+			if (!chart)
+				return;
+
+			var env = chart.data('elycharts_env');
+			if (env.mouseAreas[data.mouseOverIndex])
+				$.elycharts.mousemanager.onMouseOverArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
+		}
+		else {
+			onExitFn(server);
+		}
+	}
+
+	function chooseRange(server, range) {
+		var data = server.getChartData();
+		updateRangeButtons(server, range, data.range);
+		data.range = range;
+		data.mouseOverIndex = -1;
+		redrawChart(server);
+	}
+
+	function updateRangeButtons(server, range, prevRange) {
+		var id = server.id;
+		var chartId = server.activeChart;
+		var prevTab = $(`#${id}_Volume_${prevRange}-${chartId}, #${id}_Volume_${prevRange}2-${chartId}`);
+		var newTab = $(`#${id}_Volume_${range}-${chartId}, #${id}_Volume_${range}2-${chartId}`);
+		prevTab.removeClass('btn-active');
+		newTab.addClass('btn-active');
+	}
+
+	function makeChart(serieData, curPointData, lineLabels, units, mousearea) {
+		return {
+			height: 250,
 			values: { serie1: serieData, serie2: curPointData },
 			labels: lineLabels,
 			type: 'line',
@@ -816,382 +1096,8 @@ var Statistics = (new function ($) {
 						}
 					}
 				},
-				mousearea: {
-					type: 'axis',
-					onMouseOver: function (env, serie, index, mouseAreaData) {
-						chartMouseOver(server, env, serie, index, mouseAreaData);
-					},
-					onMouseExit: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-					onMouseOut: function (env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
-					},
-				},
-			},
-		});
-
-		simulateMouseEvent(server);
-	}
-
-	function redrawVolumeChart(server) {
-
-		var serverData = server.getChartData();
-		var serverNo = server.id;
-		var curRange = serverData.range;
-		var monYear = serverData.monYear;
-		var curMonth = serverData.curMonth;
-		var startDate = server.dateHelper.getStartDate();
-		var endDate = server.dateHelper.getEndDate()
-		var monStartDate = server.dateHelper.getStartDate();
-		var monStartIndex = server.dateHelper.getStartDay();
-		var monEndIndex = server.dateHelper.getEndDay();
-		var clockOK = serverData.clockOK;
-		var lineLabels = [];
-		var dataLabels = [];
-		var chartDataTB = [];
-		var chartDataGB = [];
-		var chartDataMB = [];
-		var chartDataKB = [];
-		var chartDataB = [];
-		var curPoint = null;
-		var sumMB = 0;
-		var sumLo = 0;
-		var maxSizeMB = 0;
-		var maxSizeLo = 0;
-
-		var dates = [];
-		var currentDate = new Date(startDate);
-		while (currentDate <= endDate)
-		{
-			dates.push(new Date(currentDate));
-			currentDate.setDate(currentDate.getDate() + 1);
-		}
-
-		function addData(bytes, dataLab, lineLab) {
-			dataLabels.push(dataLab);
-			lineLabels.push(lineLab);
-
-			if (bytes === null) {
-				chartDataTB.push(null);
-				chartDataGB.push(null);
-				chartDataMB.push(null);
-				chartDataKB.push(null);
-				chartDataB.push(null);
-				return;
+				mousearea: mousearea,
 			}
-			chartDataTB.push(bytes.SizeMB / 1024.0 / 1024.0);
-			chartDataGB.push(bytes.SizeMB / 1024.0);
-			chartDataMB.push(size64(bytes));
-			chartDataKB.push(bytes.SizeLo / 1024.0);
-			chartDataB.push(bytes.SizeLo);
-			if (bytes.SizeMB > maxSizeMB) {
-				maxSizeMB = bytes.SizeMB;
-			}
-			if (bytes.SizeLo > maxSizeLo) {
-				maxSizeLo = bytes.SizeLo;
-			}
-			sumMB += bytes.SizeMB;
-			sumLo += bytes.SizeLo;
-		}
-
-		function drawGraph() {
-			var bytesPerDays = servervolumes[serverNo].BytesPerDays;
-			var firstDay = servervolumes[serverNo].FirstDay;
-			var daySlot = servervolumes[serverNo].DaySlot;
-			var currDay = 0;
-			for (var i = 0; i < dates.length; ++i) {
-				var date = dates[i];
-				var day = date.getDate();
-				var weekDay = date.toLocaleString('default', { weekday: 'short' })
-				var slot = Math.ceil(date.getTime() / 86400 / 1000);
-				if (slot >= firstDay && currDay <= daySlot) {
-					addData(bytesPerDays[currDay], weekDay + ' ' + day, day);
-					++currDay;
-				}
-				else {
-					addData(null, weekDay + ' ' + day, day);
-				}
-			}
-		}
-
-		drawGraph();
-
-		var serieData = maxSizeMB > 1024 * 1024 ? chartDataTB :
-			maxSizeMB > 1024 ? chartDataGB :
-				maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
-					maxSizeLo > 1024 ? chartDataKB : chartDataB;
-
-		var units = maxSizeMB > 1024 * 1024 ? ' TB' :
-			maxSizeMB > 1024 ? ' GB' :
-				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
-					maxSizeLo > 1024 ? ' KB' : ' B';
-
-		var curPointData = [];
-		for (var i = 0; i < serieData.length; i++) {
-			curPointData.push(i === curPoint ? serieData[i] : null);
-		}
-
-		server.setChartData({
-			data: serieData,
-			dataMB: chartDataMB,
-			dataLo: chartDataB,
-			units: units,
-			curPoint: curPoint,
-			range: curRange,
-			monYear: monYear,
-			curMonth: curMonth,
-			sumMB: sumMB,
-			sumLo: sumLo,
-			labels: dataLabels,
-			monStartDate: monStartDate,
-			monStartIndex: monStartIndex,
-			monEndIndex: monEndIndex,
-			clockOK: clockOK,
-		});
-
-		server.hideSpinner();
-		server.showChart();
-
-		var chartBlock = $(`#${server.id}_ChartBlock-${server.activeChart}`);
-		if (!chartBlock)
-			return;
-
-		chartBlock.empty();
-		chartBlock.html(`<div class="statistics__chart" id="${server.id}_Chart-${server.activeChart}"></div>`);
-		var $chart = $(`#${server.id}_Chart-${server.activeChart}`);
-		$chart.chart({
-			values: { serie1: serieData, serie2: curPointData },
-			labels: lineLabels,
-			type: 'line',
-			margins: [10, 15, 20, 60],
-			defaultSeries: {
-				rounded: 0.5,
-				fill: true,
-				plotProps: {
-					'stroke-width': 3.0
-				},
-				dot: true,
-				dotProps: {
-					stroke: '#FFF',
-					size: 3.0,
-					'stroke-width': 1.0,
-					fill: '#5AF'
-				},
-				highlight: {
-					scaleSpeed: 0,
-					scaleEasing: '>',
-					scale: 2.0
-				},
-				tooltip: {
-					active: false,
-				},
-				color: '#5AF'
-			},
-			series: {
-				serie2: {
-					dotProps: {
-						stroke: '#F21860',
-						fill: '#F21860',
-						size: 3.5,
-						'stroke-width': 2.5
-					},
-					highlight: {
-						scale: 1.5
-					},
-				}
-			},
-			defaultAxis: {
-				labels: true,
-				labelsProps: {
-					'font-size': 13,
-					'fill': '#3a87ad'
-				},
-				labelsDistance: 12
-			},
-			axis: {
-				l: {
-					labels: true,
-					suffix: units,
-				}
-			},
-			features: {
-				grid: {
-					draw: [true, false],
-					forceBorder: true,
-					props: {
-						stroke: '#e0e0e0',
-						'stroke-width': 1
-					},
-					ticks: {
-						active: [true, false, false],
-						size: [6, 0],
-						props: {
-							stroke: '#e0e0e0'
-						}
-					}
-				},
-				mousearea: {
-					type: 'axis',
-					onMouseOver: function (env, serie, index, mouseAreaData) {
-						chartMouseOver2(server, env, serie, index, mouseAreaData);
-					},
-					onMouseExit: function (env, serie, index, mouseAreaData) {
-						chartMouseExit2(server, env, serie, index, mouseAreaData);
-					},
-					onMouseOut: function (env, serie, index, mouseAreaData) {
-						chartMouseExit2(server, env, serie, index, mouseAreaData);
-					},
-				},
-			}
-		});
-
-		simulateMouseEvent2(server);
-	}
-
-	function redrawChart(server) {
-		if (!server)
-			return;
-
-
-		if (server.activeChart === server.DOWNLOAD_SPEED_CHART) {
-			redrawSpeedChart(server);
-		}
-		else {
-			redrawVolumeChart(server);
-		}
-	}
-
-	function chartMouseOver(server, env, serie, index, mouseAreaData) {
-		var data = server.getChartData();
-
-		if (data.mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOutArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
-		}
-
-		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
-		if (!tooltip)
-			return;
-
-		var data = server.getChartData();
-		var value = data.data[index];
-		if (value === undefined || value === null) {
-			value = "0.0"
-		}
-		else {
-			value = value.toFixed(1);
-		}
-		var title = value + data.units;
-		tooltip.html('<span class="stat-size">' + title + '</span>');
-		tooltip.html(data.labels[index] + ': <span class="stat-size">' + title + '</span>');
-	}
-
-	function chartMouseOver2(server, env, serie, index, mouseAreaData)
-	{
-		var data = server.getChartData();
-
-		if (data.mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOutArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
-		}
-
-		data.mouseOverIndex = index;
-		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
-		if (!tooltip)
-			return;
-
-		var data = server.getChartData();
-		tooltip.html(data.labels[index] + ': <span class="stat-size">' +
-			Util.formatSizeMB(data.dataMB[index], data.dataLo[index]) + '</span>');
-	}
-
-	function chartMouseExit(server, env, serie, index, mouseAreaData) {
-		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
-		if (!tooltip)
-			return;
-		
-		var data = server.getChartData();
-
-		data.mouseOverIndex = -1;
-		var value = data.data[data.curPoint];
-		if (value === undefined || value === null) {
-			value = "0.0"
-		}
-		else {
-			value = value.toFixed(1);
-		}
-		var title = value + data.units;
-		tooltip.html('<span class="stat-size">' + title + '</span>');
-	}
-
-	function chartMouseExit2(server, env, serie, index, mouseAreaData) {
-		var tooltip = $(`#${server.id}_Tooltip-${server.activeChart}`);
-		if (!tooltip)
-			return;
-
-		var data = server.getChartData();
-
-		data.mouseOverIndex = -1;
-
-		var title = 'All-time:' + ' ' + Util.formatSizeMB(server.totalSizeMB, server.totalSizeLo);
-		tooltip.html('<span class="stat-size">' + title + '</span>');
-	}
-
-	function simulateMouseEvent(server) {
-		var data = server.getChartData();
-
-		if (data.mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOverArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
-		}
-		else {
-			chartMouseExit(server)
-		}
-	}
-
-	function simulateMouseEvent2(server) {
-		var data = server.getChartData();
-
-		if (data.mouseOverIndex > -1) {
-			var chart = $(`#${server.id}_Chart-${server.activeChart}`);
-			if (!chart)
-				return;
-
-			var env = chart.data('elycharts_env');
-			$.elycharts.mousemanager.onMouseOverArea(env, false, data.mouseOverIndex, env.mouseAreas[data.mouseOverIndex]);
-		}
-		else {
-			chartMouseExit2(server)
-		}
-	}
-
-	function chooseRange(server, range) {
-		var data = server.getChartData();
-		updateRangeButtons(server, range, data.range);
-		data.range = range;
-		data.mouseOverIndex = -1;
-		redrawChart(server);
-	}
-
-	function updateRangeButtons(server, range, prevRange) {
-		var id = server.id;
-		var chartId = server.activeChart;
-		var prevTab = $(`#${id}_Volume_${prevRange}-${chartId}, #${id}_Volume_${prevRange}2-${chartId}`);
-		var newTab = $(`#${id}_Volume_${range}-${chartId}, #${id}_Volume_${range}2-${chartId}`);
-		prevTab.removeClass('btn-active');
-		newTab.addClass('btn-active');
+		};
 	}
 }(jQuery));

@@ -2,7 +2,7 @@
 
 ### Signature
 ``` c++
-bool resetservervolume(int ServerId, string Sounter);
+bool resetservervolume(int ServerId, string Counter);
 ```
 
 ### Description
