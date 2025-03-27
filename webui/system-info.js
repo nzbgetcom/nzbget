@@ -840,7 +840,7 @@ var SystemInfo = (new function($)
 
 		speedContainer.attr('title', Util.formatSpeedWithCustomUnit(bytesPerSec, 'Bytes') 
 		+ '\nApprox. ' 
-		+  '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'bits'));
+		+  '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'bit'));
 
 		return speedContainer;
 	}

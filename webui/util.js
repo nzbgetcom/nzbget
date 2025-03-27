@@ -267,6 +267,31 @@ var Util = (new function($)
 		}
 	}
 
+	this.formatNumber = function (num) 
+	{
+		var formattedNum;
+
+		if (num >= 1000000000) 
+		{
+			formattedNum = (num / 1000000000).toFixed(0);
+			return formattedNum + 'B';
+		}
+		else if (num >= 1000000) 
+		{
+			formattedNum = (num / 1000000).toFixed(0);
+			return formattedNum + 'M';
+		}
+		else if (num >= 1000) 
+		{
+			formattedNum = (num / 1000).toFixed(0);
+			return formattedNum + 'K';
+		}
+		else 
+		{
+			return num.toFixed(0);
+		}
+	}
+
 	this.round0 = function(arg)
 	{
 		return Math.round(arg);

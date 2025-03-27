@@ -54,11 +54,12 @@
 	<script language="javascript" type="text/javascript" src="config.js"></script>
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
 	<script language="javascript" type="text/javascript" src="system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="statistics.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -194,6 +195,9 @@
 
 					<input id="ConfigTable_filter" class="search-query" type="text" placeholder="Search settings" title="Search settings [Shift+F]">
 					<i id="ConfigTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
+					
+					<input id="StatisticsTable_filter" class="search-query" disabled type="text" placeholder="Search statistics" title="Search">
+					<i id="StatisticsTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
 				</div>
 			</div>
 
@@ -202,6 +206,7 @@
 				<ul class="nav">
 					<li class="active"><a data-toggle="tab" href="#DownloadsTab" id="DownloadsTabLink"><span class="phone-hide" title="Downloads [Shift+D]">Downloads </span><i class="material-icon phone-only inline">download</i><br class="phone-only"><span class="badge" id="DownloadsTabBadge" style="display: none;"></span><span class="badge badge-empty" id="DownloadsTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="material-icon phone-only inline">calendar_today</i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
+					<li><a data-toggle="tab" href="#StatisticsTab" id="StatisticsTabLink"><span class="phone-hide" title="Statistics [Shift+I]">Statistics </span><i class="material-icon phone-only inline">analytics</i><br class="phone-only"><span class="badge" id="StatisticsTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="StatisticsabBadgeEmpty">&nbsp;</span></span></a></li>
 					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="material-icon phone-only inline">mail</i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
 				</ul>
@@ -1000,6 +1005,18 @@
 						<hr>
 						<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()">Save all changes</button>
 					</div>
+				</div>
+			</div>
+		</div>
+
+<!-- *** STATISTICS ************************************************************ -->
+		<div id="StatisticsTab" class="tab-pane fade">
+			<div id="StatisticsTabData" class="statistics">
+				<div id="Statistics_Spinner" class="statistics__spinner-container ">
+					<i class="material-icon spinner statistics__spinner ">progress_activity</i>
+				</div>
+				<div id="Statistics_Table" class="hide">
+					
 				</div>
 			</div>
 		</div>

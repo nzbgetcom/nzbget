@@ -34,6 +34,7 @@ function Server()
 	this.name = '';
 	this.port = 0;
 	this.connections = 0;
+	this.active = false;
 }
 
 var Options = (new function($)
@@ -46,6 +47,7 @@ var Options = (new function($)
 	this.configtemplates = [];
 	this.categories = [];
 	this.restricted = false;
+	this.loaded = false;
 
 	// State
 	var _this = this;
@@ -55,6 +57,7 @@ var Options = (new function($)
 	var loadConfigError;
 	var loadServerTemplateError;
 	var shortScriptNames = [];
+	var subs = [];
 
 	var HIDDEN_SECTIONS = ['DISPLAY (TERMINAL)', 'POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
 	var POSTPARAM_SECTIONS = ['POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
@@ -67,6 +70,8 @@ var Options = (new function($)
 			_this.options = _options;
 			initCategories();
 			_this.restricted = _this.option('ControlPort') === '***';
+			_this.loaded = true;
+			notifyAll();
 			RPC.next();
 		});
 
@@ -102,12 +107,28 @@ var Options = (new function($)
 
 		server.id = id;
 		var serverId = 'Server' + id;
-		server.host = findOption(this.options, serverId + '.Host').Value;
+		var hostOpt = findOption(this.options, serverId + '.Host');
+		if (!hostOpt)
+			return null;
+
+		server.host = hostOpt.Value;
 		server.name = findOption(this.options, serverId + '.Name').Value;
 		server.port = findOption(this.options, serverId + '.Port').Value;
+		server.active = findOption(this.options, serverId + '.Active').Value == 'yes';
 		server.connections = findOption(this.options, serverId + '.Connections').Value;
 
 		return server;
+	}
+
+	this.subscribe = function(sub)
+	{
+		subs.push(sub);
+	}
+
+	function notifyAll() {
+		for (var i = 0; i < subs.length; ++i) {
+			subs[i].update();
+		}
 	}
 
 	function initCategories()
