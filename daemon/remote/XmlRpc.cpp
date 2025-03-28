@@ -3617,7 +3617,10 @@ void ResetServerVolumeXmlCommand::Execute()
 		return;
 	}
 
-	if (strcmp(counter, "CUSTOM"))
+	bool reset = strcmp(counter, "") == 0;
+	bool resetCustom = strcmp(counter, "CUSTOM") == 0;
+
+	if (!reset && !resetCustom)
 	{
 		BuildErrorResponse(3, "Invalid Counter");
 		return;
@@ -3629,7 +3632,10 @@ void ResetServerVolumeXmlCommand::Execute()
 	{
 		if (index == serverId || serverId == -1)
 		{
-			serverVolume.ResetCustom();
+			if (reset)
+				serverVolume.Reset();
+			else
+				serverVolume.ResetCustom();
 			ok = true;
 		}
 		index++;

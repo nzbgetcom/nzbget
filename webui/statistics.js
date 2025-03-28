@@ -21,6 +21,7 @@
 var DateHelper = (function () {
 	function DateHelper() {
 		this.now = new Date();
+		this.lastResetDate = this.now;
 		this.startDate = new Date(this.now.getFullYear(), this.now.getMonth(), 1);
 		this.endDate =  new Date(this.now.getFullYear(), this.now.getMonth() + 1, 0);
 		var referenceDateStart = new Date(this.now.getFullYear(), 0, 1);
@@ -55,6 +56,10 @@ var DateHelper = (function () {
 		return this.endDateString;
 	};
 
+	DateHelper.prototype.getLastResetDate = function () {
+		return this.lastResetDate;
+	};
+
 	DateHelper.prototype.formatDateForInput = function (date) {
 		date.setTime(date.getTime() - (date.getTimezoneOffset() * 60000));
 		var dateAsString =  date.toISOString().substr(0, 19);
@@ -71,6 +76,10 @@ var DateHelper = (function () {
 		this.endDateString = dateString;
 	};
 
+	DateHelper.prototype.setLastResetDate = function (date) {
+		this.startDate = date;
+	};
+
 	return DateHelper;
 })();
 
@@ -81,7 +90,7 @@ var Statistics = (new function ($) {
 		this.DOWNLOAD_SPEED_CHART = 0;
 		this.DOWMLOADED_VOLUME_CHART = 1;
 
-		this.dateHelper = new DateHelper();
+		this.timing = new DateHelper();
 		this.id = 0;
 		this.connections = 0;
 		this.host = "";
@@ -193,8 +202,6 @@ var Statistics = (new function ($) {
 			}
 		}
 	}
-
-	var IS_MOBILE = window.innerWidth < 560;
 
 	var $StatisticsSpinner;
 	var $StatisticsTable;
@@ -333,8 +340,29 @@ var Statistics = (new function ($) {
 		server.$downloadSpeedChart.hide();
 		server.$downloadVolumeChart.hide();
 
-		$container.append(server.$details, server.$spinner, server.$downloadSpeedChart, server.$downloadVolumeChart);
+		$container.append(
+			server.$details, 
+			server.$spinner, 
+			server.$downloadSpeedChart, 
+			server.$downloadVolumeChart
+		);
 		$StatisticsTable.append($container, '<hr>');
+	}
+
+	function makeResetButton(server) {
+		var $btn = $('<button class="btn default-btn" title="Reset statistics"><i class="material-icon">refresh</i></button>')
+		$btn.on('click', function() {
+			$('#StatDialogResetConfirmDialog_Server').text(server.name);
+			$('#StatDialogResetConfirmDialog_Time').text(server.timing.getLastResetDate().toDateString());
+			ConfirmDialog.showModal(`StatDialogResetConfirmDialog`, function() {
+				RPC.call('resetservervolume', [server.id === 0 ? -1 : server.id, ''], function()
+				{
+					Refresher.update();
+				});	
+			});
+		}).css("margin-left", "5px");
+
+		return $btn;
 	}
 
 	function makeServerDetails(server) {
@@ -343,9 +371,9 @@ var Statistics = (new function ($) {
 		html += `<tr><td><h4>Host:</h4></td><td>${server.host}</td></tr>`;
 		html += `<tr><td><h4>Active:</h4></td><td>${server.active ? "Yes" : "No"}</td></tr>`;
 		html += `<tr><td><h4>Connections:</h4></td><td>${server.connections}</td></tr>`;
-		html += `<tr><td><h4>Articles Success/Failed:</h4></td><td id="${server.id}_Articles-${server.activeChart}"></td></tr>`;
-		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownloaded-${server.activeChart}"></td></tr>`;
-		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion-${server.activeChart}"></td></tr>`;
+		html += `<tr><td><h4>Total downloaded:</h4></td><td id="${server.id}_TotalDownloaded"></td></tr>`;
+		html += `<tr><td><h4>Articles Success/Failed:</h4></td><td id="${server.id}_Articles"></td></tr>`;
+		html += `<tr><td><h4>Completion:</h4></td><td id="${server.id}_Completion"></td></tr>`;
 		html += '</table>';
 
 		return $(html);
@@ -365,8 +393,11 @@ var Statistics = (new function ($) {
 		var len = server.successArticles.length;
 
 		if (servervolumes[server.id]) {
+			server.todaySizeMB = servervolumes[server.id].BytesPerDays[servervolumes[server.id].DaySlot].SizeMB;
+			server.todaySizeLo = servervolumes[server.id].BytesPerDays[servervolumes[server.id].DaySlot].SizeLo;
 			server.totalSizeMB = servervolumes[server.id].TotalSizeMB;
 			server.totalSizeLo = servervolumes[server.id].TotalSizeLo;
+			server.timing.setLastResetDate(servervolumes[server.id].DataTime * 1000);
 		}
 
 		for (var i = 0; i < len; i++) {
@@ -383,13 +414,12 @@ var Statistics = (new function ($) {
 		$successArticles.addClass('txt-success');
 		var $failedArticles = $(`<span>${Util.formatNumber(failedSum)}</span>`);
 		$failedArticles.addClass('txt-important');
-		var $articles = $(`#${server.id}_Articles-${server.activeChart}`);
+		var $articles = $(`#${server.id}_Articles`);
 		$articles.empty();
 		$articles.append($successArticles, " / ", $failedArticles);
 
-		$(`#${server.id}_FailedArticles-${server.activeChart}`).text();
-		$(`#${server.id}_TotalDownloaded-${server.activeChart}`).text(Util.formatSizeMB(server.totalSizeMB));
-		$(`#${server.id}_Completion-${server.activeChart}`).text(completion);
+		$(`#${server.id}_TotalDownloaded`).text(Util.formatSizeMB(server.totalSizeMB, server.totalSizeLo));
+		$(`#${server.id}_Completion`).text(completion);
 
 		server.showDetails();
 	}
@@ -418,7 +448,6 @@ var Statistics = (new function ($) {
 			redrawChart(server);
 		});
 
-
 		var $volumeChartBtn = $('<button>', {
 			class: 'btn btn-default',
 			title: 'Show the Downloaded Volume chart',
@@ -428,10 +457,12 @@ var Statistics = (new function ($) {
 			redrawChart(server);
 		});
 
+		var $resetBtn = makeResetButton(server);
+
 		server.$speedChartBtn = $speedChartBtn;
 		server.$volumeChartBtn = $volumeChartBtn;
 
-		$container.append($speedChartBtn, $volumeChartBtn);
+		$container.append($speedChartBtn, $volumeChartBtn, $resetBtn);
 
 		return $container;
 	}
@@ -528,36 +559,28 @@ var Statistics = (new function ($) {
 			id: `${server.id}_Toolbar-${server.DOWMLOADED_VOLUME_CHART}`
 		}).css('margin-bottom', '5px');
 
-		var size = IS_MOBILE ? '120px' : '90px';
-
-		var $startDateInput = $('<input>', {
-			type: 'date',
-			id: $(`${server.id}_StartDate-${server.DOWNLOADED_VOULUME_CHART}`)
-		}).css('width', size);
-
+		var $startDateInput = $('<input>', { type: 'date' });
 		var $sep = $('<span> - </span>')
+		var $endDateInput = $('<input>', { type: 'date' });
 
-		var $endDateInput = $('<input>', {
-			type: 'date',
-			id: $(`${server.id}_EndDate-${server.DOWNLOADED_VOULUME_CHART}`)
-		}).css('width', size);
+		$startDateInput.val(server.timing.getStartDateString());
+		$endDateInput.val(server.timing.getEndDateString());
 
-		$startDateInput.val(server.dateHelper.getStartDateString());
-		$endDateInput.val(server.dateHelper.getEndDateString());
-
-		$startDateInput.attr('max', server.dateHelper.getEndDateString());
-		$endDateInput.attr('min', server.dateHelper.getStartDateString());
+		$startDateInput.attr('max', server.timing.getEndDateString());
+		$endDateInput.attr('min', server.timing.getStartDateString());
 
 		$startDateInput.on('change', function () {
 			const newStartDate = $(this).val();
-			server.dateHelper.setStartDate(newStartDate);
+			server.timing.setStartDate(newStartDate);
 			$endDateInput.attr('min', newStartDate);
+			redrawVolumeChart(server);
 		});
 
 		$endDateInput.on('change', function () {
 			const newEndDate = $(this).val();
-			server.dateHelper.setEndDate(newEndDate);
+			server.timing.setEndDate(newEndDate);
 			$startDateInput.attr('max', newEndDate);
+			redrawVolumeChart(server);
 		});
 
 		$toolbar.append($startDateInput, $sep, $endDateInput);
@@ -760,8 +783,8 @@ var Statistics = (new function ($) {
 
 	function redrawVolumeChart(server) {
 		var serverNo = server.id;
-		var startDate = server.dateHelper.getStartDate();
-		var endDate = server.dateHelper.getEndDate();
+		var startDate = server.timing.getStartDate();
+		var endDate = server.timing.getEndDate();
 		var lineLabels = [];
 		var dataLabels = [];
 		var chartDataTB = [];

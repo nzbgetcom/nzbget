@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -54,10 +54,13 @@ public:
 
 	void AddData(int bytes);
 	void CalcSlots(time_t locCurTime);
+	void Reset();
 	void ResetCustom();
 	void LogDebugInfo();
 
 private:
+	void ResetVolume(VolumeArray& volume);
+
 	VolumeArray m_bytesPerSeconds = VolumeArray(60);
 	VolumeArray m_bytesPerMinutes = VolumeArray(60);
 	VolumeArray m_bytesPerHours = VolumeArray(24);

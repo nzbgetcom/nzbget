@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -126,10 +126,30 @@ void ServerVolume::AddData(int bytes)
 	m_dataTime = curTime;
 }
 
+void ServerVolume::Reset()
+{
+	m_totalBytes = 0;
+
+	ResetVolume(m_bytesPerSeconds);
+	ResetVolume(m_bytesPerMinutes);
+	ResetVolume(m_bytesPerHours);
+	ResetVolume(m_bytesPerDays);
+
+	ResetCustom();
+}
+
 void ServerVolume::ResetCustom()
 {
 	m_customBytes = 0;
 	m_customTime = Util::CurrentTime();
+}
+
+void ServerVolume::ResetVolume(VolumeArray& volume)
+{
+	for (int64& size : volume)
+	{
+		size = 0;
+	}
 }
 
 void ServerVolume::LogDebugInfo()

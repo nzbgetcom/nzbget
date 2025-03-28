@@ -2427,6 +2427,10 @@ body.phone,
 	margin-top: 30px;
 }
 
+input[type="date"] {
+	width: 90px;
+}
+
 /* MEDIA SMALL SCREENS */
 @media (max-width: 700px) {
 	#ConfigContent [class*="span"] {
@@ -2444,6 +2448,10 @@ body.phone,
 
 @media (max-width: 568px) {
 
+	input[type="date"] {
+		width: 125px;
+	}
+	
 	input[type="checkbox"],
 		input[type="radio"] {
 		border: 1px solid #ccc;
