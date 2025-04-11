@@ -3476,7 +3476,7 @@ GuardedMessageList LogUpdateXmlCommand::GuardMessages()
 	return g_Maintenance->GuardMessages();
 }
 
-// struct[] servervolumes(bool BytesPerSeconds, bool BytesPerMinutes, bool BytesPerHours, bool BytesPerDays)
+// struct[] servervolumes(bool BytesPerSeconds, bool BytesPerMinutes, bool BytesPerHours, bool BytesPerDays, bool ArticlesPerDays)
 void ServerVolumesXmlCommand::Execute()
 {
 	const char* XML_VOLUME_ITEM_START =
@@ -3491,12 +3491,13 @@ void ServerVolumesXmlCommand::Execute()
 	"<member><name>CustomSizeHi</name><value><i4>%u</i4></value></member>\n"
 	"<member><name>CustomSizeMB</name><value><i4>%i</i4></value></member>\n"
 	"<member><name>CustomTime</name><value><i4>%i</i4></value></member>\n"
+	"<member><name>CountersResetTime</name><value><i4>%i</i4></value></member>\n"
 	"<member><name>SecSlot</name><value><i4>%i</i4></value></member>\n"
 	"<member><name>MinSlot</name><value><i4>%i</i4></value></member>\n"
 	"<member><name>HourSlot</name><value><i4>%i</i4></value></member>\n"
 	"<member><name>DaySlot</name><value><i4>%i</i4></value></member>\n";
 
-	const char* XML_BYTES_ARRAY_START =
+	const char* XML_ARRAY_START =
 	"<member><name>%s</name><value><array><data>\n";
 
 	const char* XML_BYTES_ARRAY_ITEM =
@@ -3506,7 +3507,13 @@ void ServerVolumesXmlCommand::Execute()
 	"<member><name>SizeMB</name><value><i4>%i</i4></value></member>\n"
 	"</struct></value>\n";
 
-	const char* XML_BYTES_ARRAY_END =
+	const char* XML_ARTICLES_ARRAY_ITEM =
+	"<value><struct>\n"
+	"<member><name>Failed</name><value><i4>%u</i4></value></member>\n"
+	"<member><name>Success</name><value><i4>%u</i4></value></member>\n"
+	"</struct></value>\n";
+
+	const char* XML_ARRAY_END =
 	"</data></array></value></member>\n";
 
 	const char* XML_VOLUME_ITEM_END =
@@ -3524,12 +3531,13 @@ void ServerVolumesXmlCommand::Execute()
 	"\"CustomSizeHi\" : %u,\n"
 	"\"CustomSizeMB\" : %i,\n"
 	"\"CustomTime\" : %i,\n"
+	"\"CountersResetTime\" : %i,\n"
 	"\"SecSlot\" : %i,\n"
 	"\"MinSlot\" : %i,\n"
 	"\"HourSlot\" : %i,\n"
 	"\"DaySlot\" : %i,\n";
 
-	const char* JSON_BYTES_ARRAY_START =
+	const char* JSON_ARRAY_START =
 	"\"%s\" : [\n";
 
 	const char* JSON_BYTES_ARRAY_ITEM =
@@ -3539,7 +3547,13 @@ void ServerVolumesXmlCommand::Execute()
 	"\"SizeMB\" : %i\n"
 	"}";
 
-	const char* JSON_BYTES_ARRAY_END =
+	const char* JSON_ARTICLES_ARRAY_ITEM =
+	"{\n"\
+	"\"Failed\" : %u,\n"
+	"\"Success\" : %u\n"
+	"}";
+
+	const char* JSON_ARRAY_END =
 	"]\n";
 
 	const char* JSON_VOLUME_ITEM_END =
@@ -3548,8 +3562,13 @@ void ServerVolumesXmlCommand::Execute()
 	AppendResponse(IsJson() ? "[\n" : "<array><data>\n");
 
 	bool BytesPer[] = {true, true, true, true};
-	NextParamAsBool(&BytesPer[0]) && NextParamAsBool(&BytesPer[1]) &&
-		NextParamAsBool(&BytesPer[2]) && NextParamAsBool(&BytesPer[3]);
+	NextParamAsBool(&BytesPer[0])
+		&& NextParamAsBool(&BytesPer[1])
+		&& NextParamAsBool(&BytesPer[2])
+		&& NextParamAsBool(&BytesPer[3]);
+
+	bool articlesPerDays = true; 
+	NextParamAsBool(&articlesPerDays);
 
 	int index = 0;
 
@@ -3565,23 +3584,40 @@ void ServerVolumesXmlCommand::Execute()
 
 		AppendCondResponse(",\n", IsJson() && index > 0);
 		AppendFmtResponse(IsJson() ? JSON_VOLUME_ITEM_START : XML_VOLUME_ITEM_START,
-				 index, (int)serverVolume.GetDataTime(), serverVolume.GetFirstDay(),
-				 totalSizeLo, totalSizeHi, totalSizeMB, customSizeLo, customSizeHi, customSizeMB,
-				 (int)serverVolume.GetCustomTime(), serverVolume.GetSecSlot(),
-				 serverVolume.GetMinSlot(), serverVolume.GetHourSlot(), serverVolume.GetDaySlot());
+			index,
+			static_cast<int>(serverVolume.GetDataTime()),
+			serverVolume.GetFirstDay(),
+			totalSizeLo, totalSizeHi, totalSizeMB,
+			customSizeLo, customSizeHi, customSizeMB,
+			static_cast<int>(serverVolume.GetCustomTime()),
+			static_cast<int>(serverVolume.GetCountersResetTime()),
+			serverVolume.GetSecSlot(),
+			serverVolume.GetMinSlot(),
+			serverVolume.GetHourSlot(),
+			serverVolume.GetDaySlot()
+		);
 
-		ServerVolume::VolumeArray* VolumeArrays[] = { serverVolume.BytesPerSeconds(),
-			serverVolume.BytesPerMinutes(), serverVolume.BytesPerHours(), serverVolume.BytesPerDays() };
-		const char* VolumeNames[] = { "BytesPerSeconds", "BytesPerMinutes", "BytesPerHours", "BytesPerDays" };
+		ServerVolume::VolumeArray* VolumeArrays[] = { 
+			serverVolume.BytesPerSeconds(),
+			serverVolume.BytesPerMinutes(), 
+			serverVolume.BytesPerHours(), 
+			serverVolume.BytesPerDays() 
+		};
+		const char* VolumeNames[] = {
+			"BytesPerSeconds",
+			"BytesPerMinutes",
+			"BytesPerHours",
+			"BytesPerDays"
+		};
 
-		for (int i=0; i<4; i++)
+		for (size_t i = 0; i < 4; ++i)
 		{
 			if (BytesPer[i])
 			{
 				ServerVolume::VolumeArray* volumeArray = VolumeArrays[i];
 				const char* arrayName = VolumeNames[i];
 
-				AppendFmtResponse(IsJson() ? JSON_BYTES_ARRAY_START : XML_BYTES_ARRAY_START, arrayName);
+				AppendFmtResponse(IsJson() ? JSON_ARRAY_START : XML_ARRAY_START, arrayName);
 
 				int index2 = 0;
 				for (int64 bytes : *volumeArray)
@@ -3595,10 +3631,30 @@ void ServerVolumesXmlCommand::Execute()
 							 sizeLo, sizeHi, sizeMB);
 				}
 
-				AppendResponse(IsJson() ? JSON_BYTES_ARRAY_END : XML_BYTES_ARRAY_END);
+				AppendResponse(IsJson() ? JSON_ARRAY_END : XML_ARRAY_END);
 				AppendCondResponse(",\n", IsJson() && i < 3);
 			}
 		}
+
+		if (articlesPerDays)
+		{
+			AppendCondResponse(",\n", IsJson());
+			AppendFmtResponse(IsJson() ? JSON_ARRAY_START : XML_ARRAY_START, "ArticlesPerDays");
+	
+			const auto& articles = serverVolume.GetArticlesPerDays();
+			for (size_t i = 0; i < articles.size(); ++i)
+			{
+				AppendFmtResponse(IsJson() ? JSON_ARTICLES_ARRAY_ITEM : XML_ARTICLES_ARRAY_ITEM,
+					articles[i].failed, 
+					articles[i].success
+				);
+
+				AppendCondResponse(",\n", IsJson() && i < articles.size() - 1);
+			}
+
+			AppendResponse(IsJson() ? JSON_ARRAY_END : XML_ARRAY_END);
+		}
+
 		AppendResponse(IsJson() ? JSON_VOLUME_ITEM_END : XML_VOLUME_ITEM_END);
 		index++;
 	}
@@ -3617,7 +3673,10 @@ void ResetServerVolumeXmlCommand::Execute()
 		return;
 	}
 
-	if (strcmp(counter, "CUSTOM"))
+	bool reset = strcmp(counter, "") == 0;
+	bool resetCustom = strcmp(counter, "CUSTOM") == 0;
+
+	if (!reset && !resetCustom)
 	{
 		BuildErrorResponse(3, "Invalid Counter");
 		return;
@@ -3629,7 +3688,10 @@ void ResetServerVolumeXmlCommand::Execute()
 	{
 		if (index == serverId || serverId == -1)
 		{
-			serverVolume.ResetCustom();
+			if (reset)
+				serverVolume.Reset();
+			else
+				serverVolume.ResetCustom();
 			ok = true;
 		}
 		index++;

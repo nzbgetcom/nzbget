@@ -542,7 +542,6 @@ var StatDialog = (new function($)
 	var $StatDialog_DataSpeedLimit;
 	var $StatDialog_ArticleCache;
 	var $StatDialog_QueueScripts;
-	var $StatDialog_ChartBlock;
 	var $StatRangeDialog;
 	var $StatRangeDialog_PeriodInput;
 	var $StatDialog_Tooltip;
@@ -590,7 +589,6 @@ var StatDialog = (new function($)
 		$StatDialog_DataSpeedLimit = $('#StatDialog_DataSpeedLimit');
 		$StatDialog_ArticleCache = $('#StatDialog_ArticleCache');
 		$StatDialog_QueueScripts = $('#StatDialog_QueueScripts');
-		$StatDialog_ChartBlock = $('#StatDialog_ChartBlock');
 		$StatRangeDialog = $('#StatRangeDialog');
 		$StatRangeDialog_PeriodInput = $('#StatRangeDialog_PeriodInput');
 		$StatDialog_Tooltip = $('#StatDialog_Tooltip');
@@ -610,7 +608,6 @@ var StatDialog = (new function($)
 			lastTab = null;
 			servervolumes = null;
 			prevServervolumes = null;
-			$StatDialog_ChartBlock.empty();
 			visible = false;
 		});
 
@@ -1032,15 +1029,16 @@ var StatDialog = (new function($)
 			dataLabels: dataLabels
 		};
 
-		$StatDialog_ChartBlock.empty();
-		$StatDialog_ChartBlock.html('<div id="StatDialog_Chart"></div>');
-		$('#StatDialog_Chart').chart({
+		var $chart = $("#StatDialog_Chart");
+		if (!$chart) return;
+
+		$chart.chart('clear').chart({
 			values: { serie1 : serieData, serie2: curPointData },
 			labels: lineLabels,
 			type: 'line',
 			margins: [10, 15, 20, 60],
 			defaultSeries: {
-				rounded: 0.5,
+				rounded: 0.0,
 				fill: true,
 				plotProps: {
 					'stroke-width': 3.0

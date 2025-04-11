@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,12 +31,27 @@
 class ServerVolume
 {
 public:
-	typedef std::vector<int64> VolumeArray;
+	struct Articles
+	{
+		uint32 failed;
+		uint32 success;
+	};
+	struct Stats
+	{
+		uint32 bytes;
+		Articles articles;
+	};
+
+	using VolumeArray = std::vector<int64>;
+	using ArticlesArray = std::vector<Articles>;
 
 	VolumeArray* BytesPerSeconds() { return &m_bytesPerSeconds; }
 	VolumeArray* BytesPerMinutes() { return &m_bytesPerMinutes; }
 	VolumeArray* BytesPerHours() { return &m_bytesPerHours; }
 	VolumeArray* BytesPerDays() { return &m_bytesPerDays; }
+
+	const ArticlesArray& GetArticlesPerDays() const { return m_articlesPerDays; }
+	void SetArticlesPerDays(ArticlesArray articles) { m_articlesPerDays = std::move(articles); }
 	void SetFirstDay(int firstDay) { m_firstDay = firstDay; }
 	int GetFirstDay() { return m_firstDay; }
 	void SetTotalBytes(int64 totalBytes) { m_totalBytes = totalBytes; }
@@ -51,30 +66,46 @@ public:
 	void SetDataTime(time_t dataTime) { m_dataTime = dataTime; }
 	time_t GetCustomTime() { return m_customTime; }
 	void SetCustomTime(time_t customTime) { m_customTime = customTime; }
+	time_t GetCountersResetTime() { return m_countersResetTime; }
+	void SetCountersResetTime(time_t time) { m_countersResetTime = time; }
 
-	void AddData(int bytes);
+	void AddStats(Stats stats);
 	void CalcSlots(time_t locCurTime);
+	void Reset();
 	void ResetCustom();
 	void LogDebugInfo();
 
 private:
+	void ResetVolume(VolumeArray& volume);
+	void ResetArticles();
+
 	VolumeArray m_bytesPerSeconds = VolumeArray(60);
 	VolumeArray m_bytesPerMinutes = VolumeArray(60);
 	VolumeArray m_bytesPerHours = VolumeArray(24);
 	VolumeArray m_bytesPerDays;
+	ArticlesArray m_articlesPerDays;
+
 	int m_firstDay = 0;
 	int64 m_totalBytes = 0;
 	int64 m_customBytes = 0;
+
+	/** Date/time when the data was last updated (time is in C/Unix format) */
 	time_t m_dataTime = 0;
+
+	/** Date/time of the last reset of custom counter (time is in C/Unix format) */
 	time_t m_customTime = Util::CurrentTime();
+
+	/** Date/time of the last reset of all counters (time is in C/Unix format) */
+	time_t m_countersResetTime = Util::CurrentTime();
+
 	int m_secSlot = 0;
 	int m_minSlot = 0;
 	int m_hourSlot = 0;
 	int m_daySlot = 0;
 };
 
-typedef std::vector<ServerVolume> ServerVolumes;
-typedef GuardedPtr<ServerVolumes> GuardedServerVolumes;
+using ServerVolumes = std::vector<ServerVolume>;
+using GuardedServerVolumes = GuardedPtr<ServerVolumes>;
 
 class StatMeter : public Debuggable
 {
@@ -84,7 +115,7 @@ public:
 	int64 CalcCurrentDownloadSpeed();
 	int64 CalcMomentaryDownloadSpeed();
 	void AddSpeedReading(int bytes);
-	void AddServerData(int bytes, int serverId);
+	void AddServerStats(ServerVolume::Stats stats, int serverId);
 	void CalcTotalStat(int* upTimeSec, int* dnTimeSec, int64* allBytes, bool* standBy);
 	void CalcQuotaUsage(int64& monthBytes, int64& dayBytes);
 	void IntervalCheck();
