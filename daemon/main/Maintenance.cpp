@@ -29,7 +29,7 @@ extern int g_ArgumentCount;
 extern char* (*g_Arguments)[];
 
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 class Signature
 {
 public:
@@ -197,7 +197,7 @@ bool Maintenance::ReadPackageInfoStr(const char* key, CString& value)
 
 bool Maintenance::VerifySignature(const char* inFilename, const char* sigFilename, const char* pubKeyFilename)
 {
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	Signature signature(inFilename, sigFilename, pubKeyFilename);
 	return signature.Verify();
 #else
@@ -314,7 +314,7 @@ void UpdateInfoScriptController::AddMessage(Message::EKind kind, const char* tex
 	}
 }
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 Signature::Signature(const char *inFilename, const char *sigFilename, const char *pubKeyFilename)
 {
 	m_inFilename = inFilename;
@@ -413,4 +413,4 @@ bool Signature::Verify()
 	return ComputeInHash() && ReadSignature() && ReadPubKey() &&
 		RSA_verify(NID_sha256, m_inHash, sizeof(m_inHash), m_signature, sizeof(m_signature), m_pubKey) == 1;
 }
-#endif /* HAVE_OPENSSL */
+#endif

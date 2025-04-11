@@ -25,13 +25,13 @@
 #include <thread>
 #include <boost/asio.hpp>
 
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #endif
 
 namespace Network
 {
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 	using Socket = boost::asio::ssl::stream<boost::asio::ip::tcp::socket>;
 #else
 	using Socket = boost::asio::ip::tcp::socket;
@@ -72,7 +72,7 @@ namespace Network
 		boost::asio::io_context m_context;
 		boost::asio::ip::tcp::resolver m_resolver;
 		std::string m_localIP;
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 		void DoHandshake(Socket& socket, const std::string& host);
 		boost::asio::ssl::context m_sslContext{ boost::asio::ssl::context::tlsv13_client };
 #endif

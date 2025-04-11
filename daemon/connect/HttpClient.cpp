@@ -28,7 +28,7 @@ namespace Network
 	namespace asio = boost::asio;
 	using tcp = boost::asio::ip::tcp;
 
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 	namespace ssl = boost::asio::ssl;
 #endif
 
@@ -36,7 +36,7 @@ namespace Network
 		: m_context{}
 		, m_resolver{ m_context }
 	{
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 		m_sslContext.set_default_verify_paths();
 #endif
 	}
@@ -63,7 +63,7 @@ namespace Network
 
 	std::string HttpClient::GetProtocol() const
 	{
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 		return "https";
 #else
 		return "http";
@@ -85,7 +85,7 @@ namespace Network
 	void HttpClient::Connect(Socket& socket, const Endpoints& endpoints, const std::string& host)
 	{
 		asio::connect(socket.lowest_layer(), endpoints);
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 		DoHandshake(socket, host);
 #endif
 		SaveLocalIP(socket);
@@ -174,7 +174,7 @@ namespace Network
 		m_localIP = socket.lowest_layer().local_endpoint().address().to_string();
 	}
 
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 	Socket HttpClient::GetSocket()
 	{
 		return ssl::stream<tcp::socket>{ m_context, m_sslContext };

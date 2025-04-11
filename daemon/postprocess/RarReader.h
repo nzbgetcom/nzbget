@@ -86,7 +86,7 @@ private:
 	uint8 m_decryptBuf[16];
 	uint8 m_decryptPos = 16;
 
-	// using "void*" to prevent the including of GnuTLS/OpenSSL header files into TlsSocket.h
+	// using "void*" to prevent the including of OpenSSL header files into TlsSocket.h
 	void* m_context = nullptr;
 	void* m_session = nullptr;
 

@@ -58,12 +58,9 @@ protected:
 	virtual void PrintError(const char* errMsg);
 
 private:
-#ifdef HAVE_OPENSSL
 	static void InitX509Store(const std::string& certStore);
 	static void FreeX509Store(X509_STORE* store);
-
 	static X509_STORE* m_X509Store;
-#endif
 	static std::string m_certStore;
 
 	SOCKET m_socket;
@@ -81,7 +78,7 @@ private:
 	int m_retCode;
 	int m_certVerifLevel;
 
-	// using "void*" to prevent the including of GnuTLS/OpenSSL header files into TlsSocket.h
+	// using "void*" to prevent the including of OpenSSL header files into TlsSocket.h
 	void* m_context = nullptr;
 	void* m_session = nullptr;
 
