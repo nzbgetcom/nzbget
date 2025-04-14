@@ -1519,9 +1519,14 @@ ul.help > li {
 }
 
 .statistics__chartblock {
-	height: 250px;
 	margin-bottom: 10px;
 }
+
+.statistics__chartblock,
+.statistics__chart-block-spinner .spinner {
+	height: 250px;
+}
+
 
 #StatDialog_Chart {
 	height: 100%;
@@ -1550,6 +1555,7 @@ ul.help > li {
 
 .statistics__chart-block-spinner .spinner {
 	font-size: 100px;
+	height: 250px;
 }
 
 .stat-size {

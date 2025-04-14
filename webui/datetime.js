@@ -28,12 +28,17 @@ var DateTime = (function () {
 		var lastWeekDay = new Date();
 		lastWeekDay.setUTCDate(lastWeekDay.getUTCDate() + (6 - lastWeekDay.getUTCDay()));
 		
-		var now = new Date();
-		var firstMonthDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
-		var lastMonthDay = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 0));
+		this.currDay = new Date();
+
+		var firstMonthDay = new Date(Date.UTC(this.currDay.getFullYear(), this.currDay.getMonth(), 1));
+		var lastMonthDay = new Date(Date.UTC(this.currDay.getFullYear(), this.currDay.getMonth() + 1, 0));
 
 		this.week = this.getDateRange(firstWeekDay, lastWeekDay);
 		this.month = this.getDateRange(firstMonthDay, lastMonthDay);
+	};
+
+	DateTime.prototype.getCurrentDay = function () {
+		return this.currDay;
 	};
 
 	DateTime.prototype.getDateRange = function (startDate, endDate) {
@@ -48,15 +53,12 @@ var DateTime = (function () {
 		return dates;
 	};
 
-	DateTime.prototype.getWeekRange = function (date) {
-		const dayOfWeek = date.getUTCDay();
-		const startDate = new Date(date);
-		startDate.setUTCDate(date.getUTCDate() - dayOfWeek);
+	DateTime.prototype.getWeekRange = function () {
+		return this.getDateRange(this.week[0], this.week[this.week.length - 1]);
+	};
 
-		const endDate = new Date(date);
-		endDate.setUTCDate(date.getUTCDate() + (6 - dayOfWeek));
-
-		return this.getDateRange(startDate, endDate);
+	DateTime.prototype.getMonthRange = function () {
+		return this.getDateRange(this.month[0], this.month[this.month.length - 1]);
 	};
 
 	DateTime.prototype.getWeek = function () {

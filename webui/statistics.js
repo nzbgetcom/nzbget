@@ -24,8 +24,8 @@ var Statistics = new (function ($) {
 	var TEST_SERVER_HOST = "my.newsserver.com";
 
 	function Server() {
-		this.DOWNLOAD_SPEED_CHART = 0;
-		this.DOWMLOADED_VOLUME_CHART = 1;
+		this.SPEED_CHART = 0;
+		this.VOLUME_CHART = 1;
 
 		this.id = 0;
 		this.connections = 0;
@@ -41,17 +41,18 @@ var Statistics = new (function ($) {
 		this.totalSizeLo = 0;
 		this.successArticles = [];
 		this.failedArticles = [];
-		this.startDate = datetime.getFirstMonthDate();
-		this.endDate = datetime.getLastMonthDate();
+		this.startCustomDate = datetime.getFirstMonthDate();
+		this.endCustomDate = datetime.getLastMonthDate();
 		this.lastResetDate = null;
 		this.$details = null;
-		this.$downloadSpeedChart = null;
-		this.$downloadVolumeChart = null;
+		this.$speedChart = null;
+		this.$volumeChart = null;
 		this.$spinner = null;
 		this.$chartToggleBtn = null;
 		this.$speedChartBtn = null;
 		this.$volumeChartBtn = null;
-		this.activeChart = this.DOWNLOAD_SPEED_CHART;
+		this.activeChart = this.SPEED_CHART;
+
 		this.speedChartData = {
 			range: "MIN",
 			data: null,
@@ -75,15 +76,19 @@ var Statistics = new (function ($) {
 			mouseOverIndex: -1
 		};
 
+		this.makeId = function(suffix) {
+			return "Server_" + this.id + "_" + suffix;
+		}
+
 		this.getChartData = function () {
-			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+			if (this.activeChart === this.SPEED_CHART) {
 				return this.speedChartData;
 			}
 			return this.volumeChartData;
 		};
 
 		this.setChartData = function (data) {
-			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
+			if (this.activeChart === this.SPEED_CHART) {
 				var mouseOverIndex = this.speedChartData.mouseOverIndex;
 				this.speedChartData = data;
 				this.speedChartData.mouseOverIndex = mouseOverIndex;
@@ -95,20 +100,20 @@ var Statistics = new (function ($) {
 		};
 
 		this.showChart = function () {
-			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
-				this.$downloadSpeedChart.show();
-				this.$downloadVolumeChart.hide();
+			if (this.activeChart === this.SPEED_CHART) {
+				this.$speedChart.show();
+				this.$volumeChart.hide();
 			} else {
-				this.$downloadSpeedChart.hide();
-				this.$downloadVolumeChart.show();
+				this.$speedChart.hide();
+				this.$volumeChart.show();
 			}
 		};
 
 		this.hideChart = function () {
-			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
-				this.$downloadSpeedChart.hide();
+			if (this.activeChart === this.SPEED_CHART) {
+				this.$speedChart.hide();
 			} else {
-				this.$downloadVolumeChart.hide();
+				this.$volumeChart.hide();
 			}
 		};
 
@@ -125,16 +130,16 @@ var Statistics = new (function ($) {
 		};
 
 		this.toggleChart = function () {
-			if (this.activeChart === this.DOWNLOAD_SPEED_CHART) {
-				this.activeChart = this.DOWMLOADED_VOLUME_CHART;
-				this.$downloadSpeedChart.hide();
-				this.$downloadVolumeChart.show();
+			if (this.activeChart === this.SPEED_CHART) {
+				this.activeChart = this.VOLUME_CHART;
+				this.$speedChart.hide();
+				this.$volumeChart.show();
 				this.$speedChartBtn.removeClass("btn-active");
 				this.$volumeChartBtn.addClass("btn-active");
 			} else {
-				this.activeChart = this.DOWNLOAD_SPEED_CHART;
-				this.$downloadSpeedChart.hide();
-				this.$downloadVolumeChart.show();
+				this.activeChart = this.SPEED_CHART;
+				this.$speedChart.hide();
+				this.$volumeChart.show();
 				this.$speedChartBtn.addClass("btn-active");
 				this.$volumeChartBtn.removeClass("btn-active");
 			}
@@ -246,26 +251,26 @@ var Statistics = new (function ($) {
 			.css("min-height", "300px");
 		server.$details = makeServerDetails(server);
 		server.$spinner = makeSpinner(server);
-		server.$downloadSpeedChart = makeDownloadSpeedChart(server);
-		server.$downloadVolumeChart = makeDownloadVolumeChart(server);
+		server.$speedChart = makeSpeedChart(server);
+		server.$volumeChart = makeVolumeChart(server);
 		server.$details.css("flex-grow", "1").css("flex-basis", "400px");
 		server.$spinner.css("flex-grow", "3").css("flex-basis", "600px");
-		server.$downloadSpeedChart
+		server.$speedChart
 			.css("flex-grow", "3")
 			.css("flex-basis", "600px")
 			.css("overflow", "hidden");
-		server.$downloadVolumeChart
+		server.$volumeChart
 			.css("flex-grow", "3")
 			.css("flex-basis", "600px")
 			.css("overflow", "hidden");
 		server.$details.hide();
-		server.$downloadSpeedChart.hide();
-		server.$downloadVolumeChart.hide();
+		server.$speedChart.hide();
+		server.$volumeChart.hide();
 		$container.append(
 			server.$details,
 			server.$spinner,
-			server.$downloadSpeedChart,
-			server.$downloadVolumeChart
+			server.$speedChart,
+			server.$volumeChart
 		);
 		$StatisticsTable.append($container, "<hr>");
 	}
@@ -536,26 +541,20 @@ var Statistics = new (function ($) {
 		return $container;
 	}
 
-	function makeDownloadSpeedChart(server) {
+	function makeSpeedChart(server) {
 		var $container = $("<div>", {
 			class: "statistics"
 		});
 		var $title = makeToggleChartBtn(server);
 		var $toolbar = $("<div>", {
 			class: "btn-toolbar form-inline section-toolbar",
-			id: "".concat(server.id, "_Toolbar-").concat(server.DOWNLOAD_SPEED_CHART)
 		}).css("margin-bottom", "0");
 		var $timeBlockTop = $("<div>", {
 			class: "btn-group phone-hide",
-			id: ""
-				.concat(server.id, "_TimeBlockTop-")
-				.concat(server.DOWNLOAD_SPEED_CHART)
 		});
 		var $minButton = $("<button>", {
 			class: "btn btn-default btn-active volume-range",
-			id: ""
-				.concat(server.id, "_Volume_MIN-")
-				.concat(server.DOWNLOAD_SPEED_CHART),
+			id: server.makeId(server.SPEED_CHART + "_MIN"),
 			title: "Show last 60 seconds",
 			text: "60 Seconds"
 		}).on("click", function () {
@@ -563,9 +562,7 @@ var Statistics = new (function ($) {
 		});
 		var $5minButton = $("<button>", {
 			class: "btn btn-default volume-range",
-			id: ""
-				.concat(server.id, "_Volume_5MIN-")
-				.concat(server.DOWNLOAD_SPEED_CHART),
+			id: server.makeId(server.SPEED_CHART + "_5MIN"),
 			title: "Show last 5 minutes",
 			text: "5 Minutes"
 		}).on("click", function () {
@@ -573,10 +570,8 @@ var Statistics = new (function ($) {
 		});
 		var $hourButton = $("<button>", {
 			class: "btn btn-default volume-range",
-			id: ""
-				.concat(server.id, "_Volume_HOUR-")
-				.concat(server.DOWNLOAD_SPEED_CHART),
-			title: "Show 60 minutes",
+			id: server.makeId(server.SPEED_CHART + "_HOUR"),
+			title: "Show last 60 minutes",
 			text: "60 Minutes"
 		}).on("click", function () {
 			chooseRange(server, "HOUR");
@@ -588,9 +583,7 @@ var Statistics = new (function ($) {
 		}).append(
 			$("<button>", {
 				class: "btn btn-default btn-active volume-range",
-				id: ""
-					.concat(server.id, "_Volume_MIN2-")
-					.concat(server.DOWNLOAD_SPEED_CHART),
+				id: server.makeId(server.SPEED_CHART + "_MIN2"),
 				title: "Show last 60 seconds",
 				text: "60 s"
 			}).on("click", function () {
@@ -598,9 +591,7 @@ var Statistics = new (function ($) {
 			}),
 			$("<button>", {
 				class: "btn btn-default volume-range",
-				id: ""
-					.concat(server.id, "_Volume_5MIN2-")
-					.concat(server.DOWNLOAD_SPEED_CHART),
+				id: server.makeId(server.SPEED_CHART + "_5MIN"),
 				title: "Show last 5 minutes",
 				text: "5 m"
 			}).on("click", function () {
@@ -608,9 +599,7 @@ var Statistics = new (function ($) {
 			}),
 			$("<button>", {
 				class: "btn btn-default volume-range",
-				id: ""
-					.concat(server.id, "_Volume_HOUR2-")
-					.concat(server.DOWNLOAD_SPEED_CHART),
+				id: server.makeId(server.SPEED_CHART + "_HOUR2"),
 				title: "Show last 60 minutes",
 				text: "60 m"
 			}).on("click", function () {
@@ -620,7 +609,7 @@ var Statistics = new (function ($) {
 		$toolbar.append($phoneButtons);
 		var $tooltip = $("<div>", {
 			class: "statistics__tooltip",
-			id: "".concat(server.id, "_Tooltip-").concat(server.DOWNLOAD_SPEED_CHART),
+			id: server.makeId(server.SPEED_CHART + "_TOOLTIP"),
 			text: "--"
 		});
 		var $chartBlock = $("<div>", {
@@ -629,9 +618,7 @@ var Statistics = new (function ($) {
 
 		var $chart = $("<div>", {
 			class: "statistics__chart",
-			id: ""
-				.concat(server.id, "_Chart-")
-				.concat(server.DOWNLOAD_SPEED_CHART)
+			id: server.makeId(server.SPEED_CHART + "_CHART"),
 		});
 
 		$chartBlock.append($chart);
@@ -639,48 +626,118 @@ var Statistics = new (function ($) {
 		return $container;
 	}
 
-	function makeDownloadVolumeChart(server) {
+	function makeVolumeChart(server) {
 		var $container = $("<div>", {
 			class: "statistics"
 		});
 		var $title = makeToggleChartBtn(server);
 		var $toolbar = $("<div>", {
 			class: "btn-toolbar form-inline section-toolbar",
-			id: ""
-				.concat(server.id, "_Toolbar-")
-				.concat(server.DOWMLOADED_VOLUME_CHART)
-		}).css("margin-bottom", "5px");
+		})
+			.css("margin-bottom", "5px")
+			.css("display", "flex")
+			.css("align-items", "center")
+			.css("flex-wrap", "wrap");
+		var $timeBlockTop = $("<div>", {
+			class: "btn-group phone-hide",
+		});
+		var $dayButton = $("<button>", {
+			class: "btn btn-default volume-range",
+			id: server.makeId(server.VOLUME_CHART + "_DAY"),
+			title: "Show day",
+			text: "Day"
+		}).on("click", function () {
+			chooseRange(server, "DAY");
+			redrawVolumeChart(server);
+		});
+		var $weekButton = $("<button>", {
+			class: "btn btn-default volume-range",
+			id: server.makeId(server.VOLUME_CHART + "_WEEK"),
+			title: "Show week",
+			text: "Week"
+		}).on("click", function () {
+			chooseRange(server, "WEEK");
+			redrawVolumeChart(server);
+		});
+		var $monthButton = $("<button>", {
+			class: "btn btn-default btn-active volume-range",
+			id: server.makeId(server.VOLUME_CHART + "_MONTH"),
+			title: "Show month",
+			text: "Month"
+		}).on("click", function () {
+			chooseRange(server, "MONTH");
+			redrawVolumeChart(server);
+		});
+		$timeBlockTop.append($dayButton, $weekButton, $monthButton);
+		$toolbar.append($timeBlockTop);
+		var $phoneButtons = $("<div>", {
+			class: "btn-group phone-only inline"
+		}).append(
+			$("<button>", {
+				class: "btn btn-default volume-range",
+				id: server.makeId(server.VOLUME_CHART + "_DAY2"),
+				title: "Show day",
+				text: "D"
+			}).on("click", function () {
+				chooseRange(server, "DAY");
+				redrawVolumeChart(server);
+			}),
+			$("<button>", {
+				class: "btn btn-default volume-range",
+				id: server.makeId(server.VOLUME_CHART + "_WEEK2"),
+				title: "Show week",
+				text: "W"
+			}).on("click", function () {
+				chooseRange(server, "WEEK");
+				redrawVolumeChart(server);
+			}),
+			$("<button>", {
+				class: "btn btn-default btn-active volume-range",
+				id: server.makeId(server.VOLUME_CHART + "_MONTH2"),
+				title: "Show month",
+				text: "M"
+			}).on("click", function () {
+				chooseRange(server, "MONTH");
+				redrawVolumeChart(server);
+			})
+		);
+		$toolbar.append($phoneButtons);
+
+		var $datePicker = $("<div>");
 		var $startDateInput = $("<input>", {
-			type: "date"
+			type: "date",
 		});
 		var $sep = $("<span> - </span>");
 		var $endDateInput = $("<input>", {
-			type: "date"
+			type: "date",
 		});
-		var startDateStr = datetime.formatDateForInput(server.startDate);
-		var endDateStr = datetime.formatDateForInput(server.endDate);
+		var startDateStr = datetime.formatDateForInput(server.startCustomDate);
+		var endDateStr = datetime.formatDateForInput(server.endCustomDate);
+
 		$startDateInput.val(startDateStr);
 		$endDateInput.val(endDateStr);
 		$startDateInput.attr("max", endDateStr);
 		$endDateInput.attr("min", startDateStr);
 		$startDateInput.on("change", function () {
 			var startDate = $(this).val();
-			server.startDate = new Date(startDate);
+			chooseRange(server, "CUSTOM");
+			server.startCustomDate = new Date(startDate);
 			$endDateInput.attr("min", datetime.formatDateForInput(startDate));
 			redrawVolumeChart(server);
 		});
 		$endDateInput.on("change", function () {
 			var endDate = $(this).val();
-			server.endDate = new Date(endDate);
+			chooseRange(server, "CUSTOM");
+			server.endCustomDate = new Date(endDate);
 			$startDateInput.attr("max", datetime.formatDateForInput(endDate));
 			redrawVolumeChart(server);
 		});
-		$toolbar.append($startDateInput, $sep, $endDateInput);
+
+		$datePicker.append($startDateInput, $sep, $endDateInput);
+		$toolbar.append($datePicker);
 		var $tooltip = $("<div>", {
 			class: "statistics__tooltip",
-			id: ""
-				.concat(server.id, "_Tooltip-")
-				.concat(server.DOWMLOADED_VOLUME_CHART),
+			id: server.makeId(server.VOLUME_CHART + "_TOOLTIP"),
 			text: "--"
 		});
 
@@ -690,9 +747,7 @@ var Statistics = new (function ($) {
 
 		var $chart = $("<div>", {
 			class: "statistics__chart",
-			id: ""
-				.concat(server.id, "_Chart-")
-				.concat(server.DOWMLOADED_VOLUME_CHART)
+			id: server.makeId(server.VOLUME_CHART + "_CHART"),
 		});
 
 		$chartBlock.append($chart);
@@ -856,7 +911,7 @@ var Statistics = new (function ($) {
 		server.showChart();
 		server.hideSpinner();
 
-		var $chart = $("#".concat(server.id, "_Chart-").concat(server.activeChart));
+		var $chart = $("#" + server.makeId(server.SPEED_CHART + "_CHART"));
 		if (!$chart) return;
 		if (!isParentContainerRendered($chart)) {
 			server.hideChart();
@@ -871,24 +926,26 @@ var Statistics = new (function ($) {
 				makeChart(serieData, curPointData, lineLabels, units, {
 					type: "axis",
 					onMouseOver: function onMouseOver(env, serie, index, mouseAreaData) {
-						chartMouseOver(server, env, serie, index, mouseAreaData);
+						speedChartMouseOver(server, env, serie, index, mouseAreaData);
 					},
 					onMouseExit: function onMouseExit(env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
+						speedChartMouseExit(server, env, serie, index, mouseAreaData);
 					},
 					onMouseOut: function onMouseOut(env, serie, index, mouseAreaData) {
-						chartMouseExit(server, env, serie, index, mouseAreaData);
+						speedChartMouseExit(server, env, serie, index, mouseAreaData);
 					}
 				})
 			);
 
-		simulateMouseEvent(server, chartMouseExit);
+		simulateMouseEvent(server, speedChartMouseExit);
 	}
 
 	function redrawVolumeChart(server) {
+		var serverData = server.getChartData();
 		var serverNo = server.id;
-		var startDate = server.startDate;
-		var endDate = server.endDate;
+		var startCustomDate = server.startCustomDate;
+		var endCustomDate = server.endCustomDate;
+		var curRange = serverData.range;
 		var lineLabels = [];
 		var dataLabels = [];
 		var chartDataTB = [];
@@ -901,7 +958,6 @@ var Statistics = new (function ($) {
 		var sumLo = 0;
 		var maxSizeMB = 0;
 		var maxSizeLo = 0;
-		var dates = datetime.getDateRange(startDate, endDate);
 
 		function addData(bytes, dataLab, lineLab) {
 			dataLabels.push(dataLab);
@@ -929,27 +985,60 @@ var Statistics = new (function ($) {
 			sumLo += bytes.SizeLo;
 		}
 
-		function drawGraph() {
+		function drawGraph(dates) {
 			var bytesPerDays = servervolumes[serverNo].BytesPerDays;
 			var firstDay = servervolumes[serverNo].FirstDay;
 			var daySlot = servervolumes[serverNo].DaySlot;
+			var currDaySlot = Util.getDaySinceUnixEpoch(datetime.getCurrentDay());
 			for (var i = 0; i < dates.length; ++i) {
 				var date = dates[i];
 				var label = date.toDateString();
 				var slot = Util.getDaySinceUnixEpoch(date);
 				if (slot >= firstDay) {
 					var idx = slot - firstDay;
-					if (idx <= daySlot)
+					if (idx <= daySlot) {
 						addData(bytesPerDays[idx], label, "");
-					else
+					}
+					else {
 						addData({ SizeMB: 0, SizeLo: 0 }, label, "");
+					}
 				} else {
 					addData({ SizeMB: 0, SizeLo: 0 }, label, "");
+				}
+
+				if (currDaySlot == slot) {
+					curPoint = i;
 				}
 			}
 		}
 
-		drawGraph();
+		function drawDayGraph() {
+			var bytesPerHours = servervolumes[serverNo].BytesPerHours;
+			for (var i = 0; i < 24; ++i) {
+				addData(bytesPerHours[i], i + "h", "");
+			}
+			curPoint = servervolumes[serverNo].HourSlot;
+		}
+
+		if (curRange == "DAY") {
+			drawDayGraph();
+		}
+		else if (curRange == "WEEK") {
+			var dates = datetime.getWeekRange();
+			drawGraph(dates);
+
+		}
+		else if (curRange == "MONTH") {
+			var dates = datetime.getMonthRange();
+			drawGraph(dates);
+		}
+		else if (curRange == "CUSTOM") {
+			var dates = datetime.getDateRange(startCustomDate, endCustomDate);
+			drawGraph(dates);
+		}
+		else {
+			return;
+		}
 
 		var serieData =
 			maxSizeMB > 1024 * 1024
@@ -985,6 +1074,7 @@ var Statistics = new (function ($) {
 			data: serieData,
 			dataMB: chartDataMB,
 			dataLo: chartDataB,
+			range: curRange,
 			units: units,
 			curPoint: curPoint,
 			labels: dataLabels,
@@ -995,7 +1085,7 @@ var Statistics = new (function ($) {
 		server.showChart();
 		server.hideSpinner();
 
-		var $chart = $("#".concat(server.id, "_Chart-").concat(server.activeChart));
+		var $chart = $("#" + server.makeId(server.VOLUME_CHART + "_CHART"));
 		if (!$chart) return;
 		if (!isParentContainerRendered($chart)) {
 			server.hideChart();
@@ -1010,18 +1100,18 @@ var Statistics = new (function ($) {
 				makeChart(serieData, curPointData, lineLabels, units, {
 					type: "axis",
 					onMouseOver: function onMouseOver(env, serie, index, mouseAreaData) {
-						chartMouseOver2(server, env, serie, index, mouseAreaData);
+						volumeChartMouseOver(server, env, serie, index, mouseAreaData);
 					},
 					onMouseExit: function onMouseExit(env, serie, index, mouseAreaData) {
-						chartMouseExit2(server, env, serie, index, mouseAreaData);
+						volumeChartMouseExit(server, env, serie, index, mouseAreaData);
 					},
 					onMouseOut: function onMouseOut(env, serie, index, mouseAreaData) {
-						chartMouseExit2(server, env, serie, index, mouseAreaData);
+						volumeChartMouseExit(server, env, serie, index, mouseAreaData);
 					}
 				})
 			);
 
-		simulateMouseEvent(server, chartMouseExit2);
+		simulateMouseEvent(server, volumeChartMouseExit);
 	}
 
 	function isParentContainerRendered($chart) {
@@ -1044,21 +1134,20 @@ var Statistics = new (function ($) {
 
 	function redrawChart(server) {
 		if (!server) return;
-		if (server.activeChart === server.DOWNLOAD_SPEED_CHART) {
+		if (server.activeChart === server.SPEED_CHART) {
 			redrawSpeedChart(server);
 		} else {
 			redrawVolumeChart(server);
 		}
 	}
 
-	function chartMouseOver(server, env, serie, index, mouseAreaData) {
+	function speedChartMouseOver(server, env, serie, index, mouseAreaData) {
 		var data = server.getChartData();
 		if (data.mouseOverIndex > -1) {
-			var chart = $(
-				"#".concat(server.id, "_Chart-").concat(server.activeChart)
-			);
-			if (!chart) return;
-			var env = chart.data("elycharts_env");
+			var $chart = $("#" + server.makeId(server.SPEED_CHART + "_CHART"));
+			if (!$chart) return;
+			var env = $chart.data("elycharts_env");
+			if (!env) return;
 			if (env.mouseAreas[data.mouseOverIndex])
 				$.elycharts.mousemanager.onMouseOutArea(
 					env,
@@ -1068,10 +1157,8 @@ var Statistics = new (function ($) {
 				);
 		}
 
-		var tooltip = $(
-			"#".concat(server.id, "_Tooltip-").concat(server.activeChart)
-		);
-		if (!tooltip) return;
+		var $tooltip = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP"));
+		if (!$tooltip) return;
 		var data = server.getChartData();
 		var value = data.data[index];
 		if (value === undefined || value === null) {
@@ -1080,20 +1167,20 @@ var Statistics = new (function ($) {
 			value = value.toFixed(1);
 		}
 		var title = value + data.units;
-		tooltip.html('<span class="stat-size">' + title + "</span>");
-		tooltip.html(
+		$tooltip.html('<span class="stat-size">' + title + "</span>");
+		$tooltip.html(
 			data.labels[index] + ': <span class="stat-size">' + title + "</span>"
 		);
 	}
 
-	function chartMouseOver2(server, env, serie, index, mouseAreaData) {
+	function volumeChartMouseOver(server, env, serie, index, mouseAreaData) {
 		var data = server.getChartData();
 		if (data.mouseOverIndex > -1) {
-			var chart = $(
-				"#".concat(server.id, "_Chart-").concat(server.activeChart)
-			);
-			if (!chart) return;
-			var env = chart.data("elycharts_env");
+			var $chart = $("#" + server.makeId(server.VOLUME_CHART + "_CHART"));
+			if (!$chart) return;
+			var env = $chart.data("elycharts_env");
+			if (!env) return;
+
 			if (env.mouseAreas[data.mouseOverIndex])
 				$.elycharts.mousemanager.onMouseOutArea(
 					env,
@@ -1103,14 +1190,12 @@ var Statistics = new (function ($) {
 				);
 		}
 		data.mouseOverIndex = index;
-		var tooltip = $(
-			"#".concat(server.id, "_Tooltip-").concat(server.activeChart)
-		);
+		var $tooltip = $("#" + server.makeId(server.activeChart + "_TOOLTIP"));
 
-		if (!tooltip) return;
+		if (!$tooltip) return;
 
 		var data = server.getChartData();
-		tooltip.html(
+		$tooltip.html(
 			data.labels[index] +
 			': <span class="stat-size">' +
 			Util.formatSizeMB(data.dataMB[index], data.dataLo[index]) +
@@ -1118,11 +1203,9 @@ var Statistics = new (function ($) {
 		);
 	}
 
-	function chartMouseExit(server, env, serie, index, mouseAreaData) {
-		var tooltip = $(
-			"#".concat(server.id, "_Tooltip-").concat(server.activeChart)
-		);
-		if (!tooltip) return;
+	function speedChartMouseExit(server, env, serie, index, mouseAreaData) {
+		var $tooltip = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP"));
+		if (!$tooltip) return;
 		var data = server.getChartData();
 		data.mouseOverIndex = -1;
 		var value = data.data[data.curPoint];
@@ -1132,20 +1215,18 @@ var Statistics = new (function ($) {
 			value = value.toFixed(1);
 		}
 		var title = value + data.units;
-		tooltip.html('<span class="stat-size">' + title + "</span>");
+		$tooltip.html('<span class="stat-size">' + title + "</span>");
 	}
 
-	function chartMouseExit2(server, env, serie, index, mouseAreaData) {
-		var tooltip = $(
-			"#".concat(server.id, "_Tooltip-").concat(server.activeChart)
-		);
-		if (!tooltip) return;
+	function volumeChartMouseExit(server, env, serie, index, mouseAreaData) {
+		var $tooltip = $("#" + server.makeId(server.VOLUME_CHART + "_TOOLTIP"));
+		if (!$tooltip) return;
 		var data = server.getChartData();
 		if (data.sumMB === undefined || data.sumLo === undefined) return;
 
 		data.mouseOverIndex = -1;
 		var title = Util.formatSizeMB(data.sumMB, data.sumLo);
-		tooltip.html(
+		$tooltip.html(
 			"Selected period:" + " " + '<span class="stat-size">' + title + "</span>"
 		);
 	}
@@ -1153,11 +1234,11 @@ var Statistics = new (function ($) {
 	function simulateMouseEvent(server, onExitFn) {
 		var data = server.getChartData();
 		if (data.mouseOverIndex > -1) {
-			var chart = $(
-				"#".concat(server.id, "_Chart-").concat(server.activeChart)
-			);
-			if (!chart) return;
-			var env = chart.data("elycharts_env");
+			var $chart = $("#" + server.makeId(server.activeChart + "_CHART"));
+			if (!$chart) return;
+			var env = $chart.data("elycharts_env");
+			if (!env) return;
+
 			if (env.mouseAreas[data.mouseOverIndex])
 				$.elycharts.mousemanager.onMouseOverArea(
 					env,
@@ -1179,25 +1260,14 @@ var Statistics = new (function ($) {
 	}
 
 	function updateRangeButtons(server, range, prevRange) {
-		var id = server.id;
 		var chartId = server.activeChart;
 		var prevTab = $(
-			"#"
-				.concat(id, "_Volume_")
-				.concat(prevRange, "-")
-				.concat(chartId, ", #")
-				.concat(id, "_Volume_")
-				.concat(prevRange, "2-")
-				.concat(chartId)
+			"#" + server.makeId(chartId + "_" + prevRange) + "," +
+			"#" + server.makeId(chartId + "_" + prevRange) + "2"
 		);
 		var newTab = $(
-			"#"
-				.concat(id, "_Volume_")
-				.concat(range, "-")
-				.concat(chartId, ", #")
-				.concat(id, "_Volume_")
-				.concat(range, "2-")
-				.concat(chartId)
+			"#" + server.makeId(chartId + "_" + range) + "," +
+			"#" + server.makeId(chartId + "_" + range) + "2"
 		);
 		prevTab.removeClass("btn-active");
 		newTab.addClass("btn-active");
