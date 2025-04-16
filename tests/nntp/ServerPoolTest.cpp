@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,17 +21,16 @@
 
 #include "nzbget.h"
 
-#define BOOST_TEST_MODULE "NNTPTest" 
-#include <boost/test/included/unit_test.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include "ServerPool.h"
 #include "Log.h"
 #include "Options.h"
 #include "DiskState.h"
 
-Log* g_Log = new Log();
-Options* g_Options;
-DiskState* g_DiskState;
+extern Log* g_Log;
+extern Options* g_Options;
+extern DiskState* g_DiskState;
 
 void AddTestServer(ServerPool* pool, int id, bool active, int level, bool optional, int group, int connections)
 {
@@ -40,6 +40,7 @@ void AddTestServer(ServerPool* pool, int id, bool active, int level, bool option
 
 void TestBlockServers(int group)
 {
+	ServerVolume::VolumeArray arr;
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, group, 2);
 	AddTestServer(&pool, 2, true, 0, false, group, 2);

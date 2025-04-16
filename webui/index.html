@@ -3,6 +3,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2023-2025 Denis <denis@nzbget.net>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +43,7 @@
 
 	<!-- NZBGet -->
 	<!-- %if-debug%
+	<script language="javascript" type="text/javascript" src="datetime.js"></script>
 	<script language="javascript" type="text/javascript" src="fasttable.js"></script>
 	<script language="javascript" type="text/javascript" src="index.js"></script>
 	<script language="javascript" type="text/javascript" src="util.js"></script>
@@ -54,11 +56,12 @@
 	<script language="javascript" type="text/javascript" src="config.js"></script>
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
 	<script language="javascript" type="text/javascript" src="system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="statistics.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+datetime.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -194,6 +197,9 @@
 
 					<input id="ConfigTable_filter" class="search-query" type="text" placeholder="Search settings" title="Search settings [Shift+F]">
 					<i id="ConfigTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
+					
+					<input id="StatisticsTable_filter" class="search-query" disabled type="text" placeholder="Search statistics" title="Search">
+					<i id="StatisticsTable_clearfilter" class="icon-remove-white search-clear" title="Clear [Shift+C]"></i>
 				</div>
 			</div>
 
@@ -202,6 +208,7 @@
 				<ul class="nav">
 					<li class="active"><a data-toggle="tab" href="#DownloadsTab" id="DownloadsTabLink"><span class="phone-hide" title="Downloads [Shift+D]">Downloads </span><i class="material-icon phone-only inline">download</i><br class="phone-only"><span class="badge" id="DownloadsTabBadge" style="display: none;"></span><span class="badge badge-empty" id="DownloadsTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="material-icon phone-only inline">calendar_today</i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
+					<li><a data-toggle="tab" href="#StatisticsTab" id="StatisticsTabLink"><span class="phone-hide" title="Statistics [Shift+I]">Statistics </span><i class="material-icon phone-only inline">analytics</i><br class="phone-only"><span class="badge" id="StatisticsTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="StatisticsabBadgeEmpty">&nbsp;</span></span></a></li>
 					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="material-icon phone-only inline">mail</i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
 				</ul>
@@ -1004,6 +1011,30 @@
 			</div>
 		</div>
 
+<!-- *** STATISTICS ************************************************************ -->
+		<div id="StatisticsTab" class="tab-pane fade">
+			<div id="StatisticsTabData" class="statistics">
+				<div id="Statistics_Spinner" class="statistics__spinner-container ">
+					<i class="material-icon spinner statistics__spinner ">progress_activity</i>
+				</div>
+				<div id="Statistics_Table" class="hide"></div>
+			</div>
+
+			<div id="Statistics_NoStatisticsAvailable" class="statistics__no-statistics hide">
+				<div class="statistics__no-servers-container">
+					<p class="text-large"><strong>Server stats are not available.</strong></p>
+					<p class="text-larger">No News Servers are currently configured.</p>
+					<p class="text-larger">Please go to Settings and add a News Server.</p>
+					<button id="Statistics_ConfigureServersBtn" class="btn btn-primary btn-large" 
+						title="News-Servers configuration"
+						onclick="Statistics.navigateToNewsServersConfiguration()"
+					>
+						Configure News Server
+					</button>
+				</div>
+			</div>
+		</div>
+
 	</div>
 </div>
 
@@ -1085,7 +1116,9 @@
 				</div>
 
 				<div id="StatDialog_Tooltip">Total</div>
-				<div id="StatDialog_ChartBlock"></div>
+				<div id="StatDialog_ChartBlock">
+					<div id="StatDialog_Chart"></div>
+				</div>
 
 				<hr>
 				<div id="StatDialog_CountersBlock">
@@ -2579,6 +2612,21 @@
 		</p>
 	</div>
 	<div id="StatDialogResetConfirmDialog_OK">Reset</div>
+</div>
+
+<!-- *** RESET VOLUME COUNTERS CONFIRMATION DIALOG DATA ******************************** -->
+
+<div class="hide" id="ServerStatResetConfirmDialog">
+	<div id="ServerStatResetConfirmDialog_Title">Reset counters</div>
+	<div id="ServerStatResetConfirmDialog_Text">
+		<p>
+			Reset counters for <strong id="ServerStatResetConfirmDialog_Server"></strong>?
+		</p>
+		<p class="confirm-help-block">
+			Last reset on <strong id="ServerStatResetConfirmDialog_Time"></strong>.
+		</p>
+	</div>
+	<div id="ServerStatResetConfirmDialog_OK">Reset</div>
 </div>
 
 <!-- *** START DANGEROUS SCRIPT CONFIRMATION DIALOG DATA ******************************** -->

@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -153,13 +153,21 @@ void ArticleDownloader::Run()
 
 			if (status == adFinished || status == adFailed || status == adNotFound || status == adCrcError)
 			{
-				m_serverStats.StatOp(newsServer->GetId(), status == adFinished ? 1 : 0, status == adFinished ? 0 : 1, ServerStatList::soSet);
+				int serverId = newsServer->GetId();
+				int success = status == adFinished ? 1 : 0;
+				int failed = status == adFinished ? 0 : 1;
+				m_serverStats.StatOp(serverId, success, failed, ServerStatList::soSet);
+				ServerVolume::Stats stats;
+				stats.bytes = 0;
+				stats.articles.failed = failed;
+				stats.articles.success = success;
+				g_StatMeter->AddServerStats(stats, serverId);
 			}
 		}
 
 		if (m_connection)
 		{
-			AddServerData();
+			AddServerStats();
 		}
 
 		if (!connected && m_connection)
@@ -378,7 +386,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		SetLastUpdateTimeNow();
 		if (oldTime != m_lastUpdateTime)
 		{
-			AddServerData();
+			AddServerStats();
 		}
 
 		// decode article data
@@ -583,15 +591,20 @@ void ArticleDownloader::FreeConnection(bool keepConnected)
 		{
 			m_connection->Disconnect();
 		}
-		AddServerData();
+		AddServerStats();
 		g_ServerPool->FreeConnection(m_connection, true);
 		m_connection = nullptr;
 	}
 }
 
-void ArticleDownloader::AddServerData()
+void ArticleDownloader::AddServerStats()
 {
+	int serverId = m_connection->GetNewsServer()->GetId();
 	int bytesRead = m_connection->FetchTotalBytesRead();
-	g_StatMeter->AddServerData(bytesRead, m_connection->GetNewsServer()->GetId());
+	ServerVolume::Stats stats;
+	stats.bytes = Util::SafeIntCast<int, uint32>(bytesRead);
+	stats.articles.failed = 0;
+	stats.articles.success = 0;
+	g_StatMeter->AddServerStats(stats, serverId);
 	m_downloadedSize += bytesRead;
 }

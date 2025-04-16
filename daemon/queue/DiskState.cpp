@@ -30,7 +30,7 @@
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
 const int DISKSTATE_QUEUE_VERSION = 62;
 const int DISKSTATE_FILE_VERSION = 7;
-const int DISKSTATE_STATS_VERSION = 3;
+const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
 class StateDiskFile : public DiskFile
@@ -2332,16 +2332,25 @@ bool DiskState::SaveVolumeStat(ServerVolumes* serverVolumes, StateDiskFile& outf
 	outfile.PrintLine("%i", (int)serverVolumes->size());
 	for (ServerVolume& serverVolume : serverVolumes)
 	{
-		outfile.PrintLine("%i,%i,%i", serverVolume.GetFirstDay(), (int)serverVolume.GetDataTime(), (int)serverVolume.GetCustomTime());
+		outfile.PrintLine("%i,%i,%i,%i", 
+			serverVolume.GetFirstDay(), 
+			static_cast<int>(serverVolume.GetDataTime()), 
+			static_cast<int>(serverVolume.GetCustomTime()),
+			static_cast<int>(serverVolume.GetCountersResetTime())
+		);
 
 		uint32 High1, Low1, High2, Low2;
 		Util::SplitInt64(serverVolume.GetTotalBytes(), &High1, &Low1);
 		Util::SplitInt64(serverVolume.GetCustomBytes(), &High2, &Low2);
 		outfile.PrintLine("%u,%u,%u,%u", High1, Low1, High2, Low2);
 
-		ServerVolume::VolumeArray* VolumeArrays[] = { serverVolume.BytesPerSeconds(),
-			serverVolume.BytesPerMinutes(), serverVolume.BytesPerHours(), serverVolume.BytesPerDays() };
-		for (int i=0; i < 4; i++)
+		ServerVolume::VolumeArray* VolumeArrays[] = { 
+			serverVolume.BytesPerSeconds(),
+			serverVolume.BytesPerMinutes(), 
+			serverVolume.BytesPerHours(), 
+			serverVolume.BytesPerDays() 
+		};
+		for (int i = 0; i < 4; ++i)
 		{
 			ServerVolume::VolumeArray* volumeArray = VolumeArrays[i];
 
@@ -2351,6 +2360,13 @@ bool DiskState::SaveVolumeStat(ServerVolumes* serverVolumes, StateDiskFile& outf
 				Util::SplitInt64(bytes, &High1, &Low1);
 				outfile.PrintLine("%u,%u", High1, Low1);
 			}
+		}
+		const auto& articlesPerDays = serverVolume.GetArticlesPerDays();
+		outfile.PrintLine("%u", Util::SafeIntCast<size_t, uint32>(articlesPerDays.size()));
+
+		for (ServerVolume::Articles articles : articlesPerDays)
+		{
+			outfile.PrintLine("%u,%u", articles.failed, articles.success);
 		}
 	}
 
@@ -2382,13 +2398,30 @@ bool DiskState::LoadVolumeStat(Servers* servers, ServerVolumes* serverVolumes, S
 			}
 		}
 
-		int firstDay, dataTime, customTime;
+		int firstDay, dataTime, customTime, countersResetTime;
 		uint32 High1, Low1, High2 = 0, Low2 = 0;
-		if (formatVersion >= 3)
+		if (formatVersion >= 4)
+		{
+			if (infile.ScanLine("%i,%i,%i,%i", &firstDay, &dataTime,&customTime, &countersResetTime) != 4) goto error;
+			if (infile.ScanLine("%u,%u,%u,%u", &High1, &Low1, &High2, &Low2) != 4) goto error;
+
+			if (serverVolume)
+			{
+				serverVolume->SetCustomTime(static_cast<time_t>(customTime));
+				serverVolume->SetCountersResetTime(static_cast<time_t>(countersResetTime));
+			}
+		}
+		else if (formatVersion == 3)
 		{
 			if (infile.ScanLine("%i,%i,%i", &firstDay, &dataTime,&customTime) != 3) goto error;
 			if (infile.ScanLine("%u,%u,%u,%u", &High1, &Low1, &High2, &Low2) != 4) goto error;
-			if (serverVolume) serverVolume->SetCustomTime((time_t)customTime);
+
+			if (serverVolume)
+			{
+				serverVolume->SetCustomTime(static_cast<time_t>(customTime));
+				time_t firstDayTime = static_cast<time_t>(firstDay * 86400);
+				serverVolume->SetCountersResetTime(firstDayTime);
+			}
 		}
 		else
 		{
@@ -2400,7 +2433,8 @@ bool DiskState::LoadVolumeStat(Servers* servers, ServerVolumes* serverVolumes, S
 		if (serverVolume) serverVolume->SetTotalBytes(Util::JoinInt64(High1, Low1));
 		if (serverVolume) serverVolume->SetCustomBytes(Util::JoinInt64(High2, Low2));
 
-		ServerVolume::VolumeArray* VolumeArrays[] = { serverVolume ? serverVolume->BytesPerSeconds() : nullptr,
+		ServerVolume::VolumeArray* VolumeArrays[] = { 
+			serverVolume ? serverVolume->BytesPerSeconds() : nullptr,
 			serverVolume ? serverVolume->BytesPerMinutes() : nullptr,
 			serverVolume ? serverVolume->BytesPerHours() : nullptr,
 			serverVolume ? serverVolume->BytesPerDays() : nullptr };
@@ -2417,6 +2451,24 @@ bool DiskState::LoadVolumeStat(Servers* servers, ServerVolumes* serverVolumes, S
 				if (infile.ScanLine("%u,%u", &High1, &Low1) != 2) goto error;
 				if (volumeArray) (*volumeArray)[j] = Util::JoinInt64(High1, Low1);
 			}
+		}
+
+		if (formatVersion >= 4)
+		{
+			uint32 arrSize;
+			if (infile.ScanLine("%u", &arrSize) != 1) goto error;
+
+			ServerVolume::ArticlesArray articlesArr;
+			articlesArr.reserve(arrSize);
+
+			ServerVolume::Articles articles;
+			while (arrSize--)
+			{
+				if (infile.ScanLine("%u,%u", &articles.failed, &articles.success) != 2) goto error;
+				articlesArr.push_back(articles);
+			}
+
+			if (serverVolume) serverVolume->SetArticlesPerDays(std::move(articlesArr));
 		}
 	}
 

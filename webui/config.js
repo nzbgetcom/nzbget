@@ -55,6 +55,8 @@ var Options = (new function($)
 	var loadConfigError;
 	var loadServerTemplateError;
 	var shortScriptNames = [];
+	var subs = [];
+	var onPageRenderedCallback;
 
 	var HIDDEN_SECTIONS = ['DISPLAY (TERMINAL)', 'POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
 	var POSTPARAM_SECTIONS = ['POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
@@ -67,6 +69,7 @@ var Options = (new function($)
 			_this.options = _options;
 			initCategories();
 			_this.restricted = _this.option('ControlPort') === '***';
+			notifyAll(_options);
 			RPC.next();
 		});
 
@@ -82,6 +85,10 @@ var Options = (new function($)
 		{
 			_this.postParamConfig = initPostParamConfig(data);
 		});
+	}
+
+	this.setOnPageRenderedCallback = function(callback) {
+		onPageRenderedCallback = callback;
 	}
 
 	this.cleanup = function()
@@ -102,12 +109,28 @@ var Options = (new function($)
 
 		server.id = id;
 		var serverId = 'Server' + id;
-		server.host = findOption(this.options, serverId + '.Host').Value;
+		var hostOpt = findOption(this.options, serverId + '.Host');
+		if (!hostOpt)
+			return null;
+
+		server.host = hostOpt.Value;
 		server.name = findOption(this.options, serverId + '.Name').Value;
 		server.port = findOption(this.options, serverId + '.Port').Value;
+		server.active = findOption(this.options, serverId + '.Active').Value == 'yes';
 		server.connections = findOption(this.options, serverId + '.Connections').Value;
 
 		return server;
+	}
+
+	this.subscribe = function(sub)
+	{
+		subs.push(sub);
+	}
+
+	function notifyAll(options) {
+		for (var i = 0; i < subs.length; ++i) {
+			subs[i].update(options);
+		}
 	}
 
 	function initCategories()
@@ -294,6 +317,11 @@ var Options = (new function($)
 
 		serverValues = null;
 		loadComplete(config);
+		if (onPageRenderedCallback)
+		{
+			onPageRenderedCallback();
+			onPageRenderedCallback = null;
+		}
 	}
 
 	function serverValuesLoaded(data)
@@ -3430,7 +3458,7 @@ var ExecScriptDialog = (new function($)
 
 }(jQuery));
 
-/*** EXTENSION MANAGET *******************************************************/
+/*** EXTENSION MANAGER *******************************************************/
 
 function Extension()
 {

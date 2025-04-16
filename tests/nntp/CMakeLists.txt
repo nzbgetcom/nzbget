@@ -1,6 +1,10 @@
 set(NNTPTestsSrc
+	main.cpp
 	ServerPoolTest.cpp
+	StatMeterTest.cpp
+	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ServerPool.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/StatMeter.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NntpConnection.cpp
@@ -10,6 +14,7 @@ set(NNTPTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp

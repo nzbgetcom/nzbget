@@ -51,6 +51,14 @@ body {
 	padding-right: 0;
 }
 
+.txt-success {
+	color: #5bb75b;
+}
+
+.txt-important {
+	color: #b94a48;
+}
+
 .flex-center {
 	display: flex;
 	align-items: center;
@@ -89,13 +97,22 @@ body {
 	font-style: italic;
 }
 
+.statistics__spinner-container,
 .system-info__spinner-container {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.system-info__spinner-container {
 	height: 60vh;
 }
 
+.statistics__spinner-container {
+	height: 90vh;
+}
+
+.statistics__spinner,
 .system-info__spinner {
 	font-size: 128px;
 }
@@ -1448,10 +1465,46 @@ ul.help > li {
 	margin-top: 0;
 }
 
-/*** STATISTICS DIALOG */
+/*** STATISTICS */
 
-#StatisticsTab table {
+.statistics__no-statistics {
+	width: 100%;
+	text-align: center;
+}
+
+.statistics__no-servers-container {
+	display: inline-block;
+	vertical-align: middle;
+	text-align: left;
+	width: auto;
+	max-width: 500px;
+	padding: 15px;
+	border: 1px solid #ccc;
+	border-radius: 5px;
+	margin: 0 auto;
+}
+
+.text-large {
+	font-size: large;
+}
+
+.text-larger {
+	font-size: larger;
+}
+
+#StatisticsTab {
+	max-width: 1280px;
+	padding: 5px;
+	margin: auto;
+}
+
+.statistics__server-details {
+	height: 100%;
 	width: 350px;
+}
+
+.server-details__table {
+	margin-bottom: 15px;
 }
 
 #StatDialog_VolumesBlock {
@@ -1465,18 +1518,44 @@ ul.help > li {
 	margin-bottom: 15px;
 }
 
+.statistics__chartblock {
+	margin-bottom: 10px;
+}
+
+.statistics__chartblock,
+.statistics__chart-block-spinner .spinner {
+	height: 250px;
+}
+
+
 #StatDialog_Chart {
 	height: 100%;
 	width: 670px;
 	width: 100%;
 }
 
-#StatDialog_Tooltip {
+.statistics__chart {
+	width: 100%;
+	height: 100%;
+}
+
+#StatDialog_Tooltip, .statistics__tooltip {
 	float: right;
 	margin-top: -3px;
 	margin-bottom: -6px;
 	padding-right: 15px;
 	font-style: italic;
+}
+
+.statistics__chart-block-spinner {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.statistics__chart-block-spinner .spinner {
+	font-size: 100px;
+	height: 250px;
 }
 
 .stat-size {
@@ -1487,16 +1566,17 @@ ul.help > li {
 	font-weight: bold;
 }
 
-#StatDialog_CountersBlock {
+#StatDialog_CountersBlock, .statistics__counter-block {
 	padding-right: 20px;
 }
 
-#StatDialog_Counters {
+#StatDialog_Counters, .statistics__counters {
 	margin-top: 8px;
 	text-align: center;
 }
 
-#StatDialog_Counters .span3 {
+#StatDialog_Counters .span3,
+.statistics__counters .span3 {
 	min-height: 0;
 }
 
@@ -2379,6 +2459,10 @@ body.phone,
 
 .phone #StatDialog hr {
 	margin-top: 30px;
+}
+
+input[type="date"] {
+	width: auto;
 }
 
 /* MEDIA SMALL SCREENS */
