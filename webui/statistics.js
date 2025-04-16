@@ -483,35 +483,20 @@ var Statistics = new (function ($) {
 		)
 			.attr("data-optid", "S_Server" + server.id + "_Active")
 			.on("click", function (ev) {
-				$('#ConfigTabLink').click();
-				Options.loadConfig({
-					complete: function (config) {
-						Config.buildPage(config);
-						setTimeout(function () {
-							$("a[href$='#NEWS-SERVERS']").click();
-							Config.scrollToOption(ev, $btn);
-						}, 500);
-					},
-					configError: Config.loadConfigError,
-					serverTemplateError: Config.loadServerTemplateError
+				Options.setOnPageRenderedCallback(function() {
+					$("a[href$='#NEWS-SERVERS']").click();
 				});
+				$('#ConfigTabLink').click();
 			});
 
 		return $btn;
 	}
 
 	this.navigateToNewsServersConfiguration = function() {
-		$('#ConfigTabLink').click();
-		Options.loadConfig({
-			complete: function (config) {
-				Config.buildPage(config);
-				setTimeout(function () {
-					$("a[href$='#NEWS-SERVERS']").click();
-				}, 500);
-			},
-			configError: Config.loadConfigError,
-			serverTemplateError: Config.loadServerTemplateError
+		Options.setOnPageRenderedCallback(function() {
+			$("a[href$='#NEWS-SERVERS']").click();
 		});
+		$('#ConfigTabLink').click();
 	}
 
 	function makeToggleChartBtn(server) {

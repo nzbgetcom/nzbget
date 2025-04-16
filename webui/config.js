@@ -56,6 +56,7 @@ var Options = (new function($)
 	var loadServerTemplateError;
 	var shortScriptNames = [];
 	var subs = [];
+	var onPageRenderedCallback;
 
 	var HIDDEN_SECTIONS = ['DISPLAY (TERMINAL)', 'POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
 	var POSTPARAM_SECTIONS = ['POSTPROCESSING-PARAMETERS', 'POST-PROCESSING-PARAMETERS', 'POST-PROCESSING PARAMETERS'];
@@ -84,6 +85,10 @@ var Options = (new function($)
 		{
 			_this.postParamConfig = initPostParamConfig(data);
 		});
+	}
+
+	this.setOnPageRenderedCallback = function(callback) {
+		onPageRenderedCallback = callback;
 	}
 
 	this.cleanup = function()
@@ -312,6 +317,11 @@ var Options = (new function($)
 
 		serverValues = null;
 		loadComplete(config);
+		if (onPageRenderedCallback)
+		{
+			onPageRenderedCallback();
+			onPageRenderedCallback = null;
+		}
 	}
 
 	function serverValuesLoaded(data)
