@@ -485,6 +485,7 @@ var Statistics = new (function ($) {
 			.on("click", function (ev) {
 				Options.setOnPageRenderedCallback(function() {
 					$("a[href$='#NEWS-SERVERS']").click();
+					Config.scrollToOption(ev, $btn);
 				});
 				$('#ConfigTabLink').click();
 			});
@@ -513,8 +514,8 @@ var Statistics = new (function ($) {
 		});
 		var $volumeChartBtn = $("<button>", {
 			class: "btn btn-default",
-			title: "Show the Downloaded Volume chart",
-			text: "Volume"
+			title: "Show the Downloaded Data chart",
+			text: "Data"
 		}).on("click", function () {
 			server.toggleChart();
 			redrawChart(server);
