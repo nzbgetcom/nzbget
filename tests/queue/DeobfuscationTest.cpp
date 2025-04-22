@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,6 +40,10 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.015") == false);
 	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.zip") == false);
 	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.par2") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.rar") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4fla"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xfac4rcq47pkqt4flatz2xf4567"));
 }
 
 BOOST_AUTO_TEST_CASE(DeobfuscationTest)
