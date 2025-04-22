@@ -15,7 +15,7 @@ jobs:
     uses: ./.github/workflows/linux.yml
     if: ${{ inputs.external_call == false }}
 
-  build-pkg:
+  build-flatpak:
     runs-on: ubuntu-24.04
     needs: [build-linux]
     if: always()
@@ -30,7 +30,7 @@ jobs:
     - name: Download build artifacts
       uses: actions/download-artifact@v4
 
-    - name: Build DEB and RPM packages
+    - name: Build Flatpak packages
       run: |
         sudo apt-get update
         sudo apt-get install flatpak flatpak-builder appstream-compose -y

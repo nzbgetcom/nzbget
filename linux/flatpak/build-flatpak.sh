@@ -41,7 +41,7 @@ VERSION=$(bash "$INSTALLER" --help | grep 'Installer for' | cut -d ' ' -f 3 | se
 rm -rf build/flatpak
 mkdir -p build/flatpak
 cp -r linux/flatpak/* build/flatpak
-cp $1 build/flatpak/nzbget-bin-linux.run
+cp $INSTALLER build/flatpak/nzbget-bin-linux.run
 
 # correct version in metainfo file
 RELEASE_INFO="<release version=\"$VERSION\" date=\"$(date +%F)\">"
