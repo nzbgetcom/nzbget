@@ -101,6 +101,8 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      with:
+        name: nzbget-osx-installers-universal
 
     - name: Sign and notarize
       env:
@@ -139,6 +141,8 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      with:
+        pattern: nzbget-osx-installers-*
 
     - name: Combine artifacts
       run: |
