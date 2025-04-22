@@ -49,5 +49,6 @@ sed -i "s|^    <release version=.*|    $RELEASE_INFO|g" build/flatpak/com.nzbget
 
 # build
 cd build/flatpak
+flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 flatpak-builder --default-branch=$VERSION --force-clean --sandbox --user --install-deps-from=flathub --ccache --repo=repo build com.nzbget.nzbget.yml
 flatpak build-bundle repo "com.nzbget.nzbget.$VERSION.x86_64.flatpak" com.nzbget.nzbget $VERSION
