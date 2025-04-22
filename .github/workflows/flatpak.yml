@@ -29,6 +29,9 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      with:
+        name: nzbget-linux-installers
+        path: nzbget-linux-installers
 
     - name: Build Flatpak packages
       run: |
@@ -47,5 +50,4 @@ jobs:
       if: ${{ inputs.external_call == false }}
       uses: geekyeggo/delete-artifact@v4
       with:
-        name: |
-          nzbget-linux-installers
+        name: nzbget-linux-installers

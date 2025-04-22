@@ -93,7 +93,7 @@ jobs:
         mkdir -p build
         for ARCH in ${{ env.BUILD_ARCHS }}; do
           for TYPE in ${{ env.BUILD_TYPES }}; do
-            cp  nzbget-linux-bin-$ARCH-$TYPE/*.tar.gz build/
+            cp nzbget-linux-bin-$ARCH-$TYPE/*.tar.gz build/
           done
         done
         bash linux/build-nzbget.sh linux installer ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
