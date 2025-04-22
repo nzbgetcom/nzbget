@@ -1,0 +1,42 @@
+id: com.nzbget.nzbget
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+command: nzbget-launcher.sh
+finish-args:
+  - --share=network
+  - --filesystem=xdg-download
+  - --filesystem=/mnt
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --persist=.nzbget
+modules:
+  - name: nzbget
+    buildsystem: simple
+    build-commands:
+      - sh nzbget-bin-linux.run --arch ${FLATPAK_ARCH} --destdir ${FLATPAK_DEST}/bin
+      - >
+        for FILE in nzbget.conf install-update.sh webui/package-info.json; do
+          rm ${FLATPAK_DEST}/bin/$FILE
+        done
+      - >
+        sed -i ${FLATPAK_DEST}/bin/webui/nzbget.conf.template
+        -e "s|^MainDir=.*|MainDir=~/Downloads|"
+        -e "s|^ScriptDir=.*|ScriptDir=~/.nzbget/scripts|g"
+        -e 's|^LogFile=.*|LogFile=~/.nzbget/nzbget.log|'
+        -e 's|^LockFile=.*|LockFile=~/.nzbget/nzbget.lock|'
+      - install -Dm 0644 ${FLATPAK_ID}.desktop -t ${FLATPAK_DEST}/share/applications
+      - install -Dm 0644 ${FLATPAK_ID}.metainfo.xml -t ${FLATPAK_DEST}/share/metainfo
+      - install -Dm 0644 ${FLATPAK_ID}.svg -t ${FLATPAK_DEST}/share/icons/hicolor/scalable/apps
+      - install -Dm 0755 nzbget-launcher.sh -t ${FLATPAK_DEST}/bin
+    sources:
+      - type: file
+        path: nzbget-bin-linux.run
+      - type: file
+        path: com.nzbget.nzbget.desktop
+      - type: file
+        path: com.nzbget.nzbget.metainfo.xml
+      - type: file
+        path: com.nzbget.nzbget.svg
+      - type: file
+        path: nzbget-launcher.sh
