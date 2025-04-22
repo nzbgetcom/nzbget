@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ namespace Deobfuscation
 	inline const std::array<std::regex, 11> HASHED_RELEASES_REGEXES{
 		std::regex{ "[0-9a-f.]{16}" },
 		std::regex{ "^[0-9a-zA-Z]{24,}" },
-		std::regex{ "^[a-z0-9]{24}$" },
+		std::regex{ "^[a-z0-9]{16,}$" },
 		std::regex{ "^abc$" },
 		std::regex{ "^abc[-_. ]xyz" },
 		std::regex{ "^[A-Z]{11,}[0-9]{3}$" },
