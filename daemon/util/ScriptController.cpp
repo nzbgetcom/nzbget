@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -85,6 +86,9 @@ void EnvironmentStrings::Clear()
 
 void EnvironmentStrings::InitFromCurrentProcess()
 {
+	if (!g_EnvironmentVariables)
+		return;
+
 	for (int i = 0; (*g_EnvironmentVariables)[i]; i++)
 	{
 		char* var = (*g_EnvironmentVariables)[i];

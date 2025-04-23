@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -394,7 +395,7 @@ void DirectUnpack::AddMessage(Message::EKind kind, const char* text)
 
 void DirectUnpack::Stop(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
-	debug("Stopping direct unpack for %s", *m_infoName);
+	debug("Stopping %s", *m_infoName);
 	if (m_processed)
 	{
 		if (nzbInfo)
@@ -458,7 +459,7 @@ void DirectUnpack::FileDownloaded(DownloadQueue* downloadQueue, FileInfo* fileIn
 {
 	debug("FileDownloaded for %s/%s", fileInfo->GetNzbInfo()->GetName(), fileInfo->GetFilename());
 
-	if (fileInfo->GetNzbInfo()->GetFailedArticles() > 0)
+	if (!CanProceed(fileInfo))
 	{
 		Stop(downloadQueue, fileInfo->GetNzbInfo());
 		return;
@@ -475,6 +476,14 @@ void DirectUnpack::FileDownloaded(DownloadQueue* downloadQueue, FileInfo* fileIn
 	{
 		m_archives.emplace_back(fileInfo->GetFilename());
 	}
+}
+
+bool DirectUnpack::CanProceed(FileInfo* fileInfo) const
+{
+	if (!IsArchiveFilename(fileInfo->GetFilename())) 
+		return true;
+
+	return fileInfo->GetFailedArticles() == 0;
 }
 
 void DirectUnpack::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)

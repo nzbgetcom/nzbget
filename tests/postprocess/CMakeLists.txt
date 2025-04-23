@@ -1,12 +1,12 @@
 set(PostprocessTestsSrc
 	main.cpp
-	# DirectUnpackTest.cpp
+	DirectUnpackTest.cpp
 	# DupeMatcherTest.cpp
 	RarReaderTest.cpp
 	RarRenamerTest.cpp
 	../suite/TestUtil.cpp
-	# ${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
-	# ${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
@@ -14,7 +14,7 @@ set(PostprocessTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
-	#${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
