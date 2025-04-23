@@ -72,8 +72,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Download build artifacts
+    - name: Download release build artifacts
       uses: actions/download-artifact@v4
+      with:
+        pattern: Release*
+
+    - name: Download debug build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: Debug*
 
     - name: Prepare build environment
       run: |

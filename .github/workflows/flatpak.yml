@@ -1,4 +1,4 @@
-name: linux packages
+name: flatpak
 
 on:
   workflow_call:
@@ -15,7 +15,7 @@ jobs:
     uses: ./.github/workflows/linux.yml
     if: ${{ inputs.external_call == false }}
 
-  build-pkg:
+  build-flatpak:
     runs-on: ubuntu-24.04
     needs: [build-linux]
     if: always()
@@ -33,29 +33,21 @@ jobs:
         name: nzbget-linux-installers
         path: nzbget-linux-installers
 
-    - name: Build DEB and RPM packages
+    - name: Build Flatpak packages
       run: |
         sudo apt-get update
-        sudo apt-get install rpm -y
-        bash linux/pkg/build-pkg.sh
+        sudo apt-get install flatpak flatpak-builder appstream-compose -y
+        bash linux/flatpak/build-flatpak.sh
 
-    - name: Upload DEB build artifacts
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-deb-packages
-        path: build/deb/*.deb
-        retention-days: 5
-
-    - name: Upload RPM build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nzbget-rpm-packages
-        path: build/rpm/*.rpm
+        name: nzbget-flatpak-packages
+        path: build/flatpak/*.flatpak
         retention-days: 5
 
     - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
       uses: geekyeggo/delete-artifact@v4
       with:
-        name: |
-          nzbget-linux-installers
+        name: nzbget-linux-installers

@@ -63,7 +63,7 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: nzbget-${{ matrix.arch }}-${{ matrix.type }}-bin
+        name: nzbget-linux-bin-${{ matrix.arch }}-${{ matrix.type }}
         path: build/*.tar.gz
         retention-days: 5
 
@@ -85,13 +85,15 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      with:
+        pattern: nzbget-linux-bin-*
 
     - name: Build installer
       run: |
         mkdir -p build
         for ARCH in ${{ env.BUILD_ARCHS }}; do
           for TYPE in ${{ env.BUILD_TYPES }}; do
-            cp nzbget-$ARCH-$TYPE-bin/*.tar.gz build/
+            cp nzbget-linux-bin-$ARCH-$TYPE/*.tar.gz build/
           done
         done
         bash linux/build-nzbget.sh linux installer ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
@@ -110,8 +112,7 @@ jobs:
     - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v5
       with:
-        name: |
-          nzbget-*-*-bin
+        name: nzbget-linux-bin-*
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4

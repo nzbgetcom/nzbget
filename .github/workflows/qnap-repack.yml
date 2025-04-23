@@ -29,6 +29,9 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v4
+      with:
+        name: nzbget-linux-installers
+        path: nzbget-linux-installers
 
     - name: Download QDK and prepare environment
       run: |
