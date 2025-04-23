@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "DownloadInfo.h"
 #include "ScriptController.h"
 
-class DirectUnpack : public Thread, public ScriptController
+class DirectUnpack final : public Thread, public ScriptController
 {
 public:
 	virtual void Run();
@@ -49,6 +49,14 @@ private:
 	public:
 		bool Exists(const char* param) { return std::find(begin(), end(), param) != end(); }
 	};
+
+	/**
+	 *  @brief Checks if Direct unpack can proceed.
+	 *
+	 *  @return True if direct unpack is permitted (either the file is not an
+ 	 *          archive or the archive contains no failed articles), false otherwise.
+	 */
+	bool CanProceed(FileInfo* fileInfo) const;
 
 	typedef std::deque<CString> ArchiveList;
 
