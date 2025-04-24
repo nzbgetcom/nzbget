@@ -41,14 +41,14 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.0.7
-ZIP7_VERSION=2405
+UNRAR7_VERSION=7.1.6
+ZIP7_VERSION=2408
 
 # libs versions
-NCURSES_VERSION=6.4
+NCURSES_VERSION=6.5
 ZLIB_VERSION=1.3.1
-LIBXML2_VERSION=2.12.4
-OPENSSL_VERSION=3.1.2
+LIBXML2_VERSION=2.13.4
+OPENSSL_VERSION=3.3.3
 BOOST_VERSION=1.84.0
 
 help()
@@ -280,6 +280,12 @@ build_lib()
                         ;;
                     riscv64)
                         OPENSSL_ARCH=linux64-riscv64
+                        # patch crypto/riscv64cpuid.pl to compile on gcc9
+                        # issue https://github.com/openssl/openssl/issues/23011
+                        sed -i \
+                            -e 's|csrr $ret, vlenb|csrr a0, 0xc22|' \
+                            -e 's|slli $ret, $ret, 3|slli a0, a0, 3|' \
+                            crypto/riscv64cpuid.pl
                         ;;
                     mipseb)
                         OPENSSL_ARCH=linux-mips32
@@ -296,6 +302,9 @@ build_lib()
                         ;;
                     x86_64-bsd)
                         OPENSSL_ARCH=BSD-x86_64
+                        # patch crypto/asn1/a_time.c to remove not used function to compile on clang-14
+                        # issue https://github.com/openssl/openssl/issues/22965
+                        sed -i -n '/ossl_asn1_string_to_time_t/q;p' crypto/asn1/a_time.c
                         ;;
                     *-ndk)
                         _CC=$CC
@@ -352,6 +361,7 @@ build_lib()
             boost)
                 ./bootstrap.sh --with-libraries=json --prefix="$PWD/../$LIB"
                 if [ "$PLATFORM" == "freebsd" ]; then
+                    echo "using clang : clang : clang-$FREEBSD_CLANG_VER ; " >>  project-config.jam
                     ./b2 --toolset=clang cxxflags="--target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1" cxxstd=14 link=static runtime-link=static install
                 else
                     echo "using gcc : buildroot : $CXX ; " >>  project-config.jam
@@ -485,6 +495,7 @@ build_unrar_version()
     if [ "$PLATFORM" == "freebsd" ]; then
         sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2 -nostdlib --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1|" -i makefile
         sed "s|^LDFLAGS=.*|LDFLAGS=-static --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -pthread -lc++ -lm -fuse-ld=lld|" -i makefile
+        sed "s|^STRIP=.*|STRIP=strip|" -i makefile
     fi
     make clean
     make -j $COREX
@@ -622,11 +633,11 @@ build_bin()
     # skip building libs for ppc500 arch
     # for ppc500 arch we use buildroot libs
     if [ "$ARCH" != "ppc500" ]; then
-        build_lib "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
+        build_lib "https://invisible-island.net/archives/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
         build_lib "https://zlib.net/zlib-$ZLIB_VERSION.tar.gz"
-        build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v2.12.4/libxml2-v$LIBXML2_VERSION.tar.gz"
-        build_lib "https://github.com/openssl/openssl/releases/download/openssl-3.1.2/openssl-$OPENSSL_VERSION.tar.gz"
-        build_lib "https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-$BOOST_VERSION.tar.gz"
+        build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$LIBXML2_VERSION/libxml2-v$LIBXML2_VERSION.tar.gz"
+        build_lib "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz"
+        build_lib "https://github.com/boostorg/boost/releases/download/boost-$BOOST_VERSION/boost-$BOOST_VERSION.tar.gz"
     fi
 
     build_7zip
@@ -638,18 +649,18 @@ build_bin()
     TOOLCHAIN_PREFIX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST"
     case $PLATFORM in
         android)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -latomic"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -latomic"
             CMAKE_EXTRA_ARGS="-DCOMPILER=clang -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
         freebsd)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lz -lssl -lcrypto -lncursesw -lc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -lc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             export INCLUDES="$NZBGET_INCLUDES;$FREEBSD_SYSROOT/usr/include/c++/v1"
             CMAKE_SYSTEM_NAME="FreeBSD"
             CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT"
             ;;
         *)
             if [ "$ARCH" != "ppc500" ]; then
-                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lz -lssl -lcrypto -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             else
                 export LIBS="-lncurses -lboost_json -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
                 export INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/;$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/libxml2/"
