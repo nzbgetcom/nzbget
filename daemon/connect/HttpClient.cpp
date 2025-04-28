@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ namespace Network
 		}
 
 		auto bodyBuf = buf.data();
-		std::string body(asio::buffers_begin(bodyBuf), asio::buffers_begin(bodyBuf) + bodyBuf.size());
+		std::string body(asio::buffers_begin(bodyBuf), asio::buffers_end(bodyBuf));
 		Util::Trim(body);
 
 		return body;

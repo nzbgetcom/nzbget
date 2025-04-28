@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -309,7 +309,7 @@ namespace System
 	{
 		// e.g. 7-Zip (a) 19.00 (x64) : Copyright (c) 1999-2018 Igor Pavlov : 2019-02-21
 		// e.g. UNRAR 5.70 x64 freeware      Copyright (c) 1993-2019 Alexander Roshal
-		std::regex pattern(R"([0-9]*\.[0-9]*)"); // float number
+		static const std::regex pattern(R"([0-9]+\.[0-9]+)"); // float number
 		std::smatch match;
 		if (std::regex_search(line, match, pattern))
 		{

@@ -27,18 +27,18 @@
 
 namespace Deobfuscation
 {
-	inline const std::array<std::regex, 1> EXCLUDED_HASHED_RELEASES_REGEXES{
-		std::regex{ "[0-9a-zA-Z]{24}.(7z(\\.\\d{2,3})?|rar|r\\d{2,3}|zip|par2)$" }
+	inline static const std::array<std::regex, 1> EXCLUDED_HASHED_RELEASES_REGEXES{
+		std::regex{ R"([0-9a-zA-Z]{16,256}.(7z(\.\d{2,3})?|rar|r\d{2,3}|zip|par2)$)" }
 	};
 
-	inline const std::array<std::regex, 11> HASHED_RELEASES_REGEXES{
+	inline static const std::array<std::regex, 11> HASHED_RELEASES_REGEXES{
 		std::regex{ "[0-9a-f.]{16}" },
-		std::regex{ "^[0-9a-zA-Z]{24,}" },
-		std::regex{ "^[a-z0-9]{16,}$" },
+		std::regex{ "^[0-9a-zA-Z]{24,256}" },
+		std::regex{ "^[a-z0-9]{16,256}$" },
 		std::regex{ "^abc$" },
 		std::regex{ "^abc[-_. ]xyz" },
-		std::regex{ "^[A-Z]{11,}[0-9]{3}$" },
-		std::regex{ "^Backup_[0-9]{5,}S[0-9]{2}-[0-9]{2}$" },
+		std::regex{ "^[A-Z]{11,256}[0-9]{3}$" },
+		std::regex{ "^Backup_[0-9]{5,256}S[0-9]{2}-[0-9]{2}$" },
 		std::regex{ "^123$" },
 		std::regex{ "^b00bs$" },
 		std::regex{ "^[0-9]{6}_[0-9]{2}$" },

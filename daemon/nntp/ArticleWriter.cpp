@@ -587,12 +587,12 @@ void ArticleWriter::CompleteFileParts()
 	}
 }
 
-void ArticleWriter::RenameOutputFile(std::string_view filename, std::string_view destDir)
+void ArticleWriter::RenameOutputFile(const std::string& filename, const std::string& destDir)
 {
 	if (filename == m_fileInfo->GetFilename())
 		return;
 
-	std::string ofn = FileSystem::MakeUniqueFilename(destDir.data(), m_fileInfo->GetFilename()).Str();
+	std::string ofn = FileSystem::MakeUniqueFilename(destDir.c_str(), m_fileInfo->GetFilename()).Str();
 	if (!FileSystem::MoveFile(m_outputFilename.c_str(), ofn.c_str()))
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
