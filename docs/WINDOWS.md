@@ -26,16 +26,16 @@ For tests:
 
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
  - Clone the repository to the recommended `C:\` disk:
-```
+```powershell
 git clone --depth 1 https://github.com/microsoft/vcpkg.git
 ```
  - Run the `bootstrap` script:
-```
+```powershell
 .\vcpkg\bootstrap-vcpkg.bat
 ```
  - Edit the `Path` enviroment variable and append the folder's path: `C:\vcpkg`
  - Install all the dependencies:
-```
+```powershell
 vcpkg install openssl:x64-windows-static
 vcpkg install libxml2:x64-windows-static
 vcpkg install zlib:x64-windows-static
@@ -43,32 +43,32 @@ vcpkg install boost-json:x64-windows-static
 vcpkg install boost-asio:x64-windows-static
 ```
   - For tests:
-```
+```powershell
 vcpkg install boost-test:x64-windows-static
 ```
 
 For `Win32`, instead of `:x64-windows-static`, use `:x86-windows-static`.
 
   - Configure:
-``` 
+```powershell
 mkdir build
 cd build
 cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -A x64
 ```
   - Or for Win32:
-```
+```powershell
 cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x86-windows-static -A Win32
 ```
   - Release build:
-```
+```powershell
 cmake --build . --config Release
 ```
   - Or for debug build:
-```
+```powershell
 cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DCMAKE_BUILD_TYPE=Debug 
 ```
   - Debug build:
-```
+```powershell
 cmake --build . --config Debug
 ```
   - Now, you can find the binary in the `Release/Debug` directory.
@@ -76,16 +76,17 @@ cmake --build . --config Debug
 
 You may run configure with additional arguments:
   - Enable tests:
-```
+```powershell
 cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-  - Run tests:
 ```
+  - Run tests:
+```powershell
 ctest -C Release
 ```
-```
+
   - Disable TLS. Use this option if you can not use OpenSSL but 
   some features of nzbget will stop working, such as Extension Manager:
 
-```
+```powershell
 cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```

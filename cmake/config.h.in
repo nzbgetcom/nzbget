@@ -83,9 +83,6 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #cmakedefine HAVE_INTTYPES_H @HAVE_INTTYPES_H@
 
-/* Define to 1 to use GnuTLS library for TLS/SSL-support. */
-#cmakedefine HAVE_LIBGNUTLS @HAVE_LIBGNUTLS@
-
 /* Define to 1 if lockf is supported */
 #cmakedefine HAVE_LOCKF @HAVE_LOCKF@
 
@@ -94,12 +91,6 @@
 
 /* Define to 1 if you have the <ncurses/ncurses.h> header file. */
 #cmakedefine HAVE_NCURSES_NCURSES_H @HAVE_NCURSES_NCURSES_H@
-
-/* Define to 1 to use Nettle library for decryption. */
-#cmakedefine HAVE_NETTLE @HAVE_NETTLE@
-
-/* Define to 1 to use OpenSSL library for TLS/SSL-support and decryption. */
-#cmakedefine HAVE_OPENSSL @HAVE_OPENSSL@
 
 /* Define to 1 if pthread_cancel is supported */
 #cmakedefine HAVE_PTHREAD_CANCEL @HAVE_PTHREAD_CANCEL@
