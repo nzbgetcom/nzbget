@@ -47,8 +47,8 @@ ZIP7_VERSION=2408
 # libs versions
 NCURSES_VERSION=6.5
 ZLIB_VERSION=1.3.1
-LIBXML2_VERSION=2.13.4
-OPENSSL_VERSION=3.3.3
+LIBXML2_VERSION=2.13.5
+OPENSSL_VERSION=3.4.1
 BOOST_VERSION=1.84.0
 
 help()
@@ -302,9 +302,6 @@ build_lib()
                         ;;
                     x86_64-bsd)
                         OPENSSL_ARCH=BSD-x86_64
-                        # patch crypto/asn1/a_time.c to remove not used function to compile on clang-14
-                        # issue https://github.com/openssl/openssl/issues/22965
-                        sed -i -n '/ossl_asn1_string_to_time_t/q;p' crypto/asn1/a_time.c
                         ;;
                     *-ndk)
                         _CC=$CC
