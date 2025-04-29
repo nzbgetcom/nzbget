@@ -31,62 +31,7 @@
 #include "Options.h"
 
 std::string TlsSocket::m_certStore;
-
-#ifdef HAVE_OPENSSL
 X509_STORE* TlsSocket::m_X509Store = nullptr;
-#endif
-
-#ifdef HAVE_LIBGNUTLS
-#ifdef NEED_GCRYPT_LOCKING
-
-/**
- * Mutexes for gcryptlib
- */
-
-std::vector<std::unique_ptr<Mutex>> g_GCryptLibMutexes;
-
-static int gcry_mutex_init(void **priv)
-{
-	g_GCryptLibMutexes.emplace_back(std::make_unique<Mutex>());
-	*priv = g_GCryptLibMutexes.back().get();
-	return 0;
-}
-
-static int gcry_mutex_destroy(void **lock)
-{
-	Mutex* mutex = ((Mutex*)*lock);
-	g_GCryptLibMutexes.erase(std::find_if(g_GCryptLibMutexes.begin(), g_GCryptLibMutexes.end(),
-		[mutex](std::unique_ptr<Mutex>& itMutex)
-		{
-			return itMutex.get() == mutex;
-		}));
-	return 0;
-}
-
-static int gcry_mutex_lock(void **lock)
-{
-	((Mutex*)*lock)->Lock();
-	return 0;
-}
-
-static int gcry_mutex_unlock(void **lock)
-{
-	((Mutex*)*lock)->Unlock();
-	return 0;
-}
-
-static struct gcry_thread_cbs gcry_threads_Mutex =
-{	GCRY_THREAD_OPTION_USER, nullptr,
-	gcry_mutex_init, gcry_mutex_destroy,
-	gcry_mutex_lock, gcry_mutex_unlock,
-	nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-};
-
-#endif /* NEED_GCRYPT_LOCKING */
-#endif /* HAVE_LIBGNUTLS */
-
-
-#ifdef HAVE_OPENSSL
 
 #ifndef CRYPTO_set_locking_callback
 #define NEED_CRYPTO_LOCKING
@@ -138,35 +83,12 @@ static void openssl_dynlock_lock(int mode, struct CRYPTO_dynlock_value *l, const
 }
 
 #endif /* NEED_CRYPTO_LOCKING */
-#endif /* HAVE_OPENSSL */
 
 
 void TlsSocket::Init()
 {
 	debug("Initializing TLS library");
 
-#ifdef HAVE_LIBGNUTLS
-	int error_code;
-
-#ifdef NEED_GCRYPT_LOCKING
-	error_code = gcry_control(GCRYCTL_SET_THREAD_CBS, &gcry_threads_Mutex);
-	if (error_code != 0)
-	{
-		error("Could not initialize libcrypt");
-		return;
-	}
-#endif /* NEED_GCRYPT_LOCKING */
-
-	error_code = gnutls_global_init();
-	if (error_code != 0)
-	{
-		error("Could not initialize libgnutls");
-		return;
-	}
-
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 
 #ifdef NEED_CRYPTO_LOCKING
 	for (int i = 0, num = CRYPTO_num_locks(); i < num; i++)
@@ -183,8 +105,6 @@ void TlsSocket::Init()
 	SSL_load_error_strings();
 	SSL_library_init();
 	OpenSSL_add_all_algorithms();
-
-#endif /* HAVE_OPENSSL */
 }
 
 void TlsSocket::InitOptions(const char* certStore)
@@ -194,12 +114,9 @@ void TlsSocket::InitOptions(const char* certStore)
 
 	m_certStore = certStore;
 
-#ifdef HAVE_OPENSSL
 	InitX509Store(m_certStore);
-#endif
 }
 
-#ifdef HAVE_OPENSSL
 void TlsSocket::InitX509Store(const std::string& certStore)
 {
 	if (m_X509Store) 
@@ -227,15 +144,10 @@ void TlsSocket::FreeX509Store(X509_STORE* store)
 	X509_STORE_free(m_X509Store);
 	m_X509Store = nullptr;
 }
-#endif
 
 void TlsSocket::Final()
 {
-#ifdef HAVE_LIBGNUTLS
-	gnutls_global_deinit();
-#endif /* HAVE_LIBGNUTLS */
 
-#ifdef HAVE_OPENSSL
 	X509_STORE_free(m_X509Store);
 
 #ifndef LIBRESSL_VERSION_NUMBER
@@ -264,35 +176,19 @@ void TlsSocket::Final()
 	ERR_free_strings();
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
-#endif /* HAVE_OPENSSL */
 }
 
 TlsSocket::~TlsSocket()
 {
 	Close();
 
-#ifdef HAVE_OPENSSL
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
 	ERR_remove_state(0);
-#endif
 #endif
 }
 
 void TlsSocket::ReportError(const char* errMsg, bool suppressable)
 {
-#ifdef HAVE_LIBGNUTLS
-	const char* errstr = gnutls_strerror(m_retCode);
-	if (suppressable && m_suppressErrors)
-	{
-		debug("%s: %s", errMsg, errstr);
-	}
-	else
-	{
-		PrintError(BString<1024>("%s: %s", errMsg, errstr));
-	}
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 	int errcode = ERR_get_error();
 	do
 	{
@@ -315,7 +211,6 @@ void TlsSocket::ReportError(const char* errMsg, bool suppressable)
 
 		errcode = ERR_get_error();
 	} while (errcode);
-#endif /* HAVE_OPENSSL */
 }
 
 void TlsSocket::PrintError(const char* errMsg)
@@ -325,94 +220,6 @@ void TlsSocket::PrintError(const char* errMsg)
 
 bool TlsSocket::Start()
 {
-#ifdef HAVE_LIBGNUTLS
-	gnutls_certificate_credentials_t cred;
-	m_retCode = gnutls_certificate_allocate_credentials(&cred);
-	if (m_retCode != 0)
-	{
-		ReportError("Could not create TLS context", false);
-		return false;
-	}
-
-	m_context = cred;
-
-	if (!m_certFile.empty() && !m_keyFile.empty())
-	{
-		m_retCode = gnutls_certificate_set_x509_key_file((gnutls_certificate_credentials_t)m_context,
-			m_certFile.c_str(), m_keyFile.c_str(), GNUTLS_X509_FMT_PEM);
-		if (m_retCode != 0)
-		{
-			ReportError("Could not load certificate or key file", false);
-			Close();
-			return false;
-		}
-	}
-
-	gnutls_session_t sess;
-	m_retCode = gnutls_init(&sess, m_isClient ? GNUTLS_CLIENT : GNUTLS_SERVER);
-	if (m_retCode != 0)
-	{
-		ReportError("Could not create TLS session", false);
-		Close();
-		return false;
-	}
-
-	m_session = sess;
-
-	m_initialized = true;
-
-	const char* priority = !m_cipher.empty() ? m_cipher.c_str() :
-		(!m_certFile.empty() && !m_keyFile.empty() ? "NORMAL:!VERS-SSL3.0" : "NORMAL");
-
-	m_retCode = gnutls_priority_set_direct((gnutls_session_t)m_session, priority, nullptr);
-	if (m_retCode != 0)
-	{
-		ReportError("Could not select cipher for TLS", false);
-		Close();
-		return false;
-	}
-
-	if (!m_host.empty())
-	{
-		m_retCode = gnutls_server_name_set((gnutls_session_t)m_session, GNUTLS_NAME_DNS, m_host.c_str(), m_host.size());
-		if (m_retCode != 0)
-		{
-			ReportError("Could not set hostname for TLS");
-			Close();
-			return false;
-		}
-	}
-
-	m_retCode = gnutls_credentials_set((gnutls_session_t)m_session, GNUTLS_CRD_CERTIFICATE,
-		(gnutls_certificate_credentials_t*)m_context);
-	if (m_retCode != 0)
-	{
-		ReportError("Could not initialize TLS session", false);
-		Close();
-		return false;
-	}
-
-	gnutls_transport_set_ptr((gnutls_session_t)m_session, (gnutls_transport_ptr_t)(size_t)m_socket);
-
-	m_retCode = gnutls_handshake((gnutls_session_t)m_session);
-	if (m_retCode != 0)
-	{
-		ReportError(BString<1024>("TLS handshake failed for %s", m_host.c_str()));
-		Close();
-		return false;
-	}
-
-	if (m_isClient && !m_certStore.empty() && !ValidateCert())
-	{
-		Close();
-		return false;
-	}
-
-	m_connected = true;
-	return true;
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 	m_context = SSL_CTX_new(SSLv23_method());
 
 	if (!m_context)
@@ -536,84 +343,10 @@ bool TlsSocket::Start()
 
 	m_connected = true;
 	return true;
-#endif /* HAVE_OPENSSL */
 }
 
 bool TlsSocket::ValidateCert()
 {
-#ifdef HAVE_LIBGNUTLS
-#if	GNUTLS_VERSION_NUMBER >= 0x030104
-#if	GNUTLS_VERSION_NUMBER >= 0x030306
-	if (FileSystem::DirectoryExists(m_certStore.c_str()))
-	{
-		if (gnutls_certificate_set_x509_trust_dir((gnutls_certificate_credentials_t)m_context, m_certStore.c_str(), GNUTLS_X509_FMT_PEM) < 0)
-		{
-			ReportError("Could not set certificate store location");
-			return false;
-		}
-	}
-	else
-#endif
-	{
-		if (gnutls_certificate_set_x509_trust_file((gnutls_certificate_credentials_t)m_context, m_certStore.c_str(), GNUTLS_X509_FMT_PEM) < 0)
-		{
-			ReportError("Could not set certificate store location");
-			return false;
-		}
-	}
-
-	unsigned int status = 0;
-	if (gnutls_certificate_verify_peers3((gnutls_session_t)m_session, m_host.c_str(), &status) != 0 ||
-		gnutls_certificate_type_get((gnutls_session_t)m_session) != GNUTLS_CRT_X509)
-	{
-		ReportError("Could not verify TLS certificate");
-		return false;
-	}
-
-	if (status != 0)
-	{
-		if (status & GNUTLS_CERT_UNEXPECTED_OWNER)
-		{
-			// Extracting hostname from the certificate
-			unsigned int cert_list_size = 0;
-			const gnutls_datum_t* cert_list = gnutls_certificate_get_peers((gnutls_session_t)m_session, &cert_list_size);
-			if (cert_list_size > 0)
-			{
-				gnutls_x509_crt_t cert;
-				gnutls_x509_crt_init(&cert);
-				gnutls_x509_crt_import(cert, &cert_list[0], GNUTLS_X509_FMT_DER);
-				char dn[256];
-				size_t size = sizeof(dn);
-				if (gnutls_x509_crt_get_dn_by_oid(cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0, dn, &size) == 0)
-				{
-					PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
-						" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), dn));
-					gnutls_x509_crt_deinit(cert);
-					return false;
-				}
-				gnutls_x509_crt_deinit(cert);
-			}
-		}
-
-		gnutls_datum_t msgdata;
-		if (gnutls_certificate_verification_status_print(status, GNUTLS_CRT_X509, &msgdata, 0) == 0)
-		{
-			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
-				" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), msgdata.data));
-			gnutls_free(&msgdata);
-		}
-		else
-		{
-			ReportError(BString<1024>("TLS certificate verification failed for %s."
-				" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str()));
-		}
-		return false;
-	}
-#endif
-	return true;
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 	// verify a server certificate was presented during the negotiation
 	X509* cert = SSL_get_peer_certificate((SSL*)m_session);
 	if (!cert)
@@ -658,44 +391,24 @@ bool TlsSocket::ValidateCert()
 
 	X509_free(cert);
 	return true;
-#endif /* HAVE_OPENSSL */
 }
 
 void TlsSocket::Close()
 {
 	if (m_session)
 	{
-#ifdef HAVE_LIBGNUTLS
-		if (m_connected)
-		{
-			gnutls_bye((gnutls_session_t)m_session, GNUTLS_SHUT_WR);
-		}
-		if (m_initialized)
-		{
-			gnutls_deinit((gnutls_session_t)m_session);
-		}
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 		if (m_connected)
 		{
 			SSL_shutdown((SSL*)m_session);
 		}
 		SSL_free((SSL*)m_session);
-#endif /* HAVE_OPENSSL */
 
 		m_session = nullptr;
 	}
 
 	if (m_context)
 	{
-#ifdef HAVE_LIBGNUTLS
-		gnutls_certificate_free_credentials((gnutls_certificate_credentials_t)m_context);
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 		SSL_CTX_free((SSL_CTX*)m_context);
-#endif /* HAVE_OPENSSL */
 
 		m_context = nullptr;
 	}
@@ -703,24 +416,16 @@ void TlsSocket::Close()
 
 int TlsSocket::Send(const char* buffer, int size)
 {
-#ifdef HAVE_LIBGNUTLS
-	m_retCode = gnutls_record_send((gnutls_session_t)m_session, buffer, size);
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 	m_retCode = SSL_write((SSL*)m_session, buffer, size);
-#endif /* HAVE_OPENSSL */
 
 	if (m_retCode < 0)
 	{
-#ifdef HAVE_OPENSSL
 		if (ERR_peek_error() == 0)
 		{
 			ReportError("Could not write to TLS-Socket: Connection closed by remote host");
 		}
 		else
-#endif /* HAVE_OPENSSL */
-		ReportError("Could not write to TLS-Socket");
+			ReportError("Could not write to TLS-Socket");
 		return -1;
 	}
 
@@ -729,23 +434,15 @@ int TlsSocket::Send(const char* buffer, int size)
 
 int TlsSocket::Recv(char* buffer, int size)
 {
-#ifdef HAVE_LIBGNUTLS
-	m_retCode = gnutls_record_recv((gnutls_session_t)m_session, buffer, size);
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 	m_retCode = SSL_read((SSL*)m_session, buffer, size);
-#endif /* HAVE_OPENSSL */
 
 	if (m_retCode < 0)
 	{
-#ifdef HAVE_OPENSSL
 		if (ERR_peek_error() == 0)
 		{
 			ReportError("Could not read from TLS-Socket: Connection closed by remote host");
 		}
 		else
-#endif /* HAVE_OPENSSL */
 		{
 			ReportError("Could not read from TLS-Socket");
 		}

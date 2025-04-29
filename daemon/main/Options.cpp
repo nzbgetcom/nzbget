@@ -1818,24 +1818,13 @@ void Options::CheckOptions()
 	}
 #endif
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 #ifndef HAVE_X509_CHECK_HOST
 	if (m_certCheck)
 	{
 		LocateOptionSrcPos(OPTION_CERTCHECK);
 		ConfigWarn("TLS certificate verification (option \"%s\") is limited because the program "
 			"was compiled with older OpenSSL version not supporting hostname validation (at least OpenSSL 1.0.2d is required)", OPTION_CERTCHECK);
-	}
-#endif
-#endif
-
-#ifdef HAVE_LIBGNUTLS
-#if	GNUTLS_VERSION_NUMBER < 0x030104
-	if (m_certCheck)
-	{
-		LocateOptionSrcPos(OPTION_CERTCHECK);
-		ConfigWarn("TLS certificate verification (option \"%s\") is disabled because the program "
-			"was compiled with older GnuTLS version not supporting certificate validation (at least GnuTLS 3.1.4 is required)", OPTION_CERTCHECK);
 	}
 #endif
 #endif

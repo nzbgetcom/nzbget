@@ -48,6 +48,7 @@ struct InitGlobals
 	~InitGlobals()
 	{
 		delete g_WorkState;
+		delete g_Options;
 		delete g_DiskState;
 		delete g_ServerPool;
 		delete g_Log;

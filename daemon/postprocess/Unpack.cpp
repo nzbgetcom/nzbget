@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -650,11 +650,10 @@ void UnpackController::CheckArchiveFiles()
 
 			if (regExRar.Match(filename))
 			{
+				const auto begin = m_postInfo->GetExtractedArchives()->cbegin();
+				const auto end = m_postInfo->GetExtractedArchives()->cend();
 				m_hasRarFiles = true;
-				m_hasNotUnpackedRarFiles |= std::find(
-					m_postInfo->GetExtractedArchives()->begin(),
-					m_postInfo->GetExtractedArchives()->end(),
-					filename) == m_postInfo->GetExtractedArchives()->end();
+				m_hasNotUnpackedRarFiles |= std::find(begin, end, filename) == end;
 			}
 			else if (regExSevenZip.Match(filename))
 			{
@@ -683,7 +682,7 @@ bool UnpackController::FileHasRarSignature(const char* filename)
 	char rar4Signature[] = { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 };
 	char rar5Signature[] = { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00 };
 
-	char fileSignature[8];
+	char fileSignature[8]{};
 
 	int cnt = 0;
 	DiskFile infile;
@@ -874,7 +873,7 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		m_postInfo->GetNzbInfo()->AddMessage(kind, msgText);
 	}
 
-	if (m_postInfo && m_unpacker == upUnrar && !strncmp(msgText, "Unrar: UNRAR ", 6) &&
+	if (m_postInfo && m_unpacker == upUnrar && !strncmp(msgText, "Unrar: UNRAR ", 13) &&
 		strstr(msgText, " Copyright ") && strstr(msgText, " Alexander Roshal"))
 	{
 		// reset start time for a case if user uses unpack-script to do some things
@@ -910,7 +909,7 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 	}
 
 	if (m_unpacker == upSevenZip &&
-		(len > 18 && !strncmp(text + len - 45, "Data Error in encrypted file. Wrong password?", 45)))
+		(len > 45 && !strncmp(text + len - 45, "Data Error in encrypted file. Wrong password?", 45)))
 	{
 		m_unpackDecryptError = true;
 	}

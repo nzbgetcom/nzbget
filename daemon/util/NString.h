@@ -2,7 +2,8 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -61,12 +62,26 @@ class CString
 {
 public:
 	CString() {}
-	~CString() { free(m_data); }
+	~CString() 
+	{ 
+		free(m_data);
+		m_data = nullptr;
+	}
 	CString(const char* str, int len = 0) { Set(str, len); }
-	CString(CString&& other) noexcept { m_data = other.m_data; other.m_data = nullptr; }
+	CString(CString&& other) noexcept
+	{
+		m_data = other.m_data;
+		other.m_data = nullptr;
+	}
 	CString(CString& other) = delete;
 	CString& operator=(const CString& other) = delete;
-	CString& operator=(CString&& other) noexcept { free(m_data); m_data = other.m_data; other.m_data = nullptr; return *this; }
+	CString& operator=(CString&& other) noexcept
+	{
+		free(m_data);
+		m_data = other.m_data;
+		other.m_data = nullptr;
+		return *this;
+	}
 	CString& operator=(const char* str) { Set(str); return *this; }
 	bool operator==(const CString& other) const;
 	bool operator==(const char* other) const;
@@ -76,7 +91,11 @@ public:
 	const char* Str() const { return m_data ? m_data : ""; }
 	int Length() const { return m_data ? (int)strlen(m_data) : 0; }
 	bool Empty() const { return !m_data || !*m_data; }
-	void Clear() { free(m_data); m_data = nullptr; }
+	void Clear()
+	{
+		free(m_data);
+		m_data = nullptr;
+	}
 	void Reserve(int capacity);
 	void Bind(char* str);
 	char* Unbind();
@@ -103,7 +122,11 @@ class WString
 public:
 	WString(wchar_t* wstr) : m_data(wcsdup(wstr)) {}
 	WString(const char* utfstr);
-	~WString() { free(m_data); }
+	~WString() 
+	{ 
+		free(m_data);
+		m_data = nullptr;
+	}
 	WString(WString&& other) noexcept { m_data = other.m_data; other.m_data = nullptr; }
 	WString(WString& other) = delete;
 	operator wchar_t*() const { return m_data; }
@@ -120,7 +143,11 @@ StringBuilder preallocates storage space and is best suitable for often "Append"
 class StringBuilder
 {
 public:
-	~StringBuilder() { free(m_data); }
+	~StringBuilder() 
+	{ 
+		free(m_data);
+		m_data = nullptr;
+	}
 	operator const char*() const { return m_data ? m_data : ""; }
 	explicit operator char*() { return m_data; }
 	const char* operator*() const { return m_data; }
@@ -148,13 +175,42 @@ class CharBuffer
 {
 public:
 	CharBuffer() {}
-	CharBuffer(int size) : m_size(size) { m_data = (char*)malloc(size); }
+	CharBuffer(int size)
+	{
+		if (size <= 0) return;
+
+		char* data = static_cast<char*>(malloc(static_cast<size_t>(size)));
+		if (data)
+		{
+			m_data = data;
+			m_size = size;
+		}
+	}
 	CharBuffer(CharBuffer& other) : m_data(other.m_data), m_size(other.m_size) { other.m_data = nullptr; other.m_size = 0; }
-	~CharBuffer() { free(m_data); }
+	~CharBuffer() 
+	{ 
+		free(m_data);
+		m_data = nullptr;
+	}
 	CharBuffer& operator=(CharBuffer&& other) = delete;
 	int Size() { return m_size; }
-	void Reserve(int size) { m_data = (char*)realloc(m_data, size); m_size = size; }
-	void Clear() { free(m_data); m_data = nullptr; m_size = 0; }
+	void Reserve(int size) 
+	{
+		if (size <= 0) return;
+
+		char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(size)));
+		if (data)
+		{
+			m_data = data; 
+			m_size = size; 
+		}
+	}
+	void Clear()
+	{
+		free(m_data);
+		m_data = nullptr;
+		m_size = 0;
+	}
 	operator char*() const { return m_data; }
 	char* operator*() const { return m_data; }
 

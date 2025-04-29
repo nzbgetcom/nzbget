@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -355,17 +355,19 @@ int NCursesFrontend::CalcQueueSize()
 
 #ifndef WIN32
 
-void NCursesFrontend::PlotLine(const char * string, int row, int pos, int colorPair)
+void NCursesFrontend::PlotLine(const char* str, int row, int pos, int colorPair)
 {
-	std::string buffer(m_screenWidth + 1, '\0');
-	snprintf(buffer.data(), buffer.size(), "%-*s", m_screenWidth, string);
+	size_t size = Util::SafeIntCast<int, size_t>(m_screenWidth + 1);
+	std::string buffer(size, '\0');
+	snprintf(buffer.data(), size, "%-*s", m_screenWidth, str);
 
-	if (Util::CmpGreater(buffer.size(), m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
+	if (Util::CmpGreater(size, m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
 	{
-		buffer[m_screenWidth - pos] = '\0';
+		size = Util::SafeIntCast<int, size_t>(m_screenWidth - pos);
+		buffer.resize(size);
 	}
 
-	PlotText(buffer.data(), row, pos, colorPair, false);
+	PlotText(buffer.c_str(), row, pos, colorPair, false);
 }
 
 void NCursesFrontend::PlotText(const char * string, int row, int pos, int colorPair, bool blink)
@@ -391,25 +393,26 @@ void NCursesFrontend::PlotText(const char * string, int row, int pos, int colorP
 
 #else
 
-void NCursesFrontend::PlotLine(const char * str, int row, int pos, int colorPair)
+void NCursesFrontend::PlotLine(const char* str, int row, int pos, int colorPair)
 {
 	auto res = Utf8::Utf8ToWide(str);
-	if (!res.has_value())
+	if (!res)
 	{
 		warn("Failed to convert %s to wide string", str);
 		return;
 	}
 
-	std::wstring wstr = std::move(res.value());
-	std::wstring buffer(m_screenWidth + 1, '\0');
-	swprintf(buffer.data(), buffer.size(), L"%-*s", m_screenWidth, wstr.c_str());
+	size_t size = Util::SafeIntCast<int, size_t>(m_screenWidth + 1);
+	std::wstring buffer(size, L'\0');
+	swprintf(buffer.data(), size, L"%-*s", m_screenWidth, res->c_str());
 
-	if (Util::CmpGreater(buffer.size(), m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
+	if (Util::CmpGreater(size, m_screenWidth - pos) && m_screenWidth - pos < MAX_SCREEN_WIDTH)
 	{
-		buffer[m_screenWidth - pos] = '\0';
+		size = Util::SafeIntCast<int, size_t>(m_screenWidth - pos);
+		buffer.resize(size);
 	}
 
-	PlotText(buffer.data(), row, pos, colorPair, false);
+	PlotText(buffer.c_str(), row, pos, colorPair, false);
 }
 
 void NCursesFrontend::PlotText(const wchar_t* wstr, int row, int pos, int colorPair, bool blink)
