@@ -30,6 +30,7 @@
 
   - For static code analysis:
     - [Clang-Tidy](https://clang.llvm.org/extra/clang-tidy/)
+    - [Cppcheck](https://cppcheck.sourceforge.io/)
 
 Please note that you also 
 need the developer packages for these libraries too, they package names 
@@ -146,6 +147,9 @@ cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
   - For debug build.
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Debug
+  - Enable leak, undefined, address sanitizers
+```
+cmake .. -DENABLE_SANITIZERS=ON
 ```
   - To get a static binary, 
 ```bash

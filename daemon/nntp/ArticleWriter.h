@@ -23,7 +23,7 @@
 #define ARTICLEWRITER_H
 
 #include <atomic>
-#include <string_view>
+#include <string>
 #include "NString.h"
 #include "DownloadInfo.h"
 #include "Decoder.h"
@@ -77,7 +77,7 @@ private:
 	 * @param filename The desired final filename (without path).
 	 * @param destDir  The destination directory for the file.
 	 */
-	void RenameOutputFile(std::string_view filename, std::string_view destDir);
+	void RenameOutputFile(const std::string& filename, const std::string& destDir);
 
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;

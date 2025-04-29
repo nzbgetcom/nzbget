@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,12 @@ namespace Network
 		unsigned statusCode;
 	};
 
+	/**
+	 * @todo Refactor this class into two separate classes: HttpClient and Connection/Session. This separation will enable:
+	 *       - Reusing the Connection/Session for multiple requests.
+	 *       - Replacing the current platform-specific TlsSocket and Connection implementations with a cross-platform solution in the future.
+	 *       - Ensure avoiding blocking IO operations.
+	 */
 	class HttpClient final
 	{
 	public:

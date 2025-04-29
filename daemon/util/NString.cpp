@@ -2,7 +2,8 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nzbget.h"
@@ -45,6 +46,7 @@ void BString<size>::Append(const char* str, int len)
 	{
 		len = strlen(str);
 	}
+
 	int curLen = strlen(m_data);
 	int avail = size - curLen - 1;
 	int addLen = std::min(avail, len);
@@ -71,7 +73,7 @@ void BString<size>::AppendFmtV(const char* format, va_list ap)
 	int avail = size - curLen;
 	if (avail > 0)
 	{
-		vsnprintf(m_data + curLen, avail, format, ap);
+		vsnprintf(m_data + curLen, static_cast<size_t>(avail), format, ap);
 	}
 }
 
@@ -89,7 +91,7 @@ template <int size>
 int BString<size>::FormatV(const char* format, va_list ap)
 {
 	// ensure result isn't negative (in case of bad argument)
-	int len = std::max(vsnprintf(m_data, size, format, ap), 0);
+	int len = std::max(vsnprintf(m_data, static_cast<size_t>(size), format, ap), 0);
 	return len;
 }
 
@@ -109,13 +111,17 @@ void CString::Set(const char* str, int len)
 {
 	if (str)
 	{
-		if (len == 0)
+		if (len <= 0)
 		{
 			len = strlen(str);
 		}
-		m_data = (char*)realloc(m_data, len + 1);
-		strncpy(m_data, str, len);
-		m_data[len] = '\0';
+		char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(len + 1)));
+		if (data)
+		{
+			m_data = data;
+			strncpy(m_data, str, len);
+			m_data[len] = '\0';
+		}
 	}
 	else
 	{
@@ -130,11 +136,16 @@ void CString::Append(const char* str, int len)
 	{
 		len = strlen(str);
 	}
+
 	int curLen = Length();
 	int newLen = curLen + len;
-	m_data = (char*)realloc(m_data, newLen + 1);
-	strncpy(m_data + curLen, str, len);
-	m_data[curLen + len] = '\0';
+	char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(newLen + 1)));
+	if (data)
+	{
+		m_data = data;
+		strncpy(m_data + curLen, str, len);
+		m_data[newLen] = '\0';
+	}
 }
 
 void CString::AppendFmt(const char* format, ...)
@@ -151,20 +162,29 @@ void CString::AppendFmtV(const char* format, va_list ap)
 	va_copy(ap2, ap);
 
 	int addLen = vsnprintf(nullptr, 0, format, ap);
-	if (addLen < 0) return; // error
-
-	int curLen = Length();
-	int newLen = curLen + addLen;
-
-	char* newData = (char*)realloc(m_data, newLen + 1);
-	if (newData == nullptr) 
+	if (addLen <= 0)
 	{
+		va_end(ap2);
 		return;
 	}
 
-	m_data = newData;
+	int curLen = Length();
+	int newLen = curLen + addLen;
+	char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(newLen + 1)));
+	if (!data)
+	{
+		va_end(ap2);
+		return;
+	}
 
-	vsnprintf(m_data + curLen, addLen + 1, format, ap2);
+	if (vsnprintf(data + curLen, static_cast<size_t>(addLen + 1), format, ap2) > 0)
+	{
+		m_data = data;
+	}
+	else
+	{
+		free(data);
+	}
 
 	va_end(ap2);
 }
@@ -183,14 +203,31 @@ int CString::FormatV(const char* format, va_list ap)
 	va_list ap2;
 	va_copy(ap2, ap);
 
-	// "std::max" to ensure result isn't negative (in case of bad argument)
-	int newLen = std::max(vsnprintf(nullptr, 0, format, ap), 0);
+	int newLen = vsnprintf(nullptr, 0, format, ap);
+	if (newLen < 0)
+	{
+		va_end(ap2);
+		return 0;
+	}
 
-	m_data = (char*)realloc(m_data, newLen + 1);
-	newLen = vsnprintf(m_data, newLen + 1, format, ap2);
+	newLen += 1; // for null-terminator
+	char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(newLen)));
+	if (!data)
+	{
+		va_end(ap2);
+		return 0;
+	}
 
+	if (vsnprintf(data, static_cast<size_t>(newLen), format, ap2) > 0)
+	{
+		m_data = data;
+		va_end(ap2);
+		return newLen;
+	}
+
+	free(data);
 	va_end(ap2);
-	return newLen;
+	return 0;
 }
 
 int CString::Find(const char* str, int pos)
@@ -216,13 +253,16 @@ void CString::Replace(int pos, int len, const char* str, int strLen)
 
 	if (pos > curLen) return; // bad argument
 
-	char* newvalue = (char*)malloc(newLen + 1);
+	char* newvalue = static_cast<char*>(malloc(static_cast<size_t>(newLen + 1)));
+	if (!newvalue) return;
+
 	strncpy(newvalue, m_data, pos);
 	strncpy(newvalue + pos, str, addLen);
 	strcpy(newvalue + pos + addLen, m_data + pos + len);
 
 	free(m_data);
 	m_data = newvalue;
+	m_data[newLen] = '\0';
 }
 
 void CString::Replace(const char* from, const char* to)
@@ -253,10 +293,14 @@ char* CString::Unbind()
 void CString::Reserve(int capacity)
 {
 	int curLen = Length();
-	if (capacity > curLen || curLen == 0)
+	if (capacity > 0 && capacity > curLen || curLen == 0)
 	{
-		m_data = (char*)realloc(m_data, capacity + 1);
-		m_data[curLen] = '\0';
+		char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(capacity + 1)));
+		if (data)
+		{
+			m_data = data;
+			m_data[curLen] = '\0';
+		}
 	}
 }
 
@@ -290,7 +334,10 @@ void CString::TrimRight()
 
 WString::WString(const char* utfstr)
 {
-	m_data = (wchar_t*)malloc((strlen(utfstr) * 2 + 1) * sizeof(wchar_t));
+	wchar_t* data = static_cast<wchar_t*>(malloc((strlen(utfstr) * 2 + 1) * sizeof(wchar_t)));
+	if (!data) return;
+
+	m_data = data;
 
 	wchar_t* out = m_data;
 	unsigned int codepoint = 0;
@@ -352,7 +399,10 @@ void StringBuilder::Reserve(int capacity, bool exact)
 
 		m_capacity = smartCapacity > capacity ? smartCapacity : capacity;
 
-		m_data = (char*)realloc(m_data, m_capacity + 1);
+		char* data = static_cast<char*>(realloc(m_data, static_cast<size_t>(m_capacity + 1)));
+		if (!data) return;
+
+		m_data = data;
 		if (!oldData)
 		{
 			m_data[0] = '\0';
@@ -390,15 +440,22 @@ void StringBuilder::AppendFmtV(const char* format, va_list ap)
 	va_copy(ap2, ap);
 
 	int addLen = vsnprintf(nullptr, 0, format, ap);
-	if (addLen < 0) return; // error
+	if (addLen <= 0)
+	{
+		va_end(ap2);
+		return;
+	}
 
 	int curLen = Length();
 	int newLen = curLen + addLen;
 
 	Reserve(newLen, false);
 
-	vsnprintf(m_data + curLen, newLen + 1, format, ap2);
-	m_length = newLen;
+	if (vsnprintf(m_data + curLen, static_cast<size_t>(newLen + 1), format, ap2) > 0)
+	{
+		m_length = newLen;
+		m_data[newLen] = '\0';
+	}
 
 	va_end(ap2);
 }

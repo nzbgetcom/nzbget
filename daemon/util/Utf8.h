@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 
 namespace Utf8
 {
+	inline constexpr int STACK_BUFFER_SIZE = 1024;
 	std::optional<std::wstring> Utf8ToWide(const std::string& str);
 	std::optional<std::string> WideToUtf8(const std::wstring& wstr);
 }
