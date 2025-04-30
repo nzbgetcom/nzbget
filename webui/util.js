@@ -193,7 +193,7 @@ var Util = (new function($)
 
 	this.formatSpeed = function (bytesPerSec) 
 	{
-		if (!Util.isNumber(bytesPerSec) || bytesPerSec <= 0) 
+		if (!Util.isNumber(bytesPerSec) || bytesPerSec < 0) 
 		{
 			return '';
 		}
