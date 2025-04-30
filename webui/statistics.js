@@ -57,6 +57,7 @@ var Statistics = new (function ($) {
 			range: "MIN",
 			data: null,
 			dataMB: null,
+			dataBits: null,
 			curPoint: null,
 			units: null,
 			labels: null,
@@ -596,8 +597,15 @@ var Statistics = new (function ($) {
 		var $tooltip = $("<div>", {
 			class: "statistics__tooltip",
 			id: server.makeId(server.SPEED_CHART + "_TOOLTIP"),
-			text: "--"
 		});
+		var $tooltipMB = $("<span>", {
+			id: server.makeId(server.SPEED_CHART + "_TOOLTIP_MB"),
+		});
+		var $tooltipBits = $("<span>", {
+			id: server.makeId(server.SPEED_CHART + "_TOOLTIP_BITS"),
+		}).css("color", "darkgray").css("font-style", "italic");
+		$tooltip.append($tooltipMB, $tooltipBits);
+
 		var $chartBlock = $("<div>", {
 			class: "statistics__chartblock"
 		});
@@ -772,35 +780,37 @@ var Statistics = new (function ($) {
 		var curRange = serverData.range;
 		var lineLabels = [];
 		var dataLabels = [];
-		var chartSpeedTb = [];
-		var chartSpeedGb = [];
-		var chartSpeedMb = [];
-		var chartSpeedKb = [];
+		var chartSpeedTB = [];
+		var chartSpeedGB = [];
+		var chartSpeedMB = [];
+		var chartSpeedKB = [];
 		var chartSpeedB = [];
+		var chartSpeedBits = [];
 		var curPoint = null;
 		var sumMb = 0;
 		var sumLo = 0;
-		var maxSizeMb = 0;
+		var maxSizeMB = 0;
 		var maxSizeLo = 0;
 
 		function addData(data, dataLabel, timeIntervalSeconds) {
 			dataLabels.push(dataLabel);
 			var sizeMB = size64(data);
-			var speedMb = (sizeMB / timeIntervalSeconds) * 8;
-			var speedLoMb = (data.SizeLo / timeIntervalSeconds) * 8;
-			chartSpeedTb.push(speedMb / 1024.0 / 1024.0);
-			chartSpeedGb.push(speedMb / 1024.0);
-			chartSpeedMb.push(speedMb);
-			chartSpeedKb.push(speedMb * 1024.0);
-			chartSpeedB.push(speedMb * 1024.0 * 1024.0);
-			if (speedMb > maxSizeMb) {
-				maxSizeMb = speedMb;
+			var speedMB = (sizeMB / timeIntervalSeconds);
+			var speedLoMB = (data.SizeLo / timeIntervalSeconds);
+			chartSpeedTB.push(speedMB / 1024.0 / 1024.0);
+			chartSpeedGB.push(speedMB / 1024.0);
+			chartSpeedMB.push(speedMB);
+			chartSpeedKB.push(speedMB * 1024.0);
+			chartSpeedB.push(speedMB * 1024.0 * 1024.0);
+			chartSpeedBits.push(speedMB * 1024.0 * 1024.0 * 8);
+			if (speedMB > maxSizeMB) {
+				maxSizeMB = speedMB;
 			}
-			if (speedLoMb > maxSizeLo) {
-				maxSizeLo = speedLoMb;
+			if (speedLoMB > maxSizeLo) {
+				maxSizeLo = speedLoMB;
 			}
-			sumMb += speedMb;
-			sumLo += speedLoMb;
+			sumMb += speedMB;
+			sumLo += speedLoMB;
 		}
 
 		function rerangeCircularBuffer(buffer, currentSlot) {
@@ -864,21 +874,21 @@ var Statistics = new (function ($) {
 		}
 
 		var serieData =
-			maxSizeMb >= 1024 * 1024
-				? chartSpeedTb
-				: maxSizeMb >= 1024
-					? chartSpeedGb
-					: maxSizeMb >= 1
-						? chartSpeedMb
-						: chartSpeedKb;
+			maxSizeMB >= 1024 * 1024
+				? chartSpeedTB
+				: maxSizeMB >= 1024
+					? chartSpeedGB
+					: maxSizeMB >= 1
+						? chartSpeedMB
+						: chartSpeedKB;
 		var units =
-			maxSizeMb >= 1024 * 1024
-				? " Tbit/s"
-				: maxSizeMb >= 1024
-					? " Gbit/s"
-					: maxSizeMb >= 1
-						? " Mbit/s"
-						: " Kbit/s";
+			maxSizeMB >= 1024 * 1024
+				? " TB/s"
+				: maxSizeMB >= 1024
+					? " GB/s"
+					: maxSizeMB >= 1
+						? " MB/s"
+						: " KB/s";
 		var curPointData = [];
 
 		for (var i = 0; i < serieData.length; ++i) {
@@ -887,7 +897,8 @@ var Statistics = new (function ($) {
 
 		server.setChartData({
 			data: serieData,
-			dataMB: chartSpeedMb,
+			dataMB: chartSpeedMB,
+			dataBits: chartSpeedBits,
 			curPoint: curPoint,
 			units: units,
 			range: curRange,
@@ -1144,19 +1155,27 @@ var Statistics = new (function ($) {
 		}
 
 		var $tooltip = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP"));
-		if (!$tooltip) return;
-		var data = server.getChartData();
-		var value = data.data[index];
-		if (value === undefined || value === null) {
-			value = "0.0";
+		var $tooltipMB = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP_MB"));
+		var $tooltipBits = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP_BITS"));
+		if (!$tooltip || !$tooltipMB || !$tooltipBits) return;
+
+		var valueMB = data.data[data.curPoint];
+		var valueBits = data.dataBits[data.curPoint];
+		var label = data.labels[index];
+		var MBTitle = '';
+		var BitsTitle= '';
+		if (valueMB === undefined || valueMB === null) {
+			MBTitle = "0.0";
+			BitsTitle = "0.0";
 		} else {
-			value = value.toFixed(1);
+			MBTitle = valueMB.toFixed(1) + data.units;
+			BitsTitle = " ≈" + Util.formatSpeedWithCustomUnit(valueBits, 'bit');
 		}
-		var title = value + data.units;
-		$tooltip.html('<span class="stat-size">' + title + "</span>");
-		$tooltip.html(
-			data.labels[index] + ': <span class="stat-size">' + title + "</span>"
+		$tooltipMB.html(
+			"<span>" + label + " " + "</span>" +
+			'<span class="stat-size">' + MBTitle + '</span>',
 		);
+		$tooltipBits.text(BitsTitle);
 	}
 
 	function volumeChartMouseOver(server, env, serie, index, mouseAreaData) {
@@ -1191,17 +1210,19 @@ var Statistics = new (function ($) {
 
 	function speedChartMouseExit(server, env, serie, index, mouseAreaData) {
 		var $tooltip = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP"));
-		if (!$tooltip) return;
+		var $tooltipMB = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP_MB"));
+		var $tooltipBits = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP_BITS"));
+		if (!$tooltip || !$tooltipMB || !$tooltipBits) return;
+
 		var data = server.getChartData();
-		data.mouseOverIndex = -1;
-		var value = data.data[data.curPoint];
-		if (value === undefined || value === null) {
-			value = "0.0";
-		} else {
-			value = value.toFixed(1);
-		}
-		var title = value + data.units;
-		$tooltip.html('<span class="stat-size">' + title + "</span>");
+		var valueMB = data.data[data.curPoint] || 0;
+		var valueBits = data.dataBits[data.curPoint] || 0;
+		var units = data.units;
+
+		var MBTitle = valueMB.toFixed(1) + units;
+		var BitsTitle = " ≈" + Util.formatSpeedWithCustomUnit(valueBits, 'bit');
+		$tooltipMB.html('<span class="stat-size">' + MBTitle + '</span>');
+		$tooltipBits.text(BitsTitle);
 	}
 
 	function volumeChartMouseExit(server, env, serie, index, mouseAreaData) {
