@@ -1,15 +1,12 @@
 name: snap
 
 on:
-  push:
-    branches:
-    - feature/snap
   workflow_dispatch:
 
 jobs:
 
   build-snap:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
 
@@ -18,7 +15,7 @@ jobs:
         sudo apt-get update && sudo apt-get install snapd
         sudo groupadd --force --system lxd
         sudo usermod --append --groups lxd $USER
-        sudo snap refresh lxd
+        sudo snap install lxd
         sudo lxd init --auto
         sudo iptables -P FORWARD ACCEPT
         sudo snap install snapcraft --classic
@@ -26,7 +23,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build and publusg latest release snap
+    - name: Build and publish latest release snap
       env:
         SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
       run: |
