@@ -86,3 +86,4 @@ pytest.ini
 /.idea
 docker/downloads
 docker/config
+*.snap

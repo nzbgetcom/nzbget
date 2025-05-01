@@ -1,0 +1,63 @@
+name: nzbget
+base: core24
+adopt-info: nzbget
+summary: Efficient usenet downloader
+description: |
+  NZBGet is a binary downloader, which downloads files from Usenet based-on information given in nzb files.
+  NZBGet is written in C++ and is known for its performance and efficiency.
+grade: stable
+confinement: strict
+
+platforms:
+  amd64:
+    build-on: [amd64]
+    build-for: [amd64]
+  arm64:
+    build-on: [amd64]
+    build-for: [arm64]
+  armhf:
+    build-on: [amd64]
+    build-for: [armhf]
+
+apps:
+  nzbget:
+    command: bin/nzbget-wrapper
+    daemon: forking
+    plugs: [network, home, network-bind, removable-media]
+
+parts:
+  nzbget:
+    source: https://github.com/nzbgetcom/nzbget
+    source-type: git
+    source-branch: main
+    plugin: nil
+    override-build: |
+      NZBGET_VERSION=$(grep "set(VERSION " CMakeLists.txt | cut -d '"' -f 2)
+      craftctl set version=$NZBGET_VERSION
+      curl -LO https://github.com/nzbgetcom/nzbget/releases/download/v${NZBGET_VERSION}/nzbget-${NZBGET_VERSION}-bin-linux.run
+      case $CRAFT_ARCH_BUILD_FOR in
+        amd64) NZBGET_ARCH="x86_64";;
+        arm64) NZBGET_ARCH="aarch64";;
+        *    ) NZBGET_ARCH=$CRAFT_ARCH_BUILD_FOR;;
+      esac
+      sh nzbget-${NZBGET_VERSION}-bin-linux.run --arch $NZBGET_ARCH
+      for FILE in nzbget.conf install-update.sh webui/package-info.json; do
+        rm nzbget/$FILE
+      done
+      cat << 'EOF' > nzbget/nzbget-wrapper
+      #!/bin/sh
+      if [ ! -f $SNAP_COMMON/nzbget.conf ]; then
+        sed $SNAP/bin/webui/nzbget.conf.template \
+          -e "s|^MainDir=.*|MainDir=$SNAP_COMMON/Downloads|" \
+          -e "s|^ScriptDir=.*|ScriptDir=$SNAP_COMMON/scripts|g" \
+          -e "s|^LogFile=.*|LogFile=$SNAP_DATA/nzbget.log|" \
+          -e "s|^LockFile=.*|LockFile=$SNAP_DATA/nzbget.lock|" \
+          -e "s|^WriteLog=.*|WriteLog=rotate|" \
+          -e "s|^UMask=.*|UMask=0|" \
+          > $SNAP_COMMON/nzbget.conf
+      fi
+      $SNAP/bin/nzbget -D -c $SNAP_COMMON/nzbget.conf
+      EOF
+      chmod +x nzbget/nzbget-wrapper
+      mkdir -p $SNAPCRAFT_PART_INSTALL/bin
+      cp -r nzbget/* $SNAPCRAFT_PART_INSTALL/bin/
