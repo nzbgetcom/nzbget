@@ -1,0 +1,39 @@
+name: snap
+
+on:
+  push:
+    branches:
+    - feature/snap
+  workflow_dispatch:
+
+jobs:
+
+  build-snap:
+    runs-on: ubuntu-22.04
+
+    steps:
+
+    - name: Install snapcraft and prepare build system
+      run: |
+        sudo apt-get update && sudo apt-get install snapd
+        sudo groupadd --force --system lxd
+        sudo usermod --append --groups lxd $USER
+        sudo snap refresh lxd
+        sudo lxd init --auto
+        sudo iptables -P FORWARD ACCEPT
+        sudo snap install snapcraft --classic
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build latest release snap
+      run: |
+        cd linux/snap
+        sudo -u $USER snapcraft -v
+
+    - name: Upload builded snaps
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-snaps
+        path: linux/snap/*.snap
+        retention-days: 5
