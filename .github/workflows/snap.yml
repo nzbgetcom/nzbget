@@ -26,10 +26,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Build latest release snap
+    - name: Build and publusg latest release snap
+      env:
+        SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
       run: |
         cd linux/snap
         sudo -u $USER snapcraft -v
+        snapcraft whoami
 
     - name: Upload builded snaps
       uses: actions/upload-artifact@v4
