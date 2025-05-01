@@ -33,6 +33,9 @@ jobs:
         cd linux/snap
         sudo -u $USER snapcraft -v
         snapcraft whoami
+        for SNAP in *.snap; do
+          snapcraft upload --release=stable $SNAP
+        done
 
     - name: Upload builded snaps
       uses: actions/upload-artifact@v4
