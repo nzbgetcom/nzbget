@@ -25,6 +25,7 @@
 #include <iostream>
 #include <string>
 #include "Json.h"
+#include "Util.h"
 
 BOOST_AUTO_TEST_CASE(JsonDeserializeTest)
 {
@@ -58,4 +59,44 @@ BOOST_AUTO_TEST_CASE(JsonDeserializeTest)
 			BOOST_CHECK(!res.has_value());
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(JsonDecodeTest)
+{
+    {
+        const char* json = "Test \\\"quoted\\\" text";
+        const char* expected = "Test \"quoted\" text";
+        char* testString = strdup(json);
+        WebUtil::JsonDecode(testString);
+        BOOST_CHECK(strcmp(testString, expected) == 0);
+        free(testString);
+    }
+
+    {
+        const char* json = "Test \\u0026 ampersand";
+        const char* expected = "Test & ampersand";
+        char* testString = strdup(json);
+        WebUtil::JsonDecode(testString);
+        BOOST_CHECK(strcmp(testString, expected) == 0);
+        free(testString);
+    }
+
+
+    {
+        const char* json = "Test \\u0026 \\u0026 \\u0026";
+        const char* expected = "Test & & &";
+        char* testString = strdup(json);
+        WebUtil::JsonDecode(testString);
+        BOOST_CHECK(strcmp(testString, expected) == 0);
+        free(testString);
+    }
+
+    {
+        const char* json = "Test \\\"quote\\\" \\u0026 \\n newline";
+        const char* expected = "Test \"quote\" & \n newline";
+        char* testString = strdup(json);
+        WebUtil::JsonDecode(testString);
+        BOOST_CHECK(strcmp(testString, expected) == 0);
+        free(testString);
+    }
 }

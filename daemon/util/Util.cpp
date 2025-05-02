@@ -1360,8 +1360,13 @@ void WebUtil::JsonDecode(char* raw)
 							*output++ = '\t';
 							break;
 						case 'u':
-							*output++ = (char)strtol(p + 1, nullptr, 16);
-							p += 4;
+							{
+								char hex[5] = {0};
+								strncpy(hex, p + 1, 4);
+								unsigned int code = strtoul(hex, nullptr, 16);
+								*output++ = (char)code;
+								p += 4;
+							}
 							break;
 						default:
 							// unknown escape-sequence, should never occur
