@@ -1159,8 +1159,8 @@ var Statistics = new (function ($) {
 		var $tooltipBits = $("#" + server.makeId(server.SPEED_CHART + "_TOOLTIP_BITS"));
 		if (!$tooltip || !$tooltipMB || !$tooltipBits) return;
 
-		var valueMB = data.data[data.curPoint];
-		var valueBits = data.dataBits[data.curPoint];
+		var valueMB = data.data[index];
+		var valueBits = data.dataBits[index];
 		var label = data.labels[index];
 		var MBTitle = '';
 		var BitsTitle= '';
