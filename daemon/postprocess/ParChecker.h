@@ -142,13 +142,15 @@ protected:
 	virtual void UpdateProgress() {}
 	virtual bool IsStopped() { return false; };
 	virtual void Completed() {}
-	virtual void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3) {}
-	virtual void RegisterParredFile(const char* filename) {}
-	virtual bool IsParredFile(const char* filename) { return false; }
-	virtual EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments) { return fsUnknown; }
-	virtual const char* FindFileOrigname(const char* filename) { return nullptr; }
-	virtual void RequestDupeSources(DupeSourceList* dupeSourceList) {}
-	virtual void StatDupeSources(DupeSourceList* dupeSourceList) {}
+	virtual void PrintMessage([[maybe_unused]] Message::EKind kind, [[maybe_unused]] const char* format,
+                     ...) PRINTF_SYNTAX(3) {}
+	virtual void RegisterParredFile([[maybe_unused]] const char* filename) {}
+	virtual bool IsParredFile([[maybe_unused]] const char* filename) { return false; }
+	virtual EFileStatus FindFileCrc([[maybe_unused]] const char* filename, [[maybe_unused]] uint32* crc,
+                            [[maybe_unused]] SegmentList* segments) { return fsUnknown; }
+	virtual const char* FindFileOrigname([[maybe_unused]] const char* filename) { return nullptr; }
+	virtual void RequestDupeSources([[maybe_unused]] DupeSourceList* dupeSourceList) {}
+	virtual void StatDupeSources([[maybe_unused]] DupeSourceList* dupeSourceList) {}
 	EStage GetStage() { return m_stage; }
 	const char* GetProgressLabel() { return m_progressLabel.c_str(); }
 	int GetFileProgress() { return m_fileProgress; }
