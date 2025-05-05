@@ -41,9 +41,9 @@ protected:
 	virtual void UpdateProgress() {}
 	virtual bool IsStopped() { return false; };
 	virtual void PrintMessage([[maybe_unused]] Message::EKind kind, [[maybe_unused]] const char* format,
-                     ...) PRINTF_SYNTAX(3) {}
+		...) PRINTF_SYNTAX(3) {}
 	virtual void RegisterRenamedFile([[maybe_unused]] const char* oldFilename,
-                     [[maybe_unused]] const char* newFileName) {}
+		[[maybe_unused]] const char* newFileName) {}
 	const char* GetProgressLabel() { return m_progressLabel; }
 	int GetStageProgress() { return m_stageProgress; }
 

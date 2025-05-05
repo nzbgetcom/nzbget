@@ -179,13 +179,13 @@ public:
 			bool tls, const char* cipher, int maxConnections, int retention,
 			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
 		virtual void AddFeed([[maybe_unused]] int id, [[maybe_unused]] const char* name,
-                        [[maybe_unused]] const char* url, [[maybe_unused]] int interval,
-                        [[maybe_unused]] const char* filter, [[maybe_unused]] bool backlog,
-                        [[maybe_unused]] bool pauseNzb, [[maybe_unused]] const char* category,
+			[[maybe_unused]] const char* url, [[maybe_unused]] int interval,
+			[[maybe_unused]] const char* filter, [[maybe_unused]] bool backlog,
+			[[maybe_unused]] bool pauseNzb, [[maybe_unused]] const char* category,
 			[[maybe_unused]] int priority, [[maybe_unused]] const char* extensions) {}
 		virtual void AddTask([[maybe_unused]] int id, [[maybe_unused]] int hours, [[maybe_unused]] int minutes,
-                        [[maybe_unused]] int weekDaysBits, [[maybe_unused]] ESchedulerCommand command,
-                        [[maybe_unused]] const char* param) {}
+			[[maybe_unused]] int weekDaysBits, [[maybe_unused]] ESchedulerCommand command,
+			[[maybe_unused]] const char* param) {}
 		virtual void SetupFirstStart() {}
 	};
 

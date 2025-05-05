@@ -34,8 +34,8 @@ public:
 	static bool SizeDiffOK(int64 size1, int64 size2, int maxDiffPercent);
 
 protected:
-	virtual void PrintMessage([[maybe_unused]] Message::EKind kind, [[maybe_unused]] const char* format,
-                     ...) PRINTF_SYNTAX(3) {}
+	virtual void PrintMessage([[maybe_unused]] Message::EKind kind,
+		[[maybe_unused]] const char* format, ...) PRINTF_SYNTAX(3) {}
 
 private:
 	CString m_destDir;
