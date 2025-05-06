@@ -79,7 +79,7 @@ protected:
 	void ResetEnv();
 	void PrepareEnvOptions(const char* stripPrefix);
 	void PrepareArgs();
-	virtual const char* GetOptValue(const char* name, const char* value) { return value; }
+	virtual const char* GetOptValue([[maybe_unused]] const char* name, const char* value) { return value; }
 	void StartProcess(int* pipein, int* pipeout);
 	int WaitProcess();
 	void SetNeedWrite(bool needWrite) { m_needWrite = needWrite; }

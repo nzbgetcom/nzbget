@@ -852,7 +852,7 @@ bool Util::StrCaseCmp(const std::string& a, const std::string& b)
 }
 
 // prevent PC from going to sleep
-void Util::SetStandByMode(bool standBy)
+void Util::SetStandByMode([[maybe_unused]] bool standBy)
 {
 #ifdef WIN32
 	SetThreadExecutionState((standBy ? 0 : ES_SYSTEM_REQUIRED) | ES_CONTINUOUS);
