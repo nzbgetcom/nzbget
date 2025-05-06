@@ -346,3 +346,18 @@ check_cxx_source_compiles("
 		strings = backtrace_symbols(array, size);
 		return 0; 
 	}" HAVE_BACKTRACE)
+
+check_cxx_source_compiles("
+	#include <atomic>
+	int main()
+	{
+		std::atomic<uint64_t> x{ 0 };
+		x.load(std::memory_order_acquire);
+		return 0;
+	}
+" HAVE_NATIVE_ATOMICS_SUPPORT)
+
+if(NOT HAVE_NATIVE_ATOMICS_SUPPORT)
+	message(STATUS "Compiler lacks native support for C++ atomics. Linking against libatomic.")
+	set(LIBS ${LIBS} -latomic)
+endif()
