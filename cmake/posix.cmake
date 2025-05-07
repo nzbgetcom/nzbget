@@ -333,19 +333,21 @@ if(HAVE_VARIADIC_MACROS)
 	set(DHAVE_VARIADIC_MACROS 1)
 endif()
 
-check_cxx_source_compiles("
-	#include <execinfo.h>
-	#include <stdio.h>
-	#include <stdlib.h>
-	int main() 
-	{ 
-		void* array[100];
-		size_t size; 
-		char** strings; 
-		size = backtrace(array, 100);
-		strings = backtrace_symbols(array, size);
-		return 0; 
-	}" HAVE_BACKTRACE)
+if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+	check_cxx_source_compiles("
+		#include <execinfo.h>
+		#include <stdio.h>
+		#include <stdlib.h>
+		int main() 
+		{ 
+			void* array[100];
+			size_t size; 
+			char** strings; 
+			size = backtrace(array, 100);
+			strings = backtrace_symbols(array, size);
+			return 0; 
+		}" HAVE_BACKTRACE)
+endif()
 
 check_cxx_source_compiles("
 	#include <atomic>
