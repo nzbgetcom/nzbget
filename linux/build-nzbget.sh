@@ -650,10 +650,10 @@ build_bin()
             CMAKE_EXTRA_ARGS="-DCOMPILER=clang -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
         freebsd)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -lc++ -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -lc++ -lexecinfo -lelf -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             export INCLUDES="$NZBGET_INCLUDES;$FREEBSD_SYSROOT/usr/include/c++/v1"
             CMAKE_SYSTEM_NAME="FreeBSD"
-            CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT"
+            CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT -DCMAKE_CXX_FLAGS=-I$FREEBSD_SYSROOT/usr/include/c++/v1"
             ;;
         *)
             if [ "$ARCH" != "ppc500" ]; then
