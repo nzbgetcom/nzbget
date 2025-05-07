@@ -359,7 +359,7 @@ check_cxx_source_compiles("
 	}
 " HAVE_NATIVE_ATOMICS_SUPPORT)
 
-if(NOT HAVE_NATIVE_ATOMICS_SUPPORT AND NOT ENABLE_STATIC)
+if(NOT HAVE_NATIVE_ATOMICS_SUPPORT)
 	message(STATUS "Compiler lacks native support for C++ atomics. Linking against libatomic.")
 	set(LIBS ${LIBS} -latomic)
 endif()
