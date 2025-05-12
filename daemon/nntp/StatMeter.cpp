@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,9 +45,16 @@ void ServerVolume::CalcSlots(time_t locCurTime)
 			m_firstDay = curDay;
 		}
 		m_daySlot = curDay - m_firstDay;
-		if (m_daySlot + 1 > (int)m_bytesPerDays.size())
+
+		size_t daySlot = Util::SafeIntCast<int, size_t>(m_daySlot + 1);
+		if (daySlot > m_bytesPerDays.size())
 		{
-			m_bytesPerDays.resize(m_daySlot + 1);
+			m_bytesPerDays.resize(daySlot);
+		}
+
+		if (daySlot > m_articlesPerDays.size())
+		{
+			m_articlesPerDays.resize(daySlot);
 		}
 	}
 	else
@@ -56,7 +63,7 @@ void ServerVolume::CalcSlots(time_t locCurTime)
 	}
 }
 
-void ServerVolume::AddData(int bytes)
+void ServerVolume::AddStats(Stats stats)
 {
 	time_t curTime = Util::CurrentTime();
 	time_t locCurTime = curTime + g_WorkState->GetLocalTimeOffset();
@@ -113,12 +120,16 @@ void ServerVolume::AddData(int bytes)
 	}
 
 	// add bytes to every slot
+	int64 bytes = static_cast<int64>(stats.bytes);
 	m_bytesPerSeconds[m_secSlot] += bytes;
 	m_bytesPerMinutes[m_minSlot] += bytes;
 	m_bytesPerHours[m_hourSlot] += bytes;
 	if (m_daySlot >= 0)
 	{
-		m_bytesPerDays[m_daySlot] += bytes;
+		size_t daySlot = static_cast<size_t>(m_daySlot);
+		m_bytesPerDays[daySlot] += bytes;
+		m_articlesPerDays[daySlot].failed += stats.articles.failed;
+		m_articlesPerDays[daySlot].success += stats.articles.success;
 	}
 	m_totalBytes += bytes;
 	m_customBytes += bytes;
@@ -126,10 +137,43 @@ void ServerVolume::AddData(int bytes)
 	m_dataTime = curTime;
 }
 
+void ServerVolume::Reset()
+{
+	m_totalBytes = 0;
+	m_dataTime = 0;
+	m_firstDay = 0;
+	m_countersResetTime = Util::CurrentTime();
+
+	ResetVolume(m_bytesPerSeconds);
+	ResetVolume(m_bytesPerMinutes);
+	ResetVolume(m_bytesPerHours);
+	ResetVolume(m_bytesPerDays);
+
+	ResetArticles();
+	ResetCustom();
+}
+
 void ServerVolume::ResetCustom()
 {
 	m_customBytes = 0;
 	m_customTime = Util::CurrentTime();
+}
+
+void ServerVolume::ResetVolume(VolumeArray& volume)
+{
+	for (int64& size : volume)
+	{
+		size = 0;
+	}
+}
+
+void ServerVolume::ResetArticles()
+{
+	for (Articles& articles : m_articlesPerDays)
+	{
+		articles.failed = 0;
+		articles.success = 0;
+	}
 }
 
 void ServerVolume::LogDebugInfo()
@@ -402,16 +446,11 @@ void StatMeter::LogDebugInfo()
 	}
 }
 
-void StatMeter::AddServerData(int bytes, int serverId)
+void StatMeter::AddServerStats(ServerVolume::Stats stats, int serverId)
 {
-	if (bytes == 0)
-	{
-		return;
-	}
-
 	Guard guard(m_volumeMutex);
-	m_serverVolumes[0].AddData(bytes);
-	m_serverVolumes[serverId].AddData(bytes);
+	m_serverVolumes[0].AddStats(stats);
+	m_serverVolumes[serverId].AddStats(stats);
 	m_statChanged = true;
 }
 
@@ -422,7 +461,11 @@ GuardedServerVolumes StatMeter::GuardServerVolumes()
 	// update slots
 	for (ServerVolume& serverVolume : m_serverVolumes)
 	{
-		serverVolume.AddData(0);
+		ServerVolume::Stats stats;
+		stats.bytes = 0;
+		stats.articles.failed = 0;
+		stats.articles.success = 0;
+		serverVolume.AddStats(stats);
 	}
 
 	return serverVolumes;

@@ -57,9 +57,9 @@ $ProgressPreference = "SilentlyContinue"
 # download 7z/unrar 32/64 bit to $ToolsRoot\image
 Function DownloadUnpackers {
     $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
-    $UrlRar32="https://www.rarlab.com/rar/winrar-x32-700.exe"
-    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-700.exe"
-    $Url7Z="https://www.7-zip.org/a/7z2301-extra.7z"
+    $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
+    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-711.exe"
+    $Url7Z="https://www.7-zip.org/a/7z2408-extra.7z"
 
     $ImageDir="$ToolsRoot\image"
     Write-Host "Downloading unpackers to $ImageDir"

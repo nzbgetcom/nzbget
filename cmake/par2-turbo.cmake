@@ -1,9 +1,15 @@
 set(PAR2_ROOT ${CMAKE_BINARY_DIR}/par2-turbo/src)
-if(WIN32) 
+if(CMAKE_GENERATOR MATCHES "Visual Studio") 
 	set(PAR2_LIBS
 		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/par2-turbo.lib
 		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/gf16.lib
 		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/hasher.lib
+	)
+elseif(CMAKE_GENERATOR MATCHES "Xcode")
+	set(PAR2_LIBS
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libpar2-turbo.a
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libgf16.a
+		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libhasher.a
 	)
 else()
 	set(PAR2_LIBS
@@ -22,8 +28,11 @@ set(CMAKE_ARGS
 	-DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
 	-DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
 	-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-	-DTOOLCHAIN_PREFIX=${TOOLCHAIN_PREFIX}
 )
+
+if(DEFINED TOOLCHAIN_PREFIX)
+	set(CMAKE_ARGS ${CMAKE_ARGS} -DTOOLCHAIN_PREFIX=${TOOLCHAIN_PREFIX})
+endif()
 
 if(APPLE)
 	set(CMAKE_ARGS ${CMAKE_ARGS}

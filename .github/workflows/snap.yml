@@ -1,0 +1,42 @@
+name: snap
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build-snap:
+    runs-on: ubuntu-24.04
+
+    steps:
+
+    - name: Install snapcraft and prepare build system
+      run: |
+        sudo apt-get update && sudo apt-get install snapd
+        sudo groupadd --force --system lxd
+        sudo usermod --append --groups lxd $USER
+        sudo snap install lxd
+        sudo lxd init --auto
+        sudo iptables -P FORWARD ACCEPT
+        sudo snap install snapcraft --classic
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Build and publish latest release snap
+      env:
+        SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      run: |
+        cd linux/snap
+        sudo -u $USER snapcraft -v
+        snapcraft whoami
+        for SNAP in *.snap; do
+          snapcraft upload --release=stable $SNAP
+        done
+
+    - name: Upload builded snaps
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-snaps
+        path: linux/snap/*.snap
+        retention-days: 5

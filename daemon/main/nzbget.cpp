@@ -917,7 +917,7 @@ void NZBGet::ProcessWebGet()
 
 void NZBGet::ProcessSigVerify()
 {
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	bool ok = Maintenance::VerifySignature(m_commandLineParser->GetLastArg(),
 		m_commandLineParser->GetSigFilename(), m_commandLineParser->GetPubKeyFilename());
 	exit(ok ? 93 : 1);

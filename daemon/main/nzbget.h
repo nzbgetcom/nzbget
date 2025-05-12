@@ -176,6 +176,7 @@
 #include <type_traits>
 #include <random>
 #include <exception>
+#include <iomanip>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>
@@ -184,36 +185,8 @@
 #include <libxml/tree.h>
 
 #include <boost/asio.hpp>
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
-#endif
-
-// NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
-// intialization, causing every unit in nzbget to have initialization routine. This in particular
-// is causing fatal problems in SIMD units which must not have static initialization because
-// they contain code with runtime CPU dispatching.
-//#include <iostream>
-
-#ifdef HAVE_LIBGNUTLS
-#ifdef WIN32
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-typedef int pid_t;
-#endif
-#include <gnutls/gnutls.h>
-#include <gnutls/x509.h>
-#if GNUTLS_VERSION_NUMBER <= 0x020b00
-#define NEED_GCRYPT_LOCKING
-#endif
-#ifdef NEED_GCRYPT_LOCKING
-#include <gcrypt.h>
-#endif /* NEED_GCRYPT_LOCKING */
-#include <nettle/sha.h>
-#include <nettle/pbkdf2.h>
-#include <nettle/aes.h>
-#endif /* HAVE_LIBGNUTLS */
-
-#ifdef HAVE_OPENSSL
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
@@ -221,7 +194,13 @@ typedef int pid_t;
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <openssl/comp.h>
-#endif /* HAVE_OPENSSL */
+#endif
+
+// NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
+// intialization, causing every unit in nzbget to have initialization routine. This in particular
+// is causing fatal problems in SIMD units which must not have static initialization because
+// they contain code with runtime CPU dispatching.
+//#include <iostream>
 
 #ifdef HAVE_REGEX_H
 #include <regex.h>
@@ -233,7 +212,6 @@ typedef int pid_t;
 
 #ifndef DISABLE_PARCHECK
 #include <assert.h>
-#include <iomanip>
 #include <cassert>
 #endif /* NOT DISABLE_PARCHECK */
 
@@ -289,11 +267,6 @@ typedef int pid_t;
 // redefine "exit" to avoid printing memory leaks report when terminated because of wrong command line switches
 #define exit(code) ExitProcess(code)
 #endif
-
-#ifdef HAVE_OPENSSL
-// For static linking of OpenSSL libraries:
-#pragma comment (lib, "legacy_stdio_definitions.lib")
-#endif /* HAVE_OPENSSL */
 
 #else
 

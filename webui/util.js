@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,6 +30,12 @@
 var Util = (new function($)
 {
 	'use strict';
+
+	this.emptyObject = function(obj) {
+		if (!obj) return true;
+		if (Object.keys(obj).length == 0) return true;
+		return false;
+	}
 
 	this.saveToLocalStorage = function(key, val)
 	{
@@ -109,6 +115,23 @@ var Util = (new function($)
 		return typeof value === 'number';
 	}
 
+	this.getDaySinceUnixEpoch = function (date) 
+	{
+		var utcDate = new Date(Date.UTC(
+			date.getFullYear(),
+			date.getMonth(),
+			date.getDate()
+		));
+
+		// Get the number of milliseconds since the Unix epoch (UTC).
+		var utcTime = utcDate.getTime();
+
+		// Divide by the number of milliseconds in a day to get the number of days.
+		var daysSinceEpoch = Math.floor(utcTime / (1000 * 60 * 60 * 24));
+
+		return daysSinceEpoch;
+	}
+
 	this.formatDateTime = function(unixTime)
 	{
 		if (!Util.isNumber(unixTime) || unixTime < 0)
@@ -170,7 +193,7 @@ var Util = (new function($)
 
 	this.formatSpeed = function (bytesPerSec) 
 	{
-		if (!Util.isNumber(bytesPerSec) || bytesPerSec <= 0) 
+		if (!Util.isNumber(bytesPerSec) || bytesPerSec < 0) 
 		{
 			return '';
 		}
@@ -264,6 +287,31 @@ var Util = (new function($)
 		else
 		{
 			return this.round0(diff / (60))  +'&nbsp;m';
+		}
+	}
+
+	this.formatNumber = function (num) 
+	{
+		var formattedNum;
+
+		if (num >= 1000000000) 
+		{
+			formattedNum = (num / 1000000000).toFixed(0);
+			return formattedNum + 'B';
+		}
+		else if (num >= 1000000) 
+		{
+			formattedNum = (num / 1000000).toFixed(0);
+			return formattedNum + 'M';
+		}
+		else if (num >= 1000) 
+		{
+			formattedNum = (num / 1000).toFixed(0);
+			return formattedNum + 'K';
+		}
+		else 
+		{
+			return num.toFixed(0);
 		}
 	}
 

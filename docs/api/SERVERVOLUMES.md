@@ -20,15 +20,17 @@ This method returns an array of structures with following fields:
 - **CustomSizeHi** `(int)` - Amount of downloaded data since last reset of custom counter, high 32-bits of 64-bit value.
 - **CustomSizeMB** `(int)` - Amount of downloaded data since last reset of custom counter, in MiB.
 - **CustomTime** `(int)` - Date/time of the last reset of custom counter (time is in C/Unix format).
+- **CountersResetTime** `(int)` - Date/time of the last reset of all counters (time is in C/Unix format).
 - **BytesPerSeconds** `(struct[])` - Per-second amount of data downloaded in last 60 seconds. See below.
 - **BytesPerMinutes** `(struct[])` - Per-minute amount of data downloaded in last 60 minutes. See below.
 - **BytesPerHours** `(struct[])` - Per-hour amount of data downloaded in last 24 hours. See below.
 - **BytesPerDays** `(struct[])` - Per-day amount of data downloaded since program installation. See below.
+- **ArticlesPerDays** `(struct[])` - Per-day amount of failed and success articles since program installation. See below.
 - **SecSlot** `(int)` - The current second slot of field `BytesPerSeconds` the program writes into.
 - **MinSlot** `(int)` - The current minute slot of field `BytesPerMinutes` the program writes into.
 - **HourSlot** `(int)` - The current hour slot of field `BytesPerHours` the program writes into.
 - **DaySlot** `(int)` - The current day slot of field `BytesPerDays` the program writes into.
-- **FirstDay** `(int)` - Indicates which calendar day the very first slot of `BytesPerDays` corresponds to. Details see below.
+- **FirstDay** `(int)` - Indicates which calendar day the very first slot of `BytesPerDays`, `ArticlesPerDay` correspond to. Details see below.
 
 **NOTE**: The first record (serverid=0) are totals for all servers.
 
@@ -38,6 +40,12 @@ Contains an array of structs with following fields:
 - **SizeLo** `(int)` - Amount of downloaded data, low 32-bits of 64-bit value.
 - **SizeHi** `(int)` - Amount of downloaded data, high 32-bits of 64-bit value.
 - **SizeMB** `(int)` - Amount of downloaded data, in MiB.
+
+### ArticlesPerDays
+Contains an array of structs with following fields:
+
+- **Failed** `(int)` - Amount of failed articles.
+- **Success** `(int)` - Amount of success articles.
 
 ### Seconds, minutes and hours slots
 These slots are arrays of fixed sizes (60, 60 and 24) which contain data for the last 60 seconds, 60 minutes and 24 hours. For example if current time “16:00:21” when the current slots would be:
@@ -53,6 +61,8 @@ Similarly for minutes `(BytesPerMinutes)` and hours `(BytesPerHours)` arrays.
 Daily slots are counted from the installation date, more precisely - from the date the program was used the first time after the installation. Or the first time it was used after deleting of statistics data, which is stored in directory pointed by option `QueueDir`.
 
 Therefore the first element of `BytesPerDays` array contains the amount of data downloaded at the first day of program usage. The second element - on the second day. The sub-sequential slots are created for each day, regardless of the fact if the program was running on this day or not.
+
+Similarly for `(ArticlesPerDays)` array.
 
 Field `DaySlot` shows into which day slot the data is currently being written.
 

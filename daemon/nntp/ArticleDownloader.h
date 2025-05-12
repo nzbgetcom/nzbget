@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -105,7 +105,7 @@ private:
 	EStatus CheckResponse(const char* response, const char* comment);
 	void SetStatus(EStatus status) { m_status = status; }
 	bool Write(char* buffer, int len);
-	void AddServerData();
+	void AddServerStats();
 };
 
 #endif

@@ -570,7 +570,7 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 
 	debug("seed: %s", *Util::FormatBuffer((const char*)seed, seed.Size()));
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	EVP_MD_CTX* context = EVP_MD_CTX_create();
 
 	if (!EVP_DigestInit(context, EVP_sha1()))
@@ -578,9 +578,6 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 		EVP_MD_CTX_destroy(context);
 		return false;
 	}
-#elif defined(HAVE_NETTLE)
-	sha1_ctx context;
-	sha1_init(&context);
 #else
 	return false;
 #endif
@@ -590,10 +587,8 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 
 	for (int i = 0; i < rounds; i++)
 	{
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 		EVP_DigestUpdate(context, *seed, seed.Size());
-#elif defined(HAVE_NETTLE)
-		sha1_update(&context, seed.Size(), (const uint8_t*)*seed);
 #endif
 
 		uint8 buf[3];
@@ -601,32 +596,25 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 		buf[1] = (uint8)(i >> 8);
 		buf[2] = (uint8)(i >> 16);
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 		EVP_DigestUpdate(context, buf, sizeof(buf));
-#elif defined(HAVE_NETTLE)
-		sha1_update(&context, sizeof(buf), buf);
 #endif
 
 		if (i % (rounds / 16) == 0)
 		{
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 			EVP_MD_CTX* ivContext = EVP_MD_CTX_create();
 			EVP_MD_CTX_copy(ivContext, context);
 			EVP_DigestFinal(ivContext, digest, nullptr);
 			EVP_MD_CTX_destroy(ivContext);
-#elif defined(HAVE_NETTLE)
-			sha1_ctx ivContext = context;
-			sha1_digest(&ivContext, sizeof(digest), digest);
 #endif
 			m_decryptIV[i / (rounds / 16)] = digest[sizeof(digest) - 1];
 		}
 	}
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	EVP_DigestFinal(context, digest, nullptr);
 	EVP_MD_CTX_destroy(context);
-#elif defined(HAVE_NETTLE)
-	sha1_digest(&context, sizeof(digest), digest);
 #endif
 
 	debug("digest: %s", *Util::FormatBuffer((const char*)digest, sizeof(digest)));
@@ -651,13 +639,9 @@ bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 
 	int iterations = 1 << kdfCount;
 
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	if (!PKCS5_PBKDF2_HMAC(m_password, m_password.Length(), salt, 16,
 		iterations, EVP_sha256(), sizeof(m_decryptKey), m_decryptKey)) return false;
-	return true;
-#elif defined(HAVE_NETTLE)
-	pbkdf2_hmac_sha256(m_password.Length(), (const uint8_t*)*m_password,
-		iterations, 16, salt, sizeof(m_decryptKey), m_decryptKey);
 	return true;
 #else
 	return false;
@@ -666,16 +650,12 @@ bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 
 bool RarVolume::DecryptInit(int keyLength)
 {
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	if (!(m_context = EVP_CIPHER_CTX_new())) return false;
 	if (!EVP_DecryptInit((EVP_CIPHER_CTX*)m_context,
 		keyLength == 128 ? EVP_aes_128_cbc() : EVP_aes_256_cbc(),
 		m_decryptKey, m_decryptIV))
 		return false;
-	return true;
-#elif defined(HAVE_NETTLE)
-	m_context = new aes_ctx;
-	aes_set_decrypt_key((aes_ctx*)m_context, keyLength == 128 ? 16 : 32, m_decryptKey);
 	return true;
 #else
 	return false;
@@ -684,20 +664,11 @@ bool RarVolume::DecryptInit(int keyLength)
 
 bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 {
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 	uint8 outbuf[32];
 	int outlen = 0;
 	if (!EVP_DecryptUpdate((EVP_CIPHER_CTX*)m_context, outbuf, &outlen, in, 16)) return false;
 	memcpy(out, outbuf + outlen, 16);
-	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
-	return true;
-#elif defined(HAVE_NETTLE)
-	aes_decrypt((aes_ctx*)m_context, 16, out, in);
-	for (int i = 0; i < 16; i++)
-	{
-		out[i] ^= m_decryptIV[i];
-	}
-	memcpy(m_decryptIV, in, 16);
 	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
 	return true;
 #else
@@ -709,10 +680,8 @@ void RarVolume::DecryptFree()
 {
 	if (m_context)
 	{
-#ifdef HAVE_OPENSSL
+#ifndef DISABLE_TLS
 		EVP_CIPHER_CTX_free((EVP_CIPHER_CTX*)m_context);
-#elif defined(HAVE_NETTLE)
-		delete (aes_ctx*)m_context;
 #endif
 		m_context = nullptr;
 	}

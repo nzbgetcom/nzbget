@@ -119,13 +119,13 @@ namespace Deobfuscation
 		if (str.empty())
 			return false;
 
-		for (auto& regex : EXCLUDED_HASHED_RELEASES_REGEXES)
+		for (const auto& regex : EXCLUDED_HASHED_RELEASES_REGEXES)
 		{
 			if (std::regex_search(str, regex))
 				return false;
 		}
 
-		for (auto& regex : HASHED_RELEASES_REGEXES)
+		for (const auto& regex : HASHED_RELEASES_REGEXES)
 		{
 			if (std::regex_search(str, regex))
 				return true;

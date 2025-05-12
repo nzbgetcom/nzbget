@@ -300,7 +300,7 @@ bool FileSystem::SaveBufferIntoFile(const char* filename, const char* buffer, in
 	return writtenBytes == bufLen;
 }
 
-bool FileSystem::AllocateFile(const char* filename, int64 size, bool sparse, CString& errmsg)
+bool FileSystem::AllocateFile(const char* filename, int64 size, [[maybe_unused]] bool sparse, CString& errmsg)
 {
 	errmsg.Clear();
 	bool ok = false;
@@ -1168,7 +1168,7 @@ bool FileSystem::NeedLongPath(const char* path)
 }
 #endif
 
-CString FileSystem::MakeExtendedPath(const char* path, bool force)
+CString FileSystem::MakeExtendedPath(const char* path, [[maybe_unused]] bool force)
 {
 #ifdef WIN32
 	if (force || NeedLongPath(path))

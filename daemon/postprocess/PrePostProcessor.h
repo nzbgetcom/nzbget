@@ -39,7 +39,7 @@ public:
 	void NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 
 protected:
-	virtual void Update(Subject* caller, void* aspect) { DownloadQueueUpdate(aspect); }
+	virtual void Update([[maybe_unused]] Subject* caller, void* aspect) { DownloadQueueUpdate(aspect); }
 
 private:
 	int m_queuedJobs = 0;

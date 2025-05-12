@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include "nzbget.h"
@@ -27,9 +27,7 @@
 #include "WorkState.h"
 #include "DiskState.h"
 
-char* envVars[] = {"NZBXX_YYYY", 0};
-char* (*g_EnvironmentVariables)[2] = &envVars;
-char* (*g_Arguments)[] = nullptr;
+char* (*g_EnvironmentVariables)[] = nullptr;
 Log* g_Log;
 WorkState* g_WorkState;
 Options* g_Options;

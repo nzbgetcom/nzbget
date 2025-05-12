@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,13 +25,13 @@
 #include <thread>
 #include <boost/asio.hpp>
 
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #endif
 
 namespace Network
 {
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 	using Socket = boost::asio::ssl::stream<boost::asio::ip::tcp::socket>;
 #else
 	using Socket = boost::asio::ip::tcp::socket;
@@ -47,6 +47,12 @@ namespace Network
 		unsigned statusCode;
 	};
 
+	/**
+	 * @todo Refactor this class into two separate classes: HttpClient and Connection/Session. This separation will enable:
+	 *       - Reusing the Connection/Session for multiple requests.
+	 *       - Replacing the current platform-specific TlsSocket and Connection implementations with a cross-platform solution in the future.
+	 *       - Ensure avoiding blocking IO operations.
+	 */
 	class HttpClient final
 	{
 	public:
@@ -72,7 +78,7 @@ namespace Network
 		boost::asio::io_context m_context;
 		boost::asio::ip::tcp::resolver m_resolver;
 		std::string m_localIP;
-#if !defined(DISABLE_TLS) && defined(HAVE_OPENSSL)
+#ifndef DISABLE_TLS
 		void DoHandshake(Socket& socket, const std::string& host);
 		boost::asio::ssl::context m_sslContext{ boost::asio::ssl::context::tlsv13_client };
 #endif
