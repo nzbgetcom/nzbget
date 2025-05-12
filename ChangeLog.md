@@ -1,4 +1,4 @@
-nzbget-v25
+nzbget-v25.0
   - Features:
     - Completion and downloaded data statistics
     [#544](https://github.com/nzbgetcom/nzbget/pull/544)
