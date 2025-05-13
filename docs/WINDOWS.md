@@ -75,6 +75,12 @@ cmake --build . --config Debug
 
 
 You may run configure with additional arguments:
+  - Disable TLS. Use this option if you cannot use OpenSSL:
+
+```powershell
+cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
+
   - Enable tests:
 ```powershell
 cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
@@ -83,10 +89,7 @@ cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/
 ```powershell
 ctest -C Release
 ```
-
-  - Disable TLS. Use this option if you can not use OpenSSL but 
-  some features of nzbget will stop working, such as Extension Manager:
-
+ - Or for debug build:
 ```powershell
-cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+ctest -C Debug
 ```
