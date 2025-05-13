@@ -120,49 +120,50 @@ You may run configure with additional arguments:
 ```bash
 cmake .. -DENABLE_TESTS=ON
 ```
-  - Enable Clang-Tidy static code analizer:
+  - Enable Clang-Tidy static code analyzer:
 ```bash
 cmake .. -DENABLE_CLANG_TIDY=ON
 ```
-  - Disable ncurses. Use this option if you can not use ncurses.
+  - Disable ncurses. Use this option if you cannot use ncurses:
 ```bash
 cmake .. -DDISABLE_CURSES=ON
 ```
-  - Disable parcheck. Use this option if you have troubles when compiling par2-module.
+  - Disable parcheck. Use this option if you have troubles when compiling par2-module:
 ```bash
 cmake .. -DDISABLE_PARCHECK=ON
 ```
-  - Disable TLS. Use this option if you can not neither OpenSSL.
+  - Disable TLS. Use this option if you cannot use OpenSSL:
 ```bash
 cmake .. -DDISABLE_TLS=ON
 ```
-  - Disable gzip. Use this option if you can not use zlib.
+  - Disable gzip. Use this option if you cannot use zlib:
 ```bash
 cmake .. -DDISABLE_GZIP=ON
 ``` 
-  - Disable sigchld-handler. The disabling may be neccessary on 32-Bit BSD.
+  - Disable sigchld-handler. The disabling may be necessary on 32-Bit BSD:
 ```bash
 cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
 ``` 
-  - For debug build.
+  - For debug build:
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Debug
-  - Enable leak, undefined, address sanitizers
+``` 
+  - Enable leak, undefined, address sanitizers:
 ```
 cmake .. -DENABLE_SANITIZERS=ON
 ```
-  - To get a static binary, 
+  - To get a static binary:
 ```bash
 cmake .. -DENABLE_STATIC=ON
 ```
-`LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default
+`LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default:
 ```
 export LIBS="-lncurses -ltinfo -lboost_json -lxml2 -lz -lm -lssl -lcrypto -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
 export INCLUDES="/usr/include/;/usr/include/libxml2/"
 cmake .. -DENABLE_STATIC=ON
 ```
 ## Cppcheck
-  - Install Cppcheck
+  - Install Cppcheck:
 ```bash
 apt install cppcheck
 ```
@@ -175,7 +176,7 @@ cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
 cppcheck --project=compile_commands.json
 ```
  - To ignore certain folders you can use -i. This will skip analysis of source files in
-the foo folder.
+the foo folder:
 ```bash
 cppcheck --project=compile_commands.json -ifoo
 ```
