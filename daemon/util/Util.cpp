@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -526,9 +526,7 @@ void Util::TrimRight(char* str)
 
 void Util::TrimRight(std::string& str)
 {
-	while (
-		!str.empty() &&
-		(str.back() == '\n' || str.back() == '\r' || str.back() == ' ' || str.back() == '\t'))
+	while (!str.empty() && std::isspace(str.back()))
 	{
 		str.pop_back();
 	}
