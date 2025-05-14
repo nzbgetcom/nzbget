@@ -26,9 +26,9 @@
 #include "Options.h"
 #include "Util.h"
 
-FeedFile::FeedFile(const char* fileName, const char* infoName) 
-	: m_fileName(fileName ? fileName : "")
-	, m_infoName(infoName ? fileName : "")
+FeedFile::FeedFile(const char* filename, const char* infoName) 
+	: m_fileName(filename ? filename : "")
+	, m_infoName(infoName ? infoName : "")
 {
 	debug("Creating FeedFile");
 
