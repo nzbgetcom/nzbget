@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,24 +26,25 @@
 #include "Options.h"
 #include "Util.h"
 
-FeedFile::FeedFile(const char* fileName, const char* infoName) :
-	m_fileName(fileName), m_infoName(infoName)
+FeedFile::FeedFile(const char* filename, const char* infoName) 
+	: m_fileName(filename ? filename : "")
+	, m_infoName(infoName ? infoName : "")
 {
 	debug("Creating FeedFile");
 
 	m_feedItems = std::make_unique<FeedItemList>();
 	m_feedItemInfo = nullptr;
-	m_tagContent.Clear();
+	m_tagContent.clear();
 }
 
 void FeedFile::LogDebugInfo()
 {
-	info(" FeedFile %s", *m_fileName);
+	info(" FeedFile %s", m_fileName.c_str());
 }
 
 void FeedFile::ParseSubject(FeedItemInfo& feedItemInfo)
 {
-	// if title has quatation marks we use only part within quatation marks
+	// if title has quotation marks we use only part within quotation marks
 	char* p = (char*)feedItemInfo.GetTitle();
 	char* start = strchr(p, '\"');
 	if (start)
@@ -85,19 +86,22 @@ bool FeedFile::Parse()
 
 	m_ignoreNextError = false;
 
-	int ret = xmlSAXUserParseFile(&SAX_handler, this, m_fileName);
+	int ret = xmlSAXUserParseFile(&SAX_handler, this, m_fileName.c_str());
 
 	if (ret != 0)
 	{
-		error("Failed to parse rss feed %s", *m_infoName);
+		error("Failed to parse rss feed %s", m_infoName.c_str());
 		return false;
 	}
 
 	return true;
 }
 
-void FeedFile::Parse_StartElement(const char *name, const char **atts)
+void FeedFile::Parse_StartElement(const char* name, const char **atts)
 {
+	if (!name)
+		return;
+
 	ResetTagContent();
 
 	if (!strcmp("item", name))
@@ -178,29 +182,32 @@ void FeedFile::Parse_StartElement(const char *name, const char **atts)
 	}
 }
 
-void FeedFile::Parse_EndElement(const char *name)
+void FeedFile::Parse_EndElement(const char* name)
 {
+	if (!name)
+		return;
+
 	if (!strcmp("title", name) && m_feedItemInfo)
 	{
-		m_feedItemInfo->SetTitle(m_tagContent);
+		m_feedItemInfo->SetTitle(m_tagContent.c_str());
 		ResetTagContent();
 		ParseSubject(*m_feedItemInfo);
 	}
 	else if (!strcmp("link", name) && m_feedItemInfo &&
 		(!m_feedItemInfo->GetUrl() || strlen(m_feedItemInfo->GetUrl()) == 0))
 	{
-		m_feedItemInfo->SetUrl(m_tagContent);
+		m_feedItemInfo->SetUrl(m_tagContent.c_str());
 		ResetTagContent();
 	}
 	else if (!strcmp("category", name) && m_feedItemInfo)
 	{
-		m_feedItemInfo->SetCategory(m_tagContent);
+		m_feedItemInfo->SetCategory(m_tagContent.c_str());
 		ResetTagContent();
 	}
 	else if (!strcmp("description", name) && m_feedItemInfo)
 	{
 		// cleanup CDATA
-		CString description = *m_tagContent;
+		CString description = m_tagContent.c_str();
 		WebUtil::XmlStripTags(description);
 		WebUtil::XmlDecode(description);
 		WebUtil::XmlRemoveEntities(description);
@@ -209,7 +216,7 @@ void FeedFile::Parse_EndElement(const char *name)
 	}
 	else if (!strcmp("pubDate", name) && m_feedItemInfo)
 	{
-		time_t unixtime = WebUtil::ParseRfc822DateTime(m_tagContent);
+		time_t unixtime = WebUtil::ParseRfc822DateTime(m_tagContent.c_str());
 		if (unixtime > 0)
 		{
 			m_feedItemInfo->SetTime(unixtime);
@@ -218,14 +225,14 @@ void FeedFile::Parse_EndElement(const char *name)
 	}
 }
 
-void FeedFile::Parse_Content(const char *buf, int len)
+void FeedFile::Parse_Content(std::string content)
 {
-	m_tagContent.Append(buf, len);
+	m_tagContent.append(std::move(content));
 }
 
 void FeedFile::ResetTagContent()
 {
-	m_tagContent.Clear();
+	m_tagContent.clear();
 }
 
 void FeedFile::SAX_StartElement(FeedFile* file, const char *name, const char **atts)
@@ -238,51 +245,19 @@ void FeedFile::SAX_EndElement(FeedFile* file, const char *name)
 	file->Parse_EndElement(name);
 }
 
-void FeedFile::SAX_characters(FeedFile* file, const char * xmlstr, int len)
+void FeedFile::SAX_characters(FeedFile* file, const char* xmlstr, int len)
 {
-	char* str = (char*)xmlstr;
-
-	// trim starting blanks
-	int off = 0;
-	for (int i = 0; i < len; i++)
-	{
-		char ch = str[i];
-		if (ch == ' ' || ch == 10 || ch == 13 || ch == 9)
-		{
-			off++;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	int newlen = len - off;
-
-	// trim ending blanks
-	for (int i = len - 1; i >= off; i--)
-	{
-		char ch = str[i];
-		if (ch == ' ' || ch == 10 || ch == 13 || ch == 9)
-		{
-			newlen--;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	if (newlen > 0)
-	{
-		// interpret tag content
-		file->Parse_Content(str + off, newlen);
-	}
+	if (!xmlstr || len <= 0)
+		return;
+	
+	std::string str(xmlstr, len);
+	Util::Trim(str);
+	file->Parse_Content(std::move(str));
 }
 
-void* FeedFile::SAX_getEntity(FeedFile* file, const char * name)
+xmlEntityPtr FeedFile::SAX_getEntity(FeedFile* file, const xmlChar* name)
 {
-	xmlEntityPtr e = xmlGetPredefinedEntity((xmlChar* )name);
+	xmlEntityPtr e = xmlGetPredefinedEntity(name);
 
 	if (!e)
 	{
@@ -310,5 +285,5 @@ void FeedFile::SAX_error(FeedFile* file, const char *msg, ...)
 
 	// remove trailing CRLF
 	for (char* pend = errMsg + strlen(errMsg) - 1; pend >= errMsg && (*pend == '\n' || *pend == '\r' || *pend == ' '); pend--) *pend = '\0';
-	error("Error parsing rss feed %s: %s", *file->m_infoName, errMsg);
+	error("Error parsing rss feed %s: %s", file->m_infoName.c_str(), errMsg);
 }

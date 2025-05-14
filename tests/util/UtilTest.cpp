@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -255,5 +255,38 @@ BOOST_AUTO_TEST_CASE(SafeIntCastTest)
 		int32 min = std::numeric_limits<int32>::min();
 		uint32 res = Util::SafeIntCast<int32, uint32>(min);
 		BOOST_CHECK(res == 0);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TrimTest)
+{
+	{
+		std::string str = "  \n\r\ttext \n\r\t";
+		Util::TrimLeft(str);
+		BOOST_CHECK_EQUAL(str, "text \n\r\t");
+	}
+
+	{
+		std::string str = "  \n\r\ttext\n\r\t";
+		Util::TrimRight(str);
+		BOOST_CHECK_EQUAL(str, "  \n\r\ttext");
+	}
+
+		{
+		std::string str = "  \n\r\ttext \n\r\t";
+		Util::TrimLeft(str);
+		BOOST_CHECK_EQUAL(str, "text \n\r\t");
+	}
+
+	{
+		std::string str = "  \n\r\ttext\n\r\t  ";
+		Util::Trim(str);
+		BOOST_CHECK_EQUAL(str, "text");
+	}
+
+	{
+		std::string str = "";
+		Util::Trim(str);
+		BOOST_CHECK_EQUAL(str, "");
 	}
 }
