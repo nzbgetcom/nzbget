@@ -40,11 +40,12 @@ set(INCLUDES ${INCLUDES}
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
-list(APPEND EXTERNAL_DEPS yencode par2-turbo)
+list(APPEND EXTERNAL_DEPS rapidyenc par2-turbo)
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-	list(APPEND EXTERNAL_DEPS yencode regex)
+	list(APPEND EXTERNAL_DEPS regex)
 endif()
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)

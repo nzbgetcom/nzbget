@@ -44,7 +44,6 @@
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
-#include "YEncode.h"
 
 char* (*g_EnvironmentVariables)[];
 int g_ArgumentCount;
@@ -84,7 +83,9 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
-		YEncode::init();
+		rapidyenc_decode_init();
+		rapidyenc_crc_init();
+
 		g_Log = new Log();
 
 		Options::CmdOptList cmdOpts;
