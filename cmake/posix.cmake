@@ -130,6 +130,8 @@ if(DEPENDENCIES)
 	endif()
 endif()
 
+include(${CMAKE_SOURCE_DIR}/cmake/yenc.cmake)
+
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
