@@ -117,6 +117,8 @@ if(NOT DISABLE_PARCHECK)
 	add_dependencies(regex par2-turbo)
 endif()
 
+include(${CMAKE_SOURCE_DIR}/cmake/yenc.cmake)
+
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
