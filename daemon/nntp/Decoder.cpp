@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,9 @@
 #include "Decoder.h"
 #include "Log.h"
 #include "Util.h"
-#include "YEncode.h"
 
 Decoder::Decoder()
 {
-	debug("%s", YEncode::decode_simd ? "SIMD yEnc decoder can be used" : "SIMD yEnc decoder isn't available for this CPU");
-	debug("%s", YEncode::crc_simd ? "SIMD Crc routine can be used" : "SIMD Crc routine isn't available for this CPU");
-
 	Clear();
 }
 
@@ -260,37 +256,39 @@ void Decoder::ProcessYenc(char* buffer, int len)
 
 int Decoder::DecodeYenc(char* buffer, char* outbuf, int len)
 {
-	const unsigned char* src = (unsigned char*)buffer;
-	unsigned char* dst = (unsigned char*)outbuf;
-
-	int endseq = YEncode::decode(&src, &dst, len, (YEncode::YencDecoderState*)&m_state);
-	int outlen = (int)((char*)dst - outbuf);
-
-	// endseq:
-	//   0: no end sequence found
-	//   1: \r\n=y sequence found, src points to byte after 'y'
-	//   2: \r\n.\r\n sequence found, src points to byte after last '\n'
-	if (endseq != 0)
+	std::string_view view(buffer, len);
+	
+	// Find the end of the body (start of footer).
+	// Checks for standard "\r\n=y" or NNTP terminator "\r\n.\r\n"
+	size_t bodyLen = view.find("\r\n=y");
+	if (bodyLen == std::string_view::npos) 
 	{
-		// switch back to line mode to process '=yend'- or eof- marker
-		m_lineBuf.SetLength(0);
-		m_lineBuf.Append(endseq == 1 ? "=y" : ".\r\n");
-		int rem = len - (int)((const char*)src - buffer);
-		if (rem > 0)
-		{
-			m_lineBuf.Append((const char*)src, rem);
-		}
+		bodyLen = view.find("\r\n.\r\n");
+	}
+
+	// If no footer found, we decode the whole chunk
+	if (bodyLen == std::string_view::npos) 
+	{
+		bodyLen = len;
+	}
+
+	size_t bytesWritten = rapidyenc_decode_ex(0, buffer, outbuf, bodyLen, (RapidYencDecoderState*)&m_state);
+
+	if (bodyLen < len)
+	{
 		m_body = false;
+		m_lineBuf.SetLength(0);
+		m_lineBuf.Append(buffer + bodyLen, len - bodyLen);
 	}
 
 	if (m_crcCheck)
 	{
-		m_crc32.Append((uchar*)outbuf, (uint32)outlen);
+		m_crc32.Append((unsigned char*)outbuf, bytesWritten);
 	}
 
-	m_outSize += outlen;
+	m_outSize += bytesWritten;
 
-	return outlen;
+	return (int)bytesWritten;
 }
 
 Decoder::EStatus Decoder::Check()

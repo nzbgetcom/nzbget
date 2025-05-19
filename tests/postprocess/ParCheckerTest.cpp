@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 
 #include "Options.h"
 #include "ParChecker.h"
-#include "YEncode.h"
 
 namespace fs = boost::filesystem;
 
@@ -38,7 +37,7 @@ public:
 	ParCheckerMock(const fs::path& workingDir);
 	void Execute();
 	void CorruptFile(const char* filename, int offset);
-	~ParCheckerMock()
+	~ParCheckerMock() override
 	{
 		fs::remove_all(m_workingDir);
 	}
@@ -189,8 +188,6 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	YEncode::init();
-
 	const fs::path testFile = CURR_DIR / "QuickVerificationRepairNotNeededTest";
 	ParCheckerMock parChecker(testFile);
 	parChecker.SetParQuick(true);
@@ -205,8 +202,6 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
-
-	YEncode::init();
 
 	const fs::path testFile = CURR_DIR / "QuickVerificationRepairSuccessfulTest";
 	ParCheckerMock parChecker(testFile);
@@ -223,8 +218,6 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
-
-	YEncode::init();
 
 	const fs::path testFile = CURR_DIR / "QuickFullVerificationRepairSuccessfulTest";
 	ParCheckerMock parChecker(testFile);

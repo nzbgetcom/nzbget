@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 #include "Options.h"
 #include "WorkState.h"
 #include "DiskState.h"
+#include <rapidyenc.h>
 
 char* (*g_EnvironmentVariables)[] = nullptr;
 Log* g_Log;
@@ -37,6 +38,8 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
+		rapidyenc_decode_init();
+		rapidyenc_crc_init();
 		g_Log = new Log();
 		g_WorkState = new WorkState();
 		g_DiskState = new DiskState();

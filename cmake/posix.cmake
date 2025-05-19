@@ -113,6 +113,9 @@ endif()
 include(CheckIncludeFiles)
 check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
+
+set(DEPENDENCIES ${DEPENDENCIES} rapidyenc)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
@@ -124,7 +127,6 @@ if(NOT HAVE_SYSTEM_REGEX_H)
 endif()
 
 if(DEPENDENCIES)
-	add_dependencies(yencode ${DEPENDENCIES})
 	if(NOT BUILD_ONLY_TESTS)
 		add_dependencies(${PACKAGE} ${DEPENDENCIES})
 	endif()

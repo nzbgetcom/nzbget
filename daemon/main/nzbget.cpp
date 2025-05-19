@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,6 @@
 #include "FileSystem.h"
 #include "StackTrace.h"
 #include "CommandScript.h"
-#include "YEncode.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
@@ -134,7 +133,8 @@ int main(int argc, char *argv[], char *argp[])
 	setlocale(LC_CTYPE, "");
 
 	Util::Init();
-	YEncode::init();
+	rapidyenc_decode_init();
+	rapidyenc_crc_init();
 
 	g_ArgumentCount = argc;
 	g_Arguments = (char*(*)[])argv;

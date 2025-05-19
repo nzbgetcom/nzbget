@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -80,6 +80,16 @@ namespace System
 
 #ifndef DISABLE_PARCHECK 
 		m_libraries.push_back({ "Par2-turbo", PAR2_TURBO_LIB_VERSION });
+#endif
+
+#ifdef RAPIDYENC_VERSION
+		int ver = rapidyenc_version(); 
+		int major = (ver >> 16) & 0xFF;
+		int minor = (ver >> 8) & 0xFF;
+		int patch = ver & 0xFF;
+		char buffer[32];
+		snprintf(buffer, sizeof(buffer), "%d.%d.%d", major, minor, patch);
+		m_libraries.push_back({ "rapidyenc", buffer });
 #endif
 
 #ifdef BOOST_LIB_VERSION

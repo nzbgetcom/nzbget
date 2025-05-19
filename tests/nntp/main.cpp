@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 #include "WorkState.h"
 #include "DiskState.h"
 #include "ServerPool.h"
-#include "YEncode.h"
+#include <rapidyenc.h>
 
 Log* g_Log;
 WorkState* g_WorkState;
@@ -39,7 +39,8 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
-		YEncode::init();
+		rapidyenc_decode_init();
+		rapidyenc_crc_init();
 		g_Log = new Log();
 		g_WorkState = new WorkState();
 		g_Options = new Options(nullptr, nullptr);
