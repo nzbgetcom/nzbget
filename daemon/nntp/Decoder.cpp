@@ -269,7 +269,6 @@ int Decoder::DecodeYenc(char* buffer, char* outbuf, int len)
 	void* dst = outbuf;
 
 	auto endseq = rapidyenc_decode_incremental(&src, &dst, len, (RapidYencDecoderState*)&m_state);
-
 	int bytesWritten = static_cast<int>(static_cast<char*>(dst) - outbuf);
 
 	// endseq:
