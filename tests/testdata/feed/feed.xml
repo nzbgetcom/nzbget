@@ -21,7 +21,7 @@
    <comments>https://indexer.com/details/9bdef3a6cb1a370598f9af73ba50d40df354b327#comments</comments>
    <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
    <category>Movies &gt; HD</category>
-   <description>Description</description>
+   <description><![CDATA[<b>Title:</b> Test.Title<br /><b>Added to index:</b> 09/05/2025 14:05:12<br /><b>Weblink:</b> N/A]]></description>
    <enclosure url="https://indexer.com/getnzb/nzb.nzb" length="7445312955" type="application/x-nzb"/>
    <nZEDb:attr name="episode" value="1"/>
    <nZEDb:attr name="tvmazeid" value="33877"/>
