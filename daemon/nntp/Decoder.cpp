@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -34,7 +35,7 @@ Decoder::Decoder()
 
 void Decoder::Clear()
 {
-	m_articleFilename.Clear();
+	m_articleFilename.clear();
 	m_body = false;
 	m_begin = false;
 	m_part = false;
@@ -137,6 +138,44 @@ int Decoder::DecodeBuffer(char* buffer, int len)
 	return outlen;
 }
 
+void Decoder::ParseYpart(const char* buffer)
+{
+	m_part = true;
+	m_body = true;
+	const char* pb = strstr(buffer, " begin=");
+	if (pb)
+	{
+		pb += 7; //=strlen(" begin=")
+		m_beginPos = static_cast<int64>(atoll(pb));
+	}
+	pb = strstr(buffer, " end=");
+	if (pb)
+	{
+		pb += 5; //=strlen(" end=")
+		m_endPos = static_cast<int64>(atoll(pb));
+	}
+}
+
+void Decoder::ParseName(const char* buffer, int len)
+{
+	const char* pb = buffer;
+	pb += 6; //=strlen(" name=")
+	const char* pe = pb;
+	int pos = 0;
+	while (*pe != '\0' && *pe != '\n' && *pe != '\r')
+	{
+		if ((len - pos) > 7 && strncmp(pe, "=ypart ", 7) == 0)
+		{
+			ParseYpart(pe);
+			break;
+		}
+		++pe;
+		++pos;
+	}
+
+	m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, pos));
+}
+
 Decoder::EFormat Decoder::DetectFormat(const char* buffer, int len)
 {
 	if (!strncmp(buffer, "=ybegin ", 8))
@@ -176,15 +215,7 @@ void Decoder::ProcessYenc(char* buffer, int len)
 	if (!strncmp(buffer, "=ybegin ", 8))
 	{
 		m_begin = true;
-		char* pb = strstr(buffer, " name=");
-		if (pb)
-		{
-			pb += 6; //=strlen(" name=")
-			char* pe;
-			for (pe = pb; *pe != '\0' && *pe != '\n' && *pe != '\r'; pe++);
-			m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, (int)(pe - pb)));
-		}
-		pb = strstr(buffer, " size=");
+		char* pb = strstr(buffer, " size=");
 		if (pb)
 		{
 			pb += 6; //=strlen(" size=")
@@ -197,23 +228,16 @@ void Decoder::ProcessYenc(char* buffer, int len)
 			m_beginPos = 1;
 			m_endPos = m_size;
 		}
+
+		pb = strstr(buffer, " name=");
+		if (pb)
+		{
+			ParseName(pb, len);
+		}
 	}
 	else if (!strncmp(buffer, "=ypart ", 7))
 	{
-		m_part = true;
-		m_body = true;
-		char* pb = strstr(buffer, " begin=");
-		if (pb)
-		{
-			pb += 7; //=strlen(" begin=")
-			m_beginPos = (int64)atoll(pb);
-		}
-		pb = strstr(buffer, " end=");
-		if (pb)
-		{
-			pb += 5; //=strlen(" end=")
-			m_endPos = (int64)atoll(pb);
-		}
+		ParseYpart(buffer);
 	}
 	else if (!strncmp(buffer, "=yend ", 6))
 	{

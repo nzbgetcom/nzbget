@@ -27,6 +27,7 @@
 #include "WorkState.h"
 #include "DiskState.h"
 #include "ServerPool.h"
+#include "YEncode.h"
 
 Log* g_Log;
 WorkState* g_WorkState;
@@ -38,6 +39,7 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
+		YEncode::init();
 		g_Log = new Log();
 		g_WorkState = new WorkState();
 		g_Options = new Options(nullptr, nullptr);
