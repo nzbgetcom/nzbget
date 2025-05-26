@@ -270,9 +270,9 @@ var Util = (new function($)
 
 	this.formatAge = function(time)
 	{
-		if (time == 0)
+		if (time <= 0)
 		{
-			return '';
+			return '--';
 		}
 
 		var diff = new Date().getTime() / 1000 - time;
@@ -283,6 +283,10 @@ var Util = (new function($)
 		else if (diff > 60*60)
 		{
 			return this.round0(diff / (60*60))  +'&nbsp;h';
+		}
+		else if (diff <= 0)
+		{
+			return '--';
 		}
 		else
 		{
