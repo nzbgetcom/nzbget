@@ -155,10 +155,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: OpenBSD build and test
-      uses: cross-platform-actions/action@v0.27.0
+      uses: cross-platform-actions/action@v0.28.0
       with:
         operating_system: openbsd
-        version: '7.6'
+        version: '7.7'
         run: |
           sudo pkg_add git cmake libxml boost unrar p7zip
           mkdir build
@@ -230,10 +230,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: OpenBSD build
-      uses: cross-platform-actions/action@v0.27.0
+      uses: cross-platform-actions/action@v0.28.0
       with:
         operating_system: openbsd
-        version: '7.6'
+        version: '7.7'
         run: |
           sudo pkg_add git cmake libxml boost
           mkdir build
