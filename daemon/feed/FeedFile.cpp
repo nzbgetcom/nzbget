@@ -80,9 +80,16 @@ bool FeedFile::Parse()
 	xmlSAXHandler SAX_handler{};
 	SAX_handler.startElement = reinterpret_cast<startElementSAXFunc>(SAX_StartElement);
 	SAX_handler.endElement = reinterpret_cast<endElementSAXFunc>(SAX_EndElement);
-	SAX_handler.characters = reinterpret_cast<charactersSAXFunc>(SAX_characters);
 	SAX_handler.error = reinterpret_cast<errorSAXFunc>(SAX_error);
 	SAX_handler.getEntity = reinterpret_cast<getEntitySAXFunc>(SAX_getEntity);
+
+	/*
+	 * libxml2 2.4+ sends CDATA via `cdataBlock` instead of `characters`. Earlier
+	 * versions deliver CDATA in `characters`; `cdataBlock` is unused. Both
+	 * require identical handling, so the same handler is assigned.
+	 */
+	SAX_handler.characters  = reinterpret_cast<charactersSAXFunc>(SAX_textHandler);
+	SAX_handler.cdataBlock  = reinterpret_cast<cdataBlockSAXFunc>(SAX_textHandler);
 
 	m_ignoreNextError = false;
 
@@ -245,11 +252,11 @@ void FeedFile::SAX_EndElement(FeedFile* file, const char *name)
 	file->Parse_EndElement(name);
 }
 
-void FeedFile::SAX_characters(FeedFile* file, const char* xmlstr, int len)
+void FeedFile::SAX_textHandler(FeedFile* file, const char* xmlstr, int len)
 {
 	if (!xmlstr || len <= 0)
 		return;
-	
+
 	std::string str(xmlstr, len);
 	Util::Trim(str);
 	file->Parse_Content(std::move(str));
