@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -41,14 +42,13 @@ bool CommandScriptController::StartScript(const char* scriptName, const char* co
 
 	scriptController->Start();
 
-	for (const auto script : g_ExtensionManager->GetExtensions())
-	{
-		if (strcmp(scriptName, script->GetName()) == 0)
+	auto found = g_ExtensionManager->FindIf([&](auto script)
 		{
-			return true;
+			return strcmp(scriptName, script->GetName()) == 0;
 		}
-	}
-	return false;
+	);
+	
+	return found.has_value();
 }
 
 void CommandScriptController::Run()

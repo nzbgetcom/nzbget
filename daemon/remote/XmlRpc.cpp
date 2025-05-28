@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -2948,15 +2948,16 @@ void LoadExtensionsXmlCommand::Execute()
 
 	int index = 0;
 
-	for (const auto extension : g_ExtensionManager->GetExtensions())
-	{
-		std::string response = isJson
-			? Extension::ToJsonStr(*extension)
-			: Extension::ToXmlStr(*extension);
+	g_ExtensionManager->ForEach([&](auto extension)
+		{
+			const std::string response = isJson
+				? Extension::ToJsonStr(*extension)
+				: Extension::ToXmlStr(*extension);
 
-		AppendCondResponse(",\n", isJson && index++ > 0);
-		AppendResponse(response.c_str());
-	}
+			AppendCondResponse(",\n", isJson && index++ > 0);
+			AppendResponse(response.c_str());
+		}
+	);
 
 	AppendResponse(isJson ? "\n]" : "</data></array>\n");
 }
