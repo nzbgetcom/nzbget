@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -253,15 +253,13 @@ void QueueScriptController::AddMessage(Message::EKind kind, const char* text)
 
 void QueueScriptCoordinator::InitOptions()
 {
-	m_hasQueueScripts = false;
-	for (const auto script : g_ExtensionManager->GetExtensions())
-	{
-		if (script->GetQueueScript())
+	auto found = g_ExtensionManager->FindIf([&](auto script)
 		{
-			m_hasQueueScripts = true;
-			break;
+			return script->GetQueueScript() == true;
 		}
-	}
+	);
+
+	m_hasQueueScripts = found.has_value();
 }
 
 void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
@@ -294,41 +292,42 @@ void QueueScriptCoordinator::EnqueueScript(NzbInfo* nzbInfo, EEvent event)
 		return;
 	}
 
-	for (const auto script : g_ExtensionManager->GetExtensions())
-	{
-		if (UsableScript(script, nzbInfo, event))
+	g_ExtensionManager->ForEach([&](auto script)
 		{
-			bool alreadyQueued = false;
-			if (event == qeFileDownloaded)
+			if (UsableScript(script, nzbInfo, event))
 			{
-				// check if this script is already queued for this nzb
-				for (QueueItem* queueItem : &m_queue)
+				bool alreadyQueued = false;
+				if (event == qeFileDownloaded)
 				{
-					if (queueItem->GetNzbId() == nzbInfo->GetId() && queueItem->GetScript() == script)
+					// check if this script is already queued for this nzb
+					for (QueueItem* queueItem : &m_queue)
 					{
-						alreadyQueued = true;
-						break;
+						if (queueItem->GetNzbId() == nzbInfo->GetId() && queueItem->GetScript() == script)
+						{
+							alreadyQueued = true;
+							break;
+						}
 					}
 				}
-			}
 
-			if (!alreadyQueued)
-			{
-				std::unique_ptr<QueueItem> queueItem = std::make_unique<QueueItem>(nzbInfo->GetId(), script, event);
-				if (m_curItem)
+				if (!alreadyQueued)
 				{
-					m_queue.push_back(std::move(queueItem));
+					std::unique_ptr<QueueItem> queueItem = std::make_unique<QueueItem>(nzbInfo->GetId(), script, event);
+					if (m_curItem)
+					{
+						m_queue.push_back(std::move(queueItem));
+					}
+					else
+					{
+						m_curItem = std::move(queueItem);
+						QueueScriptController::StartScript(nzbInfo, m_curItem->GetScript(), m_curItem->GetEvent());
+					}
 				}
-				else
-				{
-					m_curItem = std::move(queueItem);
-					QueueScriptController::StartScript(nzbInfo, m_curItem->GetScript(), m_curItem->GetEvent());
-				}
-			}
 
-			nzbInfo->SetQueueScriptTime(Util::CurrentTime());
+				nzbInfo->SetQueueScriptTime(Util::CurrentTime());
+			}
 		}
-	}
+	);
 }
 
 bool QueueScriptCoordinator::UsableScript(std::shared_ptr<const Extension::Script> script, NzbInfo* nzbInfo, EEvent event)

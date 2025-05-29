@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -116,6 +117,14 @@ void TestUtil::CopyAllFiles(const std::string destDir, const std::string srcDir)
 	{
 		std::string srcFile(srcDir + "/" + filename);
 		std::string dstFile(destDir + "/" + filename);
+
+		if (FileSystem::DirectoryExists(srcFile.c_str()))
+		{
+			FileSystem::CreateDirectory(dstFile.c_str());
+			CopyAllFiles(dstFile.c_str(), srcFile.c_str());
+			continue;
+		}
+
 		FileSystem::CopyFile(srcFile.c_str(), dstFile.c_str());
 	}
 }
