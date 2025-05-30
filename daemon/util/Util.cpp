@@ -238,25 +238,6 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 	*Lo = (uint32)(Int64 & 0xFFFFFFFF);
 }
 
-std::optional<double> 
-Util::StrToNum(const std::string& str)
-{
-	std::istringstream ss(str);
-	double num;
-
-	if (ss >> num)
-	{
-		if (!ss.eof()) 
-		{
-			return std::nullopt;
-		}
-
-		return { num };
-	}
-
-	return std::nullopt;
-}
-
 /* Base64 decryption is taken from
 *  Article "BASE 64 Decoding and Encoding Class 2003" by Jan Raddatz
 *  http://www.codeguru.com/cpp/cpp/algorithms/article.php/c5099/

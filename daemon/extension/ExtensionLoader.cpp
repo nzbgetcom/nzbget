@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -335,7 +335,7 @@ namespace ExtensionLoader
 				return ManifestFile::SelectOption(val);
 			}
 
-			auto result = Util::StrToNum(val);
+			auto result = Util::StrToNum<double>(val);
 			if (result.has_value())
 			{
 				return ManifestFile::SelectOption(result.value());

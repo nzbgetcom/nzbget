@@ -122,11 +122,20 @@ BOOST_AUTO_TEST_CASE(RegExTest)
 
 BOOST_AUTO_TEST_CASE(StrToNumTest)
 {
-	BOOST_CHECK(Util::StrToNum("3.14").value() == 3.14);
-	BOOST_CHECK(Util::StrToNum("3.").value() == 3.0);
-	BOOST_CHECK(Util::StrToNum("3").value() == 3);
-	BOOST_CHECK(Util::StrToNum("3 not a number").has_value() == false);
-	BOOST_CHECK(Util::StrToNum("not a number").has_value() == false);
+	BOOST_CHECK_LT(Util::StrToNum<float>("3.14").value() - 3.14f, std::numeric_limits<float>::epsilon());
+	BOOST_CHECK_LT(Util::StrToNum<float>("3.14 abc").value() - 3.14f, std::numeric_limits<float>::epsilon());
+	BOOST_CHECK_EQUAL(Util::StrToNum<double>("3.").value(), 3.0);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("3.").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("3").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("-3").value(), -3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("+3").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("   3").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("3   ").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("3 not a number").value(), 3);
+	BOOST_CHECK_EQUAL(Util::StrToNum<uint8_t>("256").has_value(), false);
+	BOOST_CHECK_EQUAL(Util::StrToNum<int>("not a number").has_value(), false);
+	BOOST_CHECK_EQUAL(Util::StrToNum<float>("").has_value(), false);
+	BOOST_CHECK_EQUAL(Util::StrToNum<float>("  ").has_value(), false);
 }
 
 BOOST_AUTO_TEST_CASE(StrCaseCmpTest)
@@ -138,7 +147,7 @@ BOOST_AUTO_TEST_CASE(StrCaseCmpTest)
 	BOOST_CHECK(Util::StrCaseCmp("3.14", "3.12") == false);
 }
 
-BOOST_AUTO_TEST_CASE(SplintInt64Test)
+BOOST_AUTO_TEST_CASE(SplitInt64Test)
 {
 	{
 		uint32 hi, lo;
