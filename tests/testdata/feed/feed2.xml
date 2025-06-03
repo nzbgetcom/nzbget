@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+	xmlns:atom="http://www.w3.org/2005/Atom">
+	<channel>
+		<atom:link href="https://feed.animetosho.org/rss2" rel="self" type="application/rss+xml"/>
+		<title>Anime Tosho</title>
+		<link>https://animetosho.org/</link>
+		<description>Latest releases feed</description>
+		<language>en-gb</language>
+		<ttl>30</ttl>
+		<lastBuildDate>Thu, 29 May 2025 13:51:01 +0000</lastBuildDate>
+		<item>
+			<title>[Judas] Kimi to Boku no Saigo no Senjou, Aruiwa Sekai ga Hajimaru Seisen (Our Last Crusade or the Rise of a New World) - S02E08 [1080p][HEVC x265 10bit][Multi-Subs] (Weekly)</title>
+			<description>
+				<![CDATA[<strong>Total Size</strong>: 299.6 MB<br/><strong> | <a href="https://multiup.io/download/20S02E08.mkv">MultiUp</a>]]>
+			</description>
+			<link>https://animetosho.org/view/judas-kimi-boku-no-saigo-senjou-aruiwa-sekai.n1976735</link>
+			<comments>https://animetosho.org/view/judas-kimi-boku-no-saigo-senjou-aruiwa-sekai.n1976735</comments>
+			<enclosure url="http://storage.animetosho.org/torrent/7b1e37207a060d0cf896d94cb4d35d26c1a75ba2/%5BJudas%5D%20Kimisen%20-%20S02E08.torrent" type="application/x-bittorrent" length="0"/>
+			<enclosure url="http://storage.animetosho.org/nzbs/000a9b44/%5BJudas%5D%20Kimisen%20-%20S02E08.nzb" type="application/x-nzb" length="0"/>
+			<source url="https://nyaa.si/view/1976735">Nyaa</source>
+			<pubDate>Thu, 29 May 2025 13:51:01 +0000</pubDate>
+			<guid isPermaLink="true">https://animetosho.org/view/a695108</guid>
+		</item>
+    </channel>
+</rss>

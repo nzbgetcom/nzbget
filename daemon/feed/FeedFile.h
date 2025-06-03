@@ -23,6 +23,7 @@
 #define FEEDFILE_H
 
 #include <string>
+#include <string_view>
 #include "FeedInfo.h"
 
 class FeedFile
@@ -53,6 +54,13 @@ private:
 	void Parse_StartElement(const char *name, const char **atts);
 	void Parse_EndElement(const char *name);
 	void Parse_Content(std::string content);
+
+	/**
+	 * Extracts the file size in bytes from a description string.
+	 * Some RSS feeds embed the file size directly within the description text.
+	 * Example description string: "Total Size : 299.6 MB | MultiUp"
+	 */
+	int64 ExtractSizeFromDescription(std::string_view description);
 	void ResetTagContent();
 };
 
