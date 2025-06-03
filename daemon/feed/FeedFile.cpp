@@ -104,6 +104,74 @@ bool FeedFile::Parse()
 	return true;
 }
 
+int64 FeedFile::ExtractSizeFromDescription(std::string_view description)
+{
+	size_t pos = description.find("Size");
+	if (pos == std::string::npos)
+	{
+		pos = description.find("size");
+	}
+	if (pos == std::string::npos)
+	{
+		return 0;
+	}
+
+	pos += 4;
+
+	double size = 0;
+	bool foundUints = false;
+	bool foundSize = false;
+	std::string units;
+
+	for (; pos < description.size(); ++pos)
+	{
+		if (description[pos] == ':' || std::isspace(description[pos]))
+			continue;
+		
+		if (!foundSize)
+		{
+			auto res = Util::StrToNum<double>(description.data() + pos);
+			if (!res)
+			{
+				break;
+			}
+			else
+			{
+				foundSize = true;
+				size = res.value();
+				for(; !std::isspace(description[pos]); ++pos);
+				continue;
+			}
+		}
+
+		if (!foundUints && pos + 2 <= description.size())
+		{
+			foundUints = true;
+			units = description.substr(pos, 2);
+			break;
+		}
+	}
+
+	if (units == "KB")
+	{
+		size *= 1024.0;
+	}	
+	else if (units == "MB")
+	{
+		size *= 1024.0 * 1024.0;
+	}	
+	else if (units == "GB")
+	{
+		size *= 1024.0 * 1024.0 * 1024.0;
+	}
+	else if (units == "TB")
+	{
+		size *= 1024.0 * 1024.0 * 1024.0 * 1024.0;
+	}
+
+	return static_cast<int64>(std::round(size));
+}
+
 void FeedFile::Parse_StartElement(const char* name, const char **atts)
 {
 	if (!name)
@@ -130,6 +198,11 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 			else if (!strcmp("length", atts[0]))
 			{
 				int64 size = atoll(atts[1]);
+				m_feedItemInfo->SetSize(size);
+			}
+			if (m_feedItemInfo->GetSize() == 0)
+			{
+				int64 size = ExtractSizeFromDescription(m_feedItemInfo->GetDescription());
 				m_feedItemInfo->SetSize(size);
 			}
 		}
