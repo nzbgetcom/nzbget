@@ -114,10 +114,22 @@ var Options = (new function($)
 			return null;
 
 		server.host = hostOpt.Value;
-		server.name = findOption(this.options, serverId + '.Name').Value;
-		server.port = findOption(this.options, serverId + '.Port').Value;
-		server.active = findOption(this.options, serverId + '.Active').Value == 'yes';
-		server.connections = findOption(this.options, serverId + '.Connections').Value;
+
+		var nameOpt = findOption(this.options, serverId + '.Name');
+		if (nameOpt)
+			server.name = nameOpt.Value;
+		
+		var portOpt = findOption(this.options, serverId + '.Port');
+		if (portOpt)
+			server.port = portOpt.Value;
+
+		var activeOpt = findOption(this.options, serverId + '.Active');
+		if (activeOpt)
+			server.active = activeOpt.Value == 'yes';
+
+		var connectionsOpt = findOption(this.options, serverId + '.Connections');
+		if (connectionsOpt)
+			server.connections = connectionsOpt.Value;
 
 		return server;
 	}
