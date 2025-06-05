@@ -44,8 +44,8 @@ namespace Deobfuscation
 		std::regex{ "^[0-9]{6}_[0-9]{2}$" },
 	};
 
-	bool IsExcessivelyObfuscated(const std::string& str) noexcept;
-	std::string Deobfuscate(const std::string& str) noexcept;
+	bool IsExcessivelyObfuscated(const std::string& str);
+	std::string Deobfuscate(const std::string& str);
 }
 
 #endif
