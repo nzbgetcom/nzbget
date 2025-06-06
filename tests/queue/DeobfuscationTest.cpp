@@ -113,5 +113,6 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	);
 
 	BOOST_CHECK_EQUAL(Deobfuscate("Re: A (2/3)"), "A");
-	BOOST_CHECK_EQUAL(Deobfuscate("Re: A"), "Re: A");
+	BOOST_CHECK_EQUAL(Deobfuscate("Re: A"), "A");
+	BOOST_CHECK_EQUAL(Deobfuscate("[34/44] - id.bdmv yEnc (1/1) 104"), "id.bdmv");
 }

@@ -24,32 +24,58 @@
 
 namespace
 {
-	std::string ParseWithoutQuotes(const std::string& str) noexcept
+	/**
+	 * @brief Parses a subject string that does not contain quotes, extracting relevant information.
+	 *
+	 * It handles formats such as:
+	 * 
+	 *  - "[34/44] - id.bdmv yEnc (1/1) 104"
+	 * 
+	 *  - "Any.Show.2024.vol127+128.par2 (1/0)"
+	 * 
+	 *  - "Re: SubjectWithoutParentheses"
+	 */
+	std::string ParseWithoutQuotes(const std::string& str)
 	{
-		if (str.size() < 8) return str;
-		
-		const std::string start = "Re: ";
-		size_t startPos = str.find(start);
-		size_t endPos = str.rfind(" (");
-		if (endPos == std::string::npos)
+		size_t start = 0;
+		size_t end = str.find(" yEnc");
+		if (end != std::string::npos)
 		{
+			start = str.find_last_of(" ", end - 1);
+			if (start == std::string::npos)
+				return str.substr(0, end);
+
+			start += 1;
+			if (start < end)
+				return str.substr(start, end - start);
 			return str;
 		}
 
-		if (startPos != std::string::npos)
+		start = str.find("Re: ");
+		end = str.rfind(" (");
+
+		if (start != std::string::npos && end != std::string::npos)
 		{
-			startPos += start.size();
-
-			size_t distance = endPos - startPos;
-			if (distance < 1) return str;
-
-			return str.substr(startPos, distance);
+			start += 4;
+			if (start < end)
+				return str.substr(start, end - start);
+			return str;
 		}
 
-		return str.substr(0, endPos);
+		if (start != std::string::npos && end == std::string::npos)
+		{
+			return str.substr(start + 4);
+		}
+
+		if (end != std::string::npos)
+		{
+			return str.substr(0, end);
+		}
+
+		return str;
 	}
 
-	std::string ParsePRiVATEnzb(const std::string& str) noexcept
+	std::string ParsePRiVATEnzb(const std::string& str)
 	{
 		const std::string signature = "[PRiVATE]-[";
 		const std::string endOfSignature = "]-";
@@ -80,7 +106,7 @@ namespace
 
 		bool foundExtOrWord = false;
 		int depth = 0;
-		for (unsigned char ch : middle)
+		for (char ch : middle)
 		{
 			if (ch == '[' && ++depth == 1) continue;
 			if (ch == ']' && --depth == 0) continue;
@@ -114,7 +140,7 @@ namespace
 
 namespace Deobfuscation
 {
-	bool IsExcessivelyObfuscated(const std::string& str) noexcept
+	bool IsExcessivelyObfuscated(const std::string& str)
 	{
 		if (str.empty())
 			return false;
@@ -134,9 +160,10 @@ namespace Deobfuscation
 		return false;
 	}
 
-	std::string Deobfuscate(const std::string& str) noexcept
+	std::string Deobfuscate(const std::string& str)
 	{
-		if (str.size() < 3) return str;
+		if (str.size() < 3) 
+			return str;
 
 		size_t firstQuotPos = str.find("\"");
 

@@ -128,11 +128,11 @@ void NzbFile::ParseSubject(FileInfo* fileInfo, bool TryQuotes)
 
 	detail("Extracting a filename from Subject %s", fileInfo->GetSubject());
 
-	std::string subject = Deobfuscation::Deobfuscate(fileInfo->GetSubject());
+	std::string filename = Deobfuscation::Deobfuscate(fileInfo->GetSubject());
 
-	detail("Extracted Filename: %s", subject.c_str());
+	detail("Extracted Filename: %s", filename.c_str());
 
-	fileInfo->SetFilename(std::move(subject));
+	fileInfo->SetFilename(std::move(filename));
 }
 
 bool NzbFile::HasDuplicateFilenames()
