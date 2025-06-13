@@ -109,12 +109,17 @@ else()
 	endif()
 endif()
 
+include(CheckIncludeFiles)
+check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
+
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
 	add_dependencies(yencode par2-turbo)
-	add_dependencies(regex par2-turbo)
+	if(NOT HAVE_SYSTEM_REGEX_H)
+		add_dependencies(regex par2-turbo)
+	endif()
 endif()
 
 include(CheckIncludeFiles)
