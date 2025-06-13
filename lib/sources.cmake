@@ -39,13 +39,13 @@ if(IS_X86)
 endif()
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-add_library(regex STATIC
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
-)
-target_include_directories(regex PUBLIC
-	${INCLUDES}
-	${CMAKE_SOURCE_DIR}/lib/regex
-)
+	add_library(regex STATIC
+		${CMAKE_SOURCE_DIR}/lib/regex/regex.c
+	)
+	target_include_directories(regex PUBLIC
+		${INCLUDES}
+		${CMAKE_SOURCE_DIR}/lib/regex
+	)
 endif()
 
 add_library(yencode STATIC
