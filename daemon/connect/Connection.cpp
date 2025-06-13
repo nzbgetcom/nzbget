@@ -900,7 +900,7 @@ void Connection::ReadBuffer(char** buffer, int *bufLen)
 	*bufLen = m_bufAvail;
 	*buffer = m_bufPtr;
 	m_bufAvail = 0;
-};
+}
 
 void Connection::Cancel()
 {

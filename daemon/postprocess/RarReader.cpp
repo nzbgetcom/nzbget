@@ -277,7 +277,7 @@ RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
 
 	block.trailsize = blocksize - sizeof(buf);
 
-	uint8 addbuf[4];
+	uint8 addbuf[4] = {};
 	if ((block.flags & RAR3_BLOCK_ADDSIZE) && !Read(file, nullptr, &addbuf, sizeof(addbuf)))
 	{
 		return {};
