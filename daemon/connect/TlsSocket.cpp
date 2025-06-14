@@ -154,7 +154,7 @@ void TlsSocket::Final()
 #if OPENSSL_VERSION_NUMBER < 0x30000000L
 	FIPS_mode_set(0);
 #else
-	EVP_default_properties_enable_fips(NULL, 0);
+	EVP_default_properties_enable_fips(nullptr, 0);
 #endif
 #endif
 #ifdef NEED_CRYPTO_LOCKING
