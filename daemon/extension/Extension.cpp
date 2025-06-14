@@ -137,7 +137,7 @@ namespace Extension
 	void Script::SetDescription(std::vector<std::string> description)
 	{
 		m_description = std::move(description);
-	};
+	}
 
 	const std::vector<std::string>& Script::GetDescription() const
 	{
@@ -147,7 +147,7 @@ namespace Extension
 	void Script::SetKind(Kind kind)
 	{
 		m_kind = std::move(kind);
-	};
+	}
 
 	bool Script::GetPostScript() const
 	{

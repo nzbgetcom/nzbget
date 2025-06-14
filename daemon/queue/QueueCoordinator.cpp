@@ -1244,11 +1244,6 @@ bool QueueCoordinator::MergeQueueEntries(DownloadQueue* downloadQueue, NzbInfo* 
  */
 bool QueueCoordinator::SplitQueueEntries(DownloadQueue* downloadQueue, RawFileList* fileList, const char* name, NzbInfo** newNzbInfo)
 {
-	if (fileList->empty())
-	{
-		return false;
-	}
-
 	NzbInfo* srcNzbInfo = nullptr;
 
 	for (FileInfo* fileInfo : fileList)
@@ -1267,6 +1262,11 @@ bool QueueCoordinator::SplitQueueEntries(DownloadQueue* downloadQueue, RawFileLi
 		{
 			srcNzbInfo = fileInfo->GetNzbInfo();
 		}
+	}
+
+	if (!srcNzbInfo)
+	{
+		return false;
 	}
 
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();

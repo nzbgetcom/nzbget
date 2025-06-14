@@ -1338,6 +1338,7 @@ bool Options::ParseTime(const char* time, int* hours, int* minutes)
 	if (!strcmp(time, "*"))
 	{
 		*hours = -1;
+		*minutes = 0;
 		return true;
 	}
 
@@ -1957,4 +1958,4 @@ bool Options::HasScript(const char* scriptList, const char* scriptName)
 		}
 	}
 	return false;
-};
+}

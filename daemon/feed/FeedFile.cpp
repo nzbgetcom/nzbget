@@ -119,7 +119,6 @@ int64 FeedFile::ExtractSizeFromDescription(std::string_view description)
 	pos += 4;
 
 	double size = 0;
-	bool foundUints = false;
 	bool foundSize = false;
 	std::string units;
 
@@ -144,9 +143,8 @@ int64 FeedFile::ExtractSizeFromDescription(std::string_view description)
 			}
 		}
 
-		if (!foundUints && pos + 2 <= description.size())
+		if (pos + 2 <= description.size())
 		{
-			foundUints = true;
 			units = description.substr(pos, 2);
 			break;
 		}
@@ -186,7 +184,7 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 	}
 	else if (!strcmp("enclosure", name) && m_feedItemInfo)
 	{
-		//<enclosure url="http://myindexer.com/fetch/9eeb264aecce961a6e0d" length="150263340" type="application/x-nzb" />
+		// <enclosure url="http://myindexer.com/fetch/9eeb264aecce961a6e0d" length="150263340" type="application/x-nzb" />
 		for (; *atts; atts+=2)
 		{
 			if (!strcmp("url", atts[0]))
@@ -214,7 +212,7 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 	{
 		m_feedItemInfo->GetAttributes()->emplace_back(atts[1], atts[3]);
 
-		//<newznab:attr name="size" value="5423523453534" />
+		// <newznab:attr name="size" value="5423523453534" />
 		if (m_feedItemInfo->GetSize() == 0 &&
 			!strcmp("size", atts[1]))
 		{
@@ -222,39 +220,39 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 			m_feedItemInfo->SetSize(size);
 		}
 
-		//<newznab:attr name="imdb" value="1588173"/>
+		// <newznab:attr name="imdb" value="1588173"/>
 		else if (!strcmp("imdb", atts[1]))
 		{
 			m_feedItemInfo->SetImdbId(atoi(atts[3]));
 		}
 
-		//<newznab:attr name="rageid" value="33877"/>
+		// <newznab:attr name="rageid" value="33877"/>
 		else if (!strcmp("rageid", atts[1]))
 		{
 			m_feedItemInfo->SetRageId(atoi(atts[3]));
 		}
 
-		//<newznab:attr name="tvdbid" value="33877"/>
+		// <newznab:attr name="tvdbid" value="33877"/>
 		else if (!strcmp("tvdbid", atts[1]))
 		{
 			m_feedItemInfo->SetTvdbId(atoi(atts[3]));
 		}
 
-		//<newznab:attr name="tvmazeid" value="33877"/>
+		// <newznab:attr name="tvmazeid" value="33877"/>
 		else if (!strcmp("tvmazeid", atts[1]))
 		{
 			m_feedItemInfo->SetTvmazeId(atoi(atts[3]));
 		}
 
-		//<newznab:attr name="episode" value="E09"/>
-		//<newznab:attr name="episode" value="9"/>
+		// <newznab:attr name="episode" value="E09"/>
+		// <newznab:attr name="episode" value="9"/>
 		else if (!strcmp("episode", atts[1]))
 		{
 			m_feedItemInfo->SetEpisode(atts[3]);
 		}
 
-		//<newznab:attr name="season" value="S03"/>
-		//<newznab:attr name="season" value="3"/>
+		// <newznab:attr name="season" value="S03"/>
+		// <newznab:attr name="season" value="3"/>
 		else if (!strcmp("season", atts[1]))
 		{
 			m_feedItemInfo->SetSeason(atts[3]);

@@ -1043,6 +1043,10 @@ bool QueueEditor::SplitGroup(ItemList* itemList, const char* name)
 bool QueueEditor::SortGroups(ItemList* itemList, const char* sort)
 {
 	AlignGroups(itemList);
+	if (!sort)
+	{
+		return false;
+	}
 	GroupSorter sorter(m_downloadQueue->GetQueue(), itemList);
 	return sorter.Execute(sort);
 }
@@ -1093,7 +1097,7 @@ bool QueueEditor::ItemListContainsItem(ItemList* itemList, int id)
 		{
 			return item.m_nzbInfo->GetId() == id;
 		}) != itemList->end();
-};
+}
 
 bool QueueEditor::MoveGroupsTo(ItemList* itemList, IdList* idList, bool before, const char* args)
 {

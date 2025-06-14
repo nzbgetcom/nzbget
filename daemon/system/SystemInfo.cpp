@@ -317,7 +317,7 @@ namespace System
 		}
 
 		return "";
-	};
+	}
 
 	std::string SystemInfo::ParseParVersion(const std::string& line) const
 	{
@@ -328,7 +328,7 @@ namespace System
 		}
 
 		return "";
-	};
+	}
 
 	std::ostream& operator<<(std::ostream& os, const SystemInfo& sysinfo)
 	{

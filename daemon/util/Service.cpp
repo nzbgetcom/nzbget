@@ -34,7 +34,7 @@ Service::Service()
 void Service::WakeUp()
 {
 	g_ServiceCoordinator->WakeUp();
-};
+}
 
 
 ServiceCoordinator::ServiceCoordinator()
