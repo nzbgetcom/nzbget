@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -79,7 +79,7 @@ void closesocket_gracefully(SOCKET socket)
 }
 
 #ifdef ANDROID_RESOLVE
-CString ResolveAndroidHost(const char* host);
+std::string ResolveAndroidHost(const char* host);
 #endif
 
 void Connection::Init()
@@ -117,7 +117,7 @@ void Connection::Final()
 }
 
 Connection::Connection(const char* host, int port, bool tls) :
-	m_host(host), m_port(port), m_tls(tls)
+	m_host(host ? host : ""), m_port(port), m_tls(tls)
 {
 	debug("Creating Connection");
 
@@ -218,25 +218,25 @@ bool Connection::Bind()
 	int errcode = 0;
 
 #ifndef WIN32
-	if (m_host && m_host[0] == '/')
+	if (!m_host.empty() && m_host.front() == '/')
 	{
 		struct sockaddr_un addr;
 		addr.sun_family = AF_UNIX;
-		if (strlen(m_host) >= sizeof(addr.sun_path))
+		if (m_host.size() >= sizeof(addr.sun_path))
 		{
-			ReportError("Binding socket failed for %s: name too long\n", m_host, false);
+			ReportError("Binding socket failed for %s: name too long\n", m_host.c_str(), false);
 			return false;
 		}
-		strcpy(addr.sun_path, m_host);
+		strcpy(addr.sun_path, m_host.c_str());
 
 		m_socket = socket(PF_UNIX, SOCK_STREAM, 0);
 		if (m_socket == INVALID_SOCKET)
 		{
-			ReportError("Socket creation failed for %s", m_host, true);
+			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
 
-		unlink(m_host);
+		unlink(m_host.c_str());
 
 		if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
 		{
@@ -258,10 +258,10 @@ bool Connection::Bind()
 
 		BString<100> portStr("%d", m_port);
 
-		int res = getaddrinfo(m_host, portStr, &addr_hints, &addr_list);
+		int res = getaddrinfo(m_host.c_str(), portStr, &addr_hints, &addr_list);
 		if (res != 0)
 		{
-			ReportError("Could not resolve hostname %s", m_host, true
+			ReportError("Could not resolve hostname %s", m_host.c_str(), true
 #ifndef WIN32
 				, res != EAI_SYSTEM ? res : 0
 				, res != EAI_SYSTEM ? gai_strerror(res) : nullptr
@@ -301,13 +301,13 @@ bool Connection::Bind()
 		struct sockaddr_in	sSocketAddress;
 		memset(&sSocketAddress, 0, sizeof(sSocketAddress));
 		sSocketAddress.sin_family = AF_INET;
-		if (!m_host || strlen(m_host) == 0)
+		if (m_host.empty())
 		{
 			sSocketAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 		}
 		else
 		{
-			sSocketAddress.sin_addr.s_addr = ResolveHostAddr(m_host);
+			sSocketAddress.sin_addr.s_addr = ResolveHostAddr(m_host.c_str());
 			if (sSocketAddress.sin_addr.s_addr == INADDR_NONE)
 			{
 				return false;
@@ -318,7 +318,7 @@ bool Connection::Bind()
 		m_socket = socket(PF_INET, SOCK_STREAM, 0);
 		if (m_socket == INVALID_SOCKET)
 		{
-			ReportError("Socket creation failed for %s", m_host, true);
+			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
 
@@ -338,13 +338,13 @@ bool Connection::Bind()
 
 	if (m_socket == INVALID_SOCKET)
 	{
-		ReportError("Binding socket failed for %s", m_host, true, errcode);
+		ReportError("Binding socket failed for %s", m_host.c_str(), true, errcode);
 		return false;
 	}
 
 	if (listen(m_socket, 100) < 0)
 	{
-		ReportError("Listen on socket failed for %s", m_host, true);
+		ReportError("Listen on socket failed for %s", m_host.c_str(), true);
 		return false;
 	}
 
@@ -414,7 +414,7 @@ char* Connection::ReadLine(char* buffer, int size, int* bytesReadOut)
 			bufAvail = recv(m_socket, m_readBuf, m_readBuf.Size() - 1, 0);
 			if (bufAvail < 0)
 			{
-				ReportError("Could not receive data on socket from %s", m_host, true);
+				ReportError("Could not receive data on socket from %s", m_host.c_str(), true);
 				m_status = csBroken;
 				break;
 			}
@@ -488,7 +488,7 @@ std::unique_ptr<Connection> Connection::Accept()
 	SOCKET socket = accept(m_socket, nullptr, nullptr);
 	if (socket == INVALID_SOCKET && m_status != csCancelled)
 	{
-		ReportError("Could not accept connection for %s", m_host, true);
+		ReportError("Could not accept connection for %s", m_host.c_str(), true);
 	}
 	if (socket == INVALID_SOCKET)
 	{
@@ -510,7 +510,7 @@ int Connection::TryRecv(char* buffer, int size)
 
 	if (received < 0)
 	{
-		ReportError("Could not receive data on socket from %s", m_host, true);
+		ReportError("Could not receive data on socket from %s", m_host.c_str(), true);
 	}
 	else
 	{
@@ -546,7 +546,7 @@ bool Connection::Recv(char * buffer, int size)
 		// Did the recv succeed?
 		if (received <= 0)
 		{
-			ReportError("Could not receive data on socket from %s", m_host, true);
+			ReportError("Could not receive data on socket from %s", m_host.c_str(), true);
 			return false;
 		}
 		bufPtr += received;
@@ -563,27 +563,27 @@ bool Connection::DoConnect()
 	m_socket = INVALID_SOCKET;
 
 #ifndef WIN32
-	if (m_host && m_host[0] == '/')
+	if (!m_host.empty() && m_host.front() == '/')
 	{
 		struct sockaddr_un addr;
 		addr.sun_family = AF_UNIX;
-		if (strlen(m_host) >= sizeof(addr.sun_path))
+		if (m_host.size() >= sizeof(addr.sun_path))
 		{
-			ReportError("Connection to %s failed: name too long\n", m_host, false);
+			ReportError("Connection to %s failed: name too long\n", m_host.c_str(), false);
 			return false;
 		}
-		strcpy(addr.sun_path, m_host);
+		strcpy(addr.sun_path, m_host.c_str());
 
 		m_socket = socket(PF_UNIX, SOCK_STREAM, 0);
 		if (m_socket == INVALID_SOCKET)
 		{
-			ReportError("Socket creation failed for %s", m_host, true);
+			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
 
 		if (!ConnectWithTimeout(&addr, sizeof(addr)))
 		{
-			ReportError("Connection to %s failed", m_host, true);
+			ReportError("Connection to %s failed", m_host.c_str(), true);
 			closesocket(m_socket);
 			m_socket = INVALID_SOCKET;
 			return false;
@@ -601,23 +601,23 @@ bool Connection::DoConnect()
 
 		BString<100> portStr("%d", m_port);
 
-		int res = getaddrinfo(m_host, portStr, &addr_hints, &addr_list);
-		debug("getaddrinfo for %s: %i", *m_host, res);
+		int res = getaddrinfo(m_host.c_str(), portStr, &addr_hints, &addr_list);
+		debug("getaddrinfo for %s: %i", m_host.c_str(), res);
 
 #ifdef ANDROID_RESOLVE
 		if (res != 0)
 		{
-			CString resolvedHost = ResolveAndroidHost(m_host);
-			if (!resolvedHost.Empty())
+			std::string resolvedHost = ResolveAndroidHost(m_host.c_str());
+			if (!resolvedHost.empty())
 			{
-				res = getaddrinfo(resolvedHost, portStr, &addr_hints, &addr_list);
+				res = getaddrinfo(resolvedHost.c_str(), portStr, &addr_hints, &addr_list);
 			}
 		}
 #endif
 
 		if (res != 0)
 		{
-			ReportError("Could not resolve hostname %s", m_host, true
+			ReportError("Could not resolve hostname %s", m_host.c_str(), true
 #ifndef WIN32
 						, res != EAI_SYSTEM ? res : 0
 						, res != EAI_SYSTEM ? gai_strerror(res) : nullptr
@@ -664,12 +664,12 @@ bool Connection::DoConnect()
 
 		if (m_socket == INVALID_SOCKET && addr_list)
 		{
-			ReportError("Socket creation failed for %s", m_host, true);
+			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 		}
 
 		if (!connected && m_socket != INVALID_SOCKET)
 		{
-			ReportError("Connection to %s failed", m_host, true);
+			ReportError("Connection to %s failed", m_host.c_str(), true);
 			closesocket(m_socket);
 			m_socket = INVALID_SOCKET;
 		}
@@ -687,7 +687,7 @@ bool Connection::DoConnect()
 		memset(&sSocketAddress, 0, sizeof(sSocketAddress));
 		sSocketAddress.sin_family = AF_INET;
 		sSocketAddress.sin_port = htons(m_port);
-		sSocketAddress.sin_addr.s_addr = ResolveHostAddr(m_host);
+		sSocketAddress.sin_addr.s_addr = ResolveHostAddr(m_host.c_str());
 		if (sSocketAddress.sin_addr.s_addr == INADDR_NONE)
 		{
 			return false;
@@ -696,13 +696,13 @@ bool Connection::DoConnect()
 		m_socket = socket(PF_INET, SOCK_STREAM, 0);
 		if (m_socket == INVALID_SOCKET)
 		{
-			ReportError("Socket creation failed for %s", m_host, true);
+			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
 
 		if (!ConnectWithTimeout(&sSocketAddress, sizeof(sSocketAddress)))
 		{
-			ReportError("Connection to %s failed", m_host, true);
+			ReportError("Connection to %s failed", m_host.c_str(), true);
 			closesocket(m_socket);
 			m_socket = INVALID_SOCKET;
 			return false;
@@ -743,13 +743,13 @@ bool Connection::InitSocketOpts(SOCKET socket)
 	int err = setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, optbuf, optsize);
 	if (err != 0)
 	{
-		ReportError("Socket initialization failed for %s", m_host, true);
+		ReportError("Socket initialization failed for %s", m_host.c_str(), true);
 		return false;
 	}
 	err = setsockopt(socket, SOL_SOCKET, SO_SNDTIMEO, optbuf, optsize);
 	if (err != 0)
 	{
-		ReportError("Socket initialization failed for %s", m_host, true);
+		ReportError("Socket initialization failed for %s", m_host.c_str(), true);
 		return false;
 	}
 	return true;
@@ -874,10 +874,10 @@ bool Connection::DoDisconnect()
 #ifndef WIN32
 		int is_listening;
 		socklen_t len = sizeof(is_listening);
-		if (m_host && m_host[0] == '/'
+		if (!m_host.empty() && m_host.front() == '/'
 			&& getsockopt(m_socket, SOL_SOCKET, SO_ACCEPTCONN, &is_listening, &len) == 0 && is_listening)
 		{
-			unlink(m_host);
+			unlink(m_host.c_str());
 		}
 #endif
 		if (m_gracefull)
@@ -998,7 +998,7 @@ bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFi
 {
 	debug("Starting TLS");
 
-	m_tlsSocket = std::make_unique<ConTlsSocket>(m_socket, isClient, m_host, certFile, keyFile, m_cipher, m_certVerifLevel, this);
+	m_tlsSocket = std::make_unique<TlsSocket>(m_socket, isClient, m_host.c_str(), certFile, keyFile, m_cipher.c_str(), m_certVerifLevel);
 	m_tlsSocket->SetSuppressErrors(m_suppressErrors);
 
 	return m_tlsSocket->Start();
@@ -1103,7 +1103,7 @@ in_addr_t Connection::ResolveHostAddr(const char* host)
 const char* Connection::GetRemoteAddr()
 {
 #ifndef WIN32
-	if (m_host && m_host[0] == '/')
+	if (!m_host.empty() && m_host.front() == '/')
 	{
 		return "-";
 	}
@@ -1326,7 +1326,7 @@ static struct hostent * android_gethostbyname_internal(const char *name, int af,
 	return result;
 }
 
-CString ResolveAndroidHost(const char* host)
+std::string ResolveAndroidHost(const char* host)
 {
 	debug("ResolveAndroidHost");
 
@@ -1353,11 +1353,12 @@ CString ResolveAndroidHost(const char* host)
 		return nullptr;
 	}
 
-	BString<1024> result;
-	inet_ntop(hinfo->h_addrtype, hinfo->h_addr_list[0], result, result.Capacity());
+	std::string result;
+	result.reserve(1024);
+	inet_ntop(hinfo->h_addrtype, hinfo->h_addr_list[0], result.data(), result.size());
 
-	debug("android_gethostbyname_r returned %s", *result);
-	return *result;
+	debug("android_gethostbyname_r returned %s", result.c_str());
+	return result;
 }
 
 #endif

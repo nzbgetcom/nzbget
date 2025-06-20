@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,13 +68,12 @@ static const uint8 RAR5_FILE_EXTRATIMEUNIXFORMAT = 0x01;
 
 static const uint8 RAR5_ENDARC_NEXTVOL = 0x01;
 
-
 bool RarVolume::Read()
 {
-	debug("Checking file %s", *m_filename);
+	debug("Checking file %s", m_filename.c_str());
 
 	DiskFile file;
-	if (!file.Open(m_filename, DiskFile::omRead))
+	if (!file.Open(m_filename.c_str(), DiskFile::omRead))
 	{
 		return false;
 	}
@@ -183,7 +182,7 @@ bool RarVolume::Skip(DiskFile& file, RarBlock* block, int64 size)
 
 bool RarVolume::ReadRar3Volume(DiskFile& file)
 {
-	debug("Reading rar3-file %s", *m_filename);
+	debug("Reading rar3-file %s", m_filename.c_str());
 
 	while (!file.Eof())
 	{
@@ -198,7 +197,7 @@ bool RarVolume::ReadRar3Volume(DiskFile& file)
 			if (block.flags & RAR3_MAIN_PASSWORD)
 			{
 				m_encrypted = true;
-				if (m_password.Empty()) return false;
+				if (m_password.empty()) return false;
 			}
 			m_newNaming = block.flags & RAR3_MAIN_NEWNUMBERING;
 			m_multiVolume = block.flags & RAR3_MAIN_VOLUME;
@@ -339,7 +338,7 @@ bool RarVolume::ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile
 
 bool RarVolume::ReadRar5Volume(DiskFile& file)
 {
-	debug("Reading rar5-file %s", *m_filename);
+	debug("Reading rar5-file %s", m_filename.c_str());
 
 	file.Seek(8);
 
@@ -376,7 +375,7 @@ bool RarVolume::ReadRar5Volume(DiskFile& file)
 			if (!Read(file, &block, &kdfCount, sizeof(kdfCount))) return false;
 			if (!Read(file, &block, &salt, sizeof(salt))) return false;
 			m_encrypted = true;
-			if (m_password.Empty()) return false;
+			if (m_password.empty()) return false;
 			if (!DecryptRar5Prepare(kdfCount, salt)) return false;
 		}
 		
@@ -542,20 +541,20 @@ void RarVolume::LogDebugInfo()
 #ifdef DEBUG
 	debug("Volume: version:%i, multi:%i, vol-no:%i, new-naming:%i, has-next:%i, encrypted:%i, file-count:%i, [%s]",
 		(int)m_version, (int)m_multiVolume, m_volumeNo, (int)m_newNaming, (int)m_hasNextVolume,
-		(int)m_encrypted, (int)m_files.size(), FileSystem::BaseFileName(m_filename));
+		(int)m_encrypted, (int)m_files.size(), FileSystem::BaseFileName(m_filename.c_str()));
 
 	for (RarFile& file : m_files)
 	{
 		debug("  time:%i, size:%" PRIi64 ", attr:%i, split-before:%i, split-after:%i, [%s]",
 			file.m_time, file.m_size, file.m_attr,
-			file.m_splitBefore, file.m_splitAfter, *file.m_filename);
+			file.m_splitBefore, file.m_splitAfter, file.m_filename.c_str());
 	}
 #endif
 }
 
 bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 {
-	WString wstr(*m_password);
+	WString wstr(m_password.c_str());
 	int len = wstr.Length();
 	if (len == 0) return false;
 
@@ -571,11 +570,9 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 	debug("seed: %s", *Util::FormatBuffer((const char*)seed, seed.Size()));
 
 #ifndef DISABLE_TLS
-	EVP_MD_CTX* context = EVP_MD_CTX_create();
-
-	if (!EVP_DigestInit(context, EVP_sha1()))
+	OpenSSL::EVPMdCtxPtr context{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
+	if (!context || !EVP_DigestInit(context.get(), EVP_sha1()))
 	{
-		EVP_MD_CTX_destroy(context);
 		return false;
 	}
 #else
@@ -588,7 +585,7 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 	for (int i = 0; i < rounds; i++)
 	{
 #ifndef DISABLE_TLS
-		EVP_DigestUpdate(context, *seed, seed.Size());
+		EVP_DigestUpdate(context.get(), *seed, seed.Size());
 #endif
 
 		uint8 buf[3];
@@ -597,24 +594,25 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 		buf[2] = (uint8)(i >> 16);
 
 #ifndef DISABLE_TLS
-		EVP_DigestUpdate(context, buf, sizeof(buf));
+		EVP_DigestUpdate(context.get(), buf, sizeof(buf));
 #endif
 
 		if (i % (rounds / 16) == 0)
 		{
 #ifndef DISABLE_TLS
-			EVP_MD_CTX* ivContext = EVP_MD_CTX_create();
-			EVP_MD_CTX_copy(ivContext, context);
-			EVP_DigestFinal(ivContext, digest, nullptr);
-			EVP_MD_CTX_destroy(ivContext);
+			OpenSSL::EVPMdCtxPtr ivContext{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
+			if (ivContext)
+			{
+				EVP_MD_CTX_copy(ivContext.get(), context.get());
+				EVP_DigestFinal(ivContext.get(), digest, nullptr);
+			}
 #endif
 			m_decryptIV[i / (rounds / 16)] = digest[sizeof(digest) - 1];
 		}
 	}
 
 #ifndef DISABLE_TLS
-	EVP_DigestFinal(context, digest, nullptr);
-	EVP_MD_CTX_destroy(context);
+	EVP_DigestFinal(context.get(), digest, nullptr);
 #endif
 
 	debug("digest: %s", *Util::FormatBuffer((const char*)digest, sizeof(digest)));
@@ -640,7 +638,7 @@ bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 	int iterations = 1 << kdfCount;
 
 #ifndef DISABLE_TLS
-	if (!PKCS5_PBKDF2_HMAC(m_password, m_password.Length(), salt, 16,
+	if (!PKCS5_PBKDF2_HMAC(m_password.c_str(), m_password.size(), salt, 16,
 		iterations, EVP_sha256(), sizeof(m_decryptKey), m_decryptKey)) return false;
 	return true;
 #else
@@ -651,8 +649,11 @@ bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 bool RarVolume::DecryptInit(int keyLength)
 {
 #ifndef DISABLE_TLS
-	if (!(m_context = EVP_CIPHER_CTX_new())) return false;
-	if (!EVP_DecryptInit((EVP_CIPHER_CTX*)m_context,
+	m_context.reset(EVP_CIPHER_CTX_new());
+	if (!m_context) 
+		return false;
+
+	if (!EVP_DecryptInit(m_context.get(),
 		keyLength == 128 ? EVP_aes_128_cbc() : EVP_aes_256_cbc(),
 		m_decryptKey, m_decryptIV))
 		return false;
@@ -667,7 +668,7 @@ bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 #ifndef DISABLE_TLS
 	uint8 outbuf[32];
 	int outlen = 0;
-	if (!EVP_DecryptUpdate((EVP_CIPHER_CTX*)m_context, outbuf, &outlen, in, 16)) return false;
+	if (!EVP_DecryptUpdate(m_context.get(), outbuf, &outlen, in, 16)) return false;
 	memcpy(out, outbuf + outlen, 16);
 	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
 	return true;
@@ -678,13 +679,9 @@ bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 
 void RarVolume::DecryptFree()
 {
-	if (m_context)
-	{
 #ifndef DISABLE_TLS
-		EVP_CIPHER_CTX_free((EVP_CIPHER_CTX*)m_context);
+	m_context.reset();
 #endif
-		m_context = nullptr;
-	}
 }
 
 bool RarVolume::DecryptRead(DiskFile& file, void* buffer, int64 size)
@@ -709,4 +706,3 @@ bool RarVolume::DecryptRead(DiskFile& file, void* buffer, int64 size)
 
 	return true;
 }
-

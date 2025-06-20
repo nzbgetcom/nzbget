@@ -16,7 +16,8 @@ set(SystemTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp 
-	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
+	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
 )
 
 if(WIN32)

@@ -56,6 +56,9 @@ namespace Network
 				Connect(socket, endpoints, host);
 				Write(socket, "GET", host);
 
+#ifndef DISABLE_TLS
+				OpenSSL::StopSSLThread();
+#endif
 				return MakeResponse(socket);
 			}
 		);

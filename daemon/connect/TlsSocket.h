@@ -23,6 +23,9 @@
 
 #ifndef DISABLE_TLS
 
+#include <string_view>
+#include "OpenSSL.h"
+
 class TlsSocket
 {
 public:
@@ -35,12 +38,14 @@ public:
 		const char* cipher,
 		int certVerifLevel)
 		: m_socket(socket)
-		, m_isClient(isClient)
 		, m_host(host ? host : "")
 		, m_certFile(certFile ? certFile : "")
 		, m_keyFile(keyFile ? keyFile : "")
 		, m_cipher(cipher ? cipher : "")
-		, m_certVerifLevel(certVerifLevel) {}
+		, m_isClient(isClient)
+		, m_certVerifLevel(certVerifLevel) 
+		, m_context{ nullptr, &SSL_CTX_free }
+		, m_session{ nullptr, &SSL_free } {}
 
 	virtual ~TlsSocket();
 
@@ -58,10 +63,8 @@ protected:
 	virtual void PrintError(const char* errMsg);
 
 private:
-	static void InitX509Store(const std::string& certStore);
-	static void FreeX509Store(X509_STORE* store);
-	static X509_STORE* m_X509Store;
-	static std::string m_certStore;
+	static void InitX509Store(std::string_view certStore);
+	static OpenSSL::X509StorePtr m_X509Store;
 
 	SOCKET m_socket;
 
@@ -72,15 +75,13 @@ private:
 
 	bool m_isClient;
 	bool m_suppressErrors = false;
-	bool m_initialized = false;
 	bool m_connected = false;
 
 	int m_retCode;
 	int m_certVerifLevel;
 
-	// using "void*" to prevent the including of OpenSSL header files into TlsSocket.h
-	void* m_context = nullptr;
-	void* m_session = nullptr;
+	OpenSSL::SSLCtxPtr m_context;
+	OpenSSL::SSLSessionPtr m_session;
 
 	void ReportError(const char* errMsg, bool suppressable = true);
 	bool ValidateCert();

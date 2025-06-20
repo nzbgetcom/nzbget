@@ -132,7 +132,7 @@ cmake .. -DDISABLE_CURSES=ON
 ```bash
 cmake .. -DDISABLE_PARCHECK=ON
 ```
-  - Disable TLS. Use this option if you cannot use OpenSSL:
+  - **[Deprecated]** Disable TLS. Use this option if you cannot use OpenSSL:
 ```bash
 cmake .. -DDISABLE_TLS=ON
 ```
