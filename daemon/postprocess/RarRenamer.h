@@ -57,7 +57,6 @@ private:
 	CString m_destDir;
 	CString m_progressLabel;
 	int m_stageProgress = 0;
-	bool m_cancelled = false;
 	DirList m_dirList;
 	int m_fileCount = 0;
 	int m_curFile = 0;

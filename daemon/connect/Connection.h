@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 #define CONNECTION_H
 
 #include <atomic>
+#include <string>
 #include "NString.h"
 #ifndef HAVE_GETADDRINFO
 #ifndef HAVE_GETHOSTBYNAME_R
@@ -69,11 +70,11 @@ public:
 	int WriteLine(const char* buffer);
 	std::unique_ptr<Connection> Accept();
 	void Cancel();
-	const char* GetHost() { return m_host; }
+	const char* GetHost() const { return m_host.c_str(); }
 	int GetPort() { return m_port; }
 	bool GetTls() { return m_tls; }
-	const char* GetCipher() { return m_cipher; }
-	void SetCipher(const char* cipher) { m_cipher = cipher; }
+	const char* GetCipher() const { return m_cipher.c_str(); }
+	void SetCipher(const char* cipher) { m_cipher = cipher ? cipher : ""; }
 	void SetTimeout(int timeout) { m_timeout = timeout; }
 	void SetIPVersion(EIPVersion ipVersion) { m_ipVersion = ipVersion; }
 	EStatus GetStatus() { return m_status; }
@@ -90,12 +91,12 @@ public:
 	int FetchTotalBytesRead();
 
 protected:
-	CString m_host;
+	std::string m_host;
+	std::string m_cipher;
 	int m_port;
 	bool m_tls;
 	EIPVersion m_ipVersion = ipAuto;
 	SOCKET m_socket = INVALID_SOCKET;
-	CString m_cipher;
 	CharBuffer m_readBuf;
 	int m_bufAvail = 0;
 	char* m_bufPtr = nullptr;
@@ -120,20 +121,7 @@ protected:
 	};
 
 #ifndef DISABLE_TLS
-	class ConTlsSocket: public TlsSocket
-	{
-	public:
-		ConTlsSocket(SOCKET socket, bool isClient, const char* host,
-			const char* certFile, const char* keyFile, const char* cipher,
-			unsigned int certVerifLevel, Connection* owner) :
-			TlsSocket(socket, isClient, host, certFile, keyFile, cipher, certVerifLevel), m_owner(owner) {}
-	protected:
-		virtual void PrintError(const char* errMsg) { m_owner->PrintError(errMsg); }
-	private:
-		Connection* m_owner;
-	};
-
-	std::unique_ptr<ConTlsSocket> m_tlsSocket;
+	std::unique_ptr<TlsSocket> m_tlsSocket;
 	bool m_tlsError = false;
 #endif
 #ifndef HAVE_GETADDRINFO

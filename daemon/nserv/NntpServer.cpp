@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -24,6 +25,10 @@
 #include "Util.h"
 #include "YEncoder.h"
 
+#ifndef DISABLE_TLS
+#include "OpenSSL.h"
+#endif
+
 class NntpProcessor : public Thread
 {
 public:
@@ -32,8 +37,15 @@ public:
 		m_id(id), m_serverId(serverId), m_dataDir(dataDir), m_cacheDir(cacheDir),
 		m_secureCert(secureCert), m_secureKey(secureKey), m_latency(latency),
 		m_speed(speed), m_cache(cache) {}
-	~NntpProcessor() { m_connection->Disconnect(); }
-	virtual void Run();
+	~NntpProcessor()
+	{
+		m_connection->Disconnect();
+
+#ifndef DISABLE_TLS
+		OpenSSL::StopSSLThread();
+#endif
+	}
+	void Run() override;
 	void SetConnection(std::unique_ptr<Connection>&& connection) { m_connection = std::move(connection); }
 
 private:

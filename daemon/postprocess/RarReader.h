@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,21 +22,25 @@
 #ifndef RARREADER_H
 #define RARREADER_H
 
-#include "NString.h"
+#include <string>
 #include "Log.h"
 #include "FileSystem.h"
+
+#ifndef DISABLE_TLS
+#include "OpenSSL.h"
+#endif
 
 class RarFile
 {
 public:
-	const char* GetFilename() { return m_filename; }
+	const char* GetFilename() const { return m_filename.c_str(); }
 	uint32 GetTime() { return m_time; }
 	uint32 GetAttr() { return m_attr; }
 	int64 GetSize() { return m_size; }
 	bool GetSplitBefore() { return m_splitBefore; }
 	bool GetSplitAfter() { return m_splitAfter; }
 private:
-	CString m_filename;
+	std::string m_filename;
 	uint32 m_time = 0;
 	uint32 m_attr = 0;
 	int64 m_size = 0;
@@ -47,19 +52,25 @@ private:
 class RarVolume
 {
 public:
-	typedef std::deque<RarFile> FileList;
+	using FileList = std::deque<RarFile>;
 
-	RarVolume(const char* filename) : m_filename(filename) {}
+	RarVolume(const char* filename) 
+		: m_filename{ filename ? filename : "" }
+#ifndef DISABLE_TLS
+		, m_context{ nullptr, &EVP_CIPHER_CTX_free }
+#endif
+		{}
+
 	bool Read();
 
-	const char* GetFilename() { return m_filename; }
+	const char* GetFilename() const { return m_filename.c_str(); }
 	int GetVersion() { return m_version; }
 	uint32 GetVolumeNo() { return m_volumeNo; }
 	bool GetNewNaming() { return m_newNaming; }
 	bool GetHasNextVolume() { return m_hasNextVolume; }
 	bool GetMultiVolume() { return m_multiVolume; }
 	bool GetEncrypted() { return m_encrypted; }
-	void SetPassword(const char* password) { m_password = password; }
+	void SetPassword(const char* password) { m_password = password ? password : ""; }
 	FileList* GetFiles() { return &m_files; }
 
 private:
@@ -72,23 +83,26 @@ private:
 		uint64 trailsize;
 	};
 
-	CString m_filename;
-	int m_version = 0;
-	uint32 m_volumeNo = 0;
+	FileList m_files;
+
+	std::string m_filename;
+	std::string m_password;
+
 	bool m_newNaming = false;
 	bool m_hasNextVolume = false;
 	bool m_multiVolume = false;
-	FileList m_files;
 	bool m_encrypted = false;
-	CString m_password;
+
+	int m_version = 0;
+	uint32 m_volumeNo = 0;
 	uint8 m_decryptKey[32];
 	uint8 m_decryptIV[16];
 	uint8 m_decryptBuf[16];
 	uint8 m_decryptPos = 16;
 
-	// using "void*" to prevent the including of OpenSSL header files into TlsSocket.h
-	void* m_context = nullptr;
-	void* m_session = nullptr;
+#ifndef DISABLE_TLS
+	OpenSSL::EVPCipherCtxPtr m_context;
+#endif
 
 	int DetectRarVersion(DiskFile& file);
 	void LogDebugInfo();

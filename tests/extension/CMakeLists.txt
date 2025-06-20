@@ -25,6 +25,7 @@ set(ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp

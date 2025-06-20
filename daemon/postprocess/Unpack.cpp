@@ -27,6 +27,13 @@
 #include "ParParser.h"
 #include "Options.h"
 
+UnpackController::~UnpackController()
+{
+#ifndef DISABLE_TLS
+	OpenSSL::StopSSLThread();
+#endif
+}
+
 bool UnpackController::FileList::Exists(const char* filename)
 {
 	return std::find(begin(), end(), filename) != end();

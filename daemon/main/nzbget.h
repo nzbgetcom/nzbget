@@ -187,13 +187,7 @@
 #include <boost/asio.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rsa.h>
-#include <openssl/sha.h>
-#include <openssl/pem.h>
-#include <openssl/x509v3.h>
-#include <openssl/comp.h>
+#include "OpenSSL.h"
 #endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
