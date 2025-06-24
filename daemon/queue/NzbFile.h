@@ -40,6 +40,7 @@ public:
 private:
 	std::unique_ptr<NzbInfo> m_nzbInfo;
 	std::string m_fileName;
+	std::string m_category;
 	std::string m_password;
 
 	void AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
@@ -50,13 +51,13 @@ private:
 	void CalcHashes();
 	bool HasDuplicateFilenames();
 	void ReadPasswordFromFilename();
-	
 
 	std::unique_ptr<FileInfo> m_fileInfo;
 	ArticleInfo* m_article = nullptr;
 	StringBuilder m_tagContent;
 	bool m_ignoreNextError;
 	bool m_hasPassword = false;
+	bool m_hasCategory = false;
 
 	static void SAX_StartElement(NzbFile* file, const char *name, const char **atts);
 	static void SAX_EndElement(NzbFile* file, const char *name);

@@ -273,13 +273,13 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 		return;
 	}
 
-	CString nzbName = "";
-	CString nzbCategory = category;
+	std::string nzbName;
+	std::string nzbCategory = category ? category : "";
+	std::string dupeKey;
 	NzbParameterList parameters;
 	int priority = 0;
 	bool addTop = false;
 	bool addPaused = false;
-	CString dupeKey = "";
 	int dupeScore = 0;
 	EDupeMode dupeMode = dmScore;
 	EAddStatus addStatus = asSkipped;
@@ -300,12 +300,13 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 			dupeMode = queueData->GetDupeMode();
 			addTop = queueData->GetAddTop();
 			addPaused = queueData->GetAddPaused();
+			nzbCategory = queueData->GetCategory();
 			parameters.CopyFrom(queueData->GetParameters());
 			nzbInfo = queueData->GetUrlInfo();
 		}
 	}
 
-	InitPPParameters(nzbCategory, &parameters, false);
+	InitPPParameters(nzbCategory.c_str(), &parameters, false);
 
 	bool exists = true;
 
@@ -313,8 +314,16 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	{
 		ScanScriptController::ExecuteScripts(fullFilename,
 			nzbInfo, directory,
-			&nzbName, &nzbCategory, &priority, &parameters, &addTop,
-			&addPaused, &dupeKey, &dupeScore, &dupeMode);
+			nzbName.c_str(),
+			nzbCategory.c_str(),
+			&priority,
+			&parameters,
+			&addTop,
+			&addPaused,
+			dupeKey.c_str(),
+			&dupeScore,
+			&dupeMode
+		);
 		exists = FileSystem::FileExists(fullFilename);
 		if (exists && strcasecmp(extension, ".nzb"))
 		{
@@ -334,8 +343,20 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 		bool renameOK = FileSystem::RenameBak(fullFilename, "nzb", true, renamedName);
 		if (renameOK)
 		{
-			bool added = AddFileToQueue(renamedName, nzbName, nzbCategory, priority,
-				dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
+			bool added = AddFileToQueue(
+				renamedName,
+				nzbName.c_str(),
+				nzbCategory.c_str(),
+				priority,
+				dupeKey.c_str(),
+				dupeScore,
+				dupeMode,
+				&parameters,
+				addTop,
+				addPaused,
+				nzbInfo,
+				&nzbId
+			);
 			addStatus = added ? asSuccess : asFailed;
 		}
 		else
@@ -347,8 +368,20 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	}
 	else if (exists && !strcasecmp(extension, ".nzb"))
 	{
-		bool added = AddFileToQueue(fullFilename, nzbName, nzbCategory, priority,
-			dupeKey, dupeScore, dupeMode, &parameters, addTop, addPaused, nzbInfo, &nzbId);
+		bool added = AddFileToQueue(
+			fullFilename,
+			nzbName.c_str(),
+			nzbCategory.c_str(),
+			priority,
+			dupeKey.c_str(),
+			dupeScore,
+			dupeMode,
+			&parameters,
+			addTop,
+			addPaused,
+			nzbInfo,
+			&nzbId
+		);
 		addStatus = added ? asSuccess : asFailed;
 	}
 
