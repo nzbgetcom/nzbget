@@ -34,8 +34,8 @@ public:
 	static bool HasScripts();
 
 protected:
-	virtual void ExecuteScript(std::shared_ptr<const Extension::Script> script);
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	void ExecuteScript(std::shared_ptr<const Extension::Script> script) override;
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	const char* m_nzbFilename;

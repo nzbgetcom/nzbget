@@ -110,7 +110,7 @@ void ScanScriptController::PrepareParams(const char* scriptName)
 
 	SetEnvVar("NZBNP_FILENAME", m_nzbFilename);
 	SetEnvVar("NZBNP_URL", m_url);
-	SetEnvVar("NZBNP_NZBNAME", m_nzbName.size() > 0 ? m_nzbName.c_str() : FileSystem::BaseFileName(m_nzbFilename));
+	SetEnvVar("NZBNP_NZBNAME", !m_nzbName.empty() ? m_nzbName.c_str() : FileSystem::BaseFileName(m_nzbFilename));
 	SetEnvVar("NZBNP_CATEGORY", m_category.c_str());
 	SetIntEnvVar("NZBNP_PRIORITY", *m_priority);
 	SetIntEnvVar("NZBNP_TOP", *m_addTop ? 1 : 0);

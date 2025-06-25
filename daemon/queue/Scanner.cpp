@@ -32,24 +32,34 @@
 
 int Scanner::m_idGen = 0;
 
-Scanner::QueueData::QueueData(const char* filename, const char* nzbName, const char* category,
-	int priority, const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-	NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo,
-	EAddStatus* addStatus, int* nzbId)
+Scanner::QueueData::QueueData(
+	const char* filename,
+	const char* nzbName,
+	const char* category,
+	bool autoCategory,
+	int priority,
+	const char* dupeKey,
+	int dupeScore,
+	EDupeMode dupeMode,
+	NzbParameterList* parameters,
+	bool addTop,
+	bool addPaused,
+	NzbInfo* urlInfo,
+	EAddStatus* addStatus,
+	int* nzbId) : m_filename{ filename ? filename : "" }
+	, m_nzbName{ nzbName ? nzbName : "" }
+	, m_category{ category ? category : "" }
+	, m_autoCategory{ autoCategory }
+	, m_priority{ priority }
+	, m_dupeKey{ dupeKey ? dupeKey : "" }
+	, m_dupeScore{ dupeScore }
+	, m_dupeMode{ dupeMode }
+	, m_addTop{ addTop }
+	, m_addPaused{ addPaused }
+	, m_urlInfo{ urlInfo }
+	, m_addStatus{ addStatus }
+	, m_nzbId{ nzbId }
 {
-	m_filename = filename;
-	m_nzbName = nzbName;
-	m_category = category ? category : "";
-	m_priority = priority;
-	m_dupeKey = dupeKey ? dupeKey : "";
-	m_dupeScore = dupeScore;
-	m_dupeMode = dupeMode;
-	m_addTop = addTop;
-	m_addPaused = addPaused;
-	m_urlInfo = urlInfo;
-	m_addStatus = addStatus;
-	m_nzbId = nzbId;
-
 	if (parameters)
 	{
 		m_parameters.CopyFrom(parameters);
@@ -105,7 +115,7 @@ void Scanner::ServiceWork()
 
 	debug("Scanner service work: doing work");
 
-	std::lock_guard<std::mutex> guard{m_scanMutex};
+	std::lock_guard<std::mutex> guard{ m_scanMutex };
 
 	// check nzbdir every g_pOptions->GetNzbDirInterval() seconds or if requested
 	bool checkStat = !m_requestedNzbDirScan;
@@ -121,7 +131,7 @@ void Scanner::ServiceWork()
 
 	// if NzbDirFileAge is less than NzbDirInterval (that can happen if NzbDirInterval
 	// is set for rare scans like once per hour) we make 4 scans:
-	//   - one additional scan is neccessary to check sizes of detected files;
+	//   - one additional scan is necessary to check sizes of detected files;
 	//   - another scan is required to check files which were extracted by scan-scripts;
 	//   - third scan is needed to check sizes of extracted files.
 	if (g_Options->GetNzbDirInterval() > 0 && g_Options->GetNzbDirFileAge() < g_Options->GetNzbDirInterval())
@@ -264,8 +274,12 @@ void Scanner::DropOldFiles()
 		m_fileList.end());
 }
 
-void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilename,
-	const char* fullFilename, const char* category)
+void Scanner::ProcessIncomingFile(
+	const char* directory,
+	const char* baseFilename,
+	const char* fullFilename,
+	const char* category
+)
 {
 	const char* extension = strrchr(baseFilename, '.');
 	if (!extension)
@@ -274,7 +288,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	}
 
 	std::string nzbName;
-	std::string nzbCategory = category ? category : "";
+	std::string nzbCategory;
 	std::string dupeKey;
 	NzbParameterList parameters;
 	int priority = 0;
@@ -283,6 +297,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 	int dupeScore = 0;
 	EDupeMode dupeMode = dmScore;
 	EAddStatus addStatus = asSkipped;
+	bool autoCategory = false;
 	QueueData* queueData = nullptr;
 	NzbInfo* nzbInfo = nullptr;
 	int nzbId = 0;
@@ -300,9 +315,9 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 			dupeMode = queueData->GetDupeMode();
 			addTop = queueData->GetAddTop();
 			addPaused = queueData->GetAddPaused();
-			nzbCategory = queueData->GetCategory();
 			parameters.CopyFrom(queueData->GetParameters());
 			nzbInfo = queueData->GetUrlInfo();
+			autoCategory = queueData->GetAutoCategory();
 		}
 	}
 
@@ -347,6 +362,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 				renamedName,
 				nzbName.c_str(),
 				nzbCategory.c_str(),
+				autoCategory,
 				priority,
 				dupeKey.c_str(),
 				dupeScore,
@@ -372,6 +388,7 @@ void Scanner::ProcessIncomingFile(const char* directory, const char* baseFilenam
 			fullFilename,
 			nzbName.c_str(),
 			nzbCategory.c_str(),
+			autoCategory,
 			priority,
 			dupeKey.c_str(),
 			dupeScore,
@@ -445,9 +462,21 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 	}
 }
 
-bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const char* category,
-	int priority, const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-	NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo, int* nzbId)
+bool Scanner::AddFileToQueue(
+	const char* filename,
+	const char* nzbName,
+	const char* category,
+	bool autoCategory,
+	int priority,
+	const char* dupeKey,
+	int dupeScore,
+	EDupeMode dupeMode,
+	NzbParameterList* parameters,
+	bool addTop,
+	bool addPaused,
+	NzbInfo* urlInfo,
+	int* nzbId
+)
 {
 	const char* basename = FileSystem::BaseFileName(filename);
 
@@ -470,6 +499,18 @@ bool Scanner::AddFileToQueue(const char* filename, const char* nzbName, const ch
 
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
 	nzbInfo->SetQueuedFilename(bakname2);
+
+	if (autoCategory)
+	{
+		const char* nzbCategory = nzbFile.GetCategory();
+		Options::Category* categoryObj = g_Options->FindCategory(nzbCategory, true);
+		if (categoryObj)
+		{
+			const char* category = categoryObj->GetName();
+			detail("Category %s matched to %s for %s", category, nzbCategory, nzbName);
+			nzbInfo->SetCategory(category);
+		}
+	}
 
 	if (nzbName && strlen(nzbName) > 0)
 	{
@@ -547,10 +588,23 @@ void Scanner::ScanNzbDir(bool syncMode)
 	}
 }
 
-Scanner::EAddStatus Scanner::AddExternalFile(const char* nzbName, const char* category,
-	int priority, const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-	NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo,
-	const char* fileName, const char* buffer, int bufSize, int* nzbId)
+Scanner::EAddStatus Scanner::AddExternalFile(
+	const char* nzbName,
+	const char* category,
+	bool autoCategory,
+	int priority,
+	const char* dupeKey,
+	int dupeScore,
+	EDupeMode dupeMode,
+	NzbParameterList* parameters,
+	bool addTop,
+	bool addPaused,
+	NzbInfo* urlInfo,
+	const char* fileName,
+	const char* buffer,
+	int bufSize,
+	int* nzbId
+)
 {
 	bool nzb = false;
 	BString<1024> tempFileName;
@@ -636,9 +690,22 @@ Scanner::EAddStatus Scanner::AddExternalFile(const char* nzbName, const char* ca
 		}
 
 		addStatus = asSkipped;
-		m_queueList.emplace_back(scanFileName, nzbName, useCategory, priority,
-			dupeKey, dupeScore, dupeMode, parameters, addTop, addPaused, urlInfo,
-			&addStatus, nzbId);
+		m_queueList.emplace_back(
+			scanFileName,
+			nzbName,
+			useCategory,
+			autoCategory,
+			priority,
+			dupeKey,
+			dupeScore,
+			dupeMode,
+			parameters,
+			addTop,
+			addPaused,
+			urlInfo,
+			&addStatus,
+			nzbId
+		);
 	}
 
 	ScanNzbDir(true);

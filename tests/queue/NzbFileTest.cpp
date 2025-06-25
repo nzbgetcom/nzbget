@@ -29,37 +29,36 @@
 #include "NzbFile.h"
 #include "FileSystem.h"
 
+const std::string CURR_DIR = FileSystem::GetCurrentDirectory().Str();
+
 void TestNzb(std::string testFilename)
 {
-	std::string path = FileSystem::GetCurrentDirectory().Str();
-
-	std::string nzbFilename(path + "/nzbfile/" + testFilename + ".nzb");
-	std::string infoFilename(path + "/nzbfile/" + testFilename + ".txt");
+	std::string nzbFilename(CURR_DIR + "/nzbfile/" + testFilename + ".nzb");
+	std::string infoFilename(CURR_DIR + "/nzbfile/" + testFilename + ".txt");
 
 	NzbFile nzbFile(nzbFilename.c_str(), "");
-	bool parsedOK = nzbFile.Parse();
-	BOOST_CHECK(parsedOK == true);
+	BOOST_REQUIRE(nzbFile.Parse());
 
 	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
-	BOOST_CHECK(infofile != nullptr);
+	BOOST_REQUIRE(infofile);
 	char buffer[1024];
 
 	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-	BOOST_CHECK(*buffer);
+	BOOST_REQUIRE(*buffer);
 
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
-	BOOST_CHECK(nzbInfo->GetFileCount() == fileCount);
+	BOOST_CHECK_EQUAL(nzbInfo->GetFileCount(), fileCount);
 	char lastBuffer[1024];
 
 	for (int i = 0; i < fileCount; i++)
 	{
 		while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-		BOOST_CHECK(*buffer);
+		BOOST_REQUIRE(*buffer);
 		FileInfo* fileInfo = nzbInfo->GetFileList()->at(i).get();
-		BOOST_CHECK(fileInfo != nullptr);
+		BOOST_REQUIRE(fileInfo);
 		Util::TrimRight(buffer);
-		BOOST_CHECK(std::string(fileInfo->GetFilename()) == std::string(buffer));
+		BOOST_CHECK_EQUAL(std::string(fileInfo->GetFilename()), std::string(buffer));
 		memcpy(lastBuffer, buffer, sizeof(buffer));
 	}
 
@@ -71,7 +70,7 @@ void TestNzb(std::string testFilename)
 	}
 	else
 	{
-		BOOST_CHECK(nzbFile.GetPassword() == std::string(buffer));
+		BOOST_CHECK_EQUAL(nzbFile.GetPassword(), std::string(buffer));
 	}
 
 	fclose(infofile);

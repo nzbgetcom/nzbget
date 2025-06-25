@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ public:
 	NzbFile(const char* fileName, const char* category);
 	bool Parse();
 	const char* GetFileName() const { return m_fileName.c_str(); }
+	const char* GetCategory() const { return m_category.c_str(); }
 	std::unique_ptr<NzbInfo> DetachNzbInfo() { return std::move(m_nzbInfo); }
 	const std::string& GetPassword() const { return m_password; }
 

@@ -24,7 +24,7 @@
 #define SCANNER_H
 
 #include <mutex>
-#include "NString.h"
+#include <string>
 #include "DownloadInfo.h"
 #include "Thread.h"
 #include "Service.h"
@@ -41,10 +41,23 @@ public:
 
 	void InitOptions();
 	void ScanNzbDir(bool syncMode);
-	EAddStatus AddExternalFile(const char* nzbName, const char* category, int priority,
-		const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-		NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo,
-		const char* fileName, const char* buffer, int bufSize, int* nzbId);
+	EAddStatus AddExternalFile(
+		const char* nzbName, 
+		const char* category,
+		bool autoCategory,
+		int priority,
+		const char* dupeKey, 
+		int dupeScore, 
+		EDupeMode dupeMode,
+		NzbParameterList* parameters, 
+		bool addTop, 
+		bool addPaused, 
+		NzbInfo* urlInfo,
+		const char* fileName, 
+		const char* buffer, 
+		int bufSize, 
+		int* nzbId
+	);
 	void InitPPParameters(const char* category, NzbParameterList* parameters, bool reset);
 
 protected:
@@ -55,64 +68,80 @@ private:
 	class FileData
 	{
 	public:
-		FileData(const char* filename, int64 size, time_t lastChange) :
-			m_filename(filename), m_size(size), m_lastChange(lastChange) {}
-		const char* GetFilename() { return m_filename; }
+		FileData(const char* filename, int64 size, time_t lastChange)
+			: m_filename(filename ? filename : ""),
+			m_size(size),
+			m_lastChange(lastChange) {}
+		const char* GetFilename() const { return m_filename.c_str(); }
 		int64 GetSize() { return m_size; }
 		void SetSize(int64 size) { m_size = size; }
 		time_t GetLastChange() { return m_lastChange; }
 		void SetLastChange(time_t lastChange) { m_lastChange = lastChange; }
 	private:
-		CString m_filename;
+		std::string m_filename;
 		int64 m_size;
 		time_t m_lastChange;
 	};
 
-	typedef std::deque<FileData> FileList;
+	using FileList = std::deque<FileData>;
 
 	class QueueData
 	{
 	public:
-		QueueData(const char* filename, const char* nzbName, const char* category,
-			int priority, const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-			NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo,
-			EAddStatus* addStatus, int* nzbId);
-		const char* GetFilename() { return m_filename; }
-		const char* GetNzbName() { return m_nzbName; }
-		const char* GetCategory() { return m_category; }
+		QueueData(
+			const char* filename,
+			const char* nzbName,
+			const char* category,
+			bool autoCategory,
+			int priority,
+			const char* dupeKey,
+			int dupeScore,
+			EDupeMode dupeMode,
+			NzbParameterList* parameters,
+			bool addTop,
+			bool addPaused,
+			NzbInfo* urlInfo,
+			EAddStatus* addStatus,
+			int* nzbId
+		);
+		const char* GetFilename() const { return m_filename.c_str(); }
+		const char* GetNzbName() const { return m_nzbName.c_str(); }
+		const char* GetCategory() const { return m_category.c_str(); }
 		int GetPriority() { return m_priority; }
-		const char* GetDupeKey() { return m_dupeKey; }
+		const char* GetDupeKey() const { return m_dupeKey.c_str(); }
 		int GetDupeScore() { return m_dupeScore; }
 		EDupeMode GetDupeMode() { return m_dupeMode; }
 		NzbParameterList* GetParameters() { return &m_parameters; }
 		bool GetAddTop() { return m_addTop; }
 		bool GetAddPaused() { return m_addPaused; }
+		bool GetAutoCategory() { return m_autoCategory; }
 		NzbInfo* GetUrlInfo() { return m_urlInfo; }
 		void SetAddStatus(EAddStatus addStatus);
 		void SetNzbId(int nzbId);
 	private:
-		CString m_filename;
-		CString m_nzbName;
-		CString m_category;
-		int m_priority;
-		CString m_dupeKey;
-		int m_dupeScore;
-		EDupeMode m_dupeMode;
 		NzbParameterList m_parameters;
+		std::string m_filename;
+		std::string m_nzbName;
+		std::string m_category;
+		std::string m_dupeKey;
+		int m_priority;
+		int m_dupeScore;
+		bool m_autoCategory;
 		bool m_addTop;
 		bool m_addPaused;
+		EDupeMode m_dupeMode;
 		NzbInfo* m_urlInfo;
 		EAddStatus* m_addStatus;
 		int* m_nzbId;
 	};
 
-	typedef std::deque<QueueData> QueueList;
+	using QueueList = std::deque<QueueData>;
 
 	FileList m_fileList;
 	QueueList m_queueList;
 	std::mutex m_scanMutex;
-	std::atomic<bool> m_requestedNzbDirScan{false};
-	std::atomic<bool> m_scanning{false};
+	std::atomic<bool> m_requestedNzbDirScan{ false };
+	std::atomic<bool> m_scanning{ false };
 	static int m_idGen;
 	int m_nzbDirInterval = 0;
 	int m_pass = 0;
@@ -120,11 +149,27 @@ private:
 	
 
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
-	bool AddFileToQueue(const char* filename, const char* nzbName, const char* category,
-		int priority, const char* dupeKey, int dupeScore, EDupeMode dupeMode,
-		NzbParameterList* parameters, bool addTop, bool addPaused, NzbInfo* urlInfo, int* nzbId);
-	void ProcessIncomingFile(const char* directory, const char* baseFilename,
-		const char* fullFilename, const char* category);
+	bool AddFileToQueue(
+		const char* filename, 
+		const char* nzbName, 
+		const char* category,
+		bool autoCategory,
+		int priority, 
+		const char* dupeKey, 
+		int dupeScore, 
+		EDupeMode dupeMode,
+		NzbParameterList* parameters, 
+		bool addTop, 
+		bool addPaused, 
+		NzbInfo* urlInfo, 
+		int* nzbId
+	);
+	void ProcessIncomingFile(
+		const char* directory, 
+		const char* baseFilename,
+		const char* fullFilename, 
+		const char* category
+	);
 	bool CanProcessFile(const char* fullFilename, bool checkStat);
 	void DropOldFiles();
 };

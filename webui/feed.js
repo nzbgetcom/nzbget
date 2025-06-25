@@ -370,7 +370,7 @@ var FeedDialog = (new function($)
 				name += '.nzb';
 			}
 			RPC.call('append', [name, fetchItems[0].URL, fetchItems[0].AddCategory, fetchItems[0].Priority, false,
-				false, fetchItems[0].DupeKey, fetchItems[0].DupeScore, fetchItems[0].DupeMode],
+				false, fetchItems[0].DupeKey, fetchItems[0].DupeScore, fetchItems[0].DupeMode, true],
 				function()
 			{
 				fetchItems.shift();

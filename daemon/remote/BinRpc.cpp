@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -413,6 +414,7 @@ void DownloadBinCommand::Execute()
 	int priority = ntohl(DownloadRequest.m_priority);
 	bool addPaused = ntohl(DownloadRequest.m_addPaused);
 	bool addTop = ntohl(DownloadRequest.m_addFirst);
+	bool autoCategory = ntohl(DownloadRequest.m_autoCategory);
 	int dupeMode = ntohl(DownloadRequest.m_dupeMode);
 	int dupeScore = ntohl(DownloadRequest.m_dupeScore);
 
@@ -426,6 +428,7 @@ void DownloadBinCommand::Execute()
 		nzbInfo->SetUrl(nzbContent);
 		nzbInfo->SetFilename(DownloadRequest.m_nzbFilename);
 		nzbInfo->SetCategory(DownloadRequest.m_category);
+		nzbInfo->SetAutoCategory(autoCategory);
 		nzbInfo->SetPriority(priority);
 		nzbInfo->SetAddUrlPaused(addPaused);
 		nzbInfo->SetDupeKey(DownloadRequest.m_dupeKey);
@@ -438,9 +441,23 @@ void DownloadBinCommand::Execute()
 	}
 	else
 	{
-		ok = g_Scanner->AddExternalFile(DownloadRequest.m_nzbFilename, DownloadRequest.m_category, priority,
-			DownloadRequest.m_dupeKey, dupeScore, (EDupeMode)dupeMode, nullptr, addTop, addPaused,
-			nullptr, nullptr, nzbContent, bufLen, nullptr) != Scanner::asFailed;
+		ok = g_Scanner->AddExternalFile(
+			DownloadRequest.m_nzbFilename,
+			DownloadRequest.m_category,
+			autoCategory,
+			priority,
+			DownloadRequest.m_dupeKey,
+			dupeScore,
+			static_cast<EDupeMode>(dupeMode),
+			nullptr,
+			addTop,
+			addPaused,
+			nullptr,
+			nullptr,
+			nzbContent,
+			bufLen,
+			nullptr
+		) != Scanner::asFailed;
 	}
 
 	SendBoolResponse(ok, BString<1024>(ok ? "Collection %s added to queue" :

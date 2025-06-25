@@ -241,6 +241,7 @@ var Upload = (new function($)
 		$('#AddDialog_FilesHelp').show();
 		$('#AddDialog_URLLabel img').hide();
 		$('#AddDialog_URLLabel i').hide();
+		$('#AddDialog_AutoCategory').prop('checked', false);
 		$('#AddDialog_Paused').prop('checked', false);
 		$('#AddDialog_DupeForce').prop('checked', false);
 		enableAllButtons();
@@ -356,9 +357,22 @@ var Upload = (new function($)
 			var priority = parseInt($('#AddDialog_Priority').val());
 			var filename = info.name + info.ext;
 			var addPaused = $('#AddDialog_Paused').is(':checked');
+			var autoCategory = $('#AddDialog_AutoCategory').is(':checked');
 			var dupeMode = $('#AddDialog_DupeForce').is(':checked') ? "FORCE" : "SCORE";
 			var params = info.password === '' ? [] : [{'*Unpack:Password' : info.password}];
-			RPC.call('append', [filename, base64str, category, priority, false, addPaused, info.dupekey, info.dupescore, dupeMode, params], fileCompleted, fileFailure);
+			RPC.call('append', [
+				filename, 
+				base64str, 
+				category, 
+				priority, 
+				false, 
+				addPaused, 
+				info.dupekey, 
+				info.dupescore, 
+				dupeMode,
+				autoCategory,
+				params,
+			], fileCompleted, fileFailure);
 		};
 
 		if (reader.readAsBinaryString)
@@ -410,10 +424,23 @@ var Upload = (new function($)
 		
 		var category = $('#AddDialog_Category').val();
 		var priority = parseInt($('#AddDialog_Priority').val());
+		var autoCategory = $('#AddDialog_AutoCategory').is(':checked');
 		var addPaused = $('#AddDialog_Paused').is(':checked');
 		var dupeMode = $('#AddDialog_DupeForce').is(':checked') ? "FORCE" : "SCORE";
 		var params = urlInfo.password === '' ? [] : [{'*Unpack:Password' : urlInfo.password}];
-		RPC.call('append', [urlInfo.name, url, category, priority, false, addPaused, urlInfo.dupekey, urlInfo.dupescore, dupeMode, params], urlCompleted, urlFailure);
+		RPC.call('append', [
+			urlInfo.name, 
+			url, 
+			category, 
+			priority, 
+			false, 
+			addPaused, 
+			urlInfo.dupekey, 
+			urlInfo.dupescore, 
+			dupeMode, 
+			autoCategory,
+			params,
+		], urlCompleted, urlFailure);
 	}
 
 	function urlCompleted(result)

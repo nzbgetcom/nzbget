@@ -734,7 +734,7 @@ var DownloadsUI = (new function($)
 	this.fillCategoryCombo = function(combo)
 	{
 		combo.empty();
-		combo.append('<option>Auto</option>');
+		combo.append('<option></option>');
 
 		for (var i=0; i < Options.categories.length; i++)
 		{

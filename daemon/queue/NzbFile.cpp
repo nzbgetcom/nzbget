@@ -30,8 +30,8 @@
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 
-NzbFile::NzbFile(const char* fileName, const char* category) :
-	m_fileName(fileName)
+NzbFile::NzbFile(const char* fileName, const char* category) 
+	: m_fileName{ fileName ? fileName : "" }
 {
 	debug("Creating NZBFile");
 
@@ -462,7 +462,6 @@ void NzbFile::Parse_EndElement(const char *name)
 	else if (!strcmp("meta", name) && m_hasCategory)
 	{
 		m_category = m_tagContent;
-		m_nzbInfo->SetCategory(m_tagContent);
 	}
 }
 
