@@ -73,18 +73,18 @@ void NzbScriptController::ExecuteScriptList(const char* scriptList)
 		return;
 	}
 
-	g_ExtensionManager->ForEach([&](auto script)
-		{
-			// split szScriptList into tokens
-			Tokenizer tok(scriptList, ",;");
-			while (const char* scriptName = tok.Next())
+	Tokenizer tok(scriptList, ",;");
+	while (const char* scriptName = tok.Next())
+	{
+		auto found = g_ExtensionManager->FindIf([&scriptName](auto script)
 			{
-				if (strcmp(scriptName, script->GetName()) == 0)
-				{
-					ExecuteScript(std::move(script));
-					break;
-				}
+				return strcmp(scriptName, script->GetName()) == 0;
 			}
+		);
+
+		if (found)
+		{
+			ExecuteScript(std::move(found.value()));
 		}
-	);
+	}
 }
