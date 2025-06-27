@@ -41,6 +41,10 @@ ArticleDownloader::ArticleDownloader()
 ArticleDownloader::~ArticleDownloader()
 {
 	debug("Destroying ArticleDownloader");
+
+#ifndef DISABLE_TLS
+	OpenSSL::StopSSLThread();
+#endif
 }
 
 void ArticleDownloader::SetInfoName(const char* infoName)

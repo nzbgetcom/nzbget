@@ -4,6 +4,7 @@ set(ExtensionSrc
 	ExtensionLoaderTest.cpp
 	ExtensionTest.cpp
 	ExtensionManagerTest.cpp
+	../suite/TestUtil.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ManifestFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
@@ -24,6 +25,7 @@ set(ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
@@ -37,7 +39,7 @@ endif()
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE ${LIBS})
-target_include_directories(ExtensionTests PRIVATE ${INCLUDES})
+target_include_directories(ExtensionTests PRIVATE ${INCLUDES} ../suite)
 
 file(COPY ../testdata/extension/manifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/extension/V1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

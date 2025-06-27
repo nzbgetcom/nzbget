@@ -857,7 +857,7 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		char* hash16k = nullptr;
 		char* parSetId = nullptr;
 		char filenameBuf[1024];
-		char origName[1024];
+		char origName[1024] = {};
 
 		if (formatVersion >= 49)
 		{

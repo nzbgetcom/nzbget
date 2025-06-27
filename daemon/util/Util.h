@@ -24,6 +24,7 @@
 
 #include <optional>
 #include <type_traits>
+#include <string_view>
 #include "NString.h"
 
 #ifdef WIN32
@@ -51,7 +52,55 @@ public:
 
 	static int64 JoinInt64(uint32 Hi, uint32 Lo);
 	static void SplitInt64(int64 Int64, uint32* Hi, uint32* Lo);
-	static std::optional<double> StrToNum(const std::string& str);
+
+	template <typename T>
+	static std::optional<T> StrToNum(std::string_view str)
+	{
+		static_assert(std::is_arithmetic_v<T>, "T must be an arithmetic type");
+
+		T result{};
+		errno = 0;
+		auto start = str.data();
+		char* end{};
+
+		if constexpr (std::is_floating_point_v<T>)
+		{
+			double value = std::strtod(start, &end);
+			if (value < std::numeric_limits<T>::lowest() || value > std::numeric_limits<T>::max())
+			{
+				return std::nullopt;
+			}
+			result = static_cast<T>(value);
+		}
+		else
+		{
+			if constexpr (std::is_signed_v<T>)
+			{
+				int64_t value = std::strtoll(start, &end, 10);
+				if (value < std::numeric_limits<T>::min() || value > std::numeric_limits<T>::max())
+				{
+					return std::nullopt;
+				}
+				result = static_cast<T>(value);
+			}
+			else
+			{
+				uint64_t value = std::strtoull(start, &end, 10);
+				if (value < std::numeric_limits<T>::min() || value > std::numeric_limits<T>::max())
+				{
+					return std::nullopt;
+				}
+				result = static_cast<T>(value);
+			}
+		}
+
+		if (start == end)
+		{
+			return std::nullopt;
+		}
+
+		return result;
+	}
 
 	static void TrimRight(char* str);
 	static void TrimRight(std::string& str);
@@ -193,7 +242,7 @@ public:
 	* Returns program version and revision number as string formatted like "0.7.0-r295".
 	* If revision number is not available only version is returned ("0.7.0").
 	*/
-	static const char* VersionRevision() { return VersionRevisionBuf; };
+	static const char* VersionRevision() { return VersionRevisionBuf; }
 
 	static char VersionRevisionBuf[100];
 

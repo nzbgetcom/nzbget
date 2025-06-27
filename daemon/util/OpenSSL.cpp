@@ -1,6 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
+ *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -19,42 +20,18 @@
 
 #include "nzbget.h"
 
-#define BOOST_TEST_MODULE "NNTPTest" 
-#include <boost/test/included/unit_test.hpp>
+#ifndef DISABLE_TLS
 
-#include "Log.h"
-#include "Options.h"
-#include "WorkState.h"
-#include "DiskState.h"
-#include "ServerPool.h"
-#include "YEncode.h"
-
-Log* g_Log;
-WorkState* g_WorkState;
-Options* g_Options;
-DiskState* g_DiskState;
-ServerPool* g_ServerPool;
-
-struct InitGlobals
+namespace OpenSSL
 {
-	InitGlobals()
+	void StopSSLThread()
 	{
-		YEncode::init();
-		g_Log = new Log();
-		g_WorkState = new WorkState();
-		g_Options = new Options(nullptr, nullptr);
-		g_DiskState = new DiskState();
-		g_ServerPool = new ServerPool();
+#ifndef LIBRESSL_VERSION_NUMBER
+		// OpenSSL specific: cleanly shut down OpenSSL's thread handling.
+		// LibreSSL doesn't require or provide OPENSSL_thread_stop().
+		OPENSSL_thread_stop();
+#endif
 	}
+}
 
-	~InitGlobals()
-	{
-		delete g_WorkState;
-		delete g_Options;
-		delete g_DiskState;
-		delete g_ServerPool;
-		delete g_Log;
-	}
-};
-
-BOOST_GLOBAL_FIXTURE(InitGlobals);
+#endif

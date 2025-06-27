@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -22,23 +23,35 @@
 #include "FeedInfo.h"
 #include "Util.h"
 
-FeedInfo::FeedInfo(int id, const char* name, const char* url, bool backlog, int interval,
-		const char* filter, bool pauseNzb, const char* category, int priority, const char* extensions) :
-	m_backlog(backlog), m_interval(interval), m_pauseNzb(pauseNzb), m_priority(priority)
+FeedInfo::FeedInfo(
+	int id,
+	const char* name,
+	const char* url,
+	bool backlog,
+	int interval,
+	const char* filter,
+	bool pauseNzb,
+	const char* category,
+	int priority,
+	const char* extensions
+)
+	: m_id{ id }
+	, m_name{ name ? name : "" }
+	, m_url{ url ? url : "" }
+	, m_filter{ filter ? filter : "" }
+	, m_category{ category ? category : "" }
+	, m_extensions{ extensions ? extensions : "" }
+	, m_backlog{ backlog}
+	, m_interval{ interval }
+	, m_pauseNzb{ pauseNzb }
+	, m_priority{ priority }
 {
-	m_id = id;
-	m_name = name ? name : "";
-	if (m_name.Length() == 0)
+	if (m_name.empty())
 	{
-		m_name.Format("Feed%i", m_id);
+		m_name = "Feed" + std::to_string(m_id);
 	}
-	m_url = url ? url : "";
-	m_filter = filter ? filter : "";
-	m_filterHash = Util::HashBJ96(m_filter, strlen(m_filter), 0);
-	m_category = category ? category : "";
-	m_extensions = extensions ? extensions : "";
+	m_filterHash = Util::HashBJ96(m_filter.c_str(), m_filter.size(), 0);
 }
-
 
 FeedItemInfo::Attr* FeedItemInfo::Attributes::Find(const char* name)
 {
@@ -56,13 +69,13 @@ FeedItemInfo::Attr* FeedItemInfo::Attributes::Find(const char* name)
 
 void FeedItemInfo::SetSeason(const char* season)
 {
-	m_season = season;
+	m_season = season ? season : "";
 	m_seasonNum = season ? ParsePrefixedInt(season) : 0;
 }
 
 void FeedItemInfo::SetEpisode(const char* episode)
 {
-	m_episode = episode;
+	m_episode = episode ? episode : "";
 	m_episodeNum = episode ? ParsePrefixedInt(episode) : 0;
 }
 
@@ -78,9 +91,10 @@ int FeedItemInfo::ParsePrefixedInt(const char *value)
 
 void FeedItemInfo::AppendDupeKey(const char* extraDupeKey)
 {
-	if (!m_dupeKey.Empty() && !Util::EmptyStr(extraDupeKey))
+	if (!m_dupeKey.empty() && !Util::EmptyStr(extraDupeKey))
 	{
-		m_dupeKey.AppendFmt("-%s", extraDupeKey);
+		m_dupeKey += "-";
+		m_dupeKey += extraDupeKey;
 	}
 }
 
@@ -92,33 +106,35 @@ void FeedItemInfo::BuildDupeKey(const char* rageId, const char* tvdbId, const ch
 
 	if (m_imdbId != 0)
 	{
-		m_dupeKey.Format("imdb=%i", m_imdbId);
+		m_dupeKey = "imdb=" + std::to_string(m_imdbId);
 	}
 	else if (!Util::EmptyStr(series) && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
-		m_dupeKey.Format("series=%s-%s-%s", series, *m_season, *m_episode);
+		m_dupeKey = std::string("series=") + series + "-" + m_season + "-" + m_episode;
 	}
 	else if (rageIdVal != 0 && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
-		m_dupeKey.Format("rageid=%i-%s-%s", rageIdVal, *m_season, *m_episode);
+		m_dupeKey = "rageid=" + std::to_string(rageIdVal) + "-" + m_season + "-" + m_episode;
 	}
 	else if (tvdbIdVal != 0 && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
-		m_dupeKey.Format("tvdbid=%i-%s-%s", tvdbIdVal, *m_season, *m_episode);
+		m_dupeKey = "tvdbid=" + std::to_string(tvdbIdVal) + "-" + m_season + "-" + m_episode;
 	}
 	else if (tvmazeIdVal != 0 && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
-		m_dupeKey.Format("tvmazeid=%i-%s-%s", tvmazeIdVal, *m_season, *m_episode);
+		m_dupeKey = "tvmazeid=" + std::to_string(tvmazeIdVal) + "-" + m_season + "-" + m_episode;
 	}
 	else
 	{
 		m_dupeKey = "";
 	}
+
+	m_dupeKey.shrink_to_fit();
 }
 
 int FeedItemInfo::GetSeasonNum()
 {
-	if (!m_season && !m_seasonEpisodeParsed)
+	if (m_season.empty() && !m_seasonEpisodeParsed)
 	{
 		ParseSeasonEpisode();
 	}
@@ -128,7 +144,7 @@ int FeedItemInfo::GetSeasonNum()
 
 int FeedItemInfo::GetEpisodeNum()
 {
-	if (!m_episode && !m_seasonEpisodeParsed)
+	if (m_episode.empty() && !m_seasonEpisodeParsed)
 	{
 		ParseSeasonEpisode();
 	}
@@ -138,6 +154,11 @@ int FeedItemInfo::GetEpisodeNum()
 
 void FeedItemInfo::ParseSeasonEpisode()
 {
+	if (!m_feedFilterHelper)
+	{
+		return;
+	}
+
 	m_seasonEpisodeParsed = true;
 
 	const char* pattern = "[^[:alnum:]]s?([0-9]+)[ex]([0-9]+(-?e[0-9]+)?)[^[:alnum:]]";
@@ -148,12 +169,15 @@ void FeedItemInfo::ParseSeasonEpisode()
 		regEx = std::make_unique<RegEx>(pattern, 10);
 	}
 
-	if (regEx->Match(m_title))
+	if (regEx->Match(m_title.c_str()))
 	{
-		SetSeason(BString<100>("S%02d", atoi(m_title + regEx->GetMatchStart(1))));
+		const char* season = m_title.c_str() + regEx->GetMatchStart(1);
+		int seasonNum = Util::StrToNum<int>(season).value_or(0);
+		SetSeason(BString<100>("S%02d", seasonNum));
 
 		BString<100> regValue;
-		regValue.Set(m_title + regEx->GetMatchStart(2), regEx->GetMatchLen(2));
+		const char* val = m_title.c_str() + regEx->GetMatchStart(2);
+		regValue.Set(val, regEx->GetMatchLen(2));
 
 		BString<100> episode("E%s", *regValue);
 		Util::ReduceStr(episode, "-", "");
@@ -164,14 +188,14 @@ void FeedItemInfo::ParseSeasonEpisode()
 
 const char* FeedItemInfo::GetDupeStatus()
 {
-	if (!m_dupeStatus)
+	if (m_dupeStatus.empty())
 	{
 		BString<1024> statuses;
-		m_feedFilterHelper->CalcDupeStatus(m_title, m_dupeKey, statuses, statuses.Capacity());
+		m_feedFilterHelper->CalcDupeStatus(m_title.c_str(), m_dupeKey.c_str(), statuses, statuses.Capacity());
 		m_dupeStatus = statuses;
 	}
 
-	return m_dupeStatus;
+	return m_dupeStatus.c_str();
 }
 
 

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -236,25 +236,6 @@ void Util::SplitInt64(int64 Int64, uint32* Hi, uint32* Lo)
 {
 	*Hi = (uint32)(Int64 >> 32);
 	*Lo = (uint32)(Int64 & 0xFFFFFFFF);
-}
-
-std::optional<double> 
-Util::StrToNum(const std::string& str)
-{
-	std::istringstream ss(str);
-	double num;
-
-	if (ss >> num)
-	{
-		if (!ss.eof()) 
-		{
-			return std::nullopt;
-		}
-
-		return { num };
-	}
-
-	return std::nullopt;
 }
 
 /* Base64 decryption is taken from
@@ -526,9 +507,7 @@ void Util::TrimRight(char* str)
 
 void Util::TrimRight(std::string& str)
 {
-	while (
-		!str.empty() &&
-		(str.back() == '\n' || str.back() == '\r' || str.back() == ' ' || str.back() == '\t'))
+	while (!str.empty() && std::isspace(str.back()))
 	{
 		str.pop_back();
 	}

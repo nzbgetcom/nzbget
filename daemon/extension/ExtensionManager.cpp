@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 
 #include "nzbget.h"
 
-#include <algorithm>
 #include "Util.h"
 #include "FileSystem.h"
 #include "NString.h"
@@ -29,10 +28,25 @@
 
 namespace ExtensionManager
 {
-	const Extensions& Manager::GetExtensions() const &
+	void Manager::ForEach(std::function<void(const ExtensionPtr)> callback) const
 	{
-		std::shared_lock<std::shared_mutex> lock{m_mutex};
-		return m_extensions;
+		std::shared_lock<std::shared_mutex> lock{ m_mutex };
+
+		std::for_each(std::cbegin(m_extensions), std::cend(m_extensions), callback);
+	}
+
+	std::optional<ExtensionPtr>
+	Manager::FindIf(std::function<bool(ExtensionPtr)> comparator) const
+	{
+		std::shared_lock<std::shared_mutex> lock{ m_mutex };
+
+		auto found = std::find_if(std::cbegin(m_extensions), std::cend(m_extensions), comparator);
+		if (found != std::cend(m_extensions))
+		{
+			return *found;
+		}
+
+		return std::nullopt;
 	}
 
 	std::pair<WebDownloader::EStatus, std::string>
@@ -185,9 +199,9 @@ namespace ExtensionManager
 	}
 
 	std::optional<std::string>
-	Manager::DeleteExtension(const Extension::Script& ext)
+	Manager::DeleteExtension(const Extension::Script& extension)
 	{
-		const char* location = ext.GetLocation();
+		const char* location = extension.GetLocation();
 
 		ptrdiff_t count = std::count_if(
 			std::begin(m_extensions),
@@ -200,7 +214,7 @@ namespace ExtensionManager
 			// for backward compatibility, when multiple V1 extensions placed 
 			// in the same directory in which case we have to delete an entry file, 
 			// not the entire directory.
-			location = ext.GetEntry();
+			location = extension.GetEntry();
 		}
 
 		if (FileSystem::DirectoryExists(location))
@@ -239,8 +253,8 @@ namespace ExtensionManager
 			if (filename[0] == '.' || filename[0] == '_')
 				continue;
 
-			BString<1024> entry("%s%c%s", directory, PATH_SEPARATOR, filename);
-			if (!FileSystem::DirectoryExists(entry))
+			const std::string entry = std::string(directory) + PATH_SEPARATOR + filename;
+			if (!FileSystem::DirectoryExists(entry.c_str()))
 			{
 				std::string name = GetExtensionName(filename);
 				if (Exists(name))
@@ -248,8 +262,8 @@ namespace ExtensionManager
 					continue;
 				}
 
-				const char* location = isSubDir ? directory : *entry;
-				extension.SetEntry(*entry);
+				const char* location = isSubDir ? directory : entry.c_str();
+				extension.SetEntry(entry.c_str());
 				extension.SetName(std::move(name));
 				if (ExtensionLoader::V1::Load(extension, location, rootDir))
 				{
@@ -258,14 +272,14 @@ namespace ExtensionManager
 			}
 			else if (!isSubDir)
 			{
-				LoadExtensionDir(entry, true, rootDir);
+				LoadExtensionDir(entry.c_str(), true, rootDir);
 			}
 		}
 	}
 
 	void Manager::CreateTasks() const
 	{
-		for (const auto extension : m_extensions)
+		for (const auto& extension : m_extensions)
 		{
 			if (!extension->GetSchedulerScript() || Util::EmptyStr(extension->GetTaskTime()))
 			{

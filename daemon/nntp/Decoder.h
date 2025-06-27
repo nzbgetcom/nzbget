@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,13 +15,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef DECODER_H
 #define DECODER_H
 
+#include <string>
 #include "NString.h"
 #include "Util.h"
 
@@ -57,9 +59,35 @@ public:
 	uint32 GetExpectedCrc() { return m_expectedCRC; }
 	uint32 GetCalculatedCrc() { return m_calculatedCRC; }
 	bool GetEof() { return m_eof; }
-	const char* GetArticleFilename() { return m_articleFilename; }
+	const char* GetArticleFilename() { return m_articleFilename.c_str(); }
 
-private: 
+private:
+	/**
+	 * @brief Extracts the begin and end positions from a "=ypart" line.
+	 *
+	 * Parses the "=ypart" line to find " begin=" and " end=".
+	*/
+	void ParseYpart(const char* buffer);
+
+	/**
+	 * @brief Extracts the filename from a yEnc "name=" field.
+	 *
+	 * Parses the "name=" field, handling cases where "=ypart" is on the same line.
+	 * If "=ypart" is found within the name, ParseYpart is called.
+	 * @note This function handles the unusual case where "=ypart" information is present
+	 *       on the same line as the "name=" field.  This can happen if the yEnc encoder
+	 *       doesn't properly separate the header lines, e.g.:
+	 * 		 =ybegin part=1 total=10 line=128 size=500000 name=mybinary.dat=ypart begin=1 end=100000
+	 *		 .... data
+	 *		 =yend size=100000 part=1 pcrc32=abcdef12
+	 * 		 Normal message:
+	 *	     =ybegin part=1 total=10 line=128 size=500000 name=mybinary.dat
+	 *       =ypart begin=1 end=100000
+	 *		 .... data
+	 *		 =yend size=100000 part=1 pcrc32=abcdef12
+	*/
+	void ParseName(const char* buffer, int len);
+
 	EFormat m_format = efUnknown;
 	bool m_begin;
 	bool m_part;
@@ -77,7 +105,7 @@ private:
 	bool m_crcCheck;
 	char m_state;
 	bool m_rawMode = false;
-	CString m_articleFilename;
+	std::string m_articleFilename;
 	StringBuilder m_lineBuf;
 	Crc32 m_crc32;
 

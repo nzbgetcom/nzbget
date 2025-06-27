@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -67,20 +68,23 @@ void NzbScriptController::PrepareEnvScript(NzbParameterList* parameters, const c
 
 void NzbScriptController::ExecuteScriptList(const char* scriptList)
 {
-	for (const auto script : g_ExtensionManager->GetExtensions())
+	if (Util::EmptyStr(scriptList))
 	{
-		if (scriptList && *scriptList)
-		{
-			// split szScriptList into tokens
-			Tokenizer tok(scriptList, ",;");
-			while (const char* scriptName = tok.Next())
+		return;
+	}
+
+	Tokenizer tok(scriptList, ",;");
+	while (const char* scriptName = tok.Next())
+	{
+		auto found = g_ExtensionManager->FindIf([&scriptName](auto script)
 			{
-				if (strcmp(scriptName, script->GetName()) == 0)
-				{
-					ExecuteScript(std::move(script));
-					break;
-				}
+				return strcmp(scriptName, script->GetName()) == 0;
 			}
+		);
+
+		if (found)
+		{
+			ExecuteScript(std::move(found.value()));
 		}
 	}
 }

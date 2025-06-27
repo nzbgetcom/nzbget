@@ -41,7 +41,7 @@ public:
 	virtual void Append(const void* buffer, int len) = 0;
 };
 
-class ArticleDownloader : public Thread, public Subject
+class ArticleDownloader final : public Thread, public Subject
 {
 public:
 	enum EStatus
@@ -66,8 +66,8 @@ public:
 	ArticleInfo* GetArticleInfo() { return m_articleInfo; }
 	EStatus GetStatus() { return m_status; }
 	ServerStatList* GetServerStats() { return &m_serverStats; }
-	virtual void Run();
-	virtual void Stop();
+	void Run() override;
+	void Stop() override;
 	time_t GetLastUpdateTime() { return m_lastUpdateTime; }
 	void SetLastUpdateTimeNow();
 	const char* GetArticleFilename() { return m_articleFilename; }

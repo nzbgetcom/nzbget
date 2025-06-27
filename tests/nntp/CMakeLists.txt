@@ -2,12 +2,15 @@ set(NNTPTestsSrc
 	main.cpp
 	ServerPoolTest.cpp
 	StatMeterTest.cpp
+	DecoderTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ServerPool.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/StatMeter.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NntpConnection.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/Decoder.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nserv/YEncoder.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp

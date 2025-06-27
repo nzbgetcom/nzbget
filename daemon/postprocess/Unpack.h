@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -26,18 +27,20 @@
 #include "DownloadInfo.h"
 #include "ScriptController.h"
 
-class UnpackController : public Thread, public ScriptController
+class UnpackController final : public Thread, public ScriptController
 {
 public:
-	virtual void Run();
-	virtual void Stop();
+	void Run() override;
+	void Stop() override;
 	static void StartJob(PostInfo* postInfo);
 	static bool HasCompletedArchiveFiles(NzbInfo* nzbInfo);
 	static const char* DecodeSevenZipExitCode(int ec);
 
+	~UnpackController();
+
 protected:
-	virtual bool ReadLine(char* buf, int bufSize, FILE* stream);
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	bool ReadLine(char* buf, int bufSize, FILE* stream) override;
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	enum EUnpacker

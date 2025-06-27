@@ -407,10 +407,13 @@ void DirectUnpack::Stop(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 			warn("Cancelling %s", *m_infoName);
 		}
 	}
-	AddExtraTime(nzbInfo);
-	if (nzbInfo->GetPostInfo())
+	if (nzbInfo)
 	{
-		nzbInfo->GetPostInfo()->SetWorking(false);
+		AddExtraTime(nzbInfo);
+		if (nzbInfo->GetPostInfo())
+		{
+			nzbInfo->GetPostInfo()->SetWorking(false);
+		}
 	}
 	Thread::Stop();
 	if (m_unpacking)

@@ -38,13 +38,15 @@ if(IS_X86)
 	endif()
 endif()
 
-add_library(regex STATIC
-	${CMAKE_SOURCE_DIR}/lib/regex/regex.c
-)
-target_include_directories(regex PUBLIC
-	${INCLUDES}
-	${CMAKE_SOURCE_DIR}/lib/regex
-)
+if(NOT HAVE_SYSTEM_REGEX_H)
+	add_library(regex STATIC
+		${CMAKE_SOURCE_DIR}/lib/regex/regex.c
+	)
+	target_include_directories(regex PUBLIC
+		${INCLUDES}
+		${CMAKE_SOURCE_DIR}/lib/regex
+	)
+endif()
 
 add_library(yencode STATIC
 	${CMAKE_SOURCE_DIR}/lib/yencode/SimdInit.cpp
@@ -59,10 +61,16 @@ add_library(yencode STATIC
 )
 target_include_directories(yencode PUBLIC
 	${CMAKE_SOURCE_DIR}/lib/yencode
-	${CMAKE_SOURCE_DIR}/lib/regex
+	$<$<NOT:$<BOOL:${HAVE_SYSTEM_REGEX_H}>>:${CMAKE_SOURCE_DIR}/lib/regex>
 	${CMAKE_SOURCE_DIR}/daemon/main
 	${INCLUDES}
 )
 
-set(LIBS ${LIBS} regex yencode)
-set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/lib/regex ${CMAKE_SOURCE_DIR}/lib/yencode)
+set(LIBS ${LIBS}
+	$<$<NOT:$<BOOL:${HAVE_SYSTEM_REGEX_H}>>:regex>
+	yencode
+)
+set(INCLUDES ${INCLUDES}
+	$<$<NOT:$<BOOL:${HAVE_SYSTEM_REGEX_H}>>:${CMAKE_SOURCE_DIR}/lib/regex>
+	${CMAKE_SOURCE_DIR}/lib/yencode
+)

@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -32,8 +33,9 @@ class RemoteServer : public Thread, public Observer
 {
 public:
 	RemoteServer(bool tls) : m_tls(tls) {}
-	virtual void Run();
-	virtual void Stop();
+	~RemoteServer();
+	void Run() override;
+	void Stop() override;
 	void ForceStop();
 	void Update(Subject* caller, void* aspect);
 
@@ -50,8 +52,8 @@ class RequestProcessor : public Thread, public Subject
 {
 public:
 	~RequestProcessor();
-	virtual void Run();
-	virtual void Stop();
+	void Run() override;
+	void Stop() override;
 	void SetTls(bool tls) { m_tls = tls; }
 	void SetConnection(std::unique_ptr<Connection>&& connection) { m_connection = std::move(connection); }
 

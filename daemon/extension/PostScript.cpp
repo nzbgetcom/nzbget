@@ -224,7 +224,6 @@ ScriptStatus::EStatus PostScriptController::AnalyseExitCode(int exitCode, const 
 				m_postInfo->SetForceRepair(true);
 				return ScriptStatus::srSuccess;
 			}
-			break;
 #endif
 
 		default:

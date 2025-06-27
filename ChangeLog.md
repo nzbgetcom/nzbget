@@ -1,3 +1,41 @@
+nzbget-v25.1
+  - Features:
+    - Added support for extracting file size from the description field in RSS feeds, providing more info upfront
+    [#580](https://github.com/nzbgetcom/nzbget/pull/580)
+
+  - Bug fixes:
+    - OpenSSL memory leaks and vulnerabilities associated with older SSL/TLS protocols
+    [#591](https://github.com/nzbgetcom/nzbget/pull/591)
+        - Fixed memory leaks caused by unreleased per-thread OpenSSL resources.
+        - Security Improvement: updated to use the latest and most secure TLS protocol supported by the client and server, mitigating known vulnerabilities in older SSL/TLS protocols.
+    - RSS feed segfault. Improved memory safety and prevent potential undefined behavior (UB)
+    [#569](https://github.com/nzbgetcom/nzbget/pull/569)
+    - Correctly parse yEnc headers with combined name/ypart lines
+    [#571](https://github.com/nzbgetcom/nzbget/pull/571)
+    - Data race in ExtensionManager that could cause application crashes
+    [#577](https://github.com/nzbgetcom/nzbget/pull/577)
+    - Added additional checks for missing server configuration options to prevent errors in webui
+    [#581](https://github.com/nzbgetcom/nzbget/pull/581)
+    - Prevented showing of negative age caused by incorrect dates in NZB file
+    [#583](https://github.com/nzbgetcom/nzbget/pull/583)
+    - Improved parsing of yEnc subjects without surrounding quotes, e.g. "[34/44] - id.bdmv yEnc (1/1)"
+    [#584](https://github.com/nzbgetcom/nzbget/pull/584)
+  
+  - For developers:
+    - Upgraded par2-turbo to v1.3.0
+    [#586](https://github.com/nzbgetcom/nzbget/pull/586)
+    - Added support for newer versions of the libxml2 library (v2.12+), ensuring the application continues to work on modern systems
+    [#575](https://github.com/nzbgetcom/nzbget/pull/575)
+    - Updated OpenBSD tests workflow to 7.7
+    [#573](https://github.com/nzbgetcom/nzbget/pull/573)
+    - Refactored Util::StrToNum by improving performance, safety and minimizing memory usage
+    [#578](https://github.com/nzbgetcom/nzbget/pull/578)
+    - Using the system’s built-in regex library instead of an older version
+    [#589](https://github.com/nzbgetcom/nzbget/pull/589)
+    - Resolved some analyzer warnings
+    [#590](https://github.com/nzbgetcom/nzbget/pull/590)
+    - Building the app without TLS support is now deprecated and will be removed in future releases.
+
 nzbget-v25.0
   - Features:
     - Completion and downloaded data statistics

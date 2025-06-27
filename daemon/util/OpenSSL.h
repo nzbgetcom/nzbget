@@ -1,6 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
+ *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
  *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -17,44 +18,24 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "nzbget.h"
+#ifndef OPENSSL_H
+#define OPENSSL_H
 
-#define BOOST_TEST_MODULE "NNTPTest" 
-#include <boost/test/included/unit_test.hpp>
+#include <memory>
+#include <openssl/ssl.h>
+#include <openssl/ec.h>
+#include <openssl/x509v3.h>
 
-#include "Log.h"
-#include "Options.h"
-#include "WorkState.h"
-#include "DiskState.h"
-#include "ServerPool.h"
-#include "YEncode.h"
-
-Log* g_Log;
-WorkState* g_WorkState;
-Options* g_Options;
-DiskState* g_DiskState;
-ServerPool* g_ServerPool;
-
-struct InitGlobals
+namespace OpenSSL
 {
-	InitGlobals()
-	{
-		YEncode::init();
-		g_Log = new Log();
-		g_WorkState = new WorkState();
-		g_Options = new Options(nullptr, nullptr);
-		g_DiskState = new DiskState();
-		g_ServerPool = new ServerPool();
-	}
+	using X509StorePtr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
+	using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
+	using EVPMdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
+	using EVPCipherCtxPtr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)>;
+	using SSLCtxPtr = std::unique_ptr<SSL_CTX, decltype(&SSL_CTX_free)>;
+	using SSLSessionPtr = std::unique_ptr<SSL, decltype(&SSL_free)>;
 
-	~InitGlobals()
-	{
-		delete g_WorkState;
-		delete g_Options;
-		delete g_DiskState;
-		delete g_ServerPool;
-		delete g_Log;
-	}
-};
+	void StopSSLThread();
+}
 
-BOOST_GLOBAL_FIXTURE(InitGlobals);
+#endif

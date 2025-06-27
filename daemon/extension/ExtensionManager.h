@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,13 +25,15 @@
 #include <memory>
 #include <shared_mutex>
 #include <optional>
+#include <functional>
 #include "WebDownloader.h"
 #include "Options.h"
 #include "Extension.h"
 
 namespace ExtensionManager
 {
-	using Extensions = std::vector<std::shared_ptr<const Extension::Script>>;
+	using ExtensionPtr = std::shared_ptr<const Extension::Script>;
+	using Extensions = std::vector<ExtensionPtr>;
 
 	class Manager final
 	{
@@ -59,8 +61,11 @@ namespace ExtensionManager
 
 		std::pair<WebDownloader::EStatus, std::string>
 		DownloadExtension(const std::string& url, const std::string& info);
-		
-		const Extensions& GetExtensions() const &;
+
+		void ForEach(std::function<void(const ExtensionPtr)> callback) const;
+
+		std::optional<ExtensionPtr> 
+		FindIf(std::function<bool(ExtensionPtr)> comparator) const;
 
 	private:
 		void LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir);

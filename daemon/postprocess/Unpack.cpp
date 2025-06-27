@@ -27,6 +27,13 @@
 #include "ParParser.h"
 #include "Options.h"
 
+UnpackController::~UnpackController()
+{
+#ifndef DISABLE_TLS
+	OpenSSL::StopSSLThread();
+#endif
+}
+
 bool UnpackController::FileList::Exists(const char* filename)
 {
 	return std::find(begin(), end(), filename) != end();
@@ -444,7 +451,6 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 	int count = 0;
 	int min = -1;
 	int max = -1;
-	int difSizeCount = 0;
 	int difSizeMin = 999999;
 	DirBrowser dir(m_destDir);
 	while (const char* filename = dir.Next())
@@ -462,7 +468,6 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 			int64 segmentSize = FileSystem::FileSize(fullFilename);
 			if (segmentSize != firstSegmentSize)
 			{
-				difSizeCount++;
 				difSizeMin = segNum < difSizeMin ? segNum : difSizeMin;
 				difSegmentSize = segmentSize;
 			}
@@ -881,12 +886,12 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		m_postInfo->SetStageTime(Util::CurrentTime());
 	}
 
-	if (m_unpacker == upUnrar && !strncmp(msgText, "Unrar: Extracting ", 18))
+	if (m_postInfo && m_unpacker == upUnrar && !strncmp(msgText, "Unrar: Extracting ", 18))
 	{
 		SetProgressLabel(msgText + 7);
 	}
 
-	if (m_unpacker == upUnrar && !strncmp(text, "Unrar: Extracting from ", 23))
+	if (m_postInfo && m_unpacker == upUnrar && !strncmp(text, "Unrar: Extracting from ", 23))
 	{
 #ifdef DEBUG
 		const char *filename = text + 23;

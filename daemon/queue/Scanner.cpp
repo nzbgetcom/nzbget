@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -379,10 +379,11 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 
 	if (reset)
 	{
-		for (const auto script : g_ExtensionManager->GetExtensions())
-		{
-			parameters->SetParameter(BString<1024>("%s:", script->GetName()), nullptr);
-		}
+		g_ExtensionManager->ForEach([&parameters](auto script)
+			{
+				parameters->SetParameter(BString<1024>("%s:", script->GetName()), nullptr);
+			}
+		);
 	}
 
 	if (!parameters->Find("*Unpack:"))
@@ -396,16 +397,17 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 		Tokenizer tok(extensions, ",;");
 		while (const char* scriptName = tok.Next())
 		{
-			for (const auto script : g_ExtensionManager->GetExtensions())
-			{
-				BString<1024> paramName("%s:", scriptName);
-				if ((script->GetPostScript() || script->GetQueueScript()) &&
-					!parameters->Find(paramName) &&
-					strcmp(scriptName, script->GetName()) == 0)
+			g_ExtensionManager->ForEach([&](auto script)
 				{
-					parameters->SetParameter(paramName, "yes");
+					BString<1024> paramName("%s:", scriptName);
+					if ((script->GetPostScript() || script->GetQueueScript()) &&
+						!parameters->Find(paramName) &&
+						strcmp(scriptName, script->GetName()) == 0)
+					{
+						parameters->SetParameter(paramName, "yes");
+					}
 				}
-			}
+			);
 		}
 	}
 }
