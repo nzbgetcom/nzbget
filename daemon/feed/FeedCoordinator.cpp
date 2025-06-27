@@ -581,7 +581,7 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 			FeedHistoryInfo* feedHistoryInfo = m_feedHistory.Find(feedItemInfo.GetUrl());
 			if (feedHistoryInfo)
 			{
-				feedItemInfo.SetStatus((FeedItemInfo::EStatus)feedHistoryInfo->GetStatus());
+				feedItemInfo.SetStatus(static_cast<FeedItemInfo::EStatus>(feedHistoryInfo->GetStatus()));
 			}
 		}
 	}

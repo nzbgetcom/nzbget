@@ -237,7 +237,7 @@ private:
 	void ParseSeasonEpisode();
 };
 
-typedef std::deque<FeedItemInfo> FeedItemList;
+using FeedItemList = std::deque<FeedItemInfo>;
 
 class FeedHistoryInfo
 {
