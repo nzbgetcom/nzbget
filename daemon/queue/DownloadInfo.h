@@ -143,6 +143,7 @@ public:
 	void SetSubject(const char* subject) { m_subject = subject; }
 	const char* GetFilename() { return m_filename.c_str(); }
 	void SetFilename(std::string filename) { m_filename = std::move(filename); }
+	void SetFilename(const char* filename) { m_filename = filename ? filename : ""; }
 	void SetOrigname(const char* origname) { m_origname = origname; }
 	const char* GetOrigname() { return m_origname; }
 	void MakeValidFilename();
