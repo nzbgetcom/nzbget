@@ -8,6 +8,7 @@ ARG UNRAR7_VERSION=7.1.6
 ARG UNRAR7_NATIVE=false
 ARG MAKE_JOBS=1
 ARG TARGETPLATFORM
+ARG CMAKE_BUILD_TYPE=Release
 
 #install build packages
 RUN \
@@ -44,7 +45,7 @@ RUN \
   mkdir -p /app/nzbget && \
   mkdir -p /nzbget/build && \
   cd /nzbget/build && \
-  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget && \
+  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} && \
   cmake --build . -j ${MAKE_JOBS} && \
   cmake --install . && \
   cmake --build . --target install-conf && \

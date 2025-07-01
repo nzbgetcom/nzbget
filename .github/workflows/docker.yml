@@ -58,8 +58,9 @@ jobs:
           provenance: false
           outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
           build-args: |
-            "NZBGET_RELEASE=${{ github.ref_name }}"
+            "NZBGET_RELEASE=main"
             "MAKE_JOBS=4"
+            "CMAKE_BUILD_TYPE=Debug"
 
       - name: Export digest
         run: |
@@ -123,7 +124,7 @@ jobs:
               TAG="${GITHUB_REF_NAME/\//-}"
               ;;
           esac
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "tag=debug" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
