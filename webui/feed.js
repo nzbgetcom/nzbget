@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -369,8 +370,19 @@ var FeedDialog = (new function($)
 			{
 				name += '.nzb';
 			}
-			RPC.call('append', [name, fetchItems[0].URL, fetchItems[0].AddCategory, fetchItems[0].Priority, false,
-				false, fetchItems[0].DupeKey, fetchItems[0].DupeScore, fetchItems[0].DupeMode],
+			var category = fetchItems[0].AddCategory ? fetchItems[0].AddCategory : fetchItems[0].Category;
+			RPC.call('append', [
+				name,
+				fetchItems[0].URL,
+				category,
+				fetchItems[0].Priority,
+				false,
+				false,
+				fetchItems[0].DupeKey,
+				fetchItems[0].DupeScore,
+				fetchItems[0].DupeMode,
+				false
+			],
 				function()
 			{
 				fetchItems.shift();

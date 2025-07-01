@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.1//EN" "http://www.newzbin.com/DTD/nzb/nzb-1.1.dtd">
 <nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
-<head></head>
+<head>
+<meta type="category">Movies</meta>
+</head>
 <file poster="yEncBin@Poster.com (yEncBin)" date="1435841472" subject="20155f68b0df03cc9bca2c58d426163ff [2/15] - &#34;20155f68b0df03cc9bca2c58d426163ff&#34; yEnc (62/68)">
 <groups>
 <group>alt.binaries.test</group>
