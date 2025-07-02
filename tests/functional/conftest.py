@@ -4,11 +4,7 @@ import os
 import time
 import shutil
 import base64
-import distutils.spawn
-try:
-	from xmlrpclib import ServerProxy # python 2
-except ImportError:
-	from xmlrpc.client import ServerProxy # python 3
+from xmlrpc.client import ServerProxy
 
 nzbget_srcdir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 nzbget_maindir = nzbget_srcdir + '/tests/testdata/nzbget.temp'
@@ -20,11 +16,11 @@ exe_ext = '.exe' if os.name == 'nt' else ''
 nzbget_bin = nzbget_srcdir + '/nzbget' + exe_ext
 nserv_datadir = nzbget_srcdir + '/tests/testdata/nserv.temp'
 
-sevenzip_bin = distutils.spawn.find_executable('7z')
+sevenzip_bin = shutil.which('7z')
 if sevenzip_bin is None:
 	sevenzip_bin = nzbget_srcdir + '/7z' + exe_ext
 
-par2_bin = distutils.spawn.find_executable('par2')
+par2_bin = shutil.which('par2')
 if par2_bin is None:
 	par2_bin = nzbget_srcdir + '/par2' + exe_ext
 
