@@ -7,6 +7,13 @@ on:
     - main
     tags:
     - "v*"
+  workflow_call:
+    inputs:
+      debug:
+        description: 'Build debug version'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
 
 env:
@@ -58,7 +65,6 @@ jobs:
           provenance: false
           outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
           build-args: |
-            "NZBGET_RELEASE=main"
             "MAKE_JOBS=4"
             "CMAKE_BUILD_TYPE=Debug"
 
@@ -113,6 +119,9 @@ jobs:
           case $GITHUB_REF_NAME in
             develop)
               TAG="testing"
+              if [[ "${{ inputs.debug }}" == "true" ]]; then
+                TAG="debug"
+              fi
               ;;
             main)
               TAG="latest"
@@ -122,9 +131,12 @@ jobs:
               ;;
             *)
               TAG="${GITHUB_REF_NAME/\//-}"
+              if [[ "${{ inputs.debug }}" == "true" ]]; then
+                TAG="debug"
+              fi
               ;;
           esac
-          echo "tag=debug" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

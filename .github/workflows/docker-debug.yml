@@ -1,0 +1,14 @@
+name: docker build
+
+on:
+  push:
+    branches:
+    - develop
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/docker.yml
+    with:
+      debug: true

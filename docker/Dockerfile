@@ -2,7 +2,6 @@
 FROM alpine:3.21.3 AS build
 
 # args
-ARG NZBGET_RELEASE=develop
 ARG UNRAR6_VERSION=6.2.12
 ARG UNRAR7_VERSION=7.1.6
 ARG UNRAR7_NATIVE=false
@@ -79,7 +78,7 @@ FROM alpine:3.21.3
 ARG NZBGET_RELEASE=develop
 
 # labels
-LABEL org.opencontainers.image.description="NZBGet from nzbget.com, version ${NZBGET_RELEASE}"
+LABEL org.opencontainers.image.description="NZBGet from nzbget.com"
 LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
 LABEL maintainer="nzbget@nzbget.com" 
 
