@@ -18,6 +18,7 @@ NZBGet is an efficient, open-source Usenet software designed for downloading bin
 |:-------------|-
 | latest       | Stable nzbget releases (from `main` repository branch)
 | testing      | Development nzbget builds (from `develop` repository branch)
+| debug        | Development nzbget builds with debug enabled (from `develop` repository branch)
 | v*           | Version-specific release builds (like v22.0 for 22.0 nzbget release)
 
 # Usage
@@ -25,7 +26,6 @@ NZBGet is an efficient, open-source Usenet software designed for downloading bin
 [docker-compose](https://docs.docker.com/compose/) (recommended)
 ```
 ---
-version: "2.1"
 services:
   nzbget:
     image: nzbgetcom/nzbget:latest
@@ -98,7 +98,6 @@ Dockerfile supports next build arguments:
 
 | Argument	      | Description
 |:----------------|-
-| NZBGET_RELEASE  | Branch name or tag to build from
 | UNRAR6_VERSION  | Unrar 6 version
 | UNRAR7_VERSION  | Unrar 7 version
 | UNRAR7_NATIVE   | Build native unrar (see below)
@@ -142,8 +141,6 @@ services:
     build:
       context: .
       args:
-        # branch to build nzbget from
-        NZBGET_RELEASE: "develop"
         # make jobs == host cpu cores
         MAKE_JOBS: 4
         # build native unrar
