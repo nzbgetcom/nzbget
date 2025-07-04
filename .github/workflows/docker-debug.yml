@@ -1,0 +1,17 @@
+name: docker debug build
+
+on:
+  push:
+    branches:
+    - develop
+  workflow_dispatch:
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/docker.yml
+    secrets: inherit
+    with:
+      debug: true
+    permissions:
+      packages: write
