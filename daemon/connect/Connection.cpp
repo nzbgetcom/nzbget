@@ -1334,7 +1334,7 @@ std::string ResolveAndroidHost(const char* host)
 	if (!android)
 	{
 		debug("Not android");
-		return nullptr;
+		return "";
 	}
 
 	struct hostent hinfobuf;
@@ -1350,7 +1350,7 @@ std::string ResolveAndroidHost(const char* host)
 	if (hinfo == nullptr)
 	{
 		debug("android_gethostbyname_r failed");
-		return nullptr;
+		return "";
 	}
 
 	std::string result;

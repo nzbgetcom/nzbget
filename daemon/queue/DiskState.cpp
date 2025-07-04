@@ -1126,15 +1126,15 @@ bool DiskState::LoadFileInfo(FileInfo* fileInfo, StateDiskFile& infile, int form
 	char buf[1024];
 
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-	if (fileSummary) fileInfo->SetSubject(buf);
+	if (fileSummary && !Util::EmptyStr(buf)) fileInfo->SetSubject(buf);
 
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-	if (fileSummary) fileInfo->SetFilename(buf);
+	if (fileSummary && !Util::EmptyStr(buf)) fileInfo->SetFilename(buf);
 
 	if (formatVersion >= 6)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-		if (fileSummary) fileInfo->SetOrigname(Util::EmptyStr(buf) ? nullptr : buf);
+		if (fileSummary && !Util::EmptyStr(buf)) fileInfo->SetOrigname(buf);
 	}
 
 	if (formatVersion >= 7)
@@ -1150,14 +1150,14 @@ bool DiskState::LoadFileInfo(FileInfo* fileInfo, StateDiskFile& infile, int form
 	{
 		int time, filenameConfirmed;
 		if (infile.ScanLine("%i,%i", &filenameConfirmed, &time) != 2) goto error;
-		if (fileSummary) fileInfo->SetFilenameConfirmed((bool)filenameConfirmed);
-		if (fileSummary) fileInfo->SetTime((time_t)time);
+		if (fileSummary) fileInfo->SetFilenameConfirmed(static_cast<bool>(filenameConfirmed));
+		if (fileSummary) fileInfo->SetTime(static_cast<time_t>(time));
 	}
 	else if (formatVersion >= 4)
 	{
 		int time;
 		if (infile.ScanLine("%i", &time) != 1) goto error;
-		if (fileSummary) fileInfo->SetTime((time_t)time);
+		if (fileSummary) fileInfo->SetTime(static_cast<time_t>(time));
 	}
 
 	uint32 High, Low;
@@ -1171,7 +1171,7 @@ bool DiskState::LoadFileInfo(FileInfo* fileInfo, StateDiskFile& infile, int form
 
 	int parFile;
 	if (infile.ScanLine("%i", &parFile) != 1) goto error;
-	if (fileSummary) fileInfo->SetParFile((bool)parFile);
+	if (fileSummary) fileInfo->SetParFile(static_cast<bool>(parFile));
 
 	int totalArticles, missedArticles;
 	if (infile.ScanLine("%i,%i", &totalArticles, &missedArticles) != 2) goto error;
@@ -1183,7 +1183,7 @@ bool DiskState::LoadFileInfo(FileInfo* fileInfo, StateDiskFile& infile, int form
 	for (int i = 0; i < size; i++)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-		if (fileSummary) fileInfo->GetGroups()->push_back(buf);
+		if (fileSummary && !Util::EmptyStr(buf)) fileInfo->GetGroups()->push_back(buf);
 	}
 
 	if (articles)
@@ -1295,7 +1295,7 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 	if (formatVersion >= 4)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-		fileInfo->SetFilename(buf);
+		if (!Util::EmptyStr(buf)) fileInfo->SetFilename(buf);
 	}
 
 	if (formatVersion >= 5)

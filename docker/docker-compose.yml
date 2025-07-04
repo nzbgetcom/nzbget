@@ -5,7 +5,6 @@ services:
       context: ../
       dockerfile: docker/Dockerfile
       args:
-        NZBGET_RELEASE: develop
         MAKE_JOBS: 4
         UNRAR7_NATIVE: true
     environment:

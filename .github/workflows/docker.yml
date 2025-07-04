@@ -7,6 +7,13 @@ on:
     - main
     tags:
     - "v*"
+  workflow_call:
+    inputs:
+      debug:
+        description: 'Build debug version'
+        type: boolean
+        required: false
+        default: false
   workflow_dispatch:
 
 env:
@@ -46,6 +53,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set build type
+        id: set-build-type
+        run: |
+          if [[ "${{ inputs.debug }}" == "true" ]]; then
+            echo "build_type=Debug" >> $GITHUB_OUTPUT
+          else
+            echo "build_type=Release" >> $GITHUB_OUTPUT
+          fi
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
@@ -58,8 +74,8 @@ jobs:
           provenance: false
           outputs: "type=image,oci-mediatypes=false,name=${{ env.REGISTRY_IMAGE }},push-by-digest=true,name-canonical=true,push=true"
           build-args: |
-            "NZBGET_RELEASE=${{ github.ref_name }}"
             "MAKE_JOBS=4"
+            "CMAKE_BUILD_TYPE=${{ steps.set-build-type.outputs.build_type }}"
 
       - name: Export digest
         run: |
@@ -123,6 +139,13 @@ jobs:
               TAG="${GITHUB_REF_NAME/\//-}"
               ;;
           esac
+          if [[ "${{ inputs.debug }}" == "true" ]]; then
+            if [[ "$GITHUB_REF_NAME" == "develop" ]]; then
+              TAG="debug"
+            else
+              TAG="$TAG-debug"
+            fi
+          fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
