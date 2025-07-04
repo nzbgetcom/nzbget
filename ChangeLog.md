@@ -1,3 +1,13 @@
+nzbget-v25.2
+  - Bug fixes
+    [#603](https://github.com/nzbgetcom/nzbget/pull/603)
+    - Prevented crashes (segfaults) that could occur when loading disk state files containing empty or malformed data, by adding additional input validation and null pointer protection
+    - Fixed a segfault in host resolution by ensuring a valid string is always returned
+  
+  - For developers:
+    - Added workflow to build and publish debug Docker images 
+    [#605](https://github.com/nzbgetcom/nzbget/pull/605)
+
 nzbget-v25.1
   - Features:
     - Added support for extracting file size from the description field in RSS feeds, providing more info upfront
