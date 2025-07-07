@@ -160,7 +160,13 @@ public:
 	void SetUrl(const char* url) { m_url = url ? url : ""; }
 	int64 GetSize() { return m_size; }
 	void SetSize(int64 size) { m_size = size; }
-	const char* GetCategory() const { return m_category.c_str(); }
+	const char* GetCategory() const
+	{
+		if (!m_addCategory.empty())
+			return m_addCategory.c_str();
+
+		return m_category.c_str();
+	}
 	void SetCategory(const char* category) { m_category = category ? category : ""; }
 	int GetImdbId() { return m_imdbId; }
 	void SetImdbId(int imdbId) { m_imdbId = imdbId; }

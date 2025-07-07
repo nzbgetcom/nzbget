@@ -12,6 +12,7 @@ int append(
   string DupeKey,
   int DupeScore, 
   string DupeMode, 
+  bool AutoCategory,
   struct[] PPParameters
 );
 ```
@@ -28,6 +29,7 @@ _Add nzb-file or URL to download queue_
 DupeKey (string) - duplicate key for nzb-file. See [RSS](../usage/RSS.md).
 - **DupeScore** `(int)` - duplicate score for nzb-file. See [RSS](../usage/RSS.md).
 - **DupeMode** `(string)` - duplicate mode for nzb-file. See [RSS](../usage/RSS.md).
+- **AutoCategory** `(bool)` - If true, the category will be automatically detected from the NZB file (if available).
 - **PPParameters** `(array)` - `v16.0` post-processing parameters. The array consists of structures with following fields:
   - **Name** `(string)` - name of post-processing parameter.
   - **Value** `(string)` - value of post-processing parameter.
