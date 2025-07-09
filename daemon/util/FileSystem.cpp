@@ -230,6 +230,18 @@ bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 }
 #endif
 
+bool FileSystem::CreateHardLink(const char *from, const char *to)
+{
+#ifdef WIN32
+	// TODO: Create Windows implementation
+	return false;
+#else
+	const auto [newPath, _] = SplitPathAndFilename(to);
+	CString errmsg;
+	return ForceDirectories(newPath.c_str(), errmsg) && link(from, to) == 0;
+#endif
+}
+
 CString FileSystem::GetCurrentDirectory()
 {
 #ifdef WIN32
@@ -710,6 +722,14 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 		DirBrowser dir(dirFilename);
 		while (const char* filename = dir.Next())
 		{
+			BString<1024> fullFilename("%s%c%s", dirFilename, PATH_SEPARATOR, filename);
+
+			// Recursivly remove empty folder, useful in case of abort with direct rename and hardlinking
+			if (DirectoryExists(fullFilename) && DeleteDirectory(fullFilename))
+			{
+				continue;
+			}
+
 			if (*filename != '.')
 			{
 				// calling RemoveDirectory to set correct errno
