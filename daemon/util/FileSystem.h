@@ -67,6 +67,7 @@ public:
 
 	static bool DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg);
 	static bool ForceDirectories(const char* path, CString& errmsg);
+	static bool CreateHardLink(const char *from, const char *to);
 	static CString GetCurrentDirectory();
 	static bool SetCurrentDirectory(const char* dirFilename);
 	static int64 FileSize(const char* filename);
