@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -470,7 +470,7 @@ std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, Feed
 		nzbInfo->SetFilename(FileSystem::MakeValidFilename(nzbName2));
 	}
 
-	nzbInfo->SetCategory(feedItemInfo.GetAddCategory());
+	nzbInfo->SetCategory(feedItemInfo.GetCategory());
 	nzbInfo->SetPriority(feedItemInfo.GetPriority());
 	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
 	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());
