@@ -185,7 +185,7 @@ void Scanner::CheckIncomingNzbs(const char* directory, const char* category, boo
 		}
 		else if (!isDirectory && CanProcessFile(fullfilename, checkStat))
 		{
-			ProcessIncomingFile(directory, filename, fullfilename, category);
+			ProcessIncomingFile(directory, filename, fullfilename);
 		}
 	}
 }
@@ -278,8 +278,7 @@ void Scanner::DropOldFiles()
 void Scanner::ProcessIncomingFile(
 	const char* directory,
 	const char* baseFilename,
-	const char* fullFilename,
-	const char* category
+	const char* fullFilename
 )
 {
 	const char* extension = strrchr(baseFilename, '.');
@@ -526,6 +525,7 @@ bool Scanner::AddFileToQueue(
 	if (autoCategory)
 	{
 		DetectAndSetCategory(nzbFile, *nzbInfo, nzbName);
+		InitPPParameters(nzbInfo->GetCategory(), parameters, true);
 	}
 
 	if (nzbName && strlen(nzbName) > 0)

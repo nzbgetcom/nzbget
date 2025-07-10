@@ -174,8 +174,7 @@ private:
 	void ProcessIncomingFile(
 		const char* directory, 
 		const char* baseFilename,
-		const char* fullFilename, 
-		const char* category
+		const char* fullFilename
 	);
 	bool CanProcessFile(const char* fullFilename, bool checkStat);
 	void DropOldFiles();
