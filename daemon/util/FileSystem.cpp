@@ -728,6 +728,44 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 	return true;
 }
 
+std::pair<bool, std::string> FileSystem::CheckDirAccess(std::string_view dir)
+{
+	struct stat st;
+	if (stat(dir.data(), &st))
+	{
+		int err = errno;
+		switch (err)
+		{
+		case ENOENT:
+			return { false, "Doesn't exist" };
+		case ENOTDIR:
+			return { false, "Not a directory" };
+		default:
+			return { false, std::string("Error checking a directory existence: ") + std::strerror(err) };
+		}
+	}
+
+	if (!S_ISDIR(st.st_mode)) 
+	{
+        return { false, "Not a directory" };
+    }
+
+	if (access(dir.data(), R_OK | W_OK) == 0)
+	{
+		return { true, "" };
+	}
+
+	int err = errno;
+	switch (err) {
+	case EACCES:
+		return { false, "No read/write permissions" };
+	case EROFS:
+		return { false, "Directory is on a read-only filesystem" };
+	default:
+		return { false, std::string("Error checking read/write permissions: ") + std::strerror(err) };
+	}
+}
+
 bool FileSystem::DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg)
 {
 	errmsg.Clear();
