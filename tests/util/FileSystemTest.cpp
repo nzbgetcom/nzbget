@@ -25,6 +25,7 @@
 
 #include "FileSystem.h"
 
+const std::string CURRENT_DIR = FileSystem::GetCurrentDirectory().Str();
 
 #ifdef WIN32
 BOOST_AUTO_TEST_CASE(FileSystemTest)
@@ -146,4 +147,52 @@ BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)
 		BOOST_TEST(result.first == "");
 		BOOST_TEST(result.second == "");
 	}
+}
+
+BOOST_AUTO_TEST_CASE(ExistingWritableDirectory) 
+{
+	std::pair<bool, std::string> result = FileSystem::CheckDirAccess(".");
+	BOOST_CHECK_EQUAL(result.first, true);
+	BOOST_CHECK_EQUAL(result.second, "");
+}
+
+BOOST_AUTO_TEST_CASE(NonExistentDirectory) 
+{
+	std::pair<bool, std::string> result = FileSystem::CheckDirAccess("non_existent_directory_for_testing");
+	BOOST_CHECK_EQUAL(result.first, false);
+	BOOST_CHECK_EQUAL(result.second, "Doesn't exist");
+}
+
+BOOST_AUTO_TEST_CASE(ExistingFile) 
+{
+	const std::string testFile = CURRENT_DIR + "/temp_file_for_testing.txt";
+	std::ofstream tempFile(testFile);
+	BOOST_REQUIRE(tempFile.is_open());
+
+	tempFile << "This is a temporary file.";
+	tempFile.close();
+
+	std::pair<bool, std::string> result = FileSystem::CheckDirAccess(testFile);
+	BOOST_CHECK_EQUAL(result.first, false);
+	BOOST_CHECK_EQUAL(result.second, "Not a directory");
+
+	BOOST_REQUIRE_EQUAL(std::remove(testFile.c_str()), 0);
+}
+
+BOOST_AUTO_TEST_CASE(ReadOnlyDirectory) 
+{
+	const std::string testDirPath = CURRENT_DIR + "/test_readonly_dir";
+
+	//Creating the directory with rwxrwxrwx permissions
+	BOOST_REQUIRE_EQUAL(mkdir(testDirPath.c_str(), 0777), 0);
+
+	//Removing write permissions
+	BOOST_REQUIRE_EQUAL(chmod(testDirPath.c_str(), 0555), 0);
+
+	std::pair<bool, std::string> result = FileSystem::CheckDirAccess(testDirPath);
+	BOOST_CHECK_EQUAL(result.first, false);
+
+	BOOST_CHECK_EQUAL(result.second, "No read/write permissions");
+
+	BOOST_REQUIRE_EQUAL(rmdir(testDirPath.c_str()), 0);
 }
