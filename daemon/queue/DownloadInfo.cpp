@@ -256,7 +256,7 @@ CString NzbInfo::BuildFinalDirName()
 		}
 	}
 
-	if (g_Options->GetAppendCategoryDir() && useCategory)
+	if (m_appendCategoryDir && useCategory)
 	{
 		CString categoryDir = FileSystem::MakeValidFilename(m_category, true);
 		// we can't format with "finalDir.Format" because one of the parameter is "finalDir" itself.

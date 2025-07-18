@@ -2511,6 +2511,7 @@ void DownloadXmlCommand::Execute()
 		nzbInfo->SetFilename(nzbFilename);
 		nzbInfo->SetCategory(category);
 		nzbInfo->SetAutoCategory(autoCategory);
+		nzbInfo->SetAppendCategoryDir(g_Options->GetAppendCategoryDir());
 		nzbInfo->SetPriority(priority);
 		nzbInfo->SetAddUrlPaused(addPaused);
 		nzbInfo->SetDupeKey(dupeKey ? dupeKey : "");
@@ -3184,6 +3185,10 @@ void ConfigTemplatesXmlCommand::Execute()
 // v16:
 // struct[] previewfeed(int id, string name, string url, string filter, bool backlog, bool pauseNzb, string category,
 //		int priority, int interval, string feedfilter, bool includeNonMatching, int cacheTimeSec, string cacheId)
+// v25.2:
+// struct[] previewfeed(int id, string name, string url, string filter, bool backlog, bool pauseNzb, string category,
+//		int priority, int interval, string feedfilter, bool includeNonMatching, int cacheTimeSec, string cacheId,
+//      bool appendCategoryDir);
 void ViewFeedXmlCommand::Execute()
 {
 	bool includeNonMatching = false;
@@ -3197,6 +3202,7 @@ void ViewFeedXmlCommand::Execute()
 		char* filter;
 		bool backlog = true;
 		bool pauseNzb;
+		bool appendCategoryDir = false;
 		char* category;
 		int interval = 0;
 		int priority;
@@ -3218,6 +3224,8 @@ void ViewFeedXmlCommand::Execute()
 			return;
 		}
 
+		NextParamAsBool(&appendCategoryDir);
+
 		DecodeStr(name);
 		DecodeStr(url);
 		DecodeStr(filter);
@@ -3227,8 +3235,21 @@ void ViewFeedXmlCommand::Execute()
 		debug("Url=%s", url);
 		debug("Filter=%s", filter);
 
-		feedItems = g_FeedCoordinator->PreviewFeed(id, name, url, filter, backlog, pauseNzb,
-			category, priority, interval, feedFilter, cacheTimeSec, cacheId);
+		feedItems = g_FeedCoordinator->PreviewFeed(
+			id,
+			name,
+			url,
+			filter,
+			backlog,
+			pauseNzb,
+			appendCategoryDir,
+			category,
+			priority,
+			interval,
+			feedFilter,
+			cacheTimeSec,
+			cacheId
+		);
 	}
 	else
 	{
@@ -3261,6 +3282,7 @@ void ViewFeedXmlCommand::Execute()
 		"<member><name>Category</name><value><string>%s</string></value></member>\n"
 		"<member><name>AddCategory</name><value><string>%s</string></value></member>\n"
 		"<member><name>PauseNzb</name><value><boolean>%s</boolean></value></member>\n"
+		"<member><name>AppendCategoryDir</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>Priority</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>Time</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>Match</name><value><string>%s</string></value></member>\n"
@@ -3282,6 +3304,7 @@ void ViewFeedXmlCommand::Execute()
 		"\"Category\" : \"%s\",\n"
 		"\"AddCategory\" : \"%s\",\n"
 		"\"PauseNzb\" : %s,\n"
+		"\"AppendCategoryDir\" : %s,\n"
 		"\"Priority\" : %i,\n"
 		"\"Time\" : %i,\n"
 		"\"Match\" : \"%s\",\n"
@@ -3312,7 +3335,8 @@ void ViewFeedXmlCommand::Execute()
 				*EncodeStr(feedItemInfo.GetTitle()), *EncodeStr(feedItemInfo.GetFilename()),
 				*EncodeStr(feedItemInfo.GetUrl()), sizeLo, sizeHi, sizeMB,
 				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory()),
-				BoolToStr(feedItemInfo.GetPauseNzb()), feedItemInfo.GetPriority(), (int)feedItemInfo.GetTime(),
+				BoolToStr(feedItemInfo.GetPauseNzb()), BoolToStr(feedItemInfo.GetAppendCategoryDir()),
+				feedItemInfo.GetPriority(), (int)feedItemInfo.GetTime(),
 				matchStatusType[feedItemInfo.GetMatchStatus()], feedItemInfo.GetMatchRule(),
 				*EncodeStr(feedItemInfo.GetDupeKey()), feedItemInfo.GetDupeScore(),
 				dupeModeType[feedItemInfo.GetDupeMode()], statusType[feedItemInfo.GetStatus()]);

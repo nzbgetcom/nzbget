@@ -385,6 +385,7 @@ void FeedCoordinator::FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems)
 		feedItemInfo.SetMatchStatus(FeedItemInfo::msAccepted);
 		feedItemInfo.SetMatchRule(0);
 		feedItemInfo.SetPauseNzb(feedInfo->GetPauseNzb());
+		feedItemInfo.SetAppendCategoryDir(feedInfo->GetAppendCategoryDir());
 		feedItemInfo.SetPriority(feedInfo->GetPriority());
 		feedItemInfo.SetAddCategory(feedInfo->GetCategory());
 		feedItemInfo.SetDupeScore(0);
@@ -456,6 +457,7 @@ std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, Feed
 	nzbInfo->SetKind(NzbInfo::nkUrl);
 	nzbInfo->SetFeedId(feedInfo->GetId());
 	nzbInfo->SetUrl(feedItemInfo.GetUrl());
+	nzbInfo->SetAppendCategoryDir(feedInfo->GetAppendCategoryDir());
 
 	// add .nzb-extension if not present
 	BString<1024> nzbName = feedItemInfo.GetFilename();
@@ -473,6 +475,7 @@ std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, Feed
 	nzbInfo->SetCategory(feedItemInfo.GetCategory());
 	nzbInfo->SetPriority(feedItemInfo.GetPriority());
 	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
+	nzbInfo->SetAddUrlPaused(feedItemInfo.GetAppendCategoryDir());
 	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());
 	nzbInfo->SetDupeScore(feedItemInfo.GetDupeScore());
 	nzbInfo->SetDupeMode(feedItemInfo.GetDupeMode());
@@ -493,19 +496,19 @@ std::shared_ptr<FeedItemList> FeedCoordinator::ViewFeed(int id)
 	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[id - 1];
 
 	return PreviewFeed(feedInfo->GetId(), feedInfo->GetName(), feedInfo->GetUrl(), feedInfo->GetFilter(),
-		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetCategory(),
+		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetAppendCategoryDir(), feedInfo->GetCategory(),
 		feedInfo->GetPriority(), feedInfo->GetInterval(), feedInfo->GetExtensions(), 0, nullptr);
 }
 
 std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 	const char* name, const char* url, const char* filter, bool backlog, bool pauseNzb,
-	const char* category, int priority, int interval, const char* feedScript,
+	bool appendCategoryDir, const char* category, int priority, int interval, const char* feedScript,
 	int cacheTimeSec, const char* cacheId)
 {
 	debug("Preview feed %s", name);
 
 	std::unique_ptr<FeedInfo> feedInfo = std::make_unique<FeedInfo>(id, name, url, backlog, interval,
-		filter, pauseNzb, category, priority, feedScript);
+		filter, pauseNzb, appendCategoryDir, category, priority, feedScript);
 	feedInfo->SetPreview(true);
 
 	std::shared_ptr<FeedItemList> feedItems;

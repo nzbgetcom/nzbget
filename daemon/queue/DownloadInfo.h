@@ -671,6 +671,8 @@ public:
 	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 	void SetAutoCategory(bool autoCategory) { m_autoCategory = autoCategory; }
 	bool GetAutoCategory() { return m_autoCategory; }
+	void SetAppendCategoryDir(bool appendCategoryDir) { m_appendCategoryDir = appendCategoryDir; }
+	bool GetAppendCategoryDir() const { return m_appendCategoryDir; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -772,6 +774,7 @@ private:
 	bool m_skipScriptProcessing = false;
 	bool m_scipDiskWrite = false;
 	bool m_autoCategory = false;
+	bool m_appendCategoryDir = false;
 
 	static int m_idGen;
 	static int m_idMax;

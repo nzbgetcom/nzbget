@@ -43,7 +43,8 @@ protected:
 	}
 
 	void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript) override
+		const char* filter, bool backlog, bool pauseNzb, bool appendCategoryDir,
+		const char* category, int priority, const char* feedScript) override
 	{
 		m_feeds++;
 	}

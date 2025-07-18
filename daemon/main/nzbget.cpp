@@ -185,7 +185,7 @@ public:
 		bool tls, const char* cipher, int maxConnections, int retention,
 		int level, int group, bool optional, unsigned int certVerificationfLevel);
 	virtual void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category,
+		const char* filter, bool backlog, bool pauseNzb, bool appendCategoryDir, const char* category,
 		int priority, const char* feedScript);
 	virtual void AddTask(int id, int hours, int minutes, int weekDaysBits,
 		Options::ESchedulerCommand command, const char* param);
@@ -1073,10 +1073,10 @@ void NZBGet::AddNewsServer(int id, bool active, const char* name, const char* ho
 }
 
 void NZBGet::AddFeed(int id, const char* name, const char* url, int interval, const char* filter,
-	bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript)
+	bool backlog, bool pauseNzb, bool appendCategoryDir, const char* category, int priority, const char* feedScript)
 {
 	m_feedCoordinator->AddFeed(std::make_unique<FeedInfo>(id, name, url, backlog, interval, filter,
-		pauseNzb, category, priority, feedScript));
+		pauseNzb, appendCategoryDir, category, priority, feedScript));
 }
 
 void NZBGet::AddTask(int id, int hours, int minutes, int weekDaysBits,

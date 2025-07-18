@@ -45,6 +45,7 @@ public:
 		int interval,
 		const char* filter,
 		bool pauseNzb,
+		bool appendCategoryDir,
 		const char* category,
 		int priority,
 		const char* extensions
@@ -77,6 +78,8 @@ public:
 	void SetForce(bool force) { m_force = force; }
 	bool GetBacklog() { return m_backlog; }
 	void SetBacklog(bool backlog) { m_backlog = backlog; }
+	bool GetAppendCategoryDir() const { return m_appendCategoryDir; }
+	void SetAppendCategoryDir(bool appendCategoryDir) { m_appendCategoryDir = appendCategoryDir; }
 
 private:
 	int m_id;
@@ -98,6 +101,7 @@ private:
 	bool m_preview = false;
 	bool m_fetch = false;
 	bool m_force = false;
+	bool m_appendCategoryDir = false;
 };
 
 typedef std::deque<std::unique_ptr<FeedInfo>> Feeds;
@@ -188,6 +192,8 @@ public:
 	void SetAddCategory(const char* addCategory) { m_addCategory = addCategory ? addCategory : ""; }
 	bool GetPauseNzb() { return m_pauseNzb; }
 	void SetPauseNzb(bool pauseNzb) { m_pauseNzb = pauseNzb; }
+	bool GetAppendCategoryDir() const { return m_appendCategoryDir; }
+	void SetAppendCategoryDir(bool appendCategoryDir) { m_appendCategoryDir = appendCategoryDir; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
 	time_t GetTime() { return m_time; }
@@ -230,6 +236,7 @@ private:
 	int m_episodeNum = 0;
 	bool m_seasonEpisodeParsed = false;
 	bool m_pauseNzb = false;
+	bool m_appendCategoryDir = false;
 	int m_priority = 0;
 	EStatus m_status = isUnknown;
 	EMatchStatus m_matchStatus = msIgnored;

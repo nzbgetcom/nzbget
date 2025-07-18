@@ -31,6 +31,7 @@ FeedInfo::FeedInfo(
 	int interval,
 	const char* filter,
 	bool pauseNzb,
+	bool appendCategoryDir,
 	const char* category,
 	int priority,
 	const char* extensions
@@ -44,6 +45,7 @@ FeedInfo::FeedInfo(
 	, m_backlog{ backlog}
 	, m_interval{ interval }
 	, m_pauseNzb{ pauseNzb }
+	, m_appendCategoryDir { appendCategoryDir }
 	, m_priority{ priority }
 {
 	if (m_name.empty())

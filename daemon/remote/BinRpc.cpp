@@ -429,6 +429,7 @@ void DownloadBinCommand::Execute()
 		nzbInfo->SetFilename(DownloadRequest.m_nzbFilename);
 		nzbInfo->SetCategory(DownloadRequest.m_category);
 		nzbInfo->SetAutoCategory(autoCategory);
+		nzbInfo->SetAppendCategoryDir(g_Options->GetAppendCategoryDir());
 		nzbInfo->SetPriority(priority);
 		nzbInfo->SetAddUrlPaused(addPaused);
 		nzbInfo->SetDupeKey(DownloadRequest.m_dupeKey);

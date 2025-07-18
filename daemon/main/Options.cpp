@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1171,6 +1171,13 @@ void Options::InitFeeds()
 			pauseNzb = (bool)ParseEnumValue(BString<100>("Feed%i.PauseNzb", n), BoolCount, BoolNames, BoolValues);
 		}
 
+		const char* nappendCategoryDir = GetOption(BString<100>("Feed%i.AppendCategoryDir", n));
+		bool appendCategoryDir = false;
+		if (nappendCategoryDir)
+		{
+			appendCategoryDir = (bool)ParseEnumValue(BString<100>("Feed%i.AppendCategoryDir", n), BoolCount, BoolNames, BoolValues);
+		}
+
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
@@ -1187,8 +1194,17 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(n, nname, nurl, ninterval ? atoi(ninterval) : 0, nfilter,
-					backlog, pauseNzb, ncategory, npriority ? atoi(npriority) : 0, nextensions);
+				m_extender->AddFeed(
+					n,
+					nname,
+					nurl, ninterval ? atoi(ninterval) : 0,
+					nfilter,
+					backlog,
+					pauseNzb,
+					appendCategoryDir,
+					ncategory, npriority ? atoi(npriority) : 0,
+					nextensions
+				);
 			}
 		}
 		else
@@ -1605,8 +1621,9 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		char* p = (char*)optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
 		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
-			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
-			 !strcasecmp(p, ".category") || !strcasecmp(p, ".priority") || !strcasecmp(p, ".extensions")))
+			!strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
+			!strcasecmp(p, ".category") || !strcasecmp(p, ".appendCategoryDir") ||
+			!strcasecmp(p, ".priority") || !strcasecmp(p, ".extensions")))
 		{
 			return true;
 		}
