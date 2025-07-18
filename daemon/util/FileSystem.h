@@ -65,7 +65,8 @@ public:
 	/* Delete directory which is empty or contains only hidden files or directories */
 	static bool DeleteDirectory(const char* dirFilename);
 
-	static std::pair<bool, std::string> CheckDirAccess(std::string_view dir);
+	static std::pair<bool, std::string> CheckDirAccess(const std::string& path);
+	static std::pair<bool, std::string> CheckExeAccess(const std::string& path);
 	static bool DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg);
 	static bool ForceDirectories(const char* path, CString& errmsg);
 	static CString GetCurrentDirectory();

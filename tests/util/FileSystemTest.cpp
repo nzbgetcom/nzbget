@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(ExistingFile)
 	BOOST_REQUIRE_EQUAL(std::remove(testFile.c_str()), 0);
 }
 
-BOOST_AUTO_TEST_CASE(ReadOnlyDirectory) 
+BOOST_AUTO_TEST_CASE(ReadOnlyDirectory)
 {
 	const std::string testDirPath = CURRENT_DIR + "/test_readonly_dir";
 
@@ -195,4 +195,26 @@ BOOST_AUTO_TEST_CASE(ReadOnlyDirectory)
 	BOOST_CHECK_EQUAL(result.second, "No read/write permissions");
 
 	BOOST_REQUIRE_EQUAL(rmdir(testDirPath.c_str()), 0);
+}
+
+BOOST_AUTO_TEST_CASE(ExecutableFileDoesNotExist)
+{
+	std::pair<bool, std::string> result = FileSystem::CheckExeAccess("nonexistent_executable");
+	BOOST_CHECK_EQUAL(result.first, false);
+	BOOST_CHECK_EQUAL(result.second, "Doesn't exist");
+}
+
+BOOST_AUTO_TEST_CASE(NonExecutableFileExists)
+{
+	const std::string filename = "temp_nonexecutable_file.txt";
+	std::ofstream tempFile(filename);
+	BOOST_REQUIRE(tempFile.is_open());
+	tempFile << "This is a non-executable file.";
+	tempFile.close();
+
+	std::pair<bool, std::string> result = FileSystem::CheckExeAccess(filename);
+	BOOST_CHECK_EQUAL(result.first, false);
+	BOOST_CHECK_EQUAL(result.second, "No execute permission");
+
+	BOOST_REQUIRE_EQUAL(std::remove(filename.c_str()), 0);
 }

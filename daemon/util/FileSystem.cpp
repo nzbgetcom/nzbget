@@ -728,10 +728,10 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 	return true;
 }
 
-std::pair<bool, std::string> FileSystem::CheckDirAccess(std::string_view dir)
+std::pair<bool, std::string> FileSystem::CheckDirAccess(const std::string& path)
 {
 	struct stat st;
-	if (stat(dir.data(), &st))
+	if (stat(path.c_str(), &st) != 0)
 	{
 		int err = errno;
 		switch (err)
@@ -745,12 +745,12 @@ std::pair<bool, std::string> FileSystem::CheckDirAccess(std::string_view dir)
 		}
 	}
 
-	if (!S_ISDIR(st.st_mode)) 
+	if (!S_ISDIR(st.st_mode))
 	{
-        return { false, "Not a directory" };
-    }
+		return { false, "Not a directory" };
+	}
 
-	if (access(dir.data(), R_OK | W_OK) == 0)
+	if (access(path.c_str(), R_OK | W_OK) == 0)
 	{
 		return { true, "" };
 	}
@@ -763,6 +763,40 @@ std::pair<bool, std::string> FileSystem::CheckDirAccess(std::string_view dir)
 		return { false, "Directory is on a read-only filesystem" };
 	default:
 		return { false, std::string("Error checking read/write permissions: ") + std::strerror(err) };
+	}
+}
+
+std::pair<bool, std::string> FileSystem::CheckExeAccess(const std::string& path)
+{
+	struct stat st;
+	if (stat(path.c_str(), &st) != 0)
+	{
+		int err = errno;
+		switch (err)
+		{
+		case ENOENT:
+			return { false, "Doesn't exist" };
+		default:
+			return { false, std::string("Error checking file existence: ") + std::strerror(err) };
+		}
+	}
+
+	if (!S_ISREG(st.st_mode))
+	{
+		return { false, "Not a regular file" };
+	}
+
+	if (access(path.c_str(), X_OK) == 0)
+	{
+		return { true, "" };
+	}
+	int err = errno;
+	switch (err)
+	{
+	case EACCES:
+		return { false, "No execute permission" };
+	default:
+		return { false, std::string("Error checking execute permission: ") + std::strerror(err) };
 	}
 }
 
