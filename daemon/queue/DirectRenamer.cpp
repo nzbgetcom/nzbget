@@ -28,6 +28,7 @@
 #include "Options.h"
 #include "FileSystem.h"
 #include "ParParser.h"
+#include "QueueScript.h"
 
 #ifndef DISABLE_PARCHECK
 #include <par2/libpar2.h>
@@ -385,6 +386,7 @@ void DirectRenamer::RenameFiles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, 
 	if (renamedCount > 0)
 	{
 		nzbInfo->PrintMessage(Message::mkInfo, "Successfully renamed %i file(s) for %s", renamedCount, nzbInfo->GetName());
+		g_QueueScriptCoordinator->EnqueueScript(nzbInfo, QueueScriptCoordinator::qeNzbDirectRenamed);
 	}
 	else
 	{
