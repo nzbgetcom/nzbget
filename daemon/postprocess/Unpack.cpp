@@ -623,7 +623,15 @@ void UnpackController::CreateUnpackDir()
 
 	const char* destDir = !m_finalDir.Empty() ? *m_finalDir : *m_destDir;
 
-	m_unpackDir.Format("%s%c%s", destDir, PATH_SEPARATOR, "_unpack");
+	if (g_Options->GetUseTempUnpackDir())
+	{
+		m_unpackDir.Format("%s%c%s", destDir, PATH_SEPARATOR, "_unpack");
+	}
+	else
+	{
+		m_unpackDir.Format("%s", destDir);
+	}
+
 	m_unpackDirCreated = !FileSystem::DirectoryExists(m_unpackDir);
 
 	detail("Unpacking into %s", *m_unpackDir);
@@ -715,7 +723,7 @@ bool UnpackController::Cleanup()
 
 	FileList extractedFiles;
 
-	if (m_unpackOk)
+	if (m_unpackOk && g_Options->GetUseTempUnpackDir())
 	{
 		// moving files back
 		DirBrowser dir(m_unpackDir);
@@ -753,7 +761,7 @@ bool UnpackController::Cleanup()
 	}
 
 	CString errmsg;
-	if (ok && !FileSystem::DeleteDirectoryWithContent(m_unpackDir, errmsg))
+	if (ok && g_Options->GetUseTempUnpackDir() && !FileSystem::DeleteDirectoryWithContent(m_unpackDir, errmsg))
 	{
 		PrintMessage(Message::mkError, "Could not delete temporary directory %s: %s", *m_unpackDir, *errmsg);
 	}

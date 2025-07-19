@@ -242,7 +242,14 @@ void DirectUnpack::CreateUnpackDir()
 
 	const char* destDir = useInterDir && !m_finalDir.Empty() ? *m_finalDir : *m_destDir;
 
-	m_unpackDir.Format("%s%c%s", destDir, PATH_SEPARATOR, "_unpack");
+	if (g_Options->GetUseTempUnpackDir())
+	{
+		m_unpackDir.Format("%s%c%s", destDir, PATH_SEPARATOR, "_unpack");
+	}
+	else
+	{
+		m_unpackDir.Format("%s", destDir);
+	}
 
 	detail("Unpacking into %s", *m_unpackDir);
 

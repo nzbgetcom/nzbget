@@ -122,6 +122,7 @@ static const char* OPTION_PARTIMELIMIT			= "ParTimeLimit";
 static const char* OPTION_KEEPHISTORY			= "KeepHistory";
 static const char* OPTION_UNPACK				= "Unpack";
 static const char* OPTION_DIRECTUNPACK			= "DirectUnpack";
+static const char* OPTION_USETEMPUNPACKDIR		= "UseTempUnpackDir";
 static const char* OPTION_UNPACKCLEANUPDISK		= "UnpackCleanupDisk";
 static const char* OPTION_UNRARCMD				= "UnrarCmd";
 static const char* OPTION_SEVENZIPCMD			= "SevenZipCmd";
@@ -514,6 +515,7 @@ void Options::InitDefaults()
 	SetOption(OPTION_KEEPHISTORY, "7");
 	SetOption(OPTION_UNPACK, "no");
 	SetOption(OPTION_DIRECTUNPACK, "no");
+	SetOption(OPTION_USETEMPUNPACKDIR, "yes");
 	SetOption(OPTION_UNPACKCLEANUPDISK, "no");
 #ifdef WIN32
 	SetOption(OPTION_UNRARCMD, "unrar.exe");
@@ -777,6 +779,7 @@ void Options::InitOptions()
 	m_secureControl			= (bool)ParseEnumValue(OPTION_SECURECONTROL, BoolCount, BoolNames, BoolValues);
 	m_unpack				= (bool)ParseEnumValue(OPTION_UNPACK, BoolCount, BoolNames, BoolValues);
 	m_directUnpack			= (bool)ParseEnumValue(OPTION_DIRECTUNPACK, BoolCount, BoolNames, BoolValues);
+	m_useTempUnpackDir		= (bool)ParseEnumValue(OPTION_USETEMPUNPACKDIR, BoolCount, BoolNames, BoolValues);
 	m_unpackCleanupDisk		= (bool)ParseEnumValue(OPTION_UNPACKCLEANUPDISK, BoolCount, BoolNames, BoolValues);
 	m_unpackPauseQueue		= (bool)ParseEnumValue(OPTION_UNPACKPAUSEQUEUE, BoolCount, BoolNames, BoolValues);
 	m_urlForce				= (bool)ParseEnumValue(OPTION_URLFORCE, BoolCount, BoolNames, BoolValues);
