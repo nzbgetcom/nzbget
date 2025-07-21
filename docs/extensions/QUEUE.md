@@ -26,6 +26,7 @@ In the future they can be called on other events too.
 The event type is passed with env. var NZBNA_EVENT and can have following values:
  - **NZB_ADDED** - after adding of nzb-file to queue;
  - **FILE_DOWNLOADED** - after a file included in nzb is downloaded;
+ - **NZB_DIRECTRENAMED** - after DirectRename (only triggered if files are renamed);
  - **NZB_DOWNLOADED** - after all files in nzb are downloaded (before post-processing);
  - **NZB_DELETED** - after nzb-file is deleted from queue, by duplicate check or manually by user;
  - **URL_COMPLETED** - after an nzb-file queued with URL is fetched but could no be added for download.
