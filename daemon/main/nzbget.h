@@ -185,13 +185,14 @@
 #include <libxml/tree.h>
 
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #include "OpenSSL.h"
 #endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
-// intialization, causing every unit in nzbget to have initialization routine. This in particular
+// initialization, causing every unit in nzbget to have initialization routine. This in particular
 // is causing fatal problems in SIMD units which must not have static initialization because
 // they contain code with runtime CPU dispatching.
 //#include <iostream>

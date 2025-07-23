@@ -95,7 +95,7 @@ else()
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	find_package(Boost COMPONENTS json)
+	find_package(Boost COMPONENTS json filesystem)
 
 	if(NOT Boost_JSON_FOUND)
 		message(STATUS "The Boost library will be installed from github")
@@ -104,7 +104,7 @@ else()
 
 		add_dependencies(${PACKAGE} boost)
 	else()
-		set(LIBS ${LIBS} Boost::json)
+		set(LIBS ${LIBS} Boost::json Boost::filesystem)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
 	endif()
 endif()
