@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #define WORKSTATE_H
 
 #include <atomic>
+#include "FileSystem.h"
 #include "Observer.h"
 
 class WorkState final : public Subject
@@ -50,6 +51,10 @@ public:
 	bool GetQuotaReached() { return m_quotaReached; }
 	void SetDownloading(bool downloading) { m_downloading = downloading; Changed(); }
 	bool GetDownloading() { return m_downloading; }
+	void SetDestDirStatus(FileSystem::PathAccessStatus status) { m_destDirStatus = std::move(status); }
+	void SetInterDirStatus(FileSystem::PathAccessStatus status) { m_interDirStatus = std::move(status); }
+	FileSystem::PathAccessStatus GetDestDirStatus() const { return m_destDirStatus; }
+	FileSystem::PathAccessStatus GetInterDirStatus() const { return m_interDirStatus; }
 
 private:
 	std::atomic<time_t> m_resumeTime{0};
@@ -63,6 +68,8 @@ private:
 	std::atomic<bool> m_pauseFrontend{false};
 	std::atomic<bool> m_downloading{false};
 	std::atomic<bool> m_quotaReached{false};
+	FileSystem::PathAccessStatus m_destDirStatus;
+	FileSystem::PathAccessStatus m_interDirStatus;
 
 	void Changed();
 };

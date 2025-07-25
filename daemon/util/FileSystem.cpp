@@ -728,7 +728,7 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 	return true;
 }
 
-std::pair<bool, std::string> FileSystem::CheckDirAccess(const std::string& path)
+FileSystem::PathAccessStatus FileSystem::CheckDirAccess(const std::string& path)
 {
 	struct stat st;
 	if (stat(path.c_str(), &st) != 0)
@@ -766,7 +766,7 @@ std::pair<bool, std::string> FileSystem::CheckDirAccess(const std::string& path)
 	}
 }
 
-std::pair<bool, std::string> FileSystem::CheckExeAccess(const std::string& path)
+FileSystem::PathAccessStatus FileSystem::CheckExeAccess(const std::string& path)
 {
 	struct stat st;
 	if (stat(path.c_str(), &st) != 0)
