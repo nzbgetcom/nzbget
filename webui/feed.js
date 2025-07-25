@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -144,7 +145,7 @@ var FeedDialog = (new function($)
 		}
 	}
 
-	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript)
+	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, categorySource)
 	{
 		Refresher.pause();
 
@@ -186,8 +187,9 @@ var FeedDialog = (new function($)
 			var feedPriority = parseInt(priority);
 			var feedInterval = parseInt(interval);
 			var feedScript = feedscript;
+			var feedCategorySource = categorySource;
 			RPC.call('previewfeed', [id, name, url, filter, feedBacklog, feedPauseNzb, feedCategory,
-				feedPriority, feedInterval, feedScript, false, 0, ''], itemsLoaded, feedFailure);
+				feedPriority, feedInterval, feedScript, false, 0, '', feedCategorySource], itemsLoaded, feedFailure);
 		}
 
 		if (!UISettings.miniTheme)
@@ -369,8 +371,19 @@ var FeedDialog = (new function($)
 			{
 				name += '.nzb';
 			}
-			RPC.call('append', [name, fetchItems[0].URL, fetchItems[0].AddCategory, fetchItems[0].Priority, false,
-				false, fetchItems[0].DupeKey, fetchItems[0].DupeScore, fetchItems[0].DupeMode],
+			var category = fetchItems[0].AddCategory ? fetchItems[0].AddCategory : fetchItems[0].Category;
+			RPC.call('append', [
+				name,
+				fetchItems[0].URL,
+				category,
+				fetchItems[0].Priority,
+				false,
+				false,
+				fetchItems[0].DupeKey,
+				fetchItems[0].DupeScore,
+				fetchItems[0].DupeMode,
+				false
+			],
 				function()
 			{
 				fetchItems.shift();
@@ -432,6 +445,7 @@ var FeedFilterDialog = (new function($)
 	var feedBacklog;
 	var feedPauseNzb;
 	var feedCategory;
+	var feedCategorySource;
 	var feedPriority;
 	var feedInterval;
 	var feedScript;
@@ -498,7 +512,7 @@ var FeedFilterDialog = (new function($)
 		}
 	}
 
-	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, _saveCallback)
+	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, categorySource, _saveCallback)
 	{
 		saveCallback = _saveCallback;
 
@@ -536,6 +550,7 @@ var FeedFilterDialog = (new function($)
 		feedBacklog = backlog === 'yes';
 		feedPauseNzb = pauseNzb === 'yes';
 		feedCategory = category;
+		feedCategorySource = categorySource;
 		feedPriority = parseInt(priority);
 		feedInterval = parseInt(interval);
 		feedScript = feedscript;
@@ -545,7 +560,7 @@ var FeedFilterDialog = (new function($)
 		if (url !== '')
 		{
 			RPC.call('previewfeed', [feedId, name, url, filter, feedBacklog, feedPauseNzb, feedCategory, feedPriority,
-				feedInterval, feedScript, true, cacheTimeSec, cacheId], itemsLoaded, feedFailure);
+				feedInterval, feedScript, true, cacheTimeSec, cacheId, feedCategorySource], itemsLoaded, feedFailure);
 		}
 		else
 		{

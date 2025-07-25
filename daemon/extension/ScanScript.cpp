@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,10 +42,19 @@ bool ScanScriptController::HasScripts()
 	return check.has;
 }
 
-void ScanScriptController::ExecuteScripts(const char* nzbFilename,
-	NzbInfo* nzbInfo, const char* directory, CString* nzbName, CString* category,
-	int* priority, NzbParameterList* parameters, bool* addTop, bool* addPaused,
-	CString* dupeKey, int* dupeScore, EDupeMode* dupeMode)
+void ScanScriptController::ExecuteScripts(
+	const char* nzbFilename,
+	NzbInfo* nzbInfo,
+	const char* directory,
+	const char* nzbName,
+	const char* category,
+	int* priority,
+	NzbParameterList* parameters,
+	bool* addTop,
+	bool* addPaused,
+	const char* dupeKey,
+	int* dupeScore,
+	EDupeMode* dupeMode)
 {
 	if (nzbInfo && nzbInfo->GetSkipScriptProcessing())
 	{
@@ -56,22 +65,22 @@ void ScanScriptController::ExecuteScripts(const char* nzbFilename,
 	scriptController.m_nzbFilename = nzbFilename;
 	scriptController.m_url = nzbInfo ? nzbInfo->GetUrl() : "";
 	scriptController.m_directory = directory;
-	scriptController.m_nzbName = nzbName;
-	scriptController.m_category = category;
+	scriptController.m_nzbName = nzbName ? nzbName : "";
+	scriptController.m_category = category ? category : "";
 	scriptController.m_parameters = parameters;
 	scriptController.m_priority = priority;
 	scriptController.m_addTop = addTop;
 	scriptController.m_addPaused = addPaused;
-	scriptController.m_dupeKey = dupeKey;
+	scriptController.m_dupeKey = dupeKey ? dupeKey : "";
 	scriptController.m_dupeScore = dupeScore;
 	scriptController.m_dupeMode = dupeMode;
 	scriptController.m_prefixLen = 0;
 
 	const char* extensions = g_Options->GetExtensions();
 
-	if (!Util::EmptyStr(*category))
+	if (!Util::EmptyStr(category))
 	{
-		Options::Category* categoryObj = g_Options->FindCategory(*category, false);
+		Options::Category* categoryObj = g_Options->FindCategory(category, false);
 		if (categoryObj && !Util::EmptyStr(categoryObj->GetExtensions()))
 		{
 			extensions = categoryObj->GetExtensions();
@@ -110,12 +119,12 @@ void ScanScriptController::PrepareParams(const char* scriptName)
 
 	SetEnvVar("NZBNP_FILENAME", m_nzbFilename);
 	SetEnvVar("NZBNP_URL", m_url);
-	SetEnvVar("NZBNP_NZBNAME", strlen(*m_nzbName) > 0 ? **m_nzbName : FileSystem::BaseFileName(m_nzbFilename));
-	SetEnvVar("NZBNP_CATEGORY", *m_category);
+	SetEnvVar("NZBNP_NZBNAME", !m_nzbName.empty() ? m_nzbName.c_str() : FileSystem::BaseFileName(m_nzbFilename));
+	SetEnvVar("NZBNP_CATEGORY", m_category.c_str());
 	SetIntEnvVar("NZBNP_PRIORITY", *m_priority);
 	SetIntEnvVar("NZBNP_TOP", *m_addTop ? 1 : 0);
 	SetIntEnvVar("NZBNP_PAUSED", *m_addPaused ? 1 : 0);
-	SetEnvVar("NZBNP_DUPEKEY", *m_dupeKey);
+	SetEnvVar("NZBNP_DUPEKEY", m_dupeKey.c_str());
 	SetIntEnvVar("NZBNP_DUPESCORE", *m_dupeScore);
 
 	const char* dupeModeName[] = { "SCORE", "ALL", "FORCE" };
@@ -142,12 +151,12 @@ void ScanScriptController::AddMessage(Message::EKind kind, const char* text)
 		debug("Command %s detected", msgText + 6);
 		if (!strncmp(msgText + 6, "NZBNAME=", 8))
 		{
-			*m_nzbName = msgText + 6 + 8;
+			m_nzbName = msgText + 6 + 8;
 		}
 		else if (!strncmp(msgText + 6, "CATEGORY=", 9))
 		{
-			*m_category = msgText + 6 + 9;
-			g_Scanner->InitPPParameters(*m_category, m_parameters, true);
+			m_category = msgText + 6 + 9;
+			g_Scanner->InitPPParameters(m_category.c_str(), m_parameters, true);
 		}
 		else if (!strncmp(msgText + 6, "NZBPR_", 6))
 		{
@@ -177,7 +186,7 @@ void ScanScriptController::AddMessage(Message::EKind kind, const char* text)
 		}
 		else if (!strncmp(msgText + 6, "DUPEKEY=", 8))
 		{
-			*m_dupeKey = msgText + 6 + 8;
+			m_dupeKey = msgText + 6 + 8;
 		}
 		else if (!strncmp(msgText + 6, "DUPESCORE=", 10))
 		{

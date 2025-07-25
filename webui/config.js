@@ -1844,6 +1844,7 @@ var Config = (new function($)
 			getOptionValue(findOptionByName('Feed' + option.multiid + '.Priority')),
 			getOptionValue(findOptionByName('Feed' + option.multiid + '.Interval')),
 			getOptionValue(findOptionByName('Feed' + option.multiid + '.Extensions')),
+			getOptionValue(findOptionByName('Feed' + option.multiid + '.CategorySource')),
 			function(filter)
 				{
 					var control = $('#' + option.formId);
@@ -1863,7 +1864,9 @@ var Config = (new function($)
 			getOptionValue(findOptionByName('Feed' + multiid + '.Category')),
 			getOptionValue(findOptionByName('Feed' + multiid + '.Priority')),
 			getOptionValue(findOptionByName('Feed' + multiid + '.Interval')),
-			getOptionValue(findOptionByName('Feed' + multiid + '.Extensions')));
+			getOptionValue(findOptionByName('Feed' + multiid + '.Extensions')),
+			getOptionValue(findOptionByName('Feed' + multiid + '.CategorySource')),
+		);
 	}
 
 	/*** TEST SERVER ********************************************************************/

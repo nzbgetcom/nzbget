@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +24,7 @@
 #include "boost/test/unit_test.hpp"
 
 #include "Options.h"
+#include "FeedInfo.h"
 
 class OptionsExtenderMock : public Options::Extender
 {
@@ -42,8 +44,19 @@ protected:
 		m_newsServers++;
 	}
 
-	void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript) override
+	void AddFeed(
+		int id, 
+		const char* name, 
+		const char* url, 
+		int interval,
+		const char* filter, 
+		bool backlog, 
+		bool pauseNzb, 
+		const char* category,
+		FeedInfo::CategorySource categorySource, 
+		int priority, 
+		const char* feedScript
+	) override
 	{
 		m_feeds++;
 	}

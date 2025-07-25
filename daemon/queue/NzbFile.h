@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ public:
 	NzbFile(const char* fileName, const char* category);
 	bool Parse();
 	const char* GetFileName() const { return m_fileName.c_str(); }
+	const std::string& GetCategoryFromFile() const { return m_category; }
 	std::unique_ptr<NzbInfo> DetachNzbInfo() { return std::move(m_nzbInfo); }
 	const std::string& GetPassword() const { return m_password; }
 
@@ -40,6 +41,7 @@ public:
 private:
 	std::unique_ptr<NzbInfo> m_nzbInfo;
 	std::string m_fileName;
+	std::string m_category;
 	std::string m_password;
 
 	void AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
@@ -50,13 +52,13 @@ private:
 	void CalcHashes();
 	bool HasDuplicateFilenames();
 	void ReadPasswordFromFilename();
-	
 
 	std::unique_ptr<FileInfo> m_fileInfo;
 	ArticleInfo* m_article = nullptr;
 	StringBuilder m_tagContent;
 	bool m_ignoreNextError;
 	bool m_hasPassword = false;
+	bool m_hasCategory = false;
 
 	static void SAX_StartElement(NzbFile* file, const char *name, const char **atts);
 	static void SAX_EndElement(NzbFile* file, const char *name);
