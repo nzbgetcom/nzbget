@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,8 +24,11 @@
 
 
 #include <optional>
+#include <boost/filesystem.hpp>
 #include "NString.h"
 #include "Options.h"
+
+namespace FS = boost::filesystem;
 
 class FileSystem
 {
@@ -36,6 +39,12 @@ class FileSystem
 	};
 
 public:
+	struct PathAccessStatus
+	{
+		bool valid;
+		std::string message;
+	};
+
 	static CString GetLastErrorMessage();
 	static char* BaseFileName(const char* filename);
 	static std::pair<std::string, std::string> SplitPathAndFilename(const std::string& fullPath);
@@ -65,8 +74,8 @@ public:
 	/* Delete directory which is empty or contains only hidden files or directories */
 	static bool DeleteDirectory(const char* dirFilename);
 
-	static std::pair<bool, std::string> CheckDirAccess(const std::string& path);
-	static std::pair<bool, std::string> CheckExeAccess(const std::string& path);
+	static PathAccessStatus CheckDirAccess(const std::string& path);
+	static PathAccessStatus CheckExeAccess(const std::string& path);
 	static bool DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg);
 	static bool ForceDirectories(const char* path, CString& errmsg);
 	static CString GetCurrentDirectory();
