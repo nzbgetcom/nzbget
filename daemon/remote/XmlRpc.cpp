@@ -3198,6 +3198,8 @@ void ViewFeedXmlCommand::Execute()
 		bool backlog = true;
 		bool pauseNzb;
 		char* category;
+		char* categorySourceStr;
+		auto categorySource = FeedInfo::CategorySource::NZBFile;
 		int interval = 0;
 		int priority;
 		char* feedFilter = nullptr;
@@ -3218,6 +3220,8 @@ void ViewFeedXmlCommand::Execute()
 			return;
 		}
 
+		NextParamAsStr(&categorySourceStr);
+
 		DecodeStr(name);
 		DecodeStr(url);
 		DecodeStr(filter);
@@ -3227,8 +3231,21 @@ void ViewFeedXmlCommand::Execute()
 		debug("Url=%s", url);
 		debug("Filter=%s", filter);
 
-		feedItems = g_FeedCoordinator->PreviewFeed(id, name, url, filter, backlog, pauseNzb,
-			category, priority, interval, feedFilter, cacheTimeSec, cacheId);
+		feedItems = g_FeedCoordinator->PreviewFeed(
+			id,
+			name,
+			url,
+			filter,
+			backlog,
+			pauseNzb,
+			category,
+			categorySource,
+			priority,
+			interval,
+			feedFilter,
+			cacheTimeSec,
+			cacheId
+		);
 	}
 	else
 	{

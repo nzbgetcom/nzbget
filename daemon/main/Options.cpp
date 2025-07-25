@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1174,6 +1174,24 @@ void Options::InitFeeds()
 			pauseNzb = (bool)ParseEnumValue(BString<100>("Feed%i.PauseNzb", n), BoolCount, BoolNames, BoolValues);
 		}
 
+		const char* ncategorySource = GetOption(BString<100>("Feed%i.CategorySource", n));
+		auto categorySource = FeedInfo::CategorySource::NZBFile;
+		if (ncategorySource)
+		{
+			if (strncasecmp(ncategorySource, "auto", 5))
+			{
+				categorySource = FeedInfo::CategorySource::Auto;
+			}
+			else if (strncasecmp(ncategorySource, "nzbfile", 8))
+			{
+				categorySource = FeedInfo::CategorySource::NZBFile;
+			}
+			else if (strncasecmp(ncategorySource, "feedfile", 9))
+			{
+				categorySource = FeedInfo::CategorySource::FeedFile;
+			}
+		}
+
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
@@ -1190,8 +1208,19 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(n, nname, nurl, ninterval ? atoi(ninterval) : 0, nfilter,
-					backlog, pauseNzb, ncategory, npriority ? atoi(npriority) : 0, nextensions);
+				m_extender->AddFeed(
+					n,
+					nname,
+					nurl,
+					ninterval ? atoi(ninterval) : 0,
+					nfilter,
+					backlog,
+					pauseNzb,
+					ncategory,
+					categorySource,
+					npriority ? atoi(npriority) : 0,
+					nextensions
+				);
 			}
 		}
 		else

@@ -145,7 +145,7 @@ var FeedDialog = (new function($)
 		}
 	}
 
-	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript)
+	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, categorySource)
 	{
 		Refresher.pause();
 
@@ -187,8 +187,9 @@ var FeedDialog = (new function($)
 			var feedPriority = parseInt(priority);
 			var feedInterval = parseInt(interval);
 			var feedScript = feedscript;
+			var feedCategorySource = categorySource;
 			RPC.call('previewfeed', [id, name, url, filter, feedBacklog, feedPauseNzb, feedCategory,
-				feedPriority, feedInterval, feedScript, false, 0, ''], itemsLoaded, feedFailure);
+				feedPriority, feedInterval, feedScript, false, 0, '', feedCategorySource], itemsLoaded, feedFailure);
 		}
 
 		if (!UISettings.miniTheme)
@@ -444,6 +445,7 @@ var FeedFilterDialog = (new function($)
 	var feedBacklog;
 	var feedPauseNzb;
 	var feedCategory;
+	var feedCategorySource;
 	var feedPriority;
 	var feedInterval;
 	var feedScript;
@@ -510,7 +512,7 @@ var FeedFilterDialog = (new function($)
 		}
 	}
 
-	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, _saveCallback)
+	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, categorySource, _saveCallback)
 	{
 		saveCallback = _saveCallback;
 
@@ -548,6 +550,7 @@ var FeedFilterDialog = (new function($)
 		feedBacklog = backlog === 'yes';
 		feedPauseNzb = pauseNzb === 'yes';
 		feedCategory = category;
+		feedCategorySource = categorySource;
 		feedPriority = parseInt(priority);
 		feedInterval = parseInt(interval);
 		feedScript = feedscript;
@@ -557,7 +560,7 @@ var FeedFilterDialog = (new function($)
 		if (url !== '')
 		{
 			RPC.call('previewfeed', [feedId, name, url, filter, feedBacklog, feedPauseNzb, feedCategory, feedPriority,
-				feedInterval, feedScript, true, cacheTimeSec, cacheId], itemsLoaded, feedFailure);
+				feedInterval, feedScript, true, cacheTimeSec, cacheId, feedCategorySource], itemsLoaded, feedFailure);
 		}
 		else
 		{

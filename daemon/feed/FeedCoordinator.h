@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -48,7 +48,7 @@ public:
 
 	/* may return empty pointer on error */
 	std::shared_ptr<FeedItemList> PreviewFeed(int id, const char* name, const char* url,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority,
+		const char* filter, bool backlog, bool pauseNzb, const char* category, FeedInfo::CategorySource categorySource, int priority,
 		int interval, const char* feedScript, int cacheTimeSec, const char* cacheId);
 
 	/* may return empty pointer on error */
