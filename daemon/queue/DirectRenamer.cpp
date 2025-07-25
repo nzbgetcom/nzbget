@@ -415,7 +415,12 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 			newName = BuildNewRegularName(fileInfo->GetFilename(), parHashes, fileInfo->GetHash16k());
 		}
 
-		if (newName.empty())
+		// Rename the file anyway to trigger the hardlink creation
+		if (newName.empty() && !fileInfo->GetParFile())
+		{
+			newName = fileInfo->GetFilename();
+		}
+		else if (newName.empty())
 		{
 			continue;
 		}
