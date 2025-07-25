@@ -124,6 +124,33 @@ class StatusXmlCommand: public SafeXmlCommand
 {
 public:
 	virtual void Execute();
+
+	std::string PathAccessStatusToJsonStr(const FileSystem::PathAccessStatus& status)
+	{
+		Json::JsonObject json;
+
+		json["Valid"] = status.valid;
+		json["Message"] = status.message;
+
+		return Json::Serialize(json);
+	}
+
+	std::string PathAccessStatusToXmlStr(const FileSystem::PathAccessStatus& status)
+	{
+		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
+		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
+
+		Xml::AddNewNode(structNode, "Valid", "boolean", BoolToStr(status.valid));
+		Xml::AddNewNode(structNode, "Message", "string", status.message.c_str());
+
+		xmlAddChild(rootNode, structNode);
+		
+		std::string result = Xml::Serialize(rootNode);
+
+		xmlFreeNode(rootNode);
+
+		return result;
+	}
 };
 
 class SysInfoXmlCommand: public SafeXmlCommand
@@ -1455,6 +1482,8 @@ void StatusXmlCommand::Execute()
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
 		"\"QueueScriptCount\" : %i,\n"
+		"\"DestDirAccessStatus\" : %s,\n"
+		"\"InterDirAccessStatus\" : %s,\n"
 		"\"NewsServers\" : [\n";
 
 	const char* JSON_STATUS_END =
@@ -1588,6 +1617,10 @@ void StatusXmlCommand::Execute()
 	int resumeTime = (int)g_WorkState->GetResumeTime();
 	bool feedActive = g_FeedCoordinator->HasActiveDownloads();
 	int queuedScripts = g_QueueScriptCoordinator->GetQueueSize();
+	const FileSystem::PathAccessStatus destDirStatus = g_WorkState->GetDestDirStatus();
+	const FileSystem::PathAccessStatus interDirStatus = g_WorkState->GetInterDirStatus();
+	const std::string destDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(destDirStatus) :  PathAccessStatusToXmlStr(destDirStatus);
+	const std::string interDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(interDirStatus) :  PathAccessStatusToXmlStr(interDirStatus);
 
 	AppendFmtResponse(IsJson() ? JSON_STATUS_START : XML_STATUS_START,
 		remainingSizeLo, remainingSizeHi, remainingMBytes, forcedSizeLo,
@@ -1616,7 +1649,13 @@ void StatusXmlCommand::Execute()
 		totalInterDiskSpaceLo, 
 		totalInterDiskSpaceHi, 
 		totalInterDiskSpaceMB,
-		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
+		serverTime, 
+		resumeTime, 
+		BoolToStr(feedActive), 
+		queuedScripts,
+		destDirStatusJson.c_str(),
+		interDirStatusJson.c_str()
+	);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
