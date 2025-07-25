@@ -51,10 +51,10 @@ public:
 	bool GetQuotaReached() { return m_quotaReached; }
 	void SetDownloading(bool downloading) { m_downloading = downloading; Changed(); }
 	bool GetDownloading() { return m_downloading; }
-	void SetDestDirStatus(FileSystem::PathAccessStatus status) { m_destDirStatus = std::move(status); }
-	void SetInterDirStatus(FileSystem::PathAccessStatus status) { m_interDirStatus = std::move(status); }
-	FileSystem::PathAccessStatus GetDestDirStatus() const { return m_destDirStatus; }
-	FileSystem::PathAccessStatus GetInterDirStatus() const { return m_interDirStatus; }
+	void SetDestDirStatus(FileSystem::AccessResult status) { m_destDirStatus = std::move(status); }
+	void SetInterDirStatus(FileSystem::AccessResult status) { m_interDirStatus = std::move(status); }
+	FileSystem::AccessResult GetDestDirStatus() const { return m_destDirStatus; }
+	FileSystem::AccessResult GetInterDirStatus() const { return m_interDirStatus; }
 
 private:
 	std::atomic<time_t> m_resumeTime{0};
@@ -68,8 +68,8 @@ private:
 	std::atomic<bool> m_pauseFrontend{false};
 	std::atomic<bool> m_downloading{false};
 	std::atomic<bool> m_quotaReached{false};
-	FileSystem::PathAccessStatus m_destDirStatus;
-	FileSystem::PathAccessStatus m_interDirStatus;
+	FileSystem::AccessResult m_destDirStatus;
+	FileSystem::AccessResult m_interDirStatus;
 
 	void Changed();
 };

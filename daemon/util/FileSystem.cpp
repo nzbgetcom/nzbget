@@ -728,76 +728,60 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 	return true;
 }
 
-FileSystem::PathAccessStatus FileSystem::CheckDirAccess(const std::string& path)
+FileSystem::AccessResult FileSystem::CanReadWriteDirectory(const FS::path& path)
 {
-	struct stat st;
-	if (stat(path.c_str(), &st) != 0)
+	boost::system::error_code ec;
+	const auto status = FS::status(path, ec);
+	if (ec) 
 	{
-		int err = errno;
-		switch (err)
-		{
-		case ENOENT:
-			return { false, "Doesn't exist" };
-		case ENOTDIR:
-			return { false, "Not a directory" };
-		default:
-			return { false, std::string("Error checking a directory existence: ") + std::strerror(err) };
-		}
+		return FileSystem::AccessResult::Failure(ec.message());
 	}
 
-	if (!S_ISDIR(st.st_mode))
+	if (!FS::is_directory(status)) 
 	{
-		return { false, "Not a directory" };
+		return FileSystem::AccessResult::Failure("Not a directory");
 	}
 
-	if (access(path.c_str(), R_OK | W_OK) == 0)
+	const FS::perms perms = status.permissions();
+	const FS::perms canRead = FS::owner_read;
+	const FS::perms canWrite = FS::owner_write;
+
+	if ((perms & canRead) != canRead) 
 	{
-		return { true, "" };
+		return FileSystem::AccessResult::Failure("No read permission");
 	}
 
-	int err = errno;
-	switch (err) {
-	case EACCES:
-		return { false, "No read/write permissions" };
-	case EROFS:
-		return { false, "Directory is on a read-only filesystem" };
-	default:
-		return { false, std::string("Error checking read/write permissions: ") + std::strerror(err) };
+	if ((perms & canWrite) != canWrite) 
+	{
+		return FileSystem::AccessResult::Failure("No write permission");
 	}
+
+	return FileSystem::AccessResult::Success();
 }
 
-FileSystem::PathAccessStatus FileSystem::CheckExeAccess(const std::string& path)
+FileSystem::AccessResult FileSystem::CanExecute(const FS::path& path)
 {
-	struct stat st;
-	if (stat(path.c_str(), &st) != 0)
+	boost::system::error_code ec;
+	const auto status = FS::status(path, ec);
+	if (ec) 
 	{
-		int err = errno;
-		switch (err)
-		{
-		case ENOENT:
-			return { false, "Doesn't exist" };
-		default:
-			return { false, std::string("Error checking file existence: ") + std::strerror(err) };
-		}
+		return FileSystem::AccessResult::Failure(ec.message());
 	}
 
-	if (!S_ISREG(st.st_mode))
+	if (!FS::is_regular_file(status)) 
 	{
-		return { false, "Not a regular file" };
+		return FileSystem::AccessResult::Failure("Not a regular file");
 	}
 
-	if (access(path.c_str(), X_OK) == 0)
+	const FS::perms perms = status.permissions();
+	const FS::perms requiredPerms = FS::owner_exe;
+
+	if ((perms & requiredPerms) != requiredPerms) 
 	{
-		return { true, "" };
+		return FileSystem::AccessResult::Failure("No execute permission");
 	}
-	int err = errno;
-	switch (err)
-	{
-	case EACCES:
-		return { false, "No execute permission" };
-	default:
-		return { false, std::string("Error checking execute permission: ") + std::strerror(err) };
-	}
+
+	return FileSystem::AccessResult::Success();
 }
 
 bool FileSystem::DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg)

@@ -39,10 +39,29 @@ class FileSystem
 	};
 
 public:
-	struct PathAccessStatus
+	struct AccessResult
 	{
-		bool valid;
+		bool ok;
 		std::string message;
+
+		AccessResult() = default;
+
+		static AccessResult Success()
+		{
+			return { true, "OK" };
+		}
+
+		static AccessResult Failure(std::string msg)
+		{
+			return { false, std::move(msg) };
+		}
+
+	private:
+		AccessResult(bool isOk, std::string msg)
+			: ok{ isOk }
+			, message{ std::move(msg) }
+		{
+		}
 	};
 
 	static CString GetLastErrorMessage();
@@ -74,8 +93,8 @@ public:
 	/* Delete directory which is empty or contains only hidden files or directories */
 	static bool DeleteDirectory(const char* dirFilename);
 
-	static PathAccessStatus CheckDirAccess(const std::string& path);
-	static PathAccessStatus CheckExeAccess(const std::string& path);
+	static AccessResult CanReadWriteDirectory(const FS::path& path);
+	static AccessResult CanExecute(const FS::path& path);
 	static bool DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg);
 	static bool ForceDirectories(const char* path, CString& errmsg);
 	static CString GetCurrentDirectory();

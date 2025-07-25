@@ -125,22 +125,22 @@ class StatusXmlCommand: public SafeXmlCommand
 public:
 	virtual void Execute();
 
-	std::string PathAccessStatusToJsonStr(const FileSystem::PathAccessStatus& status)
+	std::string PathAccessStatusToJsonStr(const FileSystem::AccessResult& status)
 	{
 		Json::JsonObject json;
 
-		json["Valid"] = status.valid;
+		json["Valid"] = status.ok;
 		json["Message"] = status.message;
 
 		return Json::Serialize(json);
 	}
 
-	std::string PathAccessStatusToXmlStr(const FileSystem::PathAccessStatus& status)
+	std::string PathAccessStatusToXmlStr(const FileSystem::AccessResult& status)
 	{
 		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
 		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
 
-		Xml::AddNewNode(structNode, "Valid", "boolean", BoolToStr(status.valid));
+		Xml::AddNewNode(structNode, "Valid", "boolean", BoolToStr(status.ok));
 		Xml::AddNewNode(structNode, "Message", "string", status.message.c_str());
 
 		xmlAddChild(rootNode, structNode);
@@ -1482,8 +1482,8 @@ void StatusXmlCommand::Execute()
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
 		"\"QueueScriptCount\" : %i,\n"
-		"\"DestDirAccessStatus\" : %s,\n"
-		"\"InterDirAccessStatus\" : %s,\n"
+		"\"DestDirStatus\" : %s,\n"
+		"\"InterDirStatus\" : %s,\n"
 		"\"NewsServers\" : [\n";
 
 	const char* JSON_STATUS_END =
@@ -1617,8 +1617,8 @@ void StatusXmlCommand::Execute()
 	int resumeTime = (int)g_WorkState->GetResumeTime();
 	bool feedActive = g_FeedCoordinator->HasActiveDownloads();
 	int queuedScripts = g_QueueScriptCoordinator->GetQueueSize();
-	const FileSystem::PathAccessStatus destDirStatus = g_WorkState->GetDestDirStatus();
-	const FileSystem::PathAccessStatus interDirStatus = g_WorkState->GetInterDirStatus();
+	const FileSystem::AccessResult destDirStatus = g_WorkState->GetDestDirStatus();
+	const FileSystem::AccessResult interDirStatus = g_WorkState->GetInterDirStatus();
 	const std::string destDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(destDirStatus) :  PathAccessStatusToXmlStr(destDirStatus);
 	const std::string interDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(interDirStatus) :  PathAccessStatusToXmlStr(interDirStatus);
 

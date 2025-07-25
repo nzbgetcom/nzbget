@@ -151,70 +151,65 @@ BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)
 
 BOOST_AUTO_TEST_CASE(ExistingWritableDirectory) 
 {
-	const auto [valid, message] = FileSystem::CheckDirAccess(".");
-	BOOST_CHECK_EQUAL(valid, true);
-	BOOST_CHECK_EQUAL(message, "");
+	const auto path = FS::current_path();
+	const auto [ok, message] = FileSystem::CanReadWriteDirectory(path);
+	BOOST_CHECK(ok);
+	BOOST_CHECK_EQUAL(message, "OK");
 }
 
 BOOST_AUTO_TEST_CASE(NonExistentDirectory) 
-{
-	const auto [valid, message] = FileSystem::CheckDirAccess("non_existent_directory_for_testing");
-	BOOST_CHECK_EQUAL(valid, false);
-	BOOST_CHECK_EQUAL(message, "Doesn't exist");
+{	
+	const auto path = FS::current_path() / "non_existent_directory_for_testing";
+	const auto [ok, message] = FileSystem::CanReadWriteDirectory(path);
+	BOOST_CHECK(!ok);
+	BOOST_CHECK_EQUAL(message, "No such file or directory");
 }
 
-BOOST_AUTO_TEST_CASE(ExistingFile) 
+BOOST_AUTO_TEST_CASE(PathIsAFile)
 {
-	const std::string testFile = CURRENT_DIR + "/temp_file_for_testing.txt";
-	std::ofstream tempFile(testFile);
-	BOOST_REQUIRE(tempFile.is_open());
+    const auto path = FS::current_path() / "test_file.txt";
+    std::ofstream temp_file(path.c_str());
+    BOOST_REQUIRE(temp_file.is_open());
+    temp_file.close();
 
-	tempFile << "This is a temporary file.";
-	tempFile.close();
-
-	const auto [valid, message] = FileSystem::CheckDirAccess(testFile);
-	BOOST_CHECK_EQUAL(valid, false);
-	BOOST_CHECK_EQUAL(message, "Not a directory");
-
-	BOOST_REQUIRE_EQUAL(std::remove(testFile.c_str()), 0);
+    const auto status = FileSystem::CanReadWriteDirectory(path);
+    BOOST_CHECK(!status.ok);
+    BOOST_CHECK_EQUAL(status.message, "Not a directory");
 }
 
 BOOST_AUTO_TEST_CASE(ReadOnlyDirectory)
 {
-	const std::string testDirPath = CURRENT_DIR + "/test_readonly_dir";
+	const auto path = FS::current_path() / "test_readonly_dir";
+	BOOST_REQUIRE(FS::create_directory(path));
 
-	//Creating the directory with rwxrwxrwx permissions
-	BOOST_REQUIRE_EQUAL(mkdir(testDirPath.c_str(), 0777), 0);
+	FS::permissions(path, FS::owner_read);
 
-	//Removing write permissions
-	BOOST_REQUIRE_EQUAL(chmod(testDirPath.c_str(), 0555), 0);
+	const auto [ok, message] = FileSystem::CanReadWriteDirectory(path);
+	BOOST_CHECK(!ok);
+	BOOST_CHECK_EQUAL(message, "No write permission");
 
-	const auto [valid, message] = FileSystem::CheckDirAccess(testDirPath);
-	BOOST_CHECK_EQUAL(valid, false);
-
-	BOOST_CHECK_EQUAL(message, "No read/write permissions");
-
-	BOOST_REQUIRE_EQUAL(rmdir(testDirPath.c_str()), 0);
+	BOOST_REQUIRE(FS::remove(path));
 }
 
 BOOST_AUTO_TEST_CASE(ExecutableFileDoesNotExist)
 {
-	const auto [valid, message] = FileSystem::CheckExeAccess("nonexistent_executable");
-	BOOST_CHECK_EQUAL(valid, false);
-	BOOST_CHECK_EQUAL(message, "Doesn't exist");
+	const auto path = FS::current_path() / "does_not_exist";
+	const auto [ok, message] = FileSystem::CanExecute(path);
+	BOOST_CHECK(!ok);
+	BOOST_CHECK_EQUAL(message, "No such file or directory");
 }
 
 BOOST_AUTO_TEST_CASE(NonExecutableFileExists)
 {
-	const std::string filename = "temp_nonexecutable_file.txt";
-	std::ofstream tempFile(filename);
+	const auto path = FS::current_path() / "temp_nonexecutable_file.txt";
+	std::ofstream tempFile(path.c_str());
 	BOOST_REQUIRE(tempFile.is_open());
 	tempFile << "This is a non-executable file.";
 	tempFile.close();
 
-	const auto [valid, message] = FileSystem::CheckExeAccess(filename);
-	BOOST_CHECK_EQUAL(valid, false);
+	const auto [ok, message] = FileSystem::CanExecute(path);
+	BOOST_CHECK(!ok);
 	BOOST_CHECK_EQUAL(message, "No execute permission");
 
-	BOOST_REQUIRE_EQUAL(std::remove(filename.c_str()), 0);
+	BOOST_REQUIRE(FS::remove(path));
 }
