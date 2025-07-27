@@ -34,6 +34,12 @@ fi
 if [ ! -z "${NZBGET_PASS}" ]; then
     OPTIONS="${OPTIONS}-o ControlPassword=${NZBGET_PASS} "
 fi
+if [ ! -z "${NZBGET_RESTRICTED_USER}" ]; then
+    OPTIONS="${OPTIONS}-o RestrictedUsername=${NZBGET_RESTRICTED_USER} "
+fi
+if [ ! -z "${NZBGET_RESTRICTED_PASS}" ]; then
+    OPTIONS="${OPTIONS}-o RestrictedPassword=${NZBGET_RESTRICTED_PASS} "
+fi
 
 if [ "$(id -u)" -eq 0 ]; then
     chown user:users /config/nzbget.conf
