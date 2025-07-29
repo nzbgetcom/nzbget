@@ -328,7 +328,8 @@ void Scanner::ProcessIncomingFile(
 	if (m_scanScript && strcasecmp(extension, ".nzb_processed"))
 	{
 		ScanScriptController::ExecuteScripts(fullFilename,
-			nzbInfo, directory,
+			nzbInfo, 
+			directory,
 			nzbName.c_str(),
 			nzbCategory.c_str(),
 			&priority,

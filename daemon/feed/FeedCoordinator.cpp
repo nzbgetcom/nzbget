@@ -470,7 +470,21 @@ std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, Feed
 		nzbInfo->SetFilename(FileSystem::MakeValidFilename(nzbName2));
 	}
 
-	nzbInfo->SetCategory(feedItemInfo.GetCategory());
+	const char* category = feedItemInfo.GetCategory();
+	if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::FeedFile)
+	{
+		nzbInfo->SetCategory(category);
+	}
+	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::NZBFile)
+	{
+		nzbInfo->SetAutoCategory(true);
+	}
+	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::Auto)
+	{
+		nzbInfo->SetCategory(category);
+		nzbInfo->SetAutoCategory(true);
+	}
+	
 	nzbInfo->SetPriority(feedItemInfo.GetPriority());
 	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
 	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());

@@ -1178,15 +1178,15 @@ void Options::InitFeeds()
 		auto categorySource = FeedInfo::CategorySource::NZBFile;
 		if (ncategorySource)
 		{
-			if (strncasecmp(ncategorySource, "auto", 5))
+			if (!strncasecmp(ncategorySource, "auto", 5))
 			{
 				categorySource = FeedInfo::CategorySource::Auto;
 			}
-			else if (strncasecmp(ncategorySource, "nzbfile", 8))
+			else if (!strncasecmp(ncategorySource, "nzbfile", 8))
 			{
 				categorySource = FeedInfo::CategorySource::NZBFile;
 			}
-			else if (strncasecmp(ncategorySource, "feedfile", 9))
+			else if (!strncasecmp(ncategorySource, "feedfile", 9))
 			{
 				categorySource = FeedInfo::CategorySource::FeedFile;
 			}
@@ -1638,7 +1638,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		while (*p >= '0' && *p <= '9') p++;
 		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
 			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
-			 !strcasecmp(p, ".category") || !strcasecmp(p, ".priority") || !strcasecmp(p, ".extensions")))
+			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
+			 !strcasecmp(p, ".extensions")))
 		{
 			return true;
 		}
