@@ -1175,22 +1175,7 @@ void Options::InitFeeds()
 		}
 
 		const char* ncategorySource = GetOption(BString<100>("Feed%i.CategorySource", n));
-		auto categorySource = FeedInfo::CategorySource::NZBFile;
-		if (ncategorySource)
-		{
-			if (!strncasecmp(ncategorySource, "auto", 5))
-			{
-				categorySource = FeedInfo::CategorySource::Auto;
-			}
-			else if (!strncasecmp(ncategorySource, "nzbfile", 8))
-			{
-				categorySource = FeedInfo::CategorySource::NZBFile;
-			}
-			else if (!strncasecmp(ncategorySource, "feedfile", 9))
-			{
-				categorySource = FeedInfo::CategorySource::FeedFile;
-			}
-		}
+		const auto categorySource = ParseCategorySource(ncategorySource);
 
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
@@ -1991,4 +1976,29 @@ bool Options::HasScript(const char* scriptList, const char* scriptName)
 		}
 	}
 	return false;
+}
+
+FeedInfo::CategorySource Options::ParseCategorySource(const char* value)
+{
+	if (!value)
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+
+	if (!strncasecmp(value, "auto", 4))
+	{
+		return FeedInfo::CategorySource::Auto;
+	}
+	else if (!strncasecmp(value, "nzbfile", 8))
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+	else if (!strncasecmp(value, "feedfile", 9))
+	{
+		return FeedInfo::CategorySource::FeedFile;
+	}
+	else
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
 }

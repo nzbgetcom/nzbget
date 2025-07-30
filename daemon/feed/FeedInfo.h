@@ -37,6 +37,14 @@ public:
 		fsFailed
 	};
 
+	/*
+	 *	Auto     - Try to retrieve the category from the NZB file first. If not found,
+	 *           try the feed file.
+	 *	NzbFile  - Always retrieve the category from the NZB file. If not found, the
+	 *           category is left empty.
+	 *	FeedFile - Always retrieve the category from the feed file. If not found, the
+	 *          category is left empty.
+	 */
 	enum class CategorySource
 	{
 		Auto,

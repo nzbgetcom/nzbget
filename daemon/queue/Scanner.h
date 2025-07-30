@@ -70,9 +70,9 @@ private:
 	{
 	public:
 		FileData(const char* filename, int64 size, time_t lastChange)
-			: m_filename(filename ? filename : "")
-			, m_size(size)
-			, m_lastChange(lastChange) {}
+			: m_filename{ filename ? filename : "" }
+			, m_size{ size }
+			, m_lastChange{ lastChange } {}
 		const char* GetFilename() const { return m_filename.c_str(); }
 		int64 GetSize() { return m_size; }
 		void SetSize(int64 size) { m_size = size; }
@@ -115,7 +115,7 @@ private:
 		NzbParameterList* GetParameters() { return &m_parameters; }
 		bool GetAddTop() { return m_addTop; }
 		bool GetAddPaused() { return m_addPaused; }
-		bool GetAutoCategory() { return m_autoCategory; }
+		bool GetAutoCategory() const { return m_autoCategory; }
 		NzbInfo* GetUrlInfo() { return m_urlInfo; }
 		void SetAddStatus(EAddStatus addStatus);
 		void SetNzbId(int nzbId);

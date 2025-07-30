@@ -483,6 +483,7 @@ private:
 	void CheckOptions();
 	int ParseEnumValue(const char* OptName, int argc, const char* argn[], const int argv[]);
 	int ParseIntValue(const char* OptName, int base);
+	FeedInfo::CategorySource ParseCategorySource(const char* value);
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);

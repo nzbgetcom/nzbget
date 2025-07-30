@@ -670,7 +670,7 @@ public:
 	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
 	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 	void SetAutoCategory(bool autoCategory) { m_autoCategory = autoCategory; }
-	bool GetAutoCategory() { return m_autoCategory; }
+	bool GetAutoCategory() const { return m_autoCategory; }
 
 	static const int FORCE_PRIORITY = 900;
 
