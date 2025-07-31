@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -673,8 +673,8 @@ void Options::CheckDirs()
 {
 	const char* mainDir = GetOption(OPTION_MAINDIR);
 
-	CheckDir(m_destDir, OPTION_DESTDIR, mainDir, false, false);
-	CheckDir(m_interDir, OPTION_INTERDIR, mainDir, true, false);
+	CheckDir(m_destDir, OPTION_DESTDIR, mainDir, false, true);
+	CheckDir(m_interDir, OPTION_INTERDIR, mainDir, true, true);
 	CheckDir(m_tempDir, OPTION_TEMPDIR, mainDir, false, true);
 	CheckDir(m_queueDir, OPTION_QUEUEDIR, mainDir, false, true);
 	CheckDir(m_webDir, OPTION_WEBDIR, nullptr, true, false);
