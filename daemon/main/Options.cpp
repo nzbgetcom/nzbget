@@ -102,6 +102,8 @@ static const char* OPTION_PARTHREADS			= "ParThreads";
 static const char* OPTION_RARRENAME				= "RarRename";
 static const char* OPTION_HEALTHCHECK			= "HealthCheck";
 static const char* OPTION_DIRECTRENAME			= "DirectRename";
+static const char* OPTION_HARDLINKING			= "HardLinking";
+static const char* OPTION_HARDLINKINGIGNOREEXT = "HardLinkingIgnoreExt";
 static const char* OPTION_UMASK					= "UMask";
 static const char* OPTION_UPDATEINTERVAL		= "UpdateInterval";
 static const char* OPTION_CURSESNZBNAME			= "CursesNzbName";
@@ -492,6 +494,8 @@ void Options::InitDefaults()
 	SetOption(OPTION_RARRENAME, "yes");
 	SetOption(OPTION_HEALTHCHECK, "none");
 	SetOption(OPTION_DIRECTRENAME, "no");
+	SetOption(OPTION_HARDLINKING, "no");
+	SetOption(OPTION_HARDLINKINGIGNOREEXT, ".zip, .7z, .rar, *.7z.###, *.r##");
 	SetOption(OPTION_SCRIPTORDER, "");
 	SetOption(OPTION_EXTENSIONS, "");
 	SetOption(OPTION_DAEMONUSERNAME, "root");
@@ -763,6 +767,8 @@ void Options::InitOptions()
 	m_parRename				= (bool)ParseEnumValue(OPTION_PARRENAME, BoolCount, BoolNames, BoolValues);
 	m_rarRename				= (bool)ParseEnumValue(OPTION_RARRENAME, BoolCount, BoolNames, BoolValues);
 	m_directRename			= (bool)ParseEnumValue(OPTION_DIRECTRENAME, BoolCount, BoolNames, BoolValues);
+	m_hardLinking			= (bool)ParseEnumValue(OPTION_HARDLINKING, BoolCount, BoolNames, BoolValues);
+	m_hardLinkingIgnoreExt = GetOption(OPTION_HARDLINKINGIGNOREEXT);
 	m_cursesNzbName			= (bool)ParseEnumValue(OPTION_CURSESNZBNAME, BoolCount, BoolNames, BoolValues);
 	m_cursesTime			= (bool)ParseEnumValue(OPTION_CURSESTIME, BoolCount, BoolNames, BoolValues);
 	m_cursesGroup			= (bool)ParseEnumValue(OPTION_CURSESGROUP, BoolCount, BoolNames, BoolValues);

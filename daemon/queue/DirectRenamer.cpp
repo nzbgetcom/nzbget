@@ -416,7 +416,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 		}
 
 		// Rename the file anyway to trigger the hardlink creation
-		if (newName.empty() && !fileInfo->GetParFile())
+		if (newName.empty() && !fileInfo->GetParFile() && g_Options->GetHardLinking())
 		{
 			newName = fileInfo->GetFilename();
 		}
@@ -438,9 +438,20 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 		);
 
 		// Create hardlink and save the path in fileInfo
-		if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), newOutputFilename.c_str()))
+		if (g_Options->GetHardLinking() && !Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ","))
 		{
-			fileInfo->SetHardLinkPath(newOutputFilename);
+			const std::string nzbFinalDir = fileInfo->GetNzbInfo()->BuildFinalDirName().Str();
+			const std::string finalOutputFilename = nzbFinalDir + PATH_SEPARATOR + newName;
+
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"HardLinking in-progress file %s to %s",
+				oldOutputFilename.c_str(), finalOutputFilename.c_str()
+			);
+
+			if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str()))
+			{
+				fileInfo->SetHardLinkPath(finalOutputFilename);
+			}
 		}
 
 		if (Util::EmptyStr(fileInfo->GetOrigname()))
@@ -473,7 +484,8 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 			newName = BuildNewRegularName(completedFile.GetFilename(), parHashes, completedFile.GetHash16k());
 		}
 
-		if (newName.empty())
+		if (newName.empty() ||
+			(g_Options->GetHardLinking() && Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ",")))
 		{
 			continue;
 		}

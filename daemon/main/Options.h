@@ -313,6 +313,8 @@ public:
 	int GetQuotaStartDay() { return m_quotaStartDay; }
 	int GetDailyQuota() { return m_dailyQuota; }
 	bool GetDirectRename() { return m_directRename; }
+	bool GetHardLinking() { return m_hardLinking; }
+	const char* GetHardLinkingIgnoreExt() { return m_hardLinkingIgnoreExt; }
 	bool GetReorderFiles() { return m_reorderFiles; }
 	EFileNaming GetFileNaming() { return m_fileNaming; }
 	int GetDownloadRate() const { return m_downloadRate; }
@@ -407,6 +409,8 @@ private:
 	int m_parThreads = 0;
 	bool m_rarRename = false;
 	bool m_directRename = false;
+	bool m_hardLinking = false;
+	CString m_hardLinkingIgnoreExt;
 	EHealthCheck m_healthCheck = hcNone;
 	CString m_extensions;
 	CString m_scriptOrder;

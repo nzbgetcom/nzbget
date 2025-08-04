@@ -205,8 +205,8 @@ public:
 	void SetParSetId(const char* parSetId) { m_parSetId = parSetId; }
 	bool GetFlushLocked() { return m_flushLocked; }
 	void SetFlushLocked(bool flushLocked) { m_flushLocked = flushLocked; }
-	std::string GetHardLinkPath() { return m_hardLinkPath; }
-	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = hardLinkPath; }
+	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
+	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	bool IsHardLinked();
 
 	ServerStatList* GetServerStats() { return &m_serverStats; }
