@@ -1331,6 +1331,26 @@ var Config = (new function($)
 				{
 					option.editor = { caption: 'Change', click: 'Config.editFilter' };
 				}
+				if (optname !== 'requireddir' && optname.indexOf('dir') > -1)
+				{
+					option.editor = { caption: 'Browse', click: 'Config.browseDir' };
+				}
+				if (optname.indexOf('file') > -1)
+				{
+					option.editor = { caption: 'Browse', click: 'Config.browseFile' };
+				}
+				if (optname === 'unrarcmd' || optname === 'sevenzipcmd')
+				{
+					option.editor = { caption: 'Browse', click: 'Config.browseFile' };
+				}
+				if (optname === 'certstore')
+				{
+					option.editor = { caption: 'Browse', click: 'Config.browseFile' };
+				}
+				if (optname === 'configtemplate')
+				{
+					option.editor = { caption: 'Browse', click: 'Config.browseFile' };
+				}
 			}
 		}
 	}
@@ -1849,6 +1869,18 @@ var Config = (new function($)
 					var control = $('#' + option.formId);
 					control.val(filter);
 				});
+	}
+
+	this.browseDir = function(optFormId)
+	{
+		var option = findOptionById(optFormId);
+		console.log(option)
+	}
+
+	this.browseFile = function(optFormId)
+	{
+		var option = findOptionById(optFormId);
+		console.log(option)
 	}
 
 	this.previewFeed = function(control, setname, sectionId)
