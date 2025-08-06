@@ -30,8 +30,8 @@
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 
-NzbFile::NzbFile(const char* fileName, const char* category) :
-	m_fileName(fileName)
+NzbFile::NzbFile(const char* fileName, const char* category) 
+	: m_fileName{ fileName ? fileName : "" }
 {
 	debug("Creating NZBFile");
 
@@ -419,6 +419,7 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 			return;
 		}
 		m_hasPassword = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("password", atts[1]);
+		m_hasCategory = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("category", atts[1]);
 	}
 }
 
@@ -457,6 +458,10 @@ void NzbFile::Parse_EndElement(const char *name)
 	else if (!strcmp("meta", name) && m_hasPassword)
 	{
 		m_password = m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasCategory)
+	{
+		m_category = m_tagContent;
 	}
 }
 

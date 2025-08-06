@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,28 +28,28 @@ class ScanScriptController : public NzbScriptController
 {
 public:
 	static void ExecuteScripts(const char* nzbFilename, NzbInfo* nzbInfo,
-		const char* directory, CString* nzbName, CString* category, int* priority,
+		const char* directory, const char* nzbName, const char* category, int* priority,
 		NzbParameterList* parameters, bool* addTop, bool* addPaused,
-		CString* dupeKey, int* dupeScore, EDupeMode* dupeMode);
+		const char* dupeKey, int* dupeScore, EDupeMode* dupeMode);
 	static bool HasScripts();
 
 protected:
-	virtual void ExecuteScript(std::shared_ptr<const Extension::Script> script);
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	void ExecuteScript(std::shared_ptr<const Extension::Script> script) override;
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	const char* m_nzbFilename;
 	const char* m_url;
 	const char* m_directory;
-	CString* m_nzbName;
-	CString* m_category;
+	std::string m_nzbName;
+	std::string m_category;
+	std::string m_dupeKey;
 	int* m_priority;
-	NzbParameterList* m_parameters;
+	int* m_dupeScore;
 	bool* m_addTop;
 	bool* m_addPaused;
-	CString* m_dupeKey;
-	int* m_dupeScore;
 	EDupeMode* m_dupeMode;
+	NzbParameterList* m_parameters;
 	int m_prefixLen;
 
 	void PrepareParams(const char* scriptName);
