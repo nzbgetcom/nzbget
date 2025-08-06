@@ -125,31 +125,31 @@ class StatusXmlCommand: public SafeXmlCommand
 public:
 	virtual void Execute();
 
-	std::string PathAccessStatusToJsonStr(const FileSystem::AccessResult& status)
+	std::string PathAccessResultToJsonStr(const FileSystem::AccessResult& result)
 	{
 		Json::JsonObject json;
 
-		json["Valid"] = status.ok;
-		json["Message"] = status.message;
+		json["Valid"] = result.ok;
+		json["Message"] = result.message;
 
 		return Json::Serialize(json);
 	}
 
-	std::string PathAccessStatusToXmlStr(const FileSystem::AccessResult& status)
+	std::string PathAccessResultToXmlStr(const FileSystem::AccessResult& result)
 	{
 		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
 		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
 
-		Xml::AddNewNode(structNode, "Valid", "boolean", BoolToStr(status.ok));
-		Xml::AddNewNode(structNode, "Message", "string", status.message.c_str());
+		Xml::AddNewNode(structNode, "Valid", "boolean", BoolToStr(result.ok));
+		Xml::AddNewNode(structNode, "Message", "string", result.message.c_str());
 
 		xmlAddChild(rootNode, structNode);
 		
-		std::string result = Xml::Serialize(rootNode);
+		std::string xmlStr = Xml::Serialize(rootNode);
 
 		xmlFreeNode(rootNode);
 
-		return result;
+		return xmlStr;
 	}
 };
 
@@ -1617,10 +1617,10 @@ void StatusXmlCommand::Execute()
 	int resumeTime = (int)g_WorkState->GetResumeTime();
 	bool feedActive = g_FeedCoordinator->HasActiveDownloads();
 	int queuedScripts = g_QueueScriptCoordinator->GetQueueSize();
-	const FileSystem::AccessResult destDirStatus = g_WorkState->GetDestDirStatus();
-	const FileSystem::AccessResult interDirStatus = g_WorkState->GetInterDirStatus();
-	const std::string destDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(destDirStatus) :  PathAccessStatusToXmlStr(destDirStatus);
-	const std::string interDirStatusJson = IsJson() ? PathAccessStatusToJsonStr(interDirStatus) :  PathAccessStatusToXmlStr(interDirStatus);
+	const FileSystem::AccessResult destDirResult = g_WorkState->GetDestDirStatus();
+	const FileSystem::AccessResult interDirResult = g_WorkState->GetInterDirStatus();
+	const std::string destDirStatus = IsJson() ? PathAccessResultToJsonStr(destDirResult) :  PathAccessResultToXmlStr(destDirResult);
+	const std::string interDirStatus = IsJson() ? PathAccessResultToJsonStr(interDirResult) :  PathAccessResultToXmlStr(interDirResult);
 
 	AppendFmtResponse(IsJson() ? JSON_STATUS_START : XML_STATUS_START,
 		remainingSizeLo, remainingSizeHi, remainingMBytes, forcedSizeLo,
@@ -1653,8 +1653,8 @@ void StatusXmlCommand::Execute()
 		resumeTime, 
 		BoolToStr(feedActive), 
 		queuedScripts,
-		destDirStatusJson.c_str(),
-		interDirStatusJson.c_str()
+		destDirStatus.c_str(),
+		interDirStatus.c_str()
 	);
 
 	int index = 0;

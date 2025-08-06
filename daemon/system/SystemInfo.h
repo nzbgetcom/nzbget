@@ -24,6 +24,7 @@
 #include "OS.h"
 #include "CPU.h"
 #include "Network.h"
+#include "FileSystem.h"
 
 namespace System
 {
@@ -38,6 +39,7 @@ namespace System
 		std::string name;
 		std::string version;
 		std::string path;
+		FileSystem::AccessResult status;
 	};
 
 	class SystemInfo final
@@ -62,7 +64,7 @@ namespace System
 		std::string GetToolPath(const char* cmd) const;
 		std::string GetUnpackerVersion(const std::string& path, const char* marker) const;\
 		std::optional<std::string> FindPython() const;
-		std::optional<std::string> GetPythonVersion(const std::string path) const;
+		std::optional<std::string> GetPythonVersion(const std::string& path) const;
 
 		CPU m_cpu;
 		OS m_os;

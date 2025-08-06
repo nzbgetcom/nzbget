@@ -156,6 +156,7 @@ namespace System
 		}
 
 		tool.version = std::move(result.value());
+		tool.status = FileSystem::CanExecute(tool.path);
 
 		return tool;
 	}
@@ -167,6 +168,7 @@ namespace System
 		tool.name = "UnRAR";
 		tool.path = GetToolPath(g_Options->GetUnrarCmd());
 		tool.version = GetUnpackerVersion(tool.path, "UNRAR");
+		tool.status = FileSystem::CanExecute(tool.path);
 
 		return tool;
 	}
@@ -178,6 +180,7 @@ namespace System
 		tool.name = "7-Zip";
 		tool.path = GetToolPath(g_Options->GetSevenZipCmd());
 		tool.version = GetUnpackerVersion(tool.path, tool.name.c_str());
+		tool.status = FileSystem::CanExecute(tool.path);
 
 		return tool;
 	}
@@ -276,7 +279,7 @@ namespace System
 		return std::nullopt;
 	}
 
-	std::optional<std::string> SystemInfo::GetPythonVersion(const std::string path) const
+	std::optional<std::string> SystemInfo::GetPythonVersion(const std::string& path) const
 	{
 		std::string cmd = FileSystem::EscapePathForShell(path) + " --version 2>&1";
 		{
