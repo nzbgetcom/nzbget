@@ -673,6 +673,8 @@ public:
 	void SetSkipScriptProcessing(bool skip) { m_skipScriptProcessing = skip; }
 	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
 	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
+	void SetAutoCategory(bool autoCategory) { m_autoCategory = autoCategory; }
+	bool GetAutoCategory() const { return m_autoCategory; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -773,6 +775,7 @@ private:
 	int m_desiredServerId = 0;
 	bool m_skipScriptProcessing = false;
 	bool m_scipDiskWrite = false;
+	bool m_autoCategory = false;
 
 	static int m_idGen;
 	static int m_idMax;

@@ -37,6 +37,21 @@ public:
 		fsFailed
 	};
 
+	/*
+	 *	Auto     - Try to retrieve the category from the NZB file first. If not found,
+	 *           try the feed file.
+	 *	NzbFile  - Always retrieve the category from the NZB file. If not found, the
+	 *           category is left empty.
+	 *	FeedFile - Always retrieve the category from the feed file. If not found, the
+	 *          category is left empty.
+	 */
+	enum class CategorySource
+	{
+		Auto,
+		NZBFile,
+		FeedFile
+	};
+
 	FeedInfo(
 		int id,
 		const char* name,
@@ -46,6 +61,7 @@ public:
 		const char* filter,
 		bool pauseNzb,
 		const char* category,
+		CategorySource categorySource,
 		int priority,
 		const char* extensions
 	);
@@ -77,6 +93,8 @@ public:
 	void SetForce(bool force) { m_force = force; }
 	bool GetBacklog() { return m_backlog; }
 	void SetBacklog(bool backlog) { m_backlog = backlog; }
+	CategorySource GetCategorySource() { return m_categorySource; }
+	void SetCategorySource(CategorySource categorySource) { m_categorySource = categorySource; }
 
 private:
 	int m_id;
@@ -90,6 +108,7 @@ private:
 	time_t m_nextUpdate = 0;
 	uint32 m_filterHash;
 	EStatus m_status = fsUndefined;
+	CategorySource m_categorySource = CategorySource::NZBFile;
 	int m_interval;
 	int m_priority;
 	int m_lastInterval = 0;
@@ -160,7 +179,13 @@ public:
 	void SetUrl(const char* url) { m_url = url ? url : ""; }
 	int64 GetSize() { return m_size; }
 	void SetSize(int64 size) { m_size = size; }
-	const char* GetCategory() const { return m_category.c_str(); }
+	const char* GetCategory() const
+	{
+		if (!m_addCategory.empty())
+			return m_addCategory.c_str();
+
+		return m_category.c_str();
+	}
 	void SetCategory(const char* category) { m_category = category ? category : ""; }
 	int GetImdbId() { return m_imdbId; }
 	void SetImdbId(int imdbId) { m_imdbId = imdbId; }

@@ -32,6 +32,7 @@ FeedInfo::FeedInfo(
 	const char* filter,
 	bool pauseNzb,
 	const char* category,
+	FeedInfo::CategorySource categorySource,
 	int priority,
 	const char* extensions
 )
@@ -40,6 +41,7 @@ FeedInfo::FeedInfo(
 	, m_url{ url ? url : "" }
 	, m_filter{ filter ? filter : "" }
 	, m_category{ category ? category : "" }
+	, m_categorySource{ categorySource }
 	, m_extensions{ extensions ? extensions : "" }
 	, m_backlog{ backlog}
 	, m_interval{ interval }

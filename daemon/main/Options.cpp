@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1180,6 +1180,9 @@ void Options::InitFeeds()
 			pauseNzb = (bool)ParseEnumValue(BString<100>("Feed%i.PauseNzb", n), BoolCount, BoolNames, BoolValues);
 		}
 
+		const char* ncategorySource = GetOption(BString<100>("Feed%i.CategorySource", n));
+		const auto categorySource = ParseCategorySource(ncategorySource);
+
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
@@ -1196,8 +1199,19 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(n, nname, nurl, ninterval ? atoi(ninterval) : 0, nfilter,
-					backlog, pauseNzb, ncategory, npriority ? atoi(npriority) : 0, nextensions);
+				m_extender->AddFeed(
+					n,
+					nname,
+					nurl,
+					ninterval ? atoi(ninterval) : 0,
+					nfilter,
+					backlog,
+					pauseNzb,
+					ncategory,
+					categorySource,
+					npriority ? atoi(npriority) : 0,
+					nextensions
+				);
 			}
 		}
 		else
@@ -1615,7 +1629,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		while (*p >= '0' && *p <= '9') p++;
 		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
 			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
-			 !strcasecmp(p, ".category") || !strcasecmp(p, ".priority") || !strcasecmp(p, ".extensions")))
+			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
+			 !strcasecmp(p, ".extensions")))
 		{
 			return true;
 		}
@@ -1967,4 +1982,29 @@ bool Options::HasScript(const char* scriptList, const char* scriptName)
 		}
 	}
 	return false;
+}
+
+FeedInfo::CategorySource Options::ParseCategorySource(const char* value)
+{
+	if (!value)
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+
+	if (!strncasecmp(value, "auto", 4))
+	{
+		return FeedInfo::CategorySource::Auto;
+	}
+	else if (!strncasecmp(value, "nzbfile", 8))
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+	else if (!strncasecmp(value, "feedfile", 9))
+	{
+		return FeedInfo::CategorySource::FeedFile;
+	}
+	else
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
 }

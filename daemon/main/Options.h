@@ -26,6 +26,7 @@
 #include "NString.h"
 #include "Thread.h"
 #include "Util.h"
+#include "FeedInfo.h"
 
 class Options
 {
@@ -178,11 +179,19 @@ public:
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 			bool tls, const char* cipher, int maxConnections, int retention,
 			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
-		virtual void AddFeed([[maybe_unused]] int id, [[maybe_unused]] const char* name,
-			[[maybe_unused]] const char* url, [[maybe_unused]] int interval,
-			[[maybe_unused]] const char* filter, [[maybe_unused]] bool backlog,
-			[[maybe_unused]] bool pauseNzb, [[maybe_unused]] const char* category,
-			[[maybe_unused]] int priority, [[maybe_unused]] const char* extensions) {}
+		virtual void AddFeed(
+			[[maybe_unused]] int id,
+			[[maybe_unused]] const char* name,
+			[[maybe_unused]] const char* url,
+			[[maybe_unused]] int interval,
+			[[maybe_unused]] const char* filter,
+			[[maybe_unused]] bool backlog,
+			[[maybe_unused]] bool pauseNzb,
+			[[maybe_unused]] const char* category,
+			[[maybe_unused]] FeedInfo::CategorySource categorySource,
+			[[maybe_unused]] int priority,
+			[[maybe_unused]] const char* extensions
+		) { }
 		virtual void AddTask([[maybe_unused]] int id, [[maybe_unused]] int hours, [[maybe_unused]] int minutes,
 			[[maybe_unused]] int weekDaysBits, [[maybe_unused]] ESchedulerCommand command,
 			[[maybe_unused]] const char* param) {}
@@ -478,6 +487,7 @@ private:
 	void CheckOptions();
 	int ParseEnumValue(const char* OptName, int argc, const char* argn[], const int argv[]);
 	int ParseIntValue(const char* OptName, int base);
+	FeedInfo::CategorySource ParseCategorySource(const char* value);
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);
