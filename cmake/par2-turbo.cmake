@@ -52,7 +52,7 @@ ExternalProject_add(
 	par2-turbo
 	PREFIX			par2-turbo
 	GIT_REPOSITORY	https://github.com/nzbgetcom/par2cmdline-turbo.git
-	GIT_TAG			v1.3.0
+	GIT_TAG			test-build
 	TLS_VERIFY		TRUE
 	GIT_SHALLOW		TRUE
 	GIT_PROGRESS	TRUE
