@@ -37,6 +37,11 @@ add_executable(PostprocessTests ${PostprocessTestsSrc})
 
 target_link_libraries(PostprocessTests PRIVATE ${LIBS})
 target_include_directories(PostprocessTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(PostprocessTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(PostprocessTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 file(COPY ../testdata/dupematcher1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/parchecker DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
