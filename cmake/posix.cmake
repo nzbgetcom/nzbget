@@ -95,10 +95,10 @@ else()
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	find_package(Boost COMPONENTS json)
+	find_package(Boost COMPONENTS json filesystem)
 
-	if(NOT Boost_JSON_FOUND)
-		message(STATUS "The Boost library will be installed from github")
+	if(NOT Boost_FOUND OR NOT Boost_JSON_FOUND OR NOT Boost_FILESYSTEM_FOUND)
+		message(STATUS "Required Boost libraries will be installed from GitHub.")
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 
