@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,28 +21,29 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-
-#include "FileSystem.h"
 #include "Extension.h"
 #include "ExtensionLoader.h"
+
+namespace fs = boost::filesystem;
+
+const fs::path CURR_DIR = fs::current_path();
 
 BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 {
 	Extension::Script extension;
 	std::string name = "Extension.py";
 	std::string displayName = "Extension";
-	std::string rootDir = FileSystem::GetCurrentDirectory().Str();
-	std::string location = rootDir + "/V1";
-	std::string entry = location + "/Extension.py";
+	const fs::path location = CURR_DIR / "V1";
+	const fs::path entry = location / "Extension.py";
 
-	extension.SetEntry(entry);
+	extension.SetEntry(entry.c_str());
 	extension.SetName(name);
 
-	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.c_str(), rootDir.c_str()) == true);
+	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.c_str(), CURR_DIR.c_str()) == true);
 
 	BOOST_CHECK(extension.GetEntry() == entry);
 	BOOST_CHECK(extension.GetLocation() == location);
-	BOOST_CHECK(extension.GetRootDir() == rootDir);
+	BOOST_CHECK(extension.GetRootDir() == CURR_DIR);
 	BOOST_CHECK(extension.GetName() == name);
 	BOOST_CHECK(extension.GetDisplayName() == displayName);
 	BOOST_CHECK(extension.GetHomepage() == std::string(""));

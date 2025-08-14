@@ -21,14 +21,15 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "FileSystem.h"
 #include "FeedFile.h"
 
-const std::string CURR_DIR = FileSystem::GetCurrentDirectory().Str();
+namespace fs = boost::filesystem;
+
+const fs::path CURR_DIR = fs::current_path();
 
 BOOST_AUTO_TEST_CASE(FeedFileTest)
 {
-	const std::string testFile = CURR_DIR + "/feed/feed.xml";
+	const fs::path testFile = CURR_DIR / "feed/feed.xml";
 	const std::string filename = "Crows.And.Sparrows";
 	const std::string description = "   Title:     Test.Title         Added to index:     09/05/2025 14:05:12        Total Size         : 200.0 B         Weblink:     N/A";
 	FeedFile file(testFile.c_str(), "feedName");
@@ -59,7 +60,7 @@ BOOST_AUTO_TEST_CASE(FeedFileTest)
 
 BOOST_AUTO_TEST_CASE(FeedFile2Test)
 {
-	const std::string testFile = CURR_DIR + "/feed/feed2.xml";
+	const fs::path testFile = CURR_DIR / "feed/feed2.xml";
 	const std::string filename = "[Judas] Kimi to Boku no Saigo no Senjou, Aruiwa Sekai ga Hajimaru Seisen (Our Last Crusade or the Rise of a New World) - S02E08 [1080p][HEVC x265 10bit][Multi-Subs] (Weekly)";
 	const std::string description = "        Total Size         : 299.6 MB              |                                                    MultiUp    ";
 	const int64 size = static_cast<int64>(std::round(299.6 * 1024 * 1024));

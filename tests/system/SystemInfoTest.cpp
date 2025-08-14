@@ -23,7 +23,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include "SystemInfo.h"
-#include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
 #include "DiskState.h"

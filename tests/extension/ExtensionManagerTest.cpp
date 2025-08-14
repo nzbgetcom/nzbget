@@ -27,13 +27,13 @@
 #include <string>
 
 #include "ExtensionManager.h"
-#include "FileSystem.h"
 #include "Options.h"
-#include "TestUtil.h"
 
-const std::string CURRENT_PATH = FileSystem::GetCurrentDirectory().Str();
-const std::string SCRIPTS_DIR = CURRENT_PATH + "/scripts";
-const std::string SCRIPTS_DIR_OPT = "ScriptDir=" + SCRIPTS_DIR;
+namespace fs = boost::filesystem;
+
+const fs::path CURRENT_PATH = fs::current_path();
+const fs::path SCRIPTS_DIR = CURRENT_PATH / "scripts";
+const std::string SCRIPTS_DIR_OPT = "ScriptDir=" + SCRIPTS_DIR.string();
 const std::string EXTENSIONS = std::string("Extensions=") + "Extension2, Extension1, email; Extension1; Extension1";
 const std::string ORDER = std::string("ScriptOrder=") + "Extension2, Extension1, email; Extension1; Extension1";
 
@@ -86,11 +86,11 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 
 BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
 {
-	const std::string workingDir = CURRENT_PATH + "/DeleteExtensionTest_dir";
-	const std::string scriptDirOpt = "ScriptDir=" + workingDir;
+	const fs::path workingDir = CURRENT_PATH / "DeleteExtensionTest_dir";
+	const std::string scriptDirOpt = "ScriptDir=" + workingDir.string();
 
-	BOOST_REQUIRE(FileSystem::CreateDirectory(workingDir.c_str()));
-	TestUtil::CopyAllFiles(workingDir.c_str(), SCRIPTS_DIR.c_str());
+	BOOST_REQUIRE(fs::create_directory(workingDir));
+	fs::copy(SCRIPTS_DIR, workingDir, fs::copy_options::recursive);
 
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back(scriptDirOpt.c_str());
@@ -112,8 +112,7 @@ BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
 
 	BOOST_CHECK_EQUAL(res.has_value(), false);
 	BOOST_CHECK_EQUAL(found.has_value(), false);
-	BOOST_CHECK_EQUAL(FileSystem::DirectoryExists("Email"), false);
+	BOOST_CHECK_EQUAL(fs::exists("Email"), false);
 
-	CString errmsg;
-	FileSystem::DeleteDirectoryWithContent(workingDir.c_str(), errmsg);
+	fs::remove_all(workingDir);
 }

@@ -104,7 +104,7 @@ else()
 
 		add_dependencies(${PACKAGE} boost)
 	else()
-		set(LIBS ${LIBS} Boost::json)
+		set(LIBS ${LIBS} Boost::json Boost::filesystem)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
 	endif()
 endif()
