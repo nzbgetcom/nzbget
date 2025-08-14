@@ -101,8 +101,7 @@ else()
 		message(STATUS "Required Boost libraries will be installed from GitHub.")
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
-
-		add_dependencies(${PACKAGE} boost)
+		set(DEPENDENCIES boost)
 	else()
 		set(LIBS ${LIBS} Boost::json Boost::filesystem)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
@@ -111,16 +110,19 @@ endif()
 
 include(CheckIncludeFiles)
 check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
-
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	add_dependencies(yencode par2-turbo)
-	if(NOT HAVE_SYSTEM_REGEX_H)
-		add_dependencies(regex par2-turbo)
-	endif()
+	set(DEPENDENCIES ${DEPENDENCIES} par2-turbo)
 endif()
+
+if(NOT HAVE_SYSTEM_REGEX_H)
+	add_dependencies(regex ${DEPENDENCIES})
+endif()
+
+add_dependencies(yencode ${DEPENDENCIES})
+add_dependencies(${PACKAGE} ${DEPENDENCIES})
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
