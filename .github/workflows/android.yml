@@ -44,7 +44,7 @@ jobs:
         mkdir -p /build/android
         mkdir -p /build/lib
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/android-${{ matrix.arch }}.tar.gz -o /build/android/ndk.tar.gz
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v2.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/android/ndk.tar.gz -C /build/android
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get update
@@ -81,7 +81,7 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v2.0/android-unpack.tar.gz -o /build/unpack.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/android-unpack.tar.gz -o /build/unpack.tar.gz
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
