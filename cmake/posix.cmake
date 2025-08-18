@@ -102,7 +102,7 @@ else()
 		message(STATUS "Required Boost libraries will be installed from GitHub.")
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
-		
+
 		set(DEPENDENCIES boost)
 	else()
 		set(LIBS ${LIBS} Boost::json Boost::filesystem)
