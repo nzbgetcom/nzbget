@@ -88,7 +88,7 @@ COPY --from=build /usr/bin/unrar7 /usr/bin/unrar7
 COPY --from=build /app/nzbget/ /app/nzbget/
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.84-json tzdata && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.84-json boost1.84-filesystem tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
