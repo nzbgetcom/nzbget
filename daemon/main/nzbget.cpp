@@ -188,7 +188,7 @@ void FSTests()
 		}
 		// Ensure file is removed even if the block above had issues (e.g., permissions)
 		if (fs::exists(testFile)) {
-			std::remove(testFile.c_str()); // Use C-style remove as a fallback
+			std::remove(testFile.string().c_str()); // Use C-style remove as a fallback
 			std::cout << "   Attempted fallback removal of file: " << testFile << std::endl;
 		}
 
