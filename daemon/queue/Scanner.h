@@ -174,7 +174,23 @@ private:
 	void ProcessIncomingFile(
 		const char* directory, 
 		const char* baseFilename,
-		const char* fullFilename
+		const char* fullFilename,
+		const char* category
+	);
+
+	/**
+	 * @brief Process subdirectories recursively to build category paths
+	 *
+	 * When a subdirectory is encountered, it's treated as a category name.
+	 * The category path is built by concatenating the parent category with
+	 * the subdirectory name. This allows for nested
+	 * category structures like "Movies/Action" or "TV/Comedy".
+	 */
+	void ProcessSubdirectory(
+		const char* fullPath, 
+		const char* filename, 
+		const char* category, 
+		bool checkStat
 	);
 	bool CanProcessFile(const char* fullFilename, bool checkStat);
 	void DropOldFiles();
