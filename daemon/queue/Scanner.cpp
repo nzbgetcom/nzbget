@@ -171,23 +171,28 @@ void Scanner::CheckIncomingNzbs(const char* directory, const char* category, boo
 
 		BString<1024> fullfilename("%s%c%s", directory, PATH_SEPARATOR, filename);
 		bool isDirectory = FileSystem::DirectoryExists(fullfilename);
-		// check subfolders
+
 		if (isDirectory)
 		{
-			const char* useCategory = filename;
-			BString<1024> subCategory;
-			if (strlen(category) > 0)
-			{
-				subCategory.Format("%s%c%s", category, PATH_SEPARATOR, filename);
-				useCategory = subCategory;
-			}
-			CheckIncomingNzbs(fullfilename, useCategory, checkStat);
+			ProcessSubdirectory(fullfilename, filename, category, checkStat);
 		}
 		else if (!isDirectory && CanProcessFile(fullfilename, checkStat))
 		{
-			ProcessIncomingFile(directory, filename, fullfilename);
+			ProcessIncomingFile(directory, filename, fullfilename, category);
 		}
 	}
+}
+
+void Scanner::ProcessSubdirectory(const char* fullPath, const char* filename, const char* category, bool checkStat)
+{
+	const char* useCategory = filename;
+	BString<1024> subCategory;
+	if (strlen(category) > 0)
+	{
+		subCategory.Format("%s%c%s", category, PATH_SEPARATOR, filename);
+		useCategory = subCategory;
+	}
+	CheckIncomingNzbs(fullPath, useCategory, checkStat);
 }
 
 /**
@@ -278,7 +283,8 @@ void Scanner::DropOldFiles()
 void Scanner::ProcessIncomingFile(
 	const char* directory,
 	const char* baseFilename,
-	const char* fullFilename
+	const char* fullFilename,
+	const char* category
 )
 {
 	const char* extension = strrchr(baseFilename, '.');
@@ -288,13 +294,13 @@ void Scanner::ProcessIncomingFile(
 	}
 
 	std::string nzbName;
-	std::string nzbCategory;
+	std::string nzbCategory = category ? category : "";
 	std::string dupeKey;
 	NzbParameterList parameters;
 	int priority = 0;
 	bool addTop = false;
 	bool addPaused = false;
-	bool autoCategory = true;
+	bool autoCategory = nzbCategory.empty() ? true : false;
 	int dupeScore = 0;
 	EDupeMode dupeMode = dmScore;
 	EAddStatus addStatus = asSkipped;
