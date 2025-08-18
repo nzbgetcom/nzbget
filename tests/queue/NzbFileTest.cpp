@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,21 +27,22 @@
 #include "Options.h"
 #include "DiskState.h"
 #include "NzbFile.h"
-#include "FileSystem.h"
 
-const std::string CURR_DIR = FileSystem::GetCurrentDirectory().Str();
+namespace fs = boost::filesystem;
+
+const fs::path CURR_DIR = fs::current_path();
 
 void TestNzb(std::string testFilename, std::string expectedCategory)
 {
-	std::string nzbFilename(CURR_DIR + "/nzbfile/" + testFilename + ".nzb");
-	std::string infoFilename(CURR_DIR + "/nzbfile/" + testFilename + ".txt");
+	const fs::path nzbFilename = CURR_DIR / "nzbfile" / (testFilename + ".nzb");
+	const fs::path infoFilename = CURR_DIR / "nzbfile" / (testFilename + ".txt");
 
-	NzbFile nzbFile(nzbFilename.c_str(), "");
+	NzbFile nzbFile(nzbFilename.string().c_str(), "");
 	BOOST_REQUIRE(nzbFile.Parse());
 
 	BOOST_CHECK_EQUAL(expectedCategory, nzbFile.GetCategoryFromFile());
 
-	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
+	FILE* infofile = fopen(infoFilename.string().c_str(), FOPEN_RB);
 	BOOST_REQUIRE(infofile);
 	char buffer[1024];
 

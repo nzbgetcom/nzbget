@@ -24,9 +24,9 @@ jobs:
     - name: Download and extract vcpkg cache and unpackers
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v2.0/vcpkg-windows-tests.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v2.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"

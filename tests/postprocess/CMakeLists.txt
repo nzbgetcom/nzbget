@@ -4,7 +4,6 @@ set(PostprocessTestsSrc
 	# DupeMatcherTest.cpp
 	RarReaderTest.cpp
 	RarRenamerTest.cpp
-	../suite/TestUtil.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
@@ -37,7 +36,12 @@ endif()
 add_executable(PostprocessTests ${PostprocessTestsSrc})
 
 target_link_libraries(PostprocessTests PRIVATE ${LIBS})
-target_include_directories(PostprocessTests PRIVATE ${INCLUDES} ../suite)
+target_include_directories(PostprocessTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(PostprocessTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(PostprocessTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 file(COPY ../testdata/dupematcher1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/parchecker DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

@@ -41,7 +41,7 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.1.6
+UNRAR7_VERSION=7.1.10
 ZIP7_VERSION=2408
 
 # libs versions
@@ -356,7 +356,7 @@ build_lib()
                     --prefix="$PWD/../$LIB"
                 ;;
             boost)
-                ./bootstrap.sh --with-libraries=json --prefix="$PWD/../$LIB"
+                ./bootstrap.sh --with-libraries=json,filesystem --prefix="$PWD/../$LIB"
                 if [ "$PLATFORM" == "freebsd" ]; then
                     echo "using clang : clang : clang-$FREEBSD_CLANG_VER ; " >>  project-config.jam
                     ./b2 --toolset=clang cxxflags="--target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1" cxxstd=14 link=static runtime-link=static install
@@ -646,20 +646,20 @@ build_bin()
     TOOLCHAIN_PREFIX="$TOOLCHAIN_PATH/$ARCH/output/host/usr/bin/$HOST"
     case $PLATFORM in
         android)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -latomic"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lboost_filesystem -lssl -lcrypto -lz -lncursesw -latomic"
             CMAKE_EXTRA_ARGS="-DCOMPILER=clang -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
         freebsd)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -lc++ -lexecinfo -lelf -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lboost_filesystem -lssl -lcrypto -lz -lncursesw -lc++ -lexecinfo -lelf -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             export INCLUDES="$NZBGET_INCLUDES;$FREEBSD_SYSROOT/usr/include/c++/v1"
             CMAKE_SYSTEM_NAME="FreeBSD"
             CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT -DCMAKE_CXX_FLAGS=-I$FREEBSD_SYSROOT/usr/include/c++/v1"
             ;;
         *)
             if [ "$ARCH" != "ppc500" ]; then
-                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lboost_filesystem -lc -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             else
-                export LIBS="-lncurses -lboost_json -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
+                export LIBS="-lncurses -lboost_json -lboost_filesystem -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
                 export INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/;$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/libxml2/"
             fi
             CMAKE_EXTRA_ARGS="-DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"

@@ -19,7 +19,7 @@ jobs:
 
     - name: Prepare build environment
       run: |
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/vcpkg-osx-x64.tar.gz -o $HOME/vcpkg.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-osx-x64-mojave.zip -o $HOME/vcpkg.tar.gz
         tar zxf $HOME/vcpkg.tar.gz -C $HOME
 
     - name: Build
