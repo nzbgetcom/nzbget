@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("DirectUnpackSimpleTest");
-	nzbInfo->SetDestDir(WORKING_DIR.c_str());
+	nzbInfo->SetDestDir(WORKING_DIR.string().c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
 
 	DirectUnpack::StartJob(nzbPtr);
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
-	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.c_str()));
+	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.string().c_str()));
 
 	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
 	const fs::path part01Dest = WORKING_DIR / "testfile3.part01.rar";
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("DirectUnpackTwoArchives");
-	nzbInfo->SetDestDir(WORKING_DIR.c_str());
+	nzbInfo->SetDestDir(WORKING_DIR.string().c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
 
 	DirectUnpack::StartJob(nzbPtr);

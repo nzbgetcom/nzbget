@@ -36,10 +36,10 @@ BOOST_AUTO_TEST_CASE(ExtensionV1LoaderTest)
 	const fs::path location = CURR_DIR / "V1";
 	const fs::path entry = location / "Extension.py";
 
-	extension.SetEntry(entry.c_str());
+	extension.SetEntry(entry.string().c_str());
 	extension.SetName(name);
 
-	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.c_str(), CURR_DIR.c_str()) == true);
+	BOOST_REQUIRE(ExtensionLoader::V1::Load(extension, location.string().c_str(), CURR_DIR.string().c_str()) == true);
 
 	BOOST_CHECK(extension.GetEntry() == entry);
 	BOOST_CHECK(extension.GetLocation() == location);

@@ -46,7 +46,7 @@ private:
 
 RarRenamerMock::RarRenamerMock(const fs::path& workingDir) : m_workingDir(workingDir)
 {
-	SetDestDir(m_workingDir.c_str());
+	SetDestDir(m_workingDir.string().c_str());
 	fs::copy(TEST_DATA_DIR, m_workingDir);
 }
 

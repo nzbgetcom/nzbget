@@ -37,12 +37,12 @@ void TestNzb(std::string testFilename, std::string expectedCategory)
 	const fs::path nzbFilename = CURR_DIR / "nzbfile" / (testFilename + ".nzb");
 	const fs::path infoFilename = CURR_DIR / "nzbfile" / (testFilename + ".txt");
 
-	NzbFile nzbFile(nzbFilename.c_str(), "");
+	NzbFile nzbFile(nzbFilename.string().c_str(), "");
 	BOOST_REQUIRE(nzbFile.Parse());
 
 	BOOST_CHECK_EQUAL(expectedCategory, nzbFile.GetCategoryFromFile());
 
-	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
+	FILE* infofile = fopen(infoFilename.string().c_str(), FOPEN_RB);
 	BOOST_REQUIRE(infofile);
 	char buffer[1024];
 

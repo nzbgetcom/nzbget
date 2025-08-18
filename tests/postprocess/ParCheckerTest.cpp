@@ -54,7 +54,7 @@ private:
 
 ParCheckerMock::ParCheckerMock(const fs::path& workingDir) : m_workingDir(workingDir)
 {
-	SetDestDir(m_workingDir.c_str());
+	SetDestDir(m_workingDir.string().c_str());
 	fs::copy(TEST_DATA_DIR, m_workingDir);
 }
 
@@ -67,7 +67,7 @@ void ParCheckerMock::CorruptFile(const char* filename, int offset)
 {
 	const fs::path fullfilename =m_workingDir / filename;
 
-	FILE* file = fopen(fullfilename.c_str(), FOPEN_RBP);
+	FILE* file = fopen(fullfilename.string().c_str(), FOPEN_RBP);
 	BOOST_REQUIRE(file != nullptr);
 
 	fseek(file, offset, SEEK_SET);
@@ -81,7 +81,7 @@ void ParCheckerMock::CorruptFile(const char* filename, int offset)
 ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, uint32* crc, SegmentList* segments)
 {
 	const fs::path crcFileName = m_workingDir / "crc.txt";
-	std::ifstream sm(crcFileName.c_str());
+	std::ifstream sm(crcFileName.string().c_str());
 	std::string smfilename, smcrc;
 	while (!sm.eof())
 	{
@@ -90,7 +90,7 @@ ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, ui
 		{
 			*crc = strtoul(smcrc.c_str(), nullptr, 16);
 			const fs::path file = m_workingDir / filename;
-			uint32 realCrc = CalcFileCrc(file.c_str());
+			uint32 realCrc = CalcFileCrc(file.string().c_str());
 			return *crc == realCrc ? ParChecker::fsSuccess : ParChecker::fsUnknown;
 		}
 	}

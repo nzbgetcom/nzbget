@@ -54,38 +54,38 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 
 	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
 
-	DupeMatcher dupe1Matcher(dupe1.c_str(), expectedSize);
+	DupeMatcher dupe1Matcher(dupe1.string().c_str(), expectedSize);
 	BOOST_CHECK(dupe1Matcher.Prepare());
-	BOOST_CHECK(dupe1Matcher.MatchDupeContent(dupe2.c_str()));
-	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe1.c_str()));
-	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe2.c_str()));
-	BOOST_CHECK(dupe1Matcher.MatchDupeContent(nondupe.c_str()) == false);
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(dupe2.string().c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe1.string().c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(rardupe2.string().c_str()));
+	BOOST_CHECK(dupe1Matcher.MatchDupeContent(nondupe.string().c_str()) == false);
 	
-	DupeMatcher dupe2Matcher(dupe2.c_str(), expectedSize);
+	DupeMatcher dupe2Matcher(dupe2.string().c_str(), expectedSize);
 	BOOST_CHECK(dupe2Matcher.Prepare());
-	BOOST_CHECK(dupe2Matcher.MatchDupeContent(dupe1.c_str()));
-	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe1.c_str()));
-	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe2.c_str()));
-	BOOST_CHECK(dupe2Matcher.MatchDupeContent(nondupe.c_str()) == false);
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(dupe1.string().c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe1.string().c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(rardupe2.string().c_str()));
+	BOOST_CHECK(dupe2Matcher.MatchDupeContent(nondupe.string().c_str()) == false);
 
-	DupeMatcher nonDupeMatcher(nondupe.c_str(), expectedSize);
+	DupeMatcher nonDupeMatcher(nondupe.string().c_str(), expectedSize);
 	BOOST_CHECK(nonDupeMatcher.Prepare() == false);
-	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe1.c_str()) == false);
-	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe2.c_str()) == false);
-	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe1.c_str()) == false);
-	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe2.c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe1.string().c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(dupe2.string().c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe1.string().c_str()) == false);
+	BOOST_CHECK(nonDupeMatcher.MatchDupeContent(rardupe2.string().c_str()) == false);
 
-	DupeMatcher rardupe1matcher(rardupe1.c_str(), expectedSize);
+	DupeMatcher rardupe1matcher(rardupe1.string().c_str(), expectedSize);
 	BOOST_CHECK(rardupe1matcher.Prepare());
-	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe1.c_str()));
-	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe2.c_str()));		    
-	BOOST_CHECK(rardupe1matcher.MatchDupeContent(rardupe2.c_str()));
-	BOOST_CHECK(rardupe1matcher.MatchDupeContent(nondupe.c_str()) == false);
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe1.string().c_str()));
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe2.string().c_str()));		    
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(rardupe2.string().c_str()));
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(nondupe.string().c_str()) == false);
 
-	DupeMatcher rardupe2matcher(rardupe2.c_str(), expectedSize);
+	DupeMatcher rardupe2matcher(rardupe2.string().c_str(), expectedSize);
 	BOOST_CHECK(rardupe2matcher.Prepare());
-	BOOST_CHECK(rardupe2matcher.MatchDupeContent(rardupe1.c_str()));
-	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe1.c_str()));
-	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe2.c_str()));
-	BOOST_CHECK(rardupe2matcher.MatchDupeContent(nondupe.c_str()) == false);
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(rardupe1.string().c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe1.string().c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe2.string().c_str()));
+	BOOST_CHECK(rardupe2matcher.MatchDupeContent(nondupe.string().c_str()) == false);
 }

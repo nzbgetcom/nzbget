@@ -39,9 +39,9 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	const fs::path invalidFilePath = dir / "invalid";
 	const fs::path validFilePath = dir / "valid";
 
-	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, invalidFilePath.c_str()), false);
+	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, invalidFilePath.string().c_str()), false);
 	BOOST_CHECK(manifestFile.main.empty());
-	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, validFilePath.c_str()), true);
+	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, validFilePath.string().c_str()), true);
 
 	BOOST_CHECK(manifestFile.main == "email.py");
 	BOOST_CHECK(manifestFile.name == "email");

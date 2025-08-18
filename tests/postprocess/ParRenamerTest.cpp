@@ -51,7 +51,7 @@ ParRenamerMock::ParRenamerMock(const fs::path& workingDir, const fs::path& testD
 	: m_workingDir(workingDir)
 	, m_testDataDir(testDataDir)
 {
-	SetDestDir(m_workingDir.c_str());
+	SetDestDir(m_workingDir.string().c_str());
 	fs::copy(m_testDataDir, m_workingDir);
 }
 
