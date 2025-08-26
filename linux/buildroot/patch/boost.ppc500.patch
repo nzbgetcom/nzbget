@@ -1,0 +1,16 @@
+--- a/libs/filesystem/src/unique_path.cpp
++++ b/libs/filesystem/src/unique_path.cpp
+@@ -19,6 +19,13 @@
+ 
+ #include "platform_config.hpp"
+ 
++// Force old systems to avoid libc getrandom(); use /dev/(u)random path instead.
++// This must be defined before the getrandom feature-detection below.
++#ifndef BOOST_FILESYSTEM_DISABLE_GETRANDOM
++#define BOOST_FILESYSTEM_DISABLE_GETRANDOM 1
++#endif
++
++
+ #include <boost/predef/library/c/cloudabi.h>
+ #include <boost/predef/os/bsd/open.h>
+ #include <boost/predef/os/bsd/free.h>

@@ -4,7 +4,6 @@ set(ExtensionSrc
 	ExtensionLoaderTest.cpp
 	ExtensionTest.cpp
 	ExtensionManagerTest.cpp
-	../suite/TestUtil.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ManifestFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
@@ -39,7 +38,12 @@ endif()
 
 add_executable(ExtensionTests ${ExtensionSrc})
 target_link_libraries(ExtensionTests PRIVATE ${LIBS})
-target_include_directories(ExtensionTests PRIVATE ${INCLUDES} ../suite)
+target_include_directories(ExtensionTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(ExtensionTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(ExtensionTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 file(COPY ../testdata/extension/manifest DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 file(COPY ../testdata/extension/V1 DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
