@@ -484,8 +484,12 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 			newName = BuildNewRegularName(completedFile.GetFilename(), parHashes, completedFile.GetHash16k());
 		}
 
-		if (newName.empty() ||
-			(g_Options->GetHardLinking() && Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ",")))
+		// Rename the file anyway to trigger the hardlink creation
+		if (newName.empty() && !completedFile.GetParFile() && g_Options->GetHardLinking())
+		{
+			newName = completedFile.GetFilename();
+		}
+		else if (newName.empty())
 		{
 			continue;
 		}
@@ -498,6 +502,19 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 			"Renaming completed file %s to %s",
 			oldOutputFilename.c_str(), outputFilename.c_str()
 		);
+
+		if (!Util::EmptyStr(g_Options->GetInterDir()) && g_Options->GetHardLinking() && !Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ","))
+		{
+			const std::string finalDir = nzbInfo->BuildFinalDirName().Str();
+			const std::string finalOutputFilename = finalDir + PATH_SEPARATOR + newName;
+
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"HardLinking completed file %s to %s",
+				oldOutputFilename.c_str(), finalOutputFilename.c_str()
+			);
+
+			FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str());
+		}
 
 		if (RenameFile(nzbInfo, oldOutputFilename, outputFilename))
 		{
