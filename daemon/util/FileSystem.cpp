@@ -230,16 +230,29 @@ bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 }
 #endif
 
-bool FileSystem::CreateHardLink(const char *from, const char *to)
+bool FileSystem::CreateHardLink(const char *from, const char *to, CString& errmsg)
 {
-#ifdef WIN32
-	// TODO: Create Windows implementation
-	return false;
-#else
 	const auto [newPath, _] = SplitPathAndFilename(to);
-	CString errmsg;
-	return ForceDirectories(newPath.c_str(), errmsg) && link(from, to) == 0;
+	if (!ForceDirectories(newPath.c_str(), errmsg))
+	{
+		return false;
+	}
+
+#ifdef WIN32
+	if (!CreateHardLinkW(UtfPathToWidePath(to), UtfPathToWidePath(from), nullptr))
+	{
+		errmsg = GetLastErrorMessage();
+		return false;
+	}
+#else
+	if (link(from, to) != 0)
+	{
+		errmsg = GetLastErrorMessage();
+		return false;
+	}
 #endif
+
+	return true;
 }
 
 CString FileSystem::GetCurrentDirectory()

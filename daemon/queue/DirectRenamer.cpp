@@ -448,9 +448,17 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 				oldOutputFilename.c_str(), finalOutputFilename.c_str()
 			);
 
-			if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str()))
+			CString errmsg;
+			if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
 			{
 				fileInfo->SetHardLinkPath(finalOutputFilename);
+			}
+			else
+			{
+				nzbInfo->PrintMessage(Message::mkError,
+					"Could not create hardlink %s to %s: %s",
+					oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+				);
 			}
 		}
 
@@ -513,7 +521,14 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 				oldOutputFilename.c_str(), finalOutputFilename.c_str()
 			);
 
-			FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str());
+			CString errmsg;
+			if (!FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
+			{
+				nzbInfo->PrintMessage(Message::mkError,
+					"Could not create hardlink %s to %s: %s",
+					oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+				);
+			}
 		}
 
 		if (RenameFile(nzbInfo, oldOutputFilename, outputFilename))
