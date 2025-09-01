@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,167 @@
 #ifndef OPTIONS_H
 #define OPTIONS_H
 
+#include <string_view>
 #include "NString.h"
 #include "Thread.h"
 #include "Util.h"
+#include "FeedInfo.h"
+
 
 class Options
 {
 public:
+ // Program options
+	static constexpr std::string_view CONFIGFILE = "ConfigFile";
+	static constexpr std::string_view APPBIN = "AppBin";
+	static constexpr std::string_view APPDIR = "AppDir";
+	static constexpr std::string_view APPVERSION = "Version";
+	static constexpr std::string_view MAINDIR = "MainDir";
+	static constexpr std::string_view DESTDIR = "DestDir";
+	static constexpr std::string_view INTERDIR = "InterDir";
+	static constexpr std::string_view TEMPDIR = "TempDir";
+	static constexpr std::string_view QUEUEDIR = "QueueDir";
+	static constexpr std::string_view NZBDIR = "NzbDir";
+	static constexpr std::string_view WEBDIR = "WebDir";
+	static constexpr std::string_view CONFIGTEMPLATE = "ConfigTemplate";
+	static constexpr std::string_view SCRIPTDIR = "ScriptDir";
+	static constexpr std::string_view REQUIREDDIR = "RequiredDir";
+	static constexpr std::string_view LOGFILE = "LogFile";
+	static constexpr std::string_view WRITELOG = "WriteLog";
+	static constexpr std::string_view ROTATELOG = "RotateLog";
+	static constexpr std::string_view APPENDCATEGORYDIR = "AppendCategoryDir";
+	static constexpr std::string_view LOCKFILE = "LockFile";
+	static constexpr std::string_view DAEMONUSERNAME = "DaemonUsername";
+	static constexpr std::string_view OUTPUTMODE = "OutputMode";
+	static constexpr std::string_view DUPECHECK = "DupeCheck";
+	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
+	static constexpr std::string_view CONTROLIP = "ControlIp";
+	static constexpr std::string_view CONTROLPORT = "ControlPort";
+	static constexpr std::string_view CONTROLUSERNAME = "ControlUsername";
+	static constexpr std::string_view CONTROLPASSWORD = "ControlPassword";
+	static constexpr std::string_view RESTRICTEDUSERNAME = "RestrictedUsername";
+	static constexpr std::string_view RESTRICTEDPASSWORD = "RestrictedPassword";
+	static constexpr std::string_view ADDUSERNAME = "AddUsername";
+	static constexpr std::string_view ADDPASSWORD = "AddPassword";
+	static constexpr std::string_view FORMAUTH = "FormAuth";
+	static constexpr std::string_view SECURECONTROL = "SecureControl";
+	static constexpr std::string_view SECUREPORT = "SecurePort";
+	static constexpr std::string_view SECURECERT = "SecureCert";
+	static constexpr std::string_view SECUREKEY = "SecureKey";
+	static constexpr std::string_view CERTSTORE = "CertStore";
+	static constexpr std::string_view CERTCHECK = "CertCheck";
+	static constexpr std::string_view AUTHORIZEDIP = "AuthorizedIP";
+	static constexpr std::string_view ARTICLETIMEOUT = "ArticleTimeout";
+	static constexpr std::string_view ARTICLEREADCHUNKSIZE = "ArticleReadChunkSize";
+	static constexpr std::string_view URLTIMEOUT = "UrlTimeout";
+	static constexpr std::string_view REMOTETIMEOUT = "RemoteTimeout";
+	static constexpr std::string_view FLUSHQUEUE = "FlushQueue";
+	static constexpr std::string_view NZBLOG = "NzbLog";
+	static constexpr std::string_view RAWARTICLE = "RawArticle";
+	static constexpr std::string_view SKIPWRITE = "SkipWrite";
+	static constexpr std::string_view ARTICLERETRIES = "ArticleRetries";
+	static constexpr std::string_view ARTICLEINTERVAL = "ArticleInterval";
+	static constexpr std::string_view URLRETRIES = "UrlRetries";
+	static constexpr std::string_view URLINTERVAL = "UrlInterval";
+	static constexpr std::string_view CONTINUEPARTIAL = "ContinuePartial";
+	static constexpr std::string_view URLCONNECTIONS = "UrlConnections";
+	static constexpr std::string_view LOGBUFFER = "LogBuffer";
+	static constexpr std::string_view INFOTARGET = "InfoTarget";
+	static constexpr std::string_view WARNINGTARGET = "WarningTarget";
+	static constexpr std::string_view ERRORTARGET = "ErrorTarget";
+	static constexpr std::string_view DEBUGTARGET = "DebugTarget";
+	static constexpr std::string_view DETAILTARGET = "DetailTarget";
+	static constexpr std::string_view PARCHECK = "ParCheck";
+	static constexpr std::string_view PARREPAIR = "ParRepair";
+	static constexpr std::string_view PARSCAN = "ParScan";
+	static constexpr std::string_view PARQUICK = "ParQuick";
+	static constexpr std::string_view POSTSTRATEGY = "PostStrategy";
+	static constexpr std::string_view FILENAMING = "FileNaming";
+	static constexpr std::string_view RENAMEAFTERUNPACK = "RenameAfterUnpack";
+	static constexpr std::string_view RENAMEIGNOREEXT = "RenameIgnoreExt";
+	static constexpr std::string_view PARRENAME = "ParRename";
+	static constexpr std::string_view PARBUFFER = "ParBuffer";
+	static constexpr std::string_view PARTHREADS = "ParThreads";
+	static constexpr std::string_view RARRENAME = "RarRename";
+	static constexpr std::string_view HEALTHCHECK = "HealthCheck";
+	static constexpr std::string_view DIRECTRENAME = "DirectRename";
+	static constexpr std::string_view UMASK = "UMask";
+	static constexpr std::string_view UPDATEINTERVAL = "UpdateInterval";
+	static constexpr std::string_view CURSESNZBNAME = "CursesNzbName";
+	static constexpr std::string_view CURSESTIME = "CursesTime";
+	static constexpr std::string_view CURSESGROUP = "CursesGroup";
+	static constexpr std::string_view CRCCHECK = "CrcCheck";
+	static constexpr std::string_view DIRECTWRITE = "DirectWrite";
+	static constexpr std::string_view WRITEBUFFER = "WriteBuffer";
+	static constexpr std::string_view NZBDIRINTERVAL = "NzbDirInterval";
+	static constexpr std::string_view NZBDIRFILEAGE = "NzbDirFileAge";
+	static constexpr std::string_view DISKSPACE = "DiskSpace";
+	static constexpr std::string_view CRASHTRACE = "CrashTrace";
+	static constexpr std::string_view CRASHDUMP = "CrashDump";
+	static constexpr std::string_view PARPAUSEQUEUE = "ParPauseQueue";
+	static constexpr std::string_view SCRIPTPAUSEQUEUE = "ScriptPauseQueue";
+	static constexpr std::string_view NZBCLEANUPDISK = "NzbCleanupDisk";
+	static constexpr std::string_view PARTIMELIMIT = "ParTimeLimit";
+	static constexpr std::string_view KEEPHISTORY = "KeepHistory";
+	static constexpr std::string_view UNPACK = "Unpack";
+	static constexpr std::string_view DIRECTUNPACK = "DirectUnpack";
+	static constexpr std::string_view USETEMPUNPACKDIR = "UseTempUnpackDir";
+	static constexpr std::string_view UNPACKCLEANUPDISK = "UnpackCleanupDisk";
+	static constexpr std::string_view UNRARCMD = "UnrarCmd";
+	static constexpr std::string_view SEVENZIPCMD = "SevenZipCmd";
+	static constexpr std::string_view UNPACKPASSFILE = "UnpackPassFile";
+	static constexpr std::string_view UNPACKPAUSEQUEUE = "UnpackPauseQueue";
+	static constexpr std::string_view SCRIPTORDER = "ScriptOrder";
+	static constexpr std::string_view EXTENSIONS = "Extensions";
+	static constexpr std::string_view EXTCLEANUPDISK = "ExtCleanupDisk";
+	static constexpr std::string_view PARIGNOREEXT = "ParIgnoreExt";
+	static constexpr std::string_view UNPACKIGNOREEXT = "UnpackIgnoreExt";
+	static constexpr std::string_view FEEDHISTORY = "FeedHistory";
+	static constexpr std::string_view URLFORCE = "UrlForce";
+	static constexpr std::string_view TIMECORRECTION = "TimeCorrection";
+	static constexpr std::string_view PROPAGATIONDELAY = "PropagationDelay";
+	static constexpr std::string_view ARTICLECACHE = "ArticleCache";
+	static constexpr std::string_view EVENTINTERVAL = "EventInterval";
+	static constexpr std::string_view SHELLOVERRIDE = "ShellOverride";
+	static constexpr std::string_view MONTHLYQUOTA = "MonthlyQuota";
+	static constexpr std::string_view QUOTASTARTDAY = "QuotaStartDay";
+	static constexpr std::string_view DAILYQUOTA = "DailyQuota";
+	static constexpr std::string_view REORDERFILES = "ReorderFiles";
+	static constexpr std::string_view UPDATECHECK = "UpdateCheck";
+
+// obsolete options
+	static constexpr std::string_view POSTLOGKIND = "PostLogKind";
+	static constexpr std::string_view NZBLOGKIND = "NZBLogKind";
+	static constexpr std::string_view RETRYONCRCERROR = "RetryOnCrcError";
+	static constexpr std::string_view ALLOWREPROCESS = "AllowReProcess";
+	static constexpr std::string_view POSTPROCESS = "PostProcess";
+	static constexpr std::string_view LOADPARS = "LoadPars";
+	static constexpr std::string_view THREADLIMIT = "ThreadLimit";
+	static constexpr std::string_view PROCESSLOGKIND = "ProcessLogKind";
+	static constexpr std::string_view APPENDNZBDIR = "AppendNzbDir";
+	static constexpr std::string_view RENAMEBROKEN = "RenameBroken";
+	static constexpr std::string_view MERGENZB = "MergeNzb";
+	static constexpr std::string_view STRICTPARNAME = "StrictParName";
+	static constexpr std::string_view RELOADURLQUEUE = "ReloadUrlQueue";
+	static constexpr std::string_view RELOADPOSTQUEUE = "ReloadPostQueue";
+	static constexpr std::string_view NZBPROCESS = "NZBProcess";
+	static constexpr std::string_view NZBADDEDPROCESS = "NZBAddedProcess";
+	static constexpr std::string_view CREATELOG = "CreateLog";
+	static constexpr std::string_view RESETLOG = "ResetLog";
+	static constexpr std::string_view PARCLEANUPQUEUE = "ParCleanupQueue";
+	static constexpr std::string_view DELETECLEANUPDISK = "DeleteCleanupDisk";
+	static constexpr std::string_view HISTORYCLEANUPDISK = "HistoryCleanupDisk";
+	static constexpr std::string_view SCANSCRIPT = "ScanScript";
+	static constexpr std::string_view QUEUESCRIPT = "QueueScript";
+	static constexpr std::string_view FEEDSCRIPT = "FeedScript";
+	static constexpr std::string_view DECODE = "Decode";
+	static constexpr std::string_view SAVEQUEUE = "SaveQueue";
+	static constexpr std::string_view RELOADQUEUE = "ReloadQueue";
+	static constexpr std::string_view TERMINATETIMEOUT = "TerminateTimeout";
+	static constexpr std::string_view ACCURATERATE = "AccurateRate";
+	static constexpr std::string_view CREATEBROKENLOG = "CreateBrokenLog";
+	static constexpr std::string_view BROKENLOG = "BrokenLog";
+
 	enum EWriteLog
 	{
 		wlNone,
@@ -178,11 +332,19 @@ public:
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 			bool tls, const char* cipher, int maxConnections, int retention,
 			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
-		virtual void AddFeed([[maybe_unused]] int id, [[maybe_unused]] const char* name,
-			[[maybe_unused]] const char* url, [[maybe_unused]] int interval,
-			[[maybe_unused]] const char* filter, [[maybe_unused]] bool backlog,
-			[[maybe_unused]] bool pauseNzb, [[maybe_unused]] const char* category,
-			[[maybe_unused]] int priority, [[maybe_unused]] const char* extensions) {}
+		virtual void AddFeed(
+			[[maybe_unused]] int id,
+			[[maybe_unused]] const char* name,
+			[[maybe_unused]] const char* url,
+			[[maybe_unused]] int interval,
+			[[maybe_unused]] const char* filter,
+			[[maybe_unused]] bool backlog,
+			[[maybe_unused]] bool pauseNzb,
+			[[maybe_unused]] const char* category,
+			[[maybe_unused]] FeedInfo::CategorySource categorySource,
+			[[maybe_unused]] int priority,
+			[[maybe_unused]] const char* extensions
+		) { }
 		virtual void AddTask([[maybe_unused]] int id, [[maybe_unused]] int hours, [[maybe_unused]] int minutes,
 			[[maybe_unused]] int weekDaysBits, [[maybe_unused]] ESchedulerCommand command,
 			[[maybe_unused]] const char* param) {}
@@ -291,6 +453,7 @@ public:
 	int GetKeepHistory() { return m_keepHistory; }
 	bool GetUnpack() { return m_unpack; }
 	bool GetDirectUnpack() { return m_directUnpack; }
+	bool GetUseTempUnpackDir() { return m_useTempUnpackDir; }
 	bool GetUnpackCleanupDisk() { return m_unpackCleanupDisk; }
 	const char* GetUnrarCmd() { return m_unrarCmd; }
 	const char* GetSevenZipCmd() { return m_sevenZipCmd; }
@@ -430,6 +593,7 @@ private:
 	int m_keepHistory = 0;
 	bool m_unpack = false;
 	bool m_directUnpack = false;
+	bool m_useTempUnpackDir = true;
 	bool m_unpackCleanupDisk = false;
 	CString m_unrarCmd;
 	CString m_sevenZipCmd;
@@ -472,6 +636,7 @@ private:
 	void CheckOptions();
 	int ParseEnumValue(const char* OptName, int argc, const char* argn[], const int argv[]);
 	int ParseIntValue(const char* OptName, int base);
+	FeedInfo::CategorySource ParseCategorySource(const char* value);
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);

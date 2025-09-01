@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -470,7 +470,21 @@ std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, Feed
 		nzbInfo->SetFilename(FileSystem::MakeValidFilename(nzbName2));
 	}
 
-	nzbInfo->SetCategory(feedItemInfo.GetAddCategory());
+	const char* category = feedItemInfo.GetCategory();
+	if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::FeedFile)
+	{
+		nzbInfo->SetCategory(category);
+	}
+	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::NZBFile)
+	{
+		nzbInfo->SetAutoCategory(true);
+	}
+	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::Auto)
+	{
+		nzbInfo->SetCategory(category);
+		nzbInfo->SetAutoCategory(true);
+	}
+	
 	nzbInfo->SetPriority(feedItemInfo.GetPriority());
 	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
 	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());
@@ -493,19 +507,19 @@ std::shared_ptr<FeedItemList> FeedCoordinator::ViewFeed(int id)
 	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[id - 1];
 
 	return PreviewFeed(feedInfo->GetId(), feedInfo->GetName(), feedInfo->GetUrl(), feedInfo->GetFilter(),
-		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetCategory(),
+		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetCategory(), feedInfo->GetCategorySource(),
 		feedInfo->GetPriority(), feedInfo->GetInterval(), feedInfo->GetExtensions(), 0, nullptr);
 }
 
 std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 	const char* name, const char* url, const char* filter, bool backlog, bool pauseNzb,
-	const char* category, int priority, int interval, const char* feedScript,
+	const char* category, FeedInfo::CategorySource categorySource, int priority, int interval, const char* feedScript,
 	int cacheTimeSec, const char* cacheId)
 {
 	debug("Preview feed %s", name);
 
 	std::unique_ptr<FeedInfo> feedInfo = std::make_unique<FeedInfo>(id, name, url, backlog, interval,
-		filter, pauseNzb, category, priority, feedScript);
+		filter, pauseNzb, category, categorySource, priority, feedScript);
 	feedInfo->SetPreview(true);
 
 	std::shared_ptr<FeedItemList> feedItems;

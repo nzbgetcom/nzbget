@@ -1,3 +1,29 @@
+nzbget-v25.3
+  - Features:
+    - Automatic category detection from NZB file metadata
+    [#615](https://github.com/nzbgetcom/nzbget/pull/615):
+      - The API method `append` now has a new argument:
+        - AutoCategory (bool) - If true, the category will be automatically detected from the NZB file (if available);
+      - Extended web UI with "Auto-detect category" checkbox in upload dialog;
+      - Introduced a `CategorySource` option for RSS feeds, providing granular control over where category information is retrieved;
+    - Added an option to disable the _unpack intermediate folder when unpacking.
+    This allows for immediate access to files during the unpacking process
+    [#617](https://github.com/nzbgetcom/nzbget/pull/617).
+  
+  - Bug fixes
+    - Fixed macOS x64 Mojave support
+    [#613](https://github.com/nzbgetcom/nzbget/pull/613).
+  
+  - For developers:
+    - Integrated the Boost.Filesystem library for cross-platform file system operations.
+    We're using Boost.Filesystem to ensure compatibility with older systems 
+    and plan to transition to the std::filesystem library in the future
+    [#636](https://github.com/nzbgetcom/nzbget/pull/636);
+    - Updated unrar:
+      - Linux: from 7.11 to 7.13;
+      - macOS: from 7.11 to 7.12;
+      - Windows: from 7.11 to 7.13.
+
 nzbget-v25.2
   - Bug fixes
     [#603](https://github.com/nzbgetcom/nzbget/pull/603)

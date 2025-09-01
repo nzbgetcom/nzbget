@@ -23,6 +23,11 @@ add_executable(FeedTests ${FeedTestsSrc})
 
 target_link_libraries(FeedTests PRIVATE ${LIBS})
 target_include_directories(FeedTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(FeedTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(FeedTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 file(COPY ../testdata/feed DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME FeedTests COMMAND $<TARGET_FILE:FeedTests> --log_level=message)

@@ -1,22 +1,33 @@
-set(BOOST_ROOT ${CMAKE_BINARY_DIR}/boost/src)
-set(BOOST_LIBS ${BOOST_ROOT}/boost/stage/lib/libboost_json.a)
+set(BOOST_VERSION 1.84.0)
+set(BOOST_ROOT_DIR ${CMAKE_BINARY_DIR}/boost)
+set(BOOST_SOURCE_DIR ${BOOST_ROOT_DIR}/src/boost)
+set(BOOST_INSTALL_DIR ${BOOST_ROOT_DIR}/build)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	set(BOOST_BUILD_TYPE debug)
+else()
+	set(BOOST_BUILD_TYPE release)
+endif()
+
+set(BOOST_JSON_LIB ${BOOST_INSTALL_DIR}/lib/libboost_json.a)
+set(BOOST_FILESYSTEM_LIB ${BOOST_INSTALL_DIR}/lib/libboost_filesystem.a)
 
 ExternalProject_add(
 	boost
-	PREFIX boost
-	URL https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.xz
-	TLS_VERIFY 		TRUE
+	PREFIX ${BOOST_ROOT_DIR}
+	URL https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}.tar.xz
+	URL_HASH SHA256=2e64e5d79a738d0fa6fb546c6e5c2bd28f88d268a2a080546f74e5ff98f29d0e
+	TLS_VERIFY TRUE
 	BUILD_IN_SOURCE TRUE
-	GIT_SHALLOW 	TRUE
-	GIT_PROGRESS	TRUE
 	DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-	BUILD_BYPRODUCTS  ${BOOST_LIBS}
-	CONFIGURE_COMMAND ${BOOST_ROOT}/boost/bootstrap.sh 
-					--with-libraries=json 
-					--prefix=${BOOST_ROOT}/build
-	BUILD_COMMAND ${BOOST_ROOT}/boost/b2 link=static
+	USES_TERMINAL_DOWNLOAD TRUE
+	USES_TERMINAL_UPDATE TRUE
+	USES_TERMINAL_BUILD TRUE
+	BUILD_BYPRODUCTS ${BOOST_JSON_LIB} ${BOOST_FILESYSTEM_LIB}
+	CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=json,filesystem --prefix=${BOOST_INSTALL_DIR}
+	BUILD_COMMAND	  ./b2 link=static variant=${BOOST_BUILD_TYPE} install
 	INSTALL_COMMAND ""
 )
 
-set(LIBS ${LIBS} ${BOOST_LIBS})
-set(INCLUDES ${INCLUDES} ${BOOST_ROOT}/boost)
+set(LIBS ${LIBS} ${BOOST_JSON_LIB} ${BOOST_FILESYSTEM_LIB})
+set(INCLUDES ${INCLUDES} ${BOOST_INSTALL_DIR}/include)

@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +23,15 @@
 
 #include "boost/test/unit_test.hpp"
 
+#include <vector>
+#include <iostream>
 #include "Options.h"
+#include "FeedInfo.h"
+
+std::ostream operator<<(std::ostream& os, FeedInfo::CategorySource categorySource)
+{
+	return os << categorySource;
+}
 
 class OptionsExtenderMock : public Options::Extender
 {
@@ -30,6 +39,7 @@ public:
 	int m_newsServers;
 	int m_feeds;
 	int m_tasks;
+	std::vector<FeedInfo::CategorySource> m_categorySources;
 
 	OptionsExtenderMock() : m_newsServers(0), m_feeds(0), m_tasks(0) {}
 
@@ -42,10 +52,22 @@ protected:
 		m_newsServers++;
 	}
 
-	void AddFeed(int id, const char* name, const char* url, int interval,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority, const char* feedScript) override
+	void AddFeed(
+		int id, 
+		const char* name, 
+		const char* url, 
+		int interval,
+		const char* filter, 
+		bool backlog, 
+		bool pauseNzb, 
+		const char* category,
+		FeedInfo::CategorySource categorySource, 
+		int priority, 
+		const char* feedScript
+	) override
 	{
 		m_feeds++;
+		m_categorySources.push_back(categorySource);
 	}
 
 	void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param) override
@@ -98,7 +120,45 @@ BOOST_AUTO_TEST_CASE(CallingExtender)
 	OptionsExtenderMock extender;
 	Options options(&cmdOpts, &extender);
 
-	BOOST_TEST(extender.m_newsServers == 2);
-	BOOST_TEST(extender.m_feeds == 1);
-	BOOST_TEST(extender.m_tasks == 24);
+	BOOST_CHECK_EQUAL(extender.m_newsServers, 2);
+	BOOST_CHECK_EQUAL(extender.m_feeds, 1);
+	BOOST_CHECK_EQUAL(extender.m_tasks, 24);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[0], FeedInfo::CategorySource::NZBFile);
+}
+
+BOOST_AUTO_TEST_CASE(ParseCategorySourceTest)
+{
+	Options::CmdOptList cmdOpts;
+
+	cmdOpts.push_back("Feed1.Url=http://my.feed.com");
+	cmdOpts.push_back("Feed1.CategorySource=Auto");
+
+	cmdOpts.push_back("Feed2.Url=http://my.feed2.com");
+	cmdOpts.push_back("Feed2.CategorySource=NZBFile");
+
+	cmdOpts.push_back("Feed3.Url=http://my.feed3.com");
+	cmdOpts.push_back("Feed3.CategorySource=FeedFile");
+
+	cmdOpts.push_back("Feed4.Url=http://my.feed4.com");
+	cmdOpts.push_back("Feed4.CategorySource=auto");
+
+	cmdOpts.push_back("Feed5.Url=http://my.feed5.com");
+	cmdOpts.push_back("Feed5.CategorySource=nzbfile");
+
+	cmdOpts.push_back("Feed6.Url=http://my.feed6.com");
+	cmdOpts.push_back("Feed6.CategorySource=feedfile");
+
+	cmdOpts.push_back("Feed7.Url=http://my.feed7.com");
+	cmdOpts.push_back("Feed7.CategorySource=auto and nzbfile and feedfile");
+
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK_EQUAL(extender.m_categorySources[0], FeedInfo::CategorySource::Auto);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[1], FeedInfo::CategorySource::NZBFile);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[2], FeedInfo::CategorySource::FeedFile);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[3], FeedInfo::CategorySource::Auto);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[4], FeedInfo::CategorySource::NZBFile);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[5], FeedInfo::CategorySource::FeedFile);
+	BOOST_CHECK_EQUAL(extender.m_categorySources[6], FeedInfo::CategorySource::Auto);
 }

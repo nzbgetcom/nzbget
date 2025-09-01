@@ -23,15 +23,16 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "FileSystem.h"
 #include "DirectUnpack.h"
 #include "Log.h"
 #include "Options.h"
 #include "DiskState.h"
 
-const std::string CURR_DIR = FileSystem::GetCurrentDirectory().Str();
-const std::string TEST_DATA_DIR = CURR_DIR + "/rarrenamer";
-const std::string WORKING_DIR = TEST_DATA_DIR + "/empty";
+namespace fs = boost::filesystem;
+
+const fs::path CURR_DIR = fs::current_path();
+const fs::path TEST_DATA_DIR = CURR_DIR / "rarrenamer";
+const fs::path WORKING_DIR = TEST_DATA_DIR / "empty";
 static const char* UNRAR_PATH = std::getenv("unrar");
 
 class DirectUnpackDownloadQueueMock final : public DownloadQueue
@@ -68,30 +69,24 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
-	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.c_str()));
+	BOOST_REQUIRE(fs::create_directory(WORKING_DIR));
 
-	const std::string part01 = TEST_DATA_DIR + "/testfile3.part01.rar";
-	const std::string part01Dest = WORKING_DIR + "/testfile3.part01.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part01.c_str(), part01Dest.c_str())
-	);
+	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
+	const fs::path part01Dest = WORKING_DIR / "testfile3.part01.rar";
+	BOOST_CHECK(fs::copy_file(part01, part01Dest));
 
-	const std::string part02 = TEST_DATA_DIR + "/testfile3.part02.rar";
-	const std::string part02Dest = WORKING_DIR + "/testfile3.part02.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part02.c_str(), part02Dest.c_str())
-	);
+	const fs::path part02 = TEST_DATA_DIR / "testfile3.part02.rar";
+	const fs::path part02Dest = WORKING_DIR / "testfile3.part02.rar";
+	BOOST_CHECK(fs::copy_file(part02, part02Dest));
 
-	const std::string part03 = TEST_DATA_DIR + "/testfile3.part03.rar";
-	const std::string part03Dest = WORKING_DIR + "/testfile3.part03.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part03.c_str(), part03Dest.c_str())
-	);
+	const fs::path part03 = TEST_DATA_DIR / "testfile3.part03.rar";
+	const fs::path part03Dest = WORKING_DIR / "testfile3.part03.rar";
+	BOOST_CHECK(fs::copy_file(part03, part03Dest));
 
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("DirectUnpackSimpleTest");
-	nzbInfo->SetDestDir(WORKING_DIR.c_str());
+	nzbInfo->SetDestDir(WORKING_DIR.string().c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
 
 	DirectUnpack::StartJob(nzbPtr);
@@ -113,11 +108,10 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 		Util::Sleep(20);
 	}
 
-	CString errMsg;
-	const std::string resultFile = WORKING_DIR + "/_unpack/testfile3.dat";
+	const fs::path resultFile = WORKING_DIR / "_unpack/testfile3.dat";
 	BOOST_CHECK_EQUAL(nzbPtr->GetDirectUnpackStatus(), NzbInfo::nsSuccess);
-	BOOST_CHECK(FileSystem::FileExists(resultFile.c_str()));
-	BOOST_REQUIRE(FileSystem::DeleteDirectoryWithContent(WORKING_DIR.c_str(), errMsg));
+	BOOST_CHECK(fs::exists(resultFile));
+	BOOST_REQUIRE(fs::remove_all(WORKING_DIR));
 }
 
 BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
@@ -138,48 +132,36 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
-	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.c_str()));
+	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.string().c_str()));
 
-	const std::string part01 = TEST_DATA_DIR + "/testfile3.part01.rar";
-	const std::string part01Dest = WORKING_DIR + "/testfile3.part01.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part01.c_str(), part01Dest.c_str())
-	);
+	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
+	const fs::path part01Dest = WORKING_DIR / "testfile3.part01.rar";
+	BOOST_CHECK(fs::copy_file(part01, part01Dest));
 
-	const std::string part02 = TEST_DATA_DIR + "/testfile3.part02.rar";
-	const std::string part02Dest = WORKING_DIR + "/testfile3.part02.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part02.c_str(), part02Dest.c_str())
-	);
+	const fs::path part02 = TEST_DATA_DIR / "testfile3.part02.rar";
+	const fs::path part02Dest = WORKING_DIR / "testfile3.part02.rar";
+	BOOST_CHECK(fs::copy_file(part02, part02Dest));
 
-	const std::string part03 = TEST_DATA_DIR + "/testfile3.part03.rar";
-	const std::string part03Dest = WORKING_DIR + "/testfile3.part03.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(part03.c_str(), part03Dest.c_str())
-	);
+	const fs::path part03 = TEST_DATA_DIR / "testfile3.part03.rar";
+	const fs::path part03Dest = WORKING_DIR / "testfile3.part03.rar";
+	BOOST_CHECK(fs::copy_file(part03, part03Dest));
 
-	const std::string testfile5Part1 = TEST_DATA_DIR + "/testfile5.part01.rar";
-	const std::string testfile5Part1Dest = WORKING_DIR + "/testfile5.part01.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(testfile5Part1.c_str(), testfile5Part1Dest.c_str())
-	);
+	const fs::path testfile5Part1 = TEST_DATA_DIR / "testfile5.part01.rar";
+	const fs::path testfile5Part1Dest = WORKING_DIR / "testfile5.part01.rar";
+	BOOST_CHECK(fs::copy_file(testfile5Part1, testfile5Part1Dest));
 
-	const std::string testfile5Part2 = TEST_DATA_DIR + "/testfile5.part02.rar";
-	const std::string testfile5Part2Dest = WORKING_DIR + "/testfile5.part02.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(testfile5Part2.c_str(), testfile5Part2Dest.c_str())
-	);
+	const fs::path testfile5Part2 = TEST_DATA_DIR / "testfile5.part02.rar";
+	const fs::path testfile5Part2Dest = WORKING_DIR / "testfile5.part02.rar";
+	BOOST_CHECK(fs::copy_file(testfile5Part2, testfile5Part2Dest));
 
-	const std::string testfile5Part3 = TEST_DATA_DIR + "/testfile5.part03.rar";
-	const std::string testfile5Part3Dest = WORKING_DIR + "/testfile5.part03.rar";
-	BOOST_CHECK(
-		FileSystem::CopyFile(testfile5Part3.c_str(), testfile5Part3Dest.c_str())
-	);
+	const fs::path testfile5Part3 = TEST_DATA_DIR / "testfile5.part03.rar";
+	const fs::path testfile5Part3Dest = WORKING_DIR / "testfile5.part03.rar";
+	BOOST_CHECK(fs::copy_file(testfile5Part3, testfile5Part3Dest));
 
 	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 	NzbInfo* nzbPtr = nzbInfo.get();
 	nzbInfo->SetName("DirectUnpackTwoArchives");
-	nzbInfo->SetDestDir(WORKING_DIR.c_str());
+	nzbInfo->SetDestDir(WORKING_DIR.string().c_str());
 	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
 
 	DirectUnpack::StartJob(nzbPtr);
@@ -201,11 +183,10 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 		Util::Sleep(20);
 	}
 
-	CString errMsg;
-	const std::string resultFile1 = WORKING_DIR + "/_unpack/testfile3.dat";
-	const std::string resultFile2 = WORKING_DIR + "/_unpack/testfile5.dat";
+	const fs::path resultFile1 = WORKING_DIR / "_unpack/testfile3.dat";
+	const fs::path resultFile2 = WORKING_DIR / "_unpack/testfile5.dat";
 	BOOST_CHECK_EQUAL(nzbPtr->GetDirectUnpackStatus(), NzbInfo::nsSuccess);
-	BOOST_CHECK(FileSystem::FileExists(resultFile1.c_str()));
-	BOOST_CHECK(FileSystem::FileExists(resultFile2.c_str()));
-	BOOST_REQUIRE(FileSystem::DeleteDirectoryWithContent(WORKING_DIR.c_str(), errMsg));
+	BOOST_CHECK(fs::exists(resultFile1));
+	BOOST_CHECK(fs::exists(resultFile2));
+	BOOST_REQUIRE(fs::remove_all(WORKING_DIR));
 }

@@ -27,5 +27,10 @@ add_executable(UtilTests ${UtilTestSrc})
 
 target_link_libraries(UtilTests PRIVATE	${LIBS})
 target_include_directories(UtilTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(UtilTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(UtilTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 add_test(NAME UtilTests COMMAND $<TARGET_FILE:UtilTests> --log_level=message)

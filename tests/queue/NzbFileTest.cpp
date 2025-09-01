@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,39 +27,41 @@
 #include "Options.h"
 #include "DiskState.h"
 #include "NzbFile.h"
-#include "FileSystem.h"
 
-void TestNzb(std::string testFilename)
+namespace fs = boost::filesystem;
+
+const fs::path CURR_DIR = fs::current_path();
+
+void TestNzb(std::string testFilename, std::string expectedCategory)
 {
-	std::string path = FileSystem::GetCurrentDirectory().Str();
+	const fs::path nzbFilename = CURR_DIR / "nzbfile" / (testFilename + ".nzb");
+	const fs::path infoFilename = CURR_DIR / "nzbfile" / (testFilename + ".txt");
 
-	std::string nzbFilename(path + "/nzbfile/" + testFilename + ".nzb");
-	std::string infoFilename(path + "/nzbfile/" + testFilename + ".txt");
+	NzbFile nzbFile(nzbFilename.string().c_str(), "");
+	BOOST_REQUIRE(nzbFile.Parse());
 
-	NzbFile nzbFile(nzbFilename.c_str(), "");
-	bool parsedOK = nzbFile.Parse();
-	BOOST_CHECK(parsedOK == true);
+	BOOST_CHECK_EQUAL(expectedCategory, nzbFile.GetCategoryFromFile());
 
-	FILE* infofile = fopen(infoFilename.c_str(), FOPEN_RB);
-	BOOST_CHECK(infofile != nullptr);
+	FILE* infofile = fopen(infoFilename.string().c_str(), FOPEN_RB);
+	BOOST_REQUIRE(infofile);
 	char buffer[1024];
 
 	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-	BOOST_CHECK(*buffer);
+	BOOST_REQUIRE(*buffer);
 
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
-	BOOST_CHECK(nzbInfo->GetFileCount() == fileCount);
+	BOOST_CHECK_EQUAL(nzbInfo->GetFileCount(), fileCount);
 	char lastBuffer[1024];
 
 	for (int i = 0; i < fileCount; i++)
 	{
 		while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
-		BOOST_CHECK(*buffer);
+		BOOST_REQUIRE(*buffer);
 		FileInfo* fileInfo = nzbInfo->GetFileList()->at(i).get();
-		BOOST_CHECK(fileInfo != nullptr);
+		BOOST_REQUIRE(fileInfo);
 		Util::TrimRight(buffer);
-		BOOST_CHECK(std::string(fileInfo->GetFilename()) == std::string(buffer));
+		BOOST_CHECK_EQUAL(std::string(fileInfo->GetFilename()), std::string(buffer));
 		memcpy(lastBuffer, buffer, sizeof(buffer));
 	}
 
@@ -71,7 +73,7 @@ void TestNzb(std::string testFilename)
 	}
 	else
 	{
-		BOOST_CHECK(nzbFile.GetPassword() == std::string(buffer));
+		BOOST_CHECK_EQUAL(nzbFile.GetPassword(), std::string(buffer));
 	}
 
 	fclose(infofile);
@@ -84,8 +86,8 @@ BOOST_AUTO_TEST_CASE(NZBParserTest)
 	Options::CmdOptList cmdOpts;
 	Options options(&cmdOpts, nullptr);
 
-	TestNzb("dotless");
-	TestNzb("plain");
-	TestNzb("passwd{{thisisthepassword}}");
-	TestNzb("passwdMeta");
+	TestNzb("dotless", "Movies");
+	TestNzb("plain", "TV>4K");
+	TestNzb("passwd{{thisisthepassword}}", "");
+	TestNzb("passwdMeta", "");
 }

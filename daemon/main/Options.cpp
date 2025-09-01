@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,156 +27,6 @@
 #include "Log.h"
 #include "MessageBase.h"
 #include "DownloadInfo.h"
-
-// Program options
-static const char* OPTION_CONFIGFILE			= "ConfigFile";
-static const char* OPTION_APPBIN				= "AppBin";
-static const char* OPTION_APPDIR				= "AppDir";
-static const char* OPTION_VERSION				= "Version";
-static const char* OPTION_MAINDIR				= "MainDir";
-static const char* OPTION_DESTDIR				= "DestDir";
-static const char* OPTION_INTERDIR				= "InterDir";
-static const char* OPTION_TEMPDIR				= "TempDir";
-static const char* OPTION_QUEUEDIR				= "QueueDir";
-static const char* OPTION_NZBDIR				= "NzbDir";
-static const char* OPTION_WEBDIR				= "WebDir";
-static const char* OPTION_CONFIGTEMPLATE		= "ConfigTemplate";
-static const char* OPTION_SCRIPTDIR				= "ScriptDir";
-static const char* OPTION_REQUIREDDIR			= "RequiredDir";
-static const char* OPTION_LOGFILE				= "LogFile";
-static const char* OPTION_WRITELOG				= "WriteLog";
-static const char* OPTION_ROTATELOG				= "RotateLog";
-static const char* OPTION_APPENDCATEGORYDIR		= "AppendCategoryDir";
-static const char* OPTION_LOCKFILE				= "LockFile";
-static const char* OPTION_DAEMONUSERNAME		= "DaemonUsername";
-static const char* OPTION_OUTPUTMODE			= "OutputMode";
-static const char* OPTION_DUPECHECK				= "DupeCheck";
-static const char* OPTION_DOWNLOADRATE			= "DownloadRate";
-static const char* OPTION_CONTROLIP				= "ControlIp";
-static const char* OPTION_CONTROLPORT			= "ControlPort";
-static const char* OPTION_CONTROLUSERNAME		= "ControlUsername";
-static const char* OPTION_CONTROLPASSWORD		= "ControlPassword";
-static const char* OPTION_RESTRICTEDUSERNAME	= "RestrictedUsername";
-static const char* OPTION_RESTRICTEDPASSWORD	= "RestrictedPassword";
-static const char* OPTION_ADDUSERNAME			= "AddUsername";
-static const char* OPTION_ADDPASSWORD			= "AddPassword";
-static const char* OPTION_FORMAUTH				= "FormAuth";
-static const char* OPTION_SECURECONTROL			= "SecureControl";
-static const char* OPTION_SECUREPORT			= "SecurePort";
-static const char* OPTION_SECURECERT			= "SecureCert";
-static const char* OPTION_SECUREKEY				= "SecureKey";
-static const char* OPTION_CERTSTORE				= "CertStore";
-static const char* OPTION_CERTCHECK				= "CertCheck";
-static const char* OPTION_AUTHORIZEDIP			= "AuthorizedIP";
-static const char* OPTION_ARTICLETIMEOUT		= "ArticleTimeout";
-static const char* OPTION_ARTICLEREADCHUNKSIZE	= "ArticleReadChunkSize";
-static const char* OPTION_URLTIMEOUT			= "UrlTimeout";
-static const char* OPTION_REMOTETIMEOUT			= "RemoteTimeout";
-static const char* OPTION_FLUSHQUEUE			= "FlushQueue";
-static const char* OPTION_NZBLOG				= "NzbLog";
-static const char* OPTION_RAWARTICLE			= "RawArticle";
-static const char* OPTION_SKIPWRITE				= "SkipWrite";
-static const char* OPTION_ARTICLERETRIES		= "ArticleRetries";
-static const char* OPTION_ARTICLEINTERVAL		= "ArticleInterval";
-static const char* OPTION_URLRETRIES			= "UrlRetries";
-static const char* OPTION_URLINTERVAL			= "UrlInterval";
-static const char* OPTION_CONTINUEPARTIAL		= "ContinuePartial";
-static const char* OPTION_URLCONNECTIONS		= "UrlConnections";
-static const char* OPTION_LOGBUFFER				= "LogBuffer";
-static const char* OPTION_INFOTARGET			= "InfoTarget";
-static const char* OPTION_WARNINGTARGET			= "WarningTarget";
-static const char* OPTION_ERRORTARGET			= "ErrorTarget";
-static const char* OPTION_DEBUGTARGET			= "DebugTarget";
-static const char* OPTION_DETAILTARGET			= "DetailTarget";
-static const char* OPTION_PARCHECK				= "ParCheck";
-static const char* OPTION_PARREPAIR				= "ParRepair";
-static const char* OPTION_PARSCAN				= "ParScan";
-static const char* OPTION_PARQUICK				= "ParQuick";
-static const char* OPTION_POSTSTRATEGY			= "PostStrategy";
-static const char* OPTION_FILENAMING			= "FileNaming";
-static const char* OPTION_RENAMEAFTERUNPACK	    = "RenameAfterUnpack";
-static const char* OPTION_RENAMEIGNOREEXT       = "RenameIgnoreExt";
-static const char* OPTION_PARRENAME				= "ParRename";
-static const char* OPTION_PARBUFFER				= "ParBuffer";
-static const char* OPTION_PARTHREADS			= "ParThreads";
-static const char* OPTION_RARRENAME				= "RarRename";
-static const char* OPTION_HEALTHCHECK			= "HealthCheck";
-static const char* OPTION_DIRECTRENAME			= "DirectRename";
-static const char* OPTION_UMASK					= "UMask";
-static const char* OPTION_UPDATEINTERVAL		= "UpdateInterval";
-static const char* OPTION_CURSESNZBNAME			= "CursesNzbName";
-static const char* OPTION_CURSESTIME			= "CursesTime";
-static const char* OPTION_CURSESGROUP			= "CursesGroup";
-static const char* OPTION_CRCCHECK				= "CrcCheck";
-static const char* OPTION_DIRECTWRITE			= "DirectWrite";
-static const char* OPTION_WRITEBUFFER			= "WriteBuffer";
-static const char* OPTION_NZBDIRINTERVAL		= "NzbDirInterval";
-static const char* OPTION_NZBDIRFILEAGE			= "NzbDirFileAge";
-static const char* OPTION_DISKSPACE				= "DiskSpace";
-static const char* OPTION_CRASHTRACE			= "CrashTrace";
-static const char* OPTION_CRASHDUMP				= "CrashDump";
-static const char* OPTION_PARPAUSEQUEUE			= "ParPauseQueue";
-static const char* OPTION_SCRIPTPAUSEQUEUE		= "ScriptPauseQueue";
-static const char* OPTION_NZBCLEANUPDISK		= "NzbCleanupDisk";
-static const char* OPTION_PARTIMELIMIT			= "ParTimeLimit";
-static const char* OPTION_KEEPHISTORY			= "KeepHistory";
-static const char* OPTION_UNPACK				= "Unpack";
-static const char* OPTION_DIRECTUNPACK			= "DirectUnpack";
-static const char* OPTION_UNPACKCLEANUPDISK		= "UnpackCleanupDisk";
-static const char* OPTION_UNRARCMD				= "UnrarCmd";
-static const char* OPTION_SEVENZIPCMD			= "SevenZipCmd";
-static const char* OPTION_UNPACKPASSFILE		= "UnpackPassFile";
-static const char* OPTION_UNPACKPAUSEQUEUE		= "UnpackPauseQueue";
-static const char* OPTION_SCRIPTORDER			= "ScriptOrder";
-static const char* OPTION_EXTENSIONS			= "Extensions";
-static const char* OPTION_EXTCLEANUPDISK		= "ExtCleanupDisk";
-static const char* OPTION_PARIGNOREEXT			= "ParIgnoreExt";
-static const char* OPTION_UNPACKIGNOREEXT		= "UnpackIgnoreExt";
-static const char* OPTION_FEEDHISTORY			= "FeedHistory";
-static const char* OPTION_URLFORCE				= "UrlForce";
-static const char* OPTION_TIMECORRECTION		= "TimeCorrection";
-static const char* OPTION_PROPAGATIONDELAY		= "PropagationDelay";
-static const char* OPTION_ARTICLECACHE			= "ArticleCache";
-static const char* OPTION_EVENTINTERVAL			= "EventInterval";
-static const char* OPTION_SHELLOVERRIDE			= "ShellOverride";
-static const char* OPTION_MONTHLYQUOTA			= "MonthlyQuota";
-static const char* OPTION_QUOTASTARTDAY			= "QuotaStartDay";
-static const char* OPTION_DAILYQUOTA			= "DailyQuota";
-static const char* OPTION_REORDERFILES			= "ReorderFiles";
-static const char* OPTION_UPDATECHECK			= "UpdateCheck";
-
-// obsolete options
-static const char* OPTION_POSTLOGKIND			= "PostLogKind";
-static const char* OPTION_NZBLOGKIND			= "NZBLogKind";
-static const char* OPTION_RETRYONCRCERROR		= "RetryOnCrcError";
-static const char* OPTION_ALLOWREPROCESS		= "AllowReProcess";
-static const char* OPTION_POSTPROCESS			= "PostProcess";
-static const char* OPTION_LOADPARS				= "LoadPars";
-static const char* OPTION_THREADLIMIT			= "ThreadLimit";
-static const char* OPTION_PROCESSLOGKIND		= "ProcessLogKind";
-static const char* OPTION_APPENDNZBDIR			= "AppendNzbDir";
-static const char* OPTION_RENAMEBROKEN			= "RenameBroken";
-static const char* OPTION_MERGENZB				= "MergeNzb";
-static const char* OPTION_STRICTPARNAME			= "StrictParName";
-static const char* OPTION_RELOADURLQUEUE		= "ReloadUrlQueue";
-static const char* OPTION_RELOADPOSTQUEUE		= "ReloadPostQueue";
-static const char* OPTION_NZBPROCESS			= "NZBProcess";
-static const char* OPTION_NZBADDEDPROCESS		= "NZBAddedProcess";
-static const char* OPTION_CREATELOG				= "CreateLog";
-static const char* OPTION_RESETLOG				= "ResetLog";
-static const char* OPTION_PARCLEANUPQUEUE		= "ParCleanupQueue";
-static const char* OPTION_DELETECLEANUPDISK		= "DeleteCleanupDisk";
-static const char* OPTION_HISTORYCLEANUPDISK	= "HistoryCleanupDisk";
-static const char* OPTION_SCANSCRIPT			= "ScanScript";
-static const char* OPTION_QUEUESCRIPT			= "QueueScript";
-static const char* OPTION_FEEDSCRIPT			= "FeedScript";
-static const char* OPTION_DECODE				= "Decode";
-static const char* OPTION_SAVEQUEUE				= "SaveQueue";
-static const char* OPTION_RELOADQUEUE			= "ReloadQueue";
-static const char* OPTION_TERMINATETIMEOUT		= "TerminateTimeout";
-static const char* OPTION_ACCURATERATE			= "AccurateRate";
-static const char* OPTION_CREATEBROKENLOG		= "CreateBrokenLog";
-static const char* OPTION_BROKENLOG				= "BrokenLog";
 
 const char* BoolNames[] = { "yes", "no", "true", "false", "1", "0", "on", "off", "enable", "disable", "enabled", "disabled" };
 const int BoolValues[] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
@@ -209,18 +59,18 @@ bool Options::OptEntry::Restricted()
 	BString<1024> loName = *m_name;
 	for (char* p = loName; *p; p++) *p = tolower(*p); // convert string to lowercase
 
-	bool restricted = !strcasecmp(m_name, OPTION_CONTROLIP) ||
-		!strcasecmp(m_name, OPTION_CONTROLPORT) ||
-		!strcasecmp(m_name, OPTION_FORMAUTH) ||
-		!strcasecmp(m_name, OPTION_SECURECONTROL) ||
-		!strcasecmp(m_name, OPTION_SECUREPORT) ||
-		!strcasecmp(m_name, OPTION_SECURECERT) ||
-		!strcasecmp(m_name, OPTION_SECUREKEY) ||
-		!strcasecmp(m_name, OPTION_CERTSTORE) ||
-		!strcasecmp(m_name, OPTION_CERTCHECK) ||
-		!strcasecmp(m_name, OPTION_AUTHORIZEDIP) ||
-		!strcasecmp(m_name, OPTION_DAEMONUSERNAME) ||
-		!strcasecmp(m_name, OPTION_UMASK) ||
+	bool restricted = !strcasecmp(m_name, CONTROLIP.data()) ||
+		!strcasecmp(m_name, CONTROLPORT.data()) ||
+		!strcasecmp(m_name, FORMAUTH.data()) ||
+		!strcasecmp(m_name, SECURECONTROL.data()) ||
+		!strcasecmp(m_name, SECUREPORT.data()) ||
+		!strcasecmp(m_name, SECURECERT.data()) ||
+		!strcasecmp(m_name, SECUREKEY.data()) ||
+		!strcasecmp(m_name, CERTSTORE.data()) ||
+		!strcasecmp(m_name, CERTCHECK.data()) ||
+		!strcasecmp(m_name, AUTHORIZEDIP.data()) ||
+		!strcasecmp(m_name, DAEMONUSERNAME.data()) ||
+		!strcasecmp(m_name, UMASK.data()) ||
 		strchr(m_name, ':') ||			// All extension script options
 		strstr(loName, "username") ||	// ServerX.Username, ControlUsername, etc.
 		strstr(loName, "password");		// ServerX.Password, ControlPassword, etc.
@@ -301,7 +151,7 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 	m_noConfig = noConfig;
 	m_configFilename = configFilename;
 
-	SetOption(OPTION_CONFIGFILE, "");
+	SetOption(CONFIGFILE.data(), "");
 
 	CString filename;
 	if (m_noDiskAccess)
@@ -313,13 +163,13 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 		filename = FileSystem::GetExeFileName(exeName);
 	}
 	FileSystem::NormalizePathSeparators(filename);
-	SetOption(OPTION_APPBIN, filename);
+	SetOption(APPBIN.data(), filename);
 	char* end = strrchr(filename, PATH_SEPARATOR);
 	if (end) *end = '\0';
-	SetOption(OPTION_APPDIR, filename);
+	SetOption(APPDIR.data(), filename);
 	m_appDir = *filename;
 
-	SetOption(OPTION_VERSION, Util::VersionRevision());
+	SetOption(APPVERSION.data(), Util::VersionRevision());
 
 	InitDefaults();
 
@@ -414,131 +264,132 @@ void Options::LocateOptionSrcPos(const char *optionName)
 void Options::InitDefaults()
 {
 #ifdef WIN32
-	SetOption(OPTION_MAINDIR, "${AppDir}");
-	SetOption(OPTION_WEBDIR, "${AppDir}\\webui");
-	SetOption(OPTION_CONFIGTEMPLATE, "${AppDir}\\nzbget.conf.template");
+	SetOption(MAINDIR.data(), "${AppDir}");
+	SetOption(WEBDIR.data(), "${AppDir}\\webui");
+	SetOption(CONFIGTEMPLATE.data(), "${AppDir}\\nzbget.conf.template");
 #else
-	SetOption(OPTION_MAINDIR, "~/downloads");
-	SetOption(OPTION_WEBDIR, "");
-	SetOption(OPTION_CONFIGTEMPLATE, "");
+	SetOption(MAINDIR.data(), "~/downloads");
+	SetOption(WEBDIR.data(), "");
+	SetOption(CONFIGTEMPLATE.data(), "");
 #endif
-	SetOption(OPTION_TEMPDIR, "${MainDir}/tmp");
-	SetOption(OPTION_DESTDIR, "${MainDir}/dst");
-	SetOption(OPTION_INTERDIR, "");
-	SetOption(OPTION_QUEUEDIR, "${MainDir}/queue");
-	SetOption(OPTION_NZBDIR, "${MainDir}/nzb");
-	SetOption(OPTION_LOCKFILE, "${MainDir}/nzbget.lock");
-	SetOption(OPTION_LOGFILE, "${MainDir}/nzbget.log");
-	SetOption(OPTION_SCRIPTDIR, "${MainDir}/scripts");
-	SetOption(OPTION_REQUIREDDIR, "");
-	SetOption(OPTION_WRITELOG, "append");
-	SetOption(OPTION_ROTATELOG, "3");
-	SetOption(OPTION_APPENDCATEGORYDIR, "yes");
+	SetOption(TEMPDIR.data(), "${MainDir}/tmp");
+	SetOption(DESTDIR.data(), "${MainDir}/dst");
+	SetOption(INTERDIR.data(), "");
+	SetOption(QUEUEDIR.data(), "${MainDir}/queue");
+	SetOption(NZBDIR.data(), "${MainDir}/nzb");
+	SetOption(LOCKFILE.data(), "${MainDir}/nzbget.lock");
+	SetOption(LOGFILE.data(), "${MainDir}/nzbget.log");
+	SetOption(SCRIPTDIR.data(), "${MainDir}/scripts");
+	SetOption(REQUIREDDIR.data(), "");
+	SetOption(WRITELOG.data(), "append");
+	SetOption(ROTATELOG.data(), "3");
+	SetOption(APPENDCATEGORYDIR.data(), "yes");
 #ifdef DISABLE_CURSES
-	SetOption(OPTION_OUTPUTMODE, "color");
+	SetOption(OUTPUTMODE.data(), "color");
 #else
-	SetOption(OPTION_OUTPUTMODE, "curses");
+	SetOption(OUTPUTMODE.data(), "curses");
 #endif
-	SetOption(OPTION_DUPECHECK, "yes");
-	SetOption(OPTION_DOWNLOADRATE, "0");
-	SetOption(OPTION_CONTROLIP, "0.0.0.0");
-	SetOption(OPTION_CONTROLUSERNAME, "nzbget");
-	SetOption(OPTION_CONTROLPASSWORD, "tegbzn6789");
-	SetOption(OPTION_RESTRICTEDUSERNAME, "");
-	SetOption(OPTION_RESTRICTEDPASSWORD, "");
-	SetOption(OPTION_ADDUSERNAME, "");
-	SetOption(OPTION_ADDPASSWORD, "");
-	SetOption(OPTION_CONTROLPORT, "6789");
-	SetOption(OPTION_FORMAUTH, "no");
-	SetOption(OPTION_SECURECONTROL, "no");
-	SetOption(OPTION_SECUREPORT, "6791");
-	SetOption(OPTION_SECURECERT, "");
-	SetOption(OPTION_SECUREKEY, "");
-	SetOption(OPTION_CERTSTORE, "");
-	SetOption(OPTION_CERTCHECK, "no");
-	SetOption(OPTION_AUTHORIZEDIP, "");
-	SetOption(OPTION_ARTICLETIMEOUT, "60");
-	SetOption(OPTION_ARTICLEREADCHUNKSIZE, "4");
-	SetOption(OPTION_URLTIMEOUT, "60");
-	SetOption(OPTION_REMOTETIMEOUT, "90");
-	SetOption(OPTION_FLUSHQUEUE, "yes");
-	SetOption(OPTION_NZBLOG, "yes");
-	SetOption(OPTION_RAWARTICLE, "no");
-	SetOption(OPTION_SKIPWRITE, "no");
-	SetOption(OPTION_ARTICLERETRIES, "3");
-	SetOption(OPTION_ARTICLEINTERVAL, "10");
-	SetOption(OPTION_URLRETRIES, "3");
-	SetOption(OPTION_URLINTERVAL, "10");
-	SetOption(OPTION_CONTINUEPARTIAL, "no");
-	SetOption(OPTION_URLCONNECTIONS, "4");
-	SetOption(OPTION_LOGBUFFER, "1000");
-	SetOption(OPTION_INFOTARGET, "both");
-	SetOption(OPTION_WARNINGTARGET, "both");
-	SetOption(OPTION_ERRORTARGET, "both");
-	SetOption(OPTION_DEBUGTARGET, "none");
-	SetOption(OPTION_DETAILTARGET, "both");
-	SetOption(OPTION_PARCHECK, "auto");
-	SetOption(OPTION_PARREPAIR, "yes");
-	SetOption(OPTION_PARSCAN, "extended");
-	SetOption(OPTION_PARQUICK, "yes");
-	SetOption(OPTION_POSTSTRATEGY, "sequential");
-	SetOption(OPTION_FILENAMING, "article");
-	SetOption(OPTION_RENAMEAFTERUNPACK, "yes");
-	SetOption(OPTION_RENAMEIGNOREEXT, ".zip, .7z, .rar, .par2");
-	SetOption(OPTION_PARRENAME, "yes");
-	SetOption(OPTION_PARBUFFER, "16");
-	SetOption(OPTION_PARTHREADS, "0");
-	SetOption(OPTION_RARRENAME, "yes");
-	SetOption(OPTION_HEALTHCHECK, "none");
-	SetOption(OPTION_DIRECTRENAME, "no");
-	SetOption(OPTION_SCRIPTORDER, "");
-	SetOption(OPTION_EXTENSIONS, "");
-	SetOption(OPTION_DAEMONUSERNAME, "root");
-	SetOption(OPTION_UMASK, "1000");
-	SetOption(OPTION_UPDATEINTERVAL, "200");
-	SetOption(OPTION_CURSESNZBNAME, "yes");
-	SetOption(OPTION_CURSESTIME, "no");
-	SetOption(OPTION_CURSESGROUP, "no");
-	SetOption(OPTION_CRCCHECK, "yes");
-	SetOption(OPTION_DIRECTWRITE, "yes");
-	SetOption(OPTION_WRITEBUFFER, "0");
-	SetOption(OPTION_NZBDIRINTERVAL, "5");
-	SetOption(OPTION_NZBDIRFILEAGE, "60");
-	SetOption(OPTION_DISKSPACE, "250");
-	SetOption(OPTION_CRASHTRACE, "no");
-	SetOption(OPTION_CRASHDUMP, "no");
-	SetOption(OPTION_PARPAUSEQUEUE, "no");
-	SetOption(OPTION_SCRIPTPAUSEQUEUE, "no");
-	SetOption(OPTION_NZBCLEANUPDISK, "no");
-	SetOption(OPTION_PARTIMELIMIT, "0");
-	SetOption(OPTION_KEEPHISTORY, "7");
-	SetOption(OPTION_UNPACK, "no");
-	SetOption(OPTION_DIRECTUNPACK, "no");
-	SetOption(OPTION_UNPACKCLEANUPDISK, "no");
+	SetOption(DUPECHECK.data(), "yes");
+	SetOption(DOWNLOADRATE.data(), "0");
+	SetOption(CONTROLIP.data(), "0.0.0.0");
+	SetOption(CONTROLUSERNAME.data(), "nzbget");
+	SetOption(CONTROLPASSWORD.data(), "tegbzn6789");
+	SetOption(RESTRICTEDUSERNAME.data(), "");
+	SetOption(RESTRICTEDPASSWORD.data(), "");
+	SetOption(ADDUSERNAME.data(), "");
+	SetOption(ADDPASSWORD.data(), "");
+	SetOption(CONTROLPORT.data(), "6789");
+	SetOption(FORMAUTH.data(), "no");
+	SetOption(SECURECONTROL.data(), "no");
+	SetOption(SECUREPORT.data(), "6791");
+	SetOption(SECURECERT.data(), "");
+	SetOption(SECUREKEY.data(), "");
+	SetOption(CERTSTORE.data(), "");
+	SetOption(CERTCHECK.data(), "no");
+	SetOption(AUTHORIZEDIP.data(), "");
+	SetOption(ARTICLETIMEOUT.data(), "60");
+	SetOption(ARTICLEREADCHUNKSIZE.data(), "4");
+	SetOption(URLTIMEOUT.data(), "60");
+	SetOption(REMOTETIMEOUT.data(), "90");
+	SetOption(FLUSHQUEUE.data(), "yes");
+	SetOption(NZBLOG.data(), "yes");
+	SetOption(RAWARTICLE.data(), "no");
+	SetOption(SKIPWRITE.data(), "no");
+	SetOption(ARTICLERETRIES.data(), "3");
+	SetOption(ARTICLEINTERVAL.data(), "10");
+	SetOption(URLRETRIES.data(), "3");
+	SetOption(URLINTERVAL.data(), "10");
+	SetOption(CONTINUEPARTIAL.data(), "no");
+	SetOption(URLCONNECTIONS.data(), "4");
+	SetOption(LOGBUFFER.data(), "1000");
+	SetOption(INFOTARGET.data(), "both");
+	SetOption(WARNINGTARGET.data(), "both");
+	SetOption(ERRORTARGET.data(), "both");
+	SetOption(DEBUGTARGET.data(), "none");
+	SetOption(DETAILTARGET.data(), "both");
+	SetOption(PARCHECK.data(), "auto");
+	SetOption(PARREPAIR.data(), "yes");
+	SetOption(PARSCAN.data(), "extended");
+	SetOption(PARQUICK.data(), "yes");
+	SetOption(POSTSTRATEGY.data(), "sequential");
+	SetOption(FILENAMING.data(), "article");
+	SetOption(RENAMEAFTERUNPACK.data(), "yes");
+	SetOption(RENAMEIGNOREEXT.data(), ".zip, .7z, .rar, .par2");
+	SetOption(PARRENAME.data(), "yes");
+	SetOption(PARBUFFER.data(), "16");
+	SetOption(PARTHREADS.data(), "0");
+	SetOption(RARRENAME.data(), "yes");
+	SetOption(HEALTHCHECK.data(), "none");
+	SetOption(DIRECTRENAME.data(), "no");
+	SetOption(SCRIPTORDER.data(), "");
+	SetOption(EXTENSIONS.data(), "");
+	SetOption(DAEMONUSERNAME.data(), "root");
+	SetOption(UMASK.data(), "1000");
+	SetOption(UPDATEINTERVAL.data(), "200");
+	SetOption(CURSESNZBNAME.data(), "yes");
+	SetOption(CURSESTIME.data(), "no");
+	SetOption(CURSESGROUP.data(), "no");
+	SetOption(CRCCHECK.data(), "yes");
+	SetOption(DIRECTWRITE.data(), "yes");
+	SetOption(WRITEBUFFER.data(), "0");
+	SetOption(NZBDIRINTERVAL.data(), "5");
+	SetOption(NZBDIRFILEAGE.data(), "60");
+	SetOption(DISKSPACE.data(), "250");
+	SetOption(CRASHTRACE.data(), "no");
+	SetOption(CRASHDUMP.data(), "no");
+	SetOption(PARPAUSEQUEUE.data(), "no");
+	SetOption(SCRIPTPAUSEQUEUE.data(), "no");
+	SetOption(NZBCLEANUPDISK.data(), "no");
+	SetOption(PARTIMELIMIT.data(), "0");
+	SetOption(KEEPHISTORY.data(), "7");
+	SetOption(UNPACK.data(), "no");
+	SetOption(DIRECTUNPACK.data(), "no");
+	SetOption(USETEMPUNPACKDIR.data(), "yes");
+	SetOption(UNPACKCLEANUPDISK.data(), "no");
 #ifdef WIN32
-	SetOption(OPTION_UNRARCMD, "unrar.exe");
-	SetOption(OPTION_SEVENZIPCMD, "7z.exe");
+	SetOption(UNRARCMD.data(), "unrar.exe");
+	SetOption(SEVENZIPCMD.data(), "7z.exe");
 #else
-	SetOption(OPTION_UNRARCMD, "unrar");
-	SetOption(OPTION_SEVENZIPCMD, "7z");
+	SetOption(UNRARCMD.data(), "unrar");
+	SetOption(SEVENZIPCMD.data(), "7z");
 #endif
-	SetOption(OPTION_UNPACKPASSFILE, "");
-	SetOption(OPTION_UNPACKPAUSEQUEUE, "no");
-	SetOption(OPTION_EXTCLEANUPDISK, "");
-	SetOption(OPTION_PARIGNOREEXT, "");
-	SetOption(OPTION_UNPACKIGNOREEXT, "");
-	SetOption(OPTION_FEEDHISTORY, "7");
-	SetOption(OPTION_URLFORCE, "yes");
-	SetOption(OPTION_TIMECORRECTION, "0");
-	SetOption(OPTION_PROPAGATIONDELAY, "0");
-	SetOption(OPTION_ARTICLECACHE, "0");
-	SetOption(OPTION_EVENTINTERVAL, "0");
-	SetOption(OPTION_SHELLOVERRIDE, "");
-	SetOption(OPTION_MONTHLYQUOTA, "0");
-	SetOption(OPTION_QUOTASTARTDAY, "1");
-	SetOption(OPTION_DAILYQUOTA, "0");
-	SetOption(OPTION_REORDERFILES, "no");
-	SetOption(OPTION_UPDATECHECK, "none");
+	SetOption(UNPACKPASSFILE.data(), "");
+	SetOption(UNPACKPAUSEQUEUE.data(), "no");
+	SetOption(EXTCLEANUPDISK.data(), "");
+	SetOption(PARIGNOREEXT.data(), "");
+	SetOption(UNPACKIGNOREEXT.data(), "");
+	SetOption(FEEDHISTORY.data(), "7");
+	SetOption(URLFORCE.data(), "yes");
+	SetOption(TIMECORRECTION.data(), "0");
+	SetOption(PROPAGATIONDELAY.data(), "0");
+	SetOption(ARTICLECACHE.data(), "0");
+	SetOption(EVENTINTERVAL.data(), "0");
+	SetOption(SHELLOVERRIDE.data(), "");
+	SetOption(MONTHLYQUOTA.data(), "0");
+	SetOption(QUOTASTARTDAY.data(), "1");
+	SetOption(DAILYQUOTA.data(), "0");
+	SetOption(REORDERFILES.data(), "no");
+	SetOption(UPDATECHECK.data(), "none");
 }
 
 void Options::InitOptFile()
@@ -603,7 +454,7 @@ void Options::InitOptFile()
 
 		m_configFilename = *filename;
 
-		SetOption(OPTION_CONFIGFILE, m_configFilename);
+		SetOption(CONFIGFILE.data(), m_configFilename);
 		LoadConfigFile();
 	}
 }
@@ -669,164 +520,165 @@ void Options::CheckDir(CString& dir, const char* optionName,
 
 void Options::CheckDirs()
 {
-	const char* mainDir = GetOption(OPTION_MAINDIR);
+	const char* mainDir = GetOption(MAINDIR.data());
 
-	CheckDir(m_destDir, OPTION_DESTDIR, mainDir, false, false);
-	CheckDir(m_interDir, OPTION_INTERDIR, mainDir, true, false);
-	CheckDir(m_tempDir, OPTION_TEMPDIR, mainDir, false, true);
-	CheckDir(m_queueDir, OPTION_QUEUEDIR, mainDir, false, true);
-	CheckDir(m_webDir, OPTION_WEBDIR, nullptr, true, false);
-	CheckDir(m_scriptDir, OPTION_SCRIPTDIR, mainDir, true, false);
-	CheckDir(m_nzbDir, OPTION_NZBDIR, mainDir, false, true);
+	CheckDir(m_destDir, DESTDIR.data(), mainDir, false, false);
+	CheckDir(m_interDir, INTERDIR.data(), mainDir, true, false);
+	CheckDir(m_tempDir, TEMPDIR.data(), mainDir, false, true);
+	CheckDir(m_queueDir, QUEUEDIR.data(), mainDir, false, true);
+	CheckDir(m_webDir, WEBDIR.data(), nullptr, true, false);
+	CheckDir(m_scriptDir, SCRIPTDIR.data(), mainDir, true, false);
+	CheckDir(m_nzbDir, NZBDIR.data(), mainDir, false, true);
 }
 
 void Options::InitOptions()
 {
-	m_requiredDir = GetOption(OPTION_REQUIREDDIR);
+	m_requiredDir = GetOption(REQUIREDDIR.data());
 
-	m_configTemplate		= GetOption(OPTION_CONFIGTEMPLATE);
-	m_scriptOrder			= GetOption(OPTION_SCRIPTORDER);
-	m_extensions			= GetOption(OPTION_EXTENSIONS);
-	m_controlIp				= GetOption(OPTION_CONTROLIP);
-	m_controlUsername		= GetOption(OPTION_CONTROLUSERNAME);
-	m_controlPassword		= GetOption(OPTION_CONTROLPASSWORD);
-	m_restrictedUsername	= GetOption(OPTION_RESTRICTEDUSERNAME);
-	m_restrictedPassword	= GetOption(OPTION_RESTRICTEDPASSWORD);
-	m_addUsername			= GetOption(OPTION_ADDUSERNAME);
-	m_addPassword			= GetOption(OPTION_ADDPASSWORD);
-	m_secureCert			= GetOption(OPTION_SECURECERT);
-	m_secureKey				= GetOption(OPTION_SECUREKEY);
-	m_certStore				= GetOption(OPTION_CERTSTORE);
-	m_authorizedIp			= GetOption(OPTION_AUTHORIZEDIP);
-	m_lockFile				= GetOption(OPTION_LOCKFILE);
-	m_daemonUsername		= GetOption(OPTION_DAEMONUSERNAME);
-	m_logFile				= GetOption(OPTION_LOGFILE);
-	m_unrarCmd				= GetOption(OPTION_UNRARCMD);
-	m_sevenZipCmd			= GetOption(OPTION_SEVENZIPCMD);
-	m_unpackPassFile		= GetOption(OPTION_UNPACKPASSFILE);
-	m_extCleanupDisk		= GetOption(OPTION_EXTCLEANUPDISK);
-	m_parIgnoreExt			= GetOption(OPTION_PARIGNOREEXT);
-	m_unpackIgnoreExt		= GetOption(OPTION_UNPACKIGNOREEXT);
+	m_configTemplate		= GetOption(CONFIGTEMPLATE.data());
+	m_scriptOrder			= GetOption(SCRIPTORDER.data());
+	m_extensions			= GetOption(EXTENSIONS.data());
+	m_controlIp				= GetOption(CONTROLIP.data());
+	m_controlUsername		= GetOption(CONTROLUSERNAME.data());
+	m_controlPassword		= GetOption(CONTROLPASSWORD.data());
+	m_restrictedUsername	= GetOption(RESTRICTEDUSERNAME.data());
+	m_restrictedPassword	= GetOption(RESTRICTEDPASSWORD.data());
+	m_addUsername			= GetOption(ADDUSERNAME.data());
+	m_addPassword			= GetOption(ADDPASSWORD.data());
+	m_secureCert			= GetOption(SECURECERT.data());
+	m_secureKey				= GetOption(SECUREKEY.data());
+	m_certStore				= GetOption(CERTSTORE.data());
+	m_authorizedIp			= GetOption(AUTHORIZEDIP.data());
+	m_lockFile				= GetOption(LOCKFILE.data());
+	m_daemonUsername		= GetOption(DAEMONUSERNAME.data());
+	m_logFile				= GetOption(LOGFILE.data());
+	m_unrarCmd				= GetOption(UNRARCMD.data());
+	m_sevenZipCmd			= GetOption(SEVENZIPCMD.data());
+	m_unpackPassFile		= GetOption(UNPACKPASSFILE.data());
+	m_extCleanupDisk		= GetOption(EXTCLEANUPDISK.data());
+	m_parIgnoreExt			= GetOption(PARIGNOREEXT.data());
+	m_unpackIgnoreExt		= GetOption(UNPACKIGNOREEXT.data());
 
-	const char* shellOverride = GetOption(OPTION_SHELLOVERRIDE);
+	const char* shellOverride = GetOption(SHELLOVERRIDE.data());
 	m_shellOverride	= shellOverride ? shellOverride : "";
 
-	m_renameIgnoreExt 	    = GetOption(OPTION_RENAMEIGNOREEXT);
+	m_renameIgnoreExt 	    = GetOption(RENAMEIGNOREEXT.data());
 
-	m_downloadRate			= ParseIntValue(OPTION_DOWNLOADRATE, 10) * 1024;
-	m_articleTimeout		= ParseIntValue(OPTION_ARTICLETIMEOUT, 10);
-	m_articleReadChunkSize  = ParseIntValue(OPTION_ARTICLEREADCHUNKSIZE, 10) * 1024;
-	m_urlTimeout			= ParseIntValue(OPTION_URLTIMEOUT, 10);
-	m_remoteTimeout			= ParseIntValue(OPTION_REMOTETIMEOUT, 10);
-	m_articleRetries		= ParseIntValue(OPTION_ARTICLERETRIES, 10);
-	m_articleInterval		= ParseIntValue(OPTION_ARTICLEINTERVAL, 10);
-	m_urlRetries			= ParseIntValue(OPTION_URLRETRIES, 10);
-	m_urlInterval			= ParseIntValue(OPTION_URLINTERVAL, 10);
-	m_controlPort			= ParseIntValue(OPTION_CONTROLPORT, 10);
-	m_securePort			= ParseIntValue(OPTION_SECUREPORT, 10);
-	m_urlConnections		= ParseIntValue(OPTION_URLCONNECTIONS, 10);
-	m_logBuffer				= ParseIntValue(OPTION_LOGBUFFER, 10);
-	m_rotateLog				= ParseIntValue(OPTION_ROTATELOG, 10);
-	m_umask					= ParseIntValue(OPTION_UMASK, 8);
-	m_updateInterval		= ParseIntValue(OPTION_UPDATEINTERVAL, 10);
-	m_writeBuffer			= ParseIntValue(OPTION_WRITEBUFFER, 10);
-	m_nzbDirInterval		= ParseIntValue(OPTION_NZBDIRINTERVAL, 10);
-	m_nzbDirFileAge			= ParseIntValue(OPTION_NZBDIRFILEAGE, 10);
-	m_diskSpace				= ParseIntValue(OPTION_DISKSPACE, 10);
-	m_parTimeLimit			= ParseIntValue(OPTION_PARTIMELIMIT, 10);
-	m_keepHistory			= ParseIntValue(OPTION_KEEPHISTORY, 10);
-	m_feedHistory			= ParseIntValue(OPTION_FEEDHISTORY, 10);
-	m_timeCorrection		= ParseIntValue(OPTION_TIMECORRECTION, 10);
+	m_downloadRate			= ParseIntValue(DOWNLOADRATE.data(), 10) * 1024;
+	m_articleTimeout		= ParseIntValue(ARTICLETIMEOUT.data(), 10);
+	m_articleReadChunkSize  = ParseIntValue(ARTICLEREADCHUNKSIZE.data(), 10) * 1024;
+	m_urlTimeout			= ParseIntValue(URLTIMEOUT.data(), 10);
+	m_remoteTimeout			= ParseIntValue(REMOTETIMEOUT.data(), 10);
+	m_articleRetries		= ParseIntValue(ARTICLERETRIES.data(), 10);
+	m_articleInterval		= ParseIntValue(ARTICLEINTERVAL.data(), 10);
+	m_urlRetries			= ParseIntValue(URLRETRIES.data(), 10);
+	m_urlInterval			= ParseIntValue(URLINTERVAL.data(), 10);
+	m_controlPort			= ParseIntValue(CONTROLPORT.data(), 10);
+	m_securePort			= ParseIntValue(SECUREPORT.data(), 10);
+	m_urlConnections		= ParseIntValue(URLCONNECTIONS.data(), 10);
+	m_logBuffer				= ParseIntValue(LOGBUFFER.data(), 10);
+	m_rotateLog				= ParseIntValue(ROTATELOG.data(), 10);
+	m_umask					= ParseIntValue(UMASK.data(), 8);
+	m_updateInterval		= ParseIntValue(UPDATEINTERVAL.data(), 10);
+	m_writeBuffer			= ParseIntValue(WRITEBUFFER.data(), 10);
+	m_nzbDirInterval		= ParseIntValue(NZBDIRINTERVAL.data(), 10);
+	m_nzbDirFileAge			= ParseIntValue(NZBDIRFILEAGE.data(), 10);
+	m_diskSpace				= ParseIntValue(DISKSPACE.data(), 10);
+	m_parTimeLimit			= ParseIntValue(PARTIMELIMIT.data(), 10);
+	m_keepHistory			= ParseIntValue(KEEPHISTORY.data(), 10);
+	m_feedHistory			= ParseIntValue(FEEDHISTORY.data(), 10);
+	m_timeCorrection		= ParseIntValue(TIMECORRECTION.data(), 10);
 	if (-24 <= m_timeCorrection && m_timeCorrection <= 24)
 	{
 		m_timeCorrection *= 60;
 	}
 	m_timeCorrection *= 60;
-	m_propagationDelay		= ParseIntValue(OPTION_PROPAGATIONDELAY, 10) * 60;
-	m_articleCache			= ParseIntValue(OPTION_ARTICLECACHE, 10);
-	m_eventInterval			= ParseIntValue(OPTION_EVENTINTERVAL, 10);
-	m_parBuffer				= ParseIntValue(OPTION_PARBUFFER, 10);
-	m_parThreads			= ParseIntValue(OPTION_PARTHREADS, 10);
-	m_monthlyQuota			= ParseIntValue(OPTION_MONTHLYQUOTA, 10);
-	m_quotaStartDay			= ParseIntValue(OPTION_QUOTASTARTDAY, 10);
-	m_dailyQuota			= ParseIntValue(OPTION_DAILYQUOTA, 10);
+	m_propagationDelay		= ParseIntValue(PROPAGATIONDELAY.data(), 10) * 60;
+	m_articleCache			= ParseIntValue(ARTICLECACHE.data(), 10);
+	m_eventInterval			= ParseIntValue(EVENTINTERVAL.data(), 10);
+	m_parBuffer				= ParseIntValue(PARBUFFER.data(), 10);
+	m_parThreads			= ParseIntValue(PARTHREADS.data(), 10);
+	m_monthlyQuota			= ParseIntValue(MONTHLYQUOTA.data(), 10);
+	m_quotaStartDay			= ParseIntValue(QUOTASTARTDAY.data(), 10);
+	m_dailyQuota			= ParseIntValue(DAILYQUOTA.data(), 10);
 
-	m_nzbLog				= (bool)ParseEnumValue(OPTION_NZBLOG, BoolCount, BoolNames, BoolValues);
-	m_appendCategoryDir		= (bool)ParseEnumValue(OPTION_APPENDCATEGORYDIR, BoolCount, BoolNames, BoolValues);
-	m_continuePartial		= (bool)ParseEnumValue(OPTION_CONTINUEPARTIAL, BoolCount, BoolNames, BoolValues);
-	m_flushQueue			= (bool)ParseEnumValue(OPTION_FLUSHQUEUE, BoolCount, BoolNames, BoolValues);
-	m_dupeCheck				= (bool)ParseEnumValue(OPTION_DUPECHECK, BoolCount, BoolNames, BoolValues);
-	m_parRepair				= (bool)ParseEnumValue(OPTION_PARREPAIR, BoolCount, BoolNames, BoolValues);
-	m_parQuick				= (bool)ParseEnumValue(OPTION_PARQUICK, BoolCount, BoolNames, BoolValues);
-	m_parRename				= (bool)ParseEnumValue(OPTION_PARRENAME, BoolCount, BoolNames, BoolValues);
-	m_rarRename				= (bool)ParseEnumValue(OPTION_RARRENAME, BoolCount, BoolNames, BoolValues);
-	m_directRename			= (bool)ParseEnumValue(OPTION_DIRECTRENAME, BoolCount, BoolNames, BoolValues);
-	m_cursesNzbName			= (bool)ParseEnumValue(OPTION_CURSESNZBNAME, BoolCount, BoolNames, BoolValues);
-	m_cursesTime			= (bool)ParseEnumValue(OPTION_CURSESTIME, BoolCount, BoolNames, BoolValues);
-	m_cursesGroup			= (bool)ParseEnumValue(OPTION_CURSESGROUP, BoolCount, BoolNames, BoolValues);
-	m_crcCheck				= (bool)ParseEnumValue(OPTION_CRCCHECK, BoolCount, BoolNames, BoolValues);
-	m_directWrite			= (bool)ParseEnumValue(OPTION_DIRECTWRITE, BoolCount, BoolNames, BoolValues);
-	m_rawArticle			= (bool)ParseEnumValue(OPTION_RAWARTICLE, BoolCount, BoolNames, BoolValues);
-	m_skipWrite				= (bool)ParseEnumValue(OPTION_SKIPWRITE, BoolCount, BoolNames, BoolValues);
-	m_crashTrace			= (bool)ParseEnumValue(OPTION_CRASHTRACE, BoolCount, BoolNames, BoolValues);
-	m_crashDump				= (bool)ParseEnumValue(OPTION_CRASHDUMP, BoolCount, BoolNames, BoolValues);
-	m_parPauseQueue			= (bool)ParseEnumValue(OPTION_PARPAUSEQUEUE, BoolCount, BoolNames, BoolValues);
-	m_scriptPauseQueue		= (bool)ParseEnumValue(OPTION_SCRIPTPAUSEQUEUE, BoolCount, BoolNames, BoolValues);
-	m_nzbCleanupDisk		= (bool)ParseEnumValue(OPTION_NZBCLEANUPDISK, BoolCount, BoolNames, BoolValues);
-	m_formAuth				= (bool)ParseEnumValue(OPTION_FORMAUTH, BoolCount, BoolNames, BoolValues);
-	m_secureControl			= (bool)ParseEnumValue(OPTION_SECURECONTROL, BoolCount, BoolNames, BoolValues);
-	m_unpack				= (bool)ParseEnumValue(OPTION_UNPACK, BoolCount, BoolNames, BoolValues);
-	m_directUnpack			= (bool)ParseEnumValue(OPTION_DIRECTUNPACK, BoolCount, BoolNames, BoolValues);
-	m_unpackCleanupDisk		= (bool)ParseEnumValue(OPTION_UNPACKCLEANUPDISK, BoolCount, BoolNames, BoolValues);
-	m_unpackPauseQueue		= (bool)ParseEnumValue(OPTION_UNPACKPAUSEQUEUE, BoolCount, BoolNames, BoolValues);
-	m_urlForce				= (bool)ParseEnumValue(OPTION_URLFORCE, BoolCount, BoolNames, BoolValues);
-	m_certCheck				= (bool)ParseEnumValue(OPTION_CERTCHECK, BoolCount, BoolNames, BoolValues);
-	m_reorderFiles			= (bool)ParseEnumValue(OPTION_REORDERFILES, BoolCount, BoolNames, BoolValues);
-	m_renameAfterUnpack     = (bool)ParseEnumValue(OPTION_RENAMEAFTERUNPACK, BoolCount, BoolNames, BoolValues);
+	m_nzbLog				= (bool)ParseEnumValue(NZBLOG.data(), BoolCount, BoolNames, BoolValues);
+	m_appendCategoryDir		= (bool)ParseEnumValue(APPENDCATEGORYDIR.data(), BoolCount, BoolNames, BoolValues);
+	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);
+	m_flushQueue			= (bool)ParseEnumValue(FLUSHQUEUE.data(), BoolCount, BoolNames, BoolValues);
+	m_dupeCheck				= (bool)ParseEnumValue(DUPECHECK.data(), BoolCount, BoolNames, BoolValues);
+	m_parRepair				= (bool)ParseEnumValue(PARREPAIR.data(), BoolCount, BoolNames, BoolValues);
+	m_parQuick				= (bool)ParseEnumValue(PARQUICK.data(), BoolCount, BoolNames, BoolValues);
+	m_parRename				= (bool)ParseEnumValue(PARRENAME.data(), BoolCount, BoolNames, BoolValues);
+	m_rarRename				= (bool)ParseEnumValue(RARRENAME.data(), BoolCount, BoolNames, BoolValues);
+	m_directRename			= (bool)ParseEnumValue(DIRECTRENAME.data(), BoolCount, BoolNames, BoolValues);
+	m_cursesNzbName			= (bool)ParseEnumValue(CURSESNZBNAME.data(), BoolCount, BoolNames, BoolValues);
+	m_cursesTime			= (bool)ParseEnumValue(CURSESTIME.data(), BoolCount, BoolNames, BoolValues);
+	m_cursesGroup			= (bool)ParseEnumValue(CURSESGROUP.data(), BoolCount, BoolNames, BoolValues);
+	m_crcCheck				= (bool)ParseEnumValue(CRCCHECK.data(), BoolCount, BoolNames, BoolValues);
+	m_directWrite			= (bool)ParseEnumValue(DIRECTWRITE.data(), BoolCount, BoolNames, BoolValues);
+	m_rawArticle			= (bool)ParseEnumValue(RAWARTICLE.data(), BoolCount, BoolNames, BoolValues);
+	m_skipWrite				= (bool)ParseEnumValue(SKIPWRITE.data(), BoolCount, BoolNames, BoolValues);
+	m_crashTrace			= (bool)ParseEnumValue(CRASHTRACE.data(), BoolCount, BoolNames, BoolValues);
+	m_crashDump				= (bool)ParseEnumValue(CRASHDUMP.data(), BoolCount, BoolNames, BoolValues);
+	m_parPauseQueue			= (bool)ParseEnumValue(PARPAUSEQUEUE.data(), BoolCount, BoolNames, BoolValues);
+	m_scriptPauseQueue		= (bool)ParseEnumValue(SCRIPTPAUSEQUEUE.data(), BoolCount, BoolNames, BoolValues);
+	m_nzbCleanupDisk		= (bool)ParseEnumValue(NZBCLEANUPDISK.data(), BoolCount, BoolNames, BoolValues);
+	m_formAuth				= (bool)ParseEnumValue(FORMAUTH.data(), BoolCount, BoolNames, BoolValues);
+	m_secureControl			= (bool)ParseEnumValue(SECURECONTROL.data(), BoolCount, BoolNames, BoolValues);
+	m_unpack				= (bool)ParseEnumValue(UNPACK.data(), BoolCount, BoolNames, BoolValues);
+	m_directUnpack			= (bool)ParseEnumValue(DIRECTUNPACK.data(), BoolCount, BoolNames, BoolValues);
+	m_useTempUnpackDir		= (bool)ParseEnumValue(USETEMPUNPACKDIR.data(), BoolCount, BoolNames, BoolValues);
+	m_unpackCleanupDisk		= (bool)ParseEnumValue(UNPACKCLEANUPDISK.data(), BoolCount, BoolNames, BoolValues);
+	m_unpackPauseQueue		= (bool)ParseEnumValue(UNPACKPAUSEQUEUE.data(), BoolCount, BoolNames, BoolValues);
+	m_urlForce				= (bool)ParseEnumValue(URLFORCE.data(), BoolCount, BoolNames, BoolValues);
+	m_certCheck				= (bool)ParseEnumValue(CERTCHECK.data(), BoolCount, BoolNames, BoolValues);
+	m_reorderFiles			= (bool)ParseEnumValue(REORDERFILES.data(), BoolCount, BoolNames, BoolValues);
+	m_renameAfterUnpack     = (bool)ParseEnumValue(RENAMEAFTERUNPACK.data(), BoolCount, BoolNames, BoolValues);
 
 	const char* OutputModeNames[] = { "loggable", "logable", "log", "colored", "color", "ncurses", "curses" };
 	const int OutputModeValues[] = { omLoggable, omLoggable, omLoggable, omColored, omColored, omNCurses, omNCurses };
 	const int OutputModeCount = 7;
-	m_outputMode = (EOutputMode)ParseEnumValue(OPTION_OUTPUTMODE, OutputModeCount, OutputModeNames, OutputModeValues);
+	m_outputMode = (EOutputMode)ParseEnumValue(OUTPUTMODE.data(), OutputModeCount, OutputModeNames, OutputModeValues);
 
 	const char* ParCheckNames[] = { "auto", "always", "force", "manual" };
 	const int ParCheckValues[] = { pcAuto, pcAlways, pcForce, pcManual };
 	const int ParCheckCount = 6;
-	m_parCheck = (EParCheck)ParseEnumValue(OPTION_PARCHECK, ParCheckCount, ParCheckNames, ParCheckValues);
+	m_parCheck = (EParCheck)ParseEnumValue(PARCHECK.data(), ParCheckCount, ParCheckNames, ParCheckValues);
 
 	const char* ParScanNames[] = { "limited", "extended", "full", "dupe" };
 	const int ParScanValues[] = { psLimited, psExtended, psFull, psDupe };
 	const int ParScanCount = 4;
-	m_parScan = (EParScan)ParseEnumValue(OPTION_PARSCAN, ParScanCount, ParScanNames, ParScanValues);
+	m_parScan = (EParScan)ParseEnumValue(PARSCAN.data(), ParScanCount, ParScanNames, ParScanValues);
 
 	const char* PostStrategyNames[] = { "sequential", "balanced", "aggressive", "rocket" };
 	const int PostStrategyValues[] = { ppSequential, ppBalanced, ppAggressive, ppRocket };
 	const int PostStrategyCount = 4;
-	m_postStrategy = (EPostStrategy)ParseEnumValue(OPTION_POSTSTRATEGY, PostStrategyCount, PostStrategyNames, PostStrategyValues);
+	m_postStrategy = (EPostStrategy)ParseEnumValue(POSTSTRATEGY.data(), PostStrategyCount, PostStrategyNames, PostStrategyValues);
 
 	const char* FileNamingNames[] = { "auto", "article", "nzb" };
 	const int FileNamingValues[] = { nfAuto, nfArticle, nfNzb };
 	const int FileNamingCount = 4;
-	m_fileNaming = (EFileNaming)ParseEnumValue(OPTION_FILENAMING, FileNamingCount, FileNamingNames, FileNamingValues);
+	m_fileNaming = (EFileNaming)ParseEnumValue(FILENAMING.data(), FileNamingCount, FileNamingNames, FileNamingValues);
 
 	const char* HealthCheckNames[] = { "pause", "delete", "park", "none" };
 	const int HealthCheckValues[] = { hcPause, hcDelete, hcPark, hcNone };
 	const int HealthCheckCount = 4;
-	m_healthCheck = (EHealthCheck)ParseEnumValue(OPTION_HEALTHCHECK, HealthCheckCount, HealthCheckNames, HealthCheckValues);
+	m_healthCheck = (EHealthCheck)ParseEnumValue(HEALTHCHECK.data(), HealthCheckCount, HealthCheckNames, HealthCheckValues);
 
 	const char* TargetNames[] = { "screen", "log", "both", "none" };
 	const int TargetValues[] = { mtScreen, mtLog, mtBoth, mtNone };
 	const int TargetCount = 4;
-	m_infoTarget = (EMessageTarget)ParseEnumValue(OPTION_INFOTARGET, TargetCount, TargetNames, TargetValues);
-	m_warningTarget = (EMessageTarget)ParseEnumValue(OPTION_WARNINGTARGET, TargetCount, TargetNames, TargetValues);
-	m_errorTarget = (EMessageTarget)ParseEnumValue(OPTION_ERRORTARGET, TargetCount, TargetNames, TargetValues);
-	m_debugTarget = (EMessageTarget)ParseEnumValue(OPTION_DEBUGTARGET, TargetCount, TargetNames, TargetValues);
-	m_detailTarget = (EMessageTarget)ParseEnumValue(OPTION_DETAILTARGET, TargetCount, TargetNames, TargetValues);
+	m_infoTarget = (EMessageTarget)ParseEnumValue(INFOTARGET.data(), TargetCount, TargetNames, TargetValues);
+	m_warningTarget = (EMessageTarget)ParseEnumValue(WARNINGTARGET.data(), TargetCount, TargetNames, TargetValues);
+	m_errorTarget = (EMessageTarget)ParseEnumValue(ERRORTARGET.data(), TargetCount, TargetNames, TargetValues);
+	m_debugTarget = (EMessageTarget)ParseEnumValue(DEBUGTARGET.data(), TargetCount, TargetNames, TargetValues);
+	m_detailTarget = (EMessageTarget)ParseEnumValue(DETAILTARGET.data(), TargetCount, TargetNames, TargetValues);
 
 	const char* WriteLogNames[] = { "none", "append", "reset", "rotate" };
 	const int WriteLogValues[] = { wlNone, wlAppend, wlReset, wlRotate };
 	const int WriteLogCount = 4;
-	m_writeLog = (EWriteLog)ParseEnumValue(OPTION_WRITELOG, WriteLogCount, WriteLogNames, WriteLogValues);
+	m_writeLog = (EWriteLog)ParseEnumValue(WRITELOG.data(), WriteLogCount, WriteLogNames, WriteLogValues);
 }
 
 int Options::ParseEnumValue(const char* OptName, int argc, const char * argn[], const int argv[])
@@ -1171,6 +1023,9 @@ void Options::InitFeeds()
 			pauseNzb = (bool)ParseEnumValue(BString<100>("Feed%i.PauseNzb", n), BoolCount, BoolNames, BoolValues);
 		}
 
+		const char* ncategorySource = GetOption(BString<100>("Feed%i.CategorySource", n));
+		const auto categorySource = ParseCategorySource(ncategorySource);
+
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
@@ -1187,8 +1042,19 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(n, nname, nurl, ninterval ? atoi(ninterval) : 0, nfilter,
-					backlog, pauseNzb, ncategory, npriority ? atoi(npriority) : 0, nextensions);
+				m_extender->AddFeed(
+					n,
+					nname,
+					nurl,
+					ninterval ? atoi(ninterval) : 0,
+					nfilter,
+					backlog,
+					pauseNzb,
+					ncategory,
+					categorySource,
+					npriority ? atoi(npriority) : 0,
+					nextensions
+				);
 			}
 		}
 		else
@@ -1447,7 +1313,7 @@ bool Options::ParseWeekDays(const char* weekDays, int* weekDaysBits)
 
 void Options::LoadConfigFile()
 {
-	SetOption(OPTION_CONFIGFILE, m_configFilename);
+	SetOption(CONFIGFILE.data(), m_configFilename);
 
 	DiskFile infile;
 
@@ -1544,8 +1410,8 @@ bool Options::SplitOptionString(const char* option, CString& optName, CString& o
 
 bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 {
-	if (!strcasecmp(optname, OPTION_CONFIGFILE) || !strcasecmp(optname, OPTION_APPBIN) ||
-		!strcasecmp(optname, OPTION_APPDIR) || !strcasecmp(optname, OPTION_VERSION))
+	if (!strcasecmp(optname, CONFIGFILE.data()) || !strcasecmp(optname, APPBIN.data()) ||
+		!strcasecmp(optname, APPDIR.data()) || !strcasecmp(optname, APPVERSION.data()))
 	{
 		// read-only options
 		return false;
@@ -1606,7 +1472,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		while (*p >= '0' && *p <= '9') p++;
 		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
 			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
-			 !strcasecmp(p, ".category") || !strcasecmp(p, ".priority") || !strcasecmp(p, ".extensions")))
+			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
+			 !strcasecmp(p, ".extensions")))
 		{
 			return true;
 		}
@@ -1619,56 +1486,56 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	}
 
 	// print warning messages for obsolete options
-	if (!strcasecmp(optname, OPTION_RETRYONCRCERROR) ||
-		!strcasecmp(optname, OPTION_ALLOWREPROCESS) ||
-		!strcasecmp(optname, OPTION_LOADPARS) ||
-		!strcasecmp(optname, OPTION_THREADLIMIT) ||
-		!strcasecmp(optname, OPTION_POSTLOGKIND) ||
-		!strcasecmp(optname, OPTION_NZBLOGKIND) ||
-		!strcasecmp(optname, OPTION_PROCESSLOGKIND) ||
-		!strcasecmp(optname, OPTION_APPENDNZBDIR) ||
-		!strcasecmp(optname, OPTION_RENAMEBROKEN) ||
-		!strcasecmp(optname, OPTION_MERGENZB) ||
-		!strcasecmp(optname, OPTION_STRICTPARNAME) ||
-		!strcasecmp(optname, OPTION_RELOADURLQUEUE) ||
-		!strcasecmp(optname, OPTION_RELOADPOSTQUEUE) ||
-		!strcasecmp(optname, OPTION_PARCLEANUPQUEUE) ||
-		!strcasecmp(optname, OPTION_DELETECLEANUPDISK) ||
-		!strcasecmp(optname, OPTION_HISTORYCLEANUPDISK) ||
-		!strcasecmp(optname, OPTION_SAVEQUEUE) ||
-		!strcasecmp(optname, OPTION_RELOADQUEUE) ||
-		!strcasecmp(optname, OPTION_TERMINATETIMEOUT) ||
-		!strcasecmp(optname, OPTION_ACCURATERATE) ||
-		!strcasecmp(optname, OPTION_CREATEBROKENLOG) ||
-		!strcasecmp(optname, OPTION_BROKENLOG))
+	if (!strcasecmp(optname, RETRYONCRCERROR.data()) ||
+		!strcasecmp(optname, ALLOWREPROCESS.data()) ||
+		!strcasecmp(optname, LOADPARS.data()) ||
+		!strcasecmp(optname, THREADLIMIT.data()) ||
+		!strcasecmp(optname, POSTLOGKIND.data()) ||
+		!strcasecmp(optname, NZBLOGKIND.data()) ||
+		!strcasecmp(optname, PROCESSLOGKIND.data()) ||
+		!strcasecmp(optname, APPENDNZBDIR.data()) ||
+		!strcasecmp(optname, RENAMEBROKEN.data()) ||
+		!strcasecmp(optname, MERGENZB.data()) ||
+		!strcasecmp(optname, STRICTPARNAME.data()) ||
+		!strcasecmp(optname, RELOADURLQUEUE.data()) ||
+		!strcasecmp(optname, RELOADPOSTQUEUE.data()) ||
+		!strcasecmp(optname, PARCLEANUPQUEUE.data()) ||
+		!strcasecmp(optname, DELETECLEANUPDISK.data()) ||
+		!strcasecmp(optname, HISTORYCLEANUPDISK.data()) ||
+		!strcasecmp(optname, SAVEQUEUE.data()) ||
+		!strcasecmp(optname, RELOADQUEUE.data()) ||
+		!strcasecmp(optname, TERMINATETIMEOUT.data()) ||
+		!strcasecmp(optname, ACCURATERATE.data()) ||
+		!strcasecmp(optname, CREATEBROKENLOG.data()) ||
+		!strcasecmp(optname, BROKENLOG.data()))
 	{
 		ConfigWarn("Option \"%s\" is obsolete, ignored", optname);
 		return true;
 	}
 
-	if (!strcasecmp(optname, OPTION_POSTPROCESS) ||
-		!strcasecmp(optname, OPTION_NZBPROCESS) ||
-		!strcasecmp(optname, OPTION_NZBADDEDPROCESS))
+	if (!strcasecmp(optname, POSTPROCESS.data()) ||
+		!strcasecmp(optname, NZBPROCESS.data()) ||
+		!strcasecmp(optname, NZBADDEDPROCESS.data()))
 	{
 		if (optvalue && strlen(optvalue) > 0)
 		{
 			ConfigError("Option \"%s\" is obsolete, ignored, use \"%s\" and \"%s\" instead",
-				optname, OPTION_SCRIPTDIR, OPTION_EXTENSIONS);
+				optname, SCRIPTDIR, EXTENSIONS);
 		}
 		return true;
 	}
 
-	if (!strcasecmp(optname, OPTION_SCANSCRIPT) ||
-		!strcasecmp(optname, OPTION_QUEUESCRIPT) ||
-		!strcasecmp(optname, OPTION_FEEDSCRIPT))
+	if (!strcasecmp(optname, SCANSCRIPT.data()) ||
+		!strcasecmp(optname, QUEUESCRIPT.data()) ||
+		!strcasecmp(optname, FEEDSCRIPT.data()))
 	{
 		// will be automatically converted into "Extensions"
 		return true;
 	}
 
-	if (!strcasecmp(optname, OPTION_CREATELOG) || !strcasecmp(optname, OPTION_RESETLOG))
+	if (!strcasecmp(optname, CREATELOG.data()) || !strcasecmp(optname, RESETLOG.data()))
 	{
-		ConfigWarn("Option \"%s\" is obsolete, ignored, use \"%s\" instead", optname, OPTION_WRITELOG);
+		ConfigWarn("Option \"%s\" is obsolete, ignored, use \"%s\" instead", optname, WRITELOG.data());
 		return true;
 	}
 
@@ -1762,18 +1629,18 @@ void Options::ConvertOldOption(CString& option, CString& value)
 
 	if (!strcasecmp(option, "DumpCore"))
 	{
-		option = OPTION_CRASHDUMP;
+		option = CRASHDUMP.data();
 	}
 
-	if (!strcasecmp(option, OPTION_DECODE))
+	if (!strcasecmp(option, DECODE.data()))
 	{
-		option = OPTION_RAWARTICLE;
+		option = RAWARTICLE.data();
 		value = !strcasecmp(value, "no") ? "yes" : "no";
 	}
 
 	if (!strcasecmp(option, "LogBufferSize"))
 	{
-		option = OPTION_LOGBUFFER;
+		option = LOGBUFFER.data();
 	}
 }
 
@@ -1782,40 +1649,40 @@ void Options::CheckOptions()
 #ifdef DISABLE_PARCHECK
 	if (m_parCheck != pcManual)
 	{
-		LocateOptionSrcPos(OPTION_PARCHECK);
-		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", OPTION_PARCHECK);
+		LocateOptionSrcPos(PARCHECK.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", PARCHECK.data());
 	}
 	if (m_parRename)
 	{
-		LocateOptionSrcPos(OPTION_PARRENAME);
-		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", OPTION_PARRENAME);
+		LocateOptionSrcPos(PARRENAME.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", PARRENAME.data());
 	}
 	if (m_directRename)
 	{
-		LocateOptionSrcPos(OPTION_DIRECTRENAME);
-		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", OPTION_DIRECTRENAME);
+		LocateOptionSrcPos(DIRECTRENAME.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without parcheck-support", DIRECTRENAME.data());
 	}
 #endif
 
 #ifdef DISABLE_CURSES
 	if (m_outputMode == omNCurses)
 	{
-		LocateOptionSrcPos(OPTION_OUTPUTMODE);
-		ConfigError("Invalid value for option \"%s\": program was compiled without curses-support", OPTION_OUTPUTMODE);
+		LocateOptionSrcPos(OUTPUTMODE.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without curses-support", OUTPUTMODE.data());
 	}
 #endif
 
 #ifdef DISABLE_TLS
 	if (m_secureControl)
 	{
-		LocateOptionSrcPos(OPTION_SECURECONTROL);
-		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", OPTION_SECURECONTROL);
+		LocateOptionSrcPos(SECURECONTROL.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", SECURECONTROL.data());
 	}
 
 	if (m_certCheck)
 	{
-		LocateOptionSrcPos(OPTION_CERTCHECK);
-		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", OPTION_CERTCHECK);
+		LocateOptionSrcPos(CERTCHECK.data());
+		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", CERTCHECK.data());
 	}
 #endif
 
@@ -1823,17 +1690,17 @@ void Options::CheckOptions()
 #ifndef HAVE_X509_CHECK_HOST
 	if (m_certCheck)
 	{
-		LocateOptionSrcPos(OPTION_CERTCHECK);
+		LocateOptionSrcPos(CERTCHECK.data());
 		ConfigWarn("TLS certificate verification (option \"%s\") is limited because the program "
-			"was compiled with older OpenSSL version not supporting hostname validation (at least OpenSSL 1.0.2d is required)", OPTION_CERTCHECK);
+			"was compiled with older OpenSSL version not supporting hostname validation (at least OpenSSL 1.0.2d is required)", CERTCHECK.data());
 	}
 #endif
 #endif
 
 	if (m_certCheck && m_certStore.Empty())
 	{
-		LocateOptionSrcPos(OPTION_CERTCHECK);
-		ConfigError("Option \"%s\" requires proper configuration of option \"%s\"", OPTION_CERTCHECK, OPTION_CERTSTORE);
+		LocateOptionSrcPos(CERTCHECK.data());
+		ConfigError("Option \"%s\" requires proper configuration of option \"%s\"", CERTCHECK.data(), CERTSTORE.data());
 		m_certCheck = false;
 	}
 
@@ -1888,9 +1755,9 @@ void Options::CheckOptions()
 
 void Options::ConvertOldOptions(OptEntries* optEntries)
 {
-	MergeOldScriptOption(optEntries, OPTION_SCANSCRIPT, true);
-	MergeOldScriptOption(optEntries, OPTION_QUEUESCRIPT, true);
-	MergeOldScriptOption(optEntries, OPTION_FEEDSCRIPT, false);
+	MergeOldScriptOption(optEntries, SCANSCRIPT.data(), true);
+	MergeOldScriptOption(optEntries, QUEUESCRIPT.data(), true);
+	MergeOldScriptOption(optEntries, FEEDSCRIPT.data(), false);
 }
 
 void Options::MergeOldScriptOption(OptEntries* optEntries, const char* optname, bool mergeCategories)
@@ -1901,11 +1768,11 @@ void Options::MergeOldScriptOption(OptEntries* optEntries, const char* optname, 
 		return;
 	}
 
-	OptEntry* extensionsOpt = optEntries->FindOption(OPTION_EXTENSIONS);
+	OptEntry* extensionsOpt = optEntries->FindOption(EXTENSIONS.data());
 	if (!extensionsOpt)
 	{
-		optEntries->emplace_back(OPTION_EXTENSIONS, "");
-		extensionsOpt = optEntries->FindOption(OPTION_EXTENSIONS);
+		optEntries->emplace_back(EXTENSIONS.data(), "");
+		extensionsOpt = optEntries->FindOption(EXTENSIONS.data());
 	}
 
 	const char* scriptList = optEntry->GetValue();
@@ -1958,4 +1825,29 @@ bool Options::HasScript(const char* scriptList, const char* scriptName)
 		}
 	}
 	return false;
+}
+
+FeedInfo::CategorySource Options::ParseCategorySource(const char* value)
+{
+	if (!value)
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+
+	if (!strncasecmp(value, "auto", 4))
+	{
+		return FeedInfo::CategorySource::Auto;
+	}
+	else if (!strncasecmp(value, "nzbfile", 8))
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
+	else if (!strncasecmp(value, "feedfile", 9))
+	{
+		return FeedInfo::CategorySource::FeedFile;
+	}
+	else
+	{
+		return FeedInfo::CategorySource::NZBFile;
+	}
 }

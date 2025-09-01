@@ -28,5 +28,10 @@ add_executable(SystemTests ${SystemTestsSrc})
 
 target_link_libraries(SystemTests PRIVATE ${LIBS})
 target_include_directories(SystemTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(SystemTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(SystemTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 add_test(NAME SystemTests COMMAND $<TARGET_FILE:SystemTests> --log_level=message)

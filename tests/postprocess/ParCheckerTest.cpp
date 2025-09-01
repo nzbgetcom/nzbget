@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,23 +25,22 @@
 
 #include "Options.h"
 #include "ParChecker.h"
-#include "TestUtil.h"
-#include "FileSystem.h"
 #include "YEncode.h"
 
-static std::string currDir = FileSystem::GetCurrentDirectory().Str();
-static std::string testDataDir = currDir + PATH_SEPARATOR + "parchecker";
+namespace fs = boost::filesystem;
+
+static const fs::path CURR_DIR = fs::current_path();
+static const fs::path TEST_DATA_DIR = CURR_DIR / "parchecker";
 
 class ParCheckerMock : public ParChecker
 {
 public:
-	ParCheckerMock(std::string workingDir);
+	ParCheckerMock(const fs::path& workingDir);
 	void Execute();
 	void CorruptFile(const char* filename, int offset);
 	~ParCheckerMock()
 	{
-		CString errmsg;
-		FileSystem::DeleteDirectoryWithContent(m_workingDir.c_str(), errmsg);
+		fs::remove_all(m_workingDir);
 	}
 
 protected:
@@ -50,14 +49,13 @@ protected:
 
 private:
 	uint32 CalcFileCrc(const char* filename);
-	std::string m_workingDir;
+	const fs::path& m_workingDir;
 };
 
-ParCheckerMock::ParCheckerMock(std::string workingDir) : m_workingDir(std::move(workingDir))
+ParCheckerMock::ParCheckerMock(const fs::path& workingDir) : m_workingDir(workingDir)
 {
-	SetDestDir(m_workingDir.c_str());
-	BOOST_REQUIRE(FileSystem::CreateDirectory(m_workingDir.c_str()));
-	TestUtil::CopyAllFiles(m_workingDir.c_str(), testDataDir.c_str());
+	SetDestDir(m_workingDir.string().c_str());
+	fs::copy(TEST_DATA_DIR, m_workingDir);
 }
 
 void ParCheckerMock::Execute()
@@ -67,9 +65,9 @@ void ParCheckerMock::Execute()
 
 void ParCheckerMock::CorruptFile(const char* filename, int offset)
 {
-	std::string fullfilename(m_workingDir + PATH_SEPARATOR + filename);
+	const fs::path fullfilename =m_workingDir / filename;
 
-	FILE* file = fopen(fullfilename.c_str(), FOPEN_RBP);
+	FILE* file = fopen(fullfilename.string().c_str(), FOPEN_RBP);
 	BOOST_REQUIRE(file != nullptr);
 
 	fseek(file, offset, SEEK_SET);
@@ -82,8 +80,8 @@ void ParCheckerMock::CorruptFile(const char* filename, int offset)
 
 ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, uint32* crc, SegmentList* segments)
 {
-	std::string crcFileName = m_workingDir + PATH_SEPARATOR + "crc.txt";
-	std::ifstream sm(crcFileName);
+	const fs::path crcFileName = m_workingDir / "crc.txt";
+	std::ifstream sm(crcFileName.string().c_str());
 	std::string smfilename, smcrc;
 	while (!sm.eof())
 	{
@@ -91,7 +89,8 @@ ParCheckerMock::EFileStatus ParCheckerMock::FindFileCrc(const char* filename, ui
 		if (smfilename == filename)
 		{
 			*crc = strtoul(smcrc.c_str(), nullptr, 16);
-			uint32 realCrc = CalcFileCrc((m_workingDir + PATH_SEPARATOR + filename).c_str());
+			const fs::path file = m_workingDir / filename;
+			uint32 realCrc = CalcFileCrc(file.string().c_str());
 			return *crc == realCrc ? ParChecker::fsSuccess : ParChecker::fsUnknown;
 		}
 	}
@@ -124,11 +123,12 @@ BOOST_AUTO_TEST_CASE(RepairNoNeedTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairNoNeedTest");
+	const fs::path testFile = CURR_DIR / "RepairNoNeedTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
-	BOOST_CHECK(parChecker.GetParFull() == true);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepairNotNeeded);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairPossibleTest)
@@ -137,12 +137,13 @@ BOOST_AUTO_TEST_CASE(RepairPossibleTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairPossibleTest");
+	const fs::path testFile = CURR_DIR / "RepairPossibleTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairPossible);
-	BOOST_CHECK(parChecker.GetParFull() == true);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepairPossible);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairSuccessfulTest)
@@ -151,12 +152,14 @@ BOOST_AUTO_TEST_CASE(RepairSuccessfulTest)
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairSuccessfulTest");
+	const fs::path testFile = CURR_DIR / "RepairSuccessfulTest";
+	ParCheckerMock parChecker(testFile);
+	
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_CHECK(parChecker.GetParFull() == true);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepaired);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
 }
 
 BOOST_AUTO_TEST_CASE(RepairFailedTest)
@@ -165,7 +168,8 @@ BOOST_AUTO_TEST_CASE(RepairFailedTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "RepairSuccessfulTest");
+	const fs::path testFile = CURR_DIR / "RepairSuccessfulTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
@@ -175,8 +179,8 @@ BOOST_AUTO_TEST_CASE(RepairFailedTest)
 	parChecker.CorruptFile("testfile.dat", 80000);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psFailed);
-	BOOST_CHECK(parChecker.GetParFull() == true);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psFailed);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
 }
 
 BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
@@ -187,12 +191,13 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickVerificationRepairNotNeededTest");
+	const fs::path testFile = CURR_DIR / "QuickVerificationRepairNotNeededTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.SetParQuick(true);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepairNotNeeded);
-	BOOST_CHECK(parChecker.GetParFull() == false);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepairNotNeeded);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), false);
 }
 
 BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
@@ -203,13 +208,14 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickVerificationRepairSuccessfulTest");
+	const fs::path testFile = CURR_DIR / "QuickVerificationRepairSuccessfulTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.SetParQuick(true);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_CHECK(parChecker.GetParFull() == false);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepaired);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), false);
 }
 
 BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
@@ -220,7 +226,8 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 
 	YEncode::init();
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "QuickFullVerificationRepairSuccessfulTest");
+	const fs::path testFile = CURR_DIR / "QuickFullVerificationRepairSuccessfulTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.SetParQuick(true);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.nfo", 100);
@@ -228,8 +235,8 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 
 	// All files were damaged, the full verification was performed
 
-	BOOST_CHECK(parChecker.GetStatus() == ParChecker::psRepaired);
-	BOOST_CHECK(parChecker.GetParFull() == true);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepaired);
+	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
 }
 
 BOOST_AUTO_TEST_CASE(ParIgnoreExtDatTest)
@@ -244,7 +251,8 @@ BOOST_AUTO_TEST_CASE(ParIgnoreExtDatTest)
 
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "ParIgnoreExtDatTest");
+	const fs::path testFile = CURR_DIR / "ParIgnoreExtDatTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
@@ -255,7 +263,7 @@ BOOST_AUTO_TEST_CASE(ParIgnoreExtDatTest)
 
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == expectedStatus);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), expectedStatus);
 }
 
 BOOST_AUTO_TEST_CASE(ExtCleanupDiskDatTest)
@@ -270,7 +278,8 @@ BOOST_AUTO_TEST_CASE(ExtCleanupDiskDatTest)
 
 	Options options(&cmdOpts, nullptr);
 
-	ParCheckerMock parChecker(currDir + PATH_SEPARATOR + "ExtCleanupDiskDatTest");
+	const fs::path testFile = CURR_DIR / "ExtCleanupDiskDatTest";
+	ParCheckerMock parChecker(testFile);
 	parChecker.CorruptFile("testfile.dat", 20000);
 	parChecker.CorruptFile("testfile.dat", 30000);
 	parChecker.CorruptFile("testfile.dat", 40000);
@@ -281,5 +290,5 @@ BOOST_AUTO_TEST_CASE(ExtCleanupDiskDatTest)
 
 	parChecker.Execute();
 
-	BOOST_CHECK(parChecker.GetStatus() == expectedStatus);
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), expectedStatus);
 }
