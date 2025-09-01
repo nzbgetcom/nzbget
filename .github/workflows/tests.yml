@@ -248,4 +248,5 @@ jobs:
 
     - name: Build
       run: |
+        brew uninstall cmake
         brew install nzbget --formula --head --verbose
