@@ -276,7 +276,7 @@ namespace System
 		return std::nullopt;
 	}
 
-	std::optional<std::string> SystemInfo::GetPythonVersion(const std::string path) const
+	std::optional<std::string> SystemInfo::GetPythonVersion(const std::string& path) const
 	{
 		std::string cmd = FileSystem::EscapePathForShell(path) + " --version 2>&1";
 		{

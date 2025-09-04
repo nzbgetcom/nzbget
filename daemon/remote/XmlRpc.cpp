@@ -42,6 +42,7 @@
 #include "Benchmark.h"
 #include "NetworkSpeedTest.h"
 #include "Xml.h"
+#include "HealthMonitor.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -1393,6 +1394,7 @@ void StatusXmlCommand::Execute()
 		"<member><name>ResumeTime</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FeedActive</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>QueueScriptCount</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>Health</name><value><string>%s</string></value></member>\n"
 		"<member><name>NewsServers</name><value><array><data>\n";
 
 	const char* XML_STATUS_END =
@@ -1454,6 +1456,7 @@ void StatusXmlCommand::Execute()
 		"\"ServerTime\" : %i,\n"
 		"\"ResumeTime\" : %i,\n"
 		"\"FeedActive\" : %s,\n"
+		"\"Health\" : %s,\n"
 		"\"QueueScriptCount\" : %i,\n"
 		"\"NewsServers\" : [\n";
 
@@ -1588,6 +1591,9 @@ void StatusXmlCommand::Execute()
 	int resumeTime = (int)g_WorkState->GetResumeTime();
 	bool feedActive = g_FeedCoordinator->HasActiveDownloads();
 	int queuedScripts = g_QueueScriptCoordinator->GetQueueSize();
+	const std::string health = IsJson()
+		? HealthCheck::ToJsonStr(g_HealthMonitor->GetReport())
+		: HealthCheck::ToXmlStr(g_HealthMonitor->GetReport());
 
 	AppendFmtResponse(IsJson() ? JSON_STATUS_START : XML_STATUS_START,
 		remainingSizeLo, remainingSizeHi, remainingMBytes, forcedSizeLo,
@@ -1616,7 +1622,12 @@ void StatusXmlCommand::Execute()
 		totalInterDiskSpaceLo, 
 		totalInterDiskSpaceHi, 
 		totalInterDiskSpaceMB,
-		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
+		serverTime,
+		resumeTime,
+		BoolToStr(feedActive),
+		health.c_str(),
+		queuedScripts
+	);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())

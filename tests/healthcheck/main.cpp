@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,21 +14,33 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#include "nzbget.h"
 
-#include <iostream>
-#include <libxml/tree.h>
+#define BOOST_TEST_MODULE HealthCheckTests
+#include <boost/test/included/unit_test.hpp>
 
-namespace Xml
+#include "Log.h"
+#include "Options.h"
+
+Log* g_Log;
+Options* g_Options;
+
+struct InitGlobals
 {
-	using XmlNodePtr = xmlNodePtr;
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	const char* BoolToStr(bool value) noexcept;
-}
+	InitGlobals()
+	{
+		g_Log = new Log();
+		g_Options = new Options(nullptr, nullptr);
+	}
 
-#endif
+	~InitGlobals()
+	{
+		delete g_Log;
+		delete g_Options;
+	}
+};
+
+BOOST_GLOBAL_FIXTURE(InitGlobals);

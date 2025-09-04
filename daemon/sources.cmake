@@ -104,6 +104,10 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/Network.cpp
+
+	${CMAKE_SOURCE_DIR}/daemon/healthcheck/HealthMonitor.cpp
+	${CMAKE_SOURCE_DIR}/daemon/healthcheck/Checks.cpp
+	${CMAKE_SOURCE_DIR}/daemon/healthcheck/Check.cpp
 )
 
 set(WIN32_SRC
@@ -131,4 +135,5 @@ set(INCLUDES ${INCLUDES}
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/daemon/util
+	${CMAKE_SOURCE_DIR}/daemon/healthcheck
 )

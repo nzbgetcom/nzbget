@@ -366,6 +366,7 @@ public:
 	// Options
 	const char* GetConfigFilename() const { return m_configFilename; }
 	bool GetConfigErrors() { return m_configErrors; }
+	const char* GetMainDir() { return m_mainDir; }
 	const char* GetAppDir() { return m_appDir; }
 	const char* GetDestDir() { return m_destDir; }
 	const char* GetInterDir() { return m_interDir; }
@@ -505,6 +506,7 @@ private:
 	bool m_configErrors = false;
 	int m_configLine = 0;
 	CString m_appDir;
+	CString m_mainDir;
 	CString m_configFilename;
 	CString m_destDir;
 	CString m_interDir;

@@ -186,6 +186,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #include "OpenSSL.h"

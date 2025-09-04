@@ -297,6 +297,7 @@ var Frontend = (new function($)
 		LimitDialog.init();
 		SystemInfo.init();
 		Statistics.init();
+		AppHealth.init();
 
 		DownloadsEditDialog.init();
 		DownloadsMultiDialog.init();
@@ -696,7 +697,7 @@ var Frontend = (new function($)
 
 	function updateTabInfo(control, stat)
 	{
-		control.toggleClass('badge-info', stat.available == stat.total).toggleClass('badge-warning', stat.available != stat.total);
+		control.toggleClass('badge-info', stat.available == stat.total).toggleClass('badge-default', stat.available != stat.total);
 		control.html(stat.available);
 		control.toggleClass('badge2', stat.total > 9);
 		control.toggleClass('badge3', stat.total > 99);

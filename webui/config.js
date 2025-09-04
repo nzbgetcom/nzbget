@@ -492,6 +492,7 @@ var Options = (new function($)
 				option.value = null;
 				option.sectionId = section.id;
 				option.select = [];
+				option.check = AppHealth.getCheck(AppHealth.getSection(section.name), option.name);
 
 				var pstart = firstdescrline.lastIndexOf('(');
 				var pend = firstdescrline.lastIndexOf(')');
@@ -1110,10 +1111,30 @@ var Config = (new function($)
 			html += '<p class="help-block">' + htmldescr + '</p>';
 		}
 
+		if (option.check)
+		{
+			html += makeOptionCheckSection(option.check);
+		}
+
 		html += '</div>';
 		html += '</div>';
 
 		return html;
+	}
+
+	function makeOptionCheckSection(check) {
+		let section = '<div class="option__check-section">';
+
+		if (check.Status == "Error")
+			section += '<span class="option-alert alert alert-error"><i class="option-alert__icon material-icon">error</i><span>' + check.Message + '</span></span>';
+		else if (check.Status == "Warning")
+			section += '<span class="option-alert alert alert-warning"><i class="option-alert__icon material-icon">warning</i><span>' + check.Message + '</span></span>';
+		else if (check.Status == "Info")
+			section += '<span class="option-alert alert alert-success"><i class="option-alert__icon material-icon">info</i><span>' + check.Message + '</span></span>';
+
+		section += '</div>';
+
+		return section;
 	}
 
 	function buildMultiRowStart(section, multiid, option)
@@ -1197,7 +1218,12 @@ var Config = (new function($)
 				var section = conf.sections[i];
 				if (!section.hidden)
 				{
-					var html = $('<li><a href="#' + section.id + '">' + section.name + '</a></li>');
+					var html = $('<li>');
+					var link = $('<a href="#' + section.id + '">' + section.name + '</a>');
+					var errorBadges = AppHealth.makeBadges(AppHealth.getSection(section.name));
+
+					html.append(link.append(errorBadges));
+
 					if (haveExtensions)
 					{
 						html.addClass('list-item--nested');

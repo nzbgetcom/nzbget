@@ -57,11 +57,12 @@
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
 	<script language="javascript" type="text/javascript" src="system-info.js"></script>
 	<script language="javascript" type="text/javascript" src="statistics.js"></script>
+	<script language="javascript" type="text/javascript" src="app-health.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+datetime.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+datetime.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js+app-health.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -210,7 +211,20 @@
 					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="material-icon phone-only inline">calendar_today</i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#StatisticsTab" id="StatisticsTabLink"><span class="phone-hide" title="Statistics [Shift+I]">Statistics </span><i class="material-icon phone-only inline">analytics</i><br class="phone-only"><span class="badge" id="StatisticsTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="StatisticsabBadgeEmpty">&nbsp;</span></span></a></li>
 					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="material-icon phone-only inline">mail</i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
-					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
+					<li>
+						<a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink">
+							<span class="phone-hide" title="Settings [Shift+S]">Settings </span>
+							<i class="material-icon phone-only inline">settings</i>
+							<br class="phone-only">
+							<span class="badge" id="ConfigTabBadge" style="display: none;"></span>
+							<span class="badge" id="AppHealthErrorsBadge" style="display: none;"></span>
+							<span class="badge" id="AppHealthWarningsBadge" style="display: none;"></span>
+							<span class="badge" id="AppHealthInfoBadge" style="display: none;"></span>
+							<span class="phone-only">
+								<span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span>
+							</span>
+						</a>
+					</li>
 				</ul>
 			</div>
 
