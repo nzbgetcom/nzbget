@@ -19,6 +19,7 @@
  */
 
 
+#include "Service.h"
 #include "nzbget.h"
 #include "XmlRpc.h"
 #include "Log.h"
@@ -43,6 +44,7 @@
 #include "NetworkSpeedTest.h"
 #include "Xml.h"
 #include "Unpack.h"
+#include "SystemHealth.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -128,6 +130,12 @@ public:
 };
 
 class SysInfoXmlCommand: public SafeXmlCommand
+{
+public:
+	void Execute() override;
+};
+
+class SystemHealthXmlCommand : public SafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -782,6 +790,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "sysinfo"))
 	{
 		command = std::make_unique<SysInfoXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "systemhealth"))
+	{
+		command = std::make_unique<SystemHealthXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "log"))
 	{
@@ -1662,7 +1674,11 @@ void StatusXmlCommand::Execute()
 		totalInterDiskSpaceLo, 
 		totalInterDiskSpaceHi, 
 		totalInterDiskSpaceMB,
-		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
+		serverTime,
+		resumeTime,
+		BoolToStr(feedActive),
+		queuedScripts
+	);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -1680,6 +1696,16 @@ void SysInfoXmlCommand::Execute()
 	std::string response = IsJson()
 		? System::ToJsonStr(*g_SystemInfo)
 		: System::ToXmlStr(*g_SystemInfo);
+
+	AppendResponse(response.c_str());
+}
+
+void SystemHealthXmlCommand::Execute()
+{
+	const auto report = g_SystemHealth->Diagnose();
+	const std::string response = IsJson()
+		? SystemHealth::ToJsonStr(report)
+		: SystemHealth::ToXmlStr(report);
 
 	AppendResponse(response.c_str());
 }

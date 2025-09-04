@@ -156,6 +156,7 @@
 #include <set>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <iterator>
 #include <algorithm>
 #include <numeric>
@@ -186,6 +187,7 @@
 
 #include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
+#include <boost/filesystem.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #include "OpenSSL.h"

@@ -21,6 +21,7 @@
 
 
 #include "nzbget.h"
+
 #include "ServerPool.h"
 #include "Log.h"
 #include "NzbFile.h"
@@ -57,6 +58,7 @@
 #include "YEncode.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
+#include "SystemHealth.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -100,6 +102,7 @@ ScriptConfig* g_ScriptConfig;
 CommandScriptLog* g_CommandScriptLog;
 ExtensionManager::Manager* g_ExtensionManager;
 System::SystemInfo* g_SystemInfo;
+SystemHealth::Service* g_SystemHealth;
 
 #ifdef WIN32
 WinConsole* g_WinConsole;
@@ -216,6 +219,7 @@ private:
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
 	std::unique_ptr<System::SystemInfo> m_systemInfo;
+	std::unique_ptr<SystemHealth::Service> m_systemHealth;
 
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
@@ -284,6 +288,13 @@ void NZBGet::Init()
 #endif
 
 	BootConfig();
+
+	m_systemHealth = std::make_unique<SystemHealth::Service>(
+		*g_Options, 
+		*g_ServerPool->GetServers(), 
+		*g_FeedCoordinator->GetFeeds(),
+		m_scheduler->GetTasks());
+	g_SystemHealth = m_systemHealth.get();
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());

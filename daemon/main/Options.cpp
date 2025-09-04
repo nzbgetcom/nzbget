@@ -20,12 +20,14 @@
  */
 
 
+#include "Service.h"
 #include "nzbget.h"
 
 #include "Util.h"
 #include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
+#include "SystemHealth.h"
 
 #ifdef _WIN32
 #include "Utf8.h"
@@ -1809,8 +1811,8 @@ void Options::CheckOptions()
 	if (m_certCheck && m_certStore.Empty())
 	{
 		LocateOptionSrcPos(CERTCHECK.data());
-		ConfigError("Option \"%s\" requires proper configuration of option \"%s\"", CERTCHECK.data(), CERTSTORE.data());
-		m_certCheck = false;
+		// ConfigError("Option \"%s\" requires proper configuration of option \"%s\"", CERTCHECK.data(), CERTSTORE.data());
+		// m_certCheck = false;
 	}
 
 	if (m_rawArticle)

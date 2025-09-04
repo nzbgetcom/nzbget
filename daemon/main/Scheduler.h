@@ -43,6 +43,7 @@ public:
 		scDeactivateServer,
 		scFetchFeed
 	};
+	
 
 	class Task
 	{

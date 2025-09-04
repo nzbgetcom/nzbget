@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,26 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#include "nzbget.h"
 
-#include <iostream>
-#include <libxml/tree.h>
+#include "FeedsValidator.h"
+#include "FeedValidator.h"
 
-namespace Xml
+namespace SystemHealth::Feeds
 {
-	using XmlNodePtr = xmlNodePtr;
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	const char* BoolToStr(bool value) noexcept;
+FeedsValidator::FeedsValidator(const ::Feeds& feeds, const Options& options)
+	: SectionGroupValidator(MakeFeedValidators(feeds)), m_feeds(feeds), m_options(options)
+{
 }
-
-#endif
+std::vector<std::unique_ptr<SectionValidator>> FeedsValidator::MakeFeedValidators(
+	const ::Feeds& feeds) const
+{
+	std::vector<std::unique_ptr<SectionValidator>> validators;
+	validators.reserve(feeds.size());
+	for (const auto& feed : feeds)
+	{
+		validators.push_back(std::make_unique<FeedValidator>(*feed));
+	}
+	return validators;
+}
+}  // namespace SystemHealth::Feeds

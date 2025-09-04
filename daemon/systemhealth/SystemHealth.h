@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#ifndef SYSTEM_HEALTH_H
+#define SYSTEM_HEALTH_H
 
-#include <iostream>
-#include <libxml/tree.h>
-
-namespace Xml
-{
-	using XmlNodePtr = xmlNodePtr;
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	const char* BoolToStr(bool value) noexcept;
-}
+#include "Service.h"
+#include "Status.h"
 
 #endif

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,18 +17,24 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef XML_H
-#define XML_H
+#ifndef SECTION_GROUP_VALIDATOR_H
+#define SECTION_GROUP_VALIDATOR_H
 
-#include <iostream>
-#include <libxml/tree.h>
+#include "SectionValidator.h"
 
-namespace Xml
+namespace SystemHealth
 {
-	using XmlNodePtr = xmlNodePtr;
-	std::string Serialize(const xmlNodePtr rootNode);
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
-	const char* BoolToStr(bool value) noexcept;
-}
+
+class SectionGroupValidator : public SectionValidator
+{
+public:
+	explicit SectionGroupValidator(std::vector<std::unique_ptr<SectionValidator>> sections);
+	SectionReport Validate() const override;
+
+protected:
+	std::vector<std::unique_ptr<SectionValidator>> m_sections;
+};
+
+}  // namespace SystemHealth
 
 #endif

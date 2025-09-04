@@ -140,6 +140,18 @@ th {
     font-size: 128px;
 }
 
+.system-health-badge--important {
+	color: red;
+}
+
+.system-health-badge--warning {
+	color: #f89406;
+}
+
+.system-health-badge--info {
+	color: #468847;
+}
+
 .dist-speedtest__controls {
     display: flex;
     gap: 10px;
@@ -1443,6 +1455,22 @@ ul.help > li {
     margin: -80px 0 0 -200px;
 }
 
+.text-error {
+	color: #b94a48;
+}
+
+.text-warning {
+	color: #f89406;
+}
+
+.text-info {
+	color: #3a87ad;
+}
+
+.text-success {
+	color: #468847;
+}
+
 .alert-error.alert-center {
     border-color: #b94a48;
 }
@@ -1917,6 +1945,24 @@ div.control-group.last-group {
     outline: 0;
     cursor: inherit;
     text-decoration: none;
+}
+
+.option__check-section {
+	display: flex;
+	flex-direction: column;
+	width: 96%;
+	margin-top: 7px;
+}
+
+.option-alert {
+	margin-bottom: 0;
+	font-size: larger;
+	padding: 2px 3px;
+}
+
+.option-alert__icon {
+	font-size: larger;
+	margin-right: 3px;
 }
 
 .search .option-name,
