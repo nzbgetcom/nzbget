@@ -51,8 +51,11 @@ var Status = (new function($)
 	var $PauseForInput;
 	var $PauseForPreview;
 
+	var $SystemInfo_Health;
+
 	// State
 	var status;
+	var health;
 	var lastPlayState = 0;
 	var lastAnimState = 0;
 	var playInitialized = false;
@@ -89,6 +92,8 @@ var Status = (new function($)
 		$PauseForInput = $('#PauseForInput');
 		$PauseForPreview = $('#PauseForPreview');
 
+		$SystemInfo_Health = $('#SystemInfo_Health');
+
 		if (UISettings.setFocus)
 		{
 			$ScheduledPauseDialog.on('shown', function()
@@ -121,6 +126,7 @@ var Status = (new function($)
 			function(curStatus)
 			{
 				status = curStatus;
+				health = status["Health"];
 				status.DownloadRate = Util.joinInt64(status.DownloadRateHi, status.DownloadRateLo);
 				status.AverageDownloadRate = Util.joinInt64(status.AverageDownloadRateHi, status.AverageDownloadRateLo);
 				_this.status = status;
@@ -133,6 +139,42 @@ var Status = (new function($)
 	{
 		redrawInfo();
 		StatDialog.redraw();
+		var generalErrors = health['General'];
+
+		$SystemInfo_Health.empty();
+		if (generalErrors && Object.entries(generalErrors).length)
+		{
+			$SystemInfo_Health.show();
+			Object.entries(generalErrors).forEach(function([name, check]) 
+			{
+				var link = $('<a href="#"></a>')
+					.on('click', function(e) {
+						e.preventDefault();
+						var $btn = $('<a class="option" href="#">' + name + '</a>')
+						Config.scrollToOption(e, $btn);
+					});
+				if (check.Status == "Error")
+				{
+					link.append('<p class="text-error"><i class="option-alert__icon material-icon">error</i><span>' + check.Message + '</span></p>');
+					$SystemInfo_Health.append(link);
+				}
+
+				else if (check.Status == "Warning")
+				{
+					link.append('<p class="text-warning"><i class="option-alert__icon material-icon">warning</i><span>' + check.Message + '</span></p>');
+					$SystemInfo_Health.append(link);
+				}
+				else if (check.Status == "Info")
+				{
+					link.append('<p class="text-success"><i class="option-alert__icon material-icon">info</i><span>' + check.Message + '</span></p>');
+					$SystemInfo_Health.append(link);
+				}
+			});
+		}
+		else
+		{
+			$SystemInfo_Health.append('<p class="text-success">OK</span></p>');
+		}
 	}
 
 	this.subscribe = function(sub)

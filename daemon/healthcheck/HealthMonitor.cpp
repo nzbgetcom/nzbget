@@ -38,7 +38,9 @@ namespace HealthCheck
 	HealthReport HealthMonitor::CheckUp() const
 	{
 		HealthReport report;
-		SectionReport paths;
+		std::vector<std::pair<std::string_view, Report>> sections;
+		Report pathsSection;
+		Report general;
 
 		const auto mainDirCheck = Checks::ComposeSpecs(
 			[]() { return Checks::CheckRequiredOption(Options::MAINDIR, g_Options->GetMainDir()); },
@@ -135,20 +137,55 @@ namespace HealthCheck
 			}
 		);
 
-		paths[Options::MAINDIR] = mainDirCheck();
-		paths[Options::DESTDIR] = destDirCheck();
-		paths[Options::INTERDIR] = interDirCheck();
-		paths[Options::NZBDIR] = nzbDirCheck();
-		paths[Options::QUEUEDIR] = queueDirCheck();
-		paths[Options::TEMPDIR] = tmpDirCheck();
-		paths[Options::WEBDIR] = webDirCheck();
-		paths[Options::SCRIPTDIR] = scriptDirCheck();
-		// paths[Options::LOGFILE] = Checks::CheckLogFile(g_Options->GetLogFile(), g_Options->GetWriteLog());
-// 		paths[Options::CERTSTORE] = Checks::CheckCertStore(g_Options->GetCertStore(), g_Options->GetCertCheck());
+		pathsSection[Options::MAINDIR] = mainDirCheck();
+		if (!pathsSection[Options::MAINDIR].IsOk())
+		{
+			general[Options::MAINDIR] = pathsSection[Options::MAINDIR];
+		}
+		pathsSection[Options::DESTDIR] = destDirCheck();
+		if (!pathsSection[Options::DESTDIR].IsOk())
+		{
+			general[Options::DESTDIR] = pathsSection[Options::DESTDIR];
+		}
+		pathsSection[Options::INTERDIR] = interDirCheck();
+		if (!pathsSection[Options::INTERDIR].IsOk())
+		{
+			general[Options::INTERDIR] = pathsSection[Options::INTERDIR];
+		}
+		pathsSection[Options::NZBDIR] = nzbDirCheck();
+		if (!pathsSection[Options::NZBDIR].IsOk())
+		{
+			general[Options::NZBDIR] = pathsSection[Options::NZBDIR];
+		}
+		pathsSection[Options::QUEUEDIR] = queueDirCheck();
+		if (!pathsSection[Options::QUEUEDIR].IsOk())
+		{
+			general[Options::QUEUEDIR] = pathsSection[Options::QUEUEDIR];
+		}
+		pathsSection[Options::TEMPDIR] = tmpDirCheck();
+		if (!pathsSection[Options::TEMPDIR].IsOk())
+		{
+			general[Options::TEMPDIR] = pathsSection[Options::TEMPDIR];
+		}
+		pathsSection[Options::WEBDIR] = webDirCheck();
+		if (!pathsSection[Options::WEBDIR].IsOk())
+		{
+			general[Options::WEBDIR] = pathsSection[Options::WEBDIR];
+		}
+		pathsSection[Options::SCRIPTDIR] = scriptDirCheck();
+		if (!pathsSection[Options::SCRIPTDIR].IsOk())
+		{
+			general[Options::SCRIPTDIR] = pathsSection[Options::SCRIPTDIR];
+		}
+		// pathsSection[Options::LOGFILE] = Checks::CheckLogFile(g_Options->GetLogFile(), g_Options->GetWriteLog());
+// 		pathsSection[Options::CERTSTORE] = Checks::CheckCertStore(g_Options->GetCertStore(), g_Options->GetCertCheck());
 // #ifndef _WIN32
-// 		paths[Options::LOCKFILE] = Checks::CheckLockFile(g_Options->GetLockFile());
+// 		pathsSection[Options::LOCKFILE] = Checks::CheckLockFile(g_Options->GetLockFile());
 // #endif
-		report.paths.swap(paths);
+		sections.push_back({ "Paths", std::move(pathsSection) });
+
+		report.sections.swap(sections);
+		report.general.swap(general);
 
 		return report;
 	}
@@ -156,14 +193,27 @@ namespace HealthCheck
 	std::string ToJsonStr(const HealthReport& report)
 	{
 		Json::JsonObject reportJson;
-		Json::JsonObject pathsJson;
+		Json::JsonObject sectionsJson;
+		Json::JsonObject generalJson;
 
-		for (const auto& [name, check] : report.paths)
+		for (auto& [sectionName, section] : report.sections)
 		{
-			pathsJson[name] = ToJson(check);
+			Json::JsonObject sectionJson;
+			for (const auto& [name, check] : section)
+			{
+				sectionJson[name] = ToJson(check);
+			}
+
+			sectionsJson[sectionName] = std::move(sectionJson);
 		}
 
-		reportJson["Paths"] = std::move(pathsJson);
+		for (const auto& [name, check] : report.general)
+		{
+			generalJson[name] = ToJson(check);
+		}
+
+		reportJson["Sections"] = std::move(sectionsJson);
+		reportJson["General"] = std::move(generalJson);
 
 		return Json::serialize(reportJson);
 	}

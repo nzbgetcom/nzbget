@@ -27,11 +27,12 @@
 
 namespace HealthCheck
 {
-	using SectionReport = std::unordered_map<std::string_view, Check>;
+	using Report = std::unordered_map<std::string_view, Check>;
 
 	struct HealthReport
 	{
-		SectionReport paths;
+		std::vector<std::pair<std::string_view, Report>> sections;
+		Report general;
 	};
 
 	class HealthMonitor final

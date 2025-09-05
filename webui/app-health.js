@@ -19,14 +19,14 @@
 
 function SectionHealth(options_, sectionName)
 {
-	let name = sectionName;
-	let health = {
+	var name = sectionName;
+	var health = {
 		info: [],
 		warnings: [],
 		errors: []
 	}
 
-	let options = {};
+	var options = {};
 
 	init(options_);
 
@@ -73,10 +73,10 @@ function SectionHealth(options_, sectionName)
 }
 
 function HealthReport() {
-	let sections = {};
-	let infoCount = 0;
-	let warningsCount = 0;
-	let errorsCount = 0;
+	var sections = {};
+	var infoCount = 0;
+	var warningsCount = 0;
+	var errorsCount = 0;
 
 	this.getInfoCount = function()
 	{
@@ -117,32 +117,34 @@ function HealthReport() {
 	}
 }
 
-const AppHealth = (new function($)
+var AppHealth = (new function($)
 {
 	'use strict';
 
-	let $appHealthErrorsBadge;
-	let $appHealthWarningsBadge;
-	let $appHealthInfoBadge;
-	let healthReport = {};
+	var $appHealthErrorsBadge;
+	var $appHealthWarningsBadge;
+	var $appHealthInfoBadge;
+	var sectionsReport = {};
+	var generalReport = {};
 	this.SEVERITY = {
 		OK: 0,
 		INFO: 1,
 		WARNING: 2,
 		ERROR: 3,
 	}
-	const SEVERITY_STYLE = {
+	var SEVERITY_STYLE = {
 		INFO: "success",
 		WARNING: "warning",
 		ERROR: "important",
 	}
 
-	const statusHandler = 
+	var statusHandler = 
 	{
 		update: function(status) 
 		{
-			healthReport = makeHealthReport(status["Health"]);
-			redrawGlobalBadges(healthReport);
+			sectionsReport = makeHealthReport(status["Health"]["Sections"]);
+			generalReport = makeHealthReport(status["Health"]["General"]);
+			redrawGlobalBadges(sectionsReport);
 		}
 	}
 
@@ -158,13 +160,13 @@ const AppHealth = (new function($)
 	{
 		if (!section) return null;
 
-		const wrapper = $('<span style="margin-left: 5px;">');
-		const $infoBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		const $warningsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		const $errorsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		const infoCount = section.getInfoCount();
-		const warningsCount = section.getWarningsCount();
-		const errorsCount = section.getErrorsCount();
+		var wrapper = $('<span style="margin-left: 5px;">');
+		var $infoBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
+		var $warningsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
+		var $errorsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
+		var infoCount = section.getInfoCount();
+		var warningsCount = section.getWarningsCount();
+		var errorsCount = section.getErrorsCount();
 		toggleBadgeVisibility($infoBadge, infoCount, SEVERITY_STYLE.INFO);
 		toggleBadgeVisibility($warningsBadge, warningsCount, SEVERITY_STYLE.WARNING);
 		toggleBadgeVisibility($errorsBadge, errorsCount, SEVERITY_STYLE.ERROR);
@@ -175,7 +177,7 @@ const AppHealth = (new function($)
 
 	this.getSection = function(name) 
 	{
-		return healthReport.getSection(name);
+		return sectionsReport.getSection(name);
 	}
 
 	this.getCheck = function(section, name)
@@ -188,20 +190,20 @@ const AppHealth = (new function($)
 
 	function redrawGlobalBadges(healthReport)
 	{
-		const infoCount = healthReport.getInfoCount();
-		const warningsCount = healthReport.getWarningsCount();
-		const errorsCount = healthReport.getErrorsCount();
+		var infoCount = healthReport.getInfoCount();
+		var warningsCount = healthReport.getWarningsCount();
+		var errorsCount = healthReport.getErrorsCount();
 		toggleBadgeVisibility($appHealthInfoBadge, infoCount, SEVERITY_STYLE.INFO);
 		toggleBadgeVisibility($appHealthWarningsBadge, warningsCount, SEVERITY_STYLE.WARNING);
 		toggleBadgeVisibility($appHealthErrorsBadge, errorsCount, SEVERITY_STYLE.ERROR);
 	}
 
-	function makeHealthReport(appHealth) {
-		let healthReport = new HealthReport();
+	function makeHealthReport(health) {
+		var healthReport = new HealthReport();
 
-		Object.entries(appHealth).forEach(function(entry) {
-			const name = entry[0];
-			const section = entry[1];
+		Object.entries(health).forEach(function(entry) {
+			var name = entry[0];
+			var section = entry[1];
 			healthReport.addSection(new SectionHealth(section, name.toUpperCase()));
 		});
 

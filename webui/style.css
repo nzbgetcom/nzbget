@@ -1394,6 +1394,22 @@ ul.help > li {
 	margin: -80px 0 0 -200px;
 }
 
+.text-error {
+	color: #B94A48;
+}
+
+.text-warning {
+	color: #c09853;
+}
+
+.text-info {
+	color: #3a87ad;
+}
+
+.text-success {
+	color: #468847;
+}
+
 .alert-error.alert-center {
 	border-color: #B94A48;
 }
