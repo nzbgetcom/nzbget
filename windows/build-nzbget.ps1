@@ -152,7 +152,6 @@ Function PrepareFiles {
     & $Sed -e 's|DirectRename=.*|DirectRename=yes|' -i $Config
     & $Sed -e 's|DirectUnpack=.*|DirectUnpack=yes|' -i $Config
     # Hide certain options from web-interface settings page
-    & $Sed -e 's|WebDir=.*|# WebDir=${AppDir}\\webui|' -i $Config
     & $Sed -e 's|LockFile=.*|# LockFile=|' -i $Config
     & $Sed -e 's|ConfigTemplate=.*|# ConfigTemplate=${AppDir}\\nzbget.conf.template|' -i $Config
     & $Sed -e 's|DaemonUsername=.*|# DaemonUsername=|' -i $Config
