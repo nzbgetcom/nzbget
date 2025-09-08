@@ -166,20 +166,23 @@ export INCLUDES="/usr/include/;/usr/include/libxml2/"
 cmake .. -DENABLE_STATIC=ON
 ```
 ## Cppcheck
-  - Install Cppcheck:
+
+**Cppcheck** is a static analysis tool that helps you find bugs in your C/C++ code.
+
+### Installation
+
+Install **Cppcheck** using your system's package manager:
+
 ```bash
 apt install cppcheck
 ```
-  - Generate a compile database:
+  - After configuring, a **compile_commands.json** file should be generated in your build directory. This file tells **Cppcheck** how your project is compiled.
+  - The following command enables all checks and suppresses common system include warnings:
 ```bash
-cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
+cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem
 ```
-  - The file compile_commands.json is created in the current folder. Now run Cppcheck like this:
-```bash
-cppcheck --project=compile_commands.json
-```
- - To ignore certain folders you can use -i. This will skip analysis of source files in
+ - To ignore certain folders you can use **-i**. This will skip analysis of source files in
 the foo folder:
 ```bash
-cppcheck --project=compile_commands.json -ifoo
+cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem -ifoo
 ```
