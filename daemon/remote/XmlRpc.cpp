@@ -3328,7 +3328,7 @@ void ViewFeedXmlCommand::Execute()
 			AppendFmtResponse(IsJson() ? JSON_FEED_ITEM : XML_FEED_ITEM,
 				*EncodeStr(feedItemInfo.GetTitle()), *EncodeStr(feedItemInfo.GetFilename()),
 				*EncodeStr(feedItemInfo.GetUrl()), sizeLo, sizeHi, sizeMB,
-				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory()),
+				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory().c_str()),
 				BoolToStr(feedItemInfo.GetPauseNzb()), feedItemInfo.GetPriority(), (int)feedItemInfo.GetTime(),
 				matchStatusType[feedItemInfo.GetMatchStatus()], feedItemInfo.GetMatchRule(),
 				*EncodeStr(feedItemInfo.GetDupeKey()), feedItemInfo.GetDupeScore(),
