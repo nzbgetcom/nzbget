@@ -59,7 +59,7 @@ Function DownloadUnpackers {
     $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
     $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
     $UrlRar64="https://www.rarlab.com/rar/winrar-x64-713.exe"
-    $Url7Z="https://www.7-zip.org/a/7z2408-extra.7z"
+    $Url7Z="https://www.7-zip.org/a/7z2501-extra.7z"
 
     $ImageDir="$ToolsRoot\image"
     Write-Host "Downloading unpackers to $ImageDir"

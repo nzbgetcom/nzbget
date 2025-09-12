@@ -84,7 +84,7 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/linux-unpack.tar.gz -o /build/unpack.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v4.0/linux-unpack.tar.gz -o /build/unpack.tar.gz
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
