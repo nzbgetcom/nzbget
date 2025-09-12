@@ -24,7 +24,7 @@ set -o errexit
 
 # unpackers versions
 UNRAR_VERSION=712
-ZIP7_VERSION=2408
+ZIP7_VERSION=2501
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
