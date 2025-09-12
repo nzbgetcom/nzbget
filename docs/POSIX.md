@@ -9,10 +9,11 @@
 
   - Libraries:
     - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
-    - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
-    - [Boost.Asio](https://www.boost.org/doc/libs/1_85_0/doc/html/boost_asio.html)
+    - [Boost.Filesystem](https://github.com/boostorg/filesystem)
+    - [Boost.JSON](https://github.com/boostorg/json)
+    - [Boost.Asio](https://github.com/boostorg/asio)
     
-> If you face issues with Boost.JSON on your system, you can skip it - CMake will take care of it.
+> If you face issues with Boost Libraries on your system, you can skip it - CMake will take care of it.
 
 - And the following libraries are optional:
 
@@ -26,7 +27,7 @@
     - [zlib](https://www.zlib.net/)
   
   - For tests:
-    - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
+    - [Boost.Test](https://github.com/boostorg/test)
 
   - For static code analysis:
     - [Clang-Tidy](https://clang.llvm.org/extra/clang-tidy/)
@@ -43,11 +44,13 @@ apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-d
 ```
   - Debian 12 (bookworm)
 ```bash
+apt install libboost-filesystem1.81-dev
 apt install libboost-json1.81-dev
 apt install libboost-test1.81-dev #(optional: for testing)
 ```
   - Debian 13 (trixie)
 ```bash
+apt install libboost-filesystem-dev
 apt install libboost-json-dev 
 apt install libboost-test-dev #(optional: for testing)
 ```
@@ -163,20 +166,23 @@ export INCLUDES="/usr/include/;/usr/include/libxml2/"
 cmake .. -DENABLE_STATIC=ON
 ```
 ## Cppcheck
-  - Install Cppcheck:
+
+**Cppcheck** is a static analysis tool that helps you find bugs in your C/C++ code.
+
+### Installation
+
+Install **Cppcheck** using your system's package manager:
+
 ```bash
 apt install cppcheck
 ```
-  - Generate a compile database:
+  - After configuring, a **compile_commands.json** file should be generated in your build directory. This file tells **Cppcheck** how your project is compiled.
+  - The following command enables all checks and suppresses common system include warnings:
 ```bash
-cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .
+cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem
 ```
-  - The file compile_commands.json is created in the current folder. Now run Cppcheck like this:
-```bash
-cppcheck --project=compile_commands.json
-```
- - To ignore certain folders you can use -i. This will skip analysis of source files in
+ - To ignore certain folders you can use **-i**. This will skip analysis of source files in
 the foo folder:
 ```bash
-cppcheck --project=compile_commands.json -ifoo
+cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem -ifoo
 ```

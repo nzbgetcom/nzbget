@@ -2,7 +2,7 @@
 
 ## Installation
 All steps to perform on your Android device:
-- using web-browser download NZBGet installer app https://github.com/nzbgetcom/android/releases
+- using web-browser download NZBGet installer app from [GitHub](https://github.com/nzbgetcom/android/releases)
 
   **NOTE**: this app is only a frontend to NZBGet downloader background process, which
   the app installs and launches. The app isn't updated often but it always installs the latest version of nzbget by downloading it from NZBGet download page.

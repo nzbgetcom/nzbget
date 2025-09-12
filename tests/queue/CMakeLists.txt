@@ -24,6 +24,11 @@ add_executable(QueueTests ${QueueTestsSrc})
 
 target_link_libraries(QueueTests PRIVATE ${LIBS})
 target_include_directories(QueueTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(QueueTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(QueueTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 file(COPY ../testdata/nzbfile DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 add_test(NAME QueueTests COMMAND $<TARGET_FILE:QueueTests> --log_level=message)

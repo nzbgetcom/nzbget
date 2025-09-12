@@ -26,12 +26,36 @@
 #include "Options.h"
 #include "WorkState.h"
 #include "DiskState.h"
+#include "ArticleWriter.h"
+#include "DupeCoordinator.h"
+#include "ExtensionManager.h"
+#include "HistoryCoordinator.h"
+#include "QueueCoordinator.h"
+#include "UrlCoordinator.h"
+#include "QueueScript.h"
+#include "PrePostProcessor.h"
+#include "Scanner.h"
+#include "StatMeter.h"
+#include "Service.h"
+#include "ServerPool.h"
 
 char* (*g_EnvironmentVariables)[];
 Log* g_Log;
 WorkState* g_WorkState;
 Options* g_Options;
 DiskState* g_DiskState;
+ArticleCache* g_ArticleCache;
+DupeCoordinator* g_DupeCoordinator;
+HistoryCoordinator* g_HistoryCoordinator;
+PrePostProcessor* g_PrePostProcessor;
+QueueScriptCoordinator* g_QueueScriptCoordinator;
+QueueCoordinator* g_QueueCoordinator;
+UrlCoordinator* g_UrlCoordinator;
+ServiceCoordinator* g_ServiceCoordinator;
+Scanner* g_Scanner;
+StatMeter* g_StatMeter;
+ServerPool* g_ServerPool;
+ExtensionManager::Manager* g_ExtensionManager;
 
 struct InitGlobals
 {

@@ -25,8 +25,8 @@ jobs:
         mkdir -p /build/freebsd
         mkdir -p /build/lib
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/freebsd-sysroot.tar.gz -o /build/freebsd/sysroot.tar.gz
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v2.0/lib-x86_64-bsd.tar.gz -o /build/lib/lib.tar.gz
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v2.0/freebsd-unpack.tar.gz -o /build/unpack.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/lib-x86_64-bsd.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v4.0/freebsd-unpack.tar.gz -o /build/unpack.tar.gz
         tar zxf /build/freebsd/sysroot.tar.gz -C /build/freebsd
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         tar zxf /build/unpack.tar.gz -C /build

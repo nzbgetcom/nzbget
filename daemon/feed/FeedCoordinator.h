@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,6 +36,18 @@
 
 class FeedDownloader;
 
+class NzbInfoCreator final
+{
+public:
+	NzbInfoCreator() = default;
+	~NzbInfoCreator() = default;
+
+	std::unique_ptr<NzbInfo> Create(const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const;
+
+private:
+	void ApplyCategory(NzbInfo& nzbInfo, const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const;
+};
+
 class FeedCoordinator : public Thread, public Observer, public Subject, public Debuggable
 {
 public:
@@ -48,7 +60,7 @@ public:
 
 	/* may return empty pointer on error */
 	std::shared_ptr<FeedItemList> PreviewFeed(int id, const char* name, const char* url,
-		const char* filter, bool backlog, bool pauseNzb, const char* category, int priority,
+		const char* filter, bool backlog, bool pauseNzb, const char* category, FeedInfo::CategorySource categorySource, int priority,
 		int interval, const char* feedScript, int cacheTimeSec, const char* cacheId);
 
 	/* may return empty pointer on error */
@@ -116,17 +128,17 @@ private:
 	Mutex m_downloadsMutex;
 	DownloadQueueObserver m_downloadQueueObserver;
 	WorkStateObserver m_workStateObserver;
-	std::atomic<bool> m_force{false};
-	bool m_save = false;
+	NzbInfoCreator m_nzbInfoCreator;
 	FeedCache m_feedCache;
 	ConditionVar m_waitCond;
+	std::atomic<bool> m_force{false};
 	bool m_wokenUp = false;
+	bool m_save = false;
 
 	void StartFeedDownload(FeedInfo* feedInfo, bool force);
 	void FeedCompleted(FeedDownloader* feedDownloader);
 	void FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems);
 	std::vector<std::unique_ptr<NzbInfo>> ProcessFeed(FeedInfo* feedInfo, FeedItemList* feedItems);
-	std::unique_ptr<NzbInfo> CreateNzbInfo(FeedInfo* feedInfo, FeedItemInfo& feedItemInfo);
 	void ResetHangingDownloads();
 	void DownloadQueueUpdate(Subject* caller, void* aspect);
 	void CleanupHistory();

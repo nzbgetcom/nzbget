@@ -40,7 +40,7 @@ More information available at https://nzbget.com
 | <nobr>**ASUSTOR NAS** | [nzbget-asustor](https://github.com/nzbgetcom/nzbget-asustor) <br>[App Central](https://www.asustor.com/app_central/app_detail?id=1671&type=) [ASUSTOR readme](https://github.com/nzbgetcom/nzbget-asustor/blob/main/README.md) | ADM 4.3+ |
 | <nobr>**QNAP NAS** | [package manager](https://github.com/nzbgetcom/nzbget/blob/develop/qnap/README.md#install-via-sherpa-package-manager) <br>[manual installation](https://github.com/nzbgetcom/nzbget/blob/develop/qnap/README.md#manual-install)  | QTS 4.1.0+ (x86_64 / x86 / arm_64 / arm-x19 / arm-x31 / arm-x41) |
 | <nobr>**TrueNAS SCALE** | [TrueNAS App catalog](https://apps.truenas.com/catalog/nzbget/) | x86-64 (amd64) |
-| **Android** | [Releases](https://github.com/nzbgetcom/nzbget/releases) | Android 5.0+ aarch64 |
+| **Android** | [Instructions](docs/ANDROID.md) | Android 5.0+ aarch64 |
 
 ## Migration from older NZBGet versions
 

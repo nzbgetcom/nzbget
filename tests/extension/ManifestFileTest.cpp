@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,10 +21,12 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include <boost/filesystem.hpp>
 
 #include <string>
-#include "FileSystem.h"
 #include "ManifestFile.h"
+
+namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_CASE(ManifestFileTest)
 {
@@ -33,14 +35,13 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(ManifestFile::Load(manifestFile, noFilePath) == false);
 	BOOST_CHECK(manifestFile.main.empty());
 
-	std::string dir = FileSystem::GetCurrentDirectory().Str() + std::string("/manifest");
-	std::string invalidFilePath = dir + "/invalid";
+	const fs::path dir = fs::current_path() / "manifest";
+	const fs::path invalidFilePath = dir / "invalid";
+	const fs::path validFilePath = dir / "valid";
 
-	BOOST_REQUIRE(ManifestFile::Load(manifestFile, invalidFilePath.c_str()) == false);
+	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, invalidFilePath.string().c_str()), false);
 	BOOST_CHECK(manifestFile.main.empty());
-
-	std::string validFilePath = dir + "/valid";
-	BOOST_REQUIRE(ManifestFile::Load(manifestFile, validFilePath.c_str()) == true);
+	BOOST_REQUIRE_EQUAL(ManifestFile::Load(manifestFile, validFilePath.string().c_str()), true);
 
 	BOOST_CHECK(manifestFile.main == "email.py");
 	BOOST_CHECK(manifestFile.name == "email");

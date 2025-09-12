@@ -37,6 +37,21 @@ public:
 		fsFailed
 	};
 
+	/*
+	 *	Auto     - Try to retrieve the category from the NZB file first. If not found,
+	 *           try the feed file.
+	 *	NzbFile  - Always retrieve the category from the NZB file. If not found, the
+	 *           category is left empty.
+	 *	FeedFile - Always retrieve the category from the feed file. If not found, the
+	 *          category is left empty.
+	 */
+	enum class CategorySource
+	{
+		Auto,
+		NZBFile,
+		FeedFile
+	};
+
 	FeedInfo(
 		int id,
 		const char* name,
@@ -46,18 +61,19 @@ public:
 		const char* filter,
 		bool pauseNzb,
 		const char* category,
+		CategorySource categorySource,
 		int priority,
 		const char* extensions
 	);
-	int GetId() { return m_id; }
+	int GetId() const { return m_id; }
 	const char* GetName() const { return m_name.c_str(); }
 	const char* GetUrl() const { return m_url.c_str(); }
 	int GetInterval() { return m_interval; }
 	const char* GetFilter() const { return m_filter.c_str(); }
 	uint32 GetFilterHash() { return m_filterHash; }
-	bool GetPauseNzb() { return m_pauseNzb; }
+	bool GetPauseNzb() const { return m_pauseNzb; }
 	const char* GetCategory() const { return m_category.c_str(); }
-	int GetPriority() { return m_priority; }
+	int GetPriority() const { return m_priority; }
 	const char* GetExtensions() const { return m_extensions.c_str(); }
 	time_t GetLastUpdate() { return m_lastUpdate; }
 	void SetLastUpdate(time_t lastUpdate) { m_lastUpdate = lastUpdate; }
@@ -77,6 +93,8 @@ public:
 	void SetForce(bool force) { m_force = force; }
 	bool GetBacklog() { return m_backlog; }
 	void SetBacklog(bool backlog) { m_backlog = backlog; }
+	CategorySource GetCategorySource() const { return m_categorySource; }
+	void SetCategorySource(CategorySource categorySource) { m_categorySource = categorySource; }
 
 private:
 	int m_id;
@@ -90,6 +108,7 @@ private:
 	time_t m_nextUpdate = 0;
 	uint32 m_filterHash;
 	EStatus m_status = fsUndefined;
+	CategorySource m_categorySource = CategorySource::NZBFile;
 	int m_interval;
 	int m_priority;
 	int m_lastInterval = 0;
@@ -158,7 +177,7 @@ public:
 	void SetFilename(const char* filename) { m_filename = filename ? filename : ""; }
 	const char* GetUrl() const { return m_url.c_str(); }
 	void SetUrl(const char* url) { m_url = url ? url : ""; }
-	int64 GetSize() { return m_size; }
+	int64 GetSize() const { return m_size; }
 	void SetSize(int64 size) { m_size = size; }
 	const char* GetCategory() const { return m_category.c_str(); }
 	void SetCategory(const char* category) { m_category = category ? category : ""; }
@@ -178,13 +197,13 @@ public:
 	void SetEpisode(const char* episode);
 	int GetSeasonNum();
 	int GetEpisodeNum();
-	const char* GetAddCategory() const { return m_addCategory.c_str(); }
+	const std::string& GetAddCategory() const { return m_addCategory; }
 	void SetAddCategory(const char* addCategory) { m_addCategory = addCategory ? addCategory : ""; }
-	bool GetPauseNzb() { return m_pauseNzb; }
+	bool GetPauseNzb() const { return m_pauseNzb; }
 	void SetPauseNzb(bool pauseNzb) { m_pauseNzb = pauseNzb; }
-	int GetPriority() { return m_priority; }
+	int GetPriority() const { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
-	time_t GetTime() { return m_time; }
+	time_t GetTime() const { return m_time; }
 	void SetTime(time_t time) { m_time = time; }
 	EStatus GetStatus() { return m_status; }
 	void SetStatus(EStatus status) { m_status = status; }
@@ -196,9 +215,9 @@ public:
 	void SetDupeKey(const char* dupeKey) { m_dupeKey = dupeKey ? dupeKey : ""; }
 	void AppendDupeKey(const char* extraDupeKey);
 	void BuildDupeKey(const char* rageId, const char* tvdbId, const char* tvmazeId, const char* series);
-	int GetDupeScore() { return m_dupeScore; }
+	int GetDupeScore() const { return m_dupeScore; }
 	void SetDupeScore(int dupeScore) { m_dupeScore = dupeScore; }
-	EDupeMode GetDupeMode() { return m_dupeMode; }
+	EDupeMode GetDupeMode() const { return m_dupeMode; }
 	void SetDupeMode(EDupeMode dupeMode) { m_dupeMode = dupeMode; }
 	const char* GetDupeStatus();
 	Attributes* GetAttributes() { return &m_attributes; }

@@ -22,5 +22,10 @@ add_executable(MainTests ${MainTestsSrc})
 
 target_link_libraries(MainTests PRIVATE ${LIBS})
 target_include_directories(MainTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(MainTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(MainTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 add_test(NAME MainTests COMMAND $<TARGET_FILE:MainTests> --log_level=message)

@@ -49,7 +49,7 @@ extern void Reload();
 class SafeXmlCommand: public XmlCommand
 {
 public:
-	virtual bool IsSafeMethod() { return true; };
+	bool IsSafeMethod() override { return true; }
 };
 
 class ErrorXmlCommand: public XmlCommand
@@ -57,8 +57,8 @@ class ErrorXmlCommand: public XmlCommand
 public:
 	ErrorXmlCommand(int errCode, const char* errText) :
 		m_errCode(errCode), m_errText(errText) {}
-	virtual void Execute();
-	virtual bool IsError() { return true; };
+	void Execute() override;
+	bool IsError() override { return true; }
 
 private:
 	int m_errCode;
@@ -77,7 +77,7 @@ public:
 
 	PauseUnpauseXmlCommand(bool pause, EPauseAction pauseAction) :
 		m_pause(pause), m_pauseAction(pauseAction) {}
-	virtual void Execute();
+	void Execute() override;
 
 private:
 	bool m_pause;
@@ -87,55 +87,55 @@ private:
 class ScheduleResumeXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ShutdownXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ReloadXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class VersionXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class DumpDebugXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class SetDownloadRateXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class StatusXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class SysInfoXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LogXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 
 protected:
 	int m_idFrom;
@@ -153,13 +153,13 @@ protected:
 class ListFilesXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ListGroupsXmlCommand: public NzbInfoXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 private:
 	const char* DetectStatus(NzbInfo* nzbInfo);
 };
@@ -167,43 +167,43 @@ private:
 class EditQueueXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class DownloadXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class PostQueueXmlCommand: public NzbInfoXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class WriteLogXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ClearLogXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ScanXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class HistoryXmlCommand: public NzbInfoXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 private:
 	const char* DetectStatus(HistoryInfo* historyInfo);
 };
@@ -211,68 +211,68 @@ private:
 class UrlQueueXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ConfigXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LoadConfigXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LoadExtensionsXmlCommand : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class DownloadExtensionXmlCommand : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class UpdateExtensionXmlCommand : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class DeleteExtensionXmlCommand : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class TestExtensionXmlCommand : public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class SaveConfigXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ConfigTemplatesXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ViewFeedXmlCommand: public XmlCommand
 {
 public:
 	ViewFeedXmlCommand(bool preview) : m_preview(preview) {}
-	virtual void Execute();
+	void Execute() override;
 private:
 	bool m_preview;
 };
@@ -280,31 +280,31 @@ private:
 class FetchFeedXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class EditServerXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ReadUrlXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class CheckUpdatesXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class StartUpdateXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LogUpdateXmlCommand: public LogXmlCommand
@@ -316,19 +316,19 @@ protected:
 class ServerVolumesXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class ResetServerVolumeXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LoadLogXmlCommand: public LogXmlCommand
 {
 protected:
-	virtual void Execute();
+	void Execute() override;
 	virtual GuardedMessageList GuardMessages();
 private:
 	int m_nzbId;
@@ -340,7 +340,7 @@ private:
 class TestServerXmlCommand: public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 
 private:
 	CString m_errText;
@@ -361,7 +361,7 @@ private:
 class TestServerSpeedXmlCommand: public SafeXmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class TestDiskSpeedXmlCommand final : public SafeXmlCommand
@@ -436,7 +436,7 @@ public:
 class StartScriptXmlCommand : public XmlCommand
 {
 public:
-	virtual void Execute();
+	void Execute() override;
 };
 
 class LogScriptXmlCommand : public LogXmlCommand
@@ -2394,6 +2394,8 @@ void EditQueueXmlCommand::Execute()
 	BuildBoolResponse(ok);
 }
 
+// v25.2: Added new parameter "autoCategory".
+//   bool append(string NZBFilename, string Category, int Priority, bool AddToTop, string Content, bool AddPaused, string DupeKey, int DupeScore, string DupeMode, bool autoCategory)
 // v16:
 //   int append(string NZBFilename, string NZBContent, string Category, int Priority, bool AddToTop, bool AddPaused, string DupeKey, int DupeScore, string DupeMode, struct[] Parameters)
 // v13 (new param order and new result type):
@@ -2451,6 +2453,7 @@ void DownloadXmlCommand::Execute()
 	bool addPaused = false;
 	char* dupeKey = nullptr;
 	int dupeScore = 0;
+	bool autoCategory = false;
 	EDupeMode dupeMode = dmScore;
 	if (NextParamAsBool(&addPaused))
 	{
@@ -2474,6 +2477,8 @@ void DownloadXmlCommand::Execute()
 		}
 		dupeMode = !strcasecmp(dupeModeStr, "all") ? dmAll :
 			!strcasecmp(dupeModeStr, "force") ? dmForce : dmScore;
+
+		NextParamAsBool(&autoCategory);
 	}
 	else if (v13)
 	{
@@ -2505,6 +2510,7 @@ void DownloadXmlCommand::Execute()
 		nzbInfo->SetUrl(nzbContent);
 		nzbInfo->SetFilename(nzbFilename);
 		nzbInfo->SetCategory(category);
+		nzbInfo->SetAutoCategory(autoCategory);
 		nzbInfo->SetPriority(priority);
 		nzbInfo->SetAddUrlPaused(addPaused);
 		nzbInfo->SetDupeKey(dupeKey ? dupeKey : "");
@@ -2534,9 +2540,23 @@ void DownloadXmlCommand::Execute()
 		//debug("FileContent=%s", szFileContent);
 
 		int nzbId = -1;
-		g_Scanner->AddExternalFile(nzbFilename, category, priority,
-			dupeKey, dupeScore, dupeMode, Params.empty() ? nullptr : &Params, addTop, addPaused, nullptr,
-			nullptr, nzbContent, len, &nzbId);
+		g_Scanner->AddExternalFile(
+			nzbFilename,
+			category,
+			autoCategory,
+			priority,
+			dupeKey,
+			dupeScore,
+			dupeMode,
+			Params.empty() ? nullptr : &Params,
+			addTop,
+			addPaused,
+			nullptr,
+			nullptr,
+			nzbContent,
+			len,
+			&nzbId
+		);
 
 		if (v13)
 		{
@@ -3178,6 +3198,8 @@ void ViewFeedXmlCommand::Execute()
 		bool backlog = true;
 		bool pauseNzb;
 		char* category;
+		char* categorySourceStr;
+		auto categorySource = FeedInfo::CategorySource::NZBFile;
 		int interval = 0;
 		int priority;
 		char* feedFilter = nullptr;
@@ -3198,6 +3220,8 @@ void ViewFeedXmlCommand::Execute()
 			return;
 		}
 
+		NextParamAsStr(&categorySourceStr);
+
 		DecodeStr(name);
 		DecodeStr(url);
 		DecodeStr(filter);
@@ -3207,8 +3231,21 @@ void ViewFeedXmlCommand::Execute()
 		debug("Url=%s", url);
 		debug("Filter=%s", filter);
 
-		feedItems = g_FeedCoordinator->PreviewFeed(id, name, url, filter, backlog, pauseNzb,
-			category, priority, interval, feedFilter, cacheTimeSec, cacheId);
+		feedItems = g_FeedCoordinator->PreviewFeed(
+			id,
+			name,
+			url,
+			filter,
+			backlog,
+			pauseNzb,
+			category,
+			categorySource,
+			priority,
+			interval,
+			feedFilter,
+			cacheTimeSec,
+			cacheId
+		);
 	}
 	else
 	{
@@ -3291,7 +3328,7 @@ void ViewFeedXmlCommand::Execute()
 			AppendFmtResponse(IsJson() ? JSON_FEED_ITEM : XML_FEED_ITEM,
 				*EncodeStr(feedItemInfo.GetTitle()), *EncodeStr(feedItemInfo.GetFilename()),
 				*EncodeStr(feedItemInfo.GetUrl()), sizeLo, sizeHi, sizeMB,
-				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory()),
+				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory().c_str()),
 				BoolToStr(feedItemInfo.GetPauseNzb()), feedItemInfo.GetPriority(), (int)feedItemInfo.GetTime(),
 				matchStatusType[feedItemInfo.GetMatchStatus()], feedItemInfo.GetMatchRule(),
 				*EncodeStr(feedItemInfo.GetDupeKey()), feedItemInfo.GetDupeScore(),

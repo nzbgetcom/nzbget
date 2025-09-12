@@ -45,10 +45,10 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v2.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v2.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v4.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
 
     - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
@@ -85,7 +85,7 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v2.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v4.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         New-Item build -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
         Copy-Item Release* build -Recurse -ErrorAction SilentlyContinue

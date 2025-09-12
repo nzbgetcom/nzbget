@@ -31,5 +31,10 @@ add_executable(NNTPTests ${NNTPTestsSrc})
 
 target_link_libraries(NNTPTests PRIVATE ${LIBS})
 target_include_directories(NNTPTests PRIVATE ${INCLUDES})
+if (TARGET ${PACKAGE})
+	target_precompile_headers(NNTPTests REUSE_FROM ${PACKAGE})
+else()
+	target_precompile_headers(NNTPTests PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+endif()
 
 add_test(NAME NNTPTests COMMAND $<TARGET_FILE:NNTPTests> --log_level=message)

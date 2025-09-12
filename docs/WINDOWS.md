@@ -18,11 +18,12 @@ To compile the program with TLS/SSL support you need OpenSSL:
 Also required are:
    - [Zlib](https://gnuwin32.sourceforge.net/packages/zlib.htm)
    - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
-   - [Boost.JSON](https://www.boost.org/doc/libs/1_84_0/libs/json/doc/html/index.html)
-   - [Boost.Asio](https://www.boost.org/doc/libs/1_85_0/doc/html/boost_asio.html)
+   - [Boost.Filesystem](https://github.com/boostorg/filesystem)
+   - [Boost.JSON](https://github.com/boostorg/json)
+   - [Boost.Asio](https://github.com/boostorg/asio)
 
 For tests:
-   - [Boost.Test](https://www.boost.org/doc/libs/1_84_0/libs/test/doc/html/index.html)
+   - [Boost.Test](https://github.com/boostorg/test)
 
 We recommend using [vcpkg](https://vcpkg.io/) to install dependencies:
  - Clone the repository to the recommended `C:\` disk:
@@ -39,6 +40,7 @@ git clone --depth 1 https://github.com/microsoft/vcpkg.git
 vcpkg install openssl:x64-windows-static
 vcpkg install libxml2:x64-windows-static
 vcpkg install zlib:x64-windows-static
+vcpkg install boost-filesystem:x64-windows-static
 vcpkg install boost-json:x64-windows-static
 vcpkg install boost-asio:x64-windows-static
 ```
