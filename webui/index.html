@@ -141,13 +141,7 @@
 				<div href="#" onclick="LimitDialog.clicked(event)" title="Current speed (click to set speed limit) [Shift+L]"><i class="icon-plane" id="StatusSpeedIcon"></i> <span id="StatusSpeed">--- KB/s</span></div>
 				<div href="#" onclick="Status.statDialogClick()" title="Remaining time (click for more statistics) [Shift+A]"><i class="icon-time" id="StatusTimeIcon"></i> <span id="StatusTime">--h --m</span></div>
 			</div>
-
-			<!-- DARK/LIGHT THEME TOGGLE BUTTON -->
-			<button class="btn btn-inverse pull-right" id="ThemeToggle">
-				<i class="material-icon">light_mode</i>
-			</button>
 			
-			<!-- REFRESH MENU -->
 			<div id="RefreshBlockDesktop" class="pull-right phone-hide">
 				<div class="btn-toolbar" id="RefreshBlock">
 					<div class="btn-group">
@@ -166,8 +160,16 @@
 							<li data="0"><a href="#"><table><tr><td></td><td style="width:0"></td><td>Off</td></tr></table></a></li>
 							<li data="mark" style="display: none;"><i class="material-icon">done</i></li>
 						</ul>
+						<button class="btn btn-inverse" style="margin-left: 6px;" id="ThemeToggle">
+							<i class="material-icon">light_mode</i>
+						</button>
 					</div>
 				</div>
+			</div>
+
+
+			<!-- REFRESH MENU PLACE IN MINI-THEME -->
+			<div id="RefreshBlockPhone" class="pull-right phone-only">
 			</div>
 
 			<!-- SEARCH -->
@@ -213,11 +215,6 @@
 					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
 				</ul>
 			</div>
-
-			<!-- REFRESH MENU PLACE IN MINI-THEME -->
-			<div id="RefreshBlockPhone" class="pull-right phone-only">
-			</div>
-
 		</div>
 	</div>
 </div>
@@ -558,7 +555,7 @@
 							</ul>
 						</div>
 
-						<div class="span9">
+						<div class="span9" style="overflow: auto;">
 							<div>
 
 								<div class="config-header clearfix">
