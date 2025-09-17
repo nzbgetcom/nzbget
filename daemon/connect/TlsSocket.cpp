@@ -158,9 +158,9 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	if (!m_cipher.empty() && !SSL_set_cipher_list(m_session.get(), m_cipher.c_str()))
+	if (!SetCipherSuite(m_cipher))
 	{
-		ReportError("Could not select cipher for TLS", false);
+		ReportError("Could not set cipher suite for SSL/TLS connection", false);
 		Close();
 		return false;
 	}
@@ -211,6 +211,30 @@ bool TlsSocket::Start()
 
 	m_connected = true;
 	return true;
+}
+
+bool TlsSocket::SetCipherSuite(std::string_view cipher)
+{
+	if (cipher.empty())
+	{
+		return true;
+	}
+
+	// Try TLS 1.3 ciphers
+	if (SSL_set_ciphersuites(m_session.get(), cipher.data()))
+	{
+		return true;
+	}
+
+	ERR_clear_error();
+
+	// Try legacy ciphers (TLS 1.2 and below)
+	if (SSL_set_cipher_list(m_session.get(), cipher.data()))
+	{
+		return true;
+	}
+
+	return false;
 }
 
 bool TlsSocket::ValidateCert()

@@ -66,6 +66,8 @@ private:
 	static void InitX509Store(std::string_view certStore);
 	static OpenSSL::X509StorePtr m_X509Store;
 
+	bool SetCipherSuite(std::string_view cipher);
+
 	SOCKET m_socket;
 
 	std::string m_host;
