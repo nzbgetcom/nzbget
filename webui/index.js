@@ -662,9 +662,6 @@ var Frontend = (new function($)
 		if (UISettings.miniTheme)
 		{
 			var w = $('#NavbarContainer').width() - $('#RefreshBlockPhone').outerWidth() - ScrollDelta;
-			var $btns = $('#Navbar ul.nav > li');
-			var buttonWidth = w / $btns.length;
-			$btns.css('min-width', buttonWidth + 'px');
 			$('#NavLinks').css('margin-left', 0);
 			$('body').toggleClass('navfixed', false);
 		}
