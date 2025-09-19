@@ -438,8 +438,7 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 
 /* Search box */
 .navbar-search {
-	margin-top: 0px;
-	margin-right: 10px;
+	margin: 0px 10px;
 }
 
 .navbar-search .search-query,
@@ -1594,6 +1593,12 @@ ul.help > li {
 	font-size: 12px;
 }
 
+.phone #ConfigNav {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
 #ConfigTitle {
 	margin-top: 15px;
 	margin-right: 15px;
@@ -1918,7 +1923,7 @@ body.phone {
 }
 
 .phone #InfoBlock {
-	width: 190px;
+	width: 155px;
 	height: 42px;
 	margin-right: 0;
 }
@@ -2037,9 +2042,14 @@ body.phone,
 	margin: 6px 0 0;
 }
 
+.phone .nav,
+.phone ul.nav {
+	width: 100%;
+	display: flex;
+}
 .phone ul.nav > li {
 	text-align: center;
-	min-width: 52px;
+	width: 100%;
 }
 
 .phone .menu-header {
@@ -2079,10 +2089,14 @@ body.phone,
 	padding-left: 5px;
 }
 
+.phone .navbar-search {
+	width: 90%;
+}
+
 .phone .navbar-search .search-query,
 .phone .navbar-search .search-query:focus,
 .phone .navbar-search .search-query.focused {
-	width: 140px;
+	width: 85%;
 	padding: 4px 28px 4px 28px;
 	font-size: 16px;
 	-webkit-border-radius: 16px;
@@ -2555,9 +2569,24 @@ input[type="date"] {
 	}
 }
 
-@media (max-width: 479px) {
+@media (max-width: 600px) {
 	#SearchBlock {
-		display: none;
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+}
+
+@media (max-width: 560px) {
+	.phone .search-clear {
+		right: 25px;
+	}
+}
+
+@media (max-width: 450px) {
+	.phone .search-clear {
+		right: 9px;
 	}
 }
 
