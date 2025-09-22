@@ -154,12 +154,14 @@ Therefore, choosing either **TLS_AES_128_GCM_SHA256** or **TLS_AES_256_GCM_SHA38
 ### Recommended Configuration
 Based on your benchmark results, create a colon-separated list starting with your fastest cipher. For most users, **AES-128-GCM** will be the winner.
 
-The following string is recommended for the vast majority of systems. It prioritizes the fastest cipher, provides a strong second choice, and includes a fallback for systems without AES hardware acceleration.
+The following string is recommended for the vast majority of systems. 
+It lists the fastest ciphers first, but the server makes the final choice based on what it supports.
 
 ```text
 ServerX.Cipher=TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
 ```
-**We cannot mix TLS 1.3 cipher suites and older (TLS 1.2 and below) ciphers in the same string.**
 
-The underlying OpenSSL library handles them differently. 
-You must provide a list containing only TLS 1.3 ciphers or a list containing only TLS 1.2 ciphers.
+### A Note on Cipher Priority
+
+If you provide a list that mixes **TLS 1.3** and older **TLS 1.2** ciphers, **OpenSSL** will always prefer **TLS 1.3** during the handshake. 
+The server will choose a **TLS 1.3** cipher if possible, regardless of its order in your list.
