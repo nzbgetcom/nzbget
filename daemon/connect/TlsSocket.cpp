@@ -209,6 +209,14 @@ bool TlsSocket::Start()
 		return false;
 	}
 
+	const SSL_CIPHER* currentCipher = SSL_get_current_cipher(m_session.get());
+	if (currentCipher != nullptr)
+	{
+		const char* protocolVersion = SSL_get_version(m_session.get());
+		const char* cipherName = SSL_CIPHER_get_name(currentCipher);
+		debug("TLS connection established: %s using %s", protocolVersion, cipherName);
+	}
+
 	m_connected = true;
 	return true;
 }
@@ -220,21 +228,13 @@ bool TlsSocket::SetCipherSuite(std::string_view cipher)
 		return true;
 	}
 
-	// Try TLS 1.3 ciphers
-	if (SSL_set_ciphersuites(m_session.get(), cipher.data()))
-	{
-		return true;
-	}
+	bool tls13 = SSL_set_ciphersuites(m_session.get(), cipher.data());
+	bool legacy = SSL_set_cipher_list(m_session.get(), cipher.data());
 
-	ERR_clear_error();
+	if (!tls13)
+		ERR_clear_error();
 
-	// Try legacy ciphers (TLS 1.2 and below)
-	if (SSL_set_cipher_list(m_session.get(), cipher.data()))
-	{
-		return true;
-	}
-
-	return false;
+	return tls13 || legacy;
 }
 
 bool TlsSocket::ValidateCert()

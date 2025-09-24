@@ -66,6 +66,16 @@ private:
 	static void InitX509Store(std::string_view certStore);
 	static OpenSSL::X509StorePtr m_X509Store;
 
+	/**
+	 * This function configures the allowed ciphers for both TLSv1.3 and
+	 * older protocols from a single, combined string. OpenSSL
+	 * will parse the string and apply the relevant ciphers to their
+	 * respective protocol versions.
+	 *
+	 * * @note This implementation allows a mixed list, but TLSv1.3 ciphers will
+	 * always be preferred during the handshake if the server supports them,
+	 * regardless of their order in the string.
+	 */
 	bool SetCipherSuite(std::string_view cipher);
 
 	SOCKET m_socket;
