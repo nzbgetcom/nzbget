@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ namespace Json
 		return parser.release();
 	}
 
-	std::optional<JsonValue> Deserialize(const std::string& jsonStr) noexcept
+	std::optional<JsonValue> Deserialize(std::string_view jsonStr) noexcept
 	{
 		ErrorCode ec;
 		JsonValue value = parse(jsonStr, ec);
