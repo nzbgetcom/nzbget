@@ -4,17 +4,37 @@ set(ExtensionSrc
 	ExtensionLoaderTest.cpp
 	ExtensionTest.cpp
 	ExtensionManagerTest.cpp
+	ScanScriptTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ManifestFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionManager.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/ScanScript.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/NzbScript.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/QueueScript.cpp
+	${CMAKE_SOURCE_DIR}/daemon/extension/PostScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/Options.cpp
 	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/Scanner.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/QueueCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/QueueEditor.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/Deobfuscation.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/UrlCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/feed/FeedInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/ServerPool.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleWriter.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleDownloader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/NntpConnection.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/StatMeter.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/Decoder.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp 
@@ -25,8 +45,20 @@ set(ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Service.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PrePostProcessor.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/Cleanup.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp

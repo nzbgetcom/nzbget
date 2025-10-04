@@ -46,13 +46,13 @@ void ScanScriptController::ExecuteScripts(
 	const char* nzbFilename,
 	NzbInfo* nzbInfo,
 	const char* directory,
-	const char* nzbName,
-	const char* category,
+	std::string& nzbName,
+	std::string& category,
 	int* priority,
 	NzbParameterList* parameters,
 	bool* addTop,
 	bool* addPaused,
-	const char* dupeKey,
+	std::string& dupeKey,
 	int* dupeScore,
 	EDupeMode* dupeMode)
 {
@@ -61,26 +61,23 @@ void ScanScriptController::ExecuteScripts(
 		return;
 	}
 
-	ScanScriptController scriptController;
+	ScanScriptController scriptController(nzbName, category, dupeKey);
 	scriptController.m_nzbFilename = nzbFilename;
 	scriptController.m_url = nzbInfo ? nzbInfo->GetUrl() : "";
 	scriptController.m_directory = directory;
-	scriptController.m_nzbName = nzbName ? nzbName : "";
-	scriptController.m_category = category ? category : "";
 	scriptController.m_parameters = parameters;
 	scriptController.m_priority = priority;
 	scriptController.m_addTop = addTop;
 	scriptController.m_addPaused = addPaused;
-	scriptController.m_dupeKey = dupeKey ? dupeKey : "";
 	scriptController.m_dupeScore = dupeScore;
 	scriptController.m_dupeMode = dupeMode;
 	scriptController.m_prefixLen = 0;
 
 	const char* extensions = g_Options->GetExtensions();
 
-	if (!Util::EmptyStr(category))
+	if (!category.empty())
 	{
-		Options::Category* categoryObj = g_Options->FindCategory(category, false);
+		Options::Category* categoryObj = g_Options->FindCategory(category.c_str(), false);
 		if (categoryObj && !Util::EmptyStr(categoryObj->GetExtensions()))
 		{
 			extensions = categoryObj->GetExtensions();

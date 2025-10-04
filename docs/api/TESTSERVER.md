@@ -9,7 +9,8 @@ string testserver(
   string password, 
   bool encryption, 
   string cipher, 
-  int timeout
+  int timeout,
+  int certVerificationLevel
 );
 ```
 
@@ -24,6 +25,11 @@ Tries to connect to a server.
 - **encryption** `(bool)` - The inscription should be used.
 - **cipher** `(string)` - Cipher for use.
 - **timeout** `(int)` - Connection timeout.
+- **certVerificationLevel** `(int)` - Certificate verification level:
+  This is an enumerated type where the following integer values are recognized:
+  -   **0:** None - NO certificate signing check, NO certificate hostname check
+  -   **1:** Minimal - certificate signing check, NO certificate hostname check
+  -   **2:** Strict - certificate signing check, certificate hostname check
 
 ### Return value
 `string` result.
