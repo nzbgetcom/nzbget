@@ -1,6 +1,6 @@
 option(ENABLE_STATIC "Build static executable")
 option(ENABLE_TESTS "Build tests")
-option(ENABLE_CLANG_TIDY "Enable Clang-Tidy static analizer")
+option(ENABLE_CLANG_TIDY "Enable Clang-Tidy static analyzer")
 option(ENABLE_SANITIZERS "Enable leak, undefined, address sanitizers")
 option(DISABLE_TLS "Disable TLS")
 option(DISABLE_CURSES "Disable curses")

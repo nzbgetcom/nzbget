@@ -337,10 +337,22 @@ private:
 	std::unique_ptr<GuardedDownloadQueue> m_downloadQueue;
 };
 
-class TestServerXmlCommand: public XmlCommand
+class TestServerXmlCommand : public XmlCommand
 {
 public:
 	void Execute() override;
+
+	struct ServerParams
+	{
+		std::string host;
+		std::string username;
+		std::string password;
+		std::string cipher;
+		int port;
+		int timeout;
+		int certVerifLevel;
+		bool encryption;
+	};
 
 private:
 	CString m_errText;
@@ -348,14 +360,47 @@ private:
 	class TestConnection : public NntpConnection
 	{
 	public:
-		TestConnection(NewsServer* newsServer, TestServerXmlCommand* owner):
-			NntpConnection(newsServer), m_owner(owner) {}
+		TestConnection(NewsServer* newsServer, TestServerXmlCommand* owner) :
+			NntpConnection(newsServer), m_owner(owner) {
+		}
 	protected:
 		TestServerXmlCommand* m_owner;
 		virtual void PrintError(const char* errMsg) { m_owner->PrintError(errMsg); }
 	};
 
 	void PrintError(const char* errMsg);
+
+	std::optional<ServerParams> ParseRequestParams(const Json::value& value)
+	{
+		if (!value.is_object())
+			return std::nullopt;
+
+		const Json::object& obj = value.as_object();
+		if (!obj.contains("params") || !obj.at("params").is_array())
+			return std::nullopt;
+
+		const Json::array& paramsArray = obj.at("params").as_array();
+		if (paramsArray.size() < 8)
+			return std::nullopt;
+
+		try
+		{
+			ServerParams p;
+			p.host = Json::value_to<std::string>(paramsArray.at(0));
+			p.port = Json::value_to<int>(paramsArray.at(1));
+			p.username = Json::value_to<std::string>(paramsArray.at(2));
+			p.password = Json::value_to<std::string>(paramsArray.at(3));
+			p.encryption = Json::value_to<bool>(paramsArray.at(4));
+			p.cipher = Json::value_to<std::string>(paramsArray.at(5));
+			p.timeout = Json::value_to<int>(paramsArray.at(6));
+			p.certVerifLevel = Json::value_to<int>(paramsArray.at(7));
+			return p;
+		}
+		catch (const std::exception&)
+		{
+			return std::nullopt;
+		}
+	}
 };
 
 class TestServerSpeedXmlCommand: public SafeXmlCommand
@@ -3328,7 +3373,7 @@ void ViewFeedXmlCommand::Execute()
 			AppendFmtResponse(IsJson() ? JSON_FEED_ITEM : XML_FEED_ITEM,
 				*EncodeStr(feedItemInfo.GetTitle()), *EncodeStr(feedItemInfo.GetFilename()),
 				*EncodeStr(feedItemInfo.GetUrl()), sizeLo, sizeHi, sizeMB,
-				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory()),
+				*EncodeStr(feedItemInfo.GetCategory()), *EncodeStr(feedItemInfo.GetAddCategory().c_str()),
 				BoolToStr(feedItemInfo.GetPauseNzb()), feedItemInfo.GetPriority(), (int)feedItemInfo.GetTime(),
 				matchStatusType[feedItemInfo.GetMatchStatus()], feedItemInfo.GetMatchRule(),
 				*EncodeStr(feedItemInfo.GetDupeKey()), feedItemInfo.GetDupeScore(),
@@ -3781,12 +3826,13 @@ GuardedMessageList LoadLogXmlCommand::GuardMessages()
 	return GuardedMessageList(&m_messages, nullptr);
 }
 
-// string testserver(string host, int port, string username, string password, bool encryption, string cipher, int timeout);
+// string testserver(string host, int port, string username, string password, bool encryption, string cipher, int timeout, int certVerifLevel);
 void TestServerXmlCommand::Execute()
 {
 	const char* XML_RESPONSE_STR_BODY = "<string>%s</string>";
 	const char* JSON_RESPONSE_STR_BODY = "\"%s\"";
 
+	TestServerXmlCommand::ServerParams params;
 	char* host;
 	int port;
 	char* username;
@@ -3796,7 +3842,23 @@ void TestServerXmlCommand::Execute()
 	int timeout;
 	int certVerifLevel;
 
-	if (!NextParamAsStr(&host) || !NextParamAsInt(&port) || !NextParamAsStr(&username) ||
+	if (IsJson() && m_request)
+	{
+		const auto jsonResult = Json::Deserialize(m_request);
+		if (!jsonResult)
+		{
+			BuildErrorResponse(2, "Invalid JSON");
+			return;	
+		}
+		auto paramsResult = ParseRequestParams(*jsonResult);
+		if (!paramsResult)
+		{
+			BuildErrorResponse(2, "Invalid parameters");
+			return;	
+		}
+		params = std::move(*paramsResult);
+	}
+	else if (!NextParamAsStr(&host) || !NextParamAsInt(&port) || !NextParamAsStr(&username) ||
 		!NextParamAsStr(&password) || !NextParamAsBool(&encryption) ||
 		!NextParamAsStr(&cipher) || !NextParamAsInt(&timeout) ||
 		!NextParamAsInt(&certVerifLevel))
@@ -3804,17 +3866,45 @@ void TestServerXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid parameter");
 		return;
 	}
+	else
+	{
+		params.host = host;
+		params.port = port;
+		params.username = username;
+		params.password = password;
+		params.encryption = encryption;
+		params.cipher = cipher;
+		params.timeout = timeout;
+		params.certVerifLevel = certVerifLevel;
+	}
 
-	if (certVerifLevel < 0 || certVerifLevel >= Options::ECertVerifLevel::Count)
+	if (params.certVerifLevel < 0 || params.certVerifLevel >= Options::ECertVerifLevel::Count)
 	{
 		BuildErrorResponse(2, "Invalid parameter (Certificate Verification Level).");
 		return;
 	}
 
-	NewsServer server(0, true, "test server", host, port, 0, username, password, false, 
-					encryption, cipher, 1, 0, 0, 0, false, certVerifLevel);
+	NewsServer server(
+		0,
+		true,
+		"test server",
+		params.host.c_str(),
+		params.port,
+		0,
+		params.username.c_str(),
+		params.password.c_str(),
+		false,
+		params.encryption,
+		params.cipher.c_str(),
+		1,
+		0,
+		0,
+		0,
+		false,
+		params.certVerifLevel
+	);
 	TestConnection connection(&server, this);
-	connection.SetTimeout(timeout == 0 ? g_Options->GetArticleTimeout() : timeout);
+	connection.SetTimeout(params.timeout == 0 ? g_Options->GetArticleTimeout() : params.timeout);
 	connection.SetSuppressErrors(false);
 
 	bool ok = connection.Connect();

@@ -1379,39 +1379,71 @@ const char* WebUtil::JsonFindField(const char* jsonText, const char* fieldName, 
 
 const char* WebUtil::JsonNextValue(const char* jsonText, int* valueLength)
 {
-	const char* pstart = jsonText;
+	if (!jsonText || !valueLength)
+	{
+		return nullptr;
+	}
 
-	while (*pstart && strchr(" ,[{:\r\n\t\f", *pstart)) pstart++;
-	if (!*pstart) return nullptr;
+	const char* pstart = jsonText;
+	while (*pstart && strchr(" ,[]__{__:}\r\n\t\f", *pstart))
+	{
+		pstart++;
+	}
+
+	if (!*pstart)
+	{
+		*valueLength = 0;
+		return nullptr;
+	}
 
 	const char* pend = pstart;
+	bool isString = (*pstart == '"');
 
-	char ch = *pend;
-	bool str = ch == '"';
-	if (str)
+	if (isString)
 	{
-		ch = *++pend;
-	}
-	while (ch)
-	{
-		if (ch == '\\')
+		pend++; // Move past the opening quote
+		while (true)
 		{
-			if (!*++pend || !*++pend) return nullptr;
-			ch = *pend;
+			// This check runs at the start of each loop.
+			// If we run out of characters before finding a closing quote, it's an error.
+			if (!*pend) 
+			{
+				*valueLength = 0;
+				return nullptr; // unclosed string
+			}
+
+			if (*pend == '\\')
+			{
+				pend++; // Move to the character being escaped.
+
+				// This checks for a dangling escape at the very end of the input.
+				// For the input "hello\", `pend` would point to '\0' here.
+				if (!*pend) {
+					*valueLength = 0;
+					return nullptr; // CATCHES DANGLING ESCAPE
+				}
+				pend++; // Move past the character that was escaped.
+			}
+			else if (*pend == '"')
+			{
+				pend++; // Include the closing quote.
+				break;  // End of string found.
+			}
+			else
+			{
+				pend++; // Normal character.
+			}
 		}
-		if (str && ch == '"')
+	}
+	else
+	{
+		while (*pend && !strchr(" ,]}:\r\n\t\f", *pend))
 		{
 			pend++;
-			break;
 		}
-		else if (!str && strchr(" ,]}\r\n\t\f", ch))
-		{
-			break;
-		}
-		ch = *++pend;
 	}
 
-	*valueLength = (int)(pend - pstart);
+	*valueLength = static_cast<int>(pend - pstart);
 	return pstart;
 }
 

@@ -33,6 +33,75 @@
 #include "DupeCoordinator.h"
 #include "UrlCoordinator.h"
 
+std::unique_ptr<NzbInfo> NzbInfoCreator::Create(const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const
+{
+	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
+	nzbInfo->SetKind(NzbInfo::nkUrl);
+	nzbInfo->SetFeedId(feedInfo.GetId());
+	nzbInfo->SetUrl(feedItemInfo.GetUrl());
+
+	// add .nzb-extension if not present
+	BString<1024> nzbName = feedItemInfo.GetFilename();
+	char* ext = strrchr(nzbName, '.');
+	if (ext && !strcasecmp(ext, ".nzb"))
+	{
+		*ext = '\0';
+	}
+	if (!nzbName.Empty())
+	{
+		BString<1024> nzbName2("%s.nzb", *nzbName);
+		nzbInfo->SetFilename(FileSystem::MakeValidFilename(nzbName2));
+	}
+
+	ApplyCategory(*nzbInfo, feedInfo, feedItemInfo);
+
+	nzbInfo->SetPriority(feedItemInfo.GetPriority());
+	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
+	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());
+	nzbInfo->SetDupeScore(feedItemInfo.GetDupeScore());
+	nzbInfo->SetDupeMode(feedItemInfo.GetDupeMode());
+	nzbInfo->SetSize(feedItemInfo.GetSize());
+	nzbInfo->SetMinTime(feedItemInfo.GetTime());
+	nzbInfo->SetMaxTime(feedItemInfo.GetTime());
+
+	return nzbInfo;
+}
+
+void NzbInfoCreator::ApplyCategory(NzbInfo& nzbInfo, const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const
+{
+	const std::string& addCategory = feedItemInfo.GetAddCategory();
+	if (!addCategory.empty())
+	{
+		nzbInfo.SetCategory(addCategory.c_str());
+		return;
+	}
+
+	const auto categorySource = feedInfo.GetCategorySource();
+
+	// Priority 2: FeedFile - use feed category
+	if (categorySource == FeedInfo::CategorySource::FeedFile)
+	{
+		nzbInfo.SetCategory(feedInfo.GetCategory());
+		return;
+	}
+
+	// Priority 3: NZBFile - use item category
+	if (categorySource == FeedInfo::CategorySource::NZBFile)
+	{
+		nzbInfo.SetCategory(feedItemInfo.GetCategory());
+		return;
+	}
+
+	// Priority 4: Auto - try item first, fallback to feed
+	if (categorySource == FeedInfo::CategorySource::Auto)
+	{
+		const char* itemCategory = feedItemInfo.GetCategory();
+		const char* feedCategory = feedInfo.GetCategory();
+
+		nzbInfo.SetCategory(!Util::EmptyStr(itemCategory) ? itemCategory : feedCategory);
+	}
+}
+
 std::unique_ptr<RegEx>& FeedCoordinator::FilterHelper::GetRegEx(int id)
 {
 	m_regExes.resize(id);
@@ -420,7 +489,9 @@ std::vector<std::unique_ptr<NzbInfo>> FeedCoordinator::ProcessFeed(FeedInfo* fee
 			}
 			else if (!feedHistoryInfo)
 			{
-				addedNzbs.push_back(CreateNzbInfo(feedInfo, feedItemInfo));
+				debug("Download %s from %s", feedItemInfo.GetUrl(), feedInfo->GetName());
+
+				addedNzbs.push_back(m_nzbInfoCreator.Create(*feedInfo, feedItemInfo));
 				status = FeedHistoryInfo::hsFetched;
 				added++;
 			}
@@ -446,55 +517,6 @@ std::vector<std::unique_ptr<NzbInfo>> FeedCoordinator::ProcessFeed(FeedInfo* fee
 	}
 
 	return addedNzbs;
-}
-
-std::unique_ptr<NzbInfo> FeedCoordinator::CreateNzbInfo(FeedInfo* feedInfo, FeedItemInfo& feedItemInfo)
-{
-	debug("Download %s from %s", feedItemInfo.GetUrl(), feedInfo->GetName());
-
-	std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
-	nzbInfo->SetKind(NzbInfo::nkUrl);
-	nzbInfo->SetFeedId(feedInfo->GetId());
-	nzbInfo->SetUrl(feedItemInfo.GetUrl());
-
-	// add .nzb-extension if not present
-	BString<1024> nzbName = feedItemInfo.GetFilename();
-	char* ext = strrchr(nzbName, '.');
-	if (ext && !strcasecmp(ext, ".nzb"))
-	{
-		*ext = '\0';
-	}
-	if (!nzbName.Empty())
-	{
-		BString<1024> nzbName2("%s.nzb", *nzbName);
-		nzbInfo->SetFilename(FileSystem::MakeValidFilename(nzbName2));
-	}
-
-	const char* category = feedItemInfo.GetCategory();
-	if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::FeedFile)
-	{
-		nzbInfo->SetCategory(category);
-	}
-	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::NZBFile)
-	{
-		nzbInfo->SetAutoCategory(true);
-	}
-	else if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::Auto)
-	{
-		nzbInfo->SetCategory(category);
-		nzbInfo->SetAutoCategory(true);
-	}
-	
-	nzbInfo->SetPriority(feedItemInfo.GetPriority());
-	nzbInfo->SetAddUrlPaused(feedItemInfo.GetPauseNzb());
-	nzbInfo->SetDupeKey(feedItemInfo.GetDupeKey());
-	nzbInfo->SetDupeScore(feedItemInfo.GetDupeScore());
-	nzbInfo->SetDupeMode(feedItemInfo.GetDupeMode());
-	nzbInfo->SetSize(feedItemInfo.GetSize());
-	nzbInfo->SetMinTime(feedItemInfo.GetTime());
-	nzbInfo->SetMaxTime(feedItemInfo.GetTime());
-
-	return nzbInfo;
 }
 
 std::shared_ptr<FeedItemList> FeedCoordinator::ViewFeed(int id)

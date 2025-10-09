@@ -36,6 +36,18 @@
 
 class FeedDownloader;
 
+class NzbInfoCreator final
+{
+public:
+	NzbInfoCreator() = default;
+	~NzbInfoCreator() = default;
+
+	std::unique_ptr<NzbInfo> Create(const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const;
+
+private:
+	void ApplyCategory(NzbInfo& nzbInfo, const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const;
+};
+
 class FeedCoordinator : public Thread, public Observer, public Subject, public Debuggable
 {
 public:
@@ -116,17 +128,17 @@ private:
 	Mutex m_downloadsMutex;
 	DownloadQueueObserver m_downloadQueueObserver;
 	WorkStateObserver m_workStateObserver;
-	std::atomic<bool> m_force{false};
-	bool m_save = false;
+	NzbInfoCreator m_nzbInfoCreator;
 	FeedCache m_feedCache;
 	ConditionVar m_waitCond;
+	std::atomic<bool> m_force{false};
 	bool m_wokenUp = false;
+	bool m_save = false;
 
 	void StartFeedDownload(FeedInfo* feedInfo, bool force);
 	void FeedCompleted(FeedDownloader* feedDownloader);
 	void FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems);
 	std::vector<std::unique_ptr<NzbInfo>> ProcessFeed(FeedInfo* feedInfo, FeedItemList* feedItems);
-	std::unique_ptr<NzbInfo> CreateNzbInfo(FeedInfo* feedInfo, FeedItemInfo& feedItemInfo);
 	void ResetHangingDownloads();
 	void DownloadQueueUpdate(Subject* caller, void* aspect);
 	void CleanupHistory();
