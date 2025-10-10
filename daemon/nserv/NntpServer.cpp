@@ -186,7 +186,11 @@ void NntpProcessor::Run()
 		{
 			m_connection->WriteLine(CString::FormatStr("211 0 0 0 %s\r\n", line + 6));
 		}
-		else if (!strncasecmp(line, "AUTHINFO ", 9))
+		else if (!strncasecmp(line, "AUTHINFO USER", 13))
+		{
+			m_connection->WriteLine("381 Enter passphrase\r\n");
+		}
+		else if (!strncasecmp(line, "AUTHINFO PASS", 13))
 		{
 			m_connection->WriteLine("281 Authentication accepted\r\n");
 		}
