@@ -198,7 +198,6 @@ body {
 
 /* NAVBAR */
 .navbar-fixed-top {
-	margin-bottom: 18px;
 	margin-left: 0px;
 	margin-right: 0px;
 	position: static;
@@ -210,13 +209,8 @@ body {
 	overflow: hidden;
 }
 
-/* fixed navbar (applied dynamically if screen is wide enough) */
-body.navfixed {
-	margin-top: 57px;
-}
-
 body.navfixed .navbar-fixed-top  {
-	position: fixed;
+	position: static;
 }
 
 body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
@@ -1604,6 +1598,7 @@ ul.help > li {
 .config__container {
 	display: flex;
 	overflow: hidden;
+	padding-top: 15px;
     height: calc(100vh - 70px);
 }
 
@@ -1613,22 +1608,34 @@ ul.help > li {
 #MessagesTab {
 	overflow: auto;
 	height: calc(100vh - 70px);
+	padding-top: 15px;
 }
 
 .config__aside {
-	min-width: 320px;
+	flex-basis: 320px;
 	overflow: auto;
 }
 
 .config__main {
-	width: 960px;
+	max-width: 960px;
+	width: 100%;
 	padding: 0 15px;
 	overflow: auto;
 }
 
-@media (max-width: 992px) {
+@media (max-width: 960px) {
+	.container-fluid {
+		padding: 0 10px;
+	}
+}
+
+@media (max-width: 768px) {
 	body {
 		overflow: auto;
+	}
+
+	.container-fluid {
+		padding: 0 5px;
 	}
 
 	#DownloadsTab,
@@ -1636,7 +1643,8 @@ ul.help > li {
 	#StatisticsTab,
 	#MessagesTab {
 		overflow: auto;
-		height: 100%
+		height: 100%;
+		padding-top: 10px;
 	}
 
 	.config__container {
@@ -1644,13 +1652,14 @@ ul.help > li {
 		flex-direction: column;
 		height: 100%;
 		gap: 0px;
+		padding-top: 10px;
 		overflow-y: auto;
 		overflow-x: hidden;
 	}
 
 	.config__aside {
-		width: 100%;
-		height: 100%;
+		min-width: 100%;
+		flex-basis: auto;
 		overflow-x: hidden;
 	}
 
@@ -1678,7 +1687,7 @@ ul.help > li {
 }
 
 /* Tablets */
-@media (min-width: 768px) {
+@media (max-width: 480px) {
     .visible-phone {
         display: none;
     }
@@ -1688,7 +1697,7 @@ ul.help > li {
 }
 
 /* Desktops */
-@media (min-width: 992px) {
+@media (min-width: 768px) {
     .visible-tablet {
         display: none;
     }
@@ -2142,10 +2151,6 @@ body.phone,
 }
 
 /* NAVBAR */
-.phone .navbar-fixed-top {
-	margin-bottom: 8px;
-}
-
 .phone .navbar-container {
 	padding-left: 5px;
 	padding-right: 5px;
