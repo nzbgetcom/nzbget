@@ -112,6 +112,10 @@ body {
 	justify-content: center;
 }
 
+.statistics__table {
+	position: relative;
+}
+
 .system-info__spinner-container {
 	height: 60vh;
 }
@@ -1600,7 +1604,15 @@ ul.help > li {
 .config__container {
 	display: flex;
 	overflow: hidden;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 70px);
+}
+
+#DownloadsTab,
+#HistoryTab,
+#StatisticsTab,
+#MessagesTab {
+	overflow: auto;
+	height: calc(100vh - 70px);
 }
 
 .config__aside {
@@ -1617,6 +1629,14 @@ ul.help > li {
 @media (max-width: 992px) {
 	body {
 		overflow: auto;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab {
+		overflow: auto;
+		height: 100%
 	}
 
 	.config__container {
