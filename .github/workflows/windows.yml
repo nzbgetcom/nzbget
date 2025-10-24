@@ -103,12 +103,12 @@ jobs:
           Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-", "-$Suffix-bin-windows-")
         }
 
-    - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v5
-      with:
-        name: |
-          Release*
-          Debug*
+    # - name: Delete unneeded platform-specific artifacts
+    #   uses: geekyeggo/delete-artifact@v5
+    #   with:
+    #     name: |
+    #       Release*
+    #       Debug*
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
