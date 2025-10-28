@@ -41,6 +41,12 @@ By default NServ works in plain mode but can also be started in TLS/SSL mode usi
 ```bash
 /path/to/nzbget --nserv -d /path/to/datadir -s /path/to/nserv.cert /path/to/nserv.key
 ```
+If you want a trusted certificate, and have a working Let's Encrypt setup, you can use the certifcate from there:
+
+```bash
+/path/to/nzbget --nserv -d /path/to/datadir -s /etc/letsencrypt/live/host.example.com/fullchain.pem /etc/letsencrypt/live/host.example.com/privkey.pem
+```
+Note: you probably need to be root to read from those letsencrypt directories. Or copy the keys to another, safe place.
 
 ## Authorization
 
