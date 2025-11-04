@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,18 +37,18 @@
 class QueueCoordinator : public Thread, public Observer, public Debuggable
 {
 public:
-	typedef std::list<ArticleDownloader*> ActiveDownloads;
+	using ActiveDownloads = std::list<ArticleDownloader*>;
 
 	QueueCoordinator();
-	virtual ~QueueCoordinator();
-	virtual void Run();
-	virtual void Stop();
-	void Update(Subject* caller, void* aspect);
+	~QueueCoordinator() override;
+	void Run() override;
+	void Stop() override;
+	void Update(Subject* caller, void* aspect) override;
 
 	// editing queue
 	NzbInfo* AddNzbFileToQueue(std::unique_ptr<NzbInfo> nzbInfo, NzbInfo* urlInfo, bool addFirst);
 	void CheckDupeFileInfos(NzbInfo* nzbInfo);
-	bool HasMoreJobs() { return m_hasMoreJobs; }
+	bool HasMoreJobs() const { return m_hasMoreJobs; }
 	void DiscardTempFiles(FileInfo* fileInfo);
 	bool DeleteQueueEntry(DownloadQueue* downloadQueue, FileInfo* fileInfo);
 	bool SetQueueEntryCategory(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* category);
@@ -57,19 +57,19 @@ public:
 	bool SplitQueueEntries(DownloadQueue* downloadQueue, RawFileList* fileList, const char* name, NzbInfo** newNzbInfo);
 
 protected:
-	virtual void LogDebugInfo();
+	void LogDebugInfo() override;
 
 private:
 	class CoordinatorDownloadQueue : public DownloadQueue
 	{
 	public:
 		CoordinatorDownloadQueue(QueueCoordinator* owner) : m_owner(owner) {}
-		virtual bool EditEntry(int ID, EEditAction action, const char* args);
-		virtual bool EditList(IdList* idList, NameList* nameList, EMatchMode matchMode,
-			EEditAction action, const char* args);
-		virtual void HistoryChanged() { m_historyChanged = true; }
-		virtual void Save();
-		virtual void SaveChanged();
+		bool EditEntry(int ID, EEditAction action, const char* args) override;
+		bool EditList(IdList* idList, NameList* nameList, EMatchMode matchMode,
+			EEditAction action, const char* args) override;
+		void HistoryChanged() override { m_historyChanged = true; }
+		void Save() override;
+		void SaveChanged() override;
 	private:
 		QueueCoordinator* m_owner;
 		bool m_massEdit = false;
@@ -84,7 +84,7 @@ private:
 	public:
 		CoordinatorDirectRenamer(QueueCoordinator* owner) : m_owner(owner) {}
 	protected:
-		virtual void RenameCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+		void RenameCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo) override
 			{ m_owner->DirectRenameCompleted(downloadQueue, nzbInfo); }
 	private:
 		QueueCoordinator* m_owner;
@@ -97,8 +97,8 @@ private:
 	std::atomic<bool> m_hasMoreJobs{true};
 	int m_downloadsLimit;
 	int m_serverConfigGeneration = 0;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 
 	bool GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &fileInfo, ArticleInfo* &articleInfo);
 	bool GetNextFirstArticle(NzbInfo* nzbInfo, FileInfo* &fileInfo, ArticleInfo* &articleInfo);

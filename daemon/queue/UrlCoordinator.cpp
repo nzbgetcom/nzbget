@@ -20,6 +20,7 @@
 
 
 #include "nzbget.h"
+
 #include "UrlCoordinator.h"
 #include "Options.h"
 #include "WorkState.h"
@@ -90,9 +91,9 @@ void UrlCoordinator::Run()
 		Util::Sleep(20);
 	}
 
+	time_t lastReset = 0;
 	while (!IsStopped())
 	{
-		time_t lastReset = 0;
 		bool downloadStarted = false;
 
 		{
@@ -119,8 +120,8 @@ void UrlCoordinator::Run()
 
 		if (!m_hasMoreJobs && !IsStopped())
 		{
-			Guard guard(m_waitMutex);
-			m_waitCond.Wait(m_waitMutex, [&] { return m_hasMoreJobs || IsStopped(); });
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait(lk, [&] { return m_hasMoreJobs || IsStopped(); });
 		}
 		else
 		{
@@ -170,22 +171,21 @@ void UrlCoordinator::Stop()
 	debug("UrlDownloads are notified");
 
 	// Resume Run() to exit it
-	Guard guard(m_waitMutex);
-	m_waitCond.NotifyAll();
+	std::lock_guard<std::mutex> guard(m_waitMutex);
+	m_waitCond.notify_all();
 }
 
-void UrlCoordinator::DownloadQueueUpdate(Subject* caller, void* aspect)
+void UrlCoordinator::DownloadQueueUpdate(Subject*, void* aspect)
 {
 	debug("Notification from download queue received");
 
 	DownloadQueue::Aspect* queueAspect = (DownloadQueue::Aspect*)aspect;
-	if (queueAspect->action == DownloadQueue::eaUrlAdded ||
-		queueAspect->action == DownloadQueue::eaUrlReturned)
+	if (queueAspect->action == DownloadQueue::eaUrlAdded || queueAspect->action == DownloadQueue::eaUrlReturned)
 	{
 		// Resume Run()
-		Guard guard(m_waitMutex);
+		std::lock_guard<std::mutex> guard(m_waitMutex);
 		m_hasMoreJobs = true;
-		m_waitCond.NotifyAll();
+		m_waitCond.notify_all();
 	}
 }
 
@@ -199,7 +199,7 @@ void UrlCoordinator::ResetHangingDownloads()
 	GuardedDownloadQueue guard = DownloadQueue::Guard();
 	time_t tm = Util::CurrentTime();
 
-	for (UrlDownloader* urlDownloader: m_activeDownloads)
+	for (UrlDownloader* urlDownloader : m_activeDownloads)
 	{
 		if (tm - urlDownloader->GetLastUpdateTime() > g_Options->GetUrlTimeout() + 10 &&
 			urlDownloader->GetStatus() == UrlDownloader::adRunning)
@@ -231,8 +231,7 @@ NzbInfo* UrlCoordinator::GetNextUrl(DownloadQueue* downloadQueue)
 
 	for (NzbInfo* nzbInfo1 : downloadQueue->GetQueue())
 	{
-		if (nzbInfo1->GetKind() == NzbInfo::nkUrl &&
-			nzbInfo1->GetUrlStatus() == NzbInfo::lsNone &&
+		if (nzbInfo1->GetKind() == NzbInfo::nkUrl && nzbInfo1->GetUrlStatus() == NzbInfo::lsNone &&
 			nzbInfo1->GetDeleteStatus() == NzbInfo::dsNone &&
 			(!nzbInfo || nzbInfo1->GetPriority() > nzbInfo->GetPriority()))
 		{
@@ -264,11 +263,11 @@ void UrlCoordinator::StartUrlDownload(NzbInfo* nzbInfo)
 	urlDownloader->Start();
 }
 
-void UrlCoordinator::Update(Subject* caller, void* aspect)
+void UrlCoordinator::Update(Subject* caller, void*)
 {
 	debug("Notification from UrlDownloader received");
 
-	UrlDownloader* urlDownloader = (UrlDownloader*) caller;
+	UrlDownloader* urlDownloader = (UrlDownloader*)caller;
 	if ((urlDownloader->GetStatus() == WebDownloader::adFinished) ||
 		(urlDownloader->GetStatus() == WebDownloader::adFailed) ||
 		(urlDownloader->GetStatus() == WebDownloader::adRetry))
@@ -311,7 +310,8 @@ void UrlCoordinator::UrlCompleted(UrlDownloader* urlDownloader)
 
 		if (nzbInfo->GetDeleting())
 		{
-			nzbInfo->SetDeleteStatus(nzbInfo->GetDeleteStatus() == NzbInfo::dsNone ? NzbInfo::dsManual : nzbInfo->GetDeleteStatus());
+			nzbInfo->SetDeleteStatus(nzbInfo->GetDeleteStatus() == NzbInfo::dsNone ? NzbInfo::dsManual
+																				   : nzbInfo->GetDeleteStatus());
 			nzbInfo->SetUrlStatus(NzbInfo::lsNone);
 			nzbInfo->SetDeleting(false);
 		}
@@ -347,20 +347,9 @@ void UrlCoordinator::UrlCompleted(UrlDownloader* urlDownloader)
 		Scanner::EAddStatus addStatus = g_Scanner->AddExternalFile(
 			!Util::EmptyStr(nzbInfo->GetFilename()) ? nzbInfo->GetFilename() : *filename,
 			!Util::EmptyStr(nzbInfo->GetCategory()) ? nzbInfo->GetCategory() : urlDownloader->GetCategory(),
-			nzbInfo->GetAutoCategory(),
-			nzbInfo->GetPriority(),
-			nzbInfo->GetDupeKey(),
-			nzbInfo->GetDupeScore(),
-			nzbInfo->GetDupeMode(),
-			nzbInfo->GetParameters(),
-			false,
-			nzbInfo->GetAddUrlPaused(),
-			nzbInfo,
-			urlDownloader->GetOutputFilename(),
-			nullptr,
-			0,
-			nullptr
-		);
+			nzbInfo->GetAutoCategory(), nzbInfo->GetPriority(), nzbInfo->GetDupeKey(), nzbInfo->GetDupeScore(),
+			nzbInfo->GetDupeMode(), nzbInfo->GetParameters(), false, nzbInfo->GetAddUrlPaused(), nzbInfo,
+			urlDownloader->GetOutputFilename(), nullptr, 0, nullptr);
 
 		if (addStatus == Scanner::asSuccess)
 		{
@@ -408,7 +397,8 @@ bool UrlCoordinator::DeleteQueueEntry(DownloadQueue* downloadQueue, NzbInfo* nzb
 
 	info("Deleting URL %s", nzbInfo->GetName());
 
-	nzbInfo->SetDeleteStatus(nzbInfo->GetDeleteStatus() == NzbInfo::dsNone ? NzbInfo::dsManual : nzbInfo->GetDeleteStatus());
+	nzbInfo->SetDeleteStatus(nzbInfo->GetDeleteStatus() == NzbInfo::dsNone ? NzbInfo::dsManual
+																		   : nzbInfo->GetDeleteStatus());
 	nzbInfo->SetUrlStatus(NzbInfo::lsNone);
 
 	DownloadQueue::Aspect deletedAspect = {DownloadQueue::eaUrlDeleted, downloadQueue, nzbInfo, nullptr};
@@ -420,7 +410,7 @@ bool UrlCoordinator::DeleteQueueEntry(DownloadQueue* downloadQueue, NzbInfo* nzb
 void UrlCoordinator::AddUrlToQueue(std::unique_ptr<NzbInfo> nzbInfo, bool addFirst)
 {
 	debug("Adding URL to queue");
-										
+
 	NzbInfo* addedNzb = nzbInfo.get();
 
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
@@ -438,4 +428,3 @@ void UrlCoordinator::AddUrlToQueue(std::unique_ptr<NzbInfo> nzbInfo, bool addFir
 
 	downloadQueue->Save();
 }
-

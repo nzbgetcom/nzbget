@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,34 +35,33 @@ class UrlCoordinator : public Thread, public Observer, public Debuggable
 {
 public:
 	UrlCoordinator();
-	virtual ~UrlCoordinator();
-	virtual void Run();
-	virtual void Stop();
-	void Update(Subject* caller, void* aspect);
+	~UrlCoordinator() override;
+	void Run() override;
+	void Stop() override;
+	void Update(Subject* caller, void* aspect) override;
 
 	// Editing the queue
 	void AddUrlToQueue(std::unique_ptr<NzbInfo> nzbInfo, bool addFirst);
-	bool HasMoreJobs() { return m_hasMoreJobs; }
+	bool HasMoreJobs() const { return m_hasMoreJobs; }
 	bool DeleteQueueEntry(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, bool avoidHistory);
 
 protected:
-	virtual void LogDebugInfo();
+	void LogDebugInfo() override;
 
 private:
-	typedef std::list<UrlDownloader*> ActiveDownloads;
+	using ActiveDownloads = std::list<UrlDownloader*>;
 
-	class DownloadQueueObserver: public Observer
+	class DownloadQueueObserver final : public Observer
 	{
 	public:
 		UrlCoordinator* m_owner;
-		virtual void Update(Subject* caller, void* aspect) { m_owner->DownloadQueueUpdate(caller, aspect); }
+		void Update(Subject* caller, void* aspect) override { m_owner->DownloadQueueUpdate(caller, aspect); }
 	};
 
 	ActiveDownloads m_activeDownloads;
-	bool m_hasMoreJobs = true;
-	bool m_force;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::atomic<bool> m_hasMoreJobs{true};
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 	DownloadQueueObserver m_downloadQueueObserver;
 
 	NzbInfo* GetNextUrl(DownloadQueue* downloadQueue);
@@ -79,10 +79,10 @@ class UrlDownloader : public WebDownloader
 public:
 	void SetNzbInfo(NzbInfo* nzbInfo) { m_nzbInfo = nzbInfo; }
 	NzbInfo* GetNzbInfo() { return m_nzbInfo; }
-	const char* GetCategory() { return m_category; }
+	const char* GetCategory() const { return m_category; }
 
 protected:
-	virtual void ProcessHeader(const char* line);
+	void ProcessHeader(const char* line) override;
 
 private:
 	NzbInfo* m_nzbInfo;
