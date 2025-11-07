@@ -52,10 +52,10 @@ class FeedCoordinator : public Thread, public Observer, public Subject, public D
 {
 public:
 	FeedCoordinator();
-	virtual ~FeedCoordinator();
-	virtual void Run();
-	virtual void Stop();
-	void Update(Subject* caller, void* aspect);
+	~FeedCoordinator() override;
+	void Run() override;
+	void Stop() override;
+	void Update(Subject* caller, void* aspect) override;
 	void AddFeed(std::unique_ptr<FeedInfo> feedInfo) { m_feeds.push_back(std::move(feedInfo)); }
 
 	/* may return empty pointer on error */
@@ -125,12 +125,12 @@ private:
 	Feeds m_feeds;
 	ActiveDownloads m_activeDownloads;
 	FeedHistory m_feedHistory;
-	Mutex m_downloadsMutex;
+	std::mutex m_downloadsMutex;
 	DownloadQueueObserver m_downloadQueueObserver;
 	WorkStateObserver m_workStateObserver;
 	NzbInfoCreator m_nzbInfoCreator;
 	FeedCache m_feedCache;
-	ConditionVar m_waitCond;
+	std::condition_variable m_waitCond;
 	std::atomic<bool> m_force{false};
 	bool m_wokenUp = false;
 	bool m_save = false;

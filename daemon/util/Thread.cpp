@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,19 +20,9 @@
  */
 
 #include "nzbget.h"
+
 #include "Log.h"
 #include "Thread.h"
-
-std::atomic<int> Thread::m_threadCount{1}; // take the main program thread into account
-std::unique_ptr<Mutex> Thread::m_threadMutex;
-
-
-void Thread::Init()
-{
-	debug("Initializing global thread data");
-
-	m_threadMutex = std::make_unique<Mutex>();
-}
 
 Thread::Thread()
 {
@@ -51,14 +41,14 @@ void Thread::Start()
 	m_running = true;
 
 	// NOTE: "m_threadMutex" ensures that "t" lives until the very end of the function
-	Guard guard(m_threadMutex);
+	std::lock_guard<std::mutex> guard(m_threadMutex);
 
 	// start the new thread
 	std::thread t([&]{
 		{
 			// trying to lock "m_threadMutex", this will wait until function "Start()" is completed
 			// and "t" is detached.
-			Guard guard(m_threadMutex);
+			std::lock_guard<std::mutex> threadGuard(m_threadMutex);
 		}
 
 		thread_handler();
@@ -87,7 +77,7 @@ bool Thread::Kill()
 {
 	debug("Killing Thread");
 
-	Guard guard(m_threadMutex);
+	std::lock_guard<std::mutex> guard(m_threadMutex);
 
 #ifdef WIN32
 	bool terminated = TerminateThread(m_threadObj, 0) != 0;

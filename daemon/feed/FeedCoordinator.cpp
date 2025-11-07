@@ -20,6 +20,7 @@
 
 
 #include "nzbget.h"
+
 #include "FeedCoordinator.h"
 #include "Options.h"
 #include "WorkState.h"
@@ -164,7 +165,7 @@ void FeedCoordinator::Run()
 
 	if (g_Options->GetServerMode())
 	{
-		Guard guard(m_downloadsMutex);
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		g_DiskState->LoadFeeds(&m_feeds, &m_feedHistory);
 	}
 
@@ -174,7 +175,7 @@ void FeedCoordinator::Run()
 		// this code should not be called too often, once per second is OK
 		if (!g_WorkState->GetPauseDownload() || m_force || g_Options->GetUrlForce())
 		{
-			Guard guard(m_downloadsMutex);
+			std::lock_guard<std::mutex> guard(m_downloadsMutex);
 
 			time_t current = Util::CurrentTime();
 			if ((int)m_activeDownloads.size() < g_Options->GetUrlConnections())
@@ -212,11 +213,11 @@ void FeedCoordinator::Run()
 			lastCleanup = Util::CurrentTime();
 		}
 
-		Guard guard(m_downloadsMutex);
+		std::unique_lock<std::mutex> lk(m_downloadsMutex);
 		if (m_force)
 		{
 			// don't sleep too long if there active feeds scheduled for redownload
-			m_waitCond.WaitFor(m_downloadsMutex, 1000, [&]{ return IsStopped(); });
+			m_waitCond.wait_for(lk, std::chrono::milliseconds(1000), [&]{ return IsStopped(); });
 		}
 		else
 		{
@@ -229,7 +230,7 @@ void FeedCoordinator::Run()
 			//    notifications are not 100% reliable due to possible race conditions. Therefore
 			//    we sleep for max. 5 seconds.
 			int waitInterval = g_Options->GetUrlForce() || m_feeds.empty() ? 60000 : 5000;
-			m_waitCond.WaitFor(m_downloadsMutex, waitInterval, [&]{ return m_force || IsStopped(); });
+			m_waitCond.wait_for(lk, std::chrono::milliseconds(waitInterval), [&]{ return m_force || IsStopped(); });
 		}
 	}
 
@@ -239,7 +240,7 @@ void FeedCoordinator::Run()
 	while (!completed)
 	{
 		{
-			Guard guard(m_downloadsMutex);
+			std::lock_guard<std::mutex> guard(m_downloadsMutex);
 			completed = m_activeDownloads.size() == 0;
 		}
 		CheckSaveFeeds();
@@ -256,7 +257,8 @@ void FeedCoordinator::Stop()
 	Thread::Stop();
 
 	debug("Stopping UrlDownloads");
-	Guard guard(m_downloadsMutex);
+
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	for (FeedDownloader* feedDownloader : m_activeDownloads)
 	{
 		feedDownloader->Stop();
@@ -264,13 +266,14 @@ void FeedCoordinator::Stop()
 	debug("UrlDownloads are notified");
 
 	// Resume Run() to exit it
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
-void FeedCoordinator::WorkStateUpdate(Subject* caller, void* aspect)
+void FeedCoordinator::WorkStateUpdate(Subject*, void*)
 {
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	m_force = true;
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 void FeedCoordinator::ResetHangingDownloads()
@@ -280,7 +283,7 @@ void FeedCoordinator::ResetHangingDownloads()
 		return;
 	}
 
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	time_t tm = Util::CurrentTime();
 
 	for (FeedDownloader* feedDownloader: m_activeDownloads)
@@ -298,7 +301,7 @@ void FeedCoordinator::LogDebugInfo()
 {
 	info("   ---------- FeedCoordinator");
 
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	info("    Active Downloads: %i", (int)m_activeDownloads.size());
 	for (FeedDownloader* feedDownloader : m_activeDownloads)
 	{
@@ -363,7 +366,7 @@ void FeedCoordinator::FeedCompleted(FeedDownloader* feedDownloader)
 
 	// remove downloader from downloader list
 	{
-		Guard guard(m_downloadsMutex);
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		m_activeDownloads.erase(std::find(m_activeDownloads.begin(), m_activeDownloads.end(), feedDownloader));
 	}
 
@@ -388,7 +391,7 @@ void FeedCoordinator::FeedCompleted(FeedDownloader* feedDownloader)
 			std::vector<std::unique_ptr<NzbInfo>> addedNzbs;
 
 			{
-				Guard guard(m_downloadsMutex);
+				std::lock_guard<std::mutex> guard(m_downloadsMutex);
 				if (feedFile)
 				{
 					std::unique_ptr<FeedItemList> feedItems = feedFile->DetachFeedItems();
@@ -548,7 +551,7 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 	bool hasCache = false;
 	if (cacheTimeSec > 0 && *cacheId != '\0')
 	{
-		Guard guard(m_downloadsMutex);
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		for (FeedCacheItem& feedCacheItem : m_feedCache)
 		{
 			if (!strcmp(feedCacheItem.GetCacheId(), cacheId))
@@ -566,7 +569,7 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 		bool firstFetch = true;
 
 		{
-			Guard guard(m_downloadsMutex);
+			std::lock_guard<std::mutex> guard(m_downloadsMutex);
 
 			for (FeedInfo* feedInfo2 : &m_feeds)
 			{
@@ -582,7 +585,7 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 			StartFeedDownload(feedInfo.get(), true);
 
 			m_force = true;
-			m_waitCond.NotifyAll();
+			m_waitCond.notify_all();
 		}
 
 		// wait until the download in a separate thread completes
@@ -627,7 +630,7 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 
 	if (cacheTimeSec > 0 && *cacheId != '\0' && !hasCache)
 	{
-		Guard guard(m_downloadsMutex);
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		m_feedCache.emplace_back(url, cacheTimeSec, cacheId, Util::CurrentTime(), feedItems);
 	}
 
@@ -638,7 +641,7 @@ void FeedCoordinator::FetchFeed(int id)
 {
 	debug("FetchFeeds");
 
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	for (FeedInfo* feedInfo : &m_feeds)
 	{
 		if (feedInfo->GetId() == id || id == 0)
@@ -648,7 +651,7 @@ void FeedCoordinator::FetchFeed(int id)
 		}
 	}
 
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 std::unique_ptr<FeedFile> FeedCoordinator::parseFeed(FeedInfo* feedInfo)
@@ -673,7 +676,7 @@ void FeedCoordinator::DownloadQueueUpdate(Subject* caller, void* aspect)
 	DownloadQueue::Aspect* queueAspect = (DownloadQueue::Aspect*)aspect;
 	if (queueAspect->action == DownloadQueue::eaUrlCompleted)
 	{
-		Guard guard(m_downloadsMutex);
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		FeedHistoryInfo* feedHistoryInfo = m_feedHistory.Find(queueAspect->nzbInfo->GetUrl());
 		if (feedHistoryInfo)
 		{
@@ -689,13 +692,13 @@ void FeedCoordinator::DownloadQueueUpdate(Subject* caller, void* aspect)
 
 bool FeedCoordinator::HasActiveDownloads()
 {
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	return !m_activeDownloads.empty();
 }
 
 void FeedCoordinator::CheckSaveFeeds()
 {
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 	if (m_save)
 	{
 		debug("CheckSaveFeeds: save");
@@ -711,7 +714,7 @@ void FeedCoordinator::CleanupHistory()
 {
 	debug("CleanupHistory");
 
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 
 	time_t oldestUpdate = Util::CurrentTime();
 
@@ -743,7 +746,7 @@ void FeedCoordinator::CleanupCache()
 {
 	debug("CleanupCache");
 
-	Guard guard(m_downloadsMutex);
+	std::lock_guard<std::mutex> guard(m_downloadsMutex);
 
 	time_t curTime = Util::CurrentTime();
 
