@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@
 #include "ParParser.h"
 #include "DirectUnpack.h"
 #include "PostUnpackRenamer.h"
+#include <mutex>
 
 PrePostProcessor::PrePostProcessor()
 {
@@ -78,8 +79,8 @@ void PrePostProcessor::Run()
 		else
 		{
 			// Wait until we get the stop signal or more jobs in the queue
-			Guard guard(m_waitMutex);
-			m_waitCond.Wait(m_waitMutex, [&]{ return m_queuedJobs || IsStopped(); });
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait(lk, [&]{ return m_queuedJobs || IsStopped(); });
 		}
 	}
 
@@ -179,8 +180,8 @@ void PrePostProcessor::Stop()
 	}
 
 	// Resume Run() to exit it
-	Guard guard(m_waitMutex);
-	m_waitCond.NotifyAll();
+	std::lock_guard<std::mutex> guard(m_waitMutex);
+	m_waitCond.notify_all();
 }
 
 /**
@@ -378,9 +379,9 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 		downloadQueue->SaveChanged();
 
 		// We have more jobs in the queue, notify Run()
-		Guard guard(m_waitMutex);
+		std::lock_guard<std::mutex> guard(m_waitMutex);
 		m_queuedJobs++;
-		m_waitCond.NotifyAll();
+		m_waitCond.notify_all();
 	}
 	else
 	{
@@ -900,7 +901,7 @@ void PrePostProcessor::JobCompleted(DownloadQueue* downloadQueue, PostInfo* post
 		NzbCompleted(downloadQueue, nzbInfo, false);
 	}
 
-	Guard guard(m_waitMutex);
+	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_queuedJobs--;
 }
 

@@ -109,7 +109,6 @@ public:
 	Thread();
 	Thread(const Thread&) = delete;
 	virtual ~Thread();
-	static void Init();
 
 	virtual void Start();
 	virtual void Stop();
@@ -123,11 +122,11 @@ public:
 	static int GetThreadCount();
 
 protected:
-	virtual void Run() {}; // Virtual function - override in derivatives
+	virtual void Run() {} // Virtual function - override in derivatives
 
 private:
-	static std::unique_ptr<Mutex> m_threadMutex;
-	static std::atomic<int> m_threadCount;
+	inline static std::mutex m_threadMutex;
+	inline static std::atomic<int> m_threadCount{1};
 	std::thread::native_handle_type m_threadObj = 0;
 	std::atomic<bool> m_running{false};
 	std::atomic<bool> m_stopped{false};

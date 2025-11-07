@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2015-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 
 
 #include "nzbget.h"
+
 #include "Service.h"
 #include "DownloadInfo.h"
 #include "Options.h"
@@ -84,8 +85,8 @@ void ServiceCoordinator::Run()
 		debug("Waiting in ServiceCoordinator: %i", waitInterval);
 		if (waitInterval > 0)
 		{
-			Guard guard(m_waitMutex);
-			m_waitCond.WaitFor(m_waitMutex, waitInterval * 1000, [&] { return m_workenUp || IsStopped(); });
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait_for(lk, std::chrono::milliseconds(waitInterval * 1000), [&] { return m_workenUp || IsStopped(); });
 			m_workenUp = false;
 		}
 	}
@@ -98,17 +99,17 @@ void ServiceCoordinator::Stop()
 	Thread::Stop();
 	
 	// Resume Run() to exit it
-	Guard guard(m_waitMutex);
-	m_waitCond.NotifyAll();
+	std::lock_guard<std::mutex> guard(m_waitMutex);
+	m_waitCond.notify_all();
 }
 
 void ServiceCoordinator::WakeUp()
 {
 	debug("Waking up ServiceCoordinator");
 	// Resume Run()
-	Guard guard(m_waitMutex);
+	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_workenUp = true;
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 void ServiceCoordinator::RegisterService(Service* service)
