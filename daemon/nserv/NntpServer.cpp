@@ -64,6 +64,7 @@ private:
 	int64 m_offset;
 	int m_size;
 	bool m_sendHeaders;
+	bool m_sendStat;
 	int64 m_start;
 	NntpCache* m_cache;
 
@@ -174,12 +175,21 @@ void NntpProcessor::Run()
 		{
 			m_messageid = line + 8;
 			m_sendHeaders = true;
+			m_sendStat = false;
 			ServArticle();
 		}
 		else if (!strncasecmp(line, "BODY ", 5))
 		{
 			m_messageid = line + 5;
 			m_sendHeaders = false;
+			m_sendStat = false;
+			ServArticle();
+		}
+		else if (!strncasecmp(line, "STAT ", 5))
+		{
+			m_messageid = line + 5;
+			m_sendHeaders = false;
+			m_sendStat = true;
 			ServArticle();
 		}
 		else if (!strncasecmp(line, "GROUP ", 6))
@@ -348,6 +358,14 @@ void NntpProcessor::SendSegment()
 	{
 		m_connection->WriteLine(CString::FormatStr("403 %s\r\n", *errmsg));
 		return;
+	}
+
+	// if we get here, everything is ok: input is OK, article exists
+
+	if (m_sendStat)
+	{
+		m_connection->WriteLine(CString::FormatStr("223 %s\r\n", m_messageid));
+		return; // done
 	}
 
 	m_connection->WriteLine(CString::FormatStr("%i, 0 %s\r\n", m_sendHeaders ? 222 : 220, m_messageid));
