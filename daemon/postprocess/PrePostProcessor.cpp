@@ -508,7 +508,7 @@ void PrePostProcessor::DeleteCleanup(NzbInfo* nzbInfo)
 		FileSystem::DeleteDirectory(nzbInfo->GetDestDir());
 
 		// delete final directory (if empty)
-		const char* finalDir = nzbInfo->BuildFinalDirName().Str();
+		const auto finalDir = nzbInfo->BuildFinalDirName();
 		if (nzbInfo->GetDestDir() != finalDir && FileSystem::DirectoryExists(finalDir))
 		{
 			FileSystem::DeleteDirectory(finalDir);

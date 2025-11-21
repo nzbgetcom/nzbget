@@ -415,9 +415,9 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 			newName = BuildNewRegularName(fileInfo->GetFilename(), parHashes, fileInfo->GetHash16k());
 		}
 
-		// Rename the file anyway to trigger the hardlink creation
 		if (newName.empty() && !fileInfo->GetParFile() && g_Options->GetHardLinking())
 		{
+			// Force rename if file is not par file and hardlinking is on
 			newName = fileInfo->GetFilename();
 		}
 		else if (newName.empty())
@@ -492,9 +492,9 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 			newName = BuildNewRegularName(completedFile.GetFilename(), parHashes, completedFile.GetHash16k());
 		}
 
-		// Rename the file anyway to trigger the hardlink creation
 		if (newName.empty() && !completedFile.GetParFile() && g_Options->GetHardLinking())
 		{
+			// Force rename if file is not par file and hardlinking is on
 			newName = completedFile.GetFilename();
 		}
 		else if (newName.empty())
