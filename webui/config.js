@@ -694,6 +694,7 @@ var Config = (new function($)
 	var $ConfigTabBadgeEmpty;
 	var $ConfigContent;
 	var $ConfigInfo;
+	var $ConfigLicenses;
 	var $ConfigTitle;
 	var $ConfigTable;
 	var $ViewButton;
@@ -723,6 +724,7 @@ var Config = (new function($)
 		$ConfigTabBadgeEmpty = $('#ConfigTabBadgeEmpty');
 		$ConfigContent = $('#ConfigContent');
 		$ConfigInfo = $('#ConfigInfo');
+		$ConfigLicenses = $('#ConfigLicenses');
 		$ConfigTitle = $('#ConfigTitle');
 		$ViewButton = $('#Config_ViewButton');
 		$LeaveConfigDialog = $('#LeaveConfigDialog');
@@ -800,6 +802,11 @@ var Config = (new function($)
 		$('#ConfigLoadServerTemplateErrorNotFound').toggle(optConfigTemplate !== '');
 		$('#ConfigLoadServerTemplateErrorWebDir').text(Options.option('WebDir'));
 		$('#ConfigLoadServerTemplateErrorConfigFile').text(Options.option('ConfigFile'));
+	}
+
+	this.navigateTo = function(anchor)
+	{
+		$("a[href$='#" + anchor + "']").click();
 	}
 
 	function findOptionByName(name)
@@ -1222,6 +1229,9 @@ var Config = (new function($)
 			$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
 		}
 
+		$ConfigNav.append('<li class="divider"></li>');
+		$ConfigNav.append('<li><a href="#' + 'Config-Licenses' + '">' + 'LICENSES' + '</a></li>');
+
 		notifyChanges();
 
 		$ConfigNav.append('<li class="divider hide ConfigSearch"></li>');
@@ -1363,12 +1373,12 @@ var Config = (new function($)
 		Config.showSection(option.sectionId, false);
 
 		var element = $('#' + option.formId);
-		var parent = $('html,body');
+		var smallScreen = $(window).width() <= 992;
+		var parent = smallScreen ? $('html,.config__main') : $('.config__main');
 
-		parent[0].scrollIntoView(true);
-		var offsetY = 15;
+		var offsetY = 30;
 		if ($('body').hasClass('navfixed')) {
-			offsetY = 55;
+			offsetY = 10;
 		}
 		parent.animate({ scrollTop: parent.scrollTop() + element.offset().top - parent.offset().top - offsetY }, { duration: 'slow', easing: 'swing' });
 	}
@@ -1486,6 +1496,7 @@ var Config = (new function($)
 		Util.show($ViewButton, sectionId !== 'Config-Info');
 
 		$ConfigInfo.hide();
+		$ConfigLicenses.hide();
 
 		if (sectionId === 'Search')
 		{
@@ -1509,6 +1520,14 @@ var Config = (new function($)
 			$('.config-status', $ConfigData).show();
 			SystemInfo.loadSystemInfo();
 			$ConfigTitle.text('STATUS');
+			return;
+		}
+
+		if (sectionId === 'Config-Licenses')
+		{
+			$ConfigLicenses.show();
+			$ConfigData.children().hide();
+			$ConfigTitle.text('LICENSES');
 			return;
 		}
 

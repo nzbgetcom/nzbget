@@ -299,3 +299,131 @@ BOOST_AUTO_TEST_CASE(TrimTest)
 		BOOST_CHECK_EQUAL(str, "");
 	}
 }
+
+BOOST_AUTO_TEST_SUITE(JsonNextValueTestSuite)
+
+BOOST_AUTO_TEST_CASE(EscapedQuotesAndSlashesTest)
+{
+	const char* json = R"("hello\"\"\\ world")";
+	const char* expected = R"("hello\"\"\\ world")";
+	int length = 0;
+	const char* resultPtr = WebUtil::JsonNextValue(json, &length);
+
+	BOOST_REQUIRE(resultPtr != nullptr);
+	BOOST_CHECK_EQUAL(length, strlen(expected));
+	BOOST_CHECK_EQUAL(std::string(resultPtr, length), std::string(expected));
+}
+
+BOOST_AUTO_TEST_CASE(SimpleValuesTest)
+{
+	// Test: "hello world"
+	const char* input1 = R"(  "hello world"  )";
+	const char* expected1 = R"("hello world")";
+	int length1 = 0;
+	const char* resultPtr1 = WebUtil::JsonNextValue(input1, &length1);
+	BOOST_REQUIRE(resultPtr1 != nullptr);
+	BOOST_CHECK_EQUAL(length1, strlen(expected1));
+	BOOST_CHECK_EQUAL(std::string(resultPtr1, length1), std::string(expected1));
+
+	// Test: 12345
+	const char* input2 = "12345,";
+	const char* expected2 = "12345";
+	int length2 = 0;
+	const char* resultPtr2 = WebUtil::JsonNextValue(input2, &length2);
+	BOOST_REQUIRE(resultPtr2 != nullptr);
+	BOOST_CHECK_EQUAL(length2, strlen(expected2));
+	BOOST_CHECK_EQUAL(std::string(resultPtr2, length2), std::string(expected2));
+
+	// Test: true
+	const char* input3 = "  true  }";
+	const char* expected3 = "true";
+	int length3 = 0;
+	const char* resultPtr3 = WebUtil::JsonNextValue(input3, &length3);
+	BOOST_REQUIRE(resultPtr3 != nullptr);
+	BOOST_CHECK_EQUAL(length3, strlen(expected3));
+	BOOST_CHECK_EQUAL(std::string(resultPtr3, length3), std::string(expected3));
+
+	// Test: null
+	const char* input4 = "\tnull\n";
+	const char* expected4 = "null";
+	int length4 = 0;
+	const char* resultPtr4 = WebUtil::JsonNextValue(input4, &length4);
+	BOOST_REQUIRE(resultPtr4 != nullptr);
+	BOOST_CHECK_EQUAL(length4, strlen(expected4));
+	BOOST_CHECK_EQUAL(std::string(resultPtr4, length4), std::string(expected4));
+}
+
+BOOST_AUTO_TEST_CASE(StringEdgeCasesTest)
+{
+	// Test: Empty string
+	const char* input1 = R"("")";
+	const char* expected1 = R"("")";
+	int length1 = 0;
+	const char* resultPtr1 = WebUtil::JsonNextValue(input1, &length1);
+	BOOST_REQUIRE(resultPtr1 != nullptr);
+	BOOST_CHECK_EQUAL(length1, strlen(expected1));
+	BOOST_CHECK_EQUAL(std::string(resultPtr1, length1), std::string(expected1));
+
+	// Test: Just an escaped quote
+	const char* input2 = R"(" \" ")";
+	const char* expected2 = R"(" \" ")";
+	int length2 = 0;
+	const char* resultPtr2 = WebUtil::JsonNextValue(input2, &length2);
+	BOOST_REQUIRE(resultPtr2 != nullptr);
+	BOOST_CHECK_EQUAL(length2, strlen(expected2));
+	BOOST_CHECK_EQUAL(std::string(resultPtr2, length2), std::string(expected2));
+
+	// Test: Just an escaped backslash
+	const char* input3 = R"(" \\ ")";
+	const char* expected3 = R"(" \\ ")";
+	int length3 = 0;
+	const char* resultPtr3 = WebUtil::JsonNextValue(input3, &length3);
+	BOOST_REQUIRE(resultPtr3 != nullptr);
+	BOOST_CHECK_EQUAL(length3, strlen(expected3));
+	BOOST_CHECK_EQUAL(std::string(resultPtr3, length3), std::string(expected3));
+}
+
+BOOST_AUTO_TEST_CASE(ParsingInContextTest)
+{
+	const char* json = R"({ "key": "value" })";
+	int length = 0;
+	// Find "key"
+	const char* keyPtr = WebUtil::JsonNextValue(json, &length);
+	// Find "value"
+	const char* valuePtr = WebUtil::JsonNextValue(keyPtr + length, &length);
+	BOOST_REQUIRE(valuePtr != nullptr);
+	BOOST_CHECK_EQUAL(std::string(valuePtr, length), R"("value")");
+
+	const char* arrayJson = R"([ 123, "abc", true ])";
+	// Find 123
+	const char* firstVal = WebUtil::JsonNextValue(arrayJson, &length);
+	// Find "abc"
+	const char* secondVal = WebUtil::JsonNextValue(firstVal + length, &length);
+	BOOST_REQUIRE(secondVal != nullptr);
+	BOOST_CHECK_EQUAL(std::string(secondVal, length), R"("abc")");
+}
+
+BOOST_AUTO_TEST_CASE(ValidAndInvalidInputsTest)
+{
+	int length = 0;
+
+	// --- These inputs should correctly be parsed as VALID ---
+	const char* inputValue = R"("hello\\")"; // This is the JSON string "hello\"
+	const char* expectedValue = R"("hello\\")";
+	const char* resultPtr = WebUtil::JsonNextValue(inputValue, &length);
+	BOOST_REQUIRE(resultPtr != nullptr); // It SHOULD succeed
+	BOOST_CHECK_EQUAL(length, strlen(expectedValue));
+	BOOST_CHECK_EQUAL(std::string(resultPtr, length), std::string(expectedValue));
+
+
+	// --- These inputs should correctly be parsed as INVALID (return nullptr) ---
+	BOOST_CHECK(WebUtil::JsonNextValue("", &length) == nullptr);
+	BOOST_CHECK(WebUtil::JsonNextValue("   \t\n ", &length) == nullptr);
+	BOOST_CHECK(WebUtil::JsonNextValue("{ , : }", &length) == nullptr);
+
+	// This is the NEW, correct test for a dangling escape.
+	// The JSON string is "dangling\"
+	BOOST_CHECK(WebUtil::JsonNextValue("\"dangling\\\"", &length) == nullptr);
+}
+
+BOOST_AUTO_TEST_SUITE_END()

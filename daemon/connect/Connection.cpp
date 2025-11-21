@@ -27,11 +27,6 @@
 #include "Options.h"
 
 static const int CONNECTION_READBUFFER_SIZE = 1024;
-#ifndef HAVE_GETADDRINFO
-#ifndef HAVE_GETHOSTBYNAME_R
-std::unique_ptr<Mutex> Connection::m_getHostByNameMutex;
-#endif
-#endif
 
 #if defined(__linux__) && !defined(__ANDROID__)
 // Activate DNS resolving workaround for Android:
@@ -100,12 +95,6 @@ void Connection::Init()
 		WSACleanup();
 		return;
 	}
-#endif
-
-#ifndef HAVE_GETADDRINFO
-#ifndef HAVE_GETHOSTBYNAME_R
-	m_getHostByNameMutex = std::make_unique<Mutex>();
-#endif
 #endif
 }
 
@@ -1084,7 +1073,7 @@ in_addr_t Connection::ResolveHostAddr(const char* host)
 		err = hinfo == nullptr;
 #endif
 #else
-		Guard guard(m_getHostByNameMutex);
+		std::lock_guard<std::mutex> guard(m_getHostByNameMutex);
 		hinfo = gethostbyname(host);
 		err = hinfo == nullptr;
 #endif

@@ -26,11 +26,6 @@
 #include <atomic>
 #include <string>
 #include "NString.h"
-#ifndef HAVE_GETADDRINFO
-#ifndef HAVE_GETHOSTBYNAME_R
-#include "Thread.h"
-#endif
-#endif
 #ifndef DISABLE_TLS
 #include "TlsSocket.h"
 #endif
@@ -126,7 +121,7 @@ protected:
 #endif
 #ifndef HAVE_GETADDRINFO
 #ifndef HAVE_GETHOSTBYNAME_R
-	static std::unique_ptr<Mutex> m_getHostByNameMutex;
+	inline static std::mutex m_getHostByNameMutex;
 #endif
 #endif
 

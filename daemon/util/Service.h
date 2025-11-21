@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -47,17 +47,17 @@ private:
 class ServiceCoordinator : public Thread
 {
 public:
-	typedef std::vector<Service*> ServiceList;
+	using ServiceList = std::vector<Service*>;
 
 	ServiceCoordinator();
-	virtual ~ServiceCoordinator();
-	virtual void Run();
-	virtual void Stop();
+	~ServiceCoordinator() override;
+	void Run() override;
+	void Stop() override;
 
 private:
 	ServiceList m_services;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 	bool m_workenUp = false;
 
 	void RegisterService(Service* service);

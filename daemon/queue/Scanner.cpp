@@ -336,13 +336,13 @@ void Scanner::ProcessIncomingFile(
 		ScanScriptController::ExecuteScripts(fullFilename,
 			nzbInfo, 
 			directory,
-			nzbName.c_str(),
-			nzbCategory.c_str(),
+			nzbName,
+			nzbCategory,
 			&priority,
 			&parameters,
 			&addTop,
 			&addPaused,
-			dupeKey.c_str(),
+			dupeKey,
 			&dupeScore,
 			&dupeMode
 		);

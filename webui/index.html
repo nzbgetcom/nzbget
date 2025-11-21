@@ -220,7 +220,7 @@
 </div>
 
 <!-- *** ERROR BLOCK  ****************************************************************** -->
-<div class="alert alert-danger alert-block" style="display:none; margin-bottom:25px;" id="ErrorAlert">
+<div class="alert alert-danger alert-block" style="display:none; overflow:auto;" id="ErrorAlert">
 	<h4 class="alert-heading" id="ErrorAlert-title">Communication error!</h4>
 	<p id="ErrorAlert-text"></p>
 </div>
@@ -518,7 +518,7 @@
 					<h4 class="alert-heading">Loading configuration...</h4>
 					Please wait.
 				</div>
-				<div class="alert alert-error alert-block hide" id="ConfigLoadServerTemplateError">
+				<div class="config-loading-alert alert alert-error alert-block hide" id="ConfigLoadServerTemplateError">
 					<h4 class="alert-heading">Loading configuration failed</h4>
 					Could not load template configuration file <em>nzbget.conf</em>. The file contains descriptions of options
 					and is needed to display settings page. The file comes with NZBGet distribution archive and is usually
@@ -531,11 +531,11 @@
 					(<em><span id="ConfigLoadServerTemplateErrorConfigFile"></span></em>) in a text editor
 					and set the option <em>ConfigTemplate</em> to point to the template configuration file <em>nzbget.conf</em>.</span>
 				</div>
-				<div class="alert alert-error alert-block hide" id="ConfigLoadError">
+				<div class="config-loading-alert alert alert-error alert-block hide" id="ConfigLoadError">
 					<h4 class="alert-heading">Loading configuration failed</h4>
 					<em id="ConfigLoadErrorText"></em>.
 				</div>
-				<div class="hide" id="ConfigSaved">
+				<div class="config-loading-alert hide" id="ConfigSaved">
 					<div class="alert alert-success alert-block">
 						<h4 class="alert-heading">Configuration has been saved successfully</h4>
 						<p id="ConfigSaved_Reload">For changes to have effect NZBGet must be reloaded (soft-restart).<br><br>
@@ -546,18 +546,23 @@
 
 				<div id="ConfigContent">
 
-					<div class="row-fluid">
-						<div class="span3">
+					<div class="config__container">
+						<div class="config__aside">
 							<ul class="nav nav-list" id="ConfigNav">
 								<li class="config-static"><a href="#Config-Info">INFO</a></li>
 								<li class="config-static"><a href="#Config-SystemInfo">STATUS</a></li>
 								<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
 							</ul>
+							<div class="visible-desktop">
+								<hr>
+								<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()">
+									Save all changes
+								</button>
+								<hr>
+							</div>
 						</div>
 
-						<div class="span9" style="overflow: auto;">
-							<div>
-
+						<div class="config__main">
 								<div class="config-header clearfix">
 									<div class="pull-left" id="ConfigTitle">INFO</div>
 									<div class="btn-group pull-right">
@@ -570,78 +575,100 @@
 								</div>
 
 								<div id="ConfigInfo">
+									<h4>Saving changes</h4>
 									<p>
-									On this page you can review and change settings. When you done with changes click
-									<em><strong>Save all changes</strong></em>, which saves the changes made in all sections.
-									It's not necessary to save changes in each section individually.
+										On this page you can review and change settings. When you finish changing the necessary settings in all tabs, click <em><strong>Save all changes</strong></em>. It's not necessary to save changes in each section individually.
 									</p>
 
 									<h4>NZBGet settings</h4>
 									<p>
-									When you configure NZBGet for the first time you need
-									to check at least the option <a class="option" href="#" data-category="S" onclick="Config.scrollToOption(event, this)">MainDir</a> and configure one news server.
+										First-time setup: check the 
+										<a class="option" href="#" data-category="S" onclick="Config.scrollToOption(event, this)">MainDir</a> 
+										and configure at least one <a class="option" href="#" data-category="S" onclick="Config.navigateTo('NEWS-SERVERS')">News Server</a>.
 									</p>
 
-									<h4>Extension scripts settings</h4>
+									<h4>Extension manager</h4>
 									<p>
-									When NZBGet finishes download of a nzb-file it can execute post-processing scripts for further processing (e-mail notification, etc.).
-									To configure scripts use options in section <em><strong>EXTENSION SCRIPTS</strong></em>.
-									</p>
-									<p>
-									If your scripts define own options they are also shown here and can be configured like NZBGets built-in options.
+										The <a class="option" href="#" data-category="S" onclick="Config.navigateTo('extension-manager')">EXTENSION MANAGER</a>
+										is a built-in utility that serves as a central hub for managing extension scripts, 
+										providing a directory of officially supported ones and simplifying their installation. 
+										All scripts, whether installed via the manager or added manually through the supported legacy method, 
+										are configured in the 
+										<a class="option" href="#" data-category="S" onclick="Config.navigateTo('EXTENSION_SCRIPTS')">EXTENSION SCRIPTS</a> 
+										section and in individual extension's settings.
 									</p>
 
 									<h4>Web-interface settings</h4>
 									<p>
-									Settings in section <em><strong>WEB-INTERFACE</strong></em> are stored within your browser. All other settings are stored
-									in configuration file on computer where NZBGet is running.
+										<a class="option" href="#" data-category="S" onclick="Config.navigateTo('WEB-INTERFACE')">WEB INTERFACE</a> 
+										settings are stored within your browser. All other settings are stored in the configuration file on the computer where NZBGet is running.
 									</p>
 
 									<h4>Backup and restore settings</h4>
 									<p>
-									This can be done in section <em><strong>SYSTEM</strong></em>.
+										To back up or restore your configuration, go to the 
+										<a class="option" href="#" data-category="S" onclick="Config.navigateTo('Config-System')">SYSTEM</a>  
+										section.
 									</p>
 
-									<h4>Copyright</h4>
-									<p>This program is free software; you can redistribute it and/or modify
-									it under the terms of the GNU General Public License as published by
-									the Free Software Foundation; either version 2 of the License, or
-									(at your option) any later version.</p>
-							
-									<p>The complete content of license is provided in file COPYING within distribution and also available <a href="http://www.gnu.org/licenses/gpl-2.0.html">online</a>.</p>
-							
-									<p>Additional exemption: compiling, linking, and/or using OpenSSL is allowed.</p>
-														
-									<h4>Par2cmdline-turbo</h4>
-									<p>NZBGet uses <a href="https://github.com/nzbgetcom/par2cmdline-turbo">Par2cmdline-turbo</a> by <a href="https://github.com/animetosho/par2cmdline-turbo/commits?author=animetosho">animetosho</a>.</p>
-									<p>Par2cmdline is licensed under the <a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html">GPLv2 license</a>.</p>
+									<br>
 
-									<h4>jQuery</h4>
-									<p>NZBGet web-interface uses <a href="http://jquery.com">jQuery</a>. The jQuery Project is run by a distributed group of volunteers that all want to see jQuery become the best JavaScript tool possible.</p>
-									<p>jQuery is licensed under the <a href="https://jquery.com/license/">MIT</a> license.</p>
-							
-									<h4>Bootstrap</h4>
-									<p>NZBGet web-interface uses <a href="https://getbootstrap.com/2.3.2/">Bootstrap</a>. Designed and built with all the love in the world @twitter by @mdo and @fat.</p>
-									<p>Bootstrap code is licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License v2.0</a>.</p>
-							
-									<h4>Raphaël</h4>
-									<p>NZBGet web-interface makes use of <a href="https://dmitrybaranovskiy.github.io/raphael/">Raphaël</a> built by Dmitry Baranovskiy.</p>
-									<p>Raphaël code is licensed under the <a href="https://dmitrybaranovskiy.github.io/raphael/license.html">MIT license</a>.</p>
-							
-									<h4>Elycharts</h4>
-									<p>For charts NZBGet relies on <a href="https://elycharts.com/">Elycharts</a> by Void Labs s.n.c.</p>
-									<p>Elycharts code is licensed under the <a href="https://elycharts.com/license/">MIT license</a>.</p>
-							
-									<h4>iconSweets</h4>
-									<p>NZBGet web-interface includes selected icons from collections <a href="https://designbombs.com/iconsweets/">iconSweets</a> and <a href="https://www.designbombs.com/iconsweets2/">iconSweets2</a> by <a href="https://yummygum.com/">Yummygum</a>.</p>
-									<p>The icons are generally licensed under a custom license but used in NZBGet with author's permission.</p>
+									<section aria-labelledby="community-heading">
+										<h3 id="community-heading">COMMUNITY AND RESOURCES</h3>
 
-									<h4>Google Material Icons</h4>
-									<p>Material Icons is an icon font useful for implementing Google's Material design language licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0"> Apache license</a>.</p>
+										<hr>
+										<nav aria-label="Community links">
+											<ul style="list-style-type: none; margin: 0;">
+												<li class="flex">
+													<img src="img/nzbget.svg" alt="NZBGet logo." aria-hidden="true" width="25" height="25" style="margin-right:5px;"/>
+													<div>
+														<h4>
+															<a href="https://nzbget.com/" target="_blank" rel="noopener noreferrer" >
+																Official Website
+															</a>
+														</h4>
+														<p>The primary source for NZBGet downloads, news, and official documentation.</p>
+													</div>
+												</li>
 
-									<h4>Boost</h4>
-									<p>NZBGet uses <a href="https://www.boost.org/">Boost</a> by Boost organization and wider Boost community</p>
-									<p>Boost is licensed under the <a href="https://www.boost.org/users/license.html">Boost Software License</a>.</p>
+												<li class="flex">
+													<img src="img/github.svg" alt="GitHub logo." aria-hidden="true" width="25" height="25" style="margin-right:5px;"/>
+													<div>
+														<h4>
+															<a href="https://github.com/nzbgetcom/nzbget" target="_blank" rel="noopener noreferrer">
+																GitHub
+															</a>
+														</h4>
+														<p>Contribute to the project, report issues, and view the source code.</p>
+													</div>
+												</li>
+
+												<li class="flex">
+													<img src="img/discord.svg" alt="Discord logo." aria-hidden="true" width="25" height="25" style="margin-right:5px;"/>
+													<div>
+														<h4>
+															<a href="https://discord.gg/mV9Vn9sM7C" target="_blank" rel="noopener noreferrer">
+																Discord
+															</a>
+														</h4>
+														<p>Join our community for real-time chat, support, and discussions.</p>
+													</div>
+												</li>
+
+												<li class="flex">
+													<img src="img/reddit.svg" alt="Reddit logo." aria-hidden="true" width="25" height="25" style="margin-right:5px;"/>
+													<div>
+														<h4>
+															<a href="https://reddit.com/r/nzbget/" target="_blank" rel="noopener noreferrer">
+																Reddit
+															</a>
+														</h4>
+														<p>Engage with the community, ask questions, and share tips on our subreddit.</p>
+													</div>
+												</li>
+											</ul>
+										</nav>
+									</section>
 								</div>
 
 								<div>
@@ -996,13 +1023,109 @@
 									</div>
 								</div>
 
-							</div>
-						</div>
-					</div>
+								<div id="ConfigLicenses" class="config-static">
+									<h4>Copyright</h4>
+									<p>
+										This program is free software; you can redistribute it and/or modify
+										it under the terms of the GNU General Public License as published by
+										the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+									</p>
 
-					<div class="ConfigFooter">
-						<hr>
-						<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()">Save all changes</button>
+									<p>
+										The complete content of license is provided in file COPYING within distribution and also available 
+										<a href="https://www.gnu.org/licenses/gpl-2.0.html">online</a>.
+									</p>
+
+									<p>Additional exemption: compiling, linking, and/or using OpenSSL is allowed.</p>
+
+									<h4>Par2cmdline-turbo</h4>
+									<p>
+										NZBGet uses 
+										<a href="https://github.com/nzbgetcom/par2cmdline-turbo">Par2cmdline-turbo</a> by 
+										<a href="https://github.com/animetosho/par2cmdline-turbo/commits?author=animetosho">animetosho</a>.
+									</p>
+									<p>Par2cmdline is licensed under the 
+										<a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html">GPLv2 license</a>.
+									</p>
+
+									<h4>jQuery</h4>
+									<p>
+										NZBGet web-interface uses <a href="http://jquery.com">jQuery</a>. The jQuery Project is run by a distributed group of volunteers that all want to see jQuery become the best JavaScript tool possible.
+									</p>
+									<p>
+										jQuery is licensed under the <a href="https://jquery.com/license/">MIT</a> license.
+									</p>
+
+									<h4>Bootstrap</h4>
+									<p>
+										NZBGet web-interface uses 
+										<a href="https://getbootstrap.com/2.3.2/">Bootstrap</a>. Designed and built with all the love in the world @twitter by @mdo and @fat.
+									</p>
+									<p>
+										Bootstrap code is licensed under the 
+										<a href="https://www.apache.org/licenses/LICENSE-2.0">Apache License v2.0</a>.
+									</p>
+
+									<h4>Raphaël</h4>
+									<p>
+										NZBGet web-interface makes use of 
+										<a href="https://dmitrybaranovskiy.github.io/raphael/">Raphaël</a> built by Dmitry Baranovskiy.
+									</p>
+									<p>
+										Raphaël code is licensed under the 
+										<a href="https://dmitrybaranovskiy.github.io/raphael/license.html">MIT license</a>.
+									</p>
+
+									<h4>Elycharts</h4>
+									<p>
+										For charts NZBGet relies on <a href="https://elycharts.com/">Elycharts</a> by Void Labs s.n.c.
+									</p>
+									<p>
+										Elycharts code is licensed under the <a href="https://elycharts.com/license/">MIT license</a>.
+									</p>
+
+									<h4>iconSweets</h4>
+									<p>
+										NZBGet web-interface includes selected icons from collections 
+										<a href="https://designbombs.com/iconsweets/">iconSweets</a> and 
+										<a href="https://www.designbombs.com/iconsweets2/">iconSweets2</a> by 
+										<a href="https://yummygum.com/">Yummygum</a>.
+									</p>
+									<p>
+										The icons are generally licensed under a custom license but used in NZBGet with author's permission.
+									</p>
+
+									<h4>selfh.st/icons</h4>
+									<p>
+										<a href="https://selfh.st/icons/">selfhst</a> is a collection of logos and icons for self-hosted (and non-self-hosted) software under
+										<a href="https://creativecommons.org/licenses/by/4.0/legalcode.en" target="_blank" rel="noopener">CC BY 4.0</a> license.
+									</p>
+
+									<h4>Google Material Icons</h4>
+									<p>
+										Material Icons is an icon font useful for implementing Google's Material design language licensed under the <a href="https://www.apache.org/licenses/LICENSE-2.0"> Apache license</a>.
+									</p>
+
+									<h4>Boost</h4>
+									<p>
+										NZBGet uses <a href="https://www.boost.org/">Boost</a> by Boost organization and wider Boost community
+									</p>
+									<p>
+										Boost is licensed under the 
+										<a href="https://www.boost.org/users/license.html">Boost Software License</a>.
+									</p>
+								</div>
+						</div>
+
+						<div class="visible-tablet visible-phone">
+							<hr>
+							<div class="flex justify-content-center">
+								<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()">
+									Save all changes
+								</button>
+							</div>
+							<hr>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -1014,7 +1137,7 @@
 				<div id="Statistics_Spinner" class="statistics__spinner-container ">
 					<i class="material-icon spinner statistics__spinner ">progress_activity</i>
 				</div>
-				<div id="Statistics_Table" class="hide"></div>
+				<div id="Statistics_Table" class="statistics__table hide"></div>
 			</div>
 
 			<div id="Statistics_NoStatisticsAvailable" class="statistics__no-statistics hide">

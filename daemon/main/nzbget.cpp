@@ -232,8 +232,8 @@ private:
 	bool m_reloading = false;
 	bool m_daemonized = false;
 	bool m_stopped = false;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 
 	void Init();
 	void Final();
@@ -271,7 +271,6 @@ void NZBGet::Init()
 
 	if (!m_reloading)
 	{
-		Thread::Init();
 		Connection::Init();
 #ifndef DISABLE_TLS
 		TlsSocket::Init();
@@ -755,8 +754,8 @@ void NZBGet::DoMainLoop()
 		if (m_options->GetServerMode() && !m_stopped)
 		{
 			// wait for stop signal
-			Guard guard(m_waitMutex);
-			m_waitCond.Wait(m_waitMutex, [&]{ return m_stopped; });
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait(lk, [&]{ return m_stopped; });
 		}
 	}
 
@@ -962,9 +961,9 @@ void NZBGet::Stop(bool reload)
 	}
 
 	// trigger stop/reload signal
-	Guard guard(m_waitMutex);
+	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_stopped = true;
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 void NZBGet::PrintOptions()
