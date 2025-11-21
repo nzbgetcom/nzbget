@@ -26,44 +26,44 @@
 
 namespace Utf8
 {
-	std::optional<std::wstring> Utf8ToWide(const std::string& str)
+	std::optional<std::wstring> Utf8ToWide(std::string_view str)
 	{
 		if (str.empty()) return L"";
 
-		int requiredSize = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, nullptr, 0);
+		int requiredSize = MultiByteToWideChar(CP_UTF8, 0, str.data(), -1, nullptr, 0);
 		if (requiredSize <= 0) return std::nullopt;
 
 		if (requiredSize <= STACK_BUFFER_SIZE)
 		{
 			wchar_t buffer[STACK_BUFFER_SIZE];
-			int result = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, STACK_BUFFER_SIZE);
+			int result = MultiByteToWideChar(CP_UTF8, 0, str.data(), -1, buffer, STACK_BUFFER_SIZE);
 			if (result <= 0) return std::nullopt;
 			return std::wstring(buffer);
 		}
 
 		auto buffer = std::make_unique<wchar_t[]>(requiredSize);
-		int result = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer.get(), requiredSize);
+		int result = MultiByteToWideChar(CP_UTF8, 0, str.data(), -1, buffer.get(), requiredSize);
 		if (result <= 0) return std::nullopt;
 		return std::wstring(buffer.get());
 	}
 
-	std::optional<std::string> WideToUtf8(const std::wstring& wstr)
+	std::optional<std::string> WideToUtf8(std::wstring_view wstr)
 	{
 		if (wstr.empty()) return "";
 
-		int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, nullptr, 0, nullptr, nullptr);
+		int requiredSize = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), -1, nullptr, 0, nullptr, nullptr);
 		if (requiredSize <= 0) return std::nullopt;
 
 		if (requiredSize <= STACK_BUFFER_SIZE)
 		{
 			char buffer[STACK_BUFFER_SIZE];
-			int result = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, buffer, STACK_BUFFER_SIZE, nullptr, nullptr);
+			int result = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), -1, buffer, STACK_BUFFER_SIZE, nullptr, nullptr);
 			if (result <= 0) return std::nullopt;
 			return std::string(buffer);
 		}
 
 		auto buffer = std::make_unique<char[]>(requiredSize);
-		int result = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), -1, buffer.get(), requiredSize, nullptr, nullptr);
+		int result = WideCharToMultiByte(CP_UTF8, 0, wstr.data(), -1, buffer.get(), requiredSize, nullptr, nullptr);
 		if (result <= 0) return std::nullopt;
 		return std::string(buffer.get());
 	}
