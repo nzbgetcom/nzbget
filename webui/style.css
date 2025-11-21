@@ -59,6 +59,14 @@ body {
 	color: #b94a48;
 }
 
+.flex {
+	display: flex;
+}
+
+.justify-content-center {
+	justify-content: center;
+}
+
 .flex-center {
 	display: flex;
 	align-items: center;
@@ -102,6 +110,10 @@ body {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+}
+
+.statistics__table {
+	position: relative;
 }
 
 .system-info__spinner-container {
@@ -179,27 +191,26 @@ body {
 	pointer-events: none;
 }
 
-.list-item--nested {
-	margin-left: 10px;
+.list-item--nested a {
+	padding-left: 25px!important;
 }
 
 
 /* NAVBAR */
 .navbar-fixed-top {
-	margin-bottom: 18px;
 	margin-left: 0px;
 	margin-right: 0px;
 	position: static;
 }
 
-
-/* fixed navbar (applied dynamically if screen is wide enough) */
-body.navfixed {
-	margin-top: 57px;
+body {
+	height: 100vh;
+	width: 100vw;
+	overflow: hidden;
 }
 
 body.navfixed .navbar-fixed-top  {
-	position: fixed;
+	position: static;
 }
 
 body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
@@ -1584,6 +1595,147 @@ ul.help > li {
 }
 
 /*** CONFIG PAGE */
+.config__container {
+	display: flex;
+	overflow: hidden;
+	padding-top: 15px;
+}
+
+.config-loading-alert {
+	margin-top: 15px;
+}
+
+#DownloadsTab,
+#HistoryTab,
+#StatisticsTab,
+#MessagesTab,
+.config__container {
+	height: calc(100vh - 70px);
+}
+
+#DownloadsTab,
+#HistoryTab,
+#StatisticsTab,
+#MessagesTab {
+	overflow: auto;
+	padding-top: 15px;
+}
+
+.config__aside {
+	flex-basis: 320px;
+	overflow: auto;
+}
+
+.config__main {
+	max-width: 960px;
+	width: 100%;
+	padding: 0 15px;
+	overflow: auto;
+}
+
+@media (max-width: 1028px) {
+	.container-fluid {
+		padding: 0 10px;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab,
+	.config__container {
+		height: calc(100vh - 100px);
+	}
+}
+
+@media (max-width: 960px) {
+	.container-fluid {
+		padding: 0 10px;
+	}
+}
+
+@media (max-width: 768px) {
+	body {
+		overflow: auto;
+	}
+
+	.container-fluid {
+		padding: 0 5px;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab,
+	.config__container {
+		height: 100%;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab {
+		overflow: auto;
+		padding-top: 10px;
+	}
+
+	.config__container {
+		display: flex;
+		flex-direction: column;
+		gap: 0px;
+		padding-top: 10px;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+
+	.config__aside {
+		min-width: 100%;
+		flex-basis: auto;
+		overflow-x: hidden;
+	}
+
+	.config__main {
+		height: auto;
+		width: auto;
+		padding: 0 5px;
+		overflow-x: auto;
+	}
+}
+
+@media (min-width: 1280px) {
+	.config__container {
+		justify-content: center;
+	}
+}
+
+.visible-tablet,
+.visible-desktop {
+    display: none;
+}
+
+.visible-phone {
+    display: block;
+}
+
+/* Tablets */
+@media (max-width: 480px) {
+    .visible-phone {
+        display: none;
+    }
+    .visible-tablet {
+        display: block;
+    }
+}
+
+/* Desktops */
+@media (min-width: 768px) {
+    .visible-tablet {
+        display: none;
+    }
+    .visible-desktop {
+        display: block;
+    }
+}
+
 #ConfigNav.nav-list.long-list a {
 	padding-top: 3px;
 	padding-bottom: 3px;
@@ -2029,10 +2181,6 @@ body.phone,
 }
 
 /* NAVBAR */
-.phone .navbar-fixed-top {
-	margin-bottom: 8px;
-}
-
 .phone .navbar-container {
 	padding-left: 5px;
 	padding-right: 5px;
@@ -2581,6 +2729,10 @@ input[type="date"] {
 @media (max-width: 560px) {
 	.phone .search-clear {
 		right: 25px;
+	}
+
+	.list-item--nested a {
+		padding-left: 0px!important;
 	}
 }
 

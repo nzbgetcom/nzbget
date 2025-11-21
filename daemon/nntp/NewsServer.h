@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2015 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,30 +37,30 @@ public:
 		const char* user, const char* pass, bool joinGroup,
 		bool tls, const char* cipher, int maxConnections, int retention,
 		int level, int group, bool optional, unsigned int certVerificationfLevel);
-	int GetId() { return m_id; }
-	int GetStateId() { return m_stateId; }
+	int GetId() const { return m_id; }
+	int GetStateId() const { return m_stateId; }
 	void SetStateId(int stateId) { m_stateId = stateId; }
-	bool GetActive() { return m_active; }
+	bool GetActive() const { return m_active; }
 	void SetActive(bool active) { m_active = active; }
-	const char* GetName() { return m_name; }
-	int GetGroup() { return m_group; }
-	const char* GetHost() { return m_host; }
-	int GetPort() { return m_port; }
-	int GetIpVersion() { return m_ipVersion; }
-	const char* GetUser() { return m_user; }
-	const char* GetPassword() { return m_password; }
-	int GetMaxConnections() { return m_maxConnections; }
-	int GetLevel() { return m_level; }
-	int GetNormLevel() { return m_normLevel; }
+	const char* GetName() const { return m_name; }
+	int GetGroup() const { return m_group; }
+	const char* GetHost() const { return m_host; }
+	int GetPort() const { return m_port; }
+	int GetIpVersion() const { return m_ipVersion; }
+	const char* GetUser() const { return m_user; }
+	const char* GetPassword() const { return m_password; }
+	int GetMaxConnections() const { return m_maxConnections; }
+	int GetLevel() const { return m_level; }
+	int GetNormLevel() const { return m_normLevel; }
 	void SetNormLevel(int level) { m_normLevel = level; }
-	int GetJoinGroup() { return m_joinGroup; }
-	bool GetTls() { return m_tls; }
-	const char* GetCipher() { return m_cipher; }
-	int GetRetention() { return m_retention; }
-	bool GetOptional() { return m_optional; }
-	time_t GetBlockTime() { return m_blockTime; }
+	int GetJoinGroup() const { return m_joinGroup; }
+	bool GetTls() const { return m_tls; }
+	const char* GetCipher() const { return m_cipher; }
+	int GetRetention() const { return m_retention; }
+	bool GetOptional() const { return m_optional; }
+	time_t GetBlockTime() const { return m_blockTime; }
 	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
-	unsigned int GetCertVerificationLevel() { return m_certVerificationfLevel; }
+	unsigned int GetCertVerificationLevel() const { return m_certVerificationfLevel; }
 
 private:
 	int m_id;

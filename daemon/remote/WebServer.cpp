@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -626,6 +626,10 @@ const char* WebProcessor::DetectContentType(const char* filename)
 		else if (!strcasecmp(ext, ".gif"))
 		{
 			return "image/gif";
+		}
+		else if (!strcasecmp(ext, ".svg"))
+		{
+			return "image/svg+xml";
 		}
 	}
 	return nullptr;

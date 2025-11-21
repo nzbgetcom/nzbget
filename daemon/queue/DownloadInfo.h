@@ -651,7 +651,7 @@ public:
 	const char* MakeTextStatus(bool ignoreScriptStatus);
 	void AddMessage(Message::EKind kind, const char* text, bool print = true);
 	void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3);
-	int GetMessageCount() { return m_messageCount; }
+	int GetMessageCount() const { return m_messageCount; }
 	void SetMessageCount(int messageCount) { m_messageCount = messageCount; }
 	int GetCachedMessageCount() { return m_cachedMessageCount; }
 	GuardedMessageList GuardCachedMessages() { return GuardedMessageList(&m_messages, &m_logMutex); }
@@ -765,7 +765,7 @@ private:
 	bool m_changed = false;
 	time_t m_queueScriptTime = 0;
 	bool m_parFull = false;
-	int m_messageCount = 0;
+	std::atomic<int> m_messageCount{0};
 	int m_cachedMessageCount = 0;
 	int m_feedId = 0;
 	bool m_allFirst = false;

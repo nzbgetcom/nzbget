@@ -382,7 +382,7 @@ void NzbInfo::AddMessage(Message::EKind kind, const char * text, bool print)
 	if (g_Options->GetServerMode() && g_Options->GetNzbLog())
 	{
 		g_DiskState->AppendNzbMessage(m_id, kind, text);
-		m_messageCount++;
+		m_messageCount.fetch_add(1, std::memory_order_relaxed);
 	}
 
 	while (m_messages.size() > (uint32)g_Options->GetLogBuffer())

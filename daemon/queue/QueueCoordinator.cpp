@@ -255,11 +255,13 @@ void QueueCoordinator::Run()
 		// sleep longer in StandBy
 		if (standBy)
 		{
-			Guard guard(m_waitMutex);
 			// sleeping max. 2 seconds; can't sleep much longer because we can't rely on
 			// notifications from 'WorkState' and we also have periodical work to do here
 			waitInterval = std::min(waitInterval * 2, 2000);
-			m_waitCond.WaitFor(m_waitMutex, waitInterval, [&]{ return m_hasMoreJobs || IsStopped(); });
+
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait_for(lk, std::chrono::milliseconds(waitInterval),
+								[&] { return m_hasMoreJobs || IsStopped(); });
 		}
 		else
 		{
@@ -298,9 +300,9 @@ void QueueCoordinator::WakeUp()
 {
 	debug("Waking up QueueCoordinator");
 	// Resume Run()
-	Guard guard(m_waitMutex);
+	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_hasMoreJobs = true;
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 void QueueCoordinator::WaitJobs()
@@ -499,8 +501,8 @@ void QueueCoordinator::Stop()
 	debug("ArticleDownloads are notified");
 
 	// Resume Run() to exit it
-	Guard guard(m_waitMutex);
-	m_waitCond.NotifyAll();
+	std::lock_guard<std::mutex> guard(m_waitMutex);
+	m_waitCond.notify_all();
 }
 
 /*

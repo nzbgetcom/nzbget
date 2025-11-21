@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -29,8 +30,8 @@ class PrePostProcessor : public Thread, public Observer
 {
 public:
 	PrePostProcessor();
-	virtual void Run();
-	virtual void Stop();
+	void Run() override;
+	void Stop() override;
 	bool HasMoreJobs() { return m_queuedJobs > 0; }
 	int GetJobCount() { return m_queuedJobs; }
 	bool EditList(DownloadQueue* downloadQueue, IdList* idList, DownloadQueue::EEditAction action,
@@ -39,13 +40,13 @@ public:
 	void NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 
 protected:
-	virtual void Update([[maybe_unused]] Subject* caller, void* aspect) { DownloadQueueUpdate(aspect); }
+	void Update(Subject*, void* aspect) override { DownloadQueueUpdate(aspect); }
 
 private:
 	int m_queuedJobs = 0;
 	RawNzbList m_activeJobs;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 
 	void CheckPostQueue();
 	void CheckRequestPar(DownloadQueue* downloadQueue);

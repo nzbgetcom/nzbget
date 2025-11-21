@@ -522,15 +522,15 @@ void Options::CheckDir(CString& dir, const char* optionName,
 
 void Options::CheckDirs()
 {
-	const char* mainDir = GetOption(MAINDIR.data());
+	m_mainDir = GetOption(MAINDIR.data());
 
-	CheckDir(m_destDir, DESTDIR.data(), mainDir, false, false);
-	CheckDir(m_interDir, INTERDIR.data(), mainDir, true, false);
-	CheckDir(m_tempDir, TEMPDIR.data(), mainDir, false, true);
-	CheckDir(m_queueDir, QUEUEDIR.data(), mainDir, false, true);
+	CheckDir(m_destDir, DESTDIR.data(), m_mainDir, false, true);
+	CheckDir(m_interDir, INTERDIR.data(), m_mainDir, true, true);
+	CheckDir(m_tempDir, TEMPDIR.data(), m_mainDir, false, true);
+	CheckDir(m_queueDir, QUEUEDIR.data(), m_mainDir, false, true);
 	CheckDir(m_webDir, WEBDIR.data(), nullptr, true, false);
-	CheckDir(m_scriptDir, SCRIPTDIR.data(), mainDir, true, false);
-	CheckDir(m_nzbDir, NZBDIR.data(), mainDir, false, true);
+	CheckDir(m_scriptDir, SCRIPTDIR.data(), m_mainDir, true, true);
+	CheckDir(m_nzbDir, NZBDIR.data(), m_mainDir, false, true);
 }
 
 void Options::InitOptions()
