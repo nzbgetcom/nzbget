@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2008-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -194,9 +194,9 @@ void Scheduler::ExecuteTask(Task* task)
 	switch (task->m_command)
 	{
 		case scDownloadRate:
-			if (!task->m_param.Empty())
+			if (!task->m_param.empty())
 			{
-				g_WorkState->SetSpeedLimit(atoi(task->m_param) * 1024);
+				g_WorkState->SetSpeedLimit(atoi(task->m_param.c_str()) * 1024);
 				m_downloadRateChanged = true;
 			}
 			break;
@@ -223,19 +223,19 @@ void Scheduler::ExecuteTask(Task* task)
 		case scProcess:
 			if (executeProcess)
 			{
-				SchedulerScriptController::StartScript(task->m_param, task->m_command == scProcess, task->m_id);
+				SchedulerScriptController::StartScript(task->m_param.c_str(), task->m_command == scProcess, task->m_id);
 			}
 			break;
 
 		case scActivateServer:
 		case scDeactivateServer:
-			EditServer(task->m_command == scActivateServer, task->m_param);
+			EditServer(task->m_command == scActivateServer, task->m_param.c_str());
 			break;
 
 		case scFetchFeed:
 			if (executeProcess)
 			{
-				FetchFeed(task->m_param);
+				FetchFeed(task->m_param.c_str());
 				break;
 			}
 	}

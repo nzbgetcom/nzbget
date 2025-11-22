@@ -16,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -26,7 +26,6 @@
 #include <string_view>
 #include "NString.h"
 #include "Thread.h"
-#include "Util.h"
 #include "FeedInfo.h"
 
 
@@ -303,20 +302,29 @@ public:
 	class Category
 	{
 	public:
-		Category(const char* name, const char* destDir, bool unpack, const char* extensions) :
-			m_name(name), m_destDir(destDir), m_unpack(unpack), m_extensions(extensions) {}
-		const char* GetName() { return m_name; }
-		const char* GetDestDir() { return m_destDir; }
-		bool GetUnpack() { return m_unpack; }
-		const char* GetExtensions() { return m_extensions; }
+		Category(const char* name, const char* destDir, bool unpack, const char* extensions)
+			: m_name(name ? name : ""),
+			  m_destDir(destDir ? destDir : ""),
+			  m_extensions(extensions ? extensions : ""),
+			  m_destDirPath(m_destDir),
+			  m_unpack(unpack)
+		{
+		}
+		const char* GetName() const { return m_name.c_str(); }
+		const char* GetDestDir() const { return m_destDir.c_str(); }
+		const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
+		bool GetUnpack() const { return m_unpack; }
+		const char* GetExtensions() const { return m_extensions.c_str(); }
 		NameList* GetAliases() { return &m_aliases; }
+		const NameList* GetAliases() const { return &m_aliases; }
 
 	private:
-		CString m_name;
-		CString m_destDir;
-		bool m_unpack;
-		CString m_extensions;
+		const std::string m_name;
+		const std::string m_destDir;
+		const std::string m_extensions;
+		const boost::filesystem::path m_destDirPath;
 		NameList m_aliases;
+		const bool m_unpack;
 	};
 
 	typedef std::deque<Category> CategoriesBase;
@@ -495,6 +503,26 @@ public:
 	void SetRemoteClientMode(bool remoteClientMode) { m_remoteClientMode = remoteClientMode; }
 	bool GetRemoteClientMode() const { return m_remoteClientMode; }
 
+	const boost::filesystem::path& GetAppDirPath() const { return m_appDirPath; }
+	const boost::filesystem::path& GetConfigFilePath() const { return m_configFilePath; }
+	const boost::filesystem::path& GetMainDirPath() const { return m_mainDirPath; }
+	const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
+	const boost::filesystem::path& GetInterDirPath() const { return m_interDirPath; }
+	const boost::filesystem::path& GetTempDirPath() const { return m_tempDirPath; }
+	const boost::filesystem::path& GetQueueDirPath() const { return m_queueDirPath; }
+	const boost::filesystem::path& GetNzbDirPath() const { return m_nzbDirPath; }
+	const boost::filesystem::path& GetWebDirPath() const { return m_webDirPath; }
+	const boost::filesystem::path& GetConfigTemplatePath() const { return m_configTemplatePath; }
+	const boost::filesystem::path& GetScriptDirPath() const { return m_scriptDirPath; }
+	const boost::filesystem::path& GetSecureCertPath() const { return m_secureCertPath; }
+	const boost::filesystem::path& GetSecureKeyPath() const { return m_secureKeyPath; }
+	const boost::filesystem::path& GetCertStorePath() const { return m_certStorePath; }
+	const boost::filesystem::path& GetLockFilePath() const { return m_lockFilePath; }
+	const boost::filesystem::path& GetLogFilePath() const { return m_logFilePath; }
+	const boost::filesystem::path& GetUnpackPassFilePath() const { return m_unpackPassFilePath; }
+	const boost::filesystem::path& GetUnrarPath() const { return m_unrarPath; }
+	const boost::filesystem::path& GetSevenZipPath() const { return m_sevenZipPath; }
+
 private:
 	void CheckDirs();
 
@@ -507,6 +535,26 @@ private:
 	Extender* m_extender;
 
 	// Options
+	boost::filesystem::path m_appDirPath;
+	boost::filesystem::path m_configFilePath;
+	boost::filesystem::path m_mainDirPath;
+	boost::filesystem::path m_destDirPath;
+	boost::filesystem::path m_interDirPath;
+	boost::filesystem::path m_tempDirPath;
+	boost::filesystem::path m_queueDirPath;
+	boost::filesystem::path m_nzbDirPath;
+	boost::filesystem::path m_webDirPath;
+	boost::filesystem::path m_configTemplatePath;
+	boost::filesystem::path m_scriptDirPath;
+	boost::filesystem::path m_secureCertPath;
+	boost::filesystem::path m_secureKeyPath;
+	boost::filesystem::path m_certStorePath;
+	boost::filesystem::path m_lockFilePath;
+	boost::filesystem::path m_logFilePath;
+	boost::filesystem::path m_unpackPassFilePath;
+	boost::filesystem::path m_unrarPath;
+	boost::filesystem::path m_sevenZipPath;
+
 	bool m_configErrors = false;
 	int m_configLine = 0;
 	CString m_appDir;
@@ -648,6 +696,8 @@ private:
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);
+	void SetPathOption(boost::filesystem::path& pathOpt, std::string_view value);
+	void SetCmdOption(boost::filesystem::path& pathOpt, std::string_view value);
 	bool SetOptionString(const char* option);
 	bool ValidateOptionName(const char* optname, const char* optvalue);
 	void LoadConfigFile();
