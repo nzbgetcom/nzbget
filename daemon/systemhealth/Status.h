@@ -21,24 +21,24 @@
 #define STATUS_H
 
 #include <string>
+#include <utility>
 
 #include "Json.h"
 #include "Xml.h"
 
 namespace SystemHealth
 {
+enum class Severity
+{
+	Ok,
+	Info,
+	Warning,
+	Error
+};
 
 class Status final
 {
 public:
-	enum class Severity
-	{
-		Ok,
-		Info,
-		Warning,
-		Error
-	};
-
 	Status() = default;
 
 	static Status Ok() { return Status(Severity::Ok, ""); }
@@ -49,10 +49,10 @@ public:
 	}
 	static Status Error(std::string message) { return Status(Severity::Error, std::move(message)); }
 
-	template <typename Func>
-	Status And(Func nextCheck) const
+	template <typename Fn, typename... Args>
+	Status And(Fn&& nextCheck, Args&&... args) const
 	{
-		if (IsOk()) return nextCheck();
+		if (IsOk()) return std::invoke(std::forward<Fn>(nextCheck), std::forward<Args>(args)...);
 		return *this;
 	}
 
@@ -75,7 +75,7 @@ private:
 	Severity m_severity = Severity::Ok;
 };
 
-std::string_view SeverityToStr(Status::Severity severity);
+std::string_view SeverityToStr(Severity severity);
 
 Json::JsonObject ToJson(const Status& status);
 Xml::XmlNodePtr ToXml(const Status& status);

@@ -61,8 +61,7 @@ Status DuplicateNamesValidator::Validate() const
 
 		if (names.count(name))
 		{
-			return Status::Warning("Duplicate category name detected: '" + std::string(name) +
-								   "'.");
+			return Status::Warning("Duplicate category name detected: '" + std::string(name) + "'");
 		}
 		names.insert(name);
 	}

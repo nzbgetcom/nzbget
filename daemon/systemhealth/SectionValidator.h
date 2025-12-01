@@ -35,12 +35,6 @@ struct OptionStatus
 	Status status;
 };
 
-struct Alert
-{
-	std::string name;
-	Status status;
-};
-
 struct SubsectionReport
 {
 	std::string name;
@@ -50,7 +44,7 @@ struct SubsectionReport
 struct SectionReport
 {
 	std::string name;
-	std::vector<Alert> alerts;
+	std::vector<Status> issues;
 	std::vector<OptionStatus> options;
 	std::vector<SubsectionReport> subsections;
 };
@@ -67,12 +61,10 @@ protected:
 };
 
 Json::JsonObject ToJson(const OptionStatus& status);
-Json::JsonObject ToJson(const Alert& alert);
 Json::JsonObject ToJson(const SubsectionReport& report);
 Json::JsonObject ToJson(const SectionReport& report);
 
 Xml::XmlNodePtr ToXml(const OptionStatus& status);
-Xml::XmlNodePtr ToXml(const Alert& alert);
 Xml::XmlNodePtr ToXml(const SubsectionReport& report);
 Xml::XmlNodePtr ToXml(const SectionReport& report);
 }  // namespace SystemHealth

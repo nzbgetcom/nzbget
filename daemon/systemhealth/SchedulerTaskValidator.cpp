@@ -58,22 +58,21 @@ Status TimeValidator::Validate() const
 
 Status WeekDaysValidator::Validate() const
 {
-	int bits = m_task.GetWeeDaysBits();	 // Using the spelling from your snippet
+	int bits = m_task.GetWeeDaysBits();
 
 	if (bits == 0)
 	{
-		return Status::Warning("Task is not scheduled for any days.");
+		return Status::Warning("Task is not scheduled for any days");
 	}
 
 	if (bits < 0 || bits > 127)	 // Bits 1-7 (1<<0 to 1<<6) = max 127
 	{
-		return Status::Error("Invalid weekdays configuration.");
+		return Status::Error("Invalid weekdays configuration");
 	}
 
 	return Status::Ok();
 }
 
-// ParamValidator: validate that required params exist and are well-formed
 Status ParamValidator::Validate() const
 {
 	const std::string param = m_task.GetParam();
@@ -85,7 +84,7 @@ Status ParamValidator::Validate() const
 		{
 			if (param.empty())
 				return Status::Warning(
-					"" + std::string("No parameter for download rate; task will be ignored."));
+					"" + std::string("No parameter for download rate; task will be ignored"));
 
 			char* endptr = nullptr;
 			errno = 0;
@@ -110,7 +109,7 @@ Status ParamValidator::Validate() const
 			if (param.empty())
 			{
 				return Status::Error(
-					"Parameter required for this scheduled command but it's empty.");
+					"Parameter required for this scheduled command but it's empty");
 			}
 			return Status::Ok();
 		}
@@ -124,7 +123,6 @@ Status CommandValidator::Validate() const
 {
 	const auto cmd = m_task.GetCommand();
 
-	// Validate that command is within the known enum range.
 	switch (cmd)
 	{
 		case ::Scheduler::scPauseDownload:

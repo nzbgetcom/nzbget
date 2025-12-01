@@ -17,7 +17,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "UnpackValidator.h"
 #include "nzbget.h"
 
 #include "ExtensionManager.h"
@@ -36,6 +35,7 @@
 #include "SchedulerTasksValidator.h"
 #include "FeedsValidator.h"
 #include "CategoriesValidator.h"
+#include "UnpackValidator.h"
 #include "DisplayValidator.h"
 #include "Status.h"
 #include "Json.h"
@@ -70,14 +70,9 @@ HealthReport Service::Diagnose() const
 {
 	HealthReport report;
 	report.sections.reserve(m_validators.size());
-	report.status = Status::Severity::Ok;
-	bool hasErrors = false;
-	bool hasWarnings = false;
-	bool hasInfo = false;
 
 	{
 		std::lock_guard<std::mutex> lock(m_mutex);
-		// TODO: should swap?
 		report.alerts = m_alerts;
 	}
 
@@ -86,56 +81,101 @@ HealthReport Service::Diagnose() const
 		report.sections.push_back(validator->Validate());
 	}
 
-	for (const auto& sectionReport : report.sections)
-	{
-		for (const auto& [name, status] : sectionReport.alerts)
-		{
-			if (!status.IsOk())
-			{
-				if (status.IsError()) hasErrors = true;
-				if (status.IsWarning()) hasWarnings = true;
-				if (status.IsInfo()) hasInfo = true;
-				report.alerts.push_back({name, status});
-			}
-		}
-
-		for (const auto& subsectionReport : sectionReport.subsections)
-		{
-			for (const auto& option : subsectionReport.options)
-			{
-				if (!option.status.IsOk())
-				{
-					if (option.status.IsError()) hasErrors = true;
-					if (option.status.IsWarning()) hasWarnings = true;
-					if (option.status.IsInfo()) hasInfo = true;
-					report.alerts.push_back({option.name, option.status});
-				}
-			}
-		}
-
-		for (const auto& option : sectionReport.options)
-		{
-			if (!option.status.IsOk())
-			{
-				if (option.status.IsError()) hasErrors = true;
-				if (option.status.IsWarning()) hasWarnings = true;
-				if (option.status.IsInfo()) hasInfo = true;
-				report.alerts.push_back({option.name, option.status});
-			}
-		}
-	}
-
-	if (hasInfo) report.status = Status::Severity::Info;
-	if (hasWarnings) report.status = Status::Severity::Warning;
-	if (hasErrors) report.status = Status::Severity::Error;
-
 	return report;
 }
 
 void Service::ReportAlert(Alert alert)
 {
 	std::lock_guard<std::mutex> lock(m_mutex);
+
+	auto it = std::find_if(
+		m_alerts.begin(), m_alerts.end(), [&](const Alert& existing)
+		{ return existing.source == alert.source && existing.category == alert.category; });
+
+	if (alert.status.IsOk())
+	{
+		if (it != m_alerts.end()) m_alerts.erase(it);
+		return;
+	}
+
+	if (it != m_alerts.end())
+	{
+		it->status = std::move(alert.status);
+		it->timestamp = alert.timestamp;
+		return;
+	}
+
 	m_alerts.push_back(std::move(alert));
+}
+
+void Log(const HealthReport& report)
+{
+	for (const auto& alert : report.alerts) Log(alert);
+	for (const auto& sectionReport : report.sections) Log(sectionReport);
+}
+
+void Log(const SectionReport& report)
+{
+	for (const auto& issue : report.issues)
+	{
+		if (issue.IsError())
+			error("%s", issue.GetMessage().c_str());
+		else if (issue.IsWarning())
+			warn("%s", issue.GetMessage().c_str());
+		else if (issue.IsInfo())
+			info("%s", issue.GetMessage().c_str());
+	}
+
+	for (const auto& [optName, status] : report.options)
+	{
+		if (status.IsError())
+			error("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+		else if (status.IsWarning())
+			warn("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+		else if (status.IsInfo())
+			info("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+	}
+
+	for (const auto& section : report.subsections)
+	{
+		for (const auto& [optName, status] : section.options)
+		{
+			if (status.IsError())
+				error("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+					  status.GetMessage().c_str());
+			else if (status.IsWarning())
+				warn("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+					 status.GetMessage().c_str());
+			else if (status.IsInfo())
+				info("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+					 status.GetMessage().c_str());
+		}
+	}
+}
+
+void Log(const Alert& alert)
+{
+	if (alert.status.IsError())
+		error("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
+			  alert.status.GetMessage().c_str());
+	else if (alert.status.IsWarning())
+		warn("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
+			 alert.status.GetMessage().c_str());
+	else if (alert.status.IsInfo())
+		info("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
+			 alert.status.GetMessage().c_str());
+}
+
+Json::JsonObject ToJson(const Alert& alert)
+{
+	Json::JsonObject alertJson;
+	alertJson["Source"] = alert.source;
+	alertJson["Category"] = alert.category;
+	alertJson["Severity"] = SeverityToStr(alert.status.GetSeverity());
+	alertJson["Message"] = alert.status.GetMessage();
+	alertJson["Timestamp"] = alert.timestamp.time_since_epoch().count();
+
+	return alertJson;
 }
 
 std::string ToJsonStr(const HealthReport& report)
@@ -154,61 +194,10 @@ std::string ToJsonStr(const HealthReport& report)
 		sectionsArrayJson.push_back(ToJson(section));
 	}
 
-	reportJson["Status"] = SeverityToStr(report.status);
 	reportJson["Alerts"] = std::move(alertsArrayJson);
 	reportJson["Sections"] = std::move(sectionsArrayJson);
 
 	return Json::serialize(reportJson);
 }
 
-namespace
-{
-const xmlChar* XmlLiteral(const char* literal) { return reinterpret_cast<const xmlChar*>(literal); }
-
-template <typename Collection, typename Converter>
-void AppendArrayMember(xmlNodePtr structNode, const char* name, const Collection& collection,
-					   Converter converter)
-{
-	xmlNodePtr memberNode = xmlNewNode(nullptr, XmlLiteral("member"));
-	xmlNewChild(memberNode, nullptr, XmlLiteral("name"), XmlLiteral(name));
-
-	xmlNodePtr valueNode = xmlNewNode(nullptr, XmlLiteral("value"));
-	xmlNodePtr arrayNode = xmlNewNode(nullptr, XmlLiteral("array"));
-	xmlNodePtr dataNode = xmlNewNode(nullptr, XmlLiteral("data"));
-
-	for (const auto& item : collection)
-	{
-		xmlNodePtr valueWrapper = xmlNewNode(nullptr, XmlLiteral("value"));
-		xmlAddChild(valueWrapper, converter(item));
-		xmlAddChild(dataNode, valueWrapper);
-	}
-
-	xmlAddChild(arrayNode, dataNode);
-	xmlAddChild(valueNode, arrayNode);
-	xmlAddChild(memberNode, valueNode);
-	xmlAddChild(structNode, memberNode);
-}
-}  // namespace
-
-std::string ToXmlStr(const HealthReport& report)
-{
-	xmlNodePtr rootNode = xmlNewNode(nullptr, XmlLiteral("value"));
-	xmlNodePtr structNode = xmlNewNode(nullptr, XmlLiteral("struct"));
-
-	const auto statusStr = SeverityToStr(report.status);
-
-	Xml::AddNewNode(structNode, "Status", "string", statusStr.data());
-
-	AppendArrayMember(structNode, "Alerts", report.alerts,
-					  [](const Alert& alert) { return ToXml(alert); });
-	AppendArrayMember(structNode, "Sections", report.sections,
-					  [](const SectionReport& section) { return ToXml(section); });
-
-	xmlAddChild(rootNode, structNode);
-
-	std::string result = Xml::Serialize(rootNode);
-	xmlFreeNode(rootNode);
-
-	return result;
-}
 }  // namespace SystemHealth

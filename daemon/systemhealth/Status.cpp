@@ -48,17 +48,17 @@ Xml::XmlNodePtr ToXml(const Status& status)
 	return node;
 }
 
-std::string_view SeverityToStr(Status::Severity severity)
+std::string_view SeverityToStr(Severity severity)
 {
 	switch (severity)
 	{
-		case Status::Severity::Ok:
+		case Severity::Ok:
 			return "Ok";
-		case Status::Severity::Info:
+		case Severity::Info:
 			return "Info";
-		case Status::Severity::Warning:
+		case Severity::Warning:
 			return "Warning";
-		case Status::Severity::Error:
+		case Severity::Error:
 			return "Error";
 	}
 	return "Ok";

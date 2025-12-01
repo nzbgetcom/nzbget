@@ -140,8 +140,12 @@ th {
     font-size: 128px;
 }
 
+.system-health-badge {
+	vertical-align: text-bottom;
+}
+
 .system-health-badge--important {
-	color: red;
+	color: #b94a48;
 }
 
 .system-health-badge--warning {

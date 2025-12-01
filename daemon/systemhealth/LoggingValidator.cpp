@@ -41,19 +41,16 @@ LoggingValidator::LoggingValidator(const Options& options) : m_options(options)
 
 Status WriteLogValidator::Validate() const
 {
-	auto writeLog = m_options.GetWriteLog();
+	const auto writeLog = m_options.GetWriteLog();
 	switch (writeLog)
 	{
 		case Options::EWriteLog::wlNone:
 			return Status::Info(
-				"Logging to file is disabled. This makes troubleshooting difficult.");
+				"Logging to file is disabled. This makes troubleshooting difficult");
 		case Options::EWriteLog::wlAppend:
-			// Append is standard behavior for many apps, but a warning is fair for long-running
-			// servers.
-			return Status::Warning(std::string(Options::WRITELOG) +
-								   " is set to 'Append'. The log file may grow indefinitely.");
+			return Status::Warning("\"" + std::string(Options::WRITELOG) +
+								   "\" is set to 'Append'. The log file may grow indefinitely");
 		case Options::EWriteLog::wlReset:
-			return Status::Info("Log file resets on every start. Previous logs will be lost.");
 		case Options::EWriteLog::wlRotate:
 			return Status::Ok();
 	}
@@ -62,21 +59,16 @@ Status WriteLogValidator::Validate() const
 
 Status RotateLogValidator::Validate() const
 {
-	// Only validate rotation count if rotation is actually enabled
-	if (m_options.GetWriteLog() != Options::EWriteLog::wlRotate)
-	{
-		return Status::Ok();
-	}
+	if (m_options.GetWriteLog() != Options::EWriteLog::wlRotate) return Status::Ok();
 
 	Status s = CheckPositiveNum(Options::ROTATELOG, m_options.GetRotateLog());
 	if (!s.IsOk()) return s;
 
 	int rotateLog = m_options.GetRotateLog();
-	if (rotateLog > 100)
-	{
+	if (rotateLog > 365)
 		return Status::Warning(
-			"Log rotation count is very high (>100). This may consume significant disk space.");
-	}
+			"Log rotation count is very high (>365). This may consume significant disk space");
+
 	return Status::Ok();
 }
 Status LogBufferValidator::Validate() const
@@ -85,21 +77,20 @@ Status LogBufferValidator::Validate() const
 	if (!s.IsOk()) return s;
 
 	if (m_options.GetLogBuffer() < 100)
-	{
-		return Status::Warning(std::string(Options::LOGBUFFER) +
-							   " is very low. You might miss recent messages in the web UI.");
-	}
+		return Status::Warning("\"" + std::string(Options::LOGBUFFER) +
+							   "\" is very low. You might miss recent messages in the web UI");
 	return Status::Ok();
 }
 
 Status CrashDumpValidator::Validate() const
 {
+#ifdef __linux__
 	if (m_options.GetCrashDump())
-	{
 		return Status::Warning(
-			std::string(Options::CRASHDUMP) +
-			" is enabled. Memory dumps may contain sensitive data (passwords, keys).");
-	}
+			"\"" + std::string(Options::CRASHDUMP) +
+			"\" is enabled. Memory dumps may contain sensitive data (passwords, keys)");
+#endif
+
 	return Status::Ok();
 }
 
@@ -110,11 +101,9 @@ Status TimeCorrectionValidator::Validate() const
 	// Config says: -24..+24 are hours, others are minutes.
 	// If someone sets 10000 (minutes), that's ~7 days offset, likely a mistake.
 	if (std::abs(val) > 1440 && std::abs(val) < 1000000)  // 1440 mins = 24 hours
-	{
-		return Status::Warning(
-			std::string(Options::TIMECORRECTION) +
-			" value is very large (interpreted as minutes). Verify this is intentional.");
-	}
+		return Status::Warning("\"" + std::string(Options::TIMECORRECTION) +
+							   "\" value is very large (interpreted as minutes)");
+
 	return Status::Ok();
 }
 

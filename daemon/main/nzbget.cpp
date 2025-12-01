@@ -296,6 +296,9 @@ void NZBGet::Init()
 		m_scheduler->GetTasks());
 	g_SystemHealth = m_systemHealth.get();
 
+	const auto report = m_systemHealth->Diagnose();
+	SystemHealth::Log(report);
+
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
 	if (uMask < 01000)

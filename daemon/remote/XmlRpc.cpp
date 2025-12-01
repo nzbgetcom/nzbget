@@ -1703,9 +1703,7 @@ void SysInfoXmlCommand::Execute()
 void SystemHealthXmlCommand::Execute()
 {
 	const auto report = g_SystemHealth->Diagnose();
-	const std::string response = IsJson()
-		? SystemHealth::ToJsonStr(report)
-		: SystemHealth::ToXmlStr(report);
+	const std::string response = SystemHealth::ToJsonStr(report);
 
 	AppendResponse(response.c_str());
 }

@@ -32,7 +32,6 @@ class SecurityValidator final : public SectionValidator
 public:
 	explicit SecurityValidator(const Options& options);
 	std::string_view GetName() const override { return "Security"; }
-	SectionReport Validate() const override { return SectionValidator::Validate(); }
 
 private:
 	const Options& m_options;

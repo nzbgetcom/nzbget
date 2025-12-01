@@ -138,14 +138,8 @@ BOOST_FIXTURE_TEST_SUITE(PathsValidatorTests, PathsValidatorFixture)
 
 BOOST_AUTO_TEST_CASE(TestGetName) { BOOST_CHECK_EQUAL(m_validator->GetName(), "Paths"); }
 
-static const SystemHealth::SectionReport FindReportFor(const SystemHealth::SectionReport& report,
-													   const std::string& /*unused*/)
-{
-	return report;	// single section validator returns section directly in tests
-}
-
 static const SystemHealth::OptionStatus* FindOption(const SystemHealth::SectionReport& report,
-													const std::string& optName)
+													std::string_view optName)
 {
 	for (const auto& opt : report.options)
 	{

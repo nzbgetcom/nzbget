@@ -51,7 +51,7 @@ Status ServersConfiguredValidator::Validate() const
 {
 	if (m_servers.empty() ||
 		(m_servers.size() == 1 && m_servers.front()->GetHost() == DEFAULT_SERVER_HOST))
-		return Status::Error("No news servers are configured.");
+		return Status::Error("No news servers are configured");
 
 	return Status::Ok();
 }
@@ -60,7 +60,7 @@ Status AnyServerActiveValidator::Validate() const
 {
 	auto anyActive = std::any_of(m_servers.cbegin(), m_servers.cend(),
 								 [](const auto& server) { return server->GetActive(); });
-	if (!anyActive) return Status::Error("At least one news server must be active.");
+	if (!anyActive) return Status::Error("At least one news server must be active");
 
 	return Status::Ok();
 }
@@ -69,7 +69,7 @@ Status AnyPrimaryServerExistsValidator::Validate() const
 {
 	auto anyLevelZero = std::any_of(m_servers.cbegin(), m_servers.cend(),
 									[](const auto& server) { return server->GetLevel() == 0; });
-	if (!anyLevelZero) return Status::Error("No servers are configured for level 0.");
+	if (!anyLevelZero) return Status::Error("No servers are configured for level 0");
 
 	return Status::Ok();
 }

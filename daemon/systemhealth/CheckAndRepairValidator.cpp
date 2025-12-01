@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Status.h"
 #include "nzbget.h"
 
 #include "CheckAndRepairValidator.h"
@@ -25,6 +26,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <thread>
 
 namespace SystemHealth::CheckAndRepair
 {
@@ -51,29 +53,36 @@ Status CrcCheckValidator::Validate() const
 {
 	if (!m_options.GetCrcCheck())
 	{
-		return Status::Warning(std::string(Options::CRCCHECK) +
-							   " is off. File integrity won't be verified during download.");
+		return Status::Info(
+			"Normally, this option should be enabled to better detect download errors and for "
+			"quick par-verification");
 	}
 	return Status::Ok();
 }
 
 Status ParCheckValidator::Validate() const
 {
-	auto parCheck = m_options.GetParCheck();
+	if (!m_options.GetParRepair()) return Status::Ok();
+
+	const auto parCheck = m_options.GetParCheck();
 	switch (parCheck)
 	{
 		case Options::EParCheck::pcAuto:
 			return Status::Ok();
 		case Options::EParCheck::pcAlways:
 			return Status::Info(
-				std::string(Options::PARCHECK) +
-				" is set to always. Every download will be checked, even if undamaged.");
+				"Checks every download, even undamaged ones. "
+				"Use 'Auto' to skip unnecessary checks and save CPU");
+
 		case Options::EParCheck::pcForce:
-			return Status::Info(std::string(Options::PARCHECK) +
-								" is set to force. All par2-files will be downloaded and checked.");
+			return Status::Warning(
+				"Downloads all par2 files and checks everything. "
+				"This wastes bandwidth and CPU. 'Auto' is recommended");
+
 		case Options::EParCheck::pcManual:
-			return Status::Info(std::string(Options::PARCHECK) +
-								" is set to manual. Repair must be done manually if needed.");
+			return Status::Warning(
+				"Automatic repair is disabled. "
+				"You will have to repair damaged downloads manually");
 	}
 	return Status::Ok();
 }
@@ -82,112 +91,66 @@ Status ParRepairValidator::Validate() const
 {
 	if (!m_options.GetParRepair())
 	{
-		return Status::Warning(std::string(Options::PARREPAIR) +
-							   " is off. Corrupted files won't be automatically repaired.");
+		return Status::Warning("\"" + std::string(Options::PARREPAIR) +
+							   "\" option is off. Corrupted files won't be automatically repaired");
 	}
 	return Status::Ok();
 }
 
-Status ParScanValidator::Validate() const
-{
-	auto parScan = m_options.GetParScan();
-	switch (parScan)
-	{
-		case Options::EParScan::psLimited:
-			return Status::Info(std::string(Options::PARSCAN) +
-								" is set to limited. Only files in par-set are scanned.");
-		case Options::EParScan::psExtended:
-			return Status::Ok();
-		case Options::EParScan::psFull:
-			return Status::Info(std::string(Options::PARSCAN) +
-								" is set to full. All files in destination directory are scanned. "
-								"Can be time-consuming.");
-		case Options::EParScan::psDupe:
-			return Status::Info(std::string(Options::PARSCAN) +
-								" is set to dupe. Even files from duplicate downloads are scanned. "
-								"Can be very time-consuming.");
-	}
-	return Status::Ok();
-}
+Status ParScanValidator::Validate() const { return Status::Ok(); }
 
 Status ParQuickValidator::Validate() const
 {
+	if (!m_options.GetParQuick() && !m_options.GetParRepair()) return Status::Ok();
 	if (!m_options.GetParQuick())
 	{
 		return Status::Info(
-			std::string(Options::PARQUICK) +
-			" is off. Files will be verified by reading from disk, which is slower.");
+			"\"" + std::string(Options::PARQUICK) +
+			"\" is off. Files will be verified by reading from disk, which is slower");
 	}
+
 	return Status::Ok();
 }
 
 Status ParBufferValidator::Validate() const
 {
+	if (!m_options.GetParRepair()) return Status::Ok();
+
 	Status s = CheckPositiveNum(Options::PARBUFFER, m_options.GetParBuffer());
 	if (!s.IsOk()) return s;
 
 	const int buffer = m_options.GetParBuffer();
-	if (buffer < 8)
+	if (buffer < 250)
 	{
-		return Status::Info(std::string(Options::PARBUFFER) + " is " + std::to_string(buffer) +
-							" MB. Consider at least 8 MB for better repair performance.");
+		return Status::Warning("Consider at least 250 MB for better repair performance");
 	}
-	if (buffer > 512)
-	{
-		return Status::Info(std::string(Options::PARBUFFER) + " is " + std::to_string(buffer) +
-							" MB. Very large buffers may consume excessive memory.");
-	}
+
 	return Status::Ok();
 }
 
 Status ParThreadsValidator::Validate() const
 {
+	if (!m_options.GetParRepair()) return Status::Ok();
+
 	Status s = CheckPositiveNum(Options::PARTHREADS, m_options.GetParThreads());
 	if (!s.IsOk()) return s;
 
-	const int threads = m_options.GetParThreads();
+	const size_t threads = static_cast<size_t>(m_options.GetParThreads());
 	if (threads == 0) return Status::Ok();
-	if (threads > 16)
-	{
-		return Status::Info(std::string(Options::PARTHREADS) + " is " + std::to_string(threads) +
-							". Very high thread counts may overload the system.");
-	}
+	if (threads > std::thread::hardware_concurrency())
+		return Status::Warning("Very high thread counts may overload the system");
+
 	return Status::Ok();
 }
 
-Status ParIgnoreExtValidator::Validate() const
-{
-	const char* ignoreExt = m_options.GetParIgnoreExt();
-	if (ignoreExt && *ignoreExt != '\0')
-	{
-		return Status::Info(
-			std::string(Options::PARIGNOREEXT) +
-			" is set. Files matching the pattern will be ignored during par-check.");
-	}
-	return Status::Ok();
-}
-
-Status ParTimeLimitValidator::Validate() const
-{
-	Status s = CheckPositiveNum(Options::PARTIMELIMIT, m_options.GetParTimeLimit());
-	if (!s.IsOk()) return s;
-
-	const int limit = m_options.GetParTimeLimit();
-	if (limit == 0) return Status::Ok();
-	if (limit < 5)
-	{
-		return Status::Info(std::string(Options::PARTIMELIMIT) + " is " + std::to_string(limit) +
-							" minutes. Very short limits may cancel repairs prematurely.");
-	}
-	return Status::Ok();
-}
+Status ParIgnoreExtValidator::Validate() const { return Status::Ok(); }
 
 Status ParRenameValidator::Validate() const
 {
 	if (!m_options.GetParRename())
 	{
 		return Status::Info(std::string(Options::PARRENAME) +
-							" is off. Original file names won't be restored from par2-files.");
+							" is off. Original file names won't be restored from par2-files");
 	}
 	return Status::Ok();
 }
@@ -195,53 +158,47 @@ Status ParRenameValidator::Validate() const
 Status RarRenameValidator::Validate() const
 {
 	if (!m_options.GetRarRename())
-	{
-		return Status::Info(std::string(Options::RARRENAME) +
-							" is off. Original file names won't be restored from rar-files.");
-	}
+		return Status::Info(
+			"\"" + std::string(Options::RARRENAME) +
+			"\" option is off. Original file names won't be restored from rar-files");
 	return Status::Ok();
 }
 
-Status DirectRenameValidator::Validate() const
-{
-	if (m_options.GetDirectRename())
-	{
-		return Status::Info(
-			std::string(Options::DIRECTRENAME) +
-			" is on. Files will be renamed during download (only works for healthy downloads).");
-	}
-	return Status::Ok();
-}
+Status DirectRenameValidator::Validate() const { return Status::Ok(); }
 
 Status HealthCheckValidator::Validate() const
 {
-	auto healthCheck = m_options.GetHealthCheck();
+	const auto healthCheck = m_options.GetHealthCheck();
 	switch (healthCheck)
 	{
+		case Options::EHealthCheck::hcDelete:
+		case Options::EHealthCheck::hcPark:
 		case Options::EHealthCheck::hcNone:
 			return Status::Ok();
-		case Options::EHealthCheck::hcDelete:
-			return Status::Info(
-				std::string(Options::HEALTHCHECK) +
-				" is set to delete. Downloads with critical health will be deleted.");
-		case Options::EHealthCheck::hcPark:
-			return Status::Ok();
 		case Options::EHealthCheck::hcPause:
-			return Status::Info(std::string(Options::HEALTHCHECK) +
-								" is set to pause. Downloads with critical health will be paused.");
+			return Status::Warning("\"" + std::string(Options::HEALTHCHECK) +
+								   "\" is set to 'Pause' you will need to manually move another "
+								   "duplicate from history to queue");
+
+		default:
+			return Status::Ok();
 	}
+}
+
+Status ParTimeLimitValidator::Validate() const
+{
+	if (!m_options.GetParRepair()) return Status::Ok();
+
+	Status s = CheckPositiveNum(Options::PARTIMELIMIT, m_options.GetParTimeLimit());
+	if (!s.IsOk()) return s;
+
+	const int limit = m_options.GetParTimeLimit();
+	if (limit == 0) return Status::Ok();
+	if (limit < 5) return Status::Info("Very short limits may cancel repairs prematurely");
+
 	return Status::Ok();
 }
 
-Status ParPauseQueueValidator::Validate() const
-{
-	if (m_options.GetParPauseQueue())
-	{
-		return Status::Info(
-			std::string(Options::PARPAUSEQUEUE) +
-			" is on. Download queue will pause during par-check/repair to give CPU more time.");
-	}
-	return Status::Ok();
-}
+Status ParPauseQueueValidator::Validate() const { return Status::Ok(); }
 
 }  // namespace SystemHealth::CheckAndRepair

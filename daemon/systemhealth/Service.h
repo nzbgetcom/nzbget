@@ -20,9 +20,12 @@
 #ifndef SYSTEM_HEALTH_SERVICE_H
 #define SYSTEM_HEALTH_SERVICE_H
 
+#include <chrono>
+#include <ctime>
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <iostream>
 #include "SectionValidator.h"
 #include "Options.h"
 #include "NewsServer.h"
@@ -33,14 +36,16 @@
 namespace SystemHealth
 {
 
-/**
- * @brief Represents the comprehensive result of a system health check.
- * * This structure aggregates the results from all individual section validators
- * to provide a high-level overview of the system status.
- */
+struct Alert
+{
+	std::string source;
+	std::string category;
+	Status status;
+	std::chrono::system_clock::time_point timestamp;
+};
+
 struct HealthReport
 {
-	Status::Severity status;
 	std::vector<Alert> alerts;
 	std::vector<SectionReport> sections;
 };
@@ -49,7 +54,7 @@ class Service
 {
 public:
 	Service(const Options& options, const Servers& servers, const Feeds& feeds,
-			const Scheduler::TaskList& tasks);
+			const ::Scheduler::TaskList& tasks);
 	HealthReport Diagnose() const;
 
 	void ReportAlert(Alert alert);
@@ -58,7 +63,7 @@ private:
 	const Options& m_options;
 	const Servers& m_servers;
 	const Feeds& m_feeds;
-	const Scheduler::TaskList& m_tasks;
+	const ::Scheduler::TaskList& m_tasks;
 
 	std::vector<std::unique_ptr<SectionValidator>> m_validators;
 	std::vector<Alert> m_alerts;
@@ -66,6 +71,12 @@ private:
 	mutable std::mutex m_mutex;
 };
 
+void Log(const HealthReport& report);
+void Log(const SectionReport& sectionReport);
+void Log(const Alert& alert);
+
+Json::JsonObject ToJson(const Alert& alert);
+Xml::XmlNodePtr ToXml(const Alert& alert);
 std::string ToJsonStr(const HealthReport& report);
 std::string ToXmlStr(const HealthReport& report);
 }  // namespace SystemHealth

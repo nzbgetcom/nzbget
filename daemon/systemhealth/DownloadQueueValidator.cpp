@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 #include "nzbget.h"
 
 #include "DownloadQueueValidator.h"
@@ -53,21 +54,20 @@ Status FlushQueueValidator::Validate() const
 {
 	if (m_options.GetFlushQueue() && m_options.GetSkipWrite())
 	{
-		return Status::Warning(std::string(Options::FLUSHQUEUE) + " is enabled while " +
+		return Status::Warning("\"" + std::string(Options::FLUSHQUEUE) + "\" is enabled while \"" +
 							   std::string(Options::SKIPWRITE) +
-							   " is enabled; flushed data may not be written to disk.");
+							   "\" is enabled; flushed data may not be written to disk");
 	}
 	return Status::Ok();
 }
 
 Status ContinuePartialValidator::Validate() const
 {
-	if (m_options.GetContinuePartial() && m_options.GetDirectWrite())
-	{
-		return Status::Info(std::string(Options::CONTINUEPARTIAL) + " is enabled alongside " +
-							std::string(Options::DIRECTWRITE) +
-							". Behavior depends on direct write semantics.");
-	}
+	if (m_options.GetContinuePartial())
+		return Status::Info(
+			"Disabling this option may slightly reduce disk access and is recommended on fast "
+			"connections");
+
 	return Status::Ok();
 }
 
@@ -82,23 +82,44 @@ Status ArticleCacheValidator::Validate() const
 	Status s = CheckPositiveNum(Options::ARTICLECACHE, val);
 	if (!s.IsOk()) return s;
 
+	if (val == 0)
+		return Status::Warning(
+			"\"" + std::string(Options::ARTICLECACHE) +
+			"\" is disabled. Enabling it is recommended to reduce disk fragmentation");
+
 	// Check for 32-bit architecture limit (1900 MB)
 	if (sizeof(void*) == 4 && val > 1900)
+		return Status::Error("\"" + std::string(Options::ARTICLECACHE) +
+							 "\" cannot exceed 1900 MB on 32-bit systems");
+
+	if (m_options.GetDirectWrite())
 	{
-		return Status::Error(std::string(Options::ARTICLECACHE) +
-							 " cannot exceed 1900 MB on 32-bit systems.");
+		if (val < 50)
+			return Status::Warning("With \"" + std::string(Options::DIRECTWRITE) +
+								   "\" enabled, a cache of at least 50 MB is recommended");
 	}
+
+	if (val < 200)
+	{
+		return Status::Warning(
+			"\"" + std::string(Options::DIRECTWRITE) +
+			"\" is disabled. A cache under 200 MB is likely too small to hold complete files, "
+			"forcing writes to the temporary directory and degrading performance");
+	}
+
 	return Status::Ok();
 }
 
 Status DirectWriteValidator::Validate() const
 {
-	if (m_options.GetDirectWrite() && m_options.GetWriteBuffer() == 0)
-	{
-		return Status::Warning(std::string(Options::DIRECTWRITE) + " is enabled but " +
-							   std::string(Options::WRITEBUFFER) +
-							   " is 0; performance may be poor.");
-	}
+	if (!m_options.GetDirectWrite())
+		return Status::Warning(
+			"\"" + std::string(Options::DIRECTWRITE) +
+			"\" is disabled. "
+			"Articles will be written to the temporary directory first, then copied to the "
+			"destination. "
+			"Enabling this option is usually recommended to reduce disk I/O usage");
+
 	return Status::Ok();
 }
 
@@ -112,64 +133,66 @@ Status WriteBufferValidator::Validate() const
 	if (val > 102400)
 	{
 		return Status::Warning(
-			std::string(Options::WRITEBUFFER) +
-			" is very large (>100MB). This is per-connection and may exhaust memory.");
+			"\"" + std::string(Options::WRITEBUFFER) +
+			"\" is very large (>100MB). This is per-connection and may exhaust memory");
 	}
 	return Status::Ok();
 }
 
 Status FileNamingValidator::Validate() const
 {
-	auto val = m_options.GetFileNaming();
-	if (val != Options::EFileNaming::nfAuto && val != Options::EFileNaming::nfArticle &&
-		val != Options::EFileNaming::nfNzb)
+	const auto val = m_options.GetFileNaming();
+	switch (val)
 	{
-		return Status::Error("Invalid value for " + std::string(Options::FILENAMING) +
-							 ". Must be 'auto', 'article', or 'nzb'.");
+		case Options::nfAuto:
+			return Status::Ok();
+		case Options::EFileNaming::nfNzb:
+			return Status::Info(
+				"If you download obfuscated releases, "
+				"the resulting files may have meaningless names. 'Auto' is recommended.");
+
+		case Options::EFileNaming::nfArticle:
+			return Status::Info(
+				"If article headers are malformed "
+				"or missing, filenames might be incorrect. 'Auto' is recommended.");
+		default:
+			return Status::Ok();
 	}
-	return Status::Ok();
 }
 
-Status RenameAfterUnpackValidator::Validate() const
-{
-	if (m_options.GetRenameAfterUnpack() && !m_options.GetUnpack())
-	{
-		return Status::Info(
-			std::string(Options::RENAMEAFTERUNPACK) +
-			" is enabled but Unpack is disabled; renaming after unpack will not occur.");
-	}
-	return Status::Ok();
-}
+Status RenameAfterUnpackValidator::Validate() const { return Status::Ok(); }
 
-Status RenameIgnoreExtValidator::Validate() const
-{
-	std::string_view v = m_options.GetRenameIgnoreExt();
-	if (v.empty()) return Status::Ok();
-	if (v.size() > 512)
-		return Status::Warning(std::string(Options::RENAMEIGNOREEXT) + " is unusually long.");
-	return Status::Ok();
-}
+Status RenameIgnoreExtValidator::Validate() const { return Status::Ok(); }
 
-Status ReorderFilesValidator::Validate() const
-{
-	if (m_options.GetReorderFiles() && m_options.GetFileNaming() == Options::EFileNaming::nfNzb)
-	{
-		return Status::Info(std::string(Options::REORDERFILES) +
-							" is enabled but file naming mode 'nzb' is selected; reordering may "
-							"have limited effect.");
-	}
-	return Status::Ok();
-}
+Status ReorderFilesValidator::Validate() const { return Status::Ok(); }
 
 Status PostStrategyValidator::Validate() const
 {
-	auto val = m_options.GetPostStrategy();
-	if (val != Options::EPostStrategy::ppSequential && val != Options::EPostStrategy::ppBalanced &&
-		val != Options::EPostStrategy::ppAggressive && val != Options::EPostStrategy::ppRocket)
+	const auto strategy = m_options.GetPostStrategy();
+	switch (strategy)
 	{
-		return Status::Error("Invalid value for " + std::string(Options::POSTSTRATEGY) + ".");
+		case Options::EPostStrategy::ppBalanced:
+			return Status::Ok();
+
+		case Options::EPostStrategy::ppSequential:
+			return Status::Info(
+				"Strategy is 'Sequential'. Safe for low-end hardware, but may be slower.");
+
+		case Options::EPostStrategy::ppAggressive:
+			return Status::Info(
+				"Strategy is 'Aggressive'. This runs up to 3 simultaneous tasks. "
+				"Ensure you have a multi-core CPU and fast storage (SSD) to prevent bottlenecks.");
+
+		case Options::EPostStrategy::ppRocket:
+			return Status::Info(
+				"Strategy is 'Rocket'. This runs up to 6 simultaneous tasks! "
+				"This requires high-end hardware (NVMe SSD, many CPU cores). "
+				"On standard systems, this may actually SLOW down processing due to disk "
+				"thrashing.");
+
+		default:
+			return Status::Ok();
 	}
-	return Status::Ok();
 }
 
 Status DiskSpaceValidator::Validate() const
@@ -182,20 +205,20 @@ Status DiskSpaceValidator::Validate() const
 	// If enabled but very low (e.g. < 50MB), it might be too late to pause effectively.
 	if (val > 0 && val < 50)
 	{
-		return Status::Warning(std::string(Options::DISKSPACE) +
-							   " is set very low (<50MB). Downloads may fill disk before pausing.");
+		return Status::Warning(
+			"\"" + std::string(Options::DISKSPACE) +
+			"\" is set very low (<50MB). Downloads may fill disk before pausing");
 	}
 	return Status::Ok();
 }
 
 Status NzbCleanupDiskValidator::Validate() const
 {
-	if (m_options.GetNzbCleanupDisk() && m_options.GetDiskSpace() == 0)
-	{
-		return Status::Info(std::string(Options::NZBCLEANUPDISK) +
-							" is enabled but DiskSpace enforcement is disabled; cleanup thresholds "
-							"won't be applied.");
-	}
+	if (m_options.GetNzbCleanupDisk())
+		return Status::Info(
+			"Cleanup is disabled. Source NZB files will remain in the incoming directory after "
+			"processing");
+
 	return Status::Ok();
 }
 
@@ -213,18 +236,19 @@ Status SkipWriteValidator::Validate() const
 {
 	if (m_options.GetSkipWrite())
 	{
-		return Status::Warning(std::string(Options::SKIPWRITE) +
-							   " is enabled! Downloaded data will NOT be saved to disk.");
+		return Status::Warning("\"" + std::string(Options::SKIPWRITE) +
+							   "\" is enabled: downloaded data will NOT be saved to disk");
 	}
 	return Status::Ok();
 }
+
 Status RawArticleValidator::Validate() const
 {
 	if (m_options.GetRawArticle())
 	{
 		return Status::Warning(
-			std::string(Options::RAWARTICLE) +
-			" is enabled! Articles will be saved in raw format (unusable for normal files).");
+			"\"" + std::string(Options::RAWARTICLE) +
+			"\" is enabled: articles will be saved in raw format (unusable for normal files)");
 	}
 	return Status::Ok();
 }

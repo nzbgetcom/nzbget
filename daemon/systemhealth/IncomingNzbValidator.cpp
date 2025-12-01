@@ -17,7 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
+#include "Options.h"
 #include "nzbget.h"
 
 #include "IncomingNzbValidator.h"
@@ -36,31 +36,24 @@ IncomingNzbValidator::IncomingNzbValidator(const Options& options) : m_options(o
 Status AppendCategoryDirValidator::Validate() const
 {
 	bool append = m_options.GetAppendCategoryDir();
-	if (append)
-	{
-		return Status::Info("Category subdirectories will be created automatically.");
-	}
+	if (append) return Status::Info("Category subdirectories will be created automatically");
+
 	return Status::Ok();
 }
 
 Status NzbDirIntervalValidator::Validate() const
 {
 	int interval = m_options.GetNzbDirInterval();
-	if (interval < 0)
-	{
-		return Status::Error("Interval cannot be negative.");
-	}
+	Status s = CheckPositiveNum(Options::NZBDIRINTERVAL, interval);
+	if (!s.IsOk()) return s;
 
-	if (interval == 0)
-	{
-		return Status::Info("Automatic NZB directory scanning is disabled.");
-	}
+	if (interval == 0) return Status::Warning("Automatic NZB directory scanning is disabled");
 
 	if (interval < 3)
 	{
 		std::stringstream ss;
 		ss << "Interval is set to " << interval << " seconds. "
-		   << "Very frequent scanning may cause high CPU/Disk usage.";
+		   << "Very frequent scanning may cause high CPU/Disk usage";
 		return Status::Warning(ss.str());
 	}
 
@@ -70,16 +63,14 @@ Status NzbDirIntervalValidator::Validate() const
 Status NzbDirFileAgeValidator::Validate() const
 {
 	int age = m_options.GetNzbDirFileAge();
-	if (age < 0)
-	{
-		return Status::Error("File age cannot be negative.");
-	}
+	Status s = CheckPositiveNum(Options::NZBDIRFILEAGE, age);
+	if (!s.IsOk()) return s;
 
 	if (age > 3600)	 // 1 Hour
 	{
 		std::stringstream ss;
 		ss << "File age is set to " << age << " seconds (> 1 hour). "
-		   << "New NZB files will not be picked up until they are at least this old.";
+		   << "New NZB files will not be picked up until they are at least this old";
 		return Status::Info(ss.str());
 	}
 
@@ -90,18 +81,18 @@ Status DupeCheckValidator::Validate() const
 {
 	bool dupeCheck = m_options.GetDupeCheck();
 	auto healthCheckMode = m_options.GetHealthCheck();
-	if (!dupeCheck)
-	{
-		return Status::Ok();
-	}
+	if (!dupeCheck) return Status::Ok();
 
 	if (healthCheckMode == Options::EHealthCheck::hcPause)
 	{
+		const auto healthCheckStr = std::string(Options::HEALTHCHECK);
 		return Status::Info(
-			"DupeCheck is enabled while HealthCheck is set to 'Pause'. "
+			"\"" + std::string(Options::DUPECHECK) + "\" is enabled while \"" + healthCheckStr +
+			"\" is set to 'Pause'. "
 			"This configuration is not recommended as it requires manual intervention "
 			"to unpause backup downloads if the primary one fails. "
-			"Consider using 'Delete', 'Park', or 'None' for HealthCheck.");
+			"Consider using 'Delete', 'Park', or 'None' for \"" +
+			healthCheckStr + "\"");
 	}
 
 	return Status::Ok();

@@ -34,7 +34,7 @@ SectionReport SectionGroupValidator::Validate() const
 {
 	SectionReport report;
 	report.name = GetName();
-	report.alerts.reserve(m_validators.size());
+	report.issues.reserve(m_validators.size());
 
 	for (const auto& section : m_sections)
 	{
@@ -47,9 +47,7 @@ SectionReport SectionGroupValidator::Validate() const
 	{
 		Status status = validator->Validate();
 		if (!status.IsOk())
-		{
-			report.alerts.push_back({std::string(validator->GetName()), std::move(status)});
-		}
+			report.issues.push_back(std::move(status));
 	}
 
 	return report;

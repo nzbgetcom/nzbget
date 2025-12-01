@@ -49,11 +49,11 @@ Status ExtensionListValidator::Validate() const
 		const auto opt = std::string("Extension ") + *scriptName;
 		const auto extension =
 			m_extensionManager.FindIf([&](const auto ext) { return ext->GetName() == scriptName; });
-		if (!extension) return Status::Warning(opt + " doesn't exist.");
+		if (!extension) return Status::Warning(opt + " doesn't exist");
 
 		const auto entry = (*extension)->GetEntry();
 		const auto exe = File::Executable(entry);
-		if (!exe.IsOk()) return Status::Warning(opt + " cannot be executed.");
+		if (!exe.IsOk()) return Status::Warning(opt + " cannot be executed");
 	}
 	return Status::Ok();
 }
@@ -66,7 +66,7 @@ Status ScriptPauseQueueValidator::Validate() const
 		if (extensions.empty())
 		{
 			return Status::Warning(std::string(Options::SCRIPTPAUSEQUEUE) +
-								   " is enabled but no extensions are configured.");
+								   " is enabled but no extensions are configured");
 		}
 	}
 	return Status::Ok();
@@ -88,7 +88,7 @@ Status EventIntervalValidator::Validate() const
 	int val = m_options.GetEventInterval();
 	if (val < -1)
 	{
-		return Status::Error(std::string(Options::EVENTINTERVAL) + " cannot be less than -1.");
+		return Status::Error(std::string(Options::EVENTINTERVAL) + " cannot be less than -1");
 	}
 
 	return Status::Ok();
@@ -104,14 +104,14 @@ Status ScriptOrderValidator::Validate() const
 	if (extensions.empty())
 	{
 		return Status::Warning(std::string(Options::SCRIPTORDER) +
-							   " is set but no extensions are configured.");
+							   " is set but no extensions are configured");
 	}
 
 	// Basic sanity: token count shouldn't be excessive
 	auto tokens = Util::SplitStr(order.data(), ",;");
 	if (tokens.size() > 100)
 	{
-		return Status::Warning(std::string(Options::SCRIPTORDER) + " contains too many entries.");
+		return Status::Warning(std::string(Options::SCRIPTORDER) + " contains too many entries");
 	}
 
 	return Status::Ok();

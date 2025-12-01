@@ -40,9 +40,6 @@ Status RequiredOption(std::string_view name, std::string_view value);
 Status UniquePath(
 	std::string_view name, const boost::filesystem::path& path,
 	const std::vector<std::pair<std::string_view, const boost::filesystem::path&>>& other);
-Status RequiredDir(std::string_view name, const boost::filesystem::path& path);
-Status RequiredFile(std::string_view name, const boost::filesystem::path& path);
-Status OptionalDir(const boost::filesystem::path& path);
 Status CheckPassword(std::string_view password);
 Status CheckPositiveNum(std::string_view name, int value);
 

@@ -37,7 +37,9 @@ SectionReport SectionValidator::Validate() const
 
 	for (const auto& validator : m_validators)
 	{
-		report.options.push_back({std::string(validator->GetName()), validator->Validate()});
+		auto status = validator->Validate();
+		if (!status.IsOk()) 
+			report.options.push_back({std::string(validator->GetName()), std::move(status)});
 	}
 
 	return report;
@@ -47,15 +49,8 @@ Json::JsonObject ToJson(const OptionStatus& status)
 {
 	Json::JsonObject json;
 	json["Name"] = status.name;
-	json["Status"] = ToJson(status.status);
-	return json;
-}
-
-Json::JsonObject ToJson(const Alert& alert)
-{
-	Json::JsonObject json;
-	json["Name"] = alert.name;
-	json["Status"] = ToJson(alert.status);
+	json["Severity"] = SeverityToStr(status.status.GetSeverity());
+	json["Message"] = status.status.GetMessage();
 	return json;
 }
 
@@ -79,13 +74,13 @@ Json::JsonObject ToJson(const SectionReport& report)
 {
 	Json::JsonObject json;
 	Json::JsonObject reportJson;
-	Json::JsonArray alertsArrayJson;
+	Json::JsonArray issuesArrayJson;
 	Json::JsonArray optionsArrayJson;
 	Json::JsonArray sectionsArrayJson;
 
-	for (const auto& check : report.alerts)
+	for (const auto& issue : report.issues)
 	{
-		alertsArrayJson.push_back(ToJson(check));
+		issuesArrayJson.push_back(ToJson(issue));
 	}
 
 	for (const auto& option : report.options)
@@ -99,117 +94,11 @@ Json::JsonObject ToJson(const SectionReport& report)
 	}
 
 	json["Name"] = report.name;
-	json["Alerts"] = std::move(alertsArrayJson);
+	json["Issues"] = std::move(issuesArrayJson);
 	json["Options"] = std::move(optionsArrayJson);
 	json["Subsections"] = std::move(sectionsArrayJson);
 
 	return json;
 }
 
-namespace
-{
-xmlChar const* XmlLiteral(const char* literal) { return reinterpret_cast<const xmlChar*>(literal); }
-
-xmlNodePtr CreateArrayNode(const char* name, const std::vector<Xml::XmlNodePtr>& nodes)
-{
-	xmlNodePtr memberNode = xmlNewNode(nullptr, XmlLiteral("member"));
-	xmlNewChild(memberNode, nullptr, XmlLiteral("name"), XmlLiteral(name));
-
-	xmlNodePtr valueNode = xmlNewNode(nullptr, XmlLiteral("value"));
-	xmlNodePtr arrayNode = xmlNewNode(nullptr, XmlLiteral("array"));
-	xmlNodePtr dataNode = xmlNewNode(nullptr, XmlLiteral("data"));
-
-	for (Xml::XmlNodePtr node : nodes)
-	{
-		xmlNodePtr valueEntry = xmlNewNode(nullptr, XmlLiteral("value"));
-		xmlAddChild(valueEntry, node);
-		xmlAddChild(dataNode, valueEntry);
-	}
-
-	xmlAddChild(arrayNode, dataNode);
-	xmlAddChild(valueNode, arrayNode);
-	xmlAddChild(memberNode, valueNode);
-
-	return memberNode;
-}
-}  // namespace
-
-Xml::XmlNodePtr ToXml(const OptionStatus& status)
-{
-	Xml::XmlNodePtr node = xmlNewNode(nullptr, XmlLiteral("struct"));
-	Xml::AddNewNode(node, "Name", "string", status.name.c_str());
-
-	xmlNodePtr statusMember = xmlNewNode(nullptr, XmlLiteral("member"));
-	xmlNewChild(statusMember, nullptr, XmlLiteral("name"), XmlLiteral("Status"));
-	xmlNodePtr statusValue = xmlNewNode(nullptr, XmlLiteral("value"));
-	xmlAddChild(statusValue, ToXml(status.status));
-	xmlAddChild(statusMember, statusValue);
-	xmlAddChild(node, statusMember);
-
-	return node;
-}
-
-Xml::XmlNodePtr ToXml(const Alert& alert)
-{
-	Xml::XmlNodePtr node = xmlNewNode(nullptr, XmlLiteral("struct"));
-	Xml::AddNewNode(node, "Name", "string", alert.name.c_str());
-
-	xmlNodePtr statusMember = xmlNewNode(nullptr, XmlLiteral("member"));
-	xmlNewChild(statusMember, nullptr, XmlLiteral("name"), XmlLiteral("Status"));
-	xmlNodePtr statusValue = xmlNewNode(nullptr, XmlLiteral("value"));
-	xmlAddChild(statusValue, ToXml(alert.status));
-	xmlAddChild(statusMember, statusValue);
-	xmlAddChild(node, statusMember);
-
-	return node;
-}
-
-Xml::XmlNodePtr ToXml(const SubsectionReport& report)
-{
-	Xml::XmlNodePtr node = xmlNewNode(nullptr, XmlLiteral("struct"));
-	Xml::AddNewNode(node, "Name", "string", report.name.c_str());
-
-	std::vector<Xml::XmlNodePtr> optionNodes;
-	optionNodes.reserve(report.options.size());
-	for (const auto& option : report.options)
-	{
-		optionNodes.push_back(ToXml(option));
-	}
-
-	xmlAddChild(node, CreateArrayNode("Options", optionNodes));
-
-	return node;
-}
-
-Xml::XmlNodePtr ToXml(const SectionReport& report)
-{
-	Xml::XmlNodePtr node = xmlNewNode(nullptr, XmlLiteral("struct"));
-	Xml::AddNewNode(node, "Name", "string", report.name.c_str());
-
-	std::vector<Xml::XmlNodePtr> alertNodes;
-	alertNodes.reserve(report.alerts.size());
-	for (const auto& alert : report.alerts)
-	{
-		alertNodes.push_back(ToXml(alert));
-	}
-	xmlAddChild(node, CreateArrayNode("Alerts", alertNodes));
-
-	std::vector<Xml::XmlNodePtr> optionNodes;
-	optionNodes.reserve(report.options.size());
-	for (const auto& option : report.options)
-	{
-		optionNodes.push_back(ToXml(option));
-	}
-	xmlAddChild(node, CreateArrayNode("Options", optionNodes));
-
-	std::vector<Xml::XmlNodePtr> subsectionNodes;
-	subsectionNodes.reserve(report.subsections.size());
-	for (const auto& subsection : report.subsections)
-	{
-		subsectionNodes.push_back(ToXml(subsection));
-	}
-	xmlAddChild(node, CreateArrayNode("Subsections", subsectionNodes));
-
-	return node;
-}
 }  // namespace SystemHealth

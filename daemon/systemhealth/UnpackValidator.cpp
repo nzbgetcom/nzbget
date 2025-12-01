@@ -48,7 +48,7 @@ Status UnpackEnabledValidator::Validate() const
 {
 	if (!m_options->GetUnpack())
 	{
-		return Status::Warning("Unpacking is globally disabled - archives will not be extracted.");
+		return Status::Warning("Unpacking is globally disabled - archives will not be extracted");
 	}
 	return Status::Ok();
 }
@@ -62,7 +62,7 @@ Status DirectUnpackValidator::Validate() const
 	{
 		return Status::Warning(std::string(Options::DIRECTUNPACK) + " is enabled, but " +
 							   std::string(Options::UNPACK) +
-							   " is disabled. Direct unpacking will not work.");
+							   " is disabled. Direct unpacking will not work");
 	}
 
 	return Status::Ok();
@@ -79,7 +79,7 @@ Status UseTempUnpackDirValidator::Validate() const
 	{
 		return Status::Warning(
 			std::string(Options::USETEMPUNPACKDIR) +
-			" is enabled but TempDir equals DestDir. This may cause conflicts when unpacking.");
+			" is enabled but TempDir equals DestDir. This may cause conflicts when unpacking");
 	}
 	return Status::Ok();
 }
@@ -88,9 +88,8 @@ Status UnpackCleanupDiskValidator::Validate() const
 {
 	if (!m_options->GetUnpack())
 	{
-		return Status::Info(
-			std::string(Options::UNPACKCLEANUPDISK) +
-			" is configured but global Unpack is disabled; cleanup will not occur.");
+		return Status::Info(std::string(Options::UNPACKCLEANUPDISK) +
+							" is configured but global Unpack is disabled; cleanup will not occur");
 	}
 	return Status::Ok();
 }
@@ -100,7 +99,7 @@ Status UnpackPauseQueueValidator::Validate() const
 	if (m_options->GetUnpackPauseQueue() && !m_options->GetUnpack())
 	{
 		return Status::Info(std::string(Options::UNPACKPAUSEQUEUE) +
-							" has no effect because Unpack is disabled.");
+							" has no effect because Unpack is disabled");
 	}
 	return Status::Ok();
 }
@@ -112,7 +111,7 @@ Status UnrarCmdValidator::Validate() const
 	if (m_options->GetUnrarPath().empty())
 	{
 		return Status::Warning(std::string(Options::UNRARCMD) +
-							   " is not configured. RAR archives cannot be unpacked.");
+							   " is not configured. RAR archives cannot be unpacked");
 	}
 
 	const auto exists = File::Exists(m_options->GetUnrarPath());
@@ -130,7 +129,7 @@ Status SevenZipCmdValidator::Validate() const
 	if (m_options->GetSevenZipPath().empty())
 	{
 		return Status::Warning(std::string(Options::SEVENZIPCMD) +
-							   " is not configured. 7z archives cannot be unpacked.");
+							   " is not configured. 7z archives cannot be unpacked");
 	}
 
 	const auto exists = File::Exists(m_options->GetSevenZipPath());
@@ -148,7 +147,7 @@ Status ExtensionCleanupValidator::Validate() const
 	if (ext.empty()) return Status::Ok();
 	if (ext.size() > 512)
 	{
-		return Status::Warning(std::string(Options::EXTCLEANUPDISK) + " value is unusually long.");
+		return Status::Warning(std::string(Options::EXTCLEANUPDISK) + " value is unusually long");
 	}
 	return Status::Ok();
 }
@@ -172,7 +171,7 @@ Status UnpackIgnoreExtValidator::Validate() const
 	if (val.empty()) return Status::Ok();
 	if (val.size() > 512)
 	{
-		return Status::Warning(std::string(Options::UNPACKIGNOREEXT) + " is unusually long.");
+		return Status::Warning(std::string(Options::UNPACKIGNOREEXT) + " is unusually long");
 	}
 	return Status::Ok();
 }

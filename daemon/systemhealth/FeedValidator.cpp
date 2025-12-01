@@ -45,7 +45,7 @@ Status FeedNameValidator::Validate() const
 	std::string_view name = m_feed.GetName();
 	if (name.empty())
 	{
-		return Status::Error("Feed name is required.");
+		return Status::Error("Feed name is required");
 	}
 	return Status::Ok();
 }
@@ -55,13 +55,13 @@ Status FeedUrlValidator::Validate() const
 	std::string_view url = m_feed.GetUrl();
 	if (url.empty())
 	{
-		return Status::Warning("Feed URL is required.");
+		return Status::Warning("Feed URL is required");
 	}
 
 	if (url.find("http://") == std::string_view::npos &&
 		url.find("https://") == std::string_view::npos)
 	{
-		return Status::Warning("URL does not start with 'http://' or 'https://'.");
+		return Status::Warning("URL does not start with 'http://' or 'https://'");
 	}
 
 	return Status::Ok();
@@ -73,12 +73,12 @@ Status FeedIntervalValidator::Validate() const
 
 	if (interval < 0)
 	{
-		return Status::Error("Interval cannot be negative.");
+		return Status::Error("Interval cannot be negative");
 	}
 
 	if (interval == 0)
 	{
-		return Status::Info("Automatic check is disabled (0).");
+		return Status::Info("Automatic check is disabled (0)");
 	}
 
 	return Status::Ok();
@@ -89,11 +89,11 @@ Status FeedFilterValidator::Validate() const
 	std::string_view filter = m_feed.GetFilter();
 	if (filter.empty())
 	{
-		return Status::Info("No feed filter specified.");
+		return Status::Info("No feed filter specified");
 	}
 	if (filter.size() > 1024)
 	{
-		return Status::Warning("Feed filter is unusually long.");
+		return Status::Warning("Feed filter is unusually long");
 	}
 	return Status::Ok();
 }
@@ -103,7 +103,6 @@ Status FeedScriptsValidator::Validate() const
 	std::string_view ext = m_feed.GetExtensions();
 	if (ext.empty()) return Status::Ok();
 
-	// Basic sanity checks: token count and token length
 	std::istringstream ss(ext.data());
 	std::string token;
 	int count = 0;
@@ -111,9 +110,9 @@ Status FeedScriptsValidator::Validate() const
 	{
 		++count;
 		if (token.size() > 256)
-			return Status::Warning("One of the feed extensions/script names is unusually long.");
+			return Status::Warning("One of the feed extensions/script names is unusually long");
 	}
-	if (count > 20) return Status::Warning("Too many feed extensions/scripts defined.");
+	if (count > 20) return Status::Warning("Too many feed extensions/scripts defined");
 
 	return Status::Ok();
 }
@@ -123,7 +122,7 @@ Status FeedCategoryValidator::Validate() const
 	const char* category = m_feed.GetCategory();
 	if (!category || *category == '\0')
 	{
-		return Status::Info("No category assigned to this feed.");
+		return Status::Info("No category assigned to this feed");
 	}
 
 	if (g_Options)

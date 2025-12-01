@@ -31,7 +31,6 @@ class DisplayValidator final : public SectionValidator
 public:
 	explicit DisplayValidator(const Options& options);
 	std::string_view GetName() const override { return "Display"; }
-	SectionReport Validate() const override { return SectionValidator::Validate(); }
 
 private:
 	const Options& m_options;

@@ -33,7 +33,8 @@ Status RequiredOption(std::string_view name, std::string_view value)
 {
 	if (value.empty())
 	{
-		return Status::Error(std::string(name) + " is required and cannot be empty");
+		return Status::Error("\"" + std::string(name) +
+							 "\" option is required and cannot be empty");
 	}
 
 	return Status::Ok();
@@ -50,66 +51,15 @@ Status UniquePath(
 
 	if (found == other.cend()) return Status::Ok();
 
-	return Status::Warning(std::string(name) + " and " + std::string(found->first) +
-						   " are identical that can lead to unexpected behavior");
-}
-
-Status RequiredDir(std::string_view name, const boost::filesystem::path& path)
-{
-	return RequiredOption(name, path.c_str()).And([&]() { return Directory::Exists(path); });
-}
-
-Status RequiredFile(std::string_view name, const boost::filesystem::path& path)
-{
-	return RequiredOption(name, path.c_str())
-		.And([&]() { return File::Exists(path); })
-		.And([&]() { return File::Readable(path); })
-		.And([&]() { return File::Writable(path); });
-}
-
-Status OptionalDir(const boost::filesystem::path& path)
-{
-	if (path.empty()) return Status::Ok();
-
-	error_code ec;
-	bool exists = fs::exists(path, ec);
-	if (ec && ec != errc::no_such_file_or_directory)
-	{
-		std::stringstream ss;
-		ss << "Failed to check " << path << " existence: " << ec.message();
-		return Status::Error(ss.str());
-	}
-
-	if (!exists)
-	{
-		std::stringstream ss;
-		ss << path << " directory doesn't exist";
-		return Status::Warning(ss.str());
-	}
-
-	bool isDir = fs::is_directory(path, ec);
-	if (ec)
-	{
-		std::stringstream ss;
-		ss << "Failed to check type of " << path << ": " << ec.message();
-		return Status::Error(ss.str());
-	}
-
-	if (!isDir)
-	{
-		std::stringstream ss;
-		ss << "'" << path << "' exists but is not a directory";
-		return Status::Error(ss.str());
-	}
-
-	return Status::Ok();
+	return Status::Warning("\"" + std::string(name) + "\" and \"" + std::string(found->first) +
+						   "\" are identical that can lead to unexpected behavior");
 }
 
 Status CheckPassword(std::string_view password)
 {
 	if (password.empty())
 	{
-		return Status::Info("Password is set to empty");
+		return Status::Warning("Password is set to empty");
 	}
 
 	if (password.length() < 8)
@@ -122,7 +72,7 @@ Status CheckPassword(std::string_view password)
 
 Status CheckPositiveNum(std::string_view name, int value)
 {
-	if (value < 0) return Status::Error(std::string(name) + " must not be negative");
+	if (value < 0) return Status::Error("\"" + std::string(name) + "\" option must not be negative");
 	return Status::Ok();
 }
 
@@ -143,7 +93,7 @@ Status Exists(const fs::path& path)
 	if (!exists)
 	{
 		std::stringstream ss;
-		ss << "'" << path << "' file doesn't exist";
+		ss << path << " file doesn't exist";
 		return Status::Error(ss.str());
 	}
 
@@ -219,7 +169,7 @@ Status Executable(const fs::path& path)
 	}
 
 	std::stringstream ss;
-	ss << path << "' is not executable: " << std::strerror(errno);
+	ss << path << " is not executable: " << std::strerror(errno);
 	return Status::Error(ss.str());
 #endif
 }

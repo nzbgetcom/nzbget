@@ -17,21 +17,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-function SectionHealth(alerts_, options_, sectionName) {
+function SectionHealth(issues_, options_, sectionName) {
 	var name = sectionName;
-	var alerts = alerts_;
+	var issues = issues_;
+	var options = options_;
 	var health = {
 		info: [],
 		warnings: [],
 		errors: [],
 	}
 
-	var options = {};
+	init(issues_, options_);
 
-	init(options_);
-
-	this.getAlerts = function () {
-		return alerts;
+	this.getIssues = function () {
+		return issues;
 	}
 
 	this.getErrorsCount = function () {
@@ -54,17 +53,27 @@ function SectionHealth(alerts_, options_, sectionName) {
 		return name;
 	}
 
-	function init(options_) {
-		options = options_;
-		Object.values(options_).forEach(function (check) {
-			if (check.Severity === "Info") {
-				health.info.push(check);
+	function init(issues_, options_) {
+		Object.values(options_).forEach(function (opt) {
+			if (opt.Severity === "Info") {
+				health.info.push(opt);
 			}
-			else if (check.Severity === "Warning") {
-				health.warnings.push(check);
+			else if (opt.Severity === "Warning") {
+				health.warnings.push(opt);
 			}
-			else if (check.Severity === "Error") {
-				health.errors.push(check);
+			else if (opt.Severity === "Error") {
+				health.errors.push(opt);
+			}
+		});
+		issues_.forEach(function (issue) {
+			if (issue.Severity === "Info") {
+				health.info.push({name: sectionName, message: issue.Message });
+			}
+			else if (issue.Severity === "Warning") {
+				health.warnings.push({name: sectionName, message: issue.Message });
+			}
+			else if (issue.Severity === "Error") {
+				health.errors.push({name: sectionName, message: issue.Message });
 			}
 		});
 	}
@@ -113,19 +122,19 @@ var SystemHealth = (new function ($) {
 	'use strict';
 
 	var SECTION_NAMES = {
-		PATHS: "Paths",
-		NEWS_SERVERS: "NewsServers",
-		SECURITY: "Security",
-		CATEGORIES: "Categories",
-		FEEDS: "Feeds",
-		INCOMING_NZBS: "IncomingNzb",
-		DOWNLOAD_QUEUE: "DownloadQueue",
-		CONNECTION: "Connection",
-		LOGGING: "Logging",
-		CHECK_AND_REPAIR: "CheckAndRepair",
-		UNPACK: "Unpack",
-		SCHEDULER: "Scheduler",
-		EXTENSION_SCRIPTS: "ExtensionScripts"
+		Paths: "PATHS",
+		NewsServers: "NEWS-SERVERS",
+		Security: "SECURITY",
+		Categories: "CATEGORIES",
+		Feeds: "FEEDS",
+		IncomingNzb: "INCOMING NZBS",
+		DownloadQueue: "DOWNLOAD QUEUE",
+		Connection: "CONNECTION",
+		Logging: "LOGGING",
+		CheckAndRepair: "CHECK AND REPAIR",
+		Unpack: "UNPACK",
+		Scheduler: "SCHEDULER",
+		ExtensionScripts: "EXTENSION SCRIPTS"
 	};
 
 	var $appHealthBadge;
@@ -146,73 +155,72 @@ var SystemHealth = (new function ($) {
 		ERROR: "important",
 	}
 
-	var statusHandler =
-	{
-		update: function (status) {
-
-		}
-	}
-
 	this.init = function () {
 		$appHealthBadge = $("#ConfigTabAppHealthBadge");
 		$ConfigTitleStatus = $('#ConfigTitleStatus');
 		$SystemInfoNavBtnBadge = $('#SystemInfoNavBtnBadge');
 		$SystemInfo_Health = $('#SystemInfo_Health');
 		RPC.call('systemhealth', [],
-			function(health)
-			{
-				alertsReport = makeAlertsReport(health["Alerts"]);
+			function (health) {
+				console.log(health)
+				alertsReport = makeAlertsReport(health);
 				sectionsReport = makeHealthReport(health["Sections"]);
-				redrawGlobalBadges(sectionsReport);
-				redraw(health);
+				redrawGlobalBadges(alertsReport, sectionsReport);
+				redraw(alertsReport);
 			});
 	}
 
-	function redraw(health) {
-		var alertsErrors = health['Alerts'];
-		var status = health['Status'];
-
+	function redraw(alertsReport) {
 		$SystemInfo_Health.empty();
 		$ConfigTitleStatus.empty();
 
-		if (status === "Error")
-		{
-			$ConfigTitleStatus.append('<span class="text-error">ERROR</>');
-		}
-		else if (status === "Warning")
-		{
-			$ConfigTitleStatus.append('<span class="text-warning">WARNING</>');
-		}
-		else if (status === "Info")
-		{
-			$ConfigTitleStatus.append('<span class="text-success">OK</>');
-		}
-		else if (status === "Ok")
-		{
-			$ConfigTitleStatus.append('<span class="text-success">OK</>');
-		}
+		// if (status === "Error")
+		// {
+		// 	$ConfigTitleStatus.append('<span class="text-error">ERROR</>');
+		// }
+		// else if (status === "Warning")
+		// {
+		// 	$ConfigTitleStatus.append('<span class="text-warning">WARNING</>');
+		// }
+		// else if (status === "Info")
+		// {
+		// 	$ConfigTitleStatus.append('<span class="text-success">OK</>');
+		// }
+		// else if (status === "Ok")
+		// {
+		// 	$ConfigTitleStatus.append('<span class="text-success">OK</>');
+		// }
 
 		$SystemInfo_Health.show();
-		Object.values(alertsErrors).forEach(function (option) {
+		alertsReport.errors.forEach(function (alert) {
+			var link = $('<a href="#"></a>').on('click', function(e) {
+				e.preventDefault();
+				Config.navigateTo(alert.name);
+			});
+			link.append('<p class="text-error"><i class="option-alert__icon material-icon">error</i><span>' + alert.message + '</span></p>');
+			$SystemInfo_Health.append(link);
+		});
+
+		alertsReport.warnings.forEach(function (alert) {
 			var link = $('<a href="#"></a>')
 				.on('click', function (e) {
 					e.preventDefault();
-					var $btn = $('<a class="option" href="#">' + option.Name + '</a>')
+					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
 					Config.scrollToOption(e, $btn);
 				});
-			if (option.Status.Severity == "Error") {
-				link.append('<p class="text-error"><i class="option-alert__icon material-icon">error</i><span>' + option.Status.Message + '</span></p>');
-				$SystemInfo_Health.append(link);
-			}
+			link.append('<p class="text-warning"><i class="option-alert__icon material-icon">warning</i><span>' + alert.message + '</span></p>');
+			$SystemInfo_Health.append(link);
+		});
 
-			else if (option.Status.Severity == "Warning") {
-				link.append('<p class="text-warning"><i class="option-alert__icon material-icon">warning</i><span>' + option.Status.Message + '</span></p>');
-				$SystemInfo_Health.append(link);
-			}
-			else if (option.Status.Severity == "Info") {
-				link.append('<p class="text-success"><i class="option-alert__icon material-icon">info</i><span>' + option.Status.Message + '</span></p>');
-				$SystemInfo_Health.append(link);
-			}
+		alertsReport.info.forEach(function (alert) {
+			var link = $('<a href="#"></a>')
+				.on('click', function (e) {
+					e.preventDefault();
+					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
+					Config.scrollToOption(e, $btn);
+				});
+			link.append('<p class="text-success"><i class="option-alert__icon material-icon">info</i><span>' + alert.message + '</span></p>');
+			$SystemInfo_Health.append(link);
 		});
 	}
 
@@ -220,16 +228,16 @@ var SystemHealth = (new function ($) {
 		if (!section) return null;
 
 		var wrapper = $('<span style="margin-left: 5px;">');
-		// var $infoBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
+		var $infoBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
 		var $warningsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
 		var $errorsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		// var infoCount = section.getInfoCount();
+		var infoCount = section.getInfoCount();
 		var warningsCount = section.getWarningsCount();
 		var errorsCount = section.getErrorsCount();
-		// toggleBadgeVisibility($infoBadge, infoCount, SEVERITY_STYLE.INFO);
+		toggleBadgeVisibility($infoBadge, infoCount, SEVERITY_STYLE.INFO);
 		toggleBadgeVisibility($warningsBadge, warningsCount, SEVERITY_STYLE.WARNING);
 		toggleBadgeVisibility($errorsBadge, errorsCount, SEVERITY_STYLE.ERROR);
-		wrapper.append($errorsBadge, $warningsBadge);
+		wrapper.append($errorsBadge, $warningsBadge, $warningsBadge);
 
 		return wrapper;
 	}
@@ -245,113 +253,88 @@ var SystemHealth = (new function ($) {
 		return section.getCheck(name);
 	}
 
-	function redrawGlobalBadges(healthReport) {
-		// var infoCount = healthReport.getInfoCount();
-		var warningsCount = healthReport.getWarningsCount() + (alertsReport.getWarningsCount ? alertsReport.getWarningsCount() : 0);
-		var errorsCount = healthReport.getErrorsCount() + (alertsReport.getErrorsCount ? alertsReport.getErrorsCount() : 0);
+	function redrawGlobalBadges(alertsReport, sectionsReport) {
+		var infoCount = sectionsReport.getInfoCount() + (alertsReport.getInfoCount ? alertsReport.getInfoCount() : 0);
+		var warningsCount = sectionsReport.getWarningsCount() + (alertsReport.getWarningsCount ? alertsReport.getWarningsCount() : 0);
+		var errorsCount = sectionsReport.getErrorsCount() + (alertsReport.getErrorsCount ? alertsReport.getErrorsCount() : 0);
 		//toggleBadgeVisibility($appHealthInfoBadge, infoCount, SEVERITY_STYLE.INFO);
-		if (errorsCount > 0)
-		{
+		if (errorsCount > 0) {
 			toggleGlobalBadgeVisibility($appHealthBadge, errorsCount, SEVERITY_STYLE.ERROR);
 			toggleGlobalBadgeVisibility($SystemInfoNavBtnBadge, errorsCount, SEVERITY_STYLE.ERROR);
 			return;
 		}
 
-		toggleGlobalBadgeVisibility($appHealthBadge, warningsCount, SEVERITY_STYLE.WARNING);	
-		toggleGlobalBadgeVisibility($SystemInfoNavBtnBadge, warningsCount, SEVERITY_STYLE.WARNING);
-	}
-
-	function makeAlertsReport(alerts) {
-		var infoCount = 0;
-		var warningsCount = 0;
-		var errorsCount = 0;
-
-		if (Array.isArray(alerts)) {
-			alerts.forEach(function (check) {
-				if (check.Severity === "Info") infoCount++;
-				else if (check.Severity === "Warning") warningsCount++;
-				else if (check.Severity === "Error") errorsCount++;
-			});
+		// toggleGlobalBadgeVisibility($appHealthBadge, warningsCount, SEVERITY_STYLE.WARNING);	
+		if (warningsCount > 0) {
+			toggleGlobalBadgeVisibility($SystemInfoNavBtnBadge, warningsCount, SEVERITY_STYLE.WARNING);
+			return;
 		}
 
+		if (infoCount > 0) {
+			toggleGlobalBadgeVisibility($SystemInfoNavBtnBadge, infoCount, SEVERITY_STYLE.INFO);
+			return;
+		}
+	}
+
+	function makeAlertsReport(health) {
+		var alerts = health.Alerts;
+		var sections = health.Sections;
+		var info = [];
+		var warnings = [];
+		var errors = [];
+
+		alerts.forEach(function (alert) {
+			if (alert.Severity === "Info") info.push({ name: alert.Source, message: alert.Message });
+			else if (alert.Severity === "Warning") warnings.push({ name: alert.Source, message: alert.Message });
+			else if (alert.Severity === "Error") errors.push({ name: alert.Source, message: alert.Message });
+		});
+
+		sections.forEach(function (section) {
+			section.Issues.forEach(function (issue) {
+				if (issue.Severity === "Info") info.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
+				else if (issue.Severity === "Warning") warnings.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
+				else if (issue.Severity === "Error") errors.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
+			});
+
+			section.Subsections.forEach(function (sub) {
+				sub.Options.forEach(function (option) {
+					if (option.Severity === "Info") info.push({ name: sub.Name + "." + option.Name, message: option.Message });
+					else if (option.Severity === "Warning") warnings.push({ name: sub.Name + "." + option.Name, message: option.Message });
+					else if (option.Severity === "Error") errors.push({ name: sub.Name + "." + option.Name, message: option.Message });
+				});
+			});
+
+			section.Options.forEach(function (option) {
+				if (option.Severity === "Info") info.push({ name: option.Name, message: option.Message });
+				else if (option.Severity === "Warning") warnings.push({ name: option.Name, message: option.Message });
+				else if (option.Severity === "Error") errors.push({ name: option.Name, message: option.Message });
+			});
+		});
+
 		return {
-			getInfoCount: function () { return infoCount; },
-			getWarningsCount: function () { return warningsCount; },
-			getErrorsCount: function () { return errorsCount; }
+			info,
+			warnings,
+			errors,
 		};
 	}
 
-	function makeHealthReport(health) {
+	function makeHealthReport(sections) {
 		var healthReport = new HealthReport();
 
-		health.forEach(function (section) {
+		sections.forEach(function (section) {
 			var optionsMap = {};
-			var alerts = section.Alerts;
+			var issues = section.Issues;
 			section.Options.forEach(function (option) {
-				optionsMap[option.Name] = option.Status;
+				optionsMap[option.Name] = { Message: option.Message, Severity: option.Severity };
 			});
 
 			section.Subsections.forEach(function (sub) {
 				sub.Options.forEach(function (option) {
 					var key = (sub.Name ? (sub.Name + '.') : '') + option.Name;
-					optionsMap[key] = option.Status;
+					optionsMap[key] = { Message: option.Message, Severity: option.Severity };
 				});
 			});
-
-			var sectionName = section.Name;
-			if (sectionName === SECTION_NAMES.PATHS)
-			{
-				sectionName = "PATHS";
-			}
-			else if (sectionName === SECTION_NAMES.NEWS_SERVERS)
-			{
-				sectionName = "NEWS-SERVERS";
-			}
-			else if (sectionName === SECTION_NAMES.SECURITY)
-			{
-				sectionName = "SECURITY";
-			}
-			else if (sectionName === SECTION_NAMES.CATEGORIES)
-			{
-				sectionName = "CATEGORIES";
-			}
-			else if (sectionName === SECTION_NAMES.FEEDS)
-			{
-				sectionName = "RSS FEEDS";
-			}
-			else if (sectionName === SECTION_NAMES.INCOMING_NZBS)
-			{
-				sectionName = "INCOMING NZBS";
-			}
-			else if (sectionName === SECTION_NAMES.DOWNLOAD_QUEUE)
-			{
-				sectionName = "DOWNLOAD QUEUE";
-			}
-			else if (sectionName === SECTION_NAMES.CHECK_AND_REPAIR)
-			{
-				sectionName = "CHECK AND REPAIR";
-			}
-			else if (sectionName === SECTION_NAMES.UNPACK)
-			{
-				sectionName = "UNPACK";
-			}
-			else if (sectionName === SECTION_NAMES.CONNECTION)
-			{
-				sectionName = "CONNECTION";
-			}
-			else if (sectionName === SECTION_NAMES.LOGGING)
-			{
-				sectionName = "LOGGING";
-			}
-			else if (sectionName === SECTION_NAMES.SCHEDULER)
-			{
-				sectionName = "SCHEDULER";
-			}
-			else if (sectionName === SECTION_NAMES.EXTENSION_SCRIPTS)
-			{
-				sectionName = "EXTENSION SCRIPTS";
-			}
-			healthReport.addSection(new SectionHealth(alerts, optionsMap, sectionName));
+			healthReport.addSection(new SectionHealth(issues, optionsMap, SECTION_NAMES[section.Name]));
 		});
 
 		healthReport.computeCounters();
