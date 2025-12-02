@@ -925,6 +925,10 @@ h2 {
 	margin-bottom: 10px;
 }
 
+.error-block {
+	margin: 15px 0;
+}
+
 /* remove focus border */
 .nav-tabs > .active > a, .nav-tabs > .active > a:hover,
 .nav-pills > .active > a, .nav-pills > .active > a:hover,
