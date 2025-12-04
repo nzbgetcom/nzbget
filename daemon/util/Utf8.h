@@ -27,8 +27,8 @@
 namespace Utf8
 {
 	inline constexpr int STACK_BUFFER_SIZE = 1024;
-	std::optional<std::wstring> Utf8ToWide(const std::string& str);
-	std::optional<std::string> WideToUtf8(const std::wstring& wstr);
+	std::optional<std::wstring> Utf8ToWide(std::string_view str);
+	std::optional<std::string> WideToUtf8(std::wstring_view wstr);
 }
 
 #endif

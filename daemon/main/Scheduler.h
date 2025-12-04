@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2008-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,14 +15,13 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
 
-#include "NString.h"
 #include "Thread.h"
 #include "Service.h"
 
@@ -47,31 +47,45 @@ public:
 	class Task
 	{
 	public:
-		Task(int id, int hours, int minutes, int weekDaysBits, ECommand command,
-			const char* param) :
-			m_id(id), m_hours(hours), m_minutes(minutes),
-			m_weekDaysBits(weekDaysBits), m_command(command), m_param(param) {}
+		Task(int id, int hours, int minutes, int weekDaysBits, ECommand command, const char* param)
+			: m_id(id),
+			  m_hours(hours),
+			  m_minutes(minutes),
+			  m_weekDaysBits(weekDaysBits),
+			  m_command(command),
+			  m_param(param ? param : "")
+		{
+		}
 		friend class Scheduler;
 		static const int STARTUP_TASK = -1;
+		int GetId() const { return m_id; }
+		int GetHours() const { return m_hours; }
+		int GetMinutes() const { return m_minutes; }
+		int GetWeeDaysBits() const { return m_weekDaysBits; }
+		ECommand GetCommand() const { return m_command; }
+		const std::string& GetParam() const { return m_param; }
+
 	private:
-		int m_id;
-		int m_hours;
-		int m_minutes;
-		int m_weekDaysBits;
-		ECommand m_command;
-		CString m_param;
+		const int m_id;
+		const int m_hours;
+		const int m_minutes;
+		const int m_weekDaysBits;
+		const ECommand m_command;
+		const std::string m_param;
 		time_t m_lastExecuted = 0;
 	};
 
+	using TaskList = std::vector<std::unique_ptr<Task>>;
+
+	const TaskList& GetTasks() const { return m_taskList; }
 	void AddTask(std::unique_ptr<Task> task);
 
 protected:
-	virtual int ServiceInterval() { return m_serviceInterval; }
-	virtual void ServiceWork();
+	int ServiceInterval() override { return m_serviceInterval; }
+	void ServiceWork() override;
 
 private:
-	typedef std::vector<std::unique_ptr<Task>> TaskList;
-	typedef std::vector<bool> ServerStatusList;
+	using ServerStatusList = std::vector<bool>;
 
 	TaskList m_taskList;
 	Mutex m_taskListMutex;

@@ -220,30 +220,32 @@
 </div>
 
 <!-- *** ERROR BLOCK  ****************************************************************** -->
-<div class="alert alert-danger alert-block" style="display:none; overflow:auto;" id="ErrorAlert">
-	<h4 class="alert-heading" id="ErrorAlert-title">Communication error!</h4>
-	<p id="ErrorAlert-text"></p>
-</div>
+<div class="error-block">
+	<div class="alert alert-danger alert-block" style="display:none; overflow:auto;" id="ErrorAlert">
+		<h4 class="alert-heading" id="ErrorAlert-title">Communication error!</h4>
+		<p id="ErrorAlert-text"></p>
+	</div>
 
-<!-- *** ERROR BLOCK  ****************************************************************** -->
-<div id="RefreshError" data-duration="1000" style="display:none" class="alert alert-inverse alert-center alert-center-small hide">
-    <strong>Communication error, retrying...</strong>
-</div>
+	<!-- *** ERROR BLOCK  ****************************************************************** -->
+	<div id="RefreshError" data-duration="1000" style="display:none" class="alert alert-inverse alert-center alert-center-small hide">
+		<strong>Communication error, retrying...</strong>
+	</div>
 
-<!-- *** INIT LOADING-ALERT ************************************************************ -->
-<div class="alert alert-info alert-block" id="FirstUpdateInfo">
-	<h4 class="alert-heading">Loading...</h4>
-	Please wait.
-</div>
+	<!-- *** INIT LOADING-ALERT ************************************************************ -->
+	<div class="alert alert-info alert-block" id="FirstUpdateInfo">
+		<h4 class="alert-heading">Loading...</h4>
+		Please wait.
+	</div>
 
-<!-- *** UNSUPPORTED BROWSER: IE < 9 *************************************************** -->
-<div class="alert alert-danger alert-block unsupported-browser" style="display:none;" id="UnsupportedBrowserIE8Alert">
-	<h4 class="alert-heading">Unsupported browser!</h4>
-	<p>Sorry but this application doesn't work with Internet Explorer versions below 9. Please
-	upgrade to at least IE 9 or use another browser.</p>
-	<p>If you believe you are getting this message by mistake, please check
-	whether the compatibility mode is active in IE and switch it off to activate
-	all browser functionality required for the application.</p>
+	<!-- *** UNSUPPORTED BROWSER: IE < 9 *************************************************** -->
+	<div class="alert alert-danger alert-block unsupported-browser" style="display:none;" id="UnsupportedBrowserIE8Alert">
+		<h4 class="alert-heading">Unsupported browser!</h4>
+		<p>Sorry but this application doesn't work with Internet Explorer versions below 9. Please
+		upgrade to at least IE 9 or use another browser.</p>
+		<p>If you believe you are getting this message by mistake, please check
+		whether the compatibility mode is active in IE and switch it off to activate
+		all browser functionality required for the application.</p>
+	</div>
 </div>
 
 <!-- *** CONTENT ************************************************************ -->
@@ -518,7 +520,7 @@
 					<h4 class="alert-heading">Loading configuration...</h4>
 					Please wait.
 				</div>
-				<div class="alert alert-error alert-block hide" id="ConfigLoadServerTemplateError">
+				<div class="config-loading-alert alert alert-error alert-block hide" id="ConfigLoadServerTemplateError">
 					<h4 class="alert-heading">Loading configuration failed</h4>
 					Could not load template configuration file <em>nzbget.conf</em>. The file contains descriptions of options
 					and is needed to display settings page. The file comes with NZBGet distribution archive and is usually
@@ -531,11 +533,11 @@
 					(<em><span id="ConfigLoadServerTemplateErrorConfigFile"></span></em>) in a text editor
 					and set the option <em>ConfigTemplate</em> to point to the template configuration file <em>nzbget.conf</em>.</span>
 				</div>
-				<div class="alert alert-error alert-block hide" id="ConfigLoadError">
+				<div class="config-loading-alert alert alert-error alert-block hide" id="ConfigLoadError">
 					<h4 class="alert-heading">Loading configuration failed</h4>
 					<em id="ConfigLoadErrorText"></em>.
 				</div>
-				<div class="hide" id="ConfigSaved">
+				<div class="config-loading-alert hide" id="ConfigSaved">
 					<div class="alert alert-success alert-block">
 						<h4 class="alert-heading">Configuration has been saved successfully</h4>
 						<p id="ConfigSaved_Reload">For changes to have effect NZBGet must be reloaded (soft-restart).<br><br>

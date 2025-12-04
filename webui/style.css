@@ -925,6 +925,10 @@ h2 {
 	margin-bottom: 10px;
 }
 
+.error-block {
+	margin: 15px 0;
+}
+
 /* remove focus border */
 .nav-tabs > .active > a, .nav-tabs > .active > a:hover,
 .nav-pills > .active > a, .nav-pills > .active > a:hover,
@@ -1599,7 +1603,18 @@ ul.help > li {
 	display: flex;
 	overflow: hidden;
 	padding-top: 15px;
-    height: calc(100vh - 70px);
+}
+
+.config-loading-alert {
+	margin-top: 15px;
+}
+
+#DownloadsTab,
+#HistoryTab,
+#StatisticsTab,
+#MessagesTab,
+.config__container {
+	height: calc(100vh - 70px);
 }
 
 #DownloadsTab,
@@ -1607,7 +1622,6 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab {
 	overflow: auto;
-	height: calc(100vh - 70px);
 	padding-top: 15px;
 }
 
@@ -1621,6 +1635,20 @@ ul.help > li {
 	width: 100%;
 	padding: 0 15px;
 	overflow: auto;
+}
+
+@media (max-width: 1028px) {
+	.container-fluid {
+		padding: 0 10px;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab,
+	.config__container {
+		height: calc(100vh - 100px);
+	}
 }
 
 @media (max-width: 960px) {
@@ -1641,16 +1669,22 @@ ul.help > li {
 	#DownloadsTab,
 	#HistoryTab,
 	#StatisticsTab,
+	#MessagesTab,
+	.config__container {
+		height: 100%;
+	}
+
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
 	#MessagesTab {
 		overflow: auto;
-		height: 100%;
 		padding-top: 10px;
 	}
 
 	.config__container {
 		display: flex;
 		flex-direction: column;
-		height: 100%;
 		gap: 0px;
 		padding-top: 10px;
 		overflow-y: auto;
