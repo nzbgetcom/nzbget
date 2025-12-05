@@ -26,4 +26,4 @@ std::vector<std::unique_ptr<SectionValidator>> SchedulerTasksValidator::MakeTask
 	return validators;
 }
 
-}  // namespace SystemHealth::Scheduler
+}  // namespace SystemHealth::SchedulerTask

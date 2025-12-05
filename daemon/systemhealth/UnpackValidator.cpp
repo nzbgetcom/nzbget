@@ -60,9 +60,9 @@ Status DirectUnpackValidator::Validate() const
 
 	if (directUnpack && !unpack)
 	{
-		return Status::Warning(std::string(Options::DIRECTUNPACK) + " is enabled, but " +
+		return Status::Warning("'" + std::string(Options::DIRECTUNPACK) + "' is enabled, but '" +
 							   std::string(Options::UNPACK) +
-							   " is disabled. Direct unpacking will not work");
+							   "' is disabled. Direct unpacking will not work");
 	}
 
 	return Status::Ok();
@@ -70,17 +70,6 @@ Status DirectUnpackValidator::Validate() const
 
 Status UseTempUnpackDirValidator::Validate() const
 {
-	if (!m_options->GetUseTempUnpackDir()) return Status::Ok();
-
-	// Warn if temp dir equals destination dir — temp dir should be separate
-	const auto& tempPath = m_options->GetTempDirPath();
-	const auto& destPath = m_options->GetDestDirPath();
-	if (!tempPath.empty() && !destPath.empty() && tempPath == destPath)
-	{
-		return Status::Warning(
-			std::string(Options::USETEMPUNPACKDIR) +
-			" is enabled but TempDir equals DestDir. This may cause conflicts when unpacking");
-	}
 	return Status::Ok();
 }
 

@@ -23,6 +23,7 @@
 #include "SectionValidator.h"
 #include "FeedInfo.h"
 #include "Validators.h"
+#include "Options.h"
 
 namespace SystemHealth::Feeds
 {
@@ -30,18 +31,19 @@ namespace SystemHealth::Feeds
 class FeedValidator final : public SectionValidator
 {
 public:
-	FeedValidator(const FeedInfo& feed);
+	FeedValidator(const FeedInfo& feed, const Options& options);
 	std::string_view GetName() const override { return m_name; }
 
 private:
 	const FeedInfo& m_feed;
+	const Options& m_options;
 	const std::string m_name;
 };
 
-class FeedNameValidator final : public Validator
+class NameValidator final : public Validator
 {
 public:
-	explicit FeedNameValidator(const FeedInfo& feed) : m_feed(feed) {}
+	explicit NameValidator(const FeedInfo& feed) : m_feed(feed) {}
 	std::string_view GetName() const override { return "Name"; }
 	Status Validate() const override;
 
@@ -49,10 +51,10 @@ private:
 	const FeedInfo& m_feed;
 };
 
-class FeedUrlValidator final : public Validator
+class UrlValidator final : public Validator
 {
 public:
-	explicit FeedUrlValidator(const FeedInfo& feed) : m_feed(feed) {}
+	explicit UrlValidator(const FeedInfo& feed) : m_feed(feed) {}
 	std::string_view GetName() const override { return "URL"; }
 	Status Validate() const override;
 
@@ -60,10 +62,10 @@ private:
 	const FeedInfo& m_feed;
 };
 
-class FeedIntervalValidator final : public Validator
+class IntervalValidator final : public Validator
 {
 public:
-	explicit FeedIntervalValidator(const FeedInfo& feed) : m_feed(feed) {}
+	explicit IntervalValidator(const FeedInfo& feed) : m_feed(feed) {}
 	std::string_view GetName() const override { return "Interval"; }
 	Status Validate() const override;
 
@@ -71,10 +73,10 @@ private:
 	const FeedInfo& m_feed;
 };
 
-class FeedFilterValidator final : public Validator
+class FilterValidator final : public Validator
 {
 public:
-	explicit FeedFilterValidator(const FeedInfo& feed) : m_feed(feed) {}
+	explicit FilterValidator(const FeedInfo& feed) : m_feed(feed) {}
 	std::string_view GetName() const override { return "Filter"; }
 	Status Validate() const override;
 
@@ -82,10 +84,10 @@ private:
 	const FeedInfo& m_feed;
 };
 
-class FeedScriptsValidator final : public Validator
+class ScriptsValidator final : public Validator
 {
 public:
-	FeedScriptsValidator(const FeedInfo& feed) : m_feed(feed) {}
+	ScriptsValidator(const FeedInfo& feed) : m_feed(feed) {}
 
 	std::string_view GetName() const override { return "Extensions"; }
 	Status Validate() const override;
@@ -94,16 +96,20 @@ private:
 	const FeedInfo& m_feed;
 };
 
-class FeedCategoryValidator final : public Validator
+class CategoryValidator final : public Validator
 {
 public:
-	FeedCategoryValidator(const FeedInfo& feed) : m_feed(feed) {}
+	CategoryValidator(const FeedInfo& feed, const Options& options)
+		: m_feed(feed), m_options(options)
+	{
+	}
 
 	std::string_view GetName() const override { return "Category"; }
 	Status Validate() const override;
 
 private:
 	const FeedInfo& m_feed;
+	const Options& m_options;
 };
 
 }  // namespace SystemHealth::Feeds

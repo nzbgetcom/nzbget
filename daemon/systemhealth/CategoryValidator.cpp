@@ -35,11 +35,11 @@ CategoryValidator::CategoryValidator(const Options& options, const Options::Cate
 	: m_options(options), m_category(category), m_name("Category" + std::to_string(id))
 {
 	m_validators.reserve(2);
-	m_validators.push_back(std::make_unique<CategoryNameValidator>(category));
-	m_validators.push_back(std::make_unique<CategoryUnpackValidator>(options, category));
+	m_validators.push_back(std::make_unique<NameValidator>(category));
+	m_validators.push_back(std::make_unique<UnpackValidator>(options, category));
 }
 
-Status CategoryNameValidator::Validate() const
+Status NameValidator::Validate() const
 {
 	std::string_view name = m_category.GetName();
 	if (name.empty())
@@ -49,7 +49,7 @@ Status CategoryNameValidator::Validate() const
 	return Status::Ok();
 }
 
-Status CategoryUnpackValidator::Validate() const
+Status UnpackValidator::Validate() const
 {
 	bool globalUnpack = m_options.GetUnpack();
 	bool catUnpack = m_category.GetUnpack();

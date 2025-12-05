@@ -17,106 +17,120 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "Service.h"
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-
 #include "SystemHealth.h"
 
-// using namespace SystemHealth;
+using namespace SystemHealth;
 
-// struct HealthFixture
-// {
-//     Service service;
+HealthReport CreateFullReport()
+{
+    HealthReport report;
 
-//     SystemAlert CreateAlert(std::string source, std::string category, Status::Level level, std::string msg)
-//     {
-//         Alert alert;
-//         alert.source = source;
-//         alert.category = category;
-//         alert.status = (level == Status::Error) ? Status::Error(msg) :
-//                        (level == Status::Warning) ? Status::Warning(msg) :
-//                        Status::Ok();
-//         alert.timestamp = std::time(nullptr);
-//         return alert;
-//     }
-// };
+    Alert alert;
+    alert.source = "DiskMonitor";
+    alert.category = "System";
+    alert.status = Status::Error("Disk Full");
+    alert.timestamp = std::chrono::system_clock::time_point(std::chrono::seconds(1000));
+    report.alerts.push_back(alert);
 
+    SectionReport section;
+    section.name = "NewsServers";
 
-// BOOST_FIXTURE_TEST_SUITE(HealthLogicSuite, HealthFixture)
+    section.issues.push_back(Status::Warning("No active servers"));
 
+    OptionStatus opt;
+    opt.name = "Retention";
+    opt.status = Status::Info("Value is 0 (Unlimited)");
+    section.options.push_back(opt);
 
-// BOOST_AUTO_TEST_CASE(ReportSingleAlert_AppearsInDiagnose)
-// {
-//     auto alert = CreateAlert("Disk", "Space", Status::Error, "Disk full");
-
-//     service.ReportAlert(alert);
-//     HealthReport report = service.Diagnose( /* dummy state */ );
-
-//     // 1. Check Global Status
-//     // Error should propagate to the top
-//     BOOST_CHECK_EQUAL(report.status, false); 
-
-//     // 2. Check the alerts list
-//     BOOST_REQUIRE_EQUAL(report.systemAlerts.size(), 1);
-//     BOOST_CHECK_EQUAL(report.systemAlerts[0].source, "Disk");
-//     BOOST_CHECK_EQUAL(report.systemAlerts[0].status.message, "Disk full");
-//     BOOST_CHECK_EQUAL(report.systemAlerts[0].status.level, Status::Error);
-// }
-
-// // Test Case 2: Deduplication (Updating existing alert)
-// // Reporting the same source+category twice should update the timestamp, not add a new entry.
-// BOOST_AUTO_TEST_CASE(ReportDuplicateAlert_UpdatesTimestampOnly)
-// {
-//     auto alert1 = CreateAlert("Network", "Conn", Status::Error, "Timeout");
+    SubsectionReport sub;
+    sub.name = "Server1";
+    OptionStatus subOpt;
+    subOpt.name = "Host";
+    subOpt.status = Status::Error("Host is required");
+    sub.options.push_back(subOpt);
     
-//     // Simulate time passing (ensure timestamp changes)
-//     std::this_thread::sleep_for(std::chrono::seconds(1));
-//     auto alert2 = CreateAlert("Network", "Conn", Status::Error, "Timeout");
+    section.subsections.push_back(sub);
+    report.sections.push_back(section);
 
-//     service.ReportAlert(alert1);
-//     service.ReportAlert(alert2); // Should update, not add
+    return report;
+}
 
-//     // Get internal state (via Diagnose or GetActiveAlerts if you exposed it)
-//     HealthReport report = service.Diagnose( /* dummy */ );
+BOOST_AUTO_TEST_SUITE(JsonTests)
 
-//     BOOST_CHECK_EQUAL(report.systemAlerts.size(), 1); // Still 1
+BOOST_AUTO_TEST_CASE(TestAlertJsonStructure)
+{
+    Alert alert;
+    alert.source = "TestSrc";
+    alert.category = "TestCat";
+    alert.status = Status::Error("TestMsg");
+    alert.timestamp = std::chrono::system_clock::time_point(std::chrono::seconds(500));
+
+    Json::JsonObject json = ToJson(alert);
+
+    BOOST_CHECK_EQUAL(json["Source"].as_string(), "TestSrc");
+    BOOST_CHECK_EQUAL(json["Category"].as_string(), "TestCat");
+    BOOST_CHECK_EQUAL(json["Severity"].as_string(), "Error");
+    BOOST_CHECK_EQUAL(json["Message"].as_string(), "TestMsg");
+
+    BOOST_CHECK_EQUAL(json["Timestamp"], 300);
+}
+
+BOOST_AUTO_TEST_CASE(TestFullReportJson)
+{
+    HealthReport report = CreateFullReport();
+    std::string jsonStr = ToJsonStr(report);
+
+    BOOST_CHECK(jsonStr.find("\"Alerts\":") != std::string::npos);
+    BOOST_CHECK(jsonStr.find("\"Sections\":") != std::string::npos);
+    BOOST_CHECK(jsonStr.find("\"NewsServers\"") != std::string::npos);
+    BOOST_CHECK(jsonStr.find("\"Server1\"") != std::string::npos);
+    BOOST_CHECK(jsonStr.find("\"Disk Full\"") != std::string::npos);
+    BOOST_CHECK(jsonStr.find("\"Host is required\"") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(XmlTests)
+
+BOOST_AUTO_TEST_CASE(TestAlertXmlNode)
+{
+    Alert alert;
+    alert.source = "XmlSrc";
+    alert.category = "XmlCat";
+    alert.status = Status::Error("XmlMsg");
+    alert.timestamp = std::chrono::system_clock::time_point(std::chrono::seconds(123));
+
+    Xml::XmlNodePtr node = ToXml(alert);
     
-//     // Verify it used the data from the second alert (newer timestamp)
-//     BOOST_CHECK(report.systemAlerts[0].timestamp >= alert2.timestamp);
-// }
+    BOOST_REQUIRE(node != nullptr);
+    BOOST_CHECK_EQUAL(std::string((char*)node->name), "value");
 
-// // Test Case 3: Recovery (Auto-Cleanup)
-// // Reporting 'Ok' should remove the error from the list.
-// BOOST_AUTO_TEST_CASE(ReportOk_ClearsExistingError)
-// {
-//     // Arrange: System is broken
-//     service.ReportAlert(CreateAlert("DB", "Conn", Status::Error, "Lost"));
-    
-//     HealthReport initial = service.Diagnose( /* dummy */ );
-//     BOOST_REQUIRE_EQUAL(initial.systemAlerts.size(), 1);
+    std::string xmlSnippet = Xml::Serialize(node);
 
-//     // Act: System recovers
-//     service.ReportAlert(CreateAlert("DB", "Conn", Status::Ok, "Connected"));
+    BOOST_CHECK(xmlSnippet.find("<name>Source</name>") != std::string::npos);
+    BOOST_CHECK(xmlSnippet.find("<string>XmlSrc</string>") != std::string::npos);
+    BOOST_CHECK(xmlSnippet.find("<name>Severity</name>") != std::string::npos);
+    BOOST_CHECK(xmlSnippet.find("<string>Error</string>") != std::string::npos);
 
-//     // Assert: Error is gone
-//     HealthReport finalReport = service.Diagnose( /* dummy */ );
-//     BOOST_CHECK_EQUAL(finalReport.systemAlerts.size(), 0);
-//     BOOST_CHECK_EQUAL(finalReport.isValid, true);
-// }
+    xmlFreeNode(node); 
+}
 
-// // Test Case 4: Aggregation
-// // Ensure distinct sources don't overwrite each other.
-// BOOST_AUTO_TEST_CASE(MultipleDistinctAlerts_AreAggregated)
-// {
-//     service.ReportAlert(CreateAlert("Disk", "Space", Status::Warning, "90%"));
-//     service.ReportAlert(CreateAlert("Net", "Speed", Status::Error, "Slow"));
+BOOST_AUTO_TEST_CASE(TestFullReportXmlStr)
+{
+    HealthReport report = CreateFullReport();
+    std::string xmlStr = ToXmlStr(report);
 
-//     HealthReport report = service.Diagnose( /* dummy */ );
+    BOOST_CHECK(xmlStr.find("<methodResponse>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<params>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<name>Alerts</name>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<array>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<string>DiskMonitor</string>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<string>NewsServers</string>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<string>Server1</string>") != std::string::npos);
+    BOOST_CHECK(xmlStr.find("<string>Host is required</string>") != std::string::npos);
+}
 
-//     BOOST_CHECK_EQUAL(report.systemAlerts.size(), 2);
-//     BOOST_CHECK_EQUAL(report.isValid, false); // Because one is Error
-// }
-
-// BOOST_AUTO_TEST_SUITE_END()
+BOOST_AUTO_TEST_SUITE_END()

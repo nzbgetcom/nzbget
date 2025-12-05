@@ -108,7 +108,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/Network.cpp
 
-	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Service.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SystemHealthService.cpp
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Status.cpp
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Validators.cpp
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SectionValidator.cpp

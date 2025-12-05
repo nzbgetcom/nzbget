@@ -63,8 +63,8 @@ Status ControlIpValidator::Validate() const
 	std::string_view ip = m_options.GetControlIp();
 	if (ip == "0.0.0.0")
 	{
-		return Status::Info(std::string(Options::CONTROLIP) +
-							" is '0.0.0.0', allowing connections from any IP. Client mode will "
+		return Status::Info("'" + std::string(Options::CONTROLIP) +
+							"' is '0.0.0.0', allowing connections from any IP. Client mode will "
 							"default to 127.0.0.1 to connect");
 	}
 
@@ -76,8 +76,8 @@ Status ControlIpValidator::Validate() const
 		return Status::Error("Using Unix domain sockets is not supported on Windows");
 #else
 
-		return Status::Info(std::string(Options::CONTROLIP) +
-							" is set to a path, activating Unix domain socket mode");
+		return Status::Info("'" + std::string(Options::CONTROLIP) +
+							"' is set to a path, activating Unix domain socket mode");
 #endif
 	}
 
@@ -91,8 +91,8 @@ Status SecureKeyValidator::Validate() const
 	std::string_view keyFile = m_options.GetSecureKey();
 	if (m_options.GetSecureControl() && keyFile.empty())
 	{
-		return Status::Warning(std::string(Options::SECURECERT) + " is enabled but " +
-							   std::string(Options::SECUREKEY) + " is empty");
+		return Status::Warning("'" + std::string(Options::SECURECERT) + "' is enabled but '" +
+							   std::string(Options::SECUREKEY) + "' is empty");
 	}
 
 	if (!m_options.GetSecureControl()) return Status::Ok();
@@ -111,8 +111,8 @@ Status SecureCertValidator::Validate() const
 	std::string_view certFile = m_options.GetSecureCert();
 	if (m_options.GetSecureControl() && certFile.empty())
 	{
-		return Status::Warning(std::string(Options::SECURECONTROL) + " is enabled but " +
-							   std::string(Options::SECURECERT) + " is empty");
+		return Status::Warning("'" + std::string(Options::SECURECONTROL) + "' is enabled but '" +
+							   std::string(Options::SECURECERT) + "' is empty");
 	}
 
 	if (!m_options.GetSecureControl()) return Status::Ok();
@@ -132,8 +132,8 @@ Status ControlPortValidator::Validate() const
 	int port = m_options.GetControlPort();
 	if (port < 1024)
 	{
-		return Status::Warning(std::string(Options::CONTROLPORT) +
-							   " is below 1024 and may require root privileges");
+		return Status::Warning("'" + std::string(Options::CONTROLPORT) +
+							   "' is below 1024 and may require root privileges");
 	}
 	return Status::Ok();
 }
@@ -168,9 +168,9 @@ Status AddUsernameValidator::Validate() const
 	std::string_view controlUser = m_options.GetControlUsername();
 	if (!addUser.empty() && controlUser == "nzbget")
 	{
-		return Status::Warning(std::string(Options::ADDUSERNAME) + " is enabled while " +
+		return Status::Warning("'" + std::string(Options::ADDUSERNAME) + "' is enabled while '" +
 							   std::string(Options::CONTROLUSERNAME) +
-							   " is still set to the default 'nzbget'");
+							   "' is still set to the default 'nzbget'");
 	}
 
 	return Status::Ok();
@@ -182,16 +182,16 @@ Status AddPasswordValidator::Validate() const
 	std::string_view addPass = m_options.GetAddPassword();
 	if (!addUser.empty() && addPass.empty())
 	{
-		return Status::Warning(std::string(Options::ADDUSERNAME) + " is enabled, but " +
+		return Status::Warning("'" + std::string(Options::ADDUSERNAME) + "' is enabled, but '" +
 							   std::string(Options::ADDPASSWORD) +
-							   " is empty. This allows add-only access without a password");
+							   "' is empty. This allows add-only access without a password");
 	}
 
 	if (addUser.empty() && !addPass.empty())
 	{
-		return Status::Info(std::string(Options::ADDPASSWORD) + " is set, but " +
+		return Status::Info("'" + std::string(Options::ADDPASSWORD) + "' is set, but '" +
 							std::string(Options::ADDUSERNAME) +
-							" is empty. The add-user is currently disabled");
+							"' is empty. The add-user is currently disabled");
 	}
 
 	return Status::Ok();
@@ -205,11 +205,10 @@ Status RestrictedUsernameValidator::Validate() const
 	std::string_view controlUser = m_options.GetControlUsername();
 
 	if (!restrictedUser.empty() && controlUser == "nzbget")
-
 	{
-		return Status::Warning(std::string(Options::RESTRICTEDUSERNAME) + " is enabled while " +
-							   std::string(Options::CONTROLUSERNAME) +
-							   " is still set to the default 'nzbget'");
+		return Status::Warning("'" + std::string(Options::RESTRICTEDUSERNAME) +
+							   "' is enabled while '" + std::string(Options::CONTROLUSERNAME) +
+							   "' is still set to the default 'nzbget'");
 	}
 
 	return Status::Ok();
@@ -221,16 +220,16 @@ Status RestrictedPasswordValidator::Validate() const
 	std::string_view restrictedPass = m_options.GetRestrictedPassword();
 	if (!restrictedUser.empty() && restrictedPass.empty())
 	{
-		return Status::Warning(std::string(Options::RESTRICTEDUSERNAME) + " is enabled, but " +
-							   std::string(Options::RESTRICTEDPASSWORD) +
-							   " is empty. This allows restricted access without a password");
+		return Status::Warning("'" + std::string(Options::RESTRICTEDUSERNAME) +
+							   "' is enabled, but '" + std::string(Options::RESTRICTEDPASSWORD) +
+							   "' is empty. This allows restricted access without a password");
 	}
 
 	if (restrictedUser.empty() && !restrictedPass.empty())
 	{
-		return Status::Info(std::string(Options::RESTRICTEDPASSWORD) + " is set, but '" +
+		return Status::Info("'" + std::string(Options::RESTRICTEDPASSWORD) + "' is set, but '" +
 							std::string(Options::RESTRICTEDUSERNAME) +
-							" is empty. The restricted user is currently disabled");
+							"' is empty. The restricted user is currently disabled");
 	}
 
 	return Status::Ok();
@@ -248,49 +247,14 @@ Status SecurePortValidator::Validate() const
 
 	if (securePort == controlPort)
 	{
-		return Status::Error(std::string(Options::SECUREPORT) + " cannot be the same as " +
-							 std::string(Options::CONTROLPORT));
+		return Status::Error("'" + std::string(Options::SECUREPORT) +
+							 "' cannot be the same as '" + std::string(Options::CONTROLPORT) +
+							 "'");
 	}
 	return Status::Ok();
 }
 
-Status AuthorizedIPValidator::Validate() const
-{
-	std::string_view ipList = m_options.GetAuthorizedIp();
-	if (ipList.empty()) return Status::Ok();
-
-	// Split entries by comma or semicolon and validate tokens
-	std::string s(ipList);
-	size_t start = 0;
-	while (start < s.size())
-	{
-		size_t pos = s.find_first_of(",;", start);
-		std::string token =
-			s.substr(start, pos == std::string::npos ? std::string::npos : pos - start);
-		// trim spaces
-		auto l = token.find_first_not_of(' ');
-		if (l == std::string::npos)
-			return Status::Error(std::string(Options::AUTHORIZEDIP) + " contains an empty entry");
-		auto r = token.find_last_not_of(' ');
-		token = token.substr(l, r - l + 1);
-
-		// Acceptable characters: alnum, dot, colon, star, question, hyphen
-		for (char c : token)
-		{
-			if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '.' || c == ':' || c == '*' ||
-				  c == '?' || c == '-'))
-			{
-				return Status::Error(std::string(Options::AUTHORIZEDIP) + " has invalid entry '" +
-									 token + "'. Allowed: IPs, hostnames, or wildcard patterns");
-			}
-		}
-
-		if (pos == std::string::npos) break;
-		start = pos + 1;
-	}
-
-	return Status::Ok();
-}
+Status AuthorizedIPValidator::Validate() const { return Status::Ok(); }
 
 Status UpdateCheckValidator::Validate() const { return Status::Ok(); }
 
@@ -300,18 +264,17 @@ Status FormAuthValidator::Validate() const
 
 	if (!m_options.GetSecureControl())
 	{
-		return Status::Warning(std::string(Options::FORMAUTH) +
-							   " is enabled but SecureControl (HTTPS) is disabled. Form "
+		return Status::Warning("'" + std::string(Options::FORMAUTH) +
+							   "' is enabled but SecureControl (HTTPS) is disabled. Form "
 							   "credentials may be transmitted in plaintext");
 	}
 
-	const bool hasAdd = m_options.GetAddUsername() && m_options.GetAddUsername()[0] != '\0';
-	const bool hasRestricted =
-		m_options.GetRestrictedUsername() && m_options.GetRestrictedUsername()[0] != '\0';
+	const bool hasAdd = Util::EmptyStr(m_options.GetAddUsername());
+	const bool hasRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
 	if (!hasAdd && !hasRestricted)
 	{
-		return Status::Warning(std::string(Options::FORMAUTH) +
-							   " is enabled but no form users are configured "
+		return Status::Warning("'" + std::string(Options::FORMAUTH) +
+							   "' is enabled but no form users are configured "
 							   "(AddUsername/RestrictedUsername). Users cannot log in via forms");
 	}
 
@@ -322,8 +285,8 @@ Status SecureControlValidator::Validate() const
 {
 	if (m_options.GetSecureControl() && m_options.GetSecurePort() == 0)
 	{
-		return Status::Error(std::string(Options::SECURECONTROL) + " is enabled but " +
-							 std::string(Options::SECUREPORT) + " is invalid");
+		return Status::Error("'" + std::string(Options::SECURECONTROL) + "' is enabled but '" +
+							 std::string(Options::SECUREPORT) + "' is invalid");
 	}
 	return Status::Ok();
 }
@@ -343,10 +306,9 @@ Status DaemonUsernameValidator::Validate() const
 {
 	if (!m_options.GetDaemonMode()) return Status::Ok();
 	std::string_view daemonUser = m_options.GetDaemonUsername();
-
 	if (daemonUser == "root")
-		return Status::Warning(std::string(Options::DAEMONUSERNAME) +
-							   " is set to 'root', consider using a non-privileged user");
+		return Status::Warning("'" + std::string(Options::DAEMONUSERNAME) +
+							   "' is set to 'root', consider using a non-privileged user");
 
 	return Status::Ok();
 }
@@ -355,8 +317,8 @@ Status UmaskValidator::Validate() const
 {
 	int umask = m_options.GetUMask();
 	if (umask == 0)
-		return Status::Warning(std::string(Options::UMASK) +
-							   " is set to 0, files will be created with full permissions");
+		return Status::Warning("'" + std::string(Options::UMASK) +
+							   "' is set to 0, files will be created with full permissions");
 	return Status::Ok();
 }
 #endif

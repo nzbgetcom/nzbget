@@ -81,6 +81,6 @@ private:
 	const ::Scheduler::Task& m_task;
 };
 
-}  // namespace SystemHealth::Scheduler
+}  // namespace SystemHealth::SchedulerTask
 
 #endif

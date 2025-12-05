@@ -77,8 +77,10 @@ void Log(const Alert& alert);
 
 Json::JsonObject ToJson(const Alert& alert);
 Xml::XmlNodePtr ToXml(const Alert& alert);
+
 std::string ToJsonStr(const HealthReport& report);
 std::string ToXmlStr(const HealthReport& report);
+
 }  // namespace SystemHealth
 
 extern SystemHealth::Service* g_SystemHealth;

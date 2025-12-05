@@ -17,7 +17,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "Status.h"
 #include "nzbget.h"
 
 #include "CheckAndRepairValidator.h"
@@ -91,8 +90,8 @@ Status ParRepairValidator::Validate() const
 {
 	if (!m_options.GetParRepair())
 	{
-		return Status::Warning("\"" + std::string(Options::PARREPAIR) +
-							   "\" option is off. Corrupted files won't be automatically repaired");
+		return Status::Warning("'" + std::string(Options::PARREPAIR) +
+							   "' option is off. Corrupted files won't be automatically repaired");
 	}
 	return Status::Ok();
 }
@@ -105,8 +104,8 @@ Status ParQuickValidator::Validate() const
 	if (!m_options.GetParQuick())
 	{
 		return Status::Info(
-			"\"" + std::string(Options::PARQUICK) +
-			"\" is off. Files will be verified by reading from disk, which is slower");
+			"'" + std::string(Options::PARQUICK) +
+			"' is off. Files will be verified by reading from disk, which is slower");
 	}
 
 	return Status::Ok();
@@ -159,8 +158,8 @@ Status RarRenameValidator::Validate() const
 {
 	if (!m_options.GetRarRename())
 		return Status::Info(
-			"\"" + std::string(Options::RARRENAME) +
-			"\" option is off. Original file names won't be restored from rar-files");
+			"'" + std::string(Options::RARRENAME) +
+			"' option is off. Original file names won't be restored from rar-files");
 	return Status::Ok();
 }
 
@@ -176,8 +175,8 @@ Status HealthCheckValidator::Validate() const
 		case Options::EHealthCheck::hcNone:
 			return Status::Ok();
 		case Options::EHealthCheck::hcPause:
-			return Status::Warning("\"" + std::string(Options::HEALTHCHECK) +
-								   "\" is set to 'Pause' you will need to manually move another "
+			return Status::Warning("'" + std::string(Options::HEALTHCHECK) +
+								   "' is set to 'Pause' you will need to manually move another "
 								   "duplicate from history to queue");
 
 		default:

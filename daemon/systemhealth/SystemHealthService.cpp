@@ -20,7 +20,7 @@
 #include "nzbget.h"
 
 #include "ExtensionManager.h"
-#include "Service.h"
+#include "SystemHealthService.h"
 #include "PathsValidator.h"
 #include "IncomingNzbValidator.h"
 #include "SchedulerTasksValidator.h"
@@ -198,6 +198,56 @@ std::string ToJsonStr(const HealthReport& report)
 	reportJson["Sections"] = std::move(sectionsArrayJson);
 
 	return Json::serialize(reportJson);
+}
+
+// <Alert>
+//   <Source>...</Source>
+//   <Category>...</Category>
+//   <Severity>...</Severity>
+//   <Message>...</Message>
+//   <Timestamp>123456789</Timestamp>
+// </Alert>
+Xml::XmlNodePtr ToXml(const Alert& alert)
+{
+	xmlNodePtr structNode = Xml::CreateStructNode();
+
+	Xml::AddNewNode(structNode, "Source", "string", alert.source.c_str());
+	Xml::AddNewNode(structNode, "Category", "string", alert.category.c_str());
+	const auto severity = SeverityToStr(alert.status.GetSeverity());
+	Xml::AddNewNode(structNode, "Severity", "string", severity.data());
+	Xml::AddNewNode(structNode, "Message", "string", alert.status.GetMessage().c_str());
+
+	auto ticks = std::to_string(alert.timestamp.time_since_epoch().count());
+	Xml::AddNewNode(structNode, "Timestamp", "i8", ticks.c_str());
+
+	return structNode->parent;
+}
+
+std::string ToXmlStr(const HealthReport& report)
+{
+	xmlDocPtr doc = xmlNewDoc(BAD_CAST "1.0");
+	xmlNodePtr structNode = Xml::CreateStructNode();
+	xmlDocSetRootElement(doc, structNode->parent);
+
+	std::vector<xmlNodePtr> alertNodes;
+	for (const auto& alert : report.alerts)
+	{
+		alertNodes.push_back(ToXml(alert));
+	}
+	Xml::AddArrayNode(structNode, "Alerts", alertNodes);
+
+	std::vector<xmlNodePtr> sectionNodes;
+	for (const auto& section : report.sections)
+	{
+		sectionNodes.push_back(ToXml(section));
+	}
+	Xml::AddArrayNode(structNode, "Sections", sectionNodes);
+
+	std::string result = Xml::Serialize(structNode->parent);
+
+	xmlFreeDoc(doc);
+
+	return result;
 }
 
 }  // namespace SystemHealth

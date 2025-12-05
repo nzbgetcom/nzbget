@@ -38,10 +38,10 @@ private:
 	const std::string m_name;
 };
 
-class CategoryNameValidator : public Validator
+class NameValidator : public Validator
 {
 public:
-	explicit CategoryNameValidator(const Options::Category& category) : m_category(category) {}
+	explicit NameValidator(const Options::Category& category) : m_category(category) {}
 
 	std::string_view GetName() const override { return "Name"; }
 	Status Validate() const override;
@@ -50,10 +50,10 @@ private:
 	const Options::Category& m_category;
 };
 
-class CategoryUnpackValidator : public Validator
+class UnpackValidator : public Validator
 {
 public:
-	CategoryUnpackValidator(const Options& options, const Options::Category& category)
+	UnpackValidator(const Options& options, const Options::Category& category)
 		: m_options(options), m_category(category)
 	{
 	}

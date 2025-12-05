@@ -48,8 +48,8 @@ Status WriteLogValidator::Validate() const
 			return Status::Info(
 				"Logging to file is disabled. This makes troubleshooting difficult");
 		case Options::EWriteLog::wlAppend:
-			return Status::Warning("\"" + std::string(Options::WRITELOG) +
-								   "\" is set to 'Append'. The log file may grow indefinitely");
+			return Status::Warning("'" + std::string(Options::WRITELOG) +
+								   "' is set to 'Append'. The log file may grow indefinitely");
 		case Options::EWriteLog::wlReset:
 		case Options::EWriteLog::wlRotate:
 			return Status::Ok();
@@ -77,8 +77,8 @@ Status LogBufferValidator::Validate() const
 	if (!s.IsOk()) return s;
 
 	if (m_options.GetLogBuffer() < 100)
-		return Status::Warning("\"" + std::string(Options::LOGBUFFER) +
-							   "\" is very low. You might miss recent messages in the web UI");
+		return Status::Info("'" + std::string(Options::LOGBUFFER) +
+							   "' is very low. You might miss recent messages in the web UI");
 	return Status::Ok();
 }
 
@@ -86,9 +86,9 @@ Status CrashDumpValidator::Validate() const
 {
 #ifdef __linux__
 	if (m_options.GetCrashDump())
-		return Status::Warning(
-			"\"" + std::string(Options::CRASHDUMP) +
-			"\" is enabled. Memory dumps may contain sensitive data (passwords, keys)");
+		return Status::Info(
+			"'" + std::string(Options::CRASHDUMP) +
+			"' is enabled. Memory dumps may contain sensitive data (passwords, keys)");
 #endif
 
 	return Status::Ok();
@@ -101,8 +101,8 @@ Status TimeCorrectionValidator::Validate() const
 	// Config says: -24..+24 are hours, others are minutes.
 	// If someone sets 10000 (minutes), that's ~7 days offset, likely a mistake.
 	if (std::abs(val) > 1440 && std::abs(val) < 1000000)  // 1440 mins = 24 hours
-		return Status::Warning("\"" + std::string(Options::TIMECORRECTION) +
-							   "\" value is very large (interpreted as minutes)");
+		return Status::Warning("'" + std::string(Options::TIMECORRECTION) +
+							   "' value is very large (interpreted as minutes)");
 
 	return Status::Ok();
 }

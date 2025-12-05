@@ -19,10 +19,11 @@ public:
 
 private:
 	const ::Scheduler::TaskList& m_tasks;
+
 	std::vector<std::unique_ptr<SectionValidator>> MakeTaskValidators(
 		const ::Scheduler::TaskList& tasks) const;
 };
 
-}  // namespace SystemHealth::Scheduler
+}  // namespace SystemHealth::SchedulerTask
 
 #endif

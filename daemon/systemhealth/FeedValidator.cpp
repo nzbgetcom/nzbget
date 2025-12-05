@@ -28,29 +28,29 @@
 namespace SystemHealth::Feeds
 {
 
-FeedValidator::FeedValidator(const FeedInfo& feed)
-	: m_feed(feed), m_name("Feed" + std::to_string(feed.GetId()))
+FeedValidator::FeedValidator(const FeedInfo& feed, const Options& options)
+	: m_feed(feed), m_options(options), m_name("Feed" + std::to_string(feed.GetId()))
 {
 	m_validators.reserve(6);
-	m_validators.push_back(std::make_unique<FeedNameValidator>(feed));
-	m_validators.push_back(std::make_unique<FeedUrlValidator>(feed));
-	m_validators.push_back(std::make_unique<FeedIntervalValidator>(feed));
-	m_validators.push_back(std::make_unique<FeedFilterValidator>(feed));
-	m_validators.push_back(std::make_unique<FeedScriptsValidator>(feed));
-	m_validators.push_back(std::make_unique<FeedCategoryValidator>(feed));
+	m_validators.push_back(std::make_unique<NameValidator>(feed));
+	m_validators.push_back(std::make_unique<UrlValidator>(feed));
+	m_validators.push_back(std::make_unique<IntervalValidator>(feed));
+	m_validators.push_back(std::make_unique<FilterValidator>(feed));
+	m_validators.push_back(std::make_unique<ScriptsValidator>(feed));
+	m_validators.push_back(std::make_unique<CategoryValidator>(feed, options));
 }
 
-Status FeedNameValidator::Validate() const
+Status NameValidator::Validate() const
 {
 	std::string_view name = m_feed.GetName();
 	if (name.empty())
 	{
-		return Status::Error("Feed name is required");
+		return Status::Info("A feed name is recommended for clearer logs and troubleshooting");
 	}
 	return Status::Ok();
 }
 
-Status FeedUrlValidator::Validate() const
+Status UrlValidator::Validate() const
 {
 	std::string_view url = m_feed.GetUrl();
 	if (url.empty())
@@ -67,68 +67,35 @@ Status FeedUrlValidator::Validate() const
 	return Status::Ok();
 }
 
-Status FeedIntervalValidator::Validate() const
+Status IntervalValidator::Validate() const
 {
 	int interval = m_feed.GetInterval();
-
-	if (interval < 0)
-	{
-		return Status::Error("Interval cannot be negative");
-	}
+	const auto check = CheckPositiveNum("Interval", interval);
+	if (!check.IsOk()) return check;
 
 	if (interval == 0)
 	{
-		return Status::Info("Automatic check is disabled (0)");
+		return Status::Info("Automatic check is disabled");
 	}
 
 	return Status::Ok();
 }
 
-Status FeedFilterValidator::Validate() const
+Status FilterValidator::Validate() const { return Status::Ok(); }
+
+Status ScriptsValidator::Validate() const { return Status::Ok(); }
+
+Status CategoryValidator::Validate() const
 {
-	std::string_view filter = m_feed.GetFilter();
-	if (filter.empty())
+	std::string_view category = m_feed.GetCategory();
+	if (category.empty())
 	{
-		return Status::Info("No feed filter specified");
-	}
-	if (filter.size() > 1024)
-	{
-		return Status::Warning("Feed filter is unusually long");
-	}
-	return Status::Ok();
-}
-
-Status FeedScriptsValidator::Validate() const
-{
-	std::string_view ext = m_feed.GetExtensions();
-	if (ext.empty()) return Status::Ok();
-
-	std::istringstream ss(ext.data());
-	std::string token;
-	int count = 0;
-	while (std::getline(ss, token, ','))
-	{
-		++count;
-		if (token.size() > 256)
-			return Status::Warning("One of the feed extensions/script names is unusually long");
-	}
-	if (count > 20) return Status::Warning("Too many feed extensions/scripts defined");
-
-	return Status::Ok();
-}
-
-Status FeedCategoryValidator::Validate() const
-{
-	const char* category = m_feed.GetCategory();
-	if (!category || *category == '\0')
-	{
-		return Status::Info("No category assigned to this feed");
+		return Status::Ok();
 	}
 
-	if (g_Options)
+	if (!m_options.FindCategory(category.data(), true))
 	{
-		if (!g_Options->FindCategory(category, true))
-			return Status::Warning(std::string("Feed references unknown category: ") + category);
+		return Status::Warning("Feed references unknown category: '" + std::string(category) + "'");
 	}
 
 	return Status::Ok();

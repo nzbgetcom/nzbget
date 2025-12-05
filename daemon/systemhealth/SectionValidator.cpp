@@ -38,7 +38,7 @@ SectionReport SectionValidator::Validate() const
 	for (const auto& validator : m_validators)
 	{
 		auto status = validator->Validate();
-		if (!status.IsOk()) 
+		if (!status.IsOk())
 			report.options.push_back({std::string(validator->GetName()), std::move(status)});
 	}
 
@@ -99,6 +99,83 @@ Json::JsonObject ToJson(const SectionReport& report)
 	json["Subsections"] = std::move(sectionsArrayJson);
 
 	return json;
+}
+
+// <Option>
+//   <Name>...</Name>
+//   <Severity>...</Severity>
+//   <Message>...</Message>
+// </Option>
+Xml::XmlNodePtr ToXml(const OptionStatus& status)
+{
+	xmlNodePtr structNode = Xml::CreateStructNode();
+
+	const auto severity = SeverityToStr(status.status.GetSeverity());
+	Xml::AddNewNode(structNode, "Name", "string", status.name.c_str());
+	Xml::AddNewNode(structNode, "Severity", "string", severity.data());
+	Xml::AddNewNode(structNode, "Message", "string", status.status.GetMessage().c_str());
+
+	return structNode->parent;
+}
+
+// <Subsection>
+//   <Name>...</Name>
+//   <Options>...</Options>
+// </Subsection>
+Xml::XmlNodePtr ToXml(const SubsectionReport& report)
+{
+	xmlNodePtr structNode = Xml::CreateStructNode();
+
+	Xml::AddNewNode(structNode, "Name", "string", report.name.c_str());
+
+	std::vector<xmlNodePtr> optionsNodes;
+	for (const auto& option : report.options)
+	{
+		optionsNodes.push_back(ToXml(option));
+	}
+	Xml::AddArrayNode(structNode, "Options", optionsNodes);
+
+	return structNode->parent;
+}
+
+// <Section>
+//   <Name>...</Name>
+//   <Issues>...</Issues>
+//   <Options>...</Options>
+//   <Subsections>...</Subsections>
+// </Section>
+Xml::XmlNodePtr ToXml(const SectionReport& report)
+{
+	xmlNodePtr structNode = Xml::CreateStructNode();
+
+	Xml::AddNewNode(structNode, "Name", "string", report.name.c_str());
+
+	std::vector<xmlNodePtr> issueNodes;
+	for (const auto& issue : report.issues)
+	{
+		xmlNodePtr sNode = Xml::CreateStructNode();
+		const auto severity = SeverityToStr(issue.GetSeverity());
+		Xml::AddNewNode(sNode, "Severity", "string", severity.data());
+		Xml::AddNewNode(sNode, "Message", "string", issue.GetMessage().c_str());
+		issueNodes.push_back(sNode->parent);
+	}
+	Xml::AddArrayNode(structNode, "Issues", issueNodes);
+
+	std::vector<xmlNodePtr> optionNodes;
+	for (const auto& option : report.options)
+	{
+		optionNodes.push_back(ToXml(option));
+	}
+	Xml::AddArrayNode(structNode, "Options", optionNodes);
+
+	std::vector<xmlNodePtr> subNodes;
+	for (const auto& sub : report.subsections)
+	{
+		subNodes.push_back(ToXml(sub));
+	}
+	Xml::AddArrayNode(structNode, "Subsections", subNodes);
+
+	return structNode->parent;
 }
 
 }  // namespace SystemHealth

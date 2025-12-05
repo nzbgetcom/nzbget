@@ -41,7 +41,7 @@ Xml::XmlNodePtr ToXml(const Status& status)
 	std::string_view severity = SeverityToStr(status.GetSeverity());
 	const std::string& message = status.GetMessage();
 
-	Xml::XmlNodePtr node = xmlNewNode(nullptr, XmlLiteral("struct"));
+	xmlNodePtr node = Xml::CreateStructNode();
 	Xml::AddNewNode(node, "Severity", "string", severity.data());
 	Xml::AddNewNode(node, "Message", "string", message.c_str());
 

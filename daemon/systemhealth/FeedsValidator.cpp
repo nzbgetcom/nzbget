@@ -35,7 +35,7 @@ std::vector<std::unique_ptr<SectionValidator>> FeedsValidator::MakeFeedValidator
 	validators.reserve(feeds.size());
 	for (const auto& feed : feeds)
 	{
-		validators.push_back(std::make_unique<FeedValidator>(*feed));
+		validators.push_back(std::make_unique<FeedValidator>(*feed, m_options));
 	}
 	return validators;
 }

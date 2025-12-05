@@ -45,14 +45,15 @@ Status OutputModeValidator::Validate() const
 		return Status::Ok();
 	}
 
-	return Status::Error(std::string(Options::OUTPUTMODE) + " has an invalid value");
+	return Status::Error("'" + std::string(Options::OUTPUTMODE) + "' has an invalid value");
 }
 
 Status UpdateIntervalValidator::Validate() const
 {
 	int v = m_options.GetUpdateInterval();
 	if (v == 0) return Status::Ok();
-	if (v < 25) return Status::Error(std::string(Options::UPDATEINTERVAL) + " must be >= 25 ms.");
+	if (v < 25)
+		return Status::Error("'" + std::string(Options::UPDATEINTERVAL) + "' must be >= 25 ms.");
 	return Status::Ok();
 }
 
@@ -61,8 +62,8 @@ Status CursesNzbNameValidator::Validate() const
 	if (m_options.GetOutputMode() != Options::EOutputMode::omNCurses &&
 		m_options.GetCursesNzbName())
 	{
-		return Status::Info(std::string(Options::CURSESNZBNAME) +
-							" applies only when OutputMode=curses");
+		return Status::Info("'" + std::string(Options::CURSESNZBNAME) +
+							"' applies only when OutputMode=curses");
 	}
 	return Status::Ok();
 }
@@ -71,8 +72,8 @@ Status CursesGroupValidator::Validate() const
 {
 	if (m_options.GetOutputMode() != Options::EOutputMode::omNCurses && m_options.GetCursesGroup())
 	{
-		return Status::Info(std::string(Options::CURSESGROUP) +
-							" applies only when OutputMode=curses");
+		return Status::Info("'" + std::string(Options::CURSESGROUP) +
+							"' applies only when OutputMode=curses");
 	}
 	return Status::Ok();
 }
@@ -81,8 +82,8 @@ Status CursesTimeValidator::Validate() const
 {
 	if (m_options.GetOutputMode() != Options::EOutputMode::omNCurses && m_options.GetCursesTime())
 	{
-		return Status::Info(std::string(Options::CURSESTIME) +
-							" applies only when OutputMode=curses");
+		return Status::Info("'" + std::string(Options::CURSESTIME) +
+							"' applies only when OutputMode=curses");
 	}
 	return Status::Ok();
 }

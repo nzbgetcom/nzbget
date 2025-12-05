@@ -54,9 +54,9 @@ Status FlushQueueValidator::Validate() const
 {
 	if (m_options.GetFlushQueue() && m_options.GetSkipWrite())
 	{
-		return Status::Warning("\"" + std::string(Options::FLUSHQUEUE) + "\" is enabled while \"" +
+		return Status::Warning("'" + std::string(Options::FLUSHQUEUE) + "' is enabled while '" +
 							   std::string(Options::SKIPWRITE) +
-							   "\" is enabled; flushed data may not be written to disk");
+							   "' is enabled; flushed data may not be written to disk");
 	}
 	return Status::Ok();
 }
@@ -84,26 +84,26 @@ Status ArticleCacheValidator::Validate() const
 
 	if (val == 0)
 		return Status::Warning(
-			"\"" + std::string(Options::ARTICLECACHE) +
-			"\" is disabled. Enabling it is recommended to reduce disk fragmentation");
+			"'" + std::string(Options::ARTICLECACHE) +
+			"' is disabled. Enabling it is recommended to reduce disk fragmentation");
 
 	// Check for 32-bit architecture limit (1900 MB)
 	if (sizeof(void*) == 4 && val > 1900)
-		return Status::Error("\"" + std::string(Options::ARTICLECACHE) +
-							 "\" cannot exceed 1900 MB on 32-bit systems");
+		return Status::Error("'" + std::string(Options::ARTICLECACHE) +
+							 "' cannot exceed 1900 MB on 32-bit systems");
 
 	if (m_options.GetDirectWrite())
 	{
 		if (val < 50)
-			return Status::Warning("With \"" + std::string(Options::DIRECTWRITE) +
-								   "\" enabled, a cache of at least 50 MB is recommended");
+			return Status::Warning("With '" + std::string(Options::DIRECTWRITE) +
+								   "' enabled, a cache of at least 50 MB is recommended");
 	}
 
 	if (val < 200)
 	{
 		return Status::Warning(
-			"\"" + std::string(Options::DIRECTWRITE) +
-			"\" is disabled. A cache under 200 MB is likely too small to hold complete files, "
+			"'" + std::string(Options::DIRECTWRITE) +
+			"' is disabled. A cache under 200 MB is likely too small to hold complete files, "
 			"forcing writes to the temporary directory and degrading performance");
 	}
 
@@ -114,8 +114,8 @@ Status DirectWriteValidator::Validate() const
 {
 	if (!m_options.GetDirectWrite())
 		return Status::Warning(
-			"\"" + std::string(Options::DIRECTWRITE) +
-			"\" is disabled. "
+			"'" + std::string(Options::DIRECTWRITE) +
+			"' is disabled. "
 			"Articles will be written to the temporary directory first, then copied to the "
 			"destination. "
 			"Enabling this option is usually recommended to reduce disk I/O usage");
@@ -133,8 +133,8 @@ Status WriteBufferValidator::Validate() const
 	if (val > 102400)
 	{
 		return Status::Warning(
-			"\"" + std::string(Options::WRITEBUFFER) +
-			"\" is very large (>100MB). This is per-connection and may exhaust memory");
+			"'" + std::string(Options::WRITEBUFFER) +
+			"' is very large (>100MB). This is per-connection and may exhaust memory");
 	}
 	return Status::Ok();
 }
@@ -206,8 +206,8 @@ Status DiskSpaceValidator::Validate() const
 	if (val > 0 && val < 50)
 	{
 		return Status::Warning(
-			"\"" + std::string(Options::DISKSPACE) +
-			"\" is set very low (<50MB). Downloads may fill disk before pausing");
+			"'" + std::string(Options::DISKSPACE) +
+			"' is set very low (<50MB). Downloads may fill disk before pausing");
 	}
 	return Status::Ok();
 }
@@ -236,8 +236,8 @@ Status SkipWriteValidator::Validate() const
 {
 	if (m_options.GetSkipWrite())
 	{
-		return Status::Warning("\"" + std::string(Options::SKIPWRITE) +
-							   "\" is enabled: downloaded data will NOT be saved to disk");
+		return Status::Warning("'" + std::string(Options::SKIPWRITE) +
+							   "' is enabled: downloaded data will NOT be saved to disk");
 	}
 	return Status::Ok();
 }
@@ -247,8 +247,8 @@ Status RawArticleValidator::Validate() const
 	if (m_options.GetRawArticle())
 	{
 		return Status::Warning(
-			"\"" + std::string(Options::RAWARTICLE) +
-			"\" is enabled: articles will be saved in raw format (unusable for normal files)");
+			"'" + std::string(Options::RAWARTICLE) +
+			"' is enabled: articles will be saved in raw format (unusable for normal files)");
 	}
 	return Status::Ok();
 }

@@ -47,8 +47,8 @@ Status ArticleRetriesValidator::Validate() const
 {
 	int val = m_options.GetArticleRetries();
 	if (val < 0 || val > 99)
-		return Status::Error("\"" + std::string(Options::ARTICLERETRIES) +
-							 "\" value must be between 0 and 99");
+		return Status::Error("'" + std::string(Options::ARTICLERETRIES) +
+							 "' value must be between 0 and 99");
 
 	if (val < 3)
 		return Status::Warning(
@@ -135,8 +135,8 @@ Status UrlConnectionsValidator::Validate() const
 	int val = m_options.GetUrlConnections();
 	if (val < 0 || val > 999)
 	{
-		return Status::Error("\"" + std::string(Options::URLCONNECTIONS) +
-							 "\" must be between 0 and 999");
+		return Status::Error("'" + std::string(Options::URLCONNECTIONS) +
+							 "' must be between 0 and 999");
 	}
 	return Status::Ok();
 }
@@ -151,7 +151,7 @@ Status MonthlyQuotaValidator::Validate() const
 
 	if (val == 0) return Status::Ok(); // no quota
 
-	return Status::Info("\"" + std::string(Options::MONTHLYQUOTA) + "\" is active (" +
+	return Status::Info("'" + std::string(Options::MONTHLYQUOTA) + "' is active (" +
 						std::to_string(val) +
 						" MB). "
 						"Downloads will pause if this limit is reached");
@@ -172,9 +172,9 @@ Status DailyQuotaValidator::Validate() const
 	Status s = CheckPositiveNum(Options::DAILYQUOTA, val);
 	if (!s.IsOk()) return s;
 
-	if (val == 0) return Status::Ok(); // no quota
+	if (val == 0) return Status::Ok();
 
-	return Status::Info("\"" + std::string(Options::DAILYQUOTA) + "\" is active (" +
+	return Status::Info("'" + std::string(Options::DAILYQUOTA) + "' is active (" +
 						std::to_string(val) +
 						" MB). "
 						"Downloads will pause if this limit is reached");

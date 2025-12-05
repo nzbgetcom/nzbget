@@ -20,7 +20,7 @@
 #ifndef SYSTEM_HEALTH_H
 #define SYSTEM_HEALTH_H
 
-#include "Service.h"
+#include "SystemHealthService.h"
 #include "Status.h"
 
 #endif

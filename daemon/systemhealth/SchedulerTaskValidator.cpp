@@ -73,74 +73,7 @@ Status WeekDaysValidator::Validate() const
 	return Status::Ok();
 }
 
-Status ParamValidator::Validate() const
-{
-	const std::string param = m_task.GetParam();
-	const auto cmd = m_task.GetCommand();
+Status ParamValidator::Validate() const { return Status::Ok(); }
 
-	switch (cmd)
-	{
-		case ::Scheduler::scDownloadRate:
-		{
-			if (param.empty())
-				return Status::Warning(
-					"" + std::string("No parameter for download rate; task will be ignored"));
-
-			char* endptr = nullptr;
-			errno = 0;
-			long val = strtol(param.c_str(), &endptr, 10);
-			if (endptr == param.c_str() || *endptr != '\0' || errno != 0)
-			{
-				return Status::Error("Invalid numeric parameter for download rate: " + param);
-			}
-			if (val < 0)
-			{
-				return Status::Error("Download rate must be >= 0: " + param);
-			}
-			return Status::Ok();
-		}
-
-		case ::Scheduler::scExtensions:
-		case ::Scheduler::scProcess:
-		case ::Scheduler::scFetchFeed:
-		case ::Scheduler::scActivateServer:
-		case ::Scheduler::scDeactivateServer:
-		{
-			if (param.empty())
-			{
-				return Status::Error(
-					"Parameter required for this scheduled command but it's empty");
-			}
-			return Status::Ok();
-		}
-
-		default:
-			return Status::Ok();
-	}
-}
-
-Status CommandValidator::Validate() const
-{
-	const auto cmd = m_task.GetCommand();
-
-	switch (cmd)
-	{
-		case ::Scheduler::scPauseDownload:
-		case ::Scheduler::scUnpauseDownload:
-		case ::Scheduler::scPausePostProcess:
-		case ::Scheduler::scUnpausePostProcess:
-		case ::Scheduler::scDownloadRate:
-		case ::Scheduler::scExtensions:
-		case ::Scheduler::scProcess:
-		case ::Scheduler::scPauseScan:
-		case ::Scheduler::scUnpauseScan:
-		case ::Scheduler::scActivateServer:
-		case ::Scheduler::scDeactivateServer:
-		case ::Scheduler::scFetchFeed:
-			return Status::Ok();
-		default:
-			return Status::Error("Unknown scheduler command: " +
-								 std::to_string(static_cast<int>(cmd)));
-	}
-}
+Status CommandValidator::Validate() const { return Status::Ok(); }
 }  // namespace SystemHealth::Scheduler

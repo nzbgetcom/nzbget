@@ -17,7 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "Options.h"
+
 #include "nzbget.h"
 
 #include "IncomingNzbValidator.h"
@@ -87,12 +87,12 @@ Status DupeCheckValidator::Validate() const
 	{
 		const auto healthCheckStr = std::string(Options::HEALTHCHECK);
 		return Status::Info(
-			"\"" + std::string(Options::DUPECHECK) + "\" is enabled while \"" + healthCheckStr +
-			"\" is set to 'Pause'. "
+			"'" + std::string(Options::DUPECHECK) + "' is enabled while '" + healthCheckStr +
+			"' is set to 'Pause'. "
 			"This configuration is not recommended as it requires manual intervention "
 			"to unpause backup downloads if the primary one fails. "
-			"Consider using 'Delete', 'Park', or 'None' for \"" +
-			healthCheckStr + "\"");
+			"Consider using 'Delete', 'Park', or 'None' for '" +
+			healthCheckStr + "'");
 	}
 
 	return Status::Ok();

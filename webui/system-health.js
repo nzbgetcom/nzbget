@@ -126,7 +126,7 @@ var SystemHealth = (new function ($) {
 		NewsServers: "NEWS-SERVERS",
 		Security: "SECURITY",
 		Categories: "CATEGORIES",
-		Feeds: "FEEDS",
+		Feeds: "RSS FEEDS",
 		IncomingNzb: "INCOMING NZBS",
 		DownloadQueue: "DOWNLOAD QUEUE",
 		Connection: "CONNECTION",
@@ -195,6 +195,8 @@ var SystemHealth = (new function ($) {
 		alertsReport.errors.forEach(function (alert) {
 			var link = $('<a href="#"></a>').on('click', function(e) {
 				e.preventDefault();
+				var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
+				Config.scrollToOption(e, $btn);
 				Config.navigateTo(alert.name);
 			});
 			link.append('<p class="text-error"><i class="option-alert__icon material-icon">error</i><span>' + alert.message + '</span></p>');
@@ -207,6 +209,7 @@ var SystemHealth = (new function ($) {
 					e.preventDefault();
 					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
 					Config.scrollToOption(e, $btn);
+					Config.navigateTo(alert.name);
 				});
 			link.append('<p class="text-warning"><i class="option-alert__icon material-icon">warning</i><span>' + alert.message + '</span></p>');
 			$SystemInfo_Health.append(link);
@@ -218,6 +221,7 @@ var SystemHealth = (new function ($) {
 					e.preventDefault();
 					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
 					Config.scrollToOption(e, $btn);
+					Config.navigateTo(alert.name);
 				});
 			link.append('<p class="text-success"><i class="option-alert__icon material-icon">info</i><span>' + alert.message + '</span></p>');
 			$SystemInfo_Health.append(link);

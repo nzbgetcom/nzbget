@@ -67,6 +67,7 @@ Json::JsonObject ToJson(const SectionReport& report);
 Xml::XmlNodePtr ToXml(const OptionStatus& status);
 Xml::XmlNodePtr ToXml(const SubsectionReport& report);
 Xml::XmlNodePtr ToXml(const SectionReport& report);
+
 }  // namespace SystemHealth
 
 #endif

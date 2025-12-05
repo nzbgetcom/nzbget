@@ -33,8 +33,8 @@ Status RequiredOption(std::string_view name, std::string_view value)
 {
 	if (value.empty())
 	{
-		return Status::Error("\"" + std::string(name) +
-							 "\" option is required and cannot be empty");
+		return Status::Error("'" + std::string(name) +
+							 "' option is required and cannot be empty");
 	}
 
 	return Status::Ok();
@@ -51,8 +51,8 @@ Status UniquePath(
 
 	if (found == other.cend()) return Status::Ok();
 
-	return Status::Warning("\"" + std::string(name) + "\" and \"" + std::string(found->first) +
-						   "\" are identical that can lead to unexpected behavior");
+	return Status::Warning("'" + std::string(name) + "' and '" + std::string(found->first) +
+						   "' are identical that can lead to unexpected behavior");
 }
 
 Status CheckPassword(std::string_view password)
@@ -72,7 +72,7 @@ Status CheckPassword(std::string_view password)
 
 Status CheckPositiveNum(std::string_view name, int value)
 {
-	if (value < 0) return Status::Error("\"" + std::string(name) + "\" option must not be negative");
+	if (value < 0) return Status::Error("'" + std::string(name) + "' option must not be negative");
 	return Status::Ok();
 }
 
