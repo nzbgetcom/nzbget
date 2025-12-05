@@ -7,6 +7,13 @@ on:
     - main
     tags:
     - "v*"
+    paths:
+    - 'cmake/**'
+    - 'daemon/**'
+    - 'lib/**'
+    - 'webui/**'
+    - 'docker/**'
+    - 'CMakeLists.txt'
   workflow_call:
     inputs:
       debug:

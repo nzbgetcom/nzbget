@@ -6,9 +6,9 @@ on:
 
 env:
   BUILD_ARCHS: '32 64'
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release Debug' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
-  SIGN: 'true'
+  SIGN: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'true' || 'false' }}
   SIGNING_POLICY: 'release-signing'
 
 jobs:

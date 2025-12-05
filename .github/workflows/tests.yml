@@ -5,6 +5,13 @@ on:
     branches:
     - develop
     - main
+    paths:
+    - 'cmake/**'
+    - 'daemon/**'
+    - 'lib/**'
+    - 'webui/**'
+    - 'tests/**'
+    - 'CMakeLists.txt'
   pull_request:
     branches:
     - develop
