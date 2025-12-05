@@ -7,6 +7,10 @@ on:
     - main
     tags:
     - "v*"
+    paths-ignore:
+    - 'docs/**'
+    - 'tests/**'
+    - '**/*.md'
   workflow_call:
     inputs:
       debug:
