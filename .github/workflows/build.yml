@@ -5,12 +5,10 @@ on:
     branches:
     - develop
     - main
-    paths:
-    - 'cmake/**'
-    - 'daemon/**'
-    - 'lib/**'
-    - 'webui/**'
-    - 'CMakeLists.txt'
+    paths-ignore:
+    - 'docs/**'
+    - 'tests/**'
+    - '**/*.md'
   workflow_dispatch:
 
 jobs:

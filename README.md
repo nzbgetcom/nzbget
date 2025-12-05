@@ -73,4 +73,4 @@ Please [donate](https://nzbget.com/donate/) if you like what we are doing. Thank
 
 ## Code Signing Policy
 
-For our Windows release, free code signing is provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).
+Windows release: free code signing is provided by [SignPath.io](https://signpath.io), certificate by [SignPath Foundation](https://signpath.org).

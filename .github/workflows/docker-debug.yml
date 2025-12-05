@@ -4,13 +4,10 @@ on:
   push:
     branches:
     - develop
-    paths:
-    - 'cmake/**'
-    - 'daemon/**'
-    - 'lib/**'
-    - 'webui/**'
-    - 'docker/**'
-    - 'CMakeLists.txt'
+    paths-ignore:
+    - 'docs/**'
+    - 'tests/**'
+    - '**/*.md'
   workflow_dispatch:
 
 jobs:
