@@ -10,8 +10,7 @@ env:
 
 jobs:
   build-x64:
-    if: false
-    runs-on: macos-13
+    runs-on: macos-14
 
     steps:
 
@@ -162,7 +161,6 @@ jobs:
         retention-days: 5
 
   combine-osx-artifacts:
-    if: false
     runs-on: ubuntu-24.04
     needs: [build-x64, sign-universal]
     permissions:
