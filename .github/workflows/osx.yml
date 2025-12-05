@@ -10,6 +10,7 @@ env:
 
 jobs:
   build-x64:
+    if: false
     runs-on: macos-13
 
     steps:
@@ -54,12 +55,17 @@ jobs:
         retention-days: 5
 
   build-universal:
-    runs-on: [self-hosted, macos, arm64]
+    runs-on: macos-14
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
+
+    - name: Prepare build environment
+      run: |
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-osx-universal.tar.gz -o $HOME/vcpkg.tar.gz
+        tar zxf $HOME/vcpkg.tar.gz -C $HOME
 
     - name: Build
       run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
@@ -91,6 +97,7 @@ jobs:
         retention-days: 5
 
   sign-universal:
+    if: false
     runs-on: [self-hosted, macos, arm64]
     needs: [build-universal]
 
@@ -134,6 +141,7 @@ jobs:
         retention-days: 5
 
   combine-osx-artifacts:
+    if: false
     runs-on: ubuntu-24.04
     needs: [build-x64, sign-universal]
     permissions:
