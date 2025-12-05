@@ -6,7 +6,7 @@ on:
 
 env:
   BUILD_ARCHS: '32 64'
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release' }}
+  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release Debug' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
   SIGN: 'true'
   SIGNING_POLICY: 'release-signing'
@@ -68,7 +68,7 @@ jobs:
 
     - name: Submit signing request
       id: submit-signing-request
-      if: env.SIGN == 'true'
+      if: env.SIGN == 'true' && matrix.type == 'Release'
       uses: signpath/github-action-submit-signing-request@v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -81,7 +81,7 @@ jobs:
         output-artifact-directory: build\${{ matrix.type }}${{ matrix.arch }}\signed
 
     - name: Upload signed build artifacts
-      if: env.SIGN == 'true'
+      if: env.SIGN == 'true' && matrix.type == 'Release'
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
