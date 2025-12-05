@@ -127,7 +127,7 @@ jobs:
         security import cert.p12 -k "$OSX_KEYCHAIN_NAME" -P "$OSX_CERTIFICATES_P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/xcrun
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$OSX_KEYCHAIN_PASSWORD" "$OSX_KEYCHAIN_NAME"
         mkdir -p "$HOME/.private_keys"
-        echo $OSX_NOTARY_KEY_P8_BASE64 | base64 --decode > "$HOME/.private_keys/AuthKey_$OSX_NOTARY_KEY_ID.p8"
+        echo "$OSX_NOTARY_KEY_P8_BASE64" | base64 --decode > "$HOME/.private_keys/AuthKey_$OSX_NOTARY_KEY_ID.p8"
         brew install create-dmg
         rm cert.p12
 
