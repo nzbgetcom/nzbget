@@ -4,6 +4,10 @@ on:
   push:
     branches:
     - develop
+    paths-ignore:
+    - 'docs/**'
+    - 'tests/**'
+    - '**/*.md'
   workflow_dispatch:
 
 jobs:

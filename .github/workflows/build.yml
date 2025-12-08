@@ -5,11 +5,16 @@ on:
     branches:
     - develop
     - main
+    paths-ignore:
+    - 'docs/**'
+    - 'tests/**'
+    - '**/*.md'
   workflow_dispatch:
 
 jobs:
   build-windows:
     uses: ./.github/workflows/windows.yml
+    secrets: inherit
 
   build-linux:
     uses: ./.github/workflows/linux.yml
