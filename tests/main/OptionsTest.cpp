@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -161,4 +161,53 @@ BOOST_AUTO_TEST_CASE(ParseCategorySourceTest)
 	BOOST_CHECK_EQUAL(extender.m_categorySources[4], FeedInfo::CategorySource::NZBFile);
 	BOOST_CHECK_EQUAL(extender.m_categorySources[5], FeedInfo::CategorySource::FeedFile);
 	BOOST_CHECK_EQUAL(extender.m_categorySources[6], FeedInfo::CategorySource::Auto);
+}
+
+BOOST_AUTO_TEST_CASE(ParsePathsTest)
+{
+	Options::CmdOptList cmdOpts;
+
+	cmdOpts.push_back("MainDir=/usr/etc/nzbget");
+	cmdOpts.push_back("DestDir=/usr/etc/nzbget/dst");
+	cmdOpts.push_back("InterDir=/usr/etc/nzbget/inter");
+	cmdOpts.push_back("TempDir=/usr/etc/nzbget/tmp");
+	cmdOpts.push_back("WebDir=/usr/etc/nzbget/webui");
+	cmdOpts.push_back("NzbDir=/usr/etc/nzbget/nzb");
+	cmdOpts.push_back("QueueDir=/usr/etc/nzbget/queue");
+	cmdOpts.push_back("LockFile=/usr/etc/nzbget/nzbget.lock");
+	cmdOpts.push_back("LogFile=/usr/etc/nzbget/nzbget.log");
+	cmdOpts.push_back("ConfigTemplate=/usr/etc/nzbget/nzbget.template.conf");
+	cmdOpts.push_back("CertStore=/usr/etc/nzbget/cacert.pem");
+	cmdOpts.push_back("SecureCert=/usr/etc/nzbget/cert.pem");
+	cmdOpts.push_back("SecureKey=/usr/etc/nzbget/key.pem");
+	cmdOpts.push_back("UnpackPassFile=/usr/etc/nzbget/unpackpass");
+	cmdOpts.push_back("UnrarCmd=/usr/bin/unrar");
+	cmdOpts.push_back("SevenZipCmd=/usr/bin/7z");
+	cmdOpts.push_back("ScriptDir=/usr/etc/nzbget/scripts;/usr/etc/nzbget/scripts2;");
+
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK_EQUAL(options.GetMainDir(), "/usr/etc/nzbget");
+	BOOST_CHECK_EQUAL(options.GetDestDir(), "/usr/etc/nzbget/dst");
+	BOOST_CHECK_EQUAL(options.GetInterDir(), "/usr/etc/nzbget/inter");
+	BOOST_CHECK_EQUAL(options.GetTempDir(), "/usr/etc/nzbget/tmp");
+	BOOST_CHECK_EQUAL(options.GetWebDir(), "/usr/etc/nzbget/webui");
+	BOOST_CHECK_EQUAL(options.GetNzbDir(), "/usr/etc/nzbget/nzb");
+	BOOST_CHECK_EQUAL(options.GetQueueDir(), "/usr/etc/nzbget/queue");
+	BOOST_CHECK_EQUAL(options.GetLockFile(), "/usr/etc/nzbget/nzbget.lock");
+	BOOST_CHECK_EQUAL(options.GetLogFile(), "/usr/etc/nzbget/nzbget.log");
+	BOOST_CHECK_EQUAL(options.GetConfigTemplate(), "/usr/etc/nzbget/nzbget.template.conf");
+	BOOST_CHECK_EQUAL(options.GetCertStore(), "/usr/etc/nzbget/cacert.pem");
+	BOOST_CHECK_EQUAL(options.GetSecureCert(), "/usr/etc/nzbget/cert.pem");
+	BOOST_CHECK_EQUAL(options.GetSecureKey(), "/usr/etc/nzbget/key.pem");
+	BOOST_CHECK_EQUAL(options.GetUnpackPassFilePath(), "/usr/etc/nzbget/unpackpass");
+	BOOST_CHECK_EQUAL(options.GetUnrarPath(), "/usr/bin/unrar");
+	BOOST_CHECK_EQUAL(options.GetSevenZipPath(), "/usr/bin/7z");
+
+	const std::vector<boost::filesystem::path>& scriptPaths = options.GetScriptDirPaths();
+
+	BOOST_REQUIRE_EQUAL(scriptPaths.size(), 2);
+	BOOST_CHECK_EQUAL(scriptPaths[0], "/usr/etc/nzbget/scripts");
+	BOOST_CHECK_EQUAL(scriptPaths[1], "/usr/etc/nzbget/scripts2");
 }

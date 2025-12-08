@@ -333,6 +333,7 @@ public:
 	{
 	public:
 		Category* FindCategory(const char* name, bool searchAliases);
+		const Category* FindCategory(const char* name, bool searchAliases) const;
 	};
 
 	class Extender
@@ -493,7 +494,9 @@ public:
 	int GetDownloadRate() const { return m_downloadRate; }
 
 	Categories* GetCategories() { return &m_categories; }
+	const Categories* GetCategories() const { return &m_categories; }
 	Category* FindCategory(const char* name, bool searchAliases) { return m_categories.FindCategory(name, searchAliases); }
+	const Category* FindCategory(const char* name, bool searchAliases) const { return m_categories.FindCategory(name, searchAliases); }
 
 	// Current state
 	void SetServerMode(bool serverMode) { m_serverMode = serverMode; }
@@ -513,7 +516,6 @@ public:
 	const boost::filesystem::path& GetNzbDirPath() const { return m_nzbDirPath; }
 	const boost::filesystem::path& GetWebDirPath() const { return m_webDirPath; }
 	const boost::filesystem::path& GetConfigTemplatePath() const { return m_configTemplatePath; }
-	const boost::filesystem::path& GetScriptDirPath() const { return m_scriptDirPath; }
 	const boost::filesystem::path& GetSecureCertPath() const { return m_secureCertPath; }
 	const boost::filesystem::path& GetSecureKeyPath() const { return m_secureKeyPath; }
 	const boost::filesystem::path& GetCertStorePath() const { return m_certStorePath; }
@@ -522,6 +524,7 @@ public:
 	const boost::filesystem::path& GetUnpackPassFilePath() const { return m_unpackPassFilePath; }
 	const boost::filesystem::path& GetUnrarPath() const { return m_unrarPath; }
 	const boost::filesystem::path& GetSevenZipPath() const { return m_sevenZipPath; }
+	const std::vector<boost::filesystem::path>& GetScriptDirPaths() const { return m_scriptDirPaths; }
 
 private:
 	void CheckDirs();
@@ -545,7 +548,6 @@ private:
 	boost::filesystem::path m_nzbDirPath;
 	boost::filesystem::path m_webDirPath;
 	boost::filesystem::path m_configTemplatePath;
-	boost::filesystem::path m_scriptDirPath;
 	boost::filesystem::path m_secureCertPath;
 	boost::filesystem::path m_secureKeyPath;
 	boost::filesystem::path m_certStorePath;
@@ -554,6 +556,7 @@ private:
 	boost::filesystem::path m_unpackPassFilePath;
 	boost::filesystem::path m_unrarPath;
 	boost::filesystem::path m_sevenZipPath;
+	std::vector<boost::filesystem::path> m_scriptDirPaths;
 
 	bool m_configErrors = false;
 	int m_configLine = 0;

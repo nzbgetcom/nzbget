@@ -133,6 +133,10 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 	return nullptr;
 }
 
+const Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases) const
+{
+	return FindCategory(name, searchAliases);
+}
 
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
 	CmdOptList* commandLineOptions, Extender* extender)
@@ -544,8 +548,15 @@ void Options::CheckDirs()
 	SetPathOption(m_tempDirPath, *m_tempDir);
 	SetPathOption(m_queueDirPath, *m_queueDir);
 	SetPathOption(m_webDirPath, *m_webDir);
-	SetPathOption(m_scriptDirPath, *m_scriptDir);
 	SetPathOption(m_nzbDirPath, *m_nzbDir);
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	while (const char* scriptDir = tokDir.Next())
+	{
+		boost::filesystem::path path;
+		SetPathOption(path, scriptDir);
+		m_scriptDirPaths.push_back(std::move(path));
+	}
 }
 
 void Options::InitOptions()
