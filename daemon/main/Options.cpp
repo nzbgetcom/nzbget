@@ -31,6 +31,8 @@
 #include "Utf8.h"
 #endif
 
+namespace fs = boost::filesystem;
+
 const char* BoolNames[] = { "yes", "no", "true", "false", "1", "0", "on", "off", "enable", "disable", "enabled", "disabled" };
 const int BoolValues[] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
 const int BoolCount = 12;
@@ -555,7 +557,7 @@ void Options::CheckDirs()
 	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
 	while (const char* scriptDir = tokDir.Next())
 	{
-		boost::filesystem::path path;
+		fs::path path;
 		SetPathOption(path, scriptDir);
 		m_scriptDirPaths.push_back(std::move(path));
 	}
@@ -866,14 +868,32 @@ void Options::SetPathOption(boost::filesystem::path& pathOpt, std::string_view v
 
 void Options::SetCmdOption(boost::filesystem::path& pathOpt, std::string_view value)
 {
-	if (boost::filesystem::is_regular_file(value))
+	boost::system::error_code ec;
+
+#ifdef _WIN32
+	const auto wvalue = Utf8::Utf8ToWide(value);
+	fs::path directPath = wvalue ? fs::path(*wvalue) : fs::path(value);
+#else
+	fs::path directPath = value;
+#endif
+
+	if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
 	{
-		SetPathOption(pathOpt, value);
+		pathOpt.swap(directPath);
 		return;
 	}
 
+	// Clean the input: "unrar -x" -> "unrar"
 	const auto args = Util::SplitCommandLine(value.data());
-	SetPathOption(pathOpt, !args.empty() ? *args[0] : "");
+	std::string cmdName = !args.empty() ? *args[0] : std::string(value);
+	auto res = Util::ResolvePathFromEnv(cmdName);
+	if (res)
+	{
+		pathOpt.swap(*res);
+		return;
+	}
+
+	pathOpt = cmdName;
 }
 
 Options::OptEntry* Options::FindOption(const char* optname)

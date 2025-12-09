@@ -21,6 +21,7 @@
 
 #include "nzbget.h"
 
+#include <optional>
 #include <sstream>
 #include <array>
 #include "Util.h"			
@@ -209,6 +210,39 @@ Util::FindShellOverriddenExecutor(const std::string& fileExt, const std::string&
 	}
 
 	return std::nullopt;
+}
+
+std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view path)
+{
+	if (path.empty()) return std::nullopt;
+
+#ifdef _WIN32
+	const wchar_t* envPath = _wgetenv(L"PATH");
+	if (!envPath) return std::nullopt;
+	std::wstring dir;
+	std::wstringstream ss(envPath);
+	wchar_t delimiter = ';';
+#else
+	const char* envPath = std::getenv("PATH");
+	if (!envPath) return std::nullopt;
+	std::string dir;
+	std::stringstream ss(envPath);
+	char delimiter = ':';
+#endif
+
+	while (std::getline(ss, dir, delimiter))
+	{
+		if (dir.empty()) continue;
+
+		boost::filesystem::path p = boost::filesystem::path(dir) / path;
+		boost::system::error_code ec;
+		if (boost::filesystem::exists(p, ec) && boost::filesystem::is_regular_file(p, ec))
+		{
+			return p;
+		}
+	}
+
+	return std::nullopt;	
 }
 
 std::optional<std::string> Util::FindPython()
