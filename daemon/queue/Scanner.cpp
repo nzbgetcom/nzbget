@@ -20,15 +20,26 @@
 
 
 #include "nzbget.h"
+
+#include <exception>
+#include <fstream>
+#include <ios>
+
 #include "Scanner.h"
 #include "Options.h"
 #include "WorkState.h"
 #include "Log.h"
 #include "QueueCoordinator.h"
-#include "HistoryCoordinator.h"
 #include "ScanScript.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "Unpack.h"
+
+#ifdef _WIN32
+#include "Utf8.h"
+#endif
+
+namespace fs = boost::filesystem;
 
 int Scanner::m_idGen = 0;
 
@@ -118,7 +129,9 @@ void Scanner::ServiceWork()
 
 	std::lock_guard<std::mutex> guard{m_scanMutex};
 
-	// check nzbdir every g_pOptions->GetNzbDirInterval() seconds or if requested
+	CheckIncomingArchives(g_Options->GetNzbDirPath());
+
+	// check nzbdir every g_Options->GetNzbDirInterval() seconds or if requested
 	bool checkStat = !m_requestedNzbDirScan;
 	m_requestedNzbDirScan = false;
 	m_scanning = true;
@@ -152,6 +165,84 @@ void Scanner::ServiceWork()
 
 	DropOldFiles();
 	m_queueList.clear();
+}
+
+void Scanner::CheckIncomingArchives(const boost::filesystem::path& dir)
+{
+	const auto archives = FindArchives(dir);
+	UnpackArchives(archives);
+}
+
+std::vector<boost::filesystem::path> Scanner::FindArchives(const boost::filesystem::path& dir)
+{
+	std::vector<fs::path> archives;
+	archives.reserve(4);
+
+	for (const auto& entry : fs::recursive_directory_iterator(dir))
+	{
+		if (!entry.is_regular_file())
+			continue;
+
+		if (Unpack::IsArchive(entry.path()))
+		{
+			archives.push_back(entry.path());
+		}
+	}
+
+	archives.shrink_to_fit();
+
+	return archives;
+}
+
+void Scanner::UnpackArchives(const std::vector<boost::filesystem::path>& archives)
+{
+	if (archives.empty()) return;
+
+	for (const auto& archive : archives)
+	{
+		const auto filename = archive.filename();
+		info("Extracting %s", filename.c_str());
+
+		try
+		{
+			const auto extractor = Unpack::MakeExtractor(archive, archive.parent_path(), "",
+														 Unpack::OverwriteMode::Overwrite);
+
+			const auto result = extractor->Extract();
+			boost::system::error_code ec;
+			if (result.success)
+			{
+				info("%s extracted successfully", filename.c_str());
+
+				fs::remove(archive, ec);
+				if (ec)
+				{
+					const auto msg = ec.message();
+					error("Failed to remove %s: %s (code %d)", filename.c_str(), msg.c_str(),
+						  ec.value());
+				}
+			}
+			else
+			{
+				error("Failed to extract %s: %s", filename.c_str(), result.message.data());
+				auto processedArchive = archive;
+				const auto newExtension = archive.extension().string() + ".error";
+				processedArchive.replace_extension(newExtension);
+				fs::rename(archive, processedArchive, ec);
+				if (ec)
+				{
+					const auto msg = ec.message();
+					error("Failed to mark archive %s as failed: %s (code %d)", filename.c_str(),
+						  msg.c_str(), ec.value());
+				}
+			}
+		}
+		catch (const std::exception& e)
+		{
+			error("Extraction failed: %s", e.what());
+			continue;
+		}
+	}
 }
 
 /**
@@ -469,6 +560,18 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 	}
 }
 
+CString Scanner::ResolveCategory(const char* category, const char* filename)
+{
+	CString useCategory = category ? category : "";
+	Options::Category* categoryObj = g_Options->FindCategory(useCategory, true);
+	if (categoryObj && strcmp(useCategory, categoryObj->GetName()))
+	{
+		useCategory = categoryObj->GetName();
+		detail("Category '%s' matched to '%s' for '%s'", category, *useCategory, filename);
+	}
+	return useCategory;
+}
+
 void Scanner::DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, const char* nzbName)
 {
 	const std::string& nzbCategory = nzbFile.GetCategoryFromFile();
@@ -481,12 +584,12 @@ void Scanner::DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, con
 	if (categoryObj)
 	{
 		const char* category = categoryObj->GetName();
-		detail("Category %s matched to %s for %s", category, nzbCategory.c_str(), nzbName);
+		detail("Category '%s' matched to '%s' for '%s'", category, nzbCategory.c_str(), nzbName);
 		nzbInfo.SetCategory(category);
 	}
 	else
 	{
-		detail("Auto-category: using detected category %s for %s", nzbCategory.c_str(), nzbName);
+		detail("Auto-category: using detected category '%s' for '%s'", nzbCategory.c_str(), nzbName);
 		nzbInfo.SetCategory(nzbCategory.c_str());
 	}
 }
@@ -611,6 +714,253 @@ void Scanner::ScanNzbDir(bool syncMode)
 	}
 }
 
+Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* category,
+										bool autoCategory, int priority, const char* dupeKey,
+										int dupeScore, EDupeMode dupeMode,
+										NzbParameterList* parameters, bool addTop, bool addPaused,
+										NzbInfo* urlInfo, const char* buffer, int bufSize)
+{
+	if (Util::EmptyStr(filename))
+	{
+		error("Failed to add the archive to the download queue: Archive filename cannot be empty");
+		return EAddStatus::asFailed;
+	}
+
+	if (g_Options->GetTempDirPath().empty())
+	{
+		error("Failed to create file '%s': '%s' is required and cannot be empty", filename,
+			  Options::TEMPDIR.data());
+		return EAddStatus::asFailed;
+	}
+
+	if (g_Options->GetNzbDirPath().empty())
+	{
+		error("Failed to create file '%s': '%s' is required and cannot be empty", filename,
+			  Options::NZBDIR.data());
+		return EAddStatus::asFailed;
+	}
+
+	boost::system::error_code ec;
+	const auto uniqueDir = fs::unique_path("download-%%%%-%%%%", ec);
+	if (ec)
+	{
+		const auto msg = ec.message();
+		error("Failed to generate unique temporary path: %s (code %d)", msg.c_str(), ec.value());
+		return EAddStatus::asFailed;
+	}
+
+	const auto downloadDir = g_Options->GetTempDirPath() / uniqueDir;
+	const auto unpackDir = downloadDir / "_unpack";
+#ifdef _WIN32
+	const auto wfilename = Utf8::Utf8ToWide(filename);
+	if (!wfilename)
+	{
+		error("Failed to covert '%s' to wide string", filename);
+		return EAddStatus::asFailed;
+	}
+	const auto archiveFile = downloadDir / wfilename.value();
+#else
+	const auto archiveFile = downloadDir / filename;
+#endif
+	const auto unpackDirStr = unpackDir.string();
+	const auto archiveFileStr = archiveFile.string();
+	const auto downloadDirStr = downloadDir.string();
+
+	fs::create_directories(unpackDir, ec);
+	if (ec)
+	{
+		const std::string msg = ec.message();
+		error("Could not create directory '%s': %s (code %d)", unpackDirStr.c_str(), msg.c_str(),
+			  ec.value());
+		return EAddStatus::asFailed;
+	}
+
+	{
+		std::ofstream file(archiveFile.c_str(), std::ios::binary);
+		if (!file.is_open())
+		{
+			error("Failed to create archive file '%s' in temporary directory: %s",
+				  archiveFileStr.c_str(), std::strerror(errno));
+
+			fs::remove_all(downloadDir, ec);
+			if (ec)
+			{
+				const std::string msg = ec.message();
+				error("Failed to remove temporary directory '%s': %s (code %d)",
+					  downloadDirStr.c_str(), msg.c_str(), ec.value());
+			}
+			return EAddStatus::asFailed;
+		}
+
+		file.write(buffer, bufSize);
+		file.close();
+		if (!file)
+		{
+			error("Failed to write archive file to '%s': %s", archiveFileStr.c_str(),
+				  std::strerror(errno));
+
+			fs::remove_all(downloadDir, ec);
+			if (ec)
+			{
+				const auto msg = ec.message();
+				error("Failed to clean up temporary directory '%s': %s (code %d)",
+					  downloadDirStr.c_str(), msg.c_str(), ec.value());
+			}
+			return EAddStatus::asFailed;
+		}
+	}
+
+	try
+	{
+		info("Extracting %s", filename);
+
+		const auto extractor = Unpack::MakeExtractor(std::move(archiveFile), unpackDir, "",
+													 Unpack::OverwriteMode::Overwrite);
+
+		const auto result = extractor->Extract();
+		if (!result.success)
+		{
+			error("Failed to extract '%s' into '%s': %s", archiveFileStr.c_str(),
+				  unpackDirStr.c_str(), result.message.data());
+			fs::remove_all(downloadDir, ec);
+			if (ec)
+			{
+				const auto msg = ec.message();
+				error("Failed to remove temporary directory '%s': %s (code %d)",
+					  downloadDirStr.c_str(), msg.c_str(), ec.value());
+			}
+			return EAddStatus::asFailed;
+		}
+
+		info("%s extracted successfully", filename);
+
+		std::vector<fs::path> files;
+		files.reserve(4);
+		for (const auto& entry : fs::recursive_directory_iterator(unpackDir))
+		{
+			if (!entry.is_regular_file()) continue;
+
+			files.push_back(std::move(entry.path()));
+		}
+
+		files.shrink_to_fit();
+
+		{
+			std::lock_guard<std::mutex> guard{m_scanMutex};
+
+			for (const auto& file : files)
+			{
+				const auto relativePath = fs::relative(file, unpackDir, ec);
+				if (ec)
+				{
+					const std::string msg = ec.message();
+					error("Failed to calculate relative path for '%s' against '%s': %s (code %d)",
+						  file.c_str(), unpackDirStr.c_str(), msg.c_str(), ec.value());
+					ec.clear();
+					continue;
+				}
+				const auto destPath = g_Options->GetNzbDirPath() / relativePath;
+				const auto parentDir = destPath.parent_path();
+				fs::create_directories(parentDir, ec);
+				if (ec)
+				{
+					const std::string msg = ec.message();
+					error("Failed to create destination directory '%s' for %s (code %d)",
+						  parentDir.c_str(), msg.c_str(), ec.value());
+					ec.clear();
+					continue;
+				}
+				fs::rename(file, destPath, ec);
+				if (ec)
+				{
+					const std::string msg = ec.message();
+					error("Failed to move extracted NZB '%s' to '%s': %s (code %d)", file.c_str(),
+						  destPath.c_str(), msg.c_str(), ec.value());
+					ec.clear();
+					continue;
+				}
+
+				const auto destPathStr = destPath.string();
+				const auto filenameStr = destPath.filename().string();
+
+				CString useCategory = ResolveCategory(category, filenameStr.c_str());
+
+				m_queueList.emplace_back(destPathStr.c_str(), filenameStr.c_str(), useCategory,
+										 autoCategory, priority, dupeKey, dupeScore, dupeMode,
+										 parameters, addTop, addPaused, urlInfo, nullptr, nullptr);
+			}
+		}
+
+		fs::remove_all(downloadDir, ec);
+		if (ec)
+		{
+			const auto msg = ec.message();
+			error("Cleanup of temporary directory '%s' failed: %s (code %d)", downloadDir.c_str(),
+				  msg.c_str(), ec.value());
+		}
+
+		ScanNzbDir(true);
+		return EAddStatus::asSuccess;
+	}
+	catch (const std::exception& e)
+	{
+		error("Extraction failed: %s", e.what());
+		fs::remove_all(downloadDir, ec);
+		if (ec)
+		{
+			const std::string msg = ec.message();
+			error("Failed to remove temporary directory '%s': %s (code %d)", downloadDirStr.c_str(),
+				  msg.c_str(), ec.value());
+		}
+		return EAddStatus::asFailed;
+	}
+}
+
+Scanner::EAddStatus Scanner::AddArchive(
+	const char* filename,
+	const char* category,
+	bool autoCategory,
+	int priority,
+	const char* dupeKey,
+	int dupeScore,
+	EDupeMode dupeMode,
+	NzbParameterList* parameters,
+	bool addTop,
+	bool addPaused,
+	NzbInfo* urlInfo,
+	const char* tmpFilename)
+{
+	CharBuffer buffer;
+	if (!FileSystem::LoadFileIntoBuffer(tmpFilename, buffer, false))
+	{
+		error("Could not open file '%s'", tmpFilename);
+		return EAddStatus::asFailed;
+	}
+	boost::system::error_code ec;
+	fs::remove(tmpFilename, ec);
+	if (ec)
+	{
+		const auto msg = ec.message();
+		error("Failed to remove '%s': %s (code %d)", tmpFilename, msg.c_str(), ec.value());
+	}
+
+	return AddArchive(
+		filename,
+		category,
+		autoCategory,
+		priority,
+		dupeKey,
+		dupeScore,
+		dupeMode,
+		parameters,
+		addTop,
+		addPaused,
+		urlInfo,
+		*buffer,
+		buffer.Size()
+	);
+}
+
 Scanner::EAddStatus Scanner::AddExternalFile(
 	const char* nzbName,
 	const char* category,
@@ -704,13 +1054,7 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 			return asFailed;
 		}
 
-		CString useCategory = category ? category : "";
-		Options::Category* categoryObj = g_Options->FindCategory(useCategory, true);
-		if (categoryObj && strcmp(useCategory, categoryObj->GetName()))
-		{
-			useCategory = categoryObj->GetName();
-			detail("Category %s matched to %s for %s", category, *useCategory, nzbName);
-		}
+		CString useCategory = ResolveCategory(category, nzbName);
 
 		addStatus = asSkipped;
 		m_queueList.emplace_back(

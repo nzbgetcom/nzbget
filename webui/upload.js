@@ -345,15 +345,8 @@ var Upload = (new function($)
 		var reader = new FileReader();
 		reader.onload = function (event)
 		{
-			var base64str;
-			if (reader.readAsBinaryString)
-			{
-				base64str = window.btoa(event.target.result);
-			}
-			else
-			{
-				base64str = event.target.result.replace(/^data:[^,]+,/, '');
-			}
+			var result = event.target.result;
+			var base64str = result.replace(/^data:[^,]+,/, '');
 			var category = $('#AddDialog_Category').val();
 			var priority = parseInt($('#AddDialog_Priority').val());
 			var filename = info.name + info.ext;
@@ -376,14 +369,7 @@ var Upload = (new function($)
 			], fileCompleted, fileFailure);
 		};
 
-		if (reader.readAsBinaryString)
-		{
-			reader.readAsBinaryString(file);
-		}
-		else
-		{
-			reader.readAsDataURL(file);
-		}
+		reader.readAsDataURL(file);
 	}
 
 	function fileCompleted(result)

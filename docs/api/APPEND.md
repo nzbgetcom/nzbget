@@ -3,8 +3,8 @@
 ### Signature
 ``` c++
 int append(
-  string NZBFilename, 
-  string NZBContent, 
+  string Filename, 
+  string Content, 
   string Category,
   int Priority, 
   bool AddToTop, 
@@ -17,11 +17,10 @@ int append(
 );
 ```
 
-_Add nzb-file or URL to download queue_
+_Add an NZB, archive file, or URL to the download queue_
 
 ### Arguments
-- **NZBFilename** `(string)` - name of nzb-file (with extension). This parameter can be an empty string if parameter Content contains an URL; in that case the file name is read from http headers. If `NZBFilename` is provided it must have correct extension (usually `.nzb`) according to file content. Files without `.nzb`-extension are not added to queue directly; all files however are sent to scan-scripts.
-- **Content** `(string)` - content of nzb-file encoded with Base64 or URL to fetch nzb-file from.
+- **Filename** `(string)` - name of the file with extension which determines how it's handled (e.g., my-file.nzb, project.zip, data.rar). This parameter can be an empty string if **Content** contains a URL; in that case, the filename is read from HTTP headers. If `Filename` is provided it must have correct extension (usually `.nzb`, `.zip`, `.rar`) according to file content. Files without a recognized extension are not added to the queue directly but are passed to scan-scripts for further processing.
 - **Category** `(string)` - category for nzb-file. Can be empty string.
 - **Priority** `(int)` - priority for nzb-file. 0 for `normal priority`, positive values for high priority and negative values for low priority. Downloads with priorities equal to or greater than 900 are downloaded and post-processed even if the program is in paused state (force mode). Default priorities are: -100 (very low), -50 (low), 0 (normal), 50 (high), 100 (very high), 900 (force).
 - **AddToTop** `(bool)` - `true` if the file should be added to the top of the download queue or `false` if to the end.
