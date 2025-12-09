@@ -100,14 +100,14 @@ Options::OptEntry* Options::OptEntries::FindOption(const char* name)
 }
 
 
-Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
+const Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases) const
 {
 	if (!name)
 	{
 		return nullptr;
 	}
 
-	for (Category& category : this)
+	for (const Category& category : *this)
 	{
 		if (!strcasecmp(category.GetName(), name))
 		{
@@ -117,9 +117,9 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 
 	if (searchAliases)
 	{
-		for (Category& category : this)
+		for (const Category& category : *this)
 		{
-			for (CString& alias : category.GetAliases())
+			for (const CString& alias : *category.GetAliases())
 			{
 				WildMask mask(alias);
 				if (mask.Match(name))
@@ -133,9 +133,11 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 	return nullptr;
 }
 
-const Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases) const
+Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
 {
-	return FindCategory(name, searchAliases);
+	const Category* result =
+		static_cast<const Categories*>(this)->FindCategory(name, searchAliases);
+	return const_cast<Category*>(result);
 }
 
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
