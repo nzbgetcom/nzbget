@@ -147,7 +147,6 @@ public:
 
 	std::string_view GetName() const override { return Options::CONFIGTEMPLATE; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path, const boost::filesystem::path& webDirPath);
 
 private:
 	const Options& m_options;

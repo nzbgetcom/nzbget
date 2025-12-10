@@ -44,7 +44,7 @@ Status NameValidator::Validate() const
 	std::string_view name = m_category.GetName();
 	if (name.empty())
 	{
-		return Status::Warning("Name is empty. Categories should have a name");
+		return Status::Warning("Category name is empty. Categories should have a name");
 	}
 	return Status::Ok();
 }
@@ -57,7 +57,7 @@ Status UnpackValidator::Validate() const
 	if (globalUnpack && !catUnpack)
 	{
 		return Status::Info(
-			"Unpack is disabled for this category. Files will remain packed after download");
+			"Unpack is disabled. Files will remain packed after download");
 	}
 
 	if (!globalUnpack && catUnpack)

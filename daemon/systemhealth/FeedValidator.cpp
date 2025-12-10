@@ -45,7 +45,7 @@ Status NameValidator::Validate() const
 	std::string_view name = m_feed.GetName();
 	if (name.empty())
 	{
-		return Status::Info("A feed name is recommended for clearer logs and troubleshooting");
+		return Status::Info("Name is recommended for clearer logs and troubleshooting");
 	}
 	return Status::Ok();
 }
@@ -55,7 +55,7 @@ Status UrlValidator::Validate() const
 	std::string_view url = m_feed.GetUrl();
 	if (url.empty())
 	{
-		return Status::Warning("Feed URL is required");
+		return Status::Warning("URL is required");
 	}
 
 	if (url.find("http://") == std::string_view::npos &&

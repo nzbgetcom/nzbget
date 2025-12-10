@@ -30,167 +30,190 @@ namespace fs = boost::filesystem;
 using namespace SystemHealth;
 using namespace SystemHealth::Paths;
 
-struct PathsValidatorFixture
+struct StubOptions : public Options
 {
-	fs::path m_tempDir;
-	fs::path m_mainDir;
-	fs::path m_destDir;
-	fs::path m_interDir;
-	fs::path m_nzbDir;
-	fs::path m_queueDir;
-	fs::path m_webDir;
-	fs::path m_tempDirPath;
-	fs::path m_scriptDir;
-	fs::path m_configTemplate;
-	fs::path m_logFile;
-	fs::path m_certStoreFile;
-	fs::path m_certStoreDir;
-	fs::path m_lockFile;
-	fs::path m_readonlyDir;
-	fs::path m_readonlyFile;
+	StubOptions() : Options(nullptr, nullptr) {}
 
-	Options::CmdOptList m_cmdOpts;
-	std::unique_ptr<Options> m_options;
-	std::unique_ptr<SystemHealth::Paths::PathsValidator> m_validator;
+	fs::path GetMainDirPath() const { return ""; }
+	fs::path GetDestDirPath() const { return ""; }
+	fs::path GetInterDirPath() const { return ""; }
+	fs::path GetNzbDirPath() const { return ""; }
+	fs::path GetQueueDirPath() const { return ""; }
+	fs::path GetWebDirPath() const { return ""; }
+	fs::path GetTempDirPath() const { return ""; }
+	std::vector<std::string> GetScriptDirPaths() const { return {}; }
+	fs::path GetConfigTemplatePath() const { return ""; }
+	fs::path GetLogFilePath() const { return ""; }
+	fs::path GetCertStorePath() const { return ""; }
+	fs::path GetConfigFilePath() const { return ""; }
+	fs::path GetLockFilePath() const { return ""; }
 
-	PathsValidatorFixture()
+	EWriteLog GetWriteLog() const { return EWriteLog::wlAppend; }
+	bool GetCertCheck() const { return false; }
+	bool GetDaemonMode() const { return false; }
+};
+
+struct PathsFixture
+{
+	fs::path tempPath;
+	StubOptions options;
+
+	PathsFixture()
 	{
-		m_tempDir = fs::current_path() / fs::unique_path();
-		fs::create_directory(m_tempDir);
-
-		m_mainDir = m_tempDir / "main";
-		m_destDir = m_tempDir / "dest";
-		m_interDir = m_tempDir / "inter";
-		m_nzbDir = m_tempDir / "nzb";
-		m_queueDir = m_tempDir / "queue";
-		m_webDir = m_tempDir / "web";
-		m_tempDirPath = m_tempDir / "temp";
-		m_scriptDir = m_tempDir / "scripts";
-		m_configTemplate = m_tempDir / "nzbget.conf.template";
-		m_logFile = m_tempDir / "nzbget.log";
-		m_certStoreFile = m_tempDir / "certstore.pem";
-		m_certStoreDir = m_tempDir / "certstore";
-		m_lockFile = m_tempDir / "nzbget.lock";
-		m_readonlyDir = m_tempDir / "readonly";
-		m_readonlyFile = m_tempDir / "readonly.txt";
-
-		fs::create_directory(m_mainDir);
-		fs::create_directory(m_destDir);
-		fs::create_directory(m_interDir);
-		fs::create_directory(m_nzbDir);
-		fs::create_directory(m_queueDir);
-		fs::create_directory(m_webDir);
-		fs::create_directory(m_tempDirPath);
-		fs::create_directory(m_scriptDir);
-		fs::create_directory(m_readonlyDir);
-		fs::create_directory(m_certStoreDir);
-
-		std::ofstream(m_configTemplate.string()) << "# Config template";
-		std::ofstream(m_logFile.string()) << "# Log file";
-		std::ofstream(m_readonlyFile.string()) << "# Readonly file";
-		std::ofstream(m_certStoreFile.string()) << "# Cert file";
-
-		// Set readonly permissions
-		fs::permissions(m_readonlyDir, fs::perms::owner_read);
-		fs::permissions(m_readonlyFile, fs::perms::owner_read);
-
-		// Setup command line options
-		auto mainDirOpt = "MainDir=" + m_mainDir.string();
-		m_cmdOpts.push_back(mainDirOpt.c_str());
-		auto destDirOpt = "DestDir=" + m_destDir.string();
-		m_cmdOpts.push_back(destDirOpt.c_str());
-		auto interDirOpt = "InterDir=" + m_interDir.string();
-		m_cmdOpts.push_back(interDirOpt.c_str());
-		auto nzbDirOpt = "NzbDir=" + m_nzbDir.string();
-		m_cmdOpts.push_back(nzbDirOpt.c_str());
-		auto queueDirOpt = "QueueDir=" + m_queueDir.string();
-		m_cmdOpts.push_back(queueDirOpt.c_str());
-		auto webDirOpt = "WebDir=" + m_webDir.string();
-		m_cmdOpts.push_back(webDirOpt.c_str());
-		auto tempDirOpt = "TempDir=" + m_tempDirPath.string();
-		m_cmdOpts.push_back(tempDirOpt.c_str());
-		auto scriptDirOpt = "ScriptDir=" + m_scriptDir.string();
-		m_cmdOpts.push_back(scriptDirOpt.c_str());
-		auto configTemplateOpt = "ConfigTemplate=" + m_configTemplate.string();
-		m_cmdOpts.push_back(configTemplateOpt.c_str());
-		auto logFileOpt = "LogFile=" + m_logFile.string();
-		m_cmdOpts.push_back(logFileOpt.c_str());
-		auto certStoreOpt = "CertStore=" + m_certStoreFile.string();
-		m_cmdOpts.push_back(certStoreOpt.c_str());
-		auto lockFileOpt = "LockFile=" + m_lockFile.string();
-		m_cmdOpts.push_back(lockFileOpt.c_str());
-		m_cmdOpts.push_back("WriteLog=append");
-		m_cmdOpts.push_back("CertCheck=yes");
-
-		m_options = std::make_unique<Options>(&m_cmdOpts, nullptr);
-		m_validator = std::make_unique<SystemHealth::Paths::PathsValidator>(*m_options);
+		tempPath = fs::temp_directory_path() / fs::unique_path("nzbget_paths_test_%%%%");
+		fs::create_directories(tempPath);
 	}
 
-	~PathsValidatorFixture()
+	~PathsFixture()
 	{
-		fs::permissions(m_readonlyDir, fs::perms::owner_all);
-		fs::permissions(m_readonlyFile, fs::perms::owner_all);
-		fs::remove_all(m_tempDir);
+		boost::system::error_code ec;
+		fs::remove_all(tempPath, ec);
 	}
 };
 
-BOOST_FIXTURE_TEST_SUITE(PathsValidatorTests, PathsValidatorFixture)
+BOOST_FIXTURE_TEST_SUITE(PathsValidatorsSuite, PathsFixture)
 
-BOOST_AUTO_TEST_CASE(TestGetName) { BOOST_CHECK_EQUAL(m_validator->GetName(), "Paths"); }
-
-static const SystemHealth::OptionStatus* FindOption(const SystemHealth::SectionReport& report,
-													std::string_view optName)
+BOOST_AUTO_TEST_CASE(TestMainDirValidator)
 {
-	for (const auto& opt : report.options)
+	MainDirValidator validator(options);
+	fs::path dir = tempPath / "main";
+
+	BOOST_CHECK(validator.Validate(dir).IsError());
+
+	fs::create_directory(dir);
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+
+	BOOST_CHECK(validator.Validate("").IsError());
+}
+
+BOOST_AUTO_TEST_CASE(TestDestDirValidator)
+{
+	DestDirValidator validator(options);
+	fs::path dir = tempPath / "dest";
+	fs::create_directory(dir);
+
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+	BOOST_CHECK(validator.Validate(tempPath / "missing").IsError());
+}
+
+BOOST_AUTO_TEST_CASE(TestQueueDirValidator)
+{
+	QueueDirValidator validator(options);
+	fs::path dir = tempPath / "queue";
+	fs::create_directory(dir);
+
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestInterDirValidator)
+{
+	InterDirValidator validator(options);
+	fs::path dir = tempPath / "inter";
+
+	Status s = validator.Validate("");
+	BOOST_CHECK(s.IsWarning());
+	BOOST_CHECK(s.GetMessage().find("not recommended") != std::string::npos);
+
+	fs::create_directory(dir);
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+
+	BOOST_CHECK(validator.Validate(tempPath / "phantom").IsError());
+}
+
+BOOST_AUTO_TEST_CASE(TestWebDirValidator)
+{
+	WebDirValidator validator(options);
+	fs::path dir = tempPath / "web";
+
+	BOOST_CHECK(validator.Validate("").IsOk());
+
+	fs::create_directory(dir);
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+	BOOST_CHECK(validator.Validate(tempPath / "noweb").IsError());
+}
+
+BOOST_AUTO_TEST_CASE(TestLogFileValidator)
+{
+	LogFileValidator validator(options);
+	fs::path log = tempPath / "nzbget.log";
+
+	Status s1 = validator.Validate("", Options::EWriteLog::wlAppend);
+	BOOST_CHECK(s1.IsError());
+
+	Status s2 = validator.Validate("", Options::EWriteLog::wlNone);
+	BOOST_CHECK(s2.IsInfo());
+	BOOST_CHECK(s2.GetMessage().find("Logging is disabled") != std::string::npos);
+
 	{
-		if (opt.name == optName) return &opt;
+		std::ofstream(log.c_str()) << "log";
 	}
-	return nullptr;
+	BOOST_CHECK(validator.Validate(log, Options::EWriteLog::wlAppend).IsOk());
+
+	BOOST_CHECK(validator.Validate(tempPath / "ghost.log", Options::EWriteLog::wlAppend).IsError());
 }
 
-BOOST_AUTO_TEST_CASE(TestRunAllChecks)
+BOOST_AUTO_TEST_CASE(TestCertStoreValidator)
 {
-	auto report = m_validator->Validate();
-	BOOST_CHECK(!report.options.empty());
+	CertStoreValidator validator(options);
+	fs::path certFile = tempPath / "cacert.pem";
+	fs::path certDir = tempPath / "certs";
 
-	// Check that all expected options are present
-	BOOST_CHECK(FindOption(report, Options::MAINDIR));
-	BOOST_CHECK(FindOption(report, Options::DESTDIR));
-	BOOST_CHECK(FindOption(report, Options::INTERDIR));
-	BOOST_CHECK(FindOption(report, Options::NZBDIR));
-	BOOST_CHECK(FindOption(report, Options::QUEUEDIR));
-	BOOST_CHECK(FindOption(report, Options::WEBDIR));
-	BOOST_CHECK(FindOption(report, Options::TEMPDIR));
-	BOOST_CHECK(FindOption(report, Options::SCRIPTDIR));
-	BOOST_CHECK(FindOption(report, Options::CONFIGTEMPLATE));
-	BOOST_CHECK(FindOption(report, Options::LOGFILE));
-	BOOST_CHECK(FindOption(report, Options::CERTSTORE));
-	BOOST_CHECK(FindOption(report, Options::REQUIREDDIR));
+	BOOST_CHECK(validator.Validate("", false).IsOk());
+	BOOST_CHECK(validator.Validate("", true).IsError());
+
+	{
+		std::ofstream(certFile.c_str()) << "CERT";
+	}
+	BOOST_CHECK(validator.Validate(certFile, true).IsOk());
+
+	fs::create_directory(certDir);
+	BOOST_CHECK(validator.Validate(certDir, true).IsOk());
+
+	Status s = validator.Validate(tempPath / "missing.pem", true);
+	BOOST_CHECK(s.IsError());
+}
+
 #ifndef _WIN32
-	BOOST_CHECK(FindOption(report, Options::LOCKFILE));
+BOOST_AUTO_TEST_CASE(TestLockFileValidator)
+{
+	LockFileValidator validator(options);
+	fs::path lock = tempPath / "nzbget.lock";
+
+	Status s1 = validator.Validate("", true);
+	BOOST_CHECK(s1.IsWarning());
+	BOOST_CHECK(s1.GetMessage().find("check for another running instance is disabled") !=
+				std::string::npos);
+
+	BOOST_CHECK(validator.Validate("", false).IsOk());
+	BOOST_CHECK(validator.Validate("random/path", false).IsOk());
+
+	{
+		std::ofstream(lock.c_str()) << "pid";
+	}
+	BOOST_CHECK(validator.Validate(lock, true).IsOk());
+
+	BOOST_CHECK(validator.Validate(tempPath / "nolock", true).IsError());
+}
 #endif
+
+BOOST_AUTO_TEST_CASE(TestScriptDirValidator)
+{
+	ScriptDirValidator validator(options);
+	fs::path dir = tempPath / "scripts";
+
+	fs::create_directory(dir);
+	BOOST_CHECK(validator.Validate(dir).IsOk());
+
+	BOOST_CHECK(validator.Validate(tempPath / "missing_scripts").IsError());
 }
 
-BOOST_AUTO_TEST_CASE(TestCheckMainDir)
+BOOST_AUTO_TEST_CASE(TestPathsValidatorComposite)
 {
-	auto report = m_validator->Validate();
-	auto opt = FindOption(report, Options::MAINDIR);
-	BOOST_REQUIRE(opt);
-	BOOST_CHECK(opt->status.IsOk());
-}
+	PathsValidator pathsVal(options);
+	BOOST_CHECK_EQUAL(pathsVal.GetName(), "Paths");
 
-BOOST_AUTO_TEST_CASE(TestCheckMainDir_Empty)
-{
-	Options::CmdOptList emptyOpts;
-	emptyOpts.push_back("MainDir=");
-	Options emptyOptions(&emptyOpts, nullptr);
-	SystemHealth::Paths::PathsValidator emptyValidator(emptyOptions);
-
-	auto report = emptyValidator.Validate();
-	auto opt = FindOption(report, Options::MAINDIR);
-	BOOST_REQUIRE(opt);
-	BOOST_CHECK(opt->status.IsError());
-	BOOST_CHECK_EQUAL(opt->status.GetMessage(), "MainDir is required and cannot be empty.");
+	SectionReport report = pathsVal.Validate();
+	BOOST_CHECK_EQUAL(report.name, "Paths");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

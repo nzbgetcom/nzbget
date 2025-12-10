@@ -52,9 +52,9 @@ Status CrcCheckValidator::Validate() const
 {
 	if (!m_options.GetCrcCheck())
 	{
-		return Status::Info(
-			"Normally, this option should be enabled to better detect download errors and for "
-			"quick par-verification");
+		return Status::Info("Normally, '" + std::string(Options::CRCCHECK) +
+							"' should be enabled to better detect download errors and for "
+							"quick par-verification");
 	}
 	return Status::Ok();
 }
@@ -68,20 +68,24 @@ Status ParCheckValidator::Validate() const
 	{
 		case Options::EParCheck::pcAuto:
 			return Status::Ok();
+
 		case Options::EParCheck::pcAlways:
-			return Status::Info(
-				"Checks every download, even undamaged ones. "
-				"Use 'Auto' to skip unnecessary checks and save CPU");
+			return Status::Info("'" + std::string(Options::PARCHECK) +
+								"' is set to 'Always'. "
+								"Verification runs on every download, even undamaged ones. "
+								"Use 'Auto' to skip unnecessary checks and save CPU");
 
 		case Options::EParCheck::pcForce:
-			return Status::Warning(
-				"Downloads all par2 files and checks everything. "
-				"This wastes bandwidth and CPU. 'Auto' is recommended");
+			return Status::Info(
+				"'" + std::string(Options::PARCHECK) +
+				"' is set to 'Force'. "
+				"All PAR2 files are downloaded immediately, wasting bandwidth and CPU. "
+				"'Auto' is recommended");
 
 		case Options::EParCheck::pcManual:
 			return Status::Warning(
 				"Automatic repair is disabled. "
-				"You will have to repair damaged downloads manually");
+				"Damaged downloads will require manual intervention");
 	}
 	return Status::Ok();
 }
@@ -91,7 +95,7 @@ Status ParRepairValidator::Validate() const
 	if (!m_options.GetParRepair())
 	{
 		return Status::Warning("'" + std::string(Options::PARREPAIR) +
-							   "' option is off. Corrupted files won't be automatically repaired");
+							   "' is off. Corrupted files won't be automatically repaired");
 	}
 	return Status::Ok();
 }
@@ -121,7 +125,10 @@ Status ParBufferValidator::Validate() const
 	const int buffer = m_options.GetParBuffer();
 	if (buffer < 250)
 	{
-		return Status::Warning("Consider at least 250 MB for better repair performance");
+		return Status::Info(
+			"'" + std::string(Options::PARBUFFER) + "' is set to " + std::to_string(buffer) +
+			" MB. "
+			"Increasing to 250 MB or higher is recommended to speed up verification and repair");
 	}
 
 	return Status::Ok();
@@ -136,8 +143,16 @@ Status ParThreadsValidator::Validate() const
 
 	const size_t threads = static_cast<size_t>(m_options.GetParThreads());
 	if (threads == 0) return Status::Ok();
-	if (threads > std::thread::hardware_concurrency())
-		return Status::Warning("Very high thread counts may overload the system");
+
+	const size_t hwThreads = std::thread::hardware_concurrency();
+	if (hwThreads > 0 && threads > hwThreads)
+	{
+		return Status::Warning("'" + std::string(Options::PARTHREADS) + "' (" +
+							   std::to_string(threads) + ") exceeds the number of CPU cores (" +
+							   std::to_string(hwThreads) +
+							   "). "
+							   "This may slow down repair due to excessive context switching");
+	}
 
 	return Status::Ok();
 }
@@ -159,7 +174,7 @@ Status RarRenameValidator::Validate() const
 	if (!m_options.GetRarRename())
 		return Status::Info(
 			"'" + std::string(Options::RARRENAME) +
-			"' option is off. Original file names won't be restored from rar-files");
+			"' is off. Original file names won't be restored from rar-files");
 	return Status::Ok();
 }
 
@@ -193,7 +208,12 @@ Status ParTimeLimitValidator::Validate() const
 
 	const int limit = m_options.GetParTimeLimit();
 	if (limit == 0) return Status::Ok();
-	if (limit < 5) return Status::Info("Very short limits may cancel repairs prematurely");
+	if (limit < 5)
+		{
+			return Status::Info(
+				"'" + std::string(Options::PARTIMELIMIT) + "' is set to " + std::to_string(limit) + " minutes. "
+				"Large repairs often take longer, risking premature cancellation");
+		}
 
 	return Status::Ok();
 }

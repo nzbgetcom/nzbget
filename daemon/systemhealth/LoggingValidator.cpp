@@ -66,8 +66,8 @@ Status RotateLogValidator::Validate() const
 
 	int rotateLog = m_options.GetRotateLog();
 	if (rotateLog > 365)
-		return Status::Warning(
-			"Log rotation count is very high (>365). This may consume significant disk space");
+		return Status::Warning("'" + std::string(Options::ROTATELOG) +
+							   "' is very high (>365). This may consume significant disk space");
 
 	return Status::Ok();
 }
@@ -78,7 +78,7 @@ Status LogBufferValidator::Validate() const
 
 	if (m_options.GetLogBuffer() < 100)
 		return Status::Info("'" + std::string(Options::LOGBUFFER) +
-							   "' is very low. You might miss recent messages in the web UI");
+							"' is very low. You might miss recent messages in the web UI");
 	return Status::Ok();
 }
 

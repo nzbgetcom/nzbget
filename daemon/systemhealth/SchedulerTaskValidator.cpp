@@ -60,11 +60,6 @@ Status WeekDaysValidator::Validate() const
 {
 	int bits = m_task.GetWeeDaysBits();
 
-	if (bits == 0)
-	{
-		return Status::Warning("Task is not scheduled for any days");
-	}
-
 	if (bits < 0 || bits > 127)	 // Bits 1-7 (1<<0 to 1<<6) = max 127
 	{
 		return Status::Error("Invalid weekdays configuration");
@@ -76,4 +71,5 @@ Status WeekDaysValidator::Validate() const
 Status ParamValidator::Validate() const { return Status::Ok(); }
 
 Status CommandValidator::Validate() const { return Status::Ok(); }
+
 }  // namespace SystemHealth::Scheduler

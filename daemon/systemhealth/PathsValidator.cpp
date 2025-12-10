@@ -17,10 +17,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Options.h"
 #include "Status.h"
 #include "Validators.h"
 #include "PathsValidator.h"
-#include "Util.h"
 
 namespace SystemHealth::Paths
 {
@@ -48,7 +48,9 @@ Status MainDirValidator::Validate() const { return Validate(m_options.GetMainDir
 
 Status MainDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::MAINDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
 Status DestDirValidator::Validate() const
@@ -64,7 +66,9 @@ Status DestDirValidator::Validate() const
 
 Status DestDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::DESTDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
 Status InterDirValidator::Validate() const
@@ -104,7 +108,9 @@ Status NzbDirValidator::Validate() const
 
 Status NzbDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::NZBDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
 Status QueueDirValidator::Validate() const
@@ -123,7 +129,9 @@ Status QueueDirValidator::Validate() const
 
 Status QueueDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::QUEUEDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
 Status WebDirValidator::Validate() const
@@ -166,12 +174,21 @@ Status TempDirValidator::Validate() const
 
 Status TempDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::TEMPDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
 Status ScriptDirValidator::Validate() const
 {
-	for (const auto& dir : m_options.GetScriptDirPaths())
+	const auto& paths = m_options.GetScriptDirPaths();
+	if (paths.empty())
+	{
+		return Status::Error("'" + std::string(Options::SCRIPTDIR) +
+							 "' is required and cannot be empty");
+	}
+
+	for (const auto& dir : paths)
 	{
 		auto status = Validate(dir).And(
 			[&]()
@@ -196,20 +213,12 @@ Status ScriptDirValidator::Validate() const
 
 Status ScriptDirValidator::Validate(const boost::filesystem::path& path)
 {
-	return Directory::Exists(path).And(&Directory::Writable, path);
+	return RequiredPathOption(Options::SCRIPTDIR, path)
+		.And(&Directory::Exists, path)
+		.And(&Directory::Writable, path);
 }
 
-Status ConfigTemplateValidator::Validate() const
-{
-	return Validate(m_options.GetConfigTemplatePath(), m_options.GetConfigTemplatePath());
-}
-
-Status ConfigTemplateValidator::Validate(const boost::filesystem::path& path,
-										 const boost::filesystem::path& webDirPath)
-{
-	if (webDirPath.empty()) return Status::Ok();
-	return File::Exists(path).And([&]() { return File::Writable(path); });
-}
+Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
@@ -228,7 +237,7 @@ Status LogFileValidator::Validate(const boost::filesystem::path& path, Options::
 	if (path.empty() && writeLog != Options::EWriteLog::wlNone)
 	{
 		return Status::Error("Logging is enabled, but '" + std::string(Options::LOGFILE) +
-							 "' option is set to empty");
+							 "' is set to empty");
 	}
 	if (path.empty() && writeLog == Options::EWriteLog::wlNone)
 	{
@@ -256,7 +265,7 @@ Status CertStoreValidator::Validate() const
 								   {Options::TEMPDIR, m_options.GetTempDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
 								   {Options::LOGFILE, m_options.GetLogFilePath()},
-								{Options::CONFIGFILE, m_options.GetConfigFilePath()}});
+								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
 
@@ -275,8 +284,7 @@ Status CertStoreValidator::Validate(const boost::filesystem::path& path, bool ce
 	const auto dir = Directory::Exists(path);
 	if (!dir.IsError()) return Directory::Readable(path);
 
-	return Status::Error("'" + std::string(Options::CERTSTORE) +
-						 "' must be a file or a directory");
+	return Status::Error("'" + std::string(Options::CERTSTORE) + "' must be a file or a directory");
 }
 
 Status RequiredDirValidator::Validate() const { return Status::Ok(); }
@@ -293,7 +301,7 @@ Status LockFileValidator::Validate() const
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
 								   {Options::LOGFILE, m_options.GetLogFilePath()},
 								   {Options::CERTSTORE, m_options.GetCertStorePath()},
-								{Options::CONFIGFILE, m_options.GetConfigFilePath()}});
+								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
 
@@ -303,7 +311,7 @@ Status LockFileValidator::Validate(const boost::filesystem::path& path, bool dae
 	{
 		return Status::Warning(
 			"'" + std::string(Options::LOCKFILE) +
-			"' option is set to empty. The check for another running instance is disabled");
+			"' is set to empty. The check for another running instance is disabled");
 	}
 
 	if (daemonMode)

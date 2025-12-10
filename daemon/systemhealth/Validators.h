@@ -37,6 +37,7 @@ public:
 };
 
 Status RequiredOption(std::string_view name, std::string_view value);
+Status RequiredPathOption(std::string_view name, const boost::filesystem::path& value);
 Status UniquePath(
 	std::string_view name, const boost::filesystem::path& path,
 	const std::vector<std::pair<std::string_view, const boost::filesystem::path&>>& other);

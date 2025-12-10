@@ -17,12 +17,14 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Status.h"
 #include "nzbget.h"
 
 #include "ExtensionScriptsValidator.h"
 #include "Validators.h"
 #include "Options.h"
 #include "Util.h"
+#include <cstring>
 
 namespace SystemHealth::ExtensionScripts
 {
@@ -43,19 +45,34 @@ Status ExtensionListValidator::Validate() const
 	std::string_view extensions = m_options.GetExtensions();
 	if (extensions.empty()) return Status::Ok();
 
-	const auto scripts = Util::SplitStr(extensions.data(), ",;");
-	for (const auto& scriptName : scripts)
+	std::string message;
+	Tokenizer tokDir(extensions.data(), ",;");
+	while (const char* scriptName = tokDir.Next())
 	{
-		const auto opt = std::string("Extension ") + *scriptName;
 		const auto extension =
-			m_extensionManager.FindIf([&](const auto ext) { return ext->GetName() == scriptName; });
-		if (!extension) return Status::Warning(opt + " doesn't exist");
+			m_extensionManager.FindIf([&](const auto ext) 
+			{
+				std::string_view name = ext->GetName();
+				return name == scriptName; 
+			});
+		if (!extension)
+		{
+			if (!message.empty()) message += "; ";
+			message += std::string("'") + scriptName + "' doesn't exist";
+			continue;
+		}
 
-		const auto entry = (*extension)->GetEntry();
-		const auto exe = File::Executable(entry);
-		if (!exe.IsOk()) return Status::Warning(opt + " cannot be executed");
+		const auto exists = File::Exists(extension.value()->GetEntry());
+		if (!exists.IsOk())
+		{
+			if (!message.empty()) message += "; ";
+			message += exists.GetMessage() + " ";
+		}
 	}
-	return Status::Ok();
+
+	if (message.empty()) return Status::Ok();
+
+	return Status::Warning(std::move(message));
 }
 
 Status ScriptPauseQueueValidator::Validate() const
@@ -68,10 +85,34 @@ Status ShellOverrideValidator::Validate() const
 	std::string_view path = m_options.GetShellOverride();
 	if (path.empty()) return Status::Ok();
 
-	Status exeStatus = File::Executable(path);
-	if (!exeStatus.IsOk()) return exeStatus;
+	std::string message;
+	Tokenizer tok(path.data(), ",;");
+	while (char* shellover = tok.Next())
+	{
+		char* shellcmd = strchr(shellover, '=');
+		if (shellcmd)
+		{
+			*shellcmd = '\0';
+			++shellcmd;
+			const auto exists = File::Exists(shellcmd);
+			if (!exists.IsOk())
+			{
+				if (!message.empty()) message += "; ";
+				message += exists.GetMessage() + " ";
+				continue;
+			}
+			const auto exe = File::Executable(shellcmd);
+			if (!exe.IsOk())
+			{
+				if (!message.empty()) message += "; ";
+				message += exe.GetMessage() + " ";
+			}
+		}
+	}
 
-	return Status::Ok();
+	if (message.empty()) return Status::Ok();
+
+	return Status::Warning(std::move(message));
 }
 
 Status EventIntervalValidator::Validate() const
@@ -88,16 +129,6 @@ Status EventIntervalValidator::Validate() const
 
 Status ScriptOrderValidator::Validate() const
 {
-	std::string_view order = m_options.GetScriptOrder();
-	if (order.empty()) return Status::Ok();
-
-	std::string_view extensions = m_options.GetExtensions();
-	if (extensions.empty())
-	{
-		return Status::Info("'" + std::string(Options::SCRIPTORDER) +
-							   "' is set but no extensions are configured");
-	}
-
 	return Status::Ok();
 }
 }  // namespace SystemHealth::ExtensionScripts

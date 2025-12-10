@@ -17,7 +17,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include "nzbget.h"
 
 #include "IncomingNzbValidator.h"
@@ -52,7 +51,7 @@ Status NzbDirIntervalValidator::Validate() const
 	if (interval < 3)
 	{
 		std::stringstream ss;
-		ss << "Interval is set to " << interval << " seconds. "
+		ss << "'" << Options::NZBDIRINTERVAL << "' is set to " << interval << " seconds. "
 		   << "Very frequent scanning may cause high CPU/Disk usage";
 		return Status::Warning(ss.str());
 	}
@@ -69,9 +68,9 @@ Status NzbDirFileAgeValidator::Validate() const
 	if (age > 3600)	 // 1 Hour
 	{
 		std::stringstream ss;
-		ss << "File age is set to " << age << " seconds (> 1 hour). "
+		ss << "'" << Options::NZBDIRFILEAGE << "' is set to " << age << " seconds (> 1 hour). "
 		   << "New NZB files will not be picked up until they are at least this old";
-		return Status::Info(ss.str());
+		return Status::Warning(ss.str());
 	}
 
 	return Status::Ok();

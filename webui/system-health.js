@@ -126,15 +126,15 @@ var SystemHealth = (new function ($) {
 		NewsServers: "NEWS-SERVERS",
 		Security: "SECURITY",
 		Categories: "CATEGORIES",
-		Feeds: "RSS FEEDS",
-		IncomingNzb: "INCOMING NZBS",
-		DownloadQueue: "DOWNLOAD QUEUE",
+		Feeds: "RSS_FEEDS",
+		IncomingNzbs: "INCOMING_NZBS",
+		DownloadQueue: "DOWNLOAD_QUEUE",
 		Connection: "CONNECTION",
 		Logging: "LOGGING",
-		CheckAndRepair: "CHECK AND REPAIR",
+		CheckAndRepair: "CHECK_AND_REPAIR",
 		Unpack: "UNPACK",
 		Scheduler: "SCHEDULER",
-		ExtensionScripts: "EXTENSION SCRIPTS"
+		ExtensionScripts: "EXTENSION_SCRIPTS"
 	};
 
 	var $appHealthBadge;
@@ -162,70 +162,102 @@ var SystemHealth = (new function ($) {
 		$SystemInfo_Health = $('#SystemInfo_Health');
 		RPC.call('systemhealth', [],
 			function (health) {
-				console.log(health)
+				//console.log(health)
 				alertsReport = makeAlertsReport(health);
 				sectionsReport = makeHealthReport(health["Sections"]);
 				redrawGlobalBadges(alertsReport, sectionsReport);
 				redraw(alertsReport);
-			});
+			},
+			function(err)
+			{
+				console.error(err);
+			}
+		);
 	}
 
 	function redraw(alertsReport) {
-		$SystemInfo_Health.empty();
-		$ConfigTitleStatus.empty();
+		var $container = $("#SystemInfo_Health");
+		var $mainWrapper = $("#SystemInfoHealthSection");
+		var accordionId = "healthAccordion";
+		var sections = [
+			{
+				id: 'collapseErrors',
+				label: 'Errors',
+				data: alertsReport.errors,
+				cssClass: 'txt-error',
+				icon: 'error'
+			},
+			{
+				id: 'collapseWarnings',
+				label: 'Warnings',
+				data: alertsReport.warnings,
+				cssClass: 'txt-warning',
+				icon: 'warning'
+			},
+			{
+				id: 'collapseInfo',
+				label: 'Info',
+				data: alertsReport.info,
+				cssClass: 'txt-success',
+				icon: 'info'
+			}
+		];
 
-		// if (status === "Error")
-		// {
-		// 	$ConfigTitleStatus.append('<span class="text-error">ERROR</>');
-		// }
-		// else if (status === "Warning")
-		// {
-		// 	$ConfigTitleStatus.append('<span class="text-warning">WARNING</>');
-		// }
-		// else if (status === "Info")
-		// {
-		// 	$ConfigTitleStatus.append('<span class="text-success">OK</>');
-		// }
-		// else if (status === "Ok")
-		// {
-		// 	$ConfigTitleStatus.append('<span class="text-success">OK</>');
-		// }
+		$container.empty();
 
-		$SystemInfo_Health.show();
-		alertsReport.errors.forEach(function (alert) {
-			var link = $('<a href="#"></a>').on('click', function(e) {
-				e.preventDefault();
-				var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
-				Config.scrollToOption(e, $btn);
-				Config.navigateTo(alert.name);
+		var hasContent = false;
+		var $accordion = $('<div class="accordion" id="' + accordionId + '"></div>');
+
+		sections.forEach(function (section) {
+			if (!section.data || section.data.length === 0) {
+				return;
+			}
+
+			hasContent = true;
+
+			var $group = $('<div class="accordion-group"></div>');
+			var $heading = $('<div class="accordion-heading"></div>');
+			var $toggle = $('<span class="accordion-toggle" data-toggle="collapse"></span>');
+			$toggle.attr('data-parent', '#' + accordionId);
+			$toggle.attr('href', '#' + section.id);
+			
+			$toggle.html(
+				'<i class="material-icon ' + section.cssClass + '">' + section.icon + '</i> ' +
+				'<span class="' + section.cssClass + '">' + section.label + ' (' + section.data.length + ')</span>'
+			);
+			
+			$heading.append($toggle);
+			$group.append($heading);
+
+			var $body = $('<div id="' + section.id + '" class="accordion-body collapse"></div>');
+			var $inner = $('<div class="accordion-inner"></div>');
+		
+			section.data.forEach(function (alert) {
+				var $link = $('<a href="#" style="display:block;margin-bottom: 5px;""></a>');
+				$link.addClass(section.cssClass);
+				
+				$link.on('click', function (e) {
+					e.preventDefault();
+					var $mockBtn = $('<a class="option">' + alert.name + '</a>');
+					Config.scrollToOption(e, $mockBtn);
+					Config.navigateTo(alert.name);
+				});
+
+				$link.html('<span>' + alert.message + '</span>');
+				$inner.append($link);
 			});
-			link.append('<p class="text-error"><i class="option-alert__icon material-icon">error</i><span>' + alert.message + '</span></p>');
-			$SystemInfo_Health.append(link);
+
+			$body.append($inner);
+			$group.append($body);
+			$accordion.append($group);
 		});
 
-		alertsReport.warnings.forEach(function (alert) {
-			var link = $('<a href="#"></a>')
-				.on('click', function (e) {
-					e.preventDefault();
-					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
-					Config.scrollToOption(e, $btn);
-					Config.navigateTo(alert.name);
-				});
-			link.append('<p class="text-warning"><i class="option-alert__icon material-icon">warning</i><span>' + alert.message + '</span></p>');
-			$SystemInfo_Health.append(link);
-		});
-
-		alertsReport.info.forEach(function (alert) {
-			var link = $('<a href="#"></a>')
-				.on('click', function (e) {
-					e.preventDefault();
-					var $btn = $('<a class="option" href="#">' + alert.name + '</a>');
-					Config.scrollToOption(e, $btn);
-					Config.navigateTo(alert.name);
-				});
-			link.append('<p class="text-success"><i class="option-alert__icon material-icon">info</i><span>' + alert.message + '</span></p>');
-			$SystemInfo_Health.append(link);
-		});
+		if (!hasContent) {
+			$mainWrapper.hide();
+		} else {
+			$mainWrapper.show();
+			$container.append($accordion);
+		}
 	}
 
 	this.makeBadges = function (section) {
@@ -258,6 +290,8 @@ var SystemHealth = (new function ($) {
 	}
 
 	function redrawGlobalBadges(alertsReport, sectionsReport) {
+		$SystemInfoNavBtnBadge.hide();
+
 		var infoCount = sectionsReport.getInfoCount() + (alertsReport.getInfoCount ? alertsReport.getInfoCount() : 0);
 		var warningsCount = sectionsReport.getWarningsCount() + (alertsReport.getWarningsCount ? alertsReport.getWarningsCount() : 0);
 		var errorsCount = sectionsReport.getErrorsCount() + (alertsReport.getErrorsCount ? alertsReport.getErrorsCount() : 0);
@@ -281,44 +315,45 @@ var SystemHealth = (new function ($) {
 	}
 
 	function makeAlertsReport(health) {
-		var alerts = health.Alerts;
-		var sections = health.Sections;
-		var info = [];
-		var warnings = [];
-		var errors = [];
+		var buckets = {
+			"Info": [],
+			"Warning": [],
+			"Error": []
+		};
 
-		alerts.forEach(function (alert) {
-			if (alert.Severity === "Info") info.push({ name: alert.Source, message: alert.Message });
-			else if (alert.Severity === "Warning") warnings.push({ name: alert.Source, message: alert.Message });
-			else if (alert.Severity === "Error") errors.push({ name: alert.Source, message: alert.Message });
-		});
+		function add(severity, name, message) {
+			if (buckets[severity]) {
+				buckets[severity].push({ name: name, message: message });
+			}
+		}
 
-		sections.forEach(function (section) {
+		if (health.Alerts) {
+			health.Alerts.forEach(function (alert) {
+				add(alert.Severity, alert.Source, alert.Message);
+			});
+		}
+
+		health.Sections.forEach(function (section) {
 			section.Issues.forEach(function (issue) {
-				if (issue.Severity === "Info") info.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
-				else if (issue.Severity === "Warning") warnings.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
-				else if (issue.Severity === "Error") errors.push({ name: SECTION_NAMES[section.Name], message: issue.Message });
+				add(issue.Severity, SECTION_NAMES[section.Name], issue.Message);
+			});
+
+			section.Options.forEach(function (option) {
+				add(option.Severity, option.Name, option.Message);
 			});
 
 			section.Subsections.forEach(function (sub) {
 				sub.Options.forEach(function (option) {
-					if (option.Severity === "Info") info.push({ name: sub.Name + "." + option.Name, message: option.Message });
-					else if (option.Severity === "Warning") warnings.push({ name: sub.Name + "." + option.Name, message: option.Message });
-					else if (option.Severity === "Error") errors.push({ name: sub.Name + "." + option.Name, message: option.Message });
+					var fullName = sub.Name + "." + option.Name;
+					add(option.Severity, fullName, fullName + ': ' + option.Message);
 				});
-			});
-
-			section.Options.forEach(function (option) {
-				if (option.Severity === "Info") info.push({ name: option.Name, message: option.Message });
-				else if (option.Severity === "Warning") warnings.push({ name: option.Name, message: option.Message });
-				else if (option.Severity === "Error") errors.push({ name: option.Name, message: option.Message });
 			});
 		});
 
 		return {
-			info,
-			warnings,
-			errors,
+			info: buckets["Info"],
+			warnings: buckets["Warning"],
+			errors: buckets["Error"]
 		};
 	}
 
@@ -360,7 +395,7 @@ var SystemHealth = (new function ($) {
 	function toggleGlobalBadgeVisibility($badge, checks, severity) {
 		if (checks > 0) {
 			$badge.show();
-			$badge.addClass("system-health-badge--" + severity.toLowerCase());
+			$badge.addClass("txt-" + severity.toLowerCase());
 		}
 		else {
 			$badge.hide();

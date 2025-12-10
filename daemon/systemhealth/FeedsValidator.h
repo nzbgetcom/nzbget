@@ -40,6 +40,20 @@ private:
 	std::vector<std::unique_ptr<SectionValidator>> MakeFeedValidators(const ::Feeds& feeds) const;
 };
 
+class DuplicateFeedsValidator : public Validator
+{
+public:
+	explicit DuplicateFeedsValidator(const ::Feeds& feeds)
+		: m_feeds(feeds)
+	{
+	}
+	std::string_view GetName() const override { return ""; }
+	Status Validate() const override;
+
+private:
+	const ::Feeds& m_feeds;
+};
+
 }  // namespace SystemHealth::Feeds
 
 #endif

@@ -62,7 +62,7 @@ Status ServerNameValidator::Validate() const
 
 	std::string_view name = m_server.GetName();
 	if (name.empty())
-		return Status::Info("A server name is recommended for clearer logs and troubleshooting");
+		return Status::Info("Name is recommended for clearer logs and troubleshooting");
 
 	return Status::Ok();
 }
@@ -84,8 +84,8 @@ Status ServerOptionalValidator::Validate() const
 	if (m_server.GetOptional() && m_server.GetLevel() == 0)
 	{
 		return Status::Warning(
-			"Server is marked as optional but assigned to level 0; this may affect primary server "
-			"selection");
+			"Server is marked as optional but assigned to level 0; this may affect primary "
+			"server selection");
 	}
 	return Status::Ok();
 }
@@ -157,7 +157,7 @@ Status ServerEncryptionValidator::Validate() const
 	if (!tls)
 	{
 		return Status::Warning(
-			"Security Risk: TLS is disabled. "
+			"TLS is disabled. "
 			"Communication with this server will not be encrypted");
 	}
 
@@ -217,7 +217,7 @@ Status ServerRetentionValidator::Validate() const
 	if (retention > 0 && retention < 100)
 	{
 		std::stringstream ss;
-		ss << "Retention is set to only " << retention << " days. "
+		ss << "Retention is set to " << retention << " days. "
 		   << "This low value may cause downloads to fail";
 		return Status::Warning(ss.str());
 	}
@@ -243,7 +243,7 @@ Status ServerCertVerificationValidator::Validate() const
 
 	if (certLevel == Options::ECertVerifLevel::cvNone)
 		return Status::Warning(
-			"Security Risk: Certificate verification is 'None', "
+			"Certificate verification is 'None', "
 			"making the TLS connection insecure");
 
 	return Status::Ok();

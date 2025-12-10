@@ -46,13 +46,20 @@ ConnectionValidator::ConnectionValidator(const Options& options) : m_options(opt
 Status ArticleRetriesValidator::Validate() const
 {
 	int val = m_options.GetArticleRetries();
+
 	if (val < 0 || val > 99)
+	{
 		return Status::Error("'" + std::string(Options::ARTICLERETRIES) +
-							 "' value must be between 0 and 99");
+							 "' must be between 0 and 99");
+	}
 
 	if (val < 3)
+	{
 		return Status::Warning(
-			"Value is very low. Transient network errors may cause download failures");
+			"'" + std::string(Options::ARTICLERETRIES) + "' is set to " + std::to_string(val) +
+			". "
+			"This is very low; temporary connection drops may cause permanent download failures");
+	}
 
 	return Status::Ok();
 }
@@ -68,7 +75,13 @@ Status ArticleTimeoutValidator::Validate() const
 	Status s = CheckPositiveNum(Options::ARTICLETIMEOUT, val);
 	if (!s.IsOk()) return s;
 
-	if (val < 30) return Status::Warning("Value is very low. Valid connections may be dropped");
+	if (val < 30)
+	{
+		return Status::Warning(
+			"'" + std::string(Options::ARTICLETIMEOUT) + "' is set to " + std::to_string(val) +
+			" seconds. "
+			"Slow server responses may cause valid connections to be dropped prematurely");
+	}
 
 	return Status::Ok();
 }
@@ -80,11 +93,22 @@ Status ArticleReadChunkSizeValidator::Validate() const
 	if (!s.IsOk()) return s;
 
 	if (val < 4)
+	{
 		return Status::Warning(
-			"Value is very low. This may reduce download speed due to network protocol overhead.");
+			"'" + std::string(Options::ARTICLEREADCHUNKSIZE) + "' is set to " +
+			std::to_string(val) +
+			" KB. "
+			"This is very low and may reduce download speed due to network overhead");
+	}
 
-	if (val > 10240)  // 10 MB
-		return Status::Info("Value is very high. Ensure you have enough RAM");
+	if (val > 10240)
+	{
+		return Status::Info(
+			"'" + std::string(Options::ARTICLEREADCHUNKSIZE) + "' is set to " +
+			std::to_string(val) +
+			" KB. "
+			"This buffer is allocated per connection; ensure sufficient system RAM is available");
+	}
 
 	return Status::Ok();
 }
@@ -93,7 +117,7 @@ Status UrlRetriesValidator::Validate() const
 {
 	int val = m_options.GetUrlRetries();
 	if (val < 0 || val > 99)
-		return Status::Error(std::string(Options::URLRETRIES) + " must be between 0 and 99");
+		return Status::Error("'" + std::string(Options::URLRETRIES) + "' must be between 0 and 99");
 
 	return Status::Ok();
 }
@@ -109,7 +133,13 @@ Status UrlTimeoutValidator::Validate() const
 	Status s = CheckPositiveNum(Options::URLTIMEOUT, val);
 	if (!s.IsOk()) return s;
 
-	if (val < 5) return Status::Warning("Value is very low. RSS/URL fetches might fail");
+	if (val < 5)
+	{
+		return Status::Warning(
+			"'" + std::string(Options::URLTIMEOUT) + "' is set to " + std::to_string(val) +
+			" seconds. "
+			"RSS feeds and external URL fetches may fail if the remote server is slow");
+	}
 
 	return Status::Ok();
 }
@@ -127,7 +157,8 @@ Status DownloadRateValidator::Validate() const
 
 	if (val == 0) return Status::Ok();
 
-	return Status::Warning("Download speed is limited to " + std::to_string(val) + " KB/s");
+	return Status::Warning("Global download speed is restricted to " + std::to_string(val) +
+						   " KB/s by '" + std::string(Options::DOWNLOADRATE) + "'");
 }
 
 Status UrlConnectionsValidator::Validate() const
@@ -149,7 +180,7 @@ Status MonthlyQuotaValidator::Validate() const
 	Status s = CheckPositiveNum(Options::MONTHLYQUOTA, val);
 	if (!s.IsOk()) return s;
 
-	if (val == 0) return Status::Ok(); // no quota
+	if (val == 0) return Status::Ok();	// no quota
 
 	return Status::Info("'" + std::string(Options::MONTHLYQUOTA) + "' is active (" +
 						std::to_string(val) +
@@ -161,7 +192,8 @@ Status QuotaStartDayValidator::Validate() const
 {
 	int day = m_options.GetQuotaStartDay();
 	if (day < 1 || day > 31)
-		return Status::Error(std::string(Options::QUOTASTARTDAY) + " must be between 1 and 31");
+		return Status::Error("'" + std::string(Options::QUOTASTARTDAY) +
+							 "' must be between 1 and 31");
 
 	return Status::Ok();
 }

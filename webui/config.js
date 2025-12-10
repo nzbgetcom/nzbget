@@ -492,7 +492,6 @@ var Options = (new function($)
 				option.value = null;
 				option.sectionId = section.id;
 				option.select = [];
-				option.check = SystemHealth.getCheck(SystemHealth.getSection(section.name.toUpperCase()), option.name);
 
 				var pstart = firstdescrline.lastIndexOf('(');
 				var pend = firstdescrline.lastIndexOf(')');
@@ -905,6 +904,7 @@ var Config = (new function($)
 			}
 
 			var option = section.options[i];
+			option.check = SystemHealth.getCheck(SystemHealth.getSection(section.id), option.name);
 			if (!option.template)
 			{
 				if (section.multi && option.multiid !== lastmultiid)
@@ -1229,7 +1229,7 @@ var Config = (new function($)
 				{
 					var html = $('<li>');
 					var link = $('<a href="#' + section.id + '">' + section.name + '</a>');
-					var errorBadges = SystemHealth.makeBadges(SystemHealth.getSection(section.name.toUpperCase()));
+					var errorBadges = SystemHealth.makeBadges(SystemHealth.getSection(section.id));
 
 					html.append(link.append(errorBadges));
 

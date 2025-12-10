@@ -129,11 +129,11 @@ void Log(const SectionReport& report)
 	for (const auto& [optName, status] : report.options)
 	{
 		if (status.IsError())
-			error("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+			error("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
 		else if (status.IsWarning())
-			warn("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+			warn("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
 		else if (status.IsInfo())
-			info("[%s]: %s", optName.c_str(), status.GetMessage().c_str());
+			info("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
 	}
 
 	for (const auto& section : report.subsections)
@@ -141,13 +141,13 @@ void Log(const SectionReport& report)
 		for (const auto& [optName, status] : section.options)
 		{
 			if (status.IsError())
-				error("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+				error("[%s][%s.%s]: %s", report.name.c_str(), section.name.c_str(), optName.c_str(),
 					  status.GetMessage().c_str());
 			else if (status.IsWarning())
-				warn("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+				warn("[%s][%s.%s]: %s", report.name.c_str(), section.name.c_str(), optName.c_str(),
 					 status.GetMessage().c_str());
 			else if (status.IsInfo())
-				info("[%s][%s]: %s", report.name.c_str(), optName.c_str(),
+				info("[%s][%s.%s]: %s", report.name.c_str(), section.name.c_str(), optName.c_str(),
 					 status.GetMessage().c_str());
 		}
 	}

@@ -34,10 +34,21 @@ Status RequiredOption(std::string_view name, std::string_view value)
 	if (value.empty())
 	{
 		return Status::Error("'" + std::string(name) +
-							 "' option is required and cannot be empty");
+							 "' is required and cannot be empty");
 	}
 
 	return Status::Ok();
+}
+
+Status RequiredPathOption(std::string_view name, const boost::filesystem::path& value)
+{
+	if (value.empty())
+	{
+		return Status::Error("'" + std::string(name) +
+							 "' is required and cannot be empty");
+	}
+
+	return Status::Ok();	
 }
 
 Status UniquePath(

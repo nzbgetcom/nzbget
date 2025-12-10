@@ -17,7 +17,6 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
 #include "nzbget.h"
 
 #include "DownloadQueueValidator.h"
@@ -56,7 +55,7 @@ Status FlushQueueValidator::Validate() const
 	{
 		return Status::Warning("'" + std::string(Options::FLUSHQUEUE) + "' is enabled while '" +
 							   std::string(Options::SKIPWRITE) +
-							   "' is enabled; flushed data may not be written to disk");
+							   "' is enabled: flushed data may not be written to disk");
 	}
 	return Status::Ok();
 }
@@ -64,9 +63,9 @@ Status FlushQueueValidator::Validate() const
 Status ContinuePartialValidator::Validate() const
 {
 	if (m_options.GetContinuePartial())
-		return Status::Info(
-			"Disabling this option may slightly reduce disk access and is recommended on fast "
-			"connections");
+		return Status::Info("Disabling '" + std::string(Options::CONTINUEPARTIAL) +
+							"' may slightly reduce disk access and is recommended on fast "
+							"connections");
 
 	return Status::Ok();
 }
@@ -112,7 +111,7 @@ Status ArticleCacheValidator::Validate() const
 
 Status DirectWriteValidator::Validate() const
 {
-	if (!m_options.GetDirectWrite())
+	if (!m_options.GetDirectWrite() && !m_options.GetRawArticle())
 		return Status::Warning(
 			"'" + std::string(Options::DIRECTWRITE) +
 			"' is disabled. "
@@ -146,15 +145,21 @@ Status FileNamingValidator::Validate() const
 	{
 		case Options::nfAuto:
 			return Status::Ok();
+
 		case Options::EFileNaming::nfNzb:
-			return Status::Info(
-				"If you download obfuscated releases, "
-				"the resulting files may have meaningless names. 'Auto' is recommended.");
+			return Status::Info("'" + std::string(Options::FILENAMING) +
+								"' is set to 'Nzb'. "
+								"Files will be named strictly based on the NZB content. "
+								"Obfuscated releases often result in meaningless filenames with "
+								"this setting. 'Auto' is recommended");
 
 		case Options::EFileNaming::nfArticle:
-			return Status::Info(
-				"If article headers are malformed "
-				"or missing, filenames might be incorrect. 'Auto' is recommended.");
+			return Status::Info("'" + std::string(Options::FILENAMING) +
+								"' is set to 'Article'. "
+								"Files will be named using subject headers from the articles. "
+								"If headers are malformed or missing, filenames will be incorrect. "
+								"'Auto' is recommended");
+
 		default:
 			return Status::Ok();
 	}
@@ -175,20 +180,20 @@ Status PostStrategyValidator::Validate() const
 			return Status::Ok();
 
 		case Options::EPostStrategy::ppSequential:
-			return Status::Info(
-				"Strategy is 'Sequential'. Safe for low-end hardware, but may be slower.");
+			return Status::Info("'" + std::string(Options::POSTSTRATEGY) +
+								"' is set to 'Sequential'. "
+								"Safe for low-end hardware, but may be slower.");
 
 		case Options::EPostStrategy::ppAggressive:
 			return Status::Info(
-				"Strategy is 'Aggressive'. This runs up to 3 simultaneous tasks. "
-				"Ensure you have a multi-core CPU and fast storage (SSD) to prevent bottlenecks.");
+				"'" + std::string(Options::POSTSTRATEGY) +
+				"' is set to 'Aggressive'. "
+				"Ensure you have a multi-core CPU and fast storage (SSD) to prevent bottlenecks");
 
 		case Options::EPostStrategy::ppRocket:
-			return Status::Info(
-				"Strategy is 'Rocket'. This runs up to 6 simultaneous tasks! "
-				"This requires high-end hardware (NVMe SSD, many CPU cores). "
-				"On standard systems, this may actually SLOW down processing due to disk "
-				"thrashing.");
+			return Status::Info("'" + std::string(Options::POSTSTRATEGY) +
+								"' is set to 'Rocket'. "
+								"This requires high-end hardware (NVMe SSD, many CPU cores)");
 
 		default:
 			return Status::Ok();
@@ -205,9 +210,8 @@ Status DiskSpaceValidator::Validate() const
 	// If enabled but very low (e.g. < 50MB), it might be too late to pause effectively.
 	if (val > 0 && val < 50)
 	{
-		return Status::Warning(
-			"'" + std::string(Options::DISKSPACE) +
-			"' is set very low (<50MB). Downloads may fill disk before pausing");
+		return Status::Warning("'" + std::string(Options::DISKSPACE) +
+							   "' is set very low (<50MB). Downloads may fill disk before pausing");
 	}
 	return Status::Ok();
 }
@@ -216,8 +220,9 @@ Status NzbCleanupDiskValidator::Validate() const
 {
 	if (m_options.GetNzbCleanupDisk())
 		return Status::Info(
-			"Cleanup is disabled. Source NZB files will remain in the incoming directory after "
-			"processing");
+			"'" + std::string(Options::NZBCLEANUPDISK) +
+			"' is disabled. "
+			"Source NZB files will remain in the incoming directory after processing");
 
 	return Status::Ok();
 }

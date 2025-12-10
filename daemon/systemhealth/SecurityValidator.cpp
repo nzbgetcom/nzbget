@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "Options.h"
 #include "Status.h"
 #include "nzbget.h"
 #include <cctype>
@@ -50,8 +51,8 @@ SecurityValidator::SecurityValidator(const Options& options) : m_options(options
 	if (options.GetDaemonMode())
 	{
 		m_validators.push_back(std::make_unique<DaemonUsernameValidator>(options));
-		m_validators.push_back(std::make_unique<UmaskValidator>(options));
 	}
+	m_validators.push_back(std::make_unique<UmaskValidator>(options));
 #endif
 }
 
@@ -247,9 +248,8 @@ Status SecurePortValidator::Validate() const
 
 	if (securePort == controlPort)
 	{
-		return Status::Error("'" + std::string(Options::SECUREPORT) +
-							 "' cannot be the same as '" + std::string(Options::CONTROLPORT) +
-							 "'");
+		return Status::Error("'" + std::string(Options::SECUREPORT) + "' cannot be the same as '" +
+							 std::string(Options::CONTROLPORT) + "'");
 	}
 	return Status::Ok();
 }
@@ -264,8 +264,9 @@ Status FormAuthValidator::Validate() const
 
 	if (!m_options.GetSecureControl())
 	{
-		return Status::Warning("'" + std::string(Options::FORMAUTH) +
-							   "' is enabled but SecureControl (HTTPS) is disabled. Form "
+		return Status::Warning("'" + std::string(Options::FORMAUTH) + "' is enabled but '" +
+							   std::string(Options::SECURECONTROL) +
+							   "' is disabled. Form "
 							   "credentials may be transmitted in plaintext");
 	}
 
@@ -273,9 +274,9 @@ Status FormAuthValidator::Validate() const
 	const bool hasRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
 	if (!hasAdd && !hasRestricted)
 	{
-		return Status::Warning("'" + std::string(Options::FORMAUTH) +
-							   "' is enabled but no form users are configured "
-							   "(AddUsername/RestrictedUsername). Users cannot log in via forms");
+		return Status::Warning(
+			"'" + std::string(Options::FORMAUTH) +
+			"' is enabled but no form users are configured. Users cannot log in via forms");
 	}
 
 	return Status::Ok();
@@ -295,8 +296,8 @@ Status CertCheckValidator::Validate() const
 {
 	if (!m_options.GetCertCheck())
 	{
-		return Status::Warning(
-			"Certificate verification is disabled. Connections to news servers may be insecure");
+		return Status::Warning("'" + std::string(Options::CERTCHECK) +
+							   "' is disabled. Connections to news servers may be insecure");
 	}
 	return Status::Ok();
 }

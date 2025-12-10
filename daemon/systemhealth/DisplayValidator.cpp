@@ -27,7 +27,7 @@ namespace SystemHealth::Display
 
 DisplayValidator::DisplayValidator(const Options& options) : m_options(options)
 {
-	m_validators.reserve(6);
+	m_validators.reserve(5);
 	m_validators.push_back(std::make_unique<OutputModeValidator>(options));
 	m_validators.push_back(std::make_unique<UpdateIntervalValidator>(options));
 	m_validators.push_back(std::make_unique<CursesNzbNameValidator>(options));
