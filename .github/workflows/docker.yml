@@ -184,3 +184,8 @@ jobs:
           package-name: nzbget
           delete-orphans: true
           dry-run: false
+
+      - name: Delete unneeded digests artifacts
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: digests-${{ needs.prepare.outputs.build_type }}-*
