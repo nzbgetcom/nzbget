@@ -3,12 +3,7 @@ name: build
 on:
   push:
     branches:
-    - develop
     - main
-    paths-ignore:
-    - 'docs/**'
-    - 'tests/**'
-    - '**/*.md'
   workflow_dispatch:
 
 jobs:
@@ -30,6 +25,22 @@ jobs:
     permissions:
       actions: write
     secrets: inherit
+
+  build-docker:
+    if: github.ref_name == 'develop'
+    uses: ./.github/workflows/docker.yml
+    secrets: inherit
+    permissions:
+      packages: write
+    
+  build-docker-debug:
+    if: github.ref_name == 'develop'
+    uses: ./.github/workflows/docker.yml
+    secrets: inherit
+    with:
+      debug: true
+    permissions:
+      packages: write
 
   build-linux-pkg:
     uses: ./.github/workflows/linux-pkg.yml

@@ -3,14 +3,9 @@ name: docker build
 on:
   push:
     branches:
-    - develop
     - main
     tags:
     - "v*"
-    paths-ignore:
-    - 'docs/**'
-    - 'tests/**'
-    - '**/*.md'
   workflow_call:
     inputs:
       debug:
