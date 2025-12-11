@@ -56,7 +56,7 @@ public:
 	static constexpr std::string_view OUTPUTMODE = "OutputMode";
 	static constexpr std::string_view DUPECHECK = "DupeCheck";
 	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
-	static constexpr std::string_view CONTROLIP = "ControlIp";
+	static constexpr std::string_view CONTROLIP = "ControlIP";
 	static constexpr std::string_view CONTROLPORT = "ControlPort";
 	static constexpr std::string_view CONTROLUSERNAME = "ControlUsername";
 	static constexpr std::string_view CONTROLPASSWORD = "ControlPassword";
