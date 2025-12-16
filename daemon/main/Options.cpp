@@ -598,8 +598,8 @@ void Options::InitOptions()
 	SetPathOption(m_lockFilePath, *m_lockFile);
 	SetPathOption(m_logFilePath, *m_logFile);
 	SetPathOption(m_unpackPassFilePath, *m_unpackPassFile);
-	SetCmdOption(m_unrarPath, *m_unrarCmd);
-	SetCmdOption(m_sevenZipPath, *m_sevenZipCmd);
+	SetToolPathOption(m_unrarPath, *m_unrarCmd);
+	SetToolPathOption(m_sevenZipPath, *m_sevenZipCmd);
 
 	const char* shellOverride = GetOption(SHELLOVERRIDE.data());
 	m_shellOverride	= shellOverride ? shellOverride : "";
@@ -866,9 +866,9 @@ void Options::SetPathOption(boost::filesystem::path& pathOpt, std::string_view v
 #endif
 }
 
-void Options::SetCmdOption(boost::filesystem::path& pathOpt, std::string_view value)
+void Options::SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value)
 {
-	boost::system::error_code ec;
+	if (value.empty()) return;
 
 #ifdef _WIN32
 	const auto wvalue = Utf8::Utf8ToWide(value);
@@ -877,23 +877,42 @@ void Options::SetCmdOption(boost::filesystem::path& pathOpt, std::string_view va
 	fs::path directPath = value;
 #endif
 
+	boost::system::error_code ec;
 	if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
 	{
 		pathOpt.swap(directPath);
 		return;
 	}
 
-	// Clean the input: "unrar -x" -> "unrar"
+	ec.clear();
+
+	// Clean the input: "'C:\\Program Files\\unrar' -x" -> "C:\\Program Files\\unrar"
 	const auto args = Util::SplitCommandLine(value.data());
-	std::string cmdName = !args.empty() ? *args[0] : std::string(value);
-	auto res = Util::ResolvePathFromEnv(cmdName);
+	const auto tool = !args.empty() ? *args[0] : std::string(value);
+#ifdef _WIN32
+	const auto wtool = Utf8::Utf8ToWide(tool);
+	directPath = wtool ? fs::path(*wtool) : fs::path(tool);
+#else
+	directPath = tool;
+#endif
+
+	if (directPath.has_parent_path())
+	{
+		if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
+		{
+			pathOpt.swap(directPath);
+			return;
+		}
+	}
+
+	auto res = Util::ResolvePathFromEnv(tool);
 	if (res)
 	{
 		pathOpt.swap(*res);
 		return;
 	}
 
-	pathOpt = cmdName;
+	pathOpt.swap(directPath);
 }
 
 Options::OptEntry* Options::FindOption(const char* optname)

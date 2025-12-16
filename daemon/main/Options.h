@@ -700,7 +700,7 @@ private:
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);
 	void SetPathOption(boost::filesystem::path& pathOpt, std::string_view value);
-	void SetCmdOption(boost::filesystem::path& pathOpt, std::string_view value);
+	void SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value);
 	bool SetOptionString(const char* option);
 	bool ValidateOptionName(const char* optname, const char* optvalue);
 	void LoadConfigFile();

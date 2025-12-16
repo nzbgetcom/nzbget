@@ -181,8 +181,6 @@ BOOST_AUTO_TEST_CASE(ParsePathsTest)
 	cmdOpts.push_back("SecureCert=/usr/etc/nzbget/cert.pem");
 	cmdOpts.push_back("SecureKey=/usr/etc/nzbget/key.pem");
 	cmdOpts.push_back("UnpackPassFile=/usr/etc/nzbget/unpackpass");
-	cmdOpts.push_back("UnrarCmd=/usr/bin/unrar");
-	cmdOpts.push_back("SevenZipCmd=/usr/bin/7z");
 	cmdOpts.push_back("ScriptDir=/usr/etc/nzbget/scripts;/usr/etc/nzbget/scripts2;");
 
 	OptionsExtenderMock extender;
@@ -202,12 +200,37 @@ BOOST_AUTO_TEST_CASE(ParsePathsTest)
 	BOOST_CHECK_EQUAL(options.GetSecureCert(), "/usr/etc/nzbget/cert.pem");
 	BOOST_CHECK_EQUAL(options.GetSecureKey(), "/usr/etc/nzbget/key.pem");
 	BOOST_CHECK_EQUAL(options.GetUnpackPassFilePath(), "/usr/etc/nzbget/unpackpass");
-	BOOST_CHECK_EQUAL(options.GetUnrarPath(), "/usr/bin/unrar");
-	BOOST_CHECK_EQUAL(options.GetSevenZipPath(), "/usr/bin/7z");
 
 	const std::vector<boost::filesystem::path>& scriptPaths = options.GetScriptDirPaths();
 
 	BOOST_REQUIRE_EQUAL(scriptPaths.size(), 2);
 	BOOST_CHECK_EQUAL(scriptPaths[0], "/usr/etc/nzbget/scripts");
 	BOOST_CHECK_EQUAL(scriptPaths[1], "/usr/etc/nzbget/scripts2");
+}
+
+BOOST_AUTO_TEST_CASE(ParseToolPathsTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("UnrarCmd=/test/path/unrar");
+		cmdOpts.push_back("SevenZipCmd=/test/path/7z");
+
+		OptionsExtenderMock extender;
+		Options options(&cmdOpts, &extender);
+
+		BOOST_CHECK_EQUAL(options.GetUnrarPath(), "/test/path/unrar");
+		BOOST_CHECK_EQUAL(options.GetSevenZipPath(), "/test/path/7z");
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("UnrarCmd='C:\\Test Path\\unrar.exe' -y");
+		cmdOpts.push_back("SevenZipCmd='C:\\Test Path\\7z.exe' -y");
+
+		OptionsExtenderMock extender;
+		Options options(&cmdOpts, &extender);
+
+		BOOST_CHECK_EQUAL(options.GetUnrarPath(), "C:\\Test Path\\unrar.exe");
+		BOOST_CHECK_EQUAL(options.GetSevenZipPath(), "C:\\Test Path\\7z.exe");
+	}
 }
