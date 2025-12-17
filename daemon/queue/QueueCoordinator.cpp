@@ -920,6 +920,10 @@ void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 	if (g_Options->GetDirectWrite() && !outputFilename.empty() && !fileInfo->GetForceDirectWrite())
 	{
 		FileSystem::DeleteFile(outputFilename.c_str());
+		if (fileInfo->IsHardLinked())
+		{
+			FileSystem::DeleteFile(fileInfo->GetHardLinkPath().c_str());
+		}
 	}
 }
 

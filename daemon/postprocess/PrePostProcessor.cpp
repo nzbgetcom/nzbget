@@ -506,6 +506,13 @@ void PrePostProcessor::DeleteCleanup(NzbInfo* nzbInfo)
 
 		// delete old directory (if empty)
 		FileSystem::DeleteDirectory(nzbInfo->GetDestDir());
+
+		// delete final directory (if empty)
+		const auto finalDir = nzbInfo->BuildFinalDirName();
+		if (nzbInfo->GetDestDir() != finalDir && FileSystem::DirectoryExists(finalDir))
+		{
+			FileSystem::DeleteDirectory(finalDir);
+		}
 	}
 }
 

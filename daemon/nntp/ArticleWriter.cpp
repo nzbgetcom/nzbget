@@ -583,6 +583,20 @@ void ArticleWriter::CompleteFileParts()
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		m_fileInfo->SetCrc(crc);
 
+		if (m_fileInfo->IsHardLinked() && Util::EmptyStr(g_Options->GetInterDir()))
+		{
+			// No need to rename, remove hardlink of .out.tmp-file
+			if (FileSystem::DeleteFile(m_outputFilename.c_str()))
+			{
+				m_fileInfo->SetOutputFilename(nullptr);
+				return;
+			}
+			else
+			{
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Cannot remove hardlink");
+			}
+		}
+
 		RenameOutputFile(filename, destDir);
 	}
 }
