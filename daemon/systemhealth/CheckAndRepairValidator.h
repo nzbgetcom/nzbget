@@ -168,6 +168,28 @@ private:
 	const Options& m_options;
 };
 
+class HardLinkingValidator : public Validator
+{
+public:
+	explicit HardLinkingValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::HARDLINKING; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
+class HardLinkingIgnoreExtValidator : public Validator
+{
+public:
+	explicit HardLinkingIgnoreExtValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::HARDLINKINGIGNOREEXT; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
 class HealthCheckValidator : public Validator
 {
 public:

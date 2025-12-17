@@ -31,7 +31,7 @@ namespace SystemHealth::CheckAndRepair
 {
 CheckAndRepairValidator::CheckAndRepairValidator(const Options& options) : m_options(options)
 {
-	m_validators.reserve(14);
+	m_validators.reserve(16);
 	m_validators.push_back(std::make_unique<CrcCheckValidator>(options));
 	m_validators.push_back(std::make_unique<ParCheckValidator>(options));
 	m_validators.push_back(std::make_unique<ParRepairValidator>(options));
@@ -43,6 +43,8 @@ CheckAndRepairValidator::CheckAndRepairValidator(const Options& options) : m_opt
 	m_validators.push_back(std::make_unique<ParRenameValidator>(options));
 	m_validators.push_back(std::make_unique<RarRenameValidator>(options));
 	m_validators.push_back(std::make_unique<DirectRenameValidator>(options));
+	m_validators.push_back(std::make_unique<HardLinkingValidator>(options));
+	m_validators.push_back(std::make_unique<HardLinkingIgnoreExtValidator>(options));
 	m_validators.push_back(std::make_unique<HealthCheckValidator>(options));
 	m_validators.push_back(std::make_unique<ParTimeLimitValidator>(options));
 	m_validators.push_back(std::make_unique<ParPauseQueueValidator>(options));
@@ -172,13 +174,27 @@ Status ParRenameValidator::Validate() const
 Status RarRenameValidator::Validate() const
 {
 	if (!m_options.GetRarRename())
-		return Status::Info(
-			"'" + std::string(Options::RARRENAME) +
-			"' is off. Original file names won't be restored from rar-files");
+		return Status::Info("'" + std::string(Options::RARRENAME) +
+							"' is off. Original file names won't be restored from rar-files");
 	return Status::Ok();
 }
 
 Status DirectRenameValidator::Validate() const { return Status::Ok(); }
+
+Status HardLinkingValidator::Validate() const
+{
+	if (!m_options.GetHardLinking()) return Status::Ok();
+	if (!m_options.GetDirectRename())
+	{
+		return Status::Warning("'" + std::string(Options::HARDLINKING) + "' is enabled, but '" +
+							   std::string(Options::DIRECTRENAME) +
+							   "' is disabled. Hard linking will not be performed");
+	}
+
+	return Status::Ok();
+}
+
+Status HardLinkingIgnoreExtValidator::Validate() const { return Status::Ok(); }
 
 Status HealthCheckValidator::Validate() const
 {
@@ -209,11 +225,12 @@ Status ParTimeLimitValidator::Validate() const
 	const int limit = m_options.GetParTimeLimit();
 	if (limit == 0) return Status::Ok();
 	if (limit < 5)
-		{
-			return Status::Info(
-				"'" + std::string(Options::PARTIMELIMIT) + "' is set to " + std::to_string(limit) + " minutes. "
-				"Large repairs often take longer, risking premature cancellation");
-		}
+	{
+		return Status::Info("'" + std::string(Options::PARTIMELIMIT) + "' is set to " +
+							std::to_string(limit) +
+							" minutes. "
+							"Large repairs often take longer, risking premature cancellation");
+	}
 
 	return Status::Ok();
 }
