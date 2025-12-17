@@ -838,6 +838,11 @@ void FileInfo::SetActiveDownloads(int activeDownloads)
 	}
 }
 
+bool FileInfo::IsHardLinked()
+{
+	return !m_hardLinkPath.empty();
+}
+
 
 CompletedFile::CompletedFile(int id, std::string filename, std::string origname, EStatus status,
 	uint32 crc, bool parFile, std::string hash16k, std::string parSetId) 

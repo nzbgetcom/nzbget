@@ -345,6 +345,8 @@ void Options::InitDefaults()
 	SetOption(RARRENAME.data(), "yes");
 	SetOption(HEALTHCHECK.data(), "none");
 	SetOption(DIRECTRENAME.data(), "no");
+	SetOption(HARDLINKING.data(), "no");
+	SetOption(HARDLINKINGIGNOREEXT.data(), ".zip, .7z, .rar, *.7z.###, *.r##");
 	SetOption(SCRIPTORDER.data(), "");
 	SetOption(EXTENSIONS.data(), "");
 	SetOption(DAEMONUSERNAME.data(), "root");
@@ -637,6 +639,8 @@ void Options::InitOptions()
 	m_parRename				= (bool)ParseEnumValue(PARRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_rarRename				= (bool)ParseEnumValue(RARRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_directRename			= (bool)ParseEnumValue(DIRECTRENAME.data(), BoolCount, BoolNames, BoolValues);
+	m_hardLinking			= (bool)ParseEnumValue(HARDLINKING.data(), BoolCount, BoolNames, BoolValues);
+	m_hardLinkingIgnoreExt = GetOption(HARDLINKINGIGNOREEXT.data());
 	m_cursesNzbName			= (bool)ParseEnumValue(CURSESNZBNAME.data(), BoolCount, BoolNames, BoolValues);
 	m_cursesTime			= (bool)ParseEnumValue(CURSESTIME.data(), BoolCount, BoolNames, BoolValues);
 	m_cursesGroup			= (bool)ParseEnumValue(CURSESGROUP.data(), BoolCount, BoolNames, BoolValues);

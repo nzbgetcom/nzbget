@@ -106,6 +106,8 @@ public:
 	static constexpr std::string_view RARRENAME = "RarRename";
 	static constexpr std::string_view HEALTHCHECK = "HealthCheck";
 	static constexpr std::string_view DIRECTRENAME = "DirectRename";
+	static constexpr std::string_view HARDLINKING = "HardLinking";
+	static constexpr std::string_view HARDLINKINGIGNOREEXT = "HardLinkingIgnoreExt";
 	static constexpr std::string_view UMASK = "UMask";
 	static constexpr std::string_view UPDATEINTERVAL = "UpdateInterval";
 	static constexpr std::string_view CURSESNZBNAME = "CursesNzbName";
@@ -484,6 +486,8 @@ public:
 	int GetQuotaStartDay() const { return m_quotaStartDay; }
 	int GetDailyQuota() const { return m_dailyQuota; }
 	bool GetDirectRename() const { return m_directRename; }
+	bool GetHardLinking() const { return m_hardLinking; }
+	const char* GetHardLinkingIgnoreExt() const { return m_hardLinkingIgnoreExt; }
 	bool GetReorderFiles() const { return m_reorderFiles; }
 	EFileNaming GetFileNaming() const { return m_fileNaming; }
 	int GetDownloadRate() const { return m_downloadRate; }
@@ -619,6 +623,8 @@ private:
 	int m_parThreads = 0;
 	bool m_rarRename = false;
 	bool m_directRename = false;
+	bool m_hardLinking = false;
+	CString m_hardLinkingIgnoreExt;
 	EHealthCheck m_healthCheck = hcNone;
 	CString m_extensions;
 	CString m_scriptOrder;
