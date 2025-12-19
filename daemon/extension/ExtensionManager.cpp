@@ -20,11 +20,15 @@
 #include "nzbget.h"
 
 #include "Util.h"
-#include "FileSystem.h"
-#include "NString.h"
 #include "Unpack.h"
 #include "ExtensionLoader.h"
 #include "ExtensionManager.h"
+
+#ifdef _WIN32
+#include "Utf8.h"
+#endif
+
+namespace fs = boost::filesystem;
 
 namespace ExtensionManager
 {
@@ -49,18 +53,23 @@ namespace ExtensionManager
 		return std::nullopt;
 	}
 
-	std::pair<WebDownloader::EStatus, std::string>
+	std::pair<WebDownloader::EStatus, fs::path>
 	Manager::DownloadExtension(const std::string& url, const std::string& extName)
 	{
-		std::string tmpFileName = std::string(g_Options->GetTempDir()) 
-			+ PATH_SEPARATOR 
-			+ "extension-" + extName + ".tmp.zip";
+		fs::path tmpFileName = g_Options->GetTempDirPath() / (extName + ".tmp.zip");
+
+#ifdef _WIN32
+		const auto tmpFileNameStr =
+			Utf8::WideToUtf8(tmpFileName.wstring()).value_or(tmpFileName.string());
+#else
+		const auto tmpFileNameStr = tmpFileName.string();
+#endif
 
 		std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
 		downloader->SetUrl(url.c_str());
 		downloader->SetForce(true);
 		downloader->SetRetry(false);
-		downloader->SetOutputFilename(tmpFileName.c_str());
+		downloader->SetOutputFilename(tmpFileNameStr.c_str());
 		downloader->SetInfoName(extName.c_str());
 
 		WebDownloader::EStatus status = downloader->DownloadWithRedirects(5);
@@ -70,33 +79,47 @@ namespace ExtensionManager
 	}
 
 	std::optional<std::string>
-	Manager::UpdateExtension(const std::string& filename, const std::string& extName)
+	Manager::UpdateExtension(const boost::filesystem::path& filename, const std::string& extName)
 	{
 		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
 		auto extensionIt = GetByName(extName);
 		if (extensionIt == std::end(m_extensions))
 		{
-			return "Failed to find " + extName;
+			return "Update failed: Extension '" + extName + "' not found";
 		}
 
 		if (extensionIt->use_count() > 1)
 		{
-			return "Failed to update: " + filename + " is executing";
+			return "Update failed: Extension '" + extName + "' is currently in use or running";
 		}
 
 		const auto deleteExtError = DeleteExtension(*(*extensionIt));
 		if (deleteExtError)
 		{
-			if (!FileSystem::DeleteFile(filename.c_str()))
+			boost::system::error_code ec;
+			fs::remove(filename, ec);
+			if (ec)
 			{
-				return "Failed to delete extension and temp file: " + filename;
+				return "Failed to remove existing extension (Error: " + deleteExtError.value() + 
+									") and failed to cleanup temporary file '" + filename.string() + 
+									"' (Error: " + ec.message() + ")";
 			}
 
 			return deleteExtError;
 		}
-		
-		const auto installExtError = InstallExtension(filename, (*extensionIt)->GetRootDir());
+#ifdef _WIN32
+		const auto wRootDir = Utf8::Utf8ToWide((*extensionIt)->GetRootDir());
+		if (!wRootDir)
+		{
+			return std::string("Failed to install ") + extName +
+				   ": couldn't convert path to wide string.";
+		}
+		const auto installExtError = InstallExtension(filename, *wRootDir);
+#else
+		const auto rootDir = (*extensionIt)->GetRootDir();
+		const auto installExtError = InstallExtension(filename, rootDir);
+#endif
 		if (installExtError)
 		{
 			return installExtError;
@@ -106,44 +129,35 @@ namespace ExtensionManager
 		return std::nullopt;
 	}
 
-	std::optional<std::string> 
-	Manager::InstallExtension(const std::string& filename, const std::string& dest)
+	std::optional<std::string> Manager::InstallExtension(const boost::filesystem::path& file,
+														 const boost::filesystem::path& dest)
 	{
-		if (Util::EmptyStr(g_Options->GetSevenZipCmd()))
+		try
 		{
+			const auto extractor =
+				Unpack::MakeExtractor(file, dest, "", Unpack::OverwriteMode::Overwrite);
 
-			return std::string("\"SevenZipCmd\" is not specified");
+			const auto result = extractor->Extract();
+			if (!result.success)
+			{
+				return "Extraction failed for archive '" + file.string() +
+					   "'. Error: " + std::string(result.message);
+			}
+
+			boost::system::error_code ec;
+			fs::remove(file, ec);
+			if (ec)
+			{
+				return "Extension unpacked, but failed to delete temporary archive '" +
+					   file.string() + "': " + ec.message();
+			}
+
+			return std::nullopt;
 		}
-
-		UnpackController unpacker;
-		std::string outputDir = "-o" + dest;
-		UnpackController::ArgList args = {
-			g_Options->GetSevenZipCmd(),
-			"x",
-			filename.c_str(),
-			outputDir.c_str(),
-			"-y",
-		};
-		unpacker.SetArgs(std::move(args));
-		
-		int ec = unpacker.Execute();
-
-		if (ec < 0)
+		catch (const std::exception& e)
 		{
-			return "Failed to unpack " + filename + ". Make sure that the path to 7-Zip is valid.";
+			return "Extraction of " + file.string() + " failed: " + e.what();
 		}
-
-		if (ec > 0)
-		{
-			return "Failed to unpack " + filename + ". " + UnpackController::DecodeSevenZipExitCode(ec);
-		}
-
-		if (!FileSystem::DeleteFile(filename.c_str()))
-		{
-			return "Failed to delete temp file: " + filename;
-		}
-
-		return std::nullopt;
 	}
 
 	std::optional<std::string>
@@ -154,12 +168,12 @@ namespace ExtensionManager
 		auto extensionIt = GetByName(name);
 		if (extensionIt == std::end(m_extensions))
 		{
-			return "Failed to find " + name;
+			return "Deletion failed: Extension '" + name + "' not found";
 		}
 
 		if (extensionIt->use_count() > 1)
 		{
-			return "Failed to delete: " + name + " is executing";
+			return "Deletion failed: Extension '" + name + "' is currently in use";
 		}
 
 		const auto err = DeleteExtension(*(*extensionIt));
@@ -212,27 +226,30 @@ namespace ExtensionManager
 		if (count > 1)
 		{
 			// for backward compatibility, when multiple V1 extensions placed 
-			// in the same directory in which case we have to delete an entry file, 
+			// in the same directory in which case we have to delete an entry file,
 			// not the entire directory.
 			location = extension.GetEntry();
 		}
 
-		if (FileSystem::DirectoryExists(location))
+#ifdef _WIN32
+		const auto wlocation = Utf8::Utf8ToWide(location);
+		if (!wlocation) 
 		{
-			CString err;
-			if (!FileSystem::DeleteDirectoryWithContent(location, err))
-			{
-				return std::optional<std::string>(err.Str());
-			}
-
-			return std::nullopt;
+			return std::string("Failed to delete ") + location + ": couldn't convert path to wide string";
 		}
-		else if (FileSystem::FileExists(location) && FileSystem::DeleteFile(location))
+		fs::path targetPath(*wlocation);
+#else
+		fs::path targetPath(location);
+#endif
+
+		boost::system::error_code ec;
+		fs::remove_all(targetPath, ec);
+		if (ec)
 		{
-			return std::nullopt;
+			return std::string("Failed to delete ") + location + ": " + ec.message();
 		}
 
-		return std::string("Failed to delete ") + location;
+		return std::nullopt;
 	}
 	
 	void Manager::LoadExtensionDir(const char* directory, bool isSubDir, const char* rootDir)

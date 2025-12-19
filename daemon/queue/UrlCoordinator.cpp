@@ -19,6 +19,7 @@
  */
 
 
+#include "Unpack.h"
 #include "nzbget.h"
 
 #include "UrlCoordinator.h"
@@ -343,13 +344,47 @@ void UrlCoordinator::UrlCompleted(UrlDownloader* urlDownloader)
 
 	if (nzbInfo->GetUrlStatus() == NzbInfo::lsFinished)
 	{
-		// add nzb-file to download queue
-		Scanner::EAddStatus addStatus = g_Scanner->AddExternalFile(
-			!Util::EmptyStr(nzbInfo->GetFilename()) ? nzbInfo->GetFilename() : *filename,
-			!Util::EmptyStr(nzbInfo->GetCategory()) ? nzbInfo->GetCategory() : urlDownloader->GetCategory(),
-			nzbInfo->GetAutoCategory(), nzbInfo->GetPriority(), nzbInfo->GetDupeKey(), nzbInfo->GetDupeScore(),
-			nzbInfo->GetDupeMode(), nzbInfo->GetParameters(), false, nzbInfo->GetAddUrlPaused(), nzbInfo,
-			urlDownloader->GetOutputFilename(), nullptr, 0, nullptr);
+		const char* name = !Util::EmptyStr(nzbInfo->GetFilename()) ? nzbInfo->GetFilename() : *filename;
+		const char* category =!Util::EmptyStr(nzbInfo->GetCategory()) ? nzbInfo->GetCategory() : urlDownloader->GetCategory();
+
+		Scanner::EAddStatus addStatus;
+		if (Unpack::IsArchive(name))
+		{
+			addStatus = g_Scanner->AddArchive(
+				name,
+				category,
+				nzbInfo->GetAutoCategory(),
+				nzbInfo->GetPriority(),
+				nzbInfo->GetDupeKey(),
+				nzbInfo->GetDupeScore(),
+				nzbInfo->GetDupeMode(),
+				nzbInfo->GetParameters(),
+				false,
+				nzbInfo->GetAddUrlPaused(),
+				nzbInfo,
+				urlDownloader->GetOutputFilename()
+			);
+		}
+		else 
+		{
+			addStatus = g_Scanner->AddExternalFile(
+				name,
+				category,
+				nzbInfo->GetAutoCategory(),
+				nzbInfo->GetPriority(),
+				nzbInfo->GetDupeKey(),
+				nzbInfo->GetDupeScore(),
+				nzbInfo->GetDupeMode(),
+				nzbInfo->GetParameters(),
+				false,
+				nzbInfo->GetAddUrlPaused(),
+				nzbInfo,
+				urlDownloader->GetOutputFilename(),
+				nullptr,
+				0,
+				nullptr
+			);
+		}
 
 		if (addStatus == Scanner::asSuccess)
 		{
