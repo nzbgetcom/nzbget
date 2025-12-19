@@ -31,6 +31,8 @@
 #include "Utf8.h"
 #endif
 
+namespace fs = boost::filesystem;
+
 const char* BoolNames[] = { "yes", "no", "true", "false", "1", "0", "on", "off", "enable", "disable", "enabled", "disabled" };
 const int BoolValues[] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
 const int BoolCount = 12;
@@ -100,14 +102,14 @@ Options::OptEntry* Options::OptEntries::FindOption(const char* name)
 }
 
 
-Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
+const Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases) const
 {
 	if (!name)
 	{
 		return nullptr;
 	}
 
-	for (Category& category : this)
+	for (const Category& category : *this)
 	{
 		if (!strcasecmp(category.GetName(), name))
 		{
@@ -117,9 +119,9 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 
 	if (searchAliases)
 	{
-		for (Category& category : this)
+		for (const Category& category : *this)
 		{
-			for (CString& alias : category.GetAliases())
+			for (const CString& alias : *category.GetAliases())
 			{
 				WildMask mask(alias);
 				if (mask.Match(name))
@@ -133,6 +135,12 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 	return nullptr;
 }
 
+Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
+{
+	const Category* result =
+		static_cast<const Categories*>(this)->FindCategory(name, searchAliases);
+	return const_cast<Category*>(result);
+}
 
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
 	CmdOptList* commandLineOptions, Extender* extender)
@@ -544,8 +552,15 @@ void Options::CheckDirs()
 	SetPathOption(m_tempDirPath, *m_tempDir);
 	SetPathOption(m_queueDirPath, *m_queueDir);
 	SetPathOption(m_webDirPath, *m_webDir);
-	SetPathOption(m_scriptDirPath, *m_scriptDir);
 	SetPathOption(m_nzbDirPath, *m_nzbDir);
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	while (const char* scriptDir = tokDir.Next())
+	{
+		fs::path path;
+		SetPathOption(path, scriptDir);
+		m_scriptDirPaths.push_back(std::move(path));
+	}
 }
 
 void Options::InitOptions()
@@ -583,8 +598,8 @@ void Options::InitOptions()
 	SetPathOption(m_lockFilePath, *m_lockFile);
 	SetPathOption(m_logFilePath, *m_logFile);
 	SetPathOption(m_unpackPassFilePath, *m_unpackPassFile);
-	SetCmdOption(m_unrarPath, *m_unrarCmd);
-	SetCmdOption(m_sevenZipPath, *m_sevenZipCmd);
+	SetToolPathOption(m_unrarPath, *m_unrarCmd);
+	SetToolPathOption(m_sevenZipPath, *m_sevenZipCmd);
 
 	const char* shellOverride = GetOption(SHELLOVERRIDE.data());
 	m_shellOverride	= shellOverride ? shellOverride : "";
@@ -851,16 +866,53 @@ void Options::SetPathOption(boost::filesystem::path& pathOpt, std::string_view v
 #endif
 }
 
-void Options::SetCmdOption(boost::filesystem::path& pathOpt, std::string_view value)
+void Options::SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value)
 {
-	if (boost::filesystem::is_regular_file(value))
+	if (value.empty()) return;
+
+#ifdef _WIN32
+	const auto wvalue = Utf8::Utf8ToWide(value);
+	fs::path directPath = wvalue ? fs::path(*wvalue) : fs::path(value);
+#else
+	fs::path directPath = value;
+#endif
+
+	boost::system::error_code ec;
+	if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
 	{
-		SetPathOption(pathOpt, value);
+		pathOpt.swap(directPath);
 		return;
 	}
 
+	ec.clear();
+
+	// Clean the input: "'C:\\Program Files\\unrar' -x" -> "C:\\Program Files\\unrar"
 	const auto args = Util::SplitCommandLine(value.data());
-	SetPathOption(pathOpt, !args.empty() ? *args[0] : "");
+	const auto tool = !args.empty() ? *args[0] : std::string(value);
+#ifdef _WIN32
+	const auto wtool = Utf8::Utf8ToWide(tool);
+	directPath = wtool ? fs::path(*wtool) : fs::path(tool);
+#else
+	directPath = tool;
+#endif
+
+	if (directPath.has_parent_path())
+	{
+		if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
+		{
+			pathOpt.swap(directPath);
+			return;
+		}
+	}
+
+	auto res = Util::ResolvePathFromEnv(tool);
+	if (res)
+	{
+		pathOpt.swap(*res);
+		return;
+	}
+
+	pathOpt.swap(directPath);
 }
 
 Options::OptEntry* Options::FindOption(const char* optname)
