@@ -26,8 +26,8 @@
 #include <shared_mutex>
 #include <optional>
 #include <functional>
+#include <boost/filesystem.hpp>
 #include "WebDownloader.h"
-#include "Options.h"
 #include "Extension.h"
 
 namespace ExtensionManager
@@ -48,10 +48,10 @@ namespace ExtensionManager
 		Manager& operator=(Manager&&) = delete;
 
 		std::optional<std::string> 
-		InstallExtension(const std::string& filename, const std::string& dest);
+		InstallExtension(const boost::filesystem::path& file, const boost::filesystem::path& dest);
 
 		std::optional<std::string> 
-		UpdateExtension(const std::string& filename, const std::string& extName);
+		UpdateExtension(const boost::filesystem::path& filename, const std::string& extName);
 
 		std::optional<std::string>
 		DeleteExtension(const std::string& name);
@@ -59,7 +59,7 @@ namespace ExtensionManager
 		std::optional<std::string>
 		LoadExtensions();
 
-		std::pair<WebDownloader::EStatus, std::string>
+		std::pair<WebDownloader::EStatus, boost::filesystem::path>
 		DownloadExtension(const std::string& url, const std::string& info);
 
 		void ForEach(std::function<void(const ExtensionPtr)> callback) const;

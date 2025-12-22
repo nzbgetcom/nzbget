@@ -29,7 +29,7 @@
 #include "PostScript.h"
 #include "Util.h"
 #include "FileSystem.h"
-#include "Unpack.h"
+#include "UnpackController.h"
 #include "Cleanup.h"
 #include "Rename.h"
 #include "Repair.h"

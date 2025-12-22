@@ -6,6 +6,7 @@ set(UtilTestSrc
 	JsonTest.cpp
 	BenchmarkTest.cpp
 	DataAnalyticsTest.cpp
+	UnpackTest.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp 
@@ -14,6 +15,11 @@ set(UtilTestSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp 
 	${CMAKE_SOURCE_DIR}/daemon/util/Benchmark.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/DataAnalytics.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/ScriptController.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Thread.cpp
 )
 
 if(WIN32)

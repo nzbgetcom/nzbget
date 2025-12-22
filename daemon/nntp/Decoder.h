@@ -113,7 +113,7 @@ private:
 	void ProcessYenc(char* buffer, int len);
 	int DecodeYenc(char* buffer, char* outbuf, int len);
 	EStatus CheckYenc();
-	int DecodeUx(char* buffer, int len);
+	int DecodeUx(const char* inbuf, int len, char* outbuf);
 	EStatus CheckUx();
 	void ProcessRaw(char* buffer, int len);
 };

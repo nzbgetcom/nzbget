@@ -46,7 +46,10 @@ set(ExtensionSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Service.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PrePostProcessor.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp

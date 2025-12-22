@@ -20,6 +20,9 @@ set(FeedTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/util/Service.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Xml.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/Scanner.cpp
@@ -43,7 +46,7 @@ set(FeedTestsSrc
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PrePostProcessor.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParParser.cpp

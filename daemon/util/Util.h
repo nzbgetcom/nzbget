@@ -25,6 +25,7 @@
 #include <optional>
 #include <type_traits>
 #include <string_view>
+#include <boost/filesystem.hpp>
 #include "NString.h"
 
 #ifdef WIN32
@@ -42,6 +43,8 @@ public:
 	static std::optional<std::string> 
 	FindShellOverriddenExecutor(const std::string& fileExt, const std::string& customPath);
 	static std::optional<std::string> FindPython();
+
+	static std::optional<boost::filesystem::path> ResolvePathFromEnv(std::string_view path);
 
 	/*
 	* Split command line into arguments.

@@ -64,7 +64,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
@@ -99,6 +99,9 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/Benchmark.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/DataAnalytics.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp
