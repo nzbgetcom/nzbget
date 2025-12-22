@@ -871,11 +871,12 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 					ec.clear();
 					continue;
 				}
-				fs::rename(file, destPath, ec);
+
+				fs::copy_file(file, destPath, fs::copy_options::overwrite_existing, ec);
 				if (ec)
 				{
 					const std::string msg = ec.message();
-					error("Failed to move extracted NZB '%s' to '%s': %s (code %d)", file.c_str(),
+					error("Failed to copy extracted NZB '%s' to '%s': %s (code %d)", file.c_str(),
 						  destPath.c_str(), msg.c_str(), ec.value());
 					ec.clear();
 					continue;
