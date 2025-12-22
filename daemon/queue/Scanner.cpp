@@ -542,21 +542,22 @@ void Scanner::InitPPParameters(const char* category, NzbParameterList* parameter
 	if (!Util::EmptyStr(extensions))
 	{
 		// create pp-parameter for each post-processing or queue- script
-		Tokenizer tok(extensions, ",;");
-		while (const char* scriptName = tok.Next())
-		{
-			g_ExtensionManager->ForEach([&](auto script)
+		g_ExtensionManager->ForEach(
+			[&](auto script)
+			{
+				Tokenizer tok(extensions, ",;");
+				while (const char* scriptName = tok.Next())
 				{
+					if (strcmp(scriptName, script->GetName()) != 0) continue;
+
 					BString<1024> paramName("%s:", scriptName);
 					if ((script->GetPostScript() || script->GetQueueScript()) &&
-						!parameters->Find(paramName) &&
-						strcmp(scriptName, script->GetName()) == 0)
+						!parameters->Find(paramName))
 					{
 						parameters->SetParameter(paramName, "yes");
 					}
 				}
-			);
-		}
+			});
 	}
 }
 
