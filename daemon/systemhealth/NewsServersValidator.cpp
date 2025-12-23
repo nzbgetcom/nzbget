@@ -58,8 +58,9 @@ Status ServersConfiguredValidator::Validate() const
 
 Status AnyServerActiveValidator::Validate() const
 {
-	auto anyActive = std::any_of(m_servers.cbegin(), m_servers.cend(),
-								 [](const auto& server) { return server->GetActive(); });
+	auto anyActive =
+		std::any_of(m_servers.cbegin(), m_servers.cend(), [](const auto& server)
+					{ return server->GetActive() && server->GetMaxConnections() > 0; });
 	if (!anyActive) return Status::Error("At least one news server must be active");
 
 	return Status::Ok();

@@ -87,17 +87,6 @@ Status ScriptsValidator::Validate() const { return Status::Ok(); }
 
 Status CategoryValidator::Validate() const
 {
-	std::string_view category = m_feed.GetCategory();
-	if (category.empty())
-	{
-		return Status::Ok();
-	}
-
-	if (!m_options.FindCategory(category.data(), true))
-	{
-		return Status::Warning("Feed references unknown category: '" + std::string(category) + "'");
-	}
-
 	return Status::Ok();
 }
 

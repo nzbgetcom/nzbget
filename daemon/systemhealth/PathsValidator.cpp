@@ -234,16 +234,18 @@ Status LogFileValidator::Validate() const
 
 Status LogFileValidator::Validate(const boost::filesystem::path& path, Options::EWriteLog writeLog)
 {
-	if (path.empty() && writeLog != Options::EWriteLog::wlNone)
+	if (writeLog == Options::EWriteLog::wlNone) return Status::Ok();
+
+	if (path.empty())
 	{
 		return Status::Error("Logging is enabled, but '" + std::string(Options::LOGFILE) +
 							 "' is set to empty");
 	}
-	if (path.empty() && writeLog == Options::EWriteLog::wlNone)
+
+	if (writeLog == Options::EWriteLog::wlRotate && path.has_parent_path())
 	{
-		return Status::Info(
-			"Logging is disabled. Logging is recommended for "
-			"effective debugging and troubleshooting");
+		const auto&& parent = path.parent_path();
+		return Directory::Exists(parent).And(&Directory::Writable, parent);
 	}
 
 	return File::Exists(path).And(&File::Writable, path);

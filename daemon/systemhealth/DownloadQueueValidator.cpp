@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 #include "nzbget.h"
 
 #include "DownloadQueueValidator.h"
@@ -94,15 +95,19 @@ Status ArticleCacheValidator::Validate() const
 	if (m_options.GetDirectWrite())
 	{
 		if (val < 50)
-			return Status::Warning("With '" + std::string(Options::DIRECTWRITE) +
-								   "' enabled, a cache of at least 50 MB is recommended");
+		{
+			return Status::Warning("It's recommended to set '" +
+								   std::string(Options::ARTICLECACHE) + "' at least 50MB");
+		}
+		else
+		{
+			return Status::Ok();
+		}
 	}
-
-	if (val < 200)
+	else if (val < 200)
 	{
 		return Status::Warning(
-			"'" + std::string(Options::DIRECTWRITE) +
-			"' is disabled. A cache under 200 MB is likely too small to hold complete files, "
+			"A cache under 200 MB is likely too small to hold complete files, "
 			"forcing writes to the temporary directory and degrading performance");
 	}
 
@@ -127,6 +132,22 @@ Status WriteBufferValidator::Validate() const
 	int val = m_options.GetWriteBuffer();
 	Status s = CheckPositiveNum(Options::WRITEBUFFER, val);
 	if (!s.IsOk()) return s;
+
+	if (val == 0)
+	{
+		return Status::Warning(
+			"'" + std::string(Options::WRITEBUFFER) +
+			"' is set to '0'. "
+			"This uses the default system buffer, which is often too small and inefficient");
+	}
+
+	if (val < 1024)
+	{
+		return Status::Warning(
+			"'" + std::string(Options::WRITEBUFFER) +
+			"' is very low. "
+			"At least 1024 KB is recommended for systems with sufficient memory");
+	}
 
 	// Warn if buffer is excessively large (e.g., > 100MB per connection)
 	if (val > 102400)
@@ -218,7 +239,7 @@ Status DiskSpaceValidator::Validate() const
 
 Status NzbCleanupDiskValidator::Validate() const
 {
-	if (m_options.GetNzbCleanupDisk())
+	if (!m_options.GetNzbCleanupDisk())
 		return Status::Info(
 			"'" + std::string(Options::NZBCLEANUPDISK) +
 			"' is disabled. "

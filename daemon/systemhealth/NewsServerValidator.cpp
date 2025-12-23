@@ -23,7 +23,6 @@
 #include <sstream>
 #include "NewsServerValidator.h"
 #include "Options.h"
-#include "Connection.h"
 
 namespace SystemHealth::NewsServer
 {
@@ -200,8 +199,11 @@ Status ServerConnectionsValidator::Validate() const
 	if (!m_server.GetActive()) return Status::Ok();
 
 	int maxConnections = m_server.GetMaxConnections();
-	if (maxConnections < 1 || maxConnections > 999)
-		return Status::Error("Connections value is invalid. It must be between 1 and 999");
+	if (maxConnections == 0)
+		return Status::Warning("'Connections' is set to '0'. The Server is disabled");
+
+	if (maxConnections < 0 || maxConnections > 999)
+		return Status::Error("'Connections' value is invalid. It must be between 0 and 999");
 
 	if (maxConnections < 8)
 		return Status::Warning("A low number of connections may impact download performance");
@@ -251,11 +253,14 @@ Status ServerCertVerificationValidator::Validate() const
 
 Status ServerIpVersionValidator::Validate() const
 {
+	// Auto: 0,
+	// V4: 4,
+	// V6: 6
 	int ipVersion = m_server.GetIpVersion();
-	if (ipVersion == Connection::EIPVersion::ipAuto || ipVersion == Connection::EIPVersion::ipV4)
+	if (ipVersion == 0 || ipVersion == 4)
 		return Status::Ok();
 
-	if (ipVersion == Connection::EIPVersion::ipV6)
+	if (ipVersion == 6)
 		return Status::Info("Using IPv6 - ensure your network supports IPv6");
 
 	return Status::Error("Invalid value. Available options are: Auto, IpV4, IpV6");

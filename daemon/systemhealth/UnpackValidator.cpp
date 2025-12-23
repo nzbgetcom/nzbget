@@ -116,7 +116,8 @@ Status SevenZipCmdValidator::Validate() const
 	if (m_options->GetSevenZipPath().empty())
 	{
 		return Status::Warning("'" + std::string(Options::SEVENZIPCMD) +
-							   "' is not configured. 7z archives cannot be unpacked");
+							   "' is not configured. "
+							   "This prevents unpacking 7z archives and installing extensions");
 	}
 
 	const auto exists = File::Exists(m_options->GetSevenZipPath());

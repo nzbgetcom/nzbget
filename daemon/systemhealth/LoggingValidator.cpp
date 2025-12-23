@@ -46,7 +46,8 @@ Status WriteLogValidator::Validate() const
 	{
 		case Options::EWriteLog::wlNone:
 			return Status::Info(
-				"Logging to file is disabled. This makes troubleshooting difficult");
+				"Logging is disabled. Logging is recommended for "
+				"effective debugging and troubleshooting");
 		case Options::EWriteLog::wlAppend:
 			return Status::Warning("'" + std::string(Options::WRITELOG) +
 								   "' is set to 'Append'. The log file may grow indefinitely");

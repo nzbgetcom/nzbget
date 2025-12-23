@@ -496,7 +496,6 @@ public:
 	Categories* GetCategories() { return &m_categories; }
 	const Categories* GetCategories() const { return &m_categories; }
 	Category* FindCategory(const char* name, bool searchAliases) { return m_categories.FindCategory(name, searchAliases); }
-	const Category* FindCategory(const char* name, bool searchAliases) const { return m_categories.FindCategory(name, searchAliases); }
 
 	// Current state
 	void SetServerMode(bool serverMode) { m_serverMode = serverMode; }
