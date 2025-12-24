@@ -23,7 +23,6 @@
 #define SCRIPTCONTROLLER_H
 
 #include "NString.h"
-#include "Container.h"
 #include "Thread.h"
 #include "Log.h"
 
@@ -90,6 +89,8 @@ protected:
 	void UnregisterRunningScript();
 
 private:
+	void CheckEnvSize(const std::vector<char*>& envs);
+
 	ArgList m_args;
 	ArgList m_cmdArgs;
 	const char* m_workingDir = nullptr;
@@ -109,6 +110,15 @@ private:
 #else
 	pid_t m_processId = 0;
 #endif
+
+	inline static const long ARGS_LIMIT_SIZE = []() -> long
+	{
+#ifdef _WIN32
+		return 32 * 1024;
+#else
+		return sysconf(_SC_ARG_MAX);
+#endif
+	}();
 
 	typedef std::vector<ScriptController*> RunningScripts;
 
