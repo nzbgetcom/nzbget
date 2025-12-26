@@ -798,15 +798,15 @@
 														<tbody>
 															<tr>
 																<td width="50%">Version</td>
-																<td id="SysInfo_AppVersion" width="50%"></td>
+																<td id="SysInfo_AppVersion" width="50%" class="flex-center"></td>
 															</tr>
 															<tr>
 																<td width="50%">Uptime</td>
-																<td id="SysInfo_Uptime" width="50%"></td>
+																<td id="SysInfo_Uptime" width="50%" class="flex-center"></td>
 															</tr>
 															<tr>
 																<td width="50%">Config path</td>
-																<td id="SysInfo_ConfPath" width="50%"></td>
+																<td id="SysInfo_ConfPath" width="50%" class="flex-center"></td>
 															</tr>
 														</tbody>
 													</table>
@@ -828,7 +828,7 @@
 													<h4>News Servers</h4>
 													<table class="table table-striped table-condensed table-bordered table-fixed">
 														<thead>
-															<th width="25%">Host (Connections)</th>
+															<th width="25%" class="flex-center">Host (Connections)</th>
 															<th width="25%">Active</th>
 															<th width="50%">Tests</th>
 														</thead>
@@ -842,32 +842,45 @@
 														<tbody>
 															<tr>
 																<td width="50%">OS</td>
-																<td id="SysInfo_OS" width="50%"></td>
+																<td id="SysInfo_OS" width="50%" class="flex-center"></td>
 															</tr>
 															<tr>
 																<td width="50%">CPU</td>
-																<td id="SysInfo_CPUModel" width="50%"></td>
+																<td id="SysInfo_CPUModel" width="50%" class="flex-center"></td>
 															</tr>
 															<tr>
 																<td width="50%">Arch</td>
-																<td id="SysInfo_Arch" width="50%"></td>
+																<td id="SysInfo_Arch" class="flex-center"></td>
 															</tr>
 															<tr id="SysInfo_DestDiskSpaceContainer">
-																<td width="50%">Free / Total disk space (DestDir)</td>
-																<td width="50%" class="flex-center">
-																	<span id="SysInfo_DestDiskSpace"></span>
-																	<button type="button" id="SysInfo_DestDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
-																		Speed
-																	</button>
+																<td width="50%">
+																	<div class="overflow-auto"> 
+																		Free / Total disk space (DestDir)
+																	</div>
+																</td>
+
+																<td width="50%">
+																	<div class="overflow-x-auto no-wrap">
+																		<span id="SysInfo_DestDiskSpace"></span>
+																		<button type="button" id="SysInfo_DestDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																			Speed
+																		</button>
+																	</div>
 																</td>
 															</tr>
 															<tr id="SysInfo_InterDiskSpaceContainer">
-																<td width="50%">Free / Total disk space (InterDir)</td>
-																<td width="50%" class="flex-center">
-																	<span id="SysInfo_InterDiskSpace"></span>
-																	<button type="button" id="SysInfo_InterDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
-																		Speed
-																	</button>
+																<td width="50%">
+																	<div class="overflow-auto"> 
+																		Free / Total disk space (InterDir)
+																	</div>
+																</td>
+																<td width="50%">
+																	<div class="overflow-x-auto no-wrap">
+																		<span id="SysInfo_InterDiskSpace"></span>
+																		<button type="button" id="SysInfo_InterDirDiskTestBtn" data-toggle="modal" data-target="#DiskSpeedTest_Modal" class="btn btn-default">
+																			Speed
+																		</button>
+																	</div>
 																</td>
 															</tr>
 															<tr>

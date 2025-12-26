@@ -93,10 +93,22 @@ body {
 	white-space: nowrap;
 }
 
+.no-wrap {
+	white-space: nowrap;
+}
+
+.overflow-auto {
+	overflow: auto;
+}
+
+.overflow-x-auto {
+	overflow-x: auto;
+}
+
 .test-server-dropdwon-menu
 {
-	width: 195px;
-	min-width: auto;
+	min-width: 210px;
+	left: -110px;
 }
 
 .approx-speed-txt {
@@ -132,11 +144,6 @@ body {
 .dist-speedtest__controls {
 	display: flex;
 	gap: 10px;
-}
-
-.system-info__network-speed-test-btn,
-#ConfigContent select.dist-speedtest__select--width {
-	width: 80px;
 }
 
 .help-text-error {
@@ -2122,7 +2129,8 @@ body.phone,
 }
 
 .phone table td {
-	line-height: 22px;
+	line-height: 26px;
+	overflow-x: auto;
 }
 
 .phone select,
