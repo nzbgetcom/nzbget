@@ -58,7 +58,7 @@ int NServMain(int argc, char* argv[])
 {
 	Log log;
 
-	info("NServ %s (Test NNTP server)", Util::VersionRevision());
+	info("%s NServ %s (Test NNTP server)", *Util::FormatTime(Util::CurrentTime()), Util::VersionRevision());
 
 	Options::CmdOptList cmdOpts;
 	NServOpts opts(argc, argv, cmdOpts);
