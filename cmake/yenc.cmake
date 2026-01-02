@@ -53,4 +53,4 @@ ExternalProject_add(
 )
 
 set(LIBS ${LIBS} ${YENC_LIBS})
-set(INCLUDES ${INCLUDES} ${YENC_ROOT}/yenc ${YENC_ROOT}/yenc/src)
+set(INCLUDES ${INCLUDES} ${YENC_ROOT}/yenc)
