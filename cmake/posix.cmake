@@ -113,6 +113,7 @@ endif()
 include(CheckIncludeFiles)
 check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/yenc.cmake)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
@@ -124,13 +125,11 @@ if(NOT HAVE_SYSTEM_REGEX_H)
 endif()
 
 if(DEPENDENCIES)
-	add_dependencies(yencode ${DEPENDENCIES})
+	add_dependencies(yenc ${DEPENDENCIES})
 	if(NOT BUILD_ONLY_TESTS)
 		add_dependencies(${PACKAGE} ${DEPENDENCIES})
 	endif()
 endif()
-
-include(${CMAKE_SOURCE_DIR}/cmake/yenc.cmake)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)

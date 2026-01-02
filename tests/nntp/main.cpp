@@ -27,7 +27,7 @@
 #include "WorkState.h"
 #include "DiskState.h"
 #include "ServerPool.h"
-#include "YEncode.h"
+#include <src/decoder.h>
 
 Log* g_Log;
 WorkState* g_WorkState;
@@ -39,7 +39,7 @@ struct InitGlobals
 {
 	InitGlobals()
 	{
-		YEncode::init();
+		RapidYenc::decoder_init();
 		g_Log = new Log();
 		g_WorkState = new WorkState();
 		g_Options = new Options(nullptr, nullptr);

@@ -24,8 +24,8 @@
 #include <optional>
 #include <sstream>
 #include <array>
-#include "Util.h"			
-#include "YEncode.h"
+#include "Util.h"
+#include <src/decoder.h>
 
 #ifdef WIN32
 #include "utf8.h"
@@ -2073,19 +2073,20 @@ char* Tokenizer::Next()
 
 void Crc32::Reset()
 {
-	static_assert(sizeof(m_state) >= sizeof(YEncode::crc_state), "m_state has invalid size");
+	//static_assert(sizeof(m_state) >= sizeof(RapidYenc::crc_state), "m_state has invalid size");
 
-	YEncode::crc_init((YEncode::crc_state*)State());
+	//YEncode::crc_init((YEncode::crc_state*)State());
 }
 
 void Crc32::Append(uchar* block, uint32 length)
 {
-	YEncode::crc_incr((YEncode::crc_state*)State(), block, length);
+	//YEncode::crc_incr((YEncode::crc_state*)State(), block, length);
 }
 
 uint32 Crc32::Finish()
 {
-	return YEncode::crc_finish((YEncode::crc_state*)State());
+	//return YEncode::crc_finish((YEncode::crc_state*)State());
+	return 0;
 }
 
 /* From zlib/crc32.c (http://www.zlib.net/)

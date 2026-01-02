@@ -25,7 +25,7 @@
 
 #include "Options.h"
 #include "ParChecker.h"
-#include "YEncode.h"
+#include <src/decoder.h>
 
 namespace fs = boost::filesystem;
 
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairNotNeededTest)
 	cmdOpts.push_back("ParRepair=no");
 	Options options(&cmdOpts, nullptr);
 
-	YEncode::init();
+	RapidYenc::decoder_init();
 
 	const fs::path testFile = CURR_DIR / "QuickVerificationRepairNotNeededTest";
 	ParCheckerMock parChecker(testFile);
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(QuickVerificationRepairSuccessfulTest)
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
 
-	YEncode::init();
+	RapidYenc::decoder_init();
 
 	const fs::path testFile = CURR_DIR / "QuickVerificationRepairSuccessfulTest";
 	ParCheckerMock parChecker(testFile);
@@ -224,7 +224,7 @@ BOOST_AUTO_TEST_CASE(QuickFullVerificationRepairSuccessfulTest)
 	cmdOpts.push_back("ParRepair=yes");
 	Options options(&cmdOpts, nullptr);
 
-	YEncode::init();
+	RapidYenc::decoder_init();
 
 	const fs::path testFile = CURR_DIR / "QuickFullVerificationRepairSuccessfulTest";
 	ParCheckerMock parChecker(testFile);

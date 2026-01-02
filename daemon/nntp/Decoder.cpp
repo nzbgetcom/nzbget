@@ -23,12 +23,12 @@
 #include "Decoder.h"
 #include "Log.h"
 #include "Util.h"
-#include "YEncode.h"
+#include <src/decoder.h>
 
 Decoder::Decoder()
 {
-	debug("%s", YEncode::decode_simd ? "SIMD yEnc decoder can be used" : "SIMD yEnc decoder isn't available for this CPU");
-	debug("%s", YEncode::crc_simd ? "SIMD Crc routine can be used" : "SIMD Crc routine isn't available for this CPU");
+	// debug("%s", YEncode::decode_simd ? "SIMD yEnc decoder can be used" : "SIMD yEnc decoder isn't available for this CPU");
+	// debug("%s", YEncode::crc_simd ? "SIMD Crc routine can be used" : "SIMD Crc routine isn't available for this CPU");
 
 	Clear();
 }
@@ -263,7 +263,7 @@ int Decoder::DecodeYenc(char* buffer, char* outbuf, int len)
 	const unsigned char* src = (unsigned char*)buffer;
 	unsigned char* dst = (unsigned char*)outbuf;
 
-	int endseq = YEncode::decode(&src, &dst, len, (YEncode::YencDecoderState*)&m_state);
+	int endseq = RapidYenc::decode(0, &src, &dst, len, (RapidYenc::YencDecoderState*)&m_state);
 	int outlen = (int)((char*)dst - outbuf);
 
 	// endseq:
