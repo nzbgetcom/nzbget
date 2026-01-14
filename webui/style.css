@@ -932,10 +932,6 @@ h2 {
 	margin-bottom: 10px;
 }
 
-.error-block {
-	margin: 15px 0;
-}
-
 /* remove focus border */
 .nav-tabs > .active > a, .nav-tabs > .active > a:hover,
 .nav-pills > .active > a, .nav-pills > .active > a:hover,
@@ -1455,9 +1451,12 @@ ul.help > li {
 #ErrorAlert,
 #FirstUpdateInfo,
 #ConfigReloadInfo,
+#ConfigLoadInfo,
+#ConfigLoadServerTemplateError,
+#ConfigLoadError,
+#ConfigSaved,
 .unsupported-browser {
-	margin-left: 20px;
-	margin-right: 20px;
+	margin: 15px 20px 0 15px;
 }
 
 .confirm-menu {
@@ -1614,6 +1613,7 @@ ul.help > li {
 #MessagesTab,
 .config__container {
 	height: calc(100vh - 70px);
+	padding-top: 15px;
 }
 
 #DownloadsTab,
@@ -1635,7 +1635,7 @@ ul.help > li {
 	overflow: auto;
 }
 
-@media (max-width: 1028px) {
+@media (max-width: 1041px) {
 	.container-fluid {
 		padding: 0 10px;
 	}
@@ -1646,6 +1646,7 @@ ul.help > li {
 	#MessagesTab,
 	.config__container {
 		height: calc(100vh - 100px);
+		padding-top: 10px;
 	}
 }
 
@@ -1677,7 +1678,6 @@ ul.help > li {
 	#StatisticsTab,
 	#MessagesTab {
 		overflow: auto;
-		padding-top: 10px;
 	}
 
 	.config__container {
@@ -1686,6 +1686,7 @@ ul.help > li {
 		gap: 0px;
 		overflow-y: auto;
 		overflow-x: hidden;
+		padding-top: 0px;
 	}
 
 	.config__aside {
@@ -2172,8 +2173,7 @@ body.phone,
 	padding-right: 0px;
 }
 
-.phone .section-toolbar{
-	margin-top: 8px;
+.phone .section-toolbar {
 	margin-bottom: 0;
 }
 
