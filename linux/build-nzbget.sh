@@ -45,10 +45,15 @@ UNRAR7_VERSION=7.1.10
 ZIP7_VERSION=2501
 
 # libs versions
+# https://invisible-island.net/ncurses/announce.html
 NCURSES_VERSION=6.5
+# https://zlib.net/
 ZLIB_VERSION=1.3.1
+# https://gitlab.gnome.org/GNOME/libxml2/-/releases
 LIBXML2_VERSION=2.13.5
-OPENSSL_VERSION=3.4.1
+# https://github.com/openssl/openssl/releases
+OPENSSL_VERSION=3.5.4
+# https://github.com/boostorg/boost/releases
 BOOST_VERSION=1.84.0
 
 help()
