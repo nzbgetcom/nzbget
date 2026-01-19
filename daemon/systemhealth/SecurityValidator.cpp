@@ -294,7 +294,7 @@ Status SecureControlValidator::Validate() const
 
 Status CertCheckValidator::Validate() const
 {
-	if (!m_options.GetCertCheck())
+	if (!m_options.GetCertCheck() && !m_options.GetCertStorePath().empty())
 	{
 		return Status::Warning("'" + std::string(Options::CERTCHECK) +
 							   "' is disabled. Connections to news servers may be insecure");
