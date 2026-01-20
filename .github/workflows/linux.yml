@@ -47,7 +47,7 @@ jobs:
         else
           curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
         fi
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v5.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get update
