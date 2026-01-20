@@ -19,7 +19,6 @@
  */
 
 
-#include "Service.h"
 #include "nzbget.h"
 #include "XmlRpc.h"
 #include "Log.h"
@@ -445,7 +444,6 @@ public:
 		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
 
 		xmlAddChild(rootNode, structNode);
-		
 		std::string result = Xml::Serialize(rootNode);
 
 		xmlFreeNode(rootNode);
@@ -478,7 +476,6 @@ public:
 		Xml::AddNewNode(structNode, "SpeedMbps", "double", speedMbpsStr.c_str());
 
 		xmlAddChild(rootNode, structNode);
-		
 		std::string result = Xml::Serialize(rootNode);
 
 		xmlFreeNode(rootNode);
@@ -1662,17 +1659,17 @@ void StatusXmlCommand::Execute()
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, 
-		freeDiskSpaceHi, 
-		freeDiskSpaceMB, 
-		totalDiskSpaceLo, 
-		totalDiskSpaceHi, 
+		freeDiskSpaceLo,
+		freeDiskSpaceHi,
+		freeDiskSpaceMB,
+		totalDiskSpaceLo,
+		totalDiskSpaceHi,
 		totalDiskSpaceMB,
-		freeInterDiskSpaceLo, 
-		freeInterDiskSpaceHi, 
-		freeInterDiskSpaceMB, 
-		totalInterDiskSpaceLo, 
-		totalInterDiskSpaceHi, 
+		freeInterDiskSpaceLo,
+		freeInterDiskSpaceHi,
+		freeInterDiskSpaceMB,
+		totalInterDiskSpaceLo,
+		totalInterDiskSpaceHi,
 		totalInterDiskSpaceMB,
 		serverTime,
 		resumeTime,
@@ -2303,7 +2300,7 @@ void ListGroupsXmlCommand::Execute()
 const char* ListGroupsXmlCommand::DetectStatus(NzbInfo* nzbInfo)
 {
 	const char* postStageName[] = { "PP_QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
-		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING", 
+		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
 		"EXECUTING_SCRIPT", "PP_FINISHED" };
 
 	const char* status = nullptr;
@@ -3053,7 +3050,7 @@ void LoadExtensionsXmlCommand::Execute()
 		{
 			BuildErrorResponse(3, error.value().c_str());
 			return;
-		}	
+		}
 	}
 
 	AppendResponse(isJson ? "[\n" : "<array><data>\n");
@@ -3210,7 +3207,7 @@ void SaveConfigXmlCommand::Execute()
 	char* dummy;
 	while ((IsJson() && NextParamAsStr(&dummy) && NextParamAsStr(&name) &&
 			NextParamAsStr(&dummy) && NextParamAsStr(&value)) ||
-		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value))) 
+		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value)))
 	{
 		DecodeStr(name);
 		DecodeStr(value);
@@ -3695,7 +3692,7 @@ void ServerVolumesXmlCommand::Execute()
 		&& NextParamAsBool(&BytesPer[2])
 		&& NextParamAsBool(&BytesPer[3]);
 
-	bool articlesPerDays = true; 
+	bool articlesPerDays = true;
 	NextParamAsBool(&articlesPerDays);
 
 	int index = 0;
@@ -3725,11 +3722,11 @@ void ServerVolumesXmlCommand::Execute()
 			serverVolume.GetDaySlot()
 		);
 
-		ServerVolume::VolumeArray* VolumeArrays[] = { 
+		ServerVolume::VolumeArray* VolumeArrays[] = {
 			serverVolume.BytesPerSeconds(),
-			serverVolume.BytesPerMinutes(), 
-			serverVolume.BytesPerHours(), 
-			serverVolume.BytesPerDays() 
+			serverVolume.BytesPerMinutes(),
+			serverVolume.BytesPerHours(),
+			serverVolume.BytesPerDays()
 		};
 		const char* VolumeNames[] = {
 			"BytesPerSeconds",
@@ -3768,12 +3765,12 @@ void ServerVolumesXmlCommand::Execute()
 		{
 			AppendCondResponse(",\n", IsJson());
 			AppendFmtResponse(IsJson() ? JSON_ARRAY_START : XML_ARRAY_START, "ArticlesPerDays");
-	
+
 			const auto& articles = serverVolume.GetArticlesPerDays();
 			for (size_t i = 0; i < articles.size(); ++i)
 			{
 				AppendFmtResponse(IsJson() ? JSON_ARTICLES_ARRAY_ITEM : XML_ARTICLES_ARRAY_ITEM,
-					articles[i].failed, 
+					articles[i].failed,
 					articles[i].success
 				);
 
@@ -3893,13 +3890,13 @@ void TestServerXmlCommand::Execute()
 		if (!jsonResult)
 		{
 			BuildErrorResponse(2, "Invalid JSON");
-			return;	
+			return;
 		}
 		auto paramsResult = ParseRequestParams(*jsonResult);
 		if (!paramsResult)
 		{
 			BuildErrorResponse(2, "Invalid parameters");
-			return;	
+			return;
 		}
 		params = std::move(*paramsResult);
 	}
@@ -4067,12 +4064,12 @@ void TestDiskSpeedXmlCommand::Execute()
 	{
 		size_t bufferSizeBytes = writeBufferKiB * 1024;
 		uint64_t maxFileSizeBytes = maxFileSizeGiB * 1024ull * 1024ull * 1024ull;
-		 
+
 		Benchmark::DiskBenchmark db;
 		auto [size, time] = db.Run(
-			dirPath, 
-			bufferSizeBytes, 
-			maxFileSizeBytes, 
+			dirPath,
+			bufferSizeBytes,
+			maxFileSizeBytes,
 			std::chrono::seconds(timeoutSec)
 		);
 

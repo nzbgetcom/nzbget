@@ -35,13 +35,26 @@
 
 namespace SystemHealth
 {
+using Timestamp = std::chrono::system_clock::time_point;
 
-struct Alert
+class Alert final
 {
-	std::string source;
-	std::string category;
-	Status status;
-	std::chrono::system_clock::time_point timestamp;
+public:
+	Alert() = delete;
+	Alert(Severity severity, std::string category, std::string source, std::string message);
+
+	Severity GetSeverity() const { return m_severity; }
+	const std::string& GetCategory() const { return m_category; }
+	const std::string& GetSource() const { return m_source; }
+	const std::string& GetMessage() const { return m_message; }
+	const Timestamp& GetTimestamp() const { return m_timestamp; }
+
+private:
+	Severity m_severity;
+	std::string m_category;
+	std::string m_source;
+	std::string m_message;
+	Timestamp m_timestamp;
 };
 
 struct HealthReport

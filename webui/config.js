@@ -1401,7 +1401,7 @@ var Config = (new function($)
 		Config.showSection(option.sectionId, false);
 
 		var element = $('#' + option.formId);
-		var smallScreen = $(window).width() <= 992;
+		var smallScreen = $(window).width() <= 768;
 		var parent = smallScreen ? $('html,.config__main') : $('.config__main');
 
 		var offsetY = 30;

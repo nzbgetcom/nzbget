@@ -24,7 +24,6 @@
 #include "Validators.h"
 #include "Options.h"
 #include "Util.h"
-#include <cstring>
 
 namespace SystemHealth::ExtensionScripts
 {

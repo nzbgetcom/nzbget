@@ -43,6 +43,14 @@
 
 namespace SystemHealth
 {
+Alert::Alert(Severity severity, std::string category, std::string source, std::string message)
+	: m_severity(severity)
+	, m_category(std::move(category))
+	, m_source(std::move(source))
+	, m_message(std::move(message))
+	, m_timestamp{std::chrono::system_clock::now()}
+{}
+
 Service::Service(const Options& options, const Servers& servers, const ::Feeds& feeds,
 				 const ::Scheduler::TaskList& tasks)
 	: m_options(options), m_servers(servers), m_feeds(feeds), m_tasks(tasks)
@@ -90,22 +98,25 @@ void Service::ReportAlert(Alert alert)
 
 	auto it = std::find_if(
 		m_alerts.begin(), m_alerts.end(), [&](const Alert& existing)
-		{ return existing.source == alert.source && existing.category == alert.category; });
+		{ return existing.GetSource() == alert.GetSource() && existing.GetCategory() == alert.GetCategory(); });
 
-	if (alert.status.IsOk())
+	if (alert.GetSeverity() == Severity::Ok)
 	{
-		if (it != m_alerts.end()) m_alerts.erase(it);
+		if (it != m_alerts.end())
+		{
+			m_alerts.erase(it);
+		}
 		return;
 	}
 
 	if (it != m_alerts.end())
 	{
-		it->status = std::move(alert.status);
-		it->timestamp = alert.timestamp;
-		return;
+		*it = std::move(alert);
 	}
-
-	m_alerts.push_back(std::move(alert));
+	else 
+	{
+		m_alerts.push_back(std::move(alert));
+	}
 }
 
 void Log(const HealthReport& report)
@@ -155,25 +166,25 @@ void Log(const SectionReport& report)
 
 void Log(const Alert& alert)
 {
-	if (alert.status.IsError())
-		error("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
-			  alert.status.GetMessage().c_str());
-	else if (alert.status.IsWarning())
-		warn("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
-			 alert.status.GetMessage().c_str());
-	else if (alert.status.IsInfo())
-		info("[%s][%s]: %s", alert.category.c_str(), alert.source.c_str(),
-			 alert.status.GetMessage().c_str());
+	if (alert.GetSeverity() == Severity::Error)
+		error("[%s][%s]: %s", alert.GetCategory().c_str(), alert.GetSource().c_str(),
+			  alert.GetMessage().c_str());
+	else if (alert.GetSeverity() == Severity::Warning)
+		warn("[%s][%s]: %s", alert.GetCategory().c_str(), alert.GetSource().c_str(),
+			 alert.GetMessage().c_str());
+	else if (alert.GetSeverity() == Severity::Info)
+		info("[%s][%s]: %s", alert.GetCategory().c_str(), alert.GetSource().c_str(),
+			 alert.GetMessage().c_str());
 }
 
 Json::JsonObject ToJson(const Alert& alert)
 {
 	Json::JsonObject alertJson;
-	alertJson["Source"] = alert.source;
-	alertJson["Category"] = alert.category;
-	alertJson["Severity"] = SeverityToStr(alert.status.GetSeverity());
-	alertJson["Message"] = alert.status.GetMessage();
-	alertJson["Timestamp"] = alert.timestamp.time_since_epoch().count();
+	alertJson["Source"] = alert.GetSource();
+	alertJson["Category"] = alert.GetCategory();
+	alertJson["Severity"] = SeverityToStr(alert.GetSeverity());
+	alertJson["Message"] = alert.GetMessage();
+	alertJson["Timestamp"] = alert.GetTimestamp().time_since_epoch().count();
 
 	return alertJson;
 }
@@ -211,13 +222,13 @@ Xml::XmlNodePtr ToXml(const Alert& alert)
 {
 	xmlNodePtr structNode = Xml::CreateStructNode();
 
-	Xml::AddNewNode(structNode, "Source", "string", alert.source.c_str());
-	Xml::AddNewNode(structNode, "Category", "string", alert.category.c_str());
-	const auto severity = SeverityToStr(alert.status.GetSeverity());
+	Xml::AddNewNode(structNode, "Source", "string", alert.GetSource().c_str());
+	Xml::AddNewNode(structNode, "Category", "string", alert.GetCategory().c_str());
+	const auto severity = SeverityToStr(alert.GetSeverity());
 	Xml::AddNewNode(structNode, "Severity", "string", severity.data());
-	Xml::AddNewNode(structNode, "Message", "string", alert.status.GetMessage().c_str());
+	Xml::AddNewNode(structNode, "Message", "string", alert.GetMessage().c_str());
 
-	auto ticks = std::to_string(alert.timestamp.time_since_epoch().count());
+	auto ticks = std::to_string(alert.GetTimestamp().time_since_epoch().count());
 	Xml::AddNewNode(structNode, "Timestamp", "i8", ticks.c_str());
 
 	return structNode->parent;

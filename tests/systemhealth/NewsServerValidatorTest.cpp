@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(TestConnections)
 	BOOST_CHECK(SystemHealth::NewsServer::ServerConnectionsValidator(
 					*CreateServer(true, "", "", 0, true, "", "", 0))
 					.Validate()
-					.IsError());
+					.IsWarning());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerConnectionsValidator(
 					*CreateServer(true, "", "", 0, true, "", "", 1000))

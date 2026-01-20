@@ -20,7 +20,6 @@
 #include "nzbget.h"
 
 #include "SectionValidator.h"
-#include <optional>
 #include "Json.h"
 #include "Xml.h"
 

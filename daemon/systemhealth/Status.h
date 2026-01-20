@@ -39,7 +39,7 @@ enum class Severity
 class Status final
 {
 public:
-	Status() = default;
+	Status() = delete;
 
 	static Status Ok() { return Status(Severity::Ok, ""); }
 	static Status Info(std::string message) { return Status(Severity::Info, std::move(message)); }

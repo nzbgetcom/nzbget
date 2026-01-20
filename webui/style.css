@@ -141,23 +141,23 @@ th {
 }
 
 .system-health-badge {
-	vertical-align: text-bottom;
+    vertical-align: text-bottom;
 }
 
 .system-health-badge--important {
-	color: #b94a48;
+    color: #b94a48;
 }
 
 .system-health-badge--warning {
-	color: #f89406;
+    color: #f89406;
 }
 
 .system-health-badge--info {
-	color: #468847;
+    color: #468847;
 }
 
 .system-health__err-icon {
-	font-size: 20px;
+    font-size: 20px;
 }
 
 .dist-speedtest__controls {
@@ -1666,18 +1666,19 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab,
 .config__container {
-	height: calc(100vh - 55px);
+    height: calc(100vh - 55px);
+    padding-top: 15px;
 }
 
 .config__container {
-	padding-top: 12px;
+    padding-top: 12px;
 }
 
 #DownloadsTab,
 #HistoryTab,
 #StatisticsTab,
 #MessagesTab {
-	overflow: auto;
+    overflow: auto;
 }
 
 .config__aside {
@@ -1697,7 +1698,6 @@ ul.help > li {
         padding: 0 10px;
     }
 
-<<<<<<< HEAD
     #DownloadsTab,
     #HistoryTab,
     #StatisticsTab,
@@ -1706,16 +1706,6 @@ ul.help > li {
         height: calc(100vh - 90px);
         padding-top: 7px;
     }
-=======
-	#DownloadsTab,
-	#HistoryTab,
-	#StatisticsTab,
-	#MessagesTab,
-	.config__container {
-		height: calc(100vh - 90px);
-		padding-top: 7px;
-	}
->>>>>>> 72d751fd (Reduce margin)
 }
 
 @media (max-width: 960px) {
@@ -1940,21 +1930,21 @@ div.control-group.last-group {
 }
 
 .option__check-section {
-	display: flex;
-	flex-direction: column;
-	width: 96%;
-	margin-top: 7px;
+    display: flex;
+    flex-direction: column;
+    width: 96%;
+    margin-top: 7px;
 }
 
 .option-alert {
-	margin-bottom: 0;
-	font-size: larger;
-	padding: 2px 3px;
+    margin-bottom: 0;
+    font-size: larger;
+    padding: 2px 3px;
 }
 
 .option-alert__icon {
-	font-size: larger;
-	margin-right: 3px;
+    font-size: larger;
+    margin-right: 3px;
 }
 
 .search .option-name,

@@ -39,7 +39,6 @@ public:
 		int level, int group, bool optional, unsigned int certVerificationfLevel);
 	int GetId() const { return m_id; }
 	int GetStateId() const { return m_stateId; }
-
 	void SetStateId(int stateId) { m_stateId = stateId; }
 	bool GetActive() const { return m_active; }
 	void SetActive(bool active) { m_active = active; }

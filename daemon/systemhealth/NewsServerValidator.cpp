@@ -19,8 +19,6 @@
 
 #include "nzbget.h"
 
-#include <string>
-#include <sstream>
 #include "NewsServerValidator.h"
 #include "Options.h"
 
@@ -150,19 +148,11 @@ Status ServerEncryptionValidator::Validate() const
 {
 	if (!m_server.GetActive()) return Status::Ok();
 
-	bool tls = m_server.GetTls();
-	std::string_view cipher = m_server.GetCipher();
-
-	if (!tls)
+	if (!m_server.GetTls())
 	{
 		return Status::Warning(
 			"TLS is disabled. "
 			"Communication with this server will not be encrypted");
-	}
-
-	if (tls && !cipher.empty())
-	{
-		return Status::Info("Using custom cipher suite");
 	}
 
 	return Status::Ok();
@@ -185,13 +175,12 @@ Status ServerCipherValidator::Validate() const
 	if (!m_server.GetActive()) return Status::Ok();
 
 	std::string_view cipher = m_server.GetCipher();
-	bool tls = m_server.GetTls();
-
 	if (cipher.empty()) return Status::Ok();
 
+	bool tls = m_server.GetTls();
 	if (!tls) return Status::Warning("Cipher specified but TLS is disabled");
 
-	return Status::Ok();
+	return Status::Info("Using custom cipher suite");
 }
 
 Status ServerConnectionsValidator::Validate() const

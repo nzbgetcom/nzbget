@@ -23,8 +23,6 @@
 #include "UnpackValidator.h"
 #include "Options.h"
 #include "Validators.h"
-#include <functional>
-#include <memory>
 
 namespace SystemHealth::Unpack
 {

@@ -22,10 +22,6 @@
 #include "CheckAndRepairValidator.h"
 #include "Options.h"
 #include "Validators.h"
-#include <functional>
-#include <memory>
-#include <string>
-#include <thread>
 
 namespace SystemHealth::CheckAndRepair
 {

@@ -19,9 +19,6 @@
 
 #include "nzbget.h"
 
-#include <cerrno>
-#include <cstdlib>
-
 #include "SchedulerTaskValidator.h"
 
 namespace SystemHealth::Scheduler

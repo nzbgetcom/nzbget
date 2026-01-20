@@ -20,7 +20,6 @@
 #include "nzbget.h"
 
 #include "SectionGroupValidator.h"
-#include <optional>
 
 namespace SystemHealth
 {

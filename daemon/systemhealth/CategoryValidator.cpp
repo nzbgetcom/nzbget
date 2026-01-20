@@ -21,11 +21,6 @@
 
 #include "CategoryValidator.h"
 #include "Options.h"
-#include <memory>
-#include <string>
-#include <unordered_set>
-#include <algorithm>
-#include <cctype>
 
 namespace SystemHealth::Category
 {

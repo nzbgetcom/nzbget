@@ -17,12 +17,12 @@ set(SystemHealthTestsSrc
     ${CMAKE_SOURCE_DIR}/daemon/util/Json.cpp
     ${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
     ${CMAKE_SOURCE_DIR}/daemon/util/Util.cpp
-    ${CMAKE_SOURCE_DIR}/daemon/util/Filesystem.cpp
+    ${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
     ${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 )
 
 if(WIN32)
-	set(SystemHealthTests ${SystemTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
+	set(SystemHealthTestsSrc ${SystemHealthTestsSrc} ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
 endif()
 
 add_executable(SystemHealthTests ${SystemHealthTestsSrc})

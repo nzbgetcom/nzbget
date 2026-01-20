@@ -21,7 +21,6 @@
 
 #include "NewsServersValidator.h"
 #include "Validators.h"
-#include <algorithm>
 
 namespace SystemHealth::NewsServers
 {

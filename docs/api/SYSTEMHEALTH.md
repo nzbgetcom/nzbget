@@ -1,8 +1,10 @@
 ## API-method `systemhealth`
-## API-method `systemhealth`
 
 ## Since
 `v26.0`
+
+### Status
+**Experimental (Not recommended for use)**
 
 ### Signature
 ``` c++

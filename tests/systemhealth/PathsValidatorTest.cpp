@@ -141,8 +141,8 @@ BOOST_AUTO_TEST_CASE(TestLogFileValidator)
 	BOOST_CHECK(s1.IsError());
 
 	Status s2 = validator.Validate("", Options::EWriteLog::wlNone);
-	BOOST_CHECK(s2.IsInfo());
-	BOOST_CHECK(s2.GetMessage().find("Logging is disabled") != std::string::npos);
+	BOOST_CHECK(s2.IsOk());
+	BOOST_CHECK(s2.GetMessage().empty());
 
 	{
 		std::ofstream(log.c_str()) << "log";

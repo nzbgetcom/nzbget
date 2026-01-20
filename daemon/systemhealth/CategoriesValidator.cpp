@@ -19,8 +19,6 @@
 
 #include "nzbget.h"
 
-#include <memory>
-#include <string>
 #include <sstream>
 #include "CategoriesValidator.h"
 #include "CategoryValidator.h"
