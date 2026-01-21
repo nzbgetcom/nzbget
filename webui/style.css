@@ -1646,11 +1646,11 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab,
 .config__container {
-    height: calc(100vh - 55px);
+	height: calc(100vh - 55px);
 }
 
 .config__container {
-    padding-top: 12px;
+	padding-top: 12px;
 }
 
 #DownloadsTab,
@@ -1677,6 +1677,7 @@ ul.help > li {
         padding: 0 10px;
     }
 
+<<<<<<< HEAD
     #DownloadsTab,
     #HistoryTab,
     #StatisticsTab,
@@ -1685,6 +1686,16 @@ ul.help > li {
         height: calc(100vh - 90px);
         padding-top: 7px;
     }
+=======
+	#DownloadsTab,
+	#HistoryTab,
+	#StatisticsTab,
+	#MessagesTab,
+	.config__container {
+		height: calc(100vh - 90px);
+		padding-top: 7px;
+	}
+>>>>>>> 72d751fd (Reduce margin)
 }
 
 @media (max-width: 960px) {
