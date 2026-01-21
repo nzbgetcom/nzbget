@@ -1612,8 +1612,8 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab,
 .config__container {
-	height: calc(100vh - 70px);
-	padding-top: 15px;
+	height: calc(100vh - 55px);
+	padding-top: 12px;
 }
 
 #DownloadsTab,
@@ -1645,8 +1645,8 @@ ul.help > li {
 	#StatisticsTab,
 	#MessagesTab,
 	.config__container {
-		height: calc(100vh - 100px);
-		padding-top: 10px;
+		height: calc(100vh - 90px);
+		padding-top: 7px;
 	}
 }
 
