@@ -1613,6 +1613,9 @@ ul.help > li {
 #MessagesTab,
 .config__container {
 	height: calc(100vh - 55px);
+}
+
+.config__container {
 	padding-top: 12px;
 }
 
@@ -1621,6 +1624,7 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab {
 	overflow: auto;
+	padding-top: 15px;
 }
 
 .config__aside {
