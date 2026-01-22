@@ -1657,7 +1657,7 @@ ul.help > li {
 #HistoryTab,
 #StatisticsTab,
 #MessagesTab {
-    overflow: auto;
+	overflow: auto;
 }
 
 .config__aside {
