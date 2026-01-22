@@ -564,6 +564,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	std::vector<char*> environmentStrings = m_environmentStrings.GetStrings();
 	char** envdata = environmentStrings.data();
 
+	CheckEnvSize(environmentStrings);
+
 	std::copy(std::begin(m_args), std::end(m_args), std::back_inserter(m_cmdArgs));
 	m_cmdArgs.emplace_back(nullptr);
 	char* const* argdata = (char* const*)m_cmdArgs.data();
@@ -865,4 +867,24 @@ void ScriptController::Write(const char* str)
 {
 	fwrite(str, 1, strlen(str), m_writepipe);
 	fflush(m_writepipe);
+}
+
+void ScriptController::CheckEnvSize(const std::vector<char*>& envs)
+{
+	if (ARGS_LIMIT_SIZE <= 0) return;
+
+	size_t limit = static_cast<size_t>(ARGS_LIMIT_SIZE);
+	size_t total = 0;
+	for (const char* envVar : envs)
+	{
+		if (!envVar) continue;
+		total += strlen(envVar) + 1 + sizeof(void*);
+		if (total > limit)
+		{
+			PrintMessage(Message::EKind::mkWarning,
+						 "Total environment size (%zu bytes) exceeds OS limit (%zu bytes): %s",
+						 total, limit, "This may cause process creation to fail");
+			break;
+		}
+	}
 }
