@@ -1,3 +1,24 @@
+nzbget-v26.0
+  - Features:
+    - SystemHealth validators for enhanced config validation
+    [#722](https://github.com/nzbgetcom/nzbget/pull/722)
+      - Added validation methods to check for conflicting settings, suboptimal values, and missing dependencies;
+      - Introduced a status reporting mechanism (Info/Warning/Error) to guide users toward better configuration;
+      - Enhanced detection of filesystem and hardware compatibility issues at startup.
+
+  
+  - Bug fixes:
+    - Fixed the Scan script API
+    [#663](https://github.com/nzbgetcom/nzbget/pull/663);
+    - Fixed RSS feed category reading and applying when the category is set via filter rules
+    [#654](https://github.com/nzbgetcom/nzbget/pull/654);
+    - Fixed the JSON value parsing and the "testserver" API method
+    [#666](https://github.com/nzbgetcom/nzbget/pull/666).
+  
+  - For developers:
+    - Updated 7-Zip to 25.01
+    [#655](https://github.com/nzbgetcom/nzbget/pull/655).
+
 nzbget-v25.4
   - Features:
     - Added TLS 1.3 cipher suite support via ServerX.Cipher option
