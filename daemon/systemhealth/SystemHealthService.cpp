@@ -20,6 +20,7 @@
 #include "nzbget.h"
 
 #include "ExtensionManager.h"
+#include "SystemHealthService.h"
 #include "PathsValidator.h"
 #include "IncomingNzbValidator.h"
 #include "SchedulerTasksValidator.h"
@@ -30,7 +31,6 @@
 #include "DownloadQueueValidator.h"
 #include "SecurityValidator.h"
 #include "CheckAndRepairValidator.h"
-#include "SchedulerTasksValidator.h"
 #include "FeedsValidator.h"
 #include "CategoriesValidator.h"
 #include "UnpackValidator.h"
