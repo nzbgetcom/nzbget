@@ -57,11 +57,12 @@
 	<script language="javascript" type="text/javascript" src="feed.js"></script>
 	<script language="javascript" type="text/javascript" src="system-info.js"></script>
 	<script language="javascript" type="text/javascript" src="statistics.js"></script>
+	<script language="javascript" type="text/javascript" src="system-health.js"></script>
 	%end% -->
 
 	<!-- Loading all javascript files from libraries and NZBGet in one request -->
 	<!-- %if-not-debug% -->
-	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+datetime.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js"></script>
+	<script language="javascript" type="text/javascript" src="combined.js?lib/jquery.min.js+lib/bootstrap.min.js+lib/raphael.min.js+lib/elycharts.min.js+datetime.js+fasttable.js+index.js+util.js+downloads.js+edit.js+status.js+messages.js+history.js+upload.js+config.js+feed.js+system-info.js+statistics.js+system-health.js"></script>
 	<!-- %end% -->
 
 	<style>.hide{display:none;}</style>
@@ -212,7 +213,18 @@
 					<li><a data-toggle="tab" href="#HistoryTab" id="HistoryTabLink"><span class="phone-hide" title="History [Shift+H]">History </span><i class="material-icon phone-only inline">calendar_today</i><br class="phone-only"><span class="badge" id="HistoryTabBadge" style="display: none;"></span><span class="badge badge-empty" id="HistoryTabBadgeEmpty">&nbsp;</span></a></li>
 					<li><a data-toggle="tab" href="#StatisticsTab" id="StatisticsTabLink"><span class="phone-hide" title="Statistics [Shift+I]">Statistics </span><i class="material-icon phone-only inline">analytics</i><br class="phone-only"><span class="badge" id="StatisticsTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="StatisticsabBadgeEmpty">&nbsp;</span></span></a></li>
 					<li><a data-toggle="tab" href="#MessagesTab" id="MessagesTabLink"><span class="phone-hide" title="Messages [Shift+M]">Messages </span><i class="material-icon phone-only inline">mail</i><br class="phone-only"><span class="badge" id="MessagesTabBadge" style="display: none;"></span><span class="badge badge-empty" id="MessagesTabBadgeEmpty">&nbsp;</span></a></li>
-					<li><a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink"><span class="phone-hide" title="Settings [Shift+S]">Settings </span><i class="material-icon phone-only inline">settings</i><br class="phone-only"><span class="badge" id="ConfigTabBadge" style="display: none;"></span><span class="phone-only"><span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span></span></a></li>
+					<li>
+						<a data-toggle="tab" href="#ConfigTab" id="ConfigTabLink">
+							<span class="phone-hide" title="Settings [Shift+S]">Settings </span>
+							<i class="material-icon phone-only inline">settings</i>
+							<br class="phone-only">
+							<span class="badge" id="ConfigTabBadge" style="display: none;"></span>
+							<span id="ConfigTabAppHealthBadge" style="display: none;"><i class="material-icon system-health__err-icon">error</i></span>
+							<span class="phone-only">
+								<span class="badge badge-empty" id="ConfigTabBadgeEmpty">&nbsp;</span>
+							</span>
+						</a>
+					</li>
 				</ul>
 			</div>
 		</div>
@@ -550,7 +562,12 @@
 						<div class="config__aside">
 							<ul class="nav nav-list" id="ConfigNav">
 								<li class="config-static"><a href="#Config-Info">INFO</a></li>
-								<li class="config-static"><a href="#Config-SystemInfo">STATUS</a></li>
+								<li class="config-static">
+									<a href="#Config-SystemInfo">STATUS
+										<span id="SystemInfoNavBtnBadge" style="display: none;"><i class="material-icon system-health__err-icon">error</i>
+										</span>
+									</a>
+								</li>
 								<li class="config-static"><a href="#Config-System">SYSTEM</a></li>
 							</ul>
 							<div class="visible-desktop">
@@ -564,7 +581,11 @@
 
 						<div class="config__main">
 								<div class="config-header clearfix">
-									<div class="pull-left" id="ConfigTitle">INFO</div>
+									<div class="pull-left config-title">
+										<span id="ConfigTitle">INFO</span>
+										<span id="ConfigTitleStatus" style="font-size: initial;"></span>
+									</div>
+									
 									<div class="btn-group pull-right">
 										<a class="btn dropdown-toggle" id="Config_ViewButton" data-toggle="dropdown">View <span class="caret"></span></a>
 										<ul class="dropdown-menu footer-button-menu" id="Config_ViewMenu">
@@ -780,6 +801,10 @@
 															</div>
 														</div>
 													</div>
+												</div>
+
+												<div class="system-info__health" id="SystemInfoHealthSection">
+													<div id="SystemInfo_Health"></div>
 												</div>
 
 												<div id="SystemInfo_Spinner" class="system-info__spinner-container ">

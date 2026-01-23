@@ -148,6 +148,7 @@ var SystemInfo = (new function($)
 {
 	this.id = "Config-SystemInfo";
 
+	var $Container;
 	var $SysInfo_OS;
 	var $SysInfo_AppVersion;
 	var $SysInfo_Uptime;
@@ -241,6 +242,7 @@ var SystemInfo = (new function($)
 
 	this.init = function()
 	{
+		$Container = $('.config__main');
 		$SysInfo_OS = $('#SysInfo_OS');
 		$SysInfo_AppVersion = $('#SysInfo_AppVersion');
 		$SysInfo_Uptime = $('#SysInfo_Uptime');
@@ -388,6 +390,12 @@ var SystemInfo = (new function($)
 		renderTools(sysInfo['Tools']);
 		renderLibraries(sysInfo['Libraries']);
 		renderNewsServers(Status.getStatus()['NewsServers']);
+
+		scrollToTop();
+	}
+
+	function scrollToTop() {
+		$Container.animate({ scrollTop: 0 }, 'fast');
 	}
 
 	function renderWriteBuffer(writeBufferKB)

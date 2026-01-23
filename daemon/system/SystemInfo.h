@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ namespace System
 		std::string GetToolPath(const char* cmd) const;
 		std::string GetUnpackerVersion(const std::string& path, const char* marker) const;\
 		std::optional<std::string> FindPython() const;
-		std::optional<std::string> GetPythonVersion(const std::string path) const;
+		std::optional<std::string> GetPythonVersion(const std::string& path) const;
 
 		CPU m_cpu;
 		OS m_os;
