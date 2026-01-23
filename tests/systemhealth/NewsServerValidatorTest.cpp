@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(TestEncryption)
 	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s2).Validate().IsWarning());
 
 	auto s3 = CreateServer(true, "", "", 563, true, "", "", 50, 0, 0, "AES");
-	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s3).Validate().IsInfo());
+	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s3).Validate().IsOk());
 
 	auto s4 = CreateServer(true, "", "", 119, false, "", "", 50, 0, 0, "AES");
 	BOOST_CHECK(SystemHealth::NewsServer::ServerCipherValidator(*s4).Validate().IsWarning());
