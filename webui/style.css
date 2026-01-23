@@ -93,10 +93,22 @@ body {
 	white-space: nowrap;
 }
 
+.no-wrap {
+	white-space: nowrap;
+}
+
+.overflow-auto {
+	overflow: auto;
+}
+
+.overflow-x-auto {
+	overflow-x: auto;
+}
+
 .test-server-dropdwon-menu
 {
-	width: 195px;
-	min-width: auto;
+	min-width: 210px;
+	left: -110px;
 }
 
 .approx-speed-txt {
@@ -132,11 +144,6 @@ body {
 .dist-speedtest__controls {
 	display: flex;
 	gap: 10px;
-}
-
-.system-info__network-speed-test-btn,
-#ConfigContent select.dist-speedtest__select--width {
-	width: 80px;
 }
 
 .help-text-error {
@@ -925,10 +932,6 @@ h2 {
 	margin-bottom: 10px;
 }
 
-.error-block {
-	margin: 15px 0;
-}
-
 /* remove focus border */
 .nav-tabs > .active > a, .nav-tabs > .active > a:hover,
 .nav-pills > .active > a, .nav-pills > .active > a:hover,
@@ -1448,16 +1451,12 @@ ul.help > li {
 #ErrorAlert,
 #FirstUpdateInfo,
 #ConfigReloadInfo,
+#ConfigLoadInfo,
+#ConfigLoadServerTemplateError,
+#ConfigLoadError,
+#ConfigSaved,
 .unsupported-browser {
-	margin-left: 20px;
-	margin-right: 20px;
-}
-
-#ErrorAlert,
-#FirstUpdateInfo,
-#ConfigReloadInfo,
-.unsupported-browser {
-	margin-top: 20px;
+	margin: 15px 20px 0 15px;
 }
 
 .confirm-menu {
@@ -1602,7 +1601,6 @@ ul.help > li {
 .config__container {
 	display: flex;
 	overflow: hidden;
-	padding-top: 15px;
 }
 
 .config-loading-alert {
@@ -1614,7 +1612,11 @@ ul.help > li {
 #StatisticsTab,
 #MessagesTab,
 .config__container {
-	height: calc(100vh - 70px);
+	height: calc(100vh - 55px);
+}
+
+.config__container {
+	padding-top: 12px;
 }
 
 #DownloadsTab,
@@ -1637,7 +1639,7 @@ ul.help > li {
 	overflow: auto;
 }
 
-@media (max-width: 1028px) {
+@media (max-width: 1041px) {
 	.container-fluid {
 		padding: 0 10px;
 	}
@@ -1647,7 +1649,8 @@ ul.help > li {
 	#StatisticsTab,
 	#MessagesTab,
 	.config__container {
-		height: calc(100vh - 100px);
+		height: calc(100vh - 90px);
+		padding-top: 7px;
 	}
 }
 
@@ -1679,16 +1682,15 @@ ul.help > li {
 	#StatisticsTab,
 	#MessagesTab {
 		overflow: auto;
-		padding-top: 10px;
 	}
 
 	.config__container {
 		display: flex;
 		flex-direction: column;
 		gap: 0px;
-		padding-top: 10px;
 		overflow-y: auto;
 		overflow-x: hidden;
+		padding-top: 0px;
 	}
 
 	.config__aside {
@@ -2122,7 +2124,8 @@ body.phone,
 }
 
 .phone table td {
-	line-height: 22px;
+	line-height: 26px;
+	overflow-x: auto;
 }
 
 .phone select,
@@ -2174,8 +2177,7 @@ body.phone,
 	padding-right: 0px;
 }
 
-.phone .section-toolbar{
-	margin-top: 8px;
+.phone .section-toolbar {
 	margin-bottom: 0;
 }
 
