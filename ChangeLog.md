@@ -46,6 +46,9 @@ nzbget-v26.0
     [#703](https://github.com/nzbgetcom/nzbget/pull/703)
       - x86_64 build: change runner to macos-14;
       - universal build: update build and sign steps to run on macos-14.
+    - Docker [#723](https://github.com/nzbgetcom/nzbget/pull/723)
+      - Updated the image to Alpine 3.22;
+      - Updated 7zip to 25.01.
 
 nzbget-v25.4
   - Features:
