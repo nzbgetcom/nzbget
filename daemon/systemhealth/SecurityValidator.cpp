@@ -91,11 +91,9 @@ Status SecureKeyValidator::Validate() const
 	std::string_view keyFile = m_options.GetSecureKey();
 	if (m_options.GetSecureControl() && keyFile.empty())
 	{
-		return Status::Warning("'" + std::string(Options::SECURECERT) + "' is enabled but '" +
+		return Status::Warning("'" + std::string(Options::SECURECONTROL) + "' is enabled but '" +
 							   std::string(Options::SECUREKEY) + "' is empty");
 	}
-
-	if (!m_options.GetSecureControl()) return Status::Ok();
 
 	Status s = File::Exists(m_options.GetSecureKey());
 
@@ -271,7 +269,7 @@ Status FormAuthValidator::Validate() const
 
 	const bool hasAdd = Util::EmptyStr(m_options.GetAddUsername());
 	const bool hasRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
-	if (!hasAdd && !hasRestricted)
+	if (hasAdd && hasRestricted)
 	{
 		return Status::Warning(
 			"'" + std::string(Options::FORMAUTH) +

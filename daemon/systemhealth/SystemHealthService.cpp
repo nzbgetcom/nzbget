@@ -20,7 +20,6 @@
 #include "nzbget.h"
 
 #include "ExtensionManager.h"
-#include "SystemHealthService.h"
 #include "PathsValidator.h"
 #include "IncomingNzbValidator.h"
 #include "SchedulerTasksValidator.h"
@@ -30,7 +29,6 @@
 #include "ConnectionValidator.h"
 #include "DownloadQueueValidator.h"
 #include "SecurityValidator.h"
-#include "IncomingNzbValidator.h"
 #include "CheckAndRepairValidator.h"
 #include "SchedulerTasksValidator.h"
 #include "FeedsValidator.h"
@@ -113,7 +111,7 @@ void Service::ReportAlert(Alert alert)
 	{
 		*it = std::move(alert);
 	}
-	else 
+	else
 	{
 		m_alerts.push_back(std::move(alert));
 	}
