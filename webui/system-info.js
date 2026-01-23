@@ -579,6 +579,7 @@ var SystemInfo = (new function($)
 				var tdName = $('<td>');
 				var tdVersion = $('<td>');
 				var tdPath = $('<td>');
+				tdPath.addClass('flex-center');
 				tdName.text(tool.Name);
 				tdVersion.text(tool.Version ? tool.Version : 'N/A');
 				tdPath.text(tool.Path ? tool.Path : 'Not found');
@@ -613,6 +614,7 @@ var SystemInfo = (new function($)
 				var server = Options.getServerById(newsServer.ID);
 				var tr = $('<tr>');
 				var tdName = $('<td>');
+				var divName = $('<div>');
 				var tdActive = $('<td>');
 				var tdTests = $('<td>');
 				tdTests.css('display', 'flex');
@@ -644,8 +646,13 @@ var SystemInfo = (new function($)
 					}
 				});
 
-				tdName.text(server.host + ':' + server.port + '(' + server.connections + ')');
-				tdName.attr({ title: server.name });
+				divName.text(server.host + ':' + server.port + '(' + server.connections + ')');
+				divName.attr({ title: server.name });
+				divName
+					.addClass('overflow-auto')
+					.addClass('no-wrap')
+					.css('line-height', '30px')
+				tdName.append(divName);
 
 				if (newsServer.Active) 
 				{
