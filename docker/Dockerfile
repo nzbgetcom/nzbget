@@ -1,9 +1,10 @@
 # build stage
-FROM alpine:3.21.3 AS build
+FROM alpine:3.22.2 AS build
 
 # args
 ARG UNRAR6_VERSION=6.2.12
 ARG UNRAR7_VERSION=7.1.10
+ARG ZIP7_VERSION=2501
 ARG UNRAR7_NATIVE=false
 ARG MAKE_JOBS=1
 ARG TARGETPLATFORM
@@ -35,7 +36,15 @@ RUN \
   tar xf /tmp/unrar6.tar.gz -C /tmp/unrar6 --strip-components=1 && \
   cd /tmp/unrar6 && \
   make -j ${MAKE_JOBS} && \
-  install -v -m755 unrar /usr/bin/
+  install -v -m755 unrar /usr/bin/ && \
+  echo "**** install 7zip from source ****" && \
+  mkdir /tmp/7z && \
+  curl -o /tmp/7z/7z.tar.xz -lL https://www.7-zip.org/a/7z${ZIP7_VERSION}-src.tar.xz && \
+  cd /tmp/7z && \
+  tar xf 7z.tar.xz && \
+  cd CPP/7zip/Bundles/Alone && \
+  make -j ${MAKE_JOBS} -f makefile.gcc && \
+  install -v -m755 _o/7za /usr/bin/7z
 
 #build nzbget
 ADD ./ nzbget
@@ -52,7 +61,7 @@ RUN \
   rm -rf /app/nzbget/bin/ && \
   rm -rf /app/nzbget/etc/ && \
   mv /app/nzbget/share/nzbget/webui /app/nzbget/ && \
-  cp /app/nzbget/share/nzbget/nzbget.conf /app/nzbget/webui/nzbget.conf.template && \ 
+  cp /app/nzbget/share/nzbget/nzbget.conf /app/nzbget/webui/nzbget.conf.template && \
   cp /nzbget/pubkey.pem /app/nzbget/pubkey.pem && \
   curl -o /app/nzbget/cacert.pem -L "https://curl.se/ca/cacert.pem"
 
@@ -74,21 +83,22 @@ RUN \
   /app/nzbget/share/nzbget/nzbget.conf
 
 # runtime stage
-FROM alpine:3.21.3
+FROM alpine:3.22.2
 ARG NZBGET_RELEASE=develop
 
 # labels
 LABEL org.opencontainers.image.description="NZBGet from nzbget.com"
 LABEL org.opencontainers.image.source="https://github.com/nzbgetcom/nzbget"
-LABEL maintainer="nzbget@nzbget.com" 
+LABEL maintainer="nzbget@nzbget.com"
 
 ENV TERM=linux
 COPY --from=build /usr/bin/unrar /usr/bin/unrar
 COPY --from=build /usr/bin/unrar7 /usr/bin/unrar7
+COPY --from=build /usr/bin/7z /usr/bin/7z
 COPY --from=build /app/nzbget/ /app/nzbget/
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl 7zip python3 boost1.84-json boost1.84-filesystem tzdata && \
+  apk add --no-cache --update shadow libxml2 libxslt openssl python3 boost1.84-json boost1.84-filesystem tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
