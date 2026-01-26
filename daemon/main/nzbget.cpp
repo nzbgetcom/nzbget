@@ -289,15 +289,18 @@ void NZBGet::Init()
 
 	BootConfig();
 
-	m_systemHealth = std::make_unique<SystemHealth::Service>(
-		*g_Options, 
-		*g_ServerPool->GetServers(), 
-		*g_FeedCoordinator->GetFeeds(),
-		m_scheduler->GetTasks());
-	g_SystemHealth = m_systemHealth.get();
+	if (g_Options->GetSystemHealthCheck())
+	{
+		m_systemHealth = std::make_unique<SystemHealth::Service>(
+			*g_Options,
+			*g_ServerPool->GetServers(),
+			*g_FeedCoordinator->GetFeeds(),
+			m_scheduler->GetTasks());
+		g_SystemHealth = m_systemHealth.get();
 
-	const auto report = m_systemHealth->Diagnose();
-	SystemHealth::Log(report);
+		const auto report = m_systemHealth->Diagnose();
+		SystemHealth::Log(report);
+	}
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());

@@ -51,8 +51,8 @@ BOOST_AUTO_TEST_CASE(TestActive)
 
 	server->SetActive(false);
 	SystemHealth::Status s = v.Validate();
-	BOOST_CHECK(s.IsWarning());
-	BOOST_CHECK(s.GetMessage().find("disabled") != std::string::npos);
+	BOOST_CHECK(s.IsInfo());
+	BOOST_CHECK_EQUAL(s.GetMessage(), "Server is disabled");
 }
 
 BOOST_AUTO_TEST_CASE(TestHost)

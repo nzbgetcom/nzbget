@@ -131,8 +131,6 @@ void Log(const SectionReport& report)
 			error("%s", issue.GetMessage().c_str());
 		else if (issue.IsWarning())
 			warn("%s", issue.GetMessage().c_str());
-		else if (issue.IsInfo())
-			info("%s", issue.GetMessage().c_str());
 	}
 
 	for (const auto& [optName, status] : report.options)
@@ -141,8 +139,6 @@ void Log(const SectionReport& report)
 			error("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
 		else if (status.IsWarning())
 			warn("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
-		else if (status.IsInfo())
-			info("[%s][%s]: %s", report.name.c_str(), optName.c_str(), status.GetMessage().c_str());
 	}
 
 	for (const auto& section : report.subsections)
@@ -155,9 +151,6 @@ void Log(const SectionReport& report)
 			else if (status.IsWarning())
 				warn("[%s][%s.%s]: %s", report.name.c_str(), section.name.c_str(), optName.c_str(),
 					 status.GetMessage().c_str());
-			else if (status.IsInfo())
-				info("[%s][%s.%s]: %s", report.name.c_str(), section.name.c_str(), optName.c_str(),
-					 status.GetMessage().c_str());
 		}
 	}
 }
@@ -169,9 +162,6 @@ void Log(const Alert& alert)
 			  alert.GetMessage().c_str());
 	else if (alert.GetSeverity() == Severity::Warning)
 		warn("[%s][%s]: %s", alert.GetCategory().c_str(), alert.GetSource().c_str(),
-			 alert.GetMessage().c_str());
-	else if (alert.GetSeverity() == Severity::Info)
-		info("[%s][%s]: %s", alert.GetCategory().c_str(), alert.GetSource().c_str(),
 			 alert.GetMessage().c_str());
 }
 
