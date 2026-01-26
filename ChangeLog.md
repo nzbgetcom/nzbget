@@ -4,15 +4,16 @@ nzbget-v26.0
     [#722](https://github.com/nzbgetcom/nzbget/pull/722)
       - Added validation methods to check for conflicting settings, suboptimal values, and missing dependencies;
       - Introduced a status reporting mechanism (Info/Warning/Error) to guide users toward better configuration;
-      - Enhanced detection of filesystem and hardware compatibility issues at startup.
+      - Enhanced detection of filesystem and hardware compatibility issues at startup;
+      - Added `SystemHealthCheck` option to enable/disable configuration validation.
     - Support for processing compressed NZB archives
     [#711](https://github.com/nzbgetcom/nzbget/pull/711)
       - Added support for importing NZB files directly from compressed archives (e.g., RAR, ZIP, GZIP);
       - Archives dropped into the NzbDir (watch folder) or uploaded via the WebUI are now automatically processed.
     - Hardlinking during Direct Rename, allowing immediate access to files
     [#614](https://github.com/nzbgetcom/nzbget/pull/614)
-      - Added HardLinking option to create hardlinks in the destination directory during download;
-      - Added HardLinkingIgnoreExt to exclude specific file types from being hardlinked.
+      - Added `HardLinking` option to create hardlinks in the destination directory during download;
+      - Added `HardLinkingIgnoreExt` to exclude specific file types from being hardlinked.
     - WebUI and Settings page improvements
     [#676](https://github.com/nzbgetcom/nzbget/pull/676)
       - Added the LICENSES tab;
