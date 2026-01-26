@@ -316,6 +316,7 @@ void Options::InitDefaults()
 	SetOption(URLTIMEOUT.data(), "60");
 	SetOption(REMOTETIMEOUT.data(), "90");
 	SetOption(FLUSHQUEUE.data(), "yes");
+	SetOption(SYSTEMHEALTHCHECK.data(), "yes");
 	SetOption(NZBLOG.data(), "yes");
 	SetOption(RAWARTICLE.data(), "no");
 	SetOption(SKIPWRITE.data(), "no");
@@ -636,6 +637,7 @@ void Options::InitOptions()
 	m_quotaStartDay			= ParseIntValue(QUOTASTARTDAY.data(), 10);
 	m_dailyQuota			= ParseIntValue(DAILYQUOTA.data(), 10);
 
+	m_systemHealthCheck		= (bool)ParseEnumValue(SYSTEMHEALTHCHECK.data(), BoolCount, BoolNames, BoolValues);
 	m_nzbLog				= (bool)ParseEnumValue(NZBLOG.data(), BoolCount, BoolNames, BoolValues);
 	m_appendCategoryDir		= (bool)ParseEnumValue(APPENDCATEGORYDIR.data(), BoolCount, BoolNames, BoolValues);
 	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);

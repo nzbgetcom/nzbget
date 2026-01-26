@@ -904,7 +904,10 @@ var Config = (new function($)
 			}
 
 			var option = section.options[i];
-			option.check = SystemHealth.getCheck(SystemHealth.getSection(section.id), option.name);
+			if (SystemHealth.isHealthCheckEnabled())
+			{
+				option.check = SystemHealth.getCheck(SystemHealth.getSection(section.id), option.name);
+			}
 			if (!option.template)
 			{
 				if (section.multi && option.multiid !== lastmultiid)
@@ -1229,9 +1232,13 @@ var Config = (new function($)
 				{
 					var html = $('<li>');
 					var link = $('<a href="#' + section.id + '">' + section.name + '</a>');
-					var errorBadges = SystemHealth.makeBadges(SystemHealth.getSection(section.id));
+					if (SystemHealth.isHealthCheckEnabled())
+					{
+						var errorBadges = SystemHealth.makeBadges(SystemHealth.getSection(section.id));
+						link.append(errorBadges);
+					}
 
-					html.append(link.append(errorBadges));
+					html.append(link);
 
 					if (haveExtensions)
 					{

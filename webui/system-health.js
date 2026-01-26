@@ -137,12 +137,14 @@ var SystemHealth = (new function ($) {
 		ExtensionScripts: "EXTENSION_SCRIPTS"
 	};
 
+	var SYSTEM_HEALTH_CHECK_OPTION = "SystemHealthCheck";
 	var $appHealthBadge;
 	var $ConfigTitleStatus;
 	var $SystemInfo_Health;
 	var $SystemInfoNavBtnBadge;
 	var sectionsReport = {};
 	var alertsReport = {};
+	var healthCheckEnabled = true;
 	this.SEVERITY = {
 		OK: 0,
 		INFO: 1,
@@ -154,26 +156,35 @@ var SystemHealth = (new function ($) {
 		WARNING: "warning",
 		ERROR: "important",
 	}
+	
+	this.update = function() {
+		healthCheckEnabled = Options.option(SYSTEM_HEALTH_CHECK_OPTION) == "yes";
+		if (healthCheckEnabled)
+		{
+			$appHealthBadge = $("#ConfigTabAppHealthBadge");
+			$ConfigTitleStatus = $('#ConfigTitleStatus');
+			$SystemInfoNavBtnBadge = $('#SystemInfoNavBtnBadge');
+			$SystemInfo_Health = $('#SystemInfo_Health');
+			RPC.call('systemhealth', [],
+				function (health) {
+					alertsReport = makeAlertsReport(health);
+					sectionsReport = makeHealthReport(health["Sections"]);
+					redrawGlobalBadges(alertsReport, sectionsReport);
+					redraw(alertsReport);
+				},
+				function(err)
+				{
+					console.error(err);
+				}
+			);		
+		}		
+	}
 
 	this.init = function () {
-		$appHealthBadge = $("#ConfigTabAppHealthBadge");
-		$ConfigTitleStatus = $('#ConfigTitleStatus');
-		$SystemInfoNavBtnBadge = $('#SystemInfoNavBtnBadge');
-		$SystemInfo_Health = $('#SystemInfo_Health');
-		RPC.call('systemhealth', [],
-			function (health) {
-				//console.log(health)
-				alertsReport = makeAlertsReport(health);
-				sectionsReport = makeHealthReport(health["Sections"]);
-				redrawGlobalBadges(alertsReport, sectionsReport);
-				redraw(alertsReport);
-			},
-			function(err)
-			{
-				console.error(err);
-			}
-		);
+		Options.subscribe(this);
 	}
+	
+	this.isHealthCheckEnabled = function() { return healthCheckEnabled; }
 
 	function redraw(alertsReport) {
 		var $container = $("#SystemInfo_Health");
@@ -264,16 +275,10 @@ var SystemHealth = (new function ($) {
 		if (!section) return null;
 
 		var wrapper = $('<span style="margin-left: 5px;">');
-		var $infoBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		var $warningsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
 		var $errorsBadge = $('<span class="badge" style="margin-left: 3px;"></span>');
-		var infoCount = section.getInfoCount();
-		var warningsCount = section.getWarningsCount();
 		var errorsCount = section.getErrorsCount();
-		toggleBadgeVisibility($infoBadge, infoCount, SEVERITY_STYLE.INFO);
-		toggleBadgeVisibility($warningsBadge, warningsCount, SEVERITY_STYLE.WARNING);
 		toggleBadgeVisibility($errorsBadge, errorsCount, SEVERITY_STYLE.ERROR);
-		wrapper.append($errorsBadge, $warningsBadge, $warningsBadge);
+		wrapper.append($errorsBadge);
 
 		return wrapper;
 	}

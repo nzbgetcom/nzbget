@@ -77,6 +77,7 @@ public:
 	static constexpr std::string_view URLTIMEOUT = "UrlTimeout";
 	static constexpr std::string_view REMOTETIMEOUT = "RemoteTimeout";
 	static constexpr std::string_view FLUSHQUEUE = "FlushQueue";
+	static constexpr std::string_view SYSTEMHEALTHCHECK = "SystemHealthCheck";
 	static constexpr std::string_view NZBLOG = "NzbLog";
 	static constexpr std::string_view RAWARTICLE = "RawArticle";
 	static constexpr std::string_view SKIPWRITE = "SkipWrite";
@@ -388,6 +389,7 @@ public:
 	const char* GetConfigTemplate() const { return m_configTemplate; }
 	const char* GetScriptDir() const { return m_scriptDir; }
 	const char* GetRequiredDir() const { return m_requiredDir; }
+	bool GetSystemHealthCheck() const { return m_systemHealthCheck; }
 	bool GetNzbLog() const { return m_nzbLog; }
 	EMessageTarget GetInfoTarget() const { return m_infoTarget; }
 	EMessageTarget GetWarningTarget() const { return m_warningTarget; }
@@ -579,6 +581,7 @@ private:
 	bool m_skipWrite = false;
 	bool m_rawArticle = false;
 	bool m_nzbLog = false;
+	bool m_systemHealthCheck = true;
 	int m_articleTimeout = 0;
 	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;

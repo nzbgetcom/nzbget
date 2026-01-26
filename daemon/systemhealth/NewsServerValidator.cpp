@@ -48,7 +48,7 @@ NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 
 Status ServerActiveValidator::Validate() const
 {
-	if (!m_server.GetActive()) return Status::Warning("Server is disabled");
+	if (!m_server.GetActive()) return Status::Info("Server is disabled");
 
 	return Status::Ok();
 }

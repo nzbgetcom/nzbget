@@ -1699,11 +1699,18 @@ void SysInfoXmlCommand::Execute()
 
 void SystemHealthXmlCommand::Execute()
 {
-	const auto report = g_SystemHealth->Diagnose();
-	const std::string response =
-		IsJson() ? SystemHealth::ToJsonStr(report) : SystemHealth::ToXmlStr(report);
+	if (g_Options->GetSystemHealthCheck())
+	{
+		const auto report = g_SystemHealth->Diagnose();
+		const std::string response =
+			IsJson() ? SystemHealth::ToJsonStr(report) : SystemHealth::ToXmlStr(report);
 
-	AppendResponse(response.c_str());
+		AppendResponse(response.c_str());	
+	}
+	else
+	{
+		BuildErrorResponse(1, "System health check is disabled in configuration");
+	}
 }
 
 // struct[] log(idfrom, entries)
