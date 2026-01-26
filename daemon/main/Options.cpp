@@ -521,9 +521,24 @@ void Options::CheckDir(CString& dir, const char* optionName,
 
 	// Ensure the dir is created
 	CString errmsg;
-	if (create && !FileSystem::ForceDirectories(dir, errmsg))
+	if (create)
 	{
-		ConfigError("Invalid value for option \"%s\" (%s): %s", optionName, *dir, *errmsg);
+		if (!FileSystem::ForceDirectories(dir, errmsg))
+		{
+			ConfigError("Invalid value for option \"%s\" (%s): %s", optionName, *dir, *errmsg);
+			return;
+		}
+
+#ifndef WIN32
+		if (getuid() == 0 || geteuid() == 0)
+		{
+			struct passwd* pwd = getpwnam(GetOption(DAEMONUSERNAME.data()));
+			if (pwd != nullptr)
+			{
+				chown(dir, pwd->pw_uid, pwd->pw_gid);
+			}
+		}
+#endif
 	}
 }
 
