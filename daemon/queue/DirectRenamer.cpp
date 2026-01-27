@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -452,6 +452,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 			if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
 			{
 				fileInfo->SetHardLinkPath(finalOutputFilename);
+				nzbInfo->SetHardLinkPath(std::move(nzbFinalDir));
 			}
 			else
 			{

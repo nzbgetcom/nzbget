@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-
+#include <boost/filesystem.hpp>
 #include <optional>
 #include "NString.h"
 #include "Options.h"
@@ -36,6 +36,7 @@ class FileSystem
 	};
 
 public:
+	static boost::filesystem::path u8path(std::string_view pathStr);
 	static CString GetLastErrorMessage();
 	static char* BaseFileName(const char* filename);
 	static std::pair<std::string, std::string> SplitPathAndFilename(const std::string& fullPath);
@@ -48,6 +49,8 @@ public:
 	static bool TruncateFile(const char* filename, int size);
 	static CString MakeValidFilename(const char* filename, bool allowSlashes = false);
 	static bool ReservedChar(char ch);
+	static boost::filesystem::path MakeUniqueFilename(const boost::filesystem::path& path);
+	static void MoveFile(const boost::filesystem::path& src, const boost::filesystem::path& dest, boost::system::error_code ec);
 	static CString MakeUniqueFilename(const char* destDir, const char* basename);
 	static bool MoveFile(const char* srcFilename, const char* dstFilename);
 	static bool CopyFile(const char* srcFilename, const char* dstFilename);
