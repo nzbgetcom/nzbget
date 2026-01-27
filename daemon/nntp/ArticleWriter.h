@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -60,24 +60,25 @@ public:
 	bool Write(char* buffer, int len);
 	void Finish(bool success);
 	bool GetDuplicate() { return m_duplicate; }
+	void LogStartMessage(const std::string& infoFilename, bool directWrite, bool cached);
+	bool SetupOutputFile(DiskFile &outfile, const std::string &destDir,
+						const std::string &filename,
+						const std::string &infoFilename, bool directWrite,
+						bool cached, std::string &outFinalPath,
+						std::string &outTempPath);
+	uint32 ProcessArticles(DiskFile& outfile, const std::string& infoFilename, 
+							const std::string& finalOutputPath, bool directWrite, bool cached);
+	void CommitDiskFile(DiskFile& outfile, const std::string& tempDestPath, 
+						const std::string& finalOutputPath, bool directWrite);
+	void CleanupOldData(bool directWrite, const std::string& nzbDestDir, const std::string& finalOutputPath);
+	void ReportCompletionStatus(const std::string& infoFilename);
+	void HandlePostProcessing(uint32 crc, std::string currentPath, const std::string& originalFilename, const std::string& nzbDestDir);
 	void CompleteFileParts();
 	static bool MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir);
 	void FlushCache();
 
 private:
 	bool GetSkipDiskWrite();
-
-	/**
-	 *  @brief Renames the temporary `.out` output file to its original filename.
-	 *  
-	 * 	This is necessary when Direct/Par renaming is disabled or the download fails due to health checks.
-	 *  Or there are no par files at all.
-	 *  No action is taken if the filename matches the current filename.
-	 *
-	 * @param filename The desired final filename (without path).
-	 * @param destDir  The destination directory for the file.
-	 */
-	void RenameOutputFile(const std::string& filename, const std::string& destDir);
 
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;

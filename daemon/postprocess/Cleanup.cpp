@@ -19,13 +19,15 @@
  */
 
 
+#include "DownloadInfo.h"
 #include "nzbget.h"
 #include "Cleanup.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
-#include "ParParser.h"
 #include "Options.h"
+
+namespace fs = boost::filesystem;
 
 void MoveController::StartJob(PostInfo* postInfo)
 {
@@ -201,8 +203,29 @@ void CleanupController::Run()
 		PrintMessage(Message::mkError, "%s failed", *infoName);
 		m_postInfo->GetNzbInfo()->SetCleanupStatus(NzbInfo::csFailure);
 	}
+	
+	CleanupHardLinkDir(*m_postInfo->GetNzbInfo());
 
 	m_postInfo->SetWorking(false);
+}
+
+void CleanupController::CleanupHardLinkDir(NzbInfo& nzbInfo)
+{
+	const auto& hardLinkPath = nzbInfo.GetHardLinkPath();
+
+	if (hardLinkPath.empty()) return;
+	
+	const auto& finalDirname = nzbInfo.BuildFinalDirName().Str();
+
+	if (hardLinkPath == finalDirname) return;
+	
+	boost::system::error_code ec;
+	const auto path = FileSystem::u8path(hardLinkPath);
+	fs::remove_all(path, ec);
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not remove old hardlink directory: %s", ec.message().c_str());
+	}
 }
 
 bool CleanupController::Cleanup(const char* destDir, bool *deleted)

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,19 @@ CString FileSystem::GetLastErrorMessage()
 #endif
 
 	return *msg;
+}
+
+boost::filesystem::path FileSystem::u8path(std::string_view pathStr)
+{
+#ifdef _WIN32
+	if (auto wstr = Utf8::Utf8ToWide(pathStr))
+	{
+	 	return boost::filesystem::path(*wstr);
+	}
+	return boost::filesystem::path(std::string(pathStr)); 
+#else
+	return boost::filesystem::path(std::string(pathStr));
+#endif
 }
 
 void FileSystem::NormalizePathSeparators(char* path)
@@ -519,6 +532,31 @@ CString FileSystem::MakeValidFilename(const char* filename, bool allowSlashes)
 	}			
 
 	return result;
+}
+
+boost::filesystem::path FileSystem::MakeUniqueFilename(const boost::filesystem::path& path)
+{
+	boost::filesystem::path uniquePath = path;
+	boost::system::error_code ec;
+	std::string stem = path.stem().string();
+	std::string ext = path.extension().string();
+	int counter = 1;
+	while (boost::filesystem::exists(uniquePath, ec))
+	{
+		uniquePath = path.parent_path() / FileSystem::u8path(stem + "_" + std::to_string(++counter) + ext);
+	}
+	return uniquePath;
+}
+
+void FileSystem::MoveFile(const boost::filesystem::path& src, const boost::filesystem::path& dest, boost::system::error_code ec)
+{
+	boost::filesystem::rename(src, dest, ec);
+	if (ec == boost::system::errc::cross_device_link)
+	{
+		ec.clear();
+		boost::filesystem::copy_file(src, dest, boost::filesystem::copy_options::overwrite_existing, ec);
+		if (!ec) boost::filesystem::remove(src, ec);
+	}
 }
 
 CString FileSystem::MakeUniqueFilename(const char* destDir, const char* basename)
@@ -1424,4 +1462,3 @@ bool DiskFile::Sync(CString& errmsg)
 {
 	return FileSystem::FlushFileBuffers(fileno(m_file), errmsg);
 }
-
