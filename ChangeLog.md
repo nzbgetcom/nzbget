@@ -42,7 +42,7 @@ nzbget-v26.0
       [#674](https://github.com/nzbgetcom/nzbget/pull/674)
       - Added the STAT request support.
     - Updated OpenSSL to 3.5.4
-    [#729](https://github.com/nzbgetcom/nzbget/pull/720);
+    [#720](https://github.com/nzbgetcom/nzbget/pull/720);
     - macOS pipeline
     [#703](https://github.com/nzbgetcom/nzbget/pull/703)
       - x86_64 build: change runner to macos-14;
