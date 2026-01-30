@@ -50,6 +50,8 @@ var Status = (new function($)
 	var $ScheduledPauseDialog;
 	var $PauseForInput;
 	var $PauseForPreview;
+	var $ConfigTitle;
+	var $ConfigTitleStatus;
 
 	// State
 	var status;
@@ -88,6 +90,8 @@ var Status = (new function($)
 		$ScheduledPauseDialog = $('#ScheduledPauseDialog');
 		$PauseForInput = $('#PauseForInput');
 		$PauseForPreview = $('#PauseForPreview');
+		$ConfigTitle = $('#ConfigTitle');
+		$ConfigTitleStatus = $('#ConfigTitleStatus');
 
 		if (UISettings.setFocus)
 		{

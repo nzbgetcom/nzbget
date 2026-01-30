@@ -101,15 +101,14 @@ Options::OptEntry* Options::OptEntries::FindOption(const char* name)
 	return nullptr;
 }
 
-
-const Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases) const
+Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
 {
 	if (!name)
 	{
 		return nullptr;
 	}
 
-	for (const Category& category : *this)
+	for (Category& category : this)
 	{
 		if (!strcasecmp(category.GetName(), name))
 		{
@@ -119,9 +118,9 @@ const Options::Category* Options::Categories::FindCategory(const char* name, boo
 
 	if (searchAliases)
 	{
-		for (const Category& category : *this)
+		for (Category& category : this)
 		{
-			for (const CString& alias : *category.GetAliases())
+			for (CString& alias : category.GetAliases())
 			{
 				WildMask mask(alias);
 				if (mask.Match(name))
@@ -133,13 +132,6 @@ const Options::Category* Options::Categories::FindCategory(const char* name, boo
 	}
 
 	return nullptr;
-}
-
-Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
-{
-	const Category* result =
-		static_cast<const Categories*>(this)->FindCategory(name, searchAliases);
-	return const_cast<Category*>(result);
 }
 
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
@@ -324,6 +316,7 @@ void Options::InitDefaults()
 	SetOption(URLTIMEOUT.data(), "60");
 	SetOption(REMOTETIMEOUT.data(), "90");
 	SetOption(FLUSHQUEUE.data(), "yes");
+	SetOption(SYSTEMHEALTHCHECK.data(), "yes");
 	SetOption(NZBLOG.data(), "yes");
 	SetOption(RAWARTICLE.data(), "no");
 	SetOption(SKIPWRITE.data(), "no");
@@ -644,6 +637,7 @@ void Options::InitOptions()
 	m_quotaStartDay			= ParseIntValue(QUOTASTARTDAY.data(), 10);
 	m_dailyQuota			= ParseIntValue(DAILYQUOTA.data(), 10);
 
+	m_systemHealthCheck		= (bool)ParseEnumValue(SYSTEMHEALTHCHECK.data(), BoolCount, BoolNames, BoolValues);
 	m_nzbLog				= (bool)ParseEnumValue(NZBLOG.data(), BoolCount, BoolNames, BoolValues);
 	m_appendCategoryDir		= (bool)ParseEnumValue(APPENDCATEGORYDIR.data(), BoolCount, BoolNames, BoolValues);
 	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);
