@@ -4,7 +4,7 @@ if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()
 
-set(VERSION "26.0")
+set(VERSION "26.1")
 set(PACKAGE "nzbget")
 set(LIBS "")
 set(INCLUDES ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
