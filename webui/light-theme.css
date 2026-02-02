@@ -66,6 +66,25 @@ html {
 	background-image: none;
 }
 
+.system-health-badge--info,
+.txt-success {
+	color: #468847;
+}
+
+.system-health-badge--important,
+.txt-error,
+.txt-important {
+	color: #b94a48;
+}
+
+.system-health-badge--warning,
+.txt-warning {
+	color: #f89406;
+}
+
+.txt-info {
+	color: #3a87ad;
+}
 
 .navbar-fixed-top .navbar-inner {
 	padding: 0;

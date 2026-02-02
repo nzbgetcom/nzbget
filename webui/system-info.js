@@ -148,6 +148,7 @@ var SystemInfo = (new function($)
 {
 	this.id = "Config-SystemInfo";
 
+	var $Container;
 	var $SysInfo_OS;
 	var $SysInfo_AppVersion;
 	var $SysInfo_Uptime;
@@ -241,6 +242,7 @@ var SystemInfo = (new function($)
 
 	this.init = function()
 	{
+		$Container = $('.config__main');
 		$SysInfo_OS = $('#SysInfo_OS');
 		$SysInfo_AppVersion = $('#SysInfo_AppVersion');
 		$SysInfo_Uptime = $('#SysInfo_Uptime');
@@ -388,6 +390,12 @@ var SystemInfo = (new function($)
 		renderTools(sysInfo['Tools']);
 		renderLibraries(sysInfo['Libraries']);
 		renderNewsServers(Status.getStatus()['NewsServers']);
+
+		scrollToTop();
+	}
+
+	function scrollToTop() {
+		$Container.animate({ scrollTop: 0 }, 'fast');
 	}
 
 	function renderWriteBuffer(writeBufferKB)
@@ -579,6 +587,7 @@ var SystemInfo = (new function($)
 				var tdName = $('<td>');
 				var tdVersion = $('<td>');
 				var tdPath = $('<td>');
+				tdPath.addClass('flex-center');
 				tdName.text(tool.Name);
 				tdVersion.text(tool.Version ? tool.Version : 'N/A');
 				tdPath.text(tool.Path ? tool.Path : 'Not found');
@@ -613,6 +622,7 @@ var SystemInfo = (new function($)
 				var server = Options.getServerById(newsServer.ID);
 				var tr = $('<tr>');
 				var tdName = $('<td>');
+				var divName = $('<div>');
 				var tdActive = $('<td>');
 				var tdTests = $('<td>');
 				tdTests.css('display', 'flex');
@@ -644,8 +654,13 @@ var SystemInfo = (new function($)
 					}
 				});
 
-				tdName.text(server.host + ':' + server.port + '(' + server.connections + ')');
-				tdName.attr({ title: server.name });
+				divName.text(server.host + ':' + server.port + '(' + server.connections + ')');
+				divName.attr({ title: server.name });
+				divName
+					.addClass('overflow-auto')
+					.addClass('no-wrap')
+					.css('line-height', '30px')
+				tdName.append(divName);
 
 				if (newsServer.Active) 
 				{

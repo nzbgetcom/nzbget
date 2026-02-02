@@ -1,3 +1,56 @@
+nzbget-v26.0
+  - Features:
+    - SystemHealth: Advanced configuration and environment diagnostics
+    [#722](https://github.com/nzbgetcom/nzbget/pull/722)
+      - Added validation methods to check for conflicting settings, suboptimal values, and missing dependencies;
+      - Introduced a status reporting mechanism (Info/Warning/Error) to guide users toward better configuration;
+      - Enhanced detection of filesystem and hardware compatibility issues at startup;
+      - Added `SystemHealthCheck` option to enable/disable configuration validation.
+    - Support for processing compressed NZB archives
+    [#711](https://github.com/nzbgetcom/nzbget/pull/711)
+      - Added support for importing NZB files directly from compressed archives (e.g., RAR, ZIP, GZIP);
+      - Archives dropped into the NzbDir (watch folder) or uploaded via the WebUI are now automatically processed.
+    - Hardlinking during Direct Rename, allowing immediate access to files
+    [#614](https://github.com/nzbgetcom/nzbget/pull/614)
+      - Added `HardLinking` option to create hardlinks in the destination directory during download;
+      - Added `HardLinkingIgnoreExt` to exclude specific file types from being hardlinked.
+    - WebUI and Settings page improvements
+    [#676](https://github.com/nzbgetcom/nzbget/pull/676)
+      - Added the LICENSES tab;
+      - Added social media links to the INFO page;
+      - Fixed the position of the "Save all changes" button - it’s now aligned with the sidebar;
+      - Centered content on large screens (content is now centered instead of stretched full-width);
+      - Added a dedicated scroll area for the main content - the main content can now be scrolled independently of the sidebar and the "Save all changes" button.
+    - Windows release binaries and installer signing by SignPath
+    [#699](https://github.com/nzbgetcom/nzbget/pull/699).
+
+  - Bug fixes:
+    - Fixed potential deadlocks and Undefined Behavior (UB)
+    [#686](https://github.com/nzbgetcom/nzbget/pull/687);
+    - Fixed JSON parser to correctly handle nested arrays and objects
+    [#702](https://github.com/nzbgetcom/nzbget/pull/702);
+    - Fixed UU decoding issues
+    [#710](https://github.com/nzbgetcom/nzbget/pull/710);
+    - Fixed ScriptOrder having no effect for extensions
+    [#714](https://github.com/nzbgetcom/nzbget/pull/714);
+    - Added environment size check to log a warning if it exceeds the system limit on POSIX
+    [#721](https://github.com/nzbgetcom/nzbget/pull/721).
+    
+  - For developers:
+    - NSERV improvements:
+      - Handle AUTHINFO USER & AUTHINFO PASS as defined in RFC;
+      [#674](https://github.com/nzbgetcom/nzbget/pull/674)
+      - Added the STAT request support.
+    - Updated OpenSSL to 3.5.4
+    [#720](https://github.com/nzbgetcom/nzbget/pull/720);
+    - macOS pipeline
+    [#703](https://github.com/nzbgetcom/nzbget/pull/703)
+      - x86_64 build: change runner to macos-14;
+      - universal build: update build and sign steps to run on macos-14.
+    - Docker [#723](https://github.com/nzbgetcom/nzbget/pull/723)
+      - Updated the image to Alpine 3.22;
+      - Updated 7zip to 25.01.
+
 nzbget-v25.4
   - Features:
     - Added TLS 1.3 cipher suite support via ServerX.Cipher option

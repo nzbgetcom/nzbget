@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,37 +21,65 @@
 
 #include "Xml.h"
 
-namespace Xml {
-	std::string Serialize(const xmlNodePtr rootNode)
+namespace Xml
+{
+std::string Serialize(const xmlNodePtr rootNode)
+{
+	std::string result;
+
+	xmlBufferPtr buffer = xmlBufferCreate();
+	if (buffer == nullptr)
 	{
-		std::string result;
-
-		xmlBufferPtr buffer = xmlBufferCreate();
-		if (buffer == nullptr) {
-			return result;
-		}
-
-		int size = xmlNodeDump(buffer, rootNode->doc, rootNode, 0, 0);
-		if (size > 0) {
-			result = std::string(reinterpret_cast<const char*>(buffer->content), size);
-		}
-
-		xmlBufferFree(buffer);
 		return result;
 	}
 
-	void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+	int size = xmlNodeDump(buffer, rootNode->doc, rootNode, 0, 0);
+	if (size > 0)
 	{
-		xmlNodePtr memberNode = xmlNewNode(nullptr, BAD_CAST "member");
-		xmlNodePtr valueNode = xmlNewNode(nullptr, BAD_CAST "value");
-		xmlNewChild(memberNode, nullptr, BAD_CAST "name", BAD_CAST name);
-		xmlNewChild(valueNode, nullptr, BAD_CAST type, BAD_CAST value);
-		xmlAddChild(memberNode, valueNode);
-		xmlAddChild(rootNode, memberNode);
+		result = std::string(reinterpret_cast<const char*>(buffer->content), size);
 	}
 
-	const char* BoolToStr(bool value) noexcept
-	{
-		return value ? "1" : "0";
-	}
+	xmlBufferFree(buffer);
+	return result;
 }
+
+void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value)
+{
+	xmlNodePtr memberNode = xmlNewNode(nullptr, BAD_CAST "member");
+	xmlNodePtr valueNode = xmlNewNode(nullptr, BAD_CAST "value");
+	xmlNewChild(memberNode, nullptr, BAD_CAST "name", BAD_CAST name);
+	xmlNewChild(valueNode, nullptr, BAD_CAST type, BAD_CAST value);
+	xmlAddChild(memberNode, valueNode);
+	xmlAddChild(rootNode, memberNode);
+}
+
+xmlNodePtr CreateStructNode()
+{
+	xmlNodePtr valueNode = xmlNewNode(nullptr, BAD_CAST "value");
+	xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
+	xmlAddChild(valueNode, structNode);
+	return structNode;
+}
+
+void AddArrayNode(xmlNodePtr structNode, const char* name, std::vector<xmlNodePtr> children)
+{
+	xmlNodePtr memberNode = xmlNewNode(nullptr, BAD_CAST "member");
+	xmlNewChild(memberNode, nullptr, BAD_CAST "name", BAD_CAST name);
+
+	xmlNodePtr valueNode = xmlNewNode(nullptr, BAD_CAST "value");
+	xmlNodePtr arrayNode = xmlNewNode(nullptr, BAD_CAST "array");
+	xmlNodePtr dataNode = xmlNewNode(nullptr, BAD_CAST "data");
+
+	for (xmlNodePtr child : children)
+	{
+		xmlAddChild(dataNode, child);
+	}
+
+	xmlAddChild(arrayNode, dataNode);
+	xmlAddChild(valueNode, arrayNode);
+	xmlAddChild(memberNode, valueNode);
+	xmlAddChild(structNode, memberNode);
+}
+
+const char* BoolToStr(bool value) noexcept { return value ? "1" : "0"; }
+}  // namespace Xml
