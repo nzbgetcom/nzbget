@@ -21,6 +21,7 @@
 
 
 #include "nzbget.h"
+
 #include "ServerPool.h"
 #include "Log.h"
 #include "NzbFile.h"
@@ -57,6 +58,7 @@
 #include "YEncode.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
+#include "SystemHealth.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -100,6 +102,7 @@ ScriptConfig* g_ScriptConfig;
 CommandScriptLog* g_CommandScriptLog;
 ExtensionManager::Manager* g_ExtensionManager;
 System::SystemInfo* g_SystemInfo;
+SystemHealth::Service* g_SystemHealth;
 
 #ifdef WIN32
 WinConsole* g_WinConsole;
@@ -216,6 +219,7 @@ private:
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
 	std::unique_ptr<System::SystemInfo> m_systemInfo;
+	std::unique_ptr<SystemHealth::Service> m_systemHealth;
 
 #ifdef WIN32
 	std::unique_ptr<WinConsole> m_winConsole;
@@ -232,8 +236,8 @@ private:
 	bool m_reloading = false;
 	bool m_daemonized = false;
 	bool m_stopped = false;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 
 	void Init();
 	void Final();
@@ -271,7 +275,6 @@ void NZBGet::Init()
 
 	if (!m_reloading)
 	{
-		Thread::Init();
 		Connection::Init();
 #ifndef DISABLE_TLS
 		TlsSocket::Init();
@@ -285,6 +288,19 @@ void NZBGet::Init()
 #endif
 
 	BootConfig();
+
+	if (g_Options->GetSystemHealthCheck())
+	{
+		m_systemHealth = std::make_unique<SystemHealth::Service>(
+			*g_Options,
+			*g_ServerPool->GetServers(),
+			*g_FeedCoordinator->GetFeeds(),
+			m_scheduler->GetTasks());
+		g_SystemHealth = m_systemHealth.get();
+
+		const auto report = m_systemHealth->Diagnose();
+		SystemHealth::Log(report);
+	}
 
 #ifndef WIN32
 	mode_t uMask = static_cast<mode_t>(m_options->GetUMask());
@@ -755,8 +771,8 @@ void NZBGet::DoMainLoop()
 		if (m_options->GetServerMode() && !m_stopped)
 		{
 			// wait for stop signal
-			Guard guard(m_waitMutex);
-			m_waitCond.Wait(m_waitMutex, [&]{ return m_stopped; });
+			std::unique_lock<std::mutex> lk(m_waitMutex);
+			m_waitCond.wait(lk, [&]{ return m_stopped; });
 		}
 	}
 
@@ -962,9 +978,9 @@ void NZBGet::Stop(bool reload)
 	}
 
 	// trigger stop/reload signal
-	Guard guard(m_waitMutex);
+	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_stopped = true;
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 void NZBGet::PrintOptions()

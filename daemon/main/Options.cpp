@@ -16,17 +16,22 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
 #include "nzbget.h"
+
 #include "Util.h"
 #include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
-#include "MessageBase.h"
-#include "DownloadInfo.h"
+
+#ifdef _WIN32
+#include "Utf8.h"
+#endif
+
+namespace fs = boost::filesystem;
 
 const char* BoolNames[] = { "yes", "no", "true", "false", "1", "0", "on", "off", "enable", "disable", "enabled", "disabled" };
 const int BoolValues[] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
@@ -96,7 +101,6 @@ Options::OptEntry* Options::OptEntries::FindOption(const char* name)
 	return nullptr;
 }
 
-
 Options::Category* Options::Categories::FindCategory(const char* name, bool searchAliases)
 {
 	if (!name)
@@ -129,7 +133,6 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 
 	return nullptr;
 }
-
 
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
 	CmdOptList* commandLineOptions, Extender* extender)
@@ -168,6 +171,7 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 	if (end) *end = '\0';
 	SetOption(APPDIR.data(), filename);
 	m_appDir = *filename;
+	SetPathOption(m_appDirPath, *m_appDir);
 
 	SetOption(APPVERSION.data(), Util::VersionRevision());
 
@@ -312,6 +316,7 @@ void Options::InitDefaults()
 	SetOption(URLTIMEOUT.data(), "60");
 	SetOption(REMOTETIMEOUT.data(), "90");
 	SetOption(FLUSHQUEUE.data(), "yes");
+	SetOption(SYSTEMHEALTHCHECK.data(), "yes");
 	SetOption(NZBLOG.data(), "yes");
 	SetOption(RAWARTICLE.data(), "no");
 	SetOption(SKIPWRITE.data(), "no");
@@ -341,6 +346,8 @@ void Options::InitDefaults()
 	SetOption(RARRENAME.data(), "yes");
 	SetOption(HEALTHCHECK.data(), "none");
 	SetOption(DIRECTRENAME.data(), "no");
+	SetOption(HARDLINKING.data(), "no");
+	SetOption(HARDLINKINGIGNOREEXT.data(), ".zip, .7z, .rar, *.7z.###, *.r##");
 	SetOption(SCRIPTORDER.data(), "");
 	SetOption(EXTENSIONS.data(), "");
 	SetOption(DAEMONUSERNAME.data(), "root");
@@ -453,8 +460,10 @@ void Options::InitOptFile()
 #endif
 
 		m_configFilename = *filename;
+		SetPathOption(m_configFilePath, *m_configFilename);
 
 		SetOption(CONFIGFILE.data(), m_configFilename);
+
 		LoadConfigFile();
 	}
 }
@@ -520,15 +529,31 @@ void Options::CheckDir(CString& dir, const char* optionName,
 
 void Options::CheckDirs()
 {
-	const char* mainDir = GetOption(MAINDIR.data());
+	m_mainDir = GetOption(MAINDIR.data());
 
-	CheckDir(m_destDir, DESTDIR.data(), mainDir, false, false);
-	CheckDir(m_interDir, INTERDIR.data(), mainDir, true, false);
-	CheckDir(m_tempDir, TEMPDIR.data(), mainDir, false, true);
-	CheckDir(m_queueDir, QUEUEDIR.data(), mainDir, false, true);
+	CheckDir(m_destDir, DESTDIR.data(), m_mainDir, false, true);
+	CheckDir(m_interDir, INTERDIR.data(), m_mainDir, true, true);
+	CheckDir(m_tempDir, TEMPDIR.data(), m_mainDir, false, true);
+	CheckDir(m_queueDir, QUEUEDIR.data(), m_mainDir, false, true);
 	CheckDir(m_webDir, WEBDIR.data(), nullptr, true, false);
-	CheckDir(m_scriptDir, SCRIPTDIR.data(), mainDir, true, false);
-	CheckDir(m_nzbDir, NZBDIR.data(), mainDir, false, true);
+	CheckDir(m_scriptDir, SCRIPTDIR.data(), m_mainDir, true, true);
+	CheckDir(m_nzbDir, NZBDIR.data(), m_mainDir, false, true);
+
+	SetPathOption(m_mainDirPath, *m_mainDir);
+	SetPathOption(m_destDirPath, *m_destDir);
+	SetPathOption(m_interDirPath, *m_interDir);
+	SetPathOption(m_tempDirPath, *m_tempDir);
+	SetPathOption(m_queueDirPath, *m_queueDir);
+	SetPathOption(m_webDirPath, *m_webDir);
+	SetPathOption(m_nzbDirPath, *m_nzbDir);
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	while (const char* scriptDir = tokDir.Next())
+	{
+		fs::path path;
+		SetPathOption(path, scriptDir);
+		m_scriptDirPaths.push_back(std::move(path));
+	}
 }
 
 void Options::InitOptions()
@@ -558,6 +583,16 @@ void Options::InitOptions()
 	m_extCleanupDisk		= GetOption(EXTCLEANUPDISK.data());
 	m_parIgnoreExt			= GetOption(PARIGNOREEXT.data());
 	m_unpackIgnoreExt		= GetOption(UNPACKIGNOREEXT.data());
+
+	SetPathOption(m_configTemplatePath, *m_configTemplate);
+	SetPathOption(m_secureCertPath, *m_secureCert);
+	SetPathOption(m_secureKeyPath, *m_secureKey);
+	SetPathOption(m_certStorePath, *m_certStore);
+	SetPathOption(m_lockFilePath, *m_lockFile);
+	SetPathOption(m_logFilePath, *m_logFile);
+	SetPathOption(m_unpackPassFilePath, *m_unpackPassFile);
+	SetToolPathOption(m_unrarPath, *m_unrarCmd);
+	SetToolPathOption(m_sevenZipPath, *m_sevenZipCmd);
 
 	const char* shellOverride = GetOption(SHELLOVERRIDE.data());
 	m_shellOverride	= shellOverride ? shellOverride : "";
@@ -602,6 +637,7 @@ void Options::InitOptions()
 	m_quotaStartDay			= ParseIntValue(QUOTASTARTDAY.data(), 10);
 	m_dailyQuota			= ParseIntValue(DAILYQUOTA.data(), 10);
 
+	m_systemHealthCheck		= (bool)ParseEnumValue(SYSTEMHEALTHCHECK.data(), BoolCount, BoolNames, BoolValues);
 	m_nzbLog				= (bool)ParseEnumValue(NZBLOG.data(), BoolCount, BoolNames, BoolValues);
 	m_appendCategoryDir		= (bool)ParseEnumValue(APPENDCATEGORYDIR.data(), BoolCount, BoolNames, BoolValues);
 	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);
@@ -612,6 +648,8 @@ void Options::InitOptions()
 	m_parRename				= (bool)ParseEnumValue(PARRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_rarRename				= (bool)ParseEnumValue(RARRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_directRename			= (bool)ParseEnumValue(DIRECTRENAME.data(), BoolCount, BoolNames, BoolValues);
+	m_hardLinking			= (bool)ParseEnumValue(HARDLINKING.data(), BoolCount, BoolNames, BoolValues);
+	m_hardLinkingIgnoreExt = GetOption(HARDLINKINGIGNOREEXT.data());
 	m_cursesNzbName			= (bool)ParseEnumValue(CURSESNZBNAME.data(), BoolCount, BoolNames, BoolValues);
 	m_cursesTime			= (bool)ParseEnumValue(CURSESTIME.data(), BoolCount, BoolNames, BoolValues);
 	m_cursesGroup			= (bool)ParseEnumValue(CURSESGROUP.data(), BoolCount, BoolNames, BoolValues);
@@ -804,6 +842,71 @@ void Options::SetOption(const char* optname, const char* value)
 	}
 
 	optEntry->SetValue(curvalue);
+}
+
+void Options::SetPathOption(boost::filesystem::path& pathOpt, std::string_view value)
+{
+#ifdef _WIN32
+	auto wvalue = Utf8::Utf8ToWide(value);
+	if (!wvalue)
+	{
+		error("Failed to convert %s to wide string", value);
+		return;
+	}
+
+	pathOpt = std::move(wvalue.value());
+#else
+	pathOpt = value;
+#endif
+}
+
+void Options::SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value)
+{
+	if (value.empty()) return;
+
+#ifdef _WIN32
+	const auto wvalue = Utf8::Utf8ToWide(value);
+	fs::path directPath = wvalue ? fs::path(*wvalue) : fs::path(value);
+#else
+	fs::path directPath = value;
+#endif
+
+	boost::system::error_code ec;
+	if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
+	{
+		pathOpt.swap(directPath);
+		return;
+	}
+
+	ec.clear();
+
+	// Clean the input: "'C:\\Program Files\\unrar' -x" -> "C:\\Program Files\\unrar"
+	const auto args = Util::SplitCommandLine(value.data());
+	const auto tool = !args.empty() ? *args[0] : std::string(value);
+#ifdef _WIN32
+	const auto wtool = Utf8::Utf8ToWide(tool);
+	directPath = wtool ? fs::path(*wtool) : fs::path(tool);
+#else
+	directPath = tool;
+#endif
+
+	if (directPath.has_parent_path())
+	{
+		if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
+		{
+			pathOpt.swap(directPath);
+			return;
+		}
+	}
+
+	auto res = Util::ResolvePathFromEnv(tool);
+	if (res)
+	{
+		pathOpt.swap(*res);
+		return;
+	}
+
+	pathOpt.swap(directPath);
 }
 
 Options::OptEntry* Options::FindOption(const char* optname)

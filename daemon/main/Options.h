@@ -16,7 +16,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -26,7 +26,6 @@
 #include <string_view>
 #include "NString.h"
 #include "Thread.h"
-#include "Util.h"
 #include "FeedInfo.h"
 
 
@@ -57,7 +56,7 @@ public:
 	static constexpr std::string_view OUTPUTMODE = "OutputMode";
 	static constexpr std::string_view DUPECHECK = "DupeCheck";
 	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
-	static constexpr std::string_view CONTROLIP = "ControlIp";
+	static constexpr std::string_view CONTROLIP = "ControlIP";
 	static constexpr std::string_view CONTROLPORT = "ControlPort";
 	static constexpr std::string_view CONTROLUSERNAME = "ControlUsername";
 	static constexpr std::string_view CONTROLPASSWORD = "ControlPassword";
@@ -78,6 +77,7 @@ public:
 	static constexpr std::string_view URLTIMEOUT = "UrlTimeout";
 	static constexpr std::string_view REMOTETIMEOUT = "RemoteTimeout";
 	static constexpr std::string_view FLUSHQUEUE = "FlushQueue";
+	static constexpr std::string_view SYSTEMHEALTHCHECK = "SystemHealthCheck";
 	static constexpr std::string_view NZBLOG = "NzbLog";
 	static constexpr std::string_view RAWARTICLE = "RawArticle";
 	static constexpr std::string_view SKIPWRITE = "SkipWrite";
@@ -107,6 +107,8 @@ public:
 	static constexpr std::string_view RARRENAME = "RarRename";
 	static constexpr std::string_view HEALTHCHECK = "HealthCheck";
 	static constexpr std::string_view DIRECTRENAME = "DirectRename";
+	static constexpr std::string_view HARDLINKING = "HardLinking";
+	static constexpr std::string_view HARDLINKINGIGNOREEXT = "HardLinkingIgnoreExt";
 	static constexpr std::string_view UMASK = "UMask";
 	static constexpr std::string_view UPDATEINTERVAL = "UpdateInterval";
 	static constexpr std::string_view CURSESNZBNAME = "CursesNzbName";
@@ -301,20 +303,29 @@ public:
 	class Category
 	{
 	public:
-		Category(const char* name, const char* destDir, bool unpack, const char* extensions) :
-			m_name(name), m_destDir(destDir), m_unpack(unpack), m_extensions(extensions) {}
-		const char* GetName() { return m_name; }
-		const char* GetDestDir() { return m_destDir; }
-		bool GetUnpack() { return m_unpack; }
-		const char* GetExtensions() { return m_extensions; }
+		Category(const char* name, const char* destDir, bool unpack, const char* extensions)
+			: m_name(name ? name : ""),
+			  m_destDir(destDir ? destDir : ""),
+			  m_extensions(extensions ? extensions : ""),
+			  m_destDirPath(m_destDir),
+			  m_unpack(unpack)
+		{
+		}
+		const char* GetName() const { return m_name.c_str(); }
+		const char* GetDestDir() const { return m_destDir.c_str(); }
+		const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
+		bool GetUnpack() const { return m_unpack; }
+		const char* GetExtensions() const { return m_extensions.c_str(); }
 		NameList* GetAliases() { return &m_aliases; }
+		const NameList* GetAliases() const { return &m_aliases; }
 
 	private:
-		CString m_name;
-		CString m_destDir;
-		bool m_unpack;
-		CString m_extensions;
+		const std::string m_name;
+		const std::string m_destDir;
+		const std::string m_extensions;
+		const boost::filesystem::path m_destDirPath;
 		NameList m_aliases;
+		const bool m_unpack;
 	};
 
 	typedef std::deque<Category> CategoriesBase;
@@ -323,6 +334,7 @@ public:
 	{
 	public:
 		Category* FindCategory(const char* name, bool searchAliases);
+		const Category* FindCategory(const char* name, bool searchAliases) const;
 	};
 
 	class Extender
@@ -365,130 +377,155 @@ public:
 
 	// Options
 	const char* GetConfigFilename() const { return m_configFilename; }
-	bool GetConfigErrors() { return m_configErrors; }
-	const char* GetAppDir() { return m_appDir; }
-	const char* GetDestDir() { return m_destDir; }
-	const char* GetInterDir() { return m_interDir; }
-	const char* GetTempDir() { return m_tempDir; }
-	const char* GetQueueDir() { return m_queueDir; }
-	const char* GetNzbDir() { return m_nzbDir; }
-	const char* GetWebDir() { return m_webDir; }
-	const char* GetConfigTemplate() { return m_configTemplate; }
+	bool GetConfigErrors() const { return m_configErrors; }
+	const char* GetMainDir() const { return m_mainDir; }
+	const char* GetAppDir() const { return m_appDir; }
+	const char* GetDestDir() const { return m_destDir; }
+	const char* GetInterDir() const { return m_interDir; }
+	const char* GetTempDir() const { return m_tempDir; }
+	const char* GetQueueDir() const { return m_queueDir; }
+	const char* GetNzbDir() const { return m_nzbDir; }
+	const char* GetWebDir() const { return m_webDir; }
+	const char* GetConfigTemplate() const { return m_configTemplate; }
 	const char* GetScriptDir() const { return m_scriptDir; }
-	const char* GetRequiredDir() { return m_requiredDir; }
+	const char* GetRequiredDir() const { return m_requiredDir; }
+	bool GetSystemHealthCheck() const { return m_systemHealthCheck; }
 	bool GetNzbLog() const { return m_nzbLog; }
 	EMessageTarget GetInfoTarget() const { return m_infoTarget; }
 	EMessageTarget GetWarningTarget() const { return m_warningTarget; }
 	EMessageTarget GetErrorTarget() const { return m_errorTarget; }
 	EMessageTarget GetDebugTarget() const { return m_debugTarget; }
 	EMessageTarget GetDetailTarget() const { return m_detailTarget; }
-	int GetArticleTimeout() { return m_articleTimeout; }
-	int GetArticleReadChunkSize() { return m_articleReadChunkSize; }
-	int GetUrlTimeout() { return m_urlTimeout; }
-	int GetRemoteTimeout() { return m_remoteTimeout; }
-	bool GetRawArticle() { return m_rawArticle; };
-	bool GetSkipWrite() { return m_skipWrite; };
-	bool GetAppendCategoryDir() { return m_appendCategoryDir; }
-	bool GetContinuePartial() { return m_continuePartial; }
-	int GetArticleRetries() { return m_articleRetries; }
-	int GetArticleInterval() { return m_articleInterval; }
-	int GetUrlRetries() { return m_urlRetries; }
-	int GetUrlInterval() { return m_urlInterval; }
-	bool GetFlushQueue() { return m_flushQueue; }
-	bool GetDupeCheck() { return m_dupeCheck; }
-	const char* GetControlIp() { return m_controlIp; }
-	const char* GetControlUsername() { return m_controlUsername; }
-	const char* GetControlPassword() { return m_controlPassword; }
-	const char* GetRestrictedUsername() { return m_restrictedUsername; }
-	const char* GetRestrictedPassword() { return m_restrictedPassword; }
-	const char* GetAddUsername() { return m_addUsername; }
-	const char* GetAddPassword() { return m_addPassword; }
-	int GetControlPort() { return m_controlPort; }
-	bool GetFormAuth() { return m_formAuth; }
-	bool GetSecureControl() { return m_secureControl; }
-	int GetSecurePort() { return m_securePort; }
-	const char* GetSecureCert() { return m_secureCert; }
-	const char* GetSecureKey() { return m_secureKey; }
-	const char* GetCertStore() { return m_certStore; }
-	bool GetCertCheck() { return m_certCheck; }
-	const char* GetAuthorizedIp() { return m_authorizedIp; }
-	const char* GetLockFile() { return m_lockFile; }
-	const char* GetDaemonUsername() { return m_daemonUsername; }
-	EOutputMode GetOutputMode() { return m_outputMode; }
-	int GetUrlConnections() { return m_urlConnections; }
-	int GetLogBuffer() { return m_logBuffer; }
-	EWriteLog GetWriteLog() { return m_writeLog; }
-	const char* GetLogFile() { return m_logFile; }
-	int GetRotateLog() { return m_rotateLog; }
-	EParCheck GetParCheck() { return m_parCheck; }
-	bool GetParRepair() { return m_parRepair; }
-	EParScan GetParScan() { return m_parScan; }
-	bool GetParQuick() { return m_parQuick; }
-	EPostStrategy GetPostStrategy() { return m_postStrategy; }
-	bool GetParRename() { return m_parRename; }
-	int GetParBuffer() { return m_parBuffer; }
-	int GetParThreads() { return m_parThreads; }
-	bool GetRarRename() { return m_rarRename; }
-	EHealthCheck GetHealthCheck() { return m_healthCheck; }
+	int GetArticleTimeout() const { return m_articleTimeout; }
+	int GetArticleReadChunkSize() const { return m_articleReadChunkSize; }
+	int GetUrlTimeout() const { return m_urlTimeout; }
+	int GetRemoteTimeout() const { return m_remoteTimeout; }
+	bool GetRawArticle() const { return m_rawArticle; }
+	bool GetSkipWrite() const { return m_skipWrite; }
+	bool GetAppendCategoryDir() const { return m_appendCategoryDir; }
+	bool GetContinuePartial() const { return m_continuePartial; }
+	int GetArticleRetries() const { return m_articleRetries; }
+	int GetArticleInterval() const { return m_articleInterval; }
+	int GetUrlRetries() const { return m_urlRetries; }
+	int GetUrlInterval() const { return m_urlInterval; }
+	bool GetFlushQueue() const { return m_flushQueue; }
+	bool GetDupeCheck() const { return m_dupeCheck; }
+	const char* GetControlIp() const { return m_controlIp; }
+	const char* GetControlUsername() const { return m_controlUsername; }
+	const char* GetControlPassword() const { return m_controlPassword; }
+	const char* GetRestrictedUsername() const { return m_restrictedUsername; }
+	const char* GetRestrictedPassword() const { return m_restrictedPassword; }
+	const char* GetAddUsername() const { return m_addUsername; }
+	const char* GetAddPassword() const { return m_addPassword; }
+	int GetControlPort() const { return m_controlPort; }
+	bool GetFormAuth() const { return m_formAuth; }
+	bool GetSecureControl() const { return m_secureControl; }
+	int GetSecurePort() const { return m_securePort; }
+	const char* GetSecureCert() const { return m_secureCert; }
+	const char* GetSecureKey() const { return m_secureKey; }
+	const char* GetCertStore() const { return m_certStore; }
+	bool GetCertCheck() const { return m_certCheck; }
+	const char* GetAuthorizedIp() const { return m_authorizedIp; }
+	const char* GetLockFile() const { return m_lockFile; }
+	const char* GetDaemonUsername() const { return m_daemonUsername; }
+	EOutputMode GetOutputMode() const { return m_outputMode; }
+	int GetUrlConnections() const { return m_urlConnections; }
+	int GetLogBuffer() const { return m_logBuffer; }
+	EWriteLog GetWriteLog() const { return m_writeLog; }
+	const char* GetLogFile() const { return m_logFile; }
+	int GetRotateLog() const { return m_rotateLog; }
+	EParCheck GetParCheck() const { return m_parCheck; }
+	bool GetParRepair() const { return m_parRepair; }
+	EParScan GetParScan() const { return m_parScan; }
+	bool GetParQuick() const { return m_parQuick; }
+	EPostStrategy GetPostStrategy() const { return m_postStrategy; }
+	bool GetParRename() const { return m_parRename; }
+	int GetParBuffer() const { return m_parBuffer; }
+	int GetParThreads() const { return m_parThreads; }
+	bool GetRarRename() const { return m_rarRename; }
+	EHealthCheck GetHealthCheck() const { return m_healthCheck; }
 	const char* GetScriptOrder() const { return m_scriptOrder; }
 	const char* GetExtensions() const { return m_extensions; }
-	int GetUMask() { return m_umask; }
-	int GetUpdateInterval() {return m_updateInterval; }
-	bool GetCursesNzbName() { return m_cursesNzbName; }
-	bool GetCursesTime() { return m_cursesTime; }
-	bool GetCursesGroup() { return m_cursesGroup; }
-	bool GetCrcCheck() { return m_crcCheck; }
-	bool GetDirectWrite() { return m_directWrite; }
-	int GetWriteBuffer() { return m_writeBuffer; }
-	int GetNzbDirInterval() { return m_nzbDirInterval; }
-	int GetNzbDirFileAge() { return m_nzbDirFileAge; }
-	int GetDiskSpace() { return m_diskSpace; }
-	bool GetTls() { return m_tls; }
-	bool GetCrashTrace() { return m_crashTrace; }
-	bool GetCrashDump() { return m_crashDump; }
-	bool GetParPauseQueue() { return m_parPauseQueue; }
-	bool GetScriptPauseQueue() { return m_scriptPauseQueue; }
-	bool GetNzbCleanupDisk() { return m_nzbCleanupDisk; }
-	int GetParTimeLimit() { return m_parTimeLimit; }
-	int GetKeepHistory() { return m_keepHistory; }
-	bool GetUnpack() { return m_unpack; }
-	bool GetDirectUnpack() { return m_directUnpack; }
-	bool GetUseTempUnpackDir() { return m_useTempUnpackDir; }
-	bool GetUnpackCleanupDisk() { return m_unpackCleanupDisk; }
-	const char* GetUnrarCmd() { return m_unrarCmd; }
-	const char* GetSevenZipCmd() { return m_sevenZipCmd; }
-	const char* GetUnpackPassFile() { return m_unpackPassFile; }
-	bool GetUnpackPauseQueue() { return m_unpackPauseQueue; }
-	const char* GetExtCleanupDisk() { return m_extCleanupDisk; }
-	const char* GetParIgnoreExt() { return m_parIgnoreExt; }
-	const char* GetRenameIgnoreExt() { return m_renameIgnoreExt; }
-	bool GetRenameAfterUnpack() { return m_renameAfterUnpack; }
-	const char* GetUnpackIgnoreExt() { return m_unpackIgnoreExt; }
-	int GetFeedHistory() { return m_feedHistory; }
-	bool GetUrlForce() { return m_urlForce; }
-	int GetTimeCorrection() { return m_timeCorrection; }
-	int GetPropagationDelay() { return m_propagationDelay; }
-	int GetArticleCache() { return m_articleCache; }
-	int GetEventInterval() { return m_eventInterval; }
-	const std::string& GetShellOverride() { return m_shellOverride; }
-	int GetMonthlyQuota() { return m_monthlyQuota; }
-	int GetQuotaStartDay() { return m_quotaStartDay; }
-	int GetDailyQuota() { return m_dailyQuota; }
-	bool GetDirectRename() { return m_directRename; }
-	bool GetReorderFiles() { return m_reorderFiles; }
-	EFileNaming GetFileNaming() { return m_fileNaming; }
+	int GetUMask() const { return m_umask; }
+	int GetUpdateInterval() const { return m_updateInterval; }
+	bool GetCursesNzbName() const { return m_cursesNzbName; }
+	bool GetCursesTime() const { return m_cursesTime; }
+	bool GetCursesGroup() const { return m_cursesGroup; }
+	bool GetCrcCheck() const { return m_crcCheck; }
+	bool GetDirectWrite() const { return m_directWrite; }
+	int GetWriteBuffer() const { return m_writeBuffer; }
+	int GetNzbDirInterval() const { return m_nzbDirInterval; }
+	int GetNzbDirFileAge() const { return m_nzbDirFileAge; }
+	int GetDiskSpace() const { return m_diskSpace; }
+	bool GetTls() const { return m_tls; }
+	bool GetCrashTrace() const { return m_crashTrace; }
+	bool GetCrashDump() const { return m_crashDump; }
+	bool GetParPauseQueue() const { return m_parPauseQueue; }
+	bool GetScriptPauseQueue() const { return m_scriptPauseQueue; }
+	bool GetNzbCleanupDisk() const { return m_nzbCleanupDisk; }
+	int GetParTimeLimit() const { return m_parTimeLimit; }
+	int GetKeepHistory() const { return m_keepHistory; }
+	bool GetUnpack() const { return m_unpack; }
+	bool GetDirectUnpack() const { return m_directUnpack; }
+	bool GetUseTempUnpackDir() const { return m_useTempUnpackDir; }
+	bool GetUnpackCleanupDisk() const { return m_unpackCleanupDisk; }
+	const char* GetUnrarCmd() const { return m_unrarCmd; }
+	const char* GetSevenZipCmd() const { return m_sevenZipCmd; }
+	const char* GetUnpackPassFile() const { return m_unpackPassFile; }
+	bool GetUnpackPauseQueue() const { return m_unpackPauseQueue; }
+	const char* GetExtCleanupDisk() const { return m_extCleanupDisk; }
+	const char* GetParIgnoreExt() const { return m_parIgnoreExt; }
+	const char* GetRenameIgnoreExt() const { return m_renameIgnoreExt; }
+	bool GetRenameAfterUnpack() const { return m_renameAfterUnpack; }
+	const char* GetUnpackIgnoreExt() const { return m_unpackIgnoreExt; }
+	int GetFeedHistory() const { return m_feedHistory; }
+	bool GetUrlForce() const { return m_urlForce; }
+	int GetTimeCorrection() const { return m_timeCorrection; }
+	int GetPropagationDelay() const { return m_propagationDelay; }
+	int GetArticleCache() const { return m_articleCache; }
+	int GetEventInterval() const { return m_eventInterval; }
+	const std::string& GetShellOverride() const { return m_shellOverride; }
+	int GetMonthlyQuota() const { return m_monthlyQuota; }
+	int GetQuotaStartDay() const { return m_quotaStartDay; }
+	int GetDailyQuota() const { return m_dailyQuota; }
+	bool GetDirectRename() const { return m_directRename; }
+	bool GetHardLinking() const { return m_hardLinking; }
+	const char* GetHardLinkingIgnoreExt() const { return m_hardLinkingIgnoreExt; }
+	bool GetReorderFiles() const { return m_reorderFiles; }
+	EFileNaming GetFileNaming() const { return m_fileNaming; }
 	int GetDownloadRate() const { return m_downloadRate; }
 
 	Categories* GetCategories() { return &m_categories; }
+	const Categories* GetCategories() const { return &m_categories; }
 	Category* FindCategory(const char* name, bool searchAliases) { return m_categories.FindCategory(name, searchAliases); }
 
 	// Current state
 	void SetServerMode(bool serverMode) { m_serverMode = serverMode; }
-	bool GetServerMode() { return m_serverMode; }
+	bool GetServerMode() const { return m_serverMode; }
 	void SetDaemonMode(bool daemonMode) { m_daemonMode = daemonMode; }
-	bool GetDaemonMode() { return m_daemonMode; }
+	bool GetDaemonMode() const { return m_daemonMode; }
 	void SetRemoteClientMode(bool remoteClientMode) { m_remoteClientMode = remoteClientMode; }
-	bool GetRemoteClientMode() { return m_remoteClientMode; }
+	bool GetRemoteClientMode() const { return m_remoteClientMode; }
+
+	const boost::filesystem::path& GetAppDirPath() const { return m_appDirPath; }
+	const boost::filesystem::path& GetConfigFilePath() const { return m_configFilePath; }
+	const boost::filesystem::path& GetMainDirPath() const { return m_mainDirPath; }
+	const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
+	const boost::filesystem::path& GetInterDirPath() const { return m_interDirPath; }
+	const boost::filesystem::path& GetTempDirPath() const { return m_tempDirPath; }
+	const boost::filesystem::path& GetQueueDirPath() const { return m_queueDirPath; }
+	const boost::filesystem::path& GetNzbDirPath() const { return m_nzbDirPath; }
+	const boost::filesystem::path& GetWebDirPath() const { return m_webDirPath; }
+	const boost::filesystem::path& GetConfigTemplatePath() const { return m_configTemplatePath; }
+	const boost::filesystem::path& GetSecureCertPath() const { return m_secureCertPath; }
+	const boost::filesystem::path& GetSecureKeyPath() const { return m_secureKeyPath; }
+	const boost::filesystem::path& GetCertStorePath() const { return m_certStorePath; }
+	const boost::filesystem::path& GetLockFilePath() const { return m_lockFilePath; }
+	const boost::filesystem::path& GetLogFilePath() const { return m_logFilePath; }
+	const boost::filesystem::path& GetUnpackPassFilePath() const { return m_unpackPassFilePath; }
+	const boost::filesystem::path& GetUnrarPath() const { return m_unrarPath; }
+	const boost::filesystem::path& GetSevenZipPath() const { return m_sevenZipPath; }
+	const std::vector<boost::filesystem::path>& GetScriptDirPaths() const { return m_scriptDirPaths; }
 
 private:
 	void CheckDirs();
@@ -502,10 +539,31 @@ private:
 	Extender* m_extender;
 
 	// Options
+	boost::filesystem::path m_appDirPath;
+	boost::filesystem::path m_configFilePath;
+	boost::filesystem::path m_mainDirPath;
+	boost::filesystem::path m_destDirPath;
+	boost::filesystem::path m_interDirPath;
+	boost::filesystem::path m_tempDirPath;
+	boost::filesystem::path m_queueDirPath;
+	boost::filesystem::path m_nzbDirPath;
+	boost::filesystem::path m_webDirPath;
+	boost::filesystem::path m_configTemplatePath;
+	boost::filesystem::path m_secureCertPath;
+	boost::filesystem::path m_secureKeyPath;
+	boost::filesystem::path m_certStorePath;
+	boost::filesystem::path m_lockFilePath;
+	boost::filesystem::path m_logFilePath;
+	boost::filesystem::path m_unpackPassFilePath;
+	boost::filesystem::path m_unrarPath;
+	boost::filesystem::path m_sevenZipPath;
+	std::vector<boost::filesystem::path> m_scriptDirPaths;
+
 	bool m_configErrors = false;
 	int m_configLine = 0;
 	CString m_appDir;
 	CString m_configFilename;
+	CString m_mainDir;
 	CString m_destDir;
 	CString m_interDir;
 	CString m_tempDir;
@@ -523,6 +581,7 @@ private:
 	bool m_skipWrite = false;
 	bool m_rawArticle = false;
 	bool m_nzbLog = false;
+	bool m_systemHealthCheck = true;
 	int m_articleTimeout = 0;
 	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;
@@ -569,6 +628,8 @@ private:
 	int m_parThreads = 0;
 	bool m_rarRename = false;
 	bool m_directRename = false;
+	bool m_hardLinking = false;
+	CString m_hardLinkingIgnoreExt;
 	EHealthCheck m_healthCheck = hcNone;
 	CString m_extensions;
 	CString m_scriptOrder;
@@ -640,6 +701,8 @@ private:
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);
+	void SetPathOption(boost::filesystem::path& pathOpt, std::string_view value);
+	void SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value);
 	bool SetOptionString(const char* option);
 	bool ValidateOptionName(const char* optname, const char* optvalue);
 	void LoadConfigFile();

@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,6 +21,7 @@
 
 
 #include "nzbget.h"
+
 #include "Options.h"
 #include "WorkState.h"
 #include "Frontend.h"
@@ -44,12 +46,12 @@ void Frontend::Stop()
 {
 	Thread::Stop();
 
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
-void Frontend::WorkStateUpdate(Subject* caller, void* aspect)
+void Frontend::WorkStateUpdate(Subject*, void*)
 {
-	m_waitCond.NotifyAll();
+	m_waitCond.notify_all();
 }
 
 bool Frontend::PrepareData()
@@ -328,8 +330,8 @@ void Frontend::Wait(int milliseconds)
 {
 	if (g_WorkState->GetPauseFrontend())
 	{
-		Guard guard(m_waitMutex);
-		m_waitCond.WaitFor(m_waitMutex, 2000);
+		std::unique_lock<std::mutex> lk(m_waitMutex);
+		m_waitCond.wait_for(lk, std::chrono::milliseconds(2000));
 	}
 	else
 	{

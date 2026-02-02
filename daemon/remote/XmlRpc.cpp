@@ -42,6 +42,8 @@
 #include "Benchmark.h"
 #include "NetworkSpeedTest.h"
 #include "Xml.h"
+#include "Unpack.h"
+#include "SystemHealth.h"
 
 extern void ExitProc();
 extern void Reload();
@@ -127,6 +129,12 @@ public:
 };
 
 class SysInfoXmlCommand: public SafeXmlCommand
+{
+public:
+	void Execute() override;
+};
+
+class SystemHealthXmlCommand : public SafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -436,7 +444,6 @@ public:
 		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
 
 		xmlAddChild(rootNode, structNode);
-		
 		std::string result = Xml::Serialize(rootNode);
 
 		xmlFreeNode(rootNode);
@@ -469,7 +476,6 @@ public:
 		Xml::AddNewNode(structNode, "SpeedMbps", "double", speedMbpsStr.c_str());
 
 		xmlAddChild(rootNode, structNode);
-		
 		std::string result = Xml::Serialize(rootNode);
 
 		xmlFreeNode(rootNode);
@@ -781,6 +787,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "sysinfo"))
 	{
 		command = std::make_unique<SysInfoXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "systemhealth"))
+	{
+		command = std::make_unique<SystemHealthXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "log"))
 	{
@@ -1649,19 +1659,23 @@ void StatusXmlCommand::Execute()
 		postJobCount, postJobCount, urlCount, upTimeSec, downloadTimeSec,
 		BoolToStr(downloadPaused), BoolToStr(downloadPaused), BoolToStr(downloadPaused),
 		BoolToStr(serverStandBy), BoolToStr(postPaused), BoolToStr(scanPaused), BoolToStr(quotaReached),
-		freeDiskSpaceLo, 
-		freeDiskSpaceHi, 
-		freeDiskSpaceMB, 
-		totalDiskSpaceLo, 
-		totalDiskSpaceHi, 
+		freeDiskSpaceLo,
+		freeDiskSpaceHi,
+		freeDiskSpaceMB,
+		totalDiskSpaceLo,
+		totalDiskSpaceHi,
 		totalDiskSpaceMB,
-		freeInterDiskSpaceLo, 
-		freeInterDiskSpaceHi, 
-		freeInterDiskSpaceMB, 
-		totalInterDiskSpaceLo, 
-		totalInterDiskSpaceHi, 
+		freeInterDiskSpaceLo,
+		freeInterDiskSpaceHi,
+		freeInterDiskSpaceMB,
+		totalInterDiskSpaceLo,
+		totalInterDiskSpaceHi,
 		totalInterDiskSpaceMB,
-		serverTime, resumeTime, BoolToStr(feedActive), queuedScripts);
+		serverTime,
+		resumeTime,
+		BoolToStr(feedActive),
+		queuedScripts
+	);
 
 	int index = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -1681,6 +1695,22 @@ void SysInfoXmlCommand::Execute()
 		: System::ToXmlStr(*g_SystemInfo);
 
 	AppendResponse(response.c_str());
+}
+
+void SystemHealthXmlCommand::Execute()
+{
+	if (g_Options->GetSystemHealthCheck())
+	{
+		const auto report = g_SystemHealth->Diagnose();
+		const std::string response =
+			IsJson() ? SystemHealth::ToJsonStr(report) : SystemHealth::ToXmlStr(report);
+
+		AppendResponse(response.c_str());	
+	}
+	else
+	{
+		BuildErrorResponse(1, "System health check is disabled in configuration");
+	}
 }
 
 // struct[] log(idfrom, entries)
@@ -2277,7 +2307,7 @@ void ListGroupsXmlCommand::Execute()
 const char* ListGroupsXmlCommand::DetectStatus(NzbInfo* nzbInfo)
 {
 	const char* postStageName[] = { "PP_QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
-		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING", 
+		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
 		"EXECUTING_SCRIPT", "PP_FINISHED" };
 
 	const char* status = nullptr;
@@ -2438,7 +2468,8 @@ void EditQueueXmlCommand::Execute()
 
 	BuildBoolResponse(ok);
 }
-
+// v26.0: Added archived NZBs support.
+//   bool append(string filename, string Category, int Priority, bool AddToTop, string Content, bool AddPaused, string DupeKey, int DupeScore, string DupeMode, bool autoCategory)
 // v25.2: Added new parameter "autoCategory".
 //   bool append(string NZBFilename, string Category, int Priority, bool AddToTop, string Content, bool AddPaused, string DupeKey, int DupeScore, string DupeMode, bool autoCategory)
 // v16:
@@ -2451,17 +2482,17 @@ void DownloadXmlCommand::Execute()
 {
 	bool v13 = true;
 
-	char* nzbFilename;
-	if (!NextParamAsStr(&nzbFilename))
+	char* filename;
+	if (!NextParamAsStr(&filename))
 	{
-		BuildErrorResponse(2, "Invalid parameter (NZBFileName)");
+		BuildErrorResponse(2, "Invalid parameter (Filename)");
 		return;
 	}
 
-	char* nzbContent;
-	if (!NextParamAsStr(&nzbContent))
+	char* content;
+	if (!NextParamAsStr(&content))
 	{
-		BuildErrorResponse(2, "Invalid parameter (NZBContent)");
+		BuildErrorResponse(2, "Invalid parameter (Content)");
 		return;
 	}
 
@@ -2469,13 +2500,13 @@ void DownloadXmlCommand::Execute()
 	if (!NextParamAsStr(&category))
 	{
 		v13 = false;
-		category = nzbContent;
+		category = content;
 	}
 
-	DecodeStr(nzbFilename);
+	DecodeStr(filename);
 	DecodeStr(category);
 
-	debug("FileName=%s", nzbFilename);
+	debug("FileName=%s", filename);
 
 	// For backward compatibility with 0.8 parameter "Priority" is optional (error checking omitted)
 	int priority = 0;
@@ -2488,12 +2519,13 @@ void DownloadXmlCommand::Execute()
 		return;
 	}
 
-	if (!v13 && !NextParamAsStr(&nzbContent))
+	if (!v13 && !NextParamAsStr(&content))
 	{
 		BuildErrorResponse(2, "Invalid parameter (FileContent)");
 		return;
 	}
-	DecodeStr(nzbContent);
+
+	DecodeStr(content);
 
 	bool addPaused = false;
 	char* dupeKey = nullptr;
@@ -2547,13 +2579,13 @@ void DownloadXmlCommand::Execute()
 		}
 	}
 
-	if (!strncasecmp(nzbContent, "http://", 7) || !strncasecmp(nzbContent, "https://", 8))
+	if (!strncasecmp(content, "http://", 7) || !strncasecmp(content, "https://", 8))
 	{
 		// add url
 		std::unique_ptr<NzbInfo> nzbInfo = std::make_unique<NzbInfo>();
 		nzbInfo->SetKind(NzbInfo::nkUrl);
-		nzbInfo->SetUrl(nzbContent);
-		nzbInfo->SetFilename(nzbFilename);
+		nzbInfo->SetUrl(content);
+		nzbInfo->SetFilename(filename);
 		nzbInfo->SetCategory(category);
 		nzbInfo->SetAutoCategory(autoCategory);
 		nzbInfo->SetPriority(priority);
@@ -2564,7 +2596,7 @@ void DownloadXmlCommand::Execute()
 		nzbInfo->GetParameters()->CopyFrom(&Params);
 		int nzbId = nzbInfo->GetId();
 
-		info("Queue %s", *nzbInfo->MakeNiceUrlName(nzbContent, nzbFilename));
+		info("Queue %s", *nzbInfo->MakeNiceUrlName(content, filename));
 
 		g_UrlCoordinator->AddUrlToQueue(std::move(nzbInfo), addTop);
 
@@ -2579,37 +2611,56 @@ void DownloadXmlCommand::Execute()
 	}
 	else
 	{
-		// add file content
-		int len = WebUtil::DecodeBase64(nzbContent, 0, nzbContent);
-		nzbContent[len] = '\0';
-		//debug("FileContent=%s", szFileContent);
-
-		int nzbId = -1;
-		g_Scanner->AddExternalFile(
-			nzbFilename,
-			category,
-			autoCategory,
-			priority,
-			dupeKey,
-			dupeScore,
-			dupeMode,
-			Params.empty() ? nullptr : &Params,
-			addTop,
-			addPaused,
-			nullptr,
-			nullptr,
-			nzbContent,
-			len,
-			&nzbId
-		);
-
-		if (v13)
+		int len = WebUtil::DecodeBase64(content, 0, content);
+		content[len] = '\0';
+		if (Unpack::IsArchive(filename))
 		{
-			BuildIntResponse(nzbId);
+			const auto status = g_Scanner->AddArchive(
+				filename,
+				category,
+				autoCategory,
+				priority,
+				dupeKey,
+				dupeScore,
+				dupeMode,
+				Params.empty() ? nullptr : &Params,
+				addTop,
+				addPaused,
+				nullptr,
+				content,
+				len
+			);
+			BuildBoolResponse(status == Scanner::asSuccess);
 		}
 		else
 		{
-			BuildBoolResponse(nzbId > 0);
+			int nzbId = -1;
+			g_Scanner->AddExternalFile(
+				filename,
+				category,
+				autoCategory,
+				priority,
+				dupeKey,
+				dupeScore,
+				dupeMode,
+				Params.empty() ? nullptr : &Params,
+				addTop,
+				addPaused,
+				nullptr,
+				nullptr,
+				content,
+				len,
+				&nzbId
+			);
+
+			if (v13)
+			{
+				BuildIntResponse(nzbId);
+			}
+			else
+			{
+				BuildBoolResponse(nzbId > 0);
+			}
 		}
 	}
 }
@@ -3006,7 +3057,7 @@ void LoadExtensionsXmlCommand::Execute()
 		{
 			BuildErrorResponse(3, error.value().c_str());
 			return;
-		}	
+		}
 	}
 
 	AppendResponse(isJson ? "[\n" : "<array><data>\n");
@@ -3059,16 +3110,14 @@ void DownloadExtensionXmlCommand::Execute()
 		return;
 	}
 
-	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
-	const char* scriptDir = tokDir.Next();
-	if (Util::EmptyStr(scriptDir))
+	if (g_Options->GetScriptDirPaths().empty())
 	{
 		BuildErrorResponse(3, "\"ScriptDir\" is not specified");
 		return;
 	}
 
-	const std::string& filename = std::get<1>(result);
-	const auto error = g_ExtensionManager->InstallExtension(filename, scriptDir);
+	const auto& filename = std::get<1>(result);
+	const auto error = g_ExtensionManager->InstallExtension(filename, g_Options->GetScriptDirPaths().front());
 	if (error)
 	{
 		BuildErrorResponse(3, error.value().c_str());
@@ -3104,7 +3153,7 @@ void UpdateExtensionXmlCommand::Execute()
 		return;
 	}
 
-	const std::string& filename = std::get<1>(result);
+	const auto filename = std::get<1>(result);
 	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
 	if (error)
 	{
@@ -3165,7 +3214,7 @@ void SaveConfigXmlCommand::Execute()
 	char* dummy;
 	while ((IsJson() && NextParamAsStr(&dummy) && NextParamAsStr(&name) &&
 			NextParamAsStr(&dummy) && NextParamAsStr(&value)) ||
-		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value))) 
+		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value)))
 	{
 		DecodeStr(name);
 		DecodeStr(value);
@@ -3650,7 +3699,7 @@ void ServerVolumesXmlCommand::Execute()
 		&& NextParamAsBool(&BytesPer[2])
 		&& NextParamAsBool(&BytesPer[3]);
 
-	bool articlesPerDays = true; 
+	bool articlesPerDays = true;
 	NextParamAsBool(&articlesPerDays);
 
 	int index = 0;
@@ -3680,11 +3729,11 @@ void ServerVolumesXmlCommand::Execute()
 			serverVolume.GetDaySlot()
 		);
 
-		ServerVolume::VolumeArray* VolumeArrays[] = { 
+		ServerVolume::VolumeArray* VolumeArrays[] = {
 			serverVolume.BytesPerSeconds(),
-			serverVolume.BytesPerMinutes(), 
-			serverVolume.BytesPerHours(), 
-			serverVolume.BytesPerDays() 
+			serverVolume.BytesPerMinutes(),
+			serverVolume.BytesPerHours(),
+			serverVolume.BytesPerDays()
 		};
 		const char* VolumeNames[] = {
 			"BytesPerSeconds",
@@ -3723,12 +3772,12 @@ void ServerVolumesXmlCommand::Execute()
 		{
 			AppendCondResponse(",\n", IsJson());
 			AppendFmtResponse(IsJson() ? JSON_ARRAY_START : XML_ARRAY_START, "ArticlesPerDays");
-	
+
 			const auto& articles = serverVolume.GetArticlesPerDays();
 			for (size_t i = 0; i < articles.size(); ++i)
 			{
 				AppendFmtResponse(IsJson() ? JSON_ARTICLES_ARRAY_ITEM : XML_ARTICLES_ARRAY_ITEM,
-					articles[i].failed, 
+					articles[i].failed,
 					articles[i].success
 				);
 
@@ -3848,13 +3897,13 @@ void TestServerXmlCommand::Execute()
 		if (!jsonResult)
 		{
 			BuildErrorResponse(2, "Invalid JSON");
-			return;	
+			return;
 		}
 		auto paramsResult = ParseRequestParams(*jsonResult);
 		if (!paramsResult)
 		{
 			BuildErrorResponse(2, "Invalid parameters");
-			return;	
+			return;
 		}
 		params = std::move(*paramsResult);
 	}
@@ -4022,12 +4071,12 @@ void TestDiskSpeedXmlCommand::Execute()
 	{
 		size_t bufferSizeBytes = writeBufferKiB * 1024;
 		uint64_t maxFileSizeBytes = maxFileSizeGiB * 1024ull * 1024ull * 1024ull;
-		 
+
 		Benchmark::DiskBenchmark db;
 		auto [size, time] = db.Run(
-			dirPath, 
-			bufferSizeBytes, 
-			maxFileSizeBytes, 
+			dirPath,
+			bufferSizeBytes,
+			maxFileSizeBytes,
 			std::chrono::seconds(timeoutSec)
 		);
 

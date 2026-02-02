@@ -25,6 +25,7 @@
 
 #include <mutex>
 #include <string>
+#include <boost/filesystem.hpp>
 #include "DownloadInfo.h"
 #include "Thread.h"
 #include "Service.h"
@@ -42,6 +43,35 @@ public:
 
 	void InitOptions();
 	void ScanNzbDir(bool syncMode);
+	EAddStatus AddArchive(
+		const char* filename,
+		const char* category,
+		bool autoCategory,
+		int priority,
+		const char* dupeKey,
+		int dupeScore,
+		EDupeMode dupeMode,
+		NzbParameterList* parameters,
+		bool addTop,
+		bool addPaused,
+		NzbInfo* urlInfo,
+		const char* buffer,
+		int bufSize
+	);
+	EAddStatus AddArchive(
+		const char* filename,
+		const char* category,
+		bool autoCategory,
+		int priority,
+		const char* dupeKey,
+		int dupeScore,
+		EDupeMode dupeMode,
+		NzbParameterList* parameters,
+		bool addTop,
+		bool addPaused,
+		NzbInfo* urlInfo,
+		const char* tmpFilename
+	);
 	EAddStatus AddExternalFile(
 		const char* nzbName, 
 		const char* category,
@@ -60,6 +90,7 @@ public:
 		int* nzbId
 	);
 	void InitPPParameters(const char* category, NzbParameterList* parameters, bool reset);
+	CString ResolveCategory(const char* category, const char* filename);
 
 protected:
 	int ServiceInterval() override;
@@ -155,6 +186,9 @@ private:
 	 * Otherwise, the detected category (if any) is set directly.
 	 */
 	void DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, const char* nzbName);
+	void CheckIncomingArchives(const boost::filesystem::path& dir);
+	std::vector<boost::filesystem::path> FindArchives(const boost::filesystem::path& dir);
+	void UnpackArchives(const std::vector<boost::filesystem::path>& archives);
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
 	bool AddFileToQueue(
 		const char* filename, 

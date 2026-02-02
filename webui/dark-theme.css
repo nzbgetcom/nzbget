@@ -109,6 +109,26 @@ textarea,
 	background-color: #2f96b4;
 }
 
+.system-health-badge--info,
+.txt-success {
+	color: #479f76;
+}
+
+.system-health-badge--important,
+.txt-error,
+.txt-important {
+	color: #e35d6a;
+}
+
+.system-health-badge--warning,
+.txt-warning {
+	color: #ffc107;
+}
+
+.txt-info {
+	color: #3a87ad;
+}
+
 #InfoBlock div:hover,
 .close,
 label,
@@ -135,6 +155,9 @@ a:hover {
 	background-color: #333;
 }
 
+.accordion-inner,
+.accordion-group,
+.accordion-heading,
 .table th, .table td {
 	border: 0.5px solid #626262;
 }

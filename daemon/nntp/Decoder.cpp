@@ -118,7 +118,7 @@ int Decoder::DecodeBuffer(char* buffer, int len)
 		}
 		else if (m_format == efUx)
 		{
-			outlen += DecodeUx(line, llen);
+			outlen += DecodeUx(line, llen, buffer + outlen);
 		}
 
 		line = end + 1;
@@ -345,13 +345,13 @@ Decoder::EStatus Decoder::CheckYenc()
 
 #define UU_DECODE_CHAR(c) (c == '`' ? 0 : (((c) - ' ') & 077))
 
-int Decoder::DecodeUx(char* buffer, int len)
+int Decoder::DecodeUx(const char* inbuf, int len, char* outbuf)
 {
 	if (!m_body)
 	{
-		if (!strncmp(buffer, "begin ", 6))
+		if (!strncmp(inbuf, "begin ", 6))
 		{
-			char* pb = buffer;
+			const char* pb = inbuf;
 			pb += 6; //strlen("begin ")
 
 			// skip file-permissions
@@ -359,35 +359,35 @@ int Decoder::DecodeUx(char* buffer, int len)
 			pb++;
 
 			// extracting filename
-			char* pe;
+			const char* pe;
 			for (pe = pb; *pe != '\0' && *pe != '\n' && *pe != '\r'; pe++) ;
-			m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, (int)(pe - pb)));
+			m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, static_cast<int>(pe - pb)));
 
 			m_body = true;
 			return 0;
 		}
-		else if ((len == 62 || len == 63) && (buffer[62] == '\n' || buffer[62] == '\r') && *buffer == 'M')
+		else if ((len == 62 || len == 63) && (inbuf[62] == '\n' || inbuf[62] == '\r') && *inbuf == 'M')
 		{
 			m_body = true;
 		}
 	}
 
-	if (m_body && (!strncmp(buffer, "end ", 4) || *buffer == '`'))
+	if (m_body && (!strncmp(inbuf, "end ", 4) || *inbuf == '`'))
 	{
 		m_end = true;
 	}
 
 	if (m_body && !m_end)
 	{
-		int effLen = UU_DECODE_CHAR(buffer[0]);
+		int effLen = UU_DECODE_CHAR(inbuf[0]);
 		if (effLen > len)
 		{
 			// error;
 			return 0;
 		}
 
-		char* iptr = buffer;
-		char* optr = buffer;
+		const char* iptr = inbuf;
+		char* optr = outbuf;
 		for (++iptr; effLen > 0; iptr += 4, effLen -= 3)
 		{
 			if (effLen >= 3)
@@ -406,7 +406,7 @@ int Decoder::DecodeUx(char* buffer, int len)
 			}
 		}
 
-		return (int)(optr - buffer);
+		return static_cast<int>(optr - outbuf);
 	}
 
 	return 0;

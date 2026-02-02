@@ -1,10 +1,6 @@
 name: tests
 
 on:
-  push:
-    branches:
-    - develop
-    - main
   pull_request:
     branches:
     - develop
@@ -24,7 +20,7 @@ jobs:
     - name: Download and extract vcpkg cache and unpackers
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\

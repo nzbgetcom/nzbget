@@ -64,7 +64,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
@@ -99,11 +99,38 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/Benchmark.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/DataAnalytics.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/OpenSSL.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/Network.cpp
+
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SystemHealthService.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Status.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Validators.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SectionValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SectionGroupValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/PathsValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/NewsServerValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/NewsServersValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SchedulerTasksValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SchedulerTaskValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/LoggingValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/ExtensionScriptsValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/UnpackValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SecurityValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/IncomingNzbValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/FeedValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/FeedsValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/DownloadQueueValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/CheckAndRepairValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/CategoryValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/CategoriesValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/ConnectionValidator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth/DisplayValidator.cpp
 )
 
 set(WIN32_SRC
@@ -131,4 +158,5 @@ set(INCLUDES ${INCLUDES}
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/daemon/util
+	${CMAKE_SOURCE_DIR}/daemon/systemhealth
 )

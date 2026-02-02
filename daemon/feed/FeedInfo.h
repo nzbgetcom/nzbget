@@ -68,7 +68,7 @@ public:
 	int GetId() const { return m_id; }
 	const char* GetName() const { return m_name.c_str(); }
 	const char* GetUrl() const { return m_url.c_str(); }
-	int GetInterval() { return m_interval; }
+	int GetInterval() const { return m_interval; }
 	const char* GetFilter() const { return m_filter.c_str(); }
 	uint32 GetFilterHash() { return m_filterHash; }
 	bool GetPauseNzb() const { return m_pauseNzb; }

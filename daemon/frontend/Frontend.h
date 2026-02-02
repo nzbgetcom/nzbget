@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,8 +53,8 @@ protected:
 	int m_dnTimeSec = 0;
 	int64 m_allBytes = 0;
 	bool m_standBy = false;
-	Mutex m_waitMutex;
-	ConditionVar m_waitCond;
+	std::mutex m_waitMutex;
+	std::condition_variable m_waitCond;
 
 	virtual void Stop();
 	bool PrepareData();

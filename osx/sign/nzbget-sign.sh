@@ -49,6 +49,10 @@ if [ "$NOTARIZE" == "true" ]; then
     fi
 fi
 
+if [ -z "$OSX_KEYCHAIN_NAME" ]; then
+    OSX_KEYCHAIN_NAME="~/Library/Keychains/login.keychain-db"
+fi
+
 DMG_NAME=${APP_ARCHIVE/-bin-macos/}
 DMG_NAME=${DMG_NAME/.zip/.dmg}
 
@@ -62,7 +66,7 @@ Resources/daemon/usr/local/bin/unrar \
 Resources/daemon/usr/local/bin/nzbget"
 
 # sign binary files in package
-security unlock-keychain -p $KEYCHAIN_PASSWORD ~/Library/Keychains/login.keychain-db
+security unlock-keychain -p $KEYCHAIN_PASSWORD $OSX_KEYCHAIN_NAME
 for SIGN_FILE in $SIGN_FILES; do
     codesign -s "$DEVELOPER_IDENTITY" -f --timestamp -o runtime -i "com.nzbget" "NZBGet.app/Contents/$SIGN_FILE"
 done

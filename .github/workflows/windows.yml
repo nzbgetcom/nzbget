@@ -5,9 +5,11 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_ARCHS: "32 64"
+  BUILD_ARCHS: '32 64'
   BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
+  SIGN: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'true' || 'false' }}
+  SIGNING_POLICY: 'release-signing'
 
 jobs:
   prepare-build-matrix:
@@ -45,7 +47,7 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v4.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
@@ -56,11 +58,35 @@ jobs:
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
+      id: upload-unsigned-artifact
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
         path: |
           build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
           build\${{ matrix.type }}${{ matrix.arch }}\*.nsi
+        retention-days: 5
+
+    - name: Submit signing request
+      id: submit-signing-request
+      if: env.SIGN == 'true' && matrix.type == 'Release'
+      uses: signpath/github-action-submit-signing-request@v2
+      with:
+        api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+        organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+        project-slug: nzbget
+        signing-policy-slug: ${{ env.SIGNING_POLICY }}
+        artifact-configuration-slug: nzbget-binary
+        github-artifact-id: ${{ steps.upload-unsigned-artifact.outputs.artifact-id }}
+        wait-for-completion: true
+        output-artifact-directory: build\${{ matrix.type }}${{ matrix.arch }}\signed
+
+    - name: Upload signed build artifacts
+      if: env.SIGN == 'true' && matrix.type == 'Release'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.type }}${{ matrix.arch }}
+        overwrite: true
+        path: build\${{ matrix.type }}${{ matrix.arch }}\signed
         retention-days: 5
 
   build-installer:
@@ -103,16 +129,40 @@ jobs:
           Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-", "-$Suffix-bin-windows-")
         }
 
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      id: upload-unsigned-installer-artifact
+      with:
+        name: nzbget-windows-installers
+        path: build\*.exe
+        retention-days: 5
+
+    - name: Submit signing request for windows installers
+      id: submit-signing-request
+      if: env.SIGN == 'true'
+      uses: signpath/github-action-submit-signing-request@v2
+      with:
+        api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+        organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+        project-slug: nzbget
+        signing-policy-slug: ${{ env.SIGNING_POLICY }}
+        artifact-configuration-slug: nzbget-installer
+        github-artifact-id: ${{ steps.upload-unsigned-installer-artifact.outputs.artifact-id }}
+        wait-for-completion: true
+        output-artifact-directory: build\signed
+
+    - name: Upload signed build artifacts
+      if: env.SIGN == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nzbget-windows-installers
+        overwrite: true
+        path: build\signed\*.exe
+        retention-days: 5
+
     - name: Delete unneeded platform-specific artifacts
       uses: geekyeggo/delete-artifact@v5
       with:
         name: |
           Release*
           Debug*
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nzbget-windows-installers
-        path: build\*.exe
-        retention-days: 5

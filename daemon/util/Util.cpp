@@ -21,6 +21,7 @@
 
 #include "nzbget.h"
 
+#include <optional>
 #include <sstream>
 #include <array>
 #include "Util.h"			
@@ -209,6 +210,39 @@ Util::FindShellOverriddenExecutor(const std::string& fileExt, const std::string&
 	}
 
 	return std::nullopt;
+}
+
+std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view path)
+{
+	if (path.empty()) return std::nullopt;
+
+#ifdef _WIN32
+	const wchar_t* envPath = _wgetenv(L"PATH");
+	if (!envPath) return std::nullopt;
+	std::wstring dir;
+	std::wstringstream ss(envPath);
+	wchar_t delimiter = ';';
+#else
+	const char* envPath = std::getenv("PATH");
+	if (!envPath) return std::nullopt;
+	std::string dir;
+	std::stringstream ss(envPath);
+	char delimiter = ':';
+#endif
+
+	while (std::getline(ss, dir, delimiter))
+	{
+		if (dir.empty()) continue;
+
+		boost::filesystem::path p = boost::filesystem::path(dir) / path;
+		boost::system::error_code ec;
+		if (boost::filesystem::exists(p, ec) && boost::filesystem::is_regular_file(p, ec))
+		{
+			return p;
+		}
+	}
+
+	return std::nullopt;	
 }
 
 std::optional<std::string> Util::FindPython()
@@ -1385,62 +1419,40 @@ const char* WebUtil::JsonNextValue(const char* jsonText, int* valueLength)
 	}
 
 	const char* pstart = jsonText;
-	while (*pstart && strchr(" ,[]__{__:}\r\n\t\f", *pstart))
-	{
-		pstart++;
-	}
 
-	if (!*pstart)
-	{
-		*valueLength = 0;
-		return nullptr;
-	}
+	while (*pstart && strchr(" ,[{:\r\n\t\f", *pstart)) pstart++;
+	if (!*pstart) return nullptr;
 
 	const char* pend = pstart;
-	bool isString = (*pstart == '"');
 
-	if (isString)
+	char ch = *pend;
+	bool str = ch == '"';
+	if (str)
 	{
-		pend++; // Move past the opening quote
-		while (true)
-		{
-			// This check runs at the start of each loop.
-			// If we run out of characters before finding a closing quote, it's an error.
-			if (!*pend) 
-			{
-				*valueLength = 0;
-				return nullptr; // unclosed string
-			}
-
-			if (*pend == '\\')
-			{
-				pend++; // Move to the character being escaped.
-
-				// This checks for a dangling escape at the very end of the input.
-				// For the input "hello\", `pend` would point to '\0' here.
-				if (!*pend) {
-					*valueLength = 0;
-					return nullptr; // CATCHES DANGLING ESCAPE
-				}
-				pend++; // Move past the character that was escaped.
-			}
-			else if (*pend == '"')
-			{
-				pend++; // Include the closing quote.
-				break;  // End of string found.
-			}
-			else
-			{
-				pend++; // Normal character.
-			}
-		}
+		ch = *++pend;
 	}
-	else
+	while (ch)
 	{
-		while (*pend && !strchr(" ,]}:\r\n\t\f", *pend))
+		if (str && ch == '\\')
+		{
+			if (!*++pend) return nullptr;
+			if (!*++pend) return nullptr;
+
+			ch = *pend;
+			continue;
+		}
+
+		if (str && ch == '"')
 		{
 			pend++;
+			break;
 		}
+		else if (!str && strchr(" ,]}\r\n\t\f", ch))
+		{
+			break;
+		}
+
+		ch = *++pend;
 	}
 
 	*valueLength = static_cast<int>(pend - pstart);

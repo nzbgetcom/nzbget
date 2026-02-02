@@ -583,6 +583,20 @@ void ArticleWriter::CompleteFileParts()
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		m_fileInfo->SetCrc(crc);
 
+		if (m_fileInfo->IsHardLinked() && Util::EmptyStr(g_Options->GetInterDir()))
+		{
+			// No need to rename, remove hardlink of .out.tmp-file
+			if (FileSystem::DeleteFile(m_outputFilename.c_str()))
+			{
+				m_fileInfo->SetOutputFilename(nullptr);
+				return;
+			}
+			else
+			{
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Cannot remove hardlink");
+			}
+		}
+
 		RenameOutputFile(filename, destDir);
 	}
 }
@@ -799,7 +813,7 @@ bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 
 CachedSegmentData ArticleCache::Alloc(int size)
 {
-	Guard guard(m_allocMutex);
+	std::lock_guard<std::mutex> guard(m_allocMutex);
 
 	void* p = nullptr;
 
@@ -815,7 +829,7 @@ CachedSegmentData ArticleCache::Alloc(int size)
 			if (!m_allocated)
 			{
 				// Resume Run(), the notification arrives later, after releasing m_allocMutex
-				m_allocCond.NotifyAll();
+				m_allocCond.notify_all();
 			}
 			m_allocated += size;
 		}
@@ -826,7 +840,7 @@ CachedSegmentData ArticleCache::Alloc(int size)
 
 bool ArticleCache::Realloc(CachedSegmentData* segment, int newSize)
 {
-	Guard guard(m_allocMutex);
+	std::lock_guard<std::mutex> guard(m_allocMutex);
 
 	void* p = realloc(segment->m_data, newSize);
 	if (p)
@@ -845,7 +859,7 @@ void ArticleCache::Free(CachedSegmentData* segment)
 	{
 		free(segment->m_data);
 
-		Guard guard(m_allocMutex);
+		std::lock_guard<std::mutex> guard(m_allocMutex);
 		m_allocated -= segment->m_size;
 		if (!m_allocated && g_Options->GetServerMode() && g_Options->GetContinuePartial())
 		{
@@ -872,8 +886,8 @@ void ArticleCache::Run()
 		}
 		else if (!m_allocated)
 		{
-			Guard guard(m_allocMutex);
-			m_allocCond.Wait(m_allocMutex, [&] { return IsStopped() || m_allocated > 0; });
+			std::unique_lock<std::mutex> lk(m_allocMutex);
+			m_allocCond.wait(lk, [&] { return IsStopped() || m_allocated > 0; });
 			resetCounter = 0;
 		}
 		else
@@ -889,8 +903,8 @@ void ArticleCache::Stop()
 	Thread::Stop();
 
 	// Resume Run() to exit it
-	Guard guard(m_allocMutex);
-	m_allocCond.NotifyAll();
+	std::lock_guard<std::mutex> guard(m_allocMutex);
+	m_allocCond.notify_all();
 }
 
 bool ArticleCache::CheckFlush(bool flushEverything)

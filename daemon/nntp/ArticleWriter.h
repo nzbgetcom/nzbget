@@ -126,8 +126,8 @@ public:
 private:
 	std::atomic<size_t> m_allocated{0};
 	FileInfo* m_fileInfo = nullptr;
-	ConditionVar m_allocCond;
-	Mutex m_allocMutex;
+	std::mutex m_allocMutex;
+	std::condition_variable m_allocCond;
 	Mutex m_flushMutex;
 	Mutex m_contentMutex;
 	bool m_flushing = false;

@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(ShouldNotDeleteExtensionIfExtensionIsBusyTest)
 	auto error = manager.DeleteExtension((*busyExt)->GetName());
 
 	BOOST_CHECK_EQUAL(error.has_value(), true);
-	BOOST_CHECK_EQUAL(error.value(), std::string("Failed to delete: ") + (*busyExt)->GetName() + " is executing");
+	BOOST_CHECK_EQUAL(error.value(), std::string("Deletion failed: Extension '") + (*busyExt)->GetName() + "' is currently in use");
 }
 
 BOOST_AUTO_TEST_CASE(DeleteExtensionTest)

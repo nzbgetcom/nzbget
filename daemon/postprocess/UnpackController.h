@@ -19,8 +19,8 @@
  */
 
 
-#ifndef UNPACK_H
-#define UNPACK_H
+#ifndef UNPACK_CONTROLLER_H
+#define UNPACK_CONTROLLER_H
 
 #include "Log.h"
 #include "Thread.h"
@@ -34,7 +34,6 @@ public:
 	void Stop() override;
 	static void StartJob(PostInfo* postInfo);
 	static bool HasCompletedArchiveFiles(NzbInfo* nzbInfo);
-	static const char* DecodeSevenZipExitCode(int ec);
 
 	~UnpackController();
 
@@ -47,16 +46,6 @@ private:
 	{
 		upUnrar,
 		upSevenZip
-	};
-
-	enum SevenZipExitCodes
-	{
-		NoError = 0,
-		Warning = 1,
-		FatalError = 2,
-		CmdLineError = 7,
-		NotEnoughMemoryError = 8,
-		CanceledByUser = 255,
 	};
 
 	typedef std::vector<CString> FileListBase;

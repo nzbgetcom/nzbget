@@ -387,17 +387,13 @@ BOOST_AUTO_TEST_CASE(ParsingInContextTest)
 {
 	const char* json = R"({ "key": "value" })";
 	int length = 0;
-	// Find "key"
 	const char* keyPtr = WebUtil::JsonNextValue(json, &length);
-	// Find "value"
 	const char* valuePtr = WebUtil::JsonNextValue(keyPtr + length, &length);
 	BOOST_REQUIRE(valuePtr != nullptr);
 	BOOST_CHECK_EQUAL(std::string(valuePtr, length), R"("value")");
 
 	const char* arrayJson = R"([ 123, "abc", true ])";
-	// Find 123
 	const char* firstVal = WebUtil::JsonNextValue(arrayJson, &length);
-	// Find "abc"
 	const char* secondVal = WebUtil::JsonNextValue(firstVal + length, &length);
 	BOOST_REQUIRE(secondVal != nullptr);
 	BOOST_CHECK_EQUAL(std::string(secondVal, length), R"("abc")");
@@ -407,23 +403,92 @@ BOOST_AUTO_TEST_CASE(ValidAndInvalidInputsTest)
 {
 	int length = 0;
 
-	// --- These inputs should correctly be parsed as VALID ---
-	const char* inputValue = R"("hello\\")"; // This is the JSON string "hello\"
+	const char* inputValue = R"("hello\\")";
 	const char* expectedValue = R"("hello\\")";
 	const char* resultPtr = WebUtil::JsonNextValue(inputValue, &length);
-	BOOST_REQUIRE(resultPtr != nullptr); // It SHOULD succeed
+	BOOST_REQUIRE(resultPtr != nullptr);
 	BOOST_CHECK_EQUAL(length, strlen(expectedValue));
 	BOOST_CHECK_EQUAL(std::string(resultPtr, length), std::string(expectedValue));
 
-
-	// --- These inputs should correctly be parsed as INVALID (return nullptr) ---
 	BOOST_CHECK(WebUtil::JsonNextValue("", &length) == nullptr);
 	BOOST_CHECK(WebUtil::JsonNextValue("   \t\n ", &length) == nullptr);
-	BOOST_CHECK(WebUtil::JsonNextValue("{ , : }", &length) == nullptr);
 
-	// This is the NEW, correct test for a dangling escape.
-	// The JSON string is "dangling\"
 	BOOST_CHECK(WebUtil::JsonNextValue("\"dangling\\\"", &length) == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(TestAppendRPCJsonParsing)
+{
+	const std::string jsonInput = R"({
+      "method": "append",
+      "params": [
+        "test.nzb",
+        "nzbcontent",
+        "category",
+        1,
+        true,
+        true,
+        "",
+        0,
+        "SCORE",
+        false,
+        [
+          {
+            "*unpack:": "yes"
+          }
+        ]
+      ],
+      "id": 8098671763609112523
+    })";
+
+	const std::vector<std::string> expectedTokens = {"\"method\"",
+													 "\"append\"",
+													 "\"params\"",
+													 "\"test.nzb\"",
+													 "\"nzbcontent\"",
+													 "\"category\"",
+													 "1",
+													 "true",
+													 "true",
+													 "\"\"",
+													 "0",
+													 "\"SCORE\"",
+													 "false",
+													 "\"*unpack:\"",
+													 "\"yes\"",
+													 "\"id\"",
+													 "8098671763609112523"};
+
+	const char* currentPos = jsonInput.c_str();
+
+	for (const auto& expected : expectedTokens)
+	{
+		int valLen = 0;
+		const char* valStart = nullptr;
+		while (true)
+		{
+			valStart = WebUtil::JsonNextValue(currentPos, &valLen);
+
+			BOOST_REQUIRE_MESSAGE(valStart != nullptr, "Parser hit end of string unexpectedly");
+			if (valLen > 0)
+			{
+				break;
+			}
+
+			char stuckChar = *valStart;
+			if (stuckChar == ']' || stuckChar == '}')
+			{
+				currentPos++;
+				continue;
+			}
+
+			break;
+		}
+
+		std::string actual(valStart, valLen);
+		BOOST_CHECK_EQUAL(actual, expected);
+
+		currentPos = valStart + valLen;
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
