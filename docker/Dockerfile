@@ -47,7 +47,7 @@ RUN \
   install -v -m755 _o/7za /usr/bin/7z
 
 #build nzbget
-ADD ./ nzbget
+COPY ./ /nzbget
 RUN \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
@@ -104,7 +104,7 @@ RUN \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
-ADD docker/entrypoint.sh /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && \
   echo "**** create non-root user ****" && \
   adduser -G users -D -u 1000 -h /config -s /bin/sh user && \
