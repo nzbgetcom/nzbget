@@ -22,11 +22,11 @@ RUN \
   curl -o /tmp/unrar7.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR7_VERSION}.tar.gz" && \
   tar xf /tmp/unrar7.tar.gz -C /tmp/unrar7 --strip-components=1 && \
   cd /tmp/unrar7 && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/amd64" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/amd64" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64-v2|" makefile; fi && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm64" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/arm64" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|" makefile; fi && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm/v7" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" makefile; fi && \
   make -j ${MAKE_JOBS} && \
   install -v -m755 unrar /usr/bin/unrar7 && \
