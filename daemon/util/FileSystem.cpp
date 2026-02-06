@@ -56,9 +56,9 @@ boost::filesystem::path FileSystem::u8path(std::string_view pathStr)
 	{
 	 	return boost::filesystem::path(*wstr);
 	}
-	return boost::filesystem::path(std::string(pathStr)); 
+	return boost::filesystem::path(pathStr); 
 #else
-	return boost::filesystem::path(std::string(pathStr));
+	return boost::filesystem::path(pathStr);
 #endif
 }
 
