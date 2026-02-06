@@ -13,7 +13,7 @@ ARG CMAKE_BUILD_TYPE=Release
 #install build packages
 RUN \
   echo "**** install build packages ****" && \
-  apk add g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake
+  apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake
 
 #install archive packages
 RUN \
@@ -22,11 +22,11 @@ RUN \
   curl -o /tmp/unrar7.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR7_VERSION}.tar.gz" && \
   tar xf /tmp/unrar7.tar.gz -C /tmp/unrar7 --strip-components=1 && \
   cd /tmp/unrar7 && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/amd64" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/amd64" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64-v2|" makefile; fi && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm64" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/arm64" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|" makefile; fi && \
-  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" == "linux/arm/v7" ]; \
+  if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/arm/v7" ]; \
     then sed -i "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" makefile; fi && \
   make -j ${MAKE_JOBS} && \
   install -v -m755 unrar /usr/bin/unrar7 && \
@@ -47,7 +47,7 @@ RUN \
   install -v -m755 _o/7za /usr/bin/7z
 
 #build nzbget
-ADD ./ nzbget
+COPY ./ /nzbget
 RUN \
   echo "**** build nzbget ****" && \
   mkdir -p /app/nzbget && \
@@ -98,13 +98,13 @@ COPY --from=build /usr/bin/7z /usr/bin/7z
 COPY --from=build /app/nzbget/ /app/nzbget/
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow libxml2 libxslt openssl python3 boost1.84-json boost1.84-filesystem tzdata && \
+  apk add --no-cache --update shadow su-exec libxml2 libxslt openssl python3 boost1.84-json boost1.84-filesystem tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \
   echo "**** cleanup ****" && \
   rm -rf /root/.cache /root/.cargo /tmp/*
-ADD docker/entrypoint.sh /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh && \
   echo "**** create non-root user ****" && \
   adduser -G users -D -u 1000 -h /config -s /bin/sh user && \
