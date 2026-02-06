@@ -7,6 +7,7 @@ body:
     label: NZBGet Version
     description: Version of NZBGet for the scope of this issue
     options:
+    - v26.1-testing
     - v26.0-stable
     - v25.4-stable
     - v25.2-stable
