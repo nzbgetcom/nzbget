@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <string>
 #include "NString.h"
 #include "Thread.h"
 
@@ -86,6 +87,8 @@ public:
 	void UnregisterDebuggable(Debuggable* debuggable);
 	void LogDebugInfo();
 	void IntervalCheck();
+	std::string_view GetLogFilename() const { return m_logFilename; }
+	const boost::filesystem::path& GetLogFilenamePath() const { return m_logFilenamePath; }
 
 private:
 	typedef std::list<Debuggable*> Debuggables;
@@ -94,7 +97,8 @@ private:
 	MessageList m_messages;
 	Debuggables m_debuggables;
 	Mutex m_debugMutex;
-	CString m_logFilename;
+	std::string m_logFilename;
+	boost::filesystem::path m_logFilenamePath;
 	std::unique_ptr<DiskFile> m_logFile;
 	uint32 m_idGen = 0;
 	std::atomic<time_t> m_lastWritten{0};

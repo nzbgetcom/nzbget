@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(TestWebDirValidator)
 
 BOOST_AUTO_TEST_CASE(TestLogFileValidator)
 {
-	LogFileValidator validator(options);
+	LogFileValidator validator(options, *g_Log);
 	fs::path log = tempPath / "nzbget.log";
 
 	Status s1 = validator.Validate("", Options::EWriteLog::wlAppend);
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(TestScriptDirValidator)
 
 BOOST_AUTO_TEST_CASE(TestPathsValidatorComposite)
 {
-	PathsValidator pathsVal(options);
+	PathsValidator pathsVal(options, *g_Log);
 	BOOST_CHECK_EQUAL(pathsVal.GetName(), "Paths");
 
 	SectionReport report = pathsVal.Validate();

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,9 @@
 
 namespace SystemHealth::Paths
 {
-PathsValidator::PathsValidator(const Options& options) : m_options(options)
+PathsValidator::PathsValidator(const Options& options, const ::Log& log)
+	: m_options(options)
+	, m_log(log)
 {
 	m_validators.reserve(13);
 	m_validators.push_back(std::make_unique<MainDirValidator>(options));
@@ -36,7 +38,7 @@ PathsValidator::PathsValidator(const Options& options) : m_options(options)
 	m_validators.push_back(std::make_unique<TempDirValidator>(options));
 	m_validators.push_back(std::make_unique<ScriptDirValidator>(options));
 	m_validators.push_back(std::make_unique<ConfigTemplateValidator>(options));
-	m_validators.push_back(std::make_unique<LogFileValidator>(options));
+	m_validators.push_back(std::make_unique<LogFileValidator>(options, log));
 	m_validators.push_back(std::make_unique<CertStoreValidator>(options));
 	m_validators.push_back(std::make_unique<RequiredDirValidator>(options));
 #ifndef _WIN32
@@ -222,7 +224,7 @@ Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
-	return Validate(m_options.GetLogFilePath(), m_options.GetWriteLog())
+	return Validate(m_log.GetLogFilenamePath(), m_options.GetWriteLog())
 		.And(
 			[&]()
 			{

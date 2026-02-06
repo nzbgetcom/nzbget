@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -56,7 +56,7 @@ void Log::LogDebugInfo()
 
 void Log::Filelog(const char* msg, ...)
 {
-	if (m_logFilename.Empty())
+	if (m_logFilename.empty())
 	{
 		return;
 	}
@@ -90,9 +90,9 @@ void Log::Filelog(const char* msg, ...)
 	if (!m_logFile)
 	{
 		m_logFile = std::make_unique<DiskFile>();
-		if (!m_logFile->Open(m_logFilename, DiskFile::omAppend))
+		if (!m_logFile->Open(m_logFilename.c_str(), DiskFile::omAppend))
 		{
-			perror(m_logFilename);
+			perror(m_logFilename.c_str());
 			m_logFile.reset();
 			return;
 		}
@@ -358,6 +358,7 @@ void Log::RotateLog()
 		baseName, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, *baseExt);
 
 	m_logFilename = fullFilename;
+	m_logFilenamePath = m_logFilename;
 }
 
 /*
@@ -376,6 +377,7 @@ void Log::InitOptions()
 	if (g_Options->GetWriteLog() != Options::wlNone && g_Options->GetLogFile())
 	{
 		m_logFilename = g_Options->GetLogFile();
+		m_logFilenamePath = m_logFilename;
 		if (g_Options->GetServerMode() && g_Options->GetWriteLog() == Options::wlReset)
 		{
 			g_Log->ResetLog();

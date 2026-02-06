@@ -354,7 +354,7 @@ void WinConsole::ShowMenu()
 			break;
 
 		case ID_SHOW_LOGFILE:
-			ShowInExplorer(g_Options->GetLogFile());
+			ShowInExplorer(g_Log->GetLogFilename().data());
 			break;
 
 		case ID_SHOW_SCRIPTDIR:

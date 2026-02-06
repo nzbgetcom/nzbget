@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2027 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -50,11 +50,11 @@ Alert::Alert(Severity severity, std::string category, std::string source, std::s
 {}
 
 Service::Service(const Options& options, const Servers& servers, const ::Feeds& feeds,
-				 const ::Scheduler::TaskList& tasks)
-	: m_options(options), m_servers(servers), m_feeds(feeds), m_tasks(tasks)
+				 const ::Scheduler::TaskList& tasks, const ::Log& log)
+	: m_options(options), m_servers(servers), m_feeds(feeds), m_tasks(tasks), m_log(log)
 {
 	m_validators.reserve(12);
-	m_validators.push_back(std::make_unique<Paths::PathsValidator>(m_options));
+	m_validators.push_back(std::make_unique<Paths::PathsValidator>(m_options, m_log));
 	m_validators.push_back(std::make_unique<NewsServers::NewsServersValidator>(m_servers));
 	m_validators.push_back(std::make_unique<Display::DisplayValidator>(m_options));
 	m_validators.push_back(std::make_unique<Logging::LoggingValidator>(m_options));
