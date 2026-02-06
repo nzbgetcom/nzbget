@@ -79,7 +79,7 @@ void NntpServer::Run()
 {
 	debug("Entering NntpServer-loop");
 
-	info("Listening on port %i", m_port);
+	info("%s Listening on port %i", *Util::FormatTime(Util::CurrentTime()), m_port);
 
 #ifdef WIN32
 	if (m_speed > 0)
@@ -161,7 +161,7 @@ void NntpProcessor::Run()
 	}
 #endif
 
-	info("[%i] Incoming connection from: %s", m_id, m_connection->GetHost() );
+	info("%s [%i] Incoming connection from: %s", *Util::FormatTime(Util::CurrentTime()),m_id, m_connection->GetHost() );
 	m_connection->WriteLine("200 Welcome (NServ)\r\n");
 
 	CharBuffer buf(1024);
@@ -169,7 +169,7 @@ void NntpProcessor::Run()
 	while (CString line = m_connection->ReadLine(buf, 1024, &bytesRead))
 	{
 		line.TrimRight();
-		detail("[%i] Received: %s", m_id, *line);
+		detail("%s [%i] Received: %s", *Util::FormatTime(Util::CurrentTime()), m_id, *line);
 
 		if (!strncasecmp(line, "ARTICLE ", 8))
 		{
@@ -206,7 +206,7 @@ void NntpProcessor::Run()
 		}
 		else if (!strcasecmp(line, "QUIT"))
 		{
-			detail("[%i] Closing connection", m_id);
+			detail("%s [%i] Closing connection", *Util::FormatTime(Util::CurrentTime()), m_id);
 			m_connection->WriteLine("205 Connection closing\r\n");
 			break;
 		}
@@ -238,7 +238,7 @@ where:
 */
 void NntpProcessor::ServArticle()
 {
-	detail("[%i] Serving: %s", m_id, m_messageid);
+	detail("%s [%i] Serving: %s", *Util::FormatTime(Util::CurrentTime()), m_id, m_messageid);
 
 	if (m_latency)
 	{
