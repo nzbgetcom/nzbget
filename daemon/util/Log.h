@@ -88,7 +88,7 @@ public:
 	void LogDebugInfo();
 	void IntervalCheck();
 	std::string_view GetLogFilename() const { return m_logFilename; }
-	const boost::filesystem::path& GetLogFilenamePath() const { return m_logFilenamePath; }
+	const boost::filesystem::path& GetLogFilePath() const { return m_logFilePath; }
 
 private:
 	typedef std::list<Debuggable*> Debuggables;
@@ -98,7 +98,7 @@ private:
 	Debuggables m_debuggables;
 	Mutex m_debugMutex;
 	std::string m_logFilename;
-	boost::filesystem::path m_logFilenamePath;
+	boost::filesystem::path m_logFilePath;
 	std::unique_ptr<DiskFile> m_logFile;
 	uint32 m_idGen = 0;
 	std::atomic<time_t> m_lastWritten{0};

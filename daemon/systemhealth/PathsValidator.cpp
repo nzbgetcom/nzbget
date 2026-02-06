@@ -224,7 +224,7 @@ Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
-	return Validate(m_log.GetLogFilenamePath(), m_options.GetWriteLog())
+	return Validate(m_log.GetLogFilePath(), m_options.GetWriteLog())
 		.And(
 			[&]()
 			{

@@ -358,7 +358,7 @@ void Log::RotateLog()
 		baseName, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, *baseExt);
 
 	m_logFilename = fullFilename;
-	m_logFilenamePath = m_logFilename;
+	m_logFilePath = FileSystem::u8path(m_logFilename);
 }
 
 /*
@@ -377,7 +377,7 @@ void Log::InitOptions()
 	if (g_Options->GetWriteLog() != Options::wlNone && g_Options->GetLogFile())
 	{
 		m_logFilename = g_Options->GetLogFile();
-		m_logFilenamePath = m_logFilename;
+		m_logFilePath = FileSystem::u8path(m_logFilename);
 		if (g_Options->GetServerMode() && g_Options->GetWriteLog() == Options::wlReset)
 		{
 			g_Log->ResetLog();
