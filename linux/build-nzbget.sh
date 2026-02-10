@@ -3,6 +3,7 @@
 #  This file is part of nzbget. See <https://nzbget.com>.
 #
 #  Copyright (C) 2024 phnzb <pavel@nzbget.com>
+#  Copyright (C) 2026 Denis <denis@nzbget.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -361,13 +362,17 @@ build_lib()
                     --prefix="$PWD/../$LIB"
                 ;;
             boost)
+                B2_ARGS="cxxstd=17 link=static runtime-link=static install \
+                    define=BOOST_FILESYSTEM_DISABLE_STATX \
+                    define=BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE \
+                    define=BOOST_FILESYSTEM_DISABLE_GETRANDOM"
                 ./bootstrap.sh --with-libraries=json,filesystem --prefix="$PWD/../$LIB"
                 if [ "$PLATFORM" == "freebsd" ]; then
                     echo "using clang : clang : clang-$FREEBSD_CLANG_VER ; " >>  project-config.jam
-                    ./b2 --toolset=clang cxxflags="--target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1" cxxstd=14 link=static runtime-link=static install
+                    ./b2 --toolset=clang cxxflags="--target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1" $B2_ARGS
                 else
                     echo "using gcc : buildroot : $CXX ; " >>  project-config.jam
-                    ./b2 --toolset=gcc-buildroot cxxstd=14 link=static runtime-link=static install
+                    ./b2 --toolset=gcc-buildroot $B2_ARGS
                 fi
                 ;;
         esac
