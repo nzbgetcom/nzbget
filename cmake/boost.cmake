@@ -14,24 +14,24 @@ endif()
 set(BOOST_JSON_LIB ${BOOST_INSTALL_DIR}/lib/libboost_json.a)
 set(BOOST_FILESYSTEM_LIB ${BOOST_INSTALL_DIR}/lib/libboost_filesystem.a)
 
-set(BOOST_B2_DEFINES "")
+set(BOOST_B2_ARGS "link=static variant=${BOOST_BUILD_TYPE} install")
 
 if (NOT HAVE_STATX)
 	message(STATUS "statx not found")
 	add_definitions(-DBOOST_FILESYSTEM_DISABLE_STATX)
-	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_STATX")
+	list(APPEND BOOST_B2_ARGS "define=BOOST_FILESYSTEM_DISABLE_STATX")
 endif()
 
 if (NOT HAVE_COPY_FILE_RANGE)
 	message(STATUS "copy_file_range not found")
 	add_definitions(-DBOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE)
-	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE")
+	list(APPEND BOOST_B2_ARGS "define=BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE")
 endif()
 
 if (NOT HAVE_GETRANDOM)
 	message(STATUS "getrandom not found")
 	add_definitions(-DBOOST_FILESYSTEM_DISABLE_GETRANDOM)
-	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_GETRANDOM")
+	list(APPEND BOOST_B2_ARGS "define=BOOST_FILESYSTEM_DISABLE_GETRANDOM")
 endif()
 
 ExternalProject_add(
@@ -47,7 +47,7 @@ ExternalProject_add(
 	USES_TERMINAL_BUILD TRUE
 	BUILD_BYPRODUCTS ${BOOST_JSON_LIB} ${BOOST_FILESYSTEM_LIB}
 	CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=json,filesystem --prefix=${BOOST_INSTALL_DIR}
-	BUILD_COMMAND	 ./b2 link=static variant=${BOOST_BUILD_TYPE} ${BOOST_B2_OPTIONS} install
+	BUILD_COMMAND	 ./b2 link=static ${BOOST_B2_ARGS}
 	INSTALL_COMMAND ""
 )
 
