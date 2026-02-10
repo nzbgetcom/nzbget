@@ -374,3 +374,23 @@ if(NOT HAVE_NATIVE_ATOMICS_SUPPORT)
 	message(STATUS "Compiler lacks native support for C++ atomics. Linking against libatomic.")
 	set(LIBS ${LIBS} -latomic)
 endif()
+
+check_cxx_source_compiles("
+	#define _GNU_SOURCE
+	#include <sys/stat.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+	int main() { return statx(0, 0, 0, 0, 0); }
+" HAVE_STATX)
+
+check_cxx_source_compiles("
+	#define _GNU_SOURCE
+	#include <unistd.h>
+	int main() { return copy_file_range(0, 0, 0, 0, 0, 0); }
+" HAVE_COPY_FILE_RANGE)
+
+check_cxx_source_compiles("
+	#define _GNU_SOURCE
+	#include <sys/random.h>
+	int main() { return getrandom(0, 0, 0); }
+" HAVE_GETRANDOM)

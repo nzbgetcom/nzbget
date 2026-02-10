@@ -1,3 +1,5 @@
+include(CheckCXXSourceCompiles)
+
 set(BOOST_VERSION 1.84.0)
 set(BOOST_ROOT_DIR ${CMAKE_BINARY_DIR}/boost)
 set(BOOST_SOURCE_DIR ${BOOST_ROOT_DIR}/src/boost)
@@ -12,6 +14,26 @@ endif()
 set(BOOST_JSON_LIB ${BOOST_INSTALL_DIR}/lib/libboost_json.a)
 set(BOOST_FILESYSTEM_LIB ${BOOST_INSTALL_DIR}/lib/libboost_filesystem.a)
 
+set(BOOST_B2_DEFINES "")
+
+if (NOT HAVE_STATX)
+	message(STATUS "statx not found")
+	add_definitions(-DBOOST_FILESYSTEM_DISABLE_STATX)
+	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_STATX")
+endif()
+
+if (NOT HAVE_COPY_FILE_RANGE)
+	message(STATUS "copy_file_range not found")
+	add_definitions(-DBOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE)
+	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_COPY_FILE_RANGE")
+endif()
+
+if (NOT HAVE_GETRANDOM)
+	message(STATUS "getrandom not found")
+	add_definitions(-DBOOST_FILESYSTEM_DISABLE_GETRANDOM)
+	list(APPEND BOOST_B2_DEFINES "define=BOOST_FILESYSTEM_DISABLE_GETRANDOM")
+endif()
+
 ExternalProject_add(
 	boost
 	PREFIX ${BOOST_ROOT_DIR}
@@ -25,7 +47,7 @@ ExternalProject_add(
 	USES_TERMINAL_BUILD TRUE
 	BUILD_BYPRODUCTS ${BOOST_JSON_LIB} ${BOOST_FILESYSTEM_LIB}
 	CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=json,filesystem --prefix=${BOOST_INSTALL_DIR}
-	BUILD_COMMAND	  ./b2 link=static variant=${BOOST_BUILD_TYPE} install
+	BUILD_COMMAND	 ./b2 link=static variant=${BOOST_BUILD_TYPE} ${BOOST_B2_OPTIONS} install
 	INSTALL_COMMAND ""
 )
 
