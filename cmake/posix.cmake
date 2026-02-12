@@ -126,10 +126,8 @@ if(NOT HAVE_SYSTEM_REGEX_H)
 	add_dependencies(regex ${DEPENDENCIES})
 endif()
 
-if(DEPENDENCIES)
-	if(NOT BUILD_ONLY_TESTS)
-		add_dependencies(${PACKAGE} ${DEPENDENCIES})
-	endif()
+if(NOT BUILD_ONLY_TESTS)
+	add_dependencies(${PACKAGE} ${DEPENDENCIES})
 endif()
 
 include(CheckIncludeFiles)
