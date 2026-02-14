@@ -35,12 +35,16 @@ project(
 	LANGUAGES C CXX
 )
 
+set(EXTERNAL_DEPS "")
 include(cmake/common.cmake)
 include(daemon/sources.cmake)
 
 if(NOT BUILD_ONLY_TESTS)
-	add_executable(${PACKAGE} ${SRC})
+	add_executable(${PACKAGE} ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.cpp ${SRC})
 	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+if(EXTERNAL_DEPS)
+	add_dependencies(${PACKAGE} ${EXTERNAL_DEPS})
+endif()
 
 	if(NOT WIN32)
 		if(CMAKE_BUILD_TYPE STREQUAL "Release")

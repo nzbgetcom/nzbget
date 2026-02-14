@@ -1,0 +1,7 @@
+list(APPEND TESTS_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/feed/FeedFilter.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/feed/FeedFile.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/feed/NzbInfoCreator.cpp
+)
+
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/testdata/feed DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

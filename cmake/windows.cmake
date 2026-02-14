@@ -42,14 +42,10 @@ include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
-set(DEPENDENCIES rapidyenc par2-turbo)
+list(APPEND EXTERNAL_DEPS rapidyenc par2-turbo)
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-	set(DEPENDENCIES ${DEPENDENCIES} regex)
-endif()
-
-if(NOT BUILD_ONLY_TESTS)
-	add_dependencies(${PACKAGE} ${DEPENDENCIES})
+	list(APPEND EXTERNAL_DEPS regex)
 endif()
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)
