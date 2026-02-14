@@ -115,8 +115,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
 list(APPEND EXTERNAL_DEPS rapidyenc)
 
-list(APPEND EXTERNAL_DEPS yencode)
-
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
 	list(APPEND EXTERNAL_DEPS par2-turbo)
