@@ -39,12 +39,27 @@ set(EXTERNAL_DEPS "")
 include(cmake/common.cmake)
 include(daemon/sources.cmake)
 
+if(WIN32)
+	include(cmake/windows.cmake)
+else()
+	include(cmake/posix.cmake)
+endif()
+
+configure_file(
+	${CMAKE_SOURCE_DIR}/cmake/config.h.in
+	${CMAKE_BINARY_DIR}/config.h
+)
+
 if(NOT BUILD_ONLY_TESTS)
 	add_executable(${PACKAGE} ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.cpp ${SRC})
-	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+
 if(EXTERNAL_DEPS)
 	add_dependencies(${PACKAGE} ${EXTERNAL_DEPS})
 endif()
+
+	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
+	target_include_directories(${PACKAGE} PRIVATE ${INCLUDES})
 
 	if(NOT WIN32)
 		if(CMAKE_BUILD_TYPE STREQUAL "Release")
@@ -59,8 +74,6 @@ endif()
 endif()
 
 if(WIN32)
-	include(cmake/windows.cmake)
-
 	if(NOT BUILD_ONLY_TESTS)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/windows/resources/nzbget.rc)
 		configure_file(
@@ -80,21 +93,9 @@ if(WIN32)
 		target_sources(${PACKAGE} PRIVATE ${CMAKE_BINARY_DIR}/version.rc)
 	endif()
 else()
-	include(cmake/posix.cmake)
-
 	if(NOT BUILD_ONLY_TESTS)
 		include(${CMAKE_SOURCE_DIR}/cmake/install.cmake)
 	endif()
-endif()
-
-configure_file(
-	${CMAKE_SOURCE_DIR}/cmake/config.h.in
-	${CMAKE_BINARY_DIR}/config.h
-)
-
-if(NOT BUILD_ONLY_TESTS)
-	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
-	target_include_directories(${PACKAGE} PRIVATE ${INCLUDES})
 endif()
 
 if(ENABLE_TESTS OR BUILD_ONLY_TESTS)
