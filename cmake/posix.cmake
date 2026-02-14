@@ -110,20 +110,14 @@ else()
 	endif()
 endif()
 
-include(CheckIncludeFiles)
-check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+
+list(APPEND EXTERNAL_DEPS yencode)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-    list(APPEND EXTERNAL_DEPS par2-turbo)
+	list(APPEND EXTERNAL_DEPS par2-turbo)
 endif()
-
-if(NOT HAVE_SYSTEM_REGEX_H)
-    list(APPEND EXTERNAL_DEPS regex)
-endif()
-
-list(APPEND EXTERNAL_DEPS yencode)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
@@ -132,6 +126,13 @@ include(CheckFunctionExists)
 include(CheckTypeSize)
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
+
+include(CheckIncludeFiles)
+check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
+
+if(NOT HAVE_SYSTEM_REGEX_H)
+	list(APPEND EXTERNAL_DEPS regex)
+endif()
 
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H)
