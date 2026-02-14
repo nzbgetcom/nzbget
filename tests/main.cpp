@@ -21,7 +21,6 @@
 
 #define BOOST_TEST_MODULE NZBGetTests
 #include <boost/test/included/unit_test.hpp>
-#include <rapidyenc.h>
 
 #include "ServerPool.h"
 #include "Log.h"

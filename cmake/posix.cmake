@@ -110,8 +110,6 @@ else()
 	endif()
 endif()
 
-include(CheckIncludeFiles)
-check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
@@ -122,10 +120,6 @@ if(NOT DISABLE_PARCHECK)
     list(APPEND EXTERNAL_DEPS par2-turbo)
 endif()
 
-if(NOT HAVE_SYSTEM_REGEX_H)
-    list(APPEND EXTERNAL_DEPS regex)
-endif()
-
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
 include(CheckSymbolExists)
@@ -133,6 +127,11 @@ include(CheckFunctionExists)
 include(CheckTypeSize)
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
+
+check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
+if(NOT HAVE_SYSTEM_REGEX_H)
+	list(APPEND EXTERNAL_DEPS regex)
+endif()
 
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H)
