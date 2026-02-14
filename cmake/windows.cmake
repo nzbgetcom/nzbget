@@ -39,11 +39,12 @@ set(INCLUDES ${INCLUDES}
 )
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
-
 include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-add_dependencies(yencode par2-turbo)
+
+list(APPEND EXTERNAL_DEPS yencode par2-turbo)
+
 if(NOT HAVE_SYSTEM_REGEX_H)
-	add_dependencies(regex par2-turbo)
+	list(APPEND EXTERNAL_DEPS yencode regex)
 endif()
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)

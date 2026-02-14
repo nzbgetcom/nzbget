@@ -103,7 +103,7 @@ else()
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 
-		set(DEPENDENCIES boost)
+		list(APPEND EXTERNAL_DEPS boost)
 	else()
 		set(LIBS ${LIBS} Boost::json Boost::filesystem)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
@@ -116,19 +116,14 @@ include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	set(DEPENDENCIES ${DEPENDENCIES} par2-turbo)
+    list(APPEND EXTERNAL_DEPS par2-turbo)
 endif()
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-	add_dependencies(regex ${DEPENDENCIES})
+    list(APPEND EXTERNAL_DEPS regex)
 endif()
 
-if(DEPENDENCIES)
-	add_dependencies(yencode ${DEPENDENCIES})
-	if(NOT BUILD_ONLY_TESTS)
-		add_dependencies(${PACKAGE} ${DEPENDENCIES})
-	endif()
-endif()
+list(APPEND EXTERNAL_DEPS yencode)
 
 include(CheckIncludeFiles)
 include(CheckLibraryExists)
