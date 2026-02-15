@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "nzbget.h"
 #include "Options.h"
 #include "Status.h"
 #include "Validators.h"
