@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -185,8 +185,8 @@ Status ScriptDirValidator::Validate() const
 	const auto& paths = m_options.GetScriptDirPaths();
 	if (paths.empty())
 	{
-		return Status::Error("'" + std::string(Options::SCRIPTDIR) +
-							 "' is required and cannot be empty");
+		return Status::Warning("'" + std::string(Options::SCRIPTDIR) +
+							 "' is empty. Extensions cannot be found or installed");
 	}
 
 	for (const auto& dir : paths)
@@ -239,7 +239,7 @@ Status LogFileValidator::Validate(const boost::filesystem::path& path, Options::
 
 	if (path.empty())
 	{
-		return Status::Error("Logging is enabled, but '" + std::string(Options::LOGFILE) +
+		return Status::Warning("Logging is enabled, but '" + std::string(Options::LOGFILE) +
 							 "' is set to empty");
 	}
 

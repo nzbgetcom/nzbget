@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(TestLogFileValidator)
 	fs::path log = tempPath / "nzbget.log";
 
 	Status s1 = validator.Validate("", Options::EWriteLog::wlAppend);
-	BOOST_CHECK(s1.IsError());
+	BOOST_CHECK(s1.IsWarning());
 
 	Status s2 = validator.Validate("", Options::EWriteLog::wlNone);
 	BOOST_CHECK(s2.IsOk());
