@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -138,24 +138,31 @@ Status ControlPortValidator::Validate() const
 
 Status ControlUsernameValidator::Validate() const
 {
-	Status s = RequiredOption(Options::CONTROLUSERNAME, m_options.GetControlUsername());
-	if (!s.IsOk()) return s;
-
 	std::string_view username = m_options.GetControlUsername();
+	if (username.empty())
+	{
+		return Status::Info("Using an empty username is not recommended for security reasons");
+	}
+
 	if (username == "nzbget")
-		return Status::Info("Using default username 'nzbget' is not recommended for security");
+	{
+		return Status::Info("Using default username 'nzbget' is not recommended for security reasons");
+	}
 
 	return Status::Ok();
 }
 
 Status ControlPasswordValidator::Validate() const
 {
-	Status s = CheckPassword(m_options.GetControlPassword());
-	if (!s.IsOk()) return s;
+	std::string_view username = m_options.GetControlUsername();
+	if (username.empty()) return Status::Ok();
 
 	std::string_view password = m_options.GetControlPassword();
 	if (password == "tegbzn6789")
 		return Status::Info("Using default password is not recommended for security");
+
+	Status s = CheckPassword(password);
+	if (!s.IsOk()) return s;
 
 	return Status::Ok();
 }
