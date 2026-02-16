@@ -96,6 +96,17 @@ void Log::Filelog(const char* msg, ...)
 			m_logFile.reset();
 			return;
 		}
+
+#ifndef WIN32
+		if (getuid() == 0 || geteuid() == 0)
+		{
+			struct passwd* pwd = getpwnam(g_Options->GetDaemonUsername());
+			if (pwd != nullptr)
+			{
+				chown(m_logFilename, pwd->pw_uid, pwd->pw_gid);
+			}
+		}
+#endif
 	}
 
 	m_logFile->Seek(0, DiskFile::soEnd);
