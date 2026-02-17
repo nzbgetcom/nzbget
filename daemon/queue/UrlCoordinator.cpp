@@ -18,9 +18,8 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-
-#include "Unpack.h"
 #include "nzbget.h"
+#include "Unpack.h"
 
 #include "UrlCoordinator.h"
 #include "Options.h"
