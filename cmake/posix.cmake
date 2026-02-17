@@ -103,31 +103,20 @@ else()
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 
-		set(DEPENDENCIES boost)
+		list(APPEND EXTERNAL_DEPS boost)
 	else()
 		set(LIBS ${LIBS} Boost::json Boost::filesystem)
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
 	endif()
 endif()
 
-include(CheckIncludeFiles)
-check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+
+list(APPEND EXTERNAL_DEPS yencode)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	set(DEPENDENCIES ${DEPENDENCIES} par2-turbo)
-endif()
-
-if(NOT HAVE_SYSTEM_REGEX_H)
-	add_dependencies(regex ${DEPENDENCIES})
-endif()
-
-if(DEPENDENCIES)
-	add_dependencies(yencode ${DEPENDENCIES})
-	if(NOT BUILD_ONLY_TESTS)
-		add_dependencies(${PACKAGE} ${DEPENDENCIES})
-	endif()
+	list(APPEND EXTERNAL_DEPS par2-turbo)
 endif()
 
 include(CheckIncludeFiles)
@@ -137,6 +126,13 @@ include(CheckFunctionExists)
 include(CheckTypeSize)
 include(CheckCSourceCompiles)
 include(CheckCXXSourceCompiles)
+
+include(CheckIncludeFiles)
+check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
+
+if(NOT HAVE_SYSTEM_REGEX_H)
+	list(APPEND EXTERNAL_DEPS regex)
+endif()
 
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H)
