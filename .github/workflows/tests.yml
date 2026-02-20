@@ -1,6 +1,9 @@
 name: tests
 
 on:
+  push:
+    branches:
+    - develop
   pull_request:
     branches:
     - develop
@@ -244,5 +247,5 @@ jobs:
 
     - name: Build
       run: |
-        brew uninstall cmake
+        brew install --formula boost sevenzip
         brew install nzbget --formula --head --verbose
