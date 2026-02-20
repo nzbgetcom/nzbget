@@ -23,8 +23,8 @@ set -o nounset
 set -o errexit
 
 # unpackers versions
-UNRAR_VERSION=712
-ZIP7_VERSION=2501
+UNRAR_VERSION=720
+ZIP7_VERSION=2600
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
