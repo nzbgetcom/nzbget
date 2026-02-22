@@ -24,7 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <array>
-#include "Util.h"			
+#include "Util.h"
 #include "YEncode.h"
 
 #ifdef WIN32
@@ -212,7 +212,7 @@ Util::FindShellOverriddenExecutor(const std::string& fileExt, const std::string&
 	return std::nullopt;
 }
 
-std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view path)
+std::optional<fs::path> Util::ResolvePathFromEnv(std::string_view path)
 {
 	if (path.empty()) return std::nullopt;
 
@@ -234,9 +234,9 @@ std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view
 	{
 		if (dir.empty()) continue;
 
-		boost::filesystem::path p = boost::filesystem::path(dir) / path;
-		boost::system::error_code ec;
-		if (boost::filesystem::exists(p, ec) && boost::filesystem::is_regular_file(p, ec))
+		auto p = fs::path(dir) / path;
+		fs::error_code ec;
+		if (fs::exists(p, ec) && fs::is_regular_file(p, ec))
 		{
 			return p;
 		}

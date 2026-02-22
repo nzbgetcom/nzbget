@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "NString.h"
 #include "Thread.h"
 #include "FeedInfo.h"
+#include "FileSystem.h"
 
 
 class Options
@@ -313,7 +314,7 @@ public:
 		}
 		const char* GetName() const { return m_name.c_str(); }
 		const char* GetDestDir() const { return m_destDir.c_str(); }
-		const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
+		const fs::path& GetDestDirPath() const { return m_destDirPath; }
 		bool GetUnpack() const { return m_unpack; }
 		const char* GetExtensions() const { return m_extensions.c_str(); }
 		NameList* GetAliases() { return &m_aliases; }
@@ -323,7 +324,7 @@ public:
 		const std::string m_name;
 		const std::string m_destDir;
 		const std::string m_extensions;
-		const boost::filesystem::path m_destDirPath;
+		const fs::path m_destDirPath;
 		NameList m_aliases;
 		const bool m_unpack;
 	};
@@ -507,25 +508,25 @@ public:
 	void SetRemoteClientMode(bool remoteClientMode) { m_remoteClientMode = remoteClientMode; }
 	bool GetRemoteClientMode() const { return m_remoteClientMode; }
 
-	const boost::filesystem::path& GetAppDirPath() const { return m_appDirPath; }
-	const boost::filesystem::path& GetConfigFilePath() const { return m_configFilePath; }
-	const boost::filesystem::path& GetMainDirPath() const { return m_mainDirPath; }
-	const boost::filesystem::path& GetDestDirPath() const { return m_destDirPath; }
-	const boost::filesystem::path& GetInterDirPath() const { return m_interDirPath; }
-	const boost::filesystem::path& GetTempDirPath() const { return m_tempDirPath; }
-	const boost::filesystem::path& GetQueueDirPath() const { return m_queueDirPath; }
-	const boost::filesystem::path& GetNzbDirPath() const { return m_nzbDirPath; }
-	const boost::filesystem::path& GetWebDirPath() const { return m_webDirPath; }
-	const boost::filesystem::path& GetConfigTemplatePath() const { return m_configTemplatePath; }
-	const boost::filesystem::path& GetSecureCertPath() const { return m_secureCertPath; }
-	const boost::filesystem::path& GetSecureKeyPath() const { return m_secureKeyPath; }
-	const boost::filesystem::path& GetCertStorePath() const { return m_certStorePath; }
-	const boost::filesystem::path& GetLockFilePath() const { return m_lockFilePath; }
-	const boost::filesystem::path& GetLogFilePath() const { return m_logFilePath; }
-	const boost::filesystem::path& GetUnpackPassFilePath() const { return m_unpackPassFilePath; }
-	const boost::filesystem::path& GetUnrarPath() const { return m_unrarPath; }
-	const boost::filesystem::path& GetSevenZipPath() const { return m_sevenZipPath; }
-	const std::vector<boost::filesystem::path>& GetScriptDirPaths() const { return m_scriptDirPaths; }
+	const fs::path& GetAppDirPath() const { return m_appDirPath; }
+	const fs::path& GetConfigFilePath() const { return m_configFilePath; }
+	const fs::path& GetMainDirPath() const { return m_mainDirPath; }
+	const fs::path& GetDestDirPath() const { return m_destDirPath; }
+	const fs::path& GetInterDirPath() const { return m_interDirPath; }
+	const fs::path& GetTempDirPath() const { return m_tempDirPath; }
+	const fs::path& GetQueueDirPath() const { return m_queueDirPath; }
+	const fs::path& GetNzbDirPath() const { return m_nzbDirPath; }
+	const fs::path& GetWebDirPath() const { return m_webDirPath; }
+	const fs::path& GetConfigTemplatePath() const { return m_configTemplatePath; }
+	const fs::path& GetSecureCertPath() const { return m_secureCertPath; }
+	const fs::path& GetSecureKeyPath() const { return m_secureKeyPath; }
+	const fs::path& GetCertStorePath() const { return m_certStorePath; }
+	const fs::path& GetLockFilePath() const { return m_lockFilePath; }
+	const fs::path& GetLogFilePath() const { return m_logFilePath; }
+	const fs::path& GetUnpackPassFilePath() const { return m_unpackPassFilePath; }
+	const fs::path& GetUnrarPath() const { return m_unrarPath; }
+	const fs::path& GetSevenZipPath() const { return m_sevenZipPath; }
+	const std::vector<fs::path>& GetScriptDirPaths() const { return m_scriptDirPaths; }
 
 private:
 	void CheckDirs();
@@ -539,25 +540,25 @@ private:
 	Extender* m_extender;
 
 	// Options
-	boost::filesystem::path m_appDirPath;
-	boost::filesystem::path m_configFilePath;
-	boost::filesystem::path m_mainDirPath;
-	boost::filesystem::path m_destDirPath;
-	boost::filesystem::path m_interDirPath;
-	boost::filesystem::path m_tempDirPath;
-	boost::filesystem::path m_queueDirPath;
-	boost::filesystem::path m_nzbDirPath;
-	boost::filesystem::path m_webDirPath;
-	boost::filesystem::path m_configTemplatePath;
-	boost::filesystem::path m_secureCertPath;
-	boost::filesystem::path m_secureKeyPath;
-	boost::filesystem::path m_certStorePath;
-	boost::filesystem::path m_lockFilePath;
-	boost::filesystem::path m_logFilePath;
-	boost::filesystem::path m_unpackPassFilePath;
-	boost::filesystem::path m_unrarPath;
-	boost::filesystem::path m_sevenZipPath;
-	std::vector<boost::filesystem::path> m_scriptDirPaths;
+	fs::path m_appDirPath;
+	fs::path m_configFilePath;
+	fs::path m_mainDirPath;
+	fs::path m_destDirPath;
+	fs::path m_interDirPath;
+	fs::path m_tempDirPath;
+	fs::path m_queueDirPath;
+	fs::path m_nzbDirPath;
+	fs::path m_webDirPath;
+	fs::path m_configTemplatePath;
+	fs::path m_secureCertPath;
+	fs::path m_secureKeyPath;
+	fs::path m_certStorePath;
+	fs::path m_lockFilePath;
+	fs::path m_logFilePath;
+	fs::path m_unpackPassFilePath;
+	fs::path m_unrarPath;
+	fs::path m_sevenZipPath;
+	std::vector<fs::path> m_scriptDirPaths;
 
 	bool m_configErrors = false;
 	int m_configLine = 0;
@@ -701,8 +702,7 @@ private:
 	OptEntry* FindOption(const char* optname);
 	const char* GetOption(const char* optname);
 	void SetOption(const char* optname, const char* value);
-	void SetPathOption(boost::filesystem::path& pathOpt, std::string_view value);
-	void SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value);
+	void SetToolPathOption(fs::path& pathOpt, std::string_view value);
 	bool SetOptionString(const char* option);
 	bool ValidateOptionName(const char* optname, const char* optvalue);
 	void LoadConfigFile();

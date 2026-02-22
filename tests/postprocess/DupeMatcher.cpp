@@ -23,10 +23,9 @@
 
 #include <boost/test/unit_test.hpp>
 #include "DupeMatcher.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
-
-namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {

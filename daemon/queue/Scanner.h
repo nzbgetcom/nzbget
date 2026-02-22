@@ -25,7 +25,7 @@
 
 #include <mutex>
 #include <string>
-#include <boost/filesystem.hpp>
+#include "FileSystem.h"
 #include "DownloadInfo.h"
 #include "Thread.h"
 #include "Service.h"
@@ -186,9 +186,9 @@ private:
 	 * Otherwise, the detected category (if any) is set directly.
 	 */
 	void DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, const char* nzbName);
-	void CheckIncomingArchives(const boost::filesystem::path& dir);
-	std::vector<boost::filesystem::path> FindArchives(const boost::filesystem::path& dir);
-	void UnpackArchives(const std::vector<boost::filesystem::path>& archives);
+	void CheckIncomingArchives(const fs::path& dir);
+	std::vector<fs::path> FindArchives(const fs::path& dir);
+	void UnpackArchives(const std::vector<fs::path>& archives);
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
 	bool AddFileToQueue(
 		const char* filename, 

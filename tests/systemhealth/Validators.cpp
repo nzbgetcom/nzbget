@@ -19,15 +19,15 @@
 
 #include "nzbget.h"
 
-#include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 #include <fstream>
+#include <string>
+#include "FileSystem.h"
 #include "Validators.h"
 
 BOOST_AUTO_TEST_SUITE(SystemHealthTest)
 
 using namespace SystemHealth;
-namespace fs = boost::filesystem;
 
 struct TempDirFixture
 {
@@ -35,13 +35,13 @@ struct TempDirFixture
 
 	TempDirFixture()
 	{
-		tempPath = fs::temp_directory_path() / fs::unique_path("test_syshealth_%%%%");
+		tempPath = fs::temp_directory_path() / std::string(boost::unit_test::framework::current_test_case().p_name);
 		fs::create_directories(tempPath);
 	}
 
 	~TempDirFixture()
 	{
-		boost::system::error_code ec;
+		fs::error_code ec;
 		fs::remove_all(tempPath, ec);
 	}
 };
@@ -209,6 +209,7 @@ BOOST_AUTO_TEST_CASE(TestFileExecutable)
 	BOOST_CHECK(s2.GetMessage().find("missing file extension") != std::string::npos);
 
 #else
+#ifdef HAVE_STD_FILESYSTEM
 	fs::path script = tempPath / "script.sh";
 	{
 		std::ofstream(script.c_str()) << "#!/bin/bash";
@@ -217,8 +218,9 @@ BOOST_AUTO_TEST_CASE(TestFileExecutable)
 	Status s = SystemHealth::File::Executable(script);
 	BOOST_CHECK(s.IsError());
 
-	fs::permissions(script, fs::add_perms | fs::owner_exe);
+	fs::permissions(script, fs::perms::owner_exec, fs::perm_options::add);
 	BOOST_CHECK(SystemHealth::File::Executable(script).IsOk());
+#endif
 #endif
 }
 
@@ -247,11 +249,12 @@ BOOST_AUTO_TEST_CASE(TestDirectoryWritable)
 
 	BOOST_CHECK(SystemHealth::Directory::Writable(d).IsOk());
 	BOOST_CHECK(!fs::exists(d / "nzbget_write_test.tmp"));
-
 #ifndef _WIN32
-	fs::permissions(d, fs::remove_perms | fs::owner_write);
+#ifdef HAVE_STD_FILESYSTEM
+	fs::permissions(d, fs::perms::owner_write, fs::perm_options::remove);
 	BOOST_CHECK(SystemHealth::Directory::Writable(d).IsError());
-	fs::permissions(d, fs::add_perms | fs::owner_write);
+	fs::permissions(d, fs::perms::owner_write, fs::perm_options::add);
+#endif
 #endif
 }
 
@@ -263,9 +266,11 @@ BOOST_AUTO_TEST_CASE(TestDirectoryReadable)
 	BOOST_CHECK(SystemHealth::Directory::Readable(d).IsOk());
 
 #ifndef _WIN32
-	fs::permissions(d, fs::remove_perms | fs::owner_read);
+#ifdef HAVE_STD_FILESYSTEM
+	fs::permissions(d, fs::perms::owner_read, fs::perm_options::remove);
 	BOOST_CHECK(SystemHealth::Directory::Readable(d).IsError());
-	fs::permissions(d, fs::add_perms | fs::owner_read);
+	fs::permissions(d, fs::perms::owner_read, fs::perm_options::add);
+#endif
 #endif
 }
 

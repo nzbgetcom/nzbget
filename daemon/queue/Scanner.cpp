@@ -39,8 +39,6 @@
 #include "Utf8.h"
 #endif
 
-namespace fs = boost::filesystem;
-
 int Scanner::m_idGen = 0;
 
 Scanner::QueueData::QueueData(
@@ -167,13 +165,13 @@ void Scanner::ServiceWork()
 	m_queueList.clear();
 }
 
-void Scanner::CheckIncomingArchives(const boost::filesystem::path& dir)
+void Scanner::CheckIncomingArchives(const fs::path& dir)
 {
 	const auto archives = FindArchives(dir);
 	UnpackArchives(archives);
 }
 
-std::vector<boost::filesystem::path> Scanner::FindArchives(const boost::filesystem::path& dir)
+std::vector<fs::path> Scanner::FindArchives(const fs::path& dir)
 {
 	std::vector<fs::path> archives;
 	archives.reserve(4);
@@ -194,7 +192,7 @@ std::vector<boost::filesystem::path> Scanner::FindArchives(const boost::filesyst
 	return archives;
 }
 
-void Scanner::UnpackArchives(const std::vector<boost::filesystem::path>& archives)
+void Scanner::UnpackArchives(const std::vector<fs::path>& archives)
 {
 	if (archives.empty()) return;
 
@@ -209,7 +207,7 @@ void Scanner::UnpackArchives(const std::vector<boost::filesystem::path>& archive
 														 Unpack::OverwriteMode::Overwrite);
 
 			const auto result = extractor->Extract();
-			boost::system::error_code ec;
+			fs::error_code ec;
 			if (result.success)
 			{
 				info("%s extracted successfully", filename.c_str());
@@ -741,16 +739,8 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 		return EAddStatus::asFailed;
 	}
 
-	boost::system::error_code ec;
-	const auto uniqueDir = fs::unique_path("download-%%%%-%%%%", ec);
-	if (ec)
-	{
-		const auto msg = ec.message();
-		error("Failed to generate unique temporary path: %s (code %d)", msg.c_str(), ec.value());
-		return EAddStatus::asFailed;
-	}
-
-	const auto downloadDir = g_Options->GetTempDirPath() / uniqueDir;
+	fs::error_code ec;
+	const auto downloadDir = g_Options->GetTempDirPath() / filename;
 	const auto unpackDir = downloadDir / "_unpack";
 #ifdef _WIN32
 	const auto wfilename = Utf8::Utf8ToWide(filename);
@@ -938,7 +928,7 @@ Scanner::EAddStatus Scanner::AddArchive(
 		error("Could not open file '%s'", tmpFilename);
 		return EAddStatus::asFailed;
 	}
-	boost::system::error_code ec;
+	fs::error_code ec;
 	fs::remove(tmpFilename, ec);
 	if (ec)
 	{

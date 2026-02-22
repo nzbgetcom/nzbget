@@ -47,7 +47,7 @@ PathsValidator::PathsValidator(const Options& options) : m_options(options)
 
 Status MainDirValidator::Validate() const { return Validate(m_options.GetMainDirPath()); }
 
-Status MainDirValidator::Validate(const boost::filesystem::path& path)
+Status MainDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::MAINDIR, path)
 		.And(&Directory::Exists, path)
@@ -65,7 +65,7 @@ Status DestDirValidator::Validate() const
 			});
 }
 
-Status DestDirValidator::Validate(const boost::filesystem::path& path)
+Status DestDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::DESTDIR, path)
 		.And(&Directory::Exists, path)
@@ -84,7 +84,7 @@ Status InterDirValidator::Validate() const
 			});
 }
 
-Status InterDirValidator::Validate(const boost::filesystem::path& path)
+Status InterDirValidator::Validate(const fs::path& path)
 {
 	if (path.empty())
 		return Status::Warning(
@@ -107,7 +107,7 @@ Status NzbDirValidator::Validate() const
 			});
 }
 
-Status NzbDirValidator::Validate(const boost::filesystem::path& path)
+Status NzbDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::NZBDIR, path)
 		.And(&Directory::Exists, path)
@@ -128,7 +128,7 @@ Status QueueDirValidator::Validate() const
 			});
 }
 
-Status QueueDirValidator::Validate(const boost::filesystem::path& path)
+Status QueueDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::QUEUEDIR, path)
 		.And(&Directory::Exists, path)
@@ -151,7 +151,7 @@ Status WebDirValidator::Validate() const
 		});
 }
 
-Status WebDirValidator::Validate(const boost::filesystem::path& path)
+Status WebDirValidator::Validate(const fs::path& path)
 {
 	if (path.empty()) return Status::Ok();
 	return Directory::Exists(path).And(&Directory::Readable, path);
@@ -173,7 +173,7 @@ Status TempDirValidator::Validate() const
 			});
 }
 
-Status TempDirValidator::Validate(const boost::filesystem::path& path)
+Status TempDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::TEMPDIR, path)
 		.And(&Directory::Exists, path)
@@ -212,7 +212,7 @@ Status ScriptDirValidator::Validate() const
 	return Status::Ok();
 }
 
-Status ScriptDirValidator::Validate(const boost::filesystem::path& path)
+Status ScriptDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::SCRIPTDIR, path)
 		.And(&Directory::Exists, path)
@@ -233,7 +233,7 @@ Status LogFileValidator::Validate() const
 			});
 }
 
-Status LogFileValidator::Validate(const boost::filesystem::path& path, Options::EWriteLog writeLog)
+Status LogFileValidator::Validate(const fs::path& path, Options::EWriteLog writeLog)
 {
 	if (writeLog == Options::EWriteLog::wlNone) return Status::Ok();
 
@@ -272,7 +272,7 @@ Status CertStoreValidator::Validate() const
 			});
 }
 
-Status CertStoreValidator::Validate(const boost::filesystem::path& path, bool certCheck)
+Status CertStoreValidator::Validate(const fs::path& path, bool certCheck)
 {
 	if (path.empty() && !certCheck) return Status::Ok();
 
@@ -308,7 +308,7 @@ Status LockFileValidator::Validate() const
 			});
 }
 
-Status LockFileValidator::Validate(const boost::filesystem::path& path, bool daemonMode)
+Status LockFileValidator::Validate(const fs::path& path, bool daemonMode)
 {
 	if (path.empty() && daemonMode)
 	{

@@ -41,3 +41,26 @@ endif()
 
 include(ExternalProject)
 include(CheckCXXCompilerFlag)
+include(CheckIncludeFiles)
+include(CheckLibraryExists)
+include(CheckSymbolExists)
+include(CheckFunctionExists)
+include(CheckTypeSize)
+include(CheckCSourceCompiles)
+include(CheckCXXSourceCompiles)
+
+if (TOOLCHAIN_PREFIX MATCHES "android")
+	set(HAVE_STD_FILESYSTEM FALSE)
+else()
+	check_cxx_source_compiles("
+	#include <filesystem>
+	int main() {
+		std::filesystem::path p(\"/tmp\");
+		return std::filesystem::exists(p) ? 0 : 1;
+	}
+	" HAVE_STD_FILESYSTEM)
+endif()
+
+if(NOT HAVE_STD_FILESYSTEM)
+	message(STATUS "Target does not support native std::filesystem. Enabling Boost.Filesystem fallback")
+endif()

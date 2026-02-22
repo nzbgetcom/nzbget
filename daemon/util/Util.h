@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include <optional>
 #include <type_traits>
 #include <string_view>
-#include <boost/filesystem.hpp>
+#include "FileSystem.h"
 #include "NString.h"
 
 #ifdef WIN32
@@ -44,7 +44,7 @@ public:
 	FindShellOverriddenExecutor(const std::string& fileExt, const std::string& customPath);
 	static std::optional<std::string> FindPython();
 
-	static std::optional<boost::filesystem::path> ResolvePathFromEnv(std::string_view path);
+	static std::optional<fs::path> ResolvePathFromEnv(std::string_view path);
 
 	/*
 	* Split command line into arguments.

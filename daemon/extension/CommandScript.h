@@ -23,6 +23,7 @@
 
 #include "NzbScript.h"
 #include "Log.h"
+#include "Options.h"
 
 class CommandScriptController : public Thread, public NzbScriptController
 {

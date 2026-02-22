@@ -24,10 +24,9 @@
 #include <string>
 #include "ExtensionManager.h"
 #include "Options.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(ExtensionTest)
-
-namespace fs = boost::filesystem;
 
 const fs::path CURRENT_PATH = fs::current_path();
 const fs::path SCRIPTS_DIR = CURRENT_PATH / "scripts";

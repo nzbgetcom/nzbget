@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,8 +30,8 @@ namespace Unpack
 {
 Extractor::~Extractor() = default;
 
-ExtractorBase::ExtractorBase(boost::filesystem::path tool, boost::filesystem::path archive,
-							 boost::filesystem::path outputDir, std::string password,
+ExtractorBase::ExtractorBase(fs::path tool, fs::path archive,
+							 fs::path outputDir, std::string password,
 							 OverwriteMode mode)
 	: m_tool(std::move(tool)),
 	  m_archive(std::move(archive)),
@@ -57,8 +57,8 @@ Result ExtractorBase::Extract()
 
 Result ExtractorBase::CheckPrerequisites() const
 {
-	boost::system::error_code ec;
-	boost::filesystem::create_directories(m_outputDir, ec);
+	fs::error_code ec;
+	fs::create_directories(m_outputDir, ec);
 	if (ec) return {false, "Failed to create the output directory"};
 
 	return {true, ""};
@@ -71,21 +71,21 @@ std::string ExtractorBase::MakePassword() const
 	return "-p\"" + m_password + "\"";
 }
 
-bool IsArchive(const boost::filesystem::path& file)
+bool IsArchive(const fs::path& file)
 {
 	return SevenZip::IsSupported(file) || Unrar::IsSupported(file);
 }
 
-ExtractorPtr MakeExtractor(boost::filesystem::path archive, boost::filesystem::path outputDir,
+ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 						   std::string password, OverwriteMode mode)
 {
-	auto validateTool = [](const boost::filesystem::path& toolPath, std::string_view optionName)
+	auto validateTool = [](const fs::path& toolPath, std::string_view optionName)
 	{
 		if (toolPath.empty())
 			throw std::runtime_error(std::string(optionName) + " is not configured");
 
-		boost::system::error_code ec;
-		bool exists = boost::filesystem::exists(toolPath, ec);
+		fs::error_code ec;
+		bool exists = fs::exists(toolPath, ec);
 		if (ec)
 			throw std::runtime_error("Failed to access '" + toolPath.string() +
 									 "': " + ec.message());

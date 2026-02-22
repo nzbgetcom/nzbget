@@ -25,6 +25,7 @@
 #include <iostream>
 #include "Options.h"
 #include "FeedInfo.h"
+#include "FileSystem.h"
 
 std::ostream& operator<<(std::ostream& os, FeedInfo::CategorySource categorySource)
 {
@@ -201,7 +202,7 @@ BOOST_AUTO_TEST_CASE(ParsePathsTest)
 	BOOST_CHECK_EQUAL(options.GetSecureKey(), "/usr/etc/nzbget/key.pem");
 	BOOST_CHECK_EQUAL(options.GetUnpackPassFilePath(), "/usr/etc/nzbget/unpackpass");
 
-	const std::vector<boost::filesystem::path>& scriptPaths = options.GetScriptDirPaths();
+	const std::vector<fs::path>& scriptPaths = options.GetScriptDirPaths();
 
 	BOOST_REQUIRE_EQUAL(scriptPaths.size(), 2);
 	BOOST_CHECK_EQUAL(scriptPaths[0], "/usr/etc/nzbget/scripts");

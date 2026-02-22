@@ -1424,4 +1424,3 @@ bool DiskFile::Sync(CString& errmsg)
 {
 	return FileSystem::FlushFileBuffers(fileno(m_file), errmsg);
 }
-

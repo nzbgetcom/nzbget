@@ -19,15 +19,14 @@
 
 #include "nzbget.h"
 
-#include <boost/filesystem.hpp>
 #include <boost/test/unit_test.hpp>
 #include <fstream>
 #include "Options.h"
 #include "PathsValidator.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(SystemHealthTest)
 
-namespace fs = boost::filesystem;
 using namespace SystemHealth;
 using namespace SystemHealth::Paths;
 
@@ -61,13 +60,13 @@ struct PathsFixture
 
 	PathsFixture()
 	{
-		tempPath = fs::temp_directory_path() / fs::unique_path("nzbget_paths_test_%%%%");
+		tempPath = fs::temp_directory_path() / std::string(boost::unit_test::framework::current_test_case().p_name);
 		fs::create_directories(tempPath);
 	}
 
 	~PathsFixture()
 	{
-		boost::system::error_code ec;
+		fs::error_code ec;
 		fs::remove_all(tempPath, ec);
 	}
 };

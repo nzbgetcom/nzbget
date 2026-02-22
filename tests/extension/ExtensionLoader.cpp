@@ -23,10 +23,9 @@
 #include <boost/test/unit_test.hpp>
 #include "Extension.h"
 #include "ExtensionLoader.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(ExtensionTest)
-
-namespace fs = boost::filesystem;
 
 const fs::path CURR_DIR = fs::current_path();
 

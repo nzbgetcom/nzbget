@@ -21,12 +21,10 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
-#include <boost/filesystem.hpp>
+#include "FileSystem.h"
 #include "ManifestFile.h"
 
 BOOST_AUTO_TEST_SUITE(ExtensionTest)
-
-namespace fs = boost::filesystem;
 
 BOOST_AUTO_TEST_CASE(ManifestFileTest)
 {
