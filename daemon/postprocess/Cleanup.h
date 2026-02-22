@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,11 +32,11 @@
 class MoveController : public Thread, public ScriptController
 {
 public:
-	virtual void Run();
+	void Run() override;
 	static void StartJob(PostInfo* postInfo);
 
 protected:
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	PostInfo* m_postInfo;
@@ -50,11 +50,11 @@ private:
 class CleanupController : public Thread, public ScriptController
 {
 public:
-	virtual void Run();
+	void Run() override;
 	static void StartJob(PostInfo* postInfo);
 
 protected:
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	PostInfo* m_postInfo;
@@ -62,6 +62,7 @@ private:
 	CString m_finalDir;
 
 	bool Cleanup(const char* destDir, bool *deleted);
+	void CleanupHardLinkDir(NzbInfo& nzbInfo);
 };
 
 #endif
