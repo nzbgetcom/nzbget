@@ -41,8 +41,8 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.1.10
-ZIP7_VERSION=2501
+UNRAR7_VERSION=7.2.4
+ZIP7_VERSION=2600
 
 # libs versions
 # https://invisible-island.net/ncurses/announce.html
@@ -52,7 +52,7 @@ ZLIB_VERSION=1.3.1
 # https://gitlab.gnome.org/GNOME/libxml2/-/releases
 LIBXML2_VERSION=2.13.5
 # https://github.com/openssl/openssl/releases
-OPENSSL_VERSION=3.5.4
+OPENSSL_VERSION=3.5.5
 # https://github.com/boostorg/boost/releases
 BOOST_VERSION=1.84.0
 
