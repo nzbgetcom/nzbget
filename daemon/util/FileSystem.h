@@ -47,7 +47,7 @@ namespace fs
 {
 using namespace boost::filesystem;
 using error_code = boost::system::error_code;
-using errc = boost::system::errc;
+namespace errc = boost::system::errc;
 
 inline fs::path u8path(std::string_view pathStr)
 {
