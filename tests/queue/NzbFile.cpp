@@ -24,10 +24,9 @@
 #include <boost/test/unit_test.hpp>
 #include "Options.h"
 #include "NzbFile.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(QueueTest)
-
-namespace fs = boost::filesystem;
 
 const fs::path CURR_DIR = fs::current_path();
 

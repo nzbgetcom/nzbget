@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,55 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-
 #include <optional>
+#include <chrono>
 #include "NString.h"
-#include "Options.h"
+
+#ifdef _WIN32
+#include "Utf8.h"
+#endif
+
+#ifdef HAVE_STD_FILESYSTEM
+#include <filesystem>
+
+namespace fs
+{
+using namespace std::filesystem;
+using error_code = std::error_code;
+using errc = std::errc;
+}
+
+#else
+#include <boost/filesystem.hpp>
+
+namespace fs
+{
+using namespace boost::filesystem;
+using error_code = boost::system::error_code;
+using errc = boost::system::errc;
+
+inline fs::path u8path(std::string_view pathStr)
+{
+#ifdef _WIN32
+	if (auto wstr = Utf8::Utf8ToWide(pathStr))
+		return fs::path(*wstr);
+	return fs::path(pathStr); 
+#else
+	return fs::path(pathStr);
+#endif
+}
+
+}
+
+#endif
+
+namespace fs
+{
+	inline path make_unique_filename()
+	{
+		return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+	}
+}
 
 class FileSystem
 {

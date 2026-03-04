@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -185,7 +185,6 @@
 #include <libxml/entities.h>
 #include <libxml/tree.h>
 
-#include <boost/filesystem.hpp>
 #include <boost/asio.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
@@ -282,6 +281,7 @@
 #define FOPEN_AB "ab"
 #define CHILD_WATCHDOG 1
 #define fseek fseeko
+#define ftell ftello
 
 #endif /* POSIX */
 

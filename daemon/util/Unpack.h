@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,10 +20,10 @@
 #ifndef UNPACK_H
 #define UNPACK_H
 
-#include <boost/filesystem.hpp>
 #include <memory>
 #include <string_view>
 #include "ScriptController.h"
+#include "FileSystem.h"
 
 #ifdef _WIN32
 #include "Utf8.h"
@@ -54,8 +54,8 @@ public:
 class ExtractorBase : public Extractor
 {
 public:
-	ExtractorBase(boost::filesystem::path tool, boost::filesystem::path archive,
-				  boost::filesystem::path outputDir, std::string password, OverwriteMode mode);
+	ExtractorBase(fs::path tool, fs::path archive,
+		fs::path outputDir, std::string password, OverwriteMode mode);
 	Result Extract() final;
 
 protected:
@@ -63,9 +63,9 @@ protected:
 	virtual std::string MakePassword() const;
 	virtual Result DecodeExitCode(int ec) const = 0;
 
-	const boost::filesystem::path m_tool;
-	const boost::filesystem::path m_archive;
-	const boost::filesystem::path m_outputDir;
+	const fs::path m_tool;
+	const fs::path m_archive;
+	const fs::path m_outputDir;
 	const std::string m_password;
 	const OverwriteMode m_mode;
 
@@ -91,7 +91,7 @@ public:
 	SevenZip(const SevenZip&) = delete;
 	SevenZip operator=(const SevenZip&) = delete;
 
-	static bool IsSupported(const boost::filesystem::path& path);
+	static bool IsSupported(const fs::path& path);
 private:
 	ScriptController::ArgList MakeArgs() const override;
 	Result DecodeExitCode(int ec) const override;
@@ -123,16 +123,16 @@ public:
 	Unrar(const Unrar&) = delete;
 	Unrar operator=(const Unrar&) = delete;
 
-	static bool IsSupported(const boost::filesystem::path& path);
+	static bool IsSupported(const fs::path& path);
 private:
 	ScriptController::ArgList MakeArgs() const override;
 	Result DecodeExitCode(int ec) const override;
 };
 
 using ExtractorPtr = std::unique_ptr<Extractor>;
-ExtractorPtr MakeExtractor(boost::filesystem::path archive, boost::filesystem::path outputDir,
+ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 						   std::string password, OverwriteMode mode) noexcept(false);
-bool IsArchive(const boost::filesystem::path& file);
+bool IsArchive(const fs::path& file);
 }  // namespace Unpack
 
 #endif

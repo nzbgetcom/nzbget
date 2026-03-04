@@ -24,10 +24,9 @@
 #include <boost/test/unit_test.hpp>
 #include "Options.h"
 #include "ParChecker.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
-
-namespace fs = boost::filesystem;
 
 static const fs::path CURR_DIR = fs::current_path();
 static const fs::path TEST_DATA_DIR = CURR_DIR / "parchecker";

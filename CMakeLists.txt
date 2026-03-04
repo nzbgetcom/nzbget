@@ -53,9 +53,9 @@ configure_file(
 if(NOT BUILD_ONLY_TESTS)
 	add_executable(${PACKAGE} ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.cpp ${SRC})
 
-if(EXTERNAL_DEPS)
-	add_dependencies(${PACKAGE} ${EXTERNAL_DEPS})
-endif()
+	if(EXTERNAL_DEPS)
+		add_dependencies(${PACKAGE} ${EXTERNAL_DEPS})
+	endif()
 
 	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})

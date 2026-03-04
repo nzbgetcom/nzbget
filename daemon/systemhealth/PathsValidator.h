@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include "SectionValidator.h"
 #include "Options.h"
+#include "FileSystem.h"
 
 namespace SystemHealth::Paths
 {
@@ -43,7 +44,7 @@ public:
 
 	std::string_view GetName() const override { return Options::MAINDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -56,7 +57,7 @@ public:
 
 	std::string_view GetName() const override { return Options::DESTDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -69,7 +70,7 @@ public:
 
 	std::string_view GetName() const override { return Options::INTERDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -82,7 +83,7 @@ public:
 
 	std::string_view GetName() const override { return Options::NZBDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -95,7 +96,7 @@ public:
 
 	std::string_view GetName() const override { return Options::QUEUEDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -108,7 +109,7 @@ public:
 
 	std::string_view GetName() const override { return Options::WEBDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -121,7 +122,7 @@ public:
 
 	std::string_view GetName() const override { return Options::TEMPDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -134,7 +135,7 @@ public:
 
 	std::string_view GetName() const override { return Options::SCRIPTDIR; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path);
+	static Status Validate(const fs::path& path);
 
 private:
 	const Options& m_options;
@@ -159,7 +160,7 @@ public:
 
 	std::string_view GetName() const override { return Options::LOGFILE; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path, Options::EWriteLog writeLog);
+	static Status Validate(const fs::path& path, Options::EWriteLog writeLog);
 
 private:
 	const Options& m_options;
@@ -172,7 +173,7 @@ public:
 
 	std::string_view GetName() const override { return Options::CERTSTORE; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path, bool certCheck);
+	static Status Validate(const fs::path& path, bool certCheck);
 
 private:
 	const Options& m_options;
@@ -197,7 +198,7 @@ public:
 
 	std::string_view GetName() const override { return Options::LOCKFILE; }
 	Status Validate() const override;
-	static Status Validate(const boost::filesystem::path& path, bool daemonMode);
+	static Status Validate(const fs::path& path, bool daemonMode);
 
 private:
 	const Options& m_options;

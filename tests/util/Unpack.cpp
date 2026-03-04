@@ -21,8 +21,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include "Unpack.h"
+#include "FileSystem.h"
 
-namespace fs = boost::filesystem;
 using namespace Unpack;
 
 BOOST_AUTO_TEST_SUITE(UtilTest)

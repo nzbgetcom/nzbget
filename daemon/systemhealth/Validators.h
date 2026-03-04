@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <boost/filesystem.hpp>
+#include "FileSystem.h"
 #include "Status.h"
 
 namespace SystemHealth
@@ -37,26 +37,26 @@ public:
 };
 
 Status RequiredOption(std::string_view name, std::string_view value);
-Status RequiredPathOption(std::string_view name, const boost::filesystem::path& value);
+Status RequiredPathOption(std::string_view name, const fs::path& value);
 Status UniquePath(
-	std::string_view name, const boost::filesystem::path& path,
-	const std::vector<std::pair<std::string_view, const boost::filesystem::path&>>& other);
+	std::string_view name, const fs::path& path,
+	const std::vector<std::pair<std::string_view, const fs::path&>>& other);
 Status CheckPassword(std::string_view password);
 Status CheckPositiveNum(std::string_view name, int value);
 
 namespace File
 {
-Status Exists(const boost::filesystem::path& path);
-Status Readable(const boost::filesystem::path& path);
-Status Writable(const boost::filesystem::path& path);
-Status Executable(const boost::filesystem::path& path);
+Status Exists(const fs::path& path);
+Status Readable(const fs::path& path);
+Status Writable(const fs::path& path);
+Status Executable(const fs::path& path);
 }  // namespace File
 
 namespace Directory
 {
-Status Exists(const boost::filesystem::path& path);
-Status Readable(const boost::filesystem::path& path);
-Status Writable(const boost::filesystem::path& path);
+Status Exists(const fs::path& path);
+Status Readable(const fs::path& path);
+Status Writable(const fs::path& path);
 }  // namespace Directory
 
 namespace Network

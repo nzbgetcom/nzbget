@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ ScriptController::ArgList SevenZip::MakeArgs() const
 	return args;
 }
 
-bool SevenZip::IsSupported(const boost::filesystem::path& path)
+bool SevenZip::IsSupported(const fs::path& path)
 {
 	if (!path.has_filename() || !path.has_extension()) return false;
 

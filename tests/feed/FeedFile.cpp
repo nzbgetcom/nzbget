@@ -21,10 +21,10 @@
 
 #include <boost/test/unit_test.hpp>
 #include "FeedFile.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(FeedTest)
 
-namespace fs = boost::filesystem;
 
 const fs::path CURR_DIR = fs::current_path();
 

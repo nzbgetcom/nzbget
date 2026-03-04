@@ -26,10 +26,9 @@
 #include "Log.h"
 #include "Options.h"
 #include "DiskState.h"
+#include "FileSystem.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
-
-namespace fs = boost::filesystem;
 
 const fs::path CURR_DIR = fs::current_path();
 const fs::path TEST_DATA_DIR = CURR_DIR / "rarrenamer";
