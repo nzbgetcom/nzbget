@@ -224,7 +224,7 @@ void Scanner::UnpackArchives(const std::vector<fs::path>& archives)
 			{
 				error("Failed to extract %s: %s", filename.c_str(), result.message.data());
 				auto processedArchive = archive;
-				const auto newExtension = archive.extension().string() + ".error";
+				const auto newExtension = fs::u8string(archive.extension()) + ".error";
 				processedArchive.replace_extension(newExtension);
 				fs::rename(archive, processedArchive, ec);
 				if (ec)
@@ -753,9 +753,9 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 #else
 	const auto archiveFile = downloadDir / filename;
 #endif
-	const auto unpackDirStr = unpackDir.string();
-	const auto archiveFileStr = archiveFile.string();
-	const auto downloadDirStr = downloadDir.string();
+	const auto unpackDirStr = fs::u8string(unpackDir);
+	const auto archiveFileStr = fs::u8string(archiveFile);
+	const auto downloadDirStr = fs::u8string(downloadDir);
 
 	fs::create_directories(unpackDir, ec);
 	if (ec)
@@ -872,8 +872,8 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 					continue;
 				}
 
-				const auto destPathStr = destPath.string();
-				const auto filenameStr = destPath.filename().string();
+				const auto destPathStr = fs::u8string(destPath);
+				const auto filenameStr = fs::u8string(destPath.filename());
 
 				CString useCategory = ResolveCategory(category, filenameStr.c_str());
 

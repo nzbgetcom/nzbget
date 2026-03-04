@@ -58,12 +58,7 @@ namespace ExtensionManager
 	{
 		fs::path tmpFileName = g_Options->GetTempDirPath() / (extName + ".tmp.zip");
 
-#ifdef _WIN32
-		const auto tmpFileNameStr =
-			Utf8::WideToUtf8(tmpFileName.wstring()).value_or(tmpFileName.string());
-#else
-		const auto tmpFileNameStr = tmpFileName.string();
-#endif
+		const auto tmpFileNameStr = fs::u8string(tmpFileName);
 
 		std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
 		downloader->SetUrl(url.c_str());
@@ -102,7 +97,7 @@ namespace ExtensionManager
 			if (ec)
 			{
 				return "Failed to remove existing extension (Error: " + deleteExtError.value() + 
-									") and failed to cleanup temporary file '" + filename.string() + 
+									") and failed to cleanup temporary file '" + fs::u8string(filename) + 
 									"' (Error: " + ec.message() + ")";
 			}
 
@@ -140,7 +135,7 @@ namespace ExtensionManager
 			const auto result = extractor->Extract();
 			if (!result.success)
 			{
-				return "Extraction failed for archive '" + file.string() +
+				return "Extraction failed for archive '" + fs::u8string(file) +
 					   "'. Error: " + std::string(result.message);
 			}
 
@@ -149,14 +144,14 @@ namespace ExtensionManager
 			if (ec)
 			{
 				return "Extension unpacked, but failed to delete temporary archive '" +
-					   file.string() + "': " + ec.message();
+					   fs::u8string(file) + "': " + ec.message();
 			}
 
 			return std::nullopt;
 		}
 		catch (const std::exception& e)
 		{
-			return "Extraction of " + file.string() + " failed: " + e.what();
+			return "Extraction of " + fs::u8string(file) + " failed: " + e.what();
 		}
 	}
 

@@ -87,9 +87,9 @@ ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 		fs::error_code ec;
 		bool exists = fs::exists(toolPath, ec);
 		if (ec)
-			throw std::runtime_error("Failed to access '" + toolPath.string() +
+			throw std::runtime_error("Failed to access '" + fs::u8string(toolPath) +
 									 "': " + ec.message());
-		if (!exists) throw std::runtime_error(toolPath.string() + " doesn't exist");
+		if (!exists) throw std::runtime_error(fs::u8string(toolPath) + " doesn't exist");
 
 		return toolPath;
 	};
@@ -108,6 +108,6 @@ ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 									   std::move(password), mode);
 	}
 
-	throw std::runtime_error("Unsupported archive format: " + archive.extension().string());
+	throw std::runtime_error("Unsupported archive format: " + fs::u8string(archive.extension()));
 }
 }  // namespace Unpack
