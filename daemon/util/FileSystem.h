@@ -23,6 +23,7 @@
 #define FILESYSTEM_H
 
 #include <optional>
+#include <chrono>
 #include "NString.h"
 
 #ifdef _WIN32
@@ -62,6 +63,14 @@ inline fs::path u8path(std::string_view pathStr)
 }
 
 #endif
+
+namespace fs
+{
+	inline path make_unique_filename()
+	{
+		return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+	}
+}
 
 class FileSystem
 {

@@ -60,7 +60,7 @@ struct PathsFixture
 
 	PathsFixture()
 	{
-		tempPath = fs::temp_directory_path() / std::string(boost::unit_test::framework::current_test_case().p_name);
+		tempPath = fs::temp_directory_path() / fs::make_unique_filename();
 		fs::create_directories(tempPath);
 	}
 
