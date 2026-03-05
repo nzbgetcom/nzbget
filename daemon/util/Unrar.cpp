@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "FileSystem.h"
 #include "nzbget.h"
 
 #include <regex>
@@ -38,15 +39,9 @@ using namespace Unpack;
 ScriptController::ArgList Unrar::MakeArgs() const
 {
 	ScriptController::ArgList args;
-#ifdef _WIN32
-	const auto tool = Utf8::WideToUtf8(m_tool.wstring()).value_or(m_tool.string());
-	const auto outputDir = Utf8::WideToUtf8(m_outputDir.wstring()).value_or(m_outputDir.string());
-	const auto archive = Utf8::WideToUtf8(m_archive.wstring()).value_or(m_archive.string());
-#else
-	const auto tool = m_tool.string();
-	const auto outputDir = m_outputDir.string();
-	const auto archive = m_archive.string();
-#endif
+	const auto tool = fs::u8string(m_tool);
+	const auto outputDir = fs::u8string(m_outputDir);
+	const auto archive = fs::u8string(m_archive);
 
 	args.push_back(tool.c_str());
 	args.push_back("x");
@@ -79,7 +74,7 @@ bool Unrar::IsSupported(const fs::path& path)
 {
 	if (!path.has_filename()) return false;
 
-	auto filename = path.filename().string();
+	auto filename = fs::u8string(path.filename());
 	static const std::regex part1Rar("\\.part0*1\\.rar$", std::regex_constants::icase);
 	if (std::regex_search(filename, part1Rar)) return true;
 

@@ -159,7 +159,7 @@ Status Executable(const fs::path& path)
 		return Status::Error(ss.str());
 	}
 
-	std::string ext = path.extension().string();
+	std::string ext = fs::u8string(path.extension());
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 	if (ext == ".exe" || ext == ".bat" || ext == ".cmd" || ext == ".com")
 	{

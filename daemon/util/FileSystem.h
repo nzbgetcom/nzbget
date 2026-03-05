@@ -38,6 +38,11 @@ namespace fs
 using namespace std::filesystem;
 using error_code = std::error_code;
 using errc = std::errc;
+
+inline std::string u8string(const path& p)
+{
+	return p.u8string(); 
+}
 }
 
 #else
@@ -57,6 +62,15 @@ inline fs::path u8path(std::string_view pathStr)
 	return fs::path(pathStr); 
 #else
 	return fs::path(pathStr);
+#endif
+}
+
+inline std::string u8string(const path& p)
+{
+#ifdef _WIN32
+	return Utf8::WideToUtf8(p.native()).value_or("");
+#else
+	return p.string();
 #endif
 }
 

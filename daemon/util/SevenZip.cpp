@@ -36,16 +36,9 @@ using namespace Unpack;
 ScriptController::ArgList SevenZip::MakeArgs() const
 {
 	ScriptController::ArgList args;
-#ifdef _WIN32
-	const auto tool = Utf8::WideToUtf8(m_tool.wstring()).value_or(m_tool.string());
-	const auto outputDir =
-		"-o" + Utf8::WideToUtf8(m_outputDir.wstring()).value_or(m_outputDir.string());
-	const auto archive = Utf8::WideToUtf8(m_archive.wstring()).value_or(m_archive.string());
-#else
-	const auto tool = m_tool.string();
-	const auto outputDir = "-o" + m_outputDir.string();
-	const auto archive = m_archive.string();
-#endif
+	const auto tool = fs::u8string(m_tool);
+	const auto outputDir = "-o" + fs::u8string(m_outputDir);
+	const auto archive = fs::u8string(m_archive);
 
 	args.push_back(tool.c_str());
 	args.push_back("x");
@@ -77,7 +70,7 @@ bool SevenZip::IsSupported(const fs::path& path)
 {
 	if (!path.has_filename() || !path.has_extension()) return false;
 
-	auto filename = path.filename().string();
+	auto filename = fs::u8string(path.filename());
 	std::transform(filename.begin(), filename.end(), filename.begin(),
 				   [](auto c) { return std::tolower(c); });
 	const static std::array<std::string_view, 9> formats{".7z", ".zip", ".7z.001", ".tar", ".gz",
