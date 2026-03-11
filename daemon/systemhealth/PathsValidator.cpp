@@ -25,7 +25,9 @@
 
 namespace SystemHealth::Paths
 {
-PathsValidator::PathsValidator(const Options& options) : m_options(options)
+PathsValidator::PathsValidator(const Options& options, const ::Log& log)
+	: m_options(options)
+	, m_log(log)
 {
 	m_validators.reserve(13);
 	m_validators.push_back(std::make_unique<MainDirValidator>(options));
@@ -37,7 +39,7 @@ PathsValidator::PathsValidator(const Options& options) : m_options(options)
 	m_validators.push_back(std::make_unique<TempDirValidator>(options));
 	m_validators.push_back(std::make_unique<ScriptDirValidator>(options));
 	m_validators.push_back(std::make_unique<ConfigTemplateValidator>(options));
-	m_validators.push_back(std::make_unique<LogFileValidator>(options));
+	m_validators.push_back(std::make_unique<LogFileValidator>(options, log));
 	m_validators.push_back(std::make_unique<CertStoreValidator>(options));
 	m_validators.push_back(std::make_unique<RequiredDirValidator>(options));
 #ifndef _WIN32
@@ -223,7 +225,7 @@ Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
-	return Validate(m_options.GetLogFilePath(), m_options.GetWriteLog())
+	return Validate(m_log.GetLogFilePath(), m_options.GetWriteLog())
 		.And(
 			[&]()
 			{

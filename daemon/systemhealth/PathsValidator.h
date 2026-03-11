@@ -23,6 +23,7 @@
 #include "SectionValidator.h"
 #include "Options.h"
 #include "FileSystem.h"
+#include "Log.h"
 
 namespace SystemHealth::Paths
 {
@@ -30,11 +31,12 @@ namespace SystemHealth::Paths
 class PathsValidator final : public SectionValidator
 {
 public:
-	explicit PathsValidator(const Options& options);
+	explicit PathsValidator(const Options& options, const ::Log& log);
 	std::string_view GetName() const override { return "Paths"; }
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class MainDirValidator final : public Validator
@@ -156,7 +158,9 @@ private:
 class LogFileValidator final : public Validator
 {
 public:
-	explicit LogFileValidator(const Options& options) : m_options(options) {}
+	explicit LogFileValidator(const Options& options, const ::Log& log)
+			: m_options(options)
+			, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::LOGFILE; }
 	Status Validate() const override;
@@ -164,6 +168,7 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class CertStoreValidator final : public Validator

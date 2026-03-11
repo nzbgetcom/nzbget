@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -354,7 +355,7 @@ void WinConsole::ShowMenu()
 			break;
 
 		case ID_SHOW_LOGFILE:
-			ShowInExplorer(g_Options->GetLogFile());
+			ShowInExplorer(g_Log->GetLogFilename().data());
 			break;
 
 		case ID_SHOW_SCRIPTDIR:
