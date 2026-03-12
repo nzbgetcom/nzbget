@@ -304,7 +304,7 @@ Status LockFileValidator::Validate() const
 				return UniquePath(GetName(), m_options.GetLockFilePath(),
 								  {{Options::MAINDIR, m_options.GetMainDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
-								   {Options::LOGFILE, m_options.GetLogFilePath()},
+								   {Options::LOGFILE, m_log.GetLogFilePath()},
 								   {Options::CERTSTORE, m_options.GetCertStorePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
