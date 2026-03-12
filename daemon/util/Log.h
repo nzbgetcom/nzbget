@@ -88,13 +88,22 @@ public:
 	void UnregisterDebuggable(Debuggable* debuggable);
 	void LogDebugInfo();
 	void IntervalCheck();
-	std::string_view GetLogFilename() const { return m_logFilename; }
-	const fs::path& GetLogFilePath() const { return m_logFilePath; }
+	std::string GetLogFilename() const
+	{
+		Guard guard(m_logMutex);
+		return m_logFilename;
+	}
+
+	fs::path GetLogFilePath() const
+	{
+		Guard guard(m_logMutex);
+		return m_logFilePath; 
+	}
 
 private:
 	typedef std::list<Debuggable*> Debuggables;
 
-	Mutex m_logMutex;
+	mutable Mutex m_logMutex;
 	MessageList m_messages;
 	Debuggables m_debuggables;
 	Mutex m_debugMutex;

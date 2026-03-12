@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
@@ -154,7 +155,7 @@ BOOST_AUTO_TEST_CASE(TestLogFileValidator)
 
 BOOST_AUTO_TEST_CASE(TestCertStoreValidator)
 {
-	CertStoreValidator validator(options);
+	CertStoreValidator validator(options, *g_Log);
 	fs::path certFile = tempPath / "cacert.pem";
 	fs::path certDir = tempPath / "certs";
 
@@ -176,7 +177,7 @@ BOOST_AUTO_TEST_CASE(TestCertStoreValidator)
 #ifndef _WIN32
 BOOST_AUTO_TEST_CASE(TestLockFileValidator)
 {
-	LockFileValidator validator(options);
+	LockFileValidator validator(options, *g_Log);
 	fs::path lock = tempPath / "nzbget.lock";
 
 	Status s1 = validator.Validate("", true);

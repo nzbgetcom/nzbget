@@ -174,7 +174,9 @@ private:
 class CertStoreValidator final : public Validator
 {
 public:
-	explicit CertStoreValidator(const Options& options) : m_options(options) {}
+	explicit CertStoreValidator(const Options& options, const ::Log& log)
+		: m_options(options)
+		, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::CERTSTORE; }
 	Status Validate() const override;
@@ -182,6 +184,7 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class RequiredDirValidator final : public Validator
@@ -199,7 +202,9 @@ private:
 class LockFileValidator final : public Validator
 {
 public:
-	explicit LockFileValidator(const Options& options) : m_options(options) {}
+	explicit LockFileValidator(const Options& options, const ::Log& log)
+		: m_options(options)
+		, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::LOCKFILE; }
 	Status Validate() const override;
@@ -207,6 +212,7 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 #endif
 }  // namespace SystemHealth::Paths
