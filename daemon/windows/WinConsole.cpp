@@ -355,8 +355,11 @@ void WinConsole::ShowMenu()
 			break;
 
 		case ID_SHOW_LOGFILE:
-			ShowInExplorer(g_Log->GetLogFilename().data());
-			break;
+			{
+				const auto logFilename = g_Log->GetLogFilename();
+				ShowInExplorer(logFilename.c_str());
+				break;				
+			}
 
 		case ID_SHOW_SCRIPTDIR:
 			{
