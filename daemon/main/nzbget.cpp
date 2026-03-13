@@ -55,7 +55,6 @@
 #include "FileSystem.h"
 #include "StackTrace.h"
 #include "CommandScript.h"
-#include "YEncode.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
@@ -134,7 +133,8 @@ int main(int argc, char *argv[], char *argp[])
 	setlocale(LC_CTYPE, "");
 
 	Util::Init();
-	YEncode::init();
+	rapidyenc_decode_init();
+	rapidyenc_crc_init();
 
 	g_ArgumentCount = argc;
 	g_Arguments = (char*(*)[])argv;
