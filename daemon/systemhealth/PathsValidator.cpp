@@ -25,7 +25,9 @@
 
 namespace SystemHealth::Paths
 {
-PathsValidator::PathsValidator(const Options& options) : m_options(options)
+PathsValidator::PathsValidator(const Options& options, const ::Log& log)
+	: m_options(options)
+	, m_log(log)
 {
 	m_validators.reserve(13);
 	m_validators.push_back(std::make_unique<MainDirValidator>(options));
@@ -37,11 +39,11 @@ PathsValidator::PathsValidator(const Options& options) : m_options(options)
 	m_validators.push_back(std::make_unique<TempDirValidator>(options));
 	m_validators.push_back(std::make_unique<ScriptDirValidator>(options));
 	m_validators.push_back(std::make_unique<ConfigTemplateValidator>(options));
-	m_validators.push_back(std::make_unique<LogFileValidator>(options));
-	m_validators.push_back(std::make_unique<CertStoreValidator>(options));
+	m_validators.push_back(std::make_unique<LogFileValidator>(options, log));
+	m_validators.push_back(std::make_unique<CertStoreValidator>(options, log));
 	m_validators.push_back(std::make_unique<RequiredDirValidator>(options));
 #ifndef _WIN32
-	m_validators.push_back(std::make_unique<LockFileValidator>(options));
+	m_validators.push_back(std::make_unique<LockFileValidator>(options, log));
 #endif
 }
 
@@ -223,11 +225,11 @@ Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
-	return Validate(m_options.GetLogFilePath(), m_options.GetWriteLog())
+	return Validate(m_log.GetLogFilePath(), m_options.GetWriteLog())
 		.And(
 			[&]()
 			{
-				return UniquePath(GetName(), m_options.GetLogFilePath(),
+				return UniquePath(GetName(), m_log.GetLogFilePath(),
 								  {{Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
@@ -267,7 +269,7 @@ Status CertStoreValidator::Validate() const
 								   {Options::WEBDIR, m_options.GetWebDirPath()},
 								   {Options::TEMPDIR, m_options.GetTempDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
-								   {Options::LOGFILE, m_options.GetLogFilePath()},
+								   {Options::LOGFILE, m_log.GetLogFilePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
@@ -302,7 +304,7 @@ Status LockFileValidator::Validate() const
 				return UniquePath(GetName(), m_options.GetLockFilePath(),
 								  {{Options::MAINDIR, m_options.GetMainDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
-								   {Options::LOGFILE, m_options.GetLogFilePath()},
+								   {Options::LOGFILE, m_log.GetLogFilePath()},
 								   {Options::CERTSTORE, m_options.GetCertStorePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
