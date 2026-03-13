@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+
 #include "nzbget.h"
 
 #include "IncomingNzbValidator.h"
@@ -29,6 +30,8 @@ IncomingNzbValidator::IncomingNzbValidator(const Options& options) : m_options(o
 	m_validators.push_back(std::make_unique<AppendCategoryDirValidator>(options));
 	m_validators.push_back(std::make_unique<NzbDirIntervalValidator>(options));
 	m_validators.push_back(std::make_unique<NzbDirFileAgeValidator>(options));
+	m_validators.push_back(std::make_unique<NzbDirArchiveScanValidator>(options));
+	m_validators.push_back(std::make_unique<NzbDirArchiveActionValidator>(options));
 	m_validators.push_back(std::make_unique<DupeCheckValidator>(options));
 }
 
@@ -73,6 +76,16 @@ Status NzbDirFileAgeValidator::Validate() const
 		return Status::Warning(ss.str());
 	}
 
+	return Status::Ok();
+}
+
+Status NzbDirArchiveScanValidator::Validate() const
+{
+	return Status::Ok();
+}
+
+Status NzbDirArchiveActionValidator::Validate() const
+{
 	return Status::Ok();
 }
 

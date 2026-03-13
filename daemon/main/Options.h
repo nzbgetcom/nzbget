@@ -120,6 +120,8 @@ public:
 	static constexpr std::string_view WRITEBUFFER = "WriteBuffer";
 	static constexpr std::string_view NZBDIRINTERVAL = "NzbDirInterval";
 	static constexpr std::string_view NZBDIRFILEAGE = "NzbDirFileAge";
+	static constexpr std::string_view NZBDIRARCHIVESCAN = "NzbDirArchiveScan";
+	static constexpr std::string_view NZBDIRARCHIVEACTION = "NzbDirArchiveAction";
 	static constexpr std::string_view DISKSPACE = "DiskSpace";
 	static constexpr std::string_view CRASHTRACE = "CrashTrace";
 	static constexpr std::string_view CRASHDUMP = "CrashDump";
@@ -262,6 +264,12 @@ public:
 		cvMinimal,
 		cvStrict,
 		Count
+	};
+	
+	enum ENzbDirArchiveAction
+	{
+		Delete,
+		Move
 	};
 
 	class OptEntry
@@ -457,6 +465,8 @@ public:
 	int GetWriteBuffer() const { return m_writeBuffer; }
 	int GetNzbDirInterval() const { return m_nzbDirInterval; }
 	int GetNzbDirFileAge() const { return m_nzbDirFileAge; }
+	bool GetNzbDirArchiveScan() const { return m_nzbDirArchiveScan; }
+	ENzbDirArchiveAction GetNzbDirArchiveAction() const { return m_nzbDirArchiveAction; }
 	int GetDiskSpace() const { return m_diskSpace; }
 	bool GetTls() const { return m_tls; }
 	bool GetCrashTrace() const { return m_crashTrace; }
@@ -644,6 +654,8 @@ private:
 	int m_writeBuffer = 0;
 	int m_nzbDirInterval = 0;
 	int m_nzbDirFileAge = 0;
+	bool m_nzbDirArchiveScan = true;
+	ENzbDirArchiveAction m_nzbDirArchiveAction = ENzbDirArchiveAction::Move;
 	int m_diskSpace = 0;
 	bool m_tls = false;
 	bool m_crashTrace = false;

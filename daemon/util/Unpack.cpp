@@ -19,12 +19,9 @@
 
 #include "nzbget.h"
 
-#include <exception>
-#include <sstream>
-#include <stdexcept>
-
 #include "Options.h"
 #include "Unpack.h"
+#include "Log.h"
 
 namespace Unpack
 {
@@ -41,27 +38,36 @@ ExtractorBase::ExtractorBase(fs::path tool, fs::path archive,
 {
 }
 
-Result ExtractorBase::Extract()
+bool ExtractorBase::Extract()
 {
-	const auto result = CheckPrerequisites();
-	if (!result.success) return result;
+	if (!CheckPrerequisites()) return false;
 
 	auto args = MakeArgs();
 	ScriptController executor;
 	executor.SetArgs(std::move(args));
 
 	int exitCode = executor.Execute();
+	if (executor.IsTerminated())
+	{
+		error("Unpack: Extraction process for '%s' was interrupted", fs::u8string(m_archive).c_str());
+		return false;
+	}
 
 	return DecodeExitCode(exitCode);
 }
 
-Result ExtractorBase::CheckPrerequisites() const
+bool ExtractorBase::CheckPrerequisites() const
 {
 	fs::error_code ec;
 	fs::create_directories(m_outputDir, ec);
-	if (ec) return {false, "Failed to create the output directory"};
+	if (ec)
+	{
+		error("Unpack: Failed to create the output directory '%s': %s", 
+			  fs::u8string(m_outputDir).c_str(), ec.message().c_str());
+		return false;
+	}
 
-	return {true, ""};
+	return true;
 }
 
 std::string ExtractorBase::MakePassword() const
@@ -79,17 +85,28 @@ bool IsArchive(const fs::path& file)
 ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 						   std::string password, OverwriteMode mode)
 {
-	auto validateTool = [](const fs::path& toolPath, std::string_view optionName)
+	const std::string archiveName = fs::u8string(archive.filename());
+
+	auto validateTool = [&archiveName](const fs::path& toolPath, std::string_view optionName) -> std::optional<fs::path>
 	{
 		if (toolPath.empty())
-			throw std::runtime_error(std::string(optionName) + " is not configured");
+		{
+			error("Unpack: Could not process '%s': %s is not configured", archiveName.c_str(), std::string(optionName).c_str());
+			return std::nullopt;
+		}
 
 		fs::error_code ec;
 		bool exists = fs::exists(toolPath, ec);
 		if (ec)
-			throw std::runtime_error("Failed to access '" + fs::u8string(toolPath) +
-									 "': " + ec.message());
-		if (!exists) throw std::runtime_error(fs::u8string(toolPath) + " doesn't exist");
+		{
+			error("Unpack: Could not process '%s': Failed to access '%s': %s", archiveName.c_str(), fs::u8string(toolPath).c_str(), ec.message().c_str());
+			return std::nullopt;
+		}
+		if (!exists)
+		{
+			error("Unpack: Could not process '%s': %s doesn't exist", archiveName.c_str(), fs::u8string(toolPath).c_str());
+			return std::nullopt;
+		}
 
 		return toolPath;
 	};
@@ -97,17 +114,20 @@ ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
 	if (SevenZip::IsSupported(archive))
 	{
 		const auto tool = validateTool(g_Options->GetSevenZipPath(), Options::SEVENZIPCMD);
-		return std::make_unique<SevenZip>(tool, std::move(archive), std::move(outputDir),
+		if (!tool) return nullptr;
+		return std::make_unique<SevenZip>(*tool, std::move(archive), std::move(outputDir),
 										  std::move(password), mode);
 	}
 
 	if (Unrar::IsSupported(archive))
 	{
 		const auto tool = validateTool(g_Options->GetUnrarPath(), Options::UNRARCMD);
-		return std::make_unique<Unrar>(tool, std::move(archive), std::move(outputDir),
+		if (!tool) return nullptr;
+		return std::make_unique<Unrar>(*tool, std::move(archive), std::move(outputDir),
 									   std::move(password), mode);
 	}
 
-	throw std::runtime_error("Unsupported archive format: " + fs::u8string(archive.extension()));
+	error("Unpack: Could not process '%s': Unsupported archive format: %s", archiveName.c_str(), fs::u8string(archive.extension()).c_str());
+	return nullptr;
 }
 }  // namespace Unpack

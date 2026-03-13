@@ -359,6 +359,8 @@ void Options::InitDefaults()
 	SetOption(WRITEBUFFER.data(), "0");
 	SetOption(NZBDIRINTERVAL.data(), "5");
 	SetOption(NZBDIRFILEAGE.data(), "60");
+	SetOption(NZBDIRARCHIVESCAN.data(), "yes");
+	SetOption(NZBDIRARCHIVEACTION.data(), "delete");
 	SetOption(DISKSPACE.data(), "250");
 	SetOption(CRASHTRACE.data(), "no");
 	SetOption(CRASHDUMP.data(), "no");
@@ -631,6 +633,11 @@ void Options::InitOptions()
 	m_writeBuffer			= ParseIntValue(WRITEBUFFER.data(), 10);
 	m_nzbDirInterval		= ParseIntValue(NZBDIRINTERVAL.data(), 10);
 	m_nzbDirFileAge			= ParseIntValue(NZBDIRFILEAGE.data(), 10);
+	m_nzbDirArchiveScan		= (bool)ParseEnumValue(NZBDIRARCHIVESCAN.data(), BoolCount, BoolNames, BoolValues);
+	const char* ArchiveActions[] = { "move", "delete" };
+	const int ArchiveActionValues[] = { ENzbDirArchiveAction::Move, ENzbDirArchiveAction::Delete };
+	const int ArchiveActionsCount = 2;
+	m_nzbDirArchiveAction 	= (ENzbDirArchiveAction)ParseEnumValue(NZBDIRARCHIVEACTION.data(), ArchiveActionsCount, ArchiveActions, ArchiveActionValues);
 	m_diskSpace				= ParseIntValue(DISKSPACE.data(), 10);
 	m_parTimeLimit			= ParseIntValue(PARTIMELIMIT.data(), 10);
 	m_keepHistory			= ParseIntValue(KEEPHISTORY.data(), 10);

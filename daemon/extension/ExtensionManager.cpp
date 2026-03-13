@@ -127,32 +127,28 @@ namespace ExtensionManager
 	std::optional<std::string> Manager::InstallExtension(const fs::path& file,
 														 const fs::path& dest)
 	{
-		try
+		const auto extractor =
+			Unpack::MakeExtractor(file, dest, "", Unpack::OverwriteMode::Overwrite);
+
+		if (!extractor)
 		{
-			const auto extractor =
-				Unpack::MakeExtractor(file, dest, "", Unpack::OverwriteMode::Overwrite);
-
-			const auto result = extractor->Extract();
-			if (!result.success)
-			{
-				return "Extraction failed for archive '" + fs::u8string(file) +
-					   "'. Error: " + std::string(result.message);
-			}
-
-			fs::error_code ec;
-			fs::remove(file, ec);
-			if (ec)
-			{
-				return "Extension unpacked, but failed to delete temporary archive '" +
-					   fs::u8string(file) + "': " + ec.message();
-			}
-
-			return std::nullopt;
+			return "Failed to initialize extraction for archive '" + fs::u8string(file);
 		}
-		catch (const std::exception& e)
+
+		if (!extractor->Extract())
 		{
-			return "Extraction of " + fs::u8string(file) + " failed: " + e.what();
+			return "Extraction failed for archive '" + fs::u8string(file);
 		}
+
+		fs::error_code ec;
+		fs::remove(file, ec);
+		if (ec)
+		{
+			return "Extension unpacked, but failed to delete temporary archive '" +
+				   fs::u8string(file) + "': " + ec.message();
+		}
+
+		return std::nullopt;
 	}
 
 	std::optional<std::string>

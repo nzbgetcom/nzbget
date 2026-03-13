@@ -80,10 +80,50 @@ inline std::string u8string(const path& p)
 
 namespace fs
 {
-	inline path make_unique_filename()
+inline path make_unique_filename()
+{
+	return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+}
+
+inline fs::path make_unique_filename(const fs::path& targetPath)
+{
+	fs::error_code ec;
+	if (!fs::exists(targetPath, ec) && !ec) 
 	{
-		return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+		return targetPath;
 	}
+
+	const fs::path baseDir = targetPath.parent_path();
+	const std::string stem = fs::u8string(targetPath.stem());
+	const std::string ext = fs::u8string(targetPath.extension());
+	
+	int counter = 1;
+	fs::path uniquePath;
+	do 
+	{
+		uniquePath = baseDir / (stem + " (" + std::to_string(counter++) + ")" + ext);
+	} while (fs::exists(uniquePath, ec) && !ec);
+
+	return uniquePath;
+}
+
+inline void move_file(const fs::path& src, const fs::path& dest, fs::error_code& ec) noexcept
+{
+	fs::rename(src, dest, ec);
+	if (ec == std::errc::cross_device_link)
+	{
+		ec.clear();
+		fs::copy_file(src, dest, fs::copy_options::overwrite_existing, ec);
+		if (!ec) fs::remove(src, ec);
+	}
+}
+
+inline void move_file(const fs::path& src, const fs::path& dest)
+{
+	error_code ec;
+	move_file(src, dest, ec);
+	if (ec) throw std::runtime_error(ec.message());
+}
 }
 
 class FileSystem

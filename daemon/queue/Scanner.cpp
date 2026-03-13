@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,8 +22,9 @@
 #include "nzbget.h"
 
 #include <exception>
+#include <filesystem>
 #include <fstream>
-#include <ios>
+#include <memory>
 
 #include "Scanner.h"
 #include "Options.h"
@@ -97,6 +98,8 @@ void Scanner::InitOptions()
 {
 	m_nzbDirInterval = 1;
 	m_scanScript = ScanScriptController::HasScripts();
+
+	CleanupStaleUnpackDir();
 }
 
 int Scanner::ServiceInterval()
@@ -127,12 +130,16 @@ void Scanner::ServiceWork()
 
 	std::lock_guard<std::mutex> guard{m_scanMutex};
 
-	CheckIncomingArchives(g_Options->GetNzbDirPath());
-
 	// check nzbdir every g_Options->GetNzbDirInterval() seconds or if requested
 	bool checkStat = !m_requestedNzbDirScan;
 	m_requestedNzbDirScan = false;
 	m_scanning = true;
+
+	if (g_Options->GetNzbDirArchiveScan())
+	{
+		CheckIncomingArchives(g_Options->GetNzbDirPath());
+	}
+
 	CheckIncomingNzbs(g_Options->GetNzbDir(), "", checkStat);
 	if (!checkStat && m_scanScript)
 	{
@@ -174,21 +181,32 @@ void Scanner::CheckIncomingArchives(const fs::path& dir)
 std::vector<fs::path> Scanner::FindArchives(const fs::path& dir)
 {
 	std::vector<fs::path> archives;
-	archives.reserve(4);
-
-	for (const auto& entry : fs::recursive_directory_iterator(dir))
+	for (auto it = fs::recursive_directory_iterator(dir); it != fs::recursive_directory_iterator(); ++it)
 	{
-		if (!entry.is_regular_file())
-			continue;
+		const auto& path = it->path();
+		const std::string filename = fs::u8string(path.filename());
 
-		if (Unpack::IsArchive(entry.path()))
+		if (ShouldSkipItem(filename))
 		{
-			archives.push_back(entry.path());
+			if (it->is_directory()) 
+			{
+				it.disable_recursion_pending();
+			}
+			continue;
+		}
+
+		if (!it->is_regular_file())
+		{
+			continue;
+		}
+
+		if (Unpack::IsArchive(path))
+		{
+			archives.push_back(path);
 		}
 	}
 
 	archives.shrink_to_fit();
-
 	return archives;
 }
 
@@ -196,50 +214,29 @@ void Scanner::UnpackArchives(const std::vector<fs::path>& archives)
 {
 	if (archives.empty()) return;
 
+	const auto processor = Incoming::ArchiveProcessor({
+		g_Options->GetTempDirPath() / UNPACK_DIR,
+		g_Options->GetNzbDirPath(),
+		g_Options->GetNzbDirPath() / PROCESSED_DIR,
+		g_Options->GetNzbDirPath() / BROKEN_DIR,
+		g_Options->GetNzbDirArchiveAction()
+	});
+
 	for (const auto& archive : archives)
 	{
-		const auto filename = archive.filename();
-		info("Extracting %s", filename.c_str());
+		processor.Process(archive);
+	}
+}
 
-		try
-		{
-			const auto extractor = Unpack::MakeExtractor(archive, archive.parent_path(), "",
-														 Unpack::OverwriteMode::Overwrite);
-
-			const auto result = extractor->Extract();
-			fs::error_code ec;
-			if (result.success)
-			{
-				info("%s extracted successfully", filename.c_str());
-
-				fs::remove(archive, ec);
-				if (ec)
-				{
-					const auto msg = ec.message();
-					error("Failed to remove %s: %s (code %d)", filename.c_str(), msg.c_str(),
-						  ec.value());
-				}
-			}
-			else
-			{
-				error("Failed to extract %s: %s", filename.c_str(), result.message.data());
-				auto processedArchive = archive;
-				const auto newExtension = fs::u8string(archive.extension()) + ".error";
-				processedArchive.replace_extension(newExtension);
-				fs::rename(archive, processedArchive, ec);
-				if (ec)
-				{
-					const auto msg = ec.message();
-					error("Failed to mark archive %s as failed: %s (code %d)", filename.c_str(),
-						  msg.c_str(), ec.value());
-				}
-			}
-		}
-		catch (const std::exception& e)
-		{
-			error("Extraction failed: %s", e.what());
-			continue;
-		}
+void Scanner::CleanupStaleUnpackDir()
+{
+	const fs::path unpackDir = g_Options->GetTempDirPath() / UNPACK_DIR;
+	fs::error_code ec;
+	fs::remove_all(unpackDir, ec);
+	if (ec)
+	{
+		warn("Could not remove stale unpack directory '%s/%s': %s (code %d)", 
+			g_Options->GetTempDir(), UNPACK_DIR.data(), ec.message().c_str(), ec.value());	
 	}
 }
 
@@ -252,9 +249,8 @@ void Scanner::CheckIncomingNzbs(const char* directory, const char* category, boo
 	DirBrowser dir(directory);
 	while (const char* filename = dir.Next())
 	{
-		if (filename[0] == '.')
+		if (ShouldSkipItem(filename))
 		{
-			// skip hidden files
 			continue;
 		}
 
@@ -367,6 +363,12 @@ void Scanner::DropOldFiles()
 			return false;
 		}),
 		m_fileList.end());
+}
+
+bool Scanner::ShouldSkipItem(std::string_view filename)
+{
+	if (filename.empty()) return false;
+	return filename[0] == '.' || filename == PROCESSED_DIR || filename == BROKEN_DIR;
 }
 
 void Scanner::ProcessIncomingFile(
@@ -727,59 +729,28 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 
 	if (g_Options->GetTempDirPath().empty())
 	{
-		error("Failed to create file '%s': '%s' is required and cannot be empty", filename,
-			  Options::TEMPDIR.data());
+		error("Failed to create file '%s': '%s' is required and cannot be empty",
+			filename, Options::TEMPDIR.data());
 		return EAddStatus::asFailed;
 	}
 
 	if (g_Options->GetNzbDirPath().empty())
 	{
-		error("Failed to create file '%s': '%s' is required and cannot be empty", filename,
-			  Options::NZBDIR.data());
+		error("Failed to create file '%s': '%s' is required and cannot be empty",
+			filename, Options::NZBDIR.data());
 		return EAddStatus::asFailed;
 	}
+
+	const auto archiveFilename = FileSystem::MakeValidFilename(filename);
+	const auto archiveFilePath = g_Options->GetTempDirPath() / *archiveFilename;
 
 	fs::error_code ec;
-	const auto downloadDir = g_Options->GetTempDirPath() / fs::make_unique_filename();
-	const auto unpackDir = downloadDir / "_unpack";
-#ifdef _WIN32
-	const auto wfilename = Utf8::Utf8ToWide(filename);
-	if (!wfilename)
 	{
-		error("Failed to covert '%s' to wide string", filename);
-		return EAddStatus::asFailed;
-	}
-	const auto archiveFile = downloadDir / wfilename.value();
-#else
-	const auto archiveFile = downloadDir / filename;
-#endif
-	const auto unpackDirStr = fs::u8string(unpackDir);
-	const auto archiveFileStr = fs::u8string(archiveFile);
-	const auto downloadDirStr = fs::u8string(downloadDir);
-
-	fs::create_directories(unpackDir, ec);
-	if (ec)
-	{
-		const std::string msg = ec.message();
-		error("Could not create directory '%s': %s (code %d)", unpackDirStr.c_str(), msg.c_str(),
-			  ec.value());
-		return EAddStatus::asFailed;
-	}
-
-	{
-		std::ofstream file(archiveFile.c_str(), std::ios::binary);
+		std::ofstream file(archiveFilePath.c_str(), std::ios::binary);
 		if (!file.is_open())
 		{
 			error("Failed to create archive file '%s' in temporary directory: %s",
-				  archiveFileStr.c_str(), std::strerror(errno));
-
-			fs::remove_all(downloadDir, ec);
-			if (ec)
-			{
-				const std::string msg = ec.message();
-				error("Failed to remove temporary directory '%s': %s (code %d)",
-					  downloadDirStr.c_str(), msg.c_str(), ec.value());
-			}
+				*archiveFilename, std::strerror(errno));
 			return EAddStatus::asFailed;
 		}
 
@@ -787,125 +758,65 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 		file.close();
 		if (!file)
 		{
-			error("Failed to write archive file to '%s': %s", archiveFileStr.c_str(),
-				  std::strerror(errno));
-
-			fs::remove_all(downloadDir, ec);
-			if (ec)
-			{
-				const auto msg = ec.message();
-				error("Failed to clean up temporary directory '%s': %s (code %d)",
-					  downloadDirStr.c_str(), msg.c_str(), ec.value());
-			}
+			error("Failed to write data to archive file '%s': %s",
+				*archiveFilename, std::strerror(errno));
+			fs::remove(archiveFilePath, ec);
 			return EAddStatus::asFailed;
 		}
 	}
 
-	try
+	if (!g_Options->GetNzbDirArchiveScan()) 
 	{
-		info("Extracting %s", filename);
-
-		const auto extractor = Unpack::MakeExtractor(std::move(archiveFile), unpackDir, "",
-													 Unpack::OverwriteMode::Overwrite);
-
-		const auto result = extractor->Extract();
-		if (!result.success)
+		const auto finalArchiveFilePath = g_Options->GetNzbDirPath() / *archiveFilename;
+		fs::move_file(archiveFilePath, finalArchiveFilePath, ec);
+		if (ec)
 		{
-			error("Failed to extract '%s' into '%s': %s", archiveFileStr.c_str(),
-				  unpackDirStr.c_str(), result.message.data());
-			fs::remove_all(downloadDir, ec);
-			if (ec)
-			{
-				const auto msg = ec.message();
-				error("Failed to remove temporary directory '%s': %s (code %d)",
-					  downloadDirStr.c_str(), msg.c_str(), ec.value());
-			}
+			error("Failed to move file '%s' to %s: %s",
+				*archiveFilename, Options::NZBDIR.data(), ec.message().c_str());
 			return EAddStatus::asFailed;
 		}
 
-		info("%s extracted successfully", filename);
-
-		std::vector<fs::path> files;
-		files.reserve(4);
-		for (const auto& entry : fs::recursive_directory_iterator(unpackDir))
-		{
-			if (!entry.is_regular_file()) continue;
-
-			files.push_back(std::move(entry.path()));
-		}
-
-		files.shrink_to_fit();
-
-		{
-			std::lock_guard<std::mutex> guard{m_scanMutex};
-
-			for (const auto& file : files)
-			{
-				const auto relativePath = fs::relative(file, unpackDir, ec);
-				if (ec)
-				{
-					const std::string msg = ec.message();
-					error("Failed to calculate relative path for '%s' against '%s': %s (code %d)",
-						  file.c_str(), unpackDirStr.c_str(), msg.c_str(), ec.value());
-					ec.clear();
-					continue;
-				}
-				const auto destPath = g_Options->GetNzbDirPath() / relativePath;
-				const auto parentDir = destPath.parent_path();
-				fs::create_directories(parentDir, ec);
-				if (ec)
-				{
-					const std::string msg = ec.message();
-					error("Failed to create destination directory '%s' for %s (code %d)",
-						  parentDir.c_str(), msg.c_str(), ec.value());
-					ec.clear();
-					continue;
-				}
-
-				fs::copy_file(file, destPath, fs::copy_options::overwrite_existing, ec);
-				if (ec)
-				{
-					const std::string msg = ec.message();
-					error("Failed to copy extracted NZB '%s' to '%s': %s (code %d)", file.c_str(),
-						  destPath.c_str(), msg.c_str(), ec.value());
-					ec.clear();
-					continue;
-				}
-
-				const auto destPathStr = fs::u8string(destPath);
-				const auto filenameStr = fs::u8string(destPath.filename());
-
-				CString useCategory = ResolveCategory(category, filenameStr.c_str());
-
-				m_queueList.emplace_back(destPathStr.c_str(), filenameStr.c_str(), useCategory,
-										 autoCategory, priority, dupeKey, dupeScore, dupeMode,
-										 parameters, addTop, addPaused, urlInfo, nullptr, nullptr);
-			}
-		}
-
-		fs::remove_all(downloadDir, ec);
-		if (ec)
-		{
-			const auto msg = ec.message();
-			error("Cleanup of temporary directory '%s' failed: %s (code %d)", downloadDir.c_str(),
-				  msg.c_str(), ec.value());
-		}
-
-		ScanNzbDir(true);
-		return EAddStatus::asSuccess;
+		info("Skipping processing of '%s': option '%s' is disabled",
+			*archiveFilename, Options::NZBDIRARCHIVESCAN.data());
+		return EAddStatus::asSkipped;
 	}
-	catch (const std::exception& e)
+
 	{
-		error("Extraction failed: %s", e.what());
-		fs::remove_all(downloadDir, ec);
-		if (ec)
+		std::lock_guard<std::mutex> guard{m_scanMutex};
+
+		const auto processor = Incoming::ArchiveProcessor({
+			g_Options->GetTempDirPath() / UNPACK_DIR,
+			g_Options->GetNzbDirPath(),
+			g_Options->GetNzbDirPath() / PROCESSED_DIR,
+			g_Options->GetNzbDirPath() / BROKEN_DIR,
+			g_Options->GetNzbDirArchiveAction()
+		});
+
+		auto nzbFiles = processor.Process(archiveFilePath);
+		if (!nzbFiles)
 		{
-			const std::string msg = ec.message();
-			error("Failed to remove temporary directory '%s': %s (code %d)", downloadDirStr.c_str(),
-				  msg.c_str(), ec.value());
+			return EAddStatus::asFailed;
 		}
-		return EAddStatus::asFailed;
+
+		if (nzbFiles->empty())
+		{
+			return EAddStatus::asSkipped;
+		}
+
+		for (const auto& nzbFile : *nzbFiles)
+		{
+			const auto nzbFilePathStr = fs::u8string(nzbFile);
+			const auto fileName = fs::u8string(nzbFile.filename());
+			const CString useCategory = ResolveCategory(category, fileName.c_str());
+			m_queueList.emplace_back(
+				nzbFilePathStr.c_str(), fileName.c_str(), useCategory,
+				autoCategory, priority, dupeKey, dupeScore, dupeMode,
+				parameters, addTop, addPaused, urlInfo, nullptr, nullptr);
+		}
 	}
+	
+	ScanNzbDir(true);
+	return EAddStatus::asSuccess;
 }
 
 Scanner::EAddStatus Scanner::AddArchive(

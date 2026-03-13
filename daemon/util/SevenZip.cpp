@@ -80,27 +80,29 @@ bool SevenZip::IsSupported(const fs::path& path)
 					   { return Util::EndsWith(filename.c_str(), ext.data(), false); });
 }
 
-Result SevenZip::DecodeExitCode(int ec) const
+bool SevenZip::DecodeExitCode(int ec) const
 {
 	switch (ec)
 	{
 		case ExitCode::Success:
-			return {true, ""};
+			return true;
 		case ExitCode::Warning:
-			return {false,
-					"Completed with warnings. Some files may have been skipped because they were "
-					"in use"};
+			error("Completed with warnings. Some files may have been skipped because they were in use");
+			return false;
 		case ExitCode::FatalError:
-			return {false,
-					"A fatal error occurred. Check for permission issues, a corrupt archive, "
-					"password, disk space"};
+			error("A fatal error occurred. Check for permission issues, a corrupt archive, password, disk space");
+			return false;
 		case ExitCode::CmdLineError:
-			return {false, "Command line error"};
+			error("Command line error");
+			return false;
 		case ExitCode::NotEnoughMemoryError:
-			return {false, "Not enough memory for operation"};
+			error("Not enough memory for operation");
+			return false;
 		case ExitCode::CanceledByUser:
-			return {false, "User stopped the process"};
+			error("User stopped the process");
+			return false;
 		default:
-			return {false, "Unknown 7-Zip error"};
+			error("Unknown 7-Zip error (%d)", ec);
+			return false;
 	};
 }
