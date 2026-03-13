@@ -23,6 +23,7 @@
 #include "SectionValidator.h"
 #include "Options.h"
 #include "FileSystem.h"
+#include "Log.h"
 
 namespace SystemHealth::Paths
 {
@@ -30,11 +31,12 @@ namespace SystemHealth::Paths
 class PathsValidator final : public SectionValidator
 {
 public:
-	explicit PathsValidator(const Options& options);
+	explicit PathsValidator(const Options& options, const ::Log& log);
 	std::string_view GetName() const override { return "Paths"; }
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class MainDirValidator final : public Validator
@@ -156,7 +158,9 @@ private:
 class LogFileValidator final : public Validator
 {
 public:
-	explicit LogFileValidator(const Options& options) : m_options(options) {}
+	explicit LogFileValidator(const Options& options, const ::Log& log)
+			: m_options(options)
+			, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::LOGFILE; }
 	Status Validate() const override;
@@ -164,12 +168,15 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class CertStoreValidator final : public Validator
 {
 public:
-	explicit CertStoreValidator(const Options& options) : m_options(options) {}
+	explicit CertStoreValidator(const Options& options, const ::Log& log)
+		: m_options(options)
+		, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::CERTSTORE; }
 	Status Validate() const override;
@@ -177,6 +184,7 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 
 class RequiredDirValidator final : public Validator
@@ -194,7 +202,9 @@ private:
 class LockFileValidator final : public Validator
 {
 public:
-	explicit LockFileValidator(const Options& options) : m_options(options) {}
+	explicit LockFileValidator(const Options& options, const ::Log& log)
+		: m_options(options)
+		, m_log(log) {}
 
 	std::string_view GetName() const override { return Options::LOCKFILE; }
 	Status Validate() const override;
@@ -202,6 +212,7 @@ public:
 
 private:
 	const Options& m_options;
+	const ::Log& m_log;
 };
 #endif
 }  // namespace SystemHealth::Paths
