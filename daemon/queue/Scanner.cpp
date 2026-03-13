@@ -740,7 +740,7 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 	}
 
 	fs::error_code ec;
-	const auto downloadDir = fs::make_unique_filename();
+	const auto downloadDir = g_Options->GetTempDirPath() / fs::make_unique_filename();
 	const auto unpackDir = downloadDir / "_unpack";
 #ifdef _WIN32
 	const auto wfilename = Utf8::Utf8ToWide(filename);
