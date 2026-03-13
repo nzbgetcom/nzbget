@@ -368,8 +368,11 @@ void Log::RotateLog()
 	fullFilename.Format("%s%c%s-%i-%.2i-%.2i%s", *directory, PATH_SEPARATOR,
 		baseName, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, *baseExt);
 
-	m_logFilename = fullFilename;
-	m_logFilePath = fs::u8path(m_logFilename);
+	{
+		Guard guard(m_logMutex);
+		m_logFilename = fullFilename;
+		m_logFilePath = fs::u8path(m_logFilename);
+	}
 }
 
 /*
