@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,10 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <string>
 #include "NString.h"
 #include "Thread.h"
+#include "FileSystem.h"
 
 void error(const char* msg, ...) PRINTF_SYNTAX(1);
 void warn(const char* msg, ...) PRINTF_SYNTAX(1);
@@ -86,15 +88,27 @@ public:
 	void UnregisterDebuggable(Debuggable* debuggable);
 	void LogDebugInfo();
 	void IntervalCheck();
+	std::string GetLogFilename() const
+	{
+		Guard guard(m_logMutex);
+		return m_logFilename;
+	}
+
+	fs::path GetLogFilePath() const
+	{
+		Guard guard(m_logMutex);
+		return m_logFilePath; 
+	}
 
 private:
 	typedef std::list<Debuggable*> Debuggables;
 
-	Mutex m_logMutex;
+	mutable Mutex m_logMutex;
 	MessageList m_messages;
 	Debuggables m_debuggables;
 	Mutex m_debugMutex;
-	CString m_logFilename;
+	std::string m_logFilename;
+	fs::path m_logFilePath;
 	std::unique_ptr<DiskFile> m_logFile;
 	uint32 m_idGen = 0;
 	std::atomic<time_t> m_lastWritten{0};

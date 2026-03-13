@@ -67,7 +67,7 @@ class Service
 {
 public:
 	Service(const Options& options, const Servers& servers, const Feeds& feeds,
-			const ::Scheduler::TaskList& tasks);
+			const ::Scheduler::TaskList& tasks, const Log& log);
 	HealthReport Diagnose() const;
 
 	void ReportAlert(Alert alert);
@@ -77,6 +77,7 @@ private:
 	const Servers& m_servers;
 	const Feeds& m_feeds;
 	const ::Scheduler::TaskList& m_tasks;
+	const Log& m_log;
 
 	std::vector<std::unique_ptr<SectionValidator>> m_validators;
 	std::vector<Alert> m_alerts;
