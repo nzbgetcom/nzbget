@@ -387,7 +387,6 @@ void Log::InitOptions()
 	if (g_Options->GetWriteLog() != Options::wlNone && g_Options->GetLogFile())
 	{
 		UpdateLogPath(g_Options->GetLogFile());
-
 		if (g_Options->GetServerMode() && g_Options->GetWriteLog() == Options::wlReset)
 		{
 			g_Log->ResetLog();
