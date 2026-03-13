@@ -295,7 +295,8 @@ void NZBGet::Init()
 			*g_Options,
 			*g_ServerPool->GetServers(),
 			*g_FeedCoordinator->GetFeeds(),
-			m_scheduler->GetTasks());
+			m_scheduler->GetTasks(),
+			*g_Log);
 		g_SystemHealth = m_systemHealth.get();
 
 		const auto report = m_systemHealth->Diagnose();
