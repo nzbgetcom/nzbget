@@ -37,7 +37,7 @@ public:
 	ParCheckerMock(const fs::path& workingDir);
 	void Execute();
 	void CorruptFile(const char* filename, int offset);
-	~ParCheckerMock()
+	~ParCheckerMock() override
 	{
 		fs::remove_all(m_workingDir);
 	}

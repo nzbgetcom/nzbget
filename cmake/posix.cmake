@@ -120,8 +120,9 @@ else()
 endif()
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
-list(APPEND EXTERNAL_DEPS yencode)
+list(APPEND EXTERNAL_DEPS rapidyenc)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
