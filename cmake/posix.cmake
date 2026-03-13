@@ -163,6 +163,8 @@ check_symbol_exists(lockf unistd.h HAVE_LOCKF)
 check_symbol_exists(pthread_cancel pthread.h HAVE_PTHREAD_CANCEL)
 check_symbol_exists(F_FULLFSYNC fcntl.h HAVE_FULLFSYNC)
 
+check_function_exists(fseeko HAVE_FSEEKO)
+check_function_exists(getopt HAVE_GETOPT)
 check_function_exists(getopt_long HAVE_GETOPT_LONG)
 check_function_exists(fdatasync HAVE_FDATASYNC)
 
@@ -170,11 +172,6 @@ set(SIGCHLD_HANDLER 1)
 
 if(NOT DISABLE_CURSES)
 	set(HAVE_NCURSES_H 1)
-endif()
-
-if(NOT DISABLE_PARCHECK)
-	check_function_exists(fseeko HAVE_FSEEKO)
-	check_function_exists(getopt HAVE_GETOPT)
 endif()
 
 # check ctime_r

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -82,13 +82,13 @@ protected:
 
 	bool ScanDataFile(
 		Par2::DiskFile *diskfile,
-		std::string basepath, 
+		std::string basepath,
+		const bool renameonly,
 		Par2::Par2RepairerSourceFile* &sourcefile,
 		Par2::MatchType &matchtype, 
 		Par2::MD5Hash &hashfull, 
 		Par2::MD5Hash &hash16k, 
-		Par2::u32 &count,
-		std::mutex& mtx) override;
+		Par2::u32 &count) override;
 
 private:
 	typedef std::vector<Thread*> Threads;
@@ -152,6 +152,7 @@ Par2::Result Repairer::Process(bool dorepair)
 		m_commandLine.GetExtraFiles(),
 		dorepair,
 		m_commandLine.GetPurgeFiles(),
+		false,
 		m_commandLine.GetSkipData(),
 		m_commandLine.GetSkipLeaway());
 	debug("ParChecker: Process-result=%i", res);
@@ -162,12 +163,12 @@ Par2::Result Repairer::Process(bool dorepair)
 bool Repairer::ScanDataFile(
 	Par2::DiskFile *diskfile,
 	std::string basepath,
+	const bool renameonly,
 	Par2::Par2RepairerSourceFile* &sourcefile,
 	Par2::MatchType &matchtype, 
 	Par2::MD5Hash &hashfull, 
 	Par2::MD5Hash &hash16k, 
-	Par2::u32 &count,
-	std::mutex& mtx)
+	Par2::u32 &count)
 {
 	if (m_owner->GetParQuick() && sourcefile && diskfile)
 	{
@@ -195,12 +196,12 @@ bool Repairer::ScanDataFile(
 	return Par2Repairer::ScanDataFile(
 		diskfile, 
 		basepath,
+		renameonly,
 		sourcefile, 
 		matchtype,
 		hashfull, 
 		hash16k, 
-		count,
-		mtx);
+		count);
 }
 
 void Repairer::BeginRepair()
@@ -213,6 +214,11 @@ int ParChecker::StreamBuf::overflow(int ch)
 {
 	if (ch == '\n' || ch == '\r')
 	{
+		if (m_buffer.empty())
+		{
+			return ch;
+		}
+
 		char* msg = m_buffer.data();
 
 		// make par2-logging less verbose
@@ -246,7 +252,7 @@ int ParChecker::StreamBuf::overflow(int ch)
 		bf[1] = '\0';
 		m_buffer.append(std::string(bf));
 	}
-	return (int)ch;
+	return ch;
 }
 
 
@@ -737,7 +743,7 @@ bool ParChecker::AddSplittedFragments()
 		m_extraFiles += extrafiles.size();
 		m_verifyingExtraFiles = true;
 		PrintMessage(Message::mkInfo, "Found %i splitted fragments for %s", (int)extrafiles.size(), m_infoName.c_str());
-		fragmentsAdded = GetRepairer()->VerifyExtraFiles(extrafiles, m_destDir);
+		fragmentsAdded = GetRepairer()->VerifyExtraFiles(extrafiles, m_destDir, false);
 		GetRepairer()->UpdateVerificationResults();
 		m_verifyingExtraFiles = false;
 	}
@@ -903,7 +909,7 @@ bool ParChecker::AddExtraFiles(bool onlyMissing, bool externalDir, const char* d
 			int wasFilesMissing = GetRepairer()->missingfilecount;
 			int wasBlocksMissing = GetRepairer()->missingblockcount;
 
-			GetRepairer()->VerifyExtraFiles({ extraFile }, m_destDir);
+			GetRepairer()->VerifyExtraFiles({ extraFile }, m_destDir, false);
 			GetRepairer()->UpdateVerificationResults();
 
 			bool fileAdded = wasFilesMissing > (int)GetRepairer()->missingfilecount;
