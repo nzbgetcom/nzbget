@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,9 @@
 #include "Decoder.h"
 #include "Log.h"
 #include "Util.h"
-#include "YEncode.h"
 
 Decoder::Decoder()
 {
-	debug("%s", YEncode::decode_simd ? "SIMD yEnc decoder can be used" : "SIMD yEnc decoder isn't available for this CPU");
-	debug("%s", YEncode::crc_simd ? "SIMD Crc routine can be used" : "SIMD Crc routine isn't available for this CPU");
-
 	Clear();
 }
 
@@ -156,24 +152,22 @@ void Decoder::ParseYpart(const char* buffer)
 	}
 }
 
-void Decoder::ParseName(const char* buffer, int len)
+void Decoder::ParseName(const char* buffer, const char* bufferEnd)
 {
 	const char* pb = buffer;
 	pb += 6; //=strlen(" name=")
 	const char* pe = pb;
-	int pos = 0;
-	while (*pe != '\0' && *pe != '\n' && *pe != '\r')
+	while (pe < bufferEnd && *pe != '\0' && *pe != '\n' && *pe != '\r')
 	{
-		if ((len - pos) > 7 && strncmp(pe, "=ypart ", 7) == 0)
+		if (pe + 7 <= bufferEnd && strncmp(pe, "=ypart ", 7) == 0)
 		{
 			ParseYpart(pe);
 			break;
 		}
 		++pe;
-		++pos;
 	}
 
-	m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, pos));
+	m_articleFilename = WebUtil::Latin1ToUtf8(CString(pb, (int)(pe - pb)));
 }
 
 Decoder::EFormat Decoder::DetectFormat(const char* buffer, int len)
@@ -212,16 +206,22 @@ Decoder::EFormat Decoder::DetectFormat(const char* buffer, int len)
 
 void Decoder::ProcessYenc(char* buffer, int len)
 {
-	if (!strncmp(buffer, "=ybegin ", 8))
+	// 1. Check =ybegin (Prefix length 8)
+	if (len >= 8 && !strncmp(buffer, "=ybegin ", 8))
 	{
 		m_begin = true;
 		char* pb = strstr(buffer, " size=");
-		if (pb)
+		if (pb && pb + 6 < buffer + len) // Ensure room for " size="
 		{
-			pb += 6; //=strlen(" size=")
-			m_size = (int64)atoll(pb);
+			pb += 6;
+			m_size = static_cast<int64>(atoll(pb));
 		}
-		m_part = strstr(buffer, " part=");
+		
+		char* partPtr = strstr(buffer, " part=");
+		// Ensure marker is within the current buffer's length
+		if (partPtr && partPtr >= buffer + len) partPtr = nullptr;
+		m_part = partPtr != nullptr;
+
 		if (!m_part)
 		{
 			m_body = true;
@@ -230,52 +230,59 @@ void Decoder::ProcessYenc(char* buffer, int len)
 		}
 
 		pb = strstr(buffer, " name=");
-		if (pb)
+		if (pb && pb + 6 < buffer + len) // Ensure room for " name="
 		{
-			ParseName(pb, len);
+			ParseName(pb, buffer + len);
 		}
 	}
-	else if (!strncmp(buffer, "=ypart ", 7))
+	// 2. Check =ypart (Prefix length 7)
+	else if (len >= 7 && !strncmp(buffer, "=ypart ", 7))
 	{
 		ParseYpart(buffer);
 	}
-	else if (!strncmp(buffer, "=yend ", 6))
+	// 3. Check =yend (Prefix length 6)
+	else if (len >= 6 && !strncmp(buffer, "=yend ", 6))
 	{
 		m_end = true;
+		int crcOffset = 7 + static_cast<int>(m_part); // " crc32=" (7) or " pcrc32=" (8)
 		char* pb = strstr(buffer, m_part ? " pcrc32=" : " crc32=");
-		if (pb)
+
+		if (pb && pb + crcOffset < buffer + len)
 		{
 			m_crc = true;
-			pb += 7 + (int)m_part; //=strlen(" crc32=") or strlen(" pcrc32=")
-			m_expectedCRC = strtoul(pb, nullptr, 16);
+			pb += crcOffset;
+			m_expectedCRC = static_cast<uint32>(strtoul(pb, nullptr, 16));
 		}
+		
 		pb = strstr(buffer, " size=");
-		if (pb)
+		if (pb && pb + 6 < buffer + len)
 		{
-			pb += 6; //=strlen(" size=")
-			m_endSize = (int64)atoll(pb);
+			pb += 6;
+			m_endSize = atoll(pb);
 		}
 	}
 }
 
 int Decoder::DecodeYenc(char* buffer, char* outbuf, int len)
 {
-	const unsigned char* src = (unsigned char*)buffer;
-	unsigned char* dst = (unsigned char*)outbuf;
+	const void* src = buffer;
+	void* dst = outbuf;
 
-	int endseq = YEncode::decode(&src, &dst, len, (YEncode::YencDecoderState*)&m_state);
-	int outlen = (int)((char*)dst - outbuf);
+	auto endseq = rapidyenc_decode_incremental(&src, &dst, len, (RapidYencDecoderState*)&m_state);
+
+	int bytesWritten = static_cast<int>(static_cast<char*>(dst) - outbuf);
 
 	// endseq:
 	//   0: no end sequence found
 	//   1: \r\n=y sequence found, src points to byte after 'y'
 	//   2: \r\n.\r\n sequence found, src points to byte after last '\n'
-	if (endseq != 0)
+	if (endseq != 0) 
 	{
 		// switch back to line mode to process '=yend'- or eof- marker
 		m_lineBuf.SetLength(0);
 		m_lineBuf.Append(endseq == 1 ? "=y" : ".\r\n");
-		int rem = len - (int)((const char*)src - buffer);
+		int bytesConsumed = static_cast<int>(static_cast<const char*>(src) - buffer);
+		int rem = len - bytesConsumed;
 		if (rem > 0)
 		{
 			m_lineBuf.Append((const char*)src, rem);
@@ -285,12 +292,12 @@ int Decoder::DecodeYenc(char* buffer, char* outbuf, int len)
 
 	if (m_crcCheck)
 	{
-		m_crc32.Append((uchar*)outbuf, (uint32)outlen);
+		m_crc32.Append(reinterpret_cast<unsigned char*>(outbuf), bytesWritten);
 	}
 
-	m_outSize += outlen;
+	m_outSize += bytesWritten;
 
-	return outlen;
+	return bytesWritten;
 }
 
 Decoder::EStatus Decoder::Check()

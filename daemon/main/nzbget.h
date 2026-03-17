@@ -185,6 +185,8 @@
 #include <libxml/entities.h>
 #include <libxml/tree.h>
 
+#include <rapidyenc.h>
+
 #include <boost/asio.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
@@ -209,7 +211,6 @@
 #include <assert.h>
 #include <cassert>
 #endif /* NOT DISABLE_PARCHECK */
-
 
 /***************** GLOBAL FUNCTION AND CONST OVERRIDES *****************/
 
