@@ -22,9 +22,10 @@
 set -o nounset
 set -o errexit
 
-# unpackers versions
-UNRAR_VERSION=720
-ZIP7_VERSION=2600
+# unpackers versions defaults
+# can be overridden by environment variables
+UNRAR_VERSION="${UNRAR_VERSION-720}"
+ZIP7_VERSION="${ZIP7_VERSION-2600}"
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
