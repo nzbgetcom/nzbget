@@ -76,7 +76,7 @@ jobs:
     steps:
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
 
     - name: Generate signatures
       run: |
@@ -124,7 +124,7 @@ jobs:
         echo "Done."
 
     - name: Upload build artifacts with signatures
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-installers
         path: builds/*
@@ -158,18 +158,17 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Delete tag and release
-      uses: dev-drprasad/delete-tag-and-release@v0.2.1
+      uses: dev-drprasad/delete-tag-and-release@v1.1
       with:
         delete_release: true
         tag_name: testing
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
+        github_token: ${{ github.token }}
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
 
     - name: Create latest artifacts
       run: |
