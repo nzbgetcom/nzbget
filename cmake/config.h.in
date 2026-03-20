@@ -101,9 +101,6 @@
 /* Define to 1 if _SC_NPROCESSORS_ONLN is present in unistd.h */
 #cmakedefine HAVE_SC_NPROCESSORS_ONLN @HAVE_SC_NPROCESSORS_ONLN@
 
-/* Define to 1 if you have the <stdint.h> header file. */
-#cmakedefine HAVE_STDINT_H @HAVE_STDINT_H@
-
 /* Define to 1 if you have the <stdio.h> header file. */
 #cmakedefine HAVE_STDIO_H @HAVE_STDIO_H@
 
