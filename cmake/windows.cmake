@@ -54,7 +54,6 @@ set(HAVE_VARIADIC_MACROS 1)
 set(HAVE_GETADDRINFO 1)
 set(SOCKLEN_T socklen_t)
 set(HAVE_REGEX_H 1)
-set(HAVE_STDINT_H 1)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
 	set(__amd64__ 1)
