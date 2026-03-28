@@ -77,6 +77,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/Scanner.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/UrlCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/Deobfuscation.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/ArchiveProcessor.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/remote/BinRpc.cpp
 	${CMAKE_SOURCE_DIR}/daemon/remote/RemoteClient.cpp
@@ -139,12 +140,12 @@ set(WIN32_SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp
 )
 
-if(WIN32) 
+if(WIN32)
 	set(SRC ${SRC} ${WIN32_SRC})
 	set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/windows)
 endif()
 
-set(INCLUDES ${INCLUDES} 
+set(INCLUDES ${INCLUDES}
 	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/daemon/extension
 	${CMAKE_SOURCE_DIR}/daemon/feed

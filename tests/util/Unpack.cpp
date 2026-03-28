@@ -90,7 +90,7 @@ BOOST_AUTO_TEST_CASE(IsSupportedTests)
 
 BOOST_AUTO_TEST_CASE(MakeExtractorUnsupportedTest)
 {
-	BOOST_CHECK_THROW(MakeExtractor("file.txt", "/tmp/out", "", OverwriteMode::Skip), std::runtime_error);
+	BOOST_CHECK(MakeExtractor("file.txt", "/tmp/out", "", OverwriteMode::Skip) == nullptr);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

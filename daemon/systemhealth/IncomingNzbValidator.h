@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,6 +62,28 @@ class NzbDirFileAgeValidator final : public Validator
 public:
 	explicit NzbDirFileAgeValidator(const Options& options) : m_options(options) {}
 	std::string_view GetName() const override { return Options::NZBDIRFILEAGE; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
+class NzbDirArchiveScanValidator final : public Validator
+{
+public:
+	explicit NzbDirArchiveScanValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::NZBDIRARCHIVESCAN; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
+class NzbDirArchiveActionValidator final : public Validator
+{
+public:
+	explicit NzbDirArchiveActionValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::NZBDIRARCHIVEACTION; }
 	Status Validate() const override;
 
 private:
