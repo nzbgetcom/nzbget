@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 62;
+const int DISKSTATE_QUEUE_VERSION = 63;
 const int DISKSTATE_FILE_VERSION = 7;
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
@@ -543,6 +543,7 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	outfile.PrintLine("%s", nzbInfo->GetFilename());
 	outfile.PrintLine("%s", nzbInfo->GetDestDir());
 	outfile.PrintLine("%s", nzbInfo->GetFinalDir());
+	outfile.PrintLine("%s", nzbInfo->GetHardLinkPath().c_str());
 	outfile.PrintLine("%s", nzbInfo->GetQueuedFilename());
 	outfile.PrintLine("%s", nzbInfo->GetName());
 	outfile.PrintLine("%s", nzbInfo->GetCategory());
@@ -664,6 +665,12 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 	nzbInfo->SetFinalDir(buf);
+
+	if (formatVersion >= 63) 
+	{
+		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+		nzbInfo->SetHardLinkPath(buf);
+	}
 
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 	nzbInfo->SetQueuedFilename(buf);
