@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,6 +59,8 @@ void MoveController::Run()
 	PrintMessage(Message::mkInfo, "Moving completed files for %s", nzbName.c_str());
 
 	bool ok = MoveFiles();
+
+	RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 
 	infoName[0] = 'M'; // uppercase
 
@@ -201,23 +203,16 @@ void CleanupController::Run()
 		PrintMessage(Message::mkError, "%s failed", *infoName);
 		m_postInfo->GetNzbInfo()->SetCleanupStatus(NzbInfo::csFailure);
 	}
-	
-	CleanupHardLinkDir(*m_postInfo->GetNzbInfo());
 
 	m_postInfo->SetWorking(false);
 }
 
-void CleanupController::CleanupHardLinkDir(NzbInfo& nzbInfo)
+void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir)
 {
 	const auto& hardLinkPath = nzbInfo.GetHardLinkPath();
+	if (hardLinkPath.empty() || hardLinkPath == destDir) return;
 
-	if (hardLinkPath.empty()) return;
-	
-	const auto& finalDirname = nzbInfo.BuildFinalDirName().Str();
-
-	if (hardLinkPath == finalDirname) return;
-	
-	boost::system::error_code ec;
+	fs::error_code ec;
 	const auto path = fs::u8path(hardLinkPath);
 	fs::remove_all(path, ec);
 	if (ec)

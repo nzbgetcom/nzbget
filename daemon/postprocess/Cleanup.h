@@ -45,6 +45,7 @@ private:
 
 	bool MoveFiles();
 	void MoveFiles(const std::string& src, const std::string& dest, bool& isOk);
+	void RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir);
 };
 
 class CleanupController : public Thread, public ScriptController
@@ -62,7 +63,6 @@ private:
 	CString m_finalDir;
 
 	bool Cleanup(const char* destDir, bool *deleted);
-	void CleanupHardLinkDir(NzbInfo& nzbInfo);
 };
 
 #endif

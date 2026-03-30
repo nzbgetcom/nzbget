@@ -302,7 +302,7 @@ void ArticleWriter::BuildOutputFilename()
 
 	m_articleInfo->SetResultFilename(filename.c_str());
 	m_tempFilename = filename + ".tmp";
-	
+
 	if (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite())
 	{
 		Guard guard = m_fileInfo->GuardOutputFile();
@@ -357,6 +357,7 @@ void ArticleWriter::CompleteFileParts()
 	if (m_fileInfo->GetSuccessArticles() == 0)
 	{
 		detail("Skipping file parts completion for %s: no successful articles", fullInfoPath.c_str());
+		CleanupOldData(directWrite, nzbDestDir, "");
 		ReportCompletionStatus(fullInfoPath);
 		return;
 	}
@@ -376,8 +377,8 @@ void ArticleWriter::CompleteFileParts()
 	{
 		return;
 	}
-	
-	const auto& [finalOutputPath, tempDestPath] = *pathsOpt; 
+
+	const auto& [finalOutputPath, tempDestPath] = *pathsOpt;
 
 	// 4. Process data (Write/Join/Move Articles)
 	uint32 crc = ProcessArticles(outfile, fullInfoPath, finalOutputPath, directWrite, cached);
@@ -400,15 +401,15 @@ void ArticleWriter::LogStartMessage(std::string_view infoFilename, bool directWr
 	if (g_Options->GetRawArticle())
 	{
 		detail("Moving articles for %s", infoFilename.data());
-	}	
+	}
 	else if (directWrite && cached)
 	{
 		detail("Writing articles for %s", infoFilename.data());
-	}	
+	}
 	else if (directWrite)
 	{
 		detail("Checking articles for %s", infoFilename.data());
-	}	
+	}
 	else
 	{
 		detail("Joining articles for %s", infoFilename.data());
@@ -552,7 +553,7 @@ uint32 ArticleWriter::ProcessArticles(DiskFile& outfile,
 			BString<1024> dstFileName("%s%c%03i", finalOutputPath.data(), PATH_SEPARATOR, pa->GetPartNumber());
 			if (!FileSystem::MoveFile(pa->GetResultFilename(), dstFileName))
 			{
-				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s", 
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
 					pa->GetResultFilename(), *dstFileName, *FileSystem::GetLastErrorMessage());
 			}
 		}
@@ -564,7 +565,7 @@ uint32 ArticleWriter::ProcessArticles(DiskFile& outfile,
 			firstArticle = false;
 		}
 	}
-	
+
 	buffer.Clear();
 	return crc;
 }
@@ -594,11 +595,21 @@ void ArticleWriter::CleanupOldData(bool directWrite,
 {
 	if (directWrite)
 	{
-		bool sameFilename = FileSystem::SameFilename(m_outputFilename.c_str(), finalOutputPath.data());
-		if (!sameFilename && !FileSystem::MoveFile(m_outputFilename.c_str(), finalOutputPath.data()))
+		if (!finalOutputPath.empty())
 		{
-			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s", 
-				m_outputFilename.c_str(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
+			bool sameFilename = FileSystem::SameFilename(m_outputFilename.c_str(), finalOutputPath.data());
+			if (!sameFilename && !FileSystem::MoveFile(m_outputFilename.c_str(), finalOutputPath.data()))
+			{
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
+					m_outputFilename.c_str(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
+			}
+		}
+		else
+		{
+			if (FileSystem::FileExists(m_outputFilename.c_str()))
+			{
+				FileSystem::DeleteFile(m_outputFilename.c_str());
+			}
 		}
 
 		// Clean up old directory if empty
@@ -608,7 +619,7 @@ void ArticleWriter::CleanupOldData(bool directWrite,
 		{
 			debug("Checking old dir for: %s", m_outputFilename.c_str());
 			BString<1024> oldDestDir;
-			oldDestDir.Set(m_outputFilename.c_str(), (int)(FileSystem::BaseFileName(m_outputFilename.c_str()) - m_outputFilename.c_str()));
+			oldDestDir.Set(m_outputFilename.c_str(), static_cast<int>(FileSystem::BaseFileName(m_outputFilename.c_str()) - m_outputFilename.c_str()));
 			if (FileSystem::DirEmpty(oldDestDir))
 			{
 				debug("Deleting old dir: %s", *oldDestDir);
@@ -625,6 +636,14 @@ void ArticleWriter::CleanupOldData(bool directWrite,
 			{
 				FileSystem::DeleteFile(pa->GetResultFilename());
 			}
+		}
+	}
+
+	if (finalOutputPath.empty() && m_fileInfo->IsHardLinked() && Util::EmptyStr(g_Options->GetInterDir()))
+	{
+		if (FileSystem::DeleteFile(m_outputFilename.c_str()))
+		{
+			m_fileInfo->SetOutputFilename(nullptr);
 		}
 	}
 }
@@ -646,9 +665,9 @@ void ArticleWriter::ReportCompletionStatus(std::string_view infoFilename)
 	}
 }
 
-void ArticleWriter::HandlePostProcessing(uint32 crc, 
-								std::string_view currentPath, 
-								std::string_view originalFilename, 
+void ArticleWriter::HandlePostProcessing(uint32 crc,
+								std::string_view currentPath,
+								std::string_view originalFilename,
 								std::string_view nzbDestDir)
 {
 	GuardedDownloadQueue guard = DownloadQueue::Guard();
@@ -826,9 +845,9 @@ bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 	if (ec)
 	{
 		nzbInfo->PrintMessage(
-			Message::mkError, 
-			"Could not create directory %s: %s", 
-			nzbInfo->GetDestDir(), 
+			Message::mkError,
+			"Could not create directory %s: %s",
+			nzbInfo->GetDestDir(),
 			ec.message().c_str()
 		);
 		return false;
@@ -899,13 +918,13 @@ bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 				}
 			}
 		}
-	
+
 		if (!pendingWrites)
 		{
 			fs::remove(oldDir, ec);
 		}
 	}
-	
+
 	return true;
 }
 
