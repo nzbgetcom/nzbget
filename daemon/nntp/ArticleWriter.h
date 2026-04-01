@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@
 #define ARTICLEWRITER_H
 
 #include <atomic>
+#include <optional>
 #include <string>
 #include "NString.h"
 #include "DownloadInfo.h"
@@ -51,6 +52,11 @@ private:
 class ArticleWriter
 {
 public:
+	struct OutputPaths 
+	{
+	    std::string finalPath;
+	    std::string tempPath;
+	};
 	void SetInfoName(const char* infoName) { m_infoName = infoName ? infoName : ""; }
 	void SetInfoName(std::string infoName) { m_infoName = std::move(infoName); }
 	void SetFileInfo(FileInfo* fileInfo) { m_fileInfo = fileInfo; }
@@ -60,24 +66,36 @@ public:
 	bool Write(char* buffer, int len);
 	void Finish(bool success);
 	bool GetDuplicate() { return m_duplicate; }
+	void LogStartMessage(std::string_view infoFilename, bool directWrite, bool cached);
+	std::optional<OutputPaths> SetupOutputFile(DiskFile &outfile,
+											std::string_view destDir,
+											std::string_view filename,
+											std::string_view infoFilename,
+											bool directWrite,
+											bool cached);
+	uint32 ProcessArticles(DiskFile& outfile,
+						std::string_view infoFilename,
+						std::string_view finalOutputPath,
+						bool directWrite,
+						bool cached);
+	void CommitDiskFile(DiskFile& outfile,
+						std::string_view tempDestPath,
+						std::string_view finalOutputPath,
+						bool directWrite);
+	void CleanupOldData(bool directWrite,
+						std::string_view nzbDestDir,
+						std::string_view finalOutputPath);
+	void ReportCompletionStatus(std::string_view infoFilename);
+	void HandlePostProcessing(uint32 crc, 
+							std::string_view currentPath, 
+							std::string_view originalFilename, 
+							std::string_view nzbDestDir);
 	void CompleteFileParts();
 	static bool MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir);
 	void FlushCache();
 
 private:
 	bool GetSkipDiskWrite();
-
-	/**
-	 *  @brief Renames the temporary `.out` output file to its original filename.
-	 *  
-	 * 	This is necessary when Direct/Par renaming is disabled or the download fails due to health checks.
-	 *  Or there are no par files at all.
-	 *  No action is taken if the filename matches the current filename.
-	 *
-	 * @param filename The desired final filename (without path).
-	 * @param destDir  The destination directory for the file.
-	 */
-	void RenameOutputFile(const std::string& filename, const std::string& destDir);
 
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;

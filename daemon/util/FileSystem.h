@@ -88,7 +88,7 @@ inline path make_unique_filename()
 inline fs::path make_unique_filename(const fs::path& targetPath)
 {
 	fs::error_code ec;
-	if (!fs::exists(targetPath, ec) && !ec) 
+	if (!fs::exists(targetPath, ec) && !ec)
 	{
 		return targetPath;
 	}
@@ -96,10 +96,10 @@ inline fs::path make_unique_filename(const fs::path& targetPath)
 	const fs::path baseDir = targetPath.parent_path();
 	const std::string stem = fs::u8string(targetPath.stem());
 	const std::string ext = fs::u8string(targetPath.extension());
-	
+
 	int counter = 1;
 	fs::path uniquePath;
-	do 
+	do
 	{
 		uniquePath = baseDir / (stem + " (" + std::to_string(counter++) + ")" + ext);
 	} while (fs::exists(uniquePath, ec) && !ec);

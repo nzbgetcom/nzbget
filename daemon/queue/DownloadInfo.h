@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #define DOWNLOADINFO_H
 
 #include <atomic>
-#include "NewsServer.h"
+#include <string>
 #include "NString.h"
 #include "Container.h"
 #include "Observer.h"
@@ -495,6 +495,8 @@ public:
 	const char* GetCategory() { return m_category; }
 	void SetCategory(const char* category) { m_category = category; }
 	const char* GetName() { return m_name; }
+	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
+	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetName(const char* name) { m_name = name; }
 	int GetFileCount() { return m_fileCount; }
 	void SetFileCount(int fileCount) { m_fileCount = fileCount; }
@@ -687,6 +689,7 @@ private:
 	CString m_destDir = "";
 	CString m_finalDir = "";
 	CString m_category = "";
+	std::string m_hardLinkPath;
 	int m_fileCount = 0;
 	int m_parkedFileCount = 0;
 	int64 m_size = 0;
