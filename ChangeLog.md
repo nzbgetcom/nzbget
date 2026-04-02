@@ -1,3 +1,30 @@
+nzbget-v26.1
+  - Features:
+    - Improved archived NZB handling support
+    [#763](https://github.com/nzbgetcom/nzbget/pull/763)
+      - Added `NzbDirArchiveScan` option to configure scanning archives (zip, rar, 7z, etc.) in `NzbDir` for .nzb files;
+      - Added `NzbDirArchiveAction` option to define the post-scan behavior (move or delete) for processed archives.
+    - Switched yEnc implementation to rapidyenc for SIMD acceleration
+    [#751](https://github.com/nzbgetcom/nzbget/pull/751).
+
+  - Bug fixes:
+    - Docker: Fixed entrypoint to run as PID 1
+    [#731](https://github.com/nzbgetcom/nzbget/pull/731);
+    - POSIX: Ensured daemon ownership for files created at startup
+    [#726](https://github.com/nzbgetcom/nzbget/pull/726);
+    - Fixed missing log file on startup
+    [#753](https://github.com/nzbgetcom/nzbget/pull/753);
+    - Fixed 0-byte file created if article download fails and renaming an ongoing download leads to needless par repair
+    [#768](https://github.com/nzbgetcom/nzbget/pull/768).
+
+  - For developers:
+    - Switched to std::filesystem and fixed Linux 2.6.32 compatibility
+    [#745](https://github.com/nzbgetcom/nzbget/pull/745);
+    - Updated OpenSSL to 3.5.5 (Linux/FreeBSD/Android), UnRAR to 7.20, and 7-Zip to 26.00 (remains 25.01 on macOS Mojave for compatibility)
+    [#742](https://github.com/nzbgetcom/nzbget/pull/742);
+    - Updated par2-turbo to v1.4.0
+    [#752](https://github.com/nzbgetcom/nzbget/pull/752).
+
 nzbget-v26.0
   - Features:
     - SystemHealth: Advanced configuration and environment diagnostics
