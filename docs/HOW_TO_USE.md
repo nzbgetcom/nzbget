@@ -24,6 +24,9 @@ On POSIX systems:
 ```
 <EXE-DIR>/nzbget.conf
 ~/.nzbget
+~/.config/nzbget.conf
+~/.config/nzbget/nzbget
+~/.config/nzbget/nzbget.conf
 /etc/nzbget.conf
 /usr/etc/nzbget.conf
 /usr/local/etc/nzbget.conf
@@ -247,4 +250,4 @@ http://localhost:6789/username:password/
 ```
 Please note, that in this case the password is saved in a bookmark or in
 browser history in plain text and is easy to find by persons having
-access to your computer. 
+access to your computer.
