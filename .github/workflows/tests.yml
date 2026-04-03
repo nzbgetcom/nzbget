@@ -202,6 +202,36 @@ jobs:
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
 
+  cppcheck:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev cppcheck
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: cppcheck
+      run: |
+        mkdir build && cd build
+        cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+        cppcheck --error-exitcode=1 \
+          --project=compile_commands.json \
+          --enable=all \
+          --inline-suppr \
+          --check-level=exhaustive \
+          --suppress=missingIncludeSystem \
+          --suppress=unknownMacro:tests/ \
+          --suppress=preprocessorErrorDirective:build/par2-turbo/ \
+          -itests \
+          -ibuild/rapidyenc \
+          -ibuild/boost \
+          -ibuild/par2-turbo
+
   build-disabled-parcheck:
     runs-on: ubuntu-24.04
     steps:
