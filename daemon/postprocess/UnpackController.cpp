@@ -502,6 +502,11 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 	}
 
 	int64 totalSize = firstSegmentSize * (count - 1) + difSegmentSize;
+	if (totalSize <= 0)
+	{
+		PrintMessage(Message::mkError, "Could not join splitted file %s: file segments are empty", *destBaseName);
+		return false;
+	}
 	int64 written = 0;
 
 	CharBuffer buffer(1024 * 50);
