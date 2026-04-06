@@ -15,7 +15,9 @@ nzbget-v26.1
     - Fixed missing log file on startup
     [#753](https://github.com/nzbgetcom/nzbget/pull/753);
     - Fixed 0-byte file created if article download fails and renaming an ongoing download leads to needless par repair
-    [#768](https://github.com/nzbgetcom/nzbget/pull/768).
+    [#768](https://github.com/nzbgetcom/nzbget/pull/768);
+    - Fixed SIGFPE crash in JoinFile when file segments are empty
+    [#772](https://github.com/nzbgetcom/nzbget/pull/772).
 
   - For developers:
     - Switched to std::filesystem and fixed Linux 2.6.32 compatibility
