@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,12 +23,12 @@
 #include "Unpack.h"
 #include "ExtensionLoader.h"
 #include "ExtensionManager.h"
+#include "Options.h"
+#include "FileSystem.h"
 
 #ifdef _WIN32
 #include "Utf8.h"
 #endif
-
-namespace fs = boost::filesystem;
 
 namespace ExtensionManager
 {
@@ -58,12 +58,7 @@ namespace ExtensionManager
 	{
 		fs::path tmpFileName = g_Options->GetTempDirPath() / (extName + ".tmp.zip");
 
-#ifdef _WIN32
-		const auto tmpFileNameStr =
-			Utf8::WideToUtf8(tmpFileName.wstring()).value_or(tmpFileName.string());
-#else
-		const auto tmpFileNameStr = tmpFileName.string();
-#endif
+		const auto tmpFileNameStr = fs::u8string(tmpFileName);
 
 		std::unique_ptr<WebDownloader> downloader = std::make_unique<WebDownloader>();
 		downloader->SetUrl(url.c_str());
@@ -79,7 +74,7 @@ namespace ExtensionManager
 	}
 
 	std::optional<std::string>
-	Manager::UpdateExtension(const boost::filesystem::path& filename, const std::string& extName)
+	Manager::UpdateExtension(const fs::path& filename, const std::string& extName)
 	{
 		std::unique_lock<std::shared_mutex> lock{m_mutex};
 
@@ -97,12 +92,12 @@ namespace ExtensionManager
 		const auto deleteExtError = DeleteExtension(*(*extensionIt));
 		if (deleteExtError)
 		{
-			boost::system::error_code ec;
+			fs::error_code ec;
 			fs::remove(filename, ec);
 			if (ec)
 			{
 				return "Failed to remove existing extension (Error: " + deleteExtError.value() + 
-									") and failed to cleanup temporary file '" + filename.string() + 
+									") and failed to cleanup temporary file '" + fs::u8string(filename) + 
 									"' (Error: " + ec.message() + ")";
 			}
 
@@ -129,35 +124,31 @@ namespace ExtensionManager
 		return std::nullopt;
 	}
 
-	std::optional<std::string> Manager::InstallExtension(const boost::filesystem::path& file,
-														 const boost::filesystem::path& dest)
+	std::optional<std::string> Manager::InstallExtension(const fs::path& file,
+														 const fs::path& dest)
 	{
-		try
+		const auto extractor =
+			Unpack::MakeExtractor(file, dest, "", Unpack::OverwriteMode::Overwrite);
+
+		if (!extractor)
 		{
-			const auto extractor =
-				Unpack::MakeExtractor(file, dest, "", Unpack::OverwriteMode::Overwrite);
-
-			const auto result = extractor->Extract();
-			if (!result.success)
-			{
-				return "Extraction failed for archive '" + file.string() +
-					   "'. Error: " + std::string(result.message);
-			}
-
-			boost::system::error_code ec;
-			fs::remove(file, ec);
-			if (ec)
-			{
-				return "Extension unpacked, but failed to delete temporary archive '" +
-					   file.string() + "': " + ec.message();
-			}
-
-			return std::nullopt;
+			return "Failed to initialize extraction for archive '" + fs::u8string(file);
 		}
-		catch (const std::exception& e)
+
+		if (!extractor->Extract())
 		{
-			return "Extraction of " + file.string() + " failed: " + e.what();
+			return "Extraction failed for archive '" + fs::u8string(file);
 		}
+
+		fs::error_code ec;
+		fs::remove(file, ec);
+		if (ec)
+		{
+			return "Extension unpacked, but failed to delete temporary archive '" +
+				   fs::u8string(file) + "': " + ec.message();
+		}
+
+		return std::nullopt;
 	}
 
 	std::optional<std::string>
@@ -242,7 +233,7 @@ namespace ExtensionManager
 		fs::path targetPath(location);
 #endif
 
-		boost::system::error_code ec;
+		fs::error_code ec;
 		fs::remove_all(targetPath, ec);
 		if (ec)
 		{

@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ void Log::LogDebugInfo()
 	info("Dumping debug info to log");
 	info("--------------------------------------------");
 
-	Guard guard(m_debugMutex);
+	std::lock_guard<std::mutex> guard(m_debugMutex);
 	for (Debuggable* debuggable : m_debuggables)
 	{
 		debuggable->LogDebugInfo();
@@ -56,7 +56,7 @@ void Log::LogDebugInfo()
 
 void Log::Filelog(const char* msg, ...)
 {
-	if (m_logFilename.Empty())
+	if (m_logFilename.empty())
 	{
 		return;
 	}
@@ -90,12 +90,23 @@ void Log::Filelog(const char* msg, ...)
 	if (!m_logFile)
 	{
 		m_logFile = std::make_unique<DiskFile>();
-		if (!m_logFile->Open(m_logFilename, DiskFile::omAppend))
+		if (!m_logFile->Open(m_logFilename.c_str(), DiskFile::omAppend))
 		{
-			perror(m_logFilename);
+			perror(m_logFilename.c_str());
 			m_logFile.reset();
 			return;
 		}
+
+#ifndef WIN32
+		if (getuid() == 0 || geteuid() == 0)
+		{
+			struct passwd* pwd = getpwnam(g_Options->GetDaemonUsername());
+			if (pwd != nullptr)
+			{
+				chown(m_logFilename.c_str(), pwd->pw_uid, pwd->pw_gid);
+			}
+		}
+#endif
 	}
 
 	m_logFile->Seek(0, DiskFile::soEnd);
@@ -119,12 +130,12 @@ void Log::Filelog(const char* msg, ...)
 void Log::IntervalCheck()
 {
 	// Close log-file on idle (if last write into log was more than a second ago)
+	Guard guard(m_logMutex);
 	if (m_logFile)
 	{
 		time_t curTime = Util::CurrentTime() + g_Options->GetTimeCorrection();
 		if (std::abs(curTime - m_lastWritten) > 1)
 		{
-			Guard guard(m_logMutex);
 			m_logFile.reset();
 		}
 	}
@@ -357,7 +368,7 @@ void Log::RotateLog()
 	fullFilename.Format("%s%c%s-%i-%.2i-%.2i%s", *directory, PATH_SEPARATOR,
 		baseName, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, *baseExt);
 
-	m_logFilename = fullFilename;
+	UpdateLogPath(*fullFilename);
 }
 
 /*
@@ -375,7 +386,8 @@ void Log::InitOptions()
 
 	if (g_Options->GetWriteLog() != Options::wlNone && g_Options->GetLogFile())
 	{
-		m_logFilename = g_Options->GetLogFile();
+		UpdateLogPath(g_Options->GetLogFile());
+
 		if (g_Options->GetServerMode() && g_Options->GetWriteLog() == Options::wlReset)
 		{
 			g_Log->ResetLog();
@@ -428,12 +440,31 @@ void Log::InitOptions()
 
 void Log::RegisterDebuggable(Debuggable* debuggable)
 {
-	Guard guard(m_debugMutex);
+	std::lock_guard<std::mutex> guard(m_debugMutex);
 	m_debuggables.push_back(debuggable);
 }
 
 void Log::UnregisterDebuggable(Debuggable* debuggable)
 {
-	Guard guard(m_debugMutex);
+	std::lock_guard<std::mutex> guard(m_debugMutex);
 	m_debuggables.remove(debuggable);
+}
+
+std::string Log::GetLogFilename() const
+{
+	std::lock_guard<std::mutex> guard(m_pathMutex);
+	return m_logFilename;
+}
+
+fs::path Log::GetLogFilePath() const
+{
+	std::lock_guard<std::mutex> guard(m_pathMutex);
+	return m_logFilePath; 
+}
+
+void Log::UpdateLogPath(const char* newPath)
+{
+	std::lock_guard<std::mutex> guard(m_pathMutex);
+	m_logFilename = newPath;
+	m_logFilePath = fs::u8path(m_logFilename);
 }

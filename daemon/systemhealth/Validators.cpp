@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,9 +22,6 @@
 #include <fstream>
 #include "Validators.h"
 
-namespace fs = boost::filesystem;
-using namespace boost::system;
-
 namespace SystemHealth
 {
 Validator::~Validator() = default;
@@ -40,7 +37,7 @@ Status RequiredOption(std::string_view name, std::string_view value)
 	return Status::Ok();
 }
 
-Status RequiredPathOption(std::string_view name, const boost::filesystem::path& value)
+Status RequiredPathOption(std::string_view name, const fs::path& value)
 {
 	if (value.empty())
 	{
@@ -52,8 +49,8 @@ Status RequiredPathOption(std::string_view name, const boost::filesystem::path& 
 }
 
 Status UniquePath(
-	std::string_view name, const boost::filesystem::path& path,
-	const std::vector<std::pair<std::string_view, const boost::filesystem::path&>>& other)
+	std::string_view name, const fs::path& path,
+	const std::vector<std::pair<std::string_view, const fs::path&>>& other)
 {
 	if (path.empty()) return Status::Ok();
 
@@ -92,9 +89,9 @@ namespace File
 
 Status Exists(const fs::path& path)
 {
-	error_code ec;
+	fs::error_code ec;
 	bool exists = fs::exists(path, ec);
-	if (ec && ec != errc::no_such_file_or_directory)
+	if (ec)
 	{
 		std::stringstream ss;
 		ss << "Failed to check " << path << ": " << ec.message();
@@ -162,7 +159,7 @@ Status Executable(const fs::path& path)
 		return Status::Error(ss.str());
 	}
 
-	std::string ext = path.extension().string();
+	std::string ext = fs::u8string(path.extension());
 	std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 	if (ext == ".exe" || ext == ".bat" || ext == ".cmd" || ext == ".com")
 	{
@@ -192,9 +189,9 @@ namespace Directory
 
 Status Exists(const fs::path& path)
 {
-	error_code ec;
+	fs::error_code ec;
 	bool exists = fs::exists(path, ec);
-	if (ec && ec != errc::no_such_file_or_directory)
+	if (ec)
 	{
 		std::stringstream ss;
 		ss << "Failed to check " << path << ": " << ec.message();
@@ -228,7 +225,7 @@ Status Exists(const fs::path& path)
 
 Status Readable(const fs::path& path)
 {
-	error_code ec;
+	fs::error_code ec;
 	fs::directory_iterator it(path, ec);
 	if (ec)
 	{
@@ -259,13 +256,13 @@ Status Writable(const fs::path& path)
 			std::stringstream ss;
 			ss << "Failed to write content to " << path << ": " << std::strerror(errno);
 
-			error_code ignore;
+			fs::error_code ignore;
 			fs::remove(testPath, ignore);
 			return Status::Error(ss.str());
 		}
 	}
 
-	error_code ec;
+	fs::error_code ec;
 	fs::remove(testPath, ec);
 	if (ec)
 	{

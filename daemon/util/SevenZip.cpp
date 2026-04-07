@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,16 +36,9 @@ using namespace Unpack;
 ScriptController::ArgList SevenZip::MakeArgs() const
 {
 	ScriptController::ArgList args;
-#ifdef _WIN32
-	const auto tool = Utf8::WideToUtf8(m_tool.wstring()).value_or(m_tool.string());
-	const auto outputDir =
-		"-o" + Utf8::WideToUtf8(m_outputDir.wstring()).value_or(m_outputDir.string());
-	const auto archive = Utf8::WideToUtf8(m_archive.wstring()).value_or(m_archive.string());
-#else
-	const auto tool = m_tool.string();
-	const auto outputDir = "-o" + m_outputDir.string();
-	const auto archive = m_archive.string();
-#endif
+	const auto tool = fs::u8string(m_tool);
+	const auto outputDir = "-o" + fs::u8string(m_outputDir);
+	const auto archive = fs::u8string(m_archive);
 
 	args.push_back(tool.c_str());
 	args.push_back("x");
@@ -73,11 +66,11 @@ ScriptController::ArgList SevenZip::MakeArgs() const
 	return args;
 }
 
-bool SevenZip::IsSupported(const boost::filesystem::path& path)
+bool SevenZip::IsSupported(const fs::path& path)
 {
 	if (!path.has_filename() || !path.has_extension()) return false;
 
-	auto filename = path.filename().string();
+	auto filename = fs::u8string(path.filename());
 	std::transform(filename.begin(), filename.end(), filename.begin(),
 				   [](auto c) { return std::tolower(c); });
 	const static std::array<std::string_view, 9> formats{".7z", ".zip", ".7z.001", ".tar", ".gz",
@@ -87,27 +80,29 @@ bool SevenZip::IsSupported(const boost::filesystem::path& path)
 					   { return Util::EndsWith(filename.c_str(), ext.data(), false); });
 }
 
-Result SevenZip::DecodeExitCode(int ec) const
+bool SevenZip::DecodeExitCode(int ec) const
 {
 	switch (ec)
 	{
 		case ExitCode::Success:
-			return {true, ""};
+			return true;
 		case ExitCode::Warning:
-			return {false,
-					"Completed with warnings. Some files may have been skipped because they were "
-					"in use"};
+			error("Completed with warnings. Some files may have been skipped because they were in use");
+			return false;
 		case ExitCode::FatalError:
-			return {false,
-					"A fatal error occurred. Check for permission issues, a corrupt archive, "
-					"password, disk space"};
+			error("A fatal error occurred. Check for permission issues, a corrupt archive, password, disk space");
+			return false;
 		case ExitCode::CmdLineError:
-			return {false, "Command line error"};
+			error("Command line error");
+			return false;
 		case ExitCode::NotEnoughMemoryError:
-			return {false, "Not enough memory for operation"};
+			error("Not enough memory for operation");
+			return false;
 		case ExitCode::CanceledByUser:
-			return {false, "User stopped the process"};
+			error("User stopped the process");
+			return false;
 		default:
-			return {false, "Unknown 7-Zip error"};
+			error("Unknown 7-Zip error (%d)", ec);
+			return false;
 	};
 }

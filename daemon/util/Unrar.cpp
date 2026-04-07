@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+
 
 #include "nzbget.h"
 
@@ -38,15 +39,9 @@ using namespace Unpack;
 ScriptController::ArgList Unrar::MakeArgs() const
 {
 	ScriptController::ArgList args;
-#ifdef _WIN32
-	const auto tool = Utf8::WideToUtf8(m_tool.wstring()).value_or(m_tool.string());
-	const auto outputDir = Utf8::WideToUtf8(m_outputDir.wstring()).value_or(m_outputDir.string());
-	const auto archive = Utf8::WideToUtf8(m_archive.wstring()).value_or(m_archive.string());
-#else
-	const auto tool = m_tool.string();
-	const auto outputDir = m_outputDir.string();
-	const auto archive = m_archive.string();
-#endif
+	const auto tool = fs::u8string(m_tool);
+	const auto outputDir = fs::u8string(m_outputDir);
+	const auto archive = fs::u8string(m_archive);
 
 	args.push_back(tool.c_str());
 	args.push_back("x");
@@ -75,11 +70,11 @@ ScriptController::ArgList Unrar::MakeArgs() const
 	return args;
 }
 
-bool Unrar::IsSupported(const boost::filesystem::path& path)
+bool Unrar::IsSupported(const fs::path& path)
 {
 	if (!path.has_filename()) return false;
 
-	auto filename = path.filename().string();
+	auto filename = fs::u8string(path.filename());
 	static const std::regex part1Rar("\\.part0*1\\.rar$", std::regex_constants::icase);
 	if (std::regex_search(filename, part1Rar)) return true;
 
@@ -93,42 +88,47 @@ bool Unrar::IsSupported(const boost::filesystem::path& path)
 	return false;
 }
 
-Result Unrar::DecodeExitCode(int ec) const
+bool Unrar::DecodeExitCode(int ec) const
 {
 	switch (ec)
 	{
 		case ExitCode::Success:
-			return {true, ""};
+			return true;
 		case ExitCode::NonFatalError:
-			return {false, "Extraction finished, but some files might be missing or incomplete"};
+			error("Extraction finished, but some files might be missing or incomplete");
+			return false;
 		case ExitCode::FatalError:
-			return {false, "The process could not start or was interrupted unexpectedly"};
+			error("The process could not start or was interrupted unexpectedly");
+			return false;
 		case ExitCode::InvalidChecksum:
-			return {false, "The archive is damaged. The extracted files are likely corrupt"};
+			error("The archive is damaged. The extracted files are likely corrupt");
+			return false;
 		case ExitCode::LockedArchive:
-			return {false, "This archive is locked and cannot be modified or unpacked"};
+			error("This archive is locked and cannot be modified or unpacked");
+			return false;
 		case ExitCode::WriteError:
-			return {false,
-					"Could not write files to the destination. Please check your permissions and "
-					"disk space"};
+			error("Could not write files to the destination. Please check your permissions and disk space");
+			return false;
 		case ExitCode::FileOpenError:
-			return {false,
-					"Couldn't open the archive. The file may be missing or you don't have "
-					"permission to read it"};
+			error("Couldn't open the archive. The file may be missing or you don't have permission to read it");
+			return false;
 		case ExitCode::CommandLineError:
-			return {false, "An internal program error occurred"};
+			error("An internal program error occurred");
+			return false;
 		case ExitCode::NotEnoughMemory:
-			return {false,
-					"Your computer ran out of memory. Please try closing other applications first"};
+			error("Your computer ran out of memory. Please try closing other applications first");
+			return false;
 		case ExitCode::FileCreateError:
-			return {false,
-					"Couldn't create files in the destination folder. Please check your "
-					"permissions"};
+			error("Couldn't create files in the destination folder. Please check your permissions");
+			return false;
 		case ExitCode::NoFilesFound:
-			return {false, "There were no files inside the archive to extract"};
+			error("There were no files inside the archive to extract");
+			return false;
 		case ExitCode::WrongPassword:
-			return {false, "The password you entered was incorrect"};
+			error("The password you entered was incorrect");
+			return false;
 		default:
-			return {false, "Unknown Unrar error"};
+			error("Unknown error %d", ec);
+			return false;
 	}
 }

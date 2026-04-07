@@ -21,6 +21,12 @@ message(STATUS "  DISABLE CURSES:    ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:      ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK:  ${DISABLE_PARCHECK}")
 
+set(BOOST_NEEDED_COMPONENTS json)
+
+if(NOT HAVE_STD_FILESYSTEM)
+	list(APPEND BOOST_NEEDED_COMPONENTS filesystem)
+endif()
+
 if(APPLE)
 	# On macOS Cmake, when cross-compiling, sometimes CMAKE_SYSTEM_PROCESSOR wrongfully stays
 	# the same as CMAKE_HOST_SYSTEM_PROCESSOR regardless the target CPU.
@@ -96,54 +102,49 @@ else()
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	find_package(Boost COMPONENTS json filesystem)
+	find_package(Boost COMPONENTS ${BOOST_NEEDED_COMPONENTS})
 
 	if(NOT Boost_FOUND)
-		message(STATUS "Required Boost libraries will be installed from GitHub.")
+		message(STATUS "Required Boost libraries (${BOOST_NEEDED_COMPONENTS}) not found. Building from source")
 
 		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 
-		set(DEPENDENCIES boost)
+		list(APPEND EXTERNAL_DEPS boost)
 	else()
-		set(LIBS ${LIBS} Boost::json Boost::filesystem)
+		set(LIBS ${LIBS} Boost::json)
+		if(NOT HAVE_STD_FILESYSTEM)
+			set(LIBS ${LIBS} Boost::filesystem)
+		endif()
 		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
 	endif()
 endif()
 
-include(CheckIncludeFiles)
-check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
+
+list(APPEND EXTERNAL_DEPS rapidyenc)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	set(DEPENDENCIES ${DEPENDENCIES} par2-turbo)
+	list(APPEND EXTERNAL_DEPS par2-turbo)
 endif()
+
+check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-	add_dependencies(regex ${DEPENDENCIES})
+	list(APPEND EXTERNAL_DEPS regex)
 endif()
 
-if(DEPENDENCIES)
-	add_dependencies(yencode ${DEPENDENCIES})
-	if(NOT BUILD_ONLY_TESTS)
-		add_dependencies(${PACKAGE} ${DEPENDENCIES})
-	endif()
+# Large File Support (LFS)
+if (NOT TOOLCHAIN_PREFIX MATCHES "android")
+	add_compile_definitions(_FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE _LARGE_FILES)
 endif()
-
-include(CheckIncludeFiles)
-include(CheckLibraryExists)
-include(CheckSymbolExists)
-include(CheckFunctionExists)
-include(CheckTypeSize)
-include(CheckCSourceCompiles)
-include(CheckCXXSourceCompiles)
 
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H)
-check_include_files(endian.h HAVE_ENDIAN_H) 
+check_include_files(endian.h HAVE_ENDIAN_H)
 check_include_files(getopt.h HAVE_GETOPT_H)
 check_include_file(inttypes.h HAVE_INTTYPES_H)
-check_include_file(stdint.h HAVE_STDINT_H)
 check_include_file(stdio.h HAVE_STDIO_H)
 check_include_file(stdlib.h HAVE_STDLIB_H)
 check_include_file(strings.h HAVE_STRINGS_H)
@@ -152,17 +153,19 @@ check_include_file(sys/stat.h HAVE_SYS_STAT_H)
 check_include_file(unistd.h HAVE_UNISTD_H)
 check_include_file(alloca.h HAVE_ALLOCA_H)
 
-check_library_exists(pthread pthread_create "" HAVE_PTHREAD_CREATE) 
-check_library_exists(socket socket "" HAVE_SOCKET) 
-check_library_exists(nsl inet_addr "" HAVE_INET_ADDR) 
+check_library_exists(pthread pthread_create "" HAVE_PTHREAD_CREATE)
+check_library_exists(socket socket "" HAVE_SOCKET)
+check_library_exists(nsl inet_addr "" HAVE_INET_ADDR)
 check_library_exists(resolv hstrerror "" HAVE_HSTRERROR)
 
-check_symbol_exists(lockf unistd.h HAVE_LOCKF) 
+check_symbol_exists(lockf unistd.h HAVE_LOCKF)
 check_symbol_exists(pthread_cancel pthread.h HAVE_PTHREAD_CANCEL)
 check_symbol_exists(F_FULLFSYNC fcntl.h HAVE_FULLFSYNC)
 
+check_function_exists(fseeko HAVE_FSEEKO)
+check_function_exists(getopt HAVE_GETOPT)
 check_function_exists(getopt_long HAVE_GETOPT_LONG)
-check_function_exists(fdatasync HAVE_FDATASYNC) 
+check_function_exists(fdatasync HAVE_FDATASYNC)
 
 set(SIGCHLD_HANDLER 1)
 
@@ -170,89 +173,83 @@ if(NOT DISABLE_CURSES)
 	set(HAVE_NCURSES_H 1)
 endif()
 
-if(NOT DISABLE_PARCHECK)
-	check_type_size(size_t SIZE_T)
-	check_function_exists(fseeko HAVE_FSEEKO)
-	check_function_exists(getopt HAVE_GETOPT)
-endif()
-
 # check ctime_r
 check_cxx_source_compiles("
-  #include <time.h> 
-  int main() 
+		#include <time.h>
+		int main()
 	{
-		time_t clock; 
-		char buf[26]; 
-		ctime_r(&clock, buf, 26); 
-		return 0; 
+		time_t clock;
+		char buf[26];
+		ctime_r(&clock, buf, 26);
+		return 0;
 	}" HAVE_CTIME_R_3)
 
-if(NOT HAVE_CTIME_R_3) 
+if(NOT HAVE_CTIME_R_3)
 	check_cxx_source_compiles("
-	#include <time.h> 
-	int main() 
+	#include <time.h>
+	int main()
 	{
-		time_t clock; 
-		char buf[26]; 
-		ctime_r(&clock, buf); 
-		return 0; 
+		time_t clock;
+		char buf[26];
+		ctime_r(&clock, buf);
+		return 0;
 	}" HAVE_CTIME_R_2)
 endif()
-if(NOT HAVE_CTIME_R_2) 
-	message(FATAL_ERROR "ctime_r function not found") 
+if(NOT HAVE_CTIME_R_2)
+	message(FATAL_ERROR "ctime_r function not found")
 endif()
 
-check_function_exists(getaddrinfo HAVE_GETADDRINFO) 
-if(NOT HAVE_GETADDRINFO) 
-	check_library_exists(nsl getaddrinfo "" HAVE_GETADDRINFO) 
+check_function_exists(getaddrinfo HAVE_GETADDRINFO)
+if(NOT HAVE_GETADDRINFO)
+	check_library_exists(nsl getaddrinfo "" HAVE_GETADDRINFO)
 endif()
 
 # check gethostbyname_r, if getaddrinfo is not available
-if(NOT HAVE_GETADDRINFO) 
+if(NOT HAVE_GETADDRINFO)
 	check_cxx_source_compiles("
-	#include <netdb.h> 
-	int main() 
-	{ 
-		char* szHost; 
-		struct hostent hinfobuf; 
-		char* strbuf; 
-		int h_errnop; 
-		struct hostent* hinfo = gethostbyname_r(szHost, &hinfobuf, strbuf, 1024, &h_errnop); 
-		return 0; 
-	}" HAVE_GETHOSTBYNAME_R_5) 
-if(NOT HAVE_GETHOSTBYNAME_R_5) 
-	check_cxx_source_compiles("
-	#include <netdb.h> 
-	int main() 
-	{ 
-		char* szHost; 
-		struct hostent* hinfo; 
-		struct hostent hinfobuf; 
-		char* strbuf; 
-		int h_errnop; 
-		int err = gethostbyname_r(szHost, &hinfobuf, strbuf, 1024, &hinfo, &h_errnop); 
-		return 0; 
-	}" HAVE_GETHOSTBYNAME_R_6) 
-if(NOT HAVE_GETHOSTBYNAME_R_6) 
-	check_cxx_source_compiles("
-	#include <netdb.h> 
-	int main() 
-	{ 
-		char* szHost; 
-		struct hostent hinfo; 
-		struct hostent_data hinfobuf; 
-		int err = gethostbyname_r(szHost, &hinfo, &hinfobuf); 
-		return 0; 
-	}" HAVE_GETHOSTBYNAME_R_3) 
-if(NOT HAVE_GETHOSTBYNAME_R_3) 
-  message(FATAL_ERROR "gethostbyname_r function not found") 
-endif() 
-endif() 
-endif() 
-if (NOT HAVE_GETHOSTBYNAME_R_3) 
-	set(HAVE_GETHOSTBYNAME_R 1) 
-	check_library_exists(nsl gethostbyname_r "" HAVE_GETHOSTBYNAME_R) 
-endif() 
+	#include <netdb.h>
+	int main()
+	{
+		char* szHost;
+		struct hostent hinfobuf;
+		char* strbuf;
+		int h_errnop;
+		struct hostent* hinfo = gethostbyname_r(szHost, &hinfobuf, strbuf, 1024, &h_errnop);
+		return 0;
+	}" HAVE_GETHOSTBYNAME_R_5)
+	if(NOT HAVE_GETHOSTBYNAME_R_5)
+		check_cxx_source_compiles("
+	#include <netdb.h>
+	int main()
+	{
+		char* szHost;
+		struct hostent* hinfo;
+		struct hostent hinfobuf;
+		char* strbuf;
+		int h_errnop;
+		int err = gethostbyname_r(szHost, &hinfobuf, strbuf, 1024, &hinfo, &h_errnop);
+		return 0;
+	}" HAVE_GETHOSTBYNAME_R_6)
+		if(NOT HAVE_GETHOSTBYNAME_R_6)
+			check_cxx_source_compiles("
+	#include <netdb.h>
+	int main()
+	{
+		char* szHost;
+		struct hostent hinfo;
+		struct hostent_data hinfobuf;
+		int err = gethostbyname_r(szHost, &hinfo, &hinfobuf);
+		return 0;
+	}" HAVE_GETHOSTBYNAME_R_3)
+			if(NOT HAVE_GETHOSTBYNAME_R_3)
+				message(FATAL_ERROR "gethostbyname_r function not found")
+			endif()
+		endif()
+	endif()
+	if (NOT HAVE_GETHOSTBYNAME_R_3)
+		set(HAVE_GETHOSTBYNAME_R 1)
+		check_library_exists(nsl gethostbyname_r "" HAVE_GETHOSTBYNAME_R)
+	endif()
 endif()
 
 # Determine what socket length (socklen_t) data type is
@@ -265,9 +262,9 @@ check_cxx_source_compiles("
 		(void)getsockopt (1, 1, 1, NULL, (socklen_t*)NULL);
 	}" SOCKLEN)
 if(SOCKLEN)
-  set(SOCKLEN_T socklen_t)
-else() 
-  check_cxx_source_compiles("
+	set(SOCKLEN_T socklen_t)
+else()
+	check_cxx_source_compiles("
 	#include <stddef.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
@@ -275,10 +272,10 @@ else()
 	{
 		(void)getsockopt (1, 1, 1, NULL, (size_t*)NULL);
 	}" SOCKLEN)
-if(SOCKLEN)
-  set(SOCKLEN_T size_t)
-else() 
-	check_cxx_source_compiles("
+	if(SOCKLEN)
+		set(SOCKLEN_T size_t)
+	else()
+		check_cxx_source_compiles("
 	#include <stddef.h>
 	#include <sys/types.h>
 	#include <sys/socket.h>
@@ -286,12 +283,12 @@ else()
 	{
 		(void)getsockopt (1, 1, 1, NULL, (int*)NULL);
 	}" SOCKLEN)
-if(SOCKLEN)
-  set(SOCKLEN_T int)
-else()
-  set(SOCKLEN_T int)
-endif()
-endif() 
+		if(SOCKLEN)
+			set(SOCKLEN_T int)
+		else()
+			set(SOCKLEN_T int)
+		endif()
+	endif()
 endif()
 
 # Check CPU cores via sysconf
@@ -311,7 +308,7 @@ endif()
 
 check_cxx_source_compiles("
 	#include <stdio.h>
-	int main() 
+	int main()
 	{
 		printf(\"%s\", __FUNCTION__);
 		return 0;
@@ -319,7 +316,7 @@ check_cxx_source_compiles("
 
 check_cxx_source_compiles("
 	#include <stdio.h>
-	int main() 
+	int main()
 	{
 		printf(\"%s\", __func__);
 		return 0;
@@ -332,10 +329,10 @@ elseif (FUNCTION_MACRO_NAME_TWO)
 endif()
 
 check_cxx_source_compiles("
-	#define macro(...) macrofunc(__VA_ARGS__) 
+	#define macro(...) macrofunc(__VA_ARGS__)
 	int macrofunc(int a, int b) { return a + b; }
-	int main() 
-	{ 
+	int main()
+	{
 		int a = macro(1, 2);
 		return 0;
 	}" HAVE_VARIADIC_MACROS)
@@ -349,14 +346,14 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
 		#include <execinfo.h>
 		#include <stdio.h>
 		#include <stdlib.h>
-		int main() 
-		{ 
+		int main()
+		{
 			void* array[100];
-			size_t size; 
-			char** strings; 
+			size_t size;
+			char** strings;
 			size = backtrace(array, 100);
 			strings = backtrace_symbols(array, size);
-			return 0; 
+			return 0;
 		}" HAVE_BACKTRACE)
 endif()
 

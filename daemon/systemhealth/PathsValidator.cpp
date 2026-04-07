@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include "nzbget.h"
 #include "Options.h"
 #include "Status.h"
 #include "Validators.h"
@@ -24,7 +25,9 @@
 
 namespace SystemHealth::Paths
 {
-PathsValidator::PathsValidator(const Options& options) : m_options(options)
+PathsValidator::PathsValidator(const Options& options, const ::Log& log)
+	: m_options(options)
+	, m_log(log)
 {
 	m_validators.reserve(13);
 	m_validators.push_back(std::make_unique<MainDirValidator>(options));
@@ -36,17 +39,17 @@ PathsValidator::PathsValidator(const Options& options) : m_options(options)
 	m_validators.push_back(std::make_unique<TempDirValidator>(options));
 	m_validators.push_back(std::make_unique<ScriptDirValidator>(options));
 	m_validators.push_back(std::make_unique<ConfigTemplateValidator>(options));
-	m_validators.push_back(std::make_unique<LogFileValidator>(options));
-	m_validators.push_back(std::make_unique<CertStoreValidator>(options));
+	m_validators.push_back(std::make_unique<LogFileValidator>(options, log));
+	m_validators.push_back(std::make_unique<CertStoreValidator>(options, log));
 	m_validators.push_back(std::make_unique<RequiredDirValidator>(options));
 #ifndef _WIN32
-	m_validators.push_back(std::make_unique<LockFileValidator>(options));
+	m_validators.push_back(std::make_unique<LockFileValidator>(options, log));
 #endif
 }
 
 Status MainDirValidator::Validate() const { return Validate(m_options.GetMainDirPath()); }
 
-Status MainDirValidator::Validate(const boost::filesystem::path& path)
+Status MainDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::MAINDIR, path)
 		.And(&Directory::Exists, path)
@@ -64,7 +67,7 @@ Status DestDirValidator::Validate() const
 			});
 }
 
-Status DestDirValidator::Validate(const boost::filesystem::path& path)
+Status DestDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::DESTDIR, path)
 		.And(&Directory::Exists, path)
@@ -83,7 +86,7 @@ Status InterDirValidator::Validate() const
 			});
 }
 
-Status InterDirValidator::Validate(const boost::filesystem::path& path)
+Status InterDirValidator::Validate(const fs::path& path)
 {
 	if (path.empty())
 		return Status::Warning(
@@ -106,7 +109,7 @@ Status NzbDirValidator::Validate() const
 			});
 }
 
-Status NzbDirValidator::Validate(const boost::filesystem::path& path)
+Status NzbDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::NZBDIR, path)
 		.And(&Directory::Exists, path)
@@ -127,7 +130,7 @@ Status QueueDirValidator::Validate() const
 			});
 }
 
-Status QueueDirValidator::Validate(const boost::filesystem::path& path)
+Status QueueDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::QUEUEDIR, path)
 		.And(&Directory::Exists, path)
@@ -150,7 +153,7 @@ Status WebDirValidator::Validate() const
 		});
 }
 
-Status WebDirValidator::Validate(const boost::filesystem::path& path)
+Status WebDirValidator::Validate(const fs::path& path)
 {
 	if (path.empty()) return Status::Ok();
 	return Directory::Exists(path).And(&Directory::Readable, path);
@@ -172,7 +175,7 @@ Status TempDirValidator::Validate() const
 			});
 }
 
-Status TempDirValidator::Validate(const boost::filesystem::path& path)
+Status TempDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::TEMPDIR, path)
 		.And(&Directory::Exists, path)
@@ -184,8 +187,8 @@ Status ScriptDirValidator::Validate() const
 	const auto& paths = m_options.GetScriptDirPaths();
 	if (paths.empty())
 	{
-		return Status::Error("'" + std::string(Options::SCRIPTDIR) +
-							 "' is required and cannot be empty");
+		return Status::Warning("'" + std::string(Options::SCRIPTDIR) +
+							 "' is empty. Extensions cannot be found or installed");
 	}
 
 	for (const auto& dir : paths)
@@ -211,7 +214,7 @@ Status ScriptDirValidator::Validate() const
 	return Status::Ok();
 }
 
-Status ScriptDirValidator::Validate(const boost::filesystem::path& path)
+Status ScriptDirValidator::Validate(const fs::path& path)
 {
 	return RequiredPathOption(Options::SCRIPTDIR, path)
 		.And(&Directory::Exists, path)
@@ -222,23 +225,23 @@ Status ConfigTemplateValidator::Validate() const { return Status::Ok(); }
 
 Status LogFileValidator::Validate() const
 {
-	return Validate(m_options.GetLogFilePath(), m_options.GetWriteLog())
+	return Validate(m_log.GetLogFilePath(), m_options.GetWriteLog())
 		.And(
 			[&]()
 			{
-				return UniquePath(GetName(), m_options.GetLogFilePath(),
+				return UniquePath(GetName(), m_log.GetLogFilePath(),
 								  {{Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
 
-Status LogFileValidator::Validate(const boost::filesystem::path& path, Options::EWriteLog writeLog)
+Status LogFileValidator::Validate(const fs::path& path, Options::EWriteLog writeLog)
 {
 	if (writeLog == Options::EWriteLog::wlNone) return Status::Ok();
 
 	if (path.empty())
 	{
-		return Status::Error("Logging is enabled, but '" + std::string(Options::LOGFILE) +
+		return Status::Warning("Logging is enabled, but '" + std::string(Options::LOGFILE) +
 							 "' is set to empty");
 	}
 
@@ -266,12 +269,12 @@ Status CertStoreValidator::Validate() const
 								   {Options::WEBDIR, m_options.GetWebDirPath()},
 								   {Options::TEMPDIR, m_options.GetTempDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
-								   {Options::LOGFILE, m_options.GetLogFilePath()},
+								   {Options::LOGFILE, m_log.GetLogFilePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
 
-Status CertStoreValidator::Validate(const boost::filesystem::path& path, bool certCheck)
+Status CertStoreValidator::Validate(const fs::path& path, bool certCheck)
 {
 	if (path.empty() && !certCheck) return Status::Ok();
 
@@ -301,13 +304,13 @@ Status LockFileValidator::Validate() const
 				return UniquePath(GetName(), m_options.GetLockFilePath(),
 								  {{Options::MAINDIR, m_options.GetMainDirPath()},
 								   {Options::CONFIGTEMPLATE, m_options.GetConfigTemplatePath()},
-								   {Options::LOGFILE, m_options.GetLogFilePath()},
+								   {Options::LOGFILE, m_log.GetLogFilePath()},
 								   {Options::CERTSTORE, m_options.GetCertStorePath()},
 								   {Options::CONFIGFILE, m_options.GetConfigFilePath()}});
 			});
 }
 
-Status LockFileValidator::Validate(const boost::filesystem::path& path, bool daemonMode)
+Status LockFileValidator::Validate(const fs::path& path, bool daemonMode)
 {
 	if (path.empty() && daemonMode)
 	{

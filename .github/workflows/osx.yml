@@ -15,7 +15,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Prepare build environment
       run: |
@@ -24,11 +24,12 @@ jobs:
 
     - name: Build
       run: |
+        export ZIP7_VERSION=2501
         export EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
         bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-osx-x64-build-log
@@ -47,7 +48,7 @@ jobs:
         done
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-osx-installers-x64
         path: build/*.zip
@@ -59,7 +60,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Prepare build environment
       run: |
@@ -70,7 +71,7 @@ jobs:
       run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-osx-universal-build-log
@@ -89,7 +90,7 @@ jobs:
         done
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-osx-installers-universal
         path: build/*-universal*.zip
@@ -102,10 +103,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nzbget-osx-installers-universal
         path: nzbget-osx-installers-universal
@@ -154,7 +155,7 @@ jobs:
         done
 
     - name: Upload signed build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-osx-installers-universal-signed
         path: build_signed/*.dmg
@@ -168,13 +169,13 @@ jobs:
     steps:
 
     - name: Download x64 build artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nzbget-osx-installers-x64
         path: nzbget-osx-installers-x64
 
     - name: Download universal signed build artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nzbget-osx-installers-universal-signed
         path: nzbget-osx-installers-universal-signed
@@ -186,7 +187,7 @@ jobs:
         mv nzbget-osx-installers-universal-signed/* nzbget-osx-installers
 
     - name: Upload combined build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-osx-installers
         path: nzbget-osx-installers/*

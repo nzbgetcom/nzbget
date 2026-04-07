@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@
 #include "PostUnpackRenamer.h"
 #include "FileSystem.h"
 #include "Deobfuscation.h"
+#include "Util.h"
+#include "Options.h"
 
 namespace PostUnpackRenamer
 {

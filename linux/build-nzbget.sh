@@ -3,6 +3,7 @@
 #  This file is part of nzbget. See <https://nzbget.com>.
 #
 #  Copyright (C) 2024 phnzb <pavel@nzbget.com>
+#  Copyright (C) 2026 Denis <denis@nzbget.com>
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
 #  GNU General Public License for more details.
 #
 #  You should have received a copy of the GNU General Public License
-#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
 set -e
@@ -41,8 +42,8 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.1.10
-ZIP7_VERSION=2501
+UNRAR7_VERSION=7.2.4
+ZIP7_VERSION=2600
 
 # libs versions
 # https://invisible-island.net/ncurses/announce.html
@@ -52,7 +53,7 @@ ZLIB_VERSION=1.3.1
 # https://gitlab.gnome.org/GNOME/libxml2/-/releases
 LIBXML2_VERSION=2.13.5
 # https://github.com/openssl/openssl/releases
-OPENSSL_VERSION=3.5.4
+OPENSSL_VERSION=3.5.5
 # https://github.com/boostorg/boost/releases
 BOOST_VERSION=1.84.0
 
@@ -655,16 +656,16 @@ build_bin()
             CMAKE_EXTRA_ARGS="-DCOMPILER=clang -DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
         freebsd)
-            export LIBS="$LDFLAGS -lxml2 -lboost_json -lboost_filesystem -lssl -lcrypto -lz -lncursesw -lc++ -lexecinfo -lelf -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+            export LIBS="$LDFLAGS -lxml2 -lboost_json -lssl -lcrypto -lz -lncursesw -lc++ -lexecinfo -lelf -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             export INCLUDES="$NZBGET_INCLUDES;$FREEBSD_SYSROOT/usr/include/c++/v1"
             CMAKE_SYSTEM_NAME="FreeBSD"
             CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT -DCMAKE_CXX_FLAGS=-I$FREEBSD_SYSROOT/usr/include/c++/v1"
             ;;
         *)
             if [ "$ARCH" != "ppc500" ]; then
-                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lboost_filesystem -lc -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
+                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lc -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             else
-                export LIBS="-lncurses -lboost_json -lboost_filesystem -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
+                export LIBS="-lstdc++fs -lncurses -lboost_json -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
                 export INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/;$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/libxml2/"
             fi
             CMAKE_EXTRA_ARGS="-DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"

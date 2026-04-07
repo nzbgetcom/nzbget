@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,8 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <array>
-#include "Util.h"			
-#include "YEncode.h"
+#include "Util.h"
 
 #ifdef WIN32
 #include "utf8.h"
@@ -212,7 +211,7 @@ Util::FindShellOverriddenExecutor(const std::string& fileExt, const std::string&
 	return std::nullopt;
 }
 
-std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view path)
+std::optional<fs::path> Util::ResolvePathFromEnv(std::string_view path)
 {
 	if (path.empty()) return std::nullopt;
 
@@ -234,9 +233,9 @@ std::optional<boost::filesystem::path> Util::ResolvePathFromEnv(std::string_view
 	{
 		if (dir.empty()) continue;
 
-		boost::filesystem::path p = boost::filesystem::path(dir) / path;
-		boost::system::error_code ec;
-		if (boost::filesystem::exists(p, ec) && boost::filesystem::is_regular_file(p, ec))
+		auto p = fs::path(dir) / path;
+		fs::error_code ec;
+		if (fs::exists(p, ec) && fs::is_regular_file(p, ec))
 		{
 			return p;
 		}
@@ -2073,19 +2072,20 @@ char* Tokenizer::Next()
 
 void Crc32::Reset()
 {
-	static_assert(sizeof(m_state) >= sizeof(YEncode::crc_state), "m_state has invalid size");
-
-	YEncode::crc_init((YEncode::crc_state*)State());
+	uint32* currentCrc = static_cast<uint32*>(State());
+	*currentCrc = 0;
 }
 
 void Crc32::Append(uchar* block, uint32 length)
 {
-	YEncode::crc_incr((YEncode::crc_state*)State(), block, length);
+	uint32* currentCrc = static_cast<uint32*>(State());
+	*currentCrc = rapidyenc_crc(block, length, *currentCrc);
 }
 
 uint32 Crc32::Finish()
 {
-	return YEncode::crc_finish((YEncode::crc_state*)State());
+	uint32* currentCrc = static_cast<uint32*>(State());
+	return *currentCrc;
 }
 
 /* From zlib/crc32.c (http://www.zlib.net/)

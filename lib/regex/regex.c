@@ -90,9 +90,6 @@
 #if defined HAVE_STDBOOL_H || defined _LIBC
 # include <stdbool.h>
 #endif /* HAVE_STDBOOL_H || _LIBC */
-#if defined HAVE_STDINT_H || defined _LIBC
-# include <stdint.h>
-#endif /* HAVE_STDINT_H || _LIBC */
 #if defined _LIBC
 # include <bits/libc-lock.h>
 #else

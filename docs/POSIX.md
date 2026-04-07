@@ -9,7 +9,6 @@
 
   - Libraries:
     - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
-    - [Boost.Filesystem](https://github.com/boostorg/filesystem)
     - [Boost.JSON](https://github.com/boostorg/json)
     - [Boost.Asio](https://github.com/boostorg/asio)
     
@@ -44,13 +43,11 @@ apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-d
 ```
   - Debian 12 (bookworm)
 ```bash
-apt install libboost-filesystem1.81-dev
 apt install libboost-json1.81-dev
 apt install libboost-test1.81-dev #(optional: for testing)
 ```
   - Debian 13 (trixie)
 ```bash
-apt install libboost-filesystem-dev
 apt install libboost-json-dev 
 apt install libboost-test-dev #(optional: for testing)
 ```
