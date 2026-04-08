@@ -222,6 +222,10 @@ void QueueCoordinator::Run()
 					{
 						connection = g_ServerPool->GetConnection(desiredServer->GetLevel(), desiredServer, nullptr);
 					}
+					else
+					{
+						connection = g_ServerPool->GetConnection(0, nullptr, nullptr);
+					}
 				}
 				else
 				{
