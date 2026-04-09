@@ -19,8 +19,8 @@
  */
 
 
-#include "DownloadInfo.h"
 #include "nzbget.h"
+#include "DownloadInfo.h"
 #include "Cleanup.h"
 #include "Log.h"
 #include "Util.h"
