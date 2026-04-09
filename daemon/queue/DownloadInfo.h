@@ -677,6 +677,7 @@ public:
 	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
 	void SetAutoCategory(bool autoCategory) { m_autoCategory = autoCategory; }
 	bool GetAutoCategory() const { return m_autoCategory; }
+	bool HasDesiredServer() const { return m_desiredServerId > 0; }
 
 	static const int FORCE_PRIORITY = 900;
 
