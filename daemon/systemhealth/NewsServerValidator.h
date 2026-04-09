@@ -156,18 +156,6 @@ private:
 	const ::NewsServer& m_server;
 };
 
-class ServerJoinGroupValidator final : public Validator
-{
-public:
-	explicit ServerJoinGroupValidator(const ::NewsServer& server) : m_server(server) {}
-
-	std::string_view GetName() const override { return "JoinGroup"; }
-	Status Validate() const override;
-
-private:
-	const ::NewsServer& m_server;
-};
-
 class ServerCipherValidator final : public Validator
 {
 public:

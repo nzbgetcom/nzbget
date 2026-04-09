@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -54,8 +54,11 @@ class RarVolume
 public:
 	using FileList = std::deque<RarFile>;
 
-	RarVolume(const char* filename) 
+	explicit RarVolume(const char* filename) 
 		: m_filename{ filename ? filename : "" }
+		, m_decryptKey{}
+		, m_decryptIV{}
+		, m_decryptBuf{}
 #ifndef DISABLE_TLS
 		, m_context{ nullptr, &EVP_CIPHER_CTX_free }
 #endif

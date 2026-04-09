@@ -471,7 +471,7 @@ void NZBGet::BootConfig()
 
 	debug("Reading options");
 	m_options = std::make_unique<Options>((*g_Arguments)[0], m_commandLineParser->GetConfigFilename(),
-		m_commandLineParser->GetNoConfig(), (Options::CmdOptList*)m_commandLineParser->GetOptionList(), this);
+		m_commandLineParser->GetNoConfig(), reinterpret_cast<Options::CmdOptList*>(m_commandLineParser->GetOptionList()), this);
 	m_options->SetRemoteClientMode(m_commandLineParser->GetRemoteClientMode());
 	m_options->SetServerMode(m_commandLineParser->GetServerMode());
 	m_workState->SetPauseDownload(m_commandLineParser->GetPauseDownload());

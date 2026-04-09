@@ -174,12 +174,18 @@ Install **Cppcheck** using your system's package manager:
 apt install cppcheck
 ```
   - After configuring, a **compile_commands.json** file should be generated in your build directory. This file tells **Cppcheck** how your project is compiled.
-  - The following command enables all checks and suppresses common system include warnings:
+  - To analyze the NZBGet codebase correctly, you must exclude third-party libraries and tests to avoid false positives and preprocessor errors. Run the following command from the root of the project:
 ```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem
-```
- - To ignore certain folders you can use **-i**. This will skip analysis of source files in
-the foo folder:
-```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem -ifoo
+cppcheck --project=build/compile_commands.json \
+         --enable=all \
+         --inline-suppr \
+         --check-level=exhaustive \
+         --suppress=missingIncludeSystem \
+         --suppress=unknownMacro:tests/ \
+         --suppress=preprocessorErrorDirective:build/par2-turbo/ \
+         -itests \
+         -ilib \
+         -ibuild/rapidyenc \
+         -ibuild/boost \
+         -ibuild/par2-turbo
 ```

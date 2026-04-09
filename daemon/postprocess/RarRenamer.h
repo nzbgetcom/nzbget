@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -75,8 +76,8 @@ private:
 	CString GenNewExtension(int volumeNo);
 	CString GenOldExtension(int volumeNo);
 	void MakeSets();
-	bool IsSetProperlyNamed(RarVolumeSet& set);
-	RarFile* FindMainFile(RarVolumeSet& set);
+	bool IsSetProperlyNamed(const RarVolumeSet& set);
+	RarFile* FindMainFile(const RarVolumeSet& set);
 	static bool SameArchiveName(const char* filename1, const char* filename2, bool newNaming);
 };
 

@@ -47,6 +47,7 @@ void Decoder::Clear()
 	m_outSize = 0;
 	m_state = 0;
 	m_crcCheck = false;
+	m_calculatedCRC = 0;
 	m_lineBuf.Reserve(1024*8);
 	m_lineBuf.SetLength(0);
 }

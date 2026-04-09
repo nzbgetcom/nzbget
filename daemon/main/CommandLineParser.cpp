@@ -97,9 +97,9 @@ void CommandLineParser::InitCommandLine(int argc, const char* const_argv[])
 
 #ifdef HAVE_GETOPT_LONG
 		int option_index  = 0;
-		c = getopt_long(argc, (char**)argv.data(), short_options, long_options, &option_index);
+		c = getopt_long(argc, reinterpret_cast<char**>(argv.data()), short_options, long_options, &option_index);
 #else
-		c = getopt(argc, (char**)argv.data(), short_options);
+		c = getopt(argc, reinterpret_cast<char**>(argv.data()), short_options);
 #endif
 
 		if (c == -1) break;

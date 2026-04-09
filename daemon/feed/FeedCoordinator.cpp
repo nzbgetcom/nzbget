@@ -344,7 +344,7 @@ void FeedCoordinator::Update(Subject* caller, void* aspect)
 {
 	debug("Notification from FeedDownloader received");
 
-	FeedDownloader* feedDownloader = (FeedDownloader*) caller;
+	FeedDownloader* feedDownloader = static_cast<FeedDownloader*>(caller);
 	if ((feedDownloader->GetStatus() == WebDownloader::adFinished) ||
 		(feedDownloader->GetStatus() == WebDownloader::adFailed) ||
 		(feedDownloader->GetStatus() == WebDownloader::adRetry))

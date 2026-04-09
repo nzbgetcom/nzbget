@@ -33,11 +33,11 @@ const int DISKSTATE_FILE_VERSION = 7;
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
-class StateDiskFile : public DiskFile
+class StateDiskFile final : public DiskFile
 {
 public:
 	int64 PrintLine(const char* format, ...) PRINTF_SYNTAX(2);
-	char* ReadLine(char* buffer, int64 size);
+	char* ReadLine(char* buffer, int64 size) override;
 	int ScanLine(const char* format, ...) SCANF_SYNTAX(2);
 };
 
@@ -126,7 +126,7 @@ private:
 
 
 StateFile::StateFile(const char* filename, int formatVersion, bool transactional) :
-	m_formatVersion(formatVersion), m_transactional(transactional)
+	m_formatVersion(formatVersion), m_transactional(transactional), m_fileVersion(0)
 {
 	m_destFilename.Format("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, filename);
 	if (m_transactional)
@@ -591,10 +591,10 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	{
 		outfile.PrintLine("%i,%i,%u,%i,%s,%s", completedFile.GetId(), (int)completedFile.GetStatus(),
 			completedFile.GetCrc(), (int)completedFile.GetParFile(),
-			completedFile.GetHash16k() ? completedFile.GetHash16k() : "",
-			completedFile.GetParSetId() ? completedFile.GetParSetId() : "");
+			completedFile.GetHash16k(),
+			completedFile.GetParSetId());
 		outfile.PrintLine("%s", completedFile.GetFilename());
-		outfile.PrintLine("%s", completedFile.GetOrigname() ? completedFile.GetOrigname() : "");
+		outfile.PrintLine("%s", completedFile.GetOrigname());
 	}
 
 	outfile.PrintLine(
@@ -741,9 +741,7 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	nzbInfo->SetDirectRenameStatus((NzbInfo::EDirectRenameStatus)directRenameStatus);
 	nzbInfo->SetDeleteStatus((NzbInfo::EDeleteStatus)deleteStatus);
 	nzbInfo->SetMarkStatus((NzbInfo::EMarkStatus)markStatus);
-	if (nzbInfo->GetKind() == NzbInfo::nkNzb ||
-		(NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsFailed ||
-		(NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsScanSkipped)
+	if (nzbInfo->GetKind() == NzbInfo::nkNzb || (NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsFailed)
 	{
 		nzbInfo->SetUrlStatus((NzbInfo::EUrlStatus)urlStatus);
 	}
@@ -840,9 +838,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	if (formatVersion >= 48)
 	{
-		uint32 High1, Low1, downloadSec, postTotalSec, parSec, repairSec, unpackSec;
-		if (infile.ScanLine("%u,%u,%i,%i,%i,%i,%i", &High1, &Low1, &downloadSec, &postTotalSec, &parSec, &repairSec, &unpackSec) != 7) goto error;
-		nzbInfo->SetDownloadedSize(Util::JoinInt64(High1, Low1));
+		uint32 High4, Low4, downloadSec, postTotalSec, parSec, repairSec, unpackSec;
+		if (infile.ScanLine("%u,%u,%i,%i,%i,%i,%i", &High4, &Low4, &downloadSec, &postTotalSec, &parSec, &repairSec, &unpackSec) != 7) goto error;
+		nzbInfo->SetDownloadedSize(Util::JoinInt64(High4, Low4));
 		nzbInfo->SetDownloadSec(downloadSec);
 		nzbInfo->SetPostTotalSec(postTotalSec);
 		nzbInfo->SetParSec(parSec);

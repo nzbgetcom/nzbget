@@ -36,11 +36,8 @@ using namespace Unpack;
 ScriptController::ArgList SevenZip::MakeArgs() const
 {
 	ScriptController::ArgList args;
-	const auto tool = fs::u8string(m_tool);
-	const auto outputDir = "-o" + fs::u8string(m_outputDir);
-	const auto archive = fs::u8string(m_archive);
 
-	args.push_back(tool.c_str());
+	args.push_back(fs::u8string(m_tool).c_str());
 	args.push_back("x");
 	args.push_back("-y");
 
@@ -57,11 +54,9 @@ ScriptController::ArgList SevenZip::MakeArgs() const
 			break;
 	}
 
-	const std::string password = MakePassword();
-
-	args.push_back(password.c_str());
-	args.push_back(outputDir.c_str());
-	args.push_back(archive.c_str());
+	args.push_back(MakePassword().c_str());
+	args.push_back(("-o" + fs::u8string(m_outputDir)).c_str());
+	args.push_back(fs::u8string(m_archive).c_str());
 
 	return args;
 }

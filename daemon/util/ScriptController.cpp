@@ -569,7 +569,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	std::copy(std::begin(m_args), std::end(m_args), std::back_inserter(m_cmdArgs));
 	m_cmdArgs.emplace_back(nullptr);
-	char* const* argdata = (char* const*)m_cmdArgs.data();
+	char* const* argdata = reinterpret_cast<char* const*>(m_cmdArgs.data());
 
 #ifdef DEBUG
 	debug("Starting  process: %s", script);

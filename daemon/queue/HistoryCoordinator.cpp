@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,8 +74,8 @@ void HistoryCoordinator::ServiceWork()
 		}
 		else
 		{
-			it++;
-			index++;
+			++it;
+			++index;
 		}
 	}
 
@@ -132,7 +133,7 @@ void HistoryCoordinator::AddToHistory(DownloadQueue* downloadQueue, NzbInfo* nzb
 		nzbInfo->UpdateCompletedStats(fileInfo);
 		nzbInfo->GetCompletedFiles()->emplace_back(
 			fileInfo->GetId(),
-			fileInfo->GetFilename() ? fileInfo->GetFilename() : "",
+			fileInfo->GetFilename(),
 			fileInfo->GetOrigname() ? fileInfo->GetOrigname() : "",
 			CompletedFile::cfNone,
 			0,
@@ -255,7 +256,7 @@ bool HistoryCoordinator::EditList(DownloadQueue* downloadQueue, IdList* idList,
 
 	for (int id : *idList)
 	{
-		for (HistoryList::iterator itHistory = downloadQueue->GetHistory()->begin(); itHistory != downloadQueue->GetHistory()->end(); itHistory++)
+		for (HistoryList::iterator itHistory = downloadQueue->GetHistory()->begin(); itHistory != downloadQueue->GetHistory()->end(); ++itHistory)
 		{
 			HistoryInfo* historyInfo = (*itHistory).get();
 			if (historyInfo->GetId() == id)
@@ -656,7 +657,7 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 				continue;
 			}
 		}
-		it++;
+		++it;
 	}
 
 	nzbInfo->UpdateCurrentStats();

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ namespace Network
 		~HttpClient() = default;
 
 		std::future<Response> GET(std::string host);
-		const std::string GetLocalIP() const;
+		const std::string& GetLocalIP() const;
 
 	private:
 		void Connect(Socket& socket, const Endpoints& endpoints, const std::string& host);

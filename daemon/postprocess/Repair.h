@@ -73,8 +73,8 @@ private:
 		virtual void RequestDupeSources(DupeSourceList* dupeSourceList);
 		virtual void StatDupeSources(DupeSourceList* dupeSourceList);
 	private:
-		RepairController* m_owner;
-		PostInfo* m_postInfo;
+		RepairController* m_owner = nullptr;
+		PostInfo* m_postInfo = nullptr;
 		time_t m_parTime;
 		time_t m_repairTime;
 		int m_downloadSec;
@@ -105,7 +105,7 @@ private:
 
 	typedef std::deque<BlockInfo> Blocks;
 
-	PostInfo* m_postInfo;
+	PostInfo* m_postInfo = nullptr;
 	PostParChecker m_parChecker;
 
 	void FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* parFilename,

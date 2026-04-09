@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,8 +55,8 @@ void ServerPool::AddServer(std::unique_ptr<NewsServer> newsServer)
 {
 	debug("Adding server to ServerPool");
 
-	m_sortedServers.push_back(newsServer.get());
 	m_servers.push_back(std::move(newsServer));
+	m_sortedServers.push_back(m_servers.back().get());
 }
 
 /*
@@ -258,10 +258,10 @@ void ServerPool::FreeConnection(NntpConnection* connection, bool used)
 
 	Guard guard(m_connectionsMutex);
 
-	((PooledConnection*)connection)->SetInUse(false);
+	(static_cast<PooledConnection*>(connection))->SetInUse(false);
 	if (used)
 	{
-		((PooledConnection*)connection)->SetFreeTimeNow();
+		(static_cast<PooledConnection*>(connection))->SetFreeTimeNow();
 	}
 
 	if (connection->GetNewsServer()->GetNormLevel() > -1 && connection->GetNewsServer()->GetActive())

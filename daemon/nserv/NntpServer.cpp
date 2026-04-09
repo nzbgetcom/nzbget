@@ -36,7 +36,8 @@ public:
 		const char* secureCert, const char* secureKey, int latency, int speed, NntpCache* cache) :
 		m_id(id), m_serverId(serverId), m_dataDir(dataDir), m_cacheDir(cacheDir),
 		m_secureCert(secureCert), m_secureKey(secureKey), m_latency(latency),
-		m_speed(speed), m_cache(cache) {}
+		m_speed(speed), m_messageid(nullptr), m_part(0), m_offset(0), m_size(0),
+		m_sendHeaders(false), m_sendStat(false), m_start(0), m_cache(cache) {}
 	~NntpProcessor()
 	{
 		m_connection->Disconnect();
@@ -268,10 +269,7 @@ void NntpProcessor::ServArticle()
 			return;
 		}
 
-		if (!ok)
-		{
-			m_connection->WriteLine("430 No Such Article Found\r\n");
-		}
+		m_connection->WriteLine("430 No Such Article Found\r\n");
 	}
 	else
 	{

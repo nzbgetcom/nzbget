@@ -853,14 +853,15 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
-bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+
+bool Util::StrCaseCmp(std::string_view a, std::string_view b)
 {
 	auto comparator = [](unsigned char a, unsigned char b)
 	{
 		return std::tolower(a) == std::tolower(b);
 	};
-
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
 }
 
 // prevent PC from going to sleep
@@ -1968,11 +1969,10 @@ uint32 ZLib::GZip(const void* inputBuffer, int inputBufferLength, void* outputBu
 	return total_out;
 }
 
-GUnzipStream::GUnzipStream(int BufferSize) :
-	m_bufferSize(BufferSize)
+GUnzipStream::GUnzipStream(int BufferSize)
+	: m_bufferSize(BufferSize)
+	, m_outputBuffer(std::make_unique<Bytef[]>(BufferSize))
 {
-	m_outputBuffer = std::make_unique<Bytef[]>(BufferSize);
-
 	/* add 16 to MAX_WBITS to enforce gzip format */
 	int ret = inflateInit2(&m_zStream, MAX_WBITS + 16);
 	m_active = ret == Z_OK;

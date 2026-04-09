@@ -163,7 +163,7 @@ void RemoteServer::Update(Subject* caller, void* aspect)
 {
 	debug("Notification from RequestProcessor received");
 
-	RequestProcessor* requestProcessor = (RequestProcessor*)caller;
+	RequestProcessor* requestProcessor = static_cast<RequestProcessor*>(caller);
 	Guard guard(m_processorsMutex);
 	m_activeProcessors.erase(std::find(m_activeProcessors.begin(), m_activeProcessors.end(), requestProcessor));
 }
@@ -210,7 +210,7 @@ void RequestProcessor::Execute()
 
 	// Read the first 4 bytes to determine request type
 	uint32 signature = 0;
-	if (!m_connection->Recv((char*)&signature, 4))
+	if (!m_connection->Recv(reinterpret_cast<char*>(&signature), 4))
 	{
 		debug("Could not read request signature");
 		return;
@@ -224,15 +224,15 @@ void RequestProcessor::Execute()
 		processor.SetConnection(m_connection.get());
 		processor.Execute();
 	}
-	else if (!strncmp((char*)&signature, "POST", 4) ||
-		!strncmp((char*)&signature, "GET ", 4) ||
-		!strncmp((char*)&signature, "OPTI", 4))
+	else if (!strncmp(reinterpret_cast<char*>(&signature), "POST", 4) ||
+		!strncmp(reinterpret_cast<char*>(&signature), "GET ", 4) ||
+		!strncmp(reinterpret_cast<char*>(&signature), "OPTI", 4))
 	{
 		// HTTP request received
 		ok = true;
-		while (ServWebRequest((char*)&signature))
+		while (ServWebRequest(reinterpret_cast<char*>(&signature)))
 		{
-			if (!m_connection->Recv((char*)&signature, 4))
+			if (!m_connection->Recv(reinterpret_cast<char*>(&signature), 4))
 			{
 				debug("Could not read request signature");
 				break;

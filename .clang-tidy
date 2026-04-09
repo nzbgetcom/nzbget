@@ -1,0 +1,35 @@
+---
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-default-member-init,
+  modernize-use-emplace,
+  modernize-loop-convert,
+  performance-unnecessary-copy-initialization,
+  performance-move-const-arg,
+  readability-redundant-declaration,
+  readability-redundant-member-init,
+  readability-redundant-preprocessor,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-redundant-string-init,
+  readability-simplify-boolean-expr,
+  readability-misleading-indentation,
+  readability-string-compare,
+  readability-qualified-auto
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: '.*/daemon/.*'
+
+FormatStyle: none
+
+CheckOptions:
+  - key:   readability-qualified-auto.AddConstToQualified
+    value: 'true'

@@ -373,7 +373,7 @@ void ParRenamer::RenameParFiles(const char* destDir)
 
 bool ParRenamer::NeedRenameParFiles()
 {
-	for (ParInfoList::iterator it1 = m_parInfoList.begin(); it1 != m_parInfoList.end(); it1++)
+	for (ParInfoList::iterator it1 = m_parInfoList.begin(); it1 != m_parInfoList.end(); ++it1)
 	{
 		ParInfo& parInfo1 = *it1;
 
@@ -389,7 +389,7 @@ bool ParRenamer::NeedRenameParFiles()
 		int baseLen1;
 		ParParser::ParseParFilename(baseName1, true, &baseLen1, nullptr);
 
-		for (ParInfoList::iterator it2 = it1 + 1; it2 != m_parInfoList.end(); it2++)
+		for (ParInfoList::iterator it2 = it1 + 1; it2 != m_parInfoList.end(); ++it2)
 		{
 			ParInfo& parInfo2 = *it2;
 

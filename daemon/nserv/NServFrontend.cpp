@@ -49,7 +49,7 @@ void NServFrontend::Update()
 		if (!messages->empty())
 		{
 			Message& firstMessage = messages->front();
-			int start = m_neededLogFirstId - firstMessage.GetId() + 1;
+			int start = static_cast<int>(static_cast<int64>(m_neededLogFirstId) - static_cast<int64>(firstMessage.GetId()) + 1);
 			if (start < 0)
 			{
 				PrintSkip();

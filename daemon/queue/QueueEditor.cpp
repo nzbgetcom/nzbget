@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +38,7 @@ class GroupSorter
 {
 public:
 	GroupSorter(NzbList* nzbList, QueueEditor::ItemList* sortItemList) :
-		m_nzbList(nzbList), m_sortItemList(sortItemList) {}
+		m_nzbList(nzbList), m_sortItemList(sortItemList), m_sortCriteria(scName), m_sortOrder(soAscending) {}
 	bool Execute(const char* sort);
 	bool operator()(const std::unique_ptr<NzbInfo>& refNzbInfo1, const std::unique_ptr<NzbInfo>& refNzbInfo2) const;
 
@@ -145,8 +146,9 @@ bool GroupSorter::operator()(const std::unique_ptr<NzbInfo>& refNzbInfo1, const 
 	NzbInfo* nzbInfo2 = refNzbInfo2.get();
 
 	// if list of ID is empty - sort all items
-	bool sortItem1 = m_sortItemList->empty();
-	bool sortItem2 = m_sortItemList->empty();
+	bool initialSortState = m_sortItemList->empty();
+	bool sortItem1 = initialSortState;
+	bool sortItem2 = initialSortState;
 
 	for (QueueEditor::EditItem& item : m_sortItemList)
 	{
@@ -456,6 +458,11 @@ bool QueueEditor::InternEditList(ItemList* itemList,
 void QueueEditor::PrepareList(ItemList* itemList, IdList* idList,
 	DownloadQueue::EEditAction action, int offset)
 {
+	if (!itemList || !idList)
+	{
+		return;
+	}
+
 	if (action == DownloadQueue::eaFileMoveTop || action == DownloadQueue::eaGroupMoveTop)
 	{
 		offset = -MAX_ID;
@@ -810,7 +817,7 @@ void QueueEditor::PauseParsInGroups(ItemList* itemList, bool extraParsOnly)
 				it = itemList->begin();
 				continue;
 			}
-			it++;
+			++it;
 		}
 
 		if (!GroupFileList.empty())

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2014-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -556,7 +556,7 @@ void StatMeter::CalcQuotaUsage(int64& monthBytes, int64& dayBytes)
 	debug("month volume: %i MB", (int)(monthBytes / 1024 / 1024));
 }
 
-int StatMeter::CalcMonthSlots(ServerVolume& volume)
+int StatMeter::CalcMonthSlots(const ServerVolume& volume)
 {
 	int elapsedDays;
 

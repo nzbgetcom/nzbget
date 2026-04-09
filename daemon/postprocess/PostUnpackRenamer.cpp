@@ -93,6 +93,7 @@ namespace PostUnpackRenamer
 
 	bool Controller::RenameFiles(const std::string& dir, const std::string& newName)
 	{
+		bool success = true;
 		DirBrowser dirBrowser(dir.c_str());
 		while (const char* fileOrDir = dirBrowser.Next())
 		{
@@ -100,7 +101,10 @@ namespace PostUnpackRenamer
 
 			if (FileSystem::DirectoryExists(srcFileOrDir.c_str()))
 			{
-				RenameFiles(srcFileOrDir, newName);
+				if (!RenameFiles(srcFileOrDir, newName))
+				{
+					success = false;
+				}
 				continue;
 			}
 
@@ -133,10 +137,11 @@ namespace PostUnpackRenamer
 					dstFile.c_str(),
 					*FileSystem::GetLastErrorMessage()
 				);
+				success = false;
 			}
 		}
 
-		return true;
+		return success;
 	}
 
 	void Controller::AddMessage(Message::EKind kind, const char* text)

@@ -164,6 +164,7 @@ public:
 // BinProcessor
 
 BinRpcProcessor::BinRpcProcessor()
+	: m_connection(nullptr)
 {
 	m_messageBase.m_signature = (int)NZBMESSAGE_SIGNATURE;
 }
@@ -171,7 +172,7 @@ BinRpcProcessor::BinRpcProcessor()
 void BinRpcProcessor::Execute()
 {
 	// Read the first package which needs to be a request
-	if (!m_connection->Recv(((char*)&m_messageBase) + sizeof(m_messageBase.m_signature), sizeof(m_messageBase) - sizeof(m_messageBase.m_signature)))
+	if (!m_connection->Recv(reinterpret_cast<char*>(&m_messageBase) + sizeof(m_messageBase.m_signature), sizeof(m_messageBase) - sizeof(m_messageBase.m_signature)))
 	{
 		warn("Non-nzbget request received on port %i from %s", g_Options->GetControlPort(), m_connection->GetRemoteAddr());
 		return;
@@ -288,8 +289,8 @@ void BinCommand::SendBoolResponse(bool success, const char* text)
 	BoolResponse.m_trailingDataLength = htonl(textLen);
 
 	// Send the request answer
-	m_connection->Send((char*) &BoolResponse, sizeof(BoolResponse));
-	m_connection->Send((char*)text, textLen);
+	m_connection->Send(reinterpret_cast<char*>(&BoolResponse), sizeof(BoolResponse));
+	m_connection->Send(const_cast<char*>(text), textLen);
 }
 
 bool BinCommand::ReceiveRequest(void* buffer, int size)
@@ -545,7 +546,7 @@ void ListBinCommand::Execute()
 		// write nzb entries
 		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
 		{
-			SNzbListResponseNzbEntry* listAnswer = (SNzbListResponseNzbEntry*) bufptr;
+			SNzbListResponseNzbEntry* listAnswer = reinterpret_cast<SNzbListResponseNzbEntry*>(bufptr);
 
 			uint32 sizeHi, sizeLo, remainingSizeHi, remainingSizeLo, pausedSizeHi, pausedSizeLo;
 			Util::SplitInt64(nzbInfo->GetSize(), &sizeHi, &sizeLo);
@@ -596,7 +597,7 @@ void ListBinCommand::Execute()
 			nzbIndex++;
 			for (NzbParameter& nzbParameter : nzbInfo->GetParameters())
 			{
-				SNzbListResponsePPPEntry* listAnswer = (SNzbListResponsePPPEntry*) bufptr;
+				SNzbListResponsePPPEntry* listAnswer = reinterpret_cast<SNzbListResponsePPPEntry*>(bufptr);
 				listAnswer->m_nzbIndex = htonl(nzbIndex);
 				listAnswer->m_nameLen = htonl(strlen(nzbParameter.GetName()) + 1);
 				listAnswer->m_valueLen = htonl(strlen(nzbParameter.GetValue()) + 1);
@@ -621,7 +622,7 @@ void ListBinCommand::Execute()
 			for (FileInfo* fileInfo : nzbInfo->GetFileList())
 			{
 				uint32 sizeHi, sizeLo;
-				SNzbListResponseFileEntry* listAnswer = (SNzbListResponseFileEntry*) bufptr;
+				SNzbListResponseFileEntry* listAnswer = reinterpret_cast<SNzbListResponseFileEntry*>(bufptr);
 				listAnswer->m_id = htonl(fileInfo->GetId());
 
 				int nzbIndex = 0;
@@ -713,7 +714,7 @@ void ListBinCommand::Execute()
 	}
 
 	// Send the request answer
-	m_connection->Send((char*) &ListResponse, sizeof(ListResponse));
+	m_connection->Send(reinterpret_cast<char*>(&ListResponse), sizeof(ListResponse));
 
 	// Send the data
 	if (bufsize > 0)
@@ -777,7 +778,7 @@ void LogBinCommand::Execute()
 		for (uint32 i = (uint32)start; i < messages->size(); i++)
 		{
 			Message& message = messages->at(i);
-			SNzbLogResponseEntry* logAnswer = (SNzbLogResponseEntry*)bufptr;
+			SNzbLogResponseEntry* logAnswer = reinterpret_cast<SNzbLogResponseEntry*>(bufptr);
 			logAnswer->m_id = htonl(message.GetId());
 			logAnswer->m_kind = htonl(message.GetKind());
 			logAnswer->m_time = htonl((int)message.GetTime());
@@ -803,7 +804,7 @@ void LogBinCommand::Execute()
 	LogResponse.m_trailingDataLength = htonl(bufsize);
 
 	// Send the request answer
-	m_connection->Send((char*) &LogResponse, sizeof(LogResponse));
+	m_connection->Send(reinterpret_cast<char*>(&LogResponse), sizeof(LogResponse));
 
 	// Send the data
 	if (bufsize > 0)
@@ -955,7 +956,7 @@ void PostQueueBinCommand::Execute()
 				continue;
 			}
 
-			SNzbPostQueueResponseEntry* postQueueAnswer = (SNzbPostQueueResponseEntry*)bufptr;
+			SNzbPostQueueResponseEntry* postQueueAnswer = reinterpret_cast<SNzbPostQueueResponseEntry*>(bufptr);
 			postQueueAnswer->m_id = htonl(nzbInfo->GetId());
 			postQueueAnswer->m_stage = htonl(postInfo->GetStage());
 			postQueueAnswer->m_stageProgress = htonl(postInfo->GetStageProgress());
@@ -989,7 +990,7 @@ void PostQueueBinCommand::Execute()
 	}
 
 	// Send the request answer
-	m_connection->Send((char*) &PostQueueResponse, sizeof(PostQueueResponse));
+	m_connection->Send(reinterpret_cast<char*>(&PostQueueResponse), sizeof(PostQueueResponse));
 
 	// Send the data
 	if (bufsize > 0)
@@ -1104,7 +1105,7 @@ void HistoryBinCommand::Execute()
 		{
 			if (historyInfo->GetKind() != HistoryInfo::hkDup || showHidden)
 			{
-				SNzbHistoryResponseEntry* listAnswer = (SNzbHistoryResponseEntry*)bufptr;
+				SNzbHistoryResponseEntry* listAnswer = reinterpret_cast<SNzbHistoryResponseEntry*>(bufptr);
 				listAnswer->m_id = htonl(historyInfo->GetId());
 				listAnswer->m_kind = htonl((int)historyInfo->GetKind());
 				listAnswer->m_time = htonl((int)historyInfo->GetTime());
@@ -1153,7 +1154,7 @@ void HistoryBinCommand::Execute()
 	}
 
 	// Send the request answer
-	m_connection->Send((char*) &HistoryResponse, sizeof(HistoryResponse));
+	m_connection->Send(reinterpret_cast<char*>(&HistoryResponse), sizeof(HistoryResponse));
 
 	// Send the data
 	if (bufsize > 0)

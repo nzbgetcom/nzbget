@@ -1151,7 +1151,7 @@ void ParChecker::SaveSourceList()
 		}
 
 		std::vector<Par2::DataBlock>::iterator it2 = sourcefile->SourceBlocks();
-		for (int i = 0; i < (int)sourcefile->BlockCount(); i++, it2++)
+		for (int i = 0; i < (int)sourcefile->BlockCount(); i++, ++it2)
 		{
 			Par2::DataBlock block = *it2;
 			Par2::DiskFile* sourceFile = block.GetDiskFile();

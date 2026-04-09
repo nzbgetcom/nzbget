@@ -819,7 +819,7 @@ void Options::SetOption(const char* optname, const char* value)
 	CString curvalue;
 
 #ifndef WIN32
-	if (value && (value[0] == '~') && (value[1] == '/'))
+	if (value && strncmp(value, "~/", 2) == 0)
 	{
 		if (m_noDiskAccess)
 		{
@@ -1509,8 +1509,10 @@ bool Options::SplitOptionString(const char* option, CString& optName, CString& o
 
 bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 {
-	if (!strcasecmp(optname, CONFIGFILE.data()) || !strcasecmp(optname, APPBIN.data()) ||
-		!strcasecmp(optname, APPDIR.data()) || !strcasecmp(optname, APPVERSION.data()))
+	std::string_view opt_view(optname);
+
+	if (Util::StrCaseCmp(opt_view, CONFIGFILE) || Util::StrCaseCmp(opt_view, APPBIN) ||
+		Util::StrCaseCmp(opt_view, APPDIR) || Util::StrCaseCmp(opt_view, APPVERSION))
 	{
 		// read-only options
 		return false;
@@ -1527,16 +1529,16 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	{
 		char* p = (char*)optname + 6;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p &&
-			(!strcasecmp(p, ".active") || !strcasecmp(p, ".name") ||
-			!strcasecmp(p, ".level") || !strcasecmp(p, ".host") ||
-			!strcasecmp(p, ".port") || !strcasecmp(p, ".username") ||
-			!strcasecmp(p, ".password") || !strcasecmp(p, ".joingroup") ||
-			!strcasecmp(p, ".encryption") || !strcasecmp(p, ".connections") ||
-			!strcasecmp(p, ".cipher") || !strcasecmp(p, ".group") ||
-			!strcasecmp(p, ".retention") || !strcasecmp(p, ".optional") ||
-			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion") ||
-			!strcasecmp(p, ".certverification")))
+		std::string_view suffix(p);
+		if (Util::StrCaseCmp(suffix, ".active") || Util::StrCaseCmp(suffix, ".name") ||
+			Util::StrCaseCmp(suffix, ".level") || Util::StrCaseCmp(suffix, ".host") ||
+			Util::StrCaseCmp(suffix, ".port") || Util::StrCaseCmp(suffix, ".username") ||
+			Util::StrCaseCmp(suffix, ".password") || Util::StrCaseCmp(suffix, ".joingroup") ||
+			Util::StrCaseCmp(suffix, ".encryption") || Util::StrCaseCmp(suffix, ".connections") ||
+			Util::StrCaseCmp(suffix, ".cipher") || Util::StrCaseCmp(suffix, ".group") ||
+			Util::StrCaseCmp(suffix, ".retention") || Util::StrCaseCmp(suffix, ".optional") ||
+			Util::StrCaseCmp(suffix, ".notes") || Util::StrCaseCmp(suffix, ".ipversion") ||
+			Util::StrCaseCmp(suffix, ".certverification"))
 		{
 			return true;
 		}
@@ -1546,9 +1548,10 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	{
 		char* p = (char*)optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".time") || !strcasecmp(p, ".weekdays") ||
-			!strcasecmp(p, ".command") || !strcasecmp(p, ".param") ||
-			!strcasecmp(p, ".downloadrate") || !strcasecmp(p, ".process")))
+		std::string_view suffix(p);
+		if (Util::StrCaseCmp(suffix, ".time") || Util::StrCaseCmp(suffix, ".weekdays") ||
+			Util::StrCaseCmp(suffix, ".command") || Util::StrCaseCmp(suffix, ".param") ||
+			Util::StrCaseCmp(suffix, ".downloadrate") || Util::StrCaseCmp(suffix, ".process"))
 		{
 			return true;
 		}
@@ -1558,8 +1561,9 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	{
 		char* p = (char*)optname + 8;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".destdir") || !strcasecmp(p, ".extensions") ||
-			!strcasecmp(p, ".unpack") || !strcasecmp(p, ".aliases")))
+		std::string_view suffix(p);
+		if (Util::StrCaseCmp(suffix, ".name") || Util::StrCaseCmp(suffix, ".destdir") || Util::StrCaseCmp(suffix, ".extensions") ||
+			Util::StrCaseCmp(suffix, ".unpack") || Util::StrCaseCmp(suffix, ".aliases"))
 		{
 			return true;
 		}
@@ -1569,10 +1573,11 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	{
 		char* p = (char*)optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
-			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
-			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
-			 !strcasecmp(p, ".extensions")))
+		std::string_view suffix(p);
+		if (Util::StrCaseCmp(suffix, ".name") || Util::StrCaseCmp(suffix, ".url") || Util::StrCaseCmp(suffix, ".interval") ||
+			 Util::StrCaseCmp(suffix, ".filter") || Util::StrCaseCmp(suffix, ".backlog") || Util::StrCaseCmp(suffix, ".pausenzb") ||
+			 Util::StrCaseCmp(suffix, ".category") || Util::StrCaseCmp(suffix, ".categorySource") || Util::StrCaseCmp(suffix, ".priority") || 
+			 Util::StrCaseCmp(suffix, ".extensions"))
 		{
 			return true;
 		}
@@ -1585,36 +1590,36 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 	}
 
 	// print warning messages for obsolete options
-	if (!strcasecmp(optname, RETRYONCRCERROR.data()) ||
-		!strcasecmp(optname, ALLOWREPROCESS.data()) ||
-		!strcasecmp(optname, LOADPARS.data()) ||
-		!strcasecmp(optname, THREADLIMIT.data()) ||
-		!strcasecmp(optname, POSTLOGKIND.data()) ||
-		!strcasecmp(optname, NZBLOGKIND.data()) ||
-		!strcasecmp(optname, PROCESSLOGKIND.data()) ||
-		!strcasecmp(optname, APPENDNZBDIR.data()) ||
-		!strcasecmp(optname, RENAMEBROKEN.data()) ||
-		!strcasecmp(optname, MERGENZB.data()) ||
-		!strcasecmp(optname, STRICTPARNAME.data()) ||
-		!strcasecmp(optname, RELOADURLQUEUE.data()) ||
-		!strcasecmp(optname, RELOADPOSTQUEUE.data()) ||
-		!strcasecmp(optname, PARCLEANUPQUEUE.data()) ||
-		!strcasecmp(optname, DELETECLEANUPDISK.data()) ||
-		!strcasecmp(optname, HISTORYCLEANUPDISK.data()) ||
-		!strcasecmp(optname, SAVEQUEUE.data()) ||
-		!strcasecmp(optname, RELOADQUEUE.data()) ||
-		!strcasecmp(optname, TERMINATETIMEOUT.data()) ||
-		!strcasecmp(optname, ACCURATERATE.data()) ||
-		!strcasecmp(optname, CREATEBROKENLOG.data()) ||
-		!strcasecmp(optname, BROKENLOG.data()))
+	if (Util::StrCaseCmp(opt_view, RETRYONCRCERROR) ||
+		Util::StrCaseCmp(opt_view, ALLOWREPROCESS) ||
+		Util::StrCaseCmp(opt_view, LOADPARS) ||
+		Util::StrCaseCmp(opt_view, THREADLIMIT) ||
+		Util::StrCaseCmp(opt_view, POSTLOGKIND) ||
+		Util::StrCaseCmp(opt_view, NZBLOGKIND) ||
+		Util::StrCaseCmp(opt_view, PROCESSLOGKIND) ||
+		Util::StrCaseCmp(opt_view, APPENDNZBDIR) ||
+		Util::StrCaseCmp(opt_view, RENAMEBROKEN) ||
+		Util::StrCaseCmp(opt_view, MERGENZB) ||
+		Util::StrCaseCmp(opt_view, STRICTPARNAME) ||
+		Util::StrCaseCmp(opt_view, RELOADURLQUEUE) ||
+		Util::StrCaseCmp(opt_view, RELOADPOSTQUEUE) ||
+		Util::StrCaseCmp(opt_view, PARCLEANUPQUEUE) ||
+		Util::StrCaseCmp(opt_view, DELETECLEANUPDISK) ||
+		Util::StrCaseCmp(opt_view, HISTORYCLEANUPDISK) ||
+		Util::StrCaseCmp(opt_view, SAVEQUEUE) ||
+		Util::StrCaseCmp(opt_view, RELOADQUEUE) ||
+		Util::StrCaseCmp(opt_view, TERMINATETIMEOUT) ||
+		Util::StrCaseCmp(opt_view, ACCURATERATE) ||
+		Util::StrCaseCmp(opt_view, CREATEBROKENLOG) ||
+		Util::StrCaseCmp(opt_view, BROKENLOG))
 	{
 		ConfigWarn("Option \"%s\" is obsolete, ignored", optname);
 		return true;
 	}
 
-	if (!strcasecmp(optname, POSTPROCESS.data()) ||
-		!strcasecmp(optname, NZBPROCESS.data()) ||
-		!strcasecmp(optname, NZBADDEDPROCESS.data()))
+	if (Util::StrCaseCmp(opt_view, POSTPROCESS) ||
+		Util::StrCaseCmp(opt_view, NZBPROCESS) ||
+		Util::StrCaseCmp(opt_view, NZBADDEDPROCESS))
 	{
 		if (optvalue && strlen(optvalue) > 0)
 		{
@@ -1624,15 +1629,15 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		return true;
 	}
 
-	if (!strcasecmp(optname, SCANSCRIPT.data()) ||
-		!strcasecmp(optname, QUEUESCRIPT.data()) ||
-		!strcasecmp(optname, FEEDSCRIPT.data()))
+	if (Util::StrCaseCmp(opt_view, SCANSCRIPT) ||
+		Util::StrCaseCmp(opt_view, QUEUESCRIPT) ||
+		Util::StrCaseCmp(opt_view, FEEDSCRIPT))
 	{
 		// will be automatically converted into "Extensions"
 		return true;
 	}
 
-	if (!strcasecmp(optname, CREATELOG.data()) || !strcasecmp(optname, RESETLOG.data()))
+	if (Util::StrCaseCmp(opt_view, CREATELOG) || Util::StrCaseCmp(opt_view, RESETLOG))
 	{
 		ConfigWarn("Option \"%s\" is obsolete, ignored, use \"%s\" instead", optname, WRITELOG.data());
 		return true;
@@ -1899,7 +1904,7 @@ void Options::MergeOldScriptOption(OptEntries* optEntries, const char* optname, 
 				{
 					char* p = (char*)catoptname + 8;
 					while (*p >= '0' && *p <= '9') p++;
-					if (p && (!strcasecmp(p, ".extensions")))
+					if (!strcasecmp(p, ".extensions"))
 					{
 						if (!opt.m_value.Empty() && !HasScript(opt.m_value, scriptName))
 						{

@@ -32,6 +32,9 @@
 #include "Util.h"
 
 ArticleDownloader::ArticleDownloader()
+	: m_fileInfo(nullptr)
+	, m_articleInfo(nullptr)
+	, m_writingStarted(false)
 {
 	debug("Creating ArticleDownloader");
 

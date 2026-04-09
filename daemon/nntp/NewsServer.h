@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2015 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ public:
 	int GetLevel() const { return m_level; }
 	int GetNormLevel() const { return m_normLevel; }
 	void SetNormLevel(int level) { m_normLevel = level; }
-	int GetJoinGroup() const { return m_joinGroup; }
+	bool GetJoinGroup() const { return m_joinGroup; }
 	bool GetTls() const { return m_tls; }
 	const char* GetCipher() const { return m_cipher; }
 	int GetRetention() const { return m_retention; }

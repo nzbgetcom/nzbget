@@ -97,8 +97,8 @@ public:
 private:
 	bool GetSkipDiskWrite();
 
-	FileInfo* m_fileInfo;
-	ArticleInfo* m_articleInfo;
+	FileInfo* m_fileInfo = nullptr;
+	ArticleInfo* m_articleInfo = nullptr;
 	DiskFile m_outFile;
 	std::string m_tempFilename;
 	std::string m_outputFilename;
@@ -106,9 +106,9 @@ private:
 	std::string m_infoName;
 	Decoder::EFormat m_format = Decoder::efUnknown;
 	CachedSegmentData m_articleData;
-	int64 m_articleOffset;
-	int m_articleSize;
-	int m_articlePtr;
+	int64 m_articleOffset = 0;
+	int m_articleSize = 0;
+	int m_articlePtr = 0;
 	bool m_duplicate = false;
 
 	bool CreateOutputFile(int64 size);

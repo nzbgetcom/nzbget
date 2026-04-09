@@ -191,14 +191,14 @@ bool Frontend::RequestMessages()
 		LogRequest.m_idFrom = 0;
 	}
 
-	if (!connection.Send((char*)(&LogRequest), sizeof(LogRequest)))
+	if (!connection.Send(reinterpret_cast<char*>(&LogRequest), sizeof(LogRequest)))
 	{
 		return false;
 	}
 
 	// Now listen for the returned log
 	SNzbLogResponse LogResponse;
-	bool read = connection.Recv((char*) &LogResponse, sizeof(LogResponse));
+	bool read = connection.Recv(reinterpret_cast<char*>(&LogResponse), sizeof(LogResponse));
 	if (!read ||
 		(int)ntohl(LogResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(LogResponse.m_messageBase.m_structSize) != sizeof(LogResponse))
@@ -223,7 +223,7 @@ bool Frontend::RequestMessages()
 		char* bufPtr = (char*)buf;
 		for (uint32 i = 0; i < ntohl(LogResponse.m_nrTrailingEntries); i++)
 		{
-			SNzbLogResponseEntry* logAnswer = (SNzbLogResponseEntry*) bufPtr;
+			SNzbLogResponseEntry* logAnswer = reinterpret_cast<SNzbLogResponseEntry*>(bufPtr);
 
 			char* text = bufPtr + sizeof(SNzbLogResponseEntry);
 
@@ -252,14 +252,14 @@ bool Frontend::RequestFileList()
 	ListRequest.m_fileList = htonl(m_fileList);
 	ListRequest.m_serverState = htonl(m_summary);
 
-	if (!connection.Send((char*)(&ListRequest), sizeof(ListRequest)))
+	if (!connection.Send(reinterpret_cast<char*>(&ListRequest), sizeof(ListRequest)))
 	{
 		return false;
 	}
 
 	// Now listen for the returned list
 	SNzbListResponse ListResponse;
-	bool read = connection.Recv((char*) &ListResponse, sizeof(ListResponse));
+	bool read = connection.Recv(reinterpret_cast<char*>(&ListResponse), sizeof(ListResponse));
 	if (!read ||
 		(int)ntohl(ListResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(ListResponse.m_messageBase.m_structSize) != sizeof(ListResponse))

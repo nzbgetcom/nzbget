@@ -83,7 +83,7 @@ bool RemoteClient::ReceiveBoolResponse()
 	SNzbDownloadResponse BoolResponse;
 	memset(&BoolResponse, 0, sizeof(BoolResponse));
 
-	bool read = m_connection->Recv((char*)&BoolResponse, sizeof(BoolResponse));
+	bool read = m_connection->Recv(reinterpret_cast<char*>(&BoolResponse), sizeof(BoolResponse));
 	if (!read ||
 		(int)ntohl(BoolResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(BoolResponse.m_messageBase.m_structSize) != sizeof(BoolResponse))
@@ -169,7 +169,7 @@ bool RemoteClient::RequestServerDownload(const char* nzbFilename, const char* nz
 		}
 		DownloadRequest.m_dupeKey[NZBREQUESTFILENAMESIZE-1] = '\0';
 
-		if (!m_connection->Send((char*)(&DownloadRequest), sizeof(DownloadRequest)))
+		if (!m_connection->Send(reinterpret_cast<char*>(&DownloadRequest), sizeof(DownloadRequest)))
 		{
 			perror("m_pConnection->Send");
 			OK = false;
@@ -194,7 +194,7 @@ void RemoteClient::BuildFileList(SNzbListResponse* listResponse, const char* tra
 		// read nzb entries
 		for (uint32 i = 0; i < ntohl(listResponse->m_nrTrailingNzbEntries); i++)
 		{
-			SNzbListResponseNzbEntry* listAnswer = (SNzbListResponseNzbEntry*) bufPtr;
+			SNzbListResponseNzbEntry* listAnswer = reinterpret_cast<SNzbListResponseNzbEntry*>(const_cast<char*>(bufPtr));
 
 			const char* fileName = bufPtr + sizeof(SNzbListResponseNzbEntry);
 			const char* name = bufPtr + sizeof(SNzbListResponseNzbEntry) + ntohl(listAnswer->m_filenameLen);
@@ -231,7 +231,7 @@ void RemoteClient::BuildFileList(SNzbListResponse* listResponse, const char* tra
 		//read ppp entries
 		for (uint32 i = 0; i < ntohl(listResponse->m_nrTrailingPPPEntries); i++)
 		{
-			SNzbListResponsePPPEntry* listAnswer = (SNzbListResponsePPPEntry*) bufPtr;
+			SNzbListResponsePPPEntry* listAnswer = reinterpret_cast<SNzbListResponsePPPEntry*>(const_cast<char*>(bufPtr));
 
 			const char* name = bufPtr + sizeof(SNzbListResponsePPPEntry);
 			const char* value = bufPtr + sizeof(SNzbListResponsePPPEntry) + ntohl(listAnswer->m_nameLen);
@@ -246,7 +246,7 @@ void RemoteClient::BuildFileList(SNzbListResponse* listResponse, const char* tra
 		//read file entries
 		for (uint32 i = 0; i < ntohl(listResponse->m_nrTrailingFileEntries); i++)
 		{
-			SNzbListResponseFileEntry* listAnswer = (SNzbListResponseFileEntry*) bufPtr;
+			SNzbListResponseFileEntry* listAnswer = reinterpret_cast<SNzbListResponseFileEntry*>(const_cast<char*>(bufPtr));
 
 			const char* subject = bufPtr + sizeof(SNzbListResponseFileEntry);
 			const char* fileName = bufPtr + sizeof(SNzbListResponseFileEntry) + ntohl(listAnswer->m_subjectLen);
@@ -288,7 +288,7 @@ bool RemoteClient::RequestServerList(bool files, bool groups, const char* patter
 		ListRequest.m_pattern[NZBREQUESTFILENAMESIZE-1] = '\0';
 	}
 
-	if (!m_connection->Send((char*)(&ListRequest), sizeof(ListRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&ListRequest), sizeof(ListRequest)))
 	{
 		perror("m_pConnection->Send");
 		return false;
@@ -298,7 +298,7 @@ bool RemoteClient::RequestServerList(bool files, bool groups, const char* patter
 
 	// Now listen for the returned list
 	SNzbListResponse ListResponse;
-	bool read = m_connection->Recv((char*) &ListResponse, sizeof(ListResponse));
+	bool read = m_connection->Recv(reinterpret_cast<char*>(&ListResponse), sizeof(ListResponse));
 	if (!read ||
 		(int)ntohl(ListResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(ListResponse.m_messageBase.m_structSize) != sizeof(ListResponse))
@@ -374,7 +374,7 @@ bool RemoteClient::RequestServerList(bool files, bool groups, const char* patter
 						remaining += fileInfo->GetRemainingSize();
 					}
 
-					if (!pattern || ((MatchedFileInfo*)fileInfo)->m_match)
+					if (!pattern || (static_cast<MatchedFileInfo*>(fileInfo))->m_match)
 					{
 						printf("[%i] %s/%s (%s%s%s)%s\n", fileInfo->GetId(), fileInfo->GetNzbInfo()->GetName(),
 							fileInfo->GetFilename(), *Util::FormatSize(fileInfo->GetSize()),
@@ -484,7 +484,7 @@ bool RemoteClient::RequestServerList(bool files, bool groups, const char* patter
 						nzbInfo->GetFileList()->size() > 1 ? "s" : "");
 				}
 
-				if (!pattern || ((MatchedNzbInfo*)nzbInfo)->m_match)
+				if (!pattern || (static_cast<MatchedNzbInfo*>(nzbInfo))->m_match)
 				{
 					printf("[%i] %s%s (%s, %s%s%s)%s%s\n", nzbInfo->GetId(), *priority,
 						nzbInfo->GetName(), *urlOrFile, *remainingStr,
@@ -615,7 +615,7 @@ bool RemoteClient::RequestServerLog(int lines)
 	LogRequest.m_lines = htonl(lines);
 	LogRequest.m_idFrom = 0;
 
-	if (!m_connection->Send((char*)(&LogRequest), sizeof(LogRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&LogRequest), sizeof(LogRequest)))
 	{
 		perror("m_pConnection->Send");
 		return false;
@@ -625,7 +625,7 @@ bool RemoteClient::RequestServerLog(int lines)
 
 	// Now listen for the returned log
 	SNzbLogResponse LogResponse;
-	bool read = m_connection->Recv((char*) &LogResponse, sizeof(LogResponse));
+	bool read = m_connection->Recv(reinterpret_cast<char*>(&LogResponse), sizeof(LogResponse));
 	if (!read ||
 		(int)ntohl(LogResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(LogResponse.m_messageBase.m_structSize) != sizeof(LogResponse))
@@ -658,7 +658,7 @@ bool RemoteClient::RequestServerLog(int lines)
 		char* bufPtr = (char*)buf;
 		for (uint32 i = 0; i < ntohl(LogResponse.m_nrTrailingEntries); i++)
 		{
-			SNzbLogResponseEntry* logAnswer = (SNzbLogResponseEntry*) bufPtr;
+			SNzbLogResponseEntry* logAnswer = reinterpret_cast<SNzbLogResponseEntry*>(bufPtr);
 
 			char* text = bufPtr + sizeof(SNzbLogResponseEntry);
 			switch (ntohl(logAnswer->m_kind))
@@ -698,7 +698,7 @@ bool RemoteClient::RequestServerPauseUnpause(bool pause, ERemotePauseUnpauseActi
 	PauseUnpauseRequest.m_pause = htonl(pause);
 	PauseUnpauseRequest.m_action = htonl(action);
 
-	if (!m_connection->Send((char*)(&PauseUnpauseRequest), sizeof(PauseUnpauseRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&PauseUnpauseRequest), sizeof(PauseUnpauseRequest)))
 	{
 		perror("m_pConnection->Send");
 		m_connection->Disconnect();
@@ -719,7 +719,7 @@ bool RemoteClient::RequestServerSetDownloadRate(int rate)
 	InitMessageBase(&SetDownloadRateRequest.m_messageBase, rrSetDownloadRate, sizeof(SetDownloadRateRequest));
 	SetDownloadRateRequest.m_downloadRate = htonl(rate);
 
-	if (!m_connection->Send((char*)(&SetDownloadRateRequest), sizeof(SetDownloadRateRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&SetDownloadRateRequest), sizeof(SetDownloadRateRequest)))
 	{
 		perror("m_pConnection->Send");
 		m_connection->Disconnect();
@@ -739,7 +739,7 @@ bool RemoteClient::RequestServerDumpDebug()
 	SNzbDumpDebugRequest DumpDebugInfo;
 	InitMessageBase(&DumpDebugInfo.m_messageBase, rrDumpDebug, sizeof(DumpDebugInfo));
 
-	if (!m_connection->Send((char*)(&DumpDebugInfo), sizeof(DumpDebugInfo)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&DumpDebugInfo), sizeof(DumpDebugInfo)))
 	{
 		perror("m_pConnection->Send");
 		m_connection->Disconnect();
@@ -822,7 +822,7 @@ bool RemoteClient::RequestServerEditQueue(DownloadQueue::EEditAction action, int
 	}
 
 	bool OK = false;
-	if (!m_connection->Send((char*)(&EditQueueRequest), sizeof(EditQueueRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&EditQueueRequest), sizeof(EditQueueRequest)))
 	{
 		perror("m_pConnection->Send");
 	}
@@ -844,7 +844,7 @@ bool RemoteClient::RequestServerShutdown()
 	SNzbShutdownRequest ShutdownRequest;
 	InitMessageBase(&ShutdownRequest.m_messageBase, rrShutdown, sizeof(ShutdownRequest));
 
-	bool OK = m_connection->Send((char*)(&ShutdownRequest), sizeof(ShutdownRequest));
+	bool OK = m_connection->Send(reinterpret_cast<char*>(&ShutdownRequest), sizeof(ShutdownRequest));
 	if (OK)
 	{
 		OK = ReceiveBoolResponse();
@@ -865,7 +865,7 @@ bool RemoteClient::RequestServerReload()
 	SNzbReloadRequest ReloadRequest;
 	InitMessageBase(&ReloadRequest.m_messageBase, rrReload, sizeof(ReloadRequest));
 
-	bool OK = m_connection->Send((char*)(&ReloadRequest), sizeof(ReloadRequest));
+	bool OK = m_connection->Send(reinterpret_cast<char*>(&ReloadRequest), sizeof(ReloadRequest));
 	if (OK)
 	{
 		OK = ReceiveBoolResponse();
@@ -886,7 +886,7 @@ bool RemoteClient::RequestServerVersion()
 	SNzbVersionRequest VersionRequest;
 	InitMessageBase(&VersionRequest.m_messageBase, rrVersion, sizeof(VersionRequest));
 
-	bool OK = m_connection->Send((char*)(&VersionRequest), sizeof(VersionRequest));
+	bool OK = m_connection->Send(reinterpret_cast<char*>(&VersionRequest), sizeof(VersionRequest));
 	if (OK)
 	{
 		OK = ReceiveBoolResponse();
@@ -907,7 +907,7 @@ bool RemoteClient::RequestPostQueue()
 	SNzbPostQueueRequest PostQueueRequest;
 	InitMessageBase(&PostQueueRequest.m_messageBase, rrPostQueue, sizeof(PostQueueRequest));
 
-	if (!m_connection->Send((char*)(&PostQueueRequest), sizeof(PostQueueRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&PostQueueRequest), sizeof(PostQueueRequest)))
 	{
 		perror("m_pConnection->Send");
 		return false;
@@ -917,7 +917,7 @@ bool RemoteClient::RequestPostQueue()
 
 	// Now listen for the returned list
 	SNzbPostQueueResponse PostQueueResponse;
-	bool read = m_connection->Recv((char*) &PostQueueResponse, sizeof(PostQueueResponse));
+	bool read = m_connection->Recv(reinterpret_cast<char*>(&PostQueueResponse), sizeof(PostQueueResponse));
 	if (!read ||
 		(int)ntohl(PostQueueResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(PostQueueResponse.m_messageBase.m_structSize) != sizeof(PostQueueResponse))
@@ -950,7 +950,7 @@ bool RemoteClient::RequestPostQueue()
 		char* bufPtr = (char*)buf;
 		for (uint32 i = 0; i < ntohl(PostQueueResponse.m_nrTrailingEntries); i++)
 		{
-			SNzbPostQueueResponseEntry* postQueueAnswer = (SNzbPostQueueResponseEntry*) bufPtr;
+			SNzbPostQueueResponseEntry* postQueueAnswer = reinterpret_cast<SNzbPostQueueResponseEntry*>(bufPtr);
 
 			int stageProgress = ntohl(postQueueAnswer->m_stageProgress);
 
@@ -988,7 +988,7 @@ bool RemoteClient::RequestWriteLog(int kind, const char* text)
 	int length = strlen(text) + 1;
 	WriteLogRequest.m_trailingDataLength = htonl(length);
 
-	if (!m_connection->Send((char*)(&WriteLogRequest), sizeof(WriteLogRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&WriteLogRequest), sizeof(WriteLogRequest)))
 	{
 		perror("m_pConnection->Send");
 		return false;
@@ -1009,7 +1009,7 @@ bool RemoteClient::RequestScan(bool syncMode)
 
 	ScanRequest.m_syncMode = htonl(syncMode);
 
-	bool OK = m_connection->Send((char*)(&ScanRequest), sizeof(ScanRequest));
+	bool OK = m_connection->Send(reinterpret_cast<char*>(&ScanRequest), sizeof(ScanRequest));
 	if (OK)
 	{
 		OK = ReceiveBoolResponse();
@@ -1031,7 +1031,7 @@ bool RemoteClient::RequestHistory(bool withHidden)
 	InitMessageBase(&HistoryRequest.m_messageBase, rrHistory, sizeof(HistoryRequest));
 	HistoryRequest.m_hidden = htonl(withHidden);
 
-	if (!m_connection->Send((char*)(&HistoryRequest), sizeof(HistoryRequest)))
+	if (!m_connection->Send(reinterpret_cast<char*>(&HistoryRequest), sizeof(HistoryRequest)))
 	{
 		perror("m_pConnection->Send");
 		return false;
@@ -1041,7 +1041,7 @@ bool RemoteClient::RequestHistory(bool withHidden)
 
 	// Now listen for the returned list
 	SNzbHistoryResponse HistoryResponse;
-	bool read = m_connection->Recv((char*) &HistoryResponse, sizeof(HistoryResponse));
+	bool read = m_connection->Recv(reinterpret_cast<char*>(&HistoryResponse), sizeof(HistoryResponse));
 	if (!read ||
 		(int)ntohl(HistoryResponse.m_messageBase.m_signature) != (int)NZBMESSAGE_SIGNATURE ||
 		ntohl(HistoryResponse.m_messageBase.m_structSize) != sizeof(HistoryResponse))
@@ -1074,7 +1074,7 @@ bool RemoteClient::RequestHistory(bool withHidden)
 		char* bufPtr = (char*)buf;
 		for (uint32 i = 0; i < ntohl(HistoryResponse.m_nrTrailingEntries); i++)
 		{
-			SNzbHistoryResponseEntry* listAnswer = (SNzbHistoryResponseEntry*) bufPtr;
+			SNzbHistoryResponseEntry* listAnswer = reinterpret_cast<SNzbHistoryResponseEntry*>(bufPtr);
 
 			HistoryInfo::EKind kind = (HistoryInfo::EKind)ntohl(listAnswer->m_kind);
 			const char* nicename = bufPtr + sizeof(SNzbHistoryResponseEntry);

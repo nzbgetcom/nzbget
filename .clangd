@@ -1,0 +1,39 @@
+CompileFlags:
+  Add:
+    - "-Wall"
+    - "-Wextra"
+    - "-Wformat=2"
+    - "-Wformat-security"
+    - "-Wnull-dereference"
+    - "-Wimplicit-fallthrough"
+    - "-Wconversion"
+    - "-Wsign-conversion"
+    - "-U_FORTIFY_SOURCE"
+    - "-D_FORTIFY_SOURCE=2"
+    - "-fstack-protector-strong"
+
+Index:
+  Background: Build
+
+Completion:
+  AllScopes: Yes
+  HeaderInsertion: Never
+
+Diagnostics:
+  UnusedIncludes: Loose
+  Suppress:
+    - '-Wreserved-identifier'
+  ClangTidy:
+    Add:
+      - 'readability-*'
+      - 'bugprone-*'
+      - 'modernize-use-nullptr'
+      - 'modernize-use-override'
+    Remove:
+      - 'readability-magic-numbers'
+      - 'readability-identifier-length'
+      - 'readability-implicit-bool-conversion'
+      - 'readability-uppercase-literal-suffix'
+      - 'readability-braces-around-statements'
+      - 'readability-function-cognitive-complexity'
+      - 'bugprone-easily-swappable-parameters'

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -476,7 +476,7 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 
 	int correctedCount = count - (min == 0 ? 1 : 0);
 	if ((min > 1) || correctedCount != max ||
-		((difSizeMin != correctedCount || difSizeMin > max) &&
+		(difSizeMin != correctedCount &&
 		 m_postInfo->GetNzbInfo()->GetParStatus() != NzbInfo::psSuccess))
 	{
 		PrintMessage(Message::mkWarning, "Could not join splitted file %s: missing fragments detected", *destBaseName);

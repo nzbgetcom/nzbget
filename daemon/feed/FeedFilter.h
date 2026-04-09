@@ -52,7 +52,7 @@ private:
 	class Term
 	{
 	public:
-		Term() {}
+		Term() : m_positive(false), m_command(fcEqual) {}
 		Term(Term&&) = delete; // catch performance issues
 		void SetRefValues(RefValues* refValues) { m_refValues = refValues; }
 		bool Compile(char* token);
@@ -97,7 +97,7 @@ private:
 	class Rule
 	{
 	public:
-		Rule() {}
+		Rule() : m_dupeScore(0) {}
 		Rule(Rule&&) = delete; // catch performance issues
 		void Compile(char* rule);
 		bool IsValid() { return m_isValid; }

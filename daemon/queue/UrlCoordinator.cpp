@@ -267,7 +267,7 @@ void UrlCoordinator::Update(Subject* caller, void*)
 {
 	debug("Notification from UrlDownloader received");
 
-	UrlDownloader* urlDownloader = (UrlDownloader*)caller;
+	UrlDownloader* urlDownloader = static_cast<UrlDownloader*>(caller);
 	if ((urlDownloader->GetStatus() == WebDownloader::adFinished) ||
 		(urlDownloader->GetStatus() == WebDownloader::adFailed) ||
 		(urlDownloader->GetStatus() == WebDownloader::adRetry))

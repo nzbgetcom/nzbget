@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,7 +61,7 @@ xmlNodePtr CreateStructNode()
 	return structNode;
 }
 
-void AddArrayNode(xmlNodePtr structNode, const char* name, std::vector<xmlNodePtr> children)
+void AddArrayNode(xmlNodePtr structNode, const char* name, const std::vector<xmlNodePtr>& children)
 {
 	xmlNodePtr memberNode = xmlNewNode(nullptr, BAD_CAST "member");
 	xmlNewChild(memberNode, nullptr, BAD_CAST "name", BAD_CAST name);

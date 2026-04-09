@@ -111,7 +111,7 @@ namespace ExtensionLoader
 					}
 					inBeforeConfig = false;
 					inConfig = true;
-					kind = GetScriptKind(line.c_str());
+					kind = GetScriptKind(line);
 					continue;
 				}
 

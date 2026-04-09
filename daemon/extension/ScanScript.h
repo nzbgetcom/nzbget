@@ -31,8 +31,17 @@ public:
 		std::string& nzbName,
 		std::string& category,
 		std::string& dupeKey)
-		: m_nzbName{ nzbName }
+		: m_nzbFilename(nullptr)
+		, m_url(nullptr)
+		, m_directory(nullptr)
+		, m_nzbName{ nzbName }
 		, m_category{ category }
+		, m_priority(nullptr)
+		, m_dupeScore(nullptr)
+		, m_addTop(nullptr)
+		, m_addPaused(nullptr)
+		, m_dupeMode(nullptr)
+		, m_parameters(nullptr)
 		, m_dupeKey{ dupeKey } {}
 
 	static void ExecuteScripts(

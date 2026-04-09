@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2016-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -322,7 +323,7 @@ bool RarRenamer::SameArchiveName(const char* filename1, const char* filename2, b
 	}
 }
 
-bool RarRenamer::IsSetProperlyNamed(RarVolumeSet& set)
+bool RarRenamer::IsSetProperlyNamed(const RarVolumeSet& set)
 {
 	RegEx regExPart(".*.part([0-9]+)\\.rar$");
 
@@ -370,7 +371,7 @@ bool RarRenamer::IsSetProperlyNamed(RarVolumeSet& set)
 	return true;
 }
 
-RarFile* RarRenamer::FindMainFile(RarVolumeSet& set)
+RarFile* RarRenamer::FindMainFile(const RarVolumeSet& set)
 {
 	std::deque<RarFile*> allFiles;
 

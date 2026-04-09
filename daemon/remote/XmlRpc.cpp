@@ -973,6 +973,8 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 // Base command
 
 XmlCommand::XmlCommand()
+	: m_httpMethod(XmlRpcProcessor::hmPost)
+	, m_userAccess(XmlRpcProcessor::uaControl)
 {
 	m_response.Reserve(1024 * 10 - 1);
 }

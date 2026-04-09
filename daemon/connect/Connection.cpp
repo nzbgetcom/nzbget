@@ -44,7 +44,7 @@ void closesocket_gracefully(SOCKET socket)
 	// ephemeral port exhaust problem under high QPS.
 	linger.l_onoff = 1;
 	linger.l_linger = 1;
-	setsockopt(socket, SOL_SOCKET, SO_LINGER, (char *) &linger, sizeof(linger));
+	setsockopt(socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&linger), sizeof(linger));
 
 	// Send FIN to the client
 	shutdown(socket, SHUT_WR);
@@ -186,13 +186,13 @@ bool Connection::Disconnect()
 		return true;
 	}
 
-	bool res = DoDisconnect();
+	DoDisconnect();
 
 	m_status = csDisconnected;
 	m_socket = INVALID_SOCKET;
 	m_bufAvail = 0;
 
-	return res;
+	return true;
 }
 
 bool Connection::Bind()
@@ -227,7 +227,7 @@ bool Connection::Bind()
 
 		unlink(m_host.c_str());
 
-		if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+		if (bind(m_socket, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1)
 		{
 			// Connection failed
 			closesocket(m_socket);
@@ -269,7 +269,7 @@ bool Connection::Bind()
 			if (m_socket != INVALID_SOCKET)
 			{
 				int opt = 1;
-				setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
+				setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
 				res = bind(m_socket, addr->ai_addr, addr->ai_addrlen);
 				if (res != -1)
 				{
@@ -728,7 +728,7 @@ bool Connection::InitSocketOpts(SOCKET socket)
 	struct timeval TimeVal;
 	TimeVal.tv_sec = m_timeout;
 	TimeVal.tv_usec = 0;
-	optbuf = (char*)&TimeVal;
+	optbuf = reinterpret_cast<char*>(&TimeVal);
 	optsize = sizeof(TimeVal);
 #endif
 	int err = setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, optbuf, optsize);
@@ -823,7 +823,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 		}
 		//we had a positivite return so a descriptor is ready
 
-		if (getsockopt(m_socket, SOL_SOCKET, SO_ERROR, (char*)&error, &len) < 0)
+		if (getsockopt(m_socket, SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len) < 0)
 		{
 			return false;
 		}
@@ -853,7 +853,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	return true;
 }
 
-bool Connection::DoDisconnect()
+void Connection::DoDisconnect()
 {
 	debug("Do disconnecting");
 
@@ -883,7 +883,6 @@ bool Connection::DoDisconnect()
 	}
 
 	m_status = csDisconnected;
-	return true;
 }
 
 void Connection::ReadBuffer(char** buffer, int *bufLen)
@@ -1104,7 +1103,7 @@ const char* Connection::GetRemoteAddr()
 
 	char peerName[1024];
 	int peerNameLength = sizeof(peerName);
-	if (getpeername(m_socket, (sockaddr*)&peerName, (SOCKLEN_T*)&peerNameLength) >= 0)
+	if (getpeername(m_socket, reinterpret_cast<sockaddr*>(&peerName), reinterpret_cast<SOCKLEN_T*>(&peerNameLength)) >= 0)
 	{
 #ifdef WIN32
 		HMODULE module = LoadLibrary("ws2_32.dll");
@@ -1127,10 +1126,10 @@ const char* Connection::GetRemoteAddr()
 			m_remoteAddr = inet_ntoa(((sockaddr_in*)&peerName)->sin_addr);
 		}
 #else
-		inet_ntop(((sockaddr_in*)&peerName)->sin_family,
-			((sockaddr_in*)&peerName)->sin_family == AF_INET6 ?
-			(void*)&((sockaddr_in6*)&peerName)->sin6_addr :
-			(void*)&((sockaddr_in*)&peerName)->sin_addr,
+		inet_ntop(reinterpret_cast<sockaddr_in*>(&peerName)->sin_family,
+			reinterpret_cast<sockaddr_in*>(&peerName)->sin_family == AF_INET6 ?
+			reinterpret_cast<void*>(&reinterpret_cast<sockaddr_in6*>(&peerName)->sin6_addr) :
+			reinterpret_cast<void*>(&reinterpret_cast<sockaddr_in*>(&peerName)->sin_addr),
 			m_remoteAddr, m_remoteAddr.Capacity());
 #endif
 		m_remoteAddr[m_remoteAddr.Capacity() - 1] = '\0';
