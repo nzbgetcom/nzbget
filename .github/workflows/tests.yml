@@ -251,6 +251,25 @@ jobs:
         cmake .. -DDISABLE_PARCHECK=yes
         cmake --build . --config Release -j 4
 
+  build-disabled-pch:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_DISABLE_PRECOMPILE_HEADERS=yes
+        cmake --build . --config Release -j 4
+
   build-openbsd:
     runs-on: ubuntu-24.04
     steps:
