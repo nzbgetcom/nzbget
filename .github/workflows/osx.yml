@@ -194,7 +194,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneeded artifacts
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-osx-installers-x64

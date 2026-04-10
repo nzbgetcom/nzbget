@@ -131,7 +131,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-windows-installers
@@ -143,7 +143,7 @@ jobs:
           nzbget-flatpak-packages
 
     - name: Delete unneeded linux packages artifacts
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-deb-packages
