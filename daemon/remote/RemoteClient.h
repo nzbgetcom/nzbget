@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +32,8 @@ class RemoteClient
 {
 public:
 	void SetVerbose(bool verbose) { m_verbose = verbose; };
-	bool RequestServerDownload(const char* nzbFilename, const char* nzbContent, const char* category,
+	bool RequestServerDownload(const char* nzbFilename, const char* nzbContent,
+		const char* category, bool autoCategory,
 		bool addFirst, bool addPaused, int priority,
 		const char* dupeKey, int dupeMode, int dupeScore);
 	bool RequestServerList(bool files, bool groups, const char* pattern);

@@ -864,9 +864,17 @@ void NZBGet::ProcessClientRequest()
 			break;
 
 		case CommandLineParser::opClientRequestDownload:
-			ok = Client.RequestServerDownload(m_commandLineParser->GetAddNzbFilename(), m_commandLineParser->GetArgFilename(),
-				m_commandLineParser->GetAddCategory(), m_commandLineParser->GetAddTop(), m_commandLineParser->GetAddPaused(), m_commandLineParser->GetAddPriority(),
-				m_commandLineParser->GetAddDupeKey(), m_commandLineParser->GetAddDupeMode(), m_commandLineParser->GetAddDupeScore());
+			ok = Client.RequestServerDownload(
+				m_commandLineParser->GetAddNzbFilename(),
+				m_commandLineParser->GetArgFilename(),
+				m_commandLineParser->GetAddCategory(),
+				m_commandLineParser->GetAutoCategory(),
+				m_commandLineParser->GetAddTop(),
+				m_commandLineParser->GetAddPaused(),
+				m_commandLineParser->GetAddPriority(),
+				m_commandLineParser->GetAddDupeKey(),
+				m_commandLineParser->GetAddDupeMode(),
+				m_commandLineParser->GetAddDupeScore());
 			break;
 
 		case CommandLineParser::opClientRequestVersion:
