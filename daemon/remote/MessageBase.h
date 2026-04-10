@@ -104,9 +104,9 @@ struct SNzbDownloadRequest
 	int32 m_priority; // Priority for files (0 - default)
 	int32 m_dupeScore; // Duplicate score
 	int32 m_dupeMode; // Duplicate mode (EDupeMode)
-	int32 m_autoCategory;
 	char m_dupeKey[NZBREQUESTFILENAMESIZE]; // Duplicate key
 	int32 m_trailingDataLength; // Length of nzb-file in bytes
+	int32 m_autoCategory;
 	//char m_content[m_trailingDataLength]; // variable sized
 };
 

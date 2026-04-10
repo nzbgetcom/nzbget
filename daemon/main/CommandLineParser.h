@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -81,6 +82,7 @@ public:
 	const char* GetEditQueueText() { return m_editQueueText; }
 	const char* GetArgFilename() { return m_argFilename; }
 	const char* GetAddCategory() { return m_addCategory; }
+	bool GetAutoCategory() const { return m_autoCategory; }
 	bool GetAddPaused() { return m_addPaused; }
 	const char* GetLastArg() { return m_lastArg; }
 	int GetAddPriority() { return m_addPriority; }
@@ -104,6 +106,12 @@ public:
 	bool GetPauseDownload() const { return m_pauseDownload; }
 
 private:
+	void SetAddCategory(const char* category)
+	{ 
+		m_addCategory = category; 
+		m_autoCategory = false; 
+	}
+
 	bool m_noConfig = false;
 	CString m_configFilename;
 
@@ -124,6 +132,7 @@ private:
 	CString m_editQueueText;
 	CString m_argFilename;
 	CString m_addCategory;
+	bool m_autoCategory = true;
 	int m_addPriority = 0;
 	bool m_addPaused = false;
 	CString m_addNzbFilename;
