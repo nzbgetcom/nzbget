@@ -4,7 +4,7 @@ FROM alpine:3.22.2 AS build
 # args
 ARG UNRAR6_VERSION=6.2.12
 ARG UNRAR7_VERSION=7.2.4
-ARG ZIP7_VERSION=2600
+ARG ZIP7_VERSION=26.00
 ARG UNRAR7_NATIVE=false
 ARG MAKE_JOBS=1
 ARG TARGETPLATFORM
@@ -39,7 +39,7 @@ RUN \
   install -v -m755 unrar /usr/bin/ && \
   echo "**** install 7zip from source ****" && \
   mkdir /tmp/7z && \
-  curl -o /tmp/7z/7z.tar.xz -lL https://www.7-zip.org/a/7z${ZIP7_VERSION}-src.tar.xz && \
+  curl -o /tmp/7z/7z.tar.xz -lL https://github.com/ip7z/7zip/releases/download/${ZIP7_VERSION}/7z${ZIP7_VERSION//./}-src.tar.xz && \
   cd /tmp/7z && \
   tar xf 7z.tar.xz && \
   cd CPP/7zip/Bundles/Alone && \
