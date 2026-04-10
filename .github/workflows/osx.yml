@@ -24,7 +24,7 @@ jobs:
 
     - name: Build
       run: |
-        export ZIP7_VERSION=2501
+        export ZIP7_VERSION="25.01"
         export EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
         bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
@@ -194,7 +194,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneeded artifacts
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-osx-installers-x64
