@@ -23,6 +23,7 @@
 #include "Connection.h"
 #include "Options.h"
 #include "NewsServerValidator.h"
+#include "NewsServersValidator.h"
 
 BOOST_AUTO_TEST_SUITE(SystemHealthTest)
 
@@ -198,7 +199,7 @@ BOOST_AUTO_TEST_CASE(TestOptional)
 		SystemHealth::NewsServer::ServerOptionalValidator(
 			*CreateServer(true, "", "", 0, true, "", "", 50, 0, 0, "", Connection::ipAuto, true))
 			.Validate()
-			.IsWarning());
+			.IsInfo());
 }
 
 BOOST_AUTO_TEST_CASE(TestCertVerification)
@@ -220,6 +221,59 @@ BOOST_AUTO_TEST_CASE(TestCertVerification)
 								  Connection::ipAuto, false, 0, 0, Options::cvNone))
 					.Validate()
 					.IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_NoServers)
+{
+	::Servers servers;
+	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
+	SystemHealth::Status s = v.Validate();
+	BOOST_CHECK(s.IsError());
+	BOOST_CHECK(s.GetMessage().find("At least one server must be configured") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_NoActivePrimary)
+{
+	::Servers servers;
+	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
+	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+
+	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
+	SystemHealth::Status s = v.Validate();
+	BOOST_CHECK(s.IsError());
+	BOOST_CHECK(s.GetMessage().find("At least one primary server must be active") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_ActivePrimary)
+{
+	::Servers servers;
+	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
+	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+
+	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
+	BOOST_CHECK(v.Validate().IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_MultiplePrimary)
+{
+	::Servers servers;
+	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
+	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 0));
+
+	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
+	BOOST_CHECK(v.Validate().IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_HigherLevelActive)
+{
+	::Servers servers;
+	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
+	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+
+	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
+	SystemHealth::Status s = v.Validate();
+	BOOST_CHECK(s.IsError());
+	BOOST_CHECK(s.GetMessage().find("At least one primary server must be active") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
