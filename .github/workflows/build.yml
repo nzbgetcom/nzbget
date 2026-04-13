@@ -32,7 +32,7 @@ jobs:
     secrets: inherit
     permissions:
       packages: write
-    
+
   build-docker-debug:
     if: github.ref_name == 'develop'
     uses: ./.github/workflows/docker.yml
@@ -169,6 +169,9 @@ jobs:
 
     - name: Download build artifacts
       uses: actions/download-artifact@v8
+      with:
+        name: nzbget-installers
+        path: nzbget-installers
 
     - name: Create latest artifacts
       run: |
