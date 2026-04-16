@@ -245,7 +245,7 @@ Status LogFileValidator::Validate(const fs::path& path, Options::EWriteLog write
 							 "' is set to empty");
 	}
 
-	if (writeLog == Options::EWriteLog::wlRotate && path.has_parent_path())
+	if ((writeLog == Options::EWriteLog::wlRotate || writeLog == Options::EWriteLog::wlReset) && path.has_parent_path())
 	{
 		const auto&& parent = path.parent_path();
 		return Directory::Exists(parent).And(&Directory::Writable, parent);

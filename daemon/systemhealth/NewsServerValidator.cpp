@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -80,7 +80,7 @@ Status ServerOptionalValidator::Validate() const
 
 	if (m_server.GetOptional() && m_server.GetLevel() == 0)
 	{
-		return Status::Warning(
+		return Status::Info(
 			"Server is marked as optional but assigned to level 0; this may affect primary "
 			"server selection");
 	}
