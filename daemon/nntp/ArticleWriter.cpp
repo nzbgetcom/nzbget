@@ -877,6 +877,11 @@ void ArticleWriter::FlushCache()
 
 bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 {
+	if (nzbInfo->GetSkipDiskWrite())
+	{
+		return true; // nothing was written, nothing to move
+	}
+
 	if (nzbInfo->GetCompletedFiles()->empty())
 	{
 		return true;
