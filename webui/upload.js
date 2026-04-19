@@ -84,6 +84,14 @@ var Upload = (new function($)
 			});
 		}
 
+		// Workaround for iPadOS: The native Document Picker fails to map custom extensions 
+		// in the accept attribute (like .nzb or .7z), graying out valid files.
+		var isIPad = /iPad/i.test(navigator.userAgent)
+		if (isIPad)
+		{
+			$('#AddDialog_Input').removeAttr('accept');
+		}
+
 		$('#AddDialog_Select').click(selectFiles);
 		$('#AddDialog_Submit').click(submit);
 		$('#AddDialog_Input')[0].addEventListener("change", fileSelectHandler, false);
@@ -201,7 +209,7 @@ var Upload = (new function($)
 				'<i class="material-icon material-icon--success hide">check_circle</i>'+
 				'<i class="material-icon material-icon--error hide">error</i>'+
 				'<i class="material-icon material-icon--progress spinner hide">progress_activity</i>'+
-				'</td><td id="AddDialog_File' + files.length + '">' + Util.formatNZBName(filename) + '</td></tr></table></a>';
+				'</td><td id="AddDialog_File' + files.length + '">' + Util.textToHtml(Util.formatNZBName(filename)) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);
 
@@ -224,7 +232,7 @@ var Upload = (new function($)
 	{
 		var info = infos[no];
 		AddParamDialog.showModal(info, function() {
-			$('#AddDialog_File' + no).html(Util.formatNZBName(info.name + info.ext));
+			$('#AddDialog_File' + no).html(Util.textToHtml(Util.formatNZBName(info.name + info.ext)));
 		});
 	}
 
