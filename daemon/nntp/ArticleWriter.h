@@ -30,7 +30,7 @@
 #include "Decoder.h"
 #include "FileSystem.h"
 
-class CachedSegmentData : public SegmentData
+class CachedSegmentData final : public SegmentData
 {
 public:
 	CachedSegmentData() {}
@@ -39,8 +39,8 @@ public:
 	CachedSegmentData(CachedSegmentData&& other) :
 		m_data(other.m_data), m_size(other.m_size) { other.m_data = nullptr; other.m_size = 0; }
 	CachedSegmentData& operator=(CachedSegmentData&& other);
-	virtual ~CachedSegmentData();
-	virtual char* GetData() { return m_data; }
+	~CachedSegmentData() override;
+	char* GetData() override { return m_data; }
 
 private:
 	char* m_data = nullptr;
@@ -116,7 +116,7 @@ private:
 	void SetWriteBuffer(DiskFile& outFile, int recSize);
 };
 
-class ArticleCache : public Thread
+class ArticleCache final : public Thread
 {
 public:
 	class FlushGuard
@@ -130,8 +130,8 @@ public:
 		friend class ArticleCache;
 	};
 
-	virtual void Run();
-	virtual void Stop();
+	void Run() override;
+	void Stop() override;
 	CachedSegmentData Alloc(int size);
 	bool Realloc(CachedSegmentData* segment, int newSize);
 	void Free(CachedSegmentData* segment);
