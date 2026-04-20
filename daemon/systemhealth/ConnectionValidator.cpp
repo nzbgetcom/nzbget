@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -157,8 +157,7 @@ Status DownloadRateValidator::Validate() const
 
 	if (val == 0) return Status::Ok();
 
-	return Status::Warning("Global download speed is restricted to " + std::to_string(val) +
-						   " KB/s by '" + std::string(Options::DOWNLOADRATE) + "'");
+	return Status::Info("Global download speed is restricted");
 }
 
 Status UrlConnectionsValidator::Validate() const
