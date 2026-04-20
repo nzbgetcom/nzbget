@@ -84,10 +84,11 @@ var Upload = (new function($)
 			});
 		}
 
-		// Workaround for iPadOS: The native Document Picker fails to map custom extensions 
+		// Workaround for iPadOS: The native Document Picker fails to map custom extensions
 		// in the accept attribute (like .nzb or .7z), graying out valid files.
-		var isIPad = /iPad/i.test(navigator.userAgent)
-		if (isIPad)
+		// iPadOS 13+ iPad Pro/Air/Mini in desktop mode use "Mac" in UA, so we check maxTouchPoints.
+		var isIPadOS = /iPad/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		if (isIPadOS)
 		{
 			$('#AddDialog_Input').removeAttr('accept');
 		}

@@ -1610,7 +1610,7 @@ var HistoryEditDialog = (new function($)
 		if (hist.Kind !== 'NZB')
 		{
 			$('#HistoryEdit_Title').html($('#HistoryEdit_Title').html() + '&nbsp;' + '<span class="label label-info">' +
-				(hist.Kind === 'DUP' ? 'hidden' : hist.Kind) + '</span>');
+				Util.textToHtml(hist.Kind === 'DUP' ? 'hidden' : hist.Kind) + '</span>');
 		}
 
 		$('#HistoryEdit_NZBName').val(hist.Name);
