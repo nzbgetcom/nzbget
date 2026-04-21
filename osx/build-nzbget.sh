@@ -22,9 +22,10 @@
 set -o nounset
 set -o errexit
 
-# unpackers versions
-UNRAR_VERSION=712
-ZIP7_VERSION=2501
+# unpackers versions defaults
+# can be overridden by environment variables
+UNRAR_VERSION="${UNRAR_VERSION-720}"
+ZIP7_VERSION="${ZIP7_VERSION-26.00}"
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
@@ -149,8 +150,8 @@ for CONFIG in $CONFIGS; do
         rm -rf $DAEMON_PATH/etc
 
         # 7zip
-        URL_7Z=https://www.7-zip.org/a/7z$ZIP7_VERSION-mac.tar.xz
-        curl -o 7z.tar.xz $URL_7Z
+        URL_7Z="https://github.com/ip7z/7zip/releases/download/$ZIP7_VERSION/7z${ZIP7_VERSION//./}-mac.tar.xz"
+        curl -L -o 7z.tar.xz $URL_7Z
         mkdir -p 7z
         tar xf 7z.tar.xz -C 7z
         cp 7z/7zz $DAEMON_PATH/bin/7za

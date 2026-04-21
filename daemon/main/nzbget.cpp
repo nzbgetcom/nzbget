@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,6 @@
 #include "FileSystem.h"
 #include "StackTrace.h"
 #include "CommandScript.h"
-#include "YEncode.h"
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
@@ -134,7 +133,8 @@ int main(int argc, char *argv[], char *argp[])
 	setlocale(LC_CTYPE, "");
 
 	Util::Init();
-	YEncode::init();
+	rapidyenc_decode_init();
+	rapidyenc_crc_init();
 
 	g_ArgumentCount = argc;
 	g_Arguments = (char*(*)[])argv;
@@ -295,7 +295,8 @@ void NZBGet::Init()
 			*g_Options,
 			*g_ServerPool->GetServers(),
 			*g_FeedCoordinator->GetFeeds(),
-			m_scheduler->GetTasks());
+			m_scheduler->GetTasks(),
+			*g_Log);
 		g_SystemHealth = m_systemHealth.get();
 
 		const auto report = m_systemHealth->Diagnose();
@@ -863,9 +864,17 @@ void NZBGet::ProcessClientRequest()
 			break;
 
 		case CommandLineParser::opClientRequestDownload:
-			ok = Client.RequestServerDownload(m_commandLineParser->GetAddNzbFilename(), m_commandLineParser->GetArgFilename(),
-				m_commandLineParser->GetAddCategory(), m_commandLineParser->GetAddTop(), m_commandLineParser->GetAddPaused(), m_commandLineParser->GetAddPriority(),
-				m_commandLineParser->GetAddDupeKey(), m_commandLineParser->GetAddDupeMode(), m_commandLineParser->GetAddDupeScore());
+			ok = Client.RequestServerDownload(
+				m_commandLineParser->GetAddNzbFilename(),
+				m_commandLineParser->GetArgFilename(),
+				m_commandLineParser->GetAddCategory(),
+				m_commandLineParser->GetAutoCategory(),
+				m_commandLineParser->GetAddTop(),
+				m_commandLineParser->GetAddPaused(),
+				m_commandLineParser->GetAddPriority(),
+				m_commandLineParser->GetAddDupeKey(),
+				m_commandLineParser->GetAddDupeMode(),
+				m_commandLineParser->GetAddDupeScore());
 			break;
 
 		case CommandLineParser::opClientRequestVersion:

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 
 
 #include "nzbget.h"
+#include "DownloadInfo.h"
 #include "Cleanup.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
-#include "ParParser.h"
 #include "Options.h"
 
 void MoveController::StartJob(PostInfo* postInfo)
@@ -59,6 +59,8 @@ void MoveController::Run()
 	PrintMessage(Message::mkInfo, "Moving completed files for %s", nzbName.c_str());
 
 	bool ok = MoveFiles();
+
+	RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 
 	infoName[0] = 'M'; // uppercase
 
@@ -95,7 +97,8 @@ bool MoveController::MoveFiles()
 	bool ok = true;
 	MoveFiles(m_interDir, m_destDir, ok);
 	
-	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
+	if (ok && FileSystem::DirectoryExists(m_interDir.c_str()) &&
+		!FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
 		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
 	}
@@ -203,6 +206,20 @@ void CleanupController::Run()
 	}
 
 	m_postInfo->SetWorking(false);
+}
+
+void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir)
+{
+	const auto& hardLinkPath = nzbInfo.GetHardLinkPath();
+	if (hardLinkPath.empty() || hardLinkPath == destDir) return;
+
+	fs::error_code ec;
+	const auto path = fs::u8path(hardLinkPath);
+	fs::remove_all(path, ec);
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not remove old hardlink directory: %s", ec.message().c_str());
+	}
 }
 
 bool CleanupController::Cleanup(const char* destDir, bool *deleted)

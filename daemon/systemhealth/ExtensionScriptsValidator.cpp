@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,10 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "Status.h"
+
 #include "nzbget.h"
 
+#include "Status.h"
 #include "ExtensionScriptsValidator.h"
 #include "Validators.h"
 #include "Options.h"
@@ -46,8 +47,16 @@ Status ExtensionListValidator::Validate() const
 
 	std::string message;
 	Tokenizer tokDir(extensions.data(), ",;");
-	while (const char* scriptName = tokDir.Next())
+	while (const char* scriptNameRaw = tokDir.Next())
 	{
+		// Strip file extension from script name (e.g., "QueueSort.py" -> "QueueSort")
+		std::string scriptName(scriptNameRaw);
+		size_t dotPos = scriptName.find_last_of('.');
+		if (dotPos != std::string::npos && dotPos > 0)
+		{
+			scriptName = scriptName.substr(0, dotPos);
+		}
+
 		const auto extension =
 			m_extensionManager.FindIf([&](const auto ext) 
 			{
@@ -57,7 +66,7 @@ Status ExtensionListValidator::Validate() const
 		if (!extension)
 		{
 			if (!message.empty()) message += "; ";
-			message += std::string("'") + scriptName + "' doesn't exist";
+			message += std::string("'") + scriptNameRaw + "' doesn't exist";
 			continue;
 		}
 
@@ -85,22 +94,23 @@ Status ShellOverrideValidator::Validate() const
 	if (path.empty()) return Status::Ok();
 
 	std::string message;
-	Tokenizer tok(path.data(), ",;");
-	while (char* shellover = tok.Next())
+	std::string pathStr(path);
+	Tokenizer tok(pathStr.data(), ",;");
+	while (const char* shellover = tok.Next())
 	{
-		char* shellcmd = strchr(shellover, '=');
+		const char* shellcmd = strchr(shellover, '=');
 		if (shellcmd)
 		{
-			*shellcmd = '\0';
-			++shellcmd;
-			const auto exists = File::Exists(shellcmd);
+			std::string cmd(shellover, static_cast<size_t>(shellcmd - shellover));
+			const char* actualCmd = shellcmd + 1;
+			const auto exists = File::Exists(actualCmd);
 			if (!exists.IsOk())
 			{
 				if (!message.empty()) message += "; ";
 				message += exists.GetMessage() + " ";
 				continue;
 			}
-			const auto exe = File::Executable(shellcmd);
+			const auto exe = File::Executable(actualCmd);
 			if (!exe.IsOk())
 			{
 				if (!message.empty()) message += "; ";

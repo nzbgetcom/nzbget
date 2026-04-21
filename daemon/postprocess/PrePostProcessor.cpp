@@ -470,13 +470,15 @@ void PrePostProcessor::DeleteCleanup(NzbInfo* nzbInfo)
 	{
 		if (nzbInfo->GetSkipDiskWrite())
 		{
-			CString errmsg;
-			detail("Deleting dir %s", nzbInfo->GetDestDir());
-			if (!FileSystem::DeleteDirectoryWithContent(nzbInfo->GetDestDir(), errmsg))
+			if (FileSystem::DirectoryExists(nzbInfo->GetDestDir()))
 			{
-				error("Could not delete directory %s: %s", nzbInfo->GetDestDir(), *errmsg);
+				CString errmsg;
+				detail("Deleting dir %s", nzbInfo->GetDestDir());
+				if (!FileSystem::DeleteDirectoryWithContent(nzbInfo->GetDestDir(), errmsg))
+				{
+					error("Could not delete directory %s: %s", nzbInfo->GetDestDir(), *errmsg);
+				}
 			}
-
 			return;
 		}
 

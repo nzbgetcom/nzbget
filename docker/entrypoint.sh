@@ -48,7 +48,7 @@ if [ "$(id -u)" -eq 0 ]; then
         echo "*** Could not set permissions on /downloads ; this container may not work as expected ***"
     fi
 
-    su -p user -c "/app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}"
+    exec su-exec user:users /app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}
 else
-    /app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}
+    exec /app/nzbget/nzbget -s -c /config/nzbget.conf -o OutputMode=log ${OPTIONS}
 fi

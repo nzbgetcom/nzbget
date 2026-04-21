@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -147,6 +147,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <cstdint>
 
 #include <string>
 #include <string_view>
@@ -185,7 +186,8 @@
 #include <libxml/entities.h>
 #include <libxml/tree.h>
 
-#include <boost/filesystem.hpp>
+#include <rapidyenc.h>
+
 #include <boost/asio.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
@@ -210,7 +212,6 @@
 #include <assert.h>
 #include <cassert>
 #endif /* NOT DISABLE_PARCHECK */
-
 
 /***************** GLOBAL FUNCTION AND CONST OVERRIDES *****************/
 
@@ -282,6 +283,7 @@
 #define FOPEN_AB "ab"
 #define CHILD_WATCHDOG 1
 #define fseek fseeko
+#define ftell ftello
 
 #endif /* POSIX */
 
@@ -290,23 +292,13 @@
 #define SHUT_RDWR 2
 #endif
 
-#ifdef HAVE_STDINT_H
-typedef uint8_t uint8;
-typedef int16_t int16;
-typedef uint16_t uint16;
-typedef int32_t int32;
-typedef uint32_t uint32;
-typedef int64_t int64;
-typedef uint64_t uint64;
-#else
-typedef unsigned char uint8;
-typedef signed short int16;
-typedef unsigned short uint16;
-typedef signed int int32;
-typedef unsigned int uint32;
-typedef signed long long int64;
-typedef unsigned long long uint64;
-#endif
+using uint8 = uint8_t;
+using int16 = int16_t;
+using uint16 = uint16_t;
+using int32 = int32_t;
+using uint32 = uint32_t;
+using int64 = int64_t;
+using uint64 = uint64_t;
 
 #ifndef PRId64
 #define PRId64 "lld"

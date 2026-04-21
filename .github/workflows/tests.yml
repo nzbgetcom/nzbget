@@ -1,6 +1,9 @@
 name: tests
 
 on:
+  push:
+    branches:
+    - develop
   pull_request:
     branches:
     - develop
@@ -15,14 +18,14 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Download and extract vcpkg cache and unpackers
       run: |
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v3.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v6.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
@@ -40,7 +43,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-windows-test-log
@@ -57,7 +60,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Build
       run: |
@@ -72,7 +75,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -89,7 +92,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Build
       run: |
@@ -104,7 +107,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -121,7 +124,7 @@ jobs:
         brew install --cask rar
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Build
       run: |
@@ -136,7 +139,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -148,7 +151,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: OpenBSD build and test
       uses: cross-platform-actions/action@v0.28.0
@@ -164,7 +167,7 @@ jobs:
           ctest -C Release --repeat until-pass:5
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-openbsd-test-log
@@ -176,7 +179,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: FreeBSD build and test
       uses: cross-platform-actions/action@v0.27.0
@@ -192,12 +195,42 @@ jobs:
           ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-freebsd-test-log
         path: build/Testing/Temporary/LastTest.log
         retention-days: 5
+
+  cppcheck:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev cppcheck
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: cppcheck
+      run: |
+        mkdir build && cd build
+        cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+        cppcheck --error-exitcode=1 \
+          --project=compile_commands.json \
+          --enable=all \
+          --inline-suppr \
+          --check-level=exhaustive \
+          --suppress=missingIncludeSystem \
+          --suppress=unknownMacro:tests/ \
+          --suppress=preprocessorErrorDirective:build/par2-turbo/ \
+          -itests \
+          -ibuild/rapidyenc \
+          -ibuild/boost \
+          -ibuild/par2-turbo
 
   build-disabled-parcheck:
     runs-on: ubuntu-24.04
@@ -209,7 +242,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Build
       run: |
@@ -218,12 +251,31 @@ jobs:
         cmake .. -DDISABLE_PARCHECK=yes
         cmake --build . --config Release -j 4
 
+  build-disabled-pch:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_DISABLE_PRECOMPILE_HEADERS=yes
+        cmake --build . --config Release -j 4
+
   build-openbsd:
     runs-on: ubuntu-24.04
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: OpenBSD build
       uses: cross-platform-actions/action@v0.28.0
@@ -244,5 +296,5 @@ jobs:
 
     - name: Build
       run: |
-        brew uninstall cmake
+        brew install --formula boost sevenzip
         brew install nzbget --formula --head --verbose

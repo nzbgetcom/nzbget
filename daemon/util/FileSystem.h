@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,10 +22,109 @@
 #ifndef FILESYSTEM_H
 #define FILESYSTEM_H
 
-
 #include <optional>
+#include <chrono>
 #include "NString.h"
-#include "Options.h"
+
+#ifdef _WIN32
+#include "Utf8.h"
+#endif
+
+#ifdef HAVE_STD_FILESYSTEM
+#include <filesystem>
+
+namespace fs
+{
+using namespace std::filesystem;
+using error_code = std::error_code;
+using errc = std::errc;
+
+inline std::string u8string(const path& p)
+{
+	return p.u8string(); 
+}
+}
+
+#else
+#include <boost/filesystem.hpp>
+
+namespace fs
+{
+using namespace boost::filesystem;
+using error_code = boost::system::error_code;
+namespace errc = boost::system::errc;
+
+inline fs::path u8path(std::string_view pathStr)
+{
+#ifdef _WIN32
+	if (auto wstr = Utf8::Utf8ToWide(pathStr))
+		return fs::path(*wstr);
+	return fs::path(pathStr); 
+#else
+	return fs::path(pathStr);
+#endif
+}
+
+inline std::string u8string(const path& p)
+{
+#ifdef _WIN32
+	return Utf8::WideToUtf8(p.native()).value_or("");
+#else
+	return p.string();
+#endif
+}
+
+}
+
+#endif
+
+namespace fs
+{
+inline path make_unique_filename()
+{
+	return std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+}
+
+inline fs::path make_unique_filename(const fs::path& targetPath)
+{
+	fs::error_code ec;
+	if (!fs::exists(targetPath, ec) && !ec)
+	{
+		return targetPath;
+	}
+
+	const fs::path baseDir = targetPath.parent_path();
+	const std::string stem = fs::u8string(targetPath.stem());
+	const std::string ext = fs::u8string(targetPath.extension());
+
+	int counter = 1;
+	fs::path uniquePath;
+	do
+	{
+		uniquePath = baseDir / (stem + " (" + std::to_string(counter++) + ")" + ext);
+	} while (fs::exists(uniquePath, ec) && !ec);
+
+	return uniquePath;
+}
+
+inline void move_file(const fs::path& src, const fs::path& dest, fs::error_code& ec) noexcept
+{
+	fs::rename(src, dest, ec);
+	if (ec == std::errc::cross_device_link)
+	{
+		ec.clear();
+		fs::copy_file(src, dest, fs::copy_options::overwrite_existing, ec);
+		if (!ec) fs::remove(src, ec);
+	}
+}
+
+inline void move_file(const fs::path& src, const fs::path& dest)
+{
+	error_code ec;
+	move_file(src, dest, ec);
+	if (ec) throw std::runtime_error(ec.message());
+}
+}
 
 class FileSystem
 {

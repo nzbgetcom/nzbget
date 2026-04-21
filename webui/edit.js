@@ -163,7 +163,7 @@ var DownloadsEditDialog = (new function($)
 		EditUI.fillServStats($ServStatsTable, group);
 		$ServStatsTable.fasttable('setCurPage', 1);
 
-		$('#DownloadsEdit_Title').html(Util.formatNZBName(group.NZBName) +
+		$('#DownloadsEdit_Title').html(Util.textToHtml(Util.formatNZBName(group.NZBName)) +
 		    (group.Kind === 'URL' ? '&nbsp;<span class="label label-info">URL</span>' : ''));
 
 		$('#DownloadsEdit_NZBName').attr('value', group.NZBName);
@@ -1404,7 +1404,7 @@ var DownloadsMergeDialog = (new function($)
 			{
 				mergeEditIDList.push(group.NZBID);
 				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;">draft</i></td><td>' +
-					Util.formatNZBName(group.NZBName) + '</td></tr></table>';
+					Util.textToHtml(Util.formatNZBName(group.NZBName)) + '</td></tr></table>';
 				$('#DownloadsMerge_Files').append(html);
 			}
 		}
@@ -1610,7 +1610,7 @@ var HistoryEditDialog = (new function($)
 		if (hist.Kind !== 'NZB')
 		{
 			$('#HistoryEdit_Title').html($('#HistoryEdit_Title').html() + '&nbsp;' + '<span class="label label-info">' +
-				(hist.Kind === 'DUP' ? 'hidden' : hist.Kind) + '</span>');
+				Util.textToHtml(hist.Kind === 'DUP' ? 'hidden' : hist.Kind) + '</span>');
 		}
 
 		$('#HistoryEdit_NZBName').val(hist.Name);

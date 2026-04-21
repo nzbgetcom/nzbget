@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,15 +23,13 @@
 #include "nzbget.h"
 
 #include "Util.h"
-#include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
+#include "FileSystem.h"
 
 #ifdef _WIN32
 #include "Utf8.h"
 #endif
-
-namespace fs = boost::filesystem;
 
 const char* BoolNames[] = { "yes", "no", "true", "false", "1", "0", "on", "off", "enable", "disable", "enabled", "disabled" };
 const int BoolValues[] = { 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0 };
@@ -41,6 +39,8 @@ const int BoolCount = 12;
 const char* PossibleConfigLocations[] =
 	{
 		"~/.nzbget",
+		"~/.config/nzbget.conf",
+		"~/.config/nzbget/nzbget.conf",
 		"/etc/nzbget.conf",
 		"/usr/etc/nzbget.conf",
 		"/usr/local/etc/nzbget.conf",
@@ -171,7 +171,7 @@ void Options::Init(const char* exeName, const char* configFilename, bool noConfi
 	if (end) *end = '\0';
 	SetOption(APPDIR.data(), filename);
 	m_appDir = *filename;
-	SetPathOption(m_appDirPath, *m_appDir);
+	m_appDirPath = fs::u8path(*m_appDir);
 
 	SetOption(APPVERSION.data(), Util::VersionRevision());
 
@@ -361,6 +361,8 @@ void Options::InitDefaults()
 	SetOption(WRITEBUFFER.data(), "0");
 	SetOption(NZBDIRINTERVAL.data(), "5");
 	SetOption(NZBDIRFILEAGE.data(), "60");
+	SetOption(NZBDIRARCHIVESCAN.data(), "yes");
+	SetOption(NZBDIRARCHIVEACTION.data(), "delete");
 	SetOption(DISKSPACE.data(), "250");
 	SetOption(CRASHTRACE.data(), "no");
 	SetOption(CRASHDUMP.data(), "no");
@@ -460,7 +462,7 @@ void Options::InitOptFile()
 #endif
 
 		m_configFilename = *filename;
-		SetPathOption(m_configFilePath, *m_configFilename);
+		m_configFilePath = fs::u8path(*m_configFilename);
 
 		SetOption(CONFIGFILE.data(), m_configFilename);
 
@@ -521,9 +523,24 @@ void Options::CheckDir(CString& dir, const char* optionName,
 
 	// Ensure the dir is created
 	CString errmsg;
-	if (create && !FileSystem::ForceDirectories(dir, errmsg))
+	if (create)
 	{
-		ConfigError("Invalid value for option \"%s\" (%s): %s", optionName, *dir, *errmsg);
+		if (!FileSystem::ForceDirectories(dir, errmsg))
+		{
+			ConfigError("Invalid value for option \"%s\" (%s): %s", optionName, *dir, *errmsg);
+			return;
+		}
+
+#ifndef WIN32
+		if (getuid() == 0 || geteuid() == 0)
+		{
+			struct passwd* pwd = getpwnam(GetOption(DAEMONUSERNAME.data()));
+			if (pwd != nullptr)
+			{
+				chown(dir, pwd->pw_uid, pwd->pw_gid);
+			}
+		}
+#endif
 	}
 }
 
@@ -539,19 +556,19 @@ void Options::CheckDirs()
 	CheckDir(m_scriptDir, SCRIPTDIR.data(), m_mainDir, true, true);
 	CheckDir(m_nzbDir, NZBDIR.data(), m_mainDir, false, true);
 
-	SetPathOption(m_mainDirPath, *m_mainDir);
-	SetPathOption(m_destDirPath, *m_destDir);
-	SetPathOption(m_interDirPath, *m_interDir);
-	SetPathOption(m_tempDirPath, *m_tempDir);
-	SetPathOption(m_queueDirPath, *m_queueDir);
-	SetPathOption(m_webDirPath, *m_webDir);
-	SetPathOption(m_nzbDirPath, *m_nzbDir);
+	m_mainDirPath = fs::u8path(*m_mainDir);
+	m_destDirPath = fs::u8path(*m_destDir);
+	m_interDirPath = fs::u8path(*m_interDir);
+	m_tempDirPath = fs::u8path(*m_tempDir);
+	m_queueDirPath = fs::u8path(*m_queueDir);
+	m_webDirPath = fs::u8path(*m_webDir);
+	m_nzbDirPath = fs::u8path(*m_nzbDir);
 
 	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
 	while (const char* scriptDir = tokDir.Next())
 	{
 		fs::path path;
-		SetPathOption(path, scriptDir);
+		path = fs::u8path(scriptDir);
 		m_scriptDirPaths.push_back(std::move(path));
 	}
 }
@@ -584,13 +601,13 @@ void Options::InitOptions()
 	m_parIgnoreExt			= GetOption(PARIGNOREEXT.data());
 	m_unpackIgnoreExt		= GetOption(UNPACKIGNOREEXT.data());
 
-	SetPathOption(m_configTemplatePath, *m_configTemplate);
-	SetPathOption(m_secureCertPath, *m_secureCert);
-	SetPathOption(m_secureKeyPath, *m_secureKey);
-	SetPathOption(m_certStorePath, *m_certStore);
-	SetPathOption(m_lockFilePath, *m_lockFile);
-	SetPathOption(m_logFilePath, *m_logFile);
-	SetPathOption(m_unpackPassFilePath, *m_unpackPassFile);
+	m_configTemplatePath = fs::u8path(*m_configTemplate);
+	m_secureCertPath = fs::u8path(*m_secureCert);
+	m_secureKeyPath = fs::u8path(*m_secureKey);
+	m_certStorePath = fs::u8path(*m_certStore);
+	m_lockFilePath = fs::u8path(*m_lockFile);
+	m_logFilePath = fs::u8path(*m_logFile);
+	m_unpackPassFilePath = fs::u8path(*m_unpackPassFile);
 	SetToolPathOption(m_unrarPath, *m_unrarCmd);
 	SetToolPathOption(m_sevenZipPath, *m_sevenZipCmd);
 
@@ -618,6 +635,11 @@ void Options::InitOptions()
 	m_writeBuffer			= ParseIntValue(WRITEBUFFER.data(), 10);
 	m_nzbDirInterval		= ParseIntValue(NZBDIRINTERVAL.data(), 10);
 	m_nzbDirFileAge			= ParseIntValue(NZBDIRFILEAGE.data(), 10);
+	m_nzbDirArchiveScan		= (bool)ParseEnumValue(NZBDIRARCHIVESCAN.data(), BoolCount, BoolNames, BoolValues);
+	const char* ArchiveActions[] = { "move", "delete" };
+	const int ArchiveActionValues[] = { ENzbDirArchiveAction::Move, ENzbDirArchiveAction::Delete };
+	const int ArchiveActionsCount = 2;
+	m_nzbDirArchiveAction 	= (ENzbDirArchiveAction)ParseEnumValue(NZBDIRARCHIVEACTION.data(), ArchiveActionsCount, ArchiveActions, ArchiveActionValues);
 	m_diskSpace				= ParseIntValue(DISKSPACE.data(), 10);
 	m_parTimeLimit			= ParseIntValue(PARTIMELIMIT.data(), 10);
 	m_keepHistory			= ParseIntValue(KEEPHISTORY.data(), 10);
@@ -844,34 +866,13 @@ void Options::SetOption(const char* optname, const char* value)
 	optEntry->SetValue(curvalue);
 }
 
-void Options::SetPathOption(boost::filesystem::path& pathOpt, std::string_view value)
-{
-#ifdef _WIN32
-	auto wvalue = Utf8::Utf8ToWide(value);
-	if (!wvalue)
-	{
-		error("Failed to convert %s to wide string", value);
-		return;
-	}
-
-	pathOpt = std::move(wvalue.value());
-#else
-	pathOpt = value;
-#endif
-}
-
-void Options::SetToolPathOption(boost::filesystem::path& pathOpt, std::string_view value)
+void Options::SetToolPathOption(fs::path& pathOpt, std::string_view value)
 {
 	if (value.empty()) return;
 
-#ifdef _WIN32
-	const auto wvalue = Utf8::Utf8ToWide(value);
-	fs::path directPath = wvalue ? fs::path(*wvalue) : fs::path(value);
-#else
-	fs::path directPath = value;
-#endif
+	fs::path directPath = fs::u8path(value);
 
-	boost::system::error_code ec;
+	fs::error_code ec;
 	if (fs::exists(directPath, ec) && fs::is_regular_file(directPath, ec))
 	{
 		pathOpt.swap(directPath);
@@ -883,12 +884,7 @@ void Options::SetToolPathOption(boost::filesystem::path& pathOpt, std::string_vi
 	// Clean the input: "'C:\\Program Files\\unrar' -x" -> "C:\\Program Files\\unrar"
 	const auto args = Util::SplitCommandLine(value.data());
 	const auto tool = !args.empty() ? *args[0] : std::string(value);
-#ifdef _WIN32
-	const auto wtool = Utf8::Utf8ToWide(tool);
-	directPath = wtool ? fs::path(*wtool) : fs::path(tool);
-#else
-	directPath = tool;
-#endif
+	directPath = fs::u8path(tool);
 
 	if (directPath.has_parent_path())
 	{

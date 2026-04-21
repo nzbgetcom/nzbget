@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -440,25 +440,37 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 		// Create hardlink and save the path in fileInfo
 		if (g_Options->GetHardLinking() && !Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ","))
 		{
-			const std::string nzbFinalDir = fileInfo->GetNzbInfo()->BuildFinalDirName().Str();
-			const std::string finalOutputFilename = nzbFinalDir + PATH_SEPARATOR + newName;
-
-			nzbInfo->PrintMessage(Message::mkInfo,
-				"HardLinking in-progress file %s to %s",
-				oldOutputFilename.c_str(), finalOutputFilename.c_str()
-			);
-
-			CString errmsg;
-			if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
+			fs::error_code ec;
+			if (!fs::exists(oldOutputFilename, ec))
 			{
-				fileInfo->SetHardLinkPath(finalOutputFilename);
+				nzbInfo->PrintMessage(Message::mkDetail,
+					"Skipping hardlink for %s: file not assembled yet",
+					oldOutputFilename.c_str()
+				);
 			}
 			else
 			{
-				nzbInfo->PrintMessage(Message::mkError,
-					"Could not create hardlink %s to %s: %s",
-					oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+				std::string nzbFinalDir = fileInfo->GetNzbInfo()->BuildFinalDirName().Str();
+				std::string finalOutputFilename = nzbFinalDir + PATH_SEPARATOR + newName;
+
+				nzbInfo->PrintMessage(Message::mkInfo,
+					"HardLinking in-progress file %s to %s",
+					oldOutputFilename.c_str(), finalOutputFilename.c_str()
 				);
+
+				CString errmsg;
+				if (FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
+				{
+					fileInfo->SetHardLinkPath(std::move(finalOutputFilename));
+					nzbInfo->SetHardLinkPath(std::move(nzbFinalDir));
+				}
+				else
+				{
+					nzbInfo->PrintMessage(Message::mkError,
+						"Could not create hardlink %s to %s: %s",
+						oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+					);
+				}				
 			}
 		}
 
@@ -513,21 +525,32 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 
 		if (!Util::EmptyStr(g_Options->GetInterDir()) && g_Options->GetHardLinking() && !Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ","))
 		{
-			const std::string finalDir = nzbInfo->BuildFinalDirName().Str();
-			const std::string finalOutputFilename = finalDir + PATH_SEPARATOR + newName;
-
-			nzbInfo->PrintMessage(Message::mkInfo,
-				"HardLinking completed file %s to %s",
-				oldOutputFilename.c_str(), finalOutputFilename.c_str()
-			);
-
-			CString errmsg;
-			if (!FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
+			fs::error_code ec;
+			if (!fs::exists(oldOutputFilename, ec))
 			{
-				nzbInfo->PrintMessage(Message::mkError,
-					"Could not create hardlink %s to %s: %s",
-					oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+				nzbInfo->PrintMessage(Message::mkDetail,
+					"Skipping hardlink for %s: file not assembled yet",
+					oldOutputFilename.c_str()
 				);
+			}
+			else
+			{
+				const std::string finalDir = nzbInfo->BuildFinalDirName().Str();
+				const std::string finalOutputFilename = finalDir + PATH_SEPARATOR + newName;
+
+				nzbInfo->PrintMessage(Message::mkInfo,
+					"HardLinking completed file %s to %s",
+					oldOutputFilename.c_str(), finalOutputFilename.c_str()
+				);
+
+				CString errmsg;
+				if (!FileSystem::CreateHardLink(oldOutputFilename.c_str(), finalOutputFilename.c_str(), errmsg))
+				{
+					nzbInfo->PrintMessage(Message::mkError,
+						"Could not create hardlink %s to %s: %s",
+						oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+					);
+				}				
 			}
 		}
 

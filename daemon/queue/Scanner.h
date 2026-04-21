@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,15 +25,20 @@
 
 #include <mutex>
 #include <string>
-#include <boost/filesystem.hpp>
+#include "FileSystem.h"
 #include "DownloadInfo.h"
-#include "Thread.h"
+#include "ArchiveProcessor.h"
+#include "Options.h"
 #include "Service.h"
 #include "NzbFile.h"
 
 class Scanner final : public Service
 {
 public:
+	static constexpr std::string_view PROCESSED_DIR = "_processed";
+	static constexpr std::string_view BROKEN_DIR = "_broken";
+	static constexpr std::string_view UNPACK_DIR = "_unpack";
+
 	enum EAddStatus
 	{
 		asSkipped,
@@ -186,10 +191,12 @@ private:
 	 * Otherwise, the detected category (if any) is set directly.
 	 */
 	void DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, const char* nzbName);
-	void CheckIncomingArchives(const boost::filesystem::path& dir);
-	std::vector<boost::filesystem::path> FindArchives(const boost::filesystem::path& dir);
-	void UnpackArchives(const std::vector<boost::filesystem::path>& archives);
+	void CheckIncomingArchives(const fs::path& dir);
+	std::vector<fs::path> FindArchives(const fs::path& dir);
+	void UnpackArchives(const std::vector<fs::path>& archives);
+	void CleanupStaleUnpackDir();
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
+	bool ShouldSkipItem(std::string_view filename);
 	bool AddFileToQueue(
 		const char* filename, 
 		const char* nzbName, 

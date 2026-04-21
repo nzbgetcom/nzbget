@@ -25,10 +25,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nzbget-linux-installers
         path: nzbget-linux-installers
@@ -58,7 +58,7 @@ jobs:
         done
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-qnap-packages
         path: /qnap/nzbget/build/*.qpkg
@@ -66,7 +66,7 @@ jobs:
 
     - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-linux-installers

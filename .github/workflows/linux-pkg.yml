@@ -25,10 +25,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: nzbget-linux-installers
         path: nzbget-linux-installers
@@ -40,14 +40,14 @@ jobs:
         bash linux/pkg/build-pkg.sh
 
     - name: Upload DEB build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-deb-packages
         path: build/deb/*.deb
         retention-days: 5
 
     - name: Upload RPM build artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: nzbget-rpm-packages
         path: build/rpm/*.rpm
@@ -55,7 +55,7 @@ jobs:
 
     - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
-      uses: geekyeggo/delete-artifact@v4
+      uses: geekyeggo/delete-artifact@v6
       with:
         name: |
           nzbget-linux-installers

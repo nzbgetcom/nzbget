@@ -19,8 +19,6 @@ else()
 	)
 endif()
 
-add_compile_definitions(HAVE_CONFIG_H PARPAR_ENABLE_HASHER_MD5CRC)
-
 set(CMAKE_ARGS
 	-DBUILD_TOOL=OFF
 	-DBUILD_LIB=ON
@@ -40,6 +38,13 @@ if(APPLE)
 	)
 endif()
 
+add_compile_definitions(
+	HAVE_CONFIG_H 
+	PARPAR_ENABLE_HASHER_MD5CRC 
+	PARPAR_INVERT_SUPPORT 
+	PARPAR_SLIM_GF16
+)
+
 if(CMAKE_SYSROOT)
 	set(CMAKE_ARGS ${CMAKE_ARGS}
 		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
@@ -52,7 +57,7 @@ ExternalProject_add(
 	par2-turbo
 	PREFIX			par2-turbo
 	GIT_REPOSITORY	https://github.com/nzbgetcom/par2cmdline-turbo.git
-	GIT_TAG			v1.3.0-20250808
+	GIT_TAG			v1.4.0-20260323
 	TLS_VERIFY		TRUE
 	GIT_SHALLOW		TRUE
 	GIT_PROGRESS	TRUE

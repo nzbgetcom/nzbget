@@ -74,6 +74,8 @@ private:
 	 *
 	 * Parses the "name=" field, handling cases where "=ypart" is on the same line.
 	 * If "=ypart" is found within the name, ParseYpart is called.
+	 * @param buffer Pointer to the start of the "name=" field value (after "name=").
+	 * @param bufferEnd Pointer to the end of the buffer (typically end of line).
 	 * @note This function handles the unusual case where "=ypart" information is present
 	 *       on the same line as the "name=" field.  This can happen if the yEnc encoder
 	 *       doesn't properly separate the header lines, e.g.:
@@ -86,7 +88,7 @@ private:
 	 *		 .... data
 	 *		 =yend size=100000 part=1 pcrc32=abcdef12
 	*/
-	void ParseName(const char* buffer, int len);
+	void ParseName(const char* buffer, const char* bufferEnd);
 
 	EFormat m_format = efUnknown;
 	bool m_begin;
@@ -103,7 +105,7 @@ private:
 	int64 m_outSize;
 	bool m_eof;
 	bool m_crcCheck;
-	char m_state;
+	int m_state;
 	bool m_rawMode = false;
 	std::string m_articleFilename;
 	StringBuilder m_lineBuf;
