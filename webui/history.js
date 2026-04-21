@@ -223,7 +223,7 @@ var History = (new function($)
 		var hist = item.data;
 
 		var status = HistoryUI.buildStatus(hist);
-		console.log(hist.ID)
+
 		var name = '<a href="#" data-nzbid="' + hist.ID + '">' + Util.textToHtml(Util.formatNZBName(hist.Name)) + '</a>';
 		name += DownloadsUI.buildEncryptedLabel(hist.Kind === 'NZB' ? hist.Parameters : []);
 
