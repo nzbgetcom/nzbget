@@ -88,7 +88,6 @@ void InstallSignalHandlers()
 	daemonController = [[DaemonController alloc] init];
 	daemonController.updateInterval = autoStartWebUI ? START_UPDATE_INTERVAL : NORMAL_UPDATE_INTERVAL;
 	daemonController.delegate = self;
-	queuedNzbs = [[NSMutableArray alloc] init];
 
 	[self setupDefaultsObserver];
 	[self userDefaultsDidChange:nil];
@@ -610,6 +609,9 @@ void InstallSignalHandlers()
 }
 
 - (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
+    if (!queuedNzbs) {
+        queuedNzbs = [[NSMutableArray alloc] init];
+    }
     BOOL wasEmpty = ([queuedNzbs count] == 0);
     [queuedNzbs addObject:filename];
     if (wasEmpty) {
@@ -619,6 +621,9 @@ void InstallSignalHandlers()
 }
 
 - (void)application:(NSApplication *)sender openFiles:(NSArray *)filenames {
+    if (!queuedNzbs) {
+        queuedNzbs = [[NSMutableArray alloc] init];
+    }
     BOOL wasEmpty = ([queuedNzbs count] == 0);
     [queuedNzbs addObjectsFromArray:filenames];
     if (wasEmpty) {
