@@ -44,6 +44,7 @@
 	NSWindowController *preferencesDialog;
 	DaemonController *daemonController;
 	int connectionAttempts;
+	int nzbAppendRetryCount;
 	BOOL restarting;
 	BOOL resetting;
 	BOOL preventingSleep;
@@ -79,9 +80,5 @@
 - (IBAction)showInFinderClicked:(id)sender;
 
 - (void)updateSleepState:(BOOL)preventSleep;
-
-- (void)appendSuccess:(id)result;
-
-- (void)appendFailure;
 
 @end

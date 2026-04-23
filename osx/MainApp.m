@@ -55,6 +55,11 @@ void InstallSignalHandlers()
 	signal(SIGPIPE, SIG_IGN);
 }
 
+@interface MainApp ()
+- (void)appendSuccess:(id)result;
+- (void)appendFailure;
+@end
+
 @implementation MainApp
 
 - (void)applicationWillFinishLaunching:(NSNotification *)aNotification {
@@ -83,6 +88,7 @@ void InstallSignalHandlers()
 	daemonController = [[DaemonController alloc] init];
 	daemonController.updateInterval = autoStartWebUI ? START_UPDATE_INTERVAL : NORMAL_UPDATE_INTERVAL;
 	daemonController.delegate = self;
+	queuedNzbs = [[NSMutableArray alloc] init];
 
 	[self setupDefaultsObserver];
 	[self userDefaultsDidChange:nil];
@@ -604,9 +610,6 @@ void InstallSignalHandlers()
 }
 
 - (BOOL)application:(NSApplication *)sender openFile:(NSString *)filename {
-    if (!queuedNzbs) {
-        queuedNzbs = [[NSMutableArray alloc] init];
-    }
     BOOL wasEmpty = ([queuedNzbs count] == 0);
     [queuedNzbs addObject:filename];
     if (wasEmpty) {
@@ -616,9 +619,6 @@ void InstallSignalHandlers()
 }
 
 - (void)application:(NSApplication *)sender openFiles:(NSArray *)filenames {
-    if (!queuedNzbs) {
-        queuedNzbs = [[NSMutableArray alloc] init];
-    }
     BOOL wasEmpty = ([queuedNzbs count] == 0);
     [queuedNzbs addObjectsFromArray:filenames];
     if (wasEmpty) {
@@ -631,9 +631,16 @@ void InstallSignalHandlers()
     if ([queuedNzbs count] == 0) return;
     
     if (!daemonController || !daemonController.connected) {
+        if (++nzbAppendRetryCount > 30) {
+            NSLog(@"[NZBGet] Daemon unreachable, dropping %lu queued NZBs", (unsigned long)[queuedNzbs count]);
+            [queuedNzbs removeAllObjects];
+            nzbAppendRetryCount = 0;
+            return;
+        }
         [self performSelector:@selector(processQueuedNzbs) withObject:nil afterDelay:1.0];
         return;
     }
+    nzbAppendRetryCount = 0;
 
     NSString *filename = [queuedNzbs firstObject];
     NSData *fileData = [NSData dataWithContentsOfFile:filename];
@@ -649,12 +656,16 @@ void InstallSignalHandlers()
     NSString *content = [fileData base64EncodedStringWithOptions:0];
 
     // [Filename, Content, Category, Priority, AddToTop, AddPaused, DupeKey, DupeScore, DupeMode, AutoCategory, PPParameters]
-    NSArray *params = @[ filename, content, @"", @0, @NO, @NO, @"", @0, @"SCORE", @NO, @[] ];
+    NSArray *params = @[ [filename lastPathComponent], content, @"", @0, @NO, @NO, @"", @0, @"SCORE", @NO, @[] ];
 
     [daemonController rpc:@"append" params:params receiver:self success:@selector(appendSuccess:) failure:@selector(appendFailure)];
 }
 
 - (void)appendSuccess:(id)result {
+    if (!result || [result isEqual:@NO] ||
+        ([result isKindOfClass:[NSNumber class]] && [result integerValue] <= 0)) {
+        NSLog(@"[NZBGet] append RPC failed for: %@", [queuedNzbs firstObject]);
+    }
     if ([queuedNzbs count] > 0) {
         [queuedNzbs removeObjectAtIndex:0];
     }
@@ -662,9 +673,6 @@ void InstallSignalHandlers()
 }
 
 - (void)appendFailure {
-    if ([queuedNzbs count] > 0) {
-        [queuedNzbs removeObjectAtIndex:0];
-    }
     [self performSelector:@selector(processQueuedNzbs) withObject:nil afterDelay:1.0];
 }
 

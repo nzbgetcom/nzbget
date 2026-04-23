@@ -53,11 +53,10 @@
 		connection = [[NSURLConnection alloc] initWithRequest:request delegate:self startImmediately:NO];
 		[connection scheduleInRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 	}
-
 	return self;
 }
 
-- (void) start {
+- (void)start {
 	[connection start];
 }
 
