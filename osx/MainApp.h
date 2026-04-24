@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,14 +15,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #import <Cocoa/Cocoa.h>
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import "DaemonController.h"
 
-@interface MainApp : NSObject <NSMenuDelegate, DaemonControllerDelegate> {
+@interface MainApp : NSObject <NSApplicationDelegate, NSMenuDelegate, DaemonControllerDelegate> {
 	IBOutlet NSMenu *statusMenu;
     NSStatusItem *statusItem;
 	IBOutlet NSMenuItem *webuiItem;
@@ -43,6 +44,7 @@
 	NSWindowController *preferencesDialog;
 	DaemonController *daemonController;
 	int connectionAttempts;
+	int nzbAppendRetryCount;
 	BOOL restarting;
 	BOOL resetting;
 	BOOL preventingSleep;
@@ -50,6 +52,7 @@
 	NSTimer* restartTimer;
 	NSMutableArray* categoryItems;
 	NSMutableArray* categoryDirs;
+	NSMutableArray* queuedNzbs;
 }
 
 + (void)setupAppDefaults;

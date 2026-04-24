@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #include <libproc.h>
@@ -285,6 +286,11 @@ NSString* TMP_DIR = @"${AppSupDir}/tmp";
 
 - (void)rpc:(NSString*)method success:(SEL)successCallback failure:(SEL)failureCallback {
 	RPC* rpc = [[RPC alloc] initWithMethod:method receiver:self success:successCallback failure:failureCallback];
+	[rpc start];
+}
+
+- (void)rpc:(NSString*)method params:(NSArray*)params receiver:(id)receiver success:(SEL)successCallback failure:(SEL)failureCallback {
+	RPC* rpc = [[RPC alloc] initWithMethod:method params:params receiver:receiver success:successCallback failure:failureCallback];
 	[rpc start];
 }
 
