@@ -330,7 +330,8 @@ int ScriptController::Execute()
 		if (!m_writepipe)
 		{
 			PrintMessage(Message::mkError, "Could not open write pipe to %s", *m_infoName);
-			close(pipein);
+			fclose(m_readpipe);
+			m_readpipe = nullptr;
 			close(pipeout);
 			m_completed = true;
 			return -1;
