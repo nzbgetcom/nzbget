@@ -1025,10 +1025,25 @@ void NZBGet::Daemonize()
 	int lfp = -1;
 	if (!Util::EmptyStr(m_options->GetLockFile()))
 	{
-		lfp = open(m_options->GetLockFile(), O_RDWR | O_CREAT, 0640);
+		int flags = O_RDWR | O_CREAT;
+#ifdef O_NOFOLLOW
+		flags |= O_NOFOLLOW;
+#endif
+#ifdef O_CLOEXEC
+		flags |= O_CLOEXEC;
+#endif
+		lfp = open(m_options->GetLockFile(), flags, 0640);
 		if (lfp < 0)
 		{
 			error("Starting daemon failed: could not create lock-file %s", m_options->GetLockFile());
+			exit(1);
+		}
+
+		struct stat lockFileStat;
+		if (fstat(lfp, &lockFileStat) != 0 || !S_ISREG(lockFileStat.st_mode))
+		{
+			error("Starting daemon failed: lock-file %s is not a regular file", m_options->GetLockFile());
+			close(lfp);
 			exit(1);
 		}
 
@@ -1058,9 +1073,10 @@ void NZBGet::Daemonize()
 			exit(1);
 		}
 
-		// Change owner of lock- and logfile
-		chown(m_options->GetLockFile(), pw->pw_uid, pw->pw_gid);
-		chown(m_options->GetLogFile(), pw->pw_uid, pw->pw_gid);
+		if (lfp > -1)
+		{
+			fchown(lfp, pw->pw_uid, pw->pw_gid);
+		}
 
 		// Set aux groups to null, configure primary and aux groups, and then assign uid
 		if (setgroups(0, (const gid_t*)0) ||
