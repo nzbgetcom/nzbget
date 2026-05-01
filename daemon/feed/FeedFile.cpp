@@ -84,7 +84,7 @@ bool FeedFile::Parse()
 	SAX_handler.getEntity = reinterpret_cast<getEntitySAXFunc>(SAX_getEntity);
 
 	/*
-	 * libxml2 2.4+ sends CDATA via `cdataBlock` instead of `characters`. Earlier
+	 * libxml2 2.14+ sends CDATA via `cdataBlock` instead of `characters`. Earlier
 	 * versions deliver CDATA in `characters`; `cdataBlock` is unused. Both
 	 * require identical handling, so the same handler is assigned.
 	 */
@@ -265,6 +265,9 @@ void FeedFile::Parse_EndElement(const char* name)
 	if (!name)
 		return;
 
+	// Trim the collected content once after all chunks (text + CDATA) are merged
+	Util::Trim(m_tagContent);
+
 	if (!strcmp("title", name) && m_feedItemInfo)
 	{
 		m_feedItemInfo->SetTitle(m_tagContent.c_str());
@@ -328,9 +331,7 @@ void FeedFile::SAX_textHandler(FeedFile* file, const char* xmlstr, int len)
 	if (!xmlstr || len <= 0)
 		return;
 
-	std::string str(xmlstr, len);
-	Util::Trim(str);
-	file->Parse_Content(std::move(str));
+	file->Parse_Content(std::string(xmlstr, len));
 }
 
 xmlEntityPtr FeedFile::SAX_getEntity(FeedFile* file, const xmlChar* name)
