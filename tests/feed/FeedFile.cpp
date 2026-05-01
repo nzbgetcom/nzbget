@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(FeedFileTest)
 	std::unique_ptr<FeedItemList> items = file.DetachFeedItems();
 	FeedItemInfo& feedInfo = items.get()->back();
 
-	BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies>HD"));
+	BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies > HD"));
 	BOOST_CHECK_EQUAL(feedInfo.GetTime(), 1701668883);
 	BOOST_CHECK_EQUAL(feedInfo.GetEpisode(), std::string("1"));
 	BOOST_CHECK_EQUAL(feedInfo.GetEpisodeNum(), 1);
