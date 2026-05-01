@@ -24,8 +24,8 @@ set -o errexit
 
 # unpackers versions defaults
 # can be overridden by environment variables
-UNRAR_VERSION="${UNRAR_VERSION-720}"
-ZIP7_VERSION="${ZIP7_VERSION-26.00}"
+UNRAR_VERSION="${UNRAR_VERSION-721}"
+ZIP7_VERSION="${ZIP7_VERSION-26.01}"
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
