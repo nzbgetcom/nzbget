@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(NNTPTest)
 void AddTestServer(ServerPool* pool, int id, bool active, int level, bool optional, int group, int connections)
 {
 	pool->AddServer(std::make_unique<NewsServer>(id, active, nullptr, "", 119, 0,
-		"", "", false, false, nullptr, connections, 0, level, group, optional, Options::cvStrict));
+		"", "", false, false, nullptr, connections, 2, 0, level, group, optional, Options::cvStrict));
 }
 
 void TestBlockServers(int group)

@@ -32,12 +32,12 @@ struct ServerFixture
 	std::unique_ptr<NewsServer> CreateServer(
 		bool active = true, const char* name = "ValidServer", const char* host = "news.example.com",
 		int port = 563, bool tls = true, const char* user = "user", const char* pass = "pass",
-		int maxConn = 50, int level = 0, int retention = 0, const char* cipher = "",
+		int maxConn = 50, int pipelineDepth = 2, int level = 0, int retention = 0, const char* cipher = "",
 		int ipVersion = Connection::ipAuto, bool optional = false, int group = 0, int joinGroup = 0,
 		unsigned int certLevel = Options::cvStrict)
 	{
 		return std::make_unique<NewsServer>(1, active, name, host, port, ipVersion, user, pass,
-											(bool)joinGroup, tls, cipher, maxConn, retention, level,
+											(bool)joinGroup, tls, cipher, maxConn, pipelineDepth, retention, level,
 											group, optional, certLevel);
 	}
 };
@@ -145,38 +145,38 @@ BOOST_AUTO_TEST_CASE(TestConnections)
 
 BOOST_AUTO_TEST_CASE(TestEncryption)
 {
-	auto s1 = CreateServer(true, "", "", 563, true, "", "", 50, 0, 0, "");
+	auto s1 = CreateServer(true, "", "", 563, true, "", "", 50, 2,  0, 0, "");
 	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s1).Validate().IsOk());
 
-	auto s2 = CreateServer(true, "", "", 119, false, "", "", 50, 0, 0, "");
+	auto s2 = CreateServer(true, "", "", 119, false, "", "", 50, 2,  0, 0, "");
 	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s2).Validate().IsWarning());
 
-	auto s3 = CreateServer(true, "", "", 563, true, "", "", 50, 0, 0, "AES");
+	auto s3 = CreateServer(true, "", "", 563, true, "", "", 50, 2,  0, 0, "AES");
 	BOOST_CHECK(SystemHealth::NewsServer::ServerEncryptionValidator(*s3).Validate().IsOk());
 
-	auto s4 = CreateServer(true, "", "", 119, false, "", "", 50, 0, 0, "AES");
+	auto s4 = CreateServer(true, "", "", 119, false, "", "", 50, 2,  0, 0, "AES");
 	BOOST_CHECK(SystemHealth::NewsServer::ServerCipherValidator(*s4).Validate().IsWarning());
 }
 
 BOOST_AUTO_TEST_CASE(TestRetention)
 {
 	BOOST_CHECK(SystemHealth::NewsServer::ServerRetentionValidator(
-					*CreateServer(true, "", "", 0, true, "", "", 50, 0, 0))
+					*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 0))
 					.Validate()
 					.IsOk());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerRetentionValidator(
-					*CreateServer(true, "", "", 0, true, "", "", 50, 0, 3000))
+					*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 3000))
 					.Validate()
 					.IsOk());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerRetentionValidator(
-					*CreateServer(true, "", "", 0, true, "", "", 50, 0, 50))
+					*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 50))
 					.Validate()
 					.IsWarning());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerRetentionValidator(
-					*CreateServer(true, "", "", 0, true, "", "", 50, 0, 20000))
+					*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 20000))
 					.Validate()
 					.IsInfo());
 }
@@ -185,19 +185,19 @@ BOOST_AUTO_TEST_CASE(TestOptional)
 {
 	BOOST_CHECK(
 		SystemHealth::NewsServer::ServerOptionalValidator(
-			*CreateServer(true, "", "", 0, true, "", "", 50, 0, 0, "", Connection::ipAuto, false))
+			*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 0, "", Connection::ipAuto, false))
 			.Validate()
 			.IsOk());
 
 	BOOST_CHECK(
 		SystemHealth::NewsServer::ServerOptionalValidator(
-			*CreateServer(true, "", "", 0, true, "", "", 50, 1, 0, "", Connection::ipAuto, true))
+			*CreateServer(true, "", "", 0, true, "", "", 50, 2, 1, 0, "", Connection::ipAuto, true))
 			.Validate()
 			.IsOk());
 
 	BOOST_CHECK(
 		SystemHealth::NewsServer::ServerOptionalValidator(
-			*CreateServer(true, "", "", 0, true, "", "", 50, 0, 0, "", Connection::ipAuto, true))
+			*CreateServer(true, "", "", 0, true, "", "", 50, 2, 0, 0, "", Connection::ipAuto, true))
 			.Validate()
 			.IsInfo());
 }
@@ -205,19 +205,19 @@ BOOST_AUTO_TEST_CASE(TestOptional)
 BOOST_AUTO_TEST_CASE(TestCertVerification)
 {
 	BOOST_CHECK(SystemHealth::NewsServer::ServerCertVerificationValidator(
-					*CreateServer(true, "", "", 563, true, "", "", 50, 0, 0, "", Connection::ipAuto,
+					*CreateServer(true, "", "", 563, true, "", "", 50, 2, 0, 0, "", Connection::ipAuto,
 								  false, 0, 0, Options::cvStrict))
 					.Validate()
 					.IsOk());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerCertVerificationValidator(
-					*CreateServer(true, "", "", 563, true, "", "", 50, 0, 0, "", Connection::ipAuto,
+					*CreateServer(true, "", "", 563, true, "", "", 50, 2, 0, 0, "", Connection::ipAuto,
 								  false, 0, 0, Options::cvNone))
 					.Validate()
 					.IsWarning());
 
 	BOOST_CHECK(SystemHealth::NewsServer::ServerCertVerificationValidator(
-					*CreateServer(true, "", "", 119, false, "", "", 50, 0, 0, "",
+					*CreateServer(true, "", "", 119, false, "", "", 50, 2, 0, 0, "",
 								  Connection::ipAuto, false, 0, 0, Options::cvNone))
 					.Validate()
 					.IsOk());
@@ -235,8 +235,8 @@ BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_NoServers)
 BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_NoActivePrimary)
 {
 	::Servers servers;
-	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
-	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 2, 0));
+	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 2, 1));
 
 	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
 	SystemHealth::Status s = v.Validate();
@@ -247,8 +247,8 @@ BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_NoActivePrimary)
 BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_ActivePrimary)
 {
 	::Servers servers;
-	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
-	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 2, 0));
+	servers.push_back(CreateServer(false, "Server2", "news2.com", 563, true, "user", "pass", 50, 2, 1));
 
 	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
 	BOOST_CHECK(v.Validate().IsOk());
@@ -257,8 +257,8 @@ BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_ActivePrimary)
 BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_MultiplePrimary)
 {
 	::Servers servers;
-	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
-	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 0));
+	servers.push_back(CreateServer(true, "Server1", "news1.com", 563, true, "user", "pass", 50, 2, 0));
+	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 2, 0));
 
 	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
 	BOOST_CHECK(v.Validate().IsOk());
@@ -267,8 +267,8 @@ BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_MultiplePrimary)
 BOOST_AUTO_TEST_CASE(TestAnyPrimaryServerExists_HigherLevelActive)
 {
 	::Servers servers;
-	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 0));
-	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 1));
+	servers.push_back(CreateServer(false, "Server1", "news1.com", 563, true, "user", "pass", 50, 2, 0));
+	servers.push_back(CreateServer(true, "Server2", "news2.com", 563, true, "user", "pass", 50, 2, 1));
 
 	SystemHealth::NewsServers::AnyPrimaryServerExistsValidator v(servers);
 	SystemHealth::Status s = v.Validate();
