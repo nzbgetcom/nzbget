@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -3272,10 +3272,14 @@ var UpdateDialog = (new function($)
 
 		var hasUpdateSource = PackageInfo['update-info-link'] || PackageInfo['update-info-script'];
 		var hasUpdateInfo = UpdateInfo['stable-version'] || UpdateInfo['testing-version'];
-		var canUpdate = canInstallStable || canInstallTesting;
-		var canDownload = canDownloadStable || canDownloadTesting;
+		var canUpdateStable = canInstallStable || canDownloadStable;
+		var canUpdateTesting = canInstallTesting || canDownloadTesting;
+		var canUpdate = (Options.option('UpdateCheck') === 'stable' && canUpdateStable) ||
+			(Options.option('UpdateCheck') === 'testing' && canUpdateTesting);
+		var canDownload = (Options.option('UpdateCheck') === 'stable' && canDownloadStable) ||
+			(Options.option('UpdateCheck') === 'testing' && canDownloadTesting);
 		Util.show('#UpdateDialog_UpdateAvail', canUpdate);
-		Util.show('#UpdateDialog_UpdateNotAvail', !canUpdate && !canDownload);
+		Util.show('#UpdateDialog_UpdateNotAvail', Options.option('UpdateCheck') !== 'none' && !canUpdate && !canDownload);
 		Util.show('#UpdateDialog_CheckFailed', hasUpdateSource && !hasUpdateInfo);
 		Util.show('#UpdateDialog_DownloadRow,#UpdateDialog_DownloadAvail', canDownload && !canUpdate);
 		$('#UpdateDialog_AvailRow').toggleClass('hide', !hasUpdateInfo);
