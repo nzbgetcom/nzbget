@@ -654,7 +654,7 @@ var SystemInfo = (new function($)
 					}
 				});
 
-				divName.text(server.host + ':' + server.port + '(' + server.connections + ')');
+				divName.text(server.host + ':' + server.port + ' (' + server.connections + '/' + server.pipelinedepth + ')');
 				divName.attr({ title: server.name });
 				divName
 					.addClass('overflow-auto')

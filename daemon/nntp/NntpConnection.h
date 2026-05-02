@@ -34,6 +34,8 @@ public:
 	virtual bool Disconnect();
 	NewsServer* GetNewsServer() { return m_newsServer; }
 	const char* Request(const char* req);
+	bool SendRequest(const char* req);
+	const char* ReadResponseLine(const char* pendingRequest = nullptr);
 	const char* JoinGroup(const char* grp);
 	bool GetAuthError() { return m_authError; }
 

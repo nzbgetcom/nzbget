@@ -351,7 +351,7 @@ public:
 	public:
 		virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
-			bool tls, const char* cipher, int maxConnections, int retention,
+			bool tls, const char* cipher, int maxConnections, int pipelineDepth, int retention,
 			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
 		virtual void AddFeed(
 			[[maybe_unused]] int id,

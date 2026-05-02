@@ -75,6 +75,51 @@ const char* NntpConnection::Request(const char* req)
 	return answer;
 }
 
+bool NntpConnection::SendRequest(const char* req)
+{
+	if (!req)
+	{
+		return false;
+	}
+
+	if (m_status != csConnected)
+	{
+		return false;
+	}
+
+	return WriteLine(req) > 0;
+}
+
+const char* NntpConnection::ReadResponseLine(const char* pendingRequest)
+{
+	char* answer = ReadLine(m_lineBuf, m_lineBuf.Size(), nullptr);
+
+	if (!answer)
+	{
+		return nullptr;
+	}
+
+	if (!strncmp(answer, "480", 3) && pendingRequest)
+	{
+		debug("%s requested authorization", GetHost());
+
+		if (!Authenticate())
+		{
+			return nullptr;
+		}
+
+		// try again for the pending request
+		if (WriteLine(pendingRequest) <= 0)
+		{
+			return nullptr;
+		}
+
+		answer = ReadLine(m_lineBuf, m_lineBuf.Size(), nullptr);
+	}
+
+	return answer;
+}
+
 bool NntpConnection::Authenticate()
 {
 	if (strlen(m_newsServer->GetUser()) == 0 || strlen(m_newsServer->GetPassword()) == 0)

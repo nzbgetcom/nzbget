@@ -185,7 +185,7 @@ public:
 	// Options::Extender
 	void AddNewsServer(int id, bool active, const char* name, const char* host,
 		int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
-		bool tls, const char* cipher, int maxConnections, int retention,
+		bool tls, const char* cipher, int maxConnections, int pipelineDepth, int retention,
 		int level, int group, bool optional, unsigned int certVerificationfLevel) override;
 	void AddFeed(int id, const char* name, const char* url, int interval,
 		const char* filter, bool backlog, bool pauseNzb, const char* category,
@@ -1106,11 +1106,11 @@ void NZBGet::Daemonize()
 
 void NZBGet::AddNewsServer(int id, bool active, const char* name, const char* host,
 	int port, int ipVersion, const char* user, const char* pass, bool joinGroup, bool tls,
-	const char* cipher, int maxConnections, int retention, int level, int group, bool optional,
+	const char* cipher, int maxConnections, int pipelineDepth, int retention, int level, int group, bool optional,
 	unsigned int certVerificationfLevel)
 {
 	m_serverPool->AddServer(std::make_unique<NewsServer>(id, active, name, host, port, ipVersion, user, pass, joinGroup,
-		tls, cipher, maxConnections, retention, level, group, optional, certVerificationfLevel));
+		tls, cipher, maxConnections, pipelineDepth, retention, level, group, optional, certVerificationfLevel));
 }
 
 void NZBGet::AddFeed(int id, const char* name, const char* url, int interval, const char* filter,

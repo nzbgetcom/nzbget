@@ -34,6 +34,7 @@ function Server()
 	this.name = '';
 	this.port = 0;
 	this.connections = 0;
+	this.pipelinedepth = 0;
 }
 
 var Options = (new function($)
@@ -130,6 +131,10 @@ var Options = (new function($)
 		var connectionsOpt = findOption(this.options, serverId + '.Connections');
 		if (connectionsOpt)
 			server.connections = connectionsOpt.Value;
+
+		var pipelinedepthOpt = findOption(this.options, serverId + '.PipelineDepth');
+		if (pipelinedepthOpt)
+			server.pipelinedepth = pipelinedepthOpt.Value;
 
 		return server;
 	}

@@ -1004,10 +1004,11 @@ void Options::InitServers()
 
 		const char* ncipher = GetOption(BString<100>("Server%i.Cipher", n));
 		const char* nconnections = GetOption(BString<100>("Server%i.Connections", n));
+		const char* npipelinedepth = GetOption(BString<100>("Server%i.PipelineDepth", n));
 		const char* nretention = GetOption(BString<100>("Server%i.Retention", n));
 
 		bool definition = nactive || nname || nlevel || ngroup || nhost || nport || noptional ||
-			nusername || npassword || nconnections || njoingroup || ntls || ncipher || nretention;
+			nusername || npassword || nconnections || npipelinedepth || njoingroup || ntls || ncipher || nretention;
 		bool completed = nhost && nport && nconnections;
 
 		if (!definition)
@@ -1026,6 +1027,7 @@ void Options::InitServers()
 					nusername, npassword,
 					joinGroup, tls, ncipher,
 					nconnections ? atoi(nconnections) : 1,
+					npipelinedepth ? atoi(npipelinedepth) : 2,
 					nretention ? atoi(nretention) : 0,
 					nlevel ? atoi(nlevel) : 0,
 					ngroup ? atoi(ngroup) : 0,
@@ -1533,10 +1535,10 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 			!strcasecmp(p, ".port") || !strcasecmp(p, ".username") ||
 			!strcasecmp(p, ".password") || !strcasecmp(p, ".joingroup") ||
 			!strcasecmp(p, ".encryption") || !strcasecmp(p, ".connections") ||
-			!strcasecmp(p, ".cipher") || !strcasecmp(p, ".group") ||
-			!strcasecmp(p, ".retention") || !strcasecmp(p, ".optional") ||
-			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion") ||
-			!strcasecmp(p, ".certverification")))
+			!strcasecmp(p, ".pipelinedepth") || !strcasecmp(p, ".cipher") ||
+			!strcasecmp(p, ".group") || !strcasecmp(p, ".retention") ||
+			!strcasecmp(p, ".optional") || !strcasecmp(p, ".notes") ||
+			!strcasecmp(p, ".ipversion") || !strcasecmp(p, ".certverification")))
 		{
 			return true;
 		}

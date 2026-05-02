@@ -29,6 +29,7 @@ var Statistics = new (function ($) {
 
 		this.id = 0;
 		this.connections = 0;
+		this.pipelinedepth = 0;
 		this.host = "";
 		this.name = "";
 		this.port = "";
@@ -165,6 +166,7 @@ var Statistics = new (function ($) {
 				var newServer = new Server();
 				newServer.id = id;
 				newServer.connections = server.connections;
+				newServer.pipelinedepth = server.pipelinedepth;
 				newServer.host = server.host;
 				newServer.name = server.name;
 				newServer.port = server.port;
@@ -309,6 +311,10 @@ var Statistics = new (function ($) {
 		html += "<tr><th>Host:</th><td>".concat(server.host, "</td></tr>");
 		html += "<tr><th>Connections:</th><td>".concat(
 			server.connections,
+			"</td></tr>"
+		);
+		html += "<tr><th>PipelineDepth:</th><td>".concat(
+			server.pipelinedepth,
 			"</td></tr>"
 		);
 		html += "<tr><th>Active:</th><td>".concat(

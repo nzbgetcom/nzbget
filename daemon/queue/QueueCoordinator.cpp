@@ -738,7 +738,6 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			{
 				nzbInfo->SetPausedSize(nzbInfo->GetPausedSize() - articleInfo->GetSize());
 			}
-			fileInfo->SetCompletedArticles(fileInfo->GetCompletedArticles() + 1);
 			fileCompleted = (int)fileInfo->GetArticles()->size() == fileInfo->GetCompletedArticles();
 			fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
 			nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);

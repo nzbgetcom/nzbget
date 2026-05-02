@@ -3946,6 +3946,7 @@ void TestServerXmlCommand::Execute()
 		params.encryption,
 		params.cipher.c_str(),
 		1,
+		1,
 		0,
 		0,
 		0,

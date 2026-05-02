@@ -35,7 +35,7 @@ class NewsServer
 public:
 	NewsServer(int id, bool active, const char* name, const char* host, int port, int ipVersion,
 		const char* user, const char* pass, bool joinGroup,
-		bool tls, const char* cipher, int maxConnections, int retention,
+		bool tls, const char* cipher, int maxConnections, int pipelineDepth, int retention,
 		int level, int group, bool optional, unsigned int certVerificationfLevel);
 	int GetId() const { return m_id; }
 	int GetStateId() const { return m_stateId; }
@@ -50,6 +50,7 @@ public:
 	const char* GetUser() const { return m_user; }
 	const char* GetPassword() const { return m_password; }
 	int GetMaxConnections() const { return m_maxConnections; }
+	int GetPipelineDepth() const { return m_pipelineDepth; }
 	int GetLevel() const { return m_level; }
 	int GetNormLevel() const { return m_normLevel; }
 	void SetNormLevel(int level) { m_normLevel = level; }
@@ -76,6 +77,7 @@ private:
 	bool m_tls;
 	CString m_cipher;
 	int m_maxConnections;
+	int m_pipelineDepth;
 	int m_retention;
 	int m_level;
 	int m_normLevel;

@@ -20,6 +20,8 @@
  */
 
 
+#include <deque>
+
 #include "nzbget.h"
 #include "ArticleDownloader.h"
 #include "ArticleWriter.h"
@@ -30,6 +32,99 @@
 #include "ServerPool.h"
 #include "StatMeter.h"
 #include "Util.h"
+
+static ArticleInfo* ReserveNextPipelinedArticle(FileInfo* fileInfo, ArticleInfo* currentArticle)
+{
+	if (!fileInfo || !currentArticle)
+	{
+		return nullptr;
+	}
+
+	ArticleInfo* candidate = nullptr;
+	int currentPart = currentArticle->GetPartNumber();
+
+	GuardedDownloadQueue guard = DownloadQueue::Guard();
+	for (auto& articlePtr : *fileInfo->GetArticles())
+	{
+		ArticleInfo* article = articlePtr.get();
+		if (!article || article->GetStatus() != ArticleInfo::aiUndefined)
+		{
+			continue;
+		}
+
+		if (article->GetPartNumber() > currentPart)
+		{
+			if (!candidate || article->GetPartNumber() < candidate->GetPartNumber())
+			{
+				candidate = article;
+			}
+		}
+	}
+
+	if (!candidate)
+	{
+		for (auto& articlePtr : *fileInfo->GetArticles())
+		{
+			ArticleInfo* article = articlePtr.get();
+			if (!article || article->GetStatus() != ArticleInfo::aiUndefined)
+			{
+				continue;
+			}
+			if (!candidate || article->GetPartNumber() < candidate->GetPartNumber())
+			{
+				candidate = article;
+			}
+		}
+	}
+
+	if (candidate)
+	{
+		candidate->SetStatus(ArticleInfo::aiRunning);
+	}
+
+	return candidate;
+}
+
+static void RestorePipelinedArticle(ArticleInfo* article)
+{
+	if (!article)
+	{
+		return;
+	}
+
+	GuardedDownloadQueue guard = DownloadQueue::Guard();
+	if (article->GetStatus() == ArticleInfo::aiRunning)
+	{
+		article->SetStatus(ArticleInfo::aiUndefined);
+	}
+}
+
+static void UpdateArticleCompletion(FileInfo* fileInfo, NzbInfo* nzbInfo, ArticleInfo* articleInfo, bool success)
+{
+	if (!fileInfo || !nzbInfo || !articleInfo)
+	{
+		return;
+	}
+
+	if (success)
+	{
+		articleInfo->SetStatus(ArticleInfo::aiFinished);
+		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() + articleInfo->GetSize());
+		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() + articleInfo->GetSize());
+		nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() + 1);
+		nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() + 1);
+	}
+	else
+	{
+		articleInfo->SetStatus(ArticleInfo::aiFailed);
+		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
+		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + articleInfo->GetSize());
+		nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+		fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
+	}
+	fileInfo->SetCompletedArticles(fileInfo->GetCompletedArticles() + 1);
+}
 
 ArticleDownloader::ArticleDownloader()
 {
@@ -157,26 +252,15 @@ void ArticleDownloader::Run()
 
 			if (status == adFinished || status == adFailed || status == adNotFound || status == adCrcError)
 			{
-				int serverId = newsServer->GetId();
-				int success = status == adFinished ? 1 : 0;
-				int failed = status == adFinished ? 0 : 1;
-				m_serverStats.StatOp(serverId, success, failed, ServerStatList::soSet);
-				ServerVolume::Stats stats;
-				stats.bytes = 0;
-				stats.articles.failed = failed;
-				stats.articles.success = success;
-				g_StatMeter->AddServerStats(stats, serverId);
+				for (ServerStat& serverStat : m_serverStats)
+				{
+					ServerVolume::Stats stats;
+					stats.bytes = 0;
+					stats.articles.failed = serverStat.GetFailedArticles();
+					stats.articles.success = serverStat.GetSuccessArticles();
+					g_StatMeter->AddServerStats(stats, serverStat.GetServerId());
+				}
 			}
-		}
-
-		if (m_connection)
-		{
-			AddServerStats();
-		}
-
-		if (!connected && m_connection)
-		{
-			detail("Article %s @ %s failed: could not establish connection", *m_infoName, *m_connectionName);
 		}
 
 		if (status == adConnectError)
@@ -295,7 +379,7 @@ void ArticleDownloader::Run()
 		status = adFailed;
 	}
 
-	if (IsStopped())
+	if (IsStopped() && status != adFinished)
 	{
 		detail("Download %s cancelled", *m_infoName);
 		status = adRetry;
@@ -314,7 +398,7 @@ void ArticleDownloader::Run()
 
 ArticleDownloader::EStatus ArticleDownloader::Download()
 {
-	const char* response = nullptr;
+	const char* articleResponse = nullptr;
 	EStatus status = adRunning;
 	m_writingStarted = false;
 	m_articleInfo->SetCrc(0);
@@ -329,106 +413,206 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		// change group
 		for (CString& group : m_fileInfo->GetGroups())
 		{
-			response = m_connection->JoinGroup(group);
-			if (response && !strncmp(response, "2", 1))
+			articleResponse = m_connection->JoinGroup(group);
+			if (articleResponse && !strncmp(articleResponse, "2", 1))
 			{
 				break;
 			}
 		}
 
-		status = CheckResponse(response, "could not join group");
+		status = CheckResponse(articleResponse, "could not join group");
 		if (status != adFinished)
 		{
 			return status;
 		}
 	}
 
-	// retrieve article
-	response = m_connection->Request(BString<1024>("%s %s\r\n",
-		g_Options->GetRawArticle() ? "ARTICLE" : "BODY", m_articleInfo->GetMessageId()));
+	struct PipelineEntry
+	{
+		ArticleInfo* article;
+		CString request;
+		PipelineEntry(ArticleInfo* article_, CString&& request_) noexcept : article(article_), request(std::move(request_)) {}
+	};
 
-	status = CheckResponse(response, "could not fetch article");
+	std::deque<PipelineEntry> pipeline;
+	ArticleInfo* currentArticle = m_articleInfo;
+	ArticleInfo* originalArticle = m_articleInfo;
+	CString request;
+	bool firstResponseReady = true;
+
+	auto RestorePipeline = [&pipeline]() {
+		for (size_t i = 1; i < pipeline.size(); ++i)
+		{
+			RestorePipelinedArticle(pipeline[i].article);
+		}
+		pipeline.clear();
+	};
+
+	auto FillPipeline = [&]() {
+		int pipelineDepth = m_connection->GetNewsServer()->GetPipelineDepth();
+		if (pipelineDepth < 1)
+		{
+			pipelineDepth = 1;
+		}
+		while ((int)pipeline.size() < pipelineDepth)
+		{
+			ArticleInfo* tailArticle = pipeline.empty() ? currentArticle : pipeline.back().article;
+			ArticleInfo* nextArticle = ReserveNextPipelinedArticle(m_fileInfo, tailArticle);
+			if (!nextArticle)
+			{
+				break;
+			}
+
+			CString nextRequest;
+			nextRequest.Format("%s %s\r\n",
+				g_Options->GetRawArticle() ? "ARTICLE" : "BODY", nextArticle->GetMessageId());
+			if (!m_connection->SendRequest(nextRequest))
+			{
+				AddServerStats();
+				RestorePipelinedArticle(nextArticle);
+				break;
+			}
+
+			pipeline.emplace_back(nextArticle, std::move(nextRequest));
+		}
+	};
+
+	request.Format("%s %s\r\n",
+		g_Options->GetRawArticle() ? "ARTICLE" : "BODY", currentArticle->GetMessageId());
+	articleResponse = m_connection->Request(request);
+	status = CheckResponse(articleResponse, "could not fetch article");
 	if (status != adFinished)
 	{
 		return status;
 	}
 
-	m_decoder.Clear();
-	m_decoder.SetCrcCheck(g_Options->GetCrcCheck());
-	m_decoder.SetRawMode(g_Options->GetRawArticle());
+	pipeline.emplace_back(currentArticle, std::move(request));
+	FillPipeline();
 
-	status = adRunning;
-	CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
-
-	while (!IsStopped() && !m_decoder.GetEof())
+	while (!IsStopped() && !pipeline.empty())
 	{
-		// throttle the bandwidth
-		while (!IsStopped() && (g_WorkState->GetSpeedLimit() > 0.0f) &&
-			(g_StatMeter->CalcCurrentDownloadSpeed() > g_WorkState->GetSpeedLimit() ||
-			g_StatMeter->CalcMomentaryDownloadSpeed() > g_WorkState->GetSpeedLimit()))
+		currentArticle = pipeline.front().article;
+		if (currentArticle != originalArticle)
 		{
-			SetLastUpdateTimeNow();
-			Util::Sleep(10);
-		}
-
-		char* buffer;
-		int len;
-		m_connection->ReadBuffer(&buffer, &len);
-		if (len == 0)
-		{
-			len = m_connection->TryRecv(lineBuf, lineBuf.Size());
-			buffer = lineBuf;
-		}
-
-		// have we encountered a timeout?
-		if (len <= 0)
-		{
-			if (!IsStopped())
+			m_articleWriter.SetArticleInfo(currentArticle);
+			m_articleInfo = currentArticle;
+			if (m_contentAnalyzer)
 			{
-				detail("Article %s @ %s failed: Unexpected end of article", *m_infoName, *m_connectionName);
+				m_contentAnalyzer.reset();
 			}
-			status = adFailed;
-			break;
 		}
 
-		g_StatMeter->AddSpeedReading(len);
-		time_t oldTime = m_lastUpdateTime;
-		SetLastUpdateTimeNow();
-		if (oldTime != m_lastUpdateTime)
+		currentArticle->SetCrc(0);
+
+		if (!firstResponseReady)
+		{
+			articleResponse = m_connection->ReadResponseLine(pipeline.front().request);
+		}
+		firstResponseReady = false;
+
+		status = CheckResponse(articleResponse, "could not fetch article");
+		if (status != adFinished)
 		{
 			AddServerStats();
-		}
-
-		// decode article data
-		len = m_decoder.DecodeBuffer(buffer, len);
-
-		// write to output file
-		if (len > 0 && !Write(buffer, len))
-		{
-			status = adFatalError;
+			RestorePipeline();
 			break;
 		}
+
+		m_decoder.Clear();
+		m_decoder.SetCrcCheck(g_Options->GetCrcCheck());
+		m_decoder.SetRawMode(g_Options->GetRawArticle());
+
+		status = adRunning;
+		CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
+
+		while (!IsStopped() && !m_decoder.GetEof())
+		{
+			while (!IsStopped() && (g_WorkState->GetSpeedLimit() > 0.0f) &&
+				(g_StatMeter->CalcCurrentDownloadSpeed() > g_WorkState->GetSpeedLimit() ||
+				g_StatMeter->CalcMomentaryDownloadSpeed() > g_WorkState->GetSpeedLimit()))
+			{
+				SetLastUpdateTimeNow();
+				Util::Sleep(10);
+			}
+
+			int bytesRead = 0;
+			char* buffer = m_connection->ReadLine(lineBuf, lineBuf.Size(), &bytesRead);
+			if (!buffer || bytesRead <= 0)
+			{
+				if (!IsStopped())
+				{
+					detail("Article %s @ %s failed: Unexpected end of article", *m_infoName, *m_connectionName);
+				}
+				status = adFailed;
+				break;
+			}
+
+			g_StatMeter->AddSpeedReading(bytesRead);
+			SetLastUpdateTimeNow();
+			AddServerStats();
+
+			int len = m_decoder.DecodeBuffer(buffer, bytesRead);
+			if (len > 0 && !Write(buffer, len))
+			{
+				status = adFatalError;
+				break;
+			}
+		}
+
+		if (IsStopped())
+		{
+			status = adFailed;
+		}
+
+		if (status == adRunning)
+		{
+			status = DecodeCheck();
+		}
+
+		if (m_writingStarted)
+		{
+			m_articleWriter.Finish(status == adFinished);
+			m_writingStarted = false;
+		}
+
+		if (status == adFinished)
+		{
+			if (m_infoName.Empty())
+			{
+				SetInfoName(currentArticle->GetResultFilename());
+			}
+			detail("Successfully downloaded %s", *m_infoName);
+			UpdateArticleCompletion(m_fileInfo, m_fileInfo->GetNzbInfo(), currentArticle, true);
+			int serverId = m_connection->GetNewsServer()->GetId();
+			m_serverStats.StatOp(serverId, 1, 0, ServerStatList::soAdd);
+		}
+		else
+		{
+			UpdateArticleCompletion(m_fileInfo, m_fileInfo->GetNzbInfo(), currentArticle, false);
+			int serverId = m_connection->GetNewsServer()->GetId();
+			m_serverStats.StatOp(serverId, 0, 1, ServerStatList::soAdd);
+			AddServerStats();
+			RestorePipeline();
+			break;
+		}
+
+		pipeline.pop_front();
+		if (pipeline.empty())
+		{
+			break;
+		}
+
+		FillPipeline();
+		currentArticle = pipeline.front().article;
+		m_articleInfo = currentArticle;
+		BString<1024> infoName("%s%c%s [%i/%i]", m_fileInfo->GetNzbInfo()->GetName(), PATH_SEPARATOR,
+			m_fileInfo->GetFilename(), currentArticle->GetPartNumber(), (int)m_fileInfo->GetArticles()->size());
+		SetInfoName(infoName);
 	}
 
 	if (IsStopped())
 	{
 		status = adFailed;
-	}
-
-	if (status == adRunning)
-	{
-		FreeConnection(true);
-		status = DecodeCheck();
-	}
-
-	if (m_writingStarted)
-	{
-		m_articleWriter.Finish(status == adFinished);
-	}
-
-	if (status == adFinished)
-	{
-		detail("Successfully downloaded %s", *m_infoName);
 	}
 
 	return status;
