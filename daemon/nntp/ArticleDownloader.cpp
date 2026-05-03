@@ -109,8 +109,6 @@ static void UpdateArticleCompletion(FileInfo* fileInfo, NzbInfo* nzbInfo, Articl
 	if (success)
 	{
 		articleInfo->SetStatus(ArticleInfo::aiFinished);
-		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() + articleInfo->GetSize());
-		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() + articleInfo->GetSize());
 		nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
 		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() + 1);
 		nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() + 1);
@@ -118,6 +116,12 @@ static void UpdateArticleCompletion(FileInfo* fileInfo, NzbInfo* nzbInfo, Articl
 	else
 	{
 		articleInfo->SetStatus(ArticleInfo::aiFailed);
+
+		// Rollback: Subtract the bytes that were added to "Success"
+		// during the loop and move them to the "Failed" bucket
+		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - articleInfo->GetSize());
+		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() - articleInfo->GetSize());
+
 		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
 		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + articleInfo->GetSize());
 		nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
@@ -549,6 +553,11 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 
 			g_StatMeter->AddSpeedReading(bytesRead);
 			SetLastUpdateTimeNow();
+
+			// Update NZB progress in real-time
+			m_fileInfo->SetSuccessSize(m_fileInfo->GetSuccessSize() + bytesRead);
+			m_fileInfo->GetNzbInfo()->SetCurrentSuccessSize(m_fileInfo->GetNzbInfo()->GetCurrentSuccessSize() + bytesRead);
+
 			AddServerStats();
 
 			int len = m_decoder.DecodeBuffer(buffer, bytesRead);
