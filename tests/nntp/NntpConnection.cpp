@@ -54,19 +54,19 @@ static int FindFreeTcpPort()
 
     if (bind(sock, (struct sockaddr*)&addr, sizeof(addr)) != 0)
     {
-        close(sock);
+        closesocket(sock);
         return 0;
     }
 
     socklen_t len = sizeof(addr);
     if (getsockname(sock, (struct sockaddr*)&addr, &len) != 0)
     {
-        close(sock);
+        closesocket(sock);
         return 0;
     }
 
     int port = ntohs(addr.sin_port);
-    close(sock);
+    closesocket(sock);
     return port;
 }
 
