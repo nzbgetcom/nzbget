@@ -1,7 +1,7 @@
 /*
  * This file is part of nzbget. See <https://nzbget.com>.
  *
- * Copyright (C) 2025 Denis <denis@nzbget.com>
+ * Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,14 +27,18 @@ var DateTime = (function () {
 		firstWeekDay.setUTCDate(firstWeekDay.getUTCDate() - firstWeekDay.getUTCDay());
 		var lastWeekDay = new Date();
 		lastWeekDay.setUTCDate(lastWeekDay.getUTCDate() + (6 - lastWeekDay.getUTCDay()));
-		
+
 		this.currDay = new Date();
 
 		var firstMonthDay = new Date(Date.UTC(this.currDay.getFullYear(), this.currDay.getMonth(), 1));
 		var lastMonthDay = new Date(Date.UTC(this.currDay.getFullYear(), this.currDay.getMonth() + 1, 0));
 
+		var firstYearDay = new Date(Date.UTC(this.currDay.getFullYear(), 0, 1));
+		var lastYearDay = new Date(Date.UTC(this.currDay.getFullYear(), 11, 31));
+
 		this.week = this.getDateRange(firstWeekDay, lastWeekDay);
 		this.month = this.getDateRange(firstMonthDay, lastMonthDay);
+		this.year = this.getDateRange(firstYearDay, lastYearDay);
 	};
 
 	DateTime.prototype.getCurrentDay = function () {
@@ -67,6 +71,14 @@ var DateTime = (function () {
 
 	DateTime.prototype.getMonth = function () {
 		return this.month;
+	};
+
+	DateTime.prototype.getYear = function () {
+		return this.year;
+	};
+
+	DateTime.prototype.getYearRange = function () {
+		return this.getDateRange(this.year[0], this.year[this.year.length - 1]);
 	};
 
 	DateTime.prototype.getFirstWeekDate = function () {

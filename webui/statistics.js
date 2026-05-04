@@ -1,7 +1,7 @@
 /*
  * This file is part of nzbget. See <https://nzbget.com>.
  *
- * Copyright (C) 2025 Denis <denis@nzbget.com>
+ * Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -305,9 +305,9 @@ var Statistics = new (function ($) {
 		html += "<h4>Server Details</h4>";
 		html +=
 			'<table class="table table-condensed table-bordered table-fixed server-details__table">';
-		html += "<tr><th>Name:</th><td>".concat(server.name, "</td></tr>");
-		html += "<tr><th>Host:</th><td>".concat(server.host, "</td></tr>");
-		html += "<tr><th>Connections:</th><td>".concat(
+		html += "<tr><th>Name</th><td>".concat(server.name, "</td></tr>");
+		html += "<tr><th>Host</th><td>".concat(server.host, "</td></tr>");
+		html += "<tr><th>Connections</th><td>".concat(
 			server.connections,
 			"</td></tr>"
 		);
@@ -319,30 +319,34 @@ var Statistics = new (function ($) {
 		html += "<h4>Bandwidth Usage</h4>";
 		html +=
 			'<table class="table table-condensed table-bordered table-fixed server-details__table">';
-		html += '<tr><th>Today:</td><td id="'.concat(
+		html += '<tr><th>Today</td><td id="'.concat(
 			server.id,
 			'_TodayDownloaded"></td></tr>'
 		);
-		html += '<tr><th>This Week:</th><td id="'.concat(
+		html += '<tr><th>This Week</th><td id="'.concat(
 			server.id,
 			'_WeekDownloaded"></td></tr>'
 		);
-		html += '<tr><th>This Month:</th><td id="'.concat(
+		html += '<tr><th>This Month</th><td id="'.concat(
 			server.id,
 			'_MonthDownloaded"></td></tr>'
 		);
-		html += '<tr><th>Total:</td><td id="'.concat(
+		html += '<tr><th>This Year</th><td id="'.concat(
+			server.id,
+			'_YearDownloaded"></td></tr>'
+		);
+		html += '<tr><th>Total</td><td id="'.concat(
 			server.id,
 			'_TotalDownloaded"></td></tr>'
 		);
 		html += "</table>";
 		html += "<h4>Article Statistics</h4>";
 		html += '<table class="table table-condensed table-bordered table-fixed">';
-		html += '<tr><th>Success/Failed:</th><td id="'.concat(
+		html += '<tr><th>Success/Failed</th><td id="'.concat(
 			server.id,
 			'_Articles"></td></tr>'
 		);
-		html += '<tr><th>Completion:</td><td id="'.concat(
+		html += '<tr><th>Completion</td><td id="'.concat(
 			server.id,
 			'_Completion"></td></tr>'
 		);
@@ -413,6 +417,15 @@ var Statistics = new (function ($) {
 		);
 		server.monthSizeMB = monthSizes.sizeMB;
 		server.monthSizeLo = monthSizes.sizeLo;
+		var year = datetime.getYear();
+		var yearSizes = calculateSizePerDays(
+			year,
+			serverVolume.BytesPerDays,
+			serverVolume.FirstDay,
+			daySlot
+		);
+		server.yearSizeMB = yearSizes.sizeMB;
+		server.yearSizeLo = yearSizes.sizeLo;
 		server.todaySizeMB = serverVolume.BytesPerDays[daySlot].SizeMB;
 		server.todaySizeLo = serverVolume.BytesPerDays[daySlot].SizeLo;
 		server.totalSizeMB = serverVolume.TotalSizeMB;
@@ -458,6 +471,9 @@ var Statistics = new (function ($) {
 		);
 		$("#".concat(server.id, "_MonthDownloaded")).text(
 			Util.formatSizeMB(server.monthSizeMB, server.monthSizeLo)
+		);
+		$("#".concat(server.id, "_YearDownloaded")).text(
+			Util.formatSizeMB(server.yearSizeMB, server.yearSizeLo)
 		);
 		$("#".concat(server.id, "_TotalDownloaded")).text(
 			Util.formatSizeMB(server.totalSizeMB, server.totalSizeLo)
