@@ -51,25 +51,6 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	endif()
 
 	check_cxx_compiler_flag("-fstack-protector-strong" HAVE_STACK_PROTECT)
-	if(HAVE_STACK_PROTECT AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "powerpc")
-		add_compile_options(-fstack-protector-strong)
-	endif()
-endif()
-
-if (TOOLCHAIN_PREFIX MATCHES "android")
-	set(HAVE_STD_FILESYSTEM FALSE)
-else()
-	check_cxx_source_compiles("
-	#include <filesystem>
-	int main() {
-		std::filesystem::path p(\"/tmp\");
-		return std::filesystem::exists(p) ? 0 : 1;
-	}
-	" HAVE_STD_FILESYSTEM)
-endif()
-
-if(NOT HAVE_STD_FILESYSTEM)
-	message(STATUS "Target does not support native std::filesystem. Enabling Boost.Filesystem fallback")
 endif()
 
 function(apply_sanitizers target)

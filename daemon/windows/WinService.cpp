@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +26,7 @@
 extern void ExitProc();
 RunProc Run = nullptr;
 
-char* strServiceName = "NZBGet";
+char STR_SERVICE_NAME[] = "NZBGet";
 SERVICE_STATUS_HANDLE nServiceStatusHandle;
 DWORD nServiceCurrentStatus;
 
@@ -72,7 +73,7 @@ void ServiceCtrlHandler(DWORD nControlCode)
 void ServiceMain(DWORD argc, LPTSTR *argv)
 {
 	BOOL success;
-	nServiceStatusHandle = RegisterServiceCtrlHandler(strServiceName,
+	nServiceStatusHandle = RegisterServiceCtrlHandler(STR_SERVICE_NAME,
 		(LPHANDLER_FUNCTION)ServiceCtrlHandler);
 	if(!nServiceStatusHandle)
 	{
@@ -101,13 +102,13 @@ void StartService(RunProc RunProcPtr)
 
 	SERVICE_TABLE_ENTRY servicetable[]=
 	{
-		{strServiceName,(LPSERVICE_MAIN_FUNCTION)ServiceMain},
+		{STR_SERVICE_NAME,(LPSERVICE_MAIN_FUNCTION)ServiceMain},
 		{nullptr,nullptr}
 	};
 	BOOL success = StartServiceCtrlDispatcher(servicetable);
 	if(!success)
 	{
-		error("Could not start service");
+		fprintf(stderr, "Could not start service\n");
 	}
 }
 
@@ -116,7 +117,7 @@ void InstallService(int argc, char *argv[])
 	SC_HANDLE scm = OpenSCManager(0,0,SC_MANAGER_CREATE_SERVICE);
 	if(!scm)
 	{
-		printf("Could not install service\n");
+		fprintf(stderr, "Could not install service\n");
 		return;
 	}
 
@@ -126,8 +127,8 @@ void InstallService(int argc, char *argv[])
 
 	BString<1024> cmdLine("%s -D", exeName);
 
-	SC_HANDLE hService = CreateService(scm, strServiceName,
-		strServiceName,
+	SC_HANDLE hService = CreateService(scm, STR_SERVICE_NAME,
+		STR_SERVICE_NAME,
 		SERVICE_ALL_ACCESS,SERVICE_WIN32_OWN_PROCESS,SERVICE_DEMAND_START,
 		SERVICE_ERROR_NORMAL,
 		cmdLine,
@@ -135,12 +136,12 @@ void InstallService(int argc, char *argv[])
 	if(!hService)
 	{
 		CloseServiceHandle(scm);
-		printf("Could not install service\n");
+		fprintf(stderr, "Could not install service\n");
 		return;
 	}
 	CloseServiceHandle(hService);
 	CloseServiceHandle(scm);
-	printf("Service \"%s\" sucessfully installed\n", strServiceName);
+	fprintf(stdout, "Service \"%s\" sucessfully installed\n", STR_SERVICE_NAME);
 }
 
 void UnInstallService()
@@ -149,26 +150,26 @@ void UnInstallService()
 	SC_HANDLE scm = OpenSCManager(0,0,SC_MANAGER_CONNECT);
 	if(!scm)
 	{
-		printf("Could not uninstall service\n");
+		fprintf(stderr, "Could not uninstall service\n");
 		return;
 	}
 
-	SC_HANDLE hService = OpenService(scm, strServiceName, STANDARD_RIGHTS_REQUIRED);
+	SC_HANDLE hService = OpenService(scm, STR_SERVICE_NAME, STANDARD_RIGHTS_REQUIRED);
 	if(!hService)
 	{
 		CloseServiceHandle(scm);
-		printf("Could not uninstall service\n");
+		fprintf(stderr, "Could not uninstall service\n");
 		return;
 	}
 
 	success = DeleteService(hService);
 	if(!success)
 	{
-		error("Could not uninstall service");
+		fprintf(stderr, "Could not uninstall service\n");
 	}
 	CloseServiceHandle(hService);
 	CloseServiceHandle(scm);
-	printf("Service \"%s\" sucessfully uninstalled\n", strServiceName);
+	fprintf(stdout, "Service \"%s\" sucessfully uninstalled\n", STR_SERVICE_NAME);
 }
 
 void InstallUninstallServiceCheck(int argc, char *argv[])
@@ -194,7 +195,7 @@ bool IsServiceRunning()
 		return false;
 	}
 
-	SC_HANDLE hService = OpenService(scm, "NZBGet", SERVICE_QUERY_STATUS);
+	SC_HANDLE hService = OpenService(scm, STR_SERVICE_NAME, SERVICE_QUERY_STATUS);
 	SERVICE_STATUS ServiceStatus;
 	bool running = false;
 	if (hService && QueryServiceStatus(hService, &ServiceStatus))

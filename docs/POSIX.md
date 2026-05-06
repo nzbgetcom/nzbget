@@ -1,11 +1,10 @@
 ## To build NZBGet you will need:
 
   - For configuring and building:
-    - [CMake](https://cmake.org/)
-    - [GCC](https://gcc.gnu.org/)
-
+    - [CMake](https://cmake.org/) (3.13+)
+    - [GCC](https://gcc.gnu.org/) (GCC 11+ required for C++20, GCC 13+ recommended)
       or
-    - [CLang](https://clang.llvm.org/)
+    - [Clang](https://clang.llvm.org/) (Clang 14+ / Apple Clang 13+ required for C++20)
 
   - Libraries:
     - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
