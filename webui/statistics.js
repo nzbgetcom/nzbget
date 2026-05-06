@@ -381,7 +381,7 @@ var Statistics = new (function ($) {
 			if (slot >= firstDay) {
 				var idx = slot - firstDay;
 				if (!bytesPerDays[idx] || idx > daySlot)
-					break;
+					continue;
 
 				sizeMB += bytesPerDays[idx].SizeMB;
 				sizeLo += bytesPerDays[idx].SizeLo;
