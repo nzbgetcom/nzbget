@@ -41,7 +41,7 @@ class WriteLogValidator final : public Validator
 public:
 	explicit WriteLogValidator(const Options& options) : m_options(options) {}
 	std::string_view GetName() const override { return Options::WRITELOG; }
-	Status Validate() const override;
+	Status Validate() const override { return Status::Ok(); }
 
 private:
 	const Options& m_options;

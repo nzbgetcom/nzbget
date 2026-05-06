@@ -37,25 +37,6 @@ LoggingValidator::LoggingValidator(const Options& options) : m_options(options)
 	m_validators.push_back(std::make_unique<TimeCorrectionValidator>(options));
 }
 
-Status WriteLogValidator::Validate() const
-{
-	const auto writeLog = m_options.GetWriteLog();
-	switch (writeLog)
-	{
-		case Options::EWriteLog::wlNone:
-			return Status::Info(
-				"Logging is disabled. Logging is recommended for "
-				"effective debugging and troubleshooting");
-		case Options::EWriteLog::wlAppend:
-			return Status::Warning("'" + std::string(Options::WRITELOG) +
-								   "' is set to 'Append'. The log file may grow indefinitely");
-		case Options::EWriteLog::wlReset:
-		case Options::EWriteLog::wlRotate:
-			return Status::Ok();
-	}
-	return Status::Ok();
-}
-
 Status RotateLogValidator::Validate() const
 {
 	if (m_options.GetWriteLog() != Options::EWriteLog::wlRotate) return Status::Ok();
