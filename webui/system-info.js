@@ -1,7 +1,7 @@
 /*
  * This file is part of nzbget. See <https://nzbget.com>.
  *
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,7 +44,15 @@ function DiskSpeedTestsForm()
 
 		disableBtnToggle(false);
 
-		$diskSpeedTestBtn.text(Util.getFromLocalStorage(lsKey) || TEST_BTN_DEFAULT_TEXT);
+		var defaultTestText = I18n.translate('sysinfo_run_test');
+		var saved = Util.getFromLocalStorage(lsKey);
+		var isNumeric = saved !== null && saved !== '' && !isNaN(saved);
+		if (isNumeric) {
+			$diskSpeedTestBtn.text(Util.formatSpeed(Number(saved))).removeAttr('data-i18n');
+		} else {
+			$diskSpeedTestBtn.attr('data-i18n', 'sysinfo_run_test');
+			I18n.translatePage($diskSpeedTestBtn);
+		}
 
 		$writeBufferInput.val(writeBuffer);
 		$diskSpeedTestInputLabel.text(label);
@@ -91,26 +99,27 @@ function DiskSpeedTestsForm()
 		RPC.call('testdiskspeed', [path, writeBufferSize, maxFileSize, timeout], 
 			function(rawRes) 
 			{
-				var res = makeResults(rawRes);
-				Util.saveToLocalStorage(lsKey, res);
-				$diskSpeedTestBtn.html(res);
+				var bytesPerSec = (rawRes.SizeMB * 1024.0 * 1024.0) / (rawRes.DurationMS / 1000.0);
+				Util.saveToLocalStorage(lsKey, bytesPerSec);
+				$diskSpeedTestBtn.html(Util.formatSpeed(bytesPerSec)).removeAttr('data-i18n');
 				disableBtnToggle(false);
 			}, 
 			function(res) 
 			{
-				$diskSpeedTestBtn.html(Util.getFromLocalStorage(lsKey) || TEST_BTN_DEFAULT_TEXT);
+				var saved = Util.getFromLocalStorage(lsKey);
+				var isNumeric = saved !== null && saved !== '' && !isNaN(saved);
+				if (isNumeric) {
+					$diskSpeedTestBtn.html(Util.formatSpeed(Number(saved))).removeAttr('data-i18n');
+				} else {
+					$diskSpeedTestBtn.attr('data-i18n', 'sysinfo_run_test');
+					I18n.translatePage($diskSpeedTestBtn);
+				}
 				disableBtnToggle(false);
 
 				var errTxt = res.split('<br>')[0];
 				$diskSpeedTestErrorTxt.html(errTxt);
 			},
 		);
-	}
-
-	function makeResults(res)
-	{
-		var r = res.SizeMB / (res.DurationMS / 1000);
-		return Util.formatSizeMB(r) + '/s';
 	}
 
 	function disableBtnToggle(disable)
@@ -184,16 +193,19 @@ var SystemInfo = (new function($)
 	var $SpeedTest_StatsDate;
 
 	var sysInfoLoading = false;
+	var lastSysInfo = null;
 
 	var nzbFileTestPrefix = 'NZBGet Speed Test ';
 	var testNZBUrl = 'https://nzbget.com/nzb/';
-	var testNZBFiles = [
-		'100MB',
-		'500MB',
-		'1GB',
-		'5GB',
-		'10GB',
-	];
+	function getTestNZBFiles() {
+		return [
+			{ name: '100MB', label: '100' + I18n.translate("unit_mb") },
+			{ name: '500MB', label: '500' + I18n.translate("unit_mb") },
+			{ name: '1GB', label: '1' + I18n.translate("unit_gb") },
+			{ name: '5GB', label: '5' + I18n.translate("unit_gb") },
+			{ name: '10GB', label: '10' + I18n.translate("unit_gb") },
+		];
+	}
 	var testNZBListId = 'dropdown_test_nzb_list_';
 	var lastTestStatsId = 'last_test_stats_';
 	var serverTestSpinnerId = 'server_test_spinner_';
@@ -281,6 +293,53 @@ var SystemInfo = (new function($)
 		Downloads.subscribe(downloadsHandler);
 	}
 
+	this.redraw = function()
+	{
+		if (!$Container) return;
+
+		// Update disk speed buttons
+		[
+			{ btn: $SysInfo_DestDirDiskTestBtn, key: DEST_DIR_LS_KEY },
+			{ btn: $SysInfo_InterDirDiskTestBtn, key: INTER_DIR_LS_KEY }
+		].forEach(function(item) {
+			var saved = Util.getFromLocalStorage(item.key);
+			var isNumeric = saved !== null && saved !== '' && !isNaN(saved);
+			if (isNumeric) {
+				item.btn.text(Util.formatSpeed(Number(saved))).removeAttr('data-i18n');
+			} else {
+				item.btn.attr('data-i18n', 'sysinfo_run_test');
+				I18n.translatePage(item.btn);
+			}
+		});
+
+		// Update network speed button
+		var savedNet = Util.getFromLocalStorage(NETWORK_SPEED_TEST_LS_KEY);
+		if (savedNet && !isNaN(savedNet) && !NETWORK_SPEED_TEST_RUNNING) {
+			$SysInfo_NetworkSpeedTestBtn.text(Util.formatNetworkSpeed(Number(savedNet)));
+		}
+		
+		var savedDate = Number(Util.getFromLocalStorage(NETWORK_SPEED_TEST_DATE_LS_KEY));
+		if (savedDate) {
+			renderNetworkSpeedTestBtnTitle(savedDate);
+		}
+
+		// Refresh news servers table to update speed buttons and Yes/No labels
+		if (Status.getStatus() && Status.getStatus()['NewsServers']) {
+			$SysInfo_NewsServersTable.empty();
+			renderNewsServers(Status.getStatus()['NewsServers']);
+		}
+
+		if (lastSysInfo) {
+			$SysInfo_ToolsTable.empty();
+			$SysInfo_LibrariesTable.empty();
+			renderTools(lastSysInfo['Tools']);
+			renderLibraries(lastSysInfo['Libraries']);
+		}
+		
+		// Update App version (includes updates button with data-i18n)
+		renderAppVersion(Options.option('Version'));
+	};
+
 	this.loadSystemInfo = function()
 	{
 		if (sysInfoLoading) return;
@@ -293,6 +352,7 @@ var SystemInfo = (new function($)
 		RPC.call('sysinfo', [], 
 			function (sysInfo)
 			{
+				lastSysInfo = sysInfo;
 				cleanUp();
 				hideSpinner();
 				showMainContent();
@@ -340,6 +400,7 @@ var SystemInfo = (new function($)
 
 	function getTestStats(allStats)
 	{
+		if (!allStats || !Array.isArray(allStats)) return [];
 		return allStats.filter(function(stats) 
 		{ 
 			return stats.NZBFilename
@@ -354,6 +415,8 @@ var SystemInfo = (new function($)
 		$SysInfo_ToolsTable.empty();
 		$SysInfo_LibrariesTable.empty();
 		$SysInfo_NewsServersTable.empty();
+		lastTestStatsBtns = {};
+		spinners = {};
 	}
 
 	function errorHandler(err)
@@ -376,11 +439,11 @@ var SystemInfo = (new function($)
 		}
 		else
 		{
-			$SysInfo_OS.text('N/A');
+			$SysInfo_OS.text(I18n.translate('label_na'));
 		}
 		
-		$SysInfo_CPUModel.text(sysInfo['CPU'].Model || 'Unknown');
-		$SysInfo_Arch.text(sysInfo['CPU'].Arch || 'Unknown');
+		$SysInfo_CPUModel.text(sysInfo['CPU'].Model || I18n.translate('label_unknown'));
+		$SysInfo_Arch.text(sysInfo['CPU'].Arch || I18n.translate('label_unknown'));
 		$SysInfo_ConfPath.text(Options.option('ConfigFile'));
 		$SysInfo_ArticleCache.text(Util.formatSizeMB(+Options.option('ArticleCache')));
 
@@ -454,9 +517,12 @@ var SystemInfo = (new function($)
 		});
 
 		var savedResults = Util.getFromLocalStorage(DEST_DIR_LS_KEY);
-		if (savedResults)
-		{
-			$SysInfo_DestDirDiskTestBtn.text(savedResults);
+		var isNumeric = savedResults !== null && savedResults !== '' && !isNaN(savedResults);
+		if (isNumeric) {
+			$SysInfo_DestDirDiskTestBtn.text(Util.formatSpeed(Number(savedResults))).removeAttr('data-i18n');
+		} else {
+			$SysInfo_DestDirDiskTestBtn.attr('data-i18n', 'sysinfo_run_test');
+			I18n.translatePage($SysInfo_DestDirDiskTestBtn);
 		}
 	}
 
@@ -470,9 +536,12 @@ var SystemInfo = (new function($)
 		});
 
 		var savedResults = Util.getFromLocalStorage(INTER_DIR_LS_KEY);
-		if (savedResults)
-		{
-			$SysInfo_InterDirDiskTestBtn.text(savedResults);
+		var isNumeric = savedResults !== null && savedResults !== '' && !isNaN(savedResults);
+		if (isNumeric) {
+			$SysInfo_InterDirDiskTestBtn.text(Util.formatSpeed(Number(savedResults))).removeAttr('data-i18n');
+		} else {
+			$SysInfo_InterDirDiskTestBtn.attr('data-i18n', 'sysinfo_run_test');
+			I18n.translatePage($SysInfo_InterDirDiskTestBtn);
 		}
 	}
 
@@ -480,7 +549,7 @@ var SystemInfo = (new function($)
 	{
 		if (free === 0 || total === 0)
 		{
-			return 'N/A';
+			return I18n.translate('label_na');
 		}
 
 		var percents = (free / total * 100).toFixed(1) + '%';
@@ -489,8 +558,8 @@ var SystemInfo = (new function($)
 
 	function renderIP(network)
 	{
-		var privateIP = network.PrivateIP ? network.PrivateIP : 'N/A';
-		var publicIP = network.PublicIP ? network.PublicIP : 'N/A';
+		var privateIP = network.PrivateIP ? network.PrivateIP : I18n.translate('label_na');
+		var publicIP = network.PublicIP ? network.PublicIP : I18n.translate('label_na');
 		$SysInfo_IP.text(privateIP + ' / ' + publicIP);
 
 		renderNetworkSpeedTestBtn();
@@ -536,8 +605,10 @@ var SystemInfo = (new function($)
 				function(res) 
 				{
 					$SysInfo_NetworkSpeedTestBtn
-						.text(TEST_BTN_DEFAULT_TEXT)
+						.attr('data-i18n', 'sysinfo_run_test')
+						.text('')
 						.removeClass('btn--disabled');
+					I18n.translatePage($SysInfo_NetworkSpeedTestBtn);
 					removeNetworkSpeedTestBtnTitle();
 					var errTxt = res.split('<br>')[0];
 					$SysInfo_NetworkSpeedTestErrorTxt.html(errTxt);
@@ -552,7 +623,8 @@ var SystemInfo = (new function($)
 		var formatted = Util.formatDateTime(date / 1000);
 		if (formatted)
 		{
-			$SysInfo_NetworkSpeedTestBtn.attr('title', 'Date: ' + formatted);
+			var datePrefix = I18n.translate('sysinfo_stat_date');
+			$SysInfo_NetworkSpeedTestBtn.attr('title', datePrefix + ': ' + formatted);
 		}
 	}
 
@@ -573,10 +645,11 @@ var SystemInfo = (new function($)
 	function renderAppVersion(version)
 	{
 		$SysInfo_AppVersion.text(version);
-		var updateBtn = $('<button type="button" class="btn btn-default">Updates</>');
+		var updateBtn = $('<button type="button" class="btn btn-default" data-i18n="btn_updates"></button>');
 		updateBtn.css('margin-left', '5px');
 		updateBtn.on('click', Config.checkUpdates);
 		$SysInfo_AppVersion.append(updateBtn);
+		I18n.translatePage($SysInfo_AppVersion);
 	}
 
 	function renderTools(tools)
@@ -589,8 +662,8 @@ var SystemInfo = (new function($)
 				var tdPath = $('<td>');
 				tdPath.addClass('flex-center');
 				tdName.text(tool.Name);
-				tdVersion.text(tool.Version ? tool.Version : 'N/A');
-				tdPath.text(tool.Path ? tool.Path : 'Not found');
+				tdVersion.text(tool.Version ? tool.Version : I18n.translate('label_na'));
+				tdPath.text(tool.Path ? tool.Path : I18n.translate('label_not_found'));
 				tr.append(tdName);
 				tr.append(tdVersion);
 				tr.append(tdPath);
@@ -664,12 +737,12 @@ var SystemInfo = (new function($)
 
 				if (newsServer.Active) 
 				{
-					tdActive.text('Yes');
+					tdActive.text(I18n.translate('label_yes_cap'));
 					tdActive.css('color', '#468847');
 				}
 				else 
 				{
-					tdActive.text('No');
+					tdActive.text(I18n.translate('label_no_cap'));
 					tdActive.css('color', '#da4f49');
 				}
 
@@ -681,6 +754,7 @@ var SystemInfo = (new function($)
 				tr.append(tdActive);
 				tr.append(tdTests);
 				$SysInfo_NewsServersTable.append(tr);
+				I18n.translatePage(tr);
 			}
 		);
 	}
@@ -698,14 +772,14 @@ var SystemInfo = (new function($)
 
 	function makeTestServerSpinnerPlaceholder(id)
 	{
-		var spinner = $('<i id="' + id + '" class="material-icon spinner">progress_activity</>');
+		var spinner = $('<i id="' + id + '" class="material-icon spinner">progress_activity</i>');
 		spinner.css('display', 'none');
 		return spinner;
 	}
 
 	function makeTestConnectionBtn(serverid)
 	{
-		var testConnectionBtn = $('<button type="button" class="btn btn-default">Connection</>');
+		var testConnectionBtn = $('<button type="button" class="btn btn-default" data-i18n="btn_connection"></button>');
 
 		testConnectionBtn.attr({ 'data-multiid': serverid });
 		testConnectionBtn.on('click', function () 
@@ -725,7 +799,7 @@ var SystemInfo = (new function($)
 		var caret = $('<span class="caret"></>');
 		caret.css('margin-left', '5px');
 		
-		var testBtn = $('<button class="btn btn-default dropdown-toggle" data-toggle="dropdown">Speed</>');
+		var testBtn = $('<button class="btn btn-default dropdown-toggle" data-toggle="dropdown"><span data-i18n="sysinfo_speed"></span></button>');
 
 		testBtn.append(caret);
 		container.append(testBtn);
@@ -736,14 +810,14 @@ var SystemInfo = (new function($)
 	function makeListOfTestNZB(serverid)
 	{
 		var list = $('<ul class="test-server-dropdwon-menu dropdown-menu" id="' + testNZBListId + serverid + '"></ul>');
-		testNZBFiles.forEach(function(name)
+		getTestNZBFiles().forEach(function(item)
 		{
-			var fullName = nzbFileTestPrefix + name + '.nzb';
+			var fullName = nzbFileTestPrefix + item.name + '.nzb';
 			var li = $('<li></>');
 			li.css('display', 'flex');
 			li.css('align-items', 'center');
 			li.css('padding', '1px 0');
-			var btn = $('<a href="#">' + name + '</a>').on('click', function(e) 
+			var btn = $('<a href="#">' + item.label + '</a>').on('click', function(e) 
 				{
 					e.preventDefault();
 					testServerSpeed(fullName, serverid);
@@ -841,22 +915,10 @@ var SystemInfo = (new function($)
 	{
 		var bytes = stats.DownloadedSizeMB > 1024 ? stats.DownloadedSizeMB * 1024.0 * 1024.0 : stats.DownloadedSizeLo;
 		var bytesPerSec = bytes / stats.DownloadTimeSec;
-		var bitsPerSec = bytes * 8 / stats.DownloadTimeSec;
 		var speedBytes = stats.DownloadTimeSec > 0 ? Util.formatSpeed(bytesPerSec) : '--';
-		var speedBits = stats.DownloadTimeSec > 0 ? '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'b') : '--';
-		
 		var speedContainer = $('<span></span>');
-	
-		var speedBitsContainer = $('<span class="approx-speed-txt"></span>');
-		speedBitsContainer.text(speedBits);
 		
 		speedContainer.text(speedBytes);
-		speedContainer.append(speedBitsContainer);
-
-		speedContainer.attr('title', Util.formatSpeedWithCustomUnit(bytesPerSec, 'Bytes') 
-		+ '\nApprox. ' 
-		+  '≈' + Util.formatSpeedWithCustomUnit(bitsPerSec, 'bit'));
-
 		return speedContainer;
 	}
 

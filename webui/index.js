@@ -157,65 +157,83 @@ var UISettings = (new function($)
 
 $(document).ready(function()
 {
-	Frontend.init();
 	var lightThemeStyleSheet = 'light-theme.css';
 	var darkThemeStyleSheet = 'dark-theme.css';
-	var themeToggleBtn = $('#ThemeToggle');
 	var themeStyleSheet = $('#ThemeStyleSheet');
-	var darkThemeToggleBtn = $('<i class="material-icon" title="Switch to dark theme">dark_mode</i>');
-	var lightThemeToggleBtn = $('<i class="material-icon" title="Switch to light theme">light_mode</i>');
-	var savedTheme = getSavedTheme();
+	var savedTheme = Util.getFromLocalStorage('Theme');
 
-	if (!savedTheme)
-	{
-		turnOnThemeDependingOnSystemTheme();
+	// Language elements
+	var $langSelect = $('#LanguageSelect');
+
+	// Initialize frontend (i18n loads translations internally)
+	Frontend.init();
+
+	// Language Setup - wait for i18n to be ready before populating dropdown
+	I18n.whenReady(function() {
+		var langs = I18n.getAvailableLangs();
+		var currentLang = I18n.getCurrentLang();
+
+		langs.forEach(function(lang) {
+			var selected = (lang.code === currentLang) ? 'selected' : '';
+			var option = $('<option value="' + lang.code + '" ' + selected + '>' + lang.name + '</option>');
+			$langSelect.append(option);
+		});
+	});
+
+	$langSelect.click(function(e) {
+		e.stopPropagation();
+	});
+
+	$langSelect.change(function() {
+		I18n.setLanguage($(this).val());
+	});
+
+	// 3. Unit Setup
+	function updateUnitUI() {
+		$('.unit-btn').removeClass('btn-active');
+		$('.unit-btn[data-val="' + I18n.getSpeedUnit() + '"]').addClass('btn-active');
 	}
-	else
-	{
-		if (savedTheme == 'light')
-		{
-			turnOnLightTheme();
+
+	updateUnitUI();
+
+	$('.unit-btn').click(function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+
+		var selectedUnit = $(this).attr('data-val');
+		if (selectedUnit !== I18n.getSpeedUnit()) {
+			I18n.setSpeedUnit(selectedUnit);
 		}
-		else
-		{
-			turnOnDarkTheme();
-		}
+	});
+
+	// 4. Theme Setup (doesn't depend on i18n but needs to run after DOM ready)
+	function isDarkTheme() { return themeStyleSheet.attr('href') === darkThemeStyleSheet; }
+
+	function updateThemeUI() {
+		$('.theme-btn').removeClass('btn-active');
+		var current = isDarkTheme() ? 'dark' : 'light';
+		$('.theme-btn[data-val="' + current + '"]').addClass('btn-active');
 	}
 
-	subscribe();
+	if (!savedTheme) turnOnThemeDependingOnSystemTheme();
+	else if (savedTheme === 'light') turnOnLightTheme();
+	else turnOnDarkTheme();
 
-	function saveTheme(theme)
-	{
-		window.localStorage.setItem('Theme', theme);
-	}
+	updateThemeUI();
 
-	function turnOnThemeDependingOnSystemTheme()
-	{
-		if (isSystemThemeDark()) 
-		{
-			turnOnDarkTheme();
-		} else 
-		{
-			turnOnLightTheme();
-		}
-	}
+	$('.theme-btn').click(function(e) {
+		e.preventDefault();
+		e.stopPropagation();
+		var selectedTheme = $(this).attr('data-val');
+		if (selectedTheme === 'dark') turnOnDarkTheme();
+		else turnOnLightTheme();
+		Util.saveToLocalStorage('Theme', selectedTheme);
+		updateThemeUI();
+	});
 
-	function turnOnLightTheme()
-	{
-		themeStyleSheet.attr('href', lightThemeStyleSheet);
-		themeToggleBtn.children().replaceWith(darkThemeToggleBtn);
-	}
-
-	function turnOnDarkTheme()
-	{
-		themeStyleSheet.attr('href', darkThemeStyleSheet);
-		themeToggleBtn.children().replaceWith(lightThemeToggleBtn);
-	}
-
-	function getSavedTheme()
-	{
-		return window.localStorage.getItem('Theme');
-	}
+	function turnOnThemeDependingOnSystemTheme() { if (isSystemThemeDark()) turnOnDarkTheme(); else turnOnLightTheme(); }
+	function turnOnLightTheme() { themeStyleSheet.attr('href', lightThemeStyleSheet); }
+	function turnOnDarkTheme() { themeStyleSheet.attr('href', darkThemeStyleSheet); }
 
 	function isSystemThemeDark()
 	{
@@ -224,25 +242,11 @@ $(document).ready(function()
 
 	function isDarkTheme()
 	{
-		return themeStyleSheet.attr('href') === lightThemeStyleSheet;
-	}
-
-	function subscribe()
-	{
-		themeToggleBtn.on('click', function() {
-			if (isDarkTheme()) 
-			{
-				turnOnDarkTheme();
-				saveTheme('dark')
-			} else 
-			{
-				turnOnLightTheme();
-				saveTheme('light');
-			}
-		});
+		return themeStyleSheet.attr('href') === darkThemeStyleSheet;
 	}
 });
 
+	var switchingTheme = false;
 
 /*** FRONTEND MAIN PAGE ***********************************************************/
 
@@ -263,11 +267,6 @@ var Frontend = (new function($)
 	this.init = function()
 	{
 		window.onerror = error;
-
-		if (!checkBrowser())
-		{
-			return;
-		}
 
 		$('#FirstUpdateInfo').show();
 
@@ -310,6 +309,8 @@ var Frontend = (new function($)
 
 		initialized = true;
 
+		I18n.translatePage();
+
 		authorize();
 	}
 
@@ -333,17 +334,6 @@ var Frontend = (new function($)
 		$(window).scroll(windowScrolled);
 	}
 
-	function checkBrowser()
-	{
-		if ($.browser.msie && parseInt($.browser.version, 10) < 9)
-		{
-			$('#FirstUpdateInfo').hide();
-			$('#UnsupportedBrowserIE8Alert').show();
-			return false;
-		}
-		return true;
-	}
-
 	function error(message, source, lineno)
 	{
 		if (source == '')
@@ -353,7 +343,7 @@ var Frontend = (new function($)
 		}
 
 		$('#FirstUpdateInfo').hide();
-		$('#ErrorAlert-title').text('Error in ' + source + ' (line ' + lineno + ')');
+		$('#ErrorAlert-title').text(I18n.translate('msg_error_in_source', source, lineno));
 		$('#ErrorAlert-text').text(message);
 		$('#ErrorAlert').show();
 
@@ -446,6 +436,7 @@ var Frontend = (new function($)
 		switch (activeTab)
 		{
 			case 'Config': Config.shown(); break;
+			case 'Statistics': Statistics.redraw(); break;
 		}
 	}
 
@@ -548,7 +539,6 @@ var Frontend = (new function($)
 		resizeNavbar();
 
 		alignPopupMenu('#PlayMenu');
-		alignPopupMenu('#RefreshMenu');
 		alignPopupMenu('#RssMenu');
 		alignPopupMenu('#StatDialog_MonthMenu', true);
 
@@ -720,7 +710,6 @@ var Frontend = (new function($)
 		$('#HistoryTable').toggleClass('table-check', !UISettings.miniTheme || UISettings.showEditButtons);
 
 		alignPopupMenu('#PlayMenu');
-		alignPopupMenu('#RefreshMenu');
 		alignPopupMenu('#RssMenu');
 		alignPopupMenu('#StatDialog_MonthMenu', true);
 
@@ -829,10 +818,19 @@ var Refresher = (new function($)
 	var refreshNeeded = false;
 	var refreshErrors = 0;
 
+	// Update error message when language changes
+	function updateErrorMessage()
+	{
+		RPC.connectErrorMessage = I18n.translate('msg_cannot_establish_connection');
+	}
+
 	this.init = function()
 	{
 		RPC.rpcUrl = UISettings.rpcUrl;
-		RPC.connectErrorMessage = 'Cannot establish connection to NZBGet.'
+		// Subscribe to language changes immediately to ensure updates work
+		I18n.subscribe(updateErrorMessage);
+		// Also call immediately in case translations are already loaded
+		updateErrorMessage();
 		RPC.defaultFailureCallback = rpcFailure;
 		RPC.next = loadNext;
 		RPC.safeMethods = [
@@ -860,7 +858,8 @@ var Refresher = (new function($)
 			'testdiskspeed',
 		];
 
-		$('#RefreshMenu li a').click(refreshIntervalClick);
+		$('#RefreshSelect').click(function(e) { e.stopPropagation(); });
+		$('#RefreshSelect').change(refreshIntervalChange);
 		$('#RefreshButton').click(refreshClick);
 		updateRefreshMenu();
 	}
@@ -1063,9 +1062,9 @@ var Refresher = (new function($)
 		}
 	}
 
-	function refreshIntervalClick()
+	function refreshIntervalChange()
 	{
-		var data = $(this).parent().attr('data');
+		var data = $(this).val();
 		UISettings.refreshInterval = parseFloat(data);
 		scheduleNextRefresh();
 		updateRefreshMenu();
@@ -1080,14 +1079,15 @@ var Refresher = (new function($)
 
 	function updateRefreshMenu()
 	{
-		Util.setMenuMark($('#RefreshMenu'), UISettings.refreshInterval);
+		$('#RefreshSelect').val(UISettings.refreshInterval);
 	}
 }(jQuery));
 
 
 function TODO(text)
 {
-	$('#Notif_NotImplemented_Param').html(text === undefined ? '' : ': ' + text);
+	var txt = I18n.translate('not_implemented');
+	$('#Notif_NotImplemented_Param').html(txt === undefined ? '' : ': ' + txt);
 	PopupNotification.show('#Notif_NotImplemented');
 }
 
@@ -1185,7 +1185,16 @@ var AlertDialog = (new function($)
 
 	this.showModal = function(title, text)
 	{
-		$('#AlertDialog_Title').html(title);
+		var translatedTitle = title;
+
+		if (I18n.translate)
+		{
+			if (title === 'Error') translatedTitle = I18n.translate('sysinfo_error');
+			else if (title === 'Alert') translatedTitle = I18n.translate('alert_dialog_title');
+			else translatedTitle = I18n.translate(title);
+		}
+
+		$('#AlertDialog_Title').html(translatedTitle);
 		$('#AlertDialog_Text').html(text);
 		Util.centerDialog($AlertDialog, true);
 		$AlertDialog.modal();

@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -51,23 +51,23 @@ var Downloads = (new function($)
 	var listGroupsSubs = [];
 
 	var statusData = {
-		'QUEUED': { Text: 'QUEUED', PostProcess: false },
-		'FETCHING': { Text: 'FETCHING', PostProcess: false },
-		'DOWNLOADING': { Text: 'DOWNLOADING', PostProcess: false },
-		'QS_QUEUED': { Text: 'QS-QUEUED', PostProcess: true },
-		'QS_EXECUTING': { Text: 'QUEUE-SCRIPT', PostProcess: true },
-		'PP_QUEUED': { Text: 'PP-QUEUED', PostProcess: true },
-		'PAUSED': { Text: 'PAUSED', PostProcess: false },
-		'LOADING_PARS': { Text: 'CHECKING', PostProcess: true },
-		'VERIFYING_SOURCES': { Text: 'CHECKING', PostProcess: true },
-		'REPAIRING': { Text: 'REPAIRING', PostProcess: true },
-		'VERIFYING_REPAIRED': { Text: 'VERIFYING', PostProcess: true },
-		'RENAMING': { Text: 'RENAMING', PostProcess: true },
-		'MOVING': { Text: 'MOVING', PostProcess: true },
-		'POST_UNPACK_RENAMING': { Text: 'POST-UNPACK-RENAMING', PostProcess: true },
-		'UNPACKING': { Text: 'UNPACKING', PostProcess: true },
-		'EXECUTING_SCRIPT': { Text: 'PROCESSING', PostProcess: true },
-		'PP_FINISHED': { Text: 'FINISHED', PostProcess: false }
+		'QUEUED': { Text: 'status_queued_cap', PostProcess: false },
+		'FETCHING': { Text: 'status_fetching_cap', PostProcess: false },
+		'DOWNLOADING': { Text: 'status_downloading_cap', PostProcess: false },
+		'QS_QUEUED': { Text: 'status_qs_queued_cap', PostProcess: true },
+		'QS_EXECUTING': { Text: 'status_queue_script_cap', PostProcess: true },
+		'PP_QUEUED': { Text: 'status_pp_queued_cap', PostProcess: true },
+		'PAUSED': { Text: 'status_paused_cap', PostProcess: false },
+		'LOADING_PARS': { Text: 'status_checking_cap', PostProcess: true },
+		'VERIFYING_SOURCES': { Text: 'status_checking_cap', PostProcess: true },
+		'REPAIRING': { Text: 'status_repairing_cap', PostProcess: true },
+		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
+		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
+		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
+		'POST_UNPACK_RENAMING': { Text: 'status_post_unpack_renaming_cap', PostProcess: true },
+		'UNPACKING': { Text: 'status_unpacking_cap', PostProcess: true },
+		'EXECUTING_SCRIPT': { Text: 'status_processing_cap', PostProcess: true },
+		'PP_FINISHED': { Text: 'status_finished_cap', PostProcess: false }
 		};
 	this.statusData = statusData;
 
@@ -116,6 +116,9 @@ var Downloads = (new function($)
 		$CategoryMenu.on('click', 'a', categoryMenuClick);
 
 		DownloadsActionsMenu.init();
+
+		Options.subscribe(DownloadsUI);
+		I18n.subscribe(function() { Downloads.redraw(true); });
 	}
 	
 
@@ -146,10 +149,7 @@ var Downloads = (new function($)
 
 	function groups_loaded(_groups, _cached)
 	{
-		if (!groups)
-		{
-			$('#DownloadsTable_Category').css('width', DownloadsUI.calcCategoryColumnWidth());
-		}
+		$('#DownloadsTable_Category').css('width', DownloadsUI.calcCategoryColumnWidth());
 
 		cached = _cached;
 		if (!Refresher.isPaused() && !cached)
@@ -252,7 +252,7 @@ var Downloads = (new function($)
 		var propagation = '';
 		if (group.ActiveDownloads == 0 && age < parseInt(Options.option('PropagationDelay')) * 60)
 		{
-			propagation = '<span class="label label-warning" title="Very recent post, temporary delayed (see option PropagationDelay)">delayed</span> ';
+			propagation = '<span class="label label-warning text-uppercase" title="' + I18n.translate('desc_propagation_delayed') + '">' + I18n.translate('label_propagation_delayed') + '</span> ';
 		}
 
 		var name = '<a href="#" data-nzbid="' + group.NZBID + '">' + Util.textToHtml(Util.formatNZBName(group.NZBName)) + '</a>';
@@ -261,7 +261,7 @@ var Downloads = (new function($)
 		var url = '';
 		if (group.Kind === 'URL')
 		{
-			url = '<span class="label label-info">URL</span> ';
+			url = '<span class="label label-info">' + I18n.translate('label_kind_url') + '</span> ';
 		}
 
 		var health = '';
@@ -270,10 +270,10 @@ var Downloads = (new function($)
 		{
 			health = ' <span class="label ' +
 				(group.Health >= group.CriticalHealth ? 'label-warning' : 'label-important') +
-				'">health: ' + Math.floor(group.Health / 10) + '%</span> ';
+				'">' + I18n.translate('status_health', Math.floor(group.Health / 10)) + '</span> ';
 		}
 
-		var category = group.Category !== '' ? Util.textToHtml(group.Category) : '<span class="none-category">None</span>';
+		var category = group.Category !== '' ? Util.textToHtml(group.Category) : '<span class="none-category">' + I18n.translate('label_none') + '</span>';
 		var backup = DownloadsUI.buildBackupLabel(group);
 
 		if (!UISettings.miniTheme)
@@ -311,14 +311,6 @@ var Downloads = (new function($)
 		else if (index === 2 || index === 4)
 		{
 			cell.className = !UISettings.miniTheme ? 'dropdown-cell dropafter-cell' : '';
-		}
-		else if (index === 3)
-		{
-			cell.className = !UISettings.miniTheme ? 'dropafter-cell' : '';
-		}
-		else if (index === 5)
-		{
-			cell.className = 'text-right' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
 		}
 		else if (6 <= index && index <= 8)
 		{
@@ -723,18 +715,18 @@ var DownloadsUI = (new function($)
 	this.fillPriorityCombo = function(combo)
 	{
 		combo.empty();
-		combo.append('<option value="900">force</option>');
-		combo.append('<option value="100">very high</option>');
-		combo.append('<option value="50">high</option>');
-		combo.append('<option value="0">normal</option>');
-		combo.append('<option value="-50">low</option>');
-		combo.append('<option value="-100">very low</option>');
+		combo.append($('<option value="900"></option>').text(I18n.translate('priority_force').toLowerCase()));
+		combo.append($('<option value="100"></option>').text(I18n.translate('priority_very_high').toLowerCase()));
+		combo.append($('<option value="50"></option>').text(I18n.translate('priority_high').toLowerCase()));
+		combo.append($('<option value="0"></option>').text(I18n.translate('priority_normal').toLowerCase()));
+		combo.append($('<option value="-50"></option>').text(I18n.translate('priority_low').toLowerCase()));
+		combo.append($('<option value="-100"></option>').text(I18n.translate('priority_very_low').toLowerCase()));
 	}
 
 	this.fillCategoryCombo = function(combo)
 	{
 		combo.empty();
-		combo.append('<option></option>');
+		combo.append($('<option value=""></option>').text(I18n.translate('label_none')));
 
 		for (var i=0; i < Options.categories.length; i++)
 		{
@@ -761,17 +753,18 @@ var DownloadsUI = (new function($)
 
 	this.buildStatusText = function(group)
 	{
-		var statusText = Downloads.statusData[group.Status].Text;
-		if (statusText === undefined)
+		var statusTextKey = Downloads.statusData[group.Status].Text;
+		if (statusTextKey === undefined)
 		{
-			statusText = 'Internal error(' + group.Status + ')';
+			return I18n.translate('label_error') + ' (' + group.Status + ')';
 		}
-		return statusText;
+		return I18n.translate(statusTextKey);
 	}
 
 	this.buildStatus = function(group)
 	{
-		var statusText = Downloads.statusData[group.Status].Text;
+		var statusTextKey = Downloads.statusData[group.Status].Text;
+		var statusText = I18n.translate(statusTextKey);
 		var badgeClass = '';
 
 		if (group.postprocess && group.Status !== 'PP_QUEUED' && group.Status !== 'QS_QUEUED')
@@ -788,11 +781,11 @@ var DownloadsUI = (new function($)
 		}
 		else if (statusText === undefined)
 		{
-			statusText = 'INTERNAL_ERROR (' + group.Status + ')';
+			statusText = I18n.translate('label_error') + ' (' + group.Status + ')';
 			badgeClass = 'label-important';
 		}
 
-		return '<span class="label label-status ' + badgeClass + '">' + statusText + '</span>';
+		return '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
 	}
 
 	this.buildProgress = function(group, totalsize, remaining, estimated)
@@ -901,12 +894,12 @@ var DownloadsUI = (new function($)
 		switch (priority)
 		{
 			case 0: return '';
-			case 900: return 'force priority';
-			case 100: return 'very high priority';
-			case 50: return 'high priority';
-			case -50: return 'low priority';
-			case -100: return 'very low priority';
-			default: return 'priority: ' + priority;
+			case 900: return I18n.translate('priority_force').toLowerCase() + ' ' + I18n.translate('edit_priority').toLowerCase();
+			case 100: return I18n.translate('priority_very_high').toLowerCase() + ' ' + I18n.translate('edit_priority').toLowerCase();
+			case 50: return I18n.translate('priority_high').toLowerCase() + ' ' + I18n.translate('edit_priority').toLowerCase();
+			case -50: return I18n.translate('priority_low').toLowerCase() + ' ' + I18n.translate('edit_priority').toLowerCase();
+			case -100: return I18n.translate('priority_very_low').toLowerCase() + ' ' + I18n.translate('edit_priority').toLowerCase();
+			default: return I18n.translate('edit_priority') + ': ' + priority;
 		}
 	}
 
@@ -915,16 +908,16 @@ var DownloadsUI = (new function($)
 		var priority = group.MaxPriority;
 		var text;
 
-		if (priority >= 900) text = ' <div class="icon-circle-red" title="Force priority"></div>';
-		else if (priority > 50) text = ' <div class="icon-ring-fill-red" title="Very high priority"></div>';
-		else if (priority > 0) text = ' <div class="icon-ring-red" title="High priority"></div>';
-		else if (priority == 0) text = ' <div class="icon-ring-ltgrey" title="Normal priority"></div>';
-		else if (priority >= -50) text = ' <div class="icon-ring-blue" title="Low priority"></div>';
-		else text = ' <div class="icon-ring-fill-blue" title="Very low priority"></div>';
+		if (priority >= 900) text = ' <div class="icon-circle-red" title="' + I18n.translate('priority_force') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
+		else if (priority > 50) text = ' <div class="icon-ring-fill-red" title="' + I18n.translate('priority_very_high') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
+		else if (priority > 0) text = ' <div class="icon-ring-red" title="' + I18n.translate('priority_high') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
+		else if (priority == 0) text = ' <div class="icon-ring-ltgrey" title="' + I18n.translate('priority_normal') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
+		else if (priority >= -50) text = ' <div class="icon-ring-blue" title="' + I18n.translate('priority_low') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
+		else text = ' <div class="icon-ring-fill-blue" title="' + I18n.translate('priority_very_low') + ' ' + I18n.translate('edit_priority').toLowerCase() + '"></div>';
 
 		if ([900, 100, 50, 0, -50, -100].indexOf(priority) == -1)
 		{
-			text = text.replace('priority', 'priority (' + priority + ')');
+			text = text.replace(I18n.translate('edit_priority').toLowerCase(), I18n.translate('edit_priority').toLowerCase() + ' (' + priority + ')');
 		}
 
 		return text;
@@ -943,7 +936,7 @@ var DownloadsUI = (new function($)
 			}
 		}
 		return encryptedPassword != '' ?
-			' <span class="label label-info" title="'+ Util.textToAttr(encryptedPassword) +'">encrypted</span>' : '';
+			' <span class="label label-info" title="'+ Util.textToAttr(encryptedPassword) +'">' + I18n.translate('label_encrypted') + '</span>' : '';
 	}
 
 	this.buildBackupLabel = function(group)
@@ -952,8 +945,9 @@ var DownloadsUI = (new function($)
 		var backupPercent = calcBackupPercent(group);
 		if (backupPercent > 0)
 		{
-			backup = ' <a href="#" data-nzbid="' + group.NZBID + '" data-area="backup" class="badge-link"><span class="label label-warning" title="with backup news servers">backup: ' +
-				(backupPercent < 10 ? Util.round1(backupPercent) : Util.round0(backupPercent)) + '%</span> ';
+			var percentStr = (backupPercent < 10 ? Util.round1(backupPercent) : Util.round0(backupPercent));
+			backup = ' <a href="#" data-nzbid="' + group.NZBID + '" data-area="backup" class="badge-link"><span class="label label-warning" title="' + 
+				I18n.translate('desc_backup_servers') + '">' + I18n.translate('label_backup_percent', percentStr) + '</span> ';
 		}
 		return backup;
 	}
@@ -1037,7 +1031,7 @@ var DownloadsUI = (new function($)
 		if (dupeCheck && dupeKey != '' && UISettings.dupeBadges)
 		{
 			return ' <span class="label' + (dupeMode === 'FORCE' ? ' label-important' : '') +
-				'" title="Duplicate key: ' + dupeKey +
+				'" title="' + I18n.translate('desc_duplicate_key', dupeKey) +
 				(dupeScore !== 0 ? '; score: ' + dupeScore : '') +
 				(dupeMode !== 'SCORE' ? '; mode: ' + dupeMode.toLowerCase() : '') +
 				'">' + formatDupeText(dupeKey, dupeScore, dupeMode) + '</span> ';
@@ -1057,10 +1051,15 @@ var DownloadsUI = (new function($)
 	{
 		if (categoryColumnWidth === null)
 		{
+			if (typeof Options === 'undefined' || !Options.options)
+			{
+				return '60px';
+			}
+
 			var widthHelper = $('<div></div>').css({'position': 'absolute', 'float': 'left', 'white-space': 'nowrap', 'visibility': 'hidden'}).appendTo($('body'));
 
 			// default (min) width
-			categoryColumnWidth = 60;
+			var width = 60;
 
 			for (var i = 1; ; i++)
 			{
@@ -1071,12 +1070,12 @@ var DownloadsUI = (new function($)
 				}
 				widthHelper.text(opt);
 				var catWidth = widthHelper.width();
-				categoryColumnWidth = Math.max(categoryColumnWidth, catWidth);
+				width = Math.max(width, catWidth);
 			}
 
 			widthHelper.remove();
 
-			categoryColumnWidth = (categoryColumnWidth + 8) + 'px';
+			categoryColumnWidth = (width + 8) + 'px';
 		}
 
 		return categoryColumnWidth;
@@ -1150,8 +1149,16 @@ var DownloadsUI = (new function($)
 	{
 		var warning = $('.dropdown-warning', $(menu));
 		Util.show(warning, editIds.length > 1);
-		warning.text(editIds.length + ' records selected');
-	}	
+		warning.text(I18n.translate('records_selected_warning', editIds.length));
+	}
+
+	this.update = function()
+	{
+		this.resetCategoryColumnWidth();
+		var width = this.calcCategoryColumnWidth();
+		$('#DownloadsTable_Category').css('width', width);
+		$('#HistoryTable_Category').css('width', width);
+	}
 }(jQuery));
 
 /*** DOWNLOADS ACTION MENU *************************************************************************/

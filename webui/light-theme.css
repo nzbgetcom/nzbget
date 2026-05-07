@@ -126,7 +126,6 @@ html {
 /* headers in navbar menu */
 .menu-header {
 	display: block;
-	padding: 3px 15px;
 	font-size: 11px;
 	font-weight: bold;
 	line-height: 18px;
@@ -156,9 +155,9 @@ html {
 	text-shadow: none;
 }
 
-.table-bordered {
+.table-bordered:not(.table-fixed) th,
+.table-bordered:not(.table-fixed) td {
 	border-left: 1px solid #dddddd;
-	border-collapse: collapse;
 }
 
 .table-striped tbody tr:nth-child(odd) {
