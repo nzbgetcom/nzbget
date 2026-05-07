@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,6 +116,7 @@ var Status = (new function($)
 		StatDialog.init();
 		FilterMenu.init();
 		initTitle();
+		I18n.subscribe(Status.redraw);
 	}
 
 	this.update = function()
@@ -151,16 +152,23 @@ var Status = (new function($)
 
 	function redrawInfo()
 	{
-		Util.show($CHPauseDownload, status.DownloadPaused);
-		Util.show($CHPausePostProcess, status.PostPaused);
-		Util.show($CHPauseScan, status.ScanPaused);
+		$CHPauseDownload.text(status.DownloadPaused ? 'check_box' : 'check_box_outline_blank').show();
+		$CHPausePostProcess.text(status.PostPaused ? 'check_box' : 'check_box_outline_blank').show();
+		$CHPauseScan.text(status.ScanPaused ? 'check_box' : 'check_box_outline_blank').show();
 
 		updatePlayAnim();
 		updatePlayButton();
 
+		var useBits = (I18n.getSpeedUnit() === 'Mb/s');
+		var unitEmpty = '--- ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
+		var h = I18n.translate('time_hours_short');
+		var m = I18n.translate('time_minutes_short');
+		var timeEmpty = '--' + h + ' --' + m;
+		var timeZero = '0' + h + ' 0' + m;
+
 		if (status.ServerStandBy)
 		{
-			$StatusSpeed.html('--- MB/s');
+			$StatusSpeed.html(unitEmpty);
 			if (status.ResumeTime > 0)
 			{
 				$StatusTime.html(Util.formatTimeLeft(status.ResumeTime - status.ServerTime));
@@ -173,12 +181,12 @@ var Status = (new function($)
 				}
 				else
 				{
-					$StatusTime.html('--h --m');
+					$StatusTime.html(timeEmpty);
 				}
 			}
 			else
 			{
-				$StatusTime.html('0h 0m');
+				$StatusTime.html(timeZero);
 			}
 		}
 		else
@@ -191,7 +199,7 @@ var Status = (new function($)
 			}
 			else
 			{
-				$StatusTime.html('--h --m');
+				$StatusTime.html(timeEmpty);
 			}
 		}
 
@@ -544,6 +552,7 @@ var StatDialog = (new function($)
 	var $StatDialog_DataAverageSpeed;
 	var $StatDialog_DataCurrentSpeed;
 	var $StatDialog_DataSpeedLimit;
+	var $StatDialog_DataThreads;
 	var $StatDialog_ArticleCache;
 	var $StatDialog_QueueScripts;
 	var $StatRangeDialog;
@@ -577,7 +586,13 @@ var StatDialog = (new function($)
 	var clockOK = false;
 	var volumeMode = false;
 
-	var monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+	function getMonthName(month, long)
+	{
+		var date = new Date(2000, month, 1);
+		var options = { month: long ? 'long' : 'short' };
+		var name = new Intl.DateTimeFormat(I18n.getLocale(), options).format(date);
+		return name.charAt(0).toUpperCase() + name.slice(1);
+	}
 
 	this.init = function()
 	{
@@ -591,6 +606,7 @@ var StatDialog = (new function($)
 		$StatDialog_DataAverageSpeed = $('#StatDialog_DataAverageSpeed');
 		$StatDialog_DataCurrentSpeed = $('#StatDialog_DataCurrentSpeed');
 		$StatDialog_DataSpeedLimit = $('#StatDialog_DataSpeedLimit');
+		$StatDialog_DataThreads = $('#StatDialog_DataThreads');
 		$StatDialog_ArticleCache = $('#StatDialog_ArticleCache');
 		$StatDialog_QueueScripts = $('#StatDialog_QueueScripts');
 		$StatRangeDialog = $('#StatRangeDialog');
@@ -667,17 +683,26 @@ var StatDialog = (new function($)
 		$('#StatDialog_VolumesTab').hide();
 		$('#StatDialog_Back').hide();
 		$('#StatDialog_BackSpace').show();
-		$('#StatDialog_Title').text('Statistics and Status');
+		$('#StatDialog_Title').attr('data-i18n', 'title_statistics_and_status');
+		I18n.translatePage($('#StatDialog_Title').parent());
 		Util.show('#StatDialog_ArticleCache_Row', Options.option('ArticleCache') !== '0');
 		Util.show('#StatDialog_QueueScripts_Row', Status.status.QueueScriptCount > 0);
 		$StatDialog.removeClass('modal-large').addClass('modal-mini');
 
 		if (Options.option('QuotaStartDay') != '1')
 		{
-			$('#StatDialog_MonthTitle').text('Billing month:');
+			var billingMonthTxt = I18n.translate('stat_dialog_billing_month');
+			$('#StatDialog_MonthTitle').text(billingMonthTxt);
+			$('#StatDialog_MonthTitle').attr('data-i18n', 'stat_dialog_billing_month');
+		}
+		else
+		{
+			var thisMonthTxt = I18n.translate('stat_dialog_this_month');
+			$('#StatDialog_MonthTitle').text(thisMonthTxt);
+			$('#StatDialog_MonthTitle').attr('data-i18n', 'stat_dialog_this_month');
 		}
 
-		$('#StatDialog_Volume_MONTH, #StatDialog_Volume_MONTH2').text(monthNames[(new Date()).getMonth()] + ' ' + (new Date()).getFullYear());
+		$('#StatDialog_Volume_MONTH, #StatDialog_Volume_MONTH2').text(getMonthName((new Date()).getMonth(), true) + ' ' + (new Date()).getFullYear());
 
 		monthListInitialized = false;
 		updateServerList();
@@ -721,6 +746,11 @@ var StatDialog = (new function($)
 	{
 		var status = Status.status;
 
+		if (!status)
+		{
+			return;
+		}
+
 		$StatDialog_DataVersion.text(Options.option('Version'));
 		$StatDialog_DataUptime.text(Util.formatTimeHMS(status.UpTimeSec));
 		$StatDialog_DataDownloadTime.text(Util.formatTimeHMS(status.DownloadTimeSec));
@@ -730,41 +760,45 @@ var StatDialog = (new function($)
 		$StatDialog_DataAverageSpeed.html(Util.formatSpeed(status.AverageDownloadRate));
 		$StatDialog_DataCurrentSpeed.html(Util.formatSpeed(status.DownloadRate));
 		$StatDialog_DataSpeedLimit.html(Util.formatSpeed(status.DownloadLimit));
+		$StatDialog_DataThreads.html(status.ThreadCount);
 		$StatDialog_ArticleCache.html(Util.formatSizeMB(status.ArticleCacheMB, status.ArticleCacheLo));
 		$StatDialog_QueueScripts.html(status.QueueScriptCount);
 
+		Util.show('#StatDialog_ArticleCache_Row', status.ArticleCacheMB > 0 || status.ArticleCacheLo > 0);
+		Util.show('#StatDialog_QueueScripts_Row', status.QueueScriptCount > 0);
+
 		var content = '';
-		content += '<tr><td>Download</td><td class="text-right">' +
-			(status.DownloadPaused ?
-			'<span class="label label-status label-warning">paused</span>' :
-			'<span class="label label-status label-success">active</span>') +
+		var label = function(key, type) {
+			return '<span class="label label-status ' + (type ? 'label-' + type : '') + ' text-uppercase" data-i18n="' + key + '">' + I18n.translate(key) + '</span>';
+		};
+
+		content += '<tr><td data-i18n="stat_download"></td><td class="text-right">' +
+			(status.DownloadPaused ? label('label_paused', 'warning') : label('label_active', 'success')) +
 			'</td></tr>';
 
-		content += '<tr><td>Post-processing</td><td class="text-right">' + (Options.option('PostProcess') === '' ?
-			'<span class="label label-status">disabled</span>' :
-			(status.PostPaused ?
-			'<span class="label label-status label-warning">paused</span>' :
-			'<span class="label label-status label-success">active</span>')) +
+		content += '<tr><td data-i18n="stat_post_processing"></td><td class="text-right">' + (Options.option('PostProcess') === '' ?
+			label('label_disabled') :
+			(status.PostPaused ? label('label_paused', 'warning') : label('label_active', 'success'))) +
 			'</td></tr>';
 
-		content += '<tr><td>NZB-Directory scan</td><td class="text-right">' + (Options.option('NzbDirInterval') === '0' ?
-			'<span class="label label-status">disabled</span>' :
-			(status.ScanPaused ?
-			'<span class="label label-status label-warning">paused</span>' :
-			'<span class="label label-status label-success">active</span>')) +
+		content += '<tr><td data-i18n="stat_nzb_directory_scan"></td><td class="text-right">' + (Options.option('NzbDirInterval') === '0' ?
+			label('label_disabled') :
+			(status.ScanPaused ? label('label_paused', 'warning') : label('label_active', 'success'))) +
 			'</td></tr>';
 
 		if (status.QuotaReached)
 		{
-			content += '<tr><td>Download quota</td><td class="text-right"><span class="label label-status label-warning">reached</span></td></tr>';
+			content += '<tr><td data-i18n="stat_download_quota"></td><td class="text-right">' + label('label_reached', 'warning') + '</td></tr>';
 		}
 
 		if (status.ResumeTime > 0)
 		{
-			content += '<tr><td>Autoresume</td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"/></td></tr>';
+			content += '<tr><td data-i18n="stat_autoresume"></td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"/></td></tr>';
 		}
 
-		$('#StatusTable tbody').html(content);
+		var $tbody = $('#StatusTable tbody');
+		$tbody.html(content);
+		I18n.translatePage($tbody);
 	}
 
 	function tabClick(e)
@@ -792,7 +826,8 @@ var StatDialog = (new function($)
 			{
 				redrawChart();
 			}
-			$('#StatDialog_Title').text('Downloaded volumes');
+			$('#StatDialog_Title').attr('data-i18n', 'title_downloaded_volumes');
+			I18n.translatePage($('#StatDialog_Title').parent());
 		}
 	}
 
@@ -812,7 +847,8 @@ var StatDialog = (new function($)
 			  back: true});
 		lastTab = null;
 
-		$('#StatDialog_Title').text('Statistics and Status');
+		$('#StatDialog_Title').attr('data-i18n', 'title_statistics_and_status');
+		I18n.translatePage($('#StatDialog_Title').parent());
 	}
 
 	function tabSwitchCompleted()
@@ -983,7 +1019,7 @@ var StatDialog = (new function($)
 			for (var i = 0; i < 12; i++)
 			{
 				addData(firstMon > -1 && i >= firstMon && i <= lastMon ? {SizeMB: monDataMB[i], SizeLo: monDataLo[i]} : null,
-					monthNames[i] + ' ' + curMonth, monthNames[i].substr(0, 3));
+					getMonthName(i, true) + ' ' + curMonth, getMonthName(i, false));
 			}
 		}
 
@@ -1013,10 +1049,10 @@ var StatDialog = (new function($)
 					maxSizeMB > 1 || maxSizeLo == 0 ? chartDataMB :
 					maxSizeLo > 1024 ? chartDataKB : chartDataB;
 
-		var units = maxSizeMB > 1024*1024 ? ' TB' :
-				maxSizeMB > 1024 ? ' GB' :
-				maxSizeMB > 1 || maxSizeLo == 0 ? ' MB' :
-				maxSizeLo > 1024 ? ' KB' : ' B';
+		var units = maxSizeMB > 1024*1024 ? ' ' + I18n.translate('unit_tb') :
+								maxSizeMB > 1024 ? ' ' + I18n.translate('unit_gb') :
+								maxSizeMB > 1 || maxSizeLo == 0 ? ' ' + I18n.translate('unit_mb') :
+								maxSizeLo > 1024 ? ' ' + I18n.translate('unit_kb') : ' ' + I18n.translate('unit_b');
 
 		var curPointData = [];
 		for (var i = 0; i < serieData.length; i++)
@@ -1136,10 +1172,10 @@ var StatDialog = (new function($)
 	function chartMouseExit(env, serie, index, mouseAreaData)
 	{
 		mouseOverIndex = -1;
-		var title = curRange === 'MIN' ? '60 seconds' :
-			curRange === 'HOUR' ? '60 minutes' :
-			curRange === 'DAY' ? '24 hours' :
-			curRange === 'MONTH' ? $('#StatDialog_Volume_MONTH').text() : 'Sum';
+		var title = curRange === 'MIN' ? I18n.translate('btn_range_60_seconds') :
+			curRange === 'HOUR' ? I18n.translate('btn_range_60_minutes') :
+			curRange === 'DAY' ? I18n.translate('btn_range_24_hours') :
+			curRange === 'MONTH' ? $('#StatDialog_Volume_MONTH').text() : I18n.translate('label_sum');
 
 		$StatDialog_Tooltip.html(title + ': <span class="stat-size">' + Util.formatSizeMB(chartData.sumMB, chartData.sumLo) + '</span>');
 	}
@@ -1199,7 +1235,12 @@ var StatDialog = (new function($)
 			insertPos.before(item);
 		}
 
-		$('#StatDialog_ServerCap').text(curServer > 0 ? Status.serverName(Status.status.NewsServers[curServer-1]) : 'All news servers');
+		if (curServer === 0) {
+			$('#StatDialog_ServerCap').attr('data-i18n', 'stat_all_news_servers').css('text-transform', 'capitalize');
+		} else {
+			$('#StatDialog_ServerCap').text(Status.serverName(Status.status.NewsServers[curServer-1])).removeAttr('data-i18n').css('text-transform', '');
+		}
+		I18n.translatePage($('#StatDialog_ServerCap').parent());
 
 		var serverMenuAllBtn = $('#StatDialog_ServerMenuAll i');
 		if (curServer === 0)
@@ -1267,7 +1308,7 @@ var StatDialog = (new function($)
 				break;
 			}
 
-			var name = monthNames[monDt.getMonth()] + ' ' + monDt.getFullYear();
+			var name = getMonthName(monDt.getMonth(), true) + ' ' + monDt.getFullYear();
 			var monId = '' + monDt.getFullYear() + '-' + monDt.getMonth();
 
 			if (curMonth === null)
@@ -1358,7 +1399,7 @@ var StatDialog = (new function($)
 		{
 			var month = parseInt(curMonth.substr(5, 2));
 			var year = parseInt(curMonth.substring(0, 4));
-			cap = monthNames[month] + ' ' + year;
+			cap = getMonthName(month, true) + ' ' + year;
 			monStart = new Date(year, month);
 			monEnd = new Date(year, month + 1);
 			monEnd.setDate(0);
@@ -1378,9 +1419,18 @@ var StatDialog = (new function($)
 	{
 		$StatDialog_TodaySize.html(Util.formatSizeMB(Status.status.DaySizeMB, Status.status.DaySizeLo));
 		$StatDialog_MonthSize.html(Util.formatSizeMB(Status.status.MonthSizeMB, Status.status.MonthSizeLo));
+		if (!servervolumes || !servervolumes[curServer]) {
+			$StatDialog_AllTimeSize.html('-');
+			$StatDialog_CustomSize.html('-');
+			$StatDialog_Custom.attr('title', '');
+			return;
+		}
 		$StatDialog_AllTimeSize.html(Util.formatSizeMB(servervolumes[curServer].TotalSizeMB, servervolumes[curServer].TotalSizeLo));
 		$StatDialog_CustomSize.html(Util.formatSizeMB(servervolumes[curServer].CustomSizeMB, servervolumes[curServer].CustomSizeLo));
-		$StatDialog_Custom.attr('title', 'reset on ' + Util.formatDateTime(servervolumes[curServer].CustomTime));
+		var resetDate = Util.formatDateTime(servervolumes[curServer].CustomTime);
+		var resetTxt = I18n.translate('stat_dialog_reset_on', resetDate);
+		$StatDialog_Custom.attr('title', resetTxt);
+		$StatDialog_Custom.attr('data-i18n-title-arg-1', resetDate);
 	}
 
 	function chooseMonth()
@@ -1441,10 +1491,17 @@ var StatDialog = (new function($)
 
 	this.resetCounter = function()
 	{
-		$('#StatDialogResetConfirmDialog_Server').text(curServer === 0 ? 'all news servers' : $('#StatDialog_ServerCap').text());
-		$('#StatDialogResetConfirmDialog_Time').text(Util.formatDateTime(servervolumes[curServer].CustomTime));
+		if (!servervolumes || !servervolumes[curServer]) {
+			return;
+		}
+		var dt = new Date(servervolumes[curServer].CustomTime * 1000);
+		var formatted = new Intl.DateTimeFormat(I18n.getLocale(), I18n.getTimeFormatOptions()).format(dt);
+		var allServersText = I18n.translate('stat_all_news_servers');
+		$('#StatDialogResetConfirmDialog_Server').text(curServer === 0 ?
+			allServersText.charAt(0).toUpperCase() + allServersText.slice(1) : $('#StatDialog_ServerCap').text());
+		$('#StatDialogResetConfirmDialog_Time').text(formatted);
 		ConfirmDialog.showModal('StatDialogResetConfirmDialog', doResetCounter);
-	}
+	};
 
 	function doResetCounter()
 	{

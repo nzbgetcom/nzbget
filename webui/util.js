@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -62,9 +62,10 @@ var Util = (new function($)
 	{
 		var hms = '';
 		var days = Math.floor(sec / 86400);
+		var d = I18n.translate('time_days_short');
 		if (days > 0)
 		{
-			hms = days	+ 'd ';
+			hms = days	+ d + ' ';
 		}
 		var hours = Math.floor((sec % 86400) / 3600);
 		hms = hms + hours + ':';
@@ -90,24 +91,29 @@ var Util = (new function($)
 		var minutes = Math.floor((sec / 60) % 60);
 		var seconds = Math.floor(sec % 60);
 
+		var d = I18n.translate('time_days_short');
+		var h = I18n.translate('time_hours_short');
+		var m = I18n.translate('time_minutes_short');
+		var s = I18n.translate('time_seconds_short');
+
 		if (days > 10)
 		{
-			return days + 'd';
+			return days + d;
 		}
 		if (days > 0)
 		{
-			return days + 'd ' + hours + 'h';
+			return days + d + ' ' + hours + h;
 		}
 		if (hours > 0)
 		{
-			return hours + 'h ' + (minutes < 10 ? '0' : '') + minutes + 'm';
+			return hours + h + ' ' + (minutes < 10 ? '0' : '') + minutes + m;
 		}
 		if (minutes > 0)
 		{
-			return minutes + 'm ' + (seconds < 10 ? '0' : '') + seconds + 's';
+			return minutes + m + ' ' + (seconds < 10 ? '0' : '') + seconds + s;
 		}
 
-		return seconds + 's';
+		return seconds + s;
 	}
 
 	this.isNumber = function(value)
@@ -140,10 +146,7 @@ var Util = (new function($)
 		}
 
 		var dt = new Date(unixTime * 1000);
-		var h = dt.getHours();
-		var m = dt.getMinutes();
-		var s = dt.getSeconds();
-		return dt.toDateString() + ' ' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+		return new Intl.DateTimeFormat(I18n.getLocale(), I18n.getTimeFormatOptions()).format(dt);
 	}
 
 	this.formatSizeMB = function(sizeMB, sizeLo)
@@ -155,39 +158,39 @@ var Util = (new function($)
 
 		if (sizeMB >= 1024 * 1024 * 100)
 		{
-			return Math.floor(sizeMB / 1024.0 / 1024.0) + ' TB';
+			return Math.floor(sizeMB / 1024.0 / 1024.0) + ' ' + I18n.translate('unit_tb');
 		}
 		else if (sizeMB >= 1024 * 1024 * 10)
 		{
-			return this.round1(sizeMB / 1024.0 / 1024.0) + ' TB';
+			return this.round1(sizeMB / 1024.0 / 1024.0) + ' ' + I18n.translate('unit_tb');
 		}
 		else if (sizeMB >= 1024 * 1000)
 		{
-			return this.round2(sizeMB / 1024.0 / 1024.0) + ' TB';
+			return this.round2(sizeMB / 1024.0 / 1024.0) + ' ' + I18n.translate('unit_tb');
 		}
 		else if (sizeMB >= 1024 * 100)
 		{
-			return Math.floor(sizeMB / 1024.0) + ' GB';
+			return Math.floor(sizeMB / 1024.0) + ' ' + I18n.translate('unit_gb');
 		}
 		else if (sizeMB >= 1024 * 10)
 		{
-			return this.round1(sizeMB / 1024.0) + ' GB';
+			return this.round1(sizeMB / 1024.0) + ' ' + I18n.translate('unit_gb');
 		}
 		else if (sizeMB >= 1000)
 		{
-			return this.round2(sizeMB / 1024.0) + ' GB';
+			return this.round2(sizeMB / 1024.0) + ' ' + I18n.translate('unit_gb');
 		}
 		else if (sizeMB >= 100)
 		{
-			return Math.floor(sizeMB) + ' MB';
+			return Math.floor(sizeMB) + ' ' + I18n.translate('unit_mb');
 		}
 		else if (sizeMB >= 10)
 		{
-			return this.round1(sizeMB) + ' MB';
+			return this.round1(sizeMB) + ' ' + I18n.translate('unit_mb');
 		}
 		else
 		{
-			return this.round2(sizeMB) + ' MB';
+			return this.round2(sizeMB) + ' ' + I18n.translate('unit_mb');
 		}
 	}
 
@@ -198,68 +201,68 @@ var Util = (new function($)
 			return '';
 		}
 
-		if (bytesPerSec >= 100 * 1024 * 1024 * 1024) 
+		var useBits = (I18n.getSpeedUnit() === 'Mb/s');
+		var kBase = useBits ? 1000 : 1024;
+		var displayVal = useBits ? bytesPerSec * 8 : bytesPerSec;
+
+		if (displayVal >= 100 * kBase * kBase * kBase) 
 		{
-			return Util.round0(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
+			return Util.round0(displayVal / kBase / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_gbit_s' : 'unit_gb_s');
 		}
-		else if (bytesPerSec >= 10 * 1024 * 1024 * 1024) 
+		else if (displayVal >= 10 * kBase * kBase * kBase) 
 		{
-			return Util.round1(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
+			return Util.round1(displayVal / kBase / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_gbit_s' : 'unit_gb_s');
 		}
-		else if (bytesPerSec >= 1024 * 1024 * 1024) 
+		else if (displayVal >= kBase * kBase * kBase) 
 		{
-			return Util.round2(bytesPerSec / 1024 / 1024 / 1024) + ' GB/s';
+			return Util.round2(displayVal / kBase / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_gbit_s' : 'unit_gb_s');
 		}
-		if (bytesPerSec >= 100 * 1024 * 1024) 
+		if (displayVal >= 100 * kBase * kBase) 
 		{
-			return Util.round0(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+			return Util.round0(displayVal / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
 		}
-		else if (bytesPerSec >= 10 * 1024 * 1024) 
+		else if (displayVal >= 10 * kBase * kBase) 
 		{
-			return Util.round1(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+			return Util.round1(displayVal / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
 		}
-		else if (bytesPerSec >= 1024 * 1000) 
+		else if (displayVal >= kBase * 1000) 
 		{
-			return Util.round2(bytesPerSec / 1024.0 / 1024.0) + ' MB/s';
+			return Util.round2(displayVal / kBase / kBase) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
 		}
 
-		return Util.round0(bytesPerSec / 1024.0) + ' KB/s';
+		return Util.round0(displayVal / kBase) + ' ' + I18n.translate(useBits ? 'unit_kbit_s' : 'unit_kb_s');
 	}
 
 	this.formatNetworkSpeed = function(speedMbps) 
 	{
-		if (!Util.isNumber(speedMbps))
+		if (!Util.isNumber(speedMbps) || speedMbps < 0)
 		{
 			return '';
 		}
 
-		if (!speedMbps || speedMbps < 0)
-		{
-			return '';
-		}
+		var useBits = (I18n.getSpeedUnit() === 'Mb/s');
+		if (!useBits) speedMbps /= 8;
 
-		if (speedMbps >= 10000) 
+		if (speedMbps >= 1000)
 		{
-			return Util.round1(speedMbps / 10000) + ' Gbps';
+			return this.round1(speedMbps / 1000.0) + ' ' + I18n.translate(useBits ? 'unit_gbit_s' : 'unit_gb_s');
 		}
-		if (speedMbps >= 1000) 
+		else if (speedMbps >= 100)
 		{
-			return Util.round1(speedMbps / 1000) + ' Gbps';
-		} 
-		else if (speedMbps >= 100) 
-		{
-			return Util.round0(speedMbps) + ' Mbps';
-		} 
-		else if (speedMbps >= 10) 
-		{
-			return Util.round1(speedMbps) + ' Mbps';
-		} 
-		else if (speedMbps >= 1) 
-		{
-			return Util.round2(speedMbps) + ' Mbps';
+			return this.round0(speedMbps) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
 		}
-
-		return Util.round0(speedMbps * 1000) + ' Kbps';
+		else if (speedMbps >= 10)
+		{
+			return this.round1(speedMbps) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
+		}
+		else if (speedMbps >= 1)
+		{
+			return this.round2(speedMbps) + ' ' + I18n.translate(useBits ? 'unit_mbit_s' : 'unit_mb_s');
+		}
+		else
+		{
+			return this.round0(speedMbps * 1000.0) + ' ' + I18n.translate(useBits ? 'unit_kbit_s' : 'unit_kb_s');
+		}
 	}
 
 	this.formatSpeedWithCustomUnit = function (bytesPerSec, unit) 
@@ -276,13 +279,17 @@ var Util = (new function($)
 		}
 
 		var diff = new Date().getTime() / 1000 - time;
+		var d = I18n.translate('time_days_short');
+		var h = I18n.translate('time_hours_short');
+		var m = I18n.translate('time_minutes_short');
+
 		if (diff > 60*60*24)
 		{
-			return this.round0(diff / (60*60*24))  +'&nbsp;d';
+			return this.round0(diff / (60*60*24))  + '&nbsp;' + d;
 		}
 		else if (diff > 60*60)
 		{
-			return this.round0(diff / (60*60))  +'&nbsp;h';
+			return this.round0(diff / (60*60))  + '&nbsp;' + h;
 		}
 		else if (diff <= 0)
 		{
@@ -290,7 +297,7 @@ var Util = (new function($)
 		}
 		else
 		{
-			return this.round0(diff / (60))  +'&nbsp;m';
+			return this.round0(diff / (60))  + '&nbsp;' + m;
 		}
 	}
 
