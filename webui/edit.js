@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -142,19 +143,19 @@ var DownloadsEditDialog = (new function($)
 
 		var table = '';
 		//table += '<tr><td>Age</td><td class="text-right">' + age + '</td></tr>';
-		table += '<tr><td>Total</td><td class="text-right">' + size + '</td></tr>';
-		table += '<tr><td>Paused</td><td class="text-right">' + pausedSize + '</td></tr>';
-		table += '<tr><td>Unpaused</td><td class="text-right">' + remaining + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('label_total') + '</td><td class="text-right">' + size + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('label_paused') + '</td><td class="text-right">' + pausedSize + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('label_unpaused') + '</td><td class="text-right">' + remaining + '</td></tr>';
 		//table += '<tr><td>Size (total/remaining/paused)</td><td class="text-right">4.10 / 4.10 / 0.00 GB</td></tr>';
 		//table += '<tr><td>Active downloads</td><td class="text-right">' + group.ActiveDownloads + '</td></tr>';
 		//table += '<tr><td>Estimated time</td><td class="text-right">' + estimated + '</td></tr>';
-		table += '<tr><td>Health (critical/current)</td><td class="text-right">' +
+		table += '<tr><td>' + I18n.translate('label_health_critical_current') + '</td><td class="text-right">' +
 			Math.floor(group.CriticalHealth / 10) + '% / ' + Math.floor(group.Health / 10) + '%</td></tr>';
-		table += '<tr><td>Files (total/remaining/pars)</td><td class="text-right">' + group.FileCount + ' / ' +
+		table += '<tr><td>' + I18n.translate('label_files_total_remaining_pars') + '</td><td class="text-right">' + group.FileCount + ' / ' +
 			group.RemainingFileCount + ' / ' + group.RemainingParCount + '</td></tr>';
 		table += '<tr><td>' +
-			(group.ServerStats.length > 0 ? '<a href="#" id="DownloadsEdit_ServStats" data-tab="DownloadsEdit_ServStatsTab" title="Per-server statistics">' : '') +
-			'Articles (total/completion)' +
+			(group.ServerStats.length > 0 ? '<a href="#" id="DownloadsEdit_ServStats" data-tab="DownloadsEdit_ServStatsTab" title="' + I18n.translate('tooltip_per_server_stats') + '">' : '') +
+			I18n.translate('label_articles_total_completion') +
 			(group.ServerStats.length > 0 ? ' <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 			'</td><td class="text-right">' + group.TotalArticles + ' / ' + completion + '</td></tr>';
 		$('#DownloadsEdit_Statistics').html(table);
@@ -217,7 +218,7 @@ var DownloadsEditDialog = (new function($)
 			$('#DownloadsEdit_Priority').attr('disabled', 'disabled');
 			$('#DownloadsEdit_Category').attr('disabled', 'disabled');
 			$('#DownloadsEdit_Close').addClass('btn-primary');
-			$('#DownloadsEdit_Close').text('Close');
+			$('#DownloadsEdit_Close').text(I18n.translate('btn_close'));
 		}
 		else
 		{
@@ -225,12 +226,13 @@ var DownloadsEditDialog = (new function($)
 			$('#DownloadsEdit_Priority').removeAttr('disabled');
 			$('#DownloadsEdit_Category').removeAttr('disabled');
 			$('#DownloadsEdit_Close').removeClass('btn-primary');
-			$('#DownloadsEdit_Close').text('Cancel');
+			$('#DownloadsEdit_Close').text(I18n.translate('btn_cancel'));
 		}
 
 		if (postParam)
 		{
 			postParams = ParamTab.buildPostParamTab($DownloadsEdit_ParamData, postParamConfig, curGroup.Parameters);
+			ParamTab.updatePostParamTranslations();
 		}
 
 		enableAllButtons();
@@ -542,12 +544,12 @@ var DownloadsEditDialog = (new function($)
 			var status;
 			switch (file.status)
 			{
-				case 'downloading':
-				case 'pausing': status = '<span class="label label-status label-success">' + file.status + '</span>'; break;
-				case 'paused': status = '<span class="label label-status label-warning">paused</span>'; break;
-				case 'queued': status = '<span class="label label-status">queued</span>'; break;
-				case 'deleted': status = '<span class="label label-status label-important">deleted</span>'; break;
-				default: status = '<span class="label label-status label-important">internal error(' + file.status + ')</span>';
+				case 'downloading': status = '<span class="label label-status label-success">' + I18n.translate('status_downloading_cap') + '</span>'; break;
+				case 'pausing': status = '<span class="label label-status label-success">' + I18n.translate('notif_pausing').toLowerCase() + '</span>'; break;
+				case 'paused': status = '<span class="label label-status label-warning">' + I18n.translate('status_paused_cap') + '</span>'; break;
+				case 'queued': status = '<span class="label label-status">' + I18n.translate('status_queued_cap') + '</span>'; break;
+				case 'deleted': status = '<span class="label label-status label-important">' + I18n.translate('status_delete').replace(': ', '') + '</span>'; break;
+				default: status = '<span class="label label-status label-important">' + I18n.translate('label_internal_error') + '(' + file.status + ')</span>';
 			}
 
 			var name = Util.textToHtml(file.Filename);
@@ -908,6 +910,32 @@ var ParamTab = (new function($)
 		return postParamConfig;
 	}
 
+	this.updatePostParamTranslations = function()
+	{
+		$('.control-group._Unpack_').each(function()
+		{
+			var $option = $(this);
+			var $label = $option.find('.option-name');
+			var $about = $option.find('.help-block');
+			var optId = $label.attr('data-optid');
+			
+			if (optId === '_Unpack_Password')
+			{
+				if ($about.length > 0)
+				{
+					$about.find('.help-option-title').text(I18n.translate('label_unpack_about'));
+				}
+			}
+			else if (optId === '_Unpack_')
+			{
+				if ($about.length > 0)
+				{
+					$about.find('.help-option-title').text(I18n.translate('label_unpack_rar_about'));
+				}
+			}
+		});
+	}
+
 	function defineBuiltinParams(postParamConfig)
 	{
 	    if (postParamConfig.length == 0)
@@ -924,7 +952,7 @@ var ParamTab = (new function($)
 				select: [], 
 				caption: 'Password', 
 				sectionId: '_Unpack_', 
-				about: 'Unpack-password for encrypted archives.', 
+				about: I18n.translate('label_unpack_about'), 
 				description: '',
 				requirements: [],
 			});
@@ -935,7 +963,7 @@ var ParamTab = (new function($)
 				select: ['yes', 'no'], 
 				caption: 'Unpack', 
 				sectionId: '_Unpack_', 
-				about: 'Unpack rar and 7-zip archives.', 
+				about: I18n.translate('label_unpack_rar_about'), 
 				description: '',
 				requirements: [],
 			});
@@ -1080,11 +1108,11 @@ var LogTab = (new function($)
 				var kind;
 				switch (message.Kind)
 				{
-					case 'INFO': kind = '<span class="label label-status label-success">info</span>'; break;
-					case 'DETAIL': kind = '<span class="label label-status label-info">detail</span>'; break;
-					case 'WARNING': kind = '<span class="label label-status label-warning">warning</span>'; break;
-					case 'ERROR': kind = '<span class="label label-status label-important">error</span>'; break;
-					case 'DEBUG': kind = '<span class="label label-status">debug</span>'; break;
+					case 'INFO': kind = '<span class="label label-status label-success">' + I18n.translate('label_info') + '</span>'; break;
+					case 'DETAIL': kind = '<span class="label label-status label-info">' + I18n.translate('label_detail') + '</span>'; break;
+					case 'WARNING': kind = '<span class="label label-status label-warning">' + I18n.translate('label_warning') + '</span>'; break;
+					case 'ERROR': kind = '<span class="label label-status label-important">' + I18n.translate('label_error') + '</span>'; break;
+					case 'DEBUG': kind = '<span class="label label-status">' + I18n.translate('label_debug') + '</span>'; break;
 				}
 
 				var text = Util.textToHtml(message.Text);
@@ -1153,9 +1181,7 @@ var LogTab = (new function($)
 		{
 			var queueDir = Options.option('QueueDir');
 			var pathSeparator = queueDir.indexOf('\\') > -1 ? '\\' : '/';
-			alert('Unfortunately your browser doesn\'t support access to local file system.\n\n' +
-				'The log of this nzb can be found in file "' +
-				queueDir + pathSeparator + 'n' + curItem.NZBID + '.log"');
+			alert(I18n.translate('msg_no_filesystem_access', queueDir + pathSeparator + 'n' + curItem.NZBID + '.log'));
 		}
 	}
 }(jQuery));
@@ -1260,7 +1286,7 @@ var DownloadsMultiDialog = (new function($)
 			RemainingFileCount + ' / ' + RemainingParCount + '</td></tr>';
 		$('#DownloadsMulti_Statistics').html(table);
 
-		$('#DownloadsMulti_Title').text('Multiple records (' + groups.length + ')');
+		$('#DownloadsMulti_Title').text(I18n.translate('msg_multiple_records_count', groups.length));
 
 		// Priority
 		var v = $('#DownloadsMulti_Priority');
@@ -1550,27 +1576,25 @@ var HistoryEditDialog = (new function($)
 			{
 				status = '<span class="label label-status ' +
 					(hist.Health === 1000 ? 'label-success' : hist.Health >= hist.CriticalHealth ? 'label-warning' : 'label-important') +
-					'">health: ' + Math.floor(hist.Health / 10) + '%</span>';
+					'">' + I18n.translate('status_health', Math.floor(hist.Health / 10)) + '</span>';
 			}
 
 			if (hist.MarkStatus !== 'NONE')
 			{
-				status += ' ' + buildStatus(hist.MarkStatus, 'Mark: ');
+				status += ' ' + buildStatus(hist.MarkStatus, I18n.translate('status_mark'));
 			}
 
 			else if (hist.DeleteStatus === 'NONE')
 			{
-				var exParStatus = hist.ExParStatus === 'RECIPIENT' ? ' ' + '<span title="Repaired using ' + hist.ExtraParBlocks + ' par-block' +
-						(hist.ExtraParBlocks > 1 ? 's' : '') + ' from other duplicate(s)">' + buildStatus(hist.ExParStatus, 'ExPar: ') + '</span>' :
-					hist.ExParStatus === 'DONOR' ? ' ' + '<span title="Donated ' + -hist.ExtraParBlocks + ' par-block' +
-						(-hist.ExtraParBlocks > 1 ? 's' : '') + ' to repair other duplicate(s)">' + buildStatus(hist.ExParStatus, 'ExPar: ') + '</span>' : '';
-				status += ' ' + buildStatus(hist.ParStatus, 'Par: ') + exParStatus +
-					' ' + (Options.option('Unpack') == 'yes' || hist.UnpackStatus != 'NONE' ? buildStatus(hist.UnpackStatus, 'Unpack: ') : '')  +
-					' ' + (hist.MoveStatus === "FAILURE" ? buildStatus(hist.MoveStatus, 'Move: ') : '');
+				var exParStatus = hist.ExParStatus === 'RECIPIENT' ? ' ' + '<span title="' + I18n.translate('tooltip_expar_recipient', hist.ExtraParBlocks, (hist.ExtraParBlocks > 1 ? 's' : '')) + '">' + buildStatus(hist.ExParStatus, I18n.translate('status_expar')) + '</span>' :
+					hist.ExParStatus === 'DONOR' ? ' ' + '<span title="' + I18n.translate('tooltip_expar_donor', -hist.ExtraParBlocks, (-hist.ExtraParBlocks > 1 ? 's' : '')) + '">' + buildStatus(hist.ExParStatus, I18n.translate('status_expar')) + '</span>' : '';
+				status += ' ' + buildStatus(hist.ParStatus, I18n.translate('status_par')) + exParStatus +
+					' ' + (Options.option('Unpack') == 'yes' || hist.UnpackStatus != 'NONE' ? buildStatus(hist.UnpackStatus, I18n.translate('status_unpack')) : '')  +
+					' ' + (hist.MoveStatus === "FAILURE" ? buildStatus(hist.MoveStatus, I18n.translate('status_move')) : '');
 			}
 			else
 			{
-				status += ' ' + buildStatus('DELETED-' + hist.DeleteStatus, 'Delete: ');
+				status += ' ' + buildStatus('DELETED-' + hist.DeleteStatus, I18n.translate('status_delete'));
 			}
 
 			for (var i=0; i<hist.ScriptStatuses.length; i++)
@@ -1583,21 +1607,21 @@ var HistoryEditDialog = (new function($)
 		{
 			if (hist.DeleteStatus !== 'NONE')
 			{
-				status = buildStatus('DELETED-' + hist.DeleteStatus, 'Delete: ');
+				status = buildStatus('DELETED-' + hist.DeleteStatus, I18n.translate('status_delete'));
 			}
 			else if (hist.UrlStatus == 'SCAN_SKIPPED')
 			{
-				status = buildStatus('SUCCESS', 'Fetch: ') + ' ' +
-					buildStatus('SCAN_SKIPPED', 'Scan: ');
+				status = buildStatus('SUCCESS', I18n.translate('status_fetch')) + ' ' +
+					buildStatus('SCAN_SKIPPED', I18n.translate('status_scan'));
 			}
 			else if (hist.UrlStatus == 'SCAN_FAILURE')
 			{
-				status = buildStatus('SUCCESS', 'Fetch: ') + ' ' +
-					buildStatus('FAILURE', 'Scan: ');
+				status = buildStatus('SUCCESS', I18n.translate('status_fetch')) + ' ' +
+					buildStatus('FAILURE', I18n.translate('status_scan'));
 			}
 			else
 			{
-				status = buildStatus(hist.UrlStatus, 'Fetch: ');
+				status = buildStatus(hist.UrlStatus, I18n.translate('status_fetch'));
 			}
 		}
 		else if (hist.Kind === 'DUP')
@@ -1610,7 +1634,7 @@ var HistoryEditDialog = (new function($)
 		if (hist.Kind !== 'NZB')
 		{
 			$('#HistoryEdit_Title').html($('#HistoryEdit_Title').html() + '&nbsp;' + '<span class="label label-info">' +
-				Util.textToHtml(hist.Kind === 'DUP' ? 'hidden' : hist.Kind) + '</span>');
+				Util.textToHtml(hist.Kind === 'DUP' ? I18n.translate('label_hidden') : hist.Kind) + '</span>');
 		}
 
 		$('#HistoryEdit_NZBName').val(hist.Name);
@@ -1639,13 +1663,13 @@ var HistoryEditDialog = (new function($)
 			}
 
 			var table = '';
-			table += '<tr><td><a href="#" id="HistoryEdit_TimeStats" data-tab="HistoryEdit_TimeStatsTab" title="Size and time statistics">Total '+
+			table += '<tr><td><a href="#" id="HistoryEdit_TimeStats" data-tab="HistoryEdit_TimeStatsTab" title="' + I18n.translate('tooltip_history_total_stats') + '">' + I18n.translate('label_total') + ' ' +
 				'<i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' +
 				'</td><td class="text-center">' + size + '</td></tr>';
-			table += '<tr><td>Files (total/remaining)</td><td class="text-center">' + hist.FileCount + ' / ' + hist.RemainingFileCount + '</td></tr>';
+			table += '<tr><td>' + I18n.translate('label_files_total_remaining') + '</td><td class="text-center">' + hist.FileCount + ' / ' + hist.RemainingFileCount + '</td></tr>';
 			table += '<tr><td>' +
-				(hist.ServerStats.length > 0 ? '<a href="#" id="HistoryEdit_ServStats" data-tab="HistoryEdit_ServStatsTab" title="Per-server statistics">' : '') +
-				'Articles (total/completion)' +
+				(hist.ServerStats.length > 0 ? '<a href="#" id="HistoryEdit_ServStats" data-tab="HistoryEdit_ServStatsTab" title="' + I18n.translate('tooltip_history_server_stats') + '">' : '') +
+				I18n.translate('label_articles_total_completion') +
 				(hist.ServerStats.length > 0 ? '  <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 				'</td><td class="text-center">' + hist.TotalArticles + ' / ' + completion + '</td></tr>';
 			$('#HistoryEdit_Statistics').html(table);
@@ -1683,6 +1707,7 @@ var HistoryEditDialog = (new function($)
 		if (postParam)
 		{
 			postParams = ParamTab.buildPostParamTab($HistoryEdit_ParamData, postParamConfig, curHist.Parameters);
+			ParamTab.updatePostParamTranslations();
 		}
 
 		var postLog = hist.MessageCount > 0;
@@ -1720,36 +1745,45 @@ var HistoryEditDialog = (new function($)
 		switch (status)
 		{
 			case 'SUCCESS':
+				return '<span class="label label-status label-success">' + prefix + I18n.translate('status_success') + '</span>';
 			case 'GOOD':
+				return '<span class="label label-status label-success">' + prefix + I18n.translate('status_good') + '</span>';
 			case 'RECIPIENT':
+				return '<span class="label label-status label-success">' + prefix + I18n.translate('status_recipient') + '</span>';
 			case 'DONOR':
-				return '<span class="label label-status label-success">' + prefix + status + '</span>';
+				return '<span class="label label-status label-success">' + prefix + I18n.translate('status_donor') + '</span>';
 			case 'FAILURE':
-				return '<span class="label label-status label-important">' + prefix + 'failure</span>';
+				return '<span class="label label-status label-important">' + prefix + I18n.translate('status_failure') + '</span>';
 			case 'BAD':
-				return '<span class="label label-status label-important">' + prefix + status + '</span>';
+				return '<span class="label label-status label-important">' + prefix + I18n.translate('status_bad') + '</span>';
 			case 'REPAIR_POSSIBLE':
-				return '<span class="label label-status label-warning">' + prefix + 'repairable</span>';
+				return '<span class="label label-status label-warning">' + prefix + I18n.translate('status_repairable') + '</span>';
 			case 'MANUAL': // PAR-MANUAL
+				return '<span class="label label-status label-warning">' + prefix + I18n.translate('status_manual') + '</span>';
 			case 'SPACE':
+				return '<span class="label label-status label-warning">' + prefix + I18n.translate('status_space') + '</span>';
 			case 'PASSWORD':
-				return '<span class="label label-status label-warning">' + prefix + status + '</span>';
+				return '<span class="label label-status label-warning">' + prefix + I18n.translate('status_password') + '</span>';
 			case 'DELETED-DUPE':
+				return '<span class="label label-status">' + prefix + I18n.translate('status_dupe') + '</span>';
 			case 'DELETED-MANUAL':
+				return '<span class="label label-status">' + prefix + I18n.translate('status_manual') + '</span>';
 			case 'DELETED-COPY':
+				return '<span class="label label-status">' + prefix + I18n.translate('status_copy') + '</span>';
 			case 'DELETED-GOOD':
+				return '<span class="label label-status">' + prefix + I18n.translate('status_good') + '</span>';
 			case 'DELETED-SUCCESS':
-				return '<span class="label label-status">' + prefix + status.substr(8).toLowerCase() + '</span>';
+				return '<span class="label label-status">' + prefix + I18n.translate('status_success') + '</span>';
 			case 'DELETED-HEALTH':
-				return '<span class="label label-status label-important">' + prefix + 'health</span>';
+				return '<span class="label label-status label-important">' + prefix + I18n.translate('status_health_val') + '</span>';
 			case 'DELETED-BAD':
-				return '<span class="label label-status label-important">' + prefix + 'bad</span>';
+				return '<span class="label label-status label-important">' + prefix + I18n.translate('status_bad') + '</span>';
 			case 'DELETED-SCAN':
-				return '<span class="label label-status label-important">' + prefix + 'scan</span>';
+				return '<span class="label label-status label-important">' + prefix + I18n.translate('status_scan_val') + '</span>';
 			case 'SCAN_SKIPPED':
-				return '<span class="label label-status label-warning"">' + prefix + 'skipped</span>';
+				return '<span class="label label-status label-warning"">' + prefix + I18n.translate('status_skipped') + '</span>';
 			case 'NONE':
-				return '<span class="label label-status">' + prefix + 'none</span>';
+				return '<span class="label label-status">' + prefix + I18n.translate('status_none') + '</span>';
 			default:
 				return '<span class="label label-status">' + prefix + status + '</span>';
 		}
@@ -1761,15 +1795,15 @@ var HistoryEditDialog = (new function($)
 		var downloaded = Util.formatSizeMB(hist.DownloadedSizeMB, hist.DownloadedSizeLo);
 		var speed = hist.DownloadTimeSec > 0 ? Util.formatSpeed((hist.DownloadedSizeMB > 1024 ? hist.DownloadedSizeMB * 1024.0 * 1024.0 : hist.DownloadedSizeLo) / hist.DownloadTimeSec) : '--';
 		var table = '';
-		table += '<tr><td>Downloaded size</td><td class="text-center">' + downloaded + '</td></tr>';
-		table += '<tr><td>Download speed</td><td class="text-center">' + speed + '</td></tr>';
-		table += '<tr><td>Total time</td><td class="text-center">' + Util.formatTimeHMS(hist.DownloadTimeSec + hist.PostTotalTimeSec) + '</td></tr>';
-		table += '<tr><td>Download time</td><td class="text-center">' + Util.formatTimeHMS(hist.DownloadTimeSec) + '</td></tr>';
-		table += '<tr><td>Verification time </td><td class="text-center">' + Util.formatTimeHMS(hist.ParTimeSec - hist.RepairTimeSec) + '</td></tr>';
-		table += '<tr><td>Repair time</td><td class="text-center">' + Util.formatTimeHMS(hist.RepairTimeSec) + '</td></tr>';
-		table += '<tr><td>Unpack time</td><td class="text-center">' + Util.formatTimeHMS(hist.UnpackTimeSec) + '</td></tr>';
-		table += hist.ExtraParBlocks > 0 ? '<tr><td>Received extra par-blocks</td><td class="text-center">' + hist.ExtraParBlocks + '</td></tr>' :
-			hist.ExtraParBlocks < 0 ? '<tr><td>Donated par-blocks</td><td class="text-center">' + - hist.ExtraParBlocks + '</td></tr>' : '';
+		table += '<tr><td>' + I18n.translate('stat_downloaded_size') + '</td><td class="text-center">' + downloaded + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_download_speed_dialog') + '</td><td class="text-center">' + speed + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_total_time') + '</td><td class="text-center">' + Util.formatTimeHMS(hist.DownloadTimeSec + hist.PostTotalTimeSec) + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_download_time_dialog') + '</td><td class="text-center">' + Util.formatTimeHMS(hist.DownloadTimeSec) + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_verification_time') + ' </td><td class="text-center">' + Util.formatTimeHMS(hist.ParTimeSec - hist.RepairTimeSec) + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_repair_time') + '</td><td class="text-center">' + Util.formatTimeHMS(hist.RepairTimeSec) + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('stat_unpack_time') + '</td><td class="text-center">' + Util.formatTimeHMS(hist.UnpackTimeSec) + '</td></tr>';
+		table += hist.ExtraParBlocks > 0 ? '<tr><td>' + I18n.translate('stat_extra_par_blocks') + '</td><td class="text-center">' + hist.ExtraParBlocks + '</td></tr>' :
+			hist.ExtraParBlocks < 0 ? '<tr><td>' + I18n.translate('stat_donated_par_blocks') + '</td><td class="text-center">' + - hist.ExtraParBlocks + '</td></tr>' : '';
 
 		$('#HistoryEdit_TimeStatsTable tbody').html(table);
 	}

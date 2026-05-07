@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -95,6 +95,8 @@ var History = (new function($)
 		$CategoryMenu.on('click', 'a', categoryMenuClick);
 
 		HistoryActionsMenu.init();
+
+		I18n.subscribe(function() { History.redraw(true); });
 	}
 
 	this.applyTheme = function()
@@ -229,17 +231,17 @@ var History = (new function($)
 
 		var dupe = DownloadsUI.buildDupe(hist.DupeKey, hist.DupeScore, hist.DupeMode);
 		var category = hist.Kind !== 'DUP' ?
-			(hist.Category !== '' ? Util.textToHtml(hist.Category) : '<span class="none-category">None</span>')
+			(hist.Category !== '' ? Util.textToHtml(hist.Category) : '<span class="none-category">' + I18n.translate('label_none') + '</span>')
 			: '';
 		var backup = hist.Kind === 'NZB' ? DownloadsUI.buildBackupLabel(hist) : '';
 
 		if (hist.Kind === 'URL')
 		{
-			name += ' <span class="label label-info">URL</span>';
+			name += ' <span class="label label-info text-uppercase" data-i18n="label_kind_url">' + I18n.translate('label_kind_url') + '</span>';
 		}
 		else if (hist.Kind === 'DUP')
 		{
-			name += ' <span class="label label-info">hidden</span>';
+			name += ' <span class="label label-info text-uppercase" data-i18n="label_hidden">' + I18n.translate('label_hidden') + '</span>';
 		}
 
 		if (!UISettings.miniTheme)
@@ -254,7 +256,7 @@ var History = (new function($)
 				' ' + status + backup + ' <span class="label">' + item.data.time + '</span>';
 			if (category)
 			{
-				info += ' <span class="label label-status">' + category + '</span>';
+				info += ' <span class="label label-status text-uppercase">' + category + '</span>';
 			}
 			if (hist.Kind === 'NZB')
 			{
@@ -273,10 +275,6 @@ var History = (new function($)
 		else if (index === 2)
 		{
 			cell.className = 'text-center' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
-		}
-		else if (index === 5)
-		{
-			cell.className = 'text-right' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
 		}
 		else if (index === 6)
 		{
@@ -588,15 +586,19 @@ var HistoryUI = (new function($)
 		switch (total)
 		{
 			case 'SUCCESS':
-				return detail === 'GOOD' ? 'GOOD' : 'SUCCESS';
+				return detail === 'GOOD' ? I18n.translate('status_good') : I18n.translate('status_success');
 			case 'FAILURE':
-				return detail === 'BAD' ? 'BAD' : (status === 'FAILURE/INTERNAL_ERROR' ? 'INTERNAL_ERROR' : 'FAILURE');
+				return detail === 'BAD' ? I18n.translate('status_bad') : (status === 'FAILURE/INTERNAL_ERROR' ? I18n.translate('label_internal_error') : I18n.translate('status_failure'));
 			case 'WARNING':
-				return detail === 'SCRIPT' ? 'PP-FAILURE' : detail;
+				return detail === 'SCRIPT' ? I18n.translate('status_pp_failure') : detail;
 			case 'DELETED':
-				return detail === 'MANUAL' ? 'DELETED' : detail;
+			{
+				if (detail === 'COPY') return I18n.translate('status_copy');
+				if (detail === 'MANUAL') return I18n.translate('btn_history_filter_deleted');
+				return detail;
+			}
 			default:
-				return 'INTERNAL_ERROR (' + status + ')';
+				return I18n.translate('label_internal_error') + ' (' + status + ')';
 		}
 	}
 
@@ -614,7 +616,7 @@ var HistoryUI = (new function($)
 			case 'WARNING':
 				badgeClass = 'label-warning'; break;
 		}
-		return '<span class="label label-status ' + badgeClass + '">' + statusText + '</span>';
+		return '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
 	}
 
 	this.deleteConfirm = function(actionCallback, hasNzb, hasDup, hasFailed, multi, selCount, pageSelCount, selPercentage)

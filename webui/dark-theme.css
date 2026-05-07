@@ -157,9 +157,16 @@ a:hover {
 
 .accordion-inner,
 .accordion-group,
-.accordion-heading,
-.table th, .table td {
+.accordion-heading {
 	border: 0.5px solid #626262;
+}
+
+.table th, .table td {
+	border-top: 1px solid #626262;
+}
+
+.table-bordered th, .table-bordered td {
+	border-left: 1px solid #626262;
 }
 
 .table-striped tbody tr:nth-child(odd) td, .table-striped tbody tr:nth-child(odd) th {
@@ -268,7 +275,6 @@ select {
 /* headers in navbar menu */
 .menu-header {
 	display: block;
-	padding: 3px 15px;
 	font-size: 11px;
 	font-weight: bold;
 	line-height: 18px;
@@ -300,7 +306,13 @@ select {
 
 .table-bordered {
 	border: 1px solid #626262;
-	border-collapse: collapse;
+	border-collapse: separate;
+	border-left: 0;
+}
+
+.table-bordered:not(.table-fixed) th,
+.table-bordered:not(.table-fixed) td {
+	border-left: 1px solid #626262;
 }
 .table tbody tr:hover td, .table tbody tr:hover th,
 .table tbody tr:hover  {

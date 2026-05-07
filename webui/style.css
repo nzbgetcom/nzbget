@@ -105,6 +105,10 @@ th {
     overflow-x: auto;
 }
 
+.dropdown-menu__lang-menu {
+    min-width: 80px;
+}
+
 .test-server-dropdwon-menu {
     min-width: 210px;
     left: -110px;
@@ -142,6 +146,14 @@ th {
 
 .system-health-badge {
     vertical-align: text-bottom;
+}
+
+.text-uppercase {
+    text-transform: uppercase;
+}
+
+.text-lowercase {
+    text-transform: lowercase;
 }
 
 .system-health-badge--important {
@@ -198,9 +210,71 @@ th {
 }
 
 /* EXTENSION MANAGER */
-.extension-manager__td {
-    vertical-align: middle !important;
+#ExtensionManagerTable .extension-manager__td {
+    vertical-align: middle;
     max-width: 350px;
+    padding: 8px;
+}
+
+#ExtensionManagerTable td.extension-manager__actions-td {
+    padding: 1px;
+}
+
+#ExtensionManagerTable .extension-manager__td.text-center {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+#ExtensionManagerTable .btn-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 76px;
+    min-width: 76px;
+    margin: 4px auto;
+    justify-content: center;
+}
+
+#ExtensionManagerTable .btn-toolbar .btn {
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    height: 30px;
+    padding: 0;
+    margin: 0 !important;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+@media (max-width: 900px), .phone {
+    #ExtensionManagerTable .phone-hide {
+        display: none;
+    }
+
+    #ExtensionManagerTable {
+        width: 100%;
+    }
+
+    #ExtensionManagerTable th,
+    #ExtensionManagerTable td {
+        padding: 4px;
+        word-break: break-word;
+    }
+
+    #ExtensionManagerTable th:nth-child(1),
+    #ExtensionManagerTable td:nth-child(1) {
+        width: 40px;
+    }
+
+    #ExtensionManagerTable th:nth-child(6),
+    #ExtensionManagerTable td:nth-child(6) {
+        width: 82px;
+        min-width: 82px;
+        padding-left: 2px;
+        padding-right: 2px;
+    }
 }
 
 .red-circle {
@@ -407,7 +481,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
     margin-right: 10px;
     padding-top: 2px;
     cursor: pointer;
-    width: 86px;
 }
 
 #InfoBlock div {
@@ -511,7 +584,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 .navbar-search .search-query,
 .navbar-search .search-query:focus,
 .navbar-search .search-query.focused {
-    width: 130px;
     padding: 3px 28px 3px 25px;
     -webkit-border-radius: 12px;
     -moz-border-radius: 12px;
@@ -635,6 +707,8 @@ ul.dropdown-menu > li > a.has-table {
 
 ul.dropdown-menu > li > a > i {
     margin-right: 5px;
+    width: 16px;
+    text-align: center;
 }
 
 /* BEGIN: Icons */
@@ -1046,14 +1120,6 @@ form {
     left: 50%;
 }
 
-.modal-body {
-    max-height: 360px;
-}
-
-.modal.no-footer .modal-body {
-    max-height: 420px;
-}
-
 .modal-footer .btn-primary {
     min-width: 40px;
 }
@@ -1192,7 +1258,7 @@ table.table-hidecheck tbody > tr > td:first-child {
 /* BEGIN: Progress bars */
 .progress-block {
     position: relative;
-    width: calc(8.5rem);
+    width: 100%;
 }
 
 /* text on left side of progress bar */
@@ -1227,7 +1293,6 @@ td.dropdown-cell {
     padding: 0;
 }
 
-th.dropafter-cell,
 td.dropafter-cell {
     padding-left: 0;
 }
@@ -1260,6 +1325,7 @@ table th.priority-cell {
 
 table td.priority-cell {
     width: 16px;
+    text-align: center;
 }
 
 td.dropdown-cell.priority-cell > div {
@@ -1390,7 +1456,6 @@ textarea[readonly],
 }
 
 .modal-mini {
-    width: 420px;
     margin-left: -210px;
 }
 
@@ -1437,6 +1502,28 @@ ul.help > li {
     height: 0;
     opacity: 0;
     filter: alpha(opacity=0);
+}
+
+/* Ensure left alignment for first two columns on small screens */
+@media (max-width: 768px) {
+    .data-table td:first-child,
+    .data-table td:nth-child(2),
+    .data-table th:first-child,
+    .data-table th:nth-child(2) {
+        text-align: left !important;
+    }
+    table > tbody > tr > td:first-child,
+    table > tbody > tr > td:nth-child(2),
+    table > thead > tr > th:first-child,
+    table > thead > tr > th:nth-child(2) {
+        text-align: left !important;
+    }
+    /* Reset Category column width on small screens */
+    #DownloadsTable_Category,
+    #HistoryTable_Category {
+        width: auto !important;
+        min-width: 60px;
+    }
 }
 
 /* BEGIN: PopupNotification alerts */
@@ -1516,14 +1603,6 @@ ul.help > li {
     min-width: 10px;
     right: 0;
     left: auto;
-}
-
-.data-statistics {
-    width: 300px;
-}
-
-.data-statistics-full {
-    width: 364px;
 }
 
 .modal-center {
@@ -1816,6 +1895,7 @@ ul.help > li {
     margin-right: 15px;
     font-size: 16px;
     font-weight: bold;
+    text-transform: uppercase;
 }
 
 .config-header .btn-group {
@@ -2137,6 +2217,9 @@ tr.drag-source > td > * {
     visibility: hidden !important;
 }
 
+/* --- UI Settings Dropdown Panel --- */
+
+
 /****************************************************************************/
 /* SMARTPHONE THEME */
 
@@ -2242,6 +2325,11 @@ body.phone,
 .phone #DownloadQueueEmpty {
     margin-left: 5px;
     margin-right: 5px;
+}
+
+.phone .statistics__section-toolbar {
+    margin: 0;
+    padding: 0;
 }
 
 .phone #FirstUpdateInfo,
@@ -2421,6 +2509,10 @@ body.phone,
 }
 
 /* CONTROLS AROUND DATATABLE */
+.records-label {
+	padding: 0 5px;
+}
+
 .phone .records-label {
     display: none;
 }
@@ -2549,8 +2641,58 @@ body.phone,
     min-width: 45px;
 }
 
-.phone .btn-toolbar .btn-group {
-    margin-right: 0;
+/* --- UI Settings Dropdown Panel --- */
+.menu-header {
+    padding: 3px 20px;
+}
+
+.settings-menu-panel {
+    width: 181px;
+    padding: 10px;
+}
+
+.settings-menu-header {
+    padding-left: 0;
+    padding-bottom: 5px;
+}
+
+.settings-menu-divider {
+    margin-top: 10px;
+}
+
+/* Flexbox containers for segmented switches */
+.switch-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.switch-group {
+    display: flex;
+    width: 100%;
+}
+
+.switch-group.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.scrollable-menu {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Individual segment buttons */
+.switch-btn {
+    flex: 1 1 0;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+}
+
+.switch-btn-icon {
+    font-size: 16px;
+    vertical-align: text-bottom;
 }
 
 .phone .btn-toolbar .input-prepend .add-on,
@@ -2799,22 +2941,24 @@ input[type="date"] {
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 560px) {
     #SearchBlock {
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-}
 
-@media (max-width: 560px) {
     .phone .search-clear {
         right: 25px;
     }
 
     .list-item--nested a {
         padding-left: 0px !important;
+    }
+    
+    .settings-menu-panel {
+        width: 225px;
     }
 }
 
@@ -2836,3 +2980,10 @@ input[type="date"] {
     }
 }
 /* END: MEDIA SMALL SCREENS */
+
+#ConfigNav.nav-list a {
+    text-transform: uppercase;
+}
+
+#ConfigInfo p a.option,
+#ConfigInfo p em strong,
