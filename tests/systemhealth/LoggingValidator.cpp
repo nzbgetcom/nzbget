@@ -43,8 +43,8 @@ BOOST_AUTO_TEST_CASE(TestWriteLogValidator)
 	writeLogAppend.push_back("WriteLog=append");
 	Options appendOptions(&writeLogAppend, nullptr);
 	Status appendStatus = WriteLogValidator(appendOptions).Validate();
-	BOOST_CHECK(appendStatus.IsOk());
-	BOOST_CHECK(appendStatus.GetMessage().empty());
+	BOOST_CHECK(appendStatus.IsWarning());
+	BOOST_CHECK(appendStatus.GetMessage().find("may grow indefinitely") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(TestRotateLogValidator)
