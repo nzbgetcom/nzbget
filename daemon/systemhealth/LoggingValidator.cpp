@@ -42,13 +42,10 @@ Status WriteLogValidator::Validate() const
 	const auto writeLog = m_options.GetWriteLog();
 	switch (writeLog)
 	{
-		case Options::EWriteLog::wlNone:
-			return Status::Info(
-				"Logging is disabled. Logging is recommended for "
-				"effective debugging and troubleshooting");
 		case Options::EWriteLog::wlAppend:
 			return Status::Warning("'" + std::string(Options::WRITELOG) +
 								   "' is set to 'Append'. The log file may grow indefinitely");
+		case Options::EWriteLog::wlNone:
 		case Options::EWriteLog::wlReset:
 		case Options::EWriteLog::wlRotate:
 			return Status::Ok();
