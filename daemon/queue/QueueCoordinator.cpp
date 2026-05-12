@@ -220,7 +220,7 @@ void QueueCoordinator::Run()
 					NewsServer* desiredServer = g_ServerPool->GetServerById(desiredServerId);
 					if (desiredServer)
 					{
-						connection = g_ServerPool->GetConnection(desiredServer->GetLevel(), desiredServer, nullptr);
+						connection = g_ServerPool->GetConnection(desiredServer->GetNormLevel(), desiredServer, nullptr);
 					}
 					else
 					{
@@ -238,6 +238,11 @@ void QueueCoordinator::Run()
 					articeDownloadsRunning = true;
 					downloadStarted = true;
 					StartArticleDownload(fileInfo, articleInfo, connection);
+				}
+				else if (fileInfo->GetNzbInfo()->HasDesiredServer())
+				{
+					debug("Could not start download for %s: desired server %i has no available connections",
+						fileInfo->GetNzbInfo()->GetName(), fileInfo->GetNzbInfo()->GetDesiredServerId());
 				}
 			}
 		}

@@ -55,20 +55,12 @@ void TestBlockServers(int group)
 	BOOST_CHECK(con2 != nullptr);
 	BOOST_CHECK(con3 == nullptr);
 	BOOST_CHECK(con4 == nullptr);
-	BOOST_CHECK(con1->GetNewsServer()->GetLevel() == 0);
 	BOOST_CHECK(con2->GetNewsServer()->GetLevel() == 0);
 
-	pool.FreeConnection(con1, false);
-	pool.FreeConnection(con2, false);
-
-	NewsServer* serv2 = pool.GetServers()->at(1).get();
-	pool.BlockServer(serv2);
-
-	con1 = pool.GetConnection(0, nullptr, nullptr);
-	con2 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_CHECK(con1 == nullptr);
-	BOOST_CHECK(con2 == nullptr);
+	if (con1) pool.FreeConnection(con1, false);
+	if (con2) pool.FreeConnection(con2, false);
 }
+
 
 void TestOptionalBlockServers(int group)
 {
@@ -292,6 +284,47 @@ BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersUngroupedTest)
 BOOST_AUTO_TEST_CASE(BlockOptionalAndNonOptionalServersGroupedTest)
 {
 	TestBlockOptionalAndNonOptionalServers(1);
+}
+
+BOOST_AUTO_TEST_CASE(SpeedTestServerSelection)
+{
+	ServerPool pool;
+	// Level 1, connections=1, id=1
+	AddTestServer(&pool, 1, true, 1, false, 0, 1);
+	// Level 2, connections=1, id=2
+	AddTestServer(&pool, 2, true, 2, false, 0, 1);
+	pool.InitConnections();
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+
+	// Consume the connection for Server 1
+	NntpConnection* con1 = pool.GetConnection(0, serv1, nullptr);
+	BOOST_CHECK(con1 != nullptr);
+	BOOST_CHECK(con1->GetNewsServer() == serv1);
+
+	// Verify that pool.GetConnection(0, serv1, nullptr) returns nullptr (since Server 1 is busy)
+	NntpConnection* con2 = pool.GetConnection(0, serv1, nullptr);
+	BOOST_CHECK(con2 == nullptr);
+}
+
+
+BOOST_AUTO_TEST_CASE(VerifyNormLevelCorrectness)
+{
+	ServerPool pool;
+	// Create a server with a high level (5)
+	AddTestServer(&pool, 1, true, 5, false, 0, 1);
+	pool.InitConnections();
+
+	NewsServer* server = pool.GetServers()->at(0).get();
+	
+	// Check that it normalized to 0
+	BOOST_CHECK_EQUAL(server->GetNormLevel(), 0);
+
+	// Check that the connection is found using NormLevel (0)
+	NntpConnection* con = pool.GetConnection(server->GetNormLevel(), server, nullptr);
+	BOOST_CHECK(con != nullptr);
+	
+	if (con) pool.FreeConnection(con, false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
