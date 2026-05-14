@@ -75,7 +75,7 @@ var Messages = (new function($)
 				updateInfoCallback: updateInfo
 			});
 
-		I18n.subscribe(function() { Messages.redraw(); });
+		I18n.subscribe(Messages.redraw);
 	}
 
 	this.applyTheme = function()

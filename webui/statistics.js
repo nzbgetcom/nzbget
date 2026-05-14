@@ -198,7 +198,7 @@ var Statistics = new (function ($) {
 		});
 
 		Options.subscribe(optionsHandler);
-		I18n.subscribe(function() { Statistics.redraw(); Statistics.update(); });
+		I18n.subscribe(function onLangChange() { Statistics.redraw(); Statistics.update(); });
 	};
 
 	this.redraw = function () {
@@ -840,7 +840,7 @@ var Statistics = new (function ($) {
 			var currDaySlot = Util.getDaySinceUnixEpoch(datetime.getCurrentDay());
 			for (var i = 0; i < dates.length; ++i) {
 				var date = dates[i];
-				var label = new Intl.DateTimeFormat(I18n.getLocale(), I18n.getTimeFormatOptions()).format(date);
+				var label = new Intl.DateTimeFormat(I18n.getLocale(), { year: 'numeric', month: 'short', day: 'numeric' }).format(date);
 				var slot = Util.getDaySinceUnixEpoch(date);
 				if (slot >= firstDay) {
 					var idx = slot - firstDay;

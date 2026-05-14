@@ -248,7 +248,7 @@ th {
     box-sizing: border-box;
 }
 
-@media (max-width: 900px), .phone {
+@media (max-width: 900px) {
     #ExtensionManagerTable .phone-hide {
         display: none;
     }
@@ -1023,6 +1023,11 @@ div.toolbox-length select {
     margin: 0;
 }
 
+/* Minimum width for Size/Left column with nested layout */
+#DownloadsTable th:nth-child(7) {
+    min-width: 135px;
+}
+
 .pagination a {
     padding: 0 10px;
     line-height: 26px;
@@ -1083,7 +1088,8 @@ form {
 }
 
 #DownloadsEdit_FileTable_filter,
-#DownloadsEdit_LogTable_filter #HistoryEdit_LogTable_filter,
+#DownloadsEdit_LogTable_filter,
+#HistoryEdit_LogTable_filter,
 #FeedDialog_ItemTable_filter {
     width: 180px;
 }
@@ -1323,6 +1329,98 @@ table th.priority-cell {
     padding-left: 8px;
 }
 
+/* Sortable column headers indicator */
+#DownloadsTable th a::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background-color: currentColor;
+    mask: url(img/unfold_more_fill.svg) no-repeat center;
+    mask-size: contain;
+    -webkit-mask: url(img/unfold_more_fill.svg) no-repeat center;
+    -webkit-mask-size: contain;
+    opacity: 0.6;
+    vertical-align: sub;
+    margin-left: 3px;
+}
+
+/* Shrink narrow columns: prevent excess width */
+body:not(.phone) #DownloadsTable th:nth-child(2),   /* Priority */
+body:not(.phone) #DownloadsTable th:nth-child(3),   /* Status */
+body:not(.phone) #DownloadsTable th:nth-child(6),   /* Age */
+body:not(.phone) #DownloadsTable th:nth-child(8),   /* Est. Time */
+body:not(.phone) #HistoryTable th:nth-child(2),     /* Status */
+body:not(.phone) #HistoryTable th:nth-child(3),     /* Time */
+body:not(.phone) #HistoryTable th:nth-child(6),     /* Age */
+body:not(.phone) #HistoryTable th:nth-child(7),     /* Size */
+body:not(.phone) #MessagesTable th:nth-child(1),    /* Status */
+body:not(.phone) #MessagesTable th:nth-child(2) {   /* Time */
+    width: 1%;
+}
+body:not(.phone) #DownloadsTable td:nth-child(3),   /* Status */
+body:not(.phone) #DownloadsTable td:nth-child(6),   /* Age */
+body:not(.phone) #DownloadsTable td:nth-child(8),   /* Est. Time */
+body:not(.phone) #HistoryTable td:nth-child(2),     /* Status */
+body:not(.phone) #HistoryTable td:nth-child(3),     /* Time */
+body:not(.phone) #HistoryTable td:nth-child(6),     /* Age */
+body:not(.phone) #HistoryTable td:nth-child(7),     /* Size */
+body:not(.phone) #MessagesTable td:nth-child(1),    /* Status */
+body:not(.phone) #MessagesTable td:nth-child(2) {   /* Time */
+    white-space: nowrap;
+}
+
+/* Centered narrow columns */
+body:not(.phone) #DownloadsTable th:nth-child(3), body:not(.phone) #DownloadsTable td:nth-child(3),   /* Status */
+body:not(.phone) #HistoryTable th:nth-child(2), body:not(.phone) #HistoryTable td:nth-child(2),       /* Status */
+body:not(.phone) #HistoryTable th:nth-child(3), body:not(.phone) #HistoryTable td:nth-child(3),       /* Time */
+body:not(.phone) #MessagesTable th:nth-child(1), body:not(.phone) #MessagesTable td:nth-child(1),     /* Status */
+body:not(.phone) #MessagesTable th:nth-child(2), body:not(.phone) #MessagesTable td:nth-child(2) {    /* Time */
+    text-align: center;
+}
+
+/* Vertical centering for all table cells */
+body:not(.phone) #DownloadsTable td,
+body:not(.phone) #HistoryTable td,
+body:not(.phone) #MessagesTable td,
+body:not(.phone) #DownloadsEdit_FileTable td,
+body:not(.phone) #DownloadsEdit_LogTable td,
+body:not(.phone) #HistoryEdit_LogTable td {
+    vertical-align: middle;
+}
+
+/* Dialog table column sizing */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(2),   /* Status */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(4),   /* Age */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(5),   /* Size */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(1),    /* Status */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(2),    /* Time */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),      /* Status */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(2) {     /* Time */
+    width: 1%;
+}
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(2),   /* Status */
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(4),   /* Age */
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(5),   /* Size */
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(1),    /* Status */
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2) {     /* Time */
+    white-space: nowrap;
+}
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(2),
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(2),   /* Status center */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(1),
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(1),    /* Status center */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(2),
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time center */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status center */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(2),
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2) {     /* Time center */
+    text-align: center;
+}
+
 table td.priority-cell {
     width: 16px;
     text-align: center;
@@ -1456,6 +1554,7 @@ textarea[readonly],
 }
 
 .modal-mini {
+    width: 420px;
     margin-left: -210px;
 }
 
@@ -1510,13 +1609,7 @@ ul.help > li {
     .data-table td:nth-child(2),
     .data-table th:first-child,
     .data-table th:nth-child(2) {
-        text-align: left !important;
-    }
-    table > tbody > tr > td:first-child,
-    table > tbody > tr > td:nth-child(2),
-    table > thead > tr > th:first-child,
-    table > thead > tr > th:nth-child(2) {
-        text-align: left !important;
+        text-align: left;
     }
     /* Reset Category column width on small screens */
     #DownloadsTable_Category,
@@ -1772,6 +1865,15 @@ ul.help > li {
     overflow: auto;
 }
 
+.config-save-desktop {
+    text-align: right;
+}
+
+.config-save-mobile {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
 @media (max-width: 1041px) {
     .container-fluid {
         padding: 0 10px;
@@ -1902,13 +2004,24 @@ ul.help > li {
     margin-right: 0;
 }
 
-#ConfigContent p.help-block {
+#ConfigContent .help-block {
     margin-top: 6px;
     line-height: 16px;
 }
 
-#ConfigContent.hide-help-block p.help-block {
+#ConfigContent.hide-help-block .help-block {
     display: none;
+}
+
+.help-block pre.help-desc {
+    font-size: 14px;
+    border: none;
+}
+
+.help-block pre.help-desc,
+#ConfigContent .help-block pre.help-desc {
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 #ConfigContent .control-label {
@@ -1923,8 +2036,9 @@ ul.help > li {
     width: 70px;
 }
 
-#ConfigContent .editlarge {
-    width: 95%;
+#ConfigContent .editlarge,
+#ConfigContent table.editor input {
+    width: calc(100% - 10px);
 }
 
 #ConfigContent .editsmall {
@@ -1932,7 +2046,7 @@ ul.help > li {
 }
 
 #ConfigContent table.editor {
-    width: 97%;
+    width: 100%;
 }
 
 #ConfigContent table.editor td:first-child {
@@ -1941,7 +2055,7 @@ ul.help > li {
 }
 
 #ConfigContent table.editor input {
-    width: 100%;
+    width: calc(100% - 10px);
 }
 
 .ConfigFooter hr {
@@ -2012,7 +2126,6 @@ div.control-group.last-group {
 .option__check-section {
     display: flex;
     flex-direction: column;
-    width: 96%;
     margin-top: 7px;
 }
 
@@ -2034,6 +2147,7 @@ div.control-group.last-group {
 
 div.multiset-toolbar button {
     margin-right: 15px;
+    margin-bottom: 5px;
 }
 
 #ScriptListDialog_ScriptTable td:nth-child(2) {
@@ -2399,6 +2513,10 @@ body.phone,
     background-position: -112px -48px;
 }
 
+.phone #MessagesTable td {
+    text-align: left;
+}
+
 .phone .navbar .btn-toolbar .btn {
     padding: 3px;
     min-width: 40px;
@@ -2660,7 +2778,6 @@ body.phone,
     margin-top: 10px;
 }
 
-/* Flexbox containers for segmented switches */
 .switch-container {
     display: flex;
     flex-direction: column;
@@ -2682,7 +2799,6 @@ body.phone,
     overflow-x: hidden;
 }
 
-/* Individual segment buttons */
 .switch-btn {
     flex: 1 1 0;
     padding-left: 0;

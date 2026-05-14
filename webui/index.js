@@ -171,18 +171,20 @@ $(document).ready(function()
 	// Language Setup - wait for i18n to be ready before populating dropdown
 	I18n.whenReady(function() {
 		var langs = I18n.getAvailableLangs();
-		var currentLang = I18n.getCurrentLang();
+		var currentLang = I18n.getLocale();
 
 		langs.forEach(function(lang) {
 			var selected = (lang.code === currentLang) ? 'selected' : '';
 			var option = $('<option value="' + lang.code + '" ' + selected + '>' + lang.name + '</option>');
 			$langSelect.append(option);
 		});
+
+		$langSelect.click(function(e) {
+			e.stopPropagation();
+		});
 	});
 
-	$langSelect.click(function(e) {
-		e.stopPropagation();
-	});
+
 
 	$langSelect.change(function() {
 		I18n.setLanguage($(this).val());
@@ -207,8 +209,6 @@ $(document).ready(function()
 	});
 
 	// 4. Theme Setup (doesn't depend on i18n but needs to run after DOM ready)
-	function isDarkTheme() { return themeStyleSheet.attr('href') === darkThemeStyleSheet; }
-
 	function updateThemeUI() {
 		$('.theme-btn').removeClass('btn-active');
 		var current = isDarkTheme() ? 'dark' : 'light';
@@ -245,8 +245,6 @@ $(document).ready(function()
 		return themeStyleSheet.attr('href') === darkThemeStyleSheet;
 	}
 });
-
-	var switchingTheme = false;
 
 /*** FRONTEND MAIN PAGE ***********************************************************/
 
@@ -1086,8 +1084,7 @@ var Refresher = (new function($)
 
 function TODO(text)
 {
-	var txt = I18n.translate('not_implemented');
-	$('#Notif_NotImplemented_Param').html(txt === undefined ? '' : ': ' + txt);
+	$('#Notif_NotImplemented_Param').html(text === undefined ? '' : ': ' + text);
 	PopupNotification.show('#Notif_NotImplemented');
 }
 
@@ -1117,6 +1114,20 @@ var ConfirmDialog = (new function($)
 		$('#ConfirmDialog_Title').html($('#' + id + '_Title').html());
 		$('#ConfirmDialog_Text').html($('#' + id + '_Text').html());
 		$('#ConfirmDialog_OK').html($('#' + id + '_OK').html());
+
+		// Copy data-i18n attributes from source dialog so translatePage uses correct keys
+		var copyAttr = function(suffix, attr) {
+			var val = $('#' + id + '_' + suffix).attr(attr);
+			if (val) $('#ConfirmDialog_' + suffix).attr(attr, val);
+		};
+		copyAttr('Title', 'data-i18n');
+		copyAttr('Text', 'data-i18n');
+		copyAttr('OK', 'data-i18n');
+
+		if (typeof I18n !== 'undefined' && I18n.translatePage)
+		{
+			I18n.translatePage($('#ConfirmDialog'));
+		}
 		var helpId = $('#' + id + '_Help').html();
 		$('#ConfirmDialog_Help').attr('href', '#' + helpId);
 		Util.show('#ConfirmDialog_Help', helpId !== null);

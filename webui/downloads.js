@@ -118,7 +118,7 @@ var Downloads = (new function($)
 		DownloadsActionsMenu.init();
 
 		Options.subscribe(DownloadsUI);
-		I18n.subscribe(function() { Downloads.redraw(true); });
+		I18n.subscribe(function onLangChange() { Downloads.redraw(true); });
 	}
 	
 

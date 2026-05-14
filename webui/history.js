@@ -96,7 +96,7 @@ var History = (new function($)
 
 		HistoryActionsMenu.init();
 
-		I18n.subscribe(function() { History.redraw(true); });
+		I18n.subscribe(function onLangChange() { History.redraw(true); });
 	}
 
 	this.applyTheme = function()
@@ -268,13 +268,17 @@ var History = (new function($)
 
 	function renderCellCallback(cell, index, item)
 	{
-		if (index === 1 || index === 4)
+		if (index === 1)
+		{
+			cell.className = 'text-center' + (!UISettings.miniTheme ? ' dropdown-cell' : '');
+		}
+		else if (index === 4)
 		{
 			cell.className = !UISettings.miniTheme ? 'dropdown-cell' : '';
 		}
 		else if (index === 2)
 		{
-			cell.className = 'text-center' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
+			cell.className = 'text-center';
 		}
 		else if (index === 6)
 		{

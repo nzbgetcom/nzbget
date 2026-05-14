@@ -193,7 +193,7 @@
 		});
 	};
 
-this.isValidLang = function(code)
+	this.isValidLang = function(code)
 	{
 		// English is always valid - it's the base language from locales.source.json
 		if (code === 'en') return true;
@@ -205,7 +205,7 @@ this.isValidLang = function(code)
 	};
  
 	// Simple format function for $1, $2 placeholders
-	this.format = function(format, args, translateFunc) {
+	this.format = function(format, args) {
 		if (typeof format !== 'string') format = String(format);
 		return format.replace(/\$(\d+)/g, function(match, number) {
 			// $1 corresponds to args[0], $2 to args[1], etc.
@@ -247,7 +247,7 @@ this.isValidLang = function(code)
 		
 		if (arguments.length > 1) {
 			var args = Array.prototype.slice.call(arguments, 1);
-			return this.format(text, args, this.translate);
+			return this.format(text, args);
 		}
 		
 		return text;
@@ -362,11 +362,6 @@ this.isValidLang = function(code)
 		});
 	};
  
-	this.getCurrentLang = function()
-	{
-		return currentLocale;
-	};
-
 	this.getLocale = function()
 	{
 		return currentLocale;

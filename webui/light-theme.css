@@ -359,6 +359,11 @@ td:hover span.none-category {
 	border-bottom: 1px solid #eeeeee;
 }
 
+#ConfigContent .help-block pre.help-desc {
+    border: 1px solid #eeeeee;
+    color: inherit;
+}
+
 .config-header .btn {
 	margin-top: 7px;
 	margin-right: 0;

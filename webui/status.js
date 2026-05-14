@@ -116,7 +116,7 @@ var Status = (new function($)
 		StatDialog.init();
 		FilterMenu.init();
 		initTitle();
-		I18n.subscribe(function() { Status.redraw(); });
+		I18n.subscribe(Status.redraw);
 	}
 
 	this.update = function()

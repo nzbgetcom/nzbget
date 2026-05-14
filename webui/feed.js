@@ -516,7 +516,7 @@ var FeedFilterDialog = (new function($)
 			I18n.translatePage($(this));
 		});
 
-		I18n.subscribe(function()
+		I18n.subscribe(function onLangChange()
 		{
 			I18n.translatePage($('#FeedFilterDialogHelp'));
 		});
