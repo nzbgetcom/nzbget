@@ -1,19 +1,26 @@
 {
   "__LOCALES__": {
+    "cs": "Čeština",
+    "da": "Dansk",
     "de": "Deutsch",
     "el": "Ελληνικά",
     "en": "English",
     "es": "Español",
+    "fi": "Suomi",
     "fr": "Français",
-    "hr": "Hrvatski",
     "hu": "Magyar",
-    "id": "Bahasa Indonesia",
     "it": "Italiano",
+    "nb": "Norsk bokmål",
     "nl": "Nederlands",
     "pl": "Polski",
-    "pt": "Português",
+    "pt_BR": "Português (Brasil)",
+    "pt_PT": "Português (Portugal)",
+    "ro": "Română",
     "ru": "Русский",
-    "tr": "Türkçe"
+    "sr": "Српски",
+    "sv": "Svenska",
+    "tr": "Türkçe",
+    "uk": "Українська"
   },
   "play_btn_paused": {
     "message": "Download paused (click to resume) $1",
@@ -3543,6 +3550,10 @@
     "message": "Go Back",
     "description": "Button label used to navigate back to the previous view or page."
   },
+  "btn_shutdown_confirm": {
+    "message": "Shutdown",
+    "description": "Button text for confirming NZBGet shutdown"
+  },
   "config_unit_kb": {
     "message": "KB",
     "description": "Unit for KB"
@@ -3634,10 +3645,6 @@
   "config_desc_interdir": {
     "message": "Directory to store intermediate files.\n\nIf this option is set (not empty) the files are downloaded into\nthis directory first. After successful download of nzb-file (possibly\nafter par-repair) the files are moved to destination directory\n(option <DestDir>). If download or unpack fail the files remain in\nintermediate directory.\n\nUsing of intermediate directory can significantly improve unpack\nperformance if you can put intermediate directory (option <InterDir>)\nand destination directory (option <DestDir>) on separate physical\nhard drives.\n\nNOTE: If the option <InterDir> is set to empty value the downloaded\nfiles are put directly to destination directory (option <DestDir>).",
     "description": "Description for the option InterDir DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
-  },
-  "config_desc_nzbdir": {
-    "message": "Directory for incoming nzb-files.\n\nIf a new nzb-file is added to queue via web-interface or RPC-API, it\nis saved into this directory and then processed by extension\nscripts (option <Extensions>).\n\nThis directory is also monitored for new nzb-files and compressed archives\n(zip, rar, 7z, tar, gz, etc.). See options <NzbDirArchiveScan> and <NzbDirArchiveAction>.\n\nThe directory can have sub-directories. A file queued from a subdirectory\nis automatically assigned to the category matching the sub-directory name.",
-    "description": "Description for the option NzbDir DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
   },
   "config_desc_queuedir": {
     "message": "Directory to store program state.\n\nThis directory is used to save download queue, history, information\nabout fetched RSS feeds, statistics, etc.",
@@ -3733,7 +3740,7 @@
   },
   "config_desc_server_certverification": {
     "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
-    "description": "Description for the option Server1.CertVerification"
+    "description": "Description for the option Server1.CertVerification DO NOT translate configuration option values (Minimal, None, Strict) as they are fixed configuration values."
   },
   "config_desc_server_ipversion": {
     "message": "IP protocol version.",
@@ -3805,7 +3812,7 @@
   },
   "config_desc_updatecheck": {
     "message": "Automatically check for new releases.\n\n None    - do not show notifications;\n Stable  - show notifications about new stable releases;\n Testing - show notifications about new testing releases;",
-    "description": "Description for the option UpdateCheck"
+    "description": "Description for the option UpdateCheck DO NOT translate configuration option values (None, Stable, Testing) as they are fixed configuration values."
   },
   "config_desc_daemonusername": {
     "message": "User name for daemon-mode, POSIX only.\n\nSet the user that the daemon normally runs at (POSIX in daemon-mode only).\nSet MainDir with an absolute path to be sure where it will write.\nThis allows NZBGet daemon to be launched in rc.local (at boot), and\ndownload items as a specific user id.\n\nNOTE: If DaemonUsername is not \"root\" and doesn't exist the daemon will not start.\nNOTE: If the daemon is running as root (superuser) and DaemonUsername exists,\nnzbget will drop root privileges to the user specified by DaemonUsername.",
@@ -3843,9 +3850,9 @@
     "message": "Address (URL) of RSS Feed.\n\nExample: https://myindexer.com/api?apikey=3544646bfd1c535a9654645609800901&t=search&q=game.",
     "description": "Description for the option Feed1.URL"
   },
-  "config_desc_feed_filter": { 
+  "config_desc_feed_filter": {
     "message": "Filter rules for items.\n\nUse filter to ignore unwanted items in the feed. In its simplest version\nthe filter is a space separated list of words which must be present in\nthe item title.\n\nExample: linux debian dvd.\n\nMORE INFO:\nNOTE: This is a short documentation, for more information visit\nhttps://nzbget.com/documentation/rss/.\n\nFeed filter consists of rules - one rule per line. Each rule defines\na search string and a command, which must be performed if the search\nstring matches. There are five kinds of rule-commands: Accept,\nReject, Require, Options, Comment.\n\nNOTE: Since options in the configuration file can not span multiple\nlines, the lines (rules) must be separated with %-character (percent).\n\nDefinition of a rule:\n [A:|A(options):|R:|Q:|O(options):|#] search-string\n\n A - declares Accept-rule. Rules are accept-rules by default, the\n     \"A:\" can be omitted. If the feed item matches to the rule the\n     item is considered good and no further rules are checked.\n R - declares Reject-rule. If the feed item matches to the rule the\n     item is considered bad and no further rules are checked.\n Q - declares Require-rule. If the feed item DOES NOT match to the rule\n     the item is considered bad and no further rules are checked.\n O - declares Options-rule. If the feed item matches to the rule the\n     options declared in the rule are set for the item. The item is\n     neither accepted nor rejected via this rule but can be accepted\n     later by one of Accept-rules. In this case the item will have its\n     options already set (unless the Accept-rule overrides them).\n # - lines starting with # are considered comments and are ignored. You\n     can use comments to explain complex rules or to temporary disable\n     rules for debugging.\n\nOptions allow to set properties on nzb-file. It's a comma-separated\nlist of property names with their values.\n\nDefinition of an option:\n name:value\n\nOptions can be defined using long option names or short names:\n category (cat, c)    - set category name, value is a string;\n pause (p)            - add nzb in paused or unpaused state, possible\n                        values are: yes (y), no (n);\n priority (pr, r)     - set priority, value is a signed integer number;\n priority+ (pr+, r+)  - increase priority, value is a signed integer number;\n dupescore (ds, s)    - set duplicate score, value is a signed integer number;\n dupescore+ (ds+, s+) - increase duplicate score, value is a signed integer number;\n dupekey (dk, k)      - set duplicate key, value is a string;\n dupekey+ (dk+, k+)   - add to duplicate key, value is a string;\n dupemode (dm, m)     - set duplicate check mode, possible values\n                        are: score (s), all (a), force (f);\n rageid\t\t\t\t- generate duplicate key using this rageid\n                        (integer number) and season/episode numbers;\n series\t\t\t\t- generate duplicate key using series identifier\n                        (any unique string) and season/episode numbers.\n\nExamples of option definitions:\n Accept(category:my series, pause:yes, priority:100): my show 1080p;\n Options(c:my series, p:y, r:100): 1080p;\n Options(s:1000): 1080p;\n Options(k+:1080p): 1080p;\n Options(dupemode:force): BluRay.\n\nRule-options override values set in feed-options.\n\nThe search-string is similar to used in search engines. It consists of\nsearch terms separated with spaces. Every term is checked for a feed\nitem and if they all succeed the rule is considered matching.\n\nDefinition of a term:\n [+|-][field:][command]param\n\n +       - declares a positive term. Terms are positive by default,\n           the \"+\" can be omitted;\n -       - declares a negative term. If the term succeeds the feed\n           item is ignored;\n field   - field to which apply the term. If not specified\n           the default field \"title\" is used;\n command - a special character defining how to interpret the\n           parameter (followed after the command):\n           @  - search for string \"param\". This is default command,\n                the \"@\" can be omitted;\n           $  - \"param\" defines a regular expression (using POSIX Extended\n                Regular Expressions syntax);\n           =  - equal;\n           <  - less than;\n           <= - equal or less than;\n           >  - greater than;\n           >= - equal or greater than;\n param   - parameter for command.\n\nCommands @ and $ are for use with text fields (title, filename, category,\nlink, description, dupekey). Commands =, <, <=, > and >= are for use\nwith numeric fields (size, age, imdbid, rageid, season, episode, priority,\ndupescore).\n\nOnly fields title, filename and age are always present. The availability of\nother fields depend on rss feed provider.\n\nAny newznab attribute (encoded as \"newznab:attr\" in the RSS feed) can\nbe used as search field with prefix \"attr-\", for example \"attr-genre\".\n\nText search (Command @) supports wildcard characters * (matches\nany number of any characters), ? (matches any one character)\nand # (matches one digit).\nText search is by default performed against words (word-search mode): the\nfield content is separated into words and then each word is checked\nagainst pattern. If the search pattern starts and ends with * (star)\nthe search is performed against the whole field content\n(substring-search mode). If the search pattern contains word separator\ncharacters (except * and ?) the search is performed on the whole\nfield (the word-search would be obviously never successful in this\ncase). Word separators are: !\\\"#$%&'()*+,-./:;<=>?@[\\\\]^_`{|}~.\n\nField \"size\" can have suffixes \"K\" or \"KB\" for kilobytes, \"M\" or \"MB\"\nfor megabytes and \"G\" or \"GB\" for gigabytes. Field \"age\" can have\nsuffixes \"m\" for minutes, \"h\" for hours and \"d\" for days. If suffix\nis not specified default is days.\n\nExamples (the trailing ; or . is not part of filter):\n1) A: s01* -category:anime;\n2) my show WEB-DL;\n3) *my?show* WEB-DL size:<1.8GB age:>2h;\n4) R: size:>9GB;\n5) Q: HDTV.\n\nNOTE: This is a short documentation, for more information visit\nhttps://nzbget.com/documentation/rss/.",
-    "description": "Description for the option Feed1.Filter DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option Feed1.Filter DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (A, O, Q, R, command, field, param, rageid, series) as they are fixed configuration values."
   },
   "config_desc_feed_interval": {
     "message": "How often to check for new items.\n\nValue \"0\" disables the automatic check of this feed.",
@@ -3853,7 +3860,7 @@
   },
   "config_desc_feed_backlog": {
     "message": "Treat all items on first fetch as backlog.\n\n yes - when the feed is fetched for the very first time (or after\n       changing of URL or filter) all existing items are ignored (marked\n       as backlog). The items found on subsequent fetches are processed;\n no  - all items are processed even on first fetch (or after\n       changing of URL or filter).",
-    "description": "Description for the option Feed1.Backlog"
+    "description": "Description for the option Feed1.Backlog DO NOT translate configuration option values (no, yes) as they are fixed configuration values."
   },
   "config_desc_feed_pausenzb": {
     "message": "Add nzb-files as paused.",
@@ -3865,7 +3872,7 @@
   },
   "config_desc_feed_categorysource": {
     "message": "Where to retrieve the category information for a download.\n\n Auto     - Try to retrieve the category from the NZB file first. If not found,\n              try the feed file.\n NzbFile  - Always retrieve the category from the NZB file. If not found, the\n              category is left empty.\n FeedFile - Always retrieve the category from the feed file. If not found, the\n              category is left empty.\n NOTE: This option works only when filters did not set a category and the <Feed1.Category> option is empty.",
-    "description": "Description for the option Feed1.CategorySource DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option Feed1.CategorySource DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Auto, FeedFile, NzbFile) as they are fixed configuration values."
   },
   "config_desc_feed_priority": {
     "message": "Priority for added nzb-files.\n\nPriority can be any integer value. The web-interface however operates\nwith only six predefined priorities: -100 (very low priority), -50\n(low priority), 0 (normal priority, default), 50 (high priority),\n100 (very high priority) and 900 (force priority). Downloads with\npriorities equal to or greater than 900 are downloaded and\npost-processed even if the program is in paused state (force mode).",
@@ -3889,11 +3896,11 @@
   },
   "config_desc_nzbdirarchivescan": {
     "message": "Scan archives (zip, rar, 7z, etc.) in <NzbDir> for .nzb files.\n\n yes - scan archives (extract to temporary sandbox). See option <NzbDirArchiveAction>\n       for post-scan behavior.\n no  - ignore archives (only process raw .nzb files).",
-    "description": "Description for the option NzbDirArchiveScan DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+    "description": "Description for the option NzbDirArchiveScan DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate configuration option values (no, yes) as they are fixed configuration values."
   },
   "config_desc_nzbdirarchiveaction": {
     "message": "Action for processed archives in NzbDir.\n\n Move   - move the archive to '_processed' (on success) or '_broken'\n          (on failure) sub-directory.\n Delete - delete the archive.\n\nNOTE: Files are deleted ONLY if .nzb files were successfully imported.\nNOTE: If the archive contains files other than .nzb, the archive will NOT\nbe deleted to prevent accidental data loss. Instead, it will be moved to\nthe '_processed' directory.\nIf processing fails, the file is moved to '_broken' directory to prevent data loss.",
-    "description": "Description for the option NzbDirArchiveAction DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option NzbDirArchiveAction DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Delete, Move) as they are fixed configuration values."
   },
   "config_desc_dupecheck": {
     "message": "Check for duplicate titles.\n\nIf this option is enabled the program checks by adding of a new nzb-file:\n1) if history contains the same title (see below) with success status\n   the nzb-file is not added to queue;\n2) if download queue already contains the same title the nzb-file is\n   added to queue for backup (if the first file fails);\n3) if nzb-file contains duplicate entries. This helps to find errors\n   in bad nzb-files.\n\n\"Same title\" means the nzb file name is same or the duplicate key is\nsame. Duplicate keys are set by fetching from RSS feeds using title\nidentifier fields provided by RSS provider (imdbid or rageid/season/episode).\n\nIf duplicates were detected only one of them is downloaded. If download\nfails another duplicate is tried. If download succeeds all remaining\nduplicates are deleted from queue.\n\nNOTE: For automatic duplicate handling option <HealthCheck> must be\nset to \"Delete\", \"Park\" or \"None\". If it is set to \"Pause\" you will need to\nmanually unpause another duplicate (if any exists in queue).\n\nNOTE: For more info on duplicates see https://nzbget.com/documentation/rss/.",
@@ -3925,7 +3932,7 @@
   },
   "config_desc_filenaming": {
     "message": "How to name downloaded files.\n\n Article - use file names stored in article metadata;\n Nzb     - use file names as defined in nzb-file;\n Auto    - prefer names from article metadata; for obfuscated files use\n           names from nzb-file.\n\nNOTE: This option sets the naming convention for files listed in nzb. It has no\neffect on files extracted from archives.",
-    "description": "Description for the option FileNaming DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option FileNaming DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Article, Auto, Nzb) as they are fixed configuration values."
   },
   "config_desc_renameafterunpack": {
     "message": "Rename downloaded files after unpack.\n\nThis option renames the extracted and obfuscated files using the NZB filename.",
@@ -3941,7 +3948,7 @@
   },
   "config_desc_poststrategy": {
     "message": "Post-processing strategy.\n\n Sequential - downloaded items are post processed from a queue, one item at a\n              time, to dedicate the most computer resources to each\n              item. Therefore, a post process par repair will prevent another\n              task from running even if the item does not require a par repair;\n Balanced   - items that do not need par repair are post processed one at a\n              time while par repair tasks may also run simultaneously one after\n              another at the same time. This means that a post process par\n              repair will not prevent another task from running, but at a cost\n              of using more computer resource;\n Aggressive - will simultaneously post process up to three items including\n              one par repair task;\n Rocket     - will simultaneously post process up to six items including one\n              or two par repair tasks.\n\nNOTE: Computer resources are in heavy demand when post-processing with\nsimultaneous tasks - make sure the hardware is capable.",
-    "description": "Description for the option PostStrategy DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option PostStrategy DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Aggressive, Balanced, Rocket, Sequential) as they are fixed configuration values."
   },
   "config_desc_diskspace": {
     "message": "Pause if disk space gets below this value.\n\nDisk space is checked for directories pointed by option <DestDir> and\noption <InterDir>.\n\nValue \"0\" disables the check.",
@@ -4029,7 +4036,7 @@
   },
   "config_desc_writelog": {
     "message": "How to use log file.\n\n none   - do not write into log file;\n append - append to the existing log file or create it;\n reset  - delete existing log file on program start and create a new one;\n rotate - create new log file for each day, delete old files,\n          see option <RotateLog>.",
-    "description": "Description for the option WriteLog DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+    "description": "Description for the option WriteLog DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate configuration option values (append, none, reset, rotate) as they are fixed configuration values."
   },
   "config_desc_rotatelog": {
     "message": "Log file rotation period.\n\nDefines how long to keep old log-files, when log rotation is active\n(option <WriteLog> is set to \"rotate\").",
@@ -4077,7 +4084,7 @@
   },
   "config_desc_outputmode": {
     "message": "Set screen-outputmode.\n\nloggable - only messages will be printed to standard output;\ncolored  - prints messages (with simple coloring for messages categories)\n           and download progress info; uses escape-sequences to move cursor;\ncurses   - advanced interactive interface with the ability to edit\n           download queue and various output option.",
-    "description": "Description for the option OutputMode"
+    "description": "Description for the option OutputMode DO NOT translate configuration option values (colored, curses, loggable) as they are fixed configuration values."
   },
   "config_desc_cursesnzbname": {
     "message": "Shows NZB-Filename in file list in curses-outputmode.\n\nThis option controls the initial state of curses-frontend,\nit can be switched on/off in run-time with Z-key.",
@@ -4105,11 +4112,11 @@
   },
   "config_desc_task_command": {
     "message": "Command to be executed (PauseDownload, UnpauseDownload, PausePostProcess,\nUnpausePostProcess, PauseScan, UnpauseScan, DownloadRate, Script, Process,\nActivateServer, DeactivateServer, FetchFeed).\n\nPossible commands:\n  PauseDownload      - pause download;\n  UnpauseDownload    - resume download;\n  PausePostProcess   - pause post-processing;\n  UnpausePostProcess - resume post-processing;\n  PauseScan          - pause scan of incoming nzb-directory;\n  UnpauseScan        - resume scan of incoming nzb-directory;\n  DownloadRate       - set download rate limit;\n  Script             - execute one or multiple scheduler scripts. The scripts\n                       must be written specially for NZBGet;\n  Process            - execute an external (any) program;\n  ActivateServer     - activate news-server;\n  DeactivateServer   - deactivate news-server;\n  FetchFeed          - fetch RSS feed.\n\nOn start the program checks all tasks and determines current state\nfor download-pause, scan-pause, download-rate and active servers.",
-    "description": "Description for the option Task1.Command"
+    "description": "Description for the option Task1.Command DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, PauseDownload, PausePostProcess, PauseScan, Process, Script, UnpauseDownload, UnpausePostProcess, UnpauseScan) as they are fixed configuration values."
   },
   "config_desc_task_param": {
     "message": "Parameters for the command if needed.\n\nSome scheduler commands require additional parameters:\n DownloadRate     - download rate limit to be set (kilobytes/sec).\n                    Example: 1000.\n                    NOTE: use value \"0\" to disable download limit (unlimited speed).\n Script           - list of scheduler scripts to execute. The scripts in the\n                    list must be separated with commas or semicolons. All\n                    scripts must be stored in directory set by option\n                    <ScriptDir> and paths relative to <ScriptDir> must be\n                    entered here. For developer documentation visit\n                    https://nzbget.com/documentation/extension-scripts/;\n Process          - path to the program to execute and its parameters.\n                    Example: /home/user/fetch.sh.\n                    If filename or any parameter contains spaces it\n                    must be surrounded with single quotation\n                    marks. If filename/parameter contains single quotation marks,\n                    each of them must be replaced (escaped) with two single quotation\n                    marks and the resulting filename/parameter must be\n                    surrounded with single quotation marks.\n                    Example: '/home/user/download/my scripts/task process.sh' 'world''s fun'.\n                    In this example one parameter (world's fun) is passed\n                    to the script (task process.sh).\n ActivateServer   - comma separated list of news server ids or server names.\n                    Example: 1,3.\n                    Example: my news server 1, my news server 2.\n                    NOTE: server names should not have commas.\n DeactivateServer - see ActivateServer.\n FetchFeed        - comma separated list of RSS feed ids or feed names.\n                    Example: 1,3.\n                    Example: bookmarks feed, another feed.\n                    NOTE: feed names should not have commas.\n                    NOTE: use feed id \"0\" to fetch all feeds.",
-    "description": "Description for the option Task1.Param DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option Task1.Param DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, Process, Script) as they are fixed configuration values."
   },
   "config_desc_crccheck": {
     "message": "Check CRC of downloaded and decoded articles.\n\nNormally this option should be enabled for better detecting of download\nerrors and for quick par-verification (option <ParQuick>).",
@@ -4117,7 +4124,7 @@
   },
   "config_desc_parcheck": {
     "message": "Whether and how par-verification must be performed.\n\n Auto   - par-check is performed when needed. One par2-file is always\n          downloaded. Additional par2-files are downloaded if needed\n          for repair. Repair is performed if the option <ParRepair>\n          is enabled;\n Always - check every download (even undamaged). One par2-file is\n          always downloaded. Additional par2-files are downloaded\n          if needed for repair.  Repair is performed if the option\n          <ParRepair> is enabled;\n Force  - force par-check for every download (even undamaged). All\n          par2-files are always downloaded. Repair is performed if\n          the option <ParRepair> is enabled;\n Manual - par-check is skipped. One par2-file is always\n          downloaded. If a damaged download is detected, all\n          par2-files are downloaded but neither par-check nor par-repair\n          take place. The download can be then repaired manually,\n          eventually on another faster computer.",
-    "description": "Description for the option ParCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+    "description": "Description for the option ParCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate configuration option values (Always, Auto, Force, Manual) as they are fixed configuration values."
   },
   "config_desc_parrepair": {
     "message": "Automatic par-repair after par-verification.\n\nIf option <ParCheck> is set to \"Auto\" or \"Force\" this option defines\nif the download must be repaired when needed. The option can be\ndisabled if a computer does not have enough CPU power, since repairing\nmay consume too many resources and time on a slow computer.",
@@ -4125,7 +4132,7 @@
   },
   "config_desc_parscan": {
     "message": "What files should be scanned during par-verification (limited, extended,\nfull, dupe).\n\n Limited  - scan only files belonging to par-set;\n Extended - scan files belonging to par-set first, scan other files until\n            all missing files are found;\n Full     - scan all files in destination directory. Can be very time\n            consuming but may sometimes repair where Limited and Extended fail;\n Dupe     - scan files belonging to par-set first, scan other files until\n            repair is possible. Even files from other duplicate-downloads\n            are scanned. Can be very time consuming but brings best results.",
-    "description": "Description for the option ParScan"
+    "description": "Description for the option ParScan DO NOT translate configuration option values (Dupe, Extended, Full, Limited) as they are fixed configuration values."
   },
   "config_desc_parquick": {
     "message": "Quick file verification during par-check.\n\nIf the option is active the files are quickly verified using\nchecksums calculated during download; quick verification is very fast\nbecause it doesn't require the reading of files from disk, NZBGet\nknows checksums of downloaded files and quickly compares them with\nchecksums stored in the par-file.\n\nIf the option is disabled the files are verified as usual. That's\nslow. Use this if the quick verification doesn't work properly.",
@@ -4165,7 +4172,7 @@
   },
   "config_desc_healthcheck": {
     "message": "What to do if download health drops below critical health (delete, park,\npause, none).\n\n Delete - delete nzb-file from queue, also delete already downloaded files;\n Park   - move nzb-file to history, keep already downloaded files. Commands\n          \"Download remaining files\" and \"Retry failed articles\" are available\n          for this nzb;\n Pause  - pause nzb-file;\n None   - do nothing (continue download).\n\nNOTE: For automatic duplicate handling option must be set to \"Delete\", \"Park\"\nor \"None\". If it is set to \"Pause\" you will need to manually move another\nduplicate from history to queue. See also option <DupeCheck>.\n\nNOTE: When option <ParScan> is set to \"Dupe\" the park-action is performed\nonly if article completion is below 10% (empirical threshold). This is to\nimprove efficiency of dupe par scan mode.",
-    "description": "Description for the option HealthCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option HealthCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Delete, None, Park, Pause) as they are fixed configuration values."
   },
   "config_desc_partimelimit": {
     "message": "Maximum allowed time for par-repair.\n\nIf you use NZBGet on a very slow computer like NAS-device, it may be good to\nlimit the time allowed for par-repair. NZBGet calculates the estimated time\nrequired for par-repair. If the estimated value exceeds the limit defined\nhere, NZBGet cancels the repair.\n\nTo avoid a false cancellation NZBGet compares the estimated time with\n<ParTimeLimit> after the first 5 minutes of repairing, when the calculated\nestimated time is more or less accurate. But in a case if <ParTimeLimit> is\nset to a value smaller than 5 minutes, the comparison is made after the first\nwhole minute.\n\nValue \"0\" means unlimited.\n\nNOTE: The option limits only the time required for repairing. It doesn't\naffect the first stage of parcheck - verification of files. However, the\nverification speed is constant, it doesn't depend on files integrity and\ntherefore it is not necessary to limit the time needed for the first stage.",
@@ -4185,7 +4192,7 @@
   },
   "config_desc_usetempunpackdir": {
     "message": "Use a temporary _unpack directory during unpacking.\n\n Enabled  - Files are unpacked to a temporary subdirectory and then moved to the destination.\n            This guarantees integrity and preventing partial files in the final location.\n Disabled - Files are unpacked directly into the destination directory.\n            This allows for immediate access to files during the unpacking process.",
-    "description": "Description for the option UseTempUnpackDir"
+    "description": "Description for the option UseTempUnpackDir DO NOT translate configuration option values (Disabled, Enabled) as they are fixed configuration values."
   },
   "config_desc_unpackpausequeue": {
     "message": "Pause download queue during unpack.\n\nEnable the option to give CPU more time for unpacking. That helps\nto speed up unpacking on slow CPUs.\n\nNOTE: See also options <ParPauseQueue> and <ScriptPauseQueue>.",
@@ -4235,41 +4242,9 @@
     "message": "Minimum interval between queue events.\n\nExtension scripts can opt-in for progress notifcations during\ndownload. For downloads containing many small files the events can\nbe fired way too often increasing load on the system due to script\nexecution.\n\nThis option allows to reduce the number of calls of scripts by\nskipping \"file-downloaded\"-events if the previous call for the same\ndownload (nzb-file) were performed a short time ago (as defined by\nthe option).\n\nValue \"-1\" disables \"file-downloaded\"-events. Scripts are still\nnotified on other events (such as \"nzb-added\" or \"nzb-downloaded\").",
     "description": "Description for the option EventInterval DO NOT translate technical values enclosed in quotes."
   },
-  "config_desc_activityanimation": {
-    "message": "Animation on play/pause button.",
-    "description": "Description for the option ActivityAnimation"
-  },
-  "config_desc_refreshanimation": {
-    "message": "Animation on refresh button.",
-    "description": "Description for the option RefreshAnimation"
-  },
-  "config_desc_slideanimation": {
-    "message": "Animation of tab changes in tabbed dialogs.",
-    "description": "Description for the option SlideAnimation"
-  },
-  "config_desc_setfocus": {
-    "message": "Automatically set focus to the first control in dialogs.\n\nNot recommended for devices without physical keyboard.",
-    "description": "Description for the option SetFocus"
-  },
-  "config_desc_shownotifications": {
-    "message": "Show popup notifications.",
-    "description": "Description for the option ShowNotifications"
-  },
-  "config_desc_dupebadges": {
-    "message": "Show badges with duplicate info in downloads and history.",
-    "description": "Description for the option DupeBadges"
-  },
-  "config_desc_rowselect": {
-    "message": "Select records by clicking on any part of the row, not just on the check mark.",
-    "description": "Description for the option RowSelect"
-  },
-  "config_desc_windowtitle": {
-    "message": "Window-title for browser.\n\nThe following variables can be used within placeholders to insert current data:\n   COUNT - number of items in queue;\n   SPEED - current download speed.\n   TIME - remaining time;\n   PAUSE - \"download paused\"-indicator.\n\nTo form a placeholder surround variable with percent-characters, for example: %COUNT%.\n\nTo improve formating there is a special syntax. If variable value is empty or null then nothing is inserted:\n%(VARNAME)% - show variable value inside parenthesis;\n%[VARNAME]% - show variable value inside square brackets;\n%VARNAME-% - append hyphen to variable value;\n%(VARNAME-)% - show variable value with hyphen inside parenthesis;\n%[VARNAME-]% - show variable value with hyphen inside square brackets.\n\nExamples:\n \"%(COUNT-)% NZBGet\" - show number of downloads in parenthesis followed by a hyphen; don't show \"(0) - \" if queue is empty;\n \"%PAUSE% %(COUNT-)% NZBGet\" - as above but also show pause-indicator if paused;\n \"%[COUNT]% %SPEED-% NZBGet\" - show number of downloads and speed if not null (default setting).",
-    "description": "Description for the option WindowTitle"
-  },
-  "config_desc_refreshretries": {
-    "message": "Number of refresh attempts if a communication error occurs (0-99).\n\nIf all attempts fail, an error is displayed and the automatic refresh stops.",
-    "description": "Description for the option RefreshRetries"
+  "config_desc_nzbdir": {
+    "message": "Directory for incoming nzb-files.\n\nIf a new nzb-file is added to queue via web-interface or RPC-API, it\nis saved into this directory and then processed by extension\nscripts (option <Extensions>).\n\nThis directory is also monitored for new nzb-files and compressed archives\n(zip, rar, 7z, tar, gz, etc.). See options <NzbDirArchiveScan> and <NzbDirArchiveAction>.\n\nThe directory can have sub-directories. A file queued from a subdirectory\nis automatically assigned to the category matching the sub-directory name.",
+    "description": "Description for the option NzbDir DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
   },
   "help_feed_filter_options_def": {
     "message": "Definition of an option: $1name:value$2",
@@ -4450,5 +4425,57 @@
   "help_filter_search_def": {
     "message": "Definition of a term: $1[+|-][field:][command]param$2",
     "description": "Definition of a search term in filter syntax."
+  },
+  "history_title": {
+    "message": "History",
+    "description": "Title of the history edit dialog"
+  },
+  "notif_update_started": {
+    "message": "Update started",
+    "description": "Notification shown when an update starts"
+  },
+  "stat_queue_scripts": {
+    "message": "Queue Scripts",
+    "description": "Table row label in statistics dialog for queue scripts count"
+  },
+  "msg_merge_help_text": {
+    "message": "The first item in the list is the target — the resulting download inherits the properties such as destination directory, category, etc. from that item.",
+    "description": "Help text in the merge dialog explaining that the first item's target properties are used for the merged result."
+  },
+  "webui_config_desc_activityanimation": {
+    "message": "Animation on play/pause button.",
+    "description": "Description for the option ActivityAnimation"
+  },
+  "webui_config_desc_refreshanimation": {
+    "message": "Animation on refresh button.",
+    "description": "Description for the option RefreshAnimation"
+  },
+  "webui_config_desc_slideanimation": {
+    "message": "Animation of tab changes in tabbed dialogs.",
+    "description": "Description for the option SlideAnimation"
+  },
+  "webui_config_desc_setfocus": {
+    "message": "Automatically set focus to the first control in dialogs.\n\nNot recommended for devices without physical keyboard.",
+    "description": "Description for the option SetFocus"
+  },
+  "webui_config_desc_shownotifications": {
+    "message": "Show popup notifications.",
+    "description": "Description for the option ShowNotifications"
+  },
+  "webui_config_desc_dupebadges": {
+    "message": "Show badges with duplicate info in downloads and history.",
+    "description": "Description for the option DupeBadges"
+  },
+  "webui_config_desc_rowselect": {
+    "message": "Select records by clicking on any part of the row, not just on the check mark.",
+    "description": "Description for the option RowSelect"
+  },
+  "webui_config_desc_windowtitle": {
+    "message": "Window-title for browser.\n\nThe following variables can be used within placeholders to insert current data:\n   COUNT - number of items in queue;\n   SPEED - current download speed.\n   TIME - remaining time;\n   PAUSE - \"download paused\"-indicator.\n\nTo form a placeholder surround variable with percent-characters, for example: %COUNT%.\n\nTo improve formating there is a special syntax. If variable value is empty or null then nothing is inserted:\n%(VARNAME)% - show variable value inside parenthesis;\n%[VARNAME]% - show variable value inside square brackets;\n%VARNAME-% - append hyphen to variable value;\n%(VARNAME-)% - show variable value with hyphen inside parenthesis;\n%[VARNAME-]% - show variable value with hyphen inside square brackets.\n\nExamples:\n \"%(COUNT-)% NZBGet\" - show number of downloads in parenthesis followed by a hyphen; don't show \"(0) - \" if queue is empty;\n \"%PAUSE% %(COUNT-)% NZBGet\" - as above but also show pause-indicator if paused;\n \"%[COUNT]% %SPEED-% NZBGet\" - show number of downloads and speed if not null (default setting).",
+    "description": "Description for the option WindowTitle"
+  },
+  "webui_config_desc_refreshretries": {
+    "message": "Number of refresh attempts if a communication error occurs (0-99).\n\nIf all attempts fail, an error is displayed and the automatic refresh stops.",
+    "description": "Description for the option RefreshRetries"
   }
 }

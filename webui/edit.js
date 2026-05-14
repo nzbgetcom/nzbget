@@ -1151,10 +1151,6 @@ var LogTab = (new function($)
 
 	function logTableRenderCellCallback(cell, index, item)
 	{
-		if (index === 0)
-		{
-			cell.width = '65px';
-		}
 	}
 
 	this.recordsPerPageChange = function(name)
@@ -1422,7 +1418,7 @@ var DownloadsMergeDialog = (new function($)
 		Refresher.pause();
 
 		mergeEditIDList = [];
-		$('#DownloadsMerge_Files').empty();
+		var $tbody = $('#DownloadsMergeTable tbody').empty();
 		for (var i = 0; i < allGroups.length; i++)
 		{
 			var group = allGroups[i];
@@ -1431,8 +1427,12 @@ var DownloadsMergeDialog = (new function($)
 				mergeEditIDList.push(group.NZBID);
 				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;">draft</i></td><td>' +
 					Util.textToHtml(Util.formatNZBName(group.NZBName)) + '</td></tr></table>';
-				$('#DownloadsMerge_Files').append(html);
+				$tbody.append(html);
 			}
+		}
+		if (typeof I18n !== 'undefined' && I18n.translatePage)
+		{
+			I18n.translatePage($tbody);
 		}
 
 		$DownloadsMergeDialog.modal({backdrop: 'static'});

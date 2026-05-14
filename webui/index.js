@@ -178,11 +178,13 @@ $(document).ready(function()
 			var option = $('<option value="' + lang.code + '" ' + selected + '>' + lang.name + '</option>');
 			$langSelect.append(option);
 		});
+
+		$langSelect.click(function(e) {
+			e.stopPropagation();
+		});
 	});
 
-	$langSelect.click(function(e) {
-		e.stopPropagation();
-	});
+
 
 	$langSelect.change(function() {
 		I18n.setLanguage($(this).val());
@@ -245,8 +247,6 @@ $(document).ready(function()
 		return themeStyleSheet.attr('href') === darkThemeStyleSheet;
 	}
 });
-
-	var switchingTheme = false;
 
 /*** FRONTEND MAIN PAGE ***********************************************************/
 
@@ -1117,6 +1117,20 @@ var ConfirmDialog = (new function($)
 		$('#ConfirmDialog_Title').html($('#' + id + '_Title').html());
 		$('#ConfirmDialog_Text').html($('#' + id + '_Text').html());
 		$('#ConfirmDialog_OK').html($('#' + id + '_OK').html());
+
+		// Copy data-i18n attributes from source dialog so translatePage uses correct keys
+		var copyAttr = function(suffix, attr) {
+			var val = $('#' + id + '_' + suffix).attr(attr);
+			if (val) $('#ConfirmDialog_' + suffix).attr(attr, val);
+		};
+		copyAttr('Title', 'data-i18n');
+		copyAttr('Text', 'data-i18n');
+		copyAttr('OK', 'data-i18n');
+
+		if (typeof I18n !== 'undefined' && I18n.translatePage)
+		{
+			I18n.translatePage($('#ConfirmDialog'));
+		}
 		var helpId = $('#' + id + '_Help').html();
 		$('#ConfirmDialog_Help').attr('href', '#' + helpId);
 		Util.show('#ConfirmDialog_Help', helpId !== null);

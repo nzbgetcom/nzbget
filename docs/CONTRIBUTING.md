@@ -103,7 +103,7 @@ webui/
    run `generate_conf_locales.py` to regenerate `config_desc_*` entries:
 
    ```
-   python3 scripts/generate_conf_locales.py nzbget.conf webui/locales.source.json > webui/locales.source.json
+   python3 scripts/generate_conf_locales.py nzbget.conf webui/locales.source.json
    ```
 
 5. Translations for non-English languages are managed through an external

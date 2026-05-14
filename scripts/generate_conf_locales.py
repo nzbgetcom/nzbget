@@ -34,12 +34,11 @@ How it works:
   3. If a merge file is provided (2nd arg), loads existing translations and
      merges them, preserving already-translated strings while adding new keys
      and removing obsolete ones.
-  4. Outputs JSON to stdout.
+  4. Writes the updated file in-place (merge mode) or outputs to stdout (fresh generation).
 
 Usage:
-  python3 generate_conf_locales.py                         # fresh generation
-  python3 generate_conf_locales.py nzbget.conf existing.json  # merge mode
-  python3 generate_conf_locales.py nzbget.conf locales.source.json > locales.source.json
+  python3 scripts/generate_conf_locales.py                          # fresh generation
+  python3 scripts/generate_conf_locales.py nzbget.conf locales.source.json  # merge mode (writes in-place)
 """
 
 import re
@@ -47,153 +46,236 @@ import json
 import os
 import sys
 
+
 def main():
     script_dir = os.path.dirname(os.path.realpath(__file__))
-    conf_file = os.path.join(os.path.dirname(script_dir), 'nzbget.conf')
+    conf_file = os.path.join(os.path.dirname(script_dir), "nzbget.conf")
     merge_file = None
     if len(sys.argv) > 1:
         conf_file = sys.argv[1]
     if len(sys.argv) > 2:
         merge_file = sys.argv[2]
-    with open(conf_file, 'r', encoding='utf-8') as f:
+
+    # Load merge file if provided
+    locales = {}
+    existing_keys = set()
+    if merge_file and os.path.exists(merge_file):
+        with open(merge_file, "r", encoding="utf-8") as f:
+            locales = json.load(f)
+        existing_keys = {k for k in locales if k.startswith("config_desc_")}
+
+    # Parse nzbget.conf
+    with open(conf_file, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    locales = {}
-    keys_to_delete = set()  # Track keys that will be regenerated from nzbget.conf
-    if merge_file and os.path.exists(merge_file):
-        with open(merge_file, 'r', encoding='utf-8') as f:
-            locales = json.load(f)
+    keys_to_delete = set()
     current_comments = []
 
-# Matches category header lines like "### Category Name ###"
-    # Pattern: ### followed by category name (captured), then ### (with optional surrounding whitespace)
-    cat_re = re.compile(r'^###\s+(.+?)\s+###$')
-
-    # Matches option key-value pairs (both active and commented)
-    # Pattern: optional #, then option name, then = and value
-    opt_re = re.compile(r'^#?([a-zA-Z0-9_.]+)=(.*)$')
-
-    # Regex to check if line is a commented option (starts with # followed by OptionName=)
-    commented_opt_re = re.compile(r'^#([a-zA-Z0-9_.]+)=.*$')
+    cat_re = re.compile(r"^###\s+(.+?)\s+###$")
+    opt_re = re.compile(r"^#?([a-zA-Z0-9_.]+)=(.*)$")
+    commented_opt_re = re.compile(r"^#([a-zA-Z0-9_.]+)=.*$")
 
     for line in lines:
         line_stripped = line.strip()
-        cat_match = cat_re.match(line_stripped)
-        if cat_match:
+        if cat_re.match(line_stripped):
             current_comments = []
             continue
-        
-        # Check if this is a commented option like "#OptionName=Value"
+
         is_commented_opt = commented_opt_re.match(line_stripped)
-        
-        # If it's a commented option, we need to check if it's a real option or just a comment
-        # A commented option has format: #OptionName=Value (no space between # and OptionName)
         if is_commented_opt:
-            # Extract option name from commented option
             opt_name = is_commented_opt.group(1)
-            opt_value = line_stripped[len(f'#{opt_name}='):].strip()
             is_option = True
         else:
-            # Check for active option
             opt_match = opt_re.match(line_stripped)
             if opt_match:
                 opt_name = opt_match.group(1)
-                opt_value = opt_match.group(2).strip()
                 is_option = True
             else:
                 is_option = False
-        
+
         if is_option:
-            
-            # Remove trailing digits from first part to get base key (Server1.Name -> server_name)
-            parts = opt_name.split('.')
+            parts = opt_name.split(".")
             if len(parts) >= 2:
-                first_part = parts[0]
-                rest_parts = parts[1:]
-                # Remove trailing digits from first part (Server1 -> Server)
-                base_name = re.sub(r'[0-9]+$', '', first_part)
-                # Rebuild key with base name
-                opt_key = (base_name + '_' + '_'.join(rest_parts)).lower()
+                base_name = re.sub(r"[0-9]+$", "", parts[0])
+                opt_key = (base_name + "_" + "_".join(parts[1:])).lower()
             else:
-                opt_key = opt_name.replace('.', '_').lower()
-            
+                opt_key = opt_name.replace(".", "_").lower()
+
             if current_comments:
                 first_line = current_comments[0]
-                pstart = first_line.rfind('(')
-                pend = first_line.rfind(')')
-                if pstart > -1 and pend > -1 and pend == len(first_line) - 2 and first_line.endswith('.'):
-                    current_comments[0] = first_line[:pstart].strip() + '.'
-            
-            # Preserve ALL line breaks from nzbget.conf:
-            # - Single \n for regular line continuations (not paragraph breaks)
-            # - \n\n for paragraph breaks (empty # lines)
-            # This ensures exact formatting from nzbget.conf is preserved
+                pstart = first_line.rfind("(")
+                pend = first_line.rfind(")")
+                if (
+                    pstart > -1
+                    and pend > -1
+                    and pend == len(first_line) - 2
+                    and first_line.endswith(".")
+                ):
+                    current_comments[0] = first_line[:pstart].strip() + "."
+
             temp_comments = []
             for i, comment in enumerate(current_comments):
-                if comment == '\x00':
-                    # Empty # line = paragraph break
-                    # But check if there's already a pending newline
-                    if temp_comments and temp_comments[-1] == '\n':
-                        # Replace trailing \n with \n\n
-                        temp_comments[-1] = '\n\n'
+                if comment == "\x00":
+                    if temp_comments and temp_comments[-1] == "\n":
+                        temp_comments[-1] = "\n\n"
                     else:
-                        temp_comments.append('\n\n')
+                        temp_comments.append("\n\n")
                 else:
-                    # Regular comment line
                     temp_comments.append(comment)
-                    # Add newline after this comment (but not after the last one and not before paragraph)
-                    if i < len(current_comments) - 1:
-                        next_is_paragraph = current_comments[i + 1] == '\x00'
-                        if not next_is_paragraph:
-                            temp_comments.append('\n')
-            
-            desc_message = ''.join(temp_comments)
-            
-            # Now we need to clean up: remove extra \n at start/end and handle double \n\n
-            desc_message = desc_message.strip()
-            
+                    if (
+                        i < len(current_comments) - 1
+                        and current_comments[i + 1] != "\x00"
+                    ):
+                        temp_comments.append("\n")
+
+            desc_message = "".join(temp_comments).strip()
+
             if desc_message:
                 desc_hint = f"Description for the option {opt_name}"
-                if re.search(r'<[^>]+>', desc_message):
+                if re.search(r"<[^>]+>", desc_message):
                     desc_hint += " DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
                 if re.search(r'"[^"]+"', desc_message):
-                    desc_hint += " DO NOT translate technical values enclosed in quotes."
-                if re.search(r'(NOTE:|WARNING:|INFO:|INFO FOR DEVELOPERS:|MORE INFO:)', desc_message):
+                    desc_hint += (
+                        " DO NOT translate technical values enclosed in quotes."
+                    )
+                if re.search(
+                    r"(NOTE:|WARNING:|INFO:|INFO FOR DEVELOPERS:|MORE INFO:)",
+                    desc_message,
+                ):
                     desc_hint += " DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
-                
+                    desc_hint += "If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
+
+                value_names = re.findall(
+                    r"^\s*([A-Za-z]\w*)\s+-\s", desc_message, re.MULTILINE
+                )
+                if value_names:
+                    unique = sorted(set(value_names))
+                    desc_hint += (
+                        " DO NOT translate configuration option values"
+                        f" ({', '.join(unique)}) as they are fixed configuration values."
+                    )
+
                 key = f"config_desc_{opt_key}"
-                locales[key] = {
-                    "message": desc_message,
-                    "description": desc_hint
-                }
+                locales[key] = {"message": desc_message, "description": desc_hint}
                 keys_to_delete.add(key)
-            
+
             current_comments = []
             continue
 
-        if line_stripped.startswith('#'):
-            if line_stripped.startswith('####'):
+        if line_stripped.startswith("#"):
+            if line_stripped.startswith("####"):
                 continue
             comment_text = line_stripped[1:]
-            if comment_text.startswith(' '):
+            if comment_text.startswith(" "):
                 comment_text = comment_text[1:]
-            # Only treat a lone '#' (empty line) as a paragraph break marker
-            # Don't include it in the output, but mark its position for later processing
-            if comment_text == '':
-                current_comments.append('\x00')  # Placeholder for paragraph break
+            if comment_text == "":
+                current_comments.append("\x00")
             else:
                 current_comments.append(comment_text)
             continue
-            
+
         if not line_stripped:
             current_comments = []
 
-    obsolete_keys = [k for k in locales.keys() if k.startswith('config_desc_') and k not in keys_to_delete]
+    # Remove obsolete config_desc keys
+    obsolete_keys = [
+        k
+        for k in locales.keys()
+        if k.startswith("config_desc_") and k not in keys_to_delete
+    ]
     for k in obsolete_keys:
         del locales[k]
 
-    json.dump(locales, sys.stdout, indent=4, ensure_ascii=False)
-    print()
+    # Compute changes
+    new_keys = keys_to_delete - existing_keys
+    removed_keys = set(obsolete_keys)
+    changed_keys = []
+    for k in keys_to_delete:
+        if k in existing_keys:
+            old_entry = None
+            if merge_file:
+                with open(merge_file, "r", encoding="utf-8") as f:
+                    old_data = json.load(f)
+                if k in old_data:
+                    old_entry = old_data[k]
+            if old_entry and old_entry != locales[k]:
+                changed_keys.append(k)
 
-if __name__ == '__main__':
+    if merge_file:
+        # Merge mode: surgically replace only the config_desc section
+        with open(merge_file, "r", encoding="utf-8") as f:
+            original_lines = f.readlines()
+
+        first_desc_line = None
+        last_desc_line = None
+        for i, line in enumerate(original_lines):
+            if '"config_desc_' in line:
+                if first_desc_line is None:
+                    first_desc_line = i
+                last_desc_line = i
+
+        if first_desc_line is not None and last_desc_line is not None:
+            section_end = last_desc_line
+            brace_depth = 0
+            for i in range(last_desc_line, len(original_lines)):
+                brace_depth += original_lines[i].count("{") - original_lines[i].count(
+                    "}"
+                )
+                if brace_depth <= 0 and "}" in original_lines[i]:
+                    section_end = i
+                    break
+        else:
+            section_end = None
+
+        new_entries = {k: locales[k] for k in locales if k.startswith("config_desc_")}
+        if new_entries:
+            new_json = json.dumps(new_entries, indent=2, ensure_ascii=False)
+            inner_lines = new_json.split("\n")[1:-1]
+            if inner_lines:
+                inner_lines[-1] = inner_lines[-1].rstrip() + ","
+        else:
+            inner_lines = []
+
+        if section_end is not None:
+            before_lines = original_lines[:first_desc_line]
+            after_lines = original_lines[section_end + 1 :]
+        else:
+            insert_pos = len(original_lines) - 1
+            for i in range(len(original_lines) - 1, -1, -1):
+                if original_lines[i].strip() == "}":
+                    insert_pos = i
+                    break
+            before_lines = original_lines[:insert_pos]
+            after_lines = original_lines[insert_pos:]
+
+        if before_lines:
+            last_before = before_lines[-1].rstrip()
+            if not last_before.endswith(","):
+                before_lines[-1] = last_before + ",\n"
+
+        output_lines = (
+            before_lines + [line + "\n" for line in inner_lines] + after_lines
+        )
+
+        with open(merge_file, "w", encoding="utf-8") as f:
+            f.writelines(output_lines)
+
+        if removed_keys:
+            print(f"Removed: {', '.join(sorted(removed_keys))}")
+        if new_keys:
+            print(f"Added: {', '.join(sorted(new_keys))}")
+        if changed_keys:
+            print(f"Changed: {', '.join(sorted(changed_keys))}")
+        if not removed_keys and not new_keys and not changed_keys:
+            print("Up to date")
+    else:
+        # Fresh generation: output only config_desc entries
+        config_desc_only = {
+            k: v for k, v in locales.items() if k.startswith("config_desc_")
+        }
+        json.dump(config_desc_only, sys.stdout, indent=2, ensure_ascii=False)
+        print()
+
+
+if __name__ == "__main__":
     main()
