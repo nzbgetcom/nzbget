@@ -404,7 +404,7 @@ var Options = (new function($)
 			webValues.push({Name: optname, Value: value.toString()});
 		}
 
-		var webConfig = readConfigTemplate(webTemplate, undefined, '', '');
+		var webConfig = readConfigTemplate(webTemplate, undefined, '', '', 'webui_config_desc_');
 		mergeValues(webConfig.sections, webValues);
 		config.push(webConfig);
 	}
@@ -418,7 +418,7 @@ var Options = (new function($)
 
 	/*** PARSE CONFIG AND BUILD INTERNAL STRUCTURES **********************************************/
 
-	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix)
+	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix, keyPrefix)
 	{
 		var config = { nameprefix: nameprefix, sections: [], };
 		var section = null;
@@ -493,6 +493,7 @@ var Options = (new function($)
 				option.value = null;
 				option.sectionId = section.id;
 				option.select = [];
+				option.keyPrefix = keyPrefix;
 
 				var pstart = firstdescrline.lastIndexOf('(');
 				var pend = firstdescrline.lastIndexOf(')');
@@ -1001,7 +1002,7 @@ var Config = (new function($)
 		var parts = optName.split('_');
 		var first = parts.length > 0 ? parts[0].replace(/[0-9]+$/, '') : '';
 		var rest = parts.length > 1 ? parts.slice(1).join('_') : '';
-		var baseKey = 'config_desc_' + first;
+		var baseKey = (option.keyPrefix || 'config_desc_') + first;
 		var fullKey = baseKey + (rest ? '_' + rest : '');
 		description = I18n.defaultValue(fullKey, I18n.defaultValue(baseKey, description));
 
@@ -1130,19 +1131,21 @@ var Config = (new function($)
 			htmldescr = htmldescr.replace(/\n/, '</span>\n');
 			htmldescr = '<span class="help-option-title">' + htmldescr;
 
-			htmldescr = htmldescr.replace(/\n/g, '<br>');
+			// Wrap in pre to preserve formatting from nzbget.conf
+			htmldescr = '<pre class="help-desc">' + htmldescr + '</pre>';
+
 			htmldescr = htmldescr.replace(/NOTE: /g, '<span class="label label-warning text-uppercase" data-i18n="extman_note"></span> ');
 			htmldescr = htmldescr.replace(/INFO: /g, '<span class="label label-info text-uppercase" data-i18n="label_info_cap"></span>: ');
 
 			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_dev_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_dev_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
 			if (htmldescr.indexOf('MORE INFO:') > -1)
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_more_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/MORE INFO:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_more_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
@@ -1152,7 +1155,7 @@ var Config = (new function($)
 				htmldescr = htmldescr.replace(new RegExp(section.multiprefix + '[X|1]\.', 'g'), '');
 			}
 
-			html += '<p class="help-block">' + htmldescr + '</p>';
+			html += '<div class="help-block">' + htmldescr + '</div>';
 		}
 
 		if (option.check)
@@ -3370,9 +3373,9 @@ var UpdateDialog = (new function($)
 		Util.show('#UpdateDialog_CheckFailed', hasUpdateSource && !hasUpdateInfo);
 		Util.show('#UpdateDialog_DownloadRow,#UpdateDialog_DownloadAvail', canDownload && !canUpdate);
 		$('#UpdateDialog_AvailRow').toggleClass('hide', !hasUpdateInfo);
-		var canUpdateStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
-		var canUpdateTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
-		if (canUpdateStable || canUpdateTesting)
+		var shouldAutoPopupStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
+		var shouldAutoPopupTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
+		if (shouldAutoPopupStable || shouldAutoPopupTesting)
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
 		}

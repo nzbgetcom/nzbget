@@ -165,6 +165,10 @@ a:hover {
 	border-top: 1px solid #626262;
 }
 
+.table {
+	border-spacing: 0;
+}
+
 .table-bordered th, .table-bordered td {
 	border-left: 1px solid #626262;
 }
@@ -307,6 +311,7 @@ select {
 .table-bordered {
 	border: 1px solid #626262;
 	border-collapse: separate;
+	border-spacing: 0;
 	border-left: 0;
 }
 
@@ -497,6 +502,11 @@ td:hover span.none-category {
 	padding-right: 0;
 	padding-top: 0;
 	border-bottom: 1px solid #626262;
+}
+
+#ConfigContent .help-block pre.help-desc {
+    background-color: #212529;
+    color: inherit;
 }
 
 .config-header .btn {

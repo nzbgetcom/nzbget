@@ -373,12 +373,12 @@
 					<tr>
 						<th><div class="check img-check"></div></th>
 						<th class="priority-cell"><a href="#" onclick="Downloads.sort('priority', event)"><span data-i18n="col_priority"></span></a></th>
-						<th width="102px" data-i18n="col_status"></th>
+						<th data-i18n="col_status"></th>
 						<th class="dropafter-cell" id="DownloadsTable_Name"><a href="#" onclick="Downloads.sort('name', event)" data-i18n="col_name"></a></th>
 						<th id="DownloadsTable_Category"><a href="#" onclick="Downloads.sort('category', event)" data-i18n="col_category"></a></th>
-						<th class="dropafter-cell text-right" width="30px"><a href="#" onclick="Downloads.sort('age', event)" data-i18n="col_age"></a></th>
+						<th class="dropafter-cell"><a href="#" onclick="Downloads.sort('age', event)" data-i18n="col_age"></a></th>
 						<th width="145px"><div style="float:left; position:relative; width:50%; text-align:left;"><a href="#"onclick="Downloads.sort('size', event)" data-i18n="col_size">Size</a></div><div style="float:right; position:relative; width:50%; text-align:right;"><a href="#" onclick="Downloads.sort('left', event)" data-i18n="col_left"></a></div></th>
-						<th width="60px" class="text-right" data-i18n="col_est_time"></th>
+						<th data-i18n="col_est_time"></th>
 					</tr>
 					<tr>
 						<th colspan="8" class="table-selector" data-i18n="records_selected" data-i18n-arg-1="10"></th>
@@ -420,7 +420,7 @@
 				</div>
 
 				<div class="btn-group">
-					<button class="btn btn-default" onclick="History.clearClick()" title="Clear all records [C]"><i class="material-icon">delete_sweep</i><span class="btn-caption"> Clear</span></button>
+					<button class="btn btn-default" onclick="History.clearClick()" data-i18n-title="btn_history_clear_title" data-i18n-title-arg-1="[C]"><i class="material-icon">delete_forever</i><span class="btn-caption" data-i18n="btn_history_clear"></span></button>
 				</div>
 
 				<!-- STATUS FILTER BUTTONS -->
@@ -468,12 +468,12 @@
 				<thead>
 				    <tr>
                         <th><div class="check img-check"></div></th>
-                        <th width="78px" data-i18n="col_status"></th>
-                        <th width="170px" class="dropafter-cell text-center" data-i18n="col_time"></th>
+                        <th data-i18n="col_status"></th>
+                        <th class="dropafter-cell text-center" data-i18n="col_time"></th>
                         <th data-i18n="col_name"></th>
                         <th id="HistoryTable_Category" data-i18n="col_category"></th>
-                        <th width="30px" class="text-right dropafter-cell" data-i18n="col_age"></th>
-                        <th width="70px" class="text-right" data-i18n="col_size"></th>
+                        <th class="dropafter-cell" data-i18n="col_age"></th>
+                        <th data-i18n="col_size"></th>
     				</tr>
 					<tr>
 						<th colspan="7" class="table-selector" data-i18n="records_selected" data-i18n-arg-1="10"></th>
@@ -542,8 +542,8 @@
 
 			<table class="table table-striped table-bordered datatable" id="MessagesTable">
 				<thead><tr>
-					<th class="text-center" width="60px" data-i18n="col_status"></th>
-					<th width="170px" class="text-center" data-i18n="col_time"></th>
+					<th class="text-center" data-i18n="col_status"></th>
+					<th class="text-center" data-i18n="col_time"></th>
 					<th data-i18n="col_text"></th>
 				</tr></thead>
 				<tbody></tbody>
@@ -601,9 +601,9 @@
 							<li class="config-static"><a class="text-uppercase" href="#Config-System" data-i18n="nav_system"></a></li>
 						</ul>
 						<div class="visible-desktop">
-							<hr>
-							<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()" data-i18n="btn_save_all_changes"></button>
-							<hr>
+							<div class="config-save-desktop">
+								<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()" data-i18n="btn_save_all_changes"></button>
+							</div>
 						</div>
 					</div>
 
@@ -1088,18 +1088,16 @@
 									<p data-i18n-html="license_desc_material_icons" data-i18n-html-arg-1="<a href='https://fonts.google.com/icons'>" data-i18n-html-arg-2="</a>" data-i18n-html-arg-3="<a href='https://www.apache.org/licenses/LICENSE-2.0'>" data-i18n-html-arg-4="</a>"></p>
 
 									<h4>Boost</h4>
-									<p data-i18n-html="license_desc_boost" data-i18n-html-arg-1="<a href='https://www.boost.org/'>" data-i18n-html-arg-2="</a>" data-i18n-html-arg-3="<a href='https://www.boost.org/users/people.html'>" data-i18n-html-arg-4="</a>"></p>
+									<p data-i18n-html="license_desc_boost" data-i18n-html-arg-1="<a href='https://www.boost.org/'>" data-i18n-html-arg-2="</a>" data-i18n-html-arg-3="<a href='https://www.boost.org/community/'>" data-i18n-html-arg-4="</a>"></p>
 
-									<p data-i18n-html="license_terms_boost" data-i18n-html-arg-1="<a href='https://www.boost.org/users/license.html'>" data-i18n-html-arg-2="</a>"></p>
+									<p data-i18n-html="license_terms_boost" data-i18n-html-arg-1="<a href='https://www.boost.org/LICENSE_1_0.txt'>" data-i18n-html-arg-2="</a>"></p>
 								</div>
 						</div>
 
 						<div class="visible-tablet visible-phone">
-							<hr>
-							<div class="flex justify-content-center">
+							<div class="config-save-mobile">
 								<button type="button" class="btn btn-primary" id="Config_Save" onclick="Config.saveChanges()" data-i18n="btn_save_all_changes"></button>
 							</div>
-							<hr>
 						</div>
 					</div>
 				</div>
@@ -1675,7 +1673,7 @@
 					</div>
 					<div id="DownloadsEdit_LogBlock">
 						<table class="table table-striped table-bordered datatable" id="DownloadsEdit_LogTable" style="margin-bottom:15px;">
-							<thead><tr><th width="65px" data-i18n="col_status"></th><th width="170px" class="text-center" data-i18n="col_time"></th><th data-i18n="col_text"></th></tr></thead>
+							<thead><tr><th data-i18n="col_status"></th><th class="text-center" data-i18n="col_time"></th><th data-i18n="col_text"></th></tr></thead>
 							<tbody></tbody>
 						</table>
 					</div>
@@ -1869,6 +1867,7 @@
 					<table class="table table-striped table-bordered datatable" id="DownloadsMergeTable" style="margin-bottom:15px;">
 					<tbody></tbody>
 					</table>
+					<p class="help-block" style="margin-top:10px;" data-i18n="msg_merge_help_text"></p>
 				</div>
 			</fieldset>
 			</form>
@@ -2039,7 +2038,7 @@
 				</div>
 				<div id="HistoryEdit_LogBlock">
 					<table class="table table-striped table-bordered datatable" id="HistoryEdit_LogTable" style="margin-bottom:15px;">
-						<thead><tr><th width="65px" data-i18n="col_status"></th><th width="170px" class="text-center" data-i18n="col_time"></th><th data-i18n="col_text"></th></tr></thead>
+						<thead><tr><th data-i18n="col_status"></th><th class="text-center" data-i18n="col_time"></th><th data-i18n="col_text"></th></tr></thead>
 						<tbody></tbody>
 					</table>
 				</div>
@@ -2564,7 +2563,7 @@
 <!-- *** MARK AS GOOD CURRENT HISTORY RECORD CONFIRMATION DIALOG DATA ******************************** -->
 
 <div class="hide" id="HistoryEditGoodConfirmDialog">
-	<div id="HistoryEditSuccessConfirmDialog_Title" data-i18n="history_title"></div>
+	<div id="HistoryEditGoodConfirmDialog_Title" data-i18n="history_title"></div>
 	<div id="HistoryEditGoodConfirmDialog_Text">
 		<p data-i18n="history_good_dialog_text1"></p>
 		<p class="confirm-help-block" data-i18n="history_good_dialog_text2"></p>
@@ -3108,7 +3107,7 @@
 		<p data-i18n="shutdown_dialog_text1"></p>
 		<p class="alert alert-danger" data-i18n="shutdown_dialog_text2"></p>
 	</div>
-	<div id="ShutdownConfirmDialog_OK" data-i18n="shutdown_dialog_title"></div>
+	<div id="ShutdownConfirmDialog_OK" data-i18n="btn_shutdown_confirm"></div>
 </div>
 
 <!-- *** WEB LOGIN DIALOG ************************************** -->
@@ -3270,7 +3269,7 @@
 </div>
 
 <div id="Notif_History_Empty" data-duration="2000" class="alert alert-error alert-center alert-center-small hide">
-    <strong>History is empty</strong>
+    <strong data-i18n="msg_history_empty"></strong>
 </div>
 
 <div id="Notif_History_CantMark" data-duration="2000" class="alert alert-error alert-center alert-center-small hide">
