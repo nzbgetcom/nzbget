@@ -1346,6 +1346,7 @@ table th.priority-cell {
 }
 
 /* Shrink narrow columns: prevent excess width */
+body:not(.phone) #DownloadsTable th:nth-child(2),   /* Priority */
 body:not(.phone) #DownloadsTable th:nth-child(3),   /* Status */
 body:not(.phone) #DownloadsTable th:nth-child(6),   /* Age */
 body:not(.phone) #DownloadsTable th:nth-child(8),   /* Est. Time */
