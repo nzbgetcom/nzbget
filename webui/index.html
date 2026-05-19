@@ -387,6 +387,10 @@
 					</ul>
 				</div>
 
+				<div class="btn-group">
+					<button class="btn btn-default" onclick="History.clearClick()" title="Clear all records [C]"><i class="material-icon">delete_sweep</i><span class="btn-caption"> Clear</span></button>
+				</div>
+
 				<!-- STATUS FILTER BUTTONS -->
 				<div class="btn-group phone-hide">
 					<button class="btn btn-default history-filter" onclick="History.filter('ALL')" title="Show All [A]">All &nbsp;<span class="badge badge-active" id="History_Badge_ALL">?</span></button>
@@ -3454,6 +3458,10 @@
 
 <div id="Notif_History_Select" data-duration="2000" class="alert alert-error alert-center alert-center-small hide">
     <strong>Please select records first</strong>
+</div>
+
+<div id="Notif_History_Empty" data-duration="2000" class="alert alert-error alert-center alert-center-small hide">
+    <strong>History is empty</strong>
 </div>
 
 <div id="Notif_History_CantMark" data-duration="2000" class="alert alert-error alert-center alert-center-small hide">

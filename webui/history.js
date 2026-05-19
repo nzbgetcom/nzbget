@@ -399,6 +399,54 @@ var History = (new function($)
 		});
 	}
 
+	this.clearClick = function()
+	{
+		RPC.call('history', [true], function(allHistory)
+		{
+			if (allHistory.length === 0)
+			{
+				PopupNotification.show('#Notif_History_Empty');
+				return;
+			}
+
+			var hasNzb = false;
+			var hasDup = false;
+			var hasFailed = false;
+			for (var i = 0; i < allHistory.length; i++)
+			{
+				var hist = allHistory[i];
+				hasNzb |= hist.Kind === 'NZB';
+				hasDup |= hist.Kind === 'DUP';
+				// Only NZB records carry meaningful Par/Unpack/DeleteStatus; DUP/URL
+				// rows lack DeleteStatus, which would otherwise spuriously trip != 'NONE'.
+				hasFailed |= hist.Kind === 'NZB' && (hist.ParStatus === 'FAILURE' ||
+					hist.UnpackStatus === 'FAILURE' || hist.DeleteStatus != 'NONE');
+			}
+
+			notification = '#Notif_History_Cleared';
+			HistoryUI.deleteConfirm(
+				function(command) { clearAction(command, allHistory); },
+				hasNzb, hasDup, hasFailed, true,
+				allHistory.length, 0, 100, true);
+		});
+	}
+
+	function clearAction(command, allHistory)
+	{
+		Refresher.pause();
+
+		var ids = [];
+		for (var i = 0; i < allHistory.length; i++)
+		{
+			ids.push(allHistory[i].ID);
+		}
+
+		RPC.call('editqueue', [command, '', ids], function()
+		{
+			editCompleted();
+		});
+	}
+
 	function editCompleted()
 	{
 		Refresher.update();
@@ -553,9 +601,12 @@ var History = (new function($)
 
 	this.processShortcut = function(key)
 	{
+		// keyDown in index.js falls through between tab cases; ignore keys when History isn't active.
+		if (!activeTab) return false;
 		switch (key)
 		{
 			case 'D': case 'Delete': case 'Meta+Backspace': History.actionClick('DELETE'); return true;
+			case 'C': History.clearClick(); return true;
 			case 'P': History.actionClick('REPROCESS'); return true;
 			case 'N': History.actionClick('REDOWNLOAD'); return true;
 			case 'M': History.actionClick('MARKSUCCESS'); return true;
@@ -617,7 +668,7 @@ var HistoryUI = (new function($)
 		return '<span class="label label-status ' + badgeClass + '">' + statusText + '</span>';
 	}
 
-	this.deleteConfirm = function(actionCallback, hasNzb, hasDup, hasFailed, multi, selCount, pageSelCount, selPercentage)
+	this.deleteConfirm = function(actionCallback, hasNzb, hasDup, hasFailed, multi, selCount, pageSelCount, selPercentage, clearAll)
 	{
 		var dupeCheck = Options.option('DupeCheck') === 'yes';
 		var dialog = null;
@@ -625,6 +676,23 @@ var HistoryUI = (new function($)
 		function init(_dialog)
 		{
 			dialog = _dialog;
+			if (clearAll)
+			{
+				var html = $('#ConfirmDialog_Text').html();
+				html = html.replace(/Selected/g, 'All').replace(/selected/g, 'all');
+				$('#ConfirmDialog_Text').html(html);
+				$('#ConfirmDialog_OK').text('Clear');
+				// Clear is always permanent: HistoryDelete on hidden DUPs is a no-op
+				// and on visible NZBs it just creates new hidden DUPs, leaving rows behind.
+				Util.show($('#HistoryDeleteConfirmDialog_Options', dialog), false);
+				Util.show($('#HistoryDeleteConfirmDialog_Simple', dialog), true);
+				Util.show($('#HistoryDeleteConfirmDialog_DeleteWillCleanup', dialog), hasFailed);
+				Util.show($('#HistoryDeleteConfirmDialog_DeleteNoCleanup', dialog), !hasFailed);
+				Util.show($('#HistoryDeleteConfirmDialog_DupAlert', dialog), dupeCheck && hasDup);
+				Util.show('#ConfirmDialog_Help', false);
+				HistoryUI.confirmMulti(multi);
+				return;
+			}
 			HistoryUI.confirmMulti(multi);
 			$('#HistoryDeleteConfirmDialog_Hide', dialog).prop('checked', true);
 			Util.show($('#HistoryDeleteConfirmDialog_Options', dialog), hasNzb && dupeCheck);
@@ -637,8 +705,16 @@ var HistoryUI = (new function($)
 
 		function action()
 		{
-			var hide = $('#HistoryDeleteConfirmDialog_Hide', dialog).is(':checked');
-			var command = hasNzb && hide ? 'HistoryDelete' : 'HistoryFinalDelete';
+			var command;
+			if (clearAll)
+			{
+				command = 'HistoryFinalDelete';
+			}
+			else
+			{
+				var hide = $('#HistoryDeleteConfirmDialog_Hide', dialog).is(':checked');
+				command = hasNzb && hide ? 'HistoryDelete' : 'HistoryFinalDelete';
+			}
 			if (selCount - pageSelCount > 0 && selCount >= 50)
 			{
 				PurgeHistoryDialog.showModal(function(){actionCallback(command);}, selCount, selPercentage);
@@ -649,7 +725,7 @@ var HistoryUI = (new function($)
 			}
 		}
 
-		ConfirmDialog.showModal('HistoryDeleteConfirmDialog', action, init, selCount);
+		ConfirmDialog.showModal('HistoryDeleteConfirmDialog', action, init, clearAll ? 1 : selCount);
 	}
 
 	this.confirmMulti = function(multi)
