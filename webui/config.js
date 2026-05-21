@@ -404,7 +404,7 @@ var Options = (new function($)
 			webValues.push({Name: optname, Value: value.toString()});
 		}
 
-		var webConfig = readConfigTemplate(webTemplate, undefined, '', '');
+		var webConfig = readConfigTemplate(webTemplate, undefined, '', '', 'webui_config_desc_');
 		mergeValues(webConfig.sections, webValues);
 		config.push(webConfig);
 	}
@@ -418,7 +418,7 @@ var Options = (new function($)
 
 	/*** PARSE CONFIG AND BUILD INTERNAL STRUCTURES **********************************************/
 
-	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix)
+	function readConfigTemplate(filedata, visiblesections, hiddensections, nameprefix, keyPrefix)
 	{
 		var config = { nameprefix: nameprefix, sections: [], };
 		var section = null;
@@ -459,7 +459,8 @@ var Options = (new function($)
 					firstdescrline = description;
 					description = '';
 				}
-				if ('.;:'.indexOf(lastchar) > -1 || line === '#')
+				// Only add newline when line is '#' alone (empty line in config = paragraph break)
+				if (line === '#')
 				{
 					description += '\n';
 				}
@@ -492,6 +493,7 @@ var Options = (new function($)
 				option.value = null;
 				option.sectionId = section.id;
 				option.select = [];
+				option.keyPrefix = keyPrefix;
 
 				var pstart = firstdescrline.lastIndexOf('(');
 				var pend = firstdescrline.lastIndexOf(')');
@@ -731,9 +733,6 @@ var Config = (new function($)
 		$ViewButton = $('#Config_ViewButton');
 		$LeaveConfigDialog = $('#LeaveConfigDialog');
 		$('#ConfigTable_filter').val('');
-
-		Util.show('#ConfigBackupSafariNote', $.browser.safari);
-		$('#ConfigTable_filter').val('');
 		compactMode = UISettings.read('$Config_ViewCompact', 'no') == 'yes';
 		setViewMode();
 
@@ -749,6 +748,7 @@ var Config = (new function($)
 				filterInputCallback: filterInput,
 				filterClearCallback: filterClear
 			});
+		I18n.subscribe(function onLangChange() { Config.redraw(); });
 	}
 
 	this.config = function()
@@ -974,6 +974,7 @@ var Config = (new function($)
 		option.formId = (option.name.indexOf(':') == -1 ? 'S_' : '') + Util.makeId(option.name);
 
 		var caption = option.caption;
+
 		if (section.multi)
 		{
 			caption = '<span class="config-multicaption">' + caption.substring(0, caption.indexOf('.') + 1) + '</span>' + caption.substring(caption.indexOf('.') + 1);
@@ -985,8 +986,23 @@ var Config = (new function($)
 				'<a class="option-name" href="#" data-optid="' + option.formId + '" '+
 				'onclick="Config.scrollToOption(event, this)">' + caption + '</a>' +
 				(option.value === null && !section.postparam && !option.commandopts ?
-					' <a data-toggle="modal" href="#ConfigNewOptionHelp" class="label label-info">new</a>' : '') + '</label>'+
+					' <a data-toggle="modal" href="#ConfigNewOptionHelp" class="label label-info text-uppercase">new</a>' : '') + '</label>'+
 				'<div class="controls">';
+
+		var about = option['about'] || '';
+		if (about)
+		{
+			about = about.replace('\n', ' ') + '\n';
+		}
+		var rawDescription = option['description'] || '';
+		var description = about + rawDescription;
+		var optName = (option.name || '').replace(/\./g, '_').toLowerCase();
+		var parts = optName.split('_');
+		var first = parts.length > 0 ? parts[0].replace(/[0-9]+$/, '') : '';
+		var rest = parts.length > 1 ? parts.slice(1).join('_') : '';
+		var baseKey = (option.keyPrefix || 'config_desc_') + first;
+		var fullKey = baseKey + (rest ? '_' + rest : '');
+		description = I18n.defaultValue(fullKey, I18n.defaultValue(baseKey, description));
 
 		if (option.nocontent)
 		{
@@ -1002,19 +1018,28 @@ var Config = (new function($)
 			for (var j=0; j < option.select.length; j++)
 			{
 				var pvalue = option.select[j];
+				var pvalueDisplay = pvalue;
+				if (pvalue.toLowerCase() === 'yes' || pvalue.toLowerCase() === 'no') {
+					var labelKey = pvalue.toLowerCase() === 'yes' ? 'label_yes_cap' : 'label_no_cap';
+					pvalueDisplay = I18n.defaultValue(labelKey, pvalueDisplay);
+				}
 				if (value && pvalue.toLowerCase() === value.toLowerCase())
 				{
-					html += '<input type="button" class="btn btn-primary" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
+					html += '<input type="button" class="btn btn-primary" value="' + Util.textToAttr(pvalueDisplay) + '" data-value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
 					valfound = true;
 				}
 				else
 				{
-					html += '<input type="button" class="btn btn-default" value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
+					html += '<input type="button" class="btn btn-default" value="' + Util.textToAttr(pvalueDisplay) + '" data-value="' + Util.textToAttr(pvalue) + '" onclick="Config.switchClick(this)">';
 				}
 			}
 			if (!valfound)
 			{
-				html += '<input type="button" class="btn btn-primary" value="' + Util.textToAttr(value) + '" onclick="Config.switchClick(this)">';
+				var valueDisplay = value;
+				if (value && (value.toLowerCase() === 'yes' || value.toLowerCase() === 'no')) {
+					valueDisplay = I18n.defaultValue('config_value_' + value.toLowerCase(), valueDisplay);
+				}
+				html += '<input type="button" class="btn btn-primary" value="' + Util.textToAttr(valueDisplay) + '" data-value="' + Util.textToAttr(value) + '" onclick="Config.switchClick(this)">';
 			}
 
 			html +='</div>';
@@ -1022,10 +1047,21 @@ var Config = (new function($)
 		}
 		else if (option.select.length === 1)
 		{
+			var unitStr = option.select[0];
+
+			// Build i18n key from unit string:
+			// - Convert to lowercase
+			// - Remove all non-alphanumeric characters (spaces, slashes, etc.)
+			// Examples: "MB/s" -> "config_unit_mbs", "hours or minutes" -> "config_unit_hoursorminutes"
+			var unitKey = 'config_unit_' + unitStr.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+			// Try translation first, fallback to original unit string
+			var translatedUnit = I18n.defaultValue(unitKey, unitStr);
+
 			option.type = 'numeric';
 			html += '<div class="input-append">'+
 				'<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editnumeric">'+
-				'<span class="add-on">'+ option.select[0] +'</span>'+
+				'<span class="add-on text-lowercase">'+ translatedUnit +'</span>'+
 				'</div>';
 		}
 		else if (option.caption.toLowerCase().indexOf('password') > -1 &&
@@ -1036,7 +1072,7 @@ var Config = (new function($)
 				'<input type="password" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editsmall">'+
 				'<span class="add-on">'+
 				'<label class="checkbox">'+
-				'<input type="checkbox" onclick="Config.togglePassword(this, \'' + option.formId + '\')" /> Show'+
+				'<input type="checkbox" onclick="Config.togglePassword(this, \'' + option.formId + '\')" /> <span data-i18n="btn_show"></span>' +
 				'</label>'+
 				'</span>'+
 				'</div>';
@@ -1053,7 +1089,7 @@ var Config = (new function($)
 			html += '<table class="editor"><tr><td>';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '">';
 			html += '</td><td>';
-			html += '<button type="button" id="' + option.formId + '_Editor" class="btn btn-default" onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + option.editor.caption + '</button>';
+			html += '<button type="button" id="' + option.formId + '_Editor" class="btn btn-default" ' + (option.editor.i18n ? 'data-i18n="' + option.editor.i18n + '" ' : '') + 'onclick="' + option.editor.click + '($(\'input\', $(this).closest(\'table\')).attr(\'id\'))">' + (option.editor.i18n ? '' : option.editor.caption) + '</button>';
 			html += '</td></tr></table>';
 		}
 		else if (option.commandopts)
@@ -1068,12 +1104,7 @@ var Config = (new function($)
 			option.type = 'text';
 			html += '<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editlarge">';
 		}
-		var about = option['about'] || '';
-		if (about)
-		{
-			about = about.replace('\n', ' ') + '\n';
-		}
-		var description = about + (option['description'] || '');
+
 		if (description) 
 		{
 			var htmldescr = description;
@@ -1098,19 +1129,21 @@ var Config = (new function($)
 			htmldescr = htmldescr.replace(/\n/, '</span>\n');
 			htmldescr = '<span class="help-option-title">' + htmldescr;
 
-			htmldescr = htmldescr.replace(/\n/g, '<br>');
-			htmldescr = htmldescr.replace(/NOTE: /g, '<span class="label label-warning">NOTE:</span> ');
-			htmldescr = htmldescr.replace(/INFO: /g, '<span class="label label-info">INFO:</span> ');
+			// Wrap in pre to preserve formatting from nzbget.conf
+			htmldescr = '<pre class="help-desc">' + htmldescr + '</pre>';
+
+			htmldescr = htmldescr.replace(/NOTE: /g, '<span class="label label-warning text-uppercase" data-i18n="extman_note"></span> ');
+			htmldescr = htmldescr.replace(/INFO: /g, '<span class="label label-info text-uppercase" data-i18n="label_info_cap"></span>: ');
 
 			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info for developers" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_dev_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
 			if (htmldescr.indexOf('MORE INFO:') > -1)
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:<br>/g, '<input class="btn btn-default btn-mini" value="Show more info" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+				htmldescr = htmldescr.replace(/MORE INFO:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_more_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
 				htmldescr += '</span>';
 			}
 
@@ -1120,7 +1153,7 @@ var Config = (new function($)
 				htmldescr = htmldescr.replace(new RegExp(section.multiprefix + '[X|1]\.', 'g'), '');
 			}
 
-			html += '<p class="help-block">' + htmldescr + '</p>';
+			html += '<div class="help-block">' + htmldescr + '</div>';
 		}
 
 		if (option.check)
@@ -1168,32 +1201,41 @@ var Config = (new function($)
 		{
 			html += '<div class="' + section.id + ' multiid' + multiid + ' multiset multiset-toolbar">';
 			html += '<button type="button" class="btn btn-default config-button config-delete" data-multiid="' + multiid + '" ' +
-				'onclick="Config.deleteSet(this, \'' + setname + '\',\'' + section.id + '\')">Delete ' + setname + multiid + '</button>';
+				'onclick="Config.deleteSet(this, \'' + setname + '\',\'' + section.id + '\')">' +
+				'<span data-i18n="btn_delete"></span> ' + setname + multiid + '</button>';
 			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
-				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'up\')">Move Up</button>';
+				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'up\')">' +
+				'<span data-i18n="btn_move_up"></span></button>';
 			html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
-				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'down\')">Move Down</button>';
+				'onclick="Config.moveSet(this, \'' + setname + '\',\'' + section.id + '\', \'down\')">' +
+				'<span data-i18n="btn_move_down"></span></button>';
 			if (setname.toLowerCase() === 'feed')
 			{
 				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
-					'onclick="Config.previewFeed(this, \'' + setname + '\',\'' + section.id + '\')">Preview Feed</button>';
+					'onclick="Config.previewFeed(this, \'' + setname + '\',\'' + section.id + '\')">' +
+					'<span data-i18n="btn_preview_feed"></span></button>';
 			}
 			if (setname.toLowerCase() === 'server')
 			{
 				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
-					'onclick="Config.testConnection(this, \'' + setname + '\',\'' + section.id + '\')">Test Connection</button>';
+					'onclick="Config.testConnection(this, \'' + setname + '\',\'' + section.id + '\')">' +
+					'<span data-i18n="btn_test_connection"></span></button>';
 				html += ' <button type="button" class="btn btn-default config-button" data-multiid="' + multiid + '" ' +
-					'onclick="Config.serverStats(this, \'' + setname + '\',\'' + section.id + '\')">Volume Statistics</button>';
+					'onclick="Config.serverStats(this, \'' + setname + '\',\'' + section.id + '\')">' +
+					'<span data-i18n="btn_volume_statistics"></span></button>';
 			}
-			html += '<hr>';
+			html += '<hr/></div>';
 			html += '</div>';
 		}
 
 		if (!hasmore)
 		{
 			html += '<div class="' + section.id + '">';
-			html += '<button type="button" class="btn btn-default config-add ' + section.id + ' multiset" onclick="Config.addSet(\'' + setname + '\',\'' + section.id +
-			  '\')">Add ' + (hasoptions ? 'another ' : '') + setname + '</button>';
+			html += '<button type="button" class="btn btn-default config-add ' + section.id + ' multiset" ' +
+				'onclick="Config.addSet(\'' + setname + '\',\'' + section.id + '\')">' +
+				'<span data-i18n="label_add"></span> ' +
+				(hasoptions ? '<span data-i18n="label_another"></span> ' : '') +
+				setname + '</button>';
 			html += '</div>';
 		}
 
@@ -1220,7 +1262,7 @@ var Config = (new function($)
 			if (k == 2) // Extensions section
 			{
 				$ConfigNav.append('<li class="divider"></li>');
-				$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
+				$ConfigNav.append('<li><a class="text-uppercase" href="#' + ExtensionManager.id + '" data-i18n="config_title_extension_manager"></a></li>');
 				haveExtensions = true;
 			}
 			var conf = config[k];
@@ -1231,7 +1273,8 @@ var Config = (new function($)
 				if (!section.hidden)
 				{
 					var html = $('<li>');
-					var link = $('<a href="#' + section.id + '">' + section.name + '</a>');
+					var categoryName = I18n.defaultValue(('config_section_' + section.name.replace(/ /g, '_').replace(/-/g, '_')).toLowerCase(), section.name);
+					var link = $('<a href="#' + section.id + '">' + categoryName + '</a>');
 					if (SystemHealth.isHealthCheckEnabled())
 					{
 						var errorBadges = SystemHealth.makeBadges(SystemHealth.getSection(section.id));
@@ -1252,7 +1295,8 @@ var Config = (new function($)
 			}
 			if (!added)
 			{
-				var html = $('<li><a href="#' + conf.id + '">' + conf.name + '</a></li>');
+				var categoryName = I18n.defaultValue(('config_section_' + conf.name.replace(/ /g, '_').replace(/-/g, '_')).toLowerCase(), conf.name);
+				var html = $('<li><a href="#' + conf.id + '">' + categoryName + '</a></li>');
 				$ConfigNav.append(html);
 			}
 		}
@@ -1261,17 +1305,19 @@ var Config = (new function($)
 		if (!haveExtensions)
 		{
 			$ConfigNav.append('<li class="divider"></li>');
-			$ConfigNav.append('<li><a href="#' + ExtensionManager.id + '">' + 'EXTENSION MANAGER' + '</a></li>');
+			$ConfigNav.append('<li><a class="text-uppercase" href="#' + ExtensionManager.id + '" data-i18n="config_title_extension_manager"></a></li>');
 		}
 
 		$ConfigNav.append('<li class="divider"></li>');
-		$ConfigNav.append('<li><a href="#' + 'Config-Licenses' + '">' + 'LICENSES' + '</a></li>');
+		$ConfigNav.append('<li><a class="text-uppercase" href="#Config-Licenses" data-i18n="config_title_licenses"></a></li>');
 
 		notifyChanges();
 
 		$ConfigNav.append('<li class="divider hide ConfigSearch"></li>');
-		$ConfigNav.append('<li class="hide ConfigSearch"><a href="#Search">SEARCH RESULTS</a></li>');
+		$ConfigNav.append('<li class="hide ConfigSearch"><a href="#Search" data-i18n="search_results"></a></li>');
 
+		I18n.translatePage($ConfigNav);
+		I18n.translatePage($ConfigData);
 		$ConfigNav.toggleClass('long-list', $ConfigNav.children().length > 20);
 
 		Config.showSection('Config-Info', false);
@@ -1287,94 +1333,101 @@ var Config = (new function($)
 
 	function extendConfig()
 	{
-		for (var i=2; i < config.length; i++)
+		if (!config.extended)
+		{
+			for (var i=2; i < config.length; i++)
+			{
+				var conf = config[i];
+
+				var firstVisibleSection = null;
+				var visibleSections = 0;
+				for (var j=0; j < conf.sections.length; j++)
+				{
+					if (!conf.sections[j].hidden)
+					{
+						if (!firstVisibleSection)
+						{
+							firstVisibleSection = conf.sections[j];
+						}
+						visibleSections++;
+					}
+				}
+
+				// rename sections
+				for (var j=0; j < conf.sections.length; j++)
+				{
+					var section = conf.sections[j];
+					section.name = conf.shortName.toUpperCase() + (visibleSections > 1 ? ' - ' + section.name.toUpperCase() + '' : '');
+					section.caption = conf.name.toUpperCase() + (visibleSections > 1 ? ' - ' + section.name.toUpperCase() + '' : '');
+				}
+
+				if (!firstVisibleSection)
+				{
+					// create new section for virtual option "About".
+					var section = {};
+					section.name = conf.shortName.toUpperCase();
+					section.caption = conf.name.toUpperCase();
+					section.id = conf.id + '_OPTIONS';
+					section.options = [];
+					firstVisibleSection = section;
+					conf.sections.push(section);
+				}
+
+				// create virtual option "About" with scripts description.
+				var option = {};
+				option.caption = 'About ' + conf.shortName;
+				option.name = conf.nameprefix + option.caption;
+				option.value = '';
+				option.defvalue = '';
+				option.sectionId = firstVisibleSection.id;
+				option.select = [];
+				option.about = conf.about;
+				option.nocontent = true;
+				option.description = conf.description;
+				firstVisibleSection.options.unshift(option);
+			}
+			config.extended = true;
+		}
+
+		// This part must run every time to translate buttons!
+		for (var i=0; i < config.length; i++)
 		{
 			var conf = config[i];
-
-			var firstVisibleSection = null;
-			var visibleSections = 0;
-			for (var j=0; j < conf.sections.length; j++)
-			{
-				if (!conf.sections[j].hidden)
-				{
-					if (!firstVisibleSection)
-					{
-						firstVisibleSection = conf.sections[j];
-					}
-					visibleSections++;
-				}
-			}
-
-			// rename sections
 			for (var j=0; j < conf.sections.length; j++)
 			{
 				var section = conf.sections[j];
-				section.name = conf.shortName.toUpperCase() + (visibleSections > 1 ? ' - ' + section.name.toUpperCase() + '' : '');
-				section.caption = conf.name.toUpperCase() + (visibleSections > 1 ? ' - ' + section.name.toUpperCase() + '' : '');
-			}
-
-			if (!firstVisibleSection)
-			{
-				// create new section for virtual option "About".
-				var section = {};
-				section.name = conf.shortName.toUpperCase();
-				section.caption = conf.name.toUpperCase();
-				section.id = conf.id + '_OPTIONS';
-				section.options = [];
-				firstVisibleSection = section;
-				conf.sections.push(section);
-			}
-
-			// create virtual option "About" with scripts description.
-			var option = {};
-			option.caption = 'About ' + conf.shortName;
-			option.name = conf.nameprefix + option.caption;
-			option.value = '';
-			option.defvalue = '';
-			option.sectionId = firstVisibleSection.id;
-			option.select = [];
-			option.about = conf.about;
-			option.nocontent = true;
-			option.description = conf.description;
-			firstVisibleSection.options.unshift(option);
-		}
-
-		// register editors for certain options
-		var conf = config[1];
-		for (var j=0; j < conf.sections.length; j++)
-		{
-			var section = conf.sections[j];
-			for (var k=0; k < section.options.length; k++)
-			{
-				var option = section.options[k];
-				var optname = option.name.toLowerCase();
-				if (optname === 'scriptorder')
+				for (var k=0; k < section.options.length; k++)
 				{
-					option.editor = { caption: 'Reorder', click: 'Config.editScriptOrder' };
-				}
-				if (optname === 'extensions')
-				{
-					option.editor = { caption: 'Choose', click: 'Config.editExtensions' };
-				}
-				if (optname.indexOf('category') > -1 && optname.indexOf('.extensions') > -1)
-				{
-					option.editor = { caption: 'Choose', click: 'Config.editCategoryExtensions' };
-				}
-				if (optname.indexOf('feed') > -1 && optname.indexOf('.extensions') > -1)
-				{
-					option.editor = { caption: 'Choose', click: 'Config.editFeedExtensions' };
-				}
-				if (optname.indexOf('task') > -1 && optname.indexOf('.param') > -1)
-				{
-					option.editor = { caption: 'Choose', click: 'Config.editSchedulerScript' };
-				}
-				if (optname.indexOf('task') > -1 && optname.indexOf('.command') > -1)
-				{
-					option.onchange = Config.schedulerCommandChanged;
-				}
-				if (optname.indexOf('.filter') > -1)
-				{
-					option.editor = { caption: 'Change', click: 'Config.editFilter' };
+					var option = section.options[k];
+					var optname = option.name.toLowerCase();
+					if (optname === 'scriptorder')
+					{
+						option.editor = { caption: I18n.translate('btn_reorder'), i18n: 'btn_reorder', click: 'Config.editScriptOrder' };
+					}
+					if (optname === 'extensions')
+					{
+						option.editor = { caption: I18n.translate('btn_choose'), i18n: 'btn_choose', click: 'Config.editExtensions' };
+					}
+					if (optname.indexOf('category') > -1 && optname.indexOf('.extensions') > -1)
+					{
+						option.editor = { caption: I18n.translate('btn_choose'), i18n: 'btn_choose', click: 'Config.editCategoryExtensions' };
+					}
+					if (optname.indexOf('feed') > -1 && optname.indexOf('.extensions') > -1)
+					{
+						option.editor = { caption: I18n.translate('btn_choose'), i18n: 'btn_choose', click: 'Config.editFeedExtensions' };
+					}
+					if (optname.indexOf('task') > -1 && optname.indexOf('.param') > -1)
+					{
+						option.editor = { caption: I18n.translate('btn_choose'), i18n: 'btn_choose', click: 'Config.editSchedulerScript' };
+					}
+					if (optname.indexOf('task') > -1 && optname.indexOf('.command') > -1)
+					{
+						option.onchange = Config.schedulerCommandChanged;
+					}
+					if (optname.indexOf('.filter') > -1)
+					{
+						option.editor = { caption: I18n.translate('btn_change'), i18n: 'btn_change', click: 'Config.editFilter' };
+					}
 				}
 			}
 		}
@@ -1496,14 +1549,16 @@ var Config = (new function($)
 
 	function switchGetValue(control)
 	{
-		var state = $('.btn-primary', control).val();
+		var btn = $('.btn-primary', control);
+		var state = btn.attr('data-value') !== undefined ? btn.attr('data-value') : btn.val();
 		return state;
 	}
 
 	function switchSetValue(control, value)
 	{
 		$('.btn', control).removeClass('btn-primary');
-		$('.btn@[value=' + value + ']', control).addClass('btn-primary');
+		var btn = $('.btn', control).filter(function() { return $(this).attr('data-value') == value || $(this).val() == value || $(this).attr('value') == value; });
+		btn.addClass('btn-primary');
 	}
 
 	this.togglePassword = function(control, target)
@@ -1545,17 +1600,19 @@ var Config = (new function($)
 		{
 			$ConfigInfo.show();
 			$ConfigData.children().hide();
-			$ConfigTitle.text('INFO');
+			$ConfigTitle.attr('data-i18n', 'nav_info');
+			I18n.translatePage($ConfigTitle.parent());
 			$ConfigTitleStatus.hide();
 			return;
 		}
 
-		if (sectionId === SystemInfo.id)
+		if (sectionId === 'Config-SystemInfo')
 		{
 			$ConfigData.children().hide();
 			$('.config-status', $ConfigData).show();
 			SystemInfo.loadSystemInfo();
-			$ConfigTitle.text('STATUS');
+			$ConfigTitle.attr('data-i18n', 'nav_status');
+			I18n.translatePage($ConfigTitle.parent());
 			$ConfigTitleStatus.show();
 			return;
 		}
@@ -1564,7 +1621,8 @@ var Config = (new function($)
 		{
 			$ConfigLicenses.show();
 			$ConfigData.children().hide();
-			$ConfigTitle.text('LICENSES');
+			$ConfigTitle.attr('data-i18n', 'config_title_licenses');
+			I18n.translatePage($ConfigTitle.parent());
 			return;
 		}
 
@@ -1573,16 +1631,18 @@ var Config = (new function($)
 			$ConfigData.children().hide();
 			$('.config-system', $ConfigData).show();
 			markLastControlGroup();
-			$ConfigTitle.text('SYSTEM');
+			$ConfigTitle.attr('data-i18n', 'nav_system');
+			I18n.translatePage($ConfigTitle.parent());
 			$ConfigTitleStatus.hide();
 			return;
 		}
 
-		if (sectionId === ExtensionManager.id)
+		if (sectionId === 'extension-manager')
 		{
 			$ConfigData.children().hide();
 			markLastControlGroup();
-			$ConfigTitle.text('EXTENSION MANAGER');
+			$ConfigTitle.attr('data-i18n', 'config_title_extension_manager');
+			I18n.translatePage($ConfigTitle.parent());
 			$ConfigTitleStatus.hide();
 			ExtensionManager.downloadRemoteExtensions();
 			return;
@@ -1594,7 +1654,11 @@ var Config = (new function($)
 		markLastControlGroup();
 
 		var section = findSectionById(sectionId);
-		$ConfigTitle.text(section.caption ? section.caption : section.name);
+		var sectionText = section.caption ? section.caption : section.name;
+		var categoryName = I18n.defaultValue(('config_section_' + section.name.replace(/ /g, '_').replace(/-/g, '_')).toLowerCase(), sectionText);
+		$ConfigTitle.removeAttr('data-i18n');
+		$ConfigTitle.text(categoryName);
+		I18n.translatePage($ConfigTitle.parent());
 		$ConfigTitleStatus.hide();
 
 		$Body.animate({ scrollTop: 0 }, { duration: animateScroll ? 'slow' : 0, easing: 'swing' });
@@ -1660,7 +1724,10 @@ var Config = (new function($)
 
 		// update add-button
 		var addButton = $('.config-add.' + section.id, $ConfigData);
-		addButton.text('Add ' + (hasOptions ? 'another ' : '') + setname);
+		addButton.html('<span data-i18n="label_add"></span> ' +
+			(hasOptions ? '<span data-i18n="label_another"></span> ' : '') +
+			setname);
+		I18n.translatePage(addButton);
 	}
 
 	function reformatSet(section, setname, oldMultiId, newMultiId)
@@ -1677,7 +1744,10 @@ var Config = (new function($)
 				// update captions
 				$('.config-settitle.' + section.id + '.multiid' + oldMultiId, $ConfigData).text(setname + newMultiId);
 				$('.' + section.id + '.multiid' + oldMultiId + ' .config-multicaption', $ConfigData).text(setname + newMultiId + '.');
-				$('.' + section.id + '.multiid' + oldMultiId + ' .config-delete', $ConfigData).text('Delete ' + setname + newMultiId);
+
+				var delBtn = $('.' + section.id + '.multiid' + oldMultiId + ' .config-delete', $ConfigData);
+				delBtn.html('<span data-i18n="btn_delete"></span> ' + setname + newMultiId);
+				I18n.translatePage(delBtn);
 
 				//update data id
 				$('.' + section.id + '.multiid' + oldMultiId + ' .config-button', $ConfigData).attr('data-multiid', newMultiId);
@@ -1746,10 +1816,13 @@ var Config = (new function($)
 		var html = buildMultiSetContent(section, multiid);
 
 		var addButton = $('.config-add.' + section.id, $ConfigData);
-		addButton.text('Add another ' + setname);
+		addButton.html('<span data-i18n="label_add"></span> ' + 
+			'<span data-i18n="label_another"></span> ' + setname);
+		I18n.translatePage(addButton);
 
 		// insert before add-button, using a temporary div for slide effect
 		var div = $('<div>' + html + '</div>');
+		I18n.translatePage(div);
 		div.hide();
 		addButton.parent().before(div);
 
@@ -1807,11 +1880,11 @@ var Config = (new function($)
 	{
 		if (!compactMode)
 		{
-			$('#Config_ViewCompact > .material-icon').text('');
+			$('#Config_ViewCompact > .material-icon').text('check_box_outline_blank');
 		}
 		else
 		{
-			$('#Config_ViewCompact > .material-icon').text('done');
+			$('#Config_ViewCompact > .material-icon').text('check_box');
 		}
 		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);
@@ -1849,7 +1922,7 @@ var Config = (new function($)
 		var command = getOptionValue(findOptionById(optFormId.replace(/Param/, 'Command')));
 		if (command !== 'Script')
 		{
-			alert('This button is to choose scheduler scripts when option TaskX.Command is set to "Script".');
+			alert(I18n.translate('msg_scheduler_script_info'));
 			return;
 		}
 		ScriptListDialog.showModal(option, config, ['scheduler']);
@@ -1962,7 +2035,7 @@ var Config = (new function($)
 						}
 						else
 						{
-							AlertDialog.showModal('Connection test failed', errtext);
+							AlertDialog.showModal(I18n.translate('msg_connection_test_failed'), errtext);
 						}
 					});
 					connecting = false;
@@ -1973,7 +2046,7 @@ var Config = (new function($)
 						{
 							message = resultObj.error.message;
 						}
-						AlertDialog.showModal('Connection test failed', message);
+						AlertDialog.showModal(I18n.translate('msg_connection_test_failed'), message);
 						connecting = false;
 					});
 				});
@@ -2024,7 +2097,7 @@ var Config = (new function($)
 
 		if (serverId === 0)
 		{
-			AlertDialog.showModal('Downloaded volumes', 'No statistics available for that server yet.');
+			AlertDialog.showModal(I18n.translate('title_downloaded_volumes'), I18n.translate('msg_no_stats_available'));
 			return;
 		}
 
@@ -2255,7 +2328,7 @@ var Config = (new function($)
 	{
 		if (config && !configSaved && !UISettings.connectionError && prepareSaveRequest(true).length > 0)
 		{
-			return "Discard changes?";
+			return I18n.translate('msg_discard_changes_question');
 		}
 	}
 
@@ -2366,7 +2439,8 @@ var Config = (new function($)
 
 		markLastControlGroup();
 
-		$ConfigTitle.text('SEARCH RESULTS');
+		$ConfigTitle.attr('data-i18n', 'search_results');
+		I18n.translatePage($ConfigTitle.parent());
 		$Body.animate({ scrollTop: 0 }, { duration: 0 });
 
 		updateTabInfo($ConfigTabBadge, { filter: true, available: available, total: total});
@@ -2420,7 +2494,7 @@ var Config = (new function($)
 
 	this.reload = function()
 	{
-		$('#ConfigReloadAction').text('Stopping all activities and reloading...');
+		$('#ConfigReloadAction').text(I18n.translate('msg_stopping_reloading'));
 		restart(function() { RPC.call('reload', [], reloadCheckStatus); });
 	}
 
@@ -2439,7 +2513,7 @@ var Config = (new function($)
 				else
 				{
 					// restarted successfully
-					$('#ConfigReloadAction').text('Reloaded successfully. Refreshing the page...');
+					$('#ConfigReloadAction').text(I18n.translate('msg_reloaded_refreshing'));
 					// refresh page
 					document.location.reload(true);
 				}
@@ -2476,8 +2550,8 @@ var Config = (new function($)
 
 	this.shutdown = function()
 	{
-		$('#ConfigReloadTitle').text('Shutdown NZBGet');
-		$('#ConfigReloadAction').text('Stopping all activities...');
+		$('#ConfigReloadTitle').text(I18n.translate('shutdown_dialog_title'));
+		$('#ConfigReloadAction').text(I18n.translate('notif_pausing'));
 		restart(function() { RPC.call('shutdown', [], shutdownCheckStatus); });
 	}
 
@@ -2492,7 +2566,7 @@ var Config = (new function($)
 			{
 				// the program has been stopped
 				$('#ConfigReloadTransmit').hide();
-				$('#ConfigReloadAction').text('The program has been stopped.');
+				$('#ConfigReloadAction').text(I18n.translate('msg_program_stopped'));
 			});
 	}
 
@@ -2501,6 +2575,18 @@ var Config = (new function($)
 	this.checkUpdates = function()
 	{
 		UpdateDialog.showModal();
+	}
+
+	this.redraw = function()
+	{
+		if (config)
+		{
+			var activeSection = this.currentSectionID || 'Config-Info';
+			this.buildPage(config);
+			if (activeSection !== 'Config-Info') {
+				this.showSection(activeSection, false);
+			}
+		}
 	}
 }(jQuery));
 
@@ -2532,7 +2618,7 @@ var ScriptListDialog = (new function($)
 		$ScriptTable.fasttable(
 			{
 				pagerContainer: '#ScriptListDialog_ScriptTable_pager',
-				infoEmpty: 'No scripts found. If you just changed option "ScriptDir", save settings and reload NZBGet.',
+				infoEmpty: I18n.translate('msg_no_scripts_found'),
 				pageSize: 1000
 			});
 
@@ -2553,19 +2639,19 @@ var ScriptListDialog = (new function($)
 
 		if (orderMode)
 		{
-			$('#ScriptListDialog_Title').text('Reorder extensions');
-			$('#ScriptListDialog_Instruction').text('Hover mouse over table elements for reorder buttons to appear.');
+			$('#ScriptListDialog_Title').text(I18n.translate('script_list_reorder_title'));
+			$('#ScriptListDialog_Instruction').text(I18n.translate('script_list_reorder_hint'));
 		}
 		else
 		{
-			$('#ScriptListDialog_Title').text('Choose extensions');
-			$('#ScriptListDialog_Instruction').html('Select extension scripts for option <strong>' + option.name + '</strong>.');
+			$('#ScriptListDialog_Title').text(I18n.translate('script_list_dialog_title'));
+			$('#ScriptListDialog_Instruction').html(I18n.translate('script_list_dialog_instruction', '<strong>' + Util.textToHtml(option.name) + '</strong>'));
 		}
 
 		$ScriptTable.toggleClass('table-hidecheck', orderMode);
 		$ScriptTable.toggleClass('table-check table-cancheck', !orderMode);
-		$('#ScriptListDialog_OrderInfo').toggleClass('alert alert-info', !orderMode);
-		Util.show('#ScriptListDialog_OrderInfo', orderMode, 'inline-block');
+		$('#ScriptListDialog_OrderInfo').addClass('alert alert-info');
+		Util.show('#ScriptListDialog_OrderInfo', !orderMode && kind === 'settings', 'inline-block');
 
 		buildScriptList();
 		var selectedList = Util.parseCommaList(Config.getOptionValue(option));
@@ -2807,9 +2893,7 @@ var ConfigBackupRestore = (new function($)
 
 		if (!Util.saveToLocalFile(settings, "text/plain;charset=utf-8", filename))
 		{
-			alert('Unfortunately your browser doesn\'t support access to local file system.\n\n'+
-				'To backup settings you can manually save file "nzbget.conf" (' +
-				Options.option('ConfigFile')+ ').');
+			alert(I18n.translate('msg_no_filesystem_access_backup', Options.option('ConfigFile')));
 		}
 	}
 
@@ -2819,14 +2903,14 @@ var ConfigBackupRestore = (new function($)
 	{
 		if (!window.FileReader)
 		{
-			alert("Unfortunately your browser doesn't support FileReader API.");
+			alert(I18n.translate('msg_no_filereader_api'));
 			return;
 		}
 
 		var testreader = new FileReader();
 		if (!testreader.readAsBinaryString && !testreader.readAsDataURL)
 		{
-			alert("Unfortunately your browser doesn't support neither \"readAsBinaryString\" nor \"readAsDataURL\" functions of FileReader API.");
+			alert(I18n.translate('msg_no_direct_file_access'));
 			return;
 		}
 
@@ -2843,7 +2927,7 @@ var ConfigBackupRestore = (new function($)
 	{
 		if (!event.target.files)
 		{
-			alert("Unfortunately your browser doesn't support direct access to local files.");
+			alert(I18n.translate('msg_no_direct_file_access'));
 			return;
 		}
 		if (event.target.files.length > 0)
@@ -2870,7 +2954,7 @@ var ConfigBackupRestore = (new function($)
 
 			if (settings.indexOf('MainDir=') < 0)
 			{
-				alert('File ' + filename + ' is not a valid NZBGet backup.');
+				alert(I18n.translate('msg_not_valid_backup', filename));
 				return;
 			}
 
@@ -3017,7 +3101,7 @@ var RestoreSettingsDialog = (new function($)
 			{
 				pagerContainer: $('#RestoreSettingsDialog_SectionTable_pager'),
 				rowSelect: UISettings.rowSelect,
-				infoEmpty: 'No sections found.',
+				infoEmpty: I18n.translate('msg_no_sections_found'),
 				pageSize: 1000
 			});
 
@@ -3047,7 +3131,10 @@ var RestoreSettingsDialog = (new function($)
 				var section = conf.sections[i];
 				if (!section.hidden)
 				{
-					var fields = ['<div class="check img-check"></div>', '<span data-section="' + section.id + '">' + section.name + '</span>'];
+					var translated = I18n.defaultValue(('config_section_' + section.name.replace(/ /g, '_').replace(/-/g, '_')).toLowerCase(), section.name);
+					var sectionName = translated;
+					var spanHtml = '<span class="text-uppercase" data-section="' + section.id + '">' + sectionName + '</span>';
+					var fields = ['<div class="check img-check"></div>', spanHtml];
 					var item =
 					{
 						id: section.id,
@@ -3149,7 +3236,7 @@ var UpdateDialog = (new function($)
 		$('#UpdateDialog_DownloadAvail').hide();
 		$('#UpdateDialog_UpdateNotAvail').hide();
 		$('#UpdateDialog_InstalledInfo').show();
-		$UpdateDialog_Close.text(foreground ? 'Close' : 'Remind Me Later');
+		$UpdateDialog_Close.text(foreground ? I18n.translate('btn_close') : I18n.translate('btn_remind_later'));
 		$('#UpdateDialog_VerInstalled').text(Options.option('Version'));
 
 		PackageInfo = {};
@@ -3283,9 +3370,9 @@ var UpdateDialog = (new function($)
 		Util.show('#UpdateDialog_CheckFailed', hasUpdateSource && !hasUpdateInfo);
 		Util.show('#UpdateDialog_DownloadRow,#UpdateDialog_DownloadAvail', canDownload && !canUpdate);
 		$('#UpdateDialog_AvailRow').toggleClass('hide', !hasUpdateInfo);
-		var canUpdateStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
-		var canUpdateTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
-		if (canUpdateStable || canUpdateTesting)
+		var shouldAutoPopupStable = Options.option('UpdateCheck') === 'stable' && (canInstallStable || canDownloadStable) && notificationAllowed('stable');
+		var shouldAutoPopupTesting = Options.option('UpdateCheck') === 'testing' && (canInstallTesting || canDownloadTesting) && notificationAllowed('testing');
+		if (shouldAutoPopupStable || shouldAutoPopupTesting)
 		{
 			$UpdateDialog.modal({backdrop: 'static'});
 		}
@@ -3321,7 +3408,7 @@ var UpdateDialog = (new function($)
 
 		if (!script)
 		{
-			alert('Something is wrong with the package configuration file "package-info.json".');
+			alert(I18n.translate('msg_package_info_error'));
 			return;
 		}
 
@@ -3373,7 +3460,7 @@ var UpdateDialog = (new function($)
 	function terminated()
 	{
 		// rpc-failure: the program has been terminated. Waiting for new instance.
-		setLogContentAndScroll($UpdateProgressDialog_Log.html() + '\n' + 'NZBGet has been terminated. Waiting for restart...');
+		setLogContentAndScroll($UpdateProgressDialog_Log.html() + '\n' + I18n.translate('msg_terminated_waiting'));
 		setTimeout(checkStatus, 500);
 	}
 
@@ -3420,7 +3507,7 @@ var UpdateDialog = (new function($)
 				else
 				{
 					// restarted successfully, refresh page
-					setLogContentAndScroll($UpdateProgressDialog_Log.html() + '\n' + 'Successfully started. Refreshing the page...');
+					setLogContentAndScroll($UpdateProgressDialog_Log.html() + '\n' + I18n.translate('msg_started_refreshing'));
 					setTimeout(function()
 						{
 							document.location.reload(true);
@@ -3466,7 +3553,7 @@ var ExecScriptDialog = (new function($)
 
 	this.showModal = function(script, command, context, changedOptions)
 	{
-		$ExecScriptDialog_Title.text('Executing script ' + script);
+		$ExecScriptDialog_Title.text(I18n.translate('label_executing_script', script));
 		$ExecScriptDialog_Log.text('');
 		$ExecScriptDialog_Status.show();
 		$ExecScriptDialog.modal({backdrop: 'static'});
@@ -3633,7 +3720,7 @@ var ExtensionManager = (new function($)
 			{
 				hideLoadingBanner();
 				render(getAllExtensions());
-				showErrorBanner("Failed to fetch the list of available extensions", error);
+				showErrorBanner(I18n.translate('msg_ext_fetch_failed'), error);
 			}
 		);
 	}
@@ -3655,16 +3742,17 @@ var ExtensionManager = (new function($)
 		extensions.forEach(function(ext, i) {
 			var raw = $('<tr></tr>')
 				.append(getExtActiveStatusCell(ext))
-				.append(getCeneteredTextCell(ext.displayName))
-				.append(getTextCell(ext.about))
-				.append(getCeneteredTextCell(ext.version))
-				.append(getHomepageCell(ext))
+				.append(getCeneteredTextCell(ext.name))
+				.append(getTextCell(ext.about).addClass('phone-hide'))
+				.append(getCeneteredTextCell(ext.version).addClass('phone-hide'))
+				.append(getHomepageCell(ext).addClass('phone-hide'))
 				.append(getActionBtnsCell(ext))
-				.append(getSortExtensionsBtnsCell(ext, i === firstIntalledIdx, i === lastInstalledIdx));
+				.append(getSortExtensionsBtnsCell(ext, i === firstIntalledIdx, i === lastInstalledIdx).addClass('phone-hide'));
 			tbody.append(raw);
 		});
 		table.append(tbody);
 		section.append(table);
+		I18n.translatePage(tbody);
 		section.show();
 	}
 
@@ -3692,7 +3780,11 @@ var ExtensionManager = (new function($)
 			}
 		}
 
-		return remote.concat(installedExtensions);
+		remote.sort(function(a, b) {
+			return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+		});
+
+		return installedExtensions.concat(remote);
 	}
 
 	function isOutdated(v1, v2)
@@ -3719,7 +3811,7 @@ var ExtensionManager = (new function($)
 			function(error)
 			{
 				disableAllBtns(ext, false);
-				showErrorBanner("Failed to download " + ext.name, error);
+				showErrorBanner(I18n.translate('msg_ext_download_failed', ext.name), error);
 			}
 		);
 	}
@@ -3737,7 +3829,7 @@ var ExtensionManager = (new function($)
 			function(error)
 			{
 				disableAllBtns(ext, false);
-				showErrorBanner("Failed to update " + ext.name, error);
+				showErrorBanner(I18n.translate('msg_ext_update_failed', ext.name), error);
 			}
 		);
 	}
@@ -3764,13 +3856,13 @@ var ExtensionManager = (new function($)
 				function(error) 
 				{
 					updatePage();
-					showErrorBanner("Failed to save the config file", error);
+					showErrorBanner(I18n.translate('msg_save_config_failed'), error);
 				}
 			},
 			function(error) 
 			{
 				disableAllBtns(ext, false);
-				showErrorBanner("Failed to delete " + ext.name, error);
+				showErrorBanner(I18n.translate('msg_ext_delete_failed', ext.name), error);
 			}
 		);
 	}
@@ -3894,7 +3986,7 @@ var ExtensionManager = (new function($)
 			}),
 			function(error) 
 			{
-				showErrorBanner("Failed to save the config file", error);
+				showErrorBanner(I18n.translate('msg_save_config_failed'), error);
 			}
 		}
 		else
@@ -4076,7 +4168,7 @@ var ExtensionManager = (new function($)
 			},
 			function (_)
 			{
-				ext.testError = 'Failed to find the corresponding executor for ' + ext.entry + '.\nThe extension may not work';
+				ext.testError = I18n.translate('msg_ext_executor_failed', ext.entry);
 				disableAllBtns(ext, false);
 				update();
 			}
@@ -4085,23 +4177,27 @@ var ExtensionManager = (new function($)
 
 	function getActionBtnsCell(ext)
 	{
-		var cell = $('<td class="extension-manager__td btn-toolbar"></td>');
+		var cell = $('<td class="extension-manager__td extension-manager__actions-td"></td>');
+		var container = $('<div class="btn-toolbar"></div>');
+		cell.append(container);
 		if (!ext.installed)
 		{
-			return cell.append(getDownloadBtn(ext));
+			container.append(getDownloadBtn(ext));
+			return cell;
 		}
-		return cell
+		container
 			.append(getUpdateBtn(ext))
 			.append(getConfigureBtn(ext))
 			.append(getActivateBtn(ext))
 			.append(getDeleteBtn(ext));
+		return cell;
 	}
 
 	function getDeleteBtn(ext)
 	{
 		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
 			+ ext.name 
-			+ '" title="Delete"><i class="material-icon">delete</i></button>')
+			+ '" data-i18n-title="extman_btn_delete"><i class="material-icon">delete</i></button>')
 			.off('click')
 			.on('click', function() { showDeleteExtensionDropdown(ext); });
 
@@ -4112,7 +4208,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
 			+ ext.name 
-			+ '" title="Download"><i class="material-icon">download</i></button>')
+			+ '" data-i18n-title="extman_btn_download"><i class="material-icon">download</i></button>')
 			.off('click')
 			.on('click', function() { downloadExtension(ext); });
 
@@ -4123,16 +4219,14 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
 			+ ext.name 
-			+ '"><i class="material-icon">update</i></button>');
+			+ '" data-i18n-title="extman_btn_update"><i class="material-icon">update</i></button>');
 		if (ext.outdated)
 		{
-			btn.attr({ title: "Update to new version" });
 			btn.off('click').on('click', function() { updateExtension(ext); });
 		}
 		else
 		{
 			btn.attr({ disabled: true });
-			btn.attr({ title: "Extension up-to-date!" });
 			btn.addClass('btn--disabled');
 		}
 
@@ -4143,7 +4237,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-default btn-group" id="ConfigureBtn_' 
 			+ ext.name 
-			+ '" title="Configure"><i class="material-icon">settings</i></button>')
+			+ '" data-i18n-title="extman_btn_configure"><i class="material-icon">settings</i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 
@@ -4160,13 +4254,13 @@ var ExtensionManager = (new function($)
 		if (ext.isActive && !ext.testError)
 		{	
 			btn.append('<i class="material-icon">pause</i>');
-			btn.attr({ title: "Deactivate" });
+			btn.attr({ 'data-i18n-title': "extman_btn_deactivate" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
 			btn.append('<i class="material-icon">play_arrow</i>');
-			btn.attr({ title: "Activate for new downloads" });
+			btn.attr({ 'data-i18n-title': "extman_btn_activate" });
 			btn.addClass('btn-success');
 		}
 		else
@@ -4196,12 +4290,12 @@ var ExtensionManager = (new function($)
 		if (ext.isActive)
 		{	
 			circle.addClass("green-circle");
-			circle.attr({ title: "Active" });
+			circle.attr({ title: I18n.translate('label_active_cap') });
 		}
 		else
 		{
 			circle.addClass("red-circle");
-			circle.attr({ title: "Not active" });
+			circle.attr({ title: I18n.translate('label_not_active_cap') });
 		}
 		container.append(circle);
 		cell.append(container);
@@ -4213,7 +4307,7 @@ var ExtensionManager = (new function($)
 		if (ext.homepage)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" title="Homepage">home</i></a>'));
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" data-i18n-title="extman_tooltip_homepage">home</i></a>'));
 			return cell;
 		}
 		
@@ -4251,18 +4345,19 @@ var ExtensionManager = (new function($)
 			return getEmptyCell();
 		}
 		var cell = $('<td class="extension-manager__td text-center">');
-		var container = $('<div class="btn-row-order-block">');
-		var title = "Modify execution order (restart needed)";
+		var container = $('<div class="btn-row-order-block" data-i18n-title="extman_tooltip_order">');
+		var title = I18n.translate ? I18n.translate('extman_tooltip_order') : "Modify execution order (restart needed)";
+		
 		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon">vertical_align_top</i></span>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
-		var mvUp = $('<span class="btn-row-order id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
+		var mvUp = $('<span class="btn-row-order" id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
 			.off('click')
 			.on('click', function() { moveUp(ext); });
-		var mvDown = $('<span class="btn-row-order id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
+		var mvDown = $('<span class="btn-row-order" id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
 			.off('click')
 			.on('click', function() { moveDown(ext); });
-		var mvBottom = $('<span class="btn-row-order id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
+		var mvBottom = $('<span class="btn-row-order" id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
 		

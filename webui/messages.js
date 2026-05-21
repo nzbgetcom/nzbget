@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,6 +74,8 @@ var Messages = (new function($)
 				renderCellCallback: renderCellCallback,
 				updateInfoCallback: updateInfo
 			});
+
+		I18n.subscribe(Messages.redraw);
 	}
 
 	this.applyTheme = function()
@@ -158,11 +161,11 @@ var Messages = (new function($)
 		var kind;
 		switch (message.Kind)
 		{
-			case 'INFO': kind = '<span class="label label-status label-success">info</span>'; break;
-			case 'DETAIL': kind = '<span class="label label-status label-info">detail</span>'; break;
-			case 'WARNING': kind = '<span class="label label-status label-warning">warning</span>'; break;
-			case 'ERROR': kind = '<span class="label label-status label-important">error</span>'; break;
-			case 'DEBUG': kind = '<span class="label label-status">debug</span>'; break;
+			case 'INFO': kind = '<span class="label label-status label-success">' + I18n.translate('label_info') + '</span>'; break;
+			case 'DETAIL': kind = '<span class="label label-status label-info">' + I18n.translate('label_detail') + '</span>'; break;
+			case 'WARNING': kind = '<span class="label label-status label-warning">' + I18n.translate('label_warning') + '</span>'; break;
+			case 'ERROR': kind = '<span class="label label-status label-important">' + I18n.translate('label_error') + '</span>'; break;
+			case 'DEBUG': kind = '<span class="label label-status">' + I18n.translate('label_debug') + '</span>'; break;
 		}
 
 		var text = Util.textToHtml(message.Text);
@@ -199,7 +202,7 @@ var Messages = (new function($)
 
 	function renderCellCallback(cell, index, item)
 	{
-		if (index === 1)
+		if (index === 0 || index === 1)
 		{
 			cell.className = 'text-center';
 		}
@@ -290,7 +293,7 @@ var Messages = (new function($)
 
 		RPC.call('clearlog', [], function()
 		{
-			RPC.call('writelog', ['INFO', 'Messages have been deleted'], function()
+			RPC.call('writelog', ['INFO', I18n.translate('notif_messages_deleted')], function()
 			{
 				notification = '#Notif_Messages_Cleared';
 				lastID = 0;

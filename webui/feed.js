@@ -180,7 +180,7 @@ var FeedDialog = (new function($)
 		}
 		else
 		{
-			$('#FeedDialog_Title').text(name !== '' ? name : 'Feed Preview');
+			$('#FeedDialog_Title').text(name !== '' ? name : I18n.translate('title_feed_preview'));
 			var feedBacklog = backlog === 'yes';
 			var feedPauseNzb = pauseNzb === 'yes';
 			var feedCategory = category;
@@ -249,11 +249,11 @@ var FeedDialog = (new function($)
 			var status;
 			switch (item.Status)
 			{
-				case 'UNKNOWN': status = '<span class="label label-status label-important">UNKNOWN</span>'; break;
-				case 'BACKLOG': status = '<span class="label label-status">BACKLOG</span>'; countBacklog +=1; break;
-				case 'FETCHED': status = '<span class="label label-status label-success">FETCHED</span>'; countFetched +=1; break;
-				case 'NEW': status = '<span class="label label-status  label-info">NEW</span>'; countNew +=1; break;
-				default: status = '<span class="label label-status label-important">internal error(' + item.Status + ')</span>';
+				case 'UNKNOWN': status = '<span class="label label-status label-important text-uppercase" data-i18n="status_unknown">' + I18n.translate('status_unknown') + '</span>'; break;
+				case 'BACKLOG': status = '<span class="label label-status text-uppercase" data-i18n="status_backlog">' + I18n.translate('status_backlog') + '</span>'; countBacklog +=1; break;
+				case 'FETCHED': status = '<span class="label label-status label-success text-uppercase" data-i18n="status_fetched">' + I18n.translate('status_fetched') + '</span>'; countFetched +=1; break;
+				case 'NEW': status = '<span class="label label-status  label-info text-uppercase" data-i18n="status_new">' + I18n.translate('status_new') + '</span>'; countNew +=1; break;
+				default: status = '<span class="label label-status label-important text-uppercase" data-i18n="label_internal_error">' + I18n.translate('label_internal_error') + '</span> (' + item.Status + ')';
 			}
 
 			if (!(curFilter === item.Status || curFilter === 'ALL'))
@@ -510,6 +510,16 @@ var FeedFilterDialog = (new function($)
 				$FilterInput.focus();
 			});
 		}
+
+		$('#FeedFilterDialogHelp').on('shown', function()
+		{
+			I18n.translatePage($(this));
+		});
+
+		I18n.subscribe(function onLangChange()
+		{
+			I18n.translatePage($('#FeedFilterDialogHelp'));
+		});
 	}
 
 	this.showModal = function(id, name, url, filter, backlog, pauseNzb, category, priority, interval, feedscript, categorySource, _saveCallback)
@@ -542,7 +552,7 @@ var FeedFilterDialog = (new function($)
 		updateLines();
 		$LoadingBlock.show();
 
-		$('#FeedFilterDialog_Title').text(name !== '' ? name : 'Feed Preview');
+		$('#FeedFilterDialog_Title').text(name !== '' ? name : I18n.translate('title_feed_preview'));
 		feedId = id;
 		feedName = name;
 		feedUrl = url;
@@ -629,6 +639,11 @@ var FeedFilterDialog = (new function($)
 
 	function updateTable()
 	{
+		if (!items)
+		{
+			return;
+		}
+
 		var countAccepted = 0;
 		var countRejected = 0;
 		var countIgnored = 0;
@@ -649,19 +664,19 @@ var FeedFilterDialog = (new function($)
 			switch (item.Match)
 			{
 				case 'ACCEPTED':
-					var addInfo = [item.AddCategory !== feedCategory ? 'category: ' + item.AddCategory : null,
+					var addInfo = [item.AddCategory !== feedCategory ? I18n.translate('label_category_prefix') + item.AddCategory : null,
 						item.Priority !== feedPriority ? DownloadsUI.buildPriorityText(item.Priority) : null,
-						item.PauseNzb !== feedPauseNzb ? (item.PauseNzb ? 'paused' : 'unpaused') : null,
-						item.DupeScore != 0 ? 'dupe-score: ' + item.DupeScore : null,
-						item.DupeKey !== '' ? 'dupe-key: ' + item.DupeKey : null,
-						item.DupeMode !== 'SCORE' ? 'dupe-mode: ' + item.DupeMode.toLowerCase() : null].
+						item.PauseNzb !== feedPauseNzb ? (item.PauseNzb ? I18n.translate('label_paused').toLowerCase() : I18n.translate('label_unpaused').toLowerCase()) : null,
+						item.DupeScore != 0 ? I18n.translate('label_dupe_score_prefix') + item.DupeScore : null,
+						item.DupeKey !== '' ? I18n.translate('label_dupe_key_prefix') + item.DupeKey : null,
+						item.DupeMode !== 'SCORE' ? I18n.translate('label_dupe_mode_prefix') + item.DupeMode.toLowerCase() : null].
 						filter(function(e){return e}).join('; ');
-					status = '<span class="label label-status label-success" title="' + Util.textToAttr(addInfo) + '">ACCEPTED</span>';
+					status = '<span class="label label-status label-success text-uppercase" title="' + Util.textToAttr(addInfo) + '" data-i18n="status_accepted">' + I18n.translate('status_accepted') + '</span>';
 					countAccepted += 1;
 					break;
-				case 'REJECTED': status = '<span class="label label-status label-important">REJECTED</span>'; countRejected += 1; break;
-				case 'IGNORED': status = '<span class="label label-status">IGNORED</span>'; countIgnored += 1; break;
-				default: status = '<span class="label label-status label-important">internal error(' + item.Match + ')</span>'; break;
+				case 'REJECTED': status = '<span class="label label-status label-important text-uppercase" data-i18n="status_rejected">' + I18n.translate('status_rejected') + '</span>'; countRejected += 1; break;
+				case 'IGNORED': status = '<span class="label label-status text-uppercase" data-i18n="status_ignored">' + I18n.translate('status_ignored') + '</span>'; countIgnored += 1; break;
+				default: status = '<span class="label label-status label-important text-uppercase" data-i18n="label_internal_error">' + I18n.translate('label_internal_error') + '</span> (' + item.Match + ')'; break;
 			}
 
 			if (!(curFilter === item.Match || curFilter === 'ALL'))
@@ -828,7 +843,7 @@ var FeedFilterDialog = (new function($)
 		if (event.which == 37)
 		{
 			event.preventDefault();
-			alert('Percent character (%) cannot be part of a filter because it is used\nas line separator when saving filter into configuration file.');
+			alert(I18n.translate('msg_filter_percent_error'));
 		}
 	}
 
