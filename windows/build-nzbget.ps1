@@ -158,9 +158,6 @@ Function PrepareFiles {
     & $Sed -e 's|DaemonUsername=.*|# DaemonUsername=|' -i $Config
     & $Sed -e 's|UMask=.*|# UMask=|' -i $Config
 
-    New-Item -ItemType Directory "$PackageDir\scripts" | Out-Null
-    Copy-Item "scripts\*" "$PackageDir\scripts"
-
     Copy-Item "$ToolsRoot\image\32\*" "$PackageDir\32"
     Copy-Item "$ToolsRoot\image\64\*" "$PackageDir\64"
 }

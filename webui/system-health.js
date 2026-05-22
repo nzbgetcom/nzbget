@@ -193,21 +193,21 @@ var SystemHealth = (new function ($) {
 		var sections = [
 			{
 				id: 'collapseErrors',
-				label: 'Errors',
+				key: 'label_errors_count',
 				data: alertsReport.errors,
 				cssClass: 'txt-error',
 				icon: 'error'
 			},
 			{
 				id: 'collapseWarnings',
-				label: 'Warnings',
+				key: 'label_warnings_count',
 				data: alertsReport.warnings,
 				cssClass: 'txt-warning',
 				icon: 'warning'
 			},
 			{
 				id: 'collapseInfo',
-				label: 'Info',
+				key: 'label_info_count',
 				data: alertsReport.info,
 				cssClass: 'txt-success',
 				icon: 'info'
@@ -234,7 +234,8 @@ var SystemHealth = (new function ($) {
 			
 			$toggle.html(
 				'<i class="material-icon ' + section.cssClass + '">' + section.icon + '</i> ' +
-				'<span class="' + section.cssClass + '">' + section.label + ' (' + section.data.length + ')</span>'
+				'<span class="' + section.cssClass + '" data-i18n="' + section.key + '" data-i18n-arg-1="' + section.data.length + '">' +
+				I18n.translate(section.key, section.data.length) + '</span>'
 			);
 			
 			$heading.append($toggle);
@@ -254,7 +255,7 @@ var SystemHealth = (new function ($) {
 					Config.navigateTo(alert.name);
 				});
 
-				$link.html('<span>' + alert.message + '</span>');
+				$link.empty().append($('<span>').text(alert.message));
 				$inner.append($link);
 			});
 
@@ -268,6 +269,7 @@ var SystemHealth = (new function ($) {
 		} else {
 			$mainWrapper.show();
 			$container.append($accordion);
+			I18n.translatePage($container);
 		}
 	}
 
