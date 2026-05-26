@@ -143,7 +143,12 @@ def main():
                     desc_message,
                 ):
                     desc_hint += " DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
-                    desc_hint += "If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
+                if re.search(
+                    r"news[ -]servers?",
+                    desc_message,
+                    re.IGNORECASE,
+                ):
+                    desc_hint += " If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
 
                 value_names = re.findall(
                     r"^\s*([A-Za-z]\w*)\s+-\s", desc_message, re.MULTILINE
