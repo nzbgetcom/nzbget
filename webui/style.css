@@ -1409,7 +1409,20 @@ body:not(.phone) #DownloadsEdit_FileTable th:nth-child(5),   /* Size */
 body:not(.phone) #DownloadsEdit_LogTable th:nth-child(1),    /* Status */
 body:not(.phone) #DownloadsEdit_LogTable th:nth-child(2),    /* Time */
 body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),      /* Status */
-body:not(.phone) #HistoryEdit_LogTable th:nth-child(2) {     /* Time */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(2),      /* Time */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(2) {     /* Status */
+    width: 1%;
+}
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(4),     /* Category */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(5),     /* Age */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(6) {     /* Size */
+    width: 1%;
+}
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(1), /* Match */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(2), /* Rule */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(4), /* Category */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(5), /* Age */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(6) { /* Size */
     width: 1%;
 }
 body:not(.phone) #DownloadsEdit_FileTable td:nth-child(2),   /* Status */
@@ -1418,7 +1431,16 @@ body:not(.phone) #DownloadsEdit_FileTable td:nth-child(5),   /* Size */
 body:not(.phone) #DownloadsEdit_LogTable td:nth-child(1),    /* Status */
 body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time */
 body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status */
-body:not(.phone) #HistoryEdit_LogTable td:nth-child(2) {     /* Time */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2),      /* Time */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(2),      /* Status */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(4),      /* Category */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(5),      /* Age */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(6),      /* Size */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(1), /* Match */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(2), /* Rule */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(4), /* Category */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(5), /* Age */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(6) { /* Size */
     white-space: nowrap;
 }
 body:not(.phone) #DownloadsEdit_FileTable th:nth-child(2),
@@ -1430,7 +1452,13 @@ body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time center */
 body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),
 body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status center */
 body:not(.phone) #HistoryEdit_LogTable th:nth-child(2),
-body:not(.phone) #HistoryEdit_LogTable td:nth-child(2) {     /* Time center */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2),      /* Time center */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(2),
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(2),      /* Status center */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(1),
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(1), /* Match center */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(2),
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(2) { /* Rule center */
     text-align: center;
 }
 
@@ -1478,8 +1506,6 @@ textarea[readonly],
 }
 
 .modal-header .close {
-    margin-top: 6px;
-    margin-left: 10px;
     opacity: 0.6;
     filter: alpha(opacity=60);
     outline: 0;
