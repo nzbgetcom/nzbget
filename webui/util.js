@@ -712,8 +712,38 @@ var RPC = (new function($)
 		else
 		{
 			xhr.open('post', this.rpcUrl);
-			xhr._request = JSON.stringify({nocache: new Date().getTime(), method: method, params: params});
-			xhr._reportRequest = xhr._request;
+			var parts = [];
+			parts.push('{"nocache":' + new Date().getTime() + ',"method":' + JSON.stringify(method) + ',"params":[');
+			for (var i = 0; i < params.length; i++)
+			{
+				if (i > 0)
+				{
+					parts.push(',');
+				}
+				parts.push(JSON.stringify(params[i]));
+			}
+			parts.push(']}');
+
+			var isLarge = false;
+			var totalSize = 0;
+			for (var i = 0; i < parts.length; i++)
+			{
+				totalSize += parts[i].length;
+				if (totalSize > 1024 * 1024)
+				{
+					isLarge = true;
+				}
+			}
+
+			xhr._request = new Blob(parts, {type: 'application/json'});
+			if (isLarge)
+			{
+				xhr._reportRequest = '{"method":"' + method + '", "params": [...large payload...]}';
+			}
+			else
+			{
+				xhr._reportRequest = parts.join('');
+			}
 		}
 
 		if (options && ('timeout' in options))
