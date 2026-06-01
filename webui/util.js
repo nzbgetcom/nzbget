@@ -720,7 +720,16 @@ var RPC = (new function($)
 				{
 					parts.push(',');
 				}
-				parts.push(JSON.stringify(params[i]));
+				if (typeof params[i] === 'string' && params[i].length > 1024 * 1024)
+				{
+					parts.push('"');
+					parts.push(params[i]);
+					parts.push('"');
+				}
+				else
+				{
+					parts.push(JSON.stringify(params[i]));
+				}
 			}
 			parts.push(']}');
 
