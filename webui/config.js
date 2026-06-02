@@ -2947,7 +2947,7 @@ var ConfigBackupRestore = (new function($)
 			}
 			else
 			{
-				var base64str = event.target.result.replace(/^data:[^,]+,/, '');
+				var base64str = event.target.result.slice(event.target.result.indexOf(',') + 1);
 				settings = atob(base64str);
 			}
 			filename = file.name;
