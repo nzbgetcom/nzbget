@@ -44,6 +44,8 @@ nzbget-v26.2
     [#807](https://github.com/nzbgetcom/nzbget/pull/807)
     - Fixed resource leaks in socket/listener and script pipe error paths
     [#797](https://github.com/nzbgetcom/nzbget/pull/797)
+    - Fixed WebUI "InternalError: allocation size overflow" on very large file uploads
+    [#818](https://github.com/nzbgetcom/nzbget/pull/818)
 
   - For developers:
     - Fixed missing nzbget.h include order in Cleanup.cpp
