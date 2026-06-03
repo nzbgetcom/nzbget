@@ -39,7 +39,7 @@ var History = (new function($)
 	var $CategoryMenu;
 
 	// State
-	var history;
+	var history = [];
 	var notification = null;
 	var updateTabInfo;
 	var curFilter = 'ALL';
@@ -645,11 +645,24 @@ var HistoryUI = (new function($)
 			case 'FAILURE':
 				return detail === 'BAD' ? I18n.translate('status_bad') : (status === 'FAILURE/INTERNAL_ERROR' ? I18n.translate('label_internal_error') : I18n.translate('status_failure'));
 			case 'WARNING':
-				return detail === 'SCRIPT' ? I18n.translate('status_pp_failure') : detail;
+				if (detail === 'SCRIPT') return I18n.translate('status_pp_failure');
+				if (detail === 'DAMAGED') return I18n.translate('status_manual');
+				if (detail === 'REPAIRABLE') return I18n.translate('status_repairable');
+				if (detail === 'HEALTH') return I18n.translate('status_health', Math.floor(hist.Health / 10));
+				if (detail === 'SPACE') return I18n.translate('status_space');
+				if (detail === 'PASSWORD') return I18n.translate('status_password');
+				if (detail === 'SKIPPED') return I18n.translate('status_skipped');
+				return detail;
 			case 'DELETED':
 			{
 				if (detail === 'COPY') return I18n.translate('status_copy');
 				if (detail === 'MANUAL') return I18n.translate('btn_history_filter_deleted');
+				if (detail === 'DUPE') return I18n.translate('status_dupe');
+				if (detail === 'GOOD') return I18n.translate('status_good');
+				if (detail === 'SUCCESS') return I18n.translate('status_success');
+				if (detail === 'HEALTH') return I18n.translate('status_health_val');
+				if (detail === 'BAD') return I18n.translate('status_bad');
+				if (detail === 'SCAN') return I18n.translate('status_scan_val');
 				return detail;
 			}
 			default:

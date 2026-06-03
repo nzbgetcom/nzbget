@@ -334,7 +334,7 @@ var FeedDialog = (new function($)
 
 		$('#FeedDialog_Titles,#FeedDialog_Titles2').toggleClass('btn-active', !filenameMode);
 		$('#FeedDialog_Filenames,#FeedDialog_Filenames2').toggleClass('btn-active', filenameMode);
-		$('#FeedDialog_ItemTable_Name').text(filenameMode ? 'Filename' : 'Title');
+		$('#FeedDialog_ItemTable_Name').text(I18n.translate(filenameMode ? 'col_filename' : 'col_title'));
 	}
 
 	this.fetch = function()
@@ -669,7 +669,7 @@ var FeedFilterDialog = (new function($)
 						item.PauseNzb !== feedPauseNzb ? (item.PauseNzb ? I18n.translate('label_paused').toLowerCase() : I18n.translate('label_unpaused').toLowerCase()) : null,
 						item.DupeScore != 0 ? I18n.translate('label_dupe_score_prefix') + item.DupeScore : null,
 						item.DupeKey !== '' ? I18n.translate('label_dupe_key_prefix') + item.DupeKey : null,
-						item.DupeMode !== 'SCORE' ? I18n.translate('label_dupe_mode_prefix') + item.DupeMode.toLowerCase() : null].
+						item.DupeMode !== 'SCORE' ? I18n.translate('label_dupe_mode_prefix') + I18n.translate('edit_dupe_mode_' + item.DupeMode.toLowerCase()) : null].
 						filter(function(e){return e}).join('; ');
 					status = '<span class="label label-status label-success text-uppercase" title="' + Util.textToAttr(addInfo) + '" data-i18n="status_accepted">' + I18n.translate('status_accepted') + '</span>';
 					countAccepted += 1;
@@ -758,7 +758,7 @@ var FeedFilterDialog = (new function($)
 
 		$('#FeedFilterDialog_Titles,#FeedFilterDialog_Titles2').toggleClass('btn-active', !filenameMode);
 		$('#FeedFilterDialog_Filenames,#FeedFilterDialog_Filenames2').toggleClass('btn-active', filenameMode);
-		$('#FeedFilterDialog_ItemTable_Name').text(filenameMode ? 'Filename' : 'Title');
+		$('#FeedFilterDialog_ItemTable_Name').text(I18n.translate(filenameMode ? 'col_filename' : 'col_title'));
 	}
 
 	this.filter = function(type)

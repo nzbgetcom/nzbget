@@ -177,13 +177,13 @@
 				}).always(function()
 				{
 					// Translate page after translations are loaded (or failed)
-					self.translatePage();
+					self._applyLanguageChange(currentLocale);
 				});
 			}
 			else
 			{
 				// Translate page after English translations are loaded
-				self.translatePage();
+				self._applyLanguageChange(currentLocale);
 			}
 		}).fail(function()
 		{

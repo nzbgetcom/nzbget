@@ -136,6 +136,10 @@ var Status = (new function($)
 
 	this.redraw = function()
 	{
+		if (!status)
+		{
+			return;
+		}
 		redrawInfo();
 		StatDialog.redraw();
 	}
@@ -495,7 +499,8 @@ var Status = (new function($)
 				case '%[VAR-]%': return '[' + value + '] - ';
 			}
 
-			return Downloads.groups.length > 0 ? '' + Downloads.groups.length + ' - ' : '';
+			var groupsCount = Downloads.groups ? Downloads.groups.length : 0;
+			return groupsCount > 0 ? '' + groupsCount + ' - ' : '';
 		};
 
 		function fill(varname, paramFunc)
@@ -508,7 +513,10 @@ var Status = (new function($)
 			titleGen['%[' + varname + '-]%'] = function() { return format('%[VAR-]%', paramFunc); };
 		}
 
-		fill('COUNT', function() { return [Downloads.groups.length, Downloads.groups.length == 0]; });
+		fill('COUNT', function() {
+			var groupsCount = Downloads.groups ? Downloads.groups.length : 0;
+			return [groupsCount, groupsCount == 0];
+		});
 		fill('SPEED', function() { return [$StatusSpeed.text(), status.ServerStandBy]; });
 		fill('TIME', function() { return [$StatusTime.text(), status.ServerStandBy]; });
 		fill('PAUSE', function() { return ['||', !status.DownloadPaused]; });

@@ -127,10 +127,14 @@ var Messages = (new function($)
 
 	this.redraw = function()
 	{
-		if (maxMessages === null)
+		if (maxMessages === null || isNaN(maxMessages))
 		{
-			maxMessages = parseInt(Options.option('LogBuffer'));
-			initFilterButtons();
+			var logBuffer = Options.option('LogBuffer');
+			if (logBuffer !== null)
+			{
+				maxMessages = parseInt(logBuffer);
+				initFilterButtons();
+			}
 		}
 
 		var data = [];
