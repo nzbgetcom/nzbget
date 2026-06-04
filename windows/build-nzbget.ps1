@@ -58,7 +58,7 @@ $ProgressPreference = "SilentlyContinue"
 Function DownloadUnpackers {
     $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
     $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
-    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-721.exe"
+    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-722.exe"
     $Url7Z="https://github.com/ip7z/7zip/releases/download/26.01/7z2601-extra.7z"
 
     $ImageDir="$ToolsRoot\image"
