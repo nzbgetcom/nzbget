@@ -1,3 +1,66 @@
+nzbget-v26.2
+  - Features:
+    - WebUI internationalisation (i18n) and unit switching
+    [#813](https://github.com/nzbgetcom/nzbget/pull/813)
+      - Added client-side i18n engine with locale loading, language detection, and DOM translation via data-i18n attributes;
+      - Unit switching for network speed display (MB/s <-> Mb/s);
+      - Added per-language translation files for 20 languages;
+      - Added an indicator icon alignment in the Downloads table headers;
+      - Improved text readability — config description help blocks now preserve original formatting from nzbget.conf;
+      - Improved layout adaptability and responsiveness;
+    - Added support for ~/.config config locations
+    [#794](https://github.com/nzbgetcom/nzbget/pull/794)
+    - Added 'This Year' total to bandwidth usage on statistics
+    [#801](https://github.com/nzbgetcom/nzbget/pull/801)
+    - Added Clear button to History page
+    [#804](https://github.com/nzbgetcom/nzbget/pull/804)
+    - nserv: log datetime
+    [#717](https://github.com/nzbgetcom/nzbget/pull/717)
+
+  - Bug fixes:
+    - Fixed handling of server speed tests bound to a specific server
+    [#781](https://github.com/nzbgetcom/nzbget/pull/781)
+    - Fixed auto-category overriding manual category via CLI
+    [#787](https://github.com/nzbgetcom/nzbget/pull/787)
+    - Fixed SystemHealth validators
+    [#791](https://github.com/nzbgetcom/nzbget/pull/791)
+    - Fixed SkipWrite option
+    [#792](https://github.com/nzbgetcom/nzbget/pull/792)
+    - Fixed iPadOS file uploads and sanitized DOM inputs to prevent XSS vulnerability
+    [#793](https://github.com/nzbgetcom/nzbget/pull/793)
+    - Fixed macOS dark mode readable text and NZB file association
+    [#795](https://github.com/nzbgetcom/nzbget/pull/795)
+    - Resolved text fragmentation issues
+    [#796](https://github.com/nzbgetcom/nzbget/pull/796)
+    - Prevented symlink attacks and TOCTOU races in daemon startup
+    [#798](https://github.com/nzbgetcom/nzbget/pull/798)
+    - Fixed new-version flag to only trigger on same update channel
+    [#800](https://github.com/nzbgetcom/nzbget/pull/800)
+    - Fixed iOS auto-capitalizing the login username field
+    [#805](https://github.com/nzbgetcom/nzbget/pull/805)
+    - Suppressed WriteLog info/warning health checks and added LoggingValidator tests
+    [#803](https://github.com/nzbgetcom/nzbget/pull/803)
+    - Fixed hanging server speed tests
+    [#807](https://github.com/nzbgetcom/nzbget/pull/807)
+    - Fixed resource leaks in socket/listener and script pipe error paths
+    [#797](https://github.com/nzbgetcom/nzbget/pull/797)
+    - Fixed WebUI "InternalError: allocation size overflow" on very large file uploads
+    [#818](https://github.com/nzbgetcom/nzbget/pull/818)
+
+  - For developers:
+    - Fixed missing nzbget.h include order in Cleanup.cpp
+    [#782](https://github.com/nzbgetcom/nzbget/pull/782)
+    - CI: added build-disabled-pch job to verify compilation works without PCH
+    [#783](https://github.com/nzbgetcom/nzbget/pull/783)
+    - CI: changed 7-zip sources from 7-zip.org to GitHub
+    [#786](https://github.com/nzbgetcom/nzbget/pull/786)
+    - CI: fixed latest artifacts creation
+    [#790](https://github.com/nzbgetcom/nzbget/pull/790)
+    - Updated 7-Zip to 26.01 and UnRAR to 7.21
+    [#802](https://github.com/nzbgetcom/nzbget/pull/802)
+    - Bumped UnRAR to 7.22 (Windows/macOS only)
+    [#822](https://github.com/nzbgetcom/nzbget/pull/822)
+
 nzbget-v26.1
   - Features:
     - Improved archived NZB handling support
