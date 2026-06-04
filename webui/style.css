@@ -1550,6 +1550,10 @@ textarea[readonly],
     margin-bottom: 15px;
 }
 
+.modal .form-horizontal .control-label {
+    word-wrap: break-word;
+}
+
 .form-horizontal .control-group-last {
     margin-bottom: 0;
 }
@@ -1590,11 +1594,6 @@ textarea[readonly],
 .input-medium.uneditable-input,
 .uneditable-mulitline-input {
     margin-bottom: -4px;
-}
-
-.modal-mini {
-    width: 420px;
-    margin-left: -210px;
 }
 
 .modal-small {

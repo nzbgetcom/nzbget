@@ -452,7 +452,9 @@ var SystemInfo = (new function($)
 		renderAppVersion(Options.option('Version'));
 		renderTools(sysInfo['Tools']);
 		renderLibraries(sysInfo['Libraries']);
-		renderNewsServers(Status.getStatus()['NewsServers']);
+		if (Status.getStatus() && Status.getStatus()['NewsServers']) {
+			renderNewsServers(Status.getStatus()['NewsServers']);
+		}
 
 		scrollToTop();
 	}
