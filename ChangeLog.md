@@ -50,7 +50,7 @@ nzbget-v26.2
   - For developers:
     - Fixed missing nzbget.h include order in Cleanup.cpp
     [#782](https://github.com/nzbgetcom/nzbget/pull/782)
-    - Added build-disabled-pch job to verify compilation works without PCH
+    - CI: added build-disabled-pch job to verify compilation works without PCH
     [#783](https://github.com/nzbgetcom/nzbget/pull/783)
     - CI: changed 7-zip sources from 7-zip.org to GitHub
     [#786](https://github.com/nzbgetcom/nzbget/pull/786)
@@ -58,6 +58,8 @@ nzbget-v26.2
     [#790](https://github.com/nzbgetcom/nzbget/pull/790)
     - Updated 7-Zip to 26.01 and UnRAR to 7.21
     [#802](https://github.com/nzbgetcom/nzbget/pull/802)
+    - Bumped UnRAR to 7.22 (Windows/macOS only)
+    [#822](https://github.com/nzbgetcom/nzbget/pull/822)
 
 nzbget-v26.1
   - Features:
