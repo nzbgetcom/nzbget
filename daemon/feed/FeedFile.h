@@ -45,6 +45,7 @@ private:
 	FeedItemInfo* m_feedItemInfo;
 	std::string m_tagContent;
 	bool m_ignoreNextError;
+	std::string m_currentElement;
 
 	static void SAX_StartElement(FeedFile* file, const char *name, const char **atts);
 	static void SAX_EndElement(FeedFile* file, const char *name);

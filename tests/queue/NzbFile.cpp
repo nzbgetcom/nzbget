@@ -65,6 +65,8 @@ void TestNzb(std::string testFilename, std::string expectedCategory)
 
 	while (fgets(buffer, sizeof(buffer), infofile) && *buffer == '#') ;
 
+	Util::TrimRight(buffer);
+
 	if(strcmp(lastBuffer, buffer) == 0)
 	{
 		BOOST_CHECK(nzbFile.GetPassword().empty());
@@ -86,8 +88,10 @@ BOOST_AUTO_TEST_CASE(NZBParserTest)
 
 	TestNzb("dotless", "Movies");
 	TestNzb("plain", "TV>4K");
+	TestNzb("literal_gt", "TV > 4K");
 	TestNzb("passwd{{thisisthepassword}}", "");
 	TestNzb("passwdMeta", "");
+	TestNzb("passwdEntity", "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
