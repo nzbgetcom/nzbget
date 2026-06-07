@@ -1115,7 +1115,11 @@ bool XmlCommand::NextParamAsInt(int* value)
 			return false;
 		}
 		*value = atoi(param);
-		m_requestPtr = param + len + 1;
+		// "+ len" (not "+ len + 1"): leave the cursor on the value's trailing
+		// delimiter so JsonNextValue's leading-separator skip consumes it on the
+		// next read. "+ len + 1" overshoots a closing "]" into the rest of the
+		// request envelope. See issue #828.
+		m_requestPtr = param + len;
 		return true;
 	}
 	else
@@ -1179,13 +1183,13 @@ bool XmlCommand::NextParamAsBool(bool* value)
 		if (len == 4 && !strncmp(param, "true", 4))
 		{
 			*value = true;
-			m_requestPtr = param + len + 1;
+			m_requestPtr = param + len; // not "+ 1": see issue #828
 			return true;
 		}
 		else if (len == 5 && !strncmp(param, "false", 5))
 		{
 			*value = false;
-			m_requestPtr = param + len + 1;
+			m_requestPtr = param + len; // not "+ 1": see issue #828
 			return true;
 		}
 		else
@@ -1240,9 +1244,14 @@ bool XmlCommand::NextParamAsStr(char** value)
 		{
 			return false;
 		}
+		// Advance from the original token start (before param++), and by "+ len"
+		// rather than "+ len + 1", so the cursor lands on the value's trailing
+		// delimiter instead of overshooting a closing "]" into the rest of the
+		// request envelope. JsonNextValue skips the delimiter on the next read.
+		// See issue #828.
+		m_requestPtr = param + len;
 		param++; // skip first '"'
 		param[len - 2] = '\0'; // skip last '"'
-		m_requestPtr = param + len;
 		*value = param;
 		return true;
 	}
