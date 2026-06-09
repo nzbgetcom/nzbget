@@ -39,8 +39,10 @@ body:
     - All
     - Windows
     - macOS
-    - NAS/Synology/QNAP
+    - NAS/Synology/QNAP/ASUSTOR
     - Linux/Docker
+    - FreeBSD
+    - Android
   validations:
     required: true
 - type: textarea

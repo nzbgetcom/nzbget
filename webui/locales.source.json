@@ -606,6 +606,14 @@
     "message": "Name",
     "description": "Table column header for the name or title of the downloaded item."
   },
+  "col_filename": {
+    "message": "Filename",
+    "description": "Table column header for the filename of the feed item."
+  },
+  "col_title": {
+    "message": "Title",
+    "description": "Table column header for the title of the feed item."
+  },
   "col_category": {
     "message": "Category",
     "description": "Table column header for the category or group assigned to the download."
@@ -3700,19 +3708,19 @@
   },
   "config_desc_certstore": {
     "message": "Certificate store file or directory.\n\nCertificate store contains root certificates used for server certificate\nverification when connecting to servers with encryption (TLS/SSL). This\nincludes communication with news-servers for article downloading and\nwith web-servers (via https) for fetching of rss feeds and nzb-files.\n\nThe option can point either to one big file containing all root\ncertificates or to a directory containing certificate files, in PEM format.\n\nExample: /etc/ssl/certs/ca-certificates.crt.\n\nNOTE: Certificate verification must be enabled separately via option <CertCheck>.\n\nNOTE: For more details visit https://nzbget.com/documentation/certificate-verification/.",
-    "description": "Description for the option CertStore DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option CertStore DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_active": {
     "message": "Use this news server.\n\nSet to \"no\" to disable the server on program start. Servers can be activated\nlater via scheduler tasks or manually via web-interface.\n\nNOTE: Download is not possible when all servers on level 0 are disabled. Servers\non higher levels are used only if at least one server on level 0 was tried.",
-    "description": "Description for the option Server1.Active DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option Server1.Active DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_name": {
     "message": "Name of news server.\n\nThe name is used in UI and for logging. It can be any string, you\nmay even leave it empty.",
-    "description": "Description for the option Server1.Name"
+    "description": "Description for the option Server1.Name If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_level": {
     "message": "Level (priority) of news server.\n\nThe servers are ordered by their level. NZBGet first tries to download\nan article from one (any) of level-0-servers. If that server fails,\nNZBGet tries all other level-0-servers. If all servers fail, it proceeds\nwith the level-1-servers, etc.\n\nPut your major download servers at level 0 and your fill servers at\nlevels 1, 2, etc..\n\nSeveral servers with the same level may be defined, they have\nthe same priority.",
-    "description": "Description for the option Server1.Level"
+    "description": "Description for the option Server1.Level If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_optional": {
     "message": "This is an optional non-reliable server.\n\nMarking server as optional tells NZBGet to ignore this server if a\nconnection to this server cannot be established. Normally NZBGet\ndoesn't try upper-level servers before all servers on current level\nwere tried. If a connection to server fails NZBGet waits until the\nserver becomes available (it may try others from current level at this\ntime). This is usually what you want to avoid exhausting of\n(costly) upper level servers if one of main servers is temporary\nunavailable. However, for less reliable servers you may prefer to ignore\nconnection errors and go on with higher-level servers instead.",
@@ -3720,11 +3728,11 @@
   },
   "config_desc_server_group": {
     "message": "Group of news server.\n\nIf you have multiple accounts with same conditions (retention, etc.)\non the same news server, set the same group (greater than 0) for all\nof them. If download fails on one news server, NZBGet does not try\nother servers from the same group.\n\nValue \"0\" means no group defined (default).",
-    "description": "Description for the option Server1.Group DO NOT translate technical values enclosed in quotes."
+    "description": "Description for the option Server1.Group DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_host": {
     "message": "Host name of news server.",
-    "description": "Description for the option Server1.Host"
+    "description": "Description for the option Server1.Host If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_encryption": {
     "message": "Encrypted server connection (TLS/SSL).\n\nNOTE: By changing this option you should also change the option <ServerX.Port>\naccordingly because unsecure and encrypted connections use different ports.",
@@ -3732,7 +3740,7 @@
   },
   "config_desc_server_port": {
     "message": "News Server port, usually 563 for secure connections, 119 for unsecure connections, rare - 80 or 443.",
-    "description": "Description for the option Server1.Port"
+    "description": "Description for the option Server1.Port If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_username": {
     "message": "User name to use for authentication.",
@@ -3748,7 +3756,7 @@
   },
   "config_desc_server_cipher": {
     "message": "Cipher to use for encrypted server connection.\n\nBy default (when the option is empty) the underlying encryption library\nchooses the cipher automatically. To achieve the best performance\nhowever you can manually select a faster cipher.\n\nSee https://nzbget.com/documentation/choosing-cipher/ for details.\n\nNOTE: You may get a TLS handshake error if the news server does\nnot support the chosen cipher. You can also get an error \"Could not\nselect cipher for TLS\" if the cipher string is not valid.",
-    "description": "Description for the option Server1.Cipher DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option Server1.Cipher DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_connections": {
     "message": "Maximum number of simultaneous connections to this server.",
@@ -3756,7 +3764,7 @@
   },
   "config_desc_server_retention": {
     "message": "Server retention time.\n\nHow long the articles are stored on the news server. The articles\nwhose age exceed the defined server retention time are not tried on\nthis news server, the articles are instead considered failed on this\nnews server.\n\nValue \"0\" disables retention check.",
-    "description": "Description for the option Server1.Retention DO NOT translate technical values enclosed in quotes."
+    "description": "Description for the option Server1.Retention DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_server_certverification": {
     "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
@@ -3828,7 +3836,7 @@
   },
   "config_desc_certcheck": {
     "message": "TLS certificate verification.\n\nWhen connecting to a news server (for downloading) or a web server\n(for fetching of rss feeds and nzb-files) the authenticity of the server\nshould be validated using server security certificate. If the check\nfails that means the connection cannot be trusted and must be closed\nwith an error message explaining the security issue.\n\nSometimes servers are improperly configured and the certificate verification\nfails even if there is no hacker attack in place. In that case you should\ninform the server owner about the issue. If you still need to connect to\nservers with invalid certificates you can disable the certificate verification\nbut you should know that your connection is insecure and you might be\nconnecting to attacker's server without your awareness.\n\nNOTE: Certificate verification requires a list of trusted root certificates,\nwhich must be configured using option <CertStore>.\n\nNOTE: For more details visit https://nzbget.com/documentation/certificate-verification/.",
-    "description": "Description for the option CertCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option CertCheck DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_updatecheck": {
     "message": "Automatically check for new releases.\n\n None    - do not show notifications;\n Stable  - show notifications about new stable releases;\n Testing - show notifications about new testing releases;",
@@ -3936,7 +3944,7 @@
   },
   "config_desc_propagationdelay": {
     "message": "Propagation delay to your news servers.\n\nThe option sets minimum post age for nzb-files. Very recent files\nare not downloaded to avoid download failures. The files remain\non hold in the download queue until the propagation delay expires,\nafter that they are downloaded.",
-    "description": "Description for the option PropagationDelay"
+    "description": "Description for the option PropagationDelay If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_articlecache": {
     "message": "Memory limit for article cache.\n\nArticle cache helps to improve performance. First the amount of disk\noperations can be significantly reduced. Second the created files are\nless fragmented, which again speeds up the post-processing (unpacking).\n\nThe article cache works best with option <DirectWrite> which can\neffectively use even small cache (like 50 MB).\n\nIf option <DirectWrite> is disabled the cache should be big enough to\nhold all articles of one file (typically up to 200 MB, sometimes even\n500 MB). Otherwise the articles are written into temporary directory\nwhen the cache is full, which degrades performance.\n\nValue \"0\" disables article cache.\n\nIn 32 bit mode the maximum allowed value is 1900.\n\nNOTE: Also see option <WriteBuffer>.",
@@ -3948,7 +3956,7 @@
   },
   "config_desc_writebuffer": {
     "message": "Memory limit for per connection write buffer.\n\nWhen downloaded articles are written into disk the OS collects\ndata in the internal buffer before flushing it into disk. This option\ncontrols the size of this buffer per connection/download thread.\n\nLarger buffers decrease the amount of disk operations and help\nproducing less fragmented files speeding up the post-processing\n(unpack).\n\nTo calculate the maximum memory required for all download threads multiply\nWriteBuffer by number of connections configured in section\n\"NEWS-SERVERS\". The option sets the limit, the actual buffer can be\nsmaller if the article size (typically about 500 KB) is below the limit.\n\nWrite-buffer is managed by OS (system libraries) and therefore\nthe effect of the option is highly OS-dependent.\n\nRecommended value for computers with enough memory: 1024.\n\nValue \"0\" disables the setting of buffer size. In this case a buffer\nof default size (OS and compiler specific) is used, which is usually\ntoo small (1-4 KB) and therefore not optimal.\n\nNOTE: Also see option <ArticleCache>.",
-    "description": "Description for the option WriteBuffer DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option WriteBuffer DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_filenaming": {
     "message": "How to name downloaded files.\n\n Article - use file names stored in article metadata;\n Nzb     - use file names as defined in nzb-file;\n Auto    - prefer names from article metadata; for obfuscated files use\n           names from nzb-file.\n\nNOTE: This option sets the naming convention for files listed in nzb. It has no\neffect on files extracted from archives.",
@@ -3996,7 +4004,7 @@
   },
   "config_desc_articleretries": {
     "message": "How many retries should be attempted if a download error occurs.\n\nIf download fails because of incomplete or damaged article or due to\nCRC-error the program tries to re-download the article from the same\nnews server as many times as defined in this option. If all attempts fail\nthe program tries another news server.\n\nIf download fails because of \"article or group not found error\" the\nprogram tries another news server without retrying on the failed server.",
-    "description": "Description for the option ArticleRetries DO NOT translate technical values enclosed in quotes."
+    "description": "Description for the option ArticleRetries DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_articleinterval": {
     "message": "Article retry interval.\n\nIf download of article fails because of interrupted connection\nthe server is temporary blocked until the retry interval expires.",
@@ -4008,7 +4016,7 @@
   },
   "config_desc_articlereadchunksize": {
     "message": "Chunk size when reading data from the news server.",
-    "description": "Description for the option ArticleReadChunkSize"
+    "description": "Description for the option ArticleReadChunkSize If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_urlretries": {
     "message": "Number of download attempts for URL fetching.\n\nIf fetching of nzb-file via URL or fetching of RSS feed fails another\nattempt is made after the retry interval (option <UrlInterval>).",
@@ -4096,7 +4104,7 @@
   },
   "config_desc_crashdump": {
     "message": "Save memory dump into disk on program crash (Linux only).\n\nMemory dumps (core-files) are very helpful for debugging, especially if\nthey were produced by the program compiled in debug mode.\n\nNOTE: Memory dumps may contain sensitive data, like your login/password\nto news-server etc.",
-    "description": "Description for the option CrashDump DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "description": "Description for the option CrashDump DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_timecorrection": {
     "message": "Local time correction.\n\nThe option allows to adjust timestamps when converting system time to\nlocal time and vice versa. The conversion is used when printing messages\nto the log-file and by option \"TaskX.Time\" in the scheduler settings.\n\nThe option is usually not needed if the time zone is set up correctly.\nHowever, sometimes, especially when using a binary compiled on another\nplatform (cross-compiling) the conversion between system and local time\nmay not work properly and requires adjustment.\n\nValues in the range -24..+24 are interpreted as hours, other values as minutes.\n Example 1: set time correction to one hour: TimeCorrection=1;\n Example 2: set time correction to one hour and a half: TimeCorrection=90.",
@@ -4132,11 +4140,11 @@
   },
   "config_desc_task_command": {
     "message": "Command to be executed (PauseDownload, UnpauseDownload, PausePostProcess,\nUnpausePostProcess, PauseScan, UnpauseScan, DownloadRate, Script, Process,\nActivateServer, DeactivateServer, FetchFeed).\n\nPossible commands:\n  PauseDownload      - pause download;\n  UnpauseDownload    - resume download;\n  PausePostProcess   - pause post-processing;\n  UnpausePostProcess - resume post-processing;\n  PauseScan          - pause scan of incoming nzb-directory;\n  UnpauseScan        - resume scan of incoming nzb-directory;\n  DownloadRate       - set download rate limit;\n  Script             - execute one or multiple scheduler scripts. The scripts\n                       must be written specially for NZBGet;\n  Process            - execute an external (any) program;\n  ActivateServer     - activate news-server;\n  DeactivateServer   - deactivate news-server;\n  FetchFeed          - fetch RSS feed.\n\nOn start the program checks all tasks and determines current state\nfor download-pause, scan-pause, download-rate and active servers.",
-    "description": "Description for the option Task1.Command DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, PauseDownload, PausePostProcess, PauseScan, Process, Script, UnpauseDownload, UnpausePostProcess, UnpauseScan) as they are fixed configuration values."
+    "description": "Description for the option Task1.Command If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'. DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, PauseDownload, PausePostProcess, PauseScan, Process, Script, UnpauseDownload, UnpausePostProcess, UnpauseScan) as they are fixed configuration values."
   },
   "config_desc_task_param": {
     "message": "Parameters for the command if needed.\n\nSome scheduler commands require additional parameters:\n DownloadRate     - download rate limit to be set (kilobytes/sec).\n                    Example: 1000.\n                    NOTE: use value \"0\" to disable download limit (unlimited speed).\n Script           - list of scheduler scripts to execute. The scripts in the\n                    list must be separated with commas or semicolons. All\n                    scripts must be stored in directory set by option\n                    <ScriptDir> and paths relative to <ScriptDir> must be\n                    entered here. For developer documentation visit\n                    https://nzbget.com/documentation/extension-scripts/;\n Process          - path to the program to execute and its parameters.\n                    Example: /home/user/fetch.sh.\n                    If filename or any parameter contains spaces it\n                    must be surrounded with single quotation\n                    marks. If filename/parameter contains single quotation marks,\n                    each of them must be replaced (escaped) with two single quotation\n                    marks and the resulting filename/parameter must be\n                    surrounded with single quotation marks.\n                    Example: '/home/user/download/my scripts/task process.sh' 'world''s fun'.\n                    In this example one parameter (world's fun) is passed\n                    to the script (task process.sh).\n ActivateServer   - comma separated list of news server ids or server names.\n                    Example: 1,3.\n                    Example: my news server 1, my news server 2.\n                    NOTE: server names should not have commas.\n DeactivateServer - see ActivateServer.\n FetchFeed        - comma separated list of RSS feed ids or feed names.\n                    Example: 1,3.\n                    Example: bookmarks feed, another feed.\n                    NOTE: feed names should not have commas.\n                    NOTE: use feed id \"0\" to fetch all feeds.",
-    "description": "Description for the option Task1.Param DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, Process, Script) as they are fixed configuration values."
+    "description": "Description for the option Task1.Param DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'. DO NOT translate configuration option values (ActivateServer, DeactivateServer, DownloadRate, FetchFeed, Process, Script) as they are fixed configuration values."
   },
   "config_desc_crccheck": {
     "message": "Check CRC of downloaded and decoded articles.\n\nNormally this option should be enabled for better detecting of download\nerrors and for quick par-verification (option <ParQuick>).",

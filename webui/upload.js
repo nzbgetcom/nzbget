@@ -354,7 +354,7 @@ var Upload = (new function($)
 		reader.onload = function (event)
 		{
 			var result = event.target.result;
-			var base64str = result.replace(/^data:[^,]+,/, '');
+			var base64str = result.slice(result.indexOf(',') + 1);
 			var category = $('#AddDialog_Category').val();
 			var priority = parseInt($('#AddDialog_Priority').val());
 			var filename = info.name + info.ext;

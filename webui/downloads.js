@@ -44,7 +44,7 @@ var Downloads = (new function($)
 	// State
 	var notification = null;
 	var updateTabInfo;
-	var groups;
+	var groups = [];
 	var nameColumnWidth = null;
 	var cached = false;
 	var lastDownloadRate;
@@ -70,6 +70,7 @@ var Downloads = (new function($)
 		'PP_FINISHED': { Text: 'status_finished_cap', PostProcess: false }
 		};
 	this.statusData = statusData;
+	this.groups = [];
 
 	this.init = function(options)
 	{
@@ -173,6 +174,11 @@ var Downloads = (new function($)
 
 	this.redraw = function(force)
 	{
+		if (!Status.status)
+		{
+			return;
+		}
+
 		if (cached && !force && lastDownloadRate === Status.status.DownloadRate)
 		{
 			return;
