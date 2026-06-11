@@ -347,6 +347,48 @@ void WebProcessor::Dispatch()
 		}
 	}
 
+	if (!strncmp(m_url, "/extensions/", 12))
+	{
+		const auto& scriptDirs = g_Options->GetScriptDirPaths();
+		if (scriptDirs.empty())
+		{
+			SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
+			return;
+		}
+
+		// URL format: /extensions/{extname}/{path}
+		// maps to: {ScriptDir}/{extname}/{path}
+		std::string_view extUrl = m_url + 12;
+		auto slash = extUrl.find('/');
+		if (slash == std::string_view::npos)
+		{
+			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
+			return;
+		}
+
+		bool found = false;
+		for (const auto& scriptDir : scriptDirs)
+		{
+			std::string filePath = fs::u8string(scriptDir / extUrl);
+
+			CharBuffer body;
+			if (FileSystem::LoadFileIntoBuffer(filePath.c_str(), body, true))
+			{
+				const char* contentType = DetectContentType(filePath.c_str());
+				int len = body.Size() - 1;
+				SendBodyResponse(body, len, contentType, true);
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
+		}
+		return;
+	}
+
 	if (!strncmp(m_url, "/combined.", 10) && strchr(m_url, '?'))
 	{
 		SendMultiFileResponse();
@@ -630,6 +672,10 @@ const char* WebProcessor::DetectContentType(const char* filename)
 		else if (!strcasecmp(ext, ".svg"))
 		{
 			return "image/svg+xml";
+		}
+		else if (!strcasecmp(ext, ".json"))
+		{
+			return "application/json";
 		}
 	}
 	return nullptr;

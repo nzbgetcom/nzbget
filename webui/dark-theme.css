@@ -528,6 +528,10 @@ span.help-option-title {
 	color: #ffda6a;
 }
 
+.help-desc::first-line {
+	color: #ffda6a;
+}
+
 .config-settitle {
 	font-size: 14px;
 	font-weight: bold;
