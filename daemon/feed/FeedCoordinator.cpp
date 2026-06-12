@@ -458,7 +458,14 @@ void FeedCoordinator::FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems)
 		feedItemInfo.SetMatchRule(0);
 		feedItemInfo.SetPauseNzb(feedInfo->GetPauseNzb());
 		feedItemInfo.SetPriority(feedInfo->GetPriority());
-		feedItemInfo.SetAddCategory(feedInfo->GetCategory());
+		if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::FeedFile)
+		{
+			feedItemInfo.SetAddCategory(feedInfo->GetCategory());
+		}
+		else
+		{
+			feedItemInfo.SetAddCategory("");
+		}
 		feedItemInfo.SetDupeScore(0);
 		feedItemInfo.SetDupeMode(dmScore);
 		feedItemInfo.SetFeedFilterHelper(&filterHelper);

@@ -337,7 +337,7 @@ void FeedFile::SAX_textHandler(FeedFile* file, const char* xmlstr, int len)
 	std::string str(xmlstr, len);
 	if (file->m_currentElement == "category")
 	{
-		// TODO: Remove this category-specific trimming in the next major release
+		// Do not break existing users' filters that rely on this normalization
 		Util::Trim(str);
 	}
 	file->Parse_Content(std::move(str));
