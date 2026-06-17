@@ -59,6 +59,7 @@ private:
 	bool m_ignoreNextError;
 	bool m_hasPassword = false;
 	bool m_hasCategory = false;
+	std::string m_currentElement;
 
 	static void SAX_StartElement(NzbFile* file, const char *name, const char **atts);
 	static void SAX_EndElement(NzbFile* file, const char *name);
