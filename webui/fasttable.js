@@ -2,6 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ * Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -152,22 +153,24 @@
 					{
 						e.preventDefault();
 						var data = $this.data('fasttable');
-						var pageNum = $(this).text();
-						if (pageNum.indexOf('Prev') > -1)
+						var $a = $('a', this);
+						var page = $a.attr('data-page');
+
+						if (page === 'prev')
 						{
 							data.curPage--;
 						}
-						else if (pageNum.indexOf('Next') > -1)
+						else if (page === 'next')
 						{
 							data.curPage++;
 						}
-						else if (isNaN(parseInt(pageNum)))
+						else if (isNaN(parseInt(page)))
 						{
 							return;
 						}
 						else
 						{
-							data.curPage = parseInt(pageNum);
+							data.curPage = parseInt(page);
 						}
 						refresh(data);
 					});
@@ -374,6 +377,11 @@
 			data.config.renderTableCallback(table);
 		}
 
+		if (typeof I18n !== 'undefined' && I18n.translatePage)
+		{
+			I18n.translatePage(table);
+		}
+
 		return table;
 	}
 
@@ -479,12 +487,34 @@
 		}
 
 		var pager = '<ul>';
+
+		var prevTitle = '';
+		var nextTitle = '';
+		var firstTitle = '';
+		var lastTitle = '';
+		var prevText = '&larr; Prev';
+		var nextText = 'Next &rarr;';
+
+		if (I18n.translate) {
+			prevTitle = I18n.translate('pager_prev_title', (data.config.shortcuts ? ' [Left]' : ''));
+			nextTitle = I18n.translate('pager_next_title', (data.config.shortcuts ? ' [Right]' : ''));
+			firstTitle = I18n.translate('pager_first_title', (data.config.shortcuts ? ' [Shift+Left]' : ''));
+			lastTitle = I18n.translate('pager_last_title', (data.config.shortcuts ? ' [Shift+Right]' : ''));
+			prevText = '&larr; ' + I18n.translate('pager_prev');
+			nextText = I18n.translate('pager_next') + ' &rarr;';
+		} else {
+			prevTitle = 'Previous page' + (data.config.shortcuts ? ' [Left]' : '');
+			nextTitle = 'Next page' + (data.config.shortcuts ? ' [Right]' : '');
+			firstTitle = 'First page [Shift+Left]';
+			lastTitle = 'Last page [Shift+Right]';
+		}
+
 		pager += '<li' + (data.curPage === 1 || data.curPage === 0 ? ' class="disabled"' : '') +
-			'><a href="#" title="Previous page' + (data.config.shortcuts ? ' [Left]' : '') + '">&larr; Prev</a></li>';
+			'><a href="#" data-page="prev" title="' + prevTitle + '">' + prevText + '</a></li>';
 
 		if (iStart > 1)
 		{
-			pager += '<li><a href="#"' + (data.config.shortcuts ? ' title="First page [Shift+Left]"' : '') + '>1</a></li>';
+			pager += '<li><a href="#" data-page="1"' + (data.config.shortcuts ? ' title="' + firstTitle + '"' : '') + '>1</a></li>';
 			if (iStart > 2 && data.pageDots)
 			{
 				pager += '<li class="disabled"><a href="#">&#133;</a></li>';
@@ -494,9 +524,9 @@
 		for (var j=iStart; j<=iEnd; j++)
 		{
 			pager += '<li' + ((j===data.curPage) ? ' class="active"' : '') +
-				'><a href="#"' +
-				(data.config.shortcuts && j === 1 ? ' title="First page [Shift+Left]"' :
-				 data.config.shortcuts && j === data.pageCount ? ' title="Last page [Shift+Right]"' : '') +
+				'><a href="#" data-page="' + j + '"' +
+				(data.config.shortcuts && j === 1 ? ' title="' + firstTitle + '"' :
+				 data.config.shortcuts && j === data.pageCount ? ' title="' + lastTitle + '"' : '') +
 				'>' + j + '</a></li>';
 		}
 
@@ -506,11 +536,11 @@
 			{
 				pager += '<li class="disabled"><a href="#">&#133;</a></li>';
 			}
-			pager += '<li><a href="#"' + (data.config.shortcuts ? ' title="Last page [Shift+Right]"' : '') + '>' + data.pageCount + '</a></li>';
+			pager += '<li><a href="#" data-page="' + data.pageCount + '"' + (data.config.shortcuts ? ' title="' + lastTitle + '"' : '') + '>' + data.pageCount + '</a></li>';
 		}
 
 		pager += '<li' + (data.curPage === data.pageCount || data.pageCount === 0 ? ' class="disabled"' : '') +
-			'><a href="#" title="Next page' + (data.config.shortcuts ? ' [Right]' : '') + '">Next &rarr;</a></li>';
+			'><a href="#" data-page="next" title="' + nextTitle + '">' + nextText + '</a></li>';
 		pager += '</ul>';
 
 		return pager;
@@ -560,22 +590,35 @@
 		if (data.content.length === 0)
 		{
 			var infoText = data.config.infoEmpty;
+			if (infoText === 'No records')
+			{
+				infoText = '<span data-i18n="label_no_records"></span>';
+			}
 		}
-		else if (data.curPage === 0)
+		else if (data.curPage === 0 || (data.filteredContent.length == 0 && data.content.length > 0))
 		{
-			var infoText = 'No matching records found (total ' + data.content.length + ')';
+			var infoText = '<span data-i18n="info_no_records_filtered" data-i18n-arg-1="' + data.content.length + '">' +
+				'No matching records found (total ' + data.content.length + ')</span>';
 		}
 		else
 		{
 			var firstRecord = (data.curPage - 1) * data.pageSize + 1;
 			var lastRecord = firstRecord + data.pageContent.length - 1;
-			var infoText = 'Showing records ' + firstRecord + '-' + lastRecord + ' from ' + data.filteredContent.length;
+			var infoText = '<span data-i18n="info_showing_records" data-i18n-arg-1="' + firstRecord + '" ' +
+				'data-i18n-arg-2="' + lastRecord + '" data-i18n-arg-3="' + data.filteredContent.length + '">' +
+				'Showing records ' + firstRecord + '-' + lastRecord + ' from ' + data.filteredContent.length + '</span>';
 			if (data.filteredContent.length != data.content.length)
 			{
-				infoText += ' filtered (total ' + data.content.length + ')';
+				infoText += ' <span data-i18n="info_filtered_total" data-i18n-arg-1="' + data.content.length + '">' +
+					'filtered (total ' + data.content.length + ')</span>';
 			}
 		}
 		data.config.infoContainer.html(infoText);
+
+		if (I18n.translatePage)
+		{
+			I18n.translatePage(data.config.infoContainer);
+		}
 
 		if (data.config.updateInfoCallback)
 		{
@@ -602,9 +645,14 @@
 		data.config.selector.css('display', data.pageCheckedCount === data.checkedCount ? 'none' : '');
 		if (data.checkedCount !== data.pageCheckedCount)
 		{
-			data.config.selector.text('' + (data.checkedCount - data.pageCheckedCount) +
-				(data.checkedCount - data.pageCheckedCount > 1 ? ' records' : ' record') +
-				' selected on other pages');
+			var count = data.checkedCount - data.pageCheckedCount;
+			var txt = '';
+			if (I18n.translate) {
+				txt = count > 1 ? I18n.translate('records_selected', count) : I18n.translate('record_selected', count);
+			} else {
+				txt = count + (count > 1 ? ' records' : ' record') + ' selected on other pages';
+			}
+			data.config.selector.text(txt);
 		}
 	}
 

@@ -343,6 +343,7 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 {
 	BString<1024> tagAttrMessage("Malformed nzb-file, tag <%s> must have attributes", name);
 
+	m_currentElement = name;
 	m_tagContent.Clear();
 
 	if (!strcmp("file", name))
@@ -463,6 +464,8 @@ void NzbFile::Parse_EndElement(const char *name)
 	{
 		m_category = m_tagContent;
 	}
+
+	m_currentElement.clear();
 }
 
 void NzbFile::Parse_Content(const char *buf, int len)
@@ -482,43 +485,19 @@ void NzbFile::SAX_EndElement(NzbFile* file, const char *name)
 
 void NzbFile::SAX_characters(NzbFile* file, const char * xmlstr, int len)
 {
-	char* str = (char*)xmlstr;
+	if (len <= 0)
+		return;
 
-	// trim starting blanks
-	int off = 0;
-	for (int i = 0; i < len; i++)
+	std::string str(xmlstr, len);
+	if (file->m_currentElement == "meta" && file->m_hasCategory)
 	{
-		char ch = str[i];
-		if (ch == ' ' || ch == 10 || ch == 13 || ch == 9)
-		{
-			off++;
-		}
-		else
-		{
-			break;
-		}
+		// Do not break existing users' filters that rely on this normalization
+		Util::Trim(str);
 	}
 
-	int newlen = len - off;
-
-	// trim ending blanks
-	for (int i = len - 1; i >= off; i--)
+	if (!str.empty())
 	{
-		char ch = str[i];
-		if (ch == ' ' || ch == 10 || ch == 13 || ch == 9)
-		{
-			newlen--;
-		}
-		else
-		{
-			break;
-		}
-	}
-
-	if (newlen > 0)
-	{
-		// interpret tag content
-		file->Parse_Content(str + off, newlen);
+		file->Parse_Content(str.data(), str.length());
 	}
 }
 

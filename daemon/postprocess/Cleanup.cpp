@@ -19,8 +19,8 @@
  */
 
 
-#include "DownloadInfo.h"
 #include "nzbget.h"
+#include "DownloadInfo.h"
 #include "Cleanup.h"
 #include "Log.h"
 #include "Util.h"
@@ -97,7 +97,8 @@ bool MoveController::MoveFiles()
 	bool ok = true;
 	MoveFiles(m_interDir, m_destDir, ok);
 	
-	if (ok && !FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
+	if (ok && FileSystem::DirectoryExists(m_interDir.c_str()) &&
+		!FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
 		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
 	}

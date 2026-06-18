@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2025 Denis <denis@nzbget.com>
+ * Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -82,6 +82,14 @@ var Upload = (new function($)
 					$('#AddDialog_URL').focus();
 				}
 			});
+		}
+
+		// Workaround for iPadOS/iOS: The native Document Picker fails to map custom extensions
+		// in the accept attribute (like .nzb or .7z), graying out valid files.
+		var isIOS = /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+		if (isIOS)
+		{
+			$('#AddDialog_Input').removeAttr('accept');
 		}
 
 		$('#AddDialog_Select').click(selectFiles);
@@ -165,7 +173,7 @@ var Upload = (new function($)
 	{
 		setTimeout(function()
 		{
-			alert("Unfortunately your browser doesn't support drag and drop for files.\n\nPlease use alternative ways to add files to queue:\nadd via URL or put the files directly into incoming nzb-directory.");
+			alert(I18n.translate('msg_dnd_not_supported'));
 		}, 50);
 	}
 
@@ -183,7 +191,7 @@ var Upload = (new function($)
 	{
 		if (!event.target.files)
 		{
-			alert("Unfortunately your browser doesn't support direct access to local files.\n\nPlease use alternative ways to add files to queue:\nadd via URL or put the files directly into incoming nzb-directory.");
+			alert(I18n.translate('msg_no_direct_file_access_add'));
 			return;
 		}
 		addFiles(event.target.files);
@@ -195,13 +203,13 @@ var Upload = (new function($)
 		{
 			var file = selectedFiles[i];
 			var filename = file.name.replace(/\.queued$/g, '');
-			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="Click to rename">'+
+			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="' + I18n.translate('label_click_to_rename') + '">'+
 				'<table><tr><td width="18px" valign="top">'+
 				'<i class="material-icon material-icon--draft">draft</i>'+
 				'<i class="material-icon material-icon--success hide">check_circle</i>'+
 				'<i class="material-icon material-icon--error hide">error</i>'+
 				'<i class="material-icon material-icon--progress spinner hide">progress_activity</i>'+
-				'</td><td id="AddDialog_File' + files.length + '">' + Util.formatNZBName(filename) + '</td></tr></table></a>';
+				'</td><td id="AddDialog_File' + files.length + '">' + Util.textToHtml(Util.formatNZBName(filename)) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);
 
@@ -224,7 +232,7 @@ var Upload = (new function($)
 	{
 		var info = infos[no];
 		AddParamDialog.showModal(info, function() {
-			$('#AddDialog_File' + no).html(Util.formatNZBName(info.name + info.ext));
+			$('#AddDialog_File' + no).html(Util.textToHtml(Util.formatNZBName(info.name + info.ext)));
 		});
 	}
 
@@ -284,7 +292,7 @@ var Upload = (new function($)
 			if (!window.FileReader)
 			{
 				$AddDialog.modal('hide');
-				alert("Unfortunately your browser doesn't support FileReader API.\n\nPlease use alternative ways to add files to queue:\nadd via URL or put the files directly into incoming nzb-directory.");
+				alert(I18n.translate('msg_no_filereader_api_add'));
 				return;
 			}
 
@@ -292,7 +300,7 @@ var Upload = (new function($)
 			if (!testreader.readAsBinaryString && !testreader.readAsDataURL)
 			{
 				$AddDialog.modal('hide');
-				alert("Unfortunately your browser doesn't support neither \"readAsBinaryString\" nor \"readAsDataURL\" functions of FileReader API.\n\nPlease use alternative ways to add files to queue:\nadd via URL or put the files directly into incoming nzb-directory.");
+				alert(I18n.translate('msg_no_filereader_api_detailed'));
 				return;
 			}
 		}
@@ -346,7 +354,7 @@ var Upload = (new function($)
 		reader.onload = function (event)
 		{
 			var result = event.target.result;
-			var base64str = result.replace(/^data:[^,]+,/, '');
+			var base64str = result.slice(result.indexOf(',') + 1);
 			var category = $('#AddDialog_Category').val();
 			var priority = parseInt($('#AddDialog_Priority').val());
 			var filename = info.name + info.ext;
@@ -462,11 +470,11 @@ var Upload = (new function($)
 			{
 				if (failure_message)
 				{
-					alert((index > 1 ? 'One or more files' : 'The file') + ' could not be added to the queue:\n' + failure_message);
+					alert(I18n.translate(index > 1 ? 'msg_files_add_error' : 'msg_file_add_error_short', failure_message));
 				}
 				else
 				{
-					alert((index > 1 ? 'One or more files' : 'The file') + ' could not be added to the queue.\nPlease check the messages tab for any error messages.');
+					alert(I18n.translate(index > 1 ? 'msg_files_add_error_generic' : 'msg_file_add_error'));
 				}
 				needRefresh = true;
 			}, 100);

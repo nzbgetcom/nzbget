@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -168,7 +169,7 @@ void CommandLineParser::InitCommandLine(int argc, const char* const_argv[])
 							ReportError("Could not parse value of option 'A'");
 							return;
 						}
-						m_addCategory = std::move(argv[optind-1]);
+						SetAddCategory(argv[optind-1]);
 					}
 					else if (optarg && !strcasecmp(optarg, "N"))
 					{
@@ -670,7 +671,7 @@ void CommandLineParser::InitCommandLine(int argc, const char* const_argv[])
 				break;
 			case 'K':
 				// switch "K" is provided for compatibility with v. 0.8.0 and can be removed in future versions
-				m_addCategory = optarg;
+				SetAddCategory(optarg);
 				break;
 			case 'S':
 				optind++;

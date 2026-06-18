@@ -334,6 +334,8 @@ bool Connection::Bind()
 	if (listen(m_socket, 100) < 0)
 	{
 		ReportError("Listen on socket failed for %s", m_host.c_str(), true);
+		closesocket(m_socket);
+		m_socket = INVALID_SOCKET;
 		return false;
 	}
 

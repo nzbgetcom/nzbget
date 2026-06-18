@@ -101,9 +101,10 @@ void Log::Filelog(const char* msg, ...)
 		if (getuid() == 0 || geteuid() == 0)
 		{
 			struct passwd* pwd = getpwnam(g_Options->GetDaemonUsername());
-			if (pwd != nullptr)
+			int fileDescriptor = m_logFile->GetFileDescriptor();
+			if (pwd != nullptr && fileDescriptor >= 0)
 			{
-				chown(m_logFilename.c_str(), pwd->pw_uid, pwd->pw_gid);
+				fchown(fileDescriptor, pwd->pw_uid, pwd->pw_gid);
 			}
 		}
 #endif

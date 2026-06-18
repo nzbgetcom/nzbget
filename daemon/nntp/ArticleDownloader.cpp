@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -217,6 +217,12 @@ void ArticleDownloader::Run()
 			serverConfigGeneration != g_ServerPool->GetGeneration())
 		{
 			status = adRetry;
+			break;
+		}
+
+		if (!wantServer && m_fileInfo->GetNzbInfo()->HasDesiredServer())
+		{
+			status = adFailed;
 			break;
 		}
 

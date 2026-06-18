@@ -2,7 +2,7 @@
  * This file is part of nzbget. See <https://nzbget.com>.
  *
  * Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- * Copyright (C) 2024 Denis <denis@nzbget.com>
+ * Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@ var History = (new function($)
 	var $CategoryMenu;
 
 	// State
-	var history;
+	var history = [];
 	var notification = null;
 	var updateTabInfo;
 	var curFilter = 'ALL';
@@ -95,6 +95,8 @@ var History = (new function($)
 		$CategoryMenu.on('click', 'a', categoryMenuClick);
 
 		HistoryActionsMenu.init();
+
+		I18n.subscribe(function onLangChange() { History.redraw(true); });
 	}
 
 	this.applyTheme = function()
@@ -229,17 +231,17 @@ var History = (new function($)
 
 		var dupe = DownloadsUI.buildDupe(hist.DupeKey, hist.DupeScore, hist.DupeMode);
 		var category = hist.Kind !== 'DUP' ?
-			(hist.Category !== '' ? Util.textToHtml(hist.Category) : '<span class="none-category">None</span>')
+			(hist.Category !== '' ? Util.textToHtml(hist.Category) : '<span class="none-category">' + I18n.translate('label_none') + '</span>')
 			: '';
 		var backup = hist.Kind === 'NZB' ? DownloadsUI.buildBackupLabel(hist) : '';
 
 		if (hist.Kind === 'URL')
 		{
-			name += ' <span class="label label-info">URL</span>';
+			name += ' <span class="label label-info text-uppercase" data-i18n="label_kind_url">' + I18n.translate('label_kind_url') + '</span>';
 		}
 		else if (hist.Kind === 'DUP')
 		{
-			name += ' <span class="label label-info">hidden</span>';
+			name += ' <span class="label label-info text-uppercase" data-i18n="label_hidden">' + I18n.translate('label_hidden') + '</span>';
 		}
 
 		if (!UISettings.miniTheme)
@@ -254,7 +256,7 @@ var History = (new function($)
 				' ' + status + backup + ' <span class="label">' + item.data.time + '</span>';
 			if (category)
 			{
-				info += ' <span class="label label-status">' + category + '</span>';
+				info += ' <span class="label label-status text-uppercase">' + category + '</span>';
 			}
 			if (hist.Kind === 'NZB')
 			{
@@ -266,17 +268,17 @@ var History = (new function($)
 
 	function renderCellCallback(cell, index, item)
 	{
-		if (index === 1 || index === 4)
+		if (index === 1)
+		{
+			cell.className = 'text-center' + (!UISettings.miniTheme ? ' dropdown-cell' : '');
+		}
+		else if (index === 4)
 		{
 			cell.className = !UISettings.miniTheme ? 'dropdown-cell' : '';
 		}
 		else if (index === 2)
 		{
-			cell.className = 'text-center' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
-		}
-		else if (index === 5)
-		{
-			cell.className = 'text-right' + (!UISettings.miniTheme ? ' dropafter-cell' : '');
+			cell.className = 'text-center';
 		}
 		else if (index === 6)
 		{
@@ -392,6 +394,54 @@ var History = (new function($)
 		Refresher.pause();
 
 		var ids = buildContextIdList();
+
+		RPC.call('editqueue', [command, '', ids], function()
+		{
+			editCompleted();
+		});
+	}
+
+	this.clearClick = function()
+	{
+		RPC.call('history', [true], function(allHistory)
+		{
+			if (allHistory.length === 0)
+			{
+				PopupNotification.show('#Notif_History_Empty');
+				return;
+			}
+
+			var hasNzb = false;
+			var hasDup = false;
+			var hasFailed = false;
+			for (var i = 0; i < allHistory.length; i++)
+			{
+				var hist = allHistory[i];
+				hasNzb |= hist.Kind === 'NZB';
+				hasDup |= hist.Kind === 'DUP';
+				// Only NZB records carry meaningful Par/Unpack/DeleteStatus; DUP/URL
+				// rows lack DeleteStatus, which would otherwise spuriously trip != 'NONE'.
+				hasFailed |= hist.Kind === 'NZB' && (hist.ParStatus === 'FAILURE' ||
+					hist.UnpackStatus === 'FAILURE' || hist.DeleteStatus != 'NONE');
+			}
+
+			notification = '#Notif_History_Cleared';
+			HistoryUI.deleteConfirm(
+				function(command) { clearAction(command, allHistory); },
+				hasNzb, hasDup, hasFailed, true,
+				allHistory.length, 0, 100, true);
+		});
+	}
+
+	function clearAction(command, allHistory)
+	{
+		Refresher.pause();
+
+		var ids = [];
+		for (var i = 0; i < allHistory.length; i++)
+		{
+			ids.push(allHistory[i].ID);
+		}
 
 		RPC.call('editqueue', [command, '', ids], function()
 		{
@@ -553,9 +603,12 @@ var History = (new function($)
 
 	this.processShortcut = function(key)
 	{
+		// keyDown in index.js falls through between tab cases; ignore keys when History isn't active.
+		if (!activeTab) return false;
 		switch (key)
 		{
 			case 'D': case 'Delete': case 'Meta+Backspace': History.actionClick('DELETE'); return true;
+			case 'C': History.clearClick(); return true;
 			case 'P': History.actionClick('REPROCESS'); return true;
 			case 'N': History.actionClick('REDOWNLOAD'); return true;
 			case 'M': History.actionClick('MARKSUCCESS'); return true;
@@ -588,15 +641,32 @@ var HistoryUI = (new function($)
 		switch (total)
 		{
 			case 'SUCCESS':
-				return detail === 'GOOD' ? 'GOOD' : 'SUCCESS';
+				return detail === 'GOOD' ? I18n.translate('status_good') : I18n.translate('status_success');
 			case 'FAILURE':
-				return detail === 'BAD' ? 'BAD' : (status === 'FAILURE/INTERNAL_ERROR' ? 'INTERNAL_ERROR' : 'FAILURE');
+				return detail === 'BAD' ? I18n.translate('status_bad') : (status === 'FAILURE/INTERNAL_ERROR' ? I18n.translate('label_internal_error') : I18n.translate('status_failure'));
 			case 'WARNING':
-				return detail === 'SCRIPT' ? 'PP-FAILURE' : detail;
+				if (detail === 'SCRIPT') return I18n.translate('status_pp_failure');
+				if (detail === 'DAMAGED') return I18n.translate('status_manual');
+				if (detail === 'REPAIRABLE') return I18n.translate('status_repairable');
+				if (detail === 'HEALTH') return I18n.translate('status_health', Math.floor(hist.Health / 10));
+				if (detail === 'SPACE') return I18n.translate('status_space');
+				if (detail === 'PASSWORD') return I18n.translate('status_password');
+				if (detail === 'SKIPPED') return I18n.translate('status_skipped');
+				return detail;
 			case 'DELETED':
-				return detail === 'MANUAL' ? 'DELETED' : detail;
+			{
+				if (detail === 'COPY') return I18n.translate('status_copy');
+				if (detail === 'MANUAL') return I18n.translate('btn_history_filter_deleted');
+				if (detail === 'DUPE') return I18n.translate('status_dupe');
+				if (detail === 'GOOD') return I18n.translate('status_good');
+				if (detail === 'SUCCESS') return I18n.translate('status_success');
+				if (detail === 'HEALTH') return I18n.translate('status_health_val');
+				if (detail === 'BAD') return I18n.translate('status_bad');
+				if (detail === 'SCAN') return I18n.translate('status_scan_val');
+				return detail;
+			}
 			default:
-				return 'INTERNAL_ERROR (' + status + ')';
+				return I18n.translate('label_internal_error') + ' (' + status + ')';
 		}
 	}
 
@@ -614,10 +684,10 @@ var HistoryUI = (new function($)
 			case 'WARNING':
 				badgeClass = 'label-warning'; break;
 		}
-		return '<span class="label label-status ' + badgeClass + '">' + statusText + '</span>';
+		return '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
 	}
 
-	this.deleteConfirm = function(actionCallback, hasNzb, hasDup, hasFailed, multi, selCount, pageSelCount, selPercentage)
+	this.deleteConfirm = function(actionCallback, hasNzb, hasDup, hasFailed, multi, selCount, pageSelCount, selPercentage, clearAll)
 	{
 		var dupeCheck = Options.option('DupeCheck') === 'yes';
 		var dialog = null;
@@ -625,6 +695,23 @@ var HistoryUI = (new function($)
 		function init(_dialog)
 		{
 			dialog = _dialog;
+			if (clearAll)
+			{
+				var html = $('#ConfirmDialog_Text').html();
+				html = html.replace(/Selected/g, 'All').replace(/selected/g, 'all');
+				$('#ConfirmDialog_Text').html(html);
+				$('#ConfirmDialog_OK').text('Clear');
+				// Clear is always permanent: HistoryDelete on hidden DUPs is a no-op
+				// and on visible NZBs it just creates new hidden DUPs, leaving rows behind.
+				Util.show($('#HistoryDeleteConfirmDialog_Options', dialog), false);
+				Util.show($('#HistoryDeleteConfirmDialog_Simple', dialog), true);
+				Util.show($('#HistoryDeleteConfirmDialog_DeleteWillCleanup', dialog), hasFailed);
+				Util.show($('#HistoryDeleteConfirmDialog_DeleteNoCleanup', dialog), !hasFailed);
+				Util.show($('#HistoryDeleteConfirmDialog_DupAlert', dialog), dupeCheck && hasDup);
+				Util.show('#ConfirmDialog_Help', false);
+				HistoryUI.confirmMulti(multi);
+				return;
+			}
 			HistoryUI.confirmMulti(multi);
 			$('#HistoryDeleteConfirmDialog_Hide', dialog).prop('checked', true);
 			Util.show($('#HistoryDeleteConfirmDialog_Options', dialog), hasNzb && dupeCheck);
@@ -637,8 +724,16 @@ var HistoryUI = (new function($)
 
 		function action()
 		{
-			var hide = $('#HistoryDeleteConfirmDialog_Hide', dialog).is(':checked');
-			var command = hasNzb && hide ? 'HistoryDelete' : 'HistoryFinalDelete';
+			var command;
+			if (clearAll)
+			{
+				command = 'HistoryFinalDelete';
+			}
+			else
+			{
+				var hide = $('#HistoryDeleteConfirmDialog_Hide', dialog).is(':checked');
+				command = hasNzb && hide ? 'HistoryDelete' : 'HistoryFinalDelete';
+			}
 			if (selCount - pageSelCount > 0 && selCount >= 50)
 			{
 				PurgeHistoryDialog.showModal(function(){actionCallback(command);}, selCount, selPercentage);
@@ -649,7 +744,7 @@ var HistoryUI = (new function($)
 			}
 		}
 
-		ConfirmDialog.showModal('HistoryDeleteConfirmDialog', action, init, selCount);
+		ConfirmDialog.showModal('HistoryDeleteConfirmDialog', action, init, clearAll ? 1 : selCount);
 	}
 
 	this.confirmMulti = function(multi)

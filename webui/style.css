@@ -105,6 +105,10 @@ th {
     overflow-x: auto;
 }
 
+.dropdown-menu__lang-menu {
+    min-width: 80px;
+}
+
 .test-server-dropdwon-menu {
     min-width: 210px;
     left: -110px;
@@ -142,6 +146,14 @@ th {
 
 .system-health-badge {
     vertical-align: text-bottom;
+}
+
+.text-uppercase {
+    text-transform: uppercase;
+}
+
+.text-lowercase {
+    text-transform: lowercase;
 }
 
 .system-health-badge--important {
@@ -198,9 +210,71 @@ th {
 }
 
 /* EXTENSION MANAGER */
-.extension-manager__td {
-    vertical-align: middle !important;
+#ExtensionManagerTable .extension-manager__td {
+    vertical-align: middle;
     max-width: 350px;
+    padding: 8px;
+}
+
+#ExtensionManagerTable td.extension-manager__actions-td {
+    padding: 1px;
+}
+
+#ExtensionManagerTable .extension-manager__td.text-center {
+    padding-left: 8px;
+    padding-right: 8px;
+}
+
+#ExtensionManagerTable .btn-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 76px;
+    min-width: 76px;
+    margin: 4px auto;
+    justify-content: center;
+}
+
+#ExtensionManagerTable .btn-toolbar .btn {
+    flex: 0 0 36px;
+    width: 36px;
+    min-width: 36px;
+    height: 30px;
+    padding: 0;
+    margin: 0 !important;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+    #ExtensionManagerTable .phone-hide {
+        display: none;
+    }
+
+    #ExtensionManagerTable {
+        width: 100%;
+    }
+
+    #ExtensionManagerTable th,
+    #ExtensionManagerTable td {
+        padding: 4px;
+        word-break: break-word;
+    }
+
+    #ExtensionManagerTable th:nth-child(1),
+    #ExtensionManagerTable td:nth-child(1) {
+        width: 40px;
+    }
+
+    #ExtensionManagerTable th:nth-child(6),
+    #ExtensionManagerTable td:nth-child(6) {
+        width: 82px;
+        min-width: 82px;
+        padding-left: 2px;
+        padding-right: 2px;
+    }
 }
 
 .red-circle {
@@ -407,7 +481,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
     margin-right: 10px;
     padding-top: 2px;
     cursor: pointer;
-    width: 86px;
 }
 
 #InfoBlock div {
@@ -511,7 +584,6 @@ body.navfixed.scrolled .navbar-fixed-top .navbar-inner {
 .navbar-search .search-query,
 .navbar-search .search-query:focus,
 .navbar-search .search-query.focused {
-    width: 130px;
     padding: 3px 28px 3px 25px;
     -webkit-border-radius: 12px;
     -moz-border-radius: 12px;
@@ -635,6 +707,8 @@ ul.dropdown-menu > li > a.has-table {
 
 ul.dropdown-menu > li > a > i {
     margin-right: 5px;
+    width: 16px;
+    text-align: center;
 }
 
 /* BEGIN: Icons */
@@ -1009,7 +1083,8 @@ form {
 }
 
 #DownloadsEdit_FileTable_filter,
-#DownloadsEdit_LogTable_filter #HistoryEdit_LogTable_filter,
+#DownloadsEdit_LogTable_filter,
+#HistoryEdit_LogTable_filter,
 #FeedDialog_ItemTable_filter {
     width: 180px;
 }
@@ -1044,14 +1119,6 @@ form {
     position: absolute;
     top: 50%;
     left: 50%;
-}
-
-.modal-body {
-    max-height: 360px;
-}
-
-.modal.no-footer .modal-body {
-    max-height: 420px;
 }
 
 .modal-footer .btn-primary {
@@ -1192,7 +1259,7 @@ table.table-hidecheck tbody > tr > td:first-child {
 /* BEGIN: Progress bars */
 .progress-block {
     position: relative;
-    width: calc(8.5rem);
+    width: 100%;
 }
 
 /* text on left side of progress bar */
@@ -1227,7 +1294,6 @@ td.dropdown-cell {
     padding: 0;
 }
 
-th.dropafter-cell,
 td.dropafter-cell {
     padding-left: 0;
 }
@@ -1258,8 +1324,147 @@ table th.priority-cell {
     padding-left: 8px;
 }
 
+th.size-left-cell {
+    width: 175px;
+}
+
+.th-split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.th-split a:first-child {
+    text-align: left;
+}
+
+.th-split a:last-child {
+    text-align: right;
+}
+
+/* Sortable column headers indicator */
+#DownloadsTable th a::after {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background-color: currentColor;
+    mask: url(img/unfold_more_fill.svg) no-repeat center;
+    mask-size: contain;
+    -webkit-mask: url(img/unfold_more_fill.svg) no-repeat center;
+    -webkit-mask-size: contain;
+    opacity: 0.6;
+    vertical-align: sub;
+    margin-left: 3px;
+}
+
+/* Shrink narrow columns: prevent excess width */
+body:not(.phone) #DownloadsTable th:nth-child(2),   /* Priority */
+body:not(.phone) #DownloadsTable th:nth-child(3),   /* Status */
+body:not(.phone) #DownloadsTable th:nth-child(6),   /* Age */
+body:not(.phone) #DownloadsTable th:nth-child(8),   /* Est. Time */
+body:not(.phone) #HistoryTable th:nth-child(2),     /* Status */
+body:not(.phone) #HistoryTable th:nth-child(3),     /* Time */
+body:not(.phone) #HistoryTable th:nth-child(6),     /* Age */
+body:not(.phone) #HistoryTable th:nth-child(7),     /* Size */
+body:not(.phone) #MessagesTable th:nth-child(1),    /* Status */
+body:not(.phone) #MessagesTable th:nth-child(2) {   /* Time */
+    width: 1%;
+}
+body:not(.phone) #DownloadsTable td:nth-child(3),   /* Status */
+body:not(.phone) #DownloadsTable td:nth-child(6),   /* Age */
+body:not(.phone) #DownloadsTable td:nth-child(8),   /* Est. Time */
+body:not(.phone) #HistoryTable td:nth-child(2),     /* Status */
+body:not(.phone) #HistoryTable td:nth-child(3),     /* Time */
+body:not(.phone) #HistoryTable td:nth-child(6),     /* Age */
+body:not(.phone) #HistoryTable td:nth-child(7),     /* Size */
+body:not(.phone) #MessagesTable td:nth-child(1),    /* Status */
+body:not(.phone) #MessagesTable td:nth-child(2) {   /* Time */
+    white-space: nowrap;
+}
+
+/* Centered narrow columns */
+body:not(.phone) #DownloadsTable th:nth-child(3), body:not(.phone) #DownloadsTable td:nth-child(3),   /* Status */
+body:not(.phone) #HistoryTable th:nth-child(2), body:not(.phone) #HistoryTable td:nth-child(2),       /* Status */
+body:not(.phone) #HistoryTable th:nth-child(3), body:not(.phone) #HistoryTable td:nth-child(3),       /* Time */
+body:not(.phone) #MessagesTable th:nth-child(1), body:not(.phone) #MessagesTable td:nth-child(1),     /* Status */
+body:not(.phone) #MessagesTable th:nth-child(2), body:not(.phone) #MessagesTable td:nth-child(2) {    /* Time */
+    text-align: center;
+}
+
+/* Vertical centering for all table cells */
+body:not(.phone) #DownloadsTable td,
+body:not(.phone) #HistoryTable td,
+body:not(.phone) #MessagesTable td,
+body:not(.phone) #DownloadsEdit_FileTable td,
+body:not(.phone) #DownloadsEdit_LogTable td,
+body:not(.phone) #HistoryEdit_LogTable td {
+    vertical-align: middle;
+}
+
+/* Dialog table column sizing */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(2),   /* Status */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(4),   /* Age */
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(5),   /* Size */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(1),    /* Status */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(2),    /* Time */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),      /* Status */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(2),      /* Time */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(2) {     /* Status */
+    width: 1%;
+}
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(4),     /* Category */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(5),     /* Age */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(6) {     /* Size */
+    width: 1%;
+}
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(1), /* Match */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(2), /* Rule */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(4), /* Category */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(5), /* Age */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(6) { /* Size */
+    width: 1%;
+}
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(2),   /* Status */
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(4),   /* Age */
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(5),   /* Size */
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(1),    /* Status */
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status */
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2),      /* Time */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(2),      /* Status */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(4),      /* Category */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(5),      /* Age */
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(6),      /* Size */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(1), /* Match */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(2), /* Rule */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(4), /* Category */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(5), /* Age */
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(6) { /* Size */
+    white-space: nowrap;
+}
+body:not(.phone) #DownloadsEdit_FileTable th:nth-child(2),
+body:not(.phone) #DownloadsEdit_FileTable td:nth-child(2),   /* Status center */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(1),
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(1),    /* Status center */
+body:not(.phone) #DownloadsEdit_LogTable th:nth-child(2),
+body:not(.phone) #DownloadsEdit_LogTable td:nth-child(2),    /* Time center */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(1),
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(1),      /* Status center */
+body:not(.phone) #HistoryEdit_LogTable th:nth-child(2),
+body:not(.phone) #HistoryEdit_LogTable td:nth-child(2),      /* Time center */
+body:not(.phone) #FeedDialog_ItemTable th:nth-child(2),
+body:not(.phone) #FeedDialog_ItemTable td:nth-child(2),      /* Status center */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(1),
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(1), /* Match center */
+body:not(.phone) #FeedFilterDialog_ItemTable th:nth-child(2),
+body:not(.phone) #FeedFilterDialog_ItemTable td:nth-child(2) { /* Rule center */
+    text-align: center;
+}
+
 table td.priority-cell {
     width: 16px;
+    text-align: center;
 }
 
 td.dropdown-cell.priority-cell > div {
@@ -1301,8 +1506,6 @@ textarea[readonly],
 }
 
 .modal-header .close {
-    margin-top: 6px;
-    margin-left: 10px;
     opacity: 0.6;
     filter: alpha(opacity=60);
     outline: 0;
@@ -1347,6 +1550,10 @@ textarea[readonly],
     margin-bottom: 15px;
 }
 
+.modal .form-horizontal .control-label {
+    word-wrap: break-word;
+}
+
 .form-horizontal .control-group-last {
     margin-bottom: 0;
 }
@@ -1387,11 +1594,6 @@ textarea[readonly],
 .input-medium.uneditable-input,
 .uneditable-mulitline-input {
     margin-bottom: -4px;
-}
-
-.modal-mini {
-    width: 420px;
-    margin-left: -210px;
 }
 
 .modal-small {
@@ -1437,6 +1639,22 @@ ul.help > li {
     height: 0;
     opacity: 0;
     filter: alpha(opacity=0);
+}
+
+/* Ensure left alignment for first two columns on small screens */
+@media (max-width: 768px) {
+    .data-table td:first-child,
+    .data-table td:nth-child(2),
+    .data-table th:first-child,
+    .data-table th:nth-child(2) {
+        text-align: left;
+    }
+    /* Reset Category column width on small screens */
+    #DownloadsTable_Category,
+    #HistoryTable_Category {
+        width: auto !important;
+        min-width: 60px;
+    }
 }
 
 /* BEGIN: PopupNotification alerts */
@@ -1516,14 +1734,6 @@ ul.help > li {
     min-width: 10px;
     right: 0;
     left: auto;
-}
-
-.data-statistics {
-    width: 300px;
-}
-
-.data-statistics-full {
-    width: 364px;
 }
 
 .modal-center {
@@ -1693,6 +1903,15 @@ ul.help > li {
     overflow: auto;
 }
 
+.config-save-desktop {
+    text-align: right;
+}
+
+.config-save-mobile {
+    text-align: center;
+    margin: 15px 0;
+}
+
 @media (max-width: 1041px) {
     .container-fluid {
         padding: 0 10px;
@@ -1816,19 +2035,31 @@ ul.help > li {
     margin-right: 15px;
     font-size: 16px;
     font-weight: bold;
+    text-transform: uppercase;
 }
 
 .config-header .btn-group {
     margin-right: 0;
 }
 
-#ConfigContent p.help-block {
+#ConfigContent .help-block {
     margin-top: 6px;
     line-height: 16px;
 }
 
-#ConfigContent.hide-help-block p.help-block {
+#ConfigContent.hide-help-block .help-block {
     display: none;
+}
+
+.help-block pre.help-desc {
+    font-size: 14px;
+    border: none;
+}
+
+.help-block pre.help-desc,
+#ConfigContent .help-block pre.help-desc {
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 #ConfigContent .control-label {
@@ -1843,8 +2074,9 @@ ul.help > li {
     width: 70px;
 }
 
-#ConfigContent .editlarge {
-    width: 95%;
+#ConfigContent .editlarge,
+#ConfigContent table.editor input {
+    width: calc(100% - 10px);
 }
 
 #ConfigContent .editsmall {
@@ -1852,7 +2084,7 @@ ul.help > li {
 }
 
 #ConfigContent table.editor {
-    width: 97%;
+    width: 100%;
 }
 
 #ConfigContent table.editor td:first-child {
@@ -1861,7 +2093,7 @@ ul.help > li {
 }
 
 #ConfigContent table.editor input {
-    width: 100%;
+    width: calc(100% - 10px);
 }
 
 .ConfigFooter hr {
@@ -1932,7 +2164,6 @@ div.control-group.last-group {
 .option__check-section {
     display: flex;
     flex-direction: column;
-    width: 96%;
     margin-top: 7px;
 }
 
@@ -1954,6 +2185,7 @@ div.control-group.last-group {
 
 div.multiset-toolbar button {
     margin-right: 15px;
+    margin-bottom: 5px;
 }
 
 #ScriptListDialog_ScriptTable td:nth-child(2) {
@@ -2137,6 +2369,9 @@ tr.drag-source > td > * {
     visibility: hidden !important;
 }
 
+/* --- UI Settings Dropdown Panel --- */
+
+
 /****************************************************************************/
 /* SMARTPHONE THEME */
 
@@ -2244,6 +2479,11 @@ body.phone,
     margin-right: 5px;
 }
 
+.phone .statistics__section-toolbar {
+    margin: 0;
+    padding: 0;
+}
+
 .phone #FirstUpdateInfo,
 .phone #ConfigReloadInfo {
     margin-top: 5px;
@@ -2309,6 +2549,10 @@ body.phone,
 .phone .navbar .nav > li.active > #ConfigTabLink > i {
     /* icon-settings (black) */
     background-position: -112px -48px;
+}
+
+.phone #MessagesTable td {
+    text-align: left;
 }
 
 .phone .navbar .btn-toolbar .btn {
@@ -2421,6 +2665,10 @@ body.phone,
 }
 
 /* CONTROLS AROUND DATATABLE */
+.records-label {
+	padding: 0 5px;
+}
+
 .phone .records-label {
     display: none;
 }
@@ -2549,8 +2797,56 @@ body.phone,
     min-width: 45px;
 }
 
-.phone .btn-toolbar .btn-group {
-    margin-right: 0;
+/* --- UI Settings Dropdown Panel --- */
+.menu-header {
+    padding: 3px 20px;
+}
+
+.settings-menu-panel {
+    width: 181px;
+    padding: 10px;
+}
+
+.settings-menu-header {
+    padding-left: 0;
+    padding-bottom: 5px;
+}
+
+.settings-menu-divider {
+    margin-top: 10px;
+}
+
+.switch-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.switch-group {
+    display: flex;
+    width: 100%;
+}
+
+.switch-group.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.scrollable-menu {
+    max-height: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.switch-btn {
+    flex: 1 1 0;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+}
+
+.switch-btn-icon {
+    font-size: 16px;
+    vertical-align: text-bottom;
 }
 
 .phone .btn-toolbar .input-prepend .add-on,
@@ -2799,22 +3095,24 @@ input[type="date"] {
     }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 560px) {
     #SearchBlock {
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
     }
-}
 
-@media (max-width: 560px) {
     .phone .search-clear {
         right: 25px;
     }
 
     .list-item--nested a {
         padding-left: 0px !important;
+    }
+    
+    .settings-menu-panel {
+        width: 225px;
     }
 }
 
@@ -2836,3 +3134,10 @@ input[type="date"] {
     }
 }
 /* END: MEDIA SMALL SCREENS */
+
+#ConfigNav.nav-list a {
+    text-transform: uppercase;
+}
+
+#ConfigInfo p a.option,
+#ConfigInfo p em strong,

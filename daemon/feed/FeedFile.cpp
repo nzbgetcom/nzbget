@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ bool FeedFile::Parse()
 	SAX_handler.getEntity = reinterpret_cast<getEntitySAXFunc>(SAX_getEntity);
 
 	/*
-	 * libxml2 2.4+ sends CDATA via `cdataBlock` instead of `characters`. Earlier
+	 * libxml2 2.14+ sends CDATA via `cdataBlock` instead of `characters`. Earlier
 	 * versions deliver CDATA in `characters`; `cdataBlock` is unused. Both
 	 * require identical handling, so the same handler is assigned.
 	 */
@@ -175,6 +175,7 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 	if (!name)
 		return;
 
+	m_currentElement = name;
 	ResetTagContent();
 
 	if (!strcmp("item", name))
@@ -265,6 +266,9 @@ void FeedFile::Parse_EndElement(const char* name)
 	if (!name)
 		return;
 
+	// Trim the collected content once after all chunks (text + CDATA) are merged
+	Util::Trim(m_tagContent);
+
 	if (!strcmp("title", name) && m_feedItemInfo)
 	{
 		m_feedItemInfo->SetTitle(m_tagContent.c_str());
@@ -301,6 +305,8 @@ void FeedFile::Parse_EndElement(const char* name)
 		}
 		ResetTagContent();
 	}
+
+	m_currentElement.clear();
 }
 
 void FeedFile::Parse_Content(std::string content)
@@ -329,7 +335,11 @@ void FeedFile::SAX_textHandler(FeedFile* file, const char* xmlstr, int len)
 		return;
 
 	std::string str(xmlstr, len);
-	Util::Trim(str);
+	if (file->m_currentElement == "category")
+	{
+		// Do not break existing users' filters that rely on this normalization
+		Util::Trim(str);
+	}
 	file->Parse_Content(std::move(str));
 }
 

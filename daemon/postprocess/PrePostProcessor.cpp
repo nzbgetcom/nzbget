@@ -341,7 +341,7 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 		return;
 	}
 
-	if (nzbInfo->GetSkipScriptProcessing() && nzbInfo->GetSkipDiskWrite())
+	if (nzbInfo->GetSkipScriptProcessing() && (nzbInfo->GetSkipDiskWrite() || g_Options->GetSkipWrite()))
 	{
 		NzbCompleted(downloadQueue, nzbInfo, true);
 		nzbInfo->SetCleanupDisk(true);
@@ -468,15 +468,17 @@ void PrePostProcessor::DeleteCleanup(NzbInfo* nzbInfo)
 	if (nzbInfo->GetCleanupDisk() ||
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsDupe)
 	{
-		if (nzbInfo->GetSkipDiskWrite())
+		if (nzbInfo->GetSkipDiskWrite() || g_Options->GetSkipWrite())
 		{
-			CString errmsg;
-			detail("Deleting dir %s", nzbInfo->GetDestDir());
-			if (!FileSystem::DeleteDirectoryWithContent(nzbInfo->GetDestDir(), errmsg))
+			if (FileSystem::DirectoryExists(nzbInfo->GetDestDir()))
 			{
-				error("Could not delete directory %s: %s", nzbInfo->GetDestDir(), *errmsg);
+				CString errmsg;
+				detail("Deleting dir %s", nzbInfo->GetDestDir());
+				if (!FileSystem::DeleteDirectoryWithContent(nzbInfo->GetDestDir(), errmsg))
+				{
+					error("Could not delete directory %s: %s", nzbInfo->GetDestDir(), *errmsg);
+				}
 			}
-
 			return;
 		}
 

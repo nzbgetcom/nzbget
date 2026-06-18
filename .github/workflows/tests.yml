@@ -25,7 +25,7 @@ jobs:
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v6.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v7.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
@@ -249,6 +249,25 @@ jobs:
         mkdir build
         cd build
         cmake .. -DDISABLE_PARCHECK=yes
+        cmake --build . --config Release -j 4
+
+  build-disabled-pch:
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_DISABLE_PRECOMPILE_HEADERS=yes
         cmake --build . --config Release -j 4
 
   build-openbsd:

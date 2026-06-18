@@ -42,8 +42,8 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.2.4
-ZIP7_VERSION=2600
+UNRAR7_VERSION=7.2.6
+ZIP7_VERSION=26.01
 
 # libs versions
 # https://invisible-island.net/ncurses/announce.html
@@ -423,7 +423,7 @@ build_7zip()
     if [ ! -d "$LIB_PATH/$ARCH/7zip" ]; then
         rm -rf /tmp/7z
         mkdir -p /tmp/7z
-        curl -o /tmp/7z/7z.tar.xz -lL https://www.7-zip.org/a/7z$ZIP7_VERSION-src.tar.xz
+        curl -o /tmp/7z/7z.tar.xz -lL "https://github.com/ip7z/7zip/releases/download/$ZIP7_VERSION/7z${ZIP7_VERSION//./}-src.tar.xz"
         cd /tmp/7z
         tar xf 7z.tar.xz
         rm 7z.tar.xz

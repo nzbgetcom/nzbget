@@ -38,23 +38,56 @@ BOOST_AUTO_TEST_CASE(FeedFileTest)
 	BOOST_CHECK_EQUAL(file.Parse(), true);
 
 	std::unique_ptr<FeedItemList> items = file.DetachFeedItems();
-	FeedItemInfo& feedInfo = items.get()->back();
+	BOOST_REQUIRE_EQUAL(items->size(), 6u);
 
-	BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies>HD"));
-	BOOST_CHECK_EQUAL(feedInfo.GetTime(), 1701668883);
-	BOOST_CHECK_EQUAL(feedInfo.GetEpisode(), std::string("1"));
-	BOOST_CHECK_EQUAL(feedInfo.GetEpisodeNum(), 1);
-	BOOST_CHECK_EQUAL(feedInfo.GetSeason(), std::string("S03"));
-	BOOST_CHECK_EQUAL(feedInfo.GetSeasonNum(), 3);
-	BOOST_CHECK_EQUAL(feedInfo.GetTvmazeId(), 33877);
-	BOOST_CHECK_EQUAL(feedInfo.GetTvdbId(), 33877);
-	BOOST_CHECK_EQUAL(feedInfo.GetRageId(), 33877);
-	BOOST_CHECK_EQUAL(feedInfo.GetImdbId(), 42054);
-	BOOST_CHECK_EQUAL(feedInfo.GetUrl(), std::string("https://indexer.com/getnzb/nzb.nzb"));
-	BOOST_CHECK_EQUAL(feedInfo.GetDescription(), description);
-	BOOST_CHECK_EQUAL(feedInfo.GetFilename(), filename);
-	BOOST_CHECK_EQUAL(feedInfo.GetTitle(), filename);
-	BOOST_CHECK_EQUAL(feedInfo.GetSize(), 7445312955);
+	{
+		FeedItemInfo& feedInfo = items->at(0);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), filename);
+		BOOST_CHECK_EQUAL(feedInfo.GetFilename(), filename);
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies>HD"));
+		BOOST_CHECK_EQUAL(feedInfo.GetTime(), 1701668883);
+		BOOST_CHECK_EQUAL(feedInfo.GetEpisode(), std::string("1"));
+		BOOST_CHECK_EQUAL(feedInfo.GetEpisodeNum(), 1);
+		BOOST_CHECK_EQUAL(feedInfo.GetSeason(), std::string("S03"));
+		BOOST_CHECK_EQUAL(feedInfo.GetSeasonNum(), 3);
+		BOOST_CHECK_EQUAL(feedInfo.GetTvmazeId(), 33877);
+		BOOST_CHECK_EQUAL(feedInfo.GetTvdbId(), 33877);
+		BOOST_CHECK_EQUAL(feedInfo.GetRageId(), 33877);
+		BOOST_CHECK_EQUAL(feedInfo.GetImdbId(), 42054);
+		BOOST_CHECK_EQUAL(feedInfo.GetUrl(), std::string("https://indexer.com/getnzb/nzb.nzb"));
+		BOOST_CHECK_EQUAL(feedInfo.GetDescription(), description);
+		BOOST_CHECK_EQUAL(feedInfo.GetSize(), 7445312955);
+	}
+
+	{
+		FeedItemInfo& feedInfo = items->at(1);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), std::string("Deep.Path.Item"));
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies>HD>4K"));
+	}
+
+	{
+		FeedItemInfo& feedInfo = items->at(2);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), std::string("Spaced.Category.Item"));
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies>HD"));
+	}
+
+	{
+		FeedItemInfo& feedInfo = items->at(3);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), std::string("Empty.Category.Item"));
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string(""));
+	}
+
+	{
+		FeedItemInfo& feedInfo = items->at(4);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), std::string("Preserved.Spaces.Item"));
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("My Movies"));
+	}
+
+	{
+		FeedItemInfo& feedInfo = items->at(5);
+		BOOST_CHECK_EQUAL(feedInfo.GetTitle(), std::string("Literal.Gt.Item"));
+		BOOST_CHECK_EQUAL(feedInfo.GetCategory(), std::string("Movies > HD"));
+	}
 
 	xmlCleanupParser();
 }

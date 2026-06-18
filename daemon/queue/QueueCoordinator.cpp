@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -213,11 +213,19 @@ void QueueCoordinator::Run()
 			if (hasMoreArticles && canProceed && (!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
 			{
 				NntpConnection* connection = nullptr;
-				NewsServer* desiredServer = g_ServerPool->GetServerById(fileInfo->GetNzbInfo()->GetDesiredServerId());
-
-				if (desiredServer)
+			
+				if (fileInfo->GetNzbInfo()->HasDesiredServer())
 				{
-					connection = g_ServerPool->GetConnection(desiredServer->GetLevel(), desiredServer, nullptr);
+					int desiredServerId = fileInfo->GetNzbInfo()->GetDesiredServerId();
+					NewsServer* desiredServer = g_ServerPool->GetServerById(desiredServerId);
+					if (desiredServer)
+					{
+						connection = g_ServerPool->GetConnection(desiredServer->GetNormLevel(), desiredServer, nullptr);
+					}
+					else
+					{
+						connection = g_ServerPool->GetConnection(0, nullptr, nullptr);
+					}
 				}
 				else
 				{
@@ -230,6 +238,11 @@ void QueueCoordinator::Run()
 					articeDownloadsRunning = true;
 					downloadStarted = true;
 					StartArticleDownload(fileInfo, articleInfo, connection);
+				}
+				else if (fileInfo->GetNzbInfo()->HasDesiredServer())
+				{
+					debug("Could not start download for %s: desired server %i has no available connections",
+						fileInfo->GetNzbInfo()->GetName(), fileInfo->GetNzbInfo()->GetDesiredServerId());
 				}
 			}
 		}

@@ -673,10 +673,11 @@ public:
 	int GetDesiredServerId() { return m_desiredServerId; }
 	bool GetSkipScriptProcessing() { return m_skipScriptProcessing; }
 	void SetSkipScriptProcessing(bool skip) { m_skipScriptProcessing = skip; }
-	void SetSkipDiskWrite(bool skipWrite) { m_scipDiskWrite = skipWrite; }
-	bool GetSkipDiskWrite() { return m_scipDiskWrite; }
+	void SetSkipDiskWrite(bool skipWrite) { m_skipDiskWrite = skipWrite; }
+	bool GetSkipDiskWrite() { return m_skipDiskWrite; }
 	void SetAutoCategory(bool autoCategory) { m_autoCategory = autoCategory; }
 	bool GetAutoCategory() const { return m_autoCategory; }
+	bool HasDesiredServer() const { return m_desiredServerId > 0; }
 
 	static const int FORCE_PRIORITY = 900;
 
@@ -777,7 +778,7 @@ private:
 	Thread* m_unpackThread = nullptr;
 	int m_desiredServerId = 0;
 	bool m_skipScriptProcessing = false;
-	bool m_scipDiskWrite = false;
+	bool m_skipDiskWrite = false;
 	bool m_autoCategory = false;
 
 	static int m_idGen;

@@ -58,8 +58,8 @@ $ProgressPreference = "SilentlyContinue"
 Function DownloadUnpackers {
     $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
     $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
-    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-720.exe"
-    $Url7Z="https://www.7-zip.org/a/7z2600-extra.7z"
+    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-722.exe"
+    $Url7Z="https://github.com/ip7z/7zip/releases/download/26.01/7z2601-extra.7z"
 
     $ImageDir="$ToolsRoot\image"
     Write-Host "Downloading unpackers to $ImageDir"
@@ -157,9 +157,6 @@ Function PrepareFiles {
     & $Sed -e 's|ConfigTemplate=.*|# ConfigTemplate=${AppDir}\\nzbget.conf.template|' -i $Config
     & $Sed -e 's|DaemonUsername=.*|# DaemonUsername=|' -i $Config
     & $Sed -e 's|UMask=.*|# UMask=|' -i $Config
-
-    New-Item -ItemType Directory "$PackageDir\scripts" | Out-Null
-    Copy-Item "scripts\*" "$PackageDir\scripts"
 
     Copy-Item "$ToolsRoot\image\32\*" "$PackageDir\32"
     Copy-Item "$ToolsRoot\image\64\*" "$PackageDir\64"

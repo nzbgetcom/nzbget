@@ -264,6 +264,7 @@ public:
 	bool SetWriteBuffer(int size);
 	bool Flush();
 	bool Sync(CString& errmsg);
+	int GetFileDescriptor() const { return m_file ? fileno(m_file) : -1; }
 
 private:
 	FILE* m_file = nullptr;

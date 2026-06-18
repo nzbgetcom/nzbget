@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2005 Bo Cordes Petersen <placebodk@sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -109,7 +110,7 @@ bool RemoteClient::ReceiveBoolResponse()
  * Sends a message to the running nzbget process.
  */
 bool RemoteClient::RequestServerDownload(const char* nzbFilename, const char* nzbContent,
-	const char* category, bool addFirst, bool addPaused, int priority,
+	const char* category, bool autoCategory, bool addFirst, bool addPaused, int priority,
 	const char* dupeKey, int dupeMode, int dupeScore)
 {
 	// Read the file into the buffer
@@ -141,6 +142,7 @@ bool RemoteClient::RequestServerDownload(const char* nzbFilename, const char* nz
 		DownloadRequest.m_dupeMode = htonl(dupeMode);
 		DownloadRequest.m_dupeScore = htonl(dupeScore);
 		DownloadRequest.m_trailingDataLength = htonl(length);
+		DownloadRequest.m_autoCategory = htonl(autoCategory);
 
 		DownloadRequest.m_nzbFilename[0] = '\0';
 		if (!Util::EmptyStr(nzbFilename))

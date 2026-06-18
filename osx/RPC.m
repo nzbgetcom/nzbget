@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.net>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 #import <Cocoa/Cocoa.h>
@@ -33,6 +34,23 @@ NSString* rpcUrl;
 	return self;
 }
 
+- (id)initWithMethod:(NSString*)method
+			  params:(NSArray*)params
+			receiver:(id)receiver
+			 success:(SEL)successCallback
+			 failure:(SEL)failureCallback {
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:rpcUrl]];
+	[request setHTTPMethod:@"POST"];
+	[request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+	
+	NSDictionary *reqObj = @{ @"version": @"1.1", @"method": method, @"params": params ?: @[] };
+	NSData *reqData = [NSJSONSerialization dataWithJSONObject:reqObj options:0 error:nil];
+	[request setHTTPBody:reqData];
+	
+	self = [super initWithURLRequest:request receiver:receiver success:successCallback failure:failureCallback];
+	return self;
+}
+
 + (void)setRpcUrl:(NSString*)url {
 	rpcUrl = url;
 }
@@ -48,6 +66,7 @@ NSString* rpcUrl;
 		/* JSON was malformed, act appropriately here */
 		failureCode = 999;
 		[self failure];
+		return;
 	}
 
 	id result = [dataObj valueForKey:@"result"];

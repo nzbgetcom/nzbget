@@ -106,6 +106,11 @@ std::string DirectParLoader::GetSafeLocalFilename(std::string filename)
 
 void DirectParLoader::StartLoader(DirectRenamer* owner, NzbInfo* nzbInfo)
 {
+	if (nzbInfo->GetSkipDiskWrite() || g_Options->GetSkipWrite())
+	{
+		return;
+	}
+
 	nzbInfo->PrintMessage(Message::mkInfo, "Directly checking renamed files for %s", nzbInfo->GetName());
 
 	DirectParLoader* directParLoader = new DirectParLoader();
@@ -137,7 +142,7 @@ void DirectParLoader::Run()
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
 	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
-	if (nzbInfo)
+	if (nzbInfo && !nzbInfo->GetSkipDiskWrite() && !g_Options->GetSkipWrite())
 	{
 		// nzb is still in queue
 		m_owner->RenameFiles(downloadQueue, nzbInfo, &m_parHashes);
