@@ -167,6 +167,11 @@ var History = (new function($)
 
 	this.redraw = function(force)
 	{
+		if (!Status.status)
+		{
+			return;
+		}
+
 		if (cached && !force)
 		{
 			return;
