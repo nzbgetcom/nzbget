@@ -815,6 +815,13 @@ var EditUI = (new function($)
 	this.fillServStats = function(table, editItem)
 	{
 		var data = [];
+
+		if (!Status.status || !Status.status.NewsServers)
+		{
+			table.fasttable('update', data);
+			return;
+		}
+
 		for (var i=0; i < Status.status.NewsServers.length; i++)
 		{
 			var server = Status.status.NewsServers[i];
@@ -1271,7 +1278,7 @@ var DownloadsMultiDialog = (new function($)
 		var size = Util.formatSizeMB(FileSizeMB, FileSizeLo);
 		var remaining = Util.formatSizeMB(RemainingSizeMB-PausedSizeMB, RemainingSizeLo-PausedSizeLo);
 		var unpausedSize = Util.formatSizeMB(PausedSizeMB, PausedSizeLo);
-		var estimated = paused ? '' : (Status.status.DownloadRate > 0 ? Util.formatTimeHMS((RemainingSizeMB-PausedSizeMB)*1024/(Status.status.DownloadRate/1024)) : '');
+		var estimated = paused ? '' : (Status.status && Status.status.DownloadRate > 0 ? Util.formatTimeHMS((RemainingSizeMB-PausedSizeMB)*1024/(Status.status.DownloadRate/1024)) : '');
 
 		var table = '';
 		table += '<tr><td>Total</td><td class="text-right">' + size + '</td></tr>';

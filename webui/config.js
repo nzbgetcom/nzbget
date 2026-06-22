@@ -2867,7 +2867,11 @@ var ConfigBackupRestore = (new function($)
 
 	this.init = function(options)
 	{
-		$('#Config_RestoreInput')[0].addEventListener('change', restoreSelectHandler, false);
+		var restoreInput = $('#Config_RestoreInput')[0];
+		if (restoreInput)
+		{
+			restoreInput.addEventListener('change', restoreSelectHandler, false);
+		}
 	}
 
 	/*** BACKUP ********************************************************************/

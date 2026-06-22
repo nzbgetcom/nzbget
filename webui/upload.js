@@ -48,16 +48,22 @@ var Upload = (new function($)
 	this.init = function()
 	{
 		var target = $('#DownloadsTab')[0];
-		target.addEventListener('dragenter', bodyDragOver);
-		target.addEventListener('dragover', bodyDragOver);
-		target.addEventListener('dragleave', bodyDragLeave);
-		target.addEventListener('drop', bodyDrop, false);
+		if (target)
+		{
+			target.addEventListener('dragenter', bodyDragOver);
+			target.addEventListener('dragover', bodyDragOver);
+			target.addEventListener('dragleave', bodyDragLeave);
+			target.addEventListener('drop', bodyDrop, false);
+		}
 
 		target = $('#AddDialog_Target')[0];
-		target.addEventListener('dragenter', dialogDragOver);
-		target.addEventListener('dragover', dialogDragOver);
-		target.addEventListener('dragleave', dialogDragLeave);
-		target.addEventListener('drop', dialogDrop, false);
+		if (target)
+		{
+			target.addEventListener('dragenter', dialogDragOver);
+			target.addEventListener('dragover', dialogDragOver);
+			target.addEventListener('dragleave', dialogDragLeave);
+			target.addEventListener('drop', dialogDrop, false);
+		}
 
 		$AddDialog = $('#AddDialog');
 
@@ -94,7 +100,11 @@ var Upload = (new function($)
 
 		$('#AddDialog_Select').click(selectFiles);
 		$('#AddDialog_Submit').click(submit);
-		$('#AddDialog_Input')[0].addEventListener("change", fileSelectHandler, false);
+		var inp = $('#AddDialog_Input')[0];
+		if (inp)
+		{
+			inp.addEventListener("change", fileSelectHandler, false);
+		}
 		$('#AddDialog_Scan').click(scan);
 		
 		AddParamDialog.init();
