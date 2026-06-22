@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,12 +24,10 @@
 #define SERVERPOOL_H
 
 #include "Log.h"
-#include "Container.h"
-#include "Thread.h"
 #include "NewsServer.h"
 #include "NntpConnection.h"
 
-class ServerPool : public Debuggable
+class ServerPool final : public Debuggable
 {
 public:
 	typedef std::vector<NewsServer*> RawServerList;
@@ -50,10 +48,10 @@ public:
 	bool IsServerBlocked(NewsServer* newsServer);
 
 protected:
-	virtual void LogDebugInfo();
+	void LogDebugInfo() override;
 
 private:
-	class PooledConnection : public NntpConnection
+	class PooledConnection final : public NntpConnection
 	{
 	public:
 		using NntpConnection::NntpConnection;
@@ -62,8 +60,8 @@ private:
 		time_t GetFreeTime() { return m_freeTime; }
 		void SetFreeTimeNow();
 	private:
-		bool m_inUse = false;
 		time_t m_freeTime = 0;
+		bool m_inUse = false;
 	};
 
 	typedef std::vector<int> Levels;
@@ -73,8 +71,8 @@ private:
 	RawServerList m_sortedServers;
 	Connections m_connections;
 	Levels m_levels;
+	std::mutex m_connectionsMutex;
 	int m_maxNormLevel = 0;
-	Mutex m_connectionsMutex;
 	int m_timeout = 60;
 	int m_retryInterval = 0;
 	int m_generation = 0;

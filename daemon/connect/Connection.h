@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ public:
 	static void Init();
 	static void Final();
 	virtual bool Connect();
-	virtual bool Disconnect();
+	virtual void Disconnect();
 	bool Bind();
 	bool Send(const char* buffer, int size);
 	bool Recv(char* buffer, int size);
@@ -130,7 +130,7 @@ protected:
 	virtual void PrintError(const char* errMsg);
 	int GetLastNetworkError();
 	bool DoConnect();
-	bool DoDisconnect();
+	void DoDisconnect();
 	bool InitSocketOpts(SOCKET socket);
 	bool ConnectWithTimeout(void* address, int address_len);
 #ifndef HAVE_GETADDRINFO

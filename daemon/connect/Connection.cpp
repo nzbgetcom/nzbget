@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -172,27 +172,26 @@ bool Connection::Connect()
 	else
 	{
 		DoDisconnect();
+		m_status = csDisconnected;
 	}
 
 	return res;
 }
 
-bool Connection::Disconnect()
+void Connection::Disconnect()
 {
 	debug("Disconnecting");
 
 	if (m_status == csDisconnected)
 	{
-		return true;
+		return;
 	}
 
-	bool res = DoDisconnect();
+	DoDisconnect();
 
 	m_status = csDisconnected;
 	m_socket = INVALID_SOCKET;
 	m_bufAvail = 0;
-
-	return res;
 }
 
 bool Connection::Bind()
@@ -853,7 +852,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	return true;
 }
 
-bool Connection::DoDisconnect()
+void Connection::DoDisconnect()
 {
 	debug("Do disconnecting");
 
@@ -883,7 +882,6 @@ bool Connection::DoDisconnect()
 	}
 
 	m_status = csDisconnected;
-	return true;
 }
 
 void Connection::ReadBuffer(char** buffer, int *bufLen)

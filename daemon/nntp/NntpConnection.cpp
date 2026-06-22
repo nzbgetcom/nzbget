@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -195,6 +196,11 @@ bool NntpConnection::Connect()
 		return true;
 	}
 
+	if (m_newsServer)
+	{
+		m_newsServer->DelayConnect();
+	}
+
 	if (!Connection::Connect())
 	{
 		return false;
@@ -227,14 +233,14 @@ bool NntpConnection::Connect()
 	return true;
 }
 
-bool NntpConnection::Disconnect()
+void NntpConnection::Disconnect()
 {
 	if (m_status == csConnected)
 	{
 		Request("quit\r\n");
 		m_activeGroup = nullptr;
 	}
-	return Connection::Disconnect();
+	Connection::Disconnect();
 }
 
 void NntpConnection::ReportErrorAnswer(const char* msgPrefix, const char* answer)

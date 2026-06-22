@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2015 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #ifndef NEWSSERVER_H
 #define NEWSSERVER_H
 
+#include <chrono>
+#include <mutex>
 #include "NString.h"
 
 class NewsServer
@@ -62,6 +64,14 @@ public:
 	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
 	unsigned int GetCertVerificationLevel() const { return m_certVerificationfLevel; }
 
+	/**
+	 * @brief Delays the connection attempt to enforce a minimum interval of 15ms between connections.
+	 * 
+	 * This rate limiter prevents "502 Too Many Connections" and "481 Exceeded Maximum Connections"
+	 * errors on Usenet servers by spacing out rapid connection attempts.
+	 */
+	void DelayConnect();
+
 private:
 	int m_id;
 	int m_stateId = 0;
@@ -83,6 +93,9 @@ private:
 	bool m_optional = false;
 	time_t m_blockTime = 0;
 	unsigned int m_certVerificationfLevel;
+	std::chrono::steady_clock::time_point m_lastConnectTime{std::chrono::steady_clock::time_point::min()};
+	std::chrono::milliseconds m_connectionDelay{40};
+	std::mutex m_connectMutex;
 };
 
 typedef std::vector<std::unique_ptr<NewsServer>> Servers;

@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,9 @@
 #include "nzbget.h"
 #include "ServerPool.h"
 #include "Util.h"
+#include "QueueCoordinator.h"
 
-static const int CONNECTION_HOLD_SECODNS = 5;
+static constexpr int CONNECTION_HOLD_SECONDS = 30;
 
 void ServerPool::PooledConnection::SetFreeTimeNow()
 {
@@ -113,7 +114,7 @@ void ServerPool::InitConnections()
 {
 	debug("Initializing connections in ServerPool");
 
-	Guard guard(m_connectionsMutex);
+	std::lock_guard<std::mutex> guard(m_connectionsMutex);
 
 	NormalizeLevels();
 	m_levels.clear();
@@ -162,7 +163,7 @@ void ServerPool::InitConnections()
  */
 NntpConnection* ServerPool::GetConnection(int level, NewsServer* wantServer, RawServerList* ignoreServers)
 {
-	Guard guard(m_connectionsMutex);
+	std::lock_guard<std::mutex> guard(m_connectionsMutex);
 
 	for (; level < (int)m_levels.size() && m_levels[level] > 0; level++)
 	{
@@ -256,7 +257,7 @@ void ServerPool::FreeConnection(NntpConnection* connection, bool used)
 		debug("Freeing used connection");
 	}
 
-	Guard guard(m_connectionsMutex);
+	std::lock_guard<std::mutex> guard(m_connectionsMutex);
 
 	((PooledConnection*)connection)->SetInUse(false);
 	if (used)
@@ -274,7 +275,7 @@ void ServerPool::BlockServer(NewsServer* newsServer)
 {
 	bool newBlock = false;
 	{
-		Guard guard(m_connectionsMutex);
+		std::lock_guard<std::mutex> guard(m_connectionsMutex);
 		time_t curTime = Util::CurrentTime();
 		newBlock = newsServer->GetBlockTime() != curTime;
 		newsServer->SetBlockTime(curTime);
@@ -301,7 +302,7 @@ bool ServerPool::IsServerBlocked(NewsServer* newsServer)
 
 void ServerPool::CloseUnusedConnections()
 {
-	Guard guard(m_connectionsMutex);
+	std::lock_guard<std::mutex> guard(m_connectionsMutex);
 
 	time_t curtime = Util::CurrentTime();
 
@@ -350,9 +351,11 @@ void ServerPool::CloseUnusedConnections()
 			}
 		}
 
-		// if there are no in-use connections on the level and the hold time out has
-		// expired - close all connections of the level.
-		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECODNS)
+		// If there are no in-use connections on the level and the hold timeout has expired,
+		// close all connections of that level. For the primary level (level 0), we keep
+		// connections alive as long as the queue has more jobs
+		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECONDS &&
+			(level > 0 || !g_QueueCoordinator || !g_QueueCoordinator->HasMoreJobs()))
 		{
 			for (PooledConnection* connection : &m_connections)
 			{
@@ -381,7 +384,7 @@ void ServerPool::LogDebugInfo()
 
 	info("    Max-Level: %i", m_maxNormLevel);
 
-	Guard guard(m_connectionsMutex);
+	std::lock_guard<std::mutex> guard(m_connectionsMutex);
 
 	time_t curTime = Util::CurrentTime();
 

@@ -3,6 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,8 +31,8 @@ class NntpConnection : public Connection
 {
 public:
 	NntpConnection(NewsServer* newsServer);
-	virtual bool Connect();
-	virtual bool Disconnect();
+	bool Connect() override;
+	void Disconnect() override;
 	NewsServer* GetNewsServer() { return m_newsServer; }
 	const char* Request(const char* req);
 	const char* JoinGroup(const char* grp);

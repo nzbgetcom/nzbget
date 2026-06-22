@@ -283,7 +283,7 @@ void ArticleDownloader::Run()
 		}
 	}
 
-	FreeConnection(status == adFinished);
+	FreeConnection(m_connection && m_connection->GetStatus() == Connection::csConnected);
 
 	if (m_articleWriter.GetDuplicate())
 	{

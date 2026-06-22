@@ -327,4 +327,20 @@ BOOST_AUTO_TEST_CASE(VerifyNormLevelCorrectness)
 	if (con) pool.FreeConnection(con, false);
 }
 
+BOOST_AUTO_TEST_CASE(NewsServerDelayConnectTest)
+{
+	NewsServer server(1, true, "test", "localhost", 119, 0, "", "", false, false, nullptr, 1, 0, 0, 0, false, Options::cvStrict);
+
+	auto start = std::chrono::steady_clock::now();
+	server.DelayConnect();
+	auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+
+	start = std::chrono::steady_clock::now();
+	server.DelayConnect();
+	auto duration2 = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start).count();
+
+	BOOST_CHECK(duration1 < 50);
+	BOOST_CHECK(duration2 >= 5);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
