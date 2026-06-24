@@ -4215,7 +4215,7 @@
     "description": "Description for the option Unpack DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes."
   },
   "config_desc_directunpack": {
-    "message": "Directly unpack files during downloading.\n\nWhen active the files are unpacked during downloading instead of post-processing\nstage. This works only for healthy downloads. Damaged downloads are unpacked\nas usual during post-processing stage after par-repair.\n\nNOTE: This option requires unpack to be enabled in general via option <Unpack>.\nNOTE: For best results also activate option <DirectRename> and option <ReorderFiles>.",
+    "message": "Directly unpack files during downloading.\n\nWhen active the files are unpacked during downloading instead of post-processing\nstage. This works only for healthy downloads. Damaged downloads are unpacked\nas usual during post-processing stage after par-repair.\n\nNOTE: This option requires unpack to be enabled in general via option <Unpack>.\nNOTE: For best results also activate option <DirectRename> and option <ReorderFiles>.\nNOTE: DirectUnpack only works with RAR archives. 7z and other formats are not supported.",
     "description": "Description for the option DirectUnpack DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_usetempunpackdir": {
