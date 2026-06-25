@@ -860,7 +860,15 @@ bool Util::StrCaseCmp(const std::string& a, const std::string& b)
 		return std::tolower(a) == std::tolower(b);
 	};
 
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+}
+
+std::string Util::ToLower(std::string_view sv)
+{
+	std::string result(sv);
+	std::transform(result.begin(), result.end(), result.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	return result;
 }
 
 // prevent PC from going to sleep

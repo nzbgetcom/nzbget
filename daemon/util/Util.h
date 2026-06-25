@@ -115,6 +115,9 @@ public:
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
 	static bool AlphaNum(const char* str);
 
+	/* Returns a lowercase copy of the input string. */
+	static std::string ToLower(std::string_view sv);
+
 	template<typename T, typename U>
 	static constexpr bool CmpEqual(T t, U u) noexcept
 	{

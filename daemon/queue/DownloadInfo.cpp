@@ -229,6 +229,19 @@ CString NzbInfo::MakeNiceUrlName(const char* urlStr, const char* nzbFilename)
 	return urlNicename;
 }
 
+const char* NzbInfo::GetMetaName()
+{
+	if (NzbParameter* metaNameParam = m_ppParameters.Find("*MetaName"))
+	{
+		const char* val = metaNameParam->GetValue();
+		if (val && val[0] != '\0')
+		{
+			return val;
+		}
+	}
+	return m_name;
+}
+
 void NzbInfo::BuildDestDirName()
 {
 	if (Util::EmptyStr(g_Options->GetInterDir()))

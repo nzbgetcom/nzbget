@@ -42,6 +42,7 @@ namespace PostUnpackRenamer
 		std::string m_name;
 		std::string m_dstDir;
 		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
+		bool IsDirectDownload(const std::string& dir, const std::string& srcFileOrDir);
 	};
 }
 

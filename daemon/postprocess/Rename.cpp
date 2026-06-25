@@ -23,6 +23,8 @@
 #include "DiskState.h"
 #include "Log.h"
 #include "FileSystem.h"
+#include "Deobfuscation.h"
+#include "FileTypes.h"
 #include "Rename.h"
 
 #ifndef DISABLE_PARCHECK
@@ -222,4 +224,176 @@ void RenameController::RegisterRenamedFile(const char* oldFilename, const char* 
 		}
 	}
 	m_renamedCount++;
+}
+
+namespace
+{
+	bool IsSampleStem(std::string_view stem)
+	{
+		return Util::EndsWith(stem.data(), "-sample", false) ||
+			   Util::EndsWith(stem.data(), ".sample", false) ||
+			   Util::EndsWith(stem.data(), "_sample", false);
+	}
+}
+
+/**
+ * @brief Renames excessively obfuscated directly-downloaded files.
+ * 
+ * Runs as a post-processing stage after ParRename and RarRename. It:
+ * 1. Iterates over files in the download destination directory.
+ * 2. Skips archives, parity files, and extensions in RenameIgnoreExt.
+ * 3. Renames obfuscated files to the NZB metaname.
+ * 4. Preserves subtitle language tags (e.g., .eng.srt) and sample suffixes.
+ * 5. Handles filename collisions by appending a counter or the original stem.
+ * 6. Renames corresponding stale hardlinks in finalDir if InterDir is set.
+ */
+int RenameObfuscatedFiles(PostInfo* postInfo)
+{
+	NzbInfo* nzbInfo = postInfo->GetNzbInfo();
+	const char* destDir = nzbInfo->GetDestDir();
+	const char* metaname = nzbInfo->GetMetaName();
+
+	if (Util::EmptyStr(metaname) || Deobfuscation::IsExcessivelyObfuscated(metaname))
+	{
+		return 0;
+	}
+
+	int renamedCount = 0;
+	std::unordered_set<std::string> usedNames;
+
+	fs::path destPath(destDir ? destDir : "");
+	if (!fs::is_directory(destPath))
+	{
+		return 0;
+	}
+
+	for (const auto& entry : fs::directory_iterator(destPath))
+	{
+		if (!fs::is_regular_file(entry.status()))
+		{
+			continue;
+		}
+
+		std::string filename = entry.path().filename().string();
+		fs::path fullPath = entry.path();
+
+		if (!Deobfuscation::IsExcessivelyObfuscated(filename.c_str()))
+		{
+			continue;
+		}
+
+		std::string ext = entry.path().extension().string();
+		if (ext.empty() ||
+			FileTypes::IsArchiveExt(ext) ||
+			FileTypes::IsDiscStructureExt(ext) ||
+			FileTypes::IsParityExt(ext))
+		{
+			continue;
+		}
+
+		if (Util::MatchFileExt(filename.c_str(), g_Options->GetRenameIgnoreExt(), ","))
+		{
+			continue;
+		}
+
+		std::string stem = filename.substr(0, filename.size() - ext.size());
+		std::string newName(metaname);
+
+		if (FileTypes::IsSubtitleExt(ext))
+		{
+			// Check for two-part extension like ".eng.srt", ".dut.sub"
+			if (stem.size() > 4)
+			{
+				size_t dotPos = stem.rfind('.');
+				if (dotPos != std::string::npos && dotPos > 0)
+				{
+					std::string langTag = stem.substr(dotPos + 1);
+				if (langTag.size() >= 2 && langTag.size() <= 4 &&
+					std::all_of(langTag.begin(), langTag.end(),
+						[](unsigned char c) { return std::isalpha(c); }))
+					{
+						// Language tag found: "a1b2c3.eng.srt" → "metaname.eng.srt"
+						newName = std::string(metaname) + "." + langTag + ext;
+					}
+					else
+					{
+						newName = std::string(metaname) + ext;
+					}
+				}
+				else
+				{
+					newName = std::string(metaname) + ext;
+				}
+			}
+			else
+			{
+				newName = std::string(metaname) + ext;
+			}
+		}
+		else if (IsSampleStem(stem))
+		{
+			newName = std::string(metaname) + "-sample" + ext;
+		}
+		else
+		{
+			newName = std::string(metaname) + ext;
+		}
+
+		// Ensure unique filename within this batch and on disk
+		std::string candidate = newName;
+		int counter = 0;
+		while (usedNames.count(candidate) || fs::exists(destPath / candidate))
+		{
+			++counter;
+			if (FileTypes::IsSubtitleExt(ext) && stem.size() > 2)
+			{
+				candidate = std::string(metaname) + "." + stem + ext;
+			}
+			else
+			{
+				candidate = std::string(metaname) + "(" + std::to_string(counter) + ")" + ext;
+			}
+		}
+		usedNames.insert(candidate);
+
+		fs::path newPath = destPath / candidate;
+		fs::error_code ec;
+		fs::move_file(fullPath, newPath, ec);
+		if (ec)
+		{
+			continue;
+		}
+
+		// Update CompletedFile in-memory
+		for (CompletedFile& cf : *nzbInfo->GetCompletedFiles())
+		{
+			if (!strcasecmp(cf.GetFilename(), filename.c_str()))
+			{
+				if (Util::EmptyStr(cf.GetOrigname()))
+				{
+					cf.SetOrigname(cf.GetFilename());
+				}
+				cf.SetFilename(candidate.c_str());
+				break;
+			}
+		}
+
+		// If InterDir is set, DirectRenamer already hardlinked this file
+		// to finalDir with the obfuscated name. Rename that hardlink too.
+		if (g_Options->GetHardLinking() && !g_Options->GetInterDirPath().empty())
+		{
+			fs::path finalDirPath(nzbInfo->BuildFinalDirName().Str());
+			fs::path oldFinalPath = finalDirPath / filename;
+			fs::error_code ignore;
+			if (fs::exists(oldFinalPath, ignore))
+			{
+				fs::path newFinalPath = finalDirPath / candidate;
+				fs::move_file(oldFinalPath, newFinalPath, ec);
+			}
+		}
+
+		++renamedCount;
+	}
+
+	return renamedCount;
 }

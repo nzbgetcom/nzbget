@@ -495,6 +495,7 @@ public:
 	const char* GetCategory() { return m_category; }
 	void SetCategory(const char* category) { m_category = category; }
 	const char* GetName() { return m_name; }
+	const char* GetMetaName();
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetName(const char* name) { m_name = name; }
@@ -561,6 +562,8 @@ public:
 	void SetParRenameStatus(EPostRenameStatus renameStatus) { m_parRenameStatus = renameStatus; }
 	EPostRenameStatus GetRarRenameStatus() { return m_rarRenameStatus; }
 	void SetRarRenameStatus(EPostRenameStatus renameStatus) { m_rarRenameStatus = renameStatus; }
+	EPostRenameStatus GetObfuscatedRenameStatus() { return m_obfuscatedRenameStatus; }
+	void SetObfuscatedRenameStatus(EPostRenameStatus renameStatus) { m_obfuscatedRenameStatus = renameStatus; }
 	EParStatus GetParStatus() { return m_parStatus; }
 	void SetParStatus(EParStatus parStatus) { m_parStatus = parStatus; }
 	EDirectUnpackStatus GetDirectUnpackStatus() { return m_directUnpackStatus; }
@@ -721,6 +724,7 @@ private:
 	EDirectRenameStatus m_directRenameStatus = tsNone;
 	EPostRenameStatus m_parRenameStatus = rsNone;
 	EPostRenameStatus m_rarRenameStatus = rsNone;
+	EPostRenameStatus m_obfuscatedRenameStatus = rsNone;
 	EParStatus m_parStatus = psNone;
 	EDirectUnpackStatus m_directUnpackStatus = nsNone;
 	EPostUnpackStatus m_unpackStatus = usNone;
@@ -804,6 +808,7 @@ public:
 		ptVerifyingRepaired,
 		ptParRenaming,
 		ptRarRenaming,
+		ptObfuscatedRenaming,
 		ptUnpacking,
 		ptCleaningUp,
 		ptMoving,

@@ -230,31 +230,6 @@ bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 }
 #endif
 
-bool FileSystem::CreateHardLink(const char *from, const char *to, CString& errmsg)
-{
-	const auto [newPath, _] = SplitPathAndFilename(to);
-	if (!ForceDirectories(newPath.c_str(), errmsg))
-	{
-		return false;
-	}
-
-#ifdef WIN32
-	if (!CreateHardLinkW(UtfPathToWidePath(to), UtfPathToWidePath(from), nullptr))
-	{
-		errmsg = GetLastErrorMessage();
-		return false;
-	}
-#else
-	if (link(from, to) != 0)
-	{
-		errmsg = GetLastErrorMessage();
-		return false;
-	}
-#endif
-
-	return true;
-}
-
 CString FileSystem::GetCurrentDirectory()
 {
 #ifdef WIN32
@@ -713,13 +688,13 @@ std::string FileSystem::EscapePathForShell(const std::string& path)
 	return "\"" + path + "\"";
 }
 
-std::optional<std::string> FileSystem::GetFileExtension(const std::string& filename)
+std::optional<std::string> FileSystem::GetFileExtension(std::string_view filename)
 {
 	size_t extIdx = filename.rfind(".");
-	if (extIdx == std::string::npos)
+	if (extIdx == std::string_view::npos)
 		return std::nullopt;
 
-	return filename.substr(extIdx);
+	return std::string(filename.substr(extIdx));
 }
 
 /* Delete directory which is empty or contains only hidden files or directories (whose names start with dot) */

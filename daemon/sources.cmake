@@ -102,6 +102,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileTypes.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp

@@ -40,11 +40,11 @@ public:
 	};
 
 	RenameController();
-	virtual void Run();
+	void Run() override;
 	static void StartJob(PostInfo* postInfo, EJobKind kind);
 
 protected:
-	virtual void AddMessage(Message::EKind kind, const char* text);
+	void AddMessage(Message::EKind kind, const char* text) override;
 
 private:
 	PostInfo* m_postInfo;
@@ -53,16 +53,16 @@ private:
 	EJobKind m_kind;
 
 #ifndef DISABLE_PARCHECK
-	class PostParRenamer : public ParRenamer
+	class PostParRenamer final : public ParRenamer
 	{
 	protected:
-		virtual void UpdateProgress() { m_owner->UpdateParRenameProgress(); }
-		virtual void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3);
-		virtual void RegisterParredFile(const char* filename) 
+		void UpdateProgress() override { m_owner->UpdateParRenameProgress(); }
+		void PrintMessage(Message::EKind kind, const char* format, ...) override PRINTF_SYNTAX(3);
+		void RegisterParredFile(const char* filename) override
 			{ m_owner->m_postInfo->GetParredFiles()->push_back(filename); }
-		virtual void RegisterRenamedFile(const char* oldFilename, const char* newFileName) 
+		void RegisterRenamedFile(const char* oldFilename, const char* newFileName) override
 			{ m_owner->RegisterRenamedFile(oldFilename, newFileName); }
-		virtual bool IsStopped() { return m_owner->IsStopped(); };
+		bool IsStopped() override { return m_owner->IsStopped(); }
 	private:
 		RenameController* m_owner;
 		friend class RenameController;
@@ -73,14 +73,14 @@ private:
 	void UpdateParRenameProgress();
 #endif
 
-	class PostRarRenamer : public RarRenamer
+	class PostRarRenamer final : public RarRenamer
 	{
 	protected:
-		virtual void UpdateProgress() { m_owner->UpdateRarRenameProgress(); }
-		virtual void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3);
-		virtual void RegisterRenamedFile(const char* oldFilename, const char* newFilename)
+		void UpdateProgress() override { m_owner->UpdateRarRenameProgress(); }
+		void PrintMessage(Message::EKind kind, const char* format, ...) override PRINTF_SYNTAX(3);
+		void RegisterRenamedFile(const char* oldFilename, const char* newFilename) override
 			{ m_owner->RegisterRenamedFile(oldFilename, newFilename); }
-		virtual bool IsStopped() { return m_owner->IsStopped(); };
+		bool IsStopped() override { return m_owner->IsStopped(); }
 	private:
 		RenameController* m_owner;
 		friend class RenameController;
@@ -94,5 +94,7 @@ private:
 	void RenameCompleted();
 	void RegisterRenamedFile(const char* oldFilename, const char* newFilename);
 };
+
+int RenameObfuscatedFiles(PostInfo* postInfo);
 
 #endif

@@ -30,7 +30,6 @@ namespace PostUnpackRenamer
 	void Controller::StartJob(PostInfo* postInfo)
 	{
 		Controller* controller = new (std::nothrow) Controller();
-
 		if (!controller)
 		{
 			error("Failed to allocate memory for PostUnpackRenamer::Controller");
@@ -47,21 +46,23 @@ namespace PostUnpackRenamer
 
 	void Controller::Run()
 	{
+		std::string renameTargetName;
 		{
 			GuardedDownloadQueue guard = DownloadQueue::Guard();
 
 			m_name = m_postInfo->GetNzbInfo()->GetName();
 			m_dstDir = m_postInfo->GetNzbInfo()->GetDestDir();
+			renameTargetName = m_postInfo->GetNzbInfo()->GetMetaName();
 		}
 
-		std::string infoName = "Post-unpack renaming for " + m_name;
+		std::string infoName = "Post-unpack renaming for " + renameTargetName;
 		SetInfoName(infoName.c_str());
 
-		if (Deobfuscation::IsExcessivelyObfuscated(m_name))
+		if (Deobfuscation::IsExcessivelyObfuscated(renameTargetName))
 		{
 			PrintMessage(Message::mkWarning,
-				"Skipping Post-unpack renaming. NZB filename %s is excessively obfuscated which makes renaming unreliable.",
-				m_name.c_str()
+				"Skipping Post-unpack renaming. Name %s is excessively obfuscated which makes renaming unreliable",
+				renameTargetName.c_str()
 			);
 			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
 				NzbInfo::PostUnpackRenamingStatus::Skipped
@@ -70,7 +71,7 @@ namespace PostUnpackRenamer
 			return;
 		}
 
-		bool ok = RenameFiles(m_dstDir, m_name);
+		bool ok = RenameFiles(m_dstDir, renameTargetName);
 
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		if (ok)
@@ -93,6 +94,7 @@ namespace PostUnpackRenamer
 
 	bool Controller::RenameFiles(const std::string& dir, const std::string& newName)
 	{
+		bool success = true;
 		DirBrowser dirBrowser(dir.c_str());
 		while (const char* fileOrDir = dirBrowser.Next())
 		{
@@ -100,21 +102,30 @@ namespace PostUnpackRenamer
 
 			if (FileSystem::DirectoryExists(srcFileOrDir.c_str()))
 			{
-				RenameFiles(srcFileOrDir, newName);
+				if (!RenameFiles(srcFileOrDir, newName))
+				{
+					success = false;
+				}
+				continue;
+			}
+
+			if (IsDirectDownload(dir, srcFileOrDir))
+			{
 				continue;
 			}
 
 			if (!Deobfuscation::IsExcessivelyObfuscated(fileOrDir))
 			{
 				PrintMessage(Message::mkInfo,
-					"Filename %s is not excessively obfuscated, no renaming needed.",
+					"Filename %s is not excessively obfuscated, no renaming needed",
 					fileOrDir
 				);
 				continue;
 			}
 
-			std::string dstFile = dir + PATH_SEPARATOR + newName;
-			dstFile += FileSystem::GetFileExtension(srcFileOrDir).value_or("");
+			std::string ext = FileSystem::GetFileExtension(srcFileOrDir).value_or("");
+			std::string dstBasename = newName + ext;
+			std::string dstFile = FileSystem::MakeUniqueFilename(dir.c_str(), dstBasename.c_str()).Str();
 
 			if (Util::MatchFileExt(dstFile.c_str(), g_Options->GetRenameIgnoreExt(), ","))
 			{
@@ -123,20 +134,49 @@ namespace PostUnpackRenamer
 
 			if (FileSystem::MoveFile(srcFileOrDir.c_str(), dstFile.c_str()))
 			{
-				PrintMessage(Message::mkInfo, "%s renamed to %s", srcFileOrDir.c_str(), dstFile.c_str());
+				PrintMessage(Message::mkInfo, "%s renamed to %s", fileOrDir, dstBasename.c_str());
 			}
 			else
 			{
 				PrintMessage(Message::mkError,
 					"Could not rename file %s to %s: %s",
-					srcFileOrDir.c_str(),
-					dstFile.c_str(),
+					fileOrDir,
+					dstBasename.c_str(),
 					*FileSystem::GetLastErrorMessage()
 				);
+				success = false;
 			}
 		}
 
-		return true;
+		return success;
+	}
+
+	/**
+	 * @brief Checks if a file was directly downloaded (not extracted from an archive).
+	 * 
+	 * Compares the file path against the list of CompletedFiles in NzbInfo.
+	 * Used to prevent PostUnpackRenamer from double-renaming files that were
+	 * already processed by the pre-unpack RenameObfuscatedFiles stage.
+	 */
+	bool Controller::IsDirectDownload(const std::string& dir, const std::string& srcFileOrDir)
+	{
+		if (dir != m_dstDir)
+		{
+			return false;
+		}
+
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
+		for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+		{
+			std::string completedFilePath = m_dstDir + PATH_SEPARATOR + completedFile.GetFilename();
+			if (completedFilePath == srcFileOrDir)
+			{
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	void Controller::AddMessage(Message::EKind kind, const char* text)

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -795,6 +795,28 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 
+	if (nzbInfo->GetObfuscatedRenameStatus() == NzbInfo::rsNone &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptObfuscatedRenaming);
+		int count = RenameObfuscatedFiles(postInfo);
+		if (count > 0)
+		{
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Renamed %i obfuscated file(s) for %s",
+				count, nzbInfo->GetName());
+			nzbInfo->SetObfuscatedRenameStatus(NzbInfo::rsSuccess);
+		}
+		else
+		{
+			nzbInfo->SetObfuscatedRenameStatus(NzbInfo::rsNothing);
+		}
+
+		postInfo->SetWorking(false);
+
+		return;
+	}
+
 #ifndef DISABLE_PARCHECK
 	if (nzbInfo->GetParStatus() == NzbInfo::psSkipped &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
@@ -859,6 +881,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
 		nzbInfo->GetDestDir() &&
 		nzbInfo->GetName() &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usSkipped &&
 		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
 		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
 		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
@@ -930,6 +953,7 @@ void PrePostProcessor::UpdatePauseState()
 				break;
 
 			case PostInfo::ptRarRenaming:
+			case PostInfo::ptObfuscatedRenaming:
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:

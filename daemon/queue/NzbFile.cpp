@@ -115,7 +115,7 @@ void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 	m_nzbInfo->GetFileList()->Add(std::move(fileInfo));
 }
 
-void NzbFile::ParseSubject(FileInfo* fileInfo, bool TryQuotes)
+void NzbFile::ParseSubject(FileInfo* fileInfo)
 {
 	if (!fileInfo) return;
 
@@ -173,15 +173,7 @@ void NzbFile::BuildFilenames()
 {
 	for (FileInfo* fileInfo : m_nzbInfo->GetFileList())
 	{
-		ParseSubject(fileInfo, true);
-	}
-
-	if (HasDuplicateFilenames())
-	{
-		for (FileInfo* fileInfo : m_nzbInfo->GetFileList())
-		{
-			ParseSubject(fileInfo, false);
-		}
+		ParseSubject(fileInfo);
 	}
 
 	if (HasDuplicateFilenames())
@@ -421,6 +413,7 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 		}
 		m_hasPassword = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("password", atts[1]);
 		m_hasCategory = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("category", atts[1]);
+		m_hasName = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("name", atts[1]);
 	}
 }
 
@@ -463,6 +456,16 @@ void NzbFile::Parse_EndElement(const char *name)
 	else if (!strcmp("meta", name) && m_hasCategory)
 	{
 		m_category = m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasName)
+	{
+		// Extract the clean release name from the NZB's <meta type="name"> tag.
+		// Stores it as "*MetaName" parameter in NzbInfo for the obfuscated renamers.
+		m_metaName = m_tagContent;
+		if (!m_metaName.empty())
+		{
+			m_nzbInfo->GetParameters()->SetParameter("*MetaName", m_metaName.c_str());
+		}
 	}
 
 	m_currentElement.clear();
