@@ -94,7 +94,7 @@ private:
 	time_t m_blockTime = 0;
 	unsigned int m_certVerificationfLevel;
 	std::chrono::steady_clock::time_point m_lastConnectTime{std::chrono::steady_clock::time_point::min()};
-	std::chrono::milliseconds m_connectionDelay{40};
+	std::chrono::milliseconds m_connectionDelay{100};
 	std::mutex m_connectMutex;
 };
 
