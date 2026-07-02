@@ -968,6 +968,10 @@ var DownloadsUI = (new function($)
 
 		if (minLevel === null)
 		{
+			if (!Status.status || !Status.status.NewsServers)
+			{
+				return 0;
+			}
 			for (var i=0; i < Status.status.NewsServers.length; i++)
 			{
 				var server = Status.status.NewsServers[i];

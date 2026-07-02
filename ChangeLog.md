@@ -30,8 +30,10 @@ nzbget-v26.2
     [#793](https://github.com/nzbgetcom/nzbget/pull/793)
     - Fixed macOS dark mode readable text and NZB file association
     [#795](https://github.com/nzbgetcom/nzbget/pull/795)
-    - Resolved text fragmentation issues
+    - Fixed RSS feed text fragmentation causing whitespace loss in element content
     [#796](https://github.com/nzbgetcom/nzbget/pull/796)
+    - Fixed WebUI RSS "Add" dialog ignoring item-level category when `CategorySource` is `NZBFile` or `Auto`
+    [#827](https://github.com/nzbgetcom/nzbget/pull/827)
     - Prevented symlink attacks and TOCTOU races in daemon startup
     [#798](https://github.com/nzbgetcom/nzbget/pull/798)
     - Fixed new-version flag to only trigger on same update channel

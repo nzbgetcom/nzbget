@@ -595,7 +595,7 @@ var FeedFilterDialog = (new function($)
 
 		var filter = $FilterInput.val().replace(/\n/g, '%');
 		RPC.call('previewfeed', [feedId, feedName, feedUrl, filter, feedBacklog, feedPauseNzb, feedCategory, feedPriority,
-			feedInterval, feedScript, true, cacheTimeSec, cacheId], itemsLoaded, feedFailure);
+			feedInterval, feedScript, true, cacheTimeSec, cacheId, feedCategorySource], itemsLoaded, feedFailure);
 
 		setTimeout(function()
 		{

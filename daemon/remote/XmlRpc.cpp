@@ -3317,6 +3317,17 @@ void ViewFeedXmlCommand::Execute()
 		}
 
 		NextParamAsStr(&categorySourceStr);
+		if (categorySourceStr)
+		{
+			if (!strcasecmp(categorySourceStr, "FeedFile"))
+			{
+				categorySource = FeedInfo::CategorySource::FeedFile;
+			}
+			else if (!strcasecmp(categorySourceStr, "Auto"))
+			{
+				categorySource = FeedInfo::CategorySource::Auto;
+			}
+		}
 
 		DecodeStr(name);
 		DecodeStr(url);

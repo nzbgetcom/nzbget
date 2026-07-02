@@ -39,5 +39,35 @@
    <nZEDb:attr name="usenetdate" value="Mon, 04 Dec 2023 05:46:59 +0000"/>
    <nZEDb:attr name="group" value="alt.binaries.coolkidweb"/>
   </item>
+  <item>
+   <title>Deep.Path.Item</title>
+   <link>https://indexer.com/getnzb/deep.nzb</link>
+   <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+   <category>Movies &gt; HD &gt; 4K</category>
+  </item>
+  <item>
+   <title>Spaced.Category.Item</title>
+   <link>https://indexer.com/getnzb/spaced.nzb</link>
+   <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+   <category>  Movies  &gt;  HD  </category>
+  </item>
+  <item>
+   <title>Empty.Category.Item</title>
+   <link>https://indexer.com/getnzb/empty.nzb</link>
+   <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+   <category></category>
+  </item>
+   <item>
+    <title>Preserved.Spaces.Item</title>
+    <link>https://indexer.com/getnzb/preserved.nzb</link>
+    <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+    <category>My Movies</category>
+   </item>
+   <item>
+    <title>Literal.Gt.Item</title>
+    <link>https://indexer.com/getnzb/literal_gt.nzb</link>
+    <pubDate>Mon, 04 Dec 2023 05:48:03 +0000</pubDate>
+    <category>Movies > HD</category>
+   </item>
  </channel>
 </rss>

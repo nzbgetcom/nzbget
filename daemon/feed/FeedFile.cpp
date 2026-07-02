@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -176,6 +176,7 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 	if (!name)
 		return;
 
+	m_currentElement = name;
 	ResetTagContent();
 
 	if (!strcmp("item", name))
@@ -304,6 +305,8 @@ void FeedFile::Parse_EndElement(const char* name)
 		}
 		ResetTagContent();
 	}
+
+	m_currentElement.clear();
 }
 
 void FeedFile::Parse_Content(std::string content)
@@ -331,7 +334,13 @@ void FeedFile::SAX_textHandler(FeedFile* file, const char* xmlstr, int len)
 	if (!xmlstr || len <= 0)
 		return;
 
-	file->Parse_Content(std::string(xmlstr, len));
+	std::string str(xmlstr, len);
+	if (file->m_currentElement == "category")
+	{
+		// Do not break existing users' filters that rely on this normalization
+		Util::Trim(str);
+	}
+	file->Parse_Content(std::move(str));
 }
 
 xmlEntityPtr FeedFile::SAX_getEntity(FeedFile* file, const xmlChar* name)
