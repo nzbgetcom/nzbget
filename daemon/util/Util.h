@@ -403,7 +403,7 @@ class WildMask
 {
 public:
 	WildMask(const char* pattern, bool wantsPositions = false):
-		m_pattern(pattern), m_wantsPositions(wantsPositions) {}
+		m_pattern(pattern), m_wantsPositions(wantsPositions), m_wildCount(0) {}
 	bool Match(const char* text);
 	int GetMatchCount() { return m_wildCount; }
 	int GetMatchStart(int index) { return m_wildStart[index]; }

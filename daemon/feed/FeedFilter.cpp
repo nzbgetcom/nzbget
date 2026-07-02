@@ -911,12 +911,12 @@ const char* FeedFilter::Rule::GetRefValue(FeedItemInfo& feedItemInfo, const char
 	if (!strcasecmp(varName, "season"))
 	{
 		feedItemInfo.GetSeasonNum(); // needed to parse title
-		return feedItemInfo.GetSeason() ? feedItemInfo.GetSeason() : "";
+		return feedItemInfo.GetSeason();
 	}
 	else if (!strcasecmp(varName, "episode"))
 	{
 		feedItemInfo.GetEpisodeNum(); // needed to parse title
-		return feedItemInfo.GetEpisode() ? feedItemInfo.GetEpisode() : "";
+		return feedItemInfo.GetEpisode();
 	}
 
 	int index = atoi(varName) - 1;

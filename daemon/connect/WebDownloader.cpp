@@ -28,6 +28,10 @@
 #include "FileSystem.h"
 
 WebDownloader::WebDownloader()
+	: m_contentLen(0)
+	, m_redirecting(false)
+	, m_redirected(false)
+	, m_gzip(false)
 {
 	debug("Creating WebDownloader");
 

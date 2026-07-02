@@ -158,7 +158,7 @@ private:
 	void ResetSpeedStat();
 	void AdjustTimeOffset();
 	void CheckQuota();
-	int CalcMonthSlots(ServerVolume& volume);
+	int CalcMonthSlots(const ServerVolume& volume);
 };
 
 extern StatMeter* g_StatMeter;

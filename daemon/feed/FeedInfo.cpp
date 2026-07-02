@@ -205,7 +205,7 @@ const char* FeedItemInfo::GetDupeStatus()
 
 void FeedHistory::Remove(const char* url)
 {
-	for (iterator it = begin(); it != end(); it++)
+	for (iterator it = begin(); it != end(); ++it)
 	{
 		FeedHistoryInfo& feedHistoryInfo = *it;
 		if (!strcmp(feedHistoryInfo.GetUrl(), url))

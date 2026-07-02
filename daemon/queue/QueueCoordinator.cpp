@@ -490,11 +490,12 @@ void QueueCoordinator::CheckDupeFileInfos(NzbInfo* nzbInfo)
 
 	for (FileInfo* fileInfo : dupeList)
 	{
+		int fileId = fileInfo->GetId();
 		nzbInfo->UpdateDeletedStats(fileInfo);
 		nzbInfo->GetFileList()->Remove(fileInfo);
 		if (g_Options->GetServerMode())
 		{
-			g_DiskState->DiscardFile(fileInfo->GetId(), true, false, false);
+			g_DiskState->DiscardFile(fileId, true, false, false);
 		}
 	}
 }
@@ -529,12 +530,10 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 
 	// special case: if the file has ExtraPriority-flag set, it has the highest priority.
 
-	bool ok = false;
-
 	RawFileList checkedFiles;
 	time_t curDate = Util::CurrentTime();
 
-	while (!ok)
+	for (;;)
 	{
 		fileInfo = nullptr;
 
@@ -602,12 +601,9 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 			}
 		}
 
-		if (!ok)
-		{
-			// the file doesn't have any articles left for download
-			checkedFiles.reserve(100);
-			checkedFiles.push_back(fileInfo);
-		}
+		// the file doesn't have any articles left for download
+		checkedFiles.reserve(100);
+		checkedFiles.push_back(fileInfo);
 	}
 
 	return false;
@@ -683,7 +679,7 @@ void QueueCoordinator::Update(Subject* caller, void* aspect)
 
 	debug("Notification from ArticleDownloader received");
 
-	ArticleDownloader* articleDownloader = (ArticleDownloader*)caller;
+	ArticleDownloader* articleDownloader = static_cast<ArticleDownloader*>(caller);
 	if ((articleDownloader->GetStatus() == ArticleDownloader::adFinished) ||
 		(articleDownloader->GetStatus() == ArticleDownloader::adFailed) ||
 		(articleDownloader->GetStatus() == ArticleDownloader::adRetry))

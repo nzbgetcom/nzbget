@@ -316,6 +316,8 @@ void UpdateInfoScriptController::AddMessage(Message::EKind kind, const char* tex
 
 #ifndef DISABLE_TLS
 Signature::Signature(const char *inFilename, const char *sigFilename, const char *pubKeyFilename)
+	: m_inHash{}
+	, m_signature{}
 {
 	m_inFilename = inFilename;
 	m_sigFilename = sigFilename;
