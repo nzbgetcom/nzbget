@@ -54,7 +54,7 @@ Status ExtensionListValidator::Validate() const
 		size_t dotPos = scriptName.find_last_of('.');
 		if (dotPos != std::string::npos && dotPos > 0)
 		{
-			scriptName = scriptName.substr(0, dotPos);
+			scriptName.resize(dotPos);
 		}
 
 		const auto extension =

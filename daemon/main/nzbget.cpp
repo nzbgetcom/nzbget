@@ -174,10 +174,10 @@ int main(int argc, char *argv[], char *argp[])
 }
 
 
-class NZBGet : public Options::Extender
+class NZBGet final : public Options::Extender
 {
 public:
-	~NZBGet();
+	~NZBGet() override;
 	void Run(bool reload);
 	void Stop(bool reload);
 	bool GetReloading() { return m_reloading; }
@@ -189,11 +189,12 @@ public:
 		int level, int group, bool optional, unsigned int certVerificationfLevel) override;
 	void AddFeed(int id, const char* name, const char* url, int interval,
 		const char* filter, bool backlog, bool pauseNzb, const char* category,
-		FeedInfo::CategorySource categorySource, int priority, const char* feedScript) override;
+		FeedInfo::CategorySource categorySource, int priority, const char* feedScript,
+		unsigned int certVerifLevel) override;
 	void AddTask(int id, int hours, int minutes, int weekDaysBits,
 		Options::ESchedulerCommand command, const char* param) override;
 #ifdef WIN32
-	virtual void SetupFirstStart();
+	void SetupFirstStart() override;
 #endif
 
 private:
@@ -1114,10 +1115,11 @@ void NZBGet::AddNewsServer(int id, bool active, const char* name, const char* ho
 }
 
 void NZBGet::AddFeed(int id, const char* name, const char* url, int interval, const char* filter,
-	bool backlog, bool pauseNzb, const char* category, FeedInfo::CategorySource categorySource, int priority, const char* feedScript)
+	bool backlog, bool pauseNzb, const char* category, FeedInfo::CategorySource categorySource, int priority, const char* feedScript,
+	unsigned int certVeriflevel)
 {
 	m_feedCoordinator->AddFeed(std::make_unique<FeedInfo>(id, name, url, backlog, interval, filter,
-		pauseNzb, category, categorySource, priority, feedScript));
+		pauseNzb, category, categorySource, priority, feedScript, certVeriflevel));
 }
 
 void NZBGet::AddTask(int id, int hours, int minutes, int weekDaysBits,

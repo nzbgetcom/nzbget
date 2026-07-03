@@ -89,7 +89,7 @@ Status SecureKeyValidator::Validate() const
 	if (!m_options.GetSecureControl()) return Status::Ok();
 
 	std::string_view keyFile = m_options.GetSecureKey();
-	if (m_options.GetSecureControl() && keyFile.empty())
+	if (keyFile.empty())
 	{
 		return Status::Warning("'" + std::string(Options::SECURECONTROL) + "' is enabled but '" +
 							   std::string(Options::SECUREKEY) + "' is empty");
@@ -107,13 +107,11 @@ Status SecureCertValidator::Validate() const
 	if (!m_options.GetSecureControl()) return Status::Ok();
 
 	std::string_view certFile = m_options.GetSecureCert();
-	if (m_options.GetSecureControl() && certFile.empty())
+	if (certFile.empty())
 	{
 		return Status::Warning("'" + std::string(Options::SECURECONTROL) + "' is enabled but '" +
 							   std::string(Options::SECURECERT) + "' is empty");
 	}
-
-	if (!m_options.GetSecureControl()) return Status::Ok();
 
 	Status s = File::Exists(m_options.GetSecureCert());
 
@@ -301,7 +299,7 @@ Status CertCheckValidator::Validate() const
 	if (!m_options.GetCertCheck() && !m_options.GetCertStorePath().empty())
 	{
 		return Status::Warning("'" + std::string(Options::CERTCHECK) +
-							   "' is disabled. Connections to news servers may be insecure");
+							   "' is disabled. TLS connections may be insecure");
 	}
 	return Status::Ok();
 }

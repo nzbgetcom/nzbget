@@ -45,7 +45,8 @@ static FeedInfo MakeFeedInfo(
 		category,
 		categorySource,
 		10,    // priority
-		"nzb"  // extensions
+		"nzb", // extensions
+		Options::ECertVerifLevel::cvStrict
 	);
 }
 
