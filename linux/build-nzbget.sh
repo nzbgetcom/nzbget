@@ -42,8 +42,8 @@ FREEBSD_CLANG_VER=14
 
 # unpackers versions
 UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.2.6
-ZIP7_VERSION=26.01
+UNRAR7_VERSION=7.2.7
+ZIP7_VERSION=26.02
 
 # libs versions
 # https://invisible-island.net/ncurses/announce.html
