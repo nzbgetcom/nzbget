@@ -112,6 +112,18 @@ private:
 	const Options& m_options;
 };
 
+class FeedCertValidator final : public Validator
+{
+public:
+	explicit FeedCertValidator(const FeedInfo& feed) : m_feed(feed) {}
+
+	std::string_view GetName() const override { return "CertVerification"; }
+	Status Validate() const override;
+
+private:
+	const FeedInfo& m_feed;
+};
+
 }  // namespace SystemHealth::Feeds
 
 #endif

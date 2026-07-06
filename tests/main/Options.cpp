@@ -41,6 +41,7 @@ public:
 	int m_feeds;
 	int m_tasks;
 	std::vector<FeedInfo::CategorySource> m_categorySources;
+	std::vector<unsigned int> m_certVerifLevels;
 
 	OptionsExtenderMock() : m_newsServers(0), m_feeds(0), m_tasks(0) {}
 
@@ -64,16 +65,22 @@ protected:
 		const char* category,
 		FeedInfo::CategorySource categorySource, 
 		int priority, 
-		const char* feedScript
+		const char* feedScript,
+		unsigned int certVerifLevel
 	) override
 	{
 		m_feeds++;
 		m_categorySources.push_back(categorySource);
+		m_certVerifLevels.push_back(certVerifLevel);
 	}
 
 	void AddTask(int id, int hours, int minutes, int weekDaysBits, Options::ESchedulerCommand command, const char* param) override
 	{
 		m_tasks++;
+	}
+
+	void SetupFirstStart() override
+	{
 	}
 };
 
@@ -234,6 +241,35 @@ BOOST_AUTO_TEST_CASE(ParseToolPathsTest)
 		BOOST_CHECK_EQUAL(options.GetUnrarPath(), "C:\\Test Path\\unrar.exe");
 		BOOST_CHECK_EQUAL(options.GetSevenZipPath(), "C:\\Test Path\\7z.exe");
 	}
+}
+
+BOOST_AUTO_TEST_CASE(ParseFeedCertVerificationTest)
+{
+	Options::CmdOptList cmdOpts;
+
+	cmdOpts.push_back("Feed1.Url=http://my.feed.com");
+	cmdOpts.push_back("Feed1.CertVerification=None");
+
+	cmdOpts.push_back("Feed2.Url=http://my.feed2.com");
+	cmdOpts.push_back("Feed2.CertVerification=Minimal");
+
+	cmdOpts.push_back("Feed3.Url=http://my.feed3.com");
+	cmdOpts.push_back("Feed3.CertVerification=Strict");
+
+	cmdOpts.push_back("Feed4.Url=http://my.feed4.com");
+	cmdOpts.push_back("Feed4.CertVerification=none");
+
+	cmdOpts.push_back("Feed5.Url=http://my.feed5.com");
+
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels.size(), 5);
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[0], Options::ECertVerifLevel::cvNone);
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[1], Options::ECertVerifLevel::cvMinimal);
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[2], Options::ECertVerifLevel::cvStrict);
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[3], Options::ECertVerifLevel::cvNone);
+	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[4], Options::ECertVerifLevel::cvStrict);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -299,6 +299,9 @@ void FeedCoordinator::StartFeedDownload(FeedInfo* feedInfo, bool force)
 	feedDownloader->SetUrl(feedInfo->GetUrl());
 	feedDownloader->SetInfoName(feedInfo->GetName());
 	feedDownloader->SetForce(force || g_Options->GetUrlForce());
+#ifndef DISABLE_TLS
+	feedDownloader->SetCertVerifLevel(feedInfo->GetCertVerificationLevel());
+#endif
 
 	BString<1024> outFilename;
 	if (feedInfo->GetId() > 0)
@@ -525,12 +528,12 @@ std::vector<std::unique_ptr<NzbInfo>> FeedCoordinator::ProcessFeed(FeedInfo* fee
 
 std::shared_ptr<FeedItemList> FeedCoordinator::ViewFeed(int id)
 {
-	if (id < 1 || id > (int)m_feeds.size())
+	if (id < 1 || id > static_cast<int>(m_feeds.size()))
 	{
 		return nullptr;
 	}
 
-	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[id - 1];
+	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[static_cast<size_t>(id - 1)];
 
 	return PreviewFeed(feedInfo->GetId(), feedInfo->GetName(), feedInfo->GetUrl(), feedInfo->GetFilter(),
 		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetCategory(), feedInfo->GetCategorySource(),
@@ -544,8 +547,15 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 {
 	debug("Preview feed %s", name);
 
+	if (id < 1 || id > static_cast<int>(m_feeds.size()))
+	{
+		return nullptr;
+	}
+
+	unsigned int certVerifLevel = m_feeds[static_cast<size_t>(id - 1)]->GetCertVerificationLevel();
+
 	std::unique_ptr<FeedInfo> feedInfo = std::make_unique<FeedInfo>(id, name, url, backlog, interval,
-		filter, pauseNzb, category, categorySource, priority, feedScript);
+		filter, pauseNzb, category, categorySource, priority, feedScript, certVerifLevel);
 	feedInfo->SetPreview(true);
 
 	std::shared_ptr<FeedItemList> feedItems;

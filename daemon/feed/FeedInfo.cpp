@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ FeedInfo::FeedInfo(
 	const char* category,
 	FeedInfo::CategorySource categorySource,
 	int priority,
-	const char* extensions
+	const char* extensions,
+	unsigned int certVerifLevel
 )
 	: m_id{ id }
 	, m_name{ name ? name : "" }
@@ -47,6 +48,7 @@ FeedInfo::FeedInfo(
 	, m_interval{ interval }
 	, m_pauseNzb{ pauseNzb }
 	, m_priority{ priority }
+	, m_certVerifLevel{ certVerifLevel }
 {
 	if (m_name.empty())
 	{
