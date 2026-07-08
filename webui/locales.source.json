@@ -2082,6 +2082,10 @@
     "message": "Articles (total/completion)",
     "description": "UI Label for Usenet data stats. 'Articles' are technical data segments/blocks (not text stories). 'Completion' refers to the integrity percentage of these blocks on the server (whether the file is 100% whole/complete). Use terms for 'Segments', 'Parts', 'Data blocks' and 'Integrity'. Avoid 'Newspaper/Text articles' or 'Ending/Finishing'."
   },
+  "label_recovered_from_duplicates": {
+    "message": "Recovered from duplicates",
+    "description": "UI Label for Usenet data stats: the number of missing data segments/blocks ('Articles') that were fetched from a duplicate posting of the same release via the DupeArticleFallback feature. 'Articles' are technical data segments/blocks (not text stories); 'duplicates' are other postings of the same content."
+  },
   "help_feed_filter_title": {
     "message": "Help: Filter for RSS Feed",
     "description": "Help title. Title or heading"
