@@ -1944,6 +1944,7 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"<member><name>TotalArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>SuccessArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FailedArticles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DupeRecoveredArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>Health</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>CriticalHealth</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DupeKey</name><value><string>%s</string></value></member>\n"
@@ -2000,6 +2001,7 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"\"TotalArticles\" : %i,\n"
 		"\"SuccessArticles\" : %i,\n"
 		"\"FailedArticles\" : %i,\n"
+		"\"DupeRecoveredArticles\" : %i,\n"
 		"\"Health\" : %i,\n"
 		"\"CriticalHealth\" : %i,\n"
 		"\"DupeKey\" : \"%s\",\n"
@@ -2102,6 +2104,7 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 			fileSizeLo, fileSizeHi, fileSizeMB, nzbInfo->GetFileCount(),
 			(int)nzbInfo->GetMinTime(), (int)nzbInfo->GetMaxTime(),
 			nzbInfo->GetTotalArticles(), nzbInfo->GetCurrentSuccessArticles(), nzbInfo->GetCurrentFailedArticles(),
+			nzbInfo->GetDupeRecoveredArticles(),
 			nzbInfo->CalcHealth(), nzbInfo->CalcCriticalHealth(false),
 			*EncodeStr(nzbInfo->GetDupeKey()), nzbInfo->GetDupeScore(), dupeModeName[nzbInfo->GetDupeMode()],
 			BoolToStr(nzbInfo->GetDeleteStatus() != NzbInfo::dsNone),

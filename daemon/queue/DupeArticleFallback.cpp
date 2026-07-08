@@ -49,11 +49,6 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	int round = articleInfo->GetDupeFallbackRound();
 	if (round >= (int)candidates.size())
 	{
-		if (!candidates.empty())
-		{
-			nzbInfo->PrintMessage(Message::mkDetail, "No more duplicate sources for article %s [%i/%i]",
-				fileInfo->GetFilename(), articleInfo->GetPartNumber(), (int)fileInfo->GetArticles()->size());
-		}
 		return false;
 	}
 
@@ -107,15 +102,12 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 
 	std::vector<NzbInfo*> parsedDonors;
 
-	detail("DupeArticleFallback: %i donor(s) for %s", (int)donors.size(), nzbInfo->GetName());
-
 	for (NzbInfo* donorNzbInfo : donors)
 	{
 		// an exact copy of the same posting shares the message-ids and cannot help
 		if (nzbInfo->GetFullContentHash() > 0 &&
 			nzbInfo->GetFullContentHash() == donorNzbInfo->GetFullContentHash())
 		{
-			detail("DupeArticleFallback: donor %s skipped (same content)", donorNzbInfo->GetName());
 			continue;
 		}
 
@@ -123,10 +115,6 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 		if (parsedDonor)
 		{
 			parsedDonors.push_back(parsedDonor);
-		}
-		else
-		{
-			detail("DupeArticleFallback: donor %s skipped (source nzb-file not available)", donorNzbInfo->GetName());
 		}
 	}
 
@@ -149,16 +137,12 @@ std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 		FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
 		if (!donorFile)
 		{
-			detail("DupeArticleFallback: no file matching %s in donor %s",
-				targetFile->GetFilename(), parsedDonor->GetName());
 			continue;
 		}
 
 		const char* messageId = FindDonorMessageId(donorFile, partNumber);
 		if (!messageId)
 		{
-			detail("DupeArticleFallback: donor %s has no article for part %i",
-				parsedDonor->GetName(), partNumber);
 			continue;
 		}
 
@@ -264,11 +248,6 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 		targetFile->GetTotalArticles() != donorFile->GetTotalArticles() ||
 		!SizesMatch(targetFile->GetSize(), donorFile->GetSize(), TotalSizeToleranceDiv))
 	{
-		detail("DupeArticleFallback: structure reject %s vs %s (arts %i/%i tot %i/%i size %lli/%lli)",
-			targetFile->GetFilename(), donorFile->GetFilename(),
-			(int)targetArticles->size(), (int)donorArticles->size(),
-			targetFile->GetTotalArticles(), donorFile->GetTotalArticles(),
-			(long long)targetFile->GetSize(), (long long)donorFile->GetSize());
 		return false;
 	}
 
@@ -279,9 +258,6 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 		if (targetArticle->GetPartNumber() != donorArticle->GetPartNumber() ||
 			!SizesMatch(targetArticle->GetSize(), donorArticle->GetSize(), PartSizeToleranceDiv))
 		{
-			detail("DupeArticleFallback: part %i reject (part %i/%i size %i/%i)",
-				(int)i + 1, targetArticle->GetPartNumber(), donorArticle->GetPartNumber(),
-				targetArticle->GetSize(), donorArticle->GetSize());
 			return false;
 		}
 	}

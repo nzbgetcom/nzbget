@@ -172,6 +172,8 @@ public:
 	void SetFailedArticles(int failedArticles) { m_failedArticles = failedArticles; }
 	int GetSuccessArticles() { return m_successArticles; }
 	void SetSuccessArticles(int successArticles) { m_successArticles = successArticles; }
+	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
+	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
 	time_t GetTime() { return m_time; }
 	void SetTime(time_t time) { m_time = time; }
 	bool GetPaused() { return m_paused; }
@@ -236,6 +238,8 @@ private:
 	int m_missedArticles = 0;
 	int m_failedArticles = 0;
 	int m_successArticles = 0;
+	// articles obtained from a duplicate collection via DupeArticleFallback (not persisted)
+	int m_dupeRecoveredArticles = 0;
 	time_t m_time = 0;
 	bool m_paused = false;
 	bool m_deleted = false;
@@ -552,6 +556,8 @@ public:
 	void SetCurrentSuccessArticles(int currentSuccessArticles) { m_currentSuccessArticles = currentSuccessArticles; }
 	int GetCurrentFailedArticles() { return m_currentFailedArticles; }
 	void SetCurrentFailedArticles(int currentFailedArticles) { m_currentFailedArticles = currentFailedArticles; }
+	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
+	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
 	int GetExtraPriority() { return m_extraPriority; }
@@ -723,6 +729,8 @@ private:
 	int m_failedArticles = 0;
 	int m_currentSuccessArticles = 0;
 	int m_currentFailedArticles = 0;
+	// aggregate of FileInfo::m_dupeRecoveredArticles (not persisted)
+	int m_dupeRecoveredArticles = 0;
 	time_t m_minTime = 0;
 	time_t m_maxTime = 0;
 	int m_priority = 0;

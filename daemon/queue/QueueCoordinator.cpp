@@ -721,8 +721,10 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 			if (articleInfo->GetDupeFallbackRound() > 0)
 			{
-				nzbInfo->PrintMessage(Message::mkInfo, "Article %s [%i/%i] recovered from duplicate",
-					fileInfo->GetFilename(), articleInfo->GetPartNumber(), (int)fileInfo->GetArticles()->size());
+				// count the recovery; a per-file summary is logged on completion
+				// (per-article logging would flood on large files)
+				fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() + 1);
+				nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + 1);
 			}
 		}
 		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed &&
@@ -865,6 +867,13 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 	bool fileDeleted = fileInfo->GetDeleted();
 
 	fileInfo->SetDeleted(true);
+
+	if (completed && fileInfo->GetDupeRecoveredArticles() > 0)
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Recovered %i of %i article(s) of %s from duplicate collections",
+			fileInfo->GetDupeRecoveredArticles(), fileInfo->GetTotalArticles(), fileInfo->GetFilename());
+	}
 
 	if (completed || nzbInfo->GetDeleting())
 	{
