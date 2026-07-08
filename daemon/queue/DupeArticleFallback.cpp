@@ -142,7 +142,7 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 				 donor1->GetId() < donor2->GetId());
 		});
 
-	std::vector<NzbInfo*> parsedDonors;
+	std::vector<CString> candidates;
 
 	for (NzbInfo* donorNzbInfo : donors)
 	{
@@ -153,17 +153,47 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 			continue;
 		}
 
+		// Extract this donor's candidate immediately: GetParsedDonor may evict a
+		// previously-parsed donor from the bounded cache, so a parsed-donor pointer
+		// must never be held across another GetParsedDonor call (use-after-free).
 		NzbInfo* parsedDonor = GetParsedDonor(donorNzbInfo);
 		if (parsedDonor)
 		{
-			parsedDonors.push_back(parsedDonor);
+			AppendDonorCandidate(candidates, parsedDonor, fileInfo, articleInfo->GetPartNumber());
 		}
 	}
 
-	return BuildCandidateMessageIds(parsedDonors, fileInfo, articleInfo->GetPartNumber());
+	return candidates;
+}
+
+void DupeArticleFallback::AppendDonorCandidate(std::vector<CString>& candidates,
+	NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber)
+{
+	FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
+	if (!donorFile)
+	{
+		return;
+	}
+
+	const char* messageId = FindDonorMessageId(donorFile, partNumber);
+	if (!messageId)
+	{
+		return;
+	}
+
+	bool duplicate = std::find_if(candidates.begin(), candidates.end(),
+		[messageId](const CString& candidate) { return !strcmp(candidate, messageId); }) != candidates.end();
+	if (!duplicate)
+	{
+		candidates.emplace_back(messageId);
+	}
 }
 
 /*
+ * Pure candidate builder over already-live donors, used by unit tests. The
+ * production path (CollectCandidateMessageIds) processes donors one at a time
+ * for cache-safety; both share AppendDonorCandidate so the logic stays in sync.
+ *
  * The candidate list must not depend on the current state of the article:
  * ArticleInfo::m_dupeFallbackRound indexes into it across repeated failures,
  * so filtering by the currently assigned message-id would shift the indexes
@@ -176,24 +206,7 @@ std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 
 	for (NzbInfo* parsedDonor : parsedDonors)
 	{
-		FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
-		if (!donorFile)
-		{
-			continue;
-		}
-
-		const char* messageId = FindDonorMessageId(donorFile, partNumber);
-		if (!messageId)
-		{
-			continue;
-		}
-
-		bool duplicate = std::find_if(candidates.begin(), candidates.end(),
-			[messageId](const CString& candidate) { return !strcmp(candidate, messageId); }) != candidates.end();
-		if (!duplicate)
-		{
-			candidates.emplace_back(messageId);
-		}
+		AppendDonorCandidate(candidates, parsedDonor, targetFile, partNumber);
 	}
 
 	return candidates;

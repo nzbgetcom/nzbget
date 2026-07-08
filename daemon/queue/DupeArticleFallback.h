@@ -74,12 +74,16 @@ private:
 	static constexpr int TotalSizeToleranceDiv = 64;
 	// per-article declared size must match within 1/16 (~6%)
 	static constexpr int PartSizeToleranceDiv = 16;
-	static constexpr int MaxCachedDonors = 4;
+	// keep enough donors parsed to cover a whole dupe-set without re-parsing per
+	// article; must comfortably exceed the number of duplicates of one release
+	static constexpr int MaxCachedDonors = 16;
 
 	std::map<int, std::unique_ptr<NzbInfo>> m_parsedDonors;
 	std::set<int> m_badDonors;
 
 	static bool StructureMatches(FileInfo* targetFile, FileInfo* donorFile);
+	static void AppendDonorCandidate(std::vector<CString>& candidates,
+		NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber);
 	std::vector<CString> CollectCandidateMessageIds(DownloadQueue* downloadQueue,
 		FileInfo* fileInfo, ArticleInfo* articleInfo);
 	NzbInfo* GetParsedDonor(NzbInfo* donorNzb);
