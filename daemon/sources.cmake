@@ -69,6 +69,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp

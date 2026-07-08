@@ -494,6 +494,15 @@ bool ArticleDownloader::Write(char* buffer, int len)
 					warn("Malformed article %s: size %i out of range", *m_infoName, articleSize);
 					return false;
 				}
+				m_decodedFileSize = articleFileSize;
+				int64 expectedFileSize = m_fileInfo->GetDecodedFileSize();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && expectedFileSize > 0 &&
+					articleFileSize != expectedFileSize)
+				{
+					detail("Discarding article %s from duplicate: file size mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleFileSize, (long long)expectedFileSize);
+					return false;
+				}
 			}
 		}
 

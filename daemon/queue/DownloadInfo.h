@@ -104,6 +104,8 @@ public:
 	void SetResultFilename(const char* resultFilename) { m_resultFilename = resultFilename; }
 	uint32 GetCrc() { return m_crc; }
 	void SetCrc(uint32 crc) { m_crc = crc; }
+	int GetDupeFallbackRound() { return m_dupeFallbackRound; }
+	void SetDupeFallbackRound(int dupeFallbackRound) { m_dupeFallbackRound = dupeFallbackRound; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -115,6 +117,9 @@ private:
 	EStatus m_status = aiUndefined;
 	int m_partNumber;
 	int m_size = 0;
+	// number of times this article was requeued with a message-id borrowed
+	// from a duplicate collection (not persisted)
+	int m_dupeFallbackRound = 0;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -208,6 +213,8 @@ public:
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	bool IsHardLinked();
+	int64 GetDecodedFileSize() { return m_decodedFileSize; }
+	void SetDecodedFileSize(int64 decodedFileSize) { m_decodedFileSize = decodedFileSize; }
 
 	ServerStatList* GetServerStats() { return &m_serverStats; }
 
@@ -250,6 +257,9 @@ private:
 	CString m_parSetId;
 	bool m_flushLocked = false;
 	std::string m_hardLinkPath;
+	// raw file size declared by the first successfully decoded yEnc article
+	// (not persisted); used to verify articles borrowed from duplicates
+	std::atomic<int64> m_decodedFileSize{0};
 
 	static int m_idGen;
 	static int m_idMax;

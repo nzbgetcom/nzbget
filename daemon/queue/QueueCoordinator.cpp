@@ -715,6 +715,26 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
 			fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() + 1);
 			nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() + 1);
+			if (fileInfo->GetDecodedFileSize() == 0)
+			{
+				fileInfo->SetDecodedFileSize(articleDownloader->GetDecodedFileSize());
+			}
+			if (articleInfo->GetDupeFallbackRound() > 0)
+			{
+				nzbInfo->PrintMessage(Message::mkInfo, "Article %s [%i/%i] recovered from duplicate",
+					fileInfo->GetFilename(), articleInfo->GetPartNumber(), (int)fileInfo->GetArticles()->size());
+			}
+		}
+		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed &&
+			m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, articleInfo))
+		{
+			// the article is requeued with a message-id borrowed from a duplicate
+			articleInfo->SetStatus(ArticleInfo::aiUndefined);
+			retry = true;
+			if (articleInfo->GetPartNumber() == 1)
+			{
+				nzbInfo->SetAllFirst(false);
+			}
 		}
 		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed)
 		{

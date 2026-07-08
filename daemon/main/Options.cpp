@@ -296,6 +296,7 @@ void Options::InitDefaults()
 	SetOption(OUTPUTMODE.data(), "curses");
 #endif
 	SetOption(DUPECHECK.data(), "yes");
+	SetOption(DUPEARTICLEFALLBACK.data(), "no");
 	SetOption(DOWNLOADRATE.data(), "0");
 	SetOption(CONTROLIP.data(), "0.0.0.0");
 	SetOption(CONTROLUSERNAME.data(), "nzbget");
@@ -667,6 +668,7 @@ void Options::InitOptions()
 	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);
 	m_flushQueue			= (bool)ParseEnumValue(FLUSHQUEUE.data(), BoolCount, BoolNames, BoolValues);
 	m_dupeCheck				= (bool)ParseEnumValue(DUPECHECK.data(), BoolCount, BoolNames, BoolValues);
+	m_dupeArticleFallback	= (bool)ParseEnumValue(DUPEARTICLEFALLBACK.data(), BoolCount, BoolNames, BoolValues);
 	m_parRepair				= (bool)ParseEnumValue(PARREPAIR.data(), BoolCount, BoolNames, BoolValues);
 	m_parQuick				= (bool)ParseEnumValue(PARQUICK.data(), BoolCount, BoolNames, BoolValues);
 	m_parRename				= (bool)ParseEnumValue(PARRENAME.data(), BoolCount, BoolNames, BoolValues);

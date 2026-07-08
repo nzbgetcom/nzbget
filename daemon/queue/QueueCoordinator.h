@@ -33,6 +33,7 @@
 #include "QueueEditor.h"
 #include "NntpConnection.h"
 #include "DirectRenamer.h"
+#include "DupeArticleFallback.h"
 
 class QueueCoordinator : public Thread, public Observer, public Debuggable
 {
@@ -94,6 +95,7 @@ private:
 	ActiveDownloads m_activeDownloads;
 	QueueEditor m_queueEditor;
 	CoordinatorDirectRenamer m_directRenamer{this};
+	DupeArticleFallback m_dupeArticleFallback;
 	std::atomic<bool> m_hasMoreJobs{true};
 	int m_downloadsLimit;
 	int m_serverConfigGeneration = 0;
