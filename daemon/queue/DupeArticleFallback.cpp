@@ -151,7 +151,7 @@ std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 		}
 
 		bool duplicate = std::find_if(candidates.begin(), candidates.end(),
-			[messageId](CString& candidate) { return !strcmp(candidate, messageId); }) != candidates.end();
+			[messageId](const CString& candidate) { return !strcmp(candidate, messageId); }) != candidates.end();
 		if (!duplicate)
 		{
 			candidates.emplace_back(messageId);
@@ -198,11 +198,12 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 		m_parsedDonors.erase(m_parsedDonors.begin());
 	}
 
-	std::unique_ptr<NzbInfo> parsedNzbInfo = nzbFile.DetachNzbInfo();
-	NzbInfo* rawParsedNzbInfo = parsedNzbInfo.get();
-	m_parsedDonors[donorId] = std::move(parsedNzbInfo);
+	// store the parsed collection in the cache and return a pointer to the
+	// owned object (the cache keeps it alive for the daemon's lifetime)
+	std::unique_ptr<NzbInfo>& cachedDonor = m_parsedDonors[donorId];
+	cachedDonor = nzbFile.DetachNzbInfo();
 
-	return rawParsedNzbInfo;
+	return cachedDonor.get();
 }
 
 FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb)
