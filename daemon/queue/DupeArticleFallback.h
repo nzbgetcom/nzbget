@@ -47,6 +47,8 @@ public:
 	static FileInfo* MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb);
 	static const char* FindDonorMessageId(FileInfo* donorFile, int partNumber);
 	static bool SizesMatch(int64 size1, int64 size2, int div);
+	static std::vector<CString> BuildCandidateMessageIds(
+		const std::vector<NzbInfo*>& parsedDonors, FileInfo* targetFile, int partNumber);
 
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs

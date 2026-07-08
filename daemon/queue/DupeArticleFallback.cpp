@@ -104,7 +104,7 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 				 donor1->GetId() < donor2->GetId());
 		});
 
-	std::vector<CString> candidates;
+	std::vector<NzbInfo*> parsedDonors;
 
 	for (NzbInfo* donorNzbInfo : donors)
 	{
@@ -116,19 +116,36 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 		}
 
 		NzbInfo* parsedDonor = GetParsedDonor(donorNzbInfo);
-		if (!parsedDonor)
+		if (parsedDonor)
 		{
-			continue;
+			parsedDonors.push_back(parsedDonor);
 		}
+	}
 
-		FileInfo* donorFile = MatchDonorFile(fileInfo, parsedDonor);
+	return BuildCandidateMessageIds(parsedDonors, fileInfo, articleInfo->GetPartNumber());
+}
+
+/*
+ * The candidate list must not depend on the current state of the article:
+ * ArticleInfo::m_dupeFallbackRound indexes into it across repeated failures,
+ * so filtering by the currently assigned message-id would shift the indexes
+ * and skip untried donors.
+ */
+std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
+	const std::vector<NzbInfo*>& parsedDonors, FileInfo* targetFile, int partNumber)
+{
+	std::vector<CString> candidates;
+
+	for (NzbInfo* parsedDonor : parsedDonors)
+	{
+		FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
 		if (!donorFile)
 		{
 			continue;
 		}
 
-		const char* messageId = FindDonorMessageId(donorFile, articleInfo->GetPartNumber());
-		if (!messageId || !strcmp(messageId, articleInfo->GetMessageId()))
+		const char* messageId = FindDonorMessageId(donorFile, partNumber);
+		if (!messageId)
 		{
 			continue;
 		}

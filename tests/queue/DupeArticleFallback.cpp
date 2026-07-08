@@ -146,6 +146,54 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackPartSizeMismatchTest)
 	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb) == nullptr);
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackCandidateListStableAcrossRoundsTest)
+{
+	// ArticleInfo::m_dupeFallbackRound indexes into the candidate list across
+	// repeated failures; the list must be identical no matter which candidate
+	// is currently assigned to the article, otherwise untried donors would be
+	// skipped (regression test)
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 500000}, {2, 500000}}, "orig");
+
+	NzbInfo donor0Nzb;
+	AddDonorFile(&donor0Nzb, "release.r01", {{1, 500000}, {2, 500000}}, "donor0");
+	NzbInfo donor1Nzb;
+	AddDonorFile(&donor1Nzb, "release.r01", {{1, 500100}, {2, 500100}}, "donor1");
+
+	std::vector<NzbInfo*> parsedDonors = {&donor0Nzb, &donor1Nzb};
+
+	std::vector<CString> round0 = DupeArticleFallback::BuildCandidateMessageIds(parsedDonors, target.get(), 2);
+	BOOST_REQUIRE_EQUAL(round0.size(), 2u);
+	BOOST_CHECK_EQUAL(*round0[0], "donor0-2@example.com");
+	BOOST_CHECK_EQUAL(*round0[1], "donor1-2@example.com");
+
+	// simulate round 1: the article now carries donor0's message-id
+	target->GetArticles()->at(1)->SetMessageId("donor0-2@example.com");
+
+	std::vector<CString> round1 = DupeArticleFallback::BuildCandidateMessageIds(parsedDonors, target.get(), 2);
+	BOOST_REQUIRE_EQUAL(round1.size(), 2u);
+	BOOST_CHECK_EQUAL(*round1[0], "donor0-2@example.com");
+	BOOST_CHECK_EQUAL(*round1[1], "donor1-2@example.com");
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackCandidateListDedupeTest)
+{
+	// two donor nzbs listing the same posting contribute one candidate
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 500000}, {2, 500000}}, "orig");
+
+	NzbInfo donor0Nzb;
+	AddDonorFile(&donor0Nzb, "release.r01", {{1, 500000}, {2, 500000}}, "shared");
+	NzbInfo donor1Nzb;
+	AddDonorFile(&donor1Nzb, "release.r01", {{1, 500000}, {2, 500000}}, "shared");
+
+	std::vector<NzbInfo*> parsedDonors = {&donor0Nzb, &donor1Nzb};
+
+	std::vector<CString> candidates = DupeArticleFallback::BuildCandidateMessageIds(parsedDonors, target.get(), 1);
+	BOOST_REQUIRE_EQUAL(candidates.size(), 1u);
+	BOOST_CHECK_EQUAL(*candidates[0], "shared-1@example.com");
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackFindDonorMessageIdTest)
 {
 	std::unique_ptr<FileInfo> donorFile = BuildFile("release.r01",
