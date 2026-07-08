@@ -598,6 +598,12 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 			if (article->GetStatus() == ArticleInfo::aiUndefined)
 			{
 				articleInfo = article;
+				// once cut over, lead with the duplicate instead of spending a
+				// full server sweep failing on the primary first
+				if (fileInfo->GetDupeCutover() && article->GetDupeFallbackRound() == 0)
+				{
+					m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, article);
+				}
 				return true;
 			}
 		}
@@ -719,12 +725,26 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			{
 				fileInfo->SetDecodedFileSize(articleDownloader->GetDecodedFileSize());
 			}
-			if (articleInfo->GetDupeFallbackRound() > 0)
+			// count only genuine duplicate recoveries: the article was substituted
+			// and the source that succeeded was not the primary (revert) message-id
+			if (articleInfo->GetDupeFallbackRound() > 0 &&
+				!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
+				strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
 			{
-				// count the recovery; a per-file summary is logged on completion
-				// (per-article logging would flood on large files)
+				// a per-file summary is logged on completion (per-article logging would flood)
 				fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() + 1);
 				nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + 1);
+
+				// once the primary is clearly missing many articles of this file,
+				// lead with the duplicate for the rest instead of failing first
+				if (!fileInfo->GetDupeCutover() &&
+					fileInfo->GetDupeRecoveredArticles() >= DupeArticleFallback::CutoverThreshold)
+				{
+					fileInfo->SetDupeCutover(true);
+					nzbInfo->PrintMessage(Message::mkInfo,
+						"Leading with duplicate collections for %s (primary is missing many articles)",
+						fileInfo->GetFilename());
+				}
 			}
 		}
 		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed &&

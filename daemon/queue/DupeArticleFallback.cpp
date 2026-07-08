@@ -44,22 +44,64 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		return false;
 	}
 
-	std::vector<CString> candidates = CollectCandidateMessageIds(downloadQueue, fileInfo, articleInfo);
+	// preserve the article's own (primary) message-id before the first
+	// substitution, so it can be used as a revert source when cut over
+	if (Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()))
+	{
+		articleInfo->SetDupeOriginalMessageId(articleInfo->GetMessageId());
+	}
+
+	std::vector<CString> donorCandidates = CollectCandidateMessageIds(downloadQueue, fileInfo, articleInfo);
+	std::vector<CString> sources = OrderSources(donorCandidates, fileInfo->GetDupeCutover(),
+		articleInfo->GetDupeOriginalMessageId());
 
 	int round = articleInfo->GetDupeFallbackRound();
-	if (round >= (int)candidates.size())
+	if (round >= (int)sources.size())
 	{
 		return false;
 	}
 
-	nzbInfo->PrintMessage(Message::mkDetail, "Trying article %s from duplicate for %s [%i/%i]",
-		*candidates[round], fileInfo->GetFilename(), articleInfo->GetPartNumber(),
-		(int)fileInfo->GetArticles()->size());
+	// only announce a genuine duplicate source, not the primary revert
+	if (strcmp(sources[round], articleInfo->GetDupeOriginalMessageId()) != 0)
+	{
+		nzbInfo->PrintMessage(Message::mkDetail, "Trying article %s from duplicate for %s [%i/%i]",
+			*sources[round], fileInfo->GetFilename(), articleInfo->GetPartNumber(),
+			(int)fileInfo->GetArticles()->size());
+	}
 
-	articleInfo->SetMessageId(candidates[round]);
+	articleInfo->SetMessageId(sources[round]);
 	articleInfo->SetDupeFallbackRound(round + 1);
 
 	return true;
+}
+
+std::vector<CString> DupeArticleFallback::OrderSources(const std::vector<CString>& donorCandidates,
+	bool cutover, const char* primaryMessageId)
+{
+	std::vector<CString> sources;
+
+	if (!cutover || donorCandidates.empty())
+	{
+		// reactive: the primary was already tried via the normal path; offer
+		// the donor candidates only (empty if none, so the article just fails)
+		for (const CString& candidate : donorCandidates)
+		{
+			sources.emplace_back((const char*)candidate);
+		}
+		return sources;
+	}
+
+	// cut over: lead with the top donor, then revert to the primary, then the
+	// remaining donors - so the file leads with the duplicate but still tries
+	// the primary quickly if the duplicate is the one missing this article
+	sources.reserve(donorCandidates.size() + 1);
+	sources.emplace_back((const char*)donorCandidates[0]);
+	sources.emplace_back(primaryMessageId);
+	for (size_t i = 1; i < donorCandidates.size(); i++)
+	{
+		sources.emplace_back((const char*)donorCandidates[i]);
+	}
+	return sources;
 }
 
 std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQueue* downloadQueue,

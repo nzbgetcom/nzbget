@@ -106,6 +106,8 @@ public:
 	void SetCrc(uint32 crc) { m_crc = crc; }
 	int GetDupeFallbackRound() { return m_dupeFallbackRound; }
 	void SetDupeFallbackRound(int dupeFallbackRound) { m_dupeFallbackRound = dupeFallbackRound; }
+	const char* GetDupeOriginalMessageId() { return m_dupeOriginalMessageId; }
+	void SetDupeOriginalMessageId(const char* messageId) { m_dupeOriginalMessageId = messageId; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -120,6 +122,9 @@ private:
 	// number of times this article was requeued with a message-id borrowed
 	// from a duplicate collection (not persisted)
 	int m_dupeFallbackRound = 0;
+	// the article's own (primary) message-id, saved before the first
+	// substitution so the primary can be tried as a revert source (not persisted)
+	CString m_dupeOriginalMessageId;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -174,6 +179,8 @@ public:
 	void SetSuccessArticles(int successArticles) { m_successArticles = successArticles; }
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	bool GetDupeCutover() { return m_dupeCutover; }
+	void SetDupeCutover(bool dupeCutover) { m_dupeCutover = dupeCutover; }
 	time_t GetTime() { return m_time; }
 	void SetTime(time_t time) { m_time = time; }
 	bool GetPaused() { return m_paused; }
@@ -240,6 +247,10 @@ private:
 	int m_successArticles = 0;
 	// articles obtained from a duplicate collection via DupeArticleFallback (not persisted)
 	int m_dupeRecoveredArticles = 0;
+	// once the primary proves to be missing many articles of this file, lead
+	// with the duplicate for the remaining articles instead of failing on the
+	// primary first (not persisted)
+	bool m_dupeCutover = false;
 	time_t m_time = 0;
 	bool m_paused = false;
 	bool m_deleted = false;

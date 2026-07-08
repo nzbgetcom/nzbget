@@ -194,6 +194,44 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackCandidateListDedupeTest)
 	BOOST_CHECK_EQUAL(*candidates[0], "shared-1@example.com");
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesReactiveTest)
+{
+	// not cut over: donor candidates only (the primary was already tried normally)
+	std::vector<CString> donors;
+	donors.emplace_back("d0@example.com");
+	donors.emplace_back("d1@example.com");
+
+	std::vector<CString> s = DupeArticleFallback::OrderSources(donors, false, "primary@example.com");
+	BOOST_REQUIRE_EQUAL(s.size(), 2u);
+	BOOST_CHECK_EQUAL(*s[0], "d0@example.com");
+	BOOST_CHECK_EQUAL(*s[1], "d1@example.com");
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverTest)
+{
+	// cut over: lead with the top donor, then revert to primary, then the rest
+	std::vector<CString> donors;
+	donors.emplace_back("d0@example.com");
+	donors.emplace_back("d1@example.com");
+	donors.emplace_back("d2@example.com");
+
+	std::vector<CString> s = DupeArticleFallback::OrderSources(donors, true, "primary@example.com");
+	BOOST_REQUIRE_EQUAL(s.size(), 4u);
+	BOOST_CHECK_EQUAL(*s[0], "d0@example.com");     // lead with duplicate
+	BOOST_CHECK_EQUAL(*s[1], "primary@example.com"); // quick revert to primary
+	BOOST_CHECK_EQUAL(*s[2], "d1@example.com");
+	BOOST_CHECK_EQUAL(*s[3], "d2@example.com");
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverNoDonorTest)
+{
+	// cut over but no donor has this part: empty, so the article just uses its
+	// own (primary) message-id via the normal path
+	std::vector<CString> donors;
+	std::vector<CString> s = DupeArticleFallback::OrderSources(donors, true, "primary@example.com");
+	BOOST_CHECK(s.empty());
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackFindDonorMessageIdTest)
 {
 	std::unique_ptr<FileInfo> donorFile = BuildFile("release.r01",

@@ -34,11 +34,21 @@
  * duplicate; residual damage from slightly different segment boundaries is
  * left to par-repair. See option <DupeArticleFallback>.
  *
+ * Once a file has recovered enough articles from duplicates, it "cuts over":
+ * subsequent articles lead with the duplicate instead of failing on the
+ * primary first (which would waste a full server sweep per article). The
+ * primary remains a revert source in case the duplicate is the one missing
+ * that particular article.
+ *
  * All methods must be called within DownloadQueue-lock.
  */
 class DupeArticleFallback
 {
 public:
+	// after this many articles of a file are recovered from duplicates, lead
+	// with the duplicate for the file's remaining articles (cutover)
+	static constexpr int CutoverThreshold = 3;
+
 	bool TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo);
 
 	/* Finds the file of the duplicate collection which corresponds to the target
@@ -49,6 +59,14 @@ public:
 	static bool SizesMatch(int64 size1, int64 size2, int div);
 	static std::vector<CString> BuildCandidateMessageIds(
 		const std::vector<NzbInfo*>& parsedDonors, FileInfo* targetFile, int partNumber);
+
+	/* Orders the message-ids an article is tried against. Reactive (not cut
+	 * over): donor candidates only (the primary was already tried normally).
+	 * Cut over: [top donor, primary revert, remaining donors] so a cut-over
+	 * file leads with the duplicate but still reverts to the primary quickly
+	 * if the duplicate lacks that article. */
+	static std::vector<CString> OrderSources(const std::vector<CString>& donorCandidates,
+		bool cutover, const char* primaryMessageId);
 
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs
