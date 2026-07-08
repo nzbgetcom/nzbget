@@ -25,6 +25,7 @@
 #include "DupeCoordinator.h"
 #include "NzbFile.h"
 #include "Options.h"
+#include "DiskState.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
@@ -106,12 +107,15 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 
 	std::vector<NzbInfo*> parsedDonors;
 
+	detail("DupeArticleFallback: %i donor(s) for %s", (int)donors.size(), nzbInfo->GetName());
+
 	for (NzbInfo* donorNzbInfo : donors)
 	{
 		// an exact copy of the same posting shares the message-ids and cannot help
 		if (nzbInfo->GetFullContentHash() > 0 &&
 			nzbInfo->GetFullContentHash() == donorNzbInfo->GetFullContentHash())
 		{
+			detail("DupeArticleFallback: donor %s skipped (same content)", donorNzbInfo->GetName());
 			continue;
 		}
 
@@ -119,6 +123,10 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 		if (parsedDonor)
 		{
 			parsedDonors.push_back(parsedDonor);
+		}
+		else
+		{
+			detail("DupeArticleFallback: donor %s skipped (source nzb-file not available)", donorNzbInfo->GetName());
 		}
 	}
 
@@ -141,12 +149,16 @@ std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 		FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
 		if (!donorFile)
 		{
+			detail("DupeArticleFallback: no file matching %s in donor %s",
+				targetFile->GetFilename(), parsedDonor->GetName());
 			continue;
 		}
 
 		const char* messageId = FindDonorMessageId(donorFile, partNumber);
 		if (!messageId)
 		{
+			detail("DupeArticleFallback: donor %s has no article for part %i",
+				parsedDonor->GetName(), partNumber);
 			continue;
 		}
 
@@ -203,6 +215,18 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 	std::unique_ptr<NzbInfo>& cachedDonor = m_parsedDonors[donorId];
 	cachedDonor = nzbFile.DetachNzbInfo();
 
+	if (g_Options->GetServerMode())
+	{
+		// in server mode the parser offloads article lists to disk-state and
+		// clears them from memory; load them back (the donor is used in memory
+		// only) and remove the disk-state files written as parse side effect
+		for (FileInfo* fileInfo : cachedDonor->GetFileList())
+		{
+			g_DiskState->LoadArticles(fileInfo);
+		}
+		g_DiskState->DiscardFiles(cachedDonor.get(), false);
+	}
+
 	return cachedDonor.get();
 }
 
@@ -240,6 +264,11 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 		targetFile->GetTotalArticles() != donorFile->GetTotalArticles() ||
 		!SizesMatch(targetFile->GetSize(), donorFile->GetSize(), TotalSizeToleranceDiv))
 	{
+		detail("DupeArticleFallback: structure reject %s vs %s (arts %i/%i tot %i/%i size %lli/%lli)",
+			targetFile->GetFilename(), donorFile->GetFilename(),
+			(int)targetArticles->size(), (int)donorArticles->size(),
+			targetFile->GetTotalArticles(), donorFile->GetTotalArticles(),
+			(long long)targetFile->GetSize(), (long long)donorFile->GetSize());
 		return false;
 	}
 
@@ -250,6 +279,9 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 		if (targetArticle->GetPartNumber() != donorArticle->GetPartNumber() ||
 			!SizesMatch(targetArticle->GetSize(), donorArticle->GetSize(), PartSizeToleranceDiv))
 		{
+			detail("DupeArticleFallback: part %i reject (part %i/%i size %i/%i)",
+				(int)i + 1, targetArticle->GetPartNumber(), donorArticle->GetPartNumber(),
+				targetArticle->GetSize(), donorArticle->GetSize());
 			return false;
 		}
 	}
