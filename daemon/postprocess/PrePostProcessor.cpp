@@ -926,6 +926,7 @@ void PrePostProcessor::UpdatePauseState()
 			case PostInfo::ptRepairing:
 			case PostInfo::ptVerifyingRepaired:
 			case PostInfo::ptParRenaming:
+			case PostInfo::ptStreamRepairing:
 				needPause |= g_Options->GetParPauseQueue();
 				break;
 
@@ -933,6 +934,7 @@ void PrePostProcessor::UpdatePauseState()
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:
+			case PostInfo::ptPostUnpackRenaming:
 				needPause |= g_Options->GetUnpackPauseQueue();
 				break;
 

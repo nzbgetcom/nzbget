@@ -61,6 +61,7 @@ var Downloads = (new function($)
 		'LOADING_PARS': { Text: 'status_checking_cap', PostProcess: true },
 		'VERIFYING_SOURCES': { Text: 'status_checking_cap', PostProcess: true },
 		'REPAIRING': { Text: 'status_repairing_cap', PostProcess: true },
+		'STREAM_REPAIRING': { Text: 'status_stream_repairing_cap', PostProcess: true },
 		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
@@ -883,6 +884,7 @@ var DownloadsUI = (new function($)
 				case "LOADING_PARS":
 				case "VERIFYING_SOURCES":
 				case "VERIFYING_REPAIRED":
+				case "STREAM_REPAIRING":
 				case "UNPACKING":
 				case "RENAMING":
 				case "EXECUTING_SCRIPT":

@@ -883,7 +883,10 @@ public:
 		ptMoving,
 		ptPostUnpackRenaming,
 		ptExecutingScript,
-		ptFinished
+		ptFinished,
+		// appended after ptFinished: stage numbers are persisted (stage+1 in
+		// the queue file) and range checks rely on the existing order
+		ptStreamRepairing
 	};
 
 	typedef std::vector<CString> ParredFiles;

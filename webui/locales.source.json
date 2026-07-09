@@ -3126,6 +3126,10 @@
     "message": "repairing",
     "description": "Capitalized status indicating an item is being repaired."
   },
+  "status_stream_repairing_cap": {
+    "message": "dupe repair",
+    "description": "Post-processing status label shown while missing byte ranges of media files are being repaired from duplicate collections."
+  },
   "status_verifying_cap": {
     "message": "verifying",
     "description": "Capitalized status indicating an item is being verified."

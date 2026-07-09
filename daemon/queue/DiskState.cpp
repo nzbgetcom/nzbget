@@ -708,6 +708,13 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		{
 			postStage += 2;
 		}
+		if (postStage > (int)PostInfo::ptFinished)
+		{
+			// stages appended after ptFinished (ptStreamRepairing) are
+			// transient; the +1-shifted persisted value would index past the
+			// stage-name tables before SanitisePostQueue resets the stage
+			postStage = (int)PostInfo::ptFinished;
+		}
 		nzbInfo->GetPostInfo()->SetStage((PostInfo::EStage)postStage);
 	}
 	nzbInfo->SetFeedId(feedId);
