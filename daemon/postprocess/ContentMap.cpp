@@ -1538,6 +1538,7 @@ std::vector<RepairSetData> ContentMapper::BuildRepairSets(const std::vector<SetM
 				{
 					return range1.Offset < range2.Offset;
 				});
+			data.OriginalInnerHoles = data.InnerHoles;
 			if (data.InnerHoles.empty())
 			{
 				data.Map.reset();

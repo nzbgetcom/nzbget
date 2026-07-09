@@ -196,6 +196,10 @@ struct RepairSetData
 	MemberSet Set;
 	std::unique_ptr<ContentMap> Map;
 	StreamRangeList InnerHoles;
+	// InnerHoles as captured at build time: InnerHoles shrinks as donors
+	// patch, but identity evidence must only ever anchor to bytes that were
+	// NEVER a hole (primary-downloaded), so probe placement excludes these
+	StreamRangeList OriginalInnerHoles;
 	std::string SkipReason;
 };
 

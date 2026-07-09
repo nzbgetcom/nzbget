@@ -1495,11 +1495,20 @@ BOOST_AUTO_TEST_CASE(ContentMapperBuildRepairSetsTest)
 	BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Offset, 45);	// 40 + (66-61)
 	BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Size, 10);
 
+	// the build-time snapshot equals InnerHoles until a donor patches:
+	// identity probes anchor to it after InnerHoles starts shrinking
+	BOOST_REQUIRE_EQUAL(sets[0].OriginalInnerHoles.size(), sets[0].InnerHoles.size());
+	BOOST_CHECK_EQUAL(sets[0].OriginalInnerHoles[0].Offset, sets[0].InnerHoles[0].Offset);
+	BOOST_CHECK_EQUAL(sets[0].OriginalInnerHoles[0].Size, sets[0].InnerHoles[0].Size);
+
 	// the bare file is its own identity-mapped set
 	BOOST_REQUIRE_MESSAGE(sets[1].Map, sets[1].SkipReason);
 	BOOST_CHECK_EQUAL(sets[1].Map->GetInnerSize(), 50);
 	BOOST_REQUIRE_EQUAL(sets[1].InnerHoles.size(), 1u);
 	BOOST_CHECK_EQUAL(sets[1].InnerHoles[0].Offset, 10);
+	BOOST_REQUIRE_EQUAL(sets[1].OriginalInnerHoles.size(), sets[1].InnerHoles.size());
+	BOOST_CHECK_EQUAL(sets[1].OriginalInnerHoles[0].Offset, sets[1].InnerHoles[0].Offset);
+	BOOST_CHECK_EQUAL(sets[1].OriginalInnerHoles[0].Size, sets[1].InnerHoles[0].Size);
 
 	// an unmappable set still reports (compressed single-volume rar)
 	{

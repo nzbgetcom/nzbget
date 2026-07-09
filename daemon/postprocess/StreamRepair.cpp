@@ -77,7 +77,16 @@ bool DonorMemberSource::EnsureInit()
 	}
 	m_size = first->FileSize;
 	m_ranges = DupeStreamRepair::EstimateDonorRanges(m_donorFile, m_size);
-	return !m_ranges.empty();
+	if (m_ranges.empty())
+	{
+		// a malformed donor nzb (all-zero segment sizes) yields no estimates:
+		// without them offsets cannot resolve, and a committed m_size would
+		// let a later Read pass the fast-path into indexing an empty vector
+		m_bad = true;
+		m_size = -1;
+		return false;
+	}
+	return true;
 }
 
 const ArticleFetcher::FetchedArticle* DonorMemberSource::FetchPart(int partIndex)
@@ -977,12 +986,8 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 				}
 				donorSources.TakeServedParts();	// probe fetches are not "recovered"
 
-				int64 written = PatchFromDonorSet(repairSet, *donorMap, donorSources,
+				PatchFromDonorSet(repairSet, *donorMap, donorSources,
 					targetFiles, targets, memberTargets, setMembers, donor.InfoName);
-				if (written == 0 && !repairSet.InnerHoles.empty())
-				{
-					continue;	// verified but could not supply - try next packing
-				}
 			}
 		}
 	}
@@ -1017,9 +1022,15 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 {
 	ContentMap& targetMap = *repairSet.Map;
 	const StreamRangeList& holes = repairSet.InnerHoles;
+	const StreamRangeList& originalHoles = repairSet.OriginalInnerHoles;
 
-	// probe windows: present bytes hugging each hole (the most
-	// drift-sensitive positions), clipped against neighboring holes
+	// probe windows: present bytes hugging each CURRENT hole (the most
+	// drift-sensitive positions), clipped against the ORIGINAL holes:
+	// identity evidence must anchor to primary-downloaded bytes only, and
+	// a previous donor may have partially filled a hole - no window byte
+	// may overlap any region that was EVER a hole. A hole whose front or
+	// tail was donor-written is still covered by its containing original
+	// hole on that side, which zeroes the window there (fail closed)
 	std::vector<StreamRange> windows;
 	for (const StreamRange& hole : holes)
 	{
@@ -1029,13 +1040,17 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 		}
 		int64 lowClip = 0;
 		int64 highClip = targetMap.GetInnerSize();
-		for (const StreamRange& other : holes)
+		for (const StreamRange& other : originalHoles)
 		{
-			if (other.End() <= hole.Offset)
+			// any original hole starting before the before-window's end
+			// bounds it from below; any one ending past the after-window's
+			// start bounds it from above (equivalent to the plain neighbor
+			// clip while no donor has written, since holes are disjoint)
+			if (other.Offset < hole.Offset)
 			{
 				lowClip = std::max(lowClip, other.End());
 			}
-			if (other.Offset >= hole.End())
+			if (other.End() > hole.End())
 			{
 				highClip = std::min(highClip, other.Offset);
 			}
@@ -1055,14 +1070,15 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	}
 
 	// floor semantics as in M1 (Task 1): everything reachable must match,
-	// scaled to the mapped present bytes, clamped to what the windows can
-	// actually compare, never below 64
+	// scaled to the mapped present bytes (anchored to the ORIGINAL holes:
+	// donor-filled bytes are not primary evidence), clamped to what the
+	// windows can actually compare, never below 64
 	int64 mappedBytes = 0;
 	for (const ContentRun& run : *targetMap.GetRuns())
 	{
 		mappedBytes += run.Size;
 	}
-	int64 present = mappedBytes - DupeStreamRepair::TotalSize(holes);
+	int64 present = mappedBytes - DupeStreamRepair::TotalSize(originalHoles);
 	int64 base = std::min(DupeStreamRepair::MinProbeCompareBytes,
 		std::max<int64>(64, present));
 	int64 achievable = 0;
@@ -1149,6 +1165,31 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 				{
 					return written;
 				}
+
+				// defense in depth: fail closed unless the write is provably
+				// inside a captured hole of a known repair target - never
+				// overwrite bytes the primary (or an earlier donor) owns
+				if (memberTargets[piece.MemberIndex] < 0)
+				{
+					PrintMessage(Message::mkWarning,
+						"Stream repair write outside a repair target blocked for %s",
+						setMembers[piece.MemberIndex].Name.c_str());
+					return written;
+				}
+				RepairTarget& pieceTarget = targets[memberTargets[piece.MemberIndex]];
+				StreamRangeList remainder = { piece.Range };
+				for (const StreamRange& targetHole : pieceTarget.Holes)
+				{
+					DupeStreamRepair::SubtractCovered(remainder, targetHole);
+				}
+				if (!remainder.empty())
+				{
+					PrintMessage(Message::mkWarning,
+						"Stream repair write outside a captured hole blocked for %s",
+						setMembers[piece.MemberIndex].Name.c_str());
+					return written;
+				}
+
 				file->Seek(piece.Range.Offset);
 				if (file->Position() != piece.Range.Offset ||
 					file->Write(donorData.data() + (innerPos[0].Offset - pos),
@@ -1160,11 +1201,7 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 						*FileSystem::GetLastErrorMessage());
 					return written;
 				}
-				if (memberTargets[piece.MemberIndex] >= 0)
-				{
-					DupeStreamRepair::SubtractCovered(
-						targets[memberTargets[piece.MemberIndex]].Holes, piece.Range);
-				}
+				DupeStreamRepair::SubtractCovered(pieceTarget.Holes, piece.Range);
 				written += piece.Range.Size;
 			}
 			DupeStreamRepair::SubtractCovered(repairSet.InnerHoles, {pos, chunk});
