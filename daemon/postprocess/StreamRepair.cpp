@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <set>
 #include "StreamRepair.h"
+#include "StreamCrypto.h"
 #include "DupeStreamRepair.h"
 #include "DupeArticleFallback.h"
 #include "DupeCoordinator.h"
@@ -356,6 +357,14 @@ void StreamRepairController::Stop()
 void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets,
 	std::vector<CString>& memberNames)
 {
+	// the target's own archive password enables encrypted store-rar target
+	// sets to map (M3); an empty parameter means plain M2 behavior
+	NzbParameter* parameter = nzbInfo->GetParameters()->Find("*Unpack:Password");
+	if (parameter)
+	{
+		m_targetPassword = parameter->GetValue();
+	}
+
 	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
 	{
 		memberNames.emplace_back(completedFile.GetFilename());
@@ -478,6 +487,14 @@ void StreamRepairController::CollectDonors(DownloadQueue* downloadQueue, NzbInfo
 			DonorSource donor;
 			donor.QueuedFilename = donorNzbInfo->GetQueuedFilename();
 			donor.InfoName = donorNzbInfo->GetName();
+			// the donor's password must come from the live NzbInfo (queue or
+			// history - both persist parameters): the later ParseDonorNzb
+			// re-parse of the raw .nzb cannot see intake- or API-set passwords
+			NzbParameter* parameter = donorNzbInfo->GetParameters()->Find("*Unpack:Password");
+			if (parameter)
+			{
+				donor.Password = parameter->GetValue();
+			}
 			donors.push_back(std::move(donor));
 		}
 	}
@@ -882,8 +899,11 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 
 	DiskSourceSet diskSources(destDir, setMembers);
 	HoledSourceSet holedSources(diskSources, memberHoles);
+	// the target's own password (if any) lets encrypted store-rar target sets
+	// map; plaintext sets are unaffected by it
 	std::vector<RepairSetData> repairSets =
-		ContentMapper::BuildRepairSets(setMembers, memberHoles, holedSources);
+		ContentMapper::BuildRepairSets(setMembers, memberHoles, holedSources,
+			m_targetPassword.Empty() ? nullptr : *m_targetPassword);
 
 	bool anyMapped = false;
 	for (RepairSetData& repairSet : repairSets)
@@ -966,6 +986,26 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 				std::string donorSkip;
 				std::unique_ptr<ContentMap> donorMap =
 					ContentMapper::BuildMap(donorMembers, donorSet, donorSources, donorSkip);
+				// M3 ladder: a donor that failed ONLY for encryption may map
+				// with its own password (already-fetched articles are cached,
+				// so the retry mostly re-parses); anything else stays skipped
+				if (!donorMap && !donor.Password.Empty() &&
+					(donorSkip == "encrypted archive data" ||
+					 donorSkip == "encrypted archive headers"))
+				{
+					mappingBudget = 8 + 4 * (int)donorSet.Members.size();
+					donorMap = ContentMapper::BuildMap(donorMembers, donorSet,
+						donorSources, donorSkip, donor.Password);
+					if (!donorMap)
+					{
+						// the safety net firing (e.g. "archive password
+						// rejected") must be visible; never log the password
+						PrintMessage(Message::mkInfo,
+							"Skipping packing %s of duplicate %s: %s",
+							donorMembers[donorSet.Members[0]].Name.c_str(),
+							*donor.InfoName, donorSkip.c_str());
+					}
+				}
 				donorSources.SetFetchBudget(nullptr);
 
 				if (!donorMap ||
@@ -997,6 +1037,15 @@ bool StreamRepairController::ReadDonorInner(ContentMap& donorMap,
 	DonorSetSources& donorSources, const StreamRange& innerRange, std::vector<char>& buffer)
 {
 	buffer.resize(innerRange.Size);
+
+	// an encrypted donor serves PLAINTEXT transparently: the map fetches the
+	// covering cipher blocks (their predecessor included, across member
+	// boundaries) and decrypts. Any unavailable byte fails the whole read.
+	if (donorMap.GetEncrypted())
+	{
+		return donorMap.ReadInnerDecrypted(donorSources, innerRange, buffer.data());
+	}
+
 	int64 covered = 0;
 	for (const MemberRange& piece : donorMap.MapFromInner(innerRange))
 	{
@@ -1075,6 +1124,15 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	// 64-byte identity floor silently weakens
 	windows = ContentMapper::CoalesceRanges(std::move(windows));
 
+	// an encrypted target is verified in CIPHERTEXT space: the window
+	// semantics (anchoring, coalescing) are identical, only the expected-bytes
+	// computation differs
+	if (targetMap.GetEncrypted())
+	{
+		return VerifyDonorSetEncrypted(repairSet, donorMap, donorSources,
+			targetFiles, windows);
+	}
+
 	// floor semantics as in M1 (Task 1): everything reachable must match,
 	// scaled to the mapped present bytes (anchored to the ORIGINAL holes:
 	// donor-filled bytes are not primary evidence), clamped to what the
@@ -1142,12 +1200,81 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	return totalCompared >= required && sawVariedData;
 }
 
+/* writes `data` (the bytes of innerRange, index 0 = innerRange.Offset) through
+ * the target map with the M2 containment guards: every piece must be provably
+ * inside a captured hole of a known repair target - never overwrite bytes the
+ * primary (or an earlier donor) owns. Returns the bytes written, or -1 when a
+ * write was blocked or failed (the caller must stop patching this set). */
+int64 StreamRepairController::WriteInnerRange(ContentMap& targetMap, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const StreamRange& innerRange, const char* data)
+{
+	int64 written = 0;
+	for (const MemberRange& piece : targetMap.MapFromInner(innerRange))
+	{
+		StreamRangeList innerPos = targetMap.MapToInner(piece.MemberIndex, piece.Range);
+		DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+		if (innerPos.size() != 1 || !file)
+		{
+			return -1;
+		}
+
+		// defense in depth: fail closed unless the write is provably
+		// inside a captured hole of a known repair target
+		if (memberTargets[piece.MemberIndex] < 0)
+		{
+			PrintMessage(Message::mkWarning,
+				"Stream repair write outside a repair target blocked for %s",
+				setMembers[piece.MemberIndex].Name.c_str());
+			return -1;
+		}
+		RepairTarget& pieceTarget = targets[memberTargets[piece.MemberIndex]];
+		StreamRangeList remainder = { piece.Range };
+		for (const StreamRange& targetHole : pieceTarget.Holes)
+		{
+			DupeStreamRepair::SubtractCovered(remainder, targetHole);
+		}
+		if (!remainder.empty())
+		{
+			PrintMessage(Message::mkWarning,
+				"Stream repair write outside a captured hole blocked for %s",
+				setMembers[piece.MemberIndex].Name.c_str());
+			return -1;
+		}
+
+		file->Seek(piece.Range.Offset);
+		if (file->Position() != piece.Range.Offset ||
+			file->Write(data + (innerPos[0].Offset - innerRange.Offset),
+				piece.Range.Size) != piece.Range.Size)
+		{
+			PrintMessage(Message::mkError,
+				"Could not write to %s during stream repair: %s",
+				setMembers[piece.MemberIndex].Name.c_str(),
+				*FileSystem::GetLastErrorMessage());
+			return -1;
+		}
+		DupeStreamRepair::SubtractCovered(pieceTarget.Holes, piece.Range);
+		written += piece.Range.Size;
+	}
+	return written;
+}
+
 int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
 	DonorSetSources& donorSources, TargetSetFiles& targetFiles,
 	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
 	const std::vector<SetMember>& setMembers, const char* donorName)
 {
 	ContentMap& targetMap = *repairSet.Map;
+
+	// an encrypted target needs whole-cipher-block patching with boundary
+	// verification; the plain path below also serves encrypted DONORS
+	// transparently (ReadDonorInner decrypts through the donor map)
+	if (targetMap.GetEncrypted())
+	{
+		return PatchFromDonorSetEncrypted(repairSet, donorMap, donorSources,
+			targetFiles, targets, memberTargets, setMembers, donorName);
+	}
+
 	int64 written = 0;
 	std::vector<char> donorData;
 
@@ -1162,53 +1289,13 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 			{
 				break;	// this donor cannot supply the rest of this hole
 			}
-			for (const MemberRange& piece : targetMap.MapFromInner({pos, chunk}))
+			int64 wrote = WriteInnerRange(targetMap, targetFiles, targets,
+				memberTargets, setMembers, {pos, chunk}, donorData.data());
+			if (wrote < 0)
 			{
-				StreamRangeList innerPos = targetMap.MapToInner(piece.MemberIndex, piece.Range);
-				DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
-				if (innerPos.size() != 1 || !file)
-				{
-					return written;
-				}
-
-				// defense in depth: fail closed unless the write is provably
-				// inside a captured hole of a known repair target - never
-				// overwrite bytes the primary (or an earlier donor) owns
-				if (memberTargets[piece.MemberIndex] < 0)
-				{
-					PrintMessage(Message::mkWarning,
-						"Stream repair write outside a repair target blocked for %s",
-						setMembers[piece.MemberIndex].Name.c_str());
-					return written;
-				}
-				RepairTarget& pieceTarget = targets[memberTargets[piece.MemberIndex]];
-				StreamRangeList remainder = { piece.Range };
-				for (const StreamRange& targetHole : pieceTarget.Holes)
-				{
-					DupeStreamRepair::SubtractCovered(remainder, targetHole);
-				}
-				if (!remainder.empty())
-				{
-					PrintMessage(Message::mkWarning,
-						"Stream repair write outside a captured hole blocked for %s",
-						setMembers[piece.MemberIndex].Name.c_str());
-					return written;
-				}
-
-				file->Seek(piece.Range.Offset);
-				if (file->Position() != piece.Range.Offset ||
-					file->Write(donorData.data() + (innerPos[0].Offset - pos),
-						piece.Range.Size) != piece.Range.Size)
-				{
-					PrintMessage(Message::mkError,
-						"Could not write to %s during stream repair: %s",
-						setMembers[piece.MemberIndex].Name.c_str(),
-						*FileSystem::GetLastErrorMessage());
-					return written;
-				}
-				DupeStreamRepair::SubtractCovered(pieceTarget.Holes, piece.Range);
-				written += piece.Range.Size;
+				return written;
 			}
+			written += wrote;
 			DupeStreamRepair::SubtractCovered(repairSet.InnerHoles, {pos, chunk});
 			pos += chunk;
 		}
@@ -1223,6 +1310,381 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
 			written / 1024.0 / 1024.0, recoveredParts,
 			repairSet.Map->GetInnerName(), donorName);
+	}
+	return written;
+}
+
+/* assembles raw ciphertext of the target's contiguous cipher space from its
+ * member files on disk (a 16-byte block regularly straddles two volumes);
+ * false when any byte is unmappable or unreadable */
+bool StreamRepairController::ReadTargetCipher(ContentMap& targetMap, TargetSetFiles& targetFiles,
+	const StreamRange& cipherRange, char* buffer)
+{
+	std::vector<MemberRange> pieces = targetMap.MapCipherRange(cipherRange);
+	if (pieces.empty() && cipherRange.Size > 0)
+	{
+		return false;
+	}
+	int64 filled = 0;
+	for (const MemberRange& piece : pieces)
+	{
+		DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+		if (!file)
+		{
+			return false;
+		}
+		file->Seek(piece.Range.Offset);
+		if (file->Position() != piece.Range.Offset ||
+			file->Read(buffer + filled, piece.Range.Size) != piece.Range.Size)
+		{
+			return false;
+		}
+		filled += piece.Range.Size;
+	}
+	return true;
+}
+
+/* the encrypted-target probe (M3): identity evidence in CIPHERTEXT space. Per
+ * window the donor's plaintext is fetched for the covering whole cipher
+ * blocks, re-encrypted under the TARGET's stream context - chained from the
+ * predecessor cipher block read from the target's own disk, or the header IV
+ * at stream start - and byte-compared against the target's on-disk ciphertext.
+ * A wrong password, wrong donor or wrong block arithmetic fails the compare:
+ * rejection, never a write. Window semantics (anchoring to the original holes,
+ * coalescing, the 64-byte floor, varied-data demand) are M2's. */
+bool StreamRepairController::VerifyDonorSetEncrypted(RepairSetData& repairSet,
+	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+	const std::vector<StreamRange>& windows)
+{
+	constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
+	ContentMap& targetMap = *repairSet.Map;
+	const StreamRangeList& originalHoles = repairSet.OriginalInnerHoles;
+	const RunCrypto* runCrypto = targetMap.GetRunCrypto(0);
+	if (!runCrypto)
+	{
+		return false;
+	}
+
+	// the final partial plaintext block (innerSize % 16 != 0) is never
+	// checkable: its ciphertext depends on the poster's padding bytes, which
+	// no donor carries
+	int64 lastComputable = targetMap.GetInnerSize() / blockSize * blockSize;
+
+	// the recomputation must chain from a TRUSTWORTHY predecessor block: one
+	// fully outside the ORIGINAL holes (identity evidence anchors to primary
+	// bytes only), or the header IV at position 0. Advancing forfeits the
+	// window's head - fail toward less evidence, never toward trusting garbage
+	auto chainStart = [&originalHoles](const StreamRange& window, int64 windowEnd)
+	{
+		int64 blockFrom = window.Offset / blockSize * blockSize;
+		while (blockFrom > 0 && blockFrom < windowEnd)
+		{
+			bool prevPresent = true;
+			for (const StreamRange& hole : originalHoles)
+			{
+				prevPresent &= hole.End() <= blockFrom - blockSize ||
+					hole.Offset >= blockFrom;
+			}
+			if (prevPresent)
+			{
+				break;
+			}
+			blockFrom += blockSize;
+		}
+		return blockFrom;
+	};
+
+	// floor semantics as in the plain path, with the achievable evidence
+	// clipped by the last computable block and each window's chain start
+	int64 mappedBytes = 0;
+	for (const ContentRun& run : *targetMap.GetRuns())
+	{
+		mappedBytes += run.Size;
+	}
+	int64 base = DupeStreamRepair::BaseCompareFloor(
+		mappedBytes - DupeStreamRepair::TotalSize(originalHoles));
+	int64 achievable = 0;
+	for (const StreamRange& window : windows)
+	{
+		int64 windowEnd = std::min(window.End(), lastComputable);
+		int64 from = std::max(window.Offset, chainStart(window, windowEnd));
+		if (from < windowEnd)
+		{
+			achievable += windowEnd - from;
+		}
+	}
+	if (achievable < 64)
+	{
+		return false;	// identity unknowable in cipher space - par2 owns this set
+	}
+	int64 required = std::min(base, achievable);
+
+	int64 totalCompared = 0;
+	bool sawVariedData = false;
+	std::vector<char> donorData;
+	std::vector<uint8> cipher;
+
+	for (const StreamRange& window : windows)
+	{
+		if (IsStopped())
+		{
+			return false;
+		}
+		if (totalCompared >= required && sawVariedData)
+		{
+			break;
+		}
+		int64 windowEnd = std::min(window.End(), lastComputable);
+		int64 blockFrom = chainStart(window, windowEnd);
+		int64 from = std::max(window.Offset, blockFrom);
+		if (from >= windowEnd)
+		{
+			continue;
+		}
+		int64 blockTo = (windowEnd + blockSize - 1) / blockSize * blockSize;
+		uint8 prev[RarCryptoContext::CryptoBlockSize];
+		if (blockFrom > 0 && !ReadTargetCipher(targetMap, targetFiles,
+			{blockFrom - blockSize, blockSize}, (char*)prev))
+		{
+			continue;	// unreadable chain input - no evidence from this window
+		}
+		// boundary blocks need the donor's plaintext OUTSIDE the window too;
+		// if the donor cannot supply the whole expansion, the window drops
+		if (!ReadDonorInner(donorMap, donorSources,
+			{blockFrom, blockTo - blockFrom}, donorData))
+		{
+			continue;	// inconclusive: the donor may miss these articles
+		}
+		cipher.resize((size_t)(blockTo - blockFrom));
+		if (!runCrypto->Crypto->EncryptRange(blockFrom > 0 ? prev : nullptr,
+			(const uint8*)donorData.data(), cipher.data(),
+			(blockTo - blockFrom) / blockSize))
+		{
+			continue;
+		}
+		std::vector<MemberRange> pieces = targetMap.MapCipherRange({from, windowEnd - from});
+		if (pieces.empty())
+		{
+			continue;
+		}
+		int64 seen = 0;
+		for (const MemberRange& piece : pieces)
+		{
+			DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+			if (!file)
+			{
+				return false;
+			}
+			if (!CompareToFile(*file, piece.Range.Offset,
+				(const char*)cipher.data() + (from - blockFrom) + seen, piece.Range.Size))
+			{
+				return false;	// same geometry, different ciphertext - wrong donor
+			}
+			seen += piece.Range.Size;
+		}
+		totalCompared += windowEnd - from;
+
+		// constant PLAINTEXT proves nothing even in cipher space (any
+		// zero-padded sibling matches): variedness is judged on the plaintext
+		const char* plainWindow = donorData.data() + (from - blockFrom);
+		for (int64 i = 1; i < windowEnd - from && !sawVariedData; i++)
+		{
+			sawVariedData = plainWindow[i] != plainWindow[0];
+		}
+	}
+
+	return totalCompared >= required && sawVariedData;
+}
+
+/* the encrypted-target patch (M3): per hole, expand to whole cipher blocks,
+ * fetch the donor's plaintext for the expansion, re-encrypt under the target's
+ * stream context (chained from the predecessor block on disk, the header IV at
+ * stream start, or the previous chunk's recomputed tail), VERIFY every
+ * recomputed byte that is present on disk (the boundary tripwire - a mismatch
+ * means the chain, donor or password is wrong and aborts this donor for this
+ * set), and write ONLY bytes inside captured holes through the M2 guards. */
+int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSet,
+	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const char* donorName)
+{
+	constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
+	ContentMap& targetMap = *repairSet.Map;
+	const RunCrypto* runCrypto = targetMap.GetRunCrypto(0);
+	if (!runCrypto)
+	{
+		return 0;
+	}
+	// bytes at or past the last full plaintext block are unpatchable: their
+	// cipher depends on the poster's padding, which no donor can supply
+	int64 lastComputable = targetMap.GetInnerSize() / blockSize * blockSize;
+	int64 written = 0;
+	int64 uncomputableTail = 0;
+	std::vector<char> donorData;
+	std::vector<uint8> cipher;
+
+	StreamRangeList holes = repairSet.InnerHoles;	// iterate a stable copy
+	for (const StreamRange& hole : holes)
+	{
+		if (IsStopped())
+		{
+			break;
+		}
+
+		// the live remainder: an earlier hole's block expansion may have
+		// already filled parts of this one
+		int64 holeFrom = -1;
+		int64 holeTo = -1;
+		for (const StreamRange& live : repairSet.InnerHoles)
+		{
+			int64 from = std::max(live.Offset, hole.Offset);
+			int64 to = std::min(live.End(), hole.End());
+			if (from < to)
+			{
+				holeFrom = holeFrom < 0 ? from : holeFrom;
+				holeTo = to;
+			}
+		}
+		if (holeFrom < 0)
+		{
+			continue;	// already covered
+		}
+		int64 patchTo = std::min(holeTo, lastComputable);
+		uncomputableTail += holeTo - std::max(patchTo, holeFrom);
+		if (patchTo <= holeFrom)
+		{
+			continue;
+		}
+
+		int64 blockFrom = holeFrom / blockSize * blockSize;
+		int64 blockTo = (patchTo + blockSize - 1) / blockSize * blockSize;
+
+		// the chain input for the first block: the predecessor cipher block
+		// from the target's disk - REQUIRED to be outside every current hole
+		// (its bytes are primary or verified donor writes), or the header IV.
+		// Chaining from garbage could write garbage with no tripwire when the
+		// hole edges are block-aligned, so this check is load-bearing.
+		uint8 prev[RarCryptoContext::CryptoBlockSize];
+		bool havePrev = false;
+		if (blockFrom > 0)
+		{
+			bool prevPresent = true;
+			for (const StreamRange& live : repairSet.InnerHoles)
+			{
+				prevPresent &= live.End() <= blockFrom - blockSize ||
+					live.Offset >= blockFrom;
+			}
+			if (!prevPresent || !ReadTargetCipher(targetMap, targetFiles,
+				{blockFrom - blockSize, blockSize}, (char*)prev))
+			{
+				PrintMessage(Message::mkInfo,
+					"Skipping a hole of %s for duplicate %s: predecessor cipher block is missing",
+					targetMap.GetInnerName(), donorName);
+				continue;
+			}
+			havePrev = true;
+		}
+
+		while (blockFrom < blockTo && !IsStopped())
+		{
+			int64 chunkEnd = std::min<int64>(blockFrom + 4 * 1024 * 1024, blockTo);
+			if (!ReadDonorInner(donorMap, donorSources,
+				{blockFrom, chunkEnd - blockFrom}, donorData))
+			{
+				break;	// this donor cannot supply the rest of this hole
+			}
+			cipher.resize((size_t)(chunkEnd - blockFrom));
+			if (!runCrypto->Crypto->EncryptRange(havePrev ? prev : nullptr,
+				(const uint8*)donorData.data(), cipher.data(),
+				(chunkEnd - blockFrom) / blockSize))
+			{
+				break;
+			}
+
+			// partition the chunk by the LIVE holes: hole bytes get written,
+			// every other byte must equal its recomputation exactly
+			StreamRangeList holeParts;
+			for (const StreamRange& live : repairSet.InnerHoles)
+			{
+				int64 from = std::max(live.Offset, blockFrom);
+				int64 to = std::min(live.End(), chunkEnd);
+				if (from < to)
+				{
+					holeParts.push_back({from, to - from});
+				}
+			}
+			StreamRangeList presentParts = { {blockFrom, chunkEnd - blockFrom} };
+			for (const StreamRange& part : holeParts)
+			{
+				DupeStreamRepair::SubtractCovered(presentParts, part);
+			}
+
+			// verify BEFORE writing: block-expansion bytes OUTSIDE holes are
+			// verified-match, never written
+			for (const StreamRange& part : presentParts)
+			{
+				std::vector<MemberRange> pieces = targetMap.MapCipherRange(part);
+				if (pieces.empty())
+				{
+					PrintMessage(Message::mkInfo,
+						"Skipping packing of duplicate %s for %s: unmappable boundary bytes",
+						donorName, targetMap.GetInnerName());
+					return written;	// cannot verify - fail closed
+				}
+				int64 seen = 0;
+				for (const MemberRange& piece : pieces)
+				{
+					DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+					if (!file || !CompareToFile(*file, piece.Range.Offset,
+						(const char*)cipher.data() + (part.Offset - blockFrom) + seen,
+						piece.Range.Size))
+					{
+						// the corruption tripwire, not an error: this donor is
+						// dropped for the whole set (mkInfo on purpose)
+						PrintMessage(Message::mkInfo,
+							"Skipping packing of duplicate %s for %s: boundary block mismatch",
+							donorName, targetMap.GetInnerName());
+						return written;
+					}
+					seen += piece.Range.Size;
+				}
+			}
+
+			for (const StreamRange& part : holeParts)
+			{
+				int64 wrote = WriteInnerRange(targetMap, targetFiles, targets,
+					memberTargets, setMembers, part,
+					(const char*)cipher.data() + (part.Offset - blockFrom));
+				if (wrote < 0)
+				{
+					return written;
+				}
+				written += wrote;
+				DupeStreamRepair::SubtractCovered(repairSet.InnerHoles, part);
+			}
+
+			// the next chunk chains from this chunk's recomputed tail block
+			memcpy(prev, cipher.data() + (chunkEnd - blockFrom) - blockSize, blockSize);
+			havePrev = true;
+			blockFrom = chunkEnd;
+		}
+	}
+
+	if (uncomputableTail > 0)
+	{
+		PrintMessage(Message::mkInfo,
+			"Cross-packing repair of %s: %lli byte(s) in the final partial cipher block stay for par-repair",
+			targetMap.GetInnerName(), (long long)uncomputableTail);
+	}
+	if (written > 0)
+	{
+		int recoveredParts = donorSources.TakeServedParts();
+		m_recoveredArticles += recoveredParts;
+		m_recoveredBytes += written;
+		PrintMessage(Message::mkInfo,
+			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
+			written / 1024.0 / 1024.0, recoveredParts,
+			targetMap.GetInnerName(), donorName);
 	}
 	return written;
 }

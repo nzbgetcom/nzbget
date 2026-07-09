@@ -156,10 +156,16 @@ private:
 	{
 		CString QueuedFilename;
 		CString InfoName;
+		// the donor's own archive password (its *Unpack:Password parameter,
+		// captured from the LIVE donor NzbInfo: re-parsing the .nzb would lose
+		// passwords set at intake or via the API). A secret - never logged.
+		CString Password;
 	};
 
 	PostInfo* m_postInfo;
 	ArticleFetcher m_fetcher;
+	// the target's own archive password (*Unpack:Password); never logged
+	CString m_targetPassword;
 	int m_recoveredArticles = 0;
 	int64 m_recoveredBytes = 0;
 	bool m_holesRemain = false;
@@ -207,6 +213,23 @@ private:
 		DonorSetSources& donorSources, TargetSetFiles& targetFiles,
 		std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
 		const std::vector<SetMember>& setMembers, const char* donorName);
+
+	// encrypted-target variants (M3): identity and patching in CIPHERTEXT
+	// space - donor plaintext is re-encrypted under the target's stream
+	// context and byte-compared against the target's disk before any write
+	static bool ReadTargetCipher(ContentMap& targetMap, TargetSetFiles& targetFiles,
+		const StreamRange& cipherRange, char* buffer);
+	bool VerifyDonorSetEncrypted(RepairSetData& repairSet, ContentMap& donorMap,
+		DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+		const std::vector<StreamRange>& windows);
+	int64 PatchFromDonorSetEncrypted(RepairSetData& repairSet, ContentMap& donorMap,
+		DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+		std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+		const std::vector<SetMember>& setMembers, const char* donorName);
+	int64 WriteInnerRange(ContentMap& targetMap, TargetSetFiles& targetFiles,
+		std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+		const std::vector<SetMember>& setMembers, const StreamRange& innerRange,
+		const char* data);
 	void ReportRemainingHoles(std::vector<RepairTarget>& targets);
 
 	void RepairCompleted();
