@@ -329,6 +329,42 @@ private:
 
 typedef std::deque<CompletedFile> CompletedFileList;
 
+// a contiguous byte range of a decoded file
+struct StreamRange
+{
+	int64 Offset = 0;
+	int64 Size = 0;
+	int64 End() const { return Offset + Size; }
+};
+
+typedef std::vector<StreamRange> StreamRangeList;
+
+/*
+ * Byte ranges of a completed media file which no news server could supply,
+ * captured while the file's article list still exists, so post-processing
+ * can repair them from a differently segmented duplicate posting
+ * (see option <DupeArticleFallback> value "stream"; not persisted).
+ */
+class StreamRepairJob
+{
+public:
+	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, StreamRangeList holes) :
+		m_fileId(fileId), m_filename(filename), m_decodedFileSize(decodedFileSize),
+		m_holes(std::move(holes)) {}
+	int GetFileId() const { return m_fileId; }
+	const char* GetFilename() const { return m_filename; }
+	int64 GetDecodedFileSize() const { return m_decodedFileSize; }
+	StreamRangeList* GetHoles() { return &m_holes; }
+
+private:
+	int m_fileId;
+	CString m_filename;
+	int64 m_decodedFileSize;
+	StreamRangeList m_holes;
+};
+
+typedef std::vector<StreamRepairJob> StreamRepairJobList;
+
 class NzbParameter
 {
 public:
@@ -574,6 +610,7 @@ public:
 	void SetCurrentFailedArticles(int currentFailedArticles) { m_currentFailedArticles = currentFailedArticles; }
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	StreamRepairJobList* GetStreamRepairJobs() { return &m_streamRepairJobs; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
 	int GetExtraPriority() { return m_extraPriority; }
@@ -747,6 +784,9 @@ private:
 	int m_currentFailedArticles = 0;
 	// aggregate of FileInfo::m_dupeRecoveredArticles (not persisted)
 	int m_dupeRecoveredArticles = 0;
+	// missing byte ranges of completed media files awaiting stream repair
+	// from duplicate collections in post-processing (not persisted)
+	StreamRepairJobList m_streamRepairJobs;
 	time_t m_minTime = 0;
 	time_t m_maxTime = 0;
 	int m_priority = 0;

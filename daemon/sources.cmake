@@ -71,6 +71,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DupeStreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/QueueCoordinator.cpp
