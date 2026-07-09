@@ -634,8 +634,8 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 			{
 				return part1.first > part2.first;
 			});
-		int64 base = std::min(DupeStreamRepair::MinProbeCompareBytes,
-			std::max<int64>(64, target.DecodedFileSize - DupeStreamRepair::TotalSize(target.Holes)));
+		int64 base = DupeStreamRepair::BaseCompareFloor(
+			target.DecodedFileSize - DupeStreamRepair::TotalSize(target.Holes));
 		int64 pooled = 0;
 		for (const std::pair<int64, int>& candidate : overlaps)
 		{
@@ -1069,6 +1069,12 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 		}
 	}
 
+	// neighboring holes hugging a small present island produce windows over
+	// the SAME bytes (A's after-window == B's before-window): coalesce so
+	// shared bytes count once toward achievable and totalCompared, or the
+	// 64-byte identity floor silently weakens
+	windows = ContentMapper::CoalesceRanges(std::move(windows));
+
 	// floor semantics as in M1 (Task 1): everything reachable must match,
 	// scaled to the mapped present bytes (anchored to the ORIGINAL holes:
 	// donor-filled bytes are not primary evidence), clamped to what the
@@ -1078,9 +1084,8 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	{
 		mappedBytes += run.Size;
 	}
-	int64 present = mappedBytes - DupeStreamRepair::TotalSize(originalHoles);
-	int64 base = std::min(DupeStreamRepair::MinProbeCompareBytes,
-		std::max<int64>(64, present));
+	int64 base = DupeStreamRepair::BaseCompareFloor(
+		mappedBytes - DupeStreamRepair::TotalSize(originalHoles));
 	int64 achievable = 0;
 	for (const StreamRange& window : windows)
 	{

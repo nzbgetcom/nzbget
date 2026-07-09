@@ -1533,4 +1533,47 @@ BOOST_AUTO_TEST_CASE(ContentMapperBuildRepairSetsTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(ContentMapperCoalesceRangesTest)
+{
+	// empty input
+	BOOST_CHECK(ContentMapper::CoalesceRanges({}).empty());
+
+	// disjoint ranges are preserved (and sorted by offset)
+	StreamRangeList disjoint = ContentMapper::CoalesceRanges({{100, 10}, {0, 10}});
+	BOOST_REQUIRE_EQUAL(disjoint.size(), 2u);
+	BOOST_CHECK_EQUAL(disjoint[0].Offset, 0);
+	BOOST_CHECK_EQUAL(disjoint[0].Size, 10);
+	BOOST_CHECK_EQUAL(disjoint[1].Offset, 100);
+	BOOST_CHECK_EQUAL(disjoint[1].Size, 10);
+
+	// overlap merges
+	StreamRangeList overlap = ContentMapper::CoalesceRanges({{0, 20}, {10, 30}});
+	BOOST_REQUIRE_EQUAL(overlap.size(), 1u);
+	BOOST_CHECK_EQUAL(overlap[0].Offset, 0);
+	BOOST_CHECK_EQUAL(overlap[0].Size, 40);
+
+	// adjacency (end == offset) merges; a contained range never widens
+	StreamRangeList adjacent = ContentMapper::CoalesceRanges(
+		{{0, 10}, {10, 5}, {2, 3}});
+	BOOST_REQUIRE_EQUAL(adjacent.size(), 1u);
+	BOOST_CHECK_EQUAL(adjacent[0].Offset, 0);
+	BOOST_CHECK_EQUAL(adjacent[0].Size, 15);
+
+	// the double-count breach geometry: original holes [0,100000) and
+	// [100040,200000) hug the SAME 40-byte island from both sides, so
+	// window building emits {100000,40} twice - coalesced they must count
+	// 40 comparable bytes ONCE, keeping the 64-byte identity floor honest
+	StreamRangeList windows = ContentMapper::CoalesceRanges(
+		{{100000, 40}, {100000, 40}});
+	BOOST_REQUIRE_EQUAL(windows.size(), 1u);
+	BOOST_CHECK_EQUAL(windows[0].Offset, 100000);
+	BOOST_CHECK_EQUAL(windows[0].Size, 40);
+	int64 total = 0;
+	for (const StreamRange& window : windows)
+	{
+		total += window.Size;
+	}
+	BOOST_CHECK_EQUAL(total, 40);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

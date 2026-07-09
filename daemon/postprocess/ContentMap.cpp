@@ -1551,3 +1551,27 @@ std::vector<RepairSetData> ContentMapper::BuildRepairSets(const std::vector<SetM
 
 	return repairSets;
 }
+
+StreamRangeList ContentMapper::CoalesceRanges(std::vector<StreamRange> ranges)
+{
+	std::sort(ranges.begin(), ranges.end(),
+		[](const StreamRange& range1, const StreamRange& range2)
+		{
+			return range1.Offset < range2.Offset;
+		});
+
+	StreamRangeList merged;
+	for (const StreamRange& range : ranges)
+	{
+		if (!merged.empty() && range.Offset <= merged.back().End())
+		{
+			merged.back().Size =
+				std::max(merged.back().End(), range.End()) - merged.back().Offset;
+		}
+		else
+		{
+			merged.push_back(range);
+		}
+	}
+	return merged;
+}

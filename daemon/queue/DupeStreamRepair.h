@@ -21,6 +21,7 @@
 #ifndef DUPESTREAMREPAIR_H
 #define DUPESTREAMREPAIR_H
 
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "DownloadInfo.h"
@@ -61,6 +62,14 @@ public:
 	static std::vector<int> SelectProbeParts(const StreamRangeList& donorRanges,
 		const StreamRangeList& holes, int probeCount);
 	static void SubtractCovered(StreamRangeList& ranges, const StreamRange& covered);
+
+	/* The scaled identity-compare base floor shared by every verifier:
+	 * everything present must match, capped at MinProbeCompareBytes and
+	 * never below 64 (below that identity is unknowable). */
+	static int64 BaseCompareFloor(int64 presentBytes)
+	{
+		return std::min<int64>(MinProbeCompareBytes, std::max<int64>(64, presentBytes));
+	}
 
 	/* The identity-compare floor for one target/donor pair: everything
 	 * present must match, but never more than the SELECTED probe parts can

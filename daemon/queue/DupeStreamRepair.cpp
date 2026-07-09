@@ -252,8 +252,7 @@ void DupeStreamRepair::SubtractCovered(StreamRangeList& ranges, const StreamRang
 int64 DupeStreamRepair::RequiredCompareFloor(int64 decodedFileSize, const StreamRangeList& holes,
 	const StreamRangeList& donorRanges, const std::vector<int>& probeParts)
 {
-	int64 present = decodedFileSize - TotalSize(holes);
-	int64 base = std::min(MinProbeCompareBytes, std::max<int64>(64, present));
+	int64 base = BaseCompareFloor(decodedFileSize - TotalSize(holes));
 
 	int64 achievable = 0;
 	for (int partIndex : probeParts)

@@ -224,6 +224,11 @@ public:
 	static std::vector<RepairSetData> BuildRepairSets(const std::vector<SetMember>& members,
 		const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources);
 
+	/* sorts by offset and merges overlapping/adjacent ranges into a disjoint
+	 * ascending list: probe windows hugging neighboring holes can land on
+	 * the same present island, and shared bytes must only count once */
+	static StreamRangeList CoalesceRanges(std::vector<StreamRange> ranges);
+
 private:
 	static std::unique_ptr<ContentMap> BuildBareMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
