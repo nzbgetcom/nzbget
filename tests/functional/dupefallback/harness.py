@@ -44,10 +44,14 @@ article "missing" on the active server, so no real Usenet access is needed):
   cache-eviction path (regression for the use-after-free crash).
 * stream        - the donor is segmented differently; missing byte ranges are
   repaired on stream level in post-processing.
+* repost        - a 4-member opaque "rar+par2 release" reposted byte-identically
+  under different segmentation; damaged volume and par2 are both repaired
+  byte-identically (final status FAILURE/PAR by design - the stand-in par2 is
+  random bytes).
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream]
+               [--scenario all|complementary|cutover|manydonors|stream|repost]
                [--serial NNN] [--keep]
 """
 
@@ -71,19 +75,12 @@ except ImportError:
 # NZB generation (nserv message-id format: <path?part=offset:size[!servers]>)
 # --------------------------------------------------------------------------- #
 
-def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts):
-    """Return NZB XML for a single file served by nserv.
-
-    ``missing_parts`` is a set of 1-based part numbers to mark with ``!2`` so
-    they are served only by nserv instance 2 (i.e. missing on the active
-    instance-1 server, forcing a fallback)."""
+def _nzb_file_block(served_path, subject_name, file_size, seg_size, missing_parts):
+    """One <file>...</file> block for nserv-served content (msgid format:
+    <path?part=offset:size[!servers]>)."""
     import html
     n = (file_size + seg_size - 1) // seg_size
     lines = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" '
-        '"http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">',
-        '<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">',
         '<file poster="dupefallback@test" date="1700000000" '
         'subject="&quot;%s&quot; yEnc (1/%d)">' % (html.escape(subject_name), n),
         '<groups><group>alt.binaries.test</group></groups>',
@@ -96,7 +93,34 @@ def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts):
         msgid = '%s?%d=%d:%d%s' % (served_path, i, off, size, miss)
         lines.append('<segment bytes="%d" number="%d">%s</segment>'
                      % (size, i, html.escape(msgid)))
-    lines += ['</segments>', '</file>', '</nzb>']
+    lines += ['</segments>', '</file>']
+    return lines
+
+
+def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts):
+    """Return NZB XML for a single file served by nserv.
+
+    ``missing_parts`` is a set of 1-based part numbers to mark with ``!2`` so
+    they are served only by nserv instance 2 (i.e. missing on the active
+    instance-1 server, forcing a fallback)."""
+    return build_multi_nzb([(served_path, subject_name, file_size, seg_size,
+                             missing_parts)])
+
+
+def build_multi_nzb(members):
+    """Return NZB XML containing one <file> block per member tuple
+    (served_path, subject_name, file_size, seg_size, missing_parts).
+    Member subject names MUST be distinct: duplicate parsed filenames make
+    nzbget fall back to raw subjects and set ManyDupeFiles."""
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" '
+        '"http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">',
+        '<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">',
+    ]
+    for member in members:
+        lines += _nzb_file_block(*member)
+    lines.append('</nzb>')
     return '\n'.join(lines) + '\n'
 
 
@@ -477,6 +501,61 @@ def scenario_stream(daemon, t):
             % (h['Status'], recov, queued, repaired, rejected, integ))
 
 
+def scenario_repost(daemon, t):
+    """M1 same-bytes matching: a 4-member "release" (three equal-size rar
+    volumes + a small par2) where the payloads are random bytes standing in
+    for a PASSWORD-PROTECTED, COMPRESSED archive - stream repair never
+    interprets them, which is the point. The primary posting is missing
+    blocks in part01 and in the par2; the donor is a REPOST: byte-identical
+    members under the same names, cut into different article sizes. Suffix/
+    name pairing must match each damaged member to its donor twin and repair
+    both byte-identically (equal-size volumes prove pairing; the par2 proves
+    the small-file probe fallback and scaled floor). Expected history status
+    is FAILURE/PAR: ParCheck=auto runs the par stage against the stand-in
+    par2, which is opaque random bytes, so par-check fails by design -
+    byte integrity and the counters are the pass criteria here."""
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    members = [
+        ('repostA/x.part01.rar', 'Rel.part01.rar', vol, seg_primary, {2}),
+        ('repostA/x.part02.rar', 'Rel.part02.rar', vol, seg_primary, set()),
+        ('repostA/x.part03.rar', 'Rel.part03.rar', vol, seg_primary, set()),
+        ('repostA/x.par2', 'Rel.vol00+01.par2', 80_000, 70_000, {1}),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 7000 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+
+    donor_members = [(m[0].replace('repostA', 'repostB'), m[1], m[2], seg_donor, set())
+                     for m in members]
+    for m in donor_members:
+        t.write_file(os.path.join('data', m[0]), payloads[m[1]])
+
+    primary = build_multi_nzb(members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonRepost', donor, True, 'repost-key', 50)
+    daemon.append(api, 'RelRepost', primary, False, 'repost-key', 100)
+    h = daemon.wait_history(api, 'RelRepost')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    queued = _grep_log(t, 'Queueing stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ_rar = _verify_output(t, payloads['Rel.part01.rar'], '.rar', dirs=both_dirs)
+    integ_par = _verify_output(t, payloads['Rel.vol00+01.par2'], '.par2', dirs=both_dirs)
+    intact_2 = _verify_output(t, payloads['Rel.part02.rar'], '.rar', dirs=both_dirs)
+    intact_3 = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=both_dirs)
+    return ('repost',
+            integ_rar and integ_par and intact_2 and intact_3 and
+            recov >= 4 and queued >= 2 and repaired >= 2,
+            'status=%s recovered=%d queued_logs=%d repair_logs=%d '
+            'rar=%s par2=%s intact=%s/%s'
+            % (h['Status'], recov, queued, repaired,
+               integ_rar, integ_par, intact_2, intact_3))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -511,6 +590,7 @@ SCENARIOS = {
     'cutover': scenario_cutover,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
+    'repost': scenario_repost,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -521,6 +601,9 @@ SCENARIOS = {
 # files present, "auto" ends in a harmless "Nothing to par-check").
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # repost: ParCheck=auto runs par-check against a random-bytes stand-in
+    # par2 after the repair - FAILURE/PAR is the EXPECTED final status
+    'repost': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 
