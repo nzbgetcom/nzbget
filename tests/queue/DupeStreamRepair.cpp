@@ -87,12 +87,15 @@ std::unique_ptr<FileInfo> BuildDonorFile(const char* filename, std::vector<int> 
 	return fileInfo;
 }
 
-// swaps g_Options for the duration of a test (BuildRepairJob reads it)
-struct OptionsSwap
+// restores g_Options after a test constructs local Options instances
+// (BuildRepairJob reads the global): the Options constructor repoints
+// g_Options at itself and its destructor nulls it, so the guard must be
+// declared BEFORE any local Options (destroyed after them) or later tests
+// in this binary see a null g_Options
+struct OptionsGuard
 {
-	Options* prev;
-	OptionsSwap(Options* options) : prev(g_Options) { g_Options = options; }
-	~OptionsSwap() { g_Options = prev; }
+	Options* m_prev = g_Options;
+	~OptionsGuard() { g_Options = m_prev; }
 };
 
 } // namespace
@@ -272,12 +275,13 @@ BOOST_AUTO_TEST_CASE(StreamRepairSubtractCoveredTest)
 
 BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 {
+	OptionsGuard optionsGuard;
+
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("DupeArticleFallback=stream");
-	Options streamOptions(&cmdOpts, nullptr);
+	Options streamOptions(&cmdOpts, nullptr); // constructor sets g_Options
 
 	{
-		OptionsSwap swap(&streamOptions);
 		NzbInfo nzbInfo;
 
 		// incomplete media file: captured with its hole
@@ -306,15 +310,10 @@ BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 		BOOST_CHECK_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
 	}
 
-	// below "stream" (the default) nothing is captured. Swaps in an explicit
-	// freshly-parsed Options rather than restoring the ambient g_Options:
-	// Options::Init() unconditionally does "g_Options = this", and at least
-	// one other enabled test in this binary (QueueTest/NZBParserTest)
-	// constructs its own local Options without restoring g_Options afterwards,
-	// so the ambient pointer here can be left dangling depending on test order
+	// below "stream" (the default) nothing is captured; a freshly-parsed
+	// default Options repoints g_Options via its constructor
 	Options::CmdOptList noCmdOpts;
 	Options noOptions(&noCmdOpts, nullptr);
-	OptionsSwap noSwap(&noOptions);
 
 	NzbInfo plainNzb;
 	std::unique_ptr<FileInfo> media = BuildStreamFile(1000, {{0, 300}, {300, 0}});
