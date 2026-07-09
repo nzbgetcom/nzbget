@@ -182,6 +182,8 @@ private:
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
 	static std::unique_ptr<ContentMap> BuildZipMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
+	static std::unique_ptr<ContentMap> BuildSevenZipMap(const std::vector<SetMember>& members,
+		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
 };
 
 #endif

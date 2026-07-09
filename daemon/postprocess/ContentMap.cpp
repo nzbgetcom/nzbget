@@ -281,6 +281,288 @@ struct SetBucket
 	int FinalMember = -1;
 };
 
+// bounded reader over the 7z property stream; any overrun poisons Ok
+struct SevenZipReader
+{
+	// a pointer (not a reference) so the reader can be re-seated by assignment
+	// onto the unpacked bytes of a Copy-coded kEncodedHeader
+	const std::vector<char>* Buffer;
+	int64 Pos = 0;
+	bool Ok = true;
+
+	SevenZipReader(const std::vector<char>& buffer) : Buffer(&buffer) {}
+
+	uint8 ReadByte()
+	{
+		if (Pos >= (int64)Buffer->size())
+		{
+			Ok = false;
+			return 0;
+		}
+		return (uint8)(*Buffer)[Pos++];
+	}
+
+	uint64 ReadNumber()
+	{
+		uint8 firstByte = ReadByte();
+		uint64 value = 0;
+		uint8 mask = 0x80;
+		for (int i = 0; i < 8; i++)
+		{
+			if ((firstByte & mask) == 0)
+			{
+				value |= ((uint64)(firstByte & (mask - 1))) << (8 * i);
+				return value;
+			}
+			value |= (uint64)ReadByte() << (8 * i);
+			mask >>= 1;
+		}
+		return value;
+	}
+
+	void Skip(uint64 count)
+	{
+		if (Pos + (int64)count > (int64)Buffer->size())
+		{
+			Ok = false;
+			return;
+		}
+		Pos += count;
+	}
+
+	std::vector<bool> ReadBitVector(uint64 count)
+	{
+		std::vector<bool> bits(count);
+		uint8 currentByte = 0;
+		uint8 mask = 0;
+		for (uint64 i = 0; i < count; i++)
+		{
+			if (mask == 0)
+			{
+				currentByte = ReadByte();
+				mask = 0x80;
+			}
+			bits[i] = (currentByte & mask) != 0;
+			mask >>= 1;
+		}
+		return bits;
+	}
+
+	// the kCRC record: skip it, honoring the defined-entries bit vector
+	void SkipDigests(uint64 count)
+	{
+		uint64 defined = count;
+		if (ReadByte() == 0)
+		{
+			std::vector<bool> bits = ReadBitVector(count);
+			defined = 0;
+			for (bool bit : bits)
+			{
+				defined += bit ? 1 : 0;
+			}
+		}
+		Skip(defined * 4);
+	}
+};
+
+struct SevenZipStreams
+{
+	uint64 PackPos = 0;
+	std::vector<uint64> PackSizes;
+	std::vector<uint64> FolderUnpackSizes;
+	std::vector<bool> FolderCrcDefined;
+	std::vector<std::vector<uint64>> SubstreamSizes;	// per folder
+	bool CopyOnly = true;
+};
+
+// parses one StreamsInfo subtree (used for kMainStreamsInfo and, when the
+// header itself is packed, for kEncodedHeader)
+bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
+{
+	uint64 recordId = reader.ReadNumber();
+
+	if (recordId == 0x06)	// kPackInfo
+	{
+		streams.PackPos = reader.ReadNumber();
+		uint64 packCount = reader.ReadNumber();
+		for (uint64 id = reader.ReadNumber(); reader.Ok && id != 0x00; id = reader.ReadNumber())
+		{
+			if (id == 0x09)			// kSize
+			{
+				for (uint64 i = 0; i < packCount; i++)
+				{
+					streams.PackSizes.push_back(reader.ReadNumber());
+				}
+			}
+			else if (id == 0x0a)	// kCRC
+			{
+				reader.SkipDigests(packCount);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		recordId = reader.ReadNumber();
+	}
+
+	if (recordId == 0x07)	// kUnPackInfo
+	{
+		if (reader.ReadNumber() != 0x0b)	// kFolder is mandatory
+		{
+			return false;
+		}
+		uint64 folderCount = reader.ReadNumber();
+		if (reader.ReadByte() != 0)			// external folders unsupported
+		{
+			return false;
+		}
+		for (uint64 f = 0; f < folderCount && reader.Ok; f++)
+		{
+			uint64 coderCount = reader.ReadNumber();
+			for (uint64 c = 0; c < coderCount && reader.Ok; c++)
+			{
+				uint8 flags = reader.ReadByte();
+				uint8 idSize = flags & 0x0f;
+				bool copyCoder = idSize == 1 && !(flags & 0x30);
+				uint8 coderId = 0xff;
+				for (uint8 b = 0; b < idSize; b++)
+				{
+					coderId = reader.ReadByte();
+				}
+				copyCoder &= coderCount == 1 && coderId == 0x00;
+				streams.CopyOnly &= copyCoder;
+				if (flags & 0x10)	// complex: in/out stream counts follow
+				{
+					reader.ReadNumber();
+					reader.ReadNumber();
+				}
+				if (flags & 0x20)	// attributes follow
+				{
+					reader.Skip(reader.ReadNumber());
+				}
+			}
+			// bind pairs / packed-stream indexes only exist for complex
+			// folders, which CopyOnly already rejects - nothing to read here
+		}
+		if (reader.ReadNumber() != 0x0c)	// kCodersUnpackSize is mandatory
+		{
+			return false;
+		}
+		for (uint64 f = 0; f < folderCount; f++)
+		{
+			streams.FolderUnpackSizes.push_back(reader.ReadNumber());
+		}
+		streams.FolderCrcDefined.assign(folderCount, false);
+		for (uint64 id = reader.ReadNumber(); reader.Ok && id != 0x00; id = reader.ReadNumber())
+		{
+			if (id == 0x0a)	// kCRC: remember which folders have one
+			{
+				uint64 defined = folderCount;
+				if (reader.ReadByte() == 0)
+				{
+					streams.FolderCrcDefined = reader.ReadBitVector(folderCount);
+					defined = 0;
+					for (bool bit : streams.FolderCrcDefined)
+					{
+						defined += bit ? 1 : 0;
+					}
+				}
+				else
+				{
+					streams.FolderCrcDefined.assign(folderCount, true);
+				}
+				reader.Skip(defined * 4);
+			}
+			else
+			{
+				return false;
+			}
+		}
+		recordId = reader.ReadNumber();
+	}
+
+	// default: one substream per folder
+	for (uint64 unpackSize : streams.FolderUnpackSizes)
+	{
+		streams.SubstreamSizes.push_back({unpackSize});
+	}
+
+	if (recordId == 0x08)	// kSubStreamsInfo
+	{
+		std::vector<uint64> streamCounts(streams.FolderUnpackSizes.size(), 1);
+		uint64 id = reader.ReadNumber();
+		if (id == 0x0d)		// kNumUnpackStream
+		{
+			for (uint64& count : streamCounts)
+			{
+				count = reader.ReadNumber();
+			}
+			id = reader.ReadNumber();
+		}
+		if (id == 0x09)		// kSize: all but the last substream per folder
+		{
+			streams.SubstreamSizes.clear();
+			for (size_t f = 0; f < streamCounts.size(); f++)
+			{
+				std::vector<uint64> sizes;
+				uint64 used = 0;
+				for (uint64 s = 0; s + 1 < streamCounts[f]; s++)
+				{
+					sizes.push_back(reader.ReadNumber());
+					used += sizes.back();
+				}
+				if (streamCounts[f] > 0)
+				{
+					if (used > streams.FolderUnpackSizes[f])
+					{
+						return false;
+					}
+					sizes.push_back(streams.FolderUnpackSizes[f] - used);
+				}
+				streams.SubstreamSizes.push_back(std::move(sizes));
+			}
+			id = reader.ReadNumber();
+		}
+		else if (id != 0x00 && id != 0x0a)
+		{
+			return false;
+		}
+		else
+		{
+			// counts changed but no explicit sizes: only valid all-ones
+			streams.SubstreamSizes.clear();
+			for (size_t f = 0; f < streamCounts.size(); f++)
+			{
+				if (streamCounts[f] != 1)
+				{
+					return false;
+				}
+				streams.SubstreamSizes.push_back({streams.FolderUnpackSizes[f]});
+			}
+		}
+		if (id == 0x0a)		// kCRC
+		{
+			uint64 digestCount = 0;
+			for (size_t f = 0; f < streamCounts.size(); f++)
+			{
+				bool folderCovered = streamCounts[f] == 1 &&
+					f < streams.FolderCrcDefined.size() && streams.FolderCrcDefined[f];
+				digestCount += folderCovered ? 0 : streamCounts[f];
+			}
+			reader.SkipDigests(digestCount);
+			id = reader.ReadNumber();
+		}
+		if (id != 0x00)
+		{
+			return false;
+		}
+		recordId = reader.ReadNumber();
+	}
+
+	return reader.Ok && recordId == 0x00;	// kEnd of StreamsInfo
+}
+
 }
 
 std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& members)
@@ -452,6 +734,8 @@ std::unique_ptr<ContentMap> ContentMapper::BuildMap(const std::vector<SetMember>
 			return BuildRarMap(members, set, sources, skipReason);
 		case MemberSet::mfZip:
 			return BuildZipMap(members, set, sources, skipReason);
+		case MemberSet::mfSevenZip:
+			return BuildSevenZipMap(members, set, sources, skipReason);
 		default:
 			skipReason = "format mapper not implemented";
 			return nullptr;
@@ -887,6 +1171,250 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 
 	int64 innerOffset = 0;
 	for (const MemberRange& piece : logical.ToMembers({dataPos, (int64)primary.UncompSize}))
+	{
+		map->GetRuns()->push_back({innerOffset, piece.MemberIndex,
+			piece.Range.Offset, piece.Range.Size});
+		innerOffset += piece.Range.Size;
+	}
+
+	return map;
+}
+
+std::unique_ptr<ContentMap> ContentMapper::BuildSevenZipMap(const std::vector<SetMember>& members,
+	const MemberSet& set, ContentSourceSet& sources, std::string& skipReason)
+{
+	std::vector<int64> memberSizes;
+	int64 totalSize = 0;
+	for (int memberIndex : set.Members)
+	{
+		ContentSource* source = sources.GetSource(memberIndex);
+		if (!source || source->Size() <= 0)
+		{
+			skipReason = "member unreadable";
+			return nullptr;
+		}
+		memberSizes.push_back(source->Size());
+		totalSize += source->Size();
+	}
+	CompositeSource logical(sources, set.Members, memberSizes);
+
+	char signatureHeader[32];
+	static const char signature[] = {'7', 'z', (char)0xbc, (char)0xaf, 0x27, 0x1c};
+	if (totalSize < 32 || !logical.Read(0, signatureHeader, sizeof(signatureHeader)) ||
+		memcmp(signatureHeader, signature, sizeof(signature)))
+	{
+		skipReason = "not a 7z archive";
+		return nullptr;
+	}
+	uint64 nextHeaderOffset = GetLe64(signatureHeader + 12);
+	uint64 nextHeaderSize = GetLe64(signatureHeader + 20);
+	if (nextHeaderSize == 0 || nextHeaderSize > 16 * 1024 * 1024 ||
+		32 + nextHeaderOffset + nextHeaderSize > (uint64)totalSize)
+	{
+		skipReason = "implausible 7z header";
+		return nullptr;
+	}
+
+	std::vector<char> headerBytes(nextHeaderSize);
+	if (!logical.Read(32 + (int64)nextHeaderOffset, headerBytes.data(), (int64)nextHeaderSize))
+	{
+		skipReason = "archive header unreadable";
+		return nullptr;
+	}
+
+	SevenZipReader reader(headerBytes);
+	uint64 headerId = reader.ReadNumber();
+
+	// a packed header is acceptable only when it is itself Copy-coded:
+	// then the real header bytes sit verbatim in the pack area
+	std::vector<char> unpackedHeader;
+	if (headerId == 0x17)	// kEncodedHeader
+	{
+		SevenZipStreams headerStreams;
+		if (!ParseSevenZipStreamsInfo(reader, headerStreams) || !headerStreams.CopyOnly ||
+			headerStreams.PackSizes.size() != 1)
+		{
+			skipReason = "compressed 7z header";
+			return nullptr;
+		}
+		unpackedHeader.resize(headerStreams.PackSizes[0]);
+		if (32 + headerStreams.PackPos + headerStreams.PackSizes[0] > (uint64)totalSize ||
+			!logical.Read(32 + (int64)headerStreams.PackPos, unpackedHeader.data(),
+				(int64)headerStreams.PackSizes[0]))
+		{
+			skipReason = "archive header unreadable";
+			return nullptr;
+		}
+		reader = SevenZipReader(unpackedHeader);
+		headerId = reader.ReadNumber();
+	}
+	if (headerId != 0x01)	// kHeader
+	{
+		skipReason = "unsupported 7z structure";
+		return nullptr;
+	}
+
+	SevenZipStreams streams;
+	std::vector<std::string> names;
+	std::vector<bool> emptyStream;
+	uint64 fileCount = 0;
+
+	for (uint64 id = reader.ReadNumber(); reader.Ok && id != 0x00; id = reader.ReadNumber())
+	{
+		if (id == 0x02)	// kArchiveProperties: typed records, skip them
+		{
+			for (uint64 propType = reader.ReadNumber(); reader.Ok && propType != 0x00;
+				propType = reader.ReadNumber())
+			{
+				reader.Skip(reader.ReadNumber());
+			}
+		}
+		else if (id == 0x04)	// kMainStreamsInfo
+		{
+			if (!ParseSevenZipStreamsInfo(reader, streams))
+			{
+				skipReason = "unsupported 7z structure";
+				return nullptr;
+			}
+		}
+		else if (id == 0x05)	// kFilesInfo
+		{
+			fileCount = reader.ReadNumber();
+			for (uint64 propType = reader.ReadNumber(); reader.Ok && propType != 0x00;
+				propType = reader.ReadNumber())
+			{
+				uint64 propSize = reader.ReadNumber();
+				int64 propEnd = reader.Pos + (int64)propSize;
+				if (propType == 0x0e)	// kEmptyStream
+				{
+					emptyStream = reader.ReadBitVector(fileCount);
+				}
+				else if (propType == 0x11)	// kName
+				{
+					if (reader.ReadByte() != 0)
+					{
+						skipReason = "unsupported 7z structure";
+						return nullptr;
+					}
+					std::string current;
+					while (reader.Ok && reader.Pos + 1 < propEnd)
+					{
+						uint8 low = reader.ReadByte();
+						uint8 high = reader.ReadByte();
+						if (low == 0 && high == 0)
+						{
+							names.push_back(std::move(current));
+							current.clear();
+						}
+						else
+						{
+							current += (high == 0 && low < 128) ? (char)low : '_';
+						}
+					}
+				}
+				if (reader.Pos > propEnd)
+				{
+					skipReason = "unsupported 7z structure";
+					return nullptr;
+				}
+				reader.Pos = propEnd;	// every record is size-delimited
+			}
+		}
+		else
+		{
+			skipReason = "unsupported 7z structure";
+			return nullptr;
+		}
+	}
+	if (!reader.Ok || streams.FolderUnpackSizes.empty())
+	{
+		skipReason = "unsupported 7z structure";
+		return nullptr;
+	}
+	if (!streams.CopyOnly)
+	{
+		skipReason = "non-Copy 7z coder (only copy mode maps)";
+		return nullptr;
+	}
+	if (streams.PackSizes.size() != streams.FolderUnpackSizes.size())
+	{
+		skipReason = "unsupported 7z structure";
+		return nullptr;
+	}
+	for (size_t f = 0; f < streams.PackSizes.size(); f++)
+	{
+		if (streams.PackSizes[f] != streams.FolderUnpackSizes[f])
+		{
+			skipReason = "7z pack/unpack sizes disagree (not copy mode?)";
+			return nullptr;
+		}
+	}
+
+	// substreams in folder-major order own logical data regions
+	struct SevenZipFile
+	{
+		std::string Name;
+		int64 DataPos = 0;
+		int64 Size = 0;
+	};
+	std::vector<SevenZipFile> dataFiles;
+	int64 packBase = 32 + (int64)streams.PackPos;
+	int64 folderPos = packBase;
+	for (size_t f = 0; f < streams.SubstreamSizes.size(); f++)
+	{
+		int64 filePos = folderPos;
+		for (uint64 substreamSize : streams.SubstreamSizes[f])
+		{
+			dataFiles.push_back({"", filePos, (int64)substreamSize});
+			filePos += (int64)substreamSize;
+		}
+		folderPos += (int64)streams.PackSizes[f];
+	}
+
+	// align names to substreams: empty-stream files (dirs) own no data
+	size_t dataIndex = 0;
+	for (uint64 i = 0; i < fileCount && i < names.size(); i++)
+	{
+		bool hasStream = emptyStream.empty() || i >= emptyStream.size() || !emptyStream[i];
+		if (hasStream && dataIndex < dataFiles.size())
+		{
+			size_t slashPos = names[i].find_last_of("/\\");
+			dataFiles[dataIndex].Name = slashPos == std::string::npos ?
+				names[i] : names[i].substr(slashPos + 1);
+			dataIndex++;
+		}
+	}
+
+	const SevenZipFile* primary = nullptr;
+	for (const SevenZipFile& file : dataFiles)
+	{
+		if (!primary || file.Size > primary->Size)
+		{
+			primary = &file;
+		}
+	}
+	if (!primary || primary->Name.empty())
+	{
+		skipReason = "unsupported 7z structure";
+		return nullptr;
+	}
+	if (!DupeStreamRepair::IsStreamEligible(primary->Name.c_str()))
+	{
+		skipReason = "inner file is not a media file";
+		return nullptr;
+	}
+	if (primary->DataPos + primary->Size > totalSize)
+	{
+		skipReason = "implausible data run geometry";
+		return nullptr;
+	}
+
+	std::unique_ptr<ContentMap> map = std::make_unique<ContentMap>();
+	map->SetInnerName(primary->Name.c_str());
+	map->SetInnerSize(primary->Size);
+
+	int64 innerOffset = 0;
+	for (const MemberRange& piece : logical.ToMembers({primary->DataPos, primary->Size}))
 	{
 		map->GetRuns()->push_back({innerOffset, piece.MemberIndex,
 			piece.Range.Offset, piece.Range.Size});
