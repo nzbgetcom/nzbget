@@ -21,7 +21,9 @@
 #include "nzbget.h"
 
 #include <algorithm>
+#include <cctype>
 #include "DupeStreamRepair.h"
+#include "DupeArticleFallback.h"
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
@@ -279,4 +281,133 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 		fileInfo->GetDecodedFileSize(), std::move(holes));
 
 	return true;
+}
+
+std::string DupeStreamRepair::SuffixKey(const char* filename)
+{
+	if (Util::EmptyStr(filename))
+	{
+		return "";
+	}
+
+	const char* lastDot = nullptr;
+	const char* prevDot = nullptr;
+	for (const char* p = filename; *p; p++)
+	{
+		if (*p == '.')
+		{
+			prevDot = lastDot;
+			lastDot = p;
+		}
+	}
+	if (!lastDot)
+	{
+		return "";
+	}
+
+	std::string key(prevDot ? prevDot + 1 : lastDot + 1);
+	for (char& ch : key)
+	{
+		ch = (char)tolower((unsigned char)ch);
+	}
+	return key;
+}
+
+std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targetFilename,
+	int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
+	NzbInfo* donorNzb, int maxCandidates)
+{
+	if (Util::EmptyStr(targetFilename))
+	{
+		return {};
+	}
+
+	// the window: donor files whose nzb-declared ENCODED size is near the
+	// target's decoded size (yEnc overhead is ~1-3%; div 8 tolerates ~12.5%)
+	// and which still carry an article list (EstimateDonorRanges needs it)
+	std::vector<FileInfo*> window;
+	for (FileInfo* donorFile : donorNzb->GetFileList())
+	{
+		if (!donorFile->GetArticles()->empty() &&
+			DupeArticleFallback::SizesMatch(donorFile->GetSize(), targetDecodedFileSize, 8))
+		{
+			window.push_back(donorFile);
+		}
+	}
+
+	std::vector<FileInfo*> candidates;
+	auto add = [&candidates, maxCandidates](FileInfo* donorFile)
+	{
+		if ((int)candidates.size() < maxCandidates &&
+			std::find(candidates.begin(), candidates.end(), donorFile) == candidates.end())
+		{
+			candidates.push_back(donorFile);
+		}
+	};
+
+	// 1. a repost that kept its filenames
+	for (FileInfo* donorFile : window)
+	{
+		if (!strcasecmp(donorFile->GetFilename(), targetFilename))
+		{
+			add(donorFile);
+		}
+	}
+
+	// 2. same suffix key, but only when it identifies EXACTLY ONE donor
+	// member: volume schemes ("part03.rar", "r00", "vol07+08.par2") are
+	// unique per member, while shared keys (a same-extension episode pack,
+	// digit-bearing or not: "mkv", "mp4") would flood the cap in file-list
+	// order and evict the better-ranked tiers below
+	std::string targetKey = SuffixKey(targetFilename);
+	if (!targetKey.empty())
+	{
+		FileInfo* keyMatch = nullptr;
+		bool ambiguous = false;
+		for (FileInfo* donorFile : window)
+		{
+			if (SuffixKey(donorFile->GetFilename()) == targetKey)
+			{
+				ambiguous = keyMatch != nullptr;
+				keyMatch = donorFile;
+			}
+		}
+		if (keyMatch && !ambiguous)
+		{
+			add(keyMatch);
+		}
+	}
+
+	// 3. fully obfuscated reposts keep file count and sizes: pair the
+	// rank-th window member by donor filename order, but only when the
+	// window cardinality matches the target side's (the set signature)
+	if (positionalRank >= 0 && positionalWindow == (int)window.size() &&
+		positionalRank < (int)window.size())
+	{
+		std::vector<FileInfo*> byName = window;
+		std::sort(byName.begin(), byName.end(),
+			[](FileInfo* file1, FileInfo* file2)
+			{
+				return strcasecmp(file1->GetFilename(), file2->GetFilename()) < 0;
+			});
+		add(byName[positionalRank]);
+	}
+
+	// 4. closest encoded size (the pre-M1 heuristic; catches renamed singles)
+	std::vector<FileInfo*> bySize = window;
+	std::sort(bySize.begin(), bySize.end(),
+		[targetDecodedFileSize](FileInfo* file1, FileInfo* file2)
+		{
+			int64 diff1 = file1->GetSize() > targetDecodedFileSize ?
+				file1->GetSize() - targetDecodedFileSize : targetDecodedFileSize - file1->GetSize();
+			int64 diff2 = file2->GetSize() > targetDecodedFileSize ?
+				file2->GetSize() - targetDecodedFileSize : targetDecodedFileSize - file2->GetSize();
+			return diff1 < diff2;
+		});
+	for (FileInfo* donorFile : bySize)
+	{
+		add(donorFile);
+	}
+
+	return candidates;
 }

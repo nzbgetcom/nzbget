@@ -21,6 +21,7 @@
 #ifndef DUPESTREAMREPAIR_H
 #define DUPESTREAMREPAIR_H
 
+#include <string>
 #include <vector>
 #include "DownloadInfo.h"
 
@@ -47,6 +48,9 @@ public:
 	static constexpr int ProbeCount = 2;
 	// a probe must byte-compare at least this much overlap to count as proof
 	static constexpr int64 MinProbeCompareBytes = 16 * 1024;
+	// how many donor members are probed per target member before giving up
+	// (bounds wasted fetches when pairing heuristics fail on obfuscated sets)
+	static constexpr int MaxDonorCandidates = 4;
 
 	static bool IsStreamEligible(const char* filename);
 	static StreamRangeList ComputeHoles(FileInfo* fileInfo);
@@ -62,6 +66,22 @@ public:
 	 * that completed with missing byte ranges. diskBasename is the file's
 	 * on-disk name at completion. Must be called within DownloadQueue-lock. */
 	static bool BuildRepairJob(FileInfo* fileInfo, const char* diskBasename);
+
+	/* The last two dot-separated segments of a filename, lowercased
+	 * ("Rel.part03.rar" -> "part03.rar", "X.R00" -> "r00"): equal-size
+	 * members of a repost pair by this key when names differ. */
+	static std::string SuffixKey(const char* filename);
+
+	/* Donor files of one duplicate collection, ordered most-likely-identical
+	 * first for the given target member: exact name match, same suffix key
+	 * when it identifies exactly one donor member (volume schemes; shared
+	 * extension keys are skipped), the positionalRank-th size-window member
+	 * by donor filename order when positionalWindow matches the donor window size
+	 * (rank < 0 skips), then ascending encoded-size distance; deduplicated
+	 * and capped. Every candidate still has to pass probe verification. */
+	static std::vector<FileInfo*> SelectDonorCandidates(const char* targetFilename,
+		int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
+		NzbInfo* donorNzb, int maxCandidates);
 
 private:
 	static bool RangesIntersect(const StreamRange& range1, const StreamRange& range2)

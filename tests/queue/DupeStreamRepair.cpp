@@ -322,4 +322,86 @@ BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 	BOOST_CHECK(plainNzb.GetStreamRepairJobs()->empty());
 }
 
+BOOST_AUTO_TEST_CASE(StreamRepairSuffixKeyTest)
+{
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("Rel.part03.rar"), "part03.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("REL.R00"), "r00");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("movie.mkv"), "mkv");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("a.vol07+08.par2"), "vol07+08.par2");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("archive.7z.001"), "7z.001");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("noextension"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey(""), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey(nullptr), "");
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)
+{
+	// donor "repost": three equal-size volumes + a small nfo outside the window
+	NzbInfo donorNzb;
+	donorNzb.GetFileList()->Add(BuildDonorFile("rel.part01.rar", {500, 500}), false);
+	donorNzb.GetFileList()->Add(BuildDonorFile("rel.part02.rar", {500, 500}), false);
+	donorNzb.GetFileList()->Add(BuildDonorFile("rel.part03.rar", {500, 500}), false);
+	donorNzb.GetFileList()->Add(BuildDonorFile("info.nfo", {50}), false);
+
+	// (1) exact name match wins
+	std::vector<FileInfo*> byName = DupeStreamRepair::SelectDonorCandidates(
+		"rel.part02.rar", 980, -1, 0, &donorNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE(!byName.empty());
+	BOOST_CHECK_EQUAL(byName[0]->GetFilename(), "rel.part02.rar");
+
+	// (2) renamed target pairs by member-specific suffix key
+	std::vector<FileInfo*> bySuffix = DupeStreamRepair::SelectDonorCandidates(
+		"other.part03.rar", 980, -1, 0, &donorNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE(!bySuffix.empty());
+	BOOST_CHECK_EQUAL(bySuffix[0]->GetFilename(), "rel.part03.rar");
+
+	// (3) fully obfuscated names pair positionally by donor filename order,
+	// but only when the window cardinality matches
+	NzbInfo obfNzb;
+	obfNzb.GetFileList()->Add(BuildDonorFile("ccc.bin", {500, 500}), false);
+	obfNzb.GetFileList()->Add(BuildDonorFile("aaa.bin", {500, 500}), false);
+	obfNzb.GetFileList()->Add(BuildDonorFile("bbb.bin", {500, 500}), false);
+	std::vector<FileInfo*> byRank = DupeStreamRepair::SelectDonorCandidates(
+		"zz.dat", 980, 1, 3, &obfNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE(!byRank.empty());
+	BOOST_CHECK_EQUAL(byRank[0]->GetFilename(), "bbb.bin");
+
+	// cardinality mismatch disables the positional tier (still fills via size)
+	std::vector<FileInfo*> badWindow = DupeStreamRepair::SelectDonorCandidates(
+		"zz.dat", 980, 1, 4, &obfNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_CHECK_EQUAL(badWindow.size(), 3u);
+
+	// out-of-range rank is ignored gracefully
+	std::vector<FileInfo*> badRank = DupeStreamRepair::SelectDonorCandidates(
+		"zz.dat", 980, 99, 3, &obfNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_CHECK_EQUAL(badRank.size(), 3u);
+
+	// (4) the nfo never enters the window; the cap bounds the list
+	for (FileInfo* candidate : byName)
+	{
+		BOOST_CHECK(strcasecmp(candidate->GetFilename(), "info.nfo") != 0);
+	}
+	BOOST_CHECK(byName.size() <= (size_t)DupeStreamRepair::MaxDonorCandidates);
+
+	// bare-extension keys ("mkv") are not member-specific: tier 2 must NOT
+	// fire, so the closest-size donor comes first, not the file-list order
+	NzbInfo mkvNzb;
+	mkvNzb.GetFileList()->Add(BuildDonorFile("aaa.mkv", {500, 500}), false);
+	mkvNzb.GetFileList()->Add(BuildDonorFile("bbb.mkv", {490, 490}), false);
+	std::vector<FileInfo*> bareExt = DupeStreamRepair::SelectDonorCandidates(
+		"zzz.mkv", 980, -1, 0, &mkvNzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE_EQUAL(bareExt.size(), 2u);
+	BOOST_CHECK_EQUAL(bareExt[0]->GetFilename(), "bbb.mkv");
+
+	// digit-bearing shared extensions ("mp4") are equally ambiguous: the
+	// uniqueness rule, not a character-class test, gates the suffix tier
+	NzbInfo mp4Nzb;
+	mp4Nzb.GetFileList()->Add(BuildDonorFile("ep1.mp4", {500, 500}), false);
+	mp4Nzb.GetFileList()->Add(BuildDonorFile("ep2.mp4", {490, 490}), false);
+	std::vector<FileInfo*> digitExt = DupeStreamRepair::SelectDonorCandidates(
+		"zzz.mp4", 980, -1, 0, &mp4Nzb, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE_EQUAL(digitExt.size(), 2u);
+	BOOST_CHECK_EQUAL(digitExt[0]->GetFilename(), "ep2.mp4");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
