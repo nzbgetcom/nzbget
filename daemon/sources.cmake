@@ -39,6 +39,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleDownloader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleFetcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleWriter.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/Decoder.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
