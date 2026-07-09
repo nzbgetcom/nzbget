@@ -107,6 +107,23 @@ struct ContentRun
 	int64 InnerEnd() const { return InnerOffset + Size; }
 };
 
+class RarCryptoContext;	// StreamCrypto.h - held by pointer only here
+
+/* crypto annotation for a run whose member bytes are RAR-encrypted ciphertext
+ * (password-assisted store-rar donors, M3). The run lives in PLAINTEXT inner
+ * space; its member bytes are the ciphertext. For an encrypted RAR the whole
+ * inner file is one continuous AES-CBC stream (verified: RAR splits the cipher
+ * across volumes at arbitrary byte offsets, NOT re-keying per volume), so every
+ * encrypted run of a map shares ONE context. The ciphertext for plaintext
+ * position p inside this run lives at member offset CipherDataOffset +
+ * (p - run.InnerOffset); block 0 of the whole stream chains from the context's
+ * header IV, every later block from its predecessor ciphertext block. */
+struct RunCrypto
+{
+	std::shared_ptr<RarCryptoContext> Crypto;
+	int64 CipherDataOffset = 0;
+};
+
 struct MemberRange
 {
 	int MemberIndex;
@@ -172,6 +189,19 @@ public:
 	void SetInnerSize(int64 innerSize) { m_innerSize = innerSize; }
 	std::vector<ContentRun>* GetRuns() { return &m_runs; }
 
+	/* crypto annotations, kept parallel to GetRuns() (index-for-index) when the
+	 * map is encrypted, empty otherwise. The builder pushes one entry per run. */
+	std::vector<RunCrypto>* GetRunCryptos() { return &m_runCryptos; }
+	/* the crypto binding for a run, or nullptr for a plaintext run: the surface
+	 * Task 4 decrypts holes through. Encrypted maps annotate every run. */
+	const RunCrypto* GetRunCrypto(size_t runIndex) const
+	{
+		return runIndex < m_runCryptos.size() && m_runCryptos[runIndex].Crypto ?
+			&m_runCryptos[runIndex] : nullptr;
+	}
+	/* true when any run carries ciphertext (a password-assisted store-rar map) */
+	bool GetEncrypted() const { return !m_runCryptos.empty(); }
+
 	/* the parts of memberRange that carry inner bytes, in inner coordinates
 	 * (framing inside memberRange drops out - donor-irreparable by design) */
 	StreamRangeList MapToInner(int memberIndex, const StreamRange& memberRange) const;
@@ -187,6 +217,9 @@ private:
 	std::string m_innerName;
 	int64 m_innerSize = 0;
 	std::vector<ContentRun> m_runs;
+	// parallel to m_runs when encrypted (one entry per run), empty when plain;
+	// ExcludeMember keeps the two in lockstep
+	std::vector<RunCrypto> m_runCryptos;
 };
 
 /* one target-side set the repair stage can work on; Map is null exactly
@@ -214,9 +247,13 @@ public:
 	static std::vector<MemberSet> GroupSets(const std::vector<SetMember>& members);
 
 	/* builds the inner-content map for one set; nullptr + skipReason when
-	 * the set is not store/copy-mappable (M1 and par2 still apply) */
+	 * the set is not store/copy-mappable (M1 and par2 still apply). A non-null
+	 * password enables password-assisted mapping of encrypted store-rar donors
+	 * (threaded to BuildRarMap only); without it encrypted archives skip as in
+	 * M2. Only donor call sites supply a password - target maps stay plaintext. */
 	static std::unique_ptr<ContentMap> BuildMap(const std::vector<SetMember>& members,
-		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
+		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason,
+		const char* password = nullptr);
 
 	/* target side: group members into sets, keep those with holed members,
 	 * build maps through (hole-aware) sources and translate member holes to
@@ -236,7 +273,8 @@ private:
 	static std::unique_ptr<ContentMap> BuildSplitMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
 	static std::unique_ptr<ContentMap> BuildRarMap(const std::vector<SetMember>& members,
-		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
+		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason,
+		const char* password = nullptr);
 	static std::unique_ptr<ContentMap> BuildZipMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
 	static std::unique_ptr<ContentMap> BuildSevenZipMap(const std::vector<SetMember>& members,

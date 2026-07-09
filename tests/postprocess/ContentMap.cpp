@@ -22,7 +22,13 @@
 
 #include <boost/test/unit_test.hpp>
 #include <cstring>
+#include <fstream>
+#include <memory>
+#include <string>
+#include <vector>
 #include "ContentMap.h"
+#include "RarReader.h"
+#include "StreamCrypto.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
@@ -236,6 +242,118 @@ std::vector<char> BuildRar3EncryptedHeaderVolume()
 	PutLe16(out, 13);
 	out.insert(out.end(), 6, 0);
 
+	return out;
+}
+
+// a RAR3 store volume whose data is AES-encrypted: like BuildRar3StoreVolume
+// but the FILE block also advertises FILE_PASSWORD (0x0004) and FILE_SALT
+// (0x0400), appending the 8-byte per-file data salt after the name. `cipher` is
+// the on-disk ciphertext for this volume's slice; `fullSize` is the plaintext
+// inner file size. Headers stay in the clear (no MAIN password), so the parser
+// exposes GetEncryptedData()/GetHasSalt()/GetSalt() without a header key.
+std::vector<char> BuildRar3EncStoreVolume(const std::vector<char>& cipher, int64 fullSize,
+	bool splitBefore, bool splitAfter, const uint8 salt[8], const char* innerName = "inner.mkv")
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00};
+	out.insert(out.end(), signature, signature + 7);
+
+	PutLe16(out, 0);
+	out.push_back(0x73);
+	PutLe16(out, 0x0011);					// VOLUME | NEWNUMBERING
+	PutLe16(out, 13);
+	out.insert(out.end(), 6, 0);
+
+	uint16 nameLen = (uint16)strlen(innerName);
+	PutLe16(out, 0);
+	out.push_back(0x74);
+	PutLe16(out, (uint16)(0x8000 | 0x0400 | 0x0004 |	// ADDSIZE | SALT | PASSWORD
+		(splitBefore ? 0x0001 : 0) | (splitAfter ? 0x0002 : 0)));
+	PutLe16(out, (uint16)(32 + nameLen + 8));	// HEAD_SIZE incl. name + 8-byte salt
+	PutLe32(out, (uint32)cipher.size());		// PACK_SIZE (ciphertext bytes)
+	PutLe32(out, (uint32)fullSize);				// UNP_SIZE (plaintext size)
+	out.push_back(0);							// HOST_OS
+	PutLe32(out, 0);							// FILE_CRC
+	PutLe32(out, 0);							// FTIME
+	out.push_back(29);							// UNP_VER
+	out.push_back(0x30);						// METHOD store
+	PutLe16(out, nameLen);
+	PutLe32(out, 0x20);							// ATTR
+	out.insert(out.end(), innerName, innerName + nameLen);
+	out.insert(out.end(), salt, salt + 8);
+	out.insert(out.end(), cipher.begin(), cipher.end());
+
+	PutLe16(out, 0);
+	out.push_back(0x7b);
+	PutLe16(out, 0);
+	PutLe16(out, 7);
+	return out;
+}
+
+// a RAR5 store volume whose data is AES-encrypted: like BuildRar5StoreVolume
+// but the FILE header carries an FHEXTRA_CRYPT record (salt/IV/kdf, and a
+// password-check value when `check` is non-null). `cipher` is this volume's
+// on-disk ciphertext; `fullSize` is the plaintext inner file size.
+std::vector<char> BuildRar5EncStoreVolume(const std::vector<char>& cipher, int64 fullSize,
+	bool splitBefore, bool splitAfter, uint8 kdfCount, const uint8 salt[16], const uint8 iv[16],
+	const uint8* check, const char* innerName = "inner.mkv")
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00};
+	out.insert(out.end(), signature, signature + 8);
+
+	std::vector<char> mainHeader;
+	PutVint(mainHeader, 1);					// type: main
+	PutVint(mainHeader, 0);					// block flags
+	PutVint(mainHeader, 0x01);				// arc flags: volume
+	PutLe32(out, 0);
+	PutVint(out, mainHeader.size());
+	out.insert(out.end(), mainHeader.begin(), mainHeader.end());
+
+	// crypt record body (after the record-type field)
+	std::vector<char> content;
+	PutVint(content, 0);					// crypt version: 0 = AES-256
+	PutVint(content, check ? 0x01 : 0);		// flags: bit0 = password check present
+	content.push_back((char)kdfCount);
+	content.insert(content.end(), salt, salt + 16);
+	content.insert(content.end(), iv, iv + 16);
+	if (check)
+	{
+		content.insert(content.end(), check, check + 12);
+	}
+	std::vector<char> record;
+	PutVint(record, 0x01);					// record type: FHEXTRA_CRYPT
+	record.insert(record.end(), content.begin(), content.end());
+	std::vector<char> extra;
+	PutVint(extra, record.size());
+	extra.insert(extra.end(), record.begin(), record.end());
+
+	std::vector<char> fileHeader;
+	PutVint(fileHeader, 2);					// type: file
+	PutVint(fileHeader, 0x01 | 0x02 |		// HAS_EXTRA | HAS_DATA
+		(splitBefore ? 0x08 : 0) | (splitAfter ? 0x10 : 0));
+	PutVint(fileHeader, extra.size());		// extra area size
+	PutVint(fileHeader, cipher.size());		// data area size (ciphertext)
+	PutVint(fileHeader, 0);					// file flags (no mtime/crc)
+	PutVint(fileHeader, (uint64)fullSize);	// unpacked size (plaintext)
+	PutVint(fileHeader, 0);					// attributes
+	PutVint(fileHeader, 0);					// compression info: store (method 0)
+	PutVint(fileHeader, 0);					// host os
+	PutVint(fileHeader, strlen(innerName));
+	fileHeader.insert(fileHeader.end(), innerName, innerName + strlen(innerName));
+	fileHeader.insert(fileHeader.end(), extra.begin(), extra.end());
+	PutLe32(out, 0);
+	PutVint(out, fileHeader.size());
+	out.insert(out.end(), fileHeader.begin(), fileHeader.end());
+	out.insert(out.end(), cipher.begin(), cipher.end());
+
+	std::vector<char> endHeader;
+	PutVint(endHeader, 5);					// type: end of archive
+	PutVint(endHeader, 0);
+	PutVint(endHeader, 0);
+	PutLe32(out, 0);
+	PutVint(out, endHeader.size());
+	out.insert(out.end(), endHeader.begin(), endHeader.end());
 	return out;
 }
 
@@ -1574,5 +1692,263 @@ BOOST_AUTO_TEST_CASE(ContentMapperCoalesceRangesTest)
 	}
 	BOOST_CHECK_EQUAL(total, 40);
 }
+
+#ifndef DISABLE_TLS
+
+namespace
+{
+
+// pad plaintext to the next 16-byte boundary and AES-CBC encrypt it with `ctx`
+// (chain-start = header IV): the on-disk ciphertext a store-rar volume carries
+std::vector<char> EncryptPadded(RarCryptoContext& ctx, const std::vector<char>& plain)
+{
+	int64 padded = ((int64)plain.size() + 15) / 16 * 16;
+	std::vector<uint8> in((size_t)padded, 0);
+	memcpy(in.data(), plain.data(), plain.size());
+	std::vector<uint8> out((size_t)padded);
+	BOOST_REQUIRE(ctx.EncryptRange(nullptr, in.data(), out.data(), padded / 16));
+	return std::vector<char>(out.begin(), out.end());
+}
+
+std::vector<char> SlurpFile(const std::string& path)
+{
+	std::ifstream in(path, std::ios::binary);
+	return std::vector<char>((std::istreambuf_iterator<char>(in)),
+		std::istreambuf_iterator<char>());
+}
+
+}
+
+// Happy path: a 3-volume RAR3 -p store archive maps in PLAINTEXT space. The
+// runs span the plaintext file, every run is annotated with the SAME crypto
+// context (one continuous CBC stream), and decrypting the concatenated on-disk
+// ciphertext through that context reproduces the original plaintext byte for
+// byte. Non-last cipher chunks are 16-aligned; the last carries the padded tail.
+BOOST_AUTO_TEST_CASE(ContentMapperRar3EncryptedStoreMapTest)
+{
+	std::vector<char> inner = Pattern(100, 5);
+	const uint8 salt[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+	auto ctx = RarCryptoContext::MakeRar3("123", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	// cipher = AES-CBC(pad16(inner)) = 112 bytes; split 48 | 48 | 16 (16-aligned
+	// cuts). plainLast = 100 - 96 = 4, padded to 16 in the last volume.
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);
+	BOOST_REQUIRE_EQUAL(cipher.size(), 112u);
+	std::vector<char> c0(cipher.begin(), cipher.begin() + 48);
+	std::vector<char> c1(cipher.begin() + 48, cipher.begin() + 96);
+	std::vector<char> c2(cipher.begin() + 96, cipher.end());
+
+	std::vector<SetMember> members = {
+		{"rel.part01.rar", 0}, {"rel.part02.rar", 0}, {"rel.part03.rar", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c0, 100, false, true, salt)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c1, 100, true, true, salt)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c2, 100, true, false, salt)));
+
+	MemberSet set{MemberSet::mfRar, {0, 1, 2}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason, "123");
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK_EQUAL(map->GetInnerName(), "inner.mkv");
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 100);
+	BOOST_CHECK(map->GetEncrypted());
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 3u);
+
+	// plaintext run geometry: 48 + 48 + 4 = 100
+	BOOST_CHECK_EQUAL((*map->GetRuns())[0].InnerOffset, 0);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[0].Size, 48);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[1].InnerOffset, 48);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[1].Size, 48);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[2].InnerOffset, 96);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[2].Size, 4);
+
+	// every run shares the one stream context; CipherDataOffset == the member
+	// offset where that volume's ciphertext begins
+	const RunCrypto* rc0 = map->GetRunCrypto(0);
+	BOOST_REQUIRE(rc0 && rc0->Crypto);
+	for (size_t i = 0; i < map->GetRuns()->size(); i++)
+	{
+		const RunCrypto* rc = map->GetRunCrypto(i);
+		BOOST_REQUIRE(rc && rc->Crypto);
+		BOOST_CHECK(rc->Crypto == rc0->Crypto);
+		BOOST_CHECK_EQUAL(rc->CipherDataOffset, (*map->GetRuns())[i].MemberOffset);
+	}
+
+	// reassemble the ciphertext (in inner order) and decrypt through the map's
+	// context: the first innerSize plaintext bytes must equal the original
+	std::vector<uint8> full(cipher.begin(), cipher.end());
+	std::vector<uint8> plainOut(full.size());
+	BOOST_REQUIRE(rc0->Crypto->DecryptRange(nullptr, full.data(), plainOut.data(),
+		(int64)full.size() / 16));
+	BOOST_CHECK(!memcmp(plainOut.data(), inner.data(), 100));
+}
+
+// Happy path: a single-volume RAR5 -p store archive (with a password-check
+// value). The whole file is one CBC stream; PackedSize == ceil16(innerSize).
+BOOST_AUTO_TEST_CASE(ContentMapperRar5EncryptedStoreMapTest)
+{
+	std::vector<char> inner = Pattern(50, 9);
+	const uint8 salt[16] = {
+		0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7,
+		0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad, 0xae, 0xaf};
+	const uint8 iv[16] = {
+		0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7,
+		0xb8, 0xb9, 0xba, 0xbb, 0xbc, 0xbd, 0xbe, 0xbf};
+	const uint8 kdf = 12;
+	uint8 check[12] = {};
+	BOOST_REQUIRE(StreamCrypto::DeriveRar5PswCheck("123", kdf, salt, check));
+
+	RarFile::Rar5Crypt crypt;
+	crypt.Version = 0;
+	crypt.KdfCount = kdf;
+	memcpy(crypt.Salt, salt, 16);
+	memcpy(crypt.Iv, iv, 16);
+	memcpy(crypt.CheckValue, check, 8);
+	crypt.HasCheck = true;
+	auto ctx = RarCryptoContext::MakeRar5("123", crypt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);	// 64 bytes = ceil16(50)
+	BOOST_REQUIRE_EQUAL(cipher.size(), 64u);
+
+	std::vector<SetMember> members = {{"rel.part01.rar", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar5EncStoreVolume(cipher, 50, false, false, kdf, salt, iv, check)));
+
+	MemberSet set{MemberSet::mfRar, {0}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason, "123");
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 50);
+	BOOST_CHECK(map->GetEncrypted());
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 1u);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[0].Size, 50);
+
+	const RunCrypto* rc = map->GetRunCrypto(0);
+	BOOST_REQUIRE(rc && rc->Crypto);
+	std::vector<uint8> plainOut(cipher.size());
+	BOOST_REQUIRE(rc->Crypto->DecryptRange(nullptr, (const uint8*)cipher.data(),
+		plainOut.data(), (int64)cipher.size() / 16));
+	BOOST_CHECK(!memcmp(plainOut.data(), inner.data(), 50));
+}
+
+// The rejection matrix: wrong password, no password (M2 behavior preserved),
+// and the fail-closed geometry gates.
+BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedRejectionsTest)
+{
+	std::vector<char> inner = Pattern(50, 3);
+	const uint8 salt3[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	const uint8 salt5[16] = {
+		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+		0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
+	const uint8 iv5[16] = {
+		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+		0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f};
+	const uint8 kdf = 11;
+	uint8 check[12] = {};
+	BOOST_REQUIRE(StreamCrypto::DeriveRar5PswCheck("123", kdf, salt5, check));
+
+	auto ctx3 = RarCryptoContext::MakeRar3("123", salt3);
+	std::vector<char> cipher3 = EncryptPadded(*ctx3, inner);	// 64 bytes
+
+	MemberSet single{MemberSet::mfRar, {0}};
+	std::vector<SetMember> members = {{"rel.part01.rar", 0}};
+	std::string skipReason;
+
+	// wrong RAR5 password: the stored check rejects it, fail closed
+	{
+		RarFile::Rar5Crypt crypt;
+		crypt.Version = 0; crypt.KdfCount = kdf;
+		memcpy(crypt.Salt, salt5, 16); memcpy(crypt.Iv, iv5, 16);
+		memcpy(crypt.CheckValue, check, 8); crypt.HasCheck = true;
+		auto ctx5 = RarCryptoContext::MakeRar5("123", crypt);
+		std::vector<char> cipher5 = EncryptPadded(*ctx5, inner);
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar5EncStoreVolume(cipher5, 50, false, false, kdf, salt5, iv5, check)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason, "wrongpw"));
+		BOOST_CHECK_EQUAL(skipReason, "archive password rejected");
+	}
+
+	// no password: M2 behavior is unchanged (still "encrypted archive data")
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(cipher3, 50, false, false, salt3)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted archive data");
+	}
+
+	// geometry: a non-16-aligned NON-last volume (real multi-volume RAR splits
+	// this way and is correctly rejected as unmappable in store mode)
+	{
+		std::vector<char> c0(cipher3.begin(), cipher3.begin() + 47);	// 47 % 16 != 0
+		std::vector<char> c1(cipher3.begin() + 47, cipher3.end());
+		std::vector<SetMember> pair = {{"rel.part01.rar", 0}, {"rel.part02.rar", 0}};
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c0, 50, false, true, salt3)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c1, 50, true, false, salt3)));
+		MemberSet twoVol{MemberSet::mfRar, {0, 1}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, twoVol, sources, skipReason, "123"));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
+	}
+
+	// geometry: a single volume whose packed size is not ceil16(innerSize)
+	{
+		std::vector<char> shortCipher(cipher3.begin(), cipher3.begin() + 60);	// not 64
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(shortCipher, 50, false, false, salt3)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason, "123"));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
+	}
+}
+
+// The -hp donor decision, exercised against the REAL header-encrypted testdata
+// (password "123"). Without a password the headers cannot parse and the set
+// skips as encrypted headers (M2). WITH the password the SetPassword path
+// decrypts the headers, so the parse succeeds and the set is judged on its
+// contents instead of the header skip (these fixtures' inner file is a .dat, so
+// it is rejected at the media-eligibility gate) - proving -hp donors reach the
+// data-mapping path once unlocked, exactly like -p donors.
+BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedHpDonorTest)
+{
+	const fs::path dir = fs::current_path() / "rarrenamer";
+	struct Case { const char* file; };
+	for (const char* file : {"testfile3encnam.part01.rar", "testfile5encnam.part01.rar"})
+	{
+		std::vector<char> bytes = SlurpFile((dir / file).string());
+		BOOST_REQUIRE_MESSAGE(bytes.size() > 100, file);
+
+		std::vector<SetMember> members = {{file, 0}};
+		MemberSet single{MemberSet::mfRar, {0}};
+
+		MemorySourceSet noPw;
+		noPw.Sources.push_back(std::make_unique<MemoryContentSource>(bytes));
+		std::string reason;
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, noPw, reason));
+		BOOST_CHECK_EQUAL(reason, "encrypted archive headers");
+
+		MemorySourceSet withPw;
+		withPw.Sources.push_back(std::make_unique<MemoryContentSource>(bytes));
+		std::string reason2;
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, withPw, reason2, "123"));
+		// the header parse succeeded (else we'd get the header skip); the set is
+		// rejected on its data instead
+		BOOST_CHECK_MESSAGE(reason2 != "encrypted archive headers", reason2);
+		BOOST_CHECK_MESSAGE(!reason2.empty(), file);
+	}
+}
+
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
