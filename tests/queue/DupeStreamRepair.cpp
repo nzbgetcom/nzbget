@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 #include "DownloadInfo.h"
 #include "DupeStreamRepair.h"
+#include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(QueueTest)
 
@@ -85,6 +86,14 @@ std::unique_ptr<FileInfo> BuildDonorFile(const char* filename, std::vector<int> 
 	fileInfo->SetTotalArticles((int)encodedSizes.size());
 	return fileInfo;
 }
+
+// swaps g_Options for the duration of a test (BuildRepairJob reads it)
+struct OptionsSwap
+{
+	Options* prev;
+	OptionsSwap(Options* options) : prev(g_Options) { g_Options = options; }
+	~OptionsSwap() { g_Options = prev; }
+};
 
 } // namespace
 
@@ -259,6 +268,59 @@ BOOST_AUTO_TEST_CASE(StreamRepairSubtractCoveredTest)
 	// no overlap leaves the list untouched
 	DupeStreamRepair::SubtractCovered(holes, {600, 100});
 	BOOST_CHECK_EQUAL(holes.size(), 2u);
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options streamOptions(&cmdOpts, nullptr);
+
+	{
+		OptionsSwap swap(&streamOptions);
+		NzbInfo nzbInfo;
+
+		// incomplete media file: captured with its hole
+		std::unique_ptr<FileInfo> media = BuildStreamFile(1000, {{0, 300}, {300, 0}, {500, 500}});
+		media->SetNzbInfo(&nzbInfo);
+		BOOST_CHECK(DupeStreamRepair::BuildRepairJob(media.get(), "movie.mkv"));
+		BOOST_REQUIRE_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
+		StreamRepairJob& job = (*nzbInfo.GetStreamRepairJobs())[0];
+		BOOST_CHECK_EQUAL(job.GetFilename(), "movie.mkv");
+		BOOST_CHECK_EQUAL(job.GetDecodedFileSize(), 1000);
+		BOOST_REQUIRE_EQUAL(job.GetHoles()->size(), 1u);
+		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Offset, 300);
+		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Size, 200);
+
+		// non-media file is not captured
+		std::unique_ptr<FileInfo> rar = BuildStreamFile(1000, {{0, 300}, {300, 0}});
+		rar->SetFilename("release.r01");
+		rar->SetNzbInfo(&nzbInfo);
+		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(rar.get(), "release.r01"));
+
+		// complete file is not captured
+		std::unique_ptr<FileInfo> complete = BuildStreamFile(800, {{0, 300}, {300, 500}});
+		complete->SetNzbInfo(&nzbInfo);
+		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(complete.get(), "movie2.mkv"));
+
+		BOOST_CHECK_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
+	}
+
+	// below "stream" (the default) nothing is captured. Swaps in an explicit
+	// freshly-parsed Options rather than restoring the ambient g_Options:
+	// Options::Init() unconditionally does "g_Options = this", and at least
+	// one other enabled test in this binary (QueueTest/NZBParserTest)
+	// constructs its own local Options without restoring g_Options afterwards,
+	// so the ambient pointer here can be left dangling depending on test order
+	Options::CmdOptList noCmdOpts;
+	Options noOptions(&noCmdOpts, nullptr);
+	OptionsSwap noSwap(&noOptions);
+
+	NzbInfo plainNzb;
+	std::unique_ptr<FileInfo> media = BuildStreamFile(1000, {{0, 300}, {300, 0}});
+	media->SetNzbInfo(&plainNzb);
+	BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(media.get(), "movie.mkv"));
+	BOOST_CHECK(plainNzb.GetStreamRepairJobs()->empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

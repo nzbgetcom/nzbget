@@ -33,6 +33,7 @@
 #include "Decoder.h"
 #include "StatMeter.h"
 #include "Deobfuscation.h"
+#include "DupeStreamRepair.h"
 
 bool QueueCoordinator::CoordinatorDownloadQueue::EditEntry(
 	int ID, EEditAction action, const char* args)
@@ -932,6 +933,16 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 		std::string filename = (completed && !outputFilename.empty())
 			? FileSystem::BaseFileName(outputFilename.c_str())
 			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
+
+		// capture the missing byte ranges of an incomplete media file for
+		// post-processing stream repair while the article list still exists
+		// (see option <DupeArticleFallback> value "stream")
+		if (completed && fileStatus == CompletedFile::cfPartial &&
+			DupeStreamRepair::BuildRepairJob(fileInfo, filename.c_str()))
+		{
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Queueing stream repair of %s from duplicate collections", filename.c_str());
+		}
 
 		fileInfo->GetNzbInfo()->GetCompletedFiles()->emplace_back(
 			fileInfo->GetId(),

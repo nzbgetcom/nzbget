@@ -246,3 +246,37 @@ void DupeStreamRepair::SubtractCovered(StreamRangeList& ranges, const StreamRang
 
 	ranges = std::move(remaining);
 }
+
+bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasename)
+{
+	if (g_Options->GetDupeArticleFallback() != Options::dafStream || g_Options->GetRawArticle())
+	{
+		return false;
+	}
+
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+	if (!nzbInfo || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+	{
+		return false;
+	}
+
+	if (!IsStreamEligible(fileInfo->GetFilename()) ||
+		fileInfo->GetSuccessArticles() == 0 ||
+		fileInfo->GetDecodedFileSize() <= 0 ||
+		Util::EmptyStr(diskBasename))
+	{
+		return false;
+	}
+
+	StreamRangeList holes = ComputeHoles(fileInfo);
+	if (holes.empty())
+	{
+		return false;
+	}
+
+	nzbInfo->GetStreamRepairJobs()->emplace_back(fileInfo->GetId(), diskBasename,
+		fileInfo->GetDecodedFileSize(), std::move(holes));
+
+	return true;
+}

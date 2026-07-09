@@ -529,6 +529,8 @@ void HistoryCoordinator::HistoryRedownload(DownloadQueue* downloadQueue, History
 	nzbInfo->SetWaitingPar(false);
 	nzbInfo->SetLoadingPar(false);
 	nzbInfo->GetCompletedFiles()->clear();
+	// stream-repair jobs captured for the previous download attempt are stale
+	nzbInfo->GetStreamRepairJobs()->clear();
 	nzbInfo->GetServerStats()->clear();
 	nzbInfo->GetCurrentServerStats()->clear();
 
@@ -658,6 +660,9 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 		}
 		it++;
 	}
+
+	// stream-repair jobs captured for the previous download attempt are stale
+	nzbInfo->GetStreamRepairJobs()->clear();
 
 	nzbInfo->UpdateCurrentStats();
 
