@@ -21,10 +21,12 @@
 
 #include "nzbget.h"
 
+#include <algorithm>
 #include "RarReader.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "ContentMap.h"
 
 // RAR3 constants
 
@@ -41,6 +43,7 @@ static const uint16 RAR3_BLOCK_ADDSIZE = 0x8000;
 static const uint16 RAR3_FILE_ADDSIZE = 0x0100;
 static const uint16 RAR3_FILE_SPLITBEFORE = 0x0001;
 static const uint16 RAR3_FILE_SPLITAFTER = 0x0002;
+static const uint16 RAR3_FILE_PASSWORD = 0x0004;
 
 static const uint16 RAR3_ENDARC_NEXTVOL = 0x0001;
 static const uint16 RAR3_ENDARC_DATACRC = 0x0002;
@@ -65,8 +68,41 @@ static const uint8 RAR5_FILE_TIME = 0x02;
 static const uint8 RAR5_FILE_CRC = 0x04;
 static const uint8 RAR5_FILE_EXTRATIME = 0x03;
 static const uint8 RAR5_FILE_EXTRATIMEUNIXFORMAT = 0x01;
+static const uint8 RAR5_FILE_EXTRACRYPT = 0x01;
 
 static const uint8 RAR5_ENDARC_NEXTVOL = 0x01;
+
+int64 RarSourceCursor::Read(void* buffer, int64 size)
+{
+	int64 available = std::min(size, std::max<int64>(0, m_source.Size() - m_position));
+	if (available < size)
+	{
+		m_eof = true;	// mimic feof: only a read past the end raises it
+	}
+	if (available <= 0)
+	{
+		return 0;
+	}
+	if (!m_source.Read(m_position, buffer, available))
+	{
+		return 0;	// source refused (donor article missing / target hole)
+	}
+	m_position += available;
+	return available;
+}
+
+bool RarSourceCursor::Seek(int64 position, DiskFile::ESeekOrigin origin)
+{
+	int64 target = origin == DiskFile::soCur ? m_position + position :
+		origin == DiskFile::soEnd ? m_source.Size() + position : position;
+	if (target < 0)
+	{
+		return false;
+	}
+	m_position = target;
+	m_eof = false;	// like fseek clearing the eof indicator
+	return true;
+}
 
 bool RarVolume::Read()
 {
@@ -77,6 +113,16 @@ bool RarVolume::Read()
 	{
 		return false;
 	}
+
+	DiskContentSource source(file, FileSystem::FileSize(m_filename.c_str()));
+	bool ok = ReadFrom(source);
+	file.Close();
+	return ok;
+}
+
+bool RarVolume::ReadFrom(ContentSource& source)
+{
+	RarSourceCursor file(source);
 
 	m_version = DetectRarVersion(file);
 	file.Seek(0);
@@ -94,7 +140,6 @@ bool RarVolume::Read()
 			break;
 	}
 
-	file.Close();
 	DecryptFree();
 
 	LogDebugInfo();
@@ -102,7 +147,7 @@ bool RarVolume::Read()
 	return ok;
 }
 
-int RarVolume::DetectRarVersion(DiskFile& file)
+int RarVolume::DetectRarVersion(RarSourceCursor& file)
 {
 	static char RAR3_SIGNATURE[] = { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x00 };
 	static char RAR5_SIGNATURE[] = { 0x52, 0x61, 0x72, 0x21, 0x1A, 0x07, 0x01, 0x00 };
@@ -118,7 +163,7 @@ int RarVolume::DetectRarVersion(DiskFile& file)
 	return rar3 ? 3 : rar5 ? 5 : 0;
 }
 
-bool RarVolume::Read(DiskFile& file, RarBlock* block, void* buffer, int64 size)
+bool RarVolume::Read(RarSourceCursor& file, RarBlock* block, void* buffer, int64 size)
 {
 	if (m_encrypted)
 	{
@@ -137,7 +182,7 @@ bool RarVolume::Read(DiskFile& file, RarBlock* block, void* buffer, int64 size)
 	return true;
 }
 
-bool RarVolume::Read16(DiskFile& file, RarBlock* block, uint16* result)
+bool RarVolume::Read16(RarSourceCursor& file, RarBlock* block, uint16* result)
 {
 	uint8 buf[2];
 	if (!Read(file, block, buf, sizeof(buf))) return false;
@@ -145,7 +190,7 @@ bool RarVolume::Read16(DiskFile& file, RarBlock* block, uint16* result)
 	return true;
 }
 
-bool RarVolume::Read32(DiskFile& file, RarBlock* block, uint32* result)
+bool RarVolume::Read32(RarSourceCursor& file, RarBlock* block, uint32* result)
 {
 	uint8 buf[4];
 	if (!Read(file, block, buf, sizeof(buf))) return false;
@@ -153,7 +198,7 @@ bool RarVolume::Read32(DiskFile& file, RarBlock* block, uint32* result)
 	return true;
 }
 
-bool RarVolume::ReadV(DiskFile& file, RarBlock* block, uint64* result)
+bool RarVolume::ReadV(RarSourceCursor& file, RarBlock* block, uint64* result)
 {
 	*result = 0;
 	uint8 val;
@@ -168,7 +213,7 @@ bool RarVolume::ReadV(DiskFile& file, RarBlock* block, uint64* result)
 	return true;
 }
 
-bool RarVolume::Skip(DiskFile& file, RarBlock* block, int64 size)
+bool RarVolume::Skip(RarSourceCursor& file, RarBlock* block, int64 size)
 {
 	uint8 buf[256];
 	while (size > 0)
@@ -180,7 +225,7 @@ bool RarVolume::Skip(DiskFile& file, RarBlock* block, int64 size)
 	return true;
 }
 
-bool RarVolume::ReadRar3Volume(DiskFile& file)
+bool RarVolume::ReadRar3Volume(RarSourceCursor& file)
 {
 	debug("Reading rar3-file %s", m_filename.c_str());
 
@@ -191,6 +236,7 @@ bool RarVolume::ReadRar3Volume(DiskFile& file)
 		{
 			return false;
 		}
+		bool fileBlock = false;
 
 		if (block.type == RAR3_BLOCK_MAIN)
 		{
@@ -208,6 +254,7 @@ bool RarVolume::ReadRar3Volume(DiskFile& file)
 			RarFile innerFile;
 			if (!ReadRar3File(file, block, innerFile)) return false;
 			m_files.push_back(std::move(innerFile));
+			fileBlock = true;
 		}
 
 		else if (block.type == RAR3_BLOCK_ENDARC)
@@ -242,12 +289,21 @@ bool RarVolume::ReadRar3Volume(DiskFile& file)
 		{
 			return false;
 		}
+
+		if (fileBlock && !m_files.empty())
+		{
+			// the skip landed on the next block: the packed data is the
+			// last packedSize bytes before it (works for encrypted
+			// volumes too, where it names the ciphertext region)
+			RarFile& lastFile = m_files.back();
+			lastFile.m_dataOffset = file.Position() - lastFile.m_packedSize;
+		}
 	}
 
 	return true;
 }
 
-RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
+RarVolume::RarBlock RarVolume::ReadRar3Block(RarSourceCursor& file)
 {
 	RarBlock block{};
 	uint8 salt[8];
@@ -282,6 +338,7 @@ RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
 		return {};
 	}
 	block.addsize = ((uint32)addbuf[3] << 24) + ((uint32)addbuf[2] << 16) + ((uint32)addbuf[1] << 8) + addbuf[0];
+	block.datasize = 0;
 
 	if (block.flags & RAR3_BLOCK_ADDSIZE)
 	{
@@ -297,10 +354,12 @@ RarVolume::RarBlock RarVolume::ReadRar3Block(DiskFile& file)
 	return block;
 }
 
-bool RarVolume::ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile)
+bool RarVolume::ReadRar3File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile)
 {
 	innerFile.m_splitBefore = block.flags & RAR3_FILE_SPLITBEFORE;
 	innerFile.m_splitAfter = block.flags & RAR3_FILE_SPLITAFTER;
+	innerFile.m_packedSize = (int64)block.addsize;
+	innerFile.m_encryptedData = (block.flags & RAR3_FILE_PASSWORD) != 0;
 
 	uint16 namelen;
 
@@ -311,7 +370,11 @@ bool RarVolume::ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile
 	if (!Skip(file, &block, 1)) return false;
 	if (!Skip(file, &block, 4)) return false;
 	if (!Read32(file, &block, &innerFile.m_time)) return false;
-	if (!Skip(file, &block, 2)) return false;
+	uint8 unpVer, method;
+	if (!Read(file, &block, &unpVer, sizeof(unpVer))) return false;
+	if (!Read(file, &block, &method, sizeof(method))) return false;
+	innerFile.m_method = method;
+	innerFile.m_stored = method == 0x30;	// rar3 "storing"
 	if (!Read16(file, &block, &namelen)) return false;
 	if (!Read32(file, &block, &innerFile.m_attr)) return false;
 
@@ -320,6 +383,7 @@ bool RarVolume::ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile
 		uint32 highsize;
 		if (!Read32(file, &block, &highsize)) return false;
 		block.trailsize += (uint64)highsize << 32;
+		innerFile.m_packedSize += (int64)((uint64)highsize << 32);
 
 		if (!Read32(file, &block, &highsize)) return false;
 		innerFile.m_size += (uint64)highsize << 32;
@@ -336,7 +400,7 @@ bool RarVolume::ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile
 	return true;
 }
 
-bool RarVolume::ReadRar5Volume(DiskFile& file)
+bool RarVolume::ReadRar5Volume(RarSourceCursor& file)
 {
 	debug("Reading rar5-file %s", m_filename.c_str());
 
@@ -349,6 +413,7 @@ bool RarVolume::ReadRar5Volume(DiskFile& file)
 		{
 			return false;
 		}
+		bool fileBlock = false;
 
 		if (block.type == RAR5_BLOCK_MAIN)
 		{
@@ -384,6 +449,7 @@ bool RarVolume::ReadRar5Volume(DiskFile& file)
 			RarFile innerFile;
 			if (!ReadRar5File(file, block, innerFile)) return false;
 			m_files.push_back(std::move(innerFile));
+			fileBlock = true;
 		}
 
 		else if (block.type == RAR5_BLOCK_ENDARC)
@@ -416,12 +482,21 @@ bool RarVolume::ReadRar5Volume(DiskFile& file)
 		{
 			return false;
 		}
+
+		if (fileBlock && !m_files.empty())
+		{
+			// the skip landed on the next block: the packed data is the
+			// last packedSize bytes before it (works for encrypted
+			// volumes too, where it names the ciphertext region)
+			RarFile& lastFile = m_files.back();
+			lastFile.m_dataOffset = file.Position() - lastFile.m_packedSize;
+		}
 	}
 
 	return true;
 }
 
-RarVolume::RarBlock RarVolume::ReadRar5Block(DiskFile& file)
+RarVolume::RarBlock RarVolume::ReadRar5Block(RarSourceCursor& file)
 {
 	RarBlock block{};
 	uint64 buf = 0;
@@ -451,6 +526,7 @@ RarVolume::RarBlock RarVolume::ReadRar5Block(DiskFile& file)
 	uint64 datasize = 0;
 	if ((block.flags & RAR5_BLOCK_DATAAREA) && !ReadV(file, &block, &datasize)) return {};
 	block.trailsize += datasize;
+	block.datasize = datasize;
 
 #ifdef DEBUG
 	static int num = 0;
@@ -460,10 +536,11 @@ RarVolume::RarBlock RarVolume::ReadRar5Block(DiskFile& file)
 	return block;
 }
 
-bool RarVolume::ReadRar5File(DiskFile& file, RarBlock& block, RarFile& innerFile)
+bool RarVolume::ReadRar5File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile)
 {
 	innerFile.m_splitBefore = block.flags & RAR5_BLOCK_SPLITBEFORE;
 	innerFile.m_splitAfter = block.flags & RAR5_BLOCK_SPLITAFTER;
+	innerFile.m_packedSize = (int64)block.datasize;
 
 	uint64 val;
 
@@ -479,7 +556,10 @@ bool RarVolume::ReadRar5File(DiskFile& file, RarBlock& block, RarFile& innerFile
 	if (fileflags & RAR5_FILE_TIME && !Read32(file, &block, &innerFile.m_time)) return false;
 	if (fileflags & RAR5_FILE_CRC && !Skip(file, &block, 4)) return false;
 
-	if (!ReadV(file, &block, &val)) return false; // skip
+	uint64 compInfo;
+	if (!ReadV(file, &block, &compInfo)) return false;
+	innerFile.m_method = (uint32)((compInfo >> 7) & 7);	// rar5 method bits: 0 = store
+	innerFile.m_stored = innerFile.m_method == 0;
 	if (!ReadV(file, &block, &val)) return false; // skip
 
 	uint64 namelen;
@@ -506,6 +586,11 @@ bool RarVolume::ReadRar5File(DiskFile& file, RarBlock& block, RarFile& innerFile
 
 			uint64 type;
 			if (!ReadV(file, &block, &type)) return false;
+
+			if (type == RAR5_FILE_EXTRACRYPT)
+			{
+				innerFile.m_encryptedData = true;
+			}
 
 			if (type == RAR5_FILE_EXTRATIME)
 			{
@@ -684,7 +769,7 @@ void RarVolume::DecryptFree()
 #endif
 }
 
-bool RarVolume::DecryptRead(DiskFile& file, void* buffer, int64 size)
+bool RarVolume::DecryptRead(RarSourceCursor& file, void* buffer, int64 size)
 {
 	while (size > 0)
 	{
