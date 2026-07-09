@@ -13,10 +13,13 @@ suffix to make chosen articles "missing" on the active server.
 | `complementary` | Two postings of the same content, each missing *different* articles; neither completes alone, together they do. Output is byte-identical. |
 | `cutover` | Primary missing 10/20 articles → the file "cuts over" and leads with the duplicate (`Leading with duplicate collections`), completing byte-identical. |
 | `manydonors` | 18 duplicates — more than the donor cache holds — to exercise the cache-eviction path. Regression test for the use-after-free crash; the daemon must survive and complete. |
+| `stream` | Donor posted the SAME `.mkv` split into different article sizes (250 KB vs 500 KB). `DupeArticleFallback=stream` repairs the missing byte ranges in post-processing; output is byte-identical even though the history status stays non-SUCCESS (no par2 in the harness). |
 
 Each scenario asserts the download reaches `SUCCESS`, the reassembled file is
 **byte-identical** to the source (with `DirectWrite=yes`), and the
-`DupeRecoveredArticles` counter reflects the recovery.
+`DupeRecoveredArticles` counter reflects the recovery. The `stream` scenario
+asserts byte identity, the repair log lines and the counter instead of the
+SUCCESS status.
 
 ## Running
 
@@ -56,7 +59,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|manydonors] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|manydonors|stream] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

@@ -42,10 +42,12 @@ article "missing" on the active server, so no real Usenet access is needed):
   recoveries the file leads with the duplicate (DupeArticleFallback cutover).
 * manydonors    - more duplicates than the donor cache holds, to exercise the
   cache-eviction path (regression for the use-after-free crash).
+* stream        - the donor is segmented differently; missing byte ranges are
+  repaired on stream level in post-processing.
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors]
+               [--scenario all|complementary|cutover|manydonors|stream]
                [--serial NNN] [--keep]
 """
 
@@ -362,11 +364,11 @@ def _payload(size, seed):
         bytes(bytearray(r.getrandbits(8) for _ in range(size)))
 
 
-def _place_copy(target, subdir, data):
-    """Write a payload copy under data/<subdir>/file.bin and return the served
-    path (relative to the nserv data dir)."""
-    target.write_file(os.path.join('data', subdir, 'file.bin'), data)
-    return '%s/file.bin' % subdir
+def _place_copy(target, subdir, data, filename='file.bin'):
+    """Write a payload copy under data/<subdir>/<filename> and return the
+    served path (relative to the nserv data dir)."""
+    target.write_file(os.path.join('data', subdir, filename), data)
+    return '%s/%s' % (subdir, filename)
 
 
 def scenario_complementary(daemon, t):
@@ -438,18 +440,62 @@ def scenario_manydonors(daemon, t, ndonors=18):
             % (h['Status'], recov, integ, alive))
 
 
-def _verify_output(t, expected):
-    """The completed file lands at main/dst/<category>/<nzb>/<name>.bin, whose
-    exact path depends on category and FileNaming. Rather than hard-code it,
-    walk main/dst (works identically on both targets) and byte-compare every
-    produced .bin against the source payload."""
-    for rel in t.find_files('main', 'dst'):
-        if rel.endswith('.bin'):
-            try:
-                if t.read_file(rel) == expected:
-                    return True
-            except Exception:
-                pass
+def scenario_stream(daemon, t):
+    """Primary (.mkv, 500 KB parts) missing a middle block; the donor posted
+    the SAME content split into 250 KB parts (different article count) and
+    sits paused in the queue under the same dupe-key. Article-level fallback
+    cannot borrow across segmentations, so the post-processing stream repair
+    must fetch the missing byte ranges from the donor. A DECOY duplicate of
+    the same byte size but different content carries a HIGHER dupe-score, so
+    it is tried first and must be rejected by the identity probe (the
+    negative half of the test: no corruption from a same-size impostor).
+    The history status stays non-SUCCESS (the failed-article statistics
+    survive; there is no par2 here) - the proof of repair is byte integrity
+    plus the repair logs and the DupeRecoveredArticles counter."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4242)
+    decoy_data = _payload(size, 999)  # same size, different bytes
+    pp = _place_copy(t, 'streamA', data, 'file.mkv')
+    dp = _place_copy(t, 'streamB', data, 'file.mkv')
+    xp = _place_copy(t, 'streamX', decoy_data, 'file.mkv')
+    primary = build_nzb(pp, 'StreamA.mkv', size, seg_primary, {5, 6})
+    donor = build_nzb(dp, 'obf-stream.mkv', size, seg_donor, set())
+    decoy = build_nzb(xp, 'obf-decoy.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DecoyStream', decoy, True, 'stream-key', 75)
+    daemon.append(api, 'DonStream', donor, True, 'stream-key', 50)
+    daemon.append(api, 'StreamA', primary, False, 'stream-key', 100)
+    h = daemon.wait_history(api, 'StreamA')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    queued = _grep_log(t, 'Queueing stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    rejected = _grep_log(t, 'content identity not confirmed')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('stream',
+            integ and recov >= 4 and queued >= 1 and repaired >= 1 and rejected >= 1,
+            'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
+            % (h['Status'], recov, queued, repaired, rejected, integ))
+
+
+def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
+    """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
+    <name><ext>, whose exact path depends on category and FileNaming. When
+    the history status stays non-SUCCESS (e.g. failed-article statistics
+    survive a byte-level stream repair, so cleanup/move-to-dst is skipped
+    and nzbget "parks" the item instead - see HistoryCoordinator's
+    cleanupParkedFiles logic), the same file instead sits under
+    main/inter/<nzb>.#<id>/<name><ext>. Walk the directories specified in
+    'dirs' (by default, main/dst only; scenarios whose item ends parked,
+    like stream, pass both main/dst and main/inter) and byte-compare every
+    produced file with the given extension against the source payload."""
+    for base in dirs:
+        for rel in t.find_files(*base):
+            if rel.endswith(ext):
+                try:
+                    if t.read_file(rel) == expected:
+                        return True
+                except Exception:
+                    pass
     return False
 
 
@@ -464,7 +510,19 @@ SCENARIOS = {
     'complementary': scenario_complementary,
     'cutover': scenario_cutover,
     'manydonors': scenario_manydonors,
+    'stream': scenario_stream,
 }
+
+# per-scenario daemon options; the article-level scenarios keep the legacy
+# "yes" spelling on purpose - it must still parse as "article". The stream
+# scenario overrides the base config's ParCheck=manual: under "manual" the
+# RequestParCheck the repair stage issues would only flag the item instead
+# of running the par stage, leaving that handoff untested (with no par2
+# files present, "auto" ends in a harmless "Nothing to par-check").
+SCENARIO_OPTIONS = {
+    'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+}
+DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 
 
 # --------------------------------------------------------------------------- #
@@ -497,7 +555,7 @@ def main():
             target = AdbTarget(args.nzbget, stage, serial=args.serial)
         daemon = Daemon(target, nntp, rpc)
         try:
-            daemon.write_config(['DupeArticleFallback=yes'])
+            daemon.write_config(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
             daemon.start_nserv()
             time.sleep(1)
             daemon.start()
