@@ -48,15 +48,16 @@ void StreamRepairController::Run()
 	CString destDir;
 	std::vector<RepairTarget> targets;
 	std::vector<DonorSource> donors;
+	std::vector<CString> memberNames;
 
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
 		nzbName = nzbInfo->GetName();
 		destDir = nzbInfo->GetDestDir();
-		CollectTargets(nzbInfo, targets);
+		CollectTargets(nzbInfo, targets, memberNames);
 		CollectDonors(downloadQueue, nzbInfo, donors);
-		m_postInfo->SetProgressLabel("Repairing media files from duplicates");
+		m_postInfo->SetProgressLabel("Repairing files from duplicates");
 	}
 
 	BString<1024> infoName("stream repair for %s", *nzbName);
@@ -74,6 +75,7 @@ void StreamRepairController::Run()
 	}
 	else
 	{
+		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors);
 	}
 
@@ -86,8 +88,14 @@ void StreamRepairController::Stop()
 	Thread::Stop();
 }
 
-void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets)
+void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets,
+	std::vector<CString>& memberNames)
 {
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		memberNames.emplace_back(completedFile.GetFilename());
+	}
+
 	for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
 	{
 		RepairTarget target;
@@ -108,6 +116,49 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 		}
 
 		targets.push_back(std::move(target));
+	}
+}
+
+void StreamRepairController::ComputePositionalRanks(const char* destDir,
+	std::vector<RepairTarget>& targets, const std::vector<CString>& memberNames)
+{
+	// a target's rank = how many same-size members sort before it by name;
+	// the window size (incl. the target itself) must match the donor side's
+	// for positional pairing to fire (the set-signature check). Complete
+	// members' sizes come from disk (DirectWrite pre-allocates full size; a
+	// join-mode short file drops out of the window, degrading to later tiers)
+	std::vector<std::pair<const char*, int64>> memberSizes;
+	for (const CString& memberName : memberNames)
+	{
+		BString<1024> memberPath("%s%c%s", destDir, PATH_SEPARATOR, *memberName);
+		memberSizes.emplace_back(*memberName, FileSystem::FileSize(memberPath));
+	}
+
+	for (RepairTarget& target : targets)
+	{
+		int rank = 0;
+		int windowSize = 0;
+		bool selfSeen = false;
+		for (std::pair<const char*, int64>& member : memberSizes)
+		{
+			if (member.second <= 0 ||
+				!DupeArticleFallback::SizesMatch(member.second, target.DecodedFileSize, 8))
+			{
+				continue;
+			}
+			windowSize++;
+			if (!strcasecmp(member.first, target.Filename))
+			{
+				selfSeen = true;
+				continue;
+			}
+			if (strcasecmp(member.first, target.Filename) < 0)
+			{
+				rank++;
+			}
+		}
+		target.PositionalRank = selfSeen ? rank : -1;
+		target.PositionalWindow = selfSeen ? windowSize : 0;
 	}
 }
 
@@ -276,33 +327,9 @@ bool StreamRepairController::RepairFile(const char* destDir, RepairTarget& targe
 std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget& target,
 	NzbInfo* donorNzb)
 {
-	std::vector<FileInfo*> candidates;
-
-	for (FileInfo* donorFile : donorNzb->GetFileList())
-	{
-		// media identity is decoded content size; the nzb declares only
-		// encoded sizes (~1-3% yEnc overhead above decoded), so filter
-		// loosely here and let the probe verification decide
-		if (DupeStreamRepair::IsStreamEligible(donorFile->GetFilename()) &&
-			!donorFile->GetArticles()->empty() &&
-			DupeArticleFallback::SizesMatch(donorFile->GetSize(), target.DecodedFileSize, 8))
-		{
-			candidates.push_back(donorFile);
-		}
-	}
-
-	int64 decodedFileSize = target.DecodedFileSize;
-	std::sort(candidates.begin(), candidates.end(),
-		[decodedFileSize](FileInfo* file1, FileInfo* file2)
-		{
-			int64 diff1 = file1->GetSize() > decodedFileSize ?
-				file1->GetSize() - decodedFileSize : decodedFileSize - file1->GetSize();
-			int64 diff2 = file2->GetSize() > decodedFileSize ?
-				file2->GetSize() - decodedFileSize : decodedFileSize - file2->GetSize();
-			return diff1 < diff2;
-		});
-
-	return candidates;
+	return DupeStreamRepair::SelectDonorCandidates(target.Filename, target.DecodedFileSize,
+		target.PositionalRank, target.PositionalWindow, donorNzb,
+		DupeStreamRepair::MaxDonorCandidates);
 }
 
 bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& target,
@@ -311,7 +338,47 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 	std::vector<int> probeParts = DupeStreamRepair::SelectProbeParts(
 		donorRanges, target.Holes, DupeStreamRepair::ProbeCount);
 
-	bool verified = false;
+	if (probeParts.empty())
+	{
+		// small or heavily-holed files: no donor article clears the holes
+		// entirely. Probe the articles with the LARGEST present overlap
+		// instead (margin 1 pulls in hole-adjacent, fully-present parts);
+		// the compare below still covers only the target's present regions
+		std::vector<int> pool = DupeStreamRepair::SelectPatchParts(
+			donorRanges, target.Holes, 1);
+		std::vector<std::pair<int64, int>> overlaps;
+		for (int partIndex : pool)
+		{
+			StreamRangeList present = { donorRanges[partIndex] };
+			for (const StreamRange& hole : target.Holes)
+			{
+				DupeStreamRepair::SubtractCovered(present, hole);
+			}
+			int64 overlap = DupeStreamRepair::TotalSize(present);
+			if (overlap > 0)
+			{
+				overlaps.emplace_back(overlap, partIndex);
+			}
+		}
+		std::sort(overlaps.begin(), overlaps.end(),
+			[](const std::pair<int64, int>& part1, const std::pair<int64, int>& part2)
+			{
+				return part1.first > part2.first;
+			});
+		for (int i = 0; i < (int)overlaps.size() && i < DupeStreamRepair::ProbeCount; i++)
+		{
+			probeParts.push_back(overlaps[i].second);
+		}
+	}
+
+	// the compare floor scales down for small files (a repost's par2
+	// volumes): everything present must match, but never less than 64
+	// bytes total - below that identity is unknowable and par2 owns it.
+	// Compared bytes accumulate ACROSS probes.
+	int64 requiredCompare = std::min(DupeStreamRepair::MinProbeCompareBytes,
+		std::max<int64>(64, target.DecodedFileSize - DupeStreamRepair::TotalSize(target.Holes)));
+	int64 totalCompared = 0;
+	bool sawVariedData = false;
 
 	for (int partIndex : probeParts)
 	{
@@ -343,21 +410,26 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 			DupeStreamRepair::SubtractCovered(present, hole);
 		}
 
-		int64 compared = 0;
 		for (const StreamRange& range : present)
 		{
-			if (!CompareToFile(file, range.Offset,
-				fetched.Data.data() + (range.Offset - fetched.Offset), range.Size))
+			const char* rangeData = fetched.Data.data() + (range.Offset - fetched.Offset);
+			if (!CompareToFile(file, range.Offset, rangeData, range.Size))
 			{
 				return false; // same size but different content - wrong donor
 			}
-			compared += range.Size;
-		}
+			totalCompared += range.Size;
 
-		verified |= compared >= DupeStreamRepair::MinProbeCompareBytes;
+			// constant-byte runs (zero padding, sparse regions) match ANY
+			// same-size sibling and prove nothing; identity needs at least
+			// one compared range with two distinct byte values
+			for (int64 i = 1; i < range.Size && !sawVariedData; i++)
+			{
+				sawVariedData = rangeData[i] != rangeData[0];
+			}
+		}
 	}
 
-	return verified;
+	return totalCompared >= requiredCompare && sawVariedData;
 }
 
 int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,

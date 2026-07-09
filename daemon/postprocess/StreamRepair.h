@@ -56,6 +56,10 @@ private:
 		CString Filename;		// current on-disk base name (in DestDir)
 		int64 DecodedFileSize;
 		StreamRangeList Holes;
+		// rank among same-size members (by name) and that window's size,
+		// for positional donor pairing of obfuscated reposts; -1/0 = none
+		int PositionalRank = -1;
+		int PositionalWindow = 0;
 	};
 
 	struct DonorSource
@@ -70,7 +74,10 @@ private:
 	int64 m_recoveredBytes = 0;
 	bool m_holesRemain = false;
 
-	void CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets);
+	void CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets,
+		std::vector<CString>& memberNames);
+	void ComputePositionalRanks(const char* destDir, std::vector<RepairTarget>& targets,
+		const std::vector<CString>& memberNames);
 	void CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo,
 		std::vector<DonorSource>& donors);
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
