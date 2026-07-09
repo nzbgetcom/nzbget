@@ -56,10 +56,24 @@ article "missing" on the active server, so no real Usenet access is needed):
   repaired from a duplicate that posted the SAME movie packed into store-mode
   RAR3 volumes (different framing/offsets/segmentation), which M1 cannot pair;
   the ContentMap pass locates and patches the missing bytes inside the volumes.
+* xpackrar      - store-rar target repaired from a bare donor, including a
+  degraded volume whose header hole must exclude it from the map.
+* xpackrar2rar  - rar-to-rar cross-packing with different volume sizes on
+  each side (member-wise M1 cannot window these).
+* xpackzip      - bare target repaired from a SPANNED STORED ZIP donor
+  (z01+z02+zip).
+* xpack7z       - bare target repaired from a 7z-COPY donor posted as
+  .7z.001/.002 splits.
+* xpacksplit    - store-rar target repaired from RAW SPLITS
+  (movie.mkv.001/.002/.003).
+* xpackcompressed - the mechanism ladder on a COMPRESSED archive: M2 never
+  maps it (method gate), a byte-identical repost still repairs it via M1.
+* xpackneg      - the negative: a same-size, wrong-bytes donor set must be
+  rejected by the inner probes; nothing may be written.
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare]
+               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg]
                [--serial NNN] [--keep]
 """
 
@@ -643,6 +657,205 @@ def scenario_xpackbare(daemon, t):
             % (h['Status'], recov, xpack, repaired, integ))
 
 
+def _xpack_run(daemon, t, tag, primary_members, donor_members, payloads):
+    """Append donor (paused) + primary under one dupe-key, wait for history,
+    return (history, per-payload integrity dict, log counters)."""
+    primary = build_multi_nzb(primary_members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, donor, True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, primary, False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'Rel' + tag)
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integrity = {name: _verify_output(t, data, os.path.splitext(name)[1], dirs=both_dirs)
+                 for name, data in payloads.items()}
+    counters = {
+        'recov': int(h.get('DupeRecoveredArticles', 0)),
+        'xpack': _grep_log(t, 'Cross-packing repair of'),
+        'repaired': _grep_log(t, 'cross-packing'),
+        'rejected': _grep_log(t, 'content identity not confirmed'),
+        'missing': _grep_log(t, 'still missing after all duplicates'),
+    }
+    return h, integrity, counters
+
+
+def scenario_xpackrar(daemon, t):
+    """Store-rar target repaired from a BARE donor, with degradation: vol2
+    has a data hole (repairable through the map), vol3 lost its first part
+    including the rar headers (that volume must be excluded and stay
+    damaged for par2 - which doesn't exist here, so FAILURE/HEALTH)."""
+    size = 6_000_000
+    data = _payload(size, 6100)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    missing = [set(), {2}, {1}]        # vol2: data hole; vol3: header hole
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xprA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    dp = _place_copy(t, 'xprB', data, 'movie.mkv')
+    donor_members = [(dp, 'movie.mkv', size, 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpr', members, donor_members, payloads)
+    ok = (integ['Rel.part01.rar'] and integ['Rel.part02.rar'] and
+          not integ['Rel.part03.rar'] and              # header-holed vol stays damaged
+          c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1 and
+          c['missing'] >= 1)
+    return ('xpackrar', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d missing=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], c['missing'],
+               {k: v for k, v in integ.items()}))
+
+
+def scenario_xpackrar2rar(daemon, t):
+    """rar-to-rar with DIFFERENT volume sizes (3x2MB target, 4x1.5MB donor):
+    member-wise M1 cannot window these (sizes differ by 25%), the inner
+    stream matches exactly."""
+    size = 6_000_000
+    data = _payload(size, 6200)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xr2A/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 1_500_000), 1):
+        rel = 'xr2B/other.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Other.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xr2', members, donor_members, payloads)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpackrar2rar', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
+def scenario_xpackzip(daemon, t):
+    """Bare target repaired from a SPANNED STORED ZIP donor (z01+z02+zip)."""
+    size = 6_000_000
+    data = _payload(size, 6300)
+    pp = _place_copy(t, 'xpzA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    zip_bytes = generators.zip_store([('movie.mkv', data)])
+    pieces = generators.split_bytes(zip_bytes, [2_500_000, 2_500_000])
+    suffixes = ['z01', 'z02', 'zip']
+    donor_members = []
+    for piece, suffix in zip(pieces, suffixes):
+        rel = 'xpzB/rel.%s' % suffix
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'Rel.%s' % suffix, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpz', members, donor_members, payloads)
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpackzip', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xpack7z(daemon, t):
+    """Bare target repaired from a 7z-COPY donor posted as .7z.001/.002."""
+    size = 6_000_000
+    data = _payload(size, 6400)
+    pp = _place_copy(t, 'xp7A', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    archive = generators.seven_zip_copy([('movie.mkv', data)])
+    pieces = generators.split_bytes(archive, [3_000_100])
+    donor_members = []
+    for i, piece in enumerate(pieces, 1):
+        rel = 'xp7B/rel.7z.%03d' % i
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'Rel.7z.%03d' % i, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xp7', members, donor_members, payloads)
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpack7z', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xpacksplit(daemon, t):
+    """Store-rar target repaired from RAW SPLITS (movie.mkv.001/.002/.003)."""
+    size = 6_000_000
+    data = _payload(size, 6500)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpsA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {3} if i == 1 else set()))
+    donor_members = []
+    for i, piece in enumerate(generators.split_bytes(data, [2_000_000, 2_000_000]), 1):
+        rel = 'xpsB/movie.mkv.%03d' % i
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'movie.mkv.%03d' % i, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xps', members, donor_members, payloads)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpacksplit', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
+def scenario_xpackcompressed(daemon, t):
+    """The mechanism ladder on a COMPRESSED archive: M2 must never map it
+    (method gate), but a byte-identical repost still repairs it via M1 -
+    exactly the promise the docs make for compressed/encrypted content."""
+    size = 4_000_000
+    data = _payload(size, 6600)      # opaque stand-in for compressed bytes
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000, method=0x33)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpcA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpcB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpc', members, donor_members, payloads)
+    repaired_m1 = _grep_log(t, 'donor article(s)')
+    ok = (all(integ.values()) and c['recov'] >= 1 and repaired_m1 >= 1 and
+          c['xpack'] == 0)          # M1 filled the holes; M2 never needed
+    return ('xpackcompressed', ok,
+            'status=%s recovered=%d m1_repairs=%d xpack=%d integ=%s'
+            % (h['Status'], c['recov'], repaired_m1, c['xpack'], all(integ.values())))
+
+
+def scenario_xpackneg(daemon, t):
+    """The negative: a donor set with the RIGHT inner size but the WRONG
+    bytes (different payload packed into store-rar volumes). The inner
+    probes must reject it; nothing may be written."""
+    size = 6_000_000
+    data = _payload(size, 6700)
+    decoy = _payload(size, 6800)
+    pp = _place_copy(t, 'xpnA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    donor_members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', decoy, 2_000_000), 1):
+        rel = 'xpnB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpn', members, donor_members,
+                             {'movie.mkv': data, 'decoy': decoy})
+    ok = (c['rejected'] >= 1 and c['recov'] == 0 and c['missing'] >= 1 and
+          not integ['movie.mkv'] and not integ['decoy'])
+    return ('xpackneg', ok,
+            'status=%s recovered=%d rejected=%d missing=%d file_matches=%s/%s'
+            % (h['Status'], c['recov'], c['rejected'], c['missing'],
+               integ['movie.mkv'], integ['decoy']))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -680,6 +893,13 @@ SCENARIOS = {
     'repost': scenario_repost,
     'repostrenamed': scenario_repostrenamed,
     'xpackbare': scenario_xpackbare,
+    'xpackrar': scenario_xpackrar,
+    'xpackrar2rar': scenario_xpackrar2rar,
+    'xpackzip': scenario_xpackzip,
+    'xpack7z': scenario_xpack7z,
+    'xpacksplit': scenario_xpacksplit,
+    'xpackcompressed': scenario_xpackcompressed,
+    'xpackneg': scenario_xpackneg,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -698,6 +918,14 @@ SCENARIO_OPTIONS = {
     'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpackbare: no par2; "auto" ends in "Nothing to par-check" post-repair
     'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"
+    'xpackrar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackrar2rar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackzip': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpack7z': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpacksplit': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackcompressed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 
