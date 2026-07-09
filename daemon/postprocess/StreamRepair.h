@@ -75,6 +75,14 @@ private:
 		std::vector<DonorSource>& donors);
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
 		std::vector<DonorSource>& donors);
+	bool RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
+		const char* donorName);
+	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb);
+	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,
+		const StreamRangeList& donorRanges);
+	int PatchFromDonor(DiskFile& file, RepairTarget& target, FileInfo* donorFile,
+		const StreamRangeList& donorRanges, const char* donorName);
+	static bool CompareToFile(DiskFile& file, int64 offset, const char* data, int64 size);
 	void RepairCompleted();
 };
 
