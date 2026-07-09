@@ -1223,6 +1223,34 @@ BOOST_AUTO_TEST_CASE(ContentMapperSevenZipAdversarialTest)
 		rejects(header, Pattern(10, 16));
 	}
 
+	// a kCodersUnpackSize list truncated right after its marker: the loop
+	// must stop on the poisoned reader instead of appending one dry zero
+	// for every announced folder
+	{
+		const int folderCount = 4096;
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, folderCount);			// pack stream count
+		header.push_back(0x09);						// kSize
+		for (int i = 0; i < folderCount; i++)
+		{
+			Put7zNumber(header, 1);
+		}
+		header.push_back(0x00);						// kEnd (pack info)
+		header.push_back(0x07);						// kUnPackInfo
+		header.push_back(0x0b);						// kFolder
+		Put7zNumber(header, folderCount);
+		header.push_back(0x00);						// external
+		for (int i = 0; i < folderCount; i++)
+		{
+			Put7zNumber(header, 1);					// one coder
+			header.push_back(0x01);					// flags: id size 1
+			header.push_back(0x00);					// Copy
+		}
+		header.push_back(0x0c);						// kCodersUnpackSize, then EOF
+		rejects(header, {});
+	}
+
 	// a header truncated mid-structure skips, never over-reads
 	{
 		std::vector<char> archive = Build7zCopy({{"movie.mkv", Pattern(20, 18)}});
@@ -1303,6 +1331,102 @@ BOOST_AUTO_TEST_CASE(ContentMapperSevenZipSubstreamsTest)
 	BOOST_CHECK_EQUAL(map->GetInnerSize(), 60);
 	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 1u);
 	BOOST_CHECK_EQUAL((*map->GetRuns())[0].MemberOffset, 32 + 40);
+
+	std::vector<char> reassembled(60);
+	const ContentRun& run = (*map->GetRuns())[0];
+	BOOST_REQUIRE(sources.GetSource(0)->Read(run.MemberOffset, reassembled.data(), 60));
+	BOOST_CHECK(!memcmp(reassembled.data(), inner.data(), 60));
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperSevenZipDigestSkipTest)
+{
+	// realistic Copy archives carry kCRC records at every level; the parser
+	// ignores the VALUES but must skip each record exactly or every field
+	// after it desyncs. Folder 0 (one substream, folder crc defined) is
+	// excluded from the substream digest count; folder 1 contributes its two.
+	std::vector<char> nfo = Pattern(20, 26);
+	std::vector<char> notes = Pattern(30, 27);
+	std::vector<char> inner = Pattern(60, 28);
+	std::vector<char> data;
+	data.insert(data.end(), nfo.begin(), nfo.end());
+	data.insert(data.end(), notes.begin(), notes.end());
+	data.insert(data.end(), inner.begin(), inner.end());
+
+	std::vector<char> header = {0x01, 0x04, 0x06};	// kHeader, kMainStreamsInfo, kPackInfo
+	Put7zNumber(header, 0);						// pack pos
+	Put7zNumber(header, 2);						// two pack streams
+	header.push_back(0x09);						// kSize
+	Put7zNumber(header, 20);					// folder 0: the nfo
+	Put7zNumber(header, 90);					// folder 1: notes + movie (solid)
+	header.push_back(0x0a);						// kCRC (pack): defined-bits vector
+	header.push_back(0x00);						// allAreDefined = 0
+	header.push_back(0x40);						// MSB-first: only stream 1 defined
+	PutLe32(header, 0xdeadbeef);				// one digest to skip
+	header.push_back(0x00);						// kEnd (pack info)
+	header.push_back(0x07);						// kUnPackInfo
+	header.push_back(0x0b);						// kFolder
+	Put7zNumber(header, 2);						// folder count
+	header.push_back(0x00);						// external
+	for (int f = 0; f < 2; f++)
+	{
+		Put7zNumber(header, 1);					// one coder
+		header.push_back(0x01);					// flags: id size 1
+		header.push_back(0x00);					// Copy
+	}
+	header.push_back(0x0c);						// kCodersUnpackSize
+	Put7zNumber(header, 20);
+	Put7zNumber(header, 90);
+	header.push_back(0x0a);						// kCRC (folders)
+	header.push_back(0x01);						// allAreDefined = 1
+	PutLe32(header, 0xdeadbeef);				// folder 0 digest
+	PutLe32(header, 0xfeedface);				// folder 1 digest
+	header.push_back(0x00);						// kEnd (unpack info)
+	header.push_back(0x08);						// kSubStreamsInfo
+	header.push_back(0x0d);						// kNumUnpackStream
+	Put7zNumber(header, 1);						// folder 0: one substream
+	Put7zNumber(header, 2);						// folder 1: two substreams
+	header.push_back(0x09);						// kSize: all but the last per folder
+	Put7zNumber(header, 30);					// folder 1 first substream (notes)
+	header.push_back(0x0a);						// kCRC (substreams): folder 0 is
+	header.push_back(0x01);						// covered (1 stream + folder crc),
+	PutLe32(header, 0xdeadbeef);				// so exactly TWO digests follow
+	PutLe32(header, 0xfeedface);				// (folder 1's substreams)
+	header.push_back(0x00);						// kEnd (substreams info)
+	header.push_back(0x00);						// kEnd (streams info)
+	header.push_back(0x05);						// kFilesInfo
+	Put7zNumber(header, 3);
+	std::vector<char> names;
+	names.push_back(0x00);						// external
+	for (const char* name : {"info.nfo", "notes.txt", "movie.mkv"})
+	{
+		for (const char* ch = name; *ch; ch++)
+		{
+			names.push_back(*ch);
+			names.push_back(0x00);
+		}
+		names.push_back(0x00);
+		names.push_back(0x00);
+	}
+	header.push_back(0x11);						// kName
+	Put7zNumber(header, names.size());
+	header.insert(header.end(), names.begin(), names.end());
+	header.push_back(0x00);						// end of file properties
+	header.push_back(0x00);						// kEnd (header)
+
+	std::vector<SetMember> members = {{"rel.7z", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		Wrap7zHeader(header, data)));
+	MemberSet set{MemberSet::mfSevenZip, {0}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason);
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK_EQUAL(map->GetInnerName(), "movie.mkv");
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 60);
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 1u);
+	// movie data sits after the nfo folder (20) and the notes substream (30)
+	BOOST_CHECK_EQUAL((*map->GetRuns())[0].MemberOffset, 32 + 20 + 30);
 
 	std::vector<char> reassembled(60);
 	const ContentRun& run = (*map->GetRuns())[0];
