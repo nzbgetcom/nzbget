@@ -340,7 +340,7 @@ struct StreamRange
 typedef std::vector<StreamRange> StreamRangeList;
 
 /*
- * Byte ranges of a completed media file which no news server could supply,
+ * Byte ranges of a completed file which no news server could supply,
  * captured while the file's article list still exists, so post-processing
  * can repair them from a differently segmented duplicate posting
  * (see option <DupeArticleFallback> value "stream"; not persisted).

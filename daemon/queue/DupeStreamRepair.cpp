@@ -258,13 +258,19 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 
 	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
 	if (!nzbInfo || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
-		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone ||
+		nzbInfo->GetPostInfo() != nullptr)
 	{
+		// the PostInfo check: files completing AFTER post-processing started
+		// (par-check unpauses par2 volumes mid-repair) must not re-arm the
+		// already-drained job list for a second stream-repair pass
 		return false;
 	}
 
-	if (!IsStreamEligible(fileInfo->GetFilename()) ||
-		fileInfo->GetSuccessArticles() == 0 ||
+	// any file type qualifies: identity is decided empirically by probe
+	// byte-compares, so reposts of passworded or compressed archives (and
+	// their par2 files) donate exactly like bare media does
+	if (fileInfo->GetSuccessArticles() == 0 ||
 		fileInfo->GetDecodedFileSize() <= 0 ||
 		Util::EmptyStr(diskBasename))
 	{

@@ -296,18 +296,28 @@ BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Offset, 300);
 		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Size, 200);
 
-		// non-media file is not captured
+		// M1: ANY file type is captured - a byte-identical repost can donate
+		// to rar volumes (passworded or compressed) and par2 files alike
 		std::unique_ptr<FileInfo> rar = BuildStreamFile(1000, {{0, 300}, {300, 0}});
 		rar->SetFilename("release.r01");
 		rar->SetNzbInfo(&nzbInfo);
-		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(rar.get(), "release.r01"));
+		BOOST_CHECK(DupeStreamRepair::BuildRepairJob(rar.get(), "release.r01"));
+
+		// but not once post-processing started (late par2 completions must
+		// not re-arm the drained job list)
+		nzbInfo.EnterPostProcess();
+		std::unique_ptr<FileInfo> late = BuildStreamFile(1000, {{0, 300}, {300, 0}});
+		late->SetFilename("late.par2");
+		late->SetNzbInfo(&nzbInfo);
+		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(late.get(), "late.par2"));
+		nzbInfo.LeavePostProcess();
 
 		// complete file is not captured
 		std::unique_ptr<FileInfo> complete = BuildStreamFile(800, {{0, 300}, {300, 500}});
 		complete->SetNzbInfo(&nzbInfo);
 		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(complete.get(), "movie2.mkv"));
 
-		BOOST_CHECK_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
+		BOOST_CHECK_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 2u);
 	}
 
 	// below "stream" (the default) nothing is captured; a freshly-parsed

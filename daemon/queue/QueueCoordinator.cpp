@@ -934,7 +934,7 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 			? FileSystem::BaseFileName(outputFilename.c_str())
 			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
 
-		// capture the missing byte ranges of an incomplete media file for
+		// capture the missing byte ranges of an incomplete file for
 		// post-processing stream repair while the article list still exists
 		// (see option <DupeArticleFallback> value "stream")
 		if (completed && fileStatus == CompletedFile::cfPartial &&
