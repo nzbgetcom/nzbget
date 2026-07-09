@@ -110,18 +110,25 @@ struct ContentRun
 class RarCryptoContext;	// StreamCrypto.h - held by pointer only here
 
 /* crypto annotation for a run whose member bytes are RAR-encrypted ciphertext
- * (password-assisted store-rar donors, M3). The run lives in PLAINTEXT inner
+ * (password-assisted store-rar mapping, M3). The run lives in PLAINTEXT inner
  * space; its member bytes are the ciphertext. For an encrypted RAR the whole
- * inner file is one continuous AES-CBC stream (verified: RAR splits the cipher
- * across volumes at arbitrary byte offsets, NOT re-keying per volume), so every
- * encrypted run of a map shares ONE context. The ciphertext for plaintext
- * position p inside this run lives at member offset CipherDataOffset +
- * (p - run.InnerOffset); block 0 of the whole stream chains from the context's
- * header IV, every later block from its predecessor ciphertext block. */
+ * inner file is ONE continuous AES-CBC stream that RAR splits across volumes
+ * at ARBITRARY byte offsets (verified: per-volume cipher chunks are unpadded
+ * and commonly non-16-aligned, only their total is padded to ceil16 of the
+ * plaintext size; no per-volume re-keying), so every encrypted run of a map
+ * shares ONE context. The member data areas concatenate to one contiguous
+ * CIPHER SPACE in which position p carries the ciphertext byte of plaintext
+ * position p: this run's slab covers cipher positions [run.InnerOffset,
+ * run.InnerOffset + CipherSize) at member offsets [CipherDataOffset,
+ * CipherDataOffset + CipherSize). CipherSize can exceed run.Size only in the
+ * final slab (the CBC padding tail past the plaintext end). Cipher block 0
+ * chains from the context's header IV, every later block from its predecessor
+ * ciphertext block - which may live in the PREVIOUS member. */
 struct RunCrypto
 {
 	std::shared_ptr<RarCryptoContext> Crypto;
 	int64 CipherDataOffset = 0;
+	int64 CipherSize = 0;
 };
 
 struct MemberRange
@@ -201,6 +208,29 @@ public:
 	}
 	/* true when any run carries ciphertext (a password-assisted store-rar map) */
 	bool GetEncrypted() const { return !m_runCryptos.empty(); }
+	/* total bytes of the contiguous cipher space (== ceil16(InnerSize) for a
+	 * complete encrypted map), 0 for plaintext maps */
+	int64 GetCipherStreamSize() const;
+
+	/* where cipherRange (positions in the contiguous cipher space spanning all
+	 * member data areas) lives in member coordinates. Fail closed: the result is
+	 * empty unless every byte is covered exactly once, in order - a range
+	 * touching an excluded member or the padding of a foreshortened map cannot
+	 * be trusted for crypto work. Empty for plaintext maps. */
+	std::vector<MemberRange> MapCipherRange(const StreamRange& cipherRange) const;
+
+	/* assembles the raw ciphertext of cipherRange from the member sources
+	 * (cross-member 16-byte blocks are the norm: RAR cuts volumes mid-block);
+	 * false when any byte is unmappable or unreadable */
+	bool ReadCipherRange(ContentSourceSet& sources, const StreamRange& cipherRange,
+		char* buffer) const;
+
+	/* reads innerRange of the PLAINTEXT inner stream by fetching the covering
+	 * whole cipher blocks (plus the predecessor block as chain input; the
+	 * header IV seeds block 0) and CBC-decrypting them. false when any needed
+	 * cipher byte is unavailable - the caller must treat the range as missing */
+	bool ReadInnerDecrypted(ContentSourceSet& sources, const StreamRange& innerRange,
+		char* buffer) const;
 
 	/* the parts of memberRange that carry inner bytes, in inner coordinates
 	 * (framing inside memberRange drops out - donor-irreparable by design) */
@@ -248,9 +278,10 @@ public:
 
 	/* builds the inner-content map for one set; nullptr + skipReason when
 	 * the set is not store/copy-mappable (M1 and par2 still apply). A non-null
-	 * password enables password-assisted mapping of encrypted store-rar donors
+	 * password enables password-assisted mapping of encrypted store-rar archives
 	 * (threaded to BuildRarMap only); without it encrypted archives skip as in
-	 * M2. Only donor call sites supply a password - target maps stay plaintext. */
+	 * M2. Donor call sites supply the donor's password; the target side threads
+	 * its own through BuildRepairSets. */
 	static std::unique_ptr<ContentMap> BuildMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason,
 		const char* password = nullptr);
@@ -258,9 +289,11 @@ public:
 	/* target side: group members into sets, keep those with holed members,
 	 * build maps through (hole-aware) sources and translate member holes to
 	 * inner coordinates. Framing holes and holes of excluded members drop
-	 * out here - par2 owns them. */
+	 * out here - par2 owns them. A non-null password (the TARGET's own) lets
+	 * encrypted store-rar target sets map; their runs carry RunCrypto. */
 	static std::vector<RepairSetData> BuildRepairSets(const std::vector<SetMember>& members,
-		const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources);
+		const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources,
+		const char* password = nullptr);
 
 	/* sorts by offset and merges overlapping/adjacent ranges into a disjoint
 	 * ascending list: probe windows hugging neighboring holes can land on

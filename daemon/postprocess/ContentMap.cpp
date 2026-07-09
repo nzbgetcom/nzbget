@@ -146,6 +146,126 @@ std::vector<MemberRange> ContentMap::MapFromInner(const StreamRange& innerRange)
 	return pieces;
 }
 
+int64 ContentMap::GetCipherStreamSize() const
+{
+	int64 total = 0;
+	for (const RunCrypto& runCrypto : m_runCryptos)
+	{
+		total += runCrypto.CipherSize;
+	}
+	return total;
+}
+
+std::vector<MemberRange> ContentMap::MapCipherRange(const StreamRange& cipherRange) const
+{
+	std::vector<MemberRange> pieces;
+	if (cipherRange.Offset < 0 || cipherRange.Size <= 0 ||
+		m_runCryptos.size() != m_runs.size())
+	{
+		return {};
+	}
+	int64 covered = 0;
+	for (size_t i = 0; i < m_runs.size(); i++)
+	{
+		const RunCrypto& runCrypto = m_runCryptos[i];
+		if (!runCrypto.Crypto)
+		{
+			return {};	// a plaintext run has no place in a cipher space
+		}
+		// the slab's cipher-space base is the run's InnerOffset: plaintext and
+		// cipher positions coincide (one 1:1 CBC stream, no per-volume re-key)
+		int64 slabBase = m_runs[i].InnerOffset;
+		int64 from = std::max(cipherRange.Offset, slabBase);
+		int64 to = std::min(cipherRange.End(), slabBase + runCrypto.CipherSize);
+		if (from >= to)
+		{
+			continue;
+		}
+		if (from != cipherRange.Offset + covered)
+		{
+			return {};	// gapped or out-of-order coverage (excluded member) - fail closed
+		}
+		pieces.push_back({m_runs[i].MemberIndex,
+			{runCrypto.CipherDataOffset + (from - slabBase), to - from}});
+		covered += to - from;
+	}
+	if (covered != cipherRange.Size)
+	{
+		return {};	// the range runs past the cipher stream - fail closed
+	}
+	return pieces;
+}
+
+bool ContentMap::ReadCipherRange(ContentSourceSet& sources, const StreamRange& cipherRange,
+	char* buffer) const
+{
+	if (cipherRange.Size == 0)
+	{
+		return true;
+	}
+	std::vector<MemberRange> pieces = MapCipherRange(cipherRange);
+	if (pieces.empty())
+	{
+		return false;
+	}
+	int64 filled = 0;
+	for (const MemberRange& piece : pieces)
+	{
+		ContentSource* source = sources.GetSource(piece.MemberIndex);
+		if (!source || !source->Read(piece.Range.Offset, buffer + filled, piece.Range.Size))
+		{
+			return false;
+		}
+		filled += piece.Range.Size;
+	}
+	return true;
+}
+
+bool ContentMap::ReadInnerDecrypted(ContentSourceSet& sources, const StreamRange& innerRange,
+	char* buffer) const
+{
+	constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
+	if (innerRange.Offset < 0 || innerRange.Size < 0 || innerRange.End() > m_innerSize)
+	{
+		return false;
+	}
+	if (innerRange.Size == 0)
+	{
+		return true;
+	}
+	const RunCrypto* runCrypto = GetRunCrypto(0);
+	if (!runCrypto)
+	{
+		return false;
+	}
+	// cover the range with whole cipher blocks; the block straddling the
+	// plaintext end also pulls in the padding tail (decrypted then discarded)
+	int64 cipherFrom = innerRange.Offset / blockSize * blockSize;
+	int64 cipherTo = (innerRange.End() + blockSize - 1) / blockSize * blockSize;
+	if (cipherTo > GetCipherStreamSize())
+	{
+		return false;	// foreshortened map (excluded member) - fail closed
+	}
+	// CBC random access: the predecessor cipher block seeds the chain (it may
+	// live in the previous member); the header IV seeds block 0
+	uint8 prev[RarCryptoContext::CryptoBlockSize];
+	if (cipherFrom > 0 &&
+		!ReadCipherRange(sources, {cipherFrom - blockSize, blockSize}, (char*)prev))
+	{
+		return false;
+	}
+	std::vector<uint8> cipher((size_t)(cipherTo - cipherFrom));
+	std::vector<uint8> plain(cipher.size());
+	if (!ReadCipherRange(sources, {cipherFrom, cipherTo - cipherFrom}, (char*)cipher.data()) ||
+		!runCrypto->Crypto->DecryptRange(cipherFrom > 0 ? prev : nullptr,
+			cipher.data(), plain.data(), (cipherTo - cipherFrom) / blockSize))
+	{
+		return false;
+	}
+	memcpy(buffer, plain.data() + (innerRange.Offset - cipherFrom), innerRange.Size);
+	return true;
+}
+
 void ContentMap::ExcludeMember(int memberIndex)
 {
 	// when the map is encrypted, m_runCryptos runs parallel to m_runs; filter
@@ -1005,16 +1125,17 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 		}
 	}
 
-	// encrypted store-rar donor: the packed bytes are ciphertext, so the plain
+	// encrypted store-rar: the packed bytes are ciphertext, so the plain
 	// "sum of packed == inner size" gate does not apply - build the crypto
 	// geometry instead. Verified against real WinRAR encrypted testdata: an
 	// encrypted RAR file is ONE continuous AES-CBC stream that RAR splits across
-	// volumes at arbitrary byte offsets (NOT re-keyed/16-aligned per volume). We
-	// therefore fail closed on any volume split that is not 16-aligned (the
-	// per-volume gates below), which restricts M3 to the provable subset:
-	// single-volume encrypted store, plus multi-volume with block-aligned cuts.
-	// Reassembly uses ONE shared context (all volumes share the file's key and
-	// chain-start IV); Task 4 chains later blocks from their predecessor cipher.
+	// volumes at ARBITRARY byte offsets (NOT re-keyed/16-aligned per volume).
+	// The volumes' data areas therefore concatenate to one contiguous cipher
+	// space of exactly ceil16(innerSize) bytes; the map records each volume's
+	// slab (RunCrypto.CipherSize) so readers can assemble 16-byte blocks across
+	// member boundaries. Reassembly uses ONE shared context (all volumes share
+	// the file's key and chain-start IV); block 0 chains from the header IV,
+	// every later block from its predecessor ciphertext block.
 	if (anyEncrypted)
 	{
 		if (anyPlain)
@@ -1122,30 +1243,22 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 			}
 		}
 
-		// plaintext geometry: every non-last cipher chunk must be 16-aligned and
-		// equals its plaintext chunk (1:1 in CBC); the last chunk carries the
-		// remainder padded to the next block. Any deviation fails closed.
-		int lastVol = encVols.back();
-		int64 sumNonLast = 0;
+		// contiguous cipher-space geometry: volume cuts are arbitrary, but the
+		// data areas must concatenate to exactly ceil16(innerSize) cipher bytes.
+		// The gate is phrased with subtractions bounded by the source-checked
+		// packed sizes so a lying innerSize cannot overflow the arithmetic.
+		int64 cipherTotal = 0;
 		for (int v : encVols)
 		{
-			if (v == lastVol)
-			{
-				continue;
-			}
-			if (runs[v].PackedSize <= 0 || runs[v].PackedSize % 16 != 0)
+			if (runs[v].PackedSize <= 0)
 			{
 				skipReason = "encrypted volume geometry does not fit store mode";
 				return nullptr;
 			}
-			sumNonLast += runs[v].PackedSize;
+			cipherTotal += runs[v].PackedSize;
 		}
-		int64 plainLast = innerSize - sumNonLast;
-		int64 packLast = runs[lastVol].PackedSize;
-		// bound plainLast by the source-checked packLast BEFORE the ceil16
-		// arithmetic so a lying innerSize cannot overflow plainLast + 15
-		if (plainLast <= 0 || plainLast > packLast || packLast > plainLast + 15 ||
-			(plainLast + 15) / 16 * 16 != packLast)
+		if (innerSize <= 0 || cipherTotal < innerSize ||
+			cipherTotal - innerSize >= 16 || cipherTotal % 16 != 0)
 		{
 			skipReason = "encrypted volume geometry does not fit store mode";
 			return nullptr;
@@ -1155,16 +1268,27 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 		map->SetInnerName(innerName.c_str());
 		map->SetInnerSize(innerSize);
 
-		int64 innerOffset = 0;
+		int64 cipherBase = 0;
 		for (int v : encVols)
 		{
-			int64 plainChunk = v == lastVol ? plainLast : runs[v].PackedSize;
-			map->GetRuns()->push_back({innerOffset, set.Members[v],
+			// plaintext position p == cipher position p; the run covers this
+			// volume's plaintext bytes, and only the LAST volume's slab may
+			// run past them (the CBC padding tail carries no plaintext)
+			int64 plainChunk = std::min(runs[v].PackedSize, innerSize - cipherBase);
+			if (plainChunk <= 0)
+			{
+				// a padding-only volume: no real RAR splits inside the padding
+				skipReason = "encrypted volume geometry does not fit store mode";
+				return nullptr;
+			}
+			map->GetRuns()->push_back({cipherBase, set.Members[v],
 				runs[v].DataOffset, plainChunk});
-			// all runs share the one stream context; CipherDataOffset is the
-			// member offset where this volume's ciphertext begins
-			map->GetRunCryptos()->push_back({crypto, runs[v].DataOffset});
-			innerOffset += plainChunk;
+			// all runs share the one stream context; the slab is CipherSize
+			// ciphertext bytes at member offset CipherDataOffset, covering
+			// cipher-space positions [InnerOffset, InnerOffset + CipherSize)
+			map->GetRunCryptos()->push_back({crypto, runs[v].DataOffset,
+				runs[v].PackedSize});
+			cipherBase += runs[v].PackedSize;
 		}
 		return map;
 	}
@@ -1725,7 +1849,8 @@ std::unique_ptr<ContentMap> ContentMapper::BuildSevenZipMap(const std::vector<Se
 }
 
 std::vector<RepairSetData> ContentMapper::BuildRepairSets(const std::vector<SetMember>& members,
-	const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources)
+	const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources,
+	const char* password)
 {
 	std::vector<RepairSetData> repairSets;
 
@@ -1743,7 +1868,7 @@ std::vector<RepairSetData> ContentMapper::BuildRepairSets(const std::vector<SetM
 
 		RepairSetData data;
 		data.Set = set;
-		data.Map = BuildMap(members, set, sources, data.SkipReason);
+		data.Map = BuildMap(members, set, sources, data.SkipReason, password);
 
 		if (data.Map)
 		{

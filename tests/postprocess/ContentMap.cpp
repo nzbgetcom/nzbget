@@ -1886,11 +1886,12 @@ BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedRejectionsTest)
 		BOOST_CHECK_EQUAL(skipReason, "encrypted archive data");
 	}
 
-	// geometry: a non-16-aligned NON-last volume (real multi-volume RAR splits
-	// this way and is correctly rejected as unmappable in store mode)
+	// geometry LIFT (M3 Task 4): a non-16-aligned NON-last volume is how real
+	// multi-volume RAR actually splits; the contiguous cipher-space model maps
+	// it as long as the slabs total exactly ceil16(innerSize)
 	{
 		std::vector<char> c0(cipher3.begin(), cipher3.begin() + 47);	// 47 % 16 != 0
-		std::vector<char> c1(cipher3.begin() + 47, cipher3.end());
+		std::vector<char> c1(cipher3.begin() + 47, cipher3.end());		// 17 bytes
 		std::vector<SetMember> pair = {{"rel.part01.rar", 0}, {"rel.part02.rar", 0}};
 		MemorySourceSet sources;
 		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
@@ -1898,7 +1899,46 @@ BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedRejectionsTest)
 		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
 			BuildRar3EncStoreVolume(c1, 50, true, false, salt3)));
 		MemberSet twoVol{MemberSet::mfRar, {0, 1}};
-		BOOST_CHECK(!ContentMapper::BuildMap(members, twoVol, sources, skipReason, "123"));
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(pair, twoVol, sources, skipReason, "123");
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 2u);
+		BOOST_CHECK_EQUAL((*map->GetRuns())[0].Size, 47);
+		BOOST_CHECK_EQUAL((*map->GetRuns())[1].Size, 3);	// plaintext tail of 50
+		BOOST_CHECK_EQUAL(map->GetRunCrypto(0)->CipherSize, 47);
+		BOOST_CHECK_EQUAL(map->GetRunCrypto(1)->CipherSize, 17);
+		BOOST_CHECK_EQUAL(map->GetCipherStreamSize(), 64);
+	}
+
+	// geometry: slabs that do NOT total ceil16(innerSize) (a truncated or
+	// foreign last volume) fail closed
+	{
+		std::vector<char> c0(cipher3.begin(), cipher3.begin() + 47);
+		std::vector<char> c1(cipher3.begin() + 47, cipher3.begin() + 60);	// 47+13=60 != 64
+		std::vector<SetMember> pair = {{"rel.part01.rar", 0}, {"rel.part02.rar", 0}};
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c0, 50, false, true, salt3)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c1, 50, true, false, salt3)));
+		MemberSet twoVol{MemberSet::mfRar, {0, 1}};
+		BOOST_CHECK(!ContentMapper::BuildMap(pair, twoVol, sources, skipReason, "123"));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
+	}
+
+	// geometry: a padding-only last volume (its slab starts at or past the
+	// plaintext end) - no real RAR splits inside the padding, fail closed
+	{
+		std::vector<char> c0(cipher3.begin(), cipher3.begin() + 52);	// 52 >= innerSize 50
+		std::vector<char> c1(cipher3.begin() + 52, cipher3.end());		// 12 bytes, total 64
+		std::vector<SetMember> pair = {{"rel.part01.rar", 0}, {"rel.part02.rar", 0}};
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c0, 50, false, true, salt3)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncStoreVolume(c1, 50, true, false, salt3)));
+		MemberSet twoVol{MemberSet::mfRar, {0, 1}};
+		BOOST_CHECK(!ContentMapper::BuildMap(pair, twoVol, sources, skipReason, "123"));
 		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
 	}
 
@@ -1911,6 +1951,220 @@ BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedRejectionsTest)
 		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason, "123"));
 		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
 	}
+}
+
+// The cipher composite (M3 Task 4 gate lift): a 3-volume RAR3 -p store archive
+// with ARBITRARY (non-16-aligned) volume cuts - the geometry real WinRAR
+// produces - maps as one contiguous cipher space. Cross-member 16-byte block
+// assembly must reproduce the plaintext byte for byte, and every degradation
+// (uncovered member, out-of-range request) must fail closed.
+BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedCompositeTest)
+{
+	std::vector<char> inner = Pattern(100, 41);
+	const uint8 salt[8] = {0x9a, 0x8b, 0x7c, 0x6d, 0x5e, 0x4f, 0x30, 0x21};
+	auto ctx = RarCryptoContext::MakeRar3("123", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	// one continuous CBC stream of ceil16(100) = 112 bytes, cut at 45 | 37 | 30:
+	// every cut lands mid-block, so target blocks and their predecessors
+	// straddle member boundaries
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);
+	BOOST_REQUIRE_EQUAL(cipher.size(), 112u);
+	std::vector<char> c0(cipher.begin(), cipher.begin() + 45);
+	std::vector<char> c1(cipher.begin() + 45, cipher.begin() + 82);
+	std::vector<char> c2(cipher.begin() + 82, cipher.end());
+
+	std::vector<SetMember> members = {
+		{"rel.part01.rar", 0}, {"rel.part02.rar", 0}, {"rel.part03.rar", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c0, 100, false, true, salt)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c1, 100, true, true, salt)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c2, 100, true, false, salt)));
+
+	MemberSet set{MemberSet::mfRar, {0, 1, 2}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason, "123");
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK(map->GetEncrypted());
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 100);
+	BOOST_CHECK_EQUAL(map->GetCipherStreamSize(), 112);
+
+	// plaintext runs 45 + 37 + 18 (the last slab's 12 padding bytes carry no
+	// plaintext); slabs 45 + 37 + 30; one shared context
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 3u);
+	const int64 runSizes[] = {45, 37, 18};
+	const int64 slabSizes[] = {45, 37, 30};
+	const RunCrypto* rc0 = map->GetRunCrypto(0);
+	BOOST_REQUIRE(rc0 && rc0->Crypto);
+	for (size_t i = 0; i < 3; i++)
+	{
+		const ContentRun& run = (*map->GetRuns())[i];
+		const RunCrypto* rc = map->GetRunCrypto(i);
+		BOOST_REQUIRE(rc && rc->Crypto);
+		BOOST_CHECK(rc->Crypto == rc0->Crypto);
+		BOOST_CHECK_EQUAL(run.Size, runSizes[i]);
+		BOOST_CHECK_EQUAL(rc->CipherSize, slabSizes[i]);
+		BOOST_CHECK_EQUAL(rc->CipherDataOffset, run.MemberOffset);
+	}
+
+	// cipher-space translation: [32, 64) straddles the vol0/vol1 cut at 45
+	int64 dataOff0 = (*map->GetRuns())[0].MemberOffset;
+	int64 dataOff1 = (*map->GetRuns())[1].MemberOffset;
+	std::vector<MemberRange> pieces = map->MapCipherRange({32, 32});
+	BOOST_REQUIRE_EQUAL(pieces.size(), 2u);
+	BOOST_CHECK_EQUAL(pieces[0].MemberIndex, 0);
+	BOOST_CHECK_EQUAL(pieces[0].Range.Offset, dataOff0 + 32);
+	BOOST_CHECK_EQUAL(pieces[0].Range.Size, 13);
+	BOOST_CHECK_EQUAL(pieces[1].MemberIndex, 1);
+	BOOST_CHECK_EQUAL(pieces[1].Range.Offset, dataOff1);
+	BOOST_CHECK_EQUAL(pieces[1].Range.Size, 19);
+
+	// out-of-stream and degenerate requests fail closed
+	BOOST_CHECK(map->MapCipherRange({0, 113}).empty());
+	BOOST_CHECK(map->MapCipherRange({112, 16}).empty());
+	BOOST_CHECK(map->MapCipherRange({-1, 4}).empty());
+
+	// non-aligned reassembly is byte-identical to the plaintext: whole file,
+	// cut-straddling ranges, the padded tail block, single bytes
+	std::vector<char> out(100);
+	BOOST_REQUIRE(map->ReadInnerDecrypted(sources, {0, 100}, out.data()));
+	BOOST_CHECK(!memcmp(out.data(), inner.data(), 100));
+	const StreamRange probes[] = {{40, 10}, {80, 10}, {95, 5}, {0, 1}, {99, 1}, {44, 3}};
+	for (const StreamRange& probe : probes)
+	{
+		std::vector<char> piece(probe.Size);
+		BOOST_REQUIRE(map->ReadInnerDecrypted(sources, probe, piece.data()));
+		BOOST_CHECK(!memcmp(piece.data(), inner.data() + probe.Offset, probe.Size));
+	}
+	BOOST_CHECK(map->ReadInnerDecrypted(sources, {50, 0}, out.data()));	// no-op
+	BOOST_CHECK(!map->ReadInnerDecrypted(sources, {96, 10}, out.data()));	// past the end
+	BOOST_CHECK(!map->ReadInnerDecrypted(sources, {-16, 16}, out.data()));
+
+	// adversarial: a member missing on the source side (donor lost a volume) -
+	// any block touching it, incl. as a predecessor, must fail, while ranges
+	// served entirely by present members still work
+	MemorySourceSet partial;
+	partial.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c0, 100, false, true, salt)));
+	partial.Sources.push_back(nullptr);
+	partial.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3EncStoreVolume(c2, 100, true, false, salt)));
+	BOOST_CHECK(map->ReadInnerDecrypted(partial, {0, 32}, out.data()));
+	BOOST_CHECK(!memcmp(out.data(), inner.data(), 32));
+	BOOST_CHECK(!map->ReadInnerDecrypted(partial, {50, 10}, out.data()));	// inside vol1
+	BOOST_CHECK(!map->ReadInnerDecrypted(partial, {0, 48}, out.data()));	// block tail in vol1
+	BOOST_CHECK(!map->ReadInnerDecrypted(partial, {96, 4}, out.data()));	// predecessor in vol1
+}
+
+// The same lift for RAR5: two volumes cut mid-block; the crypt-record
+// agreement gate still applies across the non-aligned cut.
+BOOST_AUTO_TEST_CASE(ContentMapperRar5EncryptedNonAlignedTest)
+{
+	std::vector<char> inner = Pattern(60, 27);
+	const uint8 salt[16] = {
+		0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
+		0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf};
+	const uint8 iv[16] = {
+		0xd0, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7,
+		0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf};
+	const uint8 kdf = 10;
+	uint8 check[12] = {};
+	BOOST_REQUIRE(StreamCrypto::DeriveRar5PswCheck("123", kdf, salt, check));
+
+	RarFile::Rar5Crypt crypt;
+	crypt.Version = 0;
+	crypt.KdfCount = kdf;
+	memcpy(crypt.Salt, salt, 16);
+	memcpy(crypt.Iv, iv, 16);
+	memcpy(crypt.CheckValue, check, 8);
+	crypt.HasCheck = true;
+	auto ctx = RarCryptoContext::MakeRar5("123", crypt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);	// 64 = ceil16(60)
+	std::vector<char> c0(cipher.begin(), cipher.begin() + 23);	// 23 % 16 != 0
+	std::vector<char> c1(cipher.begin() + 23, cipher.end());	// 41 bytes
+
+	std::vector<SetMember> members = {{"rel.part01.rar", 0}, {"rel.part02.rar", 0}};
+	MemberSet set{MemberSet::mfRar, {0, 1}};
+	std::string skipReason;
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar5EncStoreVolume(c0, 60, false, true, kdf, salt, iv, check)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar5EncStoreVolume(c1, 60, true, false, kdf, salt, iv, check)));
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(members, set, sources, skipReason, "123");
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 2u);
+		BOOST_CHECK_EQUAL((*map->GetRuns())[0].Size, 23);
+		BOOST_CHECK_EQUAL((*map->GetRuns())[1].Size, 37);
+		BOOST_CHECK_EQUAL(map->GetRunCrypto(1)->CipherSize, 41);
+
+		std::vector<char> out(60);
+		BOOST_REQUIRE(map->ReadInnerDecrypted(sources, {0, 60}, out.data()));
+		BOOST_CHECK(!memcmp(out.data(), inner.data(), 60));
+		BOOST_REQUIRE(map->ReadInnerDecrypted(sources, {20, 10}, out.data()));
+		BOOST_CHECK(!memcmp(out.data(), inner.data() + 20, 10));
+	}
+
+	// a diverging IV in the second volume breaks the one-stream assumption
+	{
+		uint8 otherIv[16];
+		memcpy(otherIv, iv, 16);
+		otherIv[0] ^= 0x01;
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar5EncStoreVolume(c0, 60, false, true, kdf, salt, iv, check)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar5EncStoreVolume(c1, 60, true, false, kdf, salt, otherIv, check)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason, "123"));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted volume geometry does not fit store mode");
+	}
+}
+
+// BuildRepairSets threads the TARGET's own password: an encrypted store-rar
+// target set maps (with hole translation) when the password is supplied and
+// keeps the M2 skip without one.
+BOOST_AUTO_TEST_CASE(ContentMapperEncryptedRepairSetsTest)
+{
+	std::vector<char> inner = Pattern(50, 33);
+	const uint8 salt[8] = {8, 7, 6, 5, 4, 3, 2, 1};
+	auto ctx = RarCryptoContext::MakeRar3("123", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);	// 64 bytes
+	std::vector<char> volume = BuildRar3EncStoreVolume(cipher, 50, false, false, salt);
+	// per BuildRar3EncStoreVolume's layout the data region starts at
+	// 7 (sig) + 13 (main) + 32 + 9 ("inner.mkv") + 8 (salt) = 69
+	const int64 dataStart = 69;
+
+	std::vector<SetMember> members = {{"rel.part01.rar", (int64)volume.size()}};
+	std::vector<StreamRangeList> memberHoles(1);
+	memberHoles[0] = {{dataStart + 20, 10}};
+
+	MemorySourceSet raw;
+	raw.Sources.push_back(std::make_unique<MemoryContentSource>(volume));
+	HoledSourceSet sources(raw, memberHoles);
+
+	std::vector<RepairSetData> without =
+		ContentMapper::BuildRepairSets(members, memberHoles, sources);
+	BOOST_REQUIRE_EQUAL(without.size(), 1u);
+	BOOST_CHECK(!without[0].Map);
+	BOOST_CHECK_EQUAL(without[0].SkipReason, "encrypted archive data");
+
+	std::vector<RepairSetData> with =
+		ContentMapper::BuildRepairSets(members, memberHoles, sources, "123");
+	BOOST_REQUIRE_EQUAL(with.size(), 1u);
+	BOOST_REQUIRE_MESSAGE(with[0].Map, with[0].SkipReason);
+	BOOST_CHECK(with[0].Map->GetEncrypted());
+	BOOST_REQUIRE_EQUAL(with[0].InnerHoles.size(), 1u);
+	BOOST_CHECK_EQUAL(with[0].InnerHoles[0].Offset, 20);
+	BOOST_CHECK_EQUAL(with[0].InnerHoles[0].Size, 10);
 }
 
 // The -hp donor decision, exercised against the REAL header-encrypted testdata
