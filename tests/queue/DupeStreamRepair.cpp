@@ -64,6 +64,28 @@ std::unique_ptr<FileInfo> BuildStreamFile(int64 decodedFileSize,
 	return fileInfo;
 }
 
+// donor file as parsed from an nzb: per-article ENCODED sizes only
+std::unique_ptr<FileInfo> BuildDonorFile(const char* filename, std::vector<int> encodedSizes)
+{
+	std::unique_ptr<FileInfo> fileInfo = std::make_unique<FileInfo>();
+	fileInfo->SetFilename(filename);
+	int partNumber = 1;
+	int64 total = 0;
+	for (int encodedSize : encodedSizes)
+	{
+		std::unique_ptr<ArticleInfo> article = std::make_unique<ArticleInfo>();
+		article->SetPartNumber(partNumber);
+		article->SetSize(encodedSize);
+		article->SetMessageId(BString<1024>("donor-%i@example.com", partNumber));
+		total += encodedSize;
+		partNumber++;
+		fileInfo->GetArticles()->push_back(std::move(article));
+	}
+	fileInfo->SetSize(total);
+	fileInfo->SetTotalArticles((int)encodedSizes.size());
+	return fileInfo;
+}
+
 } // namespace
 
 BOOST_AUTO_TEST_CASE(StreamRepairEligibilityTest)
@@ -131,6 +153,112 @@ BOOST_AUTO_TEST_CASE(StreamRepairComputeHolesOverlapTest)
 	BOOST_REQUIRE_EQUAL(holes.size(), 1u);
 	BOOST_CHECK_EQUAL(holes[0].Offset, 800);
 	BOOST_CHECK_EQUAL(holes[0].Size, 200);
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairEstimateDonorRangesTest)
+{
+	// uniform parts: 4 x 250 encoded over 1000 decoded -> exact quarters
+	std::unique_ptr<FileInfo> uniform = BuildDonorFile("movie.mkv", {250, 250, 250, 250});
+	StreamRangeList ranges = DupeStreamRepair::EstimateDonorRanges(uniform.get(), 1000);
+	BOOST_REQUIRE_EQUAL(ranges.size(), 4u);
+	for (int i = 0; i < 4; i++)
+	{
+		BOOST_CHECK_EQUAL(ranges[i].Offset, i * 250);
+		BOOST_CHECK_EQUAL(ranges[i].Size, 250);
+	}
+
+	// uneven parts scale proportionally and still cover [0, size) exactly
+	std::unique_ptr<FileInfo> uneven = BuildDonorFile("movie.mkv", {300, 100, 100});
+	StreamRangeList ranges2 = DupeStreamRepair::EstimateDonorRanges(uneven.get(), 1000);
+	BOOST_REQUIRE_EQUAL(ranges2.size(), 3u);
+	BOOST_CHECK_EQUAL(ranges2[0].Offset, 0);
+	BOOST_CHECK_EQUAL(ranges2[0].Size, 600);
+	BOOST_CHECK_EQUAL(ranges2[1].Offset, 600);
+	BOOST_CHECK_EQUAL(ranges2[1].Size, 200);
+	BOOST_CHECK_EQUAL(ranges2[2].Offset, 800);
+	BOOST_CHECK_EQUAL(ranges2[2].Size, 200);
+
+	// degenerate inputs yield no ranges
+	std::unique_ptr<FileInfo> empty = BuildDonorFile("movie.mkv", {});
+	BOOST_CHECK(DupeStreamRepair::EstimateDonorRanges(empty.get(), 1000).empty());
+	BOOST_CHECK(DupeStreamRepair::EstimateDonorRanges(uniform.get(), 0).empty());
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairSelectPatchPartsTest)
+{
+	StreamRangeList donorRanges;
+	for (int i = 0; i < 10; i++)
+	{
+		donorRanges.push_back({i * 100, 100});
+	}
+
+	// hole [450,550) overlaps parts 4 and 5; margin 1 adds 3 and 6
+	StreamRangeList holes = {{450, 100}};
+	std::vector<int> picks = DupeStreamRepair::SelectPatchParts(donorRanges, holes, 1);
+	BOOST_REQUIRE_EQUAL(picks.size(), 4u);
+	BOOST_CHECK_EQUAL(picks[0], 3);
+	BOOST_CHECK_EQUAL(picks[1], 4);
+	BOOST_CHECK_EQUAL(picks[2], 5);
+	BOOST_CHECK_EQUAL(picks[3], 6);
+
+	// margin clamps at the array edges
+	StreamRangeList edgeHole = {{0, 50}};
+	std::vector<int> edgePicks = DupeStreamRepair::SelectPatchParts(donorRanges, edgeHole, 2);
+	BOOST_REQUIRE_EQUAL(edgePicks.size(), 3u);
+	BOOST_CHECK_EQUAL(edgePicks[0], 0);
+	BOOST_CHECK_EQUAL(edgePicks[2], 2);
+
+	// no holes -> nothing to patch
+	BOOST_CHECK(DupeStreamRepair::SelectPatchParts(donorRanges, StreamRangeList(), 2).empty());
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairSelectProbePartsTest)
+{
+	StreamRangeList donorRanges;
+	for (int i = 0; i < 10; i++)
+	{
+		donorRanges.push_back({i * 100, 100});
+	}
+
+	// hole [450,550): parts 4,5 hit it, 3,6 are their neighbors ->
+	// probe candidates are {0,1,2,7,8,9}; two probes spread across them
+	StreamRangeList holes = {{450, 100}};
+	std::vector<int> probes = DupeStreamRepair::SelectProbeParts(donorRanges, holes, 2);
+	BOOST_REQUIRE_EQUAL(probes.size(), 2u);
+	BOOST_CHECK_EQUAL(probes[0], 1);
+	BOOST_CHECK_EQUAL(probes[1], 8);
+
+	// entirely holey file has no probe candidates
+	StreamRangeList allHoles = {{0, 1000}};
+	BOOST_CHECK(DupeStreamRepair::SelectProbeParts(donorRanges, allHoles, 2).empty());
+
+	// fewer candidates than probes: return them all
+	StreamRangeList bigHole = {{0, 850}}; // leaves only part 9 (window 8-9 clear? no)
+	std::vector<int> few = DupeStreamRepair::SelectProbeParts(donorRanges, bigHole, 2);
+	// hole covers parts 0-8; part 9's neighbor window includes part 8 -> no candidates
+	BOOST_CHECK(few.empty());
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairSubtractCoveredTest)
+{
+	// carve the middle out of a hole
+	StreamRangeList holes = {{300, 200}, {800, 200}};
+	DupeStreamRepair::SubtractCovered(holes, {350, 100});
+	BOOST_REQUIRE_EQUAL(holes.size(), 3u);
+	BOOST_CHECK_EQUAL(holes[0].Offset, 300);
+	BOOST_CHECK_EQUAL(holes[0].Size, 50);
+	BOOST_CHECK_EQUAL(holes[1].Offset, 450);
+	BOOST_CHECK_EQUAL(holes[1].Size, 50);
+	BOOST_CHECK_EQUAL(holes[2].Offset, 800);
+	BOOST_CHECK_EQUAL(holes[2].Size, 200);
+
+	// full cover removes the hole entirely
+	DupeStreamRepair::SubtractCovered(holes, {800, 200});
+	BOOST_REQUIRE_EQUAL(holes.size(), 2u);
+
+	// no overlap leaves the list untouched
+	DupeStreamRepair::SubtractCovered(holes, {600, 100});
+	BOOST_CHECK_EQUAL(holes.size(), 2u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
