@@ -33,6 +33,7 @@
 #include "Cleanup.h"
 #include "Rename.h"
 #include "Repair.h"
+#include "StreamRepair.h"
 #include "NzbFile.h"
 #include "QueueScript.h"
 #include "ParParser.h"
@@ -719,6 +720,15 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptParRenaming);
 		RenameController::StartJob(postInfo, RenameController::jkPar);
+		return;
+	}
+
+	if (g_Options->GetDupeArticleFallback() == Options::dafStream &&
+		!nzbInfo->GetStreamRepairJobs()->empty() &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
+		StreamRepairController::StartJob(postInfo);
 		return;
 	}
 
