@@ -140,6 +140,18 @@ class LocalTarget:
     def exists(self, rel):
         return os.path.exists(self.path(rel))
 
+    def find_files(self, *parts):
+        """Return rel paths (work-relative, '/'-joined) of all files under the
+        given subdir."""
+        base = self.path(*parts)
+        out = []
+        if os.path.isdir(base):
+            for dp, _, files in os.walk(base):
+                for fn in files:
+                    rel = os.path.relpath(os.path.join(dp, fn), self.work)
+                    out.append(rel.replace(os.sep, '/'))
+        return out
+
     def spawn(self, args):
         p = subprocess.Popen(args, stdout=subprocess.DEVNULL,
                               stderr=subprocess.DEVNULL)
@@ -215,6 +227,16 @@ class AdbTarget:
         r = self._adb('shell', 'ls', self.path(rel))
         return 'No such file' not in (r.stdout + r.stderr)
 
+    def find_files(self, *parts):
+        base = self.path(*parts)
+        r = self._adb('shell', 'find', base, '-type', 'f')
+        out = []
+        for line in r.stdout.splitlines():
+            line = line.strip()
+            if line.startswith(self.work + '/'):
+                out.append(line[len(self.work) + 1:])
+        return out
+
     def spawn(self, args):
         # launch detached on device; ports are device-local
         remote = ' '.join(self._q(a) for a in args) + ' >/dev/null 2>&1 &'
@@ -252,7 +274,7 @@ class Daemon:
         self.nntp_port = nntp_port
         self.rpc_port = rpc_port
         self.datadir = target.makedirs('data')
-        for d in ('dst', 'inter', 'nzb', 'queue', 'tmp'):
+        for d in ('dst', 'inter', 'nzb', 'queue', 'tmp', 'scripts', 'web'):
             target.makedirs('main', d)
         self.conf_rel = 'nzbget.conf'
 
@@ -266,6 +288,14 @@ class Daemon:
             'QueueDir=%s' % w('main', 'queue'),
             'TempDir=%s' % w('main', 'tmp'),
             'LogFile=%s' % w('nzbget.log'),
+            # Pin every path that nzbget would otherwise default to a
+            # compiled-in location (e.g. /downloads/scripts): an uncreatable
+            # ScriptDir/WebDir is a fatal config error that pauses the whole
+            # queue, which cross-compiled (Android) builds trip over.
+            'ScriptDir=%s' % w('main', 'scripts'),
+            'WebDir=%s' % w('main', 'web'),
+            'LockFile=%s' % w('nzbget.lock'),
+            'ConfigTemplate=', 'RequiredDir=',
             'WriteLog=append', 'OutputMode=log', 'ControlIP=127.0.0.1',
             'ControlPort=%d' % self.rpc_port,
             'ControlUsername=', 'ControlPassword=',
@@ -280,10 +310,13 @@ class Daemon:
         self.t.write_file(self.conf_rel, ('\n'.join(cfg) + '\n').encode())
 
     def start_nserv(self):
-        # -i 2 => instances on nntp_port and nntp_port+1; "!2" articles are
-        # served only by instance 2, i.e. missing on the active Server1.
+        # A single instance (-i 1) binds only nntp_port. Instance 1 already
+        # returns "430 not found" for "!2" message-ids (its id 1 is not in the
+        # server-list [2]), which is how a "missing" article is simulated on the
+        # only server the daemon uses. A second instance would just bind
+        # nntp_port+1 and risk colliding with the control port.
         self.t.spawn([self.t.nzbget, '--nserv', '-d', self.datadir,
-                      '-p', str(self.nntp_port), '-i', '2', '-v', '0'])
+                      '-p', str(self.nntp_port), '-i', '1', '-v', '0'])
 
     def start(self):
         self.t.spawn([self.t.nzbget, '-c', self.t.path(self.conf_rel), '-s'])
@@ -406,26 +439,17 @@ def scenario_manydonors(daemon, t, ndonors=18):
 
 
 def _verify_output(t, expected):
-    # find the completed .bin under main/dst and compare bytes
-    import posixpath
-    # LocalTarget: search the fs; AdbTarget: known layout under dst/<nzb>/
-    for root in ('ReleaseA', 'CutA', 'ManyPrim'):
-        rel = posixpath.join('main', 'dst', root, 'file.bin')
-        # completed name follows the served file name (file.bin)
-        try:
-            if t.exists(rel):
-                return t.read_file(rel) == expected
-        except Exception:
-            pass
-    # fall back: LocalTarget filesystem walk
-    dst = t.path('main', 'dst')
-    if isinstance(t, LocalTarget) and os.path.isdir(dst):
-        for dirpath, _, files in os.walk(dst):
-            for fn in files:
-                if fn.endswith('.bin'):
-                    with open(os.path.join(dirpath, fn), 'rb') as f:
-                        if f.read() == expected:
-                            return True
+    """The completed file lands at main/dst/<category>/<nzb>/<name>.bin, whose
+    exact path depends on category and FileNaming. Rather than hard-code it,
+    walk main/dst (works identically on both targets) and byte-compare every
+    produced .bin against the source payload."""
+    for rel in t.find_files('main', 'dst'):
+        if rel.endswith('.bin'):
+            try:
+                if t.read_file(rel) == expected:
+                    return True
+            except Exception:
+                pass
     return False
 
 
@@ -464,6 +488,8 @@ def main():
     for name in scenarios:
         nntp = free_port()
         rpc = free_port()
+        while rpc == nntp:  # the two must not coincide
+            rpc = free_port()
         stage = tempfile.mkdtemp(prefix='dupefallback-%s-' % name)
         if args.target == 'local':
             target = LocalTarget(args.nzbget, stage)
