@@ -22,6 +22,9 @@
 
 #include <vector>
 #include <cstring>
+#include <fstream>
+#include <string>
+#include <memory>
 #include <boost/test/unit_test.hpp>
 #include "RarReader.h"
 #include "StreamCrypto.h"
@@ -407,5 +410,308 @@ BOOST_AUTO_TEST_CASE(RarReaderRar5OversizeKdfCountTest)
 	BOOST_CHECK(!StreamCrypto::DeriveRar5("123", crypt->KdfCount, crypt->Salt, key));
 #endif
 }
+
+#ifndef DISABLE_TLS
+
+// ---------------------------------------------------------------------------
+// Task 2: RarCryptoContext CBC range codecs + rar5 password check.
+//
+// The strongest tests here run against the real WinRAR-encrypted testdata
+// (password "123"): the rar5 password-check value and the AES-256-CBC
+// plaintext are ground-truthed against WinRAR's own output, and the rar3 -hp
+// cross-check reproduces, byte for byte, the inner filename RarVolume decrypts
+// from the same bytes. Reference vectors were computed with an independent
+// implementation (Python `cryptography` AES-CBC + hashlib PBKDF2).
+// ---------------------------------------------------------------------------
+
+namespace
+{
+
+const fs::path RAR_DIR = fs::current_path() / "rarrenamer";
+
+std::vector<char> SlurpRar(const fs::path& path)
+{
+	std::ifstream in(path.string(), std::ios::binary);
+	return std::vector<char>((std::istreambuf_iterator<char>(in)),
+		std::istreambuf_iterator<char>());
+}
+
+}
+
+// The rar5 password-check derivation, verified against real ciphertext. The
+// stored 8-byte check in testfile5encdata's crypt record must equal our
+// derivation for password "123"; a wrong password derives a different value;
+// and MakeRar5 accepts the right password and rejects the wrong one.
+BOOST_AUTO_TEST_CASE(StreamCryptoRar5PswCheckVectorTest)
+{
+	const fs::path file = RAR_DIR / "testfile5encdata.part01.rar";
+	RarVolume volume(file.string().c_str());
+	BOOST_REQUIRE(volume.Read());
+	BOOST_REQUIRE(!volume.GetFiles()->empty());
+	const RarFile::Rar5Crypt* crypt = volume.GetFiles()->front().GetCrypt();
+	BOOST_REQUIRE(crypt != nullptr);
+	BOOST_REQUIRE(crypt->HasCheck);
+
+	uint8 check[8] = {};
+	BOOST_REQUIRE(StreamCrypto::DeriveRar5PswCheck("123", crypt->KdfCount, crypt->Salt, check));
+	BOOST_CHECK_EQUAL_COLLECTIONS(check, check + 8, crypt->CheckValue, crypt->CheckValue + 8);
+
+	uint8 wrong[8] = {};
+	BOOST_REQUIRE(StreamCrypto::DeriveRar5PswCheck("456", crypt->KdfCount, crypt->Salt, wrong));
+	BOOST_CHECK(memcmp(wrong, crypt->CheckValue, 8) != 0);
+
+	// oversize kdfCount fails closed at the derivation layer
+	BOOST_CHECK(!StreamCrypto::DeriveRar5PswCheck("123", 25, crypt->Salt, check));
+
+	// factory: right password accepted, wrong/empty rejected via the check
+	BOOST_CHECK(RarCryptoContext::MakeRar5("123", *crypt) != nullptr);
+	BOOST_CHECK(RarCryptoContext::MakeRar5("wrongpass", *crypt) == nullptr);
+	BOOST_CHECK(RarCryptoContext::MakeRar5("", *crypt) == nullptr);
+}
+
+// Cross-check the rar5 AES-256-CBC codec against real WinRAR ciphertext:
+// DecryptRange reproduces the reference plaintext of block 0, and re-encrypting
+// the recovered plaintext yields the original on-disk ciphertext exactly.
+BOOST_AUTO_TEST_CASE(StreamCryptoRar5RealCiphertextCrossCheckTest)
+{
+	const fs::path file = RAR_DIR / "testfile5encdata.part01.rar";
+	std::vector<char> bytes = SlurpRar(file);
+	BOOST_REQUIRE(bytes.size() > 400);
+
+	RarVolume volume(file.string().c_str());
+	BOOST_REQUIRE(volume.Read());
+	RarFile& inner = volume.GetFiles()->front();
+	const RarFile::Rar5Crypt* crypt = inner.GetCrypt();
+	BOOST_REQUIRE(crypt != nullptr);
+	int64 dataOffset = inner.GetDataOffset();
+	BOOST_REQUIRE(dataOffset > 0);
+
+	auto ctx = RarCryptoContext::MakeRar5("123", *crypt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	const int blocks = 16;
+	BOOST_REQUIRE(dataOffset + blocks * 16 <= (int64)bytes.size());
+	const uint8* cipher = (const uint8*)bytes.data() + dataOffset;
+
+	uint8 plain[blocks * 16];
+	BOOST_REQUIRE(ctx->DecryptRange(nullptr, cipher, plain, blocks));
+
+	const uint8 expect0[16] = {
+		0xcd, 0xf2, 0x36, 0x53, 0x40, 0x75, 0x44, 0x43,
+		0x33, 0x44, 0x44, 0x00, 0x57, 0x65, 0xfb, 0x6a};
+	BOOST_CHECK_EQUAL_COLLECTIONS(plain, plain + 16, expect0, expect0 + 16);
+
+	uint8 recip[blocks * 16];
+	BOOST_REQUIRE(ctx->EncryptRange(nullptr, plain, recip, blocks));
+	BOOST_CHECK_EQUAL_COLLECTIONS(recip, recip + blocks * 16, cipher, cipher + blocks * 16);
+}
+
+// Cross-check the rar3 AES-128-CBC codec against RarVolume's own -hp header
+// decryption: decrypting the first encrypted FILE block yields a valid rar3
+// FILE header (type byte 0x74) whose name field reproduces, byte for byte, the
+// inner filename RarVolume recovers from the same volume.
+BOOST_AUTO_TEST_CASE(StreamCryptoRar3HeaderCrossCheckTest)
+{
+	const fs::path file = RAR_DIR / "testfile3encnam.part01.rar";
+	std::vector<char> bytes = SlurpRar(file);
+	BOOST_REQUIRE(bytes.size() > 100);
+	const uint8* b = (const uint8*)bytes.data();
+
+	// marker(7) + plaintext MAIN block, then the encrypted FILE block, whose
+	// 8-byte salt precedes its ciphertext (rar3 -hp re-keys per block)
+	int mainSize = b[12] | (b[13] << 8);
+	int saltOff = 7 + mainSize;
+	int cipherOff = saltOff + 8;
+	BOOST_REQUIRE(cipherOff + 64 <= (int)bytes.size());
+
+	auto ctx = RarCryptoContext::MakeRar3("123", b + saltOff);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	uint8 plain[64];
+	BOOST_REQUIRE(ctx->DecryptRange(nullptr, b + cipherOff, plain, 4));
+
+	BOOST_CHECK_EQUAL((int)plain[2], 0x74);		// rar3 FILE block type
+	int nameLen = plain[26] | (plain[27] << 8);
+	BOOST_REQUIRE_EQUAL(nameLen, 19);
+	BOOST_CHECK_EQUAL(std::string((const char*)plain + 32, nameLen), "testfile3encnam.dat");
+
+	// tie the cross-check to RarVolume: it decrypts the same bytes to that name
+	RarVolume volume(file.string().c_str());
+	volume.SetPassword("123");
+	BOOST_REQUIRE(volume.Read());
+	BOOST_REQUIRE(!volume.GetFiles()->empty());
+	BOOST_CHECK_EQUAL(volume.GetFiles()->front().GetFilename(), "testfile3encnam.dat");
+}
+
+// rar3 has no password-check value: MakeRar3 still succeeds for a wrong
+// password, and the mismatch surfaces only as different plaintext (rejected by
+// the M3 repair probes downstream, never as a hard error here).
+BOOST_AUTO_TEST_CASE(StreamCryptoRar3WrongPasswordTest)
+{
+	const fs::path file = RAR_DIR / "testfile3encnam.part01.rar";
+	std::vector<char> bytes = SlurpRar(file);
+	const uint8* b = (const uint8*)bytes.data();
+	int saltOff = 7 + (b[12] | (b[13] << 8));
+	int cipherOff = saltOff + 8;
+
+	auto right = RarCryptoContext::MakeRar3("123", b + saltOff);
+	auto wrong = RarCryptoContext::MakeRar3("wrongpw", b + saltOff);
+	BOOST_REQUIRE(right != nullptr);
+	BOOST_REQUIRE(wrong != nullptr);	// no rar3 check exists -> not nullptr
+
+	uint8 pRight[16], pWrong[16];
+	BOOST_REQUIRE(right->DecryptRange(nullptr, b + cipherOff, pRight, 1));
+	BOOST_REQUIRE(wrong->DecryptRange(nullptr, b + cipherOff, pWrong, 1));
+	BOOST_CHECK_EQUAL((int)pRight[2], 0x74);
+	BOOST_CHECK(memcmp(pRight, pWrong, 16) != 0);
+
+	// empty password is rejected outright
+	BOOST_CHECK(RarCryptoContext::MakeRar3("", b + saltOff) == nullptr);
+}
+
+// Round-trip Encrypt -> Decrypt over a multi-block range, both from the header
+// IV (prevCipherBlock == nullptr) and from an arbitrary predecessor block, for
+// both AES variants.
+BOOST_AUTO_TEST_CASE(StreamCryptoRoundTripTest)
+{
+	const uint8 salt3[8] = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
+	auto r3 = RarCryptoContext::MakeRar3("secret", salt3);
+	BOOST_REQUIRE(r3 != nullptr);
+
+	RarFile::Rar5Crypt crypt;
+	crypt.Version = 0;
+	crypt.KdfCount = 12;
+	for (int i = 0; i < 16; i++)
+	{
+		crypt.Salt[i] = (uint8)(i + 1);
+		crypt.Iv[i] = (uint8)(0x40 + i);
+	}
+	crypt.HasCheck = false;
+	auto r5 = RarCryptoContext::MakeRar5("secret", crypt);
+	BOOST_REQUIRE(r5 != nullptr);
+
+	const int blocks = 5;
+	uint8 plain[blocks * 16];
+	for (int i = 0; i < blocks * 16; i++) plain[i] = (uint8)(i * 7 + 1);
+	uint8 prev[16];
+	for (int i = 0; i < 16; i++) prev[i] = (uint8)(0xA0 + i);
+
+	RarCryptoContext* ctxs[] = { r3.get(), r5.get() };
+	for (RarCryptoContext* ctx : ctxs)
+	{
+		uint8 cipher[blocks * 16] = {};
+		uint8 back[blocks * 16] = {};
+		BOOST_REQUIRE(ctx->EncryptRange(prev, plain, cipher, blocks));
+		BOOST_REQUIRE(ctx->DecryptRange(prev, cipher, back, blocks));
+		BOOST_CHECK_EQUAL_COLLECTIONS(back, back + blocks * 16, plain, plain + blocks * 16);
+		BOOST_CHECK(memcmp(cipher, plain, blocks * 16) != 0);	// encryption happened
+
+		uint8 cipher0[blocks * 16] = {};
+		uint8 back0[blocks * 16] = {};
+		BOOST_REQUIRE(ctx->EncryptRange(nullptr, plain, cipher0, blocks));
+		BOOST_REQUIRE(ctx->DecryptRange(nullptr, cipher0, back0, blocks));
+		BOOST_CHECK_EQUAL_COLLECTIONS(back0, back0 + blocks * 16, plain, plain + blocks * 16);
+		// a different chaining start changes block 0's ciphertext
+		BOOST_CHECK(memcmp(cipher, cipher0, 16) != 0);
+	}
+}
+
+// Exceed the 65536-block (1 MiB) internal EVP batch so the batching loop and
+// its cross-call CBC chaining are exercised: a whole round-trip must recover the
+// input, and the block straddling the batch edge must decrypt correctly from its
+// true predecessor (which only holds if chaining survived the batch split).
+BOOST_AUTO_TEST_CASE(StreamCryptoMultiBatchRoundTripTest)
+{
+	RarFile::Rar5Crypt crypt;
+	crypt.Version = 0;
+	crypt.KdfCount = 8;	// small: keep the KDF cheap
+	for (int i = 0; i < 16; i++)
+	{
+		crypt.Salt[i] = (uint8)(i * 3);
+		crypt.Iv[i] = (uint8)(i * 5 + 1);
+	}
+	crypt.HasCheck = false;
+	auto ctx = RarCryptoContext::MakeRar5("secret", crypt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	const int64 blocks = 70000;	// > 65536
+	std::vector<uint8> plain(blocks * 16), cipher(blocks * 16), back(blocks * 16);
+	for (size_t i = 0; i < plain.size(); i++) plain[i] = (uint8)(i * 131 + 7);
+
+	BOOST_REQUIRE(ctx->EncryptRange(nullptr, plain.data(), cipher.data(), blocks));
+	BOOST_REQUIRE(ctx->DecryptRange(nullptr, cipher.data(), back.data(), blocks));
+	BOOST_CHECK(back == plain);
+
+	const int64 edge = 65536;
+	uint8 one[16];
+	BOOST_REQUIRE(ctx->DecryptRange(cipher.data() + (edge - 1) * 16,
+		cipher.data() + edge * 16, one, 1));
+	BOOST_CHECK_EQUAL_COLLECTIONS(one, one + 16,
+		plain.data() + edge * 16, plain.data() + (edge + 1) * 16);
+}
+
+// Random access: decrypting a sub-range [start, end) with C_{start-1} as the
+// predecessor must equal the corresponding slice of a whole-stream decrypt.
+BOOST_AUTO_TEST_CASE(StreamCryptoRandomAccessConsistencyTest)
+{
+	const uint8 salt[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+	auto ctx = RarCryptoContext::MakeRar3("pw", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	const int blocks = 8;
+	uint8 plain[blocks * 16];
+	for (int i = 0; i < blocks * 16; i++) plain[i] = (uint8)(i * 5 + 3);
+	uint8 cipher[blocks * 16];
+	BOOST_REQUIRE(ctx->EncryptRange(nullptr, plain, cipher, blocks));
+
+	const int start = 3;
+	uint8 part[(blocks - start) * 16];
+	BOOST_REQUIRE(ctx->DecryptRange(cipher + (start - 1) * 16, cipher + start * 16,
+		part, blocks - start));
+	BOOST_CHECK_EQUAL_COLLECTIONS(part, part + (blocks - start) * 16,
+		plain + start * 16, plain + blocks * 16);
+}
+
+// Zero-block calls are no-op successes; negative counts fail closed. The
+// blocks-only interface makes a byte-misaligned length inexpressible.
+BOOST_AUTO_TEST_CASE(StreamCryptoZeroAndNegativeBlocksTest)
+{
+	const uint8 salt[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+	auto ctx = RarCryptoContext::MakeRar3("pw", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+
+	uint8 in[16] = {};
+	uint8 out[16];
+	memset(out, 0xAB, sizeof(out));
+	BOOST_CHECK(ctx->DecryptRange(nullptr, in, out, 0));
+	BOOST_CHECK(ctx->EncryptRange(nullptr, in, out, 0));
+	BOOST_CHECK_EQUAL((int)out[0], 0xAB);	// zero-block leaves output untouched
+
+	BOOST_CHECK(!ctx->DecryptRange(nullptr, in, out, -1));
+	BOOST_CHECK(!ctx->EncryptRange(nullptr, in, out, -4));
+}
+
+// MakeRar5 validates the crypt version and kdf bound and rejects empty
+// passwords (Task 1 deliberately exposed Version/KdfCount without validating).
+BOOST_AUTO_TEST_CASE(StreamCryptoMakeRar5RejectsTest)
+{
+	RarFile::Rar5Crypt crypt;
+	crypt.Version = 0;
+	crypt.KdfCount = 10;
+	crypt.HasCheck = false;
+	BOOST_CHECK(RarCryptoContext::MakeRar5("pw", crypt) != nullptr);
+
+	RarFile::Rar5Crypt v1 = crypt;
+	v1.Version = 1;								// non-AES256
+	BOOST_CHECK(RarCryptoContext::MakeRar5("pw", v1) == nullptr);
+
+	RarFile::Rar5Crypt big = crypt;
+	big.KdfCount = 200;							// beyond the KDF bound
+	BOOST_CHECK(RarCryptoContext::MakeRar5("pw", big) == nullptr);
+
+	BOOST_CHECK(RarCryptoContext::MakeRar5("", crypt) == nullptr);	// empty password
+}
+
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
