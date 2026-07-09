@@ -61,12 +61,13 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		return false;
 	}
 
-	// only announce a genuine duplicate source, not the primary revert
-	if (strcmp(sources[round], articleInfo->GetDupeOriginalMessageId()) != 0)
+	// count this article once, the first time a duplicate source is tried for it
+	// (the denominator of the per-file recovered/attempted completion summary).
+	// No per-attempt log line: it would flood large files and, worse, read as a
+	// success when it is only an attempt - the recovery is counted on success.
+	if (round == 0)
 	{
-		nzbInfo->PrintMessage(Message::mkDetail, "Trying article %s from duplicate for %s [%i/%i]",
-			*sources[round], fileInfo->GetFilename(), articleInfo->GetPartNumber(),
-			(int)fileInfo->GetArticles()->size());
+		fileInfo->SetDupeAttemptedArticles(fileInfo->GetDupeAttemptedArticles() + 1);
 	}
 
 	articleInfo->SetMessageId(sources[round]);

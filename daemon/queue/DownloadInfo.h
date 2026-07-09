@@ -179,6 +179,8 @@ public:
 	void SetSuccessArticles(int successArticles) { m_successArticles = successArticles; }
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	int GetDupeAttemptedArticles() { return m_dupeAttemptedArticles; }
+	void SetDupeAttemptedArticles(int dupeAttemptedArticles) { m_dupeAttemptedArticles = dupeAttemptedArticles; }
 	bool GetDupeCutover() { return m_dupeCutover; }
 	void SetDupeCutover(bool dupeCutover) { m_dupeCutover = dupeCutover; }
 	time_t GetTime() { return m_time; }
@@ -247,6 +249,9 @@ private:
 	int m_successArticles = 0;
 	// articles obtained from a duplicate collection via DupeArticleFallback (not persisted)
 	int m_dupeRecoveredArticles = 0;
+	// distinct articles for which a duplicate source was tried (not persisted);
+	// the denominator for the recovered/attempted completion summary
+	int m_dupeAttemptedArticles = 0;
 	// once the primary proves to be missing many articles of this file, lead
 	// with the duplicate for the remaining articles instead of failing on the
 	// primary first (not persisted)

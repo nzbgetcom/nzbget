@@ -888,11 +888,13 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 
 	fileInfo->SetDeleted(true);
 
-	if (completed && fileInfo->GetDupeRecoveredArticles() > 0)
+	if (completed && fileInfo->GetDupeAttemptedArticles() > 0)
 	{
+		// honest per-file summary: recovered vs how many were tried from
+		// duplicates (0 recovered means the duplicates lacked those articles too)
 		nzbInfo->PrintMessage(Message::mkInfo,
-			"Recovered %i of %i article(s) of %s from duplicate collections",
-			fileInfo->GetDupeRecoveredArticles(), fileInfo->GetTotalArticles(), fileInfo->GetFilename());
+			"Recovered %i of %i missing article(s) of %s from duplicate collections",
+			fileInfo->GetDupeRecoveredArticles(), fileInfo->GetDupeAttemptedArticles(), fileInfo->GetFilename());
 	}
 
 	if (completed || nzbInfo->GetDeleting())
