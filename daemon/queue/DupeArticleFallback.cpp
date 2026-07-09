@@ -442,3 +442,44 @@ bool DupeArticleFallback::SegmentAligned(FileInfo* fileInfo, ArticleInfo* articl
 
 	return true;
 }
+
+ArticleInfo* DupeArticleFallback::FirstUntiledArticle(FileInfo* fileInfo)
+{
+	// DecodedFileSize is only set from a decoded yEnc article; when it is 0 the
+	// file is non-yEnc (e.g. uuencode, whose articles all record offset 0) or
+	// its geometry is not yet known - either way the tiling cannot be judged.
+	// After a restart it is repopulated from the first yEnc article that
+	// completes, so it is available again by the time a reloaded file finishes.
+	int64 decodedSize = fileInfo->GetDecodedFileSize();
+	if (decodedSize <= 0)
+	{
+		return nullptr;
+	}
+
+	int64 expected = 0;
+	for (ArticleInfo* article : fileInfo->GetArticles())
+	{
+		if (article->GetStatus() != ArticleInfo::aiFinished || article->GetSegmentSize() <= 0)
+		{
+			// an unfinished article or one without a recorded decoded placement
+			// leaves the geometry incomplete: do not judge (avoids false positives
+			// on partial or non-decoded states)
+			return nullptr;
+		}
+		if (article->GetSegmentOffset() != expected)
+		{
+			// a gap (offset > expected) or overlap (offset < expected) at this seam
+			return article;
+		}
+		expected = article->GetSegmentOffset() + article->GetSegmentSize();
+	}
+
+	if (expected != decodedSize)
+	{
+		// the assembled decoded bytes fall short of / exceed the file size
+		ArticleList* articles = fileInfo->GetArticles();
+		return articles->empty() ? nullptr : (*articles)[articles->size() - 1].get();
+	}
+
+	return nullptr;
+}

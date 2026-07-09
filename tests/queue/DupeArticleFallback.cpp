@@ -365,4 +365,85 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackSegmentAlignedUnknownNeighborsTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackFirstUntiledArticleTest)
+{
+	// Whole-file completion-time check, independent of the fallback round: this
+	// is what catches a drifted donor that survived a restart (which reloads it
+	// as a plain finished article with round 0, so the round-gated backstops no
+	// longer recognise it). Simulate a fully-loaded completed file.
+
+	// aligned: every part tiles 0..1000..2000..2500 with no gap or overlap
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		file->SetDecodedFileSize(2500);
+		FinishArticle(file.get(), 0, 0, 1000);
+		FinishArticle(file.get(), 1, 1000, 1000);
+		FinishArticle(file.get(), 2, 2000, 500);
+		BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(file.get()) == nullptr);
+	}
+
+	// interior gap/overlap: part 2 drifted 40 bytes late (part 1 ends at 1000,
+	// part 2 begins at 1040) - the offending article is returned so the file is
+	// not classified as a clean success
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		file->SetDecodedFileSize(2500);
+		FinishArticle(file.get(), 0, 0, 1000);
+		FinishArticle(file.get(), 1, 1040, 1000);
+		FinishArticle(file.get(), 2, 2000, 500);
+		ArticleInfo* untiled = DupeArticleFallback::FirstUntiledArticle(file.get());
+		BOOST_REQUIRE(untiled);
+		BOOST_CHECK_EQUAL(untiled->GetPartNumber(), 2);
+	}
+
+	// first article not at offset 0
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		file->SetDecodedFileSize(2500);
+		FinishArticle(file.get(), 0, 40, 1000);
+		FinishArticle(file.get(), 1, 1040, 1000);
+		FinishArticle(file.get(), 2, 2040, 500);
+		ArticleInfo* untiled = DupeArticleFallback::FirstUntiledArticle(file.get());
+		BOOST_REQUIRE(untiled);
+		BOOST_CHECK_EQUAL(untiled->GetPartNumber(), 1);
+	}
+
+	// tiles internally but falls short of the decoded file size: last returned
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		file->SetDecodedFileSize(2500);
+		FinishArticle(file.get(), 0, 0, 1000);
+		FinishArticle(file.get(), 1, 1000, 1000);
+		FinishArticle(file.get(), 2, 2000, 460);
+		ArticleInfo* untiled = DupeArticleFallback::FirstUntiledArticle(file.get());
+		BOOST_REQUIRE(untiled);
+		BOOST_CHECK_EQUAL(untiled->GetPartNumber(), 3);
+	}
+
+	// non-yEnc / geometry unknown: DecodedFileSize 0 (e.g. uuencode records all
+	// offsets as 0) - cannot judge, must not false-positive
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		FinishArticle(file.get(), 0, 0, 1000);
+		FinishArticle(file.get(), 1, 0, 1000);
+		FinishArticle(file.get(), 2, 0, 500);
+		BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(file.get()) == nullptr);
+	}
+
+	// not all finished: incomplete geometry, do not judge
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		file->SetDecodedFileSize(2500);
+		FinishArticle(file.get(), 0, 0, 1000);
+		FinishArticle(file.get(), 2, 2000, 500);
+		BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(file.get()) == nullptr);
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

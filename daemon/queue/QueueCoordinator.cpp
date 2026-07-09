@@ -865,6 +865,14 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			fileCompleted = true;
 		}
 
+		// last line of defence before a would-be cfSuccess file is assembled and
+		// classified: reject mis-placed donor bytes that the round-gated backstops
+		// above cannot see after a restart (round/recovered state is not persisted)
+		if (fileCompleted)
+		{
+			ValidateCompletedFileTiling(fileInfo);
+		}
+
 		completeFileParts = fileCompleted && (!fileInfo->GetDeleted() || nzbInfo->GetParking());
 
 		if (!completeFileParts)
@@ -1053,36 +1061,87 @@ void QueueCoordinator::DemoteMisalignedDupeNeighbors(FileInfo* fileInfo, Article
 			continue;
 		}
 
-		NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+		DemoteFinishedArticle(fileInfo, neighbor);
 
-		DiscardArticleSegment(fileInfo, neighbor);
-		neighbor->SetStatus(ArticleInfo::aiFailed);
-
-		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - neighbor->GetSize());
-		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + neighbor->GetSize());
-		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
-		fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
-		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() - neighbor->GetSize());
-		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + neighbor->GetSize());
-		nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() - (fileInfo->GetParFile() ? neighbor->GetSize() : 0));
-		nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? neighbor->GetSize() : 0));
-		nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
-		nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
-
-		// undo the "recovered from duplicate" count if this article was one
-		if (!Util::EmptyStr(neighbor->GetDupeOriginalMessageId()) &&
-			strcmp(neighbor->GetMessageId(), neighbor->GetDupeOriginalMessageId()) != 0)
-		{
-			fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
-			nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
-		}
-
-		fileInfo->SetPartialChanged(true);
-
-		nzbInfo->PrintMessage(Message::mkDetail,
+		fileInfo->GetNzbInfo()->PrintMessage(Message::mkDetail,
 			"Discarding misaligned article %s [%i/%i] from duplicate",
 			fileInfo->GetFilename(), neighbor->GetPartNumber(), (int)articles->size());
 	}
+}
+
+/*
+ * Final whole-file guard, run when a file finishes with every article marked
+ * successful and would therefore be classified cfSuccess. Independent of the
+ * (non-persisted) fallback round and recovered-count, so it also catches a
+ * provisionally-accepted drifted donor article that survived a daemon restart:
+ * the restart reloads it as a plain finished article (round reset to 0), which
+ * the per-article and neighbour backstops no longer recognise, but its
+ * persisted decoded offset/size still betray the gap/overlap here. A healthy
+ * file's yEnc parts tile [0, DecodedFileSize) exactly by construction, so this
+ * only fires on genuinely mis-placed bytes; the offending article is demoted
+ * to failed so the file classifies cfPartial and par2/stream repair take over.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::ValidateCompletedFileTiling(FileInfo* fileInfo)
+{
+	// only a would-be cfSuccess file is at risk of silently standing on
+	// mis-placed bytes; a file with any failed/missed article already falls to
+	// par2/stream repair
+	if (fileInfo->GetSuccessArticles() != fileInfo->GetTotalArticles())
+	{
+		return;
+	}
+
+	ArticleInfo* untiled = DupeArticleFallback::FirstUntiledArticle(fileInfo);
+	if (!untiled)
+	{
+		return;
+	}
+
+	DemoteFinishedArticle(fileInfo, untiled);
+
+	fileInfo->GetNzbInfo()->PrintMessage(Message::mkWarning,
+		"Discarding misaligned article %s [%i/%i]: decoded bytes do not tile the "
+		"file (leaving to par-repair)",
+		fileInfo->GetFilename(), untiled->GetPartNumber(), (int)fileInfo->GetArticles()->size());
+}
+
+/*
+ * Demotes an article that was counted successful back to failed, moving all
+ * per-file and per-nzb success/failed counters (incl. the par-set variants)
+ * and undoing its duplicate-recovered credit if it held one. The decoded bytes
+ * it contributed are dropped; the file can then no longer classify cfSuccess.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+
+	DiscardArticleSegment(fileInfo, articleInfo);
+	articleInfo->SetStatus(ArticleInfo::aiFailed);
+
+	fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - articleInfo->GetSize());
+	fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
+	fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
+	fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
+	nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() - articleInfo->GetSize());
+	nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + articleInfo->GetSize());
+	nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() - (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+	nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+	nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
+	nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
+
+	// undo the "recovered from duplicate" count if this article was one (a
+	// no-op after a restart, where the round/original-id/recovered state is
+	// not persisted and has already reset)
+	if (!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
+		strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
+	{
+		fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
+		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
+	}
+
+	fileInfo->SetPartialChanged(true);
 }
 
 /*

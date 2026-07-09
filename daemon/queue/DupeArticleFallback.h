@@ -96,6 +96,19 @@ public:
 	 * neighbour's bytes, so it must not count as a successful download. */
 	static bool SegmentAligned(FileInfo* fileInfo, ArticleInfo* articleInfo);
 
+	/* Whole-file decoded-boundary check, independent of the (non-persisted)
+	 * fallback round. Returns the first finished article whose decoded range
+	 * breaks the contiguous tiling of [0, DecodedFileSize) - the gap/overlap a
+	 * mis-placed donor article leaves - or nullptr when the finished articles
+	 * tile exactly OR the geometry cannot be judged (DecodedFileSize unknown /
+	 * non-yEnc, an article without recorded placement, or an unfinished
+	 * article). Meaningful only for a fully-downloaded yEnc file; used at
+	 * completion to catch a provisionally-accepted drifted donor that survived
+	 * a restart (reloaded as a plain finished article, so the round-gated
+	 * checks no longer recognise it). Healthy yEnc parts tile by construction,
+	 * so this never fires on legitimate downloads. */
+	static ArticleInfo* FirstUntiledArticle(FileInfo* fileInfo);
+
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs
 	// differences in yEnc overhead (header line lengths, filenames)
