@@ -270,6 +270,13 @@ struct RepairSetData
 class ContentMapper
 {
 public:
+	/* M3-eligible skip reasons: a set that skipped for one of these was blocked
+	 * ONLY by encryption, so the controller may retry BuildMap with a password
+	 * (the M3 ladder). Defined here - where BuildRarMap SETS them - and matched
+	 * by StreamRepair, so a future reword cannot silently disable donor-side M3. */
+	static constexpr const char* SkipEncryptedData = "encrypted archive data";
+	static constexpr const char* SkipEncryptedHeaders = "encrypted archive headers";
+
 	/* groups member files into container sets by their naming schemes;
 	 * incomplete sets (numbering gaps) are dropped - their members stay
 	 * un-mapped and par2 owns them. Bare singletons require a media

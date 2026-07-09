@@ -163,8 +163,11 @@ def build_multi_nzb(members, password=None):
     Scanner::AddExternalFile writes the posted content to NzbDir and scans it
     exactly like a dropped file) - no RPC signature change is needed to carry
     a password end to end. StreamRepair.cpp later reads that same parameter
-    for both the target (m_targetPassword) and, via a re-parse of the donor's
-    queued .nzb, each donor (DonorSource::Password)."""
+    for both the target (m_targetPassword, in CollectTargets) and each donor
+    (DonorSource::Password, in CollectDonors) - both captured from the LIVE
+    NzbInfo under the queue guard. The later ParseDonorNzb re-parse of the raw
+    .nzb CANNOT see intake- or API-set passwords, so donor capture must happen
+    from the live NzbInfo, not the re-parse."""
     import html
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',

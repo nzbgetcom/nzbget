@@ -988,10 +988,12 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 					ContentMapper::BuildMap(donorMembers, donorSet, donorSources, donorSkip);
 				// M3 ladder: a donor that failed ONLY for encryption may map
 				// with its own password (already-fetched articles are cached,
-				// so the retry mostly re-parses); anything else stays skipped
+				// so the retry mostly re-parses); anything else stays skipped.
+				// The reasons are the constants BuildRarMap sets, so a reword
+				// there cannot silently disable this retry.
 				if (!donorMap && !donor.Password.Empty() &&
-					(donorSkip == "encrypted archive data" ||
-					 donorSkip == "encrypted archive headers"))
+					(donorSkip == ContentMapper::SkipEncryptedData ||
+					 donorSkip == ContentMapper::SkipEncryptedHeaders))
 				{
 					mappingBudget = 8 + 4 * (int)donorSet.Members.size();
 					donorMap = ContentMapper::BuildMap(donorMembers, donorSet,

@@ -766,7 +766,6 @@ bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 	int outlen = 0;
 	if (!EVP_DecryptUpdate(m_context.get(), out, &outlen, in, 16)) return false;
 	if (outlen != 16) return false;
-	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
 	return true;
 #else
 	return false;

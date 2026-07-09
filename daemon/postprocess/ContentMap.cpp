@@ -991,9 +991,14 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 		ContentSource* source = sources.GetSource(memberIndex);
 		std::unique_ptr<RarVolume> volume =
 			std::make_unique<RarVolume>(members[memberIndex].Name.c_str());
-		// a donor password unlocks header-encrypted (-hp) volumes: set it before
-		// the parse so the header decryption runs. Plaintext-header volumes ignore
-		// it; a wrong -hp password fails the parse and skips as encrypted headers
+		// the archive password (a donor's, or the target's own threaded through
+		// BuildRepairSets) unlocks header-encrypted (-hp) volumes: set it before
+		// the parse so header decryption runs. Plaintext-header volumes ignore
+		// it; a wrong -hp password fails the parse and skips as encrypted headers.
+		// Target-side -hp is thus attempted too: it is safe because a holed
+		// header region makes RarSourceCursor::Read return short/zero, failing
+		// the parse to the same skip - so a successful parse means the headers
+		// were fully primary (non-hole) bytes.
 		if (password)
 		{
 			volume->SetPassword(password);
@@ -1005,7 +1010,7 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 		}
 		if (source && volume->GetEncrypted())
 		{
-			skipReason = "encrypted archive headers";
+			skipReason = SkipEncryptedHeaders;
 			return nullptr;
 		}
 		if (unknownVolume >= 0)
@@ -1083,10 +1088,10 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 			}
 			if (innerFile.GetEncryptedData())
 			{
-				// no donor password => M2 behavior: leave it for par2
+				// no password => M2 behavior: leave it for par2
 				if (!password)
 				{
-					skipReason = "encrypted archive data";
+					skipReason = SkipEncryptedData;
 					return nullptr;
 				}
 				anyEncrypted = true;

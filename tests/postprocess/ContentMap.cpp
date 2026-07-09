@@ -2167,6 +2167,66 @@ BOOST_AUTO_TEST_CASE(ContentMapperEncryptedRepairSetsTest)
 	BOOST_CHECK_EQUAL(with[0].InnerHoles[0].Size, 10);
 }
 
+// Target-side -hp safety (M3 review Should-Fix): BuildRepairSets threads the
+// TARGET's own password into BuildMap -> BuildRarMap -> SetPassword
+// unconditionally, so a -hp target attempts header decryption through the
+// hole-aware source set. That is safe by construction: RarSourceCursor::Read
+// propagates a holed read as a short/zero read, so a hole over the header
+// region fails the parse (fail-closed), while a successful parse means the
+// header bytes were fully primary (non-hole) - only the DATA region may be
+// holed and still map. This drives that exact target-role path through a
+// HoledSourceSet. The fixture is -p (encrypted DATA, plaintext headers), but
+// the safety mechanism under test is the RarSourceCursor short-read, which is
+// agnostic to whether the holed header bytes are -hp-encrypted or plaintext.
+BOOST_AUTO_TEST_CASE(ContentMapperEncryptedTargetHeaderHoleTest)
+{
+	std::vector<char> inner = Pattern(50, 71);
+	const uint8 salt[8] = {0xde, 0xad, 0xbe, 0xef, 0x01, 0x02, 0x03, 0x04};
+	auto ctx = RarCryptoContext::MakeRar3("123", salt);
+	BOOST_REQUIRE(ctx != nullptr);
+	std::vector<char> cipher = EncryptPadded(*ctx, inner);	// 64 bytes
+	std::vector<char> volume = BuildRar3EncStoreVolume(cipher, 50, false, false, salt);
+	// layout: 7 (sig) + 13 (main) + 32 + 9 ("inner.mkv") + 8 (salt) = 69 header
+	// bytes, then 64 cipher bytes of data
+	const int64 dataStart = 69;
+
+	std::vector<SetMember> members = {{"rel.part01.rar", (int64)volume.size()}};
+
+	// (a) a hole over the FILE-header region: the header parse cannot read past
+	// it, so the target set fails closed (no map) even WITH the password
+	{
+		std::vector<StreamRangeList> memberHoles(1);
+		memberHoles[0] = {{30, 12}};	// inside the FILE header (name/salt area)
+		MemorySourceSet raw;
+		raw.Sources.push_back(std::make_unique<MemoryContentSource>(volume));
+		HoledSourceSet sources(raw, memberHoles);
+		std::vector<RepairSetData> sets =
+			ContentMapper::BuildRepairSets(members, memberHoles, sources, "123");
+		BOOST_REQUIRE_EQUAL(sets.size(), 1u);
+		BOOST_CHECK(!sets[0].Map);					// fail-closed: headers holed
+		BOOST_CHECK(!sets[0].SkipReason.empty());
+	}
+
+	// (b) headers intact, a hole only over the DATA region: the -hp path parses
+	// the (present) headers, the encrypted map builds, and the data hole
+	// translates to a plaintext inner hole
+	{
+		std::vector<StreamRangeList> memberHoles(1);
+		memberHoles[0] = {{dataStart + 16, 10}};	// plaintext inner [16, 26)
+		MemorySourceSet raw;
+		raw.Sources.push_back(std::make_unique<MemoryContentSource>(volume));
+		HoledSourceSet sources(raw, memberHoles);
+		std::vector<RepairSetData> sets =
+			ContentMapper::BuildRepairSets(members, memberHoles, sources, "123");
+		BOOST_REQUIRE_EQUAL(sets.size(), 1u);
+		BOOST_REQUIRE_MESSAGE(sets[0].Map, sets[0].SkipReason);
+		BOOST_CHECK(sets[0].Map->GetEncrypted());
+		BOOST_REQUIRE_EQUAL(sets[0].InnerHoles.size(), 1u);
+		BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Offset, 16);
+		BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Size, 10);
+	}
+}
+
 // The -hp donor decision, exercised against the REAL header-encrypted testdata
 // (password "123"). Without a password the headers cannot parse and the set
 // skips as encrypted headers (M2). WITH the password the SetPassword path
