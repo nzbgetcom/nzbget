@@ -252,6 +252,8 @@ void StreamRepairController::ExecRepair(const char* destDir,
 				"Repairing from duplicate %s", *donor.InfoName));
 		}
 
+		int consecutiveFailures = 0;
+
 		for (RepairTarget& target : targets)
 		{
 			if (IsStopped())
@@ -262,7 +264,17 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			{
 				continue;
 			}
-			RepairFile(destDir, target, donorNzb.get(), donor.InfoName);
+			if (RepairFile(destDir, target, donorNzb.get(), donor.InfoName))
+			{
+				consecutiveFailures = 0;
+			}
+			else if (++consecutiveFailures >= DonorFailureBail)
+			{
+				PrintMessage(Message::mkInfo,
+					"Skipping remaining files for duplicate %s (%i consecutive files failed identity verification)",
+					*donor.InfoName, consecutiveFailures);
+				break;
+			}
 		}
 	}
 

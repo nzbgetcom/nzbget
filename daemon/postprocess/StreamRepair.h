@@ -74,6 +74,11 @@ private:
 	int64 m_recoveredBytes = 0;
 	bool m_holesRemain = false;
 
+	// a donor whose files keep failing identity verification is almost
+	// certainly not a byte-identical repost: stop trying it after this many
+	// consecutive unproductive files instead of burning fetches on the rest
+	static constexpr int DonorFailureBail = 5;
+
 	void CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets,
 		std::vector<CString>& memberNames);
 	void ComputePositionalRanks(const char* destDir, std::vector<RepairTarget>& targets,
