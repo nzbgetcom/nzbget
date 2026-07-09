@@ -160,6 +160,22 @@ bool EndsWith(const std::string& name, const char* suffix)
 		name.compare(name.size() - suffixLen, suffixLen, suffix) == 0;
 }
 
+uint16 GetLe16(const char* buffer)
+{
+	return (uint16)((uint8)buffer[0] | ((uint16)(uint8)buffer[1] << 8));
+}
+
+uint32 GetLe32(const char* buffer)
+{
+	return (uint32)(uint8)buffer[0] | ((uint32)(uint8)buffer[1] << 8) |
+		((uint32)(uint8)buffer[2] << 16) | ((uint32)(uint8)buffer[3] << 24);
+}
+
+uint64 GetLe64(const char* buffer)
+{
+	return (uint64)GetLe32(buffer) | ((uint64)GetLe32(buffer + 4) << 32);
+}
+
 // one member name parsed against the container naming schemes
 struct ParsedName
 {
@@ -434,6 +450,8 @@ std::unique_ptr<ContentMap> ContentMapper::BuildMap(const std::vector<SetMember>
 			return BuildSplitMap(members, set, sources, skipReason);
 		case MemberSet::mfRar:
 			return BuildRarMap(members, set, sources, skipReason);
+		case MemberSet::mfZip:
+			return BuildZipMap(members, set, sources, skipReason);
 		default:
 			skipReason = "format mapper not implemented";
 			return nullptr;
@@ -634,6 +652,239 @@ std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMemb
 				runs[i].DataOffset, runs[i].PackedSize});
 		}
 		innerOffset += runs[i].PackedSize;
+	}
+
+	return map;
+}
+
+std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMember>& members,
+	const MemberSet& set, ContentSourceSet& sources, std::string& skipReason)
+{
+	// the logical zip stream: z01..zNN then the final .zip (set order);
+	// only directory and header regions are read - data holes don't block
+	std::vector<int64> memberSizes;
+	std::vector<int64> diskBases;
+	int64 totalSize = 0;
+	for (int memberIndex : set.Members)
+	{
+		ContentSource* source = sources.GetSource(memberIndex);
+		if (!source || source->Size() <= 0)
+		{
+			skipReason = "member unreadable";
+			return nullptr;
+		}
+		memberSizes.push_back(source->Size());
+		diskBases.push_back(totalSize);
+		totalSize += source->Size();
+	}
+	CompositeSource logical(sources, set.Members, memberSizes);
+
+	// find the end-of-central-directory record in the tail window
+	int64 windowSize = std::min<int64>(totalSize, 66000);
+	std::vector<char> window(windowSize);
+	if (windowSize < 22 ||
+		!logical.Read(totalSize - windowSize, window.data(), windowSize))
+	{
+		skipReason = "archive directory unreadable";
+		return nullptr;
+	}
+	int64 eocdPos = -1;
+	for (int64 i = windowSize - 22; i >= 0; i--)
+	{
+		if (GetLe32(window.data() + i) == 0x06054b50)
+		{
+			eocdPos = i;
+			break;
+		}
+	}
+	if (eocdPos < 0)
+	{
+		skipReason = "no zip end-of-directory record";
+		return nullptr;
+	}
+	const char* eocd = window.data() + eocdPos;
+	uint64 entryCount = GetLe16(eocd + 10);
+	uint32 cdDisk = GetLe16(eocd + 6);
+	uint64 cdOffset = GetLe32(eocd + 16);
+
+	// zip64: the locator sits immediately before the EOCD
+	if ((cdOffset == 0xffffffff || entryCount == 0xffff) && eocdPos >= 20 &&
+		GetLe32(window.data() + eocdPos - 20) == 0x07064b50)
+	{
+		uint32 eocd64Disk = GetLe32(window.data() + eocdPos - 20 + 4);
+		uint64 eocd64Offset = GetLe64(window.data() + eocdPos - 20 + 8);
+		char eocd64[56];
+		if (eocd64Disk >= diskBases.size() ||
+			!logical.Read(diskBases[eocd64Disk] + (int64)eocd64Offset, eocd64, sizeof(eocd64)) ||
+			GetLe32(eocd64) != 0x06064b50)
+		{
+			skipReason = "corrupt zip64 directory";
+			return nullptr;
+		}
+		cdDisk = GetLe32(eocd64 + 16);
+		entryCount = GetLe64(eocd64 + 32);
+		cdOffset = GetLe64(eocd64 + 48);
+	}
+	if (cdDisk >= diskBases.size())
+	{
+		skipReason = "corrupt zip directory";
+		return nullptr;
+	}
+	int64 cdPos = diskBases[cdDisk] + (int64)cdOffset;
+
+	// walk the central directory keeping the largest (primary) entry;
+	// the CD is authoritative for sizes even under data-descriptor flag 3
+	struct ZipEntry
+	{
+		std::string Name;
+		uint64 CompSize = 0;
+		uint64 UncompSize = 0;
+		uint64 LocalOffset = 0;
+		uint32 Disk = 0;
+		uint16 Method = 0;
+		uint16 Flags = 0;
+	};
+	ZipEntry primary;
+	bool found = false;
+
+	for (uint64 entryIndex = 0; entryIndex < entryCount; entryIndex++)
+	{
+		char fixed[46];
+		if (!logical.Read(cdPos, fixed, sizeof(fixed)) || GetLe32(fixed) != 0x02014b50)
+		{
+			skipReason = "corrupt zip directory";
+			return nullptr;
+		}
+		ZipEntry entry;
+		entry.Flags = GetLe16(fixed + 8);
+		entry.Method = GetLe16(fixed + 10);
+		entry.CompSize = GetLe32(fixed + 20);
+		entry.UncompSize = GetLe32(fixed + 24);
+		uint16 nameLen = GetLe16(fixed + 28);
+		uint16 extraLen = GetLe16(fixed + 30);
+		uint16 commentLen = GetLe16(fixed + 32);
+		entry.Disk = GetLe16(fixed + 34);
+		entry.LocalOffset = GetLe32(fixed + 42);
+
+		std::vector<char> nameBuffer(nameLen);
+		if (nameLen > 0 &&
+			!logical.Read(cdPos + 46, nameBuffer.data(), nameLen))
+		{
+			skipReason = "corrupt zip directory";
+			return nullptr;
+		}
+		entry.Name.assign(nameBuffer.data(), nameLen);
+
+		if (extraLen > 0)
+		{
+			std::vector<char> extra(extraLen);
+			if (!logical.Read(cdPos + 46 + nameLen, extra.data(), extraLen))
+			{
+				skipReason = "corrupt zip directory";
+				return nullptr;
+			}
+			// zip64 field 0x0001: 64-bit values for the maxed markers, in order
+			for (int64 fieldPos = 0; fieldPos + 4 <= extraLen; )
+			{
+				uint16 fieldId = GetLe16(&extra[fieldPos]);
+				uint16 fieldSize = GetLe16(&extra[fieldPos + 2]);
+				if (fieldId == 0x0001)
+				{
+					int64 valuePos = fieldPos + 4;
+					int64 fieldEnd = fieldPos + 4 + fieldSize;
+					if (entry.UncompSize == 0xffffffff && valuePos + 8 <= fieldEnd)
+					{
+						entry.UncompSize = GetLe64(&extra[valuePos]);
+						valuePos += 8;
+					}
+					if (entry.CompSize == 0xffffffff && valuePos + 8 <= fieldEnd)
+					{
+						entry.CompSize = GetLe64(&extra[valuePos]);
+						valuePos += 8;
+					}
+					if (entry.LocalOffset == 0xffffffff && valuePos + 8 <= fieldEnd)
+					{
+						entry.LocalOffset = GetLe64(&extra[valuePos]);
+						valuePos += 8;
+					}
+					if (entry.Disk == 0xffff && valuePos + 4 <= fieldEnd)
+					{
+						entry.Disk = GetLe32(&extra[valuePos]);
+					}
+				}
+				fieldPos += 4 + fieldSize;
+			}
+		}
+
+		cdPos += 46 + nameLen + extraLen + commentLen;
+
+		if (!found || entry.UncompSize > primary.UncompSize)
+		{
+			primary = std::move(entry);
+			found = true;
+		}
+	}
+	if (!found)
+	{
+		skipReason = "empty zip directory";
+		return nullptr;
+	}
+
+	size_t slashPos = primary.Name.rfind('/');
+	std::string innerName = slashPos == std::string::npos ?
+		primary.Name : primary.Name.substr(slashPos + 1);
+
+	if (primary.Method != 0)
+	{
+		skipReason = "compressed zip entry (only stored maps)";
+		return nullptr;
+	}
+	if (primary.Flags & 0x0001)
+	{
+		skipReason = "encrypted zip entry";
+		return nullptr;
+	}
+	if (primary.CompSize != primary.UncompSize)
+	{
+		skipReason = "stored entry sizes disagree";
+		return nullptr;
+	}
+	if (!DupeStreamRepair::IsStreamEligible(innerName.c_str()))
+	{
+		skipReason = "inner file is not a media file";
+		return nullptr;
+	}
+	if (primary.Disk >= diskBases.size())
+	{
+		skipReason = "corrupt zip directory";
+		return nullptr;
+	}
+
+	// the local header names the exact data start
+	int64 localPos = diskBases[primary.Disk] + (int64)primary.LocalOffset;
+	char local[30];
+	if (!logical.Read(localPos, local, sizeof(local)) || GetLe32(local) != 0x04034b50)
+	{
+		skipReason = "corrupt zip local header";
+		return nullptr;
+	}
+	int64 dataPos = localPos + 30 + GetLe16(local + 26) + GetLe16(local + 28);
+	if (dataPos + (int64)primary.UncompSize > totalSize)
+	{
+		skipReason = "implausible data run geometry";
+		return nullptr;
+	}
+
+	std::unique_ptr<ContentMap> map = std::make_unique<ContentMap>();
+	map->SetInnerName(innerName.c_str());
+	map->SetInnerSize((int64)primary.UncompSize);
+
+	int64 innerOffset = 0;
+	for (const MemberRange& piece : logical.ToMembers({dataPos, (int64)primary.UncompSize}))
+	{
+		map->GetRuns()->push_back({innerOffset, piece.MemberIndex,
+			piece.Range.Offset, piece.Range.Size});
+		innerOffset += piece.Range.Size;
 	}
 
 	return map;

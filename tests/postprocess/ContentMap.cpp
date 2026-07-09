@@ -239,6 +239,68 @@ std::vector<char> BuildRar3EncryptedHeaderVolume()
 	return out;
 }
 
+// a minimal zip: local headers + stored data + central directory + EOCD.
+// method/flags apply to every entry (8/1 model compressed/encrypted zips)
+std::vector<char> BuildStoredZip(
+	const std::vector<std::pair<std::string, std::vector<char>>>& files,
+	uint16 method = 0, uint16 flags = 0)
+{
+	std::vector<char> out;
+	std::vector<uint32> localOffsets;
+
+	for (const std::pair<std::string, std::vector<char>>& file : files)
+	{
+		localOffsets.push_back((uint32)out.size());
+		PutLe32(out, 0x04034b50);
+		PutLe16(out, 20);						// version needed
+		PutLe16(out, flags);
+		PutLe16(out, method);
+		PutLe16(out, 0);						// mod time
+		PutLe16(out, 0);						// mod date
+		PutLe32(out, 0);						// crc (mapper ignores it)
+		PutLe32(out, (uint32)file.second.size());	// compressed size
+		PutLe32(out, (uint32)file.second.size());	// uncompressed size
+		PutLe16(out, (uint16)file.first.size());
+		PutLe16(out, 0);						// extra length
+		out.insert(out.end(), file.first.begin(), file.first.end());
+		out.insert(out.end(), file.second.begin(), file.second.end());
+	}
+
+	uint32 cdStart = (uint32)out.size();
+	for (size_t i = 0; i < files.size(); i++)
+	{
+		PutLe32(out, 0x02014b50);
+		PutLe16(out, 20);						// version made by
+		PutLe16(out, 20);						// version needed
+		PutLe16(out, flags);
+		PutLe16(out, method);
+		PutLe16(out, 0);						// mod time
+		PutLe16(out, 0);						// mod date
+		PutLe32(out, 0);						// crc
+		PutLe32(out, (uint32)files[i].second.size());
+		PutLe32(out, (uint32)files[i].second.size());
+		PutLe16(out, (uint16)files[i].first.size());
+		PutLe16(out, 0);						// extra length
+		PutLe16(out, 0);						// comment length
+		PutLe16(out, 0);						// disk number start
+		PutLe16(out, 0);						// internal attributes
+		PutLe32(out, 0);						// external attributes
+		PutLe32(out, localOffsets[i]);
+		out.insert(out.end(), files[i].first.begin(), files[i].first.end());
+	}
+	uint32 cdSize = (uint32)out.size() - cdStart;
+
+	PutLe32(out, 0x06054b50);
+	PutLe16(out, 0);							// this disk
+	PutLe16(out, 0);							// cd start disk
+	PutLe16(out, (uint16)files.size());			// entries this disk
+	PutLe16(out, (uint16)files.size());			// entries total
+	PutLe32(out, cdSize);
+	PutLe32(out, cdStart);
+	PutLe16(out, 0);							// comment length
+	return out;
+}
+
 }
 
 BOOST_AUTO_TEST_CASE(ContentMapModelTest)
@@ -586,6 +648,131 @@ BOOST_AUTO_TEST_CASE(ContentMapperRarMapDegradationTest)
 		MemberSet pair{MemberSet::mfRar, {0, 1}};
 		BOOST_CHECK(!ContentMapper::BuildMap(members, pair, sources, skipReason));
 		BOOST_CHECK_EQUAL(skipReason, "inconsistent inner file size across volumes");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperZipStoreMapTest)
+{
+	std::vector<char> inner = Pattern(90, 8);
+	std::vector<char> nfo = Pattern(10, 9);
+	std::vector<char> zipBytes = BuildStoredZip(
+		{{"release/info.nfo", nfo}, {"release/movie.mkv", inner}});
+
+	// a lone .zip: the largest entry becomes the inner file, nfo unmapped
+	{
+		std::vector<SetMember> members = {{"rel.zip", 0}};
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(zipBytes));
+		MemberSet set{MemberSet::mfZip, {0}};
+		std::string skipReason;
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(members, set, sources, skipReason);
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_CHECK_EQUAL(map->GetInnerName(), "movie.mkv");
+		BOOST_CHECK_EQUAL(map->GetInnerSize(), 90);
+		BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 1u);
+
+		std::vector<char> data(90);
+		const ContentRun& run = (*map->GetRuns())[0];
+		BOOST_REQUIRE(sources.GetSource(0)->Read(run.MemberOffset, data.data(), 90));
+		BOOST_CHECK(!memcmp(data.data(), inner.data(), 90));
+	}
+
+	// the same bytes split into spanned volumes map through the composition
+	{
+		std::vector<SetMember> members = {{"rel.z01", 0}, {"rel.z02", 0}, {"rel.zip", 0}};
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			std::vector<char>(zipBytes.begin(), zipBytes.begin() + 40)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			std::vector<char>(zipBytes.begin() + 40, zipBytes.begin() + 95)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			std::vector<char>(zipBytes.begin() + 95, zipBytes.end())));
+		MemberSet set{MemberSet::mfZip, {0, 1, 2}};
+		std::string skipReason;
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(members, set, sources, skipReason);
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_CHECK_EQUAL(map->GetInnerSize(), 90);
+
+		// stitch the inner stream back through the runs
+		std::vector<char> reassembled(90);
+		for (const MemberRange& piece : map->MapFromInner({0, 90}))
+		{
+			StreamRangeList innerPos = map->MapToInner(piece.MemberIndex, piece.Range);
+			BOOST_REQUIRE_EQUAL(innerPos.size(), 1u);
+			BOOST_REQUIRE(sources.GetSource(piece.MemberIndex)->Read(piece.Range.Offset,
+				reassembled.data() + innerPos[0].Offset, piece.Range.Size));
+		}
+		BOOST_CHECK(!memcmp(reassembled.data(), inner.data(), 90));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperZipDegradationTest)
+{
+	std::vector<char> inner = Pattern(50, 10);
+	std::vector<SetMember> members = {{"rel.zip", 0}};
+	MemberSet set{MemberSet::mfZip, {0}};
+	std::string skipReason;
+
+	// compressed entries never map
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildStoredZip({{"movie.mkv", inner}}, 8)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+		BOOST_CHECK(skipReason.find("stored") != std::string::npos);
+	}
+
+	// encrypted entries never map
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildStoredZip({{"movie.mkv", inner}}, 0, 1)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+		BOOST_CHECK(skipReason.find("encrypted") != std::string::npos);
+	}
+
+	// zip64 per-entry extra: maxed 32-bit markers resolve through field 0x0001
+	{
+		std::vector<char> zipBytes = BuildStoredZip({{"movie.mkv", inner}});
+		// rewrite the central entry: max out usize/csize/local offset and
+		// append the zip64 extra carrying the real values
+		// (locate the CD via the EOCD trailer we just wrote)
+		size_t eocd = zipBytes.size() - 22;
+		uint32 cdStart = (uint32)((uint8)zipBytes[eocd + 16] |
+			((uint8)zipBytes[eocd + 17] << 8) | ((uint8)zipBytes[eocd + 18] << 16) |
+			((uint8)zipBytes[eocd + 19] << 24));
+		std::vector<char> rebuilt(zipBytes.begin(), zipBytes.begin() + cdStart);
+		std::vector<char> entry(zipBytes.begin() + cdStart, zipBytes.begin() + eocd);
+		// maxed markers
+		for (int i = 20; i < 28; i++) entry[i] = (char)0xff;	// csize + usize
+		for (int i = 42; i < 46; i++) entry[i] = (char)0xff;	// local offset
+		// extra: id 0x0001, size 24: usize, csize, local offset (8 bytes each)
+		entry[30] = 28; entry[31] = 0;	// extra length
+		std::vector<char> extra;
+		PutLe16(extra, 0x0001);
+		PutLe16(extra, 24);
+		for (int i = 0; i < 2; i++)
+		{
+			extra.push_back(50); extra.insert(extra.end(), 7, 0);	// usize, csize = 50
+		}
+		extra.insert(extra.end(), 8, 0);	// local offset = 0
+		entry.insert(entry.end(), extra.begin(), extra.end());
+		rebuilt.insert(rebuilt.end(), entry.begin(), entry.end());
+		size_t newCdSize = entry.size();
+		std::vector<char> trailer(zipBytes.begin() + eocd, zipBytes.end());
+		// patch cd size in the EOCD copy
+		trailer[12] = (char)(newCdSize & 0xff);
+		trailer[13] = (char)((newCdSize >> 8) & 0xff);
+		rebuilt.insert(rebuilt.end(), trailer.begin(), trailer.end());
+
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(rebuilt));
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(members, set, sources, skipReason);
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_CHECK_EQUAL(map->GetInnerSize(), 50);
 	}
 }
 
