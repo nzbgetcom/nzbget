@@ -24,12 +24,18 @@ suffix to make chosen articles "missing" on the active server.
 | `xpacksplit` | A store-rar target repaired from RAW SPLITS (`movie.mkv.001`/`.002`/`.003`). |
 | `xpackcompressed` | The mechanism ladder on a COMPRESSED archive (method byte forged to 0x33): M2's method gate must never map it, but a byte-identical repost still repairs it via M1 — the ladder proof for the docs' compressed/encrypted promise. |
 | `xpackneg` | The negative: a donor set with the right inner size but the WRONG bytes must be rejected by the identity probes (`content identity not confirmed`); nothing is written and both files stay unrecovered. |
+| `xcrypt_encplain` | M3 password-assisted cross-packing: a password-ENCRYPTED store-rar target (password known via its own NZB) with a data hole in one volume, repaired from a BARE unencrypted donor. Asserts byte-identical ciphertext volumes after the decrypt/patch/re-encrypt round trip. |
+| `xcrypt_plainenc` | Reverse direction: a BARE unencrypted target repaired from a password-ENCRYPTED store-rar donor whose password travels via the donor's own NZB (the M3 retry ladder: plain `BuildMap` fails with "encrypted archive data", then retries with the donor's password). |
+| `xcrypt_diffpass` | Both sides encrypted under DIFFERENT passwords and different volume sizes: proves the donor's and target's crypto contexts never mix (each side decrypts/re-encrypts with its own key). |
+| `xcrypt_wrongpass` | The negative: an encrypted donor whose supplied password does NOT match the one it was encrypted with. RAR3 has no stored password-check value, so `BuildMap` succeeds with a wrong key; the mismatch is caught downstream by the content-identity probe (`content identity not confirmed`) - nothing is written. |
 
 Each scenario asserts the download reaches `SUCCESS`, the reassembled file is
 **byte-identical** to the source (with `DirectWrite=yes`), and the
 `DupeRecoveredArticles` counter reflects the recovery. The `stream`,
-`repost`, `repostrenamed` and `xpack*` scenarios assert byte identity, the
-repair log lines and the counter instead of the SUCCESS status.
+`repost`, `repostrenamed`, `xpack*` and `xcrypt_*` scenarios assert byte
+identity, the repair log lines and the counter instead of the SUCCESS status.
+The four `xcrypt_*` scenarios require the Python `cryptography` package;
+without it they SKIP gracefully (reported separately from PASS/FAIL).
 
 ## Running
 
@@ -69,7 +75,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

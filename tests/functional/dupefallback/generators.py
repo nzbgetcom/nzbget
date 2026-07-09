@@ -3,7 +3,14 @@
 Every generator writes STORE/COPY-mode framing around opaque payload bytes -
 byte-exactly what the C++ mappers parse (see daemon/postprocess/ContentMap.cpp).
 """
+import hashlib
 import struct
+
+try:
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+    HAVE_CRYPTO = True
+except ImportError:
+    HAVE_CRYPTO = False
 
 
 def rar3_store_volumes(inner_name, data, volume_size, method=0x30):
@@ -35,6 +42,120 @@ def rar3_store_volumes(inner_name, data, volume_size, method=0x30):
         vol += struct.pack('<HBHH', 0, 0x7b, 0, 7)
         volumes.append(vol)
         pos += volume_size
+    return volumes
+
+
+def _derive_rar3_key_iv(password, salt):
+    """Pure-Python reproduction of StreamCrypto::DeriveRar3 (rar3 AES-128-CBC
+    key schedule): SHA-1 over UTF-16LE password + 8-byte salt, re-fed each of
+    0x40000 rounds together with a 3-byte little-endian round counter; the 16
+    IV bytes are sampled every rounds/16 rounds from the running digest's last
+    byte (via a copy-and-finalize snapshot that does not disturb the running
+    hash); the key is the final digest's first 16 bytes, byte-swizzled per
+    4-byte group (key[i*4+j] = digest[i*4+3-j]). See rar3_kdf_self_test()
+    below for the byte-exact cross-check against the C++ vector."""
+    seed = password.encode('utf-16-le') + salt
+    h = hashlib.sha1()
+    rounds = 0x40000
+    step = rounds // 16
+    iv = bytearray(16)
+    for i in range(rounds):
+        h.update(seed)
+        h.update(bytes([i & 0xff, (i >> 8) & 0xff, (i >> 16) & 0xff]))
+        if i % step == 0:
+            iv[i // step] = h.copy().digest()[19]
+    digest = h.digest()
+    key = bytearray(16)
+    for i in range(4):
+        for j in range(4):
+            key[i * 4 + j] = digest[i * 4 + 3 - j]
+    return bytes(key), bytes(iv)
+
+
+def rar3_kdf_self_test():
+    """Cross-check _derive_rar3_key_iv against the pinned real-WinRAR-derived
+    vector in tests/postprocess/StreamCrypto.cpp
+    (StreamCryptoDeriveRar3VectorTest, password "123"). Raises AssertionError
+    if this pure-Python KDF ever drifts from the C++ StreamCrypto::DeriveRar3
+    it must match bit-for-bit before any encrypted fixture can be trusted."""
+    salt = bytes([0x92, 0x80, 0x37, 0x09, 0x6e, 0x88, 0x92, 0xdb])
+    key, iv = _derive_rar3_key_iv("123", salt)
+    expect_key = bytes([0x56, 0xb3, 0x08, 0x9b, 0xf3, 0x26, 0x3f, 0xfa,
+                        0x21, 0xae, 0x16, 0x43, 0x5e, 0x80, 0x72, 0xf6])
+    expect_iv = bytes([0x8c, 0x84, 0x7e, 0xfd, 0x84, 0x80, 0xe0, 0x41,
+                       0x95, 0x50, 0xee, 0x18, 0xb6, 0x88, 0x61, 0xff])
+    assert key == expect_key, 'rar3 KDF key mismatch: %s != %s' % (key.hex(), expect_key.hex())
+    assert iv == expect_iv, 'rar3 KDF iv mismatch: %s != %s' % (iv.hex(), expect_iv.hex())
+
+
+if HAVE_CRYPTO:
+    # fail fast at import time: an encrypted fixture built on a drifted KDF
+    # would silently produce volumes that decrypt to garbage everywhere.
+    rar3_kdf_self_test()
+
+
+def rar3_store_volumes_encrypted(inner_name, data, volume_size, password):
+    """Split ``data`` into PASSWORD-ENCRYPTED RAR3 store-mode volumes (MAIN +
+    FILE + ENDARC), matching what ContentMap.cpp's contiguous cipher-composite
+    mapper expects (see BuildRarMap's "anyEncrypted" branch):
+
+    * one AES-128-CBC stream for the WHOLE inner file (key/salt/IV identical
+      across every volume - a differing salt would break the cross-volume
+      "same key" invariant the mapper enforces);
+    * the salt is deterministic from (password, inner_name, volume_size), not
+      random, so fixtures are reproducible;
+    * every volume's FILE header carries the SALT (0x0400) and PASSWORD
+      (0x0004) flags, with the 8-byte salt appended right after the name -
+      byte-exactly the layout RarReader.cpp's ReadRar3File expects;
+    * PACK_SIZE per volume is the number of ciphertext bytes physically
+      stored there. Real WinRAR cuts this contiguous cipher stream at
+      ARBITRARY plaintext-byte offsets (proven in M3 Task 3: observed chunk
+      sizes 9960/9959/1393 - none a multiple of 16), so non-last volumes here
+      carry an UNROUNDED ``volume_size``-byte slice on purpose (pass a
+      volume_size that is not itself a multiple of 16 to exercise the
+      cross-member block-straddle assembly path the M3 gate lift added).
+      Only the LAST volume's slice is padded up to a whole AES block
+      (ceil16), since the overall cipher stream can only be truncated at its
+      very end - this keeps sum(PACK_SIZE) == ceil16(len(data)) exactly, the
+      geometry gate BuildRarMap checks."""
+    if not HAVE_CRYPTO:
+        raise RuntimeError('cryptography is not installed')
+
+    salt = hashlib.sha1(('rar3-store-salt|%s|%s|%d' %
+                         (password, inner_name, volume_size)).encode()).digest()[:8]
+    key, iv = _derive_rar3_key_iv(password, salt)
+
+    pad = (-len(data)) % 16
+    encryptor = Cipher(algorithms.AES(key), modes.CBC(iv)).encryptor()
+    ciphertext = encryptor.update(data + b'\x00' * pad) + encryptor.finalize()
+
+    def file_block(cipher_chunk, split_before, split_after):
+        flags = (0x8000 | 0x0004 | 0x0400 |
+                 (0x01 if split_before else 0) | (0x02 if split_after else 0))
+        name = inner_name.encode()
+        head = struct.pack('<HBHH', 0, 0x74, flags, 32 + len(name) + 8)
+        head += struct.pack('<II', len(cipher_chunk), len(data))    # pack, unp
+        head += b'\x00'                                      # host os
+        head += struct.pack('<I', 0)                         # file crc (unchecked)
+        head += struct.pack('<I', 0)                         # ftime
+        head += bytes([29, 0x30])                            # unp ver, method (store)
+        head += struct.pack('<H', len(name))
+        head += struct.pack('<I', 0x20)                      # attributes
+        head += name
+        head += salt
+        return head + cipher_chunk
+
+    starts = list(range(0, len(data), volume_size)) or [0]
+    volumes = []
+    for i, start in enumerate(starts):
+        is_last = i == len(starts) - 1
+        end = len(ciphertext) if is_last else start + volume_size
+        cipher_chunk = ciphertext[start:end]
+        vol = bytes([0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00])
+        vol += struct.pack('<HBHH', 0, 0x73, 0x0011, 13) + b'\x00' * 6
+        vol += file_block(cipher_chunk, start > 0, not is_last)
+        vol += struct.pack('<HBHH', 0, 0x7b, 0, 7)
+        volumes.append(vol)
     return volumes
 
 

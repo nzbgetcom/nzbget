@@ -70,10 +70,21 @@ article "missing" on the active server, so no real Usenet access is needed):
   maps it (method gate), a byte-identical repost still repairs it via M1.
 * xpackneg      - the negative: a same-size, wrong-bytes donor set must be
   rejected by the inner probes; nothing may be written.
+* xcrypt_encplain  - M3 password-assisted cross-packing: an ENCRYPTED
+  store-rar target (its own password known via its NZB) with a data hole,
+  repaired from a BARE unencrypted donor; asserts byte-identical ciphertext.
+* xcrypt_plainenc  - reverse direction: a BARE target repaired from an
+  ENCRYPTED store-rar donor whose password travels via the donor's NZB.
+* xcrypt_diffpass  - both sides encrypted under DIFFERENT passwords; proves
+  the donor's and target's crypto contexts never mix.
+* xcrypt_wrongpass - the negative: an encrypted donor whose supplied
+  password does NOT match; rejected by the content-identity probe, nothing
+  written. The four xcrypt_* scenarios SKIP gracefully when the
+  ``cryptography`` package is not installed (see generators.HAVE_CRYPTO).
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg]
+               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass]
                [--serial NNN] [--keep]
 """
 
@@ -123,27 +134,48 @@ def _nzb_file_block(served_path, subject_name, file_size, seg_size, missing_part
     return lines
 
 
-def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts):
+def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts,
+              password=None):
     """Return NZB XML for a single file served by nserv.
 
     ``missing_parts`` is a set of 1-based part numbers to mark with ``!2`` so
     they are served only by nserv instance 2 (i.e. missing on the active
-    instance-1 server, forcing a fallback)."""
+    instance-1 server, forcing a fallback). ``password`` is forwarded to
+    build_multi_nzb (see there for how it reaches the daemon)."""
     return build_multi_nzb([(served_path, subject_name, file_size, seg_size,
-                             missing_parts)])
+                             missing_parts)], password=password)
 
 
-def build_multi_nzb(members):
+def build_multi_nzb(members, password=None):
     """Return NZB XML containing one <file> block per member tuple
     (served_path, subject_name, file_size, seg_size, missing_parts).
     Member subject names MUST be distinct: duplicate parsed filenames make
-    nzbget fall back to raw subjects and set ManyDupeFiles."""
+    nzbget fall back to raw subjects and set ManyDupeFiles.
+
+    ``password``, if given, is emitted as a <head><meta type="password">
+    block - the real NZB convention indexers use to advertise an archive's
+    password. NzbFile::Parse (daemon/queue/NzbFile.cpp) matches any <meta
+    type="password"> element regardless of nesting and stores its text as
+    nzbFile.GetPassword(); Scanner::AddFileToQueue then copies that into the
+    queued NzbInfo's "*Unpack:Password" parameter (daemon/queue/Scanner.cpp).
+    This happens on the SAME on-disk-file parse path whether the NZB arrived
+    via directory scan or the RPC "append" method (DownloadXmlCommand ->
+    Scanner::AddExternalFile writes the posted content to NzbDir and scans it
+    exactly like a dropped file) - no RPC signature change is needed to carry
+    a password end to end. StreamRepair.cpp later reads that same parameter
+    for both the target (m_targetPassword) and, via a re-parse of the donor's
+    queued .nzb, each donor (DonorSource::Password)."""
+    import html
     lines = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" '
         '"http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">',
         '<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">',
     ]
+    if password:
+        lines += ['<head>',
+                  '<meta type="password">%s</meta>' % html.escape(password),
+                  '</head>']
     for member in members:
         lines += _nzb_file_block(*member)
     lines.append('</nzb>')
@@ -657,11 +689,16 @@ def scenario_xpackbare(daemon, t):
             % (h['Status'], recov, xpack, repaired, integ))
 
 
-def _xpack_run(daemon, t, tag, primary_members, donor_members, payloads):
+def _xpack_run(daemon, t, tag, primary_members, donor_members, payloads,
+               primary_password=None, donor_password=None):
     """Append donor (paused) + primary under one dupe-key, wait for history,
-    return (history, per-payload integrity dict, log counters)."""
-    primary = build_multi_nzb(primary_members)
-    donor = build_multi_nzb(donor_members)
+    return (history, per-payload integrity dict, log counters).
+    ``primary_password``/``donor_password`` attach a <meta type="password">
+    block to the respective NZB (see build_multi_nzb) for the M3
+    password-assisted xcrypt scenarios; both default to no password, which is
+    the M2 (unencrypted) behavior every other xpack* scenario relies on."""
+    primary = build_multi_nzb(primary_members, password=primary_password)
+    donor = build_multi_nzb(donor_members, password=donor_password)
     api = daemon.wait_ready()
     daemon.append(api, 'Don' + tag, donor, True, tag + '-key', 50)
     daemon.append(api, 'Rel' + tag, primary, False, tag + '-key', 100)
@@ -856,6 +893,146 @@ def scenario_xpackneg(daemon, t):
                integ['movie.mkv'], integ['decoy']))
 
 
+def scenario_xcrypt_encplain(daemon, t):
+    """M3 password-assisted cross-packing: the TARGET is a password-ENCRYPTED
+    store-rar release (one continuous AES-128-CBC stream across volumes -
+    ContentMap.cpp's cipher-composite map - built with a deliberately
+    non-16-aligned volume_size to exercise real WinRAR's arbitrary volume
+    cuts, see rar3_store_volumes_encrypted). Its own password travels via its
+    NZB <head><meta type="password">; the target's ContentMap is built with
+    that password directly (no ladder needed on the target side - see
+    ExecCrossPackRepair). A data hole sits in the MIDDLE volume (volume 1's
+    and 3's headers+salt stay intact, only volume 2 loses a non-header
+    segment). The donor is the SAME movie posted BARE and unencrypted -
+    cross-packing decrypts the target's plaintext space with its own key,
+    patches from the donor's plaintext, and re-encrypts back into the
+    on-disk ciphertext. Byte-identical ENCRYPTED volumes afterward prove the
+    whole decrypt/patch/re-encrypt round trip."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_encplain', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7100)
+    password = 'target-pw-A'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]      # only volume 2 loses a non-header segment
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xceA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    dp = _place_copy(t, 'xceB', data, 'movie.mkv')
+    donor_members = [(dp, 'movie.mkv', size, 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xce', members, donor_members, payloads,
+                             primary_password=password)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_encplain', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], all(integ.values())))
+
+
+def scenario_xcrypt_plainenc(daemon, t):
+    """Reverse direction: a BARE unencrypted target with a hole is repaired
+    from a password-ENCRYPTED store-rar donor. The donor's password travels
+    via its own NZB <meta type="password">; ExecCrossPackRepair's M3 retry
+    ladder tries the donor without a password first (fails: "encrypted
+    archive data"), then retries with donor.Password and succeeds."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_plainenc', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7200)
+    password = 'donor-pw-B'
+    pp = _place_copy(t, 'xpeA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password), 1):
+        rel = 'xpeB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpe', members, donor_members, payloads,
+                             donor_password=password)
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_plainenc', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xcrypt_diffpass(daemon, t):
+    """Both sides encrypted with DIFFERENT passwords and different volume
+    sizes: the target (password A) has a data hole in its middle volume; the
+    donor (password B) is a repost of the same movie under its own key. This
+    proves the two crypto contexts never mix - the donor's plaintext is
+    recovered with ITS key (VerifyDonorSetEncrypted/ReadDonorInner use the
+    donor's own ContentMap+RunCrypto) and the patch is re-encrypted with the
+    TARGET's key (PatchFromDonorSetEncrypted uses repairSet.Map's RunCrypto)."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_diffpass', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7300)
+    pw_a, pw_b = 'password-A', 'password-B'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, pw_a)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xdpA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 1_500_001, pw_b), 1):
+        rel = 'xdpB/other.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Other.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdp', members, donor_members, payloads,
+                             primary_password=pw_a, donor_password=pw_b)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_diffpass', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], all(integ.values())))
+
+
+def scenario_xcrypt_wrongpass(daemon, t):
+    """NEGATIVE: a bare unencrypted target with a hole; the encrypted donor's
+    NZB advertises a password that does NOT match the one it was actually
+    encrypted with. RAR3 carries no stored password-check value (real WinRAR
+    fact, mirrored in StreamCryptoRar3WrongPasswordTest) - so the M3 retry
+    ladder's BuildMap call SUCCEEDS with a wrong key instead of failing
+    closed there; the mismatch is only caught downstream, when the wrongly
+    "decrypted" donor plaintext is content-identity-probed against the
+    target's known bytes and rejected ("content identity not confirmed").
+    Nothing may be written and the target must stay exactly as it arrived -
+    the same fail-closed guarantee xpackneg proves for the plain case."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_wrongpass', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7400)
+    real_password = 'correct-pw'
+    wrong_password = 'incorrect-pw'
+    pp = _place_copy(t, 'xwpA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, real_password), 1):
+        rel = 'xwpB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xwp', members, donor_members, payloads,
+                             donor_password=wrong_password)
+    ok = c['rejected'] >= 1 and c['recov'] == 0 and not integ['movie.mkv']
+    return ('xcrypt_wrongpass', ok,
+            'status=%s recovered=%d rejected=%d integrity=%s'
+            % (h['Status'], c['recov'], c['rejected'], integ['movie.mkv']))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -900,6 +1077,10 @@ SCENARIOS = {
     'xpacksplit': scenario_xpacksplit,
     'xpackcompressed': scenario_xpackcompressed,
     'xpackneg': scenario_xpackneg,
+    'xcrypt_encplain': scenario_xcrypt_encplain,
+    'xcrypt_plainenc': scenario_xcrypt_plainenc,
+    'xcrypt_diffpass': scenario_xcrypt_diffpass,
+    'xcrypt_wrongpass': scenario_xcrypt_wrongpass,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -926,6 +1107,14 @@ SCENARIO_OPTIONS = {
     'xpacksplit': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackcompressed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xcrypt_*: M3 password-assisted cross-encryption; no real par2 anywhere,
+    # ParCheck=auto ends in "Nothing to par-check" post-repair. Skipped
+    # outright (no daemon options matter) when the cryptography module is
+    # not installed - see generators.HAVE_CRYPTO.
+    'xcrypt_encplain': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_plainenc': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_diffpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_wrongpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 
@@ -969,16 +1158,26 @@ def main():
             time.sleep(2)
             sc_name, passed, detail = SCENARIOS[name](daemon, target)
             results.append((sc_name, passed, detail))
-            print('[%s] %s  (%s)' % ('PASS' if passed else 'FAIL', sc_name, detail))
+            label = 'SKIP' if passed is None else ('PASS' if passed else 'FAIL')
+            print('[%s] %s  (%s)' % (label, sc_name, detail))
         except Exception as e:
             results.append((name, False, 'ERROR: %s' % e))
             print('[FAIL] %s  (ERROR: %s)' % (name, e))
         finally:
             target.teardown(args.keep)
 
-    print('\n=== %s / %s scenarios passed on target=%s ===' % (
-        sum(1 for _, p, _ in results if p), len(results), args.target))
-    return 0 if all(p for _, p, _ in results) else 1
+    # tri-state result: True/False are real pass/fail, None is a graceful SKIP
+    # (e.g. an xcrypt_* scenario when the cryptography module is not
+    # installed) - it counts toward neither the numerator nor the "attempted"
+    # denominator, and never fails the run on its own.
+    skipped = sum(1 for _, p, _ in results if p is None)
+    attempted = len(results) - skipped
+    passed_count = sum(1 for _, p, _ in results if p)
+    failed = any(p is False for _, p, _ in results)
+    suffix = ' (+%d skipped)' % skipped if skipped else ''
+    print('\n=== %s / %s scenarios passed%s on target=%s ===' % (
+        passed_count, attempted, suffix, args.target))
+    return 1 if failed else 0
 
 
 if __name__ == '__main__':
