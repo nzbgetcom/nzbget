@@ -31,6 +31,252 @@
 #include "Util.h"
 #include "FileSystem.h"
 
+ContentSource* DiskSourceSet::GetSource(int memberIndex)
+{
+	if (memberIndex < 0 || memberIndex >= (int)m_entries.size())
+	{
+		return nullptr;
+	}
+	Entry& entry = m_entries[memberIndex];
+	if (!entry.Tried)
+	{
+		entry.Tried = true;
+		BString<1024> path("%s%c%s", *m_destDir, PATH_SEPARATOR,
+			m_members[memberIndex].Name.c_str());
+		int64 size = FileSystem::FileSize(path);
+		if (size > 0 && entry.File.Open(path, DiskFile::omRead))
+		{
+			entry.Source = std::make_unique<DiskContentSource>(entry.File, size);
+		}
+	}
+	return entry.Source.get();
+}
+
+int DonorMemberSource::TakeServedParts()
+{
+	int count = (int)m_servedParts.size();
+	m_servedParts.clear();
+	return count;
+}
+
+bool DonorMemberSource::EnsureInit()
+{
+	if (m_size >= 0)
+	{
+		return true;
+	}
+	if (m_bad || m_donorFile->GetArticles()->empty())
+	{
+		return false;
+	}
+	const ArticleFetcher::FetchedArticle* first = FetchPart(0);
+	if (!first || !first->Success || first->Offset != 0)
+	{
+		m_bad = true;	// without article 0 neither headers nor size exist
+		return false;
+	}
+	m_size = first->FileSize;
+	m_ranges = DupeStreamRepair::EstimateDonorRanges(m_donorFile, m_size);
+	return !m_ranges.empty();
+}
+
+const ArticleFetcher::FetchedArticle* DonorMemberSource::FetchPart(int partIndex)
+{
+	if (partIndex < 0 || partIndex >= (int)m_donorFile->GetArticles()->size() || m_bad)
+	{
+		return nullptr;
+	}
+	auto cached = m_cache.find(partIndex);
+	if (cached != m_cache.end())
+	{
+		return cached->second.Success ? &cached->second : nullptr;
+	}
+	if (m_fetchBudget && *m_fetchBudget <= 0)
+	{
+		return nullptr;
+	}
+	if (m_fetchBudget)
+	{
+		(*m_fetchBudget)--;
+	}
+
+	ArticleInfo* article = (*m_donorFile->GetArticles())[partIndex].get();
+	ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
+		article->GetMessageId(), *m_donorFile->GetGroups());
+
+	// consistency: every article of the member must declare the same
+	// decoded size and stay inside it, or the whole member is unusable
+	if (fetched.Success &&
+		(fetched.Data.empty() || fetched.Offset < 0 ||
+		 fetched.Offset + (int64)fetched.Data.size() > fetched.FileSize ||
+		 (m_size >= 0 && fetched.FileSize != m_size)))
+	{
+		m_bad = m_size >= 0 && fetched.FileSize != m_size;
+		fetched.Success = false;
+	}
+
+	if ((int)m_cache.size() >= MaxCachedParts && !m_cacheOrder.empty())
+	{
+		m_cache.erase(m_cacheOrder.front());
+		m_cacheOrder.pop_front();
+	}
+	m_cacheOrder.push_back(partIndex);
+	auto inserted = m_cache.emplace(partIndex, std::move(fetched)).first;
+	return inserted->second.Success ? &inserted->second : nullptr;
+}
+
+const ArticleFetcher::FetchedArticle* DonorMemberSource::PartForOffset(int64 offset,
+	int& partIndex)
+{
+	// index guess from the estimates, corrected by the measured drift
+	int64 target = offset - m_drift;
+	int index = 0;
+	while (index + 1 < (int)m_ranges.size() && m_ranges[index].End() <= target)
+	{
+		index++;
+	}
+
+	for (int step = 0; step < MaxResolveSteps; step++)
+	{
+		const ArticleFetcher::FetchedArticle* fetched = FetchPart(index);
+		if (!fetched)
+		{
+			return nullptr;
+		}
+		m_drift = fetched->Offset - m_ranges[index].Offset;
+		if (offset < fetched->Offset)
+		{
+			if (index == 0)
+			{
+				return nullptr;
+			}
+			index--;
+		}
+		else if (offset >= fetched->Offset + (int64)fetched->Data.size())
+		{
+			if (index + 1 >= (int)m_ranges.size())
+			{
+				return nullptr;
+			}
+			index++;
+		}
+		else
+		{
+			partIndex = index;
+			return fetched;
+		}
+	}
+	return nullptr;
+}
+
+bool DonorMemberSource::Read(int64 offset, void* buffer, int64 size)
+{
+	if (!EnsureInit() || offset < 0 || size < 0 || offset + size > m_size)
+	{
+		return false;
+	}
+
+	char* out = (char*)buffer;
+	int64 pos = offset;
+	while (pos < offset + size)
+	{
+		int partIndex;
+		const ArticleFetcher::FetchedArticle* fetched = PartForOffset(pos, partIndex);
+		if (!fetched)
+		{
+			return false;
+		}
+		int64 from = pos - fetched->Offset;
+		int64 len = std::min<int64>((int64)fetched->Data.size() - from, offset + size - pos);
+		memcpy(out, fetched->Data.data() + from, len);
+		m_servedParts.insert(partIndex);
+		out += len;
+		pos += len;
+	}
+	return true;
+}
+
+DonorSetSources::DonorSetSources(ArticleFetcher& fetcher, NzbInfo* donorNzb) :
+	m_fetcher(fetcher)
+{
+	for (FileInfo* fileInfo : donorNzb->GetFileList())
+	{
+		m_files.push_back(fileInfo);
+	}
+	m_sources.resize(m_files.size());
+}
+
+DonorMemberSource* DonorSetSources::GetDonorSource(int memberIndex)
+{
+	if (memberIndex < 0 || memberIndex >= (int)m_files.size())
+	{
+		return nullptr;
+	}
+	if (!m_sources[memberIndex])
+	{
+		m_sources[memberIndex] = std::make_unique<DonorMemberSource>(
+			m_fetcher, m_files[memberIndex]);
+		m_sources[memberIndex]->SetFetchBudget(m_fetchBudget);
+	}
+	return m_sources[memberIndex].get();
+}
+
+std::vector<SetMember> DonorSetSources::BuildMembers()
+{
+	std::vector<SetMember> members;
+	for (FileInfo* fileInfo : m_files)
+	{
+		members.push_back({FileSystem::BaseFileName(fileInfo->GetFilename()),
+			fileInfo->GetSize()});
+	}
+	return members;
+}
+
+void DonorSetSources::SetFetchBudget(int* budget)
+{
+	m_fetchBudget = budget;
+	for (std::unique_ptr<DonorMemberSource>& source : m_sources)
+	{
+		if (source)
+		{
+			source->SetFetchBudget(budget);
+		}
+	}
+}
+
+int DonorSetSources::TakeServedParts()
+{
+	int total = 0;
+	for (std::unique_ptr<DonorMemberSource>& source : m_sources)
+	{
+		if (source)
+		{
+			total += source->TakeServedParts();
+		}
+	}
+	return total;
+}
+
+DiskFile* TargetSetFiles::GetFile(int memberIndex)
+{
+	auto existing = m_files.find(memberIndex);
+	if (existing != m_files.end())
+	{
+		return existing->second && existing->second->Active() ?
+			existing->second.get() : nullptr;
+	}
+	std::unique_ptr<DiskFile> file = std::make_unique<DiskFile>();
+	BString<1024> path("%s%c%s", *m_destDir, PATH_SEPARATOR,
+		m_members[memberIndex].Name.c_str());
+	if (!file->Open(path, DiskFile::omReadWrite))
+	{
+		file.reset();
+	}
+	DiskFile* result = file.get();
+	m_files.emplace(memberIndex, std::move(file));
+	return result;
+}
+
 void StreamRepairController::StartJob(PostInfo* postInfo)
 {
 	StreamRepairController* streamRepairController = new StreamRepairController();
@@ -71,14 +317,24 @@ void StreamRepairController::Run()
 	{
 		PrintMessage(Message::mkInfo,
 			"No duplicate collections found for stream repair of %s", *nzbName);
-		m_holesRemain = true;
 	}
 	else
 	{
 		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors);
+
+		bool anyHoles = false;
+		for (RepairTarget& target : targets)
+		{
+			anyHoles |= !target.Holes.empty();
+		}
+		if (anyHoles && !IsStopped())
+		{
+			ExecCrossPackRepair(destDir, targets, donors, memberNames);
+		}
 	}
 
+	ReportRemainingHoles(targets);
 	RepairCompleted();
 }
 
@@ -276,17 +532,6 @@ void StreamRepairController::ExecRepair(const char* destDir,
 					*donor.InfoName, consecutiveFailures);
 				break;
 			}
-		}
-	}
-
-	for (RepairTarget& target : targets)
-	{
-		if (!target.Holes.empty())
-		{
-			m_holesRemain = true;
-			PrintMessage(Message::mkInfo,
-				"Stream repair of %s: %.1f MB still missing after all duplicates (left to par-repair)",
-				*target.Filename, DupeStreamRepair::TotalSize(target.Holes) / 1024.0 / 1024.0);
 		}
 	}
 }
@@ -586,6 +831,358 @@ bool StreamRepairController::CompareToFile(DiskFile& file, int64 offset, const c
 		remaining -= chunk;
 	}
 	return true;
+}
+
+void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& targets)
+{
+	for (RepairTarget& target : targets)
+	{
+		if (!target.Holes.empty())
+		{
+			m_holesRemain = true;
+			PrintMessage(Message::mkInfo,
+				"Stream repair of %s: %.1f MB still missing after all duplicates (left to par-repair)",
+				*target.Filename, DupeStreamRepair::TotalSize(target.Holes) / 1024.0 / 1024.0);
+		}
+	}
+}
+
+void StreamRepairController::ExecCrossPackRepair(const char* destDir,
+	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors,
+	const std::vector<CString>& memberNames)
+{
+	// the member universe: every completed file, with the CURRENT holes of
+	// the ones that are repair targets (holes only shrink after M1)
+	std::vector<SetMember> setMembers;
+	std::vector<StreamRangeList> memberHoles(memberNames.size());
+	std::vector<int> memberTargets(memberNames.size(), -1);
+	for (size_t i = 0; i < memberNames.size(); i++)
+	{
+		BString<1024> path("%s%c%s", destDir, PATH_SEPARATOR, *memberNames[i]);
+		setMembers.push_back({*memberNames[i], FileSystem::FileSize(path)});
+		for (size_t t = 0; t < targets.size(); t++)
+		{
+			if (!strcasecmp(*targets[t].Filename, *memberNames[i]))
+			{
+				memberHoles[i] = targets[t].Holes;
+				memberTargets[i] = (int)t;
+				break;
+			}
+		}
+	}
+
+	DiskSourceSet diskSources(destDir, setMembers);
+	HoledSourceSet holedSources(diskSources, memberHoles);
+	std::vector<RepairSetData> repairSets =
+		ContentMapper::BuildRepairSets(setMembers, memberHoles, holedSources);
+
+	bool anyMapped = false;
+	for (RepairSetData& repairSet : repairSets)
+	{
+		if (repairSet.Map)
+		{
+			anyMapped = true;
+			PrintMessage(Message::mkInfo,
+				"Cross-packing repair of %s: %.1f MB missing of inner file %s",
+				setMembers[repairSet.Set.Members[0]].Name.c_str(),
+				DupeStreamRepair::TotalSize(repairSet.InnerHoles) / 1024.0 / 1024.0,
+				repairSet.Map->GetInnerName());
+		}
+		else
+		{
+			PrintMessage(Message::mkInfo,
+				"Cross-packing repair of %s not possible: %s; left to par-repair",
+				setMembers[repairSet.Set.Members[0]].Name.c_str(),
+				repairSet.SkipReason.c_str());
+		}
+	}
+	if (!anyMapped)
+	{
+		return;
+	}
+
+	TargetSetFiles targetFiles(destDir, setMembers);
+
+	for (DonorSource& donor : donors)
+	{
+		if (IsStopped())
+		{
+			break;
+		}
+		bool anyInnerHoles = false;
+		for (RepairSetData& repairSet : repairSets)
+		{
+			anyInnerHoles |= repairSet.Map && !repairSet.InnerHoles.empty();
+		}
+		if (!anyInnerHoles)
+		{
+			break;
+		}
+
+		std::unique_ptr<NzbInfo> donorNzb =
+			DupeArticleFallback::ParseDonorNzb(donor.QueuedFilename);
+		if (!donorNzb)
+		{
+			continue;
+		}
+
+		{
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			m_postInfo->SetProgressLabel(BString<1024>(
+				"Cross-packing repair from duplicate %s", *donor.InfoName));
+		}
+
+		DonorSetSources donorSources(m_fetcher, donorNzb.get());
+		std::vector<SetMember> donorMembers = donorSources.BuildMembers();
+		std::vector<MemberSet> donorSets = ContentMapper::GroupSets(donorMembers);
+
+		for (RepairSetData& repairSet : repairSets)
+		{
+			if (!repairSet.Map || repairSet.InnerHoles.empty() || IsStopped())
+			{
+				continue;
+			}
+
+			for (const MemberSet& donorSet : donorSets)
+			{
+				if (IsStopped() || repairSet.InnerHoles.empty())
+				{
+					break;
+				}
+
+				// map building is fetch-budgeted; probing and patching are
+				// naturally bounded by the holes
+				int mappingBudget = 8 + 4 * (int)donorSet.Members.size();
+				donorSources.SetFetchBudget(&mappingBudget);
+				std::string donorSkip;
+				std::unique_ptr<ContentMap> donorMap =
+					ContentMapper::BuildMap(donorMembers, donorSet, donorSources, donorSkip);
+				donorSources.SetFetchBudget(nullptr);
+
+				if (!donorMap ||
+					donorMap->GetInnerSize() != repairSet.Map->GetInnerSize())
+				{
+					continue;	// not this target's content (or not mappable)
+				}
+
+				if (!VerifyDonorSet(repairSet, *donorMap, donorSources, targetFiles))
+				{
+					// mkInfo on purpose: a rejected donor is the safety net
+					// firing - it must be visible in the log
+					PrintMessage(Message::mkInfo,
+						"Skipping packing %s of duplicate %s for %s: content identity not confirmed",
+						donorMembers[donorSet.Members[0]].Name.c_str(),
+						*donor.InfoName, repairSet.Map->GetInnerName());
+					continue;
+				}
+				donorSources.TakeServedParts();	// probe fetches are not "recovered"
+
+				int64 written = PatchFromDonorSet(repairSet, *donorMap, donorSources,
+					targetFiles, targets, memberTargets, setMembers, donor.InfoName);
+				if (written == 0 && !repairSet.InnerHoles.empty())
+				{
+					continue;	// verified but could not supply - try next packing
+				}
+			}
+		}
+	}
+}
+
+bool StreamRepairController::ReadDonorInner(ContentMap& donorMap,
+	DonorSetSources& donorSources, const StreamRange& innerRange, std::vector<char>& buffer)
+{
+	buffer.resize(innerRange.Size);
+	int64 covered = 0;
+	for (const MemberRange& piece : donorMap.MapFromInner(innerRange))
+	{
+		StreamRangeList innerPos = donorMap.MapToInner(piece.MemberIndex, piece.Range);
+		if (innerPos.size() != 1)
+		{
+			return false;
+		}
+		DonorMemberSource* source = donorSources.GetDonorSource(piece.MemberIndex);
+		if (!source || !source->Read(piece.Range.Offset,
+			buffer.data() + (innerPos[0].Offset - innerRange.Offset), piece.Range.Size))
+		{
+			return false;
+		}
+		covered += piece.Range.Size;
+	}
+	// a donor map with an excluded member cannot cover such a range fully
+	return covered == innerRange.Size;
+}
+
+bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
+	DonorSetSources& donorSources, TargetSetFiles& targetFiles)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	const StreamRangeList& holes = repairSet.InnerHoles;
+
+	// probe windows: present bytes hugging each hole (the most
+	// drift-sensitive positions), clipped against neighboring holes
+	std::vector<StreamRange> windows;
+	for (const StreamRange& hole : holes)
+	{
+		if ((int)windows.size() >= DupeStreamRepair::ProbeCount * 2)
+		{
+			break;
+		}
+		int64 lowClip = 0;
+		int64 highClip = targetMap.GetInnerSize();
+		for (const StreamRange& other : holes)
+		{
+			if (other.End() <= hole.Offset)
+			{
+				lowClip = std::max(lowClip, other.End());
+			}
+			if (other.Offset >= hole.End())
+			{
+				highClip = std::min(highClip, other.Offset);
+			}
+		}
+		int64 beforeFrom = std::max(lowClip,
+			hole.Offset - DupeStreamRepair::MinProbeCompareBytes);
+		if (beforeFrom < hole.Offset)
+		{
+			windows.push_back({beforeFrom, hole.Offset - beforeFrom});
+		}
+		int64 afterTo = std::min(highClip,
+			hole.End() + DupeStreamRepair::MinProbeCompareBytes);
+		if (hole.End() < afterTo)
+		{
+			windows.push_back({hole.End(), afterTo - hole.End()});
+		}
+	}
+
+	// floor semantics as in M1 (Task 1): everything reachable must match,
+	// scaled to the mapped present bytes, clamped to what the windows can
+	// actually compare, never below 64
+	int64 mappedBytes = 0;
+	for (const ContentRun& run : *targetMap.GetRuns())
+	{
+		mappedBytes += run.Size;
+	}
+	int64 present = mappedBytes - DupeStreamRepair::TotalSize(holes);
+	int64 base = std::min(DupeStreamRepair::MinProbeCompareBytes,
+		std::max<int64>(64, present));
+	int64 achievable = 0;
+	for (const StreamRange& window : windows)
+	{
+		for (const MemberRange& piece : targetMap.MapFromInner(window))
+		{
+			achievable += piece.Range.Size;
+		}
+	}
+	if (achievable < 64)
+	{
+		return false;	// identity unknowable - par2 owns this set
+	}
+	int64 required = std::min(base, achievable);
+
+	int64 totalCompared = 0;
+	bool sawVariedData = false;
+	std::vector<char> donorData;
+
+	for (const StreamRange& window : windows)
+	{
+		if (IsStopped())
+		{
+			return false;
+		}
+		if (totalCompared >= required && sawVariedData)
+		{
+			break;
+		}
+		if (!ReadDonorInner(donorMap, donorSources, window, donorData))
+		{
+			continue;	// inconclusive: the donor may miss these articles
+		}
+		for (const MemberRange& piece : targetMap.MapFromInner(window))
+		{
+			StreamRangeList innerPos = targetMap.MapToInner(piece.MemberIndex, piece.Range);
+			DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+			if (innerPos.size() != 1 || !file)
+			{
+				return false;
+			}
+			const char* pieceData = donorData.data() + (innerPos[0].Offset - window.Offset);
+			if (!CompareToFile(*file, piece.Range.Offset, pieceData, piece.Range.Size))
+			{
+				return false;	// same inner size but different bytes
+			}
+			totalCompared += piece.Range.Size;
+			for (int64 i = 1; i < piece.Range.Size && !sawVariedData; i++)
+			{
+				sawVariedData = pieceData[i] != pieceData[0];
+			}
+		}
+	}
+
+	return totalCompared >= required && sawVariedData;
+}
+
+int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
+	DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const char* donorName)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	int64 written = 0;
+	std::vector<char> donorData;
+
+	StreamRangeList holes = repairSet.InnerHoles;	// iterate a stable copy
+	for (const StreamRange& hole : holes)
+	{
+		int64 pos = hole.Offset;
+		while (pos < hole.End() && !IsStopped())
+		{
+			int64 chunk = std::min<int64>(hole.End() - pos, 4 * 1024 * 1024);
+			if (!ReadDonorInner(donorMap, donorSources, {pos, chunk}, donorData))
+			{
+				break;	// this donor cannot supply the rest of this hole
+			}
+			for (const MemberRange& piece : targetMap.MapFromInner({pos, chunk}))
+			{
+				StreamRangeList innerPos = targetMap.MapToInner(piece.MemberIndex, piece.Range);
+				DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+				if (innerPos.size() != 1 || !file)
+				{
+					return written;
+				}
+				file->Seek(piece.Range.Offset);
+				if (file->Position() != piece.Range.Offset ||
+					file->Write(donorData.data() + (innerPos[0].Offset - pos),
+						piece.Range.Size) != piece.Range.Size)
+				{
+					PrintMessage(Message::mkError,
+						"Could not write to %s during stream repair: %s",
+						setMembers[piece.MemberIndex].Name.c_str(),
+						*FileSystem::GetLastErrorMessage());
+					return written;
+				}
+				if (memberTargets[piece.MemberIndex] >= 0)
+				{
+					DupeStreamRepair::SubtractCovered(
+						targets[memberTargets[piece.MemberIndex]].Holes, piece.Range);
+				}
+				written += piece.Range.Size;
+			}
+			DupeStreamRepair::SubtractCovered(repairSet.InnerHoles, {pos, chunk});
+			pos += chunk;
+		}
+	}
+
+	if (written > 0)
+	{
+		int recoveredParts = donorSources.TakeServedParts();
+		m_recoveredArticles += recoveredParts;
+		m_recoveredBytes += written;
+		PrintMessage(Message::mkInfo,
+			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
+			written / 1024.0 / 1024.0, recoveredParts,
+			repairSet.Map->GetInnerName(), donorName);
+	}
+	return written;
 }
 
 void StreamRepairController::RepairCompleted()

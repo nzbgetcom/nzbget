@@ -52,10 +52,14 @@ article "missing" on the active server, so no real Usenet access is needed):
   release base name, same volume suffixes): exact-name pairing cannot fire,
   proving the unique-suffix-key tier pairs the damaged member with its donor
   twin end-to-end.
+* xpackbare     - M2 cross-packing: a bare .mkv completed with a hole is
+  repaired from a duplicate that posted the SAME movie packed into store-mode
+  RAR3 volumes (different framing/offsets/segmentation), which M1 cannot pair;
+  the ContentMap pass locates and patches the missing bytes inside the volumes.
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed]
+               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare]
                [--serial NNN] [--keep]
 """
 
@@ -73,6 +77,10 @@ try:
     from xmlrpc.client import ServerProxy
 except ImportError:
     from xmlrpclib import ServerProxy  # type: ignore  # python 2 fallback
+
+# deterministic container generators for the xpack scenarios
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generators
 
 
 # --------------------------------------------------------------------------- #
@@ -601,6 +609,40 @@ def scenario_repostrenamed(daemon, t):
             % (h['Status'], recov, repaired, integ))
 
 
+def scenario_xpackbare(daemon, t):
+    """M2 cross-packing smoke test: the primary posts movie.mkv BARE and
+    completes with a hole; the only duplicate posts the SAME movie packed
+    into store-mode RAR3 volumes (different framing, different offsets,
+    different segmentation). M1 cannot pair bare against rar volumes -
+    the ContentMap pass must locate the missing bytes inside the donor's
+    volumes and patch them. No par2: FAILURE/HEALTH expected; integrity,
+    the cross-packing logs and the counter are the pass criteria."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 300_000
+    data = _payload(size, 5150)
+    pp = _place_copy(t, 'xpbA', data, 'movie.mkv')
+    primary = build_nzb(pp, 'movie.mkv', size, seg_primary, {5, 6})
+
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    donor_members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpbB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), seg_donor, set()))
+    donor = build_multi_nzb(donor_members)
+
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXpb', donor, True, 'xpb-key', 50)
+    daemon.append(api, 'RelXpb', primary, False, 'xpb-key', 100)
+    h = daemon.wait_history(api, 'RelXpb')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    xpack = _grep_log(t, 'Cross-packing repair of')
+    repaired = _grep_log(t, 'cross-packing')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackbare', integ and recov >= 1 and xpack >= 1 and repaired >= 1,
+            'status=%s recovered=%d xpack_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], recov, xpack, repaired, integ))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -637,6 +679,7 @@ SCENARIOS = {
     'stream': scenario_stream,
     'repost': scenario_repost,
     'repostrenamed': scenario_repostrenamed,
+    'xpackbare': scenario_xpackbare,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -653,6 +696,8 @@ SCENARIO_OPTIONS = {
     # repostrenamed: no par2 members; "auto" ends in a harmless
     # "Nothing to par-check" after the repair handoff
     'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xpackbare: no par2; "auto" ends in "Nothing to par-check" post-repair
+    'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

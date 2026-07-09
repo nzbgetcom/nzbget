@@ -21,14 +21,104 @@
 #ifndef STREAMREPAIR_H
 #define STREAMREPAIR_H
 
+#include <deque>
+#include <map>
+#include <set>
 #include <vector>
 #include "NString.h"
 #include "Thread.h"
 #include "DownloadInfo.h"
 #include "ScriptController.h"
 #include "ArticleFetcher.h"
+#include "ContentMap.h"
 
 class DiskFile;
+
+/* target-side member files in DestDir, opened read-only on demand */
+class DiskSourceSet : public ContentSourceSet
+{
+public:
+	DiskSourceSet(const char* destDir, const std::vector<SetMember>& members) :
+		m_destDir(destDir), m_members(members), m_entries(members.size()) {}
+	virtual ContentSource* GetSource(int memberIndex);
+
+private:
+	struct Entry
+	{
+		DiskFile File;
+		std::unique_ptr<DiskContentSource> Source;
+		bool Tried = false;
+	};
+
+	CString m_destDir;
+	const std::vector<SetMember>& m_members;
+	std::deque<Entry> m_entries;
+};
+
+/* donor-side byte access to one member of a duplicate posting: articles are
+ * fetched and decoded on demand, offsets resolve through the estimated
+ * ranges with measured-drift correction, recent articles stay cached */
+class DonorMemberSource : public ContentSource
+{
+public:
+	DonorMemberSource(ArticleFetcher& fetcher, FileInfo* donorFile) :
+		m_fetcher(fetcher), m_donorFile(donorFile) {}
+	virtual int64 Size() { return EnsureInit() ? m_size : 0; }
+	virtual bool Read(int64 offset, void* buffer, int64 size);
+	void SetFetchBudget(int* budget) { m_fetchBudget = budget; }
+	int TakeServedParts();
+
+private:
+	static constexpr int MaxCachedParts = 8;
+	static constexpr int MaxResolveSteps = 6;
+
+	ArticleFetcher& m_fetcher;
+	FileInfo* m_donorFile;
+	StreamRangeList m_ranges;
+	std::map<int, ArticleFetcher::FetchedArticle> m_cache;
+	std::deque<int> m_cacheOrder;
+	std::set<int> m_servedParts;
+	int64 m_size = -1;
+	int64 m_drift = 0;
+	int* m_fetchBudget = nullptr;
+	bool m_bad = false;
+
+	bool EnsureInit();
+	const ArticleFetcher::FetchedArticle* FetchPart(int partIndex);
+	const ArticleFetcher::FetchedArticle* PartForOffset(int64 offset, int& partIndex);
+};
+
+/* all members of one donor posting, lazily sourced */
+class DonorSetSources : public ContentSourceSet
+{
+public:
+	DonorSetSources(ArticleFetcher& fetcher, NzbInfo* donorNzb);
+	virtual ContentSource* GetSource(int memberIndex) { return GetDonorSource(memberIndex); }
+	DonorMemberSource* GetDonorSource(int memberIndex);
+	std::vector<SetMember> BuildMembers();
+	void SetFetchBudget(int* budget);
+	int TakeServedParts();
+
+private:
+	ArticleFetcher& m_fetcher;
+	std::vector<FileInfo*> m_files;
+	std::vector<std::unique_ptr<DonorMemberSource>> m_sources;
+	int* m_fetchBudget = nullptr;
+};
+
+/* target member files opened read-write on demand for verify and patch */
+class TargetSetFiles
+{
+public:
+	TargetSetFiles(const char* destDir, const std::vector<SetMember>& members) :
+		m_destDir(destDir), m_members(members) {}
+	DiskFile* GetFile(int memberIndex);
+
+private:
+	CString m_destDir;
+	const std::vector<SetMember>& m_members;
+	std::map<int, std::unique_ptr<DiskFile>> m_files;
+};
 
 /*
  * Post-processing stage for option <DupeArticleFallback> value "stream":
@@ -104,6 +194,21 @@ private:
 	int PatchFromDonor(DiskFile& file, RepairTarget& target, FileInfo* donorFile,
 		const StreamRangeList& donorRanges, const char* donorName);
 	static bool CompareToFile(DiskFile& file, int64 offset, const char* data, int64 size);
+
+	// cross-packing (M2): repairs holes through inner-content maps after
+	// the per-member same-bytes pass (M1) exhausted all donors
+	void ExecCrossPackRepair(const char* destDir, std::vector<RepairTarget>& targets,
+		std::vector<DonorSource>& donors, const std::vector<CString>& memberNames);
+	bool ReadDonorInner(ContentMap& donorMap, DonorSetSources& donorSources,
+		const StreamRange& innerRange, std::vector<char>& buffer);
+	bool VerifyDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
+		DonorSetSources& donorSources, TargetSetFiles& targetFiles);
+	int64 PatchFromDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
+		DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+		std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+		const std::vector<SetMember>& setMembers, const char* donorName);
+	void ReportRemainingHoles(std::vector<RepairTarget>& targets);
+
 	void RepairCompleted();
 };
 

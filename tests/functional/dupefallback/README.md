@@ -16,6 +16,7 @@ suffix to make chosen articles "missing" on the active server.
 | `stream` | Donor posted the SAME `.mkv` split into different article sizes (250 KB vs 500 KB). `DupeArticleFallback=stream` repairs the missing byte ranges in post-processing; output is byte-identical even though the history status stays non-SUCCESS (no par2 in the harness). |
 | `repost` | A 4-member "rar+par2 release" (opaque random bytes — stands in for a passworded, compressed archive) reposted byte-identically under different segmentation. M1 same-bytes matching pairs each damaged member to its donor twin by name/suffix and repairs rar volume and par2 alike, byte-identically (final status is FAILURE/PAR by design — the stand-in par2 is not a real par2). |
 | `repostrenamed` | A 3-member rar-volume repost whose members were RENAMED (different release base name, same volume suffixes), reposted byte-identically. Exact-name pairing cannot fire, so M1's unique-suffix-key tier must pair the damaged member with its donor twin — proving tier-2 pairing end-to-end (no par2 in the harness). |
+| `xpackbare` | A bare `.mkv` completed with a hole, repaired from a duplicate that posted the SAME movie packed into store-mode RAR3 volumes (different framing, offsets and segmentation). M1 cannot pair bare against rar volumes, so the M2 cross-packing `ContentMap` pass must locate the missing bytes inside the donor's volumes and patch them byte-identically (no par2 in the harness). |
 
 Each scenario asserts the download reaches `SUCCESS`, the reassembled file is
 **byte-identical** to the source (with `DirectWrite=yes`), and the
@@ -61,7 +62,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0
