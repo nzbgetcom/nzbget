@@ -213,6 +213,37 @@ std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 	return candidates;
 }
 
+std::unique_ptr<NzbInfo> DupeArticleFallback::ParseDonorNzb(const char* queuedFilename)
+{
+	if (Util::EmptyStr(queuedFilename) || !FileSystem::FileExists(queuedFilename))
+	{
+		return nullptr;
+	}
+
+	NzbFile nzbFile(queuedFilename, "");
+	if (!nzbFile.Parse())
+	{
+		detail("Could not parse duplicate nzb-file %s", queuedFilename);
+		return nullptr;
+	}
+
+	std::unique_ptr<NzbInfo> parsedNzb = nzbFile.DetachNzbInfo();
+
+	if (g_Options->GetServerMode())
+	{
+		// in server mode the parser offloads article lists to disk-state and
+		// clears them from memory; load them back (the donor is used in memory
+		// only) and remove the disk-state files written as parse side effect
+		for (FileInfo* fileInfo : parsedNzb->GetFileList())
+		{
+			g_DiskState->LoadArticles(fileInfo);
+		}
+		g_DiskState->DiscardFiles(parsedNzb.get(), false);
+	}
+
+	return parsedNzb;
+}
+
 NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 {
 	int donorId = donorNzbInfo->GetId();
@@ -230,17 +261,9 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 
 	// duplicates in history don't keep their article lists in memory; the
 	// retained source nzb-file is parsed again instead (like "Download again")
-	const char* queuedFilename = donorNzbInfo->GetQueuedFilename();
-	if (Util::EmptyStr(queuedFilename) || !FileSystem::FileExists(queuedFilename))
+	std::unique_ptr<NzbInfo> parsedNzb = ParseDonorNzb(donorNzbInfo->GetQueuedFilename());
+	if (!parsedNzb)
 	{
-		m_badDonors.insert(donorId);
-		return nullptr;
-	}
-
-	NzbFile nzbFile(queuedFilename, "");
-	if (!nzbFile.Parse())
-	{
-		detail("Could not parse duplicate nzb-file %s", queuedFilename);
 		m_badDonors.insert(donorId);
 		return nullptr;
 	}
@@ -253,19 +276,7 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 	// store the parsed collection in the cache and return a pointer to the
 	// owned object (the cache keeps it alive for the daemon's lifetime)
 	std::unique_ptr<NzbInfo>& cachedDonor = m_parsedDonors[donorId];
-	cachedDonor = nzbFile.DetachNzbInfo();
-
-	if (g_Options->GetServerMode())
-	{
-		// in server mode the parser offloads article lists to disk-state and
-		// clears them from memory; load them back (the donor is used in memory
-		// only) and remove the disk-state files written as parse side effect
-		for (FileInfo* fileInfo : cachedDonor->GetFileList())
-		{
-			g_DiskState->LoadArticles(fileInfo);
-		}
-		g_DiskState->DiscardFiles(cachedDonor.get(), false);
-	}
+	cachedDonor = std::move(parsedNzb);
 
 	return cachedDonor.get();
 }

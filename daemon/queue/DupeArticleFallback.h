@@ -68,6 +68,13 @@ public:
 	static std::vector<CString> OrderSources(const std::vector<CString>& donorCandidates,
 		bool cutover, const char* primaryMessageId);
 
+	/* Parses a collection's retained queued .nzb from disk into a standalone
+	 * NzbInfo (with article lists loaded back in server mode). Returns nullptr
+	 * if the file is missing or unparseable. Unlike GetParsedDonor this does
+	 * not use or fill the per-instance donor cache; safe to call without the
+	 * DownloadQueue lock. */
+	static std::unique_ptr<NzbInfo> ParseDonorNzb(const char* queuedFilename);
+
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs
 	// differences in yEnc overhead (header line lengths, filenames)

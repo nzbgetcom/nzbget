@@ -281,7 +281,7 @@ private:
 	// (not persisted); used to verify articles borrowed from duplicates
 	std::atomic<int64> m_decodedFileSize{0};
 
-	static int m_idGen;
+	static std::atomic<int> m_idGen;
 	static int m_idMax;
 
 	friend class CompletedFile;
@@ -855,7 +855,7 @@ private:
 	bool m_skipDiskWrite = false;
 	bool m_autoCategory = false;
 
-	static int m_idGen;
+	static std::atomic<int> m_idGen;
 	static int m_idMax;
 
 	void ClearMessages();
