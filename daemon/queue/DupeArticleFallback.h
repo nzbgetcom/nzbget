@@ -75,6 +75,27 @@ public:
 	 * DownloadQueue lock. */
 	static std::unique_ptr<NzbInfo> ParseDonorNzb(const char* queuedFilename);
 
+	/* Decoded byte offset the article must begin at, derived from currently
+	 * known geometry: 0 for the first article of the file, the end of an
+	 * already-finished preceding article otherwise. -1 = not derivable yet.
+	 * Guards substituted donor articles against decoded-boundary drift: the
+	 * structural gate compares posted (encoded) sizes only, so a donor with
+	 * the same article count and total but non-uniform segmentation can pass
+	 * it while its decoded boundaries drift at interior articles. */
+	static int64 ExpectedSegmentOffset(FileInfo* fileInfo, ArticleInfo* articleInfo);
+
+	/* Decoded byte offset the article must end at (exclusive): the begin of an
+	 * already-finished following article, or the decoded file size for the last
+	 * article of the file. -1 = not derivable yet. */
+	static int64 ExpectedSegmentEnd(FileInfo* fileInfo, ArticleInfo* articleInfo);
+
+	/* Verifies the decoded byte range recorded for a finished article
+	 * (SegmentOffset/SegmentSize) exactly abuts the currently known geometry
+	 * (see ExpectedSegmentOffset/ExpectedSegmentEnd). A substituted article
+	 * failing this check would leave a zero-filled gap and/or overwrite a
+	 * neighbour's bytes, so it must not count as a successful download. */
+	static bool SegmentAligned(FileInfo* fileInfo, ArticleInfo* articleInfo);
+
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs
 	// differences in yEnc overhead (header line lengths, filenames)

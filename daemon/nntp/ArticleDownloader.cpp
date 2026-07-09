@@ -503,6 +503,28 @@ bool ArticleDownloader::Write(char* buffer, int len)
 						*m_infoName, (long long)articleFileSize, (long long)expectedFileSize);
 					return false;
 				}
+				// a substituted article must decode into exactly the byte range the
+				// target article occupies; the expected range was pinned from finished
+				// neighbour articles at substitution time (-1 = not known yet). This
+				// rejects donors with drifted decoded boundaries before any bytes are
+				// written (a mis-placed article would gap-fill and/or overwrite a
+				// neighbour's decoded bytes).
+				int64 dupeExpectedOffset = m_articleInfo->GetDupeExpectedOffset();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedOffset >= 0 &&
+					articleOffset != dupeExpectedOffset)
+				{
+					detail("Discarding article %s from duplicate: decoded offset mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleOffset, (long long)dupeExpectedOffset);
+					return false;
+				}
+				int64 dupeExpectedEnd = m_articleInfo->GetDupeExpectedEnd();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedEnd >= 0 &&
+					articleOffset + articleSize != dupeExpectedEnd)
+				{
+					detail("Discarding article %s from duplicate: decoded end mismatch (%lli vs %lli)",
+						*m_infoName, (long long)(articleOffset + articleSize), (long long)dupeExpectedEnd);
+					return false;
+				}
 			}
 		}
 

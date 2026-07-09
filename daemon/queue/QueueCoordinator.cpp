@@ -714,7 +714,26 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
-		if (articleDownloader->GetStatus() == ArticleDownloader::adFinished)
+		// a substituted (donor) article may only count as success if its decoded
+		// byte range exactly occupies the slot of the target article, i.e. abuts
+		// the decoded boundaries of its already-finished neighbour articles. A
+		// mis-placed article would leave a zero-filled gap and/or overwrite a
+		// neighbour's bytes, so it is treated as a failed attempt instead
+		// (advancing to the next duplicate source, if any)
+		bool misplaced = articleDownloader->GetStatus() == ArticleDownloader::adFinished &&
+			articleInfo->GetDupeFallbackRound() > 0 &&
+			articleDownloader->GetDecodedFileSize() > 0 &&
+			!DupeArticleFallback::SegmentAligned(fileInfo, articleInfo);
+		if (misplaced)
+		{
+			DiscardArticleSegment(fileInfo, articleInfo);
+			nzbInfo->PrintMessage(Message::mkDetail,
+				"Discarding misaligned article %s [%i/%i] from duplicate",
+				fileInfo->GetFilename(), articleInfo->GetPartNumber(),
+				(int)fileInfo->GetArticles()->size());
+		}
+
+		if (articleDownloader->GetStatus() == ArticleDownloader::adFinished && !misplaced)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFinished);
 			fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() + articleInfo->GetSize());
@@ -747,8 +766,18 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 						fileInfo->GetFilename());
 				}
 			}
+
+			// this article pins decoded boundaries which may not have been known
+			// when an adjacent donor-substituted article was accepted (e.g. it
+			// finished before this one): re-validate such neighbours and demote
+			// any that provably do not tile with the file's decoded geometry
+			if (fileInfo->GetDupeRecoveredArticles() > 0 &&
+				articleDownloader->GetDecodedFileSize() > 0)
+			{
+				DemoteMisalignedDupeNeighbors(fileInfo, articleInfo);
+			}
 		}
-		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed &&
+		else if ((articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced) &&
 			m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, articleInfo))
 		{
 			// the article is requeued with a message-id borrowed from a duplicate
@@ -759,7 +788,7 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 				nzbInfo->SetAllFirst(false);
 			}
 		}
-		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed)
+		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFailed);
 			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
@@ -793,7 +822,7 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			fileInfo->SetPartialChanged(true);
 		}
 
-		if (!fileInfo->GetFilenameConfirmed() &&
+		if (!fileInfo->GetFilenameConfirmed() && !misplaced &&
 			articleDownloader->GetStatus() == ArticleDownloader::adFinished &&
 			articleDownloader->GetArticleFilename())
 		{
@@ -821,7 +850,8 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 		}
 
-		if (articleDownloader->GetContentAnalyzer() && articleDownloader->GetStatus() == ArticleDownloader::adFinished)
+		if (articleDownloader->GetContentAnalyzer() && !misplaced &&
+			articleDownloader->GetStatus() == ArticleDownloader::adFinished)
 		{
 			m_directRenamer.ArticleDownloaded(downloadQueue, fileInfo, articleInfo, articleDownloader->GetContentAnalyzer());
 		}
@@ -976,6 +1006,100 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 
 	// now can destroy FileInfo
 	srcFileInfo.reset();
+}
+
+/*
+ * A donor-substituted article can finish before its neighbour articles; its
+ * decoded boundaries are then not fully verifiable and it is accepted
+ * provisionally. Each newly finished article pins more of the file's decoded
+ * geometry: re-validate the adjacent donor-substituted articles against it and
+ * demote any that provably do not tile (their bytes would leave a zero-filled
+ * gap and/or overwrite a neighbour's decoded bytes). The demoted article
+ * counts as failed, so the file cannot complete as an intact download around
+ * mis-placed donor bytes - par2 or stream repair take over instead.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DemoteMisalignedDupeNeighbors(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+
+	int index = -1;
+	for (size_t i = 0; i < articles->size(); i++)
+	{
+		if ((*articles)[i].get() == articleInfo)
+		{
+			index = (int)i;
+			break;
+		}
+	}
+	if (index < 0)
+	{
+		return;
+	}
+
+	for (int neighborIndex : {index - 1, index + 1})
+	{
+		if (neighborIndex < 0 || neighborIndex >= (int)articles->size())
+		{
+			continue;
+		}
+
+		ArticleInfo* neighbor = (*articles)[neighborIndex].get();
+		if (neighbor->GetStatus() != ArticleInfo::aiFinished ||
+			neighbor->GetDupeFallbackRound() == 0 ||
+			neighbor->GetSegmentSize() <= 0 ||
+			DupeArticleFallback::SegmentAligned(fileInfo, neighbor))
+		{
+			continue;
+		}
+
+		NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+
+		DiscardArticleSegment(fileInfo, neighbor);
+		neighbor->SetStatus(ArticleInfo::aiFailed);
+
+		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - neighbor->GetSize());
+		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + neighbor->GetSize());
+		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
+		fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
+		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() - neighbor->GetSize());
+		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + neighbor->GetSize());
+		nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() - (fileInfo->GetParFile() ? neighbor->GetSize() : 0));
+		nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? neighbor->GetSize() : 0));
+		nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
+		nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
+
+		// undo the "recovered from duplicate" count if this article was one
+		if (!Util::EmptyStr(neighbor->GetDupeOriginalMessageId()) &&
+			strcmp(neighbor->GetMessageId(), neighbor->GetDupeOriginalMessageId()) != 0)
+		{
+			fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
+			nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
+		}
+
+		fileInfo->SetPartialChanged(true);
+
+		nzbInfo->PrintMessage(Message::mkDetail,
+			"Discarding misaligned article %s [%i/%i] from duplicate",
+			fileInfo->GetFilename(), neighbor->GetPartNumber(), (int)articles->size());
+	}
+}
+
+/*
+ * Drops the cached decoded bytes of a rejected article. If the article cache
+ * is currently flushing this file's segments the flusher owns the segment
+ * lifetime (see ArticleWriter::FlushCache) and the segment is left to it.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DiscardArticleSegment(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	Guard contentGuard = g_ArticleCache->GuardContent();
+	if (!articleInfo->GetSegmentContent() || fileInfo->GetFlushLocked())
+	{
+		return;
+	}
+	articleInfo->DiscardSegment();
+	fileInfo->SetCachedArticles(fileInfo->GetCachedArticles() - 1);
 }
 
 void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)

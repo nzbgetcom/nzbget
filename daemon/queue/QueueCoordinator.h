@@ -108,6 +108,8 @@ private:
 	void ArticleCompleted(ArticleDownloader* articleDownloader);
 	void DeleteDownloader(DownloadQueue* downloadQueue, ArticleDownloader* articleDownloader, bool fileCompleted);
 	void DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fileInfo, bool completed);
+	void DemoteMisalignedDupeNeighbors(FileInfo* fileInfo, ArticleInfo* articleInfo);
+	void DiscardArticleSegment(FileInfo* fileInfo, ArticleInfo* articleInfo);
 	void DirectRenameCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void DiscardDirectRename(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void DiscardDownloadedArticles(NzbInfo* nzbInfo, FileInfo* fileInfo);

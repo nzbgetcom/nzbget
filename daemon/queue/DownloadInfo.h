@@ -108,6 +108,10 @@ public:
 	void SetDupeFallbackRound(int dupeFallbackRound) { m_dupeFallbackRound = dupeFallbackRound; }
 	const char* GetDupeOriginalMessageId() { return m_dupeOriginalMessageId; }
 	void SetDupeOriginalMessageId(const char* messageId) { m_dupeOriginalMessageId = messageId; }
+	int64 GetDupeExpectedOffset() { return m_dupeExpectedOffset; }
+	void SetDupeExpectedOffset(int64 dupeExpectedOffset) { m_dupeExpectedOffset = dupeExpectedOffset; }
+	int64 GetDupeExpectedEnd() { return m_dupeExpectedEnd; }
+	void SetDupeExpectedEnd(int64 dupeExpectedEnd) { m_dupeExpectedEnd = dupeExpectedEnd; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -125,6 +129,11 @@ private:
 	// the article's own (primary) message-id, saved before the first
 	// substitution so the primary can be tried as a revert source (not persisted)
 	CString m_dupeOriginalMessageId;
+	// decoded byte range a substituted (donor) article is expected to occupy,
+	// derived from already-finished neighbour articles at substitution time;
+	// -1 = unknown (not persisted)
+	int64 m_dupeExpectedOffset = -1;
+	int64 m_dupeExpectedEnd = -1;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;

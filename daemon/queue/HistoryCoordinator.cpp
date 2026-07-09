@@ -724,6 +724,8 @@ void HistoryCoordinator::ResetArticles(FileInfo* fileInfo, bool allFailed, bool 
 			pa->SetCrc(0);
 			pa->SetSegmentOffset(0);
 			pa->SetSegmentSize(0);
+			pa->SetDupeExpectedOffset(-1);
+			pa->SetDupeExpectedEnd(-1);
 		}
 	}
 }

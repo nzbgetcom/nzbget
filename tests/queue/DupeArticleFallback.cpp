@@ -245,4 +245,124 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackFindDonorMessageIdTest)
 	BOOST_CHECK(DupeArticleFallback::FindDonorMessageId(donorFile.get(), 2) == nullptr);
 }
 
+namespace
+{
+
+// decoded geometry of a downloaded article: [offset, offset + size)
+void FinishArticle(FileInfo* fileInfo, int index, int64 offset, int size)
+{
+	ArticleInfo* article = fileInfo->GetArticles()->at(index).get();
+	article->SetStatus(ArticleInfo::aiFinished);
+	article->SetSegmentOffset(offset);
+	article->SetSegmentSize(size);
+}
+
+} // namespace
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentOffsetTest)
+{
+	// three articles, decoded tiling 0..1000..2000..2500
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+	ArticleInfo* first = target->GetArticles()->at(0).get();
+	ArticleInfo* middle = target->GetArticles()->at(1).get();
+	ArticleInfo* last = target->GetArticles()->at(2).get();
+
+	// the first article of a file always begins at decoded offset 0
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), first), 0);
+
+	// no finished neighbours yet: interior boundaries are unknown
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), middle), -1);
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(target.get(), middle), -1);
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(target.get(), last), -1);
+
+	FinishArticle(target.get(), 0, 0, 1000);
+	FinishArticle(target.get(), 2, 2000, 500);
+	target->SetDecodedFileSize(2500);
+
+	// interior article must begin where the finished predecessor ends and end
+	// where the finished successor begins
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), middle), 1000);
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(target.get(), middle), 2000);
+
+	// the last article must end at the decoded file size
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(target.get(), last), 2500);
+
+	// the predecessor of the last article is not finished: its begin is unknown
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), last), -1);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackSegmentAlignedTest)
+{
+	// target decoded tiling: 0..1000..2000..2500; the middle article was
+	// substituted from a duplicate and its decoded placement must exactly
+	// occupy the slot between the finished neighbours
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+	ArticleInfo* middle = target->GetArticles()->at(1).get();
+
+	FinishArticle(target.get(), 0, 0, 1000);
+	FinishArticle(target.get(), 2, 2000, 500);
+	target->SetDecodedFileSize(2500);
+
+	// aligned donor: same decoded boundaries as the target article
+	FinishArticle(target.get(), 1, 1000, 1000);
+	BOOST_CHECK(DupeArticleFallback::SegmentAligned(target.get(), middle));
+
+	// drifted donor: begins 40 bytes late - would leave a zero-filled gap
+	// after part 1 and overwrite 40 bytes of part 3 (passes the encoded-size
+	// structural gate: the drift is far below the 1/16 per-part tolerance)
+	FinishArticle(target.get(), 1, 1040, 1000);
+	BOOST_CHECK(!DupeArticleFallback::SegmentAligned(target.get(), middle));
+
+	// drifted donor: begins early - would overwrite the tail of part 1
+	FinishArticle(target.get(), 1, 960, 1000);
+	BOOST_CHECK(!DupeArticleFallback::SegmentAligned(target.get(), middle));
+
+	// begin abuts but the donor part is short: zero-filled gap before part 3
+	FinishArticle(target.get(), 1, 1000, 960);
+	BOOST_CHECK(!DupeArticleFallback::SegmentAligned(target.get(), middle));
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackSegmentAlignedUnknownNeighborsTest)
+{
+	// neighbours not finished and file size unknown: nothing to validate
+	// against, the article is accepted provisionally (the completion-time
+	// re-validation of neighbours catches it once the geometry is known)
+	{
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		ArticleInfo* middle = target->GetArticles()->at(1).get();
+		FinishArticle(target.get(), 1, 1040, 1000);
+		BOOST_CHECK(DupeArticleFallback::SegmentAligned(target.get(), middle));
+
+		// an article without recorded decoded placement cannot be validated
+		middle->SetSegmentSize(0);
+		BOOST_CHECK(DupeArticleFallback::SegmentAligned(target.get(), middle));
+	}
+
+	// the first article is constrained even without neighbours: offset 0
+	{
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		ArticleInfo* first = target->GetArticles()->at(0).get();
+		FinishArticle(target.get(), 0, 40, 1000);
+		BOOST_CHECK(!DupeArticleFallback::SegmentAligned(target.get(), first));
+		FinishArticle(target.get(), 0, 0, 1000);
+		BOOST_CHECK(DupeArticleFallback::SegmentAligned(target.get(), first));
+	}
+
+	// the last article is constrained by the decoded file size
+	{
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+			{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+		ArticleInfo* last = target->GetArticles()->at(2).get();
+		target->SetDecodedFileSize(2500);
+		FinishArticle(target.get(), 2, 1960, 500);
+		BOOST_CHECK(!DupeArticleFallback::SegmentAligned(target.get(), last));
+		FinishArticle(target.get(), 2, 2000, 500);
+		BOOST_CHECK(DupeArticleFallback::SegmentAligned(target.get(), last));
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

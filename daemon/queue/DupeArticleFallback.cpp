@@ -70,6 +70,12 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		fileInfo->SetDupeAttemptedArticles(fileInfo->GetDupeAttemptedArticles() + 1);
 	}
 
+	// pin the decoded byte range this article must occupy, as far as it is
+	// already known from finished neighbour articles, so a donor article with
+	// drifted decoded boundaries is rejected before its bytes are written
+	articleInfo->SetDupeExpectedOffset(ExpectedSegmentOffset(fileInfo, articleInfo));
+	articleInfo->SetDupeExpectedEnd(ExpectedSegmentEnd(fileInfo, articleInfo));
+
 	articleInfo->SetMessageId(sources[round]);
 	articleInfo->SetDupeFallbackRound(round + 1);
 
@@ -349,4 +355,90 @@ bool DupeArticleFallback::SizesMatch(int64 size1, int64 size2, int div)
 {
 	int64 diff = size1 > size2 ? size1 - size2 : size2 - size1;
 	return diff <= std::max(size1, size2) / div;
+}
+
+static int FindArticleIndex(ArticleList* articles, ArticleInfo* articleInfo)
+{
+	for (size_t i = 0; i < articles->size(); i++)
+	{
+		if ((*articles)[i].get() == articleInfo)
+		{
+			return (int)i;
+		}
+	}
+	return -1;
+}
+
+int64 DupeArticleFallback::ExpectedSegmentOffset(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+	int index = FindArticleIndex(articles, articleInfo);
+	if (index < 0)
+	{
+		return -1;
+	}
+
+	if (index == 0)
+	{
+		// the first article of a file always decodes to offset 0
+		return 0;
+	}
+
+	ArticleInfo* prev = (*articles)[index - 1].get();
+	if (prev->GetStatus() == ArticleInfo::aiFinished && prev->GetSegmentSize() > 0)
+	{
+		return prev->GetSegmentOffset() + prev->GetSegmentSize();
+	}
+
+	return -1;
+}
+
+int64 DupeArticleFallback::ExpectedSegmentEnd(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+	int index = FindArticleIndex(articles, articleInfo);
+	if (index < 0)
+	{
+		return -1;
+	}
+
+	if (index == (int)articles->size() - 1)
+	{
+		// the last article of a file must decode up to the decoded file size
+		// (known once any article of the file was decoded)
+		return fileInfo->GetDecodedFileSize() > 0 ? fileInfo->GetDecodedFileSize() : -1;
+	}
+
+	ArticleInfo* next = (*articles)[index + 1].get();
+	if (next->GetStatus() == ArticleInfo::aiFinished && next->GetSegmentSize() > 0)
+	{
+		return next->GetSegmentOffset();
+	}
+
+	return -1;
+}
+
+bool DupeArticleFallback::SegmentAligned(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	int64 begin = articleInfo->GetSegmentOffset();
+	int size = articleInfo->GetSegmentSize();
+	if (size <= 0)
+	{
+		// no decoded placement recorded - nothing to validate against
+		return true;
+	}
+
+	int64 expectedOffset = ExpectedSegmentOffset(fileInfo, articleInfo);
+	if (expectedOffset >= 0 && begin != expectedOffset)
+	{
+		return false;
+	}
+
+	int64 expectedEnd = ExpectedSegmentEnd(fileInfo, articleInfo);
+	if (expectedEnd >= 0 && begin + size != expectedEnd)
+	{
+		return false;
+	}
+
+	return true;
 }
