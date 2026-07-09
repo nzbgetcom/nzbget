@@ -1434,4 +1434,94 @@ BOOST_AUTO_TEST_CASE(ContentMapperSevenZipDigestSkipTest)
 	BOOST_CHECK(!memcmp(reassembled.data(), inner.data(), 60));
 }
 
+BOOST_AUTO_TEST_CASE(HoledSourceTest)
+{
+	MemoryContentSource inner(Pattern(100, 17));
+	HoledSource holed(inner, {{30, 10}});
+
+	char buffer[100];
+	BOOST_CHECK(holed.Read(0, buffer, 30));		// clear of the hole
+	BOOST_CHECK(holed.Read(40, buffer, 60));	// clear of the hole
+	BOOST_CHECK(!holed.Read(25, buffer, 10));	// straddles the hole start
+	BOOST_CHECK(!holed.Read(35, buffer, 1));	// inside the hole
+	BOOST_CHECK(!holed.Read(0, buffer, 100));	// spans the hole entirely
+	BOOST_CHECK_EQUAL(holed.Size(), 100);
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperBuildRepairSetsTest)
+{
+	// a 3-volume store rar (40/40/20 of a 100-byte inner file) + a bare file
+	std::vector<char> inner = Pattern(100, 18);
+	std::vector<char> slice0(inner.begin(), inner.begin() + 40);
+	std::vector<char> slice1(inner.begin() + 40, inner.begin() + 80);
+	std::vector<char> slice2(inner.begin() + 80, inner.end());
+
+	std::vector<char> vol0 = BuildRar3StoreVolume(slice0, 100, false, true);
+	std::vector<char> vol1 = BuildRar3StoreVolume(slice1, 100, true, true);
+	std::vector<char> vol2 = BuildRar3StoreVolume(slice2, 100, true, false);
+	// per BuildRar3StoreVolume's layout the data region starts at
+	// 7 (sig) + 13 (main) + 32 + 9 ("inner.mkv") = 61
+	const int64 dataStart = 61;
+
+	std::vector<SetMember> members = {
+		{"rel.part01.rar", (int64)vol0.size()},
+		{"rel.part02.rar", (int64)vol1.size()},
+		{"rel.part03.rar", (int64)vol2.size()},
+		{"bare.mkv", 50}};
+
+	MemorySourceSet raw;
+	raw.Sources.push_back(std::make_unique<MemoryContentSource>(vol0));
+	raw.Sources.push_back(std::make_unique<MemoryContentSource>(vol1));
+	raw.Sources.push_back(std::make_unique<MemoryContentSource>(vol2));
+	raw.Sources.push_back(std::make_unique<MemoryContentSource>(Pattern(50, 19)));
+
+	// vol2: a data hole (repairable); vol3: a header hole (that volume
+	// degrades alone); bare: a plain hole (identity map)
+	std::vector<StreamRangeList> memberHoles(4);
+	memberHoles[1] = {{dataStart + 5, 10}};
+	memberHoles[2] = {{0, 20}};
+	memberHoles[3] = {{10, 5}};
+
+	HoledSourceSet sources(raw, memberHoles);
+	std::vector<RepairSetData> sets =
+		ContentMapper::BuildRepairSets(members, memberHoles, sources);
+	BOOST_REQUIRE_EQUAL(sets.size(), 2u);
+
+	// the rar set maps with volume 3 excluded (its holes stay for par2)
+	BOOST_REQUIRE_MESSAGE(sets[0].Map, sets[0].SkipReason);
+	BOOST_CHECK_EQUAL(sets[0].Map->GetInnerSize(), 100);
+	BOOST_CHECK_EQUAL(sets[0].Map->GetRuns()->size(), 2u);
+	BOOST_REQUIRE_EQUAL(sets[0].InnerHoles.size(), 1u);
+	BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Offset, 45);	// 40 + (66-61)
+	BOOST_CHECK_EQUAL(sets[0].InnerHoles[0].Size, 10);
+
+	// the bare file is its own identity-mapped set
+	BOOST_REQUIRE_MESSAGE(sets[1].Map, sets[1].SkipReason);
+	BOOST_CHECK_EQUAL(sets[1].Map->GetInnerSize(), 50);
+	BOOST_REQUIRE_EQUAL(sets[1].InnerHoles.size(), 1u);
+	BOOST_CHECK_EQUAL(sets[1].InnerHoles[0].Offset, 10);
+
+	// an unmappable set still reports (compressed single-volume rar)
+	{
+		std::vector<SetMember> compressedMembers = {{"c.rar", 0}};
+		MemorySourceSet compressedRaw;
+		compressedRaw.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice0, 100, false, false, "inner.mkv", 0x33)));
+		std::vector<StreamRangeList> compressedHoles = {{{70, 5}}};
+		HoledSourceSet compressedSources(compressedRaw, compressedHoles);
+		std::vector<RepairSetData> compressedSets = ContentMapper::BuildRepairSets(
+			compressedMembers, compressedHoles, compressedSources);
+		BOOST_REQUIRE_EQUAL(compressedSets.size(), 1u);
+		BOOST_CHECK(!compressedSets[0].Map);
+		BOOST_CHECK(!compressedSets[0].SkipReason.empty());
+	}
+
+	// sets without holes never appear
+	{
+		std::vector<StreamRangeList> noHoles(4);
+		HoledSourceSet cleanSources(raw, noHoles);
+		BOOST_CHECK(ContentMapper::BuildRepairSets(members, noHoles, cleanSources).empty());
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

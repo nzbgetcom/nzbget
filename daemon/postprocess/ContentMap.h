@@ -132,6 +132,36 @@ private:
 	int64 m_totalSize = 0;
 };
 
+/* wraps another source, refusing reads that intersect captured holes: a
+ * hole's bytes exist on disk (preallocated) but are garbage, and parsing
+ * them would build maps out of noise */
+class HoledSource : public ContentSource
+{
+public:
+	HoledSource(ContentSource& inner, StreamRangeList holes) :
+		m_inner(inner), m_holes(std::move(holes)) {}
+	virtual int64 Size() { return m_inner.Size(); }
+	virtual bool Read(int64 offset, void* buffer, int64 size);
+
+private:
+	ContentSource& m_inner;
+	StreamRangeList m_holes;
+};
+
+/* per-member hole-aware view over another source set */
+class HoledSourceSet : public ContentSourceSet
+{
+public:
+	HoledSourceSet(ContentSourceSet& inner, const std::vector<StreamRangeList>& memberHoles) :
+		m_inner(inner), m_memberHoles(memberHoles), m_wrapped(memberHoles.size()) {}
+	virtual ContentSource* GetSource(int memberIndex);
+
+private:
+	ContentSourceSet& m_inner;
+	const std::vector<StreamRangeList>& m_memberHoles;
+	std::vector<std::unique_ptr<HoledSource>> m_wrapped;
+};
+
 /* where the inner content stream lives inside a member set */
 class ContentMap
 {
@@ -159,6 +189,16 @@ private:
 	std::vector<ContentRun> m_runs;
 };
 
+/* one target-side set the repair stage can work on; Map is null exactly
+ * when SkipReason names why the set cannot cross-map (par2 still applies) */
+struct RepairSetData
+{
+	MemberSet Set;
+	std::unique_ptr<ContentMap> Map;
+	StreamRangeList InnerHoles;
+	std::string SkipReason;
+};
+
 class ContentMapper
 {
 public:
@@ -172,6 +212,13 @@ public:
 	 * the set is not store/copy-mappable (M1 and par2 still apply) */
 	static std::unique_ptr<ContentMap> BuildMap(const std::vector<SetMember>& members,
 		const MemberSet& set, ContentSourceSet& sources, std::string& skipReason);
+
+	/* target side: group members into sets, keep those with holed members,
+	 * build maps through (hole-aware) sources and translate member holes to
+	 * inner coordinates. Framing holes and holes of excluded members drop
+	 * out here - par2 owns them. */
+	static std::vector<RepairSetData> BuildRepairSets(const std::vector<SetMember>& members,
+		const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources);
 
 private:
 	static std::unique_ptr<ContentMap> BuildBareMap(const std::vector<SetMember>& members,

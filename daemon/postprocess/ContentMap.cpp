@@ -79,6 +79,37 @@ std::vector<MemberRange> CompositeSource::ToMembers(const StreamRange& logicalRa
 	return pieces;
 }
 
+bool HoledSource::Read(int64 offset, void* buffer, int64 size)
+{
+	for (const StreamRange& hole : m_holes)
+	{
+		if (offset < hole.End() && hole.Offset < offset + size)
+		{
+			return false;
+		}
+	}
+	return m_inner.Read(offset, buffer, size);
+}
+
+ContentSource* HoledSourceSet::GetSource(int memberIndex)
+{
+	if (memberIndex < 0 || memberIndex >= (int)m_wrapped.size())
+	{
+		return nullptr;
+	}
+	if (!m_wrapped[memberIndex])
+	{
+		ContentSource* inner = m_inner.GetSource(memberIndex);
+		if (!inner)
+		{
+			return nullptr;
+		}
+		m_wrapped[memberIndex] = std::make_unique<HoledSource>(
+			*inner, m_memberHoles[memberIndex]);
+	}
+	return m_wrapped[memberIndex].get();
+}
+
 StreamRangeList ContentMap::MapToInner(int memberIndex, const StreamRange& memberRange) const
 {
 	StreamRangeList innerRanges;
@@ -1467,4 +1498,55 @@ std::unique_ptr<ContentMap> ContentMapper::BuildSevenZipMap(const std::vector<Se
 	}
 
 	return map;
+}
+
+std::vector<RepairSetData> ContentMapper::BuildRepairSets(const std::vector<SetMember>& members,
+	const std::vector<StreamRangeList>& memberHoles, ContentSourceSet& sources)
+{
+	std::vector<RepairSetData> repairSets;
+
+	for (MemberSet& set : GroupSets(members))
+	{
+		bool anyHoles = false;
+		for (int memberIndex : set.Members)
+		{
+			anyHoles |= !memberHoles[memberIndex].empty();
+		}
+		if (!anyHoles)
+		{
+			continue;
+		}
+
+		RepairSetData data;
+		data.Set = set;
+		data.Map = BuildMap(members, set, sources, data.SkipReason);
+
+		if (data.Map)
+		{
+			for (int memberIndex : set.Members)
+			{
+				for (const StreamRange& hole : memberHoles[memberIndex])
+				{
+					for (const StreamRange& innerHole : data.Map->MapToInner(memberIndex, hole))
+					{
+						data.InnerHoles.push_back(innerHole);
+					}
+				}
+			}
+			std::sort(data.InnerHoles.begin(), data.InnerHoles.end(),
+				[](const StreamRange& range1, const StreamRange& range2)
+				{
+					return range1.Offset < range2.Offset;
+				});
+			if (data.InnerHoles.empty())
+			{
+				data.Map.reset();
+				data.SkipReason = "holes lie outside the mappable inner stream";
+			}
+		}
+
+		repairSets.push_back(std::move(data));
+	}
+
+	return repairSets;
 }
