@@ -359,7 +359,7 @@ BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)
 	BOOST_REQUIRE(!byName.empty());
 	BOOST_CHECK_EQUAL(byName[0]->GetFilename(), "rel.part02.rar");
 
-	// (2) renamed target pairs by member-specific suffix key
+	// (2) renamed target pairs by suffix key (unique within the donor window)
 	std::vector<FileInfo*> bySuffix = DupeStreamRepair::SelectDonorCandidates(
 		"other.part03.rar", 980, -1, 0, &donorNzb, DupeStreamRepair::MaxDonorCandidates);
 	BOOST_REQUIRE(!bySuffix.empty());
@@ -393,8 +393,8 @@ BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)
 	}
 	BOOST_CHECK(byName.size() <= (size_t)DupeStreamRepair::MaxDonorCandidates);
 
-	// bare-extension keys ("mkv") are not member-specific: tier 2 must NOT
-	// fire, so the closest-size donor comes first, not the file-list order
+	// a shared bare-extension key ("mkv") matches BOTH donor members - the
+	// uniqueness gate keeps tier 2 out, so the closest-size donor comes first
 	NzbInfo mkvNzb;
 	mkvNzb.GetFileList()->Add(BuildDonorFile("aaa.mkv", {500, 500}), false);
 	mkvNzb.GetFileList()->Add(BuildDonorFile("bbb.mkv", {490, 490}), false);
@@ -412,6 +412,39 @@ BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)
 		"zzz.mp4", 980, -1, 0, &mp4Nzb, DupeStreamRepair::MaxDonorCandidates);
 	BOOST_REQUIRE_EQUAL(digitExt.size(), 2u);
 	BOOST_CHECK_EQUAL(digitExt[0]->GetFilename(), "ep2.mp4");
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairRequiredCompareFloorTest)
+{
+	// large file, probes fully present: the full 16 KB floor stands
+	StreamRangeList holes = {{0, 1000}};
+	StreamRangeList donorRanges = {{0, 500000}, {500000, 500000}, {1000000, 500000}};
+	std::vector<int> probes = {1, 2};
+	BOOST_CHECK_EQUAL(DupeStreamRepair::RequiredCompareFloor(1500000, holes, donorRanges, probes),
+		16 * 1024);
+
+	// small file: floor scales to present bytes (80 KB file, 70 KB hole -> 10 KB)
+	StreamRangeList parHoles = {{0, 70000}};
+	StreamRangeList parRanges = {{0, 80000}};
+	std::vector<int> parProbes = {0};
+	BOOST_CHECK_EQUAL(DupeStreamRepair::RequiredCompareFloor(80000, parHoles, parRanges, parProbes),
+		10000);
+
+	// scattered present bytes: floor clamps to what the selected probes can
+	// actually reach (present = 6000 across three slivers, probe 0 reaches 2000)
+	StreamRangeList scatterHoles = {{2000, 8000}, {12000, 8000}, {22000, 8000}};
+	StreamRangeList scatterRanges = {{0, 10000}, {10000, 10000}, {20000, 10000}};
+	std::vector<int> oneProbe = {0};
+	BOOST_CHECK_EQUAL(DupeStreamRepair::RequiredCompareFloor(30000, scatterHoles, scatterRanges, oneProbe),
+		2000);
+
+	// probes reach fewer than 64 present bytes: identity unknowable - the
+	// unclamped base comes back so any achievable compare fails the floor
+	StreamRangeList tinyHoles = {{60, 999940}};
+	StreamRangeList tinyRanges = {{0, 500000}, {500000, 500000}};
+	std::vector<int> tinyProbes = {0};
+	BOOST_CHECK_EQUAL(DupeStreamRepair::RequiredCompareFloor(1000000, tinyHoles, tinyRanges, tinyProbes),
+		64);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

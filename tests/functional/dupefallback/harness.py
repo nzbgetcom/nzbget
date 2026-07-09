@@ -48,10 +48,14 @@ article "missing" on the active server, so no real Usenet access is needed):
   under different segmentation; damaged volume and par2 are both repaired
   byte-identically (final status FAILURE/PAR by design - the stand-in par2 is
   random bytes).
+* repostrenamed - a 3-member repost whose members were RENAMED (different
+  release base name, same volume suffixes): exact-name pairing cannot fire,
+  proving the unique-suffix-key tier pairs the damaged member with its donor
+  twin end-to-end.
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost]
+               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed]
                [--serial NNN] [--keep]
 """
 
@@ -556,6 +560,47 @@ def scenario_repost(daemon, t):
                integ_rar, integ_par, intact_2, intact_3))
 
 
+def scenario_repostrenamed(daemon, t):
+    """M1 tier-2 pairing end-to-end: the donor is a byte-identical repost
+    whose members were RENAMED (different release base name, same volume
+    suffixes), so exact-name pairing cannot fire and the unique-suffix-key
+    tier must pair the damaged member with its donor twin. No par2 members:
+    the item ends FAILURE/HEALTH; byte integrity and the counters are the
+    pass criteria."""
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    members = [
+        ('renA/x.part01.rar', 'Rel.part01.rar', vol, seg_primary, set()),
+        ('renA/x.part02.rar', 'Rel.part02.rar', vol, seg_primary, {2}),
+        ('renA/x.part03.rar', 'Rel.part03.rar', vol, seg_primary, set()),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 8100 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+
+    donor_members = [(m[0].replace('renA', 'renB'), m[1].replace('Rel.', 'Other.'),
+                      m[2], seg_donor, set()) for m in members]
+    for dm, m in zip(donor_members, members):
+        t.write_file(os.path.join('data', dm[0]), payloads[m[1]])
+
+    primary = build_multi_nzb(members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonRenamed', donor, True, 'ren-key', 50)
+    daemon.append(api, 'RelRenamed', primary, False, 'ren-key', 100)
+    h = daemon.wait_history(api, 'RelRenamed')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs)
+                for m in members)
+    return ('repostrenamed', integ and recov >= 1 and repaired >= 1,
+            'status=%s recovered=%d repair_logs=%d integrity=%s'
+            % (h['Status'], recov, repaired, integ))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -591,6 +636,7 @@ SCENARIOS = {
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
     'repost': scenario_repost,
+    'repostrenamed': scenario_repostrenamed,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -604,6 +650,9 @@ SCENARIO_OPTIONS = {
     # repost: ParCheck=auto runs par-check against a random-bytes stand-in
     # par2 after the repair - FAILURE/PAR is the EXPECTED final status
     'repost': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # repostrenamed: no par2 members; "auto" ends in a harmless
+    # "Nothing to par-check" after the repair handoff
+    'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

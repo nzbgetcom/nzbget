@@ -264,14 +264,15 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			{
 				continue;
 			}
-			if (RepairFile(destDir, target, donorNzb.get(), donor.InfoName))
+			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName);
+			if (outcome == roProductive)
 			{
 				consecutiveFailures = 0;
 			}
-			else if (++consecutiveFailures >= DonorFailureBail)
+			else if (outcome == roUnproductive && ++consecutiveFailures >= DonorFailureBail)
 			{
 				PrintMessage(Message::mkInfo,
-					"Skipping remaining files for duplicate %s (%i consecutive files failed identity verification)",
+					"Skipping remaining files for duplicate %s (%i consecutive files without a byte-identical match)",
 					*donor.InfoName, consecutiveFailures);
 				break;
 			}
@@ -290,8 +291,8 @@ void StreamRepairController::ExecRepair(const char* destDir,
 	}
 }
 
-bool StreamRepairController::RepairFile(const char* destDir, RepairTarget& target,
-	NzbInfo* donorNzb, const char* donorName)
+StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const char* destDir,
+	RepairTarget& target, NzbInfo* donorNzb, const char* donorName)
 {
 	BString<1024> filePath("%s%c%s", destDir, PATH_SEPARATOR, *target.Filename);
 
@@ -300,10 +301,11 @@ bool StreamRepairController::RepairFile(const char* destDir, RepairTarget& targe
 	{
 		PrintMessage(Message::mkWarning, "Could not open %s for stream repair: %s",
 			*filePath, *FileSystem::GetLastErrorMessage());
-		return false;
+		return roNoCost;
 	}
 
 	bool patched = false;
+	bool spentFetches = false;
 
 	for (FileInfo* donorFile : FindDonorFiles(target, donorNzb))
 	{
@@ -318,6 +320,7 @@ bool StreamRepairController::RepairFile(const char* destDir, RepairTarget& targe
 		{
 			continue;
 		}
+		spentFetches = true;
 
 		if (!VerifyDonor(file, target, donorFile, donorRanges))
 		{
@@ -333,7 +336,7 @@ bool StreamRepairController::RepairFile(const char* destDir, RepairTarget& targe
 	}
 
 	file.Close();
-	return patched;
+	return patched ? roProductive : spentFetches ? roUnproductive : roNoCost;
 }
 
 std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget& target,
@@ -377,18 +380,27 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 			{
 				return part1.first > part2.first;
 			});
-		for (int i = 0; i < (int)overlaps.size() && i < DupeStreamRepair::ProbeCount; i++)
+		int64 base = std::min(DupeStreamRepair::MinProbeCompareBytes,
+			std::max<int64>(64, target.DecodedFileSize - DupeStreamRepair::TotalSize(target.Holes)));
+		int64 pooled = 0;
+		for (const std::pair<int64, int>& candidate : overlaps)
 		{
-			probeParts.push_back(overlaps[i].second);
+			if ((int)probeParts.size() >= DupeStreamRepair::ProbeCount &&
+				(pooled >= base || (int)probeParts.size() >= DupeStreamRepair::ProbeCount * 2))
+			{
+				break;
+			}
+			probeParts.push_back(candidate.second);
+			pooled += candidate.first;
 		}
 	}
 
 	// the compare floor scales down for small files (a repost's par2
-	// volumes): everything present must match, but never less than 64
-	// bytes total - below that identity is unknowable and par2 owns it.
+	// volumes) and clamps to what the selected probes can actually reach;
+	// below 64 reachable bytes identity is unknowable and par2 owns it.
 	// Compared bytes accumulate ACROSS probes.
-	int64 requiredCompare = std::min(DupeStreamRepair::MinProbeCompareBytes,
-		std::max<int64>(64, target.DecodedFileSize - DupeStreamRepair::TotalSize(target.Holes)));
+	int64 requiredCompare = DupeStreamRepair::RequiredCompareFloor(
+		target.DecodedFileSize, target.Holes, donorRanges, probeParts);
 	int64 totalCompared = 0;
 	bool sawVariedData = false;
 
@@ -402,7 +414,7 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
 		ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
 			article->GetMessageId(), *donorFile->GetGroups());
-		if (!fetched.Success)
+		if (!fetched.Success || fetched.Data.empty())
 		{
 			continue; // inconclusive: the donor may simply miss this article
 		}

@@ -85,9 +85,18 @@ private:
 		const std::vector<CString>& memberNames);
 	void CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo,
 		std::vector<DonorSource>& donors);
+	// how a donor's attempt at one file ended: only attempts that actually
+	// spent fetches may advance the donor circuit breaker
+	enum ERepairOutcome
+	{
+		roNoCost,		// nothing fetched (file unopenable, no candidates)
+		roUnproductive,	// fetches spent, nothing written
+		roProductive	// bytes written
+	};
+
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
 		std::vector<DonorSource>& donors);
-	bool RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
+	ERepairOutcome RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
 		const char* donorName);
 	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb);
 	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,

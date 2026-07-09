@@ -62,6 +62,14 @@ public:
 		const StreamRangeList& holes, int probeCount);
 	static void SubtractCovered(StreamRangeList& ranges, const StreamRange& covered);
 
+	/* The identity-compare floor for one target/donor pair: everything
+	 * present must match, but never more than the SELECTED probe parts can
+	 * reach (their present overlap with the target), and never less than 64
+	 * bytes - below that identity is unknowable and the unclamped base floor
+	 * keeps the caller's accumulated compare short (reject). */
+	static int64 RequiredCompareFloor(int64 decodedFileSize, const StreamRangeList& holes,
+		const StreamRangeList& donorRanges, const std::vector<int>& probeParts);
+
 	/* Captures a stream-repair job on the owning NzbInfo for a media file
 	 * that completed with missing byte ranges. diskBasename is the file's
 	 * on-disk name at completion. Must be called within DownloadQueue-lock. */
