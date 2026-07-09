@@ -721,7 +721,7 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 			skipReason = "corrupt zip64 directory";
 			return nullptr;
 		}
-		cdDisk = GetLe32(eocd64 + 16);
+		cdDisk = GetLe32(eocd64 + 20);
 		entryCount = GetLe64(eocd64 + 32);
 		cdOffset = GetLe64(eocd64 + 48);
 	}
@@ -791,7 +791,9 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 				if (fieldId == 0x0001)
 				{
 					int64 valuePos = fieldPos + 4;
-					int64 fieldEnd = fieldPos + 4 + fieldSize;
+					// clamp to extraLen: a corrupt/adversarial fieldSize must
+					// never let the reads below run past the extra buffer
+					int64 fieldEnd = std::min<int64>(fieldPos + 4 + fieldSize, extraLen);
 					if (entry.UncompSize == 0xffffffff && valuePos + 8 <= fieldEnd)
 					{
 						entry.UncompSize = GetLe64(&extra[valuePos]);
@@ -869,7 +871,11 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 		return nullptr;
 	}
 	int64 dataPos = localPos + 30 + GetLe16(local + 26) + GetLe16(local + 28);
-	if (dataPos + (int64)primary.UncompSize > totalSize)
+	// compare in unsigned 64-bit space: primary.UncompSize comes from a
+	// zip64 extra field and can be adversarially huge, so this must not
+	// narrow it to int64 before the check (that could wrap negative and
+	// let an implausible geometry through)
+	if (dataPos > totalSize || primary.UncompSize > (uint64)(totalSize - dataPos))
 	{
 		skipReason = "implausible data run geometry";
 		return nullptr;
