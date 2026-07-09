@@ -674,7 +674,7 @@ def _xpack_run(daemon, t, tag, primary_members, donor_members, payloads):
         'xpack': _grep_log(t, 'Cross-packing repair of'),
         'repaired': _grep_log(t, 'cross-packing'),
         'rejected': _grep_log(t, 'content identity not confirmed'),
-        'missing': _grep_log(t, 'still missing after all duplicates'),
+        'missing': _grep_log(t, 'still missing after stream repair'),
     }
     return h, integrity, counters
 

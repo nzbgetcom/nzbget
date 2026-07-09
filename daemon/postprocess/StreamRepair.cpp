@@ -850,7 +850,7 @@ void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& tar
 		{
 			m_holesRemain = true;
 			PrintMessage(Message::mkInfo,
-				"Stream repair of %s: %.1f MB still missing after all duplicates (left to par-repair)",
+				"Stream repair of %s: %.1f MB still missing after stream repair (left to par-repair)",
 				*target.Filename, DupeStreamRepair::TotalSize(target.Holes) / 1024.0 / 1024.0);
 		}
 	}

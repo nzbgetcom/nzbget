@@ -114,7 +114,16 @@ bool RarVolume::Read()
 		return false;
 	}
 
-	DiskContentSource source(file, FileSystem::FileSize(m_filename.c_str()));
+	// size the source through the open handle: a path-based stat could race
+	// a concurrent rename/replace and disagree with the handle's file
+	int64 size = file.Seek(0, DiskFile::soEnd) ? file.Position() : -1;
+	if (size < 0 || !file.Seek(0))
+	{
+		file.Close();
+		return false;
+	}
+
+	DiskContentSource source(file, size);
 	bool ok = ReadFrom(source);
 	file.Close();
 	return ok;

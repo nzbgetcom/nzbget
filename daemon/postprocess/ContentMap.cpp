@@ -306,7 +306,6 @@ ParsedName ParseMemberName(const std::string& name)
 struct SetBucket
 {
 	MemberSet::EFormat Format;
-	int FirstMember;	// listing position of the earliest member (set order)
 	std::vector<std::pair<int, int>> Volumes;	// (volume, memberIndex)
 	bool HasFinal = false;	// old-naming .rar seen / spanned .zip seen
 	int FinalMember = -1;
@@ -615,8 +614,7 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 {
 	// bucket keys: scheme family + lowercased base name
 	std::vector<std::pair<std::string, SetBucket>> buckets;
-	auto bucketFor = [&buckets](const std::string& key, MemberSet::EFormat format,
-		int memberIndex) -> SetBucket&
+	auto bucketFor = [&buckets](const std::string& key, MemberSet::EFormat format) -> SetBucket&
 	{
 		for (std::pair<std::string, SetBucket>& entry : buckets)
 		{
@@ -625,7 +623,7 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 				return entry.second;
 			}
 		}
-		buckets.emplace_back(key, SetBucket{format, memberIndex, {}, false, -1});
+		buckets.emplace_back(key, SetBucket{format, {}, false, -1});
 		return buckets.back().second;
 	};
 
@@ -637,14 +635,14 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 		switch (parsed.Scheme)
 		{
 			case ParsedName::psRarNew:
-				bucketFor("rarnew:" + parsed.Base, MemberSet::mfRar, (int)i)
+				bucketFor("rarnew:" + parsed.Base, MemberSet::mfRar)
 					.Volumes.emplace_back(parsed.Volume, (int)i);
 				consumed[i] = true;
 				break;
 
 			case ParsedName::psRarOldFirst:
 			{
-				SetBucket& bucket = bucketFor("rarold:" + parsed.Base, MemberSet::mfRar, (int)i);
+				SetBucket& bucket = bucketFor("rarold:" + parsed.Base, MemberSet::mfRar);
 				bucket.HasFinal = true;	// the .rar volume leads the old naming
 				bucket.Volumes.emplace_back(0, (int)i);
 				consumed[i] = true;
@@ -652,20 +650,20 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 			}
 
 			case ParsedName::psRarOld:
-				bucketFor("rarold:" + parsed.Base, MemberSet::mfRar, (int)i)
+				bucketFor("rarold:" + parsed.Base, MemberSet::mfRar)
 					.Volumes.emplace_back(parsed.Volume, (int)i);
 				consumed[i] = true;
 				break;
 
 			case ParsedName::psZipSpan:
-				bucketFor("zip:" + parsed.Base, MemberSet::mfZip, (int)i)
+				bucketFor("zip:" + parsed.Base, MemberSet::mfZip)
 					.Volumes.emplace_back(parsed.Volume, (int)i);
 				consumed[i] = true;
 				break;
 
 			case ParsedName::psZipFinal:
 			{
-				SetBucket& bucket = bucketFor("zip:" + parsed.Base, MemberSet::mfZip, (int)i);
+				SetBucket& bucket = bucketFor("zip:" + parsed.Base, MemberSet::mfZip);
 				bucket.HasFinal = true;
 				bucket.FinalMember = (int)i;
 				consumed[i] = true;
@@ -673,19 +671,19 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 			}
 
 			case ParsedName::psSevenSingle:
-				bucketFor("7z:" + parsed.Base, MemberSet::mfSevenZip, (int)i)
+				bucketFor("7z:" + parsed.Base, MemberSet::mfSevenZip)
 					.Volumes.emplace_back(1, (int)i);
 				consumed[i] = true;
 				break;
 
 			case ParsedName::psSevenSplit:
-				bucketFor("7zsplit:" + parsed.Base, MemberSet::mfSevenZip, (int)i)
+				bucketFor("7zsplit:" + parsed.Base, MemberSet::mfSevenZip)
 					.Volumes.emplace_back(parsed.Volume, (int)i);
 				consumed[i] = true;
 				break;
 
 			case ParsedName::psSplit:
-				bucketFor("split:" + parsed.Base, MemberSet::mfSplit, (int)i)
+				bucketFor("split:" + parsed.Base, MemberSet::mfSplit)
 					.Volumes.emplace_back(parsed.Volume, (int)i);
 				consumed[i] = true;
 				break;
@@ -1044,7 +1042,10 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 		uint32 eocd64Disk = GetLe32(window.data() + eocdPos - 20 + 4);
 		uint64 eocd64Offset = GetLe64(window.data() + eocdPos - 20 + 8);
 		char eocd64[56];
+		// bound the offset in unsigned space BEFORE the int64 cast: an
+		// adversarial zip64 value near 2^63 must not signed-overflow the sum
 		if (eocd64Disk >= diskBases.size() ||
+			eocd64Offset > (uint64)(totalSize - diskBases[eocd64Disk]) ||
 			!logical.Read(diskBases[eocd64Disk] + (int64)eocd64Offset, eocd64, sizeof(eocd64)) ||
 			GetLe32(eocd64) != 0x06064b50)
 		{
@@ -1055,7 +1056,9 @@ std::unique_ptr<ContentMap> ContentMapper::BuildZipMap(const std::vector<SetMemb
 		entryCount = GetLe64(eocd64 + 32);
 		cdOffset = GetLe64(eocd64 + 48);
 	}
-	if (cdDisk >= diskBases.size())
+	// same unsigned-space bound as above: cdOffset may be a 64-bit zip64 value
+	if (cdDisk >= diskBases.size() ||
+		cdOffset > (uint64)(totalSize - diskBases[cdDisk]))
 	{
 		skipReason = "corrupt zip directory";
 		return nullptr;

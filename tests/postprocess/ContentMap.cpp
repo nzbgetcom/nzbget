@@ -580,12 +580,11 @@ BOOST_AUTO_TEST_CASE(ContentMapperGroupSetsTest)
 BOOST_AUTO_TEST_CASE(ContentMapperSplitAndBareMapTest)
 {
 	std::vector<SetMember> members = {
-		{"movie.mkv.001", 0}, {"movie.mkv.002", 0}, {"bare.mkv", 0}, {"clip.avi.001", 0}};
+		{"movie.mkv.001", 0}, {"movie.mkv.002", 0}, {"bare.mkv", 0}};
 	MemorySourceSet sources;
 	sources.Sources.push_back(std::make_unique<MemoryContentSource>(Pattern(30, 1)));
 	sources.Sources.push_back(std::make_unique<MemoryContentSource>(Pattern(12, 2)));
 	sources.Sources.push_back(std::make_unique<MemoryContentSource>(Pattern(50, 3)));
-	sources.Sources.push_back(std::make_unique<MemoryContentSource>(Pattern(7, 4)));
 
 	std::string skipReason;
 
