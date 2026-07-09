@@ -1233,4 +1233,81 @@ BOOST_AUTO_TEST_CASE(ContentMapperSevenZipAdversarialTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(ContentMapperSevenZipSubstreamsTest)
+{
+	// one Copy folder carrying two files as substreams (solid-style), plus an
+	// empty-stream directory entry that owns no data: names must align to
+	// substreams folder-major and offsets accumulate inside the folder
+	std::vector<char> nfo = Pattern(40, 24);
+	std::vector<char> inner = Pattern(60, 25);
+	std::vector<char> data;
+	data.insert(data.end(), nfo.begin(), nfo.end());
+	data.insert(data.end(), inner.begin(), inner.end());
+
+	std::vector<char> header = {0x01, 0x04, 0x06};	// kHeader, kMainStreamsInfo, kPackInfo
+	Put7zNumber(header, 0);						// pack pos
+	Put7zNumber(header, 1);						// one pack stream
+	header.push_back(0x09);						// kSize
+	Put7zNumber(header, 100);
+	header.push_back(0x00);						// kEnd (pack info)
+	header.push_back(0x07);						// kUnPackInfo
+	header.push_back(0x0b);						// kFolder
+	Put7zNumber(header, 1);						// folder count
+	header.push_back(0x00);						// external
+	Put7zNumber(header, 1);						// one coder
+	header.push_back(0x01);						// flags: id size 1
+	header.push_back(0x00);						// Copy
+	header.push_back(0x0c);						// kCodersUnpackSize
+	Put7zNumber(header, 100);
+	header.push_back(0x00);						// kEnd (unpack info)
+	header.push_back(0x08);						// kSubStreamsInfo
+	header.push_back(0x0d);						// kNumUnpackStream
+	Put7zNumber(header, 2);
+	header.push_back(0x09);						// kSize: all but the last substream
+	Put7zNumber(header, 40);
+	header.push_back(0x00);						// kEnd (substreams info)
+	header.push_back(0x00);						// kEnd (streams info)
+	header.push_back(0x05);						// kFilesInfo
+	Put7zNumber(header, 3);
+	header.push_back(0x0e);						// kEmptyStream
+	Put7zNumber(header, 1);
+	header.push_back((char)0x80);				// bit 0 (MSB-first): the directory
+	std::vector<char> names;
+	names.push_back(0x00);						// external
+	for (const char* name : {"sample", "info.nfo", "movie.mkv"})
+	{
+		for (const char* ch = name; *ch; ch++)
+		{
+			names.push_back(*ch);
+			names.push_back(0x00);
+		}
+		names.push_back(0x00);
+		names.push_back(0x00);
+	}
+	header.push_back(0x11);						// kName
+	Put7zNumber(header, names.size());
+	header.insert(header.end(), names.begin(), names.end());
+	header.push_back(0x00);						// end of file properties
+	header.push_back(0x00);						// kEnd (header)
+
+	std::vector<SetMember> members = {{"rel.7z", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		Wrap7zHeader(header, data)));
+	MemberSet set{MemberSet::mfSevenZip, {0}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason);
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK_EQUAL(map->GetInnerName(), "movie.mkv");
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 60);
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 1u);
+	BOOST_CHECK_EQUAL((*map->GetRuns())[0].MemberOffset, 32 + 40);
+
+	std::vector<char> reassembled(60);
+	const ContentRun& run = (*map->GetRuns())[0];
+	BOOST_REQUIRE(sources.GetSource(0)->Read(run.MemberOffset, reassembled.data(), 60));
+	BOOST_CHECK(!memcmp(reassembled.data(), inner.data(), 60));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
