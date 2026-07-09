@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include "RarReader.h"
+#include "StreamCrypto.h"
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
@@ -44,6 +45,7 @@ static const uint16 RAR3_FILE_ADDSIZE = 0x0100;
 static const uint16 RAR3_FILE_SPLITBEFORE = 0x0001;
 static const uint16 RAR3_FILE_SPLITAFTER = 0x0002;
 static const uint16 RAR3_FILE_PASSWORD = 0x0004;
+static const uint16 RAR3_FILE_SALT = 0x0400;	// LHD_SALT: 8-byte salt after the name
 
 static const uint16 RAR3_ENDARC_NEXTVOL = 0x0001;
 static const uint16 RAR3_ENDARC_DATACRC = 0x0002;
@@ -69,6 +71,7 @@ static const uint8 RAR5_FILE_CRC = 0x04;
 static const uint8 RAR5_FILE_EXTRATIME = 0x03;
 static const uint8 RAR5_FILE_EXTRATIMEUNIXFORMAT = 0x01;
 static const uint8 RAR5_FILE_EXTRACRYPT = 0x01;
+static const uint8 RAR5_CRYPT_PSWCHECK = 0x01;	// crypt-record flag: password check present
 
 static const uint8 RAR5_ENDARC_NEXTVOL = 0x01;
 
@@ -404,6 +407,18 @@ bool RarVolume::ReadRar3File(RarSourceCursor& file, RarBlock& block, RarFile& in
 	if (!Read(file, &block, (char*)name, namelen)) return false;
 	name[namelen] = '\0';
 	innerFile.m_filename = name;
+
+	// the 8-byte per-file salt sits right after the name (before any EXT_TIME
+	// data) when the SALT flag is set; verified against unrar ReadHeader15 and
+	// the encdata testdata. Read it through the block so the trailing skip that
+	// tolerates the rest of the header stays balanced. A truncated salt fails
+	// the read and closes the parse.
+	if (block.flags & RAR3_FILE_SALT)
+	{
+		if (!Read(file, &block, innerFile.m_salt, sizeof(innerFile.m_salt))) return false;
+		innerFile.m_hasSalt = true;
+	}
+
 	debug("%i, %i, %s", (int)block.trailsize, (int)namelen, (const char*)name);
 
 	return true;
@@ -599,6 +614,12 @@ bool RarVolume::ReadRar5File(RarSourceCursor& file, RarBlock& block, RarFile& in
 			if (type == RAR5_FILE_EXTRACRYPT)
 			{
 				innerFile.m_encryptedData = true;
+				// content bytes of this record left after the type field; the
+				// crypt parse is bounded to it so a truncated record can never
+				// over-read into the next record or the data area
+				uint64 typeBytes = trailsize - block.trailsize;
+				uint64 contentLen = len >= typeBytes ? len - typeBytes : 0;
+				if (!ReadRar5Crypt(file, block, innerFile, contentLen)) return false;
 			}
 
 			if (type == RAR5_FILE_EXTRATIME)
@@ -630,6 +651,63 @@ bool RarVolume::ReadRar5File(RarSourceCursor& file, RarBlock& block, RarFile& in
 	return true;
 }
 
+// A vint reader bounded to a byte budget, so parsing a hostile extra record
+// stops at the record edge instead of running into whatever follows. Decrements
+// `avail` per byte consumed; returns false the moment the budget is exhausted.
+bool RarVolume::ReadVLimited(RarSourceCursor& file, RarBlock* block, uint64* result, uint64& avail)
+{
+	*result = 0;
+	uint8 val;
+	uint8 bits = 0;
+	do
+	{
+		if (avail == 0) return false;
+		if (!Read(file, block, &val, sizeof(val))) return false;
+		avail -= 1;
+		*result += (uint64)(val & 0x7f) << bits;
+		bits += 7;
+	} while (val & 0x80);
+
+	return true;
+}
+
+// Parse an FHEXTRA_CRYPT (type 0x01) file-crypt record body into innerFile.
+// contentLen is the record's byte count after the type field. Every field read
+// is bounded to the remaining content, so a truncated or lying record is
+// ignored (crypt stays unpopulated) rather than over-read; the caller's Skip
+// consumes whatever this leaves. A genuine short read of the source (return
+// false) fails the whole parse closed. Layout (RAR5 technote, cross-checked
+// against the encdata testdata): version(vint,0=AES256), flags(vint,
+// bit0=password check), kdfCount(1), salt(16), IV(16), checkValue(12 iff flag).
+bool RarVolume::ReadRar5Crypt(RarSourceCursor& file, RarBlock& block, RarFile& innerFile, uint64 contentLen)
+{
+	uint64 avail = contentLen;
+	RarFile::Rar5Crypt crypt;
+
+	if (!ReadVLimited(file, &block, &crypt.Version, avail)) return true;
+	if (!ReadVLimited(file, &block, &crypt.Flags, avail)) return true;
+
+	if (avail < sizeof(crypt.KdfCount) + sizeof(crypt.Salt) + sizeof(crypt.Iv)) return true;
+	if (!Read(file, &block, &crypt.KdfCount, sizeof(crypt.KdfCount))) return false;
+	avail -= sizeof(crypt.KdfCount);
+	if (!Read(file, &block, crypt.Salt, sizeof(crypt.Salt))) return false;
+	avail -= sizeof(crypt.Salt);
+	if (!Read(file, &block, crypt.Iv, sizeof(crypt.Iv))) return false;
+	avail -= sizeof(crypt.Iv);
+
+	crypt.HasCheck = (crypt.Flags & RAR5_CRYPT_PSWCHECK) != 0;
+	if (crypt.HasCheck)
+	{
+		if (avail < sizeof(crypt.CheckValue)) return true;	// flagged but truncated: ignore
+		if (!Read(file, &block, crypt.CheckValue, sizeof(crypt.CheckValue))) return false;
+		avail -= sizeof(crypt.CheckValue);
+	}
+
+	innerFile.m_crypt = crypt;
+	innerFile.m_hasCrypt = true;
+	return true;
+}
+
 void RarVolume::LogDebugInfo()
 {
 #ifdef DEBUG
@@ -648,96 +726,14 @@ void RarVolume::LogDebugInfo()
 
 bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 {
-	WString wstr(m_password.c_str());
-	int len = wstr.Length();
-	if (len == 0) return false;
-
-	CharBuffer seed(len * 2 + 8);
-	for (int i = 0; i < len; i++)
-	{
-		wchar_t ch = wstr[i];
-		seed[i * 2] = ch & 0xFF;
-		seed[i * 2 + 1] = (ch & 0xFF00) >> 8;
-	}
-	memcpy(seed + len * 2, salt, 8);
-
-	debug("seed: %s", *Util::FormatBuffer((const char*)seed, seed.Size()));
-
-#ifndef DISABLE_TLS
-	OpenSSL::EVPMdCtxPtr context{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
-	if (!context || !EVP_DigestInit(context.get(), EVP_sha1()))
-	{
-		return false;
-	}
-#else
-	return false;
-#endif
-
-	uint8 digest[20];
-	const int rounds = 0x40000;
-
-	for (int i = 0; i < rounds; i++)
-	{
-#ifndef DISABLE_TLS
-		EVP_DigestUpdate(context.get(), *seed, seed.Size());
-#endif
-
-		uint8 buf[3];
-		buf[0] = (uint8)i;
-		buf[1] = (uint8)(i >> 8);
-		buf[2] = (uint8)(i >> 16);
-
-#ifndef DISABLE_TLS
-		EVP_DigestUpdate(context.get(), buf, sizeof(buf));
-#endif
-
-		if (i % (rounds / 16) == 0)
-		{
-#ifndef DISABLE_TLS
-			OpenSSL::EVPMdCtxPtr ivContext{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
-			if (ivContext)
-			{
-				EVP_MD_CTX_copy(ivContext.get(), context.get());
-				EVP_DigestFinal(ivContext.get(), digest, nullptr);
-			}
-#endif
-			m_decryptIV[i / (rounds / 16)] = digest[sizeof(digest) - 1];
-		}
-	}
-
-#ifndef DISABLE_TLS
-	EVP_DigestFinal(context.get(), digest, nullptr);
-#endif
-
-	debug("digest: %s", *Util::FormatBuffer((const char*)digest, sizeof(digest)));
-
-	for (int i = 0; i < 4; i++)
-	{
-		for (int j = 0; j < 4; j++)
-		{
-			m_decryptKey[i * 4 + j] = digest[i * 4 + 3 - j];
-		}
-	}
-
-	debug("key: %s", *Util::FormatBuffer((const char*)m_decryptKey, sizeof(m_decryptKey)));
-	debug("iv: %s", *Util::FormatBuffer((const char*)m_decryptIV, sizeof(m_decryptIV)));
-
-	return true;
+	// key schedule lives in StreamCrypto so header decryption here and M3 stream
+	// repair derive identical keys; writes m_decryptKey[0..15] and m_decryptIV
+	return StreamCrypto::DeriveRar3(m_password.c_str(), salt, m_decryptKey, m_decryptIV);
 }
 
 bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 {
-	if (kdfCount > 24) return false;
-
-	int iterations = 1 << kdfCount;
-
-#ifndef DISABLE_TLS
-	if (!PKCS5_PBKDF2_HMAC(m_password.c_str(), m_password.size(), salt, 16,
-		iterations, EVP_sha256(), sizeof(m_decryptKey), m_decryptKey)) return false;
-	return true;
-#else
-	return false;
-#endif
+	return StreamCrypto::DeriveRar5(m_password.c_str(), kdfCount, salt, m_decryptKey);
 }
 
 bool RarVolume::DecryptInit(int keyLength)
@@ -751,6 +747,11 @@ bool RarVolume::DecryptInit(int keyLength)
 		keyLength == 128 ? EVP_aes_128_cbc() : EVP_aes_256_cbc(),
 		m_decryptKey, m_decryptIV))
 		return false;
+	// RAR encrypts headers/data as raw CBC with no PKCS#7 padding. Leaving
+	// OpenSSL's default padding on makes EVP_DecryptUpdate buffer the final
+	// block, so a single 16-byte call yields nothing (outlen 0) and the block
+	// stream comes back garbage - which is why -hp header parsing never worked.
+	EVP_CIPHER_CTX_set_padding(m_context.get(), 0);
 	return true;
 #else
 	return false;
@@ -760,10 +761,11 @@ bool RarVolume::DecryptInit(int keyLength)
 bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 {
 #ifndef DISABLE_TLS
-	uint8 outbuf[32];
+	// padding is disabled in DecryptInit, so one 16-byte block in yields exactly
+	// one 16-byte block out
 	int outlen = 0;
-	if (!EVP_DecryptUpdate(m_context.get(), outbuf, &outlen, in, 16)) return false;
-	memcpy(out, outbuf + outlen, 16);
+	if (!EVP_DecryptUpdate(m_context.get(), out, &outlen, in, 16)) return false;
+	if (outlen != 16) return false;
 	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
 	return true;
 #else

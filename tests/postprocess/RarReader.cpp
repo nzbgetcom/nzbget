@@ -200,73 +200,69 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 		BOOST_CHECK_EQUAL(volume.GetVersion(), 3);
 		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
 	}
-
-	// {
-	// 	RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encnam.part01.rar").string().c_str());
-	// 	volume.SetPassword("123");
-	// 	BOOST_CHECK_EQUAL(volume.Read(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVersion(), 3);
-	// 	BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 0);
-	// }
-	// {
-	// 	RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile3encnam.part02.rar").string().c_str());
-	// 	volume.SetPassword("123");
-	// 	BOOST_CHECK_EQUAL(volume.Read(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVersion(), 3);
-	// 	BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 1);
-	// }
-	// {
-	// 	RarVolume volume((testDataDir + "/testfile3encnam.part03.rar").string().c_str());
-	// 	volume.SetPassword("123");
-	// 	BOOST_CHECK_EQUAL(volume.Read(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVersion(), 3);
-	// 	BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-	// 	BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 2);
-	// }
 }
 
-// BOOST_AUTO_TEST_CASE(Rar5EncryptedNames)
-// {
-// 	{
-// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part01.rar").string().c_str());
-// 		volume.SetPassword("123");
-// 		BOOST_CHECK_EQUAL(volume.Read(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
-// 		BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 0);
-// 	}
-// 	{
-// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part02.rar").string().c_str());
-// 		volume.SetPassword("123");
-// 		BOOST_CHECK_EQUAL(volume.Read(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
-// 		BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 1);
-// 	}
-// 	{
-// 		RarVolume volume((testDataDir + "/testfile5encnam.part03.rar").string().c_str());
-// 		volume.SetPassword("123");
-// 		BOOST_CHECK_EQUAL(volume.Read(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
-// 		BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
-// 		BOOST_CHECK_EQUAL(volume.GetVolumeNo(), 2);
-// 	}
+// The header-encrypted (-hp) volumes are the byte-identical regression net for
+// the rar3/rar5 KDFs: they only parse if the derived key+IV exactly reproduce
+// what WinRAR used. If the StreamCrypto extraction changed a single byte of the
+// SHA-1 swizzle, the IV sampling points, or the PBKDF2 call, these fail. The
+// stale, no-longer-compiling password blocks that used to sit here (old
+// testDataDir/PATH_SEPARATOR API) are replaced with active fs::path tests.
+BOOST_AUTO_TEST_CASE(Rar3EncryptedNamesKdfTest)
+{
+	const char* names[] = {
+		"testfile3encnam.part01.rar",
+		"testfile3encnam.part02.rar",
+		"testfile3encnam.part03.rar"
+	};
+	for (uint32 i = 0; i < 3; i++)
+	{
+		const fs::path file = TEST_DATA_DIR / names[i];
+		RarVolume volume(file.string().c_str());
+		volume.SetPassword("123");
+		BOOST_CHECK_EQUAL(volume.Read(), true);
+		BOOST_CHECK_EQUAL(volume.GetVersion(), 3);
+		BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
+		BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
+		BOOST_CHECK_EQUAL(volume.GetVolumeNo(), i);
+		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
+		BOOST_REQUIRE(!volume.GetFiles()->empty());
+		// the decrypted header must yield the real inner name
+		BOOST_CHECK_EQUAL(volume.GetFiles()->front().GetFilename(), "testfile3encnam.dat");
+	}
+}
 
-// 	{
-// 		RarVolume volume((testDataDir + PATH_SEPARATOR + "testfile5encnam.part01.rar").string().c_str());
-// 		BOOST_CHECK_EQUAL(volume.Read(), false);
-// 		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
-// 		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
-// 	}
-// }
+BOOST_AUTO_TEST_CASE(Rar5EncryptedNamesKdfTest)
+{
+	const char* names[] = {
+		"testfile5encnam.part01.rar",
+		"testfile5encnam.part02.rar",
+		"testfile5encnam.part03.rar"
+	};
+	for (uint32 i = 0; i < 3; i++)
+	{
+		const fs::path file = TEST_DATA_DIR / names[i];
+		RarVolume volume(file.string().c_str());
+		volume.SetPassword("123");
+		BOOST_CHECK_EQUAL(volume.Read(), true);
+		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
+		BOOST_CHECK_EQUAL(volume.GetMultiVolume(), true);
+		BOOST_CHECK_EQUAL(volume.GetNewNaming(), true);
+		BOOST_CHECK_EQUAL(volume.GetVolumeNo(), i);
+		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
+		BOOST_REQUIRE(!volume.GetFiles()->empty());
+		BOOST_CHECK_EQUAL(volume.GetFiles()->front().GetFilename(), "testfile5encnam.dat");
+	}
+
+	// no password: an -hp volume must fail closed and still report encrypted
+	{
+		const fs::path file = TEST_DATA_DIR / "testfile5encnam.part01.rar";
+		RarVolume volume(file.string().c_str());
+		BOOST_CHECK_EQUAL(volume.Read(), false);
+		BOOST_CHECK_EQUAL(volume.GetVersion(), 5);
+		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
+	}
+}
 
 #endif
 

@@ -65,6 +65,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/StreamCrypto.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/StreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp

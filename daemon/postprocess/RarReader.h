@@ -51,6 +51,21 @@ private:
 class RarFile
 {
 public:
+	// rar5 per-file encryption parameters (FHEXTRA_CRYPT record, type 0x01).
+	// The on-disk field order and sizes are fixed by the RAR5 format; see
+	// RarVolume::ReadRar5Crypt. CheckValue holds the raw 12 bytes (8-byte
+	// password check + 4-byte checksum) and is meaningful only if HasCheck.
+	struct Rar5Crypt
+	{
+		uint64 Version = 0;
+		uint64 Flags = 0;
+		uint8 KdfCount = 0;
+		uint8 Salt[16] = {};
+		uint8 Iv[16] = {};
+		uint8 CheckValue[12] = {};
+		bool HasCheck = false;
+	};
+
 	const char* GetFilename() const { return m_filename.c_str(); }
 	uint32 GetTime() { return m_time; }
 	uint32 GetAttr() { return m_attr; }
@@ -62,6 +77,12 @@ public:
 	int64 GetPackedSize() { return m_packedSize; }
 	int64 GetDataOffset() { return m_dataOffset; }
 	bool GetEncryptedData() { return m_encryptedData; }
+	// rar3: the 8-byte per-file salt stored after the filename when the file
+	// header carries the SALT flag (0x0400). Valid only if GetHasSalt().
+	bool GetHasSalt() { return m_hasSalt; }
+	const uint8* GetSalt() { return m_salt; }
+	// rar5: the parsed file-crypt record, or nullptr when the file has none.
+	const Rar5Crypt* GetCrypt() { return m_hasCrypt ? &m_crypt : nullptr; }
 private:
 	std::string m_filename;
 	uint32 m_time = 0;
@@ -74,6 +95,10 @@ private:
 	int64 m_packedSize = 0;
 	int64 m_dataOffset = -1;
 	bool m_encryptedData = false;
+	bool m_hasSalt = false;
+	uint8 m_salt[8] = {};
+	bool m_hasCrypt = false;
+	Rar5Crypt m_crypt;
 	friend class RarVolume;
 };
 
@@ -147,6 +172,8 @@ private:
 	RarBlock ReadRar5Block(RarSourceCursor& file);
 	bool ReadRar3File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile);
 	bool ReadRar5File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile);
+	bool ReadRar5Crypt(RarSourceCursor& file, RarBlock& block, RarFile& innerFile, uint64 contentLen);
+	bool ReadVLimited(RarSourceCursor& file, RarBlock* block, uint64* result, uint64& avail);
 	bool DecryptRar3Prepare(const uint8 salt[8]);
 	bool DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16]);
 	bool DecryptInit(int keyLength);
