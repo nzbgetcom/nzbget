@@ -69,6 +69,176 @@ std::vector<char> Pattern(int size, char seed)
 	return data;
 }
 
+void PutLe16(std::vector<char>& out, uint16 value)
+{
+	out.push_back((char)(value & 0xff));
+	out.push_back((char)((value >> 8) & 0xff));
+}
+
+void PutLe32(std::vector<char>& out, uint32 value)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		out.push_back((char)((value >> (8 * i)) & 0xff));
+	}
+}
+
+void PutVint(std::vector<char>& out, uint64 value)
+{
+	do
+	{
+		uint8 sevenBits = value & 0x7f;
+		value >>= 7;
+		out.push_back((char)(sevenBits | (value ? 0x80 : 0)));
+	} while (value);
+}
+
+// one minimal RAR3 volume: MAIN + one FILE block (store method by default,
+// carrying `slice` of an inner file of fullSize bytes) + ENDARC
+std::vector<char> BuildRar3StoreVolume(const std::vector<char>& slice, int64 fullSize,
+	bool splitBefore, bool splitAfter, const char* innerName = "inner.mkv",
+	uint8 method = 0x30)
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00};
+	out.insert(out.end(), signature, signature + 7);
+
+	// MAIN: VOLUME | NEWNUMBERING, 13-byte header (6 reserved bytes)
+	PutLe16(out, 0);						// header crc (parser ignores it)
+	out.push_back(0x73);
+	PutLe16(out, 0x0011);
+	PutLe16(out, 13);
+	out.insert(out.end(), 6, 0);
+
+	// FILE: LONG_BLOCK (pack size present) + split flags
+	uint16 nameLen = (uint16)strlen(innerName);
+	PutLe16(out, 0);
+	out.push_back(0x74);
+	PutLe16(out, (uint16)(0x8000 | (splitBefore ? 0x0001 : 0) | (splitAfter ? 0x0002 : 0)));
+	PutLe16(out, (uint16)(32 + nameLen));	// HEAD_SIZE incl. fixed fields + name
+	PutLe32(out, (uint32)slice.size());		// PACK_SIZE
+	PutLe32(out, (uint32)fullSize);			// UNP_SIZE
+	out.push_back(0);						// HOST_OS
+	PutLe32(out, 0);						// FILE_CRC
+	PutLe32(out, 0);						// FTIME
+	out.push_back(29);						// UNP_VER
+	out.push_back((char)method);			// METHOD (0x30 = storing)
+	PutLe16(out, nameLen);
+	PutLe32(out, 0x20);						// ATTR
+	out.insert(out.end(), innerName, innerName + nameLen);
+	out.insert(out.end(), slice.begin(), slice.end());
+
+	// ENDARC, no optional fields
+	PutLe16(out, 0);
+	out.push_back(0x7b);
+	PutLe16(out, 0);
+	PutLe16(out, 7);
+
+	return out;
+}
+
+// one minimal RAR5 volume: signature + MAIN + FILE (data area = slice) + ENDARC
+std::vector<char> BuildRar5StoreVolume(const std::vector<char>& slice, int64 fullSize,
+	bool splitBefore, bool splitAfter, const char* innerName = "inner.mkv",
+	uint64 method = 0)
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x01, 0x00};
+	out.insert(out.end(), signature, signature + 8);
+
+	std::vector<char> mainHeader;
+	PutVint(mainHeader, 1);					// type: main
+	PutVint(mainHeader, 0);					// block flags
+	PutVint(mainHeader, 0x01);				// arc flags: volume
+	PutLe32(out, 0);						// crc (parser ignores it)
+	PutVint(out, mainHeader.size());
+	out.insert(out.end(), mainHeader.begin(), mainHeader.end());
+
+	std::vector<char> fileHeader;
+	PutVint(fileHeader, 2);					// type: file
+	PutVint(fileHeader, 0x02 | (splitBefore ? 0x08 : 0) | (splitAfter ? 0x10 : 0));
+	PutVint(fileHeader, slice.size());		// data area size
+	PutVint(fileHeader, 0);					// file flags (no mtime/crc)
+	PutVint(fileHeader, (uint64)fullSize);	// unpacked size
+	PutVint(fileHeader, 0);					// attributes
+	PutVint(fileHeader, method << 7);		// compression info (method bits 7..9)
+	PutVint(fileHeader, 0);					// host os
+	PutVint(fileHeader, strlen(innerName));
+	fileHeader.insert(fileHeader.end(), innerName, innerName + strlen(innerName));
+	PutLe32(out, 0);
+	PutVint(out, fileHeader.size());
+	out.insert(out.end(), fileHeader.begin(), fileHeader.end());
+	out.insert(out.end(), slice.begin(), slice.end());
+
+	std::vector<char> endHeader;
+	PutVint(endHeader, 5);					// type: end of archive
+	PutVint(endHeader, 0);					// block flags
+	PutVint(endHeader, 0);					// end flags: no next volume
+	PutLe32(out, 0);
+	PutVint(out, endHeader.size());
+	out.insert(out.end(), endHeader.begin(), endHeader.end());
+
+	return out;
+}
+
+// like BuildRar3StoreVolume (no split), but the FILE block also advertises
+// RAR3_FILE_PASSWORD (0x0004) so GetEncryptedData() is true while the
+// volume's own headers still parse in the clear (store method)
+std::vector<char> BuildRar3EncryptedDataVolume(const std::vector<char>& slice, int64 fullSize,
+	const char* innerName = "inner.mkv")
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00};
+	out.insert(out.end(), signature, signature + 7);
+
+	PutLe16(out, 0);
+	out.push_back(0x73);
+	PutLe16(out, 0x0011);
+	PutLe16(out, 13);
+	out.insert(out.end(), 6, 0);
+
+	uint16 nameLen = (uint16)strlen(innerName);
+	PutLe16(out, 0);
+	out.push_back(0x74);
+	PutLe16(out, (uint16)(0x8000 | 0x0004));	// LONG_BLOCK | FILE_PASSWORD
+	PutLe16(out, (uint16)(32 + nameLen));
+	PutLe32(out, (uint32)slice.size());
+	PutLe32(out, (uint32)fullSize);
+	out.push_back(0);
+	PutLe32(out, 0);
+	PutLe32(out, 0);
+	out.push_back(29);
+	out.push_back(0x30);	// storing
+	PutLe16(out, nameLen);
+	PutLe32(out, 0x20);
+	out.insert(out.end(), innerName, innerName + nameLen);
+	out.insert(out.end(), slice.begin(), slice.end());
+
+	PutLe16(out, 0);
+	out.push_back(0x7b);
+	PutLe16(out, 0);
+	PutLe16(out, 7);
+
+	return out;
+}
+
+// a bare RAR3 signature + MAIN block advertising a password: parsing aborts
+// right after MAIN, leaving GetEncrypted() true and no file entries
+std::vector<char> BuildRar3EncryptedHeaderVolume()
+{
+	std::vector<char> out;
+	const char signature[] = {0x52, 0x61, 0x72, 0x21, 0x1a, 0x07, 0x00};
+	out.insert(out.end(), signature, signature + 7);
+
+	PutLe16(out, 0);
+	out.push_back(0x73);
+	PutLe16(out, 0x0091);	// VOLUME | NEWNUMBERING | PASSWORD
+	PutLe16(out, 13);
+	out.insert(out.end(), 6, 0);
+
+	return out;
+}
+
 }
 
 BOOST_AUTO_TEST_CASE(ContentMapModelTest)
@@ -243,6 +413,180 @@ BOOST_AUTO_TEST_CASE(ContentMapperSplitAndBareMapTest)
 	MemberSet rarSet{MemberSet::mfRar, {0}};
 	BOOST_CHECK(!ContentMapper::BuildMap(members, rarSet, sources, skipReason));
 	BOOST_CHECK(!skipReason.empty());
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperRarStoreMapTest)
+{
+	std::vector<char> inner = Pattern(100, 5);
+	std::vector<char> slice0(inner.begin(), inner.begin() + 40);
+	std::vector<char> slice1(inner.begin() + 40, inner.begin() + 80);
+	std::vector<char> slice2(inner.begin() + 80, inner.end());
+
+	std::vector<SetMember> members = {
+		{"rel.part01.rar", 0}, {"rel.part02.rar", 0}, {"rel.part03.rar", 0}};
+	MemorySourceSet sources;
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3StoreVolume(slice0, 100, false, true)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3StoreVolume(slice1, 100, true, true)));
+	sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar3StoreVolume(slice2, 100, true, false)));
+
+	MemberSet set{MemberSet::mfRar, {0, 1, 2}};
+	std::string skipReason;
+	std::unique_ptr<ContentMap> map =
+		ContentMapper::BuildMap(members, set, sources, skipReason);
+	BOOST_REQUIRE_MESSAGE(map, skipReason);
+	BOOST_CHECK_EQUAL(map->GetInnerName(), "inner.mkv");
+	BOOST_CHECK_EQUAL(map->GetInnerSize(), 100);
+	BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 3u);
+
+	// reading the whole inner stream through the map reproduces the payload
+	std::vector<char> reassembled(100);
+	for (const MemberRange& piece : map->MapFromInner({0, 100}))
+	{
+		ContentSource* source = sources.GetSource(piece.MemberIndex);
+		StreamRangeList innerPos = map->MapToInner(piece.MemberIndex, piece.Range);
+		BOOST_REQUIRE_EQUAL(innerPos.size(), 1u);
+		BOOST_REQUIRE(source->Read(piece.Range.Offset,
+			reassembled.data() + innerPos[0].Offset, piece.Range.Size));
+	}
+	BOOST_CHECK(!memcmp(reassembled.data(), inner.data(), 100));
+
+	// same content in RAR5 framing maps to the same inner stream
+	MemorySourceSet sources5;
+	sources5.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar5StoreVolume(slice0, 100, false, true)));
+	sources5.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar5StoreVolume(slice1, 100, true, true)));
+	sources5.Sources.push_back(std::make_unique<MemoryContentSource>(
+		BuildRar5StoreVolume(slice2, 100, true, false)));
+	std::unique_ptr<ContentMap> map5 =
+		ContentMapper::BuildMap(members, set, sources5, skipReason);
+	BOOST_REQUIRE_MESSAGE(map5, skipReason);
+	BOOST_CHECK_EQUAL(map5->GetInnerSize(), 100);
+	BOOST_REQUIRE_EQUAL(map5->GetRuns()->size(), 3u);
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperRarMapDegradationTest)
+{
+	std::vector<char> inner = Pattern(100, 6);
+	std::vector<char> slice0(inner.begin(), inner.begin() + 40);
+	std::vector<char> slice1(inner.begin() + 40, inner.begin() + 80);
+	std::vector<char> slice2(inner.begin() + 80, inner.end());
+	std::vector<SetMember> members = {
+		{"rel.part01.rar", 0}, {"rel.part02.rar", 0}, {"rel.part03.rar", 0}};
+	MemberSet set{MemberSet::mfRar, {0, 1, 2}};
+	std::string skipReason;
+
+	// one unreadable volume: packed size inferred, runs excluded, rest maps
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice0, 100, false, true)));
+		sources.Sources.push_back(nullptr);
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice2, 100, true, false)));
+		std::unique_ptr<ContentMap> map =
+			ContentMapper::BuildMap(members, set, sources, skipReason);
+		BOOST_REQUIRE_MESSAGE(map, skipReason);
+		BOOST_REQUIRE_EQUAL(map->GetRuns()->size(), 2u);
+		BOOST_CHECK(map->MapFromInner({40, 40}).empty());	// vol 2's inner region
+		BOOST_CHECK_EQUAL((*map->GetRuns())[1].InnerOffset, 80);
+	}
+
+	// two unreadable volumes: the set degrades entirely
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice0, 100, false, true)));
+		sources.Sources.push_back(nullptr);
+		sources.Sources.push_back(nullptr);
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+	}
+
+	// compressed method: skipped with a store-mode reason
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice0, 100, false, false, "inner.mkv", 0x33)));
+		MemberSet single{MemberSet::mfRar, {0}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason));
+		BOOST_CHECK(skipReason.find("store") != std::string::npos);
+	}
+
+	// a non-media inner file never maps
+	{
+		std::vector<char> whole = Pattern(40, 7);
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(whole, 40, false, false, "inner.iso")));
+		MemberSet single{MemberSet::mfRar, {0}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason));
+		BOOST_CHECK_EQUAL(skipReason, "inner file is not a media file");
+	}
+
+	// packed sizes that do not sum to the inner size (a lying store set)
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice0, 100, false, true)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(slice1, 100, true, true)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(std::vector<char>(slice2.begin(), slice2.end() - 5),
+				100, true, false)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+		BOOST_CHECK(skipReason.find("sum") != std::string::npos);
+	}
+
+	// packed sizes that already exceed the inner size even with one volume
+	// carried as unknown: the inferred remainder would be negative
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(Pattern(60, 10), 100, false, true)));
+		sources.Sources.push_back(nullptr);
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(Pattern(60, 11), 100, true, false)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+		BOOST_CHECK(skipReason.find("exceed") != std::string::npos);
+	}
+
+	// encrypted archive headers: a password-protected MAIN block, no
+	// password supplied - M2 has no password handling (M3's territory)
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncryptedHeaderVolume()));
+		MemberSet single{MemberSet::mfRar, {0}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted archive headers");
+	}
+
+	// encrypted archive data: headers parse fine, but the FILE block carries
+	// the password flag on the data itself
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3EncryptedDataVolume(Pattern(100, 12), 100)));
+		MemberSet single{MemberSet::mfRar, {0}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, single, sources, skipReason));
+		BOOST_CHECK_EQUAL(skipReason, "encrypted archive data");
+	}
+
+	// inconsistent inner file size: the second volume's entry for the same
+	// inner name reports a different unpacked size
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(Pattern(100, 13), 100, false, false)));
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			BuildRar3StoreVolume(Pattern(30, 14), 90, false, false)));
+		MemberSet pair{MemberSet::mfRar, {0, 1}};
+		BOOST_CHECK(!ContentMapper::BuildMap(members, pair, sources, skipReason));
+		BOOST_CHECK_EQUAL(skipReason, "inconsistent inner file size across volumes");
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

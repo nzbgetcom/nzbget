@@ -24,6 +24,7 @@
 #include <cctype>
 #include "ContentMap.h"
 #include "DupeStreamRepair.h"
+#include "RarReader.h"
 #include "Util.h"
 
 bool DiskContentSource::Read(int64 offset, void* buffer, int64 size)
@@ -431,6 +432,8 @@ std::unique_ptr<ContentMap> ContentMapper::BuildMap(const std::vector<SetMember>
 			return BuildBareMap(members, set, sources, skipReason);
 		case MemberSet::mfSplit:
 			return BuildSplitMap(members, set, sources, skipReason);
+		case MemberSet::mfRar:
+			return BuildRarMap(members, set, sources, skipReason);
 		default:
 			skipReason = "format mapper not implemented";
 			return nullptr;
@@ -485,5 +488,153 @@ std::unique_ptr<ContentMap> ContentMapper::BuildSplitMap(const std::vector<SetMe
 		innerOffset += source->Size();
 	}
 	map->SetInnerSize(innerOffset);
+	return map;
+}
+
+std::unique_ptr<ContentMap> ContentMapper::BuildRarMap(const std::vector<SetMember>& members,
+	const MemberSet& set, ContentSourceSet& sources, std::string& skipReason)
+{
+	// parse every volume's headers; at most ONE unreadable volume is carried
+	// as an unknown whose packed size is inferred from the inner size, so
+	// the rest of the set still maps (its own holes stay for par2)
+	std::vector<std::unique_ptr<RarVolume>> volumes(set.Members.size());
+	int unknownVolume = -1;
+
+	for (size_t i = 0; i < set.Members.size(); i++)
+	{
+		int memberIndex = set.Members[i];
+		ContentSource* source = sources.GetSource(memberIndex);
+		std::unique_ptr<RarVolume> volume =
+			std::make_unique<RarVolume>(members[memberIndex].Name.c_str());
+		if (source && volume->ReadFrom(*source))
+		{
+			volumes[i] = std::move(volume);
+			continue;
+		}
+		if (source && volume->GetEncrypted())
+		{
+			skipReason = "encrypted archive headers";
+			return nullptr;
+		}
+		if (unknownVolume >= 0)
+		{
+			skipReason = "unreadable headers in more than one volume";
+			return nullptr;
+		}
+		unknownVolume = (int)i;
+	}
+
+	// the primary inner file: largest entry of the first readable volume
+	RarFile* primary = nullptr;
+	for (std::unique_ptr<RarVolume>& volume : volumes)
+	{
+		if (!volume)
+		{
+			continue;
+		}
+		for (RarFile& innerFile : *volume->GetFiles())
+		{
+			if (!primary || innerFile.GetSize() > primary->GetSize())
+			{
+				primary = &innerFile;
+			}
+		}
+		break;
+	}
+	if (!primary)
+	{
+		skipReason = "no file entries in the first readable volume";
+		return nullptr;
+	}
+
+	std::string innerName = FileSystem::BaseFileName(primary->GetFilename());
+	int64 innerSize = primary->GetSize();
+	if (!DupeStreamRepair::IsStreamEligible(innerName.c_str()))
+	{
+		skipReason = "inner file is not a media file";
+		return nullptr;
+	}
+
+	struct VolumeRun
+	{
+		int64 PackedSize = 0;
+		int64 DataOffset = -1;	// -1 = no mappable data in this volume
+	};
+	std::vector<VolumeRun> runs(set.Members.size());
+	int64 knownPacked = 0;
+
+	for (size_t i = 0; i < set.Members.size(); i++)
+	{
+		if (!volumes[i])
+		{
+			continue;
+		}
+		for (RarFile& innerFile : *volumes[i]->GetFiles())
+		{
+			if (strcasecmp(FileSystem::BaseFileName(innerFile.GetFilename()),
+				innerName.c_str()))
+			{
+				continue;	// other inner files (nfo, srt) stay unmapped
+			}
+			if (!innerFile.GetStored())
+			{
+				skipReason = "compressed archive (only store mode is mappable)";
+				return nullptr;
+			}
+			if (innerFile.GetEncryptedData())
+			{
+				skipReason = "encrypted archive data";
+				return nullptr;
+			}
+			if (innerFile.GetSize() != innerSize)
+			{
+				skipReason = "inconsistent inner file size across volumes";
+				return nullptr;
+			}
+			ContentSource* source = sources.GetSource(set.Members[i]);
+			if (innerFile.GetDataOffset() < 0 || innerFile.GetPackedSize() < 0 ||
+				!source || innerFile.GetDataOffset() + innerFile.GetPackedSize() > source->Size())
+			{
+				skipReason = "implausible data run geometry";
+				return nullptr;
+			}
+			runs[i] = {innerFile.GetPackedSize(), innerFile.GetDataOffset()};
+			knownPacked += innerFile.GetPackedSize();
+		}
+	}
+
+	// store mode means the packed bytes ARE the inner bytes: exact sum
+	// required (this is the strong gate even if a method byte lied)
+	if (unknownVolume >= 0)
+	{
+		int64 inferred = innerSize - knownPacked;
+		if (inferred < 0)
+		{
+			skipReason = "packed sizes exceed the inner file size";
+			return nullptr;
+		}
+		runs[unknownVolume] = {inferred, -1};
+	}
+	else if (knownPacked != innerSize)
+	{
+		skipReason = "packed sizes do not sum to the inner file size";
+		return nullptr;
+	}
+
+	std::unique_ptr<ContentMap> map = std::make_unique<ContentMap>();
+	map->SetInnerName(innerName.c_str());
+	map->SetInnerSize(innerSize);
+
+	int64 innerOffset = 0;
+	for (size_t i = 0; i < set.Members.size(); i++)
+	{
+		if (runs[i].DataOffset >= 0 && runs[i].PackedSize > 0)
+		{
+			map->GetRuns()->push_back({innerOffset, set.Members[i],
+				runs[i].DataOffset, runs[i].PackedSize});
+		}
+		innerOffset += runs[i].PackedSize;
+	}
+
 	return map;
 }
