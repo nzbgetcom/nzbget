@@ -32,7 +32,7 @@
 
 bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo)
 {
-	if (!g_Options->GetDupeArticleFallback() || g_Options->GetRawArticle())
+	if (g_Options->GetDupeArticleFallback() == Options::dafNone || g_Options->GetRawArticle())
 	{
 		return false;
 	}

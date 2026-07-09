@@ -224,6 +224,12 @@ public:
 		psFull,
 		psDupe
 	};
+	enum EDupeArticleFallback
+	{
+		dafNone,
+		dafArticle,
+		dafStream
+	};
 	enum EHealthCheck
 	{
 		hcPause,
@@ -427,7 +433,7 @@ public:
 	int GetUrlInterval() const { return m_urlInterval; }
 	bool GetFlushQueue() const { return m_flushQueue; }
 	bool GetDupeCheck() const { return m_dupeCheck; }
-	bool GetDupeArticleFallback() const { return m_dupeArticleFallback; }
+	EDupeArticleFallback GetDupeArticleFallback() const { return m_dupeArticleFallback; }
 	const char* GetControlIp() const { return m_controlIp; }
 	const char* GetControlUsername() const { return m_controlUsername; }
 	const char* GetControlPassword() const { return m_controlPassword; }
@@ -614,7 +620,7 @@ private:
 	int m_urlInterval = 0;
 	bool m_flushQueue = false;
 	bool m_dupeCheck = false;
-	bool m_dupeArticleFallback = false;
+	EDupeArticleFallback m_dupeArticleFallback = dafNone;
 	CString m_controlIp;
 	CString m_controlUsername;
 	CString m_controlPassword;

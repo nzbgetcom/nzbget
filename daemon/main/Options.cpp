@@ -668,7 +668,6 @@ void Options::InitOptions()
 	m_continuePartial		= (bool)ParseEnumValue(CONTINUEPARTIAL.data(), BoolCount, BoolNames, BoolValues);
 	m_flushQueue			= (bool)ParseEnumValue(FLUSHQUEUE.data(), BoolCount, BoolNames, BoolValues);
 	m_dupeCheck				= (bool)ParseEnumValue(DUPECHECK.data(), BoolCount, BoolNames, BoolValues);
-	m_dupeArticleFallback	= (bool)ParseEnumValue(DUPEARTICLEFALLBACK.data(), BoolCount, BoolNames, BoolValues);
 	m_parRepair				= (bool)ParseEnumValue(PARREPAIR.data(), BoolCount, BoolNames, BoolValues);
 	m_parQuick				= (bool)ParseEnumValue(PARQUICK.data(), BoolCount, BoolNames, BoolValues);
 	m_parRename				= (bool)ParseEnumValue(PARRENAME.data(), BoolCount, BoolNames, BoolValues);
@@ -714,6 +713,14 @@ void Options::InitOptions()
 	const int ParScanValues[] = { psLimited, psExtended, psFull, psDupe };
 	const int ParScanCount = 4;
 	m_parScan = (EParScan)ParseEnumValue(PARSCAN.data(), ParScanCount, ParScanNames, ParScanValues);
+
+	// "yes" is accepted for compatibility with the former boolean option and
+	// is normalized to "article" by ParseEnumValue (first name with same value)
+	const char* DupeArticleFallbackNames[] = { "no", "article", "stream", "yes" };
+	const int DupeArticleFallbackValues[] = { dafNone, dafArticle, dafStream, dafArticle };
+	const int DupeArticleFallbackCount = 4;
+	m_dupeArticleFallback = (EDupeArticleFallback)ParseEnumValue(DUPEARTICLEFALLBACK.data(),
+		DupeArticleFallbackCount, DupeArticleFallbackNames, DupeArticleFallbackValues);
 
 	const char* PostStrategyNames[] = { "sequential", "balanced", "aggressive", "rocket" };
 	const int PostStrategyValues[] = { ppSequential, ppBalanced, ppAggressive, ppRocket };
