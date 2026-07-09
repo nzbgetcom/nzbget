@@ -26,6 +26,7 @@
 #include "NewsServer.h"
 #include "ServerPool.h"
 #include "Decoder.h"
+#include "Log.h"
 #include "Options.h"
 #include "Util.h"
 
@@ -100,6 +101,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 
 	if (!connection->Connect())
 	{
+		detail("Stream repair: could not connect to %s", connection->GetNewsServer()->GetName());
 		return result;
 	}
 
@@ -116,6 +118,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 		}
 		if (!response || strncmp(response, "2", 1))
 		{
+			detail("Stream repair: could not join groups on %s for %s",
+				connection->GetNewsServer()->GetName(), messageId);
 			return result;
 		}
 	}
@@ -123,6 +127,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 	const char* response = connection->Request(BString<1024>("BODY %s\r\n", messageId));
 	if (!response || strncmp(response, "2", 1))
 	{
+		detail("Stream repair: article %s not available on %s",
+			messageId, connection->GetNewsServer()->GetName());
 		return result;
 	}
 
@@ -148,6 +154,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 		{
 			// timeout or connection closed mid-article: the connection state
 			// is unusable for further commands
+			detail("Stream repair: connection to %s lost while fetching %s",
+				connection->GetNewsServer()->GetName(), messageId);
 			connection->Disconnect();
 			return result;
 		}
@@ -172,6 +180,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 		decoder.GetBeginPos() <= 0 || decoder.GetEndPos() <= 0 ||
 		result.Data.empty())
 	{
+		detail("Stream repair: article %s from %s failed decoding",
+			messageId, connection->GetNewsServer()->GetName());
 		return result;
 	}
 

@@ -195,6 +195,12 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			continue;
 		}
 
+		{
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			m_postInfo->SetProgressLabel(BString<1024>(
+				"Repairing from duplicate %s", *donor.InfoName));
+		}
+
 		for (RepairTarget& target : targets)
 		{
 			if (IsStopped())
