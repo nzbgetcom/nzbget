@@ -54,6 +54,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/nserv/YEncoder.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Cleanup.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/ContentMap.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
