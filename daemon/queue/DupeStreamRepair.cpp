@@ -24,6 +24,7 @@
 #include <cctype>
 #include "DupeStreamRepair.h"
 #include "DupeArticleFallback.h"
+#include "FileSystem.h"
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
@@ -435,4 +436,53 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	}
 
 	return candidates;
+}
+
+std::string DupeStreamRepair::SelectExtractedInner(const char* dir, int64 innerSize, const char* innerName)
+{
+	if (Util::EmptyStr(dir) || innerSize < 0)
+	{
+		return "";
+	}
+
+	std::vector<std::string> matches;
+
+	fs::error_code dirEc;
+	for (auto it = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, dirEc);
+		!dirEc && it != fs::recursive_directory_iterator();
+		it.increment(dirEc))
+	{
+		fs::error_code fileEc;
+		if (!it->is_regular_file(fileEc) || fileEc)
+		{
+			continue;
+		}
+
+		std::string path = fs::u8string(it->path());
+		if (FileSystem::FileSize(path.c_str()) == innerSize)
+		{
+			matches.push_back(std::move(path));
+		}
+	}
+
+	if (matches.empty())
+	{
+		return "";
+	}
+
+	std::sort(matches.begin(), matches.end());
+
+	if (!Util::EmptyStr(innerName))
+	{
+		for (const std::string& match : matches)
+		{
+			std::string basename = fs::u8string(fs::path(match).filename());
+			if (!strcasecmp(basename.c_str(), innerName))
+			{
+				return match;
+			}
+		}
+	}
+
+	return matches.front();
 }

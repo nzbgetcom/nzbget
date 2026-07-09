@@ -21,8 +21,10 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include <fstream>
 #include "DownloadInfo.h"
 #include "DupeStreamRepair.h"
+#include "FileSystem.h"
 #include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(QueueTest)
@@ -445,6 +447,52 @@ BOOST_AUTO_TEST_CASE(StreamRepairRequiredCompareFloorTest)
 	std::vector<int> tinyProbes = {0};
 	BOOST_CHECK_EQUAL(DupeStreamRepair::RequiredCompareFloor(1000000, tinyHoles, tinyRanges, tinyProbes),
 		64);
+}
+
+BOOST_AUTO_TEST_CASE(SelectExtractedInnerTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / fs::make_unique_filename();
+	fs::create_directories(tempDir);
+
+	auto writeFile = [](const fs::path& path, int64 size)
+	{
+		std::ofstream out(fs::u8string(path), std::ios::binary);
+		std::vector<char> data(size, 'x');
+		out.write(data.data(), (std::streamsize)data.size());
+	};
+
+	// two extracted files share innerSize, one is a size-only distractor
+	fs::path nameMatch = tempDir / "movie.mkv";
+	fs::path otherSameSize = tempDir / "extracted.bin";
+	fs::path wrongSize = tempDir / "readme.txt";
+	writeFile(nameMatch, 1000);
+	writeFile(otherSameSize, 1000);
+	writeFile(wrongSize, 50);
+
+	std::string dirStr = fs::u8string(tempDir);
+	std::string nameMatchStr = fs::u8string(nameMatch);
+	std::string otherSameSizeStr = fs::u8string(otherSameSize);
+
+	// several same-size candidates: the (case-insensitive) basename match wins
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 1000, "MOVIE.MKV"),
+		nameMatchStr);
+
+	// no basename match among the size matches: falls back to the first path
+	// in sorted order
+	std::string expectedFirst = std::min(nameMatchStr, otherSameSizeStr);
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 1000, "nomatch.mkv"),
+		expectedFirst);
+
+	// no file of that size anywhere under dir: empty
+	BOOST_CHECK_EQUAL(DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 999999, "movie.mkv"), "");
+
+	fs::error_code ec;
+	fs::remove_all(tempDir, ec);
+}
+
+BOOST_AUTO_TEST_CASE(MaxDecompressBytesTest)
+{
+	BOOST_CHECK_EQUAL(DupeStreamRepair::MaxDecompressBytes, 16LL * 1024 * 1024 * 1024);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

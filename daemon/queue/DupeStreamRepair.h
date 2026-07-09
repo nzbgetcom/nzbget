@@ -52,6 +52,11 @@ public:
 	// how many donor members are probed per target member before giving up
 	// (bounds wasted fetches when pairing heuristics fail on obfuscated sets)
 	static constexpr int MaxDonorCandidates = 4;
+	// M4 (option <DupeStreamDecompress>): materialization cap on a donor
+	// archive's total decoded size - generous, since the donor inner size
+	// ~ target size and the archive is usually smaller, but a hard bound so
+	// a huge donor is never extracted for a small target
+	static constexpr int64 MaxDecompressBytes = 16LL * 1024 * 1024 * 1024;
 
 	static bool IsStreamEligible(const char* filename);
 	static StreamRangeList ComputeHoles(FileInfo* fileInfo);
@@ -99,6 +104,14 @@ public:
 	static std::vector<FileInfo*> SelectDonorCandidates(const char* targetFilename,
 		int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
 		NzbInfo* donorNzb, int maxCandidates);
+
+	/* M4 (option <DupeStreamDecompress>): scans dir recursively for a
+	 * regular file whose size equals innerSize (the extractor's output
+	 * selection - the extracted file matching the target's inner content
+	 * size). Several same-size matches prefer the one whose basename
+	 * case-insensitively equals innerName, else the first by sorted path.
+	 * Returns "" when nothing matches. */
+	static std::string SelectExtractedInner(const char* dir, int64 innerSize, const char* innerName);
 
 private:
 	static bool RangesIntersect(const StreamRange& range1, const StreamRange& range2)

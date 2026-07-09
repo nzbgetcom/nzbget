@@ -303,4 +303,20 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackOptionTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(DupeStreamDecompressOptionTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(!options.GetDupeStreamDecompress());
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeStreamDecompress=yes");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeStreamDecompress());
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -2265,4 +2265,17 @@ BOOST_AUTO_TEST_CASE(ContentMapperRarEncryptedHpDonorTest)
 
 #endif
 
+BOOST_AUTO_TEST_CASE(ContentMapperIsCompressibleArchiveTest)
+{
+	// an extractor can process these - M4's decompression donor path applies
+	BOOST_CHECK(ContentMapper::IsCompressibleArchive(MemberSet{MemberSet::mfRar, {0}}));
+	BOOST_CHECK(ContentMapper::IsCompressibleArchive(MemberSet{MemberSet::mfZip, {0}}));
+	BOOST_CHECK(ContentMapper::IsCompressibleArchive(MemberSet{MemberSet::mfSevenZip, {0}}));
+
+	// no compression involved - the existing store-mode (M2) paths already
+	// handle these, M4 has nothing to add
+	BOOST_CHECK(!ContentMapper::IsCompressibleArchive(MemberSet{MemberSet::mfBare, {0}}));
+	BOOST_CHECK(!ContentMapper::IsCompressibleArchive(MemberSet{MemberSet::mfSplit, {0, 1}}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

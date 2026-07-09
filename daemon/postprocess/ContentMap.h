@@ -277,6 +277,13 @@ public:
 	static constexpr const char* SkipEncryptedData = "encrypted archive data";
 	static constexpr const char* SkipEncryptedHeaders = "encrypted archive headers";
 
+	/* M4 (option <DupeStreamDecompress>): true when set's format is one an
+	 * extractor (unrar/7z) can decompress (mfRar, mfZip, mfSevenZip) - a
+	 * candidate for the decompression-donor path. False for mfBare/mfSplit:
+	 * there is no compression to undo, the store-mode paths above already
+	 * handle them. */
+	static bool IsCompressibleArchive(const MemberSet& set);
+
 	/* groups member files into container sets by their naming schemes;
 	 * incomplete sets (numbering gaps) are dropped - their members stay
 	 * un-mapped and par2 owns them. Bare singletons require a media

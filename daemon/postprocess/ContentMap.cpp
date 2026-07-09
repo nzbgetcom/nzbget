@@ -747,6 +747,21 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 
 }
 
+bool ContentMapper::IsCompressibleArchive(const MemberSet& set)
+{
+	switch (set.Format)
+	{
+		case MemberSet::mfRar:
+		case MemberSet::mfZip:
+		case MemberSet::mfSevenZip:
+			return true;
+		case MemberSet::mfBare:
+		case MemberSet::mfSplit:
+			return false;
+	}
+	return false;
+}
+
 std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& members)
 {
 	// bucket keys: scheme family + lowercased base name
