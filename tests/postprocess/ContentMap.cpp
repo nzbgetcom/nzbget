@@ -405,6 +405,50 @@ std::vector<char> Build7zCopy(
 	return out;
 }
 
+// signature header + pack data + raw header bytes (for adversarial headers)
+std::vector<char> Wrap7zHeader(const std::vector<char>& header,
+	const std::vector<char>& data)
+{
+	std::vector<char> out;
+	const char signature[] = {'7', 'z', (char)0xbc, (char)0xaf, 0x27, 0x1c};
+	out.insert(out.end(), signature, signature + 6);
+	out.push_back(0);								// version major
+	out.push_back(4);								// version minor
+	PutLe32(out, 0);								// start header crc (unchecked)
+	for (int i = 0; i < 8; i++)						// next header offset
+	{
+		out.push_back((char)(((uint64)data.size() >> (8 * i)) & 0xff));
+	}
+	for (int i = 0; i < 8; i++)						// next header size
+	{
+		out.push_back((char)(((uint64)header.size() >> (8 * i)) & 0xff));
+	}
+	PutLe32(out, 0);								// next header crc (unchecked)
+	out.insert(out.end(), data.begin(), data.end());
+	out.insert(out.end(), header.begin(), header.end());
+	return out;
+}
+
+// a kFilesInfo record naming one file (for adversarial headers)
+void Append7zSingleFileInfo(std::vector<char>& header, const char* name)
+{
+	header.push_back(0x05);							// kFilesInfo
+	Put7zNumber(header, 1);
+	std::vector<char> names;
+	names.push_back(0x00);							// external
+	for (const char* ch = name; *ch; ch++)
+	{
+		names.push_back(*ch);
+		names.push_back(0x00);
+	}
+	names.push_back(0x00);
+	names.push_back(0x00);
+	header.push_back(0x11);							// kName
+	Put7zNumber(header, names.size());
+	header.insert(header.end(), names.begin(), names.end());
+	header.push_back(0x00);							// end of file properties
+}
+
 }
 
 BOOST_AUTO_TEST_CASE(ContentMapModelTest)
@@ -1038,6 +1082,154 @@ BOOST_AUTO_TEST_CASE(ContentMapperSevenZipEncodedHeaderTest)
 		sources.Sources.push_back(std::make_unique<MemoryContentSource>(buildEncoded(0x21)));
 		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
 		BOOST_CHECK_EQUAL(skipReason, "compressed 7z header");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ContentMapperSevenZipAdversarialTest)
+{
+	// lying counts, sizes and offsets must degrade to a skip - never crash,
+	// over-read or allocate absurd amounts (the reader fails closed)
+	std::vector<SetMember> members = {{"rel.7z", 0}};
+	MemberSet set{MemberSet::mfSevenZip, {0}};
+	std::string skipReason;
+
+	auto rejects = [&](const std::vector<char>& header, const std::vector<char>& data)
+	{
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(
+			Wrap7zHeader(header, data)));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
+	};
+
+	// a kArchiveProperties record claiming a 2^63 byte payload: the skip
+	// must not wrap the read position out of the buffer
+	{
+		std::vector<char> header = {0x01, 0x02, 0x03};
+		Put7zNumber(header, (uint64)1 << 63);
+		rejects(header, {});
+	}
+
+	// a pack-stream count of 2^60 sizing the kCRC defined-bit vector
+	{
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, (uint64)1 << 60);		// pack stream count
+		header.push_back(0x0a);						// kCRC
+		header.push_back(0x00);						// allAreDefined = 0: bit vector
+		rejects(header, {});
+	}
+
+	// a Copy-coded packed header whose single pack stream claims 2^60 bytes
+	{
+		std::vector<char> header = {0x17, 0x06};	// kEncodedHeader, kPackInfo
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, 1);						// one pack stream
+		header.push_back(0x09);						// kSize
+		Put7zNumber(header, (uint64)1 << 60);
+		header.push_back(0x00);						// kEnd (pack info)
+		header.push_back(0x07);						// kUnPackInfo
+		header.push_back(0x0b);						// kFolder
+		Put7zNumber(header, 1);
+		header.push_back(0x00);						// external
+		Put7zNumber(header, 1);						// one coder
+		header.push_back(0x01);						// flags: id size 1
+		header.push_back(0x00);						// Copy
+		header.push_back(0x0c);						// kCodersUnpackSize
+		Put7zNumber(header, (uint64)1 << 60);
+		header.push_back(0x00);						// kEnd (unpack info)
+		header.push_back(0x00);						// kEnd (streams info)
+		rejects(header, {});
+	}
+
+	// a pack position near 2^63: offset arithmetic must not wrap into a
+	// bogus (empty-runs or negative) mapping
+	{
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, ((uint64)1 << 63) - 16);	// pack pos
+		Put7zNumber(header, 1);
+		header.push_back(0x09);						// kSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (pack info)
+		header.push_back(0x07);						// kUnPackInfo
+		header.push_back(0x0b);						// kFolder
+		Put7zNumber(header, 1);
+		header.push_back(0x00);						// external
+		Put7zNumber(header, 1);						// one coder
+		header.push_back(0x01);						// flags: id size 1
+		header.push_back(0x00);						// Copy
+		header.push_back(0x0c);						// kCodersUnpackSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (unpack info)
+		header.push_back(0x00);						// kEnd (streams info)
+		Append7zSingleFileInfo(header, "movie.mkv");
+		header.push_back(0x00);						// kEnd (header)
+		rejects(header, Pattern(10, 17));
+		BOOST_CHECK_EQUAL(skipReason, "implausible data run geometry");
+	}
+
+	// a folder with zero coders is spec-invalid and must not map as Copy
+	{
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, 1);
+		header.push_back(0x09);						// kSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (pack info)
+		header.push_back(0x07);						// kUnPackInfo
+		header.push_back(0x0b);						// kFolder
+		Put7zNumber(header, 1);
+		header.push_back(0x00);						// external
+		Put7zNumber(header, 0);						// ZERO coders
+		header.push_back(0x0c);						// kCodersUnpackSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (unpack info)
+		header.push_back(0x00);						// kEnd (streams info)
+		Append7zSingleFileInfo(header, "movie.mkv");
+		header.push_back(0x00);						// kEnd (header)
+		rejects(header, Pattern(10, 19));
+	}
+
+	// a pack-stream count of 2^60 driving the kSize number list
+	{
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, (uint64)1 << 60);		// pack stream count
+		header.push_back(0x09);						// kSize: 2^60 numbers claimed
+		rejects(header, {});
+	}
+
+	// a kNumUnpackStream of 2^40 driving the per-substream kSize list
+	{
+		std::vector<char> header = {0x01, 0x04, 0x06};
+		Put7zNumber(header, 0);						// pack pos
+		Put7zNumber(header, 1);						// one pack stream
+		header.push_back(0x09);						// kSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (pack info)
+		header.push_back(0x07);						// kUnPackInfo
+		header.push_back(0x0b);						// kFolder
+		Put7zNumber(header, 1);
+		header.push_back(0x00);						// external
+		Put7zNumber(header, 1);						// one coder
+		header.push_back(0x01);						// flags: id size 1
+		header.push_back(0x00);						// Copy
+		header.push_back(0x0c);						// kCodersUnpackSize
+		Put7zNumber(header, 10);
+		header.push_back(0x00);						// kEnd (unpack info)
+		header.push_back(0x08);						// kSubStreamsInfo
+		header.push_back(0x0d);						// kNumUnpackStream
+		Put7zNumber(header, (uint64)1 << 40);		// 2^40 substreams claimed
+		header.push_back(0x09);						// kSize
+		rejects(header, Pattern(10, 16));
+	}
+
+	// a header truncated mid-structure skips, never over-reads
+	{
+		std::vector<char> archive = Build7zCopy({{"movie.mkv", Pattern(20, 18)}});
+		archive.resize(archive.size() - 5);
+		MemorySourceSet sources;
+		sources.Sources.push_back(std::make_unique<MemoryContentSource>(archive));
+		BOOST_CHECK(!ContentMapper::BuildMap(members, set, sources, skipReason));
 	}
 }
 

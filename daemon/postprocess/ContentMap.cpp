@@ -322,16 +322,25 @@ struct SevenZipReader
 
 	void Skip(uint64 count)
 	{
-		if (Pos + (int64)count > (int64)Buffer->size())
+		// compare in unsigned space: a count >= 2^63 cast to int64 would go
+		// negative, pass a signed check and wrap Pos out of the buffer
+		if (count > (uint64)Buffer->size() - (uint64)Pos)
 		{
 			Ok = false;
 			return;
 		}
-		Pos += count;
+		Pos += (int64)count;
 	}
 
 	std::vector<bool> ReadBitVector(uint64 count)
 	{
+		// bound the claimed count against the remaining bytes BEFORE sizing
+		// the vector: a lying count must poison, not allocate
+		if (count > ((uint64)Buffer->size() - (uint64)Pos) * 8)
+		{
+			Ok = false;
+			return std::vector<bool>();
+		}
 		std::vector<bool> bits(count);
 		uint8 currentByte = 0;
 		uint8 mask = 0;
@@ -389,7 +398,8 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 		{
 			if (id == 0x09)			// kSize
 			{
-				for (uint64 i = 0; i < packCount; i++)
+				// stop on poison: a lying count must not grow the list forever
+				for (uint64 i = 0; reader.Ok && i < packCount; i++)
 				{
 					streams.PackSizes.push_back(reader.ReadNumber());
 				}
@@ -420,6 +430,9 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 		for (uint64 f = 0; f < folderCount && reader.Ok; f++)
 		{
 			uint64 coderCount = reader.ReadNumber();
+			// the spec requires at least one coder; a zero-coder folder must
+			// not slip through the per-coder Copy gate below
+			streams.CopyOnly &= coderCount == 1;
 			for (uint64 c = 0; c < coderCount && reader.Ok; c++)
 			{
 				uint8 flags = reader.ReadByte();
@@ -449,7 +462,7 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 		{
 			return false;
 		}
-		for (uint64 f = 0; f < folderCount; f++)
+		for (uint64 f = 0; reader.Ok && f < folderCount; f++)
 		{
 			streams.FolderUnpackSizes.push_back(reader.ReadNumber());
 		}
@@ -507,7 +520,9 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 			{
 				std::vector<uint64> sizes;
 				uint64 used = 0;
-				for (uint64 s = 0; s + 1 < streamCounts[f]; s++)
+				// stop on poison: a lying substream count must not grow the
+				// list forever
+				for (uint64 s = 0; reader.Ok && s + 1 < streamCounts[f]; s++)
 				{
 					sizes.push_back(reader.ReadNumber());
 					used += sizes.back();
@@ -1237,9 +1252,19 @@ std::unique_ptr<ContentMap> ContentMapper::BuildSevenZipMap(const std::vector<Se
 			skipReason = "compressed 7z header";
 			return nullptr;
 		}
+		// bound BEFORE the resize (a lying pack size must not allocate), with
+		// the same plausibility cap as the outer header; both operands are
+		// individually checked so the sum cannot wrap
+		if (headerStreams.PackSizes[0] == 0 ||
+			headerStreams.PackSizes[0] > 16 * 1024 * 1024 ||
+			headerStreams.PackPos > (uint64)totalSize ||
+			32 + headerStreams.PackPos + headerStreams.PackSizes[0] > (uint64)totalSize)
+		{
+			skipReason = "implausible 7z header";
+			return nullptr;
+		}
 		unpackedHeader.resize(headerStreams.PackSizes[0]);
-		if (32 + headerStreams.PackPos + headerStreams.PackSizes[0] > (uint64)totalSize ||
-			!logical.Read(32 + (int64)headerStreams.PackPos, unpackedHeader.data(),
+		if (!logical.Read(32 + (int64)headerStreams.PackPos, unpackedHeader.data(),
 				(int64)headerStreams.PackSizes[0]))
 		{
 			skipReason = "archive header unreadable";
@@ -1348,6 +1373,26 @@ std::unique_ptr<ContentMap> ContentMapper::BuildSevenZipMap(const std::vector<Se
 			skipReason = "7z pack/unpack sizes disagree (not copy mode?)";
 			return nullptr;
 		}
+	}
+
+	// bound the whole pack area inside the logical stream BEFORE any int64
+	// offset arithmetic: a pack position or size near 2^63 must not wrap the
+	// signed math below into a bogus mapping (totalSize >= 32 was checked)
+	uint64 packEnd = streams.PackPos;
+	if (packEnd > (uint64)totalSize - 32)
+	{
+		skipReason = "implausible data run geometry";
+		return nullptr;
+	}
+	packEnd += 32;
+	for (uint64 packSize : streams.PackSizes)
+	{
+		if (packSize > (uint64)totalSize - packEnd)
+		{
+			skipReason = "implausible data run geometry";
+			return nullptr;
+		}
+		packEnd += packSize;
 	}
 
 	// substreams in folder-major order own logical data regions
