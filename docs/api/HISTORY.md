@@ -40,6 +40,7 @@ This method returns an array of structures with following fields:
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.
 - **SuccessArticles** `(int)` - Number of successfully downloaded articles.
 - **FailedArticles** `(int)` - Number of failed article downloads.
+- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed articles that were recovered from a duplicate collection by the DupeArticleFallback feature (option `DupeArticleFallback` in the configuration file).
 - **Health `(int)` - Final health of the group, in permille. 1000 means 100.0%. Higher values are better.
 - **CriticalHealth** `(int)` - Calculated critical health of the group, in permille. 1000 means 100.0%. The critical health is calculated based on the number and size of par-files. Lower values are better.
 - **Deleted** `(bool)` - ~~`v12.0`~~ Deprecated, use DeleteStatus instead.

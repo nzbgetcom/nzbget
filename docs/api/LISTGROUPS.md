@@ -61,7 +61,8 @@ This method returns array of structures with following fields:
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.
 - **SuccessArticles** `(int)` - Number of successfully downloaded articles.
 - **FailedArticles** `(int)` - Number of failed article downloads.
-- **Health** `(int)` - Current health of the group, in permille. 1000 means 100.0%. The health can go down below this valued during download if more article fails. It can never increase (unless merging of groups). Higher values are better.
+- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed articles that were recovered from a duplicate collection by the DupeArticleFallback feature (option `DupeArticleFallback` in the configuration file).
+- **Health** `(int)` - Current health of the group, in permille. 1000 means 100.0%. The health can go down during download as articles fail, and can later increase when groups are merged or when byte-level stream repair (option `DupeArticleFallback=stream`) fills missing byte ranges during post-processing. Higher values are better.
 - **CriticalHealth** `(int)` - Calculated critical health of the group, in permille. 1000 means 100.0%. The critical health is calculated based on the number and size of par-files. Lower values are better.
 - **DownloadedSizeLo** `(int)` - `v14.0` Amount of downloaded data for group in bytes, Low 32-bits of 64-bit value.
 - **DownloadedSizeHi** `(int)` - `v14.0` Amount of downloaded data for group in bytes, High 32-bits of 64-bit value.

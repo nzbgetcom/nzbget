@@ -1,3 +1,13 @@
+nzbget-v26.3
+  - Features:
+    - DupeArticleFallback — recover missing articles from duplicate collections
+    [#850](https://github.com/nzbgetcom/nzbget/pull/850)
+      - Article-level fallback substitutes a failed article's body from a duplicate posting during download;
+      - Stream-level repair (value "stream") patches missing byte ranges in post-processing from duplicates posted with different article segmentation or packaging — store-mode rar/zip/7z, raw splits and directly posted media can donate to each other, including password-protected store-mode archives when the password is known;
+      - Optional decompression-assisted recovery (option DupeStreamDecompress) extracts a compressed duplicate to bridge different compressions of the same inner file;
+      - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
+      - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
+
 nzbget-v26.2
   - Features:
     - WebUI internationalisation (i18n) and unit switching
