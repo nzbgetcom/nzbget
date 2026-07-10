@@ -31,6 +31,7 @@
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "Unpack.h"
 
 ContentSource* DiskSourceSet::GetSource(int memberIndex)
 {
@@ -932,6 +933,11 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 
 	TargetSetFiles targetFiles(destDir, setMembers);
 
+	// M4 (option <DupeStreamDecompress>): one decompression attempt per
+	// (target set x donor set) for the whole pass - materialize+extract is
+	// far too heavy to ever repeat against the same pair
+	std::set<std::pair<const RepairSetData*, std::string>> decompressTried;
+
 	for (DonorSource& donor : donors)
 	{
 		if (IsStopped())
@@ -1013,6 +1019,30 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 				if (!donorMap ||
 					donorMap->GetInnerSize() != repairSet.Map->GetInnerSize())
 				{
+					// M4 ladder (option <DupeStreamDecompress>): a donor set
+					// that cannot map for byte-copy may still donate through
+					// extraction if it is a compressed archive
+					if (g_Options->GetDupeStreamDecompress() &&
+						ContentMapper::IsCompressibleArchive(donorSet) &&
+						decompressTried.emplace(&repairSet,
+							std::string(*donor.QueuedFilename) + "|" +
+							donorMembers[donorSet.Members[0]].Name).second)
+					{
+						if (repairSet.Map->GetEncrypted())
+						{
+							// v1 scope: composing extracted plaintext with the
+							// encrypted-target write path is future work
+							PrintMessage(Message::mkInfo,
+								"Skipping decompression of duplicate %s for %s: encrypted target not supported",
+								*donor.InfoName, repairSet.Map->GetInnerName());
+						}
+						else
+						{
+							ExecDecompressRepair(destDir, repairSet, donorNzb.get(),
+								donorMembers, donorSet, donor, targetFiles,
+								targets, memberTargets, setMembers);
+						}
+					}
 					continue;	// not this target's content (or not mappable)
 				}
 
@@ -1068,20 +1098,20 @@ bool StreamRepairController::ReadDonorInner(ContentMap& donorMap,
 	return covered == innerRange.Size;
 }
 
-bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
-	DonorSetSources& donorSources, TargetSetFiles& targetFiles)
+/* probe windows: present bytes hugging each CURRENT hole (the most
+ * drift-sensitive positions), clipped against the ORIGINAL holes:
+ * identity evidence must anchor to primary-downloaded bytes only, and
+ * a previous donor may have partially filled a hole - no window byte
+ * may overlap any region that was EVER a hole. A hole whose front or
+ * tail was donor-written is still covered by its containing original
+ * hole on that side, which zeroes the window there (fail closed).
+ * Shared by every inner-space verifier (M2 plain, M3 ciphertext, M4
+ * decompressed donors). */
+std::vector<StreamRange> StreamRepairController::BuildProbeWindows(const RepairSetData& repairSet)
 {
-	ContentMap& targetMap = *repairSet.Map;
 	const StreamRangeList& holes = repairSet.InnerHoles;
 	const StreamRangeList& originalHoles = repairSet.OriginalInnerHoles;
 
-	// probe windows: present bytes hugging each CURRENT hole (the most
-	// drift-sensitive positions), clipped against the ORIGINAL holes:
-	// identity evidence must anchor to primary-downloaded bytes only, and
-	// a previous donor may have partially filled a hole - no window byte
-	// may overlap any region that was EVER a hole. A hole whose front or
-	// tail was donor-written is still covered by its containing original
-	// hole on that side, which zeroes the window there (fail closed)
 	std::vector<StreamRange> windows;
 	for (const StreamRange& hole : holes)
 	{
@@ -1090,7 +1120,7 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 			break;
 		}
 		int64 lowClip = 0;
-		int64 highClip = targetMap.GetInnerSize();
+		int64 highClip = repairSet.Map->GetInnerSize();
 		for (const StreamRange& other : originalHoles)
 		{
 			// any original hole starting before the before-window's end
@@ -1124,28 +1154,25 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	// the SAME bytes (A's after-window == B's before-window): coalesce so
 	// shared bytes count once toward achievable and totalCompared, or the
 	// 64-byte identity floor silently weakens
-	windows = ContentMapper::CoalesceRanges(std::move(windows));
+	return ContentMapper::CoalesceRanges(std::move(windows));
+}
 
-	// an encrypted target is verified in CIPHERTEXT space: the window
-	// semantics (anchoring, coalescing) are identical, only the expected-bytes
-	// computation differs
-	if (targetMap.GetEncrypted())
-	{
-		return VerifyDonorSetEncrypted(repairSet, donorMap, donorSources,
-			targetFiles, windows);
-	}
-
-	// floor semantics as in M1 (Task 1): everything reachable must match,
-	// scaled to the mapped present bytes (anchored to the ORIGINAL holes:
-	// donor-filled bytes are not primary evidence), clamped to what the
-	// windows can actually compare, never below 64
+/* the plaintext-target compare floor: everything reachable must match,
+ * scaled to the mapped present bytes (anchored to the ORIGINAL holes:
+ * donor-filled bytes are not primary evidence), clamped to what the
+ * windows can actually compare, never below 64. Returns -1 when fewer
+ * than 64 bytes are reachable - identity unknowable, par2 owns the set. */
+int64 StreamRepairController::PlainCompareFloor(RepairSetData& repairSet,
+	const std::vector<StreamRange>& windows)
+{
+	ContentMap& targetMap = *repairSet.Map;
 	int64 mappedBytes = 0;
 	for (const ContentRun& run : *targetMap.GetRuns())
 	{
 		mappedBytes += run.Size;
 	}
 	int64 base = DupeStreamRepair::BaseCompareFloor(
-		mappedBytes - DupeStreamRepair::TotalSize(originalHoles));
+		mappedBytes - DupeStreamRepair::TotalSize(repairSet.OriginalInnerHoles));
 	int64 achievable = 0;
 	for (const StreamRange& window : windows)
 	{
@@ -1156,9 +1183,33 @@ bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap
 	}
 	if (achievable < 64)
 	{
+		return -1;
+	}
+	return std::min(base, achievable);
+}
+
+bool StreamRepairController::VerifyDonorSet(RepairSetData& repairSet, ContentMap& donorMap,
+	DonorSetSources& donorSources, TargetSetFiles& targetFiles)
+{
+	ContentMap& targetMap = *repairSet.Map;
+
+	std::vector<StreamRange> windows = BuildProbeWindows(repairSet);
+
+	// an encrypted target is verified in CIPHERTEXT space: the window
+	// semantics (anchoring, coalescing) are identical, only the expected-bytes
+	// computation differs
+	if (targetMap.GetEncrypted())
+	{
+		return VerifyDonorSetEncrypted(repairSet, donorMap, donorSources,
+			targetFiles, windows);
+	}
+
+	// floor semantics as in M1 (Task 1)
+	int64 required = PlainCompareFloor(repairSet, windows);
+	if (required < 0)
+	{
 		return false;	// identity unknowable - par2 owns this set
 	}
-	int64 required = std::min(base, achievable);
 
 	int64 totalCompared = 0;
 	bool sawVariedData = false;
@@ -1687,6 +1738,345 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
 			written / 1024.0 / 1024.0, recoveredParts,
 			targetMap.GetInnerName(), donorName);
+	}
+	return written;
+}
+
+/* the M4 rung (option <DupeStreamDecompress>): materialize the donor set's
+ * member files into a scratch dir under DestDir, run the configured extractor
+ * (unrar/7z) on the main volume, pick the extracted file matching the target's
+ * inner size, and let it donate through the plain inner-space verify/patch
+ * path. Every degradation is a logged skip - never an error, never a write;
+ * the scratch tree is deleted on EVERY exit path (skip, success, exception,
+ * stop). Runs UNLOCKED except for the progress-label set. */
+void StreamRepairController::ExecDecompressRepair(const char* destDir,
+	RepairSetData& repairSet, NzbInfo* donorNzb,
+	const std::vector<SetMember>& donorMembers, const MemberSet& donorSet,
+	const DonorSource& donor, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers)
+{
+	const char* setName = donorMembers[donorSet.Members[0]].Name.c_str();
+
+	// the main volume is the member the extractor accepts as an entry point
+	// (rar: .rar/.part01.rar = data-order first; 7z: .7z/.7z.001 = first;
+	// spanned zip: the final .zip = data-order LAST); the other volumes are
+	// found next to it in the scratch dir
+	const char* mainVolume = nullptr;
+	for (int memberIndex : donorSet.Members)
+	{
+		const std::string& memberName = donorMembers[memberIndex].Name;
+		if (Unpack::IsArchive(fs::path(memberName)))
+		{
+			mainVolume = memberName.c_str();
+			break;
+		}
+	}
+	if (!mainVolume)
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: no extractable main volume",
+			setName, *donor.InfoName);
+		return;
+	}
+
+	// a unique scratch dir (a stale leftover from a crashed run is never reused)
+	BString<1024> tempDir;
+	for (int suffix = 0; ; suffix++)
+	{
+		tempDir.Format("%s%c.stream-decompress.%i", destDir, PATH_SEPARATOR, suffix);
+		if (!FileSystem::FileExists(tempDir) && !FileSystem::DirectoryExists(tempDir))
+		{
+			break;
+		}
+	}
+	if (!FileSystem::CreateDirectory(tempDir))
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: could not create %s",
+			setName, *donor.InfoName, *tempDir);
+		return;
+	}
+
+	// removes the whole scratch tree on every exit from this scope; declared
+	// before any DiskFile over its content so files close before the delete
+	struct TempDirGuard
+	{
+		CString Dir;
+		~TempDirGuard()
+		{
+			CString errmsg;
+			FileSystem::DeleteDirectoryWithContent(Dir, errmsg);
+		}
+	} tempDirGuard{CString(*tempDir)};
+
+	{
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		m_postInfo->SetProgressLabel(BString<1024>(
+			"Decompressing duplicate %s", *donor.InfoName));
+	}
+
+	int64 totalBytes = 0;
+	if (!MaterializeDonorSet(donorNzb, donorMembers, donorSet, tempDir, totalBytes))
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: donor not materializable (stopped, incomplete, over the size cap or disk error)",
+			setName, *donor.InfoName);
+		return;
+	}
+
+	BString<1024> archivePath("%s%c%s", *tempDir, PATH_SEPARATOR, mainVolume);
+	BString<1024> extractDir("%s%cextracted", *tempDir, PATH_SEPARATOR);
+
+	// the donor's own password unlocks its encrypted archive: passed to the
+	// extractor, NEVER logged. MakeExtractor validates the configured tool
+	Unpack::ExtractorPtr extractor = Unpack::MakeExtractor(fs::path(*archivePath),
+		fs::path(*extractDir),
+		donor.Password.Empty() ? std::string() : std::string(*donor.Password),
+		Unpack::OverwriteMode::Skip);
+	if (!extractor || !extractor->Extract())
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: %s",
+			setName, *donor.InfoName,
+			extractor ? "extraction failed" : "no extraction tool configured");
+		return;
+	}
+
+	std::string innerPath = DupeStreamRepair::SelectExtractedInner(extractDir,
+		repairSet.Map->GetInnerSize(), repairSet.Map->GetInnerName());
+	if (innerPath.empty())
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: no extracted file matches inner file %s",
+			setName, *donor.InfoName, repairSet.Map->GetInnerName());
+		return;
+	}
+
+	DiskFile innerFile;
+	if (!innerFile.Open(innerPath.c_str(), DiskFile::omRead))
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: could not open the extracted file",
+			setName, *donor.InfoName);
+		return;
+	}
+
+	if (!VerifyDonorInnerFile(repairSet, innerFile,
+		FileSystem::FileSize(innerPath.c_str()), targetFiles))
+	{
+		// mkInfo on purpose: a rejected donor is the safety net firing -
+		// it must be visible in the log
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s for %s: content identity not confirmed",
+			setName, *donor.InfoName, repairSet.Map->GetInnerName());
+		innerFile.Close();
+		return;
+	}
+
+	PatchFromDonorInnerFile(repairSet, innerFile, targetFiles, targets,
+		memberTargets, setMembers, donor.InfoName);
+	innerFile.Close();
+}
+
+/* fetches every article of every member of `set` and writes the decoded bytes
+ * at their declared offsets into tempDir/<member basename>. A member that
+ * misses some of its own articles still materializes what it has (extraction
+ * then typically fails and degrades to a skip). false = do not extract:
+ * stopped, an article-less member, over MaxDecompressBytes, or a disk error.
+ * Runs UNLOCKED - fetches and disk I/O never hold the queue lock. */
+bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
+	const std::vector<SetMember>& donorMembers, const MemberSet& set,
+	const char* tempDir, int64& totalBytes)
+{
+	// index-aligned with donorMembers (DonorSetSources::BuildMembers walks
+	// the same list in the same order)
+	std::vector<FileInfo*> files;
+	for (FileInfo* fileInfo : donorNzb->GetFileList())
+	{
+		files.push_back(fileInfo);
+	}
+
+	for (int memberIndex : set.Members)
+	{
+		if (memberIndex < 0 || memberIndex >= (int)files.size())
+		{
+			return false;
+		}
+		FileInfo* donorFile = files[memberIndex];
+		if (donorFile->GetArticles()->empty())
+		{
+			return false;	// nothing to materialize for this volume
+		}
+
+		BString<1024> path("%s%c%s", tempDir, PATH_SEPARATOR,
+			donorMembers[memberIndex].Name.c_str());
+		DiskFile file;
+		if (!file.Open(path, DiskFile::omWrite))
+		{
+			PrintMessage(Message::mkWarning,
+				"Could not create %s for donor materialization: %s",
+				*path, *FileSystem::GetLastErrorMessage());
+			return false;
+		}
+
+		for (std::unique_ptr<ArticleInfo>& article : *donorFile->GetArticles())
+		{
+			if (IsStopped())
+			{
+				return false;
+			}
+			ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
+				article->GetMessageId(), *donorFile->GetGroups());
+			if (!fetched.Success || fetched.Data.empty() || fetched.Offset < 0 ||
+				fetched.Offset + (int64)fetched.Data.size() > fetched.FileSize)
+			{
+				continue;	// the donor misses this article - the extractor decides
+			}
+			// the cap bounds BOTH the accumulated bytes and the declared file
+			// extents (a sparse write at a huge lying offset is as unwelcome)
+			if (fetched.FileSize > DupeStreamRepair::MaxDecompressBytes ||
+				totalBytes + (int64)fetched.Data.size() > DupeStreamRepair::MaxDecompressBytes)
+			{
+				return false;
+			}
+			file.Seek(fetched.Offset);
+			if (file.Position() != fetched.Offset ||
+				file.Write(fetched.Data.data(), fetched.Data.size()) !=
+					(int64)fetched.Data.size())
+			{
+				PrintMessage(Message::mkWarning,
+					"Could not write to %s during donor materialization: %s",
+					*path, *FileSystem::GetLastErrorMessage());
+				return false;
+			}
+			totalBytes += fetched.Data.size();
+		}
+		file.Close();
+	}
+	return true;
+}
+
+/* the M4 identity probe: the extracted donor file must byte-match the target's
+ * OWN downloaded bytes around the holes (window and floor semantics shared
+ * with M2 via BuildProbeWindows/PlainCompareFloor). PLAINTEXT targets only
+ * (v1) - composing extracted plaintext with the encrypted-target write path is
+ * future work. Nothing is written before this passes; a wrong or corrupt
+ * extraction fails the compare; par2 stays the final verifier. */
+bool StreamRepairController::VerifyDonorInnerFile(RepairSetData& repairSet,
+	DiskFile& donorInner, int64 donorInnerSize, TargetSetFiles& targetFiles)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	if (targetMap.GetEncrypted() || donorInnerSize != targetMap.GetInnerSize())
+	{
+		return false;
+	}
+
+	std::vector<StreamRange> windows = BuildProbeWindows(repairSet);
+	int64 required = PlainCompareFloor(repairSet, windows);
+	if (required < 0)
+	{
+		return false;	// identity unknowable - par2 owns this set
+	}
+
+	DiskContentSource donorSource(donorInner, donorInnerSize);
+	int64 totalCompared = 0;
+	bool sawVariedData = false;
+	std::vector<char> donorData;
+
+	for (const StreamRange& window : windows)
+	{
+		if (IsStopped())
+		{
+			return false;
+		}
+		if (totalCompared >= required && sawVariedData)
+		{
+			break;
+		}
+		donorData.resize(window.Size);
+		if (!donorSource.Read(window.Offset, donorData.data(), window.Size))
+		{
+			continue;	// unreadable extraction output: inconclusive, less evidence
+		}
+		for (const MemberRange& piece : targetMap.MapFromInner(window))
+		{
+			StreamRangeList innerPos = targetMap.MapToInner(piece.MemberIndex, piece.Range);
+			DiskFile* file = targetFiles.GetFile(piece.MemberIndex);
+			if (innerPos.size() != 1 || !file)
+			{
+				return false;
+			}
+			const char* pieceData = donorData.data() + (innerPos[0].Offset - window.Offset);
+			if (!CompareToFile(*file, piece.Range.Offset, pieceData, piece.Range.Size))
+			{
+				return false;	// same inner size but different bytes - wrong donor
+			}
+			totalCompared += piece.Range.Size;
+			for (int64 i = 1; i < piece.Range.Size && !sawVariedData; i++)
+			{
+				sawVariedData = pieceData[i] != pieceData[0];
+			}
+		}
+	}
+
+	return totalCompared >= required && sawVariedData;
+}
+
+/* patches every inner hole with bytes read from the extracted donor file.
+ * All writes go through WriteInnerRange, whose containment guards (only
+ * inside captured holes of known repair targets) stay authoritative and
+ * which already subtracts the member-space target holes - only the
+ * INNER-space holes are subtracted here (never twice). */
+int64 StreamRepairController::PatchFromDonorInnerFile(RepairSetData& repairSet,
+	DiskFile& donorInner, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const char* donorName)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	DiskContentSource donorSource(donorInner, targetMap.GetInnerSize());
+
+	int64 written = 0;
+	int holesFilled = 0;
+	std::vector<char> donorData;
+
+	StreamRangeList holes = repairSet.InnerHoles;	// iterate a stable copy
+	for (const StreamRange& hole : holes)
+	{
+		int64 pos = hole.Offset;
+		while (pos < hole.End() && !IsStopped())
+		{
+			int64 chunk = std::min<int64>(hole.End() - pos, 4 * 1024 * 1024);
+			donorData.resize(chunk);
+			if (!donorSource.Read(pos, donorData.data(), chunk))
+			{
+				break;	// unreadable extraction output - the rest stays for par2
+			}
+			int64 wrote = WriteInnerRange(targetMap, targetFiles, targets,
+				memberTargets, setMembers, {pos, chunk}, donorData.data());
+			if (wrote < 0)
+			{
+				return written;
+			}
+			written += wrote;
+			DupeStreamRepair::SubtractCovered(repairSet.InnerHoles, {pos, chunk});
+			pos += chunk;
+		}
+		if (pos >= hole.End())
+		{
+			holesFilled++;
+		}
+	}
+
+	if (written > 0)
+	{
+		// decompression serves no per-hole donor article, so the filled inner
+		// holes are the closest honest "recovered units" for the statistics
+		m_recoveredArticles += holesFilled;
+		m_recoveredBytes += written;
+		PrintMessage(Message::mkInfo,
+			"Recovered %.1f MB of %s from duplicate %s (decompressed)",
+			written / 1024.0 / 1024.0, targetMap.GetInnerName(), donorName);
 	}
 	return written;
 }
