@@ -554,9 +554,13 @@ def scenario_stream(daemon, t):
     the same byte size but different content carries a HIGHER dupe-score, so
     it is tried first and must be rejected by the identity probe (the
     negative half of the test: no corruption from a same-size impostor).
-    The history status stays non-SUCCESS (the failed-article statistics
-    survive; there is no par2 here) - the proof of repair is byte integrity
-    plus the repair logs and the DupeRecoveredArticles counter."""
+    Every hole gets filled and there is no par2 here, so the byte-based
+    health recount (StreamRepairController::RepairCompleted crediting each
+    fully-repaired file's encoded failed size back to health) drives
+    CalcHealth() to 1000: the history status now completes as SUCCESS
+    (moved to the final destination) instead of parking at FAILURE/HEALTH -
+    that status flip is asserted directly below, alongside byte integrity,
+    the repair logs and the DupeRecoveredArticles counter."""
     size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
     data = _payload(size, 4242)
     decoy_data = _payload(size, 999)  # same size, different bytes
@@ -576,8 +580,9 @@ def scenario_stream(daemon, t):
     repaired = _grep_log(t, 'donor article(s)')
     rejected = _grep_log(t, 'content identity not confirmed')
     integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    success = 'SUCCESS' in h['Status']
     return ('stream',
-            integ and recov >= 4 and queued >= 1 and repaired >= 1 and rejected >= 1,
+            success and integ and recov >= 4 and queued >= 1 and repaired >= 1 and rejected >= 1,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
             % (h['Status'], recov, queued, repaired, rejected, integ))
 
@@ -641,8 +646,10 @@ def scenario_repostrenamed(daemon, t):
     """M1 tier-2 pairing end-to-end: the donor is a byte-identical repost
     whose members were RENAMED (different release base name, same volume
     suffixes), so exact-name pairing cannot fire and the unique-suffix-key
-    tier must pair the damaged member with its donor twin. No par2 members:
-    the item ends FAILURE/HEALTH; byte integrity and the counters are the
+    tier must pair the damaged member with its donor twin. No par2 members,
+    and every hole gets filled, so the byte-based health recount now takes
+    the item all the way to SUCCESS (moved to the final destination) instead
+    of parking at FAILURE/HEALTH; byte integrity and the counters are the
     pass criteria."""
     seg_primary, seg_donor = 500_000, 300_000
     vol = 1_500_000
@@ -684,7 +691,9 @@ def scenario_xpackbare(daemon, t):
     into store-mode RAR3 volumes (different framing, different offsets,
     different segmentation). M1 cannot pair bare against rar volumes -
     the ContentMap pass must locate the missing bytes inside the donor's
-    volumes and patch them. No par2: FAILURE/HEALTH expected; integrity,
+    volumes and patch them. No par2, and the hole is fully filled, so the
+    byte-based health recount now completes the item as SUCCESS (moved to
+    the final destination) instead of parking at FAILURE/HEALTH; integrity,
     the cross-packing logs and the counter are the pass criteria."""
     size, seg_primary, seg_donor = 6_000_000, 500_000, 300_000
     data = _payload(size, 5150)
@@ -743,7 +752,12 @@ def scenario_xpackrar(daemon, t):
     """Store-rar target repaired from a BARE donor, with degradation: vol2
     has a data hole (repairable through the map), vol3 lost its first part
     including the rar headers (that volume must be excluded and stay
-    damaged for par2 - which doesn't exist here, so FAILURE/HEALTH)."""
+    damaged for par2 - which doesn't exist here). This is the PARTIAL-repair
+    proof for the health recount: RepairCompleted only credits a target's
+    encoded failed size back to health when EVERY one of its holes is
+    filled, so vol3's unrepaired header hole means the item still stays
+    FAILURE/HEALTH - never a false SUCCESS - and that is asserted directly
+    below."""
     size = 6_000_000
     data = _payload(size, 6100)
     volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
@@ -759,8 +773,10 @@ def scenario_xpackrar(daemon, t):
     donor_members = [(dp, 'movie.mkv', size, 300_000, set())]
 
     h, integ, c = _xpack_run(daemon, t, 'Xpr', members, donor_members, payloads)
+    not_success = 'SUCCESS' not in h['Status']
     ok = (integ['Rel.part01.rar'] and integ['Rel.part02.rar'] and
           not integ['Rel.part03.rar'] and              # header-holed vol stays damaged
+          not_success and                               # partial repair never parks as SUCCESS
           c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1 and
           c['missing'] >= 1)
     return ('xpackrar', ok,
@@ -796,7 +812,10 @@ def scenario_xpackrar2rar(daemon, t):
 
 
 def scenario_xpackzip(daemon, t):
-    """Bare target repaired from a SPANNED STORED ZIP donor (z01+z02+zip)."""
+    """Bare target repaired from a SPANNED STORED ZIP donor (z01+z02+zip).
+    No par2 and the hole is fully filled, so the byte-based health recount
+    takes the item to SUCCESS (moved to the final destination) - asserted
+    directly below as the cross-packing proof of the recount."""
     size = 6_000_000
     data = _payload(size, 6300)
     pp = _place_copy(t, 'xpzA', data, 'movie.mkv')
@@ -812,7 +831,8 @@ def scenario_xpackzip(daemon, t):
         donor_members.append((rel, 'Rel.%s' % suffix, len(piece), 300_000, set()))
 
     h, integ, c = _xpack_run(daemon, t, 'Xpz', members, donor_members, payloads)
-    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    ok = (integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1 and
+          'SUCCESS' in h['Status'])
     return ('xpackzip', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
             % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
 
@@ -1065,7 +1085,9 @@ def scenario_xdecomp_zip(daemon, t):
     verify the extracted bytes against the target's own downloaded bytes,
     then patch the holes - can repair it. Requires DupeStreamDecompress=yes
     (see SCENARIO_OPTIONS) and a local 7z (generators.HAVE_7Z); SKIPs
-    gracefully without one."""
+    gracefully without one. No par2 and the hole is fully filled, so the
+    byte-based health recount takes the item to SUCCESS - asserted directly
+    below as the decompression proof of the recount."""
     if not generators.HAVE_7Z:
         return ('xdecomp_zip', None, 'SKIP: 7z not installed')
     size = 4_000_000
@@ -1080,7 +1102,8 @@ def scenario_xdecomp_zip(daemon, t):
 
     h, integ, c = _xpack_run(daemon, t, 'Xdz', members, donor_members, payloads)
     decompressed = _grep_log(t, '(decompressed)')
-    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    ok = (integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1 and
+          'SUCCESS' in h['Status'])
     return ('xdecomp_zip', ok,
             'status=%s recovered=%d decompressed_logs=%d integrity=%s'
             % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
@@ -1239,14 +1262,15 @@ def scenario_xdecomp_off(daemon, t):
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
-    the history status stays non-SUCCESS (e.g. failed-article statistics
-    survive a byte-level stream repair, so cleanup/move-to-dst is skipped
-    and nzbget "parks" the item instead - see HistoryCoordinator's
+    the history status stays non-SUCCESS (e.g. a PARTIALLY-repaired release
+    still has failed-byte statistics, so cleanup/move-to-dst is skipped and
+    nzbget "parks" the item instead - see HistoryCoordinator's
     cleanupParkedFiles logic), the same file instead sits under
     main/inter/<nzb>.#<id>/<name><ext>. Walk the directories specified in
     'dirs' (by default, main/dst only; scenarios whose item ends parked,
-    like stream, pass both main/dst and main/inter) and byte-compare every
-    produced file with the given extension against the source payload."""
+    like xpackrar's header-holed volume, pass both main/dst and main/inter)
+    and byte-compare every produced file with the given extension against
+    the source payload."""
     for base in dirs:
         for rel in t.find_files(*base):
             if rel.endswith(ext):
