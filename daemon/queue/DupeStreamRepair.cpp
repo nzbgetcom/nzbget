@@ -304,7 +304,8 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 	}
 
 	nzbInfo->GetStreamRepairJobs()->emplace_back(fileInfo->GetId(), diskBasename,
-		fileInfo->GetDecodedFileSize(), std::move(holes));
+		fileInfo->GetDecodedFileSize(), fileInfo->GetFailedSize(), fileInfo->GetParFile(),
+		std::move(holes));
 
 	return true;
 }

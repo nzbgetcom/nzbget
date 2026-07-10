@@ -377,6 +377,10 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 		target.FileId = job.GetFileId();
 		target.Filename = job.GetFilename();
 		target.DecodedFileSize = job.GetDecodedFileSize();
+		// encoded failed size and par2 flag come from the job (source of truth,
+		// captured while the FileInfo was still alive at job creation)
+		target.FailedSize = job.GetFailedSize();
+		target.IsParFile = job.GetParFile();
 		target.Holes = *job.GetHoles();
 
 		// par-rename may have renamed the file since capture; the
@@ -870,6 +874,20 @@ void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& tar
 			PrintMessage(Message::mkInfo,
 				"Stream repair of %s: %.1f MB still missing after stream repair (left to par-repair)",
 				*target.Filename, DupeStreamRepair::TotalSize(target.Holes) / 1024.0 / 1024.0);
+		}
+		else
+		{
+			// fully repaired (every hole filled): credit this file's ENCODED
+			// failed size back to health, exactly reversing its contribution to
+			// m_currentFailedSize (DownloadInfo.cpp:675) and, for a par2 file,
+			// m_parCurrentFailedSize (:687). A target with any remaining hole
+			// credits nothing, so a partial repair can never raise health -
+			// both correct and the safety guarantee.
+			m_recoveredFailedSize += target.FailedSize;
+			if (target.IsParFile)
+			{
+				m_recoveredFailedParSize += target.FailedSize;
+			}
 		}
 	}
 }
@@ -2120,6 +2138,32 @@ void StreamRepairController::RepairCompleted()
 	if (m_recoveredArticles > 0)
 	{
 		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + m_recoveredArticles);
+	}
+
+	// restore byte-based health in ENCODED (bytes=) units - the units
+	// m_currentFailedSize is kept in. For each FULLY-repaired file we credit
+	// its exact encoded FailedSize (accumulated in ReportRemainingHoles),
+	// which precisely reverses that file's contribution to m_currentFailedSize
+	// (DownloadInfo.cpp:675) and, for a par2 file, m_parCurrentFailedSize
+	// (:687). So a fully-repaired par-less release reaches m_currentFailedSize
+	// == 0 -> CalcHealth() 1000 -> completes as SUCCESS; a partially-repaired
+	// file credits nothing, leaving m_currentFailedSize > 0 -> health < 1000,
+	// so the release still parks (never a false SUCCESS - crediting per
+	// fully-repaired file, not per decoded byte, is the correctness and safety
+	// argument). Clamped at 0. When par2 exists SetRequestParCheck below stays
+	// authoritative.
+	if (m_recoveredFailedSize > 0)
+	{
+		nzbInfo->SetCurrentFailedSize(std::max<int64>(0,
+			nzbInfo->GetCurrentFailedSize() - m_recoveredFailedSize));
+		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() + m_recoveredFailedSize);
+		if (m_recoveredFailedParSize > 0)
+		{
+			nzbInfo->SetParCurrentFailedSize(std::max<int64>(0,
+				nzbInfo->GetParCurrentFailedSize() - m_recoveredFailedParSize));
+			nzbInfo->SetParCurrentSuccessSize(
+				nzbInfo->GetParCurrentSuccessSize() + m_recoveredFailedParSize);
+		}
 	}
 
 	// draining the job list is the run-once gate for this stage

@@ -357,18 +357,26 @@ typedef std::vector<StreamRange> StreamRangeList;
 class StreamRepairJob
 {
 public:
-	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, StreamRangeList holes) :
+	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, int64 failedSize,
+		bool parFile, StreamRangeList holes) :
 		m_fileId(fileId), m_filename(filename), m_decodedFileSize(decodedFileSize),
-		m_holes(std::move(holes)) {}
+		m_failedSize(failedSize), m_parFile(parFile), m_holes(std::move(holes)) {}
 	int GetFileId() const { return m_fileId; }
 	const char* GetFilename() const { return m_filename; }
 	int64 GetDecodedFileSize() const { return m_decodedFileSize; }
+	// the file's ENCODED failed size (bytes= units, as counted into
+	// m_currentFailedSize) and whether it is a par2 file, captured at
+	// job-creation time while the FileInfo was still alive
+	int64 GetFailedSize() const { return m_failedSize; }
+	bool GetParFile() const { return m_parFile; }
 	StreamRangeList* GetHoles() { return &m_holes; }
 
 private:
 	int m_fileId;
 	CString m_filename;
 	int64 m_decodedFileSize;
+	int64 m_failedSize;
+	bool m_parFile;
 	StreamRangeList m_holes;
 };
 

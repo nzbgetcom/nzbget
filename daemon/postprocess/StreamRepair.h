@@ -146,6 +146,13 @@ private:
 		CString Filename;		// current on-disk base name (in DestDir)
 		int64 DecodedFileSize;
 		StreamRangeList Holes;
+		// the file's ENCODED failed size and par2 flag, captured from the
+		// StreamRepairJob (the source of truth). When this target is FULLY
+		// repaired its FailedSize is credited back to health, exactly reversing
+		// the file's contribution to m_currentFailedSize (and, for a par2 file,
+		// m_parCurrentFailedSize)
+		int64 FailedSize = 0;
+		bool IsParFile = false;
 		// rank among same-size members (by name) and that window's size,
 		// for positional donor pairing of obfuscated reposts; -1/0 = none
 		int PositionalRank = -1;
@@ -168,6 +175,12 @@ private:
 	CString m_targetPassword;
 	int m_recoveredArticles = 0;
 	int64 m_recoveredBytes = 0;
+	// health is byte-based in ENCODED (bytes=) units, so it is credited per
+	// FULLY-repaired file by that file's encoded FailedSize (not by decoded
+	// recovered bytes): m_recoveredFailedSize is the total encoded failed size
+	// of fully-repaired targets, m_recoveredFailedParSize its par2 subset
+	int64 m_recoveredFailedSize = 0;
+	int64 m_recoveredFailedParSize = 0;
 	bool m_holesRemain = false;
 
 	// a donor whose files keep failing identity verification is almost
