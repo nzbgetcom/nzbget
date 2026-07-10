@@ -81,10 +81,30 @@ article "missing" on the active server, so no real Usenet access is needed):
   password does NOT match; rejected by the content-identity probe, nothing
   written. The four xcrypt_* scenarios SKIP gracefully when the
   ``cryptography`` package is not installed (see generators.HAVE_CRYPTO).
+* xdecomp_zip    - M4 decompression-assisted donor extraction: a bare
+  movie.mkv target with holes, repaired from a REAL DEFLATE-compressed zip
+  donor of the identical file. M2 never maps a compressed zip entry, so only
+  materializing the donor and shelling out to the configured SevenZipCmd
+  (option DupeStreamDecompress=yes) can recover it.
+* xdecomp_7z     - same shape, donor is a REAL LZMA2-compressed 7z archive.
+* xdecomp_storetarget - a store-mode rar3 TARGET (not bare) repaired from a
+  compressed-7z donor, proving the M4 path composes with the M2 plain
+  target map, not just the bare/identity map.
+* xdecomp_enc7z  - the POSIX password-quoting proof: a bare target repaired
+  from a HEADER-ENCRYPTED 7z donor (-mhe=on), its password threaded via the
+  donor's own NZB exactly like xcrypt_plainenc threads an encrypted-rar
+  donor's password.
+* xdecomp_neg    - the negative: a compressed donor with the right inner
+  size but the WRONG bytes; rejected by the identity probe, nothing written.
+* xdecomp_off    - the opt-in gate: the same compressed-7z-donor setup as
+  xdecomp_7z, but DupeStreamDecompress is OMITTED (default no); the
+  decompression path must never run and the item stays unrepaired. The six
+  xdecomp_* scenarios SKIP gracefully when no local 7z/7za/7zr binary is on
+  PATH (see generators.HAVE_7Z).
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass]
+               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -1036,6 +1056,186 @@ def scenario_xcrypt_wrongpass(daemon, t):
             % (h['Status'], c['recov'], c['rejected'], integ['movie.mkv']))
 
 
+def scenario_xdecomp_zip(daemon, t):
+    """M4 decompression donor: a bare movie.mkv target with holes, repaired
+    from a REAL DEFLATE-compressed zip donor (generators.zip_deflated)
+    holding the identical movie.mkv. M2 never maps this (BuildZipMap rejects
+    any Method != 0 entry), so only the M4 ladder - materialize the donor's
+    articles, shell out to the configured SevenZipCmd to extract movie.mkv,
+    verify the extracted bytes against the target's own downloaded bytes,
+    then patch the holes - can repair it. Requires DupeStreamDecompress=yes
+    (see SCENARIO_OPTIONS) and a local 7z (generators.HAVE_7Z); SKIPs
+    gracefully without one."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_zip', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8200)
+    pp = _place_copy(t, 'xdzA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    archive = generators.zip_deflated([('movie.mkv', data)])
+    rel = 'xdzB/rel.zip'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.zip', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdz', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_zip', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_7z(daemon, t):
+    """Same shape as xdecomp_zip, but the donor is a REAL LZMA2-compressed 7z
+    archive (generators.seven_zip_lzma) - BuildSevenZipMap rejects its
+    non-Copy coder, so only the M4 decompression ladder can repair the bare
+    target."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_7z', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8300)
+    pp = _place_copy(t, 'xd7A', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xd7z-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xd7B/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xd7', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_7z', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_storetarget(daemon, t):
+    """The M4 ladder against a non-bare TARGET: a store-mode rar3 target
+    (generators.rar3_store_volumes, the same M2 target-side generator
+    xpackrar uses - no external tool needed to CREATE it) with a data hole
+    in its second volume, repaired from a REAL LZMA2-compressed 7z donor of
+    the same inner movie.mkv. Proves the M4 extracted-donor path reuses the
+    plain (M2) inner-space target map, not just the identity/bare map."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_storetarget', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8400)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xdsA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 2 else set()))
+    with tempfile.TemporaryDirectory(prefix='xds-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdsB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xds', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = all(integ.values()) and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_storetarget', ok,
+            'status=%s recovered=%d decompressed_logs=%d integ=%s'
+            % (h['Status'], c['recov'], decompressed, all(integ.values())))
+
+
+def scenario_xdecomp_enc7z(daemon, t):
+    """The POSIX password-quoting proof: a bare target repaired from a
+    HEADER-ENCRYPTED LZMA2 7z donor (generators.seven_zip_lzma_encrypted,
+    ``-mhe=on -p<password>``), the donor's password traveling via its own
+    NZB <meta type="password"> exactly like xcrypt_plainenc threads an
+    encrypted-rar donor's password. Unpack::MakeExtractor/MakePassword must
+    pass that password to 7z as a single raw argv element on POSIX (M4 Task
+    2, commit 3c3e9130) - a quote-wrapped password would make 7z see the
+    literal quote characters and fail extraction, and this scenario would
+    then FAIL (not SKIP)."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_enc7z', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8500)
+    password = 'decomp-pw-7z'
+    pp = _place_copy(t, 'xdeA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xde-') as workdir:
+        archive = generators.seven_zip_lzma_encrypted([('movie.mkv', data)], workdir, password)
+    rel = 'xdeB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xde', members, donor_members, payloads,
+                             donor_password=password)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_enc7z', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_neg(daemon, t):
+    """The negative: a bare target repaired attempt from a REAL 7z donor
+    holding the RIGHT-size but WRONG-bytes inner file (a decoy payload of
+    the same size). VerifyDonorInnerFile's identity probe must reject it
+    (`content identity not confirmed`) before any write; nothing may be
+    written and neither file may end up matching the other."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_neg', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8600)
+    decoy = _payload(size, 8700)
+    pp = _place_copy(t, 'xdnA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    with tempfile.TemporaryDirectory(prefix='xdn-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', decoy)], workdir)
+    rel = 'xdnB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdn', members, donor_members,
+                             {'movie.mkv': data, 'decoy': decoy})
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = (c['rejected'] >= 1 and c['recov'] == 0 and decompressed == 0 and
+          not integ['movie.mkv'] and not integ['decoy'])
+    return ('xdecomp_neg', ok,
+            'status=%s recovered=%d rejected=%d decompressed_logs=%d file_matches=%s/%s'
+            % (h['Status'], c['recov'], c['rejected'], decompressed,
+               integ['movie.mkv'], integ['decoy']))
+
+
+def scenario_xdecomp_off(daemon, t):
+    """The opt-in gate proof: the SAME bare-target-vs-compressed-7z-donor
+    setup as xdecomp_7z, but DupeStreamDecompress is OMITTED (default no -
+    see SCENARIO_OPTIONS, which deliberately does NOT add it here). The
+    decompression path must never run (no `(decompressed)` log) and the
+    item must stay unrepaired - M2 already rejected this donor's non-Copy
+    coder, and M4 is off, so nothing else can map it."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_off', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8800)
+    pp = _place_copy(t, 'xdoA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xdo-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdoB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdo', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = decompressed == 0 and c['recov'] == 0 and not integ['movie.mkv']
+    return ('xdecomp_off', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -1084,6 +1284,12 @@ SCENARIOS = {
     'xcrypt_plainenc': scenario_xcrypt_plainenc,
     'xcrypt_diffpass': scenario_xcrypt_diffpass,
     'xcrypt_wrongpass': scenario_xcrypt_wrongpass,
+    'xdecomp_zip': scenario_xdecomp_zip,
+    'xdecomp_7z': scenario_xdecomp_7z,
+    'xdecomp_storetarget': scenario_xdecomp_storetarget,
+    'xdecomp_enc7z': scenario_xdecomp_enc7z,
+    'xdecomp_neg': scenario_xdecomp_neg,
+    'xdecomp_off': scenario_xdecomp_off,
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -1092,6 +1298,12 @@ SCENARIOS = {
 # RequestParCheck the repair stage issues would only flag the item instead
 # of running the par stage, leaving that handoff untested (with no par2
 # files present, "auto" ends in a harmless "Nothing to par-check").
+# the xdecomp_* daemon config pins SevenZipCmd at whatever real 7z binary
+# generators._find_7z() discovered on PATH, so Unpack::MakeExtractor has a
+# tool to shell out to; empty when none was found (the scenarios themselves
+# SKIP in that case, see generators.HAVE_7Z).
+_SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.HAVE_7Z else []
+
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # repost: ParCheck=auto runs par-check against a random-bytes stand-in
@@ -1118,6 +1330,25 @@ SCENARIO_OPTIONS = {
     'xcrypt_plainenc': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xcrypt_diffpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xcrypt_wrongpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xdecomp_*: M4 decompression-assisted donor extraction. SevenZipCmd is
+    # pinned at the locally-discovered 7z binary (generators.SEVENZIP_PATH,
+    # via _SEVENZIP_OPTION below) so Unpack::MakeExtractor has a real tool to
+    # shell out to; every xdecomp_* scenario SKIPs outright when 7z is not
+    # installed (see generators.HAVE_7Z) before even reading this dict.
+    # xdecomp_off is the deliberate exception: it OMITS
+    # DupeStreamDecompress=yes to prove the opt-in gate, everything else
+    # about its fixture matches xdecomp_7z.
+    'xdecomp_zip': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                    'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                   'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_storetarget': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                            'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_enc7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                      'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_neg': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                    'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_off': ['DupeArticleFallback=stream', 'ParCheck=auto'] + _SEVENZIP_OPTION,
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

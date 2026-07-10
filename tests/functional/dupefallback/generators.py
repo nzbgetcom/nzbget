@@ -2,15 +2,43 @@
 
 Every generator writes STORE/COPY-mode framing around opaque payload bytes -
 byte-exactly what the C++ mappers parse (see daemon/postprocess/ContentMap.cpp).
+
+The zip_deflated/seven_zip_lzma*/HAVE_7Z group below is the exception: those
+build REAL compressed (and, for the encrypted variant, header-encrypted)
+archives by shelling out to a local 7z binary - genuine compression that
+ContentMap's BuildZipMap/BuildSevenZipMap refuse to map (Method != 0 / a
+non-Copy coder), which is exactly what forces the M4 decompression-donor
+path (option DupeStreamDecompress) instead of the M2 byte-copy path.
 """
 import hashlib
+import io
+import os
+import shutil
 import struct
+import subprocess
+import zipfile
 
 try:
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
     HAVE_CRYPTO = True
 except ImportError:
     HAVE_CRYPTO = False
+
+
+def _find_7z():
+    """Locate a real 7z/7za/7zr binary on PATH. Its path is also fed to the
+    daemon's SevenZipCmd option (see harness.py's SCENARIO_OPTIONS) so
+    Unpack::MakeExtractor can shell out to the SAME binary that built these
+    fixtures to extract them back out."""
+    for name in ('7z', '7za', '7zr'):
+        path = shutil.which(name)
+        if path:
+            return path
+    return None
+
+
+SEVENZIP_PATH = _find_7z()
+HAVE_7Z = SEVENZIP_PATH is not None
 
 
 def rar3_store_volumes(inner_name, data, volume_size, method=0x30):
@@ -229,6 +257,66 @@ def seven_zip_copy(files):
         out += data
     out += header
     return bytes(out)
+
+
+def zip_deflated(files):
+    """A real DEFLATE-compressed zip holding ``files`` = [(name, bytes), ...]
+    (stdlib zipfile.ZIP_DEFLATED - genuine compression, unlike zip_store's
+    forged STORE framing above). BuildZipMap rejects any entry whose Method
+    != 0 ("compressed zip entry (only stored maps)"), so a donor built with
+    this generator can never map through M2 - it exercises the M4
+    decompression-donor path exclusively. Deterministic (fixed date_time and
+    external attributes; the payload bytes themselves come from the caller's
+    own deterministic _payload(size, seed))."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for name, data in files:
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            zf.writestr(info, data)
+    return buf.getvalue()
+
+
+def _seven_zip_pack(files, workdir, out_name, extra_args):
+    if not HAVE_7Z:
+        raise RuntimeError('7z is not installed')
+    names = []
+    for name, data in files:
+        path = os.path.join(workdir, name)
+        os.makedirs(os.path.dirname(path) or workdir, exist_ok=True)
+        with open(path, 'wb') as f:
+            f.write(data)
+        names.append(name)
+    out = os.path.join(workdir, out_name)
+    subprocess.run([SEVENZIP_PATH, 'a', '-bd', '-m0=LZMA2'] + extra_args + [out] + names,
+                   cwd=workdir, check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    with open(out, 'rb') as f:
+        return f.read()
+
+
+def seven_zip_lzma(files, workdir):
+    """A real LZMA2-compressed 7z archive holding ``files`` =
+    [(name, bytes), ...], built by shelling out to the local 7z binary (see
+    HAVE_7Z/SEVENZIP_PATH). BuildSevenZipMap only maps a Copy-only coder
+    ("non-Copy 7z coder (only copy mode maps)"), so this donor can never map
+    through M2 - only through the M4 decompression path. ``workdir`` is a
+    scratch directory the CALLER creates and removes; raises if 7z is not
+    installed (callers must check HAVE_7Z first and SKIP gracefully)."""
+    return _seven_zip_pack(files, workdir, 'out.7z', [])
+
+
+def seven_zip_lzma_encrypted(files, workdir, password):
+    """A HEADER-ENCRYPTED LZMA2 7z archive (-mhe=on -p<password>: both file
+    names and data are encrypted - real 7z header encryption), holding
+    ``files`` = [(name, bytes), ...]. Locks in the POSIX password-quoting fix
+    (M4 Task 2, commit 3c3e9130): Unpack::MakePassword's non-Windows branch
+    passes -p<password> as ONE raw argv element via fork+execvp (no shell,
+    no quote-stripping) - exactly how this generator invokes 7z here, so the
+    donor password travels identically on both sides of the fixture."""
+    return _seven_zip_pack(files, workdir, 'out_enc.7z',
+                            ['-mhe=on', '-p' + password])
 
 
 def split_bytes(data, sizes):

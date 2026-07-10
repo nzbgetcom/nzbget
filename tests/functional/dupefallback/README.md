@@ -28,14 +28,22 @@ suffix to make chosen articles "missing" on the active server.
 | `xcrypt_plainenc` | Reverse direction: a BARE unencrypted target repaired from a password-ENCRYPTED store-rar donor whose password travels via the donor's own NZB (the M3 retry ladder: plain `BuildMap` fails with "encrypted archive data", then retries with the donor's password). |
 | `xcrypt_diffpass` | Both sides encrypted under DIFFERENT passwords and different volume sizes: proves the donor's and target's crypto contexts never mix (each side decrypts/re-encrypts with its own key). |
 | `xcrypt_wrongpass` | The negative: an encrypted donor whose supplied password does NOT match the one it was encrypted with. RAR3 has no stored password-check value, so `BuildMap` succeeds with a wrong key; the mismatch is caught downstream by the content-identity probe (`content identity not confirmed`) - nothing is written. |
+| `xdecomp_zip` | M4 decompression-assisted donor extraction (option `DupeStreamDecompress`): a bare `movie.mkv` target with holes, repaired from a REAL DEFLATE-compressed zip donor of the identical file. M2 never maps a compressed zip entry, so the donor's articles are materialized and extracted via the configured `SevenZipCmd` before the recovered plaintext patches the target's holes. |
+| `xdecomp_7z` | Same shape as `xdecomp_zip`, but the donor is a REAL LZMA2-compressed 7z archive. |
+| `xdecomp_storetarget` | The M4 decompression path against a non-bare TARGET: a store-mode rar3 target (same generator `xpackrar` uses) with a data hole, repaired from a compressed-7z donor of the same inner file - proves the extracted-donor path composes with the M2 plain target map. |
+| `xdecomp_enc7z` | The POSIX password-quoting proof: a bare target repaired from a HEADER-ENCRYPTED 7z donor (`-mhe=on`), its password threaded via the donor's own NZB exactly like `xcrypt_plainenc`. Locks in the Task 2 fix where a quote-wrapped password would otherwise break extraction on Linux/macOS. |
+| `xdecomp_neg` | The negative: a compressed donor with the right inner size but the WRONG bytes; rejected by the identity probe (`content identity not confirmed`) before any write - nothing is written and the target stays unrecovered. |
+| `xdecomp_off` | The opt-in gate: the identical compressed-7z-donor setup as `xdecomp_7z`, but `DupeStreamDecompress` is OMITTED (default `no`) - the decompression path must never run and the item stays unrepaired. |
 
 Each scenario asserts the download reaches `SUCCESS`, the reassembled file is
 **byte-identical** to the source (with `DirectWrite=yes`), and the
 `DupeRecoveredArticles` counter reflects the recovery. The `stream`,
-`repost`, `repostrenamed`, `xpack*` and `xcrypt_*` scenarios assert byte
-identity, the repair log lines and the counter instead of the SUCCESS status.
-The four `xcrypt_*` scenarios require the Python `cryptography` package;
-without it they SKIP gracefully (reported separately from PASS/FAIL).
+`repost`, `repostrenamed`, `xpack*`, `xcrypt_*` and `xdecomp_*` scenarios
+assert byte identity, the repair log lines and the counter instead of the
+SUCCESS status. The four `xcrypt_*` scenarios require the Python
+`cryptography` package; the six `xdecomp_*` scenarios require a local
+`7z`/`7za`/`7zr` binary on `PATH`. Without them, the respective scenarios
+SKIP gracefully (reported separately from PASS/FAIL).
 
 ## Running
 
@@ -75,7 +83,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0
