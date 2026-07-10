@@ -452,6 +452,16 @@ std::string DupeStreamRepair::SelectExtractedInner(const char* dir, int64 innerS
 		!dirEc && it != fs::recursive_directory_iterator();
 		it.increment(dirEc))
 	{
+		// skip symlinks WITHOUT following them: a hostile donor archive could
+		// contain a link escaping the scratch dir (e.g. to the target's own
+		// file), which would trivially "verify" and defeat real donors
+		fs::error_code linkEc;
+		if (fs::is_symlink(it->symlink_status(linkEc)) || linkEc)
+		{
+			it.disable_recursion_pending();
+			continue;
+		}
+
 		fs::error_code fileEc;
 		if (!it->is_regular_file(fileEc) || fileEc)
 		{
