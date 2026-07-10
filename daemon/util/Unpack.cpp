@@ -74,7 +74,15 @@ std::string ExtractorBase::MakePassword() const
 {
 	if (m_password.empty()) return "-p-";
 
+#ifdef WIN32
+	// the Windows CRT tokenizes one command-line string, so the surrounding
+	// quotes are stripped before unrar/7z see the password
 	return "-p\"" + m_password + "\"";
+#else
+	// POSIX ScriptController uses fork+execvp with an argv array (no shell):
+	// literal quotes would become part of the password and fail extraction
+	return "-p" + m_password;
+#endif
 }
 
 bool IsArchive(const fs::path& file)

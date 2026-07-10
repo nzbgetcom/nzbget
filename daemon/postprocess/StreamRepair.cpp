@@ -1780,6 +1780,23 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 		return;
 	}
 
+	// probe the extractor tool BEFORE materializing up to MaxDecompressBytes:
+	// a missing/unconfigured unrar/7z is a static config state, so without it
+	// the whole donor download would be wasted for every gated pair. Mirror
+	// the validation MakeExtractor itself does (dispatch order: 7z, then
+	// unrar); the real MakeExtractor call below stays the authoritative gate.
+	fs::path mainVolumePath(mainVolume);
+	const fs::path& toolPath = Unpack::SevenZip::IsSupported(mainVolumePath) ?
+		g_Options->GetSevenZipPath() : g_Options->GetUnrarPath();
+	fs::error_code toolEc;
+	if (toolPath.empty() || !fs::exists(toolPath, toolEc) || toolEc)
+	{
+		PrintMessage(Message::mkInfo,
+			"Skipping decompression of %s of duplicate %s: no extraction tool configured",
+			setName, *donor.InfoName);
+		return;
+	}
+
 	// a unique scratch dir (a stale leftover from a crashed run is never reused)
 	BString<1024> tempDir;
 	for (int suffix = 0; ; suffix++)
@@ -1897,6 +1914,13 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 		files.push_back(fileInfo);
 	}
 
+	// per-attempt (whole donor set) accounting: totalBytes bounds the decoded
+	// bytes actually written; totalExtent bounds the on-disk file EXTENTS - N
+	// members each declaring a huge size (one tiny high-offset article) would
+	// otherwise seek-write up to N x MaxDecompressBytes of zero-fill on a
+	// non-sparse filesystem before we ever try to extract
+	int64 totalExtent = 0;
+
 	for (int memberIndex : set.Members)
 	{
 		if (memberIndex < 0 || memberIndex >= (int)files.size())
@@ -1920,6 +1944,7 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			return false;
 		}
 
+		int64 memberExtent = 0;	// this member's highest write end (its real size)
 		for (std::unique_ptr<ArticleInfo>& article : *donorFile->GetArticles())
 		{
 			if (IsStopped())
@@ -1933,10 +1958,13 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			{
 				continue;	// the donor misses this article - the extractor decides
 			}
-			// the cap bounds BOTH the accumulated bytes and the declared file
-			// extents (a sparse write at a huge lying offset is as unwelcome)
-			if (fetched.FileSize > DupeStreamRepair::MaxDecompressBytes ||
-				totalBytes + (int64)fetched.Data.size() > DupeStreamRepair::MaxDecompressBytes)
+			int64 writeEnd = fetched.Offset + (int64)fetched.Data.size();
+			// the caps bound BOTH the accumulated decoded bytes AND the
+			// accumulated file extents across ALL members: prior members by
+			// their real materialized extent, this member by its declared size
+			// (a stable per-member upper bound that bails before its download)
+			if (totalBytes + (int64)fetched.Data.size() > DupeStreamRepair::MaxDecompressBytes ||
+				totalExtent + fetched.FileSize > DupeStreamRepair::MaxDecompressBytes)
 			{
 				return false;
 			}
@@ -1951,7 +1979,9 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 				return false;
 			}
 			totalBytes += fetched.Data.size();
+			memberExtent = std::max(memberExtent, writeEnd);
 		}
+		totalExtent += memberExtent;
 		file.Close();
 	}
 	return true;
