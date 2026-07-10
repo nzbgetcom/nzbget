@@ -22,6 +22,7 @@
 #ifndef FEEDINFO_H
 #define FEEDINFO_H
 
+#include <atomic>
 #include <string>
 #include "Util.h"
 #include "DownloadInfo.h"
@@ -109,7 +110,7 @@ private:
 	time_t m_lastUpdate = 0;
 	time_t m_nextUpdate = 0;
 	uint32 m_filterHash;
-	EStatus m_status = fsUndefined;
+	std::atomic<EStatus> m_status{fsUndefined};
 	CategorySource m_categorySource = CategorySource::NZBFile;
 	int m_interval;
 	int m_priority;

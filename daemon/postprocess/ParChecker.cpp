@@ -961,7 +961,7 @@ bool ParChecker::IsProcessedFile(const char* filename)
 
 void ParChecker::SignalFilename(std::string str)
 {
-	std::lock_guard guard{ m_sigFileNameMtx };
+	std::lock_guard guard{ m_signalMtx };
 
 	if (m_stage == ptRepairing)
 	{
@@ -988,7 +988,7 @@ void ParChecker::SignalFilename(std::string str)
 
 void ParChecker::SignalProgress(int progress)
 {
-	std::lock_guard guard{ m_sigProgressMtx };
+	std::lock_guard guard{ m_signalMtx };
 
 	m_fileProgress = progress;
 
@@ -1046,7 +1046,7 @@ void ParChecker::SignalProgress(int progress)
 
 void ParChecker::SignalDone(std::string fileName, int available, int total)
 {
-	std::lock_guard guard{ m_sigDoneMtx };
+	std::lock_guard guard{ m_signalMtx };
 
 	++m_processedCount;
 
