@@ -119,6 +119,8 @@ public:
 	void SetDupeNextLead(int dupeNextLead) { m_dupeNextLead = dupeNextLead; }
 	int GetDupeDonorCount() { return m_dupeDonorCount; }
 	void SetDupeDonorCount(int dupeDonorCount) { m_dupeDonorCount = dupeDonorCount; }
+	bool GetDupeProactive() { return m_dupeProactive; }
+	void SetDupeProactive(bool dupeProactive) { m_dupeProactive = dupeProactive; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -154,6 +156,9 @@ private:
 	int m_dupeNextLead = 0;
 	// distinct donors in the pinned order; bounds the lead rotation (not persisted)
 	int m_dupeDonorCount = 0;
+	// true when the first donor attempt was proactive cutover rather than a
+	// retry after the target article failed on its primary source
+	bool m_dupeProactive = false;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -396,9 +401,10 @@ class StreamRepairJob
 {
 public:
 	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, int64 failedSize,
-		bool parFile, StreamRangeList holes) :
+		int64 missedSize, int failedArticles, bool parFile, StreamRangeList holes) :
 		m_fileId(fileId), m_filename(filename), m_decodedFileSize(decodedFileSize),
-		m_failedSize(failedSize), m_parFile(parFile), m_holes(std::move(holes)) {}
+		m_failedSize(failedSize), m_missedSize(missedSize), m_failedArticles(failedArticles),
+		m_parFile(parFile), m_holes(std::move(holes)) {}
 	int GetFileId() const { return m_fileId; }
 	const char* GetFilename() const { return m_filename; }
 	int64 GetDecodedFileSize() const { return m_decodedFileSize; }
@@ -406,14 +412,20 @@ public:
 	// m_currentFailedSize) and whether it is a par2 file, captured at
 	// job-creation time while the FileInfo was still alive
 	int64 GetFailedSize() const { return m_failedSize; }
+	int64 GetMissedSize() const { return m_missedSize; }
+	int GetFailedArticles() const { return m_failedArticles; }
 	bool GetParFile() const { return m_parFile; }
 	StreamRangeList* GetHoles() { return &m_holes; }
+	const StreamRangeList* GetHoles() const { return &m_holes; }
+	void SetHoles(StreamRangeList holes) { m_holes = std::move(holes); }
 
 private:
 	int m_fileId;
 	CString m_filename;
 	int64 m_decodedFileSize;
 	int64 m_failedSize;
+	int64 m_missedSize;
+	int m_failedArticles;
 	bool m_parFile;
 	StreamRangeList m_holes;
 };
@@ -665,6 +677,10 @@ public:
 	void SetCurrentFailedArticles(int currentFailedArticles) { m_currentFailedArticles = currentFailedArticles; }
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	int64 GetDupeRecoveredBytes() { return m_dupeRecoveredBytes; }
+	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
+	int GetDupeRecoveredHoles() { return m_dupeRecoveredHoles; }
+	void SetDupeRecoveredHoles(int value) { m_dupeRecoveredHoles = value; }
 	StreamRepairJobList* GetStreamRepairJobs() { return &m_streamRepairJobs; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
@@ -837,10 +853,12 @@ private:
 	int m_failedArticles = 0;
 	int m_currentSuccessArticles = 0;
 	int m_currentFailedArticles = 0;
-	// aggregate of FileInfo::m_dupeRecoveredArticles (not persisted)
+	// aggregate of FileInfo::m_dupeRecoveredArticles (persisted for restart)
 	int m_dupeRecoveredArticles = 0;
+	int64 m_dupeRecoveredBytes = 0;
+	int m_dupeRecoveredHoles = 0;
 	// missing byte ranges of completed media files awaiting stream repair
-	// from duplicate collections in post-processing (not persisted)
+	// from duplicate collections in post-processing (persisted)
 	StreamRepairJobList m_streamRepairJobs;
 	time_t m_minTime = 0;
 	time_t m_maxTime = 0;

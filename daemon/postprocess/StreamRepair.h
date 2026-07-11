@@ -152,6 +152,8 @@ private:
 		// the file's contribution to m_currentFailedSize (and, for a par2 file,
 		// m_parCurrentFailedSize)
 		int64 FailedSize = 0;
+		int64 MissedSize = 0;
+		int FailedArticles = 0;
 		bool IsParFile = false;
 		// rank among same-size members (by name) and that window's size,
 		// for positional donor pairing of obfuscated reposts; -1/0 = none
@@ -175,6 +177,7 @@ private:
 	CString m_targetPassword;
 	int m_recoveredArticles = 0;
 	int64 m_recoveredBytes = 0;
+	int m_recoveredHoles = 0;
 	// health is byte-based in ENCODED (bytes=) units, so it is credited per
 	// FULLY-repaired file by that file's encoded FailedSize (not by decoded
 	// recovered bytes): m_recoveredFailedSize is the total encoded failed size
@@ -182,6 +185,7 @@ private:
 	int64 m_recoveredFailedSize = 0;
 	int64 m_recoveredFailedParSize = 0;
 	bool m_holesRemain = false;
+	std::vector<RepairTarget> m_targets;
 
 	// a donor whose files keep failing identity verification is almost
 	// certainly not a byte-identical repost: stop trying it after this many

@@ -304,7 +304,8 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 	}
 
 	nzbInfo->GetStreamRepairJobs()->emplace_back(fileInfo->GetId(), diskBasename,
-		fileInfo->GetDecodedFileSize(), fileInfo->GetFailedSize(), fileInfo->GetParFile(),
+		fileInfo->GetDecodedFileSize(), fileInfo->GetFailedSize(), fileInfo->GetMissedSize(),
+		fileInfo->GetFailedArticles() + fileInfo->GetMissedArticles(), fileInfo->GetParFile(),
 		std::move(holes));
 
 	return true;
@@ -447,20 +448,28 @@ std::string DupeStreamRepair::SelectExtractedInner(const char* dir, int64 innerS
 	}
 
 	std::vector<std::string> matches;
+	constexpr size_t MaxExtractedEntries = 10000;
+	constexpr int64 MaxExtractedBytes = MaxDecompressBytes;
+	size_t entryCount = 0;
+	int64 extractedBytes = 0;
 
 	fs::error_code dirEc;
 	for (auto it = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, dirEc);
 		!dirEc && it != fs::recursive_directory_iterator();
 		it.increment(dirEc))
 	{
+		if (++entryCount > MaxExtractedEntries)
+		{
+			return "";
+		}
 		// skip symlinks WITHOUT following them: a hostile donor archive could
 		// contain a link escaping the scratch dir (e.g. to the target's own
 		// file), which would trivially "verify" and defeat real donors
 		fs::error_code linkEc;
 		if (fs::is_symlink(it->symlink_status(linkEc)) || linkEc)
 		{
-			it.disable_recursion_pending();
-			continue;
+			info("Stream repair: archive contains link");
+			return "";
 		}
 
 		fs::error_code fileEc;
@@ -470,7 +479,13 @@ std::string DupeStreamRepair::SelectExtractedInner(const char* dir, int64 innerS
 		}
 
 		std::string path = fs::u8string(it->path());
-		if (FileSystem::FileSize(path.c_str()) == innerSize)
+		int64 size = FileSystem::FileSize(path.c_str());
+		if (size < 0 || size > MaxExtractedBytes - extractedBytes)
+		{
+			return "";
+		}
+		extractedBytes += size;
+		if (size == innerSize)
 		{
 			matches.push_back(std::move(path));
 		}

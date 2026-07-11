@@ -55,13 +55,14 @@ This method returns array of structures with following fields:
   - **RENAMING** - processed by par-renamer;
   - **UNPACKING** - being unpacked;
   - **MOVING** - moving files from intermediate directory into destination directory;
+  - **STREAM_REPAIRING** - repairing missing byte ranges from duplicate collections;
   - **POST_UNPACK_RENAMING** - renaming excessively obfuscated downloaded files after unpacking;
   - **EXECUTING_SCRIPT** - executing post-processing script;
   - **PP_FINISHED** - post-processing is finished, the item is about to be moved to history.
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.
 - **SuccessArticles** `(int)` - Number of successfully downloaded articles.
 - **FailedArticles** `(int)` - Number of failed article downloads.
-- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed articles that were recovered from a duplicate collection by the DupeArticleFallback feature (option `DupeArticleFallback` in the configuration file).
+- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed target articles that were fully recovered from a duplicate collection. Donor probes, proactive cutover, and individual byte ranges are not counted.
 - **Health** `(int)` - Current health of the group, in permille. 1000 means 100.0%. The health can go down during download as articles fail, and can later increase when groups are merged or when byte-level stream repair (option `DupeArticleFallback=stream`) fills missing byte ranges during post-processing. Higher values are better.
 - **CriticalHealth** `(int)` - Calculated critical health of the group, in permille. 1000 means 100.0%. The critical health is calculated based on the number and size of par-files. Lower values are better.
 - **DownloadedSizeLo** `(int)` - `v14.0` Amount of downloaded data for group in bytes, Low 32-bits of 64-bit value.

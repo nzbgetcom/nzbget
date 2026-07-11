@@ -486,9 +486,9 @@ BOOST_AUTO_TEST_CASE(SelectExtractedInnerTest)
 	// no file of that size anywhere under dir: empty
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 999999, "movie.mkv"), "");
 
-	// a symlink escaping the scratch dir to a same-size file must be ignored:
-	// a hostile archive could otherwise point at the target's own file and
-	// trivially "verify" - only the real files we wrote may be selected
+	// Any archive link fails closed. A hostile archive could otherwise point
+	// at the target's own file and trivially "verify", and accepting other
+	// members would make safety depend on extractor-specific link behavior.
 	fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename();
 	fs::create_directories(outsideDir);
 	fs::path outsideTarget = outsideDir / "secret.mkv";
@@ -497,11 +497,8 @@ BOOST_AUTO_TEST_CASE(SelectExtractedInnerTest)
 	fs::create_symlink(outsideTarget, tempDir / "escape.mkv", linkEc);
 	if (!linkEc)	// platforms without symlink support skip this assertion
 	{
-		std::string picked =
-			DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 1000, "escape.mkv");
-		BOOST_CHECK(picked != fs::u8string(tempDir / "escape.mkv"));
-		BOOST_CHECK(picked != fs::u8string(outsideTarget));
-		BOOST_CHECK(picked == nameMatchStr || picked == otherSameSizeStr);
+		BOOST_CHECK_EQUAL(
+			DupeStreamRepair::SelectExtractedInner(dirStr.c_str(), 1000, "escape.mkv"), "");
 	}
 	fs::error_code outEc;
 	fs::remove_all(outsideDir, outEc);

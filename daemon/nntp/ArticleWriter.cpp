@@ -63,6 +63,11 @@ void ArticleWriter::Prepare()
 		: "";
 }
 
+bool ArticleWriter::IsDupeFallbackArticle() const
+{
+	return m_articleInfo && m_articleInfo->GetDupeFallbackRound() > 0;
+}
+
 bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 fileSize,
 	int64 articleOffset, int articleSize)
 {
@@ -97,7 +102,7 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 			}
 		}
 
-		if (g_Options->GetDirectWrite())
+		if (g_Options->GetDirectWrite() && !IsDupeFallbackArticle())
 		{
 			Guard guard = m_fileInfo->GuardOutputFile();
 			if (!m_fileInfo->GetOutputInitialized())
@@ -113,7 +118,8 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 
 	// allocate cache buffer
 	if (g_Options->GetArticleCache() > 0 && !g_Options->GetRawArticle() &&
-		(!g_Options->GetDirectWrite() || m_format == Decoder::efYenc))
+		(!g_Options->GetDirectWrite() || m_format == Decoder::efYenc) &&
+		!IsDupeFallbackArticle())
 	{
 		m_articleData = g_ArticleCache->Alloc(m_articleSize);
 
@@ -136,7 +142,8 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 			return true;
 		}
 
-		bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) && m_format == Decoder::efYenc;
+		bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) &&
+			m_format == Decoder::efYenc && !IsDupeFallbackArticle();
 		const char* outFilename = directWrite ? m_outputFilename.c_str() : m_tempFilename.c_str();
 		if (!m_outFile.Open(outFilename, directWrite ? DiskFile::omReadWrite : DiskFile::omWrite))
 		{
@@ -210,7 +217,8 @@ void ArticleWriter::Finish(bool success)
 		return;
 	}
 
-	bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) && m_format == Decoder::efYenc;
+	bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) &&
+		m_format == Decoder::efYenc && !IsDupeFallbackArticle();
 
 	if (!g_Options->GetRawArticle())
 	{
@@ -344,9 +352,10 @@ void ArticleWriter::BuildOutputFilename()
 	}
  }
 
-void ArticleWriter::CompleteFileParts()
+bool ArticleWriter::CompleteFileParts()
 {
 	debug("Completing file parts");
+	m_commitError = false;
 	debug("ArticleFilename: %s", m_fileInfo->GetFilename());
 
 	// 1. Gather context & configuration
@@ -376,7 +385,7 @@ void ArticleWriter::CompleteFileParts()
 			CleanupOldData(directWrite, nzbDestDir, "");
 		}
 		ReportCompletionStatus(fullInfoPath);
-		return;
+		return true;
 	}
 
 	// 3. Skip all filesystem work when SkipWrite is active
@@ -389,7 +398,7 @@ void ArticleWriter::CompleteFileParts()
 			m_fileInfo->SetCrc(0); // CRC not computed in SkipWrite mode
 			m_fileInfo->SetOutputFilename("");
 		}
-		return;
+		return true;
 	}
 
 	// 4. Prepare directory
@@ -397,7 +406,7 @@ void ArticleWriter::CompleteFileParts()
 	if (!FileSystem::ForceDirectories(nzbDestDir.c_str(), errmsg))
 	{
 		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not create directory %s: %s", nzbDestDir.c_str(), *errmsg);
-		return;
+		return false;
 	}
 
 	// 5. Setup output file
@@ -405,25 +414,39 @@ void ArticleWriter::CompleteFileParts()
 	auto pathsOpt = SetupOutputFile(outfile, nzbDestDir, filename, fullInfoPath, directWrite, cached);
 	if (!pathsOpt)
 	{
-		return;
+		return false;
 	}
 
 	const auto& [finalOutputPath, tempDestPath] = *pathsOpt;
 
 	// 6. Process data (Write/Join/Move Articles)
 	uint32 crc = ProcessArticles(outfile, fullInfoPath, finalOutputPath, directWrite, cached);
+	if (m_commitError)
+	{
+		outfile.Close();
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+			"Could not commit all article data for %s", fullInfoPath.c_str());
+		return false;
+	}
 
 	// 7. Finalize file (Close & Move Temp to Final)
-	CommitDiskFile(outfile, tempDestPath, finalOutputPath, directWrite);
+	if (!CommitDiskFile(outfile, tempDestPath, finalOutputPath, directWrite))
+	{
+		return false;
+	}
 
 	// 8. Cleanup (Delete parts or old dirs)
-	CleanupOldData(directWrite, nzbDestDir, finalOutputPath);
+	if (!CleanupOldData(directWrite, nzbDestDir, finalOutputPath))
+	{
+		return false;
+	}
 
 	// 9. Report results
 	ReportCompletionStatus(fullInfoPath);
 
 	// 10. Post Processing (Renames, Hardlinks, Moves)
 	HandlePostProcessing(crc, finalOutputPath, filename, nzbDestDir);
+	return true;
 }
 
 void ArticleWriter::LogStartMessage(std::string_view infoFilename, bool directWrite, bool cached)
@@ -473,7 +496,7 @@ ArticleWriter::SetupOutputFile(DiskFile &outfile,
 		}
 	}
 	// Scenario B: Direct Write (Append/Modify existing)
-	else if (directWrite && cached)
+	else if (directWrite)
 	{
 		if (!outfile.Open(m_outputFilename.c_str(), DiskFile::omReadWrite))
 		{
@@ -548,10 +571,73 @@ uint32 ArticleWriter::ProcessArticles(DiskFile& outfile,
 		{
 			if (!GetSkipDiskWrite())
 			{
-				outfile.Seek(pa->GetSegmentOffset());
-				outfile.Write(pa->GetSegmentContent(), pa->GetSegmentSize());
+				if (!outfile.Seek(pa->GetSegmentOffset()))
+				{
+					m_commitError = true;
+					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+						"Could not seek while writing cached article %s",
+						infoFilename.data());
+					continue;
+				}
+				if (outfile.Write(pa->GetSegmentContent(), pa->GetSegmentSize()) !=
+					pa->GetSegmentSize())
+				{
+					m_commitError = true;
+					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+						"Could not write cached article %s", infoFilename.data());
+				}
 			}
 			pa->DiscardSegment();
+		}
+		else if (directWrite && pa->GetDupeFallbackRound() > 0 &&
+			pa->GetResultFilename() && !GetSkipDiskWrite())
+		{
+			// Duplicate articles are staged in their per-article temp file even
+			// when DirectWrite is enabled.  Copy only after the queue coordinator
+			// has accepted the article's final geometry; never let an unvalidated
+			// donor overwrite the shared output during download.
+			DiskFile infile;
+			if (FileSystem::FileSize(pa->GetResultFilename()) != pa->GetSegmentSize())
+			{
+				m_commitError = true;
+				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+					"Staged duplicate article has an invalid size for %s", infoFilename.data());
+			}
+			else if (infile.Open(pa->GetResultFilename(), DiskFile::omRead))
+			{
+				if (!outfile.Seek(pa->GetSegmentOffset()))
+				{
+					m_commitError = true;
+					m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+						"Could not seek while committing staged duplicate article %s",
+						infoFilename.data());
+					infile.Close();
+					continue;
+				}
+				CharBuffer stagedBuffer(1024 * 64);
+				int cnt = 0;
+				int64 copied = 0;
+				while ((cnt = infile.Read(stagedBuffer, stagedBuffer.Size())) > 0)
+				{
+					if (outfile.Write(stagedBuffer, cnt) != cnt)
+					{
+						m_commitError = true;
+						m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+							"Could not commit staged duplicate article %s", infoFilename.data());
+						break;
+					}
+					copied += cnt;
+				}
+				if (copied != pa->GetSegmentSize())
+				{
+					m_commitError = true;
+				}
+				infile.Close();
+			}
+			else
+			{
+				m_commitError = true;
+			}
 		}
 		else if (!g_Options->GetRawArticle() && !directWrite && !GetSkipDiskWrite())
 		{
@@ -600,31 +686,47 @@ uint32 ArticleWriter::ProcessArticles(DiskFile& outfile,
 	return crc;
 }
 
-void ArticleWriter::CommitDiskFile(DiskFile& outfile,
+bool ArticleWriter::CommitDiskFile(DiskFile& outfile,
 						std::string_view tempDestPath,
 						std::string_view finalOutputPath,
 						bool directWrite)
 {
-	if (!outfile.Active()) return;
+	if (!outfile.Active()) return true;
 
-	outfile.Close();
+	bool flushed = outfile.Flush();
+	bool closed = outfile.Close();
+	if (!flushed || !closed)
+	{
+		m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError,
+			"Could not flush completed output file %s", finalOutputPath.data());
+		return false;
+	}
 
 	if (!directWrite)
 	{
 		if (!FileSystem::MoveFile(tempDestPath.data(), finalOutputPath.data()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
-				tempDestPath.data(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
+					tempDestPath.data(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
+			return false;
 		}
 	}
+	return true;
 }
 
-void ArticleWriter::CleanupOldData(bool directWrite,
+bool ArticleWriter::CleanupOldData(bool directWrite,
 						std::string_view nzbDestDir,
 						std::string_view finalOutputPath)
 {
 	if (directWrite)
 	{
+		for (ArticleInfo* pa : m_fileInfo->GetArticles())
+		{
+			if (pa->GetDupeFallbackRound() > 0 && pa->GetResultFilename())
+			{
+				FileSystem::DeleteFile(pa->GetResultFilename());
+			}
+		}
 		if (!finalOutputPath.empty())
 		{
 			bool sameFilename = FileSystem::SameFilename(m_outputFilename.c_str(), finalOutputPath.data());
@@ -632,6 +734,7 @@ void ArticleWriter::CleanupOldData(bool directWrite,
 			{
 				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
 					m_outputFilename.c_str(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
+				return false;
 			}
 		}
 		else
@@ -676,6 +779,7 @@ void ArticleWriter::CleanupOldData(bool directWrite,
 			m_fileInfo->SetOutputFilename(nullptr);
 		}
 	}
+	return true;
 }
 
 void ArticleWriter::ReportCompletionStatus(std::string_view infoFilename)

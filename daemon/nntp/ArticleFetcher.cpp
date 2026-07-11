@@ -28,7 +28,41 @@
 #include "Decoder.h"
 #include "Log.h"
 #include "Options.h"
+#include "StatMeter.h"
 #include "Util.h"
+#include "WorkState.h"
+
+bool ArticleFetchLimits::AddRawBytes(int64 bytes)
+{
+	if (bytes < 0 || bytes > MaxRawBytes - m_rawBytes)
+	{
+		return false;
+	}
+	m_rawBytes += bytes;
+	return true;
+}
+
+bool ArticleFetchLimits::HeaderWithinLimit(bool declaredRangeKnown) const
+{
+	return declaredRangeKnown || m_rawBytes <= MaxHeaderBytes;
+}
+
+bool ArticleFetchLimits::AddDecodedBytes(int64 bytes, int64 begin, int64 end,
+	int64 fileSize)
+{
+	if (bytes < 0 || begin <= 0 || end < begin || fileSize <= 0 || end > fileSize)
+	{
+		return false;
+	}
+
+	int64 declaredBytes = end - begin + 1;
+	if (declaredBytes > MaxDecodedBytes || bytes > declaredBytes - m_decodedBytes)
+	{
+		return false;
+	}
+	m_decodedBytes += bytes;
+	return true;
+}
 
 ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	const std::vector<CString>& groups)
@@ -39,6 +73,14 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	int level = 0;
 	while (level <= g_ServerPool->GetMaxNormLevel() && !m_stopped)
 	{
+		while (g_WorkState->GetQuotaReached() && !m_stopped)
+		{
+			Util::Sleep(100);
+		}
+		if (m_stopped)
+		{
+			break;
+		}
 		// count servers still worth trying on this level; without this check
 		// a fully failed level would spin the acquire loop until its timeout
 		int eligible = 0;
@@ -63,6 +105,12 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 		while (!connection && !m_stopped &&
 			Util::CurrentTime() - waitStart <= g_Options->GetArticleTimeout())
 		{
+			if (g_WorkState->GetQuotaReached())
+			{
+				Util::Sleep(100);
+				waitStart = Util::CurrentTime();
+				continue;
+			}
 			connection = g_ServerPool->GetConnection(level, nullptr, &failedServers);
 			if (!connection)
 			{
@@ -76,14 +124,34 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 			continue;
 		}
 
+		bool stopped = false;
+		{
+			Guard guard(m_connectionMutex);
+			m_connection = connection;
+			stopped = m_stopped;
+		}
+		if (stopped)
+		{
+			ReleaseConnection(connection, true);
+			break;
+		}
+
 		result = FetchFromConnection(connection, messageId, groups);
 
 		NewsServer* server = connection->GetNewsServer();
-		g_ServerPool->FreeConnection(connection, true);
+		ReleaseConnection(connection, true);
 
 		if (result.Success)
 		{
 			return result;
+		}
+		if (result.Retry)
+		{
+			while (g_WorkState->GetQuotaReached() && !m_stopped)
+			{
+				Util::Sleep(100);
+			}
+			continue;
 		}
 
 		// this server could not supply the article; try the remaining servers
@@ -94,10 +162,55 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	return result;
 }
 
+void ArticleFetcher::Stop()
+{
+	m_stopped = true;
+	Guard guard(m_connectionMutex);
+	if (m_connection)
+	{
+		m_connection->SetSuppressErrors(true);
+		m_connection->Cancel();
+	}
+}
+
+void ArticleFetcher::ReleaseConnection(NntpConnection* connection, bool keepConnected)
+{
+	Guard guard(m_connectionMutex);
+	AddServerStats(connection);
+	if (!keepConnected || connection->GetStatus() == Connection::csCancelled)
+	{
+		connection->Disconnect();
+	}
+	if (m_connection == connection)
+	{
+		m_connection = nullptr;
+	}
+	g_ServerPool->FreeConnection(connection, true);
+}
+
+void ArticleFetcher::AddServerStats(NntpConnection* connection)
+{
+	int bytesRead = connection->FetchTotalBytesRead();
+	if (bytesRead <= 0)
+	{
+		return;
+	}
+
+	ServerVolume::Stats stats;
+	stats.bytes = Util::SafeIntCast<int, uint32>(bytesRead);
+	stats.articles.failed = 0;
+	stats.articles.success = 0;
+	g_StatMeter->AddServerStats(stats, connection->GetNewsServer()->GetId());
+}
+
 ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnection* connection,
 	const char* messageId, const std::vector<CString>& groups)
 {
 	FetchedArticle result;
+	if (m_stopped)
+	{
+		return result;
+	}
 
 	if (!connection->Connect())
 	{
@@ -138,9 +251,37 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 	decoder.SetRawMode(false);
 
 	CharBuffer recvBuf(g_Options->GetArticleReadChunkSize());
+	ArticleFetchLimits limits;
 
 	while (!m_stopped && !decoder.GetEof())
 	{
+		if (g_WorkState->GetQuotaReached())
+		{
+			// A BODY response cannot be parked safely for an arbitrary quota
+			// pause. Drop this partial response and retry the same source after
+			// quota resumes; do not classify it as a source failure.
+			connection->Disconnect();
+			result.Retry = true;
+			return result;
+		}
+		while (!m_stopped && !g_WorkState->GetQuotaReached() &&
+			g_WorkState->GetSpeedLimit() > 0 &&
+			(g_StatMeter->CalcCurrentDownloadSpeed() > g_WorkState->GetSpeedLimit() ||
+			g_StatMeter->CalcMomentaryDownloadSpeed() > g_WorkState->GetSpeedLimit()))
+		{
+			Util::Sleep(10);
+		}
+		if (g_WorkState->GetQuotaReached())
+		{
+			connection->Disconnect();
+			result.Retry = true;
+			return result;
+		}
+		if (m_stopped)
+		{
+			break;
+		}
+
 		char* buffer;
 		int len;
 		connection->ReadBuffer(&buffer, &len);
@@ -160,10 +301,36 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 			return result;
 		}
 
-		len = decoder.DecodeBuffer(buffer, len);
-		if (len > 0)
+		g_StatMeter->AddSpeedReading(len);
+		if (!limits.AddRawBytes(len))
 		{
-			result.Data.insert(result.Data.end(), buffer, buffer + len);
+			detail("Stream repair: article %s from %s exceeded the wire-size limit",
+				messageId, connection->GetNewsServer()->GetName());
+			connection->Disconnect();
+			return result;
+		}
+
+		int decodedLen = decoder.DecodeBuffer(buffer, len);
+		bool declaredRangeKnown = decoder.GetBeginPos() > 0 &&
+			decoder.GetEndPos() >= decoder.GetBeginPos() && decoder.GetSize() > 0;
+		if (!limits.HeaderWithinLimit(declaredRangeKnown))
+		{
+			detail("Stream repair: article %s from %s exceeded the yEnc-header limit",
+				messageId, connection->GetNewsServer()->GetName());
+			connection->Disconnect();
+			return result;
+		}
+		if (declaredRangeKnown && !limits.AddDecodedBytes(decodedLen,
+			decoder.GetBeginPos(), decoder.GetEndPos(), decoder.GetSize()))
+		{
+			detail("Stream repair: article %s from %s exceeded its declared decoded range",
+				messageId, connection->GetNewsServer()->GetName());
+			connection->Disconnect();
+			return result;
+		}
+		if (decodedLen > 0)
+		{
+			result.Data.insert(result.Data.end(), buffer, buffer + decodedLen);
 		}
 	}
 

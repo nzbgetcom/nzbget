@@ -24,6 +24,7 @@
 #include <atomic>
 #include <vector>
 #include "NString.h"
+#include "Thread.h"
 
 /*
  * Fetches and decodes a single yEnc article body into memory, outside the
@@ -38,6 +39,25 @@
  */
 class NntpConnection;
 
+class ArticleFetchLimits
+{
+public:
+	// Usenet articles are normally well below this. The cap is deliberately
+	// generous while still preventing an untrusted BODY response from growing
+	// memory without bound.
+	static constexpr int64 MaxDecodedBytes = 64LL * 1024 * 1024;
+	static constexpr int64 MaxHeaderBytes = 64LL * 1024;
+	static constexpr int64 MaxRawBytes = MaxDecodedBytes * 3 + MaxHeaderBytes;
+
+	bool AddRawBytes(int64 bytes);
+	bool HeaderWithinLimit(bool declaredRangeKnown) const;
+	bool AddDecodedBytes(int64 bytes, int64 begin, int64 end, int64 fileSize);
+
+private:
+	int64 m_rawBytes = 0;
+	int64 m_decodedBytes = 0;
+};
+
 class ArticleFetcher
 {
 public:
@@ -47,18 +67,23 @@ public:
 		int64 Offset = 0;		// decoded-stream offset (yEnc part begin - 1)
 		int64 FileSize = 0;		// total decoded file size from "=ybegin size="
 		bool Success = false;
+		bool Retry = false;		// interrupted by quota; retry without blaming source
 	};
 
 	/* messageId must include the angle brackets (as stored in ArticleInfo) */
 	FetchedArticle Fetch(const char* messageId, const std::vector<CString>& groups);
 
-	void Stop() { m_stopped = true; }
+	void Stop();
 
 private:
 	std::atomic<bool> m_stopped{false};
+	Mutex m_connectionMutex;
+	NntpConnection* m_connection = nullptr;
 
 	FetchedArticle FetchFromConnection(NntpConnection* connection,
 		const char* messageId, const std::vector<CString>& groups);
+	void ReleaseConnection(NntpConnection* connection, bool keepConnected);
+	void AddServerStats(NntpConnection* connection);
 };
 
 #endif

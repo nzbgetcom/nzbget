@@ -290,7 +290,7 @@ void ArticleDownloader::Run()
 		status = adFinished;
 	}
 
-	if (status != adFinished && status != adRetry)
+	if (status != adFinished && status != adRetry && status != adFatalError)
 	{
 		status = adFailed;
 	}
@@ -317,6 +317,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	const char* response = nullptr;
 	EStatus status = adRunning;
 	m_writingStarted = false;
+	m_localWriteError = false;
 	m_articleInfo->SetCrc(0);
 
 	if (m_contentAnalyzer)
@@ -405,7 +406,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		// write to output file
 		if (len > 0 && !Write(buffer, len))
 		{
-			status = adFatalError;
+			status = m_localWriteError ? adFatalError : adFailed;
 			break;
 		}
 	}
@@ -530,12 +531,19 @@ bool ArticleDownloader::Write(char* buffer, int len)
 
 		if (!m_articleWriter.Start(m_decoder.GetFormat(), articleFilename, articleFileSize, articleOffset, articleSize))
 		{
+			// A duplicate-existing-file result is not a local write failure and
+			// must retain the historical duplicate handling path.
+			m_localWriteError = !m_articleWriter.GetDuplicate();
 			return false;
 		}
 		m_writingStarted = true;
 	}
 
 	bool ok = m_articleWriter.Write(buffer, len);
+	if (!ok)
+	{
+		m_localWriteError = true;
+	}
 
 	if (m_contentAnalyzer)
 	{

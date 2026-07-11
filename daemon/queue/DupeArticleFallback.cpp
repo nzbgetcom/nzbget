@@ -70,7 +70,6 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	}
 
 	std::vector<CString>& sources = *articleInfo->GetDupeSources();
-
 	if (round >= (int)sources.size())
 	{
 		return false;
@@ -343,8 +342,12 @@ void DupeArticleFallback::AppendDonorCandidate(std::vector<CString>& candidates,
 
 /*
  * Pure candidate builder over already-live donors, used by unit tests. The
- * production path (PinSources) processes donors one at a time for
- * cache-safety; both share AppendDonorCandidate so the logic stays in sync.
+	 * production path (PinSources) processes donors one at a time for
+	 * cache-safety; both share AppendDonorCandidate so the logic stays in sync.
+	 *
+ * The candidate list must not depend on the current state of the article:
+ * it is frozen on first fallback, so later donor insertion, removal, or lead
+ * rotation cannot shift the round-to-source mapping.
  */
 std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 	const std::vector<NzbInfo*>& parsedDonors, FileInfo* targetFile, int partNumber)
@@ -433,6 +436,8 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 {
 	FileInfo* structuralMatch = nullptr;
 	bool ambiguous = false;
+	FileInfo* filenameMatch = nullptr;
+	bool filenameAmbiguous = false;
 
 	for (FileInfo* donorFile : donorNzb->GetFileList())
 	{
@@ -443,13 +448,31 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 
 		if (!strcasecmp(targetFile->GetFilename(), donorFile->GetFilename()))
 		{
-			return donorFile;
+			if (filenameMatch)
+			{
+				filenameAmbiguous = true;
+			}
+			else
+			{
+				filenameMatch = donorFile;
+			}
+			continue;
 		}
 
 		ambiguous = structuralMatch != nullptr;
 		structuralMatch = donorFile;
 	}
 
+	// An exact filename is preferred only when it is unique.  Choosing the
+	// first exact match is nondeterministic for multi-file duplicate NZBs.
+	if (filenameAmbiguous)
+	{
+		return nullptr;
+	}
+	if (filenameMatch)
+	{
+		return filenameMatch;
+	}
 	return ambiguous ? nullptr : structuralMatch;
 }
 

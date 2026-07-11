@@ -186,7 +186,6 @@ private:
 
 	std::map<int, std::unique_ptr<NzbInfo>> m_parsedDonors;
 	std::set<int> m_badDonors;
-
 	static bool StructureMatches(FileInfo* targetFile, FileInfo* donorFile);
 	static void AppendDonorCandidate(std::vector<CString>& candidates,
 		std::vector<int>& contributors, int donorNzbId,

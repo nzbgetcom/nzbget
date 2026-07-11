@@ -495,7 +495,7 @@ def scenario_complementary(daemon, t):
     ok = h['Status'].startswith('SUCCESS')
     recov = int(h.get('DupeRecoveredArticles', 0))
     integ = _verify_output(t, data)
-    return ('complementary', ok and integ and recov >= 3,
+    return ('complementary', ok and integ and recov == 3,
             'status=%s recovered=%d integrity=%s' % (h['Status'], recov, integ))
 
 
@@ -515,7 +515,10 @@ def scenario_cutover(daemon, t):
     recov = int(h.get('DupeRecoveredArticles', 0))
     cut = _grep_log(t, 'Leading with duplicate collections')
     integ = _verify_output(t, data)
-    return ('cutover', ok and integ and recov >= 10 and cut >= 1,
+    # Four primary failures can be in flight with Server1.Connections=4 when
+    # cutover trips. Fresh articles served proactively after that are not
+    # recovered failures and must not inflate the metric.
+    return ('cutover', ok and integ and recov == 4 and cut == 1,
             'status=%s recovered=%d cutover_logs=%d integrity=%s'
             % (h['Status'], recov, cut, integ))
 
@@ -547,7 +550,7 @@ def scenario_leadswitch(daemon, t):
     # per-article lead snapshot exists to prevent
     switched = _grep_log(t, 'Switching lead duplicate collection')
     integ = _verify_output(t, data)
-    return ('leadswitch', ok and integ and recov >= 11 and switched == 1,
+    return ('leadswitch', ok and integ and recov == 4 and switched == 1,
             'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
             % (h['Status'], recov, switched, integ))
 
@@ -617,7 +620,7 @@ def scenario_stream(daemon, t):
     integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
     success = 'SUCCESS' in h['Status']
     return ('stream',
-            success and integ and recov >= 4 and queued >= 1 and repaired >= 1 and rejected >= 1,
+            success and integ and recov == 2 and queued >= 1 and repaired >= 1 and rejected >= 1,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
             % (h['Status'], recov, queued, repaired, rejected, integ))
 
@@ -670,7 +673,7 @@ def scenario_repost(daemon, t):
     intact_3 = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=both_dirs)
     return ('repost',
             integ_rar and integ_par and intact_2 and intact_3 and
-            recov >= 4 and queued >= 2 and repaired >= 2,
+            h['Status'] == 'FAILURE/PAR' and recov == 2 and queued >= 2 and repaired >= 2,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d '
             'rar=%s par2=%s intact=%s/%s'
             % (h['Status'], recov, queued, repaired,
@@ -1266,6 +1269,53 @@ def scenario_xdecomp_neg(daemon, t):
                integ['movie.mkv'], integ['decoy']))
 
 
+def scenario_xdecomp_symlink(daemon, t):
+    """A compressed donor with a valid movie plus an absolute directory
+    symlink must be rejected before selecting or patching the movie. Cleanup
+    must unlink the extracted symlink, preserve the outside sentinel, and
+    remove every stream-decompression scratch directory."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_symlink', None, 'SKIP: 7z not installed')
+    if t.name != 'local':
+        return ('xdecomp_symlink', None, 'SKIP: POSIX local target required')
+
+    size = 1_000_000
+    data = _payload(size, 8750)
+    sentinel_data = b'outside-sentinel-must-survive'
+    t.write_file(os.path.join('outside', 'sentinel'), sentinel_data)
+    outside_dir = t.path('outside')
+
+    primary_path = _place_copy(t, 'xdlA', data, 'movie.mkv')
+    members = [(primary_path, 'movie.mkv', size, 250_000, {2})]
+    archive = generators.zip_deflated_with_symlink(
+        [('movie.mkv', data)], 'escape-dir', outside_dir)
+    rel = 'xdlB/rel.zip'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.zip', len(archive), 200_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdl', members, donor_members,
+                             {'movie.mkv': data})
+    rejected_links = _grep_log(t, 'archive contains link')
+    try:
+        sentinel_survived = t.read_file(os.path.join('outside', 'sentinel')) == sentinel_data
+    except Exception:
+        sentinel_survived = False
+
+    scratch_dirs = []
+    for root, dirs, _ in os.walk(t.path('main')):
+        scratch_dirs.extend(os.path.join(root, name) for name in dirs
+                            if name.startswith('.stream-decompress.'))
+
+    ok = (h['Status'] == 'FAILURE/HEALTH' and c['recov'] == 0 and
+          rejected_links >= 1 and not integ['movie.mkv'] and
+          sentinel_survived and not scratch_dirs)
+    return ('xdecomp_symlink', ok,
+            'status=%s recovered=%d rejected_links=%d integrity=%s '
+            'sentinel=%s scratch_dirs=%d'
+            % (h['Status'], c['recov'], rejected_links, integ['movie.mkv'],
+               sentinel_survived, len(scratch_dirs)))
+
+
 def scenario_xdecomp_off(daemon, t):
     """The opt-in gate proof: the SAME bare-target-vs-compressed-7z-donor
     setup as xdecomp_7z, but DupeStreamDecompress is OMITTED (default no -
@@ -1349,7 +1399,24 @@ SCENARIOS = {
     'xdecomp_storetarget': scenario_xdecomp_storetarget,
     'xdecomp_enc7z': scenario_xdecomp_enc7z,
     'xdecomp_neg': scenario_xdecomp_neg,
+    'xdecomp_symlink': scenario_xdecomp_symlink,
     'xdecomp_off': scenario_xdecomp_off,
+}
+
+EXPECTED_HISTORY_STATUS = {
+    'complementary': 'SUCCESS/HEALTH', 'cutover': 'SUCCESS/HEALTH',
+    'leadswitch': 'SUCCESS/HEALTH', 'manydonors': 'SUCCESS/HEALTH',
+    'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
+    'repostrenamed': 'SUCCESS/HEALTH', 'xpackbare': 'SUCCESS/HEALTH',
+    'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
+    'xpackzip': 'SUCCESS/HEALTH', 'xpack7z': 'SUCCESS/HEALTH',
+    'xpacksplit': 'SUCCESS/HEALTH', 'xpackcompressed': 'SUCCESS/HEALTH',
+    'xpackneg': 'FAILURE/HEALTH', 'xcrypt_encplain': 'SUCCESS/HEALTH',
+    'xcrypt_plainenc': 'SUCCESS/HEALTH', 'xcrypt_diffpass': 'SUCCESS/HEALTH',
+    'xcrypt_wrongpass': 'FAILURE/HEALTH', 'xdecomp_zip': 'SUCCESS/HEALTH',
+    'xdecomp_7z': 'SUCCESS/HEALTH', 'xdecomp_storetarget': 'SUCCESS/HEALTH',
+    'xdecomp_enc7z': 'SUCCESS/HEALTH', 'xdecomp_neg': 'FAILURE/HEALTH',
+    'xdecomp_symlink': 'FAILURE/HEALTH', 'xdecomp_off': 'FAILURE/HEALTH',
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -1408,6 +1475,8 @@ SCENARIO_OPTIONS = {
                       'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_neg': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                     'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_symlink': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                        'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_off': ['DupeArticleFallback=stream', 'ParCheck=auto'] + _SEVENZIP_OPTION,
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
@@ -1432,6 +1501,10 @@ def main():
     results = []
 
     for name in scenarios:
+        if args.target == 'adb' and name.startswith('xdecomp_'):
+            results.append((name, None, 'SKIP: target-side archive extractor is not provisioned on Android'))
+            print('[SKIP] %s  (target-side archive extractor is not provisioned on Android)' % name)
+            continue
         nntp = free_port()
         rpc = free_port()
         while rpc == nntp:  # the two must not coincide
@@ -1451,6 +1524,11 @@ def main():
                 target.forward_rpc(rpc)
             time.sleep(2)
             sc_name, passed, detail = SCENARIOS[name](daemon, target)
+            expected_status = EXPECTED_HISTORY_STATUS.get(name)
+            if passed is not None and expected_status and \
+                    ('status=%s' % expected_status) not in detail:
+                passed = False
+                detail += ' expected_status=%s' % expected_status
             results.append((sc_name, passed, detail))
             label = 'SKIP' if passed is None else ('PASS' if passed else 'FAIL')
             print('[%s] %s  (%s)' % (label, sc_name, detail))
@@ -1471,7 +1549,11 @@ def main():
     suffix = ' (+%d skipped)' % skipped if skipped else ''
     print('\n=== %s / %s scenarios passed%s on target=%s ===' % (
         passed_count, attempted, suffix, args.target))
-    return 1 if failed else 0
+    if failed:
+        return 1
+    # A requested scenario that cannot run is an explicit, machine-readable
+    # infrastructure result. Never turn missing crypto/7z into a green run.
+    return 77 if skipped else 0
 
 
 if __name__ == '__main__':

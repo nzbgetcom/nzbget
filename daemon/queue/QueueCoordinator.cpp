@@ -603,7 +603,8 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 				// full server sweep failing on the primary first
 				if (fileInfo->GetDupeCutover() && article->GetDupeFallbackRound() == 0)
 				{
-					m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, article);
+					article->SetDupeProactive(
+						m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, article));
 				}
 				return true;
 			}
@@ -693,7 +694,8 @@ void QueueCoordinator::Update(Subject* caller, void* aspect)
 	ArticleDownloader* articleDownloader = (ArticleDownloader*)caller;
 	if ((articleDownloader->GetStatus() == ArticleDownloader::adFinished) ||
 		(articleDownloader->GetStatus() == ArticleDownloader::adFailed) ||
-		(articleDownloader->GetStatus() == ArticleDownloader::adRetry))
+		(articleDownloader->GetStatus() == ArticleDownloader::adRetry) ||
+		(articleDownloader->GetStatus() == ArticleDownloader::adFatalError))
 	{
 		ArticleCompleted(articleDownloader);
 	}
@@ -747,7 +749,9 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 			// count only genuine duplicate recoveries: the article was substituted
 			// and the source that succeeded was not the primary (revert) message-id
-			if (articleInfo->GetDupeFallbackRound() > 0 &&
+			bool proactiveLeadSuccess = articleInfo->GetDupeProactive() &&
+				articleInfo->GetDupeFallbackRound() == 1;
+			if (articleInfo->GetDupeFallbackRound() > 0 && !proactiveLeadSuccess &&
 				!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
 				strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
 			{
@@ -792,7 +796,8 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 				nzbInfo->SetAllFirst(false);
 			}
 		}
-		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced)
+		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced ||
+			articleDownloader->GetStatus() == ArticleDownloader::adFatalError)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFailed);
 			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
@@ -811,6 +816,12 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 		}
 
+		// Account every completed source attempt, including attempts that are
+		// followed by a duplicate fallback retry.  The downloader owns one
+		// per-attempt ServerStatList, so this is exactly-once for this attempt.
+		fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+		nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+
 		if (!retry)
 		{
 			fileInfo->SetRemainingSize(fileInfo->GetRemainingSize() - articleInfo->GetSize());
@@ -821,8 +832,6 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 			fileInfo->SetCompletedArticles(fileInfo->GetCompletedArticles() + 1);
 			fileCompleted = (int)fileInfo->GetArticles()->size() == fileInfo->GetCompletedArticles();
-			fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
-			nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
 			fileInfo->SetPartialChanged(true);
 		}
 
@@ -881,14 +890,51 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 
 		if (!completeFileParts)
 		{
-			DeleteDownloader(downloadQueue, articleDownloader, false);
+			DeleteDownloader(&m_downloadQueue, articleDownloader, false);
 		}
 	}
 
 	if (completeFileParts)
 	{
 		// all jobs done
-		articleDownloader->CompleteFileParts();
+		if (!articleDownloader->CompleteFileParts())
+		{
+			// Assembly/commit failures are local I/O failures. Classify this as
+			// a completed failed file under the queue lock; a user deletion would
+			// remove its damage from aggregate health and can yield false SUCCESS.
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+			int successArticles = fileInfo->GetSuccessArticles();
+			int64 successSize = fileInfo->GetSuccessSize();
+			fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + successArticles);
+			fileInfo->SetSuccessArticles(0);
+			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + successSize);
+			fileInfo->SetSuccessSize(0);
+			nzbInfo->SetCurrentFailedArticles(
+				nzbInfo->GetCurrentFailedArticles() + successArticles);
+			nzbInfo->SetCurrentSuccessArticles(std::max(0,
+				nzbInfo->GetCurrentSuccessArticles() - successArticles));
+			nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + successSize);
+			nzbInfo->SetCurrentSuccessSize(std::max<int64>(0,
+				nzbInfo->GetCurrentSuccessSize() - successSize));
+			if (fileInfo->GetParFile())
+			{
+				nzbInfo->SetParCurrentFailedSize(
+					nzbInfo->GetParCurrentFailedSize() + successSize);
+				nzbInfo->SetParCurrentSuccessSize(std::max<int64>(0,
+					nzbInfo->GetParCurrentSuccessSize() - successSize));
+			}
+			for (ArticleInfo* article : fileInfo->GetArticles())
+			{
+				if (article->GetStatus() == ArticleInfo::aiFinished)
+				{
+					article->SetStatus(ArticleInfo::aiFailed);
+				}
+			}
+			DiscardTempFiles(fileInfo);
+			DeleteDownloader(downloadQueue, articleDownloader, true);
+			return;
+		}
 		fileInfo->SetPartialChanged(false);
 
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
@@ -1169,6 +1215,10 @@ void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* ar
 void QueueCoordinator::DiscardArticleSegment(FileInfo* fileInfo, ArticleInfo* articleInfo)
 {
 	Guard contentGuard = g_ArticleCache->GuardContent();
+	if (articleInfo->GetDupeFallbackRound() > 0 && articleInfo->GetResultFilename())
+	{
+		FileSystem::DeleteFile(articleInfo->GetResultFilename());
+	}
 	if (!articleInfo->GetSegmentContent() || fileInfo->GetFlushLocked())
 	{
 		return;
@@ -1179,14 +1229,13 @@ void QueueCoordinator::DiscardArticleSegment(FileInfo* fileInfo, ArticleInfo* ar
 
 void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 {
-	if (!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite())
+	for (ArticleInfo* pa : fileInfo->GetArticles())
 	{
-		for (ArticleInfo* pa : fileInfo->GetArticles())
+		if (pa->GetResultFilename() &&
+			((!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite()) ||
+			 pa->GetDupeFallbackRound() > 0))
 		{
-			if (pa->GetResultFilename())
-			{
-				FileSystem::DeleteFile(pa->GetResultFilename());
-			}
+			FileSystem::DeleteFile(pa->GetResultFilename());
 		}
 	}
 

@@ -20,6 +20,6 @@ exec docker run --rm --platform linux/amd64 \
 	ubuntu:24.04 sh -c '
 		export DEBIAN_FRONTEND=noninteractive
 		apt-get -qq update >/dev/null 2>&1
-		apt-get -qq install -y python3 libxml2 libssl3t64 zlib1g libncursesw6 >/dev/null 2>&1
+		apt-get -qq install -y python3 python3-cryptography 7zip libxml2 libssl3t64 zlib1g libncursesw6 >/dev/null 2>&1
 		python3 /harness/harness.py --nzbget /usr/local/bin/nzbget --target local --scenario '"$SCENARIO"'
 	'

@@ -14,6 +14,7 @@ import hashlib
 import io
 import os
 import shutil
+import stat
 import struct
 import subprocess
 import zipfile
@@ -30,7 +31,7 @@ def _find_7z():
     daemon's SevenZipCmd option (see harness.py's SCENARIO_OPTIONS) so
     Unpack::MakeExtractor can shell out to the SAME binary that built these
     fixtures to extract them back out."""
-    for name in ('7z', '7za', '7zr'):
+    for name in ('7z', '7za', '7zr', '7zz'):
         path = shutil.which(name)
         if path:
             return path
@@ -275,6 +276,30 @@ def zip_deflated(files):
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             zf.writestr(info, data)
+    return buf.getvalue()
+
+
+def zip_deflated_with_symlink(files, link_name, link_target):
+    """A DEFLATE ZIP containing normal files plus one POSIX symlink.
+
+    ``link_target`` is stored as the symlink payload, matching Info-ZIP's
+    representation and what 7-Zip restores on POSIX. This fixture is used to
+    prove decompression rejects archive links before selecting or repairing an
+    inner file.
+    """
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for name, data in files:
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = (stat.S_IFREG | 0o644) << 16
+            zf.writestr(info, data)
+
+        link = zipfile.ZipInfo(link_name, date_time=(1980, 1, 1, 0, 0, 0))
+        link.create_system = 3
+        link.compress_type = zipfile.ZIP_STORED
+        link.external_attr = (stat.S_IFLNK | 0o777) << 16
+        zf.writestr(link, link_target.encode())
     return buf.getvalue()
 
 

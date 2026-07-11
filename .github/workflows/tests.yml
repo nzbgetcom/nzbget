@@ -57,7 +57,7 @@ jobs:
     - name: Prepare environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev python3-cryptography unrar 7zip
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -89,7 +89,7 @@ jobs:
     - name: Prepare environment
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev python3-cryptography unrar 7zip
 
     - name: Checkout
       uses: actions/checkout@v6
@@ -298,3 +298,23 @@ jobs:
       run: |
         brew install --formula boost sevenzip
         brew install nzbget --formula --head --verbose
+
+  functional-dupefallback-smoke:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Prepare environment
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev python3-cryptography unrar 7zip
+    - name: Checkout
+      uses: actions/checkout@v6
+    - name: Build daemon
+      run: |
+        cmake -S . -B build-functional -DCMAKE_BUILD_TYPE=Release
+        cmake --build build-functional -j 4
+    - name: Run representative fallback scenarios
+      run: |
+        for scenario in complementary leadswitch stream repost xdecomp_zip xdecomp_symlink; do
+          python3 tests/functional/dupefallback/harness.py \
+            --nzbget build-functional/nzbget --target local --scenario "$scenario"
+        done

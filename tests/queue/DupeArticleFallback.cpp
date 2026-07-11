@@ -82,6 +82,20 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackFilenameMatchTest)
 	BOOST_CHECK_EQUAL(match->GetFilename(), "Release.R01");
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackAmbiguousFilenameMatchTest)
+{
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 500000}, {2, 500000}}, "orig");
+
+	NzbInfo donorNzb;
+	// Two structurally compatible files with the same filename must fail
+	// closed; selecting the first one would make the result depend on NZB order.
+	AddDonorFile(&donorNzb, "release.r01", {{1, 500000}, {2, 500000}}, "donor0");
+	AddDonorFile(&donorNzb, "RELEASE.R01", {{1, 500000}, {2, 500000}}, "donor1");
+
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb) == nullptr);
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructuralMatchTest)
 {
 	// donor uses obfuscated names; exactly one file matches structurally

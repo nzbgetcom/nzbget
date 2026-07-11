@@ -346,6 +346,7 @@ void StreamRepairController::Run()
 	}
 
 	ReportRemainingHoles(targets);
+	m_targets = std::move(targets);
 	RepairCompleted();
 }
 
@@ -380,6 +381,8 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 		// encoded failed size and par2 flag come from the job (source of truth,
 		// captured while the FileInfo was still alive at job creation)
 		target.FailedSize = job.GetFailedSize();
+		target.MissedSize = job.GetMissedSize();
+		target.FailedArticles = job.GetFailedArticles();
 		target.IsParFile = job.GetParFile();
 		target.Holes = *job.GetHoles();
 
@@ -827,7 +830,6 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 
 	if (recoveredParts > 0)
 	{
-		m_recoveredArticles += recoveredParts;
 		m_recoveredBytes += recoveredBytes;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s",
@@ -877,16 +879,19 @@ void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& tar
 		}
 		else
 		{
+			// Preserve the documented API unit: failed target articles repaired,
+			// never donor chunks, proactive cutover probes, or hole count.
+			m_recoveredArticles += target.FailedArticles;
 			// fully repaired (every hole filled): credit this file's ENCODED
 			// failed size back to health, exactly reversing its contribution to
 			// m_currentFailedSize (DownloadInfo.cpp:675) and, for a par2 file,
 			// m_parCurrentFailedSize (:687). A target with any remaining hole
 			// credits nothing, so a partial repair can never raise health -
 			// both correct and the safety guarantee.
-			m_recoveredFailedSize += target.FailedSize;
+			m_recoveredFailedSize += target.FailedSize + target.MissedSize;
 			if (target.IsParFile)
 			{
-				m_recoveredFailedParSize += target.FailedSize;
+				m_recoveredFailedParSize += target.FailedSize + target.MissedSize;
 			}
 		}
 	}
@@ -1375,7 +1380,6 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 	if (written > 0)
 	{
 		int recoveredParts = donorSources.TakeServedParts();
-		m_recoveredArticles += recoveredParts;
 		m_recoveredBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
@@ -1750,7 +1754,6 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 	if (written > 0)
 	{
 		int recoveredParts = donorSources.TakeServedParts();
-		m_recoveredArticles += recoveredParts;
 		m_recoveredBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
@@ -1820,17 +1823,17 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 	for (int suffix = 0; ; suffix++)
 	{
 		tempDir.Format("%s%c.stream-decompress.%i", destDir, PATH_SEPARATOR, suffix);
-		if (!FileSystem::FileExists(tempDir) && !FileSystem::DirectoryExists(tempDir))
+		if (FileSystem::CreateDirectoryExclusive(tempDir))
 		{
 			break;
 		}
-	}
-	if (!FileSystem::CreateDirectory(tempDir))
-	{
-		PrintMessage(Message::mkInfo,
-			"Skipping decompression of %s of duplicate %s: could not create %s",
-			setName, *donor.InfoName, *tempDir);
-		return;
+		if (errno != EEXIST)
+		{
+			PrintMessage(Message::mkInfo,
+				"Skipping decompression of %s of duplicate %s: could not create %s: %s",
+				setName, *donor.InfoName, *tempDir, *FileSystem::GetLastErrorMessage());
+			return;
+		}
 	}
 
 	// removes the whole scratch tree on every exit from this scope; declared
@@ -2118,9 +2121,7 @@ int64 StreamRepairController::PatchFromDonorInnerFile(RepairSetData& repairSet,
 
 	if (written > 0)
 	{
-		// decompression serves no per-hole donor article, so the filled inner
-		// holes are the closest honest "recovered units" for the statistics
-		m_recoveredArticles += holesFilled;
+		m_recoveredHoles += holesFilled;
 		m_recoveredBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB of %s from duplicate %s (decompressed)",
@@ -2135,9 +2136,11 @@ void StreamRepairController::RepairCompleted()
 
 	NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
 
-	if (m_recoveredArticles > 0)
+	if (m_recoveredArticles > 0 || m_recoveredBytes > 0 || m_recoveredHoles > 0)
 	{
 		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + m_recoveredArticles);
+		nzbInfo->SetDupeRecoveredBytes(nzbInfo->GetDupeRecoveredBytes() + m_recoveredBytes);
+		nzbInfo->SetDupeRecoveredHoles(nzbInfo->GetDupeRecoveredHoles() + m_recoveredHoles);
 	}
 
 	// restore byte-based health in ENCODED (bytes=) units - the units
@@ -2154,11 +2157,18 @@ void StreamRepairController::RepairCompleted()
 	// authoritative.
 	if (m_recoveredFailedSize > 0)
 	{
+		nzbInfo->SetFailedSize(std::max<int64>(0,
+			nzbInfo->GetFailedSize() - m_recoveredFailedSize));
+		nzbInfo->SetSuccessSize(nzbInfo->GetSuccessSize() + m_recoveredFailedSize);
 		nzbInfo->SetCurrentFailedSize(std::max<int64>(0,
 			nzbInfo->GetCurrentFailedSize() - m_recoveredFailedSize));
 		nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() + m_recoveredFailedSize);
 		if (m_recoveredFailedParSize > 0)
 		{
+			nzbInfo->SetParFailedSize(std::max<int64>(0,
+				nzbInfo->GetParFailedSize() - m_recoveredFailedParSize));
+			nzbInfo->SetParSuccessSize(
+				nzbInfo->GetParSuccessSize() + m_recoveredFailedParSize);
 			nzbInfo->SetParCurrentFailedSize(std::max<int64>(0,
 				nzbInfo->GetParCurrentFailedSize() - m_recoveredFailedParSize));
 			nzbInfo->SetParCurrentSuccessSize(
@@ -2166,8 +2176,41 @@ void StreamRepairController::RepairCompleted()
 		}
 	}
 
-	// draining the job list is the run-once gate for this stage
-	nzbInfo->GetStreamRepairJobs()->clear();
+	// Persist unfinished holes only when the controller is stopping so a
+	// restart can resume. During a normal run, unfinished targets are handed to
+	// par-repair and must not re-arm this stage indefinitely.
+	for (auto it = nzbInfo->GetStreamRepairJobs()->begin();
+		it != nzbInfo->GetStreamRepairJobs()->end(); )
+	{
+		if (!IsStopped())
+		{
+			it = nzbInfo->GetStreamRepairJobs()->erase(it);
+			continue;
+		}
+		bool matched = false;
+		for (const RepairTarget& target : m_targets)
+		{
+			if (target.FileId == it->GetFileId())
+			{
+				matched = true;
+				if (target.Holes.empty())
+				{
+					it = nzbInfo->GetStreamRepairJobs()->erase(it);
+				}
+				else
+				{
+					it->SetHoles(target.Holes);
+					++it;
+				}
+				break;
+			}
+		}
+		if (!matched)
+		{
+			// A job without a matching target is retained conservatively.
+			++it;
+		}
+	}
 
 	// whatever was written - and whatever is still missing - goes through
 	// par-check as final verification (a no-op when no par2 files exist)
@@ -2175,6 +2218,10 @@ void StreamRepairController::RepairCompleted()
 	{
 		m_postInfo->SetRequestParCheck(true);
 	}
+
+	// Persist repaired counters and any remaining holes before leaving the
+	// stage, so a graceful stop cannot lose the current repair state.
+	downloadQueue->Save();
 
 	m_postInfo->SetWorking(false);
 }
