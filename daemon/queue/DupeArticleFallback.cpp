@@ -112,16 +112,20 @@ std::vector<CString> DupeArticleFallback::OrderSources(const std::vector<CString
 		return sources;
 	}
 
-	// cut over: lead with the top donor, then revert to the primary, then the
-	// remaining donors - so the file leads with the duplicate but still tries
-	// the primary quickly if the duplicate is the one missing this article
+	// cut over: lead with the top donor, then the remaining donors, then the
+	// primary as the final fallback. The file cut over precisely because the
+	// primary is missing many articles, so on a lead-donor miss the other
+	// duplicates are better bets than paying a (likely failing) full server
+	// sweep on the primary; the primary still backstops parts every duplicate
+	// misses. NOTE: proactive fetches must never count as "recovered"
+	// regardless of round (see QueueCoordinator::ArticleCompleted) - with the
+	// primary last, no donor round proves the primary was missing the part
 	sources.reserve(donorCandidates.size() + 1);
-	sources.emplace_back((const char*)donorCandidates[0]);
-	sources.emplace_back(primaryMessageId);
-	for (size_t i = 1; i < donorCandidates.size(); i++)
+	for (const CString& candidate : donorCandidates)
 	{
-		sources.emplace_back((const char*)donorCandidates[i]);
+		sources.emplace_back((const char*)candidate);
 	}
+	sources.emplace_back(primaryMessageId);
 	return sources;
 }
 

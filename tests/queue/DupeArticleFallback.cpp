@@ -223,7 +223,9 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesReactiveTest)
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverTest)
 {
-	// cut over: lead with the top donor, then revert to primary, then the rest
+	// cut over: lead with the top donor, then the remaining donors, then the
+	// primary as the final fallback (the file cut over because the primary is
+	// heavily holed - other duplicates are better bets than a primary sweep)
 	std::vector<CString> donors;
 	donors.emplace_back("d0@example.com");
 	donors.emplace_back("d1@example.com");
@@ -231,10 +233,10 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverTest)
 
 	std::vector<CString> s = DupeArticleFallback::OrderSources(donors, true, "primary@example.com");
 	BOOST_REQUIRE_EQUAL(s.size(), 4u);
-	BOOST_CHECK_EQUAL(*s[0], "d0@example.com");     // lead with duplicate
-	BOOST_CHECK_EQUAL(*s[1], "primary@example.com"); // quick revert to primary
-	BOOST_CHECK_EQUAL(*s[2], "d1@example.com");
-	BOOST_CHECK_EQUAL(*s[3], "d2@example.com");
+	BOOST_CHECK_EQUAL(*s[0], "d0@example.com");      // lead with duplicate
+	BOOST_CHECK_EQUAL(*s[1], "d1@example.com");
+	BOOST_CHECK_EQUAL(*s[2], "d2@example.com");
+	BOOST_CHECK_EQUAL(*s[3], "primary@example.com"); // primary is the last resort
 }
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverNoDonorTest)
@@ -317,14 +319,15 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackFinishPinTest)
 	BOOST_REQUIRE_EQUAL(article->GetDupeSources()->size(), 3u);
 	BOOST_CHECK_EQUAL(*article->GetDupeSources()->at(0), "a1@example.com");
 
-	// cut over: the pinned order carries the primary revert at slot 1
+	// cut over: the pinned order carries the primary revert at the last slot
 	ArticleInfo* cutoverArticle = file->GetArticles()->at(1).get();
 	DupeArticleFallback::FinishPin(file.get(), cutoverArticle, candidates, contributors,
 		true, "primary@example.com");
 	BOOST_REQUIRE_EQUAL(cutoverArticle->GetDupeSources()->size(), 4u);
 	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(0), "a1@example.com");
-	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(1), "primary@example.com");
-	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(2), "b1@example.com");
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(1), "b1@example.com");
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(2), "a2@example.com");
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(3), "primary@example.com");
 	// an already decided file lead is not overwritten
 	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
 }
