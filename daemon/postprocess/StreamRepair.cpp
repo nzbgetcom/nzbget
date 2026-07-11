@@ -1285,20 +1285,13 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 							std::string(*donor.QueuedFilename) + "|" +
 							donorMembers[donorSet.Members[0]].Name).second)
 					{
-						if (repairSet.Map->GetEncrypted())
-						{
-							// v1 scope: composing extracted plaintext with the
-							// encrypted-target write path is future work
-							PrintMessage(Message::mkInfo,
-								"Skipping decompression of duplicate %s for %s: encrypted target not supported",
-								*donor.InfoName, repairSet.Map->GetInnerName());
-						}
-						else
-						{
-							ExecDecompressRepair(destDir, repairSet, donorNzb.get(),
-								donorMembers, donorSet, donor, targetFiles,
-								targets, memberTargets, setMembers);
-						}
+						// an encrypted target is a store-mode encrypted rar (a
+						// compressed archive never maps, so it is never a repair
+						// target): the extracted plaintext is re-encrypted under
+						// the target's stream context by the M3 write core
+						ExecDecompressRepair(destDir, repairSet, donorNzb.get(),
+							donorMembers, donorSet, donor, targetFiles,
+							targets, memberTargets, setMembers);
 					}
 					continue;	// not this target's content (or not mappable)
 				}
@@ -1320,6 +1313,35 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 			}
 		}
 	}
+}
+
+namespace
+{
+	/* Adapts a mapped donor to the ContentSource plaintext interface the
+	 * encrypted verify/patch cores read through, so the M3 (mapped-donor) and
+	 * M4-into-encrypted (extracted-file, a DiskContentSource) paths share one
+	 * crypto implementation. Reads decode/decrypt through the donor map. */
+	class DonorInnerPlaintextSource : public ContentSource
+	{
+	public:
+		DonorInnerPlaintextSource(ContentMap& map, DonorSetSources& sources)
+			: m_map(map), m_sources(sources) {}
+		int64 Size() override { return m_map.GetInnerSize(); }
+		bool Read(int64 offset, void* buffer, int64 size) override
+		{
+			if (!StreamRepairController::ReadDonorInner(m_map, m_sources,
+				{offset, size}, m_scratch))
+			{
+				return false;
+			}
+			memcpy(buffer, m_scratch.data(), (size_t)size);
+			return true;
+		}
+	private:
+		ContentMap& m_map;
+		DonorSetSources& m_sources;
+		std::vector<char> m_scratch;
+	};
 }
 
 bool StreamRepairController::ReadDonorInner(ContentMap& donorMap,
@@ -1661,8 +1683,8 @@ bool StreamRepairController::ReadTargetCipher(ContentMap& targetMap, TargetSetFi
  * A wrong password, wrong donor or wrong block arithmetic fails the compare:
  * rejection, never a write. Window semantics (anchoring to the original holes,
  * coalescing, the 64-byte floor, varied-data demand) are M2's. */
-bool StreamRepairController::VerifyDonorSetEncrypted(RepairSetData& repairSet,
-	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+bool StreamRepairController::VerifyEncryptedFromSource(RepairSetData& repairSet,
+	ContentSource& plaintext, TargetSetFiles& targetFiles,
 	const std::vector<StreamRange>& windows)
 {
 	constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
@@ -1759,8 +1781,8 @@ bool StreamRepairController::VerifyDonorSetEncrypted(RepairSetData& repairSet,
 		}
 		// boundary blocks need the donor's plaintext OUTSIDE the window too;
 		// if the donor cannot supply the whole expansion, the window drops
-		if (!ReadDonorInner(donorMap, donorSources,
-			{blockFrom, blockTo - blockFrom}, donorData))
+		donorData.resize((size_t)(blockTo - blockFrom));
+		if (!plaintext.Read(blockFrom, donorData.data(), blockTo - blockFrom))
 		{
 			continue;	// inconclusive: the donor may miss these articles
 		}
@@ -1812,8 +1834,8 @@ bool StreamRepairController::VerifyDonorSetEncrypted(RepairSetData& repairSet,
  * recomputed byte that is present on disk (the boundary tripwire - a mismatch
  * means the chain, donor or password is wrong and aborts this donor for this
  * set), and write ONLY bytes inside captured holes through the M2 guards. */
-int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSet,
-	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+int64 StreamRepairController::PatchEncryptedFromSource(RepairSetData& repairSet,
+	ContentSource& plaintext, TargetSetFiles& targetFiles,
 	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
 	const std::vector<SetMember>& setMembers, const char* donorName)
 {
@@ -1897,8 +1919,8 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 		while (blockFrom < blockTo && !IsStopped())
 		{
 			int64 chunkEnd = std::min<int64>(blockFrom + 4 * 1024 * 1024, blockTo);
-			if (!ReadDonorInner(donorMap, donorSources,
-				{blockFrom, chunkEnd - blockFrom}, donorData))
+			donorData.resize((size_t)(chunkEnd - blockFrom));
+			if (!plaintext.Read(blockFrom, donorData.data(), chunkEnd - blockFrom))
 			{
 				break;	// this donor cannot supply the rest of this hole
 			}
@@ -1985,6 +2007,30 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 			"Cross-packing repair of %s: %lli byte(s) in the final partial cipher block stay for par-repair",
 			targetMap.GetInnerName(), (long long)uncomputableTail);
 	}
+	// the caller owns the recovered accounting + the "Recovered ..." log: a
+	// mapped donor counts served articles, an extracted file counts holes
+	return written;
+}
+
+/* M3 entry: the encrypted target's donor is a MAPPED duplicate. Wraps the
+ * donor map as the plaintext source and does the mapped-donor recovered
+ * accounting (served articles) + the "(cross-packing)" log. */
+bool StreamRepairController::VerifyDonorSetEncrypted(RepairSetData& repairSet,
+	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+	const std::vector<StreamRange>& windows)
+{
+	DonorInnerPlaintextSource plaintext(donorMap, donorSources);
+	return VerifyEncryptedFromSource(repairSet, plaintext, targetFiles, windows);
+}
+
+int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSet,
+	ContentMap& donorMap, DonorSetSources& donorSources, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const char* donorName)
+{
+	DonorInnerPlaintextSource plaintext(donorMap, donorSources);
+	int64 written = PatchEncryptedFromSource(repairSet, plaintext, targetFiles,
+		targets, memberTargets, setMembers, donorName);
 	if (written > 0)
 	{
 		int recoveredParts = donorSources.TakeServedParts();
@@ -1992,7 +2038,7 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
 			written / 1024.0 / 1024.0, recoveredParts,
-			targetMap.GetInnerName(), donorName);
+			repairSet.Map->GetInnerName(), donorName);
 	}
 	return written;
 }
@@ -2135,8 +2181,13 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 		return;
 	}
 
-	if (!VerifyDonorInnerFile(repairSet, innerFile,
-		FileSystem::FileSize(innerPath.c_str()), targetFiles))
+	int64 innerSize = FileSystem::FileSize(innerPath.c_str());
+	bool encrypted = repairSet.Map->GetEncrypted();
+
+	bool verified = encrypted ?
+		VerifyDonorInnerFileEncrypted(repairSet, innerFile, innerSize, targetFiles) :
+		VerifyDonorInnerFile(repairSet, innerFile, innerSize, targetFiles);
+	if (!verified)
 	{
 		// mkInfo on purpose: a rejected donor is the safety net firing -
 		// it must be visible in the log
@@ -2147,8 +2198,16 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 		return;
 	}
 
-	PatchFromDonorInnerFile(repairSet, innerFile, targetFiles, targets,
-		memberTargets, setMembers, donor.InfoName);
+	if (encrypted)
+	{
+		PatchFromDonorInnerFileEncrypted(repairSet, innerFile, innerSize, targetFiles,
+			targets, memberTargets, setMembers, donor.InfoName);
+	}
+	else
+	{
+		PatchFromDonorInnerFile(repairSet, innerFile, targetFiles, targets,
+			memberTargets, setMembers, donor.InfoName);
+	}
 	innerFile.Close();
 }
 
@@ -2356,6 +2415,61 @@ int64 StreamRepairController::PatchFromDonorInnerFile(RepairSetData& repairSet,
 
 	if (written > 0)
 	{
+		m_recoveredHoles += holesFilled;
+		m_recoveredBytes += written;
+		PrintMessage(Message::mkInfo,
+			"Recovered %.1f MB of %s from duplicate %s (decompressed)",
+			written / 1024.0 / 1024.0, targetMap.GetInnerName(), donorName);
+	}
+	return written;
+}
+
+/* the encrypted-target counterpart of VerifyDonorInnerFile: the extracted
+ * plaintext is re-encrypted under the target's stream context and its
+ * ciphertext byte-compared against the target's disk (the M3 verify core),
+ * so a wrong extraction or the wrong archive is rejected before any write. */
+bool StreamRepairController::VerifyDonorInnerFileEncrypted(RepairSetData& repairSet,
+	DiskFile& donorInner, int64 donorInnerSize, TargetSetFiles& targetFiles)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	if (!targetMap.GetEncrypted() || donorInnerSize != targetMap.GetInnerSize())
+	{
+		return false;
+	}
+
+	DiskContentSource plaintext(donorInner, donorInnerSize);
+	std::vector<StreamRange> windows = BuildProbeWindows(repairSet);
+	return VerifyEncryptedFromSource(repairSet, plaintext, targetFiles, windows);
+}
+
+/* the encrypted-target counterpart of PatchFromDonorInnerFile: the extracted
+ * plaintext is re-encrypted under the target's stream context and the
+ * ciphertext written into the holes (the M3 patch core). The recovered stat
+ * counts filled holes, matching the plaintext decompression path. */
+int64 StreamRepairController::PatchFromDonorInnerFileEncrypted(RepairSetData& repairSet,
+	DiskFile& donorInner, int64 donorInnerSize, TargetSetFiles& targetFiles,
+	std::vector<RepairTarget>& targets, const std::vector<int>& memberTargets,
+	const std::vector<SetMember>& setMembers, const char* donorName)
+{
+	ContentMap& targetMap = *repairSet.Map;
+	DiskContentSource plaintext(donorInner, donorInnerSize);
+
+	// count holes that go fully empty across the patch (the encrypted core
+	// shrinks repairSet.InnerHoles in place, so snapshot the pre-patch holes)
+	StreamRangeList before = repairSet.InnerHoles;
+	int64 written = PatchEncryptedFromSource(repairSet, plaintext, targetFiles,
+		targets, memberTargets, setMembers, donorName);
+
+	if (written > 0)
+	{
+		int holesFilled = 0;
+		for (const StreamRange& hole : before)
+		{
+			if (!DupeStreamRepair::IntersectsAny(hole, repairSet.InnerHoles))
+			{
+				holesFilled++;
+			}
+		}
 		m_recoveredHoles += holesFilled;
 		m_recoveredBytes += written;
 		PrintMessage(Message::mkInfo,

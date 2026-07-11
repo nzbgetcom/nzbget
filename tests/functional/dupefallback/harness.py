@@ -1343,6 +1343,47 @@ def scenario_xdecomp_enc7z(daemon, t):
             % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
 
 
+def scenario_xdecomp_enctarget(daemon, t):
+    """The M3+M4 composition: a password-ENCRYPTED store-rar TARGET (same
+    generator as xcrypt_encplain) with a data hole in its middle volume,
+    repaired from a COMPRESSED 7z donor of the same movie.mkv. The donor
+    cannot map for byte-copy (it is compressed), so M4 materializes and
+    extracts it to plaintext; that plaintext is then re-encrypted under the
+    target's own AES-CBC stream context (the M3 write core) and the
+    ciphertext written into the hole. Byte-identical ENCRYPTED volumes prove
+    the extract -> re-encrypt -> patch round trip. Requires both a crypto
+    module (encrypted target generator) and a 7z binary (compressed donor)."""
+    if not generators.HAVE_CRYPTO:
+        return ('xdecomp_enctarget', None, 'SKIP: cryptography not installed')
+    if not generators.HAVE_7Z:
+        return ('xdecomp_enctarget', None, 'SKIP: 7z not installed')
+    size = 6_000_000
+    data = _payload(size, 8600)
+    password = 'target-pw-D'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]      # only volume 2 loses a non-header segment
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xdeA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    with tempfile.TemporaryDirectory(prefix='xde-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdeB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xde', members, donor_members, payloads,
+                             primary_password=password)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = all(integ.values()) and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_enctarget', ok,
+            'status=%s recovered=%d decompressed_logs=%d integ=%s'
+            % (h['Status'], c['recov'], decompressed, all(integ.values())))
+
+
 def scenario_xdecomp_neg(daemon, t):
     """The negative: a bare target repaired attempt from a REAL 7z donor
     holding the RIGHT-size but WRONG-bytes inner file (a decoy payload of
@@ -1518,6 +1559,7 @@ SCENARIOS = {
     'xdecomp_7z': scenario_xdecomp_7z,
     'xdecomp_storetarget': scenario_xdecomp_storetarget,
     'xdecomp_enc7z': scenario_xdecomp_enc7z,
+    'xdecomp_enctarget': scenario_xdecomp_enctarget,
     'xdecomp_neg': scenario_xdecomp_neg,
     'xdecomp_symlink': scenario_xdecomp_symlink,
     'xdecomp_off': scenario_xdecomp_off,
@@ -1598,6 +1640,8 @@ SCENARIO_OPTIONS = {
                             'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_enc7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                       'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_enctarget': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                          'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_neg': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                     'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_symlink': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',

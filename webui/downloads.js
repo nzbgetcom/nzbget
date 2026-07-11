@@ -792,7 +792,19 @@ var DownloadsUI = (new function($)
 			badgeClass = 'label-important';
 		}
 
-		return '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
+		var badge = '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
+
+		// a live stream-repair pass (option DupeArticleFallback=live) runs while
+		// the collection is still downloading and has no post-processing badge of
+		// its own - flag it so the repair activity is visible
+		if (group.LiveRepairing)
+		{
+			badge += ' <span class="label label-status label-info text-uppercase" title="' +
+				I18n.translate('label_live_repair_hint') + '">' +
+				I18n.translate('label_live_repair') + '</span>';
+		}
+
+		return badge;
 	}
 
 	this.buildProgress = function(group, totalsize, remaining, estimated)

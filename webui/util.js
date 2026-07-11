@@ -499,6 +499,25 @@ var Util = (new function($)
 		return (hi << 32) + lo;
 	}
 
+	// "N" articles, or "N (X.X MB)" when the byte-level stream repair also
+	// recovered bytes (DupeArticleFallback: article layer counts articles,
+	// stream/live layer counts bytes). The 64-bit byte total is combined in
+	// MB space the way the rest of the WebUI does (hi*4096 + lo-as-MB); NOT
+	// via joinInt64, whose (hi<<32) is a 32-bit no-op in JavaScript and would
+	// drop the high word for totals >= 4 GiB.
+	this.formatDupeRecovered = function(nzb)
+	{
+		var articles = nzb.DupeRecoveredArticles || 0;
+		var hi = nzb.DupeRecoveredBytesHi || 0;
+		var lo = nzb.DupeRecoveredBytesLo || 0;
+		if (hi > 0 || lo > 0)
+		{
+			var sizeMB = hi * 4096 + lo / 1024.0 / 1024.0;
+			return articles + ' (' + this.formatSizeMB(sizeMB, lo) + ')';
+		}
+		return '' + articles;
+	}
+
 }(jQuery));
 
 

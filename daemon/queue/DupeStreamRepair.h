@@ -113,12 +113,13 @@ public:
 	 * Returns "" when nothing matches. */
 	static std::string SelectExtractedInner(const char* dir, int64 innerSize, const char* innerName);
 
+	static bool IntersectsAny(const StreamRange& range, const StreamRangeList& ranges);
+
 private:
 	static bool RangesIntersect(const StreamRange& range1, const StreamRange& range2)
 	{
 		return range1.Offset < range2.End() && range2.Offset < range1.End();
 	}
-	static bool IntersectsAny(const StreamRange& range, const StreamRangeList& ranges);
 };
 
 #endif

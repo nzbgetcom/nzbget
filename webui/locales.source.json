@@ -2086,6 +2086,14 @@
     "message": "Recovered from duplicates",
     "description": "UI Label for Usenet data stats: the number of missing data segments/blocks ('Articles') that were fetched from a duplicate posting of the same release via the DupeArticleFallback feature. 'Articles' are technical data segments/blocks (not text stories); 'duplicates' are other postings of the same content."
   },
+  "label_live_repair": {
+    "message": "Repair",
+    "description": "Short status badge shown next to a downloading collection while byte-level stream repair (option DupeArticleFallback=live) fills its missing byte ranges from duplicate postings concurrently with the download."
+  },
+  "label_live_repair_hint": {
+    "message": "Repairing missing bytes from duplicate collections",
+    "description": "Tooltip for the 'Repair' status badge: byte-level stream repair (option DupeArticleFallback=live) is running for this collection while it still downloads."
+  },
   "help_feed_filter_title": {
     "message": "Help: Filter for RSS Feed",
     "description": "Help title. Title or heading"

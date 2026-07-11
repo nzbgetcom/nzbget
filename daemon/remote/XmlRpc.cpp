@@ -1945,6 +1945,10 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"<member><name>SuccessArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FailedArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DupeRecoveredArticles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DupeRecoveredBytesLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>DupeRecoveredBytesHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>DupeRecoveredHoles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>LiveRepairing</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>Health</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>CriticalHealth</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DupeKey</name><value><string>%s</string></value></member>\n"
@@ -2002,6 +2006,10 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"\"SuccessArticles\" : %i,\n"
 		"\"FailedArticles\" : %i,\n"
 		"\"DupeRecoveredArticles\" : %i,\n"
+		"\"DupeRecoveredBytesLo\" : %u,\n"
+		"\"DupeRecoveredBytesHi\" : %u,\n"
+		"\"DupeRecoveredHoles\" : %i,\n"
+		"\"LiveRepairing\" : %s,\n"
 		"\"Health\" : %i,\n"
 		"\"CriticalHealth\" : %i,\n"
 		"\"DupeKey\" : \"%s\",\n"
@@ -2087,6 +2095,9 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 	Util::SplitInt64(nzbInfo->GetDownloadedSize(), &downloadedSizeHi, &downloadedSizeLo);
 	downloadedSizeMB = (int)(nzbInfo->GetDownloadedSize() / 1024 / 1024);
 
+	uint32 dupeRecoveredBytesHi, dupeRecoveredBytesLo;
+	Util::SplitInt64(nzbInfo->GetDupeRecoveredBytes(), &dupeRecoveredBytesHi, &dupeRecoveredBytesLo);
+
 	int messageCount = nzbInfo->GetMessageCount() > 0 ? nzbInfo->GetMessageCount() : nzbInfo->GetCachedMessageCount();
 
 	CString xmlNzbNicename = EncodeStr(nzbInfo->GetName());
@@ -2105,6 +2116,8 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 			(int)nzbInfo->GetMinTime(), (int)nzbInfo->GetMaxTime(),
 			nzbInfo->GetTotalArticles(), nzbInfo->GetCurrentSuccessArticles(), nzbInfo->GetCurrentFailedArticles(),
 			nzbInfo->GetDupeRecoveredArticles(),
+			dupeRecoveredBytesLo, dupeRecoveredBytesHi, nzbInfo->GetDupeRecoveredHoles(),
+			BoolToStr(nzbInfo->GetLiveRepairThread() != nullptr),
 			nzbInfo->CalcHealth(), nzbInfo->CalcCriticalHealth(false),
 			*EncodeStr(nzbInfo->GetDupeKey()), nzbInfo->GetDupeScore(), dupeModeName[nzbInfo->GetDupeMode()],
 			BoolToStr(nzbInfo->GetDeleteStatus() != NzbInfo::dsNone),

@@ -4,7 +4,7 @@ nzbget-v26.3
     [#850](https://github.com/nzbgetcom/nzbget/pull/850)
       - Article-level fallback substitutes a failed article's body from a duplicate posting during download; a file missing many articles cuts over to lead with the duplicate, and independently a duplicate that keeps missing articles is rotated out in favour of the next one;
       - Stream-level repair (value "stream") patches missing byte ranges in post-processing from duplicates posted with different article segmentation or packaging — store-mode rar/zip/7z, raw splits and directly posted media can donate to each other, including password-protected store-mode archives when the password is known;
-      - Optional decompression-assisted recovery (option DupeStreamDecompress) extracts a compressed duplicate to bridge different compressions of the same inner file;
+      - Optional decompression-assisted recovery (option DupeStreamDecompress) extracts a compressed duplicate to bridge different compressions of the same inner file, including into a password-protected store-mode target (the extracted plaintext is re-encrypted under the target's stream context);
       - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
       - Value "live" runs the byte-level repair concurrently with the download: a damaged file is repaired as soon as it completes, while the collection's remaining files still download, removing the end-of-download wait on large collections;
       - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
