@@ -36,13 +36,13 @@ public:
 		, m_directory(nullptr)
 		, m_nzbName{ nzbName }
 		, m_category{ category }
+		, m_dupeKey{ dupeKey }
 		, m_priority(nullptr)
 		, m_dupeScore(nullptr)
 		, m_addTop(nullptr)
 		, m_addPaused(nullptr)
 		, m_dupeMode(nullptr)
-		, m_parameters(nullptr)
-		, m_dupeKey{ dupeKey } {}
+		, m_parameters(nullptr) {}
 
 	static void ExecuteScripts(
 		const char* nzbFilename,

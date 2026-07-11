@@ -207,7 +207,7 @@ void PrintBacktrace()
 
 	// then trace to log
 	error("Segmentation fault, tracing...");
-	error("Obtained %zd stack frames", size);
+	error("Obtained %zu stack frames", size);
 	for (i = 0; i < size; i++)
 	{
 		error("Stacktrace: %s", strings[i]);

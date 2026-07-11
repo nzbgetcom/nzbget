@@ -58,7 +58,7 @@ ArticleInfo* NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo
 	}
 
 	(*fileInfo->GetArticles())[index] = std::move(articleInfo);
-	
+
 	return (*fileInfo->GetArticles())[index].get();
 }
 
