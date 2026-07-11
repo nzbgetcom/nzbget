@@ -112,6 +112,13 @@ public:
 	void SetDupeExpectedOffset(int64 dupeExpectedOffset) { m_dupeExpectedOffset = dupeExpectedOffset; }
 	int64 GetDupeExpectedEnd() { return m_dupeExpectedEnd; }
 	void SetDupeExpectedEnd(int64 dupeExpectedEnd) { m_dupeExpectedEnd = dupeExpectedEnd; }
+	std::vector<CString>* GetDupeSources() { return &m_dupeSources; }
+	int GetDupeLeadSnapshot() { return m_dupeLeadSnapshot; }
+	void SetDupeLeadSnapshot(int dupeLeadSnapshot) { m_dupeLeadSnapshot = dupeLeadSnapshot; }
+	int GetDupeNextLead() { return m_dupeNextLead; }
+	void SetDupeNextLead(int dupeNextLead) { m_dupeNextLead = dupeNextLead; }
+	int GetDupeDonorCount() { return m_dupeDonorCount; }
+	void SetDupeDonorCount(int dupeDonorCount) { m_dupeDonorCount = dupeDonorCount; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -134,6 +141,19 @@ private:
 	// -1 = unknown (not persisted)
 	int64 m_dupeExpectedOffset = -1;
 	int64 m_dupeExpectedEnd = -1;
+	// the message-ids this article is tried against, pinned at its first
+	// fallback so no later queue/history change or lead rotation can shift the
+	// round->source mapping under the article (not persisted)
+	std::vector<CString> m_dupeSources;
+	// the nzb-id of the donor whose article the pinned slot 0 fetches; a
+	// lead-round result only counts towards demotion while this donor is still
+	// the file's lead (not persisted)
+	int m_dupeLeadSnapshot = 0;
+	// the nzb-id of the next distinct donor in the pinned order - the donor a
+	// demotion rotates the file's lead to; 0 = no other donor (not persisted)
+	int m_dupeNextLead = 0;
+	// distinct donors in the pinned order; bounds the lead rotation (not persisted)
+	int m_dupeDonorCount = 0;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -192,6 +212,12 @@ public:
 	void SetDupeAttemptedArticles(int dupeAttemptedArticles) { m_dupeAttemptedArticles = dupeAttemptedArticles; }
 	bool GetDupeCutover() { return m_dupeCutover; }
 	void SetDupeCutover(bool dupeCutover) { m_dupeCutover = dupeCutover; }
+	int GetDupeLeadDonorId() { return m_dupeLeadDonorId; }
+	void SetDupeLeadDonorId(int dupeLeadDonorId) { m_dupeLeadDonorId = dupeLeadDonorId; }
+	int GetDupeLeadFailures() { return m_dupeLeadFailures; }
+	void SetDupeLeadFailures(int dupeLeadFailures) { m_dupeLeadFailures = dupeLeadFailures; }
+	int GetDupeLeadSwitches() { return m_dupeLeadSwitches; }
+	void SetDupeLeadSwitches(int dupeLeadSwitches) { m_dupeLeadSwitches = dupeLeadSwitches; }
 	time_t GetTime() { return m_time; }
 	void SetTime(time_t time) { m_time = time; }
 	bool GetPaused() { return m_paused; }
@@ -265,6 +291,18 @@ private:
 	// with the duplicate for the remaining articles instead of failing on the
 	// primary first (not persisted)
 	bool m_dupeCutover = false;
+	// nzb-id of the duplicate this file's fresh articles try first; rotated to
+	// the next duplicate when the lead keeps missing articles, so fresh
+	// articles do not re-fail on a holed posting; 0 = not decided yet, the
+	// top-scored duplicate leads (not persisted)
+	int m_dupeLeadDonorId = 0;
+	// consecutive lead-donor misses; reaching LeadDemoteThreshold rotates
+	// m_dupeLeadDonorId (not persisted)
+	int m_dupeLeadFailures = 0;
+	// lead rotations since the last lead success; capped at the donor count so
+	// a release whose duplicates are ALL holed stops rotating (and logging)
+	// once every duplicate has led (not persisted)
+	int m_dupeLeadSwitches = 0;
 	time_t m_time = 0;
 	bool m_paused = false;
 	bool m_deleted = false;

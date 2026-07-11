@@ -148,10 +148,10 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackPartSizeMismatchTest)
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackCandidateListStableAcrossRoundsTest)
 {
-	// ArticleInfo::m_dupeFallbackRound indexes into the candidate list across
-	// repeated failures; the list must be identical no matter which candidate
-	// is currently assigned to the article, otherwise untried donors would be
-	// skipped (regression test)
+	// the pinned source list is built from these candidates; the builder must
+	// be insensitive to which candidate is currently assigned to the article,
+	// otherwise a re-pin (round-0 retry after an empty first pin) could skip
+	// untried donors (regression test)
 	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
 		{{1, 500000}, {2, 500000}}, "orig");
 
@@ -230,6 +230,282 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackOrderSourcesCutoverNoDonorTest)
 	std::vector<CString> donors;
 	std::vector<CString> s = DupeArticleFallback::OrderSources(donors, true, "primary@example.com");
 	BOOST_CHECK(s.empty());
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackRotateToLeadTest)
+{
+	NzbInfo donorA, donorB, donorC;
+	donorA.SetId(11);
+	donorB.SetId(21);
+	donorC.SetId(31);
+	RawNzbList donors = {&donorA, &donorB, &donorC};
+
+	// the lead donor comes first, the order of the others is preserved
+	DupeArticleFallback::RotateToLead(donors, 21);
+	BOOST_CHECK_EQUAL(donors[0]->GetId(), 21);
+	BOOST_CHECK_EQUAL(donors[1]->GetId(), 31);
+	BOOST_CHECK_EQUAL(donors[2]->GetId(), 11);
+
+	// unset (0) or vanished lead: order unchanged
+	DupeArticleFallback::RotateToLead(donors, 0);
+	BOOST_CHECK_EQUAL(donors[0]->GetId(), 21);
+	DupeArticleFallback::RotateToLead(donors, 99);
+	BOOST_CHECK_EQUAL(donors[0]->GetId(), 21);
+}
+
+namespace
+{
+
+std::vector<CString> Candidates(std::initializer_list<const char*> ids)
+{
+	std::vector<CString> candidates;
+	for (const char* id : ids)
+	{
+		candidates.emplace_back(id);
+	}
+	return candidates;
+}
+
+// an article that just failed its lead-donor attempt: fallback round 1, its
+// pinned slot-0 donor being the file's current lead
+ArticleInfo* FailedLeadArticle(FileInfo* fileInfo, int index, int nextLead, int donorCount)
+{
+	ArticleInfo* article = fileInfo->GetArticles()->at(index).get();
+	article->SetDupeFallbackRound(1);
+	article->SetDupeLeadSnapshot(fileInfo->GetDupeLeadDonorId());
+	article->SetDupeNextLead(nextLead);
+	article->SetDupeDonorCount(donorCount);
+	return article;
+}
+
+} // namespace
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackFinishPinTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}}, "orig");
+	ArticleInfo* article = file->GetArticles()->at(0).get();
+
+	// two candidates from donor 11 (a spanned posting), one from donor 21:
+	// slot 0 belongs to donor 11, a demotion would rotate to donor 21
+	std::vector<CString> candidates = Candidates(
+		{"a1@example.com", "b1@example.com", "a2@example.com"});
+	std::vector<int> contributors = {11, 21, 11};
+
+	DupeArticleFallback::FinishPin(file.get(), article, candidates, contributors,
+		false, "primary@example.com");
+
+	BOOST_CHECK_EQUAL(article->GetDupeLeadSnapshot(), 11);
+	BOOST_CHECK_EQUAL(article->GetDupeNextLead(), 21);
+	BOOST_CHECK_EQUAL(article->GetDupeDonorCount(), 2);
+	// the file's lead is decided by its first pinned article
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+	BOOST_REQUIRE_EQUAL(article->GetDupeSources()->size(), 3u);
+	BOOST_CHECK_EQUAL(*article->GetDupeSources()->at(0), "a1@example.com");
+
+	// cut over: the pinned order carries the primary revert at slot 1
+	ArticleInfo* cutoverArticle = file->GetArticles()->at(1).get();
+	DupeArticleFallback::FinishPin(file.get(), cutoverArticle, candidates, contributors,
+		true, "primary@example.com");
+	BOOST_REQUIRE_EQUAL(cutoverArticle->GetDupeSources()->size(), 4u);
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(0), "a1@example.com");
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(1), "primary@example.com");
+	BOOST_CHECK_EQUAL(*cutoverArticle->GetDupeSources()->at(2), "b1@example.com");
+	// an already decided file lead is not overwritten
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackFinishPinNoDonorsTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01", {{1, 1000}}, "orig");
+	ArticleInfo* article = file->GetArticles()->at(0).get();
+
+	DupeArticleFallback::FinishPin(file.get(), article, {}, {}, true, "primary@example.com");
+
+	BOOST_CHECK_EQUAL(article->GetDupeLeadSnapshot(), 0);
+	BOOST_CHECK_EQUAL(article->GetDupeNextLead(), 0);
+	BOOST_CHECK_EQUAL(article->GetDupeDonorCount(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 0);
+	BOOST_CHECK(article->GetDupeSources()->empty());
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLeadDemotionTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}}, "orig");
+	file->SetDupeLeadDonorId(11);
+
+	// two consecutive lead misses: streak accumulates, no demotion yet
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 0, 21, 2)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 1, 21, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 2);
+
+	// a failure at a non-lead round is not a lead miss
+	ArticleInfo* laterRound = FailedLeadArticle(file.get(), 2, 21, 2);
+	laterRound->SetDupeFallbackRound(2);
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), laterRound));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 2);
+
+	// third consecutive lead miss: the lead rotates to the article's next
+	// donor and the streak resets
+	BOOST_CHECK(DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 3, 21, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadSwitches(), 1);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLeadSuccessResetsStreakTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}, {5, 1000}}, "orig");
+	file->SetDupeLeadDonorId(11);
+
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 0, 21, 2)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 1, 21, 2)));
+
+	// a successful fetch from the lead ends the streak: the misses are not
+	// consecutive, so the lead is not demoted
+	DupeArticleFallback::RegisterLeadSuccess(file.get(), FailedLeadArticle(file.get(), 2, 21, 2));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 0);
+
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 3, 21, 2)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 4, 21, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLeadStaleSnapshotTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}, {5, 1000}, {6, 1000}}, "orig");
+	file->SetDupeLeadDonorId(11);
+
+	// pin two articles to lead 11, then demote it: their late failures are
+	// failures of the OLD lead and must not count against the new lead
+	// (otherwise a burst of in-flight failures would cascade-demote through
+	// donors that were never tried)
+	ArticleInfo* stale1 = FailedLeadArticle(file.get(), 0, 21, 2);
+	ArticleInfo* stale2 = FailedLeadArticle(file.get(), 1, 21, 2);
+
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 2, 21, 2)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 3, 21, 2)));
+	BOOST_CHECK(DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 4, 21, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), stale1));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), stale2));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+
+	// a stale success must not clear the new lead's streak either
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 5, 11, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 1);
+	DupeArticleFallback::RegisterLeadSuccess(file.get(), stale1);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 1);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLeadSingleDonorNoDemotionTest)
+{
+	// with a single duplicate there is nothing to rotate to: the streak
+	// accumulates but the lead stays put and nothing is logged
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}}, "orig");
+	file->SetDupeLeadDonorId(11);
+
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 0, 0, 1)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 1, 0, 1)));
+	BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 2, 0, 1)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+
+	// a second duplicate appearing on a later article makes the accumulated
+	// streak act
+	BOOST_CHECK(DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), 3, 21, 2)));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLeadRotationBoundedTest)
+{
+	// duplicates that are ALL holed: the lead rotates until every donor has
+	// led once, then freezes (further rotation and logging would be noise);
+	// a lead success re-arms the rotation budget
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1000}, {2, 1000}, {3, 1000}, {4, 1000}, {5, 1000}, {6, 1000},
+		 {7, 1000}, {8, 1000}, {9, 1000}, {10, 1000}, {11, 1000}, {12, 1000},
+		 {13, 1000}}, "orig");
+	file->SetDupeLeadDonorId(11);
+
+	auto missStreak = [&](int firstIndex, int nextLead)
+	{
+		BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), firstIndex, nextLead, 2)));
+		BOOST_CHECK(!DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), firstIndex + 1, nextLead, 2)));
+		return DupeArticleFallback::RegisterLeadFailure(file.get(), FailedLeadArticle(file.get(), firstIndex + 2, nextLead, 2));
+	};
+
+	// switch 1: 11 -> 21; switch 2: 21 -> 11 (the full two-donor cycle)
+	BOOST_CHECK(missStreak(0, 21));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+	BOOST_CHECK(missStreak(3, 11));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadSwitches(), 2);
+
+	// the budget is exhausted: misses keep counting but the lead stays put
+	BOOST_CHECK(!missStreak(6, 21));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 11);
+
+	// a PROVISIONAL success (decoded neighbours unknown, the alignment check
+	// passed vacuously - the article may be demoted again later) ends the
+	// streak but must NOT re-arm the budget: a systematically drifted lead
+	// keeps producing provisional accepts, and letting them re-arm would
+	// bypass the rotation bound
+	DupeArticleFallback::RegisterLeadSuccess(file.get(), FailedLeadArticle(file.get(), 9, 21, 2));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadSwitches(), 2);
+	BOOST_CHECK(!missStreak(10, 21));
+
+	// a VERIFIABLE lead success (decoded boundaries pinned by finished
+	// neighbours) re-arms the budget
+	auto finish = [&](int index, int64 offset, int size)
+	{
+		ArticleInfo* neighbour = file->GetArticles()->at(index).get();
+		neighbour->SetStatus(ArticleInfo::aiFinished);
+		neighbour->SetSegmentOffset(offset);
+		neighbour->SetSegmentSize(size);
+	};
+	finish(8, 8000, 1000);
+	finish(10, 10000, 1000);
+	DupeArticleFallback::RegisterLeadSuccess(file.get(), FailedLeadArticle(file.get(), 9, 21, 2));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadSwitches(), 0);
+	BOOST_CHECK(missStreak(3, 21));
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackVacateGhostLeadTest)
+{
+	// a lead donor deleted from queue/history can never match a collected
+	// donor again (nzb-ids are not reused): without vacating, the snapshot
+	// gate would block all lead accounting for the rest of the file
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01", {{1, 1000}}, "orig");
+
+	NzbInfo donorA, donorB;
+	donorA.SetId(11);
+	donorB.SetId(21);
+	RawNzbList donors = {&donorA, &donorB};
+
+	// live lead: nothing changes
+	file->SetDupeLeadDonorId(21);
+	file->SetDupeLeadFailures(2);
+	DupeArticleFallback::VacateGhostLead(file.get(), donors);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 21);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 2);
+
+	// ghost lead: vacated, the accounting starts clean and the next pin
+	// re-decides the lead
+	file->SetDupeLeadDonorId(99);
+	file->SetDupeLeadSwitches(2);
+	DupeArticleFallback::VacateGhostLead(file.get(), donors);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadDonorId(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadFailures(), 0);
+	BOOST_CHECK_EQUAL(file->GetDupeLeadSwitches(), 0);
 }
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackFindDonorMessageIdTest)

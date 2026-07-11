@@ -40,6 +40,27 @@
  * primary remains a revert source in case the duplicate is the one missing
  * that particular article.
  *
+ * The duplicate a file leads with rotates as well, independently of the
+ * cutover: whenever duplicates are tried at all, the file's lead duplicate is
+ * tried first, and when that lead misses enough articles in a row it is
+ * demoted and the next duplicate takes over the lead for fresh articles, so a
+ * holed lead does not cost a wasted fetch per article when other duplicates
+ * could serve them. The rotation is bounded: once every duplicate has led
+ * without a single lead success it stops (the duplicates are equally holed
+ * and rotating - and logging - would be pure noise) until a lead success
+ * resets it.
+ *
+ * An article's source order is PINNED at its first fallback (PinSources): the
+ * donors known at that moment, rotated to the file's lead, primary revert
+ * inserted when cut over. The fallback round indexes into that pinned list,
+ * so neither a lead rotation nor a queue/history change while the article is
+ * in flight can shift the round->source mapping under it (which would skip or
+ * repeat sources). The lead is identified by donor nzb-id, never by list
+ * position: a lead-round result only counts towards demotion while the pinned
+ * slot-0 donor is still the file's lead, so a burst of stale failures cannot
+ * cascade-demote donors that were never tried, and a donor's streak can never
+ * be charged to another donor even when candidate lists differ per part.
+ *
  * All methods must be called within DownloadQueue-lock.
  */
 class DupeArticleFallback
@@ -48,6 +69,9 @@ public:
 	// after this many articles of a file are recovered from duplicates, lead
 	// with the duplicate for the file's remaining articles (cutover)
 	static constexpr int CutoverThreshold = 3;
+	// after this many consecutive articles missed by the lead duplicate, the
+	// next duplicate becomes the lead for the file's fresh articles
+	static constexpr int LeadDemoteThreshold = 3;
 
 	bool TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo);
 
@@ -67,6 +91,47 @@ public:
 	 * if the duplicate lacks that article. */
 	static std::vector<CString> OrderSources(const std::vector<CString>& donorCandidates,
 		bool cutover, const char* primaryMessageId);
+
+	/* Rotates the donor list so the donor with the given nzb-id comes first
+	 * (order among the others preserved); no-op when the id is 0 or absent. */
+	static void RotateToLead(RawNzbList& donors, int leadNzbId);
+
+	/* Pure pinning step: derives the article's lead bookkeeping (slot-0 donor,
+	 * next-lead donor, distinct donor count) from the collected candidates and
+	 * their contributing donor nzb-ids, lazily fixes the file's lead to the
+	 * slot-0 donor when still undecided, and stores the ordered sources on the
+	 * article. candidates/contributors run parallel (one contributor id per
+	 * candidate, the donor that FIRST offered that message-id). */
+	static void FinishPin(FileInfo* fileInfo, ArticleInfo* articleInfo,
+		const std::vector<CString>& candidates, const std::vector<int>& contributors,
+		bool cutover, const char* primaryMessageId);
+
+	/* Counts a failed fetch of the article's pinned lead donor towards the
+	 * file's consecutive lead-miss streak. Only a lead-round (round 1) result
+	 * counts, and only while the pinned slot-0 donor is still the file's
+	 * lead. Returns true when the streak reached LeadDemoteThreshold and the
+	 * lead was rotated to the article's next donor (requires another donor
+	 * and an unexhausted rotation budget; the caller logs the switch). Also
+	 * called when a provisionally-accepted lead article is demoted later
+	 * (QueueCoordinator::DemoteFinishedArticle): that fetch was in truth a
+	 * lead miss and must not leave its bogus streak reset standing. */
+	static bool RegisterLeadFailure(FileInfo* fileInfo, ArticleInfo* articleInfo);
+
+	/* Ends the file's lead-miss streak after a successful fetch from the
+	 * current lead (same gating as RegisterLeadFailure). The rotation budget
+	 * is re-armed only when the success is verifiable (the article's decoded
+	 * boundaries were pinned by finished neighbours): an article accepted
+	 * provisionally may be demoted again later, and its bogus success must
+	 * not bypass the rotation bound. */
+	static void RegisterLeadSuccess(FileInfo* fileInfo, ArticleInfo* articleInfo);
+
+	/* A lead donor deleted from queue/history would freeze the lead
+	 * accounting for good: nzb-ids are never reused, so its id could never
+	 * match a collected donor again and the snapshot gate would block
+	 * RegisterLeadFailure/Success for every fresh pin. Treat such a lead as
+	 * vacated - the next pin re-decides the lead and the accounting starts
+	 * clean. */
+	static void VacateGhostLead(FileInfo* fileInfo, const RawNzbList& donors);
 
 	/* Parses a collection's retained queued .nzb from disk into a standalone
 	 * NzbInfo (with article lists loaded back in server mode). Returns nullptr
@@ -124,9 +189,10 @@ private:
 
 	static bool StructureMatches(FileInfo* targetFile, FileInfo* donorFile);
 	static void AppendDonorCandidate(std::vector<CString>& candidates,
+		std::vector<int>& contributors, int donorNzbId,
 		NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber);
-	std::vector<CString> CollectCandidateMessageIds(DownloadQueue* downloadQueue,
-		FileInfo* fileInfo, ArticleInfo* articleInfo);
+	static RawNzbList CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	void PinSources(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo);
 	NzbInfo* GetParsedDonor(NzbInfo* donorNzb);
 };
 

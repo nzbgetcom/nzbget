@@ -40,6 +40,9 @@ article "missing" on the active server, so no real Usenet access is needed):
   completes alone, together they do.
 * cutover       - the primary is missing most of a file; after a few
   recoveries the file leads with the duplicate (DupeArticleFallback cutover).
+* leadswitch    - the top-scored duplicate shares the primary's hole; after a
+  few consecutive lead misses the lead rotates to the next duplicate, which
+  completes the file (lead demotion).
 * manydonors    - more duplicates than the donor cache holds, to exercise the
   cache-eviction path (regression for the use-after-free crash).
 * stream        - the donor is segmented differently; missing byte ranges are
@@ -104,7 +107,7 @@ article "missing" on the active server, so no real Usenet access is needed):
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
+               [--scenario all|complementary|cutover|leadswitch|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -515,6 +518,38 @@ def scenario_cutover(daemon, t):
     return ('cutover', ok and integ and recov >= 10 and cut >= 1,
             'status=%s recovered=%d cutover_logs=%d integrity=%s'
             % (h['Status'], recov, cut, integ))
+
+
+def scenario_leadswitch(daemon, t):
+    """Primary AND the top-scored duplicate share the same hole (parts 2-12);
+    a second, lower-scored duplicate covers it. After a few consecutive lead
+    misses the file must switch its lead to the next duplicate instead of
+    paying a wasted fetch per article on the holed one, and still complete
+    byte-identically from the second duplicate."""
+    size, seg = 10_000_000, 500_000
+    data = _payload(size, 4242)
+    pp = _place_copy(t, 'leadP', data)
+    dhp = _place_copy(t, 'leadH', data)
+    dlp = _place_copy(t, 'leadL', data)
+    holes = set(range(2, 13))
+    primary = build_nzb(pp, 'LeadA.bin', size, seg, holes)
+    donor_high = build_nzb(dhp, 'obf-lh.bin', size, seg, holes)
+    donor_low = build_nzb(dlp, 'obf-ll.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LeadHigh', donor_high, True, 'lead-key', 60)
+    daemon.append(api, 'LeadLow', donor_low, True, 'lead-key', 50)
+    daemon.append(api, 'LeadA', primary, False, 'lead-key', 100)
+    h = daemon.wait_history(api, 'LeadA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    # exactly ONE switch: more would mean stale in-flight failures of the old
+    # lead cascade-demoted the new (complete) lead - the regression the
+    # per-article lead snapshot exists to prevent
+    switched = _grep_log(t, 'Switching lead duplicate collection')
+    integ = _verify_output(t, data)
+    return ('leadswitch', ok and integ and recov >= 11 and switched == 1,
+            'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
+            % (h['Status'], recov, switched, integ))
 
 
 def scenario_manydonors(daemon, t, ndonors=18):
@@ -1292,6 +1327,7 @@ def _grep_log(t, needle):
 SCENARIOS = {
     'complementary': scenario_complementary,
     'cutover': scenario_cutover,
+    'leadswitch': scenario_leadswitch,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
     'repost': scenario_repost,

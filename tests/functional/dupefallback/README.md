@@ -12,6 +12,7 @@ suffix to make chosen articles "missing" on the active server.
 |---|---|
 | `complementary` | Two postings of the same content, each missing *different* articles; neither completes alone, together they do. Output is byte-identical. |
 | `cutover` | Primary missing 10/20 articles → the file "cuts over" and leads with the duplicate (`Leading with duplicate collections`), completing byte-identical. |
+| `leadswitch` | The top-scored duplicate shares the primary's hole (parts 2–12), a lower-scored duplicate covers it. After a few consecutive lead misses the lead rotates to the next duplicate (`Switching lead duplicate collection`, exactly once — the stale-snapshot guard must prevent cascade demotion), completing byte-identical from the second duplicate. |
 | `manydonors` | 18 duplicates — more than the donor cache holds — to exercise the cache-eviction path. Regression test for the use-after-free crash; the daemon must survive and complete. |
 | `stream` | Donor posted the SAME `.mkv` split into different article sizes (250 KB vs 500 KB). `DupeArticleFallback=stream` repairs the missing byte ranges in post-processing; every hole is filled and there is no par2 in the harness, so the byte-based health recount (see option `DupeArticleFallback`) takes the release all the way to `SUCCESS` (moved to its destination directory), asserted directly alongside byte identity. |
 | `repost` | A 4-member "rar+par2 release" (opaque random bytes — stands in for a passworded, compressed archive) reposted byte-identically under different segmentation. M1 same-bytes matching pairs each damaged member to its donor twin by name/suffix and repairs rar volume and par2 alike, byte-identically (final status is FAILURE/PAR by design — the stand-in par2 is not a real par2). |
@@ -37,7 +38,7 @@ suffix to make chosen articles "missing" on the active server.
 
 Each scenario asserts byte identity of the reassembled file (with
 `DirectWrite=yes`) and the `DupeRecoveredArticles` counter reflecting the
-recovery. Article-level scenarios (`complementary`, `cutover`,
+recovery. Article-level scenarios (`complementary`, `cutover`, `leadswitch`,
 `manydonors`) assert `SUCCESS` directly. Stream-repair recounts byte-based
 health after repair (see option `DupeArticleFallback`): a release whose
 holes are ALL filled and ships no par2 now also completes `SUCCESS`, moved
@@ -95,7 +96,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

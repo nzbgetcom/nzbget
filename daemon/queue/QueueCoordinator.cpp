@@ -767,6 +767,10 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 				}
 			}
 
+			// a successful fetch from the lead duplicate ends its miss streak
+			// (no-op unless this was a lead-round fetch of the current lead)
+			DupeArticleFallback::RegisterLeadSuccess(fileInfo, articleInfo);
+
 			// this article pins decoded boundaries which may not have been known
 			// when an adjacent donor-substituted article was accepted (e.g. it
 			// finished before this one): re-validate such neighbours and demote
@@ -1139,6 +1143,18 @@ void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* ar
 	{
 		fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
 		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
+	}
+
+	// a lead-donor article accepted provisionally (its neighbours were still
+	// in flight) reset the lead-miss streak as a success; demoting it proves
+	// that fetch was in truth a lead miss, so charge it as one - otherwise a
+	// systematically drifted lead could keep resetting its own streak and
+	// never be rotated away (round-gated: a no-op for non-lead articles)
+	if (DupeArticleFallback::RegisterLeadFailure(fileInfo, articleInfo))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Switching lead duplicate collection for %s (the lead duplicate is missing many articles)",
+			fileInfo->GetFilename());
 	}
 
 	fileInfo->SetPartialChanged(true);

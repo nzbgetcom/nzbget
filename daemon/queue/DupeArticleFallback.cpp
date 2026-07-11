@@ -51,11 +51,26 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		articleInfo->SetDupeOriginalMessageId(articleInfo->GetMessageId());
 	}
 
-	std::vector<CString> donorCandidates = CollectCandidateMessageIds(downloadQueue, fileInfo, articleInfo);
-	std::vector<CString> sources = OrderSources(donorCandidates, fileInfo->GetDupeCutover(),
-		articleInfo->GetDupeOriginalMessageId());
-
 	int round = articleInfo->GetDupeFallbackRound();
+	if (round == 0)
+	{
+		// the article's source order is decided once, at its first fallback:
+		// the donors known now, rotated to the file's current lead, pinned on
+		// the article so no later queue/history change or lead rotation can
+		// shift the round->source mapping under it (which would skip or
+		// repeat sources). The trade-off is deliberate: a duplicate appearing
+		// later serves fresh articles, not articles already mid-fallback.
+		PinSources(downloadQueue, fileInfo, articleInfo);
+	}
+	else if (round == 1 && RegisterLeadFailure(fileInfo, articleInfo))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Switching lead duplicate collection for %s (the lead duplicate is missing many articles)",
+			fileInfo->GetFilename());
+	}
+
+	std::vector<CString>& sources = *articleInfo->GetDupeSources();
+
 	if (round >= (int)sources.size())
 	{
 		return false;
@@ -111,11 +126,124 @@ std::vector<CString> DupeArticleFallback::OrderSources(const std::vector<CString
 	return sources;
 }
 
-std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQueue* downloadQueue,
-	FileInfo* fileInfo, ArticleInfo* articleInfo)
+void DupeArticleFallback::RotateToLead(RawNzbList& donors, int leadNzbId)
 {
-	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+	if (leadNzbId == 0)
+	{
+		return;
+	}
 
+	RawNzbList::iterator lead = std::find_if(donors.begin(), donors.end(),
+		[leadNzbId](NzbInfo* donor) { return donor->GetId() == leadNzbId; });
+	if (lead != donors.end())
+	{
+		std::rotate(donors.begin(), lead, donors.end());
+	}
+}
+
+void DupeArticleFallback::FinishPin(FileInfo* fileInfo, ArticleInfo* articleInfo,
+	const std::vector<CString>& candidates, const std::vector<int>& contributors,
+	bool cutover, const char* primaryMessageId)
+{
+	// the distinct donors behind the candidates, in candidate order: [0] is
+	// the donor whose article the pinned slot 0 fetches, [1] the donor a
+	// demotion would rotate the lead to
+	std::vector<int> donorIds;
+	for (int donorId : contributors)
+	{
+		if (std::find(donorIds.begin(), donorIds.end(), donorId) == donorIds.end())
+		{
+			donorIds.push_back(donorId);
+		}
+	}
+
+	articleInfo->SetDupeLeadSnapshot(donorIds.empty() ? 0 : donorIds[0]);
+	articleInfo->SetDupeNextLead(donorIds.size() > 1 ? donorIds[1] : 0);
+	articleInfo->SetDupeDonorCount((int)donorIds.size());
+
+	// the file's lead is decided by its first pinned article (the donors were
+	// iterated in score order then, so this is the top-scored donor offering
+	// that part); until rotated it stays this donor by nzb-id
+	if (fileInfo->GetDupeLeadDonorId() == 0 && !donorIds.empty())
+	{
+		fileInfo->SetDupeLeadDonorId(donorIds[0]);
+	}
+
+	*articleInfo->GetDupeSources() = OrderSources(candidates, cutover, primaryMessageId);
+}
+
+bool DupeArticleFallback::RegisterLeadFailure(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	// only a failed fetch of the pinned lead donor counts, and only while that
+	// donor is still the file's lead: late failures of an already demoted lead
+	// reported by in-flight articles must not cascade-demote donors that were
+	// never tried, and a part whose slot 0 belongs to ANOTHER donor (the lead
+	// does not carry that part) must not charge the lead's streak
+	if (articleInfo->GetDupeFallbackRound() != 1 ||
+		articleInfo->GetDupeLeadSnapshot() == 0 ||
+		articleInfo->GetDupeLeadSnapshot() != fileInfo->GetDupeLeadDonorId())
+	{
+		return false;
+	}
+
+	int failures = fileInfo->GetDupeLeadFailures() + 1;
+	fileInfo->SetDupeLeadFailures(failures);
+
+	// rotate only while another donor exists and the rotation budget lasts:
+	// once every duplicate has led without a single lead success, the
+	// duplicates are equally holed and further rotation (and its log line,
+	// once per switch) would be pure noise
+	if (failures >= LeadDemoteThreshold && articleInfo->GetDupeNextLead() != 0 &&
+		fileInfo->GetDupeLeadSwitches() < articleInfo->GetDupeDonorCount())
+	{
+		fileInfo->SetDupeLeadDonorId(articleInfo->GetDupeNextLead());
+		fileInfo->SetDupeLeadFailures(0);
+		fileInfo->SetDupeLeadSwitches(fileInfo->GetDupeLeadSwitches() + 1);
+		return true;
+	}
+	return false;
+}
+
+void DupeArticleFallback::RegisterLeadSuccess(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	if (articleInfo->GetDupeFallbackRound() != 1 ||
+		articleInfo->GetDupeLeadSnapshot() == 0 ||
+		articleInfo->GetDupeLeadSnapshot() != fileInfo->GetDupeLeadDonorId())
+	{
+		return;
+	}
+
+	fileInfo->SetDupeLeadFailures(0);
+
+	// re-arm the rotation budget only when the success is verifiable: with
+	// unfinished neighbours the alignment check passes vacuously, the article
+	// may be demoted again later (DemoteMisalignedDupeNeighbors), and its
+	// bogus success - although the streak reset is recharged at demotion -
+	// must not bypass the rotation bound
+	if (ExpectedSegmentOffset(fileInfo, articleInfo) != -1 &&
+		ExpectedSegmentEnd(fileInfo, articleInfo) != -1)
+	{
+		fileInfo->SetDupeLeadSwitches(0);
+	}
+}
+
+void DupeArticleFallback::VacateGhostLead(FileInfo* fileInfo, const RawNzbList& donors)
+{
+	int leadNzbId = fileInfo->GetDupeLeadDonorId();
+	if (leadNzbId == 0 ||
+		std::find_if(donors.begin(), donors.end(),
+			[leadNzbId](NzbInfo* donor) { return donor->GetId() == leadNzbId; }) != donors.end())
+	{
+		return;
+	}
+
+	fileInfo->SetDupeLeadDonorId(0);
+	fileInfo->SetDupeLeadFailures(0);
+	fileInfo->SetDupeLeadSwitches(0);
+}
+
+RawNzbList DupeArticleFallback::CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
 	RawNzbList donors;
 
 	for (NzbInfo* queuedNzbInfo : downloadQueue->GetQueue())
@@ -149,7 +277,20 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 				 donor1->GetId() < donor2->GetId());
 		});
 
+	return donors;
+}
+
+void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fileInfo,
+	ArticleInfo* articleInfo)
+{
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+
+	RawNzbList donors = CollectDonors(downloadQueue, nzbInfo);
+	VacateGhostLead(fileInfo, donors);
+	RotateToLead(donors, fileInfo->GetDupeLeadDonorId());
+
 	std::vector<CString> candidates;
+	std::vector<int> contributors;
 
 	for (NzbInfo* donorNzbInfo : donors)
 	{
@@ -166,14 +307,17 @@ std::vector<CString> DupeArticleFallback::CollectCandidateMessageIds(DownloadQue
 		NzbInfo* parsedDonor = GetParsedDonor(donorNzbInfo);
 		if (parsedDonor)
 		{
-			AppendDonorCandidate(candidates, parsedDonor, fileInfo, articleInfo->GetPartNumber());
+			AppendDonorCandidate(candidates, contributors, donorNzbInfo->GetId(),
+				parsedDonor, fileInfo, articleInfo->GetPartNumber());
 		}
 	}
 
-	return candidates;
+	FinishPin(fileInfo, articleInfo, candidates, contributors,
+		fileInfo->GetDupeCutover(), articleInfo->GetDupeOriginalMessageId());
 }
 
 void DupeArticleFallback::AppendDonorCandidate(std::vector<CString>& candidates,
+	std::vector<int>& contributors, int donorNzbId,
 	NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber)
 {
 	FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
@@ -193,27 +337,25 @@ void DupeArticleFallback::AppendDonorCandidate(std::vector<CString>& candidates,
 	if (!duplicate)
 	{
 		candidates.emplace_back(messageId);
+		contributors.push_back(donorNzbId);
 	}
 }
 
 /*
  * Pure candidate builder over already-live donors, used by unit tests. The
- * production path (CollectCandidateMessageIds) processes donors one at a time
- * for cache-safety; both share AppendDonorCandidate so the logic stays in sync.
- *
- * The candidate list must not depend on the current state of the article:
- * ArticleInfo::m_dupeFallbackRound indexes into it across repeated failures,
- * so filtering by the currently assigned message-id would shift the indexes
- * and skip untried donors.
+ * production path (PinSources) processes donors one at a time for
+ * cache-safety; both share AppendDonorCandidate so the logic stays in sync.
  */
 std::vector<CString> DupeArticleFallback::BuildCandidateMessageIds(
 	const std::vector<NzbInfo*>& parsedDonors, FileInfo* targetFile, int partNumber)
 {
 	std::vector<CString> candidates;
+	std::vector<int> contributors;
 
 	for (NzbInfo* parsedDonor : parsedDonors)
 	{
-		AppendDonorCandidate(candidates, parsedDonor, targetFile, partNumber);
+		AppendDonorCandidate(candidates, contributors, parsedDonor->GetId(),
+			parsedDonor, targetFile, partNumber);
 	}
 
 	return candidates;
