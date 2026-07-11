@@ -189,7 +189,10 @@ bool FeedFilter::Term::Compile(char* token)
 		ch = token[0];
 	}
 
-	char ch2= token[1];
+	// guard the second-char read: a term of just "-" or "+" leaves token at
+	// its '\0' after the increment above, so token[1] would read one byte past
+	// the buffer (harmless-looking without a sanitizer, a real heap overflow)
+	char ch2 = ch != '\0' ? token[1] : '\0';
 	if ((ch == '(' || ch == ')' || ch == '|') && (ch2 == ' ' || ch2 == '\0'))
 	{
 		switch (ch)

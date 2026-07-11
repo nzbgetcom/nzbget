@@ -85,6 +85,17 @@ BOOST_AUTO_TEST_CASE(FeedFilterTest)
 	TestFilter(&item, "A(k:series=GOT-${1}-${2}): Game of clowns S##E##", FeedItemInfo::msAccepted);
 	TestFilter(&item, "A(k:series=GOT-${1}-${2}): $.+S([0-9]{1,2})E([0-9]{1,2})", FeedItemInfo::msAccepted);
 	TestFilter(&item, "A(category:Series)", FeedItemInfo::msIgnored);
+
+	// a term of just "-" or "+" (the sign with no following text) leaves the
+	// token pointing at its '\0' after the sign is consumed; it must compile
+	// as an invalid term without reading past the buffer (regression for a
+	// heap-buffer-overflow in Term::Compile caught by AddressSanitizer). A
+	// lone "|" is a valid operator token and must not overflow either.
+	TestFilter(&item, "-", FeedItemInfo::msIgnored);
+	TestFilter(&item, "+", FeedItemInfo::msIgnored);
+	TestFilter(&item, "|", FeedItemInfo::msIgnored);
+	TestFilter(&item, "game -", FeedItemInfo::msIgnored);
+	TestFilter(&item, "-:game", FeedItemInfo::msIgnored);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
