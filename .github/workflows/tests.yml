@@ -18,7 +18,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Download and extract vcpkg cache and unpackers
       run: |
@@ -43,7 +43,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-windows-test-log
@@ -60,7 +60,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Build
       run: |
@@ -75,7 +75,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -92,7 +92,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Build
       run: |
@@ -107,7 +107,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -124,7 +124,7 @@ jobs:
         brew install --cask rar
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Build
       run: |
@@ -139,7 +139,7 @@ jobs:
         ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-linux-test-log
@@ -151,10 +151,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: OpenBSD build and test
-      uses: cross-platform-actions/action@v0.28.0
+      uses: cross-platform-actions/action@97419d18f6470332677e345e9df97cdc71244ead # v0.28.0
       with:
         operating_system: openbsd
         version: '7.7'
@@ -167,7 +167,7 @@ jobs:
           ctest -C Release --repeat until-pass:5
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-openbsd-test-log
@@ -179,10 +179,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: FreeBSD build and test
-      uses: cross-platform-actions/action@v0.27.0
+      uses: cross-platform-actions/action@fe0167d8082ac584754ef3ffb567fded22642c7d # v0.27.0
       with:
         operating_system: freebsd
         version: '14.2'
@@ -195,7 +195,7 @@ jobs:
           ctest -C Release
 
     - name: Upload test artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-freebsd-test-log
@@ -213,7 +213,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev cppcheck
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: cppcheck
       run: |
@@ -242,7 +242,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Build
       run: |
@@ -261,7 +261,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Build
       run: |
@@ -275,10 +275,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: OpenBSD build
-      uses: cross-platform-actions/action@v0.28.0
+      uses: cross-platform-actions/action@97419d18f6470332677e345e9df97cdc71244ead # v0.28.0
       with:
         operating_system: openbsd
         version: '7.7'

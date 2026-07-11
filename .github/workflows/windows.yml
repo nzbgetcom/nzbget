@@ -42,7 +42,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Prepare build environment
       run: |
@@ -57,7 +57,7 @@ jobs:
       run: Invoke-Expression "windows\build-nzbget.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}"
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       id: upload-unsigned-artifact
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
@@ -69,7 +69,7 @@ jobs:
     - name: Submit signing request
       id: submit-signing-request
       if: env.SIGN == 'true' && matrix.type == 'Release'
-      uses: signpath/github-action-submit-signing-request@v2
+      uses: signpath/github-action-submit-signing-request@b9d91eadd323de506c0c81cf0c7fe7438f3360fd # v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
         organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
@@ -82,7 +82,7 @@ jobs:
 
     - name: Upload signed build artifacts
       if: env.SIGN == 'true' && matrix.type == 'Release'
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
         overwrite: true
@@ -96,15 +96,15 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Download release build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: Release*
 
     - name: Download debug build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: Debug*
 
@@ -130,7 +130,7 @@ jobs:
         }
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       id: upload-unsigned-installer-artifact
       with:
         name: nzbget-windows-installers
@@ -140,7 +140,7 @@ jobs:
     - name: Submit signing request for windows installers
       id: submit-signing-request
       if: env.SIGN == 'true'
-      uses: signpath/github-action-submit-signing-request@v2
+      uses: signpath/github-action-submit-signing-request@b9d91eadd323de506c0c81cf0c7fe7438f3360fd # v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
         organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
@@ -153,7 +153,7 @@ jobs:
 
     - name: Upload signed build artifacts
       if: env.SIGN == 'true'
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-windows-installers
         overwrite: true
@@ -161,7 +161,7 @@ jobs:
         retention-days: 5
 
     - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v6
+      uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6
       with:
         name: |
           Release*

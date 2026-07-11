@@ -25,10 +25,10 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         name: nzbget-linux-installers
         path: nzbget-linux-installers
@@ -40,14 +40,14 @@ jobs:
         bash linux/pkg/build-pkg.sh
 
     - name: Upload DEB build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-deb-packages
         path: build/deb/*.deb
         retention-days: 5
 
     - name: Upload RPM build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-rpm-packages
         path: build/rpm/*.rpm
@@ -55,7 +55,7 @@ jobs:
 
     - name: Delete unneeded linux artifacts
       if: ${{ inputs.external_call == false }}
-      uses: geekyeggo/delete-artifact@v6
+      uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6
       with:
         name: |
           nzbget-linux-installers

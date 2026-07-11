@@ -35,7 +35,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Prepare ${{ matrix.arch }} / ${{ matrix.type }} environment
       run: |
@@ -54,7 +54,7 @@ jobs:
       run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-android-${{ matrix.arch }}-${{ matrix.type }}-build-log
@@ -62,7 +62,7 @@ jobs:
         retention-days: 5
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-android-bin-${{ matrix.arch }}-${{ matrix.type }}
         path: build/*.tar.gz
@@ -75,7 +75,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
     - name: Prepare build environment
       run: |
@@ -85,7 +85,7 @@ jobs:
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: nzbget-android-bin-*
 
@@ -111,12 +111,12 @@ jobs:
         done
 
     - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v6
+      uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6
       with:
         name: nzbget-android-bin-*
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-android-installers
         path: build/*.run
