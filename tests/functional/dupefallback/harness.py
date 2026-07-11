@@ -988,6 +988,39 @@ def scenario_xpackrar2rar(daemon, t):
             % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
 
 
+def scenario_xpack2sets(daemon, t):
+    """TWO damaged store-rar sets in one item, repaired from ONE duplicate
+    carrying both sets at different volume sizes. Locks R>1 correctness of
+    per-donor-set map reuse: both sets must repair byte-identically and the
+    per-pair identity gate (inner-size equality + probes) must still route
+    each repair set to ITS donor set only."""
+    size = 6_000_000
+    data_one = _payload(size, 6300)
+    data_two = _payload(size, 6301)
+    payloads, members = {}, []
+    for tag, data in (('one', data_one), ('two', data_two)):
+        volumes = generators.rar3_store_volumes('movie_%s.mkv' % tag, data, 2_000_000)
+        for i, vol in enumerate(volumes, 1):
+            rel = 'x2sA/%s.part%02d.rar' % (tag, i)
+            name = 'Rel%s.part%02d.rar' % (tag.capitalize(), i)
+            t.write_file(os.path.join('data', rel), vol)
+            payloads[name] = vol
+            members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for tag, data in (('one', data_one), ('two', data_two)):
+        volumes = generators.rar3_store_volumes('movie_%s.mkv' % tag, data, 1_500_000)
+        for i, vol in enumerate(volumes, 1):
+            rel = 'x2sB/o%s.part%02d.rar' % (tag, i)
+            t.write_file(os.path.join('data', rel), vol)
+            donor_members.append(
+                (rel, 'O%s.part%02d.rar' % (tag.capitalize(), i), len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'X2s', members, donor_members, payloads)
+    ok = all(integ.values()) and c['repaired'] >= 2 and c['recov'] >= 2
+    return ('xpack2sets', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
 def scenario_xpackzip(daemon, t):
     """Bare target repaired from a SPANNED STORED ZIP donor (z01+z02+zip).
     No par2 and the hole is fully filled, so the byte-based health recount
@@ -1582,6 +1615,7 @@ SCENARIOS = {
     'xpackbare': scenario_xpackbare,
     'xpackrar': scenario_xpackrar,
     'xpackrar2rar': scenario_xpackrar2rar,
+    'xpack2sets': scenario_xpack2sets,
     'xpackzip': scenario_xpackzip,
     'xpack7z': scenario_xpack7z,
     'xpacksplit': scenario_xpacksplit,
@@ -1608,6 +1642,7 @@ EXPECTED_HISTORY_STATUS = {
     'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
     'repostrenamed': 'SUCCESS/HEALTH', 'xpackbare': 'SUCCESS/HEALTH',
     'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
+    'xpack2sets': 'SUCCESS/HEALTH',
     'xpackzip': 'SUCCESS/HEALTH', 'xpack7z': 'SUCCESS/HEALTH',
     'xpacksplit': 'SUCCESS/HEALTH', 'xpackcompressed': 'SUCCESS/HEALTH',
     'xpackneg': 'FAILURE/HEALTH', 'xcrypt_encplain': 'SUCCESS/HEALTH',
@@ -1648,6 +1683,7 @@ SCENARIO_OPTIONS = {
     # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"
     'xpackrar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackrar2rar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpack2sets': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackzip': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpack7z': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpacksplit': ['DupeArticleFallback=stream', 'ParCheck=auto'],

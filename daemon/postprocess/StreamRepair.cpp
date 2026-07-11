@@ -1225,6 +1225,15 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 		std::vector<SetMember> donorMembers = donorSources.BuildMembers();
 		std::vector<MemberSet> donorSets = ContentMapper::GroupSets(donorMembers);
 
+		// a donor set's map depends only on the donor side (members, sources,
+		// password) - never on the repair set - so build it at most once per
+		// duplicate and reuse it across repair sets. Rebuilds only burned CPU
+		// (fetches are cached in DonorMemberSource), but a multi-set release
+		// paid the parse R times and logged every skip R times
+		std::vector<std::unique_ptr<ContentMap>> setMaps(donorSets.size());
+		std::vector<std::string> setSkips(donorSets.size());
+		std::vector<bool> setTried(donorSets.size(), false);
+
 		for (RepairSetData& repairSet : repairSets)
 		{
 			if (!repairSet.Map || repairSet.InnerHoles.empty() || IsStopped())
@@ -1232,43 +1241,49 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 				continue;
 			}
 
-			for (const MemberSet& donorSet : donorSets)
+			for (size_t setIndex = 0; setIndex < donorSets.size(); setIndex++)
 			{
+				const MemberSet& donorSet = donorSets[setIndex];
+
 				if (IsStopped() || repairSet.InnerHoles.empty())
 				{
 					break;
 				}
 
-				// map building is fetch-budgeted; probing and patching are
-				// naturally bounded by the holes
-				int mappingBudget = 8 + 4 * (int)donorSet.Members.size();
-				donorSources.SetFetchBudget(&mappingBudget);
-				std::string donorSkip;
-				std::unique_ptr<ContentMap> donorMap =
-					ContentMapper::BuildMap(donorMembers, donorSet, donorSources, donorSkip);
-				// M3 ladder: a donor that failed ONLY for encryption may map
-				// with its own password (already-fetched articles are cached,
-				// so the retry mostly re-parses); anything else stays skipped.
-				// The reasons are the constants BuildRarMap sets, so a reword
-				// there cannot silently disable this retry.
-				if (!donorMap && !donor.Password.Empty() &&
-					(donorSkip == ContentMapper::SkipEncryptedData ||
-					 donorSkip == ContentMapper::SkipEncryptedHeaders))
+				if (!setTried[setIndex])
 				{
-					mappingBudget = 8 + 4 * (int)donorSet.Members.size();
-					donorMap = ContentMapper::BuildMap(donorMembers, donorSet,
-						donorSources, donorSkip, donor.Password);
-					if (!donorMap)
+					setTried[setIndex] = true;
+					// map building is fetch-budgeted; probing and patching are
+					// naturally bounded by the holes
+					int mappingBudget = 8 + 4 * (int)donorSet.Members.size();
+					donorSources.SetFetchBudget(&mappingBudget);
+					setMaps[setIndex] = ContentMapper::BuildMap(donorMembers, donorSet,
+						donorSources, setSkips[setIndex]);
+					// M3 ladder: a donor that failed ONLY for encryption may map
+					// with its own password (already-fetched articles are cached,
+					// so the retry mostly re-parses); anything else stays skipped.
+					// The reasons are the constants BuildRarMap sets, so a reword
+					// there cannot silently disable this retry.
+					if (!setMaps[setIndex] && !donor.Password.Empty() &&
+						(setSkips[setIndex] == ContentMapper::SkipEncryptedData ||
+						 setSkips[setIndex] == ContentMapper::SkipEncryptedHeaders))
 					{
-						// the safety net firing (e.g. "archive password
-						// rejected") must be visible; never log the password
-						PrintMessage(Message::mkInfo,
-							"Skipping packing %s of duplicate %s: %s",
-							donorMembers[donorSet.Members[0]].Name.c_str(),
-							*donor.InfoName, donorSkip.c_str());
+						mappingBudget = 8 + 4 * (int)donorSet.Members.size();
+						setMaps[setIndex] = ContentMapper::BuildMap(donorMembers, donorSet,
+							donorSources, setSkips[setIndex], donor.Password);
+						if (!setMaps[setIndex])
+						{
+							// the safety net firing (e.g. "archive password
+							// rejected") must be visible; never log the password
+							PrintMessage(Message::mkInfo,
+								"Skipping packing %s of duplicate %s: %s",
+								donorMembers[donorSet.Members[0]].Name.c_str(),
+								*donor.InfoName, setSkips[setIndex].c_str());
+						}
 					}
+					donorSources.SetFetchBudget(nullptr);
 				}
-				donorSources.SetFetchBudget(nullptr);
+				ContentMap* donorMap = setMaps[setIndex].get();
 
 				if (!donorMap ||
 					donorMap->GetInnerSize() != repairSet.Map->GetInnerSize())
