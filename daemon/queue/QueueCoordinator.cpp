@@ -748,11 +748,14 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			{
 				fileInfo->SetDecodedFileSize(articleDownloader->GetDecodedFileSize());
 			}
-			// count only genuine duplicate recoveries: the article was substituted
-			// and the source that succeeded was not the primary (revert) message-id
-			bool proactiveLeadSuccess = articleInfo->GetDupeProactive() &&
-				articleInfo->GetDupeFallbackRound() == 1;
-			if (articleInfo->GetDupeFallbackRound() > 0 && !proactiveLeadSuccess &&
+			// count only proven duplicate recoveries: the article was
+			// substituted after genuinely failing on the primary (reactive)
+			// and the source that succeeded was not the primary (revert)
+			// message-id. Proactive (cutover) fetches never count - the
+			// duplicate is tried FIRST then, so a donor success proves
+			// nothing about the primary (documented in
+			// docs/api/LISTGROUPS.md under DupeRecoveredArticles)
+			if (articleInfo->GetDupeFallbackRound() > 0 && !articleInfo->GetDupeProactive() &&
 				!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
 				strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
 			{
@@ -1203,10 +1206,14 @@ void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* ar
 	nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
 	nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
 
-	// undo the "recovered from duplicate" count if this article was one (a
+	// undo the "recovered from duplicate" count if this article was one -
+	// symmetric with the increment in ArticleCompleted, which excludes
+	// proactive (cutover) fetches: without the same exclusion here a demoted
+	// proactive article would decrement a count it never incremented. (A
 	// no-op after a restart, where the round/original-id/recovered state is
 	// not persisted and has already reset)
-	if (!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
+	if (!articleInfo->GetDupeProactive() &&
+		!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
 		strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
 	{
 		fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);

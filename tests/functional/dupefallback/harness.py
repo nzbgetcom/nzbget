@@ -523,7 +523,8 @@ def scenario_cutover(daemon, t):
     # Only REACTIVE recoveries count: fresh articles served proactively after
     # the cutover trips must not inflate the metric, so the count can never
     # exceed the 10 articles the primary is actually missing (proactive
-    # inflation would push it towards 19). The exact value below 10 is
+    # inflation would push it towards 19) (any proactive round, incl. donor
+    # round >= 2 under the primary-last order). The exact value below 10 is
     # timing-dependent - it is the number of primary failures already in
     # flight when cutover trips (>= the 3 recoveries that trip it), which
     # grows under system load beyond the 4 concurrent connections.
@@ -563,8 +564,42 @@ def scenario_leadswitch(daemon, t):
     # not inflate the metric), bounding the count by the 11 articles the
     # primary is missing; the exact value below that is timing-dependent -
     # how many articles were already mid-fallback when the proactive
-    # pre-assignment took over grows under system load.
+    # pre-assignment took over grows under system load (any proactive round,
+    # incl. donor round >= 2 under the primary-last order).
     return ('leadswitch', ok and integ and 3 <= recov <= 11 and switched == 1,
+            'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
+            % (h['Status'], recov, switched, integ))
+
+
+def scenario_cutovertruth(daemon, t):
+    """Counter honesty under cutover: the lead duplicate misses articles the
+    PRIMARY actually has (parts 20-23); the second duplicate serves them at
+    round 2. Those proactive successes prove nothing about the primary and
+    must NOT count as recovered - only reactive recoveries of the primary's
+    own 11 missing articles may. Without the !DupeProactive guard the
+    primary-last cutover order counts them (recov ~12-15 here)."""
+    size, seg = 20_000_000, 500_000          # 40 articles
+    data = _payload(size, 1207)
+    pp = _place_copy(t, 'ctrA', data)
+    dhp = _place_copy(t, 'ctrH', data)
+    dlp = _place_copy(t, 'ctrL', data)
+    primary = build_nzb(pp, 'CtrA.bin', size, seg, set(range(2, 13)))       # 11 missing
+    donor_high = build_nzb(dhp, 'obf-cth.bin', size, seg, set(range(20, 24)))
+    donor_low = build_nzb(dlp, 'obf-ctl.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'CtrHigh', donor_high, True, 'ctr-key', 60)
+    daemon.append(api, 'CtrLow', donor_low, True, 'ctr-key', 50)
+    daemon.append(api, 'CtrA', primary, False, 'ctr-key', 100)
+    h = daemon.wait_history(api, 'CtrA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    switched = _grep_log(t, 'Switching lead duplicate collection')
+    integ = _verify_output(t, data)
+    # bound = the primary's 11 missing articles: proactive traffic (incl. the
+    # lead's private holes at parts 20-23, served by the second duplicate)
+    # never counts, so the bound is timing-independent. The lead's 4
+    # consecutive misses may legitimately rotate the lead once.
+    return ('cutovertruth', ok and integ and 3 <= recov <= 11 and switched <= 1,
             'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
             % (h['Status'], recov, switched, integ))
 
@@ -1536,6 +1571,7 @@ SCENARIOS = {
     'complementary': scenario_complementary,
     'cutover': scenario_cutover,
     'leadswitch': scenario_leadswitch,
+    'cutovertruth': scenario_cutovertruth,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
     'liveoverlap': scenario_liveoverlap,
@@ -1567,7 +1603,8 @@ SCENARIOS = {
 
 EXPECTED_HISTORY_STATUS = {
     'complementary': 'SUCCESS/HEALTH', 'cutover': 'SUCCESS/HEALTH',
-    'leadswitch': 'SUCCESS/HEALTH', 'manydonors': 'SUCCESS/HEALTH',
+    'leadswitch': 'SUCCESS/HEALTH', 'cutovertruth': 'SUCCESS/HEALTH',
+    'manydonors': 'SUCCESS/HEALTH',
     'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
     'repostrenamed': 'SUCCESS/HEALTH', 'xpackbare': 'SUCCESS/HEALTH',
     'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
