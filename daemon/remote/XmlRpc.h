@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -59,13 +60,13 @@ public:
 	const char* GetResponse() { return m_response; }
 	const char* GetContentType() { return m_contentType; }
 	static bool IsRpcRequest(const char* url);
-	bool IsSafeMethod() { return m_safeMethod; };
+	bool IsSafeMethod() { return m_safeMethod; }
 
 private:
 	char* m_request = nullptr;
 	const char* m_contentType = nullptr;
-	ERpcProtocol m_protocol = rpUndefined;
-	EHttpMethod m_httpMethod = hmPost;
+	ERpcProtocol m_protocol;
+	EHttpMethod m_httpMethod;
 	EUserAccess m_userAccess;
 	CString m_url;
 	StringBuilder m_response;
@@ -82,7 +83,7 @@ class XmlCommand
 {
 public:
 	XmlCommand();
-	virtual ~XmlCommand() {}
+	virtual ~XmlCommand();
 	virtual void Execute() = 0;
 	void PrepareParams();
 	void SetRequest(char* request) { m_request = request; m_requestPtr = m_request; }
@@ -119,6 +120,19 @@ protected:
 	const char* BoolToStr(bool value);
 	CString EncodeStr(const char* str);
 	void DecodeStr(char* str);
+
+	/**
+	 * @brief Determines the cursor step size after parsing a JSON value.
+	 *
+	 * Stops at the closing bracket ']' or end of string, but advances past
+	 * other delimiters like ',' or '}' to prepare for the next read.
+	 *
+	 * @param param  Pointer to the start of the parsed JSON value.
+	 * @param len    Length of the parsed JSON value.
+	 *
+	 * @return 0 if the next character is ']' or '\0', 1 otherwise.
+	 */
+	int JsonStep(const char* param, int len);
 };
 
 #endif

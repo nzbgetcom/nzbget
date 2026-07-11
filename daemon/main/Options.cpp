@@ -134,6 +134,8 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 	return nullptr;
 }
 
+Options::Extender::~Extender() = default;
+
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
 	CmdOptList* commandLineOptions, Extender* extender)
 {
@@ -1128,6 +1130,16 @@ void Options::InitFeeds()
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
+		const char* ncertveriflevel = GetOption(BString<100>("Feed%i.CertVerification", n));
+		int certveriflevel = ECertVerifLevel::cvStrict;
+		if (ncertveriflevel)
+		{
+			const char* CertVerifNames[] = { "none", "minimal", "strict" };
+			const int CertVerifValues[] = { ECertVerifLevel::cvNone, ECertVerifLevel::cvMinimal, ECertVerifLevel::cvStrict };
+			const int CertVerifCount = ECertVerifLevel::Count;
+			certveriflevel = ParseEnumValue(BString<100>("Feed%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
+		}
+
 		bool definition = nname || nurl || nfilter || ncategory || nbacklog || npausenzb ||
 			ninterval || npriority || nextensions;
 		bool completed = nurl;
@@ -1141,19 +1153,20 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(
-					n,
-					nname,
-					nurl,
-					ninterval ? atoi(ninterval) : 0,
-					nfilter,
-					backlog,
-					pauseNzb,
-					ncategory,
-					categorySource,
-					npriority ? atoi(npriority) : 0,
-					nextensions
-				);
+			m_extender->AddFeed(
+				n,
+				nname,
+				nurl,
+				ninterval ? atoi(ninterval) : 0,
+				nfilter,
+				backlog,
+				pauseNzb,
+				ncategory,
+				categorySource,
+				npriority ? atoi(npriority) : 0,
+				nextensions,
+				certveriflevel
+			);
 			}
 		}
 		else
@@ -1576,8 +1589,8 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 		std::string_view suffix(p);
 		if (Util::StrCaseCmp(suffix, ".name") || Util::StrCaseCmp(suffix, ".url") || Util::StrCaseCmp(suffix, ".interval") ||
 			 Util::StrCaseCmp(suffix, ".filter") || Util::StrCaseCmp(suffix, ".backlog") || Util::StrCaseCmp(suffix, ".pausenzb") ||
-			 Util::StrCaseCmp(suffix, ".category") || Util::StrCaseCmp(suffix, ".categorySource") || Util::StrCaseCmp(suffix, ".priority") || 
-			 Util::StrCaseCmp(suffix, ".extensions"))
+			 Util::StrCaseCmp(suffix, ".category") || Util::StrCaseCmp(suffix, ".categorySource") || Util::StrCaseCmp(suffix, ".priority") ||
+			 Util::StrCaseCmp(suffix, ".extensions") || Util::StrCaseCmp(suffix, ".certverification"))
 		{
 			return true;
 		}

@@ -208,11 +208,11 @@ var Status = (new function($)
 		}
 
 		var limit = status.DownloadLimit > 0;
-		if (!limit)
+		if (!limit && status.NewsServers)
 		{
-			for (var i=0; i < Status.status.NewsServers.length; i++)
+			for (var i=0; i < status.NewsServers.length; i++)
 			{
-				limit = !Status.status.NewsServers[i].Active;
+				limit = !status.NewsServers[i].Active;
 				if (limit)
 				{
 					break;

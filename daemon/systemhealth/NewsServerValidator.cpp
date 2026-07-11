@@ -27,7 +27,7 @@ namespace SystemHealth::NewsServer
 NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 	: m_server(server), m_name("Server" + std::to_string(server.GetId()))
 {
-	m_validators.reserve(16);
+	m_validators.reserve(15);
 	m_validators.push_back(std::make_unique<ServerActiveValidator>(server));
 	m_validators.push_back(std::make_unique<ServerNameValidator>(server));
 	m_validators.push_back(std::make_unique<ServerLevelValidator>(server));

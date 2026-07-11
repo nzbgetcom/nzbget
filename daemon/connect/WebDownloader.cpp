@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -243,6 +243,10 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 	bool tls = !strcasecmp(url->GetProtocol(), "https");
 
 	m_connection = std::make_unique<Connection>(url->GetHost(), port, tls);
+
+#ifndef DISABLE_TLS
+	m_connection->SetCertVerifLevel(m_certVerifLevel);
+#endif
 
 	return adRunning;
 }

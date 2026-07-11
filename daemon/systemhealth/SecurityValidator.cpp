@@ -113,8 +113,6 @@ Status SecureCertValidator::Validate() const
 							   std::string(Options::SECURECERT) + "' is empty");
 	}
 
-	if (!m_options.GetSecureControl()) return Status::Ok();
-
 	Status s = File::Exists(m_options.GetSecureCert());
 
 	if (!s.IsOk()) return s;
@@ -301,7 +299,7 @@ Status CertCheckValidator::Validate() const
 	if (!m_options.GetCertCheck() && !m_options.GetCertStorePath().empty())
 	{
 		return Status::Warning("'" + std::string(Options::CERTCHECK) +
-							   "' is disabled. Connections to news servers may be insecure");
+							   "' is disabled. TLS connections may be insecure");
 	}
 	return Status::Ok();
 }

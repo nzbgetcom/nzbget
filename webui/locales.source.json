@@ -4274,6 +4274,10 @@
     "message": "Directory for incoming nzb-files.\n\nIf a new nzb-file is added to queue via web-interface or RPC-API, it\nis saved into this directory and then processed by extension\nscripts (option <Extensions>).\n\nThis directory is also monitored for new nzb-files and compressed archives\n(zip, rar, 7z, tar, gz, etc.). See options <NzbDirArchiveScan> and <NzbDirArchiveAction>.\n\nThe directory can have sub-directories. A file queued from a subdirectory\nis automatically assigned to the category matching the sub-directory name.",
     "description": "Description for the option NzbDir DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
   },
+  "config_desc_feed_certverification": {
+    "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
+    "description": "Description for the option Feed1.CertVerification DO NOT translate configuration option values (Minimal, None, Strict) as they are fixed configuration values."
+  },
   "help_feed_filter_options_def": {
     "message": "Definition of an option: $1name:value$2",
     "description": "Definition of an option in feed filter. Used to show option syntax format."
