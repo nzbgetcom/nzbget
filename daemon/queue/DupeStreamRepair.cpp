@@ -271,7 +271,7 @@ int64 DupeStreamRepair::RequiredCompareFloor(int64 decodedFileSize, const Stream
 
 bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasename)
 {
-	if (g_Options->GetDupeArticleFallback() != Options::dafStream || g_Options->GetRawArticle())
+	if (g_Options->GetDupeArticleFallback() < Options::dafStream || g_Options->GetRawArticle())
 	{
 		return false;
 	}

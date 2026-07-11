@@ -128,6 +128,18 @@ private:
  * into articles. Content identity is verified by byte-comparing fetched
  * donor articles against already-downloaded regions before anything is
  * written; par-check remains the backstop for whatever stays missing.
+ *
+ * With option value "live" the same controller additionally runs in LIVE
+ * mode, download-concurrent (StartLive, lifecycle mirroring DirectUnpack):
+ * dispatched when a file completes with holes while the collection still
+ * downloads, it repairs the holes of already-completed files immediately
+ * instead of waiting for post-processing. A live pass only writes bytes and
+ * shrinks the jobs' hole lists (each job gets one live attempt); it never
+ * credits health, never drains the job list and skips the decompression
+ * rung - the post-processing stage remains the sole accounting authority
+ * and the final repair word. The live target files are COMPLETED files, so
+ * there is no concurrent writer on them; the continuing download only
+ * writes other files of the collection.
  */
 class StreamRepairController : public Thread, public ScriptController
 {
@@ -135,6 +147,7 @@ public:
 	virtual void Run();
 	virtual void Stop();
 	static void StartJob(PostInfo* postInfo);
+	static void StartLive(NzbInfo* nzbInfo);
 
 protected:
 	virtual void AddMessage(Message::EKind kind, const char* text);
@@ -155,6 +168,12 @@ private:
 		int64 MissedSize = 0;
 		int FailedArticles = 0;
 		bool IsParFile = false;
+		// false in a live pass for jobs that already had their one live
+		// attempt: their holes stay DECLARED (cross-pack member universe and
+		// probe selection must know them - treating them as present bytes
+		// would parse zero-fill as headers and fail donor verification) but
+		// no further patches are attempted on them until post-processing
+		bool PatchEligible = true;
 		// rank among same-size members (by name) and that window's size,
 		// for positional donor pairing of obfuscated reposts; -1/0 = none
 		int PositionalRank = -1;
@@ -171,7 +190,11 @@ private:
 		CString Password;
 	};
 
-	PostInfo* m_postInfo;
+	// null in live mode: progress labels are skipped and the NzbInfo is
+	// re-found by id under the DownloadQueue lock at every locked touchpoint
+	PostInfo* m_postInfo = nullptr;
+	bool m_liveMode = false;
+	int m_nzbId = 0;
 	ArticleFetcher m_fetcher;
 	// the target's own archive password (*Unpack:Password); never logged
 	CString m_targetPassword;
@@ -192,6 +215,11 @@ private:
 	// consecutive unproductive files instead of burning fetches on the rest
 	static constexpr int DonorFailureBail = 5;
 
+	void RunLive();
+	void RepairCompletedLive(std::vector<RepairTarget>& targets);
+	void RefreshLiveNames(std::vector<RepairTarget>& targets,
+		std::vector<CString>& memberNames);
+	void RefreshLiveTargetName(RepairTarget& target);
 	void CollectTargets(NzbInfo* nzbInfo, std::vector<RepairTarget>& targets,
 		std::vector<CString>& memberNames);
 	void ComputePositionalRanks(const char* destDir, std::vector<RepairTarget>& targets,

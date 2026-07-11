@@ -34,6 +34,7 @@
 #include "StatMeter.h"
 #include "Deobfuscation.h"
 #include "DupeStreamRepair.h"
+#include "StreamRepair.h"
 
 bool QueueCoordinator::CoordinatorDownloadQueue::EditEntry(
 	int ID, EEditAction action, const char* args)
@@ -1030,6 +1031,27 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 		{
 			nzbInfo->PrintMessage(Message::mkInfo,
 				"Queueing stream repair of %s from duplicate collections", filename.c_str());
+
+			// live mode: repair this file's holes now, while the rest of the
+			// collection still downloads. Only when other files remain queued -
+			// for the collection's last file the post-processing stage starts
+			// moments later anyway and remains the accounting authority either
+			// way. One live pass per collection at a time; jobs captured while
+			// one runs are picked up by the next dispatch.
+			bool moreFilesQueued = false;
+			for (FileInfo* queuedFile : nzbInfo->GetFileList())
+			{
+				if (queuedFile != fileInfo && !queuedFile->GetDeleted())
+				{
+					moreFilesQueued = true;
+					break;
+				}
+			}
+			if (g_Options->GetDupeArticleFallback() == Options::dafLive &&
+				moreFilesQueued && !nzbInfo->GetLiveRepairThread())
+			{
+				StreamRepairController::StartLive(nzbInfo);
+			}
 		}
 
 		fileInfo->GetNzbInfo()->GetCompletedFiles()->emplace_back(

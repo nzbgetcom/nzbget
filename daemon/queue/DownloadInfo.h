@@ -418,6 +418,8 @@ public:
 	StreamRangeList* GetHoles() { return &m_holes; }
 	const StreamRangeList* GetHoles() const { return &m_holes; }
 	void SetHoles(StreamRangeList holes) { m_holes = std::move(holes); }
+	bool GetLiveAttempted() const { return m_liveAttempted; }
+	void SetLiveAttempted(bool liveAttempted) { m_liveAttempted = liveAttempted; }
 
 private:
 	int m_fileId;
@@ -428,6 +430,11 @@ private:
 	int m_failedArticles;
 	bool m_parFile;
 	StreamRangeList m_holes;
+	// whether the download-concurrent live pass already tried this job once:
+	// donors are static, so retrying live would only re-pay fetch traffic -
+	// whatever is left waits for the post-processing pass (not persisted; a
+	// restart re-allows one live attempt, which is harmless)
+	bool m_liveAttempted = false;
 };
 
 typedef std::vector<StreamRepairJob> StreamRepairJobList;
@@ -805,6 +812,8 @@ public:
 	void SetLoadingPar(bool loadingPar) { m_loadingPar = loadingPar; }
 	Thread* GetUnpackThread() { return m_unpackThread; }
 	void SetUnpackThread(Thread* unpackThread) { m_unpackThread = unpackThread; }
+	Thread* GetLiveRepairThread() { return m_liveRepairThread; }
+	void SetLiveRepairThread(Thread* liveRepairThread) { m_liveRepairThread = liveRepairThread; }
 	void UpdateCurrentStats();
 	void UpdateCompletedStats(FileInfo* fileInfo);
 	void UpdateDeletedStats(FileInfo* fileInfo);
@@ -923,6 +932,9 @@ private:
 	bool m_waitingPar = false;
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
+	// download-concurrent stream repair for completed-with-holes files (see
+	// option <DupeArticleFallback> value "live"; not persisted)
+	Thread* m_liveRepairThread = nullptr;
 	int m_desiredServerId = 0;
 	bool m_skipScriptProcessing = false;
 	bool m_skipDiskWrite = false;

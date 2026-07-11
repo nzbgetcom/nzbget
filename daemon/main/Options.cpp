@@ -717,9 +717,9 @@ void Options::InitOptions()
 
 	// "yes" is accepted for compatibility with the former boolean option and
 	// is normalized to "article" by ParseEnumValue (first name with same value)
-	const char* DupeArticleFallbackNames[] = { "no", "article", "stream", "yes" };
-	const int DupeArticleFallbackValues[] = { dafNone, dafArticle, dafStream, dafArticle };
-	const int DupeArticleFallbackCount = 4;
+	const char* DupeArticleFallbackNames[] = { "no", "article", "stream", "live", "yes" };
+	const int DupeArticleFallbackValues[] = { dafNone, dafArticle, dafStream, dafLive, dafArticle };
+	const int DupeArticleFallbackCount = 5;
 	m_dupeArticleFallback = (EDupeArticleFallback)ParseEnumValue(DUPEARTICLEFALLBACK.data(),
 		DupeArticleFallbackCount, DupeArticleFallbackNames, DupeArticleFallbackValues);
 	m_dupeStreamDecompress	= (bool)ParseEnumValue(DUPESTREAMDECOMPRESS.data(), BoolCount, BoolNames, BoolValues);

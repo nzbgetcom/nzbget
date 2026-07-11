@@ -125,7 +125,7 @@ void PrePostProcessor::WaitJobs()
 		}
 	}
 
-	// wait 5 seconds until direct unpack threads gracefully finish
+	// wait 5 seconds until direct unpack and live repair threads gracefully finish
 	waitStart = Util::CurrentTime();
 	while (Util::CurrentTime() < waitStart + 5)
 	{
@@ -135,7 +135,8 @@ void PrePostProcessor::WaitJobs()
 				downloadQueue->GetQueue()->end(),
 				[](const std::unique_ptr<NzbInfo>& nzbInfo)
 				{
-					return nzbInfo->GetUnpackThread() != nullptr;
+					return nzbInfo->GetUnpackThread() != nullptr ||
+						nzbInfo->GetLiveRepairThread() != nullptr;
 				}) == downloadQueue->GetQueue()->end())
 			{
 				break;
@@ -144,12 +145,13 @@ void PrePostProcessor::WaitJobs()
 		Util::Sleep(200);
 	}
 
-	// disconnect remaining direct unpack jobs
+	// disconnect remaining direct unpack and live repair jobs
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
 		{
 			nzbInfo->SetUnpackThread(nullptr);
+			nzbInfo->SetLiveRepairThread(nullptr);
 		}
 	}
 
@@ -176,6 +178,10 @@ void PrePostProcessor::Stop()
 			if (nzbInfo->GetUnpackThread())
 			{
 				((DirectUnpack*)nzbInfo->GetUnpackThread())->Stop(downloadQueue, nzbInfo);
+			}
+			if (nzbInfo->GetLiveRepairThread())
+			{
+				nzbInfo->GetLiveRepairThread()->Stop();
 			}
 		}
 	}
@@ -344,6 +350,14 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 
 	if (nzbInfo->GetSkipScriptProcessing() && (nzbInfo->GetSkipDiskWrite() || g_Options->GetSkipWrite()))
 	{
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			// no post-processing job will wait for the pass and the cleanup
+			// below deletes the very files it writes: detach and stop it
+			Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+			nzbInfo->SetLiveRepairThread(nullptr);
+			liveRepairThread->Stop();
+		}
 		NzbCompleted(downloadQueue, nzbInfo, true);
 		nzbInfo->SetCleanupDisk(true);
 		DeleteCleanup(nzbInfo);
@@ -376,6 +390,18 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 			((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDownloaded(downloadQueue, nzbInfo);
 		}
 
+		// a live stream-repair pass may still be writing into completed files:
+		// the post-processing job (whose stream stage works on the same files)
+		// waits for it; the pass clears the working flag when it detaches
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			nzbInfo->GetPostInfo()->SetWorking(true);
+			if (!nzbInfo->GetUnpackThread())
+			{
+				m_activeJobs.push_back(nzbInfo);
+			}
+		}
+
 		nzbInfo->SetChanged(true);
 		downloadQueue->SaveChanged();
 
@@ -391,6 +417,15 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 			((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDownloaded(downloadQueue, nzbInfo);
 		}
 
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			// no post-processing job will wait for the pass: detach and stop
+			// it before the collection moves to history
+			Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+			nzbInfo->SetLiveRepairThread(nullptr);
+			liveRepairThread->Stop();
+		}
+
 		NzbCompleted(downloadQueue, nzbInfo, true);
 	}
 }
@@ -400,6 +435,15 @@ void PrePostProcessor::NzbDeleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo
 	if (nzbInfo->GetUnpackThread())
 	{
 		((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDeleted(downloadQueue, nzbInfo);
+	}
+
+	if (nzbInfo->GetLiveRepairThread())
+	{
+		// detach FIRST: the live pass re-checks attachment at every locked
+		// touchpoint and aborts without writing anything back
+		Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+		nzbInfo->SetLiveRepairThread(nullptr);
+		liveRepairThread->Stop();
 	}
 
 	if (nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
@@ -648,6 +692,11 @@ NzbInfo* PrePostProcessor::PickNextJob(DownloadQueue* downloadQueue, bool allowP
 		if (nzbInfo1->GetPostInfo() && !nzbInfo1->GetPostInfo()->GetWorking() &&
 			!g_QueueScriptCoordinator->HasJob(nzbInfo1->GetId(), nullptr) &&
 			nzbInfo1->GetDirectUnpackStatus() != NzbInfo::nsRunning &&
+			// never start post-processing while a live stream-repair pass still
+			// writes into the collection's completed files (the working flag
+			// alone is not enough: it is shared with direct unpack, whose exit
+			// must not release a job the live pass is still holding)
+			!nzbInfo1->GetLiveRepairThread() &&
 			(!nzbInfo || nzbInfo1->GetPriority() > nzbInfo->GetPriority()) &&
 			(!g_WorkState->GetPausePostProcess() || nzbInfo1->GetForcePriority()) &&
 			(allowPar || !nzbInfo1->GetPostInfo()->GetNeedParCheck()) &&
@@ -723,7 +772,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 
-	if (g_Options->GetDupeArticleFallback() == Options::dafStream &&
+	if (g_Options->GetDupeArticleFallback() >= Options::dafStream &&
 		!nzbInfo->GetStreamRepairJobs()->empty() &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
 	{
@@ -1009,6 +1058,18 @@ bool PrePostProcessor::PostQueueDelete(DownloadQueue* downloadQueue, IdList* idL
 					else if (postInfo->GetNzbInfo()->GetUnpackThread())
 					{
 						((DirectUnpack*)postInfo->GetNzbInfo()->GetUnpackThread())->NzbDeleted(downloadQueue, postInfo->GetNzbInfo());
+						ok = true;
+					}
+					else if (postInfo->GetNzbInfo()->GetLiveRepairThread())
+					{
+						// the job is waiting for a live stream-repair pass:
+						// detach first (the pass aborts at its next locked
+						// touchpoint without writing back), stop its fetches
+						// and release the job
+						Thread* liveRepairThread = postInfo->GetNzbInfo()->GetLiveRepairThread();
+						postInfo->GetNzbInfo()->SetLiveRepairThread(nullptr);
+						liveRepairThread->Stop();
+						postInfo->SetWorking(false);
 						ok = true;
 					}
 					else

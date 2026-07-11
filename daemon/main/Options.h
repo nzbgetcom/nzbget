@@ -227,9 +227,13 @@ public:
 	};
 	enum EDupeArticleFallback
 	{
+		// ordered by capability: every value includes the capabilities of the
+		// values before it, so feature gates compare with >= (dafLive adds
+		// download-concurrent repair on top of dafStream's post-processing repair)
 		dafNone,
 		dafArticle,
-		dafStream
+		dafStream,
+		dafLive
 	};
 	enum EHealthCheck
 	{

@@ -6,6 +6,7 @@ nzbget-v26.3
       - Stream-level repair (value "stream") patches missing byte ranges in post-processing from duplicates posted with different article segmentation or packaging — store-mode rar/zip/7z, raw splits and directly posted media can donate to each other, including password-protected store-mode archives when the password is known;
       - Optional decompression-assisted recovery (option DupeStreamDecompress) extracts a compressed duplicate to bridge different compressions of the same inner file;
       - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
+      - Value "live" runs the byte-level repair concurrently with the download: a damaged file is repaired as soon as it completes, while the collection's remaining files still download, removing the end-of-download wait on large collections;
       - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
 
 nzbget-v26.2

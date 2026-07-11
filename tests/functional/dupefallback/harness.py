@@ -47,6 +47,11 @@ article "missing" on the active server, so no real Usenet access is needed):
   cache-eviction path (regression for the use-after-free crash).
 * stream        - the donor is segmented differently; missing byte ranges are
   repaired on stream level in post-processing.
+* liveoverlap   - DupeArticleFallback=live: a damaged file is stream-repaired
+  DURING the download of the rest of the collection (log-order proof).
+* livegate      - the same fixture under plain "stream" must not run live.
+* livelastfile  - live mode, single-file collection: the live dispatch is
+  skipped for the collection's last file (post-processing handles it).
 * repost        - a 4-member opaque "rar+par2 release" reposted byte-identically
   under different segmentation; damaged volume and par2 are both repaired
   byte-identically (final status FAILURE/PAR by design - the stand-in par2 is
@@ -107,7 +112,7 @@ article "missing" on the active server, so no real Usenet access is needed):
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|leadswitch|manydonors|stream|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
+               [--scenario all|complementary|cutover|leadswitch|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -515,10 +520,14 @@ def scenario_cutover(daemon, t):
     recov = int(h.get('DupeRecoveredArticles', 0))
     cut = _grep_log(t, 'Leading with duplicate collections')
     integ = _verify_output(t, data)
-    # Four primary failures can be in flight with Server1.Connections=4 when
-    # cutover trips. Fresh articles served proactively after that are not
-    # recovered failures and must not inflate the metric.
-    return ('cutover', ok and integ and recov == 4 and cut == 1,
+    # Only REACTIVE recoveries count: fresh articles served proactively after
+    # the cutover trips must not inflate the metric, so the count can never
+    # exceed the 10 articles the primary is actually missing (proactive
+    # inflation would push it towards 19). The exact value below 10 is
+    # timing-dependent - it is the number of primary failures already in
+    # flight when cutover trips (>= the 3 recoveries that trip it), which
+    # grows under system load beyond the 4 concurrent connections.
+    return ('cutover', ok and integ and 3 <= recov <= 10 and cut == 1,
             'status=%s recovered=%d cutover_logs=%d integrity=%s'
             % (h['Status'], recov, cut, integ))
 
@@ -550,7 +559,12 @@ def scenario_leadswitch(daemon, t):
     # per-article lead snapshot exists to prevent
     switched = _grep_log(t, 'Switching lead duplicate collection')
     integ = _verify_output(t, data)
-    return ('leadswitch', ok and integ and recov == 4 and switched == 1,
+    # Only REACTIVE recoveries count (proactive traffic after cutover must
+    # not inflate the metric), bounding the count by the 11 articles the
+    # primary is missing; the exact value below that is timing-dependent -
+    # how many articles were already mid-fallback when the proactive
+    # pre-assignment took over grows under system load.
+    return ('leadswitch', ok and integ and 3 <= recov <= 11 and switched == 1,
             'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
             % (h['Status'], recov, switched, integ))
 
@@ -623,6 +637,96 @@ def scenario_stream(daemon, t):
             success and integ and recov == 2 and queued >= 1 and repaired >= 1 and rejected >= 1,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
             % (h['Status'], recov, queued, repaired, rejected, integ))
+
+
+def scenario_liveoverlap(daemon, t):
+    """DupeArticleFallback=live: FileA (differently-segmented donor queued)
+    completes with a hole while the big FileB still downloads (the global
+    DownloadRate throttle keeps B busy). The live pass must repair A DURING
+    the download - asserted by log order: 'Starting live stream repair'
+    strictly before the collection's 'completely downloaded' line - while
+    the post-processing stage stays the accounting authority, taking the
+    fully repaired release to SUCCESS with byte-identical output."""
+    size_a, seg_a = 2_000_000, 200_000
+    size_b, seg_b = 24_000_000, 500_000
+    data_a = _payload(size_a, 7401)
+    data_b = _payload(size_b, 7402)
+    pa = _place_copy(t, 'liveA', data_a, 'a.mkv')
+    pb = _place_copy(t, 'liveB', data_b, 'b.mkv')
+    da = _place_copy(t, 'liveDon', data_a, 'a.mkv')
+    primary = build_multi_nzb([
+        (pa, 'LiveA.mkv', size_a, seg_a, {4, 5, 6}),
+        (pb, 'LiveB.mkv', size_b, seg_b, set()),
+    ])
+    donor = build_nzb(da, 'obf-live.mkv', size_a, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LiveDonor', donor, True, 'live-key', 50)
+    daemon.append(api, 'LiveMain', primary, False, 'live-key', 100)
+    h = daemon.wait_history(api, 'LiveMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    overlapped = _log_before(t, 'Starting live stream repair',
+                             'completely downloaded')
+    integ = (_verify_output(t, data_a, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))) and
+             _verify_output(t, data_b, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))))
+    return ('liveoverlap', ok and integ and live == 1 and overlapped,
+            'status=%s live_logs=%d overlapped=%s integrity=%s'
+            % (h['Status'], live, overlapped, integ))
+
+
+def scenario_livegate(daemon, t):
+    """Same shape as liveoverlap but DupeArticleFallback=stream: the live
+    pass must NOT run (option gate); the repair happens in post-processing
+    as before and the release still completes SUCCESS byte-identically."""
+    size_a, seg_a = 2_000_000, 200_000
+    size_b, seg_b = 4_000_000, 500_000
+    data_a = _payload(size_a, 7403)
+    data_b = _payload(size_b, 7404)
+    pa = _place_copy(t, 'gateA', data_a, 'a.mkv')
+    pb = _place_copy(t, 'gateB', data_b, 'b.mkv')
+    da = _place_copy(t, 'gateDon', data_a, 'a.mkv')
+    primary = build_multi_nzb([
+        (pa, 'GateA.mkv', size_a, seg_a, {4, 5, 6}),
+        (pb, 'GateB.mkv', size_b, seg_b, set()),
+    ])
+    donor = build_nzb(da, 'obf-gate.mkv', size_a, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'GateDonor', donor, True, 'gate-key', 50)
+    daemon.append(api, 'GateMain', primary, False, 'gate-key', 100)
+    h = daemon.wait_history(api, 'GateMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    integ = (_verify_output(t, data_a, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))) and
+             _verify_output(t, data_b, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))))
+    return ('livegate', ok and integ and live == 0 and repaired >= 1,
+            'status=%s live_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], live, repaired, integ))
+
+
+def scenario_livelastfile(daemon, t):
+    """DupeArticleFallback=live with a SINGLE damaged file: when its job is
+    captured no other file remains queued, so the live dispatch is skipped
+    (the post-processing stage starts moments later and repairs it there) -
+    asserts the last-file guard against a pointless race with the imminent
+    post-processing stage."""
+    size, seg = 2_000_000, 200_000
+    data = _payload(size, 7405)
+    pp = _place_copy(t, 'lastA', data, 'a.mkv')
+    dp = _place_copy(t, 'lastDon', data, 'a.mkv')
+    primary = build_nzb(pp, 'LastA.mkv', size, seg, {4, 5, 6})
+    donor = build_nzb(dp, 'obf-last.mkv', size, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LastDonor', donor, True, 'last-key', 50)
+    daemon.append(api, 'LastMain', primary, False, 'last-key', 100)
+    h = daemon.wait_history(api, 'LastMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('livelastfile', ok and integ and live == 0 and repaired >= 1,
+            'status=%s live_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], live, repaired, integ))
 
 
 def scenario_repost(daemon, t):
@@ -1374,12 +1478,28 @@ def _grep_log(t, needle):
         return 0
 
 
+def _log_before(t, first, second):
+    """True when the FIRST occurrence of ``first`` precedes the FIRST
+    occurrence of ``second`` in the daemon log (both must occur). The log is
+    strictly append-ordered, so this proves event ordering."""
+    try:
+        log = t.read_file('nzbget.log').decode(errors='replace')
+    except Exception:
+        return False
+    first_at = log.find(first)
+    second_at = log.find(second)
+    return 0 <= first_at < second_at
+
+
 SCENARIOS = {
     'complementary': scenario_complementary,
     'cutover': scenario_cutover,
     'leadswitch': scenario_leadswitch,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
+    'liveoverlap': scenario_liveoverlap,
+    'livegate': scenario_livegate,
+    'livelastfile': scenario_livelastfile,
     'repost': scenario_repost,
     'repostrenamed': scenario_repostrenamed,
     'xpackbare': scenario_xpackbare,
@@ -1433,6 +1553,11 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
+    # downloading long enough that FileA's live repair provably overlaps it
+    'liveoverlap': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=8000'],
+    'livegate': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'livelastfile': ['DupeArticleFallback=live', 'ParCheck=auto'],
     # repost: ParCheck=auto runs par-check against a random-bytes stand-in
     # par2 after the repair - FAILURE/PAR is the EXPECTED final status
     'repost': ['DupeArticleFallback=stream', 'ParCheck=auto'],

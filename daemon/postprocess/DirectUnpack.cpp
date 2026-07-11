@@ -145,7 +145,11 @@ void DirectUnpack::Run()
 
 		AddExtraTime(nzbInfo);
 
-		if (nzbInfo->GetPostInfo())
+		// the working flag is shared with a live stream-repair pass (option
+		// <DupeArticleFallback> value "live"): while that thread is attached
+		// it must keep holding the post-processing job, so it clears the flag
+		// itself when it detaches
+		if (nzbInfo->GetPostInfo() && !nzbInfo->GetLiveRepairThread())
 		{
 			nzbInfo->GetPostInfo()->SetWorking(false);
 		}
@@ -417,7 +421,9 @@ void DirectUnpack::Stop(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 	if (nzbInfo)
 	{
 		AddExtraTime(nzbInfo);
-		if (nzbInfo->GetPostInfo())
+		// shared with a live stream-repair pass, which clears it itself (see
+		// the Run() epilogue)
+		if (nzbInfo->GetPostInfo() && !nzbInfo->GetLiveRepairThread())
 		{
 			nzbInfo->GetPostInfo()->SetWorking(false);
 		}

@@ -299,8 +299,26 @@ void StreamRepairController::StartJob(PostInfo* postInfo)
 	streamRepairController->Start();
 }
 
+void StreamRepairController::StartLive(NzbInfo* nzbInfo)
+{
+	StreamRepairController* streamRepairController = new StreamRepairController();
+	streamRepairController->m_liveMode = true;
+	streamRepairController->m_nzbId = nzbInfo->GetId();
+	streamRepairController->SetAutoDestroy(true);
+
+	nzbInfo->SetLiveRepairThread(streamRepairController);
+
+	streamRepairController->Start();
+}
+
 void StreamRepairController::Run()
 {
+	if (m_liveMode)
+	{
+		RunLive();
+		return;
+	}
+
 	BString<1024> nzbName;
 	CString destDir;
 	std::vector<RepairTarget> targets;
@@ -348,6 +366,205 @@ void StreamRepairController::Run()
 	ReportRemainingHoles(targets);
 	m_targets = std::move(targets);
 	RepairCompleted();
+}
+
+/*
+ * Download-concurrent repair pass (option <DupeArticleFallback> value
+ * "live"): repairs the holes of the collection's already-completed files
+ * while the remaining files still download. Every locked touchpoint re-finds
+ * the NzbInfo by id and verifies this thread is still attached, so a deleted
+ * collection (detached via PrePostProcessor::NzbDeleted) aborts the pass
+ * without touching freed state. See the class comment for what a live pass
+ * deliberately does NOT do.
+ */
+void StreamRepairController::RunLive()
+{
+	BString<1024> nzbName;
+	CString destDir;
+	std::vector<RepairTarget> targets;
+	std::vector<DonorSource> donors;
+	std::vector<CString> memberNames;
+
+	{
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+		if (!nzbInfo || nzbInfo->GetLiveRepairThread() != this)
+		{
+			return;
+		}
+		nzbName = nzbInfo->GetName();
+		destDir = nzbInfo->GetDestDir();
+		CollectTargets(nzbInfo, targets, memberNames);
+		CollectDonors(downloadQueue, nzbInfo, donors);
+
+		// each job gets exactly ONE live attempt: donors are static, so
+		// re-fetching for holes an earlier live pass could not fill would only
+		// re-pay the fetch traffic; whatever remains is retried once more by
+		// the post-processing pass with the complete member universe. Already
+		// attempted jobs stay in the target list with their holes DECLARED
+		// (PatchEligible=false): the cross-pack member universe must know
+		// their holes, or their zero-filled ranges would be treated as valid
+		// present bytes and poison map building and donor verification
+		for (RepairTarget& target : targets)
+		{
+			for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
+			{
+				if (job.GetFileId() == target.FileId)
+				{
+					target.PatchEligible = !job.GetLiveAttempted();
+					job.SetLiveAttempted(true);
+					break;
+				}
+			}
+		}
+	}
+
+	BString<1024> infoName("live stream repair for %s", *nzbName);
+	SetInfoName(infoName);
+
+	bool anyEligible = false;
+	for (RepairTarget& target : targets)
+	{
+		anyEligible |= target.PatchEligible && !target.Holes.empty();
+	}
+
+	if (anyEligible && !donors.empty())
+	{
+		PrintMessage(Message::mkInfo, "Starting live stream repair for %s", *nzbName);
+
+		ComputePositionalRanks(destDir, targets, memberNames);
+		ExecRepair(destDir, targets, donors);
+
+		bool anyHoles = false;
+		for (RepairTarget& target : targets)
+		{
+			anyHoles |= target.PatchEligible && !target.Holes.empty();
+		}
+		if (anyHoles && !IsStopped())
+		{
+			// completed files may have been renamed since the pass started
+			// (e.g. direct rename after its trigger par2 arrived): re-resolve
+			// the on-disk names so the member universe is built against them
+			RefreshLiveNames(targets, memberNames);
+			ExecCrossPackRepair(destDir, targets, donors, memberNames);
+		}
+	}
+
+	RepairCompletedLive(targets);
+}
+
+/*
+ * Re-resolves the targets' and member universe's on-disk names from the
+ * live CompletedFiles records (live mode only): direct rename can rename
+ * completed files while the pass runs, and repairing under a stale name
+ * would consume the job's one live attempt with zero work.
+ */
+void StreamRepairController::RefreshLiveNames(std::vector<RepairTarget>& targets,
+	std::vector<CString>& memberNames)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+	if (!nzbInfo || nzbInfo->GetLiveRepairThread() != this)
+	{
+		return;
+	}
+
+	for (RepairTarget& target : targets)
+	{
+		for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+		{
+			if (completedFile.GetId() == target.FileId)
+			{
+				target.Filename = completedFile.GetFilename();
+				break;
+			}
+		}
+	}
+
+	memberNames.clear();
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		memberNames.emplace_back(completedFile.GetFilename());
+	}
+}
+
+void StreamRepairController::RefreshLiveTargetName(RepairTarget& target)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+	if (!nzbInfo || nzbInfo->GetLiveRepairThread() != this)
+	{
+		return;
+	}
+
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		if (completedFile.GetId() == target.FileId)
+		{
+			target.Filename = completedFile.GetFilename();
+			break;
+		}
+	}
+}
+
+/*
+ * Live-pass epilogue: shrink the jobs' hole lists to what is still missing
+ * and add the recovered bytes/holes statistics, then detach. Deliberately
+ * NO health credit, NO job draining, NO par-check request - the
+ * post-processing stage stays the sole accounting authority (its per-file
+ * credit gate then simply finds the holes already empty). Must not print
+ * messages while holding the lock (AddMessage re-acquires it in live mode).
+ */
+void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targets)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+	if (!nzbInfo || nzbInfo->GetLiveRepairThread() != this)
+	{
+		// deleted or detached mid-pass: nothing may be written back
+		return;
+	}
+
+	if (m_recoveredBytes > 0 || m_recoveredHoles > 0)
+	{
+		nzbInfo->SetDupeRecoveredBytes(nzbInfo->GetDupeRecoveredBytes() + m_recoveredBytes);
+		nzbInfo->SetDupeRecoveredHoles(nzbInfo->GetDupeRecoveredHoles() + m_recoveredHoles);
+	}
+
+	for (RepairTarget& target : targets)
+	{
+		if (!target.PatchEligible)
+		{
+			// declared-only target: its job's holes were never touched
+			continue;
+		}
+		for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
+		{
+			if (job.GetFileId() == target.FileId)
+			{
+				job.SetHoles(std::move(target.Holes));
+				break;
+			}
+		}
+	}
+
+	nzbInfo->SetLiveRepairThread(nullptr);
+	if (nzbInfo->GetPostInfo() && !nzbInfo->GetUnpackThread())
+	{
+		// the download completed while this pass ran and the post-processing
+		// job is waiting for it (see PrePostProcessor::NzbDownloaded). The
+		// working flag is shared with direct unpack: when that thread is
+		// still attached it stays the flag's owner and clears it on its own
+		// exit (which symmetrically leaves the flag alone while this pass is
+		// attached - see DirectUnpack's epilogue)
+		nzbInfo->GetPostInfo()->SetWorking(false);
+	}
+
+	// jobs (and their shrunk holes) are persisted; keep disk-state honest
+	downloadQueue->Save();
 }
 
 void StreamRepairController::Stop()
@@ -521,7 +738,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
 		{
-			anyHoles |= !target.Holes.empty();
+			anyHoles |= target.PatchEligible && !target.Holes.empty();
 		}
 		if (!anyHoles)
 		{
@@ -536,6 +753,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			continue;
 		}
 
+		if (m_postInfo)
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 			m_postInfo->SetProgressLabel(BString<1024>(
@@ -550,7 +768,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			{
 				break;
 			}
-			if (target.Holes.empty())
+			if (!target.PatchEligible || target.Holes.empty())
 			{
 				continue;
 			}
@@ -573,6 +791,14 @@ void StreamRepairController::ExecRepair(const char* destDir,
 StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const char* destDir,
 	RepairTarget& target, NzbInfo* donorNzb, const char* donorName)
 {
+	if (m_liveMode)
+	{
+		// direct rename can rename the completed file while this pass runs;
+		// opening a stale name would consume the job's one live attempt with
+		// zero work, so re-resolve it right before the open
+		RefreshLiveTargetName(target);
+	}
+
 	BString<1024> filePath("%s%c%s", destDir, PATH_SEPARATOR, *target.Filename);
 
 	DiskFile file;
@@ -902,7 +1128,11 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 	const std::vector<CString>& memberNames)
 {
 	// the member universe: every completed file, with the CURRENT holes of
-	// the ones that are repair targets (holes only shrink after M1)
+	// the ones that are repair targets (holes only shrink after M1). Holes
+	// are declared for ALL holed targets - including live-ineligible ones -
+	// but only PatchEligible targets get a patch slot: an undeclared hole
+	// would be read as valid present bytes (zero-fill parsed as headers,
+	// probes comparing donors against zeroes)
 	std::vector<SetMember> setMembers;
 	std::vector<StreamRangeList> memberHoles(memberNames.size());
 	std::vector<int> memberTargets(memberNames.size(), -1);
@@ -915,7 +1145,7 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 			if (!strcasecmp(*targets[t].Filename, *memberNames[i]))
 			{
 				memberHoles[i] = targets[t].Holes;
-				memberTargets[i] = (int)t;
+				memberTargets[i] = targets[t].PatchEligible ? (int)t : -1;
 				break;
 			}
 		}
@@ -984,6 +1214,7 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 			continue;
 		}
 
+		if (m_postInfo)
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 			m_postInfo->SetProgressLabel(BString<1024>(
@@ -1044,8 +1275,11 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 				{
 					// M4 ladder (option <DupeStreamDecompress>): a donor set
 					// that cannot map for byte-copy may still donate through
-					// extraction if it is a compressed archive
-					if (g_Options->GetDupeStreamDecompress() &&
+					// extraction if it is a compressed archive. Skipped in a
+					// live pass - materializing and extracting whole archives
+					// beside an active download is too disk/CPU-heavy; those
+					// holes wait for the post-processing pass
+					if (!m_liveMode && g_Options->GetDupeStreamDecompress() &&
 						ContentMapper::IsCompressibleArchive(donorSet) &&
 						decompressTried.emplace(&repairSet,
 							std::string(*donor.QueuedFilename) + "|" +
@@ -1848,6 +2082,7 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 		}
 	} tempDirGuard{CString(*tempDir)};
 
+	if (m_postInfo)
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		m_postInfo->SetProgressLabel(BString<1024>(
@@ -2228,5 +2463,19 @@ void StreamRepairController::RepairCompleted()
 
 void StreamRepairController::AddMessage(Message::EKind kind, const char* text)
 {
+	if (m_liveMode)
+	{
+		// no PostInfo in a live pass: find the collection by id (it may have
+		// been deleted mid-pass, then the message is dropped). Callers must
+		// not hold the DownloadQueue lock when printing in live mode.
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+		if (nzbInfo)
+		{
+			nzbInfo->AddMessage(kind, text);
+		}
+		return;
+	}
+
 	m_postInfo->GetNzbInfo()->AddMessage(kind, text);
 }
