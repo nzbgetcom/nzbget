@@ -979,7 +979,9 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		}
 	}
 
-	return totalCompared >= requiredCompare && sawVariedData;
+	// a stop ends Next() before the in-loop guard runs; never report a donor
+	// verified on the partial probe set that was delivered before the stop
+	return !IsStopped() && totalCompared >= requiredCompare && sawVariedData;
 }
 
 int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
@@ -2377,6 +2379,14 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			}
 			totalBytes += fetched.Data.size();
 			memberExtent = std::max(memberExtent, writeEnd);
+		}
+		// a stop ends Next() before the in-loop guard can fire, so re-check
+		// here: materialization must fail-fast on stop, never fall through to
+		// return true and drive the extractor on truncated donor files
+		if (IsStopped())
+		{
+			m_batchFetcher.CancelRemaining();
+			return false;
 		}
 		totalExtent += memberExtent;
 		file.Close();
