@@ -361,3 +361,193 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 
 	return result;
 }
+
+class ArticleBatchFetcher::Worker : public Thread
+{
+public:
+	Worker(ArticleBatchFetcher& owner) : m_owner(owner) {}
+	virtual void Run() { m_owner.WorkerLoop(m_fetcher); }
+	ArticleFetcher& GetFetcher() { return m_fetcher; }
+
+private:
+	ArticleBatchFetcher& m_owner;
+	ArticleFetcher m_fetcher;
+};
+
+ArticleBatchFetcher::ArticleBatchFetcher()
+{
+}
+
+ArticleBatchFetcher::ArticleBatchFetcher(FetchFunc fetchFunc) :
+	m_fetchFunc(std::move(fetchFunc))
+{
+}
+
+ArticleBatchFetcher::~ArticleBatchFetcher()
+{
+	Stop();
+	for (std::unique_ptr<Worker>& worker : m_workers)
+	{
+		while (worker->IsRunning())
+		{
+			Util::Sleep(5);
+		}
+	}
+}
+
+void ArticleBatchFetcher::EnsureWorkers()
+{
+	while ((int)m_workers.size() < m_workerCount)
+	{
+		m_workers.push_back(std::make_unique<Worker>(*this));
+		m_workers.back()->SetAutoDestroy(false);
+		m_workers.back()->Start();
+	}
+}
+
+void ArticleBatchFetcher::Begin(std::vector<Request> requests)
+{
+	Guard guard(m_mutex);
+	m_batchId++;
+	m_requests = std::move(requests);
+	m_slots.assign(m_requests.size(), Slot());
+	m_nextClaim = 0;
+	m_nextDeliver = 0;
+	m_bufferedBytes = 0;
+	m_cancelled = false;
+	if (m_workerCount > 0 && !m_stopped)
+	{
+		EnsureWorkers();
+	}
+}
+
+bool ArticleBatchFetcher::ClaimNext(int batchId, size_t& index, Request& request)
+{
+	Guard guard(m_mutex);
+	if (batchId != m_batchId || m_cancelled || m_stopped ||
+		m_nextClaim >= m_requests.size() ||
+		m_nextClaim - m_nextDeliver >= (size_t)MaxWindowParts ||
+		m_bufferedBytes >= MaxBufferedBytes)
+	{
+		return false;
+	}
+	index = m_nextClaim++;
+	// CString's copy-assignment is deleted; move instead (safe - each index
+	// is claimed exactly once, so m_requests[index] is never read again)
+	request = std::move(m_requests[index]);
+	return true;
+}
+
+void ArticleBatchFetcher::StoreResult(int batchId, size_t index,
+	ArticleFetcher::FetchedArticle&& result)
+{
+	Guard guard(m_mutex);
+	if (batchId != m_batchId || m_cancelled)
+	{
+		return;	// stale batch or the consumer bailed: discard
+	}
+	m_bufferedBytes += (int64)result.Data.size();
+	m_slots[index].Result = std::move(result);
+	m_slots[index].Ready = true;
+}
+
+void ArticleBatchFetcher::WorkerLoop(ArticleFetcher& fetcher)
+{
+	while (!m_stopped)
+	{
+		int batchId;
+		{
+			Guard guard(m_mutex);
+			batchId = m_batchId;
+		}
+		size_t index;
+		Request request;
+		if (ClaimNext(batchId, index, request))
+		{
+			ArticleFetcher::FetchedArticle fetched;
+			try
+			{
+				fetched = m_fetchFunc
+					? m_fetchFunc(request)
+					: fetcher.Fetch(request.MessageId, *request.Groups);
+			}
+			catch (const std::exception& e)
+			{
+				// a throwing fetch (e.g. bad_alloc on a huge decode buffer) must
+				// not kill the daemon nor wedge the window on a never-ready slot:
+				// store a failed result so the consumer's Next() keeps moving
+				detail("Batch fetch of %s failed: %s", *request.MessageId, e.what());
+				fetched = ArticleFetcher::FetchedArticle();
+			}
+			StoreResult(batchId, index, std::move(fetched));
+		}
+		else
+		{
+			Util::Sleep(5);	// window full, batch drained, or between batches
+		}
+	}
+}
+
+bool ArticleBatchFetcher::Next(ArticleFetcher::FetchedArticle& result)
+{
+	size_t index;
+	{
+		Guard guard(m_mutex);
+		if (m_cancelled || m_stopped || m_nextDeliver >= m_requests.size())
+		{
+			return false;
+		}
+		index = m_nextDeliver;
+	}
+
+	if (m_workerCount == 0)
+	{
+		// inline (serial) mode: fetch lazily on the caller's thread
+		const Request& request = m_requests[index];
+		result = m_fetchFunc ? m_fetchFunc(request)
+			: m_inlineFetcher.Fetch(request.MessageId, *request.Groups);
+		Guard guard(m_mutex);
+		m_nextDeliver++;
+		return !m_stopped;
+	}
+
+	while (!m_stopped)
+	{
+		{
+			Guard guard(m_mutex);
+			if (m_cancelled)
+			{
+				return false;
+			}
+			if (m_slots[index].Ready)
+			{
+				result = std::move(m_slots[index].Result);
+				m_slots[index].Ready = false;
+				m_bufferedBytes -= (int64)result.Data.size();
+				m_nextDeliver++;
+				return true;
+			}
+		}
+		Util::Sleep(5);
+	}
+	return false;
+}
+
+void ArticleBatchFetcher::CancelRemaining()
+{
+	Guard guard(m_mutex);
+	m_cancelled = true;
+	m_bufferedBytes = 0;
+}
+
+void ArticleBatchFetcher::Stop()
+{
+	m_stopped = true;
+	Guard guard(m_mutex);
+	m_inlineFetcher.Stop();
+	for (std::unique_ptr<Worker>& worker : m_workers)
+	{
+		worker->Stop();
+		worker->GetFetcher().Stop();	// cancels an in-flight connection
+	}
+}

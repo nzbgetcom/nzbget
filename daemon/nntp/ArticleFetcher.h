@@ -22,6 +22,8 @@
 #define ARTICLEFETCHER_H
 
 #include <atomic>
+#include <functional>
+#include <memory>
 #include <vector>
 #include "NString.h"
 #include "Thread.h"
@@ -84,6 +86,83 @@ private:
 		const char* messageId, const std::vector<CString>& groups);
 	void ReleaseConnection(NntpConnection* connection, bool keepConnected);
 	void AddServerStats(NntpConnection* connection);
+};
+
+/*
+ * Fetches an ordered batch of donor articles concurrently: each worker owns
+ * its own ArticleFetcher (and therefore its own pool connection), while the
+ * consumer receives results strictly IN SUBMISSION ORDER, so serial consumer
+ * semantics (drift measurement, size caps, early exit) are preserved.
+ *
+ * Workers run ahead of the consumer under a bounded window: at most
+ * MaxWindowParts claimed-but-undelivered requests AND MaxBufferedBytes of
+ * buffered decoded bytes (worst case memory = MaxBufferedBytes + workers x
+ * ArticleFetchLimits::MaxDecodedBytes still in flight; a typical article is
+ * well under 1 MB). With worker count 0 the fetch happens lazily inside
+ * Next() on the caller's thread - byte-for-byte the serial behavior; the
+ * live repair pass uses that so it never competes with the active download
+ * for pool connections beyond what the serial code already did.
+ *
+ * The consumer API (SetWorkerCount/Begin/Next/CancelRemaining) is
+ * single-threaded: one consumer drives one batch at a time. Stop() may be
+ * called from any thread. Request::Groups must outlive the batch.
+ */
+class ArticleBatchFetcher
+{
+public:
+	struct Request
+	{
+		CString MessageId;
+		const std::vector<CString>* Groups = nullptr;
+	};
+	using FetchFunc = std::function<ArticleFetcher::FetchedArticle(const Request&)>;
+
+	static constexpr int MaxWindowParts = 8;
+	static constexpr int64 MaxBufferedBytes = 128LL * 1024 * 1024;
+
+	// defined in the .cpp, after Worker is complete: std::vector<unique_ptr<Worker>>
+	// needs the full type available to generate exception-unwind cleanup here
+	ArticleBatchFetcher();
+	// test seam: a blocking FetchFunc is NOT interruptible by Stop() (unlike a
+	// real ArticleFetcher), so tests must release their gates before destruction
+	// - the destructor joins the workers
+	explicit ArticleBatchFetcher(FetchFunc fetchFunc);
+	~ArticleBatchFetcher();
+
+	void SetWorkerCount(int workerCount) { m_workerCount = workerCount; }
+	void Begin(std::vector<Request> requests);
+	bool Next(ArticleFetcher::FetchedArticle& result);
+	void CancelRemaining();
+	void Stop();
+
+private:
+	class Worker;
+
+	struct Slot
+	{
+		ArticleFetcher::FetchedArticle Result;
+		bool Ready = false;
+	};
+
+	Mutex m_mutex;
+	std::vector<Request> m_requests;
+	std::vector<Slot> m_slots;
+	size_t m_nextClaim = 0;
+	size_t m_nextDeliver = 0;
+	int64 m_bufferedBytes = 0;
+	int m_batchId = 0;
+	bool m_cancelled = false;
+	std::atomic<bool> m_stopped{false};
+	int m_workerCount = 0;
+	std::vector<std::unique_ptr<Worker>> m_workers;
+	FetchFunc m_fetchFunc;			// test seam; production uses real fetchers
+	ArticleFetcher m_inlineFetcher;	// worker count 0 (live mode)
+
+	void WorkerLoop(ArticleFetcher& fetcher);
+	bool ClaimNext(int batchId, size_t& index, Request& request);
+	void StoreResult(int batchId, size_t index, ArticleFetcher::FetchedArticle&& result);
+	void EnsureWorkers();
+	friend class Worker;
 };
 
 #endif
