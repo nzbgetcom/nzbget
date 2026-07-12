@@ -105,7 +105,9 @@ private:
  *
  * The consumer API (SetWorkerCount/Begin/Next/CancelRemaining) is
  * single-threaded: one consumer drives one batch at a time. Stop() may be
- * called from any thread. Request::Groups must outlive the batch.
+ * called from any thread. Requests own their group list (shared per donor
+ * file), so worker fetches stay safe regardless of the caller's object
+ * lifetimes - CancelRemaining does not quiesce in-flight workers.
  */
 class ArticleBatchFetcher
 {
@@ -113,7 +115,7 @@ public:
 	struct Request
 	{
 		CString MessageId;
-		const std::vector<CString>* Groups = nullptr;
+		std::shared_ptr<const std::vector<CString>> Groups;
 	};
 	using FetchFunc = std::function<ArticleFetcher::FetchedArticle(const Request&)>;
 

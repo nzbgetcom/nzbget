@@ -12,6 +12,7 @@
 #include "nzbget.h"
 
 #include <atomic>
+#include <memory>
 #include <stdexcept>
 #include <thread>
 #include <boost/test/unit_test.hpp>
@@ -91,11 +92,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherDeliversInSubmissionOrder)
 	});
 	batch.SetWorkerCount(3);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 4; i++)
 	{
-		requests.push_back({CString(BString<20>("%i", i)), &noGroups});
+		requests.push_back({CString(BString<20>("%i", i)), noGroups});
 	}
 	batch.Begin(std::move(requests));
 
@@ -120,11 +121,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherHonorsWindowBound)
 	});
 	batch.SetWorkerCount(ArticleBatchFetcher::MaxWindowParts * 2);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < ArticleBatchFetcher::MaxWindowParts * 3; i++)
 	{
-		requests.push_back({CString("m"), &noGroups});
+		requests.push_back({CString("m"), noGroups});
 	}
 	batch.Begin(std::move(requests));
 	Util::Sleep(300);
@@ -148,11 +149,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherByteCapThrottlesClaims)
 	});
 	batch.SetWorkerCount(1);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 3; i++)
 	{
-		requests.push_back({CString("m"), &noGroups});
+		requests.push_back({CString("m"), noGroups});
 	}
 	batch.Begin(std::move(requests));
 	Util::Sleep(300);
@@ -177,11 +178,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherCancelStopsClaims)
 	});
 	batch.SetWorkerCount(2);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 20; i++)
 	{
-		requests.push_back({CString("m"), &noGroups});
+		requests.push_back({CString("m"), noGroups});
 	}
 	batch.Begin(std::move(requests));
 	ArticleFetcher::FetchedArticle fetched;
@@ -204,11 +205,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherInlineModeFetchesOnCallerThread)
 	});
 	batch.SetWorkerCount(0);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 3; i++)
 	{
-		requests.push_back({CString(BString<20>("%i", i)), &noGroups});
+		requests.push_back({CString(BString<20>("%i", i)), noGroups});
 	}
 	batch.Begin(std::move(requests));
 	ArticleFetcher::FetchedArticle fetched;
@@ -239,11 +240,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherThrowingFetchDeliversFailedResult)
 	});
 	batch.SetWorkerCount(2);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 4; i++)
 	{
-		requests.push_back({CString(BString<20>("%i", i)), &noGroups});
+		requests.push_back({CString(BString<20>("%i", i)), noGroups});
 	}
 	batch.Begin(std::move(requests));
 
@@ -277,11 +278,11 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherStopUnblocksConsumer)
 	});
 	batch.SetWorkerCount(1);
 
-	std::vector<CString> noGroups;
+	auto noGroups = std::make_shared<std::vector<CString>>();
 	std::vector<ArticleBatchFetcher::Request> requests;
 	for (int i = 0; i < 2; i++)
 	{
-		requests.push_back({CString("m"), &noGroups});
+		requests.push_back({CString("m"), noGroups});
 	}
 	batch.Begin(std::move(requests));
 
@@ -290,6 +291,42 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherStopUnblocksConsumer)
 	BOOST_CHECK(!batch.Next(fetched));	// unblocked by Stop, no result
 	release = true;						// let the worker exit its fetch
 	stopper.join();
+}
+
+BOOST_AUTO_TEST_CASE(ArticleBatchFetcherRequestsOwnTheirGroups)
+{
+	// requests must OWN their group list: the repair pass destroys the donor
+	// NzbInfo (the former Groups pointee) between donors while CancelRemaining
+	// leaves in-flight workers running - a raw pointer here was a use-after-free
+	std::atomic<bool> release{false};
+	std::atomic<bool> groupsIntact{false};
+	ArticleBatchFetcher batch([&](const ArticleBatchFetcher::Request& request)
+	{
+		while (!release)
+		{
+			Util::Sleep(1);
+		}
+		groupsIntact = request.Groups && request.Groups->size() == 1 &&
+			!strcmp((*request.Groups)[0], "alt.binaries.ownership");
+		return MakeResult('g');
+	});
+	batch.SetWorkerCount(1);
+
+	auto sourceGroups = std::make_shared<std::vector<CString>>();
+	sourceGroups->emplace_back("alt.binaries.ownership");
+	std::vector<ArticleBatchFetcher::Request> requests;
+	requests.push_back({CString("m"), sourceGroups});
+	batch.Begin(std::move(requests));
+
+	// drop the caller's only reference while the worker is still gated:
+	// the request's own shared copy must keep the vector alive
+	sourceGroups.reset();
+	release = true;
+
+	ArticleFetcher::FetchedArticle fetched;
+	BOOST_REQUIRE(batch.Next(fetched));
+	BOOST_CHECK(groupsIntact.load());
+	BOOST_CHECK(!batch.Next(fetched));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

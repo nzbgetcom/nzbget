@@ -912,12 +912,21 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 	int64 totalCompared = 0;
 	bool sawVariedData = false;
 
+	// requests own a shared copy of the donor's group list: CancelRemaining
+	// does not quiesce in-flight workers, which may still dereference their
+	// request after this donor's NzbInfo (and its FileInfos) is destroyed
+	auto donorGroups = std::make_shared<std::vector<CString>>();
+	for (const CString& group : *donorFile->GetGroups())
+	{
+		donorGroups->emplace_back(*group);
+	}
+
 	std::vector<ArticleBatchFetcher::Request> requests;
 	requests.reserve(probeParts.size());
 	for (int partIndex : probeParts)
 	{
 		ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
-		requests.push_back({article->GetMessageId(), donorFile->GetGroups()});
+		requests.push_back({article->GetMessageId(), donorGroups});
 	}
 	m_batchFetcher.Begin(std::move(requests));
 
@@ -981,6 +990,15 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 	int64 drift = 0;
 	std::set<int> tried;
 
+	// requests own a shared copy of the donor's group list: CancelRemaining
+	// does not quiesce in-flight workers, which may still dereference their
+	// request after this donor's NzbInfo (and its FileInfos) is destroyed
+	auto donorGroups = std::make_shared<std::vector<CString>>();
+	for (const CString& group : *donorFile->GetGroups())
+	{
+		donorGroups->emplace_back(*group);
+	}
+
 	// two selection passes: pass 2 re-selects with the measured drift between
 	// estimated and actual donor offsets. A donor nzb with missing segment
 	// entries (or regionally varying yEnc overhead) shifts ALL estimates by
@@ -1001,6 +1019,11 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 		std::vector<ArticleBatchFetcher::Request> requests;
 		std::vector<int> requestParts;
 		requests.reserve(patchParts.size());
+		requestParts.reserve(patchParts.size());
+		// marking parts "tried" BEFORE Begin (rather than as each result
+		// arrives) is safe only because the pass-loop guard (pass < 2 &&
+		// !Holes.empty() && !IsStopped()) prevents pass 2 exactly when an
+		// early break cancelled undelivered requests
 		for (int partIndex : patchParts)
 		{
 			if (!tried.insert(partIndex).second)
@@ -1008,7 +1031,7 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 				continue; // already fetched in the previous pass
 			}
 			ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
-			requests.push_back({article->GetMessageId(), donorFile->GetGroups()});
+			requests.push_back({article->GetMessageId(), donorGroups});
 			requestParts.push_back(partIndex);
 		}
 		m_batchFetcher.Begin(std::move(requests));
