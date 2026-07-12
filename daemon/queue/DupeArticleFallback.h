@@ -86,9 +86,9 @@ public:
 
 	/* Orders the message-ids an article is tried against. Reactive (not cut
 	 * over): donor candidates only (the primary was already tried normally).
-	 * Cut over: [top donor, primary revert, remaining donors] so a cut-over
-	 * file leads with the duplicate but still reverts to the primary quickly
-	 * if the duplicate lacks that article. */
+	 * Cut over: [top donor, remaining donors, primary revert last] so a
+	 * cut-over file leads with the duplicate and tries the other duplicates
+	 * before falling back to the proven-holed primary as the last resort. */
 	static std::vector<CString> OrderSources(const std::vector<CString>& donorCandidates,
 		bool cutover, const char* primaryMessageId);
 

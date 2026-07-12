@@ -13,6 +13,7 @@ suffix to make chosen articles "missing" on the active server.
 | `complementary` | Two postings of the same content, each missing *different* articles; neither completes alone, together they do. Output is byte-identical. |
 | `cutover` | Primary missing 10/20 articles → the file "cuts over" and leads with the duplicate (`Leading with duplicate collections`), completing byte-identical. |
 | `leadswitch` | The top-scored duplicate shares the primary's hole (parts 2–12), a lower-scored duplicate covers it. After a few consecutive lead misses the lead rotates to the next duplicate (`Switching lead duplicate collection`, exactly once — the stale-snapshot guard must prevent cascade demotion), completing byte-identical from the second duplicate. |
+| `cutovertruth` | Counter honesty under cutover: the lead duplicate misses articles the primary HAS, so after cutover a second duplicate serves them proactively. Those proactive successes must NOT count as recovered — `DupeRecoveredArticles` stays bounded by the primary's own missing articles, with at most one lead switch. |
 | `manydonors` | 18 duplicates — more than the donor cache holds — to exercise the cache-eviction path. Regression test for the use-after-free crash; the daemon must survive and complete. |
 | `stream` | Donor posted the SAME `.mkv` split into different article sizes (250 KB vs 500 KB). `DupeArticleFallback=stream` repairs the missing byte ranges in post-processing; every hole is filled and there is no par2 in the harness, so the byte-based health recount (see option `DupeArticleFallback`) takes the release all the way to `SUCCESS` (moved to its destination directory), asserted directly alongside byte identity. |
 | `liveoverlap` | `DupeArticleFallback=live`: FileA completes with a hole while the big FileB still downloads (DownloadRate-throttled). The live pass repairs A DURING the download — proven by strict log order (`Starting live stream repair` before `completely downloaded`) — and the release still completes `SUCCESS` byte-identically via the unchanged post-processing accounting. |
@@ -23,6 +24,7 @@ suffix to make chosen articles "missing" on the active server.
 | `xpackbare` | A bare `.mkv` completed with a hole, repaired from a duplicate that posted the SAME movie packed into store-mode RAR3 volumes (different framing, offsets and segmentation). M1 cannot pair bare against rar volumes, so the M2 cross-packing `ContentMap` pass must locate the missing bytes inside the donor's volumes and patch them byte-identically. No par2 and the hole is fully filled, so the release also completes `SUCCESS`. |
 | `xpackrar` | A store-rar target repaired from a bare donor, with a degraded volume (a header hole) that must be excluded from the map and stays damaged (no par2) — the PARTIAL-repair proof for the health recount: the still-damaged volume means the release stays `FAILURE/HEALTH`, asserted directly (never a false `SUCCESS`). |
 | `xpackrar2rar` | rar-to-rar cross-packing where target and donor use *different* volume sizes (2 MB vs 1.5 MB); member-wise M1 cannot window these, but the inner content stream matches exactly. No par2 and the hole is fully filled, so the release also completes `SUCCESS`. |
+| `xpack2sets` | TWO damaged store-rar sets in one item, repaired from ONE duplicate carrying both sets at different volume sizes. Locks the per-duplicate donor-map reuse (the map is built once per duplicate and shared across repair sets) with the per-pair identity gate still routing each repair set to its own donor set; both sets repaired byte-identically. |
 | `xpackzip` | A bare target repaired from a SPANNED STORED ZIP donor (`z01`+`z02`+`zip`); the repair write itself crosses a donor volume boundary. No par2 and the hole is fully filled, so this is the cross-packing scenario that asserts `SUCCESS` directly. |
 | `xpack7z` | A bare target repaired from a 7z-COPY donor posted as `.7z.001`/`.002` splits. |
 | `xpacksplit` | A store-rar target repaired from RAW SPLITS (`movie.mkv.001`/`.002`/`.003`). |
@@ -38,6 +40,7 @@ suffix to make chosen articles "missing" on the active server.
 | `xdecomp_enc7z` | The POSIX password-quoting proof: a bare target repaired from a HEADER-ENCRYPTED 7z donor (`-mhe=on`), its password threaded via the donor's own NZB exactly like `xcrypt_plainenc`. Locks in the Task 2 fix where a quote-wrapped password would otherwise break extraction on Linux/macOS. |
 | `xdecomp_enctarget` | The M3+M4 composition: a password-ENCRYPTED store-rar TARGET with a data hole, repaired from a COMPRESSED 7z donor of the same movie. The donor is materialized and extracted to plaintext, then re-encrypted under the target's own AES-CBC stream context (the M3 write core) and the ciphertext written into the hole. Byte-identical encrypted volumes prove the extract → re-encrypt → patch round trip. Needs both a crypto module and a 7z binary. |
 | `xdecomp_neg` | The negative: a compressed donor with the right inner size but the WRONG bytes; rejected by the identity probe (`content identity not confirmed`) before any write - nothing is written and the target stays unrecovered. |
+| `xdecomp_symlink` | The symlink fail-close: a compressed donor containing a valid movie plus an absolute directory symlink must be rejected before selecting or patching anything (`archive contains link`). Also asserts cleanup unlinks the extracted symlink without following it (an outside sentinel file survives) and removes every scratch directory. POSIX-only. |
 | `xdecomp_off` | The opt-in gate: the identical compressed-7z-donor setup as `xdecomp_7z`, but `DupeStreamDecompress` is OMITTED (default `no`) - the decompression path must never run and the item stays unrepaired. |
 
 Each scenario asserts byte identity of the reassembled file (with
@@ -58,8 +61,8 @@ partial repair. `repost` ends `FAILURE/PAR` (its stand-in par2 is opaque
 random bytes and fails par-check by design). The negative scenarios
 (`xpackneg`, `xcrypt_wrongpass`, `xdecomp_neg`, `xdecomp_off`) recover
 nothing and stay `FAILURE/HEALTH`. The four `xcrypt_*` scenarios require the
-Python `cryptography` package; the six `xdecomp_*` scenarios require a local
-`7z`/`7za`/`7zr` binary on `PATH`. Without them, the respective scenarios
+Python `cryptography` package; the eight `xdecomp_*` scenarios require a local
+`7z`/`7za`/`7zr`/`7zz` binary on `PATH`. Without them, the respective scenarios
 SKIP gracefully (reported separately from PASS/FAIL).
 
 ## Running
@@ -100,7 +103,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|leadswitch|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_off] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0
