@@ -102,17 +102,24 @@ article "missing" on the active server, so no real Usenet access is needed):
   from a HEADER-ENCRYPTED 7z donor (-mhe=on), its password threaded via the
   donor's own NZB exactly like xcrypt_plainenc threads an encrypted-rar
   donor's password.
+* xdecomp_enctarget - the M3+M4 composition: an ENCRYPTED store-rar target
+  (password via its own NZB) repaired from a compressed 7z donor; the
+  extracted plaintext is re-encrypted under the target's AES-CBC stream
+  context and the ciphertext written into the hole.
 * xdecomp_neg    - the negative: a compressed donor with the right inner
   size but the WRONG bytes; rejected by the identity probe, nothing written.
+* xdecomp_symlink - the link fail-close: a compressed donor whose archive
+  contains a symlink is rejected before selecting or patching anything;
+  cleanup unlinks without following. POSIX-only.
 * xdecomp_off    - the opt-in gate: the same compressed-7z-donor setup as
   xdecomp_7z, but DupeStreamDecompress is OMITTED (default no); the
-  decompression path must never run and the item stays unrepaired. The six
+  decompression path must never run and the item stays unrepaired. The eight
   xdecomp_* scenarios SKIP gracefully when no local 7z/7za/7zr binary is on
   PATH (see generators.HAVE_7Z).
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|leadswitch|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_neg|xdecomp_off]
+               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -1483,10 +1490,17 @@ def scenario_xdecomp_neg(daemon, t):
 
 
 def scenario_xdecomp_symlink(daemon, t):
-    """A compressed donor with a valid movie plus an absolute directory
-    symlink must be rejected before selecting or patching the movie. Cleanup
-    must unlink the extracted symlink, preserve the outside sentinel, and
-    remove every stream-decompression scratch directory."""
+    """A compressed donor with a valid movie plus a symlink must be rejected
+    before selecting or patching the movie (`archive contains link`). The
+    link is RELATIVE and in-tree on purpose: 7-Zip 23.01+ refuses to create
+    absolute or ``..`` link targets at extraction time (exit code 2, link
+    skipped), which fails the extract step before the daemon's own link
+    check ever runs - only a link every extractor generation materializes
+    can probe that check. A relative link to the valid movie.mkv is also the
+    attack shape the check guards against: followed naively it would
+    "verify" trivially. Cleanup must unlink the extracted symlink, preserve
+    the outside sentinel, and remove every stream-decompression scratch
+    directory."""
     if not generators.HAVE_7Z:
         return ('xdecomp_symlink', None, 'SKIP: 7z not installed')
     if t.name != 'local':
@@ -1496,12 +1510,11 @@ def scenario_xdecomp_symlink(daemon, t):
     data = _payload(size, 8750)
     sentinel_data = b'outside-sentinel-must-survive'
     t.write_file(os.path.join('outside', 'sentinel'), sentinel_data)
-    outside_dir = t.path('outside')
 
     primary_path = _place_copy(t, 'xdlA', data, 'movie.mkv')
     members = [(primary_path, 'movie.mkv', size, 250_000, {2})]
     archive = generators.zip_deflated_with_symlink(
-        [('movie.mkv', data)], 'escape-dir', outside_dir)
+        [('movie.mkv', data)], 'movie-link.mkv', 'movie.mkv')
     rel = 'xdlB/rel.zip'
     t.write_file(os.path.join('data', rel), archive)
     donor_members = [(rel, 'Rel.zip', len(archive), 200_000, set())]
