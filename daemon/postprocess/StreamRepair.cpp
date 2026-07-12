@@ -1751,7 +1751,9 @@ bool StreamRepairController::VerifyEncryptedFromSource(RepairSetData& repairSet,
 	ContentSource& plaintext, TargetSetFiles& targetFiles,
 	const std::vector<StreamRange>& windows)
 {
-	constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
+	// static: chainStart below reads it without capturing it, which MSVC
+	// rejects for non-static constexpr locals (C3493)
+	static constexpr int64 blockSize = RarCryptoContext::CryptoBlockSize;
 	ContentMap& targetMap = *repairSet.Map;
 	const StreamRangeList& originalHoles = repairSet.OriginalInnerHoles;
 	const RunCrypto* runCrypto = targetMap.GetRunCrypto(0);
