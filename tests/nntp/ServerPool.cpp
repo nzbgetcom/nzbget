@@ -501,27 +501,43 @@ BOOST_AUTO_TEST_CASE(CloseUnusedConnectionsUsesWholeLevelIdleTime)
 	BOOST_REQUIRE(oldConnection1->GetStatus() == Connection::csDisconnected);
 	BOOST_REQUIRE(oldConnection2->GetStatus() == Connection::csDisconnected);
 
-	NntpConnection* oldConnection = pool.GetConnection(0, newsServer1, nullptr);
-	NntpConnection* recentlyUsed = pool.GetConnection(0, newsServer2, nullptr);
-	BOOST_REQUIRE(oldConnection != nullptr);
-	BOOST_REQUIRE(recentlyUsed != nullptr);
-	oldConnection->SetSuppressErrors(true);
-	recentlyUsed->SetSuppressErrors(true);
-	oldConnection->SetTimeout(5);
-	recentlyUsed->SetTimeout(5);
-	BOOST_REQUIRE(oldConnection->Connect());
-	BOOST_REQUIRE(recentlyUsed->Connect());
+	// A debugger, scheduler pause, or wall-clock adjustment can legitimately move a
+	// freshly returned connection past the five-second hold before cleanup samples
+	// the clock. Retry an inconclusive timing window instead of treating correct
+	// production behavior as a regression, while keeping the real production path.
+	bool verifiedWithinHold = false;
+	for (int attempt = 0; attempt < 3 && !verifiedWithinHold; attempt++)
+	{
+		NntpConnection* oldConnection = pool.GetConnection(0, newsServer1, nullptr);
+		NntpConnection* recentlyUsed = pool.GetConnection(0, newsServer2, nullptr);
+		BOOST_REQUIRE(oldConnection != nullptr);
+		BOOST_REQUIRE(recentlyUsed != nullptr);
+		oldConnection->SetSuppressErrors(true);
+		recentlyUsed->SetSuppressErrors(true);
+		oldConnection->SetTimeout(5);
+		recentlyUsed->SetTimeout(5);
+		BOOST_REQUIRE(oldConnection->Connect());
+		BOOST_REQUIRE(recentlyUsed->Connect());
 
-	// Keep one old timestamp and stamp the other connection as freshly returned.
-	pool.FreeConnection(oldConnection, false);
-	pool.FreeConnection(recentlyUsed, true);
-	BOOST_REQUIRE(oldConnection->GetStatus() == Connection::csConnected);
-	BOOST_REQUIRE(recentlyUsed->GetStatus() == Connection::csConnected);
+		// Keep one old timestamp and stamp the other connection as freshly returned.
+		pool.FreeConnection(oldConnection, false);
+		const time_t returnStarted = Util::CurrentTime();
+		pool.FreeConnection(recentlyUsed, true);
+		BOOST_REQUIRE(oldConnection->GetStatus() == Connection::csConnected);
+		BOOST_REQUIRE(recentlyUsed->GetStatus() == Connection::csConnected);
 
-	pool.CloseUnusedConnections();
+		pool.CloseUnusedConnections();
 
-	BOOST_CHECK(oldConnection->GetStatus() == Connection::csConnected);
-	BOOST_CHECK(recentlyUsed->GetStatus() == Connection::csConnected);
+		if (Util::CurrentTime() - returnStarted <= 5)
+		{
+			BOOST_CHECK(oldConnection->GetStatus() == Connection::csConnected);
+			BOOST_CHECK(recentlyUsed->GetStatus() == Connection::csConnected);
+			verifiedWithinHold = true;
+		}
+	}
+
+	BOOST_REQUIRE_MESSAGE(verifiedWithinHold,
+		"Could not exercise cleanup within the five-second connection hold");
 }
 
 BOOST_AUTO_TEST_CASE(CloseUnusedConnectionsKeepsLevelWithInUseConnection)
