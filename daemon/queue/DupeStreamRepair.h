@@ -52,6 +52,13 @@ public:
 	// how many donor members are probed per target member before giving up
 	// (bounds wasted fetches when pairing heuristics fail on obfuscated sets)
 	static constexpr int MaxDonorCandidates = 4;
+	// concurrent donor-article fetch workers for the post-processing repair
+	// pass (each holds one pool connection while fetching). Modest on purpose:
+	// enough to hide NNTP round-trip latency, small against typical pool
+	// sizes, and memory-bounded by ArticleBatchFetcher's window. The live
+	// pass always fetches serially (0 workers) - it must not compete with
+	// the active download for connections
+	static constexpr int StreamFetchWorkers = 4;
 	// M4 (option <DupeStreamDecompress>): materialization cap on a donor
 	// archive's total decoded size - generous, since the donor inner size
 	// ~ target size and the archive is usually smaller, but a hard bound so

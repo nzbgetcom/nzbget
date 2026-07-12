@@ -202,6 +202,7 @@ private:
 	bool m_liveMode = false;
 	int m_nzbId = 0;
 	ArticleFetcher m_fetcher;
+	ArticleBatchFetcher m_batchFetcher;
 	// the target's own archive password (*Unpack:Password); never logged
 	CString m_targetPassword;
 	int m_recoveredArticles = 0;

@@ -569,6 +569,7 @@ void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targ
 
 void StreamRepairController::Stop()
 {
+	m_batchFetcher.Stop();
 	m_fetcher.Stop();
 	Thread::Stop();
 }
@@ -728,6 +729,8 @@ void StreamRepairController::CollectDonors(DownloadQueue* downloadQueue, NzbInfo
 void StreamRepairController::ExecRepair(const char* destDir,
 	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors)
 {
+	m_batchFetcher.SetWorkerCount(m_liveMode ? 0 : DupeStreamRepair::StreamFetchWorkers);
+
 	for (DonorSource& donor : donors)
 	{
 		if (IsStopped())
@@ -909,16 +912,23 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 	int64 totalCompared = 0;
 	bool sawVariedData = false;
 
+	std::vector<ArticleBatchFetcher::Request> requests;
+	requests.reserve(probeParts.size());
 	for (int partIndex : probeParts)
+	{
+		ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
+		requests.push_back({article->GetMessageId(), donorFile->GetGroups()});
+	}
+	m_batchFetcher.Begin(std::move(requests));
+
+	ArticleFetcher::FetchedArticle fetched;
+	while (m_batchFetcher.Next(fetched))
 	{
 		if (IsStopped())
 		{
+			m_batchFetcher.CancelRemaining();
 			return false;
 		}
-
-		ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
-		ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
-			article->GetMessageId(), *donorFile->GetGroups());
 		if (!fetched.Success || fetched.Data.empty())
 		{
 			continue; // inconclusive: the donor may simply miss this article
@@ -928,6 +938,7 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		if (fetched.FileSize != target.DecodedFileSize ||
 			fetched.Offset + (int64)fetched.Data.size() > target.DecodedFileSize)
 		{
+			m_batchFetcher.CancelRemaining();
 			return false;
 		}
 
@@ -944,6 +955,7 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 			const char* rangeData = fetched.Data.data() + (range.Offset - fetched.Offset);
 			if (!CompareToFile(file, range.Offset, rangeData, range.Size))
 			{
+				m_batchFetcher.CancelRemaining();
 				return false; // same size but different content - wrong donor
 			}
 			totalCompared += range.Size;
@@ -986,22 +998,33 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 		std::vector<int> patchParts = DupeStreamRepair::SelectPatchParts(
 			donorRanges, shiftedHoles, DupeStreamRepair::PatchMarginParts);
 
-		bool fetchedAny = false;
-
+		std::vector<ArticleBatchFetcher::Request> requests;
+		std::vector<int> requestParts;
+		requests.reserve(patchParts.size());
 		for (int partIndex : patchParts)
 		{
-			if (IsStopped() || target.Holes.empty())
-			{
-				break;
-			}
 			if (!tried.insert(partIndex).second)
 			{
 				continue; // already fetched in the previous pass
 			}
-
 			ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
-			ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
-				article->GetMessageId(), *donorFile->GetGroups());
+			requests.push_back({article->GetMessageId(), donorFile->GetGroups()});
+			requestParts.push_back(partIndex);
+		}
+		m_batchFetcher.Begin(std::move(requests));
+
+		bool fetchedAny = false;
+		size_t resultIndex = 0;
+		ArticleFetcher::FetchedArticle fetched;
+
+		for (; m_batchFetcher.Next(fetched); resultIndex++)
+		{
+			int partIndex = requestParts[resultIndex];
+			if (IsStopped() || target.Holes.empty())
+			{
+				m_batchFetcher.CancelRemaining();
+				break;
+			}
 			if (!fetched.Success || fetched.FileSize != target.DecodedFileSize ||
 				fetched.Data.empty() ||
 				fetched.Offset + (int64)fetched.Data.size() > target.DecodedFileSize)
@@ -1030,6 +1053,7 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 						PrintMessage(Message::mkError,
 							"Could not write to %s during stream repair: %s",
 							*target.Filename, *FileSystem::GetLastErrorMessage());
+						m_batchFetcher.CancelRemaining();
 						return recoveredParts;
 					}
 					written.push_back({from, to - from});
