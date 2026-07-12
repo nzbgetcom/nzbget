@@ -784,7 +784,7 @@ enum class PathType
 PathType GetPathTypeNoFollow(const char* filename)
 {
 #ifdef WIN32
-	DWORD attributes = GetFileAttributesW(UtfPathToWidePath(filename));
+	DWORD attributes = GetFileAttributesW(FileSystem::UtfPathToWidePath(filename));
 	if (attributes == INVALID_FILE_ATTRIBUTES)
 	{
 		return PathType::Error;
