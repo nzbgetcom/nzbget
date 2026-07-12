@@ -42,11 +42,11 @@ public:
 	bool ShouldClose() const
 	{
 		return m_observed && !m_hasInUseConnection &&
-			m_shortestInactiveSeconds > ConnectionHoldSeconds;
+			m_shortestInactiveSeconds > CONNECTION_HOLD_SECONDS;
 	}
 
 private:
-	static constexpr time_t ConnectionHoldSeconds = 5;
+	static constexpr time_t CONNECTION_HOLD_SECONDS = 5;
 	bool m_observed = false;
 	bool m_hasInUseConnection = false;
 	time_t m_shortestInactiveSeconds = std::numeric_limits<time_t>::max();

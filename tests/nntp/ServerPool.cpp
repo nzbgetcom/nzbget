@@ -35,6 +35,8 @@ BOOST_AUTO_TEST_SUITE(NNTPTest)
 
 // Minimal loopback server for driving real pooled NntpConnection instances. It binds
 // an ephemeral port, sends a greeting, and acknowledges QUIT before accepting again.
+// The destructor closes both the listen socket and any accepted client socket so the
+// handler thread always unblocks, regardless of whether clients are still connected.
 class LoopbackNntpServer
 {
 public:
@@ -47,6 +49,7 @@ public:
 	{
 		m_stopping = true;
 		CloseSocket(m_listenSocket);
+		CloseSocket(m_clientSocket);
 		if (m_thread.joinable())
 		{
 			m_thread.join();
@@ -124,10 +127,13 @@ private:
 				break;
 			}
 
+			// Publish the accepted socket before re-checking m_stopping so that either
+			// this thread or the destructor (never both) closes it via CloseSocket.
+			m_clientSocket = clientSocket;
+
 			if (m_stopping)
 			{
-				shutdown(clientSocket, SHUT_RDWR);
-				closesocket(clientSocket);
+				CloseSocket(m_clientSocket);
 				break;
 			}
 
@@ -139,12 +145,12 @@ private:
 				SendLine(clientSocket, "205 Connection closing");
 			}
 
-			shutdown(clientSocket, SHUT_RDWR);
-			closesocket(clientSocket);
+			CloseSocket(m_clientSocket);
 		}
 	}
 
 	std::atomic<SOCKET> m_listenSocket{INVALID_SOCKET};
+	std::atomic<SOCKET> m_clientSocket{INVALID_SOCKET};
 	std::atomic<bool> m_stopping{false};
 	std::thread m_thread;
 };
@@ -516,6 +522,59 @@ BOOST_AUTO_TEST_CASE(CloseUnusedConnectionsUsesWholeLevelIdleTime)
 
 	BOOST_CHECK(oldConnection->GetStatus() == Connection::csConnected);
 	BOOST_CHECK(recentlyUsed->GetStatus() == Connection::csConnected);
+}
+
+BOOST_AUTO_TEST_CASE(CloseUnusedConnectionsKeepsLevelWithInUseConnection)
+{
+	LoopbackNntpServer server1;
+	LoopbackNntpServer server2;
+	int port1 = server1.Start();
+	int port2 = server2.Start();
+	BOOST_REQUIRE(port1 != 0);
+	BOOST_REQUIRE(port2 != 0);
+
+	ServerPool pool;
+	pool.AddServer(std::make_unique<NewsServer>(1, true, "test1", "127.0.0.1", port1, 4,
+		"", "", false, false, nullptr, 1, 0, 0, 0, false, Options::cvNone));
+	pool.AddServer(std::make_unique<NewsServer>(2, true, "test2", "127.0.0.1", port2, 4,
+		"", "", false, false, nullptr, 1, 0, 0, 0, false, Options::cvNone));
+	pool.InitConnections();
+
+	NewsServer* newsServer1 = pool.GetServers()->at(0).get();
+	NewsServer* newsServer2 = pool.GetServers()->at(1).get();
+
+	// The pool scans connections in an unspecified order, so run the scenario with
+	// each server's connection checked out in turn. One of the two rounds observes
+	// the epoch-old idle sibling before reaching the in-use connection, which is
+	// the state where a broken in-use veto would sweep the level.
+	for (int round = 0; round < 2; round++)
+	{
+		NewsServer* inUseServer = round == 0 ? newsServer1 : newsServer2;
+		NewsServer* idleServer = round == 0 ? newsServer2 : newsServer1;
+
+		NntpConnection* inUse = pool.GetConnection(0, inUseServer, nullptr);
+		NntpConnection* idle = pool.GetConnection(0, idleServer, nullptr);
+		BOOST_REQUIRE(inUse != nullptr);
+		BOOST_REQUIRE(idle != nullptr);
+		inUse->SetSuppressErrors(true);
+		idle->SetSuppressErrors(true);
+		inUse->SetTimeout(5);
+		idle->SetTimeout(5);
+		BOOST_REQUIRE(inUse->Connect());
+		BOOST_REQUIRE(idle->Connect());
+
+		// Return only the idle sibling with its epoch timestamp; the other connection
+		// stays checked out and must protect every connection on the level.
+		pool.FreeConnection(idle, false);
+		pool.CloseUnusedConnections();
+
+		BOOST_CHECK(inUse->GetStatus() == Connection::csConnected);
+		BOOST_CHECK(idle->GetStatus() == Connection::csConnected);
+
+		pool.FreeConnection(inUse, false);
+		inUse->Disconnect();
+		idle->Disconnect();
+	}
 }
 
 BOOST_AUTO_TEST_CASE(IdleLevelClosesOnlyAfterEveryConnectionPassesHold)
