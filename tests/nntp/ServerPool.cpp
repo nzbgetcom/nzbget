@@ -21,12 +21,133 @@
 
 #include "nzbget.h"
 
+#include <atomic>
+#include <string>
+#include <thread>
+
 #include <boost/test/unit_test.hpp>
 #include "ServerPool.h"
 #include "Options.h"
 #include "DiskState.h"
+#include "ConnectionIdlePolicy.h"
 
 BOOST_AUTO_TEST_SUITE(NNTPTest)
+
+// Minimal loopback server for driving real pooled NntpConnection instances. It binds
+// an ephemeral port, sends a greeting, and acknowledges QUIT before accepting again.
+class LoopbackNntpServer
+{
+public:
+	LoopbackNntpServer()
+	{
+		Connection::Init();
+	}
+
+	~LoopbackNntpServer()
+	{
+		m_stopping = true;
+		CloseSocket(m_listenSocket);
+		if (m_thread.joinable())
+		{
+			m_thread.join();
+		}
+		Connection::Final();
+	}
+
+	int Start()
+	{
+		SOCKET listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+		if (listenSocket == INVALID_SOCKET)
+		{
+			return 0;
+		}
+
+		int on = 1;
+		setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR,
+			reinterpret_cast<const char*>(&on), sizeof(on));
+
+		struct sockaddr_in addr;
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+		addr.sin_port = 0;
+
+		if (bind(listenSocket, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) != 0 ||
+			listen(listenSocket, 1) != 0)
+		{
+			closesocket(listenSocket);
+			return 0;
+		}
+
+		socklen_t len = sizeof(addr);
+		if (getsockname(listenSocket, reinterpret_cast<struct sockaddr*>(&addr), &len) != 0)
+		{
+			closesocket(listenSocket);
+			return 0;
+		}
+
+		m_listenSocket = listenSocket;
+		m_thread = std::thread(&LoopbackNntpServer::Run, this);
+		return ntohs(addr.sin_port);
+	}
+
+private:
+	static void CloseSocket(std::atomic<SOCKET>& socket)
+	{
+		SOCKET ownedSocket = socket.exchange(INVALID_SOCKET);
+		if (ownedSocket != INVALID_SOCKET)
+		{
+			shutdown(ownedSocket, SHUT_RDWR);
+			closesocket(ownedSocket);
+		}
+	}
+
+	static void SendLine(SOCKET socket, const char* line)
+	{
+		std::string data = std::string(line) + "\r\n";
+		send(socket, data.c_str(), static_cast<int>(data.size()), 0);
+	}
+
+	void Run()
+	{
+		while (!m_stopping)
+		{
+			SOCKET listenSocket = m_listenSocket;
+			if (listenSocket == INVALID_SOCKET)
+			{
+				break;
+			}
+
+			SOCKET clientSocket = accept(listenSocket, nullptr, nullptr);
+			if (clientSocket == INVALID_SOCKET)
+			{
+				break;
+			}
+
+			if (m_stopping)
+			{
+				shutdown(clientSocket, SHUT_RDWR);
+				closesocket(clientSocket);
+				break;
+			}
+
+			SendLine(clientSocket, "200 Welcome");
+
+			char buffer[64];
+			if (recv(clientSocket, buffer, sizeof(buffer), 0) > 0)
+			{
+				SendLine(clientSocket, "205 Connection closing");
+			}
+
+			shutdown(clientSocket, SHUT_RDWR);
+			closesocket(clientSocket);
+		}
+	}
+
+	std::atomic<SOCKET> m_listenSocket{INVALID_SOCKET};
+	std::atomic<bool> m_stopping{false};
+	std::thread m_thread;
+};
 
 void AddTestServer(ServerPool* pool, int id, bool active, int level, bool optional, int group, int connections)
 {
@@ -325,6 +446,100 @@ BOOST_AUTO_TEST_CASE(VerifyNormLevelCorrectness)
 	BOOST_CHECK(con != nullptr);
 	
 	if (con) pool.FreeConnection(con, false);
+}
+
+BOOST_AUTO_TEST_CASE(IdleLevelWaitsForMostRecentlyFreedConnection)
+{
+	ConnectionIdlePolicy policy;
+	policy.ObserveIdle(10);
+	BOOST_CHECK(policy.ShouldClose());
+
+	policy.ObserveIdle(0);
+	BOOST_CHECK(!policy.ShouldClose());
+}
+
+BOOST_AUTO_TEST_CASE(CloseUnusedConnectionsUsesWholeLevelIdleTime)
+{
+	LoopbackNntpServer server1;
+	LoopbackNntpServer server2;
+	int port1 = server1.Start();
+	int port2 = server2.Start();
+	BOOST_REQUIRE(port1 != 0);
+	BOOST_REQUIRE(port2 != 0);
+
+	ServerPool pool;
+	pool.AddServer(std::make_unique<NewsServer>(1, true, "test1", "127.0.0.1", port1, 4,
+		"", "", false, false, nullptr, 1, 0, 0, 0, false, Options::cvNone));
+	pool.AddServer(std::make_unique<NewsServer>(2, true, "test2", "127.0.0.1", port2, 4,
+		"", "", false, false, nullptr, 1, 0, 0, 0, false, Options::cvNone));
+	pool.InitConnections();
+
+	NewsServer* newsServer1 = pool.GetServers()->at(0).get();
+	NewsServer* newsServer2 = pool.GetServers()->at(1).get();
+	NntpConnection* oldConnection1 = pool.GetConnection(0, newsServer1, nullptr);
+	NntpConnection* oldConnection2 = pool.GetConnection(0, newsServer2, nullptr);
+	BOOST_REQUIRE(oldConnection1 != nullptr);
+	BOOST_REQUIRE(oldConnection2 != nullptr);
+	oldConnection1->SetSuppressErrors(true);
+	oldConnection2->SetSuppressErrors(true);
+	oldConnection1->SetTimeout(5);
+	oldConnection2->SetTimeout(5);
+	BOOST_REQUIRE(oldConnection1->Connect());
+	BOOST_REQUIRE(oldConnection2->Connect());
+
+	// Preserve the initial epoch timestamps to create an all-old level without sleeping.
+	pool.FreeConnection(oldConnection1, false);
+	pool.FreeConnection(oldConnection2, false);
+	pool.CloseUnusedConnections();
+
+	BOOST_REQUIRE(oldConnection1->GetStatus() == Connection::csDisconnected);
+	BOOST_REQUIRE(oldConnection2->GetStatus() == Connection::csDisconnected);
+
+	NntpConnection* oldConnection = pool.GetConnection(0, newsServer1, nullptr);
+	NntpConnection* recentlyUsed = pool.GetConnection(0, newsServer2, nullptr);
+	BOOST_REQUIRE(oldConnection != nullptr);
+	BOOST_REQUIRE(recentlyUsed != nullptr);
+	oldConnection->SetSuppressErrors(true);
+	recentlyUsed->SetSuppressErrors(true);
+	oldConnection->SetTimeout(5);
+	recentlyUsed->SetTimeout(5);
+	BOOST_REQUIRE(oldConnection->Connect());
+	BOOST_REQUIRE(recentlyUsed->Connect());
+
+	// Keep one old timestamp and stamp the other connection as freshly returned.
+	pool.FreeConnection(oldConnection, false);
+	pool.FreeConnection(recentlyUsed, true);
+	BOOST_REQUIRE(oldConnection->GetStatus() == Connection::csConnected);
+	BOOST_REQUIRE(recentlyUsed->GetStatus() == Connection::csConnected);
+
+	pool.CloseUnusedConnections();
+
+	BOOST_CHECK(oldConnection->GetStatus() == Connection::csConnected);
+	BOOST_CHECK(recentlyUsed->GetStatus() == Connection::csConnected);
+}
+
+BOOST_AUTO_TEST_CASE(IdleLevelClosesOnlyAfterEveryConnectionPassesHold)
+{
+	ConnectionIdlePolicy allIdle;
+	allIdle.ObserveIdle(7);
+	allIdle.ObserveIdle(6);
+	BOOST_CHECK(allIdle.ShouldClose());
+
+	ConnectionIdlePolicy boundary;
+	boundary.ObserveIdle(5);
+	BOOST_CHECK(!boundary.ShouldClose());
+
+	ConnectionIdlePolicy active;
+	active.ObserveIdle(10);
+	active.ObserveInUse();
+	BOOST_CHECK(!active.ShouldClose());
+
+	ConnectionIdlePolicy empty;
+	BOOST_CHECK(!empty.ShouldClose());
+
+	ConnectionIdlePolicy largeDuration;
+	largeDuration.ObserveIdle(std::numeric_limits<time_t>::max());
+	BOOST_CHECK(largeDuration.ShouldClose());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

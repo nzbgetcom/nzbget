@@ -22,9 +22,8 @@
 
 #include "nzbget.h"
 #include "ServerPool.h"
+#include "ConnectionIdlePolicy.h"
 #include "Util.h"
-
-static const int CONNECTION_HOLD_SECODNS = 5;
 
 void ServerPool::PooledConnection::SetFreeTimeNow()
 {
@@ -327,32 +326,24 @@ void ServerPool::CloseUnusedConnections()
 	// close all opened connections on levels not having any in-use connections
 	for (int level = 0; level <= m_maxNormLevel; level++)
 	{
-		// check if we have in-use connections on the level
-		bool hasInUseConnections = false;
-		int inactiveTime = 0;
+		ConnectionIdlePolicy idlePolicy;
 		for (PooledConnection* connection : &m_connections)
 		{
 			if (connection->GetNewsServer()->GetNormLevel() == level)
 			{
 				if (connection->GetInUse())
 				{
-					hasInUseConnections = true;
+					idlePolicy.ObserveInUse();
 					break;
 				}
-				else
-				{
-					int tdiff = (int)(curtime - connection->GetFreeTime());
-					if (tdiff > inactiveTime)
-					{
-						inactiveTime = tdiff;
-					}
-				}
+
+				idlePolicy.ObserveIdle(curtime - connection->GetFreeTime());
 			}
 		}
 
 		// if there are no in-use connections on the level and the hold time out has
 		// expired - close all connections of the level.
-		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECODNS)
+		if (idlePolicy.ShouldClose())
 		{
 			for (PooledConnection* connection : &m_connections)
 			{
