@@ -2360,8 +2360,8 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			// (a stable per-member upper bound that bails before its download).
 			// Checked in delivery order BEFORE each write, exactly as the
 			// serial loop did - the fetch window may run ahead, the caps never
-			if (totalBytes + (int64)fetched.Data.size() > DupeStreamRepair::MaxDecompressBytes ||
-				totalExtent + fetched.FileSize > DupeStreamRepair::MaxDecompressBytes)
+			if (DupeStreamRepair::ExceedsDecompressCap(totalBytes,
+				(int64)fetched.Data.size(), totalExtent, fetched.FileSize))
 			{
 				m_batchFetcher.CancelRemaining();
 				return false;

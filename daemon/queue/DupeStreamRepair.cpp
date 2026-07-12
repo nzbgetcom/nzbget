@@ -512,3 +512,10 @@ std::string DupeStreamRepair::SelectExtractedInner(const char* dir, int64 innerS
 
 	return matches.front();
 }
+
+bool DupeStreamRepair::ExceedsDecompressCap(int64 totalBytes, int64 addBytes,
+	int64 totalExtent, int64 addExtent)
+{
+	return totalBytes + addBytes > MaxDecompressBytes ||
+		totalExtent + addExtent > MaxDecompressBytes;
+}

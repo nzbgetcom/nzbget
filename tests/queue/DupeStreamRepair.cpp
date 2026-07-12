@@ -507,9 +507,26 @@ BOOST_AUTO_TEST_CASE(SelectExtractedInnerTest)
 	fs::remove_all(tempDir, ec);
 }
 
-BOOST_AUTO_TEST_CASE(MaxDecompressBytesTest)
+BOOST_AUTO_TEST_CASE(ExceedsDecompressCapTest)
 {
-	BOOST_CHECK_EQUAL(DupeStreamRepair::MaxDecompressBytes, 16LL * 1024 * 1024 * 1024);
+	const int64 Max = DupeStreamRepair::MaxDecompressBytes;
+
+	// exactly at the cap via accumulated decoded bytes: not exceeded
+	BOOST_CHECK(!DupeStreamRepair::ExceedsDecompressCap(Max - 100, 100, 0, 0));
+	// one byte over via accumulated decoded bytes: exceeded
+	BOOST_CHECK(DupeStreamRepair::ExceedsDecompressCap(Max - 99, 100, 0, 0));
+
+	// exactly at the cap via accumulated file extent: not exceeded
+	BOOST_CHECK(!DupeStreamRepair::ExceedsDecompressCap(0, 0, Max - 50, 50));
+	// one byte over via accumulated file extent: exceeded
+	BOOST_CHECK(DupeStreamRepair::ExceedsDecompressCap(0, 0, Max - 49, 50));
+
+	// already at the cap: even a 1-byte addition on either dimension trips it
+	BOOST_CHECK(DupeStreamRepair::ExceedsDecompressCap(Max, 1, 0, 0));
+	BOOST_CHECK(DupeStreamRepair::ExceedsDecompressCap(0, 0, Max, 1));
+
+	// nowhere near either bound: not exceeded
+	BOOST_CHECK(!DupeStreamRepair::ExceedsDecompressCap(0, 1024, 0, 1024));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

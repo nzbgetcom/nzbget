@@ -122,6 +122,15 @@ public:
 
 	static bool IntersectsAny(const StreamRange& range, const StreamRangeList& ranges);
 
+	/* M4 donor materialization cap check: true if accepting addBytes more
+	 * decoded bytes and/or addExtent more file extent would push the
+	 * accumulated totals past MaxDecompressBytes. A pure function so the
+	 * bound itself is unit-testable without driving real article fetches;
+	 * StreamRepairController::MaterializeDonorSet calls this before every
+	 * write and cancels the remaining fetch window on true. */
+	static bool ExceedsDecompressCap(int64 totalBytes, int64 addBytes,
+		int64 totalExtent, int64 addExtent);
+
 private:
 	static bool RangesIntersect(const StreamRange& range1, const StreamRange& range2)
 	{
