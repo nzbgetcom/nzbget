@@ -2322,14 +2322,30 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 		}
 
 		int64 memberExtent = 0;	// this member's highest write end (its real size)
+		// requests OWN a shared copy of the group list: donorNzb is destroyed
+		// per donor iteration while cancelled workers may still be fetching
+		// (same pattern as VerifyDonor/PatchFromDonor after the UAF fix)
+		auto donorGroups = std::make_shared<std::vector<CString>>();
+		for (const CString& group : *donorFile->GetGroups())
+		{
+			donorGroups->emplace_back(*group);
+		}
+		std::vector<ArticleBatchFetcher::Request> requests;
+		requests.reserve(donorFile->GetArticles()->size());
 		for (std::unique_ptr<ArticleInfo>& article : *donorFile->GetArticles())
+		{
+			requests.push_back({article->GetMessageId(), donorGroups});
+		}
+		m_batchFetcher.Begin(std::move(requests));
+
+		ArticleFetcher::FetchedArticle fetched;
+		while (m_batchFetcher.Next(fetched))
 		{
 			if (IsStopped())
 			{
+				m_batchFetcher.CancelRemaining();
 				return false;
 			}
-			ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
-				article->GetMessageId(), *donorFile->GetGroups());
 			if (!fetched.Success || fetched.Data.empty() || fetched.Offset < 0 ||
 				fetched.Offset + (int64)fetched.Data.size() > fetched.FileSize)
 			{
@@ -2339,10 +2355,13 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			// the caps bound BOTH the accumulated decoded bytes AND the
 			// accumulated file extents across ALL members: prior members by
 			// their real materialized extent, this member by its declared size
-			// (a stable per-member upper bound that bails before its download)
+			// (a stable per-member upper bound that bails before its download).
+			// Checked in delivery order BEFORE each write, exactly as the
+			// serial loop did - the fetch window may run ahead, the caps never
 			if (totalBytes + (int64)fetched.Data.size() > DupeStreamRepair::MaxDecompressBytes ||
 				totalExtent + fetched.FileSize > DupeStreamRepair::MaxDecompressBytes)
 			{
+				m_batchFetcher.CancelRemaining();
 				return false;
 			}
 			file.Seek(fetched.Offset);
@@ -2353,6 +2372,7 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 				PrintMessage(Message::mkWarning,
 					"Could not write to %s during donor materialization: %s",
 					*path, *FileSystem::GetLastErrorMessage());
+				m_batchFetcher.CancelRemaining();
 				return false;
 			}
 			totalBytes += fetched.Data.size();
