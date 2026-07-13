@@ -69,7 +69,7 @@ std::optional<std::vector<fs::path>> ArchiveProcessor::Process(const fs::path& a
 		to.push_back(destDir / relPath);
 	}
 
-	MoveNzbFiles(from, to);
+	int moved = MoveNzbFiles(from, to);
 
 	fs::error_code ec;
 	fs::remove_all(unpackDir, ec);
@@ -83,8 +83,17 @@ std::optional<std::vector<fs::path>> ArchiveProcessor::Process(const fs::path& a
 		detail("%s Cleaned up temporary directory '%s'", LOG_PREFIX, fs::u8string(unpackDir).c_str());
 	}
 
+	if (moved > 0)
+	{
+		info("%s Moved %d NZB file(s) to '%s'", LOG_PREFIX, moved, fs::u8string(destDir).c_str());
+	}
+
 	DisposeArchive(archiveFile, scanResult.nonNzbFiles);
 
+	if (moved == 0)
+	{
+		to.clear();
+	}
 	return to;
 }
 
@@ -155,8 +164,9 @@ ArchiveProcessor::ScanResult ArchiveProcessor::ScanUnpackDir(const fs::path& unp
 	return result;
 }
 
-void ArchiveProcessor::MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const
+int ArchiveProcessor::MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const
 {
+	int moved = 0;
 	fs::error_code ec;
 	for (size_t i = 0; i < from.size(); ++i)
 	{
@@ -169,7 +179,12 @@ void ArchiveProcessor::MoveNzbFiles(const std::vector<fs::path>& from, const std
 			error("%s Failed to move NZB '%s': %s", LOG_PREFIX,
 				  fs::u8string(from[i].filename()).c_str(), ec.message().c_str());
 		}
+		else
+		{
+			++moved;
+		}
 	}
+	return moved;
 }
 
 void ArchiveProcessor::DisposeArchive(const fs::path& archiveFile, int nonNzbFileCount) const

@@ -54,7 +54,7 @@ private:
 	bool Extract(const fs::path& archiveFile, const fs::path& unpackDir) const;
 	bool IsNzbFile(const fs::path& filename) const;
 	ScanResult ScanUnpackDir(const fs::path& unpackDir) const;
-	void MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const;
+	int MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const;
 	void DisposeArchive(const fs::path& archiveFile, int nonNzbFileCount) const;
 	const Config m_config;
 };
