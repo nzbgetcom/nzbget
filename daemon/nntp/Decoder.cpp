@@ -451,7 +451,7 @@ void Decoder::ProcessRaw(char* buffer, int len)
 			break;
 	}
 
-	m_eof |= len >= 5 && strstr(buffer, "\r\n.\r\n");
+	m_eof |= std::string_view(buffer, len).find("\r\n.\r\n") != std::string_view::npos;
 
 	if (len >= 4 && buffer[len-4] == '\r' && buffer[len-3] == '\n' &&
 		buffer[len-2] == '.' && buffer[len-1] == '\r')

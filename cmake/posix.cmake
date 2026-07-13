@@ -1,7 +1,6 @@
 option(ENABLE_STATIC "Build static executable")
 option(ENABLE_TESTS "Build tests")
 option(ENABLE_CLANG_TIDY "Enable Clang-Tidy static analyzer")
-option(ENABLE_SANITIZERS "Enable leak, undefined, address sanitizers")
 option(DISABLE_TLS "Disable TLS")
 option(DISABLE_CURSES "Disable curses")
 option(DISABLE_GZIP "Disable gzip")
@@ -15,11 +14,11 @@ message(STATUS "BUILD OPTIONS:")
 message(STATUS "  BUILD TYPE:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  ENABLE STATIC:     ${ENABLE_STATIC}")
 message(STATUS "  ENABLE TESTS:      ${ENABLE_TESTS}")
-message(STATUS "  ENABLE SANITIZERS: ${ENABLE_SANITIZERS}")
 message(STATUS "  DISABLE TLS:       ${DISABLE_TLS}")
 message(STATUS "  DISABLE CURSES:    ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:      ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK:  ${DISABLE_PARCHECK}")
+message(STATUS "  USE SANITIZERS:    ${USE_SANITIZERS}")
 
 set(BOOST_NEEDED_COMPONENTS json)
 
@@ -52,12 +51,6 @@ endif()
 
 if(ENABLE_CLANG_TIDY)
 	set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=-*,readability-*)
-endif()
-
-if(ENABLE_SANITIZERS)
-	set(SANITIZERS_OPTION "-fsanitize=leak,undefined,address")
-	target_compile_options(${PACKAGE} PRIVATE ${SANITIZERS_OPTION})
-	target_link_options(${PACKAGE} PRIVATE ${SANITIZERS_OPTION})
 endif()
 
 if(ENABLE_STATIC)
