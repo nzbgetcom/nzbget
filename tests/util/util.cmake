@@ -6,6 +6,7 @@ list(APPEND TESTS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Benchmark.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/DataAnalytics.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/util/Unpack.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/util/FileTypes.cpp
 )
 
 if(WIN32)

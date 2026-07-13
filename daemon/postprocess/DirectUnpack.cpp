@@ -24,6 +24,7 @@
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include "FileTypes.h"
 #include "Options.h"
 
 void DirectUnpack::StartJob(NzbInfo* nzbInfo)
@@ -280,10 +281,14 @@ void DirectUnpack::FindArchiveFiles()
 
 bool DirectUnpack::IsMainArchive(const char* filename)
 {
+	auto ext = FileSystem::GetFileExtension(filename);
+	if (!ext || !FileTypes::IsRarExt(*ext))
+	{
+		return false;
+	}
+
 	RegEx regExRarPart(".*\\.part([0-9]+)\\.rar$");
-	bool mainPart = Util::EndsWith(filename, ".rar", false) &&
-		(!regExRarPart.Match(filename) || atoi(filename + regExRarPart.GetMatchStart(1)) == 1);
-	return mainPart;
+	return !regExRarPart.Match(filename) || atoi(filename + regExRarPart.GetMatchStart(1)) == 1;
 }
 
 /**
@@ -565,13 +570,8 @@ void DirectUnpack::AddExtraTime(NzbInfo* nzbInfo)
 	}
 }
 
-bool DirectUnpack::IsArchiveFilename(const char* filename)
+bool DirectUnpack::IsArchiveFilename(std::string_view filename)
 {
-	if (Util::EndsWith(filename, ".rar", false))
-	{
-		return true;
-	}
-
-	RegEx regExRarMultiSeq(".*\\.[r-z][0-9][0-9]$");
-	return regExRarMultiSeq.Match(filename);
+	auto ext = FileSystem::GetFileExtension(filename);
+	return ext && (FileTypes::IsRarExt(*ext) || FileTypes::IsRarVolumeExt(*ext));
 }

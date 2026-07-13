@@ -22,7 +22,6 @@
 #include "nzbget.h"
 
 #include <exception>
-#include <filesystem>
 #include <fstream>
 #include <memory>
 
@@ -640,7 +639,7 @@ bool Scanner::AddFileToQueue(
 
 	if (nzbName && strlen(nzbName) > 0)
 	{
-		nzbInfo->SetName(nullptr);
+		nzbInfo->SetName("");
 		nzbInfo->SetFilename(nzbName);
 		nzbInfo->BuildDestDirName();
 	}

@@ -94,54 +94,117 @@ bool MoveController::MoveFiles()
 		return false;
 	}
 
-	bool ok = true;
-	MoveFiles(m_interDir, m_destDir, ok);
-	
-	if (ok && FileSystem::DirectoryExists(m_interDir.c_str()) &&
+	if (!MoveFiles(fs::u8path(m_interDir), fs::u8path(m_destDir)))
+		return false;
+
+	if (FileSystem::DirectoryExists(m_interDir.c_str()) &&
 		!FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
 	{
 		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
 	}
 
-	return ok;
+	return true;
 }
 
-void MoveController::MoveFiles(const std::string& src, const std::string& dest, bool& isOk)
+bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 {
-	DirBrowser dir(src.c_str());
-	while (const char* filename = dir.Next())
+	std::vector<fs::path> dirs, files;
+	fs::error_code ec;
+	for (auto it = fs::recursive_directory_iterator(src, fs::directory_options::skip_permission_denied, ec); 
+		it != fs::recursive_directory_iterator(); 
+		it.increment(ec))
 	{
-		const std::string srcFile = src + PATH_SEPARATOR + filename;
-		const std::string dstFile = dest + PATH_SEPARATOR + filename;
-		if (FileSystem::DirectoryExists(srcFile.c_str()))
+		if (IsStopped()) break;
+		if (ec) break;
+
+		auto filename = fs::u8string(it->path().filename());
+		if (filename[0] == '.')
 		{
-			CString errmsg;
-			if (FileSystem::ForceDirectories(dstFile.c_str(), errmsg))
+			if (it->is_directory(ec))
 			{
-				MoveFiles(srcFile, dstFile, isOk);
+				it.disable_recursion_pending();
 			}
-			else
-			{
-				isOk = false;
-				PrintMessage(Message::mkError, "Could not create directory %s: %s", dest.c_str(), *errmsg);
-			}
+			continue;
+		}
+
+		if (it->is_directory(ec))
+		{
+			dirs.push_back(it->path());
 		}
 		else
 		{
-			bool hiddenFile = srcFile[0] == '.';
-			if (hiddenFile)
-				continue;
-
-			PrintMessage(Message::mkInfo, "Moving file %s to %s", filename, dest.c_str());
-
-			if (!FileSystem::MoveFile(srcFile.c_str(), dstFile.c_str()))
-			{
-				isOk = false;
-				PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
-					srcFile.c_str(), dstFile.c_str(), *FileSystem::GetLastErrorMessage());
-			}
+			files.push_back(it->path());
 		}
 	}
+
+	if (IsStopped() || ec)
+	{
+		return false;
+	}
+
+	for (const auto& d : dirs)
+	{
+		if (IsStopped()) return false;
+		fs::path dstDir = dest / d.lexically_relative(src);
+		fs::create_directories(dstDir, ec);
+		if (ec)
+		{
+			PrintMessage(Message::mkError,
+				"Could not create directory %s: %s",
+				fs::u8string(dstDir).c_str(), ec.message().c_str());
+			return false;
+		}
+	}
+
+	for (const auto& f : files)
+	{
+		if (IsStopped()) return false;
+		std::string filename = fs::u8string(f.filename());
+		auto relPath = f.lexically_relative(src);
+		fs::path dstPath = dest / relPath;
+
+		if (fs::exists(dstPath, ec))
+		{
+			if (fs::equivalent(f, dstPath, ec))
+			{
+				fs::remove(f, ec);
+				if (ec)
+				{
+					PrintMessage(Message::mkError,
+						"Could not remove file %s: %s",
+						filename.c_str(), ec.message().c_str());
+					return false;
+				}
+				continue;
+			}
+
+			dstPath = fs::make_unique_filename(dstPath);
+			PrintMessage(Message::mkWarning,
+				"File %s already exists in destination, saving as %s",
+				filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+		}
+
+		PrintMessage(Message::mkInfo, "Moving file %s to %s",
+			filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+
+		fs::move_file(f, dstPath, ec);
+		if (ec)
+		{
+			PrintMessage(Message::mkError,
+				"Could not move file %s to %s: %s",
+				filename.c_str(), fs::u8string(dstPath).c_str(), ec.message().c_str());
+			return false;
+		}
+
+		if (fs::u8string(dstPath.filename()) != filename)
+		{
+			std::string newName = fs::u8string(dstPath.filename());
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
+			m_postInfo->GetNzbInfo()->RenameCompletedFile(filename.c_str(), newName.c_str());
+		}
+	}
+
+	return true;
 }
 
 void MoveController::AddMessage(Message::EKind kind, const char* text)

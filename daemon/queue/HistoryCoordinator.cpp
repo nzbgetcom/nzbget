@@ -398,6 +398,9 @@ void HistoryCoordinator::MoveToQueue(DownloadQueue* downloadQueue, HistoryList::
 		nzbInfo->SetCleanupStatus(NzbInfo::csNone);
 		nzbInfo->SetParRenameStatus(NzbInfo::rsNone);
 		nzbInfo->SetRarRenameStatus(NzbInfo::rsNone);
+		nzbInfo->SetPostUnpackRenamingStatus(NzbInfo::RenamingStatus::None);
+		nzbInfo->SetPostRenamingStatus(NzbInfo::RenamingStatus::None);
+		nzbInfo->ResetHardLinks();
 		nzbInfo->SetPostTotalSec(nzbInfo->GetPostTotalSec() - nzbInfo->GetUnpackSec());
 		nzbInfo->SetUnpackSec(0);
 
@@ -516,6 +519,9 @@ void HistoryCoordinator::HistoryRedownload(DownloadQueue* downloadQueue, History
 	nzbInfo->SetParStatus(NzbInfo::psNone);
 	nzbInfo->SetParRenameStatus(NzbInfo::rsNone);
 	nzbInfo->SetRarRenameStatus(NzbInfo::rsNone);
+	nzbInfo->SetPostUnpackRenamingStatus(NzbInfo::RenamingStatus::None);
+	nzbInfo->SetPostRenamingStatus(NzbInfo::RenamingStatus::None);
+	nzbInfo->ResetHardLinks();
 	nzbInfo->SetDirectRenameStatus(NzbInfo::tsNone);
 	nzbInfo->SetDirectUnpackStatus(NzbInfo::nsNone);
 	nzbInfo->SetHealthPaused(false);
@@ -650,7 +656,6 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 					g_DiskState->SaveFileState(fileInfo.get(), true);
 				}
 				fileInfo->GetArticles()->clear();
-
 				nzbInfo->GetFileList()->Add(std::move(fileInfo), false);
 
 				it = nzbInfo->GetCompletedFiles()->erase(it);

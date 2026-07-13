@@ -69,6 +69,7 @@ public:
 
 protected:
 	virtual void RenameCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo) = 0;
+	void HardLinkFiles(NzbInfo* nzbInfo);
 
 private:
 	void CheckState(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
@@ -81,6 +82,12 @@ private:
 	std::string BuildNewParName(const char* oldName, const char* destDir, const char* setId, int& vol);
 	int RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
 	int RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
+	void HardLinkFile(NzbInfo* nzbInfo, FileInfo* file);
+	void HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file);
+	bool CreateHardLink(NzbInfo* nzbInfo, const std::string& sourcePath, const std::string& destFilename, std::string& finalOutputFilename);
+
+	template <typename F>
+	void HardLinkFileImpl(NzbInfo* nzbInfo, const char* filename, const std::string& sourcePath, const char* notReadyReason, F onSuccess);
 
 	friend class DirectParLoader;
 };

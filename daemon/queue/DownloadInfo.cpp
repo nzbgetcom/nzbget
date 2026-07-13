@@ -27,6 +27,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 
+
 int FileInfo::m_idGen = 0;
 int FileInfo::m_idMax = 0;
 int NzbInfo::m_idGen = 0;
@@ -175,7 +176,7 @@ void NzbInfo::SetUrl(const char* url)
 {
 	m_url = url;
 
-	if (!m_name)
+	if (m_name.empty())
 	{
 		CString nzbNicename = MakeNiceUrlName(url, m_filename);
 		SetName(nzbNicename);
@@ -187,7 +188,7 @@ void NzbInfo::SetFilename(const char* filename)
 	bool hadFilename = !Util::EmptyStr(m_filename);
 	m_filename = filename;
 
-	if ((!m_name || !hadFilename) && !Util::EmptyStr(filename))
+	if ((m_name.empty() || !hadFilename) && !Util::EmptyStr(filename))
 	{
 		CString nzbNicename = MakeNiceNzbName(m_filename, true);
 		SetName(nzbNicename);
@@ -227,6 +228,45 @@ CString NzbInfo::MakeNiceUrlName(const char* urlStr, const char* nzbFilename)
 	}
 
 	return urlNicename;
+}
+
+const char* NzbInfo::GetMetaName()
+{
+	if (NzbParameter* metaNameParam = m_ppParameters.Find("*MetaName"))
+	{
+		const char* val = metaNameParam->GetValue();
+		if (val && val[0] != '\0')
+		{
+			return val;
+		}
+	}
+	return m_name.c_str();
+}
+
+bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newName)
+{
+	for (CompletedFile& cf : m_completedFiles)
+	{
+		if (!strcasecmp(cf.GetFilename(), oldName))
+		{
+			if (Util::EmptyStr(cf.GetOrigname()))
+			{
+				cf.SetOrigname(cf.GetFilename());
+			}
+			cf.SetFilename(newName);
+			return true;
+		}
+	}
+	return false;
+}
+
+void NzbInfo::ResetHardLinks()
+{
+	for (FileInfo* fileInfo : &m_fileList)
+	{
+		fileInfo->ResetHardLink();
+	}
+	m_hardLinkPath.clear();
 }
 
 void NzbInfo::BuildDestDirName()
@@ -841,6 +881,16 @@ void FileInfo::SetActiveDownloads(int activeDownloads)
 bool FileInfo::IsHardLinked()
 {
 	return !m_hardLinkPath.empty();
+}
+
+void FileInfo::ResetHardLink()
+{
+	if (!m_hardLinkPath.empty())
+	{
+		fs::error_code ec;
+		fs::remove(m_hardLinkPath, ec);
+		m_hardLinkPath.clear();
+	}
 }
 
 

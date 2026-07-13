@@ -105,6 +105,8 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe1.string().c_str()));
 	BOOST_CHECK(rardupe2matcher.MatchDupeContent(dupe2.string().c_str()));
 	BOOST_CHECK(rardupe2matcher.MatchDupeContent(nondupe.string().c_str()) == false);
+
+	fs::remove_all(workingDir);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

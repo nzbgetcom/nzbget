@@ -63,8 +63,8 @@ var Downloads = (new function($)
 		'REPAIRING': { Text: 'status_repairing_cap', PostProcess: true },
 		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
-		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
 		'POST_UNPACK_RENAMING': { Text: 'status_post_unpack_renaming_cap', PostProcess: true },
+		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
 		'UNPACKING': { Text: 'status_unpacking_cap', PostProcess: true },
 		'EXECUTING_SCRIPT': { Text: 'status_processing_cap', PostProcess: true },
 		'PP_FINISHED': { Text: 'status_finished_cap', PostProcess: false }

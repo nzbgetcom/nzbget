@@ -21,165 +21,316 @@
 #include "nzbget.h"
 
 #include "Deobfuscation.h"
+#include "FileSystem.h"
+#include "FileTypes.h"
+
+#include <regex>
+#include <array>
 
 namespace
 {
 	/**
-	 * @brief Parses a subject string that does not contain quotes, extracting relevant information.
-	 *
-	 * It handles formats such as:
+	 * @brief Extracts a filename from a subject line that has no quotes.
 	 * 
-	 *  - "[34/44] - id.bdmv yEnc (1/1) 104"
-	 * 
-	 *  - "Any.Show.2024.vol127+128.par2 (1/0)"
-	 * 
-	 *  - "Re: SubjectWithoutParentheses"
+	 * Handles standard Usenet subject patterns:
+	 * - yEnc binaries: "[34/44] - filename.ext yEnc (1/1)" -> extracts "filename.ext"
+	 * - Re: prefixes: "Re: Re: filename.ext (1/2)" -> strips "Re: " and extracts "filename.ext"
+	 * - General fallbacks: "filename.ext (1/2)" -> strips trailing parentheses
 	 */
-	std::string ParseWithoutQuotes(const std::string& str)
+	std::string ParseWithoutQuotes(std::string_view sv)
 	{
 		size_t start = 0;
-		size_t end = str.find(" yEnc");
-		if (end != std::string::npos)
+		size_t end = sv.find(" yEnc");
+		if (end != std::string_view::npos)
 		{
-			start = str.find_last_of(" ", end - 1);
-			if (start == std::string::npos)
-				return str.substr(0, end);
+			if (end > 0) start = sv.find_last_of(" ", end - 1);
+			if (start == std::string_view::npos)
+				return std::string(sv.substr(0, end));
 
 			start += 1;
 			if (start < end)
-				return str.substr(start, end - start);
-			return str;
+				return std::string(sv.substr(start, end - start));
+			return std::string(sv);
 		}
 
-		start = str.find("Re: ");
-		end = str.rfind(" (");
+		start = sv.find("Re: ");
+		end = sv.rfind(" (");
 
-		if (start != std::string::npos && end != std::string::npos)
+		if (start != std::string_view::npos && end != std::string_view::npos)
 		{
 			start += 4;
+			while (sv.compare(start, 4, "Re: ") == 0)
+				start += 4;
 			if (start < end)
-				return str.substr(start, end - start);
-			return str;
+				return std::string(sv.substr(start, end - start));
+			return std::string(sv);
 		}
 
-		if (start != std::string::npos && end == std::string::npos)
+		if (start != std::string_view::npos && end == std::string_view::npos)
 		{
-			return str.substr(start + 4);
+			size_t reStart = start + 4;
+			while (sv.compare(reStart, 4, "Re: ") == 0)
+				reStart += 4;
+			return std::string(sv.substr(reStart));
 		}
 
-		if (end != std::string::npos)
+		if (end != std::string_view::npos)
 		{
-			return str.substr(0, end);
+			return std::string(sv.substr(0, end));
 		}
 
-		return str;
+		return std::string(sv);
 	}
 
-	std::string ParsePRiVATEnzb(const std::string& str)
+	/**
+	 * @brief Extracts a filename from the obfuscated "[PRiVATE]" subject format.
+	 * 
+	 * Handles the double-bracketed private indexer format:
+	 * - "[PRiVATE]-[indexer]-[filename.ext]-[1/10] - \"\" yEnc" -> extracts "filename.ext"
+	 * - "[PRiVATE]-[indexer]-[1/10]-[filename.ext] - \"\" yEnc" -> extracts "filename.ext"
+	 */
+	std::string ParsePRiVATEnzb(std::string_view sv)
 	{
-		const std::string signature = "[PRiVATE]-[";
-		const std::string endOfSignature = "]-";
+		constexpr std::string_view signature = "[PRiVATE]-[";
+		constexpr std::string_view endOfSignature = "]-";
 
-		size_t beginPos = str.find(signature);
-		if (beginPos == std::string::npos) return str;
+		size_t beginPos = sv.find(signature);
+		if (beginPos == std::string_view::npos) return std::string(sv);
 
 		beginPos += signature.size();
 
-		beginPos = str.find("]-[", beginPos);
-		if (beginPos == std::string::npos) return str;
+		beginPos = sv.find("]-[", beginPos);
+		if (beginPos == std::string_view::npos) return std::string(sv);
 
 		beginPos += endOfSignature.size();
 
-		const std::string end = " - \"\"";
-		size_t endPos = str.rfind(end);
-		if (endPos == std::string::npos) return str;
+		constexpr std::string_view end = " - \"\"";
+		size_t endPos = sv.rfind(end);
+		if (endPos == std::string_view::npos) return std::string(sv);
+		if (endPos < beginPos) return std::string(sv);
 
-		// can be 
+		// can be
 		// [path/something[123].bin]-[1/10]
 		// or
 		// [1/10]-[path/something[123].bin]
 		size_t distance = endPos - beginPos;
-		const std::string middle = str.substr(beginPos, distance);
+		std::string_view middle = sv.substr(beginPos, distance);
+
+		// Split middle into bracket segments separated by "]-[".
+		// One segment is the filename, the other is the counter pattern.
+		// Handles nested brackets by tracking bracket depth.
+		auto isCounter = [](std::string_view seg) -> bool
+		{
+			return !seg.empty() &&
+				std::all_of(seg.begin(), seg.end(), [](unsigned char c)
+				{
+					return std::isdigit(c) || c == '/' || c == '_';
+				});
+		};
 
 		std::string result;
-		result.reserve(middle.size());
-
-		bool foundExtOrWord = false;
-		int depth = 0;
-		for (char ch : middle)
 		{
-			if (ch == '[' && ++depth == 1) continue;
-			if (ch == ']' && --depth == 0) continue;
-			if (foundExtOrWord && !depth) break;
-
-			if (!foundExtOrWord && !depth)
+			size_t pos = 0;
+			while (pos < middle.size())
 			{
-				result.clear();
-				continue;
+				if (middle[pos] != '[') break;
+
+				// Find the matching ']' tracking bracket depth
+				int depth = 1;
+				size_t closeBracket = pos + 1;
+				while (closeBracket < middle.size() && depth > 0)
+				{
+					if (middle[closeBracket] == '[') depth++;
+					else if (middle[closeBracket] == ']') depth--;
+					if (depth > 0) closeBracket++;
+				}
+				if (depth != 0) break;
+
+				std::string_view segment = middle.substr(pos + 1, closeBracket - pos - 1);
+				if (!isCounter(segment))
+				{
+					size_t lastSep = segment.rfind('/');
+					size_t lastBackslash = segment.rfind('\\');
+					size_t start = 0;
+					if (lastBackslash != std::string_view::npos)
+						start = lastBackslash + 1;
+					if (lastSep != std::string_view::npos && lastSep + 1 > start)
+						start = lastSep + 1;
+
+					result = std::string(segment.substr(start));
+					break;
+				}
+
+				pos = closeBracket + 1;
+				if (pos + 1 < middle.size() && middle[pos] == '-' && middle[pos + 1] == '[')
+				{
+					pos += 1;
+				}
 			}
-
-			if (!depth && ch == '-') continue;
-
-			if (depth == 1 && (ch == '/' || ch == '\\'))
-			{
-				result.clear();
-				continue;
-			}
-
-			if (depth == 1 && (ch == '.' || isalpha(ch) != 0))
-				foundExtOrWord = true;
-
-			result.push_back(ch);
 		}
 
-		result.shrink_to_fit();
-
+		if (result.empty())
+		{
+			return std::string(sv);
+		}
 		return result;
+	}
+}
+
+namespace
+{
+	const std::array<std::regex, 10>& GetObfuscationRegexes()
+	{
+		static const std::array<std::regex, 10> regexes{
+			std::regex{ "[0-9a-f.]{16}" },
+			std::regex{ "^(?=.*[0-9])[0-9a-zA-Z]{14,256}" },
+			std::regex{ "^[a-z0-9]{16,256}$" },
+			std::regex{ "^abc$" },
+			std::regex{ "^abc[-_. ]xyz" },
+			std::regex{ "^[A-Z]{11,256}[0-9]{3}$" },
+			std::regex{ "^Backup_[0-9]{5,256}S[0-9]{2}-[0-9]{2}$" },
+			std::regex{ "^123$" },
+			std::regex{ "^b00bs$" },
+			std::regex{ "^[0-9]{6}_[0-9]{2}$" },
+		};
+		return regexes;
+	}
+
+	std::regex& GetSeasonEpisodeRegex()
+	{
+		static std::regex re(R"([Ss]\d{2}[Ee]\d{2})");
+		return re;
+	}
+
+	std::regex& GetYearRegex()
+	{
+		static std::regex re(R"((?:19|20)\d{2})");
+		return re;
 	}
 }
 
 namespace Deobfuscation
 {
+	/**
+	 * @brief Counter-heuristic to check if a filename is likely legitimate (not a random hash).
+	 * 
+	 * Checks for spaces, season/episode markers (SxxExx), and 4-digit years.
+	 * These patterns appear in legitimate scene/movie releases but virtually
+	 * never in automated obfuscation hashes.
+	 */
+	bool IsProbablyLegitimateFilename(std::string_view str)
+	{
+		return str.find(' ') != std::string_view::npos ||
+			   std::regex_search(str.begin(), str.end(), GetSeasonEpisodeRegex()) ||
+			   std::regex_search(str.begin(), str.end(), GetYearRegex());
+	}
+
+	/**
+	 * @brief Checks if a filename matches known obfuscation hash patterns.
+	 * 
+	 * Matches against a list of common obfuscation regexes (e.g., 16+ char hex, 14+ char alphanumeric).
+	 * Excludes standard archive extensions (.rar, .zip, etc.) and applies the
+	 * `IsProbablyLegitimateFilename` counter-heuristic to prevent false positives.
+	 */
 	bool IsExcessivelyObfuscated(const std::string& str)
 	{
-		if (str.empty())
+		if (str.empty() || IsProbablyLegitimateFilename(str))
 			return false;
 
-		for (const auto& regex : EXCLUDED_HASHED_RELEASES_REGEXES)
+		if (auto ext = FileSystem::GetFileExtension(str))
 		{
-			if (std::regex_search(str, regex))
+			std::string_view extView(*ext);
+			std::optional<std::string> nestedExt;
+
+			// If it's a numeric split volume (e.g., .001), check the nested extension
+			if (FileTypes::IsNumericVolumeExt(extView))
+			{
+				std::string base = str.substr(0, str.size() - extView.size());
+				nestedExt = FileSystem::GetFileExtension(base);
+				if (nestedExt)
+				{
+					extView = *nestedExt;
+				}
+			}
+			else if (FileTypes::IsAllDigitsExt(extView))
+			{
+				// Short numeric extension (e.g., .15): only treat as split
+				// volume if there's a recognized archive extension underneath
+				std::string base = str.substr(0, str.size() - extView.size());
+				nestedExt = FileSystem::GetFileExtension(base);
+				if (nestedExt && (FileTypes::IsArchiveExt(*nestedExt) ||
+					FileTypes::IsParityExt(*nestedExt) ||
+					FileTypes::IsDiscStructureExt(*nestedExt)))
+				{
+					extView = *nestedExt;
+				}
+			}
+
+			if (FileTypes::IsArchiveExt(extView) || FileTypes::IsParityExt(extView) ||
+				FileTypes::IsDiscStructureExt(extView))
+			{
 				return false;
+			}
 		}
 
-		for (const auto& regex : HASHED_RELEASES_REGEXES)
+		for (const auto& regex : GetObfuscationRegexes())
 		{
 			if (std::regex_search(str, regex))
+			{
 				return true;
+			}
 		}
 
 		return false;
 	}
 
+	/**
+	 * @brief Main entry point to extract a clean filename from a Usenet subject line.
+	 * 
+	 * 1. Strips leading bracket tags (e.g., "[N3wZ] ").
+	 * 2. If the subject contains quotes, extracts the quoted filename.
+	 * 3. If quotes are empty (""), dispatches to the `[PRiVATE]` parser.
+	 * 4. If no quotes exist, dispatches to the quote-less parser.
+	 */
 	std::string Deobfuscate(const std::string& str)
 	{
 		if (str.size() < 3) 
 			return str;
 
-		size_t firstQuotPos = str.find("\"");
+		size_t contentStart = 0;
+		while (contentStart < str.size() && str[contentStart] == '[')
+		{
+			size_t closeBracket = str.find(']', contentStart);
+			if (closeBracket != std::string::npos && closeBracket + 1 < str.size() && str[closeBracket + 1] == ' ')
+			{
+				contentStart = closeBracket + 2;
+			}
+			else
+			{
+				break;
+			}
+		}
 
-		if (firstQuotPos == std::string::npos)
-			return ParseWithoutQuotes(str);
+		std::string_view sv(str);
+		sv.remove_prefix(contentStart);
+
+		if (sv.size() < 3)
+			return std::string(sv);
+
+		size_t firstQuotPos = sv.find("\"");
+
+		if (firstQuotPos == std::string_view::npos)
+			return ParseWithoutQuotes(sv);
 
 		firstQuotPos += 1;
-		size_t secondQuotPos = str.find("\"", firstQuotPos);
+		size_t secondQuotPos = sv.find("\"", firstQuotPos);
+		if (secondQuotPos == std::string_view::npos) return std::string(sv);
+
 		size_t distance = secondQuotPos - firstQuotPos;
 
 		if (distance == 0)
-			return ParsePRiVATEnzb(str);
+			return ParsePRiVATEnzb(sv);
 
-		if (distance > 0)
-			return str.substr(firstQuotPos, distance);
-
-		return str;
+		return std::string(sv.substr(firstQuotPos, distance));
 	}
 }

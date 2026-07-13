@@ -21,6 +21,7 @@
 
 #include "Unpack.h"
 #include "Util.h"
+#include "FileTypes.h"
 
 using namespace Unpack;
 
@@ -71,13 +72,12 @@ bool SevenZip::IsSupported(const fs::path& path)
 	if (!path.has_filename() || !path.has_extension()) return false;
 
 	auto filename = fs::u8string(path.filename());
-	std::transform(filename.begin(), filename.end(), filename.begin(),
-				   [](auto c) { return std::tolower(c); });
-	const static std::array<std::string_view, 9> formats{".7z", ".zip", ".7z.001", ".tar", ".gz",
-														 ".bz", ".bz2", ".tgz",	   ".txz"};
+	if (Util::EndsWith(filename.c_str(), ".7z.001", false))
+	{
+		return true;
+	}
 
-	return std::any_of(formats.cbegin(), formats.cend(), [&](auto ext)
-					   { return Util::EndsWith(filename.c_str(), ext.data(), false); });
+	return FileTypes::IsSevenZipExt(fs::u8string(path.extension()));
 }
 
 bool SevenZip::DecodeExitCode(int ec) const

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,31 +18,39 @@
  */
 
 
-#ifndef POST_UNPACK_H
-#define POST_UNPACK_H
+#ifndef COLLECTION_ANALYZER_H
+#define COLLECTION_ANALYZER_H
 
 #include <string>
-#include "Thread.h"
-#include "ScriptController.h"
-#include "DownloadInfo.h"
+#include <vector>
+#include <cstdint>
+#include "PostDownloadRenamer.h"
 
-namespace PostUnpackRenamer
+namespace PostDownloadRenamer
 {
-	class Controller final : public Thread, public ScriptController
+
+class CollectionAnalyzer final
+{
+public:
+	explicit CollectionAnalyzer(const std::vector<Candidate>& candidates);
+	bool ShouldSkip(const Candidate& candidate) const;
+
+private:
+	struct FileGroup
 	{
-	public:
-		void Run() override;
-		static void StartJob(PostInfo* postInfo);
-
-	protected:
-		void AddMessage(Message::EKind kind, const char* text) override;
-
-	private:
-		PostInfo* m_postInfo;
-		std::string m_name;
-		std::string m_dstDir;
-		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
+		fs::path parentDir;
+		std::string extKey;
+		uintmax_t largest = 0;
+		uintmax_t second = 0;
+		int count = 0;
+		bool skip = false;
 	};
+
+	std::vector<FileGroup> m_groups;
+
+	static std::vector<FileGroup> BuildGroups(const std::vector<Candidate>& candidates);
+};
+
 }
 
 #endif

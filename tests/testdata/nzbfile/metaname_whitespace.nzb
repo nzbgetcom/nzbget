@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" "http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">
+<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">
+<head>
+<meta type="name">
+  Some.Filename.1080p.WEB.H264
+</meta>
+</head>
+<file poster="poster" date="1335508618" subject="&quot;testfile.rar&quot; yEnc (1/1)">
+<groups>
+<group>alt.binaries.test</group>
+</groups>
+<segments>
+<segment bytes="1000" number="1">123456@news.astraweb.com</segment>
+</segments>
+</file>
+</nzb>
