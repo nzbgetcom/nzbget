@@ -895,7 +895,7 @@ bool ArticleWriter::MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir)
 
 	const fs::path destDir = fs::u8path(nzbInfo->GetDestDir());
 	const fs::path oldDir  = fs::u8path(oldDestDir);
-	boost::system::error_code ec;
+	fs::error_code ec;
 	fs::create_directories(destDir, ec);
 	if (ec)
 	{

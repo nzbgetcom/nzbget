@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@
 #include "ParParser.h"
 #include "DirectUnpack.h"
 #include "PostUnpackRenamer.h"
-#include <mutex>
 
 PrePostProcessor::PrePostProcessor()
 {
@@ -858,10 +857,8 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
 		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
 		nzbInfo->GetDestDir() &&
-		nzbInfo->GetName() &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+		nzbInfo->GetUnpackStatus() == NzbInfo::usSuccess &&
 		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
 		nzbInfo->GetParStatus() != NzbInfo::psManual &&
 		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
@@ -930,6 +927,7 @@ void PrePostProcessor::UpdatePauseState()
 				break;
 
 			case PostInfo::ptRarRenaming:
+			case PostInfo::ptPostUnpackRenaming:
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:

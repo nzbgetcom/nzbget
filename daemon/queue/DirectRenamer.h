@@ -81,6 +81,10 @@ private:
 	std::string BuildNewParName(const char* oldName, const char* destDir, const char* setId, int& vol);
 	int RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
 	int RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHashes, bool needRenamePars, int& vol);
+	void HardLinkFiles(NzbInfo* nzbInfo);
+	void HardLinkFile(NzbInfo* nzbInfo, FileInfo* file);
+	void HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file);
+	bool CreateHardLink(NzbInfo* nzbInfo, const std::string& sourcePath, const std::string& destFilename, std::string& finalOutputFilename);
 
 	friend class DirectParLoader;
 };

@@ -427,9 +427,8 @@ public:
 	enum class PostUnpackRenamingStatus
 	{
 		None,
-		Failure,
-		Success,
-		Skipped
+		Nothing,
+		Success
 	};
 
 	enum EDeleteStatus
@@ -489,15 +488,16 @@ public:
 	static CString MakeNiceNzbName(const char* nzbFilename, bool removeExt);
 	static CString MakeNiceUrlName(const char* url, const char* nzbFilename);
 	const char* GetDestDir() { return m_destDir; }
-	void SetDestDir(const char* destDir) { m_destDir = destDir; }
+	void SetDestDir(const char* destDir) { m_destDir = destDir ? destDir : ""; }
 	const char* GetFinalDir() { return m_finalDir; }
 	void SetFinalDir(const char* finalDir) { m_finalDir = finalDir; }
 	const char* GetCategory() { return m_category; }
 	void SetCategory(const char* category) { m_category = category; }
-	const char* GetName() { return m_name; }
+	const char* GetName() { return m_name.c_str(); }
+	const char* GetMetaName();
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
-	void SetName(const char* name) { m_name = name; }
+	void SetName(const char* name) { m_name = name ? name : ""; }
 	int GetFileCount() { return m_fileCount; }
 	void SetFileCount(int fileCount) { m_fileCount = fileCount; }
 	int GetParkedFileCount() { return m_parkedFileCount; }
@@ -555,12 +555,15 @@ public:
 	void BuildDestDirName();
 	CString BuildFinalDirName();
 	CompletedFileList* GetCompletedFiles() { return &m_completedFiles; }
+	bool RenameCompletedFile(const char* oldName, const char* newName);
 	void SetDirectRenameStatus(EDirectRenameStatus renameStatus) { m_directRenameStatus = renameStatus; }
 	EDirectRenameStatus GetDirectRenameStatus() { return m_directRenameStatus; }
 	EPostRenameStatus GetParRenameStatus() { return m_parRenameStatus; }
 	void SetParRenameStatus(EPostRenameStatus renameStatus) { m_parRenameStatus = renameStatus; }
 	EPostRenameStatus GetRarRenameStatus() { return m_rarRenameStatus; }
 	void SetRarRenameStatus(EPostRenameStatus renameStatus) { m_rarRenameStatus = renameStatus; }
+	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
+	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus renameStatus) { m_postUnpackRenamingStatus = renameStatus; }
 	EParStatus GetParStatus() { return m_parStatus; }
 	void SetParStatus(EParStatus parStatus) { m_parStatus = parStatus; }
 	EDirectUnpackStatus GetDirectUnpackStatus() { return m_directUnpackStatus; }
@@ -570,8 +573,6 @@ public:
 	ECleanupStatus GetCleanupStatus() { return m_cleanupStatus; }
 	void SetCleanupStatus(ECleanupStatus cleanupStatus) { m_cleanupStatus = cleanupStatus; }
 	EMoveStatus GetMoveStatus() { return m_moveStatus; }
-	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
-	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
 	void SetMoveStatus(EMoveStatus moveStatus) { m_moveStatus = moveStatus; }
 	EDeleteStatus GetDeleteStatus() { return m_deleteStatus; }
 	void SetDeleteStatus(EDeleteStatus deleteStatus) { m_deleteStatus = deleteStatus; }
@@ -686,7 +687,7 @@ private:
 	EKind m_kind = nkNzb;
 	CString m_url = "";
 	CString m_filename = "";
-	CString m_name;
+	std::string m_name;
 	CString m_destDir = "";
 	CString m_finalDir = "";
 	CString m_category = "";
@@ -721,12 +722,12 @@ private:
 	EDirectRenameStatus m_directRenameStatus = tsNone;
 	EPostRenameStatus m_parRenameStatus = rsNone;
 	EPostRenameStatus m_rarRenameStatus = rsNone;
+	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
 	EParStatus m_parStatus = psNone;
 	EDirectUnpackStatus m_directUnpackStatus = nsNone;
 	EPostUnpackStatus m_unpackStatus = usNone;
 	ECleanupStatus m_cleanupStatus = csNone;
 	EMoveStatus m_moveStatus = msNone;
-	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;

@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,35 +14,43 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
-#ifndef POST_UNPACK_H
-#define POST_UNPACK_H
+#ifndef POST_UNPACK_RENAMER_H
+#define POST_UNPACK_RENAMER_H
 
-#include <string>
 #include "Thread.h"
-#include "ScriptController.h"
 #include "DownloadInfo.h"
+#include <set>
+#include <vector>
+#include <string>
+#include <string_view>
 
 namespace PostUnpackRenamer
 {
-	class Controller final : public Thread, public ScriptController
-	{
-	public:
-		void Run() override;
-		static void StartJob(PostInfo* postInfo);
 
-	protected:
-		void AddMessage(Message::EKind kind, const char* text) override;
+class Controller final : public Thread
+{
+public:
+	static void StartJob(PostInfo* postInfo);
+	void Run() override;
 
-	private:
-		PostInfo* m_postInfo;
-		std::string m_name;
-		std::string m_dstDir;
-		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
-	};
+	int RenameFiles(PostInfo* postInfo);
+
+	std::string ResolveSubtitleName(std::string_view metaname, std::string_view stem, std::string_view ext);
+	std::string ResolveUniqueName(std::string_view metaname, std::string_view stem, std::string_view ext,
+		std::string_view baseName, const std::set<fs::path>& usedPaths, const fs::path& destPath);
+
+private:
+	PostInfo* m_postInfo = nullptr;
+	int m_renamedCount = 0;
+
+	std::vector<fs::path> CollectCandidates(const fs::path& dir);
+	void RenameCompleted();
+};
+
 }
 
 #endif

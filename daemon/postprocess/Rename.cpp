@@ -52,7 +52,6 @@ void RenameController::PostRarRenamer::PrintMessage(Message::EKind kind, const c
 	m_owner->m_postInfo->GetNzbInfo()->AddMessage(kind, text);
 }
 
-
 RenameController::RenameController()
 {
 	debug("Creating RenameController");
