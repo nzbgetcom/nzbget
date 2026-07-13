@@ -85,6 +85,11 @@ cmake .. -DDISABLE_TLS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/v
 ```powershell
 cmake .. -DENABLE_TESTS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
 ```
+
+  - Enable AddressSanitizer (MSVC):
+```powershell
+cmake .. -DUSE_SANITIZERS="address" -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
+```
   - Run tests:
 ```powershell
 ctest -C Release
