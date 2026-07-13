@@ -134,29 +134,12 @@ std::string GetNetworkXmlStr(const System::Network& network)
 	return res;
 }
 
-std::string BlankOutPublicIP(std::string str, const std::string& from, const std::string& to)
-{
-	size_t start = str.find(from);
-	if (start == std::string::npos)
-	{
-		return str;
-	}
-
-	start += from.length();
-
-	size_t end = str.find(to, start);
-	if (end == std::string::npos)
-	{
-		return str;
-	}
-
-	str.erase(start, end - start);
-	return str;
-}
-
 BOOST_AUTO_TEST_CASE(SystemInfoTest)
 {
-	auto sysInfo = std::make_unique<System::SystemInfo>();
+	// inject a deterministic network fetcher so the test makes no network calls
+	auto sysInfo = std::make_unique<System::SystemInfo>(
+		[] { return System::Network{ "1.2.3.4", "192.168.1.5" }; }
+	);
 
 	std::string jsonStrResult = System::ToJsonStr(*sysInfo);
 	std::string xmlStrResult = System::ToXmlStr(*sysInfo);
@@ -184,14 +167,6 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 		GetToolsXmlStr(sysInfo->GetTools()) +
 		GetLibrariesXmlStr(sysInfo->GetLibraries()) +
 		"</struct></value>";
-
-	// ToJsonStr and ToXmlStr fetch the public IP themselves, and it may change
-	// between fetches (e.g. rotating NAT egress IPs on CI runners),
-	// so blank it out on both sides before comparing
-	jsonStrResult = BlankOutPublicIP(std::move(jsonStrResult), "\"PublicIP\":\"", "\"");
-	jsonStrExpected = BlankOutPublicIP(std::move(jsonStrExpected), "\"PublicIP\":\"", "\"");
-	xmlStrResult = BlankOutPublicIP(std::move(xmlStrResult), "<name>PublicIP</name>", "</value>");
-	xmlStrExpected = BlankOutPublicIP(std::move(xmlStrExpected), "<name>PublicIP</name>", "</value>");
 
 	BOOST_TEST_MESSAGE("EXPECTED JSON STR: ");
 	BOOST_TEST_MESSAGE(jsonStrExpected);
