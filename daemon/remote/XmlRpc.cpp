@@ -2326,7 +2326,7 @@ void ListGroupsXmlCommand::Execute()
 const char* ListGroupsXmlCommand::DetectStatus(NzbInfo* nzbInfo)
 {
 	const char* postStageName[] = { "PP_QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
-		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
+		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
 		"EXECUTING_SCRIPT", "PP_FINISHED" };
 
 	const char* status = nullptr;
@@ -2715,7 +2715,8 @@ void PostQueueXmlCommand::Execute()
 		"}";
 
 	const char* postStageName[] = { "QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
-		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "EXECUTING_SCRIPT", "FINISHED" };
+		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING",
+		"POST_UNPACK_RENAMING", "EXECUTING_SCRIPT", "FINISHED" };
 
 	int index = 0;
 

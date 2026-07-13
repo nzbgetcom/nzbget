@@ -64,8 +64,6 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
-
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
@@ -102,6 +100,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/util/SevenZip.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Unrar.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Unpack.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileTypes.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp

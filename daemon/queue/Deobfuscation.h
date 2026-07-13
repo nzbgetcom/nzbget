@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -22,18 +22,15 @@
 #define DEOBFUSCATION_H
 
 #include <string>
+#include <string_view>
 #include <array>
 #include <regex>
 
 namespace Deobfuscation
 {
-	inline static const std::array<std::regex, 1> EXCLUDED_HASHED_RELEASES_REGEXES{
-		std::regex{ R"([0-9a-zA-Z]{16,256}.(7z(\.\d{2,3})?|rar|r\d{2,3}|zip|par2)$)" }
-	};
-
-	inline static const std::array<std::regex, 11> HASHED_RELEASES_REGEXES{
+	inline static const std::array<std::regex, 10> HASHED_RELEASES_REGEXES{
 		std::regex{ "[0-9a-f.]{16}" },
-		std::regex{ "^[0-9a-zA-Z]{24,256}" },
+		std::regex{ "^[0-9a-zA-Z]{14,256}" },
 		std::regex{ "^[a-z0-9]{16,256}$" },
 		std::regex{ "^abc$" },
 		std::regex{ "^abc[-_. ]xyz" },
@@ -45,6 +42,7 @@ namespace Deobfuscation
 	};
 
 	bool IsExcessivelyObfuscated(const std::string& str);
+	bool IsProbablyLegitimateFilename(std::string_view str);
 	std::string Deobfuscate(const std::string& str);
 }
 

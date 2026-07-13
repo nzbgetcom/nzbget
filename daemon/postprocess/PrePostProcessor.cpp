@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,6 @@
 #include "QueueScript.h"
 #include "ParParser.h"
 #include "DirectUnpack.h"
-#include "PostUnpackRenamer.h"
 #include <mutex>
 
 PrePostProcessor::PrePostProcessor()
@@ -855,16 +854,15 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		unpack = false;
 	}
 
-	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
-		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
+	// Unified obfuscated rename: runs after all file operations (unpack/cleanup/move)
+	// Handles both direct-download and extracted files in a single recursive pass.
+	bool obfuscatedRename = g_Options->GetRenameAfterUnpack() &&
+		nzbInfo->GetObfuscatedRenameStatus() == NzbInfo::RenameStatus::None &&
 		nzbInfo->GetDestDir() &&
 		nzbInfo->GetName() &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
 		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
-		nzbInfo->GetParStatus() != NzbInfo::psManual &&
-		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
+		nzbInfo->GetParStatus() != NzbInfo::psManual;
 
 	if (unpack)
 	{
@@ -881,10 +879,10 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		EnterStage(downloadQueue, postInfo, PostInfo::ptMoving);
 		MoveController::StartJob(postInfo);
 	}
-	else if (postUnpackRenaming)
+	else if (obfuscatedRename)
 	{
-		EnterStage(downloadQueue, postInfo, PostInfo::ptPostUnpackRenaming);
-		PostUnpackRenamer::Controller::StartJob(postInfo);
+		EnterStage(downloadQueue, postInfo, PostInfo::ptObfuscatedRenaming);
+		ObfuscatedRenamer::StartJob(postInfo);
 	}
 	else
 	{
@@ -930,6 +928,7 @@ void PrePostProcessor::UpdatePauseState()
 				break;
 
 			case PostInfo::ptRarRenaming:
+			case PostInfo::ptObfuscatedRenaming:
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:

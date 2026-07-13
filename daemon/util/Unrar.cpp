@@ -23,6 +23,7 @@
 #include <regex>
 
 #include "Unpack.h"
+#include "FileTypes.h"
 #include "Util.h"
 
 using namespace Unpack;
@@ -79,13 +80,12 @@ bool Unrar::IsSupported(const fs::path& path)
 	if (std::regex_search(filename, part1Rar)) return true;
 
 	std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-	if (filename.find(".part") == std::string::npos &&
-		Util::EndsWith(filename.c_str(), ".rar", false))
+	if (filename.find(".part") != std::string::npos)
 	{
-		return true;
+		return false;
 	}
 
-	return false;
+	return FileTypes::IsRarExt(path.extension().string());
 }
 
 bool Unrar::DecodeExitCode(int ec) const

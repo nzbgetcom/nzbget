@@ -424,11 +424,12 @@ public:
 		msSuccess
 	};
 
-	enum class PostUnpackRenamingStatus
+	enum class RenameStatus
 	{
 		None,
-		Failure,
+		Nothing,
 		Success,
+		Failure,
 		Skipped
 	};
 
@@ -495,6 +496,7 @@ public:
 	const char* GetCategory() { return m_category; }
 	void SetCategory(const char* category) { m_category = category; }
 	const char* GetName() { return m_name; }
+	const char* GetMetaName();
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetName(const char* name) { m_name = name; }
@@ -561,6 +563,8 @@ public:
 	void SetParRenameStatus(EPostRenameStatus renameStatus) { m_parRenameStatus = renameStatus; }
 	EPostRenameStatus GetRarRenameStatus() { return m_rarRenameStatus; }
 	void SetRarRenameStatus(EPostRenameStatus renameStatus) { m_rarRenameStatus = renameStatus; }
+	RenameStatus GetObfuscatedRenameStatus() { return m_obfuscatedRenameStatus; }
+	void SetObfuscatedRenameStatus(RenameStatus renameStatus) { m_obfuscatedRenameStatus = renameStatus; }
 	EParStatus GetParStatus() { return m_parStatus; }
 	void SetParStatus(EParStatus parStatus) { m_parStatus = parStatus; }
 	EDirectUnpackStatus GetDirectUnpackStatus() { return m_directUnpackStatus; }
@@ -570,8 +574,6 @@ public:
 	ECleanupStatus GetCleanupStatus() { return m_cleanupStatus; }
 	void SetCleanupStatus(ECleanupStatus cleanupStatus) { m_cleanupStatus = cleanupStatus; }
 	EMoveStatus GetMoveStatus() { return m_moveStatus; }
-	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
-	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
 	void SetMoveStatus(EMoveStatus moveStatus) { m_moveStatus = moveStatus; }
 	EDeleteStatus GetDeleteStatus() { return m_deleteStatus; }
 	void SetDeleteStatus(EDeleteStatus deleteStatus) { m_deleteStatus = deleteStatus; }
@@ -721,12 +723,12 @@ private:
 	EDirectRenameStatus m_directRenameStatus = tsNone;
 	EPostRenameStatus m_parRenameStatus = rsNone;
 	EPostRenameStatus m_rarRenameStatus = rsNone;
+	RenameStatus m_obfuscatedRenameStatus = RenameStatus::None;
 	EParStatus m_parStatus = psNone;
 	EDirectUnpackStatus m_directUnpackStatus = nsNone;
 	EPostUnpackStatus m_unpackStatus = usNone;
 	ECleanupStatus m_cleanupStatus = csNone;
 	EMoveStatus m_moveStatus = msNone;
-	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;
@@ -804,6 +806,7 @@ public:
 		ptVerifyingRepaired,
 		ptParRenaming,
 		ptRarRenaming,
+		ptObfuscatedRenaming,
 		ptUnpacking,
 		ptCleaningUp,
 		ptMoving,
