@@ -24,6 +24,7 @@
 
 #include <optional>
 #include <chrono>
+#include <string_view>
 #include "NString.h"
 
 #ifdef _WIN32
@@ -124,6 +125,18 @@ inline void move_file(const fs::path& src, const fs::path& dest)
 	move_file(src, dest, ec);
 	if (ec) throw std::runtime_error(ec.message());
 }
+
+inline void create_hard_link(const path& target, const path& link, fs::error_code& ec)
+{
+	fs::create_directories(link.parent_path(), ec);
+	if (ec) return;
+#ifdef HAVE_STD_FILESYSTEM
+	std::filesystem::create_hard_link(target, link, ec);
+#else
+	boost::filesystem::create_hard_link(target, link, ec);
+#endif
+}
+
 }
 
 class FileSystem
@@ -156,7 +169,7 @@ public:
 	static bool CreateDirectory(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
-	static std::optional<std::string> GetFileExtension(const std::string& filename);
+	static std::optional<std::string> GetFileExtension(std::string_view filename);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);
@@ -166,7 +179,6 @@ public:
 
 	static bool DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg);
 	static bool ForceDirectories(const char* path, CString& errmsg);
-	static bool CreateHardLink(const char *from, const char *to, CString& errmsg);
 	static CString GetCurrentDirectory();
 	static bool SetCurrentDirectory(const char* dirFilename);
 	static int64 FileSize(const char* filename);

@@ -134,11 +134,40 @@ void MoveController::MoveFiles(const std::string& src, const std::string& dest, 
 
 			PrintMessage(Message::mkInfo, "Moving file %s to %s", filename, dest.c_str());
 
-			if (!FileSystem::MoveFile(srcFile.c_str(), dstFile.c_str()))
+			fs::path srcPath = fs::u8path(srcFile);
+			fs::path dstFsPath = fs::u8path(dstFile);
+
+			fs::path movePath = dstFsPath;
+			if (fs::exists(dstFsPath))
+			{
+				fs::error_code eqEc;
+				if (fs::equivalent(srcPath, dstFsPath, eqEc) && !eqEc)
+				{
+					fs::error_code rmEc;
+					fs::remove(srcPath, rmEc);
+					if (rmEc)
+					{
+						isOk = false;
+						PrintMessage(Message::mkError,
+							"Could not remove file %s: %s",
+							srcFile.c_str(), rmEc.message().c_str());
+					}
+					continue;
+				}
+
+				movePath = fs::make_unique_filename(dstFsPath);
+				PrintMessage(Message::mkWarning,
+					"File %s already exists in destination, saving as %s",
+					filename, fs::u8string(movePath.filename()).c_str());
+			}
+
+			fs::error_code ec;
+			fs::move_file(srcPath, movePath, ec);
+			if (ec)
 			{
 				isOk = false;
 				PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
-					srcFile.c_str(), dstFile.c_str(), *FileSystem::GetLastErrorMessage());
+					srcFile.c_str(), fs::u8string(movePath).c_str(), ec.message().c_str());
 			}
 		}
 	}

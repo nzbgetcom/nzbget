@@ -341,7 +341,7 @@ void Options::InitDefaults()
 	SetOption(POSTSTRATEGY.data(), "sequential");
 	SetOption(FILENAMING.data(), "article");
 	SetOption(RENAMEAFTERUNPACK.data(), "yes");
-	SetOption(RENAMEIGNOREEXT.data(), ".zip, .7z, .rar, .par2");
+	SetOption(RENAMEIGNOREEXT.data(), ".txt,.nfo");
 	SetOption(PARRENAME.data(), "yes");
 	SetOption(PARBUFFER.data(), "16");
 	SetOption(PARTHREADS.data(), "0");
