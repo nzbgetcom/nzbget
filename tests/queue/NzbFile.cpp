@@ -83,18 +83,6 @@ void TestNzb(std::string testFilename, std::string expectedCategory)
 
 BOOST_AUTO_TEST_CASE(NZBParserTest)
 {
-	// constructing a local Options repoints g_Options at it and its
-	// destructor nulls the global; the guard (declared first, destroyed
-	// last) restores the fixture's instance for later tests in this binary
-	struct OptionsGuard
-	{
-		Options* m_prev = g_Options;
-		~OptionsGuard() { g_Options = m_prev; }
-	} optionsGuard;
-
-	Options::CmdOptList cmdOpts;
-	Options options(&cmdOpts, nullptr);
-
 	TestNzb("dotless", "Movies");
 	TestNzb("plain", "TV>4K");
 	TestNzb("literal_gt", "TV > 4K");

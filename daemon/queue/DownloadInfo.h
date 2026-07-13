@@ -1031,7 +1031,7 @@ private:
 	EStage m_stage = ptQueued;
 	CString m_progressLabel = "";
 	int m_fileProgress = 0;
-	int m_stageProgress = 0;
+	std::atomic<int> m_stageProgress{0};
 	time_t m_startTime = 0;
 	time_t m_stageTime = 0;
 	Thread* m_postThread = nullptr;

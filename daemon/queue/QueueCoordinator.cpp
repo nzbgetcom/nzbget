@@ -962,9 +962,13 @@ void QueueCoordinator::DeleteDownloader(DownloadQueue* downloadQueue,
 
 	if (deleteFileObj)
 	{
+		int nzbId = nzbInfo->GetId();
 		DeleteFileInfo(downloadQueue, fileInfo, fileCompleted);
-		nzbInfo->SetChanged(true);
-		downloadQueue->SaveChanged();
+		if (NzbInfo* nzb = downloadQueue->GetQueue()->Find(nzbId))
+		{
+			nzb->SetChanged(true);
+			downloadQueue->SaveChanged();
+		}
 	}
 }
 

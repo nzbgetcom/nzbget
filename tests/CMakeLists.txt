@@ -25,6 +25,8 @@ endif()
 target_link_libraries(${TESTS_TARGET} PRIVATE ${LIBS})
 target_include_directories(${TESTS_TARGET} PRIVATE ${INCLUDES})
 
+apply_sanitizers(${TESTS_TARGET})
+
 if (TARGET ${PACKAGE})
 	target_precompile_headers(${TESTS_TARGET} REUSE_FROM ${PACKAGE})
 else()

@@ -148,10 +148,13 @@ cmake .. -DDISABLE_SIGCHLD_HANDLER=ON
 ```bash
 cmake .. -DCMAKE_BUILD_TYPE=Debug
 ``` 
-  - Enable leak, undefined, address sanitizers:
+  - Enable sanitizers (comma-separated list):
 ```
-cmake .. -DENABLE_SANITIZERS=ON
+cmake .. -DUSE_SANITIZERS="address,undefined" -DCMAKE_BUILD_TYPE=Debug
 ```
+    Common sanitizers: `address` (ASan), `undefined` (UBSan), `thread` (TSan), `memory` (MSan), `leak` (LSan).
+    Platform notes: AppleClang supports only ASan and UBSan. TSan and MSan require upstream LLVM Clang.
+
   - To get a static binary:
 ```bash
 cmake .. -DENABLE_STATIC=ON
