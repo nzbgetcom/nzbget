@@ -472,7 +472,7 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		BString<1024> newETag;
 
 		size_t hash = m_hasher(body);
-		newETag.Format("\"%x\"", hash);
+		newETag.Format("\"%zx\"", hash);
 
 		unchanged = m_oldETag && !strcmp(newETag, m_oldETag);
 		if (unchanged)
