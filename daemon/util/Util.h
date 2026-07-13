@@ -232,7 +232,7 @@ public:
 	/* cross platform version of GNU timegm, which is similar to mktime but takes an UTC time as parameter */
 	static time_t Timegm(tm const *t);
 
-	static bool StrCaseCmp(const std::string& a, const std::string& b);
+	static bool StrCaseCmp(std::string_view a, std::string_view b);
 
 	static void FormatTime(time_t timeSec, char* buffer, int bufsize);
 	static CString FormatTime(time_t timeSec);

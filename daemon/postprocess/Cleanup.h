@@ -44,7 +44,7 @@ private:
 	std::string m_destDir;
 
 	bool MoveFiles();
-	void MoveFiles(const std::string& src, const std::string& dest, bool& isOk);
+	bool MoveFiles(const fs::path& src, const fs::path& dest);
 	void RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir);
 };
 

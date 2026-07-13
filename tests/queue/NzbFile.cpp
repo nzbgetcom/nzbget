@@ -15,7 +15,7 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
 
@@ -50,6 +50,14 @@ void TestNzb(std::string testFilename, std::string expectedCategory)
 	int fileCount = atoi(buffer);
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
 	BOOST_CHECK_EQUAL(nzbInfo->GetFileCount(), fileCount);
+
+	if (testFilename == "metaname")
+	{
+		BOOST_CHECK_EQUAL(nzbFile.GetMetaName(), "Some.Filename.1080p.WEB.H264");
+		NzbParameter* param = nzbInfo->GetParameters()->Find("*MetaName");
+		BOOST_REQUIRE(param);
+		BOOST_CHECK_EQUAL(param->GetValue(), "Some.Filename.1080p.WEB.H264");
+	}
 	char lastBuffer[1024];
 
 	for (int i = 0; i < fileCount; i++)
@@ -89,6 +97,7 @@ BOOST_AUTO_TEST_CASE(NZBParserTest)
 	TestNzb("passwd{{thisisthepassword}}", "");
 	TestNzb("passwdMeta", "");
 	TestNzb("passwdEntity", "");
+	TestNzb("metaname", "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

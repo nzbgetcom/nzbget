@@ -853,14 +853,11 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
-bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+bool Util::StrCaseCmp(std::string_view a, std::string_view b)
 {
-	auto comparator = [](unsigned char a, unsigned char b)
-	{
-		return std::tolower(a) == std::tolower(b);
-	};
-
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	if (a.size() != b.size()) return false;
+	return std::equal(a.begin(), a.end(), b.begin(),
+		[](unsigned char ca, unsigned char cb) { return std::tolower(ca) == std::tolower(cb); });
 }
 
 // prevent PC from going to sleep

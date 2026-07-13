@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ public:
 	void FileDownloaded(DownloadQueue* downloadQueue, FileInfo* fileInfo);
 	void NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void NzbDeleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
-	static bool IsArchiveFilename(const char* filename);
+	static bool IsArchiveFilename(std::string_view filename);
 
 protected:
 	virtual bool ReadLine(char* buf, int bufSize, FILE* stream);
