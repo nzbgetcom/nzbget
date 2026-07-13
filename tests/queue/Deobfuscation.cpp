@@ -27,6 +27,17 @@ BOOST_AUTO_TEST_SUITE(QueueTest)
 
 using namespace Deobfuscation;
 
+BOOST_AUTO_TEST_CASE(IsProbablyLegitimateFilenameTest)
+{
+	BOOST_CHECK(IsProbablyLegitimateFilename("A filename with spaces.mkv"));
+	BOOST_CHECK(IsProbablyLegitimateFilename("  leading spaces.mkv"));
+	BOOST_CHECK(IsProbablyLegitimateFilename("trailing spaces "));
+	BOOST_CHECK(!IsProbablyLegitimateFilename("NoSpacesHere.mkv"));
+	BOOST_CHECK(!IsProbablyLegitimateFilename("justlowercase"));
+	BOOST_CHECK(!IsProbablyLegitimateFilename(""));
+	BOOST_CHECK(!IsProbablyLegitimateFilename("a"));
+}
+
 BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 {
 	BOOST_CHECK(IsExcessivelyObfuscated("2c0837e5fa42c8cfb5d5e583168a2af4.10"));
@@ -47,6 +58,14 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4fla"));
 	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf"));
 	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xfac4rcq47pkqt4flatz2xf4567"));
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe1unWxVw.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("l5PcmaKxDxcUaSM"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.part001.rar") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.tar") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.gz") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.bz2") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.tgz") == false);
+	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.txz") == false);
 }
 
 BOOST_AUTO_TEST_CASE(DeobfuscationTest)
@@ -118,6 +137,51 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	BOOST_CHECK_EQUAL(Deobfuscate("Re: A (2/3)"), "A");
 	BOOST_CHECK_EQUAL(Deobfuscate("Re: A"), "A");
 	BOOST_CHECK_EQUAL(Deobfuscate("[34/44] - id.bdmv yEnc (1/1) 104"), "id.bdmv");
+
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("Re: Re: Some.Show.S01E01.mkv (2/3)"),
+		"Some.Show.S01E01.mkv"
+	);
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("Re: Re: Re: Stacked.mkv (1/1)"),
+		"Stacked.mkv"
+	);
+	BOOST_CHECK_EQUAL(Deobfuscate("Re: Re: A (1/1)"), "A");
+	BOOST_CHECK_EQUAL(Deobfuscate("Re: Re: A"), "A");
+
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[SomeTag] Some.Show.S01E01.mkv yEnc (1/1)"),
+		"Some.Show.S01E01.mkv"
+	);
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[N3wZ] \"Some.Show.S01E01.mkv\" yEnc (1/1)"),
+		"Some.Show.S01E01.mkv"
+	);
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[01/44] [02/44] Some.Show.mkv yEnc (1/1)"),
+		"Some.Show.mkv"
+	);
+
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[PRiVATE]-[WtFnZb]-[2/9]-[[Grp].Show.S01E01.mkv] - \"\" yEnc  225628476 (1/315)"),
+		"[Grp].Show.S01E01.mkv"
+	);
+
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[PRiVATE]-[WtFnZb]-[1\\sub\\Movie.2020.mkv]-[1/8] - \"\" yEnc  9876543210 (2/12345)"),
+		"Movie.2020.mkv"
+	);
+
+	BOOST_CHECK_EQUAL(
+		Deobfuscate("[PRiVATE]-[WtFnZb]-[1/1]-[Some.movie.2020.part01.rar] - \"\" yEnc  1234567890 (1/99)"),
+		"Some.movie.2020.part01.rar"
+	);
+}
+
+BOOST_AUTO_TEST_CASE(CounterHeuristicRescueTest)
+{
+	BOOST_CHECK(!IsExcessivelyObfuscated("A legitimate name with spaces.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Another  name with  multiple  spaces  .mkv"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -3963,12 +3963,12 @@
     "description": "Description for the option FileNaming DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Article, Auto, Nzb) as they are fixed configuration values."
   },
   "config_desc_renameafterunpack": {
-    "message": "Rename downloaded files after unpack.\n\nThis option renames the extracted and obfuscated files using the NZB filename.",
-    "description": "Description for the option RenameAfterUnpack"
+    "message": "Rename downloaded files after unpack.\n\nThis option renames the extracted and obfuscated files using the name specified in\nthe NZB <meta type=\"name\"> tag, or falls back to the NZB filename.",
+    "description": "Description for the option RenameAfterUnpack DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes."
   },
   "config_desc_renameignoreext": {
-    "message": "File extensions to ignore during renaming after unpack.\n\nExample: zip, .7z, .rar, .par2.\n\nNOTE: Only needed if <RenameAfterUnpack> is enabled.",
-    "description": "Description for the option RenameIgnoreExt DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
+    "message": "Comma-separated list of file extensions to ignore during obfuscated renaming.\n\nArchives (.rar, .zip, .7z, etc.) and par2 files are automatically skipped\nby the obfuscated renamer as they are handled by dedicated stages\n(article-decoding for .rar, par-rename for .par2, etc.).\nThis option can be used to ignore other specific extensions (e.g., .txt, .nfo).",
+    "description": "Description for the option RenameIgnoreExt DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes."
   },
   "config_desc_reorderfiles": {
     "message": "Reorder files within nzbs for optimal download order.\n\nWhen nzb-file is added to queue the files listed within nzb can be in a random\norder. When \"ReorderFiles\" is active the files are automatically sorted\nalphabetically to ensure download of archive parts in correct order. The\npar2-files are moved to the end and then sorted by size.\n\nNOTE: When option <DirectRename> is active the files are sorted again after the file\nnames become known.",

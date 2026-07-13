@@ -398,6 +398,7 @@ void HistoryCoordinator::MoveToQueue(DownloadQueue* downloadQueue, HistoryList::
 		nzbInfo->SetCleanupStatus(NzbInfo::csNone);
 		nzbInfo->SetParRenameStatus(NzbInfo::rsNone);
 		nzbInfo->SetRarRenameStatus(NzbInfo::rsNone);
+		nzbInfo->SetObfuscatedRenameStatus(NzbInfo::RenameStatus::None);
 		nzbInfo->SetPostTotalSec(nzbInfo->GetPostTotalSec() - nzbInfo->GetUnpackSec());
 		nzbInfo->SetUnpackSec(0);
 
@@ -516,6 +517,7 @@ void HistoryCoordinator::HistoryRedownload(DownloadQueue* downloadQueue, History
 	nzbInfo->SetParStatus(NzbInfo::psNone);
 	nzbInfo->SetParRenameStatus(NzbInfo::rsNone);
 	nzbInfo->SetRarRenameStatus(NzbInfo::rsNone);
+	nzbInfo->SetObfuscatedRenameStatus(NzbInfo::RenameStatus::None);
 	nzbInfo->SetDirectRenameStatus(NzbInfo::tsNone);
 	nzbInfo->SetDirectUnpackStatus(NzbInfo::nsNone);
 	nzbInfo->SetDownloadedSize(0);

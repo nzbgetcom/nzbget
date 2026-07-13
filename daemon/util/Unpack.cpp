@@ -21,6 +21,7 @@
 
 #include "Options.h"
 #include "Unpack.h"
+#include "FileTypes.h"
 #include "Log.h"
 
 namespace Unpack
@@ -79,7 +80,7 @@ std::string ExtractorBase::MakePassword() const
 
 bool IsArchive(const fs::path& file)
 {
-	return SevenZip::IsSupported(file) || Unrar::IsSupported(file);
+	return FileTypes::IsArchiveExt(file.extension().string());
 }
 
 ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,
