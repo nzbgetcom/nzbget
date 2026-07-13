@@ -134,6 +134,26 @@ std::string GetNetworkXmlStr(const System::Network& network)
 	return res;
 }
 
+std::string BlankOutPublicIP(std::string str, const std::string& from, const std::string& to)
+{
+	size_t start = str.find(from);
+	if (start == std::string::npos)
+	{
+		return str;
+	}
+
+	start += from.length();
+
+	size_t end = str.find(to, start);
+	if (end == std::string::npos)
+	{
+		return str;
+	}
+
+	str.erase(start, end - start);
+	return str;
+}
+
 BOOST_AUTO_TEST_CASE(SystemInfoTest)
 {
 	auto sysInfo = std::make_unique<System::SystemInfo>();
@@ -141,12 +161,14 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 	std::string jsonStrResult = System::ToJsonStr(*sysInfo);
 	std::string xmlStrResult = System::ToXmlStr(*sysInfo);
 
+	System::Network network = sysInfo->GetNetworkInfo();
+
 	std::string jsonStrExpected = "{\"OS\":{\"Name\":\"" + sysInfo->GetOSInfo().GetName() +
 		"\",\"Version\":\"" + sysInfo->GetOSInfo().GetVersion() +
 		"\"},\"CPU\":{\"Model\":\"" + sysInfo->GetCPUInfo().GetModel() +
 		"\",\"Arch\":\"" + sysInfo->GetCPUInfo().GetArch() +
-		"\"},\"Network\":{\"PublicIP\":\"" + sysInfo->GetNetworkInfo().publicIP +
-		"\",\"PrivateIP\":\"" + sysInfo->GetNetworkInfo().privateIP +
+		"\"},\"Network\":{\"PublicIP\":\"" + network.publicIP +
+		"\",\"PrivateIP\":\"" + network.privateIP +
 		"\"}," + GetToolsJsonStr(sysInfo->GetTools()) + "," +
 		GetLibrariesJsonStr(sysInfo->GetLibraries()) + "}";
 
@@ -158,10 +180,18 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 		"</string></value></member>" +
 		"<member><name>Arch</name><value><string>" + sysInfo->GetCPUInfo().GetArch() +
 		"</string></value></member></CPU>" +
-		GetNetworkXmlStr(sysInfo->GetNetworkInfo()) +
+		GetNetworkXmlStr(network) +
 		GetToolsXmlStr(sysInfo->GetTools()) +
 		GetLibrariesXmlStr(sysInfo->GetLibraries()) +
 		"</struct></value>";
+
+	// ToJsonStr and ToXmlStr fetch the public IP themselves, and it may change
+	// between fetches (e.g. rotating NAT egress IPs on CI runners),
+	// so blank it out on both sides before comparing
+	jsonStrResult = BlankOutPublicIP(std::move(jsonStrResult), "\"PublicIP\":\"", "\"");
+	jsonStrExpected = BlankOutPublicIP(std::move(jsonStrExpected), "\"PublicIP\":\"", "\"");
+	xmlStrResult = BlankOutPublicIP(std::move(xmlStrResult), "<name>PublicIP</name>", "</value>");
+	xmlStrExpected = BlankOutPublicIP(std::move(xmlStrExpected), "<name>PublicIP</name>", "</value>");
 
 	BOOST_TEST_MESSAGE("EXPECTED JSON STR: ");
 	BOOST_TEST_MESSAGE(jsonStrExpected);
