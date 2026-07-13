@@ -71,3 +71,23 @@ endif()
 if(NOT HAVE_STD_FILESYSTEM)
 	message(STATUS "Target does not support native std::filesystem. Enabling Boost.Filesystem fallback")
 endif()
+
+function(apply_sanitizers target)
+	if(NOT USE_SANITIZERS)
+		return()
+	endif()
+
+	if(MSVC)
+		target_compile_options(${target} PRIVATE /fsanitize=address)
+		target_link_options(${target} PRIVATE /fsanitize=address)
+	else()
+		target_compile_options(${target} PRIVATE
+			-fsanitize=${USE_SANITIZERS}
+			-fno-omit-frame-pointer
+			-fno-sanitize-recover=all
+		)
+		target_link_options(${target} PRIVATE
+			-fsanitize=${USE_SANITIZERS}
+		)
+	endif()
+endfunction()

@@ -32,10 +32,10 @@ namespace
 	const char* LOG_PREFIX = "ArchiveProcessor:";
 }
 
-std::optional<std::vector<fs::path>> ArchiveProcessor::Process(const fs::path& archiveFile) const
+std::optional<std::vector<fs::path>> ArchiveProcessor::Process(const fs::path& archiveFile, const fs::path& destDir) const
 {
 	const std::string filenameStr = fs::u8string(archiveFile.filename());
-	info("Extracting '%s'", filenameStr.c_str());
+	info("%s Extracting '%s'", LOG_PREFIX, filenameStr.c_str());
 
 	const auto unpackDir = m_config.unpackDir / fs::make_unique_filename();
 	
@@ -44,30 +44,57 @@ std::optional<std::vector<fs::path>> ArchiveProcessor::Process(const fs::path& a
 		return std::nullopt;
 	}
 
-	ScanResult scanResult = ScanUnpackDir(unpackDir);
+	detail("%s Extraction of '%s' completed", LOG_PREFIX, filenameStr.c_str());
 
-	MoveNzbFiles(scanResult.from, scanResult.to);
+	auto scanResult = ScanUnpackDir(unpackDir);
+
+	if (scanResult.nzbFiles.empty())
+	{
+		info("%s Skipped '%s': No NZB files were found inside", LOG_PREFIX, filenameStr.c_str());
+	}
+	else
+	{
+		info("%s Successfully extracted %zu NZB file(s) (and %d non-NZB file(s)) from '%s'",
+			 LOG_PREFIX, scanResult.nzbFiles.size(), scanResult.nonNzbFiles, filenameStr.c_str());
+	}
+
+	std::vector<fs::path> from;
+	std::vector<fs::path> to;
+	from.reserve(scanResult.nzbFiles.size());
+	to.reserve(scanResult.nzbFiles.size());
+
+	for (const auto& relPath : scanResult.nzbFiles)
+	{
+		from.push_back(unpackDir / relPath);
+		to.push_back(destDir / relPath);
+	}
+
+	int moved = MoveNzbFiles(from, to);
 
 	fs::error_code ec;
 	fs::remove_all(unpackDir, ec);
 	if (ec)
 	{
-		warn("Failed to clean up temp dir '%s': %s (code: %d)", 
-			 fs::u8string(unpackDir).c_str(), ec.message().c_str(), ec.value());
+		warn("%s Failed to clean up temp dir '%s': %s (code: %d)", 
+			 LOG_PREFIX, fs::u8string(unpackDir).c_str(), ec.message().c_str(), ec.value());
+	}
+	else
+	{
+		detail("%s Cleaned up temporary directory '%s'", LOG_PREFIX, fs::u8string(unpackDir).c_str());
+	}
+
+	if (moved > 0)
+	{
+		info("%s Moved %d NZB file(s) to '%s'", LOG_PREFIX, moved, fs::u8string(destDir).c_str());
 	}
 
 	DisposeArchive(archiveFile, scanResult.nonNzbFiles);
 
-	if (scanResult.to.empty())
+	if (moved == 0)
 	{
-		info("Skipped '%s': No NZB files were found inside", filenameStr.c_str());
+		to.clear();
 	}
-	else
-	{
-		info("Successfully extracted %zu NZB file(s) from '%s'", scanResult.to.size(), filenameStr.c_str());
-	}
-	
-	return std::move(scanResult.to);
+	return to;
 }
 
 bool ArchiveProcessor::Extract(const fs::path& archiveFile, const fs::path& unpackDir) const
@@ -82,7 +109,7 @@ bool ArchiveProcessor::Extract(const fs::path& archiveFile, const fs::path& unpa
 	{
 		const std::string archiveName = fs::u8string(archiveFile.filename());
 		const std::string brokenDirName = fs::u8string(m_config.brokenDir.filename());
-		error("Failed to extract '%s'. Moving to '%s'", archiveName.c_str(), brokenDirName.c_str());
+		error("%s Failed to extract '%s'. Moving to '%s'", LOG_PREFIX, archiveName.c_str(), brokenDirName.c_str());
 
 		fs::error_code ec;
 		fs::remove_all(unpackDir, ec);
@@ -120,7 +147,7 @@ ArchiveProcessor::ScanResult ArchiveProcessor::ScanUnpackDir(const fs::path& unp
 
 		if (!IsNzbFile(filename))
 		{
-			debug("%s Found non-NZB file '%s'", LOG_PREFIX, filenameStr.c_str());
+			detail("%s Found non-NZB file '%s' in the archive", LOG_PREFIX, filenameStr.c_str());
 			++result.nonNzbFiles;
 			continue;
 		}
@@ -128,28 +155,36 @@ ArchiveProcessor::ScanResult ArchiveProcessor::ScanUnpackDir(const fs::path& unp
 		auto relativePath = fs::relative(file, unpackDir, ec);
 		if (ec) continue;
 
-		auto finalDestPath = m_config.destDir / relativePath;
-		result.from.push_back(file);
-		result.to.push_back(std::move(finalDestPath));
+		detail("%s Found NZB file '%s' in the archive", LOG_PREFIX, fs::u8string(relativePath).c_str());
+
+		result.nzbFiles.push_back(std::move(relativePath));
 	}
 	
-	result.from.shrink_to_fit();
-	result.to.shrink_to_fit();
+	result.nzbFiles.shrink_to_fit();
 	return result;
 }
 
-void ArchiveProcessor::MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const
+int ArchiveProcessor::MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const
 {
+	int moved = 0;
 	fs::error_code ec;
 	for (size_t i = 0; i < from.size(); ++i)
 	{
+		detail("%s Moving '%s' to '%s'", LOG_PREFIX,
+			   fs::u8string(from[i].filename()).c_str(), fs::u8string(to[i]).c_str());
 		fs::create_directories(to[i].parent_path(), ec);
 		fs::move_file(from[i], to[i], ec); 
 		if (ec)
 		{
-			error("Failed to move NZB '%s': %s", fs::u8string(from[i].filename()).c_str(), ec.message().c_str());
+			error("%s Failed to move NZB '%s': %s", LOG_PREFIX,
+				  fs::u8string(from[i].filename()).c_str(), ec.message().c_str());
+		}
+		else
+		{
+			++moved;
 		}
 	}
+	return moved;
 }
 
 void ArchiveProcessor::DisposeArchive(const fs::path& archiveFile, int nonNzbFileCount) const
@@ -163,39 +198,39 @@ void ArchiveProcessor::DisposeArchive(const fs::path& archiveFile, int nonNzbFil
 	{
 		if (nonNzbFileCount > 0)
 		{
-			info("Archive '%s' contains %d non-NZB file(s). Moving to '%s' instead of deleting to prevent data loss", 
-				 filenameStr.c_str(), nonNzbFileCount, processedDirName.c_str());
+			info("%s Archive '%s' contains %d non-NZB file(s). Moving to '%s' instead of deleting to prevent data loss", 
+				 LOG_PREFIX, filenameStr.c_str(), nonNzbFileCount, processedDirName.c_str());
 			
 			fs::create_directories(m_config.processedDir, ec);
 			fs::move_file(archiveFile, fs::make_unique_filename(m_config.processedDir / archiveFile.filename()), ec);
 			if (ec)
 			{
-				warn("Failed to move archive '%s' to '%s': %s (code: %d)", 
-					 filenameStr.c_str(), processedDirName.c_str(), ec.message().c_str(), ec.value());
+				warn("%s Failed to move archive '%s' to '%s': %s (code: %d)", 
+					 LOG_PREFIX, filenameStr.c_str(), processedDirName.c_str(), ec.message().c_str(), ec.value());
 			}
 		}
 		else
 		{
 			if (fs::remove(archiveFile, ec) && !ec)
 			{
-				info("Deleted archive '%s'", filenameStr.c_str());
+				info("%s Deleted archive '%s'", LOG_PREFIX, filenameStr.c_str());
 			}
 			else if (ec)
 			{
-				warn("Failed to delete archive '%s': %s (code: %d)", 
-					 filenameStr.c_str(), ec.message().c_str(), ec.value());
+				warn("%s Failed to delete archive '%s': %s (code: %d)", 
+					 LOG_PREFIX, filenameStr.c_str(), ec.message().c_str(), ec.value());
 			}
 		}
 	}
 	else
 	{
-		info("Moving archive '%s' to '%s'", filenameStr.c_str(), processedDirName.c_str());
+		info("%s Moving archive '%s' to '%s'", LOG_PREFIX, filenameStr.c_str(), processedDirName.c_str());
 		fs::create_directories(m_config.processedDir, ec);
 		fs::move_file(archiveFile, fs::make_unique_filename(m_config.processedDir / archiveFile.filename()), ec);
 		if (ec)
 		{
-			warn("Failed to move archive '%s' to '%s': %s (code: %d)", 
-				 filenameStr.c_str(), processedDirName.c_str(), ec.message().c_str(), ec.value());
+			warn("%s Failed to move archive '%s' to '%s': %s (code: %d)", 
+				 LOG_PREFIX, filenameStr.c_str(), processedDirName.c_str(), ec.message().c_str(), ec.value());
 		}
 	}
 }

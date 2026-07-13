@@ -32,7 +32,6 @@ namespace Incoming
 struct Config
 {
 	fs::path unpackDir;
-	fs::path destDir;
 	fs::path processedDir;
 	fs::path brokenDir;
 	Options::ENzbDirArchiveAction action;
@@ -43,21 +42,20 @@ class ArchiveProcessor final
 public:
 	explicit ArchiveProcessor(Config config) : m_config(std::move(config))
 	{}
-	std::optional<std::vector<fs::path>> Process(const fs::path& archiveFile) const;
+	std::optional<std::vector<fs::path>> Process(const fs::path& archiveFile, const fs::path& destDir) const;
 
 private:
 	struct ScanResult
 	{
-		std::vector<fs::path> from;
-		std::vector<fs::path> to;
+		std::vector<fs::path> nzbFiles;
 		int nonNzbFiles{};
 	};
 
 	bool Extract(const fs::path& archiveFile, const fs::path& unpackDir) const;
 	bool IsNzbFile(const fs::path& filename) const;
 	ScanResult ScanUnpackDir(const fs::path& unpackDir) const;
-	void MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const;
-	void DisposeArchive(const fs::path& archiveFilePath, int nonNzbFileCount) const;
+	int MoveNzbFiles(const std::vector<fs::path>& from, const std::vector<fs::path>& to) const;
+	void DisposeArchive(const fs::path& archiveFile, int nonNzbFileCount) const;
 	const Config m_config;
 };
 

@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -178,19 +179,27 @@ bool FeedFilter::Term::MatchRegex(const char* strValue)
 
 bool FeedFilter::Term::Compile(char* token)
 {
-	debug("Token: %s", token);
-
-	char ch = token[0];
-
-	m_positive = ch != '-';
-	if (ch == '-' || ch == '+')
+	if (!token)
 	{
-		token++;
-		ch = token[0];
+		return false;
 	}
 
-	char ch2= token[1];
-	if ((ch == '(' || ch == ')' || ch == '|') && (ch2 == ' ' || ch2 == '\0'))
+	debug("Token: %s", token);
+
+	std::string_view sv(token);
+	m_positive = sv.empty() || sv.front() != '-';
+	if (!sv.empty() && (sv.front() == '-' || sv.front() == '+'))
+	{
+		sv.remove_prefix(1);
+	}
+
+	if (sv.empty())
+	{
+		return false;
+	}
+
+	auto ch = sv.front();
+	if ((ch == '(' || ch == ')' || ch == '|') && (sv.size() < 2 || sv[1] == ' '))
 	{
 		switch (ch)
 		{
@@ -203,84 +212,78 @@ bool FeedFilter::Term::Compile(char* token)
 			case '|':
 				m_command = fcOrOperator;
 				return true;
+			default: break;
 		}
 	}
 
-	char *field = nullptr;
 	m_command = fcText;
 
-	char* colon = nullptr;
 	if (ch != '@' && ch != '$' && ch != '<' && ch != '>' && ch != '=')
 	{
-		colon = strchr(token, ':');
+		auto pos = sv.find(':');
+		if (pos != std::string_view::npos)
+		{
+			m_field.Set(sv.data(), static_cast<int>(pos));
+			sv.remove_prefix(pos + 1);
+			if (sv.empty())
+			{
+				return false;
+			}
+			ch = sv.front();
+		}
 	}
-	if (colon)
-	{
-		field = token;
-		colon[0] = '\0';
-		token = colon + 1;
-		ch = token[0];
-	}
-
-	if (ch == '\0')
-	{
-		return false;
-	}
-
-	ch2= token[1];
 
 	if (ch == '@')
 	{
 		m_command = fcText;
-		token++;
+		sv.remove_prefix(1);
 	}
 	else if (ch == '$')
 	{
 		m_command = fcRegex;
-		token++;
+		sv.remove_prefix(1);
 	}
 	else if (ch == '=')
 	{
 		m_command = fcEqual;
-		token++;
+		sv.remove_prefix(1);
 	}
-	else if (ch == '<' && ch2 == '=')
+	else if (ch == '<' && sv.size() > 1 && sv[1] == '=')
 	{
 		m_command = fcLessEqual;
-		token += 2;
+		sv.remove_prefix(2);
 	}
-	else if (ch == '>' && ch2 == '=')
+	else if (ch == '>' && sv.size() > 1 && sv[1] == '=')
 	{
 		m_command = fcGreaterEqual;
-		token += 2;
+		sv.remove_prefix(2);
 	}
 	else if (ch == '<')
 	{
 		m_command = fcLess;
-		token++;
+		sv.remove_prefix(1);
 	}
 	else if (ch == '>')
 	{
 		m_command = fcGreater;
-		token++;
+		sv.remove_prefix(1);
 	}
 
-	debug("%s, Field: %s, Command: %i, Param: %s", (m_positive ? "Positive" : "Negative"), field, m_command, token);
+	debug("%s, Field: %s, Command: %i, Param: %.*s", (m_positive ? "Positive" : "Negative"), m_field.Str(), m_command, static_cast<int>(sv.size()), sv.data());
 
 	const char* strValue;
 	int64 intValue;
-	if (!GetFieldData(field, nullptr, &strValue, &intValue))
+	if (!GetFieldData(m_field.Empty() ? nullptr : m_field.Str(), nullptr, &strValue, &intValue))
 	{
 		return false;
 	}
 
-	if (field && !ParseParam(field, token))
+	if (!m_field.Empty() && !ParseParam(m_field, sv.data()))
 	{
 		return false;
 	}
 
-	m_field = field;
-	m_param = token;
+	m_param.Set(sv.data(), static_cast<int>(sv.size()));
 
 	return true;
 }
