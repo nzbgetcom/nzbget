@@ -43,6 +43,7 @@ public:
 		, m_keyFile(keyFile ? keyFile : "")
 		, m_cipher(cipher ? cipher : "")
 		, m_isClient(isClient)
+		, m_retCode(0)
 		, m_certVerifLevel(certVerifLevel) 
 		, m_context{ nullptr, &SSL_CTX_free }
 		, m_session{ nullptr, &SSL_free } {}

@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,8 @@
 #ifndef DISABLE_TLS
 #include "TlsSocket.h"
 #endif
+
+inline constexpr size_t CONNECTION_READBUFFER_SIZE = 4 * 1024;
 
 class Connection
 {
@@ -79,6 +81,7 @@ public:
 	bool GetGracefull() { return m_gracefull; }
 	void SetGracefull(bool gracefull) { m_gracefull = gracefull; }
 	void SetForceClose(bool forceClose) { m_forceClose = forceClose; }
+
 #ifndef DISABLE_TLS
 	bool StartTls(bool isClient, const char* certFile, const char* keyFile);
 	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
@@ -91,15 +94,15 @@ protected:
 	int m_port;
 	bool m_tls;
 	EIPVersion m_ipVersion = ipAuto;
-	SOCKET m_socket = INVALID_SOCKET;
+	std::atomic<SOCKET> m_socket = INVALID_SOCKET;
 	CharBuffer m_readBuf;
 	int m_bufAvail = 0;
 	char* m_bufPtr = nullptr;
 	std::atomic<EStatus> m_status{csDisconnected};
 	int m_timeout = 60;
-	bool m_suppressErrors = true;
+	std::atomic<bool> m_suppressErrors{true};
 	BString<100> m_remoteAddr;
-	int m_totalBytesRead = 0;
+	std::atomic<int> m_totalBytesRead{0};
 	bool m_gracefull = false;
 	bool m_forceClose = false;
 #ifndef DISABLE_TLS
@@ -130,7 +133,7 @@ protected:
 	virtual void PrintError(const char* errMsg);
 	int GetLastNetworkError();
 	bool DoConnect();
-	bool DoDisconnect();
+	void DoDisconnect();
 	bool InitSocketOpts(SOCKET socket);
 	bool ConnectWithTimeout(void* address, int address_len);
 #ifndef HAVE_GETADDRINFO

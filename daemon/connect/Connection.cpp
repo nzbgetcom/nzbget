@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@
 #include "Log.h"
 #include "FileSystem.h"
 #include "Options.h"
-
-static const int CONNECTION_READBUFFER_SIZE = 1024;
 
 #if defined(__linux__) && !defined(__ANDROID__)
 // Activate DNS resolving workaround for Android:
@@ -75,6 +73,34 @@ void closesocket_gracefully(SOCKET socket)
 
 #ifdef ANDROID_RESOLVE
 std::string ResolveAndroidHost(const char* host);
+#endif
+
+#ifndef WIN32
+// Friendlier descriptions for the most common getaddrinfo() failures.
+// Scoped strictly to EAI_* codes - never mix with h_errno codes (see
+// GetHErrnoErrorDescription below), their numeric values can collide.
+static const char* GetEaiErrorDescription(int errCode)
+{
+#ifdef EAI_NONAME
+	if (errCode == EAI_NONAME)
+	{
+		return "hostname not found, check the server address";
+	}
+#endif
+#ifdef EAI_AGAIN
+	if (errCode == EAI_AGAIN)
+	{
+		return "temporary DNS failure, try again later";
+	}
+#endif
+#ifdef EAI_FAIL
+	if (errCode == EAI_FAIL)
+	{
+		return "DNS lookup failed";
+	}
+#endif
+	return gai_strerror(errCode);
+}
 #endif
 
 void Connection::Init()
@@ -186,13 +212,11 @@ bool Connection::Disconnect()
 		return true;
 	}
 
-	bool res = DoDisconnect();
+	DoDisconnect();
 
-	m_status = csDisconnected;
-	m_socket = INVALID_SOCKET;
 	m_bufAvail = 0;
 
-	return res;
+	return true;
 }
 
 bool Connection::Bind()
@@ -227,10 +251,10 @@ bool Connection::Bind()
 
 		unlink(m_host.c_str());
 
-		if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
+		if (bind(m_socket.load(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == -1)
 		{
 			// Connection failed
-			closesocket(m_socket);
+			closesocket(m_socket.load());
 			m_socket = INVALID_SOCKET;
 		}
 	}
@@ -253,7 +277,7 @@ bool Connection::Bind()
 			ReportError("Could not resolve hostname %s", m_host.c_str(), true
 #ifndef WIN32
 				, res != EAI_SYSTEM ? res : 0
-				, res != EAI_SYSTEM ? gai_strerror(res) : nullptr
+				, res != EAI_SYSTEM ? GetEaiErrorDescription(res) : nullptr
 #endif
 				);
 			return false;
@@ -264,13 +288,13 @@ bool Connection::Bind()
 		{
 			m_socket = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 #ifdef WIN32
-			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
+			SetHandleInformation(reinterpret_cast<HANDLE>(m_socket.load()), HANDLE_FLAG_INHERIT, 0);
 #endif
 			if (m_socket != INVALID_SOCKET)
 			{
 				int opt = 1;
-				setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
-				res = bind(m_socket, addr->ai_addr, addr->ai_addrlen);
+				setsockopt(m_socket.load(), SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
+				res = bind(m_socket.load(), addr->ai_addr, addr->ai_addrlen);
 				if (res != -1)
 				{
 					// Connection established
@@ -278,7 +302,7 @@ bool Connection::Bind()
 				}
 				// Connection failed
 				errcode = GetLastNetworkError();
-				closesocket(m_socket);
+				closesocket(m_socket.load());
 				m_socket = INVALID_SOCKET;
 			}
 		}
@@ -312,14 +336,14 @@ bool Connection::Bind()
 		}
 
 		int opt = 1;
-		setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
+		setsockopt(m_socket.load(), SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*>(&opt), sizeof(opt));
 
-		int res = bind(m_socket, (struct sockaddr *) &sSocketAddress, sizeof(sSocketAddress));
+		int res = bind(m_socket.load(), reinterpret_cast<sockaddr*>(&sSocketAddress), sizeof(sSocketAddress));
 		if (res == -1)
 		{
 			// Connection failed
 			errcode = GetLastNetworkError();
-			closesocket(m_socket);
+			closesocket(m_socket.load());
 			m_socket = INVALID_SOCKET;
 		}
 #endif
@@ -331,10 +355,10 @@ bool Connection::Bind()
 		return false;
 	}
 
-	if (listen(m_socket, 100) < 0)
+	if (listen(m_socket.load(), 100) < 0)
 	{
 		ReportError("Listen on socket failed for %s", m_host.c_str(), true);
-		closesocket(m_socket);
+		closesocket(m_socket.load());
 		m_socket = INVALID_SOCKET;
 		return false;
 	}
@@ -353,7 +377,7 @@ int Connection::WriteLine(const char* buffer)
 		return -1;
 	}
 
-	int res = send(m_socket, buffer, strlen(buffer), 0);
+	int res = send(m_socket.load(), buffer, strlen(buffer), 0);
 	if (res <= 0)
 	{
 		m_status = csBroken;
@@ -374,7 +398,7 @@ bool Connection::Send(const char* buffer, int size)
 	int bytesSent = 0;
 	while (bytesSent < size)
 	{
-		int res = send(m_socket, buffer + bytesSent, size-bytesSent, 0);
+		int res = send(m_socket.load(), buffer + bytesSent, size-bytesSent, 0);
 		if (res <= 0)
 		{
 			m_status = csBroken;
@@ -402,7 +426,7 @@ char* Connection::ReadLine(char* buffer, int size, int* bytesReadOut)
 	{
 		if (!bufAvail)
 		{
-			bufAvail = recv(m_socket, m_readBuf, m_readBuf.Size() - 1, 0);
+			bufAvail = recv(m_socket.load(), m_readBuf, m_readBuf.Size() - 1, 0);
 			if (bufAvail < 0)
 			{
 				ReportError("Could not receive data on socket from %s", m_host.c_str(), true);
@@ -415,7 +439,7 @@ char* Connection::ReadLine(char* buffer, int size, int* bytesReadOut)
 			}
 			else
 			{
-				m_totalBytesRead += bufAvail;
+				m_totalBytesRead.fetch_add(bufAvail, std::memory_order_relaxed);
 			}
 			bufPtr = m_readBuf;
 			m_readBuf[bufAvail] = '\0';
@@ -476,7 +500,7 @@ std::unique_ptr<Connection> Connection::Accept()
 		return nullptr;
 	}
 
-	SOCKET socket = accept(m_socket, nullptr, nullptr);
+	SOCKET socket = accept(m_socket.load(), nullptr, nullptr);
 	if (socket == INVALID_SOCKET && m_status != csCancelled)
 	{
 		ReportError("Could not accept connection for %s", m_host.c_str(), true);
@@ -497,7 +521,7 @@ int Connection::TryRecv(char* buffer, int size)
 
 	memset(buffer, 0, size);
 
-	int received = recv(m_socket, buffer, size, 0);
+	int received = recv(m_socket.load(), buffer, size, 0);
 
 	if (received < 0)
 	{
@@ -505,7 +529,7 @@ int Connection::TryRecv(char* buffer, int size)
 	}
 	else
 	{
-		m_totalBytesRead += received;
+		m_totalBytesRead.fetch_add(received, std::memory_order_relaxed);
 	}
 
 	return received;
@@ -533,7 +557,7 @@ bool Connection::Recv(char * buffer, int size)
 	// Read from the socket until nothing remains
 	while (NeedBytes > 0)
 	{
-		int received = recv(m_socket, bufPtr, NeedBytes, 0);
+		int received = recv(m_socket.load(), bufPtr, NeedBytes, 0);
 		// Did the recv succeed?
 		if (received <= 0)
 		{
@@ -542,7 +566,7 @@ bool Connection::Recv(char * buffer, int size)
 		}
 		bufPtr += received;
 		NeedBytes -= received;
-		m_totalBytesRead += received;
+		m_totalBytesRead.fetch_add(received, std::memory_order_relaxed);
 	}
 	return true;
 }
@@ -575,7 +599,7 @@ bool Connection::DoConnect()
 		if (!ConnectWithTimeout(&addr, sizeof(addr)))
 		{
 			ReportError("Connection to %s failed", m_host.c_str(), true);
-			closesocket(m_socket);
+			closesocket(m_socket.load());
 			m_socket = INVALID_SOCKET;
 			return false;
 		}
@@ -610,10 +634,10 @@ bool Connection::DoConnect()
 		{
 			ReportError("Could not resolve hostname %s", m_host.c_str(), true
 #ifndef WIN32
-						, res != EAI_SYSTEM ? res : 0
-						, res != EAI_SYSTEM ? gai_strerror(res) : nullptr
+				, res != EAI_SYSTEM ? res : 0
+				, res != EAI_SYSTEM ? GetEaiErrorDescription(res) : nullptr
 #endif
-						);
+				);
 			return false;
 		}
 
@@ -632,12 +656,12 @@ bool Connection::DoConnect()
 
 			if (m_socket != INVALID_SOCKET)
 			{
-				closesocket(m_socket);
+				closesocket(m_socket.load());
 			}
 
 			m_socket = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 #ifdef WIN32
-			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
+			SetHandleInformation(reinterpret_cast<HANDLE>(m_socket.load()), HANDLE_FLAG_INHERIT, 0);
 #endif
 			if (m_socket == INVALID_SOCKET)
 			{
@@ -661,7 +685,7 @@ bool Connection::DoConnect()
 		if (!connected && m_socket != INVALID_SOCKET)
 		{
 			ReportError("Connection to %s failed", m_host.c_str(), true);
-			closesocket(m_socket);
+			closesocket(m_socket.load());
 			m_socket = INVALID_SOCKET;
 		}
 
@@ -694,14 +718,14 @@ bool Connection::DoConnect()
 		if (!ConnectWithTimeout(&sSocketAddress, sizeof(sSocketAddress)))
 		{
 			ReportError("Connection to %s failed", m_host.c_str(), true);
-			closesocket(m_socket);
+			closesocket(m_socket.load());
 			m_socket = INVALID_SOCKET;
 			return false;
 		}
 #endif
 	}
 
-	if (!InitSocketOpts(m_socket))
+	if (!InitSocketOpts(m_socket.load()))
 	{
 		return false;
 	}
@@ -759,31 +783,31 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	//clear out descriptor sets for select
 	//add socket to the descriptor sets
 	FD_ZERO(&rset);
-	FD_SET(m_socket, &rset);
+	FD_SET(m_socket.load(), &rset);
 	wset = rset;    //structure assignment ok
 
 	//set socket nonblocking flag
 #ifdef WIN32
 	u_long mode = 1;
-	if (ioctlsocket(m_socket, FIONBIO, &mode) != 0)
+	if (ioctlsocket(m_socket.load(), FIONBIO, &mode) != 0)
 	{
 		return false;
 	}
 #else
-	flags = fcntl(m_socket, F_GETFL, 0);
+	flags = fcntl(m_socket.load(), F_GETFL, 0);
 	if (flags < 0)
 	{
 		return false;
 	}
 
-	if (fcntl(m_socket, F_SETFL, flags | O_NONBLOCK) < 0)
+	if (fcntl(m_socket.load(), F_SETFL, flags | O_NONBLOCK) < 0)
 	{
 		return false;
 	}
 #endif
 
 	//initiate non-blocking connect
-	ret = connect(m_socket, (struct sockaddr*)address, address_len);
+	ret = connect(m_socket.load(), reinterpret_cast<sockaddr*>(address), address_len);
 	if (ret < 0)
 	{
 		int err = GetLastNetworkError();
@@ -800,7 +824,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	//connect succeeded right away?
 	if (ret != 0)
 	{
-		ret = select((int)m_socket + 1, &rset, &wset, nullptr, m_timeout ? &ts : nullptr);
+		ret = select(static_cast<int>(m_socket.load()) + 1, &rset, &wset, nullptr, m_timeout ? &ts : nullptr);
 		//we are waiting for connect to complete now
 		if (ret < 0)
 		{
@@ -817,13 +841,13 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 			return false;
 		}
 
-		if (!(FD_ISSET(m_socket, &rset) || FD_ISSET(m_socket, &wset)))
+		if (!(FD_ISSET(m_socket.load(), &rset) || FD_ISSET(m_socket.load(), &wset)))
 		{
 			return false;
 		}
 		//we had a positivite return so a descriptor is ready
 
-		if (getsockopt(m_socket, SOL_SOCKET, SO_ERROR, (char*)&error, &len) < 0)
+		if (getsockopt(m_socket.load(), SOL_SOCKET, SO_ERROR, reinterpret_cast<char*>(&error), &len) < 0)
 		{
 			return false;
 		}
@@ -839,12 +863,12 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	//put socket back in blocking mode
 #ifdef WIN32
 	mode = 0;
-	if (ioctlsocket(m_socket, FIONBIO, &mode) != 0)
+	if (ioctlsocket(m_socket.load(), FIONBIO, &mode) != 0)
 	{
 		return false;
 	}
 #else
-	if (fcntl(m_socket, F_SETFL, flags) < 0)
+	if (fcntl(m_socket.load(), F_SETFL, flags) < 0)
 	{
 		return false;
 	}
@@ -853,7 +877,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	return true;
 }
 
-bool Connection::DoDisconnect()
+void Connection::DoDisconnect()
 {
 	debug("Do disconnecting");
 
@@ -883,7 +907,6 @@ bool Connection::DoDisconnect()
 	}
 
 	m_status = csDisconnected;
-	return true;
 }
 
 void Connection::ReadBuffer(char** buffer, int *bufLen)
@@ -902,8 +925,7 @@ void Connection::Cancel()
 
 		if (m_forceClose)
 		{
-			SOCKET socket = m_socket;
-			m_socket = INVALID_SOCKET;
+			SOCKET socket = m_socket.exchange(INVALID_SOCKET);
 			shutdown(socket, SHUT_RDWR);
 			closesocket(socket);
 		}
@@ -989,7 +1011,7 @@ bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFi
 {
 	debug("Starting TLS");
 
-	m_tlsSocket = std::make_unique<TlsSocket>(m_socket, isClient, m_host.c_str(), certFile, keyFile, m_cipher.c_str(), m_certVerifLevel);
+	m_tlsSocket = std::make_unique<TlsSocket>(m_socket.load(), isClient, m_host.c_str(), certFile, keyFile, m_cipher.c_str(), m_certVerifLevel);
 	m_tlsSocket->SetSuppressErrors(m_suppressErrors);
 
 	return m_tlsSocket->Start();
@@ -1049,6 +1071,36 @@ int Connection::send(SOCKET s, const char* buf, int len, int flags)
 #endif
 
 #ifndef HAVE_GETADDRINFO
+
+static const char* GetHErrnoErrorDescription(int errCode)
+{
+#ifdef HOST_NOT_FOUND
+	if (errCode == HOST_NOT_FOUND)
+	{
+		return "hostname not found, check the server address";
+	}
+#endif
+#ifdef TRY_AGAIN
+	if (errCode == TRY_AGAIN)
+	{
+		return "temporary DNS failure, try again later";
+	}
+#endif
+#ifdef NO_RECOVERY
+	if (errCode == NO_RECOVERY)
+	{
+		return "DNS lookup failed";
+	}
+#endif
+#ifdef NO_DATA
+	if (errCode == NO_DATA)
+	{
+		return "hostname not found, check the server address";
+	}
+#endif
+	return hstrerror(errCode);
+}
+
 in_addr_t Connection::ResolveHostAddr(const char* host)
 {
 	in_addr_t uaddr = inet_addr(host);
@@ -1081,7 +1133,7 @@ in_addr_t Connection::ResolveHostAddr(const char* host)
 #endif
 		if (err)
 		{
-			ReportError("Could not resolve hostname %s", host, true, h_errnop, hstrerror(h_errnop));
+			ReportError("Could not resolve hostname %s", host, true, h_errnop, GetHErrnoErrorDescription(h_errnop));
 			return INADDR_NONE;
 		}
 
@@ -1104,7 +1156,7 @@ const char* Connection::GetRemoteAddr()
 
 	char peerName[1024];
 	int peerNameLength = sizeof(peerName);
-	if (getpeername(m_socket, (sockaddr*)&peerName, (SOCKLEN_T*)&peerNameLength) >= 0)
+	if (getpeername(m_socket.load(), reinterpret_cast<sockaddr*>(&peerName), reinterpret_cast<SOCKLEN_T*>(&peerNameLength)) >= 0)
 	{
 #ifdef WIN32
 		HMODULE module = LoadLibrary("ws2_32.dll");
@@ -1141,9 +1193,7 @@ const char* Connection::GetRemoteAddr()
 
 int Connection::FetchTotalBytesRead()
 {
-	int total = m_totalBytesRead;
-	m_totalBytesRead = 0;
-	return total;
+	return m_totalBytesRead.exchange(0, std::memory_order_relaxed);
 }
 
 

@@ -22,6 +22,7 @@
 #ifndef PREPOSTPROCESSOR_H
 #define PREPOSTPROCESSOR_H
 
+#include <atomic>
 #include "Thread.h"
 #include "Observer.h"
 #include "DownloadInfo.h"
@@ -43,7 +44,7 @@ protected:
 	void Update(Subject*, void* aspect) override { DownloadQueueUpdate(aspect); }
 
 private:
-	int m_queuedJobs = 0;
+	std::atomic<int> m_queuedJobs{0};
 	RawNzbList m_activeJobs;
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;

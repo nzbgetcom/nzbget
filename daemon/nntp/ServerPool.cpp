@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,11 +24,29 @@
 #include "ServerPool.h"
 #include "Util.h"
 
-static const int CONNECTION_HOLD_SECODNS = 5;
-
 void ServerPool::PooledConnection::SetFreeTimeNow()
 {
 	m_freeTime = Util::CurrentTime();
+	m_consecutiveFailures = 0;
+}
+
+void ServerPool::PooledConnection::SetCooldown(int retryIntervalSec)
+{
+	if (retryIntervalSec <= 0)
+	{
+		m_cooldownUntil = Util::CurrentTime();
+		return;
+	}
+	++m_consecutiveFailures;
+	constexpr int MAX_BACKOFF_STEPS = 5;
+	int failures = std::min(m_consecutiveFailures, MAX_BACKOFF_STEPS);
+	int staggerOffset = m_index % retryIntervalSec;
+	m_cooldownUntil = Util::CurrentTime() + failures * retryIntervalSec + staggerOffset;
+}
+
+bool ServerPool::PooledConnection::IsOnCooldown()
+{
+	return Util::CurrentTime() < m_cooldownUntil;
 }
 
 NewsServer* ServerPool::GetServerById(int id)
@@ -145,6 +163,7 @@ void ServerPool::InitConnections()
 				{
 					std::unique_ptr<PooledConnection> connection = std::make_unique<PooledConnection>(newsServer);
 					connection->SetTimeout(m_timeout);
+					connection->SetIndex(i);
 					m_connections.push_back(std::move(connection));
 					connections++;
 				}
@@ -204,7 +223,7 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 			(!wantServer || candidateServer == wantServer ||
 			 (wantServer->GetGroup() > 0 && wantServer->GetGroup() == candidateServer->GetGroup())) &&
 			(candidateConnection->GetStatus() == Connection::csConnected ||
-			 !IsServerBlocked(candidateServer)))
+			 !candidateConnection->IsOnCooldown()))
 		{
 			// free connection found, check if it's not from the server which should be ignored
 			bool useConnection = true;
@@ -239,6 +258,11 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 		int randomIndex = rand() % candidates.size();
 		connection = candidates[randomIndex];
 		connection->SetInUse(true);
+		if (connection->GetStatus() != Connection::csConnected)
+		{
+			detail("Connecting to %s/%s", 
+				connection->GetNewsServer()->GetName(), connection->GetNewsServer()->GetHost());
+		}
 	}
 
 	if (connection)
@@ -251,17 +275,20 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 
 void ServerPool::FreeConnection(NntpConnection* connection, bool used)
 {
-	if (used)
-	{
-		debug("Freeing used connection");
-	}
-
 	Guard guard(m_connectionsMutex);
 
-	((PooledConnection*)connection)->SetInUse(false);
+	auto pooledConn = static_cast<PooledConnection*>(connection);
+	pooledConn->SetInUse(false);
+
 	if (used)
 	{
-		((PooledConnection*)connection)->SetFreeTimeNow();
+		pooledConn->SetFreeTimeNow();
+	}
+	else
+	{
+		pooledConn->SetCooldown(m_retryInterval);
+		detail("Connection %s/%s failed",
+			connection->GetNewsServer()->GetName(), connection->GetNewsServer()->GetHost());
 	}
 
 	if (connection->GetNewsServer()->GetNormLevel() > -1 && connection->GetNewsServer()->GetActive())
@@ -282,7 +309,7 @@ void ServerPool::BlockServer(NewsServer* newsServer)
 
 	if (newBlock && m_retryInterval > 0)
 	{
-		warn("Blocking %s (%s) for %i sec", newsServer->GetName(), newsServer->GetHost(), m_retryInterval);
+		warn("Blocking %s/%s for %i sec", newsServer->GetName(), newsServer->GetHost(), m_retryInterval);
 	}
 }
 
@@ -352,7 +379,7 @@ void ServerPool::CloseUnusedConnections()
 
 		// if there are no in-use connections on the level and the hold time out has
 		// expired - close all connections of the level.
-		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECODNS)
+		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECONDS)
 		{
 			for (PooledConnection* connection : &m_connections)
 			{

@@ -24,14 +24,28 @@
 
 NewsServer::NewsServer(int id, bool active, const char* name, const char* host, int port, int ipVersion,
 	const char* user, const char* pass, bool joinGroup, bool tls, const char* cipher,
-	int maxConnections, int retention, int level, int group, bool optional, unsigned int certVerificationfLevel) :
-		m_id(id), m_active(active), m_name(name), m_host(host ? host : ""), m_port(port), m_ipVersion(ipVersion),
-		m_user(user ? user : ""), m_password(pass ? pass : ""), m_joinGroup(joinGroup), m_tls(tls),
-		m_cipher(cipher ? cipher : ""), m_maxConnections(maxConnections), m_retention(retention),
-		m_level(level), m_normLevel(level), m_group(group), m_optional(optional), m_certVerificationfLevel(certVerificationfLevel)
+	int maxConnections, int retention, int level, int group, bool optional, unsigned int certVerificationfLevel) 
+		: m_name(name ? name : "")
+		, m_host(host ? host : "")
+		, m_user(user ? user : "")
+		, m_password(pass ? pass : "")
+		, m_cipher(cipher ? cipher : "")
+		, m_id(id)
+		, m_port(port)
+		, m_ipVersion(ipVersion)
+		, m_maxConnections(maxConnections)
+		, m_retention(retention)
+		, m_level(level)
+		, m_normLevel(level)
+		, m_group(group)
+		, m_certVerificationfLevel(certVerificationfLevel)
+		, m_active(active)
+		, m_joinGroup(joinGroup)
+		, m_tls(tls)
+		, m_optional(optional)
 {
-	if (m_name.Empty())
+	if (m_name.empty())
 	{
-		m_name.Format("server%i", id);
+		m_name = "server" + std::to_string(id);
 	}
 }

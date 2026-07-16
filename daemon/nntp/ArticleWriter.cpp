@@ -1102,7 +1102,8 @@ bool ArticleCache::CheckFlush(bool flushEverything)
 					&& (!fileInfo->GetNzbInfo()->GetSkipDiskWrite() || flushEverything))
 				{
 					m_fileInfo = fileInfo;
-					infoName.Format("%s%c%s", m_fileInfo->GetNzbInfo()->GetName(), PATH_SEPARATOR, m_fileInfo->GetFilename());
+					FileInfo* fi = m_fileInfo.load();
+					infoName.Format("%s%c%s", fi->GetNzbInfo()->GetName(), PATH_SEPARATOR, fi->GetFilename());
 					break;
 				}
 			}
@@ -1112,7 +1113,7 @@ bool ArticleCache::CheckFlush(bool flushEverything)
 	if (m_fileInfo)
 	{
 		ArticleWriter articleWriter;
-		articleWriter.SetFileInfo(m_fileInfo);
+		articleWriter.SetFileInfo(m_fileInfo.load());
 		articleWriter.SetInfoName(infoName);
 		articleWriter.FlushCache();
 		m_fileInfo = nullptr;

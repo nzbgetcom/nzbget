@@ -591,18 +591,17 @@ void ArticleDownloader::Stop()
 	debug("ArticleDownloader stopped successfully");
 }
 
-void ArticleDownloader::FreeConnection(bool keepConnected)
+void ArticleDownloader::FreeConnection(bool used)
 {
 	if (m_connection)
 	{
-		debug("Releasing connection");
 		Guard guard(m_connectionMutex);
-		if (!keepConnected || m_connection->GetStatus() == Connection::csCancelled)
+		if (!used || m_connection->GetStatus() == Connection::csCancelled)
 		{
 			m_connection->Disconnect();
 		}
 		AddServerStats();
-		g_ServerPool->FreeConnection(m_connection, true);
+		g_ServerPool->FreeConnection(m_connection, used);
 		m_connection = nullptr;
 	}
 }

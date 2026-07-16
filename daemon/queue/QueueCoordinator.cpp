@@ -490,11 +490,12 @@ void QueueCoordinator::CheckDupeFileInfos(NzbInfo* nzbInfo)
 
 	for (FileInfo* fileInfo : dupeList)
 	{
+		int fileId = fileInfo->GetId();
 		nzbInfo->UpdateDeletedStats(fileInfo);
 		nzbInfo->GetFileList()->Remove(fileInfo);
 		if (g_Options->GetServerMode())
 		{
-			g_DiskState->DiscardFile(fileInfo->GetId(), true, false, false);
+			g_DiskState->DiscardFile(fileId, true, false, false);
 		}
 	}
 }

@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 #include "Thread.h"
 #include "NewsServer.h"
 #include "NntpConnection.h"
+
+inline constexpr int CONNECTION_HOLD_SECONDS = 60;
 
 class ServerPool : public Debuggable
 {
@@ -59,11 +61,17 @@ private:
 		using NntpConnection::NntpConnection;
 		bool GetInUse() { return m_inUse; }
 		void SetInUse(bool inUse) { m_inUse = inUse; }
+		void SetIndex(int index) { m_index = index; }
 		time_t GetFreeTime() { return m_freeTime; }
 		void SetFreeTimeNow();
+		void SetCooldown(int retryIntervalSec);
+		bool IsOnCooldown();
 	private:
 		bool m_inUse = false;
 		time_t m_freeTime = 0;
+		time_t m_cooldownUntil = 0;
+		int m_consecutiveFailures = 0;
+		int m_index = 0;
 	};
 
 	typedef std::vector<int> Levels;

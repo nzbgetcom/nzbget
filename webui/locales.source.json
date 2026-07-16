@@ -4003,7 +4003,7 @@
     "description": "Description for the option ArticleRetries DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_articleinterval": {
-    "message": "Article retry interval.\n\nIf download of article fails because of interrupted connection\nthe server is temporary blocked until the retry interval expires.",
+    "message": "Article retry interval.\n\nWhen an article download is interrupted mid-transfer or a connection\ncannot be established, the affected connection is put on cooldown for\nthis interval, staggered by connection index to prevent simultaneous\nretries. The cooldown grows with consecutive failures and resets after\na successful use. Other connections to the same server remain available.",
     "description": "Description for the option ArticleInterval"
   },
   "config_desc_articletimeout": {
