@@ -21,6 +21,7 @@
 #define SYSTEM_INFO_H
 
 #include <string>
+#include <functional>
 #include "OS.h"
 #include "CPU.h"
 #include "Network.h"
@@ -43,7 +44,7 @@ namespace System
 	class SystemInfo final
 	{
 	public:
-		SystemInfo();
+		SystemInfo(std::function<Network()> networkFetcher = GetNetwork);
 		~SystemInfo() = default;
 		std::vector<Tool> GetTools() const;
 		Network GetNetworkInfo() const;
@@ -67,6 +68,7 @@ namespace System
 		CPU m_cpu;
 		OS m_os;
 		std::vector<Library> m_libraries;
+		std::function<Network()> m_networkFetcher;
 	};
 
 	std::string ToJsonStr(const SystemInfo& sysInfo);
