@@ -37,7 +37,7 @@ public:
 private:
 	const ::Feeds& m_feeds;
 	const Options& m_options;
-	std::vector<std::unique_ptr<SectionValidator>> MakeFeedValidators(const ::Feeds& feeds) const;
+	std::vector<std::unique_ptr<SectionValidator>> MakeFeedValidators(const ::Feeds& feeds, const Options& options) const;
 };
 
 class DuplicateFeedsValidator : public Validator

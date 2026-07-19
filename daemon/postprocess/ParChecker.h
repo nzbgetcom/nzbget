@@ -24,6 +24,7 @@
 
 #ifndef DISABLE_PARCHECK
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -176,15 +177,15 @@ private:
 	bool m_verifyingExtraFiles;
 	bool m_cancelled;
 	bool m_hasDamagedFiles;
-	bool m_parQuick = false;
 	bool m_forceRepair = false;
-	bool m_parFull = false;
 	int m_processedCount;
 	int m_filesToRepair;
 	int m_extraFiles;
-	int m_quickFiles;
 	int m_fileProgress;
 	int m_stageProgress;
+	std::atomic<bool> m_parQuick{false};
+	std::atomic<bool> m_parFull{false};
+	std::atomic<int> m_quickFiles{0};
 	std::string m_infoName;
 	std::string m_destDir;
 	std::string m_nzbName;
@@ -192,7 +193,7 @@ private:
 	std::string m_progressLabel;
 	std::string m_errMsg;
 	EStatus m_status = psFailed;
-	EStage m_stage;
+	std::atomic<EStage> m_stage{ptLoadingPars};
 	FileList m_queuedParFiles;
 	FileList m_processedFiles;
 	SourceList m_sourceFiles;
@@ -203,9 +204,7 @@ private:
 	std::ostream m_parCerr{&m_parErrStream};
 	std::mutex m_queuedParFilesMtx;
 	std::mutex m_repairerMtx;
-	std::mutex m_sigFileNameMtx;
-	std::mutex m_sigProgressMtx;
-	std::mutex m_sigDoneMtx;
+	std::mutex m_signalMtx;
 
 	// "m_repairer" should be of type "Par2::Par2Repairer", however to prevent the
 	// including of libpar2-headers into this header-file we use an empty abstract class.

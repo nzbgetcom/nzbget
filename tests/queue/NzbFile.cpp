@@ -83,9 +83,6 @@ void TestNzb(std::string testFilename, std::string expectedCategory)
 
 BOOST_AUTO_TEST_CASE(NZBParserTest)
 {
-	Options::CmdOptList cmdOpts;
-	Options options(&cmdOpts, nullptr);
-
 	TestNzb("dotless", "Movies");
 	TestNzb("plain", "TV>4K");
 	TestNzb("literal_gt", "TV > 4K");

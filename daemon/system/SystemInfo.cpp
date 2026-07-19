@@ -43,7 +43,8 @@ namespace System
 {
 	constexpr size_t BUFFER_SIZE = 512;
 
-	SystemInfo::SystemInfo()
+	SystemInfo::SystemInfo(std::function<Network()> networkFetcher)
+		: m_networkFetcher{std::move(networkFetcher)}
 	{
 		InitLibsInfo();
 	}
@@ -111,7 +112,7 @@ namespace System
 
 	Network SystemInfo::GetNetworkInfo() const
 	{
-		return GetNetwork();
+		return m_networkFetcher();
 	}
 
 	std::vector<Tool> SystemInfo::GetTools() const

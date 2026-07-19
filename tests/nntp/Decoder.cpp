@@ -27,12 +27,12 @@ BOOST_AUTO_TEST_SUITE(NNTPTest)
 
 std::string yEncEncode(const std::string& data)
 {
-    std::string encodedData = "";
-    for (unsigned char c : data)
-    {
-        encodedData += static_cast<unsigned char>((c + 42) % 256);
-    }
-    return encodedData;
+	std::string encodedData = "";
+	for (unsigned char c : data)
+	{
+		encodedData += static_cast<unsigned char>((c + 42) % 256);
+	}
+	return encodedData;
 }
 
 /**
@@ -46,39 +46,39 @@ std::string yEncEncode(const std::string& data)
 */
 BOOST_AUTO_TEST_CASE(SingleMessageTest)
 {
-    Decoder decoder;
-    decoder.SetCrcCheck(true);
-    std::stringstream ss;
+	Decoder decoder;
+	decoder.SetCrcCheck(true);
+	std::stringstream ss;
 
-    const std::string data = "nzbget";
-    const std::string crc = "a30bff0d";
-    const std::string filename = "name.dat";
-    const std::string encodedData = yEncEncode(data);
+	const std::string data = "nzbget";
+	const std::string crc = "a30bff0d";
+	const std::string filename = "name.dat";
+	const std::string encodedData = yEncEncode(data);
 
-    ss << "=ybegin line=128 size=" << data.size() << " name=" << filename << "\r\n";
-    ss << encodedData << "\r\n";
-    ss << "=yend size=" << data.size() << " crc32=" << crc << "\r\n";
-    ss << ".\r\n";
+	ss << "=ybegin line=128 size=" << data.size() << " name=" << filename << "\r\n";
+	ss << encodedData << "\r\n";
+	ss << "=yend size=" << data.size() << " crc32=" << crc << "\r\n";
+	ss << ".\r\n";
 
-    std::string msg = ss.str();
+	std::string msg = ss.str();
 
-    int len = decoder.DecodeBuffer(msg.data(), msg.size());
+	int len = decoder.DecodeBuffer(msg.data(), msg.size());
 
-    auto status = decoder.Check();
-    auto size = decoder.GetSize();
-    auto calculatedCrc = decoder.GetCalculatedCrc();
-    auto articleName = decoder.GetArticleFilename();
-    auto format = decoder.GetFormat();
-    auto eof = decoder.GetEof();
-    auto res = msg.substr(0, len);
+	auto status = decoder.Check();
+	auto size = decoder.GetSize();
+	auto calculatedCrc = decoder.GetCalculatedCrc();
+	auto articleName = decoder.GetArticleFilename();
+	auto format = decoder.GetFormat();
+	auto eof = decoder.GetEof();
+	auto res = msg.substr(0, len);
 
-    BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
-    BOOST_CHECK_EQUAL(articleName, filename);
-    BOOST_CHECK_EQUAL(size, 6);
-    BOOST_CHECK_EQUAL(calculatedCrc, 0xa30bff0d);
-    BOOST_CHECK_EQUAL(format, Decoder::efYenc);
-    BOOST_CHECK_EQUAL(eof, true);
-    BOOST_CHECK_EQUAL(res, "nzbget");
+	BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
+	BOOST_CHECK_EQUAL(articleName, filename);
+	BOOST_CHECK_EQUAL(size, 6);
+	BOOST_CHECK_EQUAL(calculatedCrc, 0xa30bff0d);
+	BOOST_CHECK_EQUAL(format, Decoder::efYenc);
+	BOOST_CHECK_EQUAL(eof, true);
+	BOOST_CHECK_EQUAL(res, "nzbget");
 }
 
 /**
@@ -97,77 +97,77 @@ BOOST_AUTO_TEST_CASE(SingleMessageTest)
 */
 BOOST_AUTO_TEST_CASE(MultipartMessageTest)
 {
-    Decoder decoder;
-    decoder.SetCrcCheck(true);
-    std::stringstream ss;
+	Decoder decoder;
+	decoder.SetCrcCheck(true);
+	std::stringstream ss;
 
-    const std::string crc = "a30bff0d";
-    const std::string data = "nzb";
-    const std::string encodedData = yEncEncode(data);
-    const std::string pcrc = "cb64ae30";
-    const std::string filename = "name.dat";
+	const std::string crc = "a30bff0d";
+	const std::string data = "nzb";
+	const std::string encodedData = yEncEncode(data);
+	const std::string pcrc = "cb64ae30";
+	const std::string filename = "name.dat";
 
-    const std::string data2 = "get";
-    const std::string encodedData2 = yEncEncode(data2);
-    const std::string pcrc2 = "fd3b2e70";
-    const size_t totalSize = data.size() + data2.size();
+	const std::string data2 = "get";
+	const std::string encodedData2 = yEncEncode(data2);
+	const std::string pcrc2 = "fd3b2e70";
+	const size_t totalSize = data.size() + data2.size();
 
-    ss << "=ybegin part=1 total=2 line=128 size=" << totalSize << " name=" << filename << "\r\n";
-    ss << "=ypart begin=1 end=" << data.size() << "\r\n";
-    ss << encodedData << "\r\n";
-    ss << "=yend size=" << data.size() << " pcrc32=" << pcrc << "\r\n";
-    ss << ".\r\n";
+	ss << "=ybegin part=1 total=2 line=128 size=" << totalSize << " name=" << filename << "\r\n";
+	ss << "=ypart begin=1 end=" << data.size() << "\r\n";
+	ss << encodedData << "\r\n";
+	ss << "=yend size=" << data.size() << " pcrc32=" << pcrc << "\r\n";
+	ss << ".\r\n";
 
-    std::string msg = ss.str();
-    ss.str("");
+	std::string msg = ss.str();
+	ss.str("");
 
-    ss << "=ybegin part=2 total=2 line=128 size=" << totalSize << " name=" << filename << "\r\n";
-    ss << "=ypart begin=" << data.size() + 1 << " end=" << totalSize << "\r\n";
-    ss << encodedData2 << "\r\n";
-    ss << "=yend size=" << data2.size() << " pcrc32=" << pcrc2 << " crc32=" << crc << "\r\n";
-    ss << ".\r\n";
+	ss << "=ybegin part=2 total=2 line=128 size=" << totalSize << " name=" << filename << "\r\n";
+	ss << "=ypart begin=" << data.size() + 1 << " end=" << totalSize << "\r\n";
+	ss << encodedData2 << "\r\n";
+	ss << "=yend size=" << data2.size() << " pcrc32=" << pcrc2 << " crc32=" << crc << "\r\n";
+	ss << ".\r\n";
 
-    std::string msg2 = ss.str();
+	std::string msg2 = ss.str();
 
-    int len = decoder.DecodeBuffer(msg.data(), msg.size());
-    {
-        auto status = decoder.Check();
-        auto size = decoder.GetSize();
-        auto calculatedCrc = decoder.GetCalculatedCrc();
-        auto articleName = decoder.GetArticleFilename();
-        auto format = decoder.GetFormat();
-        auto eof = decoder.GetEof();
-        auto res = msg.substr(0, len);
+	int len = decoder.DecodeBuffer(msg.data(), msg.size());
+	{
+		auto status = decoder.Check();
+		auto size = decoder.GetSize();
+		auto calculatedCrc = decoder.GetCalculatedCrc();
+		auto articleName = decoder.GetArticleFilename();
+		auto format = decoder.GetFormat();
+		auto eof = decoder.GetEof();
+		auto res = msg.substr(0, len);
 
-        BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
-        BOOST_CHECK_EQUAL(articleName, filename);
-        BOOST_CHECK_EQUAL(size, totalSize);
-        BOOST_CHECK_EQUAL(calculatedCrc, 0xcb64ae30);
-        BOOST_CHECK_EQUAL(format, Decoder::efYenc);
-        BOOST_CHECK_EQUAL(eof, true);
-        BOOST_CHECK_EQUAL(res, "nzb");
-    }
+		BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
+		BOOST_CHECK_EQUAL(articleName, filename);
+		BOOST_CHECK_EQUAL(size, totalSize);
+		BOOST_CHECK_EQUAL(calculatedCrc, 0xcb64ae30);
+		BOOST_CHECK_EQUAL(format, Decoder::efYenc);
+		BOOST_CHECK_EQUAL(eof, true);
+		BOOST_CHECK_EQUAL(res, "nzb");
+	}
 
-    decoder.Clear();
-    decoder.SetCrcCheck(true);
+	decoder.Clear();
+	decoder.SetCrcCheck(true);
 
-    int len2 = decoder.DecodeBuffer(msg2.data(), msg2.size());
+	int len2 = decoder.DecodeBuffer(msg2.data(), msg2.size());
 
-    auto articleName = decoder.GetArticleFilename();
-    auto status = decoder.Check();
-    auto size = decoder.GetSize();
-    auto calculatedCrc = decoder.GetCalculatedCrc();
-    auto eof = decoder.GetEof();
-    auto res = msg2.substr(0, len);
+	auto articleName = decoder.GetArticleFilename();
+	auto status = decoder.Check();
+	auto size = decoder.GetSize();
+	auto calculatedCrc = decoder.GetCalculatedCrc();
+	auto eof = decoder.GetEof();
+	auto res = msg2.substr(0, len);
 
-    BOOST_CHECK_EQUAL(articleName, filename);
-    BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
-    BOOST_CHECK_EQUAL(len, data2.size());
-    BOOST_CHECK_EQUAL(len + len2, totalSize);
-    BOOST_CHECK_EQUAL(size, totalSize);
-    BOOST_CHECK_EQUAL(calculatedCrc, 0xfd3b2e70);
-    BOOST_CHECK_EQUAL(eof, true);
-    BOOST_CHECK_EQUAL(res, "get");
+	BOOST_CHECK_EQUAL(articleName, filename);
+	BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
+	BOOST_CHECK_EQUAL(len, data2.size());
+	BOOST_CHECK_EQUAL(len + len2, totalSize);
+	BOOST_CHECK_EQUAL(size, totalSize);
+	BOOST_CHECK_EQUAL(calculatedCrc, 0xfd3b2e70);
+	BOOST_CHECK_EQUAL(eof, true);
+	BOOST_CHECK_EQUAL(res, "get");
 }
 
 /**
@@ -185,78 +185,91 @@ BOOST_AUTO_TEST_CASE(MultipartMessageTest)
 */
 BOOST_AUTO_TEST_CASE(UnusualMultipartMessageTest)
 {
-    Decoder decoder;
-    decoder.SetCrcCheck(true);
-    std::stringstream ss;
+	Decoder decoder;
+	decoder.SetCrcCheck(true);
+	std::stringstream ss;
 
-    const std::string crc = "a30bff0d";
-    const std::string data = "nzb";
-    const std::string encodedData = yEncEncode(data);
-    const std::string pcrc = "cb64ae30";
-    const std::string filename = "name.dat";
+	const std::string crc = "a30bff0d";
+	const std::string data = "nzb";
+	const std::string encodedData = yEncEncode(data);
+	const std::string pcrc = "cb64ae30";
+	const std::string filename = "name.dat";
 
-    const std::string data2 = "get";
-    const std::string encodedData2 = yEncEncode(data2);
-    const std::string pcrc2 = "fd3b2e70";
-    const size_t totalSize = data.size() + data2.size();
+	const std::string data2 = "get";
+	const std::string encodedData2 = yEncEncode(data2);
+	const std::string pcrc2 = "fd3b2e70";
+	const size_t totalSize = data.size() + data2.size();
 
-    ss << "=ybegin part=1 total=2 line=128 size=" << totalSize << " name=" << filename;
-    ss << "=ypart begin=1 end=" << data.size() << "\r\n";
-    ss << encodedData << "\r\n";
-    ss << "=yend size=" << data.size() << " pcrc32=" << pcrc << "\r\n";
-    ss << ".\r\n";
+	ss << "=ybegin part=1 total=2 line=128 size=" << totalSize << " name=" << filename;
+	ss << "=ypart begin=1 end=" << data.size() << "\r\n";
+	ss << encodedData << "\r\n";
+	ss << "=yend size=" << data.size() << " pcrc32=" << pcrc << "\r\n";
+	ss << ".\r\n";
 
-    std::string msg = ss.str();
-    ss.str("");
+	std::string msg = ss.str();
+	ss.str("");
 
-    ss << "=ybegin part=2 total=2 line=128 size=" << totalSize << " name=" << filename;
-    ss << "=ypart begin=" << data.size() + 1 << " end=" << totalSize << "\r\n";
-    ss << encodedData2 << "\r\n";
-    ss << "=yend size=" << data2.size() << " pcrc32=" << pcrc2 << " crc32=" << crc << "\r\n";
-    ss << ".\r\n";
+	ss << "=ybegin part=2 total=2 line=128 size=" << totalSize << " name=" << filename;
+	ss << "=ypart begin=" << data.size() + 1 << " end=" << totalSize << "\r\n";
+	ss << encodedData2 << "\r\n";
+	ss << "=yend size=" << data2.size() << " pcrc32=" << pcrc2 << " crc32=" << crc << "\r\n";
+	ss << ".\r\n";
 
-    std::string msg2 = ss.str();
+	std::string msg2 = ss.str();
 
-    int len = decoder.DecodeBuffer(msg.data(), msg.size());
-    {
-        auto status = decoder.Check();
-        auto size = decoder.GetSize();
-        auto calculatedCrc = decoder.GetCalculatedCrc();
-        auto articleName = decoder.GetArticleFilename();
-        auto format = decoder.GetFormat();
-        auto eof = decoder.GetEof();
-        auto res = msg.substr(0, len);
+	int len = decoder.DecodeBuffer(msg.data(), msg.size());
+	{
+		auto status = decoder.Check();
+		auto size = decoder.GetSize();
+		auto calculatedCrc = decoder.GetCalculatedCrc();
+		auto articleName = decoder.GetArticleFilename();
+		auto format = decoder.GetFormat();
+		auto eof = decoder.GetEof();
+		auto res = msg.substr(0, len);
 
-        BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
-        BOOST_CHECK_EQUAL(articleName, filename);
-        BOOST_CHECK_EQUAL(size, totalSize);
-        BOOST_CHECK_EQUAL(calculatedCrc, 0xcb64ae30);
-        BOOST_CHECK_EQUAL(format, Decoder::efYenc);
-        BOOST_CHECK_EQUAL(eof, true);
-        BOOST_CHECK_EQUAL(res, "nzb");
-    }
+		BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
+		BOOST_CHECK_EQUAL(articleName, filename);
+		BOOST_CHECK_EQUAL(size, totalSize);
+		BOOST_CHECK_EQUAL(calculatedCrc, 0xcb64ae30);
+		BOOST_CHECK_EQUAL(format, Decoder::efYenc);
+		BOOST_CHECK_EQUAL(eof, true);
+		BOOST_CHECK_EQUAL(res, "nzb");
+	}
 
-    decoder.Clear();
-    decoder.SetCrcCheck(true);
+	decoder.Clear();
+	decoder.SetCrcCheck(true);
 
-    int len2 = decoder.DecodeBuffer(msg2.data(), msg2.size());
+	int len2 = decoder.DecodeBuffer(msg2.data(), msg2.size());
 
-    auto articleName = decoder.GetArticleFilename();
-    auto status = decoder.Check();
-    auto size = decoder.GetSize();
-    auto calculatedCrc = decoder.GetCalculatedCrc();
-    auto eof = decoder.GetEof();
-    auto res = msg2.substr(0, len);
+	auto articleName = decoder.GetArticleFilename();
+	auto status = decoder.Check();
+	auto size = decoder.GetSize();
+	auto calculatedCrc = decoder.GetCalculatedCrc();
+	auto eof = decoder.GetEof();
+	auto res = msg2.substr(0, len);
 
-    BOOST_CHECK_EQUAL(articleName, filename);
-    BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
-    BOOST_CHECK_EQUAL(len, data2.size());
-    BOOST_CHECK_EQUAL(len + len2, totalSize);
-    BOOST_CHECK_EQUAL(size, totalSize);
-    BOOST_CHECK_EQUAL(calculatedCrc, 0xfd3b2e70);
-    BOOST_CHECK_EQUAL(eof, true);
-    BOOST_CHECK_EQUAL(res, "get");
+	BOOST_CHECK_EQUAL(articleName, filename);
+	BOOST_CHECK_EQUAL(status, Decoder::dsFinished);
+	BOOST_CHECK_EQUAL(len, data2.size());
+	BOOST_CHECK_EQUAL(len + len2, totalSize);
+	BOOST_CHECK_EQUAL(size, totalSize);
+	BOOST_CHECK_EQUAL(calculatedCrc, 0xfd3b2e70);
+	BOOST_CHECK_EQUAL(eof, true);
+	BOOST_CHECK_EQUAL(res, "get");
 }
 
+BOOST_AUTO_TEST_CASE(BufferOverflowTest)
+{
+	Decoder decoder;
+	decoder.SetRawMode(true);
+
+	constexpr int bufSize = 4096;
+	auto buf = std::make_unique<char[]>(bufSize);
+	memset(buf.get(), 'x', bufSize);
+
+	int len = decoder.DecodeBuffer(buf.get(), bufSize);
+	BOOST_CHECK_EQUAL(len, bufSize);
+	BOOST_CHECK_EQUAL(decoder.GetEof(), false);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -25,19 +25,19 @@
 namespace SystemHealth::Feeds
 {
 FeedsValidator::FeedsValidator(const ::Feeds& feeds, const Options& options)
-	: SectionGroupValidator(MakeFeedValidators(feeds)), m_feeds(feeds), m_options(options)
+	: SectionGroupValidator(MakeFeedValidators(feeds, options)), m_feeds(feeds), m_options(options)
 {
 	m_validators.reserve(1);
 	m_validators.push_back(std::make_unique<DuplicateFeedsValidator>(feeds));
 }
 std::vector<std::unique_ptr<SectionValidator>> FeedsValidator::MakeFeedValidators(
-	const ::Feeds& feeds) const
+	const ::Feeds& feeds, const Options& options) const
 {
 	std::vector<std::unique_ptr<SectionValidator>> validators;
 	validators.reserve(feeds.size());
 	for (const auto& feed : feeds)
 	{
-		validators.push_back(std::make_unique<FeedValidator>(*feed, m_options));
+		validators.push_back(std::make_unique<FeedValidator>(*feed, options));
 	}
 	return validators;
 }
