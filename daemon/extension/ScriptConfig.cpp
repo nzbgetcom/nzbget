@@ -74,6 +74,14 @@ bool ScriptConfig::LoadConfig(Options::OptEntries* optEntries)
 
 bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 {
+	struct CaseInsensitiveLess
+	{
+		bool operator()(const CString& left, const CString& right) const
+		{
+			return strcasecmp(*left, *right) < 0;
+		}
+	};
+
 	// save to config file
 	DiskFile infile;
 
@@ -83,7 +91,7 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 	}
 
 	std::vector<CString> config;
-	std::set<Options::OptEntry*> writtenOptions;
+	std::set<CString, CaseInsensitiveLess> writtenOptions;
 
 	// read config file into memory array
 	int fileLen = (int)FileSystem::FileSize(g_Options->GetConfigFilename()) + 1;
@@ -113,7 +121,7 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 				if (optEntry)
 				{
 					infile.Print("%s=%s\n", optEntry->GetName(), optEntry->GetValue());
-					writtenOptions.insert(optEntry);
+					writtenOptions.insert(optEntry->GetName());
 				}
 			}
 		}
@@ -126,10 +134,11 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 	// write new options
 	for (Options::OptEntry& optEntry : *optEntries)
 	{
-		std::set<Options::OptEntry*>::iterator fit = writtenOptions.find(&optEntry);
+		std::set<CString, CaseInsensitiveLess>::iterator fit = writtenOptions.find(optEntry.GetName());
 		if (fit == writtenOptions.end())
 		{
 			infile.Print("%s=%s\n", optEntry.GetName(), optEntry.GetValue());
+			writtenOptions.insert(optEntry.GetName());
 		}
 	}
 
