@@ -108,11 +108,7 @@ void FeedItemInfo::BuildDupeKey(const char* rageId, const char* tvdbId, const ch
 	int tvdbIdVal = !Util::EmptyStr(tvdbId) ? atoi(tvdbId) : m_tvdbId;
 	int tvmazeIdVal = !Util::EmptyStr(tvmazeId) ? atoi(tvmazeId) : m_tvmazeId;
 
-	if (m_imdbId != 0)
-	{
-		m_dupeKey = "imdb=" + std::to_string(m_imdbId);
-	}
-	else if (!Util::EmptyStr(series) && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
+	if (!Util::EmptyStr(series) && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
 		m_dupeKey = std::string("series=") + series + "-" + m_season + "-" + m_episode;
 	}
@@ -127,6 +123,10 @@ void FeedItemInfo::BuildDupeKey(const char* rageId, const char* tvdbId, const ch
 	else if (tvmazeIdVal != 0 && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
 		m_dupeKey = "tvmazeid=" + std::to_string(tvmazeIdVal) + "-" + m_season + "-" + m_episode;
+	}
+	else if (m_imdbId != 0)
+	{
+		m_dupeKey = "imdb=" + std::to_string(m_imdbId);
 	}
 	else
 	{
