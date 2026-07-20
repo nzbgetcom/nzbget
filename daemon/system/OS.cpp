@@ -148,7 +148,7 @@ namespace System
 			}
 			else
 			{
-				detail("Failed to get OS name. Couldn't read 'uname -o'");
+				detail("Failed to get OS release. Couldn't read 'uname -r'");
 			}
 		}
 

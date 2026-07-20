@@ -80,9 +80,7 @@ std::string ExtractorBase::MakePassword() const
 
 bool IsArchive(const fs::path& file)
 {
-	std::string ext = file.extension().string();
-	return FileTypes::IsSevenZipExt(ext) || FileTypes::IsRarExt(ext) ||
-		FileTypes::IsRarVolumeExt(ext) || FileTypes::IsNumericVolumeExt(ext);
+	return FileTypes::IsArchiveExt(file.extension().string());
 }
 
 ExtractorPtr MakeExtractor(fs::path archive, fs::path outputDir,

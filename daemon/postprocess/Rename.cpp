@@ -338,18 +338,13 @@ void ObfuscatedRenamer::CollectCandidates(const fs::path& dir, std::vector<fs::p
 			continue;
 		}
 
-		std::string filename = entry.path().filename().string();
-
+		std::string filename = fs::u8string(entry.path().filename());
 		if (!Deobfuscation::IsExcessivelyObfuscated(filename.c_str()))
 		{
 			continue;
 		}
 
-		std::string ext = entry.path().extension().string();
-		if (ext.empty() ||
-			FileTypes::IsArchiveExt(ext) ||
-			FileTypes::IsDiscStructureExt(ext) ||
-			FileTypes::IsParityExt(ext))
+		if (!entry.path().has_extension())
 		{
 			continue;
 		}

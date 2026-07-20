@@ -214,7 +214,8 @@ namespace Deobfuscation
 				}
 			}
 
-			if (FileTypes::IsArchiveExt(extView) || FileTypes::IsParityExt(extView))
+			if (FileTypes::IsArchiveExt(extView) || FileTypes::IsParityExt(extView) ||
+				FileTypes::IsDiscStructureExt(extView))
 			{
 				return false;
 			}
