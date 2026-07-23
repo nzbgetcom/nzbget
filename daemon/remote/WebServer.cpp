@@ -323,12 +323,6 @@ void WebProcessor::Dispatch()
 		return;
 	}
 
-	if (Util::EmptyStr(g_Options->GetWebDir()))
-	{
-		SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
-		return;
-	}
-
 	if (m_httpMethod != hmGet)
 	{
 		SendErrorResponse(ERR_HTTP_BAD_REQUEST, true);
@@ -349,6 +343,12 @@ void WebProcessor::Dispatch()
 
 	if (!strncmp(m_url, "/extensions/", 12))
 	{
+		if (!m_authorized)
+		{
+			SendAuthResponse();
+			return;
+		}
+
 		const auto& scriptDirs = g_Options->GetScriptDirPaths();
 		if (scriptDirs.empty())
 		{
@@ -360,7 +360,8 @@ void WebProcessor::Dispatch()
 		// maps to: {ScriptDir}/{extname}/{path}
 		std::string_view extUrl = m_url + 12;
 		auto slash = extUrl.find('/');
-		if (slash == std::string_view::npos)
+		// reject missing path separator and reject absolute extUrl (e.g. //etc/passwd)
+		if (slash == std::string_view::npos || slash == 0)
 		{
 			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
 			return;
@@ -369,12 +370,22 @@ void WebProcessor::Dispatch()
 		bool found = false;
 		for (const auto& scriptDir : scriptDirs)
 		{
-			std::string filePath = fs::u8string(scriptDir / extUrl);
+			fs::path filePath = scriptDir / extUrl;
+			fs::error_code ec;
+			auto resolvedDir = fs::canonical(scriptDir, ec);
+			if (ec) continue;
+
+			auto resolvedPath = fs::canonical(filePath, ec);
+			if (ec) continue;
+
+			auto rel = resolvedPath.lexically_relative(resolvedDir);
+			if (rel.empty() || rel.native().front() == '.') continue;
 
 			CharBuffer body;
-			if (FileSystem::LoadFileIntoBuffer(filePath.c_str(), body, true))
+			std::string filePathStr = fs::u8string(resolvedPath);
+			if (FileSystem::LoadFileIntoBuffer(filePathStr.c_str(), body, true))
 			{
-				const char* contentType = DetectContentType(filePath.c_str());
+				const char* contentType = DetectContentType(filePathStr.c_str());
 				int len = body.Size() - 1;
 				SendBodyResponse(body, len, contentType, true);
 				found = true;
@@ -386,6 +397,12 @@ void WebProcessor::Dispatch()
 		{
 			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
 		}
+		return;
+	}
+
+	if (Util::EmptyStr(g_Options->GetWebDir()))
+	{
+		SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
 		return;
 	}
 

@@ -112,6 +112,11 @@ def extract_from_manifest(manifest):
             "message": about_text,
             "description": f"Short description of the extension shown as a heading in the About section." + do_not_translate,
         }
+        about_caption_text = f"About {ext_name}"
+        entries["about_caption"] = {
+            "message": about_caption_text,
+            "description": f"Section heading for extension description in settings. DO NOT translate '{ext_name}'.",
+        }
 
     desc = manifest.get("description", [])
     desc_text = join_description(desc)
