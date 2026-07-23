@@ -32,12 +32,18 @@
 
 CachedSegmentData::~CachedSegmentData()
 {
-	g_ArticleCache->Free(this);
+	if (g_ArticleCache)
+	{
+		g_ArticleCache->Free(this);
+	}
 }
 
 CachedSegmentData& CachedSegmentData::operator=(CachedSegmentData&& other)
 {
-	g_ArticleCache->Free(this);
+	if (g_ArticleCache)
+	{
+		g_ArticleCache->Free(this);
+	}
 	m_data = other.m_data;
 	m_size = other.m_size;
 	other.m_data = nullptr;
@@ -1048,7 +1054,7 @@ void ArticleCache::Run()
 			(g_Options->GetDirectWrite() && m_allocated >= fillThreshold)) &&
 			m_allocated > 0)
 		{
-			justFlushed = CheckFlush(m_allocated >= fillThreshold);
+			justFlushed = CheckFlush(IsStopped() || m_allocated >= fillThreshold);
 			resetCounter = 0;
 		}
 		else if (!m_allocated)
@@ -1091,10 +1097,9 @@ bool ArticleCache::CheckFlush(bool flushEverything)
 
 			for (FileInfo* fileInfo : nzbInfo->GetFileList())
 			{
-			if (fileInfo->GetCachedArticles() > 0 
-				&& (fileInfo->GetActiveDownloads() == 0 || flushEverything)
-				&& !fileInfo->GetNzbInfo()->GetSkipDiskWrite()
-				&& !g_Options->GetSkipWrite())
+				if (fileInfo->GetCachedArticles() > 0 
+					&& (fileInfo->GetActiveDownloads() == 0 || flushEverything)
+					&& (!fileInfo->GetNzbInfo()->GetSkipDiskWrite() || flushEverything))
 				{
 					m_fileInfo = fileInfo;
 					infoName.Format("%s%c%s", m_fileInfo->GetNzbInfo()->GetName(), PATH_SEPARATOR, m_fileInfo->GetFilename());
