@@ -378,13 +378,9 @@ Create `locales.source.json` in the extension root directory with English source
 
 ```json
 {
-    "about_caption": {
-        "message": "About EMail",
-        "description": "Section heading for extension description in settings"
-    },
     "about": {
-        "message": "Sends E-Mail notification.",
-        "description": "Short description shown in the extension manager table"
+        "message": "About EMail",
+        "description": "Section heading for extension description in settings. DO NOT translate 'EMail'."
     },
     "description": {
         "message": "This script sends E-Mail notification when the job is done.",
@@ -413,8 +409,7 @@ Create `locales.source.json` in the extension root directory with English source
 
 | Key pattern | Scope | Example |
 |---|---|---|
-| `about` | Short description in the extension manager table | `about` → "Sends E-Mail notification." |
-| `about_caption` | Section heading above the extension description in settings | `about_caption` → "About EMail" |
+| `about` | Section heading above the extension description in settings | `about` → "About EMail" |
 | `description` | Full description shown in settings | `description` → "This script sends..." |
 | `requirements` | System requirements displayed to the user | `requirements` → "Requires Python3.8+" |
 | `{optionname}_desc` | Option help text | `server_desc` → "SMTP server host." |
