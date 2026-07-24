@@ -109,13 +109,8 @@ def extract_from_manifest(manifest):
         if re.search(r"\bNZBGet\b", about_text):
             do_not_translate += " DO NOT translate 'NZBGet'."
         entries["about"] = {
-            "message": about_text,
-            "description": f"Short description of the extension shown as a heading in the About section." + do_not_translate,
-        }
-        about_caption_text = f"About {ext_name}"
-        entries["about_caption"] = {
-            "message": about_caption_text,
-            "description": f"Section heading for extension description in settings. DO NOT translate '{ext_name}'.",
+            "message": f"About {ext_name}",
+            "description": f"Section heading for extension description in settings. DO NOT translate '{ext_name}'." + do_not_translate,
         }
 
     desc = manifest.get("description", [])
