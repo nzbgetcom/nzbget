@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ public:
 	static void StartJob(PostInfo* postInfo);
 	static bool HasCompletedArchiveFiles(NzbInfo* nzbInfo);
 
-	~UnpackController();
+	~UnpackController() override;
 
 protected:
 	bool ReadLine(char* buf, int bufSize, FILE* stream) override;
@@ -110,6 +110,7 @@ private:
 #endif
 	bool FileHasRarSignature(const char* filename);
 	bool PrepareCmdParams(const char* command, ParamList* params, const char* infoName);
+	bool WillRetryWithPass();
 };
 
 #endif
