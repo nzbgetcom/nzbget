@@ -932,7 +932,10 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		m_unpackPasswordError = true;
 	}
 
-	if (m_unpacker == upSevenZip && strstr(text, "Wrong password"))
+	if (m_unpacker == upSevenZip &&
+		(strstr(text, "Cannot open encrypted archive. Wrong password?") ||
+		 strstr(text, "Data Error in encrypted file. Wrong password?") ||
+		 strstr(text, "CRC Failed in encrypted file. Wrong password?")))
 	{
 		m_unpackDecryptError = true;
 	}
