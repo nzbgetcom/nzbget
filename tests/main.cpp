@@ -45,6 +45,7 @@
 #include "SystemInfo.h"
 #include "SystemHealth.h"
 
+extern char** environ;
 char* (*g_EnvironmentVariables)[];
 int g_ArgumentCount;
 char* (*g_Arguments)[];
@@ -93,7 +94,7 @@ struct InitGlobals
 		cmdOpts.push_back("UnrarCmd=unrar");
 
 		g_Options = new Options(&cmdOpts, nullptr);
-		g_EnvironmentVariables = nullptr;
+		g_EnvironmentVariables = (char*(*)[])environ;
 		g_ArgumentCount = 0;
 		g_Arguments = nullptr;
 		g_WorkState = new WorkState();

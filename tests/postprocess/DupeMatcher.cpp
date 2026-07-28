@@ -29,29 +29,30 @@ BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
-	const fs::path testDataDir = fs::current_path() / "rarrenamer";
-	const fs::path workingDir = testDataDir / "DupeMatcher";
-	BOOST_REQUIRE(fs::create_directory(workingDir));
+	const fs::path CURR_DIR = fs::current_path();
+	const fs::path workingDir = CURR_DIR / "DupeMatcher";
+	fs::remove_all(workingDir);
+	BOOST_REQUIRE(fs::create_directories(workingDir));
 
 	const fs::path dupe1 = workingDir / "dupe1";
 	BOOST_CHECK(fs::create_directories(dupe1));
-	fs::copy_file(testDataDir / "parchecker", dupe1);
+	fs::copy(CURR_DIR / "parchecker", dupe1, fs::copy_options::recursive);
 
 	const fs::path dupe2 = workingDir / "dupe2";
 	BOOST_CHECK(fs::create_directories(dupe2));
-	fs::copy_file(testDataDir / "parchecker", dupe2);
+	fs::copy(CURR_DIR / "parchecker", dupe2, fs::copy_options::recursive);
 	fs::remove(dupe2 / "testfile.nfo");
 
-	const fs::path rardupe1 = testDataDir / "/dupematcher1";
-	const fs::path rardupe2 = testDataDir / "/dupematcher2";
+	const fs::path rardupe1 = CURR_DIR / "dupematcher1";
+	const fs::path rardupe2 = CURR_DIR / "dupematcher2";
 
 	const fs::path nondupe = workingDir / "nondupe";
 	BOOST_CHECK(fs::create_directories(nondupe));
-	fs::copy_file(testDataDir / "parchecker", nondupe);
+	fs::copy(CURR_DIR / "parchecker", nondupe, fs::copy_options::recursive);
 	fs::remove(nondupe / "testfile.dat");
 
 
-	int64 expectedSize = fs::file_size(dupe1 / "/testfile.dat");
+	int64 expectedSize = static_cast<int64>(fs::file_size(dupe1 / "testfile.dat"));
 
 	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
 
