@@ -70,6 +70,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
+	fs::remove_all(WORKING_DIR);
 	BOOST_REQUIRE(fs::create_directory(WORKING_DIR));
 
 	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
@@ -133,6 +134,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
+	fs::remove_all(WORKING_DIR);
 	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.string().c_str()));
 
 	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
