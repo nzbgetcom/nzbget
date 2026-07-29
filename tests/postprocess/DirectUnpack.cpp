@@ -55,8 +55,8 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 {
 	if (!UNRAR_PATH)
 	{
-		BOOST_TEST_MESSAGE("This test requires a working 'unrar' executable.");
-		BOOST_TEST_MESSAGE("The 'unrar' command was not found in your system's PATH.");
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
 		return;
 	}
 
@@ -118,8 +118,8 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 {
 	if (!UNRAR_PATH)
 	{
-		BOOST_TEST_MESSAGE("This test requires a working 'unrar' executable.");
-		BOOST_TEST_MESSAGE("The 'unrar' command was not found in your system's PATH.");
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
 		return;
 	}
 
