@@ -22,14 +22,18 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include "Options.h"
 #include "DupeMatcher.h"
 #include "FileSystem.h"
+#include "Util.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
-	static const char* UNRAR_PATH = std::getenv("unrar");
+	const fs::path CURR_DIR = fs::current_path();
+
+	auto UNRAR_PATH = Util::ResolvePathFromEnv("unrar");
 	if (!UNRAR_PATH)
 	{
 		BOOST_TEST_MESSAGE("unrar not available - skipping test");
@@ -37,7 +41,13 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 		return;
 	}
 
-	const fs::path CURR_DIR = fs::current_path();
+	const std::string unrarCmd = std::string("UnrarCmd=") + fs::u8string(UNRAR_PATH.value());
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("WriteLog=none");
+	cmdOpts.push_back("NzbLog=no");
+	cmdOpts.push_back(unrarCmd.c_str());
+	Options options(&cmdOpts, nullptr);
+
 	const fs::path workingDir = CURR_DIR / "DupeMatcher";
 	fs::remove_all(workingDir);
 	BOOST_REQUIRE(fs::create_directories(workingDir));
