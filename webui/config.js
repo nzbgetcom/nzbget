@@ -84,6 +84,7 @@ var Options = (new function($)
 		RPC.call('loadextensions', [false], function(data)
 		{
 			_this.postParamConfig = initPostParamConfig(data);
+			data.forEach(function(ext) { if (ext.Name) I18n.loadExtensionTranslations(ext.Name); });
 		});
 	}
 
@@ -179,8 +180,13 @@ var Options = (new function($)
 	function makeOption(extConf, rawOption)
 	{
 		var [type, select] = GetTypeAndSelect(rawOption);
+		var extName = extConf.Name.toLowerCase();
+		var optName = rawOption.Name.toLowerCase();
 		return {
 			caption: rawOption.DisplayName,
+			i18nCaption: 'ext_' + extName + '_' + optName + '_displayName',
+			i18nSelectPrefix: 'ext_' + extName + '_' + optName + '_select_',
+			descriptionKey: 'ext_' + extName + '_' + optName + '_desc',
 			name: getOptionName(extConf, rawOption),
 			value: String(rawOption.Value),
 			defvalue: String(rawOption.Value),
@@ -200,8 +206,12 @@ var Options = (new function($)
 
 	function makeCommandOption(extConf, rawCommand)
 	{
+		var extName = extConf.Name.toLowerCase();
+		var cmdName = rawCommand.Name.toLowerCase();
 		return {
 			caption: rawCommand.DisplayName,
+			i18nCaption: 'ext_' + extName + '_' + cmdName + '_displayName',
+			descriptionKey: 'ext_' + extName + '_' + cmdName + '_desc',
 			name: getOptionName(extConf, rawCommand),
 			value: null,
 			defvalue: rawCommand.Action,
@@ -272,7 +282,8 @@ var Options = (new function($)
 				nameprefix: this.serverTemplateData[i].Name,
 			};
 			var requirements = this.serverTemplateData[i].Requirements;
-			var description = arrToStr(this.serverTemplateData[i].Description) + '\n';
+			var body = arrToStr(this.serverTemplateData[i].Description) + '\n';
+			var description = body;
 			description = requirements.reduce(function(acc, curr) {
 				if (curr)
 				{
@@ -291,6 +302,8 @@ var Options = (new function($)
 			scriptConfig['defscheduler'] = this.serverTemplateData[i].TaskTime !== '';
 			scriptConfig['feed'] = this.serverTemplateData[i].FeedScript;
 			scriptConfig['about'] = this.serverTemplateData[i].About;
+			scriptConfig['body'] = body;
+			scriptConfig['requirements'] = this.serverTemplateData[i].Requirements;
 			scriptConfig['description'] = description;
 			scriptConfig['author'] = this.serverTemplateData[i].Author;
 			scriptConfig['license'] = this.serverTemplateData[i].License;
@@ -360,6 +373,7 @@ var Options = (new function($)
 			Options.serverTemplateData = Options.serverTemplateData.concat(data);
 			Options.complete();
 			ExtensionManager.setExtensions(data.slice());
+			data.forEach(function(ext) { I18n.loadExtensionTranslations(ext.Name); });
 		}
 	}
 
@@ -663,13 +677,16 @@ var Options = (new function($)
 			if (data[i].PostScript || data[i].QueueScript) 
 			{
 				var scriptName = data[i].Name;
+				var extName = scriptName.toLowerCase();
 				var sectionId = Util.makeId(scriptName + ':');
 				var option = {};
 				option.name = data[i].Name + ':';
 				option.caption = data[i].DisplayName;
+				option.i18nCaption = 'ext_' + extName + '_displayName';
 
 				option.defvalue = 'no';
-				option.description = '';
+				option.description = data[i].About || 'Extension script ' + scriptName + '.';
+				option.descriptionKey = 'ext_' + extName + '_about';
 				option.about = data[i].About || 'Extension script ' + scriptName + '.';
 				option.requirements = [];
 				option.value = null;
@@ -748,7 +765,10 @@ var Config = (new function($)
 				filterInputCallback: filterInput,
 				filterClearCallback: filterClear
 			});
-		I18n.subscribe(function onLangChange() { Config.redraw(); });
+		I18n.subscribe(function onLangChange() {
+			Config.redraw();
+			Config._translateDescriptions();
+		});
 	}
 
 	this.config = function()
@@ -884,6 +904,85 @@ var Config = (new function($)
 		}
 	}
 
+	function formatDescription(text, hasAbout)
+	{
+		// replace option references
+		var exp = /\<([A-Z0-9\.]*)\>/ig;
+		text = text.replace(exp, '<a class="option" href="#" onclick="Config.scrollToOption(event, this)">$1</a>');
+
+		// replace URLs
+		exp = /(https?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+		text = text.replace(exp, "<a href='$1'>$1</a>");
+
+		// highlight first line or paragraph safely
+		if (hasAbout)
+		{
+			text = text.replace(/\n/, '</span>\n');
+		}
+		else if (text.indexOf('\n\n') > -1)
+		{
+			text = text.replace(/\n\n/, '</span>\n\n');
+		}
+		else if (text.indexOf('\n') > -1)
+		{
+			text = text.replace(/\n/, '</span>\n');
+		}
+		else
+		{
+			text = text + '</span>';
+		}
+		text = '<span class="help-option-title">' + text;
+
+		// Wrap NOTE / INFO labels
+		text = text.replace(/NOTE: /g, '<span class="label label-warning text-uppercase">' + I18n.defaultValue('extman_note', 'NOTE') + '</span> ');
+		text = text.replace(/INFO: /g, '<span class="label label-info text-uppercase">' + I18n.defaultValue('label_info_cap', 'INFO') + '</span>: ');
+
+		// handle spoilers
+		if (text.indexOf('INFO FOR DEVELOPERS:') > -1)
+		{
+			text = text.replace(/INFO FOR DEVELOPERS:\n/g,
+				'<input class="btn btn-default btn-mini" data-i18n-value="btn_show_dev_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+			text += '</span>';
+		}
+		if (text.indexOf('MORE INFO:') > -1)
+		{
+			text = text.replace(/MORE INFO:\n/g,
+				'<input class="btn btn-default btn-mini" data-i18n-value="btn_show_more_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
+			text += '</span>';
+		}
+
+		return text;
+	}
+
+	/**
+	 * Translates and reformats extension option descriptions after language change.
+	 * The safe two-step approach: set as text (escapes all HTML), then
+	 * selectively reintroduce formatting (<Option> links, URL links,
+	 * NOTE/INFO labels, spoilers) via inner HTML.
+	 */
+	this._translateDescriptions = function()
+	{
+		$('pre.help-desc[data-i18n-key]').each(function() {
+			var $pre = $(this);
+			var key = $pre.attr('data-i18n-key');
+			var text = I18n.translate(key);
+			if (!text || text === key)
+			{
+				return;
+			}
+
+			$pre.text(text);
+
+			// Step 2: get the safely-escaped text back
+			var safeText = $pre.text();
+
+			// Step 3: format the description using the shared helper
+			safeText = formatDescription(safeText, false);
+
+			$pre.html(safeText);
+		});
+	}
+
 	/*** GENERATE HTML PAGE *****************************************************************/
 
 	function buildOptionsContent(section, extensionsec)
@@ -980,10 +1079,11 @@ var Config = (new function($)
 			caption = '<span class="config-multicaption">' + caption.substring(0, caption.indexOf('.') + 1) + '</span>' + caption.substring(caption.indexOf('.') + 1);
 		}
 
+		var i18nCaptionAttr = option.i18nCaption ? 'data-i18n="' + Util.textToAttr(option.i18nCaption) + '" ' : '';
 		var html =
 			'<div class="control-group ' + option.sectionId + (section.multi ? ' multiid' + option.multiid + ' multiset' : '') + '">'+
 				'<label class="control-label">' +
-				'<a class="option-name" href="#" data-optid="' + option.formId + '" '+
+				'<a class="option-name" href="#" data-optid="' + option.formId + '" ' + i18nCaptionAttr +
 				'onclick="Config.scrollToOption(event, this)">' + caption + '</a>' +
 				(option.value === null && !section.postparam && !option.commandopts ?
 					' <a data-toggle="modal" href="#ConfigNewOptionHelp" class="label label-info text-uppercase">new</a>' : '') + '</label>'+
@@ -995,20 +1095,68 @@ var Config = (new function($)
 			about = about.replace('\n', ' ') + '\n';
 		}
 		var rawDescription = option['description'] || '';
-		var description = about + rawDescription;
-		var optName = (option.name || '').replace(/\./g, '_').toLowerCase();
-		var parts = optName.split('_');
-		var first = parts.length > 0 ? parts[0].replace(/[0-9]+$/, '') : '';
-		var rest = parts.length > 1 ? parts.slice(1).join('_') : '';
-		var baseKey = (option.keyPrefix || 'config_desc_') + first;
-		var fullKey = baseKey + (rest ? '_' + rest : '');
-		description = I18n.defaultValue(fullKey, I18n.defaultValue(baseKey, description));
+		var description;
+		if (option.extKeyPrefix && about && !option.descriptionKey)
+		{
+			var aboutText = option.about;
+			if (aboutText)
+			{
+				aboutText = aboutText.replace('\n', ' ');
+			}
+			aboutText = I18n.defaultValue(option.extKeyPrefix + 'about', aboutText) + '\n';
+			var bodyText = option.body || rawDescription;
+			if (bodyText)
+			{
+				bodyText = bodyText.replace(/\n+$/, '');
+			}
+			bodyText = I18n.defaultValue(option.extKeyPrefix + 'description', bodyText);
+			description = aboutText + (bodyText || '') + '\n\n';
+
+			var reqs = option.requirements || [];
+			if (reqs.length > 0)
+			{
+				var joinedReqs = '';
+				for (var rj = 0; rj < reqs.length; rj++)
+				{
+					if (reqs[rj])
+					{
+						if (joinedReqs) joinedReqs += '\n';
+						joinedReqs += reqs[rj];
+					}
+				}
+				var translatedReqs = I18n.defaultValue(option.extKeyPrefix + 'requirements', joinedReqs);
+				var reqLines = translatedReqs.split('\n');
+				for (var rk = 0; rk < reqLines.length; rk++)
+				{
+					if (reqLines[rk])
+					{
+						description += 'NOTE: ' + reqLines[rk] + '\n';
+					}
+				}
+			}
+		}
+		else
+		{
+			description = option.descriptionKey ? rawDescription : (about + rawDescription);
+			if (option.descriptionKey) {
+				description = I18n.defaultValue(option.descriptionKey, description);
+			} else {
+				var optName = (option.name || '').replace(/\./g, '_').toLowerCase();
+				var parts = optName.split('_');
+				var first = parts.length > 0 ? parts[0].replace(/[0-9]+$/, '') : '';
+				var rest = parts.length > 1 ? parts.slice(1).join('_') : '';
+				var baseKey = (option.keyPrefix || 'config_desc_') + first;
+				var fullKey = baseKey + (rest ? '_' + rest : '');
+				description = I18n.defaultValue(fullKey, I18n.defaultValue(baseKey, description));
+			}
+		}
 
 		if (option.nocontent)
 		{
 			option.type = 'info';
 			html +=	'<div class="" id="' + option.formId + '"/>';
 		}
+
 		else if (option.select.length > 1)
 		{
 			option.type = 'switch';
@@ -1022,6 +1170,10 @@ var Config = (new function($)
 				if (pvalue.toLowerCase() === 'yes' || pvalue.toLowerCase() === 'no') {
 					var labelKey = pvalue.toLowerCase() === 'yes' ? 'label_yes_cap' : 'label_no_cap';
 					pvalueDisplay = I18n.defaultValue(labelKey, pvalueDisplay);
+				}
+				else if (option.i18nSelectPrefix)
+				{
+					pvalueDisplay = I18n.defaultValue(option.i18nSelectPrefix + pvalue.toLowerCase(), pvalueDisplay);
 				}
 				if (value && pvalue.toLowerCase() === value.toLowerCase())
 				{
@@ -1038,6 +1190,10 @@ var Config = (new function($)
 				var valueDisplay = value;
 				if (value && (value.toLowerCase() === 'yes' || value.toLowerCase() === 'no')) {
 					valueDisplay = I18n.defaultValue('config_value_' + value.toLowerCase(), valueDisplay);
+				}
+				else if (value && option.i18nSelectPrefix)
+				{
+					valueDisplay = I18n.defaultValue(option.i18nSelectPrefix + value.toLowerCase(), valueDisplay);
 				}
 				html += '<input type="button" class="btn btn-primary" value="' + Util.textToAttr(valueDisplay) + '" data-value="' + Util.textToAttr(value) + '" onclick="Config.switchClick(this)">';
 			}
@@ -1095,9 +1251,10 @@ var Config = (new function($)
 		else if (option.commandopts)
 		{
 			option.type = 'command';
+			var i18nBtnAttr = option.i18nCaption ? 'data-i18n="' + Util.textToAttr(option.i18nCaption) + '" ' : '';
 			html += '<button type="button" id="' + option.formId + '" class="btn ' + 
 				(option.commandopts.indexOf('danger') > -1 ? 'btn-danger' : 'btn-default') + 
-				'" onclick="Config.commandClick(this)">' + value +  '</button>';
+				'" ' + i18nBtnAttr + 'onclick="Config.commandClick(this)">' + (option.i18nCaption ? option.caption : value) +  '</button>';
 		}
 		else
 		{
@@ -1110,10 +1267,6 @@ var Config = (new function($)
 			var htmldescr = description;
 			htmldescr = htmldescr.replace(/NOTE: do not forget to uncomment the next line.\n/, '');
 
-			// replace option references
-			var exp = /\<([A-Z0-9\.]*)\>/ig;
-			htmldescr = htmldescr.replace(exp, '<a class="option" href="#" onclick="Config.scrollToOption(event, this)">$1</a>');
-
 			htmldescr = htmldescr.replace(/&/g, '&amp;');
 
 			// add extra new line after Examples not ended with dot
@@ -1121,30 +1274,15 @@ var Config = (new function($)
 				return match + (Util.endsWith(match, '.') ? '' : '\n');
 			});
 
-			// replace URLs
-			exp = /(https?:\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-			htmldescr = htmldescr.replace(exp, "<a href='$1'>$1</a>");
+			htmldescr = formatDescription(htmldescr, option.about);
 
-			// highlight first line
-			htmldescr = htmldescr.replace(/\n/, '</span>\n');
-			htmldescr = '<span class="help-option-title">' + htmldescr;
-
-			// Wrap in pre to preserve formatting from nzbget.conf
-			htmldescr = '<pre class="help-desc">' + htmldescr + '</pre>';
-
-			htmldescr = htmldescr.replace(/NOTE: /g, '<span class="label label-warning text-uppercase" data-i18n="extman_note"></span> ');
-			htmldescr = htmldescr.replace(/INFO: /g, '<span class="label label-info text-uppercase" data-i18n="label_info_cap"></span>: ');
-
-			if (htmldescr.indexOf('INFO FOR DEVELOPERS:') > -1)
+			if (option.descriptionKey)
 			{
-				htmldescr = htmldescr.replace(/INFO FOR DEVELOPERS:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_dev_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
-				htmldescr += '</span>';
+				htmldescr = '<pre class="help-desc" data-i18n-key="' + Util.textToAttr(option.descriptionKey) + '">' + htmldescr + '</pre>';
 			}
-
-			if (htmldescr.indexOf('MORE INFO:') > -1)
+			else
 			{
-				htmldescr = htmldescr.replace(/MORE INFO:\n/g, '<input class="btn btn-default btn-mini" data-i18n-value="btn_show_more_info" value="" type="button" onclick="Config.showSpoiler(this)"><span class="hide">');
-				htmldescr += '</span>';
+				htmldescr = '<pre class="help-desc">' + htmldescr + '</pre>';
 			}
 
 			if (section.multi)
@@ -1375,6 +1513,7 @@ var Config = (new function($)
 
 				// create virtual option "About" with scripts description.
 				var option = {};
+				option.i18nCaption = 'ext_' + conf.name.toLowerCase() + '_about_caption';
 				option.caption = 'About ' + conf.shortName;
 				option.name = conf.nameprefix + option.caption;
 				option.value = '';
@@ -1383,6 +1522,9 @@ var Config = (new function($)
 				option.select = [];
 				option.about = conf.about;
 				option.nocontent = true;
+				option.body = conf.body;
+				option.requirements = conf.requirements;
+				option.extKeyPrefix = 'ext_' + conf.name.toLowerCase() + '_';
 				option.description = conf.description;
 				firstVisibleSection.options.unshift(option);
 			}
@@ -3669,6 +3811,11 @@ var ExtensionManager = (new function($)
 		return remoteExtensions;
 	}
 
+	this.getInstalledExtensions = function()
+	{
+		return installedExtensions;
+	}
+
 	this.setExtensions = function(exts)
 	{
 		var value = Config.findOptionByName(extensionsId).value;
@@ -3690,6 +3837,11 @@ var ExtensionManager = (new function($)
 			return extension;
 		});
 		sortExtensions();
+
+		if (window.I18n)
+		{
+			installedExtensions.forEach(function(ext) { I18n.loadExtensionTranslations(ext.name); });
+		}
 	}
 
 	this.downloadRemoteExtensions = function()
@@ -3746,8 +3898,8 @@ var ExtensionManager = (new function($)
 		extensions.forEach(function(ext, i) {
 			var raw = $('<tr></tr>')
 				.append(getExtActiveStatusCell(ext))
-				.append(getCeneteredTextCell(ext.name))
-				.append(getTextCell(ext.about).addClass('phone-hide'))
+				.append(getCeneteredTextCell(ext.displayName, ext.name, 'displayName'))
+				.append(getTextCell(ext.about, ext.name, 'about').addClass('phone-hide'))
 				.append(getCeneteredTextCell(ext.version).addClass('phone-hide'))
 				.append(getHomepageCell(ext).addClass('phone-hide'))
 				.append(getActionBtnsCell(ext))
@@ -4318,24 +4470,32 @@ var ExtensionManager = (new function($)
 		return getEmptyCell();
 	}
 
-	function getCeneteredTextCell(text)
+	function getCeneteredTextCell(text, extName, fieldName)
 	{
 		if (text)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append(text);
+			if (extName && fieldName)
+			{
+				cell.attr('data-i18n', 'ext_' + extName.toLowerCase() + '_' + fieldName);
+			}
+			cell.text(text);
 			return cell;
 		}
 		
 		return getEmptyCell();
 	}
 
-	function getTextCell(text)
+	function getTextCell(text, extName, fieldName)
 	{
 		if (text)
 		{
 			var cell = $('<td class="extension-manager__td">');
-			cell.append(text);
+			if (extName && fieldName)
+			{
+				cell.attr('data-i18n', 'ext_' + extName.toLowerCase() + '_' + fieldName);
+			}
+			cell.text(text);
 			return cell;
 		}
 		

@@ -105,8 +105,30 @@ var DownloadsEditDialog = (new function($)
 				{
 					$('#DownloadsEdit_NZBName').focus();
 				}
+				if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+				{
+					ParamTab.updatePostParamTranslations();
+				}
 			});
 		}
+		else
+		{
+			$DownloadsEditDialog.on('shown', function()
+			{
+				if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+				{
+					ParamTab.updatePostParamTranslations();
+				}
+			});
+		}
+
+		I18n.subscribe(function()
+		{
+			if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
 	}
 
 	this.showModal = function(nzbid, allGroups, area)
@@ -908,6 +930,14 @@ var ParamTab = (new function($)
 			lastDiv = div;
 			lastClass = divClass;
 		}
+		if (window.I18n)
+		{
+			I18n.translatePage(configData);
+			if (window.Config)
+			{
+				Config._translateDescriptions();
+			}
+		}
 		return postParams;
 	}
 
@@ -942,6 +972,11 @@ var ParamTab = (new function($)
 				}
 			}
 		});
+
+		if (window.Config)
+		{
+			Config._translateDescriptions();
+		}
 	}
 
 	function defineBuiltinParams(postParamConfig)
@@ -1568,7 +1603,23 @@ var HistoryEditDialog = (new function($)
 			Refresher.resume();
 		});
 
+		$HistoryEditDialog.on('shown', function ()
+		{
+			if ($HistoryEdit_ParamData && $HistoryEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
+
 		TabDialog.extend($HistoryEditDialog);
+
+		I18n.subscribe(function()
+		{
+			if ($HistoryEdit_ParamData && $HistoryEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
 	}
 
 	this.showModal = function(hist, area)

@@ -88,6 +88,13 @@ docker/downloads
 docker/config
 *.snap
 
+# Ignore all dotfiles except those explicitly needed
+.*
+!/.gitignore
+!/.gitattributes
+!.github/
+!.github/**
+
 # local secrets (API keys) — never commit
 .env
 .env.*

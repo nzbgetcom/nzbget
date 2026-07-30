@@ -27,13 +27,14 @@
 #include "Options.h"
 #include "DiskState.h"
 #include "FileSystem.h"
+#include "Util.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
 const fs::path CURR_DIR = fs::current_path();
 const fs::path TEST_DATA_DIR = CURR_DIR / "rarrenamer";
 const fs::path WORKING_DIR = TEST_DATA_DIR / "empty";
-static const char* UNRAR_PATH = std::getenv("unrar");
+static const auto UNRAR_PATH = Util::ResolvePathFromEnv("unrar");
 
 class DirectUnpackDownloadQueueMock final : public DownloadQueue
 {
@@ -55,12 +56,12 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 {
 	if (!UNRAR_PATH)
 	{
-		BOOST_TEST_MESSAGE("This test requires a working 'unrar' executable.");
-		BOOST_TEST_MESSAGE("The 'unrar' command was not found in your system's PATH.");
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
 		return;
 	}
 
-	const std::string unrarCmd = std::string("UnrarCmd=") + UNRAR_PATH;
+	const std::string unrarCmd = std::string("UnrarCmd=") + fs::u8string(UNRAR_PATH.value());
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("WriteLog=none");
 	cmdOpts.push_back("NzbLog=no");
@@ -69,6 +70,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
+	fs::remove_all(WORKING_DIR);
 	BOOST_REQUIRE(fs::create_directory(WORKING_DIR));
 
 	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
@@ -118,12 +120,12 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 {
 	if (!UNRAR_PATH)
 	{
-		BOOST_TEST_MESSAGE("This test requires a working 'unrar' executable.");
-		BOOST_TEST_MESSAGE("The 'unrar' command was not found in your system's PATH.");
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
 		return;
 	}
 
-	const std::string unrarCmd = std::string("UnrarCmd=") + UNRAR_PATH;
+	const std::string unrarCmd = std::string("UnrarCmd=") + UNRAR_PATH->string();
 	Options::CmdOptList cmdOpts;
 	cmdOpts.push_back("WriteLog=none");
 	cmdOpts.push_back("NzbLog=no");
@@ -132,6 +134,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 
 	DirectUnpackDownloadQueueMock downloadQueue;
 
+	fs::remove_all(WORKING_DIR);
 	BOOST_REQUIRE(FileSystem::CreateDirectory(WORKING_DIR.string().c_str()));
 
 	const fs::path part01 = TEST_DATA_DIR / "testfile3.part01.rar";
