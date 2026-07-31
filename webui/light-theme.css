@@ -379,6 +379,10 @@ span.help-option-title {
 	color: #8D1212;
 }
 
+.help-desc::first-line {
+	color: #8D1212;
+}
+
 .failure-message {
 	color: #8D1212;
 }

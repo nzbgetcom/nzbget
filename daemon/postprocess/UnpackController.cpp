@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2018 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2023-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2023-2026 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -317,7 +317,7 @@ void UnpackController::ExecuteUnrar(const char* password)
 	m_unpackSpaceError = exitCode == 5;
 	m_unpackPasswordError |= exitCode == 11; // only for rar5-archives
 
-	if (!m_unpackOk && exitCode > 0)
+	if (!m_unpackOk && exitCode > 0 && !WillRetryWithPass())
 	{
 		PrintMessage(Message::mkError, "Unrar error code: %i", exitCode);
 	}
@@ -370,10 +370,16 @@ void UnpackController::ExecuteSevenZip(const char* password, bool multiVolumes)
 	m_unpackOk = exitCode == 0 && m_allOkMessageReceived && !GetTerminated();
 	m_unpackStartError = exitCode == -1 && !m_autoTerminated;
 
-	if (!m_unpackOk && exitCode > 0)
+	if (!m_unpackOk && exitCode > 0 && !WillRetryWithPass())
 	{
 		PrintMessage(Message::mkError, "7-Zip error code: %i", exitCode);
 	}
+}
+
+bool UnpackController::WillRetryWithPass()
+{
+	return (m_unpackDecryptError || m_unpackPasswordError) &&
+		m_password.Empty() && !g_Options->GetUnpackPassFilePath().empty();
 }
 
 bool UnpackController::PrepareCmdParams(const char* command, ParamList* params, const char* infoName)
@@ -927,7 +933,9 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 	}
 
 	if (m_unpacker == upSevenZip &&
-		(len > 45 && !strncmp(text + len - 45, "Data Error in encrypted file. Wrong password?", 45)))
+		(strstr(text, "Cannot open encrypted archive. Wrong password?") ||
+		 strstr(text, "Data Error in encrypted file. Wrong password?") ||
+		 strstr(text, "CRC Failed in encrypted file. Wrong password?")))
 	{
 		m_unpackDecryptError = true;
 	}
@@ -939,7 +947,7 @@ void UnpackController::AddMessage(Message::EKind kind, const char* text)
 		(len > 18 && !strncmp(text + len - 18, " - checksum failed", 18)) ||
 		!strncmp(text, "Unrar: WARNING: You need to start extraction from a previous volume", 67)))
 	{
-		if (m_postInfo)
+		if (m_postInfo && !WillRetryWithPass())
 		{
 			m_postInfo->GetNzbInfo()->AddMessage(
 				Message::mkWarning,

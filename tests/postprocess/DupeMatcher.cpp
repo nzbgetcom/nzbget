@@ -22,38 +22,54 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include "Options.h"
 #include "DupeMatcher.h"
 #include "FileSystem.h"
+#include "Util.h"
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
 BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 {
-	const fs::path testDataDir = fs::current_path() / "rarrenamer";
-	const fs::path workingDir = testDataDir / "DupeMatcher";
-	BOOST_REQUIRE(fs::create_directory(workingDir));
+	const fs::path CURR_DIR = fs::current_path();
+
+	auto UNRAR_PATH = Util::ResolvePathFromEnv("unrar");
+	if (!UNRAR_PATH)
+	{
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
+		return;
+	}
+
+	const std::string unrarCmd = std::string("UnrarCmd=") + fs::u8string(UNRAR_PATH.value());
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("WriteLog=none");
+	cmdOpts.push_back("NzbLog=no");
+	cmdOpts.push_back(unrarCmd.c_str());
+	Options options(&cmdOpts, nullptr);
+
+	const fs::path workingDir = CURR_DIR / "DupeMatcher";
+	fs::remove_all(workingDir);
+	BOOST_REQUIRE(fs::create_directories(workingDir));
 
 	const fs::path dupe1 = workingDir / "dupe1";
 	BOOST_CHECK(fs::create_directories(dupe1));
-	fs::copy_file(testDataDir / "parchecker", dupe1);
+	fs::copy(CURR_DIR / "parchecker", dupe1, fs::copy_options::recursive);
 
 	const fs::path dupe2 = workingDir / "dupe2";
 	BOOST_CHECK(fs::create_directories(dupe2));
-	fs::copy_file(testDataDir / "parchecker", dupe2);
+	fs::copy(CURR_DIR / "parchecker", dupe2, fs::copy_options::recursive);
 	fs::remove(dupe2 / "testfile.nfo");
 
-	const fs::path rardupe1 = testDataDir / "/dupematcher1";
-	const fs::path rardupe2 = testDataDir / "/dupematcher2";
+	const fs::path rardupe1 = CURR_DIR / "dupematcher1";
+	const fs::path rardupe2 = CURR_DIR / "dupematcher2";
 
 	const fs::path nondupe = workingDir / "nondupe";
 	BOOST_CHECK(fs::create_directories(nondupe));
-	fs::copy_file(testDataDir / "parchecker", nondupe);
+	fs::copy(CURR_DIR / "parchecker", nondupe, fs::copy_options::recursive);
 	fs::remove(nondupe / "testfile.dat");
 
-
-	int64 expectedSize = fs::file_size(dupe1 / "/testfile.dat");
-
-	BOOST_TEST_MESSAGE("This test requires working unrar 5 in search path");
+	int64 expectedSize = static_cast<int64>(fs::file_size(dupe1 / "testfile.dat"));
 
 	DupeMatcher dupe1Matcher(dupe1.string().c_str(), expectedSize);
 	BOOST_CHECK(dupe1Matcher.Prepare());
@@ -79,7 +95,7 @@ BOOST_AUTO_TEST_CASE(DupeMatcherTest)
 	DupeMatcher rardupe1matcher(rardupe1.string().c_str(), expectedSize);
 	BOOST_CHECK(rardupe1matcher.Prepare());
 	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe1.string().c_str()));
-	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe2.string().c_str()));		    
+	BOOST_CHECK(rardupe1matcher.MatchDupeContent(dupe2.string().c_str()));
 	BOOST_CHECK(rardupe1matcher.MatchDupeContent(rardupe2.string().c_str()));
 	BOOST_CHECK(rardupe1matcher.MatchDupeContent(nondupe.string().c_str()) == false);
 

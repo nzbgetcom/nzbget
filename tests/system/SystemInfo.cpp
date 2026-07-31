@@ -168,18 +168,6 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 		GetLibrariesXmlStr(sysInfo->GetLibraries()) +
 		"</struct></value>";
 
-	BOOST_TEST_MESSAGE("EXPECTED JSON STR: ");
-	BOOST_TEST_MESSAGE(jsonStrExpected);
-
-	BOOST_TEST_MESSAGE("RESULT JSON STR: ");
-	BOOST_TEST_MESSAGE(jsonStrResult);
-
-	BOOST_TEST_MESSAGE("EXPECTED XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrExpected);
-
-	BOOST_TEST_MESSAGE("RESULT XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrResult);
-
 	BOOST_CHECK(jsonStrResult == jsonStrExpected);
 	BOOST_CHECK(xmlStrResult == xmlStrExpected);
 
