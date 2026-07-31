@@ -65,7 +65,9 @@ BOOST_AUTO_TEST_CASE(SaveConfigDoesNotAppendDuplicateOptionNames)
 		contents << firstFile.rdbuf();
 		firstContents = contents.str();
 	}
-	BOOST_CHECK_EQUAL(firstContents, "# existing config\nExtension.Option=first\n");
+	// one line only, carrying the last entry's value - Options::SetOption
+	// resolves duplicates the same way, so the file matches what nzbget loads
+	BOOST_CHECK_EQUAL(firstContents, "# existing config\nExtension.Option=second\n");
 
 	BOOST_REQUIRE(scriptConfig.SaveConfig(&optEntries));
 	std::string secondContents;
@@ -114,6 +116,48 @@ BOOST_AUTO_TEST_CASE(SaveConfigRemovesDuplicateLinesFromDamagedConfig)
 		"Server1.Active=yes\n"
 		"Server2.Active=no\n"
 		"Server2.Host=news.example.com\n");
+}
+
+// When a config file carries duplicate lines for one option, Options::SetOption
+// overwrites the same entry while parsing, so the LAST line is the value nzbget
+// actually runs on. Collapsing the duplicates must preserve that value,
+// otherwise saving a damaged config silently changes settings (issue #588).
+BOOST_AUTO_TEST_CASE(SaveConfigKeepsLastValueWhenConfigHasDuplicateLines)
+{
+	TempConfigFile configFile;
+	{
+		std::ofstream output(configFile.path);
+		output << "# existing config\n"
+			<< "Server2.Active=yes\n"
+			<< "Server2.Name=xsusenet\n"
+			<< "server2.active=no\n";
+	}
+
+	OptionsGuard optionsGuard;
+	Options options("nzbget", configFile.path.string().c_str(), true, nullptr, nullptr);
+	g_Options = &options;
+
+	// as loadconfig reports it: raw file lines, duplicates included
+	Options::OptEntries optEntries;
+	optEntries.emplace_back("Server2.Active", "yes");
+	optEntries.emplace_back("Server2.Name", "xsusenet");
+	optEntries.emplace_back("server2.active", "no");
+	ScriptConfig scriptConfig;
+
+	BOOST_REQUIRE(scriptConfig.SaveConfig(&optEntries));
+	std::string contents;
+	{
+		std::ifstream file(configFile.path);
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		contents = buffer.str();
+	}
+	// one line per option, keeping the first occurrence's name and position
+	// but the last occurrence's value - exactly what Options::SetOption does
+	BOOST_CHECK_EQUAL(contents,
+		"# existing config\n"
+		"Server2.Active=no\n"
+		"Server2.Name=xsusenet\n");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

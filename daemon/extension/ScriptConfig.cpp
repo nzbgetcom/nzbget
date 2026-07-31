@@ -93,6 +93,22 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 	std::vector<CString> config;
 	std::set<CString, CaseInsensitiveLess> writtenOptions;
 
+	// Options::SetOption overwrites the existing entry while parsing, so when a
+	// name occurs on several lines the last one is the value nzbget runs on.
+	// Collapsing duplicates must preserve that value, otherwise saving a damaged
+	// config silently changes settings.
+	auto findLastValue = [optEntries](const char* name) -> const char*
+	{
+		for (auto it = optEntries->rbegin(); it != optEntries->rend(); ++it)
+		{
+			if (!strcasecmp(it->GetName(), name))
+			{
+				return it->GetValue();
+			}
+		}
+		return nullptr;
+	};
+
 	// read config file into memory array
 	int fileLen = (int)FileSystem::FileSize(g_Options->GetConfigFilename()) + 1;
 	CString content;
@@ -119,10 +135,12 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			{
 				Options::OptEntry* optEntry = optEntries->FindOption(optname);
 				// write each option only once, dropping duplicate lines accumulated
-				// in the config file by earlier versions (issue #588)
+				// in the config file by earlier versions (issue #588); keep the
+				// first occurrence's name and position but the last occurrence's
+				// value, so the collapsed line is the one nzbget was running on
 				if (optEntry && writtenOptions.find(optEntry->GetName()) == writtenOptions.end())
 				{
-					infile.Print("%s=%s\n", optEntry->GetName(), optEntry->GetValue());
+					infile.Print("%s=%s\n", optEntry->GetName(), findLastValue(optEntry->GetName()));
 					writtenOptions.insert(optEntry->GetName());
 				}
 			}
@@ -139,7 +157,7 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 		std::set<CString, CaseInsensitiveLess>::iterator fit = writtenOptions.find(optEntry.GetName());
 		if (fit == writtenOptions.end())
 		{
-			infile.Print("%s=%s\n", optEntry.GetName(), optEntry.GetValue());
+			infile.Print("%s=%s\n", optEntry.GetName(), findLastValue(optEntry.GetName()));
 			writtenOptions.insert(optEntry.GetName());
 		}
 	}
