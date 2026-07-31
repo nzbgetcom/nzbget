@@ -67,6 +67,8 @@ Contributions are very welcome - not only from developers, but from our users to
 
 For more information - see [Contributing](docs/CONTRIBUTING.md).
 
+AI-assisted contributions are allowed, but only if they follow our [AI Policy](docs/AI_POLICY.md).
+
 ## Donate
 
 Please [donate](https://nzbget.com/donate/) if you like what we are doing. Thank you!

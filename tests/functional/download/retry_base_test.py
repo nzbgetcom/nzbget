@@ -32,6 +32,33 @@ def test_retry_medium_failed(nserv, nzbget):
 	assert hist['Status'] == 'FAILURE/HEALTH'
 	assert hist['DeleteStatus'] == 'HEALTH'
 
+def test_download_remaining_after_health_failure(nserv, nzbget):
+	nzb_content = nzbget.load_nzb('medium.nzb')
+	nzb_content = nzb_content.replace('000000:500000', '000000:500000!2')
+	hist = nzbget.download_nzb('medium.remaining.nzb', nzb_content)
+	assert hist['Status'] == 'FAILURE/HEALTH'
+	assert hist['DeleteStatus'] == 'HEALTH'
+	assert hist['RemainingFileCount'] > 0
+	initial_remaining_files = hist['RemainingFileCount']
+	initial_success_articles = hist['SuccessArticles']
+	initial_downloaded_mb = hist['DownloadedSizeMB']
+
+	nzbget.api.editqueue('HistoryReturn', 0, '', [hist['NZBID']])
+	hist = nzbget.wait_nzb('medium.remaining.nzb')
+
+	assert hist['RemainingFileCount'] < initial_remaining_files
+	assert hist['SuccessArticles'] > initial_success_articles
+	assert hist['DownloadedSizeMB'] > initial_downloaded_mb
+	assert hist['DeleteStatus'] == 'NONE'
+	assert hist['Status'] == 'FAILURE/HEALTH'
+
+	nzbget.api.editqueue('HistoryRedownload', 0, '', [hist['NZBID']])
+	hist = nzbget.wait_nzb('medium.remaining.nzb')
+
+	assert hist['DeleteStatus'] == 'HEALTH'
+	assert hist['RemainingFileCount'] > 0
+	assert hist['Status'] == 'FAILURE/HEALTH'
+
 def test_retry_medium_redownload(nserv, nzbget):
 	nzb_content = nzbget.load_nzb('medium.nzb')
 	nzb_content = nzb_content.replace('0000000:500000', '0000000:500000!2')
