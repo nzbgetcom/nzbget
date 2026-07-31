@@ -224,6 +224,38 @@ private:
 	Options* m_previous;
 };
 
+// Shared by the PAR-failure/DirectUnpack tests below; unrarCmdOpt is only needed
+// when a test actually runs a real unpack (pass nullptr to skip it).
+Options::CmdOptList MakeParFailureTestOpts(const char* unrarCmdOpt)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("WriteLog=none");
+	cmdOpts.push_back("NzbLog=no");
+	if (unrarCmdOpt)
+	{
+		cmdOpts.push_back(unrarCmdOpt);
+	}
+	cmdOpts.push_back("ParRename=no");
+	cmdOpts.push_back("RarRename=no");
+	cmdOpts.push_back("RenameAfterUnpack=no");
+	cmdOpts.push_back("DupeCheck=no");
+	cmdOpts.push_back("KeepHistory=1");
+	return cmdOpts;
+}
+
+int QueueParFailureTestNzb(DirectUnpackDownloadQueueMock& downloadQueue, const char* name, const fs::path& destDir,
+	NzbInfo::EParStatus parStatus = NzbInfo::psNone, NzbInfo::EDirectUnpackStatus directStatus = NzbInfo::nsNone)
+{
+	auto nzbInfo = std::make_unique<NzbInfo>();
+	NzbInfo* nzbPtr = nzbInfo.get();
+	nzbInfo->SetName(name);
+	nzbInfo->SetDestDir(destDir.string().c_str());
+	nzbInfo->SetParStatus(parStatus);
+	nzbInfo->SetDirectUnpackStatus(directStatus);
+	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
+	return nzbPtr->GetId();
+}
+
 BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 {
 	if (!UNRAR_PATH)
@@ -376,15 +408,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackParFailureStillFinalizesUnpack)
 	}
 
 	const std::string unrarCmd = std::string("UnrarCmd=") + UNRAR_PATH->string();
-	Options::CmdOptList cmdOpts;
-	cmdOpts.push_back("WriteLog=none");
-	cmdOpts.push_back("NzbLog=no");
-	cmdOpts.push_back(unrarCmd.c_str());
-	cmdOpts.push_back("ParRename=no");
-	cmdOpts.push_back("RarRename=no");
-	cmdOpts.push_back("RenameAfterUnpack=no");
-	cmdOpts.push_back("DupeCheck=no");
-	cmdOpts.push_back("KeepHistory=1");
+	Options::CmdOptList cmdOpts = MakeParFailureTestOpts(unrarCmd.c_str());
 	RestoreOptionsGlobal restoreOptions;
 	Options options(&cmdOpts, nullptr);
 	DirectUnpackDownloadQueueMock downloadQueue;
@@ -398,12 +422,7 @@ BOOST_AUTO_TEST_CASE(DirectUnpackParFailureStillFinalizesUnpack)
 		BOOST_REQUIRE(fs::copy_file(TEST_DATA_DIR / part, workPath / part));
 	}
 
-	auto nzbInfo = std::make_unique<NzbInfo>();
-	NzbInfo* nzbPtr = nzbInfo.get();
-	nzbInfo->SetName("DirectUnpackParFailureStillFinalizesUnpack");
-	nzbInfo->SetDestDir(workPath.string().c_str());
-	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
-	const int nzbId = nzbPtr->GetId();
+	const int nzbId = QueueParFailureTestNzb(downloadQueue, "DirectUnpackParFailureStillFinalizesUnpack", workPath);
 
 	BOOST_REQUIRE(WithNzbInfo(nzbId, [](NzbInfo* info)
 	{
@@ -459,14 +478,7 @@ BOOST_AUTO_TEST_CASE(ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack)
 {
 	for (NzbInfo::EDirectUnpackStatus directStatus : {NzbInfo::nsNone, NzbInfo::nsFailure})
 	{
-		Options::CmdOptList cmdOpts;
-		cmdOpts.push_back("WriteLog=none");
-		cmdOpts.push_back("NzbLog=no");
-		cmdOpts.push_back("ParRename=no");
-		cmdOpts.push_back("RarRename=no");
-		cmdOpts.push_back("RenameAfterUnpack=no");
-		cmdOpts.push_back("DupeCheck=no");
-		cmdOpts.push_back("KeepHistory=1");
+		Options::CmdOptList cmdOpts = MakeParFailureTestOpts(nullptr);
 		RestoreOptionsGlobal restoreOptions;
 		Options options(&cmdOpts, nullptr);
 		DirectUnpackDownloadQueueMock downloadQueue;
@@ -474,14 +486,9 @@ BOOST_AUTO_TEST_CASE(ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack)
 		ScopedPostProcessPause postProcessPause;
 		ScopedPostProcessCoordinators postProcessCoordinators;
 		ScopedTempDir workingDir;
-		auto nzbInfo = std::make_unique<NzbInfo>();
-		NzbInfo* nzbPtr = nzbInfo.get();
-		nzbInfo->SetName("ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack");
-		nzbInfo->SetDestDir(workingDir.Get().string().c_str());
-		nzbInfo->SetParStatus(NzbInfo::psFailure);
-		nzbInfo->SetDirectUnpackStatus(directStatus);
-		downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
-		const int nzbId = nzbPtr->GetId();
+		const int nzbId = QueueParFailureTestNzb(downloadQueue,
+			"ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack", workingDir.Get(),
+			NzbInfo::psFailure, directStatus);
 
 		ScopedPrePostProcessor processor;
 		BOOST_REQUIRE(WithNzbInfo(nzbId, [&](NzbInfo* info)
