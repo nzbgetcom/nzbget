@@ -45,6 +45,7 @@
 #include "SystemInfo.h"
 #include "SystemHealth.h"
 
+extern char** environ;
 char* (*g_EnvironmentVariables)[];
 int g_ArgumentCount;
 char* (*g_Arguments)[];
@@ -81,19 +82,19 @@ void ExitProc(){}
 
 struct InitGlobals
 {
+	Options::CmdOptList m_cmdOpts;
+
 	InitGlobals()
 	{
 		rapidyenc_decode_init();
 		rapidyenc_crc_init();
 
+		m_cmdOpts.push_back("SevenZipCmd=7z");
+		m_cmdOpts.push_back("UnrarCmd=unrar");
+
 		g_Log = new Log();
-
-		Options::CmdOptList cmdOpts;
-		cmdOpts.push_back("SevenZipCmd=7z");
-		cmdOpts.push_back("UnrarCmd=unrar");
-
-		g_Options = new Options(&cmdOpts, nullptr);
-		g_EnvironmentVariables = nullptr;
+		g_Options = new Options(&m_cmdOpts, nullptr);
+		g_EnvironmentVariables = (char*(*)[])environ;
 		g_ArgumentCount = 0;
 		g_Arguments = nullptr;
 		g_WorkState = new WorkState();
