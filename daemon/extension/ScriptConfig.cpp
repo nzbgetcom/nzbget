@@ -118,7 +118,9 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			if (g_Options->SplitOptionString(buf, optname, optvalue))
 			{
 				Options::OptEntry* optEntry = optEntries->FindOption(optname);
-				if (optEntry)
+				// write each option only once, dropping duplicate lines accumulated
+				// in the config file by earlier versions (issue #588)
+				if (optEntry && writtenOptions.find(optEntry->GetName()) == writtenOptions.end())
 				{
 					infile.Print("%s=%s\n", optEntry->GetName(), optEntry->GetValue());
 					writtenOptions.insert(optEntry->GetName());
