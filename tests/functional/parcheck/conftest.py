@@ -5,11 +5,11 @@ import pytest
 
 
 @pytest.fixture(scope='session', autouse=True)
-def prepare_testdata(request):
+def prepare_testdata(request, check_config):
 	print('Preparing test data for "parcheck"')
 
-	nserv_datadir = pytest.config.getini('nserv_datadir')
-	nzbget_bin = pytest.config.getini('nzbget_bin')
+	nserv_datadir = request.config.getini('nserv_datadir')
+	nzbget_bin = request.config.getini('nzbget_bin')
 
 	if not os.path.exists(nserv_datadir):
 		print('Creating nserv datadir')
