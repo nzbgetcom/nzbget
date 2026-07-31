@@ -18,7 +18,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Download and extract vcpkg cache and unpackers
       run: |
@@ -60,7 +60,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Build
       run: |
@@ -92,7 +92,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev unrar 7zip
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Build
       run: |
@@ -124,7 +124,7 @@ jobs:
         brew install --cask rar
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Build
       run: |
@@ -151,7 +151,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: OpenBSD build and test
       uses: cross-platform-actions/action@97419d18f6470332677e345e9df97cdc71244ead # v0.28.0
@@ -179,7 +179,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: FreeBSD build and test
       uses: cross-platform-actions/action@fe0167d8082ac584754ef3ffb567fded22642c7d # v0.27.0
@@ -213,7 +213,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev cppcheck
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: cppcheck
       run: |
@@ -242,7 +242,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Build
       run: |
@@ -261,7 +261,7 @@ jobs:
         sudo apt-get install -y cmake libxml2-dev libssl-dev libncurses-dev libboost-all-dev
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Build
       run: |
@@ -275,7 +275,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: OpenBSD build
       uses: cross-platform-actions/action@97419d18f6470332677e345e9df97cdc71244ead # v0.28.0
