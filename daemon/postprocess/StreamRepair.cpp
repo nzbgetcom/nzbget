@@ -283,9 +283,10 @@ DiskFile* TargetSetFiles::GetFile(int memberIndex)
 	{
 		file.reset();
 	}
-	DiskFile* result = file.get();
-	m_files.emplace(memberIndex, std::move(file));
-	return result;
+	// take the pointer from the map entry that now owns the file, not from the
+	// moved-from local (which also reads as a dangling return to static analysis)
+	auto inserted = m_files.emplace(memberIndex, std::move(file));
+	return inserted.first->second.get();
 }
 
 void StreamRepairController::StartJob(PostInfo* postInfo)
