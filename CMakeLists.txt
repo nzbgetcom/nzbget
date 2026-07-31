@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.13)
 
+if(POLICY CMP0167)
+	cmake_policy(SET CMP0167 NEW)
+endif()
+
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()

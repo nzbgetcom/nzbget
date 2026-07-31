@@ -243,7 +243,7 @@
 			transValue = baseTranslations[key];
 		}
 		var extractedText = extractTranslationText(transValue);
-		var text = extractedText !== null ? extractedText : key.replace(/^[a-z]+_/, '').replace(/_/g, ' ');
+		var text = extractedText !== null ? extractedText : key;
 		
 		if (arguments.length > 1) {
 			var args = Array.prototype.slice.call(arguments, 1);
@@ -380,6 +380,70 @@
 		};	 
 	}
  
+	function requestExtensionLocale(extName)
+	{
+		return $.ajax({
+			url: 'extensions/' + extName + '/_locales/' + currentLocale + '/messages.json',
+			dataType: 'json',
+			cache: true
+		});
+	}
+
+	function mergeExtensionLocale(extName, data)
+	{
+		var prefix = 'ext_' + extName.toLowerCase() + '_';
+		for (var key in data) {
+			if (data.hasOwnProperty(key)) {
+				translations[prefix + key] = data[key];
+			}
+		}
+	}
+
+	this.loadExtensionTranslations = function(extName)
+	{
+		if (currentLocale === 'en') return;
+
+		var self = this;
+		requestExtensionLocale(extName).done(function(data) {
+			mergeExtensionLocale(extName, data);
+			if (window.Config)
+			{
+				Config._translateDescriptions();
+			}
+			self._applyLanguageChange(currentLocale);
+		}).fail(function() {
+			console.warn('Extension locale not found: extensions/' + extName + '/_locales/' + currentLocale + '/messages.json, using English fallback');
+		});
+	};
+
+	this._getExtensionNames = function()
+	{
+		var extNames = [];
+		var exts = ExtensionManager.getInstalledExtensions();
+		for (var i = 0; i < exts.length; i++) {
+			if (exts[i].name) {
+				extNames.push(exts[i].name);
+			}
+		}
+		return extNames;
+	};
+
+	this._loadExtensionTranslations = function(extName)
+	{
+		if (currentLocale === 'en') {
+			return $.Deferred().resolve().promise();
+		}
+
+		var deferred = $.Deferred();
+		requestExtensionLocale(extName).done(function(data) {
+			mergeExtensionLocale(extName, data);
+			deferred.resolve();
+		}).fail(function() {
+			deferred.resolve();
+		});
+		return deferred.promise();
+	};
+
 	this.getAvailableLangs = function()
 	{
 		return availableLangs;
@@ -429,9 +493,22 @@
 							translations[key] = data[key];
 						}
 					}
-					self._applyLanguageChange(localeCode);
+
+					var extNames = self._getExtensionNames();
+					if (extNames.length > 0)
+					{
+						var promises = extNames.map(function(extName) {
+							return self._loadExtensionTranslations(extName);
+						});
+						$.when.apply($, promises).always(function() {
+							self._applyLanguageChange(localeCode);
+						});
+					}
+					else
+					{
+						self._applyLanguageChange(localeCode);
+					}
 				}).fail(function() {
-					// Locale not found - fall back to English
 					console.warn('Locale "' + localeCode + '" not found, using English');
 					currentLocale = 'en';
 					localStorage.setItem('Language', 'en');
@@ -440,7 +517,6 @@
 			}
 			else
 			{
-				// English selected
 				currentLocale = 'en';
 				localStorage.setItem('Language', 'en');
 				this._applyLanguageChange('en');

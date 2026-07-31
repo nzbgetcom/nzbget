@@ -361,7 +361,7 @@
   "config_info_community_resources": "Społeczność i zasoby",
   "config_info_discord_desc": "Dołącz do naszej społeczności, aby rozmawiać w czasie rzeczywistym, uzyskać wsparcie i brać udział w dyskusjach.",
   "config_info_extension_manager": "Menedżer rozszerzeń",
-  "config_info_extension_manager_desc": "The $1menedżer rozszerzeń$2 to wbudowane narzędzie służące jako centralne centrum zarządzania skryptami rozszerzeń, udostępniające katalog oficjalnie obsługiwanych skryptów i upraszczające ich instalację. Wszystkie skrypty, zarówno zainstalowane przez menedżera, jak i dodane ręcznie za pomocą obsługiwanej metody tradycyjnej, są konfigurowane w sekcji $3skryptów rozszerzeń$4 oraz w ustawieniach poszczególnych rozszerzeń.",
+  "config_info_extension_manager_desc": "$1Menedżer rozszerzeń$2 to wbudowane narzędzie służące jako centralne centrum zarządzania skryptami rozszerzeń, udostępniające katalog oficjalnie obsługiwanych skryptów i upraszczające ich instalację. Wszystkie skrypty, zarówno zainstalowane przez menedżera, jak i dodane ręcznie za pomocą obsługiwanej metody tradycyjnej, są konfigurowane w sekcji $3skryptów rozszerzeń$4 oraz w ustawieniach poszczególnych rozszerzeń.",
   "config_info_github_desc": "Współtwórz projekt, zgłaszaj problemy i przeglądaj kod źródłowy.",
   "config_info_nzbget_settings": "Ustawienia NZBGet",
   "config_info_nzbget_settings_desc": "Konfiguracja wstępna: sprawdź $1MainDir$2 i skonfiguruj co najmniej jeden $3serwer Usenet$4.",
