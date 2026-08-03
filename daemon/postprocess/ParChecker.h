@@ -30,8 +30,6 @@
 
 #include <par2/par2repairer.h>
 
-#include "NString.h"
-#include "Container.h"
 #include "FileSystem.h"
 #include "Log.h"
 
@@ -61,7 +59,7 @@ public:
 	class AbstractRepairer
 	{
 	public:
-		virtual ~AbstractRepairer() {};
+		virtual ~AbstractRepairer() = default;
 		virtual Repairer* GetRepairer() = 0;
 	};
 
@@ -120,8 +118,8 @@ protected:
 
 	private:
 		int m_id;
-		std::string m_directory;
 		int m_usedBlocks = 0;
+		std::string m_directory;
 	};
 
 	typedef std::deque<DupeSource> DupeSourceList;
@@ -141,7 +139,7 @@ protected:
 	*/
 	virtual bool RequestMorePars(int blockNeeded, int* blockFound) = 0;
 	virtual void UpdateProgress() {}
-	virtual bool IsStopped() { return false; };
+	virtual bool IsStopped() { return false; }
 	virtual void Completed() {}
 	virtual void PrintMessage([[maybe_unused]] Message::EKind kind,
 		[[maybe_unused]] const char* format, ...) PRINTF_SYNTAX(3) {}
@@ -158,42 +156,39 @@ protected:
 	int GetStageProgress() { return m_stageProgress; }
 
 private:
-	class StreamBuf : public std::streambuf
+	class StreamBuf final : public std::streambuf
 	{
 	public:
 		StreamBuf(ParChecker* owner, Message::EKind kind) : m_owner(owner), m_kind(kind) {}
 		virtual int overflow(int ch) override;
 	private:
+		std::string m_buffer;
 		ParChecker* m_owner;
 		Message::EKind m_kind;
-		std::string m_buffer;
 	};
 
 	typedef std::deque<std::string> FileList;
 	typedef std::deque<Par2::DiskFile*> SourceList;
 	typedef std::vector<bool> ValidBlocks;
 
-	bool m_queuedParFilesChanged;
-	bool m_verifyingExtraFiles;
-	bool m_cancelled;
-	bool m_hasDamagedFiles;
-	bool m_forceRepair = false;
-	int m_processedCount;
-	int m_filesToRepair;
-	int m_extraFiles;
-	int m_fileProgress;
-	int m_stageProgress;
-	std::atomic<bool> m_parQuick{false};
-	std::atomic<bool> m_parFull{false};
-	std::atomic<int> m_quickFiles{0};
 	std::string m_infoName;
 	std::string m_destDir;
 	std::string m_nzbName;
 	std::string m_parFilename;
 	std::string m_progressLabel;
 	std::string m_errMsg;
+
+	int m_processedCount;
+	int m_filesToRepair;
+	int m_extraFiles;
+	int m_fileProgress;
+	int m_stageProgress;
+
 	EStatus m_status = psFailed;
+
 	std::atomic<EStage> m_stage{ptLoadingPars};
+	std::atomic<int> m_quickFiles{0};
+
 	FileList m_queuedParFiles;
 	FileList m_processedFiles;
 	SourceList m_sourceFiles;
@@ -209,6 +204,16 @@ private:
 	// "m_repairer" should be of type "Par2::Par2Repairer", however to prevent the
 	// including of libpar2-headers into this header-file we use an empty abstract class.
 	std::unique_ptr<AbstractRepairer> m_repairer;
+
+	std::atomic<bool> m_parQuick{false};
+	std::atomic<bool> m_parFull{false};
+
+	bool m_queuedParFilesChanged;
+	bool m_verifyingExtraFiles;
+	bool m_cancelled;
+	bool m_hasDamagedFiles;
+	bool m_forceRepair = false;
+
 	Repairer* GetRepairer() { return m_repairer->GetRepairer(); }
 
 	void Cleanup();
