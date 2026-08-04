@@ -406,6 +406,10 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 	}
 	else if (!strcmp("meta", name))
 	{
+		m_hasPassword = false;
+		m_hasCategory = false;
+		m_hasName = false;
+
 		if (!atts)
 		{
 			m_nzbInfo->AddMessage(Message::mkWarning, tagAttrMessage);

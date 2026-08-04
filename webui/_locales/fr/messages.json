@@ -990,7 +990,6 @@
   "status_password": "mot de passe",
   "status_paused_cap": "en pause",
   "status_pausing_cap": "en pause",
-  "status_post_unpack_renaming_cap": "renommage après extraction",
   "status_pp_failure": "erreur de post-traitement",
   "status_pp_queued_cap": "pp-en attente",
   "status_processing_cap": "traitement",

@@ -18,37 +18,37 @@
  */
 
 
-#ifndef POST_UNPACK_RENAMER_H
-#define POST_UNPACK_RENAMER_H
+#ifndef COLLECTION_ANALYZER_H
+#define COLLECTION_ANALYZER_H
 
-#include "Thread.h"
-#include "DownloadInfo.h"
-#include <set>
-#include <vector>
 #include <string>
-#include <string_view>
+#include <vector>
+#include <cstdint>
+#include "PostDownloadRenamer.h"
 
-namespace PostUnpackRenamer
+namespace PostDownloadRenamer
 {
 
-class Controller final : public Thread
+class CollectionAnalyzer final
 {
 public:
-	static void StartJob(PostInfo* postInfo);
-	void Run() override;
-
-	int RenameFiles(PostInfo* postInfo);
-
-	std::string ResolveSubtitleName(std::string_view metaname, std::string_view stem, std::string_view ext);
-	std::string ResolveUniqueName(std::string_view metaname, std::string_view stem, std::string_view ext,
-		std::string_view baseName, const std::set<fs::path>& usedPaths, const fs::path& destPath);
+	explicit CollectionAnalyzer(const std::vector<Candidate>& candidates);
+	bool ShouldSkip(const Candidate& candidate) const;
 
 private:
-	PostInfo* m_postInfo = nullptr;
-	int m_renamedCount = 0;
+	struct FileGroup
+	{
+		fs::path parentDir;
+		std::string extKey;
+		uintmax_t largest = 0;
+		uintmax_t second = 0;
+		int count = 0;
+		bool skip = false;
+	};
 
-	std::vector<fs::path> CollectCandidates(const fs::path& dir);
-	void RenameCompleted();
+	std::vector<FileGroup> m_groups;
+
+	static std::vector<FileGroup> BuildGroups(const std::vector<Candidate>& candidates);
 };
 
 }

@@ -990,7 +990,6 @@
   "status_password": "lösenord",
   "status_paused_cap": "pausad",
   "status_pausing_cap": "pausar",
-  "status_post_unpack_renaming_cap": "namnbyte efter uppackning",
   "status_pp_failure": "pp-fel",
   "status_pp_queued_cap": "pp-köad",
   "status_processing_cap": "bearbetar",

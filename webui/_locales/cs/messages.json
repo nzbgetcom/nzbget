@@ -990,7 +990,6 @@
   "status_password": "heslo",
   "status_paused_cap": "pozastaveno",
   "status_pausing_cap": "pozastavování",
-  "status_post_unpack_renaming_cap": "přejmenování po rozbalení",
   "status_pp_failure": "chyba post-processingu",
   "status_pp_queued_cap": "pp-ve frontě",
   "status_processing_cap": "zpracování",

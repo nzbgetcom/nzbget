@@ -27,6 +27,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 
+
 int FileInfo::m_idGen = 0;
 int FileInfo::m_idMax = 0;
 int NzbInfo::m_idGen = 0;
@@ -255,6 +256,21 @@ bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newName)
 			cf.SetFilename(newName);
 			return true;
 		}
+	}
+	return false;
+}
+
+bool NzbInfo::IsDownloadedFilename(std::string_view basename)
+{
+	for (FileInfo* fileInfo : &m_fileList)
+	{
+		if (Util::StrCaseCmp(basename, fileInfo->GetFilename() ? fileInfo->GetFilename() : ""))
+			return true;
+	}
+	for (CompletedFile& completedFile : m_completedFiles)
+	{
+		if (Util::StrCaseCmp(basename, completedFile.GetFilename() ? completedFile.GetFilename() : ""))
+			return true;
 	}
 	return false;
 }

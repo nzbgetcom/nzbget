@@ -990,7 +990,6 @@
   "status_password": "wachtwoord",
   "status_paused_cap": "gepauzeerd",
   "status_pausing_cap": "pauzeren",
-  "status_post_unpack_renaming_cap": "hernoemen na uitpakken",
   "status_pp_failure": "pp-fout",
   "status_pp_queued_cap": "pp-in wachtrij",
   "status_processing_cap": "verwerken",

@@ -234,7 +234,7 @@ namespace Deobfuscation
 	 */
 	bool IsExcessivelyObfuscated(const std::string& str)
 	{
-		if (str.empty())
+		if (str.empty() || IsProbablyLegitimateFilename(str))
 			return false;
 
 		if (auto ext = FileSystem::GetFileExtension(str))

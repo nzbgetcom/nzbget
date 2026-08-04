@@ -86,6 +86,9 @@ private:
 	void HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file);
 	bool CreateHardLink(NzbInfo* nzbInfo, const std::string& sourcePath, const std::string& destFilename, std::string& finalOutputFilename);
 
+	template <typename F>
+	void HardLinkFileImpl(NzbInfo* nzbInfo, const char* filename, const std::string& sourcePath, const char* notReadyReason, F onSuccess);
+
 	friend class DirectParLoader;
 };
 

@@ -990,7 +990,6 @@
   "status_password": "лозинка",
   "status_paused_cap": "паузирано",
   "status_pausing_cap": "паузирање",
-  "status_post_unpack_renaming_cap": "преименовање након распакивања",
   "status_pp_failure": "грешка обраде",
   "status_pp_queued_cap": "pp-у реду",
   "status_processing_cap": "обрада",

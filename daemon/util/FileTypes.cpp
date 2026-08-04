@@ -31,6 +31,10 @@ namespace
 	template <size_t N>
 	bool MatchesAnyExt(std::string_view ext, const std::string_view (&formats)[N])
 	{
+		if (ext.empty() || ext[0] != '.')
+		{
+			return false;
+		}
 		return std::any_of(std::begin(formats), std::end(formats),
 			[&](std::string_view fmt) { return Util::StrCaseCmp(ext, fmt); });
 	}

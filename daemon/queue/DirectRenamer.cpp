@@ -521,12 +521,21 @@ bool DirectRenamer::CreateHardLink(NzbInfo* nzbInfo, const std::string& sourcePa
 	const std::string finalDir = nzbInfo->BuildFinalDirName().Str();
 	finalOutputFilename = finalDir + PATH_SEPARATOR + destFilename;
 
+	fs::error_code ec;
+	if (fs::exists(finalOutputFilename, ec))
+	{
+		if (fs::equivalent(sourcePath, finalOutputFilename, ec))
+		{
+			return true;
+		}
+		fs::remove(finalOutputFilename, ec);
+	}
+
 	nzbInfo->PrintMessage(Message::mkInfo,
 		"HardLinking file %s to %s",
 		destFilename.c_str(), finalOutputFilename.c_str()
 	);
 
-	fs::error_code ec;
 	fs::create_hard_link(sourcePath, finalOutputFilename, ec);
 	if (ec)
 	{
@@ -539,61 +548,61 @@ bool DirectRenamer::CreateHardLink(NzbInfo* nzbInfo, const std::string& sourcePa
 	return true;
 }
 
-void DirectRenamer::HardLinkFile(NzbInfo* nzbInfo, FileInfo* file)
+namespace
 {
-	if (file->GetParFile() || g_Options->GetInterDirPath().empty() ||
-		Util::MatchFileExt(file->GetFilename(), g_Options->GetHardLinkingIgnoreExt(), ","))
+	bool CheckHardLinkEligibility(NzbInfo* nzbInfo, const char* filename)
 	{
-		return;
+		return !g_Options->GetInterDirPath().empty() &&
+			!Util::MatchFileExt(filename, g_Options->GetHardLinkingIgnoreExt(), ",");
 	}
+}
 
+template <typename F>
+void DirectRenamer::HardLinkFileImpl(NzbInfo* nzbInfo, const char* filename, const std::string& sourcePath, const char* notReadyReason, F onSuccess)
+{
 	fs::error_code ec;
-	if (!fs::exists(file->GetOutputFilename(), ec) || ec)
+	if (!fs::exists(sourcePath, ec) || ec)
 	{
 		nzbInfo->PrintMessage(Message::mkDetail,
-			"Skipping hardlink for %s: file not assembled yet",
-			file->GetOutputFilename().c_str()
+			"Skipping hardlink for %s: %s",
+			filename, notReadyReason
 		);
 		return;
 	}
 
 	std::string finalOutputFilename;
-	if (!CreateHardLink(nzbInfo, file->GetOutputFilename(), file->GetFilename(), finalOutputFilename))
+	if (CreateHardLink(nzbInfo, sourcePath, filename, finalOutputFilename))
+	{
+		onSuccess(std::move(finalOutputFilename));
+	}
+}
+
+void DirectRenamer::HardLinkFile(NzbInfo* nzbInfo, FileInfo* file)
+{
+	if (file->GetParFile() || !CheckHardLinkEligibility(nzbInfo, file->GetFilename()) ||
+		!file->GetHardLinkPath().empty())
 	{
 		return;
 	}
 
-	file->SetHardLinkPath(std::move(finalOutputFilename));
+	HardLinkFileImpl(nzbInfo, file->GetFilename(), file->GetOutputFilename(), "file not assembled yet",
+		[file, nzbInfo](std::string path)
+		{
+			file->SetHardLinkPath(std::move(path));
+			nzbInfo->SetHardLinkPath(nzbInfo->BuildFinalDirName().Str());
+		});
 }
 
 void DirectRenamer::HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file)
 {
-	if (file->GetParFile() || g_Options->GetInterDirPath().empty() ||
-		Util::MatchFileExt(file->GetFilename(), g_Options->GetHardLinkingIgnoreExt(), ","))
+	if (file->GetParFile() || !CheckHardLinkEligibility(nzbInfo, file->GetFilename()))
 	{
 		return;
 	}
 
 	const std::string sourcePath = std::string(nzbInfo->GetDestDir()) + PATH_SEPARATOR + file->GetFilename();
-
-	fs::error_code ec;
-	if (!fs::exists(sourcePath, ec) || ec)
-	{
-		nzbInfo->PrintMessage(Message::mkDetail,
-			"Skipping hardlink for %s: file not found",
-			file->GetFilename()
-		);
-		return;
-	}
-
-	std::string finalOutputFilename;
-	if (!CreateHardLink(nzbInfo, sourcePath, file->GetFilename(), finalOutputFilename))
-	{
-		return;
-	}
-
-	const std::string finalDir = nzbInfo->BuildFinalDirName().Str();
-	nzbInfo->SetHardLinkPath(finalDir);
+	HardLinkFileImpl(nzbInfo, file->GetFilename(), sourcePath, "file not found",
+		[nzbInfo](std::string) { nzbInfo->SetHardLinkPath(nzbInfo->BuildFinalDirName().Str()); });
 }
 
 std::string DirectRenamer::BuildNewRegularName(const char* oldName, FileHashList* parHashes, const char* hash16k)

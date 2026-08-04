@@ -990,7 +990,6 @@
   "status_password": "contraseña",
   "status_paused_cap": "pausado",
   "status_pausing_cap": "pausando",
-  "status_post_unpack_renaming_cap": "renombrando tras extracción",
   "status_pp_failure": "error de postprocesado",
   "status_pp_queued_cap": "pp-en cola",
   "status_processing_cap": "procesando",

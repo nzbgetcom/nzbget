@@ -990,7 +990,6 @@
   "status_password": "passwort",
   "status_paused_cap": "pausiert",
   "status_pausing_cap": "wird pausiert",
-  "status_post_unpack_renaming_cap": "Umbenennen nach dem Entpacken",
   "status_pp_failure": "Nachbearbeitungsfehler",
   "status_pp_queued_cap": "pp-warteschlange",
   "status_processing_cap": "wird verarbeitet",

@@ -26,6 +26,7 @@
 #include <atomic>
 #include <algorithm>
 #include <string>
+#include <string_view>
 #include "NString.h"
 #include "Container.h"
 #include "Observer.h"
@@ -425,7 +426,7 @@ public:
 		msSuccess
 	};
 
-	enum class PostUnpackRenamingStatus
+	enum class RenamingStatus
 	{
 		None,
 		Nothing,
@@ -557,14 +558,17 @@ public:
 	CString BuildFinalDirName();
 	CompletedFileList* GetCompletedFiles() { return &m_completedFiles; }
 	bool RenameCompletedFile(const char* oldName, const char* newName);
+	bool IsDownloadedFilename(std::string_view basename);
 	void SetDirectRenameStatus(EDirectRenameStatus renameStatus) { m_directRenameStatus = renameStatus; }
 	EDirectRenameStatus GetDirectRenameStatus() { return m_directRenameStatus; }
 	EPostRenameStatus GetParRenameStatus() { return m_parRenameStatus; }
 	void SetParRenameStatus(EPostRenameStatus renameStatus) { m_parRenameStatus = renameStatus; }
 	EPostRenameStatus GetRarRenameStatus() { return m_rarRenameStatus; }
 	void SetRarRenameStatus(EPostRenameStatus renameStatus) { m_rarRenameStatus = renameStatus; }
-	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
-	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus renameStatus) { m_postUnpackRenamingStatus = renameStatus; }
+	RenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
+	void SetPostUnpackRenamingStatus(RenamingStatus renameStatus) { m_postUnpackRenamingStatus = renameStatus; }
+	RenamingStatus GetPostRenamingStatus() { return m_postRenamingStatus; }
+	void SetPostRenamingStatus(RenamingStatus renameStatus) { m_postRenamingStatus = renameStatus; }
 	EParStatus GetParStatus() { return m_parStatus; }
 	void SetParStatus(EParStatus parStatus) { m_parStatus = parStatus; }
 	EDirectUnpackStatus GetDirectUnpackStatus() { return m_directUnpackStatus; }
@@ -723,7 +727,8 @@ private:
 	EDirectRenameStatus m_directRenameStatus = tsNone;
 	EPostRenameStatus m_parRenameStatus = rsNone;
 	EPostRenameStatus m_rarRenameStatus = rsNone;
-	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
+	RenamingStatus m_postUnpackRenamingStatus = RenamingStatus::None;
+	RenamingStatus m_postRenamingStatus = RenamingStatus::None;
 	EParStatus m_parStatus = psNone;
 	EDirectUnpackStatus m_directUnpackStatus = nsNone;
 	EPostUnpackStatus m_unpackStatus = usNone;
@@ -809,7 +814,7 @@ public:
 		ptUnpacking,
 		ptCleaningUp,
 		ptMoving,
-		ptPostUnpackRenaming,
+		ptRenaming,
 		ptExecutingScript,
 		ptFinished
 	};

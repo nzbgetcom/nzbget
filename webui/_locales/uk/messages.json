@@ -990,7 +990,6 @@
   "status_password": "пароль",
   "status_paused_cap": "призупинено",
   "status_pausing_cap": "призупинення",
-  "status_post_unpack_renaming_cap": "перейменування після розпакування",
   "status_pp_failure": "помилка постобробки",
   "status_pp_queued_cap": "pp-у черзі",
   "status_processing_cap": "обробка",

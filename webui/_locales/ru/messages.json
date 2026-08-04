@@ -990,7 +990,6 @@
   "status_password": "пароль",
   "status_paused_cap": "на паузе",
   "status_pausing_cap": "приостановка",
-  "status_post_unpack_renaming_cap": "переименование после распаковки",
   "status_pp_failure": "ошибка постобработки",
   "status_pp_queued_cap": "pp-в очереди",
   "status_processing_cap": "обработка",

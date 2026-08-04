@@ -990,7 +990,6 @@
   "status_password": "passord",
   "status_paused_cap": "pauset",
   "status_pausing_cap": "pauser",
-  "status_post_unpack_renaming_cap": "gir nytt navn etter utpakking",
   "status_pp_failure": "etterbehandlingsfeil",
   "status_pp_queued_cap": "pp-i-kø",
   "status_processing_cap": "behandler",

@@ -52,10 +52,9 @@ This method returns array of structures with following fields:
   - **VERIFYING_SOURCES** - stage of par-check;
   - **REPAIRING** - stage of par-check;
   - **VERIFYING_REPAIRED** - stage of par-check;
-  - **RENAMING** - processing by par-renamer or rar-renamer;
+  - **RENAMING** - processing by par-renamer, rar-renamer or renaming excessively obfuscated downloaded files after unpacking;
   - **UNPACKING** - being unpacked;
   - **MOVING** - moving files from intermediate directory into destination directory;
-  - **POST_UNPACK_RENAMING** - renaming excessively obfuscated downloaded files after unpacking;
   - **EXECUTING_SCRIPT** - executing post-processing script;
   - **PP_FINISHED** - post-processing is finished, the item is about to be moved to history.
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.

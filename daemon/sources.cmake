@@ -51,6 +51,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/nserv/YEncoder.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Cleanup.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/CollectionAnalyzer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
@@ -60,7 +61,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarReader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
-	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostDownloadRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp

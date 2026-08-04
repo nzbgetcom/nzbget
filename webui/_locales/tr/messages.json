@@ -990,7 +990,6 @@
   "status_password": "şifre",
   "status_paused_cap": "duraklatıldı",
   "status_pausing_cap": "duraklatılıyor",
-  "status_post_unpack_renaming_cap": "açma sonrası yeniden adlandırma",
   "status_pp_failure": "işlem sonrası hata",
   "status_pp_queued_cap": "pp-sıraya alındı",
   "status_processing_cap": "işleniyor",

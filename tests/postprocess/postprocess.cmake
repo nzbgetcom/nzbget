@@ -1,9 +1,10 @@
 list(APPEND TESTS_SRC
+	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/CollectionAnalyzer.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/DirectUnpack.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/DupeMatcher.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/RarReader.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/RarRenamer.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/postprocess/PostDownloadRenamer.cpp
 )
 
 if(NOT DISABLE_PARCHECK)

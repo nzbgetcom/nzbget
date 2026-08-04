@@ -990,7 +990,6 @@
   "status_password": "salasana",
   "status_paused_cap": "keskeytetty",
   "status_pausing_cap": "keskeytetään",
-  "status_post_unpack_renaming_cap": "uudelleennimeäminen purun jälkeen",
   "status_pp_failure": "jälkikäsittelyvirhe",
   "status_pp_queued_cap": "pp-jonossa",
   "status_processing_cap": "käsitellään",

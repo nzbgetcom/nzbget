@@ -120,14 +120,14 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		auto filename = fs::u8string(it->path().filename());
 		if (filename[0] == '.')
 		{
-			if (it->is_directory())
+			if (it->is_directory(ec))
 			{
 				it.disable_recursion_pending();
 			}
 			continue;
 		}
 
-		if (it->is_directory())
+		if (it->is_directory(ec))
 		{
 			dirs.push_back(it->path());
 		}
@@ -135,6 +135,11 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		{
 			files.push_back(it->path());
 		}
+	}
+
+	if (IsStopped() || ec)
+	{
+		return false;
 	}
 
 	for (const auto& d : dirs)
@@ -194,6 +199,7 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		if (fs::u8string(dstPath.filename()) != filename)
 		{
 			std::string newName = fs::u8string(dstPath.filename());
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
 			m_postInfo->GetNzbInfo()->RenameCompletedFile(filename.c_str(), newName.c_str());
 		}
 	}

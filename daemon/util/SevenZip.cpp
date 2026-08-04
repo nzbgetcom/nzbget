@@ -72,15 +72,12 @@ bool SevenZip::IsSupported(const fs::path& path)
 	if (!path.has_filename() || !path.has_extension()) return false;
 
 	auto filename = fs::u8string(path.filename());
-	std::transform(filename.begin(), filename.end(), filename.begin(),
-				   [](auto c) { return std::tolower(c); });
-
 	if (Util::EndsWith(filename.c_str(), ".7z.001", false))
 	{
 		return true;
 	}
 
-	return FileTypes::IsSevenZipExt(path.extension().string());
+	return FileTypes::IsSevenZipExt(fs::u8string(path.extension()));
 }
 
 bool SevenZip::DecodeExitCode(int ec) const

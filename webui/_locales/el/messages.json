@@ -990,7 +990,6 @@
   "status_password": "κωδικός",
   "status_paused_cap": "σε παύση",
   "status_pausing_cap": "σε παύση",
-  "status_post_unpack_renaming_cap": "μετονομασία μετά την αποσυμπίεση",
   "status_pp_failure": "σφάλμα μετεπεξεργασίας",
   "status_pp_queued_cap": "pp-σε ουρά",
   "status_processing_cap": "επεξεργασία",

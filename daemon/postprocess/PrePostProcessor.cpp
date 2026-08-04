@@ -37,7 +37,7 @@
 #include "QueueScript.h"
 #include "ParParser.h"
 #include "DirectUnpack.h"
-#include "PostUnpackRenamer.h"
+#include "PostDownloadRenamer.h"
 
 PrePostProcessor::PrePostProcessor()
 {
@@ -854,14 +854,26 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		unpack = false;
 	}
 
+	auto CanRunRenaming = [](NzbInfo* nzbInfo) {
+		return nzbInfo->GetDestDir() &&
+			nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+			nzbInfo->GetParStatus() != NzbInfo::psFailure &&
+			nzbInfo->GetParStatus() != NzbInfo::psRepairPossible &&
+			nzbInfo->GetParStatus() != NzbInfo::psManual;
+	};
+
 	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
-		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
-		nzbInfo->GetDestDir() &&
-		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::RenamingStatus::None &&
+		CanRunRenaming(nzbInfo) &&
 		nzbInfo->GetUnpackStatus() == NzbInfo::usSuccess &&
-		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
-		nzbInfo->GetParStatus() != NzbInfo::psManual &&
-		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
+		(nzbInfo->GetMoveStatus() == NzbInfo::msSuccess ||
+		 nzbInfo->GetMoveStatus() == NzbInfo::msNone);
+
+	bool postRenaming =
+		nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::None &&
+		CanRunRenaming(nzbInfo) &&
+		(nzbInfo->GetMoveStatus() == NzbInfo::msSuccess ||
+		 nzbInfo->GetMoveStatus() == NzbInfo::msNone);
 
 	if (unpack)
 	{
@@ -878,10 +890,10 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		EnterStage(downloadQueue, postInfo, PostInfo::ptMoving);
 		MoveController::StartJob(postInfo);
 	}
-	else if (postUnpackRenaming)
+	else if (postUnpackRenaming || postRenaming)
 	{
-		EnterStage(downloadQueue, postInfo, PostInfo::ptPostUnpackRenaming);
-		PostUnpackRenamer::Controller::StartJob(postInfo);
+		EnterStage(downloadQueue, postInfo, PostInfo::ptRenaming);
+		PostDownloadRenamer::Controller::StartJob(postInfo);
 	}
 	else
 	{
@@ -927,7 +939,7 @@ void PrePostProcessor::UpdatePauseState()
 				break;
 
 			case PostInfo::ptRarRenaming:
-			case PostInfo::ptPostUnpackRenaming:
+			case PostInfo::ptRenaming:
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:
