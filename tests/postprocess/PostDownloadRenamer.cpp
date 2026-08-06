@@ -743,4 +743,72 @@ BOOST_AUTO_TEST_CASE(ExtractedScopeLeavesDownloadedFilesUntouchedTest)
 	fs::remove_all(workingDir);
 }
 
+BOOST_AUTO_TEST_CASE(ObfuscatedMetaNameSettlesStatusesTest)
+{
+	const fs::path workingDir = CURR_DIR / "RenameObfuscatedFiles_ObfuscatedMetaName";
+	const std::string obfuscated = "b4bd41113f2d410fa16dc6a04d2cad5c";
+	fs::remove_all(workingDir);
+	fs::create_directory(workingDir);
+
+	WriteEmptyFile(workingDir / (obfuscated + ".mkv"));
+
+	Options::CmdOptList cmdOpts;
+	Options options(&cmdOpts, nullptr);
+
+	auto nzbInfo = std::make_unique<NzbInfo>();
+	nzbInfo->SetName(obfuscated.c_str());
+	nzbInfo->SetDestDir(workingDir.string().c_str());
+	nzbInfo->GetParameters()->SetParameter("*MetaName", obfuscated.c_str());
+	nzbInfo->GetCompletedFiles()->emplace_back(
+		1, (obfuscated + ".mkv").c_str(), (obfuscated + ".mkv").c_str(),
+		CompletedFile::cfSuccess, 0, false, "", "");
+	nzbInfo->SetUnpackStatus(NzbInfo::usSuccess);
+
+	PostDownloadRenamerDownloadQueueMock downloadQueue;
+	PostInfo postInfo;
+	postInfo.SetNzbInfo(nzbInfo.get());
+	PostDownloadRenamer::Controller renamer;
+	PostDownloadRenamer::RenameResult result = PostDownloadRenamer::RenameFiles(renamer, &postInfo);
+
+	// Nothing can be renamed (no valid target name) and no file is touched.
+	BOOST_CHECK_EQUAL(result.downloadedCount, 0);
+	BOOST_CHECK_EQUAL(result.extractedCount, 0);
+	BOOST_CHECK(fs::exists(workingDir / (obfuscated + ".mkv")));
+
+	PostDownloadRenamer::FinishStage(renamer, &postInfo, result);
+
+	// Both scopes ran; both statuses must be terminal so the stage is never re-entered.
+	BOOST_CHECK(nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::Nothing);
+	BOOST_CHECK(nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::RenamingStatus::Nothing);
+
+	fs::remove_all(workingDir);
+}
+
+BOOST_AUTO_TEST_CASE(EmptyDestDirSettlesStatusesTest)
+{
+	// A missing destDir is another early-return path: the statuses must still
+	// settle so the stage does not spin.
+	Options::CmdOptList cmdOpts;
+	Options options(&cmdOpts, nullptr);
+
+	auto nzbInfo = std::make_unique<NzbInfo>();
+	nzbInfo->SetName("SomeNzb");
+	nzbInfo->GetParameters()->SetParameter("*MetaName", METANAME.c_str());
+	nzbInfo->SetUnpackStatus(NzbInfo::usSuccess);
+
+	PostDownloadRenamerDownloadQueueMock downloadQueue;
+	PostInfo postInfo;
+	postInfo.SetNzbInfo(nzbInfo.get());
+	PostDownloadRenamer::Controller renamer;
+	PostDownloadRenamer::RenameResult result = PostDownloadRenamer::RenameFiles(renamer, &postInfo);
+
+	BOOST_CHECK_EQUAL(result.downloadedCount, 0);
+	BOOST_CHECK_EQUAL(result.extractedCount, 0);
+
+	PostDownloadRenamer::FinishStage(renamer, &postInfo, result);
+
+	BOOST_CHECK(nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::Nothing);
+	BOOST_CHECK(nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::RenamingStatus::Nothing);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

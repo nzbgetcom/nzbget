@@ -64,19 +64,16 @@ int RenameFiles(Thread& thread, PostInfo* postInfo, Scope scope);
 RenameResult RenameFiles(Thread& thread, PostInfo* postInfo);
 int RenameFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
 	const std::vector<Candidate>& candidates, bool includeDownloaded, std::set<fs::path>& usedPaths);
-void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result, const char* infoName = nullptr);
+void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result);
 
 class Controller final : public Thread
 {
 public:
 	static void StartJob(PostInfo* postInfo);
 	void Run() override;
-	void SetInfoName(const char* infoName) { m_infoName = infoName; }
-	const char* GetInfoName() { return m_infoName; }
 
 private:
 	PostInfo* m_postInfo = nullptr;
-	CString m_infoName;
 };
 
 }

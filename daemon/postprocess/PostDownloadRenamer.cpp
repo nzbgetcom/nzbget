@@ -50,15 +50,13 @@ void Controller::StartJob(PostInfo* postInfo)
 
 void Controller::Run()
 {
-	std::string infoName = "Renaming for " + std::string(m_postInfo->GetNzbInfo()->GetName());
-	SetInfoName(infoName.c_str());
-	FinishStage(*this, m_postInfo, RenameFiles(*this, m_postInfo), GetInfoName());
+	FinishStage(*this, m_postInfo, RenameFiles(*this, m_postInfo));
 }
 
-void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result, const char* infoName)
+void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result)
 {
 	NzbInfo* nzbInfo = postInfo->GetNzbInfo();
-	const char* name = !Util::EmptyStr(infoName) ? infoName : nzbInfo->GetName();
+	const char* name = nzbInfo->GetName();
 
 	int renamedCount = result.downloadedCount + result.extractedCount;
 
@@ -188,6 +186,9 @@ namespace
 
 		RenameResult result;
 
+		result.downloadedRan = runDownloaded;
+		result.extractedRan = runExtracted;
+
 		if (Util::EmptyStr(nzbInfo->GetDestDir())) return result;
 
 		fs::path destPath = fs::u8path(nzbInfo->GetDestDir());
@@ -211,9 +212,6 @@ namespace
 		{
 			return result;
 		}
-
-		result.downloadedRan = runDownloaded;
-		result.extractedRan = runExtracted;
 
 		std::vector<Candidate> downloadedCandidates;
 		std::vector<Candidate> extractedCandidates;
