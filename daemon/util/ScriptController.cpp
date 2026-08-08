@@ -579,6 +579,15 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	}
 #endif
 
+	// Determine the highest fd we might need to close in the child, before
+	// forking - sysconf() is not guaranteed async-signal-safe, so it must
+	// not be called after fork() in the child branch below.
+	long openMax = sysconf(_SC_OPEN_MAX);
+	if (openMax < 0)
+	{
+		openMax = 1024;
+	}
+
 	debug("forking");
 	pid_t pid = fork();
 
@@ -617,6 +626,18 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 			dup2(pout[0], 0);
 			close(pout[0]);
 			close(pout[1]);
+		}
+
+		// Close all other inherited file descriptors. Without this, any
+		// handle the parent process happens to have open at the moment of
+		// fork() - e.g. a file mid-rename during download post-processing -
+		// leaks into this child and keeps that unrelated file "busy" for as
+		// long as the child runs, causing spurious EBUSY / NFS "Resource
+		// busy" failures on the parent's operation. close() is
+		// async-signal-safe so this is safe to do here.
+		for (int fd = 3; fd < (int)openMax; fd++)
+		{
+			close(fd);
 		}
 
 #ifdef CHILD_WATCHDOG
