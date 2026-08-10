@@ -102,7 +102,10 @@ void ArticleDownloader::Run()
 		SetStatus(adWaiting);
 		while (!m_connection && !(IsStopped() || serverConfigGeneration != g_ServerPool->GetGeneration()))
 		{
-			m_connection = g_ServerPool->GetConnection(level, wantServer, &failedServers);
+			{
+				Guard guard(m_connectionMutex);
+				m_connection = g_ServerPool->GetConnection(level, wantServer, &failedServers);
+			}
 			Util::Sleep(5);
 		}
 		SetLastUpdateTimeNow();
