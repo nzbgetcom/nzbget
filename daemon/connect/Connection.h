@@ -30,7 +30,7 @@
 #include "TlsSocket.h"
 #endif
 
-inline constexpr size_t CONNECTION_READBUFFER_SIZE = 4 * 1024;
+inline constexpr size_t CONNECTION_READBUFFER_SIZE = 1024;
 
 class Connection
 {
