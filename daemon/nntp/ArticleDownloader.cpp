@@ -138,7 +138,9 @@ void ArticleDownloader::Run()
 				(int)(Util::CurrentTime() - m_fileInfo->GetTime()) / 86400,
 				m_connection->GetNewsServer()->GetRetention());
 			status = adFailed;
-			FreeConnection(true);
+			// retention failure is not a connection failure - the socket was never
+			// attempted, so it must not go on cooldown
+			FreeConnection(true, false);
 		}
 
 		if (m_connection && !IsStopped())
@@ -190,11 +192,12 @@ void ArticleDownloader::Run()
 			remainedRetries--;
 		}
 
-		bool optionalBlocked = false;
+		// only an optional server can be escalated past; a failed non-optional
+		// server is retried on the same level once its cooldown expires
+		bool optionalConnectFailed = false;
 		if (!connected && m_connection && !IsStopped())
 		{
-			g_ServerPool->BlockServer(lastServer);
-			optionalBlocked = lastServer->GetOptional();
+			optionalConnectFailed = lastServer->GetOptional();
 		}
 
 		wantServer = nullptr;
@@ -204,7 +207,13 @@ void ArticleDownloader::Run()
 		}
 		else
 		{
-			FreeConnection(status == adFinished || status == adNotFound);
+			// only a failed connect (!connected) or a socket that broke mid-transfer
+			// (csBroken) counts as a connection failure and goes on cooldown; a
+			// healthy connection after a protocol/CRC error or a user cancel is not
+			// penalized. m_connection may be null after a retention failure.
+			bool failed = !connected ||
+				(m_connection && m_connection->GetStatus() == Connection::csBroken);
+			FreeConnection(status == adFinished || status == adNotFound, failed);
 		}
 
 		if (status == adFinished || status == adFatalError)
@@ -226,9 +235,9 @@ void ArticleDownloader::Run()
 			break;
 		}
 
-		if (!wantServer && (connected || retentionFailure || optionalBlocked))
+		if (!wantServer && (connected || retentionFailure || optionalConnectFailed))
 		{
-			if (!optionalBlocked)
+			if (!optionalConnectFailed)
 			{
 				failedServers.push_back(lastServer);
 			}
@@ -242,7 +251,7 @@ void ArticleDownloader::Run()
 				if (candidateServer->GetNormLevel() == level)
 				{
 					bool serverFailed = !candidateServer->GetActive() || candidateServer->GetMaxConnections() == 0 ||
-						(candidateServer->GetOptional() && g_ServerPool->IsServerBlocked(candidateServer));
+						(candidateServer->GetOptional() && !g_ServerPool->ServerHasUsableConnection(candidateServer));
 					if (!serverFailed)
 					{
 						for (NewsServer* ignoreServer : failedServers)
@@ -283,7 +292,10 @@ void ArticleDownloader::Run()
 		}
 	}
 
-	FreeConnection(status == adFinished);
+	// only a socket that broke mid-transfer counts as a connection failure at loop
+	// exit; a healthy connection (finished article, pause/cancel) is not penalized
+	bool broken = m_connection && m_connection->GetStatus() == Connection::csBroken;
+	FreeConnection(status == adFinished, broken);
 
 	if (m_articleWriter.GetDuplicate())
 	{
@@ -417,7 +429,8 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 
 	if (status == adRunning)
 	{
-		FreeConnection(true);
+		// article bytes downloaded OK, connection is healthy - no cooldown
+		FreeConnection(true, false);
 		status = DecodeCheck();
 	}
 
@@ -591,7 +604,7 @@ void ArticleDownloader::Stop()
 	debug("ArticleDownloader stopped successfully");
 }
 
-void ArticleDownloader::FreeConnection(bool used)
+void ArticleDownloader::FreeConnection(bool used, bool failed)
 {
 	if (m_connection)
 	{
@@ -601,7 +614,7 @@ void ArticleDownloader::FreeConnection(bool used)
 			m_connection->Disconnect();
 		}
 		AddServerStats();
-		g_ServerPool->FreeConnection(m_connection, used);
+		g_ServerPool->FreeConnection(m_connection, failed);
 		m_connection = nullptr;
 	}
 }

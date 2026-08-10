@@ -46,7 +46,7 @@ NntpConnection* WaitForConnection(ServerPool* pool, int level, time_t timeoutSec
 	return connection;
 }
 
-void TestCooldownOnFailure(int /*group*/)
+void TestCooldownOnFailure()
 {
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, 0, 2);
@@ -57,43 +57,24 @@ void TestCooldownOnFailure(int /*group*/)
 	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_REQUIRE(con1 != nullptr);
 
-	// Free with used=false → sets cooldown
-	pool.FreeConnection(con1, false);
+	// Free with failed=true → sets cooldown
+	pool.FreeConnection(con1, true);
 
 	// con1's connection is on cooldown, should NOT be returned
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_CHECK(con2 != nullptr);
 	BOOST_CHECK(con2 != con1);
 
-	// Free with used=true → resets cooldown and failures
-	pool.FreeConnection(con2, true);
+	// Free with failed=false → resets cooldown and failures
+	pool.FreeConnection(con2, false);
 
 	// con2 should now be available for reuse immediately
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_CHECK(con3 != nullptr);
 
-	if (con3) pool.FreeConnection(con3, true);
+	if (con3) pool.FreeConnection(con3, false);
 }
 
-
-void TestBlockDoesNotGateConnections(int /*group*/)
-{
-	ServerPool pool;
-	AddTestServer(&pool, 1, true, 0, false, 0, 2);
-	AddTestServer(&pool, 2, true, 1, false, 0, 1);
-	pool.InitConnections();
-	pool.SetRetryInterval(60);
-
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-	pool.BlockServer(serv1);
-
-	// BlockServer alone does NOT gate connections (only per-connection cooldown does)
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
-	BOOST_CHECK(con1 != nullptr);
-	BOOST_CHECK(con1->GetNewsServer() == serv1);
-
-	if (con1) pool.FreeConnection(con1, true);
-}
 
 BOOST_AUTO_TEST_CASE(SimpleLevelsTest)
 {
@@ -113,7 +94,7 @@ BOOST_AUTO_TEST_CASE(SimpleLevelsTest)
 	BOOST_CHECK(con2 != nullptr);
 	BOOST_CHECK(con3 == nullptr);
 
-	pool.FreeConnection(con1, true);
+	pool.FreeConnection(con1, false);
 	con3 = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_CHECK(con3 != nullptr);
 
@@ -235,17 +216,10 @@ BOOST_AUTO_TEST_CASE(IgnoreServersGroupedTest)
 
 BOOST_AUTO_TEST_CASE(CooldownOnFailureTest)
 {
-	TestCooldownOnFailure(0);
-}
-
-BOOST_AUTO_TEST_CASE(CooldownOnFailureGroupedTest)
-{
-	TestCooldownOnFailure(1);
-}
-
-BOOST_AUTO_TEST_CASE(BlockDoesNotGateConnectionsTest)
-{
-	TestBlockDoesNotGateConnections(0);
+	// Server grouping (wantServer/ignoreServers group matching) is orthogonal to
+	// per-connection cooldown, which is what's under test here - a single case
+	// covers it; a "grouped" variant would exercise an identical code path.
+	TestCooldownOnFailure();
 }
 
 BOOST_AUTO_TEST_CASE(SpeedTestServerSelection)
@@ -293,7 +267,7 @@ BOOST_AUTO_TEST_CASE(ProgressiveBackoffTest)
 	// First failure puts the connection on a base cooldown (1s)...
 	NntpConnection* con = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_REQUIRE(con != nullptr);
-	pool.FreeConnection(con, false);
+	pool.FreeConnection(con, true);
 	BOOST_CHECK(pool.GetConnection(0, nullptr, nullptr) == nullptr);
 
 	// ...which expires after the base window (1s).
@@ -303,7 +277,7 @@ BOOST_AUTO_TEST_CASE(ProgressiveBackoffTest)
 	// A second consecutive failure escalates the cooldown (to 2s). At 1s the
 	// base 1s window would have cleared, but the connection must STILL be
 	// blocked; that is what distinguishes escalation from a flat cooldown.
-	pool.FreeConnection(con, false);
+	pool.FreeConnection(con, true);
 	BOOST_CHECK(pool.GetConnection(0, nullptr, nullptr) == nullptr);
 	con = WaitForConnection(&pool, 0, 1);
 	BOOST_CHECK(con == nullptr);
@@ -311,7 +285,7 @@ BOOST_AUTO_TEST_CASE(ProgressiveBackoffTest)
 	// It comes back once the escalated (2s) window expires.
 	con = WaitForConnection(&pool, 0, 2);
 	BOOST_REQUIRE(con != nullptr);
-	pool.FreeConnection(con, true);
+	pool.FreeConnection(con, false);
 }
 
 BOOST_AUTO_TEST_CASE(ResetOnSuccessTest)
@@ -324,23 +298,23 @@ BOOST_AUTO_TEST_CASE(ResetOnSuccessTest)
 	// Failure → base cooldown (1s).
 	NntpConnection* con = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_REQUIRE(con != nullptr);
-	pool.FreeConnection(con, false);
+	pool.FreeConnection(con, true);
 	con = WaitForConnection(&pool, 0, 2);
 	BOOST_REQUIRE(con != nullptr);
 
 	// A successful use resets the failure counter, so the following failure
 	// only gets the base cooldown (1s), not an escalated one (2s).
-	pool.FreeConnection(con, true);
+	pool.FreeConnection(con, false);
 	con = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_REQUIRE(con != nullptr);
-	pool.FreeConnection(con, false);
+	pool.FreeConnection(con, true);
 	BOOST_CHECK(pool.GetConnection(0, nullptr, nullptr) == nullptr);
 
 	// Because the counter was reset, the connection returns within the base
 	// 1s window (an unreset 2s cooldown would still be blocked at 1s).
 	con = WaitForConnection(&pool, 0, 1);
 	BOOST_CHECK(con != nullptr);
-	if (con) pool.FreeConnection(con, true);
+	if (con) pool.FreeConnection(con, false);
 }
 
 BOOST_AUTO_TEST_CASE(OptionalServerEscalationOnCooldownTest)
@@ -356,27 +330,26 @@ BOOST_AUTO_TEST_CASE(OptionalServerEscalationOnCooldownTest)
 	NewsServer* serv1 = pool.GetServers()->at(0).get();
 	NewsServer* serv2 = pool.GetServers()->at(1).get();
 
-	for (int pass = 0; pass < 2; pass++)
+	// Put all connections of the two optional level-0 servers on cooldown,
+	// leaving the non-optional level-1 server untouched.
+	for (NewsServer* server : {serv1, serv2})
 	{
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < 2; i++)
 		{
-			NntpConnection *con = pool.GetConnection(0, nullptr, nullptr);
-			if (!con) break;
-			pool.FreeConnection(con, false);
+			NntpConnection* con = pool.GetConnection(0, server, nullptr);
+			BOOST_REQUIRE(con != nullptr);
+			pool.FreeConnection(con, true);
 		}
 	}
 
-	// All level-0 servers blocked and on cooldown → escalate to level 1
-	pool.BlockServer(serv1);
-	pool.BlockServer(serv2);
-
+	// All level-0 servers on cooldown → escalate to level 1
 	NntpConnection* con = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_CHECK(con != nullptr);
 	if (con)
 	{
 		BOOST_CHECK_MESSAGE(con->GetNewsServer()->GetLevel() == 1,
 			"Got level " << con->GetNewsServer()->GetLevel() << ", expected level 1");
-		pool.FreeConnection(con, true);
+		pool.FreeConnection(con, false);
 	}
 }
 
@@ -390,11 +363,9 @@ BOOST_AUTO_TEST_CASE(MixedCooldownNoEscalationTest)
 	pool.InitConnections();
 	pool.SetRetryInterval(60);
 
-	NewsServer* serv1 = pool.GetServers()->at(0).get();
-
-	// Block the optional server
-	pool.BlockServer(serv1);
-
+	// A mix of optional and non-optional servers on a level must still yield
+	// connections; cooldown only applies per failed connection, so nothing is
+	// on cooldown here and no escalation to level 1 happens.
 	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
 	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
@@ -404,15 +375,16 @@ BOOST_AUTO_TEST_CASE(MixedCooldownNoEscalationTest)
 	BOOST_REQUIRE(con3);
 	BOOST_REQUIRE(con4);
 
-	// Free one level-0 connection; it returns immediately, no escalation needed.
-	pool.FreeConnection(con4, true);
+	// Free one level-0 connection as successful; it returns immediately,
+	// no escalation needed.
+	pool.FreeConnection(con4, false);
 	NntpConnection* con5 = pool.GetConnection(0, nullptr, nullptr);
 	BOOST_CHECK(con5 != nullptr);
 
-	if (con1) pool.FreeConnection(con1, true);
-	if (con2) pool.FreeConnection(con2, true);
-	if (con3) pool.FreeConnection(con3, true);
-	if (con5) pool.FreeConnection(con5, true);
+	if (con1) pool.FreeConnection(con1, false);
+	if (con2) pool.FreeConnection(con2, false);
+	if (con3) pool.FreeConnection(con3, false);
+	if (con5) pool.FreeConnection(con5, false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

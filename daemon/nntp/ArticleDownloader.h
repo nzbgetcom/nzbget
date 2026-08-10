@@ -101,7 +101,13 @@ private:
 
 	EStatus Download();
 	EStatus DecodeCheck();
-	void FreeConnection(bool keepConnected);
+	// used: true leaves the socket connected for reuse (e.g. article finished
+	//   or not found); false forces a Disconnect() first (e.g. CRC error, giving
+	//   up on this article, or a stop/pause/cancel).
+	// failed: true tells the pool to put the connection on cooldown before it can
+	//   be reused (connect failure or a socket that broke mid-transfer); independent
+	//   of "used" - a finished article can still land on a since-broken socket.
+	void FreeConnection(bool used, bool failed);
 	EStatus CheckResponse(const char* response, const char* comment);
 	void SetStatus(EStatus status) { m_status = status; }
 	bool Write(char* buffer, int len);

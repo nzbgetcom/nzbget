@@ -138,7 +138,6 @@ void ServerPool::InitConnections()
 
 	for (NewsServer* newsServer : m_sortedServers)
 	{
-		newsServer->SetBlockTime(0);
 		int normLevel = newsServer->GetNormLevel();
 		if (newsServer->GetNormLevel() > -1)
 		{
@@ -177,7 +176,8 @@ void ServerPool::InitConnections()
 }
 
 /* Returns connection from any server on a given level or nullptr if there is no free connection at the moment.
- * If all servers are blocked and all are optional a connection from the next level is returned instead.
+ * If all servers on the level are optional and none has a usable (not-on-cooldown) connection,
+ * a connection from the next level is returned instead.
  */
 NntpConnection* ServerPool::GetConnection(int level, NewsServer* wantServer, RawServerList* ignoreServers)
 {
@@ -194,7 +194,7 @@ NntpConnection* ServerPool::GetConnection(int level, NewsServer* wantServer, Raw
 		for (NewsServer* newsServer : m_sortedServers)
 		{
 			if (newsServer->GetNormLevel() == level && newsServer->GetActive() &&
-				!(newsServer->GetOptional() && IsServerBlocked(newsServer)))
+				!(newsServer->GetOptional() && !LockedServerHasUsableConnection(newsServer)))
 			{
 				return nullptr;
 			}
@@ -241,8 +241,6 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 				}
 			}
 
-			candidateServer->SetBlockTime(0);
-
 			if (useConnection)
 			{
 				candidates.push_back(candidateConnection);
@@ -273,22 +271,22 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 	return connection;
 }
 
-void ServerPool::FreeConnection(NntpConnection* connection, bool used)
+void ServerPool::FreeConnection(NntpConnection* connection, bool failed)
 {
 	Guard guard(m_connectionsMutex);
 
 	auto pooledConn = static_cast<PooledConnection*>(connection);
 	pooledConn->SetInUse(false);
 
-	if (used)
-	{
-		pooledConn->SetFreeTimeNow();
-	}
-	else
+	if (failed)
 	{
 		pooledConn->SetCooldown(m_retryInterval);
 		detail("Connection %s/%s failed",
 			connection->GetNewsServer()->GetName(), connection->GetNewsServer()->GetHost());
+	}
+	else
+	{
+		pooledConn->SetFreeTimeNow();
 	}
 
 	if (connection->GetNewsServer()->GetNormLevel() > -1 && connection->GetNewsServer()->GetActive())
@@ -297,33 +295,22 @@ void ServerPool::FreeConnection(NntpConnection* connection, bool used)
 	}
 }
 
-void ServerPool::BlockServer(NewsServer* newsServer)
+bool ServerPool::ServerHasUsableConnection(NewsServer* newsServer)
 {
-	bool newBlock = false;
-	{
-		Guard guard(m_connectionsMutex);
-		time_t curTime = Util::CurrentTime();
-		newBlock = newsServer->GetBlockTime() != curTime;
-		newsServer->SetBlockTime(curTime);
-	}
-
-	if (newBlock && m_retryInterval > 0)
-	{
-		warn("Blocking %s/%s for %i sec", newsServer->GetName(), newsServer->GetHost(), m_retryInterval);
-	}
+	Guard guard(m_connectionsMutex);
+	return LockedServerHasUsableConnection(newsServer);
 }
 
-bool ServerPool::IsServerBlocked(NewsServer* newsServer)
+bool ServerPool::LockedServerHasUsableConnection(NewsServer* newsServer)
 {
-	if (!newsServer->GetBlockTime())
+	for (PooledConnection* connection : &m_connections)
 	{
-		return false;
+		if (connection->GetNewsServer() == newsServer && !connection->IsOnCooldown())
+		{
+			return true;
+		}
 	}
-
-	time_t curTime = Util::CurrentTime();
-	bool blocked = newsServer->GetBlockTime() <= curTime &&
-		curTime < newsServer->GetBlockTime() + m_retryInterval;
-	return blocked;
+	return false;
 }
 
 void ServerPool::CloseUnusedConnections()
@@ -410,15 +397,11 @@ void ServerPool::LogDebugInfo()
 
 	Guard guard(m_connectionsMutex);
 
-	time_t curTime = Util::CurrentTime();
-
 	info("    Servers: %i", (int)m_servers.size());
 	for (NewsServer* newsServer : &m_servers)
 	{
-		info("      %i) %s (%s): Level=%i, NormLevel=%i, BlockSec=%i", newsServer->GetId(), newsServer->GetName(),
-			newsServer->GetHost(), newsServer->GetLevel(), newsServer->GetNormLevel(),
-			newsServer->GetBlockTime() && newsServer->GetBlockTime() + m_retryInterval > curTime ?
-				(int)(newsServer->GetBlockTime() + m_retryInterval - curTime) : 0);
+		info("      %i) %s (%s): Level=%i, NormLevel=%i", newsServer->GetId(), newsServer->GetName(),
+			newsServer->GetHost(), newsServer->GetLevel(), newsServer->GetNormLevel());
 	}
 
 	info("    Levels: %i", (int)m_levels.size());

@@ -54,8 +54,6 @@ public:
 	const char* GetCipher() const { return m_cipher.c_str(); }
 	int GetRetention() const { return m_retention; }
 	bool GetOptional() const { return m_optional; }
-	time_t GetBlockTime() const { return m_blockTime; }
-	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
 	unsigned int GetCertVerificationLevel() const { return m_certVerificationfLevel; }
 
 private:
@@ -64,7 +62,6 @@ private:
 	std::string m_user;
 	std::string m_password;
 	std::string m_cipher;
-	std::atomic<time_t> m_blockTime = 0;
 	int m_id;
 	int m_stateId = 0;
 	int m_port;

@@ -44,12 +44,15 @@ public:
 	Servers* GetServers() { return &m_servers; } // Only for read access (no lockings)
 	NewsServer* GetServerById(int id);
 	NntpConnection* GetConnection(int level, NewsServer* wantServer, RawServerList* ignoreServers);
-	void FreeConnection(NntpConnection* connection, bool used);
+	void FreeConnection(NntpConnection* connection, bool failed);
 	void CloseUnusedConnections();
 	void Changed();
 	int GetGeneration() { return m_generation; }
-	void BlockServer(NewsServer* newsServer);
-	bool IsServerBlocked(NewsServer* newsServer);
+	// True if the server has at least one pooled connection that is not currently on
+	// cooldown. In-use connections still count (they free up soon); this answers "can
+	// this optional server actually serve a connection right now", used to decide
+	// whether to escalate to the next level instead of waiting.
+	bool ServerHasUsableConnection(NewsServer* newsServer);
 
 protected:
 	virtual void LogDebugInfo();
@@ -89,6 +92,7 @@ private:
 
 	void NormalizeLevels();
 	NntpConnection* LockedGetConnection(int level, NewsServer* wantServer, RawServerList* ignoreServers);
+	bool LockedServerHasUsableConnection(NewsServer* newsServer); // assumes m_connectionsMutex held
 };
 
 extern ServerPool* g_ServerPool;
