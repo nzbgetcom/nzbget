@@ -73,6 +73,24 @@ void closesocket_gracefully(SOCKET socket)
 	closesocket(socket);
 }
 
+// Prevents a socket from being inherited by child processes that NZBGet
+// forks to run unrar/7z or extension scripts. Without this, a socket the
+// daemon still has open (e.g. the WebUI/control-port listener, or a
+// just-accepted connection) leaks into those unrelated children and stays
+// "in use" from the OS's point of view for as long as the child runs -
+// on POSIX this can block re-binding the port after a restart; the
+// equivalent for Windows handles is done inline via SetHandleInformation.
+static void SetCloseOnExec(SOCKET socket)
+{
+	if (socket == INVALID_SOCKET)
+	{
+		return;
+	}
+#ifndef WIN32
+	fcntl(socket, F_SETFD, FD_CLOEXEC);
+#endif
+}
+
 #ifdef ANDROID_RESOLVE
 std::string ResolveAndroidHost(const char* host);
 #endif
@@ -224,6 +242,7 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
+		SetCloseOnExec(m_socket);
 
 		unlink(m_host.c_str());
 
@@ -266,6 +285,7 @@ bool Connection::Bind()
 #ifdef WIN32
 			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
 #endif
+			SetCloseOnExec(m_socket);
 			if (m_socket != INVALID_SOCKET)
 			{
 				int opt = 1;
@@ -310,6 +330,7 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
+		SetCloseOnExec(m_socket);
 
 		int opt = 1;
 		setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
@@ -485,6 +506,7 @@ std::unique_ptr<Connection> Connection::Accept()
 	{
 		return nullptr;
 	}
+	SetCloseOnExec(socket);
 
 	InitSocketOpts(socket);
 
@@ -571,6 +593,7 @@ bool Connection::DoConnect()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
+		SetCloseOnExec(m_socket);
 
 		if (!ConnectWithTimeout(&addr, sizeof(addr)))
 		{
@@ -639,6 +662,7 @@ bool Connection::DoConnect()
 #ifdef WIN32
 			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
 #endif
+			SetCloseOnExec(m_socket);
 			if (m_socket == INVALID_SOCKET)
 			{
 				// try another addr/family/protocol
@@ -690,6 +714,7 @@ bool Connection::DoConnect()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
+		SetCloseOnExec(m_socket);
 
 		if (!ConnectWithTimeout(&sSocketAddress, sizeof(sSocketAddress)))
 		{
