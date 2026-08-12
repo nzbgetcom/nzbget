@@ -491,4 +491,24 @@ BOOST_AUTO_TEST_CASE(TestAppendRPCJsonParsing)
 	}
 }
 
+#ifndef WIN32
+BOOST_AUTO_TEST_CASE(SetCloseOnExecTest)
+{
+	int fds[2];
+	BOOST_REQUIRE(pipe(fds) == 0);
+	BOOST_REQUIRE(Util::SetCloseOnExec(fds[0]));
+
+	int flags = fcntl(fds[0], F_GETFD);
+	BOOST_REQUIRE(flags != -1);
+#ifdef FD_CLOEXEC
+	BOOST_CHECK((flags & FD_CLOEXEC) != 0);
+#else
+	BOOST_CHECK((flags & 1) != 0);
+#endif
+
+	close(fds[0]);
+	close(fds[1]);
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()

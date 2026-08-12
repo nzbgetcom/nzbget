@@ -25,6 +25,7 @@
 #include "Log.h"
 #include "FileSystem.h"
 #include "Options.h"
+#include "Util.h"
 
 static const int CONNECTION_READBUFFER_SIZE = 1024;
 
@@ -71,24 +72,6 @@ void closesocket_gracefully(SOCKET socket)
 
 	// Now we know that our FIN is ACK-ed, safe to close
 	closesocket(socket);
-}
-
-// Prevents a socket from being inherited by child processes that NZBGet
-// forks to run unrar/7z or extension scripts. Without this, a socket the
-// daemon still has open (e.g. the WebUI/control-port listener, or a
-// just-accepted connection) leaks into those unrelated children and stays
-// "in use" from the OS's point of view for as long as the child runs -
-// on POSIX this can block re-binding the port after a restart; the
-// equivalent for Windows handles is done inline via SetHandleInformation.
-static void SetCloseOnExec(SOCKET socket)
-{
-	if (socket == INVALID_SOCKET)
-	{
-		return;
-	}
-#ifndef WIN32
-	fcntl(socket, F_SETFD, FD_CLOEXEC);
-#endif
 }
 
 #ifdef ANDROID_RESOLVE
@@ -242,8 +225,6 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-		SetCloseOnExec(m_socket);
-
 		unlink(m_host.c_str());
 
 		if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
@@ -285,7 +266,6 @@ bool Connection::Bind()
 #ifdef WIN32
 			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
 #endif
-			SetCloseOnExec(m_socket);
 			if (m_socket != INVALID_SOCKET)
 			{
 				int opt = 1;
@@ -330,8 +310,6 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-		SetCloseOnExec(m_socket);
-
 		int opt = 1;
 		setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
@@ -349,6 +327,13 @@ bool Connection::Bind()
 	if (m_socket == INVALID_SOCKET)
 	{
 		ReportError("Binding socket failed for %s", m_host.c_str(), true, errcode);
+		return false;
+	}
+
+	if (!InitSocketOpts(m_socket))
+	{
+		closesocket(m_socket);
+		m_socket = INVALID_SOCKET;
 		return false;
 	}
 
@@ -506,8 +491,6 @@ std::unique_ptr<Connection> Connection::Accept()
 	{
 		return nullptr;
 	}
-	SetCloseOnExec(socket);
-
 	InitSocketOpts(socket);
 
 	return std::make_unique<Connection>(socket, m_tls);
@@ -593,7 +576,6 @@ bool Connection::DoConnect()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-		SetCloseOnExec(m_socket);
 
 		if (!ConnectWithTimeout(&addr, sizeof(addr)))
 		{
@@ -662,7 +644,6 @@ bool Connection::DoConnect()
 #ifdef WIN32
 			SetHandleInformation((HANDLE)m_socket, HANDLE_FLAG_INHERIT, 0);
 #endif
-			SetCloseOnExec(m_socket);
 			if (m_socket == INVALID_SOCKET)
 			{
 				// try another addr/family/protocol
@@ -714,7 +695,6 @@ bool Connection::DoConnect()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-		SetCloseOnExec(m_socket);
 
 		if (!ConnectWithTimeout(&sSocketAddress, sizeof(sSocketAddress)))
 		{
@@ -768,6 +748,11 @@ bool Connection::InitSocketOpts(SOCKET socket)
 		ReportError("Socket initialization failed for %s", m_host.c_str(), true);
 		return false;
 	}
+
+#ifndef WIN32
+	Util::SetCloseOnExec((int)socket);
+#endif
+
 	return true;
 }
 

@@ -557,8 +557,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	// stops these specific fd numbers from leaking into any *other* child
 	// that might be forked while they're still open (e.g. concurrently, for
 	// an unrelated queue item).
-	fcntl(pin[0], F_SETFD, FD_CLOEXEC);
-	fcntl(pin[1], F_SETFD, FD_CLOEXEC);
+	Util::SetCloseOnExec(pin[0]);
+	Util::SetCloseOnExec(pin[1]);
 	if (m_needWrite && pipe(pout))
 	{
 		PrintMessage(Message::mkError, "Could not open write pipe: errno %i", errno);
@@ -568,8 +568,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	}
 	if (m_needWrite)
 	{
-		fcntl(pout[0], F_SETFD, FD_CLOEXEC);
-		fcntl(pout[1], F_SETFD, FD_CLOEXEC);
+		Util::SetCloseOnExec(pout[0]);
+		Util::SetCloseOnExec(pout[1]);
 	}
 
 	*pipein = pin[0];
