@@ -291,6 +291,7 @@ public:
 	void SetParSetId(std::string parSetId) { m_parSetId = std::move(parSetId); }
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
+	void ResetHardLink();
 
 private:
 	int m_id;
@@ -435,7 +436,8 @@ public:
 	{
 		None,
 		Nothing,
-		Success
+		Success,
+		Failure
 	};
 
 	enum EDeleteStatus

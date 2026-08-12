@@ -76,18 +76,19 @@ void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result)
 
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
-	if (!thread.IsStopped())
+	if (thread.IsStopped()) return;
+
+	if (result.extractedRan)
 	{
-		if (result.extractedRan)
-		{
-			nzbInfo->SetPostUnpackRenamingStatus(result.extractedCount > 0
-				? NzbInfo::RenamingStatus::Success : NzbInfo::RenamingStatus::Nothing);
-		}
-		if (result.downloadedRan)
-		{
-			nzbInfo->SetPostRenamingStatus(result.downloadedCount > 0
-				? NzbInfo::RenamingStatus::Success : NzbInfo::RenamingStatus::Nothing);
-		}
+		nzbInfo->SetPostUnpackRenamingStatus(result.extractedFailed
+			? NzbInfo::RenamingStatus::Failure
+			: (result.extractedCount > 0 ? NzbInfo::RenamingStatus::Success : NzbInfo::RenamingStatus::Nothing));
+	}
+	if (result.downloadedRan)
+	{
+		nzbInfo->SetPostRenamingStatus(result.downloadedFailed
+			? NzbInfo::RenamingStatus::Failure
+			: (result.downloadedCount > 0 ? NzbInfo::RenamingStatus::Success : NzbInfo::RenamingStatus::Nothing));
 	}
 
 	postInfo->SetWorking(false);
@@ -119,7 +120,7 @@ std::string ResolveUniqueName(std::string_view metaname, std::string_view stem, 
 	std::string metanameStr(metaname);
 	std::string extStr(ext);
 	std::string stemStr(stem);
-	bool isSub = FileTypes::IsSubtitleExt(ext) && stem.size() > 2;
+	bool isSub = FileTypes::IsSubtitleExt(ext) && stem.size() >= 2;
 	fs::error_code ec;
 	fs::path fullPath = destPath / candidate;
 	while ((usedPaths.count(fullPath) || fs::exists(fullPath, ec)))
@@ -127,13 +128,14 @@ std::string ResolveUniqueName(std::string_view metaname, std::string_view stem, 
 		++counter;
 		if (isSub)
 		{
-			if (counter == 1)
+			if (counter == 1 && candidate != metanameStr + "." + stemStr + extStr)
 			{
 				candidate = metanameStr + "." + stemStr + extStr;
 			}
 			else
 			{
-				candidate = metanameStr + "." + stemStr + "(" + std::to_string(counter - 1) + ")" + extStr;
+				int subIndex = (baseName == metanameStr + "." + stemStr + extStr) ? counter : counter - 1;
+				candidate = metanameStr + "." + stemStr + "(" + std::to_string(subIndex) + ")" + extStr;
 			}
 		}
 		else
@@ -156,7 +158,7 @@ std::vector<PostDownloadRenamer::Candidate> CollectCandidates(Thread& thread, co
 	{
 		if (thread.IsStopped()) break;
 		if (ec) break;
-		if (!it->is_regular_file()) continue;
+		if (!it->is_regular_file(ec)) continue;
 
 		std::string filename = fs::u8string(it->path().filename());
 		if (!Deobfuscation::IsExcessivelyObfuscated(filename)) continue;
@@ -179,102 +181,99 @@ std::vector<PostDownloadRenamer::Candidate> CollectCandidates(Thread& thread, co
 	return candidates;
 }
 
-namespace
+RenameResult RenameFiles(Thread& thread, PostInfo* postInfo, bool runDownloaded, bool runExtracted)
 {
-	RenameResult RenameFilesInternal(Thread& thread, PostInfo* postInfo, bool runDownloaded, bool runExtracted)
+	NzbInfo* nzbInfo = postInfo->GetNzbInfo();
+
+	RenameResult result;
+
+	result.downloadedRan = runDownloaded;
+	result.extractedRan = runExtracted;
+
+	if (Util::EmptyStr(nzbInfo->GetDestDir())) return result;
+
+	fs::path destPath = fs::u8path(nzbInfo->GetDestDir());
+	if (!fs::is_directory(destPath))
 	{
-		NzbInfo* nzbInfo = postInfo->GetNzbInfo();
-
-		RenameResult result;
-
-		result.downloadedRan = runDownloaded;
-		result.extractedRan = runExtracted;
-
-		if (Util::EmptyStr(nzbInfo->GetDestDir())) return result;
-
-		fs::path destPath = fs::u8path(nzbInfo->GetDestDir());
-		if (!fs::is_directory(destPath))
-		{
-			return result;
-		}
-
-		auto IsValidName = [](const std::string& name)
-		{
-			return !name.empty() && !Deobfuscation::IsExcessivelyObfuscated(name);
-		};
-
-		std::string metaname = nzbInfo->GetMetaName();
-		if (!IsValidName(metaname))
-		{
-			metaname = nzbInfo->GetName();
-		}
-
-		if (!IsValidName(metaname))
-		{
-			return result;
-		}
-
-		auto ToLower = [](std::string str)
-		{
-			std::transform(str.begin(), str.end(), str.begin(),
-				[](unsigned char c) { return std::tolower(c); });
-			return str;
-		};
-
-		std::vector<Candidate> downloadedCandidates;
-		std::vector<Candidate> extractedCandidates;
-		std::vector<Candidate> allCandidates = CollectCandidates(thread, destPath);
-		{
-			// Build the set of downloaded filenames once instead of re-scanning the
-			// file list and completed-files list per candidate below.
-			std::unordered_set<std::string> downloadedFilenames;
-			GuardedDownloadQueue guard = DownloadQueue::Guard();
-			for (FileInfo* fileInfo : nzbInfo->GetFileList())
-			{
-				if (fileInfo->GetFilename())
-				{
-					// File records may store a full relative path (DirectRenamer
-					// keeps the par2-discovered name verbatim); key by basename to
-					// match the on-disk candidate filenames.
-					downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(fileInfo->GetFilename())));
-				}
-			}
-			for (CompletedFile& completedFile : *nzbInfo->GetCompletedFiles())
-			{
-				if (completedFile.GetFilename())
-				{
-					downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(completedFile.GetFilename())));
-				}
-			}
-
-			for (Candidate& candidate : allCandidates)
-			{
-				if (downloadedFilenames.count(ToLower(candidate.filename)))
-				{
-					if (runDownloaded)
-					{
-						downloadedCandidates.push_back(std::move(candidate));
-					}
-				}
-				else if (runExtracted)
-				{
-					extractedCandidates.push_back(std::move(candidate));
-				}
-			}
-		}
-
-		std::set<fs::path> usedPaths;
-		if (runExtracted)
-		{
-			result.extractedCount = RenameFiles(thread, nzbInfo, metaname, extractedCandidates, false, usedPaths);
-		}
-		if (runDownloaded)
-		{
-			result.downloadedCount = RenameFiles(thread, nzbInfo, metaname, downloadedCandidates, true, usedPaths);
-		}
-
 		return result;
 	}
+
+	auto IsValidName = [](const std::string& name)
+	{
+		return !name.empty() && !Deobfuscation::IsExcessivelyObfuscated(name);
+	};
+
+	std::string metaname = nzbInfo->GetMetaName();
+	if (!IsValidName(metaname))
+	{
+		metaname = nzbInfo->GetName();
+	}
+
+	if (!IsValidName(metaname))
+	{
+		return result;
+	}
+
+	auto ToLower = [](std::string str)
+	{
+		std::transform(str.begin(), str.end(), str.begin(),
+				[](unsigned char c) { return std::tolower(c); });
+		return str;
+	};
+
+	std::vector<Candidate> downloadedCandidates;
+	std::vector<Candidate> extractedCandidates;
+	std::vector<Candidate> allCandidates = CollectCandidates(thread, destPath);
+	{
+
+		std::unordered_set<std::string> downloadedFilenames;
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		for (FileInfo* fileInfo : nzbInfo->GetFileList())
+		{
+			if (fileInfo->GetFilename())
+			{
+				downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(fileInfo->GetFilename())));
+			}
+		}
+		for (CompletedFile& completedFile : *nzbInfo->GetCompletedFiles())
+		{
+			if (completedFile.GetFilename())
+			{
+				downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(completedFile.GetFilename())));
+			}
+		}
+
+		for (Candidate& candidate : allCandidates)
+		{
+			if (downloadedFilenames.count(ToLower(candidate.filename)))
+			{
+				if (runDownloaded)
+				{
+					downloadedCandidates.push_back(std::move(candidate));
+				}
+			}
+			else if (runExtracted)
+			{
+				extractedCandidates.push_back(std::move(candidate));
+			}
+		}
+	}
+
+	std::set<fs::path> usedPaths;
+	if (runExtracted)
+	{
+		PassResult res = RenameExtractedFiles(thread, nzbInfo, metaname, extractedCandidates, usedPaths);
+		result.extractedCount = res.count;
+		result.extractedFailed = res.failed;
+	}
+	if (runDownloaded)
+	{
+		PassResult res = RenameDownloadedFiles(thread, nzbInfo, metaname, downloadedCandidates, usedPaths);
+		result.downloadedCount = res.count;
+		result.downloadedFailed = res.failed;
+	}
+
+	return result;
 }
 
 RenameResult RenameFiles(Thread& thread, PostInfo* postInfo)
@@ -287,15 +286,14 @@ RenameResult RenameFiles(Thread& thread, PostInfo* postInfo)
 	bool downloadedRan = g_Options->GetDirectRename() &&
 		nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::None;
 
-	return RenameFilesInternal(thread, postInfo, downloadedRan, extractedRan);
+	return RenameFiles(thread, postInfo, downloadedRan, extractedRan);
 }
 
-int RenameFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
-	const std::vector<Candidate>& candidates, bool includeDownloaded, std::set<fs::path>& usedPaths)
+PassResult RenameCandidates(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, bool updateCompletedRecord, std::set<fs::path>& usedPaths)
 {
 	CollectionAnalyzer analyzer(candidates);
-
-	int renamedCount = 0;
+	PassResult passResult;
 
 	for (const Candidate& candidate : candidates)
 	{
@@ -332,10 +330,11 @@ int RenameFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
 			nzbInfo->PrintMessage(Message::mkWarning,
 				"Could not rename obfuscated file %s to %s: %s",
 				filename.c_str(), candidateName.c_str(), moveEc.message().c_str());
+			passResult.failed = true;
 			continue;
 		}
 
-		if (includeDownloaded)
+		if (updateCompletedRecord)
 		{
 			bool updated;
 			{
@@ -349,10 +348,22 @@ int RenameFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
 			}
 		}
 
-		++renamedCount;
+		++passResult.count;
 	}
 
-	return renamedCount;
+	return passResult;
+}
+
+PassResult RenameDownloadedFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, std::set<fs::path>& usedPaths)
+{
+	return RenameCandidates(thread, nzbInfo, metaname, candidates, true, usedPaths);
+}
+
+PassResult RenameExtractedFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, std::set<fs::path>& usedPaths)
+{
+	return RenameCandidates(thread, nzbInfo, metaname, candidates, false, usedPaths);
 }
 
 }

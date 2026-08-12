@@ -56,7 +56,8 @@ BOOST_AUTO_TEST_CASE(IsSampleStemTest)
 	BOOST_CHECK(FileTypes::IsSampleStem("abc.Sample"));
 	BOOST_CHECK(!FileTypes::IsSampleStem("abc-sampl"));
 	BOOST_CHECK(!FileTypes::IsSampleStem("abc-sample-extra"));
-	BOOST_CHECK(!FileTypes::IsSampleStem("sample"));
+	BOOST_CHECK(FileTypes::IsSampleStem("sample"));
+	BOOST_CHECK(FileTypes::IsSampleStem("Sample"));
 }
 
 BOOST_FIXTURE_TEST_CASE(ResolveUniqueNameTest, RenamerTestFixture)
@@ -87,6 +88,11 @@ BOOST_FIXTURE_TEST_CASE(ResolveUniqueNameTest, RenamerTestFixture)
 	std::string sub3 = PostDownloadRenamer::ResolveUniqueName("meta", "eng", ".srt", "meta.srt", usedPaths, workingDir);
 	BOOST_CHECK_EQUAL(sub3, "meta.eng(1).srt");
 	usedPaths.insert(workingDir / sub3);
+
+	// Test 2-letter subtitle language code collision resolution
+	WriteEmptyFile(workingDir / "meta.en.srt");
+	std::string sub2letter = PostDownloadRenamer::ResolveUniqueName("meta", "en", ".srt", "meta.en.srt", usedPaths, workingDir);
+	BOOST_CHECK_EQUAL(sub2letter, "meta.en(1).srt");
 }
 
 BOOST_FIXTURE_TEST_CASE(BasicRenameTest, RenamerTestFixture)
@@ -148,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE(DownloadedFileInSubdirWithPathQualifiedRecordTest, Renam
 	BOOST_CHECK(fs::exists(workingDir / "Some.Dir" / (METANAME + ".mkv")));
 	BOOST_CHECK(!fs::exists(workingDir / "Some.Dir" / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv"));
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
-		METANAME + ".mkv");
+		"Some.Dir/" + METANAME + ".mkv");
 }
 
 BOOST_FIXTURE_TEST_CASE(SkipIgnoreExtTest, RenamerTestFixture)

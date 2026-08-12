@@ -495,7 +495,7 @@ void DirectUnpack::FileDownloaded(DownloadQueue* downloadQueue, FileInfo* fileIn
 
 bool DirectUnpack::CanProceed(FileInfo* fileInfo) const
 {
-	if (!IsArchiveFilename(fileInfo->GetFilename())) 
+	if (!IsArchiveFilename(fileInfo->GetFilename()))
 		return true;
 
 	return fileInfo->GetFailedArticles() == 0;

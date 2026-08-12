@@ -493,7 +493,7 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 
 /**
  * @brief Creates hardlinks in finalDir for all downloaded files if hardlinking is enabled.
- * 
+ *
  * Iterates over both in-progress and completed files and creates a hardlink
  * from the download directory (destDir) to the user-facing directory (finalDir).
  * This is decoupled from the renaming logic to ensure clean separation of concerns.
@@ -609,7 +609,7 @@ void DirectRenamer::HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file)
 	HardLinkFileImpl(nzbInfo, file->GetFilename(), sourcePath, "file not found",
 		[file, nzbInfo](std::string path)
 		{
-			file->SetHardLinkPath(path);
+			file->SetHardLinkPath(std::move(path));
 			nzbInfo->SetHardLinkPath(nzbInfo->BuildFinalDirName().Str());
 		});
 }
@@ -711,7 +711,7 @@ bool DirectRenamer::RenameFile(NzbInfo* nzbInfo, const std::string& oldFullFilen
 		CString errmsg;
 		if (!FileSystem::ForceDirectories(newPath.c_str(), errmsg))
 		{
-			nzbInfo->PrintMessage(Message::mkError, 
+			nzbInfo->PrintMessage(Message::mkError,
 				"Failed to rename file %s to %s. Could not create the target directory \"%s\"",
 				oldName.c_str(), newName.c_str(), newPath.c_str()
 			);
@@ -722,7 +722,7 @@ bool DirectRenamer::RenameFile(NzbInfo* nzbInfo, const std::string& oldFullFilen
 
 	if (!FileSystem::MoveFile(oldFullFilename.c_str(), newFullFilename.c_str()))
 	{
-		nzbInfo->PrintMessage(Message::mkError, 
+		nzbInfo->PrintMessage(Message::mkError,
 			"Failed to rename file %s to %s: %s",
 			oldName.c_str(), newName.c_str(), *FileSystem::GetLastErrorMessage()
 		);

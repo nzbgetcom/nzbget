@@ -30,7 +30,7 @@
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 
-NzbFile::NzbFile(const char* fileName, const char* category) 
+NzbFile::NzbFile(const char* fileName, const char* category)
 	: m_fileName{ fileName ? fileName : "" }
 {
 	debug("Creating NZBFile");
@@ -289,7 +289,7 @@ void NzbFile::ReadPasswordFromFilename()
 {
 	size_t start = m_fileName.find("{{");
 	if (start == std::string::npos) return;
-	
+
 	start += 2;
 
 	size_t end = m_fileName.find("}}", start);
@@ -463,7 +463,9 @@ void NzbFile::Parse_EndElement(const char *name)
 	}
 	else if (!strcmp("meta", name) && m_hasName)
 	{
-		m_metaName = FileSystem::MakeValidFilename(m_tagContent).Str();
+		std::string nameStr(m_tagContent);
+		Util::Trim(nameStr);
+		m_metaName = FileSystem::MakeValidFilename(nameStr.c_str()).Str();
 		if (!m_metaName.empty())
 		{
 			m_nzbInfo->GetParameters()->SetParameter("*MetaName", m_metaName.c_str());
@@ -497,10 +499,6 @@ void NzbFile::SAX_characters(NzbFile* file, const char * xmlstr, int len)
 	if (file->m_currentElement == "meta" && file->m_hasCategory)
 	{
 		// Do not break existing users' filters that rely on this normalization
-		Util::Trim(str);
-	}
-	else if (file->m_currentElement == "meta" && file->m_hasName)
-	{
 		Util::Trim(str);
 	}
 

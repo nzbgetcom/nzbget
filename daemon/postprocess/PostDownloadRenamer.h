@@ -48,12 +48,20 @@ enum class Scope
 	Extracted
 };
 
+struct PassResult
+{
+	int count = 0;
+	bool failed = false;
+};
+
 struct RenameResult
 {
 	int downloadedCount = 0;
 	int extractedCount = 0;
 	bool downloadedRan = false;
 	bool extractedRan = false;
+	bool downloadedFailed = false;
+	bool extractedFailed = false;
 };
 
 std::vector<Candidate> CollectCandidates(Thread& thread, const fs::path& dir);
@@ -61,8 +69,13 @@ std::string ResolveSubtitleName(std::string_view metaname, std::string_view stem
 std::string ResolveUniqueName(std::string_view metaname, std::string_view stem, std::string_view ext,
 	std::string_view baseName, const std::set<fs::path>& usedPaths, const fs::path& destPath);
 RenameResult RenameFiles(Thread& thread, PostInfo* postInfo);
-int RenameFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
-	const std::vector<Candidate>& candidates, bool includeDownloaded, std::set<fs::path>& usedPaths);
+RenameResult RenameFiles(Thread& thread, PostInfo* postInfo, bool runDownloaded, bool runExtracted);
+PassResult RenameDownloadedFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, std::set<fs::path>& usedPaths);
+PassResult RenameExtractedFiles(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, std::set<fs::path>& usedPaths);
+PassResult RenameCandidates(Thread& thread, NzbInfo* nzbInfo, const std::string& metaname,
+	const std::vector<Candidate>& candidates, bool updateCompletedRecord, std::set<fs::path>& usedPaths);
 void FinishStage(Thread& thread, PostInfo* postInfo, const RenameResult& result);
 
 class Controller final : public Thread

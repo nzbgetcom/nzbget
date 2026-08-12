@@ -135,6 +135,10 @@ bool IsSubtitleExt(std::string_view ext)
 
 bool IsSampleStem(std::string_view stem)
 {
+	if (Util::StrCaseCmp(stem, "sample"))
+	{
+		return true;
+	}
 	if (stem.size() < 7)
 	{
 		return false;

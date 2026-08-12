@@ -31,7 +31,7 @@ namespace
 {
 	/**
 	 * @brief Extracts a filename from a subject line that has no quotes.
-	 * 
+	 *
 	 * Handles standard Usenet subject patterns:
 	 * - yEnc binaries: "[34/44] - filename.ext yEnc (1/1)" -> extracts "filename.ext"
 	 * - Re: prefixes: "Re: Re: filename.ext (1/2)" -> strips "Re: " and extracts "filename.ext"
@@ -84,7 +84,7 @@ namespace
 
 	/**
 	 * @brief Extracts a filename from the obfuscated "[PRiVATE]" subject format.
-	 * 
+	 *
 	 * Handles the double-bracketed private indexer format:
 	 * - "[PRiVATE]-[indexer]-[filename.ext]-[1/10] - \"\" yEnc" -> extracts "filename.ext"
 	 * - "[PRiVATE]-[indexer]-[1/10]-[filename.ext] - \"\" yEnc" -> extracts "filename.ext"
@@ -213,7 +213,7 @@ namespace Deobfuscation
 {
 	/**
 	 * @brief Counter-heuristic to check if a filename is likely legitimate (not a random hash).
-	 * 
+	 *
 	 * Checks for spaces, season/episode markers (SxxExx), and 4-digit years.
 	 * These patterns appear in legitimate scene/movie releases but virtually
 	 * never in automated obfuscation hashes.
@@ -227,7 +227,7 @@ namespace Deobfuscation
 
 	/**
 	 * @brief Checks if a filename matches known obfuscation hash patterns.
-	 * 
+	 *
 	 * Matches against a list of common obfuscation regexes (e.g., 16+ char hex, 14+ char alphanumeric).
 	 * Excludes standard archive extensions (.rar, .zip, etc.) and applies the
 	 * `IsProbablyLegitimateFilename` counter-heuristic to prevent false positives.
@@ -286,7 +286,7 @@ namespace Deobfuscation
 
 	/**
 	 * @brief Main entry point to extract a clean filename from a Usenet subject line.
-	 * 
+	 *
 	 * 1. Strips leading bracket tags (e.g., "[N3wZ] ").
 	 * 2. If the subject contains quotes, extracts the quoted filename.
 	 * 3. If quotes are empty (""), dispatches to the `[PRiVATE]` parser.
@@ -294,7 +294,7 @@ namespace Deobfuscation
 	 */
 	std::string Deobfuscate(const std::string& str)
 	{
-		if (str.size() < 3) 
+		if (str.size() < 3)
 			return str;
 
 		size_t contentStart = 0;

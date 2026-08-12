@@ -109,8 +109,8 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 {
 	std::vector<fs::path> dirs, files;
 	fs::error_code ec;
-	for (auto it = fs::recursive_directory_iterator(src, fs::directory_options::skip_permission_denied, ec); 
-		it != fs::recursive_directory_iterator(); 
+	for (auto it = fs::recursive_directory_iterator(src, fs::directory_options::skip_permission_denied, ec);
+		it != fs::recursive_directory_iterator();
 		it.increment(ec))
 	{
 		if (IsStopped()) break;
@@ -158,11 +158,14 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 			if (fs::equivalent(f, dstPath, ec))
 			{
 				fs::remove(f, ec);
-				if (ec && !isDotFile)
+				if (ec)
 				{
-					PrintMessage(Message::mkError,
-						"Could not remove file %s: %s",
-						filename.c_str(), ec.message().c_str());
+					if (!isDotFile)
+					{
+						PrintMessage(Message::mkError,
+							"Could not remove file %s: %s",
+							filename.c_str(), ec.message().c_str());
+					}
 					return false;
 				}
 				continue;
@@ -181,21 +184,25 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		}
 
 		fs::move_file(f, dstPath, ec);
-		if (ec && !isDotFile)
+		if (ec)
 		{
-			PrintMessage(Message::mkError,
-				"Could not move file %s to %s: %s",
-				filename.c_str(), fs::u8string(dstPath).c_str(), ec.message().c_str());
+			if (!isDotFile)
+			{
+				PrintMessage(Message::mkError,
+					"Could not move file %s to %s: %s",
+					filename.c_str(), fs::u8string(dstPath).c_str(), ec.message().c_str());
+			}
 			return false;
 		}
 
 		if (fs::u8string(dstPath.filename()) != filename)
 		{
-			std::string newName = fs::u8string(dstPath.filename());
+			std::string newName = fs::u8string(dstPath.lexically_relative(dest));
+			std::string oldRelName = fs::u8string(f.lexically_relative(src));
 			if (m_postInfo && m_postInfo->GetNzbInfo())
 			{
 				GuardedDownloadQueue guard = DownloadQueue::Guard();
-				m_postInfo->GetNzbInfo()->RenameCompletedFile(filename.c_str(), newName.c_str());
+				m_postInfo->GetNzbInfo()->RenameCompletedFile(oldRelName.c_str(), newName.c_str());
 			}
 		}
 	}
@@ -353,6 +360,16 @@ void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view des
 		fs::remove(d, ec);
 	}
 	fs::remove(rootPath, ec);
+
+	nzbInfo.SetHardLinkPath("");
+	for (FileInfo* fileInfo : nzbInfo.GetFileList())
+	{
+		fileInfo->SetHardLinkPath("");
+	}
+	for (CompletedFile& cf : *nzbInfo.GetCompletedFiles())
+	{
+		cf.SetHardLinkPath("");
+	}
 }
 
 bool CleanupController::Cleanup(const char* destDir, bool *deleted)

@@ -157,7 +157,8 @@ BOOST_AUTO_TEST_CASE(IsSampleStemTest)
 	BOOST_CHECK(FileTypes::IsSampleStem("movie-sample"));
 	BOOST_CHECK(FileTypes::IsSampleStem("movie.sample"));
 	BOOST_CHECK(FileTypes::IsSampleStem("movie_sample"));
-	BOOST_CHECK(!FileTypes::IsSampleStem("sample"));
+	BOOST_CHECK(FileTypes::IsSampleStem("sample"));
+	BOOST_CHECK(FileTypes::IsSampleStem("Sample"));
 	BOOST_CHECK(!FileTypes::IsSampleStem("moviesample"));
 }
 

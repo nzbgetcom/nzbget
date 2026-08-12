@@ -245,12 +245,34 @@ const char* NzbInfo::GetMetaName()
 
 bool CompletedFile::SameFilename(const char* name) const
 {
-	return !strcasecmp(FileSystem::BaseFileName(m_filename.c_str()),
+	if (!name) return false;
+
+	const char* p1 = strchr(m_filename.c_str(), '/');
+	if (!p1) p1 = strchr(m_filename.c_str(), '\\');
+
+	const char* p2 = strchr(name, '/');
+	if (!p2) p2 = strchr(name, '\\');
+
+	if (p1 && p2)
+	{
+		std::string n1 = m_filename;
+		std::string n2(name);
+		std::replace(n1.begin(), n1.end(), '\\', '/');
+		std::replace(n2.begin(), n2.end(), '\\', '/');
+		return Util::StrCaseCmp(n1.c_str(), n2.c_str());
+	}
+
+	return Util::StrCaseCmp(FileSystem::BaseFileName(m_filename.c_str()),
 		FileSystem::BaseFileName(name));
 }
 
 bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newName)
 {
+	if (Util::EmptyStr(oldName) || Util::EmptyStr(newName))
+	{
+		return false;
+	}
+
 	for (CompletedFile& cf : m_completedFiles)
 	{
 		if (cf.SameFilename(oldName))
@@ -259,7 +281,20 @@ bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newName)
 			{
 				cf.SetOrigname(cf.GetFilename());
 			}
-			cf.SetFilename(newName);
+
+			std::string_view currentPath = cf.GetFilename();
+			const char* oldBase = FileSystem::BaseFileName(cf.GetFilename());
+			const char* newBase = FileSystem::BaseFileName(newName);
+			if (oldBase != cf.GetFilename() && newBase == newName)
+			{
+				size_t dirLen = static_cast<size_t>(oldBase - cf.GetFilename());
+				std::string_view parentDir = currentPath.substr(0, dirLen);
+				cf.SetFilename(std::string(parentDir) + newName);
+			}
+			else
+			{
+				cf.SetFilename(newName);
+			}
 			return true;
 		}
 	}
@@ -271,6 +306,10 @@ void NzbInfo::ResetHardLinks()
 	for (FileInfo* fileInfo : &m_fileList)
 	{
 		fileInfo->ResetHardLink();
+	}
+	for (CompletedFile& cf : m_completedFiles)
+	{
+		cf.ResetHardLink();
 	}
 	m_hardLinkPath.clear();
 }
@@ -899,9 +938,19 @@ void FileInfo::ResetHardLink()
 	}
 }
 
+void CompletedFile::ResetHardLink()
+{
+	if (!m_hardLinkPath.empty())
+	{
+		fs::error_code ec;
+		fs::remove(m_hardLinkPath, ec);
+		m_hardLinkPath.clear();
+	}
+}
+
 
 CompletedFile::CompletedFile(int id, std::string filename, std::string origname, EStatus status,
-	uint32 crc, bool parFile, std::string hash16k, std::string parSetId) 
+	uint32 crc, bool parFile, std::string hash16k, std::string parSetId)
 	: m_id(id)
 	, m_filename(std::move(filename))
 	, m_origname(std::move(origname))
