@@ -60,12 +60,11 @@ void MoveController::Run()
 
 	bool ok = MoveFiles();
 
-	RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
-
 	infoName[0] = 'M'; // uppercase
 
 	if (ok)
 	{
+		RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 		PrintMessage(Message::mkInfo, "%s successful", infoName.c_str());
 		// save new dest dir
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
@@ -117,16 +116,6 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		if (IsStopped()) break;
 		if (ec) break;
 
-		auto filename = fs::u8string(it->path().filename());
-		if (filename[0] == '.')
-		{
-			if (it->is_directory(ec))
-			{
-				it.disable_recursion_pending();
-			}
-			continue;
-		}
-
 		if (it->is_directory(ec))
 		{
 			dirs.push_back(it->path());
@@ -160,6 +149,7 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 	{
 		if (IsStopped()) return false;
 		std::string filename = fs::u8string(f.filename());
+		bool isDotFile = filename[0] == '.';
 		auto relPath = f.lexically_relative(src);
 		fs::path dstPath = dest / relPath;
 
@@ -168,7 +158,7 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 			if (fs::equivalent(f, dstPath, ec))
 			{
 				fs::remove(f, ec);
-				if (ec)
+				if (ec && !isDotFile)
 				{
 					PrintMessage(Message::mkError,
 						"Could not remove file %s: %s",
@@ -184,11 +174,14 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 				filename.c_str(), fs::u8string(dstPath.filename()).c_str());
 		}
 
-		PrintMessage(Message::mkInfo, "Moving file %s to %s",
-			filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+		if (!isDotFile)
+		{
+			PrintMessage(Message::mkInfo, "Moving file %s to %s",
+				filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+		}
 
 		fs::move_file(f, dstPath, ec);
-		if (ec)
+		if (ec && !isDotFile)
 		{
 			PrintMessage(Message::mkError,
 				"Could not move file %s to %s: %s",
@@ -199,8 +192,11 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		if (fs::u8string(dstPath.filename()) != filename)
 		{
 			std::string newName = fs::u8string(dstPath.filename());
-			GuardedDownloadQueue guard = DownloadQueue::Guard();
-			m_postInfo->GetNzbInfo()->RenameCompletedFile(filename.c_str(), newName.c_str());
+			if (m_postInfo && m_postInfo->GetNzbInfo())
+			{
+				GuardedDownloadQueue guard = DownloadQueue::Guard();
+				m_postInfo->GetNzbInfo()->RenameCompletedFile(filename.c_str(), newName.c_str());
+			}
 		}
 	}
 
@@ -209,7 +205,10 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 
 void MoveController::AddMessage(Message::EKind kind, const char* text)
 {
-	m_postInfo->GetNzbInfo()->AddMessage(kind, text);
+	if (m_postInfo && m_postInfo->GetNzbInfo())
+	{
+		m_postInfo->GetNzbInfo()->AddMessage(kind, text);
+	}
 }
 
 void CleanupController::StartJob(PostInfo* postInfo)
@@ -277,12 +276,83 @@ void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view des
 	if (hardLinkPath.empty() || hardLinkPath == destDir) return;
 
 	fs::error_code ec;
-	const auto path = fs::u8path(hardLinkPath);
-	fs::remove_all(path, ec);
-	if (ec)
+	const auto rootPath = fs::u8path(hardLinkPath);
+	if (!fs::exists(rootPath, ec) || !fs::is_directory(rootPath, ec)) return;
+
+	const auto destPath = fs::u8path(destDir);
+
+	std::vector<fs::path> dirs;
+	for (auto it = fs::recursive_directory_iterator(rootPath, fs::directory_options::skip_permission_denied, ec);
+		it != fs::recursive_directory_iterator();
+		it.increment(ec))
 	{
-		PrintMessage(Message::mkError, "Could not remove old hardlink directory: %s", ec.message().c_str());
+		if (ec) break;
+
+		if (it->is_directory(ec))
+		{
+			dirs.push_back(it->path());
+			continue;
+		}
+
+		if (!it->is_regular_file(ec)) continue;
+
+		fs::path candidate = it->path();
+		bool shouldRemove = false;
+
+		for (FileInfo* fileInfo : nzbInfo.GetFileList())
+		{
+			if (!fileInfo->GetHardLinkPath().empty() &&
+				fs::u8path(fileInfo->GetHardLinkPath()) == candidate)
+			{
+				shouldRemove = true;
+				break;
+			}
+		}
+
+		if (!shouldRemove)
+		{
+			for (const CompletedFile& completedFile : *nzbInfo.GetCompletedFiles())
+			{
+				if (!completedFile.GetHardLinkPath().empty() &&
+					fs::u8path(completedFile.GetHardLinkPath()) == candidate)
+				{
+					shouldRemove = true;
+					break;
+				}
+			}
+		}
+
+		if (!shouldRemove && fs::exists(destPath, ec))
+		{
+			auto relPath = candidate.lexically_relative(rootPath);
+			fs::path targetInDest = destPath / relPath;
+			if (fs::exists(targetInDest, ec) && fs::equivalent(candidate, targetInDest, ec))
+			{
+				shouldRemove = true;
+			}
+		}
+
+		if (shouldRemove)
+		{
+			fs::remove(candidate, ec);
+		}
+		else
+		{
+			PrintMessage(Message::mkWarning,
+				"Preserving unrelated file in old hardlink directory: %s",
+				fs::u8string(candidate).c_str());
+		}
 	}
+
+	std::sort(dirs.begin(), dirs.end(), [](const fs::path& a, const fs::path& b) {
+		return a.string().length() > b.string().length();
+	});
+
+	for (const auto& d : dirs)
+	{
+		fs::remove(d, ec);
+	}
+	fs::remove(rootPath, ec);
 }
 
 bool CleanupController::Cleanup(const char* destDir, bool *deleted)

@@ -37,15 +37,14 @@ public:
 
 protected:
 	void AddMessage(Message::EKind kind, const char* text) override;
-
-private:
-	PostInfo* m_postInfo;
-	std::string m_interDir;
-	std::string m_destDir;
-
 	bool MoveFiles();
 	bool MoveFiles(const fs::path& src, const fs::path& dest);
 	void RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir);
+
+private:
+	PostInfo* m_postInfo = nullptr;
+	std::string m_interDir;
+	std::string m_destDir;
 };
 
 class CleanupController : public Thread, public ScriptController

@@ -607,7 +607,11 @@ void DirectRenamer::HardLinkFile(NzbInfo* nzbInfo, CompletedFile* file)
 
 	const std::string sourcePath = std::string(nzbInfo->GetDestDir()) + PATH_SEPARATOR + file->GetFilename();
 	HardLinkFileImpl(nzbInfo, file->GetFilename(), sourcePath, "file not found",
-		[nzbInfo](std::string) { nzbInfo->SetHardLinkPath(nzbInfo->BuildFinalDirName().Str()); });
+		[file, nzbInfo](std::string path)
+		{
+			file->SetHardLinkPath(path);
+			nzbInfo->SetHardLinkPath(nzbInfo->BuildFinalDirName().Str());
+		});
 }
 
 std::string DirectRenamer::BuildNewRegularName(const char* oldName, FileHashList* parHashes, const char* hash16k)

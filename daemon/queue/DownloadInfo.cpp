@@ -243,11 +243,17 @@ const char* NzbInfo::GetMetaName()
 	return m_name.c_str();
 }
 
+bool CompletedFile::SameFilename(const char* name) const
+{
+	return !strcasecmp(FileSystem::BaseFileName(m_filename.c_str()),
+		FileSystem::BaseFileName(name));
+}
+
 bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newName)
 {
 	for (CompletedFile& cf : m_completedFiles)
 	{
-		if (!strcasecmp(cf.GetFilename(), oldName))
+		if (cf.SameFilename(oldName))
 		{
 			if (Util::EmptyStr(cf.GetOrigname()))
 			{

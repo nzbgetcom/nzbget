@@ -130,6 +130,27 @@ BOOST_FIXTURE_TEST_CASE(DownloadedScopeSkipsExtractedFilesTest, RenamerTestFixtu
 		METANAME + ".mkv");
 }
 
+// DirectRenamer stores the par2-discovered name in the completed-file record,
+// which can be a full relative path ("Some.Dir/<obfuscated>.mkv"). The
+// downloaded-files classifier must still recognize the on-disk file as
+// downloaded (matching by basename), rename it in place inside its
+// subdirectory, and update the path-qualified record.
+BOOST_FIXTURE_TEST_CASE(DownloadedFileInSubdirWithPathQualifiedRecordTest, RenamerTestFixture)
+{
+	fs::create_directories(workingDir / "Some.Dir");
+	WriteEmptyFile(workingDir / "Some.Dir" / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv");
+
+	auto nzbInfo = SetupNzb(workingDir, { "Some.Dir/2c0837e5fa42c8cfb5d5e583168a2af4.mkv" });
+
+	int count = RunRename(nzbInfo.get(), PostDownloadRenamer::Scope::Downloaded);
+
+	BOOST_CHECK_EQUAL(count, 1);
+	BOOST_CHECK(fs::exists(workingDir / "Some.Dir" / (METANAME + ".mkv")));
+	BOOST_CHECK(!fs::exists(workingDir / "Some.Dir" / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv"));
+	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
+		METANAME + ".mkv");
+}
+
 BOOST_FIXTURE_TEST_CASE(SkipIgnoreExtTest, RenamerTestFixture)
 {
 	WriteEmptyFile(workingDir / "2c0837e5fa42c8cfb5d5e583168a2af4.txt");
@@ -272,6 +293,31 @@ BOOST_FIXTURE_TEST_CASE(NoMetanameTest, RenamerTestFixture)
 	BOOST_CHECK(fs::exists(workingDir / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv"));
 }
 
+BOOST_FIXTURE_TEST_CASE(DownloadedPassRespectsDirectRenameOptionTest, RenamerTestFixture)
+{
+	WriteEmptyFile(workingDir / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv");
+
+	auto nzbInfo = SetupNzb(workingDir, { "2c0837e5fa42c8cfb5d5e583168a2af4.mkv" });
+	nzbInfo->SetUnpackStatus(NzbInfo::usSuccess);
+
+	// Disable DirectRename, enable RenameAfterUnpack
+	Options::CmdOptList localCmdOpts = { "DirectRename=no", "RenameAfterUnpack=yes" };
+	Options localOptions(&localCmdOpts, nullptr);
+
+	PostDownloadRenamerDownloadQueueMock downloadQueue;
+	PostInfo postInfo;
+	postInfo.SetNzbInfo(nzbInfo.get());
+	PostDownloadRenamer::Controller renamer;
+
+	PostDownloadRenamer::RenameResult result = PostDownloadRenamer::RenameFiles(renamer, &postInfo);
+
+	BOOST_CHECK(!result.downloadedRan);
+	BOOST_CHECK(result.extractedRan);
+	BOOST_CHECK_EQUAL(result.downloadedCount, 0);
+	BOOST_CHECK_EQUAL(result.extractedCount, 0);
+	BOOST_CHECK(fs::exists(workingDir / "2c0837e5fa42c8cfb5d5e583168a2af4.mkv"));
+}
+
 BOOST_FIXTURE_TEST_CASE(ObfuscatedMetanameTest, RenamerTestFixture)
 {
 	WriteEmptyFile(workingDir / "5KzdcWdGVGUG83Q9jv8KXht4O2k57w.mkv");
@@ -355,6 +401,7 @@ BOOST_AUTO_TEST_CASE(HardLinkFinalDirRenameTest)
 	optStorage.push_back("InterDir=" + workDir.string());
 	optStorage.push_back("DestDir=" + destDir.string());
 	optStorage.push_back("HardLinking=yes");
+	optStorage.push_back("DirectRename=yes");
 
 	Options::CmdOptList cmdOpts;
 	for (const auto& s : optStorage)
@@ -588,7 +635,7 @@ BOOST_AUTO_TEST_CASE(EmptyDestDirSettlesStatusesTest)
 {
 	// A missing destDir is another early-return path: the statuses must still
 	// settle so the stage does not spin.
-	Options::CmdOptList cmdOpts;
+	Options::CmdOptList cmdOpts = { "DirectRename=yes", "RenameAfterUnpack=yes" };
 	Options options(&cmdOpts, nullptr);
 
 	auto nzbInfo = std::make_unique<NzbInfo>();

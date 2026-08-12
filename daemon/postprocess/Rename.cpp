@@ -210,7 +210,7 @@ void RenameController::RegisterRenamedFile(const char* oldFilename, const char* 
 {
 	for (CompletedFile& completedFile : m_postInfo->GetNzbInfo()->GetCompletedFiles())
 	{
-		if (!strcasecmp(completedFile.GetFilename(), oldFilename))
+		if (completedFile.SameFilename(oldFilename))
 		{
 			if (Util::EmptyStr(completedFile.GetOrigname()))
 			{

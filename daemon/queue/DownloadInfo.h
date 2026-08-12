@@ -279,6 +279,7 @@ public:
 	int GetId() { return m_id; }
 	void SetFilename(std::string filename) { m_filename = std::move(filename); }
 	const char* GetFilename() { return m_filename.c_str(); }
+	bool SameFilename(const char* name) const;
 	void SetOrigname(std::string origname) { m_origname = std::move(origname); }
 	const char* GetOrigname() { return m_origname.c_str(); }
 	bool GetParFile() { return m_parFile; }
@@ -288,6 +289,8 @@ public:
 	void SetHash16k(std::string hash16k) { m_hash16k = std::move(hash16k); }
 	const char* GetParSetId() { return m_parSetId.c_str(); }
 	void SetParSetId(std::string parSetId) { m_parSetId = std::move(parSetId); }
+	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
+	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 
 private:
 	int m_id;
@@ -298,6 +301,7 @@ private:
 	std::string m_origname;
 	std::string m_hash16k;
 	std::string m_parSetId;
+	std::string m_hardLinkPath;
 };
 
 typedef std::deque<CompletedFile> CompletedFileList;

@@ -481,7 +481,7 @@ void DirectUnpack::FileDownloaded(DownloadQueue* downloadQueue, FileInfo* fileIn
 	}
 
 	Guard guard(m_volumeMutex);
-	if (m_waitingFile && !strcasecmp(fileInfo->GetFilename(), m_waitingFile))
+	if (m_waitingFile && !strcasecmp(FileSystem::BaseFileName(fileInfo->GetFilename()), m_waitingFile))
 	{
 		m_waitingFile = nullptr;
 		Write("\n"); // emulating click on Enter-key for "continue"

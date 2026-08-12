@@ -233,14 +233,17 @@ namespace
 			{
 				if (fileInfo->GetFilename())
 				{
-					downloadedFilenames.insert(ToLower(fileInfo->GetFilename()));
+					// File records may store a full relative path (DirectRenamer
+					// keeps the par2-discovered name verbatim); key by basename to
+					// match the on-disk candidate filenames.
+					downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(fileInfo->GetFilename())));
 				}
 			}
 			for (CompletedFile& completedFile : *nzbInfo->GetCompletedFiles())
 			{
 				if (completedFile.GetFilename())
 				{
-					downloadedFilenames.insert(ToLower(completedFile.GetFilename()));
+					downloadedFilenames.insert(ToLower(FileSystem::BaseFileName(completedFile.GetFilename())));
 				}
 			}
 
@@ -281,7 +284,8 @@ RenameResult RenameFiles(Thread& thread, PostInfo* postInfo)
 	bool extractedRan = g_Options->GetRenameAfterUnpack() &&
 		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::RenamingStatus::None &&
 		nzbInfo->GetUnpackStatus() == NzbInfo::usSuccess;
-	bool downloadedRan = nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::None;
+	bool downloadedRan = g_Options->GetDirectRename() &&
+		nzbInfo->GetPostRenamingStatus() == NzbInfo::RenamingStatus::None;
 
 	return RenameFilesInternal(thread, postInfo, downloadedRan, extractedRan);
 }

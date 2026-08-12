@@ -23,6 +23,7 @@ struct RenamerTestFixture
 
 	RenamerTestFixture()
 		: workingDir(CURR_DIR / boost::unit_test::framework::current_test_case().p_name.get())
+		, cmdOpts{ "DirectRename=yes" }
 		, options(&cmdOpts, nullptr)
 	{
 		fs::remove_all(workingDir);
