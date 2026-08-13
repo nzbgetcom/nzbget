@@ -1,3 +1,60 @@
+nzbget-v26.3
+  - Features:
+    - Added support for extension i18n
+    [#872](https://github.com/nzbgetcom/nzbget/pull/872)
+    - Added per-feed certificate verification option
+    [#846](https://github.com/nzbgetcom/nzbget/pull/846)
+    - Updated 7-Zip to 26.02 and UnRAR to 7.23
+    [#847](https://github.com/nzbgetcom/nzbget/pull/847)
+
+  - Bug fixes:
+    - Fixed missing path separator in auto-detected config template path
+    [#902](https://github.com/nzbgetcom/nzbget/pull/902)
+    - Fixed RSS episode duplicate keys
+    [#868](https://github.com/nzbgetcom/nzbget/pull/868)
+    - Hardened web auth token generation and unpack-dir symlink handling
+    [#894](https://github.com/nzbgetcom/nzbget/pull/894)
+    - Fixed WebUI crash on startup with non-English languages
+    [#845](https://github.com/nzbgetcom/nzbget/pull/845)
+    - Fixed WebUI runtime errors from unguarded addEventListener and Status.status accesses
+    [#834](https://github.com/nzbgetcom/nzbget/pull/834)
+    - Fixed feed category priority and consolidated category resolution
+    [#835](https://github.com/nzbgetcom/nzbget/pull/835)
+    - Fixed JSON-RPC param reader
+    [#843](https://github.com/nzbgetcom/nzbget/pull/843)
+    - Fixed category not preserved for compressed archives in NzbDir subdirectories
+    [#860](https://github.com/nzbgetcom/nzbget/pull/860)
+    - Fixed SkipWrite causing an infinite spin loop
+    [#871](https://github.com/nzbgetcom/nzbget/pull/871)
+    - Fixed "Download Remaining Files" not working for Health-failed files from History
+    [#870](https://github.com/nzbgetcom/nzbget/pull/870)
+    - Fixed UnpackPassFile not being consulted for 7z archives with encrypted headers
+    [#877](https://github.com/nzbgetcom/nzbget/pull/877)
+    - Fixed parsing of the filename from the Content-Disposition header
+    [#865](https://github.com/nzbgetcom/nzbget/pull/865)
+    - Fixed error message for OS release retrieval on Linux
+    [#864](https://github.com/nzbgetcom/nzbget/pull/864)
+    - Fixed segfault crashes and data races
+    [#851](https://github.com/nzbgetcom/nzbget/pull/851)
+    - Fixed printf format specifiers for int64 and size_t
+    [#856](https://github.com/nzbgetcom/nzbget/pull/856)
+    - Translated leftover English strings in Polish and Hungarian locale files
+    [#876](https://github.com/nzbgetcom/nzbget/pull/876)
+
+  - For developers:
+    - Added AI-Assisted Contributions Policy
+    [#873](https://github.com/nzbgetcom/nzbget/pull/873)
+    - Bumped par2-turbo to v1.4.0-20260803
+    [#885](https://github.com/nzbgetcom/nzbget/pull/885)
+    - Fixed functional test suite on Python 3 and modern pytest
+    [#883](https://github.com/nzbgetcom/nzbget/pull/883)
+    - Fixed rare random failures in System tests
+    [#859](https://github.com/nzbgetcom/nzbget/pull/859)
+    - Fixed tests skipping without assertions when unrar/7z unavailable
+    [#880](https://github.com/nzbgetcom/nzbget/pull/880)
+    - Fixed cppcheck errors in CI and added .clang-tidy / .clangd configs for consistent static analysis
+    [#811](https://github.com/nzbgetcom/nzbget/pull/811)
+
 nzbget-v26.2
   - Features:
     - WebUI internationalisation (i18n) and unit switching
