@@ -2063,10 +2063,10 @@ uint32 ZLib::GZip(const void* inputBuffer, int inputBufferLength, void* outputBu
 	return total_out;
 }
 
-GUnzipStream::GUnzipStream(int BufferSize) :
-	m_bufferSize(BufferSize)
+GUnzipStream::GUnzipStream(int BufferSize)
+	: m_bufferSize(BufferSize)
+	, m_outputBuffer(std::make_unique<Bytef[]>(BufferSize))
 {
-	m_outputBuffer = std::make_unique<Bytef[]>(BufferSize);
 
 	/* add 16 to MAX_WBITS to enforce gzip format */
 	int ret = inflateInit2(&m_zStream, MAX_WBITS + 16);

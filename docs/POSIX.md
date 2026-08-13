@@ -177,12 +177,17 @@ Install **Cppcheck** using your system's package manager:
 apt install cppcheck
 ```
   - After configuring, a **compile_commands.json** file should be generated in your build directory. This file tells **Cppcheck** how your project is compiled.
-  - The following command enables all checks and suppresses common system include warnings:
+  - The following command enables warning, performance, portability and information checks, suppressing common system include warnings:
 ```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem
+cppcheck --project=compile_commands.json \
+  --enable=warning,performance,portability,information \
+  --suppress=missingIncludeSystem
 ```
  - To ignore certain folders you can use **-i**. This will skip analysis of source files in
 the foo folder:
 ```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem -ifoo
+cppcheck --project=compile_commands.json \
+  --enable=warning,performance,portability,information \
+  --suppress=missingIncludeSystem \
+  -ifoo
 ```

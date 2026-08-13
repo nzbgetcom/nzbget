@@ -271,7 +271,7 @@ namespace ExtensionManager
 				}
 
 				const char* location = isSubDir ? directory : entry.c_str();
-				extension.SetEntry(entry.c_str());
+				extension.SetEntry(entry);
 				extension.SetName(std::move(name));
 				if (ExtensionLoader::V1::Load(extension, location, rootDir))
 				{
