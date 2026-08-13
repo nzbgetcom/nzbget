@@ -73,7 +73,7 @@ ParChecker::EFileStatus RepairController::PostParChecker::FindFileCrc(const char
 {
 	CompletedFile* completedFile = nullptr;
 
-	for (CompletedFile& completedFile2 : m_postInfo->GetNzbInfo()->GetCompletedFiles())
+	for (CompletedFile& completedFile2 : *m_postInfo->GetNzbInfo()->GetCompletedFiles())
 	{
 		if (!strcasecmp(completedFile2.GetFilename(), filename))
 		{
@@ -117,7 +117,7 @@ ParChecker::EFileStatus RepairController::PostParChecker::FindFileCrc(const char
 
 const char* RepairController::PostParChecker::FindFileOrigname(const char* filename)
 {
-	for (CompletedFile& completedFile : m_postInfo->GetNzbInfo()->GetCompletedFiles())
+	for (CompletedFile& completedFile : *m_postInfo->GetNzbInfo()->GetCompletedFiles())
 	{
 		if (!strcasecmp(completedFile.GetFilename(), filename))
 		{
@@ -342,7 +342,7 @@ bool RepairController::RequestMorePars(NzbInfo* nzbInfo, const char* parFilename
 	if (blockFound >= blockNeeded)
 	{
 		// collect as much blocks as needed
-		for (Blocks::iterator it = availableBlocks.begin(); blockNeeded > 0 && it != availableBlocks.end(); it++)
+		for (Blocks::iterator it = availableBlocks.begin(); blockNeeded > 0 && it != availableBlocks.end(); ++it)
 		{
 			BlockInfo& blockInfo = *it;
 			selectedBlocks.push_front(blockInfo);
@@ -360,7 +360,7 @@ bool RepairController::RequestMorePars(NzbInfo* nzbInfo, const char* parFilename
 			}
 			else
 			{
-				it++;
+				++it;
 			}
 		}
 

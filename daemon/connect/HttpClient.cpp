@@ -41,7 +41,7 @@ namespace Network
 #endif
 	}
 
-	const std::string HttpClient::GetLocalIP() const
+	const std::string& HttpClient::GetLocalIP() const
 	{
 		return m_localIP;
 	}

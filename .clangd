@@ -1,0 +1,30 @@
+CompileFlags:
+  Add:
+    - "-Wall"
+    - "-Wextra"
+    - "-Wformat=2"
+    - "-Wformat-security"
+    - "-Wnull-dereference"
+    - "-Wimplicit-fallthrough"
+    - "-Wswitch-enum"
+    - "-Wshadow"
+    - "-Wnon-virtual-dtor"
+    - "-Wold-style-cast"
+    - "-Wsign-conversion"
+    - "-U_FORTIFY_SOURCE"
+    - "-D_FORTIFY_SOURCE=2"
+    - "-fstack-protector-strong"
+    - "-Wno-unused-parameter"
+
+Index:
+  Background: Build
+
+Completion:
+  AllScopes: Yes
+  HeaderInsertion: Never
+
+Diagnostics:
+  UnusedIncludes: Loose
+  Suppress:
+    - '-Wreserved-identifier'
+    - '-Wdisabled-macro-expansion'
