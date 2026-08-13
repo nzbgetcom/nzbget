@@ -491,37 +491,13 @@ void WebDownloader::ProcessHeader(const char* line)
 
 void WebDownloader::ParseFilename(const char* contentDisposition)
 {
-	// Examples:
-	// Content-Disposition: attachment; filename="fname.ext"
-	// Content-Disposition: attachement;filename=fname.ext
-	// Content-Disposition: attachement;filename=fname.ext;
-	const char *p = strstr(contentDisposition, "filename");
-	if (!p)
+	CString filename = WebUtil::ParseContentDispositionFilename(contentDisposition);
+	if (filename.Empty())
 	{
 		return;
 	}
 
-	p = strchr(p, '=');
-	if (!p)
-	{
-		return;
-	}
-
-	p++;
-
-	while (*p == ' ') p++;
-
-	BString<1024> fname = p;
-
-	char *pe = fname + strlen(fname) - 1;
-	while ((*pe == ' ' || *pe == '\n' || *pe == '\r' || *pe == ';') && pe > fname) {
-		*pe = '\0';
-		pe--;
-	}
-
-	WebUtil::HttpUnquote(fname);
-
-	m_originalFilename = FileSystem::BaseFileName(fname);
+	m_originalFilename = FileSystem::BaseFileName(filename);
 
 	debug("OriginalFilename: %s", *m_originalFilename);
 }

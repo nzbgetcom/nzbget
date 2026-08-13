@@ -326,6 +326,13 @@ public:
 	static void HttpUnquote(char* raw);
 
 	/*
+	* Extracts file name from the value of "Content-Disposition" HTTP header (RFC 6266).
+	* The extended parameter "filename*" (RFC 5987) takes precedence over "filename".
+	* Returns an empty string if the header doesn't contain a file name.
+	*/
+	static CString ParseContentDispositionFilename(const char* contentDisposition);
+
+	/*
 	* Decodes URL-string.
 	* The string is decoded on the place overwriting the content of raw-data.
 	*/
