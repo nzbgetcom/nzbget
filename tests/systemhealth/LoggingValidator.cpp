@@ -45,6 +45,38 @@ BOOST_AUTO_TEST_CASE(TestWriteLogValidator)
 	Status appendStatus = WriteLogValidator(appendOptions).Validate();
 	BOOST_CHECK(appendStatus.IsWarning());
 	BOOST_CHECK(appendStatus.GetMessage().find("may grow indefinitely") != std::string::npos);
+
+#ifdef _WIN32
+	Options::CmdOptList writeLogAppendSpecial;
+	writeLogAppendSpecial.push_back("WriteLog=append");
+	writeLogAppendSpecial.push_back("LogFile=NUL");
+	Options appendSpecialOptions(&writeLogAppendSpecial, nullptr);
+	Status appendSpecialStatus = WriteLogValidator(appendSpecialOptions).Validate();
+	BOOST_CHECK(appendSpecialStatus.IsOk());
+	BOOST_CHECK(appendSpecialStatus.GetMessage().empty());
+#else
+	Options::CmdOptList writeLogAppendSpecial;
+	writeLogAppendSpecial.push_back("WriteLog=append");
+	writeLogAppendSpecial.push_back("LogFile=/dev/null");
+	Options appendSpecialOptions(&writeLogAppendSpecial, nullptr);
+	Status appendSpecialStatus = WriteLogValidator(appendSpecialOptions).Validate();
+	BOOST_CHECK(appendSpecialStatus.IsOk());
+	BOOST_CHECK(appendSpecialStatus.GetMessage().empty());
+
+	Options::CmdOptList writeLogRotateSpecial;
+	writeLogRotateSpecial.push_back("WriteLog=rotate");
+	writeLogRotateSpecial.push_back("LogFile=/dev/null");
+	Options rotateSpecialOptions(&writeLogRotateSpecial, nullptr);
+	Status rotateSpecialStatus = WriteLogValidator(rotateSpecialOptions).Validate();
+	BOOST_CHECK(rotateSpecialStatus.IsOk());
+
+	Options::CmdOptList writeLogResetSpecial;
+	writeLogResetSpecial.push_back("WriteLog=reset");
+	writeLogResetSpecial.push_back("LogFile=/dev/null");
+	Options resetSpecialOptions(&writeLogResetSpecial, nullptr);
+	Status resetSpecialStatus = WriteLogValidator(resetSpecialOptions).Validate();
+	BOOST_CHECK(resetSpecialStatus.IsOk());
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestRotateLogValidator)

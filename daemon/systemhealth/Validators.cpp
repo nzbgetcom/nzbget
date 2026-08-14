@@ -182,6 +182,21 @@ Status Executable(const fs::path& path)
 #endif
 }
 
+bool NullOrConsoleDevice(const fs::path& path)
+{
+	if (path.empty()) return false;
+
+#ifdef _WIN32
+	std::string name = fs::u8string(path.filename());
+	return strcasecmp(name.c_str(), "NUL") == 0 ||
+		   strcasecmp(name.c_str(), "CON") == 0 ||
+		   strcasecmp(name.c_str(), "CONOUT$") == 0;
+#else
+	std::string p = path.string();
+	return p == "/dev/null" || p == "/dev/stdout" || p == "/dev/stderr";
+#endif
+}
+
 }  // namespace File
 
 namespace Directory

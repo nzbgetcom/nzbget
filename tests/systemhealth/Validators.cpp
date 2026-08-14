@@ -25,6 +25,10 @@
 #include "FileSystem.h"
 #include "Validators.h"
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+
 BOOST_AUTO_TEST_SUITE(SystemHealthTest)
 
 using namespace SystemHealth;
@@ -164,6 +168,37 @@ BOOST_AUTO_TEST_CASE(TestFileExists)
 	Status s2 = SystemHealth::File::Exists(d);
 	BOOST_CHECK(s2.IsError());
 	BOOST_CHECK(s2.GetMessage().find("not a regular file") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFileNullOrConsoleDevice)
+{
+	fs::path f = tempPath / "testfile.txt";
+
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(f));
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(""));
+
+	{
+		std::ofstream(f.c_str()) << "content";
+	}
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(f));
+
+	fs::path d = tempPath / "subdir";
+	fs::create_directory(d);
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(d));
+
+#ifdef _WIN32
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("NUL"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("nul"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("CON"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("con"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("CONOUT$"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("C:\\path\\NUL"));
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice("C:\\path\\random.txt"));
+#else
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/null"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/stdout"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/stderr"));
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestFileReadable)
