@@ -58,6 +58,7 @@
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
+#include "Core.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -78,6 +79,8 @@
 
 // Prototypes
 void RunMain();
+void ExitProc();
+void Reload();
 
 // Globals
 Log* g_Log;
@@ -199,6 +202,7 @@ public:
 
 private:
 	// globals
+	std::unique_ptr<Core::Engine> m_engine;
 	std::unique_ptr<Log> m_log;
 	std::unique_ptr<Options> m_options;
 	std::unique_ptr<WorkState> m_workState;
@@ -254,6 +258,8 @@ private:
 	void StopRemoteServer();
 	void StartFrontend();
 	void StopFrontend();
+	void StartEngine();
+	void StopEngine();
 	void ProcessStandalone();
 	void DoMainLoop();
 #ifndef WIN32
@@ -505,6 +511,8 @@ void NZBGet::Cleanup()
 {
 	debug("Cleaning up global objects");
 
+	m_engine.reset();
+
 	if (m_options && m_commandLineParser->GetDaemonMode() && !m_reloading && m_daemonized)
 	{
 		info("Deleting lock file");
@@ -688,6 +696,53 @@ void NZBGet::StopFrontend()
 	}
 }
 
+void NZBGet::StartEngine()
+{
+	try
+	{
+		size_t netThreads = 1;
+		size_t diskThreads = 1;
+		size_t computeThreads = 1;
+
+		Core::Engine::Config conf{
+			.netThreads = netThreads,
+			.diskThreads = diskThreads,
+			.computeThreads = computeThreads,
+		};
+
+		m_engine = std::make_unique<Core::Engine>(conf);
+		m_engine->AddComponent<Core::SignalHandler>(
+			m_engine->GetControlExecutor(),
+			[]() { ExitProc(); },
+			[]() { Reload(); }
+		);
+
+		m_engine->Start();
+		debug("Engine started: net=%zu, disk=%zu, compute=%zu",
+			netThreads, diskThreads, computeThreads);
+	}
+	catch (const std::exception& e)
+	{
+		error("Could not start NZBGet: %s", e.what());
+		exit(EXIT_FAILURE);
+	}
+	catch (...)
+	{
+		error("Could not start NZBGet: unknown error");
+		exit(EXIT_FAILURE);
+	}
+}
+
+void NZBGet::StopEngine()
+{
+	if (m_engine)
+	{
+		debug("Stopping engine");
+		m_engine->Stop();
+		m_engine.reset();
+	}
+}
+
 void NZBGet::ProcessStandalone()
 {
 	const char* category = m_commandLineParser->GetAddCategory() ? m_commandLineParser->GetAddCategory() : "";
@@ -789,6 +844,11 @@ void NZBGet::Run(bool reload)
 
 	ProcessDirect();
 
+	if (!m_commandLineParser->GetRemoteClientMode())
+	{
+		StartEngine();
+	}
+
 	StartRemoteServer();
 	StartFrontend();
 
@@ -806,6 +866,7 @@ void NZBGet::Run(bool reload)
 
 	StopRemoteServer();
 	StopFrontend();
+	StopEngine();
 
 	Final();
 }

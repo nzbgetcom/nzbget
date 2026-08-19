@@ -16,6 +16,7 @@ include(system/system.cmake)
 include(postprocess/postprocess.cmake)
 include(systemhealth/systemhealth.cmake)
 include(remote/remote.cmake)
+include(core/core.cmake)
 
 add_executable(${TESTS_TARGET} ${TESTS_SRC})
 if(EXTERNAL_DEPS)
@@ -47,3 +48,4 @@ add_test(NAME SystemTest       COMMAND ${TESTS_TARGET} --run_test=SystemTest --l
 add_test(NAME PostprocessTest  COMMAND ${TESTS_TARGET} --run_test=PostprocessTest --log_level=message)
 add_test(NAME SystemHealthTest COMMAND ${TESTS_TARGET} --run_test=SystemHealthTest --log_level=message)
 add_test(NAME RemoteTest       COMMAND ${TESTS_TARGET} --run_test=RemoteTest --log_level=message)
+add_test(NAME CoreTest         COMMAND ${TESTS_TARGET} --run_test=CoreTest --log_level=message)

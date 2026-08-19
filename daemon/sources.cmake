@@ -1,4 +1,8 @@
 set(SRC
+	${CMAKE_SOURCE_DIR}/daemon/core/Engine.cpp
+	${CMAKE_SOURCE_DIR}/daemon/core/TaskProcessor.cpp
+	${CMAKE_SOURCE_DIR}/daemon/core/SignalHandler.cpp
+
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
@@ -147,6 +151,7 @@ if(WIN32)
 endif()
 
 set(INCLUDES ${INCLUDES}
+	${CMAKE_SOURCE_DIR}/daemon/core
 	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/daemon/extension
 	${CMAKE_SOURCE_DIR}/daemon/feed

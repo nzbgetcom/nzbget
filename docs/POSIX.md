@@ -39,6 +39,8 @@ download the libraries at the given URLs and compile them (see hints below).
 ### Debian:  
 ```bash
 apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev
+# For io_uring support (optional):
+apt install liburing-dev
 ```
   - Debian 12 (bookworm)
 ```bash
@@ -158,6 +160,11 @@ cmake .. -DUSE_SANITIZERS="address,undefined" -DCMAKE_BUILD_TYPE=Debug
 ```bash
 cmake .. -DENABLE_STATIC=ON
 ```
+  - Enable io_uring as default reactor (Linux 5.10+, requires liburing):
+```bash
+cmake .. -DENABLE_IO_URING=ON
+```
+  By default Asio uses epoll. This option switches to io_uring for better performance on Linux 5.10+.
 `LIBS` and `INCLUDES` env variables can be useful for static linking, since CMake looks for shared libraries by default:
 ```
 export LIBS="-lncurses -ltinfo -lboost_json -lxml2 -lz -lm -lssl -lcrypto -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
