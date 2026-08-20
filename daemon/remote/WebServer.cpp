@@ -72,7 +72,7 @@ static void GenerateSecureToken(char* token)
 	catch (const std::exception& ex)
 	{
 		error("Could not generate secure authentication token: %s", ex.what());
-		std::exit(1);
+		exit(1);
 	}
 	token[TOKEN_SIZE - 1] = '\0';
 }
