@@ -4509,5 +4509,9 @@
   "webui_config_desc_refreshretries": {
     "message": "Number of refresh attempts if a communication error occurs (0-99).\n\nIf all attempts fail, an error is displayed and the automatic refresh stops.",
     "description": "Description for the option RefreshRetries"
+  },
+  "progress_awaiting_par_files": {
+    "message": "Awaiting additional par-files",
+    "description": "Progress status indicating waiting for additional par files to download."
   }
 }
