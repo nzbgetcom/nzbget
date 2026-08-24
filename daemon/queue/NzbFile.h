@@ -44,7 +44,7 @@ private:
 	std::string m_category;
 	std::string m_password;
 
-	void AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
+	ArticleInfo* AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
 	void AddFileInfo(std::unique_ptr<FileInfo> fileInfo);
 	void ParseSubject(FileInfo* fileInfo, bool TryQuotes);
 	void BuildFilenames();
