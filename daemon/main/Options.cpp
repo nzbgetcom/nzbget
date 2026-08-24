@@ -1827,9 +1827,9 @@ void Options::CheckOptions()
 
 	// if option "ConfigTemplate" is not set, use "WebDir" as default location for template
 	// (for compatibility with versions 9 and 10).
-	if (m_configTemplate.Empty() && !m_noDiskAccess)
+	if (m_configTemplate.Empty() && !m_noDiskAccess && !m_webDir.Empty())
 	{
-		m_configTemplate.Format("%s%s", *m_webDir, "nzbget.conf");
+		m_configTemplate.Format("%s%c%s", *m_webDir, PATH_SEPARATOR, "nzbget.conf");
 		if (!FileSystem::FileExists(m_configTemplate))
 		{
 			m_configTemplate = "";
