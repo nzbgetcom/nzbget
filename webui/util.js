@@ -201,7 +201,7 @@ var Util = (new function($)
 			return '';
 		}
 
-		var useBits = (I18n.getSpeedUnit() === 'Mb/s');
+		var useBits = Util.useBits();
 		var kBase = useBits ? 1000 : 1024;
 		var displayVal = useBits ? bytesPerSec * 8 : bytesPerSec;
 
@@ -233,6 +233,23 @@ var Util = (new function($)
 		return Util.round0(displayVal / kBase) + ' ' + I18n.translate(useBits ? 'unit_kbit_s' : 'unit_kb_s');
 	}
 
+	this.useBits = function()
+	{
+		// speed units ending in 'b/s' are bits ('Mb/s'), in 'B/s' bytes ('MB/s')
+		return Util.endsWith(I18n.getSpeedUnit(), 'b/s');
+	}
+
+	this.speedToMegaValue = function(bytesPerSec)
+	{
+		var mega = Util.useBits() ? bytesPerSec * 8 / 1000 / 1000 : bytesPerSec / 1024 / 1024;
+		return parseFloat(Util.round2(mega));
+	}
+
+	this.megaValueToKilobytes = function(value)
+	{
+		return Util.round0(Util.useBits() ? value * 1000 * 1000 / 8 / 1024 : value * 1024);
+	}
+
 	this.formatNetworkSpeed = function(speedMbps) 
 	{
 		if (!Util.isNumber(speedMbps) || speedMbps < 0)
@@ -240,7 +257,7 @@ var Util = (new function($)
 			return '';
 		}
 
-		var useBits = (I18n.getSpeedUnit() === 'Mb/s');
+		var useBits = Util.useBits();
 		if (!useBits) speedMbps /= 8;
 
 		if (speedMbps >= 1000)

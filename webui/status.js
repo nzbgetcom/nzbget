@@ -1545,6 +1545,9 @@ var LimitDialog = (new function($)
 
 	// State
 	var changed;
+	// exact string last programmatically written into the speed input,
+	// so save() can detect an untouched field without a lossy unit round-trip
+	var filledValue;
 
 	this.init = function()
 	{
@@ -1592,8 +1595,10 @@ var LimitDialog = (new function($)
 		if (!Status.status) {
 			return;
 		}
-		var rate = Util.round0(Status.status.DownloadLimit / 1024);
-		$LimitDialog_SpeedInput.val(rate > 0 ? rate : '');
+		var limit = Status.status.DownloadLimit;
+		filledValue = limit > 0 ? '' + Util.speedToMegaValue(limit) : '';
+		$LimitDialog_SpeedInput.val(filledValue);
+		$('#LimitDialog_SpeedUnit').text(I18n.getSpeedUnit());
 		updateTable();
 		$LimitDialog.modal({backdrop: 'static'});
 	}
@@ -1627,16 +1632,20 @@ var LimitDialog = (new function($)
 		if (!Status.status || !Status.status.NewsServers) {
 			return;
 		}
-		var val = $LimitDialog_SpeedInput.val();
+		var val = $LimitDialog_SpeedInput.val().trim();
 		var rate = 0;
 		if (val == '')
 		{
 			rate = 0;
 		}
+		else if (val == filledValue)
+		{
+			rate = Util.round0(Status.status.DownloadLimit / 1024);
+		}
 		else
 		{
-			rate = parseInt(val);
-			if (isNaN(rate))
+			rate = Util.megaValueToKilobytes(parseFloat(val));
+			if (isNaN(rate) || rate < 0)
 			{
 				return;
 			}
