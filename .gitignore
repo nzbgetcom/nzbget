@@ -94,3 +94,10 @@ docker/config
 !/.gitattributes
 !.github/
 !.github/**
+
+# local secrets (API keys) — never commit
+.env
+.env.*
+
+# local, credential-driven manual tests — never commit
+tests/manual/

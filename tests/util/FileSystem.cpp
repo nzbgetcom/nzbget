@@ -67,7 +67,90 @@ BOOST_AUTO_TEST_CASE(EscapePathForShellTest)
 	BOOST_CHECK(FileSystem::EscapePathForShell("") == "");
 }
 
+BOOST_AUTO_TEST_CASE(DeleteDirectoryWithContentDoesNotFollowNestedSymlink)
+{
+	const fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-delete-outside-%%%%-%%%%");
+	const fs::path scratchDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-delete-scratch-%%%%-%%%%");
+	const fs::path sentinel = outsideDir / "sentinel";
+	const fs::path escape = scratchDir / "escape";
+
+	BOOST_REQUIRE(fs::create_directory(outsideDir));
+	BOOST_REQUIRE(fs::create_directory(scratchDir));
+	BOOST_REQUIRE(FileSystem::SaveBufferIntoFile(sentinel.string().c_str(), "safe", 4));
+	fs::create_directory_symlink(outsideDir, escape);
+
+	CString errmsg;
+	const bool deleted = FileSystem::DeleteDirectoryWithContent(scratchDir.string().c_str(), errmsg);
+	const bool sentinelSurvived = fs::exists(sentinel);
+	const bool scratchRemoved = !fs::exists(scratchDir) && !fs::is_symlink(scratchDir);
+
+	fs::remove_all(scratchDir);
+	fs::remove_all(outsideDir);
+
+	BOOST_CHECK_MESSAGE(deleted, errmsg.Str());
+	BOOST_CHECK(sentinelSurvived);
+	BOOST_CHECK(scratchRemoved);
+}
+
+BOOST_AUTO_TEST_CASE(DeleteDirectoryWithContentDoesNotFollowRootSymlink)
+{
+	const fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-delete-root-outside-%%%%-%%%%");
+	const fs::path rootLink = fs::temp_directory_path() / fs::make_unique_filename("nzbget-delete-root-link-%%%%-%%%%");
+	const fs::path sentinel = outsideDir / "sentinel";
+
+	BOOST_REQUIRE(fs::create_directory(outsideDir));
+	BOOST_REQUIRE(FileSystem::SaveBufferIntoFile(sentinel.string().c_str(), "safe", 4));
+	fs::create_directory_symlink(outsideDir, rootLink);
+
+	CString errmsg;
+	const bool deleted = FileSystem::DeleteDirectoryWithContent(rootLink.string().c_str(), errmsg);
+	const bool sentinelSurvived = fs::exists(sentinel);
+	const bool rootLinkRemoved = !fs::exists(rootLink) && !fs::is_symlink(rootLink);
+
+	fs::remove(rootLink);
+	fs::remove_all(outsideDir);
+
+	BOOST_CHECK_MESSAGE(deleted, errmsg.Str());
+	BOOST_CHECK(sentinelSurvived);
+	BOOST_CHECK(rootLinkRemoved);
+}
+
+BOOST_AUTO_TEST_CASE(CreateDirectoryExclusiveRejectsSymlink)
+{
+	const fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-create-outside-%%%%-%%%%");
+	const fs::path dirLink = fs::temp_directory_path() / fs::make_unique_filename("nzbget-create-link-%%%%-%%%%");
+
+	BOOST_REQUIRE(fs::create_directory(outsideDir));
+	fs::create_directory_symlink(outsideDir, dirLink);
+
+	const bool created = FileSystem::CreateDirectoryExclusive(dirLink.string().c_str());
+	const bool linkStillPresent = fs::is_symlink(dirLink);
+	const bool targetStillPresent = fs::is_directory(outsideDir);
+
+	fs::remove(dirLink);
+	fs::remove_all(outsideDir);
+
+	BOOST_CHECK(!created);
+	BOOST_CHECK(linkStillPresent);
+	BOOST_CHECK(targetStillPresent);
+}
+
 #endif
+
+BOOST_AUTO_TEST_CASE(CreateDirectoryExclusiveCreatesOnce)
+{
+	const fs::path newDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-create-exclusive-%%%%-%%%%");
+
+	const bool firstCreate = FileSystem::CreateDirectoryExclusive(newDir.string().c_str());
+	const bool secondCreate = FileSystem::CreateDirectoryExclusive(newDir.string().c_str());
+	const bool directoryExists = fs::is_directory(newDir);
+
+	fs::remove_all(newDir);
+
+	BOOST_CHECK(firstCreate);
+	BOOST_CHECK(!secondCreate);
+	BOOST_CHECK(directoryExists);
+}
 
 BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)
 {

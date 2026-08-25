@@ -293,7 +293,7 @@ void ArticleDownloader::Run()
 		status = adFinished;
 	}
 
-	if (status != adFinished && status != adRetry)
+	if (status != adFinished && status != adRetry && status != adFatalError)
 	{
 		status = adFailed;
 	}
@@ -320,6 +320,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	const char* response = nullptr;
 	EStatus status = adRunning;
 	m_writingStarted = false;
+	m_localWriteError = false;
 	m_articleInfo->SetCrc(0);
 
 	if (m_contentAnalyzer)
@@ -408,7 +409,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		// write to output file
 		if (len > 0 && !Write(buffer, len))
 		{
-			status = adFatalError;
+			status = m_localWriteError ? adFatalError : adFailed;
 			break;
 		}
 	}
@@ -497,17 +498,55 @@ bool ArticleDownloader::Write(char* buffer, int len)
 					warn("Malformed article %s: size %i out of range", *m_infoName, articleSize);
 					return false;
 				}
+				m_decodedFileSize = articleFileSize;
+				int64 expectedFileSize = m_fileInfo->GetDecodedFileSize();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && expectedFileSize > 0 &&
+					articleFileSize != expectedFileSize)
+				{
+					detail("Discarding article %s from duplicate: file size mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleFileSize, (long long)expectedFileSize);
+					return false;
+				}
+				// a substituted article must decode into exactly the byte range the
+				// target article occupies; the expected range was pinned from finished
+				// neighbour articles at substitution time (-1 = not known yet). This
+				// rejects donors with drifted decoded boundaries before any bytes are
+				// written (a mis-placed article would gap-fill and/or overwrite a
+				// neighbour's decoded bytes).
+				int64 dupeExpectedOffset = m_articleInfo->GetDupeExpectedOffset();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedOffset >= 0 &&
+					articleOffset != dupeExpectedOffset)
+				{
+					detail("Discarding article %s from duplicate: decoded offset mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleOffset, (long long)dupeExpectedOffset);
+					return false;
+				}
+				int64 dupeExpectedEnd = m_articleInfo->GetDupeExpectedEnd();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedEnd >= 0 &&
+					articleOffset + articleSize != dupeExpectedEnd)
+				{
+					detail("Discarding article %s from duplicate: decoded end mismatch (%lli vs %lli)",
+						*m_infoName, (long long)(articleOffset + articleSize), (long long)dupeExpectedEnd);
+					return false;
+				}
 			}
 		}
 
 		if (!m_articleWriter.Start(m_decoder.GetFormat(), articleFilename, articleFileSize, articleOffset, articleSize))
 		{
+			// A duplicate-existing-file result is not a local write failure and
+			// must retain the historical duplicate handling path.
+			m_localWriteError = !m_articleWriter.GetDuplicate();
 			return false;
 		}
 		m_writingStarted = true;
 	}
 
 	bool ok = m_articleWriter.Write(buffer, len);
+	if (!ok)
+	{
+		m_localWriteError = true;
+	}
 
 	if (m_contentAnalyzer)
 	{

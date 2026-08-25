@@ -37,6 +37,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/main/WorkState.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleDownloader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleFetcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/ArticleWriter.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/Decoder.cpp
 	${CMAKE_SOURCE_DIR}/daemon/nntp/NewsServer.cpp
@@ -51,6 +52,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/nserv/YEncoder.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Cleanup.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/ContentMap.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DirectUnpack.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/DupeMatcher.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/ParChecker.cpp
@@ -61,13 +63,17 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/RarRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Rename.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/StreamCrypto.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/StreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DownloadInfo.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
+	${CMAKE_SOURCE_DIR}/daemon/queue/DupeStreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/QueueCoordinator.cpp

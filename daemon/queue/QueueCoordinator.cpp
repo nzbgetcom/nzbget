@@ -33,6 +33,8 @@
 #include "Decoder.h"
 #include "StatMeter.h"
 #include "Deobfuscation.h"
+#include "DupeStreamRepair.h"
+#include "StreamRepair.h"
 
 bool QueueCoordinator::CoordinatorDownloadQueue::EditEntry(
 	int ID, EEditAction action, const char* args)
@@ -597,6 +599,13 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 			if (article->GetStatus() == ArticleInfo::aiUndefined)
 			{
 				articleInfo = article;
+				// once cut over, lead with the duplicate instead of spending a
+				// full server sweep failing on the primary first
+				if (fileInfo->GetDupeCutover() && article->GetDupeFallbackRound() == 0)
+				{
+					article->SetDupeProactive(
+						m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, article));
+				}
 				return true;
 			}
 		}
@@ -682,7 +691,8 @@ void QueueCoordinator::Update(Subject* caller, void* aspect)
 	ArticleDownloader* articleDownloader = static_cast<ArticleDownloader*>(caller);
 	if ((articleDownloader->GetStatus() == ArticleDownloader::adFinished) ||
 		(articleDownloader->GetStatus() == ArticleDownloader::adFailed) ||
-		(articleDownloader->GetStatus() == ArticleDownloader::adRetry))
+		(articleDownloader->GetStatus() == ArticleDownloader::adRetry) ||
+		(articleDownloader->GetStatus() == ArticleDownloader::adFatalError))
 	{
 		ArticleCompleted(articleDownloader);
 	}
@@ -703,7 +713,26 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
-		if (articleDownloader->GetStatus() == ArticleDownloader::adFinished)
+		// a substituted (donor) article may only count as success if its decoded
+		// byte range exactly occupies the slot of the target article, i.e. abuts
+		// the decoded boundaries of its already-finished neighbour articles. A
+		// mis-placed article would leave a zero-filled gap and/or overwrite a
+		// neighbour's bytes, so it is treated as a failed attempt instead
+		// (advancing to the next duplicate source, if any)
+		bool misplaced = articleDownloader->GetStatus() == ArticleDownloader::adFinished &&
+			articleInfo->GetDupeFallbackRound() > 0 &&
+			articleDownloader->GetDecodedFileSize() > 0 &&
+			!DupeArticleFallback::SegmentAligned(fileInfo, articleInfo);
+		if (misplaced)
+		{
+			DiscardArticleSegment(fileInfo, articleInfo);
+			nzbInfo->PrintMessage(Message::mkDetail,
+				"Discarding misaligned article %s [%i/%i] from duplicate",
+				fileInfo->GetFilename(), articleInfo->GetPartNumber(),
+				(int)fileInfo->GetArticles()->size());
+		}
+
+		if (articleDownloader->GetStatus() == ArticleDownloader::adFinished && !misplaced)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFinished);
 			fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() + articleInfo->GetSize());
@@ -711,8 +740,64 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
 			fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() + 1);
 			nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() + 1);
+			if (fileInfo->GetDecodedFileSize() == 0)
+			{
+				fileInfo->SetDecodedFileSize(articleDownloader->GetDecodedFileSize());
+			}
+			// count only proven duplicate recoveries: the article was
+			// substituted after genuinely failing on the primary (reactive)
+			// and the source that succeeded was not the primary (revert)
+			// message-id. Proactive (cutover) fetches never count - the
+			// duplicate is tried FIRST then, so a donor success proves
+			// nothing about the primary (documented in
+			// docs/api/LISTGROUPS.md under DupeRecoveredArticles)
+			if (articleInfo->GetDupeFallbackRound() > 0 && !articleInfo->GetDupeProactive() &&
+				!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
+				strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
+			{
+				// a per-file summary is logged on completion (per-article logging would flood)
+				fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() + 1);
+				nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + 1);
+
+				// once the primary is clearly missing many articles of this file,
+				// lead with the duplicate for the rest instead of failing first
+				if (!fileInfo->GetDupeCutover() &&
+					fileInfo->GetDupeRecoveredArticles() >= DupeArticleFallback::CutoverThreshold)
+				{
+					fileInfo->SetDupeCutover(true);
+					nzbInfo->PrintMessage(Message::mkInfo,
+						"Leading with duplicate collections for %s (primary is missing many articles)",
+						fileInfo->GetFilename());
+				}
+			}
+
+			// a successful fetch from the lead duplicate ends its miss streak
+			// (no-op unless this was a lead-round fetch of the current lead)
+			DupeArticleFallback::RegisterLeadSuccess(fileInfo, articleInfo);
+
+			// this article pins decoded boundaries which may not have been known
+			// when an adjacent donor-substituted article was accepted (e.g. it
+			// finished before this one): re-validate such neighbours and demote
+			// any that provably do not tile with the file's decoded geometry
+			if (fileInfo->GetDupeRecoveredArticles() > 0 &&
+				articleDownloader->GetDecodedFileSize() > 0)
+			{
+				DemoteMisalignedDupeNeighbors(fileInfo, articleInfo);
+			}
 		}
-		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed)
+		else if ((articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced) &&
+			m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, articleInfo))
+		{
+			// the article is requeued with a message-id borrowed from a duplicate
+			articleInfo->SetStatus(ArticleInfo::aiUndefined);
+			retry = true;
+			if (articleInfo->GetPartNumber() == 1)
+			{
+				nzbInfo->SetAllFirst(false);
+			}
+		}
+		else if (articleDownloader->GetStatus() == ArticleDownloader::adFailed || misplaced ||
+			articleDownloader->GetStatus() == ArticleDownloader::adFatalError)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFailed);
 			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
@@ -731,6 +816,12 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 		}
 
+		// Account every completed source attempt, including attempts that are
+		// followed by a duplicate fallback retry.  The downloader owns one
+		// per-attempt ServerStatList, so this is exactly-once for this attempt.
+		fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+		nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+
 		if (!retry)
 		{
 			fileInfo->SetRemainingSize(fileInfo->GetRemainingSize() - articleInfo->GetSize());
@@ -741,12 +832,10 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 			fileInfo->SetCompletedArticles(fileInfo->GetCompletedArticles() + 1);
 			fileCompleted = (int)fileInfo->GetArticles()->size() == fileInfo->GetCompletedArticles();
-			fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
-			nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
 			fileInfo->SetPartialChanged(true);
 		}
 
-		if (!fileInfo->GetFilenameConfirmed() &&
+		if (!fileInfo->GetFilenameConfirmed() && !misplaced &&
 			articleDownloader->GetStatus() == ArticleDownloader::adFinished &&
 			articleDownloader->GetArticleFilename())
 		{
@@ -774,7 +863,8 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			}
 		}
 
-		if (articleDownloader->GetContentAnalyzer() && articleDownloader->GetStatus() == ArticleDownloader::adFinished)
+		if (articleDownloader->GetContentAnalyzer() && !misplaced &&
+			articleDownloader->GetStatus() == ArticleDownloader::adFinished)
 		{
 			m_directRenamer.ArticleDownloaded(downloadQueue, fileInfo, articleInfo, articleDownloader->GetContentAnalyzer());
 		}
@@ -788,18 +878,63 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			fileCompleted = true;
 		}
 
+		// last line of defence before a would-be cfSuccess file is assembled and
+		// classified: reject mis-placed donor bytes that the round-gated backstops
+		// above cannot see after a restart (round/recovered state is not persisted)
+		if (fileCompleted)
+		{
+			ValidateCompletedFileTiling(fileInfo);
+		}
+
 		completeFileParts = fileCompleted && (!fileInfo->GetDeleted() || nzbInfo->GetParking());
 
 		if (!completeFileParts)
 		{
-			DeleteDownloader(downloadQueue, articleDownloader, false);
+			DeleteDownloader(&m_downloadQueue, articleDownloader, false);
 		}
 	}
 
 	if (completeFileParts)
 	{
 		// all jobs done
-		articleDownloader->CompleteFileParts();
+		if (!articleDownloader->CompleteFileParts())
+		{
+			// Assembly/commit failures are local I/O failures. Classify this as
+			// a completed failed file under the queue lock; a user deletion would
+			// remove its damage from aggregate health and can yield false SUCCESS.
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+			int successArticles = fileInfo->GetSuccessArticles();
+			int64 successSize = fileInfo->GetSuccessSize();
+			fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + successArticles);
+			fileInfo->SetSuccessArticles(0);
+			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + successSize);
+			fileInfo->SetSuccessSize(0);
+			nzbInfo->SetCurrentFailedArticles(
+				nzbInfo->GetCurrentFailedArticles() + successArticles);
+			nzbInfo->SetCurrentSuccessArticles(std::max(0,
+				nzbInfo->GetCurrentSuccessArticles() - successArticles));
+			nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + successSize);
+			nzbInfo->SetCurrentSuccessSize(std::max<int64>(0,
+				nzbInfo->GetCurrentSuccessSize() - successSize));
+			if (fileInfo->GetParFile())
+			{
+				nzbInfo->SetParCurrentFailedSize(
+					nzbInfo->GetParCurrentFailedSize() + successSize);
+				nzbInfo->SetParCurrentSuccessSize(std::max<int64>(0,
+					nzbInfo->GetParCurrentSuccessSize() - successSize));
+			}
+			for (ArticleInfo* article : fileInfo->GetArticles())
+			{
+				if (article->GetStatus() == ArticleInfo::aiFinished)
+				{
+					article->SetStatus(ArticleInfo::aiFailed);
+				}
+			}
+			DiscardTempFiles(fileInfo);
+			DeleteDownloader(downloadQueue, articleDownloader, true);
+			return;
+		}
 		fileInfo->SetPartialChanged(false);
 
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
@@ -846,6 +981,15 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 
 	fileInfo->SetDeleted(true);
 
+	if (completed && fileInfo->GetDupeAttemptedArticles() > 0)
+	{
+		// honest per-file summary: recovered vs how many were tried from
+		// duplicates (0 recovered means the duplicates lacked those articles too)
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Recovered %i of %i missing article(s) of %s from duplicate collections",
+			fileInfo->GetDupeRecoveredArticles(), fileInfo->GetDupeAttemptedArticles(), fileInfo->GetFilename());
+	}
+
 	if (completed || nzbInfo->GetDeleting())
 	{
 		nzbInfo->UpdateCompletedStats(fileInfo);
@@ -882,6 +1026,37 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 			? FileSystem::BaseFileName(outputFilename.c_str())
 			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
 
+		// capture the missing byte ranges of an incomplete file for
+		// post-processing stream repair while the article list still exists
+		// (see option <DupeArticleFallback> value "stream")
+		if (completed && fileStatus == CompletedFile::cfPartial &&
+			DupeStreamRepair::BuildRepairJob(fileInfo, filename.c_str()))
+		{
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Queueing stream repair of %s from duplicate collections", filename.c_str());
+
+			// live mode: repair this file's holes now, while the rest of the
+			// collection still downloads. Only when other files remain queued -
+			// for the collection's last file the post-processing stage starts
+			// moments later anyway and remains the accounting authority either
+			// way. One live pass per collection at a time; jobs captured while
+			// one runs are picked up by the next dispatch.
+			bool moreFilesQueued = false;
+			for (FileInfo* queuedFile : nzbInfo->GetFileList())
+			{
+				if (queuedFile != fileInfo && !queuedFile->GetDeleted())
+				{
+					moreFilesQueued = true;
+					break;
+				}
+			}
+			if (g_Options->GetDupeArticleFallback() == Options::dafLive &&
+				moreFilesQueued && !nzbInfo->GetLiveRepairThread())
+			{
+				StreamRepairController::StartLive(nzbInfo);
+			}
+		}
+
 		fileInfo->GetNzbInfo()->GetCompletedFiles()->emplace_back(
 			fileInfo->GetId(),
 			std::move(filename),
@@ -916,16 +1091,180 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 	srcFileInfo.reset();
 }
 
+/*
+ * A donor-substituted article can finish before its neighbour articles; its
+ * decoded boundaries are then not fully verifiable and it is accepted
+ * provisionally. Each newly finished article pins more of the file's decoded
+ * geometry: re-validate the adjacent donor-substituted articles against it and
+ * demote any that provably do not tile (their bytes would leave a zero-filled
+ * gap and/or overwrite a neighbour's decoded bytes). The demoted article
+ * counts as failed, so the file cannot complete as an intact download around
+ * mis-placed donor bytes - par2 or stream repair take over instead.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DemoteMisalignedDupeNeighbors(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+
+	int index = -1;
+	for (size_t i = 0; i < articles->size(); i++)
+	{
+		if ((*articles)[i].get() == articleInfo)
+		{
+			index = (int)i;
+			break;
+		}
+	}
+	if (index < 0)
+	{
+		return;
+	}
+
+	for (int neighborIndex : {index - 1, index + 1})
+	{
+		if (neighborIndex < 0 || neighborIndex >= (int)articles->size())
+		{
+			continue;
+		}
+
+		ArticleInfo* neighbor = (*articles)[neighborIndex].get();
+		if (neighbor->GetStatus() != ArticleInfo::aiFinished ||
+			neighbor->GetDupeFallbackRound() == 0 ||
+			neighbor->GetSegmentSize() <= 0 ||
+			DupeArticleFallback::SegmentAligned(fileInfo, neighbor))
+		{
+			continue;
+		}
+
+		DemoteFinishedArticle(fileInfo, neighbor);
+
+		fileInfo->GetNzbInfo()->PrintMessage(Message::mkDetail,
+			"Discarding misaligned article %s [%i/%i] from duplicate",
+			fileInfo->GetFilename(), neighbor->GetPartNumber(), (int)articles->size());
+	}
+}
+
+/*
+ * Final whole-file guard, run when a file finishes with every article marked
+ * successful and would therefore be classified cfSuccess. Independent of the
+ * (non-persisted) fallback round and recovered-count, so it also catches a
+ * provisionally-accepted drifted donor article that survived a daemon restart:
+ * the restart reloads it as a plain finished article (round reset to 0), which
+ * the per-article and neighbour backstops no longer recognise, but its
+ * persisted decoded offset/size still betray the gap/overlap here. A healthy
+ * file's yEnc parts tile [0, DecodedFileSize) exactly by construction, so this
+ * only fires on genuinely mis-placed bytes; the offending article is demoted
+ * to failed so the file classifies cfPartial and par2/stream repair take over.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::ValidateCompletedFileTiling(FileInfo* fileInfo)
+{
+	// only a would-be cfSuccess file is at risk of silently standing on
+	// mis-placed bytes; a file with any failed/missed article already falls to
+	// par2/stream repair
+	if (fileInfo->GetSuccessArticles() != fileInfo->GetTotalArticles())
+	{
+		return;
+	}
+
+	ArticleInfo* untiled = DupeArticleFallback::FirstUntiledArticle(fileInfo);
+	if (!untiled)
+	{
+		return;
+	}
+
+	DemoteFinishedArticle(fileInfo, untiled);
+
+	fileInfo->GetNzbInfo()->PrintMessage(Message::mkWarning,
+		"Discarding misaligned article %s [%i/%i]: decoded bytes do not tile the "
+		"file (leaving to par-repair)",
+		fileInfo->GetFilename(), untiled->GetPartNumber(), (int)fileInfo->GetArticles()->size());
+}
+
+/*
+ * Demotes an article that was counted successful back to failed, moving all
+ * per-file and per-nzb success/failed counters (incl. the par-set variants)
+ * and undoing its duplicate-recovered credit if it held one. The decoded bytes
+ * it contributed are dropped; the file can then no longer classify cfSuccess.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+
+	DiscardArticleSegment(fileInfo, articleInfo);
+	articleInfo->SetStatus(ArticleInfo::aiFailed);
+
+	fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - articleInfo->GetSize());
+	fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
+	fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
+	fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
+	nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() - articleInfo->GetSize());
+	nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + articleInfo->GetSize());
+	nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() - (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+	nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
+	nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
+	nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
+
+	// undo the "recovered from duplicate" count if this article was one -
+	// symmetric with the increment in ArticleCompleted, which excludes
+	// proactive (cutover) fetches: without the same exclusion here a demoted
+	// proactive article would decrement a count it never incremented. (A
+	// no-op after a restart, where the round/original-id/recovered state is
+	// not persisted and has already reset)
+	if (!articleInfo->GetDupeProactive() &&
+		!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
+		strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
+	{
+		fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
+		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
+	}
+
+	// a lead-donor article accepted provisionally (its neighbours were still
+	// in flight) reset the lead-miss streak as a success; demoting it proves
+	// that fetch was in truth a lead miss, so charge it as one - otherwise a
+	// systematically drifted lead could keep resetting its own streak and
+	// never be rotated away (round-gated: a no-op for non-lead articles)
+	if (DupeArticleFallback::RegisterLeadFailure(fileInfo, articleInfo))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Switching lead duplicate collection for %s (the lead duplicate is missing many articles)",
+			fileInfo->GetFilename());
+	}
+
+	fileInfo->SetPartialChanged(true);
+}
+
+/*
+ * Drops the cached decoded bytes of a rejected article. If the article cache
+ * is currently flushing this file's segments the flusher owns the segment
+ * lifetime (see ArticleWriter::FlushCache) and the segment is left to it.
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::DiscardArticleSegment(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	Guard contentGuard = g_ArticleCache->GuardContent();
+	if (articleInfo->GetDupeFallbackRound() > 0 && articleInfo->GetResultFilename())
+	{
+		FileSystem::DeleteFile(articleInfo->GetResultFilename());
+	}
+	if (!articleInfo->GetSegmentContent() || fileInfo->GetFlushLocked())
+	{
+		return;
+	}
+	articleInfo->DiscardSegment();
+	fileInfo->SetCachedArticles(fileInfo->GetCachedArticles() - 1);
+}
+
 void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 {
-	if (!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite())
+	for (ArticleInfo* pa : fileInfo->GetArticles())
 	{
-		for (ArticleInfo* pa : fileInfo->GetArticles())
+		if (pa->GetResultFilename() &&
+			((!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite()) ||
+			 pa->GetDupeFallbackRound() > 0))
 		{
-			if (pa->GetResultFilename())
-			{
-				FileSystem::DeleteFile(pa->GetResultFilename());
-			}
+			FileSystem::DeleteFile(pa->GetResultFilename());
 		}
 	}
 

@@ -1,0 +1,1815 @@
+#!/usr/bin/env python3
+#
+#  This file is part of nzbget. See <https://nzbget.com>.
+#
+#  Copyright (C) 2026 Denis <denis@nzbget.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+Cross-platform functional harness for the DupeArticleFallback feature.
+
+It drives nzbget's own test NNTP server (``nzbget --nserv``) plus a scratch
+nzbget daemon, entirely offline, and verifies that a download missing articles
+on the news server is completed by borrowing the equivalent articles from a
+duplicate posting of the same content.
+
+The same scenarios run on Linux, macOS and Android; the only thing that differs
+is *where* the processes/files live, which is isolated behind the ``Target``
+abstraction:
+
+* ``LocalTarget`` runs nserv + the daemon as local subprocesses (Linux, macOS).
+* ``AdbTarget`` runs them inside a connected Android emulator/device over adb,
+  forwarding the RPC port back to the host.
+
+Scenarios (all use the ``!serverlist`` nserv message-id suffix to make an
+article "missing" on the active server, so no real Usenet access is needed):
+
+* complementary - two postings, each missing different articles; neither
+  completes alone, together they do.
+* cutover       - the primary is missing most of a file; after a few
+  recoveries the file leads with the duplicate (DupeArticleFallback cutover).
+* leadswitch    - the top-scored duplicate shares the primary's hole; after a
+  few consecutive lead misses the lead rotates to the next duplicate, which
+  completes the file (lead demotion).
+* manydonors    - more duplicates than the donor cache holds, to exercise the
+  cache-eviction path (regression for the use-after-free crash).
+* stream        - the donor is segmented differently; missing byte ranges are
+  repaired on stream level in post-processing.
+* liveoverlap   - DupeArticleFallback=live: a damaged file is stream-repaired
+  DURING the download of the rest of the collection (log-order proof).
+* livegate      - the same fixture under plain "stream" must not run live.
+* livelastfile  - live mode, single-file collection: the live dispatch is
+  skipped for the collection's last file (post-processing handles it).
+* repost        - a 4-member opaque "rar+par2 release" reposted byte-identically
+  under different segmentation; damaged volume and par2 are both repaired
+  byte-identically (final status FAILURE/PAR by design - the stand-in par2 is
+  random bytes).
+* repostrenamed - a 3-member repost whose members were RENAMED (different
+  release base name, same volume suffixes): exact-name pairing cannot fire,
+  proving the unique-suffix-key tier pairs the damaged member with its donor
+  twin end-to-end.
+* xpackbare     - M2 cross-packing: a bare .mkv completed with a hole is
+  repaired from a duplicate that posted the SAME movie packed into store-mode
+  RAR3 volumes (different framing/offsets/segmentation), which M1 cannot pair;
+  the ContentMap pass locates and patches the missing bytes inside the volumes.
+* xpackrar      - store-rar target repaired from a bare donor, including a
+  degraded volume whose header hole must exclude it from the map.
+* xpackrar2rar  - rar-to-rar cross-packing with different volume sizes on
+  each side (member-wise M1 cannot window these).
+* xpackzip      - bare target repaired from a SPANNED STORED ZIP donor
+  (z01+z02+zip).
+* xpack7z       - bare target repaired from a 7z-COPY donor posted as
+  .7z.001/.002 splits.
+* xpacksplit    - store-rar target repaired from RAW SPLITS
+  (movie.mkv.001/.002/.003).
+* xpackcompressed - the mechanism ladder on a COMPRESSED archive: M2 never
+  maps it (method gate), a byte-identical repost still repairs it via M1.
+* xpackneg      - the negative: a same-size, wrong-bytes donor set must be
+  rejected by the inner probes; nothing may be written.
+* xcrypt_encplain  - M3 password-assisted cross-packing: an ENCRYPTED
+  store-rar target (its own password known via its NZB) with a data hole,
+  repaired from a BARE unencrypted donor; asserts byte-identical ciphertext.
+* xcrypt_plainenc  - reverse direction: a BARE target repaired from an
+  ENCRYPTED store-rar donor whose password travels via the donor's NZB.
+* xcrypt_diffpass  - both sides encrypted under DIFFERENT passwords; proves
+  the donor's and target's crypto contexts never mix.
+* xcrypt_wrongpass - the negative: an encrypted donor whose supplied
+  password does NOT match; rejected by the content-identity probe, nothing
+  written. The four xcrypt_* scenarios SKIP gracefully when the
+  ``cryptography`` package is not installed (see generators.HAVE_CRYPTO).
+* xdecomp_zip    - M4 decompression-assisted donor extraction: a bare
+  movie.mkv target with holes, repaired from a REAL DEFLATE-compressed zip
+  donor of the identical file. M2 never maps a compressed zip entry, so only
+  materializing the donor and shelling out to the configured SevenZipCmd
+  (option DupeStreamDecompress=yes) can recover it.
+* xdecomp_7z     - same shape, donor is a REAL LZMA2-compressed 7z archive.
+* xdecomp_storetarget - a store-mode rar3 TARGET (not bare) repaired from a
+  compressed-7z donor, proving the M4 path composes with the M2 plain
+  target map, not just the bare/identity map.
+* xdecomp_enc7z  - the POSIX password-quoting proof: a bare target repaired
+  from a HEADER-ENCRYPTED 7z donor (-mhe=on), its password threaded via the
+  donor's own NZB exactly like xcrypt_plainenc threads an encrypted-rar
+  donor's password.
+* xdecomp_enctarget - the M3+M4 composition: an ENCRYPTED store-rar target
+  (password via its own NZB) repaired from a compressed 7z donor; the
+  extracted plaintext is re-encrypted under the target's AES-CBC stream
+  context and the ciphertext written into the hole.
+* xdecomp_neg    - the negative: a compressed donor with the right inner
+  size but the WRONG bytes; rejected by the identity probe, nothing written.
+* xdecomp_symlink - the link fail-close: a compressed donor whose archive
+  contains a symlink is rejected before selecting or patching anything;
+  cleanup unlinks without following. POSIX-only.
+* xdecomp_off    - the opt-in gate: the same compressed-7z-donor setup as
+  xdecomp_7z, but DupeStreamDecompress is OMITTED (default no); the
+  decompression path must never run and the item stays unrepaired. The eight
+  xdecomp_* scenarios SKIP gracefully when no local 7z/7za/7zr binary is on
+  PATH (see generators.HAVE_7Z).
+
+Usage:
+    harness.py --nzbget /path/to/nzbget [--target local|adb]
+               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
+               [--serial NNN] [--keep]
+"""
+
+import argparse
+import base64
+import os
+import random
+import shutil
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+try:
+    from xmlrpc.client import ServerProxy
+except ImportError:
+    from xmlrpclib import ServerProxy  # type: ignore  # python 2 fallback
+
+# deterministic container generators for the xpack scenarios
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generators
+
+
+# --------------------------------------------------------------------------- #
+# NZB generation (nserv message-id format: <path?part=offset:size[!servers]>)
+# --------------------------------------------------------------------------- #
+
+def _nzb_file_block(served_path, subject_name, file_size, seg_size, missing_parts):
+    """One <file>...</file> block for nserv-served content (msgid format:
+    <path?part=offset:size[!servers]>)."""
+    import html
+    n = (file_size + seg_size - 1) // seg_size
+    lines = [
+        '<file poster="dupefallback@test" date="1700000000" '
+        'subject="&quot;%s&quot; yEnc (1/%d)">' % (html.escape(subject_name), n),
+        '<groups><group>alt.binaries.test</group></groups>',
+        '<segments>',
+    ]
+    for i in range(1, n + 1):
+        off = (i - 1) * seg_size
+        size = min(seg_size, file_size - off)
+        miss = '!2' if i in missing_parts else ''
+        msgid = '%s?%d=%d:%d%s' % (served_path, i, off, size, miss)
+        lines.append('<segment bytes="%d" number="%d">%s</segment>'
+                     % (size, i, html.escape(msgid)))
+    lines += ['</segments>', '</file>']
+    return lines
+
+
+def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts,
+              password=None):
+    """Return NZB XML for a single file served by nserv.
+
+    ``missing_parts`` is a set of 1-based part numbers to mark with ``!2`` so
+    they are served only by nserv instance 2 (i.e. missing on the active
+    instance-1 server, forcing a fallback). ``password`` is forwarded to
+    build_multi_nzb (see there for how it reaches the daemon)."""
+    return build_multi_nzb([(served_path, subject_name, file_size, seg_size,
+                             missing_parts)], password=password)
+
+
+def build_multi_nzb(members, password=None):
+    """Return NZB XML containing one <file> block per member tuple
+    (served_path, subject_name, file_size, seg_size, missing_parts).
+    Member subject names MUST be distinct: duplicate parsed filenames make
+    nzbget fall back to raw subjects and set ManyDupeFiles.
+
+    ``password``, if given, is emitted as a <head><meta type="password">
+    block - the real NZB convention indexers use to advertise an archive's
+    password. NzbFile::Parse (daemon/queue/NzbFile.cpp) matches any <meta
+    type="password"> element regardless of nesting and stores its text as
+    nzbFile.GetPassword(); Scanner::AddFileToQueue then copies that into the
+    queued NzbInfo's "*Unpack:Password" parameter (daemon/queue/Scanner.cpp).
+    This happens on the SAME on-disk-file parse path whether the NZB arrived
+    via directory scan or the RPC "append" method (DownloadXmlCommand ->
+    Scanner::AddExternalFile writes the posted content to NzbDir and scans it
+    exactly like a dropped file) - no RPC signature change is needed to carry
+    a password end to end. StreamRepair.cpp later reads that same parameter
+    for both the target (m_targetPassword, in CollectTargets) and each donor
+    (DonorSource::Password, in CollectDonors) - both captured from the LIVE
+    NzbInfo under the queue guard. The later ParseDonorNzb re-parse of the raw
+    .nzb CANNOT see intake- or API-set passwords, so donor capture must happen
+    from the live NzbInfo, not the re-parse."""
+    import html
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" '
+        '"http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">',
+        '<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">',
+    ]
+    if password:
+        lines += ['<head>',
+                  '<meta type="password">%s</meta>' % html.escape(password),
+                  '</head>']
+    for member in members:
+        lines += _nzb_file_block(*member)
+    lines.append('</nzb>')
+    return '\n'.join(lines) + '\n'
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(('127.0.0.1', 0))
+    p = s.getsockname()[1]
+    s.close()
+    return p
+
+
+# --------------------------------------------------------------------------- #
+# Targets
+# --------------------------------------------------------------------------- #
+
+class LocalTarget:
+    """Run nserv + daemon as local subprocesses (Linux, macOS)."""
+    name = 'local'
+
+    def __init__(self, nzbget_bin, workdir):
+        self.nzbget = nzbget_bin
+        self.work = workdir
+        self.procs = []
+
+    def path(self, *parts):
+        return os.path.join(self.work, *parts)
+
+    def makedirs(self, *parts):
+        d = self.path(*parts)
+        os.makedirs(d, exist_ok=True)
+        return d
+
+    def write_file(self, rel, data):
+        full = self.path(rel)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, 'wb') as f:
+            f.write(data)
+
+    def read_file(self, rel):
+        with open(self.path(rel), 'rb') as f:
+            return f.read()
+
+    def exists(self, rel):
+        return os.path.exists(self.path(rel))
+
+    def find_files(self, *parts):
+        """Return rel paths (work-relative, '/'-joined) of all files under the
+        given subdir."""
+        base = self.path(*parts)
+        out = []
+        if os.path.isdir(base):
+            for dp, _, files in os.walk(base):
+                for fn in files:
+                    rel = os.path.relpath(os.path.join(dp, fn), self.work)
+                    out.append(rel.replace(os.sep, '/'))
+        return out
+
+    def spawn(self, args):
+        p = subprocess.Popen(args, stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
+        self.procs.append(p)
+        return p
+
+    def rpc_host(self):
+        return '127.0.0.1'
+
+    def forward_rpc(self, device_port):
+        _ = device_port  # local: the daemon already listens on localhost; no-op
+
+    def teardown(self, keep):
+        for p in self.procs:
+            try:
+                p.kill()
+            except Exception:
+                pass
+        if not keep and os.path.exists(self.work):
+            shutil.rmtree(self.work, ignore_errors=True)
+
+
+class AdbTarget:
+    """Run nserv + daemon inside an Android emulator/device over adb.
+
+    Files live under a device-local workdir; the RPC control port is forwarded
+    back to the host so the same XML-RPC client works unchanged."""
+    name = 'adb'
+    DEVICE_ROOT = '/data/local/tmp/nzbget-dupefallback'
+
+    def __init__(self, nzbget_device_path, workdir, serial=None, rpc_port=None):
+        # nzbget_device_path is the path to the nzbget binary ALREADY on device
+        self.nzbget = nzbget_device_path
+        self.work = self.DEVICE_ROOT
+        self.host_stage = workdir            # host-side staging dir
+        self.serial = serial
+        self.rpc_port = rpc_port
+        self.forwarded = None
+        os.makedirs(self.host_stage, exist_ok=True)
+        self._adb('shell', 'rm', '-rf', self.work)
+        self._adb('shell', 'mkdir', '-p', self.work)
+
+    def _adb(self, *args):
+        cmd = ['adb']
+        if self.serial:
+            cmd += ['-s', self.serial]
+        cmd += list(args)
+        return subprocess.run(cmd, capture_output=True, text=True)
+
+    def path(self, *parts):
+        return '/'.join([self.work] + list(parts))
+
+    def makedirs(self, *parts):
+        d = self.path(*parts)
+        self._adb('shell', 'mkdir', '-p', d)
+        return d
+
+    def write_file(self, rel, data):
+        full = self.path(rel)
+        self._adb('shell', 'mkdir', '-p', full.rsplit('/', 1)[0])
+        stage = os.path.join(self.host_stage, rel.replace('/', '_'))
+        with open(stage, 'wb') as f:
+            f.write(data)
+        self._adb('push', stage, full)
+
+    def read_file(self, rel):
+        stage = os.path.join(self.host_stage, 'pull_' + rel.replace('/', '_'))
+        self._adb('pull', self.path(rel), stage)
+        with open(stage, 'rb') as f:
+            return f.read()
+
+    def exists(self, rel):
+        r = self._adb('shell', 'ls', self.path(rel))
+        return 'No such file' not in (r.stdout + r.stderr)
+
+    def find_files(self, *parts):
+        base = self.path(*parts)
+        r = self._adb('shell', 'find', base, '-type', 'f')
+        out = []
+        for line in r.stdout.splitlines():
+            line = line.strip()
+            if line.startswith(self.work + '/'):
+                out.append(line[len(self.work) + 1:])
+        return out
+
+    def spawn(self, args):
+        # launch detached on device; ports are device-local
+        remote = ' '.join(self._q(a) for a in args) + ' >/dev/null 2>&1 &'
+        self._adb('shell', remote)
+        return None
+
+    @staticmethod
+    def _q(a):
+        return "'" + str(a).replace("'", "'\\''") + "'" if ' ' in str(a) else str(a)
+
+    def rpc_host(self):
+        return '127.0.0.1'
+
+    def forward_rpc(self, device_port):
+        self.rpc_port = device_port
+        self._adb('forward', 'tcp:%d' % device_port, 'tcp:%d' % device_port)
+        self.forwarded = device_port
+
+    def teardown(self, keep):
+        self._adb('shell', 'pkill', '-f', self.nzbget)
+        if self.forwarded:
+            self._adb('forward', '--remove', 'tcp:%d' % self.forwarded)
+        if not keep:
+            self._adb('shell', 'rm', '-rf', self.work)
+        shutil.rmtree(self.host_stage, ignore_errors=True)
+
+
+# --------------------------------------------------------------------------- #
+# Daemon control
+# --------------------------------------------------------------------------- #
+
+class Daemon:
+    def __init__(self, target, nntp_port, rpc_port):
+        self.t = target
+        self.nntp_port = nntp_port
+        self.rpc_port = rpc_port
+        self.datadir = target.makedirs('data')
+        for d in ('dst', 'inter', 'nzb', 'queue', 'tmp', 'scripts', 'web'):
+            target.makedirs('main', d)
+        self.conf_rel = 'nzbget.conf'
+
+    def write_config(self, extra_options):
+        w = self.t.path
+        cfg = [
+            'MainDir=%s' % w('main'),
+            'DestDir=%s' % w('main', 'dst'),
+            'InterDir=%s' % w('main', 'inter'),
+            'NzbDir=%s' % w('main', 'nzb'),
+            'QueueDir=%s' % w('main', 'queue'),
+            'TempDir=%s' % w('main', 'tmp'),
+            'LogFile=%s' % w('nzbget.log'),
+            # Pin every path that nzbget would otherwise default to a
+            # compiled-in location (e.g. /downloads/scripts): an uncreatable
+            # ScriptDir/WebDir is a fatal config error that pauses the whole
+            # queue, which cross-compiled (Android) builds trip over.
+            'ScriptDir=%s' % w('main', 'scripts'),
+            'WebDir=%s' % w('main', 'web'),
+            'LockFile=%s' % w('nzbget.lock'),
+            'ConfigTemplate=', 'RequiredDir=',
+            'WriteLog=append', 'OutputMode=log', 'ControlIP=127.0.0.1',
+            'ControlPort=%d' % self.rpc_port,
+            'ControlUsername=', 'ControlPassword=',
+            'Server1.Host=127.0.0.1', 'Server1.Port=%d' % self.nntp_port,
+            'Server1.Connections=4', 'Server1.Level=0', 'Server1.Encryption=no',
+            'DirectWrite=yes', 'ArticleCache=0', 'ContinuePartial=no',
+            'FileNaming=nzb', 'DupeCheck=yes', 'NzbCleanupDisk=no',
+            'HealthCheck=none', 'ArticleRetries=1', 'ParCheck=manual',
+            'ParRename=no', 'RarRename=no', 'Unpack=no', 'DirectUnpack=no',
+            'DirectRename=no', 'UpdateCheck=none',
+        ] + extra_options
+        self.t.write_file(self.conf_rel, ('\n'.join(cfg) + '\n').encode())
+
+    def start_nserv(self):
+        # A single instance (-i 1) binds only nntp_port. Instance 1 already
+        # returns "430 not found" for "!2" message-ids (its id 1 is not in the
+        # server-list [2]), which is how a "missing" article is simulated on the
+        # only server the daemon uses. A second instance would just bind
+        # nntp_port+1 and risk colliding with the control port.
+        self.t.spawn([self.t.nzbget, '--nserv', '-d', self.datadir,
+                      '-p', str(self.nntp_port), '-i', '1', '-v', '0'])
+
+    def start(self):
+        self.t.spawn([self.t.nzbget, '-c', self.t.path(self.conf_rel), '-s'])
+
+    def api(self):
+        host = self.t.rpc_host()
+        return ServerProxy('http://%s:%d/xmlrpc' % (host, self.rpc_port))
+
+    def wait_ready(self, timeout=30):
+        api = self.api()
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                api.status()
+                return api
+            except Exception:
+                time.sleep(0.3)
+        raise RuntimeError('nzbget did not become ready')
+
+    def append(self, api, name, nzb_xml, paused, dupekey, score):
+        content = base64.standard_b64encode(nzb_xml.encode()).decode()
+        return api.append(name, content, 'test', 0, False, paused,
+                           dupekey, score, 'score', [])
+
+    def wait_history(self, api, name, timeout=180):
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            for h in api.history():
+                if h.get('NZBName') == name or h.get('NZBFilename') == name + '.nzb':
+                    return h
+            time.sleep(0.5)
+        raise RuntimeError('timeout waiting for %s in history' % name)
+
+
+# --------------------------------------------------------------------------- #
+# Scenarios
+# --------------------------------------------------------------------------- #
+
+def _payload(size, seed):
+    r = random.Random(seed)
+    return bytes(r.getrandbits(8) for _ in range(size)) if size < 1 else \
+        r.randbytes(size) if hasattr(r, 'randbytes') else \
+        bytes(bytearray(r.getrandbits(8) for _ in range(size)))
+
+
+def _place_copy(target, subdir, data, filename='file.bin'):
+    """Write a payload copy under data/<subdir>/<filename> and return the
+    served path (relative to the nserv data dir)."""
+    target.write_file(os.path.join('data', subdir, filename), data)
+    return '%s/%s' % (subdir, filename)
+
+
+def scenario_complementary(daemon, t):
+    """Primary missing parts 3,5,7; donor missing 2,8 (different) — only
+    together do they complete. Byte-identical result expected."""
+    size, seg = 5_000_000, 500_000
+    data = _payload(size, 849)
+    pp = _place_copy(t, 'primA', data)
+    dp = _place_copy(t, 'primB', data)
+    primary = build_nzb(pp, 'ReleaseA.bin', size, seg, {3, 5, 7})
+    donor = build_nzb(dp, 'obf-b.bin', size, seg, {2, 8})
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonorB', donor, True, 'comp-key', 50)
+    daemon.append(api, 'ReleaseA', primary, False, 'comp-key', 100)
+    h = daemon.wait_history(api, 'ReleaseA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    integ = _verify_output(t, data)
+    return ('complementary', ok and integ and recov == 3,
+            'status=%s recovered=%d integrity=%s' % (h['Status'], recov, integ))
+
+
+def scenario_cutover(daemon, t):
+    """Primary missing 10 of 20 articles => file cuts over to the duplicate."""
+    size, seg = 10_000_000, 500_000
+    data = _payload(size, 1206)
+    pp = _place_copy(t, 'cutA', data)
+    dp = _place_copy(t, 'cutB', data)
+    primary = build_nzb(pp, 'CutA.bin', size, seg, set(range(2, 12)))
+    donor = build_nzb(dp, 'obf-cut.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonCut', donor, True, 'cut-key', 50)
+    daemon.append(api, 'CutA', primary, False, 'cut-key', 100)
+    h = daemon.wait_history(api, 'CutA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    cut = _grep_log(t, 'Leading with duplicate collections')
+    integ = _verify_output(t, data)
+    # Only REACTIVE recoveries count: fresh articles served proactively after
+    # the cutover trips must not inflate the metric, so the count can never
+    # exceed the 10 articles the primary is actually missing (proactive
+    # inflation would push it towards 19) (any proactive round, incl. donor
+    # round >= 2 under the primary-last order). The exact value below 10 is
+    # timing-dependent - it is the number of primary failures already in
+    # flight when cutover trips (>= the 3 recoveries that trip it), which
+    # grows under system load beyond the 4 concurrent connections.
+    return ('cutover', ok and integ and 3 <= recov <= 10 and cut == 1,
+            'status=%s recovered=%d cutover_logs=%d integrity=%s'
+            % (h['Status'], recov, cut, integ))
+
+
+def scenario_leadswitch(daemon, t):
+    """Primary AND the top-scored duplicate share the same hole (parts 2-12);
+    a second, lower-scored duplicate covers it. After a few consecutive lead
+    misses the file must switch its lead to the next duplicate instead of
+    paying a wasted fetch per article on the holed one, and still complete
+    byte-identically from the second duplicate."""
+    size, seg = 10_000_000, 500_000
+    data = _payload(size, 4242)
+    pp = _place_copy(t, 'leadP', data)
+    dhp = _place_copy(t, 'leadH', data)
+    dlp = _place_copy(t, 'leadL', data)
+    holes = set(range(2, 13))
+    primary = build_nzb(pp, 'LeadA.bin', size, seg, holes)
+    donor_high = build_nzb(dhp, 'obf-lh.bin', size, seg, holes)
+    donor_low = build_nzb(dlp, 'obf-ll.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LeadHigh', donor_high, True, 'lead-key', 60)
+    daemon.append(api, 'LeadLow', donor_low, True, 'lead-key', 50)
+    daemon.append(api, 'LeadA', primary, False, 'lead-key', 100)
+    h = daemon.wait_history(api, 'LeadA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    # exactly ONE switch: more would mean stale in-flight failures of the old
+    # lead cascade-demoted the new (complete) lead - the regression the
+    # per-article lead snapshot exists to prevent
+    switched = _grep_log(t, 'Switching lead duplicate collection')
+    integ = _verify_output(t, data)
+    # Only REACTIVE recoveries count (proactive traffic after cutover must
+    # not inflate the metric), bounding the count by the 11 articles the
+    # primary is missing; the exact value below that is timing-dependent -
+    # how many articles were already mid-fallback when the proactive
+    # pre-assignment took over grows under system load (any proactive round,
+    # incl. donor round >= 2 under the primary-last order).
+    return ('leadswitch', ok and integ and 3 <= recov <= 11 and switched == 1,
+            'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
+            % (h['Status'], recov, switched, integ))
+
+
+def scenario_cutovertruth(daemon, t):
+    """Counter honesty under cutover: the lead duplicate misses articles the
+    PRIMARY actually has (parts 20-23); the second duplicate serves them at
+    round 2. Those proactive successes prove nothing about the primary and
+    must NOT count as recovered - only reactive recoveries of the primary's
+    own 11 missing articles may. Without the !DupeProactive guard the
+    primary-last cutover order counts them (recov ~12-15 here)."""
+    size, seg = 20_000_000, 500_000          # 40 articles
+    data = _payload(size, 1207)
+    pp = _place_copy(t, 'ctrA', data)
+    dhp = _place_copy(t, 'ctrH', data)
+    dlp = _place_copy(t, 'ctrL', data)
+    primary = build_nzb(pp, 'CtrA.bin', size, seg, set(range(2, 13)))       # 11 missing
+    donor_high = build_nzb(dhp, 'obf-cth.bin', size, seg, set(range(20, 24)))
+    donor_low = build_nzb(dlp, 'obf-ctl.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'CtrHigh', donor_high, True, 'ctr-key', 60)
+    daemon.append(api, 'CtrLow', donor_low, True, 'ctr-key', 50)
+    daemon.append(api, 'CtrA', primary, False, 'ctr-key', 100)
+    h = daemon.wait_history(api, 'CtrA')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    switched = _grep_log(t, 'Switching lead duplicate collection')
+    integ = _verify_output(t, data)
+    # bound = the primary's 11 missing articles: proactive traffic (incl. the
+    # lead's private holes at parts 20-23, served by the second duplicate)
+    # never counts, so the bound is timing-independent. The lead's 4
+    # consecutive misses may legitimately rotate the lead once.
+    return ('cutovertruth', ok and integ and 3 <= recov <= 11 and switched <= 1,
+            'status=%s recovered=%d lead_switch_logs=%d integrity=%s'
+            % (h['Status'], recov, switched, integ))
+
+
+def scenario_manydonors(daemon, t, ndonors=18):
+    """More duplicates than the donor cache (16) => exercises cache eviction
+    (regression for the use-after-free crash). Primary missing 2,3,4."""
+    size, seg = 3_000_000, 500_000
+    data = _payload(size, 77)
+    pp = _place_copy(t, 'manyPrim', data)
+    primary = build_nzb(pp, 'ManyPrim.bin', size, seg, {2, 3, 4})
+    api = daemon.wait_ready()
+    for i in range(ndonors):
+        dp = _place_copy(t, 'manyD%02d' % i, data)
+        donor = build_nzb(dp, 'obf-d%02d.bin' % i, size, seg, set())
+        daemon.append(api, 'ManyD%02d' % i, donor, True, 'many-key', 50 + i)
+    daemon.append(api, 'ManyPrim', primary, False, 'many-key', 100)
+    h = daemon.wait_history(api, 'ManyPrim')
+    ok = h['Status'].startswith('SUCCESS')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    integ = _verify_output(t, data)
+    # crash regression: the daemon must still answer RPC afterwards
+    alive = True
+    try:
+        api.status()
+    except Exception:
+        alive = False
+    return ('manydonors', ok and integ and recov >= 3 and alive,
+            'status=%s recovered=%d integrity=%s daemon_alive=%s'
+            % (h['Status'], recov, integ, alive))
+
+
+def scenario_stream(daemon, t):
+    """Primary (.mkv, 500 KB parts) missing a middle block; the donor posted
+    the SAME content split into 250 KB parts (different article count) and
+    sits paused in the queue under the same dupe-key. Article-level fallback
+    cannot borrow across segmentations, so the post-processing stream repair
+    must fetch the missing byte ranges from the donor. A DECOY duplicate of
+    the same byte size but different content carries a HIGHER dupe-score, so
+    it is tried first and must be rejected by the identity probe (the
+    negative half of the test: no corruption from a same-size impostor).
+    Every hole gets filled and there is no par2 here, so the byte-based
+    health recount (StreamRepairController::RepairCompleted crediting each
+    fully-repaired file's encoded failed size back to health) drives
+    CalcHealth() to 1000: the history status now completes as SUCCESS
+    (moved to the final destination) instead of parking at FAILURE/HEALTH -
+    that status flip is asserted directly below, alongside byte integrity,
+    the repair logs and the DupeRecoveredArticles counter."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4242)
+    decoy_data = _payload(size, 999)  # same size, different bytes
+    pp = _place_copy(t, 'streamA', data, 'file.mkv')
+    dp = _place_copy(t, 'streamB', data, 'file.mkv')
+    xp = _place_copy(t, 'streamX', decoy_data, 'file.mkv')
+    primary = build_nzb(pp, 'StreamA.mkv', size, seg_primary, {5, 6})
+    donor = build_nzb(dp, 'obf-stream.mkv', size, seg_donor, set())
+    decoy = build_nzb(xp, 'obf-decoy.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DecoyStream', decoy, True, 'stream-key', 75)
+    daemon.append(api, 'DonStream', donor, True, 'stream-key', 50)
+    daemon.append(api, 'StreamA', primary, False, 'stream-key', 100)
+    h = daemon.wait_history(api, 'StreamA')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    queued = _grep_log(t, 'Queueing stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    rejected = _grep_log(t, 'content identity not confirmed')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    success = 'SUCCESS' in h['Status']
+    return ('stream',
+            success and integ and recov == 2 and queued >= 1 and repaired >= 1 and rejected >= 1,
+            'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
+            % (h['Status'], recov, queued, repaired, rejected, integ))
+
+
+def scenario_liveoverlap(daemon, t):
+    """DupeArticleFallback=live: FileA (differently-segmented donor queued)
+    completes with a hole while the big FileB still downloads (the global
+    DownloadRate throttle keeps B busy). The live pass must repair A DURING
+    the download - asserted by log order: 'Starting live stream repair'
+    strictly before the collection's 'completely downloaded' line - while
+    the post-processing stage stays the accounting authority, taking the
+    fully repaired release to SUCCESS with byte-identical output."""
+    size_a, seg_a = 2_000_000, 200_000
+    size_b, seg_b = 24_000_000, 500_000
+    data_a = _payload(size_a, 7401)
+    data_b = _payload(size_b, 7402)
+    pa = _place_copy(t, 'liveA', data_a, 'a.mkv')
+    pb = _place_copy(t, 'liveB', data_b, 'b.mkv')
+    da = _place_copy(t, 'liveDon', data_a, 'a.mkv')
+    primary = build_multi_nzb([
+        (pa, 'LiveA.mkv', size_a, seg_a, {4, 5, 6}),
+        (pb, 'LiveB.mkv', size_b, seg_b, set()),
+    ])
+    donor = build_nzb(da, 'obf-live.mkv', size_a, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LiveDonor', donor, True, 'live-key', 50)
+    daemon.append(api, 'LiveMain', primary, False, 'live-key', 100)
+    h = daemon.wait_history(api, 'LiveMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    overlapped = _log_before(t, 'Starting live stream repair',
+                             'completely downloaded')
+    integ = (_verify_output(t, data_a, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))) and
+             _verify_output(t, data_b, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))))
+    return ('liveoverlap', ok and integ and live == 1 and overlapped,
+            'status=%s live_logs=%d overlapped=%s integrity=%s'
+            % (h['Status'], live, overlapped, integ))
+
+
+def scenario_livegate(daemon, t):
+    """Same shape as liveoverlap but DupeArticleFallback=stream: the live
+    pass must NOT run (option gate); the repair happens in post-processing
+    as before and the release still completes SUCCESS byte-identically."""
+    size_a, seg_a = 2_000_000, 200_000
+    size_b, seg_b = 4_000_000, 500_000
+    data_a = _payload(size_a, 7403)
+    data_b = _payload(size_b, 7404)
+    pa = _place_copy(t, 'gateA', data_a, 'a.mkv')
+    pb = _place_copy(t, 'gateB', data_b, 'b.mkv')
+    da = _place_copy(t, 'gateDon', data_a, 'a.mkv')
+    primary = build_multi_nzb([
+        (pa, 'GateA.mkv', size_a, seg_a, {4, 5, 6}),
+        (pb, 'GateB.mkv', size_b, seg_b, set()),
+    ])
+    donor = build_nzb(da, 'obf-gate.mkv', size_a, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'GateDonor', donor, True, 'gate-key', 50)
+    daemon.append(api, 'GateMain', primary, False, 'gate-key', 100)
+    h = daemon.wait_history(api, 'GateMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    integ = (_verify_output(t, data_a, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))) and
+             _verify_output(t, data_b, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))))
+    return ('livegate', ok and integ and live == 0 and repaired >= 1,
+            'status=%s live_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], live, repaired, integ))
+
+
+def scenario_livelastfile(daemon, t):
+    """DupeArticleFallback=live with a SINGLE damaged file: when its job is
+    captured no other file remains queued, so the live dispatch is skipped
+    (the post-processing stage starts moments later and repairs it there) -
+    asserts the last-file guard against a pointless race with the imminent
+    post-processing stage."""
+    size, seg = 2_000_000, 200_000
+    data = _payload(size, 7405)
+    pp = _place_copy(t, 'lastA', data, 'a.mkv')
+    dp = _place_copy(t, 'lastDon', data, 'a.mkv')
+    primary = build_nzb(pp, 'LastA.mkv', size, seg, {4, 5, 6})
+    donor = build_nzb(dp, 'obf-last.mkv', size, 160_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'LastDonor', donor, True, 'last-key', 50)
+    daemon.append(api, 'LastMain', primary, False, 'last-key', 100)
+    h = daemon.wait_history(api, 'LastMain')
+    ok = h['Status'].startswith('SUCCESS')
+    live = _grep_log(t, 'Starting live stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('livelastfile', ok and integ and live == 0 and repaired >= 1,
+            'status=%s live_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], live, repaired, integ))
+
+
+def scenario_repost(daemon, t):
+    """M1 same-bytes matching: a 4-member "release" (three equal-size rar
+    volumes + a small par2) where the payloads are random bytes standing in
+    for a PASSWORD-PROTECTED, COMPRESSED archive - stream repair never
+    interprets them, which is the point. The primary posting is missing
+    blocks in part01 and in the par2; the donor is a REPOST: byte-identical
+    members under the same names, cut into different article sizes. Suffix/
+    name pairing must match each damaged member to its donor twin and repair
+    both byte-identically (equal-size volumes prove pairing; the par2 proves
+    the small-file probe fallback and scaled floor). Expected history status
+    is FAILURE/PAR: ParCheck=auto runs the par stage against the stand-in
+    par2, which is opaque random bytes, so par-check fails by design -
+    byte integrity and the counters are the pass criteria here."""
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    members = [
+        ('repostA/x.part01.rar', 'Rel.part01.rar', vol, seg_primary, {2}),
+        ('repostA/x.part02.rar', 'Rel.part02.rar', vol, seg_primary, set()),
+        ('repostA/x.part03.rar', 'Rel.part03.rar', vol, seg_primary, set()),
+        ('repostA/x.par2', 'Rel.vol00+01.par2', 80_000, 70_000, {1}),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 7000 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+
+    donor_members = [(m[0].replace('repostA', 'repostB'), m[1], m[2], seg_donor, set())
+                     for m in members]
+    for m in donor_members:
+        t.write_file(os.path.join('data', m[0]), payloads[m[1]])
+
+    primary = build_multi_nzb(members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonRepost', donor, True, 'repost-key', 50)
+    daemon.append(api, 'RelRepost', primary, False, 'repost-key', 100)
+    h = daemon.wait_history(api, 'RelRepost')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    queued = _grep_log(t, 'Queueing stream repair')
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ_rar = _verify_output(t, payloads['Rel.part01.rar'], '.rar', dirs=both_dirs)
+    integ_par = _verify_output(t, payloads['Rel.vol00+01.par2'], '.par2', dirs=both_dirs)
+    intact_2 = _verify_output(t, payloads['Rel.part02.rar'], '.rar', dirs=both_dirs)
+    intact_3 = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=both_dirs)
+    return ('repost',
+            integ_rar and integ_par and intact_2 and intact_3 and
+            h['Status'] == 'FAILURE/PAR' and recov == 2 and queued >= 2 and repaired >= 2,
+            'status=%s recovered=%d queued_logs=%d repair_logs=%d '
+            'rar=%s par2=%s intact=%s/%s'
+            % (h['Status'], recov, queued, repaired,
+               integ_rar, integ_par, intact_2, intact_3))
+
+
+def scenario_repostrenamed(daemon, t):
+    """M1 tier-2 pairing end-to-end: the donor is a byte-identical repost
+    whose members were RENAMED (different release base name, same volume
+    suffixes), so exact-name pairing cannot fire and the unique-suffix-key
+    tier must pair the damaged member with its donor twin. No par2 members,
+    and every hole gets filled, so the byte-based health recount now takes
+    the item all the way to SUCCESS (moved to the final destination) instead
+    of parking at FAILURE/HEALTH; byte integrity and the counters are the
+    pass criteria."""
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    members = [
+        ('renA/x.part01.rar', 'Rel.part01.rar', vol, seg_primary, set()),
+        ('renA/x.part02.rar', 'Rel.part02.rar', vol, seg_primary, {2}),
+        ('renA/x.part03.rar', 'Rel.part03.rar', vol, seg_primary, set()),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 8100 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+
+    donor_members = [(m[0].replace('renA', 'renB'), m[1].replace('Rel.', 'Other.'),
+                      m[2], seg_donor, set()) for m in members]
+    for dm, m in zip(donor_members, members):
+        t.write_file(os.path.join('data', dm[0]), payloads[m[1]])
+
+    primary = build_multi_nzb(members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonRenamed', donor, True, 'ren-key', 50)
+    daemon.append(api, 'RelRenamed', primary, False, 'ren-key', 100)
+    h = daemon.wait_history(api, 'RelRenamed')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs)
+                for m in members)
+    return ('repostrenamed', integ and recov >= 1 and repaired >= 1,
+            'status=%s recovered=%d repair_logs=%d integrity=%s'
+            % (h['Status'], recov, repaired, integ))
+
+
+def scenario_xpackbare(daemon, t):
+    """M2 cross-packing smoke test: the primary posts movie.mkv BARE and
+    completes with a hole; the only duplicate posts the SAME movie packed
+    into store-mode RAR3 volumes (different framing, different offsets,
+    different segmentation). M1 cannot pair bare against rar volumes -
+    the ContentMap pass must locate the missing bytes inside the donor's
+    volumes and patch them. No par2, and the hole is fully filled, so the
+    byte-based health recount now completes the item as SUCCESS (moved to
+    the final destination) instead of parking at FAILURE/HEALTH; integrity,
+    the cross-packing logs and the counter are the pass criteria."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 300_000
+    data = _payload(size, 5150)
+    pp = _place_copy(t, 'xpbA', data, 'movie.mkv')
+    primary = build_nzb(pp, 'movie.mkv', size, seg_primary, {5, 6})
+
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    donor_members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpbB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), seg_donor, set()))
+    donor = build_multi_nzb(donor_members)
+
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXpb', donor, True, 'xpb-key', 50)
+    daemon.append(api, 'RelXpb', primary, False, 'xpb-key', 100)
+    h = daemon.wait_history(api, 'RelXpb')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    xpack = _grep_log(t, 'Cross-packing repair of')
+    repaired = _grep_log(t, 'cross-packing')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackbare', integ and recov >= 1 and xpack >= 1 and repaired >= 1,
+            'status=%s recovered=%d xpack_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], recov, xpack, repaired, integ))
+
+
+def _xpack_run(daemon, t, tag, primary_members, donor_members, payloads,
+               primary_password=None, donor_password=None):
+    """Append donor (paused) + primary under one dupe-key, wait for history,
+    return (history, per-payload integrity dict, log counters).
+    ``primary_password``/``donor_password`` attach a <meta type="password">
+    block to the respective NZB (see build_multi_nzb) for the M3
+    password-assisted xcrypt scenarios; both default to no password, which is
+    the M2 (unencrypted) behavior every other xpack* scenario relies on."""
+    primary = build_multi_nzb(primary_members, password=primary_password)
+    donor = build_multi_nzb(donor_members, password=donor_password)
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, donor, True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, primary, False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'Rel' + tag)
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integrity = {name: _verify_output(t, data, os.path.splitext(name)[1], dirs=both_dirs)
+                 for name, data in payloads.items()}
+    counters = {
+        'recov': int(h.get('DupeRecoveredArticles', 0)),
+        'xpack': _grep_log(t, 'Cross-packing repair of'),
+        'repaired': _grep_log(t, 'cross-packing'),
+        'rejected': _grep_log(t, 'content identity not confirmed'),
+        'missing': _grep_log(t, 'still missing after stream repair'),
+    }
+    return h, integrity, counters
+
+
+def scenario_xpackrar(daemon, t):
+    """Store-rar target repaired from a BARE donor, with degradation: vol2
+    has a data hole (repairable through the map), vol3 lost its first part
+    including the rar headers (that volume must be excluded and stay
+    damaged for par2 - which doesn't exist here). This is the PARTIAL-repair
+    proof for the health recount: RepairCompleted only credits a target's
+    encoded failed size back to health when EVERY one of its holes is
+    filled, so vol3's unrepaired header hole means the item still stays
+    FAILURE/HEALTH - never a false SUCCESS - and that is asserted directly
+    below."""
+    size = 6_000_000
+    data = _payload(size, 6100)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    missing = [set(), {2}, {1}]        # vol2: data hole; vol3: header hole
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xprA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    dp = _place_copy(t, 'xprB', data, 'movie.mkv')
+    donor_members = [(dp, 'movie.mkv', size, 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpr', members, donor_members, payloads)
+    not_success = 'SUCCESS' not in h['Status']
+    ok = (integ['Rel.part01.rar'] and integ['Rel.part02.rar'] and
+          not integ['Rel.part03.rar'] and              # header-holed vol stays damaged
+          not_success and                               # partial repair never parks as SUCCESS
+          c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1 and
+          c['missing'] >= 1)
+    return ('xpackrar', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d missing=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], c['missing'],
+               {k: v for k, v in integ.items()}))
+
+
+def scenario_xpackrar2rar(daemon, t):
+    """rar-to-rar with DIFFERENT volume sizes (3x2MB target, 4x1.5MB donor):
+    member-wise M1 cannot window these (sizes differ by 25%), the inner
+    stream matches exactly."""
+    size = 6_000_000
+    data = _payload(size, 6200)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xr2A/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 1_500_000), 1):
+        rel = 'xr2B/other.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Other.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xr2', members, donor_members, payloads)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpackrar2rar', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
+def scenario_xpack2sets(daemon, t):
+    """TWO damaged store-rar sets in one item, repaired from ONE duplicate
+    carrying both sets at different volume sizes. Locks R>1 correctness of
+    per-donor-set map reuse: both sets must repair byte-identically and the
+    per-pair identity gate (inner-size equality + probes) must still route
+    each repair set to ITS donor set only."""
+    size = 6_000_000
+    data_one = _payload(size, 6300)
+    data_two = _payload(size, 6301)
+    payloads, members = {}, []
+    for tag, data in (('one', data_one), ('two', data_two)):
+        volumes = generators.rar3_store_volumes('movie_%s.mkv' % tag, data, 2_000_000)
+        for i, vol in enumerate(volumes, 1):
+            rel = 'x2sA/%s.part%02d.rar' % (tag, i)
+            name = 'Rel%s.part%02d.rar' % (tag.capitalize(), i)
+            t.write_file(os.path.join('data', rel), vol)
+            payloads[name] = vol
+            members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for tag, data in (('one', data_one), ('two', data_two)):
+        volumes = generators.rar3_store_volumes('movie_%s.mkv' % tag, data, 1_500_000)
+        for i, vol in enumerate(volumes, 1):
+            rel = 'x2sB/o%s.part%02d.rar' % (tag, i)
+            t.write_file(os.path.join('data', rel), vol)
+            donor_members.append(
+                (rel, 'O%s.part%02d.rar' % (tag.capitalize(), i), len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'X2s', members, donor_members, payloads)
+    ok = all(integ.values()) and c['repaired'] >= 2 and c['recov'] >= 2
+    return ('xpack2sets', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
+def scenario_xpackzip(daemon, t):
+    """Bare target repaired from a SPANNED STORED ZIP donor (z01+z02+zip).
+    No par2 and the hole is fully filled, so the byte-based health recount
+    takes the item to SUCCESS (moved to the final destination) - asserted
+    directly below as the cross-packing proof of the recount."""
+    size = 6_000_000
+    data = _payload(size, 6300)
+    pp = _place_copy(t, 'xpzA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    zip_bytes = generators.zip_store([('movie.mkv', data)])
+    pieces = generators.split_bytes(zip_bytes, [2_500_000, 2_500_000])
+    suffixes = ['z01', 'z02', 'zip']
+    donor_members = []
+    for piece, suffix in zip(pieces, suffixes):
+        rel = 'xpzB/rel.%s' % suffix
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'Rel.%s' % suffix, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpz', members, donor_members, payloads)
+    ok = (integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1 and
+          'SUCCESS' in h['Status'])
+    return ('xpackzip', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xpack7z(daemon, t):
+    """Bare target repaired from a 7z-COPY donor posted as .7z.001/.002."""
+    size = 6_000_000
+    data = _payload(size, 6400)
+    pp = _place_copy(t, 'xp7A', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    archive = generators.seven_zip_copy([('movie.mkv', data)])
+    pieces = generators.split_bytes(archive, [3_000_100])
+    donor_members = []
+    for i, piece in enumerate(pieces, 1):
+        rel = 'xp7B/rel.7z.%03d' % i
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'Rel.7z.%03d' % i, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xp7', members, donor_members, payloads)
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpack7z', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xpacksplit(daemon, t):
+    """Store-rar target repaired from RAW SPLITS (movie.mkv.001/.002/.003)."""
+    size = 6_000_000
+    data = _payload(size, 6500)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpsA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {3} if i == 1 else set()))
+    donor_members = []
+    for i, piece in enumerate(generators.split_bytes(data, [2_000_000, 2_000_000]), 1):
+        rel = 'xpsB/movie.mkv.%03d' % i
+        t.write_file(os.path.join('data', rel), piece)
+        donor_members.append((rel, 'movie.mkv.%03d' % i, len(piece), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xps', members, donor_members, payloads)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xpacksplit', ok, 'status=%s recovered=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['repaired'], all(integ.values())))
+
+
+def scenario_xpackcompressed(daemon, t):
+    """The mechanism ladder on a COMPRESSED archive: M2 must never map it
+    (method gate), but a byte-identical repost still repairs it via M1 -
+    exactly the promise the docs make for compressed/encrypted content."""
+    size = 4_000_000
+    data = _payload(size, 6600)      # opaque stand-in for compressed bytes
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000, method=0x33)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpcA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 1 else set()))
+    donor_members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xpcB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpc', members, donor_members, payloads)
+    repaired_m1 = _grep_log(t, 'donor article(s)')
+    ok = (all(integ.values()) and c['recov'] >= 1 and repaired_m1 >= 1 and
+          c['xpack'] == 0)          # M1 filled the holes; M2 never needed
+    return ('xpackcompressed', ok,
+            'status=%s recovered=%d m1_repairs=%d xpack=%d integ=%s'
+            % (h['Status'], c['recov'], repaired_m1, c['xpack'], all(integ.values())))
+
+
+def scenario_xpackneg(daemon, t):
+    """The negative: a donor set with the RIGHT inner size but the WRONG
+    bytes (different payload packed into store-rar volumes). The inner
+    probes must reject it; nothing may be written."""
+    size = 6_000_000
+    data = _payload(size, 6700)
+    decoy = _payload(size, 6800)
+    pp = _place_copy(t, 'xpnA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    donor_members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', decoy, 2_000_000), 1):
+        rel = 'xpnB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpn', members, donor_members,
+                             {'movie.mkv': data, 'decoy': decoy})
+    ok = (c['rejected'] >= 1 and c['recov'] == 0 and c['missing'] >= 1 and
+          not integ['movie.mkv'] and not integ['decoy'])
+    return ('xpackneg', ok,
+            'status=%s recovered=%d rejected=%d missing=%d file_matches=%s/%s'
+            % (h['Status'], c['recov'], c['rejected'], c['missing'],
+               integ['movie.mkv'], integ['decoy']))
+
+
+def scenario_xcrypt_encplain(daemon, t):
+    """M3 password-assisted cross-packing: the TARGET is a password-ENCRYPTED
+    store-rar release (one continuous AES-128-CBC stream across volumes -
+    ContentMap.cpp's cipher-composite map - built with a deliberately
+    non-16-aligned volume_size to exercise real WinRAR's arbitrary volume
+    cuts, see rar3_store_volumes_encrypted). Its own password travels via its
+    NZB <head><meta type="password">; the target's ContentMap is built with
+    that password directly (no ladder needed on the target side - see
+    ExecCrossPackRepair). A data hole sits in the MIDDLE volume (volume 1's
+    and 3's headers+salt stay intact, only volume 2 loses a non-header
+    segment). The donor is the SAME movie posted BARE and unencrypted -
+    cross-packing decrypts the target's plaintext space with its own key,
+    patches from the donor's plaintext, and re-encrypts back into the
+    on-disk ciphertext. Byte-identical ENCRYPTED volumes afterward prove the
+    whole decrypt/patch/re-encrypt round trip."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_encplain', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7100)
+    password = 'target-pw-A'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]      # only volume 2 loses a non-header segment
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xceA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    dp = _place_copy(t, 'xceB', data, 'movie.mkv')
+    donor_members = [(dp, 'movie.mkv', size, 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xce', members, donor_members, payloads,
+                             primary_password=password)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_encplain', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], all(integ.values())))
+
+
+def scenario_xcrypt_plainenc(daemon, t):
+    """Reverse direction: a BARE unencrypted target with a hole is repaired
+    from a password-ENCRYPTED store-rar donor. The donor's password travels
+    via its own NZB <meta type="password">; ExecCrossPackRepair's M3 retry
+    ladder tries the donor without a password first (fails: "encrypted
+    archive data"), then retries with donor.Password and succeeds."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_plainenc', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7200)
+    password = 'donor-pw-B'
+    pp = _place_copy(t, 'xpeA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password), 1):
+        rel = 'xpeB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xpe', members, donor_members, payloads,
+                             donor_password=password)
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_plainenc', ok, 'status=%s recovered=%d repaired=%d integrity=%s'
+            % (h['Status'], c['recov'], c['repaired'], integ['movie.mkv']))
+
+
+def scenario_xcrypt_diffpass(daemon, t):
+    """Both sides encrypted with DIFFERENT passwords and different volume
+    sizes: the target (password A) has a data hole in its middle volume; the
+    donor (password B) is a repost of the same movie under its own key. This
+    proves the two crypto contexts never mix - the donor's plaintext is
+    recovered with ITS key (VerifyDonorSetEncrypted/ReadDonorInner use the
+    donor's own ContentMap+RunCrypto) and the patch is re-encrypted with the
+    TARGET's key (PatchFromDonorSetEncrypted uses repairSet.Map's RunCrypto)."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_diffpass', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7300)
+    pw_a, pw_b = 'password-A', 'password-B'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, pw_a)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xdpA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 1_500_001, pw_b), 1):
+        rel = 'xdpB/other.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Other.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdp', members, donor_members, payloads,
+                             primary_password=pw_a, donor_password=pw_b)
+    ok = all(integ.values()) and c['recov'] >= 1 and c['xpack'] >= 1 and c['repaired'] >= 1
+    return ('xcrypt_diffpass', ok,
+            'status=%s recovered=%d xpack=%d repaired=%d integ=%s'
+            % (h['Status'], c['recov'], c['xpack'], c['repaired'], all(integ.values())))
+
+
+def scenario_xcrypt_wrongpass(daemon, t):
+    """NEGATIVE: a bare unencrypted target with a hole; the encrypted donor's
+    NZB advertises a password that does NOT match the one it was actually
+    encrypted with. RAR3 carries no stored password-check value (real WinRAR
+    fact, mirrored in StreamCryptoRar3WrongPasswordTest) - so the M3 retry
+    ladder's BuildMap call SUCCEEDS with a wrong key instead of failing
+    closed there; the mismatch is only caught downstream, when the wrongly
+    "decrypted" donor plaintext is content-identity-probed against the
+    target's known bytes and rejected ("content identity not confirmed").
+    Nothing may be written and the target must stay exactly as it arrived -
+    the same fail-closed guarantee xpackneg proves for the plain case."""
+    if not generators.HAVE_CRYPTO:
+        return ('xcrypt_wrongpass', None, 'SKIP: cryptography not installed')
+    size = 6_000_000
+    data = _payload(size, 7400)
+    real_password = 'correct-pw'
+    wrong_password = 'incorrect-pw'
+    pp = _place_copy(t, 'xwpA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    donor_members = []
+    for i, vol in enumerate(
+            generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, real_password), 1):
+        rel = 'xwpB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        donor_members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+
+    h, integ, c = _xpack_run(daemon, t, 'Xwp', members, donor_members, payloads,
+                             donor_password=wrong_password)
+    ok = c['rejected'] >= 1 and c['recov'] == 0 and not integ['movie.mkv']
+    return ('xcrypt_wrongpass', ok,
+            'status=%s recovered=%d rejected=%d integrity=%s'
+            % (h['Status'], c['recov'], c['rejected'], integ['movie.mkv']))
+
+
+def scenario_xdecomp_zip(daemon, t):
+    """M4 decompression donor: a bare movie.mkv target with holes, repaired
+    from a REAL DEFLATE-compressed zip donor (generators.zip_deflated)
+    holding the identical movie.mkv. M2 never maps this (BuildZipMap rejects
+    any Method != 0 entry), so only the M4 ladder - materialize the donor's
+    articles, shell out to the configured SevenZipCmd to extract movie.mkv,
+    verify the extracted bytes against the target's own downloaded bytes,
+    then patch the holes - can repair it. Requires DupeStreamDecompress=yes
+    (see SCENARIO_OPTIONS) and a local 7z (generators.HAVE_7Z); SKIPs
+    gracefully without one. No par2 and the hole is fully filled, so the
+    byte-based health recount takes the item to SUCCESS - asserted directly
+    below as the decompression proof of the recount."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_zip', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8200)
+    pp = _place_copy(t, 'xdzA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    archive = generators.zip_deflated([('movie.mkv', data)])
+    rel = 'xdzB/rel.zip'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.zip', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdz', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = (integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1 and
+          'SUCCESS' in h['Status'])
+    return ('xdecomp_zip', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_7z(daemon, t):
+    """Same shape as xdecomp_zip, but the donor is a REAL LZMA2-compressed 7z
+    archive (generators.seven_zip_lzma) - BuildSevenZipMap rejects its
+    non-Copy coder, so only the M4 decompression ladder can repair the bare
+    target."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_7z', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8300)
+    pp = _place_copy(t, 'xd7A', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xd7z-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xd7B/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xd7', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_7z', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_storetarget(daemon, t):
+    """The M4 ladder against a non-bare TARGET: a store-mode rar3 target
+    (generators.rar3_store_volumes, the same M2 target-side generator
+    xpackrar uses - no external tool needed to CREATE it) with a data hole
+    in its second volume, repaired from a REAL LZMA2-compressed 7z donor of
+    the same inner movie.mkv. Proves the M4 extracted-donor path reuses the
+    plain (M2) inner-space target map, not just the identity/bare map."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_storetarget', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8400)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'xdsA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, {2} if i == 2 else set()))
+    with tempfile.TemporaryDirectory(prefix='xds-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdsB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xds', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = all(integ.values()) and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_storetarget', ok,
+            'status=%s recovered=%d decompressed_logs=%d integ=%s'
+            % (h['Status'], c['recov'], decompressed, all(integ.values())))
+
+
+def scenario_xdecomp_enc7z(daemon, t):
+    """The POSIX password-quoting proof: a bare target repaired from a
+    HEADER-ENCRYPTED LZMA2 7z donor (generators.seven_zip_lzma_encrypted,
+    ``-mhe=on -p<password>``), the donor's password traveling via its own
+    NZB <meta type="password"> exactly like xcrypt_plainenc threads an
+    encrypted-rar donor's password. Unpack::MakeExtractor/MakePassword must
+    pass that password to 7z as a single raw argv element on POSIX (M4 Task
+    2, commit 3c3e9130) - a quote-wrapped password would make 7z see the
+    literal quote characters and fail extraction, and this scenario would
+    then FAIL (not SKIP)."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_enc7z', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8500)
+    password = 'decomp-pw-7z'
+    pp = _place_copy(t, 'xdeA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xde-') as workdir:
+        archive = generators.seven_zip_lzma_encrypted([('movie.mkv', data)], workdir, password)
+    rel = 'xdeB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xde', members, donor_members, payloads,
+                             donor_password=password)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = integ['movie.mkv'] and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_enc7z', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def scenario_xdecomp_enctarget(daemon, t):
+    """The M3+M4 composition: a password-ENCRYPTED store-rar TARGET (same
+    generator as xcrypt_encplain) with a data hole in its middle volume,
+    repaired from a COMPRESSED 7z donor of the same movie.mkv. The donor
+    cannot map for byte-copy (it is compressed), so M4 materializes and
+    extracts it to plaintext; that plaintext is then re-encrypted under the
+    target's own AES-CBC stream context (the M3 write core) and the
+    ciphertext written into the hole. Byte-identical ENCRYPTED volumes prove
+    the extract -> re-encrypt -> patch round trip. Requires both a crypto
+    module (encrypted target generator) and a 7z binary (compressed donor)."""
+    if not generators.HAVE_CRYPTO:
+        return ('xdecomp_enctarget', None, 'SKIP: cryptography not installed')
+    if not generators.HAVE_7Z:
+        return ('xdecomp_enctarget', None, 'SKIP: 7z not installed')
+    size = 6_000_000
+    data = _payload(size, 8600)
+    password = 'target-pw-D'
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 2_000_003, password)
+    payloads, members = {}, []
+    missing = [set(), {2}, set()]      # only volume 2 loses a non-header segment
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xdeA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    with tempfile.TemporaryDirectory(prefix='xde-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdeB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xde', members, donor_members, payloads,
+                             primary_password=password)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = all(integ.values()) and c['recov'] >= 1 and decompressed >= 1
+    return ('xdecomp_enctarget', ok,
+            'status=%s recovered=%d decompressed_logs=%d integ=%s'
+            % (h['Status'], c['recov'], decompressed, all(integ.values())))
+
+
+def scenario_xdecomp_neg(daemon, t):
+    """The negative: a bare target repaired attempt from a REAL 7z donor
+    holding the RIGHT-size but WRONG-bytes inner file (a decoy payload of
+    the same size). VerifyDonorInnerFile's identity probe must reject it
+    (`content identity not confirmed`) before any write; nothing may be
+    written and neither file may end up matching the other."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_neg', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8600)
+    decoy = _payload(size, 8700)
+    pp = _place_copy(t, 'xdnA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    with tempfile.TemporaryDirectory(prefix='xdn-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', decoy)], workdir)
+    rel = 'xdnB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdn', members, donor_members,
+                             {'movie.mkv': data, 'decoy': decoy})
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = (c['rejected'] >= 1 and c['recov'] == 0 and decompressed == 0 and
+          not integ['movie.mkv'] and not integ['decoy'])
+    return ('xdecomp_neg', ok,
+            'status=%s recovered=%d rejected=%d decompressed_logs=%d file_matches=%s/%s'
+            % (h['Status'], c['recov'], c['rejected'], decompressed,
+               integ['movie.mkv'], integ['decoy']))
+
+
+def scenario_xdecomp_symlink(daemon, t):
+    """A compressed donor with a valid movie plus a symlink must be rejected
+    before selecting or patching the movie (`archive contains link`). The
+    link is RELATIVE and in-tree on purpose: 7-Zip 23.01+ refuses to create
+    absolute or ``..`` link targets at extraction time (exit code 2, link
+    skipped), which fails the extract step before the daemon's own link
+    check ever runs - only a link every extractor generation materializes
+    can probe that check. A relative link to the valid movie.mkv is also the
+    attack shape the check guards against: followed naively it would
+    "verify" trivially. Cleanup must unlink the extracted symlink, preserve
+    the outside sentinel, and remove every stream-decompression scratch
+    directory."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_symlink', None, 'SKIP: 7z not installed')
+    if t.name != 'local':
+        return ('xdecomp_symlink', None, 'SKIP: POSIX local target required')
+
+    size = 1_000_000
+    data = _payload(size, 8750)
+    sentinel_data = b'outside-sentinel-must-survive'
+    t.write_file(os.path.join('outside', 'sentinel'), sentinel_data)
+
+    primary_path = _place_copy(t, 'xdlA', data, 'movie.mkv')
+    members = [(primary_path, 'movie.mkv', size, 250_000, {2})]
+    archive = generators.zip_deflated_with_symlink(
+        [('movie.mkv', data)], 'movie-link.mkv', 'movie.mkv')
+    rel = 'xdlB/rel.zip'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.zip', len(archive), 200_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdl', members, donor_members,
+                             {'movie.mkv': data})
+    rejected_links = _grep_log(t, 'archive contains link')
+    try:
+        sentinel_survived = t.read_file(os.path.join('outside', 'sentinel')) == sentinel_data
+    except Exception:
+        sentinel_survived = False
+
+    scratch_dirs = []
+    for root, dirs, _ in os.walk(t.path('main')):
+        scratch_dirs.extend(os.path.join(root, name) for name in dirs
+                            if name.startswith('.stream-decompress.'))
+
+    ok = (h['Status'] == 'FAILURE/HEALTH' and c['recov'] == 0 and
+          rejected_links >= 1 and not integ['movie.mkv'] and
+          sentinel_survived and not scratch_dirs)
+    return ('xdecomp_symlink', ok,
+            'status=%s recovered=%d rejected_links=%d integrity=%s '
+            'sentinel=%s scratch_dirs=%d'
+            % (h['Status'], c['recov'], rejected_links, integ['movie.mkv'],
+               sentinel_survived, len(scratch_dirs)))
+
+
+def scenario_xdecomp_off(daemon, t):
+    """The opt-in gate proof: the SAME bare-target-vs-compressed-7z-donor
+    setup as xdecomp_7z, but DupeStreamDecompress is OMITTED (default no -
+    see SCENARIO_OPTIONS, which deliberately does NOT add it here). The
+    decompression path must never run (no `(decompressed)` log) and the
+    item must stay unrepaired - M2 already rejected this donor's non-Copy
+    coder, and M4 is off, so nothing else can map it."""
+    if not generators.HAVE_7Z:
+        return ('xdecomp_off', None, 'SKIP: 7z not installed')
+    size = 4_000_000
+    data = _payload(size, 8800)
+    pp = _place_copy(t, 'xdoA', data, 'movie.mkv')
+    members = [(pp, 'movie.mkv', size, 500_000, {5, 6})]
+    payloads = {'movie.mkv': data}
+    with tempfile.TemporaryDirectory(prefix='xdo-') as workdir:
+        archive = generators.seven_zip_lzma([('movie.mkv', data)], workdir)
+    rel = 'xdoB/rel.7z'
+    t.write_file(os.path.join('data', rel), archive)
+    donor_members = [(rel, 'Rel.7z', len(archive), 300_000, set())]
+
+    h, integ, c = _xpack_run(daemon, t, 'Xdo', members, donor_members, payloads)
+    decompressed = _grep_log(t, '(decompressed)')
+    ok = decompressed == 0 and c['recov'] == 0 and not integ['movie.mkv']
+    return ('xdecomp_off', ok,
+            'status=%s recovered=%d decompressed_logs=%d integrity=%s'
+            % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
+
+
+def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
+    """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
+    <name><ext>, whose exact path depends on category and FileNaming. When
+    the history status stays non-SUCCESS (e.g. a PARTIALLY-repaired release
+    still has failed-byte statistics, so cleanup/move-to-dst is skipped and
+    nzbget "parks" the item instead - see HistoryCoordinator's
+    cleanupParkedFiles logic), the same file instead sits under
+    main/inter/<nzb>.#<id>/<name><ext>. Walk the directories specified in
+    'dirs' (by default, main/dst only; scenarios whose item ends parked,
+    like xpackrar's header-holed volume, pass both main/dst and main/inter)
+    and byte-compare every produced file with the given extension against
+    the source payload."""
+    for base in dirs:
+        for rel in t.find_files(*base):
+            if rel.endswith(ext):
+                try:
+                    if t.read_file(rel) == expected:
+                        return True
+                except Exception:
+                    pass
+    return False
+
+
+def _grep_log(t, needle):
+    try:
+        return t.read_file('nzbget.log').decode(errors='replace').count(needle)
+    except Exception:
+        return 0
+
+
+def _log_before(t, first, second):
+    """True when the FIRST occurrence of ``first`` precedes the FIRST
+    occurrence of ``second`` in the daemon log (both must occur). The log is
+    strictly append-ordered, so this proves event ordering."""
+    try:
+        log = t.read_file('nzbget.log').decode(errors='replace')
+    except Exception:
+        return False
+    first_at = log.find(first)
+    second_at = log.find(second)
+    return 0 <= first_at < second_at
+
+
+SCENARIOS = {
+    'complementary': scenario_complementary,
+    'cutover': scenario_cutover,
+    'leadswitch': scenario_leadswitch,
+    'cutovertruth': scenario_cutovertruth,
+    'manydonors': scenario_manydonors,
+    'stream': scenario_stream,
+    'liveoverlap': scenario_liveoverlap,
+    'livegate': scenario_livegate,
+    'livelastfile': scenario_livelastfile,
+    'repost': scenario_repost,
+    'repostrenamed': scenario_repostrenamed,
+    'xpackbare': scenario_xpackbare,
+    'xpackrar': scenario_xpackrar,
+    'xpackrar2rar': scenario_xpackrar2rar,
+    'xpack2sets': scenario_xpack2sets,
+    'xpackzip': scenario_xpackzip,
+    'xpack7z': scenario_xpack7z,
+    'xpacksplit': scenario_xpacksplit,
+    'xpackcompressed': scenario_xpackcompressed,
+    'xpackneg': scenario_xpackneg,
+    'xcrypt_encplain': scenario_xcrypt_encplain,
+    'xcrypt_plainenc': scenario_xcrypt_plainenc,
+    'xcrypt_diffpass': scenario_xcrypt_diffpass,
+    'xcrypt_wrongpass': scenario_xcrypt_wrongpass,
+    'xdecomp_zip': scenario_xdecomp_zip,
+    'xdecomp_7z': scenario_xdecomp_7z,
+    'xdecomp_storetarget': scenario_xdecomp_storetarget,
+    'xdecomp_enc7z': scenario_xdecomp_enc7z,
+    'xdecomp_enctarget': scenario_xdecomp_enctarget,
+    'xdecomp_neg': scenario_xdecomp_neg,
+    'xdecomp_symlink': scenario_xdecomp_symlink,
+    'xdecomp_off': scenario_xdecomp_off,
+}
+
+EXPECTED_HISTORY_STATUS = {
+    'complementary': 'SUCCESS/HEALTH', 'cutover': 'SUCCESS/HEALTH',
+    'leadswitch': 'SUCCESS/HEALTH', 'cutovertruth': 'SUCCESS/HEALTH',
+    'manydonors': 'SUCCESS/HEALTH',
+    'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
+    'repostrenamed': 'SUCCESS/HEALTH', 'xpackbare': 'SUCCESS/HEALTH',
+    'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
+    'xpack2sets': 'SUCCESS/HEALTH',
+    'xpackzip': 'SUCCESS/HEALTH', 'xpack7z': 'SUCCESS/HEALTH',
+    'xpacksplit': 'SUCCESS/HEALTH', 'xpackcompressed': 'SUCCESS/HEALTH',
+    'xpackneg': 'FAILURE/HEALTH', 'xcrypt_encplain': 'SUCCESS/HEALTH',
+    'xcrypt_plainenc': 'SUCCESS/HEALTH', 'xcrypt_diffpass': 'SUCCESS/HEALTH',
+    'xcrypt_wrongpass': 'FAILURE/HEALTH', 'xdecomp_zip': 'SUCCESS/HEALTH',
+    'xdecomp_7z': 'SUCCESS/HEALTH', 'xdecomp_storetarget': 'SUCCESS/HEALTH',
+    'xdecomp_enc7z': 'SUCCESS/HEALTH', 'xdecomp_neg': 'FAILURE/HEALTH',
+    'xdecomp_symlink': 'FAILURE/HEALTH', 'xdecomp_off': 'FAILURE/HEALTH',
+}
+
+# per-scenario daemon options; the article-level scenarios keep the legacy
+# "yes" spelling on purpose - it must still parse as "article". The stream
+# scenario overrides the base config's ParCheck=manual: under "manual" the
+# RequestParCheck the repair stage issues would only flag the item instead
+# of running the par stage, leaving that handoff untested (with no par2
+# files present, "auto" ends in a harmless "Nothing to par-check").
+# the xdecomp_* daemon config pins SevenZipCmd at whatever real 7z binary
+# generators._find_7z() discovered on PATH, so Unpack::MakeExtractor has a
+# tool to shell out to; empty when none was found (the scenarios themselves
+# SKIP in that case, see generators.HAVE_7Z).
+_SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.HAVE_7Z else []
+
+SCENARIO_OPTIONS = {
+    'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
+    # downloading long enough that FileA's live repair provably overlaps it
+    'liveoverlap': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=8000'],
+    'livegate': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'livelastfile': ['DupeArticleFallback=live', 'ParCheck=auto'],
+    # repost: ParCheck=auto runs par-check against a random-bytes stand-in
+    # par2 after the repair - FAILURE/PAR is the EXPECTED final status
+    'repost': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # repostrenamed: no par2 members; "auto" ends in a harmless
+    # "Nothing to par-check" after the repair handoff
+    'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xpackbare: no par2; "auto" ends in "Nothing to par-check" post-repair
+    'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"
+    'xpackrar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackrar2rar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpack2sets': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackzip': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpack7z': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpacksplit': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackcompressed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xcrypt_*: M3 password-assisted cross-encryption; no real par2 anywhere,
+    # ParCheck=auto ends in "Nothing to par-check" post-repair. Skipped
+    # outright (no daemon options matter) when the cryptography module is
+    # not installed - see generators.HAVE_CRYPTO.
+    'xcrypt_encplain': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_plainenc': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_diffpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xcrypt_wrongpass': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # xdecomp_*: M4 decompression-assisted donor extraction. SevenZipCmd is
+    # pinned at the locally-discovered 7z binary (generators.SEVENZIP_PATH,
+    # via _SEVENZIP_OPTION below) so Unpack::MakeExtractor has a real tool to
+    # shell out to; every xdecomp_* scenario SKIPs outright when 7z is not
+    # installed (see generators.HAVE_7Z) before even reading this dict.
+    # xdecomp_off is the deliberate exception: it OMITS
+    # DupeStreamDecompress=yes to prove the opt-in gate, everything else
+    # about its fixture matches xdecomp_7z.
+    'xdecomp_zip': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                    'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                   'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_storetarget': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                            'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_enc7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                      'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_enctarget': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                          'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_neg': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                    'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_symlink': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
+                        'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_off': ['DupeArticleFallback=stream', 'ParCheck=auto'] + _SEVENZIP_OPTION,
+}
+DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
+
+def main():
+    ap = argparse.ArgumentParser(description='DupeArticleFallback functional harness')
+    ap.add_argument('--nzbget', required=True,
+                    help='path to nzbget binary (local) or ON-DEVICE path (adb)')
+    ap.add_argument('--target', choices=['local', 'adb'], default='local')
+    ap.add_argument('--scenario', default='all',
+                    choices=['all'] + list(SCENARIOS))
+    ap.add_argument('--serial', help='adb device serial (adb target)')
+    ap.add_argument('--keep', action='store_true', help='keep the workdir')
+    args = ap.parse_args()
+
+    scenarios = list(SCENARIOS) if args.scenario == 'all' else [args.scenario]
+    results = []
+
+    for name in scenarios:
+        if args.target == 'adb' and name.startswith('xdecomp_'):
+            results.append((name, None, 'SKIP: target-side archive extractor is not provisioned on Android'))
+            print('[SKIP] %s  (target-side archive extractor is not provisioned on Android)' % name)
+            continue
+        nntp = free_port()
+        rpc = free_port()
+        while rpc == nntp:  # the two must not coincide
+            rpc = free_port()
+        stage = tempfile.mkdtemp(prefix='dupefallback-%s-' % name)
+        if args.target == 'local':
+            target = LocalTarget(args.nzbget, stage)
+        else:
+            target = AdbTarget(args.nzbget, stage, serial=args.serial)
+        daemon = Daemon(target, nntp, rpc)
+        try:
+            daemon.write_config(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
+            daemon.start_nserv()
+            time.sleep(1)
+            daemon.start()
+            if args.target == 'adb':
+                target.forward_rpc(rpc)
+            time.sleep(2)
+            sc_name, passed, detail = SCENARIOS[name](daemon, target)
+            expected_status = EXPECTED_HISTORY_STATUS.get(name)
+            if passed is not None and expected_status and \
+                    ('status=%s' % expected_status) not in detail:
+                passed = False
+                detail += ' expected_status=%s' % expected_status
+            results.append((sc_name, passed, detail))
+            label = 'SKIP' if passed is None else ('PASS' if passed else 'FAIL')
+            print('[%s] %s  (%s)' % (label, sc_name, detail))
+        except Exception as e:
+            results.append((name, False, 'ERROR: %s' % e))
+            print('[FAIL] %s  (ERROR: %s)' % (name, e))
+        finally:
+            target.teardown(args.keep)
+
+    # tri-state result: True/False are real pass/fail, None is a graceful SKIP
+    # (e.g. an xcrypt_* scenario when the cryptography module is not
+    # installed) - it counts toward neither the numerator nor the "attempted"
+    # denominator, and never fails the run on its own.
+    skipped = sum(1 for _, p, _ in results if p is None)
+    attempted = len(results) - skipped
+    passed_count = sum(1 for _, p, _ in results if p)
+    failed = any(p is False for _, p, _ in results)
+    suffix = ' (+%d skipped)' % skipped if skipped else ''
+    print('\n=== %s / %s scenarios passed%s on target=%s ===' % (
+        passed_count, attempted, suffix, args.target))
+    if failed:
+        return 1
+    # A requested scenario that cannot run is an explicit, machine-readable
+    # infrastructure result. Never turn missing crypto/7z into a green run.
+    return 77 if skipped else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

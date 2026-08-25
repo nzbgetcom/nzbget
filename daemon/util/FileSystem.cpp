@@ -672,6 +672,15 @@ bool FileSystem::CreateDirectory(const char* dirFilename)
 	return DirectoryExists(dirFilename);
 }
 
+bool FileSystem::CreateDirectoryExclusive(const char* dirFilename)
+{
+#ifdef WIN32
+	return _wmkdir(UtfPathToWidePath(dirFilename)) == 0;
+#else
+	return mkdir(dirFilename, S_DIRMODE) == 0;
+#endif
+}
+
 bool FileSystem::RemoveDirectory(const char* dirFilename)
 {
 #ifdef WIN32
@@ -761,9 +770,78 @@ bool FileSystem::DeleteDirectory(const char* dirFilename)
 	return true;
 }
 
+namespace
+{
+enum class PathType
+{
+	Error,
+	File,
+	Directory,
+	Link,
+	DirectoryLink
+};
+
+PathType GetPathTypeNoFollow(const char* filename)
+{
+#ifdef WIN32
+	DWORD attributes = GetFileAttributesW(FileSystem::UtfPathToWidePath(filename));
+	if (attributes == INVALID_FILE_ATTRIBUTES)
+	{
+		return PathType::Error;
+	}
+
+	const bool directory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+	if ((attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
+	{
+		return directory ? PathType::DirectoryLink : PathType::Link;
+	}
+	return directory ? PathType::Directory : PathType::File;
+#else
+	struct stat buffer;
+	if (lstat(filename, &buffer) != 0)
+	{
+		return PathType::Error;
+	}
+	if (S_ISLNK(buffer.st_mode))
+	{
+		return PathType::Link;
+	}
+	return S_ISDIR(buffer.st_mode) ? PathType::Directory : PathType::File;
+#endif
+}
+
+bool DeleteLink(const char* filename, PathType pathType)
+{
+#ifdef WIN32
+	if (pathType == PathType::DirectoryLink)
+	{
+		return FileSystem::RemoveDirectory(filename);
+	}
+#else
+	(void)pathType;
+#endif
+	return FileSystem::DeleteFile(filename);
+}
+}
+
 bool FileSystem::DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg)
 {
 	errmsg.Clear();
+	PathType rootType = GetPathTypeNoFollow(dirFilename);
+	if (rootType == PathType::Link || rootType == PathType::DirectoryLink)
+	{
+		if (DeleteLink(dirFilename, rootType))
+		{
+			return true;
+		}
+		errmsg.Format("could not delete %s: %s", dirFilename, *GetLastErrorMessage());
+		return false;
+	}
+	if (rootType != PathType::Directory)
+	{
+		errmsg.Format("could not delete %s: %s", dirFilename, *GetLastErrorMessage());
+		return false;
+	}
 
 	bool del = false;
 	bool ok = true;
@@ -773,14 +851,19 @@ bool FileSystem::DeleteDirectoryWithContent(const char* dirFilename, CString& er
 		while (const char* filename = dir.Next())
 		{
 			BString<1024> fullFilename("%s%c%s", dirFilename, PATH_SEPARATOR, filename);
+			PathType pathType = GetPathTypeNoFollow(fullFilename);
 
-			if (FileSystem::DirectoryExists(fullFilename))
+			if (pathType == PathType::Directory)
 			{
 				del = DeleteDirectoryWithContent(fullFilename, errmsg);
 			}
+			else if (pathType == PathType::Link || pathType == PathType::DirectoryLink)
+			{
+				del = DeleteLink(fullFilename, pathType);
+			}
 			else
 			{
-				del = DeleteFile(fullFilename);
+				del = pathType == PathType::File && DeleteFile(fullFilename);
 			}
 			ok &= del;
 			if (!del && errmsg.Empty())
@@ -1356,7 +1439,7 @@ bool DiskFile::Close()
 	{
 		int ret = fclose(m_file);
 		m_file = nullptr;
-		return ret;
+		return ret == 0;
 	}
 	else
 	{

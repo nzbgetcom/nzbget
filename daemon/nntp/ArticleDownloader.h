@@ -75,8 +75,9 @@ public:
 	const char* GetInfoName() { return m_infoName; }
 	const char* GetConnectionName() { return m_connectionName; }
 	void SetConnection(NntpConnection* connection) { m_connection = connection; }
-	void CompleteFileParts() { m_articleWriter.CompleteFileParts(); }
+	bool CompleteFileParts() { return m_articleWriter.CompleteFileParts(); }
 	int GetDownloadedSize() { return m_downloadedSize; }
+	int64 GetDecodedFileSize() { return m_decodedFileSize; }
 	void SetContentAnalyzer(std::unique_ptr<ArticleContentAnalyzer> contentAnalyzer) { m_contentAnalyzer = std::move(contentAnalyzer); }
 	ArticleContentAnalyzer* GetContentAnalyzer() { return m_contentAnalyzer.get(); }
 
@@ -96,7 +97,11 @@ private:
 	ArticleWriter m_articleWriter;
 	ServerStatList m_serverStats;
 	bool m_writingStarted;
+	// Distinguish local output failures from malformed/source articles.  Only
+	// the former must bypass duplicate fallback.
+	bool m_localWriteError = false;
 	int m_downloadedSize = 0;
+	int64 m_decodedFileSize = 0;
 	std::unique_ptr<ArticleContentAnalyzer> m_contentAnalyzer;
 
 	EStatus Download();

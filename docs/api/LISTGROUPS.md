@@ -55,13 +55,19 @@ This method returns array of structures with following fields:
   - **RENAMING** - processed by par-renamer;
   - **UNPACKING** - being unpacked;
   - **MOVING** - moving files from intermediate directory into destination directory;
+  - **STREAM_REPAIRING** - repairing missing byte ranges from duplicate collections;
   - **POST_UNPACK_RENAMING** - renaming excessively obfuscated downloaded files after unpacking;
   - **EXECUTING_SCRIPT** - executing post-processing script;
   - **PP_FINISHED** - post-processing is finished, the item is about to be moved to history.
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.
 - **SuccessArticles** `(int)` - Number of successfully downloaded articles.
 - **FailedArticles** `(int)` - Number of failed article downloads.
-- **Health** `(int)` - Current health of the group, in permille. 1000 means 100.0%. The health can go down below this valued during download if more article fails. It can never increase (unless merging of groups). Higher values are better.
+- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed target articles that were fully recovered from a duplicate collection. Donor probes, proactive cutover, and individual byte ranges are not counted.
+- **DupeRecoveredBytesLo** `(int)` - `v26.3` Low 32-bits of the number of bytes recovered by the byte-level stream repair (option `DupeArticleFallback=stream`/`live`) from duplicate collections. Complements DupeRecoveredArticles, which counts whole-article recoveries only.
+- **DupeRecoveredBytesHi** `(int)` - `v26.3` High 32-bits of the number of bytes recovered by the byte-level stream repair.
+- **DupeRecoveredHoles** `(int)` - `v26.3` Number of missing byte ranges (holes) filled by decompression-assisted stream repair (option `DupeStreamDecompress`), where recovery is not attributable to individual donor articles.
+- **LiveRepairing** `(bool)` - `v26.3` "True" while a download-concurrent stream repair (option `DupeArticleFallback=live`) is running for this group, repairing a damaged file that has already completed while the group's other files are still downloading.
+- **Health** `(int)` - Current health of the group, in permille. 1000 means 100.0%. The health can go down during download as articles fail, and can later increase when groups are merged or when byte-level stream repair (option `DupeArticleFallback=stream`) fills missing byte ranges during post-processing. Higher values are better.
 - **CriticalHealth** `(int)` - Calculated critical health of the group, in permille. 1000 means 100.0%. The critical health is calculated based on the number and size of par-files. Lower values are better.
 - **DownloadedSizeLo** `(int)` - `v14.0` Amount of downloaded data for group in bytes, Low 32-bits of 64-bit value.
 - **DownloadedSizeHi** `(int)` - `v14.0` Amount of downloaded data for group in bytes, High 32-bits of 64-bit value.

@@ -298,51 +298,54 @@ BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 
 #ifndef DISABLE_TLS
 
-// BOOST_AUTO_TEST_CASE(RenameRar5EncryptedTest)
-// {
-// 	std::string workingDir = currDir / "RenameRar5EncryptedTest";
+// Re-enabled (M3 Task 5, follow-up m3-1a): these were commented out - and
+// written against a pre-libfs++ std::string/MoveFile API this file no longer
+// uses - because the pre-existing DecryptBuf bug (fixed in M3 Task 1) broke
+// ALL -hp header-encrypted rar parsing. Modernized to the fs::path/fs::rename
+// pattern the rest of this file uses; otherwise unchanged in intent.
+BOOST_AUTO_TEST_CASE(RenameRar5EncryptedTest)
+{
+	const fs::path workingDir = CURR_DIR / "RenameRar5EncryptedTest";
+	const fs::path testFile = workingDir / "testfile5encnam.part01.rar";
+	const fs::path testFile2 = workingDir / "testfile5encnam.part02.rar";
+	const fs::path testFile3 = workingDir / "testfile5encnam.part03.rar";
+	const fs::path renamedTestFile = workingDir / "12348";
+	const fs::path renamedTestFile2 = workingDir / "12343";
+	const fs::path renamedTestFile3 = workingDir / "12344";
 
-// 	std::string testFile = workingDir / "testfile5encnam.part01.rar";
-// 	std::string testFile2 = workingDir / "testfile5encnam.part02.rar";
-// 	std::string testFile3 = workingDir / "testfile5encnam.part03.rar";
-// 	std::string renamedTestFile = workingDir / "12348";
-// 	std::string renamedTestFile2 = workingDir / "12343";
-// 	std::string renamedTestFile3 = workingDir / "12344";
+	RarRenamerMock rarRenamer(workingDir);
+	rarRenamer.SetPassword("123");
 
-// 	RarRenamerMock rarRenamer(workingDir);
-// 	rarRenamer.SetPassword("123");
+	fs::rename(testFile, renamedTestFile);
+	fs::rename(testFile2, renamedTestFile2);
+	fs::rename(testFile3, renamedTestFile3);
 
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile.c_str(), renamedTestFile);
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile2.c_str(), renamedTestFile2);
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile3.c_str(), renamedTestFile3);
+	rarRenamer.Execute();
 
-// 	rarRenamer.Execute();
+	BOOST_CHECK_EQUAL(rarRenamer.GetRenamedCount(), 3);
+}
 
-// 	BOOST_CHECK(rarRenamer.GetRenamedCount() == 3);
-// }
+BOOST_AUTO_TEST_CASE(RenameRar3EncryptedTest)
+{
+	const fs::path workingDir = CURR_DIR / "RenameRar3EncryptedTest";
+	const fs::path testFile = workingDir / "testfile3encnam.part01.rar";
+	const fs::path testFile2 = workingDir / "testfile3encnam.part02.rar";
+	const fs::path testFile3 = workingDir / "testfile3encnam.part03.rar";
+	const fs::path renamedTestFile = workingDir / "12348";
+	const fs::path renamedTestFile2 = workingDir / "12343";
+	const fs::path renamedTestFile3 = workingDir / "12344";
 
-// BOOST_AUTO_TEST_CASE(RenameRar3EncryptedTest)
-// {
-// 	std::string workingDir = currDir / "RenameRar3EncryptedTest";
+	RarRenamerMock rarRenamer(workingDir);
+	rarRenamer.SetPassword("123");
 
-// 	std::string testFile = workingDir / "testfile3encnam.part01.rar";
-// 	std::string testFile2 = workingDir / "testfile3encnam.part02.rar";
-// 	std::string testFile3 = workingDir / "testfile3encnam.part03.rar";
-// 	std::string renamedTestFile = workingDir / "12348";
-// 	std::string renamedTestFile2 = workingDir / "12343";
-// 	std::string renamedTestFile3 = workingDir / "12344";
+	fs::rename(testFile, renamedTestFile);
+	fs::rename(testFile2, renamedTestFile2);
+	fs::rename(testFile3, renamedTestFile3);
 
-// 	RarRenamerMock rarRenamer(workingDir);
-// 	rarRenamer.SetPassword("123");
+	rarRenamer.Execute();
 
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile.c_str(), renamedTestFile);
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile2.c_str(), renamedTestFile2);
-// 	BOOST_CHECK(FileSystem::MoveFile(testFile3.c_str(), renamedTestFile3);
-
-// 	rarRenamer.Execute();
-
-// 	BOOST_CHECK(rarRenamer.GetRenamedCount() == 3);
-// }
+	BOOST_CHECK_EQUAL(rarRenamer.GetRenamedCount(), 3);
+}
 
 #endif
 

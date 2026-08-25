@@ -56,6 +56,8 @@ public:
 	static constexpr std::string_view DAEMONUSERNAME = "DaemonUsername";
 	static constexpr std::string_view OUTPUTMODE = "OutputMode";
 	static constexpr std::string_view DUPECHECK = "DupeCheck";
+	static constexpr std::string_view DUPEARTICLEFALLBACK = "DupeArticleFallback";
+	static constexpr std::string_view DUPESTREAMDECOMPRESS = "DupeStreamDecompress";
 	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
 	static constexpr std::string_view CONTROLIP = "ControlIP";
 	static constexpr std::string_view CONTROLPORT = "ControlPort";
@@ -222,6 +224,16 @@ public:
 		psExtended,
 		psFull,
 		psDupe
+	};
+	enum EDupeArticleFallback
+	{
+		// ordered by capability: every value includes the capabilities of the
+		// values before it, so feature gates compare with >= (dafLive adds
+		// download-concurrent repair on top of dafStream's post-processing repair)
+		dafNone,
+		dafArticle,
+		dafStream,
+		dafLive
 	};
 	enum EHealthCheck
 	{
@@ -426,6 +438,8 @@ public:
 	int GetUrlInterval() const { return m_urlInterval; }
 	bool GetFlushQueue() const { return m_flushQueue; }
 	bool GetDupeCheck() const { return m_dupeCheck; }
+	EDupeArticleFallback GetDupeArticleFallback() const { return m_dupeArticleFallback; }
+	bool GetDupeStreamDecompress() const { return m_dupeStreamDecompress; }
 	const char* GetControlIp() const { return m_controlIp; }
 	const char* GetControlUsername() const { return m_controlUsername; }
 	const char* GetControlPassword() const { return m_controlPassword; }
@@ -612,6 +626,8 @@ private:
 	int m_urlInterval = 0;
 	bool m_flushQueue = false;
 	bool m_dupeCheck = false;
+	EDupeArticleFallback m_dupeArticleFallback = dafNone;
+	bool m_dupeStreamDecompress = false;
 	CString m_controlIp;
 	CString m_controlUsername;
 	CString m_controlPassword;

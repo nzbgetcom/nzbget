@@ -25,20 +25,64 @@
 #include <string>
 #include "Log.h"
 #include "FileSystem.h"
+#include "ContentMap.h"
 
 #ifndef DISABLE_TLS
 #include "OpenSSL.h"
 #endif
 
+/* sequential parse cursor over a ContentSource, mirroring the DiskFile
+ * read/seek/eof surface the rar parser was written against */
+class RarSourceCursor
+{
+public:
+	RarSourceCursor(ContentSource& source) : m_source(source) {}
+	int64 Read(void* buffer, int64 size);
+	bool Seek(int64 position, DiskFile::ESeekOrigin origin = DiskFile::soSet);
+	int64 Position() { return m_position; }
+	bool Eof() { return m_eof; }
+
+private:
+	ContentSource& m_source;
+	int64 m_position = 0;
+	bool m_eof = false;
+};
+
 class RarFile
 {
 public:
+	// rar5 per-file encryption parameters (FHEXTRA_CRYPT record, type 0x01).
+	// The on-disk field order and sizes are fixed by the RAR5 format; see
+	// RarVolume::ReadRar5Crypt. CheckValue holds the raw 12 bytes (8-byte
+	// password check + 4-byte checksum) and is meaningful only if HasCheck.
+	struct Rar5Crypt
+	{
+		uint64 Version = 0;
+		uint64 Flags = 0;
+		uint8 KdfCount = 0;
+		uint8 Salt[16] = {};
+		uint8 Iv[16] = {};
+		uint8 CheckValue[12] = {};
+		bool HasCheck = false;
+	};
+
 	const char* GetFilename() const { return m_filename.c_str(); }
 	uint32 GetTime() { return m_time; }
 	uint32 GetAttr() { return m_attr; }
 	int64 GetSize() { return m_size; }
 	bool GetSplitBefore() { return m_splitBefore; }
 	bool GetSplitAfter() { return m_splitAfter; }
+	uint32 GetMethod() { return m_method; }
+	bool GetStored() { return m_stored; }
+	int64 GetPackedSize() { return m_packedSize; }
+	int64 GetDataOffset() { return m_dataOffset; }
+	bool GetEncryptedData() { return m_encryptedData; }
+	// rar3: the 8-byte per-file salt stored after the filename when the file
+	// header carries the SALT flag (0x0400). Valid only if GetHasSalt().
+	bool GetHasSalt() { return m_hasSalt; }
+	const uint8* GetSalt() { return m_salt; }
+	// rar5: the parsed file-crypt record, or nullptr when the file has none.
+	const Rar5Crypt* GetCrypt() { return m_hasCrypt ? &m_crypt : nullptr; }
 private:
 	std::string m_filename;
 	uint32 m_time = 0;
@@ -46,6 +90,15 @@ private:
 	int64 m_size = 0;
 	bool m_splitBefore = false;
 	bool m_splitAfter = false;
+	uint32 m_method = 0;
+	bool m_stored = false;
+	int64 m_packedSize = 0;
+	int64 m_dataOffset = -1;
+	bool m_encryptedData = false;
+	bool m_hasSalt = false;
+	uint8 m_salt[8] = {};
+	bool m_hasCrypt = false;
+	Rar5Crypt m_crypt;
 	friend class RarVolume;
 };
 
@@ -65,6 +118,7 @@ public:
 		{}
 
 	bool Read();
+	bool ReadFrom(ContentSource& source);
 
 	const char* GetFilename() const { return m_filename.c_str(); }
 	int GetVersion() { return m_version; }
@@ -84,6 +138,7 @@ private:
 		uint16 flags;
 		uint64 addsize;
 		uint64 trailsize;
+		uint64 datasize;
 	};
 
 	FileList m_files;
@@ -107,25 +162,27 @@ private:
 	OpenSSL::EVPCipherCtxPtr m_context;
 #endif
 
-	int DetectRarVersion(DiskFile& file);
+	int DetectRarVersion(RarSourceCursor& file);
 	void LogDebugInfo();
-	bool Skip(DiskFile& file, RarBlock* block, int64 size);
-	bool Read(DiskFile& file, RarBlock* block, void* buffer, int64 size);
-	bool Read16(DiskFile& file, RarBlock* block, uint16* result);
-	bool Read32(DiskFile& file, RarBlock* block, uint32* result);
-	bool ReadV(DiskFile& file, RarBlock* block, uint64* result);
-	bool ReadRar3Volume(DiskFile& file);
-	bool ReadRar5Volume(DiskFile& file);
-	RarBlock ReadRar3Block(DiskFile& file);
-	RarBlock ReadRar5Block(DiskFile& file);
-	bool ReadRar3File(DiskFile& file, RarBlock& block, RarFile& innerFile);
-	bool ReadRar5File(DiskFile& file, RarBlock& block, RarFile& innerFile);
+	bool Skip(RarSourceCursor& file, RarBlock* block, int64 size);
+	bool Read(RarSourceCursor& file, RarBlock* block, void* buffer, int64 size);
+	bool Read16(RarSourceCursor& file, RarBlock* block, uint16* result);
+	bool Read32(RarSourceCursor& file, RarBlock* block, uint32* result);
+	bool ReadV(RarSourceCursor& file, RarBlock* block, uint64* result);
+	bool ReadRar3Volume(RarSourceCursor& file);
+	bool ReadRar5Volume(RarSourceCursor& file);
+	RarBlock ReadRar3Block(RarSourceCursor& file);
+	RarBlock ReadRar5Block(RarSourceCursor& file);
+	bool ReadRar3File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile);
+	bool ReadRar5File(RarSourceCursor& file, RarBlock& block, RarFile& innerFile);
+	bool ReadRar5Crypt(RarSourceCursor& file, RarBlock& block, RarFile& innerFile, uint64 contentLen);
+	bool ReadVLimited(RarSourceCursor& file, RarBlock* block, uint64* result, uint64& avail);
 	bool DecryptRar3Prepare(const uint8 salt[8]);
 	bool DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16]);
 	bool DecryptInit(int keyLength);
 	bool DecryptBuf(const uint8 in[16], uint8 out[16]);
 	void DecryptFree();
-	bool DecryptRead(DiskFile& file, void* buffer, int64 size);
+	bool DecryptRead(RarSourceCursor& file, void* buffer, int64 size);
 };
 
 #endif

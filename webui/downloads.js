@@ -61,6 +61,7 @@ var Downloads = (new function($)
 		'LOADING_PARS': { Text: 'status_checking_cap', PostProcess: true },
 		'VERIFYING_SOURCES': { Text: 'status_checking_cap', PostProcess: true },
 		'REPAIRING': { Text: 'status_repairing_cap', PostProcess: true },
+		'STREAM_REPAIRING': { Text: 'status_stream_repairing_cap', PostProcess: true },
 		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
@@ -791,7 +792,19 @@ var DownloadsUI = (new function($)
 			badgeClass = 'label-important';
 		}
 
-		return '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
+		var badge = '<span class="label label-status ' + badgeClass + ' text-uppercase">' + statusText + '</span>';
+
+		// a live stream-repair pass (option DupeArticleFallback=live) runs while
+		// the collection is still downloading and has no post-processing badge of
+		// its own - flag it so the repair activity is visible
+		if (group.LiveRepairing)
+		{
+			badge += ' <span class="label label-status label-info text-uppercase" title="' +
+				I18n.translate('label_live_repair_hint') + '">' +
+				I18n.translate('label_live_repair') + '</span>';
+		}
+
+		return badge;
 	}
 
 	this.buildProgress = function(group, totalsize, remaining, estimated)
@@ -893,6 +906,7 @@ var DownloadsUI = (new function($)
 				case "LOADING_PARS":
 				case "VERIFYING_SOURCES":
 				case "VERIFYING_REPAIRED":
+				case "STREAM_REPAIRING":
 				case "UNPACKING":
 				case "RENAMING":
 				case "EXECUTING_SCRIPT":

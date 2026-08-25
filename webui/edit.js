@@ -180,6 +180,7 @@ var DownloadsEditDialog = (new function($)
 			I18n.translate('label_articles_total_completion') +
 			(group.ServerStats.length > 0 ? ' <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 			'</td><td class="text-right">' + group.TotalArticles + ' / ' + completion + '</td></tr>';
+		table += '<tr><td>' + I18n.translate('label_recovered_from_duplicates') + '</td><td class="text-right">' + Util.formatDupeRecovered(group) + '</td></tr>';
 		$('#DownloadsEdit_Statistics').html(table);
 
 		$('#DownloadsEdit_ServStats').click(tabClick);
@@ -1730,6 +1731,7 @@ var HistoryEditDialog = (new function($)
 				I18n.translate('label_articles_total_completion') +
 				(hist.ServerStats.length > 0 ? '  <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
 				'</td><td class="text-center">' + hist.TotalArticles + ' / ' + completion + '</td></tr>';
+			table += '<tr><td>' + I18n.translate('label_recovered_from_duplicates') + '</td><td class="text-center">' + Util.formatDupeRecovered(hist) + '</td></tr>';
 			$('#HistoryEdit_Statistics').html(table);
 
 			$('#HistoryEdit_ServStats').click(tabClick);

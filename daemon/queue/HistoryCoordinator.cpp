@@ -120,6 +120,17 @@ void HistoryCoordinator::DeleteDiskFiles(NzbInfo* nzbInfo)
 
 void HistoryCoordinator::AddToHistory(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
+	// catch-all for every path into history: a still-attached live
+	// stream-repair thread (option <DupeArticleFallback> value "live") could
+	// never find this collection by id again (the pass searches the QUEUE),
+	// so it would self-destruct and leave this slot a dangling pointer
+	if (nzbInfo->GetLiveRepairThread())
+	{
+		Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+		nzbInfo->SetLiveRepairThread(nullptr);
+		liveRepairThread->Stop();
+	}
+
 	std::unique_ptr<NzbInfo> oldNzbInfo = downloadQueue->GetQueue()->Remove(nzbInfo);
 	std::unique_ptr<HistoryInfo> historyInfo = std::make_unique<HistoryInfo>(std::move(oldNzbInfo));
 	historyInfo->SetTime(Util::CurrentTime());
@@ -530,6 +541,8 @@ void HistoryCoordinator::HistoryRedownload(DownloadQueue* downloadQueue, History
 	nzbInfo->SetWaitingPar(false);
 	nzbInfo->SetLoadingPar(false);
 	nzbInfo->GetCompletedFiles()->clear();
+	// stream-repair jobs captured for the previous download attempt are stale
+	nzbInfo->GetStreamRepairJobs()->clear();
 	nzbInfo->GetServerStats()->clear();
 	nzbInfo->GetCurrentServerStats()->clear();
 
@@ -660,6 +673,9 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 		++it;
 	}
 
+	// stream-repair jobs captured for the previous download attempt are stale
+	nzbInfo->GetStreamRepairJobs()->clear();
+
 	nzbInfo->UpdateCurrentStats();
 	if (!resetFailed && !reprocess)
 	{
@@ -726,6 +742,8 @@ void HistoryCoordinator::ResetArticles(FileInfo* fileInfo, bool allFailed, bool 
 			pa->SetCrc(0);
 			pa->SetSegmentOffset(0);
 			pa->SetSegmentSize(0);
+			pa->SetDupeExpectedOffset(-1);
+			pa->SetDupeExpectedEnd(-1);
 		}
 	}
 }

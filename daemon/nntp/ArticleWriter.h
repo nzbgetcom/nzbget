@@ -78,11 +78,11 @@ public:
 						std::string_view finalOutputPath,
 						bool directWrite,
 						bool cached);
-	void CommitDiskFile(DiskFile& outfile,
+	bool CommitDiskFile(DiskFile& outfile,
 						std::string_view tempDestPath,
 						std::string_view finalOutputPath,
 						bool directWrite);
-	void CleanupOldData(bool directWrite,
+	bool CleanupOldData(bool directWrite,
 						std::string_view nzbDestDir,
 						std::string_view finalOutputPath);
 	void ReportCompletionStatus(std::string_view infoFilename);
@@ -90,11 +90,12 @@ public:
 							std::string_view currentPath, 
 							std::string_view originalFilename, 
 							std::string_view nzbDestDir);
-	void CompleteFileParts();
+	bool CompleteFileParts();
 	static bool MoveCompletedFiles(NzbInfo* nzbInfo, const char* oldDestDir);
 	void FlushCache();
 
 private:
+	bool IsDupeFallbackArticle() const;
 	bool GetSkipDiskWrite();
 
 	FileInfo* m_fileInfo;
@@ -110,6 +111,7 @@ private:
 	int m_articleSize;
 	int m_articlePtr;
 	bool m_duplicate = false;
+	bool m_commitError = false;
 
 	bool CreateOutputFile(int64 size);
 	void BuildOutputFilename();

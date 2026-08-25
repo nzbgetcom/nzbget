@@ -1944,6 +1944,11 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"<member><name>TotalArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>SuccessArticles</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>FailedArticles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DupeRecoveredArticles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>DupeRecoveredBytesLo</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>DupeRecoveredBytesHi</name><value><i4>%u</i4></value></member>\n"
+		"<member><name>DupeRecoveredHoles</name><value><i4>%i</i4></value></member>\n"
+		"<member><name>LiveRepairing</name><value><boolean>%s</boolean></value></member>\n"
 		"<member><name>Health</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>CriticalHealth</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>DupeKey</name><value><string>%s</string></value></member>\n"
@@ -2000,6 +2005,11 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 		"\"TotalArticles\" : %i,\n"
 		"\"SuccessArticles\" : %i,\n"
 		"\"FailedArticles\" : %i,\n"
+		"\"DupeRecoveredArticles\" : %i,\n"
+		"\"DupeRecoveredBytesLo\" : %u,\n"
+		"\"DupeRecoveredBytesHi\" : %u,\n"
+		"\"DupeRecoveredHoles\" : %i,\n"
+		"\"LiveRepairing\" : %s,\n"
 		"\"Health\" : %i,\n"
 		"\"CriticalHealth\" : %i,\n"
 		"\"DupeKey\" : \"%s\",\n"
@@ -2085,6 +2095,9 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 	Util::SplitInt64(nzbInfo->GetDownloadedSize(), &downloadedSizeHi, &downloadedSizeLo);
 	downloadedSizeMB = (int)(nzbInfo->GetDownloadedSize() / 1024 / 1024);
 
+	uint32 dupeRecoveredBytesHi, dupeRecoveredBytesLo;
+	Util::SplitInt64(nzbInfo->GetDupeRecoveredBytes(), &dupeRecoveredBytesHi, &dupeRecoveredBytesLo);
+
 	int messageCount = nzbInfo->GetMessageCount() > 0 ? nzbInfo->GetMessageCount() : nzbInfo->GetCachedMessageCount();
 
 	CString xmlNzbNicename = EncodeStr(nzbInfo->GetName());
@@ -2102,6 +2115,9 @@ void NzbInfoXmlCommand::AppendNzbInfoFields(NzbInfo* nzbInfo)
 			fileSizeLo, fileSizeHi, fileSizeMB, nzbInfo->GetFileCount(),
 			(int)nzbInfo->GetMinTime(), (int)nzbInfo->GetMaxTime(),
 			nzbInfo->GetTotalArticles(), nzbInfo->GetCurrentSuccessArticles(), nzbInfo->GetCurrentFailedArticles(),
+			nzbInfo->GetDupeRecoveredArticles(),
+			dupeRecoveredBytesLo, dupeRecoveredBytesHi, nzbInfo->GetDupeRecoveredHoles(),
+			BoolToStr(nzbInfo->GetLiveRepairThread() != nullptr),
 			nzbInfo->CalcHealth(), nzbInfo->CalcCriticalHealth(false),
 			*EncodeStr(nzbInfo->GetDupeKey()), nzbInfo->GetDupeScore(), dupeModeName[nzbInfo->GetDupeMode()],
 			BoolToStr(nzbInfo->GetDeleteStatus() != NzbInfo::dsNone),
@@ -2327,7 +2343,7 @@ const char* ListGroupsXmlCommand::DetectStatus(NzbInfo* nzbInfo)
 {
 	const char* postStageName[] = { "PP_QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
 		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
-		"EXECUTING_SCRIPT", "PP_FINISHED" };
+		"EXECUTING_SCRIPT", "PP_FINISHED", "STREAM_REPAIRING" };
 
 	const char* status = nullptr;
 
@@ -2715,7 +2731,8 @@ void PostQueueXmlCommand::Execute()
 		"}";
 
 	const char* postStageName[] = { "QUEUED", "LOADING_PARS", "VERIFYING_SOURCES", "REPAIRING",
-		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "EXECUTING_SCRIPT", "FINISHED" };
+		"VERIFYING_REPAIRED", "RENAMING", "RENAMING", "UNPACKING", "MOVING", "MOVING", "POST_UNPACK_RENAMING",
+		"EXECUTING_SCRIPT", "FINISHED", "STREAM_REPAIRING" };
 
 	int index = 0;
 

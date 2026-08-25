@@ -40,6 +40,10 @@ This method returns an array of structures with following fields:
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.
 - **SuccessArticles** `(int)` - Number of successfully downloaded articles.
 - **FailedArticles** `(int)` - Number of failed article downloads.
+- **DupeRecoveredArticles** `(int)` - `v26.3` Number of failed target articles that were fully recovered from a duplicate collection by the DupeArticleFallback feature. Donor probes, proactive cutover, and individual byte ranges are not counted; the value is cumulative for the group.
+- **DupeRecoveredBytesLo** `(int)` - `v26.3` Low 32-bits of the number of bytes recovered by the byte-level stream repair (option `DupeArticleFallback=stream`/`live`) from duplicate collections. Complements DupeRecoveredArticles, which counts whole-article recoveries only.
+- **DupeRecoveredBytesHi** `(int)` - `v26.3` High 32-bits of the number of bytes recovered by the byte-level stream repair.
+- **DupeRecoveredHoles** `(int)` - `v26.3` Number of missing byte ranges (holes) filled by decompression-assisted stream repair (option `DupeStreamDecompress`), where recovery is not attributable to individual donor articles.
 - **Health `(int)` - Final health of the group, in permille. 1000 means 100.0%. Higher values are better.
 - **CriticalHealth** `(int)` - Calculated critical health of the group, in permille. 1000 means 100.0%. The critical health is calculated based on the number and size of par-files. Lower values are better.
 - **Deleted** `(bool)` - ~~`v12.0`~~ Deprecated, use DeleteStatus instead.

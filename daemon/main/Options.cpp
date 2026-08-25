@@ -296,6 +296,8 @@ void Options::InitDefaults()
 	SetOption(OUTPUTMODE.data(), "curses");
 #endif
 	SetOption(DUPECHECK.data(), "yes");
+	SetOption(DUPEARTICLEFALLBACK.data(), "no");
+	SetOption(DUPESTREAMDECOMPRESS.data(), "no");
 	SetOption(DOWNLOADRATE.data(), "0");
 	SetOption(CONTROLIP.data(), "0.0.0.0");
 	SetOption(CONTROLUSERNAME.data(), "nzbget");
@@ -712,6 +714,15 @@ void Options::InitOptions()
 	const int ParScanValues[] = { psLimited, psExtended, psFull, psDupe };
 	const int ParScanCount = 4;
 	m_parScan = (EParScan)ParseEnumValue(PARSCAN.data(), ParScanCount, ParScanNames, ParScanValues);
+
+	// "yes" is accepted for compatibility with the former boolean option and
+	// is normalized to "article" by ParseEnumValue (first name with same value)
+	const char* DupeArticleFallbackNames[] = { "no", "article", "stream", "live", "yes" };
+	const int DupeArticleFallbackValues[] = { dafNone, dafArticle, dafStream, dafLive, dafArticle };
+	const int DupeArticleFallbackCount = 5;
+	m_dupeArticleFallback = (EDupeArticleFallback)ParseEnumValue(DUPEARTICLEFALLBACK.data(),
+		DupeArticleFallbackCount, DupeArticleFallbackNames, DupeArticleFallbackValues);
+	m_dupeStreamDecompress	= (bool)ParseEnumValue(DUPESTREAMDECOMPRESS.data(), BoolCount, BoolNames, BoolValues);
 
 	const char* PostStrategyNames[] = { "sequential", "balanced", "aggressive", "rocket" };
 	const int PostStrategyValues[] = { ppSequential, ppBalanced, ppAggressive, ppRocket };

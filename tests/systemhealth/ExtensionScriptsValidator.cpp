@@ -49,6 +49,16 @@ struct TempScriptDir
 	}
 };
 
+// restores g_Options after a test constructs a local Options: the Options
+// constructor repoints the global at itself and its destructor nulls it, so
+// the guard must be declared BEFORE the local Options (destroyed after it)
+// or later tests in this binary see a null/foreign g_Options
+struct OptionsGuard
+{
+	Options* m_prev = g_Options;
+	~OptionsGuard() { g_Options = m_prev; }
+};
+
 void CreateTestExtension(const fs::path& dir, const std::string& name, const std::string& kind)
 {
 	std::ofstream script((dir / (name + ".py")).string());
@@ -73,10 +83,8 @@ BOOST_AUTO_TEST_CASE(TestExtensionListValidatorWithoutExt)
 	cmdOpts.push_back(extensionsOpt.c_str());
 	cmdOpts.push_back("NzbLog=no");
 
-	Options options(&cmdOpts, nullptr);
-
-	Options* oldOptions = g_Options;
-	g_Options = &options;
+	OptionsGuard optionsGuard;
+	Options options(&cmdOpts, nullptr); // constructor sets g_Options = &options
 
 	ExtensionManager::Manager manager;
 	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
@@ -84,8 +92,6 @@ BOOST_AUTO_TEST_CASE(TestExtensionListValidatorWithoutExt)
 	ExtensionListValidator validator(options, manager);
 	Status status = validator.Validate();
 	BOOST_CHECK_MESSAGE(status.IsOk(), "Validation failed: " << status.GetMessage());
-
-	g_Options = oldOptions;
 }
 
 BOOST_AUTO_TEST_CASE(TestExtensionListValidatorWithExt)
@@ -103,10 +109,8 @@ BOOST_AUTO_TEST_CASE(TestExtensionListValidatorWithExt)
 	cmdOpts.push_back(extensionsOpt.c_str());
 	cmdOpts.push_back("NzbLog=no");
 
-	Options options(&cmdOpts, nullptr);
-
-	Options* oldOptions = g_Options;
-	g_Options = &options;
+	OptionsGuard optionsGuard;
+	Options options(&cmdOpts, nullptr); // constructor sets g_Options = &options
 
 	ExtensionManager::Manager manager;
 	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
@@ -114,8 +118,6 @@ BOOST_AUTO_TEST_CASE(TestExtensionListValidatorWithExt)
 	ExtensionListValidator validator(options, manager);
 	Status status = validator.Validate();
 	BOOST_CHECK_MESSAGE(status.IsOk(), "Validation failed: " << status.GetMessage());
-
-	g_Options = oldOptions;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

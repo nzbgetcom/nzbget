@@ -272,4 +272,51 @@ BOOST_AUTO_TEST_CASE(ParseFeedCertVerificationTest)
 	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[4], Options::ECertVerifLevel::cvStrict);
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackOptionTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeArticleFallback() == Options::dafNone);
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeArticleFallback=article");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeArticleFallback() == Options::dafArticle);
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeArticleFallback=stream");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeArticleFallback() == Options::dafStream);
+	}
+
+	{
+		// compatibility alias for configs written for the boolean option
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeArticleFallback=yes");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeArticleFallback() == Options::dafArticle);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeStreamDecompressOptionTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(!options.GetDupeStreamDecompress());
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeStreamDecompress=yes");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetDupeStreamDecompress());
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()
