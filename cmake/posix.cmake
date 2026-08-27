@@ -121,6 +121,9 @@ if(NOT HAVE_SYSTEM_REGEX_H)
 	list(APPEND EXTERNAL_DEPS regex)
 endif()
 
+# Large File Support (LFS)
+add_compile_definitions(_FILE_OFFSET_BITS=64 _LARGEFILE_SOURCE _LARGE_FILES)
+
 check_include_files(sys/prctl.h HAVE_SYS_PRCTL_H)
 check_include_files(regex.h HAVE_REGEX_H)
 check_include_files(endian.h HAVE_ENDIAN_H)

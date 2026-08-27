@@ -51,6 +51,9 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
 	endif()
 
 	check_cxx_compiler_flag("-fstack-protector-strong" HAVE_STACK_PROTECT)
+	if(HAVE_STACK_PROTECT)
+		add_compile_options(-fstack-protector-strong)
+	endif()
 endif()
 
 function(apply_sanitizers target)
