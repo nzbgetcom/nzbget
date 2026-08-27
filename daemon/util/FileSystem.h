@@ -30,7 +30,6 @@
 #include "Utf8.h"
 #endif
 
-#ifdef HAVE_STD_FILESYSTEM
 #include <filesystem>
 
 namespace fs
@@ -39,27 +38,12 @@ using namespace std::filesystem;
 using error_code = std::error_code;
 using errc = std::errc;
 
-inline std::string u8string(const path& p)
-{
-	return p.u8string(); 
-}
-}
-
-#else
-#include <boost/filesystem.hpp>
-
-namespace fs
-{
-using namespace boost::filesystem;
-using error_code = boost::system::error_code;
-namespace errc = boost::system::errc;
-
 inline fs::path u8path(std::string_view pathStr)
 {
 #ifdef _WIN32
 	if (auto wstr = Utf8::Utf8ToWide(pathStr))
 		return fs::path(*wstr);
-	return fs::path(pathStr); 
+	return fs::path(pathStr);
 #else
 	return fs::path(pathStr);
 #endif
@@ -73,10 +57,9 @@ inline std::string u8string(const path& p)
 	return p.string();
 #endif
 }
-
 }
 
-#endif
+
 
 namespace fs
 {
