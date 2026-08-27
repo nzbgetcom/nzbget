@@ -108,7 +108,7 @@ void StartService(RunProc RunProcPtr)
 	BOOL success = StartServiceCtrlDispatcher(servicetable);
 	if(!success)
 	{
-		fprintf(stderr, "Could not start service\n");
+		printf("Could not start service\n");
 	}
 }
 
@@ -117,7 +117,7 @@ void InstallService(int argc, char *argv[])
 	SC_HANDLE scm = OpenSCManager(0,0,SC_MANAGER_CREATE_SERVICE);
 	if(!scm)
 	{
-		fprintf(stderr, "Could not install service\n");
+		printf("Could not install service\n");
 		return;
 	}
 
@@ -136,12 +136,12 @@ void InstallService(int argc, char *argv[])
 	if(!hService)
 	{
 		CloseServiceHandle(scm);
-		fprintf(stderr, "Could not install service\n");
+		printf("Could not install service\n");
 		return;
 	}
 	CloseServiceHandle(hService);
 	CloseServiceHandle(scm);
-	fprintf(stdout, "Service \"%s\" sucessfully installed\n", STR_SERVICE_NAME);
+	printf("Service \"%s\" sucessfully installed\n", STR_SERVICE_NAME);
 }
 
 void UnInstallService()
@@ -150,7 +150,7 @@ void UnInstallService()
 	SC_HANDLE scm = OpenSCManager(0,0,SC_MANAGER_CONNECT);
 	if(!scm)
 	{
-		fprintf(stderr, "Could not uninstall service\n");
+		printf("Could not uninstall service\n");
 		return;
 	}
 
@@ -158,18 +158,18 @@ void UnInstallService()
 	if(!hService)
 	{
 		CloseServiceHandle(scm);
-		fprintf(stderr, "Could not uninstall service\n");
+		printf("Could not uninstall service\n");
 		return;
 	}
 
 	success = DeleteService(hService);
 	if(!success)
 	{
-		fprintf(stderr, "Could not uninstall service\n");
+		printf("Could not uninstall service\n");
 	}
 	CloseServiceHandle(hService);
 	CloseServiceHandle(scm);
-	fprintf(stdout, "Service \"%s\" sucessfully uninstalled\n", STR_SERVICE_NAME);
+	printf("Service \"%s\" sucessfully uninstalled\n", STR_SERVICE_NAME);
 }
 
 void InstallUninstallServiceCheck(int argc, char *argv[])
