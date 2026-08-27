@@ -15,6 +15,7 @@ include(nntp/nntp.cmake)
 include(system/system.cmake)
 include(postprocess/postprocess.cmake)
 include(systemhealth/systemhealth.cmake)
+include(remote/remote.cmake)
 
 add_executable(${TESTS_TARGET} ${TESTS_SRC})
 if(EXTERNAL_DEPS)
@@ -23,6 +24,8 @@ endif()
 
 target_link_libraries(${TESTS_TARGET} PRIVATE ${LIBS})
 target_include_directories(${TESTS_TARGET} PRIVATE ${INCLUDES})
+
+apply_sanitizers(${TESTS_TARGET})
 
 if (TARGET ${PACKAGE})
 	target_precompile_headers(${TESTS_TARGET} REUSE_FROM ${PACKAGE})
@@ -39,3 +42,4 @@ add_test(NAME NNTPTest         COMMAND ${TESTS_TARGET} --run_test=NNTPTest --log
 add_test(NAME SystemTest       COMMAND ${TESTS_TARGET} --run_test=SystemTest --log_level=message)
 add_test(NAME PostprocessTest  COMMAND ${TESTS_TARGET} --run_test=PostprocessTest --log_level=message)
 add_test(NAME SystemHealthTest COMMAND ${TESTS_TARGET} --run_test=SystemHealthTest --log_level=message)
+add_test(NAME RemoteTest       COMMAND ${TESTS_TARGET} --run_test=RemoteTest --log_level=message)

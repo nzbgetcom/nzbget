@@ -48,13 +48,14 @@
 extern void ExitProc();
 extern void Reload();
 
-class SafeXmlCommand: public XmlCommand
+class SafeXmlCommand : public XmlCommand
 {
 public:
+	~SafeXmlCommand() override;
 	bool IsSafeMethod() override { return true; }
 };
 
-class ErrorXmlCommand: public XmlCommand
+class ErrorXmlCommand final : public XmlCommand
 {
 public:
 	ErrorXmlCommand(int errCode, const char* errText) :
@@ -67,7 +68,7 @@ private:
 	const char* m_errText;
 };
 
-class PauseUnpauseXmlCommand: public XmlCommand
+class PauseUnpauseXmlCommand final : public XmlCommand
 {
 public:
 	enum EPauseAction
@@ -86,55 +87,55 @@ private:
 	EPauseAction m_pauseAction;
 };
 
-class ScheduleResumeXmlCommand: public XmlCommand
+class ScheduleResumeXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ShutdownXmlCommand: public XmlCommand
+class ShutdownXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ReloadXmlCommand: public XmlCommand
+class ReloadXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class VersionXmlCommand: public SafeXmlCommand
+class VersionXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DumpDebugXmlCommand: public SafeXmlCommand
+class DumpDebugXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SetDownloadRateXmlCommand: public XmlCommand
+class SetDownloadRateXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class StatusXmlCommand: public SafeXmlCommand
+class StatusXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SysInfoXmlCommand: public SafeXmlCommand
+class SysInfoXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SystemHealthXmlCommand : public SafeXmlCommand
+class SystemHealthXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -143,6 +144,7 @@ public:
 class LogXmlCommand: public SafeXmlCommand
 {
 public:
+	~LogXmlCommand() override;
 	void Execute() override;
 
 protected:
@@ -153,18 +155,21 @@ protected:
 
 class NzbInfoXmlCommand: public SafeXmlCommand
 {
+public:
+	~NzbInfoXmlCommand() override;
+
 protected:
 	void AppendNzbInfoFields(NzbInfo* nzbInfo);
 	void AppendPostInfoFields(PostInfo* postInfo, int logEntries, bool postQueue);
 };
 
-class ListFilesXmlCommand: public SafeXmlCommand
+class ListFilesXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ListGroupsXmlCommand: public NzbInfoXmlCommand
+class ListGroupsXmlCommand final : public NzbInfoXmlCommand
 {
 public:
 	void Execute() override;
@@ -172,43 +177,43 @@ private:
 	const char* DetectStatus(NzbInfo* nzbInfo);
 };
 
-class EditQueueXmlCommand: public XmlCommand
+class EditQueueXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DownloadXmlCommand: public XmlCommand
+class DownloadXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class PostQueueXmlCommand: public NzbInfoXmlCommand
+class PostQueueXmlCommand final : public NzbInfoXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class WriteLogXmlCommand: public XmlCommand
+class WriteLogXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ClearLogXmlCommand: public XmlCommand
+class ClearLogXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ScanXmlCommand: public XmlCommand
+class ScanXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class HistoryXmlCommand: public NzbInfoXmlCommand
+class HistoryXmlCommand final : public NzbInfoXmlCommand
 {
 public:
 	void Execute() override;
@@ -216,67 +221,67 @@ private:
 	const char* DetectStatus(HistoryInfo* historyInfo);
 };
 
-class UrlQueueXmlCommand: public SafeXmlCommand
+class UrlQueueXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ConfigXmlCommand: public SafeXmlCommand
+class ConfigXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadConfigXmlCommand: public SafeXmlCommand
+class LoadConfigXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadExtensionsXmlCommand : public SafeXmlCommand
+class LoadExtensionsXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DownloadExtensionXmlCommand : public SafeXmlCommand
+class DownloadExtensionXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class UpdateExtensionXmlCommand : public SafeXmlCommand
+class UpdateExtensionXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DeleteExtensionXmlCommand : public SafeXmlCommand
+class DeleteExtensionXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class TestExtensionXmlCommand : public SafeXmlCommand
+class TestExtensionXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SaveConfigXmlCommand: public XmlCommand
+class SaveConfigXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ConfigTemplatesXmlCommand: public SafeXmlCommand
+class ConfigTemplatesXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ViewFeedXmlCommand: public XmlCommand
+class ViewFeedXmlCommand final : public XmlCommand
 {
 public:
 	ViewFeedXmlCommand(bool preview) : m_preview(preview) {}
@@ -285,59 +290,59 @@ private:
 	bool m_preview;
 };
 
-class FetchFeedXmlCommand: public XmlCommand
+class FetchFeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class EditServerXmlCommand: public XmlCommand
+class EditServerXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ReadUrlXmlCommand: public SafeXmlCommand
+class ReadUrlXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class CheckUpdatesXmlCommand: public XmlCommand
+class CheckUpdatesXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class StartUpdateXmlCommand: public XmlCommand
+class StartUpdateXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LogUpdateXmlCommand: public LogXmlCommand
+class LogUpdateXmlCommand final : public LogXmlCommand
 {
 protected:
-	virtual GuardedMessageList GuardMessages();
+	GuardedMessageList GuardMessages() override;
 };
 
-class ServerVolumesXmlCommand: public SafeXmlCommand
+class ServerVolumesXmlCommand final : public SafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ResetServerVolumeXmlCommand: public XmlCommand
+class ResetServerVolumeXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadLogXmlCommand: public LogXmlCommand
+class LoadLogXmlCommand final : public LogXmlCommand
 {
 protected:
 	void Execute() override;
-	virtual GuardedMessageList GuardMessages();
+	GuardedMessageList GuardMessages() override;
 private:
 	int m_nzbId;
 	NzbInfo* m_nzbInfo;
@@ -345,7 +350,7 @@ private:
 	std::unique_ptr<GuardedDownloadQueue> m_downloadQueue;
 };
 
-class TestServerXmlCommand : public XmlCommand
+class TestServerXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -365,7 +370,7 @@ public:
 private:
 	CString m_errText;
 
-	class TestConnection : public NntpConnection
+	class TestConnection final : public NntpConnection
 	{
 	public:
 		TestConnection(NewsServer* newsServer, TestServerXmlCommand* owner) :
@@ -373,7 +378,7 @@ private:
 		}
 	protected:
 		TestServerXmlCommand* m_owner;
-		virtual void PrintError(const char* errMsg) { m_owner->PrintError(errMsg); }
+		void PrintError(const char* errMsg) override { m_owner->PrintError(errMsg); }
 	};
 
 	void PrintError(const char* errMsg);
@@ -411,7 +416,7 @@ private:
 	}
 };
 
-class TestServerSpeedXmlCommand: public SafeXmlCommand
+class TestServerSpeedXmlCommand final: public SafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -484,13 +489,13 @@ public:
 	}
 };
 
-class StartScriptXmlCommand : public XmlCommand
+class StartScriptXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LogScriptXmlCommand : public LogXmlCommand
+class LogScriptXmlCommand final : public LogXmlCommand
 {
 protected:
 	virtual GuardedMessageList GuardMessages();
@@ -973,9 +978,17 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 // Base command
 
 XmlCommand::XmlCommand()
+	: m_protocol(XmlRpcProcessor::rpUndefined)
+	, m_httpMethod(XmlRpcProcessor::hmPost)
+	, m_userAccess(XmlRpcProcessor::uaControl)
 {
 	m_response.Reserve(1024 * 10 - 1);
 }
+
+XmlCommand::~XmlCommand() = default;
+SafeXmlCommand::~SafeXmlCommand() = default;
+LogXmlCommand::~LogXmlCommand() = default;
+NzbInfoXmlCommand::~NzbInfoXmlCommand() = default;
 
 bool XmlCommand::IsJson()
 {
@@ -1089,6 +1102,12 @@ char* XmlCommand::XmlNextValue(char* xml, const char* tag, int* valueLength)
 	return nullptr;
 }
 
+int XmlCommand::JsonStep(const char* param, int len)
+{
+	char nextChar = *(param + len);
+	return (nextChar == ']' || nextChar == '\0') ? 0 : 1;
+}
+
 bool XmlCommand::NextParamAsInt(int* value)
 {
 	if (m_httpMethod == XmlRpcProcessor::hmGet)
@@ -1115,7 +1134,7 @@ bool XmlCommand::NextParamAsInt(int* value)
 			return false;
 		}
 		*value = atoi(param);
-		m_requestPtr = param + len + 1;
+		m_requestPtr = param + len + JsonStep(param, len);
 		return true;
 	}
 	else
@@ -1179,13 +1198,13 @@ bool XmlCommand::NextParamAsBool(bool* value)
 		if (len == 4 && !strncmp(param, "true", 4))
 		{
 			*value = true;
-			m_requestPtr = param + len + 1;
+			m_requestPtr = param + len + JsonStep(param, len);
 			return true;
 		}
 		else if (len == 5 && !strncmp(param, "false", 5))
 		{
 			*value = false;
-			m_requestPtr = param + len + 1;
+			m_requestPtr = param + len + JsonStep(param, len);
 			return true;
 		}
 		else
@@ -1240,9 +1259,9 @@ bool XmlCommand::NextParamAsStr(char** value)
 		{
 			return false;
 		}
+		m_requestPtr = param + len + JsonStep(param, len);
 		param++; // skip first '"'
 		param[len - 2] = '\0'; // skip last '"'
-		m_requestPtr = param + len;
 		*value = param;
 		return true;
 	}
@@ -3315,6 +3334,17 @@ void ViewFeedXmlCommand::Execute()
 		}
 
 		NextParamAsStr(&categorySourceStr);
+		if (categorySourceStr)
+		{
+			if (!strcasecmp(categorySourceStr, "FeedFile"))
+			{
+				categorySource = FeedInfo::CategorySource::FeedFile;
+			}
+			else if (!strcasecmp(categorySourceStr, "Auto"))
+			{
+				categorySource = FeedInfo::CategorySource::Auto;
+			}
+		}
 
 		DecodeStr(name);
 		DecodeStr(url);

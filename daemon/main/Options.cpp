@@ -134,6 +134,8 @@ Options::Category* Options::Categories::FindCategory(const char* name, bool sear
 	return nullptr;
 }
 
+Options::Extender::~Extender() = default;
+
 Options::Options(const char* exeName, const char* configFilename, bool noConfig,
 	CmdOptList* commandLineOptions, Extender* extender)
 {
@@ -819,7 +821,7 @@ void Options::SetOption(const char* optname, const char* value)
 	CString curvalue;
 
 #ifndef WIN32
-	if (value && (value[0] == '~') && (value[1] == '/'))
+	if (value && strncmp(value, "~/", 2) == 0)
 	{
 		if (m_noDiskAccess)
 		{
@@ -1128,6 +1130,16 @@ void Options::InitFeeds()
 		const char* ninterval = GetOption(BString<100>("Feed%i.Interval", n));
 		const char* npriority = GetOption(BString<100>("Feed%i.Priority", n));
 
+		const char* ncertveriflevel = GetOption(BString<100>("Feed%i.CertVerification", n));
+		int certveriflevel = ECertVerifLevel::cvStrict;
+		if (ncertveriflevel)
+		{
+			const char* CertVerifNames[] = { "none", "minimal", "strict" };
+			const int CertVerifValues[] = { ECertVerifLevel::cvNone, ECertVerifLevel::cvMinimal, ECertVerifLevel::cvStrict };
+			const int CertVerifCount = ECertVerifLevel::Count;
+			certveriflevel = ParseEnumValue(BString<100>("Feed%i.CertVerification", n), CertVerifCount, CertVerifNames, CertVerifValues);
+		}
+
 		bool definition = nname || nurl || nfilter || ncategory || nbacklog || npausenzb ||
 			ninterval || npriority || nextensions;
 		bool completed = nurl;
@@ -1141,19 +1153,20 @@ void Options::InitFeeds()
 		{
 			if (m_extender)
 			{
-				m_extender->AddFeed(
-					n,
-					nname,
-					nurl,
-					ninterval ? atoi(ninterval) : 0,
-					nfilter,
-					backlog,
-					pauseNzb,
-					ncategory,
-					categorySource,
-					npriority ? atoi(npriority) : 0,
-					nextensions
-				);
+			m_extender->AddFeed(
+				n,
+				nname,
+				nurl,
+				ninterval ? atoi(ninterval) : 0,
+				nfilter,
+				backlog,
+				pauseNzb,
+				ncategory,
+				categorySource,
+				npriority ? atoi(npriority) : 0,
+				nextensions,
+				certveriflevel
+			);
 			}
 		}
 		else
@@ -1525,10 +1538,9 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "server", 6))
 	{
-		char* p = (char*)optname + 6;
+		const char* p = optname + 6;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p &&
-			(!strcasecmp(p, ".active") || !strcasecmp(p, ".name") ||
+		if ((!strcasecmp(p, ".active") || !strcasecmp(p, ".name") ||
 			!strcasecmp(p, ".level") || !strcasecmp(p, ".host") ||
 			!strcasecmp(p, ".port") || !strcasecmp(p, ".username") ||
 			!strcasecmp(p, ".password") || !strcasecmp(p, ".joingroup") ||
@@ -1544,11 +1556,11 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "task", 4))
 	{
-		char* p = (char*)optname + 4;
+		const char* p = optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".time") || !strcasecmp(p, ".weekdays") ||
+		if (!strcasecmp(p, ".time") || !strcasecmp(p, ".weekdays") ||
 			!strcasecmp(p, ".command") || !strcasecmp(p, ".param") ||
-			!strcasecmp(p, ".downloadrate") || !strcasecmp(p, ".process")))
+			!strcasecmp(p, ".downloadrate") || !strcasecmp(p, ".process"))
 		{
 			return true;
 		}
@@ -1556,10 +1568,10 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "category", 8))
 	{
-		char* p = (char*)optname + 8;
+		const char* p = optname + 8;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".destdir") || !strcasecmp(p, ".extensions") ||
-			!strcasecmp(p, ".unpack") || !strcasecmp(p, ".aliases")))
+		if (!strcasecmp(p, ".name") || !strcasecmp(p, ".destdir") || !strcasecmp(p, ".extensions") ||
+			!strcasecmp(p, ".unpack") || !strcasecmp(p, ".aliases"))
 		{
 			return true;
 		}
@@ -1567,12 +1579,12 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "feed", 4))
 	{
-		char* p = (char*)optname + 4;
+		const char* p = optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
+		if (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
 			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
 			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
-			 !strcasecmp(p, ".extensions")))
+			 !strcasecmp(p, ".extensions") || !strcasecmp(p, ".certverification"))
 		{
 			return true;
 		}
@@ -1815,9 +1827,9 @@ void Options::CheckOptions()
 
 	// if option "ConfigTemplate" is not set, use "WebDir" as default location for template
 	// (for compatibility with versions 9 and 10).
-	if (m_configTemplate.Empty() && !m_noDiskAccess)
+	if (m_configTemplate.Empty() && !m_noDiskAccess && !m_webDir.Empty())
 	{
-		m_configTemplate.Format("%s%s", *m_webDir, "nzbget.conf");
+		m_configTemplate.Format("%s%c%s", *m_webDir, PATH_SEPARATOR, "nzbget.conf");
 		if (!FileSystem::FileExists(m_configTemplate))
 		{
 			m_configTemplate = "";
@@ -1897,9 +1909,9 @@ void Options::MergeOldScriptOption(OptEntries* optEntries, const char* optname, 
 				const char* catoptname = opt.GetName();
 				if (!strncasecmp(catoptname, "category", 8))
 				{
-					char* p = (char*)catoptname + 8;
-					while (*p >= '0' && *p <= '9') p++;
-					if (p && (!strcasecmp(p, ".extensions")))
+				const char* p = catoptname + 8;
+				while (*p >= '0' && *p <= '9') p++;
+				if (!strcasecmp(p, ".extensions"))
 					{
 						if (!opt.m_value.Empty() && !HasScript(opt.m_value, scriptName))
 						{

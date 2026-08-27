@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.13)
 
+if(POLICY CMP0167)
+	cmake_policy(SET CMP0167 NEW)
+endif()
+
 if (PROJECT_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
 	message(FATAL_ERROR "In-source builds are not allowed. You should create separate directory for build files.")
 endif()
 
-set(VERSION "26.2")
+set(VERSION "26.3")
 set(PACKAGE "nzbget")
 set(LIBS "")
 set(INCLUDES ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
@@ -27,6 +31,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(BUILD_ONLY_TESTS "Build only tests (for CI)")
+set(USE_SANITIZERS "" CACHE STRING
+    "Comma-separated sanitizers: address,undefined,thread,memory,leak (MSVC supports only address)")
 
 project(
 	nzbget
@@ -60,6 +66,8 @@ if(NOT BUILD_ONLY_TESTS)
 	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
 	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
 	target_include_directories(${PACKAGE} PRIVATE ${INCLUDES})
+
+	apply_sanitizers(${PACKAGE})
 
 	if(NOT WIN32)
 		if(CMAKE_BUILD_TYPE STREQUAL "Release")

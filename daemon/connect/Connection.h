@@ -130,7 +130,7 @@ protected:
 	virtual void PrintError(const char* errMsg);
 	int GetLastNetworkError();
 	bool DoConnect();
-	bool DoDisconnect();
+	void DoDisconnect();
 	bool InitSocketOpts(SOCKET socket);
 	bool ConnectWithTimeout(void* address, int address_len);
 #ifndef HAVE_GETADDRINFO

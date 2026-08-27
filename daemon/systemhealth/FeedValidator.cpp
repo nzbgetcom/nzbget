@@ -29,13 +29,14 @@ namespace SystemHealth::Feeds
 FeedValidator::FeedValidator(const FeedInfo& feed, const Options& options)
 	: m_feed(feed), m_options(options), m_name("Feed" + std::to_string(feed.GetId()))
 {
-	m_validators.reserve(6);
+	m_validators.reserve(7);
 	m_validators.push_back(std::make_unique<NameValidator>(feed));
 	m_validators.push_back(std::make_unique<UrlValidator>(feed));
 	m_validators.push_back(std::make_unique<IntervalValidator>(feed));
 	m_validators.push_back(std::make_unique<FilterValidator>(feed));
 	m_validators.push_back(std::make_unique<ScriptsValidator>(feed));
 	m_validators.push_back(std::make_unique<CategoryValidator>(feed, options));
+	m_validators.push_back(std::make_unique<FeedCertValidator>(feed));
 }
 
 Status NameValidator::Validate() const
@@ -85,6 +86,20 @@ Status ScriptsValidator::Validate() const { return Status::Ok(); }
 
 Status CategoryValidator::Validate() const
 {
+	return Status::Ok();
+}
+
+Status FeedCertValidator::Validate() const
+{
+	const char* url = m_feed.GetUrl();
+	if (!url || strncasecmp(url, "https://", 8) != 0) return Status::Ok();
+
+	if (m_feed.GetCertVerificationLevel() == Options::ECertVerifLevel::cvNone)
+	{
+		return Status::Warning("Certificate verification is 'None', "
+							   "making the TLS connection insecure");
+	}
+
 	return Status::Ok();
 }
 

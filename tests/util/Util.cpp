@@ -72,6 +72,38 @@ BOOST_AUTO_TEST_CASE(URLEncodeTest)
 	BOOST_CHECK(strcmp(testString, correctedUrl) == 0);
 }
 
+BOOST_AUTO_TEST_CASE(ParseContentDispositionFilenameTest)
+{
+	// quoted and unquoted parameter values
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=\"fname.ext\"").Str(), "fname.ext") == 0);
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachement;filename=fname.ext").Str(), "fname.ext") == 0);
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachement;filename=fname.ext;").Str(), "fname.ext") == 0);
+
+	// unquoted value must end at the parameter delimiter
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=1313961.nzb; filename*=UTF-8''1313961.nzb").Str(), "1313961.nzb") == 0);
+
+	// the extended parameter "filename*" (RFC 5987) takes precedence over "filename"
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=fallback.nzb; filename*=UTF-8''na%C3%AFve%20file.nzb").Str(), "na\xC3\xAFve file.nzb") == 0);
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename*=UTF-8'en'fname.ext").Str(), "fname.ext") == 0);
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename*=ISO-8859-1''na%EFve.nzb").Str(), "na\xC3\xAFve.nzb") == 0);
+
+	// quoted value can contain the parameter delimiter
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=\"semi;colon.nzb\"; foo=bar").Str(), "semi;colon.nzb") == 0);
+
+	// parameter names are case-insensitive
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; FileName=\"fname.ext\"").Str(), "fname.ext") == 0);
+
+	// trailing end-of-line characters of the raw header line
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=fname.ext\r\n").Str(), "fname.ext") == 0);
+
+	// no filename
+	BOOST_CHECK(WebUtil::ParseContentDispositionFilename("Content-Disposition: inline").Empty());
+	BOOST_CHECK(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename=").Empty());
+
+	// malformed percent-encoding must not crash
+	BOOST_CHECK(strcmp(WebUtil::ParseContentDispositionFilename("Content-Disposition: attachment; filename*=UTF-8''fname%").Str(), "fname%") == 0);
+}
+
 BOOST_AUTO_TEST_CASE(WildMaskTest)
 {
 	WildMask mask("*.par2", true);

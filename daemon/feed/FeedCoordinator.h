@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -70,8 +70,22 @@ public:
 	bool HasActiveDownloads();
 	Feeds* GetFeeds() { return &m_feeds; }
 
+	/**
+	 * @brief Resolves effective category for a feed item.
+	 *
+	 * Priority:
+	 *  1. Feed.Category (if non-empty)
+	 *  2. CategorySource fallback when Feed.Category is empty:
+	 *     - NZBFile / Auto -> item's own category
+	 *     - FeedFile -> empty
+	 *
+	 * @note Filter rules applied later (in FeedFilter::Match) may override
+	 *       AddCategory with their own category.
+	 */
+	static std::string ResolveCategory(const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo);
+
 protected:
-	virtual void LogDebugInfo();
+	void LogDebugInfo() override;
 
 private:
 	class DownloadQueueObserver: public Observer

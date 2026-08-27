@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2025-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,8 @@ FeedInfo::FeedInfo(
 	const char* category,
 	FeedInfo::CategorySource categorySource,
 	int priority,
-	const char* extensions
+	const char* extensions,
+	unsigned int certVerifLevel
 )
 	: m_id{ id }
 	, m_name{ name ? name : "" }
@@ -47,6 +48,7 @@ FeedInfo::FeedInfo(
 	, m_interval{ interval }
 	, m_pauseNzb{ pauseNzb }
 	, m_priority{ priority }
+	, m_certVerifLevel{ certVerifLevel }
 {
 	if (m_name.empty())
 	{
@@ -106,11 +108,7 @@ void FeedItemInfo::BuildDupeKey(const char* rageId, const char* tvdbId, const ch
 	int tvdbIdVal = !Util::EmptyStr(tvdbId) ? atoi(tvdbId) : m_tvdbId;
 	int tvmazeIdVal = !Util::EmptyStr(tvmazeId) ? atoi(tvmazeId) : m_tvmazeId;
 
-	if (m_imdbId != 0)
-	{
-		m_dupeKey = "imdb=" + std::to_string(m_imdbId);
-	}
-	else if (!Util::EmptyStr(series) && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
+	if (!Util::EmptyStr(series) && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
 		m_dupeKey = std::string("series=") + series + "-" + m_season + "-" + m_episode;
 	}
@@ -125,6 +123,10 @@ void FeedItemInfo::BuildDupeKey(const char* rageId, const char* tvdbId, const ch
 	else if (tvmazeIdVal != 0 && GetSeasonNum() != 0 && GetEpisodeNum() != 0)
 	{
 		m_dupeKey = "tvmazeid=" + std::to_string(tvmazeIdVal) + "-" + m_season + "-" + m_episode;
+	}
+	else if (m_imdbId != 0)
+	{
+		m_dupeKey = "imdb=" + std::to_string(m_imdbId);
 	}
 	else
 	{
@@ -203,7 +205,7 @@ const char* FeedItemInfo::GetDupeStatus()
 
 void FeedHistory::Remove(const char* url)
 {
-	for (iterator it = begin(); it != end(); it++)
+	for (iterator it = begin(); it != end(); ++it)
 	{
 		FeedHistoryInfo& feedHistoryInfo = *it;
 		if (!strcmp(feedHistoryInfo.GetUrl(), url))

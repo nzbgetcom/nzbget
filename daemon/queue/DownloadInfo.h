@@ -24,6 +24,7 @@
 #define DOWNLOADINFO_H
 
 #include <atomic>
+#include <algorithm>
 #include <string>
 #include "NString.h"
 #include "Container.h"
@@ -824,7 +825,7 @@ public:
 	int GetFileProgress() { return m_fileProgress; }
 	void SetFileProgress(int fileProgress) { m_fileProgress = fileProgress; }
 	int GetStageProgress() { return m_stageProgress; }
-	void SetStageProgress(int stageProgress) { m_stageProgress = stageProgress; }
+	void SetStageProgress(int stageProgress) { m_stageProgress = std::clamp(stageProgress, 0, 1000); }
 	time_t GetStartTime() { return m_startTime; }
 	void SetStartTime(time_t startTime) { m_startTime = startTime; }
 	time_t GetStageTime() { return m_stageTime; }
@@ -869,7 +870,7 @@ private:
 	EStage m_stage = ptQueued;
 	CString m_progressLabel = "";
 	int m_fileProgress = 0;
-	int m_stageProgress = 0;
+	std::atomic<int> m_stageProgress{0};
 	time_t m_startTime = 0;
 	time_t m_stageTime = 0;
 	Thread* m_postThread = nullptr;

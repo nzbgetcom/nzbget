@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2008-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,10 +24,8 @@
 #ifndef DISABLE_TLS
 
 #include "TlsSocket.h"
-#include "Thread.h"
 #include "Log.h"
 #include "Util.h"
-#include "FileSystem.h"
 #include "Options.h"
 
 OpenSSL::X509StorePtr TlsSocket::m_X509Store{ nullptr, &X509_STORE_free };
@@ -185,25 +183,29 @@ bool TlsSocket::Start()
 		return false;
 	}
 
-	int error_code = m_isClient ? SSL_connect(m_session.get()) : SSL_accept(m_session.get());
-	if (error_code < 1 && m_certVerifLevel > Options::ECertVerifLevel::cvNone)
+	int ec = m_isClient ? SSL_connect(m_session.get()) : SSL_accept(m_session.get());
+	bool shouldVerify = m_X509Store && m_certVerifLevel > Options::ECertVerifLevel::cvNone;
+	if (ec < 1)
 	{
-		long verifyRes = SSL_get_verify_result(m_session.get());
-		if (verifyRes != X509_V_OK)
+		if (m_isClient && shouldVerify)
 		{
-			PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
-				" For more info visit https://nzbget.com/documentation/certificate-verification/",
-				m_host.c_str(), X509_verify_cert_error_string(verifyRes)));
+			long verifyRes = SSL_get_verify_result(m_session.get());
+			if (verifyRes != X509_V_OK)
+			{
+				PrintError(BString<1024>("TLS certificate verification failed for %s: %s."
+					" For more info visit https://nzbget.com/documentation/certificate-verification/",
+					m_host.c_str(), X509_verify_cert_error_string(verifyRes)));
+				Close();
+				return false;
+			}
 		}
-		else
-		{
-			ReportError(BString<1024>("TLS handshake failed for %s", m_host.c_str()));
-		}
+
+		ReportError(BString<1024>("TLS handshake failed for %s", m_host.c_str()));
 		Close();
 		return false;
 	}
 
-	if (m_isClient && m_X509Store && !ValidateCert())
+	if (m_isClient && shouldVerify && !ValidateCert())
 	{
 		Close();
 		return false;
@@ -212,9 +214,7 @@ bool TlsSocket::Start()
 	const SSL_CIPHER* currentCipher = SSL_get_current_cipher(m_session.get());
 	if (currentCipher != nullptr)
 	{
-		const char* protocolVersion = SSL_get_version(m_session.get());
-		const char* cipherName = SSL_CIPHER_get_name(currentCipher);
-		debug("TLS connection established: %s using %s", protocolVersion, cipherName);
+		debug("TLS connection established: %s using %s", SSL_get_version(m_session.get()), SSL_CIPHER_get_name(currentCipher));
 	}
 
 	m_connected = true;
@@ -253,9 +253,9 @@ bool TlsSocket::ValidateCert()
 	if (m_certVerifLevel > Options::ECertVerifLevel::cvMinimal && !m_host.empty() && !X509_check_host(cert.get(), m_host.c_str(), m_host.size(), 0, nullptr))
 	{
 		const unsigned char* certHost = nullptr;
-        // Find the position of the CN field in the Subject field of the certificate
-        int common_name_loc = X509_NAME_get_index_by_NID(X509_get_subject_name(cert.get()), NID_commonName, -1);
-        if (common_name_loc >= 0)
+		// Find the position of the CN field in the Subject field of the certificate
+		int common_name_loc = X509_NAME_get_index_by_NID(X509_get_subject_name(cert.get()), NID_commonName, -1);
+		if (common_name_loc >= 0)
 		{
 			// Extract the CN field
 			X509_NAME_ENTRY* common_name_entry = X509_NAME_get_entry(X509_get_subject_name(cert.get()), common_name_loc);
@@ -268,7 +268,7 @@ bool TlsSocket::ValidateCert()
 					certHost = ASN1_STRING_get0_data(common_name_asn1);
 				}
 			}
-        }
+		}
 
 		PrintError(BString<1024>("TLS certificate verification failed for %s: certificate hostname mismatch (%s)."
 			" For more info visit https://nzbget.com/documentation/certificate-verification/", m_host.c_str(), certHost));

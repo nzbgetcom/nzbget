@@ -45,7 +45,8 @@ static FeedInfo MakeFeedInfo(
 		category,
 		categorySource,
 		10,    // priority
-		"nzb"  // extensions
+		"nzb", // extensions
+		Options::ECertVerifLevel::cvStrict
 	);
 }
 
@@ -185,7 +186,7 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryNZBFileSourceTest)
 {
 	const NzbInfoCreator creator;
 
-	// NZBFile source should use item category, ignore feed category
+	// Feed.Category wins over NZBFile
 	{
 		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCategory", FeedInfo::CategorySource::NZBFile);
 		FeedItemInfo itemInfo;
@@ -194,10 +195,10 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryNZBFileSourceTest)
 
 		const auto nzbInfo = creator.Create(feedInfo, itemInfo);
 		BOOST_REQUIRE(nzbInfo);
-		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "ItemCategory");
+		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "FeedCategory");
 	}
 
-	// Empty item category should result in empty category
+	// Feed.Category wins even when item category is empty
 	{
 		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCategory", FeedInfo::CategorySource::NZBFile);
 		FeedItemInfo itemInfo;
@@ -206,17 +207,12 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryNZBFileSourceTest)
 
 		const auto nzbInfo = creator.Create(feedInfo, itemInfo);
 		BOOST_REQUIRE(nzbInfo);
-		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "");
+		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "FeedCategory");
 	}
-}
 
-BOOST_AUTO_TEST_CASE(ApplyCategoryAutoSourceTest)
-{
-	const NzbInfoCreator creator;
-
-	// Auto source should try item category first, fallback to feed category
+	// When Feed.Category is empty, falls back to NZBFile -> item category
 	{
-		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCategory", FeedInfo::CategorySource::Auto);
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::NZBFile);
 		FeedItemInfo itemInfo;
 		InitItemInfo(itemInfo);
 		itemInfo.SetCategory("ItemCategory");
@@ -225,8 +221,25 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryAutoSourceTest)
 		BOOST_REQUIRE(nzbInfo);
 		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "ItemCategory");
 	}
+}
 
-	// Auto source should fallback to feed category when item category is empty
+BOOST_AUTO_TEST_CASE(ApplyCategoryAutoSourceTest)
+{
+	const NzbInfoCreator creator;
+
+	// Feed.Category wins over Auto
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCategory", FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCategory");
+
+		const auto nzbInfo = creator.Create(feedInfo, itemInfo);
+		BOOST_REQUIRE(nzbInfo);
+		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "FeedCategory");
+	}
+
+	// Feed.Category wins when item category is empty
 	{
 		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCategory", FeedInfo::CategorySource::Auto);
 		FeedItemInfo itemInfo;
@@ -238,7 +251,7 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryAutoSourceTest)
 		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "FeedCategory");
 	}
 
-	// Auto source should use empty string when both are empty
+	// When both are empty, result is empty
 	{
 		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::Auto);
 		FeedItemInfo itemInfo;
@@ -248,6 +261,18 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryAutoSourceTest)
 		const auto nzbInfo = creator.Create(feedInfo, itemInfo);
 		BOOST_REQUIRE(nzbInfo);
 		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "");
+	}
+
+	// When Feed.Category is empty, Auto falls back to item category
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCategory");
+
+		const auto nzbInfo = creator.Create(feedInfo, itemInfo);
+		BOOST_REQUIRE(nzbInfo);
+		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "ItemCategory");
 	}
 }
 
@@ -278,6 +303,95 @@ BOOST_AUTO_TEST_CASE(ApplyCategoryEdgeCasesTest)
 		BOOST_REQUIRE(nzbInfo);
 		// Should preserve whitespace (Util::EmptyStr checks for empty, not whitespace)
 		BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCategory()), "   ");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ResolveCategoryTest)
+{
+	// Feed.Category set -> wins regardless of CategorySource
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCat", FeedInfo::CategorySource::NZBFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "FeedCat");
+	}
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCat", FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "FeedCat");
+	}
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "FeedCat", FeedInfo::CategorySource::FeedFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "FeedCat");
+	}
+
+	// Feed.Category empty + NZBFile -> item category
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::NZBFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "ItemCat");
+	}
+
+	// Feed.Category empty + Auto -> item category
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "ItemCat");
+	}
+
+	// Feed.Category empty + NZBFile + empty item -> empty
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::NZBFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "");
+	}
+
+	// Feed.Category empty + Auto + empty item -> empty
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "");
+	}
+
+	// Feed.Category empty + FeedFile -> empty
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, "", FeedInfo::CategorySource::FeedFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "");
+	}
+
+	// nullptr Feed.Category treated as empty -> falls back to NZBFile
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, nullptr, FeedInfo::CategorySource::NZBFile);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("ItemCat");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "ItemCat");
+	}
+
+	// nullptr Feed.Category treated as empty + Auto + empty item -> empty
+	{
+		const FeedInfo feedInfo = MakeFeedInfo(1, nullptr, FeedInfo::CategorySource::Auto);
+		FeedItemInfo itemInfo;
+		InitItemInfo(itemInfo);
+		itemInfo.SetCategory("");
+		BOOST_CHECK_EQUAL(FeedCoordinator::ResolveCategory(feedInfo, itemInfo), "");
 	}
 }
 

@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "Connection.h"
 #include "FileSystem.h"
 #include "Util.h"
+#include "Options.h"
 
 class WebDownloader : public Thread, public Subject
 {
@@ -62,6 +63,9 @@ public:
 	const char* GetOriginalFilename() { return m_originalFilename; }
 	void SetForce(bool force) { m_force = force; }
 	void SetRetry(bool retry) { m_retry = retry; }
+#ifndef DISABLE_TLS
+	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
+#endif
 
 	void LogDebugInfo();
 
@@ -85,6 +89,9 @@ private:
 	bool m_redirected;
 	bool m_gzip;
 	bool m_retry = true;
+#ifndef DISABLE_TLS
+	unsigned int m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
+#endif
 #ifndef DISABLE_GZIP
 	std::unique_ptr<GUnzipStream> m_gUnzipStream;
 #endif

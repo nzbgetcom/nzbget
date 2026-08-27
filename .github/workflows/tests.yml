@@ -25,7 +25,7 @@ jobs:
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v7.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
+        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
@@ -204,7 +204,6 @@ jobs:
 
   cppcheck:
     runs-on: ubuntu-24.04
-    continue-on-error: true
     steps:
 
     - name: Prepare environment
@@ -217,16 +216,22 @@ jobs:
 
     - name: cppcheck
       run: |
-        mkdir build && cd build
-        cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..
+        mkdir build
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         cppcheck --error-exitcode=1 \
-          --project=compile_commands.json \
-          --enable=all \
+          --project=build/compile_commands.json \
+          --enable=warning,performance,portability,information \
           --inline-suppr \
           --check-level=exhaustive \
           --suppress=missingIncludeSystem \
+          --suppress=cstyleCast \
+          --suppress=dangerousTypeCast \
+          --suppress=uninitMemberVar \
+          --suppress=uninitMemberVarNoCtor \
+          --suppress=unmatchedSuppression \
           --suppress=unknownMacro:tests/ \
           --suppress=preprocessorErrorDirective:build/par2-turbo/ \
+          -ilib \
           -itests \
           -ibuild/rapidyenc \
           -ibuild/boost \

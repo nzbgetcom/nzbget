@@ -249,7 +249,7 @@ public:
 
 	DiskFile() = default;
 	DiskFile(const DiskFile&) = delete;
-	~DiskFile();
+	virtual ~DiskFile();
 	bool Open(const char* filename, EOpenMode mode);
 	bool Close();
 	bool Active() { return m_file != nullptr; }
@@ -260,7 +260,7 @@ public:
 	bool Eof();
 	bool Error();
 	int64 Print(const char* format, ...) PRINTF_SYNTAX(2);
-	char* ReadLine(char* buffer, int64 size);
+	virtual char* ReadLine(char* buffer, int64 size);
 	bool SetWriteBuffer(int size);
 	bool Flush();
 	bool Sync(CString& errmsg);

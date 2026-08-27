@@ -167,6 +167,11 @@ var History = (new function($)
 
 	this.redraw = function(force)
 	{
+		if (!Status.status)
+		{
+			return;
+		}
+
 		if (cached && !force)
 		{
 			return;
@@ -700,7 +705,7 @@ var HistoryUI = (new function($)
 				var html = $('#ConfirmDialog_Text').html();
 				html = html.replace(/Selected/g, 'All').replace(/selected/g, 'all');
 				$('#ConfirmDialog_Text').html(html);
-				$('#ConfirmDialog_OK').text('Clear');
+				$('#ConfirmDialog_OK').text(I18n.translate('btn_history_clear'));
 				// Clear is always permanent: HistoryDelete on hidden DUPs is a no-op
 				// and on visible NZBs it just creates new hidden DUPs, leaving rows behind.
 				Util.show($('#HistoryDeleteConfirmDialog_Options', dialog), false);

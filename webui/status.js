@@ -208,11 +208,11 @@ var Status = (new function($)
 		}
 
 		var limit = status.DownloadLimit > 0;
-		if (!limit)
+		if (!limit && status.NewsServers)
 		{
-			for (var i=0; i < Status.status.NewsServers.length; i++)
+			for (var i=0; i < status.NewsServers.length; i++)
 			{
-				limit = !Status.status.NewsServers[i].Active;
+				limit = !status.NewsServers[i].Active;
 				if (limit)
 				{
 					break;
@@ -694,7 +694,7 @@ var StatDialog = (new function($)
 		$('#StatDialog_Title').attr('data-i18n', 'title_statistics_and_status');
 		I18n.translatePage($('#StatDialog_Title').parent());
 		Util.show('#StatDialog_ArticleCache_Row', Options.option('ArticleCache') !== '0');
-		Util.show('#StatDialog_QueueScripts_Row', Status.status.QueueScriptCount > 0);
+		Util.show('#StatDialog_QueueScripts_Row', Status.status && Status.status.QueueScriptCount > 0);
 		$StatDialog.removeClass('modal-large').addClass('modal-mini');
 
 		if (Options.option('QuotaStartDay') != '1')
@@ -1222,6 +1222,12 @@ var StatDialog = (new function($)
 		var insertPos = $('#StatDialog_ServerMenuDivider', menu);
 
 		$('.volume-server', menu).remove();
+
+		if (!Status.status || !Status.status.NewsServers)
+		{
+			return;
+		}
+
 		for (var i=0; i < Status.status.NewsServers.length; i++)
 		{
 			var server = Status.status.NewsServers[i];
@@ -1246,7 +1252,8 @@ var StatDialog = (new function($)
 		if (curServer === 0) {
 			$('#StatDialog_ServerCap').attr('data-i18n', 'stat_all_news_servers').css('text-transform', 'capitalize');
 		} else {
-			$('#StatDialog_ServerCap').text(Status.serverName(Status.status.NewsServers[curServer-1])).removeAttr('data-i18n').css('text-transform', '');
+			var serverName = Status.status.NewsServers[curServer-1] ? Status.serverName(Status.status.NewsServers[curServer-1]) : '';
+			$('#StatDialog_ServerCap').text(serverName).removeAttr('data-i18n').css('text-transform', '');
 		}
 		I18n.translatePage($('#StatDialog_ServerCap').parent());
 
@@ -1425,6 +1432,9 @@ var StatDialog = (new function($)
 
 	function updateCounters()
 	{
+		if (!Status.status) {
+			return;
+		}
 		$StatDialog_TodaySize.html(Util.formatSizeMB(Status.status.DaySizeMB, Status.status.DaySizeLo));
 		$StatDialog_MonthSize.html(Util.formatSizeMB(Status.status.MonthSizeMB, Status.status.MonthSizeLo));
 		if (!servervolumes || !servervolumes[curServer]) {
@@ -1579,6 +1589,9 @@ var LimitDialog = (new function($)
 
 	function showModal()
 	{
+		if (!Status.status) {
+			return;
+		}
 		var rate = Util.round0(Status.status.DownloadLimit / 1024);
 		$LimitDialog_SpeedInput.val(rate > 0 ? rate : '');
 		updateTable();
@@ -1588,6 +1601,9 @@ var LimitDialog = (new function($)
 	function updateTable()
 	{
 		var data = [];
+		if (!Status.status || !Status.status.NewsServers) {
+			return;
+		}
 		for (var i=0; i < Status.status.NewsServers.length; i++)
 		{
 			var server = Status.status.NewsServers[i];
@@ -1608,6 +1624,9 @@ var LimitDialog = (new function($)
 
 	function save(e)
 	{
+		if (!Status.status || !Status.status.NewsServers) {
+			return;
+		}
 		var val = $LimitDialog_SpeedInput.val();
 		var rate = 0;
 		if (val == '')
@@ -1641,6 +1660,9 @@ var LimitDialog = (new function($)
 
 	function saveLimit(rate, servers)
 	{
+		if (!Status.status) {
+			return;
+		}
 		function saveServers()
 		{
 			if (servers.length > 0)
@@ -1686,6 +1708,9 @@ var LimitDialog = (new function($)
 
 	function toggleLimit()
 	{
+		if (!Status.status || !Status.status.NewsServers) {
+			return;
+		}
 		var limited = Status.status.DownloadLimit > 0;
 		for (var i=0; i < Status.status.NewsServers.length; i++)
 		{

@@ -27,7 +27,7 @@ namespace SystemHealth::NewsServer
 NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 	: m_server(server), m_name("Server" + std::to_string(server.GetId()))
 {
-	m_validators.reserve(16);
+	m_validators.reserve(15);
 	m_validators.push_back(std::make_unique<ServerActiveValidator>(server));
 	m_validators.push_back(std::make_unique<ServerNameValidator>(server));
 	m_validators.push_back(std::make_unique<ServerLevelValidator>(server));
@@ -38,7 +38,6 @@ NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 	m_validators.push_back(std::make_unique<ServerUsernameValidator>(server));
 	m_validators.push_back(std::make_unique<ServerPasswordValidator>(server));
 	m_validators.push_back(std::make_unique<ServerEncryptionValidator>(server));
-	m_validators.push_back(std::make_unique<ServerJoinGroupValidator>(server));
 	m_validators.push_back(std::make_unique<ServerCipherValidator>(server));
 	m_validators.push_back(std::make_unique<ServerConnectionsValidator>(server));
 	m_validators.push_back(std::make_unique<ServerRetentionValidator>(server));
@@ -155,18 +154,6 @@ Status ServerEncryptionValidator::Validate() const
 			"Communication with this server will not be encrypted");
 	}
 
-	return Status::Ok();
-}
-
-Status ServerJoinGroupValidator::Validate() const
-{
-	if (!m_server.GetActive()) return Status::Ok();
-
-	int join = m_server.GetJoinGroup();
-	if (join < 0 || join > 99)
-	{
-		return Status::Error("JoinGroup must be between 0 and 99");
-	}
 	return Status::Ok();
 }
 

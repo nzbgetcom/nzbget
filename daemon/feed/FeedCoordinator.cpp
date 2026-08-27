@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  * 
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ std::unique_ptr<NzbInfo> NzbInfoCreator::Create(const FeedInfo& feedInfo, const 
 
 void NzbInfoCreator::ApplyCategory(NzbInfo& nzbInfo, const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo) const
 {
+	// Priority 1: AddCategory from filter rules
 	const std::string& addCategory = feedItemInfo.GetAddCategory();
 	if (!addCategory.empty())
 	{
@@ -77,30 +78,8 @@ void NzbInfoCreator::ApplyCategory(NzbInfo& nzbInfo, const FeedInfo& feedInfo, c
 		return;
 	}
 
-	const auto categorySource = feedInfo.GetCategorySource();
-
-	// Priority 2: FeedFile - use feed category
-	if (categorySource == FeedInfo::CategorySource::FeedFile)
-	{
-		nzbInfo.SetCategory(feedInfo.GetCategory());
-		return;
-	}
-
-	// Priority 3: NZBFile - use item category
-	if (categorySource == FeedInfo::CategorySource::NZBFile)
-	{
-		nzbInfo.SetCategory(feedItemInfo.GetCategory());
-		return;
-	}
-
-	// Priority 4: Auto - try item first, fallback to feed
-	if (categorySource == FeedInfo::CategorySource::Auto)
-	{
-		const char* itemCategory = feedItemInfo.GetCategory();
-		const char* feedCategory = feedInfo.GetCategory();
-
-		nzbInfo.SetCategory(!Util::EmptyStr(itemCategory) ? itemCategory : feedCategory);
-	}
+	// Priority 2: Feed.Category / CategorySource fallback
+	nzbInfo.SetCategory(FeedCoordinator::ResolveCategory(feedInfo, feedItemInfo).c_str());
 }
 
 std::unique_ptr<RegEx>& FeedCoordinator::FilterHelper::GetRegEx(int id)
@@ -320,6 +299,9 @@ void FeedCoordinator::StartFeedDownload(FeedInfo* feedInfo, bool force)
 	feedDownloader->SetUrl(feedInfo->GetUrl());
 	feedDownloader->SetInfoName(feedInfo->GetName());
 	feedDownloader->SetForce(force || g_Options->GetUrlForce());
+#ifndef DISABLE_TLS
+	feedDownloader->SetCertVerifLevel(feedInfo->GetCertVerificationLevel());
+#endif
 
 	BString<1024> outFilename;
 	if (feedInfo->GetId() > 0)
@@ -440,6 +422,28 @@ void FeedCoordinator::SchedulerNextUpdate(FeedInfo* feedInfo, bool success)
 	feedInfo->SetNextUpdate(current + interval);
 }
 
+std::string FeedCoordinator::ResolveCategory(const FeedInfo& feedInfo, const FeedItemInfo& feedItemInfo)
+{
+	const char* feedCategory = feedInfo.GetCategory();
+	if (!Util::EmptyStr(feedCategory))
+	{
+		return feedCategory;
+	}
+
+	switch (feedInfo.GetCategorySource())
+	{
+		case FeedInfo::CategorySource::NZBFile:
+		case FeedInfo::CategorySource::Auto:
+		{
+			const char* itemCategory = feedItemInfo.GetCategory();
+			return !Util::EmptyStr(itemCategory) ? itemCategory : "";
+		}
+		case FeedInfo::CategorySource::FeedFile:
+		default:
+			return "";
+	}
+}
+
 void FeedCoordinator::FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems)
 {
 	debug("Filtering feed %s", feedInfo->GetName());
@@ -458,14 +462,7 @@ void FeedCoordinator::FilterFeed(FeedInfo* feedInfo, FeedItemList* feedItems)
 		feedItemInfo.SetMatchRule(0);
 		feedItemInfo.SetPauseNzb(feedInfo->GetPauseNzb());
 		feedItemInfo.SetPriority(feedInfo->GetPriority());
-		if (feedInfo->GetCategorySource() == FeedInfo::CategorySource::FeedFile)
-		{
-			feedItemInfo.SetAddCategory(feedInfo->GetCategory());
-		}
-		else
-		{
-			feedItemInfo.SetAddCategory("");
-		}
+		feedItemInfo.SetAddCategory(FeedCoordinator::ResolveCategory(*feedInfo, feedItemInfo).c_str());
 		feedItemInfo.SetDupeScore(0);
 		feedItemInfo.SetDupeMode(dmScore);
 		feedItemInfo.SetFeedFilterHelper(&filterHelper);
@@ -531,12 +528,12 @@ std::vector<std::unique_ptr<NzbInfo>> FeedCoordinator::ProcessFeed(FeedInfo* fee
 
 std::shared_ptr<FeedItemList> FeedCoordinator::ViewFeed(int id)
 {
-	if (id < 1 || id > (int)m_feeds.size())
+	if (id < 1 || id > static_cast<int>(m_feeds.size()))
 	{
 		return nullptr;
 	}
 
-	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[id - 1];
+	std::unique_ptr<FeedInfo>& feedInfo = m_feeds[static_cast<size_t>(id - 1)];
 
 	return PreviewFeed(feedInfo->GetId(), feedInfo->GetName(), feedInfo->GetUrl(), feedInfo->GetFilter(),
 		feedInfo->GetBacklog(), feedInfo->GetPauseNzb(), feedInfo->GetCategory(), feedInfo->GetCategorySource(),
@@ -550,8 +547,14 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 {
 	debug("Preview feed %s", name);
 
+	unsigned int certVerifLevel = Options::ECertVerifLevel::cvStrict;
+	if (id >= 1 && id <= static_cast<int>(m_feeds.size()))
+	{
+		certVerifLevel = m_feeds[static_cast<size_t>(id - 1)]->GetCertVerificationLevel();
+	}
+
 	std::unique_ptr<FeedInfo> feedInfo = std::make_unique<FeedInfo>(id, name, url, backlog, interval,
-		filter, pauseNzb, category, categorySource, priority, feedScript);
+		filter, pauseNzb, category, categorySource, priority, feedScript, certVerifLevel);
 	feedInfo->SetPreview(true);
 
 	std::shared_ptr<FeedItemList> feedItems;

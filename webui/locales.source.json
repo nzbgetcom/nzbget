@@ -4215,7 +4215,7 @@
     "description": "Description for the option Unpack DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes."
   },
   "config_desc_directunpack": {
-    "message": "Directly unpack files during downloading.\n\nWhen active the files are unpacked during downloading instead of post-processing\nstage. This works only for healthy downloads. Damaged downloads are unpacked\nas usual during post-processing stage after par-repair.\n\nNOTE: This option requires unpack to be enabled in general via option <Unpack>.\nNOTE: For best results also activate option <DirectRename> and option <ReorderFiles>.",
+    "message": "Directly unpack files during downloading.\n\nWhen active the files are unpacked during downloading instead of post-processing\nstage. This works only for healthy downloads. Damaged downloads are unpacked\nas usual during post-processing stage after par-repair.\n\nNOTE: This option requires unpack to be enabled in general via option <Unpack>.\nNOTE: For best results also activate option <DirectRename> and option <ReorderFiles>.\nNOTE: <DirectUnpack> only works with RAR archives. 7z and other formats are not supported.",
     "description": "Description for the option DirectUnpack DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_usetempunpackdir": {
@@ -4273,6 +4273,10 @@
   "config_desc_nzbdir": {
     "message": "Directory for incoming nzb-files.\n\nIf a new nzb-file is added to queue via web-interface or RPC-API, it\nis saved into this directory and then processed by extension\nscripts (option <Extensions>).\n\nThis directory is also monitored for new nzb-files and compressed archives\n(zip, rar, 7z, tar, gz, etc.). See options <NzbDirArchiveScan> and <NzbDirArchiveAction>.\n\nThe directory can have sub-directories. A file queued from a subdirectory\nis automatically assigned to the category matching the sub-directory name.",
     "description": "Description for the option NzbDir DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_feed_certverification": {
+    "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
+    "description": "Description for the option Feed1.CertVerification DO NOT translate configuration option values (Minimal, None, Strict) as they are fixed configuration values."
   },
   "help_feed_filter_options_def": {
     "message": "Definition of an option: $1name:value$2",
@@ -4505,5 +4509,9 @@
   "webui_config_desc_refreshretries": {
     "message": "Number of refresh attempts if a communication error occurs (0-99).\n\nIf all attempts fail, an error is displayed and the automatic refresh stops.",
     "description": "Description for the option RefreshRetries"
+  },
+  "progress_awaiting_par_files": {
+    "message": "Awaiting additional par-files",
+    "description": "Progress status indicating waiting for additional par files to download."
   }
 }

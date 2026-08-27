@@ -105,8 +105,30 @@ var DownloadsEditDialog = (new function($)
 				{
 					$('#DownloadsEdit_NZBName').focus();
 				}
+				if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+				{
+					ParamTab.updatePostParamTranslations();
+				}
 			});
 		}
+		else
+		{
+			$DownloadsEditDialog.on('shown', function()
+			{
+				if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+				{
+					ParamTab.updatePostParamTranslations();
+				}
+			});
+		}
+
+		I18n.subscribe(function()
+		{
+			if ($DownloadsEdit_ParamData && $DownloadsEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
 	}
 
 	this.showModal = function(nzbid, allGroups, area)
@@ -165,7 +187,7 @@ var DownloadsEditDialog = (new function($)
 		$ServStatsTable.fasttable('setCurPage', 1);
 
 		$('#DownloadsEdit_Title').html(Util.textToHtml(Util.formatNZBName(group.NZBName)) +
-		    (group.Kind === 'URL' ? '&nbsp;<span class="label label-info">URL</span>' : ''));
+		    (group.Kind === 'URL' ? '&nbsp;<span class="label label-info text-uppercase">' + I18n.translate('label_kind_url') + '</span>' : ''));
 
 		$('#DownloadsEdit_NZBName').attr('value', group.NZBName);
 		$('#DownloadsEdit_NZBName').attr('readonly', group.postprocess);
@@ -815,6 +837,13 @@ var EditUI = (new function($)
 	this.fillServStats = function(table, editItem)
 	{
 		var data = [];
+
+		if (!Status.status || !Status.status.NewsServers)
+		{
+			table.fasttable('update', data);
+			return;
+		}
+
 		for (var i=0; i < Status.status.NewsServers.length; i++)
 		{
 			var server = Status.status.NewsServers[i];
@@ -900,6 +929,14 @@ var ParamTab = (new function($)
 			lastDiv = div;
 			lastClass = divClass;
 		}
+		if (window.I18n)
+		{
+			I18n.translatePage(configData);
+			if (window.Config)
+			{
+				Config._translateDescriptions();
+			}
+		}
 		return postParams;
 	}
 
@@ -934,6 +971,11 @@ var ParamTab = (new function($)
 				}
 			}
 		});
+
+		if (window.Config)
+		{
+			Config._translateDescriptions();
+		}
 	}
 
 	function defineBuiltinParams(postParamConfig)
@@ -1271,7 +1313,7 @@ var DownloadsMultiDialog = (new function($)
 		var size = Util.formatSizeMB(FileSizeMB, FileSizeLo);
 		var remaining = Util.formatSizeMB(RemainingSizeMB-PausedSizeMB, RemainingSizeLo-PausedSizeLo);
 		var unpausedSize = Util.formatSizeMB(PausedSizeMB, PausedSizeLo);
-		var estimated = paused ? '' : (Status.status.DownloadRate > 0 ? Util.formatTimeHMS((RemainingSizeMB-PausedSizeMB)*1024/(Status.status.DownloadRate/1024)) : '');
+		var estimated = paused ? '' : (Status.status && Status.status.DownloadRate > 0 ? Util.formatTimeHMS((RemainingSizeMB-PausedSizeMB)*1024/(Status.status.DownloadRate/1024)) : '');
 
 		var table = '';
 		table += '<tr><td>Total</td><td class="text-right">' + size + '</td></tr>';
@@ -1560,7 +1602,23 @@ var HistoryEditDialog = (new function($)
 			Refresher.resume();
 		});
 
+		$HistoryEditDialog.on('shown', function ()
+		{
+			if ($HistoryEdit_ParamData && $HistoryEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
+
 		TabDialog.extend($HistoryEditDialog);
+
+		I18n.subscribe(function()
+		{
+			if ($HistoryEdit_ParamData && $HistoryEdit_ParamData.children().length > 0)
+			{
+				ParamTab.updatePostParamTranslations();
+			}
+		});
 	}
 
 	this.showModal = function(hist, area)

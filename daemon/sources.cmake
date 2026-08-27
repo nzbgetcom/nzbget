@@ -9,11 +9,9 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/extension/FeedScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/NzbScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/PostScript.cpp
-	${CMAKE_SOURCE_DIR}/daemon/extension/PostScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/QueueScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ScanScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/SchedulerScript.cpp
-	${CMAKE_SOURCE_DIR}/daemon/extension/ScriptConfig.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ScriptConfig.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/Extension.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/ExtensionLoader.cpp

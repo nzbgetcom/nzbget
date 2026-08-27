@@ -216,7 +216,6 @@ void Scanner::UnpackArchives(const std::vector<fs::path>& archives)
 
 	const auto processor = Incoming::ArchiveProcessor({
 		g_Options->GetTempDirPath() / UNPACK_DIR,
-		g_Options->GetNzbDirPath(),
 		g_Options->GetNzbDirPath() / PROCESSED_DIR,
 		g_Options->GetNzbDirPath() / BROKEN_DIR,
 		g_Options->GetNzbDirArchiveAction()
@@ -224,7 +223,7 @@ void Scanner::UnpackArchives(const std::vector<fs::path>& archives)
 
 	for (const auto& archive : archives)
 	{
-		processor.Process(archive);
+		processor.Process(archive, archive.parent_path());
 	}
 }
 
@@ -306,7 +305,7 @@ bool Scanner::CanProcessFile(const char* fullFilename, bool checkStat)
 	bool canProcess = false;
 	bool inList = false;
 
-	for (FileList::iterator it = m_fileList.begin(); it != m_fileList.end(); it++)
+	for (FileList::iterator it = m_fileList.begin(); it != m_fileList.end(); ++it)
 	{
 		FileData& fileData = *it;
 		if (!strcmp(fileData.GetFilename(), fullFilename))
@@ -786,13 +785,12 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 
 		const auto processor = Incoming::ArchiveProcessor({
 			g_Options->GetTempDirPath() / UNPACK_DIR,
-			g_Options->GetNzbDirPath(),
 			g_Options->GetNzbDirPath() / PROCESSED_DIR,
 			g_Options->GetNzbDirPath() / BROKEN_DIR,
 			g_Options->GetNzbDirArchiveAction()
 		});
 
-		auto nzbFiles = processor.Process(archiveFilePath);
+		auto nzbFiles = processor.Process(archiveFilePath, g_Options->GetNzbDirPath());
 		if (!nzbFiles)
 		{
 			return EAddStatus::asFailed;

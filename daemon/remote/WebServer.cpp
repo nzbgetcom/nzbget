@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,10 @@
 #include "Util.h"
 #include "FileSystem.h"
 
+#ifndef DISABLE_TLS
+#include <openssl/rand.h>
+#endif
+
 static const char* ERR_HTTP_OK = "200 OK";
 static const char* ERR_HTTP_NOT_MODIFIED = "304 Not Modified";
 static const char* ERR_HTTP_BAD_REQUEST = "400 Bad Request";
@@ -34,7 +38,44 @@ static const char* ERR_HTTP_NOT_FOUND = "404 Not Found";
 static const char* ERR_HTTP_SERVICE_UNAVAILABLE = "503 Service Unavailable";
 
 static const int MAX_UNCOMPRESSED_SIZE = 500;
-char WebProcessor::m_serverAuthToken[3][49];
+char WebProcessor::m_serverAuthToken[3][TOKEN_SIZE];
+
+static void GenerateSecureToken(char* token)
+{
+	// 1 byte = 2 hex characters.
+	// For a token string of size TOKEN_SIZE (including \0), we need half that many random bytes.
+	constexpr size_t BYTES_NEEDED = (TOKEN_SIZE - 1) / 2;
+
+#ifndef DISABLE_TLS
+	unsigned char randBytes[BYTES_NEEDED];
+	if (RAND_bytes(randBytes, static_cast<int>(BYTES_NEEDED)) == 1)
+	{
+		for (size_t i = 0; i < BYTES_NEEDED; ++i)
+		{
+			sprintf(&token[i * 2], "%02x", randBytes[i]);
+		}
+
+		token[TOKEN_SIZE - 1] = '\0';
+		return;
+	}
+#endif
+
+	try
+	{
+		std::random_device rd;
+		std::uniform_int_distribution<unsigned int> dist(0, 0xFF);
+		for (size_t i = 0; i < BYTES_NEEDED; ++i)
+		{
+			sprintf(&token[i * 2], "%02x", dist(rd));
+		}
+	}
+	catch (const std::exception& ex)
+	{
+		error("Could not generate secure authentication token: %s", ex.what());
+		exit(1);
+	}
+	token[TOKEN_SIZE - 1] = '\0';
+}
 
 //*****************************************************************
 // WebProcessor
@@ -47,26 +88,9 @@ void WebProcessor::Init()
 		return;
 	}
 
-	for (int j = uaControl; j <= uaAdd; j++)
+	for (size_t j = uaControl; j <= uaAdd; ++j)
 	{
-		for (size_t i = 0; i < sizeof(m_serverAuthToken[j]) - 1; i++)
-		{
-			int ch = rand() % (10 + 26 + 26);
-			if (0 <= ch && ch < 10)
-			{
-				m_serverAuthToken[j][i] = '0' + ch;
-			}
-			else if (10 <= ch && ch < 10 + 26)
-			{
-				m_serverAuthToken[j][i] = 'a' + ch - 10;
-			}
-			else
-			{
-				m_serverAuthToken[j][i] = 'A' + ch - 10 - 26;
-			}
-		}
-		m_serverAuthToken[j][sizeof(m_serverAuthToken[j]) - 1] = '\0';
-		debug("X-Auth-Token[%i]: %s", j, m_serverAuthToken[j]);
+		GenerateSecureToken(m_serverAuthToken[j]);
 	}
 }
 
@@ -192,8 +216,6 @@ void WebProcessor::ParseHeaders()
 	}
 
 	debug("URL=%s", *m_url);
-	debug("Authorization=%s", m_authInfo);
-	debug("Auth-Token=%s", m_authToken);
 }
 
 void WebProcessor::ParseUrl()
@@ -323,12 +345,6 @@ void WebProcessor::Dispatch()
 		return;
 	}
 
-	if (Util::EmptyStr(g_Options->GetWebDir()))
-	{
-		SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
-		return;
-	}
-
 	if (m_httpMethod != hmGet)
 	{
 		SendErrorResponse(ERR_HTTP_BAD_REQUEST, true);
@@ -345,6 +361,71 @@ void WebProcessor::Dispatch()
 			SendErrorResponse(ERR_HTTP_NOT_FOUND, true);
 			return;
 		}
+	}
+
+	if (!strncmp(m_url, "/extensions/", 12))
+	{
+		if (!m_authorized)
+		{
+			SendAuthResponse();
+			return;
+		}
+
+		const auto& scriptDirs = g_Options->GetScriptDirPaths();
+		if (scriptDirs.empty())
+		{
+			SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
+			return;
+		}
+
+		// URL format: /extensions/{extname}/{path}
+		// maps to: {ScriptDir}/{extname}/{path}
+		std::string_view extUrl = m_url + 12;
+		auto slash = extUrl.find('/');
+		// reject missing path separator and reject absolute extUrl (e.g. //etc/passwd)
+		if (slash == std::string_view::npos || slash == 0)
+		{
+			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
+			return;
+		}
+
+		bool found = false;
+		for (const auto& scriptDir : scriptDirs)
+		{
+			fs::path filePath = scriptDir / extUrl;
+			fs::error_code ec;
+			auto resolvedDir = fs::canonical(scriptDir, ec);
+			if (ec) continue;
+
+			auto resolvedPath = fs::canonical(filePath, ec);
+			if (ec) continue;
+
+			auto rel = resolvedPath.lexically_relative(resolvedDir);
+			if (rel.empty() || rel.native().front() == '.') continue;
+
+			CharBuffer body;
+			std::string filePathStr = fs::u8string(resolvedPath);
+			if (FileSystem::LoadFileIntoBuffer(filePathStr.c_str(), body, true))
+			{
+				const char* contentType = DetectContentType(filePathStr.c_str());
+				int len = body.Size() - 1;
+				SendBodyResponse(body, len, contentType, true);
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			SendErrorResponse(ERR_HTTP_NOT_FOUND, false);
+		}
+		return;
+	}
+
+	if (Util::EmptyStr(g_Options->GetWebDir()))
+	{
+		SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
+		return;
 	}
 
 	if (!strncmp(m_url, "/combined.", 10) && strchr(m_url, '?'))
@@ -472,7 +553,7 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		BString<1024> newETag;
 
 		size_t hash = m_hasher(body);
-		newETag.Format("\"%x\"", hash);
+		newETag.Format("\"%zx\"", hash);
 
 		unchanged = m_oldETag && !strcmp(newETag, m_oldETag);
 		if (unchanged)
@@ -630,6 +711,10 @@ const char* WebProcessor::DetectContentType(const char* filename)
 		else if (!strcasecmp(ext, ".svg"))
 		{
 			return "image/svg+xml";
+		}
+		else if (!strcasecmp(ext, ".json"))
+		{
+			return "application/json";
 		}
 	}
 	return nullptr;

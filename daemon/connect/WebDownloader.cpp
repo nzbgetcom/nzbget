@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2019 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,10 @@
 #include "FileSystem.h"
 
 WebDownloader::WebDownloader()
+	: m_contentLen(0)
+	, m_redirecting(false)
+	, m_redirected(false)
+	, m_gzip(false)
 {
 	debug("Creating WebDownloader");
 
@@ -239,6 +243,10 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 	bool tls = !strcasecmp(url->GetProtocol(), "https");
 
 	m_connection = std::make_unique<Connection>(url->GetHost(), port, tls);
+
+#ifndef DISABLE_TLS
+	m_connection->SetCertVerifLevel(m_certVerifLevel);
+#endif
 
 	return adRunning;
 }
@@ -487,37 +495,13 @@ void WebDownloader::ProcessHeader(const char* line)
 
 void WebDownloader::ParseFilename(const char* contentDisposition)
 {
-	// Examples:
-	// Content-Disposition: attachment; filename="fname.ext"
-	// Content-Disposition: attachement;filename=fname.ext
-	// Content-Disposition: attachement;filename=fname.ext;
-	const char *p = strstr(contentDisposition, "filename");
-	if (!p)
+	CString filename = WebUtil::ParseContentDispositionFilename(contentDisposition);
+	if (filename.Empty())
 	{
 		return;
 	}
 
-	p = strchr(p, '=');
-	if (!p)
-	{
-		return;
-	}
-
-	p++;
-
-	while (*p == ' ') p++;
-
-	BString<1024> fname = p;
-
-	char *pe = fname + strlen(fname) - 1;
-	while ((*pe == ' ' || *pe == '\n' || *pe == '\r' || *pe == ';') && pe > fname) {
-		*pe = '\0';
-		pe--;
-	}
-
-	WebUtil::HttpUnquote(fname);
-
-	m_originalFilename = FileSystem::BaseFileName(fname);
+	m_originalFilename = FileSystem::BaseFileName(filename);
 
 	debug("OriginalFilename: %s", *m_originalFilename);
 }

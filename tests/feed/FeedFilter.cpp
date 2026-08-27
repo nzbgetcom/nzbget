@@ -84,6 +84,7 @@ BOOST_AUTO_TEST_CASE(FeedFilterTest)
 	TestFilter(&item, "A(my series, paused, 100):game", FeedItemInfo::msAccepted);
 	TestFilter(&item, "A(k:series=GOT-${1}-${2}): Game of clowns S##E##", FeedItemInfo::msAccepted);
 	TestFilter(&item, "A(k:series=GOT-${1}-${2}): $.+S([0-9]{1,2})E([0-9]{1,2})", FeedItemInfo::msAccepted);
+	TestFilter(&item, "A(category:Series)", FeedItemInfo::msIgnored);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

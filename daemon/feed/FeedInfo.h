@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2013-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #ifndef FEEDINFO_H
 #define FEEDINFO_H
 
+#include <atomic>
 #include <string>
 #include "Util.h"
 #include "DownloadInfo.h"
@@ -63,7 +64,8 @@ public:
 		const char* category,
 		CategorySource categorySource,
 		int priority,
-		const char* extensions
+		const char* extensions,
+		unsigned int certVerifLevel
 	);
 	int GetId() const { return m_id; }
 	const char* GetName() const { return m_name.c_str(); }
@@ -75,6 +77,7 @@ public:
 	const char* GetCategory() const { return m_category.c_str(); }
 	int GetPriority() const { return m_priority; }
 	const char* GetExtensions() const { return m_extensions.c_str(); }
+	unsigned int GetCertVerificationLevel() const { return m_certVerifLevel; }
 	time_t GetLastUpdate() { return m_lastUpdate; }
 	void SetLastUpdate(time_t lastUpdate) { m_lastUpdate = lastUpdate; }
 	time_t GetNextUpdate() { return m_nextUpdate; }
@@ -107,7 +110,7 @@ private:
 	time_t m_lastUpdate = 0;
 	time_t m_nextUpdate = 0;
 	uint32 m_filterHash;
-	EStatus m_status = fsUndefined;
+	std::atomic<EStatus> m_status{fsUndefined};
 	CategorySource m_categorySource = CategorySource::NZBFile;
 	int m_interval;
 	int m_priority;
@@ -117,6 +120,7 @@ private:
 	bool m_preview = false;
 	bool m_fetch = false;
 	bool m_force = false;
+	unsigned int m_certVerifLevel;
 };
 
 typedef std::deque<std::unique_ptr<FeedInfo>> Feeds;

@@ -873,6 +873,16 @@ var DownloadsUI = (new function($)
 		return '';
 	}
 
+	this.formatProgressLabel = function(text)
+	{
+		if (text === 'Awaiting additional par-files')
+		{
+			return I18n.translate('progress_awaiting_par_files');
+		}
+
+		return text;
+	}
+
 	this.buildProgressLabel = function(group, maxWidth)
 	{
 		var text = '';
@@ -886,7 +896,7 @@ var DownloadsUI = (new function($)
 				case "UNPACKING":
 				case "RENAMING":
 				case "EXECUTING_SCRIPT":
-					text = group.PostInfoText;
+					text = DownloadsUI.formatProgressLabel(group.PostInfoText);
 					break;
 			}
 		}
@@ -968,6 +978,10 @@ var DownloadsUI = (new function($)
 
 		if (minLevel === null)
 		{
+			if (!Status.status || !Status.status.NewsServers)
+			{
+				return 0;
+			}
 			for (var i=0; i < Status.status.NewsServers.length; i++)
 			{
 				var server = Status.status.NewsServers[i];

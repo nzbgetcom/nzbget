@@ -136,17 +136,22 @@ std::string GetNetworkXmlStr(const System::Network& network)
 
 BOOST_AUTO_TEST_CASE(SystemInfoTest)
 {
-	auto sysInfo = std::make_unique<System::SystemInfo>();
+	// inject a deterministic network fetcher so the test makes no network calls
+	auto sysInfo = std::make_unique<System::SystemInfo>(
+		[] { return System::Network{ "1.2.3.4", "192.168.1.5" }; }
+	);
 
 	std::string jsonStrResult = System::ToJsonStr(*sysInfo);
 	std::string xmlStrResult = System::ToXmlStr(*sysInfo);
+
+	System::Network network = sysInfo->GetNetworkInfo();
 
 	std::string jsonStrExpected = "{\"OS\":{\"Name\":\"" + sysInfo->GetOSInfo().GetName() +
 		"\",\"Version\":\"" + sysInfo->GetOSInfo().GetVersion() +
 		"\"},\"CPU\":{\"Model\":\"" + sysInfo->GetCPUInfo().GetModel() +
 		"\",\"Arch\":\"" + sysInfo->GetCPUInfo().GetArch() +
-		"\"},\"Network\":{\"PublicIP\":\"" + sysInfo->GetNetworkInfo().publicIP +
-		"\",\"PrivateIP\":\"" + sysInfo->GetNetworkInfo().privateIP +
+		"\"},\"Network\":{\"PublicIP\":\"" + network.publicIP +
+		"\",\"PrivateIP\":\"" + network.privateIP +
 		"\"}," + GetToolsJsonStr(sysInfo->GetTools()) + "," +
 		GetLibrariesJsonStr(sysInfo->GetLibraries()) + "}";
 
@@ -158,22 +163,10 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 		"</string></value></member>" +
 		"<member><name>Arch</name><value><string>" + sysInfo->GetCPUInfo().GetArch() +
 		"</string></value></member></CPU>" +
-		GetNetworkXmlStr(sysInfo->GetNetworkInfo()) +
+		GetNetworkXmlStr(network) +
 		GetToolsXmlStr(sysInfo->GetTools()) +
 		GetLibrariesXmlStr(sysInfo->GetLibraries()) +
 		"</struct></value>";
-
-	BOOST_TEST_MESSAGE("EXPECTED JSON STR: ");
-	BOOST_TEST_MESSAGE(jsonStrExpected);
-
-	BOOST_TEST_MESSAGE("RESULT JSON STR: ");
-	BOOST_TEST_MESSAGE(jsonStrResult);
-
-	BOOST_TEST_MESSAGE("EXPECTED XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrExpected);
-
-	BOOST_TEST_MESSAGE("RESULT XML STR: ");
-	BOOST_TEST_MESSAGE(xmlStrResult);
 
 	BOOST_CHECK(jsonStrResult == jsonStrExpected);
 	BOOST_CHECK(xmlStrResult == xmlStrExpected);

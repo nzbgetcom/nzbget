@@ -62,7 +62,7 @@ namespace Network
 		~HttpClient() = default;
 
 		std::future<Response> GET(std::string host);
-		const std::string GetLocalIP() const;
+		const std::string& GetLocalIP() const;
 
 	private:
 		void Connect(Socket& socket, const Endpoints& endpoints, const std::string& host);
