@@ -1,4 +1,7 @@
 nzbget-v26.3
+  - Important notes:
+    - Version 26.3 is the final release supporting legacy platforms: Linux MIPS (mipseb/mipsel), PowerPC e500 (ppc500), and macOS < 12.0. Future versions (v27+) require C++20 and updated OS baselines.
+
   - Features:
     - Added support for extension i18n
     [#872](https://github.com/nzbgetcom/nzbget/pull/872)
@@ -10,6 +13,8 @@ nzbget-v26.3
   - Bug fixes:
     - Fixed missing path separator in auto-detected config template path
     [#902](https://github.com/nzbgetcom/nzbget/pull/902)
+    - Fixed feed preview for new (unsaved) feeds
+    [#893](https://github.com/nzbgetcom/nzbget/pull/893)
     - Fixed RSS episode duplicate keys
     [#868](https://github.com/nzbgetcom/nzbget/pull/868)
     - Hardened web auth token generation and unpack-dir symlink handling
@@ -40,18 +45,22 @@ nzbget-v26.3
     [#856](https://github.com/nzbgetcom/nzbget/pull/856)
     - Translated leftover English strings in Polish and Hungarian locale files
     [#876](https://github.com/nzbgetcom/nzbget/pull/876)
+    - Updated DirectUnpack description and WriteLog default value
+    [#837](https://github.com/nzbgetcom/nzbget/pull/837)
 
   - For developers:
     - Added AI-Assisted Contributions Policy
     [#873](https://github.com/nzbgetcom/nzbget/pull/873)
     - Bumped par2-turbo to v1.4.0-20260803
     [#885](https://github.com/nzbgetcom/nzbget/pull/885)
+    - Updated rapidyenc to v1.1.1-20260821
+    [#896](https://github.com/nzbgetcom/nzbget/pull/896)
     - Fixed functional test suite on Python 3 and modern pytest
     [#883](https://github.com/nzbgetcom/nzbget/pull/883)
     - Fixed rare random failures in System tests
     [#859](https://github.com/nzbgetcom/nzbget/pull/859)
     - Fixed tests skipping without assertions when unrar/7z unavailable
-    [#880](https://github.com/nzbgetcom/nzbget/pull/880)
+    [#878](https://github.com/nzbgetcom/nzbget/pull/878)
     - Fixed cppcheck errors in CI and added .clang-tidy / .clangd configs for consistent static analysis
     [#811](https://github.com/nzbgetcom/nzbget/pull/811)
 
@@ -232,7 +241,7 @@ nzbget-v25.3
     - Added an option to disable the _unpack intermediate folder when unpacking.
     This allows for immediate access to files during the unpacking process
     [#617](https://github.com/nzbgetcom/nzbget/pull/617).
-  
+
   - Bug fixes:
     - Fixed macOS x64 Mojave support
     [#613](https://github.com/nzbgetcom/nzbget/pull/613).
