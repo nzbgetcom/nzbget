@@ -135,7 +135,9 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 				auto it = values.find(*optname);
 				if (it != values.end() && writtenOptions.insert(it->first).second)
 				{
-					infile.Print("%s=%.*s\n", *optname, static_cast<int>(it->second.size()), it->second.data());
+					infile.Print("%.*s=%.*s\n",
+						static_cast<int>(it->first.size()), it->first.data(),
+						static_cast<int>(it->second.size()), it->second.data());
 				}
 			}
 		}
