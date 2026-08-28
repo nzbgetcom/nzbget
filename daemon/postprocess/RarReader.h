@@ -54,8 +54,11 @@ class RarVolume
 public:
 	using FileList = std::deque<RarFile>;
 
-	RarVolume(const char* filename) 
+	explicit RarVolume(const char* filename) 
 		: m_filename{ filename ? filename : "" }
+		, m_decryptKey{}
+		, m_decryptIV{}
+		, m_decryptBuf{}
 #ifndef DISABLE_TLS
 		, m_context{ nullptr, &EVP_CIPHER_CTX_free }
 #endif

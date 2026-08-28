@@ -61,7 +61,7 @@ xmlNodePtr CreateStructNode()
 	return structNode;
 }
 
-void AddArrayNode(xmlNodePtr structNode, const char* name, std::vector<xmlNodePtr> children)
+void AddArrayNode(xmlNodePtr structNode, const char* name, const std::vector<xmlNodePtr>& children)
 {
 	xmlNodePtr memberNode = xmlNewNode(nullptr, BAD_CAST "member");
 	xmlNewChild(memberNode, nullptr, BAD_CAST "name", BAD_CAST name);

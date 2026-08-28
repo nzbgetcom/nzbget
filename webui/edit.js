@@ -187,7 +187,7 @@ var DownloadsEditDialog = (new function($)
 		$ServStatsTable.fasttable('setCurPage', 1);
 
 		$('#DownloadsEdit_Title').html(Util.textToHtml(Util.formatNZBName(group.NZBName)) +
-		    (group.Kind === 'URL' ? '&nbsp;<span class="label label-info">URL</span>' : ''));
+		    (group.Kind === 'URL' ? '&nbsp;<span class="label label-info text-uppercase">' + I18n.translate('label_kind_url') + '</span>' : ''));
 
 		$('#DownloadsEdit_NZBName').attr('value', group.NZBName);
 		$('#DownloadsEdit_NZBName').attr('readonly', group.postprocess);

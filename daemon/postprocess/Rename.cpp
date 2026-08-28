@@ -54,6 +54,8 @@ void RenameController::PostRarRenamer::PrintMessage(Message::EKind kind, const c
 
 
 RenameController::RenameController()
+	: m_postInfo(nullptr)
+	, m_kind(jkPar)
 {
 	debug("Creating RenameController");
 

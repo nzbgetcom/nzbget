@@ -322,7 +322,7 @@ bool RarRenamer::SameArchiveName(const char* filename1, const char* filename2, b
 	}
 }
 
-bool RarRenamer::IsSetProperlyNamed(RarVolumeSet& set)
+bool RarRenamer::IsSetProperlyNamed(const RarVolumeSet& set)
 {
 	RegEx regExPart(".*.part([0-9]+)\\.rar$");
 
@@ -370,7 +370,7 @@ bool RarRenamer::IsSetProperlyNamed(RarVolumeSet& set)
 	return true;
 }
 
-RarFile* RarRenamer::FindMainFile(RarVolumeSet& set)
+RarFile* RarRenamer::FindMainFile(const RarVolumeSet& set)
 {
 	std::deque<RarFile*> allFiles;
 

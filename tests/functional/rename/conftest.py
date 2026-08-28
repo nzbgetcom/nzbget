@@ -4,14 +4,13 @@ import subprocess
 import pytest
 
 @pytest.fixture(scope='session', autouse=True)
-def prepare_testdata(request):
+def prepare_testdata(request, check_config):
 	print('Preparing test data for "rename"')
-	pytest.check_config()
 
-	nserv_datadir = pytest.config.getini('nserv_datadir')
-	nzbget_bin = pytest.config.getini('nzbget_bin')
-	sevenzip_bin = pytest.config.getini('sevenzip_bin')
-	par2_bin = pytest.config.getini('par2_bin')
+	nserv_datadir = request.config.getini('nserv_datadir')
+	nzbget_bin = request.config.getini('nzbget_bin')
+	sevenzip_bin = request.config.getini('sevenzip_bin')
+	par2_bin = request.config.getini('par2_bin')
 
 	if not os.path.exists(nserv_datadir):
 		print('Creating nserv datadir')
@@ -190,8 +189,8 @@ def create_test_file(bigdir, sevenzip_bin, sizemb, partmb):
 		os.makedirs(bigdir)
 
 	f = open(bigdir + '/' + str(sizemb) + 'mb.dat', 'wb')
-	for n in xrange(sizemb / partmb):
-		print('Writing block %i from %i' % (n + 1, sizemb / partmb))
+	for n in range(sizemb // partmb):
+		print('Writing block %i from %i' % (n + 1, sizemb // partmb))
 		f.write(os.urandom(partmb * 1024 * 1024))
 	f.close()
 

@@ -186,13 +186,13 @@ bool Connection::Disconnect()
 		return true;
 	}
 
-	bool res = DoDisconnect();
+	DoDisconnect();
 
 	m_status = csDisconnected;
 	m_socket = INVALID_SOCKET;
 	m_bufAvail = 0;
 
-	return res;
+	return true;
 }
 
 bool Connection::Bind()
@@ -853,7 +853,7 @@ bool Connection::ConnectWithTimeout(void* address, int address_len)
 	return true;
 }
 
-bool Connection::DoDisconnect()
+void Connection::DoDisconnect()
 {
 	debug("Do disconnecting");
 
@@ -883,7 +883,6 @@ bool Connection::DoDisconnect()
 	}
 
 	m_status = csDisconnected;
-	return true;
 }
 
 void Connection::ReadBuffer(char** buffer, int *bufLen)
