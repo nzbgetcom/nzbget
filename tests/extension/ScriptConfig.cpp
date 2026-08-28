@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(SaveConfigRemovesDuplicateLinesFromDamagedConfig)
 // When a config file carries duplicate lines for one option, Options::SetOption
 // overwrites the same entry while parsing, so the LAST line is the value nzbget
 // actually runs on. Collapsing the duplicates must preserve that value,
-// otherwise saving a damaged config silently changes settings (issue #588).
+// otherwise saving a damaged config silently changes settings.
 BOOST_AUTO_TEST_CASE(SaveConfigKeepsLastValueWhenConfigHasDuplicateLines)
 {
 	TempConfigFile configFile;
@@ -158,6 +158,37 @@ BOOST_AUTO_TEST_CASE(SaveConfigKeepsLastValueWhenConfigHasDuplicateLines)
 		"# existing config\n"
 		"Server2.Active=no\n"
 		"Server2.Name=xsusenet\n");
+}
+
+BOOST_AUTO_TEST_CASE(SaveConfigDropsOrphanedOptionLines)
+{
+	TempConfigFile configFile;
+	{
+		std::ofstream output(configFile.path);
+		output << "# existing config\n"
+			<< "ActiveOption=yes\n"
+			<< "RemovedExtension.Option=old_value\n";
+	}
+
+	OptionsGuard optionsGuard;
+	Options options("nzbget", configFile.path.string().c_str(), true, nullptr, nullptr);
+	g_Options = &options;
+
+	Options::OptEntries optEntries;
+	optEntries.emplace_back("ActiveOption", "yes");
+	ScriptConfig scriptConfig;
+
+	BOOST_REQUIRE(scriptConfig.SaveConfig(&optEntries));
+	std::string contents;
+	{
+		std::ifstream file(configFile.path);
+		std::stringstream buffer;
+		buffer << file.rdbuf();
+		contents = buffer.str();
+	}
+	BOOST_CHECK_EQUAL(contents,
+		"# existing config\n"
+		"ActiveOption=yes\n");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

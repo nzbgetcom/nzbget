@@ -133,17 +133,16 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			if (g_Options->SplitOptionString(buf, optname, optvalue))
 			{
 				auto it = values.find(*optname);
-				if (it != values.end())
+				if (it != values.end() && writtenOptions.insert(it->first).second)
 				{
-					if (writtenOptions.insert(it->first).second)
-					{
-						infile.Print("%s=%.*s\n", *optname, static_cast<int>(it->second.size()), it->second.data());
-					}
-					continue;
+					infile.Print("%s=%.*s\n", *optname, static_cast<int>(it->second.size()), it->second.data());
 				}
 			}
 		}
-		infile.Print("%s", *buf);
+		else
+		{
+			infile.Print("%s", *buf);
+		}
 	}
 
 	// write new options
