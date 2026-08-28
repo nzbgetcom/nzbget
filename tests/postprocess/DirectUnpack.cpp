@@ -140,10 +140,6 @@ public:
 		const bool stopped = WaitFor([this] { return !m_processor.IsRunning(); }, 12000);
 		BOOST_CHECK_MESSAGE(stopped,
 			"PrePostProcessor did not stop within the bounded wait");
-		while (!stopped && m_processor.IsRunning())
-		{
-			Util::Sleep(20);
-		}
 	}
 
 	PrePostProcessor* Get() { return &m_processor; }
