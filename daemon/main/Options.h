@@ -278,11 +278,11 @@ public:
 		OptEntry(const char* name, const char* value) :
 			m_name(name), m_value(value) {}
 		void SetName(const char* name) { m_name = name; }
-		const char* GetName() { return m_name; }
+		const char* GetName() const { return m_name; }
 		void SetValue(const char* value);
-		const char* GetValue() { return m_value; }
-		const char* GetDefValue() { return m_defValue; }
-		int GetLineNo() { return m_lineNo; }
+		const char* GetValue() const { return m_value; }
+		const char* GetDefValue() const { return m_defValue; }
+		int GetLineNo() const { return m_lineNo; }
 		bool Restricted();
 
 	private:
