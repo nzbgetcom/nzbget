@@ -846,7 +846,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		!strncmp(nzbInfo->GetDestDir(), g_Options->GetInterDir(), strlen(g_Options->GetInterDir())) &&
 		nzbInfo->GetDestDir()[strlen(g_Options->GetInterDir())] == PATH_SEPARATOR;
 
-	if (unpack && parFailed)
+	if (unpack && parFailed && nzbInfo->GetDirectUnpackStatus() != NzbInfo::nsSuccess)
 	{
 		nzbInfo->PrintMessage(Message::mkWarning,
 			"Skipping unpack for %s due to %s", nzbInfo->GetName(),
