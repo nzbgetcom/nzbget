@@ -94,10 +94,7 @@ PrintHelp()
     PrintArch "armel"    "    armel    - ARMv5/v6 (ARM9 and ARM11 families)"
     PrintArch "armhf"    "    armhf    - ARMv7/v8 (Cortex family)"
     PrintArch "aarch64"  "    aarch64  - ARMv8, 64 Bit"
-    PrintArch "mipsel"   "    mipsel   - MIPS (little endian)"
-    PrintArch "mipseb"   "    mipseb   - MIPS (big endian)"
     PrintArch "ppc6xx"   "    ppc6xx   - PowerPC 6xx (603e series)"
-    PrintArch "ppc500"   "    ppc500   - PowerPC e500 (core e500v1/e500v2)"
     PrintArch "riscv64"  "    riscv64  - RISC-V 64-bit"
     Info ""
 
@@ -149,19 +146,6 @@ Verify()
     fi
 }
 
-DetectEndianness()
-{
-    # Sixth byte of any executable indicates endianness
-    ENDBYTE=`dd if=/bin/sh bs=1 count=6 2>/dev/null | sed -n 's/.ELF.\(.*\)/\1/p'`
-
-    ENDIAN=unknown
-    if test "$ENDBYTE" = $'\001'; then
-        ENDIAN=little
-    elif test "$ENDBYTE" = $'\002'; then
-        ENDIAN=big
-    fi
-}
-
 DetectArch()
 {
     OS=`uname -s`
@@ -198,39 +182,12 @@ DetectArch()
                 ARCH=aarch64
                 ;;
             ppc)
-                ARCH=ppcx
+                ARCH=ppc6xx
                 ;;
             riscv64)
                 ARCH=riscv64
                 ;;
         esac
-    fi
-
-    if test "$OS" = "Linux"; then
-        if test "$ARCH" = ""; then
-            MIPS=`cat /proc/cpuinfo | sed -n 's/.*:.*\(mips\).*/&/p'`
-            if test "$MIPS" != ""; then
-                ARCH=mipsx
-            fi
-        fi
-
-        if test "$ARCH" = "mipsx"; then
-            DetectEndianness
-            if test "$ENDIAN" = "big"; then
-                ARCH=mipseb
-            else
-                ARCH=mipsel
-            fi
-        fi
-
-        if test "$ARCH" = "ppcx"; then
-            E500=`cat /proc/cpuinfo | sed -n 's/.*:.*\(e500\).*/&/p'`
-            if test "$E500" != ""; then
-                ARCH=ppc500
-            else
-                ARCH=ppc6xx
-            fi
-        fi
     fi
 
     if test "$ARCH" = ""; then

@@ -134,9 +134,6 @@
 /* Define to 1 if OpenSSL supports function "X509_check_host" */
 #cmakedefine HAVE_X509_CHECK_HOST @HAVE_X509_CHECK_HOST@
 
-/* Define to 1 if the compiler natively supports std::filesystem */
-#cmakedefine HAVE_STD_FILESYSTEM @HAVE_STD_FILESYSTEM@
-
 /* Determine what socket length (socklen_t) data type is */
 #cmakedefine SOCKLEN_T @SOCKLEN_T@
 
