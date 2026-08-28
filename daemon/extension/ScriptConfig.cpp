@@ -134,10 +134,6 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			if (g_Options->SplitOptionString(buf, optname, optvalue))
 			{
 				Options::OptEntry* optEntry = optEntries->FindOption(optname);
-				// write each option only once, dropping duplicate lines accumulated
-				// in the config file by earlier versions (issue #588); keep the
-				// first occurrence's name and position but the last occurrence's
-				// value, so the collapsed line is the one nzbget was running on
 				if (optEntry && writtenOptions.find(optEntry->GetName()) == writtenOptions.end())
 				{
 					infile.Print("%s=%s\n", optEntry->GetName(), findLastValue(optEntry->GetName()));
