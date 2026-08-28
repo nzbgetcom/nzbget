@@ -76,9 +76,15 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 {
 	struct CaseInsensitiveLess
 	{
-		bool operator()(const CString& left, const CString& right) const
+		bool operator()(std::string_view a, std::string_view b) const
 		{
-			return strcasecmp(*left, *right) < 0;
+			return std::lexicographical_compare(
+				a.begin(), a.end(), b.begin(), b.end(),
+				[](unsigned char ca, unsigned char cb)
+				{
+					return std::tolower(ca) < std::tolower(cb);
+				}
+			);
 		}
 	};
 
@@ -90,29 +96,22 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 		return false;
 	}
 
-	std::vector<CString> config;
-	std::set<CString, CaseInsensitiveLess> writtenOptions;
-
-	// Options::SetOption overwrites the existing entry while parsing, so when a
-	// name occurs on several lines the last one is the value nzbget runs on.
-	// Collapsing duplicates must preserve that value, otherwise saving a damaged
-	// config silently changes settings.
-	auto findLastValue = [optEntries](const char* name) -> const char*
+	std::map<std::string_view, std::string_view, CaseInsensitiveLess> values;
+	for (const auto& entry : *optEntries)
 	{
-		for (auto it = optEntries->rbegin(); it != optEntries->rend(); ++it)
+		if (entry.GetName() && entry.GetValue())
 		{
-			if (!strcasecmp(it->GetName(), name))
-			{
-				return it->GetValue();
-			}
+			values[entry.GetName()] = entry.GetValue();
 		}
-		return nullptr;
-	};
+	}
+
+	std::set<std::string_view, CaseInsensitiveLess> writtenOptions;
 
 	// read config file into memory array
 	int fileLen = (int)FileSystem::FileSize(g_Options->GetConfigFilename()) + 1;
 	CString content;
 	content.Reserve(fileLen);
+	std::vector<CString> config;
 	while (infile.ReadLine(content, fileLen + 1))
 	{
 		config.push_back(*content);
@@ -133,28 +132,32 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			CString optvalue;
 			if (g_Options->SplitOptionString(buf, optname, optvalue))
 			{
-				Options::OptEntry* optEntry = optEntries->FindOption(optname);
-				if (optEntry && writtenOptions.find(optEntry->GetName()) == writtenOptions.end())
+				auto it = values.find(*optname);
+				if (it != values.end())
 				{
-					infile.Print("%s=%s\n", optEntry->GetName(), findLastValue(optEntry->GetName()));
-					writtenOptions.insert(optEntry->GetName());
+					if (writtenOptions.insert(it->first).second)
+					{
+						infile.Print("%s=%.*s\n", *optname, static_cast<int>(it->second.size()), it->second.data());
+					}
+					continue;
 				}
 			}
 		}
-		else
-		{
-			infile.Print("%s", *buf);
-		}
+		infile.Print("%s", *buf);
 	}
 
 	// write new options
-	for (Options::OptEntry& optEntry : *optEntries)
+	for (const auto& entry : *optEntries)
 	{
-		std::set<CString, CaseInsensitiveLess>::iterator fit = writtenOptions.find(optEntry.GetName());
-		if (fit == writtenOptions.end())
+		if (entry.GetName() && entry.GetValue())
 		{
-			infile.Print("%s=%s\n", optEntry.GetName(), findLastValue(optEntry.GetName()));
-			writtenOptions.insert(optEntry.GetName());
+			const char* name = entry.GetName();
+			if (writtenOptions.insert(name).second)
+			{
+				auto it = values.find(name);
+				std::string_view val = (it != values.end()) ? it->second : entry.GetValue();
+				infile.Print("%s=%.*s\n", name, static_cast<int>(val.size()), val.data());
+			}
 		}
 	}
 
