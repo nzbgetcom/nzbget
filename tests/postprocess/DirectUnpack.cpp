@@ -27,7 +27,13 @@
 #include "Options.h"
 #include "DiskState.h"
 #include "FileSystem.h"
+#include "PrePostProcessor.h"
+#include "QueueScript.h"
+#include "WorkState.h"
+#include "HistoryCoordinator.h"
+#include "DupeCoordinator.h"
 #include "Util.h"
+#include <chrono>
 
 BOOST_AUTO_TEST_SUITE(PostprocessTest)
 
@@ -39,7 +45,15 @@ static const auto UNRAR_PATH = Util::ResolvePathFromEnv("unrar");
 class DirectUnpackDownloadQueueMock final : public DownloadQueue
 {
 public:
-	DirectUnpackDownloadQueueMock() { Init(this); }
+	DirectUnpackDownloadQueueMock()
+	{
+		Init(this);
+		Loaded();
+	}
+	~DirectUnpackDownloadQueueMock()
+	{
+		Final();
+	}
 	bool EditEntry(int ID, EEditAction action, const char* args) { return false; };
 	bool EditList(
 		IdList* idList, 
@@ -51,6 +65,192 @@ public:
 	void Save() {};
 	void SaveChanged() {}
 };
+
+bool WaitFor(const std::function<bool()>& condition, int timeoutMs = 5000)
+{
+	for (int elapsed = 0; elapsed < timeoutMs; elapsed += 20)
+	{
+		if (condition())
+		{
+			return true;
+		}
+		Util::Sleep(20);
+	}
+	return condition();
+}
+
+template<typename Func>
+bool WithNzbInfo(int id, Func&& func)
+{
+	GuardedDownloadQueue queueGuard = DownloadQueue::Guard();
+	for (const auto& nzb : *queueGuard->GetQueue())
+	{
+		NzbInfo* nzbInfo = nzb.get();
+		if (nzbInfo->GetId() == id)
+		{
+			return func(nzbInfo);
+		}
+	}
+	for (const auto& history : *queueGuard->GetHistory())
+	{
+		HistoryInfo* historyInfo = history.get();
+		if (historyInfo->GetNzbInfo() && historyInfo->GetNzbInfo()->GetId() == id)
+		{
+			return func(historyInfo->GetNzbInfo());
+		}
+	}
+	return false;
+}
+
+class ScopedTempDir final
+{
+public:
+	ScopedTempDir()
+	{
+		const fs::path base = fs::temp_directory_path();
+		const auto nonce = std::chrono::steady_clock::now().time_since_epoch().count();
+		m_path = base / ("nzbget-directunpack-" + std::to_string(nonce));
+		BOOST_REQUIRE(base.is_absolute());
+		BOOST_REQUIRE(fs::create_directory(m_path));
+	}
+
+	~ScopedTempDir()
+	{
+		std::error_code error;
+		fs::remove_all(m_path, error);
+	}
+
+	const fs::path& Get() const { return m_path; }
+
+private:
+	fs::path m_path;
+};
+
+class ScopedPrePostProcessor final
+{
+public:
+	ScopedPrePostProcessor()
+	{
+		m_processor.Start();
+	}
+
+	~ScopedPrePostProcessor()
+	{
+		m_processor.Stop();
+		const bool stopped = WaitFor([this] { return !m_processor.IsRunning(); }, 12000);
+		BOOST_CHECK_MESSAGE(stopped,
+			"PrePostProcessor did not stop within the bounded wait");
+	}
+
+	PrePostProcessor* Get() { return &m_processor; }
+
+private:
+	PrePostProcessor m_processor;
+};
+
+class ScopedQueueScriptCoordinator final
+{
+public:
+	ScopedQueueScriptCoordinator() : m_previous(g_QueueScriptCoordinator)
+	{
+		g_QueueScriptCoordinator = &m_coordinator;
+	}
+
+	~ScopedQueueScriptCoordinator()
+	{
+		g_QueueScriptCoordinator = m_previous;
+	}
+
+private:
+	QueueScriptCoordinator* m_previous;
+	QueueScriptCoordinator m_coordinator;
+};
+
+class ScopedPostProcessPause final
+{
+public:
+	explicit ScopedPostProcessPause(bool pausePostProcess = false) : m_tempPause(g_WorkState->GetTempPausePostprocess())
+	{
+		g_WorkState->SetTempPausePostprocess(pausePostProcess);
+	}
+
+	~ScopedPostProcessPause()
+	{
+		g_WorkState->SetTempPausePostprocess(m_tempPause);
+	}
+
+	void Set(bool pausePostProcess)
+	{
+		g_WorkState->SetTempPausePostprocess(pausePostProcess);
+	}
+
+private:
+	bool m_tempPause;
+};
+
+class ScopedPostProcessCoordinators final
+{
+public:
+	ScopedPostProcessCoordinators() : m_historyPrevious(g_HistoryCoordinator), m_dupePrevious(g_DupeCoordinator)
+	{
+		g_HistoryCoordinator = &m_history;
+		g_DupeCoordinator = &m_dupe;
+	}
+
+	~ScopedPostProcessCoordinators()
+	{
+		g_HistoryCoordinator = m_historyPrevious;
+		g_DupeCoordinator = m_dupePrevious;
+	}
+
+private:
+	HistoryCoordinator* m_historyPrevious;
+	DupeCoordinator* m_dupePrevious;
+	HistoryCoordinator m_history;
+	DupeCoordinator m_dupe;
+};
+
+class RestoreOptionsGlobal final
+{
+public:
+	RestoreOptionsGlobal() : m_previous(g_Options) {}
+	~RestoreOptionsGlobal() { g_Options = m_previous; }
+
+private:
+	Options* m_previous;
+};
+
+// Shared by the PAR-failure/DirectUnpack tests below; unrarCmdOpt is only needed
+// when a test actually runs a real unpack (pass nullptr to skip it).
+Options::CmdOptList MakeParFailureTestOpts(const char* unrarCmdOpt)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("WriteLog=none");
+	cmdOpts.push_back("NzbLog=no");
+	if (unrarCmdOpt)
+	{
+		cmdOpts.push_back(unrarCmdOpt);
+	}
+	cmdOpts.push_back("ParRename=no");
+	cmdOpts.push_back("RarRename=no");
+	cmdOpts.push_back("RenameAfterUnpack=no");
+	cmdOpts.push_back("DupeCheck=no");
+	cmdOpts.push_back("KeepHistory=1");
+	return cmdOpts;
+}
+
+int QueueParFailureTestNzb(DirectUnpackDownloadQueueMock& downloadQueue, const char* name, const fs::path& destDir,
+	NzbInfo::EParStatus parStatus = NzbInfo::psNone, NzbInfo::EDirectUnpackStatus directStatus = NzbInfo::nsNone)
+{
+	auto nzbInfo = std::make_unique<NzbInfo>();
+	NzbInfo* nzbPtr = nzbInfo.get();
+	nzbInfo->SetName(name);
+	nzbInfo->SetDestDir(destDir.string().c_str());
+	nzbInfo->SetParStatus(parStatus);
+	nzbInfo->SetDirectUnpackStatus(directStatus);
+	downloadQueue.GetQueue()->Add(std::move(nzbInfo), false);
+	return nzbPtr->GetId();
+}
 
 BOOST_AUTO_TEST_CASE(DirectUnpackSimpleTest)
 {
@@ -192,6 +392,115 @@ BOOST_AUTO_TEST_CASE(DirectUnpackTwoArchives)
 	BOOST_CHECK(fs::exists(resultFile1));
 	BOOST_CHECK(fs::exists(resultFile2));
 	BOOST_REQUIRE(fs::remove_all(WORKING_DIR));
+}
+
+BOOST_AUTO_TEST_CASE(DirectUnpackParFailureStillFinalizesUnpack)
+{
+	if (!UNRAR_PATH)
+	{
+		BOOST_TEST_MESSAGE("unrar not available - skipping test");
+		BOOST_CHECK(true);
+		return;
+	}
+
+	const std::string unrarCmd = std::string("UnrarCmd=") + UNRAR_PATH->string();
+	Options::CmdOptList cmdOpts = MakeParFailureTestOpts(unrarCmd.c_str());
+	RestoreOptionsGlobal restoreOptions;
+	Options options(&cmdOpts, nullptr);
+	DirectUnpackDownloadQueueMock downloadQueue;
+	ScopedQueueScriptCoordinator queueScripts;
+	ScopedPostProcessPause postProcessPause(true);
+	ScopedPostProcessCoordinators postProcessCoordinators;
+	ScopedTempDir workingDir;
+	const fs::path& workPath = workingDir.Get();
+	for (const char* part : {"testfile3.part01.rar", "testfile3.part02.rar", "testfile3.part03.rar"})
+	{
+		BOOST_REQUIRE(fs::copy_file(TEST_DATA_DIR / part, workPath / part));
+	}
+
+	const int nzbId = QueueParFailureTestNzb(downloadQueue, "DirectUnpackParFailureStillFinalizesUnpack", workPath);
+
+	BOOST_REQUIRE(WithNzbInfo(nzbId, [](NzbInfo* info)
+	{
+		DirectUnpack::StartJob(info);
+		return true;
+	}));
+	BOOST_REQUIRE(WaitFor([&]
+	{
+		return WithNzbInfo(nzbId, [](NzbInfo* info) { return info->GetUnpackThread() != nullptr; });
+	}));
+	BOOST_REQUIRE(WithNzbInfo(nzbId, [](NzbInfo* info)
+	{
+		info->SetParStatus(NzbInfo::psFailure);
+		return true;
+	}));
+	{
+		ScopedPrePostProcessor processor;
+		BOOST_REQUIRE(WithNzbInfo(nzbId, [&](NzbInfo* info)
+		{
+			processor.Get()->NzbDownloaded(&downloadQueue, info);
+			return true;
+		}));
+
+		BOOST_REQUIRE(WaitFor([&]
+		{
+			return WithNzbInfo(nzbId, [](NzbInfo* info)
+			{
+				return info->GetDirectUnpackStatus() == NzbInfo::nsSuccess &&
+					info->GetUnpackThread() == nullptr && info->GetPostInfo() &&
+					!info->GetPostInfo()->GetExtractedArchives()->empty();
+			});
+		}));
+		BOOST_REQUIRE(fs::exists(workPath / "_unpack/testfile3.dat"));
+		postProcessPause.Set(false);
+		BOOST_REQUIRE(WaitFor([&]
+		{
+			return WithNzbInfo(nzbId, [](NzbInfo* info) { return info->GetUnpackStatus() != NzbInfo::usNone; });
+		}));
+		{
+			BOOST_CHECK(WithNzbInfo(nzbId, [](NzbInfo* info)
+			{
+				return info->GetUnpackStatus() == NzbInfo::usSuccess &&
+					info->GetParStatus() == NzbInfo::psFailure &&
+					!strcmp(info->MakeTextStatus(false), "FAILURE/PAR");
+			}));
+		}
+		BOOST_CHECK(fs::exists(workPath / "testfile3.dat"));
+		BOOST_CHECK(!fs::exists(workPath / "_unpack"));
+	}
+}
+
+BOOST_AUTO_TEST_CASE(ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack)
+{
+	for (NzbInfo::EDirectUnpackStatus directStatus : {NzbInfo::nsNone, NzbInfo::nsFailure})
+	{
+		Options::CmdOptList cmdOpts = MakeParFailureTestOpts(nullptr);
+		RestoreOptionsGlobal restoreOptions;
+		Options options(&cmdOpts, nullptr);
+		DirectUnpackDownloadQueueMock downloadQueue;
+		ScopedQueueScriptCoordinator queueScripts;
+		ScopedPostProcessPause postProcessPause;
+		ScopedPostProcessCoordinators postProcessCoordinators;
+		ScopedTempDir workingDir;
+		const int nzbId = QueueParFailureTestNzb(downloadQueue,
+			"ParFailureWithoutSuccessfulDirectUnpackStillSkipsUnpack", workingDir.Get(),
+			NzbInfo::psFailure, directStatus);
+
+		ScopedPrePostProcessor processor;
+		BOOST_REQUIRE(WithNzbInfo(nzbId, [&](NzbInfo* info)
+		{
+			processor.Get()->NzbDownloaded(&downloadQueue, info);
+			return true;
+		}));
+		BOOST_REQUIRE(WaitFor([&]
+		{
+			return WithNzbInfo(nzbId, [](NzbInfo* info)
+			{
+				return info->GetPostInfo() && info->GetUnpackStatus() != NzbInfo::usNone;
+			});
+		}));
+		BOOST_CHECK(WithNzbInfo(nzbId, [](NzbInfo* info) { return info->GetUnpackStatus() == NzbInfo::usSkipped; }));
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()

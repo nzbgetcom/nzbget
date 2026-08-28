@@ -494,7 +494,7 @@ void DupeCoordinator::HistoryCleanup(DownloadQueue* downloadQueue, HistoryInfo* 
 		}
 		else
 		{
-			it++;
+			++it;
 			index++;
 		}
 	}

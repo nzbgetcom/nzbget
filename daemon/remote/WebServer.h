@@ -2,7 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2012-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@
 
 #include "NString.h"
 #include "Connection.h"
+
+inline constexpr int TOKEN_SIZE = 48 + 1;
 
 class WebProcessor
 {
@@ -61,8 +63,8 @@ private:
 	CString m_origin;
 	int m_contentLen;
 	char m_authInfo[256+1];
-	char m_authToken[48+1];
-	static char m_serverAuthToken[3][48+1];
+	char m_authToken[TOKEN_SIZE];
+	static char m_serverAuthToken[3][TOKEN_SIZE];
 	CString m_forwardedFor;
 	CString m_oldETag;
 	bool m_keepAlive = false;

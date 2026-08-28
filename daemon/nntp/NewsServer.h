@@ -53,7 +53,7 @@ public:
 	int GetLevel() const { return m_level; }
 	int GetNormLevel() const { return m_normLevel; }
 	void SetNormLevel(int level) { m_normLevel = level; }
-	int GetJoinGroup() const { return m_joinGroup; }
+	bool GetJoinGroup() const { return m_joinGroup; }
 	bool GetTls() const { return m_tls; }
 	const char* GetCipher() const { return m_cipher; }
 	int GetRetention() const { return m_retention; }

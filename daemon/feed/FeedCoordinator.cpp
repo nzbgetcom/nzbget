@@ -547,12 +547,11 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 {
 	debug("Preview feed %s", name);
 
-	if (id < 1 || id > static_cast<int>(m_feeds.size()))
+	unsigned int certVerifLevel = Options::ECertVerifLevel::cvStrict;
+	if (id >= 1 && id <= static_cast<int>(m_feeds.size()))
 	{
-		return nullptr;
+		certVerifLevel = m_feeds[static_cast<size_t>(id - 1)]->GetCertVerificationLevel();
 	}
-
-	unsigned int certVerifLevel = m_feeds[static_cast<size_t>(id - 1)]->GetCertVerificationLevel();
 
 	std::unique_ptr<FeedInfo> feedInfo = std::make_unique<FeedInfo>(id, name, url, backlog, interval,
 		filter, pauseNzb, category, categorySource, priority, feedScript, certVerifLevel);
