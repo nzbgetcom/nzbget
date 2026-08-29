@@ -121,6 +121,12 @@ var Util = (new function($)
 		return typeof value === 'number';
 	}
 
+	this.normalizeDecimalSeparator = function(value)
+	{
+		// non-English locales use comma as decimal separator ("1,5" -> "1.5")
+		return value.trim().replace(',', '.');
+	}
+
 	this.getDaySinceUnixEpoch = function (date) 
 	{
 		var utcDate = new Date(Date.UTC(

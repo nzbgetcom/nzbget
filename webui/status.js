@@ -1632,7 +1632,7 @@ var LimitDialog = (new function($)
 		if (!Status.status || !Status.status.NewsServers) {
 			return;
 		}
-		var val = $LimitDialog_SpeedInput.val().trim();
+		var val = Util.normalizeDecimalSeparator($LimitDialog_SpeedInput.val());
 		var rate = 0;
 		if (val == '')
 		{
