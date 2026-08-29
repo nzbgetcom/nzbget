@@ -1644,11 +1644,14 @@ var LimitDialog = (new function($)
 		}
 		else
 		{
-			rate = Util.megaValueToKilobytes(parseFloat(val));
-			if (isNaN(rate) || rate < 0)
+			// validate before converting: a small negative value would round to -0
+			// and silently save as "no limit"
+			var parsed = parseFloat(val);
+			if (!isFinite(parsed) || parsed < 0)
 			{
 				return;
 			}
+			rate = Util.megaValueToKilobytes(parsed);
 		}
 
 		var checkedRows = $ServerTable.fasttable('checkedRows');
