@@ -219,8 +219,6 @@ public:
 
 #ifdef WIN32
 	static bool RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, char* buffer, int* bufLen);
-#else
-	static std::optional<std::string> Uname(const char* key);
 #endif
 
 	static void SetStandByMode(bool standBy);

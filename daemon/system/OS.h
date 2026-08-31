@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 #define OS_H
 
 #include <string>
-#include <optional>
 
 namespace System
 {
@@ -39,6 +38,7 @@ namespace System
 
 #ifdef __linux__
 		bool IsRunningInDocker() const;
+		bool IsRunningInContainer() const;
 		void TrimQuotes(std::string& str) const;
 		void InitOSInfoFromOSRelease();
 #endif

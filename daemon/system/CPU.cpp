@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,10 +20,13 @@
 
 #include "nzbget.h"
 
+#ifndef WIN32
+#include <sys/utsname.h>
+#endif
+
 #include "CPU.h"
-#include "Util.h"
 #include "Log.h"
-#include "FileSystem.h"
+#include "Util.h"
 
 namespace System
 {
@@ -73,7 +76,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get CPU model. Couldn't read Windows Registry");
+			debug("Failed to get CPU model from Windows Registry");
 		}
 
 		result = GetCPUArch();
@@ -83,7 +86,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get CPU arch. Couldn't read Windows Registry");
+			debug("Failed to get CPU arch from Windows Registry");
 		}
 	}
 
@@ -135,24 +138,20 @@ namespace System
 		{
 			m_arch = std::move(result.value());
 		}
+		else
+		{
+			debug("Failed to get CPU arch from uname(2)");
+		}
 
 		result = GetCPUModelFromCPUInfo();
 		if (result.has_value())
 		{
 			m_model = std::move(result.value());
-			return;
 		}
-
-		detail("Failed to get CPU model from '/proc/cpuinfo'");
-
-		result = GetCPUModelFromLSCPU();
-		if (result.has_value())
+		else
 		{
-			m_model = std::move(result.value());
-			return;
+			debug("Failed to get CPU model from /proc/cpuinfo");
 		}
-
-		detail("Failed to get CPU model from 'lscpu'");
 	}
 
 	std::optional<std::string> CPU::GetCPUModelFromCPUInfo() const
@@ -168,33 +167,21 @@ namespace System
 		{
 			if (line.find("model name") != std::string::npos ||
 				line.find("Processor") != std::string::npos ||
-				line.find("cpu model") != std::string::npos)
+				line.find("cpu model") != std::string::npos ||
+				line.find("Hardware") != std::string::npos ||
+				line.find("system type") != std::string::npos)
 			{
-				line = line.substr(line.find(":") + 1);
-				Util::Trim(line);
-				return line;
+				auto colonPos = line.find(":");
+				if (colonPos != std::string::npos)
+				{
+					std::string model = line.substr(colonPos + 1);
+					Util::Trim(model);
+					if (!model.empty())
+					{
+						return model;
+					}
+				}
 			}
-		}
-
-		return std::nullopt;
-	}
-
-	std::optional<std::string> CPU::GetCPUModelFromLSCPU() const
-	{
-		std::string cmd = "lscpu | grep \"Model name\"";
-		auto pipe = Util::MakePipe(cmd);
-		if (!pipe)
-		{
-			return std::nullopt;
-		}
-
-		char buffer[BUFFER_SIZE];
-		if (fgets(buffer, BUFFER_SIZE, pipe.get()))
-		{
-			std::string model{ buffer };
-			model = model.substr(model.find(":") + 1);
-			Util::Trim(model);
-			return model;
 		}
 
 		return std::nullopt;
@@ -217,7 +204,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get CPU model. Couldn't read 'hw.model'");
+			debug("Failed to get CPU model from sysctl(2): HW_MODEL");
 		}
 
 		auto result = GetCPUArch();
@@ -226,7 +213,6 @@ namespace System
 			m_arch = std::move(result.value());
 		}
 	}
-
 #endif
 
 #ifdef __APPLE__
@@ -241,7 +227,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get CPU model. Couldn't read 'machdep.cpu.brand_string'");
+			debug("Failed to get CPU model from sysctlbyname: machdep.cpu.brand_string");
 		}
 
 		auto result = GetCPUArch();
@@ -255,15 +241,13 @@ namespace System
 #ifndef WIN32
 	std::optional<std::string> CPU::GetCPUArch() const
 	{
-		auto res = Util::Uname("-m");
-		if (!res.has_value())
+		struct utsname uts;
+		if (uname(&uts) == 0 && uts.machine[0] != '\0')
 		{
-			detail("Failed to get CPU arch from 'uname-m'");
-
-			return std::nullopt;
+			return GetCanonicalCPUArch(uts.machine);
 		}
 
-		return GetCanonicalCPUArch(res.value());
+		return std::nullopt;
 	}
 #endif
 }
