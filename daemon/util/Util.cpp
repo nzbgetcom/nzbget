@@ -750,23 +750,6 @@ bool Util::RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, 
 	}
 	return false;
 }
-#else
-std::optional<std::string> Util::Uname(const char* key)
-{
-	std::string cmd = std::string("uname ") + key;
-
-	const size_t BUFFER_SIZE = 256;
-	auto pipe = Util::MakePipe(cmd);
-	char buffer[BUFFER_SIZE];
-	if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
-	{
-		std::string res{ buffer };
-		Util::Trim(res);
-		return res;
-	}
-
-	return std::nullopt;
-}
 #endif
 
 time_t Util::CurrentTime()
