@@ -121,7 +121,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew install --formula boost sevenzip
-        brew install --cask rar
+        curl -L https://github.com/nzbgetcom/unrar/releases/download/v7.23/unrar-7.23-macos-universal.tar.gz | sudo tar -xzf - -C /usr/local/bin
 
     - name: Checkout
       uses: actions/checkout@v6
