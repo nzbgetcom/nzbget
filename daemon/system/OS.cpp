@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,9 +21,8 @@
 #include "nzbget.h"
 
 #include "OS.h"
-#include "Util.h"
 #include "Log.h"
-#include "FileSystem.h"
+#include "Util.h"
 
 namespace System
 {
@@ -58,16 +57,14 @@ namespace System
 			buildBuffer,
 			&len))
 		{
-			detail("Failed to get OS version. Couldn't read from Windows Registry");
-
+			debug("Failed to get OS version: couldn't read CurrentBuild from Windows Registry");
 			return;
 		}
 
 		long buildNum = std::atol(buildBuffer);
 		if (buildNum == 0)
 		{
-			detail("Got invalid Windows version: %s", buildBuffer);
-
+			debug("Got invalid Windows build number: %s", buildBuffer);
 			return;
 		}
 
@@ -78,7 +75,7 @@ namespace System
 		else if (buildNum >= m_winXPBuildVersion) m_version = "XP";
 		else
 		{
-			detail("Unsupported Windows version");
+			debug("Unsupported Windows build number: %ld", buildNum);
 			return;
 		}
 
@@ -95,7 +92,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get OS update version. Couldn't read from Windows Registry");
+			debug("Failed to get OS display version from Windows Registry");
 		}
 
 		m_version += std::string(" (") + buildBuffer + ")";
@@ -104,9 +101,26 @@ namespace System
 
 #ifdef __linux__
 #include <fstream>
+#include <sys/utsname.h>
+
 	bool OS::IsRunningInDocker() const
 	{
 		return FileSystem::FileExists("/.dockerenv");
+	}
+
+	bool OS::IsRunningInContainer() const
+	{
+		if (std::getenv("container") != nullptr)
+		{
+			return true;
+		}
+
+		if (FileSystem::FileExists("/run/systemd/container") || FileSystem::FileExists("/run/.containerenv"))
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	void OS::TrimQuotes(std::string& str) const
@@ -126,35 +140,34 @@ namespace System
 	{
 		InitOSInfoFromOSRelease();
 
-		if (m_name.empty())
+		if (m_name.empty() || m_version.empty())
 		{
-			auto res = Util::Uname("-o");
-			if (res.has_value())
+			struct utsname uts;
+			if (uname(&uts) == 0)
 			{
-				m_name = std::move(res.value());
-			}
-			else
-			{
-				detail("Failed to get OS name. Couldn't read 'uname -o'");
-			}
-		}
+				if (m_name.empty() && uts.sysname[0] != '\0')
+				{
+					m_name = uts.sysname;
+				}
 
-		if (m_version.empty())
-		{
-			auto res = Util::Uname("-r");
-			if (res.has_value())
-			{
-				m_version = std::move(res.value());
+				if (m_version.empty() && uts.release[0] != '\0')
+				{
+					m_version = uts.release;
+				}
 			}
 			else
 			{
-				detail("Failed to get OS release. Couldn't read 'uname -r'");
+				debug("Failed to get OS info from uname(2)");
 			}
 		}
 
 		if (IsRunningInDocker())
 		{
 			m_version += " (Running in Docker)";
+		}
+		else if (IsRunningInContainer())
+		{
+			m_version += " (Running in Container)";
 		}
 	}
 
@@ -215,12 +228,12 @@ namespace System
 		auto pipe = Util::MakePipe(cmd);
 		if (!pipe)
 		{
-			detail("Failed to get OS info. Couldn't read 'sw_vers'");
+			debug("Failed to get OS info: couldn't run 'sw_vers'");
 			return;
 		}
 
 		char buffer[BUFFER_SIZE];
-		std::string result = "";
+		std::string result;
 		while (!feof(pipe.get()))
 		{
 			if (fgets(buffer, BUFFER_SIZE, pipe.get()))
@@ -239,7 +252,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get OS name. Couldn't find 'ProductName'");
+			debug("Failed to get OS name: 'ProductName' not found in sw_vers output");
 		}
 
 		std::string productVersion = "ProductVersion:";
@@ -252,7 +265,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get OS version. Couldn't find 'ProductVersion'");
+			debug("Failed to get OS version: 'ProductVersion' not found in sw_vers output");
 		}
 	}
 #endif
@@ -273,7 +286,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get OS name. Couldn't read 'kern.ostype'");
+			debug("Failed to get OS name from sysctl(2): KERN_OSTYPE");
 		}
 
 		len = BUFFER_SIZE;
@@ -286,7 +299,7 @@ namespace System
 		}
 		else
 		{
-			detail("Failed to get OS version. Couldn't to read 'kern.osrelease'");
+			debug("Failed to get OS version from sysctl(2): KERN_OSRELEASE");
 		}
 	}
 #endif
