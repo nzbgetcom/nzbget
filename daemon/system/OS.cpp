@@ -110,7 +110,17 @@ namespace System
 
 	bool OS::IsRunningInContainer() const
 	{
-		return FileSystem::FileExists("/run/.containerenv");
+		if (std::getenv("container") != nullptr)
+		{
+			return true;
+		}
+
+		if (FileSystem::FileExists("/run/systemd/container") || FileSystem::FileExists("/run/.containerenv"))
+		{
+			return true;
+		}
+
+		return false;
 	}
 
 	void OS::TrimQuotes(std::string& str) const
