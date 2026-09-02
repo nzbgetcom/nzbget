@@ -214,6 +214,9 @@ public:
 
 	static std::unique_ptr<FILE, std::function<void(FILE*)>> MakePipe(const std::string& cmd);
 
+	/* Mark a file descriptor as close-on-exec (no-op on Windows). */
+	static bool SetCloseOnExec(int fd);
+
 	static const char* NULL_OUTPUT;
 	static const char* FIND_CMD;
 

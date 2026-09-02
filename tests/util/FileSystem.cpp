@@ -67,6 +67,55 @@ BOOST_AUTO_TEST_CASE(EscapePathForShellTest)
 	BOOST_CHECK(FileSystem::EscapePathForShell("") == "");
 }
 
+// Files opened via DiskFile must not be inherited by child processes NZBGet
+// forks for unrar/scripts (see #887): a leaked handle keeps the file "busy"
+// on NFS mounts for as long as an unrelated child runs.
+BOOST_AUTO_TEST_CASE(DiskFileCloseOnExecTest)
+{
+	CString tempFile = CString::FormatStr("/tmp/nzbget_test_cloexec_%d.tmp", (int)getpid());
+
+	DiskFile file;
+	BOOST_REQUIRE(file.Open(tempFile, DiskFile::omWrite));
+
+	int fd = file.GetFileDescriptor();
+	BOOST_REQUIRE(fd >= 0);
+
+	int flags = fcntl(fd, F_GETFD);
+	BOOST_REQUIRE(flags != -1);
+	BOOST_CHECK((flags & FD_CLOEXEC) != 0);
+
+	file.Close();
+	FileSystem::DeleteFile(tempFile);
+}
+
+BOOST_AUTO_TEST_CASE(ForkExecDoesNotRetainCloseOnExecFilesTest)
+{
+	char tmpl[] = "/tmp/nzbget-cloexec-XXXXXX";
+	int tmpfd = mkstemp(tmpl);
+	BOOST_REQUIRE(tmpfd >= 0);
+	close(tmpfd);
+
+	DiskFile file;
+	BOOST_REQUIRE(file.Open(tmpl, DiskFile::omRead));
+
+	pid_t pid = fork();
+	BOOST_REQUIRE(pid != -1);
+	if (pid == 0)
+	{
+		execl("/bin/sleep", "sleep", "5", (char*)nullptr);
+		_exit(127);
+	}
+
+	usleep(100000);
+
+	file.Close();
+	BOOST_CHECK(FileSystem::DeleteFile(tmpl));
+
+	BOOST_REQUIRE(kill(pid, SIGTERM) == 0);
+	int status = 0;
+	waitpid(pid, &status, 0);
+}
+
 #endif
 
 BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)

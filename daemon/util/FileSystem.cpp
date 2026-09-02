@@ -32,6 +32,16 @@ const char* RESERVED_DEVICE_NAMES[] = { "CON", "PRN", "AUX", "NUL",
 	"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
 	"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", NULL };
 
+static void SetCloseOnExecFile(FILE* file)
+{
+#ifndef WIN32
+	if (file)
+	{
+		Util::SetCloseOnExec(fileno(file));
+	}
+#endif
+}
+
 CString FileSystem::GetLastErrorMessage()
 {
 	BString<1024> msg;
@@ -359,6 +369,7 @@ bool FileSystem::AllocateFile(const char* filename, int64 size, [[maybe_unused]]
 		errmsg = GetLastErrorMessage();
 		return false;
 	}
+	SetCloseOnExecFile(file);
 	fclose(file);
 
 	// there are no reliable function to expand file on POSIX, so we must try different approaches,
@@ -377,6 +388,7 @@ bool FileSystem::AllocateFile(const char* filename, int64 size, [[maybe_unused]]
 			errmsg = GetLastErrorMessage();
 			return false;
 		}
+		SetCloseOnExecFile(file);
 
 		// write zeros in 16K chunks
 		CharBuffer zeros(16 * 1024);
@@ -1083,6 +1095,7 @@ bool FileSystem::FlushDirBuffers(const char* filename, CString& errmsg)
 		errmsg = GetLastErrorMessage();
 		return false;
 	}
+	SetCloseOnExecFile(file);
 	bool ok = FlushFileBuffers(fileno(file), errmsg);
 	fclose(file);
 	return ok;
@@ -1347,6 +1360,7 @@ bool DiskFile::Open(const char* filename, EOpenMode mode)
 #else
 	m_file = fopen(filename, strmode);
 #endif
+	SetCloseOnExecFile(m_file);
 	return m_file;
 }
 
