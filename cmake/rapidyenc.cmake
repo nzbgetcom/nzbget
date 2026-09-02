@@ -56,7 +56,7 @@ ExternalProject_add(
 	rapidyenc
 	PREFIX			rapidyenc
 	GIT_REPOSITORY	https://github.com/nzbgetcom/rapidyenc.git
-	GIT_TAG			v1.1.1-20260821
+	GIT_TAG			fix/decoder-unaligned-load
 	TLS_VERIFY		TRUE
 	GIT_SHALLOW		TRUE
 	GIT_PROGRESS	TRUE
