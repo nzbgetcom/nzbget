@@ -36,17 +36,156 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.4567"));
 	BOOST_CHECK(IsExcessivelyObfuscated("abc.xyz.a1b2c3d4e5f678.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("b00bs.a1b2c3d4e5f678.mkv"));
-	BOOST_CHECK(IsExcessivelyObfuscated("Not.obfuscated.rar") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.rar") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.r00") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.15") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.015") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.zip") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.par2") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.rar") == false);
-	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4fla"));
-	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf"));
 	BOOST_CHECK(IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xfac4rcq47pkqt4flatz2xf4567"));
+	BOOST_CHECK(IsExcessivelyObfuscated("yfjEpzFbQommamTW"));
+	BOOST_CHECK(IsExcessivelyObfuscated("MQHeRbSCIoPs"));
+	BOOST_CHECK(IsExcessivelyObfuscated("n1iY94U6fTpMVY9GPD"));
+	BOOST_CHECK(IsExcessivelyObfuscated("nzqymzflnjiyztgyntcynzzytq"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Not.obfuscated.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("SomeMovie"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie1998"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated(
+		"-Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12!"
+	));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.r00"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.15"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.015"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.zip"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("a1b2c3d4e5f678.901234567890abcdef01234567890123.par2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("2fpJZyw12WSJz8JunjkxpZcw0XIZKKMP.7z.01"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.7z"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.7z.15"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.7z.015"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.zip"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.par2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.r00"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.RAR"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.PAR2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.s00"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.z99"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.gz"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.tar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.sfv"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdef0123456789abcdef.r000"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdef0123456789abcdef.mkv.015"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdef0123456789abcdef.015"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f6789.rar"));
+	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f6789-abc.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("a1b2c3d4e5f6789a.rar"));
+	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f6789a.mkv"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.z00"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.s99"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("ac4rcq47pkqt4flatz2xf.r50"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("Backup_12345S67-89"));
+	BOOST_CHECK(IsExcessivelyObfuscated("Backup_1234567890S01-02.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Backup_1234S67-89"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Backup_Series.S01E01"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("123456_78"));
+	BOOST_CHECK(IsExcessivelyObfuscated("987654_32.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("12345_78"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("2024_2025"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("01_02_03"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("File-0123456789ab.cafe"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("2012"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("300"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1917"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("9"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("21"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe1unWxVw.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("l5PcmaKxDxcUaSM"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("CamelCaseTitle"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("TigerManTwo"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("CamelCase1999"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdefghij12"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe1unWxVw-release"));
+	BOOST_CHECK(IsExcessivelyObfuscated("xY7z8K9mN2pQ3rS4t-group"));
+	BOOST_CHECK(IsExcessivelyObfuscated("a1b2c3d4e5f6-group"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Some-Movie"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("The-Movie"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Strike4Force2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Strike4Force"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Rise4Glory"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.01.02.1080p.x264-Group"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.S01E01.1080p.WEB-DL.x264-Group"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe.1unWxVw"));
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe-1unWxVw"));
+	BOOST_CHECK(IsExcessivelyObfuscated("HFg3BYe_1unWxVw"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("NightHawk2022"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Sentinel2024"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Champion2000"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Spartan2004"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("TigerOnTheRun"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("BattleInBerlin"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("ChaseToNowhere"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("RunOfTheMill"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("FallAtDawn"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("TigerOnTheRun2024"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("BattleInBerlin2023"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("deadbeefcafe1234"));
+	BOOST_CHECK(IsExcessivelyObfuscated("1234567890123456"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ABCDEFGHIJKLMNOPQRSTUVWXYZ"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdef0123456789"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("xyz"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("The.Show.Name.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("The_Last_Of_The_Words"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("StarTrekIntoDarkness"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie2024Extended"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Rise4Glory2023Fall"));
+	BOOST_CHECK(IsExcessivelyObfuscated("Movie9999Extended"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.part01.rar"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.part123.par2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.vol00+01.par2"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("abcdef0123456789abcdef.vol10+20.par2"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("american.gangster.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Fahrenheit.451.mkv"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("SpiderManNoWayHome.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("MissionImpossibleIII.mkv"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("INTERSTELLAR.mkv"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeF1234567890abcdef1234.S01E01.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdef1234567890abcdef1234567890.1080p.x264-GROUP"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ABCDEF1234567890ABCDEF1234567890.S01E01.mkv"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("ABCDEFGHIJK001.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdefghijklm001.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ABCDEFGHIJ01.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("abcdefghijkl01.mkv"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated("ABC"));
+	BOOST_CHECK(IsExcessivelyObfuscated("AbC-XyZ"));
+	BOOST_CHECK(IsExcessivelyObfuscated("ABC-XYZ"));
 }
 
 BOOST_AUTO_TEST_CASE(DeobfuscationTest)
@@ -54,9 +193,9 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	BOOST_CHECK_EQUAL(Deobfuscate(""), "");
 	BOOST_CHECK_EQUAL(Deobfuscate("\"A\""), "A");
 	BOOST_CHECK_EQUAL(Deobfuscate("Not obfuscated"), "Not obfuscated");
-
+	BOOST_CHECK_EQUAL(Deobfuscate("\"filename.mkv yEnc (1/1)"), "filename.mkv yEnc (1/1)");
 	BOOST_CHECK_EQUAL(
-		Deobfuscate("Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2 (1/0)"), 
+		Deobfuscate("Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2 (1/0)"),
 		"Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2"
 	);
 
