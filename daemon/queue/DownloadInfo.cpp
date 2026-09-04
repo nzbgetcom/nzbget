@@ -286,6 +286,29 @@ int NzbInfo::CalcHealth()
 	return health;
 }
 
+bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newAbsoluteOrRelativePath)
+{
+	if (Util::EmptyStr(oldName) || Util::EmptyStr(newAbsoluteOrRelativePath))
+	{
+		return false;
+	}
+
+	for (CompletedFile& cf : m_completedFiles)
+	{
+		if (cf.SameFilename(oldName))
+		{
+			if (Util::EmptyStr(cf.GetOrigname()))
+			{
+				cf.SetOrigname(cf.GetFilename());
+			}
+
+			cf.SetFilename(newAbsoluteOrRelativePath);
+			return true;
+		}
+	}
+	return false;
+}
+
 int NzbInfo::CalcCriticalHealth(bool allowEstimation)
 {
 	if (m_size == 0)
@@ -861,6 +884,22 @@ CompletedFile::CompletedFile(int id, std::string filename, std::string origname,
 	}
 }
 
+bool CompletedFile::SameFilename(const char* name) const
+{
+	if (!name) return false;
+
+	std::string_view s1 = m_filename;
+	std::string_view s2 = name;
+	if (s1.size() != s2.size())
+		return false;
+
+	return std::equal(s1.begin(), s1.end(), s2.begin(), [](char c1, char c2)
+	{
+		if (c1 == '\\') c1 = '/';
+		if (c2 == '\\') c2 = '/';
+		return std::tolower(static_cast<unsigned char>(c1)) == std::tolower(static_cast<unsigned char>(c2));
+	});
+}
 
 void DupInfo::SetId(int id)
 {
