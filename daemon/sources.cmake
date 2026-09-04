@@ -85,6 +85,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.h
 
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileTypes.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp

@@ -602,34 +602,34 @@ std::vector<CString> Util::SplitStr(const char* str, const char* separators)
 	return result;
 }
 
+bool Util::EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive)
+{
+	if (suffix.empty())
+	{
+		return true;
+	}
+	if (str.size() < suffix.size())
+	{
+		return false;
+	}
+	if (caseSensitive)
+	{
+		return str.ends_with(suffix);
+	}
+	return StrCaseCmp(str.substr(str.size() - suffix.size()), suffix);
+}
+
 bool Util::EndsWith(const char* str, const char* suffix, bool caseSensitive)
 {
 	if (!str)
 	{
 		return false;
 	}
-
 	if (EmptyStr(suffix))
 	{
 		return true;
 	}
-
-	int lenStr = strlen(str);
-	int lenSuf = strlen(suffix);
-
-	if (lenSuf > lenStr)
-	{
-		return false;
-	}
-
-	if (caseSensitive)
-	{
-		return !strcmp(str + lenStr - lenSuf, suffix);
-	}
-	else
-	{
-		return !strcasecmp(str + lenStr - lenSuf, suffix);
-	}
+	return EndsWith(std::string_view(str), std::string_view(suffix), caseSensitive);
 }
 
 bool Util::AlphaNum(const char* str)
@@ -836,14 +836,14 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
-bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+bool Util::StrCaseCmp(std::string_view a, std::string_view b)
 {
-	auto comparator = [](unsigned char a, unsigned char b)
-	{
-		return std::tolower(a) == std::tolower(b);
-	};
-
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+		[](unsigned char ca, unsigned char cb)
+		{
+			return std::tolower(ca) == std::tolower(cb);
+		}
+	);
 }
 
 // prevent PC from going to sleep
