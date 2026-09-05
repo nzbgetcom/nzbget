@@ -456,7 +456,7 @@ std::pair<std::string, std::string> FileSystem::SplitPathAndFilename(const std::
 
 bool FileSystem::ReservedChar(char ch)
 {
-	if ((unsigned char)ch < 32)
+	if (Util::IsControlChar(ch))
 	{
 		return true;
 	}
@@ -519,6 +519,112 @@ CString FileSystem::MakeValidFilename(const char* filename, bool allowSlashes)
 	}			
 
 	return result;
+}
+
+std::string FileSystem::SanitizePathSegment(std::string_view name)
+{
+	// Bound input length to prevent excessive allocations from untrusted metadata
+	if (name.size() > 1024)
+	{
+		name = name.substr(0, 1024);
+	}
+
+	// 1. Trim leading whitespace
+	while (!name.empty() && (name.front() == ' ' || name.front() == '\t'))
+	{
+		name.remove_prefix(1);
+	}
+	
+	// 2. Trim trailing whitespace and dots
+	while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '.'))
+	{
+		name.remove_suffix(1);
+	}
+
+	if (name.empty())
+	{
+		return "";
+	}
+
+	// 3. Remove illegal filesystem characters
+	std::string result = MakeValidFilename(std::string(name).c_str(), false).Str();
+
+	// 4. Safely collapse consecutive dots to normalize relative paths.
+	std::string collapsed;
+	collapsed.reserve(result.size());
+	size_t dotRun = 0;
+	for (char c : result)
+	{
+		if (c == '.')
+		{
+			dotRun++;
+		}
+		else
+		{
+			if (dotRun >= 2)
+			{
+				collapsed += '_';
+			}
+			else if (dotRun == 1)
+			{
+				collapsed += '.';
+			}
+			dotRun = 0;
+			collapsed += c;
+		}
+	}
+	if (dotRun >= 2)
+	{
+		collapsed += '_';
+	}
+	else if (dotRun == 1)
+	{
+		collapsed += '.';
+	}
+	result = std::move(collapsed);
+
+	// 5. Trim trailing dots/spaces that might have been exposed by MakeValidFilename or replacement
+	while (!result.empty() && (result.back() == '.' || result.back() == ' '))
+	{
+		result.pop_back();
+	}
+
+	// 6. Final safety check against Windows reserved names or empty path segments
+	if (result.empty() || result == "." || result == "..")
+	{
+		return "";
+	}
+
+	return result;
+}
+
+std::string FileSystem::SanitizeRelativePath(std::string_view path)
+{
+	std::string clean;
+	size_t start = 0;
+	while (start < path.size())
+	{
+		size_t end = path.find_first_of("/\\", start);
+		size_t len = (end == std::string_view::npos) ? (path.size() - start) : (end - start);
+		if (len > 0)
+		{
+			std::string_view seg = path.substr(start, len);
+			std::string cleanSeg = SanitizePathSegment(seg);
+			if (!cleanSeg.empty())
+			{
+				if (!clean.empty())
+				{
+					clean += PATH_SEPARATOR;
+				}
+				clean += cleanSeg;
+			}
+		}
+
+		if (end == std::string_view::npos) break;
+		start = end + 1;
+	}
+
+	return clean;
 }
 
 CString FileSystem::MakeUniqueFilename(const char* destDir, const char* basename)

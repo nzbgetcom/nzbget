@@ -500,6 +500,8 @@ public:
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetName(const char* name) { m_name = name; }
+	const std::string& GetMetaName() const { return m_metaName; }
+	void SetMetaName(std::string metaName) { m_metaName = std::move(metaName); }
 	int GetFileCount() { return m_fileCount; }
 	void SetFileCount(int fileCount) { m_fileCount = fileCount; }
 	int GetParkedFileCount() { return m_parkedFileCount; }
@@ -694,6 +696,7 @@ private:
 	CString m_finalDir = "";
 	CString m_category = "";
 	std::string m_hardLinkPath;
+	std::string m_metaName;
 	int m_fileCount = 0;
 	int m_parkedFileCount = 0;
 	int64 m_size = 0;

@@ -28,7 +28,7 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 63;
+const int DISKSTATE_QUEUE_VERSION = 64;
 const int DISKSTATE_FILE_VERSION = 7;
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
@@ -538,12 +538,13 @@ error:
 void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 {
 	outfile.PrintLine("%i", nzbInfo->GetId());
-	outfile.PrintLine("%i", (int)nzbInfo->GetKind());
+	outfile.PrintLine("%i", static_cast<int>(nzbInfo->GetKind()));
 	outfile.PrintLine("%s", nzbInfo->GetUrl());
 	outfile.PrintLine("%s", nzbInfo->GetFilename());
 	outfile.PrintLine("%s", nzbInfo->GetDestDir());
 	outfile.PrintLine("%s", nzbInfo->GetFinalDir());
 	outfile.PrintLine("%s", nzbInfo->GetHardLinkPath().c_str());
+	outfile.PrintLine("%s", nzbInfo->GetMetaName().c_str());
 	outfile.PrintLine("%s", nzbInfo->GetQueuedFilename());
 	outfile.PrintLine("%s", nzbInfo->GetName());
 	outfile.PrintLine("%s", nzbInfo->GetCategory());
@@ -670,6 +671,12 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 		nzbInfo->SetHardLinkPath(buf);
+	}
+
+	if (formatVersion >= 64) 
+	{
+		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+		nzbInfo->SetMetaName(buf);
 	}
 
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
