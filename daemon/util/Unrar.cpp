@@ -20,9 +20,11 @@
 
 #include "nzbget.h"
 
+#include <algorithm>
 #include <regex>
 
 #include "Unpack.h"
+#include "FileTypes.h"
 #include "Util.h"
 
 using namespace Unpack;
@@ -70,17 +72,23 @@ bool Unrar::IsSupported(const fs::path& path)
 	if (!path.has_filename()) return false;
 
 	auto filename = fs::u8string(path.filename());
-	static const std::regex part1Rar("\\.part0*1\\.rar$", std::regex_constants::icase);
-	if (std::regex_search(filename, part1Rar)) return true;
+	auto ext = fs::u8string(path.extension());
 
-	std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
-	if (filename.find(".part") == std::string::npos &&
-		Util::EndsWith(filename.c_str(), ".rar", false))
+	if (!FileTypes::IsRarExt(ext))
 	{
-		return true;
+		return false;
 	}
 
-	return false;
+	static const std::regex part1Rar("\\.part0*1\\.rar$", std::regex_constants::icase);
+
+	std::string lowerFilename = filename;
+	std::transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+	if (lowerFilename.find(".part") != std::string::npos)
+	{
+		return std::regex_search(filename, part1Rar);
+	}
+
+	return true;
 }
 
 bool Unrar::DecodeExitCode(int ec) const

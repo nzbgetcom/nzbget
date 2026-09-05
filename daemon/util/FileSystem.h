@@ -139,7 +139,7 @@ public:
 	static bool CreateDirectory(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
-	static std::optional<std::string> GetFileExtension(const std::string& filename);
+	static std::optional<std::string> GetFileExtension(std::string_view filename);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);
