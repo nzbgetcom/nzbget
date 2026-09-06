@@ -19,6 +19,8 @@
  */
 
 
+#include <cstdint>
+
 #include "nzbget.h"
 #include "WebDownloader.h"
 #include "Log.h"
@@ -26,6 +28,210 @@
 #include "WorkState.h"
 #include "Util.h"
 #include "FileSystem.h"
+
+namespace
+{
+std::string Base64Encode(const std::string& input)
+{
+	static constexpr char alphabet[] =
+		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+	std::string output;
+	output.reserve(((input.size() + 2) / 3) * 4);
+
+	for (size_t i = 0; i < input.size(); i += 3)
+	{
+		unsigned int value = static_cast<unsigned char>(input[i]) << 16;
+		bool hasSecond = i + 1 < input.size();
+		bool hasThird = i + 2 < input.size();
+		if (hasSecond)
+		{
+			value |= static_cast<unsigned char>(input[i + 1]) << 8;
+		}
+		if (hasThird)
+		{
+			value |= static_cast<unsigned char>(input[i + 2]);
+		}
+
+		output.push_back(alphabet[(value >> 18) & 0x3f]);
+		output.push_back(alphabet[(value >> 12) & 0x3f]);
+		output.push_back(hasSecond ? alphabet[(value >> 6) & 0x3f] : '=');
+		output.push_back(hasThird ? alphabet[value & 0x3f] : '=');
+	}
+
+	return output;
+}
+
+std::string TrimProxyBypassRule(const std::string& value)
+{
+	size_t first = value.find_first_not_of(" \t");
+	if (first == std::string::npos)
+	{
+		return {};
+	}
+
+	size_t last = value.find_last_not_of(" \t");
+	return value.substr(first, last - first + 1);
+}
+
+bool ParseIpv4Address(const std::string& value, std::uint32_t& address)
+{
+	address = 0;
+	size_t pos = 0;
+
+	for (int part = 0; part < 4; part++)
+	{
+		if (pos >= value.size())
+		{
+			return false;
+		}
+
+		unsigned int octet = 0;
+		int digits = 0;
+		while (pos < value.size() && value[pos] >= '0' && value[pos] <= '9')
+		{
+			octet = octet * 10 + static_cast<unsigned int>(value[pos] - '0');
+			if (octet > 255)
+			{
+				return false;
+			}
+			pos++;
+			digits++;
+		}
+
+		if (digits == 0)
+		{
+			return false;
+		}
+
+		address = (address << 8) | octet;
+		if (part < 3)
+		{
+			if (pos >= value.size() || value[pos] != '.')
+			{
+				return false;
+			}
+			pos++;
+		}
+	}
+
+	return pos == value.size();
+}
+
+bool ParseCidrPrefix(const std::string& value, unsigned int& prefix)
+{
+	if (value.empty())
+	{
+		return false;
+	}
+
+	prefix = 0;
+	for (char ch : value)
+	{
+		if (ch < '0' || ch > '9')
+		{
+			return false;
+		}
+		prefix = prefix * 10 + static_cast<unsigned int>(ch - '0');
+		if (prefix > 32)
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool EndsWithNoCase(const std::string& value, const std::string& suffix)
+{
+	return value.size() >= suffix.size() &&
+		!strcasecmp(value.c_str() + value.size() - suffix.size(), suffix.c_str());
+}
+
+bool MatchesIpv4Cidr(const char* host, const std::string& rule)
+{
+	size_t slash = rule.find('/');
+	if (slash == std::string::npos || rule.find('/', slash + 1) != std::string::npos)
+	{
+		return false;
+	}
+
+	std::uint32_t hostAddress = 0;
+	std::uint32_t networkAddress = 0;
+	unsigned int prefix = 0;
+	if (!ParseIpv4Address(host ? host : "", hostAddress) ||
+		!ParseIpv4Address(rule.substr(0, slash), networkAddress) ||
+		!ParseCidrPrefix(rule.substr(slash + 1), prefix))
+	{
+		return false;
+	}
+
+	std::uint32_t mask = prefix == 0 ? 0 : 0xffffffffu << (32 - prefix);
+	return (hostAddress & mask) == (networkAddress & mask);
+}
+
+bool MatchesProxyBypassRule(const char* host, const std::string& rule)
+{
+	if (!host || !*host || rule.empty())
+	{
+		return false;
+	}
+
+	if (rule.find('/') != std::string::npos)
+	{
+		return MatchesIpv4Cidr(host, rule);
+	}
+
+	if (!strcasecmp(host, rule.c_str()))
+	{
+		return true;
+	}
+
+	std::string hostName(host);
+	if (rule.size() > 2 && rule[0] == '*' && rule[1] == '.')
+	{
+		std::string suffix = rule.substr(1);
+		return hostName.size() > suffix.size() && EndsWithNoCase(hostName, suffix);
+	}
+
+	if (rule.size() > 1 && rule[0] == '.')
+	{
+		return !strcasecmp(host, rule.c_str() + 1) || EndsWithNoCase(hostName, rule);
+	}
+
+	return false;
+}
+
+bool IsProxyBypassed(const char* host, const char* bypassList)
+{
+	if (!host || !*host || Util::EmptyStr(bypassList))
+	{
+		return false;
+	}
+
+	std::string rules(bypassList);
+	size_t start = 0;
+	while (start <= rules.size())
+	{
+		size_t end = rules.find_first_of(",;", start);
+		std::string rule = TrimProxyBypassRule(rules.substr(
+			start, end == std::string::npos ? std::string::npos : end - start));
+		if (!rule.empty() && MatchesProxyBypassRule(host, rule))
+		{
+			return true;
+		}
+
+		if (end == std::string::npos)
+		{
+			break;
+		}
+		start = end + 1;
+	}
+
+	return false;
+}
+
+}
 
 WebDownloader::WebDownloader()
 	: m_contentLen(0)
@@ -161,6 +367,16 @@ WebDownloader::EStatus WebDownloader::Download()
 		return adConnectError;
 	}
 
+	if (m_proxy && !strcasecmp(url.GetProtocol(), "https"))
+	{
+		Status = CreateProxyTunnel(&url);
+		if (Status != adRunning || IsStopped())
+		{
+			FreeConnection();
+			return Status == adRunning ? adConnectError : Status;
+		}
+	}
+
 	// Okay, we got a Connection. Now start downloading.
 	detail("Downloading %s", *m_infoName);
 
@@ -241,8 +457,21 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 #endif
 
 	bool tls = !strcasecmp(url->GetProtocol(), "https");
+	m_proxy = !Util::EmptyStr(g_Options->GetUrlProxyHost());
+	if (m_proxy && IsProxyBypassed(url->GetHost(), g_Options->GetUrlProxyBypass()))
+	{
+		debug("Bypassing URL proxy for host %s", url->GetHost());
+		m_proxy = false;
+	}
 
-	m_connection = std::make_unique<Connection>(url->GetHost(), port, tls);
+	if (m_proxy)
+	{
+		m_connection = std::make_unique<Connection>(g_Options->GetUrlProxyHost(), g_Options->GetUrlProxyPort(), false);
+	}
+	else
+	{
+		m_connection = std::make_unique<Connection>(url->GetHost(), port, tls);
+	}
 
 #ifndef DISABLE_TLS
 	m_connection->SetCertVerifLevel(m_certVerifLevel);
@@ -254,8 +483,29 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 void WebDownloader::SendHeaders(URL *url)
 {
 	// retrieve file
-	m_connection->WriteLine(BString<1024>("GET %s HTTP/1.0\r\n", url->GetResource()));
+	if (m_proxy && !strcasecmp(url->GetProtocol(), "http"))
+	{
+		std::string request = "GET http://";
+		request += url->GetHost();
+		if (url->GetPort() != 80 && url->GetPort() != 0)
+		{
+			request += ':';
+			request += std::to_string(url->GetPort());
+		}
+		request += url->GetResource();
+		request += " HTTP/1.0\r\n";
+		m_connection->WriteLine(request.c_str());
+	}
+	else
+	{
+		m_connection->WriteLine(BString<1024>("GET %s HTTP/1.0\r\n", url->GetResource()));
+	}
 	m_connection->WriteLine(BString<1024>("User-Agent: nzbget/%s\r\n", Util::VersionRevision()));
+
+	if (m_proxy && !strcasecmp(url->GetProtocol(), "http"))
+	{
+		SendProxyAuthorization();
+	}
 
 	if ((!strcasecmp(url->GetProtocol(), "http") && (url->GetPort() == 80 || url->GetPort() == 0)) ||
 		(!strcasecmp(url->GetProtocol(), "https") && (url->GetPort() == 443 || url->GetPort() == 0)))
@@ -273,6 +523,81 @@ void WebDownloader::SendHeaders(URL *url)
 #endif
 	m_connection->WriteLine("Connection: close\r\n");
 	m_connection->WriteLine("\r\n");
+}
+
+void WebDownloader::SendProxyAuthorization()
+{
+	const char* username = g_Options->GetUrlProxyUsername();
+	const char* password = g_Options->GetUrlProxyPassword();
+	if (Util::EmptyStr(username) && Util::EmptyStr(password))
+	{
+		return;
+	}
+
+	std::string credentials = username ? username : "";
+	credentials += ':';
+	credentials += password ? password : "";
+	std::string encoded = Base64Encode(credentials);
+	std::string header = "Proxy-Authorization: Basic ";
+	header += encoded;
+	header += "\r\n";
+	m_connection->WriteLine(header.c_str());
+}
+
+WebDownloader::EStatus WebDownloader::CreateProxyTunnel(URL *url)
+{
+	int port = url->GetPort() == 0 ? 443 : url->GetPort();
+	m_connection->WriteLine(BString<1024>("CONNECT %s:%i HTTP/1.1\r\n", url->GetHost(), port));
+	m_connection->WriteLine(BString<1024>("Host: %s:%i\r\n", url->GetHost(), port));
+	m_connection->WriteLine(BString<1024>("User-Agent: nzbget/%s\r\n", Util::VersionRevision()));
+	SendProxyAuthorization();
+	m_connection->WriteLine("\r\n");
+
+	CharBuffer lineBuf(1024 * 10);
+	int len = 0;
+	char* line = m_connection->ReadLine(lineBuf, lineBuf.Size(), &len);
+	if (!line)
+	{
+		warn("URL %s: proxy closed connection while creating tunnel", *m_infoName);
+		return adConnectError;
+	}
+
+	Util::TrimRight(line);
+	const char* status = strchr(line, ' ');
+	if (strncmp(line, "HTTP/", 5) || !status || status[1] != '2')
+	{
+		warn("URL %s: proxy tunnel failed: %s", *m_infoName, line);
+		return adConnectError;
+	}
+
+	while (!IsStopped())
+	{
+		line = m_connection->ReadLine(lineBuf, lineBuf.Size(), &len);
+		if (!line)
+		{
+			warn("URL %s: proxy closed connection while creating tunnel", *m_infoName);
+			return adConnectError;
+		}
+		if (*line == '\r' || *line == '\n')
+		{
+			break;
+		}
+	}
+
+	if (IsStopped())
+	{
+		return adConnectError;
+	}
+
+#ifndef DISABLE_TLS
+	if (!m_connection->StartTls(true, "", "", url->GetHost()))
+	{
+		warn("URL %s: TLS handshake through proxy failed", *m_infoName);
+		return adConnectError;
+	}
+#endif
+
+	return adRunning;
 }
 
 WebDownloader::EStatus WebDownloader::DownloadHeaders()

@@ -316,6 +316,11 @@ void Options::InitDefaults()
 	SetOption(ARTICLETIMEOUT.data(), "60");
 	SetOption(ARTICLEREADCHUNKSIZE.data(), "4");
 	SetOption(URLTIMEOUT.data(), "60");
+	SetOption(URLPROXYHOST.data(), "");
+	SetOption(URLPROXYPORT.data(), "8080");
+	SetOption(URLPROXYUSERNAME.data(), "");
+	SetOption(URLPROXYPASSWORD.data(), "");
+	SetOption(URLPROXYBYPASS.data(), "");
 	SetOption(REMOTETIMEOUT.data(), "90");
 	SetOption(FLUSHQUEUE.data(), "yes");
 	SetOption(SYSTEMHEALTHCHECK.data(), "yes");
@@ -592,6 +597,10 @@ void Options::InitOptions()
 	m_secureCert			= GetOption(SECURECERT.data());
 	m_secureKey				= GetOption(SECUREKEY.data());
 	m_certStore				= GetOption(CERTSTORE.data());
+	m_urlProxyHost			= GetOption(URLPROXYHOST.data());
+	m_urlProxyUsername		= GetOption(URLPROXYUSERNAME.data());
+	m_urlProxyPassword		= GetOption(URLPROXYPASSWORD.data());
+	m_urlProxyBypass			= GetOption(URLPROXYBYPASS.data());
 	m_authorizedIp			= GetOption(AUTHORIZEDIP.data());
 	m_lockFile				= GetOption(LOCKFILE.data());
 	m_daemonUsername		= GetOption(DAEMONUSERNAME.data());
@@ -622,6 +631,7 @@ void Options::InitOptions()
 	m_articleTimeout		= ParseIntValue(ARTICLETIMEOUT.data(), 10);
 	m_articleReadChunkSize  = ParseIntValue(ARTICLEREADCHUNKSIZE.data(), 10) * 1024;
 	m_urlTimeout			= ParseIntValue(URLTIMEOUT.data(), 10);
+	m_urlProxyPort			= ParseIntValue(URLPROXYPORT.data(), 10);
 	m_remoteTimeout			= ParseIntValue(REMOTETIMEOUT.data(), 10);
 	m_articleRetries		= ParseIntValue(ARTICLERETRIES.data(), 10);
 	m_articleInterval		= ParseIntValue(ARTICLEINTERVAL.data(), 10);
