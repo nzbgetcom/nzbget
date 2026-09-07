@@ -180,6 +180,7 @@
 #include <exception>
 #include <iomanip>
 #include <span>
+#include <regex>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>

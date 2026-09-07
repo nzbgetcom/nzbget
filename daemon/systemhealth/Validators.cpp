@@ -293,27 +293,57 @@ Status Writable(const fs::path& path)
 
 namespace Network
 {
-Status ValidHostname(std::string_view hostname)
+
+Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv)
 {
 	if (hostname.empty())
 	{
-		return Status::Error("Hostname cannot be empty");
+		return Status::Error("Hostname or IP address is empty");
 	}
 
-	if (hostname.length() > 253)
+	if (hostname.size() > 255)
 	{
-		return Status::Error("Hostname is too long (max 253 characters)");
+		return Status::Error("Hostname is too long (maximum 255 characters)");
 	}
 
-	for (char c : hostname)
+	bool hasBrackets = (hostname.size() >= 2 && hostname.front() == '[' && hostname.back() == ']');
+	std::string_view ip = hasBrackets ? hostname.substr(1, hostname.size() - 2) : hostname;
+
+	boost::system::error_code ecv4, ecv6;
+	boost::asio::ip::make_address_v4(ip, ecv4);
+	boost::asio::ip::make_address_v6(ip, ecv6);
+
+	bool isV4 = !ecv4;
+	bool isV6 = !ecv6;
+
+	if (isV4 || isV6)
 	{
-		if (!std::isalnum(c) && c != '.' && c != '-' && c != '_')
+		if (ipv == Connection::EIPVersion::ipV4 && isV6)
 		{
-			return Status::Error("Hostname contains invalid characters");
+			return Status::Error("IPv6 address '" + std::string(ip) + "' is provided, but connection mode is set to IPv4");
 		}
+		if (ipv == Connection::EIPVersion::ipV6 && isV4)
+		{
+			return Status::Error("IPv4 address '" + std::string(ip) + "' is provided, but connection mode is set to IPv6");
+		}
+
+		if (hasBrackets)
+		{
+			return Status::Error("Remove brackets from the IP address, e.g., '" + std::string(ip) + "'");
+		}
+		return Status::Ok();
 	}
 
-	return Status::Ok();
+	static const std::regex regex(
+		R"(^([a-zA-Z0-9_]|[a-zA-Z0-9_][a-zA-Z0-9_\-]{0,61}[a-zA-Z0-9_])(\.([a-zA-Z0-9_]|[a-zA-Z0-9_][a-zA-Z0-9_\-]{0,61}[a-zA-Z0-9_]))*$)"
+	);
+
+	if (!hasBrackets && std::regex_match(hostname.begin(), hostname.end(), regex))
+	{
+		return Status::Ok();
+	}
+
+	return Status::Error("Invalid hostname or IP address: '" + std::string(hostname) + "'");
 }
 
 Status ValidPort(int port)
