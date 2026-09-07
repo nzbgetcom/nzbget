@@ -179,6 +179,7 @@
 #include <random>
 #include <exception>
 #include <iomanip>
+#include <span>
 #include <regex>
 
 #include <libxml/parser.h>
