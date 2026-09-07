@@ -179,6 +179,8 @@
 #include <random>
 #include <exception>
 #include <iomanip>
+#include <format>
+#include <regex>
 
 #include <libxml/parser.h>
 #include <libxml/xmlreader.h>
