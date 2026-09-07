@@ -63,7 +63,7 @@ Status Writable(const fs::path& path);
 
 namespace Network
 {
-Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv);
+Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv = Connection::ipAuto);
 Status ValidPort(int port);
 }  // namespace Network
 }  // namespace SystemHealth

@@ -318,22 +318,24 @@ Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv)
 
 	if (isV4 || isV6)
 	{
-		if (ipv == Connection::EIPVersion::ipV4 && isV6) {
-			return Status::Error(std::format("IPv6 address '{}' is provided, but connection mode is set to IPv4", ip));
+		if (ipv == Connection::EIPVersion::ipV4 && isV6)
+		{
+			return Status::Error("IPv6 address '" + std::string(ip) + "' is provided, but connection mode is set to IPv4");
 		}
-		if (ipv == Connection::EIPVersion::ipV6 && isV4) {
-			return Status::Error(std::format("IPv4 address '{}' is provided, but connection mode is set to IPv6", ip));
+		if (ipv == Connection::EIPVersion::ipV6 && isV4)
+		{
+			return Status::Error("IPv4 address '" + std::string(ip) + "' is provided, but connection mode is set to IPv6");
 		}
 
 		if (hasBrackets)
 		{
-			return Status::Error(std::format("Remove brackets from the IP address, e.g., '{}'", ip));
+			return Status::Error("Remove brackets from the IP address, e.g., '" + std::string(ip) + "'");
 		}
 		return Status::Ok();
 	}
 
 	static const std::regex regex(
-		R"(^([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])(\.([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9]))*$)"
+		R"(^([a-zA-Z0-9_]|[a-zA-Z0-9_][a-zA-Z0-9_\-]{0,61}[a-zA-Z0-9_])(\.([a-zA-Z0-9_]|[a-zA-Z0-9_][a-zA-Z0-9_\-]{0,61}[a-zA-Z0-9_]))*$)"
 	);
 
 	if (!hasBrackets && std::regex_match(hostname.begin(), hostname.end(), regex))
@@ -341,7 +343,7 @@ Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv)
 		return Status::Ok();
 	}
 
-	return Status::Error(std::format("Invalid hostname or IP address: '{}'", hostname));
+	return Status::Error("Invalid hostname or IP address: '" + std::string(hostname) + "'");
 }
 
 Status ValidPort(int port)

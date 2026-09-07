@@ -127,6 +127,11 @@ BOOST_AUTO_TEST_CASE(TestValidHost)
 	BOOST_CHECK(ValidHost("google.com", Connection::ipAuto).IsOk());
 	BOOST_CHECK(ValidHost("my-server-1", Connection::ipAuto).IsOk());
 	BOOST_CHECK(ValidHost("sub.domain.example.com", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("my_server_1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("_leading", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("trailing_", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("foo_bar.baz", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("my-server_1", Connection::ipAuto).IsOk());
 	BOOST_CHECK(ValidHost("a", Connection::ipAuto).IsOk());
 	BOOST_CHECK(ValidHost(std::string(63, 'a'), Connection::ipAuto).IsOk());
 
@@ -139,7 +144,6 @@ BOOST_AUTO_TEST_CASE(TestValidHost)
 
 	BOOST_CHECK(ValidHost("", Connection::ipAuto).IsError());
 	BOOST_CHECK(ValidHost("invalid char!", Connection::ipAuto).IsError());
-	BOOST_CHECK(ValidHost("my_server_1", Connection::ipAuto).IsError());
 	BOOST_CHECK(ValidHost("-foo", Connection::ipAuto).IsError());
 	BOOST_CHECK(ValidHost("foo-", Connection::ipAuto).IsError());
 	BOOST_CHECK(ValidHost("example..com", Connection::ipAuto).IsError());
