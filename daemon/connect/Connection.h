@@ -3,7 +3,7 @@
  *
  *  Copyright (C) 2004 Sven Henkel <sidddy@users.sourceforge.net>
  *  Copyright (C) 2007-2017 Andrey Prygunkov <hugbug@users.sourceforge.net>
- *  Copyright (C) 2024-2025 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,9 +44,9 @@ public:
 
 	enum EIPVersion
 	{
-		ipAuto,
-		ipV4,
-		ipV6
+		ipAuto = 0,
+		ipV4 = 4,
+		ipV6 = 6
 	};
 
 	Connection(const char* host, int port, bool tls);

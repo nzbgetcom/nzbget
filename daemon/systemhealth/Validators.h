@@ -25,6 +25,7 @@
 #include <functional>
 #include "FileSystem.h"
 #include "Status.h"
+#include "Connection.h"
 
 namespace SystemHealth
 {
@@ -62,7 +63,7 @@ Status Writable(const fs::path& path);
 
 namespace Network
 {
-Status ValidHostname(std::string_view hostname);
+Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv = Connection::ipAuto);
 Status ValidPort(int port);
 }  // namespace Network
 }  // namespace SystemHealth
