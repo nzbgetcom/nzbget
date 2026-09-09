@@ -396,9 +396,12 @@ BOOST_AUTO_TEST_CASE(MoveControllerNestedDirectoryCollision)
 	BOOST_REQUIRE(fs::exists(src / "sub/dir/inner.mkv"));
 	BOOST_REQUIRE(fs::exists(dst / "sub/dir/inner.mkv"));
 
+	const std::string expectedOrig = fs::u8string(fs::path("sub") / "dir" / "inner.mkv");
+	const std::string expectedNew = fs::u8string(fs::path("sub") / "dir" / "inner (1).mkv");
+
 	auto nzbInfo = MakeMoveNzbInfo(src, dst);
 	nzbInfo->GetCompletedFiles()->emplace_back(
-		1, "sub/dir/inner.mkv", "", CompletedFile::cfSuccess, 0, false, "", "");
+		1, expectedOrig, "", CompletedFile::cfSuccess, 0, false, "", "");
 
 	RunMove(nzbInfo.get());
 	BOOST_CHECK_EQUAL(nzbInfo->GetMoveStatus(), NzbInfo::msSuccess);
@@ -413,9 +416,6 @@ BOOST_AUTO_TEST_CASE(MoveControllerNestedDirectoryCollision)
 		std::getline(newFile, content);
 		BOOST_CHECK_EQUAL(content, "new nested data");
 	}
-
-	const std::string expectedNew = fs::u8string(fs::path("sub") / "dir" / "inner (1).mkv");
-	const std::string expectedOrig = fs::u8string(fs::path("sub") / "dir" / "inner.mkv");
 
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
 		expectedNew);
