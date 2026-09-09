@@ -432,14 +432,13 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 
 		const std::string& currOutputFilename = fileInfo->GetOutputFilename();
 		const std::string nzbDestDir = fileInfo->GetNzbInfo()->GetDestDir();
-		const std::string newOutputFilename = nzbDestDir + PATH_SEPARATOR + newName;
 		const std::string oldOutputFilename = currOutputFilename.empty()
 			? nzbDestDir + PATH_SEPARATOR + fileInfo->GetFilename()
 			: currOutputFilename;
 
 		nzbInfo->PrintMessage(Message::mkInfo,
 			"Renaming in-progress file %s to %s",
-			oldOutputFilename.c_str(), newOutputFilename.c_str()
+			fileInfo->GetFilename(), newName.c_str()
 		);
 
 		// Create hardlink and save the path in fileInfo
@@ -450,7 +449,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 			{
 				nzbInfo->PrintMessage(Message::mkDetail,
 					"Skipping hardlink for %s: file not assembled yet",
-					oldOutputFilename.c_str()
+					fileInfo->GetFilename()
 				);
 			}
 			else
@@ -460,7 +459,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 
 				nzbInfo->PrintMessage(Message::mkInfo,
 					"HardLinking in-progress file %s to %s",
-					oldOutputFilename.c_str(), finalOutputFilename.c_str()
+					fileInfo->GetFilename(), newName.c_str()
 				);
 
 				CString errmsg;
@@ -473,7 +472,7 @@ int DirectRenamer::RenameFilesInProgress(NzbInfo* nzbInfo, FileHashList* parHash
 				{
 					nzbInfo->PrintMessage(Message::mkError,
 						"Could not create hardlink %s to %s: %s",
-						oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+						fileInfo->GetFilename(), newName.c_str(), *errmsg
 					);
 				}				
 			}
@@ -525,7 +524,7 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 
 		nzbInfo->PrintMessage(Message::mkInfo,
 			"Renaming completed file %s to %s",
-			oldOutputFilename.c_str(), outputFilename.c_str()
+			completedFile.GetFilename(), newName.c_str()
 		);
 
 		if (!Util::EmptyStr(g_Options->GetInterDir()) && g_Options->GetHardLinking() && !Util::MatchFileExt(newName.c_str(), g_Options->GetHardLinkingIgnoreExt(), ","))
@@ -535,7 +534,7 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 			{
 				nzbInfo->PrintMessage(Message::mkDetail,
 					"Skipping hardlink for %s: file not assembled yet",
-					oldOutputFilename.c_str()
+					completedFile.GetFilename()
 				);
 			}
 			else
@@ -545,7 +544,7 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 
 				nzbInfo->PrintMessage(Message::mkInfo,
 					"HardLinking completed file %s to %s",
-					oldOutputFilename.c_str(), finalOutputFilename.c_str()
+					completedFile.GetFilename(), newName.c_str()
 				);
 
 				CString errmsg;
@@ -553,7 +552,7 @@ int DirectRenamer::RenameCompletedFiles(NzbInfo* nzbInfo, FileHashList* parHashe
 				{
 					nzbInfo->PrintMessage(Message::mkError,
 						"Could not create hardlink %s to %s: %s",
-						oldOutputFilename.c_str(), finalOutputFilename.c_str(), *errmsg
+						completedFile.GetFilename(), newName.c_str(), *errmsg
 					);
 				}				
 			}

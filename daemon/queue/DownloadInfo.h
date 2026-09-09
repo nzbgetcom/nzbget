@@ -286,6 +286,7 @@ public:
 	void SetHash16k(std::string hash16k) { m_hash16k = std::move(hash16k); }
 	const char* GetParSetId() { return m_parSetId.c_str(); }
 	void SetParSetId(std::string parSetId) { m_parSetId = std::move(parSetId); }
+	bool SameFilename(const char* name) const;
 
 private:
 	int m_id;
@@ -556,6 +557,7 @@ public:
 	void BuildDestDirName();
 	CString BuildFinalDirName();
 	CompletedFileList* GetCompletedFiles() { return &m_completedFiles; }
+	bool RenameCompletedFile(const char* oldName, const char* newName);
 	void SetDirectRenameStatus(EDirectRenameStatus renameStatus) { m_directRenameStatus = renameStatus; }
 	EDirectRenameStatus GetDirectRenameStatus() { return m_directRenameStatus; }
 	EPostRenameStatus GetParRenameStatus() { return m_parRenameStatus; }
