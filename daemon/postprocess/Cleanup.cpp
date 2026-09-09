@@ -207,10 +207,7 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 
 void MoveController::AddMessage(Message::EKind kind, const char* text)
 {
-	if (m_postInfo && m_postInfo->GetNzbInfo())
-	{
-		m_postInfo->GetNzbInfo()->AddMessage(kind, text);
-	}
+	m_postInfo->GetNzbInfo()->AddMessage(kind, text);
 }
 
 void CleanupController::StartJob(PostInfo* postInfo)
