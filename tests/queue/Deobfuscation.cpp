@@ -178,6 +178,10 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.kraftfahrzeugversicherung.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.geschwindigkeitsbegrenzung.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Release.2024.01.02.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pRemux.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pBluRay.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("BCDFGHJKLMNP.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("tag.HFg3BYe.1unWxVw.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("Release.1234567890123456.mkv"));
 
 	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeF1234567890abcdef1234.S01E01.mkv"));

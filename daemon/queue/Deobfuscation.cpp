@@ -30,13 +30,12 @@ namespace
 	constexpr size_t MAX_PLAUSIBLE_EXT_LEN = 4;
 	constexpr size_t MIN_DEOBFUSCATE_SIZE = 3;
 	constexpr size_t RE_PREFIX_LEN = 4;
-	constexpr size_t MIN_ALNUM_HASH_LEN = 10;
+	constexpr size_t MIN_ALNUM_HASH_LEN = 12;
 	constexpr size_t MIN_CAPS_HASH_LEN = 10;
 	constexpr size_t MAX_MOVIE_TITLE_LEN = 15;
 	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 24;
 	constexpr size_t MIN_NUMERIC_HASH_LEN = 16;
 	constexpr size_t MIN_INTERIOR_CAPS_COUNT = 3;
-	constexpr size_t EVASION_TOKEN_TARGET_COUNT = 2;
 
 	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- ]+)" };
 	static const std::regex EXCLUDED_MULTIPART_REGEX{ 
@@ -214,9 +213,17 @@ namespace
 		if (digits >= MIN_NUMERIC_HASH_LEN && digits == tok.size())
 			return true;
 
-		// 3. Whitelist short all-caps movie/show titles up to 15 chars (e.g. INTERSTELLAR, OPPENHEIMER)
-		if (tok.size() <= MAX_MOVIE_TITLE_LEN && alpha > 0 && digits == 0 &&
-			uppers == alpha) return false;
+		// 3. Whitelist short all-caps movie/show titles up to 15 chars with plausible vowels (e.g. INTERSTELLAR, OPPENHEIMER)
+		if (tok.size() <= MAX_MOVIE_TITLE_LEN && alpha > 0 && digits == 0 && uppers == alpha)
+		{
+			auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
+				int l = std::tolower(static_cast<unsigned char>(c));
+				return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
+			}));
+			// Allow short acronyms <= 3 chars (e.g. "TV", "DL", "HDR") or words with >= 20% vowels
+			if (tok.size() <= 3 || vowels * 5 >= tok.size())
+				return false;
+		}
 
 		// 4. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs)
 		size_t interiorAllowed = MIN_INTERIOR_CAPS_COUNT + (std::isupper(static_cast<unsigned char>(tok.front())) ? 1 : 0);
@@ -389,42 +396,35 @@ namespace Deobfuscation
 			if (std::regex_search(stem, rx)) return true;
 		}
 
+		auto isMixed = [](std::string_view tok)
+		{
+			bool hasUpper = false, hasLower = false;
+			for (char c : tok)
+			{
+				if (std::isupper(static_cast<unsigned char>(c))) hasUpper = true;
+				if (std::islower(static_cast<unsigned char>(c))) hasLower = true;
+			}
+			return hasUpper && hasLower;
+		};
+
 		auto tokBegin = std::cregex_iterator(stem.data(), stem.data() + stem.size(), TOKEN_SPLIT_REGEX);
 		auto tokEnd = std::cregex_iterator();
-		size_t tokenCount = 0;
-		std::array<std::string_view, EVASION_TOKEN_TARGET_COUNT> firstTwoTokens{};
+		std::string_view prevTok{};
 
-		// Check individual tokens against hash-blob heuristics
+		// Check individual tokens and split adjacent mixed-case tokens against hash heuristics
 		for (auto it = tokBegin; it != tokEnd; ++it)
 		{
 			std::string_view tok = stemView.substr(static_cast<size_t>(it->position()), static_cast<size_t>(it->length()));
 			if (LooksLikeHashBlob(tok)) return true;
 
-			if (tokenCount < EVASION_TOKEN_TARGET_COUNT) firstTwoTokens[tokenCount] = tok;
-			++tokenCount;
-		}
-
-		// Evasion check: test concatenation of split 2-token mixed-case hash names
-		if (tokenCount == EVASION_TOKEN_TARGET_COUNT && stem.size() <= MAX_TITLE_LEN)
-		{
-			auto isMixed = [](std::string_view tok)
-			{
-				bool hasUpper = false, hasLower = false;
-				for (char c : tok)
-				{
-					if (std::isupper(static_cast<unsigned char>(c))) hasUpper = true;
-					if (std::islower(static_cast<unsigned char>(c))) hasLower = true;
-				}
-				return hasUpper && hasLower;
-			};
-
-			if (isMixed(firstTwoTokens[0]) && isMixed(firstTwoTokens[1]))
+			if (!prevTok.empty() && stem.size() <= MAX_TITLE_LEN && isMixed(prevTok) && isMixed(tok))
 			{
 				std::string concatenated;
-				concatenated.reserve(firstTwoTokens[0].size() + firstTwoTokens[1].size());
-				concatenated.append(firstTwoTokens[0]).append(firstTwoTokens[1]);
+				concatenated.reserve(prevTok.size() + tok.size());
+				concatenated.append(prevTok).append(tok);
 				if (LooksLikeHashBlob(concatenated)) return true;
 			}
+			prevTok = tok;
 		}
 
 		return false;
