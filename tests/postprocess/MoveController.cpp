@@ -195,10 +195,12 @@ BOOST_AUTO_TEST_CASE(MoveControllerCollisionKeepsBothAndRenamesRecord)
 	BOOST_CHECK(fs::exists(dst / "video (1).mkv"));
 	BOOST_CHECK(!fs::exists(src / "video.mkv"));
 
-	std::ifstream newFile((dst / "video (1).mkv").string());
-	std::string content;
-	std::getline(newFile, content);
-	BOOST_CHECK(content == "new data");
+	{
+		std::ifstream newFile(dst / "video (1).mkv");
+		std::string content;
+		std::getline(newFile, content);
+		BOOST_CHECK(content == "new data");
+	}
 
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
 		"video (1).mkv");
@@ -317,10 +319,12 @@ BOOST_AUTO_TEST_CASE(MoveControllerSameDirectoryNoOp)
 	// The file must survive — same-directory move is a no-op
 	BOOST_CHECK(fs::exists(src / "video.mkv"));
 
-	std::ifstream f((src / "video.mkv").string());
-	std::string content;
-	std::getline(f, content);
-	BOOST_CHECK_EQUAL(content, "keep me safe");
+	{
+		std::ifstream f(src / "video.mkv");
+		std::string content;
+		std::getline(f, content);
+		BOOST_CHECK_EQUAL(content, "keep me safe");
+	}
 
 	fs::remove_all(workDir);
 }
@@ -358,10 +362,12 @@ BOOST_AUTO_TEST_CASE(MoveControllerCascadingCollision)
 	BOOST_CHECK(fs::exists(dst / "video (2).mkv"));
 	BOOST_CHECK(!fs::exists(src / "video.mkv"));
 
-	std::ifstream newFile(dst / "video (2).mkv");
-	std::string content;
-	std::getline(newFile, content);
-	BOOST_CHECK_EQUAL(content, "new data 2");
+	{
+		std::ifstream newFile(dst / "video (2).mkv");
+		std::string content;
+		std::getline(newFile, content);
+		BOOST_CHECK_EQUAL(content, "new data 2");
+	}
 
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
 		"video (2).mkv");
@@ -401,15 +407,40 @@ BOOST_AUTO_TEST_CASE(MoveControllerNestedDirectoryCollision)
 	BOOST_CHECK(fs::exists(dst / "sub/dir/inner (1).mkv"));
 	BOOST_CHECK(!fs::exists(src / "sub/dir/inner.mkv"));
 
-	std::ifstream newFile(dst / "sub/dir/inner (1).mkv");
-	std::string content;
-	std::getline(newFile, content);
-	BOOST_CHECK_EQUAL(content, "new nested data");
+	{
+		std::ifstream newFile(dst / "sub/dir/inner (1).mkv");
+		std::string content;
+		std::getline(newFile, content);
+		BOOST_CHECK_EQUAL(content, "new nested data");
+	}
+
+	const std::string expectedNew = fs::u8string(fs::path("sub") / "dir" / "inner (1).mkv");
+	const std::string expectedOrig = fs::u8string(fs::path("sub") / "dir" / "inner.mkv");
 
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
-		"sub/dir/inner (1).mkv");
+		expectedNew);
 	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetOrigname()),
-		"sub/dir/inner.mkv");
+		expectedOrig);
+
+	fs::remove_all(workDir);
+}
+
+BOOST_AUTO_TEST_CASE(MoveControllerNonExistentSourceFails)
+{
+	Options::CmdOptList cmdOpts = MakeMoveTestOptions();
+	Options options(&cmdOpts, nullptr);
+
+	MoveControllerDownloadQueueMock downloadQueue;
+
+	const fs::path workDir = fs::temp_directory_path() / "nzbget_test_movecontroller_nonexistent";
+	const fs::path src = workDir / "non_existent_src";
+	const fs::path dst = workDir / "dst";
+	fs::remove_all(workDir);
+
+	auto nzbInfo = MakeMoveNzbInfo(src, dst);
+
+	RunMove(nzbInfo.get());
+	BOOST_CHECK_EQUAL(nzbInfo->GetMoveStatus(), NzbInfo::msFailure);
 
 	fs::remove_all(workDir);
 }

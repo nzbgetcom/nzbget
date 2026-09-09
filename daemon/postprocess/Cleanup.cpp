@@ -60,13 +60,17 @@ void MoveController::Run()
 
 	infoName[0] = 'M'; // uppercase
 
+	if (ok)
+	{
+		RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
+	}
+
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		if (m_postInfo && m_postInfo->GetNzbInfo())
 		{
 			if (ok)
 			{
-				RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 				PrintMessage(Message::mkInfo, "%s successful", *infoName);
 				m_postInfo->GetNzbInfo()->SetDestDir(fs::u8string(m_destDir).c_str());
 				m_postInfo->GetNzbInfo()->SetFinalDir("");
@@ -125,6 +129,13 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 	fs::error_code ec;
 	auto it = fs::recursive_directory_iterator(src, fs::directory_options::skip_permission_denied, ec);
 	auto end = fs::recursive_directory_iterator();
+
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not open directory %s: %s",
+			fs::u8string(src).c_str(), ec.message().c_str());
+		return false;
+	}
 
 	while (it != end)
 	{
@@ -200,6 +211,18 @@ bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 		}
 
 		it.increment(ec);
+	}
+
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not read directory %s: %s",
+			fs::u8string(src).c_str(), ec.message().c_str());
+		return false;
+	}
+
+	if (IsStopped())
+	{
+		return false;
 	}
 
 	return true;
