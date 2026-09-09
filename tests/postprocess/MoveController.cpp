@@ -149,6 +149,22 @@ BOOST_AUTO_TEST_CASE(UniqueFilenameNoExtension)
 	fs::remove_all(workDir);
 }
 
+BOOST_AUTO_TEST_CASE(UniqueFilenameUtf8)
+{
+	const fs::path workDir = fs::temp_directory_path() / "nzbget_test_movecontroller_utf8";
+	fs::remove_all(workDir);
+	fs::create_directories(workDir);
+
+	const fs::path target = workDir / fs::u8path("vidéo_déjà_vu.mkv");
+	std::ofstream(target) << "existing";
+	BOOST_REQUIRE(fs::exists(target));
+
+	const fs::path result = fs::make_unique_filename(target);
+	BOOST_CHECK(result == workDir / fs::u8path("vidéo_déjà_vu (1).mkv"));
+
+	fs::remove_all(workDir);
+}
+
 BOOST_AUTO_TEST_CASE(MoveControllerCollisionKeepsBothAndRenamesRecord)
 {
 	Options::CmdOptList cmdOpts = MakeMoveTestOptions();
@@ -305,6 +321,95 @@ BOOST_AUTO_TEST_CASE(MoveControllerSameDirectoryNoOp)
 	std::string content;
 	std::getline(f, content);
 	BOOST_CHECK_EQUAL(content, "keep me safe");
+
+	fs::remove_all(workDir);
+}
+
+BOOST_AUTO_TEST_CASE(MoveControllerCascadingCollision)
+{
+	Options::CmdOptList cmdOpts = MakeMoveTestOptions();
+	Options options(&cmdOpts, nullptr);
+
+	MoveControllerDownloadQueueMock downloadQueue;
+
+	const fs::path workDir = fs::temp_directory_path() / "nzbget_test_movecontroller_cascade";
+	const fs::path src = workDir / "src";
+	const fs::path dst = workDir / "dst";
+	fs::remove_all(workDir);
+	fs::create_directories(src);
+	fs::create_directories(dst);
+
+	std::ofstream(src / "video.mkv") << "new data 2";
+	std::ofstream(dst / "video.mkv") << "original data";
+	std::ofstream(dst / "video (1).mkv") << "collision 1";
+	BOOST_REQUIRE(fs::exists(src / "video.mkv"));
+	BOOST_REQUIRE(fs::exists(dst / "video.mkv"));
+	BOOST_REQUIRE(fs::exists(dst / "video (1).mkv"));
+
+	auto nzbInfo = MakeMoveNzbInfo(src, dst);
+	nzbInfo->GetCompletedFiles()->emplace_back(
+		1, "video.mkv", "", CompletedFile::cfSuccess, 0, false, "", "");
+
+	RunMove(nzbInfo.get());
+	BOOST_CHECK_EQUAL(nzbInfo->GetMoveStatus(), NzbInfo::msSuccess);
+
+	BOOST_CHECK(fs::exists(dst / "video.mkv"));
+	BOOST_CHECK(fs::exists(dst / "video (1).mkv"));
+	BOOST_CHECK(fs::exists(dst / "video (2).mkv"));
+	BOOST_CHECK(!fs::exists(src / "video.mkv"));
+
+	std::ifstream newFile(dst / "video (2).mkv");
+	std::string content;
+	std::getline(newFile, content);
+	BOOST_CHECK_EQUAL(content, "new data 2");
+
+	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
+		"video (2).mkv");
+	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetOrigname()),
+		"video.mkv");
+
+	fs::remove_all(workDir);
+}
+
+BOOST_AUTO_TEST_CASE(MoveControllerNestedDirectoryCollision)
+{
+	Options::CmdOptList cmdOpts = MakeMoveTestOptions();
+	Options options(&cmdOpts, nullptr);
+
+	MoveControllerDownloadQueueMock downloadQueue;
+
+	const fs::path workDir = fs::temp_directory_path() / "nzbget_test_movecontroller_nested_collision";
+	const fs::path src = workDir / "src";
+	const fs::path dst = workDir / "dst";
+	fs::remove_all(workDir);
+	fs::create_directories(src / "sub/dir");
+	fs::create_directories(dst / "sub/dir");
+
+	std::ofstream(src / "sub/dir/inner.mkv") << "new nested data";
+	std::ofstream(dst / "sub/dir/inner.mkv") << "existing nested data";
+	BOOST_REQUIRE(fs::exists(src / "sub/dir/inner.mkv"));
+	BOOST_REQUIRE(fs::exists(dst / "sub/dir/inner.mkv"));
+
+	auto nzbInfo = MakeMoveNzbInfo(src, dst);
+	nzbInfo->GetCompletedFiles()->emplace_back(
+		1, "sub/dir/inner.mkv", "", CompletedFile::cfSuccess, 0, false, "", "");
+
+	RunMove(nzbInfo.get());
+	BOOST_CHECK_EQUAL(nzbInfo->GetMoveStatus(), NzbInfo::msSuccess);
+
+	BOOST_CHECK(fs::exists(dst / "sub/dir/inner.mkv"));
+	BOOST_CHECK(fs::exists(dst / "sub/dir/inner (1).mkv"));
+	BOOST_CHECK(!fs::exists(src / "sub/dir/inner.mkv"));
+
+	std::ifstream newFile(dst / "sub/dir/inner (1).mkv");
+	std::string content;
+	std::getline(newFile, content);
+	BOOST_CHECK_EQUAL(content, "new nested data");
+
+	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetFilename()),
+		"sub/dir/inner (1).mkv");
+	BOOST_CHECK_EQUAL(std::string(nzbInfo->GetCompletedFiles()->at(0).GetOrigname()),
+		"sub/dir/inner.mkv");
 
 	fs::remove_all(workDir);
 }
