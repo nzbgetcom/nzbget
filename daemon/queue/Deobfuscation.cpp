@@ -27,23 +27,20 @@
 namespace
 {
 	constexpr size_t MAX_TITLE_LEN = 32;
-	constexpr size_t MAX_CAMEL_TOKEN_LEN = 64;
 	constexpr size_t MAX_PLAUSIBLE_EXT_LEN = 4;
 	constexpr size_t MIN_DEOBFUSCATE_SIZE = 3;
 	constexpr size_t RE_PREFIX_LEN = 4;
 	constexpr size_t MIN_ALNUM_HASH_LEN = 10;
 	constexpr size_t MIN_CAPS_HASH_LEN = 10;
 	constexpr size_t MAX_MOVIE_TITLE_LEN = 15;
-	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 16;
+	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 24;
+	constexpr size_t MIN_NUMERIC_HASH_LEN = 16;
 	constexpr size_t MIN_INTERIOR_CAPS_COUNT = 3;
 	constexpr size_t EVASION_TOKEN_TARGET_COUNT = 2;
 
 	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- ]+)" };
 	static const std::regex EXCLUDED_MULTIPART_REGEX{ 
 		R"((part\d+\.(rar|par2)$)|(vol\d+\+\d+\.par2$))", std::regex::icase 
-	};
-	static const std::regex CAMEL_CASE_REGEX{
-		R"(^(?:[A-Z][a-z]{2,}|On|In|To|Of|At|By|No)(?:(?:(?:19|20)\d{2}|\d{1,2})?(?:[A-Z][a-z]{2,}|On|In|To|Of|At|By|No))*(?:(?:19|20)\d{2}|\d{1,3}|XXX|XXI{0,3}|XIX|XIV|XVI{0,3}|XI{0,3}|IX|VI{0,3}|IV|I{1,3})?$)"
 	};
 	static const std::array<std::regex, 11> HASHED_RELEASES_REGEXES{
 		std::regex{ "^[0-9a-zA-Z]{24,}" },
@@ -97,11 +94,105 @@ namespace
 		return info;
 	}
 
+	bool LooksLikeCamelCaseTitle(std::string_view tok)
+	{
+		if (tok.empty()) return false;
+
+		static constexpr std::string_view LAST_CENTURY = "19";    // 1900s release year prefix
+		static constexpr std::string_view CURRENT_CENTURY = "20"; // 2000s release year prefix
+		static constexpr std::string_view CONNECTORS[] = {
+			"On", "In", "To", "Of", "At", "By", "No"
+		};
+		static constexpr std::string_view ROMAN_NUMERALS[] = {
+			"XXX", "XXIII", "XXII", "XXI", "XX",
+			"XIX", "XVIII", "XVII", "XVI", "XV", "XIV", "XIII", "XII", "XI", "X",
+			"IX", "VIII", "VII", "VI", "V", "IV", "III", "II", "I"
+		};
+
+		auto isYearFn = [](std::string_view s)
+		{
+			return s.size() == 4 && (s.starts_with(LAST_CENTURY) || s.starts_with(CURRENT_CENTURY));
+		};
+
+		auto matchWordFn = [&](size_t p) -> size_t
+		{
+			if (p >= tok.size() || !std::isupper(static_cast<unsigned char>(tok[p])))
+				return std::string_view::npos;
+
+			// Check 2-letter title prepositions ("On", "In", "To", etc.)
+			for (std::string_view conn : CONNECTORS)
+			{
+				if (tok.substr(p).starts_with(conn))
+				{
+					// If followed by lowercase, it belongs to a longer word (e.g. "Into", "Only")
+					if (p + 2 < tok.size() && std::islower(static_cast<unsigned char>(tok[p + 2])))
+						break;
+					return p + 2;
+				}
+			}
+
+			// Standard title word: 1 uppercase followed by at least 2 lowercase letters
+			size_t end = p + 1;
+			while (end < tok.size() && std::islower(static_cast<unsigned char>(tok[end])))
+				++end;
+
+			return (end - p >= 3) ? end : std::string_view::npos;
+		};
+
+		// Title must start with a capitalized word or preposition
+		size_t pos = matchWordFn(0);
+		if (pos == std::string_view::npos) return false;
+
+		// Consume intermediate segments: optional digits followed by a title word
+		while (pos < tok.size())
+		{
+			size_t next = pos;
+			while (next < tok.size() && std::isdigit(static_cast<unsigned char>(tok[next])))
+				++next;
+
+			size_t digitCount = next - pos;
+			if (digitCount > 0)
+			{
+				std::string_view digits = tok.substr(pos, digitCount);
+				// Only 1-2 digits or 4-digit release years allowed between words
+				if (!isYearFn(digits) && digitCount > 2)
+					break;
+			}
+
+			size_t wordEnd = matchWordFn(next);
+			if (wordEnd == std::string_view::npos)
+				break;
+			pos = wordEnd;
+		}
+
+		if (pos == tok.size()) return true;
+
+		// Check optional suffix: 1-3 digits (sequel number), 4-digit release year, or Roman numeral
+		std::string_view tail = tok.substr(pos);
+		bool isNumeric = std::all_of(tail.begin(), tail.end(),
+			[](char c) { return std::isdigit(static_cast<unsigned char>(c)); });
+
+		if (isNumeric)
+		{
+			if (tail.size() >= 1 && tail.size() <= 3)
+				return true;
+			if (isYearFn(tail))
+				return true;
+		}
+
+		for (std::string_view roman : ROMAN_NUMERALS)
+		{
+			if (tail == roman) return true;
+		}
+
+		return false;
+	}
+
 	bool LooksLikeHashBlob(std::string_view tok)
 	{
 		if (tok.empty()) return true;
-		if (tok.size() <= MAX_CAMEL_TOKEN_LEN && std::regex_match(tok.begin(), tok.end(), CAMEL_CASE_REGEX))
-			return false;
+		// Whitelist human-readable CamelCase titles before applying hash heuristics
+		if (LooksLikeCamelCaseTitle(tok)) return false;
 
 		size_t alpha = 0, digits = 0, uppers = 0, lowers = 0;
 		for (char c : tok)
@@ -115,16 +206,34 @@ namespace
 			if (std::isdigit(uc)) ++digits;
 		}
 
+		// 1. Mixed alphanumeric token of 10+ chars with no punctuation (e.g. 5KzdcWdGVGUG83Q9jv8KXht4O2k57w)
 		if (tok.size() >= MIN_ALNUM_HASH_LEN && alpha > 0 && digits > 0 &&
 			alpha + digits == tok.size()) return true;
+
+		// 2. Embedded 16+ digit numeric hash token (e.g. 1234567890123456)
+		if (digits >= MIN_NUMERIC_HASH_LEN && digits == tok.size())
+			return true;
+
+		// 3. Whitelist short all-caps movie/show titles up to 15 chars (e.g. INTERSTELLAR, OPPENHEIMER)
 		if (tok.size() <= MAX_MOVIE_TITLE_LEN && alpha > 0 && digits == 0 &&
 			uppers == alpha) return false;
 
+		// 4. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs)
 		size_t interiorAllowed = MIN_INTERIOR_CAPS_COUNT + (std::isupper(static_cast<unsigned char>(tok.front())) ? 1 : 0);
 		if (tok.size() >= MIN_CAPS_HASH_LEN && digits == 0 && uppers >= interiorAllowed)
 			return true;
+
+		// 5. Long single-case alphabetic hash with < 20% vowels (differentiates random hashes from real words)
 		if (tok.size() >= MIN_ALPHA_RUN_HASH_LEN && alpha == tok.size() &&
-			(lowers == alpha || uppers == alpha)) return true;
+			(lowers == alpha || uppers == alpha))
+		{
+			auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
+				int l = std::tolower(static_cast<unsigned char>(c));
+				return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
+			}));
+			if (vowels * 5 < tok.size())
+				return true;
+		}
 		return false;
 	}
 
@@ -255,6 +364,7 @@ namespace Deobfuscation
 				maxRun = std::max(maxRun, curRun);
 			}
 
+			// Preserve single-part archive/parity files so unrar/par2 can extract them
 			if (maxRun >= 16 && maxRun <= 256 &&
 				(FileTypes::IsSevenZipExt(ext.real) ||
 					FileTypes::IsRarExt(ext.real) ||
@@ -265,6 +375,7 @@ namespace Deobfuscation
 			}
 		}
 
+		// Preserve multipart archives (part01.rar, vol01.par2) so file sequences remain intact for extraction
 		if (std::regex_search(str.begin(), str.end(), EXCLUDED_MULTIPART_REGEX))
 		{
 			return false;
@@ -272,6 +383,7 @@ namespace Deobfuscation
 
 		std::string stem(StripOneExtension(str));
 		std::string_view stemView(stem);
+		// Check known hashed release patterns against the entire stem
 		for (const auto& rx : HASHED_RELEASES_REGEXES)
 		{
 			if (std::regex_search(stem, rx)) return true;
@@ -282,6 +394,7 @@ namespace Deobfuscation
 		size_t tokenCount = 0;
 		std::array<std::string_view, EVASION_TOKEN_TARGET_COUNT> firstTwoTokens{};
 
+		// Check individual tokens against hash-blob heuristics
 		for (auto it = tokBegin; it != tokEnd; ++it)
 		{
 			std::string_view tok = stemView.substr(static_cast<size_t>(it->position()), static_cast<size_t>(it->length()));
@@ -291,6 +404,7 @@ namespace Deobfuscation
 			++tokenCount;
 		}
 
+		// Evasion check: test concatenation of split 2-token mixed-case hash names
 		if (tokenCount == EVASION_TOKEN_TARGET_COUNT && stem.size() <= MAX_TITLE_LEN)
 		{
 			auto isMixed = [](std::string_view tok)
@@ -327,13 +441,14 @@ namespace Deobfuscation
 			return std::string(ParseWithoutQuotes(sv));
 
 		if (firstQuotPos + 1 >= sv.size())
-			return std::string(sv.substr(firstQuotPos));
+			return std::string(sv.substr(firstQuotPos + 1));
 
 		size_t secondQuotPos = sv.find('"', firstQuotPos + 1);
 		if (secondQuotPos == std::string_view::npos)
 			return std::string(sv.substr(firstQuotPos + 1));
 
 		size_t distance = secondQuotPos - firstQuotPos - 1;
+		// Empty quotes indicate [PRiVATE]-[signature] formatted releases
 		if (distance == 0)
 			return ParsePRiVATEnzb(sv);
 

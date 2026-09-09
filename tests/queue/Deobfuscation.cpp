@@ -173,6 +173,12 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("MissionImpossibleIII.mkv"));
 
 	BOOST_CHECK(!IsExcessivelyObfuscated("INTERSTELLAR.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("History.of.telecommunications.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Documentary.about.counterrevolutionary.theme.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.kraftfahrzeugversicherung.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.geschwindigkeitsbegrenzung.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Release.2024.01.02.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("Release.1234567890123456.mkv"));
 
 	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeF1234567890abcdef1234.S01E01.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("abcdef1234567890abcdef1234567890.1080p.x264-GROUP"));
@@ -194,6 +200,7 @@ BOOST_AUTO_TEST_CASE(DeobfuscationTest)
 	BOOST_CHECK_EQUAL(Deobfuscate("\"A\""), "A");
 	BOOST_CHECK_EQUAL(Deobfuscate("Not obfuscated"), "Not obfuscated");
 	BOOST_CHECK_EQUAL(Deobfuscate("\"filename.mkv yEnc (1/1)"), "filename.mkv yEnc (1/1)");
+	BOOST_CHECK_EQUAL(Deobfuscate("filename.mkv yEnc\""), "");
 	BOOST_CHECK_EQUAL(
 		Deobfuscate("Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2 (1/0)"),
 		"Any.Show.2024.S01E01.Die.verborgene.Hand.GERMAN.5.1.DL.EAC3.2160p.WEB-DL.DV.HDR.x265-TvR.vol127+128.par2"
