@@ -278,8 +278,14 @@ CString NzbInfo::BuildFinalDirName()
 		}
 	}
 
-	finalDir.AppendFmt("%c%s", PATH_SEPARATOR,
-		Util::EmptyStr(GetName()) ? "nzb" : GetName());
+	if (Util::EmptyStr(GetName()))
+	{
+		finalDir.AppendFmt("%c%s-%i", PATH_SEPARATOR, "nzb", GetId());
+	}
+	else
+	{
+		finalDir.AppendFmt("%c%s", PATH_SEPARATOR, GetName());
+	}
 
 	return finalDir;
 }

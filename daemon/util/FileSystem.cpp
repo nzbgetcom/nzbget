@@ -526,7 +526,14 @@ std::string FileSystem::SanitizePathSegment(std::string_view name)
 	// Bound input length to prevent excessive allocations from untrusted metadata
 	if (name.size() > 1024)
 	{
-		name = name.substr(0, 1024);
+		size_t cut = 1024;
+		// Back up over any trailing UTF-8 continuation bytes (10xxxxxx) to avoid
+		// splitting a multi-byte sequence
+		while (cut > 0 && (static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80)
+		{
+			--cut;
+		}
+		name = name.substr(0, cut);
 	}
 
 	// 1. Trim leading whitespace

@@ -133,6 +133,18 @@ BOOST_AUTO_TEST_CASE(SanitizePathSegmentTest)
 	std::string longName(2000, 'a');
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(longName).size(), 1024u);
 
+	// UTF-8 boundary truncation: multi-byte character straddling byte 1024
+	std::string splitUtf8 = std::string(1023, 'a') + "\xC3\xA9" + "tail";
+	std::string cleanSplit = FileSystem::SanitizePathSegment(splitUtf8);
+	BOOST_CHECK_EQUAL(cleanSplit.size(), 1023u);
+	BOOST_CHECK_EQUAL(cleanSplit.back(), 'a');
+
+	// UTF-8 multi-byte character entirely within 1024 limit is preserved
+	std::string intactUtf8 = std::string(1022, 'a') + "\xC3\xA9" + "tail";
+	std::string cleanIntact = FileSystem::SanitizePathSegment(intactUtf8);
+	BOOST_CHECK_EQUAL(cleanIntact.size(), 1024u);
+	BOOST_CHECK_EQUAL(cleanIntact.substr(1022), "\xC3\xA9");
+
 	// Drive and UNC paths
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment("C:\\Windows"), "C__Windows");
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment("\\\\server\\share"), "__server_share");
@@ -296,6 +308,24 @@ BOOST_AUTO_TEST_CASE(EmptyNzbNameFallbackTest)
 
 	// Consecutive dots normalized
 	BOOST_CHECK_EQUAL(NzbInfo::MakeNiceNzbName("My..Release...nzb", true), "My_Release");
+}
+
+BOOST_AUTO_TEST_CASE(BuildFinalDirNameUniqueIdTest)
+{
+	NzbInfo nzbInfo1;
+	nzbInfo1.SetName("");
+	std::string finalDir1 = *nzbInfo1.BuildFinalDirName();
+	std::string expectedSuffix1 = "nzb-" + std::to_string(nzbInfo1.GetId());
+	BOOST_CHECK(finalDir1.rfind(expectedSuffix1) != std::string::npos);
+
+	NzbInfo nzbInfo2;
+	nzbInfo2.SetName("");
+	std::string finalDir2 = *nzbInfo2.BuildFinalDirName();
+	std::string expectedSuffix2 = "nzb-" + std::to_string(nzbInfo2.GetId());
+	BOOST_CHECK(finalDir2.rfind(expectedSuffix2) != std::string::npos);
+
+	// Both empty downloads must have different final directories
+	BOOST_CHECK_NE(finalDir1, finalDir2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
