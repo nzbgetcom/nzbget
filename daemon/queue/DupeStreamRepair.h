@@ -91,9 +91,10 @@ public:
 	static int64 RequiredCompareFloor(int64 decodedFileSize, const StreamRangeList& holes,
 		const StreamRangeList& donorRanges, const std::vector<int>& probeParts);
 
-	/* Captures a stream-repair job on the owning NzbInfo for a media file
+	/* Captures a stream-repair job on the owning NzbInfo for a data file
 	 * that completed with missing byte ranges. diskBasename is the file's
-	 * on-disk name at completion. Must be called within DownloadQueue-lock. */
+	 * on-disk name at completion. PAR2 files are excluded. Must be called
+	 * within DownloadQueue-lock. */
 	static bool BuildRepairJob(FileInfo* fileInfo, const char* diskBasename);
 
 	/* The last two dot-separated segments of a filename, lowercased
@@ -107,7 +108,8 @@ public:
 	 * extension keys are skipped), the positionalRank-th size-window member
 	 * by donor filename order when positionalWindow matches the donor window size
 	 * (rank < 0 skips), then ascending encoded-size distance; deduplicated
-	 * and capped. Every candidate still has to pass probe verification. */
+	 * and capped. PAR2 targets and donors are excluded. Every candidate still
+	 * has to pass probe verification. */
 	static std::vector<FileInfo*> SelectDonorCandidates(const char* targetFilename,
 		int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
 		NzbInfo* donorNzb, int maxCandidates);

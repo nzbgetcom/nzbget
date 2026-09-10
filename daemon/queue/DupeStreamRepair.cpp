@@ -271,7 +271,8 @@ int64 DupeStreamRepair::RequiredCompareFloor(int64 decodedFileSize, const Stream
 
 bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasename)
 {
-	if (g_Options->GetDupeArticleFallback() < Options::dafStream || g_Options->GetRawArticle())
+	if (g_Options->GetDupeArticleFallback() < Options::dafStream || g_Options->GetRawArticle() ||
+		DupeArticleFallback::IsParFile(fileInfo) || Util::EndsWith(diskBasename, ".par2", false))
 	{
 		return false;
 	}
@@ -287,9 +288,9 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 		return false;
 	}
 
-	// any file type qualifies: identity is decided empirically by probe
-	// byte-compares, so reposts of passworded or compressed archives (and
-	// their par2 files) donate exactly like bare media does
+	// Data files qualify regardless of container: identity is decided by
+	// probe byte-compares. Parity is excluded above because partial byte
+	// matches cannot establish that another posting belongs to the PAR set.
 	if (fileInfo->GetSuccessArticles() == 0 ||
 		fileInfo->GetDecodedFileSize() <= 0 ||
 		Util::EmptyStr(diskBasename))
@@ -345,7 +346,7 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
 	NzbInfo* donorNzb, int maxCandidates)
 {
-	if (Util::EmptyStr(targetFilename))
+	if (Util::EmptyStr(targetFilename) || Util::EndsWith(targetFilename, ".par2", false))
 	{
 		return {};
 	}
@@ -356,7 +357,7 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	std::vector<FileInfo*> window;
 	for (FileInfo* donorFile : donorNzb->GetFileList())
 	{
-		if (!donorFile->GetArticles()->empty() &&
+		if (!DupeArticleFallback::IsParFile(donorFile) && !donorFile->GetArticles()->empty() &&
 			DupeArticleFallback::SizesMatch(donorFile->GetSize(), targetDecodedFileSize, 8))
 		{
 			window.push_back(donorFile);
@@ -383,7 +384,7 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	}
 
 	// 2. same suffix key, but only when it identifies EXACTLY ONE donor
-	// member: volume schemes ("part03.rar", "r00", "vol07+08.par2") are
+	// member: volume schemes ("part03.rar", "r00") are
 	// unique per member, while shared keys (a same-extension episode pack,
 	// digit-bearing or not: "mkv", "mp4") would flood the cap in file-list
 	// order and evict the better-ranked tiers below

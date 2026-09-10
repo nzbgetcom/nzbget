@@ -298,8 +298,7 @@ BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Offset, 300);
 		BOOST_CHECK_EQUAL((*job.GetHoles())[0].Size, 200);
 
-		// M1: ANY file type is captured - a byte-identical repost can donate
-		// to rar volumes (passworded or compressed) and par2 files alike
+		// A byte-identical repost can donate to archive data as well as media.
 		std::unique_ptr<FileInfo> rar = BuildStreamFile(1000, {{0, 300}, {300, 0}});
 		rar->SetFilename("release.r01");
 		rar->SetNzbInfo(&nzbInfo);
@@ -344,6 +343,56 @@ BOOST_AUTO_TEST_CASE(StreamRepairSuffixKeyTest)
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("noextension"), "");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey(""), "");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey(nullptr), "");
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairDoesNotCaptureParFilesTest)
+{
+	OptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options options(&cmdOpts, nullptr);
+	NzbInfo nzb;
+
+	for (int kind = 0; kind < 3; kind++)
+	{
+		std::unique_ptr<FileInfo> file = BuildStreamFile(1000, {{0, 300}, {300, 0}});
+		file->SetNzbInfo(&nzb);
+		file->SetFilename(kind == 1 ? "release.PaR2" : "obfuscated.bin");
+		file->SetFilenameConfirmed(kind == 1);
+		file->SetParFile(kind == 0);
+		const char* diskName = kind == 2 ? "release.vol01+02.PAR2" : "obfuscated.bin";
+
+		// PAR flags, confirmed names, and decoded disk names each identify parity.
+		BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(file.get(), diskName));
+		BOOST_CHECK(nzb.GetStreamRepairJobs()->empty());
+	}
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairRefusesParTargetCandidatesTest)
+{
+	NzbInfo donor;
+	donor.GetFileList()->Add(BuildDonorFile("release.PAR2", {500, 500}), false);
+	donor.GetFileList()->Add(BuildDonorFile("renamed.bin", {500, 500}), false);
+	BOOST_CHECK(DupeStreamRepair::SelectDonorCandidates(
+		"release.PAR2", 980, 0, 2, &donor, DupeStreamRepair::MaxDonorCandidates).empty());
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairExcludesParDonorCandidatesTest)
+{
+	NzbInfo donor;
+	std::unique_ptr<FileInfo> flagged = BuildDonorFile("release.r01", {500, 500});
+	flagged->SetParFile(true);
+	donor.GetFileList()->Add(std::move(flagged), false);
+	std::unique_ptr<FileInfo> named = BuildDonorFile("release.PaR2", {500, 500});
+	named->SetFilenameConfirmed(true);
+	donor.GetFileList()->Add(std::move(named), false);
+	donor.GetFileList()->Add(BuildDonorFile("renamed.bin", {500, 500}), false);
+
+	// Neither exact name nor equal size makes a parity donor acceptable.
+	std::vector<FileInfo*> candidates = DupeStreamRepair::SelectDonorCandidates(
+		"release.r01", 980, 0, 3, &donor, DupeStreamRepair::MaxDonorCandidates);
+	BOOST_REQUIRE_EQUAL(candidates.size(), 1u);
+	BOOST_CHECK_EQUAL(candidates[0]->GetFilename(), "renamed.bin");
 }
 
 BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)

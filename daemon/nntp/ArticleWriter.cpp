@@ -485,7 +485,7 @@ ArticleWriter::SetupOutputFile(DiskFile &outfile,
 {
 	OutputPaths paths;
 	if (m_fileInfo->GetForceDirectWrite())
-		paths.finalPath = std::string(destDir) + PATH_SEPARATOR + std::string(infoFilename);
+		paths.finalPath = std::string(destDir) + PATH_SEPARATOR + std::string(filename);
 	else
 		paths.finalPath = FileSystem::MakeUniqueFilename(destDir.data(), filename.data()).Str();
 

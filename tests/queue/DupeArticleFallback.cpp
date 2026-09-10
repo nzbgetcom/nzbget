@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 #include "DownloadInfo.h"
 #include "DupeArticleFallback.h"
+#include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(QueueTest)
 
@@ -55,6 +56,12 @@ void AddDonorFile(NzbInfo* donorNzb, const char* filename,
 	donorNzb->GetFileList()->Add(BuildFile(filename, std::move(parts), msgIdPrefix), false);
 }
 
+struct FallbackOptionsGuard
+{
+	Options* m_prev = g_Options;
+	~FallbackOptionsGuard() { g_Options = m_prev; }
+};
+
 } // namespace
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackSizesMatchTest)
@@ -80,6 +87,183 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackFilenameMatchTest)
 	BOOST_REQUIRE(match);
 	// filename match is case-insensitive
 	BOOST_CHECK_EQUAL(match->GetFilename(), "Release.R01");
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackRefusesParTargetsTest)
+{
+	// Matching filenames and article geometry cannot establish PAR set identity.
+	for (bool flagged : {false, true})
+	{
+		const char* filename = flagged ? "obfuscated.bin" : "release.vol01+02.PaR2";
+		std::unique_ptr<FileInfo> target = BuildFile(filename, {{1, 500000}}, "orig");
+		target->SetParFile(flagged);
+		target->SetFilenameConfirmed(!flagged);
+		NzbInfo donor;
+		AddDonorFile(&donor, filename, {{1, 500000}}, "foreign-par");
+
+		BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donor) == nullptr);
+		BOOST_CHECK(DupeArticleFallback::BuildCandidateMessageIds({&donor}, target.get(), 1).empty());
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackExcludesParDonorsTest)
+{
+	for (bool flagged : {false, true})
+	{
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		NzbInfo donor;
+		std::unique_ptr<FileInfo> parity = BuildFile(
+			flagged ? "release.r01" : "release.PAR2", {{1, 500000}}, "foreign-par");
+		parity->SetParFile(flagged);
+		parity->SetFilenameConfirmed(!flagged);
+		donor.GetFileList()->Add(std::move(parity), false);
+		BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donor) == nullptr);
+
+		// Excluding parity must still leave an ordinary, obfuscated data donor usable.
+		AddDonorFile(&donor, "renamed.bin", {{1, 500000}}, "data");
+		std::vector<CString> candidates =
+			DupeArticleFallback::BuildCandidateMessageIds({&donor}, target.get(), 1);
+		BOOST_REQUIRE_EQUAL(candidates.size(), 1u);
+		BOOST_CHECK_EQUAL(*candidates[0], "data-1@example.com");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackStopsPinnedParSourcesTest)
+{
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+	NzbInfo nzb;
+	for (bool flagged : {false, true})
+	{
+		std::unique_ptr<FileInfo> target = BuildFile(
+			flagged ? "obfuscated.bin" : "release.PAR2", {{1, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		target->SetParFile(flagged);
+		target->SetFilenameConfirmed(!flagged);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("foreign-first@example.com");
+		article->GetDupeSources()->emplace_back("foreign-next@example.com");
+		article->SetDupeFallbackRound(1);
+
+		// Late PAR recognition must stop an already pinned fallback sequence.
+		BOOST_CHECK(!fallback.TryFallback(nullptr, target.get(), article));
+		BOOST_CHECK_EQUAL(article->GetMessageId(), "orig-1@example.com");
+		BOOST_CHECK_EQUAL(article->GetDupeFallbackRound(), 1);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackDefersDataToAvailableParTest)
+{
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+	for (int kind = 0; kind < 10; kind++)
+	{
+		NzbInfo nzb;
+		if (kind == 0 || kind >= 6)
+		{
+			nzb.SetParSize(500000);
+		}
+		if (kind == 1 || kind == 3)
+		{
+			std::unique_ptr<FileInfo> parity = BuildFile(
+				kind == 1 ? "obfuscated.bin" : "release.PAR2", {{1, 500000}}, "par");
+			parity->SetParFile(kind == 1);
+			parity->SetFilenameConfirmed(kind == 3);
+			nzb.GetFileList()->Add(std::move(parity), false);
+		}
+		if (kind == 2 || kind == 4)
+		{
+			nzb.GetCompletedFiles()->emplace_back(1,
+				kind == 2 ? "obfuscated.bin" : "release.PAR2", "",
+				CompletedFile::cfSuccess, 0, kind == 2, "", "");
+		}
+		if (kind == 5) nzb.SetDirectRenameStatus(NzbInfo::tsRunning);
+		if (kind == 6) nzb.SetParStatus(NzbInfo::psSkipped);
+		if (kind == 7) nzb.SetParStatus(NzbInfo::psRepairPossible);
+		if (kind == 8) nzb.SetParStatus(NzbInfo::psSuccess);
+		if (kind == 9) nzb.SetParStatus(NzbInfo::psManual);
+
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("first@example.com");
+		article->GetDupeSources()->emplace_back("next@example.com");
+		article->SetDupeFallbackRound(1);
+
+		// Incomplete data must reach ordinary PAR before duplicate sources;
+		// skipped/manual/repair-possible do not prove parity was exhausted.
+		BOOST_TEST_CONTEXT("PAR discovery/status fixture " << kind)
+		{
+			BOOST_CHECK(!fallback.TryFallback(nullptr, target.get(), article));
+			BOOST_CHECK_EQUAL(article->GetMessageId(), "orig-1@example.com");
+		}
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackAllowsDataWithoutUsableParTest)
+{
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+	for (bool parFailed : {false, true})
+	{
+		NzbInfo nzb;
+		nzb.SetDirectRenameStatus(NzbInfo::tsSuccess);
+		if (parFailed)
+		{
+			nzb.SetParSize(500000);
+			nzb.SetParStatus(NzbInfo::psFailure);
+		}
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("first@example.com");
+		article->GetDupeSources()->emplace_back("next@example.com");
+		article->SetDupeFallbackRound(1);
+		BOOST_CHECK(fallback.TryFallback(nullptr, target.get(), article));
+		BOOST_CHECK_EQUAL(article->GetMessageId(), "next@example.com");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackArticleModePreservesRecoveryWithParTest)
+{
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=article");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+	NzbInfo nzb;
+	nzb.SetParSize(500000);
+	for (int kind = 0; kind < 3; kind++)
+	{
+		std::unique_ptr<FileInfo> target = BuildFile(
+			kind == 0 ? "release.r01" : kind == 1 ? "release.PAR2" : "obfuscated.bin",
+			{{1, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		target->SetParFile(kind == 2);
+		target->SetFilenameConfirmed(kind != 2);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("first@example.com");
+		article->GetDupeSources()->emplace_back("next@example.com");
+		article->SetDupeFallbackRound(1);
+
+		// Article mode cannot replay deferred data after PAR checking, but
+		// foreign parity must still be rejected even with pinned sources.
+		BOOST_TEST_CONTEXT("article-mode target " << target->GetFilename())
+		{
+			BOOST_CHECK_EQUAL(fallback.TryFallback(nullptr, target.get(), article), kind == 0);
+			BOOST_CHECK_EQUAL(article->GetMessageId(), kind == 0 ? "next@example.com" : "orig-1@example.com");
+			BOOST_CHECK_EQUAL(article->GetDupeFallbackRound(), kind == 0 ? 2 : 1);
+		}
+	}
 }
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackAmbiguousFilenameMatchTest)

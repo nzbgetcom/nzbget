@@ -56,6 +56,35 @@ void RepairController::PostParChecker::RegisterParredFile(const char* filename)
 	m_postInfo->GetParredFiles()->push_back(filename);
 }
 
+void RepairController::PostParChecker::RegisterVerifiedFile(const char* filename)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
+	StreamRepairJobList* jobs = nzbInfo->GetStreamRepairJobs();
+	std::string verifiedPath = FileSystem::GetRealPath(filename).value_or(filename);
+	size_t previousSize = jobs->size();
+	jobs->erase(std::remove_if(jobs->begin(), jobs->end(),
+		[nzbInfo, &verifiedPath](const StreamRepairJob& job)
+		{
+			const char* currentName = job.GetFilename();
+			for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+			{
+				if (completedFile.GetId() == job.GetFileId())
+				{
+					currentName = completedFile.GetFilename();
+					break;
+				}
+			}
+			std::string path = std::string(nzbInfo->GetDestDir()) + PATH_SEPARATOR + currentName;
+			path = FileSystem::GetRealPath(path).value_or(path);
+			return FileSystem::SameFilename(path.c_str(), verifiedPath.c_str());
+		}), jobs->end());
+	if (jobs->size() != previousSize)
+	{
+		nzbInfo->SetChanged(true);
+	}
+}
+
 bool RepairController::PostParChecker::IsParredFile(const char* filename)
 {
 	for (CString& parredFile : m_postInfo->GetParredFiles())

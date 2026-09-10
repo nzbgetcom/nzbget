@@ -772,16 +772,21 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 
-	if (g_Options->GetDupeArticleFallback() >= Options::dafStream &&
+	bool streamRepair = g_Options->GetDupeArticleFallback() >= Options::dafStream &&
 		!nzbInfo->GetStreamRepairJobs()->empty() &&
-		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone;
+
+#ifndef DISABLE_PARCHECK
+	// Captured holes are a fallback, not evidence that donor data is needed.
+	// Let the current PAR set verify and repair first, including auto mode
+	// which initially marks the check as skipped until damage is known.
+	if (streamRepair && nzbInfo->GetParStatus() == NzbInfo::psSkipped &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
 	{
-		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
-		StreamRepairController::StartJob(postInfo);
+		postInfo->SetRequestParCheck(true);
 		return;
 	}
 
-#ifndef DISABLE_PARCHECK
 	if (nzbInfo->GetParStatus() == NzbInfo::psNone &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
 	{
@@ -840,6 +845,18 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 #endif
+
+	// Successful PAR sets remove the holes they actually protect. Remaining
+	// jobs may belong to unprotected files, or to a set that could not repair.
+	// Manual repair and sufficient parity with ParRepair=no remain user choices.
+	if (streamRepair &&
+		nzbInfo->GetParStatus() != NzbInfo::psRepairPossible &&
+		nzbInfo->GetParStatus() != NzbInfo::psManual)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
+		StreamRepairController::StartJob(postInfo);
+		return;
+	}
 
 	NzbParameter* unpackParameter = nzbInfo->GetParameters()->Find("*Unpack:");
 	bool wantUnpack = !(unpackParameter && !strcasecmp(unpackParameter->GetValue(), "no"));

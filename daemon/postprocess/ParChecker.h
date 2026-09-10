@@ -146,6 +146,7 @@ protected:
 	virtual void PrintMessage([[maybe_unused]] Message::EKind kind,
 		[[maybe_unused]] const char* format, ...) PRINTF_SYNTAX(3) {}
 	virtual void RegisterParredFile([[maybe_unused]] const char* filename) {}
+	virtual void RegisterVerifiedFile([[maybe_unused]] const char* filename) {}
 	virtual bool IsParredFile([[maybe_unused]] const char* filename) { return false; }
 	virtual EFileStatus FindFileCrc([[maybe_unused]] const char* filename, [[maybe_unused]] uint32* crc,
 		[[maybe_unused]] SegmentList* segments) { return fsUnknown; }
@@ -197,6 +198,7 @@ private:
 	FileList m_queuedParFiles;
 	FileList m_processedFiles;
 	SourceList m_sourceFiles;
+	std::vector<std::string> m_verifiedFiles;
 	DupeSourceList m_dupeSources;
 	StreamBuf m_parOutStream{this, Message::mkDetail};
 	StreamBuf m_parErrStream{this, Message::mkError};

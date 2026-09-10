@@ -302,6 +302,13 @@ void StreamRepairController::StartJob(PostInfo* postInfo)
 
 void StreamRepairController::StartLive(NzbInfo* nzbInfo)
 {
+	// Parity may already cover every hole. Download-time recovery cannot
+	// establish that it is insufficient; defer to the normal PAR stage.
+	if (DupeArticleFallback::ShouldDeferToPar(nzbInfo))
+	{
+		return;
+	}
+
 	StreamRepairController* streamRepairController = new StreamRepairController();
 	streamRepairController->m_liveMode = true;
 	streamRepairController->m_nzbId = nzbInfo->GetId();
@@ -478,6 +485,7 @@ void StreamRepairController::RefreshLiveNames(std::vector<RepairTarget>& targets
 			if (completedFile.GetId() == target.FileId)
 			{
 				target.Filename = completedFile.GetFilename();
+				target.IsParFile = target.IsParFile || completedFile.GetParFile();
 				break;
 			}
 		}
@@ -593,6 +601,12 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 
 	for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
 	{
+		// Older queue states may contain PAR2 jobs captured before duplicate
+		// recovery excluded them. Never use another release to patch parity.
+		if (job.GetParFile() || Util::EndsWith(job.GetFilename(), ".par2", false))
+		{
+			continue;
+		}
 		RepairTarget target;
 		target.FileId = job.GetFileId();
 		target.Filename = job.GetFilename();
@@ -612,10 +626,15 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 			if (completedFile.GetId() == target.FileId)
 			{
 				target.Filename = completedFile.GetFilename();
+				target.IsParFile = target.IsParFile || completedFile.GetParFile();
 				break;
 			}
 		}
 
+		if (target.IsParFile || Util::EndsWith(target.Filename, ".par2", false))
+		{
+			continue;
+		}
 		targets.push_back(std::move(target));
 	}
 }
@@ -2658,9 +2677,23 @@ void StreamRepairController::RepairCompleted()
 
 	// whatever was written - and whatever is still missing - goes through
 	// par-check as final verification (a no-op when no par2 files exist)
-	if (m_recoveredArticles > 0 || m_holesRemain)
+	if (m_recoveredArticles > 0 || m_recoveredBytes > 0 ||
+		m_recoveredHoles > 0 || m_holesRemain)
 	{
-		m_postInfo->SetRequestParCheck(true);
+		if (nzbInfo->GetParStatus() > NzbInfo::psSkipped)
+		{
+			// The initial PAR attempt ran before donor recovery. Its result
+			// and download-time CRCs no longer describe the repaired bytes.
+			// Recheck from disk, even when ParQuick is enabled.
+			nzbInfo->SetParStatus(g_Options->GetParCheck() == Options::pcManual ?
+				NzbInfo::psManual : NzbInfo::psNone);
+			m_postInfo->SetForceParFull(true);
+			m_postInfo->SetRequestParCheck(false);
+		}
+		else
+		{
+			m_postInfo->SetRequestParCheck(true);
+		}
 	}
 
 	// Persist repaired counters and any remaining holes before leaving the

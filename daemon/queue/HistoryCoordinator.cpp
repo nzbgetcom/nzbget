@@ -655,6 +655,21 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 					}
 				}
 
+				// A partial file may contain only entries missing from the NZB.
+				// They have no message IDs to retry. Keep its completed record and
+				// statistics intact instead of queueing an all-finished article list.
+				if (fileInfo->GetPartialState() == FileInfo::psCompleted &&
+					std::none_of(fileInfo->GetArticles()->begin(), fileInfo->GetArticles()->end(),
+						[resetFailed](const std::unique_ptr<ArticleInfo>& article)
+						{
+							return article->GetStatus() == ArticleInfo::aiUndefined ||
+								(resetFailed && article->GetStatus() == ArticleInfo::aiFailed);
+						}))
+				{
+					++it;
+					continue;
+				}
+
 				ResetArticles(fileInfo.get(), completedFile.GetStatus() == CompletedFile::cfFailure, resetFailed);
 
 				g_DiskState->DiscardFile(fileInfo->GetId(), false, true, fileInfo->GetPartialState() != FileInfo::psCompleted);
@@ -684,7 +699,9 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 		nzbInfo->SetHealthPaused(true);
 	}
 
-	MoveToQueue(downloadQueue, itHistory, historyInfo, reprocess);
+	// With no download work left there will be no article-completion event to
+	// start post-processing. Paused spare PAR files do not block that transition.
+	MoveToQueue(downloadQueue, itHistory, historyInfo, reprocess || nzbInfo->IsDownloadCompleted(true));
 
 	if (g_Options->GetParCheck() != Options::pcForce)
 	{

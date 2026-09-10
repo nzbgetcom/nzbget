@@ -53,9 +53,9 @@ article "missing" on the active server, so no real Usenet access is needed):
 * livelastfile  - live mode, single-file collection: the live dispatch is
   skipped for the collection's last file (post-processing handles it).
 * repost        - a 4-member opaque "rar+par2 release" reposted byte-identically
-  under different segmentation; damaged volume and par2 are both repaired
-  byte-identically (final status FAILURE/PAR by design - the stand-in par2 is
-  random bytes).
+  under different segmentation; the damaged archive volume is repaired, while
+  the PAR2 hole stays untouched and no donor PAR2 article is requested
+  (final status FAILURE/PAR by design - the stand-in par2 is random bytes).
 * repostrenamed - a 3-member repost whose members were RENAMED (different
   release base name, same volume suffixes): exact-name pairing cannot fire,
   proving the unique-suffix-key tier pairs the damaged member with its donor
@@ -127,6 +127,7 @@ import argparse
 import base64
 import os
 import random
+import re
 import shutil
 import socket
 import subprocess
@@ -274,9 +275,13 @@ class LocalTarget:
                     out.append(rel.replace(os.sep, '/'))
         return out
 
-    def spawn(self, args):
-        p = subprocess.Popen(args, stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
+    def spawn(self, args, output_rel=None):
+        if output_rel:
+            with open(self.path(output_rel), 'wb') as output:
+                p = subprocess.Popen(args, stdout=output, stderr=subprocess.STDOUT)
+        else:
+            p = subprocess.Popen(args, stdout=subprocess.DEVNULL,
+                                  stderr=subprocess.DEVNULL)
         self.procs.append(p)
         return p
 
@@ -359,9 +364,10 @@ class AdbTarget:
                 out.append(line[len(self.work) + 1:])
         return out
 
-    def spawn(self, args):
+    def spawn(self, args, output_rel=None):
         # launch detached on device; ports are device-local
-        remote = ' '.join(self._q(a) for a in args) + ' >/dev/null 2>&1 &'
+        output = self._q(self.path(output_rel)) if output_rel else '/dev/null'
+        remote = ' '.join(self._q(a) for a in args) + ' >' + output + ' 2>&1 &'
         self._adb('shell', remote)
         return None
 
@@ -431,14 +437,16 @@ class Daemon:
         ] + extra_options
         self.t.write_file(self.conf_rel, ('\n'.join(cfg) + '\n').encode())
 
-    def start_nserv(self):
+    def start_nserv(self, capture_requests=False):
         # A single instance (-i 1) binds only nntp_port. Instance 1 already
         # returns "430 not found" for "!2" message-ids (its id 1 is not in the
         # server-list [2]), which is how a "missing" article is simulated on the
         # only server the daemon uses. A second instance would just bind
         # nntp_port+1 and risk colliding with the control port.
         self.t.spawn([self.t.nzbget, '--nserv', '-d', self.datadir,
-                      '-p', str(self.nntp_port), '-i', '1', '-v', '0'])
+                      '-p', str(self.nntp_port), '-i', '1',
+                      '-v', '2' if capture_requests else '0'],
+                     output_rel='nserv.log' if capture_requests else None)
 
     def start(self):
         self.t.spawn([self.t.nzbget, '-c', self.t.path(self.conf_rel), '-s'])
@@ -778,12 +786,11 @@ def scenario_repost(daemon, t):
     interprets them, which is the point. The primary posting is missing
     blocks in part01 and in the par2; the donor is a REPOST: byte-identical
     members under the same names, cut into different article sizes. Suffix/
-    name pairing must match each damaged member to its donor twin and repair
-    both byte-identically (equal-size volumes prove pairing; the par2 proves
-    the small-file probe fallback and scaled floor). Expected history status
-    is FAILURE/PAR: ParCheck=auto runs the par stage against the stand-in
-    par2, which is opaque random bytes, so par-check fails by design -
-    byte integrity and the counters are the pass criteria here."""
+    name pairing must repair the damaged archive volume. The PAR2 file must
+    remain exactly as downloaded, with no donor PAR2 requests: names, sizes,
+    and partial byte identity do not authorize borrowing another PAR set.
+    Expected history status is FAILURE/PAR because the stand-in parity is
+    opaque random bytes. Capture nserv requests when running this scenario."""
     seg_primary, seg_donor = 500_000, 300_000
     vol = 1_500_000
     members = [
@@ -814,16 +821,25 @@ def scenario_repost(daemon, t):
     repaired = _grep_log(t, 'donor article(s)')
     both_dirs = (('main', 'dst'), ('main', 'inter'))
     integ_rar = _verify_output(t, payloads['Rel.part01.rar'], '.rar', dirs=both_dirs)
-    integ_par = _verify_output(t, payloads['Rel.vol00+01.par2'], '.par2', dirs=both_dirs)
+    par_payload = payloads['Rel.vol00+01.par2']
+    untouched_par = _verify_output(t, b'\0' * 70_000 + par_payload[70_000:],
+                                    '.par2', dirs=both_dirs)
     intact_2 = _verify_output(t, payloads['Rel.part02.rar'], '.rar', dirs=both_dirs)
     intact_3 = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=both_dirs)
+    # nserv flushes command output every 100 ms; wait for the final fetch.
+    time.sleep(0.25)
+    requests = re.findall(r'Received: (?:BODY|ARTICLE) [^\r\n]*',
+                          t.read_file('nserv.log').decode(errors='replace'))
+    donor_par = sum('repostB/x.par2?' in request for request in requests)
+    donor_rar = sum('repostB/x.part01.rar?' in request for request in requests)
     return ('repost',
-            integ_rar and integ_par and intact_2 and intact_3 and
-            h['Status'] == 'FAILURE/PAR' and recov == 2 and queued >= 2 and repaired >= 2,
+            integ_rar and untouched_par and intact_2 and intact_3 and
+            donor_rar > 0 and donor_par == 0 and
+            h['Status'] == 'FAILURE/PAR' and recov == 1 and queued == 1 and repaired >= 1,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d '
-            'rar=%s par2=%s intact=%s/%s'
+            'rar=%s par2_untouched=%s intact=%s/%s donor_rar=%d donor_par2=%d'
             % (h['Status'], recov, queued, repaired,
-               integ_rar, integ_par, intact_2, intact_3))
+               integ_rar, untouched_par, intact_2, intact_3, donor_rar, donor_par))
 
 
 def scenario_repostrenamed(daemon, t):
@@ -1522,6 +1538,13 @@ def scenario_xdecomp_symlink(daemon, t):
     h, integ, c = _xpack_run(daemon, t, 'Xdl', members, donor_members,
                              {'movie.mkv': data})
     rejected_links = _grep_log(t, 'archive contains link')
+    # Newer 7-Zip versions reject the dangerous absolute link before NZBGet
+    # can inspect the extracted tree. Require that specific diagnostic AND
+    # the failed-extraction path; a generic extraction error is insufficient.
+    extractor_rejected = (
+        _grep_log(t, 'ERROR: Dangerous link path was ignored') >= 1 and
+        _grep_log(t, 'Skipping decompression of Rel.zip of duplicate DonXdl: '
+                     'extraction failed') >= 1)
     try:
         sentinel_survived = t.read_file(os.path.join('outside', 'sentinel')) == sentinel_data
     except Exception:
@@ -1533,12 +1556,12 @@ def scenario_xdecomp_symlink(daemon, t):
                             if name.startswith('.stream-decompress.'))
 
     ok = (h['Status'] == 'FAILURE/HEALTH' and c['recov'] == 0 and
-          rejected_links >= 1 and not integ['movie.mkv'] and
+          (rejected_links >= 1 or extractor_rejected) and not integ['movie.mkv'] and
           sentinel_survived and not scratch_dirs)
     return ('xdecomp_symlink', ok,
-            'status=%s recovered=%d rejected_links=%d integrity=%s '
+            'status=%s recovered=%d rejected_links=%d extractor_rejected=%s integrity=%s '
             'sentinel=%s scratch_dirs=%d'
-            % (h['Status'], c['recov'], rejected_links, integ['movie.mkv'],
+            % (h['Status'], c['recov'], rejected_links, extractor_rejected, integ['movie.mkv'],
                sentinel_survived, len(scratch_dirs)))
 
 
@@ -1686,7 +1709,8 @@ SCENARIO_OPTIONS = {
     'livegate': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'livelastfile': ['DupeArticleFallback=live', 'ParCheck=auto'],
     # repost: ParCheck=auto runs par-check against a random-bytes stand-in
-    # par2 after the repair - FAILURE/PAR is the EXPECTED final status
+    # par2; duplicate fallback repairs only archive data and leaves parity
+    # untouched - FAILURE/PAR is the EXPECTED final status
     'repost': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # repostrenamed: no par2 members; "auto" ends in a harmless
     # "Nothing to par-check" after the repair handoff
@@ -1772,7 +1796,7 @@ def main():
         daemon = Daemon(target, nntp, rpc)
         try:
             daemon.write_config(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
-            daemon.start_nserv()
+            daemon.start_nserv(capture_requests=(name == 'repost'))
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':

@@ -270,15 +270,23 @@ void ParChecker::Cleanup()
 
 void ParChecker::Execute()
 {
+	m_verifiedFiles.clear();
 	m_status = RunParCheckAll();
 
 	if (m_status == psRepairNotNeeded && m_parQuick && m_forceRepair && !IsStopped())
 	{
 		PrintMessage(Message::mkInfo, "Performing full par-check for %s", m_nzbName.c_str());
 		m_parQuick = false;
+		m_verifiedFiles.clear();
 		m_status = RunParCheckAll();
 	}
 
+	// Publish only the final pass: a forced full check can overturn a quick
+	// result, and its pending duplicate jobs must survive until then.
+	for (const std::string& filename : m_verifiedFiles)
+	{
+		RegisterVerifiedFile(filename.c_str());
+	}
 	Completed();
 }
 
@@ -474,6 +482,31 @@ ParChecker::EStatus ParChecker::RunParCheck(std::string parFilename)
 		}
 		PrintMessage(Message::mkError, "Repair failed for %s: %s. Recovery files created by: %s",
 			m_infoName.c_str(), m_errMsg.c_str(), creator.empty() ? "<unknown program>" : creator.c_str());
+	}
+
+	// A successful set does not cover unrelated files, and ignored damage
+	// can also produce psRepairNotNeeded. Keep only complete final targets
+	// actually established by libpar2, before its source metadata is freed.
+	for (Par2::Par2RepairerSourceFile* sourcefile : GetRepairer()->sourcefiles)
+	{
+		if (!sourcefile)
+		{
+			continue;
+		}
+		// A later set may have attempted to rewrite the same target; its
+		// result supersedes any earlier proof, including when repair failed.
+		std::string targetName = sourcefile->TargetFileName();
+		m_verifiedFiles.erase(std::remove_if(m_verifiedFiles.begin(), m_verifiedFiles.end(),
+			[&targetName](const std::string& previous)
+			{
+				return FileSystem::SameFilename(previous.c_str(), targetName.c_str());
+			}), m_verifiedFiles.end());
+		if ((status == psRepaired || status == psRepairNotNeeded) &&
+			sourcefile->GetCompleteFile() &&
+			sourcefile->GetCompleteFile() == sourcefile->GetTargetFile())
+		{
+			m_verifiedFiles.push_back(sourcefile->GetTargetFile()->FileName());
+		}
 	}
 
 	Cleanup();

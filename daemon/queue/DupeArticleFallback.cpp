@@ -30,16 +30,61 @@
 #include "Util.h"
 #include "FileSystem.h"
 
+bool DupeArticleFallback::IsParFile(FileInfo* fileInfo)
+{
+	return fileInfo->GetParFile() ||
+		(fileInfo->GetFilenameConfirmed() &&
+		 Util::EndsWith(fileInfo->GetFilename(), ".par2", false));
+}
+
+bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
+{
+	if (!nzbInfo)
+	{
+		return false;
+	}
+	if (nzbInfo->GetDirectRenameStatus() == NzbInfo::tsRunning)
+	{
+		// Obfuscated parity is not recognizable until direct renaming finishes.
+		return true;
+	}
+	if (nzbInfo->GetParStatus() == NzbInfo::psFailure)
+	{
+		return false;
+	}
+	if (nzbInfo->GetParSize() > 0)
+	{
+		return true;
+	}
+	for (FileInfo* fileInfo : nzbInfo->GetFileList())
+	{
+		if (!fileInfo->GetDeleted() && IsParFile(fileInfo))
+		{
+			return true;
+		}
+	}
+	for (CompletedFile& fileInfo : nzbInfo->GetCompletedFiles())
+	{
+		if (fileInfo.GetParFile() || Util::EndsWith(fileInfo.GetFilename(), ".par2", false))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo)
 {
-	if (g_Options->GetDupeArticleFallback() == Options::dafNone || g_Options->GetRawArticle())
+	if (g_Options->GetDupeArticleFallback() == Options::dafNone || g_Options->GetRawArticle() ||
+		IsParFile(fileInfo))
 	{
 		return false;
 	}
 
 	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
 	if (fileInfo->GetDeleted() || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
-		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetDupeMode() == dmForce)
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetDupeMode() == dmForce ||
+		(g_Options->GetDupeArticleFallback() >= Options::dafStream && ShouldDeferToPar(nzbInfo)))
 	{
 		return false;
 	}
@@ -438,6 +483,11 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 
 FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb)
 {
+	if (IsParFile(targetFile))
+	{
+		return nullptr;
+	}
+
 	FileInfo* structuralMatch = nullptr;
 	bool ambiguous = false;
 	FileInfo* filenameMatch = nullptr;
@@ -445,7 +495,7 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 
 	for (FileInfo* donorFile : donorNzb->GetFileList())
 	{
-		if (!StructureMatches(targetFile, donorFile))
+		if (IsParFile(donorFile) || !StructureMatches(targetFile, donorFile))
 		{
 			continue;
 		}

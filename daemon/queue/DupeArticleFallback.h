@@ -75,8 +75,17 @@ public:
 
 	bool TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo);
 
+	/* PAR2 identity is not established by filenames, sizes, or partial byte
+	 * matches. Recognized parity must never be a duplicate target or donor. */
+	static bool IsParFile(FileInfo* fileInfo);
+
+	/* Defer download-time donor recovery while parity is being discovered or
+	 * a known PAR set has not failed ordinary repair. Must be called within
+	 * DownloadQueue-lock, like TryFallback. */
+	static bool ShouldDeferToPar(NzbInfo* nzbInfo);
+
 	/* Finds the file of the duplicate collection which corresponds to the target
-	 * file: preferably by filename, otherwise by unambiguous structural identity
+	 * data file: preferably by filename, otherwise by unambiguous structural identity
 	 * (article count and sizes). Returns nullptr if no or multiple candidates. */
 	static FileInfo* MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb);
 	static const char* FindDonorMessageId(FileInfo* donorFile, int partNumber);
