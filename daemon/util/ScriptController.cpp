@@ -551,12 +551,25 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 		PrintMessage(Message::mkError, "Could not open read pipe: errno %i", errno);
 		return;
 	}
+	// Marked close-on-exec immediately: the ends that the child actually needs
+	// (stdin/stdout/stderr) are wired up via dup2() below, and a dup2()'d fd
+	// never carries over the close-on-exec flag from its source, so this only
+	// stops these specific fd numbers from leaking into any *other* child
+	// that might be forked while they're still open (e.g. concurrently, for
+	// an unrelated queue item).
+	Util::SetCloseOnExec(pin[0]);
+	Util::SetCloseOnExec(pin[1]);
 	if (m_needWrite && pipe(pout))
 	{
 		PrintMessage(Message::mkError, "Could not open write pipe: errno %i", errno);
 		close(pin[0]);
 		close(pin[1]);
 		return;
+	}
+	if (m_needWrite)
+	{
+		Util::SetCloseOnExec(pout[0]);
+		Util::SetCloseOnExec(pout[1]);
 	}
 
 	*pipein = pin[0];

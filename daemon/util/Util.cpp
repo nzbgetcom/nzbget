@@ -715,6 +715,31 @@ uint32 Util::HashBJ96(const char* buffer, int bufSize, uint32 initValue)
 	return (uint32)hash((uint8*)buffer, (uint32)bufSize, (uint32)initValue);
 }
 
+bool Util::SetCloseOnExec(int fd)
+{
+#ifndef WIN32
+	if (fd < 0)
+	{
+		return false;
+	}
+
+	int flags = fcntl(fd, F_GETFD);
+	if (flags == -1)
+	{
+		return false;
+	}
+
+#ifdef FD_CLOEXEC
+	return fcntl(fd, F_SETFD, flags | FD_CLOEXEC) != -1;
+#else
+	return fcntl(fd, F_SETFD, flags | 1) != -1;
+#endif
+#else
+	(void)fd;
+	return true;
+#endif
+}
+
 std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::string& cmd)
 {
 #ifdef WIN32

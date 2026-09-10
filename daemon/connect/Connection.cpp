@@ -25,6 +25,7 @@
 #include "Log.h"
 #include "FileSystem.h"
 #include "Options.h"
+#include "Util.h"
 
 static const int CONNECTION_READBUFFER_SIZE = 1024;
 
@@ -224,7 +225,6 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-
 		unlink(m_host.c_str());
 
 		if (bind(m_socket, (struct sockaddr *)&addr, sizeof(addr)) == -1)
@@ -310,7 +310,6 @@ bool Connection::Bind()
 			ReportError("Socket creation failed for %s", m_host.c_str(), true);
 			return false;
 		}
-
 		int opt = 1;
 		setsockopt(m_socket, SOL_SOCKET, SO_REUSEADDR, (char*)&opt, sizeof(opt));
 
@@ -328,6 +327,13 @@ bool Connection::Bind()
 	if (m_socket == INVALID_SOCKET)
 	{
 		ReportError("Binding socket failed for %s", m_host.c_str(), true, errcode);
+		return false;
+	}
+
+	if (!InitSocketOpts(m_socket))
+	{
+		closesocket(m_socket);
+		m_socket = INVALID_SOCKET;
 		return false;
 	}
 
@@ -485,7 +491,6 @@ std::unique_ptr<Connection> Connection::Accept()
 	{
 		return nullptr;
 	}
-
 	InitSocketOpts(socket);
 
 	return std::make_unique<Connection>(socket, m_tls);
@@ -743,6 +748,11 @@ bool Connection::InitSocketOpts(SOCKET socket)
 		ReportError("Socket initialization failed for %s", m_host.c_str(), true);
 		return false;
 	}
+
+#ifndef WIN32
+	Util::SetCloseOnExec((int)socket);
+#endif
+
 	return true;
 }
 
