@@ -45,6 +45,7 @@ namespace FileTypes
 	bool IsVideoExt(std::string_view ext);
 	bool IsAudioExt(std::string_view ext);
 	bool IsSubtitleExt(std::string_view ext);
+	bool IsNfoExt(std::string_view ext);
 	bool IsSampleStem(std::string_view stem);
 	bool IsSevenZipFile(std::string_view filename);
 	bool IsRarFile(std::string_view filename);

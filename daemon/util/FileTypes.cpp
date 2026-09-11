@@ -207,6 +207,14 @@ bool IsSubtitleExt(std::string_view ext)
 	return MatchesAnyExt(ext, formats);
 }
 
+bool IsNfoExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".nfo", ".info"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
 bool IsSampleStem(std::string_view stem)
 {
 	if (Util::StrCaseCmp(stem, "sample"))

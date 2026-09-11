@@ -233,9 +233,9 @@ namespace
 			{
 				auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
 					int l = std::tolower(static_cast<unsigned char>(c));
-					return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
+					return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u' || l == 'y';
 				}));
-				if (vowels * 5 < tok.size()) return true;
+				if (vowels == 0) return true;
 			}
 			else
 			{

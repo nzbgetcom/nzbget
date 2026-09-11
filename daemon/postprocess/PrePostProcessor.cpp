@@ -860,7 +860,10 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		nzbInfo->GetPostDownloadRenamingStatus() == NzbInfo::PostDownloadRenamingStatus::None &&
 		!Util::EmptyStr(nzbInfo->GetDestDir()) &&
 		!Util::EmptyStr(nzbInfo->GetName()) &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usSuccess &&
+		(nzbInfo->GetUnpackStatus() == NzbInfo::usNone || nzbInfo->GetUnpackStatus() == NzbInfo::usSkipped) &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
 		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
 		nzbInfo->GetParStatus() != NzbInfo::psManual &&
 		!moveInter &&

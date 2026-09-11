@@ -898,6 +898,7 @@ var DownloadsUI = (new function($)
 				case "RENAMING":
 				case "POST_UNPACK_RENAMING":
 				case "POST_DOWNLOAD_RENAMING":
+				case "EXECUTING_SCRIPT":
 					text = DownloadsUI.formatProgressLabel(group.PostInfoText);
 					break;
 			}

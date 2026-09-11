@@ -236,4 +236,80 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerClutterSkipTest)
 	fs::remove_all(tempDir);
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerCleanVideoSidecarPairingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_clean_video_sidecars";
+	fs::create_directories(tempDir);
+
+	// Already clean video (not obfuscated)
+	fs::path mainVideo = tempDir / "Show.S01E01.720p.mkv";
+	std::ofstream(mainVideo) << "clean video data";
+
+	// Subtitle
+	fs::path sub = tempDir / "sub.en.srt";
+	std::ofstream(sub) << "subtitle";
+
+	// Target name from NZB/metadata differs slightly (e.g. show title)
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(tempDir, "Show.S01E01", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u); // Only subtitle needs renaming
+
+	// Subtitle must pair to the main video's actual stem, not targetName
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Show.S01E01.720p.en.srt");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerObfuscatedNzbTitleWithCleanVideoTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_obf_nzb_clean_video";
+	fs::create_directories(tempDir);
+
+	// Clean video already on disk
+	fs::path mainVideo = tempDir / "Show.S01E01.720p.mkv";
+	std::ofstream(mainVideo) << "clean video";
+
+	// Obfuscated subtitle
+	fs::path sub = tempDir / "1234567890abcdef1234567890abcdef.en.srt";
+	std::ofstream(sub) << "sub";
+
+	// NZB title is an obfuscated hash without metadata
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "1a2b3c4d5e6f7g8h9i0j1k2l", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	// Subtitle must be successfully planned to pair with the clean video, not blocked by the NZB title
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Show.S01E01.720p.en.srt");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerAudioCollectionTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_audio_collection";
+	fs::create_directories(tempDir);
+
+	// 1. Single audio file: not an ambiguous multi-file collection
+	fs::path track1 = tempDir / "track01.flac";
+	std::ofstream(track1) << "audio data";
+
+	CollectionAnalyzer::AnalysisResult singleResult = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+	BOOST_CHECK(singleResult.hasAudio);
+	BOOST_CHECK(!singleResult.isAmbiguousCollection);
+	BOOST_CHECK(!singleResult.CanRename());
+
+	// 2. Multi-track audio album: ambiguous collection
+	fs::path track2 = tempDir / "track02.flac";
+	std::ofstream(track2) << "audio data 2";
+
+	CollectionAnalyzer::AnalysisResult multiResult = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+	BOOST_CHECK(multiResult.hasAudio);
+	BOOST_CHECK(multiResult.isAmbiguousCollection);
+	BOOST_CHECK(!multiResult.CanRename());
+
+	fs::remove_all(tempDir);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

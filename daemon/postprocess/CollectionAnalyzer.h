@@ -69,6 +69,8 @@ namespace CollectionAnalyzer
 		bool isAmbiguousCollection = false;
 		bool isDiscStructure = false;
 		bool canRename = false;
+		bool targetNameObfuscated = false;
+		std::string effectiveBaseName;
 	};
 
 	AnalysisResult Analyze(const std::vector<FileEntry>& files);

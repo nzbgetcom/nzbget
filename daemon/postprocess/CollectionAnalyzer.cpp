@@ -37,6 +37,7 @@ namespace CollectionAnalyzer
 		uintmax_t largestSize = 0;
 		uintmax_t secondSize = 0;
 		int videoCount = 0;
+		int audioCount = 0;
 
 		for (const auto& file : files)
 		{
@@ -48,6 +49,7 @@ namespace CollectionAnalyzer
 			if (FileTypes::IsAudioExt(file.ext))
 			{
 				result.hasAudio = true;
+				audioCount++;
 				result.otherFiles.push_back(file);
 			}
 			else if (FileTypes::IsVideoExt(file.ext))
@@ -75,7 +77,7 @@ namespace CollectionAnalyzer
 			{
 				result.subtitles.push_back(file);
 			}
-			else if (Util::StrCaseCmp(file.ext, ".nfo"))
+			else if (FileTypes::IsNfoExt(file.ext))
 			{
 				result.nfos.push_back(file);
 			}
@@ -94,7 +96,7 @@ namespace CollectionAnalyzer
 		}
 
 		// Music albums without video must not have individual tracks folded into one release title
-		if (result.hasAudio && videoCount == 0)
+		if (audioCount > 1 && videoCount == 0)
 		{
 			result.isAmbiguousCollection = true;
 		}
@@ -170,10 +172,6 @@ namespace CollectionAnalyzer
 	RenamePlan BuildPlan(const fs::path& dir, std::string_view targetName, const char* ignoreExt)
 	{
 		RenamePlan plan;
-		if (targetName.empty())
-		{
-			return plan;
-		}
 
 		AnalysisResult analysis = AnalyzeDirectory(dir);
 		plan.isDiscStructure = analysis.isDiscStructure;
@@ -215,25 +213,45 @@ namespace CollectionAnalyzer
 			plan.actions.push_back({entry.path, std::move(targetDstPath), entry.filename, actualFinalBasename});
 		};
 
-		// 1. Plan main feature rename if obfuscated
+		bool canUseTargetName = !targetName.empty() && targetName != "nzb" &&
+			!Deobfuscation::IsExcessivelyObfuscated(targetName);
+
+		std::string videoBaseName = std::string(targetName);
 		if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainVideo.filename))
 		{
-			std::string newVideoName = std::string(targetName) + analysis.mainVideo.ext;
-			PlanFileRename(analysis.mainVideo, newVideoName);
+			if (canUseTargetName)
+			{
+				std::string newVideoName = videoBaseName + analysis.mainVideo.ext;
+				PlanFileRename(analysis.mainVideo, newVideoName);
+			}
+			else
+			{
+				plan.targetNameObfuscated = true;
+				videoBaseName = analysis.mainVideo.stem;
+			}
+		}
+		else
+		{
+			videoBaseName = analysis.mainVideo.stem;
 		}
 
-		// 2. Plan sample rename if present
-		if (!analysis.sampleVideo.filename.empty())
-		{
-			std::string sampleDstName = ResolveSampleName(targetName, analysis.sampleVideo.ext);
-			PlanFileRename(analysis.sampleVideo, sampleDstName);
-		}
+		plan.effectiveBaseName = videoBaseName;
 
-		// 3. Plan accompanying subtitles rename
-		for (const auto& sub : analysis.subtitles)
+		if (!videoBaseName.empty() && !Deobfuscation::IsExcessivelyObfuscated(videoBaseName))
 		{
-			std::string subDstName = ResolveSubtitleName(targetName, sub.stem, sub.ext);
-			PlanFileRename(sub, subDstName);
+			// 2. Plan sample rename if present
+			if (!analysis.sampleVideo.filename.empty())
+			{
+				std::string sampleDstName = ResolveSampleName(videoBaseName, analysis.sampleVideo.ext);
+				PlanFileRename(analysis.sampleVideo, sampleDstName);
+			}
+
+			// 3. Plan accompanying subtitles rename
+			for (const auto& sub : analysis.subtitles)
+			{
+				std::string subDstName = ResolveSubtitleName(videoBaseName, sub.stem, sub.ext);
+				PlanFileRename(sub, subDstName);
+			}
 		}
 
 		return plan;

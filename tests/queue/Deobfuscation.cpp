@@ -182,7 +182,13 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("Release.2024.01.02.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pRemux.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pBluRay.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("LIGHTSWITCH.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("BLACKKNIGHTS.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("PSYCHOPATHS.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("CYBERCRYPTS.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("FLIGHTPATHS.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("BCDFGHJKLMNP.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("QWRTZPSDFGHJ.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("tag.HFg3BYe.1unWxVw.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("Release.1234567890123456.mkv"));
 

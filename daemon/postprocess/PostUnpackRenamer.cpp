@@ -51,16 +51,11 @@ namespace PostUnpackRenamer
 	{
 		std::string targetName;
 		std::string dstDir;
-		bool fromMetadata = false;
 		{
 			GuardedDownloadQueue guard = DownloadQueue::Guard();
 			NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
 			targetName = nzbInfo->GetMetaName();
-			if (!targetName.empty())
-			{
-				fromMetadata = true;
-			}
-			else
+			if (targetName.empty())
 			{
 				targetName = nzbInfo->GetName() ? nzbInfo->GetName() : "";
 			}
@@ -106,17 +101,16 @@ namespace PostUnpackRenamer
 
 		if (plan.actions.empty())
 		{
-			PrintMessage(Message::mkInfo, "No files needed renaming for %s", targetName.c_str());
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(NzbInfo::PostUnpackRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
-			return;
-		}
-
-		if (targetName.empty() || targetName == "nzb" || (!fromMetadata && Deobfuscation::IsExcessivelyObfuscated(targetName)))
-		{
-			PrintMessage(Message::mkWarning,
-				"Skipping Post-unpack renaming. Obfuscated files found, but NZB filename %s is also obfuscated and no clean metadata was provided.",
-				targetName.c_str());
+			if (plan.targetNameObfuscated)
+			{
+				PrintMessage(Message::mkWarning,
+					"Skipping Post-unpack renaming. Obfuscated files found, but NZB filename %s is also obfuscated and no clean metadata was provided.",
+					targetName.c_str());
+			}
+			else
+			{
+				PrintMessage(Message::mkInfo, "No files needed renaming for %s", targetName.c_str());
+			}
 			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(NzbInfo::PostUnpackRenamingStatus::Skipped);
 			m_postInfo->SetWorking(false);
 			return;
@@ -129,18 +123,21 @@ namespace PostUnpackRenamer
 		{
 			if (IsStopped()) break;
 
-			std::string srcStr = fs::u8string(action.srcPath);
-			std::string dstStr = fs::u8string(action.dstPath);
-
-			if (FileSystem::MoveFile(srcStr.c_str(), dstStr.c_str()))
+			fs::error_code ec;
+			fs::move_file(action.srcPath, action.dstPath, ec);
+			if (!ec)
 			{
 				PrintMessage(Message::mkInfo, "Renamed %s to %s", action.oldFilename.c_str(), action.newFilename.c_str());
+				{
+					GuardedDownloadQueue guard = DownloadQueue::Guard();
+					m_postInfo->GetNzbInfo()->RenameCompletedFile(action.oldFilename.c_str(), action.newFilename.c_str());
+				}
 				anyRenamed = true;
 			}
 			else
 			{
 				PrintMessage(Message::mkError, "Could not rename file %s to %s: %s",
-					action.oldFilename.c_str(), action.newFilename.c_str(), *FileSystem::GetLastErrorMessage());
+					action.oldFilename.c_str(), action.newFilename.c_str(), ec.message().c_str());
 				anyFailed = true;
 			}
 		}
@@ -153,24 +150,27 @@ namespace PostUnpackRenamer
 			return;
 		}
 
-		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		if (anyFailed)
 		{
 			PrintMessage(Message::mkError, "%s finished with errors", *infoName);
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(NzbInfo::PostUnpackRenamingStatus::Failure);
 		}
 		else if (anyRenamed)
 		{
 			PrintMessage(Message::mkInfo, "%s successful", *infoName);
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(NzbInfo::PostUnpackRenamingStatus::Success);
 		}
 		else
 		{
 			PrintMessage(Message::mkInfo, "No files needed renaming for %s", *infoName);
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(NzbInfo::PostUnpackRenamingStatus::Skipped);
 		}
 
-		m_postInfo->SetWorking(false);
+		{
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
+			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
+				anyFailed ? NzbInfo::PostUnpackRenamingStatus::Failure :
+				anyRenamed ? NzbInfo::PostUnpackRenamingStatus::Success :
+				NzbInfo::PostUnpackRenamingStatus::Skipped);
+			m_postInfo->SetWorking(false);
+		}
 	}
 
 	void Controller::AddMessage(Message::EKind kind, const char* text)
