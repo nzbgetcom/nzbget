@@ -100,6 +100,7 @@ public:
 	static constexpr std::string_view PARQUICK = "ParQuick";
 	static constexpr std::string_view POSTSTRATEGY = "PostStrategy";
 	static constexpr std::string_view FILENAMING = "FileNaming";
+	static constexpr std::string_view POSTDOWNLOADRENAME = "PostDownloadRename";
 	static constexpr std::string_view RENAMEAFTERUNPACK = "RenameAfterUnpack";
 	static constexpr std::string_view RENAMEIGNOREEXT = "RenameIgnoreExt";
 	static constexpr std::string_view PARRENAME = "ParRename";
@@ -493,8 +494,9 @@ public:
 	bool GetUnpackPauseQueue() const { return m_unpackPauseQueue; }
 	const char* GetExtCleanupDisk() const { return m_extCleanupDisk; }
 	const char* GetParIgnoreExt() const { return m_parIgnoreExt; }
-	const char* GetRenameIgnoreExt() const { return m_renameIgnoreExt; }
+	bool GetPostDownloadRename() const { return m_postDownloadRename; }
 	bool GetRenameAfterUnpack() const { return m_renameAfterUnpack; }
+	const char* GetRenameIgnoreExt() const { return m_renameIgnoreExt; }
 	const char* GetUnpackIgnoreExt() const { return m_unpackIgnoreExt; }
 	int GetFeedHistory() const { return m_feedHistory; }
 	bool GetUrlForce() const { return m_urlForce; }
@@ -695,6 +697,7 @@ private:
 	int m_dailyQuota = 0;
 	bool m_reorderFiles = false;
 	EFileNaming m_fileNaming = nfArticle;
+	bool m_postDownloadRename = true;
 	bool m_renameAfterUnpack = true;
 	CString m_renameIgnoreExt;
 	int m_downloadRate = 0;
