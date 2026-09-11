@@ -130,10 +130,125 @@ BOOST_AUTO_TEST_CASE(IsDiscStructureExtTest)
 	BOOST_CHECK(FileTypes::IsDiscStructureExt(".bup"));
 	BOOST_CHECK(FileTypes::IsDiscStructureExt(".mts"));
 	BOOST_CHECK(FileTypes::IsDiscStructureExt(".m2ts"));
+	BOOST_CHECK(FileTypes::IsDiscStructureExt(".aob"));
+	BOOST_CHECK(FileTypes::IsDiscStructureExt(".evo"));
+	BOOST_CHECK(FileTypes::IsDiscStructureExt(".bdjo"));
 
 	BOOST_CHECK(!FileTypes::IsDiscStructureExt(".rar"));
 	BOOST_CHECK(!FileTypes::IsDiscStructureExt(".mkv"));
 	BOOST_CHECK(!FileTypes::IsDiscStructureExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsDiscStructureDirTest)
+{
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("BDMV"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("bdmv"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("VIDEO_TS"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("video_ts"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("AUDIO_TS"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("audio_ts"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("HVDVD_TS"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("hvdvd_ts"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("AVCHD"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("avchd"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("CERTIFICATE"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("certificate"));
+
+	// Path resiliency
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("/downloads/complete/BDMV"));
+	BOOST_CHECK(FileTypes::IsDiscStructureDir("C:\\downloads\\VIDEO_TS"));
+
+	BOOST_CHECK(!FileTypes::IsDiscStructureDir("Subs"));
+	BOOST_CHECK(!FileTypes::IsDiscStructureDir("Sample"));
+	BOOST_CHECK(!FileTypes::IsDiscStructureDir("Season 01"));
+	BOOST_CHECK(!FileTypes::IsDiscStructureDir(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsDiscDescriptorExtTest)
+{
+	BOOST_CHECK(FileTypes::IsDiscDescriptorExt(".cue"));
+	BOOST_CHECK(FileTypes::IsDiscDescriptorExt(".CUE"));
+	BOOST_CHECK(FileTypes::IsDiscDescriptorExt(".mds"));
+	BOOST_CHECK(FileTypes::IsDiscDescriptorExt(".ccd"));
+	BOOST_CHECK(FileTypes::IsDiscDescriptorExt(".toc"));
+
+	BOOST_CHECK(!FileTypes::IsDiscDescriptorExt(".iso"));
+	BOOST_CHECK(!FileTypes::IsDiscDescriptorExt(".bin"));
+	BOOST_CHECK(!FileTypes::IsDiscDescriptorExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsDiscImageExtTest)
+{
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".iso"));
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".ISO"));
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".mdf"));
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".nrg"));
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".cdi"));
+	BOOST_CHECK(FileTypes::IsDiscImageExt(".gdi"));
+
+	// Generic container extensions requiring descriptor pairing
+	BOOST_CHECK(!FileTypes::IsDiscImageExt(".bin"));
+	BOOST_CHECK(!FileTypes::IsDiscImageExt(".img"));
+
+	BOOST_CHECK(!FileTypes::IsDiscImageExt(".mkv"));
+	BOOST_CHECK(!FileTypes::IsDiscImageExt(".cue"));
+	BOOST_CHECK(!FileTypes::IsDiscImageExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsGenericDiscImageExtTest)
+{
+	BOOST_CHECK(FileTypes::IsGenericDiscImageExt(".bin"));
+	BOOST_CHECK(FileTypes::IsGenericDiscImageExt(".BIN"));
+	BOOST_CHECK(FileTypes::IsGenericDiscImageExt(".img"));
+	BOOST_CHECK(FileTypes::IsGenericDiscImageExt(".IMG"));
+
+	BOOST_CHECK(!FileTypes::IsGenericDiscImageExt(".iso"));
+	BOOST_CHECK(!FileTypes::IsGenericDiscImageExt(".mkv"));
+	BOOST_CHECK(!FileTypes::IsGenericDiscImageExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsClutterDirTest)
+{
+	BOOST_CHECK(FileTypes::IsClutterDir("@eaDir"));
+	BOOST_CHECK(FileTypes::IsClutterDir("@eadir"));
+	BOOST_CHECK(FileTypes::IsClutterDir(".AppleDouble"));
+	BOOST_CHECK(FileTypes::IsClutterDir("__MACOSX"));
+	BOOST_CHECK(FileTypes::IsClutterDir(".Spotlight-V100"));
+	BOOST_CHECK(FileTypes::IsClutterDir(".Trashes"));
+
+	// Path resiliency
+	BOOST_CHECK(FileTypes::IsClutterDir("/nas/storage/@eaDir"));
+	BOOST_CHECK(FileTypes::IsClutterDir("C:\\downloads\\__MACOSX"));
+
+	BOOST_CHECK(!FileTypes::IsClutterDir("Movies"));
+	BOOST_CHECK(!FileTypes::IsClutterDir("BDMV"));
+	BOOST_CHECK(!FileTypes::IsClutterDir(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsClutterFileTest)
+{
+	BOOST_CHECK(FileTypes::IsClutterFile(".DS_Store"));
+	BOOST_CHECK(FileTypes::IsClutterFile(".ds_store"));
+	BOOST_CHECK(FileTypes::IsClutterFile("Thumbs.db"));
+	BOOST_CHECK(FileTypes::IsClutterFile("thumbs.db"));
+	BOOST_CHECK(FileTypes::IsClutterFile("desktop.ini"));
+	BOOST_CHECK(FileTypes::IsClutterFile("ehthumbs.db"));
+
+	// AppleDouble resource fork sidecars
+	BOOST_CHECK(FileTypes::IsClutterFile("._Movie.mkv"));
+	BOOST_CHECK(FileTypes::IsClutterFile("._track01.flac"));
+	BOOST_CHECK(FileTypes::IsClutterFile("/path/to/._Movie.mkv"));
+	BOOST_CHECK(FileTypes::IsClutterFile("C:\\downloads\\._track01.flac"));
+
+	// Path resiliency
+	BOOST_CHECK(FileTypes::IsClutterFile("/path/to/.DS_Store"));
+	BOOST_CHECK(FileTypes::IsClutterFile("C:\\downloads\\Thumbs.db"));
+
+	BOOST_CHECK(!FileTypes::IsClutterFile("._"));
+	BOOST_CHECK(!FileTypes::IsClutterFile(".Movie.mkv"));
+	BOOST_CHECK(!FileTypes::IsClutterFile("movie.nfo"));
+	BOOST_CHECK(!FileTypes::IsClutterFile("cover.jpg"));
+	BOOST_CHECK(!FileTypes::IsClutterFile(""));
 }
 
 BOOST_AUTO_TEST_CASE(IsParityExtTest)
