@@ -110,9 +110,70 @@ bool IsDiscStructureExt(std::string_view ext)
 	static constexpr std::string_view formats[] = {
 		".vob", ".bdmv", ".mpls", ".mpl", ".clpi", ".cpi", ".bdm",
 		".ifo", ".bup",
-		".mts", ".m2ts"
+		".mts", ".m2ts",
+		".aob", ".evo", ".bdjo"
 	};
 	return MatchesAnyExt(ext, formats);
+}
+
+bool IsDiscStructureDir(std::string_view dirname)
+{
+	auto bare = Basename(dirname);
+	static constexpr std::string_view discDirs[] = {
+		"BDMV", "VIDEO_TS", "AUDIO_TS", "HVDVD_TS", "AVCHD", "CERTIFICATE"
+	};
+	return std::any_of(std::begin(discDirs), std::end(discDirs),
+		[&](std::string_view dir) { return Util::StrCaseCmp(bare, dir); });
+}
+
+bool IsDiscDescriptorExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".cue", ".mds", ".ccd", ".toc"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
+bool IsDiscImageExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".iso", ".mdf", ".nrg", ".cdi", ".gdi"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
+bool IsGenericDiscImageExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".bin", ".img"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
+bool IsClutterDir(std::string_view dirname)
+{
+	auto bare = Basename(dirname);
+	static constexpr std::string_view clutterDirs[] = {
+		"@eaDir", ".AppleDouble", "__MACOSX", ".Spotlight-V100", ".Trashes"
+	};
+	return std::any_of(std::begin(clutterDirs), std::end(clutterDirs),
+		[&](std::string_view dir) { return Util::StrCaseCmp(bare, dir); });
+}
+
+bool IsClutterFile(std::string_view filename)
+{
+	auto bare = Basename(filename);
+	// AppleDouble resource fork / extended attribute sidecar files (e.g. ._Movie.mkv)
+	if (bare.size() > 2 && bare[0] == '.' && bare[1] == '_')
+	{
+		return true;
+	}
+
+	static constexpr std::string_view clutterFiles[] = {
+		".DS_Store", "Thumbs.db", "desktop.ini", "ehthumbs.db"
+	};
+	return std::any_of(std::begin(clutterFiles), std::end(clutterFiles),
+		[&](std::string_view file) { return Util::StrCaseCmp(bare, file); });
 }
 
 bool IsParityExt(std::string_view ext)
