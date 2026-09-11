@@ -47,6 +47,8 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("SomeMovie"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Movie"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Movie1998"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("nameNZBGood_New_Sample_2012__DvdRip__CD1"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Example_Feature_1999_1080p"));
 
 	BOOST_CHECK(!IsExcessivelyObfuscated(
 		"-Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12Abc12!"

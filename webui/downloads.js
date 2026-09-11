@@ -65,6 +65,7 @@ var Downloads = (new function($)
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
 		'POST_UNPACK_RENAMING': { Text: 'status_post_unpack_renaming_cap', PostProcess: true },
+		'POST_DOWNLOAD_RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'UNPACKING': { Text: 'status_unpacking_cap', PostProcess: true },
 		'EXECUTING_SCRIPT': { Text: 'status_processing_cap', PostProcess: true },
 		'PP_FINISHED': { Text: 'status_finished_cap', PostProcess: false }
@@ -895,7 +896,8 @@ var DownloadsUI = (new function($)
 				case "VERIFYING_REPAIRED":
 				case "UNPACKING":
 				case "RENAMING":
-				case "EXECUTING_SCRIPT":
+				case "POST_UNPACK_RENAMING":
+				case "POST_DOWNLOAD_RENAMING":
 					text = DownloadsUI.formatProgressLabel(group.PostInfoText);
 					break;
 			}

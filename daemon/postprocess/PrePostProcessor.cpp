@@ -38,6 +38,7 @@
 #include "ParParser.h"
 #include "DirectUnpack.h"
 #include "PostUnpackRenamer.h"
+#include "PostDownloadRenamer.h"
 #include <mutex>
 
 PrePostProcessor::PrePostProcessor()
@@ -855,16 +856,25 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		unpack = false;
 	}
 
-	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
-		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
-		nzbInfo->GetDestDir() &&
-		nzbInfo->GetName() &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usFailure &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usSpace &&
-		nzbInfo->GetUnpackStatus() != NzbInfo::usPassword &&
+	bool postDownloadRenaming = g_Options->GetPostDownloadRename() &&
+		nzbInfo->GetPostDownloadRenamingStatus() == NzbInfo::PostDownloadRenamingStatus::None &&
+		!Util::EmptyStr(nzbInfo->GetDestDir()) &&
+		!Util::EmptyStr(nzbInfo->GetName()) &&
+		nzbInfo->GetUnpackStatus() != NzbInfo::usSuccess &&
 		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
 		nzbInfo->GetParStatus() != NzbInfo::psManual &&
-		nzbInfo->GetMoveStatus() == NzbInfo::msSuccess;
+		!moveInter &&
+		(nzbInfo->GetMoveStatus() == NzbInfo::msSuccess || nzbInfo->GetMoveStatus() == NzbInfo::msNone);
+
+	bool postUnpackRenaming = g_Options->GetRenameAfterUnpack() &&
+		nzbInfo->GetPostUnpackRenamingStatus() == NzbInfo::PostUnpackRenamingStatus::None &&
+		!Util::EmptyStr(nzbInfo->GetDestDir()) &&
+		!Util::EmptyStr(nzbInfo->GetName()) &&
+		nzbInfo->GetUnpackStatus() == NzbInfo::usSuccess &&
+		nzbInfo->GetParStatus() != NzbInfo::psFailure &&
+		nzbInfo->GetParStatus() != NzbInfo::psManual &&
+		!moveInter &&
+		(nzbInfo->GetMoveStatus() == NzbInfo::msSuccess || nzbInfo->GetMoveStatus() == NzbInfo::msNone);
 
 	if (unpack)
 	{
@@ -880,6 +890,11 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	{
 		EnterStage(downloadQueue, postInfo, PostInfo::ptMoving);
 		MoveController::StartJob(postInfo);
+	}
+	else if (postDownloadRenaming)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptPostDownloadRenaming);
+		PostDownloadRenamer::Controller::StartJob(postInfo);
 	}
 	else if (postUnpackRenaming)
 	{
@@ -933,6 +948,8 @@ void PrePostProcessor::UpdatePauseState()
 			case PostInfo::ptUnpacking:
 			case PostInfo::ptCleaningUp:
 			case PostInfo::ptMoving:
+			case PostInfo::ptPostUnpackRenaming:
+			case PostInfo::ptPostDownloadRenaming:
 				needPause |= g_Options->GetUnpackPauseQueue();
 				break;
 

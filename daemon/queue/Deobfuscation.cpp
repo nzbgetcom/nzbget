@@ -225,10 +225,33 @@ namespace
 				return false;
 		}
 
-		// 4. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs)
+		// 4. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs) or all-caps consonant string (e.g. BCDFGHJKLMNP)
 		size_t interiorAllowed = MIN_INTERIOR_CAPS_COUNT + (std::isupper(static_cast<unsigned char>(tok.front())) ? 1 : 0);
 		if (tok.size() >= MIN_CAPS_HASH_LEN && digits == 0 && uppers >= interiorAllowed)
-			return true;
+		{
+			if (uppers == alpha)
+			{
+				auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
+					int l = std::tolower(static_cast<unsigned char>(c));
+					return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
+				}));
+				if (vowels * 5 < tok.size()) return true;
+			}
+			else
+			{
+				size_t caseTransitions = 0;
+				for (size_t i = 1; i < tok.size(); ++i)
+				{
+					bool prevUpper = std::isupper(static_cast<unsigned char>(tok[i - 1]));
+					bool currUpper = std::isupper(static_cast<unsigned char>(tok[i]));
+					if (prevUpper != currUpper)
+					{
+						++caseTransitions;
+					}
+				}
+				if (caseTransitions >= 3) return true;
+			}
+		}
 
 		// 5. Long single-case alphabetic hash with < 20% vowels (differentiates random hashes from real words)
 		if (tok.size() >= MIN_ALPHA_RUN_HASH_LEN && alpha == tok.size() &&
