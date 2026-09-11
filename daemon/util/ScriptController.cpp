@@ -166,7 +166,23 @@ ScriptController::ScriptController()
 ScriptController::~ScriptController()
 {
 	UnregisterRunningScript();
+#ifdef WIN32
+	SetProcess(0, 0);
+#endif
 }
+
+#ifdef WIN32
+void ScriptController::SetProcess(HANDLE processId, DWORD dwProcessId)
+{
+	Guard guard(m_processMutex);
+	if (m_processId)
+	{
+		CloseHandle(m_processId);
+	}
+	m_processId = processId;
+	m_dwProcessId = dwProcessId;
+}
+#endif
 
 void ScriptController::UnregisterRunningScript()
 {
@@ -527,8 +543,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	debug("Child Process-ID: %i", (int)processInfo.dwProcessId);
 
-	m_processId = processInfo.hProcess;
-	m_dwProcessId = processInfo.dwProcessId;
+	CloseHandle(processInfo.hThread);
+	SetProcess(processInfo.hProcess, processInfo.dwProcessId);
 
 	// close unused pipe ends
 	CloseHandle(readProcPipe);
@@ -692,6 +708,7 @@ void ScriptController::Terminate()
 	m_terminated = true;
 
 #ifdef WIN32
+	Guard guard(m_processMutex);
 	BOOL ok = TerminateProcess(m_processId, -1) || m_completed;
 #else
 	pid_t killId = m_processId;
@@ -720,7 +737,16 @@ void ScriptController::TerminateAll()
 	Guard guard(m_runningMutex);
 	for (ScriptController* script : m_runningScripts)
 	{
-		if (script->m_processId && !script->m_detached)
+		bool hasProcess;
+#ifdef WIN32
+		{
+			Guard processGuard(script->m_processMutex);
+			hasProcess = script->m_processId != 0;
+		}
+#else
+		hasProcess = script->m_processId != 0;
+#endif
+		if (hasProcess && !script->m_detached)
 		{
 			// send break signal and wait up to 5 seconds for graceful termination
 			if (script->Break())
@@ -741,7 +767,8 @@ bool ScriptController::Break()
 	debug("Sending break signal to %s", *m_infoName);
 
 #ifdef WIN32
-	BOOL ok = GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_dwProcessId);
+	Guard guard(m_processMutex);
+	BOOL ok = m_processId && GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_dwProcessId);
 #else
 	bool ok = kill(m_processId, SIGINT) == 0;
 #endif
@@ -771,7 +798,11 @@ void ScriptController::Resume()
 {
 	m_terminated = false;
 	m_detached = false;
+#ifdef WIN32
+	SetProcess(0, 0);
+#else
 	m_processId = 0;
+#endif
 }
 
 bool ScriptController::ReadLine(char* buf, int bufSize, FILE* stream)

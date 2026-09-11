@@ -11,4 +11,5 @@ list(APPEND TESTS_SRC
 
 if(WIN32)
 	list(APPEND TESTS_SRC ${CMAKE_CURRENT_SOURCE_DIR}/util/Utf8.cpp)
+	list(APPEND TESTS_SRC ${CMAKE_CURRENT_SOURCE_DIR}/util/ScriptController.cpp)
 endif()

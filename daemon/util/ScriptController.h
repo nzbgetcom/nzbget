@@ -91,6 +91,9 @@ protected:
 
 private:
 	void CheckEnvSize(const std::vector<char*>& envs);
+#ifdef WIN32
+	void SetProcess(HANDLE processId, DWORD dwProcessId);
+#endif
 
 	ArgList m_args;
 	ArgList m_cmdArgs;
@@ -106,6 +109,7 @@ private:
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
 #ifdef WIN32
+	Mutex m_processMutex;
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
 #else
