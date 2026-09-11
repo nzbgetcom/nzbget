@@ -80,7 +80,7 @@ public:
 	void SetGracefull(bool gracefull) { m_gracefull = gracefull; }
 	void SetForceClose(bool forceClose) { m_forceClose = forceClose; }
 #ifndef DISABLE_TLS
-	bool StartTls(bool isClient, const char* certFile, const char* keyFile);
+	bool StartTls(bool isClient, const char* certFile, const char* keyFile, const char* host = nullptr);
 	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
 #endif
 	int FetchTotalBytesRead();

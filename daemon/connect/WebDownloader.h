@@ -89,6 +89,7 @@ private:
 	bool m_redirected;
 	bool m_gzip;
 	bool m_retry = true;
+	bool m_proxy = false;
 #ifndef DISABLE_TLS
 	unsigned int m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
 #endif
@@ -102,8 +103,10 @@ private:
 	void FreeConnection();
 	EStatus CheckResponse(const char* response);
 	EStatus CreateConnection(URL *url);
+	EStatus CreateProxyTunnel(URL *url);
 	void ParseFilename(const char* contentDisposition);
 	void SendHeaders(URL *url);
+	void SendProxyAuthorization();
 	EStatus DownloadHeaders();
 	EStatus DownloadBody();
 	void ParseRedirect(const char* location);

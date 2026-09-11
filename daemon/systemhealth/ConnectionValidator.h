@@ -112,6 +112,17 @@ private:
 	const Options& m_options;
 };
 
+class UrlProxyPortValidator : public Validator
+{
+public:
+	explicit UrlProxyPortValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::URLPROXYPORT; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
 class RemoteTimeoutValidator : public Validator
 {
 public:

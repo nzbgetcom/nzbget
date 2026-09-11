@@ -984,11 +984,12 @@ void Connection::PrintError(const char* errMsg)
 }
 
 #ifndef DISABLE_TLS
-bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFile)
+bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFile, const char* host)
 {
 	debug("Starting TLS");
 
-	m_tlsSocket = std::make_unique<TlsSocket>(m_socket, isClient, m_host.c_str(), certFile, keyFile, m_cipher.c_str(), m_certVerifLevel);
+	const char* tlsHost = host && *host ? host : m_host.c_str();
+	m_tlsSocket = std::make_unique<TlsSocket>(m_socket, isClient, tlsHost, certFile, keyFile, m_cipher.c_str(), m_certVerifLevel);
 	m_tlsSocket->SetSuppressErrors(m_suppressErrors);
 
 	return m_tlsSocket->Start();

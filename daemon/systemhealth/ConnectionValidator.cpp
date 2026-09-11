@@ -26,7 +26,7 @@ namespace SystemHealth::Connection
 {
 ConnectionValidator::ConnectionValidator(const Options& options) : m_options(options)
 {
-	m_validators.reserve(14);
+	m_validators.reserve(15);
 	m_validators.push_back(std::make_unique<ArticleRetriesValidator>(options));
 	m_validators.push_back(std::make_unique<ArticleIntervalValidator>(options));
 	m_validators.push_back(std::make_unique<ArticleTimeoutValidator>(options));
@@ -34,6 +34,7 @@ ConnectionValidator::ConnectionValidator(const Options& options) : m_options(opt
 	m_validators.push_back(std::make_unique<UrlRetriesValidator>(options));
 	m_validators.push_back(std::make_unique<UrlIntervalValidator>(options));
 	m_validators.push_back(std::make_unique<UrlTimeoutValidator>(options));
+	m_validators.push_back(std::make_unique<UrlProxyPortValidator>(options));
 	m_validators.push_back(std::make_unique<UrlConnectionsValidator>(options));
 	m_validators.push_back(std::make_unique<UrlForceValidator>(options));
 	m_validators.push_back(std::make_unique<RemoteTimeoutValidator>(options));
@@ -139,6 +140,24 @@ Status UrlTimeoutValidator::Validate() const
 			"'" + std::string(Options::URLTIMEOUT) + "' is set to " + std::to_string(val) +
 			" seconds. "
 			"RSS feeds and external URL fetches may fail if the remote server is slow");
+	}
+
+	return Status::Ok();
+}
+
+Status UrlProxyPortValidator::Validate() const
+{
+	const char* host = m_options.GetUrlProxyHost();
+	if (!host || !*host)
+	{
+		return Status::Ok();
+	}
+
+	int val = m_options.GetUrlProxyPort();
+	if (val < 1 || val > 65535)
+	{
+		return Status::Error("'" + std::string(Options::URLPROXYPORT) +
+			"' must be between 1 and 65535 when '" + std::string(Options::URLPROXYHOST) + "' is set");
 	}
 
 	return Status::Ok();

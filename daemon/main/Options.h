@@ -76,6 +76,11 @@ public:
 	static constexpr std::string_view ARTICLETIMEOUT = "ArticleTimeout";
 	static constexpr std::string_view ARTICLEREADCHUNKSIZE = "ArticleReadChunkSize";
 	static constexpr std::string_view URLTIMEOUT = "UrlTimeout";
+	static constexpr std::string_view URLPROXYHOST = "UrlProxyHost";
+	static constexpr std::string_view URLPROXYPORT = "UrlProxyPort";
+	static constexpr std::string_view URLPROXYUSERNAME = "UrlProxyUsername";
+	static constexpr std::string_view URLPROXYPASSWORD = "UrlProxyPassword";
+	static constexpr std::string_view URLPROXYBYPASS = "UrlProxyBypass";
 	static constexpr std::string_view REMOTETIMEOUT = "RemoteTimeout";
 	static constexpr std::string_view FLUSHQUEUE = "FlushQueue";
 	static constexpr std::string_view SYSTEMHEALTHCHECK = "SystemHealthCheck";
@@ -415,6 +420,11 @@ public:
 	int GetArticleTimeout() const { return m_articleTimeout; }
 	int GetArticleReadChunkSize() const { return m_articleReadChunkSize; }
 	int GetUrlTimeout() const { return m_urlTimeout; }
+	const char* GetUrlProxyHost() const { return m_urlProxyHost; }
+	int GetUrlProxyPort() const { return m_urlProxyPort; }
+	const char* GetUrlProxyUsername() const { return m_urlProxyUsername; }
+	const char* GetUrlProxyPassword() const { return m_urlProxyPassword; }
+	const char* GetUrlProxyBypass() const { return m_urlProxyBypass; }
 	int GetRemoteTimeout() const { return m_remoteTimeout; }
 	bool GetRawArticle() const { return m_rawArticle; }
 	bool GetSkipWrite() const { return m_skipWrite; }
@@ -603,6 +613,11 @@ private:
 	int m_articleTimeout = 0;
 	int m_articleReadChunkSize = 4;
 	int m_urlTimeout = 0;
+	CString m_urlProxyHost;
+	int m_urlProxyPort = 0;
+	CString m_urlProxyUsername;
+	CString m_urlProxyPassword;
+	CString m_urlProxyBypass;
 	int m_remoteTimeout = 0;
 	bool m_appendCategoryDir = false;
 	bool m_continuePartial = false;
