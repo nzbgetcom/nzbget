@@ -434,6 +434,14 @@ public:
 		Skipped
 	};
 
+	enum class PostDownloadRenamingStatus
+	{
+		None,
+		Failure,
+		Success,
+		Skipped
+	};
+
 	enum EDeleteStatus
 	{
 		dsNone,
@@ -577,6 +585,8 @@ public:
 	EMoveStatus GetMoveStatus() { return m_moveStatus; }
 	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
 	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
+	void SetPostDownloadRenamingStatus(PostDownloadRenamingStatus status) { m_postDownloadRenamingStatus = status; }
+	PostDownloadRenamingStatus GetPostDownloadRenamingStatus() { return m_postDownloadRenamingStatus; }
 	void SetMoveStatus(EMoveStatus moveStatus) { m_moveStatus = moveStatus; }
 	EDeleteStatus GetDeleteStatus() { return m_deleteStatus; }
 	void SetDeleteStatus(EDeleteStatus deleteStatus) { m_deleteStatus = deleteStatus; }
@@ -733,6 +743,7 @@ private:
 	ECleanupStatus m_cleanupStatus = csNone;
 	EMoveStatus m_moveStatus = msNone;
 	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
+	PostDownloadRenamingStatus m_postDownloadRenamingStatus = PostDownloadRenamingStatus::None;
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;
@@ -815,7 +826,8 @@ public:
 		ptMoving,
 		ptPostUnpackRenaming,
 		ptExecutingScript,
-		ptFinished
+		ptFinished,
+		ptPostDownloadRenaming
 	};
 
 	typedef std::vector<CString> ParredFiles;

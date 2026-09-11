@@ -316,6 +316,19 @@ BOOST_AUTO_TEST_CASE(IsSubtitleExtTest)
 	BOOST_CHECK(!FileTypes::IsSubtitleExt(""));
 }
 
+BOOST_AUTO_TEST_CASE(IsNfoExtTest)
+{
+	BOOST_CHECK(FileTypes::IsNfoExt(".nfo"));
+	BOOST_CHECK(FileTypes::IsNfoExt(".NFO"));
+	BOOST_CHECK(FileTypes::IsNfoExt(".info"));
+	BOOST_CHECK(FileTypes::IsNfoExt(".INFO"));
+
+	BOOST_CHECK(!FileTypes::IsNfoExt(".txt"));
+	BOOST_CHECK(!FileTypes::IsNfoExt(".mkv"));
+	BOOST_CHECK(!FileTypes::IsNfoExt(".rar"));
+	BOOST_CHECK(!FileTypes::IsNfoExt(""));
+}
+
 BOOST_AUTO_TEST_CASE(IsSampleStemTest)
 {
 	BOOST_CHECK(FileTypes::IsSampleStem("sample"));
