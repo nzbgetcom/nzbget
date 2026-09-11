@@ -183,40 +183,61 @@ namespace CollectionAnalyzer
 			return plan;
 		}
 
-		std::unordered_set<std::string> usedPaths;
+		std::vector<std::string> usedPaths;
 
 		auto PlanFileRename = [&](const FileEntry& entry, const std::string& newBasename) -> std::string {
 			std::string cleanBasename = FileSystem::SanitizePathSegment(newBasename);
 			if (cleanBasename.empty())
 			{
-				return fs::u8string(entry.path.stem());
+				return entry.stem;
 			}
-			fs::path targetDstPath = entry.path.parent_path() / fs::u8path(cleanBasename);
-			std::string srcStr = fs::u8string(entry.path);
-			std::string targetDst = fs::u8string(targetDstPath);
 
-			if (srcStr == targetDst)
+			if (entry.filename == cleanBasename)
 			{
-				usedPaths.insert(targetDst);
-				return fs::u8string(entry.path.stem());
+				usedPaths.push_back(fs::u8string(entry.path));
+				return entry.stem;
 			}
+
+			fs::path targetDstPath = entry.path.parent_path() / fs::u8path(cleanBasename);
+			std::string targetDst = fs::u8string(targetDstPath);
 
 			if (ignoreExt && Util::MatchFileExt(targetDst.c_str(), ignoreExt, ","))
 			{
-				return fs::u8string(entry.path.stem());
+				return entry.stem;
 			}
 
-			if (FileSystem::FileExists(targetDst.c_str()) || usedPaths.count(targetDst))
+			auto IsCollision = [&](const fs::path& p, const std::string& s) {
+				fs::error_code ec;
+				if (fs::exists(p, ec)) return true;
+				for (const auto& used : usedPaths)
+				{
+					if (Util::StrCaseCmp(used, s)) return true;
+				}
+				return false;
+			};
+
+			if (IsCollision(targetDstPath, targetDst))
 			{
-				std::string dirStr = fs::u8string(entry.path.parent_path());
-				targetDst = FileSystem::MakeUniqueFilename(dirStr.c_str(), cleanBasename.c_str()).Str();
-				targetDstPath = fs::u8path(targetDst);
-			}
-			usedPaths.insert(targetDst);
+				fs::path cleanPath = fs::u8path(cleanBasename);
+				std::string stem = fs::u8string(cleanPath.stem());
+				std::string ext = fs::u8string(cleanPath.extension());
+				const fs::path& parentDir = entry.path.parent_path();
 
-			const char* actualFinalBasename = FileSystem::BaseFileName(targetDst.c_str());
-			plan.actions.push_back({entry.path, targetDstPath, entry.filename, actualFinalBasename});
-			return fs::u8string(targetDstPath.stem());
+				int dupeNumber = 0;
+				do
+				{
+					dupeNumber++;
+					targetDstPath = parentDir / fs::u8path(stem + ".duplicate" + std::to_string(dupeNumber) + ext);
+					targetDst = fs::u8string(targetDstPath);
+				} while (IsCollision(targetDstPath, targetDst));
+			}
+
+			std::string finalStem = fs::u8string(targetDstPath.stem());
+			std::string finalBasename = fs::u8string(targetDstPath.filename());
+
+			usedPaths.push_back(std::move(targetDst));
+			plan.actions.push_back({entry.path, std::move(targetDstPath), entry.filename, std::move(finalBasename)});
+			return finalStem;
 		};
 
 		std::string cleanTargetName = FileSystem::SanitizePathSegment(targetName);
@@ -277,14 +298,23 @@ namespace CollectionAnalyzer
 			if (tag.size() >= MIN_LANG_TAG_LEN && tag.size() <= MAX_LANG_TAG_LEN &&
 				std::all_of(tag.begin(), tag.end(), [](unsigned char c) { return std::isalpha(c); }))
 			{
-				return std::string(baseName) + "." + std::string(tag) + std::string(subExt);
+				std::string result;
+				result.reserve(baseName.size() + 1 + tag.size() + subExt.size());
+				result.append(baseName).append(".").append(tag).append(subExt);
+				return result;
 			}
 		}
-		return std::string(baseName) + std::string(subExt);
+		std::string result;
+		result.reserve(baseName.size() + subExt.size());
+		result.append(baseName).append(subExt);
+		return result;
 	}
 
 	std::string ResolveSampleName(std::string_view baseName, std::string_view sampleExt)
 	{
-		return std::string(baseName) + "-sample" + std::string(sampleExt);
+		std::string result;
+		result.reserve(baseName.size() + 7 + sampleExt.size());
+		result.append(baseName).append("-sample").append(sampleExt);
+		return result;
 	}
 }
