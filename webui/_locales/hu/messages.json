@@ -992,6 +992,7 @@
   "status_password": "jelszó",
   "status_paused_cap": "Szüneteltetve",
   "status_pausing_cap": "szüneteltetés",
+  "status_post_download_renaming_cap": "Átnevezés letöltés után",
   "status_post_unpack_renaming_cap": "Átnevezés kicsomagolás után",
   "status_pp_failure": "pp-hiba",
   "status_pp_queued_cap": "pp-sorban áll",

@@ -62,10 +62,17 @@ namespace PostDownloadRenamer
 			dstDir = nzbInfo->GetDestDir() ? nzbInfo->GetDestDir() : "";
 		}
 
+		NzbInfo::PostDownloadRenamingStatus finalStatus = NzbInfo::PostDownloadRenamingStatus::Skipped;
+
+		auto Finish = [&]() {
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
+			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(finalStatus);
+			m_postInfo->SetWorking(false);
+		};
+
 		if (dstDir.empty())
 		{
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
@@ -78,24 +85,21 @@ namespace PostDownloadRenamer
 		if (plan.isDiscStructure)
 		{
 			PrintMessage(Message::mkInfo, "Skipping Post-download renaming: disc structure detected");
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
 		if (plan.isAmbiguousCollection)
 		{
 			PrintMessage(Message::mkInfo, "Skipping Post-download renaming: ambiguous multi-file collection detected");
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
 		if (!plan.canRename)
 		{
 			PrintMessage(Message::mkInfo, "No qualifying media file found for Post-download renaming");
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
@@ -111,8 +115,7 @@ namespace PostDownloadRenamer
 			{
 				PrintMessage(Message::mkInfo, "No files needed renaming for %s", targetName.c_str());
 			}
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
@@ -146,32 +149,27 @@ namespace PostDownloadRenamer
 		if (IsStopped())
 		{
 			PrintMessage(Message::mkWarning, "%s cancelled", *infoName);
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
+			Finish();
 			return;
 		}
 
 		if (anyFailed)
 		{
 			PrintMessage(Message::mkError, "%s finished with errors", *infoName);
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Failure;
 		}
 		else if (anyRenamed)
 		{
 			PrintMessage(Message::mkInfo, "%s successful", *infoName);
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Success;
 		}
 		else
 		{
 			PrintMessage(Message::mkInfo, "No files needed renaming for %s", *infoName);
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Skipped;
 		}
 
-		{
-			GuardedDownloadQueue guard = DownloadQueue::Guard();
-			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(
-				anyFailed ? NzbInfo::PostDownloadRenamingStatus::Failure :
-				anyRenamed ? NzbInfo::PostDownloadRenamingStatus::Success :
-				NzbInfo::PostDownloadRenamingStatus::Skipped);
-			m_postInfo->SetWorking(false);
-		}
+		Finish();
 	}
 
 	void Controller::AddMessage(Message::EKind kind, const char* text)

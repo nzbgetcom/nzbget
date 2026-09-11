@@ -3134,6 +3134,10 @@
     "message": "moving",
     "description": "Capitalized status indicating an item is being moved."
   },
+  "status_post_download_renaming_cap": {
+    "message": "post-download-renaming",
+    "description": "Status: renaming files after download. Translate all parts ('post', 'download', 'renaming'). Use a natural phrase (e.g., 'Renaming after download'). Hyphens are not mandatory in translation."
+  },
   "status_post_unpack_renaming_cap": {
     "message": "post-unpack-renaming",
     "description": "Status: renaming files after extraction. Translate all parts ('post', 'unpack', 'renaming'). Use a natural phrase (e.g., 'Renaming after unpack'). Hyphens are not mandatory in translation."

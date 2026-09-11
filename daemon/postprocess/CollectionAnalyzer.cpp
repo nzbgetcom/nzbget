@@ -185,44 +185,51 @@ namespace CollectionAnalyzer
 
 		std::unordered_set<std::string> usedPaths;
 
-		auto PlanFileRename = [&](const FileEntry& entry, const std::string& newBasename) {
-			fs::path targetDstPath = entry.path.parent_path() / fs::u8path(newBasename);
+		auto PlanFileRename = [&](const FileEntry& entry, const std::string& newBasename) -> std::string {
+			std::string cleanBasename = FileSystem::SanitizePathSegment(newBasename);
+			if (cleanBasename.empty())
+			{
+				return fs::u8string(entry.path.stem());
+			}
+			fs::path targetDstPath = entry.path.parent_path() / fs::u8path(cleanBasename);
 			std::string srcStr = fs::u8string(entry.path);
 			std::string targetDst = fs::u8string(targetDstPath);
 
 			if (srcStr == targetDst)
 			{
 				usedPaths.insert(targetDst);
-				return;
+				return fs::u8string(entry.path.stem());
 			}
 
 			if (ignoreExt && Util::MatchFileExt(targetDst.c_str(), ignoreExt, ","))
 			{
-				return;
+				return fs::u8string(entry.path.stem());
 			}
 
 			if (FileSystem::FileExists(targetDst.c_str()) || usedPaths.count(targetDst))
 			{
 				std::string dirStr = fs::u8string(entry.path.parent_path());
-				targetDst = FileSystem::MakeUniqueFilename(dirStr.c_str(), newBasename.c_str()).Str();
+				targetDst = FileSystem::MakeUniqueFilename(dirStr.c_str(), cleanBasename.c_str()).Str();
 				targetDstPath = fs::u8path(targetDst);
 			}
 			usedPaths.insert(targetDst);
 
 			const char* actualFinalBasename = FileSystem::BaseFileName(targetDst.c_str());
-			plan.actions.push_back({entry.path, std::move(targetDstPath), entry.filename, actualFinalBasename});
+			plan.actions.push_back({entry.path, targetDstPath, entry.filename, actualFinalBasename});
+			return fs::u8string(targetDstPath.stem());
 		};
 
-		bool canUseTargetName = !targetName.empty() && targetName != "nzb" &&
-			!Deobfuscation::IsExcessivelyObfuscated(targetName);
+		std::string cleanTargetName = FileSystem::SanitizePathSegment(targetName);
+		bool canUseTargetName = !cleanTargetName.empty() && cleanTargetName != "nzb" &&
+			!Deobfuscation::IsExcessivelyObfuscated(cleanTargetName);
 
-		std::string videoBaseName = std::string(targetName);
+		std::string videoBaseName = cleanTargetName;
 		if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainVideo.filename))
 		{
 			if (canUseTargetName)
 			{
 				std::string newVideoName = videoBaseName + analysis.mainVideo.ext;
-				PlanFileRename(analysis.mainVideo, newVideoName);
+				videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
 			}
 			else
 			{
@@ -259,12 +266,15 @@ namespace CollectionAnalyzer
 
 	std::string ResolveSubtitleName(std::string_view baseName, std::string_view subStem, std::string_view subExt)
 	{
+		constexpr size_t MIN_LANG_TAG_LEN = 2; // ISO 639-1 codes
+		constexpr size_t MAX_LANG_TAG_LEN = 4; // ISO 639-2 codes plus margin
+
 		// Detect language tag at end of stem: e.g. "12345.en" -> ".en", "sub.eng" -> ".eng"
 		size_t dotPos = subStem.rfind('.');
 		if (dotPos != std::string_view::npos && dotPos > 0)
 		{
 			std::string_view tag = subStem.substr(dotPos + 1);
-			if (tag.size() >= 2 && tag.size() <= 4 &&
+			if (tag.size() >= MIN_LANG_TAG_LEN && tag.size() <= MAX_LANG_TAG_LEN &&
 				std::all_of(tag.begin(), tag.end(), [](unsigned char c) { return std::isalpha(c); }))
 			{
 				return std::string(baseName) + "." + std::string(tag) + std::string(subExt);

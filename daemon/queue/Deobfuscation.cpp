@@ -36,6 +36,7 @@ namespace
 	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 24;
 	constexpr size_t MIN_NUMERIC_HASH_LEN = 16;
 	constexpr size_t MIN_INTERIOR_CAPS_COUNT = 3;
+	constexpr size_t MIN_CASE_TRANSITIONS_FOR_HASH = 3;
 
 	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- ]+)" };
 	static const std::regex EXCLUDED_MULTIPART_REGEX{ 
@@ -187,6 +188,17 @@ namespace
 		return false;
 	}
 
+	constexpr bool IsVowel(char c)
+	{
+		return c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y' ||
+			c == 'A' || c == 'E' || c == 'I' || c == 'O' || c == 'U' || c == 'Y';
+	}
+
+	size_t CountVowels(std::string_view str)
+	{
+		return static_cast<size_t>(std::count_if(str.begin(), str.end(), IsVowel));
+	}
+
 	bool LooksLikeHashBlob(std::string_view tok)
 	{
 		if (tok.empty()) return true;
@@ -216,12 +228,8 @@ namespace
 		// 3. Whitelist short all-caps movie/show titles up to 15 chars with plausible vowels (e.g. INTERSTELLAR, OPPENHEIMER)
 		if (tok.size() <= MAX_MOVIE_TITLE_LEN && alpha > 0 && digits == 0 && uppers == alpha)
 		{
-			auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
-				int l = std::tolower(static_cast<unsigned char>(c));
-				return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
-			}));
 			// Allow short acronyms <= 3 chars (e.g. "TV", "DL", "HDR") or words with >= 20% vowels
-			if (tok.size() <= 3 || vowels * 5 >= tok.size())
+			if (tok.size() <= 3 || CountVowels(tok) * 5 >= tok.size())
 				return false;
 		}
 
@@ -231,11 +239,7 @@ namespace
 		{
 			if (uppers == alpha)
 			{
-				auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
-					int l = std::tolower(static_cast<unsigned char>(c));
-					return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u' || l == 'y';
-				}));
-				if (vowels == 0) return true;
+				if (CountVowels(tok) == 0) return true;
 			}
 			else
 			{
@@ -249,7 +253,7 @@ namespace
 						++caseTransitions;
 					}
 				}
-				if (caseTransitions >= 3) return true;
+				if (caseTransitions >= MIN_CASE_TRANSITIONS_FOR_HASH) return true;
 			}
 		}
 
@@ -257,11 +261,7 @@ namespace
 		if (tok.size() >= MIN_ALPHA_RUN_HASH_LEN && alpha == tok.size() &&
 			(lowers == alpha || uppers == alpha))
 		{
-			auto vowels = static_cast<size_t>(std::count_if(tok.begin(), tok.end(), [](char c) {
-				int l = std::tolower(static_cast<unsigned char>(c));
-				return l == 'a' || l == 'e' || l == 'i' || l == 'o' || l == 'u';
-			}));
-			if (vowels * 5 < tok.size())
+			if (CountVowels(tok) * 5 < tok.size())
 				return true;
 		}
 		return false;
