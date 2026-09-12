@@ -108,3 +108,26 @@ python3 harness.py --nzbget <bin> --target {local|adb} \
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0
 only if every selected scenario passes.
+
+## Unavailable archive donors
+
+```sh
+python3 archive_stall_test.py --nzbget /path/to/nzbget --keep
+```
+
+This separate regression suite requires a local `7z`/`7za`/`7zr`/`7zz`. It
+creates real compressed archives split over three volumes and hundreds of
+NNTP articles, and captures actual `BODY` requests from an isolated nserv.
+The four scenarios cover an entirely unavailable donor, a donor with an
+internal missing article, repeated entries for the same unavailable posting
+followed by a healthy donor, and the same encrypted posting retried with a
+corrected password. Use `--scenario <name>` to select a case:
+`all_missing`, `missing_middle`, `repeated_then_healthy`, or `password_retry`.
+
+The failed-donor cases bound requests well below a complete first volume,
+preserve every target byte and zero recovery counters, and require cleanup
+of temporary archive directories. Successful recovery must reproduce the
+original payload byte for byte. Public RPC progress labels must say
+`Downloading duplicate` while retrieving articles; incomplete archives must
+never reach `Decompressing duplicate`. Results, request captures, progress
+labels and history are saved with `--keep` or whenever a case fails.

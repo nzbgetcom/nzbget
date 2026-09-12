@@ -556,6 +556,30 @@ BOOST_AUTO_TEST_CASE(SelectExtractedInnerTest)
 	fs::remove_all(tempDir, ec);
 }
 
+BOOST_AUTO_TEST_CASE(DonorPostingIdentityPreservesRepairAlternativesTest)
+{
+	NzbInfo first;
+	NzbInfo copy;
+	first.SetQueuedFilename("release.nzb.2.queued");
+	copy.SetQueuedFilename("release.nzb.8.queued");
+	first.GetFileList()->Add(BuildDonorFile("movie.7z", {500, 500}), false);
+	copy.GetFileList()->Add(BuildDonorFile("movie.7z", {500, 500}), false);
+	const std::string original = DupeStreamRepair::BuildDonorKey(&first, "");
+	BOOST_CHECK_EQUAL(original, DupeStreamRepair::BuildDonorKey(&copy, ""));
+
+	// The same posting with corrected archive credentials remains useful.
+	BOOST_CHECK(original != DupeStreamRepair::BuildDonorKey(&copy, "corrected-password"));
+	FileInfo* member = copy.GetFileList()->front().get();
+	member->GetGroups()->emplace_back("alt.binaries.other");
+	BOOST_CHECK(original != DupeStreamRepair::BuildDonorKey(&copy, ""));
+	member->GetGroups()->clear();
+	BOOST_CHECK_EQUAL(original, DupeStreamRepair::BuildDonorKey(&copy, ""));
+
+	// A repost with a new article ID must still be tried for missing bytes.
+	member->GetArticles()->front()->SetMessageId("replacement@example.com");
+	BOOST_CHECK(original != DupeStreamRepair::BuildDonorKey(&copy, ""));
+}
+
 BOOST_AUTO_TEST_CASE(ExceedsDecompressCapTest)
 {
 	const int64 Max = DupeStreamRepair::MaxDecompressBytes;

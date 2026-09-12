@@ -133,6 +133,12 @@ public:
 	static bool ExceedsDecompressCap(int64 totalBytes, int64 addBytes,
 		int64 totalExtent, int64 addExtent);
 
+	/* Exact, in-memory identity of a parsed donor's repair inputs. Includes
+	 * groups, archive names, article geometry and password so saved copies of
+	 * one posting can be skipped without hiding useful alternate metadata.
+	 * Contains the password: never persist or log this key. */
+	static std::string BuildDonorKey(NzbInfo* donorNzb, const char* password);
+
 private:
 	static bool RangesIntersect(const StreamRange& range1, const StreamRange& range2)
 	{

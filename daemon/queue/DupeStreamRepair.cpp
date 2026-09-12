@@ -520,3 +520,38 @@ bool DupeStreamRepair::ExceedsDecompressCap(int64 totalBytes, int64 addBytes,
 	return totalBytes + addBytes > MaxDecompressBytes ||
 		totalExtent + addExtent > MaxDecompressBytes;
 }
+
+std::string DupeStreamRepair::BuildDonorKey(NzbInfo* donorNzb, const char* password)
+{
+	std::string key;
+	// Length-prefix every field: neither separator characters in names nor a
+	// hash collision may cause a different donor to be discarded. Preserve
+	// parser order because candidate and newsgroup selection can depend on it.
+	auto append = [&key](const std::string& value)
+	{
+		key += std::to_string(value.size());
+		key += ':';
+		key += value;
+	};
+	append(password ? password : "");
+	append(std::to_string(donorNzb->GetFileList()->size()));
+	for (FileInfo* file : donorNzb->GetFileList())
+	{
+		append(file->GetFilename());
+		append(std::to_string(file->GetSize()));
+		append(file->GetParFile() ? "par" : "data");
+		append(std::to_string(file->GetGroups()->size()));
+		for (const CString& group : *file->GetGroups())
+		{
+			append(*group);
+		}
+		append(std::to_string(file->GetArticles()->size()));
+		for (const std::unique_ptr<ArticleInfo>& article : *file->GetArticles())
+		{
+			append(std::to_string(article->GetPartNumber()));
+			append(std::to_string(article->GetSize()));
+			append(article->GetMessageId());
+		}
+	}
+	return key;
+}

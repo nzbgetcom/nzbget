@@ -312,7 +312,7 @@ private:
 		TargetSetFiles& targetFiles, std::vector<RepairTarget>& targets,
 		const std::vector<int>& memberTargets, const std::vector<SetMember>& setMembers);
 	bool MaterializeDonorSet(NzbInfo* donorNzb, const std::vector<SetMember>& donorMembers,
-		const MemberSet& set, const char* tempDir, int64& totalBytes);
+		const MemberSet& set, const char* tempDir, const char* donorName, int64& totalBytes);
 	bool VerifyDonorInnerFile(RepairSetData& repairSet, DiskFile& donorInner,
 		int64 donorInnerSize, TargetSetFiles& targetFiles);
 	int64 PatchFromDonorInnerFile(RepairSetData& repairSet, DiskFile& donorInner,

@@ -750,6 +750,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors)
 {
 	m_batchFetcher.SetWorkerCount(m_liveMode ? 0 : DupeStreamRepair::StreamFetchWorkers);
+	std::set<std::string> triedPostings;
 
 	for (DonorSource& donor : donors)
 	{
@@ -775,12 +776,20 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		{
 			continue;
 		}
+		if (!triedPostings.insert(DupeStreamRepair::BuildDonorKey(
+			donorNzb.get(), donor.Password)).second)
+		{
+			PrintMessage(Message::mkInfo,
+				"Skipping another copy of duplicate posting %s", *donor.InfoName);
+			continue;
+		}
 
 		if (m_postInfo)
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 			m_postInfo->SetProgressLabel(BString<1024>(
 				"Repairing from duplicate %s", *donor.InfoName));
+			m_postInfo->SetStageProgress(0);
 		}
 
 		int consecutiveFailures = 0;
@@ -1259,6 +1268,7 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 	// (target set x donor set) for the whole pass - materialize+extract is
 	// far too heavy to ever repeat against the same pair
 	std::set<std::pair<const RepairSetData*, std::string>> decompressTried;
+	std::set<std::string> triedPostings;
 
 	for (DonorSource& donor : donors)
 	{
@@ -1282,12 +1292,20 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 		{
 			continue;
 		}
+		if (!triedPostings.insert(DupeStreamRepair::BuildDonorKey(
+			donorNzb.get(), donor.Password)).second)
+		{
+			PrintMessage(Message::mkInfo,
+				"Skipping another copy of duplicate posting %s", *donor.InfoName);
+			continue;
+		}
 
 		if (m_postInfo)
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 			m_postInfo->SetProgressLabel(BString<1024>(
 				"Cross-packing repair from duplicate %s", *donor.InfoName));
+			m_postInfo->SetStageProgress(0);
 		}
 
 		DonorSetSources donorSources(m_fetcher, donorNzb.get());
@@ -2218,11 +2236,13 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		m_postInfo->SetProgressLabel(BString<1024>(
-			"Decompressing duplicate %s", *donor.InfoName));
+			"Downloading duplicate %s", *donor.InfoName));
+		m_postInfo->SetStageProgress(0);
 	}
 
 	int64 totalBytes = 0;
-	if (!MaterializeDonorSet(donorNzb, donorMembers, donorSet, tempDir, totalBytes))
+	if (!MaterializeDonorSet(donorNzb, donorMembers, donorSet, tempDir,
+		donor.InfoName, totalBytes))
 	{
 		PrintMessage(Message::mkInfo,
 			"Skipping decompression of %s of duplicate %s: donor not materializable (stopped, incomplete, over the size cap or disk error)",
@@ -2232,6 +2252,17 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 
 	BString<1024> archivePath("%s%c%s", *tempDir, PATH_SEPARATOR, mainVolume);
 	BString<1024> extractDir("%s%cextracted", *tempDir, PATH_SEPARATOR);
+	if (IsStopped())
+	{
+		return;
+	}
+	if (m_postInfo)
+	{
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		m_postInfo->SetProgressLabel(BString<1024>(
+			"Decompressing duplicate %s", *donor.InfoName));
+		m_postInfo->SetStageProgress(0);
+	}
 
 	// the donor's own password unlocks its encrypted archive: passed to the
 	// extractor, NEVER logged. MakeExtractor validates the configured tool
@@ -2298,14 +2329,15 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 }
 
 /* fetches every article of every member of `set` and writes the decoded bytes
- * at their declared offsets into tempDir/<member basename>. A member that
- * misses some of its own articles still materializes what it has (extraction
- * then typically fails and degrades to a skip). false = do not extract:
+ * at their declared offsets into tempDir/<member basename>. Extraction needs
+ * complete donor members, so the first unavailable or invalid article aborts
+ * this donor instead of spending hours walking the rest of a missing posting.
+ * false = do not extract:
  * stopped, an article-less member, over MaxDecompressBytes, or a disk error.
  * Runs UNLOCKED - fetches and disk I/O never hold the queue lock. */
 bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 	const std::vector<SetMember>& donorMembers, const MemberSet& set,
-	const char* tempDir, int64& totalBytes)
+	const char* tempDir, const char* donorName, int64& totalBytes)
 {
 	// index-aligned with donorMembers (DonorSetSources::BuildMembers walks
 	// the same list in the same order)
@@ -2314,6 +2346,17 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 	{
 		files.push_back(fileInfo);
 	}
+	int64 totalArticles = 0;
+	for (int memberIndex : set.Members)
+	{
+		if (memberIndex < 0 || memberIndex >= (int)files.size() ||
+			files[memberIndex]->GetArticles()->empty())
+		{
+			return false;
+		}
+		totalArticles += (int64)files[memberIndex]->GetArticles()->size();
+	}
+	int64 completedArticles = 0;
 
 	// per-attempt (whole donor set) accounting: totalBytes bounds the decoded
 	// bytes actually written; totalExtent bounds the on-disk file EXTENTS - N
@@ -2321,18 +2364,12 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 	// otherwise seek-write up to N x MaxDecompressBytes of zero-fill on a
 	// non-sparse filesystem before we ever try to extract
 	int64 totalExtent = 0;
+	int memberNumber = 0;
 
 	for (int memberIndex : set.Members)
 	{
-		if (memberIndex < 0 || memberIndex >= (int)files.size())
-		{
-			return false;
-		}
+		memberNumber++;
 		FileInfo* donorFile = files[memberIndex];
-		if (donorFile->GetArticles()->empty())
-		{
-			return false;	// nothing to materialize for this volume
-		}
 
 		BString<1024> path("%s%c%s", tempDir, PATH_SEPARATOR,
 			donorMembers[memberIndex].Name.c_str());
@@ -2346,6 +2383,22 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 		}
 
 		int64 memberExtent = 0;	// this member's highest write end (its real size)
+		int64 memberSize = -1;
+		StreamRangeList memberHoles;
+		int deliveredArticles = 0;
+		auto updateProgress = [&]()
+		{
+			if (m_postInfo)
+			{
+				GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+				m_postInfo->SetProgressLabel(BString<1024>(
+					"Downloading duplicate %s (volume %i/%i, article %i/%i, %.1f MB)",
+					donorName, memberNumber, (int)set.Members.size(), deliveredArticles,
+					(int)donorFile->GetArticles()->size(), totalBytes / 1024.0 / 1024.0));
+				m_postInfo->SetStageProgress((int)(completedArticles * 1000 / totalArticles));
+			}
+		};
+		updateProgress();
 		// requests OWN a shared copy of the group list: donorNzb is destroyed
 		// per donor iteration while cancelled workers may still be fetching
 		// (same pattern as VerifyDonor/PatchFromDonor after the UAF fix)
@@ -2371,9 +2424,21 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 				return false;
 			}
 			if (!fetched.Success || fetched.Data.empty() || fetched.Offset < 0 ||
-				fetched.Offset + (int64)fetched.Data.size() > fetched.FileSize)
+				fetched.FileSize <= 0 || fetched.Offset > fetched.FileSize ||
+				(int64)fetched.Data.size() > fetched.FileSize - fetched.Offset ||
+				(memberSize >= 0 && fetched.FileSize != memberSize))
 			{
-				continue;	// the donor misses this article - the extractor decides
+				m_batchFetcher.CancelRemaining();
+				PrintMessage(Message::mkInfo,
+					"Stopping download of duplicate %s: article %i of %i in %s is unavailable or invalid",
+					donorName, deliveredArticles + 1, (int)donorFile->GetArticles()->size(),
+					donorMembers[memberIndex].Name.c_str());
+				return false;
+			}
+			if (memberSize < 0)
+			{
+				memberSize = fetched.FileSize;
+				memberHoles.push_back({0, memberSize});
 			}
 			int64 writeEnd = fetched.Offset + (int64)fetched.Data.size();
 			// the caps bound BOTH the accumulated decoded bytes AND the
@@ -2401,6 +2466,11 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			}
 			totalBytes += fetched.Data.size();
 			memberExtent = std::max(memberExtent, writeEnd);
+			DupeStreamRepair::SubtractCovered(memberHoles,
+				{fetched.Offset, (int64)fetched.Data.size()});
+			deliveredArticles++;
+			completedArticles++;
+			updateProgress();
 		}
 		// a stop ends Next() before the in-loop guard can fire, so re-check
 		// here: materialization must fail-fast on stop, never fall through to
@@ -2408,6 +2478,14 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 		if (IsStopped())
 		{
 			m_batchFetcher.CancelRemaining();
+			return false;
+		}
+		if (memberSize < 0 || !memberHoles.empty())
+		{
+			m_batchFetcher.CancelRemaining();
+			PrintMessage(Message::mkInfo,
+				"Stopping download of duplicate %s: %s has missing ranges after all listed articles",
+				donorName, donorMembers[memberIndex].Name.c_str());
 			return false;
 		}
 		totalExtent += memberExtent;
