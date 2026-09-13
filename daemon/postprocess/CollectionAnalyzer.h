@@ -42,6 +42,7 @@ namespace CollectionAnalyzer
 	{
 		FileEntry mainVideo;
 		FileEntry sampleVideo;
+		FileEntry mainBook;
 		std::vector<FileEntry> subtitles;
 		std::vector<FileEntry> nfos;
 		std::vector<FileEntry> otherFiles;
@@ -51,7 +52,8 @@ namespace CollectionAnalyzer
 
 		bool CanRename() const
 		{
-			return !mainVideo.filename.empty() && !isAmbiguousCollection && !isDiscStructure;
+			return (!mainVideo.filename.empty() || !mainBook.filename.empty()) &&
+			       !isAmbiguousCollection && !isDiscStructure;
 		}
 	};
 

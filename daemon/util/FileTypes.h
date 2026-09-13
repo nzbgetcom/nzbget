@@ -22,6 +22,9 @@
 #define FILETYPES_H
 
 #include <string_view>
+#include <span>
+#include <cstdint>
+#include <filesystem>
 
 /**
  * @brief Centralized utility functions for classifying file extensions.
@@ -46,11 +49,16 @@ namespace FileTypes
 	bool IsAudioExt(std::string_view ext);
 	bool IsSubtitleExt(std::string_view ext);
 	bool IsNfoExt(std::string_view ext);
+	bool IsBookExt(std::string_view ext);
+	bool IsImageExt(std::string_view ext);
 	bool IsSampleStem(std::string_view stem);
 	bool IsSevenZipFile(std::string_view filename);
 	bool IsRarFile(std::string_view filename);
 	bool IsArchiveFile(std::string_view filename);
 	bool IsSampleFile(std::string_view filename);
+
+	std::string_view SniffExtension(std::span<const uint8_t> header);
+	std::string_view SniffExtension(const std::filesystem::path& filePath);
 }
 
 #endif
