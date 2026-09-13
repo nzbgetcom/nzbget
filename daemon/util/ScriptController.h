@@ -109,7 +109,7 @@ private:
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
 #ifdef WIN32
-	Mutex m_processMutex;
+	std::mutex m_processMutex;
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
 #else

@@ -174,7 +174,7 @@ ScriptController::~ScriptController()
 #ifdef WIN32
 void ScriptController::SetProcess(HANDLE processId, DWORD dwProcessId)
 {
-	Guard guard(m_processMutex);
+	std::lock_guard guard(m_processMutex);
 	if (m_processId)
 	{
 		CloseHandle(m_processId);
@@ -708,7 +708,7 @@ void ScriptController::Terminate()
 	m_terminated = true;
 
 #ifdef WIN32
-	Guard guard(m_processMutex);
+	std::lock_guard guard(m_processMutex);
 	BOOL ok = TerminateProcess(m_processId, -1) || m_completed;
 #else
 	pid_t killId = m_processId;
@@ -740,7 +740,7 @@ void ScriptController::TerminateAll()
 		bool hasProcess;
 #ifdef WIN32
 		{
-			Guard processGuard(script->m_processMutex);
+			std::lock_guard processGuard(script->m_processMutex);
 			hasProcess = script->m_processId != 0;
 		}
 #else
@@ -767,7 +767,7 @@ bool ScriptController::Break()
 	debug("Sending break signal to %s", *m_infoName);
 
 #ifdef WIN32
-	Guard guard(m_processMutex);
+	std::lock_guard guard(m_processMutex);
 	BOOL ok = m_processId && GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_dwProcessId);
 #else
 	bool ok = kill(m_processId, SIGINT) == 0;
