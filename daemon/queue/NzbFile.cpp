@@ -292,6 +292,23 @@ void NzbFile::ProcessFiles()
 	{
 		ReadPasswordFromFilename();
 	}
+
+	m_metaName = FileSystem::SanitizePathSegment(m_metaName);
+	m_metaTitle = FileSystem::SanitizePathSegment(m_metaTitle);
+
+	if (m_metaName.empty() && !m_metaTitle.empty())
+	{
+		m_metaName = m_metaTitle;
+	}
+
+	// Sanitize control characters (\r, \n, \t, etc.) to prevent
+	// line desynchronization in the line-based DiskState file format.
+	Util::SanitizeLine(m_category);
+
+	if (!m_metaName.empty() && m_nzbInfo)
+	{
+		m_nzbInfo->SetMetaName(m_metaName);
+	}
 }
 /*
 * Attempt to Read the Password from the Filename encoded in {{ Bracets }}
@@ -416,13 +433,27 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 	}
 	else if (!strcmp("meta", name))
 	{
+		m_hasPassword = false;
+		m_hasCategory = false;
+		m_hasName = false;
+		m_hasTitle = false;
+
 		if (!atts)
 		{
 			m_nzbInfo->AddMessage(Message::mkWarning, tagAttrMessage);
 			return;
 		}
-		m_hasPassword = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("password", atts[1]);
-		m_hasCategory = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("category", atts[1]);
+
+		for (int i = 0; atts[i] && atts[i + 1]; i += 2)
+		{
+			if (!strcasecmp("type", atts[i]))
+			{
+				if (!strcasecmp("password", atts[i + 1])) m_hasPassword = true;
+				else if (!strcasecmp("category", atts[i + 1])) m_hasCategory = true;
+				else if (!strcasecmp("name", atts[i + 1])) m_hasName = true;
+				else if (!strcasecmp("title", atts[i + 1])) m_hasTitle = true;
+			}
+		}
 	}
 }
 
@@ -465,6 +496,14 @@ void NzbFile::Parse_EndElement(const char *name)
 	else if (!strcmp("meta", name) && m_hasCategory)
 	{
 		m_category = m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasName)
+	{
+		m_metaName = m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasTitle)
+	{
+		m_metaTitle = m_tagContent;
 	}
 
 	m_currentElement.clear();

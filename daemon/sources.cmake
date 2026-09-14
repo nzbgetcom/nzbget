@@ -63,6 +63,8 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostDownloadRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/CollectionAnalyzer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp

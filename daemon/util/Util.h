@@ -110,6 +110,13 @@ public:
 	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
 	static void Trim(std::string& str);
+	static constexpr bool IsControlChar(char c) noexcept
+	{
+		constexpr unsigned char ASCII_SPACE = 32;
+		constexpr unsigned char ASCII_DEL = 127;
+		return static_cast<unsigned char>(c) < ASCII_SPACE || static_cast<unsigned char>(c) == ASCII_DEL;
+	}
+	static void SanitizeLine(std::string& str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);
 	static bool EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive);

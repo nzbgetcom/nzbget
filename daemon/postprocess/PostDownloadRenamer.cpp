@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -20,14 +20,14 @@
 
 #include "nzbget.h"
 
-#include "PostUnpackRenamer.h"
+#include "PostDownloadRenamer.h"
 #include "CollectionAnalyzer.h"
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 #include "Util.h"
 #include "Options.h"
 
-namespace PostUnpackRenamer
+namespace PostDownloadRenamer
 {
 	void Controller::StartJob(PostInfo* postInfo)
 	{
@@ -35,7 +35,7 @@ namespace PostUnpackRenamer
 
 		if (!controller)
 		{
-			error("Failed to allocate memory for PostUnpackRenamer::Controller");
+			error("Failed to allocate memory for PostDownloadRenamer::Controller");
 			return;
 		}
 
@@ -62,11 +62,11 @@ namespace PostUnpackRenamer
 			dstDir = nzbInfo->GetDestDir() ? nzbInfo->GetDestDir() : "";
 		}
 
-		NzbInfo::PostUnpackRenamingStatus finalStatus = NzbInfo::PostUnpackRenamingStatus::Skipped;
+		NzbInfo::PostDownloadRenamingStatus finalStatus = NzbInfo::PostDownloadRenamingStatus::Skipped;
 
 		auto Finish = [&]() {
 			GuardedDownloadQueue guard = DownloadQueue::Guard();
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(finalStatus);
+			m_postInfo->GetNzbInfo()->SetPostDownloadRenamingStatus(finalStatus);
 			m_postInfo->SetWorking(false);
 		};
 
@@ -76,7 +76,7 @@ namespace PostUnpackRenamer
 			return;
 		}
 
-		BString<1024> infoName("Post-unpack renaming for %s", targetName.c_str());
+		BString<1024> infoName("Post-download renaming for %s", targetName.c_str());
 		SetInfoName(*infoName);
 
 		CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
@@ -84,21 +84,21 @@ namespace PostUnpackRenamer
 
 		if (plan.isDiscStructure)
 		{
-			PrintMessage(Message::mkInfo, "Skipping Post-unpack renaming: disc structure detected");
+			PrintMessage(Message::mkInfo, "Skipping Post-download renaming: disc structure detected");
 			Finish();
 			return;
 		}
 
 		if (plan.isAmbiguousCollection)
 		{
-			PrintMessage(Message::mkInfo, "Skipping Post-unpack renaming: ambiguous multi-file collection detected");
+			PrintMessage(Message::mkInfo, "Skipping Post-download renaming: ambiguous multi-file collection detected");
 			Finish();
 			return;
 		}
 
 		if (!plan.canRename)
 		{
-			PrintMessage(Message::mkInfo, "No qualifying media file found for Post-unpack renaming");
+			PrintMessage(Message::mkInfo, "No qualifying media file found for Post-download renaming");
 			Finish();
 			return;
 		}
@@ -108,7 +108,7 @@ namespace PostUnpackRenamer
 			if (plan.targetNameObfuscated)
 			{
 				PrintMessage(Message::mkWarning,
-					"Skipping Post-unpack renaming. Obfuscated files found, but NZB filename %s is also obfuscated and no clean metadata was provided.",
+					"Skipping Post-download renaming. Obfuscated files found, but NZB filename %s is also obfuscated and no clean metadata was provided.",
 					targetName.c_str());
 			}
 			else
@@ -121,6 +121,7 @@ namespace PostUnpackRenamer
 
 		bool anyRenamed = false;
 		bool anyFailed = false;
+		NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
 
 		for (const auto& action : plan.actions)
 		{
@@ -133,7 +134,7 @@ namespace PostUnpackRenamer
 				PrintMessage(Message::mkInfo, "Renamed %s to %s", action.oldFilename.c_str(), action.newFilename.c_str());
 				{
 					GuardedDownloadQueue guard = DownloadQueue::Guard();
-					m_postInfo->GetNzbInfo()->RenameCompletedFile(action.oldFilename.c_str(), action.newFilename.c_str());
+					nzbInfo->RenameCompletedFile(action.oldFilename.c_str(), action.newFilename.c_str());
 				}
 				anyRenamed = true;
 			}
@@ -155,17 +156,17 @@ namespace PostUnpackRenamer
 		if (anyFailed)
 		{
 			PrintMessage(Message::mkError, "%s finished with errors", *infoName);
-			finalStatus = NzbInfo::PostUnpackRenamingStatus::Failure;
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Failure;
 		}
 		else if (anyRenamed)
 		{
 			PrintMessage(Message::mkInfo, "%s successful", *infoName);
-			finalStatus = NzbInfo::PostUnpackRenamingStatus::Success;
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Success;
 		}
 		else
 		{
 			PrintMessage(Message::mkInfo, "No files needed renaming for %s", *infoName);
-			finalStatus = NzbInfo::PostUnpackRenamingStatus::Skipped;
+			finalStatus = NzbInfo::PostDownloadRenamingStatus::Skipped;
 		}
 
 		Finish();

@@ -154,18 +154,28 @@ BOOST_AUTO_TEST_CASE(WantServerTest)
 {
 	ServerPool pool;
 	AddTestServer(&pool, 1, true, 0, false, 0, 2);
+	// decoys: a spare connection on the same level and on the next level
 	AddTestServer(&pool, 2, true, 0, false, 0, 1);
 	AddTestServer(&pool, 3, true, 1, false, 0, 3);
 	pool.InitConnections();
 
 	NewsServer* serv1 = pool.GetServers()->at(0).get();
 
-	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con1 = pool.GetConnection(0, serv1, nullptr);
 	NntpConnection* con2 = pool.GetConnection(0, serv1, nullptr);
-	NntpConnection* con3 = pool.GetConnection(0, serv1, nullptr);
-	BOOST_CHECK(con1 != nullptr);
-	BOOST_CHECK(con2 != nullptr);
-	BOOST_CHECK(con3 == nullptr);
+	BOOST_REQUIRE(con1 != nullptr);
+	BOOST_REQUIRE(con2 != nullptr);
+	BOOST_CHECK(con1->GetNewsServer() == serv1);
+	BOOST_CHECK(con2->GetNewsServer() == serv1);
+
+	// server 1 is exhausted; neither decoy may be substituted for it
+	BOOST_CHECK(pool.GetConnection(0, serv1, nullptr) == nullptr);
+
+	// the decoys were in fact available, so the nullptr above came from the
+	// wanted-server restriction and not from an empty pool
+	NntpConnection* con3 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_REQUIRE(con3 != nullptr);
+	BOOST_CHECK(con3->GetNewsServer() != serv1);
 }
 
 BOOST_AUTO_TEST_CASE(ActiveOnOffTest)

@@ -35,10 +35,17 @@ namespace FileTypes
 	bool IsAllDigitsExt(std::string_view ext);
 	bool IsArchiveExt(std::string_view ext);
 	bool IsDiscStructureExt(std::string_view ext);
+	bool IsDiscStructureDir(std::string_view dirname);
+	bool IsDiscDescriptorExt(std::string_view ext);
+	bool IsDiscImageExt(std::string_view ext);
+	bool IsGenericDiscImageExt(std::string_view ext);
+	bool IsClutterDir(std::string_view dirname);
+	bool IsClutterFile(std::string_view filename);
 	bool IsParityExt(std::string_view ext);
 	bool IsVideoExt(std::string_view ext);
 	bool IsAudioExt(std::string_view ext);
 	bool IsSubtitleExt(std::string_view ext);
+	bool IsNfoExt(std::string_view ext);
 	bool IsSampleStem(std::string_view stem);
 	bool IsSevenZipFile(std::string_view filename);
 	bool IsRarFile(std::string_view filename);

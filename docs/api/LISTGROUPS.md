@@ -56,6 +56,7 @@ This method returns array of structures with following fields:
   - **UNPACKING** - being unpacked;
   - **MOVING** - moving files from intermediate directory into destination directory;
   - **POST_UNPACK_RENAMING** - renaming excessively obfuscated downloaded files after unpacking;
+  - **POST_DOWNLOAD_RENAMING** - renaming excessively obfuscated downloaded non-archive files;
   - **EXECUTING_SCRIPT** - executing post-processing script;
   - **PP_FINISHED** - post-processing is finished, the item is about to be moved to history.
 - **TotalArticles** `(int)` - Total number of articles in all files of the group.

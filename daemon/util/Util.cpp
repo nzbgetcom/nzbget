@@ -24,6 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <array>
+#include <algorithm>
 #include "Util.h"
 
 #ifdef WIN32
@@ -571,6 +572,12 @@ void Util::Trim(std::string& str)
 {
 	TrimLeft(str);
 	TrimRight(str);
+}
+
+void Util::SanitizeLine(std::string& str)
+{
+	std::replace_if(str.begin(), str.end(), IsControlChar, ' ');
+	Trim(str);
 }
 
 char* Util::ReduceStr(char* str, const char* from, const char* to)

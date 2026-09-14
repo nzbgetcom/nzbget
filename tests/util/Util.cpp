@@ -523,4 +523,42 @@ BOOST_AUTO_TEST_CASE(TestAppendRPCJsonParsing)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(SanitizeLineTest)
+{
+	// IsControlChar checks
+	BOOST_CHECK(Util::IsControlChar('\0'));
+	BOOST_CHECK(Util::IsControlChar('\r'));
+	BOOST_CHECK(Util::IsControlChar('\n'));
+	BOOST_CHECK(Util::IsControlChar('\t'));
+	BOOST_CHECK(Util::IsControlChar(127));
+	BOOST_CHECK(!Util::IsControlChar(' '));
+	BOOST_CHECK(!Util::IsControlChar('A'));
+	BOOST_CHECK(!Util::IsControlChar('z'));
+	// UTF-8 bytes (> 127) must NOT be identified as control characters
+	BOOST_CHECK(!Util::IsControlChar(static_cast<char>(0xC3)));
+	BOOST_CHECK(!Util::IsControlChar(static_cast<char>(0xA9)));
+
+	// SanitizeLine trimming and replacement
+	std::string s1 = "\r\n\t  hello  \r\n";
+	Util::SanitizeLine(s1);
+	BOOST_CHECK_EQUAL(s1, "hello");
+
+	std::string s2 = "TV\r\nHD";
+	Util::SanitizeLine(s2);
+	BOOST_CHECK_EQUAL(s2, "TV  HD");
+
+	std::string s3 = "Movies\t4K";
+	Util::SanitizeLine(s3);
+	BOOST_CHECK_EQUAL(s3, "Movies 4K");
+
+	// UTF-8 multi-byte characters must be preserved intact
+	std::string s4 = "\r\n  Séries / Vidéo  \n";
+	Util::SanitizeLine(s4);
+	BOOST_CHECK_EQUAL(s4, "Séries / Vidéo");
+
+	std::string s5 = "Mädchen\r\n4K";
+	Util::SanitizeLine(s5);
+	BOOST_CHECK_EQUAL(s5, "Mädchen  4K");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

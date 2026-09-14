@@ -35,6 +35,8 @@ public:
 	const std::string& GetCategoryFromFile() const { return m_category; }
 	std::unique_ptr<NzbInfo> DetachNzbInfo() { return std::move(m_nzbInfo); }
 	const std::string& GetPassword() const { return m_password; }
+	const std::string& GetMetaName() const { return m_metaName; }
+	const std::string& GetMetaTitle() const { return m_metaTitle; }
 
 	void LogDebugInfo();
 
@@ -43,6 +45,8 @@ private:
 	std::string m_fileName;
 	std::string m_category;
 	std::string m_password;
+	std::string m_metaName;
+	std::string m_metaTitle;
 
 	ArticleInfo* AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
 	void AddFileInfo(std::unique_ptr<FileInfo> fileInfo);
@@ -59,6 +63,8 @@ private:
 	bool m_ignoreNextError;
 	bool m_hasPassword = false;
 	bool m_hasCategory = false;
+	bool m_hasName = false;
+	bool m_hasTitle = false;
 	std::string m_currentElement;
 
 	static void SAX_StartElement(NzbFile* file, const char *name, const char **atts);

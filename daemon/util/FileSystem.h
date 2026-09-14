@@ -136,6 +136,8 @@ public:
 	static bool AllocateFile(const char* filename, int64 size, bool sparse, CString& errmsg);
 	static bool TruncateFile(const char* filename, int size);
 	static CString MakeValidFilename(const char* filename, bool allowSlashes = false);
+	static std::string SanitizePathSegment(std::string_view name);
+	static std::string SanitizeRelativePath(std::string_view path);
 	static bool ReservedChar(char ch);
 	static CString MakeUniqueFilename(const char* destDir, const char* basename);
 	static bool MoveFile(const char* srcFilename, const char* dstFilename);
