@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2026 Rick van Hattem <Wolph@wol.ph>
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,7 +20,11 @@
 
 #include "nzbget.h"
 
+#ifdef WIN32
+
 #include <boost/test/unit_test.hpp>
+#include <future>
+#include <io.h>
 
 #include "ScriptController.h"
 
@@ -113,4 +118,145 @@ BOOST_AUTO_TEST_CASE(ScriptProcessCanTerminateWhileWaiting)
 	BOOST_CHECK_EQUAL(script.RunAndTerminate(), -1);
 }
 
+BOOST_AUTO_TEST_CASE(BuildCommandLineEmptyArgs)
+{
+	ScriptController ctrl;
+	char buf[256] = "initial";
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineSimpleArgs)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-y"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"unrar\" \"x\" \"-y\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLinePasswordWithSpace)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-psecret pass"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"unrar\" \"x\" \"-psecret pass\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLinePasswordWithQuote)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-pfoo\"bar"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"unrar\" \"x\" \"-pfoo\\\"bar\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLinePathWithTrailingBackslash)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"cmd", "/c", "C:\\path\\"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"cmd\" \"/c\" \"C:\\path\\\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineBackslashesBeforeQuote)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"-p", "a\\\"b"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"-p\" \"a\\\\\\\"b\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineMultipleTrailingBackslashes)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"dir\\\\"});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"dir\\\\\\\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineEmptyStringArg)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({""});
+	char buf[256] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK_EQUAL(buf, "\"\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineTruncation)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-p", "very_long_password_that_exceeds_buffer"});
+	char buf[16] = {};
+	ctrl.BuildCommandLine(buf, sizeof(buf));
+	BOOST_CHECK(strlen(buf) < sizeof(buf));
+	BOOST_CHECK_EQUAL(buf[sizeof(buf) - 1], '\0');
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineNullBuffer)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"test"});
+	ctrl.BuildCommandLine(nullptr, 100);
+	ctrl.BuildCommandLine(nullptr, 0);
+	char buf[10] = "init";
+	ctrl.BuildCommandLine(buf, 0);
+	ctrl.BuildCommandLine(buf, -5);
+	BOOST_CHECK_EQUAL(buf, "init");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineStringVersion)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-pfoo\"bar", "C:\\path\\"});
+	BOOST_CHECK_EQUAL(ctrl.BuildCommandLine(), "\"unrar\" \"x\" \"-pfoo\\\"bar\" \"C:\\path\\\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineStringVersionEmpty)
+{
+	ScriptController ctrl;
+	BOOST_CHECK_EQUAL(ctrl.BuildCommandLine(), "");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineDirectPathWithUnpack)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-y", "-p-", "-o+", "*.rar", "\\\\?\\C:\\Downloads\\_unpack\\"});
+	std::string cmd = ctrl.BuildCommandLine();
+	BOOST_CHECK_EQUAL(cmd, "\"unrar\" \"x\" \"-y\" \"-p-\" \"-o+\" \"*.rar\" \"\\\\?\\C:\\Downloads\\_unpack\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineDirectPathWithoutUnpack)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "-y", "-p-", "-o+", "*.rar", "\\\\?\\D:\\MyMovie\\"});
+	std::string cmd = ctrl.BuildCommandLine();
+	BOOST_CHECK_EQUAL(cmd, "\"unrar\" \"x\" \"-y\" \"-p-\" \"-o+\" \"*.rar\" \"\\\\?\\D:\\MyMovie\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineDirectPathUNC)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "\\\\?\\UNC\\server\\share\\dest\\"});
+	std::string cmd = ctrl.BuildCommandLine();
+	BOOST_CHECK_EQUAL(cmd, "\"unrar\" \"x\" \"\\\\?\\UNC\\server\\share\\dest\\\"");
+}
+
+BOOST_AUTO_TEST_CASE(BuildCommandLineExceedsWindowsLimit)
+{
+	ScriptController ctrl;
+	std::string veryLongArg(33000, 'x');
+	ctrl.SetArgs({veryLongArg.c_str()});
+	std::string cmdLine = ctrl.BuildCommandLine();
+	BOOST_CHECK(cmdLine.size() > 32767);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif // WIN32
