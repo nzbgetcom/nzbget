@@ -441,18 +441,86 @@ int ScriptController::Execute()
 }
 
 #ifdef WIN32
-void ScriptController::BuildCommandLine(char* cmdLineBuf, int bufSize)
+namespace
 {
-	int usedLen = 0;
+void AppendEscapedArg(std::string& out, const char* arg)
+{
+	out.push_back('"');
+	size_t backslashes = 0;
+	for (const char* p = arg; *p != '\0'; ++p)
+	{
+		if (*p == '\\')
+		{
+			++backslashes;
+		}
+		else if (*p == '"')
+		{
+			out.append(backslashes * 2 + 1, '\\');
+			out.push_back('"');
+			backslashes = 0;
+		}
+		else
+		{
+			if (backslashes > 0)
+			{
+				out.append(backslashes, '\\');
+				backslashes = 0;
+			}
+			out.push_back(*p);
+		}
+	}
+	out.append(backslashes * 2, '\\');
+	out.push_back('"');
+}
+}
+
+std::string ScriptController::BuildCommandLine()
+{
+	size_t estimatedLen = 0;
 	for (const char* arg : m_args)
 	{
-		int len = strlen(arg);
-		bool endsWithBackslash = arg[len - 1] == '\\';
-		bool isDirectPath = !strncmp(arg, "\\\\?", 3);
-		snprintf(cmdLineBuf + usedLen, bufSize - usedLen, endsWithBackslash && ! isDirectPath ? "\"%s\\\" " : "\"%s\" ", arg);
-		usedLen += len + 3 + (endsWithBackslash ? 1 : 0);
+		estimatedLen += strlen(arg) + 4;
 	}
-	cmdLineBuf[usedLen < bufSize ? usedLen - 1 : bufSize - 1] = '\0';
+
+	std::string fullCmdLine;
+	fullCmdLine.reserve(estimatedLen);
+
+	for (const char* arg : m_args)
+	{
+		if (!fullCmdLine.empty())
+		{
+			fullCmdLine.push_back(' ');
+		}
+		AppendEscapedArg(fullCmdLine, arg);
+	}
+
+	constexpr size_t WIN32_MAX_CMDLINE = 32767;
+	if (fullCmdLine.size() > WIN32_MAX_CMDLINE)
+	{
+		warn("Script command line length (%zu) exceeds Windows limit (%zu), execution may fail",
+			fullCmdLine.size(), WIN32_MAX_CMDLINE);
+	}
+
+	return fullCmdLine;
+}
+
+void ScriptController::BuildCommandLine(char* cmdLineBuf, int bufSize)
+{
+	if (!cmdLineBuf || bufSize <= 0)
+	{
+		return;
+	}
+
+	std::string fullCmdLine = BuildCommandLine();
+	size_t copyLen = std::min(fullCmdLine.size(), static_cast<size_t>(bufSize - 1));
+	memcpy(cmdLineBuf, fullCmdLine.data(), copyLen);
+	cmdLineBuf[copyLen] = '\0';
+
+	if (fullCmdLine.size() >= static_cast<size_t>(bufSize))
+	{
+		warn("Script command line truncated: %zu chars exceed buffer %d",
+			fullCmdLine.size(), bufSize);
+	}
 }
 #endif
 
@@ -470,12 +538,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	const char* script = m_args[0];
 
 #ifdef WIN32
-	char* cmdLine = m_cmdLine;
-	char cmdLineBuf[2048];
-	BuildCommandLine(cmdLineBuf, sizeof(cmdLineBuf));
-	cmdLine = cmdLineBuf;
+	std::string cmdLine = BuildCommandLine();
 
-	debug("Starting process: %s", cmdLine);
+	debug("Starting process: %s", cmdLine.c_str());
 
 	WString wideWorkingDir = FileSystem::UtfPathToWidePath(workingDir);
 	if (strlen(workingDir) > 260 - 14)
@@ -510,7 +575,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	std::unique_ptr<wchar_t[]> environmentStrings = m_environmentStrings.GetStrings();
 
-	BOOL ok = CreateProcessW(nullptr, WString(cmdLine), nullptr, nullptr, TRUE,
+	BOOL ok = CreateProcessW(nullptr, WString(cmdLine.c_str()), nullptr, nullptr, TRUE,
 		NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT,
 		environmentStrings.get(), wideWorkingDir, &startupInfo, &processInfo);
 	if (!ok)
