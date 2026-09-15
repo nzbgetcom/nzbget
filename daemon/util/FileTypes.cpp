@@ -22,6 +22,8 @@
 
 #include "FileTypes.h"
 #include "Util.h"
+#include <fstream>
+#include <cstring>
 
 namespace
 {
@@ -215,6 +217,22 @@ bool IsNfoExt(std::string_view ext)
 	return MatchesAnyExt(ext, formats);
 }
 
+bool IsBookExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".epub", ".pdf", ".mobi", ".azw3", ".cbr", ".cbz", ".djvu"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
+bool IsImageExt(std::string_view ext)
+{
+	static constexpr std::string_view formats[] = {
+		".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
+	};
+	return MatchesAnyExt(ext, formats);
+}
+
 bool IsSampleStem(std::string_view stem)
 {
 	if (Util::StrCaseCmp(stem, "sample"))
@@ -290,6 +308,203 @@ bool IsSampleFile(std::string_view filename)
 	auto bare = Basename(filename);
 	auto stem = StripLastExt(bare);
 	return IsSampleStem(stem);
+}
+
+std::string_view SniffExtension(std::span<const uint8_t> header)
+{
+	// 1. PDF: %PDF-
+	if (header.size() >= 5 && std::memcmp(header.data(), "%PDF-", 5) == 0)
+	{
+		return ".pdf";
+	}
+
+	// 2. EBML container: MKV or WebM (\x1A\x45\xDF\xA3)
+	if (header.size() >= 4 && header[0] == 0x1A && header[1] == 0x45 && header[2] == 0xDF && header[3] == 0xA3)
+	{
+		std::string_view sv(reinterpret_cast<const char*>(header.data()), header.size());
+		if (sv.find("webm") != std::string_view::npos)
+		{
+			return ".webm";
+		}
+		return ".mkv";
+	}
+
+	// 3. MP4 / MOV / M4V / M4A (ftyp or moov)
+	if (header.size() >= 8 && std::memcmp(header.data() + 4, "ftyp", 4) == 0)
+	{
+		if (header.size() >= 12)
+		{
+			std::string_view brand(reinterpret_cast<const char*>(header.data() + 8), 4);
+			if (brand == "M4V ") return ".m4v";
+			if (brand == "M4A ") return ".m4a";
+			if (brand == "qt  ") return ".mov";
+		}
+		return ".mp4";
+	}
+	if (header.size() >= 8 && std::memcmp(header.data() + 4, "moov", 4) == 0)
+	{
+		return ".mp4";
+	}
+
+	// 4. RIFF container: AVI, WAVE, WEBP
+	if (header.size() >= 12 && std::memcmp(header.data(), "RIFF", 4) == 0)
+	{
+		if (std::memcmp(header.data() + 8, "AVI ", 4) == 0) return ".avi";
+		if (std::memcmp(header.data() + 8, "WAVE", 4) == 0) return ".wav";
+		if (std::memcmp(header.data() + 8, "WEBP", 4) == 0) return ".webp";
+	}
+
+	// 5. MPEG-TS (Sync byte 0x47 spaced by 188 or 192 bytes)
+	if (header.size() >= 189 && header[0] == 0x47 &&
+		(header[188] == 0x47 || (header.size() >= 193 && header[192] == 0x47)))
+	{
+		return ".ts";
+	}
+
+	// 6. WMV / ASF (\x30\x26\xB2\x75\x8E\x66\xCF\x11)
+	static constexpr uint8_t ASF_GUID[8] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11 };
+	if (header.size() >= 8 && std::memcmp(header.data(), ASF_GUID, 8) == 0)
+	{
+		return ".wmv";
+	}
+
+	// 7. FLAC
+	if (header.size() >= 4 && std::memcmp(header.data(), "fLaC", 4) == 0)
+	{
+		return ".flac";
+	}
+
+	// 8. MP3 (ID3 tag or MPEG audio sync frame)
+	if (header.size() >= 3 && std::memcmp(header.data(), "ID3", 3) == 0)
+	{
+		return ".mp3";
+	}
+	if (header.size() >= 2 && header[0] == 0xFF && (header[1] & 0xE6) == 0xE2)
+	{
+		return ".mp3";
+	}
+
+	// 9. OGG
+	if (header.size() >= 4 && std::memcmp(header.data(), "OggS", 4) == 0)
+	{
+		return ".ogg";
+	}
+
+	// 10. ZIP or EPUB (PK\x03\x04)
+	if (header.size() >= 4 && header[0] == 0x50 && header[1] == 0x4B && header[2] == 0x03 && header[3] == 0x04)
+	{
+		std::string_view sv(reinterpret_cast<const char*>(header.data()), header.size());
+		if (sv.find("mimetypeapplication/epub+zip") != std::string_view::npos ||
+			sv.find("application/epub+zip") != std::string_view::npos)
+		{
+			return ".epub";
+		}
+		return ".zip";
+	}
+
+	// 11. MOBI (BOOKMOBI at offset 60)
+	if (header.size() >= 68 && std::memcmp(header.data() + 60, "BOOKMOBI", 8) == 0)
+	{
+		return ".mobi";
+	}
+
+	// 12. JPEG (\xFF\xD8\xFF)
+	if (header.size() >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF)
+	{
+		return ".jpg";
+	}
+
+	// 13. PNG (\x89PNG\r\n\x1a\n)
+	static constexpr uint8_t PNG_MAGIC[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+	if (header.size() >= 8 && std::memcmp(header.data(), PNG_MAGIC, 8) == 0)
+	{
+		return ".png";
+	}
+
+	// 14. GIF (GIF87a or GIF89a)
+	if (header.size() >= 6 &&
+		(std::memcmp(header.data(), "GIF87a", 6) == 0 || std::memcmp(header.data(), "GIF89a", 6) == 0))
+	{
+		return ".gif";
+	}
+
+	// 15. BMP (BM)
+	if (header.size() >= 14 && header[0] == 'B' && header[1] == 'M')
+	{
+		return ".bmp";
+	}
+
+	// 16. RAR (Rar!\x1A\x07)
+	static constexpr uint8_t RAR_MAGIC[6] = { 'R', 'a', 'r', '!', 0x1A, 0x07 };
+	if (header.size() >= 6 && std::memcmp(header.data(), RAR_MAGIC, 6) == 0)
+	{
+		return ".rar";
+	}
+
+	// 17. 7z (7z\xBC\xAF\x27\x1C)
+	static constexpr uint8_t SEVENZIP_MAGIC[6] = { '7', 'z', 0xBC, 0xAF, 0x27, 0x1C };
+	if (header.size() >= 6 && std::memcmp(header.data(), SEVENZIP_MAGIC, 6) == 0)
+	{
+		return ".7z";
+	}
+
+	// 18. Gzip (\x1F\x8B\x08)
+	if (header.size() >= 3 && header[0] == 0x1F && header[1] == 0x8B && header[2] == 0x08)
+	{
+		return ".gz";
+	}
+
+	// 19. Bzip2 (BZh)
+	if (header.size() >= 3 && header[0] == 'B' && header[1] == 'Z' && header[2] == 'h')
+	{
+		return ".bz2";
+	}
+
+	// 20. XZ (\xFD7zXZ\x00)
+	static constexpr uint8_t XZ_MAGIC[6] = { 0xFD, '7', 'z', 'X', 'Z', 0x00 };
+	if (header.size() >= 6 && std::memcmp(header.data(), XZ_MAGIC, 6) == 0)
+	{
+		return ".xz";
+	}
+
+	// 21. POSIX tar (ustar at offset 257)
+	if (header.size() >= 262 && std::memcmp(header.data() + 257, "ustar", 5) == 0)
+	{
+		return ".tar";
+	}
+
+	// 22. Unix compress (\x1F\x9D)
+	if (header.size() >= 2 && header[0] == 0x1F && header[1] == 0x9D)
+	{
+		return ".Z";
+	}
+
+	return "";
+}
+
+std::string_view SniffExtension(const std::filesystem::path& filePath)
+{
+	std::error_code ec;
+	if (!std::filesystem::is_regular_file(filePath, ec))
+	{
+		return "";
+	}
+
+	std::ifstream file(filePath, std::ios::binary);
+	if (!file)
+	{
+		return "";
+	}
+
+	uint8_t buffer[512];
+	file.read(reinterpret_cast<char*>(buffer), sizeof(buffer));
+	std::streamsize bytesRead = file.gcount();
+	if (bytesRead <= 0)
+	{
+		return "";
+	}
+
+	return SniffExtension(std::span<const uint8_t>(buffer, static_cast<size_t>(bytesRead)));
 }
 
 }

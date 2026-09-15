@@ -25,19 +25,46 @@
 #include "Util.h"
 #include <algorithm>
 #include <cctype>
-#include <unordered_set>
 
 namespace CollectionAnalyzer
 {
 	static constexpr uintmax_t AMBIGUOUS_COLLECTION_RATIO = 3;
 
+	struct VideoTrack
+	{
+		uintmax_t largest = 0;
+		uintmax_t second = 0;
+		int count = 0;
+		FileEntry mainFile;
+
+		void Add(const FileEntry& file)
+		{
+			++count;
+			if (file.size > largest)
+			{
+				second = largest;
+				largest = file.size;
+				mainFile = file;
+			}
+			else if (file.size > second)
+			{
+				second = file.size;
+			}
+		}
+
+		bool IsAmbiguous() const
+		{
+			return count > 1 && largest <= second * AMBIGUOUS_COLLECTION_RATIO;
+		}
+	};
+
 	AnalysisResult Analyze(const std::vector<FileEntry>& files)
 	{
 		AnalysisResult result;
-		uintmax_t largestSize = 0;
-		uintmax_t secondSize = 0;
-		int videoCount = 0;
+		VideoTrack video;
 		int audioCount = 0;
+		int bookCount = 0;
+		FileEntry dominantBook;
 
 		for (const auto& file : files)
 		{
@@ -45,11 +72,19 @@ namespace CollectionAnalyzer
 			{
 				result.isDiscStructure = true;
 			}
-
-			if (FileTypes::IsAudioExt(file.ext))
+			else if (FileTypes::IsAudioExt(file.ext))
 			{
 				result.hasAudio = true;
-				audioCount++;
+				++audioCount;
+				result.otherFiles.push_back(file);
+			}
+			else if (FileTypes::IsBookExt(file.ext))
+			{
+				++bookCount;
+				if (file.size > dominantBook.size)
+				{
+					dominantBook = file;
+				}
 				result.otherFiles.push_back(file);
 			}
 			else if (FileTypes::IsVideoExt(file.ext))
@@ -60,17 +95,7 @@ namespace CollectionAnalyzer
 				}
 				else
 				{
-					videoCount++;
-					if (file.size > largestSize)
-					{
-						secondSize = largestSize;
-						largestSize = file.size;
-						result.mainVideo = file;
-					}
-					else if (file.size > secondSize)
-					{
-						secondSize = file.size;
-					}
+					video.Add(file);
 				}
 			}
 			else if (FileTypes::IsSubtitleExt(file.ext))
@@ -90,15 +115,26 @@ namespace CollectionAnalyzer
 		// The 3:1 Dominance Rule:
 		// Multiple same-type videos with comparable size (e.g. season pack, multi-part episode)
 		// have no single dominant feature. Renaming them to the release title would overwrite files.
-		if (videoCount > 1 && largestSize <= secondSize * AMBIGUOUS_COLLECTION_RATIO)
+		result.isAmbiguousCollection = video.IsAmbiguous();
+		result.mainVideo = std::move(video.mainFile);
+
+		// Music albums without video must not have individual tracks folded into one release title
+		if (audioCount > 1 && video.count == 0)
 		{
 			result.isAmbiguousCollection = true;
 		}
 
-		// Music albums without video must not have individual tracks folded into one release title
-		if (audioCount > 1 && videoCount == 0)
+		// Single dominant book release (when no video is present)
+		if (video.count == 0)
 		{
-			result.isAmbiguousCollection = true;
+			if (bookCount == 1)
+			{
+				result.mainBook = std::move(dominantBook);
+			}
+			else if (bookCount > 1)
+			{
+				result.isAmbiguousCollection = true;
+			}
 		}
 
 		return result;
@@ -157,6 +193,23 @@ namespace CollectionAnalyzer
 				fe.stem = fs::u8string(entryPath.stem());
 				fe.ext = fs::u8string(entryPath.extension());
 				fe.size = size;
+
+				bool isKnown = !fe.ext.empty() && (
+					FileTypes::IsVideoExt(fe.ext) || FileTypes::IsAudioExt(fe.ext) ||
+					FileTypes::IsSubtitleExt(fe.ext) || FileTypes::IsNfoExt(fe.ext) ||
+					FileTypes::IsBookExt(fe.ext) || FileTypes::IsImageExt(fe.ext) ||
+					FileTypes::IsArchiveExt(fe.ext) || FileTypes::IsParityExt(fe.ext) ||
+					FileTypes::IsDiscStructureExt(fe.ext) || FileTypes::IsDiscImageExt(fe.ext));
+
+				if (!isKnown)
+				{
+					std::string_view sniffed = FileTypes::SniffExtension(fe.path);
+					if (!sniffed.empty())
+					{
+						fe.ext = sniffed;
+					}
+				}
+
 				files.push_back(std::move(fe));
 			}
 		}
@@ -244,42 +297,78 @@ namespace CollectionAnalyzer
 		bool canUseTargetName = !cleanTargetName.empty() && cleanTargetName != "nzb" &&
 			!Deobfuscation::IsExcessivelyObfuscated(cleanTargetName);
 
-		std::string videoBaseName = cleanTargetName;
-		if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainVideo.filename))
+		if (!analysis.mainVideo.filename.empty())
 		{
-			if (canUseTargetName)
+			std::string videoBaseName = cleanTargetName;
+			if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainVideo.filename))
 			{
-				std::string newVideoName = videoBaseName + analysis.mainVideo.ext;
+				if (canUseTargetName)
+				{
+					std::string newVideoName = videoBaseName + analysis.mainVideo.ext;
+					videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
+				}
+				else
+				{
+					plan.targetNameObfuscated = true;
+					videoBaseName = analysis.mainVideo.stem;
+				}
+			}
+			else if (analysis.mainVideo.filename.find('.') == std::string::npos && !analysis.mainVideo.ext.empty())
+			{
+				std::string newVideoName = analysis.mainVideo.filename + analysis.mainVideo.ext;
 				videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
 			}
 			else
 			{
-				plan.targetNameObfuscated = true;
 				videoBaseName = analysis.mainVideo.stem;
 			}
-		}
-		else
-		{
-			videoBaseName = analysis.mainVideo.stem;
-		}
 
-		plan.effectiveBaseName = videoBaseName;
+			plan.effectiveBaseName = videoBaseName;
 
-		if (!videoBaseName.empty() && !Deobfuscation::IsExcessivelyObfuscated(videoBaseName))
-		{
-			// 2. Plan sample rename if present
-			if (!analysis.sampleVideo.filename.empty())
+			if (!videoBaseName.empty() && !Deobfuscation::IsExcessivelyObfuscated(videoBaseName))
 			{
-				std::string sampleDstName = ResolveSampleName(videoBaseName, analysis.sampleVideo.ext);
-				PlanFileRename(analysis.sampleVideo, sampleDstName);
+				// 2. Plan sample rename if present
+				if (!analysis.sampleVideo.filename.empty())
+				{
+					std::string sampleDstName = ResolveSampleName(videoBaseName, analysis.sampleVideo.ext);
+					PlanFileRename(analysis.sampleVideo, sampleDstName);
+				}
+
+				// 3. Plan accompanying subtitles rename
+				for (const auto& sub : analysis.subtitles)
+				{
+					std::string subDstName = ResolveSubtitleName(videoBaseName, sub.stem, sub.ext);
+					PlanFileRename(sub, subDstName);
+				}
+			}
+		}
+		else if (!analysis.mainBook.filename.empty())
+		{
+			std::string bookBaseName = cleanTargetName;
+			if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainBook.filename))
+			{
+				if (canUseTargetName)
+				{
+					std::string newBookName = bookBaseName + analysis.mainBook.ext;
+					bookBaseName = PlanFileRename(analysis.mainBook, newBookName);
+				}
+				else
+				{
+					plan.targetNameObfuscated = true;
+					bookBaseName = analysis.mainBook.stem;
+				}
+			}
+			else if (analysis.mainBook.filename.find('.') == std::string::npos && !analysis.mainBook.ext.empty())
+			{
+				std::string newBookName = analysis.mainBook.filename + analysis.mainBook.ext;
+				bookBaseName = PlanFileRename(analysis.mainBook, newBookName);
+			}
+			else
+			{
+				bookBaseName = analysis.mainBook.stem;
 			}
 
-			// 3. Plan accompanying subtitles rename
-			for (const auto& sub : analysis.subtitles)
-			{
-				std::string subDstName = ResolveSubtitleName(videoBaseName, sub.stem, sub.ext);
-				PlanFileRename(sub, subDstName);
-			}
+			plan.effectiveBaseName = bookBaseName;
 		}
 
 		return plan;
