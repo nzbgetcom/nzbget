@@ -1,5 +1,5 @@
 # build stage
-FROM alpine:3.22.2 AS build
+FROM alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce AS build
 
 # args
 ARG UNRAR6_VERSION=6.2.12
@@ -83,7 +83,7 @@ RUN \
   /app/nzbget/share/nzbget/nzbget.conf
 
 # runtime stage
-FROM alpine:3.22.2
+FROM alpine:3.22.5@sha256:14358309a308569c32bdc37e2e0e9694be33a9d99e68afb0f5ff33cc1f695dce
 ARG NZBGET_RELEASE=develop
 
 # labels

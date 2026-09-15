@@ -34,7 +34,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Prepare ${{ matrix.arch }} / ${{ matrix.type }} environment
       run: |
@@ -53,7 +53,7 @@ jobs:
       run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       if: failure()
       with:
         name: nzbget-linux-${{ matrix.arch }}-${{ matrix.type }}-build-log
@@ -61,7 +61,7 @@ jobs:
         retention-days: 5
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-linux-bin-${{ matrix.arch }}-${{ matrix.type }}
         path: build/*.tar.gz
@@ -74,7 +74,7 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
     - name: Prepare build environment
       run: |
@@ -84,7 +84,7 @@ jobs:
         tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
       with:
         pattern: nzbget-linux-bin-*
 
@@ -110,12 +110,12 @@ jobs:
         done
 
     - name: Delete unneeded platform-specific artifacts
-      uses: geekyeggo/delete-artifact@v6
+      uses: geekyeggo/delete-artifact@176a747ab7e287e3ff4787bf8a148716375ca118 # v6
       with:
         name: nzbget-linux-bin-*
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
       with:
         name: nzbget-linux-installers
         path: build/*.run
