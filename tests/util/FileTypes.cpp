@@ -295,6 +295,8 @@ BOOST_AUTO_TEST_CASE(IsAudioExtTest)
 	BOOST_CHECK(FileTypes::IsAudioExt(".opus"));
 	BOOST_CHECK(FileTypes::IsAudioExt(".wma"));
 	BOOST_CHECK(FileTypes::IsAudioExt(".eac3"));
+	BOOST_CHECK(FileTypes::IsAudioExt(".m4a"));
+	BOOST_CHECK(FileTypes::IsAudioExt(".M4A"));
 
 	BOOST_CHECK(!FileTypes::IsAudioExt(".rar"));
 	BOOST_CHECK(!FileTypes::IsAudioExt(""));
@@ -444,6 +446,8 @@ BOOST_AUTO_TEST_CASE(IsBookExtTest)
 	BOOST_CHECK(FileTypes::IsBookExt(".cbr"));
 	BOOST_CHECK(FileTypes::IsBookExt(".cbz"));
 	BOOST_CHECK(FileTypes::IsBookExt(".djvu"));
+	BOOST_CHECK(FileTypes::IsBookExt(".m4b"));
+	BOOST_CHECK(FileTypes::IsBookExt(".M4B"));
 
 	BOOST_CHECK(!FileTypes::IsBookExt(".mkv"));
 	BOOST_CHECK(!FileTypes::IsBookExt(".txt"));
@@ -492,6 +496,14 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	uint8_t m4vBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'V', ' ' };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4vBuf), ".m4v");
 
+	// M4A (ftyp M4A )
+	uint8_t m4aBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'A', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4aBuf), ".m4a");
+
+	// M4B (ftyp M4B )
+	uint8_t m4bBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'B', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4bBuf), ".m4b");
+
 	// MOV (ftyp qt  )
 	uint8_t movBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'q', 't', ' ', ' ' };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(movBuf), ".mov");
@@ -513,6 +525,20 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	tsBuf[0] = 0x47;
 	tsBuf[188] = 0x47;
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(tsBuf), ".ts");
+
+	// MPEG-TS (3 packets verified in larger buffer)
+	std::vector<uint8_t> tsBuf512(512, 0x00);
+	tsBuf512[0] = 0x47;
+	tsBuf512[188] = 0x47;
+	tsBuf512[376] = 0x47;
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(tsBuf512), ".ts");
+
+	// MPEG-TS: 3rd packet missing in 512-byte buffer -> must not match .ts
+	std::vector<uint8_t> falseTsBuf(512, 0x00);
+	falseTsBuf[0] = 0x47;
+	falseTsBuf[188] = 0x47;
+	falseTsBuf[376] = 0x00;
+	BOOST_CHECK_NE(FileTypes::SniffExtension(falseTsBuf), ".ts");
 
 	// WMV
 	uint8_t wmvBuf[] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0x00, 0x00 };
@@ -566,10 +592,22 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	uint8_t gifBuf[] = { 'G', 'I', 'F', '8', '9', 'a', 0x01, 0x00 };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(gifBuf), ".gif");
 
+	// GIF with 0x47 at byte 188 (must NOT be misclassified as MPEG-TS .ts!)
+	std::vector<uint8_t> gifCollisionBuf(256, 0x00);
+	std::memcpy(gifCollisionBuf.data(), "GIF89a", 6);
+	gifCollisionBuf[188] = 0x47;
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(gifCollisionBuf), ".gif");
+
 	// BMP
 	std::vector<uint8_t> bmpBuf(20, 0x00);
 	bmpBuf[0] = 'B'; bmpBuf[1] = 'M';
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(bmpBuf), ".bmp");
+
+	// Fake BMP: starts with "BM" but has non-zero reserved bytes -> must NOT match .bmp
+	std::vector<uint8_t> fakeBmpBuf(20, 0x00);
+	fakeBmpBuf[0] = 'B'; fakeBmpBuf[1] = 'M';
+	fakeBmpBuf[6] = 0x01;
+	BOOST_CHECK_NE(FileTypes::SniffExtension(fakeBmpBuf), ".bmp");
 
 	// RAR
 	uint8_t rarBuf[] = { 'R', 'a', 'r', '!', 0x1A, 0x07, 0x00 };

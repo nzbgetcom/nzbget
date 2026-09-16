@@ -506,4 +506,64 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerBookVsVideoTest)
 	BOOST_CHECK(result.mainBook.filename.empty());
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessM4bAudiobookSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_m4b";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing M4B ftyp brand
+	fs::path audiobook = tempDir / "44a5b6c7d8e9f0123456789abcdef012";
+	{
+		std::ofstream ofs(audiobook, std::ios::binary);
+		uint8_t m4bHeader[] = {
+			0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'B', ' ',
+			0x00, 0x00, 0x00, 0x00, 'M', '4', 'B', ' ', 'm', 'p', '4', '2', 'i', 's', 'o', 'm'
+		};
+		ofs.write(reinterpret_cast<const char*>(m4bHeader), sizeof(m4bHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Famous.Author.Audiobook.Title.2026", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "44a5b6c7d8e9f0123456789abcdef012");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Famous.Author.Audiobook.Title.2026.m4b");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerCleanTitleWithDotsExtensionlessSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_clean_dots_extless";
+	fs::create_directories(tempDir);
+
+	// A clean file with dots in its name, but NO extension (e.g. Show.S01E01.1080p)
+	fs::path video = tempDir / "Show.S01E01.1080p";
+	{
+		std::ofstream ofs(video, std::ios::binary);
+		uint8_t mkvHeader[] = {
+			0x1A, 0x45, 0xDF, 0xA3, 0xA3, 0x42, 0x86, 0x81,
+			0x01, 0x42, 0xF7, 0x81, 0x01, 0x42, 0xF2, 0x81,
+			0x04, 0x42, 0xF3, 0x81, 0x08, 0x42, 0x82, 0x88,
+			'm', 'a', 't', 'r', 'o', 's', 'k', 'a'
+		};
+		ofs.write(reinterpret_cast<const char*>(mkvHeader), sizeof(mkvHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Show.S01E01.1080p", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "Show.S01E01.1080p");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Show.S01E01.1080p.mkv");
+
+	fs::remove_all(tempDir);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -59,10 +59,10 @@ namespace FileTypes
 
 bool IsSevenZipExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".7z", ".zip", ".tar", ".gz", ".bz", ".bz2", ".tgz", ".txz", ".xz"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsRarExt(std::string_view ext)
@@ -109,56 +109,56 @@ bool IsArchiveExt(std::string_view ext)
 
 bool IsDiscStructureExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".vob", ".bdmv", ".mpls", ".mpl", ".clpi", ".cpi", ".bdm",
 		".ifo", ".bup",
 		".mts", ".m2ts",
 		".aob", ".evo", ".bdjo"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsDiscStructureDir(std::string_view dirname)
 {
 	auto bare = Basename(dirname);
-	static constexpr std::string_view discDirs[] = {
+	static constexpr std::string_view DISC_DIRS[] = {
 		"BDMV", "VIDEO_TS", "AUDIO_TS", "HVDVD_TS", "AVCHD", "CERTIFICATE"
 	};
-	return std::any_of(std::begin(discDirs), std::end(discDirs),
+	return std::any_of(std::begin(DISC_DIRS), std::end(DISC_DIRS),
 		[&](std::string_view dir) { return Util::StrCaseCmp(bare, dir); });
 }
 
 bool IsDiscDescriptorExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".cue", ".mds", ".ccd", ".toc"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsDiscImageExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".iso", ".mdf", ".nrg", ".cdi", ".gdi"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsGenericDiscImageExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".bin", ".img"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsClutterDir(std::string_view dirname)
 {
 	auto bare = Basename(dirname);
-	static constexpr std::string_view clutterDirs[] = {
+	static constexpr std::string_view CLUTTER_DIRS[] = {
 		"@eaDir", ".AppleDouble", "__MACOSX", ".Spotlight-V100", ".Trashes"
 	};
-	return std::any_of(std::begin(clutterDirs), std::end(clutterDirs),
+	return std::any_of(std::begin(CLUTTER_DIRS), std::end(CLUTTER_DIRS),
 		[&](std::string_view dir) { return Util::StrCaseCmp(bare, dir); });
 }
 
@@ -171,10 +171,10 @@ bool IsClutterFile(std::string_view filename)
 		return true;
 	}
 
-	static constexpr std::string_view clutterFiles[] = {
+	static constexpr std::string_view CLUTTER_FILES[] = {
 		".DS_Store", "Thumbs.db", "desktop.ini", "ehthumbs.db"
 	};
-	return std::any_of(std::begin(clutterFiles), std::end(clutterFiles),
+	return std::any_of(std::begin(CLUTTER_FILES), std::end(CLUTTER_FILES),
 		[&](std::string_view file) { return Util::StrCaseCmp(bare, file); });
 }
 
@@ -185,52 +185,52 @@ bool IsParityExt(std::string_view ext)
 
 bool IsVideoExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".mkv", ".mp4", ".avi", ".mov", ".m2ts", ".mts", ".ts",
 		".m4v", ".webm", ".flv", ".wmv", ".divx", ".xvid"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsAudioExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".mp3", ".flac", ".aac", ".ogg", ".wav", ".dts", ".ac3",
-		".mka", ".opus", ".wma", ".eac3"
+		".mka", ".opus", ".wma", ".eac3", ".m4a"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsSubtitleExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".srt", ".sub", ".idx", ".ass", ".ssa", ".smi", ".sup", ".pgs", ".vtt"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsNfoExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".nfo", ".info"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsBookExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
-		".epub", ".pdf", ".mobi", ".azw3", ".cbr", ".cbz", ".djvu"
+	static constexpr std::string_view FORMATS[] = {
+		".epub", ".pdf", ".mobi", ".azw3", ".cbr", ".cbz", ".djvu", ".m4b"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsImageExt(std::string_view ext)
 {
-	static constexpr std::string_view formats[] = {
+	static constexpr std::string_view FORMATS[] = {
 		".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".tif", ".tiff"
 	};
-	return MatchesAnyExt(ext, formats);
+	return MatchesAnyExt(ext, FORMATS);
 }
 
 bool IsSampleStem(std::string_view stem)
@@ -329,7 +329,7 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 		return ".mkv";
 	}
 
-	// 3. MP4 / MOV / M4V / M4A (ftyp or moov)
+	// 3. MP4 / MOV / M4V / M4A / M4B (ftyp or moov)
 	if (header.size() >= 8 && std::memcmp(header.data() + 4, "ftyp", 4) == 0)
 	{
 		if (header.size() >= 12)
@@ -337,6 +337,7 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 			std::string_view brand(reinterpret_cast<const char*>(header.data() + 8), 4);
 			if (brand == "M4V ") return ".m4v";
 			if (brand == "M4A ") return ".m4a";
+			if (brand == "M4B ") return ".m4b";
 			if (brand == "qt  ") return ".mov";
 		}
 		return ".mp4";
@@ -354,14 +355,48 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 		if (std::memcmp(header.data() + 8, "WEBP", 4) == 0) return ".webp";
 	}
 
-	// 5. MPEG-TS (Sync byte 0x47 spaced by 188 or 192 bytes)
-	if (header.size() >= 189 && header[0] == 0x47 &&
-		(header[188] == 0x47 || (header.size() >= 193 && header[192] == 0x47)))
+	// 5. Images (high-confidence signatures checked before heuristics like MPEG-TS)
+	// PNG (\x89PNG\r\n\x1a\n)
+	static constexpr uint8_t PNG_MAGIC[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
+	if (header.size() >= 8 && std::memcmp(header.data(), PNG_MAGIC, 8) == 0)
 	{
-		return ".ts";
+		return ".png";
 	}
 
-	// 6. WMV / WMA / ASF
+	// GIF (GIF87a or GIF89a; starts with 'G'=0x47, must precede MPEG-TS)
+	if (header.size() >= 6 &&
+		(std::memcmp(header.data(), "GIF87a", 6) == 0 || std::memcmp(header.data(), "GIF89a", 6) == 0))
+	{
+		return ".gif";
+	}
+
+	// JPEG (\xFF\xD8\xFF)
+	if (header.size() >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF)
+	{
+		return ".jpg";
+	}
+
+	// BMP (BM with reserved bytes 6-9 equal to 0)
+	if (header.size() >= 14 && header[0] == 'B' && header[1] == 'M' &&
+		header[6] == 0 && header[7] == 0 && header[8] == 0 && header[9] == 0)
+	{
+		return ".bmp";
+	}
+
+	// 6. MPEG-TS (Sync byte 0x47 spaced by 188 or 192 bytes; require 3 packets when buffer allows)
+	if (header.size() >= 189 && header[0] == 0x47)
+	{
+		if (header[188] == 0x47 && (header.size() < 377 || header[376] == 0x47))
+		{
+			return ".ts";
+		}
+		if (header.size() >= 193 && header[192] == 0x47 && (header.size() < 385 || header[384] == 0x47))
+		{
+			return ".ts";
+		}
+	}
+
+	// 7. WMV / WMA / ASF
 	static constexpr uint8_t ASF_GUID[8] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11 };
 	if (header.size() >= 8 && std::memcmp(header.data(), ASF_GUID, 8) == 0)
 	{
@@ -424,33 +459,7 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 		return ".mobi";
 	}
 
-	// 12. JPEG (\xFF\xD8\xFF)
-	if (header.size() >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF)
-	{
-		return ".jpg";
-	}
-
-	// 13. PNG (\x89PNG\r\n\x1a\n)
-	static constexpr uint8_t PNG_MAGIC[8] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A };
-	if (header.size() >= 8 && std::memcmp(header.data(), PNG_MAGIC, 8) == 0)
-	{
-		return ".png";
-	}
-
-	// 14. GIF (GIF87a or GIF89a)
-	if (header.size() >= 6 &&
-		(std::memcmp(header.data(), "GIF87a", 6) == 0 || std::memcmp(header.data(), "GIF89a", 6) == 0))
-	{
-		return ".gif";
-	}
-
-	// 15. BMP (BM)
-	if (header.size() >= 14 && header[0] == 'B' && header[1] == 'M')
-	{
-		return ".bmp";
-	}
-
-	// 16. RAR (Rar!\x1A\x07)
+	// 12. RAR (Rar!\x1A\x07)
 	static constexpr uint8_t RAR_MAGIC[6] = { 'R', 'a', 'r', '!', 0x1A, 0x07 };
 	if (header.size() >= 6 && std::memcmp(header.data(), RAR_MAGIC, 6) == 0)
 	{

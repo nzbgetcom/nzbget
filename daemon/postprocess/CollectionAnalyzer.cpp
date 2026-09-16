@@ -313,7 +313,8 @@ namespace CollectionAnalyzer
 					videoBaseName = analysis.mainVideo.stem;
 				}
 			}
-			else if (analysis.mainVideo.filename.find('.') == std::string::npos && !analysis.mainVideo.ext.empty())
+			else if (!analysis.mainVideo.ext.empty() &&
+				!Util::EndsWith(analysis.mainVideo.filename, analysis.mainVideo.ext, false))
 			{
 				std::string newVideoName = analysis.mainVideo.filename + analysis.mainVideo.ext;
 				videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
@@ -358,7 +359,8 @@ namespace CollectionAnalyzer
 					bookBaseName = analysis.mainBook.stem;
 				}
 			}
-			else if (analysis.mainBook.filename.find('.') == std::string::npos && !analysis.mainBook.ext.empty())
+			else if (!analysis.mainBook.ext.empty() &&
+				!Util::EndsWith(analysis.mainBook.filename, analysis.mainBook.ext, false))
 			{
 				std::string newBookName = analysis.mainBook.filename + analysis.mainBook.ext;
 				bookBaseName = PlanFileRename(analysis.mainBook, newBookName);
