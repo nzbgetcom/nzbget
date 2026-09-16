@@ -566,4 +566,34 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerCleanTitleWithDotsExtensionlessSniffingTe
 	fs::remove_all(tempDir);
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessDjvuSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_djvu";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing DjVu magic bytes
+	fs::path book = tempDir / "88f9e0a1b2c3d4e5f60123456789abcd";
+	{
+		std::ofstream ofs(book, std::ios::binary);
+		uint8_t djvuHeader[] = {
+			'A', 'T', '&', 'T', 'F', 'O', 'R', 'M',
+			0x00, 0x00, 0x04, 0x00, // chunk length
+			'D', 'J', 'V', 'M'
+		};
+		ofs.write(reinterpret_cast<const char*>(djvuHeader), sizeof(djvuHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Vintage.Magazine.Issue.42.1998", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "88f9e0a1b2c3d4e5f60123456789abcd");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Vintage.Magazine.Issue.42.1998.djvu");
+
+	fs::remove_all(tempDir);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

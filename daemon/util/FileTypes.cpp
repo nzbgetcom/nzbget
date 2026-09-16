@@ -459,7 +459,14 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 		return ".mobi";
 	}
 
-	// 12. RAR (Rar!\x1A\x07)
+	// 12. DjVu (IFF container: 'AT&TFORM' at offset 0, 4-byte length, and 'DJVU' or 'DJVM' at offset 12)
+	if (header.size() >= 16 && std::memcmp(header.data(), "AT&TFORM", 8) == 0 &&
+		(std::memcmp(header.data() + 12, "DJVU", 4) == 0 || std::memcmp(header.data() + 12, "DJVM", 4) == 0))
+	{
+		return ".djvu";
+	}
+
+	// 13. RAR (Rar!\x1A\x07)
 	static constexpr uint8_t RAR_MAGIC[6] = { 'R', 'a', 'r', '!', 0x1A, 0x07 };
 	if (header.size() >= 6 && std::memcmp(header.data(), RAR_MAGIC, 6) == 0)
 	{

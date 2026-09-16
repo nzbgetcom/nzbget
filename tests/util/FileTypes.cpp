@@ -580,6 +580,20 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	std::memcpy(mobiBuf.data() + 60, "BOOKMOBI", 8);
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mobiBuf), ".mobi");
 
+	// DjVu (single-page: AT&TFORM + 4-byte length + DJVU)
+	std::vector<uint8_t> djvuBuf(20, 0x00);
+	std::memcpy(djvuBuf.data(), "AT&TFORM", 8);
+	djvuBuf[8] = 0x00; djvuBuf[9] = 0x00; djvuBuf[10] = 0x01; djvuBuf[11] = 0x00;
+	std::memcpy(djvuBuf.data() + 12, "DJVU", 4);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(djvuBuf), ".djvu");
+
+	// DjVu (multi-page: AT&TFORM + 4-byte length + DJVM)
+	std::vector<uint8_t> djvmBuf(20, 0x00);
+	std::memcpy(djvmBuf.data(), "AT&TFORM", 8);
+	djvmBuf[8] = 0x00; djvmBuf[9] = 0x00; djvmBuf[10] = 0x01; djvmBuf[11] = 0x00;
+	std::memcpy(djvmBuf.data() + 12, "DJVM", 4);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(djvmBuf), ".djvu");
+
 	// JPEG
 	uint8_t jpgBuf[] = { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F' };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(jpgBuf), ".jpg");
