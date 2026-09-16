@@ -217,6 +217,9 @@ bool IsNfoExt(std::string_view ext)
 	return MatchesAnyExt(ext, FORMATS);
 }
 
+// Classifies book and comic-book file extensions when present on disk.
+// Note: CBR/CBZ are byte-for-byte identical to standard RAR/ZIP archives. SniffExtension
+// intentionally emits .rar/.zip for them so NZBGet's unpack pipeline can extract their contents.
 bool IsBookExt(std::string_view ext)
 {
 	static constexpr std::string_view FORMATS[] = {
@@ -416,7 +419,8 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 
 		if (ContainsGuid(header, ASF_VIDEO_GUID)) return ".wmv";
 		if (ContainsGuid(header, ASF_AUDIO_GUID)) return ".wma";
-		return ".wmv";
+		// Undecided: neither stream GUID was reached in the buffer; do not falsely assume video
+		return "";
 	}
 
 	// 7. FLAC

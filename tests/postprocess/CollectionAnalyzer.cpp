@@ -396,6 +396,19 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerMultiBookAmbiguousTest)
 	fs::remove_all(tempDir);
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerSingleBookNotDuplicatedInOtherFilesTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/Novel.epub", "Novel.epub", "Novel", ".epub", 2000000ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	BOOST_CHECK(result.CanRename());
+	BOOST_CHECK_EQUAL(result.mainBook.filename, "Novel.epub");
+	BOOST_CHECK(result.otherFiles.empty());
+}
+
 BOOST_AUTO_TEST_CASE(CollectionAnalyzerDvdVideoTsTest)
 {
 	std::vector<CollectionAnalyzer::FileEntry> files = {
@@ -592,6 +605,35 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessDjvuSniffingTest)
 	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
 	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "88f9e0a1b2c3d4e5f60123456789abcd");
 	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Vintage.Magazine.Issue.42.1998.djvu");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerDiscDescriptorKnownExtensionTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_disc_descriptor_known";
+	fs::create_directories(tempDir);
+
+	// Create .cue sheet and .bin disc image
+	fs::path cueFile = tempDir / "Game.cue";
+	std::ofstream(cueFile) << "FILE \"Game.bin\" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n";
+
+	// Even if Game.bin contains bytes that look like a video container, it must NOT be sniffed
+	fs::path binFile = tempDir / "Game.bin";
+	{
+		std::ofstream ofs(binFile, std::ios::binary);
+		uint8_t mkvHeader[] = { 0x1A, 0x45, 0xDF, 0xA3 };
+		ofs.write(reinterpret_cast<const char*>(mkvHeader), sizeof(mkvHeader));
+		std::vector<char> pad(1024, '0');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+
+	// Both .cue and .bin are known disc types: must be protected as disc structure
+	BOOST_CHECK(result.isDiscStructure);
+	BOOST_CHECK(!result.CanRename());
+	BOOST_CHECK(result.mainVideo.filename.empty());
 
 	fs::remove_all(tempDir);
 }

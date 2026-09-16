@@ -540,10 +540,6 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	falseTsBuf[376] = 0x00;
 	BOOST_CHECK_NE(FileTypes::SniffExtension(falseTsBuf), ".ts");
 
-	// WMV
-	uint8_t wmvBuf[] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0x00, 0x00 };
-	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(wmvBuf), ".wmv");
-
 	// FLAC
 	uint8_t flacBuf[] = { 'f', 'L', 'a', 'C', 0x00, 0x00 };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(flacBuf), ".flac");
@@ -670,10 +666,10 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	std::memcpy(asfAudioBuf.data() + 80, audioGuid, 16);
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfAudioBuf), ".wma");
 
-	// ASF with no stream type found (fallback to .wmv)
+	// ASF with no stream type found (must return empty string, NOT assume .wmv)
 	std::vector<uint8_t> asfUnknownBuf(16, 0x00);
 	std::memcpy(asfUnknownBuf.data(), asfGuid, 8);
-	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfUnknownBuf), ".wmv");
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfUnknownBuf), "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

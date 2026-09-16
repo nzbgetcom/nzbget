@@ -65,6 +65,7 @@ namespace CollectionAnalyzer
 		int audioCount = 0;
 		int bookCount = 0;
 		FileEntry dominantBook;
+		std::vector<FileEntry> books;
 
 		for (const auto& file : files)
 		{
@@ -85,7 +86,7 @@ namespace CollectionAnalyzer
 				{
 					dominantBook = file;
 				}
-				result.otherFiles.push_back(file);
+				books.push_back(file);
 			}
 			else if (FileTypes::IsVideoExt(file.ext))
 			{
@@ -134,7 +135,16 @@ namespace CollectionAnalyzer
 			else if (bookCount > 1)
 			{
 				result.isAmbiguousCollection = true;
+				result.otherFiles.insert(result.otherFiles.end(),
+					std::make_move_iterator(books.begin()),
+					std::make_move_iterator(books.end()));
 			}
+		}
+		else
+		{
+			result.otherFiles.insert(result.otherFiles.end(),
+				std::make_move_iterator(books.begin()),
+				std::make_move_iterator(books.end()));
 		}
 
 		return result;
@@ -199,7 +209,8 @@ namespace CollectionAnalyzer
 					FileTypes::IsSubtitleExt(fe.ext) || FileTypes::IsNfoExt(fe.ext) ||
 					FileTypes::IsBookExt(fe.ext) || FileTypes::IsImageExt(fe.ext) ||
 					FileTypes::IsArchiveExt(fe.ext) || FileTypes::IsParityExt(fe.ext) ||
-					FileTypes::IsDiscStructureExt(fe.ext) || FileTypes::IsDiscImageExt(fe.ext));
+					FileTypes::IsDiscStructureExt(fe.ext) || FileTypes::IsDiscImageExt(fe.ext) ||
+					FileTypes::IsDiscDescriptorExt(fe.ext) || FileTypes::IsGenericDiscImageExt(fe.ext));
 
 				if (!isKnown)
 				{
