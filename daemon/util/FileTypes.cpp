@@ -361,10 +361,26 @@ std::string_view SniffExtension(std::span<const uint8_t> header)
 		return ".ts";
 	}
 
-	// 6. WMV / ASF (\x30\x26\xB2\x75\x8E\x66\xCF\x11)
+	// 6. WMV / WMA / ASF
 	static constexpr uint8_t ASF_GUID[8] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11 };
 	if (header.size() >= 8 && std::memcmp(header.data(), ASF_GUID, 8) == 0)
 	{
+		// ASF_Video_Media GUID
+		static constexpr uint8_t ASF_VIDEO_GUID[16] = {
+			0xC0, 0xEF, 0x19, 0xBC, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B
+		};
+		// ASF_Audio_Media GUID
+		static constexpr uint8_t ASF_AUDIO_GUID[16] = {
+			0x40, 0x9E, 0x69, 0xF8, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B
+		};
+
+		auto ContainsGuid = [](std::span<const uint8_t> buf, const uint8_t guid[16]) {
+			if (buf.size() < 16) return false;
+			return std::search(buf.begin(), buf.end(), guid, guid + 16) != buf.end();
+		};
+
+		if (ContainsGuid(header, ASF_VIDEO_GUID)) return ".wmv";
+		if (ContainsGuid(header, ASF_AUDIO_GUID)) return ".wma";
 		return ".wmv";
 	}
 

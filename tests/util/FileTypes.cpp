@@ -599,6 +599,29 @@ BOOST_AUTO_TEST_CASE(SniffExtensionTest)
 	// Unix compress
 	uint8_t zBuf[] = { 0x1F, 0x9D };
 	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(zBuf), ".Z");
+
+	// ASF with video stream
+	std::vector<uint8_t> asfVideoBuf(256, 0x00);
+	// ASF Header Object GUID (first 8 bytes)
+	uint8_t asfGuid[] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11 };
+	std::memcpy(asfVideoBuf.data(), asfGuid, 8);
+	// ASF_Video_Media GUID somewhere in the buffer
+	uint8_t videoGuid[] = { 0xC0, 0xEF, 0x19, 0xBC, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B };
+	std::memcpy(asfVideoBuf.data() + 80, videoGuid, 16);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfVideoBuf), ".wmv");
+
+	// ASF with audio stream only
+	std::vector<uint8_t> asfAudioBuf(256, 0x00);
+	std::memcpy(asfAudioBuf.data(), asfGuid, 8);
+	// ASF_Audio_Media GUID somewhere in the buffer
+	uint8_t audioGuid[] = { 0x40, 0x9E, 0x69, 0xF8, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B };
+	std::memcpy(asfAudioBuf.data() + 80, audioGuid, 16);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfAudioBuf), ".wma");
+
+	// ASF with no stream type found (fallback to .wmv)
+	std::vector<uint8_t> asfUnknownBuf(16, 0x00);
+	std::memcpy(asfUnknownBuf.data(), asfGuid, 8);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfUnknownBuf), ".wmv");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
