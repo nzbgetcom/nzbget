@@ -312,4 +312,330 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerAudioCollectionTest)
 	fs::remove_all(tempDir);
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessVideoSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_video";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension, containing MKV EBML header bytes
+	fs::path video = tempDir / "33f5e57280cf9321825f9243daa1dcb0";
+	{
+		std::ofstream ofs(video, std::ios::binary);
+		uint8_t mkvHeader[] = {
+			0x1A, 0x45, 0xDF, 0xA3, 0xA3, 0x42, 0x86, 0x81,
+			0x01, 0x42, 0xF7, 0x81, 0x01, 0x42, 0xF2, 0x81,
+			0x04, 0x42, 0xF3, 0x81, 0x08, 0x42, 0x82, 0x88,
+			'm', 'a', 't', 'r', 'o', 's', 'k', 'a'
+		};
+		ofs.write(reinterpret_cast<const char*>(mkvHeader), sizeof(mkvHeader));
+		// Pad with dummy data to give it non-zero size
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	// Accompanying obfuscated subtitle
+	fs::path sub = tempDir / "33f5e57280cf9321825f9243daa1dcb0.en.srt";
+	std::ofstream(sub) << "1\n00:00:01,000 --> 00:00:02,000\nHello\n";
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Release.Title.S01E09.1080p", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 2u);
+
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "33f5e57280cf9321825f9243daa1dcb0");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Release.Title.S01E09.1080p.mkv");
+
+	BOOST_CHECK_EQUAL(plan.actions[1].oldFilename, "33f5e57280cf9321825f9243daa1dcb0.en.srt");
+	BOOST_CHECK_EQUAL(plan.actions[1].newFilename, "Release.Title.S01E09.1080p.en.srt");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessBookSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_book";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing EPUB magic bytes
+	fs::path book = tempDir / "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4";
+	{
+		std::ofstream ofs(book, std::ios::binary);
+		std::vector<uint8_t> epubHeader(80, 0x00);
+		epubHeader[0] = 0x50; epubHeader[1] = 0x4B; epubHeader[2] = 0x03; epubHeader[3] = 0x04;
+		const char* mime = "mimetypeapplication/epub+zip";
+		std::memcpy(epubHeader.data() + 30, mime, std::strlen(mime));
+		ofs.write(reinterpret_cast<const char*>(epubHeader.data()), epubHeader.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Author.Novel.Title.2026", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Author.Novel.Title.2026.epub");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerMultiBookAmbiguousTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_multi_book";
+	fs::create_directories(tempDir);
+
+	fs::path book1 = tempDir / "Volume1.epub";
+	fs::path book2 = tempDir / "Volume2.epub";
+	std::ofstream(book1) << "book 1";
+	std::ofstream(book2) << "book 2";
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+	BOOST_CHECK(result.isAmbiguousCollection);
+	BOOST_CHECK(!result.CanRename());
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerSingleBookNotDuplicatedInOtherFilesTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/Novel.epub", "Novel.epub", "Novel", ".epub", 2000000ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	BOOST_CHECK(result.CanRename());
+	BOOST_CHECK_EQUAL(result.mainBook.filename, "Novel.epub");
+	BOOST_CHECK(result.otherFiles.empty());
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerDvdVideoTsTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/VIDEO_TS/VIDEO_TS.BUP", "VIDEO_TS.BUP", "VIDEO_TS", ".BUP", 1024ULL },
+		{ "/path/VIDEO_TS/VTS_01_1.VOB", "VTS_01_1.VOB", "VTS_01_1", ".VOB", 1073741824ULL },
+		{ "/path/VIDEO_TS/VTS_01_0.IFO", "VTS_01_0.IFO", "VTS_01_0", ".IFO", 2048ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	BOOST_CHECK(result.isDiscStructure);
+	BOOST_CHECK(!result.CanRename());
+	BOOST_CHECK(result.mainVideo.filename.empty());
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerDvdAvchdTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_dvd_avchd";
+	fs::create_directories(tempDir / "AVCHD" / "BDMV" / "STREAM");
+
+	fs::path streamFile = tempDir / "AVCHD" / "BDMV" / "STREAM" / "00001.m2ts";
+	std::ofstream(streamFile) << "fake m2ts data";
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+
+	BOOST_CHECK(result.isDiscStructure);
+	BOOST_CHECK(!result.CanRename());
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerMusicAlbumLargerTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/01-intro.flac", "01-intro.flac", "01-intro", ".flac", 8000000ULL },
+		{ "/path/02-main.flac", "02-main.flac", "02-main", ".flac", 45000000ULL },
+		{ "/path/03-solo.flac", "03-solo.flac", "03-solo", ".flac", 38000000ULL },
+		{ "/path/04-outro.flac", "04-outro.flac", "04-outro", ".flac", 12000000ULL },
+		{ "/path/05-bonus.flac", "05-bonus.flac", "05-bonus", ".flac", 25000000ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	BOOST_CHECK(result.hasAudio);
+	BOOST_CHECK(result.isAmbiguousCollection);
+	BOOST_CHECK(!result.CanRename());
+	BOOST_CHECK(result.mainVideo.filename.empty());
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerMixedAudioVideoTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/feature.mkv", "feature.mkv", "feature", ".mkv", 4000000000ULL },
+		{ "/path/commentary.dts", "commentary.dts", "commentary", ".dts", 600000000ULL },
+		{ "/path/score.flac", "score.flac", "score", ".flac", 80000000ULL },
+		{ "/path/extras.flac", "extras.flac", "extras", ".flac", 50000000ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	// Video dominates: audio tracks are ignored for rename purposes
+	BOOST_CHECK(result.hasAudio);
+	BOOST_CHECK(!result.isAmbiguousCollection);
+	BOOST_CHECK(result.CanRename());
+	BOOST_CHECK_EQUAL(result.mainVideo.filename, "feature.mkv");
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerPdfSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_pdf_sniff";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing PDF magic bytes
+	fs::path book = tempDir / "deadbeef0102030405060708deadbeef01";
+	{
+		std::ofstream ofs(book, std::ios::binary);
+		// PDF: %PDF-1.x
+		const char* pdfMagic = "%PDF-1.7";
+		ofs.write(pdfMagic, 9);
+		std::vector<char> pad(512, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Technical.Reference.Guide.2026", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "deadbeef0102030405060708deadbeef01");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Technical.Reference.Guide.2026.pdf");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerBookVsVideoTest)
+{
+	std::vector<CollectionAnalyzer::FileEntry> files = {
+		{ "/path/feature.mkv", "feature.mkv", "feature", ".mkv", 4000000000ULL },
+		{ "/path/accompanying.epub", "accompanying.epub", "accompanying", ".epub", 500000ULL }
+	};
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::Analyze(files);
+
+	// Video wins: book goes to otherFiles, not mainBook
+	BOOST_CHECK(!result.isAmbiguousCollection);
+	BOOST_CHECK(result.CanRename());
+	BOOST_CHECK_EQUAL(result.mainVideo.filename, "feature.mkv");
+	BOOST_CHECK(result.mainBook.filename.empty());
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessM4bAudiobookSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_m4b";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing M4B ftyp brand
+	fs::path audiobook = tempDir / "44a5b6c7d8e9f0123456789abcdef012";
+	{
+		std::ofstream ofs(audiobook, std::ios::binary);
+		uint8_t m4bHeader[] = {
+			0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'B', ' ',
+			0x00, 0x00, 0x00, 0x00, 'M', '4', 'B', ' ', 'm', 'p', '4', '2', 'i', 's', 'o', 'm'
+		};
+		ofs.write(reinterpret_cast<const char*>(m4bHeader), sizeof(m4bHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Famous.Author.Audiobook.Title.2026", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "44a5b6c7d8e9f0123456789abcdef012");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Famous.Author.Audiobook.Title.2026.m4b");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerCleanTitleWithDotsExtensionlessSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_clean_dots_extless";
+	fs::create_directories(tempDir);
+
+	// A clean file with dots in its name, but NO extension (e.g. Show.S01E01.1080p)
+	fs::path video = tempDir / "Show.S01E01.1080p";
+	{
+		std::ofstream ofs(video, std::ios::binary);
+		uint8_t mkvHeader[] = {
+			0x1A, 0x45, 0xDF, 0xA3, 0xA3, 0x42, 0x86, 0x81,
+			0x01, 0x42, 0xF7, 0x81, 0x01, 0x42, 0xF2, 0x81,
+			0x04, 0x42, 0xF3, 0x81, 0x08, 0x42, 0x82, 0x88,
+			'm', 'a', 't', 'r', 'o', 's', 'k', 'a'
+		};
+		ofs.write(reinterpret_cast<const char*>(mkvHeader), sizeof(mkvHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Show.S01E01.1080p", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "Show.S01E01.1080p");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Show.S01E01.1080p.mkv");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerExtensionlessDjvuSniffingTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_extless_djvu";
+	fs::create_directories(tempDir);
+
+	// Create an obfuscated file with NO extension containing DjVu magic bytes
+	fs::path book = tempDir / "88f9e0a1b2c3d4e5f60123456789abcd";
+	{
+		std::ofstream ofs(book, std::ios::binary);
+		uint8_t djvuHeader[] = {
+			'A', 'T', '&', 'T', 'F', 'O', 'R', 'M',
+			0x00, 0x00, 0x04, 0x00, // chunk length
+			'D', 'J', 'V', 'M'
+		};
+		ofs.write(reinterpret_cast<const char*>(djvuHeader), sizeof(djvuHeader));
+		std::vector<char> pad(1024, 'X');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, "Vintage.Magazine.Issue.42.1998", ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "88f9e0a1b2c3d4e5f60123456789abcd");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, "Vintage.Magazine.Issue.42.1998.djvu");
+
+	fs::remove_all(tempDir);
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerDiscDescriptorKnownExtensionTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_disc_descriptor_known";
+	fs::create_directories(tempDir);
+
+	// Create .cue sheet and .bin disc image
+	fs::path cueFile = tempDir / "Game.cue";
+	std::ofstream(cueFile) << "FILE \"Game.bin\" BINARY\n  TRACK 01 MODE1/2352\n    INDEX 01 00:00:00\n";
+
+	// Even if Game.bin contains bytes that look like a video container, it must NOT be sniffed
+	fs::path binFile = tempDir / "Game.bin";
+	{
+		std::ofstream ofs(binFile, std::ios::binary);
+		uint8_t mkvHeader[] = { 0x1A, 0x45, 0xDF, 0xA3 };
+		ofs.write(reinterpret_cast<const char*>(mkvHeader), sizeof(mkvHeader));
+		std::vector<char> pad(1024, '0');
+		ofs.write(pad.data(), pad.size());
+	}
+
+	CollectionAnalyzer::AnalysisResult result = CollectionAnalyzer::AnalyzeDirectory(tempDir);
+
+	// Both .cue and .bin are known disc types: must be protected as disc structure
+	BOOST_CHECK(result.isDiscStructure);
+	BOOST_CHECK(!result.CanRename());
+	BOOST_CHECK(result.mainVideo.filename.empty());
+
+	fs::remove_all(tempDir);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

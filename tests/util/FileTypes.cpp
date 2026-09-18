@@ -295,6 +295,8 @@ BOOST_AUTO_TEST_CASE(IsAudioExtTest)
 	BOOST_CHECK(FileTypes::IsAudioExt(".opus"));
 	BOOST_CHECK(FileTypes::IsAudioExt(".wma"));
 	BOOST_CHECK(FileTypes::IsAudioExt(".eac3"));
+	BOOST_CHECK(FileTypes::IsAudioExt(".m4a"));
+	BOOST_CHECK(FileTypes::IsAudioExt(".M4A"));
 
 	BOOST_CHECK(!FileTypes::IsAudioExt(".rar"));
 	BOOST_CHECK(!FileTypes::IsAudioExt(""));
@@ -431,6 +433,243 @@ BOOST_AUTO_TEST_CASE(IsSampleFileTest)
 	BOOST_CHECK(!FileTypes::IsSampleFile("samples.mkv"));
 	BOOST_CHECK(!FileTypes::IsSampleFile("mysample.mkv"));
 	BOOST_CHECK(!FileTypes::IsSampleFile("file.mkv"));
+}
+
+BOOST_AUTO_TEST_CASE(IsBookExtTest)
+{
+	BOOST_CHECK(FileTypes::IsBookExt(".epub"));
+	BOOST_CHECK(FileTypes::IsBookExt(".EPUB"));
+	BOOST_CHECK(FileTypes::IsBookExt(".pdf"));
+	BOOST_CHECK(FileTypes::IsBookExt(".PDF"));
+	BOOST_CHECK(FileTypes::IsBookExt(".mobi"));
+	BOOST_CHECK(FileTypes::IsBookExt(".azw3"));
+	BOOST_CHECK(FileTypes::IsBookExt(".cbr"));
+	BOOST_CHECK(FileTypes::IsBookExt(".cbz"));
+	BOOST_CHECK(FileTypes::IsBookExt(".djvu"));
+	BOOST_CHECK(FileTypes::IsBookExt(".m4b"));
+	BOOST_CHECK(FileTypes::IsBookExt(".M4B"));
+
+	BOOST_CHECK(!FileTypes::IsBookExt(".mkv"));
+	BOOST_CHECK(!FileTypes::IsBookExt(".txt"));
+	BOOST_CHECK(!FileTypes::IsBookExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(IsImageExtTest)
+{
+	BOOST_CHECK(FileTypes::IsImageExt(".jpg"));
+	BOOST_CHECK(FileTypes::IsImageExt(".JPG"));
+	BOOST_CHECK(FileTypes::IsImageExt(".jpeg"));
+	BOOST_CHECK(FileTypes::IsImageExt(".png"));
+	BOOST_CHECK(FileTypes::IsImageExt(".gif"));
+	BOOST_CHECK(FileTypes::IsImageExt(".webp"));
+	BOOST_CHECK(FileTypes::IsImageExt(".bmp"));
+	BOOST_CHECK(FileTypes::IsImageExt(".tif"));
+	BOOST_CHECK(FileTypes::IsImageExt(".tiff"));
+
+	BOOST_CHECK(!FileTypes::IsImageExt(".mkv"));
+	BOOST_CHECK(!FileTypes::IsImageExt(".mp4"));
+	BOOST_CHECK(!FileTypes::IsImageExt(""));
+}
+
+BOOST_AUTO_TEST_CASE(SniffExtensionTest)
+{
+	// Empty / short / unknown
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(std::span<const uint8_t>()), "");
+	uint8_t shortBuf[] = { 0x1A, 0x45 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(shortBuf), "");
+	uint8_t unknownBuf[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(unknownBuf), "");
+
+	// MKV (EBML)
+	uint8_t mkvBuf[] = { 0x1A, 0x45, 0xDF, 0xA3, 0x01, 0x00, 0x00, 0x00, 'm', 'a', 't', 'r', 'o', 's', 'k', 'a' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mkvBuf), ".mkv");
+
+	// WebM (EBML with webm docType)
+	uint8_t webmBuf[] = { 0x1A, 0x45, 0xDF, 0xA3, 0x01, 0x00, 0x00, 0x00, 'w', 'e', 'b', 'm' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(webmBuf), ".webm");
+
+	// MP4 (ftyp isom)
+	uint8_t mp4Buf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mp4Buf), ".mp4");
+
+	// M4V (ftyp M4V )
+	uint8_t m4vBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'V', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4vBuf), ".m4v");
+
+	// M4A (ftyp M4A )
+	uint8_t m4aBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'A', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4aBuf), ".m4a");
+
+	// M4B (ftyp M4B )
+	uint8_t m4bBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'M', '4', 'B', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(m4bBuf), ".m4b");
+
+	// MOV (ftyp qt  )
+	uint8_t movBuf[] = { 0x00, 0x00, 0x00, 0x20, 'f', 't', 'y', 'p', 'q', 't', ' ', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(movBuf), ".mov");
+
+	// AVI (RIFF....AVI )
+	uint8_t aviBuf[] = { 'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'A', 'V', 'I', ' ' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(aviBuf), ".avi");
+
+	// WAV (RIFF....WAVE)
+	uint8_t wavBuf[] = { 'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'A', 'V', 'E' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(wavBuf), ".wav");
+
+	// WEBP (RIFF....WEBP)
+	uint8_t webpBuf[] = { 'R', 'I', 'F', 'F', 0x00, 0x00, 0x00, 0x00, 'W', 'E', 'B', 'P' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(webpBuf), ".webp");
+
+	// MPEG-TS (188 bytes interval)
+	std::vector<uint8_t> tsBuf(200, 0x00);
+	tsBuf[0] = 0x47;
+	tsBuf[188] = 0x47;
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(tsBuf), ".ts");
+
+	// MPEG-TS (3 packets verified in larger buffer)
+	std::vector<uint8_t> tsBuf512(512, 0x00);
+	tsBuf512[0] = 0x47;
+	tsBuf512[188] = 0x47;
+	tsBuf512[376] = 0x47;
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(tsBuf512), ".ts");
+
+	// MPEG-TS: 3rd packet missing in 512-byte buffer -> must not match .ts
+	std::vector<uint8_t> falseTsBuf(512, 0x00);
+	falseTsBuf[0] = 0x47;
+	falseTsBuf[188] = 0x47;
+	falseTsBuf[376] = 0x00;
+	BOOST_CHECK_NE(FileTypes::SniffExtension(falseTsBuf), ".ts");
+
+	// FLAC
+	uint8_t flacBuf[] = { 'f', 'L', 'a', 'C', 0x00, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(flacBuf), ".flac");
+
+	// MP3 (ID3)
+	uint8_t mp3Id3Buf[] = { 'I', 'D', '3', 0x03, 0x00, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mp3Id3Buf), ".mp3");
+
+	// MP3 (MPEG audio frame sync 0xFF 0xFB)
+	uint8_t mp3SyncBuf[] = { 0xFF, 0xFB, 0x90, 0x64 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mp3SyncBuf), ".mp3");
+
+	// OGG
+	uint8_t oggBuf[] = { 'O', 'g', 'g', 'S', 0x00, 0x02 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(oggBuf), ".ogg");
+
+	// PDF
+	uint8_t pdfBuf[] = { '%', 'P', 'D', 'F', '-', '1', '.', '5' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(pdfBuf), ".pdf");
+
+	// EPUB (ZIP with mimetype)
+	std::vector<uint8_t> epubBuf(80, 0x00);
+	epubBuf[0] = 0x50; epubBuf[1] = 0x4B; epubBuf[2] = 0x03; epubBuf[3] = 0x04;
+	const char* epubMime = "mimetypeapplication/epub+zip";
+	std::memcpy(epubBuf.data() + 30, epubMime, std::strlen(epubMime));
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(epubBuf), ".epub");
+
+	// Generic ZIP
+	uint8_t zipBuf[] = { 0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x00, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(zipBuf), ".zip");
+
+	// MOBI
+	std::vector<uint8_t> mobiBuf(80, 0x00);
+	std::memcpy(mobiBuf.data() + 60, "BOOKMOBI", 8);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(mobiBuf), ".mobi");
+
+	// DjVu (single-page: AT&TFORM + 4-byte length + DJVU)
+	std::vector<uint8_t> djvuBuf(20, 0x00);
+	std::memcpy(djvuBuf.data(), "AT&TFORM", 8);
+	djvuBuf[8] = 0x00; djvuBuf[9] = 0x00; djvuBuf[10] = 0x01; djvuBuf[11] = 0x00;
+	std::memcpy(djvuBuf.data() + 12, "DJVU", 4);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(djvuBuf), ".djvu");
+
+	// DjVu (multi-page: AT&TFORM + 4-byte length + DJVM)
+	std::vector<uint8_t> djvmBuf(20, 0x00);
+	std::memcpy(djvmBuf.data(), "AT&TFORM", 8);
+	djvmBuf[8] = 0x00; djvmBuf[9] = 0x00; djvmBuf[10] = 0x01; djvmBuf[11] = 0x00;
+	std::memcpy(djvmBuf.data() + 12, "DJVM", 4);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(djvmBuf), ".djvu");
+
+	// JPEG
+	uint8_t jpgBuf[] = { 0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 'J', 'F', 'I', 'F' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(jpgBuf), ".jpg");
+
+	// PNG
+	uint8_t pngBuf[] = { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(pngBuf), ".png");
+
+	// GIF
+	uint8_t gifBuf[] = { 'G', 'I', 'F', '8', '9', 'a', 0x01, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(gifBuf), ".gif");
+
+	// GIF with 0x47 at byte 188 (must NOT be misclassified as MPEG-TS .ts!)
+	std::vector<uint8_t> gifCollisionBuf(256, 0x00);
+	std::memcpy(gifCollisionBuf.data(), "GIF89a", 6);
+	gifCollisionBuf[188] = 0x47;
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(gifCollisionBuf), ".gif");
+
+	// BMP
+	std::vector<uint8_t> bmpBuf(20, 0x00);
+	bmpBuf[0] = 'B'; bmpBuf[1] = 'M';
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(bmpBuf), ".bmp");
+
+	// Fake BMP: starts with "BM" but has non-zero reserved bytes -> must NOT match .bmp
+	std::vector<uint8_t> fakeBmpBuf(20, 0x00);
+	fakeBmpBuf[0] = 'B'; fakeBmpBuf[1] = 'M';
+	fakeBmpBuf[6] = 0x01;
+	BOOST_CHECK_NE(FileTypes::SniffExtension(fakeBmpBuf), ".bmp");
+
+	// RAR
+	uint8_t rarBuf[] = { 'R', 'a', 'r', '!', 0x1A, 0x07, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(rarBuf), ".rar");
+
+	// 7z
+	uint8_t szBuf[] = { '7', 'z', 0xBC, 0xAF, 0x27, 0x1C };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(szBuf), ".7z");
+
+	// Gzip
+	uint8_t gzBuf[] = { 0x1F, 0x8B, 0x08, 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(gzBuf), ".gz");
+
+	// Bzip2
+	uint8_t bz2Buf[] = { 'B', 'Z', 'h', '9' };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(bz2Buf), ".bz2");
+
+	// XZ
+	uint8_t xzBuf[] = { 0xFD, '7', 'z', 'X', 'Z', 0x00 };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(xzBuf), ".xz");
+
+	// POSIX tar
+	std::vector<uint8_t> tarBuf(300, 0x00);
+	std::memcpy(tarBuf.data() + 257, "ustar", 5);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(tarBuf), ".tar");
+
+	// Unix compress
+	uint8_t zBuf[] = { 0x1F, 0x9D };
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(zBuf), ".Z");
+
+	// ASF with video stream
+	std::vector<uint8_t> asfVideoBuf(256, 0x00);
+	// ASF Header Object GUID (first 8 bytes)
+	uint8_t asfGuid[] = { 0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11 };
+	std::memcpy(asfVideoBuf.data(), asfGuid, 8);
+	// ASF_Video_Media GUID somewhere in the buffer
+	uint8_t videoGuid[] = { 0xC0, 0xEF, 0x19, 0xBC, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B };
+	std::memcpy(asfVideoBuf.data() + 80, videoGuid, 16);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfVideoBuf), ".wmv");
+
+	// ASF with audio stream only
+	std::vector<uint8_t> asfAudioBuf(256, 0x00);
+	std::memcpy(asfAudioBuf.data(), asfGuid, 8);
+	// ASF_Audio_Media GUID somewhere in the buffer
+	uint8_t audioGuid[] = { 0x40, 0x9E, 0x69, 0xF8, 0x4D, 0x5B, 0xCF, 0x11, 0xA8, 0xFD, 0x00, 0x80, 0x5F, 0x5C, 0x44, 0x2B };
+	std::memcpy(asfAudioBuf.data() + 80, audioGuid, 16);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfAudioBuf), ".wma");
+
+	// ASF with no stream type found (must return empty string, NOT assume .wmv)
+	std::vector<uint8_t> asfUnknownBuf(16, 0x00);
+	std::memcpy(asfUnknownBuf.data(), asfGuid, 8);
+	BOOST_CHECK_EQUAL(FileTypes::SniffExtension(asfUnknownBuf), "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
