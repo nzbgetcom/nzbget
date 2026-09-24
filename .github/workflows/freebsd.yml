@@ -24,10 +24,9 @@ jobs:
         sudo chown $USER:$USER /build
         mkdir -p /build/freebsd
         mkdir -p /build/lib
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/freebsd-sysroot.tar.gz -o /build/freebsd/sysroot.tar.gz
+        bash linux/freebsd/build-toolchain.sh
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/lib-x86_64-bsd.tar.gz -o /build/lib/lib.tar.gz
         curl -L https://github.com/nzbgetcom/build-files/releases/download/v10.0/freebsd-unpack.tar.gz -o /build/unpack.tar.gz
-        tar zxf /build/freebsd/sysroot.tar.gz -C /build/freebsd
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         tar zxf /build/unpack.tar.gz -C /build
         sudo apt-get update
