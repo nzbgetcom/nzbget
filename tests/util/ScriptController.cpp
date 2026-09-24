@@ -248,6 +248,14 @@ BOOST_AUTO_TEST_CASE(BuildCommandLineDirectPathUNC)
 	BOOST_CHECK_EQUAL(cmd, "\"unrar\" \"x\" \"\\\\?\\UNC\\server\\share\\dest\\\"");
 }
 
+BOOST_AUTO_TEST_CASE(BuildCommandLineFakeExtendedPath)
+{
+	ScriptController ctrl;
+	ctrl.SetArgs({"unrar", "x", "\\\\?test\\"});
+	std::string cmd = ctrl.BuildCommandLine();
+	BOOST_CHECK_EQUAL(cmd, "\"unrar\" \"x\" \"\\\\?test\\\\\"");
+}
+
 BOOST_AUTO_TEST_CASE(BuildCommandLineExceedsWindowsLimit)
 {
 	ScriptController ctrl;

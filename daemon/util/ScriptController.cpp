@@ -455,7 +455,7 @@ void AppendEscapedArg(std::string& out, const char* arg, size_t len)
 		return;
 	}
 
-	bool isDirectPath = len >= 3 && arg[0] == '\\' && arg[1] == '\\' && arg[2] == '?';
+	bool isDirectPath = len >= 4 && arg[0] == '\\' && arg[1] == '\\' && arg[2] == '?' && arg[3] == '\\';
 	size_t backslashes = 0;
 
 	for (size_t i = 0; i < len; ++i)
