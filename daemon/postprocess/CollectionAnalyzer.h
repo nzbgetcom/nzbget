@@ -80,6 +80,8 @@ namespace CollectionAnalyzer
 
 	RenamePlan BuildPlan(const fs::path& dir, std::string_view targetName, const char* ignoreExt);
 
+	std::string ResolveTargetName(std::string_view metaName, std::string_view nzbName);
+
 	std::string ResolveSubtitleName(std::string_view baseName, std::string_view subStem, std::string_view subExt);
 	std::string ResolveSampleName(std::string_view baseName, std::string_view sampleExt);
 }
