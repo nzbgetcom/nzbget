@@ -54,11 +54,8 @@ namespace PostDownloadRenamer
 		{
 			GuardedDownloadQueue guard = DownloadQueue::Guard();
 			NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
-			targetName = nzbInfo->GetMetaName();
-			if (targetName.empty())
-			{
-				targetName = nzbInfo->GetName() ? nzbInfo->GetName() : "";
-			}
+			targetName = CollectionAnalyzer::ResolveTargetName(
+				nzbInfo->GetMetaName(), nzbInfo->GetName() ? nzbInfo->GetName() : "");
 			dstDir = nzbInfo->GetDestDir() ? nzbInfo->GetDestDir() : "";
 		}
 
