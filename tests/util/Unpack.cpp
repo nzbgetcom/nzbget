@@ -93,4 +93,25 @@ BOOST_AUTO_TEST_CASE(MakeExtractorUnsupportedTest)
 	BOOST_CHECK(MakeExtractor("file.txt", "/tmp/out", "", OverwriteMode::Skip) == nullptr);
 }
 
+class TestExtractor : public ExtractorBase
+{
+public:
+	using ExtractorBase::ExtractorBase;
+	std::string TestPassword() const { return MakePassword(); }
+	ScriptController::ArgList MakeArgs() const override { return {}; }
+	bool DecodeExitCode([[maybe_unused]] int ec) const override { return true; }
+};
+
+BOOST_AUTO_TEST_CASE(MakePasswordTest)
+{
+	TestExtractor noPass("tool", "archive", "out", "", OverwriteMode::Skip);
+	BOOST_CHECK_EQUAL(noPass.TestPassword(), "-p-");
+
+	TestExtractor withPass("tool", "archive", "out", "mysecret", OverwriteMode::Skip);
+	BOOST_CHECK_EQUAL(withPass.TestPassword(), "-pmysecret");
+
+	TestExtractor passWithSpaces("tool", "archive", "out", "pass with space", OverwriteMode::Skip);
+	BOOST_CHECK_EQUAL(passWithSpaces.TestPassword(), "-ppass with space");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
