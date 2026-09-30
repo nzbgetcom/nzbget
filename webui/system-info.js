@@ -21,6 +21,52 @@ var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
 var TEST_BTN_DEFAULT_TEXT = 'Run test';
 var NETWORK_SPEED_TEST_RUNNING = false;
 
+function formatDiskSpeedResult(writeBytesPerSec, readBytesPerSec, twoLines)
+{
+	var hasRead = readBytesPerSec !== null && readBytesPerSec !== '' && !isNaN(readBytesPerSec);
+	var write = Util.formatSpeed(Number(writeBytesPerSec));
+	var read = hasRead ? Util.formatSpeed(Number(readBytesPerSec)) : '-';
+	if (twoLines)
+	{
+		return 'Read: ' + read + '<br>Write: ' + write;
+	}
+	return hasRead ? 'Read: ' + read + ' / Write: ' + write : write;
+}
+
+function getSavedDiskSpeed(key)
+{
+	var raw = Util.getFromLocalStorage(key);
+	if (raw === null || raw === '')
+	{
+		return null;
+	}
+	try
+	{
+		var parsed = JSON.parse(raw);
+		if (parsed !== null && typeof parsed === 'object' && !isNaN(parsed.write))
+		{
+			return { write: Number(parsed.write), read: parsed.read };
+		}
+	}
+	catch (e) {}
+	// legacy format: a single number (write speed only)
+	return isNaN(raw) ? null : { write: Number(raw), read: null };
+}
+
+function renderSavedDiskSpeed($btn, key, twoLines)
+{
+	var saved = getSavedDiskSpeed(key);
+	if (saved)
+	{
+		$btn.html(formatDiskSpeedResult(saved.write, saved.read, twoLines)).removeAttr('data-i18n');
+	}
+	else
+	{
+		$btn.attr('data-i18n', 'sysinfo_run_test').removeData('i18n-last');
+		I18n.translatePage($btn);
+	}
+}
+
 function DiskSpeedTestsForm()
 {
 	var _512MiB = 1024 * 1024 * 512;
@@ -99,21 +145,19 @@ function DiskSpeedTestsForm()
 		RPC.call('testdiskspeed', [path, writeBufferSize, maxFileSize, timeout], 
 			function(rawRes) 
 			{
-				var bytesPerSec = (rawRes.SizeMB * 1024.0 * 1024.0) / (rawRes.DurationMS / 1000.0);
-				Util.saveToLocalStorage(lsKey, bytesPerSec);
-				$diskSpeedTestBtn.html(Util.formatSpeed(bytesPerSec)).removeAttr('data-i18n');
+				var writeBytesPerSec = (rawRes.SizeMB * 1024.0 * 1024.0) / (rawRes.DurationMS / 1000.0);
+				var readBytesPerSec = rawRes.ReadDurationMS > 0
+					? (rawRes.ReadSizeMB * 1024.0 * 1024.0) / (rawRes.ReadDurationMS / 1000.0)
+					: null;
+				Util.saveToLocalStorage(lsKey, JSON.stringify({ write: writeBytesPerSec, read: readBytesPerSec }));
+				$diskSpeedTestBtn.html(formatDiskSpeedResult(writeBytesPerSec, readBytesPerSec, true)).removeAttr('data-i18n');
 				disableBtnToggle(false);
 			}, 
 			function(res) 
 			{
-				var saved = Util.getFromLocalStorage(lsKey);
-				var isNumeric = saved !== null && saved !== '' && !isNaN(saved);
-				if (isNumeric) {
-					$diskSpeedTestBtn.html(Util.formatSpeed(Number(saved))).removeAttr('data-i18n');
-				} else {
-					$diskSpeedTestBtn.attr('data-i18n', 'sysinfo_run_test').removeData('i18n-last');
-					I18n.translatePage($diskSpeedTestBtn);
-				}
+				// On error: reset button to "Run test" (keep saved value in localStorage intact for status table)
+				$diskSpeedTestBtn.attr('data-i18n', 'sysinfo_run_test').removeData('i18n-last');
+				I18n.translatePage($diskSpeedTestBtn);
 				disableBtnToggle(false);
 
 				var errTxt = res.split('<br>')[0];
@@ -302,14 +346,7 @@ var SystemInfo = (new function($)
 			{ btn: $SysInfo_DestDirDiskTestBtn, key: DEST_DIR_LS_KEY },
 			{ btn: $SysInfo_InterDirDiskTestBtn, key: INTER_DIR_LS_KEY }
 		].forEach(function(item) {
-			var saved = Util.getFromLocalStorage(item.key);
-			var isNumeric = saved !== null && saved !== '' && !isNaN(saved);
-			if (isNumeric) {
-				item.btn.text(Util.formatSpeed(Number(saved))).removeAttr('data-i18n');
-			} else {
-				item.btn.attr('data-i18n', 'sysinfo_run_test');
-				I18n.translatePage(item.btn);
-			}
+			renderSavedDiskSpeed(item.btn, item.key);
 		});
 
 		// Update network speed button
@@ -518,14 +555,7 @@ var SystemInfo = (new function($)
 			showDiskSpeedModal(writeBufferKB, dirPath, 'DestDir', DEST_DIR_LS_KEY);
 		});
 
-		var savedResults = Util.getFromLocalStorage(DEST_DIR_LS_KEY);
-		var isNumeric = savedResults !== null && savedResults !== '' && !isNaN(savedResults);
-		if (isNumeric) {
-			$SysInfo_DestDirDiskTestBtn.text(Util.formatSpeed(Number(savedResults))).removeAttr('data-i18n');
-		} else {
-			$SysInfo_DestDirDiskTestBtn.attr('data-i18n', 'sysinfo_run_test').removeData('i18n-last');
-			I18n.translatePage($SysInfo_DestDirDiskTestBtn);
-		}
+		renderSavedDiskSpeed($SysInfo_DestDirDiskTestBtn, DEST_DIR_LS_KEY);
 	}
 
 	function renderInterDiskSpace(writeBufferKB, free, total, dirPath)
@@ -537,14 +567,7 @@ var SystemInfo = (new function($)
 			showDiskSpeedModal(writeBufferKB, dirPath, 'InterDir', INTER_DIR_LS_KEY);
 		});
 
-		var savedResults = Util.getFromLocalStorage(INTER_DIR_LS_KEY);
-		var isNumeric = savedResults !== null && savedResults !== '' && !isNaN(savedResults);
-		if (isNumeric) {
-			$SysInfo_InterDirDiskTestBtn.text(Util.formatSpeed(Number(savedResults))).removeAttr('data-i18n');
-		} else {
-			$SysInfo_InterDirDiskTestBtn.attr('data-i18n', 'sysinfo_run_test').removeData('i18n-last');
-			I18n.translatePage($SysInfo_InterDirDiskTestBtn);
-		}
+		renderSavedDiskSpeed($SysInfo_InterDirDiskTestBtn, INTER_DIR_LS_KEY);
 	}
 
 	function formatDiskInfo(free, total)

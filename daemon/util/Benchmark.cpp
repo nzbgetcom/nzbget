@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,8 +19,11 @@
 
 #include "nzbget.h"
 
-#include <exception>
+#include <algorithm>
+#include <fstream>
 #include <random>
+#include <stdexcept>
+#include <vector>
 #include "FileSystem.h"
 #include "Benchmark.h"
 
@@ -28,143 +31,154 @@ namespace Benchmark
 {
 	using namespace std::chrono;
 
-	std::pair<uint64_t, double> DiskBenchmark::Run(
-		const std::string& dir,
-		size_t bufferSizeBytes,
-		uint64_t maxFileSizeBytes,
-		seconds timeout) const noexcept(false)
+	namespace
 	{
-		ValidateBufferSize(bufferSizeBytes);
-
-		const std::string filename = dir + PATH_SEPARATOR + GetUniqueFilename();
-		std::ofstream file = OpenFile(filename);
-
-		std::vector<char> buffer;
-		UseBuffer(file, buffer, bufferSizeBytes);
-
-		size_t dataSize = bufferSizeBytes > 0 ? bufferSizeBytes : 1024;
-		std::vector<char> data = GenerateRandomCharsVec(dataSize);
-
-		nanoseconds timeoutNS = duration_cast<nanoseconds>(timeout);
-
-		return RunBench(file, filename, data, maxFileSizeBytes, timeoutNS);
-	}
-
-	std::pair<uint64_t, double> DiskBenchmark::RunBench(
-		std::ofstream& file,
-		const std::string& filename,
-		const std::vector<char>& data,
-		uint64_t maxFileSizeBytes,
-		std::chrono::nanoseconds timeoutNS) const noexcept(false)
-	{
-		uint64_t totalWritten = 0;
-
-		auto start = steady_clock::now();
-		try
+		void FillRandom(std::vector<char>& data)
 		{
-			while (totalWritten < maxFileSizeBytes && (steady_clock::now() - start) < timeoutNS)
+			std::mt19937_64 gen(std::random_device{}());
+			for (char& c : data)
 			{
-				file.write(data.data(), data.size());
-				totalWritten += data.size();
+				c = static_cast<char>(gen());
 			}
 		}
-		catch (const std::exception& e)
+
+		// Deletes the test file on scope exit, also when the test fails.
+		class TestFileRemover
 		{
-			CleanUp(file, filename);
+		public:
+			explicit TestFileRemover(fs::path path) : m_path(std::move(path)) {}
+			TestFileRemover(const TestFileRemover&) = delete;
+			TestFileRemover& operator=(const TestFileRemover&) = delete;
+			~TestFileRemover()
+			{
+				fs::error_code ec;
+				fs::remove(m_path, ec);
+			}
 
-			std::string errMsg = "Failed to write data to file " + filename + ". " + e.what();
-			throw std::runtime_error(errMsg);
-		}
-		auto finish = steady_clock::now();
-		double elapsed = duration<double, std::milli>(finish - start).count();
+		private:
+			fs::path m_path;
+		};
 
-		CleanUp(file, filename);
-
-		return { totalWritten, elapsed };
-	}
-
-	void DiskBenchmark::DeleteFile(const std::string& filename) const noexcept(false)
-	{
-		if (!FileSystem::DeleteFile(filename.c_str()))
+		std::string GetUniqueFilename()
 		{
-			std::string errMsg = "Failed to delete " + filename + " test file";
-			throw std::runtime_error(errMsg);
-		}
-	}
-
-	void DiskBenchmark::CleanUp(
-		std::ofstream& file,
-		const std::string& filename) const noexcept(false)
-	{
-		file.close();
-		DeleteFile(filename);
-	}
-
-	std::string DiskBenchmark::GetUniqueFilename() const noexcept(false)
-	{
-		return std::to_string(
-			high_resolution_clock::now().time_since_epoch().count()
-		) + ".bin";
-	}
-
-	std::ofstream DiskBenchmark::OpenFile(const std::string& filename) const noexcept(false)
-	{
-		std::ofstream file(filename, std::ios::binary);
-
-		if (!file.is_open())
-		{
-			std::string errMsg = std::string("Failed to create test file: ") + strerror(errno);
-			throw std::runtime_error(errMsg);
+			return "nzbget_disktest_" + std::to_string(
+				high_resolution_clock::now().time_since_epoch().count()) + ".bin";
 		}
 
-		file.exceptions(std::ofstream::badbit | std::ofstream::failbit);
-		file.sync_with_stdio(false);
+		uint64_t ResolveMaxFileSize(const fs::path& dir, size_t blockSize, uint64_t requested)
+		{
+			fs::error_code ec;
+			fs::space_info space = fs::space(dir, ec);
+			if (ec)
+			{
+				// unknown free space, creating the test file reports a meaningful error
+				return requested;
+			}
 
-		return file;
+			if (space.available < DiskBenchmark::FREE_SPACE_RESERVE + blockSize)
+			{
+				throw std::runtime_error("Not enough free disk space for the test");
+			}
+
+			return DiskBenchmark::LimitByFreeSpace(requested, space.available);
+		}
+
+		double ElapsedMs(steady_clock::time_point start)
+		{
+			return duration<double, std::milli>(steady_clock::now() - start).count();
+		}
 	}
 
-	void DiskBenchmark::ValidateBufferSize(size_t bufferSz) const noexcept(false)
+	uint64_t DiskBenchmark::LimitByFreeSpace(uint64_t requested, uint64_t available)
 	{
-		if (bufferSz > m_maxBufferSize)
+		if (available <= FREE_SPACE_RESERVE)
+		{
+			return 0;
+		}
+		return std::min(requested, available - FREE_SPACE_RESERVE);
+	}
+
+	Result DiskBenchmark::Run(
+		const std::string& dir,
+		size_t blockSizeBytes,
+		uint64_t maxFileSizeBytes,
+		seconds timeout) const
+	{
+		if (blockSizeBytes > MAX_BLOCK_SIZE)
 		{
 			throw std::invalid_argument("The buffer size is too big");
 		}
-	}
 
-	void DiskBenchmark::UseBuffer(
-		std::ofstream& file,
-		std::vector<char>& buffer,
-		size_t buffSize
-	) const noexcept(false)
-	{
-		if (buffSize > 0)
-		{
-			buffer.resize(buffSize);
-			file.rdbuf()->pubsetbuf(buffer.data(), buffSize);
-		}
-		else
-		{
-			file.rdbuf()->pubsetbuf(nullptr, 0);
-		}
-	}
+		const size_t blockSize = blockSizeBytes == 0 ? DEFAULT_BLOCK_SIZE : blockSizeBytes;
+		const fs::path dirPath = fs::u8path(dir);
 
-	std::vector<char> DiskBenchmark::GenerateRandomCharsVec(size_t size) const noexcept(false)
-	{
-		if (size == 0)
+		fs::error_code ec;
+		if (!fs::is_directory(dirPath, ec))
 		{
-			return {};
+			throw std::runtime_error("Directory does not exist: " + dir);
 		}
 
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_int_distribution<> distrib(0, 127);
+		const uint64_t maxBytes = ResolveMaxFileSize(dirPath, blockSize, maxFileSizeBytes);
+		const nanoseconds timeoutNS = duration_cast<nanoseconds>(timeout);
+		const fs::path filePath = dirPath / fs::u8path(GetUniqueFilename());
 
-		std::vector<char> v(size);
-		std::generate(begin(v), end(v), [&distrib, &gen]()
+		std::vector<char> buffer(blockSize);
+		FillRandom(buffer);
+
+		Result result;
+		const TestFileRemover remover(filePath);
+
+		{
+			std::ofstream file(filePath, std::ios::binary);
+			if (!file)
 			{
-				return static_cast<char>(distrib(gen));
-			});
+				throw std::runtime_error("Failed to create test file");
+			}
 
-		return v;
+			auto start = steady_clock::now();
+			while (result.writeBytes < maxBytes && steady_clock::now() - start < timeoutNS)
+			{
+				if (!file.write(buffer.data(), blockSize))
+				{
+					throw std::runtime_error("Failed to write data to the test file");
+				}
+				result.writeBytes += blockSize;
+			}
+			file.close();
+			if (file.fail())
+			{
+				throw std::runtime_error("Failed to write data to the test file");
+			}
+			result.writeMs = ElapsedMs(start);
+		}
+
+		{
+			std::ifstream file(filePath, std::ios::binary);
+			if (!file)
+			{
+				throw std::runtime_error("Failed to open test file for reading");
+			}
+
+			auto start = steady_clock::now();
+			while (steady_clock::now() - start < timeoutNS)
+			{
+				file.read(buffer.data(), blockSize);
+				const auto read = static_cast<uint64_t>(file.gcount());
+				result.readBytes += read;
+				if (!file)
+				{
+					break;
+				}
+			}
+			result.readMs = ElapsedMs(start);
+		}
+
+		fs::remove(filePath, ec);
+		if (ec)
+		{
+			throw std::runtime_error("Failed to delete test file " + fs::u8string(filePath) + ": " + ec.message());
+		}
+
+		return result;
 	}
 }
