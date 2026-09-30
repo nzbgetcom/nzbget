@@ -198,6 +198,55 @@ BOOST_AUTO_TEST_CASE(CollectionAnalyzerBuildPlanTest)
 	fs::remove_all(tempDir);
 }
 
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerResolveTargetNameTest)
+{
+	std::string hashedMeta1 =
+		"9e12c233ddf94502a46e47b1f0246f25 [10_78] _9e12c233ddf94502a46e47b1f0246f25.part09.rar_ yEnc";
+	std::string nzbName1 = "Sample.Show.Title.S01E05.Pies.And.Tarts.720p.WEB.h264-GRP";
+	BOOST_CHECK_EQUAL(CollectionAnalyzer::ResolveTargetName(hashedMeta1, nzbName1), nzbName1);
+
+	std::string hashedMeta2 =
+		"785d61fbd43d41e8aaa751f0c2481a1c [1_64] _785d61fbd43d41e8aaa751f0c2481a1c.par2_ yEnc";
+	std::string nzbName2 = "Secret.Agents.of.A.B.C.D.E.S07E03.PROPER.1080p.WEB.H264-GRP";
+	BOOST_CHECK_EQUAL(CollectionAnalyzer::ResolveTargetName(hashedMeta2, nzbName2), nzbName2);
+
+	BOOST_CHECK_EQUAL(
+		CollectionAnalyzer::ResolveTargetName("Some.Show.S01E01.1080p.WEB.x264-GRP", "renamed-by-user"),
+		"Some.Show.S01E01.1080p.WEB.x264-GRP");
+
+	BOOST_CHECK_EQUAL(CollectionAnalyzer::ResolveTargetName("", nzbName1), nzbName1);
+
+	BOOST_CHECK_EQUAL(
+		CollectionAnalyzer::ResolveTargetName(hashedMeta1, "9e12c233ddf94502a46e47b1f0246f25"),
+		"9e12c233ddf94502a46e47b1f0246f25");
+
+	BOOST_CHECK_EQUAL(CollectionAnalyzer::ResolveTargetName("", ""), "");
+}
+
+BOOST_AUTO_TEST_CASE(CollectionAnalyzerObfuscatedMetaFallbackTest)
+{
+	fs::path tempDir = fs::temp_directory_path() / "nzbget_test_meta_fallback";
+	fs::create_directories(tempDir);
+
+	fs::path video = tempDir / "1234567890abcdef1234567890abcdef.mkv";
+	std::ofstream(video.string()) << "main video data";
+
+	std::string hashedMeta =
+		"9e12c233ddf94502a46e47b1f0246f25 [10_78] _9e12c233ddf94502a46e47b1f0246f25.part09.rar_ yEnc";
+	std::string nzbName = "Sample.Show.Title.S01E05.Pies.And.Tarts.720p.WEB.h264-GRP";
+
+	CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+		tempDir, CollectionAnalyzer::ResolveTargetName(hashedMeta, nzbName), ".zip, .rar");
+
+	BOOST_CHECK(plan.canRename);
+	BOOST_CHECK(!plan.targetNameObfuscated);
+	BOOST_REQUIRE_EQUAL(plan.actions.size(), 1u);
+	BOOST_CHECK_EQUAL(plan.actions[0].oldFilename, "1234567890abcdef1234567890abcdef.mkv");
+	BOOST_CHECK_EQUAL(plan.actions[0].newFilename, nzbName + ".mkv");
+
+	fs::remove_all(tempDir);
+}
+
 BOOST_AUTO_TEST_CASE(CollectionAnalyzerCueSheetDiscProtectionTest)
 {
 	std::vector<CollectionAnalyzer::FileEntry> files = {

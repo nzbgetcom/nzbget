@@ -387,6 +387,21 @@ namespace CollectionAnalyzer
 		return plan;
 	}
 
+	std::string ResolveTargetName(std::string_view metaName, std::string_view nzbName)
+	{
+		if (!metaName.empty() && !Deobfuscation::IsExcessivelyObfuscated(metaName))
+		{
+			return std::string(metaName);
+		}
+
+		if (!nzbName.empty())
+		{
+			return std::string(nzbName);
+		}
+
+		return std::string(metaName);
+	}
+
 	std::string ResolveSubtitleName(std::string_view baseName, std::string_view subStem, std::string_view subExt)
 	{
 		constexpr size_t MIN_LANG_TAG_LEN = 2; // ISO 639-1 codes

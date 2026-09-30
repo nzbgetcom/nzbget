@@ -204,6 +204,16 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("ABC"));
 	BOOST_CHECK(IsExcessivelyObfuscated("AbC-XyZ"));
 	BOOST_CHECK(IsExcessivelyObfuscated("ABC-XYZ"));
+
+	BOOST_CHECK(!IsExcessivelyObfuscated("Sample.Show.Title.S01E05.Pies.And.Tarts.720p.WEB.h264-GRP"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Sample.Show.Title.S01E05.Pies.And.Tarts.720p.WEB.h264-GRP.nzb"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Secret.Agents.of.A.B.C.D.E.S07E03.PROPER.1080p.WEB.H264-GRP"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Secret.Agents.of.A.B.C.D.E.S07E03.PROPER.1080p.WEB.H264-GRP.nzb"));
+
+	BOOST_CHECK(IsExcessivelyObfuscated(
+		"9e12c233ddf94502a46e47b1f0246f25 [10_78] _9e12c233ddf94502a46e47b1f0246f25.part09.rar_ yEnc"));
+	BOOST_CHECK(IsExcessivelyObfuscated(
+		"785d61fbd43d41e8aaa751f0c2481a1c [1_64] _785d61fbd43d41e8aaa751f0c2481a1c.par2_ yEnc"));
 }
 
 BOOST_AUTO_TEST_CASE(DeobfuscationTest)
