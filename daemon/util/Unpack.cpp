@@ -74,7 +74,7 @@ std::string ExtractorBase::MakePassword() const
 {
 	if (m_password.empty()) return "-p-";
 
-	return "-p\"" + m_password + "\"";
+	return "-p" + m_password;
 }
 
 bool IsArchive(const fs::path& file)
