@@ -700,6 +700,9 @@ public:
 	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
 	int GetDupeRecoveredHoles() { return m_dupeRecoveredHoles; }
 	void SetDupeRecoveredHoles(int value) { m_dupeRecoveredHoles = value; }
+	enum EDupeParDeferState { dpNone, dpDeferred, dpLifted };
+	EDupeParDeferState GetDupeParDeferState() { return m_dupeParDeferState; }
+	void SetDupeParDeferState(EDupeParDeferState state) { m_dupeParDeferState = state; }
 	StreamRepairJobList* GetStreamRepairJobs() { return &m_streamRepairJobs; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
@@ -882,6 +885,8 @@ private:
 	int m_dupeRecoveredArticles = 0;
 	int64 m_dupeRecoveredBytes = 0;
 	int m_dupeRecoveredHoles = 0;
+	// which way the par-first rule of duplicate recovery went, for logging once (not persisted)
+	EDupeParDeferState m_dupeParDeferState = dpNone;
 	// missing byte ranges of completed media files awaiting stream repair
 	// from duplicate collections in post-processing (persisted)
 	StreamRepairJobList m_streamRepairJobs;

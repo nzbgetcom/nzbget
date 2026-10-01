@@ -528,6 +528,15 @@ var Util = (new function($)
 	// MB space the way the rest of the WebUI does (hi*4096 + lo-as-MB); NOT
 	// via joinInt64, whose (hi<<32) is a 32-bit no-op in JavaScript and would
 	// drop the high word for totals >= 4 GiB.
+	// the statistics row is shown only where duplicate recovery can apply
+	this.showDupeRecovered = function(nzb)
+	{
+		var option = Options.option('DupeArticleFallback');
+		return (option && option.toLowerCase() !== 'no') ||
+			(nzb.DupeRecoveredArticles || 0) > 0 ||
+			(nzb.DupeRecoveredBytesHi || 0) > 0 || (nzb.DupeRecoveredBytesLo || 0) > 0;
+	}
+
 	this.formatDupeRecovered = function(nzb)
 	{
 		var articles = nzb.DupeRecoveredArticles || 0;

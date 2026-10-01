@@ -233,6 +233,38 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackAllowsDataWithoutUsableParTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackLiftsDeferralWhenParCannotCoverTest)
+{
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=live");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+
+	// 500000 bytes of parity, 20000 of them lost: 480000 recovery bytes left
+	struct Case { int64 failed; bool expectFallback; };
+	for (Case c : {Case{100000, false}, Case{479999, false}, Case{480001, true}, Case{2000000, true}})
+	{
+		NzbInfo nzb;
+		nzb.SetDirectRenameStatus(NzbInfo::tsSuccess);
+		nzb.SetParSize(500000);
+		nzb.SetParCurrentFailedSize(20000);
+		nzb.SetCurrentFailedSize(c.failed + 20000);
+		BOOST_CHECK_EQUAL(DupeArticleFallback::ShouldDeferToPar(&nzb), !c.expectFallback);
+
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("first@example.com");
+		article->GetDupeSources()->emplace_back("next@example.com");
+		article->SetDupeFallbackRound(1);
+		BOOST_TEST_CONTEXT("failed data bytes " << c.failed)
+		{
+			BOOST_CHECK_EQUAL(fallback.TryFallback(nullptr, target.get(), article), c.expectFallback);
+		}
+	}
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackArticleModePreservesRecoveryWithParTest)
 {
 	FallbackOptionsGuard optionsGuard;
@@ -307,6 +339,57 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackAmbiguousStructuralMatchTest)
 	AddDonorFile(&donorNzb, "b23f98c4.bin", {{1, 500000}, {2, 500000}}, "donor1");
 
 	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb) == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackStepFingerprintMatchTest)
+{
+	// An obfuscated repost of a rar set: every volume has the same article
+	// count and nearly the same sizes, so several donor members pass the
+	// structural gates. The identical member is the one whose NZB article
+	// sizes step exactly like the target's (its own subject line is longer,
+	// which shifts every size by the same constant).
+	// encoded article sizes of three different volumes (yEnc escaping makes
+	// them vary with the content)
+	static const int sizes[4][10] = {
+		{0},
+		{769211, 770840, 768392, 771005, 769930, 768777, 770123, 769504, 771288, 412004},
+		{770318, 768951, 771402, 769037, 770660, 769845, 768590, 771113, 769722, 398760},
+		{768845, 771230, 769918, 770402, 768611, 771077, 769283, 770936, 768458, 405391}};
+	auto volume = [](int seed, int shift)
+	{
+		std::vector<std::pair<int, int>> parts;
+		for (int i = 1; i <= 10; i++)
+		{
+			parts.push_back({i, sizes[seed][i - 1] + shift});
+		}
+		return parts;
+	};
+
+	std::unique_ptr<FileInfo> target = BuildFile("release.part02.rar", volume(2, 0), "orig");
+
+	NzbInfo donorNzb;
+	AddDonorFile(&donorNzb, "x9d0a1.bin", volume(1, 31), "donor1");
+	AddDonorFile(&donorNzb, "q7c3e2.bin", volume(2, 31), "donor2");
+	AddDonorFile(&donorNzb, "m2b8f4.bin", volume(3, 31), "donor3");
+
+	FileInfo* match = DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb);
+	BOOST_REQUIRE(match);
+	BOOST_CHECK_EQUAL(match->GetFilename(), "q7c3e2.bin");
+
+	// two donor members stepping alike (a self-repost inside one NZB) stay
+	// ambiguous: fail closed
+	AddDonorFile(&donorNzb, "z1y2x3.bin", volume(2, 77), "donor4");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb) == nullptr);
+
+	// too few articles, or fixed per-article sizes, are no fingerprint
+	std::unique_ptr<FileInfo> shortTarget = BuildFile("a.r01", {{1, 500000}, {2, 500100}, {3, 500050}}, "orig");
+	std::unique_ptr<FileInfo> shortDonor = BuildFile("b.bin", {{1, 500020}, {2, 500120}, {3, 500070}}, "d");
+	BOOST_CHECK(!DupeArticleFallback::ArticleSizeStepsMatch(shortTarget.get(), shortDonor.get()));
+	std::vector<std::pair<int, int>> flat;
+	for (int i = 1; i <= 10; i++) flat.push_back({i, 750000});
+	std::unique_ptr<FileInfo> flatTarget = BuildFile("c.r01", flat, "orig");
+	std::unique_ptr<FileInfo> flatDonor = BuildFile("d.bin", flat, "d");
+	BOOST_CHECK(!DupeArticleFallback::ArticleSizeStepsMatch(flatTarget.get(), flatDonor.get()));
 }
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackPartCountMismatchTest)

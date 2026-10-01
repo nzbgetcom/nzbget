@@ -84,10 +84,18 @@ public:
 	 * DownloadQueue-lock, like TryFallback. */
 	static bool ShouldDeferToPar(NzbInfo* nzbInfo);
 
+	/* True when the collection's damaged data already exceeds all of its par2
+	 * recovery data, so par-check can never repair it; the deferral is then
+	 * lifted. Must be called within DownloadQueue-lock. */
+	static bool ParCannotCover(NzbInfo* nzbInfo);
+
 	/* Finds the file of the duplicate collection which corresponds to the target
 	 * data file: preferably by filename, otherwise by unambiguous structural identity
 	 * (article count and sizes). Returns nullptr if no or multiple candidates. */
 	static FileInfo* MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb);
+	/* Exact identity fingerprint used to pick among several structural
+	 * matches: equal steps between consecutive NZB article sizes. */
+	static bool ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* donorFile);
 	static const char* FindDonorMessageId(FileInfo* donorFile, int partNumber);
 	static bool SizesMatch(int64 size1, int64 size2, int div);
 	static std::vector<CString> BuildCandidateMessageIds(
@@ -208,6 +216,8 @@ private:
 	// keep enough donors parsed to cover a whole dupe-set without re-parsing per
 	// article; must comfortably exceed the number of duplicates of one release
 	static constexpr int MaxCachedDonors = 16;
+	// articles a file needs before its size steps are trusted as a fingerprint
+	static constexpr int MinStepFingerprintArticles = 8;
 
 	std::map<int, std::unique_ptr<NzbInfo>> m_parsedDonors;
 	std::set<int> m_badDonors;

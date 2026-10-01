@@ -54,7 +54,7 @@ bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 	}
 	if (nzbInfo->GetParSize() > 0)
 	{
-		return true;
+		return !ParCannotCover(nzbInfo);
 	}
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
@@ -73,6 +73,17 @@ bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 	return false;
 }
 
+bool DupeArticleFallback::ParCannotCover(NzbInfo* nzbInfo)
+{
+	// Damaged data bytes beyond every recovery byte the collection has (minus
+	// its own failed parity) can never be repaired by its par2 set; waiting
+	// for par-check would only forfeit the download-time recovery. Block
+	// granularity makes the real need larger still, so this is conservative.
+	int64 parAvailable = nzbInfo->GetParSize() - nzbInfo->GetParCurrentFailedSize();
+	int64 dataFailed = nzbInfo->GetCurrentFailedSize() - nzbInfo->GetParCurrentFailedSize();
+	return dataFailed > 0 && dataFailed > parAvailable;
+}
+
 bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo)
 {
 	if (g_Options->GetDupeArticleFallback() == Options::dafNone || g_Options->GetRawArticle() ||
@@ -83,10 +94,35 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 
 	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
 	if (fileInfo->GetDeleted() || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
-		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetDupeMode() == dmForce ||
-		(g_Options->GetDupeArticleFallback() >= Options::dafStream && ShouldDeferToPar(nzbInfo)))
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetDupeMode() == dmForce)
 	{
 		return false;
+	}
+
+	if (g_Options->GetDupeArticleFallback() >= Options::dafStream)
+	{
+		bool defer = ShouldDeferToPar(nzbInfo);
+		// say once per collection which way the par-first rule went, so a
+		// download that borrowed nothing can be told apart from one that tried
+		if (defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpNone &&
+			downloadQueue && !CollectDonors(downloadQueue, nzbInfo).empty())
+		{
+			nzbInfo->SetDupeParDeferState(NzbInfo::dpDeferred);
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Deferring duplicate recovery for %s to par-check (its par2 files may cover the damage)",
+				nzbInfo->GetName());
+		}
+		else if (!defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpDeferred)
+		{
+			nzbInfo->SetDupeParDeferState(NzbInfo::dpLifted);
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Damage of %s exceeds its par2 recovery data, recovering missing articles from duplicates",
+				nzbInfo->GetName());
+		}
+		if (defer)
+		{
+			return false;
+		}
 	}
 
 	// preserve the article's own (primary) message-id before the first
@@ -488,8 +524,7 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 		return nullptr;
 	}
 
-	FileInfo* structuralMatch = nullptr;
-	bool ambiguous = false;
+	std::vector<FileInfo*> structuralMatches;
 	FileInfo* filenameMatch = nullptr;
 	bool filenameAmbiguous = false;
 
@@ -513,8 +548,7 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 			continue;
 		}
 
-		ambiguous = structuralMatch != nullptr;
-		structuralMatch = donorFile;
+		structuralMatches.push_back(donorFile);
 	}
 
 	// An exact filename is preferred only when it is unique.  Choosing the
@@ -527,7 +561,58 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 	{
 		return filenameMatch;
 	}
-	return ambiguous ? nullptr : structuralMatch;
+	if (structuralMatches.size() == 1)
+	{
+		return structuralMatches[0];
+	}
+
+	// Equal-size volumes of an obfuscated repost all match structurally;
+	// the identical member is the only one whose article sizes step exactly
+	// like the target's.
+	FileInfo* stepMatch = nullptr;
+	for (FileInfo* donorFile : structuralMatches)
+	{
+		if (ArticleSizeStepsMatch(targetFile, donorFile))
+		{
+			if (stepMatch)
+			{
+				return nullptr;
+			}
+			stepMatch = donorFile;
+		}
+	}
+	return stepMatch;
+}
+
+bool DupeArticleFallback::ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* donorFile)
+{
+	// An NZB lists the encoded size of each article including its headers.
+	// Two postings of the same bytes with the same segmentation differ there
+	// only by a per-file constant (their subject lines differ), so the steps
+	// between consecutive article sizes are equal. Encoded sizes vary with
+	// the content (yEnc escaping), which makes the step sequence a strong
+	// identity fingerprint once a file has enough articles.
+	ArticleList* targetArticles = targetFile->GetArticles();
+	ArticleList* donorArticles = donorFile->GetArticles();
+	if ((int)targetArticles->size() < MinStepFingerprintArticles ||
+		targetArticles->size() != donorArticles->size())
+	{
+		return false;
+	}
+
+	bool varying = false;
+	for (size_t i = 1; i < targetArticles->size(); i++)
+	{
+		int targetStep = (*targetArticles)[i]->GetSize() - (*targetArticles)[i - 1]->GetSize();
+		int donorStep = (*donorArticles)[i]->GetSize() - (*donorArticles)[i - 1]->GetSize();
+		if (targetStep != donorStep)
+		{
+			return false;
+		}
+		// a posting tool that lists one fixed size per article proves nothing
+		varying |= targetStep != 0 && i < targetArticles->size() - 1;
+	}
+	return varying;
 }
 
 bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donorFile)
