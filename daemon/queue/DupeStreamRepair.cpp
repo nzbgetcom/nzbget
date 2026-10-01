@@ -344,7 +344,8 @@ std::string DupeStreamRepair::SuffixKey(const char* filename)
 
 std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targetFilename,
 	int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
-	NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash)
+	NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash,
+	const std::set<FileInfo*>* claimed)
 {
 	if (Util::EmptyStr(targetFilename) || Util::EndsWith(targetFilename, ".par2", false))
 	{
@@ -365,9 +366,10 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	}
 
 	std::vector<FileInfo*> candidates;
-	auto add = [&candidates, maxCandidates](FileInfo* donorFile)
+	auto add = [&candidates, maxCandidates, claimed](FileInfo* donorFile)
 	{
 		if ((int)candidates.size() < maxCandidates &&
+			(!claimed || !claimed->count(donorFile)) &&
 			std::find(candidates.begin(), candidates.end(), donorFile) == candidates.end())
 		{
 			candidates.push_back(donorFile);

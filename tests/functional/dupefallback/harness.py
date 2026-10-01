@@ -60,6 +60,11 @@ article "missing" on the active server, so no real Usenet access is needed):
   release base name, same volume suffixes): exact-name pairing cannot fire,
   proving the unique-suffix-key tier pairs the damaged member with its donor
   twin end-to-end.
+* repostobfuscated - an 8-member repost of equal-size volumes with
+  obfuscated names on BOTH sides and a shuffled donor order: names, suffixes,
+  positions and article sizes all fail to identify the twins, so stream repair
+  must probe the donor's members until one is byte-identical, for every
+  damaged member.
 * xpackbare     - M2 cross-packing: a bare .mkv completed with a hole is
   repaired from a duplicate that posted the SAME movie packed into store-mode
   RAR3 volumes (different framing/offsets/segmentation), which M1 cannot pair;
@@ -119,7 +124,7 @@ article "missing" on the active server, so no real Usenet access is needed):
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
+               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -881,6 +886,50 @@ def scenario_repostrenamed(daemon, t):
     integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs)
                 for m in members)
     return ('repostrenamed', integ and recov >= 1 and repaired >= 1,
+            'status=%s recovered=%d repair_logs=%d integrity=%s'
+            % (h['Status'], recov, repaired, integ))
+
+
+def scenario_repostobfuscated(daemon, t):
+    """M1 sibling search end-to-end: a dupe of eight equal-size volumes whose
+    names say nothing on either side (as when an indexer deobfuscated the
+    release name but the posting kept random file names). The donor lists
+    its members in a different order and cuts them into different article
+    sizes, so no name, suffix, position or size-step tier can pair a damaged
+    member with its twin. The twins of the damaged members sit beyond the
+    first four donor members, which is all the old candidate cap probed:
+    every damaged member must still be repaired byte-exactly."""
+    seg_primary, seg_donor = 400_000, 300_000
+    vol = 1_200_000
+    names = ['Zk4q.bin', 'Yq8w.bin', 'Xa1e.bin', 'Wd3r.bin',
+             'Vf7t.bin', 'Ug2y.bin', 'Th5u.bin', 'Sj6i.bin']
+    damaged = {1, 4, 6, 7}
+    members = [('obfA/f%d.bin' % i, names[i], vol, seg_primary,
+                {2} if i in damaged else set()) for i in range(8)]
+    payloads = []
+    for i, m in enumerate(members):
+        data = _payload(vol, 8300 + i)
+        payloads.append(data)
+        t.write_file(os.path.join('data', m[0]), data)
+
+    donor_order = [0, 2, 3, 5, 1, 4, 6, 7]
+    donor_members = []
+    for pos, i in enumerate(donor_order):
+        path = 'obfB/g%d.bin' % pos
+        t.write_file(os.path.join('data', path), payloads[i])
+        donor_members.append((path, 'd%02dx%d.bin' % (pos, 9 - pos), vol, seg_donor, set()))
+
+    primary = build_multi_nzb(members)
+    donor = build_multi_nzb(donor_members)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonObf', donor, True, 'obf-key', 50)
+    daemon.append(api, 'RelObf', primary, False, 'obf-key', 100)
+    h = daemon.wait_history(api, 'RelObf')
+    recov = int(h.get('DupeRecoveredArticles', 0))
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[i], '.bin', dirs=both_dirs) for i in range(8))
+    return ('repostobfuscated', integ and recov >= len(damaged) and repaired >= len(damaged),
             'status=%s recovered=%d repair_logs=%d integrity=%s'
             % (h['Status'], recov, repaired, integ))
 
@@ -1648,6 +1697,7 @@ SCENARIOS = {
     'livelastfile': scenario_livelastfile,
     'repost': scenario_repost,
     'repostrenamed': scenario_repostrenamed,
+    'repostobfuscated': scenario_repostobfuscated,
     'xpackbare': scenario_xpackbare,
     'xpackrar': scenario_xpackrar,
     'xpackrar2rar': scenario_xpackrar2rar,
@@ -1676,7 +1726,8 @@ EXPECTED_HISTORY_STATUS = {
     'leadswitch': 'SUCCESS/HEALTH', 'cutovertruth': 'SUCCESS/HEALTH',
     'manydonors': 'SUCCESS/HEALTH',
     'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
-    'repostrenamed': 'SUCCESS/HEALTH', 'xpackbare': 'SUCCESS/HEALTH',
+    'repostrenamed': 'SUCCESS/HEALTH', 'repostobfuscated': 'SUCCESS/HEALTH',
+    'xpackbare': 'SUCCESS/HEALTH',
     'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
     'xpack2sets': 'SUCCESS/HEALTH',
     'xpackzip': 'SUCCESS/HEALTH', 'xpack7z': 'SUCCESS/HEALTH',
@@ -1715,6 +1766,7 @@ SCENARIO_OPTIONS = {
     # repostrenamed: no par2 members; "auto" ends in a harmless
     # "Nothing to par-check" after the repair handoff
     'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'repostobfuscated': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpackbare: no par2; "auto" ends in "Nothing to par-check" post-repair
     'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"

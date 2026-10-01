@@ -20,6 +20,8 @@
 
 #include "nzbget.h"
 
+#include <set>
+
 #include <boost/test/unit_test.hpp>
 #include <fstream>
 #include "DownloadInfo.h"
@@ -500,6 +502,41 @@ BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)
 		"zzz.mp4", 980, -1, 0, &mp4Nzb, DupeStreamRepair::MaxDonorCandidates);
 	BOOST_REQUIRE_EQUAL(digitExt.size(), 2u);
 	BOOST_CHECK_EQUAL(digitExt[0]->GetFilename(), "ep2.mp4");
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairObfuscatedSiblingCandidatesTest)
+{
+	// a dupe of sixteen equal-size volumes whose names say nothing: every
+	// member is a candidate (probe verification picks the twin), and members
+	// already proven identical to another target are never offered again
+	NzbInfo donorNzb;
+	for (int i = 0; i < 16; i++)
+	{
+		donorNzb.GetFileList()->Add(BuildDonorFile(
+			("obf" + std::to_string(100 + i) + (char)('q' - i)).c_str(), {500, 500}), false);
+	}
+
+	std::vector<FileInfo*> all = DupeStreamRepair::SelectDonorCandidates(
+		"zz.dat", 980, -1, 0, &donorNzb, DupeStreamRepair::MaxSiblingCandidates);
+	BOOST_CHECK_EQUAL(all.size(), 16u);
+
+	std::set<FileInfo*> claimed = {all[0], all[5]};
+	std::vector<FileInfo*> rest = DupeStreamRepair::SelectDonorCandidates(
+		"zz.dat", 980, -1, 0, &donorNzb, DupeStreamRepair::MaxSiblingCandidates, 0, &claimed);
+	BOOST_CHECK_EQUAL(rest.size(), 14u);
+	for (FileInfo* candidate : rest)
+	{
+		BOOST_CHECK(!claimed.count(candidate));
+	}
+
+	// a claimed member is skipped by the named tiers too
+	FileInfo* named = all[3];
+	std::set<FileInfo*> claimedNamed = {named};
+	std::vector<FileInfo*> byName = DupeStreamRepair::SelectDonorCandidates(
+		named->GetFilename(), 980, -1, 0, &donorNzb, DupeStreamRepair::MaxSiblingCandidates,
+		0, &claimedNamed);
+	BOOST_REQUIRE(!byName.empty());
+	BOOST_CHECK(byName[0] != named);
 }
 
 BOOST_AUTO_TEST_CASE(StreamRepairRequiredCompareFloorTest)

@@ -794,6 +794,10 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		}
 
 		int consecutiveFailures = 0;
+		bool donorProven = false;
+		// donor members already proven identical to a target: one member
+		// cannot be another target's twin, so they are never probed again
+		std::set<FileInfo*> claimed;
 
 		for (RepairTarget& target : targets)
 		{
@@ -805,12 +809,14 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			{
 				continue;
 			}
-			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName);
+			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName, claimed);
 			if (outcome == roProductive)
 			{
 				consecutiveFailures = 0;
+				donorProven = true;
 			}
-			else if (outcome == roUnproductive && ++consecutiveFailures >= DonorFailureBail)
+			else if (outcome == roUnproductive &&
+				++consecutiveFailures >= (donorProven ? DonorFailureBail : UnprovenDonorBail))
 			{
 				PrintMessage(Message::mkInfo,
 					"Skipping remaining files for duplicate %s (%i consecutive files without a byte-identical match)",
@@ -822,7 +828,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 }
 
 StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const char* destDir,
-	RepairTarget& target, NzbInfo* donorNzb, const char* donorName)
+	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed)
 {
 	if (m_liveMode)
 	{
@@ -844,10 +850,18 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 
 	bool patched = false;
 	bool spentFetches = false;
+	bool verified = false;
+	int probed = 0;
 
-	for (FileInfo* donorFile : FindDonorFiles(target, donorNzb))
+	for (FileInfo* donorFile : FindDonorFiles(target, donorNzb, claimed))
 	{
 		if (IsStopped() || target.Holes.empty())
+		{
+			break;
+		}
+		// the wide sibling search is only for finding the target's twin; once
+		// one member verified, further members get the usual small budget
+		if (verified && probed >= DupeStreamRepair::MaxDonorCandidates)
 		{
 			break;
 		}
@@ -859,17 +873,21 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 			continue;
 		}
 		spentFetches = true;
+		probed++;
 
 		if (!VerifyDonor(file, target, donorFile, donorRanges))
 		{
 			// mkInfo on purpose: a rejected donor is the safety net firing -
-			// the user (and the e2e decoy test) should see it in the log
-			PrintMessage(Message::mkInfo,
+			// the user (and the e2e decoy test) should see it in the log; the
+			// sibling search past the usual budget would flood it, so detail
+			PrintMessage(probed <= DupeStreamRepair::MaxDonorCandidates ? Message::mkInfo : Message::mkDetail,
 				"Skipping file %s of duplicate %s for %s: content identity not confirmed",
 				donorFile->GetFilename(), donorName, *target.Filename);
 			continue;
 		}
 
+		verified = true;
+		claimed.insert(donorFile);
 		patched |= PatchFromDonor(file, target, donorFile, donorRanges, donorName) > 0;
 	}
 
@@ -878,14 +896,14 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 }
 
 std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget& target,
-	NzbInfo* donorNzb)
+	NzbInfo* donorNzb, const std::set<FileInfo*>& claimed)
 {
 	// donor NZBs list flat names, while a par-renamed target may carry a path
 	// relative to the destination directory (e.g. "BDMV/STREAM/00000.m2ts")
 	return DupeStreamRepair::SelectDonorCandidates(FileSystem::BaseFileName(target.Filename),
 		target.DecodedFileSize,
 		target.PositionalRank, target.PositionalWindow, donorNzb,
-		DupeStreamRepair::MaxDonorCandidates, target.StepsHash);
+		DupeStreamRepair::MaxSiblingCandidates, target.StepsHash, &claimed);
 }
 
 bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& target,

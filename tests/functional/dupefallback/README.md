@@ -21,6 +21,7 @@ suffix to make chosen articles "missing" on the active server.
 | `livelastfile` | Live mode, single-file collection: the live dispatch is skipped for the collection's last file (the post-processing stage starts moments later and repairs it there)—asserts the last-file guard. |
 | `repost` | A 4-member "rar+par2 release" (opaque random bytes standing in for a passworded, compressed archive) reposted byte-identically under different segmentation. The damaged archive volume is repaired byte-identically after PAR fails. The PAR2 file retains its exact original hole, and captured NNTP commands prove zero donor PAR2 fetches alongside successful archive donor fetches. Final status is FAILURE/PAR by design because the stand-in parity is not a real PAR2 set. |
 | `repostrenamed` | A 3-member rar-volume repost whose members were RENAMED (different release base name, same volume suffixes), reposted byte-identically. Exact-name pairing cannot fire, so M1's unique-suffix-key tier must pair the damaged member with its donor twin—proving tier-2 pairing end-to-end. No par2 and the hole is fully filled, so the release also completes `SUCCESS`. |
+| `repostobfuscated` | An 8-member repost of equal-size volumes with obfuscated names on both sides, a shuffled donor order, and different article sizes. No name, suffix, position, or size-step tier identifies the twins, so stream repair probes the donor's members until one is byte-identical. Every damaged member must be repaired; the release completes `SUCCESS`. |
 | `xpackbare` | A bare `.mkv` completed with a hole, repaired from a duplicate that posted the SAME movie packed into store-mode RAR3 volumes (different framing, offsets and segmentation). M1 cannot pair bare against rar volumes, so the M2 cross-packing `ContentMap` pass must locate the missing bytes inside the donor's volumes and patch them byte-identically. No par2 and the hole is fully filled, so the release also completes `SUCCESS`. |
 | `xpackrar` | A store-rar target repaired from a bare donor, with a degraded volume (a header hole) that must be excluded from the map and stays damaged (no par2)—the PARTIAL-repair proof for the health recount: the still-damaged volume means the release stays `FAILURE/HEALTH`, asserted directly (never a false `SUCCESS`). |
 | `xpackrar2rar` | rar-to-rar cross-packing where target and donor use *different* volume sizes (2 MB vs 1.5 MB); member-wise M1 cannot window these, but the inner content stream matches exactly. No par2 and the hole is fully filled, so the release also completes `SUCCESS`. |
@@ -51,7 +52,7 @@ health after repair (see option `DupeArticleFallback`): a release whose
 holes are ALL filled and ships no par2 now also completes `SUCCESS`, moved
 to its destination directory - `stream`, one cross-packing (`xpackzip`)
 and one decompression (`xdecomp_zip`) scenario assert that status flip
-directly, and every other fully repaired no-par2 scenario (`repostrenamed`,
+directly, and every other fully repaired no-par2 scenario (`repostrenamed`, `repostobfuscated`,
 `xpackbare`, `xpackrar2rar`, `xpack7z`, `xpacksplit`, `xpackcompressed`,
 `xcrypt_encplain`, `xcrypt_plainenc`, `xcrypt_diffpass`, `xdecomp_7z`,
 `xdecomp_storetarget`, `xdecomp_enc7z`) reaches it too. A PARTIALLY-repaired release still stays
@@ -103,7 +104,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

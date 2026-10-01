@@ -22,6 +22,7 @@
 #define DUPESTREAMREPAIR_H
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 #include "DownloadInfo.h"
@@ -52,6 +53,11 @@ public:
 	// how many donor members are probed per target member before giving up
 	// (bounds wasted fetches when pairing heuristics fail on obfuscated sets)
 	static constexpr int MaxDonorCandidates = 4;
+	// a duplicate whose same-size members cannot be told apart by name or
+	// article sizes (obfuscated volumes on both sides) is probed member by
+	// member up to this many, until one is byte-identical: a dupe is the
+	// same release, so the matching member is in there somewhere
+	static constexpr int MaxSiblingCandidates = 32;
 	// concurrent donor-article fetch workers for the post-processing repair
 	// pass (each holds one pool connection while fetching). Modest on purpose:
 	// enough to hide NNTP round-trip latency, small against typical pool
@@ -108,11 +114,13 @@ public:
 	 * extension keys are skipped), the positionalRank-th size-window member
 	 * by donor filename order when positionalWindow matches the donor window size
 	 * (rank < 0 skips), then ascending encoded-size distance; deduplicated
-	 * and capped. PAR2 targets and donors are excluded. Every candidate still
-	 * has to pass probe verification. */
+	 * and capped. PAR2 targets and donors are excluded, and so are the donor
+	 * members in claimed (already proven identical to another target). Every
+	 * candidate still has to pass probe verification. */
 	static std::vector<FileInfo*> SelectDonorCandidates(const char* targetFilename,
 		int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
-		NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash = 0);
+		NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash = 0,
+		const std::set<FileInfo*>* claimed = nullptr);
 
 	/* M4 (option <DupeStreamDecompress>): scans dir recursively for a
 	 * regular file whose size equals innerSize (the extractor's output

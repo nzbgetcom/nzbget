@@ -223,6 +223,10 @@ private:
 	// certainly not a byte-identical repost: stop trying it after this many
 	// consecutive unproductive files instead of burning fetches on the rest
 	static constexpr int DonorFailureBail = 5;
+	// the same before the donor has proven byte-identical for any file: its
+	// indistinguishable siblings are probed exhaustively, so a duplicate that
+	// is merely a different packing must be given up on sooner
+	static constexpr int UnprovenDonorBail = 2;
 
 	void RunLive();
 	void RepairCompletedLive(std::vector<RepairTarget>& targets);
@@ -247,8 +251,9 @@ private:
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
 		std::vector<DonorSource>& donors);
 	ERepairOutcome RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
-		const char* donorName);
-	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb);
+		const char* donorName, std::set<FileInfo*>& claimed);
+	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb,
+		const std::set<FileInfo*>& claimed);
 	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,
 		const StreamRangeList& donorRanges);
 	int PatchFromDonor(DiskFile& file, RepairTarget& target, FileInfo* donorFile,
