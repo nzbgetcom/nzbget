@@ -740,9 +740,13 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
 			fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() + 1);
 			nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() + 1);
-			if (fileInfo->GetDecodedFileSize() == 0)
+			int64 previousFileSize = fileInfo->GetDecodedFileSize();
+			if (DupeArticleFallback::MergeDecodedFileSize(fileInfo, articleDownloader->GetDecodedFileSize()))
 			{
-				fileInfo->SetDecodedFileSize(articleDownloader->GetDecodedFileSize());
+				nzbInfo->PrintMessage(Message::mkDetail,
+					"Articles of %s declare different file sizes (%" PRIi64 " vs %" PRIi64
+					"); ignoring the declared size", fileInfo->GetFilename(), previousFileSize,
+					articleDownloader->GetDecodedFileSize());
 			}
 			// count only proven duplicate recoveries: the article was
 			// substituted after genuinely failing on the primary (reactive)
@@ -1163,6 +1167,14 @@ void QueueCoordinator::ValidateCompletedFileTiling(FileInfo* fileInfo)
 	// mis-placed bytes; a file with any failed/missed article already falls to
 	// par2/stream repair
 	if (fileInfo->GetSuccessArticles() != fileInfo->GetTotalArticles())
+	{
+		return;
+	}
+
+	// only donor bytes can be mis-placed: a file assembled purely from its own
+	// postings is written exactly as before this feature existed, even when the
+	// poster's yEnc geometry is unusual (e.g. obfuscated "=ybegin size=" values)
+	if (!DupeArticleFallback::HasDonorArticles(fileInfo))
 	{
 		return;
 	}

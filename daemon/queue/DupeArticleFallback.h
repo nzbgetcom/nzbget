@@ -179,9 +179,25 @@ public:
 	 * article). Meaningful only for a fully-downloaded yEnc file; used at
 	 * completion to catch a provisionally-accepted drifted donor that survived
 	 * a restart (reloaded as a plain finished article, so the round-gated
-	 * checks no longer recognise it). Healthy yEnc parts tile by construction,
-	 * so this never fires on legitimate downloads. */
+	 * checks no longer recognise it). Only meaningful for files that took donor
+	 * bytes (see HasDonorArticles): a poster's own geometry may be unusual
+	 * without being wrong, and such files must be written as without this
+	 * feature. */
 	static ArticleInfo* FirstUntiledArticle(FileInfo* fileInfo);
+
+	/* True when any article of the file was substituted from a duplicate (its
+	 * fallback round survives a restart through the staged flag of the file
+	 * state). Files without donor articles are never judged by the geometry
+	 * checks. */
+	static bool HasDonorArticles(FileInfo* fileInfo);
+
+	/* Folds the "=ybegin size=" of a successfully decoded article into the
+	 * file's DecodedFileSize. Some posters randomise that field per article
+	 * (the "=ypart" ranges stay correct); once two articles disagree the size
+	 * is marked unknown (-1) for good, which turns off every size-based check
+	 * for the file. Returns true only on the call that detects the
+	 * disagreement. */
+	static bool MergeDecodedFileSize(FileInfo* fileInfo, int64 articleFileSize);
 
 private:
 	// total declared size must match within 1/64 (~1.6%); the slack absorbs

@@ -923,4 +923,66 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackFirstUntiledArticleTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackMergeDecodedFileSizeTest)
+{
+	// consistent posters: the first declared size is kept
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01", {{1, 1300}, {2, 700}}, "orig");
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 1500));
+		BOOST_CHECK_EQUAL(file->GetDecodedFileSize(), 1500);
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 1500));
+		BOOST_CHECK_EQUAL(file->GetDecodedFileSize(), 1500);
+		// a non-yEnc article (no declared size) changes nothing
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 0));
+		BOOST_CHECK_EQUAL(file->GetDecodedFileSize(), 1500);
+	}
+
+	// obfuscating posters randomise "=ybegin size=" per article (seen live:
+	// 9731448, 10894771, 7548362 for one 200000000-byte rar volume): the size
+	// becomes unknown at the first disagreement and stays unknown
+	{
+		std::unique_ptr<FileInfo> file = BuildFile("release.r01", {{1, 1300}, {2, 700}}, "orig");
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 9731448));
+		BOOST_CHECK(DupeArticleFallback::MergeDecodedFileSize(file.get(), 10894771));
+		BOOST_CHECK_EQUAL(file->GetDecodedFileSize(), -1);
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 9731448));
+		BOOST_CHECK(!DupeArticleFallback::MergeDecodedFileSize(file.get(), 7548362));
+		BOOST_CHECK_EQUAL(file->GetDecodedFileSize(), -1);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackObfuscatedSizeNotUntiledTest)
+{
+	// Regression: a complete, healthy volume whose articles declare random file
+	// sizes must not have its last article judged "untiled" - that discarded
+	// one good article per rar volume and failed par-check on real releases.
+	std::unique_ptr<FileInfo> file = BuildFile("vol.part001.rar",
+		{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+	DupeArticleFallback::MergeDecodedFileSize(file.get(), 9731448);
+	FinishArticle(file.get(), 0, 0, 1000);
+	DupeArticleFallback::MergeDecodedFileSize(file.get(), 10894771);
+	FinishArticle(file.get(), 1, 1000, 1000);
+	DupeArticleFallback::MergeDecodedFileSize(file.get(), 7548362);
+	FinishArticle(file.get(), 2, 2000, 500);
+	BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(file.get()) == nullptr);
+	// and the last article's end is not pinned to a bogus size either
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(file.get(),
+		file->GetArticles()->at(2).get()), -1);
+}
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackHasDonorArticlesTest)
+{
+	std::unique_ptr<FileInfo> file = BuildFile("release.r01",
+		{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+	FinishArticle(file.get(), 0, 0, 1000);
+	FinishArticle(file.get(), 1, 1000, 1000);
+	FinishArticle(file.get(), 2, 2000, 500);
+	// a file built only from its own postings is never judged by the
+	// completion-time geometry check, whatever its declared size says
+	BOOST_CHECK(!DupeArticleFallback::HasDonorArticles(file.get()));
+
+	file->GetArticles()->at(1)->SetDupeFallbackRound(1);
+	BOOST_CHECK(DupeArticleFallback::HasDonorArticles(file.get()));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

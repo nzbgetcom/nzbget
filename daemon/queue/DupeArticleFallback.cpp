@@ -702,3 +702,33 @@ ArticleInfo* DupeArticleFallback::FirstUntiledArticle(FileInfo* fileInfo)
 
 	return nullptr;
 }
+
+bool DupeArticleFallback::HasDonorArticles(FileInfo* fileInfo)
+{
+	for (ArticleInfo* article : fileInfo->GetArticles())
+	{
+		if (article->GetDupeFallbackRound() > 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool DupeArticleFallback::MergeDecodedFileSize(FileInfo* fileInfo, int64 articleFileSize)
+{
+	int64 decodedFileSize = fileInfo->GetDecodedFileSize();
+	if (articleFileSize <= 0 || decodedFileSize < 0 || decodedFileSize == articleFileSize)
+	{
+		return false;
+	}
+
+	if (decodedFileSize == 0)
+	{
+		fileInfo->SetDecodedFileSize(articleFileSize);
+		return false;
+	}
+
+	fileInfo->SetDecodedFileSize(-1);
+	return true;
+}
