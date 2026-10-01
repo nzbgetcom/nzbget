@@ -92,7 +92,8 @@ public:
 	/* Finds the file of the duplicate collection which corresponds to the target
 	 * data file: preferably by filename, otherwise by unambiguous structural identity
 	 * (article count and sizes). Returns nullptr if no or multiple candidates. */
-	static FileInfo* MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb);
+	static FileInfo* MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb,
+		const char* targetNzbFilename = nullptr);
 	/* Exact identity fingerprint used to pick among several structural
 	 * matches: equal steps between consecutive NZB article sizes. */
 	static bool ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* donorFile);
@@ -228,8 +229,11 @@ private:
 	static bool StructureMatches(FileInfo* targetFile, FileInfo* donorFile);
 	static void AppendDonorCandidate(std::vector<CString>& candidates,
 		std::vector<int>& contributors, int donorNzbId,
-		NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber);
+		NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber,
+		const char* targetNzbFilename = nullptr);
 	static RawNzbList CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	// the subject filename of fileInfo in its own collection's nzb-file
+	CString NzbFilenameOf(FileInfo* fileInfo);
 	void PinSources(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo);
 	NzbInfo* GetParsedDonor(NzbInfo* donorNzb);
 };

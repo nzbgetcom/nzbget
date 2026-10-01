@@ -419,6 +419,27 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackStepFingerprintMatchTest)
 	BOOST_CHECK(!DupeArticleFallback::ArticleSizeStepsMatch(flatTarget.get(), flatDonor.get()));
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackNzbFilenameMatchTest)
+{
+	// The downloaded file took the (obfuscated) name from its article headers,
+	// equal-size volumes all match structurally and the posting lists one
+	// fixed size per article (no size-step fingerprint). The name both
+	// nzb-files give the file still pairs it.
+	std::vector<std::pair<int, int>> flat;
+	for (int i = 1; i <= 10; i++) flat.push_back({i, 716800});
+	std::unique_ptr<FileInfo> target = BuildFile("eywx5KxUK17tPqpAtlTI8cRgOZdSqZTV", flat, "orig");
+
+	NzbInfo donorNzb;
+	AddDonorFile(&donorNzb, "Release.part01.rar", flat, "donor1");
+	AddDonorFile(&donorNzb, "Release.part02.rar", flat, "donor2");
+	AddDonorFile(&donorNzb, "Release.part03.rar", flat, "donor3");
+
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb) == nullptr);
+	FileInfo* match = DupeArticleFallback::MatchDonorFile(target.get(), &donorNzb, "Release.part02.rar");
+	BOOST_REQUIRE(match);
+	BOOST_CHECK_EQUAL(match->GetFilename(), "Release.part02.rar");
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackPartCountMismatchTest)
 {
 	std::unique_ptr<FileInfo> target = BuildFile("release.r01",

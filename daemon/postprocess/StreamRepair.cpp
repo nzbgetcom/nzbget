@@ -2762,6 +2762,14 @@ void StreamRepairController::RepairCompleted()
 	if (m_recoveredArticles > 0 || m_recoveredBytes > 0 ||
 		m_recoveredHoles > 0 || m_holesRemain)
 	{
+		if (m_recoveredBytes > 0 && nzbInfo->GetParRenameStatus() != NzbInfo::rsNone)
+		{
+			// A file whose first bytes were missing could not be identified by
+			// par-rename (it matches by the hash of the first 16 KiB), so it may
+			// still carry an obfuscated name the par-check below would report as
+			// missing. Its start may be repaired now: rename again first.
+			nzbInfo->SetParRenameStatus(NzbInfo::rsNone);
+		}
 		if (nzbInfo->GetParStatus() > NzbInfo::psSkipped)
 		{
 			// The initial PAR attempt ran before donor recovery. Its result

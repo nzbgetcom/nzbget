@@ -337,6 +337,35 @@ void DupeArticleFallback::VacateGhostLead(FileInfo* fileInfo, const RawNzbList& 
 	fileInfo->SetDupeLeadSwitches(0);
 }
 
+CString DupeArticleFallback::NzbFilenameOf(FileInfo* fileInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+	if (articles->empty())
+	{
+		return CString();
+	}
+	ArticleInfo* first = (*articles)[0].get();
+	const char* firstMessageId = !Util::EmptyStr(first->GetDupeOriginalMessageId()) ?
+		first->GetDupeOriginalMessageId() : first->GetMessageId();
+
+	// the collection's own nzb-file is parsed (and cached) like a donor's
+	NzbInfo* ownNzb = GetParsedDonor(fileInfo->GetNzbInfo());
+	if (!ownNzb)
+	{
+		return CString();
+	}
+	for (FileInfo* ownFile : ownNzb->GetFileList())
+	{
+		ArticleList* ownArticles = ownFile->GetArticles();
+		if (!ownArticles->empty() && (*ownArticles)[0]->GetPartNumber() == first->GetPartNumber() &&
+			!strcmp((*ownArticles)[0]->GetMessageId(), firstMessageId))
+		{
+			return CString(ownFile->GetFilename());
+		}
+	}
+	return CString();
+}
+
 RawNzbList DupeArticleFallback::CollectDonors(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
 	RawNzbList donors;
@@ -384,8 +413,15 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 	VacateGhostLead(fileInfo, donors);
 	RotateToLead(donors, fileInfo->GetDupeLeadDonorId());
 
+	// the name the target's own nzb-file gives this file: the downloaded name
+	// may have been replaced by an (obfuscated) name from the article itself,
+	// while duplicate nzb-files still carry the subject names
+	CString targetNzbFilename = donors.empty() ? CString() : NzbFilenameOf(fileInfo);
+
 	std::vector<CString> candidates;
 	std::vector<int> contributors;
+	int samePosting = 0;
+	int unparsed = 0;
 
 	for (NzbInfo* donorNzbInfo : donors)
 	{
@@ -393,6 +429,7 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 		if (nzbInfo->GetFullContentHash() > 0 &&
 			nzbInfo->GetFullContentHash() == donorNzbInfo->GetFullContentHash())
 		{
+			samePosting++;
 			continue;
 		}
 
@@ -403,8 +440,22 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 		if (parsedDonor)
 		{
 			AppendDonorCandidate(candidates, contributors, donorNzbInfo->GetId(),
-				parsedDonor, fileInfo, articleInfo->GetPartNumber());
+				parsedDonor, fileInfo, articleInfo->GetPartNumber(), targetNzbFilename);
 		}
+		else
+		{
+			unparsed++;
+		}
+	}
+
+	if (candidates.empty() && !donors.empty())
+	{
+		// the silent "did not even try" case: say why no duplicate could help
+		nzbInfo->PrintMessage(Message::mkDetail,
+			"No duplicate source for %s [%i]: %i duplicate(s), %i same posting, "
+			"%i without readable nzb-file, none with a matching file",
+			fileInfo->GetFilename(), articleInfo->GetPartNumber(), (int)donors.size(),
+			samePosting, unparsed);
 	}
 
 	FinishPin(fileInfo, articleInfo, candidates, contributors,
@@ -413,9 +464,9 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 
 void DupeArticleFallback::AppendDonorCandidate(std::vector<CString>& candidates,
 	std::vector<int>& contributors, int donorNzbId,
-	NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber)
+	NzbInfo* parsedDonor, FileInfo* targetFile, int partNumber, const char* targetNzbFilename)
 {
-	FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor);
+	FileInfo* donorFile = MatchDonorFile(targetFile, parsedDonor, targetNzbFilename);
 	if (!donorFile)
 	{
 		return;
@@ -528,7 +579,8 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 	return cachedDonor.get();
 }
 
-FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb)
+FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* donorNzb,
+	const char* targetNzbFilename)
 {
 	if (IsParFile(targetFile))
 	{
@@ -546,7 +598,9 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 			continue;
 		}
 
-		if (!strcasecmp(targetFile->GetFilename(), donorFile->GetFilename()))
+		if (!strcasecmp(targetFile->GetFilename(), donorFile->GetFilename()) ||
+			(!Util::EmptyStr(targetNzbFilename) &&
+			 !strcasecmp(targetNzbFilename, donorFile->GetFilename())))
 		{
 			if (filenameMatch)
 			{
