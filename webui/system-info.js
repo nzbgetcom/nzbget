@@ -90,6 +90,7 @@ function DiskSpeedTestsForm()
 		$diskSpeedTestBtn = $('#SysInfo_DiskSpeedTestBtn');
 		$diskSpeedTestErrorTxt = $('#SysInfo_DiskSpeedTestErrorTxt');
 
+		$diskSpeedTestErrorTxt.empty();
 		disableBtnToggle(false);
 
 		var defaultTestText = I18n.translate('sysinfo_run_test');
