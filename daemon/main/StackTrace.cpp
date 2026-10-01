@@ -2,6 +2,7 @@
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
  *  Copyright (C) 2007-2016 Andrey Prygunkov <hugbug@users.sourceforge.net>
+ *  Copyright (C) 2025 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -198,7 +199,7 @@ void PrintBacktrace()
 	strings = backtrace_symbols(array, size);
 
 	// first trace to screen
-	printf("Obtained %zd stack frames\n", size);
+	printf("Obtained %zu stack frames\n", size);
 	for (i = 0; i < size; i++)
 	{
 		printf("%s\n", strings[i]);
@@ -282,6 +283,7 @@ public:
 	void DoSegFault()
 	{
 		char* N = nullptr;
+		// cppcheck-suppress nullPointer
 		*N = '\0';
 	}
 };

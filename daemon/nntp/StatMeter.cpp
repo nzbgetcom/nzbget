@@ -556,7 +556,7 @@ void StatMeter::CalcQuotaUsage(int64& monthBytes, int64& dayBytes)
 	debug("month volume: %i MB", (int)(monthBytes / 1024 / 1024));
 }
 
-int StatMeter::CalcMonthSlots(ServerVolume& volume)
+int StatMeter::CalcMonthSlots(const ServerVolume& volume)
 {
 	int elapsedDays;
 

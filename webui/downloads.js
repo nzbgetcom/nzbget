@@ -65,6 +65,7 @@ var Downloads = (new function($)
 		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
+		'POST_DOWNLOAD_RENAMING': { Text: 'status_post_download_renaming_cap', PostProcess: true },
 		'POST_UNPACK_RENAMING': { Text: 'status_post_unpack_renaming_cap', PostProcess: true },
 		'UNPACKING': { Text: 'status_unpacking_cap', PostProcess: true },
 		'EXECUTING_SCRIPT': { Text: 'status_processing_cap', PostProcess: true },
@@ -886,6 +887,16 @@ var DownloadsUI = (new function($)
 		return '';
 	}
 
+	this.formatProgressLabel = function(text)
+	{
+		if (text === 'Awaiting additional par-files')
+		{
+			return I18n.translate('progress_awaiting_par_files');
+		}
+
+		return text;
+	}
+
 	this.buildProgressLabel = function(group, maxWidth)
 	{
 		var text = '';
@@ -899,8 +910,10 @@ var DownloadsUI = (new function($)
 				case "STREAM_REPAIRING":
 				case "UNPACKING":
 				case "RENAMING":
+				case "POST_UNPACK_RENAMING":
+				case "POST_DOWNLOAD_RENAMING":
 				case "EXECUTING_SCRIPT":
-					text = group.PostInfoText;
+					text = DownloadsUI.formatProgressLabel(group.PostInfoText);
 					break;
 			}
 		}

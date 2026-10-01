@@ -538,12 +538,13 @@ error:
 void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 {
 	outfile.PrintLine("%i", nzbInfo->GetId());
-	outfile.PrintLine("%i", (int)nzbInfo->GetKind());
+	outfile.PrintLine("%i", static_cast<int>(nzbInfo->GetKind()));
 	outfile.PrintLine("%s", nzbInfo->GetUrl());
 	outfile.PrintLine("%s", nzbInfo->GetFilename());
 	outfile.PrintLine("%s", nzbInfo->GetDestDir());
 	outfile.PrintLine("%s", nzbInfo->GetFinalDir());
 	outfile.PrintLine("%s", nzbInfo->GetHardLinkPath().c_str());
+	outfile.PrintLine("%s", nzbInfo->GetMetaName().c_str());
 	outfile.PrintLine("%s", nzbInfo->GetQueuedFilename());
 	outfile.PrintLine("%s", nzbInfo->GetName());
 	outfile.PrintLine("%s", nzbInfo->GetCategory());
@@ -591,10 +592,10 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 	{
 		outfile.PrintLine("%i,%i,%u,%i,%s,%s", completedFile.GetId(), (int)completedFile.GetStatus(),
 			completedFile.GetCrc(), (int)completedFile.GetParFile(),
-			completedFile.GetHash16k() ? completedFile.GetHash16k() : "",
-			completedFile.GetParSetId() ? completedFile.GetParSetId() : "");
+			completedFile.GetHash16k(),
+			completedFile.GetParSetId());
 		outfile.PrintLine("%s", completedFile.GetFilename());
-		outfile.PrintLine("%s", completedFile.GetOrigname() ? completedFile.GetOrigname() : "");
+		outfile.PrintLine("%s", completedFile.GetOrigname());
 	}
 
 	outfile.PrintLine(
@@ -700,6 +701,12 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		nzbInfo->SetHardLinkPath(buf);
 	}
 
+	if (formatVersion >= 64) 
+	{
+		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+		nzbInfo->SetMetaName(buf);
+	}
+
 	if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 	nzbInfo->SetQueuedFilename(buf);
 
@@ -738,9 +745,10 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		}
 		if (postStage > (int)PostInfo::ptFinished)
 		{
-			// stages appended after ptFinished (ptStreamRepairing) are
-			// transient; the +1-shifted persisted value would index past the
-			// stage-name tables before SanitisePostQueue resets the stage
+			// stages appended after ptFinished (ptPostDownloadRenaming,
+			// ptStreamRepairing) are transient; the +1-shifted persisted value
+			// would index past the stage-name tables before SanitisePostQueue
+			// resets the stage
 			postStage = (int)PostInfo::ptFinished;
 		}
 		nzbInfo->GetPostInfo()->SetStage((PostInfo::EStage)postStage);
@@ -776,9 +784,7 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	nzbInfo->SetDirectRenameStatus((NzbInfo::EDirectRenameStatus)directRenameStatus);
 	nzbInfo->SetDeleteStatus((NzbInfo::EDeleteStatus)deleteStatus);
 	nzbInfo->SetMarkStatus((NzbInfo::EMarkStatus)markStatus);
-	if (nzbInfo->GetKind() == NzbInfo::nkNzb ||
-		(NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsFailed ||
-		(NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsScanSkipped)
+	if (nzbInfo->GetKind() == NzbInfo::nkNzb || (NzbInfo::EUrlStatus)urlStatus >= NzbInfo::lsFailed)
 	{
 		nzbInfo->SetUrlStatus((NzbInfo::EUrlStatus)urlStatus);
 	}
@@ -875,9 +881,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 
 	if (formatVersion >= 48)
 	{
-		uint32 High1, Low1, downloadSec, postTotalSec, parSec, repairSec, unpackSec;
-		if (infile.ScanLine("%u,%u,%i,%i,%i,%i,%i", &High1, &Low1, &downloadSec, &postTotalSec, &parSec, &repairSec, &unpackSec) != 7) goto error;
-		nzbInfo->SetDownloadedSize(Util::JoinInt64(High1, Low1));
+		uint32 High4, Low4, downloadSec, postTotalSec, parSec, repairSec, unpackSec;
+		if (infile.ScanLine("%u,%u,%i,%i,%i,%i,%i", &High4, &Low4, &downloadSec, &postTotalSec, &parSec, &repairSec, &unpackSec) != 7) goto error;
+		nzbInfo->SetDownloadedSize(Util::JoinInt64(High4, Low4));
 		nzbInfo->SetDownloadSec(downloadSec);
 		nzbInfo->SetPostTotalSec(postTotalSec);
 		nzbInfo->SetParSec(parSec);
@@ -1044,7 +1050,7 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	}
 
 	nzbInfo->GetStreamRepairJobs()->clear();
-	if (formatVersion >= 64)
+	if (formatVersion >= 65)
 	{
 		uint32 recoveredHigh, recoveredLow;
 		int recoveredArticles, recoveredHoles;
@@ -1058,16 +1064,11 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		if (infile.ScanLine("%i", &repairCount) != 1 || repairCount < 0 || repairCount > 100000) goto error;
 		for (int i = 0; i < repairCount; i++)
 		{
-			int fileId, parFile, failedArticles = 0;
+			int fileId, parFile, failedArticles;
 			uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
-			if (formatVersion >= 65)
-			{
-				if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
-					&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
-					&failedArticles) != 9 || failedArticles < 0) goto error;
-			}
-			else if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i", &fileId, &decodedHigh,
-				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile) != 8) goto error;
+			if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
+				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+				&failedArticles) != 9 || failedArticles < 0) goto error;
 			if (fileId <= 0 || parFile < 0 || parFile > 1) goto error;
 			if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 			int holeCount;

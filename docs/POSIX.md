@@ -1,11 +1,10 @@
 ## To build NZBGet you will need:
 
   - For configuring and building:
-    - [CMake](https://cmake.org/)
-    - [GCC](https://gcc.gnu.org/)
-
+    - [CMake](https://cmake.org/) (3.13+)
+    - [GCC](https://gcc.gnu.org/) (GCC 11+ required for C++20, GCC 13+ recommended)
       or
-    - [CLang](https://clang.llvm.org/)
+    - [Clang](https://clang.llvm.org/) (Clang 14+ / Apple Clang 13+ required for C++20)
 
   - Libraries:
     - [libxml2](https://gitlab.gnome.org/GNOME/libxml2/-/wikis/home)
@@ -177,12 +176,17 @@ Install **Cppcheck** using your system's package manager:
 apt install cppcheck
 ```
   - After configuring, a **compile_commands.json** file should be generated in your build directory. This file tells **Cppcheck** how your project is compiled.
-  - The following command enables all checks and suppresses common system include warnings:
+  - The following command enables warning, performance, portability and information checks, suppressing common system include warnings:
 ```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem
+cppcheck --project=compile_commands.json \
+  --enable=warning,performance,portability,information \
+  --suppress=missingIncludeSystem
 ```
  - To ignore certain folders you can use **-i**. This will skip analysis of source files in
 the foo folder:
 ```bash
-cppcheck --project=compile_commands.json --enable=all --suppress=missingIncludeSystem -ifoo
+cppcheck --project=compile_commands.json \
+  --enable=warning,performance,portability,information \
+  --suppress=missingIncludeSystem \
+  -ifoo
 ```

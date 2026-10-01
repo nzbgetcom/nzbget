@@ -190,21 +190,32 @@ void NzbInfo::SetFilename(const char* filename)
 	if ((!m_name || !hadFilename) && !Util::EmptyStr(filename))
 	{
 		CString nzbNicename = MakeNiceNzbName(m_filename, true);
+		if (nzbNicename.Empty())
+		{
+			nzbNicename.Format("nzb-%i", GetId());
+		}
 		SetName(nzbNicename);
 	}
 }
 
 CString NzbInfo::MakeNiceNzbName(const char * nzbFilename, bool removeExt)
 {
-	BString<1024> nicename = FileSystem::BaseFileName(nzbFilename);
+	std::string nicename = FileSystem::BaseFileName(nzbFilename);
 	if (removeExt)
 	{
 		// wipe out ".nzb"
-		char* p = strrchr(nicename, '.');
-		if (p && !strcasecmp(p, ".nzb")) *p = '\0';
+		auto dotpos = nicename.rfind('.');
+		if (dotpos != std::string::npos && !strcasecmp(nicename.c_str() + dotpos, ".nzb"))
+		{
+			nicename.erase(dotpos);
+		}
 	}
-	CString validname = FileSystem::MakeValidFilename(nicename);
-	return validname;
+	std::string validname = FileSystem::SanitizePathSegment(nicename);
+	if (validname.empty())
+	{
+		validname = "nzb";
+	}
+	return validname.c_str();
 }
 
 CString NzbInfo::MakeNiceUrlName(const char* urlStr, const char* nzbFilename)
@@ -237,7 +248,8 @@ void NzbInfo::BuildDestDirName()
 	}
 	else
 	{
-		m_destDir.Format("%s%c%s.#%i", g_Options->GetInterDir(), PATH_SEPARATOR, GetName(), GetId());
+		m_destDir.Format("%s%c%s.#%i", g_Options->GetInterDir(), PATH_SEPARATOR,
+			Util::EmptyStr(GetName()) ? "nzb" : GetName(), GetId());
 	}
 }
 
@@ -258,12 +270,22 @@ CString NzbInfo::BuildFinalDirName()
 
 	if (g_Options->GetAppendCategoryDir() && useCategory)
 	{
-		CString categoryDir = FileSystem::MakeValidFilename(m_category, true);
-		// we can't format with "finalDir.Format" because one of the parameter is "finalDir" itself.
-		finalDir = CString::FormatStr("%s%c%s", *finalDir, PATH_SEPARATOR, *categoryDir);
+		std::string categoryDir = FileSystem::SanitizeRelativePath(*m_category);
+		if (!categoryDir.empty())
+		{
+			// we can't format with "finalDir.Format" because one of the parameter is "finalDir" itself.
+			finalDir = CString::FormatStr("%s%c%s", *finalDir, PATH_SEPARATOR, categoryDir.c_str());
+		}
 	}
 
-	finalDir.AppendFmt("%c%s", PATH_SEPARATOR, GetName());
+	if (Util::EmptyStr(GetName()))
+	{
+		finalDir.AppendFmt("%c%s-%i", PATH_SEPARATOR, "nzb", GetId());
+	}
+	else
+	{
+		finalDir.AppendFmt("%c%s", PATH_SEPARATOR, GetName());
+	}
 
 	return finalDir;
 }
@@ -284,6 +306,29 @@ int NzbInfo::CalcHealth()
 	}
 
 	return health;
+}
+
+bool NzbInfo::RenameCompletedFile(const char* oldName, const char* newAbsoluteOrRelativePath)
+{
+	if (Util::EmptyStr(oldName) || Util::EmptyStr(newAbsoluteOrRelativePath))
+	{
+		return false;
+	}
+
+	for (CompletedFile& cf : m_completedFiles)
+	{
+		if (cf.SameFilename(oldName))
+		{
+			if (Util::EmptyStr(cf.GetOrigname()))
+			{
+				cf.SetOrigname(cf.GetFilename());
+			}
+
+			cf.SetFilename(newAbsoluteOrRelativePath);
+			return true;
+		}
+	}
+	return false;
 }
 
 int NzbInfo::CalcCriticalHealth(bool allowEstimation)
@@ -861,6 +906,22 @@ CompletedFile::CompletedFile(int id, std::string filename, std::string origname,
 	}
 }
 
+bool CompletedFile::SameFilename(const char* name) const
+{
+	if (!name) return false;
+
+	std::string_view s1 = m_filename;
+	std::string_view s2 = name;
+	if (s1.size() != s2.size())
+		return false;
+
+	return std::equal(s1.begin(), s1.end(), s2.begin(), [](char c1, char c2)
+	{
+		if (c1 == '\\') c1 = '/';
+		if (c2 == '\\') c2 = '/';
+		return std::tolower(static_cast<unsigned char>(c1)) == std::tolower(static_cast<unsigned char>(c2));
+	});
+}
 
 void DupInfo::SetId(int id)
 {

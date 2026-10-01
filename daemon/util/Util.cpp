@@ -24,6 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <array>
+#include <algorithm>
 #include "Util.h"
 
 #ifdef WIN32
@@ -573,6 +574,12 @@ void Util::Trim(std::string& str)
 	TrimRight(str);
 }
 
+void Util::SanitizeLine(std::string& str)
+{
+	std::replace_if(str.begin(), str.end(), IsControlChar, ' ');
+	Trim(str);
+}
+
 char* Util::ReduceStr(char* str, const char* from, const char* to)
 {
 	int lenFrom = strlen(from);
@@ -602,34 +609,34 @@ std::vector<CString> Util::SplitStr(const char* str, const char* separators)
 	return result;
 }
 
+bool Util::EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive)
+{
+	if (suffix.empty())
+	{
+		return true;
+	}
+	if (str.size() < suffix.size())
+	{
+		return false;
+	}
+	if (caseSensitive)
+	{
+		return str.ends_with(suffix);
+	}
+	return StrCaseCmp(str.substr(str.size() - suffix.size()), suffix);
+}
+
 bool Util::EndsWith(const char* str, const char* suffix, bool caseSensitive)
 {
 	if (!str)
 	{
 		return false;
 	}
-
 	if (EmptyStr(suffix))
 	{
 		return true;
 	}
-
-	int lenStr = strlen(str);
-	int lenSuf = strlen(suffix);
-
-	if (lenSuf > lenStr)
-	{
-		return false;
-	}
-
-	if (caseSensitive)
-	{
-		return !strcmp(str + lenStr - lenSuf, suffix);
-	}
-	else
-	{
-		return !strcasecmp(str + lenStr - lenSuf, suffix);
-	}
+	return EndsWith(std::string_view(str), std::string_view(suffix), caseSensitive);
 }
 
 bool Util::AlphaNum(const char* str)
@@ -750,23 +757,6 @@ bool Util::RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, 
 	}
 	return false;
 }
-#else
-std::optional<std::string> Util::Uname(const char* key)
-{
-	std::string cmd = std::string("uname ") + key;
-
-	const size_t BUFFER_SIZE = 256;
-	auto pipe = Util::MakePipe(cmd);
-	char buffer[BUFFER_SIZE];
-	if (pipe && fgets(buffer, BUFFER_SIZE, pipe.get()))
-	{
-		std::string res{ buffer };
-		Util::Trim(res);
-		return res;
-	}
-
-	return std::nullopt;
-}
 #endif
 
 time_t Util::CurrentTime()
@@ -853,14 +843,14 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
-bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+bool Util::StrCaseCmp(std::string_view a, std::string_view b)
 {
-	auto comparator = [](unsigned char a, unsigned char b)
-	{
-		return std::tolower(a) == std::tolower(b);
-	};
-
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+		[](unsigned char ca, unsigned char cb)
+		{
+			return std::tolower(ca) == std::tolower(cb);
+		}
+	);
 }
 
 // prevent PC from going to sleep
@@ -1487,6 +1477,95 @@ BreakLoop:
 	*output = '\0';
 }
 
+CString WebUtil::ParseContentDispositionFilename(const char* contentDisposition)
+{
+	// Examples:
+	// Content-Disposition: attachment; filename="fname.ext"
+	// Content-Disposition: attachement;filename=fname.ext
+	// Content-Disposition: attachement;filename=fname.ext;
+	// Content-Disposition: attachment; filename=fname.ext; filename*=UTF-8''fname.ext
+	CString filename;
+	CString extFilename;
+
+	for (const char* p = contentDisposition; *p; )
+	{
+		while (*p == ';' || *p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+		if (!*p) break;
+
+		const char* nameStart = p;
+		while (*p && *p != '=' && *p != ';') p++;
+		int nameLen = (int)(p - nameStart);
+		while (nameLen > 0 && (nameStart[nameLen-1] == ' ' || nameStart[nameLen-1] == '\t')) nameLen--;
+
+		if (*p != '=')
+		{
+			// disposition type ("attachment") or a parameter without value
+			continue;
+		}
+
+		p++;
+		while (*p == ' ' || *p == '\t') p++;
+
+		const char* valueStart = p;
+		int valueLen;
+		bool quoted = *p == '"';
+		if (quoted)
+		{
+			p++;
+			while (*p && *p != '"')
+			{
+				p += *p == '\\' && p[1] ? 2 : 1;
+			}
+			if (*p == '"') p++;
+			valueLen = (int)(p - valueStart);
+			while (*p && *p != ';') p++;
+		}
+		else
+		{
+			while (*p && *p != ';') p++;
+			valueLen = (int)(p - valueStart);
+			while (valueLen > 0 && (valueStart[valueLen-1] == ' ' || valueStart[valueLen-1] == '\t' ||
+				valueStart[valueLen-1] == '\r' || valueStart[valueLen-1] == '\n')) valueLen--;
+		}
+
+		if (valueLen == 0)
+		{
+			continue;
+		}
+
+		if (nameLen == 8 && !strncasecmp(nameStart, "filename", 8))
+		{
+			filename.Set(valueStart, valueLen);
+			if (quoted)
+			{
+				HttpUnquote(filename);
+			}
+		}
+		else if (nameLen == 9 && !strncasecmp(nameStart, "filename*", 9))
+		{
+			// ext-value = charset "'" [ language ] "'" value-chars (RFC 5987)
+			CString value(valueStart, valueLen);
+			char* apo1 = strchr(value, '\'');
+			char* apo2 = apo1 ? strchr(apo1 + 1, '\'') : nullptr;
+			if (apo2 && apo2[1])
+			{
+				extFilename = apo2 + 1;
+				UrlDecode(extFilename);
+				if (apo1 - value == 10 && !strncasecmp(value, "ISO-8859-1", 10))
+				{
+					extFilename = Latin1ToUtf8(extFilename);
+				}
+			}
+		}
+	}
+
+	if (!extFilename.Empty())
+	{
+		return extFilename;
+	}
+	return filename;
+}
+
 void WebUtil::UrlDecode(char* raw)
 {
 	char* output = raw;
@@ -1498,6 +1577,12 @@ void WebUtil::UrlDecode(char* raw)
 				goto BreakLoop;
 			case '%':
 				{
+					if (!p[1] || !p[2])
+					{
+						// truncated escape sequence, keep it as is
+						*output++ = *p++;
+						break;
+					}
 					p++;
 					uchar c1 = *p++;
 					uchar c2 = *p++;
@@ -1968,10 +2053,10 @@ uint32 ZLib::GZip(const void* inputBuffer, int inputBufferLength, void* outputBu
 	return total_out;
 }
 
-GUnzipStream::GUnzipStream(int BufferSize) :
-	m_bufferSize(BufferSize)
+GUnzipStream::GUnzipStream(int BufferSize)
+	: m_bufferSize(BufferSize)
+	, m_outputBuffer(std::make_unique<Bytef[]>(BufferSize))
 {
-	m_outputBuffer = std::make_unique<Bytef[]>(BufferSize);
 
 	/* add 16 to MAX_WBITS to enforce gzip format */
 	int ret = inflateInit2(&m_zStream, MAX_WBITS + 16);

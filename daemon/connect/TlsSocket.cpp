@@ -214,9 +214,7 @@ bool TlsSocket::Start()
 	const SSL_CIPHER* currentCipher = SSL_get_current_cipher(m_session.get());
 	if (currentCipher != nullptr)
 	{
-		const char* protocolVersion = SSL_get_version(m_session.get());
-		const char* cipherName = SSL_CIPHER_get_name(currentCipher);
-		debug("TLS connection established: %s using %s", protocolVersion, cipherName);
+		debug("TLS connection established: %s using %s", SSL_get_version(m_session.get()), SSL_CIPHER_get_name(currentCipher));
 	}
 
 	m_connected = true;

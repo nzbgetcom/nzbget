@@ -2,7 +2,7 @@
 
 `build-nzbget.sh` is a bash script which is used to build linux, android and freebsd nzbget packages.
 
-Supported linux architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `mipseb` `mipsel` `ppc500` `ppc6xx`
+Supported linux architectures: `armel` `armhf` `aarch64` `i686` `x86_64` `riscv64` `ppc6xx`
 
 Supported android architectures: `i686-ndk` `x86_64-ndk` `armhf-ndk` `aarch64-ndk`
 
@@ -39,9 +39,6 @@ Build options:
         - i686
         - x86_64
         - riscv64
-        - mipsel
-        - mipseb
-        - ppc500
         - ppc6xx
     - android:
         - i686-ndk
@@ -72,7 +69,7 @@ Script assumes that buildroot toolchains is installed in `/build/buildroot/` - o
 
 ## Manual setup
 
-Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24` due to defining time_t from 32 to 64 bits, which may cause compatibility issues.
+Used buildroot version: `buildroot-2025.02.13` with `musl` downgraded to `1.1.24` due to defining time_t from 32 to 64 bits, which may cause compatibility issues.
 
 - Download Buildroot archive from https://buildroot.uclibc.org/download.html
 - Unpack the tarball into /build/buildroot/ directory
@@ -85,8 +82,7 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
         - Libraries (both static and shared)
     - Toolchain:
         - C library
-            - ppc500: uClibc-ng
-            - all others: musl
+            - musl
         - Kernel Headers
             - risc-v64:
                 - Linux 4.19.x kernel headers
@@ -97,9 +93,9 @@ Used buildroot version: `buildroot-2022.05.3` with `musl` downgraded to `1.1.24`
                         - 3.10.6
                         - Custom kernel headers series (3.10.x)
                     - all others:
-                        - 2.6.32
-                        - Custom kernel headers series (2.6.x)
-        - GCC compiler Version (gcc 9.x)
+                        - 3.2.102
+                        - Custom kernel headers series (3.2.x)
+        - GCC compiler Version (gcc 13.x or 14.x)
         - Enable C++ support
         - (Optional) Build cross gdb for the host
 - Save config and exit
@@ -136,12 +132,12 @@ It will download and build buildroot with needed options and patches
 
 If you want to build all supported toolchains, run
 ```
-for ARCH in aarch64 armel armhf i686 x86_64 riscv64 mipseb mipsel ppc500 ppc6xx; do bash linux/buildroot/build-toolchain.sh $ARCH; done
+for ARCH in aarch64 armel armhf i686 x86_64 riscv64 ppc6xx; do bash linux/buildroot/build-toolchain.sh $ARCH; done
 ```
 
 # NDK setup
 
-Script assumes that android toolchains is installed in `/build/android/` - one folder per architecture.
+Script assumes that android toolchains is installed in `/build/android/` (Android NDK r27c) - one folder per architecture.
 
 To install Android toolchain and NDK:
 

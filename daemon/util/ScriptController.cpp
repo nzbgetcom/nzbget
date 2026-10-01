@@ -166,7 +166,23 @@ ScriptController::ScriptController()
 ScriptController::~ScriptController()
 {
 	UnregisterRunningScript();
+#ifdef WIN32
+	SetProcess(0, 0);
+#endif
 }
+
+#ifdef WIN32
+void ScriptController::SetProcess(HANDLE processId, DWORD dwProcessId)
+{
+	std::lock_guard guard(m_processMutex);
+	if (m_processId)
+	{
+		CloseHandle(m_processId);
+	}
+	m_processId = processId;
+	m_dwProcessId = dwProcessId;
+}
+#endif
 
 void ScriptController::UnregisterRunningScript()
 {
@@ -425,18 +441,111 @@ int ScriptController::Execute()
 }
 
 #ifdef WIN32
-void ScriptController::BuildCommandLine(char* cmdLineBuf, int bufSize)
+namespace
 {
-	int usedLen = 0;
+void AppendEscapedArg(std::string& out, const char* arg, size_t len)
+{
+	out.push_back('"');
+
+	// Fast path: if there are no quotes or backslashes, copy as a single block
+	if (memchr(arg, '"', len) == nullptr && memchr(arg, '\\', len) == nullptr)
+	{
+		out.append(arg, len);
+		out.push_back('"');
+		return;
+	}
+
+	bool isDirectPath = len >= 4 && arg[0] == '\\' && arg[1] == '\\' && arg[2] == '?' && arg[3] == '\\';
+	size_t backslashes = 0;
+
+	for (size_t i = 0; i < len; ++i)
+	{
+		char c = arg[i];
+		if (c == '\\')
+		{
+			++backslashes;
+		}
+		else if (c == '"')
+		{
+			out.append(backslashes * 2 + 1, '\\');
+			out.push_back('"');
+			backslashes = 0;
+		}
+		else
+		{
+			if (backslashes > 0)
+			{
+				out.append(backslashes, '\\');
+				backslashes = 0;
+			}
+			out.push_back(c);
+		}
+	}
+
+	// For Win32 extended paths (\\?\), do not double the trailing backslash as
+	// \\?\ disables Win32 path normalization and consecutive slashes cause ERROR_INVALID_NAME.
+	out.append(isDirectPath ? backslashes : backslashes * 2, '\\');
+	out.push_back('"');
+}
+}
+
+std::string ScriptController::BuildCommandLine()
+{
+	if (m_args.empty())
+	{
+		return {};
+	}
+
+	size_t estimatedLen = m_args.size() - 1; // space separators
+	std::vector<size_t> argLens;
+	argLens.reserve(m_args.size());
+
 	for (const char* arg : m_args)
 	{
-		int len = strlen(arg);
-		bool endsWithBackslash = arg[len - 1] == '\\';
-		bool isDirectPath = !strncmp(arg, "\\\\?", 3);
-		snprintf(cmdLineBuf + usedLen, bufSize - usedLen, endsWithBackslash && ! isDirectPath ? "\"%s\\\" " : "\"%s\" ", arg);
-		usedLen += len + 3 + (endsWithBackslash ? 1 : 0);
+		size_t len = strlen(arg);
+		argLens.push_back(len);
+		estimatedLen += len + 4;
 	}
-	cmdLineBuf[usedLen < bufSize ? usedLen - 1 : bufSize - 1] = '\0';
+
+	std::string fullCmdLine;
+	fullCmdLine.reserve(estimatedLen);
+
+	for (size_t i = 0; i < m_args.size(); ++i)
+	{
+		if (i > 0)
+		{
+			fullCmdLine.push_back(' ');
+		}
+		AppendEscapedArg(fullCmdLine, m_args[i], argLens[i]);
+	}
+
+	constexpr size_t WIN32_MAX_CMDLINE = 32767;
+	if (fullCmdLine.size() > WIN32_MAX_CMDLINE)
+	{
+		warn("Script command line length (%zu) exceeds Windows limit (%zu), execution may fail",
+			fullCmdLine.size(), WIN32_MAX_CMDLINE);
+	}
+
+	return fullCmdLine;
+}
+
+void ScriptController::BuildCommandLine(char* cmdLineBuf, int bufSize)
+{
+	if (!cmdLineBuf || bufSize <= 0)
+	{
+		return;
+	}
+
+	std::string fullCmdLine = BuildCommandLine();
+	size_t copyLen = std::min(fullCmdLine.size(), static_cast<size_t>(bufSize - 1));
+	memcpy(cmdLineBuf, fullCmdLine.data(), copyLen);
+	cmdLineBuf[copyLen] = '\0';
+
+	if (fullCmdLine.size() >= static_cast<size_t>(bufSize))
+	{
+		warn("Script command line truncated: %zu chars exceed buffer %d",
+			fullCmdLine.size(), bufSize);
+	}
 }
 #endif
 
@@ -454,12 +563,9 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 	const char* script = m_args[0];
 
 #ifdef WIN32
-	char* cmdLine = m_cmdLine;
-	char cmdLineBuf[2048];
-	BuildCommandLine(cmdLineBuf, sizeof(cmdLineBuf));
-	cmdLine = cmdLineBuf;
+	std::string cmdLine = BuildCommandLine();
 
-	debug("Starting process: %s", cmdLine);
+	debug("Starting process: %s", cmdLine.c_str());
 
 	WString wideWorkingDir = FileSystem::UtfPathToWidePath(workingDir);
 	if (strlen(workingDir) > 260 - 14)
@@ -494,7 +600,7 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	std::unique_ptr<wchar_t[]> environmentStrings = m_environmentStrings.GetStrings();
 
-	BOOL ok = CreateProcessW(nullptr, WString(cmdLine), nullptr, nullptr, TRUE,
+	BOOL ok = CreateProcessW(nullptr, WString(cmdLine.c_str()), nullptr, nullptr, TRUE,
 		NORMAL_PRIORITY_CLASS | CREATE_NEW_PROCESS_GROUP | CREATE_UNICODE_ENVIRONMENT,
 		environmentStrings.get(), wideWorkingDir, &startupInfo, &processInfo);
 	if (!ok)
@@ -527,8 +633,8 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	debug("Child Process-ID: %i", (int)processInfo.dwProcessId);
 
-	m_processId = processInfo.hProcess;
-	m_dwProcessId = processInfo.dwProcessId;
+	CloseHandle(processInfo.hThread);
+	SetProcess(processInfo.hProcess, processInfo.dwProcessId);
 
 	// close unused pipe ends
 	CloseHandle(readProcPipe);
@@ -692,6 +798,7 @@ void ScriptController::Terminate()
 	m_terminated = true;
 
 #ifdef WIN32
+	std::lock_guard guard(m_processMutex);
 	BOOL ok = TerminateProcess(m_processId, -1) || m_completed;
 #else
 	pid_t killId = m_processId;
@@ -720,7 +827,16 @@ void ScriptController::TerminateAll()
 	Guard guard(m_runningMutex);
 	for (ScriptController* script : m_runningScripts)
 	{
-		if (script->m_processId && !script->m_detached)
+		bool hasProcess;
+#ifdef WIN32
+		{
+			std::lock_guard processGuard(script->m_processMutex);
+			hasProcess = script->m_processId != 0;
+		}
+#else
+		hasProcess = script->m_processId != 0;
+#endif
+		if (hasProcess && !script->m_detached)
 		{
 			// send break signal and wait up to 5 seconds for graceful termination
 			if (script->Break())
@@ -741,7 +857,8 @@ bool ScriptController::Break()
 	debug("Sending break signal to %s", *m_infoName);
 
 #ifdef WIN32
-	BOOL ok = GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_dwProcessId);
+	std::lock_guard guard(m_processMutex);
+	BOOL ok = m_processId && GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, m_dwProcessId);
 #else
 	bool ok = kill(m_processId, SIGINT) == 0;
 #endif
@@ -771,7 +888,11 @@ void ScriptController::Resume()
 {
 	m_terminated = false;
 	m_detached = false;
+#ifdef WIN32
+	SetProcess(0, 0);
+#else
 	m_processId = 0;
+#endif
 }
 
 bool ScriptController::ReadLine(char* buf, int bufSize, FILE* stream)

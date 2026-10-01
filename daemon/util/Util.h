@@ -110,8 +110,16 @@ public:
 	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
 	static void Trim(std::string& str);
+	static constexpr bool IsControlChar(char c) noexcept
+	{
+		constexpr unsigned char ASCII_SPACE = 32;
+		constexpr unsigned char ASCII_DEL = 127;
+		return static_cast<unsigned char>(c) < ASCII_SPACE || static_cast<unsigned char>(c) == ASCII_DEL;
+	}
+	static void SanitizeLine(std::string& str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);
+	static bool EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive);
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
 	static bool AlphaNum(const char* str);
 
@@ -219,8 +227,6 @@ public:
 
 #ifdef WIN32
 	static bool RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, char* buffer, int* bufLen);
-#else
-	static std::optional<std::string> Uname(const char* key);
 #endif
 
 	static void SetStandByMode(bool standBy);
@@ -232,7 +238,7 @@ public:
 	/* cross platform version of GNU timegm, which is similar to mktime but takes an UTC time as parameter */
 	static time_t Timegm(tm const *t);
 
-	static bool StrCaseCmp(const std::string& a, const std::string& b);
+	static bool StrCaseCmp(std::string_view a, std::string_view b);
 
 	static void FormatTime(time_t timeSec, char* buffer, int bufsize);
 	static CString FormatTime(time_t timeSec);
@@ -326,6 +332,13 @@ public:
 	static void HttpUnquote(char* raw);
 
 	/*
+	* Extracts file name from the value of "Content-Disposition" HTTP header (RFC 6266).
+	* The extended parameter "filename*" (RFC 5987) takes precedence over "filename".
+	* Returns an empty string if the header doesn't contain a file name.
+	*/
+	static CString ParseContentDispositionFilename(const char* contentDisposition);
+
+	/*
 	* Decodes URL-string.
 	* The string is decoded on the place overwriting the content of raw-data.
 	*/
@@ -396,7 +409,7 @@ class WildMask
 {
 public:
 	WildMask(const char* pattern, bool wantsPositions = false):
-		m_pattern(pattern), m_wantsPositions(wantsPositions) {}
+		m_pattern(pattern), m_wantsPositions(wantsPositions), m_wildCount(0) {}
 	bool Match(const char* text);
 	int GetMatchCount() { return m_wildCount; }
 	int GetMatchStart(int index) { return m_wildStart[index]; }

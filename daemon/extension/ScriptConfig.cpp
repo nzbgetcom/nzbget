@@ -74,6 +74,20 @@ bool ScriptConfig::LoadConfig(Options::OptEntries* optEntries)
 
 bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 {
+	struct CaseInsensitiveLess
+	{
+		bool operator()(std::string_view a, std::string_view b) const
+		{
+			return std::lexicographical_compare(
+				a.begin(), a.end(), b.begin(), b.end(),
+				[](unsigned char ca, unsigned char cb)
+				{
+					return std::tolower(ca) < std::tolower(cb);
+				}
+			);
+		}
+	};
+
 	// save to config file
 	DiskFile infile;
 
@@ -82,13 +96,22 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 		return false;
 	}
 
-	std::vector<CString> config;
-	std::set<Options::OptEntry*> writtenOptions;
+	std::map<std::string_view, std::string_view, CaseInsensitiveLess> values;
+	for (const auto& entry : *optEntries)
+	{
+		if (entry.GetName() && entry.GetValue())
+		{
+			values[entry.GetName()] = entry.GetValue();
+		}
+	}
+
+	std::set<std::string_view, CaseInsensitiveLess> writtenOptions;
 
 	// read config file into memory array
 	int fileLen = (int)FileSystem::FileSize(g_Options->GetConfigFilename()) + 1;
 	CString content;
 	content.Reserve(fileLen);
+	std::vector<CString> config;
 	while (infile.ReadLine(content, fileLen + 1))
 	{
 		config.push_back(*content);
@@ -109,11 +132,12 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 			CString optvalue;
 			if (g_Options->SplitOptionString(buf, optname, optvalue))
 			{
-				Options::OptEntry* optEntry = optEntries->FindOption(optname);
-				if (optEntry)
+				auto it = values.find(*optname);
+				if (it != values.end() && writtenOptions.insert(it->first).second)
 				{
-					infile.Print("%s=%s\n", optEntry->GetName(), optEntry->GetValue());
-					writtenOptions.insert(optEntry);
+					infile.Print("%.*s=%.*s\n",
+						static_cast<int>(it->first.size()), it->first.data(),
+						static_cast<int>(it->second.size()), it->second.data());
 				}
 			}
 		}
@@ -124,12 +148,17 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 	}
 
 	// write new options
-	for (Options::OptEntry& optEntry : *optEntries)
+	for (const auto& entry : *optEntries)
 	{
-		std::set<Options::OptEntry*>::iterator fit = writtenOptions.find(&optEntry);
-		if (fit == writtenOptions.end())
+		if (entry.GetName() && entry.GetValue())
 		{
-			infile.Print("%s=%s\n", optEntry.GetName(), optEntry.GetValue());
+			const char* name = entry.GetName();
+			if (writtenOptions.insert(name).second)
+			{
+				auto it = values.find(name);
+				std::string_view val = (it != values.end()) ? it->second : entry.GetValue();
+				infile.Print("%s=%.*s\n", name, static_cast<int>(val.size()), val.data());
+			}
 		}
 	}
 

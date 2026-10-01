@@ -3150,6 +3150,10 @@
     "message": "moving",
     "description": "Capitalized status indicating an item is being moved."
   },
+  "status_post_download_renaming_cap": {
+    "message": "post-download-renaming",
+    "description": "Status: renaming files after download. Translate all parts ('post', 'download', 'renaming'). Use a natural phrase (e.g., 'Renaming after download'). Hyphens are not mandatory in translation."
+  },
   "status_post_unpack_renaming_cap": {
     "message": "post-unpack-renaming",
     "description": "Status: renaming files after extraction. Translate all parts ('post', 'unpack', 'renaming'). Use a natural phrase (e.g., 'Renaming after unpack'). Hyphens are not mandatory in translation."
@@ -3987,11 +3991,11 @@
     "description": "Description for the option FileNaming DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges. DO NOT translate configuration option values (Article, Auto, Nzb) as they are fixed configuration values."
   },
   "config_desc_renameafterunpack": {
-    "message": "Rename downloaded files after unpack.\n\nThis option renames the extracted and obfuscated files using the NZB filename.",
+    "message": "Rename downloaded files after unpack.\n\nRenames extracted obfuscated files using the NZB name or metadata.",
     "description": "Description for the option RenameAfterUnpack"
   },
   "config_desc_renameignoreext": {
-    "message": "File extensions to ignore during renaming after unpack.\n\nExample: zip, .7z, .rar, .par2.\n\nNOTE: Only needed if <RenameAfterUnpack> is enabled.",
+    "message": "File extensions to ignore during post-download or post-unpack renaming.\n\nArchive (.rar, .7z, .zip) and parity (.par2, .sfv) files are already\nprotected automatically. Use this option to exclude additional extensions\nfrom renaming (e.g. .nfo, .exe, .cbr).\n\nNOTE: Only needed if <PostDownloadRename> or <RenameAfterUnpack> is enabled.",
     "description": "Description for the option RenameIgnoreExt DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_reorderfiles": {
@@ -4302,6 +4306,10 @@
     "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
     "description": "Description for the option Feed1.CertVerification DO NOT translate configuration option values (Minimal, None, Strict) as they are fixed configuration values."
   },
+  "config_desc_postdownloadrename": {
+    "message": "Rename downloaded non-archive files if obfuscated.\n\nRenames downloaded non-archive obfuscated files (such as standalone video)\nusing the NZB name or metadata.",
+    "description": "Description for the option PostDownloadRename"
+  },
   "help_feed_filter_options_def": {
     "message": "Definition of an option: $1name:value$2",
     "description": "Definition of an option in feed filter. Used to show option syntax format."
@@ -4533,5 +4541,9 @@
   "webui_config_desc_refreshretries": {
     "message": "Number of refresh attempts if a communication error occurs (0-99).\n\nIf all attempts fail, an error is displayed and the automatic refresh stops.",
     "description": "Description for the option RefreshRetries"
+  },
+  "progress_awaiting_par_files": {
+    "message": "Awaiting additional par-files",
+    "description": "Progress status indicating waiting for additional par files to download."
   }
 }

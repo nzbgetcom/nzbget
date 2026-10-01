@@ -30,7 +30,7 @@ COREX=4
 TESTING="no"
 
 # build variables
-ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 mipsel mipseb ppc500 ppc6xx i686-ndk x86_64-ndk armhf-ndk aarch64-ndk x86_64-bsd"
+ALL_ARCHS="armel armhf aarch64 i686 x86_64 riscv64 ppc6xx i686-ndk x86_64-ndk armhf-ndk aarch64-ndk x86_64-bsd"
 ALL_PLATFORMS="linux android freebsd"
 OUTPUTDIR=build
 BUILDROOT_HOME=/build
@@ -293,18 +293,8 @@ build_lib()
                             -e 's|slli $ret, $ret, 3|slli a0, a0, 3|' \
                             crypto/riscv64cpuid.pl
                         ;;
-                    mipseb)
-                        OPENSSL_ARCH=linux-mips32
-                        ;;
-                    mipsel)
-                        OPENSSL_ARCH=linux-mips32
-                        ;;
                     ppc6xx)
                         OPENSSL_ARCH=linux-ppc
-                        ;;
-                    ppc500)
-                        OPENSSL_ARCH=linux-ppc
-                        OPENSSL_OPTS=no-async
                         ;;
                     x86_64-bsd)
                         OPENSSL_ARCH=BSD-x86_64
@@ -556,20 +546,8 @@ build_bin()
             export HOST="riscv64-buildroot-linux-musl"
             CMAKE_SYSTEM_PROCESSOR="riscv64"
             ;;
-        mipseb)
-            export HOST="mips-buildroot-linux-musl"
-            CMAKE_SYSTEM_PROCESSOR="mips"
-            ;;
-        mipsel)
-            export HOST="mipsel-buildroot-linux-musl"
-            CMAKE_SYSTEM_PROCESSOR="mips"
-            ;;
         ppc6xx)
             export HOST="powerpc-buildroot-linux-musl"
-            CMAKE_SYSTEM_PROCESSOR="powerpc"
-            ;;
-        ppc500)
-            export HOST="powerpc-buildroot-linux-uclibcspe"
             CMAKE_SYSTEM_PROCESSOR="powerpc"
             ;;
         i686-ndk)
@@ -633,15 +611,11 @@ build_bin()
         export CPPFLAGS=$CXXFLAGS
     fi
 
-    # skip building libs for ppc500 arch
-    # for ppc500 arch we use buildroot libs
-    if [ "$ARCH" != "ppc500" ]; then
-        build_lib "https://invisible-island.net/archives/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
-        build_lib "https://zlib.net/zlib-$ZLIB_VERSION.tar.gz"
-        build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$LIBXML2_VERSION/libxml2-v$LIBXML2_VERSION.tar.gz"
-        build_lib "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz"
-        build_lib "https://github.com/boostorg/boost/releases/download/boost-$BOOST_VERSION/boost-$BOOST_VERSION.tar.gz"
-    fi
+    build_lib "https://invisible-island.net/archives/ncurses/ncurses-$NCURSES_VERSION.tar.gz"
+    build_lib "https://zlib.net/zlib-$ZLIB_VERSION.tar.gz"
+    build_lib "https://gitlab.gnome.org/GNOME/libxml2/-/archive/v$LIBXML2_VERSION/libxml2-v$LIBXML2_VERSION.tar.gz"
+    build_lib "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz"
+    build_lib "https://github.com/boostorg/boost/releases/download/boost-$BOOST_VERSION/boost-$BOOST_VERSION.tar.gz"
 
     build_7zip
     build_unrar
@@ -662,12 +636,7 @@ build_bin()
             CMAKE_EXTRA_ARGS="-DCMAKE_SYSROOT=$FREEBSD_SYSROOT -DCMAKE_CXX_FLAGS=-I$FREEBSD_SYSROOT/usr/include/c++/v1"
             ;;
         *)
-            if [ "$ARCH" != "ppc500" ]; then
-                export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lc -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
-            else
-                export LIBS="-lstdc++fs -lncurses -lboost_json -lxml2 -lz -lm -lssl -lcrypto -lz -ltinfow -latomic"
-                export INCLUDES="$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/;$TOOLCHAIN_PATH/$ARCH/output/host/$HOST/sysroot/usr/include/libxml2/"
-            fi
+            export LIBS="$LDFLAGS -lxml2 -lrt -lboost_json -lc -lssl -lcrypto -lz -lncursesw -latomic -Wl,--whole-archive -lpthread -Wl,--no-whole-archive"
             CMAKE_EXTRA_ARGS="-DTOOLCHAIN_PREFIX=$TOOLCHAIN_PREFIX"
             ;;
     esac

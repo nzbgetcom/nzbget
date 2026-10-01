@@ -1,0 +1,85 @@
+---
+Checks: >
+  clang-diagnostic-*,
+  clang-analyzer-*,
+  -clang-analyzer-cplusplus.NewDeleteLeaks,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-emplace,
+  modernize-loop-convert,
+  modernize-concat-nested-namespaces,
+  modernize-make-unique,
+  modernize-use-equals-default,
+  modernize-use-equals-delete,
+  modernize-deprecated-headers,
+  modernize-use-noexcept,
+  performance-unnecessary-copy-initialization,
+  performance-move-const-arg,
+  performance-for-range-copy,
+  performance-inefficient-algorithm,
+  performance-noexcept-move-constructor,
+  misc-misleading-identifier,
+  misc-definitions-in-headers,
+  misc-uniqueptr-reset-release,
+  -misc-const-correctness,
+  -misc-include-cleaner,
+  -misc-no-recursion,
+  concurrency-mt-unsafe,
+  readability-redundant-declaration,
+  readability-redundant-member-init,
+  readability-redundant-preprocessor,
+  readability-redundant-smartptr-get,
+  readability-redundant-string-cstr,
+  readability-redundant-string-init,
+  readability-simplify-boolean-expr,
+  readability-misleading-indentation,
+  readability-string-compare,
+  readability-qualified-auto,
+  readability-container-size-empty,
+  readability-const-return-type,
+  readability-identifier-naming
+
+WarningsAsErrors: ''
+
+HeaderFilterRegex: '.*/daemon/.*'
+
+FormatStyle: none
+
+CheckOptions:
+  - key:   readability-qualified-auto.AddConstToQualified
+    value: 'true'
+  - key:   bugprone-dangling-handle.HandleClasses
+    value: '::std::string_view'
+  - key:   bugprone-string-constructor.StringNames
+    value: '::std::string;::CString;::BString'
+  - key:   readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key:   readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key:   readability-identifier-naming.FunctionCase
+    value: CamelCase
+  - key:   readability-identifier-naming.MemberCase
+    value: camelBack
+  - key:   readability-identifier-naming.MemberPrefix
+    value: m_
+  - key:   readability-identifier-naming.ParameterCase
+    value: camelBack
+  - key:   readability-identifier-naming.VariableCase
+    value: camelBack
+  - key:   readability-identifier-naming.GlobalVariableCase
+    value: camelBack
+  - key:   readability-identifier-naming.GlobalVariablePrefix
+    value: g_
+  - key:   readability-identifier-naming.StaticVariableCase
+    value: camelBack
+  - key:   readability-identifier-naming.StaticVariablePrefix
+    value: s_
+  - key:   readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+  - key:   readability-identifier-naming.IgnoreMainLikeFunctions
+    value: '1'
+  - key:   readability-identifier-naming.IgnoreOSMacroNames
+    value: '1'

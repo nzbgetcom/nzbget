@@ -170,6 +170,9 @@ BOOST_AUTO_TEST_CASE(SystemInfoTest)
 
 	BOOST_CHECK(jsonStrResult == jsonStrExpected);
 	BOOST_CHECK(xmlStrResult == xmlStrExpected);
+	BOOST_CHECK(!sysInfo->GetOSInfo().GetName().empty());
+	BOOST_CHECK(!sysInfo->GetOSInfo().GetVersion().empty());
+	BOOST_CHECK(!sysInfo->GetCPUInfo().GetArch().empty());
 
 	xmlCleanupParser();
 }

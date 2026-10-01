@@ -419,6 +419,7 @@ void QueueScriptCoordinator::CheckQueue()
 
 	m_curItem.reset();
 	NzbInfo* curNzbInfo = nullptr;
+	EEvent maxEvent = EEvent::qeFileDownloaded;
 	Queue::iterator itCurItem;
 
 	for (Queue::iterator it = m_queue.begin(); it != m_queue.end(); )
@@ -445,13 +446,14 @@ void QueueScriptCoordinator::CheckQueue()
 			continue;
 		}
 
-		if (!m_curItem || queueItem->GetEvent() > m_curItem->GetEvent())
+		if (!curNzbInfo || queueItem->GetEvent() > maxEvent)
 		{
 			itCurItem = it;
 			curNzbInfo = nzbInfo;
+			maxEvent = queueItem->GetEvent();
 		}
 
-		it++;
+		++it;
 	}
 
 	if (curNzbInfo)

@@ -24,8 +24,7 @@ jobs:
 
     - name: Build
       run: |
-        export ZIP7_VERSION="25.01"
-        export EXTRA_ARGS="-DCMAKE_OSX_SYSROOT=/Applications/Xcode_14.1.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX13.sdk -DCMAKE_OSX_DEPLOYMENT_TARGET=10.14"
+        export EXTRA_ARGS="-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"
         bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure

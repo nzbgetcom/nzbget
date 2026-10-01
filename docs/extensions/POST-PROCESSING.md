@@ -66,6 +66,10 @@ For the complete list see description of [API-Method "history"](../api/HISTORY.m
   - **3** = write error (usually not enough disk space);
   - **4** = wrong password (only for rar5 archives).
   - `Deprecated, use NZBPP_STATUS and NZBPP_TOTALSTATUS instead.`
+  - **NOTE** if DirectUnpack (option `DirectUnpack`) already extracted the files successfully before par-check finished,
+ `NZBPP_UNPACKSTATUS=2` (unpack successful) can be reported together with `NZBPP_PARSTATUS=1` (checked and failed to repair):
+ NZBGet finalizes the already-extracted files instead of skipping unpack in this case. `NZBPP_STATUS`/`NZBPP_TOTALSTATUS`
+ still reflect the par failure (e.g. `FAILURE/PAR`).
 
 ### Example: test if download failed
 ```sh

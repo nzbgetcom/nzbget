@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_ARCHS: "aarch64 armel armhf i686 mipseb mipsel ppc500 ppc6xx riscv64 x86_64"
+  BUILD_ARCHS: "aarch64 armel armhf i686 ppc6xx riscv64 x86_64"
   BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
@@ -42,12 +42,8 @@ jobs:
         sudo chown $USER:$USER /build
         mkdir -p /build/buildroot
         mkdir -p /build/lib
-        if [ "${{ matrix.arch }}" == "ppc500" ]; then
-          curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
-        else
-          curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
-        fi
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v6.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/buildroot-${{ matrix.arch }}.tar.gz -o /build/buildroot/buildroot.tar.gz
+        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
         tar zxf /build/buildroot/buildroot.tar.gz -C /build/buildroot
         tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get update

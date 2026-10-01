@@ -4,11 +4,7 @@ import os
 import time
 import shutil
 import base64
-import distutils.spawn
-try:
-	from xmlrpclib import ServerProxy # python 2
-except ImportError:
-	from xmlrpc.client import ServerProxy # python 3
+from xmlrpc.client import ServerProxy
 
 nzbget_srcdir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 nzbget_maindir = nzbget_srcdir + '/tests/testdata/nzbget.temp'
@@ -20,13 +16,9 @@ exe_ext = '.exe' if os.name == 'nt' else ''
 nzbget_bin = nzbget_srcdir + '/nzbget' + exe_ext
 nserv_datadir = nzbget_srcdir + '/tests/testdata/nserv.temp'
 
-sevenzip_bin = distutils.spawn.find_executable('7z')
-if sevenzip_bin is None:
-	sevenzip_bin = nzbget_srcdir + '/7z' + exe_ext
+sevenzip_bin = shutil.which('7z') or nzbget_srcdir + '/7z' + exe_ext
 
-par2_bin = distutils.spawn.find_executable('par2')
-if par2_bin is None:
-	par2_bin = nzbget_srcdir + '/par2' + exe_ext
+par2_bin = shutil.which('par2') or nzbget_srcdir + '/par2' + exe_ext
 
 has_failures = False
 
@@ -38,29 +30,28 @@ def pytest_addoption(parser):
 	parser.addini('par2_bin', 'path to par2 binary', default=par2_bin)
 	parser.addoption("--hold", action="store_true", help="Hold at the end of test (keep NZBGet running)")
 
-def check_config():
+@pytest.fixture(scope='session')
+def check_config(request):
 	global nzbget_bin
-	nzbget_bin = pytest.config.getini('nzbget_bin')
+	nzbget_bin = request.config.getini('nzbget_bin')
 	if not os.path.exists(nzbget_bin):
 		pytest.exit('Could not find nzbget binary at ' + nzbget_bin + '. Alternative path can be set via pytest ini option "nzbget_bin".')
 
 	global sevenzip_bin, par2_bin
-	sevenzip_bin = pytest.config.getini('sevenzip_bin')
-	par2_bin = pytest.config.getini('par2_bin')
+	sevenzip_bin = request.config.getini('sevenzip_bin')
+	par2_bin = request.config.getini('par2_bin')
 	if not os.path.exists(sevenzip_bin):
 		pytest.exit('Could not find 7-zip binary in search path or at ' + sevenzip_bin + '. Alternative path can be set via pytest ini option "sevenzip_bin".')
 	if not os.path.exists(par2_bin):
 		pytest.exit('Could not find par2 binary in search path or at ' + par2_bin + '. Alternative path can be set via pytest ini option "par2_bin".')
 
 	global nserv_datadir
-	nserv_datadir = pytest.config.getini('nserv_datadir')
+	nserv_datadir = request.config.getini('nserv_datadir')
 
 	global nzbget_maindir
-	nzbget_maindir = pytest.config.getini('nzbget_maindir')
+	nzbget_maindir = request.config.getini('nzbget_maindir')
 	global nzbget_configfile
 	nzbget_configfile = nzbget_maindir + '/nzbget.conf'
-
-pytest.check_config = check_config
 
 class NServ:
 
@@ -72,9 +63,7 @@ class NServ:
 
 @pytest.fixture(scope='session')
 
-def nserv(request):
-	check_config()
-
+def nserv(request, check_config):
 	instance = NServ()
 	request.addfinalizer(instance.finalize)
 	return instance
@@ -91,7 +80,7 @@ class Nzbget:
 		self.wait_until_started()
 
 	def finalize(self):
-		if pytest.config.getoption("--hold"):
+		if self.session.config.getoption("--hold"):
 			print('\nNZBGet is still running, press Ctrl+C to quit')
 			time.sleep(100000)
 		self.process.kill()
@@ -172,7 +161,7 @@ class Nzbget:
 		print('Started')
 
 	def append_nzb(self, nzb_name, nzb_content, unpack = None, dupekey = '', dupescore = 0, dupemode = 'FORCE', params = None):
-		nzbcontent64 = base64.standard_b64encode(nzb_content)
+		nzbcontent64 = base64.standard_b64encode(nzb_content.encode()).decode()
 		if params is None:
 			params = []
 		if unpack == True:
@@ -210,13 +199,11 @@ class Nzbget:
 		return hist
 
 	def clear(self):
-		self.api.editqueue('HistoryFinalDelete', 0, '', range(1, 1000));
+		self.api.editqueue('HistoryFinalDelete', 0, '', list(range(1, 1000)))
 
 @pytest.fixture(scope='module')
 
-def nzbget(request):
-	check_config()
-
+def nzbget(request, check_config):
 	instance = Nzbget(getattr(request.module, 'nzbget_options', []), request.session)
 	request.addfinalizer(instance.finalize)
 	return instance

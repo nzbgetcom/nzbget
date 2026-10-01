@@ -75,7 +75,7 @@ namespace Network
 		static constexpr std::string_view m_errMsg = "No speed data was collected during the network speed test";
 
 		bool RunTest(TestSpec testSpec);
-		std::pair<uint32_t, std::chrono::duration<double>> ExecuteTest(std::string request, std::chrono::seconds timeout);
+		std::pair<uint32_t, std::chrono::duration<double>> ExecuteTest(const std::string& request, std::chrono::seconds timeout);
 		std::string MakeRequest(uint32_t filesize) const;
 		double CalculateSpeedInMbps(uint32_t bytes, double timeSec) const;
 		bool IsRequiredMoreTests() const;

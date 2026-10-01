@@ -167,9 +167,9 @@ void NServPrintUsage(const char* com)
 }
 
 NServOpts::NServOpts(int argc, char* argv[], Options::CmdOptList& cmdOpts)
+	: bindAddress("0.0.0.0")
 {
 	instances = 1;
-	bindAddress = "0.0.0.0";
 	firstPort = 6791;
 	generateNzb = false;
 	segmentSize = 500000;

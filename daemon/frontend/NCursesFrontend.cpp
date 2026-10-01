@@ -98,6 +98,11 @@ static const int READKEY_EMPTY = ERR;
 #endif
 
 NCursesFrontend::NCursesFrontend()
+	: m_startHint(0)
+	, m_colWidthFiles(0)
+	, m_colWidthTotal(0)
+	, m_colWidthLeft(0)
+	, m_inputValue(0)
 {
 	m_summary = true;
 	m_fileList = true;

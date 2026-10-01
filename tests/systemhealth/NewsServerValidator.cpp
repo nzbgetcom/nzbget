@@ -72,6 +72,64 @@ BOOST_AUTO_TEST_CASE(TestHost)
 		SystemHealth::NewsServer::ServerHostValidator(*CreateServer(true, "MyServer", "bad@host!"))
 			.Validate()
 			.IsError());
+
+	// IP literals as server host
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "192.168.0.1"))
+			.Validate()
+			.IsOk());
+
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "2001:db8:1234:12:321::1"))
+			.Validate()
+			.IsOk());
+
+	// Bracketed IPv6 is URL syntax and is rejected
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "[2001:db8:1234:12:321::1]"))
+			.Validate()
+			.IsError());
+
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "[foo]"))
+			.Validate()
+			.IsError());
+
+	// ipVersion - family constraints
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "192.168.0.1", 563, true, "user", "pass", 50, 0, 0, "", 4))
+			.Validate()
+			.IsOk());
+
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "2001:db8:1234:12:321::1", 563, true, "user", "pass", 50, 0, 0, "", 6))
+			.Validate()
+			.IsOk());
+
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "2001:db8:1234:12:321::1", 563, true, "user", "pass", 50, 0, 0, "", 4))
+			.Validate()
+			.IsError());
+
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "192.168.0.1", 563, true, "user", "pass", 50, 0, 0, "", 6))
+			.Validate()
+			.IsError());
+
+	// hostnames are not constrained by ipVersion
+	BOOST_CHECK(
+		SystemHealth::NewsServer::ServerHostValidator(
+			*CreateServer(true, "MyServer", "news.valid.com", 563, true, "user", "pass", 50, 0, 0, "", 6))
+			.Validate()
+			.IsOk());
 }
 
 BOOST_AUTO_TEST_CASE(TestPort)

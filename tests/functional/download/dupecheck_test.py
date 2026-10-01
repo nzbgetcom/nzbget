@@ -14,6 +14,6 @@ def test_dupecheck_small_id(nserv, nzbget):
 	hist = nzbget.download_nzb('small.nzb', dupemode = 'SCORE')
 	assert hist['Status'] == 'SUCCESS/HEALTH'
 	nzb_content = nzbget.load_nzb('small.nzb')
-	nzbcontent64 = base64.standard_b64encode(nzb_content)
+	nzbcontent64 = base64.standard_b64encode(nzb_content.encode()).decode()
 	id = nzbget.api.append('small.copy2.nzb', nzbcontent64, 'test', 0, False, False, '', 0, 'SCORE', [])
 	assert id > 0

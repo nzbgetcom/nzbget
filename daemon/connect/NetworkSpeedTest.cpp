@@ -66,7 +66,7 @@ namespace Network
 				++failures;
 				if (HasExceededMaxFailures(failures, iterations))
 				{
-					break;
+					return false;
 				}
 
 				continue;
@@ -84,7 +84,7 @@ namespace Network
 		return true;
 	}
 
-	std::pair<uint32_t, duration<double>> SpeedTest::ExecuteTest(std::string request, seconds timeout)
+	std::pair<uint32_t, duration<double>> SpeedTest::ExecuteTest(const std::string& request, seconds timeout)
 	{
 		Connection connection(m_host.data(), m_port, m_useTls);
 		connection.SetTimeout(1);

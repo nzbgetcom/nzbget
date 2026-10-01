@@ -37,6 +37,8 @@ extern void ExitProc();
 extern void Reload();
 extern WinConsole* g_WinConsole;
 
+char SERVICE_ARG[] = "-s";
+
 #define UM_TRAYICON (WM_USER + 1)
 #define UM_QUIT (WM_USER + 2)
 #define UM_SHOWWEBUI (WM_USER + 3)
@@ -97,7 +99,7 @@ void WinConsole::InitAppMode()
 		// make command line to start in server mode
 		m_defaultArguments = (char**)malloc(sizeof(char*) * 3);
 		m_defaultArguments[0] = (*g_Arguments)[0];
-		m_defaultArguments[1] = "-s";
+		m_defaultArguments[1] = SERVICE_ARG;
 		m_defaultArguments[2] = nullptr;
 		g_Arguments = (char*(*)[])m_defaultArguments;
 		g_ArgumentCount = 2;
@@ -611,7 +613,7 @@ void WinConsole::SavePrefs()
 	{
 		char filename[MAX_PATH + 1];
 		GetModuleFileName(nullptr, filename, sizeof(filename));
-		BString<1024> startCommand("\"%s\" -s -app -auto", filename);
+		BString<1024> startCommand("\"%s\" \"%s\" -app -auto", filename, SERVICE_ARG);
 		RegSetValueEx(hKey, "NZBGet", 0, REG_SZ, (BYTE*)(char*)startCommand, strlen(startCommand) + 1);
 	}
 	else

@@ -32,6 +32,7 @@
 
 NzbFile::NzbFile(const char* fileName, const char* category) 
 	: m_fileName{ fileName ? fileName : "" }
+	, m_ignoreNextError(false)
 {
 	debug("Creating NZBFile");
 
@@ -46,17 +47,19 @@ void NzbFile::LogDebugInfo()
 	info(" NZBFile %s", m_fileName.c_str());
 }
 
-void NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo)
+ArticleInfo* NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo)
 {
-	int index = articleInfo->GetPartNumber() - 1;
+	size_t index = Util::SafeIntCast<int, size_t>(articleInfo->GetPartNumber() - 1);
 
 	// make Article-List big enough
-	if (index >= (int)fileInfo->GetArticles()->size())
+	if (index >= fileInfo->GetArticles()->size())
 	{
 		fileInfo->GetArticles()->resize(index + 1);
 	}
 
 	(*fileInfo->GetArticles())[index] = std::move(articleInfo);
+	
+	return (*fileInfo->GetArticles())[index].get();
 }
 
 void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
@@ -94,7 +97,7 @@ void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 			{
 				oneSize = article->GetSize();
 			}
-			it++;
+			++it;
 			i++;
 		}
 	}
@@ -137,11 +140,11 @@ void NzbFile::ParseSubject(FileInfo* fileInfo, bool TryQuotes)
 
 bool NzbFile::HasDuplicateFilenames()
 {
-	for (FileList::iterator it = m_nzbInfo->GetFileList()->begin(); it != m_nzbInfo->GetFileList()->end(); it++)
+	for (FileList::iterator it = m_nzbInfo->GetFileList()->begin(); it != m_nzbInfo->GetFileList()->end(); ++it)
 	{
 		FileInfo* fileInfo1 = (*it).get();
 		int dupe = 1;
-		for (FileList::iterator it2 = it + 1; it2 != m_nzbInfo->GetFileList()->end(); it2++)
+		for (FileList::iterator it2 = it + 1; it2 != m_nzbInfo->GetFileList()->end(); ++it2)
 		{
 			FileInfo* fileInfo2 = (*it2).get();
 			if (!strcmp(fileInfo1->GetFilename(), fileInfo2->GetFilename()) &&
@@ -289,6 +292,23 @@ void NzbFile::ProcessFiles()
 	{
 		ReadPasswordFromFilename();
 	}
+
+	m_metaName = FileSystem::SanitizePathSegment(m_metaName);
+	m_metaTitle = FileSystem::SanitizePathSegment(m_metaTitle);
+
+	if (m_metaName.empty() && !m_metaTitle.empty())
+	{
+		m_metaName = m_metaTitle;
+	}
+
+	// Sanitize control characters (\r, \n, \t, etc.) to prevent
+	// line desynchronization in the line-based DiskState file format.
+	Util::SanitizeLine(m_category);
+
+	if (!m_metaName.empty() && m_nzbInfo)
+	{
+		m_nzbInfo->SetMetaName(m_metaName);
+	}
 }
 /*
 * Attempt to Read the Password from the Filename encoded in {{ Bracets }}
@@ -408,19 +428,32 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 			std::unique_ptr<ArticleInfo> article = std::make_unique<ArticleInfo>();
 			article->SetPartNumber(partNumber);
 			article->SetSize(lsize);
-			m_article = article.get();
-			AddArticle(m_fileInfo.get(), std::move(article));
+			m_article = AddArticle(m_fileInfo.get(), std::move(article));
 		}
 	}
 	else if (!strcmp("meta", name))
 	{
+		m_hasPassword = false;
+		m_hasCategory = false;
+		m_hasName = false;
+		m_hasTitle = false;
+
 		if (!atts)
 		{
 			m_nzbInfo->AddMessage(Message::mkWarning, tagAttrMessage);
 			return;
 		}
-		m_hasPassword = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("password", atts[1]);
-		m_hasCategory = atts[0] && atts[1] && !strcmp("type", atts[0]) && !strcmp("category", atts[1]);
+
+		for (int i = 0; atts[i] && atts[i + 1]; i += 2)
+		{
+			if (!strcasecmp("type", atts[i]))
+			{
+				if (!strcasecmp("password", atts[i + 1])) m_hasPassword = true;
+				else if (!strcasecmp("category", atts[i + 1])) m_hasCategory = true;
+				else if (!strcasecmp("name", atts[i + 1])) m_hasName = true;
+				else if (!strcasecmp("title", atts[i + 1])) m_hasTitle = true;
+			}
+		}
 	}
 }
 
@@ -464,6 +497,14 @@ void NzbFile::Parse_EndElement(const char *name)
 	{
 		m_category = m_tagContent;
 	}
+	else if (!strcmp("meta", name) && m_hasName)
+	{
+		m_metaName = m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasTitle)
+	{
+		m_metaTitle = m_tagContent;
+	}
 
 	m_currentElement.clear();
 }
@@ -503,7 +544,7 @@ void NzbFile::SAX_characters(NzbFile* file, const char * xmlstr, int len)
 
 void* NzbFile::SAX_getEntity(NzbFile* file, const char * name)
 {
-	xmlEntityPtr e = xmlGetPredefinedEntity((xmlChar* )name);
+	xmlEntityPtr e = xmlGetPredefinedEntity(reinterpret_cast<const xmlChar*>(name));
 
 	if (!e)
 	{

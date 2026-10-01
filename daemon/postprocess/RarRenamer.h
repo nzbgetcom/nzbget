@@ -75,8 +75,8 @@ private:
 	CString GenNewExtension(int volumeNo);
 	CString GenOldExtension(int volumeNo);
 	void MakeSets();
-	bool IsSetProperlyNamed(RarVolumeSet& set);
-	RarFile* FindMainFile(RarVolumeSet& set);
+	bool IsSetProperlyNamed(const RarVolumeSet& set);
+	RarFile* FindMainFile(const RarVolumeSet& set);
 	static bool SameArchiveName(const char* filename1, const char* filename2, bool newNaming);
 };
 

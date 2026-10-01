@@ -373,7 +373,7 @@ void ParRenamer::RenameParFiles(const char* destDir)
 
 bool ParRenamer::NeedRenameParFiles()
 {
-	for (ParInfoList::iterator it1 = m_parInfoList.begin(); it1 != m_parInfoList.end(); it1++)
+	for (ParInfoList::iterator it1 = m_parInfoList.begin(); it1 != m_parInfoList.end(); ++it1)
 	{
 		ParInfo& parInfo1 = *it1;
 
@@ -389,7 +389,7 @@ bool ParRenamer::NeedRenameParFiles()
 		int baseLen1;
 		ParParser::ParseParFilename(baseName1, true, &baseLen1, nullptr);
 
-		for (ParInfoList::iterator it2 = it1 + 1; it2 != m_parInfoList.end(); it2++)
+		for (ParInfoList::iterator it2 = it1 + 1; it2 != m_parInfoList.end(); ++it2)
 		{
 			ParInfo& parInfo2 = *it2;
 
@@ -458,7 +458,23 @@ void ParRenamer::RenameFile(const char* srcFilename, const char* destFileName)
 	++m_renamedCount;
 
 	// notify about new file name
-	RegisterRenamedFile(oldName.c_str(), newName.c_str());
+	std::string oldRelName = MakeRelativeName(srcFilename);
+	std::string newRelName = MakeRelativeName(destFileName);
+	RegisterRenamedFile(oldRelName.c_str(), newRelName.c_str());
+}
+
+std::string ParRenamer::MakeRelativeName(const char* fullFilename)
+{
+	fs::path canonicalDest = fs::weakly_canonical(fs::u8path(m_destDir.Str()));
+	fs::path canonicalFile = fs::weakly_canonical(fs::u8path(fullFilename));
+	fs::path rel = canonicalFile.lexically_relative(canonicalDest);
+
+	if (rel.empty() || *rel.begin() == "..")
+	{
+		return fs::u8string(canonicalFile.filename());
+	}
+
+	return fs::u8string(rel);
 }
 
 void ParRenamer::RenameBadParFiles()

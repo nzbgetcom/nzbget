@@ -30,7 +30,6 @@
 #include "Utf8.h"
 #endif
 
-#ifdef HAVE_STD_FILESYSTEM
 #include <filesystem>
 
 namespace fs
@@ -39,27 +38,12 @@ using namespace std::filesystem;
 using error_code = std::error_code;
 using errc = std::errc;
 
-inline std::string u8string(const path& p)
-{
-	return p.u8string(); 
-}
-}
-
-#else
-#include <boost/filesystem.hpp>
-
-namespace fs
-{
-using namespace boost::filesystem;
-using error_code = boost::system::error_code;
-namespace errc = boost::system::errc;
-
 inline fs::path u8path(std::string_view pathStr)
 {
 #ifdef _WIN32
 	if (auto wstr = Utf8::Utf8ToWide(pathStr))
 		return fs::path(*wstr);
-	return fs::path(pathStr); 
+	return fs::path(pathStr);
 #else
 	return fs::path(pathStr);
 #endif
@@ -73,10 +57,9 @@ inline std::string u8string(const path& p)
 	return p.string();
 #endif
 }
-
 }
 
-#endif
+
 
 namespace fs
 {
@@ -101,7 +84,7 @@ inline fs::path make_unique_filename(const fs::path& targetPath)
 	fs::path uniquePath;
 	do
 	{
-		uniquePath = baseDir / (stem + " (" + std::to_string(counter++) + ")" + ext);
+		uniquePath = baseDir / u8path(stem + " (" + std::to_string(counter++) + ")" + ext);
 	} while (fs::exists(uniquePath, ec) && !ec);
 
 	return uniquePath;
@@ -109,6 +92,13 @@ inline fs::path make_unique_filename(const fs::path& targetPath)
 
 inline void move_file(const fs::path& src, const fs::path& dest, fs::error_code& ec) noexcept
 {
+	if (fs::exists(dest, ec))
+	{
+		ec = std::make_error_code(std::errc::file_exists);
+		return;
+	}
+	if (ec) return;
+
 	fs::rename(src, dest, ec);
 	if (ec == std::errc::cross_device_link)
 	{
@@ -146,6 +136,8 @@ public:
 	static bool AllocateFile(const char* filename, int64 size, bool sparse, CString& errmsg);
 	static bool TruncateFile(const char* filename, int size);
 	static CString MakeValidFilename(const char* filename, bool allowSlashes = false);
+	static std::string SanitizePathSegment(std::string_view name);
+	static std::string SanitizeRelativePath(std::string_view path);
 	static bool ReservedChar(char ch);
 	static CString MakeUniqueFilename(const char* destDir, const char* basename);
 	static bool MoveFile(const char* srcFilename, const char* dstFilename);
@@ -157,7 +149,7 @@ public:
 	static bool CreateDirectoryExclusive(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
-	static std::optional<std::string> GetFileExtension(const std::string& filename);
+	static std::optional<std::string> GetFileExtension(std::string_view filename);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);
@@ -250,7 +242,7 @@ public:
 
 	DiskFile() = default;
 	DiskFile(const DiskFile&) = delete;
-	~DiskFile();
+	virtual ~DiskFile();
 	bool Open(const char* filename, EOpenMode mode);
 	bool Close();
 	bool Active() { return m_file != nullptr; }
@@ -261,7 +253,7 @@ public:
 	bool Eof();
 	bool Error();
 	int64 Print(const char* format, ...) PRINTF_SYNTAX(2);
-	char* ReadLine(char* buffer, int64 size);
+	virtual char* ReadLine(char* buffer, int64 size);
 	bool SetWriteBuffer(int size);
 	bool Flush();
 	bool Sync(CString& errmsg);

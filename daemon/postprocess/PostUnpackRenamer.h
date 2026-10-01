@@ -38,10 +38,7 @@ namespace PostUnpackRenamer
 		void AddMessage(Message::EKind kind, const char* text) override;
 
 	private:
-		PostInfo* m_postInfo;
-		std::string m_name;
-		std::string m_dstDir;
-		bool RenameFiles(const std::string& dir, const std::string& nameToRename);
+		PostInfo* m_postInfo = nullptr;
 	};
 }
 

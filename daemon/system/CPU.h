@@ -1,7 +1,7 @@
 /*
  *  This file is part of nzbget. See <https://nzbget.com>.
  *
- *  Copyright (C) 2024 Denis <denis@nzbget.com>
+ *  Copyright (C) 2024-2026 Denis <denis@nzbget.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,7 +40,6 @@ namespace System
 
 #ifndef WIN32
 		std::optional<std::string> GetCPUModelFromCPUInfo() const;
-		std::optional<std::string> GetCPUModelFromLSCPU() const;
 #endif
 
 		std::string m_model;

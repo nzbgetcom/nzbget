@@ -137,7 +137,8 @@ ArchiveProcessor::ScanResult ArchiveProcessor::ScanUnpackDir(const fs::path& unp
 		!ec && it != fs::recursive_directory_iterator(); 
 		it.increment(ec))
 	{
-		if (!fs::is_regular_file(it->path(), ec)) continue;
+		fs::file_status status = fs::symlink_status(it->path(), ec); 
+		if (ec || !fs::is_regular_file(status)) continue;
 
 		const auto& file = it->path();
 		const auto& filename = file.filename();

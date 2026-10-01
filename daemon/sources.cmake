@@ -67,6 +67,8 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/StreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostDownloadRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/CollectionAnalyzer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
@@ -91,6 +93,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.h
 
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileTypes.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp

@@ -55,8 +55,8 @@ void ServerPool::AddServer(std::unique_ptr<NewsServer> newsServer)
 {
 	debug("Adding server to ServerPool");
 
-	m_sortedServers.push_back(newsServer.get());
 	m_servers.push_back(std::move(newsServer));
+	m_sortedServers.push_back(m_servers.back().get());
 }
 
 /*

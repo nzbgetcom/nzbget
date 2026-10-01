@@ -6,7 +6,7 @@ Homebrew package manager (https://brew.sh).
 
 Installation supported on Intel / Apple Silicon Macs.
 
-macOS supported: macOS Mojave+ 10.14+
+macOS supported: macOS Monterey 12+
 
 ## Install
 Run from console:

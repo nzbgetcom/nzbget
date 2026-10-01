@@ -285,7 +285,7 @@ bool RarVolume::ReadRar3Volume(RarSourceCursor& file)
 
 		else if (block.type < 0x72 || block.type > 0x7b)
 		{
-			// inlvaid block type
+			// invalid block type
 			return false;
 		}
 
@@ -484,9 +484,9 @@ bool RarVolume::ReadRar5Volume(RarSourceCursor& file)
 			break;
 		}
 
-		else if (block.type < 1 || block.type > 5)
+		else if (block.type > 5)
 		{
-			// inlvaid block type
+			// invalid block type
 			return false;
 		}
 

@@ -151,6 +151,21 @@ BOOST_AUTO_TEST_CASE(TestLogFileValidator)
 	BOOST_CHECK(validator.Validate(log, Options::EWriteLog::wlAppend).IsOk());
 
 	BOOST_CHECK(validator.Validate(tempPath / "ghost.log", Options::EWriteLog::wlAppend).IsError());
+
+#ifdef _WIN32
+	BOOST_CHECK(validator.Validate("NUL", Options::EWriteLog::wlAppend).IsOk());
+	BOOST_CHECK(validator.Validate("NUL", Options::EWriteLog::wlReset).IsOk());
+	BOOST_CHECK(validator.Validate("NUL", Options::EWriteLog::wlRotate).IsOk());
+	BOOST_CHECK(validator.Validate("nul", Options::EWriteLog::wlAppend).IsOk());
+	BOOST_CHECK(validator.Validate("CON", Options::EWriteLog::wlAppend).IsOk());
+	BOOST_CHECK(validator.Validate("CONOUT$", Options::EWriteLog::wlAppend).IsOk());
+#else
+	BOOST_CHECK(validator.Validate("/dev/null", Options::EWriteLog::wlAppend).IsOk());
+	BOOST_CHECK(validator.Validate("/dev/null", Options::EWriteLog::wlReset).IsOk());
+	BOOST_CHECK(validator.Validate("/dev/null", Options::EWriteLog::wlRotate).IsOk());
+	BOOST_CHECK(validator.Validate("/dev/stdout", Options::EWriteLog::wlAppend).IsOk());
+	BOOST_CHECK(validator.Validate("/dev/stderr", Options::EWriteLog::wlAppend).IsOk());
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestCertStoreValidator)

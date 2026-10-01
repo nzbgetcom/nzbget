@@ -30,7 +30,7 @@ public:
 	typedef std::function<void(const char* buf, int size)> WriteFunc;
 
 	YEncoder(const char* filename, int part, int64 offset, int size, WriteFunc writeFunc) :
-		m_filename(filename), m_part(part), m_offset(offset), m_size(size), m_writeFunc(writeFunc) {};
+		m_filename(filename), m_part(part), m_offset(offset), m_size(size), m_fileSize(0), m_writeFunc(writeFunc) {};
 	bool OpenFile(CString& errmsg);
 	void WriteSegment();
 

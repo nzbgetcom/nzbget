@@ -14,12 +14,14 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+
 
 #include "nzbget.h"
 
 #include "PostUnpackRenamer.h"
+#include "CollectionAnalyzer.h"
 #include "FileSystem.h"
 #include "Deobfuscation.h"
 #include "Util.h"
@@ -47,96 +49,123 @@ namespace PostUnpackRenamer
 
 	void Controller::Run()
 	{
+		std::string targetName;
+		std::string dstDir;
 		{
 			GuardedDownloadQueue guard = DownloadQueue::Guard();
-
-			m_name = m_postInfo->GetNzbInfo()->GetName();
-			m_dstDir = m_postInfo->GetNzbInfo()->GetDestDir();
+			NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
+			targetName = CollectionAnalyzer::ResolveTargetName(
+				nzbInfo->GetMetaName(), nzbInfo->GetName() ? nzbInfo->GetName() : "");
+			dstDir = nzbInfo->GetDestDir() ? nzbInfo->GetDestDir() : "";
 		}
 
-		std::string infoName = "Post-unpack renaming for " + m_name;
-		SetInfoName(infoName.c_str());
+		NzbInfo::PostUnpackRenamingStatus finalStatus = NzbInfo::PostUnpackRenamingStatus::Skipped;
 
-		if (Deobfuscation::IsExcessivelyObfuscated(m_name))
-		{
-			PrintMessage(Message::mkWarning,
-				"Skipping Post-unpack renaming. NZB filename %s is excessively obfuscated which makes renaming unreliable.",
-				m_name.c_str()
-			);
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
-				NzbInfo::PostUnpackRenamingStatus::Skipped
-			);
+		auto Finish = [&]() {
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
+			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(finalStatus);
 			m_postInfo->SetWorking(false);
+		};
+
+		if (dstDir.empty())
+		{
+			Finish();
 			return;
 		}
 
-		bool ok = RenameFiles(m_dstDir, m_name);
+		BString<1024> infoName("Post-unpack renaming for %s", targetName.c_str());
+		SetInfoName(*infoName);
 
-		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		if (ok)
+		CollectionAnalyzer::RenamePlan plan = CollectionAnalyzer::BuildPlan(
+			fs::u8path(dstDir), targetName, g_Options->GetRenameIgnoreExt());
+
+		if (plan.isDiscStructure)
 		{
-			PrintMessage(Message::mkInfo, "%s successful", infoName.c_str());
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
-				NzbInfo::PostUnpackRenamingStatus::Success
-			);
-		}
-		else
-		{
-			PrintMessage(Message::mkError, "%s failed", infoName.c_str());
-			m_postInfo->GetNzbInfo()->SetPostUnpackRenamingStatus(
-				NzbInfo::PostUnpackRenamingStatus::Failure
-			);
+			PrintMessage(Message::mkInfo, "Skipping Post-unpack renaming: disc structure detected");
+			Finish();
+			return;
 		}
 
-		m_postInfo->SetWorking(false);
-	}
-
-	bool Controller::RenameFiles(const std::string& dir, const std::string& newName)
-	{
-		DirBrowser dirBrowser(dir.c_str());
-		while (const char* fileOrDir = dirBrowser.Next())
+		if (plan.isAmbiguousCollection)
 		{
-			std::string srcFileOrDir = dir + PATH_SEPARATOR + fileOrDir;
+			PrintMessage(Message::mkInfo, "Skipping Post-unpack renaming: ambiguous multi-file collection detected");
+			Finish();
+			return;
+		}
 
-			if (FileSystem::DirectoryExists(srcFileOrDir.c_str()))
+		if (!plan.canRename)
+		{
+			PrintMessage(Message::mkInfo, "No qualifying media file found for Post-unpack renaming");
+			Finish();
+			return;
+		}
+
+		if (plan.actions.empty())
+		{
+			if (plan.targetNameObfuscated)
 			{
-				RenameFiles(srcFileOrDir, newName);
-				continue;
-			}
-
-			if (!Deobfuscation::IsExcessivelyObfuscated(fileOrDir))
-			{
-				PrintMessage(Message::mkInfo,
-					"Filename %s is not excessively obfuscated, no renaming needed.",
-					fileOrDir
-				);
-				continue;
-			}
-
-			std::string dstFile = dir + PATH_SEPARATOR + newName;
-			dstFile += FileSystem::GetFileExtension(srcFileOrDir).value_or("");
-
-			if (Util::MatchFileExt(dstFile.c_str(), g_Options->GetRenameIgnoreExt(), ","))
-			{
-				continue;
-			}
-
-			if (FileSystem::MoveFile(srcFileOrDir.c_str(), dstFile.c_str()))
-			{
-				PrintMessage(Message::mkInfo, "%s renamed to %s", srcFileOrDir.c_str(), dstFile.c_str());
+				PrintMessage(Message::mkWarning,
+					"Skipping Post-unpack renaming. Obfuscated files found, but NZB filename %s is also obfuscated and no clean metadata was provided.",
+					targetName.c_str());
 			}
 			else
 			{
-				PrintMessage(Message::mkError,
-					"Could not rename file %s to %s: %s",
-					srcFileOrDir.c_str(),
-					dstFile.c_str(),
-					*FileSystem::GetLastErrorMessage()
-				);
+				PrintMessage(Message::mkInfo, "No files needed renaming for %s", targetName.c_str());
+			}
+			Finish();
+			return;
+		}
+
+		bool anyRenamed = false;
+		bool anyFailed = false;
+
+		for (const auto& action : plan.actions)
+		{
+			if (IsStopped()) break;
+
+			fs::error_code ec;
+			fs::move_file(action.srcPath, action.dstPath, ec);
+			if (!ec)
+			{
+				PrintMessage(Message::mkInfo, "Renamed %s to %s", action.oldFilename.c_str(), action.newFilename.c_str());
+				{
+					GuardedDownloadQueue guard = DownloadQueue::Guard();
+					m_postInfo->GetNzbInfo()->RenameCompletedFile(action.oldFilename.c_str(), action.newFilename.c_str());
+				}
+				anyRenamed = true;
+			}
+			else
+			{
+				PrintMessage(Message::mkError, "Could not rename file %s to %s: %s",
+					action.oldFilename.c_str(), action.newFilename.c_str(), ec.message().c_str());
+				anyFailed = true;
 			}
 		}
 
-		return true;
+		if (IsStopped())
+		{
+			PrintMessage(Message::mkWarning, "%s cancelled", *infoName);
+			Finish();
+			return;
+		}
+
+		if (anyFailed)
+		{
+			PrintMessage(Message::mkError, "%s finished with errors", *infoName);
+			finalStatus = NzbInfo::PostUnpackRenamingStatus::Failure;
+		}
+		else if (anyRenamed)
+		{
+			PrintMessage(Message::mkInfo, "%s successful", *infoName);
+			finalStatus = NzbInfo::PostUnpackRenamingStatus::Success;
+		}
+		else
+		{
+			PrintMessage(Message::mkInfo, "No files needed renaming for %s", *infoName);
+			finalStatus = NzbInfo::PostUnpackRenamingStatus::Skipped;
+		}
+
+		Finish();
 	}
 
 	void Controller::AddMessage(Message::EKind kind, const char* text)

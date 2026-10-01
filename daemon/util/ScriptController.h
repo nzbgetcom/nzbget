@@ -62,6 +62,10 @@ public:
 	const char* GetScript() { return !m_args.empty() ? *m_args[0] : nullptr; }
 	void SetWorkingDir(const char* workingDir) { m_workingDir = workingDir; }
 	void SetArgs(ArgList&& args) { m_args = std::move(args); }
+#ifdef WIN32
+	std::string BuildCommandLine();
+	void BuildCommandLine(char* cmdLineBuf, int bufSize);
+#endif
 	void SetInfoName(const char* infoName) { m_infoName = infoName; }
 	const char* GetInfoName() { return m_infoName; }
 	void SetLogPrefix(const char* logPrefix) { m_logPrefix = logPrefix; }
@@ -84,13 +88,13 @@ protected:
 	int WaitProcess();
 	void SetNeedWrite(bool needWrite) { m_needWrite = needWrite; }
 	void Write(const char* str);
-#ifdef WIN32
-	void BuildCommandLine(char* cmdLineBuf, int bufSize);
-#endif
 	void UnregisterRunningScript();
 
 private:
 	void CheckEnvSize(const std::vector<char*>& envs);
+#ifdef WIN32
+	void SetProcess(HANDLE processId, DWORD dwProcessId);
+#endif
 
 	ArgList m_args;
 	ArgList m_cmdArgs;
@@ -106,6 +110,7 @@ private:
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
 #ifdef WIN32
+	std::mutex m_processMutex;
 	HANDLE m_processId = 0;
 	DWORD m_dwProcessId = 0;
 #else

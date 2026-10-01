@@ -25,6 +25,7 @@
 #include <functional>
 #include "FileSystem.h"
 #include "Status.h"
+#include "Connection.h"
 
 namespace SystemHealth
 {
@@ -47,6 +48,7 @@ Status CheckPositiveNum(std::string_view name, int value);
 namespace File
 {
 Status Exists(const fs::path& path);
+bool NullOrConsoleDevice(const fs::path& path);
 Status Readable(const fs::path& path);
 Status Writable(const fs::path& path);
 Status Executable(const fs::path& path);
@@ -61,7 +63,7 @@ Status Writable(const fs::path& path);
 
 namespace Network
 {
-Status ValidHostname(std::string_view hostname);
+Status ValidHost(std::string_view hostname, Connection::EIPVersion ipv = Connection::ipAuto);
 Status ValidPort(int port);
 }  // namespace Network
 }  // namespace SystemHealth

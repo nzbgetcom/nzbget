@@ -54,6 +54,8 @@ void RenameController::PostRarRenamer::PrintMessage(Message::EKind kind, const c
 
 
 RenameController::RenameController()
+	: m_postInfo(nullptr)
+	, m_kind(jkPar)
 {
 	debug("Creating RenameController");
 
@@ -209,17 +211,11 @@ void RenameController::UpdateRarRenameProgress()
 */
 void RenameController::RegisterRenamedFile(const char* oldFilename, const char* newFilename)
 {
-	for (CompletedFile& completedFile : m_postInfo->GetNzbInfo()->GetCompletedFiles())
+	if (!m_postInfo->GetNzbInfo()->RenameCompletedFile(oldFilename, newFilename))
 	{
-		if (!strcasecmp(completedFile.GetFilename(), oldFilename))
-		{
-			if (Util::EmptyStr(completedFile.GetOrigname()))
-			{
-				completedFile.SetOrigname(completedFile.GetFilename());
-			}
-			completedFile.SetFilename(newFilename);
-			break;
-		}
+		PrintMessage(Message::mkWarning,
+			"Could not find completed-file entry for %s while renaming to %s",
+			oldFilename, newFilename);
 	}
-	m_renamedCount++;
+	++m_renamedCount;
 }

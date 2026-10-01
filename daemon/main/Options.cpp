@@ -342,8 +342,9 @@ void Options::InitDefaults()
 	SetOption(PARQUICK.data(), "yes");
 	SetOption(POSTSTRATEGY.data(), "sequential");
 	SetOption(FILENAMING.data(), "article");
+	SetOption(POSTDOWNLOADRENAME.data(), "yes");
 	SetOption(RENAMEAFTERUNPACK.data(), "yes");
-	SetOption(RENAMEIGNOREEXT.data(), ".zip, .7z, .rar, .par2");
+	SetOption(RENAMEIGNOREEXT.data(), "");
 	SetOption(PARRENAME.data(), "yes");
 	SetOption(PARBUFFER.data(), "16");
 	SetOption(PARTHREADS.data(), "0");
@@ -698,6 +699,7 @@ void Options::InitOptions()
 	m_urlForce				= (bool)ParseEnumValue(URLFORCE.data(), BoolCount, BoolNames, BoolValues);
 	m_certCheck				= (bool)ParseEnumValue(CERTCHECK.data(), BoolCount, BoolNames, BoolValues);
 	m_reorderFiles			= (bool)ParseEnumValue(REORDERFILES.data(), BoolCount, BoolNames, BoolValues);
+	m_postDownloadRename    = (bool)ParseEnumValue(POSTDOWNLOADRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_renameAfterUnpack     = (bool)ParseEnumValue(RENAMEAFTERUNPACK.data(), BoolCount, BoolNames, BoolValues);
 
 	const char* OutputModeNames[] = { "loggable", "logable", "log", "colored", "color", "ncurses", "curses" };
@@ -832,7 +834,7 @@ void Options::SetOption(const char* optname, const char* value)
 	CString curvalue;
 
 #ifndef WIN32
-	if (value && (value[0] == '~') && (value[1] == '/'))
+	if (value && strncmp(value, "~/", 2) == 0)
 	{
 		if (m_noDiskAccess)
 		{
@@ -1549,10 +1551,9 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "server", 6))
 	{
-		char* p = (char*)optname + 6;
+		const char* p = optname + 6;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p &&
-			(!strcasecmp(p, ".active") || !strcasecmp(p, ".name") ||
+		if ((!strcasecmp(p, ".active") || !strcasecmp(p, ".name") ||
 			!strcasecmp(p, ".level") || !strcasecmp(p, ".host") ||
 			!strcasecmp(p, ".port") || !strcasecmp(p, ".username") ||
 			!strcasecmp(p, ".password") || !strcasecmp(p, ".joingroup") ||
@@ -1568,11 +1569,11 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "task", 4))
 	{
-		char* p = (char*)optname + 4;
+		const char* p = optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".time") || !strcasecmp(p, ".weekdays") ||
+		if (!strcasecmp(p, ".time") || !strcasecmp(p, ".weekdays") ||
 			!strcasecmp(p, ".command") || !strcasecmp(p, ".param") ||
-			!strcasecmp(p, ".downloadrate") || !strcasecmp(p, ".process")))
+			!strcasecmp(p, ".downloadrate") || !strcasecmp(p, ".process"))
 		{
 			return true;
 		}
@@ -1580,10 +1581,10 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "category", 8))
 	{
-		char* p = (char*)optname + 8;
+		const char* p = optname + 8;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".destdir") || !strcasecmp(p, ".extensions") ||
-			!strcasecmp(p, ".unpack") || !strcasecmp(p, ".aliases")))
+		if (!strcasecmp(p, ".name") || !strcasecmp(p, ".destdir") || !strcasecmp(p, ".extensions") ||
+			!strcasecmp(p, ".unpack") || !strcasecmp(p, ".aliases"))
 		{
 			return true;
 		}
@@ -1591,12 +1592,12 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 
 	if (!strncasecmp(optname, "feed", 4))
 	{
-		char* p = (char*)optname + 4;
+		const char* p = optname + 4;
 		while (*p >= '0' && *p <= '9') p++;
-		if (p && (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
+		if (!strcasecmp(p, ".name") || !strcasecmp(p, ".url") || !strcasecmp(p, ".interval") ||
 			 !strcasecmp(p, ".filter") || !strcasecmp(p, ".backlog") || !strcasecmp(p, ".pausenzb") ||
 			 !strcasecmp(p, ".category") || !strcasecmp(p, ".categorySource") || !strcasecmp(p, ".priority") || 
-			 !strcasecmp(p, ".extensions") || !strcasecmp(p, ".certverification")))
+			 !strcasecmp(p, ".extensions") || !strcasecmp(p, ".certverification"))
 		{
 			return true;
 		}
@@ -1839,9 +1840,9 @@ void Options::CheckOptions()
 
 	// if option "ConfigTemplate" is not set, use "WebDir" as default location for template
 	// (for compatibility with versions 9 and 10).
-	if (m_configTemplate.Empty() && !m_noDiskAccess)
+	if (m_configTemplate.Empty() && !m_noDiskAccess && !m_webDir.Empty())
 	{
-		m_configTemplate.Format("%s%s", *m_webDir, "nzbget.conf");
+		m_configTemplate.Format("%s%c%s", *m_webDir, PATH_SEPARATOR, "nzbget.conf");
 		if (!FileSystem::FileExists(m_configTemplate))
 		{
 			m_configTemplate = "";
@@ -1921,9 +1922,9 @@ void Options::MergeOldScriptOption(OptEntries* optEntries, const char* optname, 
 				const char* catoptname = opt.GetName();
 				if (!strncasecmp(catoptname, "category", 8))
 				{
-					char* p = (char*)catoptname + 8;
-					while (*p >= '0' && *p <= '9') p++;
-					if (p && (!strcasecmp(p, ".extensions")))
+				const char* p = catoptname + 8;
+				while (*p >= '0' && *p <= '9') p++;
+				if (!strcasecmp(p, ".extensions"))
 					{
 						if (!opt.m_value.Empty() && !HasScript(opt.m_value, scriptName))
 						{

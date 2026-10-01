@@ -29,7 +29,7 @@ using XmlNodePtr = xmlNodePtr;
 std::string Serialize(const xmlNodePtr rootNode);
 void AddNewNode(xmlNodePtr rootNode, const char* name, const char* type, const char* value);
 xmlNodePtr CreateStructNode();
-void AddArrayNode(xmlNodePtr structNode, const char* name, std::vector<xmlNodePtr> children);
+void AddArrayNode(xmlNodePtr structNode, const char* name, const std::vector<xmlNodePtr>& children);
 const char* BoolToStr(bool value) noexcept;
 }  // namespace Xml
 

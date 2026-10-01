@@ -101,7 +101,10 @@ Status ServerHostValidator::Validate() const
 	if (!m_server.GetActive()) return Status::Ok();
 
 	return RequiredOption(GetName(), m_server.GetHost())
-		.And([&]() { return Network::ValidHostname(m_server.GetHost()); });
+		.And([&]() { return Network::ValidHost(
+			m_server.GetHost(),
+			static_cast<Connection::EIPVersion>(m_server.GetIpVersion()));
+		});
 }
 
 Status ServerPortValidator::Validate() const

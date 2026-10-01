@@ -305,7 +305,7 @@ bool Scanner::CanProcessFile(const char* fullFilename, bool checkStat)
 	bool canProcess = false;
 	bool inList = false;
 
-	for (FileList::iterator it = m_fileList.begin(); it != m_fileList.end(); it++)
+	for (FileList::iterator it = m_fileList.begin(); it != m_fileList.end(); ++it)
 	{
 		FileData& fileData = *it;
 		if (!strcmp(fileData.GetFilename(), fullFilename))

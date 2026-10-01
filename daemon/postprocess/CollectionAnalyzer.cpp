@@ -1,0 +1,437 @@
+/*
+ *  This file is part of nzbget. See <https://nzbget.com>.
+ *
+ *  Copyright (C) 2026 Denis <denis@nzbget.com>
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
+#include "nzbget.h"
+#include "CollectionAnalyzer.h"
+#include "FileTypes.h"
+#include "Deobfuscation.h"
+#include "Util.h"
+#include <algorithm>
+#include <cctype>
+
+namespace CollectionAnalyzer
+{
+	static constexpr uintmax_t AMBIGUOUS_COLLECTION_RATIO = 3;
+
+	struct VideoTrack
+	{
+		uintmax_t largest = 0;
+		uintmax_t second = 0;
+		int count = 0;
+		FileEntry mainFile;
+
+		void Add(const FileEntry& file)
+		{
+			++count;
+			if (file.size > largest)
+			{
+				second = largest;
+				largest = file.size;
+				mainFile = file;
+			}
+			else if (file.size > second)
+			{
+				second = file.size;
+			}
+		}
+
+		bool IsAmbiguous() const
+		{
+			return count > 1 && largest <= second * AMBIGUOUS_COLLECTION_RATIO;
+		}
+	};
+
+	AnalysisResult Analyze(const std::vector<FileEntry>& files)
+	{
+		AnalysisResult result;
+		VideoTrack video;
+		int audioCount = 0;
+		int bookCount = 0;
+		FileEntry dominantBook;
+		std::vector<FileEntry> books;
+
+		for (const auto& file : files)
+		{
+			if (FileTypes::IsDiscStructureExt(file.ext) || FileTypes::IsDiscDescriptorExt(file.ext))
+			{
+				result.isDiscStructure = true;
+			}
+			else if (FileTypes::IsAudioExt(file.ext))
+			{
+				result.hasAudio = true;
+				++audioCount;
+				result.otherFiles.push_back(file);
+			}
+			else if (FileTypes::IsBookExt(file.ext))
+			{
+				++bookCount;
+				if (file.size > dominantBook.size)
+				{
+					dominantBook = file;
+				}
+				books.push_back(file);
+			}
+			else if (FileTypes::IsVideoExt(file.ext))
+			{
+				if (FileTypes::IsSampleStem(file.stem))
+				{
+					result.sampleVideo = file;
+				}
+				else
+				{
+					video.Add(file);
+				}
+			}
+			else if (FileTypes::IsSubtitleExt(file.ext))
+			{
+				result.subtitles.push_back(file);
+			}
+			else if (FileTypes::IsNfoExt(file.ext))
+			{
+				result.nfos.push_back(file);
+			}
+			else
+			{
+				result.otherFiles.push_back(file);
+			}
+		}
+
+		// The 3:1 Dominance Rule:
+		// Multiple same-type videos with comparable size (e.g. season pack, multi-part episode)
+		// have no single dominant feature. Renaming them to the release title would overwrite files.
+		result.isAmbiguousCollection = video.IsAmbiguous();
+		result.mainVideo = std::move(video.mainFile);
+
+		// Music albums without video must not have individual tracks folded into one release title
+		if (audioCount > 1 && video.count == 0)
+		{
+			result.isAmbiguousCollection = true;
+		}
+
+		// Single dominant book release (when no video is present)
+		if (video.count == 0)
+		{
+			if (bookCount == 1)
+			{
+				result.mainBook = std::move(dominantBook);
+			}
+			else if (bookCount > 1)
+			{
+				result.isAmbiguousCollection = true;
+				result.otherFiles.insert(result.otherFiles.end(),
+					std::make_move_iterator(books.begin()),
+					std::make_move_iterator(books.end()));
+			}
+		}
+		else
+		{
+			result.otherFiles.insert(result.otherFiles.end(),
+				std::make_move_iterator(books.begin()),
+				std::make_move_iterator(books.end()));
+		}
+
+		return result;
+	}
+
+	AnalysisResult AnalyzeDirectory(const fs::path& dir)
+	{
+		std::vector<FileEntry> files;
+		bool discFound = false;
+
+		fs::error_code ec;
+		if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec))
+		{
+			return {};
+		}
+
+		for (auto it = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, ec);
+			it != fs::recursive_directory_iterator();
+			it.increment(ec))
+		{
+			if (ec) break;
+
+			if (it->is_directory(ec))
+			{
+				std::string dirname = fs::u8string(it->path().filename());
+				if (FileTypes::IsClutterDir(dirname))
+				{
+					it.disable_recursion_pending();
+					continue;
+				}
+				if (FileTypes::IsDiscStructureDir(dirname))
+				{
+					discFound = true;
+					it.disable_recursion_pending();
+				}
+				continue;
+			}
+
+			if (it->is_regular_file(ec))
+			{
+				const fs::path& entryPath = it->path();
+				std::string filename = fs::u8string(entryPath.filename());
+				if (FileTypes::IsClutterFile(filename))
+				{
+					continue;
+				}
+				fs::error_code sizeEc;
+				uintmax_t size = it->file_size(sizeEc);
+				if (sizeEc)
+				{
+					continue;
+				}
+				FileEntry fe;
+				fe.path = entryPath;
+				fe.filename = std::move(filename);
+				fe.stem = fs::u8string(entryPath.stem());
+				fe.ext = fs::u8string(entryPath.extension());
+				fe.size = size;
+
+				bool isKnown = !fe.ext.empty() && (
+					FileTypes::IsVideoExt(fe.ext) || FileTypes::IsAudioExt(fe.ext) ||
+					FileTypes::IsSubtitleExt(fe.ext) || FileTypes::IsNfoExt(fe.ext) ||
+					FileTypes::IsBookExt(fe.ext) || FileTypes::IsImageExt(fe.ext) ||
+					FileTypes::IsArchiveExt(fe.ext) || FileTypes::IsParityExt(fe.ext) ||
+					FileTypes::IsDiscStructureExt(fe.ext) || FileTypes::IsDiscImageExt(fe.ext) ||
+					FileTypes::IsDiscDescriptorExt(fe.ext) || FileTypes::IsGenericDiscImageExt(fe.ext));
+
+				if (!isKnown)
+				{
+					std::string_view sniffed = FileTypes::SniffExtension(fe.path);
+					if (!sniffed.empty())
+					{
+						fe.ext = sniffed;
+					}
+				}
+
+				files.push_back(std::move(fe));
+			}
+		}
+
+		AnalysisResult res = Analyze(files);
+		if (discFound)
+		{
+			res.isDiscStructure = true;
+		}
+		return res;
+	}
+
+	RenamePlan BuildPlan(const fs::path& dir, std::string_view targetName, const char* ignoreExt)
+	{
+		RenamePlan plan;
+
+		AnalysisResult analysis = AnalyzeDirectory(dir);
+		plan.isDiscStructure = analysis.isDiscStructure;
+		plan.isAmbiguousCollection = analysis.isAmbiguousCollection;
+		plan.canRename = analysis.CanRename();
+
+		if (!plan.canRename)
+		{
+			return plan;
+		}
+
+		std::vector<std::string> usedPaths;
+
+		auto PlanFileRename = [&](const FileEntry& entry, const std::string& newBasename) -> std::string {
+			std::string cleanBasename = FileSystem::SanitizePathSegment(newBasename);
+			if (cleanBasename.empty())
+			{
+				return entry.stem;
+			}
+
+			if (entry.filename == cleanBasename)
+			{
+				usedPaths.push_back(fs::u8string(entry.path));
+				return entry.stem;
+			}
+
+			fs::path targetDstPath = entry.path.parent_path() / fs::u8path(cleanBasename);
+			std::string targetDst = fs::u8string(targetDstPath);
+
+			if (ignoreExt && Util::MatchFileExt(targetDst.c_str(), ignoreExt, ","))
+			{
+				return entry.stem;
+			}
+
+			auto IsCollision = [&](const fs::path& p, const std::string& s) {
+				fs::error_code ec;
+				if (fs::exists(p, ec)) return true;
+				for (const auto& used : usedPaths)
+				{
+					if (Util::StrCaseCmp(used, s)) return true;
+				}
+				return false;
+			};
+
+			if (IsCollision(targetDstPath, targetDst))
+			{
+				fs::path cleanPath = fs::u8path(cleanBasename);
+				std::string stem = fs::u8string(cleanPath.stem());
+				std::string ext = fs::u8string(cleanPath.extension());
+				const fs::path& parentDir = entry.path.parent_path();
+
+				int dupeNumber = 0;
+				do
+				{
+					dupeNumber++;
+					targetDstPath = parentDir / fs::u8path(stem + ".duplicate" + std::to_string(dupeNumber) + ext);
+					targetDst = fs::u8string(targetDstPath);
+				} while (IsCollision(targetDstPath, targetDst));
+			}
+
+			std::string finalStem = fs::u8string(targetDstPath.stem());
+			std::string finalBasename = fs::u8string(targetDstPath.filename());
+
+			usedPaths.push_back(std::move(targetDst));
+			plan.actions.push_back({entry.path, std::move(targetDstPath), entry.filename, std::move(finalBasename)});
+			return finalStem;
+		};
+
+		std::string cleanTargetName = FileSystem::SanitizePathSegment(targetName);
+		bool canUseTargetName = !cleanTargetName.empty() && cleanTargetName != "nzb" &&
+			!Deobfuscation::IsExcessivelyObfuscated(cleanTargetName);
+
+		if (!analysis.mainVideo.filename.empty())
+		{
+			std::string videoBaseName = cleanTargetName;
+			if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainVideo.filename))
+			{
+				if (canUseTargetName)
+				{
+					std::string newVideoName = videoBaseName + analysis.mainVideo.ext;
+					videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
+				}
+				else
+				{
+					plan.targetNameObfuscated = true;
+					videoBaseName = analysis.mainVideo.stem;
+				}
+			}
+			else if (!analysis.mainVideo.ext.empty() &&
+				!Util::EndsWith(analysis.mainVideo.filename, analysis.mainVideo.ext, false))
+			{
+				std::string newVideoName = analysis.mainVideo.filename + analysis.mainVideo.ext;
+				videoBaseName = PlanFileRename(analysis.mainVideo, newVideoName);
+			}
+			else
+			{
+				videoBaseName = analysis.mainVideo.stem;
+			}
+
+			plan.effectiveBaseName = videoBaseName;
+
+			if (!videoBaseName.empty() && !Deobfuscation::IsExcessivelyObfuscated(videoBaseName))
+			{
+				// 2. Plan sample rename if present
+				if (!analysis.sampleVideo.filename.empty())
+				{
+					std::string sampleDstName = ResolveSampleName(videoBaseName, analysis.sampleVideo.ext);
+					PlanFileRename(analysis.sampleVideo, sampleDstName);
+				}
+
+				// 3. Plan accompanying subtitles rename
+				for (const auto& sub : analysis.subtitles)
+				{
+					std::string subDstName = ResolveSubtitleName(videoBaseName, sub.stem, sub.ext);
+					PlanFileRename(sub, subDstName);
+				}
+			}
+		}
+		else if (!analysis.mainBook.filename.empty())
+		{
+			std::string bookBaseName = cleanTargetName;
+			if (Deobfuscation::IsExcessivelyObfuscated(analysis.mainBook.filename))
+			{
+				if (canUseTargetName)
+				{
+					std::string newBookName = bookBaseName + analysis.mainBook.ext;
+					bookBaseName = PlanFileRename(analysis.mainBook, newBookName);
+				}
+				else
+				{
+					plan.targetNameObfuscated = true;
+					bookBaseName = analysis.mainBook.stem;
+				}
+			}
+			else if (!analysis.mainBook.ext.empty() &&
+				!Util::EndsWith(analysis.mainBook.filename, analysis.mainBook.ext, false))
+			{
+				std::string newBookName = analysis.mainBook.filename + analysis.mainBook.ext;
+				bookBaseName = PlanFileRename(analysis.mainBook, newBookName);
+			}
+			else
+			{
+				bookBaseName = analysis.mainBook.stem;
+			}
+
+			plan.effectiveBaseName = bookBaseName;
+		}
+
+		return plan;
+	}
+
+	std::string ResolveTargetName(std::string_view metaName, std::string_view nzbName)
+	{
+		if (!metaName.empty() && !Deobfuscation::IsExcessivelyObfuscated(metaName))
+		{
+			return std::string(metaName);
+		}
+
+		if (!nzbName.empty())
+		{
+			return std::string(nzbName);
+		}
+
+		return std::string(metaName);
+	}
+
+	std::string ResolveSubtitleName(std::string_view baseName, std::string_view subStem, std::string_view subExt)
+	{
+		constexpr size_t MIN_LANG_TAG_LEN = 2; // ISO 639-1 codes
+		constexpr size_t MAX_LANG_TAG_LEN = 4; // ISO 639-2 codes plus margin
+
+		// Detect language tag at end of stem: e.g. "12345.en" -> ".en", "sub.eng" -> ".eng"
+		size_t dotPos = subStem.rfind('.');
+		if (dotPos != std::string_view::npos && dotPos > 0)
+		{
+			std::string_view tag = subStem.substr(dotPos + 1);
+			if (tag.size() >= MIN_LANG_TAG_LEN && tag.size() <= MAX_LANG_TAG_LEN &&
+				std::all_of(tag.begin(), tag.end(), [](unsigned char c) { return std::isalpha(c); }))
+			{
+				std::string result;
+				result.reserve(baseName.size() + 1 + tag.size() + subExt.size());
+				result.append(baseName).append(".").append(tag).append(subExt);
+				return result;
+			}
+		}
+		std::string result;
+		result.reserve(baseName.size() + subExt.size());
+		result.append(baseName).append(subExt);
+		return result;
+	}
+
+	std::string ResolveSampleName(std::string_view baseName, std::string_view sampleExt)
+	{
+		std::string result;
+		result.reserve(baseName.size() + 7 + sampleExt.size());
+		result.append(baseName).append("-sample").append(sampleExt);
+		return result;
+	}
+}
