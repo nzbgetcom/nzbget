@@ -426,7 +426,7 @@ bool ArticleBatchFetcher::ClaimNext(int batchId, size_t& index, Request& request
 	Guard guard(m_mutex);
 	if (batchId != m_batchId || m_cancelled || m_stopped ||
 		m_nextClaim >= m_requests.size() ||
-		m_nextClaim - m_nextDeliver >= (size_t)MaxWindowParts ||
+		m_nextClaim - m_nextDeliver >= (size_t)GetWindowParts() ||
 		m_bufferedBytes >= MaxBufferedBytes)
 	{
 		return false;

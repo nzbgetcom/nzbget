@@ -4,7 +4,9 @@
 Each scenario runs a scratch NZBGet daemon and its own nserv. Repairable
 downloads must use their matching parity without requesting a donor article.
 Insufficient parity must still permit duplicate stream recovery, followed by a
-successful PAR verification. The existing no-PAR scenarios cover compatibility.
+successful PAR verification. Parity that cannot cover the damage, with only a
+duplicate that cannot help, must fail without verifying the collection at all.
+The existing no-PAR scenarios cover compatibility.
 
 Usage:
     python3 par_first_test.py --nzbget /path/to/nzbget [--keep]
@@ -33,6 +35,7 @@ SCENARIOS = (
     'repairable_live', 'repairable_stream',
     'insufficient_live', 'insufficient_stream',
     'unprotected_live', 'unprotected_stream',
+    'hopeless_live', 'hopeless_stream',
     'no_par_live', 'no_par_stream',
 )
 
@@ -113,7 +116,8 @@ def verify_named_outputs(target, expected):
 
 
 def scenario_parity(daemon, target, name):
-    insufficient = name.startswith('insufficient_')
+    hopeless = name.startswith('hopeless_')
+    insufficient = name.startswith('insufficient_') or hopeless
     unprotected = name.startswith('unprotected_')
     parity_names = ['testfile.par2', 'testfile.vol00+1.PAR2']
     if not insufficient:
@@ -126,7 +130,9 @@ def scenario_parity(daemon, target, name):
     # segmentation differs, so article fallback cannot hide the PAR/stream
     # ordering under test. The hole is internal and leaves ample identity data.
     segment_size = block_size * 3
-    missing_parts = {10}
+    # hopeless: twenty lost articles put health far below what one recovery
+    # block allows, so par2 provably cannot cover the damage
+    missing_parts = set(range(5, 25)) if hopeless else {10}
     data = (FIXTURES / 'testfile.dat').read_bytes()
     nfo = (FIXTURES / 'testfile.nfo').read_bytes()
     assert len(data) > segment_size * 20
@@ -154,7 +160,9 @@ def scenario_parity(daemon, target, name):
                                      filename)
         primary_members.append((served, filename, len(content), 64 * 1024, set()))
 
-    donor_path = harness._place_copy(target, 'par-first-donor', data,
+    # the hopeless donor is a same-size decoy: probe verification rejects it
+    donor_data = harness._payload(len(data), 9102027) if hopeless else data
+    donor_path = harness._place_copy(target, 'par-first-donor', donor_data,
                                      'testfile.dat')
     donor_members = [(donor_path, 'testfile.dat', len(data),
                       block_size * 5, set())]
@@ -181,6 +189,8 @@ def scenario_parity(daemon, target, name):
     live_runs = log.count('Starting live stream repair')
     donor_at = log.rfind('donor article(s)')
     after_donor = log[donor_at:] if donor_at >= 0 else ''
+    par_verified = 'Verifying file testfile.dat' in log
+    skipped_par = 'Skipping par-check for Primary-' + name in log
     final_full_par = ('Checking pars for' in after_donor
                       and 'Verifying file testfile.dat' in after_donor
                       and 'Quickly verified' not in after_donor)
@@ -196,6 +206,8 @@ def scenario_parity(daemon, target, name):
         'unprotected_donor_fetches': sum(tail_name + '?' in req for req in fetched),
         'live_stream_runs': live_runs,
         'full_par_after_donor': final_full_par,
+        'par_verified': par_verified,
+        'skipped_par': skipped_par,
         'integrity': integrity,
     }
     target.write_file('history.json', json.dumps(history, indent=2).encode())
@@ -204,7 +216,14 @@ def scenario_parity(daemon, target, name):
     common = (history.get('Status') == 'SUCCESS/PAR'
               and history.get('ParStatus') == 'SUCCESS'
               and all(integrity.values()))
-    if unprotected:
+    if hopeless:
+        # The par2 data cannot cover the hole and the only duplicate is a
+        # decoy: the collection fails without one pass over its files.
+        passed = (history.get('Status', '').startswith('FAILURE')
+                  and history.get('ParStatus') == 'FAILURE'
+                  and len(fetched) > 0 and articles == 0
+                  and skipped_par and not par_verified)
+    elif unprotected:
         # Matching PAR repairs testfile.dat; only the file absent from the
         # manifest may use duplicate data. Global psSuccess is insufficient
         # evidence to throw away this second job.

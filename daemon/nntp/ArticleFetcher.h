@@ -21,6 +21,7 @@
 #ifndef ARTICLEFETCHER_H
 #define ARTICLEFETCHER_H
 
+#include <algorithm>
 #include <atomic>
 #include <functional>
 #include <memory>
@@ -95,7 +96,8 @@ private:
  * semantics (drift measurement, size caps, early exit) are preserved.
  *
  * Workers run ahead of the consumer under a bounded window: at most
- * MaxWindowParts claimed-but-undelivered requests AND MaxBufferedBytes of
+ * GetWindowParts() claimed-but-undelivered requests (MaxWindowParts, or two
+ * per worker when there are more workers) AND MaxBufferedBytes of
  * buffered decoded bytes (worst case memory = MaxBufferedBytes + workers x
  * ArticleFetchLimits::MaxDecodedBytes still in flight; a typical article is
  * well under 1 MB). With worker count 0 the fetch happens lazily inside
@@ -132,6 +134,7 @@ public:
 	~ArticleBatchFetcher();
 
 	void SetWorkerCount(int workerCount) { m_workerCount = workerCount; }
+	int GetWindowParts() const { return std::max(MaxWindowParts, m_workerCount * 2); }
 	void Begin(std::vector<Request> requests);
 	bool Next(ArticleFetcher::FetchedArticle& result);
 	void CancelRemaining();

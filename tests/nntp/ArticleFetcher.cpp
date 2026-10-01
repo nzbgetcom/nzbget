@@ -111,32 +111,38 @@ BOOST_AUTO_TEST_CASE(ArticleBatchFetcherDeliversInSubmissionOrder)
 
 BOOST_AUTO_TEST_CASE(ArticleBatchFetcherHonorsWindowBound)
 {
-	// more workers than the window, instant fetches, and a consumer that
-	// never delivers: claims must settle at exactly the window bound
-	std::atomic<int> started{0};
-	ArticleBatchFetcher batch([&](const ArticleBatchFetcher::Request&)
+	for (int workers : {3, ArticleBatchFetcher::MaxWindowParts * 2})
 	{
-		started++;
-		return MakeResult('w');
-	});
-	batch.SetWorkerCount(ArticleBatchFetcher::MaxWindowParts * 2);
+		int window = std::max(ArticleBatchFetcher::MaxWindowParts, workers * 2);
+		// instant fetches and a consumer that never delivers: claims must
+		// settle at exactly the window bound, for a few workers (the fixed
+		// minimum window) and for many (two per worker)
+		std::atomic<int> started{0};
+		ArticleBatchFetcher batch([&](const ArticleBatchFetcher::Request&)
+		{
+			started++;
+			return MakeResult('w');
+		});
+		batch.SetWorkerCount(workers);
+		BOOST_CHECK_EQUAL(batch.GetWindowParts(), window);
 
-	auto noGroups = std::make_shared<std::vector<CString>>();
-	std::vector<ArticleBatchFetcher::Request> requests;
-	for (int i = 0; i < ArticleBatchFetcher::MaxWindowParts * 3; i++)
-	{
-		requests.push_back({CString("m"), noGroups});
+		auto noGroups = std::make_shared<std::vector<CString>>();
+		std::vector<ArticleBatchFetcher::Request> requests;
+		for (int i = 0; i < window * 3; i++)
+		{
+			requests.push_back({CString("m"), noGroups});
+		}
+		batch.Begin(std::move(requests));
+		Util::Sleep(300);
+		BOOST_CHECK_EQUAL(started.load(), window);
+		ArticleFetcher::FetchedArticle fetched;
+		int delivered = 0;
+		while (batch.Next(fetched))
+		{
+			delivered++;
+		}
+		BOOST_CHECK_EQUAL(delivered, window * 3);
 	}
-	batch.Begin(std::move(requests));
-	Util::Sleep(300);
-	BOOST_CHECK_EQUAL(started.load(), ArticleBatchFetcher::MaxWindowParts);
-	ArticleFetcher::FetchedArticle fetched;
-	int delivered = 0;
-	while (batch.Next(fetched))
-	{
-		delivered++;
-	}
-	BOOST_CHECK_EQUAL(delivered, ArticleBatchFetcher::MaxWindowParts * 3);
 }
 
 BOOST_AUTO_TEST_CASE(ArticleBatchFetcherByteCapThrottlesClaims)

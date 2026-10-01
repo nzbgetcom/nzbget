@@ -37,6 +37,7 @@
 #include "NzbFile.h"
 #include "QueueScript.h"
 #include "ParParser.h"
+#include "ParRenamer.h"
 #include "DirectUnpack.h"
 #include "PostUnpackRenamer.h"
 #include "PostDownloadRenamer.h"
@@ -751,6 +752,79 @@ void PrePostProcessor::CheckPostQueue()
 	Util::SetStandByMode(m_activeJobs.empty());
 }
 
+#ifndef DISABLE_PARCHECK
+// The collection's par2 files provably cannot cover its damage: the damage
+// of the files they protect exceeds all par2 data still intact. Health below
+// critical says the same for the whole collection, but also counts damage in
+// files outside the par2 set, so it only gates the closer look: the failed
+// size of every stream-repair job whose file the main par2 files list.
+static bool ParCannotCover(NzbInfo* nzbInfo)
+{
+	int health = nzbInfo->CalcHealth();
+	int criticalHealth = nzbInfo->CalcCriticalHealth(false);
+	if (health > 0 && (criticalHealth >= 1000 || health >= criticalHealth))
+	{
+		return false;
+	}
+
+	ParParser::ParFileList mainPars;
+	if (!ParParser::FindMainPars(nzbInfo->GetDestDir(), &mainPars))
+	{
+		return false;
+	}
+	std::vector<std::string> parredFiles;
+	for (std::string& mainPar : mainPars)
+	{
+		BString<1024> parPath("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, mainPar.c_str());
+		if (!ParRenamer::ListParredFiles(parPath, parredFiles))
+		{
+			return false;
+		}
+	}
+
+	int64 protectedDamage = 0;
+	for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
+	{
+		const char* filename = job.GetFilename();
+		for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+		{
+			if (completedFile.GetId() == job.GetFileId())
+			{
+				filename = completedFile.GetFilename();
+				break;
+			}
+		}
+		const char* baseName = FileSystem::BaseFileName(filename);
+		if (std::any_of(parredFiles.begin(), parredFiles.end(),
+			[baseName](const std::string& parredFile) { return !strcasecmp(parredFile.c_str(), baseName); }))
+		{
+			protectedDamage += job.GetFailedSize();
+		}
+	}
+
+	return protectedDamage > nzbInfo->GetParSize() - nzbInfo->GetParCurrentFailedSize();
+}
+
+// ParScan=dupe can still find missing blocks in the files of a duplicate
+// already downloaded to disk, which the health estimate does not know about
+static bool HasDupeScanSources(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (g_Options->GetParScan() != Options::psDupe)
+	{
+		return false;
+	}
+	for (NzbInfo* dupeNzbInfo : g_DupeCoordinator->ListHistoryDupes(downloadQueue, nzbInfo))
+	{
+		if (!Util::EmptyStr(dupeNzbInfo->GetDestDir()) &&
+			FileSystem::DirectoryExists(dupeNzbInfo->GetDestDir()))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+#endif
+
 void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo, bool allowPar)
 {
 	NzbInfo* nzbInfo = postInfo->GetNzbInfo();
@@ -778,6 +852,43 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone;
 
 #ifndef DISABLE_PARCHECK
+	// A par-check that cannot succeed still reads the whole collection (and
+	// waits for every remaining par2-file): recover from duplicates first,
+	// par-check afterwards only if that wrote anything
+	if (streamRepair && !postInfo->GetStreamRepairDone() &&
+		nzbInfo->GetParStatus() <= NzbInfo::psSkipped &&
+		g_Options->GetParCheck() != Options::pcManual &&
+		ParCannotCover(nzbInfo) &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Par2 files of %s cannot cover its damage (health %.1f%%, critical %.1f%%), "
+			"recovering from duplicates before par-check",
+			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(false) / 10.0);
+		postInfo->SetParCannotCover(true);
+		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
+		StreamRepairController::StartJob(postInfo);
+		return;
+	}
+
+	// Duplicates recovered nothing, so the damage is still beyond the par2
+	// files: report the failure instead of verifying a collection that
+	// cannot be repaired
+	if (postInfo->GetParCannotCover() && postInfo->GetStreamRepairDone() &&
+		!postInfo->GetStreamRepairRecovered() &&
+		nzbInfo->GetParStatus() == NzbInfo::psNone &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+		!HasDupeScanSources(downloadQueue, nzbInfo) &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+	{
+		nzbInfo->PrintMessage(Message::mkWarning,
+			"Skipping par-check for %s: its par2 files cannot cover the damage "
+			"(health %.1f%%, critical %.1f%%) and duplicates recovered nothing",
+			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(false) / 10.0);
+		nzbInfo->SetParStatus(NzbInfo::psFailure);
+		return;
+	}
+
 	// Captured holes are a fallback, not evidence that donor data is needed.
 	// Let the current PAR set verify and repair first, including auto mode
 	// which initially marks the check as skipped until damage is known.

@@ -201,6 +201,28 @@ void ParRenamer::LoadParFile(const char* parFilename)
 	}
 }
 
+bool ParRenamer::ListParredFiles(const char* parFilename, std::vector<std::string>& filenames)
+{
+	ParRenamerRepairer repairer;
+	if (!repairer.LoadPacketsFromFile(parFilename))
+	{
+		return false;
+	}
+
+	for (std::pair<const Par2::MD5Hash, Par2::Par2RepairerSourceFile*>& entry : repairer.sourcefilemap)
+	{
+		Par2::Par2RepairerSourceFile* sourceFile = entry.second;
+		if (sourceFile && sourceFile->GetDescriptionPacket())
+		{
+			std::string filename = Par2::DescriptionPacket::TranslateFilenameFromPar2ToLocal(
+				repairer.m_nout, repairer.m_nout, Par2::nlNormal,
+				sourceFile->GetDescriptionPacket()->FileName());
+			filenames.emplace_back(FileSystem::BaseFileName(filename.c_str()));
+		}
+	}
+	return true;
+}
+
 void ParRenamer::CheckFiles(const char* destDir, bool checkPars)
 {
 	DirBrowser dir(destDir);

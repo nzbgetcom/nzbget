@@ -1027,6 +1027,12 @@ public:
 	void SetRequestParCheck(bool requestParCheck) { m_requestParCheck = requestParCheck; }
 	bool GetForceParFull() { return m_forceParFull; }
 	void SetForceParFull(bool forceParFull) { m_forceParFull = forceParFull; }
+	bool GetStreamRepairDone() { return m_streamRepairDone; }
+	void SetStreamRepairDone(bool streamRepairDone) { m_streamRepairDone = streamRepairDone; }
+	bool GetStreamRepairRecovered() { return m_streamRepairRecovered; }
+	void SetStreamRepairRecovered(bool streamRepairRecovered) { m_streamRepairRecovered = streamRepairRecovered; }
+	bool GetParCannotCover() { return m_parCannotCover; }
+	void SetParCannotCover(bool parCannotCover) { m_parCannotCover = parCannotCover; }
 	bool GetForceRepair() { return m_forceRepair; }
 	void SetForceRepair(bool forceRepair) { m_forceRepair = forceRepair; }
 	bool GetParRepaired() { return m_parRepaired; }
@@ -1050,6 +1056,11 @@ private:
 	bool m_deleted = false;
 	bool m_requestParCheck = false;
 	bool m_forceParFull = false;
+	// the post-processing stream repair has run, and whether it wrote bytes
+	bool m_streamRepairDone = false;
+	bool m_streamRepairRecovered = false;
+	// par-check was postponed because the par2 files cannot cover the damage
+	bool m_parCannotCover = false;
 	bool m_forceRepair = false;
 	bool m_parRepaired = false;
 	bool m_unpackTried = false;

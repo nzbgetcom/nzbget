@@ -27,6 +27,8 @@
 #include "DupeStreamRepair.h"
 #include "DupeArticleFallback.h"
 #include "DupeCoordinator.h"
+#include "NewsServer.h"
+#include "ServerPool.h"
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
@@ -750,7 +752,16 @@ void StreamRepairController::CollectDonors(DownloadQueue* downloadQueue, NzbInfo
 void StreamRepairController::ExecRepair(const char* destDir,
 	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors)
 {
-	m_batchFetcher.SetWorkerCount(m_liveMode ? 0 : DupeStreamRepair::StreamFetchWorkers);
+	int primaryConnections = 0;
+	for (NewsServer* server : g_ServerPool->GetServers())
+	{
+		if (server->GetActive() && server->GetNormLevel() == 0)
+		{
+			primaryConnections += server->GetMaxConnections();
+		}
+	}
+	m_batchFetcher.SetWorkerCount(m_liveMode ? 0 :
+		DupeStreamRepair::StreamFetchWorkerCount(primaryConnections));
 	std::set<std::string> triedPostings;
 
 	for (DonorSource& donor : donors)
@@ -2775,10 +2786,13 @@ void StreamRepairController::RepairCompleted()
 		}
 	}
 
+	bool recovered = m_recoveredArticles > 0 || m_recoveredBytes > 0 || m_recoveredHoles > 0;
+	m_postInfo->SetStreamRepairDone(true);
+	m_postInfo->SetStreamRepairRecovered(recovered);
+
 	// whatever was written - and whatever is still missing - goes through
 	// par-check as final verification (a no-op when no par2 files exist)
-	if (m_recoveredArticles > 0 || m_recoveredBytes > 0 ||
-		m_recoveredHoles > 0 || m_holesRemain)
+	if (recovered || m_holesRemain)
 	{
 		if (m_recoveredBytes > 0 && nzbInfo->GetParRenameStatus() != NzbInfo::rsNone)
 		{
@@ -2792,11 +2806,16 @@ void StreamRepairController::RepairCompleted()
 		{
 			// The initial PAR attempt ran before donor recovery. Its result
 			// and download-time CRCs no longer describe the repaired bytes.
-			// Recheck from disk, even when ParQuick is enabled.
-			nzbInfo->SetParStatus(g_Options->GetParCheck() == Options::pcManual ?
-				NzbInfo::psManual : NzbInfo::psNone);
-			m_postInfo->SetForceParFull(true);
-			m_postInfo->SetRequestParCheck(false);
+			// Recheck from disk, even when ParQuick is enabled. Nothing written
+			// leaves its result valid: a second full verification of a large
+			// collection would only repeat it.
+			if (recovered)
+			{
+				nzbInfo->SetParStatus(g_Options->GetParCheck() == Options::pcManual ?
+					NzbInfo::psManual : NzbInfo::psNone);
+				m_postInfo->SetForceParFull(true);
+				m_postInfo->SetRequestParCheck(false);
+			}
 		}
 		else
 		{
