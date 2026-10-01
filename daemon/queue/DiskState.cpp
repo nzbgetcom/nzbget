@@ -650,9 +650,11 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 		Util::SplitInt64(job.GetDecodedFileSize(), &decodedHigh, &decodedLow);
 		Util::SplitInt64(job.GetFailedSize(), &failedHigh, &failedLow);
 		Util::SplitInt64(job.GetMissedSize(), &missedHigh, &missedLow);
-		outfile.PrintLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", job.GetFileId(), decodedHigh, decodedLow,
-			failedHigh, failedLow, missedHigh, missedLow, (int)job.GetParFile(),
-			job.GetFailedArticles());
+		uint32 stepsHigh, stepsLow;
+		Util::SplitInt64((int64)job.GetStepsHash(), &stepsHigh, &stepsLow);
+		outfile.PrintLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", job.GetFileId(), decodedHigh,
+			decodedLow, failedHigh, failedLow, missedHigh, missedLow, (int)job.GetParFile(),
+			job.GetFailedArticles(), stepsHigh, stepsLow);
 		outfile.PrintLine("%s", job.GetFilename());
 		const StreamRangeList* holes = job.GetHoles();
 		outfile.PrintLine("%i", (int)holes->size());
@@ -1068,7 +1070,14 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		{
 			int fileId, parFile, failedArticles;
 			uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
-			if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
+			uint32 stepsHigh = 0, stepsLow = 0;
+			if (formatVersion >= 66)
+			{
+				if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", &fileId, &decodedHigh,
+					&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+					&failedArticles, &stepsHigh, &stepsLow) != 11 || failedArticles < 0) goto error;
+			}
+			else if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
 				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
 				&failedArticles) != 9 || failedArticles < 0) goto error;
 			if (fileId <= 0 || parFile < 0 || parFile > 1) goto error;
@@ -1089,7 +1098,8 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 			}
 			nzbInfo->GetStreamRepairJobs()->emplace_back(fileId, buf, decodedSize,
 				Util::JoinInt64(failedHigh, failedLow), Util::JoinInt64(missedHigh, missedLow),
-				failedArticles, parFile != 0, std::move(holes));
+				failedArticles, parFile != 0, std::move(holes),
+				(uint64)Util::JoinInt64(stepsHigh, stepsLow));
 		}
 	}
 

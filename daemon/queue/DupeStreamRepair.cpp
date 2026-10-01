@@ -307,7 +307,7 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 	nzbInfo->GetStreamRepairJobs()->emplace_back(fileInfo->GetId(), diskBasename,
 		fileInfo->GetDecodedFileSize(), fileInfo->GetFailedSize(), fileInfo->GetMissedSize(),
 		fileInfo->GetFailedArticles() + fileInfo->GetMissedArticles(), fileInfo->GetParFile(),
-		std::move(holes));
+		std::move(holes), DupeArticleFallback::ArticleSizeStepsHash(fileInfo));
 
 	return true;
 }
@@ -344,7 +344,7 @@ std::string DupeStreamRepair::SuffixKey(const char* filename)
 
 std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targetFilename,
 	int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
-	NzbInfo* donorNzb, int maxCandidates)
+	NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash)
 {
 	if (Util::EmptyStr(targetFilename) || Util::EndsWith(targetFilename, ".par2", false))
 	{
@@ -373,6 +373,27 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 			candidates.push_back(donorFile);
 		}
 	};
+
+	// 0. a byte-identical repost, whatever its names: the only donor member
+	// whose article sizes step exactly like the target's posting did
+	if (targetStepsHash != 0)
+	{
+		FileInfo* stepMatch = nullptr;
+		bool ambiguous = false;
+		for (FileInfo* donorFile : donorNzb->GetFileList())
+		{
+			if (!DupeArticleFallback::IsParFile(donorFile) &&
+				DupeArticleFallback::ArticleSizeStepsHash(donorFile) == targetStepsHash)
+			{
+				ambiguous = stepMatch != nullptr;
+				stepMatch = donorFile;
+			}
+		}
+		if (stepMatch && !ambiguous)
+		{
+			add(stepMatch);
+		}
+	}
 
 	// 1. a repost that kept its filenames
 	for (FileInfo* donorFile : window)

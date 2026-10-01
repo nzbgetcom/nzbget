@@ -96,6 +96,10 @@ public:
 	/* Exact identity fingerprint used to pick among several structural
 	 * matches: equal steps between consecutive NZB article sizes. */
 	static bool ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* donorFile);
+	/* The same fingerprint as a 64-bit hash (0 = the file has too few or too
+	 * uniform articles to be identified this way), for pairing after the
+	 * target's article list is gone. */
+	static uint64 ArticleSizeStepsHash(FileInfo* fileInfo);
 	static const char* FindDonorMessageId(FileInfo* donorFile, int partNumber);
 	static bool SizesMatch(int64 size1, int64 size2, int div);
 	static std::vector<CString> BuildCandidateMessageIds(

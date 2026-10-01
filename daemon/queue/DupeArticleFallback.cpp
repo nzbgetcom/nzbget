@@ -43,9 +43,12 @@ bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 	{
 		return false;
 	}
-	if (nzbInfo->GetDirectRenameStatus() == NzbInfo::tsRunning)
+	if (nzbInfo->GetDirectRenameStatus() == NzbInfo::tsRunning && !nzbInfo->GetAllFirst())
 	{
-		// Obfuscated parity is not recognizable until direct renaming finishes.
+		// Obfuscated parity is not recognizable until the first article of
+		// every file was tried (that is when its par2 header is detected).
+		// The rename status itself stays "running" for the whole download
+		// whenever any first article is missing, so it cannot end the wait.
 		return true;
 	}
 	if (nzbInfo->GetParStatus() == NzbInfo::psFailure)
@@ -101,7 +104,10 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 
 	if (g_Options->GetDupeArticleFallback() >= Options::dafStream)
 	{
-		bool defer = ShouldDeferToPar(nzbInfo);
+		// The first article identifies its file (the 16k hash direct-rename
+		// and par-rename go by, the archive headers) - losing it costs far
+		// more than the single donor fetch that can recover it.
+		bool defer = articleInfo->GetPartNumber() != 1 && ShouldDeferToPar(nzbInfo);
 		// say once per collection which way the par-first rule went, so a
 		// download that borrowed nothing can be told apart from one that tried
 		if (defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpNone &&
@@ -582,6 +588,36 @@ FileInfo* DupeArticleFallback::MatchDonorFile(FileInfo* targetFile, NzbInfo* don
 		}
 	}
 	return stepMatch;
+}
+
+uint64 DupeArticleFallback::ArticleSizeStepsHash(FileInfo* fileInfo)
+{
+	ArticleList* articles = fileInfo->GetArticles();
+	if ((int)articles->size() < MinStepFingerprintArticles)
+	{
+		return 0;
+	}
+
+	// FNV-1a over the article count and the steps between consecutive sizes
+	uint64 hash = 14695981039346656037ULL;
+	auto mix = [&hash](int64 value)
+	{
+		for (int i = 0; i < 8; i++)
+		{
+			hash ^= (uint64)((value >> (i * 8)) & 0xff);
+			hash *= 1099511628211ULL;
+		}
+	};
+
+	mix((int64)articles->size());
+	bool varying = false;
+	for (size_t i = 1; i < articles->size(); i++)
+	{
+		int step = (*articles)[i]->GetSize() - (*articles)[i - 1]->GetSize();
+		mix(step);
+		varying |= step != 0 && i < articles->size() - 1;
+	}
+	return varying && hash != 0 ? hash : 0;
 }
 
 bool DupeArticleFallback::ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* donorFile)

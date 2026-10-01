@@ -24,6 +24,7 @@
 #include <fstream>
 #include "DownloadInfo.h"
 #include "DupeStreamRepair.h"
+#include "DupeArticleFallback.h"
 #include "FileSystem.h"
 #include "Options.h"
 
@@ -393,6 +394,42 @@ BOOST_AUTO_TEST_CASE(StreamRepairExcludesParDonorCandidatesTest)
 		"release.r01", 980, 0, 3, &donor, DupeStreamRepair::MaxDonorCandidates);
 	BOOST_REQUIRE_EQUAL(candidates.size(), 1u);
 	BOOST_CHECK_EQUAL(candidates[0]->GetFilename(), "renamed.bin");
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairStepFingerprintCandidateTest)
+{
+	// A target whose name stayed obfuscated (its first article was missing, so
+	// par-rename could not identify it) still finds its byte-identical twin in
+	// an obfuscated repost: the member whose article sizes step like its own.
+	std::vector<int> twin = {770318, 768951, 771402, 769037, 770660, 769845, 768590, 771113, 769722, 398760};
+	std::vector<int> other = {769211, 770840, 768392, 771005, 769930, 768777, 770123, 769504, 771288, 398760};
+	std::vector<int> third = {768845, 771230, 769918, 770402, 768611, 771077, 769283, 770936, 768458, 398760};
+	auto shifted = [](std::vector<int> sizes, int shift)
+	{
+		for (int& size : sizes) size += shift;
+		return sizes;
+	};
+
+	std::unique_ptr<FileInfo> target = BuildDonorFile("Q8aZ1kLmN0pR", twin);
+	uint64 targetHash = DupeArticleFallback::ArticleSizeStepsHash(target.get());
+	BOOST_CHECK(targetHash != 0);
+
+	NzbInfo donorNzb;
+	donorNzb.GetFileList()->Add(BuildDonorFile("aaa.bin", shifted(other, 27)), false);
+	donorNzb.GetFileList()->Add(BuildDonorFile("ccc.bin", shifted(twin, 27)), false);
+	donorNzb.GetFileList()->Add(BuildDonorFile("bbb.bin", shifted(third, 27)), false);
+	int64 decodedSize = 7300000;
+
+	std::vector<FileInfo*> candidates = DupeStreamRepair::SelectDonorCandidates(
+		"Q8aZ1kLmN0pR", decodedSize, -1, 0, &donorNzb, DupeStreamRepair::MaxDonorCandidates,
+		targetHash);
+	BOOST_REQUIRE(!candidates.empty());
+	BOOST_CHECK_EQUAL(candidates[0]->GetFilename(), "ccc.bin");
+
+	// uniform article sizes carry no fingerprint
+	std::vector<int> flat(10, 750000);
+	std::unique_ptr<FileInfo> flatFile = BuildDonorFile("flat.bin", flat);
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ArticleSizeStepsHash(flatFile.get()), 0u);
 }
 
 BOOST_AUTO_TEST_CASE(StreamRepairSelectDonorCandidatesTest)

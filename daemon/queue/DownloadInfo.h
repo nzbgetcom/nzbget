@@ -403,10 +403,11 @@ class StreamRepairJob
 {
 public:
 	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, int64 failedSize,
-		int64 missedSize, int failedArticles, bool parFile, StreamRangeList holes) :
+		int64 missedSize, int failedArticles, bool parFile, StreamRangeList holes,
+		uint64 stepsHash = 0) :
 		m_fileId(fileId), m_filename(filename), m_decodedFileSize(decodedFileSize),
 		m_failedSize(failedSize), m_missedSize(missedSize), m_failedArticles(failedArticles),
-		m_parFile(parFile), m_holes(std::move(holes)) {}
+		m_parFile(parFile), m_holes(std::move(holes)), m_stepsHash(stepsHash) {}
 	int GetFileId() const { return m_fileId; }
 	const char* GetFilename() const { return m_filename; }
 	int64 GetDecodedFileSize() const { return m_decodedFileSize; }
@@ -420,6 +421,9 @@ public:
 	StreamRangeList* GetHoles() { return &m_holes; }
 	const StreamRangeList* GetHoles() const { return &m_holes; }
 	void SetHoles(StreamRangeList holes) { m_holes = std::move(holes); }
+	// article-size step fingerprint of the file's posting (see
+	// DupeArticleFallback::ArticleSizeStepsHash), 0 = none
+	uint64 GetStepsHash() const { return m_stepsHash; }
 	bool GetLiveAttempted() const { return m_liveAttempted; }
 	void SetLiveAttempted(bool liveAttempted) { m_liveAttempted = liveAttempted; }
 
@@ -432,6 +436,7 @@ private:
 	int m_failedArticles;
 	bool m_parFile;
 	StreamRangeList m_holes;
+	uint64 m_stepsHash;
 	// whether the download-concurrent live pass already tried this job once:
 	// donors are static, so retrying live would only re-pay fetch traffic -
 	// whatever is left waits for the post-processing pass (not persisted; a

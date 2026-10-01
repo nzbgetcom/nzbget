@@ -618,6 +618,7 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 		target.FailedArticles = job.GetFailedArticles();
 		target.IsParFile = job.GetParFile();
 		target.Holes = *job.GetHoles();
+		target.StepsHash = job.GetStepsHash();
 
 		// par-rename may have renamed the file since capture; the
 		// completed-file record tracks the current on-disk name
@@ -884,7 +885,7 @@ std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget
 	return DupeStreamRepair::SelectDonorCandidates(FileSystem::BaseFileName(target.Filename),
 		target.DecodedFileSize,
 		target.PositionalRank, target.PositionalWindow, donorNzb,
-		DupeStreamRepair::MaxDonorCandidates);
+		DupeStreamRepair::MaxDonorCandidates, target.StepsHash);
 }
 
 bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& target,

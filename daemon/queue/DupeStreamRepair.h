@@ -112,7 +112,7 @@ public:
 	 * has to pass probe verification. */
 	static std::vector<FileInfo*> SelectDonorCandidates(const char* targetFilename,
 		int64 targetDecodedFileSize, int positionalRank, int positionalWindow,
-		NzbInfo* donorNzb, int maxCandidates);
+		NzbInfo* donorNzb, int maxCandidates, uint64 targetStepsHash = 0);
 
 	/* M4 (option <DupeStreamDecompress>): scans dir recursively for a
 	 * regular file whose size equals innerSize (the extractor's output

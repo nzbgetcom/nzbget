@@ -184,6 +184,8 @@ private:
 		// for positional donor pairing of obfuscated reposts; -1/0 = none
 		int PositionalRank = -1;
 		int PositionalWindow = 0;
+		// article-size step fingerprint of the target's posting, 0 = none
+		uint64 StepsHash = 0;
 	};
 
 	struct DonorSource

@@ -189,9 +189,9 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackDefersDataToAvailableParTest)
 		if (kind == 8) nzb.SetParStatus(NzbInfo::psSuccess);
 		if (kind == 9) nzb.SetParStatus(NzbInfo::psManual);
 
-		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}, {2, 500000}}, "orig");
 		target->SetNzbInfo(&nzb);
-		ArticleInfo* article = target->GetArticles()->at(0).get();
+		ArticleInfo* article = target->GetArticles()->at(1).get();
 		article->GetDupeSources()->emplace_back("first@example.com");
 		article->GetDupeSources()->emplace_back("next@example.com");
 		article->SetDupeFallbackRound(1);
@@ -201,8 +201,33 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackDefersDataToAvailableParTest)
 		BOOST_TEST_CONTEXT("PAR discovery/status fixture " << kind)
 		{
 			BOOST_CHECK(!fallback.TryFallback(nullptr, target.get(), article));
-			BOOST_CHECK_EQUAL(article->GetMessageId(), "orig-1@example.com");
+			BOOST_CHECK_EQUAL(article->GetMessageId(), "orig-2@example.com");
 		}
+	}
+	// the first article of a file is never deferred: it identifies the file
+	{
+		NzbInfo nzb;
+		nzb.SetParSize(500000);
+		nzb.SetDirectRenameStatus(NzbInfo::tsRunning);
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}, {2, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		ArticleInfo* article = target->GetArticles()->at(0).get();
+		article->GetDupeSources()->emplace_back("first@example.com");
+		article->GetDupeSources()->emplace_back("next@example.com");
+		article->SetDupeFallbackRound(1);
+		BOOST_CHECK(fallback.TryFallback(nullptr, target.get(), article));
+	}
+
+	// the direct-rename status stays "running" all download long once a first
+	// article is missing: discovery ends when every first article was tried
+	{
+		NzbInfo nzb;
+		nzb.SetDirectRenameStatus(NzbInfo::tsRunning);
+		BOOST_CHECK(DupeArticleFallback::ShouldDeferToPar(&nzb));
+		nzb.SetAllFirst(true);
+		BOOST_CHECK(!DupeArticleFallback::ShouldDeferToPar(&nzb));
+		nzb.SetParSize(500000);
+		BOOST_CHECK(DupeArticleFallback::ShouldDeferToPar(&nzb));
 	}
 }
 
@@ -252,9 +277,9 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackLiftsDeferralWhenParCannotCoverTest)
 		nzb.SetCurrentFailedSize(c.failed + 20000);
 		BOOST_CHECK_EQUAL(DupeArticleFallback::ShouldDeferToPar(&nzb), !c.expectFallback);
 
-		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}}, "orig");
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}, {2, 500000}}, "orig");
 		target->SetNzbInfo(&nzb);
-		ArticleInfo* article = target->GetArticles()->at(0).get();
+		ArticleInfo* article = target->GetArticles()->at(1).get();
 		article->GetDupeSources()->emplace_back("first@example.com");
 		article->GetDupeSources()->emplace_back("next@example.com");
 		article->SetDupeFallbackRound(1);
