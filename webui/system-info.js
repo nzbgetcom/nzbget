@@ -26,11 +26,13 @@ function formatDiskSpeedResult(writeBytesPerSec, readBytesPerSec, twoLines)
 	var hasRead = readBytesPerSec !== null && readBytesPerSec !== '' && !isNaN(readBytesPerSec);
 	var write = Util.formatSpeed(Number(writeBytesPerSec));
 	var read = hasRead ? Util.formatSpeed(Number(readBytesPerSec)) : '-';
+	var readLabel = I18n.translate('sysinfo_read');
+	var writeLabel = I18n.translate('sysinfo_write');
 	if (twoLines)
 	{
-		return 'Read: ' + read + '<br>Write: ' + write;
+		return readLabel + ': ' + read + '<br>' + writeLabel + ': ' + write;
 	}
-	return hasRead ? 'Read: ' + read + ' / Write: ' + write : write;
+	return hasRead ? readLabel + ': ' + read + ' / ' + writeLabel + ': ' + write : write;
 }
 
 function getSavedDiskSpeed(key)
