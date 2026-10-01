@@ -85,8 +85,8 @@ public:
 	static bool ShouldDeferToPar(NzbInfo* nzbInfo);
 
 	/* True when the collection's damaged data already exceeds all of its par2
-	 * recovery data, so par-check can never repair it; the deferral is then
-	 * lifted. Must be called within DownloadQueue-lock. */
+	 * recovery data, so par-check can never repair it; download-time article
+	 * fallback then stops deferring. Must be called within DownloadQueue-lock. */
 	static bool ParCannotCover(NzbInfo* nzbInfo);
 
 	/* Finds the file of the duplicate collection which corresponds to the target

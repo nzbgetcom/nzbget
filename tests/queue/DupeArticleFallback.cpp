@@ -275,7 +275,9 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackLiftsDeferralWhenParCannotCoverTest)
 		nzb.SetParSize(500000);
 		nzb.SetParCurrentFailedSize(20000);
 		nzb.SetCurrentFailedSize(c.failed + 20000);
-		BOOST_CHECK_EQUAL(DupeArticleFallback::ShouldDeferToPar(&nzb), !c.expectFallback);
+		// whole-file recovery keeps the par-first order either way
+		BOOST_CHECK(DupeArticleFallback::ShouldDeferToPar(&nzb));
+		BOOST_CHECK_EQUAL(DupeArticleFallback::ParCannotCover(&nzb), c.expectFallback);
 
 		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}, {2, 500000}}, "orig");
 		target->SetNzbInfo(&nzb);

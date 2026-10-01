@@ -57,7 +57,7 @@ bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 	}
 	if (nzbInfo->GetParSize() > 0)
 	{
-		return !ParCannotCover(nzbInfo);
+		return true;
 	}
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
@@ -107,7 +107,11 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		// The first article identifies its file (the 16k hash direct-rename
 		// and par-rename go by, the archive headers) - losing it costs far
 		// more than the single donor fetch that can recover it.
-		bool defer = articleInfo->GetPartNumber() != 1 && ShouldDeferToPar(nzbInfo);
+		// Once the damage outgrows every recovery byte the collection has,
+		// single articles are borrowed again (whole-file stream recovery
+		// keeps waiting for par-check, which knows which files it protects).
+		bool parDefer = ShouldDeferToPar(nzbInfo);
+		bool defer = parDefer && articleInfo->GetPartNumber() != 1 && !ParCannotCover(nzbInfo);
 		// say once per collection which way the par-first rule went, so a
 		// download that borrowed nothing can be told apart from one that tried
 		if (defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpNone &&
@@ -118,7 +122,8 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 				"Deferring duplicate recovery for %s to par-check (its par2 files may cover the damage)",
 				nzbInfo->GetName());
 		}
-		else if (!defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpDeferred)
+		else if (parDefer && !defer && articleInfo->GetPartNumber() != 1 &&
+			nzbInfo->GetDupeParDeferState() == NzbInfo::dpDeferred)
 		{
 			nzbInfo->SetDupeParDeferState(NzbInfo::dpLifted);
 			nzbInfo->PrintMessage(Message::mkInfo,
