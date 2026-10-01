@@ -28,7 +28,7 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 65;
+const int DISKSTATE_QUEUE_VERSION = 66;
 const int DISKSTATE_FILE_VERSION = 9;
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
@@ -701,7 +701,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		nzbInfo->SetHardLinkPath(buf);
 	}
 
-	if (formatVersion >= 64) 
+	// format 65 was written only by pre-release DupeArticleFallback builds,
+	// which had the stream-repair state below but not the meta name
+	if (formatVersion >= 64 && formatVersion != 65)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 		nzbInfo->SetMetaName(buf);

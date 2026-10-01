@@ -823,8 +823,13 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 		// Account every completed source attempt, including attempts that are
 		// followed by a duplicate fallback retry.  The downloader owns one
 		// per-attempt ServerStatList, so this is exactly-once for this attempt.
-		fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
-		nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+		// An interrupted attempt (stop, pause, server reconfiguration) is
+		// downloaded again from scratch and accounted then, as before.
+		if (articleDownloader->GetStatus() != ArticleDownloader::adRetry)
+		{
+			fileInfo->GetServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+			nzbInfo->GetCurrentServerStats()->ListOp(articleDownloader->GetServerStats(), ServerStatList::soAdd);
+		}
 
 		if (!retry)
 		{

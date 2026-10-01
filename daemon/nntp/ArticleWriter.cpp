@@ -710,11 +710,13 @@ bool ArticleWriter::CommitDiskFile(DiskFile& outfile,
 
 	if (!directWrite)
 	{
+		// a failed rename leaves the complete data under its temporary name
+		// (as it always has): it is not a data-commit failure, and failing the
+		// file would discard data that par-rename/par-check can still use
 		if (!FileSystem::MoveFile(tempDestPath.data(), finalOutputPath.data()))
 		{
 			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
 					tempDestPath.data(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
-			return false;
 		}
 	}
 	return true;
@@ -736,11 +738,11 @@ bool ArticleWriter::CleanupOldData(bool directWrite,
 		if (!finalOutputPath.empty())
 		{
 			bool sameFilename = FileSystem::SameFilename(m_outputFilename.c_str(), finalOutputPath.data());
+			// a failed rename is logged only, see CommitDiskFile
 			if (!sameFilename && !FileSystem::MoveFile(m_outputFilename.c_str(), finalOutputPath.data()))
 			{
 				m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
 					m_outputFilename.c_str(), finalOutputPath.data(), *FileSystem::GetLastErrorMessage());
-				return false;
 			}
 		}
 		else

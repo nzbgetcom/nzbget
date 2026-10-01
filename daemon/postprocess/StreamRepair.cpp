@@ -879,7 +879,10 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget& target,
 	NzbInfo* donorNzb)
 {
-	return DupeStreamRepair::SelectDonorCandidates(target.Filename, target.DecodedFileSize,
+	// donor NZBs list flat names, while a par-renamed target may carry a path
+	// relative to the destination directory (e.g. "BDMV/STREAM/00000.m2ts")
+	return DupeStreamRepair::SelectDonorCandidates(FileSystem::BaseFileName(target.Filename),
+		target.DecodedFileSize,
 		target.PositionalRank, target.PositionalWindow, donorNzb,
 		DupeStreamRepair::MaxDonorCandidates);
 }

@@ -177,6 +177,17 @@ void ArticleDownloader::Run()
 			AddServerStats();
 		}
 
+		if (m_contentRejected)
+		{
+			// the abandoned body still occupies the connection, so it must not
+			// serve another request; other servers would deliver the same
+			// rejected content, so the article fails here (a duplicate source,
+			// if any, is tried next by the queue coordinator)
+			FreeConnection(false);
+			status = adFailed;
+			break;
+		}
+
 		if (!connected && m_connection)
 		{
 			detail("Article %s @ %s failed: could not establish connection", *m_infoName, *m_connectionName);
@@ -321,6 +332,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	EStatus status = adRunning;
 	m_writingStarted = false;
 	m_localWriteError = false;
+	m_contentRejected = false;
 	m_articleInfo->SetCrc(0);
 
 	if (m_contentAnalyzer)
@@ -409,7 +421,17 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		// write to output file
 		if (len > 0 && !Write(buffer, len))
 		{
-			status = m_localWriteError ? adFatalError : adFailed;
+			if (m_localWriteError)
+			{
+				status = adFatalError;
+			}
+			else
+			{
+				// the article's content was rejected before its body was fully
+				// read: the rest of the body is still pending on the connection
+				m_contentRejected = true;
+				status = adFailed;
+			}
 			break;
 		}
 	}
@@ -534,9 +556,10 @@ bool ArticleDownloader::Write(char* buffer, int len)
 
 		if (!m_articleWriter.Start(m_decoder.GetFormat(), articleFilename, articleFileSize, articleOffset, articleSize))
 		{
-			// A duplicate-existing-file result is not a local write failure and
-			// must retain the historical duplicate handling path.
-			m_localWriteError = !m_articleWriter.GetDuplicate();
+			// both a write failure and a duplicate-existing-file result end the
+			// download of this article on the spot (a duplicate is then reported
+			// as finished by Run)
+			m_localWriteError = true;
 			return false;
 		}
 		m_writingStarted = true;

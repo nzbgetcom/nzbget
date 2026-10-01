@@ -100,6 +100,7 @@ private:
 	// Distinguish local output failures from malformed/source articles.  Only
 	// the former must bypass duplicate fallback.
 	bool m_localWriteError = false;
+	bool m_contentRejected = false;
 	int m_downloadedSize = 0;
 	int64 m_decodedFileSize = 0;
 	std::unique_ptr<ArticleContentAnalyzer> m_contentAnalyzer;
