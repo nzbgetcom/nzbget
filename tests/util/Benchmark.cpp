@@ -138,9 +138,9 @@ BOOST_AUTO_TEST_CASE(BenchmarkZeroBlockSizeUsesDefaultTest)
 	BenchTempDir dir("nzbget_bench_");
 	Benchmark::DiskBenchmark db;
 
-	auto res = db.Run(dir.Str(), 0, 1, std::chrono::seconds(5));
+	auto res = db.Run(dir.Str(), 0, 4 * MiB, std::chrono::seconds(5));
 
-	BOOST_CHECK_EQUAL(res.writeBytes, Benchmark::DiskBenchmark::DEFAULT_BLOCK_SIZE);
+	BOOST_CHECK_EQUAL(res.writeBytes, 4 * MiB);
 	BOOST_CHECK_EQUAL(res.readBytes, res.writeBytes);
 }
 

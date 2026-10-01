@@ -71,8 +71,7 @@ namespace Benchmark
 			fs::space_info space = fs::space(dir, ec);
 			if (ec)
 			{
-				// unknown free space, creating the test file reports a meaningful error
-				return requested;
+				throw std::runtime_error("Could not determine free disk space for " + fs::u8string(dir) + ": " + ec.message());
 			}
 
 			if (space.available < DiskBenchmark::FREE_SPACE_RESERVE + blockSize)
@@ -138,11 +137,12 @@ namespace Benchmark
 			auto start = steady_clock::now();
 			while (result.writeBytes < maxBytes && steady_clock::now() - start < timeoutNS)
 			{
-				if (!file.write(buffer.data(), blockSize))
+				const size_t bytesToWrite = static_cast<size_t>(std::min<uint64_t>(blockSize, maxBytes - result.writeBytes));
+				if (!file.write(buffer.data(), bytesToWrite))
 				{
 					throw std::runtime_error("Failed to write data to the test file");
 				}
-				result.writeBytes += blockSize;
+				result.writeBytes += bytesToWrite;
 			}
 			file.close();
 			if (file.fail())
