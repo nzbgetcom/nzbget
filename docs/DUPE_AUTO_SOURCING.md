@@ -1,8 +1,8 @@
-# Auto-sourcing donors for DupeArticleFallback
+# Auto-sourcing donors for `DupeArticleFallback`
 
 The `DupeArticleFallback` feature (see option `DupeArticleFallback`) repairs a
-damaged download by borrowing articles — or, with value `stream`/`live`, byte
-ranges — from a **duplicate collection** of the same release that is already in
+damaged download by borrowing articles—or, with value `stream`/`live`, byte
+ranges—from a **duplicate collection** of the same release that is already in
 your download queue or history. This document describes how to make those
 duplicates appear *automatically* when a download is damaged, so the repair has
 something to draw from without you queuing an alternate NZB by hand.
@@ -15,8 +15,8 @@ layer you add around it, using nzbget's existing extension and RPC facilities.
 
 A queue or history item is a donor for a target when it has the **same
 duplicate key** (`DupeKey`) or the same name, and is not marked `dmForce`.
-Crucially, the donor's source `.nzb` must still exist in `NzbDir` — so
-`NzbCleanupDisk` must be **disabled** for the machinery to re-parse it. See the
+Crucially, the donor's source `.nzb` must still exist in `NzbDir`—so
+`NzbCleanupDisk` must be **turned off** for the machinery to re-parse it. See the
 `DupeArticleFallback` option help for the full donor rules.
 
 Two facts make auto-sourcing practical:
@@ -24,10 +24,10 @@ Two facts make auto-sourcing practical:
 1. **RSS duplicate handling already queues donors.** With `DupeCheck=yes`, when
    your RSS feeds pull in several postings of the same release (same
    `imdbid`/`rageid` dupe key), nzbget downloads one and marks the rest
-   `DELETED/DUPE` without downloading them — but their `.nzb` files are retained
+   `DELETED/DUPE` without downloading them—but their `.nzb` files are retained
    in `NzbDir`. Those retained duplicates are exactly the donors the repair
    machinery re-parses. So for RSS-driven grabbing, you often already have
-   donors with no extra work — just keep `NzbCleanupDisk=no`.
+   donors with no extra work—just keep `NzbCleanupDisk=no`.
 
 2. **A script can queue a donor on demand.** When a download finishes damaged,
    a post-processing extension can query your indexer for another NZB of the
@@ -48,11 +48,11 @@ HealthCheck=none                # do NOT delete/park a damaged item before
 ## What a post-processing script receives
 
 nzbget runs post-processing extension scripts with these environment variables
-(among others — see `docs/extensions`):
+(among others—see `docs/extensions`):
 
 | Variable | Meaning |
 |---|---|
-| `NZBPP_TOTALSTATUS` | `SUCCESS` / `WARNING` / `FAILURE` — the overall outcome |
+| `NZBPP_TOTALSTATUS` | `SUCCESS` / `WARNING` / `FAILURE`—the overall outcome |
 | `NZBPP_HEALTH` | health in permille (1000 = 100.0%) |
 | `NZBPP_DUPEKEY` | the item's duplicate key (empty if none) |
 | `NZBPP_NZBNAME` | the release name |
@@ -109,17 +109,17 @@ The control credentials/port are passed to scripts as `NZBOP_CONTROLUSERNAME`,
 
 ## Notes and caveats
 
-- **Only the indexer-query step is yours to fill in.** Everything else —
+- **Only the indexer-query step is yours to fill in.** Everything else—
   matching the donor to the target, verifying byte identity before writing,
-  the repair itself — is done by `DupeArticleFallback`.
+  the repair itself—is done by `DupeArticleFallback`.
 - **The donor must be genuinely the same content.** A different encode
-  (different resolution/codec/group) will not donate: the repair verifies byte
+  (different resolution/codec/group) don't donate: the repair verifies byte
   identity against already-downloaded bytes and rejects a mismatch. Prefer an
   alternate posting of the *identical* release.
-- **Loop protection.** Guard your script against re-fetching forever (e.g. skip
-  if a donor was already queued for this `DupeKey`, or cap retries) — otherwise
-  a release no indexer can complete will retry indefinitely.
+- **Loop protection.** Guard your script against re-fetching forever (for example, skip
+  if a donor was already queued for this `DupeKey`, or cap retries)—otherwise
+  a release no indexer can complete retries indefinitely.
 - **`live` mode** repairs each damaged file as soon as it completes, so with an
   already-present donor there is no wait for the whole download to finish; the
-  auto-sourcing script above still applies for the case where NO donor was
+  preceding auto-sourcing script still applies for the case where NO donor was
   present at download time.
