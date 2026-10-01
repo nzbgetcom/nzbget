@@ -742,62 +742,60 @@
 															<h3 data-i18n="sysinfo_disk_speed_test"></h3>
 														</div>
 														<div class="modal-body">
-															<div class="control-group">
-																<div>
-																	<p>
-																		<label class="control-label" for="SysInfo_DiskSpeedTestTimeout" data-i18n="sysinfo_timeout"></label>
-																		<div class="controls">
-																			<div class="input-append">
-																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestTimeout">
-																					<option value="1" selected>1</option>
-																					<option value="2">2</option>
-																					<option value="3">3</option>
-																					<option value="4">4</option>
-																					<option value="5">5</option>
-																				</select>
-																				<span class="add-on" data-i18n="sysinfo_seconds"></span>
-																			</div>
+															<form class="form-horizontal" id="DiskSpeedTestForm">
+																<div class="control-group">
+																	<label class="control-label" for="SysInfo_DiskSpeedTestTimeout" data-i18n="sysinfo_timeout"></label>
+																	<div class="controls">
+																		<div class="input-append dist-speedtest__select-wrapper">
+																			<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestTimeout">
+																				<option value="1" selected>1</option>
+																				<option value="2">2</option>
+																				<option value="3">3</option>
+																				<option value="4">4</option>
+																				<option value="5">5</option>
+																			</select>
+																			<span class="add-on" data-i18n="sysinfo_seconds"></span>
 																		</div>
-																	</p>
-
-																	<p>
-																		<label class="control-label" for="SysInfo_DiskSpeedTestMaxSize" data-i18n="sysinfo_max_size"></label>
-																		<div class="controls">
-																			<div class="input-append">
-																				<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestMaxSize">
-																					<option value="1">1</option>
-																					<option value="2">2</option>
-																					<option value="4" selected>4</option>
-																					<option value="8">8</option>
-																					<option value="16">16</option>
-																				</select>
-																				<span class="add-on" data-i18n="unit_gib">GiB</span>
-																			</div>
-																		</div>
-																	</p>
-
-																	<p>
-																		<label class="control-label" for="SysInfo_DiskSpeedTestWriteBufferInput" data-i18n="sysinfo_write_buffer"></label>
-																		<div class="controls">
-																			<div class="input-append">
-																				<input type="text" id="SysInfo_DiskSpeedTestWriteBufferInput" class="editnumeric" required>
-																				<span class="add-on" data-i18n="unit_kib">KiB</span>
-																			</div>
-																		</div>
-																	</p>
-																</div>
-
-																<hr>
-
-																<label class="control-label" for="SysInfo_DiskSpeedTestInput" id="SysInfo_DiskSpeedTestInputLabel"></label>
-																<div class="controls">
-																	<div class="dist-speedtest__controls">
-																		<input type="text" id="SysInfo_DiskSpeedTestInput" class="editlarge" required>
-																		<button type="button" style="min-width: 150px;" class="btn btn-default" id="SysInfo_DiskSpeedTestBtn"></button>
 																	</div>
-																	<p class="help-text-error" id="SysInfo_DiskSpeedTestErrorTxt"></p>
 																</div>
-															</div>
+
+																<div class="control-group">
+																	<label class="control-label" for="SysInfo_DiskSpeedTestMaxSize" data-i18n="sysinfo_max_size"></label>
+																	<div class="controls">
+																		<div class="input-append dist-speedtest__select-wrapper">
+																			<select class="dist-speedtest__select--width" id="SysInfo_DiskSpeedTestMaxSize">
+																				<option value="1">1</option>
+																				<option value="2">2</option>
+																				<option value="4" selected>4</option>
+																				<option value="8">8</option>
+																				<option value="16">16</option>
+																			</select>
+																			<span class="add-on" data-i18n="unit_gib">GiB</span>
+																		</div>
+																	</div>
+																</div>
+
+																<div class="control-group">
+																	<label class="control-label" for="SysInfo_DiskSpeedTestWriteBufferInput" data-i18n="sysinfo_write_buffer"></label>
+																	<div class="controls">
+																		<div class="input-append dist-speedtest__input-wrapper">
+																			<input type="text" id="SysInfo_DiskSpeedTestWriteBufferInput" class="editnumeric" required>
+																			<span class="add-on" data-i18n="unit_kib">KiB</span>
+																		</div>
+																	</div>
+																</div>
+
+																<div class="control-group">
+																	<label class="control-label" for="SysInfo_DiskSpeedTestInput" id="SysInfo_DiskSpeedTestInputLabel"></label>
+																	<div class="controls">
+																		<div class="dist-speedtest__controls">
+																			<input type="text" id="SysInfo_DiskSpeedTestInput" class="editlarge dist-speedtest__path-input" required>
+																			<button type="button" class="btn btn-default dist-speedtest__run-btn" id="SysInfo_DiskSpeedTestBtn"></button>
+																		</div>
+																		<p class="help-text-error" id="SysInfo_DiskSpeedTestErrorTxt"></p>
+																	</div>
+																</div>
+															</form>
 														</div>
 													</div>
 												</div>
