@@ -344,9 +344,6 @@ CString DupeArticleFallback::NzbFilenameOf(FileInfo* fileInfo)
 	{
 		return CString();
 	}
-	ArticleInfo* first = (*articles)[0].get();
-	const char* firstMessageId = !Util::EmptyStr(first->GetDupeOriginalMessageId()) ?
-		first->GetDupeOriginalMessageId() : first->GetMessageId();
 
 	// the collection's own nzb-file is parsed (and cached) like a donor's
 	NzbInfo* ownNzb = GetParsedDonor(fileInfo->GetNzbInfo());
@@ -354,13 +351,29 @@ CString DupeArticleFallback::NzbFilenameOf(FileInfo* fileInfo)
 	{
 		return CString();
 	}
+
+	// The own entry is found by an article message-id. Substituted articles
+	// carry a duplicate's id (their original id is not kept across an
+	// unload/reload of the article list), so any article whose id is still
+	// the posting's own identifies the file.
 	for (FileInfo* ownFile : ownNzb->GetFileList())
 	{
 		ArticleList* ownArticles = ownFile->GetArticles();
-		if (!ownArticles->empty() && (*ownArticles)[0]->GetPartNumber() == first->GetPartNumber() &&
-			!strcmp((*ownArticles)[0]->GetMessageId(), firstMessageId))
+		if (ownArticles->size() != articles->size())
 		{
-			return CString(ownFile->GetFilename());
+			continue;
+		}
+		for (size_t i = 0; i < articles->size(); i++)
+		{
+			ArticleInfo* article = (*articles)[i].get();
+			const char* messageId = !Util::EmptyStr(article->GetDupeOriginalMessageId()) ?
+				article->GetDupeOriginalMessageId() : article->GetMessageId();
+			ArticleInfo* ownArticle = (*ownArticles)[i].get();
+			if (ownArticle->GetPartNumber() == article->GetPartNumber() &&
+				!Util::EmptyStr(messageId) && !strcmp(ownArticle->GetMessageId(), messageId))
+			{
+				return CString(ownFile->GetFilename());
+			}
 		}
 	}
 	return CString();
@@ -453,9 +466,9 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 		// the silent "did not even try" case: say why no duplicate could help
 		nzbInfo->PrintMessage(Message::mkDetail,
 			"No duplicate source for %s [%i]: %i duplicate(s), %i same posting, "
-			"%i without readable nzb-file, none with a matching file",
+			"%i without readable nzb-file, none with a matching file (nzb name: %s)",
 			fileInfo->GetFilename(), articleInfo->GetPartNumber(), (int)donors.size(),
-			samePosting, unparsed);
+			samePosting, unparsed, targetNzbFilename.Empty() ? "unknown" : *targetNzbFilename);
 	}
 
 	FinishPin(fileInfo, articleInfo, candidates, contributors,
