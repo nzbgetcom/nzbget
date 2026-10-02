@@ -273,7 +273,12 @@ void RepairController::Run()
 	m_parChecker.SetNzbName(nzbName);
 	m_parChecker.SetParTime(Util::CurrentTime());
 	m_parChecker.SetDownloadSec(m_postInfo->GetNzbInfo()->GetDownloadSec());
-	m_parChecker.SetParQuick(g_Options->GetParQuick() && !m_postInfo->GetForceParFull());
+	// stream repair rewrites file contents without updating the download-time
+	// CRCs and segment states ParQuick judges files by: once it has written
+	// into the collection (live or in post-processing, before or after a
+	// restart), only a full verification sees the repaired bytes
+	m_parChecker.SetParQuick(g_Options->GetParQuick() && !m_postInfo->GetForceParFull() &&
+		m_postInfo->GetNzbInfo()->GetDupeRecoveredBytes() == 0);
 	m_parChecker.SetForceRepair(m_postInfo->GetForceRepair());
 
 	m_parChecker.PrintMessage(Message::mkInfo, "Checking pars for %s", *nzbName);

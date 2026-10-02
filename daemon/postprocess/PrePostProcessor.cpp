@@ -777,9 +777,29 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 	{
 		return false;
 	}
+
+	// FindMainPars reports whichever file of the set it meets first; the
+	// description packets are cheapest to read from its smallest file (the
+	// index, unless every volume was downloaded)
+	std::string parPath;
+	int64 parFileSize = -1;
+	DirBrowser dir(nzbInfo->GetDestDir());
+	while (const char* filename = dir.Next())
+	{
+		if (ParParser::SameParCollection(filename, mainPars[0].c_str(), true))
+		{
+			BString<1024> path("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, filename);
+			int64 size = FileSystem::FileSize(path);
+			if (size > 0 && (parFileSize < 0 || size < parFileSize))
+			{
+				parPath = *path;
+				parFileSize = size;
+			}
+		}
+	}
+
 	std::vector<std::string> parredFiles;
-	BString<1024> parPath("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, mainPars[0].c_str());
-	if (!ParRenamer::ListParredFiles(parPath, parredFiles))
+	if (parFileSize < 0 || !ParRenamer::ListParredFiles(parPath.c_str(), parredFiles))
 	{
 		return false;
 	}

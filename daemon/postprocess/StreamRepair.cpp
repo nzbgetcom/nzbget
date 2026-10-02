@@ -2791,7 +2791,8 @@ void StreamRepairController::RepairCompleted()
 	}
 
 	// bytes written by THIS pass: m_recoveredArticles also credits targets an
-	// earlier live pass already completed, whose repair the first par-check saw
+	// earlier live pass already completed. A par-check that judged those has
+	// verified them in full (ParQuick is off once stream repair wrote bytes)
 	bool recovered = m_recoveredBytes > 0;
 	m_postInfo->SetStreamRepairDone(true);
 	m_postInfo->SetStreamRepairRecovered(recovered);
