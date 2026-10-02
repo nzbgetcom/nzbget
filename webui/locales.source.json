@@ -1374,6 +1374,14 @@
     "message": "Speed",
     "description": "Button label to run disk speed test"
   },
+  "sysinfo_read": {
+    "message": "Read",
+    "description": "Label for read speed in disk benchmark"
+  },
+  "sysinfo_write": {
+    "message": "Write",
+    "description": "Label for write speed in disk benchmark"
+  },
   "sysinfo_error": {
     "message": "Error",
     "description": "Header for error message in status section"

@@ -721,7 +721,7 @@ bool FileSystem::CopyFile(const char* srcFilename, const char* dstFilename)
 bool FileSystem::DeleteFile(const char* filename)
 {
 #ifdef WIN32
-	SetFileAttributes(filename, FILE_ATTRIBUTE_NORMAL);
+	SetFileAttributesW(UtfPathToWidePath(filename), FILE_ATTRIBUTE_NORMAL);
 	return _wremove(UtfPathToWidePath(filename)) == 0;
 #else
 	return remove(filename) == 0;
@@ -1022,7 +1022,7 @@ std::optional<FileSystem::DiskState> FileSystem::GetDiskState(const char* path)
 	ULARGE_INTEGER freeBytesAvailable;
 	ULARGE_INTEGER totalNumberOfBytes;
 
-	if (GetDiskFreeSpaceEx(path, &freeBytesAvailable, &totalNumberOfBytes, nullptr))
+	if (GetDiskFreeSpaceExW(UtfPathToWidePath(path), &freeBytesAvailable, &totalNumberOfBytes, nullptr))
 	{
 		int64 available = Util::SafeIntCast<uint64, int64>(freeBytesAvailable.QuadPart);
 		int64 total = Util::SafeIntCast<uint64, int64>(totalNumberOfBytes.QuadPart);
