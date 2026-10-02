@@ -45,6 +45,33 @@
 #include "Unpack.h"
 #include "SystemHealth.h"
 
+namespace
+{
+	// Pauses downloads for the duration of the disk test and restores the previous state.
+	class PauseGuard
+	{
+	public:
+		PauseGuard() : m_wasPaused(g_WorkState->GetPauseDownload())
+		{
+			g_WorkState->SetPauseDownload(true);
+		}
+		PauseGuard(const PauseGuard&) = delete;
+		PauseGuard& operator=(const PauseGuard&) = delete;
+		~PauseGuard()
+		{
+			g_WorkState->SetPauseDownload(m_wasPaused);
+		}
+
+	private:
+		bool m_wasPaused;
+	};
+
+	double MiBPerSec(uint64_t bytes, double ms)
+	{
+		return ms > 0.0 ? (static_cast<double>(bytes) / 1024.0 / 1024.0) / (ms / 1000.0) : 0.0;
+	}
+}
+
 extern void ExitProc();
 extern void Reload();
 
@@ -427,26 +454,32 @@ class TestDiskSpeedXmlCommand final : public SafeXmlCommand
 public:
 	void Execute() override;
 
-	std::string ToJsonStr(uint64_t size, double time)
+	std::string ToJsonStr(const Benchmark::Result& res)
 	{
 		Json::JsonObject json;
 
-		json["SizeMB"] = size / 1024ull / 1024ull;
-		json["DurationMS"] = time;
+		json["SizeMB"] = res.writeBytes / 1024ull / 1024ull;
+		json["DurationMS"] = res.writeMs;
+		json["ReadSizeMB"] = res.readBytes / 1024ull / 1024ull;
+		json["ReadDurationMS"] = res.readMs;
 
 		return Json::Serialize(json);
 	}
 
-	std::string ToXmlStr(uint64_t size, double time)
+	std::string ToXmlStr(const Benchmark::Result& res)
 	{
 		xmlNodePtr rootNode = xmlNewNode(nullptr, BAD_CAST "value");
 		xmlNodePtr structNode = xmlNewNode(nullptr, BAD_CAST "struct");
 
-		std::string sizeMB = std::to_string(size / 1024ull / 1024ull);
-		std::string durationMS = std::to_string(time);
+		std::string sizeMB = std::to_string(res.writeBytes / 1024ull / 1024ull);
+		std::string durationMS = std::to_string(res.writeMs);
+		std::string readSizeMB = std::to_string(res.readBytes / 1024ull / 1024ull);
+		std::string readDurationMS = std::to_string(res.readMs);
 
 		Xml::AddNewNode(structNode, "SizeMB", "i4", sizeMB.c_str());
 		Xml::AddNewNode(structNode, "DurationMS", "double", durationMS.c_str());
+		Xml::AddNewNode(structNode, "ReadSizeMB", "i4", readSizeMB.c_str());
+		Xml::AddNewNode(structNode, "ReadDurationMS", "double", readDurationMS.c_str());
 
 		xmlAddChild(rootNode, structNode);
 		std::string result = Xml::Serialize(rootNode);
@@ -4064,8 +4097,6 @@ void TestServerSpeedXmlCommand::Execute()
 	BuildBoolResponse(true);
 }
 
-
-
 void TestDiskSpeedXmlCommand::Execute()
 {
 	char* dirPath;
@@ -4117,25 +4148,29 @@ void TestDiskSpeedXmlCommand::Execute()
 
 	try
 	{
-		size_t bufferSizeBytes = writeBufferKiB * 1024;
-		uint64_t maxFileSizeBytes = maxFileSizeGiB * 1024ull * 1024ull * 1024ull;
+		size_t bufferSizeBytes = static_cast<size_t>(writeBufferKiB) * size_t{1024};
+		uint64_t maxFileSizeBytes = static_cast<uint64_t>(maxFileSizeGiB) * 1024ull * 1024ull * 1024ull;
+
+		PauseGuard pauseGuard;
 
 		Benchmark::DiskBenchmark db;
-		auto [size, time] = db.Run(
+		Benchmark::Result res = db.Run(
 			dirPath,
 			bufferSizeBytes,
 			maxFileSizeBytes,
 			std::chrono::seconds(timeoutSec)
 		);
 
-		std::string jsonStr = IsJson() ?
-			ToJsonStr(size, time) :
-			ToXmlStr(size, time);
+		info("Disk speed test for %s: write %.1f MiB/s, read %.1f MiB/s",
+			dirPath, MiBPerSec(res.writeBytes, res.writeMs), MiBPerSec(res.readBytes, res.readMs));
+
+		std::string jsonStr = IsJson() ? ToJsonStr(res) : ToXmlStr(res);
 
 		AppendResponse(jsonStr.c_str());
 	}
 	catch (const std::exception& e)
 	{
+		warn("Disk speed test for %s failed: %s", dirPath, e.what());
 		BuildErrorResponse(2, e.what());
 	}
 }

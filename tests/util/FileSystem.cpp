@@ -149,4 +149,64 @@ BOOST_AUTO_TEST_CASE(SplitPathAndFilenameTest)
 	}
 }
 
+namespace
+{
+struct Utf8TempDir
+{
+	Utf8TempDir()
+	{
+		path = fs::temp_directory_path() /
+			fs::u8path("nzbget_l\xC3\xA4_utf8_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+		fs::create_directories(path);
+	}
+
+	~Utf8TempDir()
+	{
+		fs::error_code ec;
+		fs::remove_all(path, ec);
+	}
+
+	std::string Str() const { return fs::u8string(path); }
+
+	fs::path path;
+};
+}
+
+BOOST_AUTO_TEST_CASE(GetDiskStateUtf8PathTest)
+{
+	Utf8TempDir dir;
+
+	auto state = FileSystem::GetDiskState(dir.Str().c_str());
+
+	BOOST_REQUIRE(state.has_value());
+	BOOST_CHECK(state->total > 0);
+	BOOST_CHECK(state->available > 0);
+}
+
+BOOST_AUTO_TEST_CASE(DeleteFileUtf8PathTest)
+{
+	Utf8TempDir dir;
+	fs::path file = dir.path / fs::u8path("\xE4\xBD\xA0\xE5\xA5\xBD_l\xC3\xA4.bin");
+	{
+		std::ofstream(file, std::ios::binary) << "data";
+	}
+	BOOST_REQUIRE(fs::exists(file));
+
+	BOOST_CHECK(FileSystem::DeleteFile(fs::u8string(file).c_str()));
+	BOOST_CHECK(!fs::exists(file));
+}
+
+BOOST_AUTO_TEST_CASE(DeleteReadOnlyFileUtf8PathTest)
+{
+	Utf8TempDir dir;
+	fs::path file = dir.path / fs::u8path("readonly_l\xC3\xA4.bin");
+	{
+		std::ofstream(file, std::ios::binary) << "data";
+	}
+	fs::permissions(file, fs::perms::owner_read, fs::perm_options::replace);
+
+	BOOST_CHECK(FileSystem::DeleteFile(fs::u8string(file).c_str()));
+	BOOST_CHECK(!fs::exists(file));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
