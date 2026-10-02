@@ -257,6 +257,11 @@ private:
 		const std::set<FileInfo*>& claimed);
 	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,
 		const StreamRangeList& donorRanges);
+	/* Byte-compares the batch fetcher's delivered probes against the target's
+	 * present regions. False on any mismatch, a size disagreement or a stop;
+	 * probes the donor could not supply are counted in missing. */
+	bool CompareProbes(DiskFile& file, const RepairTarget& target, int64& totalCompared,
+		bool& sawVariedData, int& missing);
 	int PatchFromDonor(DiskFile& file, RepairTarget& target, FileInfo* donorFile,
 		const StreamRangeList& donorRanges, const char* donorName);
 	static bool CompareToFile(DiskFile& file, int64 offset, const char* data, int64 size);

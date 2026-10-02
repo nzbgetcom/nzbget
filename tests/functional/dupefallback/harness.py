@@ -65,6 +65,9 @@ article "missing" on the active server, so no real Usenet access is needed):
   positions and article sizes all fail to identify the twins, so stream repair
   must probe the donor's members until one is byte-identical, for every
   damaged member.
+* repostdonorgaps - the donor repost misses articles of its own exactly where
+  the identity probes land first; missing probes must be replaced by other
+  eligible donor articles instead of rejecting the true twin.
 * xpackbare     - M2 cross-packing: a bare .mkv completed with a hole is
   repaired from a duplicate that posted the SAME movie packed into store-mode
   RAR3 volumes (different framing/offsets/segmentation), which M1 cannot pair;
@@ -124,7 +127,7 @@ article "missing" on the active server, so no real Usenet access is needed):
 
 Usage:
     harness.py --nzbget /path/to/nzbget [--target local|adb]
-               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
+               [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off]
                [--serial NNN] [--keep]
 """
 
@@ -934,6 +937,35 @@ def scenario_repostobfuscated(daemon, t):
             % (h['Status'], recov, repaired, integ))
 
 
+def scenario_repostdonorgaps(daemon, t):
+    """Probe replacement end-to-end: the donor is a byte-identical repost
+    (different segmentation) that misses articles of its own - the four it
+    misses are exactly the first two identity probes and their first two
+    replacements. A probe the donor cannot supply is inconclusive, not a
+    mismatch: verification must draw further probes until it can compare
+    the twin, then repair the primary's hole. Nothing may be rejected."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 8500)
+    pp = _place_copy(t, 'gapsA', data, 'file.mkv')
+    dp = _place_copy(t, 'gapsB', data, 'file.mkv')
+    # primary part 6 = donor parts 11-12; the clear probe candidates are the
+    # remaining donor parts minus a one-part margin, and the spread picks
+    # (then the spread replacements) are donor parts 6/20, then 5/19
+    primary = build_nzb(pp, 'GapsA.mkv', size, seg_primary, {6})
+    donor = build_nzb(dp, 'obf-gaps.mkv', size, seg_donor, {5, 6, 19, 20})
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonGaps', donor, True, 'gaps-key', 50)
+    daemon.append(api, 'RelGaps', primary, False, 'gaps-key', 100)
+    h = daemon.wait_history(api, 'RelGaps')
+    repaired = _grep_log(t, 'donor article(s)')
+    rejected = _grep_log(t, 'content identity not confirmed')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    success = 'SUCCESS' in h['Status']
+    return ('repostdonorgaps', success and integ and repaired >= 1 and rejected == 0,
+            'status=%s repair_logs=%d rejected_logs=%d integrity=%s'
+            % (h['Status'], repaired, rejected, integ))
+
+
 def scenario_xpackbare(daemon, t):
     """M2 cross-packing smoke test: the primary posts movie.mkv BARE and
     completes with a hole; the only duplicate posts the SAME movie packed
@@ -1698,6 +1730,7 @@ SCENARIOS = {
     'repost': scenario_repost,
     'repostrenamed': scenario_repostrenamed,
     'repostobfuscated': scenario_repostobfuscated,
+    'repostdonorgaps': scenario_repostdonorgaps,
     'xpackbare': scenario_xpackbare,
     'xpackrar': scenario_xpackrar,
     'xpackrar2rar': scenario_xpackrar2rar,
@@ -1727,6 +1760,7 @@ EXPECTED_HISTORY_STATUS = {
     'manydonors': 'SUCCESS/HEALTH',
     'stream': 'SUCCESS/HEALTH', 'repost': 'FAILURE/PAR',
     'repostrenamed': 'SUCCESS/HEALTH', 'repostobfuscated': 'SUCCESS/HEALTH',
+    'repostdonorgaps': 'SUCCESS/HEALTH',
     'xpackbare': 'SUCCESS/HEALTH',
     'xpackrar': 'FAILURE/HEALTH', 'xpackrar2rar': 'SUCCESS/HEALTH',
     'xpack2sets': 'SUCCESS/HEALTH',
@@ -1767,6 +1801,7 @@ SCENARIO_OPTIONS = {
     # "Nothing to par-check" after the repair handoff
     'repostrenamed': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'repostobfuscated': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'repostdonorgaps': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpackbare: no par2; "auto" ends in "Nothing to par-check" post-repair
     'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"

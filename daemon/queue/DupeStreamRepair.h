@@ -48,6 +48,10 @@ public:
 	// number of donor articles fetched to verify content identity against
 	// already-downloaded regions before anything is written
 	static constexpr int ProbeCount = 2;
+	// a repost misses articles of its own: a probe the donor cannot supply
+	// is inconclusive, so it is replaced by another eligible article, up to
+	// this many probe fetches per donor member
+	static constexpr int MaxProbeFetches = 8;
 	// a probe must byte-compare at least this much overlap to count as proof
 	static constexpr int64 MinProbeCompareBytes = 16 * 1024;
 	// how many donor members are probed per target member before giving up

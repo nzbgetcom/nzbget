@@ -933,8 +933,22 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 {
 	std::vector<int> probeParts = DupeStreamRepair::SelectProbeParts(
 		donorRanges, target.Holes, DupeStreamRepair::ProbeCount);
+	// eligible parts not probed yet, in the order replacements are drawn
+	// when a probe turns out to be missing on the donor itself
+	std::vector<int> reserve;
 
-	if (probeParts.empty())
+	if (!probeParts.empty())
+	{
+		for (int partIndex : DupeStreamRepair::SelectProbeParts(
+			donorRanges, target.Holes, (int)donorRanges.size()))
+		{
+			if (std::find(probeParts.begin(), probeParts.end(), partIndex) == probeParts.end())
+			{
+				reserve.push_back(partIndex);
+			}
+		}
+	}
+	else
 	{
 		// small or heavily-holed files: no donor article clears the holes
 		// entirely. Probe the articles with the LARGEST present overlap
@@ -969,19 +983,14 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 			if ((int)probeParts.size() >= DupeStreamRepair::ProbeCount &&
 				(pooled >= base || (int)probeParts.size() >= DupeStreamRepair::ProbeCount * 2))
 			{
-				break;
+				reserve.push_back(candidate.second);
+				continue;
 			}
 			probeParts.push_back(candidate.second);
 			pooled += candidate.first;
 		}
 	}
 
-	// the compare floor scales down for small files (a repost's par2
-	// volumes) and clamps to what the selected probes can actually reach;
-	// below 64 reachable bytes identity is unknowable and par2 owns it.
-	// Compared bytes accumulate ACROSS probes.
-	int64 requiredCompare = DupeStreamRepair::RequiredCompareFloor(
-		target.DecodedFileSize, target.Holes, donorRanges, probeParts);
 	int64 totalCompared = 0;
 	bool sawVariedData = false;
 
@@ -994,15 +1003,61 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		donorGroups->emplace_back(*group);
 	}
 
-	std::vector<ArticleBatchFetcher::Request> requests;
-	requests.reserve(probeParts.size());
-	for (int partIndex : probeParts)
+	std::vector<int> attempted;
+	std::vector<int> batch = std::move(probeParts);
+	while (!batch.empty())
 	{
-		ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
-		requests.push_back({article->GetMessageId(), donorGroups});
-	}
-	m_batchFetcher.Begin(std::move(requests));
+		attempted.insert(attempted.end(), batch.begin(), batch.end());
 
+		std::vector<ArticleBatchFetcher::Request> requests;
+		requests.reserve(batch.size());
+		for (int partIndex : batch)
+		{
+			ArticleInfo* article = (*donorFile->GetArticles())[partIndex].get();
+			requests.push_back({article->GetMessageId(), donorGroups});
+		}
+		m_batchFetcher.Begin(std::move(requests));
+
+		int missing = 0;
+		if (!CompareProbes(file, target, totalCompared, sawVariedData, missing))
+		{
+			return false;
+		}
+
+		// the compare floor scales down for small files (a repost's par2
+		// volumes) and clamps to what the attempted probes can reach;
+		// below 64 reachable bytes identity is unknowable and par2 owns it.
+		// Compared bytes accumulate ACROSS probes.
+		int64 requiredCompare = DupeStreamRepair::RequiredCompareFloor(
+			target.DecodedFileSize, target.Holes, donorRanges, attempted);
+		if (IsStopped() || (totalCompared >= requiredCompare && sawVariedData))
+		{
+			// a stop ends Next() before the in-loop guard runs; never report a
+			// donor verified on the partial probe set delivered before the stop
+			return !IsStopped();
+		}
+
+		// a repost misses articles of its own; replace each probe the donor
+		// could not supply, spread over the remaining eligible parts
+		int replacements = std::min({missing, (int)reserve.size(),
+			DupeStreamRepair::MaxProbeFetches - (int)attempted.size()});
+		batch.clear();
+		for (int k = 0; k < replacements; k++)
+		{
+			batch.push_back(reserve[reserve.size() * (2 * k + 1) / (2 * replacements)]);
+		}
+		for (int partIndex : batch)
+		{
+			reserve.erase(std::find(reserve.begin(), reserve.end(), partIndex));
+		}
+	}
+
+	return false;
+}
+
+bool StreamRepairController::CompareProbes(DiskFile& file, const RepairTarget& target,
+	int64& totalCompared, bool& sawVariedData, int& missing)
+{
 	ArticleFetcher::FetchedArticle fetched;
 	while (m_batchFetcher.Next(fetched))
 	{
@@ -1013,6 +1068,7 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		}
 		if (!fetched.Success || fetched.Data.empty())
 		{
+			missing++;
 			continue; // inconclusive: the donor may simply miss this article
 		}
 
@@ -1052,9 +1108,7 @@ bool StreamRepairController::VerifyDonor(DiskFile& file, const RepairTarget& tar
 		}
 	}
 
-	// a stop ends Next() before the in-loop guard runs; never report a donor
-	// verified on the partial probe set that was delivered before the stop
-	return !IsStopped() && totalCompared >= requiredCompare && sawVariedData;
+	return true;
 }
 
 int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
