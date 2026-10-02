@@ -40,8 +40,10 @@ public:
 	bool HasDamagedParFiles() { return m_hasDamagedParFiles; }
 	void SetDetectMissing(bool detectMissing) { m_detectMissing = detectMissing; }
 	/* Base names of the files a par2-file's description packets list (only
-	 * that file's packets are read). False when it cannot be loaded. */
+	 * that file's packets are read). False when it cannot be loaded or is
+	 * larger than MaxIndexParSize. */
 	static bool ListParredFiles(const char* parFilename, std::vector<std::string>& filenames);
+	static constexpr int64 MaxIndexParSize = 16 * 1024 * 1024;
 
 protected:
 	virtual void UpdateProgress() {}

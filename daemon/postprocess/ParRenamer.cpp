@@ -203,6 +203,13 @@ void ParRenamer::LoadParFile(const char* parFilename)
 
 bool ParRenamer::ListParredFiles(const char* parFilename, std::vector<std::string>& filenames)
 {
+	// a main par2 index is small; anything larger is a recovery volume whose
+	// packets would take long to scan
+	if (FileSystem::FileSize(parFilename) > MaxIndexParSize)
+	{
+		return false;
+	}
+
 	ParRenamerRepairer repairer;
 	if (!repairer.LoadPacketsFromFile(parFilename))
 	{

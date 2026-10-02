@@ -67,7 +67,9 @@ public:
 	// ArticleBatchFetcher's window. The live pass always fetches serially
 	// (0 workers) - it must not compete with the active download
 	static constexpr int StreamFetchWorkers = 4;
-	static constexpr int MaxStreamFetchWorkers = 32;
+	// bounds worst-case memory: every worker may hold one article in flight
+	// on top of the batch fetcher's buffered window
+	static constexpr int MaxStreamFetchWorkers = 16;
 	static int StreamFetchWorkerCount(int primaryConnections)
 	{
 		return std::clamp(primaryConnections / 4, StreamFetchWorkers, MaxStreamFetchWorkers);

@@ -26,6 +26,7 @@
 #include "Log.h"
 #include "HistoryCoordinator.h"
 #include "DupeCoordinator.h"
+#include "DupeStreamRepair.h"
 #include "PostScript.h"
 #include "Util.h"
 #include "FileSystem.h"
@@ -577,7 +578,8 @@ void PrePostProcessor::CheckRequestPar(DownloadQueue* downloadQueue)
 			(postInfo->GetForceRepair() && !postInfo->GetNzbInfo()->GetParFull())) &&
 			g_Options->GetParCheck() != Options::pcManual)
 		{
-			postInfo->SetForceParFull(postInfo->GetNzbInfo()->GetParStatus() > NzbInfo::psSkipped);
+			postInfo->SetForceParFull(postInfo->GetForceParFull() ||
+				postInfo->GetNzbInfo()->GetParStatus() > NzbInfo::psSkipped);
 			postInfo->GetNzbInfo()->SetParStatus(NzbInfo::psNone);
 			postInfo->SetRequestParCheck(false);
 			postInfo->GetNzbInfo()->GetScriptStatuses()->clear();
@@ -753,11 +755,14 @@ void PrePostProcessor::CheckPostQueue()
 }
 
 #ifndef DISABLE_PARCHECK
-// The collection's par2 files provably cannot cover its damage: the damage
-// of the files they protect exceeds all par2 data still intact. Health below
-// critical says the same for the whole collection, but also counts damage in
-// files outside the par2 set, so it only gates the closer look: the failed
-// size of every stream-repair job whose file the main par2 files list.
+// The collection's par2 files provably cannot cover its damage: the bytes
+// still missing from the files they protect exceed all par2 data still
+// intact. Health below critical says the same for the whole collection, but
+// it also counts damage in files outside the par2 set and never drops for
+// partly repaired files, so it only gates the closer look: the remaining
+// holes of every stream-repair job whose file the main par2 file lists.
+// Several par sets can't be judged from collection-wide sizes, so they are
+// always left to par-check.
 static bool ParCannotCover(NzbInfo* nzbInfo)
 {
 	int health = nzbInfo->CalcHealth();
@@ -768,18 +773,15 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 	}
 
 	ParParser::ParFileList mainPars;
-	if (!ParParser::FindMainPars(nzbInfo->GetDestDir(), &mainPars))
+	if (!ParParser::FindMainPars(nzbInfo->GetDestDir(), &mainPars) || mainPars.size() != 1)
 	{
 		return false;
 	}
 	std::vector<std::string> parredFiles;
-	for (std::string& mainPar : mainPars)
+	BString<1024> parPath("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, mainPars[0].c_str());
+	if (!ParRenamer::ListParredFiles(parPath, parredFiles))
 	{
-		BString<1024> parPath("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, mainPar.c_str());
-		if (!ParRenamer::ListParredFiles(parPath, parredFiles))
-		{
-			return false;
-		}
+		return false;
 	}
 
 	int64 protectedDamage = 0;
@@ -798,7 +800,7 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 		if (std::any_of(parredFiles.begin(), parredFiles.end(),
 			[baseName](const std::string& parredFile) { return !strcasecmp(parredFile.c_str(), baseName); }))
 		{
-			protectedDamage += job.GetFailedSize();
+			protectedDamage += DupeStreamRepair::TotalSize(*job.GetHoles());
 		}
 	}
 
@@ -857,7 +859,7 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 	// par-check afterwards only if that wrote anything
 	if (streamRepair && !postInfo->GetStreamRepairDone() &&
 		nzbInfo->GetParStatus() <= NzbInfo::psSkipped &&
-		g_Options->GetParCheck() != Options::pcManual &&
+		g_Options->GetParCheck() == Options::pcAuto &&
 		ParCannotCover(nzbInfo) &&
 		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
 	{
@@ -873,9 +875,12 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 
 	// Duplicates recovered nothing, so the damage is still beyond the par2
 	// files: report the failure instead of verifying a collection that
-	// cannot be repaired
+	// cannot be repaired. Any byte ever recovered from duplicates (a live
+	// pass, or a pass interrupted by a restart) may have brought the damage
+	// within reach, so then par-check still runs.
 	if (postInfo->GetParCannotCover() && postInfo->GetStreamRepairDone() &&
-		!postInfo->GetStreamRepairRecovered() &&
+		!postInfo->GetStreamRepairRecovered() && nzbInfo->GetDupeRecoveredBytes() == 0 &&
+		g_Options->GetParCheck() == Options::pcAuto &&
 		nzbInfo->GetParStatus() == NzbInfo::psNone &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
 		!HasDupeScanSources(downloadQueue, nzbInfo) &&

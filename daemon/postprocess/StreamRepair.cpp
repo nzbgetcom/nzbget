@@ -820,11 +820,15 @@ void StreamRepairController::ExecRepair(const char* destDir,
 			{
 				continue;
 			}
-			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName, claimed);
+			bool verified = false;
+			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName,
+				claimed, verified);
+			// a byte-identical twin proves the donor is a repost of this
+			// release even when it misses the same articles as the target
+			donorProven |= verified;
 			if (outcome == roProductive)
 			{
 				consecutiveFailures = 0;
-				donorProven = true;
 			}
 			else if (outcome == roUnproductive &&
 				++consecutiveFailures >= (donorProven ? DonorFailureBail : UnprovenDonorBail))
@@ -839,7 +843,8 @@ void StreamRepairController::ExecRepair(const char* destDir,
 }
 
 StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const char* destDir,
-	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed)
+	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed,
+	bool& verified)
 {
 	if (m_liveMode)
 	{
@@ -861,7 +866,6 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 
 	bool patched = false;
 	bool spentFetches = false;
-	bool verified = false;
 	int probed = 0;
 
 	for (FileInfo* donorFile : FindDonorFiles(target, donorNzb, claimed))
@@ -2786,7 +2790,9 @@ void StreamRepairController::RepairCompleted()
 		}
 	}
 
-	bool recovered = m_recoveredArticles > 0 || m_recoveredBytes > 0 || m_recoveredHoles > 0;
+	// bytes written by THIS pass: m_recoveredArticles also credits targets an
+	// earlier live pass already completed, whose repair the first par-check saw
+	bool recovered = m_recoveredBytes > 0;
 	m_postInfo->SetStreamRepairDone(true);
 	m_postInfo->SetStreamRepairRecovered(recovered);
 
@@ -2820,6 +2826,13 @@ void StreamRepairController::RepairCompleted()
 		else
 		{
 			m_postInfo->SetRequestParCheck(true);
+			// par-check had not run yet (the par2 files could not cover the
+			// damage): download-time CRCs don't describe the bytes written
+			// now either, so ParQuick must not judge the repaired files
+			if (recovered)
+			{
+				m_postInfo->SetForceParFull(true);
+			}
 		}
 	}
 

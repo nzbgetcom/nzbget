@@ -5,7 +5,8 @@ Each scenario runs a scratch NZBGet daemon and its own nserv. Repairable
 downloads must use their matching parity without requesting a donor article.
 Insufficient parity must still permit duplicate stream recovery, followed by a
 successful PAR verification. Parity that cannot cover the damage, with only a
-duplicate that cannot help, must fail without verifying the collection at all.
+duplicate that cannot help, must fail without verifying the collection at all,
+while a duplicate that repairs enough of it must still hand the rest to par.
 The existing no-PAR scenarios cover compatibility.
 
 Usage:
@@ -36,6 +37,7 @@ SCENARIOS = (
     'insufficient_live', 'insufficient_stream',
     'unprotected_live', 'unprotected_stream',
     'hopeless_live', 'hopeless_stream',
+    'partial_live', 'partial_stream',
     'no_par_live', 'no_par_stream',
 )
 
@@ -117,6 +119,7 @@ def verify_named_outputs(target, expected):
 
 def scenario_parity(daemon, target, name):
     hopeless = name.startswith('hopeless_')
+    partial = name.startswith('partial_')
     insufficient = name.startswith('insufficient_') or hopeless
     unprotected = name.startswith('unprotected_')
     parity_names = ['testfile.par2', 'testfile.vol00+1.PAR2']
@@ -132,7 +135,7 @@ def scenario_parity(daemon, target, name):
     segment_size = block_size * 3
     # hopeless: twenty lost articles put health far below what one recovery
     # block allows, so par2 provably cannot cover the damage
-    missing_parts = set(range(5, 25)) if hopeless else {10}
+    missing_parts = set(range(5, 25)) if hopeless or partial else {10}
     data = (FIXTURES / 'testfile.dat').read_bytes()
     nfo = (FIXTURES / 'testfile.nfo').read_bytes()
     assert len(data) > segment_size * 20
@@ -164,8 +167,10 @@ def scenario_parity(daemon, target, name):
     donor_data = harness._payload(len(data), 9102027) if hopeless else data
     donor_path = harness._place_copy(target, 'par-first-donor', donor_data,
                                      'testfile.dat')
+    # partial: the donor lacks the part covering blocks 30-34, so the holes
+    # of articles 10 and 11 keep 5 blocks the full par2 set can repair
     donor_members = [(donor_path, 'testfile.dat', len(data),
-                      block_size * 5, set())]
+                      block_size * 5, {7} if partial else set())]
     if unprotected:
         donor_tail = harness._place_copy(target, 'par-first-donor', tail,
                                          tail_name)
@@ -216,7 +221,13 @@ def scenario_parity(daemon, target, name):
     common = (history.get('Status') == 'SUCCESS/PAR'
               and history.get('ParStatus') == 'SUCCESS'
               and all(integrity.values()))
-    if hopeless:
+    if partial:
+        # Duplicates repair most of the damage, the six recovery blocks the
+        # rest: par-check must still run and succeed, however the health
+        # recorded at download time looked.
+        passed = (common and len(fetched) > 0 and byte_count > 0
+                  and not skipped_par and par_verified)
+    elif hopeless:
         # The par2 data cannot cover the hole and the only duplicate is a
         # decoy: the collection fails without one pass over its files.
         passed = (history.get('Status', '').startswith('FAILURE')
