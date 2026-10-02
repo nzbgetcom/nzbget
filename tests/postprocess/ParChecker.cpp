@@ -37,6 +37,7 @@ public:
 	ParCheckerMock(const fs::path& workingDir);
 	void Execute();
 	void CorruptFile(const char* filename, int offset);
+	const std::vector<std::string>& GetVerifiedFiles() { return m_verifiedFiles; }
 	~ParCheckerMock() override
 	{
 		fs::remove_all(m_workingDir);
@@ -45,10 +46,15 @@ public:
 protected:
 	bool RequestMorePars(int blockNeeded, int* blockFound) override { return false; }
 	EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments) override;
+	void RegisterVerifiedFile(const char* filename) override
+	{
+		m_verifiedFiles.emplace_back(FileSystem::BaseFileName(filename));
+	}
 
 private:
 	uint32 CalcFileCrc(const char* filename);
 	const fs::path& m_workingDir;
+	std::vector<std::string> m_verifiedFiles;
 };
 
 ParCheckerMock::ParCheckerMock(const fs::path& workingDir) : m_workingDir(workingDir)
@@ -129,6 +135,42 @@ BOOST_AUTO_TEST_CASE(RepairNoNeedTest)
 
 	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepairNotNeeded);
 	BOOST_CHECK_EQUAL(parChecker.GetParFull(), true);
+}
+
+BOOST_AUTO_TEST_CASE(ParVerifiedTargetsExcludeUnprotectedFilesTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("ParRepair=yes");
+	Options options(&cmdOpts, nullptr);
+	const fs::path testFile = CURR_DIR / "ParVerifiedTargetsExcludeUnprotectedFilesTest";
+	ParCheckerMock parChecker(testFile);
+	std::ofstream((testFile / "unprotected.bin").string()) << "This file has no matching PAR member";
+	parChecker.CorruptFile("testfile.dat", 20000);
+	parChecker.Execute();
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepaired);
+	std::vector<std::string> verified = parChecker.GetVerifiedFiles();
+	std::sort(verified.begin(), verified.end());
+	BOOST_REQUIRE_EQUAL(verified.size(), 2u);
+	BOOST_CHECK_EQUAL(verified[0], "testfile.dat");
+	BOOST_CHECK_EQUAL(verified[1], "testfile.nfo");
+}
+
+BOOST_AUTO_TEST_CASE(ParVerifiedTargetsExcludeIgnoredDamageTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("ParRepair=no");
+	// libpar2 may report an empty name for damaged files. A wildcard keeps
+	// this fixture about verified membership, independent of that callback.
+	cmdOpts.push_back("ParIgnoreExt=*");
+	Options options(&cmdOpts, nullptr);
+	const fs::path testFile = CURR_DIR / "ParVerifiedTargetsExcludeIgnoredDamageTest";
+	ParCheckerMock parChecker(testFile);
+	parChecker.CorruptFile("testfile.dat", 20000);
+	parChecker.Execute();
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psRepairNotNeeded);
+	const std::vector<std::string>& verified = parChecker.GetVerifiedFiles();
+	BOOST_REQUIRE_EQUAL(verified.size(), 1u);
+	BOOST_CHECK_EQUAL(verified[0], "testfile.nfo");
 }
 
 BOOST_AUTO_TEST_CASE(RepairPossibleTest)

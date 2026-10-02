@@ -41,11 +41,11 @@ public:
 	void HistoryMark(DownloadQueue* downloadQueue, HistoryInfo* historyInfo, NzbInfo::EMarkStatus markStatus);
 	EDupeStatus GetDupeStatus(DownloadQueue* downloadQueue, const char* name, const char* dupeKey);
 	RawNzbList ListHistoryDupes(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	static bool SameNameOrKey(const char* name1, const char* dupeKey1, const char* name2, const char* dupeKey2);
 
 private:
 	void ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey);
 	void HistoryCleanup(DownloadQueue* downloadQueue, HistoryInfo* markHistoryInfo);
-	bool SameNameOrKey(const char* name1, const char* dupeKey1, const char* name2, const char* dupeKey2);
 };
 
 extern DupeCoordinator* g_DupeCoordinator;

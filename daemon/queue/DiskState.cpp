@@ -28,8 +28,8 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 64;
-const int DISKSTATE_FILE_VERSION = 7;
+const int DISKSTATE_QUEUE_VERSION = 66;
+const int DISKSTATE_FILE_VERSION = 9;
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
@@ -636,6 +636,36 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 				(int)fileInfo->GetExtraPriority());
 		}
 	}
+
+	// Stream-repair state is appended so older queue versions remain readable.
+	uint32 recoveredHigh, recoveredLow;
+	Util::SplitInt64(nzbInfo->GetDupeRecoveredBytes(), &recoveredHigh, &recoveredLow);
+	outfile.PrintLine("%i,%u,%u,%i", nzbInfo->GetDupeRecoveredArticles(), recoveredHigh,
+		recoveredLow, nzbInfo->GetDupeRecoveredHoles());
+	const StreamRepairJobList* repairJobs = nzbInfo->GetStreamRepairJobs();
+	outfile.PrintLine("%i", (int)repairJobs->size());
+	for (const StreamRepairJob& job : *repairJobs)
+	{
+		uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
+		Util::SplitInt64(job.GetDecodedFileSize(), &decodedHigh, &decodedLow);
+		Util::SplitInt64(job.GetFailedSize(), &failedHigh, &failedLow);
+		Util::SplitInt64(job.GetMissedSize(), &missedHigh, &missedLow);
+		uint32 stepsHigh, stepsLow;
+		Util::SplitInt64((int64)job.GetStepsHash(), &stepsHigh, &stepsLow);
+		outfile.PrintLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", job.GetFileId(), decodedHigh,
+			decodedLow, failedHigh, failedLow, missedHigh, missedLow, (int)job.GetParFile(),
+			job.GetFailedArticles(), stepsHigh, stepsLow);
+		outfile.PrintLine("%s", job.GetFilename());
+		const StreamRangeList* holes = job.GetHoles();
+		outfile.PrintLine("%i", (int)holes->size());
+		for (const StreamRange& hole : *holes)
+		{
+			uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
+			Util::SplitInt64(hole.Offset, &offsetHigh, &offsetLow);
+			Util::SplitInt64(hole.Size, &sizeHigh, &sizeLow);
+			outfile.PrintLine("%u,%u,%u,%u", offsetHigh, offsetLow, sizeHigh, sizeLow);
+		}
+	}
 }
 
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -673,7 +703,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		nzbInfo->SetHardLinkPath(buf);
 	}
 
-	if (formatVersion >= 64) 
+	// format 65 was written only by pre-release DupeArticleFallback builds,
+	// which had the stream-repair state below but not the meta name
+	if (formatVersion >= 64 && formatVersion != 65)
 	{
 		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
 		nzbInfo->SetMetaName(buf);
@@ -714,6 +746,14 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		else if (formatVersion < 59 && postStage > 6)
 		{
 			postStage += 2;
+		}
+		if (postStage > (int)PostInfo::ptFinished)
+		{
+			// stages appended after ptFinished (ptPostDownloadRenaming,
+			// ptStreamRepairing) are transient; the +1-shifted persisted value
+			// would index past the stage-name tables before SanitisePostQueue
+			// resets the stage
+			postStage = (int)PostInfo::ptFinished;
 		}
 		nzbInfo->GetPostInfo()->SetStage((PostInfo::EStage)postStage);
 	}
@@ -1013,6 +1053,56 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 		nzbInfo->GetFileList()->Add(std::move(fileInfo));
 	}
 
+	nzbInfo->GetStreamRepairJobs()->clear();
+	if (formatVersion >= 65)
+	{
+		uint32 recoveredHigh, recoveredLow;
+		int recoveredArticles, recoveredHoles;
+		if (infile.ScanLine("%i,%u,%u,%i", &recoveredArticles, &recoveredHigh, &recoveredLow,
+			&recoveredHoles) != 4 || recoveredArticles < 0 || recoveredHoles < 0) goto error;
+		nzbInfo->SetDupeRecoveredArticles(recoveredArticles);
+		nzbInfo->SetDupeRecoveredBytes(Util::JoinInt64(recoveredHigh, recoveredLow));
+		nzbInfo->SetDupeRecoveredHoles(recoveredHoles);
+
+		int repairCount;
+		if (infile.ScanLine("%i", &repairCount) != 1 || repairCount < 0 || repairCount > 100000) goto error;
+		for (int i = 0; i < repairCount; i++)
+		{
+			int fileId, parFile, failedArticles;
+			uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
+			uint32 stepsHigh = 0, stepsLow = 0;
+			if (formatVersion >= 66)
+			{
+				if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", &fileId, &decodedHigh,
+					&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+					&failedArticles, &stepsHigh, &stepsLow) != 11 || failedArticles < 0) goto error;
+			}
+			else if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
+				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+				&failedArticles) != 9 || failedArticles < 0) goto error;
+			if (fileId <= 0 || parFile < 0 || parFile > 1) goto error;
+			if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+			int holeCount;
+			if (infile.ScanLine("%i", &holeCount) != 1 || holeCount < 0 || holeCount > 1000000) goto error;
+			int64 decodedSize = Util::JoinInt64(decodedHigh, decodedLow);
+			StreamRangeList holes;
+			holes.reserve(holeCount);
+			for (int j = 0; j < holeCount; j++)
+			{
+				uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
+				if (infile.ScanLine("%u,%u,%u,%u", &offsetHigh, &offsetLow, &sizeHigh, &sizeLow) != 4) goto error;
+				int64 offset = Util::JoinInt64(offsetHigh, offsetLow);
+				int64 size = Util::JoinInt64(sizeHigh, sizeLow);
+				if (offset < 0 || size <= 0 || decodedSize <= 0 || offset > decodedSize || size > decodedSize - offset) goto error;
+				holes.push_back({offset, size});
+			}
+			nzbInfo->GetStreamRepairJobs()->emplace_back(fileId, buf, decodedSize,
+				Util::JoinInt64(failedHigh, failedLow), Util::JoinInt64(missedHigh, missedLow),
+				failedArticles, parFile != 0, std::move(holes),
+				(uint64)Util::JoinInt64(stepsHigh, stepsLow));
+		}
+	}
+
 	return true;
 
 error:
@@ -1248,6 +1338,9 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	Util::SplitInt64(fileInfo->GetSuccessSize(), &High2, &Low2);
 	Util::SplitInt64(fileInfo->GetFailedSize(), &High3, &Low3);
 	outfile.PrintLine("%u,%u,%u,%u,%u,%u", High1, Low1, High2, Low2, High3, Low3);
+	uint32 decodedHigh, decodedLow;
+	Util::SplitInt64(fileInfo->GetDecodedFileSize(), &decodedHigh, &decodedLow);
+	outfile.PrintLine("%u,%u", decodedHigh, decodedLow);
 
 	outfile.PrintLine("%s", fileInfo->GetFilename());
 	outfile.PrintLine("%s", fileInfo->GetHash16k() ? fileInfo->GetHash16k() : "");
@@ -1259,11 +1352,14 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	outfile.PrintLine("%i", (int)fileInfo->GetArticles()->size());
 	for (ArticleInfo* articleInfo : fileInfo->GetArticles())
 	{
-		outfile.PrintLine("%i,%" PRIi64 ",%i,%u", 
+		int stagedFallback = !completed && articleInfo->GetStatus() == ArticleInfo::aiFinished &&
+			articleInfo->GetDupeFallbackRound() > 0 && articleInfo->GetResultFilename() ? 1 : 0;
+		outfile.PrintLine("%i,%" PRIi64 ",%i,%u,%i",
 			(int)articleInfo->GetStatus(), 
 			articleInfo->GetSegmentOffset(),
 			articleInfo->GetSegmentSize(), 
-			articleInfo->GetCrc()
+			articleInfo->GetCrc(),
+			stagedFallback
 		);
 	}
 
@@ -1301,6 +1397,12 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 	fileInfo->SetRemainingSize(Util::JoinInt64(High1, Low1));
 	fileInfo->SetSuccessSize(Util::JoinInt64(High2, Low2));
 	fileInfo->SetFailedSize(Util::JoinInt64(High3, Low3));
+	if (formatVersion >= 8)
+	{
+		uint32 decodedHigh, decodedLow;
+		if (infile.ScanLine("%u,%u", &decodedHigh, &decodedLow) != 2) goto error;
+		fileInfo->SetDecodedFileSize(Util::JoinInt64(decodedHigh, decodedLow));
+	}
 
 	char buf[1024];
 
@@ -1346,10 +1448,20 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			int64 segmentOffset;
 			uint32 crc;
 			int segmentSize;
-			if (infile.ScanLine("%i,%" PRIi64 ",%i,%u", &statusInt, &segmentOffset, &segmentSize, &crc) != 4) goto error;
+			int stagedFallback = 0;
+			if (formatVersion >= 9)
+			{
+				if (infile.ScanLine("%i,%" PRIi64 ",%i,%u,%i", &statusInt, &segmentOffset,
+					&segmentSize, &crc, &stagedFallback) != 5 ||
+					(stagedFallback != 0 && stagedFallback != 1)) goto error;
+			}
+			else if (infile.ScanLine("%i,%" PRIi64 ",%i,%u", &statusInt, &segmentOffset,
+				&segmentSize, &crc) != 4) goto error;
 			pa->SetSegmentOffset(segmentOffset);
 			pa->SetSegmentSize(segmentSize);
 			pa->SetCrc(crc);
+			pa->SetDupeFallbackRound(!completed && statusInt == ArticleInfo::aiFinished &&
+				stagedFallback ? 1 : 0);
 		}
 		else
 		{
@@ -1363,8 +1475,21 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			status = ArticleInfo::aiUndefined;
 		}
 
-		if (status == ArticleInfo::aiFinished && !g_Options->GetDirectWrite() &&
-			!fileInfo->GetForceDirectWrite() && !pa->GetResultFilename())
+		if (!completed && formatVersion < 9 && status == ArticleInfo::aiFinished &&
+			(g_Options->GetDirectWrite() || fileInfo->GetForceDirectWrite()) &&
+			pa->GetPartNumber() > 0)
+		{
+			BString<1024> stagedPath("%s%c%i.%03i", g_Options->GetTempDir(),
+				PATH_SEPARATOR, fileInfo->GetId(), pa->GetPartNumber());
+			if (FileSystem::FileExists(stagedPath))
+			{
+				pa->SetDupeFallbackRound(1);
+			}
+		}
+
+		if (status == ArticleInfo::aiFinished &&
+			((!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite()) ||
+			 pa->GetDupeFallbackRound() > 0) && !pa->GetResultFilename())
 		{
 			pa->SetResultFilename(BString<1024>("%s%c%i.%03i", g_Options->GetTempDir(),
 				PATH_SEPARATOR, fileInfo->GetId(), pa->GetPartNumber()));
@@ -1375,6 +1500,7 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 		if (completedArticles == size - 1 && !completed)
 		{
 			status = ArticleInfo::aiUndefined;
+			pa->SetDupeFallbackRound(0);
 		}
 		if (status != ArticleInfo::aiUndefined)
 		{

@@ -177,6 +177,17 @@ void ArticleDownloader::Run()
 			AddServerStats();
 		}
 
+		if (m_contentRejected)
+		{
+			// the abandoned body still occupies the connection, so it must not
+			// serve another request; other servers would deliver the same
+			// rejected content, so the article fails here (a duplicate source,
+			// if any, is tried next by the queue coordinator)
+			FreeConnection(false);
+			status = adFailed;
+			break;
+		}
+
 		if (!connected && m_connection)
 		{
 			detail("Article %s @ %s failed: could not establish connection", *m_infoName, *m_connectionName);
@@ -293,7 +304,7 @@ void ArticleDownloader::Run()
 		status = adFinished;
 	}
 
-	if (status != adFinished && status != adRetry)
+	if (status != adFinished && status != adRetry && status != adFatalError)
 	{
 		status = adFailed;
 	}
@@ -320,6 +331,8 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	const char* response = nullptr;
 	EStatus status = adRunning;
 	m_writingStarted = false;
+	m_localWriteError = false;
+	m_contentRejected = false;
 	m_articleInfo->SetCrc(0);
 
 	if (m_contentAnalyzer)
@@ -408,7 +421,17 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		// write to output file
 		if (len > 0 && !Write(buffer, len))
 		{
-			status = adFatalError;
+			if (m_localWriteError)
+			{
+				status = adFatalError;
+			}
+			else
+			{
+				// the article's content was rejected before its body was fully
+				// read: the rest of the body is still pending on the connection
+				m_contentRejected = true;
+				status = adFailed;
+			}
 			break;
 		}
 	}
@@ -497,17 +520,56 @@ bool ArticleDownloader::Write(char* buffer, int len)
 					warn("Malformed article %s: size %i out of range", *m_infoName, articleSize);
 					return false;
 				}
+				m_decodedFileSize = articleFileSize;
+				int64 expectedFileSize = m_fileInfo->GetDecodedFileSize();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && expectedFileSize > 0 &&
+					articleFileSize != expectedFileSize)
+				{
+					detail("Discarding article %s from duplicate: file size mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleFileSize, (long long)expectedFileSize);
+					return false;
+				}
+				// a substituted article must decode into exactly the byte range the
+				// target article occupies; the expected range was pinned from finished
+				// neighbour articles at substitution time (-1 = not known yet). This
+				// rejects donors with drifted decoded boundaries before any bytes are
+				// written (a mis-placed article would gap-fill and/or overwrite a
+				// neighbour's decoded bytes).
+				int64 dupeExpectedOffset = m_articleInfo->GetDupeExpectedOffset();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedOffset >= 0 &&
+					articleOffset != dupeExpectedOffset)
+				{
+					detail("Discarding article %s from duplicate: decoded offset mismatch (%lli vs %lli)",
+						*m_infoName, (long long)articleOffset, (long long)dupeExpectedOffset);
+					return false;
+				}
+				int64 dupeExpectedEnd = m_articleInfo->GetDupeExpectedEnd();
+				if (m_articleInfo->GetDupeFallbackRound() > 0 && dupeExpectedEnd >= 0 &&
+					articleOffset + articleSize != dupeExpectedEnd)
+				{
+					detail("Discarding article %s from duplicate: decoded end mismatch (%lli vs %lli)",
+						*m_infoName, (long long)(articleOffset + articleSize), (long long)dupeExpectedEnd);
+					return false;
+				}
 			}
 		}
 
 		if (!m_articleWriter.Start(m_decoder.GetFormat(), articleFilename, articleFileSize, articleOffset, articleSize))
 		{
+			// both a write failure and a duplicate-existing-file result end the
+			// download of this article on the spot (a duplicate is then reported
+			// as finished by Run)
+			m_localWriteError = true;
 			return false;
 		}
 		m_writingStarted = true;
 	}
 
 	bool ok = m_articleWriter.Write(buffer, len);
+	if (!ok)
+	{
+		m_localWriteError = true;
+	}
 
 	if (m_contentAnalyzer)
 	{

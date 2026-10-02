@@ -962,7 +962,8 @@ bool RemoteClient::RequestPostQueue()
 
 			const char* postStageName[] = { "", ", Loading Pars", ", Verifying source files", ", Repairing",
 				", Verifying repaired files", ", Par-Renaming", ", Rar-Renaming", ", Unpacking", ", Cleaning up",
-				", Moving", ", Post-unpack renaming", ", Executing postprocess-script", "", ", Post-download renaming" };
+				", Moving", ", Post-unpack renaming", ", Executing postprocess-script", "",
+				", Post-download renaming", ", Repairing from duplicates" };
 			char* infoName = bufPtr + sizeof(SNzbPostQueueResponseEntry) + ntohl(postQueueAnswer->m_nzbFilenameLen);
 
 			printf("[%i] %s%s%s\n", ntohl(postQueueAnswer->m_id), infoName, postStageName[ntohl(postQueueAnswer->m_stage)], *completed);

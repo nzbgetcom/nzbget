@@ -56,6 +56,35 @@ void RepairController::PostParChecker::RegisterParredFile(const char* filename)
 	m_postInfo->GetParredFiles()->push_back(filename);
 }
 
+void RepairController::PostParChecker::RegisterVerifiedFile(const char* filename)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
+	StreamRepairJobList* jobs = nzbInfo->GetStreamRepairJobs();
+	std::string verifiedPath = FileSystem::GetRealPath(filename).value_or(filename);
+	size_t previousSize = jobs->size();
+	jobs->erase(std::remove_if(jobs->begin(), jobs->end(),
+		[nzbInfo, &verifiedPath](const StreamRepairJob& job)
+		{
+			const char* currentName = job.GetFilename();
+			for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+			{
+				if (completedFile.GetId() == job.GetFileId())
+				{
+					currentName = completedFile.GetFilename();
+					break;
+				}
+			}
+			std::string path = std::string(nzbInfo->GetDestDir()) + PATH_SEPARATOR + currentName;
+			path = FileSystem::GetRealPath(path).value_or(path);
+			return FileSystem::SameFilename(path.c_str(), verifiedPath.c_str());
+		}), jobs->end());
+	if (jobs->size() != previousSize)
+	{
+		nzbInfo->SetChanged(true);
+	}
+}
+
 bool RepairController::PostParChecker::IsParredFile(const char* filename)
 {
 	for (CString& parredFile : m_postInfo->GetParredFiles())
@@ -233,10 +262,12 @@ void RepairController::Run()
 {
 	BString<1024> nzbName;
 	CString destDir;
+	bool dupeRepaired = false;
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_postInfo->GetNzbInfo()->GetName();
 		destDir = m_postInfo->GetNzbInfo()->GetDestDir();
+		dupeRepaired = m_postInfo->GetNzbInfo()->GetDupeRecoveredBytes() > 0;
 	}
 
 	m_parChecker.SetPostInfo(m_postInfo);
@@ -244,7 +275,12 @@ void RepairController::Run()
 	m_parChecker.SetNzbName(nzbName);
 	m_parChecker.SetParTime(Util::CurrentTime());
 	m_parChecker.SetDownloadSec(m_postInfo->GetNzbInfo()->GetDownloadSec());
-	m_parChecker.SetParQuick(g_Options->GetParQuick() && !m_postInfo->GetForceParFull());
+	// stream repair rewrites file contents without updating the download-time
+	// CRCs and segment states ParQuick judges files by: once it has written
+	// into the collection (live or in post-processing, before or after a
+	// restart), only a full verification sees the repaired bytes
+	m_parChecker.SetParQuick(g_Options->GetParQuick() && !m_postInfo->GetForceParFull() &&
+		!dupeRepaired);
 	m_parChecker.SetForceRepair(m_postInfo->GetForceRepair());
 
 	m_parChecker.PrintMessage(Message::mkInfo, "Checking pars for %s", *nzbName);

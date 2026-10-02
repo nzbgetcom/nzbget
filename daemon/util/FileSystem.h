@@ -146,6 +146,7 @@ public:
 	static bool FileExists(const char* filename);
 	static bool DirectoryExists(const char* dirFilename);
 	static bool CreateDirectory(const char* dirFilename);
+	static bool CreateDirectoryExclusive(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
 	static std::optional<std::string> GetFileExtension(std::string_view filename);

@@ -27,9 +27,9 @@
 #include "Util.h"
 #include "FileSystem.h"
 
-int FileInfo::m_idGen = 0;
+std::atomic<int> FileInfo::m_idGen{0};
 int FileInfo::m_idMax = 0;
-int NzbInfo::m_idGen = 0;
+std::atomic<int> NzbInfo::m_idGen{0};
 int NzbInfo::m_idMax = 0;
 DownloadQueue* DownloadQueue::g_DownloadQueue = nullptr;
 std::atomic<bool> DownloadQueue::g_Loaded{false};

@@ -67,6 +67,7 @@ private:
 		virtual void Completed() { m_owner->ParCheckCompleted(); }
 		virtual void PrintMessage(Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(3);
 		virtual void RegisterParredFile(const char* filename);
+		void RegisterVerifiedFile(const char* filename) override;
 		virtual bool IsParredFile(const char* filename);
 		EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments) override;
 		virtual const char* FindFileOrigname(const char* filename);

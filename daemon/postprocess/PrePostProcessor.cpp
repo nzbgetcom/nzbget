@@ -26,6 +26,7 @@
 #include "Log.h"
 #include "HistoryCoordinator.h"
 #include "DupeCoordinator.h"
+#include "DupeStreamRepair.h"
 #include "PostScript.h"
 #include "Util.h"
 #include "FileSystem.h"
@@ -33,9 +34,11 @@
 #include "Cleanup.h"
 #include "Rename.h"
 #include "Repair.h"
+#include "StreamRepair.h"
 #include "NzbFile.h"
 #include "QueueScript.h"
 #include "ParParser.h"
+#include "ParRenamer.h"
 #include "DirectUnpack.h"
 #include "PostUnpackRenamer.h"
 #include "PostDownloadRenamer.h"
@@ -125,7 +128,7 @@ void PrePostProcessor::WaitJobs()
 		}
 	}
 
-	// wait 5 seconds until direct unpack threads gracefully finish
+	// wait 5 seconds until direct unpack and live repair threads gracefully finish
 	waitStart = Util::CurrentTime();
 	while (Util::CurrentTime() < waitStart + 5)
 	{
@@ -135,7 +138,8 @@ void PrePostProcessor::WaitJobs()
 				downloadQueue->GetQueue()->end(),
 				[](const std::unique_ptr<NzbInfo>& nzbInfo)
 				{
-					return nzbInfo->GetUnpackThread() != nullptr;
+					return nzbInfo->GetUnpackThread() != nullptr ||
+						nzbInfo->GetLiveRepairThread() != nullptr;
 				}) == downloadQueue->GetQueue()->end())
 			{
 				break;
@@ -144,12 +148,13 @@ void PrePostProcessor::WaitJobs()
 		Util::Sleep(200);
 	}
 
-	// disconnect remaining direct unpack jobs
+	// disconnect remaining direct unpack and live repair jobs
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
 		{
 			nzbInfo->SetUnpackThread(nullptr);
+			nzbInfo->SetLiveRepairThread(nullptr);
 		}
 	}
 
@@ -176,6 +181,10 @@ void PrePostProcessor::Stop()
 			if (nzbInfo->GetUnpackThread())
 			{
 				((DirectUnpack*)nzbInfo->GetUnpackThread())->Stop(downloadQueue, nzbInfo);
+			}
+			if (nzbInfo->GetLiveRepairThread())
+			{
+				nzbInfo->GetLiveRepairThread()->Stop();
 			}
 		}
 	}
@@ -344,6 +353,14 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 
 	if (nzbInfo->GetSkipScriptProcessing() && (nzbInfo->GetSkipDiskWrite() || g_Options->GetSkipWrite()))
 	{
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			// no post-processing job will wait for the pass and the cleanup
+			// below deletes the very files it writes: detach and stop it
+			Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+			nzbInfo->SetLiveRepairThread(nullptr);
+			liveRepairThread->Stop();
+		}
 		NzbCompleted(downloadQueue, nzbInfo, true);
 		nzbInfo->SetCleanupDisk(true);
 		DeleteCleanup(nzbInfo);
@@ -376,6 +393,18 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 			((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDownloaded(downloadQueue, nzbInfo);
 		}
 
+		// a live stream-repair pass may still be writing into completed files:
+		// the post-processing job (whose stream stage works on the same files)
+		// waits for it; the pass clears the working flag when it detaches
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			nzbInfo->GetPostInfo()->SetWorking(true);
+			if (!nzbInfo->GetUnpackThread())
+			{
+				m_activeJobs.push_back(nzbInfo);
+			}
+		}
+
 		nzbInfo->SetChanged(true);
 		downloadQueue->SaveChanged();
 
@@ -391,6 +420,15 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 			((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDownloaded(downloadQueue, nzbInfo);
 		}
 
+		if (nzbInfo->GetLiveRepairThread())
+		{
+			// no post-processing job will wait for the pass: detach and stop
+			// it before the collection moves to history
+			Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+			nzbInfo->SetLiveRepairThread(nullptr);
+			liveRepairThread->Stop();
+		}
+
 		NzbCompleted(downloadQueue, nzbInfo, true);
 	}
 }
@@ -400,6 +438,15 @@ void PrePostProcessor::NzbDeleted(DownloadQueue* downloadQueue, NzbInfo* nzbInfo
 	if (nzbInfo->GetUnpackThread())
 	{
 		((DirectUnpack*)nzbInfo->GetUnpackThread())->NzbDeleted(downloadQueue, nzbInfo);
+	}
+
+	if (nzbInfo->GetLiveRepairThread())
+	{
+		// detach FIRST: the live pass re-checks attachment at every locked
+		// touchpoint and aborts without writing anything back
+		Thread* liveRepairThread = nzbInfo->GetLiveRepairThread();
+		nzbInfo->SetLiveRepairThread(nullptr);
+		liveRepairThread->Stop();
 	}
 
 	if (nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
@@ -531,7 +578,8 @@ void PrePostProcessor::CheckRequestPar(DownloadQueue* downloadQueue)
 			(postInfo->GetForceRepair() && !postInfo->GetNzbInfo()->GetParFull())) &&
 			g_Options->GetParCheck() != Options::pcManual)
 		{
-			postInfo->SetForceParFull(postInfo->GetNzbInfo()->GetParStatus() > NzbInfo::psSkipped);
+			postInfo->SetForceParFull(postInfo->GetForceParFull() ||
+				postInfo->GetNzbInfo()->GetParStatus() > NzbInfo::psSkipped);
 			postInfo->GetNzbInfo()->SetParStatus(NzbInfo::psNone);
 			postInfo->SetRequestParCheck(false);
 			postInfo->GetNzbInfo()->GetScriptStatuses()->clear();
@@ -648,6 +696,11 @@ NzbInfo* PrePostProcessor::PickNextJob(DownloadQueue* downloadQueue, bool allowP
 		if (nzbInfo1->GetPostInfo() && !nzbInfo1->GetPostInfo()->GetWorking() &&
 			!g_QueueScriptCoordinator->HasJob(nzbInfo1->GetId(), nullptr) &&
 			nzbInfo1->GetDirectUnpackStatus() != NzbInfo::nsRunning &&
+			// never start post-processing while a live stream-repair pass still
+			// writes into the collection's completed files (the working flag
+			// alone is not enough: it is shared with direct unpack, whose exit
+			// must not release a job the live pass is still holding)
+			!nzbInfo1->GetLiveRepairThread() &&
 			(!nzbInfo || nzbInfo1->GetPriority() > nzbInfo->GetPriority()) &&
 			(!g_WorkState->GetPausePostProcess() || nzbInfo1->GetForcePriority()) &&
 			(allowPar || !nzbInfo1->GetPostInfo()->GetNeedParCheck()) &&
@@ -701,6 +754,99 @@ void PrePostProcessor::CheckPostQueue()
 	Util::SetStandByMode(m_activeJobs.empty());
 }
 
+#ifndef DISABLE_PARCHECK
+// The collection's par2 files provably cannot cover its damage: the bytes
+// still missing from the files they protect exceed all par2 data still
+// intact. Health below critical says the same for the whole collection, but
+// it also counts damage in files outside the par2 set and never drops for
+// partly repaired files, so it only gates the closer look: the remaining
+// holes of every stream-repair job whose file the main par2 file lists.
+// Several par sets can't be judged from collection-wide sizes, so they are
+// always left to par-check.
+static bool ParCannotCover(NzbInfo* nzbInfo)
+{
+	int health = nzbInfo->CalcHealth();
+	int criticalHealth = nzbInfo->CalcCriticalHealth(false);
+	if (health > 0 && (criticalHealth >= 1000 || health >= criticalHealth))
+	{
+		return false;
+	}
+
+	ParParser::ParFileList mainPars;
+	if (!ParParser::FindMainPars(nzbInfo->GetDestDir(), &mainPars) || mainPars.size() != 1)
+	{
+		return false;
+	}
+
+	// FindMainPars reports whichever file of the set it meets first; the
+	// description packets are cheapest to read from its smallest file (the
+	// index, unless every volume was downloaded)
+	std::string parPath;
+	int64 parFileSize = -1;
+	DirBrowser dir(nzbInfo->GetDestDir());
+	while (const char* filename = dir.Next())
+	{
+		if (ParParser::SameParCollection(filename, mainPars[0].c_str(), true))
+		{
+			BString<1024> path("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, filename);
+			int64 size = FileSystem::FileSize(path);
+			if (size > 0 && (parFileSize < 0 || size < parFileSize))
+			{
+				parPath = *path;
+				parFileSize = size;
+			}
+		}
+	}
+
+	std::vector<std::string> parredFiles;
+	if (parFileSize < 0 || !ParRenamer::ListParredFiles(parPath.c_str(), parredFiles))
+	{
+		return false;
+	}
+
+	int64 protectedDamage = 0;
+	for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
+	{
+		const char* filename = job.GetFilename();
+		for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+		{
+			if (completedFile.GetId() == job.GetFileId())
+			{
+				filename = completedFile.GetFilename();
+				break;
+			}
+		}
+		const char* baseName = FileSystem::BaseFileName(filename);
+		if (std::any_of(parredFiles.begin(), parredFiles.end(),
+			[baseName](const std::string& parredFile) { return !strcasecmp(parredFile.c_str(), baseName); }))
+		{
+			protectedDamage += DupeStreamRepair::TotalSize(*job.GetHoles());
+		}
+	}
+
+	return protectedDamage > nzbInfo->GetParSize() - nzbInfo->GetParCurrentFailedSize();
+}
+
+// ParScan=dupe can still find missing blocks in the files of a duplicate
+// already downloaded to disk, which the health estimate does not know about
+static bool HasDupeScanSources(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (g_Options->GetParScan() != Options::psDupe)
+	{
+		return false;
+	}
+	for (NzbInfo* dupeNzbInfo : g_DupeCoordinator->ListHistoryDupes(downloadQueue, nzbInfo))
+	{
+		if (!Util::EmptyStr(dupeNzbInfo->GetDestDir()) &&
+			FileSystem::DirectoryExists(dupeNzbInfo->GetDestDir()))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+#endif
+
 void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo, bool allowPar)
 {
 	NzbInfo* nzbInfo = postInfo->GetNzbInfo();
@@ -723,7 +869,61 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 
+	bool streamRepair = g_Options->GetDupeArticleFallback() >= Options::dafStream &&
+		!nzbInfo->GetStreamRepairJobs()->empty() &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone;
+
 #ifndef DISABLE_PARCHECK
+	// A par-check that cannot succeed still reads the whole collection (and
+	// waits for every remaining par2-file): recover from duplicates first,
+	// par-check afterwards only if that wrote anything
+	if (streamRepair && !postInfo->GetStreamRepairDone() &&
+		nzbInfo->GetParStatus() <= NzbInfo::psSkipped &&
+		g_Options->GetParCheck() == Options::pcAuto &&
+		ParCannotCover(nzbInfo) &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Par2 files of %s cannot cover its damage (health %.1f%%, critical %.1f%%), "
+			"recovering from duplicates before par-check",
+			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(false) / 10.0);
+		postInfo->SetParCannotCover(true);
+		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
+		StreamRepairController::StartJob(postInfo);
+		return;
+	}
+
+	// Duplicates recovered nothing, so the damage is still beyond the par2
+	// files: report the failure instead of verifying a collection that
+	// cannot be repaired. Any byte ever recovered from duplicates (a live
+	// pass, or a pass interrupted by a restart) may have brought the damage
+	// within reach, so then par-check still runs.
+	if (postInfo->GetParCannotCover() && postInfo->GetStreamRepairDone() &&
+		!postInfo->GetStreamRepairRecovered() && nzbInfo->GetDupeRecoveredBytes() == 0 &&
+		g_Options->GetParCheck() == Options::pcAuto &&
+		nzbInfo->GetParStatus() == NzbInfo::psNone &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+		!HasDupeScanSources(downloadQueue, nzbInfo) &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+	{
+		nzbInfo->PrintMessage(Message::mkWarning,
+			"Skipping par-check for %s: its par2 files cannot cover the damage "
+			"(health %.1f%%, critical %.1f%%) and duplicates recovered nothing",
+			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(false) / 10.0);
+		nzbInfo->SetParStatus(NzbInfo::psFailure);
+		return;
+	}
+
+	// Captured holes are a fallback, not evidence that donor data is needed.
+	// Let the current PAR set verify and repair first, including auto mode
+	// which initially marks the check as skipped until damage is known.
+	if (streamRepair && nzbInfo->GetParStatus() == NzbInfo::psSkipped &&
+		ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+	{
+		postInfo->SetRequestParCheck(true);
+		return;
+	}
+
 	if (nzbInfo->GetParStatus() == NzbInfo::psNone &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone)
 	{
@@ -782,6 +982,18 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		return;
 	}
 #endif
+
+	// Successful PAR sets remove the holes they actually protect. Remaining
+	// jobs may belong to unprotected files, or to a set that could not repair.
+	// Manual repair and sufficient parity with ParRepair=no remain user choices.
+	if (streamRepair &&
+		nzbInfo->GetParStatus() != NzbInfo::psRepairPossible &&
+		nzbInfo->GetParStatus() != NzbInfo::psManual)
+	{
+		EnterStage(downloadQueue, postInfo, PostInfo::ptStreamRepairing);
+		StreamRepairController::StartJob(postInfo);
+		return;
+	}
 
 	NzbParameter* unpackParameter = nzbInfo->GetParameters()->Find("*Unpack:");
 	bool wantUnpack = !(unpackParameter && !strcasecmp(unpackParameter->GetValue(), "no"));
@@ -944,6 +1156,7 @@ void PrePostProcessor::UpdatePauseState()
 			case PostInfo::ptRepairing:
 			case PostInfo::ptVerifyingRepaired:
 			case PostInfo::ptParRenaming:
+			case PostInfo::ptStreamRepairing:
 				needPause |= g_Options->GetParPauseQueue();
 				break;
 
@@ -1017,6 +1230,18 @@ bool PrePostProcessor::PostQueueDelete(DownloadQueue* downloadQueue, IdList* idL
 					else if (postInfo->GetNzbInfo()->GetUnpackThread())
 					{
 						((DirectUnpack*)postInfo->GetNzbInfo()->GetUnpackThread())->NzbDeleted(downloadQueue, postInfo->GetNzbInfo());
+						ok = true;
+					}
+					else if (postInfo->GetNzbInfo()->GetLiveRepairThread())
+					{
+						// the job is waiting for a live stream-repair pass:
+						// detach first (the pass aborts at its next locked
+						// touchpoint without writing back), stop its fetches
+						// and release the job
+						Thread* liveRepairThread = postInfo->GetNzbInfo()->GetLiveRepairThread();
+						postInfo->GetNzbInfo()->SetLiveRepairThread(nullptr);
+						liveRepairThread->Stop();
+						postInfo->SetWorking(false);
 						ok = true;
 					}
 					else

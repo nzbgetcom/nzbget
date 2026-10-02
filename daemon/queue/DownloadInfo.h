@@ -105,6 +105,23 @@ public:
 	void SetResultFilename(const char* resultFilename) { m_resultFilename = resultFilename; }
 	uint32 GetCrc() { return m_crc; }
 	void SetCrc(uint32 crc) { m_crc = crc; }
+	int GetDupeFallbackRound() { return m_dupeFallbackRound; }
+	void SetDupeFallbackRound(int dupeFallbackRound) { m_dupeFallbackRound = dupeFallbackRound; }
+	const char* GetDupeOriginalMessageId() { return m_dupeOriginalMessageId; }
+	void SetDupeOriginalMessageId(const char* messageId) { m_dupeOriginalMessageId = messageId; }
+	int64 GetDupeExpectedOffset() { return m_dupeExpectedOffset; }
+	void SetDupeExpectedOffset(int64 dupeExpectedOffset) { m_dupeExpectedOffset = dupeExpectedOffset; }
+	int64 GetDupeExpectedEnd() { return m_dupeExpectedEnd; }
+	void SetDupeExpectedEnd(int64 dupeExpectedEnd) { m_dupeExpectedEnd = dupeExpectedEnd; }
+	std::vector<CString>* GetDupeSources() { return &m_dupeSources; }
+	int GetDupeLeadSnapshot() { return m_dupeLeadSnapshot; }
+	void SetDupeLeadSnapshot(int dupeLeadSnapshot) { m_dupeLeadSnapshot = dupeLeadSnapshot; }
+	int GetDupeNextLead() { return m_dupeNextLead; }
+	void SetDupeNextLead(int dupeNextLead) { m_dupeNextLead = dupeNextLead; }
+	int GetDupeDonorCount() { return m_dupeDonorCount; }
+	void SetDupeDonorCount(int dupeDonorCount) { m_dupeDonorCount = dupeDonorCount; }
+	bool GetDupeProactive() { return m_dupeProactive; }
+	void SetDupeProactive(bool dupeProactive) { m_dupeProactive = dupeProactive; }
 
 private:
 	std::unique_ptr<SegmentData> m_segmentContent;
@@ -116,6 +133,33 @@ private:
 	EStatus m_status = aiUndefined;
 	int m_partNumber;
 	int m_size = 0;
+	// number of times this article was requeued with a message-id borrowed
+	// from a duplicate collection (not persisted)
+	int m_dupeFallbackRound = 0;
+	// the article's own (primary) message-id, saved before the first
+	// substitution so the primary can be tried as a revert source (not persisted)
+	CString m_dupeOriginalMessageId;
+	// decoded byte range a substituted (donor) article is expected to occupy,
+	// derived from already-finished neighbour articles at substitution time;
+	// -1 = unknown (not persisted)
+	int64 m_dupeExpectedOffset = -1;
+	int64 m_dupeExpectedEnd = -1;
+	// the message-ids this article is tried against, pinned at its first
+	// fallback so no later queue/history change or lead rotation can shift the
+	// round->source mapping under the article (not persisted)
+	std::vector<CString> m_dupeSources;
+	// the nzb-id of the donor whose article the pinned slot 0 fetches; a
+	// lead-round result only counts towards demotion while this donor is still
+	// the file's lead (not persisted)
+	int m_dupeLeadSnapshot = 0;
+	// the nzb-id of the next distinct donor in the pinned order - the donor a
+	// demotion rotates the file's lead to; 0 = no other donor (not persisted)
+	int m_dupeNextLead = 0;
+	// distinct donors in the pinned order; bounds the lead rotation (not persisted)
+	int m_dupeDonorCount = 0;
+	// true when the first donor attempt was proactive cutover rather than a
+	// retry after the target article failed on its primary source
+	bool m_dupeProactive = false;
 };
 
 typedef std::vector<std::unique_ptr<ArticleInfo>> ArticleList;
@@ -168,6 +212,18 @@ public:
 	void SetFailedArticles(int failedArticles) { m_failedArticles = failedArticles; }
 	int GetSuccessArticles() { return m_successArticles; }
 	void SetSuccessArticles(int successArticles) { m_successArticles = successArticles; }
+	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
+	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	int GetDupeAttemptedArticles() { return m_dupeAttemptedArticles; }
+	void SetDupeAttemptedArticles(int dupeAttemptedArticles) { m_dupeAttemptedArticles = dupeAttemptedArticles; }
+	bool GetDupeCutover() { return m_dupeCutover; }
+	void SetDupeCutover(bool dupeCutover) { m_dupeCutover = dupeCutover; }
+	int GetDupeLeadDonorId() { return m_dupeLeadDonorId; }
+	void SetDupeLeadDonorId(int dupeLeadDonorId) { m_dupeLeadDonorId = dupeLeadDonorId; }
+	int GetDupeLeadFailures() { return m_dupeLeadFailures; }
+	void SetDupeLeadFailures(int dupeLeadFailures) { m_dupeLeadFailures = dupeLeadFailures; }
+	int GetDupeLeadSwitches() { return m_dupeLeadSwitches; }
+	void SetDupeLeadSwitches(int dupeLeadSwitches) { m_dupeLeadSwitches = dupeLeadSwitches; }
 	time_t GetTime() { return m_time; }
 	void SetTime(time_t time) { m_time = time; }
 	bool GetPaused() { return m_paused; }
@@ -209,6 +265,8 @@ public:
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	bool IsHardLinked();
+	int64 GetDecodedFileSize() { return m_decodedFileSize; }
+	void SetDecodedFileSize(int64 decodedFileSize) { m_decodedFileSize = decodedFileSize; }
 
 	ServerStatList* GetServerStats() { return &m_serverStats; }
 
@@ -230,6 +288,27 @@ private:
 	int m_missedArticles = 0;
 	int m_failedArticles = 0;
 	int m_successArticles = 0;
+	// articles obtained from a duplicate collection via DupeArticleFallback (not persisted)
+	int m_dupeRecoveredArticles = 0;
+	// distinct articles for which a duplicate source was tried (not persisted);
+	// the denominator for the recovered/attempted completion summary
+	int m_dupeAttemptedArticles = 0;
+	// once the primary proves to be missing many articles of this file, lead
+	// with the duplicate for the remaining articles instead of failing on the
+	// primary first (not persisted)
+	bool m_dupeCutover = false;
+	// nzb-id of the duplicate this file's fresh articles try first; rotated to
+	// the next duplicate when the lead keeps missing articles, so fresh
+	// articles do not re-fail on a holed posting; 0 = not decided yet, the
+	// top-scored duplicate leads (not persisted)
+	int m_dupeLeadDonorId = 0;
+	// consecutive lead-donor misses; reaching LeadDemoteThreshold rotates
+	// m_dupeLeadDonorId (not persisted)
+	int m_dupeLeadFailures = 0;
+	// lead rotations since the last lead success; capped at the donor count so
+	// a release whose duplicates are ALL holed stops rotating (and logging)
+	// once every duplicate has led (not persisted)
+	int m_dupeLeadSwitches = 0;
 	time_t m_time = 0;
 	bool m_paused = false;
 	bool m_deleted = false;
@@ -251,8 +330,11 @@ private:
 	CString m_parSetId;
 	bool m_flushLocked = false;
 	std::string m_hardLinkPath;
+	// raw file size declared by the first successfully decoded yEnc article
+	// (not persisted); used to verify articles borrowed from duplicates
+	std::atomic<int64> m_decodedFileSize{0};
 
-	static int m_idGen;
+	static std::atomic<int> m_idGen;
 	static int m_idMax;
 
 	friend class CompletedFile;
@@ -300,6 +382,69 @@ private:
 };
 
 typedef std::deque<CompletedFile> CompletedFileList;
+
+// a contiguous byte range of a decoded file
+struct StreamRange
+{
+	int64 Offset = 0;
+	int64 Size = 0;
+	int64 End() const { return Offset + Size; }
+};
+
+typedef std::vector<StreamRange> StreamRangeList;
+
+/*
+ * Byte ranges of a completed file which no news server could supply,
+ * captured while the file's article list still exists, so post-processing
+ * can repair them from a differently segmented duplicate posting
+ * (see option <DupeArticleFallback> value "stream"; not persisted).
+ */
+class StreamRepairJob
+{
+public:
+	StreamRepairJob(int fileId, const char* filename, int64 decodedFileSize, int64 failedSize,
+		int64 missedSize, int failedArticles, bool parFile, StreamRangeList holes,
+		uint64 stepsHash = 0) :
+		m_fileId(fileId), m_filename(filename), m_decodedFileSize(decodedFileSize),
+		m_failedSize(failedSize), m_missedSize(missedSize), m_failedArticles(failedArticles),
+		m_parFile(parFile), m_holes(std::move(holes)), m_stepsHash(stepsHash) {}
+	int GetFileId() const { return m_fileId; }
+	const char* GetFilename() const { return m_filename; }
+	int64 GetDecodedFileSize() const { return m_decodedFileSize; }
+	// the file's ENCODED failed size (bytes= units, as counted into
+	// m_currentFailedSize) and whether it is a par2 file, captured at
+	// job-creation time while the FileInfo was still alive
+	int64 GetFailedSize() const { return m_failedSize; }
+	int64 GetMissedSize() const { return m_missedSize; }
+	int GetFailedArticles() const { return m_failedArticles; }
+	bool GetParFile() const { return m_parFile; }
+	StreamRangeList* GetHoles() { return &m_holes; }
+	const StreamRangeList* GetHoles() const { return &m_holes; }
+	void SetHoles(StreamRangeList holes) { m_holes = std::move(holes); }
+	// article-size step fingerprint of the file's posting (see
+	// DupeArticleFallback::ArticleSizeStepsHash), 0 = none
+	uint64 GetStepsHash() const { return m_stepsHash; }
+	bool GetLiveAttempted() const { return m_liveAttempted; }
+	void SetLiveAttempted(bool liveAttempted) { m_liveAttempted = liveAttempted; }
+
+private:
+	int m_fileId;
+	CString m_filename;
+	int64 m_decodedFileSize;
+	int64 m_failedSize;
+	int64 m_missedSize;
+	int m_failedArticles;
+	bool m_parFile;
+	StreamRangeList m_holes;
+	uint64 m_stepsHash;
+	// whether the download-concurrent live pass already tried this job once:
+	// donors are static, so retrying live would only re-pay fetch traffic -
+	// whatever is left waits for the post-processing pass (not persisted; a
+	// restart re-allows one live attempt, which is harmless)
+	bool m_liveAttempted = false;
+};
+
+typedef std::vector<StreamRepairJob> StreamRepairJobList;
 
 class NzbParameter
 {
@@ -554,6 +699,16 @@ public:
 	void SetCurrentSuccessArticles(int currentSuccessArticles) { m_currentSuccessArticles = currentSuccessArticles; }
 	int GetCurrentFailedArticles() { return m_currentFailedArticles; }
 	void SetCurrentFailedArticles(int currentFailedArticles) { m_currentFailedArticles = currentFailedArticles; }
+	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
+	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
+	int64 GetDupeRecoveredBytes() { return m_dupeRecoveredBytes; }
+	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
+	int GetDupeRecoveredHoles() { return m_dupeRecoveredHoles; }
+	void SetDupeRecoveredHoles(int value) { m_dupeRecoveredHoles = value; }
+	enum EDupeParDeferState { dpNone, dpDeferred, dpLifted };
+	EDupeParDeferState GetDupeParDeferState() { return m_dupeParDeferState; }
+	void SetDupeParDeferState(EDupeParDeferState state) { m_dupeParDeferState = state; }
+	StreamRepairJobList* GetStreamRepairJobs() { return &m_streamRepairJobs; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
 	int GetExtraPriority() { return m_extraPriority; }
@@ -680,6 +835,8 @@ public:
 	void SetLoadingPar(bool loadingPar) { m_loadingPar = loadingPar; }
 	Thread* GetUnpackThread() { return m_unpackThread; }
 	void SetUnpackThread(Thread* unpackThread) { m_unpackThread = unpackThread; }
+	Thread* GetLiveRepairThread() { return m_liveRepairThread; }
+	void SetLiveRepairThread(Thread* liveRepairThread) { m_liveRepairThread = liveRepairThread; }
 	void UpdateCurrentStats();
 	void UpdateCompletedStats(FileInfo* fileInfo);
 	void UpdateDeletedStats(FileInfo* fileInfo);
@@ -729,6 +886,15 @@ private:
 	int m_failedArticles = 0;
 	int m_currentSuccessArticles = 0;
 	int m_currentFailedArticles = 0;
+	// aggregate of FileInfo::m_dupeRecoveredArticles (persisted for restart)
+	int m_dupeRecoveredArticles = 0;
+	int64 m_dupeRecoveredBytes = 0;
+	int m_dupeRecoveredHoles = 0;
+	// which way the par-first rule of duplicate recovery went, for logging once (not persisted)
+	EDupeParDeferState m_dupeParDeferState = dpNone;
+	// missing byte ranges of completed media files awaiting stream repair
+	// from duplicate collections in post-processing (persisted)
+	StreamRepairJobList m_streamRepairJobs;
 	time_t m_minTime = 0;
 	time_t m_maxTime = 0;
 	int m_priority = 0;
@@ -793,12 +959,15 @@ private:
 	bool m_waitingPar = false;
 	bool m_loadingPar = false;
 	Thread* m_unpackThread = nullptr;
+	// download-concurrent stream repair for completed-with-holes files (see
+	// option <DupeArticleFallback> value "live"; not persisted)
+	Thread* m_liveRepairThread = nullptr;
 	int m_desiredServerId = 0;
 	bool m_skipScriptProcessing = false;
 	bool m_skipDiskWrite = false;
 	bool m_autoCategory = false;
 
-	static int m_idGen;
+	static std::atomic<int> m_idGen;
 	static int m_idMax;
 
 	void ClearMessages();
@@ -827,7 +996,10 @@ public:
 		ptPostUnpackRenaming,
 		ptExecutingScript,
 		ptFinished,
-		ptPostDownloadRenaming
+		// appended after ptFinished: stage numbers are persisted (stage+1 in
+		// the queue file) and range checks rely on the existing order
+		ptPostDownloadRenaming,
+		ptStreamRepairing
 	};
 
 	typedef std::vector<CString> ParredFiles;
@@ -855,6 +1027,12 @@ public:
 	void SetRequestParCheck(bool requestParCheck) { m_requestParCheck = requestParCheck; }
 	bool GetForceParFull() { return m_forceParFull; }
 	void SetForceParFull(bool forceParFull) { m_forceParFull = forceParFull; }
+	bool GetStreamRepairDone() { return m_streamRepairDone; }
+	void SetStreamRepairDone(bool streamRepairDone) { m_streamRepairDone = streamRepairDone; }
+	bool GetStreamRepairRecovered() { return m_streamRepairRecovered; }
+	void SetStreamRepairRecovered(bool streamRepairRecovered) { m_streamRepairRecovered = streamRepairRecovered; }
+	bool GetParCannotCover() { return m_parCannotCover; }
+	void SetParCannotCover(bool parCannotCover) { m_parCannotCover = parCannotCover; }
 	bool GetForceRepair() { return m_forceRepair; }
 	void SetForceRepair(bool forceRepair) { m_forceRepair = forceRepair; }
 	bool GetParRepaired() { return m_parRepaired; }
@@ -878,6 +1056,11 @@ private:
 	bool m_deleted = false;
 	bool m_requestParCheck = false;
 	bool m_forceParFull = false;
+	// the post-processing stream repair has run, and whether it wrote bytes
+	bool m_streamRepairDone = false;
+	bool m_streamRepairRecovered = false;
+	// par-check was postponed because the par2 files cannot cover the damage
+	bool m_parCannotCover = false;
 	bool m_forceRepair = false;
 	bool m_parRepaired = false;
 	bool m_unpackTried = false;
