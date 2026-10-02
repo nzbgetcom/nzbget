@@ -262,10 +262,12 @@ void RepairController::Run()
 {
 	BString<1024> nzbName;
 	CString destDir;
+	bool dupeRepaired = false;
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_postInfo->GetNzbInfo()->GetName();
 		destDir = m_postInfo->GetNzbInfo()->GetDestDir();
+		dupeRepaired = m_postInfo->GetNzbInfo()->GetDupeRecoveredBytes() > 0;
 	}
 
 	m_parChecker.SetPostInfo(m_postInfo);
@@ -278,7 +280,7 @@ void RepairController::Run()
 	// into the collection (live or in post-processing, before or after a
 	// restart), only a full verification sees the repaired bytes
 	m_parChecker.SetParQuick(g_Options->GetParQuick() && !m_postInfo->GetForceParFull() &&
-		m_postInfo->GetNzbInfo()->GetDupeRecoveredBytes() == 0);
+		!dupeRepaired);
 	m_parChecker.SetForceRepair(m_postInfo->GetForceRepair());
 
 	m_parChecker.PrintMessage(Message::mkInfo, "Checking pars for %s", *nzbName);

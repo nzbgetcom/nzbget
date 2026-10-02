@@ -533,9 +533,16 @@ void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targ
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
 	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
-	if (!nzbInfo || nzbInfo->GetLiveRepairThread() != this)
+	if (!nzbInfo)
 	{
-		// deleted or detached mid-pass: nothing may be written back
+		return;
+	}
+	if (nzbInfo->GetLiveRepairThread() != this)
+	{
+		// detached mid-pass (shutdown): no job state may be written back, but
+		// the bytes already patched on disk must still be recorded, or a later
+		// par-check would judge those files by their download-time state
+		nzbInfo->SetDupeRecoveredBytes(nzbInfo->GetDupeRecoveredBytes() + m_recoveredBytes);
 		return;
 	}
 
