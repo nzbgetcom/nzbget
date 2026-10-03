@@ -66,10 +66,16 @@ public:
 	virtual int64 Size() { return EnsureInit() ? m_size : 0; }
 	virtual bool Read(int64 offset, void* buffer, int64 size);
 	void SetFetchBudget(int* budget) { m_fetchBudget = budget; }
+	// patch reads fetch the parts of a range in parallel through it (no
+	// budget is set then; budgeted map building stays serial)
+	void SetBatchFetcher(ArticleBatchFetcher* batchFetcher) { m_batchFetcher = batchFetcher; }
 	int TakeServedParts();
 
 private:
-	static constexpr int MaxCachedParts = 8;
+	static constexpr int MaxCachedParts = 16;
+	// at most this many parts are fetched ahead for one read, so a read
+	// never evicts parts it is about to use from the cache
+	static constexpr int MaxPrefetchParts = MaxCachedParts / 2;
 	static constexpr int MaxResolveSteps = 6;
 
 	ArticleFetcher& m_fetcher;
@@ -81,10 +87,13 @@ private:
 	int64 m_size = -1;
 	int64 m_drift = 0;
 	int* m_fetchBudget = nullptr;
+	ArticleBatchFetcher* m_batchFetcher = nullptr;
 	bool m_bad = false;
 
 	bool EnsureInit();
 	const ArticleFetcher::FetchedArticle* FetchPart(int partIndex);
+	const ArticleFetcher::FetchedArticle* StoreFetched(int partIndex, ArticleFetcher::FetchedArticle&& fetched);
+	void Prefetch(int64 offset, int64 size);
 	const ArticleFetcher::FetchedArticle* PartForOffset(int64 offset, int& partIndex);
 };
 
@@ -97,6 +106,7 @@ public:
 	DonorMemberSource* GetDonorSource(int memberIndex);
 	std::vector<SetMember> BuildMembers();
 	void SetFetchBudget(int* budget);
+	void SetBatchFetcher(ArticleBatchFetcher* batchFetcher);
 	int TakeServedParts();
 
 private:
@@ -104,6 +114,7 @@ private:
 	std::vector<FileInfo*> m_files;
 	std::vector<std::unique_ptr<DonorMemberSource>> m_sources;
 	int* m_fetchBudget = nullptr;
+	ArticleBatchFetcher* m_batchFetcher = nullptr;
 };
 
 /* target member files opened read-write on demand for verify and patch */

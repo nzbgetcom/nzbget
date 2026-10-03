@@ -115,9 +115,12 @@ const ArticleFetcher::FetchedArticle* DonorMemberSource::FetchPart(int partIndex
 	}
 
 	ArticleInfo* article = (*m_donorFile->GetArticles())[partIndex].get();
-	ArticleFetcher::FetchedArticle fetched = m_fetcher.Fetch(
-		article->GetMessageId(), *m_donorFile->GetGroups());
+	return StoreFetched(partIndex, m_fetcher.Fetch(article->GetMessageId(), *m_donorFile->GetGroups()));
+}
 
+const ArticleFetcher::FetchedArticle* DonorMemberSource::StoreFetched(int partIndex,
+	ArticleFetcher::FetchedArticle&& fetched)
+{
 	// consistency: every article of the member must declare the same
 	// decoded size and stay inside it, or the whole member is unusable
 	if (fetched.Success &&
@@ -183,12 +186,67 @@ const ArticleFetcher::FetchedArticle* DonorMemberSource::PartForOffset(int64 off
 	return nullptr;
 }
 
+void DonorMemberSource::Prefetch(int64 offset, int64 size)
+{
+	if (!m_batchFetcher || m_fetchBudget || m_bad || m_ranges.empty() || size <= 0)
+	{
+		return;
+	}
+
+	// the parts the estimates (corrected by the measured drift) put under the
+	// range, one more on each side for estimation error
+	auto indexOf = [this](int64 offset)
+	{
+		int64 target = offset - m_drift;
+		int index = 0;
+		while (index + 1 < (int)m_ranges.size() && m_ranges[index].End() <= target)
+		{
+			index++;
+		}
+		return index;
+	};
+	int first = std::max(0, indexOf(offset) - 1);
+	int last = std::min((int)m_ranges.size() - 1, indexOf(offset + size - 1) + 1);
+
+	auto groups = std::make_shared<std::vector<CString>>();
+	for (const CString& group : *m_donorFile->GetGroups())
+	{
+		groups->emplace_back(*group);
+	}
+	std::vector<ArticleBatchFetcher::Request> requests;
+	std::vector<int> parts;
+	for (int index = first; index <= last && (int)parts.size() < MaxPrefetchParts; index++)
+	{
+		if (!m_cache.count(index))
+		{
+			requests.push_back({(*m_donorFile->GetArticles())[index]->GetMessageId(), groups});
+			parts.push_back(index);
+		}
+	}
+	if (parts.size() < 2)
+	{
+		return;	// nothing to gain over the serial fetch
+	}
+
+	m_batchFetcher->Begin(std::move(requests));
+	ArticleFetcher::FetchedArticle fetched;
+	for (size_t i = 0; i < parts.size() && m_batchFetcher->Next(fetched); i++)
+	{
+		StoreFetched(parts[i], std::move(fetched));
+		fetched = ArticleFetcher::FetchedArticle();
+	}
+	// a stop ends Next() early: drop what is still in flight
+	m_batchFetcher->CancelRemaining();
+}
+
 bool DonorMemberSource::Read(int64 offset, void* buffer, int64 size)
 {
 	if (!EnsureInit() || offset < 0 || size < 0 || offset + size > m_size)
 	{
 		return false;
 	}
+
+	Prefetch(offset, size);
 
 	char* out = (char*)buffer;
 	int64 pos = offset;
@@ -231,6 +289,7 @@ DonorMemberSource* DonorSetSources::GetDonorSource(int memberIndex)
 		m_sources[memberIndex] = std::make_unique<DonorMemberSource>(
 			m_fetcher, m_files[memberIndex]);
 		m_sources[memberIndex]->SetFetchBudget(m_fetchBudget);
+		m_sources[memberIndex]->SetBatchFetcher(m_batchFetcher);
 	}
 	return m_sources[memberIndex].get();
 }
@@ -254,6 +313,18 @@ void DonorSetSources::SetFetchBudget(int* budget)
 		if (source)
 		{
 			source->SetFetchBudget(budget);
+		}
+	}
+}
+
+void DonorSetSources::SetBatchFetcher(ArticleBatchFetcher* batchFetcher)
+{
+	m_batchFetcher = batchFetcher;
+	for (std::unique_ptr<DonorMemberSource>& source : m_sources)
+	{
+		if (source)
+		{
+			source->SetBatchFetcher(batchFetcher);
 		}
 	}
 }
@@ -1688,6 +1759,8 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 		}
 
 		DonorSetSources donorSources(m_fetcher, donorNzb.get());
+		// patch reads fetch the donor parts of each range in parallel
+		donorSources.SetBatchFetcher(&m_batchFetcher);
 		std::vector<SetMember> donorMembers = donorSources.BuildMembers();
 		std::vector<MemberSet> donorSets = ContentMapper::GroupSets(donorMembers);
 
