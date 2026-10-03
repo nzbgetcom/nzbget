@@ -25,6 +25,7 @@ endif()
 target_link_libraries(${TESTS_TARGET} PRIVATE ${LIBS})
 target_include_directories(${TESTS_TARGET} PRIVATE ${INCLUDES})
 
+apply_compiler_flags(${TESTS_TARGET})
 apply_sanitizers(${TESTS_TARGET})
 
 if (TARGET ${PACKAGE})

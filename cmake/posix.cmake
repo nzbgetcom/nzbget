@@ -63,16 +63,28 @@ if(ENABLE_STATIC)
 	# for the sub-projects
 	include_directories($ENV{INCLUDES})
 else()
-	find_package(Threads REQUIRED)
-	find_package(LibXml2 REQUIRED)
+	# Build external dependencies via FetchContent
+	include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
+	include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
+	if(APPLE)
+		# On macOS, use system libxml2 (provided by Xcode SDK)
+		find_package(LibXml2 REQUIRED)
+	else()
+		include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
+	endif()
+	include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
+	include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
-	set(LIBS ${LIBS} Threads::Threads LibXml2::LibXml2)
-	set(INCLUDES ${INCLUDES} ${LIBXML2_INCLUDE_DIR})
+	find_package(Threads REQUIRED)
+
+	set(LIBS ${LIBS} Threads::Threads)
 
 	if(NOT DISABLE_TLS)
-		find_package(OpenSSL REQUIRED)
 		set(LIBS ${LIBS} OpenSSL::SSL OpenSSL::Crypto)
-		set(INCLUDES ${INCLUDES} ${OPENSSL_INCLUDE_DIR})
+		set(HAVE_X509_CHECK_HOST 1)
+		if(OPENSSL_INCLUDE_DIR)
+			set(INCLUDES ${INCLUDES} ${OPENSSL_INCLUDE_DIR})
+		endif()
 	endif()
 
 	if(NOT DISABLE_CURSES)
@@ -81,38 +93,21 @@ else()
 			set(CURSES_NEED_WIDE TRUE)
 		endif()
 		find_package(Curses REQUIRED)
-		set(INCLUDES ${INCLUDES} ${CURSES_INCLUDE_DIRS})
 		set(LIBS ${LIBS} ${CURSES_LIBRARIES})
 	endif()
 
 	if(NOT DISABLE_GZIP)
-		find_package(ZLIB REQUIRED)
-		set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
 		set(LIBS ${LIBS} ZLIB::ZLIB)
 	endif()
 
-	find_package(Boost COMPONENTS ${BOOST_NEEDED_COMPONENTS})
-
-	if(NOT Boost_FOUND)
-		message(STATUS "Required Boost libraries (${BOOST_NEEDED_COMPONENTS}) not found. Building from source")
-
-		include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
-
-		list(APPEND EXTERNAL_DEPS boost)
-	else()
-		set(LIBS ${LIBS} Boost::json)
-		set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR})
-	endif()
+	set(LIBS ${LIBS} LibXml2::LibXml2 Boost::boost rapidyenc::rapidyenc)
 endif()
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
-
-list(APPEND EXTERNAL_DEPS rapidyenc)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	list(APPEND EXTERNAL_DEPS par2-turbo)
+	set(LIBS ${LIBS} par2-turbo::par2-turbo)
 endif()
 
 check_include_files(regex.h HAVE_SYSTEM_REGEX_H)

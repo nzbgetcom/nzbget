@@ -20,34 +20,38 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Download and extract vcpkg cache and unpackers
+    - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
-        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
 
-    - name: Build
-      run: |
-        New-Item build -ItemType Directory -Force | Out-Null
-        cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
-        cmake --build . --config Release -j 4
+    - name: Cache ExternalProject dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/debug-tests/deps
+        key: deps-windows-test-${{ hashFiles('cmake/openssl.cmake', 'cmake/zlib.cmake', 'cmake/libxml2.cmake', 'cmake/boost.cmake', 'CMakeLists.txt') }}
+        restore-keys: |
+          deps-windows-test-
 
-    - name: Test
+    - name: Build and Test
+      shell: cmd
       run: |
-        cd build
-        ctest -C Release
+        choco install nasm jom --no-progress
+        set PATH=%PATH%;C:\Program Files\NASM;C:\ProgramData\chocolatey\bin
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        cmake --preset=debug-tests
+        cmake --build --preset=debug-tests
+        ctest --preset=debug-tests
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-windows-test-log
-        path: build/Testing/Temporary/LastTest.log
+        path: build/debug-tests/Testing/Temporary/LastTest.log
         retention-days: 5
 
   tests-linux:

@@ -4,49 +4,62 @@ option(DISABLE_TLS "Disable TLS")
 message(STATUS "TOOLCHAIN OPTIONS:")
 message(STATUS "  SYSTEM NAME      ${CMAKE_SYSTEM_NAME}")
 message(STATUS "  SYSTEM PROCESSOR ${CMAKE_SYSTEM_PROCESSOR}")
-message(STATUS "  TARGET TRIPLET   ${VCPKG_TARGET_TRIPLET}")
 message(STATUS "BUILD OPTIONS:")
-message(STATUS "  BUILD TYPE:   ${CMAKE_BUILD_TYPE}")
+message(STATUS "  BUILD TYPE:      ${CMAKE_BUILD_TYPE}")
+message(STATUS "  ENABLE LTO:      ${ENABLE_LTO}")
 message(STATUS "  ENABLE TESTS:    ${ENABLE_TESTS}")
 message(STATUS "  DISABLE TLS:     ${DISABLE_TLS}")
 message(STATUS "  USE SANITIZERS:  ${USE_SANITIZERS}")
 
-set(Boost_USE_STATIC_LIBS ON)
+# Windows 7 minimum target (0x0601), disable MSVC CRT deprecation warnings, disable Boost auto-linking
+add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 _CRT_SECURE_NO_WARNINGS BOOST_ALL_NO_LIB)
+
+# Build external dependencies via FetchContent
+include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
 find_package(Threads REQUIRED)
-find_package(LibXml2 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS json)
+
+# nzbget target is created in CMakeLists.txt before this include
+# Use CMAKE_PROJECT_NAME which is "nzbget"
+set(NZBGET_TARGET ${CMAKE_PROJECT_NAME})
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set(LIBS ${LIBS} dbghelp.lib)
+	target_link_libraries(${NZBGET_TARGET} PUBLIC dbghelp.lib)
 endif()
 
-set(LIBS ${LIBS} Threads::Threads Boost::json LibXml2::LibXml2 winmm.lib)
-set(INCLUDES ${INCLUDES} ${Boost_INCLUDE_DIR} ${LIBXML2_INCLUDE_DIR})
+target_link_libraries(${NZBGET_TARGET} PUBLIC
+	Threads::Threads
+	Boost::boost
+	LibXml2::LibXml2
+	ZLIB::ZLIB
+	rapidyenc::rapidyenc
+	winmm.lib
+)
 
 if(NOT DISABLE_TLS)
-	find_package(OpenSSL REQUIRED)
+	target_link_libraries(${NZBGET_TARGET} PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 	set(HAVE_X509_CHECK_HOST 1)
-	set(LIBS ${LIBS} OpenSSL::SSL OpenSSL::Crypto)
-	set(INCLUDES ${INCLUDES} ${OPENSSL_INCLUDE_DIR})
+	if(OPENSSL_INCLUDE_DIR)
+		target_include_directories(${NZBGET_TARGET} PUBLIC ${OPENSSL_INCLUDE_DIR})
+	endif()
 endif()
 
-find_package(ZLIB REQUIRED)
-set(LIBS ${LIBS} ZLIB::ZLIB)
-set(INCLUDES ${INCLUDES} ${ZLIB_INCLUDE_DIRS})
-set(INCLUDES ${INCLUDES}
+target_include_directories(${NZBGET_TARGET} PUBLIC
 	${CMAKE_SOURCE_DIR}/daemon/windows
-	${CMAKE_SOURCE_DIR}/windows/resources
+	${CMAKE_SOURCE_DIR}/platforms/windows/resources
 )
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 
-list(APPEND EXTERNAL_DEPS rapidyenc par2-turbo)
+target_link_libraries(${NZBGET_TARGET} PUBLIC par2-turbo::par2-turbo)
 
 if(NOT HAVE_SYSTEM_REGEX_H)
-	list(APPEND EXTERNAL_DEPS regex)
+	target_link_libraries(${NZBGET_TARGET} PUBLIC regex)
 endif()
 
 set(FUNCTION_MACRO_NAME __FUNCTION__)
@@ -65,4 +78,14 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(_CRTDBG_MAP_ALLOC 1)
+endif()
+
+# Set CMAKE_SYSTEM_PROCESSOR for cross-compilation on Windows
+# Needed because CMake with VS generator doesn't auto-update it for -A Win32/x64
+if(MSVC)
+	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		set(CMAKE_SYSTEM_PROCESSOR "x86" CACHE STRING "Target processor architecture" FORCE)
+	elseif(CMAKE_SIZEOF_VOID_P EQUAL 8)
+		set(CMAKE_SYSTEM_PROCESSOR "AMD64" CACHE STRING "Target processor architecture" FORCE)
+	endif()
 endif()

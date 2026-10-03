@@ -1,0 +1,337 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build for rapid development (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "debug-tests",
+      "displayName": "Debug with Tests",
+      "description": "Debug build with unit tests enabled (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "debug-asan",
+      "displayName": "Debug with ASan & UBSan",
+      "description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "USE_SANITIZERS": "address,undefined",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "debug-tsan",
+      "displayName": "Debug with TSan",
+      "description": "Debug build with ThreadSanitizer (detect data races and deadlocks) (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-tsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "USE_SANITIZERS": "thread",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Optimized release build (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "reldebinfo",
+      "displayName": "Release with Debug Info",
+      "description": "Optimized build with debug symbols for profiling (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/reldebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "minsizerel",
+      "displayName": "Minimum Size Release",
+      "description": "Release build optimized for binary size (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/minsizerel",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "release-lto",
+      "displayName": "Release with LTO",
+      "description": "Release build with Link-Time Optimization (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/release-lto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "ci-release-lto",
+      "displayName": "CI Release with LTO",
+      "description": "Full release build with Link-Time Optimization for CI/packaging (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-release-lto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-windows-x64",
+      "displayName": "CI Windows x64",
+      "description": "Windows x64 CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-windows-x86",
+      "displayName": "CI Windows x86",
+      "description": "Windows x86 CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-x86",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-macos-arm64",
+      "displayName": "CI macOS arm64",
+      "description": "macOS Apple Silicon CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-macos-arm64",
+      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-macos-x64",
+      "displayName": "CI macOS x64",
+      "description": "macOS Intel CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-macos-x64",
+      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ninja-debug",
+      "displayName": "Ninja Debug",
+      "description": "Fast parallel debug build using Ninja (uses system libraries when available)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "ninja-release",
+      "displayName": "Ninja Release",
+      "description": "Fast parallel release build using Ninja (uses system libraries when available)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "ninja-release-lto",
+      "displayName": "Ninja Release with LTO",
+      "description": "Fast parallel release build with LTO using Ninja (uses system libraries when available)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-release-lto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    },
+    {
+      "name": "ninja-debug-tests",
+      "displayName": "Ninja Debug with Tests",
+      "description": "Fast parallel debug build with unit tests using Ninja (uses system libraries when available)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/ninja-debug-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-tests",
+      "configurePreset": "debug-tests",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-asan",
+      "configurePreset": "debug-asan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-tsan",
+      "configurePreset": "debug-tsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "reldebinfo",
+      "configurePreset": "reldebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "minsizerel",
+      "configurePreset": "minsizerel",
+      "configuration": "MinSizeRel"
+    },
+    {
+      "name": "release-lto",
+      "configurePreset": "release-lto",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-release-lto",
+      "configurePreset": "ci-release-lto",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-windows-x64",
+      "configurePreset": "ci-windows-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-windows-x86",
+      "configurePreset": "ci-windows-x86",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-macos-arm64",
+      "configurePreset": "ci-macos-arm64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-macos-x64",
+      "configurePreset": "ci-macos-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ninja-debug",
+      "configurePreset": "ninja-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ninja-release",
+      "configurePreset": "ninja-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "ninja-release-lto",
+      "configurePreset": "ninja-release-lto",
+      "configuration": "Release"
+    },
+    {
+      "name": "ninja-debug-tests",
+      "configurePreset": "ninja-debug-tests",
+      "configuration": "Debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug-tests",
+      "configurePreset": "debug-tests",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-asan",
+      "configurePreset": "debug-asan",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-tsan",
+      "configurePreset": "debug-tsan",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ninja-debug-tests",
+      "configurePreset": "ninja-debug-tests",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

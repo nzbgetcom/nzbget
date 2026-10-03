@@ -25,7 +25,8 @@ Param (
     [switch]$Build64=$False,
     [switch]$BuildSetup=$False,
     [switch]$BuildTesting=$False,
-    [switch]$DownloadUnpackers=$False
+    [switch]$DownloadUnpackers=$False,
+    [switch]$BuildDepsFromSource=$True
 )
 
 If (-not $BuildDebug -and
@@ -46,7 +47,6 @@ If (-not $BuildDebug -and
 $ToolsRoot="C:\nzbget"
 $Sed="$ToolsRoot\sed\sed.exe"
 $Nsis="$ToolsRoot\nsis"
-$VcpkgDir="c:\vcpkg"
 
 # global ps params
 # stop on error
@@ -65,7 +65,7 @@ Function DownloadUnpackers {
     Write-Host "Downloading unpackers to $ImageDir"
 
     $UnpackDir="$BuildDir\unpack"
-    New-Item -ItemType Directory $UnpackDir | Out-Null
+    New-Item -ItemType Directory $UnpackDir -Force | Out-Null
 
     # download unrar64
     Invoke-WebRequest -Uri $UrlUnrar64 -OutFile $UnpackDir\unrarw64.exe
@@ -119,16 +119,16 @@ Function PrepareFiles {
         Write-Output "This test setup doesn't include binaries for 64 bit platform" | Out-File "$PackageDir\64\README-WARNING.txt"
     }
 
-    Copy-Item windows\nzbget-command-shell.bat $PackageDir
-    Copy-Item windows\install-update.bat $PackageDir
-    Copy-Item windows\README-WINDOWS.txt $PackageDir
+    Copy-Item platforms\windows\nzbget-command-shell.bat $PackageDir
+    Copy-Item platforms\windows\install-update.bat $PackageDir
+    Copy-Item platforms\windows\README-WINDOWS.txt $PackageDir
     Copy-Item ChangeLog.md $PackageDir
     # not needeed anymore
     # Copy-Item INSTALLATION.md $PackageDir
     Copy-Item COPYING $PackageDir
     Copy-Item pubkey.pem $PackageDir
     Copy-Item webui $PackageDir -Recurse
-    Copy-Item windows\package-info.json $PackageDir\webui
+    Copy-Item platforms\windows\package-info.json $PackageDir\webui
 
     Write-Host "Updating root certificates"
     Invoke-WebRequest -Uri "https://curl.se/ca/cacert.pem" -OutFile "$PackageDir\cacert.pem"
@@ -168,19 +168,31 @@ Function BuildTarget($Type, $Bits) {
     If ($Bits -eq "32") {
         $Arch="x86"
         $Platform="Win32"
+        $SystemProcessor="x86"
     } Else {
         $Arch="x64"
         $Platform="x64"
+        $SystemProcessor="AMD64"
     }
 
     New-Item -Path "$BuildDir\$Type$Bits" -ItemType Directory -Force | Out-Null
     Set-Location "$BuildDir\$Type$Bits"
 
     If (-not (Test-Path "$Type\nzbget.exe")) {
-        $CMakeCmd="cmake ..\.. -DCMAKE_TOOLCHAIN_FILE=$VcpkgDir\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$Arch-windows-static -A $Platform"
+        $CMakeCmd="cmake ..\.. -A $Platform -DCMAKE_SYSTEM_PROCESSOR=$SystemProcessor"
+
+        # Always pass CMAKE_BUILD_TYPE to ensure libxml2/FindZLIB resolves correctly
+        $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=$Type"
+
+        If ($BuildDepsFromSource) {
+            $CMakeCmd="$CMakeCmd -DBUILD_DEPS_FROM_SOURCE=ON"
+        }
 
         If ($Type -eq "Debug" ) {
-            $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=Debug"
+            $CMakeCmd="$CMakeCmd -DENABLE_TESTS=ON"
+        } ElseIf ($env:LTO -eq "yes") {
+            # LTO for release builds (opt-in with LTO=yes)
+            $CMakeCmd="$CMakeCmd -DENABLE_LTO=ON"
         }
 
         if ($BuildTesting) {
@@ -205,13 +217,13 @@ Function BuildTarget($Type, $Bits) {
 Function BuildSetup($Type) {
     Write-Host "Building NSIS setup package ($Type)"
 
-    Copy-Item -Recurse -Force windows\resources $DistribDir
+    Copy-Item -Recurse -Force platforms\windows\resources $DistribDir
     If ($Build32) {
         $Bits="32"
     } Else {
         $Bits="64"
     }
-    Copy-Item "windows\nzbget-setup.nsi" $DistribDir
+    Copy-Item "platforms\windows\nzbget-setup.nsi" $DistribDir
     Copy-Item "$BuildDir\$Type$Bits\version.nsi" $DistribDir
     Copy-Item "$BuildDir\$Type$Bits\version-uninstall.nsi" $DistribDir
     Set-Location $DistribDir
@@ -225,7 +237,7 @@ Function BuildSetup($Type) {
         $InstallerFile="nzbget-$Version$VersionSuffix-bin-windows-debug-setup.exe"
     }
 
-    Move-Item "$DistribDir\nzbget-setup.exe" "$BuildDir\$InstallerFile" -Force
+    Move-Item "$DistribDir\nzbget-setup.exe" "$DistDir\$InstallerFile" -Force
 }
 
 # build package release/debug
@@ -245,6 +257,7 @@ Function Build($Type) {
 # script begins here
 $SrcDir=Get-Location | Select-Object -ExpandProperty Path
 $BuildDir="build"
+$DistDir="build"
 $DistribDir="$BuildDir\distrib"
 $PackageDir="$DistribDir\nzbget"
 $Jobs=(Get-ComputerInfo).CsProcessors.NumberOfCores
@@ -259,23 +272,23 @@ $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -sp
 If (Test-Path $DistribDir) {
     Remove-Item $DistribDir -Force -Recurse
 }
-New-Item -ItemType Directory $BuildDir -ErrorAction SilentlyContinue | Out-Null
+New-Item -ItemType Directory $BuildDir,$DistDir -Force -ErrorAction SilentlyContinue | Out-Null
 
 # download 7z/unrar
 if ($DownloadUnpackers) {
     DownloadUnpackers
 }
 
+# build binaries if requested
 if ($BuildRelease -or $BuildDebug) {
     Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
     New-Item -ItemType Directory $PackageDir | Out-Null
+    if ($BuildRelease) {
+        Build("Release")
+    }
+    if ($BuildDebug) {
+        Build("Debug")
+    }
 }
 
-# build
-if ($BuildRelease) {
-    Build("Release")
-}
 
-if ($BuildDebug) {
-    Build("Debug")
-}

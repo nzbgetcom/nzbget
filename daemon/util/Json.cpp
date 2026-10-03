@@ -21,6 +21,11 @@
 
 #include "Json.h"
 
+// Explicit instantiation of Boost.JSON templates to work with -fvisibility=hidden
+// and -flto=thin. Without this, template functions like boost::json::object::contains()
+// are instantiated with hidden visibility and become unavailable at link time.
+#include <boost/json/src.hpp>
+
 namespace Json
 {
 	std::optional<JsonValue> Deserialize(std::basic_istream<char>& is) noexcept

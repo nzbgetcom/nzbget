@@ -37,9 +37,14 @@
 #define _USE_32BIT_TIME_T
 #endif
 
-#if _WIN32_WINNT < 0x0501
+#if _WIN32_WINNT < 0x0601
 #undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501
+#define _WIN32_WINNT 0x0601
+#endif
+
+#if WINVER < 0x0601
+#undef WINVER
+#define WINVER 0x0601
 #endif
 
 #ifdef _WIN64

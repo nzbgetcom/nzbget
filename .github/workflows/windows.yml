@@ -47,23 +47,37 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
-        Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
-        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
 
+    - name: Cache ExternalProject dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/${{ matrix.type }}${{ matrix.arch }}/deps
+        key: deps-windows-${{ matrix.arch }}-${{ matrix.type }}-${{ hashFiles('cmake/openssl.cmake', 'cmake/zlib.cmake', 'cmake/libxml2.cmake', 'cmake/boost.cmake', 'CMakeLists.txt') }}
+        restore-keys: |
+          deps-windows-${{ matrix.arch }}-${{ matrix.type }}-
+
     - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
-      run: Invoke-Expression "windows\build-nzbget.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}"
+      env:
+        LTO: ${{ matrix.type == 'Release' && 'yes' || 'no' }}
+      shell: cmd
+      run: |
+        choco install nasm jom --no-progress
+        set PATH=%PATH%;C:\Program Files\NASM;C:\ProgramData\chocolatey\bin
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.arch == '64' && 'x64' || 'x86' }}
+        powershell -ExecutionPolicy Bypass -Command "& platforms\windows\build.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}; if (-not $?) { exit 1 }"
+        if errorlevel 1 exit /b %errorlevel%
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       id: upload-unsigned-artifact
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
+        if-no-files-found: error
         path: |
-          build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
-          build\${{ matrix.type }}${{ matrix.arch }}\*.nsi
+          build/${{ matrix.type }}${{ matrix.arch }}/${{ matrix.type }}/*.exe
+          build/${{ matrix.type }}${{ matrix.arch }}/*.nsi
         retention-days: 5
 
     - name: Submit signing request
@@ -118,7 +132,7 @@ jobs:
         Copy-Item Debug* build -Recurse -ErrorAction SilentlyContinue
 
     - name: Build nzbget windows installer
-      run: Invoke-Expression "windows\build-nzbget.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
+      run: Invoke-Expression "platforms\windows\build.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
