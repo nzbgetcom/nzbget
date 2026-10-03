@@ -20,6 +20,8 @@
 
 #include "nzbget.h"
 
+#include <map>
+
 #include <algorithm>
 #include "ArticleFetcher.h"
 #include "NntpConnection.h"
@@ -69,6 +71,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 {
 	FetchedArticle result;
 	ServerPool::RawServerList failedServers;
+	std::map<NewsServer*, int> transientAttempts;
 
 	int level = 0;
 	while (level <= g_ServerPool->GetMaxNormLevel() && !m_stopped)
@@ -153,6 +156,10 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 			}
 			continue;
 		}
+		if (result.Transient && ++transientAttempts[server] < MaxTransientAttempts)
+		{
+			continue;	// ask this server again on a fresh connection
+		}
 
 		// this server could not supply the article; try the remaining servers
 		// of this level, then the next level
@@ -215,6 +222,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 	if (!connection->Connect())
 	{
 		detail("Stream repair: could not connect to %s", connection->GetNewsServer()->GetName());
+		result.Transient = true;
 		return result;
 	}
 
@@ -233,12 +241,26 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 		{
 			detail("Stream repair: could not join groups on %s for %s",
 				connection->GetNewsServer()->GetName(), messageId);
+			result.Transient = !response;
+			if (!response)
+			{
+				connection->Disconnect();
+			}
 			return result;
 		}
 	}
 
 	const char* response = connection->Request(BString<1024>("BODY %s\r\n", messageId));
-	if (!response || strncmp(response, "2", 1))
+	if (!response)
+	{
+		// no reply at all (a timeout, or a pooled connection the server
+		// already closed): not an answer about the article
+		detail("Stream repair: no response from %s for %s", connection->GetNewsServer()->GetName(), messageId);
+		connection->Disconnect();
+		result.Transient = true;
+		return result;
+	}
+	if (strncmp(response, "2", 1))
 	{
 		detail("Stream repair: article %s not available on %s",
 			messageId, connection->GetNewsServer()->GetName());
@@ -298,6 +320,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 			detail("Stream repair: connection to %s lost while fetching %s",
 				connection->GetNewsServer()->GetName(), messageId);
 			connection->Disconnect();
+			result = FetchedArticle();
+			result.Transient = true;
 			return result;
 		}
 

@@ -71,7 +71,15 @@ public:
 		int64 FileSize = 0;		// total decoded file size from "=ybegin size="
 		bool Success = false;
 		bool Retry = false;		// interrupted by quota; retry without blaming source
+		// no definitive answer from the server (no connection, no response,
+		// connection lost mid-article): the same server is asked again
+		// before the article counts as missing there
+		bool Transient = false;
 	};
+
+	// attempts per server that end without a definitive answer before that
+	// server counts as unable to supply the article
+	static constexpr int MaxTransientAttempts = 3;
 
 	/* messageId must include the angle brackets (as stored in ArticleInfo) */
 	FetchedArticle Fetch(const char* messageId, const std::vector<CString>& groups);

@@ -445,7 +445,7 @@ class Daemon:
         ] + extra_options
         self.t.write_file(self.conf_rel, ('\n'.join(cfg) + '\n').encode())
 
-    def start_nserv(self, capture_requests=False):
+    def start_nserv(self, capture_requests=False, extra_args=()):
         # A single instance (-i 1) binds only nntp_port. Instance 1 already
         # returns "430 not found" for "!2" message-ids (its id 1 is not in the
         # server-list [2]), which is how a "missing" article is simulated on the
@@ -453,7 +453,7 @@ class Daemon:
         # nntp_port+1 and risk colliding with the control port.
         self.t.spawn([self.t.nzbget, '--nserv', '-d', self.datadir,
                       '-p', str(self.nntp_port), '-i', '1',
-                      '-v', '2' if capture_requests else '0'],
+                      '-v', '2' if capture_requests else '0'] + list(extra_args),
                      output_rel='nserv.log' if capture_requests else None)
 
     def start(self):
@@ -2215,6 +2215,30 @@ def scenario_dupefailoverchain(daemon, t):
             % (status.get('Primary'), status.get('Backup1'), status.get('Backup2'), p_over, b1_over, returned))
 
 
+def scenario_xpacklatency(daemon, t):
+    """Cross-packing against a slow news server (1 s per response): requests
+    that end without a server answer (no response line, a connection lost
+    mid-article) must be retried instead of counting the article as missing,
+    or a repost that carries every byte repairs nothing."""
+    size, seg = 20_000_000, 700_000
+    data = _payload(size, 4243)
+    pp = _place_copy(t, 'xlA', data, 'movie.mkv')
+    primary = build_nzb(pp, 'movie.mkv', size, seg, set(range(8, 20)))
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 5_000_000), 1):
+        rel = 'xlB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXL', build_multi_nzb(members), True, 'xl-key', 50)
+    daemon.append(api, 'RelXL', primary, False, 'xl-key', 100)
+    h = daemon.wait_history(api, 'RelXL', timeout=900)
+    retried = _grep_log(t, 'no response from') + _grep_log(t, 'lost while fetching')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpacklatency', integ and h['Status'].startswith('SUCCESS'),
+            'status=%s transient_logs=%d integrity=%s' % (h['Status'], retried, integ))
+
+
 def scenario_streamretry(daemon, t):
     """Corner case (no whole-file job involved): stream repair fully repairs
     one volume and leaves a hole in another that no duplicate carries, so the
@@ -2519,6 +2543,7 @@ SCENARIOS = {
     'wholefilenfoproof': scenario_wholefilenfoproof,
     'wholefilesampleproof': scenario_wholefilesampleproof,
     'dupefailoverchain': scenario_dupefailoverchain,
+    'xpacklatency': scenario_xpacklatency,
     'prodwholefile': scenario_prodwholefile,
     'prodstream': scenario_prodstream,
     'prodrarwhole': scenario_prodrarwhole,
@@ -2642,6 +2667,7 @@ SCENARIO_OPTIONS = {
     'wholefilenfoproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilesampleproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'prodwholefile': PROD_OPTIONS,
     'prodstream': PROD_OPTIONS,
     'prodrarwhole': PROD_OPTIONS,
@@ -2654,6 +2680,8 @@ SCENARIO_OPTIONS = {
     'failoverlive': ['DupeArticleFallback=live', 'HealthCheck=dupe', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
+# extra nserv arguments per scenario (-w: response latency in ms)
+SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000']}
 
 
 # --------------------------------------------------------------------------- #
@@ -2691,7 +2719,8 @@ def main():
         daemon = Daemon(target, nntp, rpc)
         try:
             daemon.write_config(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
-            daemon.start_nserv(capture_requests=(name == 'repost'))
+            daemon.start_nserv(capture_requests=(name == 'repost'),
+                               extra_args=SCENARIO_NSERV_ARGS.get(name, ()))
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':
