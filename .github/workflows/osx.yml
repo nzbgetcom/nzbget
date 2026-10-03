@@ -9,36 +9,158 @@ env:
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
 jobs:
-  build-x64:
+  # Build static libc++ once and cache it
+  build-static-libcxx:
     runs-on: macos-14
+    outputs:
+      cache-hit: ${{ steps.cache.outputs.cache-hit }}
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Cache static libc++
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/macos12-libcxx
+        key: macos-static-libcxx-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        restore-keys: |
+          macos-static-libcxx-
+
+    - name: Install LLVM Clang 19
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        brew install llvm@19
+
+    - name: Build static libc++
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p ${{ runner.temp }}/macos12-libcxx
+        sudo mkdir -p /opt/macos12-libcxx
+        sudo chown -R runner:admin /opt/macos12-libcxx
+        bash toolchains/build-macos-libcxx.sh llvmorg-19.1.7 /opt/macos12-libcxx
+        # Mirror to cache location
+        cp -R /opt/macos12-libcxx/* ${{ runner.temp }}/macos12-libcxx/
+
+    - name: Restore static libc++ to system location (cache hit)
+      if: steps.cache.outputs.cache-hit == 'true'
+      run: |
+        if [ -d "${{ runner.temp }}/macos12-libcxx" ]; then
+          sudo mkdir -p /opt/macos12-libcxx
+          sudo cp -R ${{ runner.temp }}/macos12-libcxx/* /opt/macos12-libcxx/
+        fi
+
+    - name: Verify static libc++
+      run: |
+        ls -la /opt/macos12-libcxx/lib/
+        file /opt/macos12-libcxx/lib/libc++.a
+        file /opt/macos12-libcxx/lib/libc++abi.a
+
+  build-arm64:
+    runs-on: macos-14
+    needs: build-static-libcxx
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Prepare build environment
-      run: |
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v3.0/vcpkg-osx-x64-mojave.zip -o $HOME/vcpkg.tar.gz
-        tar zxf $HOME/vcpkg.tar.gz -C $HOME
+    - name: Cache static libc++
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/macos12-libcxx
+        key: macos-static-libcxx-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        restore-keys: |
+          macos-static-libcxx-
 
-    - name: Build
+    - name: Restore static libc++ to system location
       run: |
-        export EXTRA_ARGS="-DCMAKE_OSX_DEPLOYMENT_TARGET=12.0"
-        bash osx/build-nzbget.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+        if [ -d "${{ runner.temp }}/macos12-libcxx" ]; then
+          sudo mkdir -p /opt/macos12-libcxx
+          sudo cp -R ${{ runner.temp }}/macos12-libcxx/* /opt/macos12-libcxx/
+        fi
+
+    - name: Install LLVM Clang 19
+      run: brew install llvm@19
+
+    - name: Build arm64
+      env:
+        BUILD_TESTING: ${{ env.BUILD_TESTING }}
+      run: |
+        bash platforms/macos/build.sh arm64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v7
       if: failure()
       with:
-        name: nzbget-osx-x64-build-log
-        path: build/*/build.log
+        name: nzbget-macos-arm64-build-log
+        path: build.log
         retention-days: 5
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd build
+        cd build/dist
+        SUFFIX="${GITHUB_REF_NAME/\//-}"
+        for FILE in *.zip; do
+          [ -f $FILE ] || continue
+          NEW_FILE=${FILE/-bin-macos-arm64/-$SUFFIX-bin-macos-arm64}
+          mv $FILE $NEW_FILE
+        done
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: nzbget-macos-installers-arm64
+        path: build/dist/*-arm64*.zip
+        retention-days: 5
+
+  build-x64:
+    runs-on: macos-14
+    needs: build-static-libcxx
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Cache static libc++
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/macos12-libcxx
+        key: macos-static-libcxx-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        restore-keys: |
+          macos-static-libcxx-
+
+    - name: Restore static libc++ to system location
+      run: |
+        if [ -d "${{ runner.temp }}/macos12-libcxx" ]; then
+          sudo mkdir -p /opt/macos12-libcxx
+          sudo cp -R ${{ runner.temp }}/macos12-libcxx/* /opt/macos12-libcxx/
+        fi
+
+    - name: Install LLVM Clang 19
+      run: brew install llvm@19
+
+    - name: Build x64
+      env:
+        BUILD_TESTING: ${{ env.BUILD_TESTING }}
+      run: |
+        bash platforms/macos/build.sh x64 ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+
+    - name: Upload full build log on failure
+      uses: actions/upload-artifact@v7
+      if: failure()
+      with:
+        name: nzbget-macos-x64-build-log
+        path: build.log
+        retention-days: 5
+
+    - name: Rename build artifacts
+      if: github.ref_name != 'main' && github.ref_name != 'develop'
+      run: |
+        cd build/dist
         SUFFIX="${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
@@ -49,38 +171,84 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: nzbget-osx-installers-x64
-        path: build/*.zip
+        name: nzbget-macos-installers-x64
+        path: build/dist/*-x64*.zip
         retention-days: 5
 
   build-universal:
     runs-on: macos-14
+    needs: [build-arm64, build-x64]
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Prepare build environment
-      run: |
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-osx-universal.tar.gz -o $HOME/vcpkg.tar.gz
-        tar zxf $HOME/vcpkg.tar.gz -C $HOME
+    - name: Download arm64 build artifacts
+      uses: actions/download-artifact@v8
+      with:
+        name: nzbget-macos-installers-arm64
+        path: nzbget-macos-installers-arm64
 
-    - name: Build
-      run: bash osx/build-nzbget.sh universal ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+    - name: Download x64 build artifacts
+      uses: actions/download-artifact@v8
+      with:
+        name: nzbget-macos-installers-x64
+        path: nzbget-macos-installers-x64
+
+    - name: Build universal
+      env:
+        BUILD_TESTING: ${{ env.BUILD_TESTING }}
+      run: |
+        # Create universal .app bundle by merging per-arch .app bundles
+        mkdir -p build/universal-tmp
+        cd build/universal-tmp
+        # Extract per-arch .app bundles
+        unzip -qo ../../nzbget-macos-installers-arm64/nzbget-*-arm64*.zip
+        mv NZBGet.app NZBGet.arm64.app
+        unzip -qo ../../nzbget-macos-installers-x64/nzbget-*-x64*.zip
+        mv NZBGet.app NZBGet.x64.app
+        
+        # Lipo binaries inside .app bundles
+        DAEMON_REL="Contents/Resources/daemon/usr/local/bin"
+        mkdir -p "$DAEMON_REL"
+        lipo -create "NZBGet.x64.app/$DAEMON_REL/nzbget" "NZBGet.arm64.app/$DAEMON_REL/nzbget" -output "$DAEMON_REL/nzbget"
+        lipo -create "NZBGet.x64.app/$DAEMON_REL/unrar" "NZBGet.arm64.app/$DAEMON_REL/unrar" -output "$DAEMON_REL/unrar"
+        
+        # Use arm64 app as base, replace binaries
+        mv NZBGet.arm64.app NZBGet.app
+        mv "$DAEMON_REL/nzbget" "NZBGet.app/$DAEMON_REL/nzbget"
+        mv "$DAEMON_REL/unrar" "NZBGet.app/$DAEMON_REL/unrar"
+        
+        # Verify
+        lipo -info "NZBGet.app/$DAEMON_REL/nzbget"
+        lipo -info "NZBGet.app/$DAEMON_REL/unrar"
+        
+        # Create universal zip with .app bundle
+        mkdir -p "$GITHUB_WORKSPACE/build/dist"
+        VERSION=$(grep "set(VERSION " "$GITHUB_WORKSPACE/CMakeLists.txt" | cut -d '"' -f 2)
+        VERSION_SUFFIX=""
+        if [ "${{ env.BUILD_TESTING }}" == "testing" ]; then
+            VERSION_SUFFIX="-testing-$(date '+%Y%m%d')"
+        fi
+        UNI_NAME="nzbget-$VERSION$VERSION_SUFFIX-bin-macos-universal.zip"
+        zip -r "$UNI_NAME" NZBGet.app
+        mv "$UNI_NAME" "$GITHUB_WORKSPACE/build/dist/"
+        echo "Universal .app bundle created: $GITHUB_WORKSPACE/build/dist/$UNI_NAME"
+        cd "$GITHUB_WORKSPACE"
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v7
       if: failure()
       with:
-        name: nzbget-osx-universal-build-log
-        path: build/*/build.log
+        name: nzbget-macos-universal-build-log
+        path: build.log
         retention-days: 5
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd build
+        cd build/dist
         SUFFIX="${GITHUB_REF_NAME/\//-}"
         for FILE in *.zip; do
           [ -f $FILE ] || continue
@@ -91,8 +259,8 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: nzbget-osx-installers-universal
-        path: build/*-universal*.zip
+        name: nzbget-macos-installers-universal
+        path: build/dist/*-universal*.zip
         retention-days: 5
 
   sign-universal:
@@ -107,8 +275,8 @@ jobs:
     - name: Download build artifacts
       uses: actions/download-artifact@v8
       with:
-        name: nzbget-osx-installers-universal
-        path: nzbget-osx-installers-universal
+        name: nzbget-macos-installers-universal
+        path: nzbget-macos-installers-universal
 
     - name: Import codesign certificate and notary key
       env:
@@ -141,10 +309,10 @@ jobs:
         OSX_KEYCHAIN_NAME: build.keychain
       run: |
         mkdir -p build_signed
-        for FILE in nzbget-osx-installers-universal/*.zip; do
+        for FILE in nzbget-macos-installers-universal/*.zip; do
           [ -f $FILE ] || continue
           mkdir -p build
-          cp osx/sign/* build
+          cp platforms/macos/sign/* build
           cp $FILE build/
           cd build
           bash nzbget-sign.sh *.zip
@@ -156,13 +324,13 @@ jobs:
     - name: Upload signed build artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: nzbget-osx-installers-universal-signed
+        name: nzbget-macos-installers-universal-signed
         path: build_signed/*.dmg
         retention-days: 5
 
-  combine-osx-artifacts:
+  combine-macos-artifacts:
     runs-on: ubuntu-24.04
-    needs: [build-x64, sign-universal]
+    needs: [build-x64, build-arm64, sign-universal]
     permissions:
       actions: write
     steps:
@@ -170,32 +338,40 @@ jobs:
     - name: Download x64 build artifact
       uses: actions/download-artifact@v8
       with:
-        name: nzbget-osx-installers-x64
-        path: nzbget-osx-installers-x64
+        name: nzbget-macos-installers-x64
+        path: nzbget-macos-installers-x64
+
+    - name: Download arm64 build artifact
+      uses: actions/download-artifact@v8
+      with:
+        name: nzbget-macos-installers-arm64
+        path: nzbget-macos-installers-arm64
 
     - name: Download universal signed build artifact
       uses: actions/download-artifact@v8
       with:
-        name: nzbget-osx-installers-universal-signed
-        path: nzbget-osx-installers-universal-signed
+        name: nzbget-macos-installers-universal-signed
+        path: nzbget-macos-installers-universal-signed
 
     - name: Combine artifacts
       run: |
-        mkdir -p nzbget-osx-installers
-        mv nzbget-osx-installers-x64/* nzbget-osx-installers
-        mv nzbget-osx-installers-universal-signed/* nzbget-osx-installers
+        mkdir -p nzbget-macos-installers
+        mv nzbget-macos-installers-x64/* nzbget-macos-installers 2>/dev/null || true
+        mv nzbget-macos-installers-arm64/* nzbget-macos-installers 2>/dev/null || true
+        mv nzbget-macos-installers-universal-signed/* nzbget-macos-installers 2>/dev/null || true
 
     - name: Upload combined build artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: nzbget-osx-installers
-        path: nzbget-osx-installers/*
+        name: nzbget-macos-installers
+        path: nzbget-macos-installers/*
         retention-days: 5
 
     - name: Delete unneeded artifacts
       uses: geekyeggo/delete-artifact@v6
       with:
         name: |
-          nzbget-osx-installers-x64
-          nzbget-osx-installers-universal
-          nzbget-osx-installers-universal-signed
+          nzbget-macos-installers-x64
+          nzbget-macos-installers-arm64
+          nzbget-macos-installers-universal
+          nzbget-macos-installers-universal-signed

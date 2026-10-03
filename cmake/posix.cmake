@@ -66,12 +66,7 @@ else()
 	# Build external dependencies via FetchContent
 	include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
 	include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
-	if(APPLE)
-		# On macOS, use system libxml2 (provided by Xcode SDK)
-		find_package(LibXml2 REQUIRED)
-	else()
-		include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
-	endif()
+	include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
 	include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
 	include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
 

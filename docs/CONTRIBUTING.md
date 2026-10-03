@@ -16,8 +16,10 @@ Main documentation is available on the NZBGet.com website - [https://nzbget.com/
 
 NZBGet natively supports for multiple platforms and build options, so each platform has their own development documenation, including:
 
-- [General documentation, including Posix](https://github.com/nzbgetcom/nzbget/blob/develop/INSTALLATION.md)
-- [Windows](https://github.com/nzbgetcom/nzbget/blob/develop/windows/README-WINDOWS.txt)
+- [General documentation, including Posix](POSIX.md)
+- [Apple (macOS, iOS)](APPLE.md)
+- [Windows](WINDOWS.md)
+- [Android](ANDROID.md)
 - [Docker](https://github.com/nzbgetcom/nzbget/blob/develop/docker/README.md)
 
 ### Branches naming policy ###
