@@ -1461,8 +1461,7 @@ bool QueueCoordinator::DownloadHopeless(NzbInfo* nzbInfo)
 
 void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
-	if (!g_Options->GetDupeCheck() || nzbInfo->GetDupeMode() != dmScore ||
-		nzbInfo->GetDeleting() || nzbInfo->GetParking())
+	if (nzbInfo->GetDeleting() || nzbInfo->GetParking())
 	{
 		return;
 	}
@@ -1484,8 +1483,12 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 	}
 	nzbInfo->SetDupeFailoverChecked(failed);
 
-	HistoryInfo* backup = g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo,
-		nzbInfo->GetName(), nzbInfo->GetDupeKey());
+	// failing over needs duplicate handling (a backup in history is returned
+	// by DupeCoordinator::NzbCompleted only then); parking a hopeless
+	// download does not
+	HistoryInfo* backup = g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() == dmScore ?
+		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()) :
+		nullptr;
 	if (backup && DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(),
 		nzbInfo->CalcHealth(), backup->GetNzbInfo()->GetDupeScore()))
 	{

@@ -57,6 +57,9 @@ suffix to make chosen articles "missing" on the active server.
 | `wholefilepartial` | The donor's twin has a hole: partial recreation credits nothing to health, and a retry keeps the recreated bytes. |
 | `wholefiletwo` | Two volumes missing entirely, each recreated from its own twin member. |
 | `wholefilenfoproof` / `wholefilesampleproof` | A different packing (same volume names and sizes, other bytes) that ships the same `.nfo` or sample: a byte match on those - even the sample's legitimate repair - must not prove the duplicate for recreating an archive volume, which only a sibling volume of the same set can. |
+| `dupehopelessnodupecheck` | `HealthCheck=dupe` with `DupeCheck=no`: no failover is possible, but a dead posting is still parked after the sample. |
+| `dupefailovernofallback` | `HealthCheck=dupe` with `DupeArticleFallback=no`: a posting missing only its first stretch is not abandoned for a lower-scored backup. |
+| `failoverlive` | `HealthCheck=dupe` with `live` mode: the failover parks the download (detaching any live pass) and the backup completes. |
 | `xdecomp_off` | The opt-in gate: the identical compressed-7z-donor setup as `xdecomp_7z`, but `DupeStreamDecompress` is OMITTED (default `no`) - the decompression path must never run and the item stays unrepaired. |
 
 Each scenario asserts byte identity of the reassembled file (with
@@ -119,7 +122,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile|dupefailover|dupehopeless|dupedeadstart|streamretry|wholefileretry|wholefilefailretry|wholefileonly|wholefilewrongdonor|wholefilelive|wholefilepar|wholefilenofirst|wholefilepartial|wholefiletwo|wholefilenfoproof|wholefilesampleproof] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile|dupefailover|dupehopeless|dupedeadstart|streamretry|wholefileretry|wholefilefailretry|wholefileonly|wholefilewrongdonor|wholefilelive|wholefilepar|wholefilenofirst|wholefilepartial|wholefiletwo|dupehopelessnodupecheck|dupefailovernofallback|failoverlive|wholefilenfoproof|wholefilesampleproof] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

@@ -1933,6 +1933,49 @@ def scenario_wholefiletwo(daemon, t):
             'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
 
 
+def scenario_failoverlive(daemon, t):
+    """Corner case: HealthCheck=dupe parks a download while a live stream
+    repair pass (DupeArticleFallback=live) still works on one of its files.
+    The pass must be detached cleanly - no crash, no write into the parked
+    item - and the backup must be fetched and complete."""
+    seg = 100_000
+    holed = _payload(4_000_000, 9950)
+    dead_size = 2_900_000
+    n_dead = dead_size // seg
+    t.write_file(os.path.join('data', 'flA/a.bin'), holed)
+    members = [('flA/a.bin', 'A.bin', len(holed), seg, set(range(2, 40)))]
+    for i in range(6):
+        t.write_file(os.path.join('data', 'flA/d%d.bin' % i), _payload(dead_size, 9960 + i))
+        members.append(('flA/d%d.bin' % i, 'Dead%d.bin' % i, dead_size, seg, set(range(1, n_dead + 1))))
+    # the backup carries A byte-identically (other segmentation) plus its own content
+    t.write_file(os.path.join('data', 'flB/a.bin'), holed)
+    data = _payload(3_000_000, 9970)
+    t.write_file(os.path.join('data', 'flB/b.bin'), data)
+    backup = build_multi_nzb([('flB/a.bin', 'A.bin', len(holed), 70_000, set()),
+                              ('flB/b.bin', 'Backup.bin', len(data), seg, set())])
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(members), True, 'fl-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'fl-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary', timeout=300)
+    deadline = time.time() + 240
+    hb = daemon.wait_history(api, 'Backup')
+    while hb['Status'].startswith('DELETED') and time.time() < deadline:
+        time.sleep(1)
+        hb = daemon.wait_history(api, 'Backup')
+    alive = True
+    try:
+        api.status()
+    except Exception:
+        alive = False
+    live = _grep_log(t, 'Starting live stream repair')
+    failed_over = _grep_log(t, 'Failing over Primary')
+    return ('failoverlive', alive and failed_over == 1 and hb['Status'].startswith('SUCCESS'),
+            'status=%s backup_status=%s live_logs=%d failover_logs=%d daemon_alive=%s'
+            % (hp['Status'], hb['Status'], live, failed_over, alive))
+
+
 def scenario_wholefilenfoproof(daemon, t):
     """Corner case: a different packing of the release (same volume names and
     sizes, other bytes) that ships the SAME small .nfo. A byte match on the
@@ -2030,6 +2073,51 @@ def scenario_wholefilelive(daemon, t):
     integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members[:4])
     return ('wholefilelive', integ and recreated == 1,
             'status=%s live_logs=%d recreated_logs=%d integrity=%s' % (h['Status'], live, recreated, integ))
+
+
+def scenario_dupehopelessnodupecheck(daemon, t):
+    """Corner case: HealthCheck=dupe with DupeCheck=no. There is no
+    duplicate handling, so no failover - but a hopeless download (a dead
+    posting) must still be parked, as the option help promises, instead of
+    failing every article."""
+    seg = 100_000
+    vol_dead = 2_900_000
+    n = vol_dead // seg
+    dead = [('hnA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg, set(range(1, n + 1))) for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9800))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(dead), False, 'hn-key', 100)
+    hp = daemon.wait_history(api, 'Primary')
+    parked = _grep_log(t, 'Parking Primary: health')
+    failed_articles = int(hp.get('FailedArticles', 0))
+    return ('dupehopelessnodupecheck', parked == 1 and failed_articles < 140,
+            'status=%s parked_logs=%d failed_articles=%d' % (hp['Status'], parked, failed_articles))
+
+
+def scenario_dupefailovernofallback(daemon, t):
+    """Corner case: HealthCheck=dupe with DupeArticleFallback=no (no sample
+    gate). A posting that merely misses its first stretch must not be
+    abandoned on its first failed article in favour of a lower-scored
+    backup: it is still at almost full health then, and warrants more than
+    the backup's score."""
+    seg = 100_000
+    vol = 6_000_000
+    data = _payload(vol, 9900)
+    pp = _place_copy(t, 'nfA', data)
+    primary = build_nzb(pp, 'Main.bin', vol, seg, set(range(1, 4)))
+    bp = _place_copy(t, 'nfB', _payload(3_000_000, 9901))
+    backup = build_nzb(bp, 'Backup.bin', 3_000_000, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', primary, True, 'nf-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'nf-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    failed_over = _grep_log(t, 'Failing over Primary')
+    parked = _grep_log(t, 'Parking Primary')
+    return ('dupefailovernofallback', failed_over == 0 and parked == 0,
+            'status=%s failover_logs=%d parked_logs=%d' % (hp['Status'], failed_over, parked))
 
 
 def scenario_dupefailover(daemon, t):
@@ -2234,6 +2322,8 @@ SCENARIOS = {
     'dupehopeless': scenario_dupehopeless,
     'dupedeadstart': scenario_dupedeadstart,
     'wholefileretry': scenario_wholefileretry,
+    'dupehopelessnodupecheck': scenario_dupehopelessnodupecheck,
+    'dupefailovernofallback': scenario_dupefailovernofallback,
     'wholefilepar': scenario_wholefilepar,
     'wholefilefailretry': scenario_wholefilefailretry,
     'wholefilelive': scenario_wholefilelive,
@@ -2245,6 +2335,7 @@ SCENARIOS = {
     'wholefilenofirst': scenario_wholefilenofirst,
     'wholefilepartial': scenario_wholefilepartial,
     'wholefiletwo': scenario_wholefiletwo,
+    'failoverlive': scenario_failoverlive,
 }
 
 EXPECTED_HISTORY_STATUS = {
@@ -2348,6 +2439,8 @@ SCENARIO_OPTIONS = {
     'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'wholefileretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'dupehopelessnodupecheck': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'DupeCheck=no'],
+    'dupefailovernofallback': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'wholefilepar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilefailretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilelive': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=4000'],
@@ -2359,6 +2452,7 @@ SCENARIO_OPTIONS = {
     'wholefilenofirst': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilepartial': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefiletwo': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'failoverlive': ['DupeArticleFallback=live', 'HealthCheck=dupe', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 
