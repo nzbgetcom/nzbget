@@ -239,6 +239,10 @@ private:
 	// indistinguishable siblings are probed exhaustively, so a duplicate that
 	// is merely a different packing must be given up on sooner
 	static constexpr int UnprovenDonorBail = 2;
+	// intact files of the collection probed to prove a donor for whole-file
+	// recreation (each costs at most MaxProbeFetches article fetches per
+	// candidate member)
+	static constexpr int MaxIntactProofFiles = 2;
 
 	void RunLive();
 	void RepairCompletedLive(std::vector<RepairTarget>& targets);
@@ -261,11 +265,22 @@ private:
 	};
 
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
-		std::vector<DonorSource>& donors);
+		std::vector<DonorSource>& donors, const std::vector<CString>& memberNames);
+	/* Proves a duplicate byte-identical for the whole-file target on an
+	 * intact (undamaged) volume of the same archive set, when no damaged file
+	 * of this pass could: a release missing one volume entirely and nothing
+	 * else, or one whose other damage an earlier live pass already repaired.
+	 * Only sibling volumes count on both sides (DupeStreamRepair::
+	 * VolumeSetKey): an .nfo or a sample identical across two packings of a
+	 * release proves nothing about their archive volumes. */
+	bool ProveDonorOnIntactFile(const char* destDir, const RepairTarget& wholeTarget,
+		const std::vector<RepairTarget>& targets, const std::vector<CString>& memberNames,
+		NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed);
 	// verified: set when a donor member proved byte-identical to the target;
-	// donorProven: a member of this donor already verified against another
-	// target of the collection (the only identity evidence a whole-file
-	// target can rely on)
+	// donorProven: the duplicate's archive set that stands in for a whole-file
+	// target was proven byte-identical to the target's own archive set, on a
+	// damaged or an intact sibling volume (the only identity evidence a
+	// whole-file target can rely on)
 	ERepairOutcome RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
 		const char* donorName, std::set<FileInfo*>& claimed, bool& verified, bool donorProven);
 	/* Recreates a file none of whose articles arrived from the donor member

@@ -131,6 +131,13 @@ public:
 		int targetArticleCount, uint64 targetStepsHash, NzbInfo* donorNzb,
 		const std::set<FileInfo*>* claimed = nullptr);
 
+	/* The name a file shares with every other volume of its archive set, its
+	 * volume number replaced: "Rel.part03.rar" and "Rel.part1.rar" ->
+	 * "rel.part#.rar", "Rel.r07" and "Rel.rar" -> "rel.r#", "Rel.7z.002" ->
+	 * "rel.7z.#", "Rel.z01" and "Rel.zip" -> "rel.z#". Empty for a file that
+	 * is no archive volume (an .nfo, a sample, a bare media file). */
+	static std::string VolumeSetKey(const char* filename);
+
 	/* Plausibility of the decoded size a donor's article declares for a
 	 * file whose own size is only known encoded (yEnc adds 1-3%, never more
 	 * than ~12%). */

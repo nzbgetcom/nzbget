@@ -361,7 +361,7 @@ void StreamRepairController::Run()
 	else
 	{
 		ComputePositionalRanks(destDir, targets, memberNames);
-		ExecRepair(destDir, targets, donors);
+		ExecRepair(destDir, targets, donors, memberNames);
 
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
@@ -444,7 +444,7 @@ void StreamRepairController::RunLive()
 		PrintMessage(Message::mkInfo, "Starting live stream repair for %s", *nzbName);
 
 		ComputePositionalRanks(destDir, targets, memberNames);
-		ExecRepair(destDir, targets, donors);
+		ExecRepair(destDir, targets, donors, memberNames);
 
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
@@ -765,7 +765,8 @@ void StreamRepairController::CollectDonors(DownloadQueue* downloadQueue, NzbInfo
 }
 
 void StreamRepairController::ExecRepair(const char* destDir,
-	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors)
+	std::vector<RepairTarget>& targets, std::vector<DonorSource>& donors,
+	const std::vector<CString>& memberNames)
 {
 	int primaryConnections = 0;
 	for (NewsServer* server : g_ServerPool->GetServers())
@@ -825,6 +826,13 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		// cannot be another target's twin, so they are never probed again
 		std::set<FileInfo*> claimed;
 
+		// archive sets of this release proven byte-identical to an archive set
+		// of the duplicate: (VolumeSetKey of ours, VolumeSetKey of theirs).
+		// A whole volume is recreated only from a set proven this way - an
+		// identical sample or .nfo proves nothing about the archive volumes
+		// of two different packings
+		std::set<std::pair<std::string, std::string>> provenSets;
+
 		// whole-file targets wait for the end of the donor's pass: only the
 		// other targets can prove the donor is a repost of this release
 		for (int round = 0; round < 2; round++)
@@ -840,16 +848,46 @@ void StreamRepairController::ExecRepair(const char* destDir,
 				{
 					continue;
 				}
-				if (wholeFile && !donorProven)
+				bool setProven = false;
+				if (wholeFile)
 				{
-					break;
+					FileInfo* standIn = DupeStreamRepair::SelectWholeFileDonor(
+						FileSystem::BaseFileName(target.Filename), target.EncodedSize, target.ArticleCount,
+						target.StepsHash, donorNzb.get(), &claimed);
+					std::string ourSet = DupeStreamRepair::VolumeSetKey(target.Filename);
+					std::string theirSet = standIn ? DupeStreamRepair::VolumeSetKey(standIn->GetFilename()) : "";
+					setProven = !ourSet.empty() && !theirSet.empty() &&
+						(provenSets.count({ourSet, theirSet}) ||
+						 ProveDonorOnIntactFile(destDir, target, targets, memberNames,
+							donorNzb.get(), donor.InfoName, claimed));
+					if (setProven)
+					{
+						provenSets.insert({ourSet, theirSet});
+					}
+					else
+					{
+						continue;
+					}
 				}
+				std::set<FileInfo*> claimedBefore = claimed;
 				bool verified = false;
 				ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName,
-					claimed, verified, donorProven);
+					claimed, verified, setProven);
 				// a byte-identical twin proves the donor is a repost of this
 				// release even when it misses the same articles as the target
 				donorProven |= verified;
+				if (verified)
+				{
+					std::string ourSet = DupeStreamRepair::VolumeSetKey(target.Filename);
+					for (FileInfo* member : claimed)
+					{
+						std::string theirSet = DupeStreamRepair::VolumeSetKey(member->GetFilename());
+						if (!claimedBefore.count(member) && !ourSet.empty() && !theirSet.empty())
+						{
+							provenSets.insert({ourSet, theirSet});
+						}
+					}
+				}
 				if (outcome == roProductive)
 				{
 					consecutiveFailures = 0;
@@ -941,6 +979,82 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 	return patched ? roProductive : spentFetches ? roUnproductive : roNoCost;
 }
 
+bool StreamRepairController::ProveDonorOnIntactFile(const char* destDir,
+	const RepairTarget& wholeTarget, const std::vector<RepairTarget>& targets,
+	const std::vector<CString>& memberNames, NzbInfo* donorNzb, const char* donorName,
+	std::set<FileInfo*>& claimed)
+{
+	// the proof has to come from the same archive set on both sides: a
+	// sibling volume of the missing one, and a sibling of the donor member
+	// that would stand in for it
+	std::string targetSet = DupeStreamRepair::VolumeSetKey(wholeTarget.Filename);
+	FileInfo* standIn = DupeStreamRepair::SelectWholeFileDonor(FileSystem::BaseFileName(wholeTarget.Filename),
+		wholeTarget.EncodedSize, wholeTarget.ArticleCount, wholeTarget.StepsHash, donorNzb, &claimed);
+	std::string donorSet = standIn ? DupeStreamRepair::VolumeSetKey(standIn->GetFilename()) : "";
+	if (targetSet.empty() || donorSet.empty())
+	{
+		return false;
+	}
+
+	int tried = 0;
+	for (const CString& memberName : memberNames)
+	{
+		if (IsStopped() || tried >= MaxIntactProofFiles)
+		{
+			break;
+		}
+		const char* baseName = FileSystem::BaseFileName(memberName);
+		if (Util::EndsWith(baseName, ".par2", false) ||
+			DupeStreamRepair::VolumeSetKey(baseName) != targetSet ||
+			std::any_of(targets.begin(), targets.end(),
+				[&memberName](const RepairTarget& target) { return !strcasecmp(target.Filename, memberName); }))
+		{
+			continue;
+		}
+
+		BString<1024> path("%s%c%s", destDir, PATH_SEPARATOR, *memberName);
+		int64 size = FileSystem::FileSize(path);
+		if (size <= 0)
+		{
+			continue;
+		}
+		DiskFile file;
+		if (!file.Open(path, DiskFile::omRead))
+		{
+			continue;
+		}
+		tried++;
+
+		// an intact file has no holes: every probe compares fully present bytes
+		RepairTarget probe;
+		probe.FileId = 0;
+		probe.Filename = *memberName;
+		probe.DecodedFileSize = size;
+		for (FileInfo* donorFile : DupeStreamRepair::SelectDonorCandidates(baseName, size, -1, 0,
+			donorNzb, DupeStreamRepair::MaxDonorCandidates, 0, &claimed))
+		{
+			if (IsStopped())
+			{
+				break;
+			}
+			if (donorFile == standIn || DupeStreamRepair::VolumeSetKey(donorFile->GetFilename()) != donorSet)
+			{
+				continue;
+			}
+			StreamRangeList donorRanges = DupeStreamRepair::EstimateDonorRanges(donorFile, size);
+			if (!donorRanges.empty() && VerifyDonor(file, probe, donorFile, donorRanges))
+			{
+				claimed.insert(donorFile);
+				PrintMessage(Message::mkInfo,
+					"Duplicate %s is byte-identical to this release (verified on intact file %s)",
+					donorName, *memberName);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(const char* destDir,
 	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed,
 	bool donorProven)
@@ -961,21 +1075,31 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(c
 		return roNoCost;
 	}
 
-	// the decoded size comes from the donor's first article; a donor missing
-	// it cannot size the file either (its later parts carry the size too, but
-	// a repost holed at its start is not worth the extra fetches)
+	// the decoded size: every yEnc article declares the size of its file, so
+	// the first article that arrives sizes it (a repost may miss its start)
 	auto donorGroups = std::make_shared<std::vector<CString>>();
 	for (const CString& group : *donorFile->GetGroups())
 	{
 		donorGroups->emplace_back(*group);
 	}
-	std::vector<ArticleBatchFetcher::Request> requests;
-	requests.push_back({(*donorFile->GetArticles())[0]->GetMessageId(), donorGroups});
-	m_batchFetcher.Begin(std::move(requests));
+	ArticleList* donorArticles = donorFile->GetArticles();
+	std::vector<size_t> sizeProbes = { 0, 1, donorArticles->size() / 2, donorArticles->size() - 1 };
 	ArticleFetcher::FetchedArticle fetched;
-	bool sized = m_batchFetcher.Next(fetched) && fetched.Success &&
-		DupeStreamRepair::DecodedSizePlausible(fetched.FileSize, target.EncodedSize);
-	m_batchFetcher.CancelRemaining();
+	bool sized = false;
+	std::set<size_t> probed;
+	for (size_t index : sizeProbes)
+	{
+		if (sized || IsStopped() || index >= donorArticles->size() || !probed.insert(index).second)
+		{
+			continue;
+		}
+		std::vector<ArticleBatchFetcher::Request> requests;
+		requests.push_back({(*donorArticles)[index]->GetMessageId(), donorGroups});
+		m_batchFetcher.Begin(std::move(requests));
+		sized = m_batchFetcher.Next(fetched) && fetched.Success &&
+			DupeStreamRepair::DecodedSizePlausible(fetched.FileSize, target.EncodedSize);
+		m_batchFetcher.CancelRemaining();
+	}
 	if (IsStopped())
 	{
 		return roNoCost;

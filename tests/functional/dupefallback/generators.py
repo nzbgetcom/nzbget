@@ -353,3 +353,38 @@ def split_bytes(data, sizes):
         pos += size
     pieces.append(data[pos:])
     return [piece for piece in pieces if piece]
+
+
+def par2_index(files, slice_size=65536, creator=b'dupefallback harness'):
+    """A par2 index (main, file descriptions, slice checksums, creator; no
+    recovery slices) for [(name, data)]: enough for a par-check to verify
+    every file byte for byte, and to report a damaged file as unrepairable."""
+    import hashlib as _hashlib
+    import struct as _struct
+    import zlib as _zlib
+
+    def fid(name, data):
+        return _hashlib.md5(_hashlib.md5(data[:16384]).digest() + _struct.pack('<Q', len(data)) +
+                            name.encode()).digest()
+
+    ids = sorted(fid(n, d) for n, d in files)
+    main = _struct.pack('<QI', slice_size, len(ids)) + b''.join(ids)
+    rsid = _hashlib.md5(main).digest()
+
+    def packet(ptype, body):
+        body += b'\0' * (-len(body) % 4)
+        md5 = _hashlib.md5(rsid + ptype + body).digest()
+        return b'PAR2\0PKT' + _struct.pack('<Q', 64 + len(body)) + md5 + rsid + ptype + body
+
+    out = packet(b'PAR 2.0\0Main\0\0\0\0', main)
+    for name, data in files:
+        f = fid(name, data)
+        out += packet(b'PAR 2.0\0FileDesc', f + _hashlib.md5(data).digest() +
+                      _hashlib.md5(data[:16384]).digest() + _struct.pack('<Q', len(data)) + name.encode())
+        checks = b''
+        for off in range(0, len(data), slice_size):
+            chunk = data[off:off + slice_size].ljust(slice_size, b'\0')
+            checks += _hashlib.md5(chunk).digest() + _struct.pack('<I', _zlib.crc32(chunk) & 0xffffffff)
+        out += packet(b'PAR 2.0\0IFSC\0\0\0\0', f + checks)
+    out += packet(b'PAR 2.0\0Creator\0', creator)
+    return out

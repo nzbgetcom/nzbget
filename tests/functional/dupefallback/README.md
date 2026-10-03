@@ -49,6 +49,14 @@ suffix to make chosen articles "missing" on the active server.
 | `dupedeadstart` | The guard for that rule: a posting that merely begins with a dead stretch (first 40 of 100 articles of each file missing, no par2, no usable duplicate) is below critical health with nothing downloaded yet, but is NOT parked - it runs to the end and ends `FAILURE/HEALTH` with exactly its missing articles failed. |
 | `streamretry` | Retry after stream repair: one volume fully repaired, another keeps a hole no duplicate carries. "Retry failed articles" must leave the release `FAILURE/HEALTH` (before the fix the repaired volume's credit was subtracted twice and the damaged release turned `SUCCESS`). |
 | `wholefileretry` / `wholefilefailretry` | "Retry failed articles" after a whole volume was recreated, on a release that succeeded and on one that still fails: the recreated volume is kept, never deleted as an empty failed file. |
+| `wholefileonly` | The common shape of a missing volume: everything else is intact, so the duplicate is proven byte-identical on an intact volume (`verified on intact file`) and the missing one is recreated; `SUCCESS` byte-identically. |
+| `wholefilewrongdonor` | A duplicate with the same volume names and sizes but other bytes (another packing) fails that proof; nothing is recreated or written. |
+| `wholefilelive` | Whole-file recreation under `live` mode, when the live pass already repaired the collection's other damage. |
+| `wholefilepar` | A real par2 index (generated, no recovery slices): the recreated volume passes a full par-check (`SUCCESS/PAR`). |
+| `wholefilenofirst` | The donor's twin misses its first article: the file is sized from a later article and recreated except that first part. |
+| `wholefilepartial` | The donor's twin has a hole: partial recreation credits nothing to health, and a retry keeps the recreated bytes. |
+| `wholefiletwo` | Two volumes missing entirely, each recreated from its own twin member. |
+| `wholefilenfoproof` / `wholefilesampleproof` | A different packing (same volume names and sizes, other bytes) that ships the same `.nfo` or sample: a byte match on those - even the sample's legitimate repair - must not prove the duplicate for recreating an archive volume, which only a sibling volume of the same set can. |
 | `xdecomp_off` | The opt-in gate: the identical compressed-7z-donor setup as `xdecomp_7z`, but `DupeStreamDecompress` is OMITTED (default `no`) - the decompression path must never run and the item stays unrepaired. |
 
 Each scenario asserts byte identity of the reassembled file (with
@@ -111,7 +119,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile|dupefailover|dupehopeless|dupedeadstart|streamretry|wholefileretry|wholefilefailretry] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile|dupefailover|dupehopeless|dupedeadstart|streamretry|wholefileretry|wholefilefailretry|wholefileonly|wholefilewrongdonor|wholefilelive|wholefilepar|wholefilenofirst|wholefilepartial|wholefiletwo|wholefilenfoproof|wholefilesampleproof] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

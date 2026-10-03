@@ -454,6 +454,31 @@ BOOST_AUTO_TEST_CASE(StreamRepairSelectWholeFileDonorTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(StreamRepairVolumeSetKeyTest)
+{
+	// volumes of one set share the key, whatever their number
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.part03.rar"), "rel.part#.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("REL.part1.RAR"), "rel.part#.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.r07"), "rel.r#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.rar"), "rel.r#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.7z.002"), "rel.7z.#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("movie.mkv.001"), "movie.mkv.#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.z01"), "rel.z#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.zip"), "rel.z#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("dir/x8Tdn3e3iFf1MaWLu.part12.rar"), "x8tdn3e3iff1mawlu.part#.rar");
+
+	// files that are no archive volume have none
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.nfo"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.sample.mkv"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("movie.mkv"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.srr"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("track.mp3"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey(""), "");
+
+	// a .nfo never shares a key with a rar volume of the same release
+	BOOST_CHECK_NE(DupeStreamRepair::VolumeSetKey("Rel.nfo"), DupeStreamRepair::VolumeSetKey("Rel.part01.rar"));
+}
+
 BOOST_AUTO_TEST_CASE(StreamRepairSuffixKeyTest)
 {
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("Rel.part03.rar"), "part03.rar");

@@ -1764,6 +1764,29 @@ def scenario_wholefileretry(daemon, t):
             % (h['Status'], h2['Status'], first_integ, integ))
 
 
+def scenario_wholefilepar(daemon, t):
+    """Fix 2 with a real par2 index (no recovery slices, so par2 cannot
+    cover a missing volume): the whole-file job counts as damage par2 can't
+    cover, stream repair runs before par-check, recreates the volume, and
+    the full par-check that follows verifies all four volumes against the
+    par2 checksums - SUCCESS/PAR only if the recreated volume is exact."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wp')
+    par = generators.par2_index([(m[1], payloads[m[1]]) for m in members])
+    t.write_file(os.path.join('data', 'wpA/rel.par2'), par)
+    members = members + [('wpA/rel.par2', 'Rel.par2', len(par), 500_000, set())]
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWP', build_multi_nzb(donor_members), True, 'wp-key', 50)
+    daemon.append(api, 'RelWP', build_multi_nzb(members), False, 'wp-key', 100)
+    h = daemon.wait_history(api, 'RelWP')
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    par_ok = _grep_log(t, 'repair not needed') + _grep_log(t, 'Repair not needed') + _grep_log(t, 'all files are correct')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members[:4])
+    return ('wholefilepar', integ and recreated == 1 and h['ParStatus'] == 'SUCCESS',
+            'status=%s par=%s recreated_logs=%d par_ok_logs=%d integrity=%s'
+            % (h['Status'], h['ParStatus'], recreated, par_ok, integ))
+
+
 def scenario_wholefilefailretry(daemon, t):
     """Corner case: a release that still FAILS after a volume was recreated
     (another volume is missing on the donor too), so the recreated volume
@@ -1792,6 +1815,176 @@ def scenario_wholefilefailretry(daemon, t):
             % (h['Status'], h2['Status'], before, after))
 
 
+def scenario_wholefileonly(daemon, t):
+    """Fix 2 in the most common shape: one volume missing entirely, every
+    other volume complete - no damaged file exists to prove the duplicate
+    on. The duplicate must be proven byte-identical on an intact volume and
+    the missing one recreated; SUCCESS byte-identically."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wo')
+    members[1] = members[1][:4] + (set(),)               # part02 complete too
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWO', build_multi_nzb(donor_members), True, 'wo-key', 50)
+    daemon.append(api, 'RelWO', build_multi_nzb(members), False, 'wo-key', 100)
+    h = daemon.wait_history(api, 'RelWO')
+    proven = _grep_log(t, 'verified on intact file')
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members)
+    return ('wholefileonly', integ and proven == 1 and recreated == 1,
+            'status=%s proven_logs=%d recreated_logs=%d integrity=%s' % (h['Status'], proven, recreated, integ))
+
+
+def scenario_wholefilewrongdonor(daemon, t):
+    """The safety net of that proof: a duplicate with the same volume names
+    and sizes but DIFFERENT bytes (another packing) must fail the intact-file
+    proof, so the missing volume is not recreated from it and nothing is
+    written; the release stays a failure."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'ww')
+    members[1] = members[1][:4] + (set(),)
+    for i, dm in enumerate(donor_members):                 # same sizes, other bytes
+        t.write_file(os.path.join('data', dm[0]), _payload(dm[2], 9700 + i))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWW', build_multi_nzb(donor_members), True, 'ww-key', 50)
+    daemon.append(api, 'RelWW', build_multi_nzb(members), False, 'ww-key', 100)
+    h = daemon.wait_history(api, 'RelWW')
+    proven = _grep_log(t, 'verified on intact file')
+    recreated = _grep_log(t, 'Recreating')
+    return ('wholefilewrongdonor', proven == 0 and recreated == 0 and h['Status'].startswith('FAILURE'),
+            'status=%s proven_logs=%d recreated_logs=%d' % (h['Status'], proven, recreated))
+
+
+def _wholefile_run(daemon, t, tag, members, donor_members):
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
+    return api, daemon.wait_history(api, 'Rel' + tag)
+
+
+def scenario_wholefilenofirst(daemon, t):
+    """Corner case: the donor's twin of the missing volume lacks its FIRST
+    article, which is where the decoded file size is normally learned. Every
+    yEnc article declares the file size, so a later article must size the
+    file and the rest of the volume is still recreated (the first part stays
+    a hole, so the release fails without par2 - but the bytes it got must be
+    there and correct)."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'nf1')
+    members[1] = members[1][:4] + (set(),)
+    donor_members[2] = donor_members[2][:4] + ({1},)
+    api, h = _wholefile_run(daemon, t, 'NF1', members, donor_members)
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    data = None
+    for base in (('main', 'dst'), ('main', 'inter')):
+        for rel in t.find_files(*base):
+            if rel.endswith('Rel.part03.rar'):
+                data = t.read_file(rel)
+    expected = payloads['Rel.part03.rar']
+    tail_ok = bool(data) and len(data) == len(expected) and data[300_000:] == expected[300_000:]
+    return ('wholefilenofirst', recreated == 1 and tail_ok,
+            'status=%s recreated_logs=%d recreated_tail_matches=%s' % (h['Status'], recreated, tail_ok))
+
+
+def scenario_wholefilepartial(daemon, t):
+    """Corner case: the donor's twin has a hole of its own, so the missing
+    volume is recreated only partly. Nothing may be credited to health for
+    it (the release stays a failure), the recreated bytes must be correct,
+    and a retry must keep them."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wpt')
+    members[1] = members[1][:4] + (set(),)
+    donor_members[2] = donor_members[2][:4] + ({3},)
+    api, h = _wholefile_run(daemon, t, 'WPT', members, donor_members)
+    nzbid = h['NZBID']
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+
+    def part03():
+        for base in (('main', 'dst'), ('main', 'inter')):
+            for rel in t.find_files(*base):
+                if rel.endswith('Rel.part03.rar'):
+                    return t.read_file(rel)
+        return None
+    expected = payloads['Rel.part03.rar']
+    first = part03()
+    head_ok = bool(first) and first[:600_000] == expected[:600_000]
+    api.editqueue('HistoryRetryFailed', 0, '', [nzbid])
+    time.sleep(3)
+    deadline = time.time() + 180
+    while time.time() < deadline and any(g['NZBID'] == nzbid for g in api.listgroups()):
+        time.sleep(1)
+    h2 = [x for x in api.history() if x['NZBID'] == nzbid][0]
+    second = part03()
+    kept = bool(second) and second[:600_000] == expected[:600_000]
+    return ('wholefilepartial', recreated == 1 and head_ok and kept and h['Status'].startswith('FAILURE')
+            and h2['Status'].startswith('FAILURE'),
+            'status=%s retry_status=%s recreated_logs=%d head_ok=%s kept_after_retry=%s'
+            % (h['Status'], h2['Status'], recreated, head_ok, kept))
+
+
+def scenario_wholefiletwo(daemon, t):
+    """Corner case: two volumes missing entirely, both carried by the
+    duplicate. Each must be recreated from its own twin member (never both
+    from one), and the release completes SUCCESS byte-identically."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'w2')
+    n = 3
+    members[3] = members[3][:4] + (set(range(1, n + 1)),)
+    api, h = _wholefile_run(daemon, t, 'W2', members, donor_members)
+    recreated = _grep_log(t, 'Recreating Rel.part0')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members)
+    return ('wholefiletwo', integ and recreated == 2,
+            'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
+
+
+def scenario_wholefilenfoproof(daemon, t):
+    """Corner case: a different packing of the release (same volume names and
+    sizes, other bytes) that ships the SAME small .nfo. A byte match on the
+    .nfo must not prove the duplicate for recreating a missing volume - only
+    a sibling volume of the missing one can."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'nfo')
+    # one other volume is damaged (one verification miss, below the bail)
+    # and the two others are missing as well: the .nfo is the only intact
+    # file, so before the set-key rule it was the one the proof used
+    members[0] = members[0][:4] + (set(range(1, 4)),)
+    members[3] = members[3][:4] + (set(range(1, 4)),)
+    for i, dm in enumerate(donor_members):                 # other packing: other bytes
+        t.write_file(os.path.join('data', dm[0]), _payload(dm[2], 9800 + i))
+    nfo = _payload(3_000, 9890)
+    t.write_file(os.path.join('data', 'nfoA/rel.nfo'), nfo)
+    t.write_file(os.path.join('data', 'nfoB/rel.nfo'), nfo)
+    members = [('nfoA/rel.nfo', 'Rel.nfo', len(nfo), 500_000, set())] + members
+    donor_members = [('nfoB/rel.nfo', 'Other.nfo', len(nfo), 500_000, set())] + donor_members
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonNFO', build_multi_nzb(donor_members), True, 'nfo-key', 50)
+    daemon.append(api, 'RelNFO', build_multi_nzb(members), False, 'nfo-key', 100)
+    h = daemon.wait_history(api, 'RelNFO')
+    proven = _grep_log(t, 'verified on intact file')
+    recreated = _grep_log(t, 'Recreating')
+    return ('wholefilenfoproof', proven == 0 and recreated == 0,
+            'status=%s proven_logs=%d recreated_logs=%d' % (h['Status'], proven, recreated))
+
+
+def scenario_wholefilesampleproof(daemon, t):
+    """Corner case: a different packing (same volume names and sizes, other
+    bytes) that ships the SAME sample. The damaged sample is repaired from it
+    byte-identically - that is fine - but it must not prove the duplicate
+    for recreating a missing archive volume of another set."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'smp')
+    members[1] = members[1][:4] + (set(),)
+    for i, dm in enumerate(donor_members):                 # other packing: other bytes
+        t.write_file(os.path.join('data', dm[0]), _payload(dm[2], 9850 + i))
+    sample = _payload(900_000, 9899)
+    t.write_file(os.path.join('data', 'smpA/sample.mkv'), sample)
+    t.write_file(os.path.join('data', 'smpB/sample.mkv'), sample)
+    members = members + [('smpA/sample.mkv', 'Rel.sample.mkv', len(sample), 300_000, {2})]
+    donor_members = donor_members + [('smpB/sample.mkv', 'Other.sample.mkv', len(sample), 200_000, set())]
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSMP', build_multi_nzb(donor_members), True, 'smp-key', 50)
+    daemon.append(api, 'RelSMP', build_multi_nzb(members), False, 'smp-key', 100)
+    h = daemon.wait_history(api, 'RelSMP')
+    sample_fixed = _grep_log(t, 'of Rel.sample.mkv from duplicate')
+    recreated = _grep_log(t, 'Recreating')
+    return ('wholefilesampleproof', recreated == 0,
+            'status=%s sample_repaired_logs=%d recreated_logs=%d' % (h['Status'], sample_fixed, recreated))
+
+
 def scenario_streamretry(daemon, t):
     """Corner case (no whole-file job involved): stream repair fully repairs
     one volume and leaves a hole in another that no duplicate carries, so the
@@ -1816,6 +2009,27 @@ def scenario_streamretry(daemon, t):
     return ('streamretry', h['Status'].startswith('FAILURE') and h2['Status'].startswith('FAILURE'),
             'status=%s health=%d retry_status=%s retry_health=%d'
             % (h['Status'], h['Health'], h2['Status'], h2['Health']))
+
+
+def scenario_wholefilelive(daemon, t):
+    """Fix 2 under DupeArticleFallback=live: the zero-article volume
+    completes while the rest still downloads (throttled), the live pass
+    proves the donor on the holed volume and recreates the missing one, and
+    the release completes SUCCESS byte-identically."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wl')
+    big = _payload(12_000_000, 9350)
+    t.write_file(os.path.join('data', 'wlA/z.bin'), big)
+    members = members + [('wlA/z.bin', 'Rel.zz.bin', len(big), 500_000, set())]
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWL', build_multi_nzb(donor_members), True, 'wl-key', 50)
+    daemon.append(api, 'RelWL', build_multi_nzb(members), False, 'wl-key', 100)
+    h = daemon.wait_history(api, 'RelWL', timeout=300)
+    live = _grep_log(t, 'Starting live stream repair')
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members[:4])
+    return ('wholefilelive', integ and recreated == 1,
+            'status=%s live_logs=%d recreated_logs=%d integrity=%s' % (h['Status'], live, recreated, integ))
 
 
 def scenario_dupefailover(daemon, t):
@@ -2020,8 +2234,17 @@ SCENARIOS = {
     'dupehopeless': scenario_dupehopeless,
     'dupedeadstart': scenario_dupedeadstart,
     'wholefileretry': scenario_wholefileretry,
+    'wholefilepar': scenario_wholefilepar,
     'wholefilefailretry': scenario_wholefilefailretry,
+    'wholefilelive': scenario_wholefilelive,
     'streamretry': scenario_streamretry,
+    'wholefilenfoproof': scenario_wholefilenfoproof,
+    'wholefilesampleproof': scenario_wholefilesampleproof,
+    'wholefileonly': scenario_wholefileonly,
+    'wholefilewrongdonor': scenario_wholefilewrongdonor,
+    'wholefilenofirst': scenario_wholefilenofirst,
+    'wholefilepartial': scenario_wholefilepartial,
+    'wholefiletwo': scenario_wholefiletwo,
 }
 
 EXPECTED_HISTORY_STATUS = {
@@ -2125,8 +2348,17 @@ SCENARIO_OPTIONS = {
     'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'wholefileretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilepar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilefailretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilelive': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=4000'],
     'streamretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilenfoproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilesampleproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefileonly': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilewrongdonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilenofirst': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilepartial': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefiletwo': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

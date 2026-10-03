@@ -397,6 +397,63 @@ FileInfo* DupeStreamRepair::SelectWholeFileDonor(const char* targetFilename, int
 	return nullptr;
 }
 
+std::string DupeStreamRepair::VolumeSetKey(const char* filename)
+{
+	if (Util::EmptyStr(filename))
+	{
+		return "";
+	}
+	std::string name(FileSystem::BaseFileName(filename));
+	for (char& ch : name)
+	{
+		ch = (char)tolower((unsigned char)ch);
+	}
+
+	auto digitsBefore = [&name](size_t end) -> size_t
+	{
+		size_t begin = end;
+		while (begin > 0 && isdigit((unsigned char)name[begin - 1]))
+		{
+			begin--;
+		}
+		return begin;
+	};
+	auto endsWith = [&name](const char* tail) -> bool
+	{
+		size_t len = strlen(tail);
+		return name.size() > len && !name.compare(name.size() - len, len, tail);
+	};
+
+	// "x.partNN.rar"
+	if (endsWith(".rar"))
+	{
+		size_t end = name.size() - 4;
+		size_t begin = digitsBefore(end);
+		if (begin < end && begin >= 5 && !name.compare(begin - 5, 5, ".part"))
+		{
+			return name.substr(0, begin) + "#.rar";
+		}
+		// old-style first volume "x.rar" of "x.r00", "x.r01", ...
+		return name.substr(0, name.size() - 4) + ".r#";
+	}
+	if (endsWith(".zip"))
+	{
+		return name.substr(0, name.size() - 4) + ".z#";
+	}
+	// "x.rNN", "x.zNN", "x.NNN" (7z/raw splits)
+	size_t begin = digitsBefore(name.size());
+	if (begin < name.size() && begin >= 2 && name[begin - 1] != '.' &&
+		name[begin - 2] == '.' && (name[begin - 1] == 'r' || name[begin - 1] == 'z'))
+	{
+		return name.substr(0, begin) + "#";
+	}
+	if (begin < name.size() && name.size() - begin >= 3 && begin >= 1 && name[begin - 1] == '.')
+	{
+		return name.substr(0, begin) + "#";
+	}
+	return "";
+}
+
 bool DupeStreamRepair::DecodedSizePlausible(int64 decodedFileSize, int64 encodedSize)
 {
 	return decodedFileSize > 0 && encodedSize > 0 && decodedFileSize <= encodedSize &&
