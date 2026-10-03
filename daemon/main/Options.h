@@ -241,7 +241,8 @@ public:
 		hcPause,
 		hcDelete,
 		hcPark,
-		hcNone
+		hcNone,
+		hcDupe
 	};
 	enum ESchedulerCommand
 	{

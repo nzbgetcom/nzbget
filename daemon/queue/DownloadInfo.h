@@ -710,6 +710,12 @@ public:
 	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
 	int GetDupeRecoveredHoles() { return m_dupeRecoveredHoles; }
 	void SetDupeRecoveredHoles(int value) { m_dupeRecoveredHoles = value; }
+	int GetDupeAttemptedArticles() { return m_dupeAttemptedArticles; }
+	void SetDupeAttemptedArticles(int value) { m_dupeAttemptedArticles = value; }
+	int GetDupeUnsourcedArticles() { return m_dupeUnsourcedArticles; }
+	void SetDupeUnsourcedArticles(int value) { m_dupeUnsourcedArticles = value; }
+	int GetDupeFailoverChecked() { return m_dupeFailoverChecked; }
+	void SetDupeFailoverChecked(int value) { m_dupeFailoverChecked = value; }
 	enum EDupeParDeferState { dpNone, dpDeferred, dpLifted };
 	EDupeParDeferState GetDupeParDeferState() { return m_dupeParDeferState; }
 	void SetDupeParDeferState(EDupeParDeferState state) { m_dupeParDeferState = state; }
@@ -895,6 +901,15 @@ private:
 	int m_dupeRecoveredArticles = 0;
 	int64 m_dupeRecoveredBytes = 0;
 	int m_dupeRecoveredHoles = 0;
+	// failed articles that were tried from duplicates / that no duplicate
+	// could even offer a source for (the early dupe failover's sample of how
+	// the download-time recovery is faring; not persisted)
+	int m_dupeAttemptedArticles = 0;
+	int m_dupeUnsourcedArticles = 0;
+	// failed-article count at the last history scan of the early dupe failover
+	// (-1 = never scanned), so a download without a backup is not rescanned
+	// for every failed article
+	int m_dupeFailoverChecked = -1;
 	// which way the par-first rule of duplicate recovery went, for logging once (not persisted)
 	EDupeParDeferState m_dupeParDeferState = dpNone;
 	// missing byte ranges of completed media files awaiting stream repair

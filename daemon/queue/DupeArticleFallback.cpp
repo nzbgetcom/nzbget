@@ -164,6 +164,11 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	std::vector<CString>& sources = *articleInfo->GetDupeSources();
 	if (round >= (int)sources.size())
 	{
+		if (round == 0)
+		{
+			// no duplicate carries this article's file at all
+			nzbInfo->SetDupeUnsourcedArticles(nzbInfo->GetDupeUnsourcedArticles() + 1);
+		}
 		return false;
 	}
 
@@ -174,6 +179,7 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	if (round == 0)
 	{
 		fileInfo->SetDupeAttemptedArticles(fileInfo->GetDupeAttemptedArticles() + 1);
+		nzbInfo->SetDupeAttemptedArticles(nzbInfo->GetDupeAttemptedArticles() + 1);
 	}
 
 	// pin the decoded byte range this article must occupy, as far as it is

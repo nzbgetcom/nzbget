@@ -303,6 +303,23 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackOptionTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(HealthCheckDupeOptionTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("HealthCheck=dupe");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetHealthCheck() == Options::hcDupe);
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("HealthCheck=park");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK(options.GetHealthCheck() == Options::hcPark);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(DupeStreamDecompressOptionTest)
 {
 	{

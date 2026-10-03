@@ -116,6 +116,17 @@ private:
 	void DiscardDirectRename(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void DiscardDownloadedArticles(NzbInfo* nzbInfo, FileInfo* fileInfo);
 	void CheckHealth(DownloadQueue* downloadQueue, FileInfo* fileInfo);
+	void CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	// failed articles the duplicates must have been asked for before the
+	// early dupe failover judges the download-time recovery
+	static constexpr int DupeFailoverSample = 32;
+	// a download without a better duplicate is parked once this share of its
+	// articles was tried (percent) and fewer than this share of the tried
+	// ones existed (percent; the ParScan=dupe park ratio): nothing of it
+	// exists for par2 or byte-level repair to build on
+	static constexpr int DupeHopelessTriedPercent = 10;
+	static constexpr int DupeHopelessAlivePercent = 10;
+	static bool DownloadHopeless(NzbInfo* nzbInfo);
 	void ResetHangingDownloads();
 	void AdjustDownloadsLimit();
 	void Load();

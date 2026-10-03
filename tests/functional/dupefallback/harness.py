@@ -1713,6 +1713,125 @@ def scenario_wholefile(daemon, t):
             % (h['Status'], queued, recreated, repaired, integ))
 
 
+def scenario_dupefailover(daemon, t):
+    """HealthCheck=dupe: the primary is a dead posting (every article of
+    every file missing) and no duplicate carries its files, while a healthy
+    lower-scored backup of the same title waits in history (deleted as
+    duplicate at intake). The download must be abandoned early - long before
+    all of its articles have failed - and the backup fetched and completed
+    in its place. The backup's score (90) is above what the primary (100)
+    warrants at the health it has when the sample completes, so the
+    failover itself fires (not the hopeless-park, see dupehopeless)."""
+    seg = 100_000
+    # the dead posting is packaged differently from the backup (other
+    # volume size and article count), so no article can be borrowed from it
+    vol_dead, vol_backup = 2_900_000, 3_000_000
+    n = vol_dead // seg
+    dead = [('foA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg, set(range(1, n + 1)))
+            for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9500))
+    data = _payload(vol_backup, 9501)
+    bp = _place_copy(t, 'foB', data)
+    backup = build_nzb(bp, 'Backup.bin', vol_backup, seg, set())
+    api = daemon.wait_ready()
+    # the primary is queued paused first, so the lower-scored backup is
+    # deleted as duplicate into history instead of downloading
+    daemon.append(api, 'Primary', build_multi_nzb(dead), True, 'fo-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'fo-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    # the backup leaves history while it downloads and returns finished
+    deadline = time.time() + 180
+    hb = daemon.wait_history(api, 'Backup')
+    while hb['Status'].startswith('DELETED') and time.time() < deadline:
+        time.sleep(0.5)
+        hb = daemon.wait_history(api, 'Backup')
+    failed_over = _grep_log(t, 'Failing over Primary to duplicate Backup')
+    failed_articles = int(hp.get('FailedArticles', 0))
+    integ = _verify_output(t, data)
+    # the primary has 174 articles; the failover fires once 32 were tried
+    # against the (unusable) duplicate and the health is below critical
+    early = failed_articles < 140
+    return ('dupefailover', failed_over == 1 and early and integ and
+            hb['Status'].startswith('SUCCESS'),
+            'status=%s backup_status=%s failover_logs=%d failed_articles=%d integrity=%s'
+            % (hp['Status'], hb['Status'], failed_over, failed_articles, integ))
+
+
+def scenario_dupehopeless(daemon, t):
+    """HealthCheck=dupe without a backup: a dead posting (every article of
+    every file missing, no duplicate able to supply anything) must be parked
+    once the duplicates were asked for a sample and almost nothing of it
+    exists, instead of failing all of its articles first. The one donor in
+    history is an unrelated packaging that is itself dead, so nothing can
+    be borrowed and no failover target qualifies either."""
+    seg = 100_000
+    vol_dead, vol_donor = 2_900_000, 3_000_000
+    n = vol_dead // seg
+    dead = [('hoA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg, set(range(1, n + 1)))
+            for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9600))
+    dp = _place_copy(t, 'hoB', _payload(vol_donor, 9601))
+    donor = build_nzb(dp, 'Donor.bin', vol_donor, seg, set(range(1, vol_donor // seg + 1)))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(dead), True, 'ho-key', 100)
+    daemon.append(api, 'Donor', donor, False, 'ho-key', 50)
+    daemon.wait_history(api, 'Donor', timeout=60)
+    # the donor is a dead posting too: mark it bad so it is no failover target
+    api.editqueue('HistoryMarkBad', 0, '', [h['NZBID'] for h in api.history()
+                                            if h['NZBName'] == 'Donor'])
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    parked = _grep_log(t, 'Parking Primary: health')
+    failed_over = _grep_log(t, 'Failing over Primary')
+    failed_articles = int(hp.get('FailedArticles', 0))
+    # 174 articles in total; the park fires once 32 were tried (more than a
+    # tenth of the download, none of them alive)
+    early = failed_articles < 140
+    return ('dupehopeless', parked == 1 and failed_over == 0 and early,
+            'status=%s parked_logs=%d failover_logs=%d failed_articles=%d'
+            % (hp['Status'], parked, failed_over, failed_articles))
+
+
+def scenario_dupedeadstart(daemon, t):
+    """The hopeless-park must not fire on a posting that merely BEGINS with
+    a dead stretch: the first 40 of 300 articles are missing, the rest
+    exist, there is no par2 and no duplicate carries anything. Health is
+    below critical with nothing downloaded yet, but by the time a tenth of
+    the download was tried most tried articles exist, so the download runs
+    to the end (FAILURE/HEALTH with exactly the 40 missing articles, every
+    other article downloaded) and nothing is parked early."""
+    seg = 100_000
+    vol = 10_000_000
+    data = _payload(vol, 9700)
+    pp = _place_copy(t, 'dsA', data)
+    primary = build_multi_nzb([(pp, 'Start.bin', vol, seg, set(range(1, 41))),
+                               ('dsA/file.bin', 'Start2.bin', vol, seg, set(range(1, 41))),
+                               ('dsA/file.bin', 'Start3.bin', vol, seg, set(range(1, 41)))])
+    dp = _place_copy(t, 'dsB', _payload(3_000_000, 9701))
+    donor = build_nzb(dp, 'Donor.bin', 3_000_000, seg, set(range(1, 31)))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', primary, True, 'ds-key', 100)
+    daemon.append(api, 'Donor', donor, False, 'ds-key', 50)
+    daemon.wait_history(api, 'Donor', timeout=60)
+    api.editqueue('HistoryMarkBad', 0, '', [h['NZBID'] for h in api.history()
+                                            if h['NZBName'] == 'Donor'])
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary', timeout=300)
+    parked = _grep_log(t, 'Parking Primary: health')
+    failed_articles = int(hp.get('FailedArticles', 0))
+    success_articles = int(hp.get('SuccessArticles', 0))
+    return ('dupedeadstart', parked == 0 and failed_articles == 120 and success_articles == 180,
+            'status=%s parked_logs=%d failed_articles=%d success_articles=%d'
+            % (hp['Status'], parked, failed_articles, success_articles))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -1792,6 +1911,9 @@ SCENARIOS = {
     'xdecomp_symlink': scenario_xdecomp_symlink,
     'xdecomp_off': scenario_xdecomp_off,
     'wholefile': scenario_wholefile,
+    'dupefailover': scenario_dupefailover,
+    'dupehopeless': scenario_dupehopeless,
+    'dupedeadstart': scenario_dupedeadstart,
 }
 
 EXPECTED_HISTORY_STATUS = {
@@ -1813,6 +1935,8 @@ EXPECTED_HISTORY_STATUS = {
     'xdecomp_enc7z': 'SUCCESS/HEALTH', 'xdecomp_neg': 'FAILURE/HEALTH',
     'xdecomp_symlink': 'FAILURE/HEALTH', 'xdecomp_off': 'FAILURE/HEALTH',
     'wholefile': 'SUCCESS/HEALTH',
+    'dupefailover': 'FAILURE/HEALTH', 'dupehopeless': 'FAILURE/HEALTH',
+    'dupedeadstart': 'FAILURE/HEALTH',
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -1886,6 +2010,12 @@ SCENARIO_OPTIONS = {
                         'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_off': ['DupeArticleFallback=stream', 'ParCheck=auto'] + _SEVENZIP_OPTION,
     'wholefile': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # dupefailover: the health action under test replaces the base config's
+    # HealthCheck=none; article recovery stays on so the failover's
+    # "duplicates were asked first" sample gate is exercised too
+    'dupefailover': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

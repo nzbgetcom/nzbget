@@ -33,6 +33,7 @@
 #include "Decoder.h"
 #include "StatMeter.h"
 #include "Deobfuscation.h"
+#include "DupeCoordinator.h"
 #include "DupeStreamRepair.h"
 #include "StreamRepair.h"
 
@@ -1424,6 +1425,94 @@ void QueueCoordinator::CheckHealth(DownloadQueue* downloadQueue, FileInfo* fileI
 			g_Options->GetHealthCheck() == Options::hcPark ? DownloadQueue::eaGroupParkDelete : DownloadQueue::eaGroupDelete,
 			nullptr);
 	}
+	else if (g_Options->GetHealthCheck() == Options::hcDupe)
+	{
+		CheckDupeFailover(downloadQueue, fileInfo->GetNzbInfo());
+	}
+}
+
+/*
+ * Option <HealthCheck> value "dupe": a download whose health fell below
+ * critical is abandoned (parked, so its files stay available as a stream
+ * repair donor) as soon as a better duplicate waits in history, instead of
+ * failing every remaining article first and only then fetching that
+ * duplicate through DupeCoordinator::NzbCompleted. The download-time
+ * recovery (option <DupeArticleFallback>) gets its say first: with it
+ * enabled the failover waits until the duplicates were asked for a sample of
+ * articles and could supply less than half of them.
+ *
+ * Without a better duplicate the download continues - unless it is hopeless:
+ * at least a tenth of it was tried and fewer than one in ten of the tried
+ * articles existed (the ratio the park-action uses under ParScan=dupe), so
+ * neither par2 nor the byte-level repair from duplicates, which needs the
+ * collection's own files to verify against, has anything to work with. Such
+ * a download is parked too, instead of failing every remaining article;
+ * whatever history holds is still tried through DupeCoordinator::NzbCompleted.
+ * The tenth-of-the-download floor matters: a posting that merely starts
+ * with a dead stretch is below critical health with nothing downloaded yet.
+ */
+bool QueueCoordinator::DownloadHopeless(NzbInfo* nzbInfo)
+{
+	int total = nzbInfo->GetTotalArticles();
+	int tried = nzbInfo->GetCurrentSuccessArticles() + nzbInfo->GetCurrentFailedArticles();
+	return total > 0 && tried * 100 >= total * DupeHopelessTriedPercent &&
+		nzbInfo->GetCurrentSuccessArticles() * 100 < tried * DupeHopelessAlivePercent;
+}
+
+void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (!g_Options->GetDupeCheck() || nzbInfo->GetDupeMode() != dmScore ||
+		nzbInfo->GetDeleting() || nzbInfo->GetParking())
+	{
+		return;
+	}
+
+	int attempted = nzbInfo->GetDupeAttemptedArticles() + nzbInfo->GetDupeUnsourcedArticles();
+	int recovered = nzbInfo->GetDupeRecoveredArticles();
+	if (g_Options->GetDupeArticleFallback() != Options::dafNone &&
+		(attempted < DupeFailoverSample || recovered * 2 >= attempted))
+	{
+		return;
+	}
+
+	// the history scan is repeated only after a batch of further failures
+	int failed = nzbInfo->GetCurrentFailedArticles();
+	if (nzbInfo->GetDupeFailoverChecked() >= 0 &&
+		failed - nzbInfo->GetDupeFailoverChecked() < DupeFailoverSample)
+	{
+		return;
+	}
+	nzbInfo->SetDupeFailoverChecked(failed);
+
+	HistoryInfo* backup = g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo,
+		nzbInfo->GetName(), nzbInfo->GetDupeKey());
+	if (backup && DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(),
+		nzbInfo->CalcHealth(), backup->GetNzbInfo()->GetDupeScore()))
+	{
+		nzbInfo->PrintMessage(Message::mkWarning,
+			"Failing over %s to duplicate %s: health %.1f%% below critical %.1f%%, "
+			"%i of %i missing article(s) recovered from duplicates",
+			nzbInfo->GetName(), backup->GetNzbInfo()->GetName(),
+			nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(true) / 10.0,
+			recovered, attempted);
+	}
+	else if (DownloadHopeless(nzbInfo))
+	{
+		int tried = nzbInfo->GetCurrentSuccessArticles() + nzbInfo->GetCurrentFailedArticles();
+		nzbInfo->PrintMessage(Message::mkWarning,
+			"Parking %s: health %.1f%% below critical %.1f%%, %i of %i missing article(s) "
+			"recovered from duplicates, %i of %i tried article(s) exist and no better duplicate in history",
+			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(true) / 10.0,
+			recovered, attempted, nzbInfo->GetCurrentSuccessArticles(), tried);
+	}
+	else
+	{
+		return;
+	}
+	// the parked failure is processed like a health-deletion: on its way to
+	// history DupeCoordinator::NzbCompleted returns the backup to the queue
+	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
+	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
 }
 
 void QueueCoordinator::LogDebugInfo()

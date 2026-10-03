@@ -19,6 +19,8 @@
 
 
 #include "nzbget.h"
+
+#include <algorithm>
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
@@ -328,6 +330,19 @@ void DupeCoordinator::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInf
 */
 void DupeCoordinator::ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey)
 {
+	HistoryInfo* historyDupe = FindDupeBackup(downloadQueue, nzbInfo, nzbName, dupeKey);
+
+	// move that dupe-backup from history to download queue
+	if (historyDupe)
+	{
+		info("Found duplicate %s for %s", historyDupe->GetNzbInfo()->GetName(), nzbName);
+		historyDupe->GetNzbInfo()->SetDupeHint(NzbInfo::dhRedownloadAuto);
+		g_HistoryCoordinator->Redownload(downloadQueue, historyDupe);
+	}
+}
+
+HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey)
+{
 	// check if history (recent or dup) has other success-duplicates or good-duplicates
 	bool dupeFound = false;
 	int historyScore = 0;
@@ -365,7 +380,7 @@ void DupeCoordinator::ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbI
 		if (goodDupe)
 		{
 			// another duplicate with good-status exists - exit without moving other dupes to queue
-			return;
+			return nullptr;
 		}
 	}
 
@@ -405,13 +420,20 @@ void DupeCoordinator::ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbI
 		}
 	}
 
-	// move that dupe-backup from history to download queue
-	if (historyDupe)
-	{
-		info("Found duplicate %s for %s", historyDupe->GetNzbInfo()->GetName(), nzbName);
-		historyDupe->GetNzbInfo()->SetDupeHint(NzbInfo::dhRedownloadAuto);
-		g_HistoryCoordinator->Redownload(downloadQueue, historyDupe);
-	}
+	return historyDupe;
+}
+
+bool DupeCoordinator::DupeFailoverWarranted(int itemScore, int health, int backupScore)
+{
+	// The item's score was assigned when it was queued, before its health was
+	// known; what it still warrants shrinks with its health (a posting at 30%
+	// health warrants 30% of its score). A backup not below that is the
+	// better bet. A non-positive item score warrants nothing, so any backup
+	// qualifies - exactly the backup ReturnBestDupe would fetch after the
+	// failure anyway, only without the wait.
+	health = std::max(0, std::min(1000, health));
+	int warranted = itemScore > 0 ? (int)((int64)itemScore * health / 1000) : 0;
+	return backupScore >= warranted;
 }
 
 void DupeCoordinator::HistoryMark(DownloadQueue* downloadQueue, HistoryInfo* historyInfo, NzbInfo::EMarkStatus markStatus)

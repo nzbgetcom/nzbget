@@ -16,6 +16,7 @@ nzbget-v26.3
       - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
       - Value "live" runs the byte-level repair concurrently with the download: a damaged file is repaired as soon as it completes, while the collection's remaining files still download, removing the end-of-download wait on large collections;
       - A file none of whose articles is available anywhere is recreated whole from a duplicate proven byte-identical on the collection's other files;
+      - Option HealthCheck value "dupe": a download the duplicates can't complete is parked as soon as its health drops below critical when a better duplicate waits in history, which is fetched right away instead of after every remaining article failed; a dead posting without a better duplicate is parked instead of failing every article;
       - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
     - Added support for extension i18n
     [#872](https://github.com/nzbgetcom/nzbget/pull/872)

@@ -736,9 +736,9 @@ void Options::InitOptions()
 	const int FileNamingCount = 4;
 	m_fileNaming = (EFileNaming)ParseEnumValue(FILENAMING.data(), FileNamingCount, FileNamingNames, FileNamingValues);
 
-	const char* HealthCheckNames[] = { "pause", "delete", "park", "none" };
-	const int HealthCheckValues[] = { hcPause, hcDelete, hcPark, hcNone };
-	const int HealthCheckCount = 4;
+	const char* HealthCheckNames[] = { "pause", "delete", "park", "none", "dupe" };
+	const int HealthCheckValues[] = { hcPause, hcDelete, hcPark, hcNone, hcDupe };
+	const int HealthCheckCount = 5;
 	m_healthCheck = (EHealthCheck)ParseEnumValue(HEALTHCHECK.data(), HealthCheckCount, HealthCheckNames, HealthCheckValues);
 
 	const char* TargetNames[] = { "screen", "log", "both", "none" };

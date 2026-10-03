@@ -42,6 +42,14 @@ public:
 	EDupeStatus GetDupeStatus(DownloadQueue* downloadQueue, const char* name, const char* dupeKey);
 	RawNzbList ListHistoryDupes(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	static bool SameNameOrKey(const char* name1, const char* dupeKey1, const char* name2, const char* dupeKey2);
+	/* The dupe-backup in history ReturnBestDupe would move to the queue for
+	 * this title (nullptr if none, or if a good-duplicate already exists). */
+	HistoryInfo* FindDupeBackup(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey);
+	/* Whether a queued item at the given health (permille) and duplicate score
+	 * should be abandoned early for a backup with the given score (option
+	 * <HealthCheck> value "dupe"): the backup's score must not fall below the
+	 * score the item still warrants at its remaining health. */
+	static bool DupeFailoverWarranted(int itemScore, int health, int backupScore);
 
 private:
 	void ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey);

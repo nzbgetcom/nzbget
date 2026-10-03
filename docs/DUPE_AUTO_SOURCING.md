@@ -41,8 +41,12 @@ Two facts make auto-sourcing practical:
 DupeArticleFallback=stream      # or "live" for download-concurrent repair
 DupeCheck=yes
 NzbCleanupDisk=no               # donors must keep their .nzb in NzbDir
-HealthCheck=none                # do NOT delete/park a damaged item before
-                                # post-processing, or the repair never runs
+HealthCheck=dupe                # never delete/park a REPAIRABLE item before
+                                # post-processing ("delete"/"park" would), but
+                                # switch to a better duplicate in history as
+                                # soon as this one proves unrecoverable, and
+                                # park a dead posting instead of downloading
+                                # all of its failures ("none" would)
 ```
 
 ## What a post-processing script receives

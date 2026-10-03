@@ -44,6 +44,9 @@ suffix to make chosen articles "missing" on the active server.
 | `xdecomp_neg` | The negative: a compressed donor with the right inner size but the WRONG bytes; rejected by the identity probe (`content identity not confirmed`) before any write - nothing is written and the target stays unrecovered. |
 | `xdecomp_symlink` | The symlink fail-close: a compressed donor containing a valid movie plus a relative symlink to it must be rejected before selecting or patching anything (`archive contains link`). The link is relative and in-tree because 7-Zip 23.01+ refuses to create absolute or `..` link targets at extraction time (exit code 2), which would fail the extract step before the daemon's own link check ever ran. Also asserts cleanup unlinks the extracted symlink without following it (an outside sentinel file survives) and removes every scratch directory. POSIX-only. |
 | `wholefile` | A volume none of whose articles exists anywhere. The renamed byte-identical repost is proven on the set's other damaged volume first, then the missing volume is recreated whole from the twin member the suffix pairs it with (`Recreating`), and the release completes `SUCCESS` byte-identically. |
+| `dupefailover` | `HealthCheck=dupe`: a dead posting whose files no duplicate carries, with a healthy lower-scored backup of the same title in history. The download is abandoned well before all of its articles have failed (`Failing over`), and the backup is fetched and completes `SUCCESS`. |
+| `dupehopeless` | `HealthCheck=dupe` without a usable backup: a dead posting whose one duplicate is dead too (and marked bad) is parked (`Parking`) once the duplicates were asked for a sample, a tenth of it was tried and fewer than one in ten of those articles existed, instead of failing every article; no `Failing over` line. |
+| `dupedeadstart` | The guard for that rule: a posting that merely begins with a dead stretch (first 40 of 100 articles of each file missing, no par2, no usable duplicate) is below critical health with nothing downloaded yet, but is NOT parked - it runs to the end and ends `FAILURE/HEALTH` with exactly its missing articles failed. |
 | `xdecomp_off` | The opt-in gate: the identical compressed-7z-donor setup as `xdecomp_7z`, but `DupeStreamDecompress` is OMITTED (default `no`) - the decompression path must never run and the item stays unrepaired. |
 
 Each scenario asserts byte identity of the reassembled file (with
@@ -106,7 +109,7 @@ device, and the RPC control port is forwarded back to the host.
 
 ```sh
 python3 harness.py --nzbget <bin> --target {local|adb} \
-    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile] [--serial <adb-serial>] [--keep]
+    [--scenario all|complementary|cutover|leadswitch|cutovertruth|manydonors|stream|liveoverlap|livegate|livelastfile|repost|repostrenamed|repostobfuscated|repostdonorgaps|xpackbare|xpackrar|xpackrar2rar|xpack2sets|xpackzip|xpack7z|xpacksplit|xpackcompressed|xpackneg|xcrypt_encplain|xcrypt_plainenc|xcrypt_diffpass|xcrypt_wrongpass|xdecomp_zip|xdecomp_7z|xdecomp_storetarget|xdecomp_enc7z|xdecomp_enctarget|xdecomp_neg|xdecomp_symlink|xdecomp_off|wholefile|dupefailover|dupehopeless|dupedeadstart] [--serial <adb-serial>] [--keep]
 ```
 
 `--keep` leaves the scratch workdir in place for inspection. Exit code is 0

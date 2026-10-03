@@ -4,6 +4,7 @@ list(APPEND TESTS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/queue/ArchiveProcessor.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/queue/CompletedFile.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/queue/DupeArticleFallback.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/queue/DupeCoordinator.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/queue/DupeStreamRepair.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/queue/HistoryCoordinator.cpp
 )

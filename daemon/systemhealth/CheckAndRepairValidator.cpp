@@ -200,6 +200,7 @@ Status HealthCheckValidator::Validate() const
 		case Options::EHealthCheck::hcDelete:
 		case Options::EHealthCheck::hcPark:
 		case Options::EHealthCheck::hcNone:
+		case Options::EHealthCheck::hcDupe:
 			return Status::Ok();
 		case Options::EHealthCheck::hcPause:
 			return Status::Warning("'" + std::string(Options::HEALTHCHECK) +
