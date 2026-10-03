@@ -1674,6 +1674,45 @@ def scenario_xdecomp_off(daemon, t):
             % (h['Status'], c['recov'], decompressed, integ['movie.mkv']))
 
 
+def scenario_wholefile(daemon, t):
+    """A volume none of whose articles is available anywhere: the primary
+    lists it, every server lacks it. The byte-identical renamed repost is
+    proven on the set's other damaged volume first (its bytes verify), and
+    then the missing volume is recreated whole from the twin member the
+    suffix pairs it with. Every hole filled and no par2, so the release
+    completes SUCCESS byte-identically."""
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    n = (vol + seg_primary - 1) // seg_primary
+    members = [
+        ('wholeA/x.part01.rar', 'Rel.part01.rar', vol, seg_primary, set()),
+        ('wholeA/x.part02.rar', 'Rel.part02.rar', vol, seg_primary, {2}),
+        ('wholeA/x.part03.rar', 'Rel.part03.rar', vol, seg_primary, set(range(1, n + 1))),
+        ('wholeA/x.part04.rar', 'Rel.part04.rar', vol, seg_primary, set()),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 9300 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+    donor_members = [(m[0].replace('wholeA', 'wholeB'), m[1].replace('Rel.', 'Other.'),
+                      m[2], seg_donor, set()) for m in members]
+    for dm, m in zip(donor_members, members):
+        t.write_file(os.path.join('data', dm[0]), payloads[m[1]])
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWhole', build_multi_nzb(donor_members), True, 'whole-key', 50)
+    daemon.append(api, 'RelWhole', build_multi_nzb(members), False, 'whole-key', 100)
+    h = daemon.wait_history(api, 'RelWhole')
+    queued = _grep_log(t, 'no article available')
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    repaired = _grep_log(t, 'donor article(s)')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members)
+    return ('wholefile', integ and queued == 1 and recreated == 1 and repaired >= 2,
+            'status=%s queued_logs=%d recreated_logs=%d repair_logs=%d integrity=%s'
+            % (h['Status'], queued, recreated, repaired, integ))
+
+
 def _verify_output(t, expected, ext='.bin', dirs=(('main', 'dst'),)):
     """On SUCCESS the completed file lands at main/dst/<category>/<nzb>/
     <name><ext>, whose exact path depends on category and FileNaming. When
@@ -1752,6 +1791,7 @@ SCENARIOS = {
     'xdecomp_neg': scenario_xdecomp_neg,
     'xdecomp_symlink': scenario_xdecomp_symlink,
     'xdecomp_off': scenario_xdecomp_off,
+    'wholefile': scenario_wholefile,
 }
 
 EXPECTED_HISTORY_STATUS = {
@@ -1772,6 +1812,7 @@ EXPECTED_HISTORY_STATUS = {
     'xdecomp_7z': 'SUCCESS/HEALTH', 'xdecomp_storetarget': 'SUCCESS/HEALTH',
     'xdecomp_enc7z': 'SUCCESS/HEALTH', 'xdecomp_neg': 'FAILURE/HEALTH',
     'xdecomp_symlink': 'FAILURE/HEALTH', 'xdecomp_off': 'FAILURE/HEALTH',
+    'wholefile': 'SUCCESS/HEALTH',
 }
 
 # per-scenario daemon options; the article-level scenarios keep the legacy
@@ -1844,6 +1885,7 @@ SCENARIO_OPTIONS = {
     'xdecomp_symlink': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                         'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_off': ['DupeArticleFallback=stream', 'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'wholefile': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

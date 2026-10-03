@@ -15,6 +15,7 @@ nzbget-v26.3
       - Stop fetching an incomplete duplicate archive when a required article is unavailable, skip equivalent saved postings, and distinguish download progress from decompression;
       - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
       - Value "live" runs the byte-level repair concurrently with the download: a damaged file is repaired as soon as it completes, while the collection's remaining files still download, removing the end-of-download wait on large collections;
+      - A file none of whose articles is available anywhere is recreated whole from a duplicate proven byte-identical on the collection's other files;
       - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
     - Added support for extension i18n
     [#872](https://github.com/nzbgetcom/nzbget/pull/872)

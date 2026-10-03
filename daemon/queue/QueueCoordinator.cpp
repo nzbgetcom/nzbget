@@ -1034,15 +1034,30 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 		std::string filename = (completed && !outputFilename.empty())
 			? FileSystem::BaseFileName(outputFilename.c_str())
 			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
+		// a file none of whose articles arrived never got past its temporary
+		// output name ("<id>.out.tmp"), and nothing exists on disk under it:
+		// record the file by the name its nzb-file gives it, which is what a
+		// recreation from a duplicate (stream repair) and a retry need
+		if (completed && fileStatus == CompletedFile::cfFailure &&
+			!Util::EmptyStr(fileInfo->GetFilename()) &&
+			!FileSystem::FileExists(outputFilename.c_str()))
+		{
+			filename = fileInfo->GetFilename();
+		}
 
 		// capture the missing byte ranges of an incomplete file for
 		// post-processing stream repair while the article list still exists
-		// (see option <DupeArticleFallback> value "stream")
-		if (completed && fileStatus == CompletedFile::cfPartial &&
+		// (see option <DupeArticleFallback> value "stream"). A file none of
+		// whose articles arrived is captured whole: a duplicate proven on the
+		// collection's other files may still carry it
+		if (completed &&
+			(fileStatus == CompletedFile::cfPartial || fileStatus == CompletedFile::cfFailure) &&
 			DupeStreamRepair::BuildRepairJob(fileInfo, filename.c_str()))
 		{
 			nzbInfo->PrintMessage(Message::mkInfo,
-				"Queueing stream repair of %s from duplicate collections", filename.c_str());
+				fileStatus == CompletedFile::cfFailure ?
+					"Queueing stream repair of %s (no article available) from duplicate collections" :
+					"Queueing stream repair of %s from duplicate collections", filename.c_str());
 
 			// live mode: repair this file's holes now, while the rest of the
 			// collection still downloads. Only when other files remain queued -

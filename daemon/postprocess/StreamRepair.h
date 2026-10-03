@@ -163,8 +163,20 @@ private:
 	{
 		int FileId;
 		CString Filename;		// current on-disk base name (in DestDir)
+		// 0 for a file none of whose articles arrived: nothing is on disk,
+		// the whole file is the hole and its size is learned from the first
+		// donor article (RepairWholeFile); Holes is empty until then
 		int64 DecodedFileSize;
 		StreamRangeList Holes;
+		// true while the target still needs bytes: declared holes, or a
+		// whole-file target that was not sized yet
+		bool NeedsRepair() const { return !Holes.empty() || DecodedFileSize <= 0; }
+		// the file's ENCODED size and article count from its own nzb-file
+		// (whole-file donor pairing has nothing else to go by)
+		int64 EncodedSize = 0;
+		int ArticleCount = 0;
+		// a whole-file target that was allocated on disk in this pass
+		bool Recreated = false;
 		// the file's ENCODED failed size and par2 flag, captured from the
 		// StreamRepairJob (the source of truth). When this target is FULLY
 		// repaired its FailedSize is credited back to health, exactly reversing
@@ -250,9 +262,21 @@ private:
 
 	void ExecRepair(const char* destDir, std::vector<RepairTarget>& targets,
 		std::vector<DonorSource>& donors);
-	// verified: set when a donor member proved byte-identical to the target
+	// verified: set when a donor member proved byte-identical to the target;
+	// donorProven: a member of this donor already verified against another
+	// target of the collection (the only identity evidence a whole-file
+	// target can rely on)
 	ERepairOutcome RepairFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
-		const char* donorName, std::set<FileInfo*>& claimed, bool& verified);
+		const char* donorName, std::set<FileInfo*>& claimed, bool& verified, bool donorProven);
+	/* Recreates a file none of whose articles arrived from the donor member
+	 * SelectWholeFileDonor pairs it with: the decoded size comes from that
+	 * member's first article, the file is allocated and every part is
+	 * patched in. Only for a donor proven on another file of the collection. */
+	ERepairOutcome RepairWholeFile(const char* destDir, RepairTarget& target, NzbInfo* donorNzb,
+		const char* donorName, std::set<FileInfo*>& claimed, bool donorProven);
+	/* Marks the completed-file record of a recreated whole-file target as
+	 * partially downloaded, so later stages read it from disk. */
+	static void MarkRecreated(NzbInfo* nzbInfo, const RepairTarget& target);
 	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb,
 		const std::set<FileInfo*>& claimed);
 	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,

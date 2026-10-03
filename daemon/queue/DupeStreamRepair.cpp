@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <functional>
 #include "DupeStreamRepair.h"
 #include "DupeArticleFallback.h"
 #include "FileSystem.h"
@@ -288,12 +289,32 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 		return false;
 	}
 
+	if (Util::EmptyStr(diskBasename) || fileInfo->GetArticles()->empty())
+	{
+		return false;
+	}
+
+	// A file none of whose articles arrived has no decoded size and nothing
+	// on disk: the whole file is its hole. It can only be recreated from a
+	// donor member identified structurally and proven on the collection's
+	// other files (see StreamRepairController::RepairWholeFile).
+	if (fileInfo->GetSuccessArticles() == 0)
+	{
+		if (fileInfo->GetSize() <= 0)
+		{
+			return false;
+		}
+		nzbInfo->GetStreamRepairJobs()->emplace_back(fileInfo->GetId(), diskBasename,
+			0, fileInfo->GetFailedSize(), fileInfo->GetMissedSize(),
+			fileInfo->GetFailedArticles() + fileInfo->GetMissedArticles(), fileInfo->GetParFile(),
+			StreamRangeList(), DupeArticleFallback::ArticleSizeStepsHash(fileInfo));
+		return true;
+	}
+
 	// Data files qualify regardless of container: identity is decided by
 	// probe byte-compares. Parity is excluded above because partial byte
 	// matches cannot establish that another posting belongs to the PAR set.
-	if (fileInfo->GetSuccessArticles() == 0 ||
-		fileInfo->GetDecodedFileSize() <= 0 ||
-		Util::EmptyStr(diskBasename))
+	if (fileInfo->GetDecodedFileSize() <= 0)
 	{
 		return false;
 	}
@@ -310,6 +331,76 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 		std::move(holes), DupeArticleFallback::ArticleSizeStepsHash(fileInfo));
 
 	return true;
+}
+
+FileInfo* DupeStreamRepair::SelectWholeFileDonor(const char* targetFilename, int64 targetEncodedSize,
+	int targetArticleCount, uint64 targetStepsHash, NzbInfo* donorNzb,
+	const std::set<FileInfo*>* claimed)
+{
+	if (Util::EmptyStr(targetFilename) || Util::EndsWith(targetFilename, ".par2", false) ||
+		targetEncodedSize <= 0 || targetArticleCount <= 0)
+	{
+		return nullptr;
+	}
+
+	// both sides are nzb-declared encoded sizes here, so the tight tolerance
+	// of the download-time article pairing applies; the article count may
+	// differ (a repost cut into other article sizes still names its volumes)
+	std::vector<FileInfo*> pool;
+	for (FileInfo* donorFile : donorNzb->GetFileList())
+	{
+		if (!DupeArticleFallback::IsParFile(donorFile) &&
+			!donorFile->GetArticles()->empty() &&
+			(!claimed || !claimed->count(donorFile)) &&
+			DupeArticleFallback::SizesMatch(donorFile->GetSize(), targetEncodedSize, WholeFileSizeToleranceDiv))
+		{
+			pool.push_back(donorFile);
+		}
+	}
+
+	auto unique = [&pool](std::function<bool(FileInfo*)> matches) -> FileInfo*
+	{
+		FileInfo* match = nullptr;
+		for (FileInfo* donorFile : pool)
+		{
+			if (matches(donorFile))
+			{
+				if (match)
+				{
+					return nullptr;
+				}
+				match = donorFile;
+			}
+		}
+		return match;
+	};
+
+	if (targetStepsHash != 0)
+	{
+		if (FileInfo* match = unique([targetStepsHash](FileInfo* donorFile)
+			{ return DupeArticleFallback::ArticleSizeStepsHash(donorFile) == targetStepsHash; }))
+		{
+			return match;
+		}
+	}
+	if (FileInfo* match = unique([targetFilename](FileInfo* donorFile)
+		{ return !strcasecmp(donorFile->GetFilename(), targetFilename); }))
+	{
+		return match;
+	}
+	std::string targetKey = SuffixKey(targetFilename);
+	if (!targetKey.empty())
+	{
+		return unique([&targetKey](FileInfo* donorFile)
+			{ return SuffixKey(donorFile->GetFilename()) == targetKey; });
+	}
+	return nullptr;
+}
+
+bool DupeStreamRepair::DecodedSizePlausible(int64 decodedFileSize, int64 encodedSize)
+{
+	return decodedFileSize > 0 && encodedSize > 0 && decodedFileSize <= encodedSize &&
+		decodedFileSize >= encodedSize - encodedSize / 8;
 }
 
 std::string DupeStreamRepair::SuffixKey(const char* filename)

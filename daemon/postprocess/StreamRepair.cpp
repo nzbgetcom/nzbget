@@ -365,7 +365,7 @@ void StreamRepairController::Run()
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
 		{
-			anyHoles |= !target.Holes.empty();
+			anyHoles |= target.NeedsRepair();
 		}
 		if (anyHoles && !IsStopped())
 		{
@@ -435,7 +435,7 @@ void StreamRepairController::RunLive()
 	bool anyEligible = false;
 	for (RepairTarget& target : targets)
 	{
-		anyEligible |= target.PatchEligible && !target.Holes.empty();
+		anyEligible |= target.PatchEligible && target.NeedsRepair();
 	}
 
 	if (anyEligible && !donors.empty())
@@ -448,7 +448,7 @@ void StreamRepairController::RunLive()
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
 		{
-			anyHoles |= target.PatchEligible && !target.Holes.empty();
+			anyHoles |= target.PatchEligible && target.NeedsRepair();
 		}
 		if (anyHoles && !IsStopped())
 		{
@@ -563,6 +563,11 @@ void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targ
 		{
 			if (job.GetFileId() == target.FileId)
 			{
+				if (target.Recreated)
+				{
+					job.SetDecodedFileSize(target.DecodedFileSize);
+					MarkRecreated(nzbInfo, target);
+				}
 				job.SetHoles(std::move(target.Holes));
 				break;
 			}
@@ -628,6 +633,8 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 		target.IsParFile = job.GetParFile();
 		target.Holes = *job.GetHoles();
 		target.StepsHash = job.GetStepsHash();
+		target.EncodedSize = job.GetFailedSize() + job.GetMissedSize();
+		target.ArticleCount = job.GetFailedArticles();
 
 		// par-rename may have renamed the file since capture; the
 		// completed-file record tracks the current on-disk name
@@ -781,7 +788,7 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		bool anyHoles = false;
 		for (RepairTarget& target : targets)
 		{
-			anyHoles |= target.PatchEligible && !target.Holes.empty();
+			anyHoles |= target.PatchEligible && target.NeedsRepair();
 		}
 		if (!anyHoles)
 		{
@@ -817,33 +824,44 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		// cannot be another target's twin, so they are never probed again
 		std::set<FileInfo*> claimed;
 
-		for (RepairTarget& target : targets)
+		// whole-file targets wait for the end of the donor's pass: only the
+		// other targets can prove the donor is a repost of this release
+		for (int round = 0; round < 2; round++)
 		{
-			if (IsStopped())
+			for (RepairTarget& target : targets)
 			{
-				break;
-			}
-			if (!target.PatchEligible || target.Holes.empty())
-			{
-				continue;
-			}
-			bool verified = false;
-			ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName,
-				claimed, verified);
-			// a byte-identical twin proves the donor is a repost of this
-			// release even when it misses the same articles as the target
-			donorProven |= verified;
-			if (outcome == roProductive)
-			{
-				consecutiveFailures = 0;
-			}
-			else if (outcome == roUnproductive &&
-				++consecutiveFailures >= (donorProven ? DonorFailureBail : UnprovenDonorBail))
-			{
-				PrintMessage(Message::mkInfo,
-					"Skipping remaining files for duplicate %s (%i consecutive files without a byte-identical match)",
-					*donor.InfoName, consecutiveFailures);
-				break;
+				if (IsStopped())
+				{
+					break;
+				}
+				bool wholeFile = target.DecodedFileSize <= 0;
+				if (!target.PatchEligible || !target.NeedsRepair() || wholeFile != (round == 1))
+				{
+					continue;
+				}
+				if (wholeFile && !donorProven)
+				{
+					break;
+				}
+				bool verified = false;
+				ERepairOutcome outcome = RepairFile(destDir, target, donorNzb.get(), donor.InfoName,
+					claimed, verified, donorProven);
+				// a byte-identical twin proves the donor is a repost of this
+				// release even when it misses the same articles as the target
+				donorProven |= verified;
+				if (outcome == roProductive)
+				{
+					consecutiveFailures = 0;
+				}
+				else if (outcome == roUnproductive &&
+					++consecutiveFailures >= (donorProven ? DonorFailureBail : UnprovenDonorBail))
+				{
+					PrintMessage(Message::mkInfo,
+						"Skipping remaining files for duplicate %s (%i consecutive files without a byte-identical match)",
+						*donor.InfoName, consecutiveFailures);
+					round = 2;
+					break;
+				}
 			}
 		}
 	}
@@ -851,8 +869,13 @@ void StreamRepairController::ExecRepair(const char* destDir,
 
 StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const char* destDir,
 	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed,
-	bool& verified)
+	bool& verified, bool donorProven)
 {
+	if (target.DecodedFileSize <= 0)
+	{
+		return RepairWholeFile(destDir, target, donorNzb, donorName, claimed, donorProven);
+	}
+
 	if (m_liveMode)
 	{
 		// direct rename can rename the completed file while this pass runs;
@@ -915,6 +938,113 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 
 	file.Close();
 	return patched ? roProductive : spentFetches ? roUnproductive : roNoCost;
+}
+
+StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(const char* destDir,
+	RepairTarget& target, NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed,
+	bool donorProven)
+{
+	// nothing of the file was downloaded, so no byte of it can confirm a
+	// donor: only a donor already proven byte-identical on another file of
+	// this collection, and a member identified by the file's own nzb entry
+	// (not by size alone), may stand in for it
+	if (!donorProven)
+	{
+		return roNoCost;
+	}
+	FileInfo* donorFile = DupeStreamRepair::SelectWholeFileDonor(
+		FileSystem::BaseFileName(target.Filename), target.EncodedSize, target.ArticleCount,
+		target.StepsHash, donorNzb, &claimed);
+	if (!donorFile || donorFile->GetArticles()->empty())
+	{
+		return roNoCost;
+	}
+
+	// the decoded size comes from the donor's first article; a donor missing
+	// it cannot size the file either (its later parts carry the size too, but
+	// a repost holed at its start is not worth the extra fetches)
+	auto donorGroups = std::make_shared<std::vector<CString>>();
+	for (const CString& group : *donorFile->GetGroups())
+	{
+		donorGroups->emplace_back(*group);
+	}
+	std::vector<ArticleBatchFetcher::Request> requests;
+	requests.push_back({(*donorFile->GetArticles())[0]->GetMessageId(), donorGroups});
+	m_batchFetcher.Begin(std::move(requests));
+	ArticleFetcher::FetchedArticle fetched;
+	bool sized = m_batchFetcher.Next(fetched) && fetched.Success &&
+		DupeStreamRepair::DecodedSizePlausible(fetched.FileSize, target.EncodedSize);
+	m_batchFetcher.CancelRemaining();
+	if (IsStopped())
+	{
+		return roNoCost;
+	}
+	if (!sized)
+	{
+		PrintMessage(Message::mkDetail,
+			"Skipping file %s of duplicate %s for %s: could not learn the file size from it",
+			donorFile->GetFilename(), donorName, *target.Filename);
+		return roUnproductive;
+	}
+
+	BString<1024> filePath("%s%c%s", destDir, PATH_SEPARATOR, *target.Filename);
+	if (FileSystem::FileExists(filePath))
+	{
+		PrintMessage(Message::mkWarning, "Could not recreate %s: file already exists", *filePath);
+		return roNoCost;
+	}
+	CString errmsg;
+	if (!FileSystem::AllocateFile(filePath, fetched.FileSize, true, errmsg))
+	{
+		PrintMessage(Message::mkWarning, "Could not recreate %s: %s", *filePath, *errmsg);
+		return roNoCost;
+	}
+	DiskFile file;
+	if (!file.Open(filePath, DiskFile::omReadWrite))
+	{
+		PrintMessage(Message::mkWarning, "Could not open %s for stream repair: %s",
+			*filePath, *FileSystem::GetLastErrorMessage());
+		FileSystem::DeleteFile(filePath);
+		return roNoCost;
+	}
+
+	PrintMessage(Message::mkInfo,
+		"Recreating %s (no article of the file was available) from file %s of duplicate %s",
+		*target.Filename, donorFile->GetFilename(), donorName);
+
+	target.DecodedFileSize = fetched.FileSize;
+	target.Holes = { {0, fetched.FileSize} };
+	claimed.insert(donorFile);
+
+	StreamRangeList donorRanges = DupeStreamRepair::EstimateDonorRanges(donorFile, fetched.FileSize);
+	int recoveredParts = PatchFromDonor(file, target, donorFile, donorRanges, donorName);
+	file.Close();
+
+	if (recoveredParts == 0)
+	{
+		// nothing arrived: leave no empty file behind, another duplicate may
+		// still carry the file
+		FileSystem::DeleteFile(filePath);
+		target.DecodedFileSize = 0;
+		target.Holes.clear();
+		return roUnproductive;
+	}
+
+	target.Recreated = true;
+	return roProductive;
+}
+
+void StreamRepairController::MarkRecreated(NzbInfo* nzbInfo, const RepairTarget& target)
+{
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		if (completedFile.GetId() == target.FileId &&
+			completedFile.GetStatus() == CompletedFile::cfFailure)
+		{
+			completedFile.SetStatus(CompletedFile::cfPartial);
+			break;
+		}
+	}
 }
 
 std::vector<FileInfo*> StreamRepairController::FindDonorFiles(const RepairTarget& target,
@@ -1272,7 +1402,15 @@ void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& tar
 {
 	for (RepairTarget& target : targets)
 	{
-		if (!target.Holes.empty())
+		if (target.DecodedFileSize <= 0)
+		{
+			// never sized: no duplicate carried the file (nothing was written)
+			m_holesRemain = true;
+			PrintMessage(Message::mkInfo,
+				"Stream repair of %s: no duplicate could supply the file (left to par-repair)",
+				*target.Filename);
+		}
+		else if (!target.Holes.empty())
 		{
 			m_holesRemain = true;
 			PrintMessage(Message::mkInfo,
@@ -2775,6 +2913,14 @@ void StreamRepairController::RepairCompleted()
 
 	NzbInfo* nzbInfo = m_postInfo->GetNzbInfo();
 
+	for (const RepairTarget& target : m_targets)
+	{
+		if (target.Recreated)
+		{
+			MarkRecreated(nzbInfo, target);
+		}
+	}
+
 	if (m_recoveredArticles > 0 || m_recoveredBytes > 0 || m_recoveredHoles > 0)
 	{
 		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() + m_recoveredArticles);
@@ -2832,12 +2978,16 @@ void StreamRepairController::RepairCompleted()
 			if (target.FileId == it->GetFileId())
 			{
 				matched = true;
-				if (target.Holes.empty())
+				if (target.Holes.empty() && target.DecodedFileSize > 0)
 				{
 					it = nzbInfo->GetStreamRepairJobs()->erase(it);
 				}
 				else
 				{
+					if (it->GetDecodedFileSize() <= 0 && target.DecodedFileSize > 0)
+					{
+						it->SetDecodedFileSize(target.DecodedFileSize);
+					}
 					it->SetHoles(target.Holes);
 					++it;
 				}

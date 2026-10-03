@@ -363,6 +363,9 @@ public:
 	const char* GetOrigname() { return m_origname.c_str(); }
 	bool GetParFile() { return m_parFile; }
 	EStatus GetStatus() { return m_status; }
+	// a failed file recreated from a duplicate (stream repair) is partial:
+	// its bytes are on disk, but were never download-verified
+	void SetStatus(EStatus status) { m_status = status; }
 	uint32 GetCrc() { return m_crc; }
 	const char* GetHash16k() { return m_hash16k.c_str(); }
 	void SetHash16k(std::string hash16k) { m_hash16k = std::move(hash16k); }
@@ -421,6 +424,8 @@ public:
 	StreamRangeList* GetHoles() { return &m_holes; }
 	const StreamRangeList* GetHoles() const { return &m_holes; }
 	void SetHoles(StreamRangeList holes) { m_holes = std::move(holes); }
+	// a whole-file job (0) learns its size from the first donor article
+	void SetDecodedFileSize(int64 decodedFileSize) { m_decodedFileSize = decodedFileSize; }
 	// article-size step fingerprint of the file's posting (see
 	// DupeArticleFallback::ArticleSizeStepsHash), 0 = none
 	uint64 GetStepsHash() const { return m_stepsHash; }

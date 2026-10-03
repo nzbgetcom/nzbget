@@ -336,6 +336,124 @@ BOOST_AUTO_TEST_CASE(StreamRepairBuildRepairJobTest)
 	BOOST_CHECK(plainNzb.GetStreamRepairJobs()->empty());
 }
 
+BOOST_AUTO_TEST_CASE(StreamRepairWholeFileJobTest)
+{
+	OptionsGuard optionsGuard;
+
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=stream");
+	Options streamOptions(&cmdOpts, nullptr);
+
+	NzbInfo nzbInfo;
+
+	// a file none of whose articles arrived: captured whole, with no decoded
+	// size and no holes (both are learned from the first donor article)
+	std::unique_ptr<FileInfo> missing = BuildStreamFile(0, {{0, 0}, {0, 0}, {0, 0}});
+	missing->SetFilename("ZGWRiqtR4jt2nswwN.part03.rar");
+	missing->SetSize(2400000);
+	missing->SetFailedSize(1600000);
+	missing->SetMissedSize(800000);
+	missing->SetMissedArticles(1);
+	missing->SetFailedArticles(2);
+	missing->SetNzbInfo(&nzbInfo);
+	BOOST_CHECK(DupeStreamRepair::BuildRepairJob(missing.get(), "ZGWRiqtR4jt2nswwN.part03.rar"));
+	BOOST_REQUIRE_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
+	StreamRepairJob& job = (*nzbInfo.GetStreamRepairJobs())[0];
+	BOOST_CHECK_EQUAL(job.GetDecodedFileSize(), 0);
+	BOOST_CHECK(job.GetHoles()->empty());
+	BOOST_CHECK_EQUAL(job.GetFailedSize() + job.GetMissedSize(), 2400000);
+	BOOST_CHECK_EQUAL(job.GetFailedArticles(), 3);
+
+	// a parity file is never captured, whole or not
+	std::unique_ptr<FileInfo> par = BuildStreamFile(0, {{0, 0}, {0, 0}});
+	par->SetFilename("rel.vol00+01.par2");
+	par->SetSize(100000);
+	par->SetParFile(true);
+	par->SetNzbInfo(&nzbInfo);
+	BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(par.get(), "rel.vol00+01.par2"));
+
+	// an nzb entry without a declared size cannot be paired with anything
+	std::unique_ptr<FileInfo> sizeless = BuildStreamFile(0, {{0, 0}});
+	sizeless->SetFilename("x.r00");
+	sizeless->SetNzbInfo(&nzbInfo);
+	BOOST_CHECK(!DupeStreamRepair::BuildRepairJob(sizeless.get(), "x.r00"));
+	BOOST_CHECK_EQUAL(nzbInfo.GetStreamRepairJobs()->size(), 1u);
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairDecodedSizePlausibleTest)
+{
+	// yEnc adds 1-3% on top of the decoded bytes
+	BOOST_CHECK(DupeStreamRepair::DecodedSizePlausible(1000000, 1020000));
+	BOOST_CHECK(DupeStreamRepair::DecodedSizePlausible(1020000, 1020000));
+	BOOST_CHECK(!DupeStreamRepair::DecodedSizePlausible(1020001, 1020000));
+	BOOST_CHECK(!DupeStreamRepair::DecodedSizePlausible(800000, 1020000));
+	BOOST_CHECK(!DupeStreamRepair::DecodedSizePlausible(0, 1020000));
+	BOOST_CHECK(!DupeStreamRepair::DecodedSizePlausible(1000, 0));
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairSelectWholeFileDonorTest)
+{
+	std::vector<int> flat(12, 768000);
+	std::vector<int> twin = {770318, 768951, 771402, 769037, 770660, 769845, 768590, 771113, 769722, 771000, 769500, 398760};
+	std::vector<int> other = {769211, 770840, 768392, 771005, 769930, 768777, 770123, 769504, 771288, 770100, 769400, 398760};
+	auto shifted = [](std::vector<int> sizes, int shift)
+	{
+		for (int& size : sizes) size += shift;
+		return sizes;
+	};
+	auto total = [](const std::vector<int>& sizes)
+	{
+		int64 sum = 0;
+		for (int size : sizes) sum += size;
+		return sum;
+	};
+
+	// 1. the size-step fingerprint identifies the member whatever the names
+	{
+		std::unique_ptr<FileInfo> target = BuildDonorFile("Q8aZ1kLmN0pR", twin);
+		uint64 hash = DupeArticleFallback::ArticleSizeStepsHash(target.get());
+		NzbInfo donorNzb;
+		donorNzb.GetFileList()->Add(BuildDonorFile("aaa.bin", shifted(other, 27)), false);
+		donorNzb.GetFileList()->Add(BuildDonorFile("ccc.bin", shifted(twin, 27)), false);
+		FileInfo* match = DupeStreamRepair::SelectWholeFileDonor("Q8aZ1kLmN0pR", total(twin), 12, hash, &donorNzb);
+		BOOST_REQUIRE(match);
+		BOOST_CHECK_EQUAL(match->GetFilename(), "ccc.bin");
+
+		// a member already proven to be another file's twin is skipped
+		std::set<FileInfo*> claimed = { match };
+		BOOST_CHECK(DupeStreamRepair::SelectWholeFileDonor("Q8aZ1kLmN0pR", total(twin), 12, hash, &donorNzb, &claimed) == nullptr);
+	}
+
+	// 2. flat sizes: the exact name, else the volume suffix - never size alone
+	{
+		NzbInfo donorNzb;
+		donorNzb.GetFileList()->Add(BuildDonorFile("LN2ttWTMLC4N1DkTm.part02.rar", flat), false);
+		donorNzb.GetFileList()->Add(BuildDonorFile("LN2ttWTMLC4N1DkTm.part03.rar", flat), false);
+		donorNzb.GetFileList()->Add(BuildDonorFile("LN2ttWTMLC4N1DkTm.part04.rar", flat), false);
+		donorNzb.GetFileList()->Add(BuildDonorFile("rel.vol00+08.par2", flat), false);
+		(*donorNzb.GetFileList())[3]->SetParFile(true);
+
+		FileInfo* match = DupeStreamRepair::SelectWholeFileDonor("x8Tdn3e3iFf1MaWLu.part03.rar", total(flat), 12, 0, &donorNzb);
+		BOOST_REQUIRE(match);
+		BOOST_CHECK_EQUAL(match->GetFilename(), "LN2ttWTMLC4N1DkTm.part03.rar");
+
+		match = DupeStreamRepair::SelectWholeFileDonor("ln2ttwtmlc4n1dktm.PART04.RAR", total(flat), 12, 0, &donorNzb);
+		BOOST_REQUIRE(match);
+		BOOST_CHECK_EQUAL(match->GetFilename(), "LN2ttWTMLC4N1DkTm.part04.rar");
+
+		// no usable name: nothing, although every member has the right size
+		BOOST_CHECK(DupeStreamRepair::SelectWholeFileDonor("x8Tdn3e3iFf1MaWLu", total(flat), 12, 0, &donorNzb) == nullptr);
+		// a repost cut into other article sizes still pairs by its volume
+		// numbering; a different size never does
+		match = DupeStreamRepair::SelectWholeFileDonor("x8Tdn3e3iFf1MaWLu.part03.rar", total(flat), 20, 0, &donorNzb);
+		BOOST_REQUIRE(match);
+		BOOST_CHECK_EQUAL(match->GetFilename(), "LN2ttWTMLC4N1DkTm.part03.rar");
+		BOOST_CHECK(DupeStreamRepair::SelectWholeFileDonor("x8Tdn3e3iFf1MaWLu.part03.rar", total(flat) * 2, 12, 0, &donorNzb) == nullptr);
+		// parity is neither target nor donor
+		BOOST_CHECK(DupeStreamRepair::SelectWholeFileDonor("rel.vol00+08.par2", total(flat), 12, 0, &donorNzb) == nullptr);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(StreamRepairSuffixKeyTest)
 {
 	BOOST_CHECK_EQUAL(DupeStreamRepair::SuffixKey("Rel.part03.rar"), "part03.rar");

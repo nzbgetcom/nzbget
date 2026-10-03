@@ -820,7 +820,10 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 		if (std::any_of(parredFiles.begin(), parredFiles.end(),
 			[baseName](const std::string& parredFile) { return !strcasecmp(parredFile.c_str(), baseName); }))
 		{
-			protectedDamage += DupeStreamRepair::TotalSize(*job.GetHoles());
+			// a whole-file job has no decoded geometry yet: its encoded size
+			// is the closest measure of its damage
+			protectedDamage += job.GetDecodedFileSize() > 0 ?
+				DupeStreamRepair::TotalSize(*job.GetHoles()) : job.GetFailedSize() + job.GetMissedSize();
 		}
 	}
 

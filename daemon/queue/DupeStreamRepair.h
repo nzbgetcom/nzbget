@@ -57,6 +57,9 @@ public:
 	// how many donor members are probed per target member before giving up
 	// (bounds wasted fetches when pairing heuristics fail on obfuscated sets)
 	static constexpr int MaxDonorCandidates = 4;
+	// nzb-declared encoded sizes of two postings of one file differ by their
+	// subject lines only (as DupeArticleFallback::TotalSizeToleranceDiv)
+	static constexpr int WholeFileSizeToleranceDiv = 64;
 	// a duplicate whose same-size members cannot be told apart by name or
 	// article sizes (obfuscated volumes on both sides) is probed member by
 	// member up to this many, until one is byte-identical: a dupe is the
@@ -111,10 +114,27 @@ public:
 		const StreamRangeList& donorRanges, const std::vector<int>& probeParts);
 
 	/* Captures a stream-repair job on the owning NzbInfo for a data file
-	 * that completed with missing byte ranges. diskBasename is the file's
-	 * on-disk name at completion. PAR2 files are excluded. Must be called
-	 * within DownloadQueue-lock. */
+	 * that completed with missing byte ranges - or without a single article:
+	 * such a job has no decoded size and no holes yet (the whole file is the
+	 * hole; its size is learned from the first donor article). diskBasename
+	 * is the file's on-disk name at completion. PAR2 files are excluded.
+	 * Must be called within DownloadQueue-lock. */
 	static bool BuildRepairJob(FileInfo* fileInfo, const char* diskBasename);
+
+	/* The one donor member that can stand in for a file no article of which
+	 * was downloaded (so nothing exists to compare bytes against): among the
+	 * donor's data files with the target's encoded size (the article count
+	 * may differ), the unique size-step fingerprint match, else the unique
+	 * exact name, else the unique volume suffix. Size-only pairing is
+	 * deliberately not offered. Members in claimed are skipped. */
+	static FileInfo* SelectWholeFileDonor(const char* targetFilename, int64 targetEncodedSize,
+		int targetArticleCount, uint64 targetStepsHash, NzbInfo* donorNzb,
+		const std::set<FileInfo*>* claimed = nullptr);
+
+	/* Plausibility of the decoded size a donor's article declares for a
+	 * file whose own size is only known encoded (yEnc adds 1-3%, never more
+	 * than ~12%). */
+	static bool DecodedSizePlausible(int64 decodedFileSize, int64 encodedSize);
 
 	/* The last two dot-separated segments of a filename, lowercased
 	 * ("Rel.part03.rar" -> "part03.rar", "X.R00" -> "r00"): equal-size
