@@ -29,6 +29,7 @@
 #include "DupeCoordinator.h"
 #include "NewsServer.h"
 #include "ServerPool.h"
+#include "DiskState.h"
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
@@ -1032,6 +1033,24 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(c
 
 	target.Recreated = true;
 	return roProductive;
+}
+
+void StreamRepairController::MarkRepaired(NzbInfo* nzbInfo, const RepairTarget& target)
+{
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		if (completedFile.GetId() == target.FileId &&
+			completedFile.GetStatus() != CompletedFile::cfSuccess)
+		{
+			completedFile.SetStatus(CompletedFile::cfSuccess);
+			// the article state kept for an incomplete file is no longer needed
+			// (and DiskState::DiscardFiles skips complete files); its download-
+			// time CRC is unknown, so a quick par-check falls back to verifying
+			// the file in full
+			g_DiskState->DiscardFile(target.FileId, true, true, true);
+			break;
+		}
+	}
 }
 
 void StreamRepairController::MarkRecreated(NzbInfo* nzbInfo, const RepairTarget& target)
@@ -2915,7 +2934,12 @@ void StreamRepairController::RepairCompleted()
 
 	for (const RepairTarget& target : m_targets)
 	{
-		if (target.Recreated)
+		// exactly the targets ReportRemainingHoles credited back to health
+		if (target.DecodedFileSize > 0 && target.Holes.empty())
+		{
+			MarkRepaired(nzbInfo, target);
+		}
+		else if (target.Recreated)
 		{
 			MarkRecreated(nzbInfo, target);
 		}

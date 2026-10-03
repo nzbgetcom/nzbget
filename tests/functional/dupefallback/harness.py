@@ -1713,6 +1713,111 @@ def scenario_wholefile(daemon, t):
             % (h['Status'], queued, recreated, repaired, integ))
 
 
+def _wholefile_fixture(t, tag):
+    seg_primary, seg_donor = 500_000, 300_000
+    vol = 1_500_000
+    n = (vol + seg_primary - 1) // seg_primary
+    members = [
+        ('%sA/x.part01.rar' % tag, 'Rel.part01.rar', vol, seg_primary, set()),
+        ('%sA/x.part02.rar' % tag, 'Rel.part02.rar', vol, seg_primary, {2}),
+        ('%sA/x.part03.rar' % tag, 'Rel.part03.rar', vol, seg_primary, set(range(1, n + 1))),
+        ('%sA/x.part04.rar' % tag, 'Rel.part04.rar', vol, seg_primary, set()),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        data = _payload(m[2], 9300 + i)
+        payloads[m[1]] = data
+        t.write_file(os.path.join('data', m[0]), data)
+    donor_members = [(m[0].replace('%sA' % tag, '%sB' % tag), m[1].replace('Rel.', 'Other.'),
+                      m[2], seg_donor, set()) for m in members]
+    for dm, m in zip(donor_members, members):
+        t.write_file(os.path.join('data', dm[0]), payloads[m[1]])
+    return members, donor_members, payloads
+
+
+def scenario_wholefileretry(daemon, t):
+    """Corner case: "Retry failed articles" on a release whose volume was
+    recreated whole from a duplicate. The recreated volume (no own article
+    ever arrived) must survive the retry - it must not be deleted as an
+    empty failed file and re-downloaded from the dead primary - and the
+    release must again end byte-identical."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wr')
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWR', build_multi_nzb(donor_members), True, 'wr-key', 50)
+    daemon.append(api, 'RelWR', build_multi_nzb(members), False, 'wr-key', 100)
+    h = daemon.wait_history(api, 'RelWR')
+    nzbid = h['NZBID']
+    first_integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=(('main', 'dst'), ('main', 'inter')))
+                      for m in members)
+    api.editqueue('HistoryRetryFailed', 0, '', [nzbid])
+    deadline = time.time() + 180
+    time.sleep(3)
+    while time.time() < deadline:
+        if not any(g['NZBID'] == nzbid for g in api.listgroups()):
+            break
+        time.sleep(1)
+    h2 = [x for x in api.history() if x['NZBID'] == nzbid][0]
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=(('main', 'dst'), ('main', 'inter')))
+                for m in members)
+    return ('wholefileretry', first_integ and integ,
+            'status=%s retry_status=%s first_integrity=%s integrity_after_retry=%s'
+            % (h['Status'], h2['Status'], first_integ, integ))
+
+
+def scenario_wholefilefailretry(daemon, t):
+    """Corner case: a release that still FAILS after a volume was recreated
+    (another volume is missing on the donor too), so the recreated volume
+    stays in the intermediate directory. "Retry failed articles" must not
+    delete the recreated volume as an empty failed file."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'wf')
+    # part04 is missing everywhere, on the primary and the duplicate
+    members[3] = members[3][:4] + ({2},)
+    donor_members[3] = donor_members[3][:4] + (set(range(2, 4)),)
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonWF', build_multi_nzb(donor_members), True, 'wf-key', 50)
+    daemon.append(api, 'RelWF', build_multi_nzb(members), False, 'wf-key', 100)
+    h = daemon.wait_history(api, 'RelWF')
+    nzbid = h['NZBID']
+    inter = (('main', 'inter'),)
+    before = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=inter)
+    api.editqueue('HistoryRetryFailed', 0, '', [nzbid])
+    time.sleep(3)
+    deadline = time.time() + 180
+    while time.time() < deadline and any(g['NZBID'] == nzbid for g in api.listgroups()):
+        time.sleep(1)
+    h2 = [x for x in api.history() if x['NZBID'] == nzbid][0]
+    after = _verify_output(t, payloads['Rel.part03.rar'], '.rar', dirs=inter)
+    return ('wholefilefailretry', h['Status'].startswith('FAILURE') and before and after,
+            'status=%s retry_status=%s part03_before=%s part03_after_retry=%s'
+            % (h['Status'], h2['Status'], before, after))
+
+
+def scenario_streamretry(daemon, t):
+    """Corner case (no whole-file job involved): stream repair fully repairs
+    one volume and leaves a hole in another that no duplicate carries, so the
+    release ends FAILURE/HEALTH. "Retry failed articles" can't fill that hole
+    either - the release must stay a failure, never turn into a SUCCESS with
+    a hole in a file."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'sr')
+    members[2] = members[2][:4] + (set(),)               # part03 complete
+    members[3] = members[3][:4] + ({2},)                 # part04 article 2 missing ...
+    donor_members[3] = donor_members[3][:4] + (set(range(2, 4)),)  # ... on the duplicate too
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSR', build_multi_nzb(donor_members), True, 'sr-key', 50)
+    daemon.append(api, 'RelSR', build_multi_nzb(members), False, 'sr-key', 100)
+    h = daemon.wait_history(api, 'RelSR')
+    nzbid = h['NZBID']
+    api.editqueue('HistoryRetryFailed', 0, '', [nzbid])
+    time.sleep(3)
+    deadline = time.time() + 180
+    while time.time() < deadline and any(g['NZBID'] == nzbid for g in api.listgroups()):
+        time.sleep(1)
+    h2 = [x for x in api.history() if x['NZBID'] == nzbid][0]
+    return ('streamretry', h['Status'].startswith('FAILURE') and h2['Status'].startswith('FAILURE'),
+            'status=%s health=%d retry_status=%s retry_health=%d'
+            % (h['Status'], h['Health'], h2['Status'], h2['Health']))
+
+
 def scenario_dupefailover(daemon, t):
     """HealthCheck=dupe: the primary is a dead posting (every article of
     every file missing) and no duplicate carries its files, while a healthy
@@ -1914,6 +2019,9 @@ SCENARIOS = {
     'dupefailover': scenario_dupefailover,
     'dupehopeless': scenario_dupehopeless,
     'dupedeadstart': scenario_dupedeadstart,
+    'wholefileretry': scenario_wholefileretry,
+    'wholefilefailretry': scenario_wholefilefailretry,
+    'streamretry': scenario_streamretry,
 }
 
 EXPECTED_HISTORY_STATUS = {
@@ -2016,6 +2124,9 @@ SCENARIO_OPTIONS = {
     'dupefailover': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'wholefileretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilefailretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 

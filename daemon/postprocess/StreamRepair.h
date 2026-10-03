@@ -277,6 +277,11 @@ private:
 	/* Marks the completed-file record of a recreated whole-file target as
 	 * partially downloaded, so later stages read it from disk. */
 	static void MarkRecreated(NzbInfo* nzbInfo, const RepairTarget& target);
+	/* Marks the completed-file record of a target whose every hole is
+	 * filled as complete, the moment its failed size is credited back to the
+	 * collection's health: a later "retry failed articles" must neither
+	 * download it again nor subtract that failed size a second time. */
+	static void MarkRepaired(NzbInfo* nzbInfo, const RepairTarget& target);
 	static std::vector<FileInfo*> FindDonorFiles(const RepairTarget& target, NzbInfo* donorNzb,
 		const std::set<FileInfo*>& claimed);
 	bool VerifyDonor(DiskFile& file, const RepairTarget& target, FileInfo* donorFile,
