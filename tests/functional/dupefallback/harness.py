@@ -1976,6 +1976,152 @@ def scenario_failoverlive(daemon, t):
             % (hp['Status'], hb['Status'], live, failed_over, alive))
 
 
+def scenario_wholefilerestart(daemon, t):
+    """Corner case: nzbget restarts between download and post-processing
+    while a whole-file job (no decoded size, no holes yet) waits in the
+    queue state. The job must be saved and loaded intact, so the restarted
+    daemon still proves the duplicate and recreates the volume."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'rs')
+    members[1] = members[1][:4] + (set(),)
+    api = daemon.wait_ready()
+    api.pausepost()
+    daemon.append(api, 'DonRS', build_multi_nzb(donor_members), True, 'rs-key', 50)
+    daemon.append(api, 'RelRS', build_multi_nzb(members), False, 'rs-key', 100)
+    deadline = time.time() + 120
+    while time.time() < deadline and _grep_log(t, 'Collection RelRS completely downloaded') == 0:
+        time.sleep(0.5)
+    queued_job = _grep_log(t, 'no article available')
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    time.sleep(4)
+    daemon.start()
+    time.sleep(3)
+    api = daemon.wait_ready()
+    api.resumepost()
+    h = daemon.wait_history(api, 'RelRS')
+    recreated = _grep_log(t, 'Recreating Rel.part03.rar')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members)
+    return ('wholefilerestart', queued_job == 1 and recreated == 1 and integ,
+            'status=%s queued_logs=%d recreated_logs=%d integrity=%s'
+            % (h['Status'], queued_job, recreated, integ))
+
+
+PROD_OPTIONS = ['DupeArticleFallback=live', 'DupeStreamDecompress=yes', 'ContinuePartial=yes',
+                'ArticleCache=8192', 'FileNaming=auto', 'ReorderFiles=yes', 'PostStrategy=rocket',
+                'ParCheck=auto', 'ParRepair=yes', 'ParScan=dupe', 'ParQuick=yes', 'ParRename=yes',
+                'RarRename=yes', 'DirectRename=yes', 'HealthCheck=dupe', 'Unpack=yes', 'DirectUnpack=yes',
+                'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ArticleRetries=0']
+
+
+def _prod_7z_set(t, tag, movie, volume_kb=1500):
+    """A store-mode 7z split of movie.mkv: [(name suffix, bytes)]."""
+    import shutil as _sh
+    import tempfile as _tf
+    work = _tf.mkdtemp(prefix='prod7z-')
+    with open(os.path.join(work, 'movie.mkv'), 'wb') as f:
+        f.write(movie)
+    subprocess.run(['/usr/bin/7z', 'a', '-mx0', '-v%dk' % volume_kb, 'out.7z', 'movie.mkv'], cwd=work,
+                   check=True, capture_output=True)
+    vols = sorted(n for n in os.listdir(work) if n.startswith('out.7z.'))
+    out = [(n[len('out'):], open(os.path.join(work, n), 'rb').read()) for n in vols]
+    _sh.rmtree(work)
+    return out
+
+
+def _prod_wholefile(daemon, t, tag, damage):
+    """Production options; a 4-volume store 7z of movie.mkv with a par2 index;
+    the byte-identical repost under other names in history. damage:
+    {volume index: missing parts}. Returns (history, extracted_ok)."""
+    seg = 300_000
+    movie = _payload(5_500_000, 9990)
+    vols = _prod_7z_set(t, tag, movie)
+    members, donor_members = [], []
+    for i, (suffix, data) in enumerate(vols):
+        t.write_file(os.path.join('data', '%sA/v%d' % (tag, i)), data)
+        t.write_file(os.path.join('data', '%sB/v%d' % (tag, i)), data)
+        members.append(('%sA/v%d' % (tag, i), 'Rel' + suffix, len(data), seg, damage.get(i, set())))
+        donor_members.append(('%sB/v%d' % (tag, i), 'Other' + suffix, len(data), 200_000, set()))
+    par = generators.par2_index([('Rel' + s, d) for s, d in vols])
+    t.write_file(os.path.join('data', '%sA/rel.par2' % tag), par)
+    members.append(('%sA/rel.par2' % tag, 'Rel.par2', len(par), seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'Rel' + tag, timeout=300)
+    ok = _verify_output(t, movie, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return h, ok
+
+
+def scenario_prodwholefile(daemon, t):
+    """Fix 2 under the production option set (live, direct rename/unpack,
+    par-rename, quick par-check, unpack, article cache, HealthCheck=dupe):
+    one 7z volume missing entirely, the rest intact. The volume is recreated
+    from the proven repost, the par-check passes, and unpack extracts a
+    byte-identical movie.mkv."""
+    h, ok = _prod_wholefile(daemon, t, 'PW', {2: set(range(1, 7))})
+    recreated = _grep_log(t, 'Recreating')
+    return ('prodwholefile', ok and recreated == 1 and h['Status'].startswith('SUCCESS'),
+            'status=%s par=%s unpack=%s recreated_logs=%d extracted_ok=%s'
+            % (h['Status'], h['ParStatus'], h['UnpackStatus'], recreated, ok))
+
+
+def scenario_prodstream(daemon, t):
+    """Stream repair under the production option set: two volumes with holes
+    (one at its start, one in the middle), the byte-identical repost in
+    history; the par-check passes and unpack extracts a byte-identical
+    movie.mkv."""
+    h, ok = _prod_wholefile(daemon, t, 'PS', {0: {1}, 2: {3, 4}})
+    return ('prodstream', ok and h['Status'].startswith('SUCCESS'),
+            'status=%s par=%s unpack=%s extracted_ok=%s' % (h['Status'], h['ParStatus'], h['UnpackStatus'], ok))
+
+
+def _prod_rar(daemon, t, tag, damage):
+    """Production options; a 4-volume store-mode rar set (real CRCs, so unrar
+    and direct unpack accept it) of movie.mkv with a par2 index; the
+    byte-identical repost under other names in history."""
+    seg = 300_000
+    movie = _payload(5_000_000, 9995)
+    vols = generators.rar3_store_volumes_valid('movie.mkv', movie, 1_400_000)
+    members, donor_members = [], []
+    for i, data in enumerate(vols):
+        t.write_file(os.path.join('data', '%sA/v%d' % (tag, i)), data)
+        t.write_file(os.path.join('data', '%sB/v%d' % (tag, i)), data)
+        members.append(('%sA/v%d' % (tag, i), 'Rel.part%02d.rar' % (i + 1), len(data), seg, damage.get(i, set())))
+        donor_members.append(('%sB/v%d' % (tag, i), 'Other.part%02d.rar' % (i + 1), len(data), 200_000, set()))
+    par = generators.par2_index([('Rel.part%02d.rar' % (i + 1), d) for i, d in enumerate(vols)])
+    t.write_file(os.path.join('data', '%sA/rel.par2' % tag), par)
+    members.append(('%sA/rel.par2' % tag, 'Rel.par2', len(par), seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'Rel' + tag, timeout=300)
+    ok = _verify_output(t, movie, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return h, ok
+
+
+def scenario_prodrarwhole(daemon, t):
+    """Fix 2 on a rar set under the production option set: the third volume is
+    missing entirely while direct unpack extracts the others. The volume is
+    recreated, par-check passes, and unpack extracts a byte-identical movie."""
+    h, ok = _prod_rar(daemon, t, 'RW', {2: set(range(1, 6))})
+    recreated = _grep_log(t, 'Recreating')
+    return ('prodrarwhole', ok and recreated == 1 and h['Status'].startswith('SUCCESS'),
+            'status=%s par=%s unpack=%s recreated_logs=%d extracted_ok=%s'
+            % (h['Status'], h['ParStatus'], h['UnpackStatus'], recreated, ok))
+
+
+def scenario_prodrarstream(daemon, t):
+    """Stream repair on a rar set under the production option set: holes in
+    the first volume's start (its rar headers) and in the middle of the third
+    while direct unpack runs; repaired, par-checked, extracted byte-identical."""
+    h, ok = _prod_rar(daemon, t, 'RS', {0: {1}, 2: {3}})
+    return ('prodrarstream', ok and h['Status'].startswith('SUCCESS'),
+            'status=%s par=%s unpack=%s extracted_ok=%s' % (h['Status'], h['ParStatus'], h['UnpackStatus'], ok))
+
+
 def scenario_wholefilenfoproof(daemon, t):
     """Corner case: a different packing of the release (same volume names and
     sizes, other bytes) that ships the SAME small .nfo. A byte match on the
@@ -2026,6 +2172,47 @@ def scenario_wholefilesampleproof(daemon, t):
     recreated = _grep_log(t, 'Recreating')
     return ('wholefilesampleproof', recreated == 0,
             'status=%s sample_repaired_logs=%d recreated_logs=%d' % (h['Status'], sample_fixed, recreated))
+
+
+def scenario_dupefailoverchain(daemon, t):
+    """Corner case: the first backup is dead too. The primary fails over to
+    it, it fails over to the second (healthy) backup, which completes; the
+    parked primary is never brought back."""
+    seg = 100_000
+    vol_dead = 2_900_000
+    n = vol_dead // seg
+    def dead_set(tag, seed):
+        files = [('%s/d%d.bin' % (tag, i), '%s%d.bin' % (tag, i), vol_dead, seg, set(range(1, n + 1)))
+                 for i in range(6)]
+        for m in files:
+            t.write_file(os.path.join('data', m[0]), _payload(vol_dead, seed))
+        return build_multi_nzb(files)
+    data = _payload(3_000_000, 9921)
+    bp = _place_copy(t, 'chC', data)
+    healthy = build_nzb(bp, 'Healthy.bin', 3_000_000, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', dead_set('chA', 9919), True, 'ch-key', 100)
+    daemon.append(api, 'Backup1', dead_set('chB', 9920), False, 'ch-key', 95)
+    daemon.append(api, 'Backup2', healthy, False, 'ch-key', 90)
+    daemon.wait_history(api, 'Backup2', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    deadline = time.time() + 400
+    status = {}
+    while time.time() < deadline:
+        hist = {h['NZBName']: h['Status'] for h in api.history()}
+        queued = {g['NZBName'] for g in api.listgroups()}
+        if hist.get('Backup2', '').startswith('SUCCESS') and not queued:
+            status = hist
+            break
+        time.sleep(1)
+    status = status or {h['NZBName']: h['Status'] for h in api.history()}
+    p_over = _grep_log(t, 'Failing over Primary to duplicate Backup1')
+    b1_over = _grep_log(t, 'Failing over Backup1 to duplicate Backup2')
+    returned = _grep_log(t, 'Found duplicate Primary')
+    return ('dupefailoverchain', p_over == 1 and b1_over == 1 and returned == 0 and
+            status.get('Backup2', '').startswith('SUCCESS'),
+            'primary=%s backup1=%s backup2=%s primary_failover=%d backup1_failover=%d primary_returned=%d'
+            % (status.get('Primary'), status.get('Backup1'), status.get('Backup2'), p_over, b1_over, returned))
 
 
 def scenario_streamretry(daemon, t):
@@ -2328,8 +2515,14 @@ SCENARIOS = {
     'wholefilefailretry': scenario_wholefilefailretry,
     'wholefilelive': scenario_wholefilelive,
     'streamretry': scenario_streamretry,
+    'wholefilerestart': scenario_wholefilerestart,
     'wholefilenfoproof': scenario_wholefilenfoproof,
     'wholefilesampleproof': scenario_wholefilesampleproof,
+    'dupefailoverchain': scenario_dupefailoverchain,
+    'prodwholefile': scenario_prodwholefile,
+    'prodstream': scenario_prodstream,
+    'prodrarwhole': scenario_prodrarwhole,
+    'prodrarstream': scenario_prodrarstream,
     'wholefileonly': scenario_wholefileonly,
     'wholefilewrongdonor': scenario_wholefilewrongdonor,
     'wholefilenofirst': scenario_wholefilenofirst,
@@ -2445,8 +2638,14 @@ SCENARIO_OPTIONS = {
     'wholefilefailretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilelive': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=4000'],
     'streamretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilerestart': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilenfoproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilesampleproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'prodwholefile': PROD_OPTIONS,
+    'prodstream': PROD_OPTIONS,
+    'prodrarwhole': PROD_OPTIONS,
+    'prodrarstream': PROD_OPTIONS,
     'wholefileonly': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilewrongdonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilenofirst': ['DupeArticleFallback=stream', 'ParCheck=auto'],

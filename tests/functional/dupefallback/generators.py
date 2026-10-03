@@ -16,6 +16,7 @@ import os
 import shutil
 import stat
 import struct
+import zlib
 import subprocess
 import zipfile
 
@@ -355,10 +356,14 @@ def split_bytes(data, sizes):
     return [piece for piece in pieces if piece]
 
 
-def par2_index(files, slice_size=65536, creator=b'dupefallback harness'):
+def par2_index(files, slice_size=65536, creator=b'dupefallback harness', pad=200_000):
     """A par2 index (main, file descriptions, slice checksums, creator; no
     recovery slices) for [(name, data)]: enough for a par-check to verify
-    every file byte for byte, and to report a damaged file as unrepairable."""
+    every file byte for byte, and to report a damaged file as unrepairable.
+    The creator packet is padded to `pad` bytes: nzbget's direct-rename
+    content check misses the par2 signature of a file whose first article
+    arrives in one decoded buffer, which a few-KB index would."""
+    creator = creator + b' ' * max(0, pad - len(creator))
     import hashlib as _hashlib
     import struct as _struct
     import zlib as _zlib
@@ -388,3 +393,32 @@ def par2_index(files, slice_size=65536, creator=b'dupefallback harness'):
         out += packet(b'PAR 2.0\0IFSC\0\0\0\0', f + checks)
     out += packet(b'PAR 2.0\0Creator\0', creator)
     return out
+
+
+def rar3_store_volumes_valid(inner_name, data, volume_size):
+    """RAR3 store-mode volumes with real header and file CRCs (unrar-verifiable).
+    Non-final parts carry the CRC of their own data, the final part the CRC of the whole file."""
+    def hcrc(head):  # header CRC: low 16 bits of CRC32 over the header from HEAD_TYPE on
+        return zlib.crc32(head[2:]) & 0xffff
+    def block(head):
+        return struct.pack('<H', hcrc(head)) + head[2:]
+    name = inner_name.encode()
+    full_crc = zlib.crc32(data) & 0xffffffff
+    vols, pos, n = [], 0, (len(data) + volume_size - 1) // volume_size
+    for k in range(n):
+        chunk = data[pos:pos + volume_size]
+        last = k == n - 1
+        main_flags = 0x0001 | (0x0100 if k == 0 else 0) | 0x0010  # volume, first volume, new numbering
+        main = struct.pack('<HBHH', 0, 0x73, main_flags, 13) + b'\x00' * 6
+        flags = 0x8000 | (0x01 if k > 0 else 0) | (0x02 if not last else 0)
+        fcrc = full_crc if last else (zlib.crc32(chunk) & 0xffffffff)
+        fh = struct.pack('<HBHH', 0, 0x74, flags, 32 + len(name))
+        fh += struct.pack('<II', len(chunk), len(data)) + b'\x02'          # pack, unp, host os (win)
+        fh += struct.pack('<I', fcrc) + struct.pack('<I', 0x5a6b2c21)      # crc, dos time
+        fh += bytes([29, 0x30]) + struct.pack('<H', len(name)) + struct.pack('<I', 0x20) + name
+        end_flags = 0x0001 if not last else 0                              # next volume follows
+        end = struct.pack('<HBHH', 0, 0x7b, end_flags, 7)
+        vol = b'Rar!\x1a\x07\x00' + block(main) + block(fh) + chunk + block(end)
+        vols.append(vol)
+        pos += volume_size
+    return vols
