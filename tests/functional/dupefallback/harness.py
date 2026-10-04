@@ -3618,6 +3618,53 @@ def scenario_dupesearchgroup(daemon, t):
     return ('dupesearchgroup', ok, 'got=%s pick_score=%s' % (sorted(got.items()), pick and pick.get('DupeScore')))
 
 
+def scenario_dupesearchresume(daemon, t):
+    """A search that a crash cuts off resumes after the restart without searching
+    or fetching again (grabs are scarce): the daemon is killed right after the
+    two fast donors are added, while the full samples of the other two postings
+    are still running. After the restart the saved nzb-files of those two are
+    checked and added, the fast donors (in history now) are measured with the
+    key's other duplicates, and the final scores are those of an uninterrupted
+    run (dupesearchdonors without the dead posting): 90, 89, 85, 82."""
+    n = 40
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(n)]
+    postings = {
+        'twin100': (ids('tw'), 400_000, 1, 11),
+        'other100': (ids('ot'), 410_000, 1, 12),
+        'other95': (ids('o5'), 420_000, 40, 13),
+        'twin90': (ids('t9'), 400_000, 50, 14),
+    }
+    alive = set(ids('tw')) | set(ids('ot')) | set(ids('o5')[:38]) | set(ids('t9')[:36])
+    daemon.fake_nntp.delays.update({'ot-': 0.3, 'o5-': 0.3})
+    api = _ds_donor_env(daemon, t, postings, alive)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, '(fast)') < 2:
+        time.sleep(0.2)
+    time.sleep(0.5)
+    t.procs[-1].kill()
+    t.procs[-1].wait()
+    killed_before_summary = _grep_log(t, ' added=') == 0
+    grabs_before = sum(1 for r in daemon.newznab.requests if r['_path'].startswith('/getnzb/'))
+    searches_before = sum(1 for r in daemon.newznab.requests if r.get('t') in ('search', 'tvsearch', 'movie'))
+    daemon.fake_nntp.delays.clear()
+    daemon.start()
+    api = daemon.wait_ready()
+    deadline = time.time() + 90
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    base = DS_PICK - 1000
+    got = sorted((h.get('DupeScore') - base for h in api.history() if h.get('NZBName') == DS_TITLE), reverse=True)
+    grabs_after = sum(1 for r in daemon.newznab.requests if r['_path'].startswith('/getnzb/')) - grabs_before
+    searches_after = sum(1 for r in daemon.newznab.requests if r.get('t') in ('search', 'tvsearch', 'movie')) - searches_before
+    resumed = _grep_log(t, 'resuming the search of')
+    pending_left = t.exists(os.path.join('main', 'queue', 'dupesearch-pending', '1'))
+    ok = (killed_before_summary and got == [90, 89, 85, 82] and grabs_after == 0 and searches_after == 0 and
+          resumed == 1 and not pending_left)
+    return ('dupesearchresume', ok, 'killed_before_summary=%s scores=%s grabs_after=%d searches_after=%d resumed=%d '
+            'pending_left=%s' % (killed_before_summary, got, grabs_after, searches_after, resumed, pending_left))
+
+
 def scenario_dupesearchfastdead(daemon, t):
     """A posting the quick probe finds alive but its full sample finds mostly
     gone (30% alive, below DupeMinAlive) was already queued as a fast donor: it
@@ -4093,6 +4140,7 @@ SCENARIOS = {
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
     'dupesearchgroup': scenario_dupesearchgroup,
+    'dupesearchresume': scenario_dupesearchresume,
     'dupesearchdryrun': scenario_dupesearchdryrun,
     'dupesearchrescorefail': scenario_dupesearchrescorefail,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
@@ -4260,6 +4308,7 @@ SCENARIO_OPTIONS = {
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4334,10 +4383,10 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup'}
+                   'dupesearchgroup', 'dupesearchresume'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

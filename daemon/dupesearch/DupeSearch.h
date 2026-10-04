@@ -121,6 +121,23 @@ private:
 	void ScanQueue();
 	bool Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job);
 	void Search(const Job& job);
+	/* health checks, adds and ranks the verified postings and the key's duplicates in history */
+	void Place(const Job& job, const NzbSummary& pick, std::vector<NzbFetcher::Fetched>& verified,
+		std::map<std::string, int>& rejected, int results, int candidates, int postings);
+	void Collect(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, Job& job);
+
+	/*
+	 * A search in progress survives a restart: QueueDir/dupesearch-pending/<nzb id>/
+	 * holds a phase file ("searching", then "fetched" once the fetched nzb-files
+	 * are saved beside it as <n>.nzb and <n>.meta). At startup a fetched search
+	 * resumes from the saved files (no search, no fetch: grabs are scarce); one
+	 * still searching is searched again; one whose pick is gone is dropped.
+	 */
+	std::string PendingDir(int nzbId);
+	void MarkSearching(int nzbId);
+	void SavePending(const Job& job, const std::vector<NzbFetcher::Fetched>& verified);
+	void RemovePending(int nzbId);
+	void ResumePending();
 	/* queues a posting as a duplicate of the pick; the download id, 0 when not added */
 	int AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive);
 	/* the DupeScore (and a parameter "Name=Value") of a duplicate that sits in history or in the queue */

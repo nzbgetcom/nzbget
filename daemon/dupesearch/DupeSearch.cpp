@@ -158,6 +158,7 @@ void DupeSearch::Run()
 	m_dead.Load();
 	if (g_Options->GetDupeSearch())
 	{
+		ResumePending();
 		ScanQueue();
 	}
 
@@ -196,6 +197,7 @@ void DupeSearch::Run()
 			}
 			if (search)
 			{
+				MarkSearching(job.nzbId);
 				Search(job);
 			}
 		}
@@ -289,7 +291,21 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 		downloadQueue->SaveChanged();
 	}
 
-	job.nzbId = nzbId;
+	Collect(downloadQueue, nzbInfo, job);
+	job.score = pickScore;
+	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)",
+		nzbInfo->GetName(), key.c_str());
+	return true;
+}
+
+/*
+ * What a search of a pick needs to know of the queue and history. Runs under the queue lock.
+ */
+void DupeSearch::Collect(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, Job& job)
+{
+	std::string key = EffectiveKey(nzbInfo);
+	std::string lowerKey = LowerKey(key);
+	job.nzbId = nzbInfo->GetId();
 	job.name = nzbInfo->GetName();
 	job.dupeKey = key;
 	job.category = nzbInfo->GetCategory();
@@ -324,17 +340,13 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 		{
 			NzbInfo* item = historyInfo->GetNzbInfo();
 			addKnown(item);
-			if (item->GetDeleteStatus() == NzbInfo::dsDupe && LowerKey(EffectiveKey(item)) == lowerKey &&
+			if (item != nzbInfo && item->GetDeleteStatus() == NzbInfo::dsDupe && LowerKey(EffectiveKey(item)) == lowerKey &&
 				!Util::EmptyStr(item->GetQueuedFilename()) && !strchr(item->GetQueuedFilename(), '|'))
 			{
 				job.members.emplace_back(item->GetId(), item->GetQueuedFilename());
 			}
 		}
 	}
-	job.score = pickScore;
-	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)",
-		nzbInfo->GetName(), key.c_str());
-	return true;
 }
 
 void DupeSearch::Search(const Job& job)
@@ -471,6 +483,15 @@ void DupeSearch::Search(const Job& job)
 	rejected["parse"] += fetchStats.parse;
 	rejected["deadline"] += notTried;
 
+	// what was fetched is kept until it is placed: a restart resumes from it
+	// without fetching again (every fetch costs a grab)
+	SavePending(job, verified);
+	Place(job, pick, verified, rejected, (int)results.size(), (int)candidates.size(), (int)order.size());
+}
+
+void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFetcher::Fetched>& verified,
+	std::map<std::string, int>& rejected, int results, int candidates, int postings)
+{
 	// closest size first: the likeliest byte-identical repost; then the most grabbed
 	long long pickBytes = pick.totalBytes;
 	auto distance = [&](const NzbFetcher::Fetched& f)
@@ -800,8 +821,8 @@ void DupeSearch::Search(const Job& job)
 		}
 	}
 	info("DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i added=%i rejected={%s}",
-		job.name.c_str(), (int)results.size(), (int)candidates.size(), (int)order.size(),
-		(int)verified.size(), added, outcome.c_str());
+		job.name.c_str(), results, candidates, postings, (int)verified.size(), added, outcome.c_str());
+	RemovePending(job.nzbId);
 }
 
 int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive)
@@ -873,6 +894,193 @@ bool DupeSearch::SetScore(int id, int score, const std::string& param)
 		}
 	}
 	return false;
+}
+
+std::string DupeSearch::PendingDir(int nzbId)
+{
+	std::string dir = std::string(g_Options->GetQueueDir()) + PATH_SEPARATOR + "dupesearch-pending";
+	return nzbId > 0 ? dir + PATH_SEPARATOR + std::to_string(nzbId) : dir;
+}
+
+namespace
+{
+
+void RemoveDir(const std::string& dir)
+{
+	CString errmsg;
+	FileSystem::DeleteDirectoryWithContent(dir.c_str(), errmsg);
+}
+
+bool WriteAtomic(const std::string& path, const std::string& data)
+{
+	std::string temp = path + ".new";
+	{
+		std::ofstream file(temp, std::ios::binary | std::ios::trunc);
+		file.write(data.data(), data.size());
+		if (!file.good())
+		{
+			return false;
+		}
+	}
+	return FileSystem::MoveFile(temp.c_str(), path.c_str());
+}
+
+std::string ReadAll(const std::string& path)
+{
+	std::ifstream file(path, std::ios::binary);
+	return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+}
+
+}
+
+void DupeSearch::MarkSearching(int nzbId)
+{
+	if (g_Options->GetDupeSearchDryRun())
+	{
+		return;
+	}
+	std::string dir = PendingDir(nzbId);
+	RemoveDir(dir);
+	CString errmsg;
+	if (!FileSystem::ForceDirectories(dir.c_str(), errmsg) || !WriteAtomic(dir + PATH_SEPARATOR + "phase", "searching\n"))
+	{
+		warn("Could not save the DupeSearch state to %s", dir.c_str());
+	}
+}
+
+void DupeSearch::SavePending(const Job& job, const std::vector<NzbFetcher::Fetched>& verified)
+{
+	if (g_Options->GetDupeSearchDryRun())
+	{
+		return;
+	}
+	std::string dir = PendingDir(job.nzbId);
+	bool ok = true;
+	for (size_t i = 0; i < verified.size() && ok; i++)
+	{
+		const Newznab::Result& listing = verified[i].listing;
+		std::string base = dir + PATH_SEPARATOR + std::to_string(i);
+		std::stringstream meta;
+		meta << listing.title << '\t' << listing.indexer << '\t' << listing.grabs << '\t' << listing.size << '\t'
+			<< (long long)listing.date << "\t\n";
+		ok = WriteAtomic(base + ".nzb", verified[i].data) && WriteAtomic(base + ".meta", meta.str());
+	}
+	if (!ok || !WriteAtomic(dir + PATH_SEPARATOR + "phase", "fetched\n"))
+	{
+		warn("Could not save the DupeSearch state to %s", dir.c_str());
+	}
+}
+
+void DupeSearch::RemovePending(int nzbId)
+{
+	if (IsStopped())
+	{
+		return;	// interrupted: resumed after the restart
+	}
+	RemoveDir(PendingDir(nzbId));
+}
+
+void DupeSearch::ResumePending()
+{
+	std::vector<int> ids;
+	DirBrowser dirBrowser(PendingDir(0).c_str());
+	while (const char* name = dirBrowser.Next())
+	{
+		if (atoi(name) > 0 && std::to_string(atoi(name)) == name)
+		{
+			ids.push_back(atoi(name));
+		}
+	}
+
+	for (int nzbId : ids)
+	{
+		if (IsStopped())
+		{
+			return;
+		}
+		std::string dir = PendingDir(nzbId);
+		bool fetched = ReadAll(dir + PATH_SEPARATOR + "phase") == "fetched\n";
+
+		Job job;
+		{
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
+			for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+			{
+				if (!nzbInfo && historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
+				{
+					nzbInfo = historyInfo->GetNzbInfo();
+				}
+			}
+			if (nzbInfo && fetched)
+			{
+				Collect(downloadQueue, nzbInfo, job);
+				job.score = std::max(nzbInfo->GetDupeScore(), BasePickScore);
+			}
+			else if (nzbInfo)
+			{
+				// the search itself was cut off: it runs again
+				std::lock_guard<std::mutex> guard(m_mutex);
+				m_searched.erase(LowerKey(EffectiveKey(nzbInfo)));
+			}
+		}
+		if (!fetched || job.nzbId == 0)
+		{
+			RemoveDir(dir);
+			continue;
+		}
+
+		info("DupeSearch: resuming the search of %s after a restart", job.name.c_str());
+		NzbSummary pick;
+		NzbReader::Parse(ReadAll(job.queuedFile), pick);
+		std::vector<Posting::Sketch> known;
+		for (const std::string& path : job.knownFiles)
+		{
+			Posting::Sketch sketch;
+			if (Posting::SketchOfFile(path, sketch))
+			{
+				known.push_back(std::move(sketch));
+			}
+		}
+
+		std::vector<NzbFetcher::Fetched> verified;
+		std::map<std::string, int> rejected;
+		for (int i = 0;; i++)
+		{
+			std::string base = dir + PATH_SEPARATOR + std::to_string(i);
+			if (!FileSystem::FileExists((base + ".meta").c_str()))
+			{
+				break;
+			}
+			NzbFetcher::Fetched posting;
+			std::stringstream meta(ReadAll(base + ".meta"));
+			std::string grabs, size, date;
+			std::getline(meta, posting.listing.title, '\t');
+			std::getline(meta, posting.listing.indexer, '\t');
+			std::getline(meta, grabs, '\t');
+			std::getline(meta, size, '\t');
+			std::getline(meta, date, '\t');
+			posting.listing.grabs = atoi(grabs.c_str());
+			posting.listing.size = atoll(size.c_str());
+			posting.listing.date = (time_t)atoll(date.c_str());
+			posting.data = ReadAll(base + ".nzb");
+			if (!NzbReader::Parse(posting.data, posting.info))
+			{
+				continue;
+			}
+			posting.reason = NzbFetcher::frOk;
+			// the postings added before the restart are in nzbget now: they are
+			// ranked with the key's other duplicates
+			Posting::Sketch sketch = Posting::MakeSketch(posting.info.messageIds);
+			if (std::any_of(known.begin(), known.end(), [&](const Posting::Sketch& k) { return Posting::SameSketch(sketch, k); }))
+			{
+				rejected["in-nzbget"]++;
+				continue;
+			}
+			verified.push_back(std::move(posting));
+		}
+		Place(job, pick, verified, rejected, 0, 0, 0);
+	}
 }
 
 std::string DupeSearch::StatePath()
