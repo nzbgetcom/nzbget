@@ -141,7 +141,9 @@ import socket
 import subprocess
 import sys
 import tempfile
+import socketserver
 import threading
+import zlib
 import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -418,6 +420,7 @@ class Daemon:
         self.conf_rel = 'nzbget.conf'
         self.proxy = None
         self.newznab = None
+        self.fake_nntp = None
 
     def write_config(self, extra_options):
         w = self.t.path
@@ -728,6 +731,94 @@ class DelayingNntpProxy(RewritingNntpProxy):
                 except OSError:
                     pass
                 sock.close()
+class FakeNntp:
+    """A news server that holds exactly the articles in ``alive`` (message-ids without
+    the angle brackets): STAT and BODY (a yEnc article with a valid checksum) answer
+    for them, 430 for the others. ``delays`` maps a message-id prefix to seconds to
+    wait before answering; ``reply451`` ids answer 451. Counts what was asked."""
+
+    def __init__(self, port, alive=()):
+        outer = self
+        self.alive = set(alive)
+        self.delays = {}
+        self.reply451 = set()
+        self.stats = 0
+        self.bodies = 0
+        self.sessions = 0
+        self.max_sessions = 0
+        self.open_sessions = 0
+        self.lock = threading.Lock()
+
+        class Handler(socketserver.StreamRequestHandler):
+            def handle(self):
+                with outer.lock:
+                    outer.sessions += 1
+                    outer.open_sessions += 1
+                    outer.max_sessions = max(outer.max_sessions, outer.open_sessions)
+                try:
+                    self.wfile.write(b'200 fake\r\n')
+                    for raw in self.rfile:
+                        line = raw.decode('latin1').strip()
+                        cmd, _, arg = line.partition(' ')
+                        cmd = cmd.upper()
+                        mid = arg.strip().strip('<>')
+                        if cmd == 'STAT' or cmd == 'BODY':
+                            for prefix, delay in outer.delays.items():
+                                if mid.startswith(prefix):
+                                    time.sleep(delay)
+                            with outer.lock:
+                                if cmd == 'STAT':
+                                    outer.stats += 1
+                                else:
+                                    outer.bodies += 1
+                            if mid in outer.reply451:
+                                self.wfile.write(b'451 not here\r\n')
+                            elif mid not in outer.alive:
+                                self.wfile.write(b'430 no such article\r\n')
+                            elif cmd == 'STAT':
+                                self.wfile.write(('223 0 <%s>\r\n' % mid).encode())
+                            else:
+                                self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + FakeNntp.article(mid) + b'.\r\n')
+                        elif cmd == 'GROUP':
+                            self.wfile.write(('211 1 1 1 %s\r\n' % arg).encode())
+                        elif cmd == 'MODE':
+                            self.wfile.write(b'200 reader\r\n')
+                        elif cmd == 'QUIT':
+                            self.wfile.write(b'205 bye\r\n')
+                            break
+                        else:
+                            self.wfile.write(b'500 what\r\n')
+                        self.wfile.flush()
+                finally:
+                    with outer.lock:
+                        outer.open_sessions -= 1
+
+        class Server(socketserver.ThreadingTCPServer):
+            allow_reuse_address = True
+            daemon_threads = True
+
+        self.server = Server(('127.0.0.1', port), Handler)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    @staticmethod
+    def article(mid):
+        data = (mid * 4).encode()[:64]
+        enc = bytearray()
+        for b in data:
+            c = (b + 42) & 255
+            if c in (0, 10, 13, 61):
+                enc += b'=' + bytes([(c + 64) & 255])
+            else:
+                enc.append(c)
+        crc = zlib.crc32(data) & 0xffffffff
+        return (b'=ybegin part=1 total=1 line=128 size=%d name=a.mkv\r\n=ypart begin=1 end=%d\r\n' % (len(data), len(data))
+                + bytes(enc) + b'\r\n=yend size=%d part=1 pcrc32=%08x\r\n' % (len(data), crc))
+
+    def close(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+
 class FakeNewznab:
     """A Newznab indexer for the duplicate search: an HTTP server whose
     ``respond(params, path)`` returns (status, body bytes); every request is
@@ -3306,7 +3397,7 @@ def scenario_dupesearchfetch(daemon, t):
             name = r['_path'].rsplit('/', 1)[-1]
             grabs[name] = grabs.get(name, 0) + 1
     capped = grabs.get('p2', 0) + grabs.get('p3', 0)
-    summary = _grep_log(t, 'DupeSearch: %s: results=8 candidates=8 postings=5 verified=3 '
+    summary = _grep_log(t, 'DupeSearch: %s: results=8 candidates=8 postings=5 verified=3 added=3 '
                            'rejected={fetch: 1, listing-mismatch: 1, refused: 1, relisted: 2}' % DS_TITLE)
     state = t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).decode(errors='replace') \
         if t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) else ''
@@ -3339,7 +3430,7 @@ def scenario_dupesearchfetcherror(daemon, t):
         time.sleep(0.5)
     time.sleep(1)
     grabs = sum(1 for r in daemon.newznab.requests if r['_path'] == '/getnzb/pe')
-    summary = _grep_log(t, 'DupeSearch: %s: results=1 candidates=1 postings=1 verified=0 rejected={parse: 1}' % DS_TITLE)
+    summary = _grep_log(t, 'DupeSearch: %s: results=1 candidates=1 postings=1 verified=0 added=0 rejected={parse: 1}' % DS_TITLE)
     cooldown = t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) and \
         len(t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).strip()) > 0
     return ('dupesearchfetcherror', grabs == 2 and summary == 1 and not cooldown,
@@ -3414,9 +3505,135 @@ def scenario_dupesearchfilters(daemon, t):
     while time.time() < deadline and _grep_log(t, 'verified=') == 0:
         time.sleep(0.5)
     time.sleep(1)
-    summary = _grep_log(t, 'DupeSearch: %s: results=6 candidates=6 postings=6 verified=2 '
-                           'rejected={in-nzbget: 1, known-dead: 1, other-release: 1, same-posting: 1}' % DS_TITLE)
+    summary = _grep_log(t, 'DupeSearch: %s: results=6 candidates=6 postings=6 verified=2 added=0 '
+                           'rejected={dead: 2, in-nzbget: 1, known-dead: 1, other-release: 1, same-posting: 1}' % DS_TITLE)
     return ('dupesearchfilters', summary == 1, 'summary_logs=%d' % summary)
+
+
+def scenario_dupesearchdonors(daemon, t):
+    """Donors are scored by wholeness: a pick scored like a client's (23859118)
+    with two backups of the client's own, five postings on the indexer: a
+    byte-identical twin 100% alive, another packaging 100%, one 95%, a twin
+    90%, and one that no server holds. The dead one is dropped; the others are
+    added below the backups (the first two at once, after the probe, the rest as
+    their full samples land) and end up scored base + 90, 89, 85, 82 (base is
+    the pick's score minus 1000)."""
+    n = 40
+    ids = lambda p, alive=n: ['%s-%d@x' % (p, i) for i in range(n)]
+    postings = {
+        'twin100': (ids('tw'), 400_000, 1, 11),
+        'other100': (ids('ot'), 410_000, 1, 12),
+        'other95': (ids('o5'), 420_000, 40, 13),
+        'twin90': (ids('t9'), 400_000, 50, 14),
+        'gone': (ids('gn'), 430_000, 5, 15),
+    }
+    alive = set(ids('pk'))
+    alive |= set(postings['twin100'][0]) | set(postings['other100'][0])
+    alive |= set(postings['other95'][0][:38]) | set(postings['twin90'][0][:36])
+    daemon.fake_nntp.alive = alive
+    results = [{'title': DS_TITLE, 'link': 'http://127.0.0.1:%d/getnzb/%s' % (daemon.newznab.port, name),
+                'size': size, 'grabs': grabs, 'indexer': 'Idx' + name,
+                'date': 'Tue, %d Jun 2025 01:10:05 +0000' % day}
+               for name, (_, size, grabs, day) in postings.items()]
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            name = path.rsplit('/', 1)[-1]
+            return 200, _fake_nzb_ids(postings[name][0], postings[name][1])
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    api = daemon.wait_ready()
+    daemon.newznab.respond = respond
+    _ds_append(api, DS_TITLE, _fake_nzb_ids(ids('pk'), 400_000).decode(), DS_KEY, DS_PICK)
+    _ds_append(api, DS_TITLE + '.b1', _ds_nzb(t, 'b1'), DS_KEY, DS_PICK - 1)
+    _ds_append(api, DS_TITLE + '.b2', _ds_nzb(t, 'b2'), DS_KEY, DS_PICK - 2)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    base = DS_PICK - 1000
+    got = sorted((h.get('DupeScore') for h in api.history() if h.get('NZBName') == DS_TITLE), reverse=True)
+    summary = _grep_log(t, 'verified=5 added=4 rejected={dead: 1}')
+    fast = _grep_log(t, '(fast)')
+    checked = _grep_log(t, '(checked)')
+    ok = got == [base + 90, base + 89, base + 85, base + 82] and summary == 1 and fast == 2 and checked == 2
+    return ('dupesearchdonors', ok, 'scores=%s summary=%d fast=%d checked=%d' % ([g - base for g in got], summary, fast, checked))
+
+
+def _ds_donor_env(daemon, t, postings, alive):
+    """The indexer and the news server of a donors scenario: postings maps a name to
+    (ids, size, grabs, day); returns the api once the pick and its backups are queued."""
+    daemon.fake_nntp.alive = set(alive)
+    results = [{'title': DS_TITLE, 'link': 'http://127.0.0.1:%d/getnzb/%s' % (daemon.newznab.port, name),
+                'size': size, 'grabs': grabs, 'indexer': 'Idx' + name,
+                'date': 'Tue, %d Jun 2025 01:10:05 +0000' % day}
+               for name, (_, size, grabs, day) in postings.items()]
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            name = path.rsplit('/', 1)[-1]
+            return 200, _fake_nzb_ids(postings[name][0], postings[name][1])
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    api = daemon.wait_ready()
+    daemon.newznab.respond = respond
+    _ds_append(api, DS_TITLE, _fake_nzb_ids(['pk-%d@x' % i for i in range(40)], 400_000).decode(), DS_KEY, DS_PICK)
+    daemon.fake_nntp.alive |= {'pk-%d@x' % i for i in range(40)}
+    return api
+
+
+def scenario_dupesearchfastdead(daemon, t):
+    """A posting the quick probe finds alive but its full sample finds mostly
+    gone (30% alive, below DupeMinAlive) was already queued as a fast donor: it
+    is demoted to base + 1 and carries DupeAlive 30, the whole one stays at
+    base + 89, and the dead one is remembered."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    postings = {'whole': (ids('wh'), 410_000, 1, 11), 'mostlygone': (ids('mg'), 420_000, 5, 12)}
+    api = _ds_donor_env(daemon, t, postings, set(ids('wh')) | set(ids('mg')[:12]))
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    base = DS_PICK - 1000
+    rows = sorted(((h.get('DupeScore'), {p['Name']: p['Value'] for p in h.get('Parameters', [])})
+                   for h in api.history() if h.get('NZBName') == DS_TITLE), reverse=True)
+    scores = [r[0] - base for r in rows]
+    alive = [r[1].get('DupeAlive') for r in rows]
+    dead_kept = False
+    try:
+        dead_kept = len(t.read_file(os.path.join('main', 'queue', 'dupesearch-dead')).strip()) > 0
+    except Exception:
+        pass
+    summary = _grep_log(t, 'verified=2 added=2 rejected={dead: 1}')
+    ok = scores == [89, 1] and alive == ['100', '30'] and dead_kept and summary == 1
+    return ('dupesearchfastdead', ok, 'scores=%s alive=%s dead_kept=%s summary=%d' % (scores, alive, dead_kept, summary))
+
+
+def scenario_dupesearchrescorefail(daemon, t):
+    """A fast donor that left history before its full sample landed (the user
+    deleted it) can't be rescored: the search says so (rescore: 1 in its
+    summary, a warning) instead of claiming the new score."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    postings = {'slow': (ids('sl'), 410_000, 1, 11)}
+    api = _ds_donor_env(daemon, t, postings, set(ids('sl')))
+    daemon.fake_nntp.delays['sl-'] = 0.4
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, '(fast)') == 0:
+        time.sleep(0.2)
+    donors = [h for h in api.history() if h.get('NZBName') == DS_TITLE]
+    for h in donors:
+        api.editqueue('HistoryFinalDelete', '', [h['ID']])
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    summary = _grep_log(t, 'verified=1 added=1 rejected={rescore: 1}')
+    warned = _grep_log(t, 'could not rescore')
+    ok = len(donors) == 1 and summary == 1 and warned == 1
+    return ('dupesearchrescorefail', ok, 'donors=%d summary=%d warned=%d' % (len(donors), summary, warned))
 
 
 def scenario_dupesearchdonor(daemon, t):
@@ -3818,6 +4035,9 @@ SCENARIOS = {
     'dupesearchsearch': scenario_dupesearchsearch,
     'dupesearchfetch': scenario_dupesearchfetch,
     'dupesearchfilters': scenario_dupesearchfilters,
+    'dupesearchdonors': scenario_dupesearchdonors,
+    'dupesearchfastdead': scenario_dupesearchfastdead,
+    'dupesearchrescorefail': scenario_dupesearchrescorefail,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
     'dupesearchdonor': scenario_dupesearchdonor,
     'dupesearchrestart': scenario_dupesearchrestart,
@@ -3982,6 +4202,9 @@ SCENARIO_OPTIONS = {
     'dupesearchfetch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
+    'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchrescorefail': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -4050,7 +4273,11 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamtooslow': [(b'slowB/', 1.0)]}
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
-SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters'}
+SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
+                   'dupesearchfastdead', 'dupesearchrescorefail'}
+
+# scenarios with a FakeNntp news server in place of nserv
+SCENARIO_FAKE_NNTP = {'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail'}
 
 
 # --------------------------------------------------------------------------- #
@@ -4126,8 +4353,11 @@ def main():
                 daemon.newznab = FakeNewznab()
                 options.append('DupeSearchUrl=http://127.0.0.1:%d/api' % daemon.newznab.port)
             daemon.write_config(options)
-            daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
-                               extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
+            if name in SCENARIO_FAKE_NNTP:
+                daemon.fake_nntp = FakeNntp(nserv_port)
+            else:
+                daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
+                                   extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
             if flaky:
                 daemon.proxy = FlakyNntpProxy(proxy_port, nserv_port, *flaky[1:])
             elif corrupt:
@@ -4158,6 +4388,8 @@ def main():
                 daemon.proxy.close()
             if daemon.newznab:
                 daemon.newznab.close()
+            if daemon.fake_nntp:
+                daemon.fake_nntp.close()
             target.teardown(args.keep)
 
     # tri-state result: True/False are real pass/fail, None is a graceful SKIP
