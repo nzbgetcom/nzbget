@@ -299,6 +299,18 @@ void Options::InitDefaults()
 	SetOption(DUPEARTICLEFALLBACK.data(), "no");
 	SetOption(DUPESTREAMDECOMPRESS.data(), "no");
 	SetOption(DUPESTREAMTIMEOUT.data(), "60");
+	SetOption(DUPESEARCH.data(), "no");
+	SetOption(DUPESEARCHURL.data(), "");
+	SetOption(DUPESEARCHAPIKEY.data(), "");
+	SetOption(DUPESEARCHDELAY.data(), "20");
+	SetOption(DUPESEARCHMAXDONORS.data(), "0");
+	SetOption(DUPEHEALTHPERCENT.data(), "5");
+	SetOption(DUPEHEALTHMIN.data(), "50");
+	SetOption(DUPEHEALTHMAX.data(), "1000");
+	SetOption(DUPEBODYCHECKS.data(), "20");
+	SetOption(DUPEHEALTHBUDGET.data(), "120");
+	SetOption(DUPEMINALIVE.data(), "50");
+	SetOption(DUPEFASTDONORS.data(), "5");
 	SetOption(DOWNLOADRATE.data(), "0");
 	SetOption(CONTROLIP.data(), "0.0.0.0");
 	SetOption(CONTROLUSERNAME.data(), "nzbget");
@@ -727,6 +739,24 @@ void Options::InitOptions()
 		DupeArticleFallbackCount, DupeArticleFallbackNames, DupeArticleFallbackValues);
 	m_dupeStreamDecompress	= (bool)ParseEnumValue(DUPESTREAMDECOMPRESS.data(), BoolCount, BoolNames, BoolValues);
 	m_dupeStreamTimeout		= std::max(0, ParseIntValue(DUPESTREAMTIMEOUT.data(), 10));
+	m_dupeSearch			= (bool)ParseEnumValue(DUPESEARCH.data(), BoolCount, BoolNames, BoolValues);
+	m_dupeSearchUrl			= GetOption(DUPESEARCHURL.data());
+	m_dupeSearchApiKey		= GetOption(DUPESEARCHAPIKEY.data());
+	m_dupeSearchDelay		= std::max(0, ParseIntValue(DUPESEARCHDELAY.data(), 10));
+	m_dupeSearchMaxDonors	= std::max(0, ParseIntValue(DUPESEARCHMAXDONORS.data(), 10));
+	m_dupeHealthPercent		= std::min(100, std::max(1, ParseIntValue(DUPEHEALTHPERCENT.data(), 10)));
+	m_dupeHealthMin			= std::max(1, ParseIntValue(DUPEHEALTHMIN.data(), 10));
+	m_dupeHealthMax			= std::max(m_dupeHealthMin, ParseIntValue(DUPEHEALTHMAX.data(), 10));
+	m_dupeBodyChecks		= std::max(0, ParseIntValue(DUPEBODYCHECKS.data(), 10));
+	m_dupeHealthBudget		= std::max(5, ParseIntValue(DUPEHEALTHBUDGET.data(), 10));
+	m_dupeMinAlive			= std::min(100, std::max(0, ParseIntValue(DUPEMINALIVE.data(), 10)));
+	m_dupeFastDonors		= std::max(0, ParseIntValue(DUPEFASTDONORS.data(), 10));
+	if (m_dupeSearch && Util::EmptyStr(m_dupeSearchUrl))
+	{
+		warn("Option <%s> is enabled but option <%s> is empty: no duplicates will be searched",
+			DUPESEARCH.data(), DUPESEARCHURL.data());
+		m_dupeSearch = false;
+	}
 
 	const char* PostStrategyNames[] = { "sequential", "balanced", "aggressive", "rocket" };
 	const int PostStrategyValues[] = { ppSequential, ppBalanced, ppAggressive, ppRocket };

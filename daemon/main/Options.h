@@ -59,6 +59,18 @@ public:
 	static constexpr std::string_view DUPEARTICLEFALLBACK = "DupeArticleFallback";
 	static constexpr std::string_view DUPESTREAMDECOMPRESS = "DupeStreamDecompress";
 	static constexpr std::string_view DUPESTREAMTIMEOUT = "DupeStreamTimeout";
+	static constexpr std::string_view DUPESEARCH = "DupeSearch";
+	static constexpr std::string_view DUPESEARCHURL = "DupeSearchUrl";
+	static constexpr std::string_view DUPESEARCHAPIKEY = "DupeSearchApiKey";
+	static constexpr std::string_view DUPESEARCHDELAY = "DupeSearchDelay";
+	static constexpr std::string_view DUPESEARCHMAXDONORS = "DupeSearchMaxDonors";
+	static constexpr std::string_view DUPEHEALTHPERCENT = "DupeHealthPercent";
+	static constexpr std::string_view DUPEHEALTHMIN = "DupeHealthMin";
+	static constexpr std::string_view DUPEHEALTHMAX = "DupeHealthMax";
+	static constexpr std::string_view DUPEBODYCHECKS = "DupeBodyChecks";
+	static constexpr std::string_view DUPEHEALTHBUDGET = "DupeHealthBudget";
+	static constexpr std::string_view DUPEMINALIVE = "DupeMinAlive";
+	static constexpr std::string_view DUPEFASTDONORS = "DupeFastDonors";
 	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
 	static constexpr std::string_view CONTROLIP = "ControlIP";
 	static constexpr std::string_view CONTROLPORT = "ControlPort";
@@ -444,6 +456,18 @@ public:
 	EDupeArticleFallback GetDupeArticleFallback() const { return m_dupeArticleFallback; }
 	bool GetDupeStreamDecompress() const { return m_dupeStreamDecompress; }
 	int GetDupeStreamTimeout() const { return m_dupeStreamTimeout; }
+	bool GetDupeSearch() const { return m_dupeSearch; }
+	const char* GetDupeSearchUrl() const { return m_dupeSearchUrl; }
+	const char* GetDupeSearchApiKey() const { return m_dupeSearchApiKey; }
+	int GetDupeSearchDelay() const { return m_dupeSearchDelay; }
+	int GetDupeSearchMaxDonors() const { return m_dupeSearchMaxDonors; }
+	int GetDupeHealthPercent() const { return m_dupeHealthPercent; }
+	int GetDupeHealthMin() const { return m_dupeHealthMin; }
+	int GetDupeHealthMax() const { return m_dupeHealthMax; }
+	int GetDupeBodyChecks() const { return m_dupeBodyChecks; }
+	int GetDupeHealthBudget() const { return m_dupeHealthBudget; }
+	int GetDupeMinAlive() const { return m_dupeMinAlive; }
+	int GetDupeFastDonors() const { return m_dupeFastDonors; }
 	const char* GetControlIp() const { return m_controlIp; }
 	const char* GetControlUsername() const { return m_controlUsername; }
 	const char* GetControlPassword() const { return m_controlPassword; }
@@ -634,6 +658,18 @@ private:
 	EDupeArticleFallback m_dupeArticleFallback = dafNone;
 	bool m_dupeStreamDecompress = false;
 	int m_dupeStreamTimeout = 60;
+	bool m_dupeSearch = false;
+	CString m_dupeSearchUrl;
+	CString m_dupeSearchApiKey;
+	int m_dupeSearchDelay = 20;
+	int m_dupeSearchMaxDonors = 0;
+	int m_dupeHealthPercent = 5;
+	int m_dupeHealthMin = 50;
+	int m_dupeHealthMax = 1000;
+	int m_dupeBodyChecks = 20;
+	int m_dupeHealthBudget = 120;
+	int m_dupeMinAlive = 50;
+	int m_dupeFastDonors = 5;
 	CString m_controlIp;
 	CString m_controlUsername;
 	CString m_controlPassword;

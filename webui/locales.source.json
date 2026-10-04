@@ -3970,6 +3970,54 @@
     "message": "Recover byte-identical content from compressed duplicate archives.\n\nOption <DupeArticleFallback> value \"stream\" only donates bytes that are\ncopyable without decompression (store-mode rar/zip/7z, raw splits, directly\nposted media). A duplicate posted as a normally-compressed archive (deflate\nzip, LZMA 7z, compressed rar) of the same inner media file cannot donate\nunder that scheme, because its posted bytes are a compression of the\ncontent, not the content itself.\n\nWhen this option is enabled and \"stream\" repair still has holes after\ntrying every store-mode/split/bare donor, nzbget materializes a compressed\nduplicate's member files to a temporary directory and runs the configured\nextractor (<UnrarCmd>/<SevenZipCmd>) on them to recover the inner file's\nplaintext bytes, which are then verified and patched exactly like any other\nstream-repair donor.\n\nThis is an opt-in, heavier last resort: it fetches and decompresses an\nentire duplicate archive (the fetched archive is bounded by an internal\nsize cap; the decompressed inner file it writes to the temporary directory\nis not, so ensure the intermediate directory has room) instead of only\nthe byte ranges needed, and requires a working extractor. It only helps a\ntarget that \"stream\" can otherwise map to its inner content (directly\nposted media, or store/copy-mode rar/zip/7z/split archives with holes); a\ncompressed target still cannot be repaired this way, since there is no\nplaintext location to write into a compressed member.\nA password-protected store-mode target IS supported: the extracted donor\nplaintext is re-encrypted under the target's own stream context (its\npassword taken from the NZB's password field, as for the non-decompression\nencrypted repair) before the bytes are written, so a compressed duplicate\ncan repair an encrypted store-mode archive too.",
     "description": "Description for the option DupeStreamDecompress DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes."
   },
+  "config_desc_dupesearch": {
+    "message": "Search for duplicates of a new download.\n\nWhen a download is added, nzbget asks the Newznab-compatible indexer\n(usually NZBHydra2) set in option <DupeSearchUrl> for other postings of\nthe same release, downloads their nzb-files, checks how much of each one\nstill exists on the news servers and queues the live ones paused, as\nduplicates of the download under the same duplicate key. If the download\nturns out dead or damaged beyond repair, the best duplicate takes its\nplace (see option <HealthCheck> value \"dupe\") or repairs it (see option\n<DupeArticleFallback>).\n\nNeeds option <DupeCheck> enabled. Only the top-scored item of a duplicate\nkey is searched for: duplicates, items returned from history and nzb-files\nthat this search added itself are not.",
+    "description": "Description for the option DupeSearch DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupesearchurl": {
+    "message": "Newznab-compatible search URL for option <DupeSearch>.\n\nThe URL of the api endpoint without parameters, for example\n\"http://127.0.0.1:5076/api\". Parameters (t, q, apikey, ...) are added\nby nzbget.",
+    "description": "Description for the option DupeSearchUrl DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupesearchapikey": {
+    "message": "API key for option <DupeSearchUrl>.",
+    "description": "Description for the option DupeSearchApiKey DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupesearchdelay": {
+    "message": "Seconds to wait before searching (seconds).\n\nA client that submits several postings itself (a main one and its own\nbackups) adds them within a few seconds; the search runs after they have\narrived so that it can see all of them.",
+    "description": "Description for the option DupeSearchDelay DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupesearchmaxdonors": {
+    "message": "Maximum number of duplicates to queue per download (0 = unlimited).",
+    "description": "Description for the option DupeSearchMaxDonors DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupehealthpercent": {
+    "message": "Share of a posting's articles to check for existence (percent).\n\nTogether with <DupeHealthMin> and <DupeHealthMax> sets how many articles\nof a candidate duplicate are checked on the news servers to estimate\nhow much of it is alive. A first check of about 10 articles discards\npostings that are dead outright.",
+    "description": "Description for the option DupeHealthPercent DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupehealthmin": {
+    "message": "Minimum number of articles to check per posting.",
+    "description": "Description for the option DupeHealthMin DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupehealthmax": {
+    "message": "Maximum number of articles to check per posting.",
+    "description": "Description for the option DupeHealthMax DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupebodychecks": {
+    "message": "Number of articles per posting to download and verify (articles).\n\nOf the checked articles this many are downloaded and their yEnc checksum\nverified, because a news server may say an article exists when its body\nis gone. 0 disables the download check.",
+    "description": "Description for the option DupeBodyChecks DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupehealthbudget": {
+    "message": "Time limit for checking one posting (seconds).\n\nWhen the time runs out, articles that most servers do not have count as\nmissing, so that a slow check does not make a posting look better than\nit is.",
+    "description": "Description for the option DupeHealthBudget DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupeminalive": {
+    "message": "Minimum share of a posting that must be alive to be queued (percent).",
+    "description": "Description for the option DupeMinAlive DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
+  "config_desc_dupefastdonors": {
+    "message": "Number of duplicates that are queued right after the first check\n(duplicates).\n\nThe first check of about 10 articles proves a posting alive quickly; this\nmany such postings are queued at once, the rest after their full check.",
+    "description": "Description for the option DupeFastDonors DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
+  },
   "config_desc_flushqueue": {
     "message": "Flush download queue to disk.\n\nImmediately flush file buffers for queue state file. This improves\nsafety for the queue file but may decrease disk performance due to\ndisabling of disk caching for queue state file.\n\nYou can disable this option if it negatively affects disk performance on your\nsystem. You should create backups of queue-directory (option <QueueDir>)\nin that case. Keep the option enabled if your system often crashes.",
     "description": "Description for the option FlushQueue DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>)."
