@@ -426,6 +426,7 @@ void HistoryCoordinator::MoveToQueue(DownloadQueue* downloadQueue, HistoryList::
 	// the returned download is checked for a failover (option HealthCheck
 	// value "dupe") like a new one, not from the previous attempt's count
 	nzbInfo->SetDupeFailoverChecked(-1);
+	nzbInfo->SetDeadPickProbed(false);
 	nzbInfo->SetMarkStatus(NzbInfo::ksNone);
 	nzbInfo->GetScriptStatuses()->clear();
 	nzbInfo->SetParkedFileCount(0);

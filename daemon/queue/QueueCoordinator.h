@@ -44,6 +44,10 @@ public:
 	~QueueCoordinator() override;
 	void Run() override;
 	void Stop() override;
+	/* the dead-pick probe (see DupeProbe) found none of the download's sampled
+	 * articles on any server: fail over to the best duplicate in history */
+	void FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId, int samples,
+		int missingServers, int activeServers);
 	void Update(Subject* caller, void* aspect) override;
 
 	// editing queue
@@ -117,6 +121,7 @@ private:
 	void DiscardDownloadedArticles(NzbInfo* nzbInfo, FileInfo* fileInfo);
 	void CheckHealth(DownloadQueue* downloadQueue, FileInfo* fileInfo);
 	void CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery
 	static constexpr int DupeFailoverSample = 32;

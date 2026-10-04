@@ -638,6 +638,59 @@ class CorruptingNntpProxy:
             pass
 
 
+class RewritingNntpProxy:
+    """A news server in front of nserv that rewrites ``old`` to ``new`` in
+    its replies (same length): a provider that says "451" for a missing
+    article instead of "430"."""
+
+    def __init__(self, listen_port, upstream_port, old, new):
+        assert len(old) == len(new)
+        self.upstream_port = upstream_port
+        self.old, self.new = old, new
+        self.rewritten = 0
+        self.srv = socket.socket()
+        self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind(('127.0.0.1', listen_port))
+        self.srv.listen(64)
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    def _serve(self):
+        while True:
+            try:
+                client, _ = self.srv.accept()
+            except OSError:
+                return
+            upstream = socket.create_connection(('127.0.0.1', self.upstream_port))
+            threading.Thread(target=self._pipe, args=(client, upstream, False), daemon=True).start()
+            threading.Thread(target=self._pipe, args=(upstream, client, True), daemon=True).start()
+
+    def _pipe(self, src, dst, rewrite):
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                if rewrite and self.old in data:
+                    self.rewritten += data.count(self.old)
+                    data = data.replace(self.old, self.new)
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            for sock in (src, dst):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                sock.close()
+
+    def close(self):
+        try:
+            self.srv.close()
+        except OSError:
+            pass
+
+
 # --------------------------------------------------------------------------- #
 # Scenarios
 # --------------------------------------------------------------------------- #
@@ -2906,6 +2959,145 @@ def scenario_dupefailover(daemon, t):
             % (hp['Status'], hb['Status'], failed_over, failed_articles, integ))
 
 
+def _probe_fixture(t, tag, alive_every=0):
+    """A six-file, 180-article dead posting (every article missing, or all but
+    every ``alive_every``-th of each file) and a healthy lower-scored backup of
+    the same title in another packing."""
+    seg = 100_000
+    vol = 3_000_000
+    n = vol // seg
+    dead_set = set(range(1, n + 1))
+    if alive_every:
+        dead_set = {i for i in dead_set if (i - 1) % alive_every != 3 % alive_every}
+    primary = [('%sA/d%d.bin' % (tag, i), 'Dead%d.bin' % i, vol, seg, set(dead_set)) for i in range(6)]
+    for m in primary:
+        t.write_file(os.path.join('data', m[0]), _payload(vol, 9700))
+    data = _payload(2_900_000, 9701)
+    bp = _place_copy(t, '%sB' % tag, data)
+    backup = build_nzb(bp, 'Backup.bin', 2_900_000, seg, set())
+    return primary, backup, data
+
+
+def scenario_deadpickprobe(daemon, t):
+    """HealthCheck=dupe, a posting none of whose articles exists on the server
+    and a healthy backup in history: the probe (STAT of 10 articles spread
+    over the posting) finds nothing and abandons the download for the backup
+    at once, not through the failed-article path (the news server answers
+    after 500 ms, so the probe finishes before 32 articles failed)."""
+    primary, backup, data = _probe_fixture(t, 'dp')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'dp-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'dp-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    deadline = time.time() + 240
+    hb = daemon.wait_history(api, 'Backup')
+    while hb['Status'].startswith('DELETED') and time.time() < deadline:
+        time.sleep(0.5)
+        hb = daemon.wait_history(api, 'Backup')
+    probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
+    health_failover = _grep_log(t, 'Failing over Primary to duplicate Backup: health')
+    integ = _verify_output(t, data)
+    failed_articles = int(hp.get('FailedArticles', 0))
+    return ('deadpickprobe', probed == 1 and health_failover == 0 and failed_articles < 32 and
+            integ and hb['Status'].startswith('SUCCESS'),
+            'status=%s backup_status=%s probe_logs=%d health_failover_logs=%d failed_articles=%d integrity=%s'
+            % (hp['Status'], hb['Status'], probed, health_failover, failed_articles, integ))
+
+
+def _deadpick_servers(daemon, t, tag):
+    """A large dead posting (1800 articles, 15 files) with a healthy backup,
+    several news servers answering after 200 ms (SCENARIO_EXTRA_SERVERS); the
+    probe runs through the servers one after the other and finishes before the
+    downloads have failed the 15% of the posting that make the regular health
+    check abandon it."""
+    seg, vol = 20_000, 2_400_000
+    n = vol // seg
+    payload = _payload(vol, 9800)
+    primary = []
+    for i in range(15):
+        rel = '%sA/d%d.bin' % (tag, i)
+        t.write_file(os.path.join('data', rel), payload)
+        primary.append((rel, 'Dead%d.bin' % i, vol, seg, set(range(1, n + 1))))
+    data = _payload(2_900_000, 9801)
+    backup = build_nzb(_place_copy(t, '%sB' % tag, data), 'Backup.bin', 2_900_000, 100_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, tag + '-key', 100)
+    daemon.append(api, 'Backup', backup, False, tag + '-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary', timeout=300)
+    deadline = time.time() + 300
+    hb = daemon.wait_history(api, 'Backup', timeout=300)
+    while hb['Status'].startswith('DELETED') and time.time() < deadline:
+        time.sleep(0.5)
+        hb = daemon.wait_history(api, 'Backup', timeout=300)
+    return hp, hb, _verify_output(t, data)
+
+
+def scenario_deadpickservers(daemon, t):
+    """Six news servers, one of them unreachable (an optional server nothing
+    listens on): five servers answer definitively, which is the minimum for a
+    verdict, and the unreachable one is ignored, not counted as missing."""
+    hp, hb, integ = _deadpick_servers(daemon, t, 'ds')
+    probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
+    return ('deadpickservers', probed == 1 and integ and hb['Status'].startswith('SUCCESS'),
+            'status=%s backup_status=%s probe_logs=%d failed_articles=%s integrity=%s'
+            % (hp['Status'], hb['Status'], probed, hp.get('FailedArticles'), integ))
+
+
+def scenario_deadpickfewservers(daemon, t):
+    """Six news servers, two of them unreachable: only four answer
+    definitively, below the minimum of five, so the probe gives no verdict and
+    the regular health check handles the dead posting later."""
+    hp, hb, integ = _deadpick_servers(daemon, t, 'df')
+    probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
+    no_verdict = _grep_log(t, 'no verdict (4 of 6 servers answered definitively)')
+    return ('deadpickfewservers', probed == 0 and no_verdict == 1 and integ and
+            hb['Status'].startswith('SUCCESS'),
+            'status=%s backup_status=%s probe_logs=%d no_verdict_logs=%d integrity=%s'
+            % (hp['Status'], hb['Status'], probed, no_verdict, integ))
+
+
+def scenario_deadpickpartial(daemon, t):
+    """The probe never abandons a partly alive posting: 85% of the articles
+    are missing but some exist, among them one the probe samples, and the
+    backup's score is too low to be warranted by the real health. The download
+    is not failed over."""
+    primary, backup, data = _probe_fixture(t, 'dq', alive_every=7)
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'dq-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'dq-key', 1)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    failed_over = _grep_log(t, 'Failing over Primary')
+    alive_logs = _grep_log(t, 'an article exists, not abandoning it')
+    return ('deadpickpartial', failed_over == 0 and alive_logs == 1,
+            'status=%s failover_logs=%d alive_probe_logs=%d' % (hp['Status'], failed_over, alive_logs))
+
+
+def scenario_notfound451(daemon, t):
+    """A news server that answers 451 for a missing article (as some
+    providers do) is treated like 430: the article is asked for once on that
+    server. Before, 451 was an unknown error and the same server was asked
+    again ArticleRetries times, for every missing article of every server."""
+    size, seg = 2_500_000, 500_000
+    data = _payload(size, 5300)
+    pp = _place_copy(t, 'nfA', data, 'movie.mkv')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelNF', build_nzb(pp, 'movie.mkv', size, seg, {2, 3}), False, 'nf-key', 100)
+    h = daemon.wait_history(api, 'RelNF', timeout=120)
+    rewritten = daemon.proxy.rewritten if daemon.proxy else 0
+    return ('notfound451', rewritten == 2 and int(h.get('FailedArticles', 0)) == 2,
+            'status=%s rewritten_replies=%d failed_articles=%s (one request per missing article)'
+            % (h['Status'], rewritten, h.get('FailedArticles')))
+
+
 def scenario_dupehopeless(daemon, t):
     """HealthCheck=dupe without a backup: a dead posting (every article of
     every file missing, no duplicate able to supply anything) must be parked
@@ -3109,6 +3301,11 @@ SCENARIOS = {
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
+    'deadpickprobe': scenario_deadpickprobe,
+    'deadpickpartial': scenario_deadpickpartial,
+    'deadpickservers': scenario_deadpickservers,
+    'deadpickfewservers': scenario_deadpickfewservers,
+    'notfound451': scenario_notfound451,
     'manualparnopar': scenario_manualparnopar,
     'xpackextensionless': scenario_xpackextensionless,
     'xpackextensionlessneg': scenario_xpackextensionlessneg,
@@ -3254,6 +3451,11 @@ SCENARIO_OPTIONS = {
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    'deadpickprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deadpickpartial': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'notfound451': ['DupeArticleFallback=no', 'ArticleRetries=3', 'ArticleInterval=3'],
     'manualparnopar': ['DupeArticleFallback=stream', 'ParCheck=manual'],
     'xpackextensionless': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackextensionlessneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
@@ -3294,7 +3496,13 @@ DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 # scenarios that read nserv's request log (nserv.log)
 CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
-SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000']}
+SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'],
+                       'deadpickpartial': ['-w', '100'], 'deadpickservers': ['-w', '200'],
+                       'deadpickfewservers': ['-w', '200']}
+
+# extra news servers behind the same nserv: (servers answering, unreachable
+# optional servers); Server1 counts among the answering ones
+SCENARIO_EXTRA_SERVERS = {'deadpickservers': (5, 1), 'deadpickfewservers': (4, 2)}
 
 # scenarios with a FlakyNntpProxy in front of a news server:
 # (server number, message-id trigger, window in s or None for good)
@@ -3302,6 +3510,9 @@ SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, '
 
 # scenarios with a CorruptingNntpProxy in front of Server1: message-id marker
 SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
+
+# scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
+SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 
 
 # --------------------------------------------------------------------------- #
@@ -3323,7 +3534,8 @@ def main():
     results = []
 
     for name in scenarios:
-        if args.target == 'adb' and (name in SCENARIO_FLAKY_PROXY or name in SCENARIO_CORRUPT_PROXY):
+        if args.target == 'adb' and (name in SCENARIO_FLAKY_PROXY or name in SCENARIO_CORRUPT_PROXY or
+                                           name in SCENARIO_REWRITE_PROXY):
             results.append((name, None, 'SKIP: the flaky news-server proxy runs on the host'))
             print('[SKIP] %s  (the flaky news-server proxy runs on the host)' % name)
             continue
@@ -3344,10 +3556,11 @@ def main():
         try:
             flaky = SCENARIO_FLAKY_PROXY.get(name)
             corrupt = SCENARIO_CORRUPT_PROXY.get(name)
+            rewrite = SCENARIO_REWRITE_PROXY.get(name)
             options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
             nserv_port = nntp
             proxy_port = None
-            if flaky or corrupt:
+            if flaky or corrupt or rewrite:
                 # Server1 always is nntp: a proxy for it listens there and
                 # nserv moves to a port of its own; a proxy for Server2 gets a
                 # port of its own
@@ -3357,6 +3570,19 @@ def main():
                     nserv_port = free_port()
                 else:
                     options.append('Server%d.Port=%d' % (server, proxy_port))
+            if name in SCENARIO_EXTRA_SERVERS:
+                live, dead = SCENARIO_EXTRA_SERVERS[name]
+                number = 1
+                for _ in range(live - 1):
+                    number += 1
+                    options += ['Server%d.Host=127.0.0.1' % number, 'Server%d.Port=%d' % (number, nserv_port),
+                                'Server%d.Connections=2' % number, 'Server%d.Level=0' % number,
+                                'Server%d.Encryption=no' % number]
+                for _ in range(dead):
+                    number += 1
+                    options += ['Server%d.Host=127.0.0.1' % number, 'Server%d.Port=1' % number,
+                                'Server%d.Connections=2' % number, 'Server%d.Level=0' % number,
+                                'Server%d.Encryption=no' % number, 'Server%d.Optional=yes' % number]
             daemon.write_config(options)
             daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
                                extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
@@ -3364,6 +3590,8 @@ def main():
                 daemon.proxy = FlakyNntpProxy(proxy_port, nserv_port, *flaky[1:])
             elif corrupt:
                 daemon.proxy = CorruptingNntpProxy(proxy_port, nserv_port, corrupt)
+            elif rewrite:
+                daemon.proxy = RewritingNntpProxy(proxy_port, nserv_port, *rewrite)
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':

@@ -716,6 +716,8 @@ public:
 	void SetDupeUnsourcedArticles(int value) { m_dupeUnsourcedArticles = value; }
 	int GetDupeFailoverChecked() { return m_dupeFailoverChecked; }
 	void SetDupeFailoverChecked(int value) { m_dupeFailoverChecked = value; }
+	bool GetDeadPickProbed() { return m_deadPickProbed; }
+	void SetDeadPickProbed(bool value) { m_deadPickProbed = value; }
 	enum EDupeParDeferState { dpNone, dpDeferred, dpLifted };
 	EDupeParDeferState GetDupeParDeferState() { return m_dupeParDeferState; }
 	void SetDupeParDeferState(EDupeParDeferState state) { m_dupeParDeferState = state; }
@@ -910,6 +912,7 @@ private:
 	// (-1 = never scanned), so a download without a backup is not rescanned
 	// for every failed article
 	int m_dupeFailoverChecked = -1;
+	bool m_deadPickProbed = false;
 	// which way the par-first rule of duplicate recovery went, for logging once (not persisted)
 	EDupeParDeferState m_dupeParDeferState = dpNone;
 	// missing byte ranges of completed media files awaiting stream repair

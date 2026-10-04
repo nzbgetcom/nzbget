@@ -34,6 +34,7 @@
 #include "StatMeter.h"
 #include "Deobfuscation.h"
 #include "DupeCoordinator.h"
+#include "DupeProbe.h"
 #include "DupeStreamRepair.h"
 #include "StreamRepair.h"
 
@@ -102,6 +103,8 @@ QueueCoordinator::QueueCoordinator()
 QueueCoordinator::~QueueCoordinator()
 {
 	debug("Destroying QueueCoordinator");
+
+	DupeProbe::WaitAll();
 
 	for (ArticleDownloader* articleDownloader : m_activeDownloads)
 	{
@@ -240,6 +243,7 @@ void QueueCoordinator::Run()
 					downloadsChecked = true;
 					articeDownloadsRunning = true;
 					downloadStarted = true;
+					StartDeadPickProbe(downloadQueue, fileInfo->GetNzbInfo());
 					StartArticleDownload(fileInfo, articleInfo, connection);
 				}
 				else if (fileInfo->GetNzbInfo()->HasDesiredServer())
@@ -506,6 +510,8 @@ void QueueCoordinator::CheckDupeFileInfos(NzbInfo* nzbInfo)
 void QueueCoordinator::Stop()
 {
 	Thread::Stop();
+
+	DupeProbe::StopAll();
 
 	debug("Stopping ArticleDownloads");
 	{
@@ -1514,6 +1520,127 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 	}
 	// the parked failure is processed like a health-deletion: on its way to
 	// history DupeCoordinator::NzbCompleted returns the backup to the queue
+	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
+	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
+}
+
+void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
+		nzbInfo->GetDeadPickProbed() || nzbInfo->GetDupeMode() != dmScore ||
+		nzbInfo->GetKind() != NzbInfo::nkNzb || nzbInfo->GetDeleting() ||
+		nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+	{
+		return;
+	}
+	// one probe per download (a retry from history resets this)
+	nzbInfo->SetDeadPickProbed(true);
+
+	// a dead posting is only worth abandoning when a duplicate waits
+	if (!g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()))
+	{
+		return;
+	}
+
+	// the articles to check, spread over the whole posting: the unpaused files
+	// (data files before par2 files) are treated as one run of articles
+	std::vector<FileInfo*> files;
+	for (int pass = 0; pass < 2 && files.empty(); pass++)
+	{
+		for (FileInfo* fileInfo : nzbInfo->GetFileList())
+		{
+			if (!fileInfo->GetDeleted() && !fileInfo->GetPaused() && fileInfo->GetTotalArticles() > 0 &&
+				(pass == 1 || !fileInfo->GetParFile()))
+			{
+				files.push_back(fileInfo);
+			}
+		}
+	}
+	size_t total = 0;
+	for (FileInfo* fileInfo : files)
+	{
+		total += fileInfo->GetTotalArticles();
+	}
+	if (total < (size_t)DupeProbe::MinArticles)
+	{
+		return;
+	}
+
+	std::vector<DupeProbe::Sample> samples;
+	for (size_t position : DupeProbe::SampleIndexes(total, DupeProbe::SampleCount))
+	{
+		size_t offset = 0;
+		for (FileInfo* fileInfo : files)
+		{
+			size_t count = fileInfo->GetTotalArticles();
+			if (position >= offset + count)
+			{
+				offset += count;
+				continue;
+			}
+
+			// the article list of a file that hasn't started yet is on disk
+			if (fileInfo->GetArticles()->empty() && g_Options->GetServerMode())
+			{
+				g_DiskState->LoadArticles(fileInfo);
+				LoadPartialState(fileInfo);
+			}
+			size_t index = position - offset;
+			if (index < fileInfo->GetArticles()->size())
+			{
+				DupeProbe::Sample sample;
+				sample.MessageId = fileInfo->GetArticles()->at(index)->GetMessageId();
+				sample.Groups = std::make_shared<std::vector<CString>>();
+				for (const CString& group : *fileInfo->GetGroups())
+				{
+					sample.Groups->emplace_back(*group);
+				}
+				samples.push_back(std::move(sample));
+			}
+			break;
+		}
+	}
+	if (samples.size() < (size_t)DupeProbe::MinArticles)
+	{
+		return;
+	}
+
+	DupeProbe::Start(nzbInfo->GetId(), std::move(samples));
+}
+
+void QueueCoordinator::FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId, int samples,
+	int missingServers, int activeServers)
+{
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
+	if (!nzbInfo || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+	{
+		return;
+	}
+	// something of it arrived meanwhile: a partly alive posting is never
+	// abandoned here (the regular health check handles partial damage)
+	if (nzbInfo->GetCurrentSuccessArticles() > 0)
+	{
+		return;
+	}
+
+	HistoryInfo* backup = g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() == dmScore ?
+		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()) :
+		nullptr;
+	// the posting is dead, whatever score it was queued with: health 0
+	if (!backup || !DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), 0,
+		backup->GetNzbInfo()->GetDupeScore()))
+	{
+		return;
+	}
+
+	nzbInfo->PrintMessage(Message::mkWarning,
+		"Failing over %s to duplicate %s: none of %i sampled articles exists on any server "
+		"(%i of %i servers answered definitively)",
+		nzbInfo->GetName(), backup->GetNzbInfo()->GetName(), samples, missingServers, activeServers);
+
+	// processed like a health-deletion: on its way to history
+	// DupeCoordinator::NzbCompleted returns the backup to the queue
 	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
 	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
 }

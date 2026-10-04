@@ -19,6 +19,8 @@ nzbget-v26.3
       - A file none of whose articles is available anywhere is recreated whole from a duplicate proven byte-identical on the collection's other files, damaged or intact;
       - A file fully repaired from duplicates is recorded as complete, so retrying failed articles no longer counts its repair twice and reports a damaged release as successful;
       - Option HealthCheck value "dupe": a download the duplicates can't complete is parked as soon as its health drops below critical when a better duplicate waits in history, which is fetched right away instead of after every remaining article failed; a dead posting without a better duplicate is parked instead of failing every article;
+      - Option HealthCheck value "dupe" also checks a starting download that has a duplicate in history: about 10 articles spread over the posting are checked (STAT) on every active server, and a posting none of whose articles exists anywhere is parked at once for the duplicate;
+      - A "451" reply to an article request counts as "article not found", like "430", instead of an unknown error that is retried on the same server;
       - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
     - Added support for extension i18n
     [#872](https://github.com/nzbgetcom/nzbget/pull/872)

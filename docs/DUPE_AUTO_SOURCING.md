@@ -49,6 +49,18 @@ HealthCheck=dupe                # never delete/park a REPAIRABLE item before
                                 # all of its failures ("none" would)
 ```
 
+With `HealthCheck=dupe` a dead pick is also found out when the download
+starts, not after thousands of failed articles: if a duplicate waits in
+history, nzbget checks (STAT) about 10 articles spread over the whole posting
+on every active news server. When none exists and at least 5 servers (or all
+of them, if there are fewer) answered that they have none, the download is
+parked and the duplicate takes its place. A posting with any article alive is
+never abandoned this way, so partial damage still goes through the regular
+health check, byte-level repair and par2. A server that fails to answer is
+ignored, not counted as missing. The check needs a free connection on each
+server for a moment; with the connections of every server busy, that server is
+skipped after 10 seconds.
+
 ## What a post-processing script receives
 
 nzbget runs post-processing extension scripts with these environment variables
