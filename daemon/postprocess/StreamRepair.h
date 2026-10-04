@@ -21,9 +21,13 @@
 #ifndef STREAMREPAIR_H
 #define STREAMREPAIR_H
 
+#include <atomic>
+#include <condition_variable>
 #include <deque>
 #include <map>
+#include <mutex>
 #include <set>
+#include <thread>
 #include <vector>
 #include "NString.h"
 #include "Thread.h"
@@ -229,6 +233,18 @@ private:
 	PostInfo* m_postInfo = nullptr;
 	bool m_liveMode = false;
 	int m_nzbId = 0;
+	// option <DupeStreamTimeout>: a watchdog stops the pass after that long;
+	// unlike a stop for shutdown, the pass then finishes as a normal one
+	// (what is still missing goes to par-repair, nothing is kept to resume)
+	std::thread m_watchdog;
+	std::mutex m_watchdogMutex;
+	std::condition_variable m_watchdogCond;
+	bool m_watchdogDone = false;
+	std::atomic<bool> m_timedOut{false};
+	void StartWatchdog();
+	void StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets);
+	/* stopped for a reload or shutdown (the pass is to run again), not by the timeout */
+	bool Interrupted() { return IsStopped() && !m_timedOut; }
 	ArticleFetcher m_fetcher;
 	ArticleBatchFetcher m_batchFetcher;
 	// the target's own archive password (*Unpack:Password); never logged

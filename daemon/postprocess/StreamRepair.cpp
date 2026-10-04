@@ -449,6 +449,7 @@ void StreamRepairController::Run()
 	}
 	else
 	{
+		StartWatchdog();
 		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors, memberNames);
 
@@ -461,6 +462,7 @@ void StreamRepairController::Run()
 		{
 			ExecCrossPackRepair(destDir, targets, donors, memberNames);
 		}
+		StopWatchdog(nzbName, targets);
 	}
 
 	ReportRemainingHoles(targets);
@@ -532,6 +534,7 @@ void StreamRepairController::RunLive()
 	{
 		PrintMessage(Message::mkInfo, "Starting live stream repair for %s", *nzbName);
 
+		StartWatchdog();
 		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors, memberNames);
 
@@ -548,6 +551,7 @@ void StreamRepairController::RunLive()
 			RefreshLiveNames(targets, memberNames);
 			ExecCrossPackRepair(destDir, targets, donors, memberNames);
 		}
+		StopWatchdog(nzbName, targets);
 	}
 
 	RepairCompletedLive(targets);
@@ -678,6 +682,58 @@ void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targ
 
 	// jobs (and their shrunk holes) are persisted; keep disk-state honest
 	downloadQueue->Save();
+}
+
+void StreamRepairController::StartWatchdog()
+{
+	int timeout = g_Options->GetDupeStreamTimeout();
+	if (timeout <= 0)
+	{
+		return;
+	}
+	m_watchdog = std::thread([this, timeout]()
+		{
+			std::unique_lock<std::mutex> lock(m_watchdogMutex);
+			if (!m_watchdogCond.wait_for(lock, std::chrono::seconds(timeout), [this] { return m_watchdogDone; }))
+			{
+				m_timedOut = true;
+				lock.unlock();
+				Stop();
+			}
+		});
+}
+
+void StreamRepairController::StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets)
+{
+	if (!m_watchdog.joinable())
+	{
+		return;
+	}
+	{
+		std::lock_guard<std::mutex> lock(m_watchdogMutex);
+		m_watchdogDone = true;
+	}
+	m_watchdogCond.notify_all();
+	m_watchdog.join();
+	if (m_timedOut)
+	{
+		int64 missing = 0;
+		int unsized = 0;
+		for (const RepairTarget& target : targets)
+		{
+			missing += DupeStreamRepair::TotalSize(target.Holes);
+			unsized += target.DecodedFileSize <= 0 ? 1 : 0;
+		}
+		BString<100> wholeFiles;
+		if (unsized > 0)
+		{
+			wholeFiles.Format(" and %i whole file(s)", unsized);
+		}
+		PrintMessage(Message::mkWarning,
+			"Stream repair of %s stopped after %i seconds (option DupeStreamTimeout): %.1f MB recovered, %.1f MB%s still missing",
+			nzbName, g_Options->GetDupeStreamTimeout(), m_recoveredBytes / 1024.0 / 1024.0,
+			missing / 1024.0 / 1024.0, *wholeFiles);
+	}
 }
 
 void StreamRepairController::Stop()
@@ -1684,7 +1740,7 @@ bool StreamRepairController::CompareToFile(DiskFile& file, int64 offset, const c
 
 void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& targets)
 {
-	if (IsStopped())
+	if (Interrupted())
 	{
 		// a reload or shutdown interrupted the pass, which says nothing about
 		// what the duplicates carry: the pass runs again after the restart
@@ -3276,7 +3332,7 @@ void StreamRepairController::RepairCompleted()
 	for (auto it = nzbInfo->GetStreamRepairJobs()->begin();
 		it != nzbInfo->GetStreamRepairJobs()->end(); )
 	{
-		if (!IsStopped())
+		if (!Interrupted())
 		{
 			it = nzbInfo->GetStreamRepairJobs()->erase(it);
 			continue;

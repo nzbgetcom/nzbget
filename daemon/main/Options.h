@@ -58,6 +58,7 @@ public:
 	static constexpr std::string_view DUPECHECK = "DupeCheck";
 	static constexpr std::string_view DUPEARTICLEFALLBACK = "DupeArticleFallback";
 	static constexpr std::string_view DUPESTREAMDECOMPRESS = "DupeStreamDecompress";
+	static constexpr std::string_view DUPESTREAMTIMEOUT = "DupeStreamTimeout";
 	static constexpr std::string_view DOWNLOADRATE = "DownloadRate";
 	static constexpr std::string_view CONTROLIP = "ControlIP";
 	static constexpr std::string_view CONTROLPORT = "ControlPort";
@@ -442,6 +443,7 @@ public:
 	bool GetDupeCheck() const { return m_dupeCheck; }
 	EDupeArticleFallback GetDupeArticleFallback() const { return m_dupeArticleFallback; }
 	bool GetDupeStreamDecompress() const { return m_dupeStreamDecompress; }
+	int GetDupeStreamTimeout() const { return m_dupeStreamTimeout; }
 	const char* GetControlIp() const { return m_controlIp; }
 	const char* GetControlUsername() const { return m_controlUsername; }
 	const char* GetControlPassword() const { return m_controlPassword; }
@@ -631,6 +633,7 @@ private:
 	bool m_dupeCheck = false;
 	EDupeArticleFallback m_dupeArticleFallback = dafNone;
 	bool m_dupeStreamDecompress = false;
+	int m_dupeStreamTimeout = 60;
 	CString m_controlIp;
 	CString m_controlUsername;
 	CString m_controlPassword;

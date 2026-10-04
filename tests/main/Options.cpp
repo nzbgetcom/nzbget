@@ -336,4 +336,27 @@ BOOST_AUTO_TEST_CASE(DupeStreamDecompressOptionTest)
 	}
 }
 
+BOOST_AUTO_TEST_CASE(DupeStreamTimeoutOptionTest)
+{
+	{
+		Options::CmdOptList cmdOpts;
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK_EQUAL(options.GetDupeStreamTimeout(), 60);
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeStreamTimeout=0");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK_EQUAL(options.GetDupeStreamTimeout(), 0);
+	}
+
+	{
+		Options::CmdOptList cmdOpts;
+		cmdOpts.push_back("DupeStreamTimeout=-5");
+		Options options(&cmdOpts, nullptr);
+		BOOST_CHECK_EQUAL(options.GetDupeStreamTimeout(), 0);
+	}
+}
+
 BOOST_AUTO_TEST_SUITE_END()

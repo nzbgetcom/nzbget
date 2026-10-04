@@ -298,6 +298,7 @@ void Options::InitDefaults()
 	SetOption(DUPECHECK.data(), "yes");
 	SetOption(DUPEARTICLEFALLBACK.data(), "no");
 	SetOption(DUPESTREAMDECOMPRESS.data(), "no");
+	SetOption(DUPESTREAMTIMEOUT.data(), "60");
 	SetOption(DOWNLOADRATE.data(), "0");
 	SetOption(CONTROLIP.data(), "0.0.0.0");
 	SetOption(CONTROLUSERNAME.data(), "nzbget");
@@ -725,6 +726,7 @@ void Options::InitOptions()
 	m_dupeArticleFallback = (EDupeArticleFallback)ParseEnumValue(DUPEARTICLEFALLBACK.data(),
 		DupeArticleFallbackCount, DupeArticleFallbackNames, DupeArticleFallbackValues);
 	m_dupeStreamDecompress	= (bool)ParseEnumValue(DUPESTREAMDECOMPRESS.data(), BoolCount, BoolNames, BoolValues);
+	m_dupeStreamTimeout		= std::max(0, ParseIntValue(DUPESTREAMTIMEOUT.data(), 10));
 
 	const char* PostStrategyNames[] = { "sequential", "balanced", "aggressive", "rocket" };
 	const int PostStrategyValues[] = { ppSequential, ppBalanced, ppAggressive, ppRocket };

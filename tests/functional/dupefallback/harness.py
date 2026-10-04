@@ -691,6 +691,38 @@ class RewritingNntpProxy:
             pass
 
 
+class DelayingNntpProxy(RewritingNntpProxy):
+    """A news server in front of nserv that holds every request naming
+    ``marker`` for ``delay`` seconds before passing it on: a duplicate whose
+    articles are slow to come (in practice, requests for articles that no
+    server has any more, each waiting out its timeout)."""
+
+    def __init__(self, listen_port, upstream_port, marker, delay):
+        self.marker, self.delay = marker, delay
+        self.delayed = 0
+        super().__init__(listen_port, upstream_port, b'', b'')
+
+    def _pipe(self, src, dst, rewrite):
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                if not rewrite and self.marker in data:
+                    self.delayed += 1
+                    time.sleep(self.delay)
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            for sock in (src, dst):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                sock.close()
+
+
 # --------------------------------------------------------------------------- #
 # Scenarios
 # --------------------------------------------------------------------------- #
@@ -897,6 +929,32 @@ def scenario_stream(daemon, t):
             success and integ and recov == 2 and queued >= 1 and repaired >= 1 and rejected >= 1,
             'status=%s recovered=%d queued_logs=%d repair_logs=%d rejected_logs=%d integrity=%s'
             % (h['Status'], recov, queued, repaired, rejected, integ))
+
+
+def scenario_streamtimeout(daemon, t):
+    """DupeStreamTimeout: the only duplicate is slow (every request for its
+    articles waits 4 s), so repairing the primary's 4 MB hole from it would
+    take minutes. With DupeStreamTimeout=5 the repair stops after 5 seconds,
+    logs why, and the download finishes at once as a failure (no par2 here)
+    instead of sitting in stream repair, so a client can grab another release."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4343)
+    pp = _place_copy(t, 'slowA', data, 'file.mkv')
+    dp = _place_copy(t, 'slowB', data, 'file.mkv')
+    primary = build_nzb(pp, 'SlowA.mkv', size, seg_primary, set(range(2, 10)))
+    donor = build_nzb(dp, 'obf-slow.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSlow', donor, True, 'slow-key', 50)
+    daemon.append(api, 'SlowA', primary, False, 'slow-key', 100)
+    start = time.time()
+    h = daemon.wait_history(api, 'SlowA', timeout=120)
+    took = time.time() - start
+    stopped = _grep_log(t, 'stopped after 5 seconds (option DupeStreamTimeout)')
+    interrupted = _grep_log(t, 'Stream repair interrupted')
+    ok = stopped == 1 and interrupted == 0 and 'SUCCESS' not in h['Status'] and took < 40 and \
+        daemon.proxy.delayed > 0
+    return ('streamtimeout', ok, 'status=%s took=%.0fs stopped_logs=%d interrupted_logs=%d delayed=%d'
+            % (h['Status'], took, stopped, interrupted, daemon.proxy.delayed))
 
 
 def scenario_liveoverlap(daemon, t):
@@ -3255,6 +3313,7 @@ SCENARIOS = {
     'cutovertruth': scenario_cutovertruth,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
+    'streamtimeout': scenario_streamtimeout,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -3374,6 +3433,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it
     'liveoverlap': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=8000'],
@@ -3514,6 +3574,9 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 
+# scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
+SCENARIO_DELAY_PROXY = {'streamtimeout': (b'slowB/', 4.0)}
+
 
 # --------------------------------------------------------------------------- #
 # Main
@@ -3535,7 +3598,7 @@ def main():
 
     for name in scenarios:
         if args.target == 'adb' and (name in SCENARIO_FLAKY_PROXY or name in SCENARIO_CORRUPT_PROXY or
-                                           name in SCENARIO_REWRITE_PROXY):
+                                           name in SCENARIO_REWRITE_PROXY or name in SCENARIO_DELAY_PROXY):
             results.append((name, None, 'SKIP: the flaky news-server proxy runs on the host'))
             print('[SKIP] %s  (the flaky news-server proxy runs on the host)' % name)
             continue
@@ -3557,10 +3620,11 @@ def main():
             flaky = SCENARIO_FLAKY_PROXY.get(name)
             corrupt = SCENARIO_CORRUPT_PROXY.get(name)
             rewrite = SCENARIO_REWRITE_PROXY.get(name)
+            delay = SCENARIO_DELAY_PROXY.get(name)
             options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
             nserv_port = nntp
             proxy_port = None
-            if flaky or corrupt or rewrite:
+            if flaky or corrupt or rewrite or delay:
                 # Server1 always is nntp: a proxy for it listens there and
                 # nserv moves to a port of its own; a proxy for Server2 gets a
                 # port of its own
@@ -3592,6 +3656,8 @@ def main():
                 daemon.proxy = CorruptingNntpProxy(proxy_port, nserv_port, corrupt)
             elif rewrite:
                 daemon.proxy = RewritingNntpProxy(proxy_port, nserv_port, *rewrite)
+            elif delay:
+                daemon.proxy = DelayingNntpProxy(proxy_port, nserv_port, *delay)
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':
