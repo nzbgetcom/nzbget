@@ -2526,6 +2526,24 @@ def scenario_xpackextensionlessneg(daemon, t):
             'status=%s recovered_logs=%d intact=%s' % (h['Status'], recovered, intact))
 
 
+def scenario_manualparnopar(daemon, t):
+    """ParCheck=manual, no par2 files: a release fully repaired from a
+    duplicate is a success. Before, the repair pass asked for a par-check
+    anyway and manual mode turned that into "needs manual repair"
+    (WARNING/DAMAGED) although every byte was recovered."""
+    size, seg = 3_000_000, 250_000
+    data = _payload(size, 5100)
+    pp = _place_copy(t, 'mpA', data, 'movie.mkv')
+    dp = _place_copy(t, 'mpB', data, 'movie.mkv')
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonMP', build_nzb(dp, 'Other.movie.mkv', size, 300_000, set()), True, 'mp-key', 50)
+    daemon.append(api, 'RelMP', build_nzb(pp, 'movie.mkv', size, seg, {3, 4, 9}), False, 'mp-key', 100)
+    h = daemon.wait_history(api, 'RelMP')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('manualparnopar', integ and h['Status'].startswith('SUCCESS'),
+            'status=%s integrity=%s' % (h['Status'], integ))
+
+
 def scenario_xpackflaky(daemon, t):
     """Cross-packing while the provider drops every connection and turns new
     ones away for 4 s (a per-user connection limit, see FlakyNntpProxy):
@@ -3091,6 +3109,7 @@ SCENARIOS = {
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
+    'manualparnopar': scenario_manualparnopar,
     'xpackextensionless': scenario_xpackextensionless,
     'xpackextensionlessneg': scenario_xpackextensionlessneg,
     'xpackcorrupt': scenario_xpackcorrupt,
@@ -3235,6 +3254,7 @@ SCENARIO_OPTIONS = {
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    'manualparnopar': ['DupeArticleFallback=stream', 'ParCheck=manual'],
     'xpackextensionless': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackextensionlessneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackcorrupt': ['DupeArticleFallback=stream', 'ParCheck=auto', 'CrcCheck=no'],

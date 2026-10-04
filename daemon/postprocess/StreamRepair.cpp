@@ -35,6 +35,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 #include "Unpack.h"
+#include "ParParser.h"
 
 namespace
 {
@@ -3345,7 +3346,13 @@ void StreamRepairController::RepairCompleted()
 		}
 		else
 		{
-			m_postInfo->SetRequestParCheck(true);
+			// without par2 files there is nothing to check; asking anyway
+			// would make ParCheck=manual report the repaired release as
+			// needing manual repair (WARNING/DAMAGED)
+			if (ParParser::FindMainPars(nzbInfo->GetDestDir(), nullptr))
+			{
+				m_postInfo->SetRequestParCheck(true);
+			}
 			// par-check had not run yet (the par2 files could not cover the
 			// damage): download-time CRCs don't describe the bytes written
 			// now either, so ParQuick must not judge the repaired files
