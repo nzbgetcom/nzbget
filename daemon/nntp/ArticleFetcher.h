@@ -36,11 +36,14 @@
  * option <DupeArticleFallback> value "stream").
  *
  * Connections come from the global server pool; server levels are walked
- * like the regular downloader's, but without its per-server retry rounds -
- * any failure just reports "this article is not available", which stream
- * repair treats as "the donor cannot supply this range".
+ * like the regular downloader's. A definitive answer ("430 no such article")
+ * moves on to the next server at once; a failure without one (no connection,
+ * no response, a connection lost mid-article) asks the same server again a
+ * few times first. When no server supplies the article, stream repair treats
+ * it as "the donor cannot supply this range".
  */
 class NntpConnection;
+class NewsServer;
 
 class ArticleFetchLimits
 {
@@ -78,8 +81,15 @@ public:
 	};
 
 	// attempts per server that end without a definitive answer before that
-	// server counts as unable to supply the article
-	static constexpr int MaxTransientAttempts = 3;
+	// server counts as unable to supply the article. The attempts are spaced
+	// (TransientRetryDelay): a provider that drops its connections and turns
+	// new ones away for a moment (a per-user connection limit) would
+	// otherwise exhaust them within milliseconds
+	static constexpr int MaxTransientAttempts = 4;
+
+	// seconds to wait before asking a server again after its n-th attempt
+	// without a definitive answer
+	static int TransientRetryDelay(int attempt) { return attempt; }
 
 	/* messageId must include the angle brackets (as stored in ArticleInfo) */
 	FetchedArticle Fetch(const char* messageId, const std::vector<CString>& groups);
@@ -90,6 +100,13 @@ private:
 	std::atomic<bool> m_stopped{false};
 	Mutex m_connectionMutex;
 	NntpConnection* m_connection = nullptr;
+
+	// a server that used up its attempts without a definitive answer gets a
+	// single attempt per article (in every fetcher) until it answers again,
+	// so an unreachable server does not delay every later article as well
+	static bool ServerUnreachable(NewsServer* server);
+	static void SetServerUnreachable(NewsServer* server, bool unreachable);
+	bool WaitBeforeRetry(int seconds);
 
 	FetchedArticle FetchFromConnection(NntpConnection* connection,
 		const char* messageId, const std::vector<CString>& groups);

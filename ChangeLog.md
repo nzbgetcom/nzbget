@@ -11,6 +11,7 @@ nzbget-v26.3
       - Obfuscated duplicates whose equal-size files can't be told apart by name are probed file by file until one is verified byte-identical;
       - A verification probe the duplicate can't supply (a repost missing articles of its own) is replaced by another article instead of rejecting the matching file;
       - Post-processing fetches duplicate articles over a quarter of the primary servers' connections (4 to 16) instead of 4;
+      - A duplicate article fetch that ends without a server answer (a timeout, a lost or refused connection) is retried on the same server, spaced so that a brief per-user connection limit doesn't use up the attempts (pooled connections the server already closed don't count); a server that stays unreachable gets one attempt per article until it answers again;
       - With ParCheck=auto, when the par2 files can't cover the bytes still missing from the files they protect, duplicates are tried before par-check, and par-check is skipped if they recover nothing; a par-check that already failed isn't repeated when duplicates wrote nothing, and one that follows a repair from duplicates verifies the files fully;
       - Stop fetching an incomplete duplicate archive when a required article is unavailable, skip equivalent saved postings, and distinguish download progress from decompression;
       - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);

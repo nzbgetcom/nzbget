@@ -21,6 +21,7 @@
 #include "nzbget.h"
 
 #include <map>
+#include <set>
 
 #include <algorithm>
 #include "ArticleFetcher.h"
@@ -72,6 +73,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	FetchedArticle result;
 	ServerPool::RawServerList failedServers;
 	std::map<NewsServer*, int> transientAttempts;
+	std::map<NewsServer*, int> staleConnections;
 
 	int level = 0;
 	while (level <= g_ServerPool->GetMaxNormLevel() && !m_stopped)
@@ -139,6 +141,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 			break;
 		}
 
+		bool reused = connection->GetStatus() == Connection::csConnected;
 		result = FetchFromConnection(connection, messageId, groups);
 
 		NewsServer* server = connection->GetNewsServer();
@@ -146,7 +149,12 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 
 		if (result.Success)
 		{
+			SetServerUnreachable(server, false);
 			return result;
+		}
+		if (!result.Transient)
+		{
+			SetServerUnreachable(server, false);	// it answered
 		}
 		if (result.Retry)
 		{
@@ -156,9 +164,26 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 			}
 			continue;
 		}
-		if (result.Transient && ++transientAttempts[server] < MaxTransientAttempts)
+		if (result.Transient && !ServerUnreachable(server))
 		{
-			continue;	// ask this server again on a fresh connection
+			// an idle pooled connection the server already closed (a provider
+			// dropping every connection of the account) says nothing about the
+			// server, and it is closed now, so it can't fail this way again:
+			// it doesn't use up an attempt
+			if (reused && ++staleConnections[server] <= server->GetMaxConnections())
+			{
+				continue;
+			}
+			int attempt = ++transientAttempts[server];
+			if (attempt < MaxTransientAttempts)
+			{
+				if (WaitBeforeRetry(TransientRetryDelay(attempt)))
+				{
+					continue;	// ask this server again on a fresh connection
+				}
+				break;
+			}
+			SetServerUnreachable(server, true);
 		}
 
 		// this server could not supply the article; try the remaining servers
@@ -167,6 +192,40 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	}
 
 	return result;
+}
+
+namespace
+{
+	Mutex g_unreachableMutex;
+	std::set<int> g_unreachableServers;	// news server ids
+}
+
+bool ArticleFetcher::ServerUnreachable(NewsServer* server)
+{
+	Guard guard(g_unreachableMutex);
+	return g_unreachableServers.count(server->GetId()) > 0;
+}
+
+void ArticleFetcher::SetServerUnreachable(NewsServer* server, bool unreachable)
+{
+	Guard guard(g_unreachableMutex);
+	if (unreachable)
+	{
+		g_unreachableServers.insert(server->GetId());
+	}
+	else
+	{
+		g_unreachableServers.erase(server->GetId());
+	}
+}
+
+bool ArticleFetcher::WaitBeforeRetry(int seconds)
+{
+	for (int waited = 0; waited < seconds * 10 && !m_stopped; waited++)
+	{
+		Util::Sleep(100);
+	}
+	return !m_stopped;
 }
 
 void ArticleFetcher::Stop()
