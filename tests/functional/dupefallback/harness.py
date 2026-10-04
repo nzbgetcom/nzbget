@@ -141,6 +141,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 try:
     from xmlrpc.client import ServerProxy
@@ -413,6 +414,7 @@ class Daemon:
         for d in ('dst', 'inter', 'nzb', 'queue', 'tmp', 'scripts', 'web'):
             target.makedirs('main', d)
         self.conf_rel = 'nzbget.conf'
+        self.proxy = None
 
     def write_config(self, extra_options):
         w = self.t.path
@@ -445,14 +447,14 @@ class Daemon:
         ] + extra_options
         self.t.write_file(self.conf_rel, ('\n'.join(cfg) + '\n').encode())
 
-    def start_nserv(self, capture_requests=False, extra_args=()):
+    def start_nserv(self, capture_requests=False, extra_args=(), port=None):
         # A single instance (-i 1) binds only nntp_port. Instance 1 already
         # returns "430 not found" for "!2" message-ids (its id 1 is not in the
         # server-list [2]), which is how a "missing" article is simulated on the
         # only server the daemon uses. A second instance would just bind
         # nntp_port+1 and risk colliding with the control port.
         self.t.spawn([self.t.nzbget, '--nserv', '-d', self.datadir,
-                      '-p', str(self.nntp_port), '-i', '1',
+                      '-p', str(port or self.nntp_port), '-i', '1',
                       '-v', '2' if capture_requests else '0'] + list(extra_args),
                      output_rel='nserv.log' if capture_requests else None)
 
@@ -487,6 +489,82 @@ class Daemon:
                     return h
             time.sleep(0.5)
         raise RuntimeError('timeout waiting for %s in history' % name)
+
+
+class FlakyNntpProxy:
+    """A news server in front of nserv that, on the first BODY request whose
+    message-id contains ``trigger``, drops every open connection (leaving that
+    request unanswered) and turns new connections away with "502 too many
+    connections" for ``window`` seconds: a provider enforcing a per-user
+    connection limit while another client holds the account's connections.
+    With ``window`` None the server stays down for good."""
+
+    def __init__(self, listen_port, upstream_port, trigger, window):
+        self.upstream_port = upstream_port
+        self.trigger = trigger.encode()
+        self.window = window
+        self.triggered_at = None
+        self.rejected = 0
+        self.live = []
+        self.lock = threading.Lock()
+        self.srv = socket.socket()
+        self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind(('127.0.0.1', listen_port))
+        self.srv.listen(64)
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    @staticmethod
+    def _kill(sock):
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        sock.close()
+
+    def _serve(self):
+        while True:
+            try:
+                client, _ = self.srv.accept()
+            except OSError:
+                return
+            with self.lock:
+                if self.triggered_at and (self.window is None or
+                                          time.time() - self.triggered_at < self.window):
+                    self.rejected += 1
+                    client.sendall(b'502 too many connections\r\n')
+                    self._kill(client)
+                    continue
+                upstream = socket.create_connection(('127.0.0.1', self.upstream_port))
+                self.live += [client, upstream]
+            threading.Thread(target=self._pipe, args=(client, upstream, True), daemon=True).start()
+            threading.Thread(target=self._pipe, args=(upstream, client, False), daemon=True).start()
+
+    def _pipe(self, src, dst, from_client):
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                if from_client and b'BODY <' in data and self.trigger in data:
+                    with self.lock:
+                        if not self.triggered_at:
+                            self.triggered_at = time.time()
+                            for sock in self.live:
+                                self._kill(sock)
+                            self.live = []
+                            return
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            self._kill(src)
+            self._kill(dst)
+
+    def close(self):
+        self._kill(self.srv)
+        with self.lock:
+            for sock in self.live:
+                self._kill(sock)
 
 
 # --------------------------------------------------------------------------- #
@@ -2239,6 +2317,228 @@ def scenario_xpacklatency(daemon, t):
             'status=%s transient_logs=%d integrity=%s' % (h['Status'], retried, integ))
 
 
+def scenario_xpackflaky(daemon, t):
+    """Cross-packing while the provider drops every connection and turns new
+    ones away for 4 s (a per-user connection limit, see FlakyNntpProxy):
+    the repeated attempts for a duplicate article are spaced instead of being
+    used up within milliseconds, and the four dropped pooled connections
+    don't use up attempts of their own. Before, the article counted as
+    missing, the duplicate's content map could not be built, and nothing was
+    recovered."""
+    size, seg = 12_000_000, 300_000
+    data = _payload(size, 4244)
+    pp = _place_copy(t, 'xfA', data, 'movie.mkv')
+    primary = build_nzb(pp, 'movie.mkv', size, seg, set(range(10, 30)))
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 3_000_000), 1):
+        rel = 'xfB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXF', build_multi_nzb(members), True, 'xf-key', 50)
+    daemon.append(api, 'RelXF', primary, False, 'xf-key', 100)
+    h = daemon.wait_history(api, 'RelXF', timeout=300)
+    rejected = daemon.proxy.rejected if daemon.proxy else 0
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackflaky', integ and rejected >= 1 and h['Status'].startswith('SUCCESS'),
+            'status=%s recovered=%d rejected_connects=%d integrity=%s'
+            % (h['Status'], int(h.get('DupeRecoveredArticles', 0)), rejected, integ))
+
+
+def scenario_xpackdeadserver(daemon, t):
+    """Cross-packing while the preferred news server goes down for good at
+    the first duplicate request (see SCENARIO_FLAKY_PROXY): once it used up
+    its spaced attempts it gets a single attempt per article until it answers
+    again, so it delays the repair once, not for every article."""
+    size, seg = 12_000_000, 300_000
+    data = _payload(size, 4245)
+    pp = _place_copy(t, 'xdA', data, 'movie.mkv')
+    primary = build_nzb(pp, 'movie.mkv', size, seg, set(range(10, 30)))
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 3_000_000), 1):
+        rel = 'xdB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXD', build_multi_nzb(members), True, 'xd-key', 50)
+    daemon.append(api, 'RelXD', primary, False, 'xd-key', 100)
+    h = daemon.wait_history(api, 'RelXD', timeout=300)
+    log = t.read_file('nzbget.log').decode(errors='replace')
+    def when(pattern):
+        m = re.search(r'^(\w{3} \w{3} +\d+ [\d:]+ \d{4})\t\w+\t' + pattern, log, re.M)
+        return time.mktime(time.strptime(m.group(1), '%a %b %d %H:%M:%S %Y')) if m else None
+    start, end = when('Cross-packing repair of'), when(r'Recovered .*\(cross-packing\)')
+    seconds = end - start if start is not None and end is not None else None
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    rejected = daemon.proxy.rejected if daemon.proxy else 0
+    return ('xpackdeadserver', integ and h['Status'].startswith('SUCCESS') and rejected >= 10 and
+            seconds is not None and seconds <= 15,
+            'status=%s cross_pack_seconds=%s rejected_connects=%d integrity=%s'
+            % (h['Status'], seconds, rejected, integ))
+
+
+def _wholefile_named(daemon, t, tag, primary_names, donor_names):
+    """The whole-file fixture with custom member names on both sides: part03
+    missing entirely, everything else intact; byte-identical repost."""
+    members, donor_members, payloads = _wholefile_fixture(t, tag)
+    members[1] = members[1][:4] + (set(),)
+    members = [(m[0], primary_names[i]) + m[2:] for i, m in enumerate(members)]
+    donor_members = [(m[0], donor_names[i]) + m[2:] for i, m in enumerate(donor_members)]
+    payloads = {primary_names[i]: payloads['Rel.part%02d.rar' % (i + 1)] for i in range(4)}
+    api = daemon.wait_ready()
+    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'Rel' + tag)
+    recreated = _grep_log(t, 'Recreating')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    # by name: old-style volumes (x.r00) don't end in .rar
+    integ = all(_verify_output(t, payloads[n], n, dirs=both_dirs) for n in primary_names)
+    return h, recreated, integ
+
+
+def scenario_wholefileunicode(daemon, t):
+    """Names with spaces and non-ASCII characters on both sides."""
+    h, recreated, integ = _wholefile_named(daemon, t, 'UNI',
+        ['Rel Fête été.part%02d.rar' % i for i in range(1, 5)],
+        ['Autre Ñame ü.part%02d.rar' % i for i in range(1, 5)])
+    return ('wholefileunicode', integ and recreated == 1,
+            'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
+
+
+def scenario_wholefilepadding(daemon, t):
+    """The duplicate zero-pads its volume numbers differently (part003 vs
+    part03): the volumes are still siblings and the missing one pairs."""
+    h, recreated, integ = _wholefile_named(daemon, t, 'PAD',
+        ['Rel.part%03d.rar' % i for i in range(1, 5)],
+        ['Other.part%02d.rar' % i for i in range(1, 5)])
+    return ('wholefilepadding', integ and recreated == 1,
+            'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
+
+
+def scenario_wholefileoldstyle(daemon, t):
+    """Old-style rar volume names (x.rar, x.r00, x.r01, ...) on both sides,
+    with different base names: the volumes pair by number and the missing
+    third volume (x.r01) is recreated."""
+    h, recreated, integ = _wholefile_named(daemon, t, 'OLD',
+        ['Rel.rar', 'Rel.r00', 'Rel.r01', 'Rel.r02'],
+        ['Other.rar', 'Other.r00', 'Other.r01', 'Other.r02'])
+    return ('wholefileoldstyle', integ and recreated == 1,
+            'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
+
+
+def scenario_wholefilecontinued(daemon, t):
+    """An old-style set of more than 101 volumes continues x.r99 with x.s00,
+    x.s01, ...: the missing x.s00 belongs to the x.rNN set, is proven on its
+    siblings and recreated."""
+    h, recreated, integ = _wholefile_named(daemon, t, 'CNT',
+        ['Rel.r98', 'Rel.s00', 'Rel.s01', 'Rel.r99'],
+        ['Other.r98', 'Other.s00', 'Other.s01', 'Other.r99'])
+    return ('wholefilecontinued', integ and recreated == 1,
+            'status=%s recreated_logs=%d integrity=%s' % (h['Status'], recreated, integ))
+
+
+def scenario_wholefiletwosets(daemon, t):
+    """Two archive sets in one release (Main.partNN.rar and Extras.partNN.rar),
+    the duplicate carrying both under other names. Extras.part03.rar is
+    missing entirely: it must be recreated from the duplicate's Extras set,
+    never from its Main set's part03."""
+    seg, seg_d = 500_000, 300_000
+    vol = 1_500_000
+    n = (vol + seg - 1) // seg
+    members, donor_members, payloads = [], [], {}
+    for set_name, other_name, seed in (('Main', 'OMain', 9600), ('Extras', 'OExtras', 9700)):
+        for i in range(4):
+            data = _payload(vol, seed + i)
+            name = '%s.part%02d.rar' % (set_name, i + 1)
+            payloads[name] = data
+            pa = 'tsA/%s%d' % (set_name, i)
+            pb = 'tsB/%s%d' % (set_name, i)
+            t.write_file(os.path.join('data', pa), data)
+            t.write_file(os.path.join('data', pb), data)
+            missing = set(range(1, n + 1)) if (set_name == 'Extras' and i == 2) else set()
+            members.append((pa, name, vol, seg, missing))
+            donor_members.append((pb, '%s.part%02d.rar' % (other_name, i + 1), vol, seg_d, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonTS', build_multi_nzb(donor_members), True, 'ts-key', 50)
+    daemon.append(api, 'RelTS', build_multi_nzb(members), False, 'ts-key', 100)
+    h = daemon.wait_history(api, 'RelTS')
+    recreated = _grep_log(t, 'Recreating Extras.part03.rar')
+    wrong = _grep_log(t, 'from file OMain.part03.rar')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[n], n, dirs=both_dirs) for n in payloads)
+    return ('wholefiletwosets', integ and recreated == 1 and wrong == 0,
+            'status=%s recreated_logs=%d wrong_set_logs=%d integrity=%s' % (h['Status'], recreated, wrong, integ))
+
+
+def scenario_dupefailovernonzb(daemon, t):
+    """Corner case: the best backup's source nzb-file is gone from NzbDir, so
+    it can't be downloaded again. The failover must pick the next backup that
+    can (and never park the download for one that can't)."""
+    seg = 100_000
+    vol_dead = 2_900_000
+    n = vol_dead // seg
+    dead = [('nnA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg, set(range(1, n + 1))) for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9930))
+    data1, data2 = _payload(3_000_000, 9931), _payload(3_000_000, 9932)
+    b1 = build_nzb(_place_copy(t, 'nnB', data1), 'Gone.bin', 3_000_000, seg, set())
+    b2 = build_nzb(_place_copy(t, 'nnC', data2), 'Kept.bin', 3_000_000, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(dead), True, 'nn-key', 100)
+    daemon.append(api, 'BackupGone', b1, False, 'nn-key', 95)
+    daemon.append(api, 'BackupKept', b2, False, 'nn-key', 90)
+    daemon.wait_history(api, 'BackupKept', timeout=60)
+    nzbdir = t.path('main', 'nzb')
+    for name in os.listdir(nzbdir):
+        if 'BackupGone' in name:
+            os.remove(os.path.join(nzbdir, name))
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    deadline = time.time() + 180
+    hk = daemon.wait_history(api, 'BackupKept')
+    while hk['Status'].startswith('DELETED') and time.time() < deadline:
+        time.sleep(1)
+        hk = daemon.wait_history(api, 'BackupKept')
+    to_gone = _grep_log(t, 'Failing over Primary to duplicate BackupGone')
+    to_kept = _grep_log(t, 'Failing over Primary to duplicate BackupKept')
+    return ('dupefailovernonzb', to_gone == 0 and to_kept == 1 and hk['Status'].startswith('SUCCESS'),
+            'primary=%s kept=%s failover_to_gone=%d failover_to_kept=%d'
+            % (hp['Status'], hk['Status'], to_gone, to_kept))
+
+
+def scenario_wholefileproofcost(daemon, t):
+    """Cost bound: six volumes missing entirely and a duplicate that is a
+    different packing (same names and sizes, other bytes). The proof on an
+    intact sibling fails - and must not be repeated for every missing volume
+    of the same set: the duplicate's articles are fetched a bounded number
+    of times, not once per missing volume."""
+    seg, seg_d = 500_000, 300_000
+    vol = 1_500_000
+    n = (vol + seg - 1) // seg
+    members, donor_members = [], []
+    for i in range(10):
+        data = _payload(vol, 9500 + i)
+        pa, pb = 'pcA/v%d' % i, 'pcB/v%d' % i
+        t.write_file(os.path.join('data', pa), data)
+        t.write_file(os.path.join('data', pb), _payload(vol, 9600 + i))     # other packing
+        missing = set(range(1, n + 1)) if i in (2, 3, 4, 5, 6, 7) else set()
+        members.append((pa, 'Rel.part%02d.rar' % (i + 1), vol, seg, missing))
+        donor_members.append((pb, 'Other.part%02d.rar' % (i + 1), vol, seg_d, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonPC', build_multi_nzb(donor_members), True, 'pc-key', 50)
+    daemon.append(api, 'RelPC', build_multi_nzb(members), False, 'pc-key', 100)
+    h = daemon.wait_history(api, 'RelPC')
+    try:
+        log = t.read_file('nserv.log').decode(errors='replace')
+    except Exception:
+        log = ''
+    donor_bodies = len(re.findall(r'BODY <pcB/', log))
+    recreated = _grep_log(t, 'Recreating')
+    # one failed proof: 2 intact volumes x their candidates x a few probes
+    return ('wholefileproofcost', recreated == 0 and donor_bodies <= 32,
+            'status=%s recreated_logs=%d donor_body_requests=%d' % (h['Status'], recreated, donor_bodies))
+
+
 def scenario_streamretry(daemon, t):
     """Corner case (no whole-file job involved): stream repair fully repairs
     one volume and leaves a hole in another that no duplicate carries, so the
@@ -2416,6 +2716,42 @@ def scenario_dupehopeless(daemon, t):
             % (hp['Status'], parked, failed_over, failed_articles))
 
 
+def scenario_dupehopelessretry(daemon, t):
+    """"Retry failed articles" on a download parked as hopeless: the retry
+    is checked like a new download and parked again as early as the first
+    attempt while the posting is still dead. Before, the failure count of the
+    first attempt was kept as the point of the last check and the retry's own
+    count started below it, so the retry was checked only once it had failed
+    that many articles again plus a sample (60 here, thousands after a late
+    first check)."""
+    seg = 100_000
+    vol_dead = 2_900_000
+    n = vol_dead // seg
+    # one article exists: a download none of whose articles arrived has no
+    # destination directory and can't be retried at all (upstream behavior)
+    dead = [('hrA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg,
+             set(range(2 if i == 0 else 1, n + 1))) for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9610))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(dead), False, 'hr-key', 100)
+    hp = daemon.wait_history(api, 'Primary')
+    first_failed = int(hp.get('FailedArticles', 0))
+    api.editqueue('HistoryRetryFailed', 0, '', [hp['NZBID']])
+    deadline = time.time() + 60
+    while time.time() < deadline and any(h['NZBID'] == hp['NZBID'] for h in api.history()):
+        time.sleep(0.2)
+    hp = daemon.wait_history(api, 'Primary')
+    parked = _grep_log(t, 'Parking Primary: health')
+    retry_failed = int(hp.get('FailedArticles', 0))
+    # 174 articles in total; each attempt is parked once a tenth was tried
+    # and its health is below critical
+    return ('dupehopelessretry', parked == 2 and first_failed < 140 and
+            retry_failed <= first_failed + 8,
+            'status=%s parked_logs=%d first_failed_articles=%d retry_failed_articles=%d'
+            % (hp['Status'], parked, first_failed, retry_failed))
+
+
 def scenario_dupedeadstart(daemon, t):
     """The hopeless-park must not fire on a posting that merely BEGINS with
     a dead stretch: the first 40 of 300 articles are missing, the rest
@@ -2531,6 +2867,7 @@ SCENARIOS = {
     'wholefile': scenario_wholefile,
     'dupefailover': scenario_dupefailover,
     'dupehopeless': scenario_dupehopeless,
+    'dupehopelessretry': scenario_dupehopelessretry,
     'dupedeadstart': scenario_dupedeadstart,
     'wholefileretry': scenario_wholefileretry,
     'dupehopelessnodupecheck': scenario_dupehopelessnodupecheck,
@@ -2544,6 +2881,20 @@ SCENARIOS = {
     'wholefilesampleproof': scenario_wholefilesampleproof,
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
+    'xpackflaky': scenario_xpackflaky,
+    'xpackdeadserver': scenario_xpackdeadserver,
+    'wholefileunicode': scenario_wholefileunicode,
+    'wholefilepadding': scenario_wholefilepadding,
+    'wholefileoldstyle': scenario_wholefileoldstyle,
+    'wholefilecontinued': scenario_wholefilecontinued,
+    'wholefiletwosets': scenario_wholefiletwosets,
+    'dupefailovernonzb': scenario_dupefailovernonzb,
+    'wholefileproofcost': scenario_wholefileproofcost,
+    'wholefile_nodirect': scenario_wholefile,
+    'wholefileonly_nodirect': scenario_wholefileonly,
+    'stream_nodirect': scenario_stream,
+    'xpackbare_nodirect': scenario_xpackbare,
+    'streamretry_nodirect': scenario_streamretry,
     'prodwholefile': scenario_prodwholefile,
     'prodstream': scenario_prodstream,
     'prodrarwhole': scenario_prodrarwhole,
@@ -2655,6 +3006,7 @@ SCENARIO_OPTIONS = {
     # "duplicates were asked first" sample gate is exercised too
     'dupefailover': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'dupehopelessretry': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'wholefileretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'dupehopelessnodupecheck': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'DupeCheck=no'],
@@ -2668,6 +3020,26 @@ SCENARIO_OPTIONS = {
     'wholefilesampleproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
+    'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    # Server2 (preferred level 0, behind a FlakyNntpProxy) serves the download
+    # and goes down for good at the first duplicate request; Server1 is the
+    # level-1 backup every repair fetch then falls back to
+    'xpackdeadserver': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=2',
+                        'Server1.Level=1', 'Server2.Host=127.0.0.1', 'Server2.Connections=2',
+                        'Server2.Level=0', 'Server2.Encryption=no'],
+    'wholefileunicode': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilepadding': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefileoldstyle': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilecontinued': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefiletwosets': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'dupefailovernonzb': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'wholefileproofcost': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    # the same paths when nzbget assembles files from temporary article files
+    'wholefile_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
+    'wholefileonly_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
+    'stream_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
+    'xpackbare_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
+    'streamretry_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
     'prodwholefile': PROD_OPTIONS,
     'prodstream': PROD_OPTIONS,
     'prodrarwhole': PROD_OPTIONS,
@@ -2680,8 +3052,14 @@ SCENARIO_OPTIONS = {
     'failoverlive': ['DupeArticleFallback=live', 'HealthCheck=dupe', 'ParCheck=auto'],
 }
 DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
+# scenarios that read nserv's request log (nserv.log)
+CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
 SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000']}
+
+# scenarios with a FlakyNntpProxy in front of a news server:
+# (server number, message-id trigger, window in s or None for good)
+SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, 'xdB/', None)}
 
 
 # --------------------------------------------------------------------------- #
@@ -2703,6 +3081,10 @@ def main():
     results = []
 
     for name in scenarios:
+        if args.target == 'adb' and name in SCENARIO_FLAKY_PROXY:
+            results.append((name, None, 'SKIP: the flaky news-server proxy runs on the host'))
+            print('[SKIP] %s  (the flaky news-server proxy runs on the host)' % name)
+            continue
         if args.target == 'adb' and name.startswith('xdecomp_'):
             results.append((name, None, 'SKIP: target-side archive extractor is not provisioned on Android'))
             print('[SKIP] %s  (target-side archive extractor is not provisioned on Android)' % name)
@@ -2718,9 +3100,24 @@ def main():
             target = AdbTarget(args.nzbget, stage, serial=args.serial)
         daemon = Daemon(target, nntp, rpc)
         try:
-            daemon.write_config(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
-            daemon.start_nserv(capture_requests=(name == 'repost'),
-                               extra_args=SCENARIO_NSERV_ARGS.get(name, ()))
+            flaky = SCENARIO_FLAKY_PROXY.get(name)
+            options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
+            nserv_port = free_port() if flaky else nntp
+            proxy_port = None
+            if flaky:
+                # Server1 always is nntp: the proxy listens there, or Server2
+                # gets a port of its own
+                proxy_port = nntp if flaky[0] == 1 else free_port()
+                if flaky[0] == 1:
+                    nserv_port = free_port()
+                else:
+                    nserv_port = nntp
+                    options.append('Server%d.Port=%d' % (flaky[0], proxy_port))
+            daemon.write_config(options)
+            daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
+                               extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
+            if flaky:
+                daemon.proxy = FlakyNntpProxy(proxy_port, nserv_port, *flaky[1:])
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':
@@ -2739,6 +3136,8 @@ def main():
             results.append((name, False, 'ERROR: %s' % e))
             print('[FAIL] %s  (ERROR: %s)' % (name, e))
         finally:
+            if daemon.proxy:
+                daemon.proxy.close()
             target.teardown(args.keep)
 
     # tri-state result: True/False are real pass/fail, None is a graceful SKIP
