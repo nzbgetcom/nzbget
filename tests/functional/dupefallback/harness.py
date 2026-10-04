@@ -4379,7 +4379,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
                         'streamtooslow': [(b'slowB/', 1.0)]}
-# scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
+
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
