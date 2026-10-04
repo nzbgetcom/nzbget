@@ -21,7 +21,9 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include <fstream>
 #include "DupeCoordinator.h"
+#include "FileSystem.h"
 #include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(QueueTest)
@@ -52,12 +54,36 @@ std::unique_ptr<NzbInfo> MakeNzb(const char* name, const char* dupeKey, int dupe
 	return nzbInfo;
 }
 
-// a history item deleted as duplicate backup: healthy (nothing failed) and
-// not marked bad, so ReturnBestDupe may move it back to the queue
-NzbInfo* AddBackup(DownloadQueue& queue, const char* name, const char* dupeKey, int dupeScore)
+// source nzb-files of backups, as nzbget keeps them in NzbDir; removed at exit
+struct KeptNzbFiles
+{
+	std::vector<std::string> paths;
+	~KeptNzbFiles()
+	{
+		for (const std::string& path : paths)
+		{
+			FileSystem::DeleteFile(path.c_str());
+		}
+	}
+} g_keptNzbFiles;
+
+std::string KeepNzbFile(const char* name)
+{
+	std::string path = (fs::temp_directory_path() / fs::make_unique_filename()).string() + name + ".nzb.queued";
+	std::ofstream(path) << "<nzb></nzb>";
+	g_keptNzbFiles.paths.push_back(path);
+	return path;
+}
+
+// a history item deleted as duplicate backup: healthy (nothing failed), not
+// marked bad and with its source nzb-file kept, so ReturnBestDupe may move
+// it back to the queue
+NzbInfo* AddBackup(DownloadQueue& queue, const char* name, const char* dupeKey, int dupeScore,
+	bool keepNzbFile = true)
 {
 	std::unique_ptr<NzbInfo> nzbInfo = MakeNzb(name, dupeKey, dupeScore);
 	nzbInfo->SetDeleteStatus(NzbInfo::dsDupe);
+	nzbInfo->SetQueuedFilename(keepNzbFile ? KeepNzbFile(name).c_str() : "/nonexistent/gone.nzb.queued");
 	NzbInfo* raw = nzbInfo.get();
 	queue.GetHistory()->Add(std::make_unique<HistoryInfo>(std::move(nzbInfo)), true);
 	return raw;
@@ -105,6 +131,14 @@ BOOST_AUTO_TEST_CASE(DupeCoordinatorFindDupeBackupTest)
 	HistoryInfo* backup = coordinator.FindDupeBackup(&queue, item, item->GetName(), item->GetDupeKey());
 	BOOST_REQUIRE(backup);
 	BOOST_CHECK(backup->GetNzbInfo() == best);
+
+	// a backup whose source nzb-file is gone can't be downloaded again: the
+	// next one is picked instead
+	NzbInfo* gone = AddBackup(queue, "Rel.2026.1080p-Z", "imdb:1", 95, false);
+	backup = coordinator.FindDupeBackup(&queue, item, item->GetName(), item->GetDupeKey());
+	BOOST_REQUIRE(backup);
+	BOOST_CHECK(backup->GetNzbInfo() == best);
+	gone->SetDupeKey("imdb:gone");
 
 	// a backup marked bad, or one that failed on its own, is no candidate
 	best->SetMarkStatus(NzbInfo::ksBad);

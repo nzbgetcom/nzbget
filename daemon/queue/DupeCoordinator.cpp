@@ -24,6 +24,7 @@
 #include "Options.h"
 #include "Log.h"
 #include "Util.h"
+#include "FileSystem.h"
 #include "NzbFile.h"
 #include "HistoryCoordinator.h"
 #include "DupeCoordinator.h"
@@ -409,6 +410,11 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 			 historyInfo->GetKind() == HistoryInfo::hkUrl) &&
 			historyInfo->GetNzbInfo()->GetDupeMode() != dmForce &&
 			historyInfo->GetNzbInfo()->GetDeleteStatus() == NzbInfo::dsDupe &&
+			// a backup whose source nzb-file is gone (NzbCleanupDisk, or
+			// removed by hand) can't be downloaded again (the same check as
+			// HistoryCoordinator::HistoryRedownload's): the next one can
+			(historyInfo->GetKind() != HistoryInfo::hkNzb ||
+			 FileSystem::FileExists(historyInfo->GetNzbInfo()->GetQueuedFilename())) &&
 			historyInfo->GetNzbInfo()->CalcHealth() >= historyInfo->GetNzbInfo()->CalcCriticalHealth(true) &&
 			historyInfo->GetNzbInfo()->GetMarkStatus() != NzbInfo::ksBad &&
 			(!dupeFound || historyInfo->GetNzbInfo()->GetDupeScore() > historyScore) &&
