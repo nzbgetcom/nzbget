@@ -322,7 +322,13 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	{
 		if (historyInfo->GetKind() == HistoryInfo::hkNzb)
 		{
-			addKnown(historyInfo->GetNzbInfo());
+			NzbInfo* item = historyInfo->GetNzbInfo();
+			addKnown(item);
+			if (item->GetDeleteStatus() == NzbInfo::dsDupe && LowerKey(EffectiveKey(item)) == lowerKey &&
+				!Util::EmptyStr(item->GetQueuedFilename()) && !strchr(item->GetQueuedFilename(), '|'))
+			{
+				job.members.emplace_back(item->GetId(), item->GetQueuedFilename());
+			}
 		}
 	}
 	job.score = pickScore;
@@ -477,7 +483,7 @@ void DupeSearch::Search(const Job& job)
 		});
 
 	DonorHealth::ServerList servers;
-	if (!verified.empty())
+	if (!verified.empty() || !job.members.empty())
 	{
 		servers = NntpHealthServer::Servers();
 		if (servers.empty())
@@ -557,6 +563,8 @@ void DupeSearch::Search(const Job& job)
 	{
 		int id;
 		DonorScore::Entry entry;
+		std::string title;
+		bool member = false;	// a duplicate that was already in history: always rescored
 	};
 	std::map<size_t, Placed> placed;
 	DonorScore::Ranks ranks;
@@ -585,7 +593,7 @@ void DupeSearch::Search(const Job& job)
 				return;
 			}
 			added++;
-			placed[i] = { id, entryOf(i, score, alive) };
+			placed[i] = { id, entryOf(i, score, alive), verified[i].listing.title };
 			info("DupeSearch: %s: added %s [%s] score=%i alive=%i%% (%s)", job.name.c_str(),
 				verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(), base + score,
 				alive < 0 ? -1 : (int)std::lround(100 * alive), how);
@@ -691,6 +699,58 @@ void DupeSearch::Search(const Job& job)
 		place(i, -1.0, "unchecked");
 	}
 
+	// the duplicates nzbget already kept for the key (a client's own backups,
+	// earlier searches' donors) are measured the same way and ranked with the
+	// new ones: nzbget tries them by score, whoever sent them. Each is read
+	// from its own nzb-file, never matched by size: two postings can have one size.
+	if (!servers.empty() && !job.members.empty())
+	{
+		std::vector<NzbSummary> summaries(job.members.size());
+		std::vector<DonorHealth::Posting> list;
+		for (size_t m = 0; m < job.members.size(); m++)
+		{
+			std::ifstream file(job.members[m].second, std::ios::binary);
+			std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+			if (NzbReader::Parse(data, summaries[m]) && !Posting::SamePosting(summaries[m].messageIds, pick.messageIds))
+			{
+				list.push_back({ std::to_string(m), summaries[m].messageIds, groupsOf(summaries[m]) });
+			}
+		}
+		std::map<size_t, DonorHealth::Health> measured;
+		DonorHealth::CheckPostings(servers, list, healthOptions, true, FetchParallel,
+			[&](const std::string& key, const DonorHealth::Health& health)
+			{
+				std::lock_guard<std::mutex> guard(placeMutex);
+				measured[(size_t)atoi(key.c_str())] = health;
+			});
+		for (const auto& entry : measured)
+		{
+			const NzbSummary& summary = summaries[entry.first];
+			double alive = aliveOf(entry.second);
+			if (alive < 0)
+			{
+				continue;	// too few answers to judge: its score stays
+			}
+			bool isDead = alive * 100 < g_Options->GetDupeMinAlive() && entry.second.missing >= DonorHealth::MinKnown;
+			if (isDead)
+			{
+				m_dead.Add(Posting::MakeSketch(summary.messageIds));
+			}
+			Placed member;
+			member.id = job.members[entry.first].first;
+			member.title = FileSystem::BaseFileName(job.members[entry.first].second.c_str());
+			member.member = true;
+			member.entry.score = isDead ? DonorScore::Dead : DonorScore::Dead + 1;
+			member.entry.alive = alive;
+			member.entry.twin = summary.files == pick.files && summary.totalBytes == pick.totalBytes;
+			member.entry.bytes = summary.totalBytes;
+			placed[verified.size() + entry.first] = member;
+			info("DupeSearch: %s: duplicate %s in history: alive=%i%% (%i of %i articles)%s", job.name.c_str(),
+				member.title.c_str(), (int)std::lround(100 * alive), entry.second.present, entry.second.Answered(),
+				isDead ? ", dead" : "");
+		}
+	}
+
 	// once every check is in, the scores in order of wholeness
 	std::vector<size_t> order2;
 	std::vector<DonorScore::Entry> entries;
@@ -703,14 +763,18 @@ void DupeSearch::Search(const Job& job)
 	for (size_t n = 0; n < order2.size(); n++)
 	{
 		Placed& donor = placed[order2[n]];
-		if (wanted[n] == donor.entry.score)
+		if (wanted[n] == donor.entry.score && !donor.member)
 		{
 			continue;
 		}
-		if (SetScore(donor.id, base + wanted[n], ""))
+		std::string param;
+		if (donor.member)
 		{
-			info("DupeSearch: %s: reranked %s: score %i -> %i", job.name.c_str(),
-				verified[order2[n]].listing.title.c_str(), base + donor.entry.score, base + wanted[n]);
+			param = std::string(AliveParam) + "=" + std::to_string((int)std::lround(100 * donor.entry.alive));
+		}
+		if (SetScore(donor.id, base + wanted[n], param))
+		{
+			info("DupeSearch: %s: reranked %s: score %i", job.name.c_str(), donor.title.c_str(), base + wanted[n]);
 			donor.entry.score = wanted[n];
 		}
 		else

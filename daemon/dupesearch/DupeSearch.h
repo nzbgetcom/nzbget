@@ -98,6 +98,9 @@ private:
 		std::string tvdb;
 		std::string queuedFile;	// the nzb-file of the pick
 		std::vector<std::string> knownFiles;	// the nzb-files nzbget keeps for this release (queue and history)
+		// the duplicates of the key nzbget keeps in history (DELETED/DUPE),
+		// whoever sent them: id and the item's own nzb-file
+		std::vector<std::pair<int, std::string>> members;
 		int score = 0;
 	};
 

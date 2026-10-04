@@ -3586,6 +3586,38 @@ def _ds_donor_env(daemon, t, postings, alive):
     return api
 
 
+def scenario_dupesearchgroup(daemon, t):
+    """The whole duplicate key is ranked, not only the search's own donors: a
+    client sends the pick and three backups of its own, scored just below the
+    pick (so nzbget would try them first): one 50% alive, one dead, one whole.
+    The indexer has one more posting, 95% alive. After the search every
+    DELETED/DUPE member carries its measured DupeAlive and they are scored by
+    wholeness: whole backup base + 89, donor base + 85, half-dead backup
+    base + 49, dead backup base + 1. The pick keeps its score."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    postings = {'idx95': (ids('ix'), 420_000, 3, 11)}
+    alive = set(ids('ix')[:38]) | set(ids('half')[:20]) | set(ids('whole'))
+    api = _ds_donor_env(daemon, t, postings, alive)
+    backups = (('half', 1, 430_000), ('gone', 2, 440_000), ('whole', 3, 410_000))
+    for tag, below, size in backups:
+        _ds_append(api, DS_TITLE + '.' + tag, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(2)
+    base = DS_PICK - 1000
+    got = {}
+    for h in api.history():
+        name = h.get('NZBName')
+        tag = name.rsplit('.', 1)[-1] if name != DS_TITLE else 'idx95'
+        params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
+        got[tag] = (h.get('DupeScore') - base, params.get('DupeAlive'))
+    pick = _ds_group(api, DS_TITLE)
+    want = {'whole': (89, '100'), 'idx95': (85, '95'), 'half': (49, '50'), 'gone': (1, '0')}
+    ok = got == want and pick is not None and pick.get('DupeScore') == DS_PICK
+    return ('dupesearchgroup', ok, 'got=%s pick_score=%s' % (sorted(got.items()), pick and pick.get('DupeScore')))
+
+
 def scenario_dupesearchfastdead(daemon, t):
     """A posting the quick probe finds alive but its full sample finds mostly
     gone (30% alive, below DupeMinAlive) was already queued as a fast donor: it
@@ -4060,6 +4092,7 @@ SCENARIOS = {
     'dupesearchfilters': scenario_dupesearchfilters,
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
+    'dupesearchgroup': scenario_dupesearchgroup,
     'dupesearchdryrun': scenario_dupesearchdryrun,
     'dupesearchrescorefail': scenario_dupesearchrescorefail,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
@@ -4227,6 +4260,7 @@ SCENARIO_OPTIONS = {
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrescorefail': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4299,10 +4333,11 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
-                   'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+                   'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
+                   'dupesearchgroup'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
