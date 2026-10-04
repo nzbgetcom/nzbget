@@ -3096,6 +3096,105 @@ def scenario_dupefailover(daemon, t):
             % (hp['Status'], hb['Status'], failed_over, failed_articles, integ))
 
 
+DS_TITLE = 'Show.S01E01.1080p.WEB.H264-GRP'
+DS_KEY = 'tvdbid=1-S01-E01|show-s01e01'
+DS_PICK = 23859118
+
+
+def _ds_nzb(t, tag, size=300_000):
+    data = _payload(size, 9950 + len(tag))
+    path = _place_copy(t, 'ds' + tag, data)
+    return build_nzb(path, 'a.bin', size, 100_000, set())
+
+
+def _ds_append(api, name, nzb, key, score, paused=True, params=()):
+    content = base64.standard_b64encode(nzb.encode()).decode()
+    return api.append(name, content, 'test', 0, False, paused, key, score, 'score', list(params))
+
+
+def _ds_group(api, name):
+    return next((g for g in api.listgroups() if g['NZBName'] == name), None)
+
+
+def scenario_dupesearchtrigger(daemon, t):
+    """DupeSearch decides which downloads it searches: the pick of a client
+    that also submits two backups of its own (scored one and two below) is
+    searched once, after DupeSearchDelay, and the backups - filed in history as
+    duplicates by the duplicate check - never are."""
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'p'), DS_KEY, DS_PICK)
+    _ds_append(api, DS_TITLE + '.b1', _ds_nzb(t, 'b1'), DS_KEY, DS_PICK - 1)
+    _ds_append(api, DS_TITLE + '.b2', _ds_nzb(t, 'b2'), DS_KEY, DS_PICK - 2)
+    time.sleep(6)
+    searched = _grep_log(t, 'DupeSearch: searching duplicates of %s ' % DS_TITLE)
+    backups = _grep_log(t, 'DupeSearch: searching duplicates of %s.b' % DS_TITLE)
+    pick = _ds_group(api, DS_TITLE)
+    score = int(pick['DupeScore']) if pick else -1
+    return ('dupesearchtrigger', searched == 1 and backups == 0 and score == DS_PICK,
+            'searched_logs=%d backup_searched_logs=%d pick_score=%d' % (searched, backups, score))
+
+
+def scenario_dupesearchkey(daemon, t):
+    """A pick without a duplicate key and with a score of 0 gets "dupes:" + its
+    normalized title as key and the managed score of 1,000,000, which leaves
+    room below it for duplicates."""
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'k'), '', 0)
+    time.sleep(6)
+    pick = _ds_group(api, DS_TITLE)
+    key = pick['DupeKey'] if pick else None
+    score = int(pick['DupeScore']) if pick else -1
+    searched = _grep_log(t, 'DupeSearch: searching duplicates of %s ' % DS_TITLE)
+    return ('dupesearchkey', searched == 1 and key == 'dupes:show.s01e01.1080p.web.h264.grp' and score == 1_000_000,
+            'searched_logs=%d key=%s score=%d' % (searched, key, score))
+
+
+def scenario_dupesearchdonor(daemon, t):
+    """Items carrying the DupeAlive parameter (the nzbget-dupe-proxy marks its
+    duplicates with it) or the DupeSearch parameter (what this search marks
+    its own duplicates with) are never searched."""
+    api = daemon.wait_ready()
+    _ds_append(api, 'Alive.Show.S01E01.1080p.WEB.H264-GRP', _ds_nzb(t, 'a'), 'ds-key-a', 5_000_000,
+               params=[{'Name': 'DupeAlive', 'Value': '80'}])
+    _ds_append(api, 'Donor.Show.S01E01.1080p.WEB.H264-GRP', _ds_nzb(t, 'd'), 'ds-key-d', 5_000_000,
+               params=[{'Name': 'DupeSearch', 'Value': 'donor'}])
+    _ds_append(api, 'Plain.Show.S01E01.1080p.WEB.H264-GRP', _ds_nzb(t, 'n'), 'ds-key-n', 5_000_000)
+    time.sleep(6)
+    skipped = _grep_log(t, 'DupeSearch: searching duplicates of Alive.') + \
+        _grep_log(t, 'DupeSearch: searching duplicates of Donor.')
+    plain = _grep_log(t, 'DupeSearch: searching duplicates of Plain.')
+    return ('dupesearchdonor', skipped == 0 and plain == 1,
+            'marked_searched_logs=%d plain_searched_logs=%d' % (skipped, plain))
+
+
+def scenario_dupesearchrestart(daemon, t):
+    """A restart before the delay is over doesn't lose the pick (no add event
+    fires for it after the restart: the queue is scanned once), and a restart
+    after the search doesn't repeat it (the searched key is kept on disk)."""
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'r'), DS_KEY, DS_PICK)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    time.sleep(3)
+    daemon.start()
+    api = daemon.wait_ready()
+    time.sleep(8)
+    first = _grep_log(t, 'DupeSearch: searching duplicates of %s ' % DS_TITLE)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    time.sleep(3)
+    daemon.start()
+    api = daemon.wait_ready()
+    time.sleep(8)
+    total = _grep_log(t, 'DupeSearch: searching duplicates of %s ' % DS_TITLE)
+    return ('dupesearchrestart', first == 1 and total == 1,
+            'searched_after_first_restart=%d searched_in_total=%d' % (first, total))
+
+
 def _probe_fixture(t, tag, alive_every=0):
     """A six-file, 180-article dead posting (every article missing, or all but
     every ``alive_every``-th of each file) and a healthy lower-scored backup of
@@ -3444,6 +3543,10 @@ SCENARIOS = {
     'xpackflaky': scenario_xpackflaky,
     'deadpickprobe': scenario_deadpickprobe,
     'deadpickpartial': scenario_deadpickpartial,
+    'dupesearchtrigger': scenario_dupesearchtrigger,
+    'dupesearchkey': scenario_dupesearchkey,
+    'dupesearchdonor': scenario_dupesearchdonor,
+    'dupesearchrestart': scenario_dupesearchrestart,
     'deadpickservers': scenario_deadpickservers,
     'deadpickfewservers': scenario_deadpickfewservers,
     'notfound451': scenario_notfound451,
@@ -3598,6 +3701,10 @@ SCENARIO_OPTIONS = {
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
     'deadpickprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickpartial': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'dupesearchtrigger': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
+    'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
+    'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
+    'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'notfound451': ['DupeArticleFallback=no', 'ArticleRetries=3', 'ArticleInterval=3'],

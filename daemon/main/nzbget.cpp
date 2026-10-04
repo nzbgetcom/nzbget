@@ -34,6 +34,7 @@
 #include "NCursesFrontend.h"
 #include "QueueCoordinator.h"
 #include "UrlCoordinator.h"
+#include "DupeSearch.h"
 #include "RemoteServer.h"
 #include "WebServer.h"
 #include "RemoteClient.h"
@@ -205,6 +206,7 @@ private:
 	std::unique_ptr<ServerPool> m_serverPool;
 	std::unique_ptr<QueueCoordinator> m_queueCoordinator;
 	std::unique_ptr<UrlCoordinator> m_urlCoordinator;
+	std::unique_ptr<DupeSearch> m_dupeSearch;
 	std::unique_ptr<StatMeter> m_statMeter;
 	std::unique_ptr<PrePostProcessor> m_prePostProcessor;
 	std::unique_ptr<HistoryCoordinator> m_historyCoordinator;
@@ -423,6 +425,9 @@ void NZBGet::CreateGlobals()
 	m_urlCoordinator = std::make_unique<UrlCoordinator>();
 	g_UrlCoordinator = m_urlCoordinator.get();
 
+	m_dupeSearch = std::make_unique<DupeSearch>();
+	g_DupeSearch = m_dupeSearch.get();
+
 	m_feedCoordinator = std::make_unique<FeedCoordinator>();
 	g_FeedCoordinator = m_feedCoordinator.get();
 
@@ -512,6 +517,7 @@ void NZBGet::Cleanup()
 	}
 
 	g_UrlCoordinator = nullptr;
+	g_DupeSearch = nullptr;
 	g_PrePostProcessor = nullptr;
 	g_Scanner = nullptr;
 	g_HistoryCoordinator = nullptr;
@@ -718,6 +724,7 @@ void NZBGet::DoMainLoop()
 #endif
 	m_queueCoordinator->Start();
 	m_urlCoordinator->Start();
+	m_dupeSearch->Start();
 	m_prePostProcessor->Start();
 	m_feedCoordinator->Start();
 	m_serviceCoordinator->Start();
@@ -729,6 +736,7 @@ void NZBGet::DoMainLoop()
 	// enter main program-loop
 	while (m_queueCoordinator->IsRunning() ||
 		m_urlCoordinator->IsRunning() ||
+		m_dupeSearch->IsRunning() ||
 		m_prePostProcessor->IsRunning() ||
 		m_feedCoordinator->IsRunning() ||
 		m_serviceCoordinator->IsRunning() ||
@@ -750,6 +758,10 @@ void NZBGet::DoMainLoop()
 			if (!m_urlCoordinator->IsStopped())
 			{
 				m_urlCoordinator->Stop();
+			}
+			if (!m_dupeSearch->IsStopped())
+			{
+				m_dupeSearch->Stop();
 			}
 			if (!m_prePostProcessor->IsStopped())
 			{
@@ -977,6 +989,7 @@ void NZBGet::Stop(bool reload)
 			m_serviceCoordinator->Stop();
 			m_queueCoordinator->Stop();
 			m_urlCoordinator->Stop();
+			m_dupeSearch->Stop();
 			m_prePostProcessor->Stop();
 			m_feedCoordinator->Stop();
 			m_articleCache->Stop();

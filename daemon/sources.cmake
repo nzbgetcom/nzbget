@@ -76,6 +76,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeProbe.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DupeSearch.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/ReleaseName.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeStreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
