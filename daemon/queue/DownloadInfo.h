@@ -1284,7 +1284,10 @@ public:
 
 protected:
 	DownloadQueue() {}
-	static void Init(DownloadQueue* globalInstance) { g_DownloadQueue = globalInstance; }
+	// a reload creates the queue anew: until it is loaded again, threads
+	// waiting for IsLoaded() (the post-processor's queue sanitising, for
+	// one) must not take the previous queue's state for it
+	static void Init(DownloadQueue* globalInstance) { g_DownloadQueue = globalInstance; g_Loaded = false; }
 	static void Final() { g_DownloadQueue = nullptr; }
 	static void Loaded() { g_Loaded = true; }
 

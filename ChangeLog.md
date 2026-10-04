@@ -28,6 +28,7 @@ nzbget-v26.3
     [#847](https://github.com/nzbgetcom/nzbget/pull/847)
 
   - Bug fixes:
+    - Fixed post-processing that never started after a reload (saving settings) while a download waited in the post-processing queue
     - Fixed missing path separator in auto-detected config template path
     [#902](https://github.com/nzbgetcom/nzbget/pull/902)
     - Fixed feed preview for new (unsaved) feeds
