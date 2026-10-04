@@ -328,7 +328,11 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 
 	Decoder decoder;
 	decoder.Clear();
-	decoder.SetCrcCheck(g_Options->GetCrcCheck());
+	// always: a repaired range is credited to health and may complete a
+	// release without a par-check, so a corrupt duplicate article must never
+	// be taken for good bytes (option CrcCheck=no only spares the CPU of the
+	// regular download, whose damage par-check can still find)
+	decoder.SetCrcCheck(true);
 	decoder.SetRawMode(false);
 
 	CharBuffer recvBuf(g_Options->GetArticleReadChunkSize());

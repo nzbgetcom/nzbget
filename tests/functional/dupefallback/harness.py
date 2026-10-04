@@ -567,6 +567,77 @@ class FlakyNntpProxy:
                 self._kill(sock)
 
 
+class CorruptingNntpProxy:
+    """A news server in front of nserv that changes one byte inside the yEnc
+    data of every BODY response for a message-id containing ``marker``,
+    leaving the declared crc32 as it was: a provider serving a corrupt copy."""
+
+    def __init__(self, listen_port, upstream_port, marker):
+        self.upstream_port = upstream_port
+        self.marker = marker.encode()
+        self.corrupted = 0
+        self.srv = socket.socket()
+        self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind(('127.0.0.1', listen_port))
+        self.srv.listen(64)
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    def _serve(self):
+        while True:
+            try:
+                client, _ = self.srv.accept()
+            except OSError:
+                return
+            upstream = socket.create_connection(('127.0.0.1', self.upstream_port))
+            state = {'corrupt': False}
+            threading.Thread(target=self._requests, args=(client, upstream, state), daemon=True).start()
+            threading.Thread(target=self._responses, args=(upstream, client, state), daemon=True).start()
+
+    def _requests(self, client, upstream, state):
+        try:
+            while True:
+                data = client.recv(65536)
+                if not data:
+                    break
+                if b'BODY <' in data and self.marker in data:
+                    state['corrupt'] = True
+                upstream.sendall(data)
+        except OSError:
+            pass
+
+    def _responses(self, upstream, client, state):
+        buf = b''
+        try:
+            while True:
+                data = upstream.recv(65536)
+                if not data:
+                    break
+                if not state['corrupt']:
+                    client.sendall(data)
+                    continue
+                buf += data
+                head = buf.find(b'=ypart')
+                line_end = buf.find(b'\r\n', head) if head >= 0 else -1
+                if line_end < 0 or len(buf) < line_end + 500:
+                    continue
+                pos = line_end + 300
+                # a plain data byte: never a line break, escape or dot-stuffing
+                if buf[pos] not in b'\r\n=.' and (buf[pos] + 1) % 256 not in b'\r\n=.\0':
+                    buf = buf[:pos] + bytes([(buf[pos] + 1) % 256]) + buf[pos + 1:]
+                    self.corrupted += 1
+                state['corrupt'] = False
+                client.sendall(buf)
+                buf = b''
+        except OSError:
+            pass
+
+    def close(self):
+        try:
+            self.srv.close()
+        except OSError:
+            pass
+
+
 # --------------------------------------------------------------------------- #
 # Scenarios
 # --------------------------------------------------------------------------- #
@@ -2381,6 +2452,30 @@ def scenario_xpackendhole_nodirect(daemon, t):
             'status=%s unmappable_logs=%d integrity=%s' % (h['Status'], unmappable, integ))
 
 
+def scenario_xpackcorrupt(daemon, t):
+    """The news server serves a corrupt copy of every duplicate article (one
+    byte changed, crc32 left as declared) and CrcCheck=no: repair fetches
+    check the yEnc crc32 anyway, so the corrupt articles are rejected and the
+    release ends FAILURE/HEALTH. Before, cross-packing wrote the corrupt
+    bytes and the release ended SUCCESS with a damaged movie."""
+    size, seg = 3_000_000, 250_000
+    data = _payload(size, 4501)
+    pp = _place_copy(t, 'xcA', data, 'movie.mkv')
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 1_000_000), 1):
+        rel = 'xcB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXC', build_multi_nzb(members), True, 'xc-key', 50)
+    daemon.append(api, 'RelXC', build_nzb(pp, 'movie.mkv', size, seg, {4, 5, 6}), False, 'xc-key', 100)
+    h = daemon.wait_history(api, 'RelXC')
+    corrupted = daemon.proxy.corrupted if daemon.proxy else 0
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackcorrupt', corrupted >= 1 and h['Status'].startswith('FAILURE') and not integ,
+            'status=%s corrupted_articles=%d integrity=%s' % (h['Status'], corrupted, integ))
+
+
 def scenario_xpackflaky(daemon, t):
     """Cross-packing while the provider drops every connection and turns new
     ones away for 4 s (a per-user connection limit, see FlakyNntpProxy):
@@ -2946,6 +3041,7 @@ SCENARIOS = {
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
+    'xpackcorrupt': scenario_xpackcorrupt,
     'xpackendhole_nodirect': scenario_xpackendhole_nodirect,
     'xpackdeadserver': scenario_xpackdeadserver,
     'wholefileunicode': scenario_wholefileunicode,
@@ -3087,6 +3183,7 @@ SCENARIO_OPTIONS = {
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    'xpackcorrupt': ['DupeArticleFallback=stream', 'ParCheck=auto', 'CrcCheck=no'],
     'xpackendhole_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
     # Server2 (preferred level 0, behind a FlakyNntpProxy) serves the download
     # and goes down for good at the first duplicate request; Server1 is the
@@ -3129,6 +3226,9 @@ SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000']}
 # (server number, message-id trigger, window in s or None for good)
 SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, 'xdB/', None)}
 
+# scenarios with a CorruptingNntpProxy in front of Server1: message-id marker
+SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
+
 
 # --------------------------------------------------------------------------- #
 # Main
@@ -3149,7 +3249,7 @@ def main():
     results = []
 
     for name in scenarios:
-        if args.target == 'adb' and name in SCENARIO_FLAKY_PROXY:
+        if args.target == 'adb' and (name in SCENARIO_FLAKY_PROXY or name in SCENARIO_CORRUPT_PROXY):
             results.append((name, None, 'SKIP: the flaky news-server proxy runs on the host'))
             print('[SKIP] %s  (the flaky news-server proxy runs on the host)' % name)
             continue
@@ -3169,23 +3269,27 @@ def main():
         daemon = Daemon(target, nntp, rpc)
         try:
             flaky = SCENARIO_FLAKY_PROXY.get(name)
+            corrupt = SCENARIO_CORRUPT_PROXY.get(name)
             options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
-            nserv_port = free_port() if flaky else nntp
+            nserv_port = nntp
             proxy_port = None
-            if flaky:
-                # Server1 always is nntp: the proxy listens there, or Server2
-                # gets a port of its own
-                proxy_port = nntp if flaky[0] == 1 else free_port()
-                if flaky[0] == 1:
+            if flaky or corrupt:
+                # Server1 always is nntp: a proxy for it listens there and
+                # nserv moves to a port of its own; a proxy for Server2 gets a
+                # port of its own
+                server = flaky[0] if flaky else 1
+                proxy_port = nntp if server == 1 else free_port()
+                if server == 1:
                     nserv_port = free_port()
                 else:
-                    nserv_port = nntp
-                    options.append('Server%d.Port=%d' % (flaky[0], proxy_port))
+                    options.append('Server%d.Port=%d' % (server, proxy_port))
             daemon.write_config(options)
             daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
                                extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
             if flaky:
                 daemon.proxy = FlakyNntpProxy(proxy_port, nserv_port, *flaky[1:])
+            elif corrupt:
+                daemon.proxy = CorruptingNntpProxy(proxy_port, nserv_port, corrupt)
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':
