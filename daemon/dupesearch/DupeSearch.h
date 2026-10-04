@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include "DeadPostings.h"
 #include "NzbFetcher.h"
 
 /*
@@ -95,6 +96,7 @@ private:
 		std::string imdb;	// from the nzb-file's meta data
 		std::string tvdb;
 		std::string queuedFile;	// the nzb-file of the pick
+		std::vector<std::string> knownFiles;	// the nzb-files nzbget keeps for this release (queue and history)
 		int score = 0;
 	};
 
@@ -103,6 +105,7 @@ private:
 
 	DownloadQueueObserver m_observer;
 	NzbFetcher m_fetcher;
+	DeadPostings m_dead;
 	std::mutex m_mutex;
 	std::condition_variable m_cond;
 	std::map<int, time_t> m_pending;			// nzb id -> when to look at it

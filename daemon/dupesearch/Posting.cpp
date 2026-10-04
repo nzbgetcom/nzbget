@@ -25,7 +25,11 @@
 #include <map>
 #include <set>
 #include <zlib.h>
+#include <fstream>
+#include <mutex>
+#include <sys/stat.h>
 #include "Posting.h"
+#include "NzbReader.h"
 
 Posting::Sketch Posting::MakeSketch(const std::vector<std::string>& messageIds)
 {
@@ -44,6 +48,45 @@ Posting::Sketch Posting::MakeSketch(const std::vector<std::string>& messageIds)
 		sketch.push_back(hash);
 	}
 	return sketch;
+}
+
+bool Posting::SketchOfFile(const std::string& path, Sketch& sketch)
+{
+	static std::mutex mutex;
+	static std::map<std::string, std::pair<std::pair<long long, long long>, Sketch>> cache;
+
+	struct stat info;
+	if (stat(path.c_str(), &info) != 0)
+	{
+		return false;
+	}
+	std::pair<long long, long long> stamp((long long)info.st_mtime, (long long)info.st_size);
+	{
+		std::lock_guard<std::mutex> guard(mutex);
+		auto it = cache.find(path);
+		if (it != cache.end() && it->second.first == stamp)
+		{
+			sketch = it->second.second;
+			return true;
+		}
+	}
+
+	std::ifstream file(path, std::ios::binary);
+	std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	NzbSummary summary;
+	if (!NzbReader::Parse(data, summary))
+	{
+		return false;
+	}
+	sketch = MakeSketch(summary.messageIds);
+
+	std::lock_guard<std::mutex> guard(mutex);
+	if (cache.size() > 4096)
+	{
+		cache.clear();
+	}
+	cache[path] = { stamp, sketch };
+	return true;
 }
 
 bool Posting::SameSketch(const Sketch& a, const Sketch& b)

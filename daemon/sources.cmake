@@ -76,6 +76,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeProbe.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DeadPostings.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DupeSearch.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/HttpGet.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/Newznab.cpp

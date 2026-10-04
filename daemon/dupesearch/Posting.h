@@ -56,6 +56,11 @@ public:
 	static Sketch MakeSketch(const std::vector<std::string>& messageIds);
 	static bool SameSketch(const Sketch& a, const Sketch& b);
 
+	/* the sketch of an nzb-file on disk (the copies nzbget keeps of what it
+	 * downloaded); cached by path, modification time and size. False if the
+	 * file can't be read or isn't an nzb-file. */
+	static bool SketchOfFile(const std::string& path, Sketch& sketch);
+
 	/* more than SamePostingShare of the articles in common (both sorted, unique) */
 	static bool SamePosting(const std::vector<std::string>& a, const std::vector<std::string>& b);
 

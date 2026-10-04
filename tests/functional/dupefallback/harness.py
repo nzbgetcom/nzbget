@@ -3297,7 +3297,7 @@ def scenario_dupesearchfetch(daemon, t):
     api = daemon.wait_ready()
     _ds_append(api, DS_TITLE, _ds_nzb(t, 'f'), DS_KEY, DS_PICK)
     deadline = time.time() + 40
-    while time.time() < deadline and _grep_log(t, 'posting(s) to fetch') == 0:
+    while time.time() < deadline and _grep_log(t, 'verified=') == 0:
         time.sleep(0.5)
     time.sleep(1)
     grabs = {}
@@ -3306,9 +3306,8 @@ def scenario_dupesearchfetch(daemon, t):
             name = r['_path'].rsplit('/', 1)[-1]
             grabs[name] = grabs.get(name, 0) + 1
     capped = grabs.get('p2', 0) + grabs.get('p3', 0)
-    summary = _grep_log(t, 'DupeSearch: %s: 5 posting(s) to fetch, 3 fetched (1 failed, 0 not an nzb-file, 1 refused, '
-                           '2 other listing(s) of them not needed, 1 listing(s) served another size, 0 not tried in time)'
-                           % DS_TITLE)
+    summary = _grep_log(t, 'DupeSearch: %s: results=8 candidates=8 postings=5 verified=3 '
+                           'rejected={fetch: 1, listing-mismatch: 1, refused: 1, relisted: 2}' % DS_TITLE)
     state = t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).decode(errors='replace') \
         if t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) else ''
     kept = state.startswith('Capped\t')
@@ -3336,15 +3335,88 @@ def scenario_dupesearchfetcherror(daemon, t):
     api = daemon.wait_ready()
     _ds_append(api, DS_TITLE, _ds_nzb(t, 'e'), DS_KEY, DS_PICK)
     deadline = time.time() + 40
-    while time.time() < deadline and _grep_log(t, 'posting(s) to fetch') == 0:
+    while time.time() < deadline and _grep_log(t, 'verified=') == 0:
         time.sleep(0.5)
     time.sleep(1)
     grabs = sum(1 for r in daemon.newznab.requests if r['_path'] == '/getnzb/pe')
-    summary = _grep_log(t, 'DupeSearch: %s: 1 posting(s) to fetch, 0 fetched (0 failed, 1 not an nzb-file, 0 refused' % DS_TITLE)
+    summary = _grep_log(t, 'DupeSearch: %s: results=1 candidates=1 postings=1 verified=0 rejected={parse: 1}' % DS_TITLE)
     cooldown = t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) and \
         len(t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).strip()) > 0
     return ('dupesearchfetcherror', grabs == 2 and summary == 1 and not cooldown,
             'grabs=%d summary_logs=%d cooldown_started=%s' % (grabs, summary, cooldown))
+
+
+def _fake_nzb_ids(ids, total_bytes, name='a.mkv'):
+    """An nzb-file of one file whose articles are exactly ``ids``."""
+    seg = max(1, total_bytes // len(ids))
+    segs = ''.join('<segment bytes="%d" number="%d">%s</segment>' % (seg, i + 1, m) for i, m in enumerate(ids))
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">'
+            '<file poster="p@x" date="1" subject="[1/1] &quot;%s&quot; yEnc (1/1)"><groups><group>alt.binaries.test</group>'
+            '</groups><segments>%s</segments></file></nzb>' % (name, segs)).encode()
+
+
+def scenario_dupesearchfilters(daemon, t):
+    """What the search keeps among the postings it fetched, in the order of
+    the filters: another release (named by the largest data file, only when
+    the name is readable: an obfuscated one never rejects), a posting nzbget
+    already holds (a backup in history, read from its copy in NzbDir), a
+    posting found dead before (kept on disk), a posting that shares articles
+    with the pick or an accepted duplicate. Two fresh postings are kept."""
+    import zlib
+    same = 'Show S01E01 1080p WEB H264-GRP'
+    ids = lambda p, n=40: ['%s-%d@x' % (p, i) for i in range(n)]
+    held_nzb = _ds_nzb(t, 'held')                       # a backup the user keeps in history
+
+    postings = {
+        # (ids, main file name) served per link; sizes are listed equal to the served total
+        'other':   (ids('other'), 'Other.Show.S09E09.1080p.WEB.H264-XYZ.mkv'),
+        'obf':     (ids('obf'),   'e630b420289687dc3c66cc3274207902.mkv'),             # obfuscated: not rejected
+        'dead':    (ids('dead'),  'a.mkv'),
+        'fresh':   (ids('fresh'), 'Show.S01E01.1080p.WEB.H264-GRP.mkv'),
+        'resend':  (ids('fresh', 40)[:39] + ['reup@x'], 'a.mkv'),                      # the same posting, one article re-uploaded
+    }
+    # the posting nzbget holds is served again by an indexer: its articles are in the held nzb-file
+    held_ids = re.findall(r'<segment[^>]*>([^<]+)</segment>', held_nzb)
+    postings['held'] = (held_ids, 'a.mkv')
+
+    dead_sketch = sorted({zlib.crc32(i.encode()) for i in postings['dead'][0]})[:64]
+
+    sizes = {name: 100_000 + 10_000 * k for k, name in enumerate(['fresh', 'resend', 'obf', 'other', 'dead', 'held'])}
+    results = [{'title': same, 'link': 'http://127.0.0.1:%d/getnzb/%s' % (daemon.newznab.port, name),
+                'size': sizes[name], 'grabs': 1, 'indexer': 'Idx%s' % name,
+                'date': 'Tue, 1%d Jun 2025 01:10:05 +0000' % k} for k, name in enumerate(sizes)]
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            name = path.rsplit('/', 1)[-1]
+            return 200, _fake_nzb_ids(postings[name][0], sizes[name], postings[name][1])
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    # the dead posting is remembered from an earlier search: restart with the record in place
+    api = daemon.wait_ready()
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    time.sleep(3)
+    t.write_file(os.path.join('main', 'queue', 'dupesearch-dead'),
+                 ('%d\t%s\t\n' % (int(time.time()), ','.join(str(h) for h in dead_sketch))).encode())
+    daemon.start()
+    api = daemon.wait_ready()
+    daemon.newznab.respond = respond
+
+    # the held posting sits in history as a backup (lower score, same key), filed by the duplicate check
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'pick'), DS_KEY, DS_PICK)
+    _ds_append(api, DS_TITLE + '.held', held_nzb, DS_KEY, DS_PICK - 5)
+    deadline = time.time() + 40
+    while time.time() < deadline and _grep_log(t, 'verified=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    summary = _grep_log(t, 'DupeSearch: %s: results=6 candidates=6 postings=6 verified=2 '
+                           'rejected={in-nzbget: 1, known-dead: 1, other-release: 1, same-posting: 1}' % DS_TITLE)
+    return ('dupesearchfilters', summary == 1, 'summary_logs=%d' % summary)
 
 
 def scenario_dupesearchdonor(daemon, t):
@@ -3745,6 +3817,7 @@ SCENARIOS = {
     'dupesearchkey': scenario_dupesearchkey,
     'dupesearchsearch': scenario_dupesearchsearch,
     'dupesearchfetch': scenario_dupesearchfetch,
+    'dupesearchfilters': scenario_dupesearchfilters,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
     'dupesearchdonor': scenario_dupesearchdonor,
     'dupesearchrestart': scenario_dupesearchrestart,
@@ -3908,6 +3981,7 @@ SCENARIO_OPTIONS = {
     'dupesearchsearch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
     'dupesearchfetch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
+    'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -3976,7 +4050,7 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamtooslow': [(b'slowB/', 1.0)]}
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
-SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror'}
+SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters'}
 
 
 # --------------------------------------------------------------------------- #

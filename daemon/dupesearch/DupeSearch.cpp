@@ -28,6 +28,7 @@
 #include "Newznab.h"
 #include "NzbReader.h"
 #include "Posting.h"
+#include <algorithm>
 #include <thread>
 #include "ReleaseName.h"
 #include "FileSystem.h"
@@ -149,6 +150,8 @@ void DupeSearch::Run()
 	LoadState();
 	m_fetcher.SetStatePath(std::string(g_Options->GetQueueDir()) + PATH_SEPARATOR + "dupesearch-indexers");
 	m_fetcher.Load();
+	m_dead.SetStatePath(std::string(g_Options->GetQueueDir()) + PATH_SEPARATOR + "dupesearch-dead");
+	m_dead.Load();
 	if (g_Options->GetDupeSearch())
 	{
 		ScanQueue();
@@ -286,6 +289,37 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	job.dupeKey = key;
 	job.category = nzbInfo->GetCategory();
 	job.queuedFile = nzbInfo->GetQueuedFilename() ? nzbInfo->GetQueuedFilename() : "";
+
+	// the nzb-files nzbget keeps for this release: queue and history items
+	// with this duplicate key, or whose name is the same release
+	auto addKnown = [&](NzbInfo* item)
+	{
+		if (item->GetKind() != NzbInfo::nkNzb || Util::EmptyStr(item->GetQueuedFilename()))
+		{
+			return;
+		}
+		if (LowerKey(EffectiveKey(item)) == lowerKey || ReleaseName::SameRelease(nzbInfo->GetName(), item->GetName()))
+		{
+			// the file of a merged group names several, separated by "|"
+			std::stringstream names(item->GetQueuedFilename());
+			std::string name;
+			while (std::getline(names, name, '|'))
+			{
+				job.knownFiles.push_back(name);
+			}
+		}
+	};
+	for (NzbInfo* item : downloadQueue->GetQueue())
+	{
+		addKnown(item);
+	}
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetKind() == HistoryInfo::hkNzb)
+		{
+			addKnown(historyInfo->GetNzbInfo());
+		}
+	}
 	job.score = pickScore;
 	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)",
 		nzbInfo->GetName(), key.c_str());
@@ -335,6 +369,20 @@ void DupeSearch::Search(const Job& job)
 	std::vector<Posting::Group> order = Posting::OrderPostings(candidates, pick.totalBytes,
 		g_Options->GetDupeSearchMaxDonors());
 
+	// the sketches of what nzbget already holds, read beside the fetches
+	std::vector<Posting::Sketch> known;
+	std::thread knownReader([&]()
+		{
+			for (const std::string& path : job.knownFiles)
+			{
+				Posting::Sketch sketch;
+				if (Posting::SketchOfFile(path, sketch))
+				{
+					known.push_back(std::move(sketch));
+				}
+			}
+		});
+
 	NzbFetcher::Stats fetchStats;
 	std::vector<NzbFetcher::Fetched> fetched;
 	int notTried = 0;
@@ -369,10 +417,60 @@ void DupeSearch::Search(const Job& job)
 		}
 	}
 
-	info("DupeSearch: %s: %i posting(s) to fetch, %i fetched (%i failed, %i not an nzb-file, %i refused, "
-		"%i other listing(s) of them not needed, %i listing(s) served another size, %i not tried in time)",
-		job.name.c_str(), (int)order.size(), (int)fetched.size(), fetchStats.fetch, fetchStats.parse,
-		fetchStats.refused, fetchStats.relisted, fetchStats.listingMismatch, notTried);
+	knownReader.join();
+
+	// what is worth keeping, in this order: another release (by the name of
+	// its largest data file, when that name is readable), a posting nzbget
+	// already holds, one found dead before, one that shares articles with
+	// the pick or an accepted duplicate
+	std::vector<std::vector<std::string>> postings;
+	postings.push_back(pick.messageIds);
+	std::vector<NzbFetcher::Fetched> verified;
+	std::map<std::string, int> rejected;
+	for (NzbFetcher::Fetched& posting : fetched)
+	{
+		Posting::Sketch sketch = Posting::MakeSketch(posting.info.messageIds);
+		const std::vector<std::string>& ids = posting.info.messageIds;
+		if (ReleaseName::Readable(posting.info.mainName) && !ReleaseName::SameRelease(job.name, posting.info.mainName))
+		{
+			rejected["other-release"]++;
+		}
+		else if (std::any_of(known.begin(), known.end(), [&](const Posting::Sketch& k) { return Posting::SameSketch(sketch, k); }))
+		{
+			rejected["in-nzbget"]++;
+		}
+		else if (m_dead.IsDead(sketch))
+		{
+			rejected["known-dead"]++;
+		}
+		else if (std::any_of(postings.begin(), postings.end(), [&](const std::vector<std::string>& p) { return Posting::SamePosting(ids, p); }))
+		{
+			rejected["same-posting"]++;
+		}
+		else
+		{
+			postings.push_back(ids);
+			verified.push_back(std::move(posting));
+		}
+	}
+	rejected["listing-mismatch"] += fetchStats.listingMismatch;
+	rejected["refused"] += fetchStats.refused;
+	rejected["relisted"] += fetchStats.relisted;
+	rejected["fetch"] += fetchStats.fetch;
+	rejected["parse"] += fetchStats.parse;
+	rejected["deadline"] += notTried;
+
+	std::string outcome;
+	for (const auto& entry : rejected)
+	{
+		if (entry.second > 0)
+		{
+			outcome += (outcome.empty() ? "" : ", ") + entry.first + ": " + std::to_string(entry.second);
+		}
+	}
+	info("DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i rejected={%s}",
+		job.name.c_str(), (int)results.size(), (int)candidates.size(), (int)order.size(),
+		(int)verified.size(), outcome.c_str());
 }
 
 std::string DupeSearch::StatePath()
