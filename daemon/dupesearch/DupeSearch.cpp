@@ -26,6 +26,9 @@
 #include "DupeSearch.h"
 #include "HttpGet.h"
 #include "Newznab.h"
+#include "NzbReader.h"
+#include "Posting.h"
+#include <thread>
 #include "ReleaseName.h"
 #include "FileSystem.h"
 #include "Log.h"
@@ -144,6 +147,8 @@ void DupeSearch::Run()
 	}
 
 	LoadState();
+	m_fetcher.SetStatePath(std::string(g_Options->GetQueueDir()) + PATH_SEPARATOR + "dupesearch-indexers");
+	m_fetcher.Load();
 	if (g_Options->GetDupeSearch())
 	{
 		ScanQueue();
@@ -280,6 +285,7 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	job.name = nzbInfo->GetName();
 	job.dupeKey = key;
 	job.category = nzbInfo->GetCategory();
+	job.queuedFile = nzbInfo->GetQueuedFilename() ? nzbInfo->GetQueuedFilename() : "";
 	job.score = pickScore;
 	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)",
 		nzbInfo->GetName(), key.c_str());
@@ -291,7 +297,22 @@ void DupeSearch::Search(const Job& job)
 	// search and fetch together are meant to fit in about this long
 	time_t deadline = Util::CurrentTime() + SearchDeadlineSec;
 
-	std::vector<Newznab::Params> queries = Newznab::BuildQueries(job.name, job.imdb, job.tvdb);
+	// what the pick's own nzb-file says: its size ranks the candidates (the
+	// closest size is the likeliest byte-identical repost), its ids narrow the search
+	NzbSummary pick;
+	if (!job.queuedFile.empty())
+	{
+		std::ifstream file(job.queuedFile, std::ios::binary);
+		std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+		if (!NzbReader::Parse(data, pick))
+		{
+			detail("DupeSearch: could not read the nzb-file of %s", job.name.c_str());
+		}
+	}
+	std::string imdb = pick.meta.count("imdb") ? pick.meta["imdb"] : "";
+	std::string tvdb = pick.meta.count("tvdb") ? pick.meta["tvdb"] : "";
+
+	std::vector<Newznab::Params> queries = Newznab::BuildQueries(job.name, imdb, tvdb);
 	Newznab::SearchStats stats;
 	std::vector<Newznab::Result> results = Newznab::Search(g_Options->GetDupeSearchUrl(),
 		g_Options->GetDupeSearchApiKey(), queries, deadline, &stats);
@@ -309,6 +330,49 @@ void DupeSearch::Search(const Job& job)
 
 	info("DupeSearch: %s: %i result(s) from %i search(es) (%i failed, %i page(s)), %i of them the same release",
 		job.name.c_str(), (int)results.size(), stats.queries, stats.failed, stats.pages, (int)candidates.size());
+
+	// the postings to fetch, best first: fetching each costs a grab of an indexer
+	std::vector<Posting::Group> order = Posting::OrderPostings(candidates, pick.totalBytes,
+		g_Options->GetDupeSearchMaxDonors());
+
+	NzbFetcher::Stats fetchStats;
+	std::vector<NzbFetcher::Fetched> fetched;
+	int notTried = 0;
+	for (size_t from = 0; from < order.size(); from += FetchParallel)
+	{
+		if (IsStopped() || Util::CurrentTime() >= deadline)
+		{
+			notTried = (int)(order.size() - from);
+			break;
+		}
+
+		size_t count = std::min((size_t)FetchParallel, order.size() - from);
+		std::vector<NzbFetcher::Fetched> chunk(count);
+		std::vector<NzbFetcher::Stats> chunkStats(count);
+		std::vector<std::thread> threads;
+		for (size_t i = 0; i < count; i++)
+		{
+			threads.emplace_back([&, i]()
+				{ chunk[i] = m_fetcher.FetchPosting(order[from + i], deadline, chunkStats[i]); });
+		}
+		for (std::thread& thread : threads)
+		{
+			thread.join();
+		}
+		for (size_t i = 0; i < count; i++)
+		{
+			fetchStats.Add(chunkStats[i]);
+			if (chunk[i].reason == NzbFetcher::frOk)
+			{
+				fetched.push_back(std::move(chunk[i]));
+			}
+		}
+	}
+
+	info("DupeSearch: %s: %i posting(s) to fetch, %i fetched (%i failed, %i not an nzb-file, %i refused, "
+		"%i other listing(s) of them not needed, %i listing(s) served another size, %i not tried in time)",
+		job.name.c_str(), (int)order.size(), (int)fetched.size(), fetchStats.fetch, fetchStats.parse,
+		fetchStats.refused, fetchStats.relisted, fetchStats.listingMismatch, notTried);
 }
 
 std::string DupeSearch::StatePath()

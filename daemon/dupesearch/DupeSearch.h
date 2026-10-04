@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include "NzbFetcher.h"
 
 /*
  * Option <DupeSearch>: looks for other postings of a new download on a
@@ -93,10 +94,15 @@ private:
 		std::string category;
 		std::string imdb;	// from the nzb-file's meta data
 		std::string tvdb;
+		std::string queuedFile;	// the nzb-file of the pick
 		int score = 0;
 	};
 
+	// postings fetched at the same time
+	static constexpr int FetchParallel = 4;
+
 	DownloadQueueObserver m_observer;
+	NzbFetcher m_fetcher;
 	std::mutex m_mutex;
 	std::condition_variable m_cond;
 	std::map<int, time_t> m_pending;			// nzb id -> when to look at it

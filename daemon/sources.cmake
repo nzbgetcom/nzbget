@@ -79,6 +79,9 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DupeSearch.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/HttpGet.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/Newznab.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/NzbFetcher.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/NzbReader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/Posting.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/XmlReader.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/ReleaseName.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeStreamRepair.cpp

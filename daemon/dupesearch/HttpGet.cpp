@@ -83,6 +83,11 @@ HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoNam
 	return reply;
 }
 
+bool HttpGet::Stopped()
+{
+	return g_stopped;
+}
+
 void HttpGet::Reset()
 {
 	g_stopped = false;

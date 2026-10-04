@@ -3250,6 +3250,103 @@ def scenario_dupesearchsearch(daemon, t):
             % (offsets, short_pages, grouped_pages, len(reqs), summary, error_logged, leaked))
 
 
+def _fake_nzb(prefix, total_bytes, name='a.mkv'):
+    """An nzb-file of one file of ``total_bytes`` whose articles are named after ``prefix``."""
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">'
+            '<file poster="p@x" date="1" subject="[1/1] &quot;%s&quot; yEnc (1/1)"><groups><group>alt.binaries.test</group>'
+            '</groups><segments><segment bytes="%d" number="1">%s-1@x</segment></segments></file></nzb>'
+            % (name, total_bytes, prefix)).encode()
+
+
+def scenario_dupesearchfetch(daemon, t):
+    """Fetching the postings the search found: a posting that three indexers
+    list is fetched once (from its most grabbed listing); an indexer that
+    answers 403 is asked twice (one retry), then not asked at all (its other
+    listing is refused without a request, and the refusal is kept on disk);
+    a listing that serves an nzb-file of another size is skipped for the
+    posting's next listing, and only used when no listing serves the posting."""
+    same = 'Show S01E01 1080p WEB H264-GRP'
+
+    def listing(link, size, grabs, indexer, date):
+        return {'title': same, 'link': 'http://127.0.0.1:%d/getnzb/%s' % (daemon.newznab.port, link),
+                'size': size, 'grabs': grabs, 'indexer': indexer, 'date': date}
+
+    results = [
+        listing('p1a', 310_000, 9, 'IdxA', 'Tue, 10 Jun 2025 01:10:05 +0000'),
+        listing('p1b', 310_000, 5, 'IdxB', 'Tue, 10 Jun 2025 01:10:20 +0000'),
+        listing('p1c', 310_000, 1, 'IdxC', 'Tue, 10 Jun 2025 01:10:40 +0000'),
+        listing('p2', 320_000, 1, 'Capped', 'Wed, 11 Jun 2025 01:10:05 +0000'),
+        listing('p3', 330_000, 1, 'Capped', 'Thu, 12 Jun 2025 01:10:05 +0000'),
+        listing('p4m', 340_000, 9, 'IdxM', 'Fri, 13 Jun 2025 01:10:05 +0000'),
+        listing('p4n', 340_000, 3, 'IdxN', 'Fri, 13 Jun 2025 01:10:30 +0000'),
+        listing('p5', 350_000, 1, 'IdxM', 'Sat, 14 Jun 2025 01:10:05 +0000'),
+    ]
+    served = {'p1a': 310_000, 'p1b': 310_000, 'p1c': 310_000, 'p4m': 380_000, 'p4n': 340_000, 'p5': 400_000}
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            name = path.rsplit('/', 1)[-1]
+            if name in ('p2', 'p3'):
+                return 403, b''
+            return 200, _fake_nzb(name, served[name])
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    daemon.newznab.respond = respond
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'f'), DS_KEY, DS_PICK)
+    deadline = time.time() + 40
+    while time.time() < deadline and _grep_log(t, 'posting(s) to fetch') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    grabs = {}
+    for r in daemon.newznab.requests:
+        if r['_path'].startswith('/getnzb/'):
+            name = r['_path'].rsplit('/', 1)[-1]
+            grabs[name] = grabs.get(name, 0) + 1
+    capped = grabs.get('p2', 0) + grabs.get('p3', 0)
+    summary = _grep_log(t, 'DupeSearch: %s: 5 posting(s) to fetch, 3 fetched (1 failed, 0 not an nzb-file, 1 refused, '
+                           '2 other listing(s) of them not needed, 1 listing(s) served another size, 0 not tried in time)'
+                           % DS_TITLE)
+    state = t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).decode(errors='replace') \
+        if t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) else ''
+    kept = state.startswith('Capped\t')
+    exact = {k: v for k, v in grabs.items() if k not in ('p2', 'p3')}
+    return ('dupesearchfetch', exact == {'p1a': 1, 'p4m': 1, 'p4n': 1, 'p5': 1} and capped == 2 and
+            summary == 1 and kept,
+            'grabs=%s capped_requests=%d summary_logs=%d cooldown_kept=%s' % (exact, capped, summary, kept))
+
+
+def scenario_dupesearchfetcherror(daemon, t):
+    """An error answer served with HTTP 200 (code 429, "request limit
+    reached") is no nzb-file: the download is retried once and counted as not
+    an nzb-file, but it starts no cooldown - only HTTP 403 and 429 do."""
+    listing = {'title': 'Show S01E01 1080p WEB H264-GRP', 'size': 310_000, 'grabs': 1, 'indexer': 'IdxE',
+               'link': 'http://127.0.0.1:%d/getnzb/pe' % daemon.newznab.port}
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            return 200, b'<?xml version="1.0" encoding="UTF-8"?>\n<error code="429" description="Request limit reached"/>'
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml([listing])
+        return 200, newznab_xml([])
+
+    daemon.newznab.respond = respond
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 'e'), DS_KEY, DS_PICK)
+    deadline = time.time() + 40
+    while time.time() < deadline and _grep_log(t, 'posting(s) to fetch') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    grabs = sum(1 for r in daemon.newznab.requests if r['_path'] == '/getnzb/pe')
+    summary = _grep_log(t, 'DupeSearch: %s: 1 posting(s) to fetch, 0 fetched (0 failed, 1 not an nzb-file, 0 refused' % DS_TITLE)
+    cooldown = t.exists(os.path.join('main', 'queue', 'dupesearch-indexers')) and \
+        len(t.read_file(os.path.join('main', 'queue', 'dupesearch-indexers')).strip()) > 0
+    return ('dupesearchfetcherror', grabs == 2 and summary == 1 and not cooldown,
+            'grabs=%d summary_logs=%d cooldown_started=%s' % (grabs, summary, cooldown))
+
+
 def scenario_dupesearchdonor(daemon, t):
     """Items carrying the DupeAlive parameter (the nzbget-dupe-proxy marks its
     duplicates with it) or the DupeSearch parameter (what this search marks
@@ -3647,6 +3744,8 @@ SCENARIOS = {
     'dupesearchtrigger': scenario_dupesearchtrigger,
     'dupesearchkey': scenario_dupesearchkey,
     'dupesearchsearch': scenario_dupesearchsearch,
+    'dupesearchfetch': scenario_dupesearchfetch,
+    'dupesearchfetcherror': scenario_dupesearchfetcherror,
     'dupesearchdonor': scenario_dupesearchdonor,
     'dupesearchrestart': scenario_dupesearchrestart,
     'deadpickservers': scenario_deadpickservers,
@@ -3807,6 +3906,8 @@ SCENARIO_OPTIONS = {
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchsearch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
+    'dupesearchfetch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
+    'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -3875,7 +3976,7 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamtooslow': [(b'slowB/', 1.0)]}
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
-SCENARIO_NEWZNAB = {'dupesearchsearch'}
+SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror'}
 
 
 # --------------------------------------------------------------------------- #

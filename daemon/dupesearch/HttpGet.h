@@ -45,6 +45,7 @@ public:
 	static void StopAll();
 	/* allows requests again (nzbget reloads inside the same process) */
 	static void Reset();
+	static bool Stopped();
 };
 
 #endif
