@@ -2355,6 +2355,32 @@ def scenario_xpacklatency(daemon, t):
             'status=%s transient_logs=%d integrity=%s' % (h['Status'], retried, integ))
 
 
+def scenario_xpackendhole_nodirect(daemon, t):
+    """DirectWrite=no, holes up to the end of a bare movie: the file joined
+    from article files ends with its last downloaded article, and the
+    duplicate packs the movie into rar volumes. Cross-packing must map the
+    target by its decoded size, not by the shorter file on disk. Before, the
+    holes past the end of the file lay "outside the mappable inner stream"
+    and nothing was recovered."""
+    size, seg = 5_000_000, 333_333
+    n = (size + seg - 1) // seg
+    data = _payload(size, 4410)
+    pp = _place_copy(t, 'xeA', data, 'movie.mkv')
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 1_500_000), 1):
+        rel = 'xeB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 250_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXE', build_multi_nzb(members), True, 'xe-key', 50)
+    daemon.append(api, 'RelXE', build_nzb(pp, 'movie.mkv', size, seg, set(range(n - 2, n + 1))), False, 'xe-key', 100)
+    h = daemon.wait_history(api, 'RelXE')
+    unmappable = _grep_log(t, 'outside the mappable inner stream')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackendhole_nodirect', integ and unmappable == 0 and h['Status'].startswith('SUCCESS'),
+            'status=%s unmappable_logs=%d integrity=%s' % (h['Status'], unmappable, integ))
+
+
 def scenario_xpackflaky(daemon, t):
     """Cross-packing while the provider drops every connection and turns new
     ones away for 4 s (a per-user connection limit, see FlakyNntpProxy):
@@ -2920,6 +2946,7 @@ SCENARIOS = {
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
+    'xpackendhole_nodirect': scenario_xpackendhole_nodirect,
     'xpackdeadserver': scenario_xpackdeadserver,
     'wholefileunicode': scenario_wholefileunicode,
     'wholefilepadding': scenario_wholefilepadding,
@@ -3060,6 +3087,7 @@ SCENARIO_OPTIONS = {
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    'xpackendhole_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
     # Server2 (preferred level 0, behind a FlakyNntpProxy) serves the download
     # and goes down for good at the first duplicate request; Server1 is the
     # level-1 backup every repair fetch then falls back to

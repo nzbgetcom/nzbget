@@ -62,7 +62,10 @@ ContentSource* DiskSourceSet::GetSource(int memberIndex)
 		entry.Tried = true;
 		BString<1024> path("%s%c%s", *m_destDir, PATH_SEPARATOR,
 			m_members[memberIndex].Name.c_str());
-		int64 size = FileSystem::FileSize(path);
+		// a member's size may exceed the file on disk: a target joined from
+		// article files ends with its last downloaded article, and the ranges
+		// past it are declared holes (HoledSourceSet), never read from here
+		int64 size = std::max(FileSystem::FileSize(path), m_members[memberIndex].Size);
 		if (size > 0 && entry.File.Open(path, DiskFile::omRead))
 		{
 			entry.Source = std::make_unique<DiskContentSource>(entry.File, size);
@@ -1744,16 +1747,21 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 	for (size_t i = 0; i < memberNames.size(); i++)
 	{
 		BString<1024> path("%s%c%s", destDir, PATH_SEPARATOR, *memberNames[i]);
-		setMembers.push_back({*memberNames[i], FileSystem::FileSize(path)});
+		int64 size = FileSystem::FileSize(path);
 		for (size_t t = 0; t < targets.size(); t++)
 		{
 			if (!strcasecmp(*targets[t].Filename, *memberNames[i]))
 			{
 				memberHoles[i] = targets[t].Holes;
 				memberTargets[i] = targets[t].PatchEligible ? (int)t : -1;
+				// a file joined from article files (DirectWrite=no) ends with
+				// its last downloaded article: holes at its end lie past the
+				// end of the file on disk, and they are declared holes anyway
+				size = std::max(size, targets[t].DecodedFileSize);
 				break;
 			}
 		}
+		setMembers.push_back({*memberNames[i], size});
 	}
 
 	DiskSourceSet diskSources(destDir, setMembers);
