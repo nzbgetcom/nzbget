@@ -238,13 +238,13 @@ void DupeCoordinator::NzbFound(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 		if (!strcmp(nzbInfo->GetName(), dupeName))
 		{
 			message.Format("Skipping duplicate %s, found in history with %s", nzbInfo->GetName(),
-				sameContent ? "exactly same content" : good ? "good status" : "success status");
+				sameContent ? "exactly same content (the same posting, no new articles)" : good ? "good status" : "success status");
 		}
 		else
 		{
 			message.Format("Skipping duplicate %s, found in history %s with %s",
 				nzbInfo->GetName(), dupeName,
-				sameContent ? "exactly same content" : good ? "good status" : "success status");
+				sameContent ? "exactly same content (the same posting, no new articles)" : good ? "good status" : "success status");
 		}
 
 		if (nzbInfo->GetFeedId() && nzbInfo->GetDupeHint() == NzbInfo::dhNone)

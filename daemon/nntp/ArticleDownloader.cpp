@@ -476,8 +476,12 @@ ArticleDownloader::EStatus ArticleDownloader::CheckResponse(const char* response
 		detail("Article %s @ %s failed, %s: %s", *m_infoName, *m_connectionName, comment, response);
 		return adConnectError;
 	}
-	else if (!strncmp(response, "41", 2) || !strncmp(response, "42", 2) || !strncmp(response, "43", 2))
+	else if (!strncmp(response, "41", 2) || !strncmp(response, "42", 2) || !strncmp(response, "43", 2) ||
+		!strncmp(response, "451", 3))
 	{
+		// 451 is how some providers (super.newsgroupdirect.com) say "no such
+		// article": treat it like 430, not as an unknown error that is retried
+		// on the same server after <ArticleInterval>
 		detail("Article %s @ %s failed, %s: %s", *m_infoName, *m_connectionName, comment, response);
 		return adNotFound;
 	}
