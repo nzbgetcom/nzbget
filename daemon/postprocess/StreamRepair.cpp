@@ -36,6 +36,20 @@
 #include "FileSystem.h"
 #include "Unpack.h"
 
+namespace
+{
+	// a short write to a full disk may leave errno unset
+	CString WriteErrorMessage()
+	{
+		CString message = FileSystem::GetLastErrorMessage();
+		if (message.Empty())
+		{
+			message = "incomplete write (disk full?)";
+		}
+		return message;
+	}
+}
+
 ContentSource* DiskSourceSet::GetSource(int memberIndex)
 {
 	if (memberIndex < 0 || memberIndex >= (int)m_entries.size())
@@ -1595,11 +1609,12 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 				{
 					file.Seek(from);
 					if (file.Position() != from ||
-						file.Write(fetched.Data.data() + (from - fetched.Offset), to - from) != to - from)
+						file.Write(fetched.Data.data() + (from - fetched.Offset), to - from) != to - from ||
+						!file.Flush())
 					{
 						PrintMessage(Message::mkError,
 							"Could not write to %s during stream repair: %s",
-							*target.Filename, *FileSystem::GetLastErrorMessage());
+							*target.Filename, *WriteErrorMessage());
 						m_batchFetcher.CancelRemaining();
 						return recoveredParts;
 					}
@@ -2193,12 +2208,13 @@ int64 StreamRepairController::WriteInnerRange(ContentMap& targetMap, TargetSetFi
 		file->Seek(piece.Range.Offset);
 		if (file->Position() != piece.Range.Offset ||
 			file->Write(data + (innerPos[0].Offset - innerRange.Offset),
-				piece.Range.Size) != piece.Range.Size)
+				piece.Range.Size) != piece.Range.Size ||
+			!file->Flush())
 		{
 			PrintMessage(Message::mkError,
 				"Could not write to %s during stream repair: %s",
 				setMembers[piece.MemberIndex].Name.c_str(),
-				*FileSystem::GetLastErrorMessage());
+				*WriteErrorMessage());
 			return -1;
 		}
 		DupeStreamRepair::SubtractCovered(pieceTarget.Holes, piece.Range);
@@ -2970,11 +2986,12 @@ bool StreamRepairController::MaterializeDonorSet(NzbInfo* donorNzb,
 			file.Seek(fetched.Offset);
 			if (file.Position() != fetched.Offset ||
 				file.Write(fetched.Data.data(), fetched.Data.size()) !=
-					(int64)fetched.Data.size())
+					(int64)fetched.Data.size() ||
+				!file.Flush())
 			{
 				PrintMessage(Message::mkWarning,
 					"Could not write to %s during donor materialization: %s",
-					*path, *FileSystem::GetLastErrorMessage());
+					*path, *WriteErrorMessage());
 				m_batchFetcher.CancelRemaining();
 				return false;
 			}
