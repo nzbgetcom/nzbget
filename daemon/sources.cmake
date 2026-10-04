@@ -76,6 +76,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeArticleFallback.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeProbe.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/ReleaseName.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DupeStreamRepair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/HistoryCoordinator.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/NzbFile.cpp
@@ -163,6 +164,7 @@ set(INCLUDES ${INCLUDES}
 	${CMAKE_SOURCE_DIR}/daemon/nserv
 	${CMAKE_SOURCE_DIR}/daemon/postprocess
 	${CMAKE_SOURCE_DIR}/daemon/queue
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch
 	${CMAKE_SOURCE_DIR}/daemon/remote
 	${CMAKE_SOURCE_DIR}/daemon/system
 	${CMAKE_SOURCE_DIR}/daemon/util
