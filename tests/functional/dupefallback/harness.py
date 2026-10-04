@@ -2087,6 +2087,44 @@ def scenario_wholefilerestart(daemon, t):
             % (h['Status'], queued_job, recreated, integ))
 
 
+def scenario_reloadpostqueue(daemon, t):
+    """nzbget reloads (saving settings in the web UI does) while a download
+    waits in post-processing, three times: the reloaded post job must run.
+    Before, the queue counted as loaded from the start of the reload, so the
+    post-processor could sanitise the queue before it was loaded again: the
+    reloaded job kept its persisted stage, was never counted as queued, and
+    post-processing never started (it showed LOADING_PARS for good). Stream
+    repair makes post-processing run for minutes, so a reload meets it more
+    often."""
+    size, seg = 3_000_000, 500_000
+    data = _payload(size, 4260)
+    pp = _place_copy(t, 'rpA', data, 'movie.mkv')
+    api = daemon.wait_ready()
+    api.pausepost()
+    # a queue that takes a moment to load: the post-processor starts first
+    for i in range(40):
+        filler = build_multi_nzb([('rpA/movie.mkv', 'Fill%02d-%02d.bin' % (i, j), size, seg, set())
+                                  for j in range(50)])
+        daemon.append(api, 'Filler%02d' % i, filler, True, 'rp-fill-%d' % i, 0)
+    daemon.append(api, 'RelRP', build_nzb(pp, 'movie.mkv', size, seg, set()), False, 'rp-key', 100)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, 'Collection RelRP completely downloaded') == 0:
+        time.sleep(0.2)
+    for _ in range(3):
+        api.reload()
+        time.sleep(1)
+        api = daemon.wait_ready(timeout=60)
+    api.resumepost()
+    try:
+        h = daemon.wait_history(api, 'RelRP', timeout=60)
+        status = h['Status']
+    except RuntimeError:
+        status = 'STUCK:%s' % [g['Status'] for g in api.listgroups()]
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('reloadpostqueue', status.startswith('SUCCESS') and integ,
+            'status=%s integrity=%s' % (status, integ))
+
+
 PROD_OPTIONS = ['DupeArticleFallback=live', 'DupeStreamDecompress=yes', 'ContinuePartial=yes',
                 'ArticleCache=8192', 'FileNaming=auto', 'ReorderFiles=yes', 'PostStrategy=rocket',
                 'ParCheck=auto', 'ParRepair=yes', 'ParScan=dupe', 'ParQuick=yes', 'ParRename=yes',
@@ -2887,6 +2925,7 @@ SCENARIOS = {
     'wholefilepadding': scenario_wholefilepadding,
     'wholefileoldstyle': scenario_wholefileoldstyle,
     'wholefilecontinued': scenario_wholefilecontinued,
+    'reloadpostqueue': scenario_reloadpostqueue,
     'wholefiletwosets': scenario_wholefiletwosets,
     'dupefailovernonzb': scenario_dupefailovernonzb,
     'wholefileproofcost': scenario_wholefileproofcost,
@@ -3031,6 +3070,7 @@ SCENARIO_OPTIONS = {
     'wholefilepadding': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefileoldstyle': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilecontinued': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'reloadpostqueue': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefiletwosets': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'dupefailovernonzb': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'wholefileproofcost': ['DupeArticleFallback=stream', 'ParCheck=auto'],

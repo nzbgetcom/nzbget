@@ -62,6 +62,7 @@ suffix to make chosen articles "missing" on the active server.
 | `dupefailovernofallback` | `HealthCheck=dupe` with `DupeArticleFallback=no`: a posting missing only its first stretch is not abandoned for a lower-scored backup. |
 | `failoverlive` | `HealthCheck=dupe` with `live` mode: the failover parks the download (detaching any live pass) and the backup completes. |
 | `wholefilerestart` | nzbget restarts between download and post-processing while a whole-file job waits: the job is saved and loaded intact and the volume is still recreated. |
+| `reloadpostqueue` | nzbget reloads (as saving settings does) three times while a download waits in post-processing behind 40 queued downloads: the reloaded post job must run. Before, the post-processor could sanitise the queue before it was loaded again, and the job stayed at `LOADING_PARS` for good (a race: about half the runs). |
 | `prodwholefile` / `prodstream` | Whole-file recreation and stream repair under the production option set (`live`, direct rename and unpack, par-rename, quick par-check, unpack, article cache, `HealthCheck=dupe`) on a store-mode 7z split with a par2 index: par-check passes and unpack extracts a byte-identical movie. |
 | `prodrarwhole` / `prodrarstream` | The same on a store-mode rar set with valid CRCs, so `unrar` and direct unpack really run (`generators.rar3_store_volumes_valid`). |
 | `dupefailoverchain` | The first backup is dead too: the primary fails over to it, it fails over to the second, healthy backup, which completes; the parked primary is never brought back. |
