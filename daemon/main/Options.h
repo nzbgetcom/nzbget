@@ -60,6 +60,7 @@ public:
 	static constexpr std::string_view DUPESTREAMDECOMPRESS = "DupeStreamDecompress";
 	static constexpr std::string_view DUPESTREAMTIMEOUT = "DupeStreamTimeout";
 	static constexpr std::string_view DUPESEARCH = "DupeSearch";
+	static constexpr std::string_view DUPESEARCHDRYRUN = "DupeSearchDryRun";
 	static constexpr std::string_view DUPESEARCHURL = "DupeSearchUrl";
 	static constexpr std::string_view DUPESEARCHAPIKEY = "DupeSearchApiKey";
 	static constexpr std::string_view DUPESEARCHDELAY = "DupeSearchDelay";
@@ -457,6 +458,7 @@ public:
 	bool GetDupeStreamDecompress() const { return m_dupeStreamDecompress; }
 	int GetDupeStreamTimeout() const { return m_dupeStreamTimeout; }
 	bool GetDupeSearch() const { return m_dupeSearch; }
+	bool GetDupeSearchDryRun() const { return m_dupeSearchDryRun; }
 	const char* GetDupeSearchUrl() const { return m_dupeSearchUrl; }
 	const char* GetDupeSearchApiKey() const { return m_dupeSearchApiKey; }
 	int GetDupeSearchDelay() const { return m_dupeSearchDelay; }
@@ -659,6 +661,7 @@ private:
 	bool m_dupeStreamDecompress = false;
 	int m_dupeStreamTimeout = 60;
 	bool m_dupeSearch = false;
+	bool m_dupeSearchDryRun = false;
 	CString m_dupeSearchUrl;
 	CString m_dupeSearchApiKey;
 	int m_dupeSearchDelay = 20;

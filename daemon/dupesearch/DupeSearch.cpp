@@ -273,12 +273,13 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	// a managed pick: it has a key and a score that leave room below it for
 	// duplicates (they score pick - 1000 + 2..90)
 	bool changed = false;
-	if (Util::EmptyStr(nzbInfo->GetDupeKey()))
+	bool dryRun = g_Options->GetDupeSearchDryRun();
+	if (!dryRun && Util::EmptyStr(nzbInfo->GetDupeKey()))
 	{
 		nzbInfo->SetDupeKey(key.c_str());
 		changed = true;
 	}
-	if (nzbInfo->GetDupeScore() < BasePickScore)
+	if (!dryRun && nzbInfo->GetDupeScore() < BasePickScore)
 	{
 		nzbInfo->SetDupeScore(BasePickScore);
 		changed = true;
@@ -578,7 +579,7 @@ void DupeSearch::Search(const Job& job)
 		{
 			int score = ranks.Take(alive, twinOf(verified[i]));
 			int id = AddDonor(job, verified[i], base + score, alive);
-			if (id <= 0)
+			if (id == 0)
 			{
 				ranks.Release(score);
 				return;
@@ -741,6 +742,13 @@ void DupeSearch::Search(const Job& job)
 
 int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive)
 {
+	if (g_Options->GetDupeSearchDryRun())
+	{
+		info("DupeSearch: %s: dry run, would add %s [%s] score=%i alive=%i%%", job.name.c_str(),
+			posting.listing.title.c_str(), posting.listing.indexer.c_str(), score,
+			alive < 0 ? -1 : (int)std::lround(100 * alive));
+		return -1;
+	}
 	std::string lowerKey = LowerKey(job.dupeKey);
 	std::string fingerprint = posting.info.Fingerprint();
 	{
@@ -778,6 +786,11 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 
 bool DupeSearch::SetScore(int id, int score, const std::string& param)
 {
+	if (g_Options->GetDupeSearchDryRun() || id < 0)
+	{
+		info("DupeSearch: dry run, would set the score of download %i to %i %s", id, score, param.c_str());
+		return true;
+	}
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 	IdList ids{ id };
 	std::string text = std::to_string(score);

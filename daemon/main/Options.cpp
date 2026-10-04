@@ -300,6 +300,7 @@ void Options::InitDefaults()
 	SetOption(DUPESTREAMDECOMPRESS.data(), "no");
 	SetOption(DUPESTREAMTIMEOUT.data(), "60");
 	SetOption(DUPESEARCH.data(), "no");
+	SetOption(DUPESEARCHDRYRUN.data(), "no");
 	SetOption(DUPESEARCHURL.data(), "");
 	SetOption(DUPESEARCHAPIKEY.data(), "");
 	SetOption(DUPESEARCHDELAY.data(), "20");
@@ -740,6 +741,7 @@ void Options::InitOptions()
 	m_dupeStreamDecompress	= (bool)ParseEnumValue(DUPESTREAMDECOMPRESS.data(), BoolCount, BoolNames, BoolValues);
 	m_dupeStreamTimeout		= std::max(0, ParseIntValue(DUPESTREAMTIMEOUT.data(), 10));
 	m_dupeSearch			= (bool)ParseEnumValue(DUPESEARCH.data(), BoolCount, BoolNames, BoolValues);
+	m_dupeSearchDryRun		= (bool)ParseEnumValue(DUPESEARCHDRYRUN.data(), BoolCount, BoolNames, BoolValues);
 	m_dupeSearchUrl			= GetOption(DUPESEARCHURL.data());
 	m_dupeSearchApiKey		= GetOption(DUPESEARCHAPIKEY.data());
 	m_dupeSearchDelay		= std::max(0, ParseIntValue(DUPESEARCHDELAY.data(), 10));

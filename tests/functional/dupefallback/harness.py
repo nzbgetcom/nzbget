@@ -3636,6 +3636,29 @@ def scenario_dupesearchrescorefail(daemon, t):
     return ('dupesearchrescorefail', ok, 'donors=%d summary=%d warned=%d' % (len(donors), summary, warned))
 
 
+def scenario_dupesearchdryrun(daemon, t):
+    """DupeSearchDryRun: the search runs and logs what it would do (four donors,
+    ranks 90/89/85/82) but queues nothing and leaves the pick's key and score alone."""
+    n = 40
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(n)]
+    postings = {'twin100': (ids('tw'), 400_000, 1, 11), 'other100': (ids('ot'), 410_000, 1, 12),
+                'other95': (ids('o5'), 420_000, 40, 13), 'twin90': (ids('t9'), 400_000, 50, 14)}
+    alive = set(postings['twin100'][0]) | set(postings['other100'][0]) | set(postings['other95'][0][:38]) \
+        | set(postings['twin90'][0][:36])
+    api = _ds_donor_env(daemon, t, postings, alive)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    queued = [h for h in api.history() if h.get('NZBName') == DS_TITLE]
+    groups = [g for g in api.listgroups() if g['NZBName'] == DS_TITLE]
+    would = _grep_log(t, 'dry run, would add')
+    summary = _grep_log(t, 'verified=4 added=4')
+    pick_ok = len(groups) == 1 and groups[0]['MaxPostTime'] is not None and groups[0].get('DupeScore') == DS_PICK
+    ok = not queued and would == 4 and summary == 1 and pick_ok
+    return ('dupesearchdryrun', ok, 'queued=%d would=%d summary=%d pick_ok=%s' % (len(queued), would, summary, pick_ok))
+
+
 def scenario_dupesearchdonor(daemon, t):
     """Items carrying the DupeAlive parameter (the nzbget-dupe-proxy marks its
     duplicates with it) or the DupeSearch parameter (what this search marks
@@ -4037,6 +4060,7 @@ SCENARIOS = {
     'dupesearchfilters': scenario_dupesearchfilters,
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
+    'dupesearchdryrun': scenario_dupesearchdryrun,
     'dupesearchrescorefail': scenario_dupesearchrescorefail,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
     'dupesearchdonor': scenario_dupesearchdonor,
@@ -4204,6 +4228,7 @@ SCENARIO_OPTIONS = {
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrescorefail': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -4274,10 +4299,10 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
-                   'dupesearchfastdead', 'dupesearchrescorefail'}
+                   'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail'}
+SCENARIO_FAKE_NNTP = {'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
