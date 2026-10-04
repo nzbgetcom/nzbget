@@ -55,10 +55,25 @@ Status ArticleRetriesValidator::Validate() const
 
 	if (val < 3)
 	{
-		return Status::Warning(
-			"'" + std::string(Options::ARTICLERETRIES) + "' is set to " + std::to_string(val) +
-			". "
-			"This is very low; temporary connection drops may cause permanent download failures");
+		std::string message = "'" + std::string(Options::ARTICLERETRIES) + "' is set to " +
+			std::to_string(val) + ". This is very low; temporary connection drops may cause permanent download failures";
+		// duplicate handling judges a posting by its article results: an article
+		// lost to one timeout reads as missing
+		std::string decisions;
+		if (m_options.GetHealthCheck() == Options::hcDupe)
+		{
+			decisions = "HealthCheck=dupe";
+		}
+		if (m_options.GetDupeSearch())
+		{
+			decisions += std::string(decisions.empty() ? "" : " and ") + "DupeSearch";
+		}
+		if (!decisions.empty())
+		{
+			message += ", and " + decisions + " may then take a good download for a bad one "
+				"(fail over from it, rank its duplicates above it)";
+		}
+		return Status::Warning(message);
 	}
 
 	return Status::Ok();

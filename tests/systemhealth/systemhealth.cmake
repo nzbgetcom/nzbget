@@ -5,4 +5,5 @@ list(APPEND TESTS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/systemhealth/NewsServerValidator.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/systemhealth/ExtensionScriptsValidator.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/systemhealth/FeedValidator.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/systemhealth/ConnectionValidator.cpp
 )
