@@ -21,6 +21,7 @@
 #include "nzbget.h"
 
 #include <algorithm>
+#include <chrono>
 #include <set>
 #include "StreamRepair.h"
 #include "StreamCrypto.h"
@@ -732,11 +733,24 @@ void StreamRepairController::StartWatchdog()
 	m_watchdog = std::thread([this, timeout]()
 		{
 			std::unique_lock<std::mutex> lock(m_watchdogMutex);
-			if (!m_watchdogCond.wait_for(lock, std::chrono::seconds(timeout), [this] { return m_watchdogDone; }))
+			int64 progress = m_progressBytes;
+			auto lastProgress = std::chrono::steady_clock::now();
+			while (!m_watchdogDone)
 			{
-				m_timedOut = true;
-				lock.unlock();
-				Stop();
+				m_watchdogCond.wait_for(lock, std::chrono::milliseconds(500));
+				auto now = std::chrono::steady_clock::now();
+				if (m_progressBytes != progress)
+				{
+					progress = m_progressBytes;
+					lastProgress = now;
+				}
+				else if (!m_watchdogDone && now - lastProgress >= std::chrono::seconds(timeout))
+				{
+					m_timedOut = true;
+					lock.unlock();
+					Stop();
+					return;
+				}
 			}
 		});
 }
@@ -768,7 +782,7 @@ void StreamRepairController::StopWatchdog(const char* nzbName, const std::vector
 			wholeFiles.Format(" and %i whole file(s)", unsized);
 		}
 		PrintMessage(Message::mkWarning,
-			"Stream repair of %s stopped after %i seconds (option DupeStreamTimeout): %.1f MB recovered, %.1f MB%s still missing",
+			"Stream repair of %s stopped: nothing recovered for %i seconds (option DupeStreamTimeout); %.1f MB recovered, %.1f MB%s still missing",
 			nzbName, g_Options->GetDupeStreamTimeout(), m_recoveredBytes / 1024.0 / 1024.0,
 			missing / 1024.0 / 1024.0, *wholeFiles);
 	}
@@ -1728,6 +1742,7 @@ int StreamRepairController::PatchFromDonor(DiskFile& file, RepairTarget& target,
 			{
 				DupeStreamRepair::SubtractCovered(target.Holes, range);
 				recoveredBytes += range.Size;
+				m_progressBytes += range.Size;
 			}
 
 			if (!written.empty())
@@ -2380,6 +2395,7 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 	{
 		int recoveredParts = donorSources.TakeServedParts();
 		m_recoveredBytes += written;
+		m_progressBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
 			written / 1024.0 / 1024.0, recoveredParts,
@@ -2780,6 +2796,7 @@ int64 StreamRepairController::PatchFromDonorSetEncrypted(RepairSetData& repairSe
 	{
 		int recoveredParts = donorSources.TakeServedParts();
 		m_recoveredBytes += written;
+		m_progressBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB (%i donor article(s)) of %s from duplicate %s (cross-packing)",
 			written / 1024.0 / 1024.0, recoveredParts,
@@ -3251,6 +3268,7 @@ int64 StreamRepairController::PatchFromDonorInnerFile(RepairSetData& repairSet,
 	{
 		m_recoveredHoles += holesFilled;
 		m_recoveredBytes += written;
+		m_progressBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB of %s from duplicate %s (decompressed)",
 			written / 1024.0 / 1024.0, targetMap.GetInnerName(), donorName);
@@ -3306,6 +3324,7 @@ int64 StreamRepairController::PatchFromDonorInnerFileEncrypted(RepairSetData& re
 		}
 		m_recoveredHoles += holesFilled;
 		m_recoveredBytes += written;
+		m_progressBytes += written;
 		PrintMessage(Message::mkInfo,
 			"Recovered %.1f MB of %s from duplicate %s (decompressed)",
 			written / 1024.0 / 1024.0, targetMap.GetInnerName(), donorName);

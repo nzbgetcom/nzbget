@@ -233,14 +233,16 @@ private:
 	PostInfo* m_postInfo = nullptr;
 	bool m_liveMode = false;
 	int m_nzbId = 0;
-	// option <DupeStreamTimeout>: a watchdog stops the pass after that long;
-	// unlike a stop for shutdown, the pass then finishes as a normal one
-	// (what is still missing goes to par-repair, nothing is kept to resume)
+	// option <DupeStreamTimeout>: a watchdog stops the pass once it recovered
+	// nothing for that long; unlike a stop for shutdown, the pass then
+	// finishes as a normal one (what is still missing goes to par-repair,
+	// nothing is kept to resume). m_progressBytes is what it watches.
 	std::thread m_watchdog;
 	std::mutex m_watchdogMutex;
 	std::condition_variable m_watchdogCond;
 	bool m_watchdogDone = false;
 	std::atomic<bool> m_timedOut{false};
+	std::atomic<int64> m_progressBytes{0};
 	// a duplicate none of whose sampled articles exists on any server is
 	// skipped (checked once per pass, within DonorCheckSec)
 	static constexpr int DonorCheckSec = 20;

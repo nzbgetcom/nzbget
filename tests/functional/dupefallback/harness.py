@@ -932,11 +932,12 @@ def scenario_stream(daemon, t):
 
 
 def scenario_streamtimeout(daemon, t):
-    """DupeStreamTimeout: the only duplicate is slow (every request for its
-    articles waits 4 s), so repairing the primary's 4 MB hole from it would
-    take minutes. With DupeStreamTimeout=5 the repair stops after 5 seconds,
-    logs why, and the download finishes at once as a failure (no par2 here)
-    instead of sitting in stream repair, so a client can grab another release."""
+    """DupeStreamTimeout: the only duplicate is stalled (every request for its
+    articles waits 8 s, longer than the timeout), so the repair of the
+    primary's 4 MB hole recovers nothing. With DupeStreamTimeout=5 it stops
+    after 5 seconds without progress, logs why, and the download finishes at
+    once as a failure (no par2 here) instead of sitting in stream repair, so a
+    client can grab another release."""
     size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
     data = _payload(size, 4343)
     pp = _place_copy(t, 'slowA', data, 'file.mkv')
@@ -949,12 +950,34 @@ def scenario_streamtimeout(daemon, t):
     start = time.time()
     h = daemon.wait_history(api, 'SlowA', timeout=120)
     took = time.time() - start
-    stopped = _grep_log(t, 'stopped after 5 seconds (option DupeStreamTimeout)')
+    stopped = _grep_log(t, 'nothing recovered for 5 seconds (option DupeStreamTimeout)')
     interrupted = _grep_log(t, 'Stream repair interrupted')
     ok = stopped == 1 and interrupted == 0 and 'SUCCESS' not in h['Status'] and took < 40 and \
         daemon.proxy.delayed > 0
     return ('streamtimeout', ok, 'status=%s took=%.0fs stopped_logs=%d interrupted_logs=%d delayed=%d'
             % (h['Status'], took, stopped, interrupted, daemon.proxy.delayed))
+
+
+def scenario_streamslowprogress(daemon, t):
+    """DupeStreamTimeout counts time WITHOUT progress: a duplicate that answers
+    slowly (each request waits 1 s) but keeps delivering is never cut off, even
+    when the whole repair takes longer than the timeout (5 s). The file is
+    repaired in full."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4343)
+    pp = _place_copy(t, 'slowA', data, 'file.mkv')
+    dp = _place_copy(t, 'slowB', data, 'file.mkv')
+    primary = build_nzb(pp, 'SlowA.mkv', size, seg_primary, set(range(2, 10)))
+    donor = build_nzb(dp, 'obf-slow.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSlow', donor, True, 'slow-key', 50)
+    daemon.append(api, 'SlowA', primary, False, 'slow-key', 100)
+    h = daemon.wait_history(api, 'SlowA', timeout=180)
+    stopped = _grep_log(t, '(option DupeStreamTimeout)')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    ok = stopped == 0 and integ and 'SUCCESS' in h['Status'] and daemon.proxy.delayed > 5
+    return ('streamslowprogress', ok, 'status=%s stopped_logs=%d integrity=%s delayed=%d'
+            % (h['Status'], stopped, integ, daemon.proxy.delayed))
 
 
 def scenario_streamdeaddonor(daemon, t):
@@ -3339,6 +3362,7 @@ SCENARIOS = {
     'stream': scenario_stream,
     'streamtimeout': scenario_streamtimeout,
     'streamdeaddonor': scenario_streamdeaddonor,
+    'streamslowprogress': scenario_streamslowprogress,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -3459,6 +3483,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it
@@ -3601,7 +3626,7 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
-SCENARIO_DELAY_PROXY = {'streamtimeout': (b'slowB/', 4.0)}
+SCENARIO_DELAY_PROXY = {'streamtimeout': (b'slowB/', 8.0), 'streamslowprogress': (b'slowB/', 1.0)}
 
 
 # --------------------------------------------------------------------------- #
