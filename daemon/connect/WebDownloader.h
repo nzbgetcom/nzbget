@@ -60,6 +60,8 @@ public:
 	time_t GetLastUpdateTime() { return m_lastUpdateTime; }
 	void SetLastUpdateTimeNow();
 	bool GetConfirmedLength() { return m_confirmedLength; }
+	// the status code of the last response (0 before any)
+	int GetHttpStatus() const { return m_httpStatus; }
 	const char* GetOriginalFilename() { return m_originalFilename; }
 	void SetForce(bool force) { m_force = force; }
 	void SetRetry(bool retry) { m_retry = retry; }
@@ -83,6 +85,7 @@ private:
 	DiskFile m_outFile;
 	int m_contentLen;
 	bool m_confirmedLength = false;
+	int m_httpStatus = 0;
 	CString m_originalFilename;
 	bool m_force = false;
 	bool m_redirecting;

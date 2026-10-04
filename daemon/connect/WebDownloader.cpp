@@ -440,6 +440,7 @@ WebDownloader::EStatus WebDownloader::CheckResponse(const char* response)
 	}
 
 	hTTPResponse++;
+	m_httpStatus = atoi(hTTPResponse);
 
 	if (!strncmp(hTTPResponse, "400", 3) || !strncmp(hTTPResponse, "499", 3))
 	{

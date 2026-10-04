@@ -56,6 +56,8 @@ public:
 	static constexpr int StateTtlSec = 30 * 24 * 3600;
 	// the score of a managed pick, and the room below it for donors
 	static constexpr int BasePickScore = 1000000;
+	// search and fetch of one pick are meant to fit in this long
+	static constexpr int SearchDeadlineSec = 60;
 
 	// parameters of the duplicates this search queued: a marker, and the
 	// share of the posting found alive (percent)
@@ -89,6 +91,8 @@ private:
 		std::string name;
 		std::string dupeKey;
 		std::string category;
+		std::string imdb;	// from the nzb-file's meta data
+		std::string tvdb;
 		int score = 0;
 	};
 

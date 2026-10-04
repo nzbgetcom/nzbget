@@ -143,6 +143,8 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.parse
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 try:
     from xmlrpc.client import ServerProxy
 except ImportError:
@@ -415,6 +417,7 @@ class Daemon:
             target.makedirs('main', d)
         self.conf_rel = 'nzbget.conf'
         self.proxy = None
+        self.newznab = None
 
     def write_config(self, extra_options):
         w = self.t.path
@@ -725,6 +728,57 @@ class DelayingNntpProxy(RewritingNntpProxy):
                 except OSError:
                     pass
                 sock.close()
+class FakeNewznab:
+    """A Newznab indexer for the duplicate search: an HTTP server whose
+    ``respond(params, path)`` returns (status, body bytes); every request is
+    recorded in ``requests`` (the query parameters, apikey included)."""
+
+    def __init__(self):
+        outer = self
+        self.requests = []
+        self.lock = threading.Lock()
+        self.respond = lambda params, path: (200, newznab_xml([]))
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                parts = urllib.parse.urlsplit(self.path)
+                params = {k: v[0] for k, v in urllib.parse.parse_qs(parts.query).items()}
+                with outer.lock:
+                    outer.requests.append(dict(params, _path=parts.path))
+                status, body = outer.respond(params, parts.path)
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/xml')
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *args):
+                pass
+
+        self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        self.port = self.server.server_address[1]
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+
+    def close(self):
+        self.server.shutdown()
+        self.server.server_close()
+
+
+def newznab_xml(items, error=None):
+    """A Newznab search page; items are dicts (title, link, size, grabs, date, indexer)."""
+    if error:
+        return ('<?xml version="1.0" encoding="UTF-8"?>\n<error code="%d" description="%s"/>' % error).encode()
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<rss xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" version="2.0"><channel>',
+           '<title>Fake</title>']
+    for it in items:
+        out.append('<item><title>%s</title><link>%s</link><size>%d</size>'
+                   '<newznab:attr name="size" value="%d"/><newznab:attr name="grabs" value="%d"/>'
+                   '<newznab:attr name="usenetdate" value="%s"/><newznab:attr name="hydraIndexerName" value="%s"/></item>'
+                   % (it['title'], it['link'], it.get('size', 0), it.get('size', 0), it.get('grabs', 0),
+                      it.get('date', 'Tue, 10 Jun 2025 01:10:05 +0000'), it.get('indexer', 'Fake')))
+    out.append('</channel></rss>')
+    return '\n'.join(out).encode()
 
 
 # --------------------------------------------------------------------------- #
@@ -3149,6 +3203,53 @@ def scenario_dupesearchkey(daemon, t):
             'searched_logs=%d key=%s score=%d' % (searched, key, score))
 
 
+def scenario_dupesearchsearch(daemon, t):
+    """The search of a pick: the full title query reads three pages (250
+    results), the short query one page, the short query with the group gets an
+    indexer error; the failing query doesn't fail the search. Results are
+    merged by link and filtered to the same release, and the api key reaches
+    the indexer but never the log."""
+    full, short, grouped = 'show s01e01 1080p web h264 grp', 'show s01e01 1080p', 'show s01e01 1080p grp'
+    api_key = 'SECRETKEY123'
+
+    def item(i, same):
+        title = 'Show S01E01 1080p WEB H264-GRP' if same else 'Show.S01E01.1080p.WEB.H264-OTHER%d' % i
+        return {'title': title, 'link': 'http://127.0.0.1:1/getnzb/%d?apikey=%s' % (i, api_key),
+                'size': 1_000_000 + i, 'grabs': i % 7, 'indexer': 'Idx%d' % (i % 3)}
+
+    def respond(params, path):
+        q, offset, limit = params.get('q'), int(params.get('offset', 0)), int(params.get('limit', 0))
+        if params.get('apikey') != api_key:
+            return 200, newznab_xml([], error=(100, 'Wrong api key'))
+        if q == full:
+            return 200, newznab_xml([item(i, i % 5 == 0) for i in range(offset, min(offset + limit, 250))])
+        if q == short:      # two results of the full query again, and a new one of the same release
+            return 200, newznab_xml([item(0, True), item(1, False), item(900, True)])
+        if q == grouped:
+            return 200, newznab_xml([], error=(300, 'That search could not be run'))
+        return 200, newznab_xml([])
+
+    daemon.newznab.respond = respond
+    api = daemon.wait_ready()
+    _ds_append(api, DS_TITLE, _ds_nzb(t, 's'), DS_KEY, DS_PICK)
+    deadline = time.time() + 20
+    while time.time() < deadline and _grep_log(t, 'DupeSearch: %s: ' % DS_TITLE) == 0:
+        time.sleep(0.5)
+    reqs = list(daemon.newznab.requests)
+    log = t.read_file('nzbget.log').decode(errors='replace')
+    offsets = sorted(int(r['offset']) for r in reqs if r.get('q') == full)
+    short_pages = sum(1 for r in reqs if r.get('q') == short)
+    grouped_pages = sum(1 for r in reqs if r.get('q') == grouped)
+    keys_sent = all(r.get('apikey') == api_key for r in reqs)
+    summary = _grep_log(t, 'DupeSearch: %s: 251 result(s) from 3 search(es) (1 failed, 5 page(s)), 51 of them the same release' % DS_TITLE)
+    error_logged = 'error 300' in log
+    leaked = api_key in log
+    return ('dupesearchsearch', offsets == [0, 100, 200] and short_pages == 1 and grouped_pages == 1 and
+            len(reqs) == 5 and keys_sent and summary == 1 and error_logged and not leaked,
+            'full_offsets=%s short_pages=%d grouped_pages=%d requests=%d summary_logs=%d error_logged=%s api_key_in_log=%s'
+            % (offsets, short_pages, grouped_pages, len(reqs), summary, error_logged, leaked))
+
+
 def scenario_dupesearchdonor(daemon, t):
     """Items carrying the DupeAlive parameter (the nzbget-dupe-proxy marks its
     duplicates with it) or the DupeSearch parameter (what this search marks
@@ -3545,6 +3646,7 @@ SCENARIOS = {
     'deadpickpartial': scenario_deadpickpartial,
     'dupesearchtrigger': scenario_dupesearchtrigger,
     'dupesearchkey': scenario_dupesearchkey,
+    'dupesearchsearch': scenario_dupesearchsearch,
     'dupesearchdonor': scenario_dupesearchdonor,
     'dupesearchrestart': scenario_dupesearchrestart,
     'deadpickservers': scenario_deadpickservers,
@@ -3704,6 +3806,7 @@ SCENARIO_OPTIONS = {
     'dupesearchtrigger': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
+    'dupesearchsearch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
     'dupesearchrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'deadpickservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickfewservers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -3770,6 +3873,9 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
                         'streamtooslow': [(b'slowB/', 1.0)]}
+# scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
+# scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
+SCENARIO_NEWZNAB = {'dupesearchsearch'}
 
 
 # --------------------------------------------------------------------------- #
@@ -3841,6 +3947,9 @@ def main():
                     options += ['Server%d.Host=127.0.0.1' % number, 'Server%d.Port=1' % number,
                                 'Server%d.Connections=2' % number, 'Server%d.Level=0' % number,
                                 'Server%d.Encryption=no' % number, 'Server%d.Optional=yes' % number]
+            if name in SCENARIO_NEWZNAB:
+                daemon.newznab = FakeNewznab()
+                options.append('DupeSearchUrl=http://127.0.0.1:%d/api' % daemon.newznab.port)
             daemon.write_config(options)
             daemon.start_nserv(capture_requests=(name in CAPTURE_REQUESTS),
                                extra_args=SCENARIO_NSERV_ARGS.get(name, ()), port=nserv_port)
@@ -3872,6 +3981,8 @@ def main():
         finally:
             if daemon.proxy:
                 daemon.proxy.close()
+            if daemon.newznab:
+                daemon.newznab.close()
             target.teardown(args.keep)
 
     # tri-state result: True/False are real pass/fail, None is a graceful SKIP

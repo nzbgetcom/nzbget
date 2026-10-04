@@ -24,6 +24,8 @@
 #include <fstream>
 #include <sstream>
 #include "DupeSearch.h"
+#include "HttpGet.h"
+#include "Newznab.h"
 #include "ReleaseName.h"
 #include "FileSystem.h"
 #include "Log.h"
@@ -73,6 +75,7 @@ bool DupeSearch::IsDonor(NzbInfo* nzbInfo)
 
 DupeSearch::DupeSearch()
 {
+	HttpGet::Reset();
 	m_observer.m_owner = this;
 	DownloadQueue::Guard()->Attach(&m_observer);
 }
@@ -85,6 +88,7 @@ DupeSearch::~DupeSearch()
 void DupeSearch::Stop()
 {
 	Thread::Stop();
+	HttpGet::StopAll();
 	std::lock_guard<std::mutex> guard(m_mutex);
 	m_cond.notify_all();
 }
@@ -284,7 +288,27 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 
 void DupeSearch::Search(const Job& job)
 {
-	debug("DupeSearch: search of %s", job.name.c_str());
+	// search and fetch together are meant to fit in about this long
+	time_t deadline = Util::CurrentTime() + SearchDeadlineSec;
+
+	std::vector<Newznab::Params> queries = Newznab::BuildQueries(job.name, job.imdb, job.tvdb);
+	Newznab::SearchStats stats;
+	std::vector<Newznab::Result> results = Newznab::Search(g_Options->GetDupeSearchUrl(),
+		g_Options->GetDupeSearchApiKey(), queries, deadline, &stats);
+
+	// the same release by name; the size isn't a criterion (postings of one
+	// release differ by gigabytes in par2 and packaging)
+	std::vector<Newznab::Result> candidates;
+	for (const Newznab::Result& result : results)
+	{
+		if (ReleaseName::SameRelease(job.name, result.title))
+		{
+			candidates.push_back(result);
+		}
+	}
+
+	info("DupeSearch: %s: %i result(s) from %i search(es) (%i failed, %i page(s)), %i of them the same release",
+		job.name.c_str(), (int)results.size(), stats.queries, stats.failed, stats.pages, (int)candidates.size());
 }
 
 std::string DupeSearch::StatePath()

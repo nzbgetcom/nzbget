@@ -1,0 +1,783 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<rss xmlns:atom="http://www.w3.org/2005/Atom"  xmlns:newznab="http://www.newznab.com/DTD/2010/feeds/attributes/" version="2.0">
+    
+    <channel>
+        <title>NZBHydra 2</title>
+        <link>https://www.github.com/theotherp/nzbhydra2</link>
+        <webMaster>theotherp@posteo.net</webMaster>
+        <generator>NZBHydra2</generator>
+        <newznab:response offset="0" total="46"/>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/2114962605753885140?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/2114962605753885140?apikey=APIKEY" length="10896716818" type="application/x-nzb"/>
+            <pubDate>Tue, 10 Jun 2025 01:10:05 +0000</pubDate>
+            <guid isPermaLink="false">2114962605753885140</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://api.althub.co.za/details/6c9e4b2ef02bde0488643b7a8c682466#comments</comments>
+            <category>TV UHD</category>
+            <size>10896716818</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="28"/>
+            <newznab:attr name="grabs" value="111"/>
+            <newznab:attr name="group" value="alt.binaries.newznzb.india"/>
+            <newznab:attr name="guid" value="2114962605753885140"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="cmVsZWFzZXM@YWx0aHViLmNvLnph.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="37753121147cddc6d3971efd11688958b77237f6"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10896716818"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Tue, 10 Jun 2025 01:10:05 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.althub.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="altHUB"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/5501704193941053210?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/5501704193941053210?apikey=APIKEY" length="10893813254" type="application/x-nzb"/>
+            <pubDate>Fri, 11 Oct 2024 13:04:24 +0000</pubDate>
+            <guid isPermaLink="false">5501704193941053210</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://squareeyed.org/details/f630a141545b26626144e8cb886a364e#comments</comments>
+            <category>TV UHD</category>
+            <size>10893813254</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="59"/>
+            <newznab:attr name="grabs" value="0"/>
+            <newznab:attr name="group" value="alt.binaries.hunters"/>
+            <newznab:attr name="guid" value="5501704193941053210"/>
+            <newznab:attr name="imdb" value="7671070"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="NX28RVdyNnRMX@ngPost.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="775cae078244546744bd11cfc4142a0ea468c300"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10893813254"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Fri, 11 Oct 2024 13:04:22 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="squareeyed.org"/>
+            <newznab:attr name="hydraIndexerName" value="Square Eyed"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/9208979542589165424?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/9208979542589165424?apikey=APIKEY" length="10888676002" type="application/x-nzb"/>
+            <pubDate>Fri, 11 Oct 2024 09:54:57 +0000</pubDate>
+            <guid isPermaLink="false">9208979542589165424</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://digitalcarnage.info/details/e691295fa801356869f068038bfba080#comments</comments>
+            <category>TV UHD</category>
+            <size>10888676002</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="69"/>
+            <newznab:attr name="grabs" value="5"/>
+            <newznab:attr name="group" value="alt.binaries.xylo"/>
+            <newznab:attr name="guid" value="9208979542589165424"/>
+            <newznab:attr name="imdbid" value="tt7671070"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="9BEnLgUFvzuIq@ngPost_pc_games.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="seriesfull" value="S03E07"/>
+            <newznab:attr name="sha1" value="4053a1f61462ff2c66d53b72ceb413ba9fcc2a82"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10888676002"/>
+            <newznab:attr name="subs" value="English"/>
+            <newznab:attr name="subs" value="Es-419"/>
+            <newznab:attr name="subs" value="Portuguese"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="tvairdate" value="2024-09-22 00:00:00"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvtitle" value="TBA"/>
+            <newznab:attr name="usenetdate" value="Fri, 11 Oct 2024 09:54:57 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="digitalcarnage.info"/>
+            <newznab:attr name="hydraIndexerName" value="Digital Carnage"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-1230298877539767968?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-1230298877539767968?apikey=APIKEY" length="10882951293" type="application/x-nzb"/>
+            <pubDate>Thu, 10 Oct 2024 22:10:29 +0000</pubDate>
+            <guid isPermaLink="false">-1230298877539767968</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://api.althub.co.za/details/f875b1c7539626d65bdd7aa6a079f2c9#comments</comments>
+            <category>TV UHD</category>
+            <size>10882951293</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="28"/>
+            <newznab:attr name="grabs" value="165"/>
+            <newznab:attr name="group" value="alt.binaries.etc"/>
+            <newznab:attr name="guid" value="-1230298877539767968"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="cmVsZWFzZXM@YWx0aHViLmNvLnph.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="26d6648a1d3a033eaeafe3cafc141e0f5d325bb7"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10882951293"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Thu, 10 Oct 2024 22:10:29 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.althub.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="altHUB"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-8023793310611084559?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-8023793310611084559?apikey=APIKEY" length="10888682242" type="application/x-nzb"/>
+            <pubDate>Thu, 10 Oct 2024 17:39:22 +0000</pubDate>
+            <guid isPermaLink="false">-8023793310611084559</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://abnzb.com/details/c4857d5b5b2de16e16097181ee71c328#comments</comments>
+            <category>TV UHD</category>
+            <size>10888682242</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="69"/>
+            <newznab:attr name="grabs" value="32"/>
+            <newznab:attr name="group" value="alt.binaries.nzb"/>
+            <newznab:attr name="guid" value="-8023793310611084559"/>
+            <newznab:attr name="imdb" value="7671070"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="kBEw0luXYORvs@nyuu.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="c370ae3110e784d16aa104158dec4f55933b5c7e"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10888682242"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Thu, 10 Oct 2024 17:39:21 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="abnzb.com"/>
+            <newznab:attr name="hydraIndexerName" value="abNZB"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/7576479056932564524?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/7576479056932564524?apikey=APIKEY" length="11719878914" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 04:45:02 +0000</pubDate>
+            <guid isPermaLink="false">7576479056932564524</guid>
+            <category>TV TV/UHD</category>
+            <size>11719878914</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="guid" value="7576479056932564524"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719878914"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="debridmediamanager.com"/>
+            <newznab:attr name="hydraIndexerName" value="Zurg"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/3333057272802678753?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/3333057272802678753?apikey=APIKEY" length="11719878914" type="application/x-nzb"/>
+            <pubDate>Tue, 04 Nov 2025 16:08:01 +0000</pubDate>
+            <guid isPermaLink="false">3333057272802678753</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://ninjacentral.co.za/details/bfc08e885f82a4e88aa7f8ccac32395b#comments</comments>
+            <category>TV UHD</category>
+            <size>11719878914</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="16"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.alias"/>
+            <newznab:attr name="guid" value="3333057272802678753"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="QDLrhJ840Ds71]NYRRwL1XUTwu@wMMf82pA.NQp"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="31d9d4d331e7f2cc61bb419d503736be4506d720"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719878914"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0200"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 06:41:45 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="ninjacentral.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="Ninjacentral"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/4126580768857249278?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/4126580768857249278?apikey=APIKEY" length="11719878914" type="application/x-nzb"/>
+            <pubDate>Tue, 04 Nov 2025 16:09:05 +0000</pubDate>
+            <guid isPermaLink="false">4126580768857249278</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://www.miatrix.com/details/17ec39c0f869d2ed77fe088d9b13eb2c#comments</comments>
+            <category>TV UHD</category>
+            <size>11719878914</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="7"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.alias"/>
+            <newznab:attr name="guid" value="4126580768857249278"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="QDLrhJ840Ds71]NYRRwL1XUTwu@wMMf82pA.NQp"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="7c6f394f2bee8727a4e402ae9f1af123f0c34b1b"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719878914"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 -0400"/>
+            <newznab:attr name="tvtitle" value="industry"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 00:41:45 -0400"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="www.miatrix.com"/>
+            <newznab:attr name="hydraIndexerName" value="miatrix"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/3435206443822673002?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/3435206443822673002?apikey=APIKEY" length="11719878914" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 04:42:24 +0000</pubDate>
+            <guid isPermaLink="false">3435206443822673002</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://nzbfinder.ws/details/60de8da5-2d25-4038-9cf0-4d7f776f21f3#comments</comments>
+            <category>TV UHD</category>
+            <size>11719878914</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="164"/>
+            <newznab:attr name="guid" value="3435206443822673002"/>
+            <newznab:attr name="imdbid" value="tt7671070"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719878914"/>
+            <newznab:attr name="subs" value="English (US)"/>
+            <newznab:attr name="subs" value="Spanish (Latin America)"/>
+            <newznab:attr name="subs" value="Portuguese (BR)"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 06:41:41 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="nzbfinder.ws"/>
+            <newznab:attr name="hydraIndexerName" value="NZB Finder"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-4645798054463878518?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-4645798054463878518?apikey=APIKEY" length="11719878914" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 04:45:02 +0000</pubDate>
+            <guid isPermaLink="false">-4645798054463878518</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://drunkenslug.com/details/8e1043516cf63d75f638e08ea13ebac7464e95b9#comments</comments>
+            <category>TV UHD</category>
+            <size>11719878914</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="203"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.aviation"/>
+            <newznab:attr name="guid" value="-4645798054463878518"/>
+            <newznab:attr name="imdbid" value="7671070"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="r2mL6NzR7Fsb@Ez06anKx.pJy"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719878914"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 05:41:41 +0100"/>
+            <newznab:attr name="videos_id" value="10035277"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.drunkenslug.com"/>
+            <newznab:attr name="hydraIndexerName" value="Drunken Slug"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/4812423718523786488?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/4812423718523786488?apikey=APIKEY" length="11711166170" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 02:54:02 +0000</pubDate>
+            <guid isPermaLink="false">4812423718523786488</guid>
+            <category>TV TV/UHD</category>
+            <size>11711166170</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="guid" value="4812423718523786488"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11711166170"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="debridmediamanager.com"/>
+            <newznab:attr name="hydraIndexerName" value="Zurg"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-7807152922957425104?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-7807152922957425104?apikey=APIKEY" length="11711166170" type="application/x-nzb"/>
+            <pubDate>Tue, 04 Nov 2025 16:08:01 +0000</pubDate>
+            <guid isPermaLink="false">-7807152922957425104</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://ninjacentral.co.za/details/ea96275c9d3ea68fcc7d7ad88abec3b1#comments</comments>
+            <category>TV UHD</category>
+            <size>11711166170</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="24"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.aviation"/>
+            <newznab:attr name="guid" value="-7807152922957425104"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="zdRmVc840Ds71]2DM2kfgsiLrw@HoBaEhlV.DeW"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="99cfc9f7362439eed6d539a77537f30d5c20c707"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11711166170"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0200"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 04:50:47 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="ninjacentral.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="Ninjacentral"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-183430120354170852?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-183430120354170852?apikey=APIKEY" length="11711166170" type="application/x-nzb"/>
+            <pubDate>Tue, 04 Nov 2025 16:09:06 +0000</pubDate>
+            <guid isPermaLink="false">-183430120354170852</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://www.miatrix.com/details/24ef81a1d8cd7168e23b511d4029d87e#comments</comments>
+            <category>TV UHD</category>
+            <size>11711166170</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="9"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.aviation"/>
+            <newznab:attr name="guid" value="-183430120354170852"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="zdRmVc840Ds71]2DM2kfgsiLrw@HoBaEhlV.DeW"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="5e76ae18985effa8249eb6464cd81e90b16fdd92"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11711166170"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 -0400"/>
+            <newznab:attr name="tvtitle" value="industry"/>
+            <newznab:attr name="usenetdate" value="Tue, 01 Oct 2024 22:50:47 -0400"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="www.miatrix.com"/>
+            <newznab:attr name="hydraIndexerName" value="miatrix"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-7105512235551278024?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-7105512235551278024?apikey=APIKEY" length="11711166170" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 02:52:57 +0000</pubDate>
+            <guid isPermaLink="false">-7105512235551278024</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://nzbfinder.ws/details/31807c47-473e-4343-af82-82ee8e6fa508#comments</comments>
+            <category>TV UHD</category>
+            <size>11711166170</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="230"/>
+            <newznab:attr name="guid" value="-7105512235551278024"/>
+            <newznab:attr name="imdbid" value="tt7671070"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11711166170"/>
+            <newznab:attr name="subs" value="English (US)"/>
+            <newznab:attr name="subs" value="Spanish (Latin America)"/>
+            <newznab:attr name="subs" value="Portuguese (BR)"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 04:50:43 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="nzbfinder.ws"/>
+            <newznab:attr name="hydraIndexerName" value="NZB Finder"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/6260926284407287077?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/6260926284407287077?apikey=APIKEY" length="11711166170" type="application/x-nzb"/>
+            <pubDate>Wed, 02 Oct 2024 02:54:02 +0000</pubDate>
+            <guid isPermaLink="false">6260926284407287077</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://drunkenslug.com/details/7d2ed266901838fcb51e6c34d7c0b237cdac76e9#comments</comments>
+            <category>TV UHD</category>
+            <size>11711166170</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="415"/>
+            <newznab:attr name="group" value="alt.binaries.multimedia.aviation"/>
+            <newznab:attr name="guid" value="6260926284407287077"/>
+            <newznab:attr name="imdbid" value="7671070"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="RhChxJgsoH3P@syVigN13.KyU"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11711166170"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Wed, 02 Oct 2024 03:50:43 +0100"/>
+            <newznab:attr name="videos_id" value="10035277"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.drunkenslug.com"/>
+            <newznab:attr name="hydraIndexerName" value="Drunken Slug"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/739806266450704641?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/739806266450704641?apikey=APIKEY" length="10902308926" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 14:30:34 +0000</pubDate>
+            <guid isPermaLink="false">739806266450704641</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://squareeyed.org/details/5efebfe74081d3288e699da8f83f3685#comments</comments>
+            <category>TV UHD</category>
+            <size>10902308926</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="59"/>
+            <newznab:attr name="grabs" value="0"/>
+            <newznab:attr name="group" value="alt.binaries.hunters"/>
+            <newznab:attr name="guid" value="739806266450704641"/>
+            <newznab:attr name="imdb" value="7671070"/>
+            <newznab:attr name="info" value="https://squareeyed.org/api?t=getnfo&amp;id=5efebfe74081d3288e699da8f83f3685&amp;apikey=APIKEY&amp;raw=1"/>
+            <newznab:attr name="nfo" value="1"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="89LFxjzbDipYZ@ngPost.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="f51d2992164c3cb4017962a225b0b562189e0d2a"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10902308926"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 14:30:33 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="squareeyed.org"/>
+            <newznab:attr name="hydraIndexerName" value="Square Eyed"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/8949686805733112296?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/8949686805733112296?apikey=APIKEY" length="10882951293" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 14:27:13 +0000</pubDate>
+            <guid isPermaLink="false">8949686805733112296</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.HDR.H.265-FLUX</description>
+            <comments>https://api.althub.co.za/details/cbf94e642b7e19e4bc9472f50ab5fd28#comments</comments>
+            <category>TV UHD</category>
+            <size>10882951293</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="28"/>
+            <newznab:attr name="grabs" value="147"/>
+            <newznab:attr name="group" value="alt.binaries.newznzb.charlie"/>
+            <newznab:attr name="guid" value="8949686805733112296"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="cmVsZWFzZXM@YWx0aHViLmNvLnph.com"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="70e00ae430b85240811cc3df06e28d6fd2af007c"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10882951293"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0000"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 14:27:13 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.althub.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="altHUB"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/1763521947853650240?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/1763521947853650240?apikey=APIKEY" length="11190153052" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 14:20:01 +0000</pubDate>
+            <guid isPermaLink="false">1763521947853650240</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://api.nzb.life/details/43f7d343fb46f3f850a7fb019690b1ca#comments</comments>
+            <category>TV HD</category>
+            <size>11190153052</size>
+            <newznab:attr name="category" value="5040"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="113"/>
+            <newznab:attr name="grabs" value="178"/>
+            <newznab:attr name="group" value="alt.binaries.boneless"/>
+            <newznab:attr name="guid" value="1763521947853650240"/>
+            <newznab:attr name="hash" value="6ea3cb0d8b2797854a8813ea2fb46533"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="JBinUp.com &lt;JBinUp@JBinUp.local&gt;"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11190153052"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 -0500"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 09:17:31 -0500"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.nzb.life"/>
+            <newznab:attr name="hydraIndexerName" value="nzb.life"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-2261509303062266214?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-2261509303062266214?apikey=APIKEY" length="10530026000" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 13:20:55 +0000</pubDate>
+            <guid isPermaLink="false">-2261509303062266214</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://nzbgeek.info/geekseek.php?guid=94bf2717cfc7e68cbb470efb9836f128</comments>
+            <category>TV UHD</category>
+            <size>10530026000</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="1"/>
+            <newznab:attr name="coverurl" value="https://api.nzbgeek.info/covers/tv/371796.jpg"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="grabs" value="869"/>
+            <newznab:attr name="guid" value="-2261509303062266214"/>
+            <newznab:attr name="language" value="English"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="10530026000"/>
+            <newznab:attr name="subs" value="English"/>
+            <newznab:attr name="subs" value="Spanish"/>
+            <newznab:attr name="subs" value="Portuguese"/>
+            <newznab:attr name="thumbsdown" value="0"/>
+            <newznab:attr name="thumbsup" value="0"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 13:20:55 +0000"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.nzbgeek.info"/>
+            <newznab:attr name="hydraIndexerName" value="NZBGeek"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/2491301490152428840?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/2491301490152428840?apikey=APIKEY" length="11190153052" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 13:33:28 +0000</pubDate>
+            <guid isPermaLink="false">2491301490152428840</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://nzbfinder.ws/details/4aaa39dd-8243-4f07-bd90-220a458023a5#comments</comments>
+            <category>TV UHD</category>
+            <size>11190153052</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="113"/>
+            <newznab:attr name="grabs" value="170"/>
+            <newznab:attr name="guid" value="2491301490152428840"/>
+            <newznab:attr name="imdbid" value="tt7671070"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11190153052"/>
+            <newznab:attr name="subs" value="English (US)"/>
+            <newznab:attr name="subs" value="Spanish (Latin America)"/>
+            <newznab:attr name="subs" value="Portuguese (BR)"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 14:59:45 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="nzbfinder.ws"/>
+            <newznab:attr name="hydraIndexerName" value="NZB Finder"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/7027729171773420220?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/7027729171773420220?apikey=APIKEY" length="11719879076" type="application/x-nzb"/>
+            <pubDate>Fri, 31 Oct 2025 20:11:32 +0000</pubDate>
+            <guid isPermaLink="false">7027729171773420220</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://ninjacentral.co.za/details/9382b4adcc102cf5da941ba7b03541a0#comments</comments>
+            <category>TV UHD</category>
+            <size>11719879076</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="6"/>
+            <newznab:attr name="group" value="alt.binaries.sleazemovies"/>
+            <newznab:attr name="guid" value="7027729171773420220"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="sgWrXd840Ds71]jLQ724lR8sr0@shRXbjQJ.EPg"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="643ed5471178cdec554b6cefbb7b89beea8a9024"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719879076"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 +0200"/>
+            <newznab:attr name="tvtitle" value="Industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 14:43:22 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="ninjacentral.co.za"/>
+            <newznab:attr name="hydraIndexerName" value="Ninjacentral"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-2004607461421327279?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-2004607461421327279?apikey=APIKEY" length="11719879076" type="application/x-nzb"/>
+            <pubDate>Sat, 01 Nov 2025 02:08:59 +0000</pubDate>
+            <guid isPermaLink="false">-2004607461421327279</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://www.miatrix.com/details/fbe0830ec6401b2cf472a2bf19593e79#comments</comments>
+            <category>TV UHD</category>
+            <size>11719879076</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="7"/>
+            <newznab:attr name="group" value="alt.binaries.sleazemovies"/>
+            <newznab:attr name="guid" value="-2004607461421327279"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="sgWrXd840Ds71]jLQ724lR8sr0@shRXbjQJ.EPg"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="c49a51eaadf14969baa758724be41c42a5e257b9"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719879076"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 -0400"/>
+            <newznab:attr name="tvtitle" value="industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 08:43:22 -0400"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="www.miatrix.com"/>
+            <newznab:attr name="hydraIndexerName" value="miatrix"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-1464651833164616454?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-1464651833164616454?apikey=APIKEY" length="11719879076" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 12:44:33 +0000</pubDate>
+            <guid isPermaLink="false">-1464651833164616454</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://nzbfinder.ws/details/6f40d122-6834-45d1-b979-6ca625e1d520#comments</comments>
+            <category>TV UHD</category>
+            <size>11719879076</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="158"/>
+            <newznab:attr name="guid" value="-1464651833164616454"/>
+            <newznab:attr name="imdbid" value="tt7671070"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719879076"/>
+            <newznab:attr name="subs" value="English (US)"/>
+            <newznab:attr name="subs" value="Spanish (Latin America)"/>
+            <newznab:attr name="subs" value="Portuguese (BR)"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 14:43:18 +0200"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="nzbfinder.ws"/>
+            <newznab:attr name="hydraIndexerName" value="NZB Finder"/>
+        </item>
+        <item>
+            <title>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-7680080726644884803?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-7680080726644884803?apikey=APIKEY" length="11719879076" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 12:45:02 +0000</pubDate>
+            <guid isPermaLink="false">-7680080726644884803</guid>
+            <description>Industry.S03E07.Useful.Idiot.2160p.MAX.WEB-DL.DDP5.1.Atmos.DV.H.265-FLUX</description>
+            <comments>https://drunkenslug.com/details/b7e95bb90746084733bf49b4275973380c7a4345#comments</comments>
+            <category>TV UHD</category>
+            <size>11719879076</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="10"/>
+            <newznab:attr name="grabs" value="192"/>
+            <newznab:attr name="group" value="alt.binaries.warcraft"/>
+            <newznab:attr name="guid" value="-7680080726644884803"/>
+            <newznab:attr name="imdbid" value="7671070"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="vdzV9NWpOqsk@1qpGSXTF.7gl"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="showtitle" value="industry"/>
+            <newznab:attr name="size" value="11719879076"/>
+            <newznab:attr name="tmdbid" value="90812"/>
+            <newznab:attr name="traktid" value="154822"/>
+            <newznab:attr name="tvairdate" value="2024-09-22"/>
+            <newznab:attr name="tvdbid" value="371796"/>
+            <newznab:attr name="tvmazeid" value="45501"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 13:43:18 +0100"/>
+            <newznab:attr name="videos_id" value="10035277"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="api.drunkenslug.com"/>
+            <newznab:attr name="hydraIndexerName" value="Drunken Slug"/>
+        </item>
+        <item>
+            <title>Industry S03E07 Useful Idiot 2160p MAX WEB-DL DDP5 1 Atmos DV H 265-FLUX</title>
+            <link>http://127.0.0.1:5076/getnzb/api/-695252337922308159?apikey=APIKEY</link>
+            <enclosure url="http://127.0.0.1:5076/getnzb/api/-695252337922308159?apikey=APIKEY" length="11692039895" type="application/x-nzb"/>
+            <pubDate>Mon, 30 Sep 2024 12:01:05 +0000</pubDate>
+            <guid isPermaLink="false">-695252337922308159</guid>
+            <description>Industry S03E07 Useful Idiot 2160p MAX WEB-DL DDP5 1 Atmos DV H 265-FLUX</description>
+            <comments>https://www.miatrix.com/details/7a636a5d123d8daed6b8949bf9cea24c#comments</comments>
+            <category>TV UHD</category>
+            <size>11692039895</size>
+            <newznab:attr name="category" value="5045"/>
+            <newznab:attr name="comments" value="0"/>
+            <newznab:attr name="episode" value="7"/>
+            <newznab:attr name="files" value="74"/>
+            <newznab:attr name="grabs" value="6"/>
+            <newznab:attr name="group" value="alt.binaries.ninja.shredder"/>
+            <newznab:attr name="guid" value="-695252337922308159"/>
+            <newznab:attr name="nfo" value="0"/>
+            <newznab:attr name="password" value="0"/>
+            <newznab:attr name="poster" value="lenatos &lt;posted@fgdg5y45udfgh&gt;"/>
+            <newznab:attr name="season" value="3"/>
+            <newznab:attr name="sha1" value="784d1d1cbce4a565053489f171f8dc175d31a985"/>
+            <newznab:attr name="size" value="11692039895"/>
+            <newznab:attr name="tvairdate" value="Sun, 22 Sep 2024 00:00:00 -0400"/>
+            <newznab:attr name="tvtitle" value="industry"/>
+            <newznab:attr name="usenetdate" value="Mon, 30 Sep 2024 08:00:15 -0400"/>
+            <newznab:attr name="hydraIndexerScore" value="0"/>
+            <newznab:attr name="hydraIndexerHost" value="www.miatrix.com"/>
+            <newznab:attr name="hydraIndexerName" value="miatrix"/>
+        </item>
+    </channel>
+</rss>
