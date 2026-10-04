@@ -1536,6 +1536,13 @@ void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo*
 	// one probe per download (a retry from history resets this)
 	nzbInfo->SetDeadPickProbed(true);
 
+	// a download that already has articles (resumed, or loaded after a
+	// restart) is alive; the probe is for a start with nothing known
+	if (nzbInfo->GetCurrentSuccessArticles() > 0)
+	{
+		return;
+	}
+
 	// a dead posting is only worth abandoning when a duplicate waits
 	if (!g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()))
 	{
