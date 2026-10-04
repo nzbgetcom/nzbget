@@ -126,10 +126,11 @@ public:
 	 * donor's data files with the target's encoded size (the article count
 	 * may differ), the unique size-step fingerprint match, else the unique
 	 * exact name, else the unique volume suffix. Size-only pairing is
-	 * deliberately not offered. Members in claimed are skipped. */
+	 * deliberately not offered. Members in claimed are skipped; with donorSet
+	 * only members of that archive set (VolumeSetKey) are considered. */
 	static FileInfo* SelectWholeFileDonor(const char* targetFilename, int64 targetEncodedSize,
 		int targetArticleCount, uint64 targetStepsHash, NzbInfo* donorNzb,
-		const std::set<FileInfo*>* claimed = nullptr);
+		const std::set<FileInfo*>* claimed = nullptr, const std::string& donorSet = "");
 
 	/* The name a file shares with every other volume of its archive set, its
 	 * volume number replaced: "Rel.part03.rar" and "Rel.part1.rar" ->
@@ -147,6 +148,10 @@ public:
 	 * ("Rel.part03.rar" -> "part03.rar", "X.R00" -> "r00"): equal-size
 	 * members of a repost pair by this key when names differ. */
 	static std::string SuffixKey(const char* filename);
+	/* SuffixKey with the leading zeros of every number dropped, so volumes
+	 * numbered with different padding pair: "Rel.part003.rar" and
+	 * "Other.part03.rar" -> "part3.rar", "X.r007" and "Y.r07" -> "r7". */
+	static std::string VolumeKey(const char* filename);
 
 	/* Donor files of one duplicate collection, ordered most-likely-identical
 	 * first for the given target member: exact name match, same suffix key

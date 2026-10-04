@@ -903,6 +903,9 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		// identical sample or .nfo proves nothing about the archive volumes
 		// of two different packings
 		std::set<std::pair<std::string, std::string>> provenSets;
+		// pairs an intact-volume proof already failed for: every further
+		// missing volume of the set would only repeat the same probe fetches
+		std::set<std::pair<std::string, std::string>> disprovenSets;
 
 		// whole-file targets wait for the end of the donor's pass: only the
 		// other targets can prove the donor is a repost of this release
@@ -922,20 +925,47 @@ void StreamRepairController::ExecRepair(const char* destDir,
 				bool setProven = false;
 				if (wholeFile)
 				{
-					FileInfo* standIn = DupeStreamRepair::SelectWholeFileDonor(
-						FileSystem::BaseFileName(target.Filename), target.EncodedSize, target.ArticleCount,
-						target.StepsHash, donorNzb.get(), &claimed);
+					// each archive set of the duplicate in turn: the missing
+					// volume pairs only within one set, and only a set proven
+					// against the volume's own set may stand in for it
 					std::string ourSet = DupeStreamRepair::VolumeSetKey(target.Filename);
-					std::string theirSet = standIn ? DupeStreamRepair::VolumeSetKey(standIn->GetFilename()) : "";
-					setProven = !ourSet.empty() && !theirSet.empty() &&
-						(provenSets.count({ourSet, theirSet}) ||
-						 ProveDonorOnIntactFile(destDir, target, targets, memberNames,
-							donorNzb.get(), donor.InfoName, claimed));
-					if (setProven)
+					std::set<std::string> donorSets;
+					for (FileInfo* donorFile : donorNzb->GetFileList())
 					{
-						provenSets.insert({ourSet, theirSet});
+						std::string key = DupeStreamRepair::VolumeSetKey(donorFile->GetFilename());
+						if (!key.empty())
+						{
+							donorSets.insert(key);
+						}
 					}
-					else
+					for (const std::string& theirSet : donorSets)
+					{
+						if (ourSet.empty() || IsStopped())
+						{
+							break;
+						}
+						if (!DupeStreamRepair::SelectWholeFileDonor(FileSystem::BaseFileName(target.Filename),
+							target.EncodedSize, target.ArticleCount, target.StepsHash, donorNzb.get(),
+							&claimed, theirSet))
+						{
+							continue;
+						}
+						if (disprovenSets.count({ourSet, theirSet}))
+						{
+							continue;
+						}
+						if (provenSets.count({ourSet, theirSet}) ||
+							ProveDonorOnIntactFile(destDir, target, targets, memberNames,
+								donorNzb.get(), donor.InfoName, claimed, theirSet))
+						{
+							provenSets.insert({ourSet, theirSet});
+							target.DonorSet = theirSet;
+							setProven = true;
+							break;
+						}
+						disprovenSets.insert({ourSet, theirSet});
+					}
+					if (!setProven)
 					{
 						continue;
 					}
@@ -1053,16 +1083,15 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairFile(const 
 bool StreamRepairController::ProveDonorOnIntactFile(const char* destDir,
 	const RepairTarget& wholeTarget, const std::vector<RepairTarget>& targets,
 	const std::vector<CString>& memberNames, NzbInfo* donorNzb, const char* donorName,
-	std::set<FileInfo*>& claimed)
+	std::set<FileInfo*>& claimed, const std::string& donorSet)
 {
 	// the proof has to come from the same archive set on both sides: a
 	// sibling volume of the missing one, and a sibling of the donor member
 	// that would stand in for it
 	std::string targetSet = DupeStreamRepair::VolumeSetKey(wholeTarget.Filename);
 	FileInfo* standIn = DupeStreamRepair::SelectWholeFileDonor(FileSystem::BaseFileName(wholeTarget.Filename),
-		wholeTarget.EncodedSize, wholeTarget.ArticleCount, wholeTarget.StepsHash, donorNzb, &claimed);
-	std::string donorSet = standIn ? DupeStreamRepair::VolumeSetKey(standIn->GetFilename()) : "";
-	if (targetSet.empty() || donorSet.empty())
+		wholeTarget.EncodedSize, wholeTarget.ArticleCount, wholeTarget.StepsHash, donorNzb, &claimed, donorSet);
+	if (targetSet.empty() || donorSet.empty() || !standIn)
 	{
 		return false;
 	}
@@ -1101,16 +1130,38 @@ bool StreamRepairController::ProveDonorOnIntactFile(const char* destDir,
 		probe.FileId = 0;
 		probe.Filename = *memberName;
 		probe.DecodedFileSize = size;
-		for (FileInfo* donorFile : DupeStreamRepair::SelectDonorCandidates(baseName, size, -1, 0,
-			donorNzb, DupeStreamRepair::MaxDonorCandidates, 0, &claimed))
+		// candidates from the donor set only: the member with the intact
+		// file's volume number first, then the set's other members of a
+		// similar size (a renamed repost may number differently)
+		std::vector<FileInfo*> candidates;
+		std::string volumeKey = DupeStreamRepair::VolumeKey(baseName);
+		for (int pass = 0; pass < 2; pass++)
+		{
+			for (FileInfo* donorFile : donorNzb->GetFileList())
+			{
+				if ((int)candidates.size() >= DupeStreamRepair::MaxDonorCandidates)
+				{
+					break;
+				}
+				if (donorFile == standIn || claimed.count(donorFile) || donorFile->GetArticles()->empty() ||
+					DupeStreamRepair::VolumeSetKey(donorFile->GetFilename()) != donorSet ||
+					!DupeArticleFallback::SizesMatch(donorFile->GetSize(), size, 8) ||
+					std::find(candidates.begin(), candidates.end(), donorFile) != candidates.end())
+				{
+					continue;
+				}
+				bool sameNumber = DupeStreamRepair::VolumeKey(donorFile->GetFilename()) == volumeKey;
+				if (sameNumber == (pass == 0))
+				{
+					candidates.push_back(donorFile);
+				}
+			}
+		}
+		for (FileInfo* donorFile : candidates)
 		{
 			if (IsStopped())
 			{
 				break;
-			}
-			if (donorFile == standIn || DupeStreamRepair::VolumeSetKey(donorFile->GetFilename()) != donorSet)
-			{
-				continue;
 			}
 			StreamRangeList donorRanges = DupeStreamRepair::EstimateDonorRanges(donorFile, size);
 			if (!donorRanges.empty() && VerifyDonor(file, probe, donorFile, donorRanges))
@@ -1140,7 +1191,7 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(c
 	}
 	FileInfo* donorFile = DupeStreamRepair::SelectWholeFileDonor(
 		FileSystem::BaseFileName(target.Filename), target.EncodedSize, target.ArticleCount,
-		target.StepsHash, donorNzb, &claimed);
+		target.StepsHash, donorNzb, &claimed, target.DonorSet);
 	if (!donorFile || donorFile->GetArticles()->empty())
 	{
 		return roNoCost;

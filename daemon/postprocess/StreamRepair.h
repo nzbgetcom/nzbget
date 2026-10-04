@@ -188,6 +188,9 @@ private:
 		int ArticleCount = 0;
 		// a whole-file target that was allocated on disk in this pass
 		bool Recreated = false;
+		// the duplicate's archive set proven for a whole-file target (the
+		// stand-in member is chosen from it)
+		std::string DonorSet;
 		// the file's ENCODED failed size and par2 flag, captured from the
 		// StreamRepairJob (the source of truth). When this target is FULLY
 		// repaired its FailedSize is credited back to health, exactly reversing
@@ -286,7 +289,8 @@ private:
 	 * release proves nothing about their archive volumes. */
 	bool ProveDonorOnIntactFile(const char* destDir, const RepairTarget& wholeTarget,
 		const std::vector<RepairTarget>& targets, const std::vector<CString>& memberNames,
-		NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed);
+		NzbInfo* donorNzb, const char* donorName, std::set<FileInfo*>& claimed,
+		const std::string& donorSet);
 	// verified: set when a donor member proved byte-identical to the target;
 	// donorProven: the duplicate's archive set that stands in for a whole-file
 	// target was proven byte-identical to the target's own archive set, on a

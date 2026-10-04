@@ -461,6 +461,8 @@ BOOST_AUTO_TEST_CASE(StreamRepairVolumeSetKeyTest)
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("REL.part1.RAR"), "rel.part#.rar");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.r07"), "rel.r#");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.rar"), "rel.r#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.s00"), "rel.r#");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.t12"), "rel.r#");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.7z.002"), "rel.7z.#");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("movie.mkv.001"), "movie.mkv.#");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.z01"), "rel.z#");
@@ -473,10 +475,27 @@ BOOST_AUTO_TEST_CASE(StreamRepairVolumeSetKeyTest)
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("movie.mkv"), "");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.srr"), "");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("track.mp3"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.s001"), "");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey("Rel.part2"), "");
 	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeSetKey(""), "");
 
 	// a .nfo never shares a key with a rar volume of the same release
 	BOOST_CHECK_NE(DupeStreamRepair::VolumeSetKey("Rel.nfo"), DupeStreamRepair::VolumeSetKey("Rel.part01.rar"));
+}
+
+BOOST_AUTO_TEST_CASE(StreamRepairVolumeKeyTest)
+{
+	// volume numbers compare by value, not by padding
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("Rel.part003.rar"), "part3.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("Other.part03.rar"), "part3.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("X.r007"), "r7");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("Y.R07"), "r7");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("x.7z.001"), "7z.1");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("x.r00"), "r0");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("Rel.part10.rar"), "part10.rar");
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey("Movie.x264.mkv"), "x264.mkv");
+	BOOST_CHECK_NE(DupeStreamRepair::VolumeKey("Rel.part10.rar"), DupeStreamRepair::VolumeKey("Rel.part01.rar"));
+	BOOST_CHECK_EQUAL(DupeStreamRepair::VolumeKey(""), "");
 }
 
 BOOST_AUTO_TEST_CASE(StreamRepairSuffixKeyTest)

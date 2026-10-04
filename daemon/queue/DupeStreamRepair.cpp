@@ -335,7 +335,7 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 
 FileInfo* DupeStreamRepair::SelectWholeFileDonor(const char* targetFilename, int64 targetEncodedSize,
 	int targetArticleCount, uint64 targetStepsHash, NzbInfo* donorNzb,
-	const std::set<FileInfo*>* claimed)
+	const std::set<FileInfo*>* claimed, const std::string& donorSet)
 {
 	if (Util::EmptyStr(targetFilename) || Util::EndsWith(targetFilename, ".par2", false) ||
 		targetEncodedSize <= 0 || targetArticleCount <= 0)
@@ -352,6 +352,7 @@ FileInfo* DupeStreamRepair::SelectWholeFileDonor(const char* targetFilename, int
 		if (!DupeArticleFallback::IsParFile(donorFile) &&
 			!donorFile->GetArticles()->empty() &&
 			(!claimed || !claimed->count(donorFile)) &&
+			(donorSet.empty() || VolumeSetKey(donorFile->GetFilename()) == donorSet) &&
 			DupeArticleFallback::SizesMatch(donorFile->GetSize(), targetEncodedSize, WholeFileSizeToleranceDiv))
 		{
 			pool.push_back(donorFile);
@@ -388,11 +389,11 @@ FileInfo* DupeStreamRepair::SelectWholeFileDonor(const char* targetFilename, int
 	{
 		return match;
 	}
-	std::string targetKey = SuffixKey(targetFilename);
+	std::string targetKey = VolumeKey(targetFilename);
 	if (!targetKey.empty())
 	{
 		return unique([&targetKey](FileInfo* donorFile)
-			{ return SuffixKey(donorFile->GetFilename()) == targetKey; });
+			{ return VolumeKey(donorFile->GetFilename()) == targetKey; });
 	}
 	return nullptr;
 }
@@ -447,6 +448,13 @@ std::string DupeStreamRepair::VolumeSetKey(const char* filename)
 	{
 		return name.substr(0, begin) + "#";
 	}
+	// an old-style set of more than 101 volumes continues "x.r99" with
+	// "x.s00", "x.s01", ..., "x.t00", ...
+	if (name.size() - begin == 2 && begin >= 2 && name[begin - 2] == '.' &&
+		name[begin - 1] >= 's' && name[begin - 1] <= 'y')
+	{
+		return name.substr(0, begin - 1) + "r#";
+	}
 	if (begin < name.size() && name.size() - begin >= 3 && begin >= 1 && name[begin - 1] == '.')
 	{
 		return name.substr(0, begin) + "#";
@@ -458,6 +466,36 @@ bool DupeStreamRepair::DecodedSizePlausible(int64 decodedFileSize, int64 encoded
 {
 	return decodedFileSize > 0 && encodedSize > 0 && decodedFileSize <= encodedSize &&
 		decodedFileSize >= encodedSize - encodedSize / 8;
+}
+
+std::string DupeStreamRepair::VolumeKey(const char* filename)
+{
+	std::string key = SuffixKey(filename);
+	std::string out;
+	out.reserve(key.size());
+	size_t i = 0;
+	while (i < key.size())
+	{
+		if (!isdigit((unsigned char)key[i]))
+		{
+			out += key[i++];
+			continue;
+		}
+		// a run of digits: keep its value, not its padding
+		size_t end = i;
+		while (end < key.size() && isdigit((unsigned char)key[end]))
+		{
+			end++;
+		}
+		size_t first = i;
+		while (first + 1 < end && key[first] == '0')
+		{
+			first++;
+		}
+		out.append(key, first, end - first);
+		i = end;
+	}
+	return out;
 }
 
 std::string DupeStreamRepair::SuffixKey(const char* filename)
@@ -559,14 +597,14 @@ std::vector<FileInfo*> DupeStreamRepair::SelectDonorCandidates(const char* targe
 	// unique per member, while shared keys (a same-extension episode pack,
 	// digit-bearing or not: "mkv", "mp4") would flood the cap in file-list
 	// order and evict the better-ranked tiers below
-	std::string targetKey = SuffixKey(targetFilename);
+	std::string targetKey = VolumeKey(targetFilename);
 	if (!targetKey.empty())
 	{
 		FileInfo* keyMatch = nullptr;
 		bool ambiguous = false;
 		for (FileInfo* donorFile : window)
 		{
-			if (SuffixKey(donorFile->GetFilename()) == targetKey)
+			if (VolumeKey(donorFile->GetFilename()) == targetKey)
 			{
 				ambiguous = keyMatch != nullptr;
 				keyMatch = donorFile;
