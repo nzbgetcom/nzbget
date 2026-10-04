@@ -93,12 +93,75 @@ void DupeProbe::Start(int nzbId, std::vector<Sample> samples)
 {
 	DupeProbe* probe = new DupeProbe(nzbId, std::move(samples));
 	probe->SetAutoDestroy(true);
-	{
-		Guard guard(g_probeMutex);
-		g_probes.insert(probe);
-		g_probeCount++;
-	}
+	probe->Register();
 	probe->Thread::Start();
+}
+
+DupeProbe::Verdict DupeProbe::Check(std::vector<Sample> samples, int limitSec)
+{
+	DupeProbe probe(0, std::move(samples));
+	probe.Register();
+	Verdict verdict = probe.Measure(limitSec);
+	probe.Unregister();
+	return verdict;
+}
+
+void DupeProbe::Register()
+{
+	Guard guard(g_probeMutex);
+	g_probes.insert(this);
+	g_probeCount++;
+}
+
+void DupeProbe::Unregister()
+{
+	Guard guard(g_probeMutex);
+	g_probes.erase(this);
+	g_probeCount--;
+}
+
+std::vector<DupeProbe::Sample> DupeProbe::SamplesOf(const std::vector<FileInfo*>& files,
+	const std::function<void(FileInfo*)>& loadArticles)
+{
+	size_t total = 0;
+	for (FileInfo* fileInfo : files)
+	{
+		total += fileInfo->GetTotalArticles();
+	}
+
+	std::vector<Sample> samples;
+	for (size_t position : SampleIndexes(total, SampleCount))
+	{
+		size_t offset = 0;
+		for (FileInfo* fileInfo : files)
+		{
+			size_t count = fileInfo->GetTotalArticles();
+			if (position >= offset + count)
+			{
+				offset += count;
+				continue;
+			}
+
+			if (fileInfo->GetArticles()->empty() && loadArticles)
+			{
+				loadArticles(fileInfo);
+			}
+			size_t index = position - offset;
+			if (index < fileInfo->GetArticles()->size())
+			{
+				Sample sample;
+				sample.MessageId = fileInfo->GetArticles()->at(index)->GetMessageId();
+				sample.Groups = std::make_shared<std::vector<CString>>();
+				for (const CString& group : *fileInfo->GetGroups())
+				{
+					sample.Groups->emplace_back(*group);
+				}
+				samples.push_back(std::move(sample));
+			}
+			break;
+		}
+	}
+	return samples;
 }
 
 void DupeProbe::StopAll()
@@ -241,12 +304,12 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 	return probedServer;
 }
 
-void DupeProbe::Run()
+DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 {
 	// the servers to ask: every active one, one per server group
 	std::vector<std::pair<int, int>> order;	// level, id
 	std::set<int> groups;
-	int activeServers = 0;
+	Verdict verdict;
 	for (NewsServer* server : g_ServerPool->GetServers())
 	{
 		if (!server->GetActive())
@@ -257,22 +320,19 @@ void DupeProbe::Run()
 		{
 			continue;
 		}
-		activeServers++;
+		verdict.ActiveServers++;
 		order.emplace_back(server->GetNormLevel(), server->GetId());
 	}
 	std::sort(order.begin(), order.end());
 
-	int existing = 0;
-	int missingServers = 0;
 	std::set<int> probed;
 	time_t start = Util::CurrentTime();
-	bool finished = true;
 
 	for (const std::pair<int, int>& entry : order)
 	{
-		if (IsStopped() || Util::CurrentTime() - start > ProbeLimitSec)
+		if (IsStopped() || Util::CurrentTime() - start > limitSec)
 		{
-			finished = false;
+			verdict.Finished = false;
 			break;
 		}
 
@@ -283,34 +343,38 @@ void DupeProbe::Run()
 			continue;
 		}
 
-		existing += result.Exists;
-		if (existing > 0)
+		verdict.Existing += result.Exists;
+		if (verdict.Existing > 0)
 		{
 			break;
 		}
 		if (result.Missing == (int)m_samples.size())
 		{
-			missingServers++;
+			verdict.MissingServers++;
 		}
 	}
+	return verdict;
+}
 
-	if (finished && IsDead(existing, missingServers, activeServers))
+void DupeProbe::Run()
+{
+	Verdict verdict = Measure(ProbeLimitSec);
+
+	if (verdict.Dead())
 	{
-		Abandon(missingServers, activeServers);
+		Abandon(verdict.MissingServers, verdict.ActiveServers);
 	}
-	else if (existing > 0)
+	else if (verdict.Existing > 0)
 	{
 		detail("Dupe probe of download %i: an article exists, not abandoning it", m_nzbId);
 	}
-	else if (finished)
+	else if (verdict.Finished)
 	{
 		detail("Dupe probe of download %i: no verdict (%i of %i servers answered definitively)",
-			m_nzbId, missingServers, activeServers);
+			m_nzbId, verdict.MissingServers, verdict.ActiveServers);
 	}
 
-	Guard guard(g_probeMutex);
-	g_probes.erase(this);
-	g_probeCount--;
+	Unregister();
 }
 
 void DupeProbe::Abandon(int missingServers, int activeServers)

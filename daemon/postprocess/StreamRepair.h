@@ -241,6 +241,11 @@ private:
 	std::condition_variable m_watchdogCond;
 	bool m_watchdogDone = false;
 	std::atomic<bool> m_timedOut{false};
+	// a duplicate none of whose sampled articles exists on any server is
+	// skipped (checked once per pass, within DonorCheckSec)
+	static constexpr int DonorCheckSec = 20;
+	std::map<std::string, bool> m_donorDead;
+	bool DonorDead(const DonorSource& donor, NzbInfo* donorNzb);
 	void StartWatchdog();
 	void StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets);
 	/* stopped for a reload or shutdown (the pass is to run again), not by the timeout */

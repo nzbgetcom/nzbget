@@ -27,6 +27,7 @@
 #include "DupeStreamRepair.h"
 #include "DupeArticleFallback.h"
 #include "DupeCoordinator.h"
+#include "DupeProbe.h"
 #include "NewsServer.h"
 #include "ServerPool.h"
 #include "DiskState.h"
@@ -684,6 +685,43 @@ void StreamRepairController::RepairCompletedLive(std::vector<RepairTarget>& targ
 	downloadQueue->Save();
 }
 
+bool StreamRepairController::DonorDead(const DonorSource& donor, NzbInfo* donorNzb)
+{
+	auto it = m_donorDead.find(*donor.QueuedFilename);
+	if (it != m_donorDead.end())
+	{
+		return it->second;
+	}
+
+	// data files before par2 files, as the dead-pick probe samples a posting
+	std::vector<FileInfo*> files;
+	for (int pass = 0; pass < 2 && files.empty(); pass++)
+	{
+		for (FileInfo* fileInfo : donorNzb->GetFileList())
+		{
+			if (fileInfo->GetTotalArticles() > 0 && (pass == 1 || !fileInfo->GetParFile()))
+			{
+				files.push_back(fileInfo);
+			}
+		}
+	}
+	bool dead = false;
+	std::vector<DupeProbe::Sample> samples = DupeProbe::SamplesOf(files);
+	if (samples.size() >= (size_t)DupeProbe::MinArticles && !IsStopped())
+	{
+		DupeProbe::Verdict verdict = DupeProbe::Check(std::move(samples), DonorCheckSec);
+		dead = verdict.Dead();
+		if (dead)
+		{
+			PrintMessage(Message::mkInfo,
+				"Skipping duplicate %s for stream repair: none of %i sampled articles exists on any server",
+				*donor.InfoName, DupeProbe::SampleCount);
+		}
+	}
+	m_donorDead[*donor.QueuedFilename] = dead;
+	return dead;
+}
+
 void StreamRepairController::StartWatchdog()
 {
 	int timeout = g_Options->GetDupeStreamTimeout();
@@ -954,6 +992,10 @@ void StreamRepairController::ExecRepair(const char* destDir,
 		{
 			PrintMessage(Message::mkInfo,
 				"Skipping another copy of duplicate posting %s", *donor.InfoName);
+			continue;
+		}
+		if (DonorDead(donor, donorNzb.get()))
+		{
 			continue;
 		}
 
@@ -1889,6 +1931,10 @@ void StreamRepairController::ExecCrossPackRepair(const char* destDir,
 		{
 			PrintMessage(Message::mkInfo,
 				"Skipping another copy of duplicate posting %s", *donor.InfoName);
+			continue;
+		}
+		if (DonorDead(donor, donorNzb.get()))
+		{
 			continue;
 		}
 

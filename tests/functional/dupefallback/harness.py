@@ -957,6 +957,30 @@ def scenario_streamtimeout(daemon, t):
             % (h['Status'], took, stopped, interrupted, daemon.proxy.delayed))
 
 
+def scenario_streamdeaddonor(daemon, t):
+    """Before stream repair reads from a duplicate, a few of its articles are
+    checked (STAT) on the servers: a dead duplicate (none of its articles
+    exists any more) scored above the good one is skipped at once instead of
+    being asked for every missing range, and the good one repairs the file."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4545)
+    pp = _place_copy(t, 'deadA', data, 'file.mkv')
+    gp = _place_copy(t, 'deadG', data, 'file.mkv')
+    xp = _place_copy(t, 'deadX', data, 'file.mkv')
+    primary = build_nzb(pp, 'DeadA.mkv', size, seg_primary, {5, 6})
+    good = build_nzb(gp, 'obf-good.mkv', size, seg_donor, set())
+    dead = build_nzb(xp, 'obf-dead.mkv', size, seg_donor, set(range(size // seg_donor)))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DeadDonor', dead, True, 'dead-key', 75)
+    daemon.append(api, 'GoodDonor', good, True, 'dead-key', 50)
+    daemon.append(api, 'DeadA', primary, False, 'dead-key', 100)
+    h = daemon.wait_history(api, 'DeadA')
+    skipped = _grep_log(t, 'Skipping duplicate DeadDonor for stream repair: none of 10 sampled articles')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    ok = skipped == 1 and integ and 'SUCCESS' in h['Status']
+    return ('streamdeaddonor', ok, 'status=%s skipped_logs=%d integrity=%s' % (h['Status'], skipped, integ))
+
+
 def scenario_liveoverlap(daemon, t):
     """DupeArticleFallback=live: FileA (differently-segmented donor queued)
     completes with a hole while the big FileB still downloads (the global
@@ -3314,6 +3338,7 @@ SCENARIOS = {
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
     'streamtimeout': scenario_streamtimeout,
+    'streamdeaddonor': scenario_streamdeaddonor,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -3433,6 +3458,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it

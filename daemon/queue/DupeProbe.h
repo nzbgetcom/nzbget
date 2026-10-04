@@ -23,11 +23,13 @@
 
 #include "NString.h"
 #include "Thread.h"
+#include <functional>
 #include <memory>
 #include <set>
 #include <vector>
 
 class NntpConnection;
+class FileInfo;
 
 /*
  * Early dead-posting check for option <HealthCheck> value "dupe".
@@ -78,8 +80,26 @@ public:
 	 * missing */
 	static bool IsDead(int existing, int missingServers, int activeServers);
 
+	/* samples spread over the articles of <files>, treated as one run;
+	 * <loadArticles> loads the article list of a file not started yet */
+	static std::vector<Sample> SamplesOf(const std::vector<FileInfo*>& files,
+		const std::function<void(FileInfo*)>& loadArticles = nullptr);
+
 	/* starts a probe of <samples> for download <nzbId>; the thread destroys itself */
 	static void Start(int nzbId, std::vector<Sample> samples);
+
+	struct Verdict
+	{
+		int Existing = 0;
+		int MissingServers = 0;
+		int ActiveServers = 0;
+		bool Finished = true;
+		bool Dead() const { return Finished && IsDead(Existing, MissingServers, ActiveServers); }
+	};
+
+	/* the same check in the calling thread, within <limitSec> (a duplicate
+	 * is checked this way before stream repair reads from it) */
+	static Verdict Check(std::vector<Sample> samples, int limitSec);
 
 	/* shutdown: cancels running probes, WaitAll() returns when they ended */
 	static void StopAll();
@@ -104,6 +124,9 @@ private:
 	NntpConnection* m_connection = nullptr;
 
 	bool ProbeServer(int serverId, std::set<int>& probed, ServerResult& result);
+	Verdict Measure(int limitSec);
+	void Register();
+	void Unregister();
 	void Cancel();
 	void Abandon(int missingServers, int activeServers);
 };

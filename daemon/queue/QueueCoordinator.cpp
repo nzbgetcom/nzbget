@@ -1573,40 +1573,15 @@ void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo*
 		return;
 	}
 
-	std::vector<DupeProbe::Sample> samples;
-	for (size_t position : DupeProbe::SampleIndexes(total, DupeProbe::SampleCount))
-	{
-		size_t offset = 0;
-		for (FileInfo* fileInfo : files)
+	// the article list of a file that hasn't started yet is on disk
+	std::vector<DupeProbe::Sample> samples = DupeProbe::SamplesOf(files, [this](FileInfo* fileInfo)
 		{
-			size_t count = fileInfo->GetTotalArticles();
-			if (position >= offset + count)
-			{
-				offset += count;
-				continue;
-			}
-
-			// the article list of a file that hasn't started yet is on disk
-			if (fileInfo->GetArticles()->empty() && g_Options->GetServerMode())
+			if (g_Options->GetServerMode())
 			{
 				g_DiskState->LoadArticles(fileInfo);
 				LoadPartialState(fileInfo);
 			}
-			size_t index = position - offset;
-			if (index < fileInfo->GetArticles()->size())
-			{
-				DupeProbe::Sample sample;
-				sample.MessageId = fileInfo->GetArticles()->at(index)->GetMessageId();
-				sample.Groups = std::make_shared<std::vector<CString>>();
-				for (const CString& group : *fileInfo->GetGroups())
-				{
-					sample.Groups->emplace_back(*group);
-				}
-				samples.push_back(std::move(sample));
-			}
-			break;
-		}
-	}
+		});
 	if (samples.size() < (size_t)DupeProbe::MinArticles)
 	{
 		return;
