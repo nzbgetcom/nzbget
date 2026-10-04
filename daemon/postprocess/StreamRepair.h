@@ -236,19 +236,26 @@ private:
 	// option <DupeStreamTimeout>: a watchdog stops the pass once it recovered
 	// nothing for that long; unlike a stop for shutdown, the pass then
 	// finishes as a normal one (what is still missing goes to par-repair,
-	// nothing is kept to resume). m_progressBytes is what it watches.
+	// nothing is kept to resume). m_progressBytes is what it watches. It also
+	// stops a repair that recovers so slowly that the rest would take more
+	// than SlowRepairFactor times as long as downloading it at nzbget's
+	// average download speed (checked once the pass ran half the timeout):
+	// another release is quicker then.
+	static constexpr int SlowRepairFactor = 3;
 	std::thread m_watchdog;
 	std::mutex m_watchdogMutex;
 	std::condition_variable m_watchdogCond;
 	bool m_watchdogDone = false;
 	std::atomic<bool> m_timedOut{false};
 	std::atomic<int64> m_progressBytes{0};
+	int64 m_missingBytes = 0;
+	CString m_slowReason;
 	// a duplicate none of whose sampled articles exists on any server is
 	// skipped (checked once per pass, within DonorCheckSec)
 	static constexpr int DonorCheckSec = 20;
 	std::map<std::string, bool> m_donorDead;
 	bool DonorDead(const DonorSource& donor, NzbInfo* donorNzb);
-	void StartWatchdog();
+	void StartWatchdog(const std::vector<RepairTarget>& targets);
 	void StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets);
 	/* stopped for a reload or shutdown (the pass is to run again), not by the timeout */
 	bool Interrupted() { return IsStopped() && !m_timedOut; }

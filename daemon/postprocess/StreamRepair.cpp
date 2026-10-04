@@ -31,6 +31,7 @@
 #include "DupeProbe.h"
 #include "NewsServer.h"
 #include "ServerPool.h"
+#include "StatMeter.h"
 #include "DiskState.h"
 #include "Options.h"
 #include "Log.h"
@@ -451,7 +452,7 @@ void StreamRepairController::Run()
 	}
 	else
 	{
-		StartWatchdog();
+		StartWatchdog(targets);
 		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors, memberNames);
 
@@ -536,7 +537,7 @@ void StreamRepairController::RunLive()
 	{
 		PrintMessage(Message::mkInfo, "Starting live stream repair for %s", *nzbName);
 
-		StartWatchdog();
+		StartWatchdog(targets);
 		ComputePositionalRanks(destDir, targets, memberNames);
 		ExecRepair(destDir, targets, donors, memberNames);
 
@@ -723,34 +724,76 @@ bool StreamRepairController::DonorDead(const DonorSource& donor, NzbInfo* donorN
 	return dead;
 }
 
-void StreamRepairController::StartWatchdog()
+void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targets)
 {
 	int timeout = g_Options->GetDupeStreamTimeout();
 	if (timeout <= 0)
 	{
 		return;
 	}
-	m_watchdog = std::thread([this, timeout]()
+
+	// what the pass has to recover: the holes, and the whole files not sized yet
+	m_missingBytes = 0;
+	for (const RepairTarget& target : targets)
+	{
+		m_missingBytes += target.DecodedFileSize > 0 ? DupeStreamRepair::TotalSize(target.Holes) : target.EncodedSize;
+	}
+
+	// nzbget's average download speed
+	int upTimeSec = 0, downloadTimeSec = 0;
+	int64 allBytes = 0;
+	bool standBy = false;
+	g_StatMeter->CalcTotalStat(&upTimeSec, &downloadTimeSec, &allBytes, &standBy);
+	int64 downloadRate = downloadTimeSec > 0 ? allBytes / downloadTimeSec : 0;
+
+	m_watchdog = std::thread([this, timeout, downloadRate]()
 		{
 			std::unique_lock<std::mutex> lock(m_watchdogMutex);
-			int64 progress = m_progressBytes;
-			auto lastProgress = std::chrono::steady_clock::now();
+			int64 startProgress = m_progressBytes;
+			int64 progress = startProgress;
+			auto start = std::chrono::steady_clock::now();
+			auto lastProgress = start;
 			while (!m_watchdogDone)
 			{
 				m_watchdogCond.wait_for(lock, std::chrono::milliseconds(500));
+				if (m_watchdogDone)
+				{
+					break;
+				}
 				auto now = std::chrono::steady_clock::now();
 				if (m_progressBytes != progress)
 				{
 					progress = m_progressBytes;
 					lastProgress = now;
 				}
-				else if (!m_watchdogDone && now - lastProgress >= std::chrono::seconds(timeout))
+				else if (now - lastProgress >= std::chrono::seconds(timeout))
 				{
-					m_timedOut = true;
-					lock.unlock();
-					Stop();
-					return;
+					m_slowReason.Format("nothing recovered for %i seconds", timeout);
+					break;
 				}
+
+				double elapsed = std::chrono::duration<double>(now - start).count();
+				int64 recovered = progress - startProgress;
+				int64 remaining = std::max<int64>(0, m_missingBytes - recovered);
+				if (downloadRate > 0 && recovered > 0 && remaining > 0 && elapsed >= timeout / 2.0)
+				{
+					double repairRate = recovered / elapsed;
+					double repairSec = remaining / repairRate;
+					double downloadSec = (double)remaining / downloadRate;
+					if (repairSec > SlowRepairFactor * downloadSec && repairSec > timeout)
+					{
+						m_slowReason.Format("at %.2f MB/s the %.1f MB left would take %.0f seconds, "
+							"more than %i times a download at %.2f MB/s", repairRate / 1024 / 1024,
+							remaining / 1024.0 / 1024.0, repairSec, SlowRepairFactor, downloadRate / 1024.0 / 1024.0);
+						break;
+					}
+				}
+			}
+			if (!m_watchdogDone)
+			{
+				m_timedOut = true;
+				lock.unlock();
+				Stop();
 			}
 		});
 }
@@ -782,9 +825,8 @@ void StreamRepairController::StopWatchdog(const char* nzbName, const std::vector
 			wholeFiles.Format(" and %i whole file(s)", unsized);
 		}
 		PrintMessage(Message::mkWarning,
-			"Stream repair of %s stopped: nothing recovered for %i seconds (option DupeStreamTimeout); %.1f MB recovered, %.1f MB%s still missing",
-			nzbName, g_Options->GetDupeStreamTimeout(), m_recoveredBytes / 1024.0 / 1024.0,
-			missing / 1024.0 / 1024.0, *wholeFiles);
+			"Stream repair of %s stopped: %s (option DupeStreamTimeout); %.1f MB recovered, %.1f MB%s still missing",
+			nzbName, *m_slowReason, m_recoveredBytes / 1024.0 / 1024.0, missing / 1024.0 / 1024.0, *wholeFiles);
 	}
 }
 

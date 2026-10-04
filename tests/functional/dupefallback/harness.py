@@ -692,13 +692,14 @@ class RewritingNntpProxy:
 
 
 class DelayingNntpProxy(RewritingNntpProxy):
-    """A news server in front of nserv that holds every request naming
-    ``marker`` for ``delay`` seconds before passing it on: a duplicate whose
-    articles are slow to come (in practice, requests for articles that no
-    server has any more, each waiting out its timeout)."""
+    """A news server in front of nserv that holds every request naming a
+    marker for that marker's delay (seconds) before passing it on: a slow
+    server, or a duplicate whose articles are slow to come (in practice,
+    requests for articles that no server has any more, each waiting out its
+    timeout). ``delays`` is a list of (marker, seconds)."""
 
-    def __init__(self, listen_port, upstream_port, marker, delay):
-        self.marker, self.delay = marker, delay
+    def __init__(self, listen_port, upstream_port, delays):
+        self.delays = delays
         self.delayed = 0
         super().__init__(listen_port, upstream_port, b'', b'')
 
@@ -708,9 +709,12 @@ class DelayingNntpProxy(RewritingNntpProxy):
                 data = src.recv(65536)
                 if not data:
                     break
-                if not rewrite and self.marker in data:
-                    self.delayed += 1
-                    time.sleep(self.delay)
+                if not rewrite:
+                    for marker, delay in self.delays:
+                        if marker in data:
+                            self.delayed += 1
+                            time.sleep(delay)
+                            break
                 dst.sendall(data)
         except OSError:
             pass
@@ -960,9 +964,10 @@ def scenario_streamtimeout(daemon, t):
 
 def scenario_streamslowprogress(daemon, t):
     """DupeStreamTimeout counts time WITHOUT progress: a duplicate that answers
-    slowly (each request waits 1 s) but keeps delivering is never cut off, even
-    when the whole repair takes longer than the timeout (5 s). The file is
-    repaired in full."""
+    slowly but keeps delivering is not cut off, even
+    when the whole repair takes longer than the timeout (5 s), as long as it is
+    not 3 times slower than downloading: the download is slow here too (2 s
+    per request, the duplicate 0.5 s). The file is repaired in full."""
     size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
     data = _payload(size, 4343)
     pp = _place_copy(t, 'slowA', data, 'file.mkv')
@@ -978,6 +983,33 @@ def scenario_streamslowprogress(daemon, t):
     ok = stopped == 0 and integ and 'SUCCESS' in h['Status'] and daemon.proxy.delayed > 5
     return ('streamslowprogress', ok, 'status=%s stopped_logs=%d integrity=%s delayed=%d'
             % (h['Status'], stopped, integ, daemon.proxy.delayed))
+
+
+def scenario_streamtooslow(daemon, t):
+    """A repair that keeps recovering, but so slowly that the rest would take
+    more than 3 times as long as downloading it at nzbget's average speed, is
+    stopped (another release is quicker): the download itself is fast here,
+    every request to the duplicate waits 1 s. (A 40 MB download first gives
+    nzbget an average speed to compare with.)"""
+    warm = 40_000_000
+    wp = _place_copy(t, 'warm', _payload(warm, 77), 'file.bin')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Warm', build_nzb(wp, 'warm.bin', warm, 500_000, set()), False, 'warm-key', 0)
+    daemon.wait_history(api, 'Warm')
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 4343)
+    pp = _place_copy(t, 'slowA', data, 'file.mkv')
+    dp = _place_copy(t, 'slowB', data, 'file.mkv')
+    primary = build_nzb(pp, 'SlowA.mkv', size, seg_primary, set(range(2, 10)))
+    donor = build_nzb(dp, 'obf-slow.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSlow', donor, True, 'slow-key', 50)
+    daemon.append(api, 'SlowA', primary, False, 'slow-key', 100)
+    h = daemon.wait_history(api, 'SlowA', timeout=180)
+    slow = _grep_log(t, 'more than 3 times a download at')
+    stalled = _grep_log(t, 'nothing recovered for')
+    ok = slow == 1 and stalled == 0 and 'SUCCESS' not in h['Status']
+    return ('streamtooslow', ok, 'status=%s too_slow_logs=%d stalled_logs=%d' % (h['Status'], slow, stalled))
 
 
 def scenario_streamdeaddonor(daemon, t):
@@ -3363,6 +3395,7 @@ SCENARIOS = {
     'streamtimeout': scenario_streamtimeout,
     'streamdeaddonor': scenario_streamdeaddonor,
     'streamslowprogress': scenario_streamslowprogress,
+    'streamtooslow': scenario_streamtooslow,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -3484,6 +3517,7 @@ SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
+    'streamtooslow': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it
@@ -3625,8 +3659,10 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
 
-# scenarios with a DelayingNntpProxy in front of Server1: (message-id marker, delay in s)
-SCENARIO_DELAY_PROXY = {'streamtimeout': (b'slowB/', 8.0), 'streamslowprogress': (b'slowB/', 1.0)}
+# scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
+SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
+                        'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
+                        'streamtooslow': [(b'slowB/', 1.0)]}
 
 
 # --------------------------------------------------------------------------- #
@@ -3708,7 +3744,7 @@ def main():
             elif rewrite:
                 daemon.proxy = RewritingNntpProxy(proxy_port, nserv_port, *rewrite)
             elif delay:
-                daemon.proxy = DelayingNntpProxy(proxy_port, nserv_port, *delay)
+                daemon.proxy = DelayingNntpProxy(proxy_port, nserv_port, delay)
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':
