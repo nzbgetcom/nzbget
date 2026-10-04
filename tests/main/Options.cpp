@@ -134,6 +134,106 @@ BOOST_AUTO_TEST_CASE(CallingExtender)
 	BOOST_CHECK_EQUAL(extender.m_categorySources[0], FeedInfo::CategorySource::NZBFile);
 }
 
+BOOST_AUTO_TEST_CASE(DupeSearchOptionsDefaultsTest)
+{
+	Options::CmdOptList cmdOpts;
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK(!options.GetDupeSearch());
+	BOOST_CHECK_EQUAL(options.GetDupeSearchUrl(), "");
+	BOOST_CHECK_EQUAL(options.GetDupeSearchApiKey(), "");
+	BOOST_CHECK_EQUAL(options.GetDupeSearchDelay(), 20);
+	BOOST_CHECK_EQUAL(options.GetDupeSearchMaxDonors(), 0);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthPercent(), 5);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMin(), 50);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMax(), 1000);
+	BOOST_CHECK_EQUAL(options.GetDupeBodyChecks(), 20);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthBudget(), 120);
+	BOOST_CHECK_EQUAL(options.GetDupeMinAlive(), 50);
+	BOOST_CHECK_EQUAL(options.GetDupeFastDonors(), 5);
+}
+
+BOOST_AUTO_TEST_CASE(DupeSearchOptionsParseTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeSearch=yes");
+	cmdOpts.push_back("DupeSearchUrl=http://127.0.0.1:5076/api");
+	cmdOpts.push_back("DupeSearchApiKey=secret");
+	cmdOpts.push_back("DupeSearchDelay=7");
+	cmdOpts.push_back("DupeSearchMaxDonors=3");
+	cmdOpts.push_back("DupeHealthPercent=10");
+	cmdOpts.push_back("DupeHealthMin=30");
+	cmdOpts.push_back("DupeHealthMax=500");
+	cmdOpts.push_back("DupeBodyChecks=0");
+	cmdOpts.push_back("DupeHealthBudget=60");
+	cmdOpts.push_back("DupeMinAlive=70");
+	cmdOpts.push_back("DupeFastDonors=2");
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK(options.GetDupeSearch());
+	BOOST_CHECK_EQUAL(options.GetDupeSearchUrl(), "http://127.0.0.1:5076/api");
+	BOOST_CHECK_EQUAL(options.GetDupeSearchApiKey(), "secret");
+	BOOST_CHECK_EQUAL(options.GetDupeSearchDelay(), 7);
+	BOOST_CHECK_EQUAL(options.GetDupeSearchMaxDonors(), 3);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthPercent(), 10);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMin(), 30);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMax(), 500);
+	BOOST_CHECK_EQUAL(options.GetDupeBodyChecks(), 0);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthBudget(), 60);
+	BOOST_CHECK_EQUAL(options.GetDupeMinAlive(), 70);
+	BOOST_CHECK_EQUAL(options.GetDupeFastDonors(), 2);
+}
+
+BOOST_AUTO_TEST_CASE(DupeSearchOptionsClampTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeSearch=yes");
+	cmdOpts.push_back("DupeSearchUrl=http://127.0.0.1:5076/api");
+	cmdOpts.push_back("DupeSearchDelay=-5");
+	cmdOpts.push_back("DupeSearchMaxDonors=-1");
+	cmdOpts.push_back("DupeHealthPercent=500");
+	cmdOpts.push_back("DupeHealthMin=0");
+	cmdOpts.push_back("DupeHealthMax=10");
+	cmdOpts.push_back("DupeBodyChecks=-3");
+	cmdOpts.push_back("DupeHealthBudget=1");
+	cmdOpts.push_back("DupeMinAlive=150");
+	cmdOpts.push_back("DupeFastDonors=-2");
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK_EQUAL(options.GetDupeSearchDelay(), 0);
+	BOOST_CHECK_EQUAL(options.GetDupeSearchMaxDonors(), 0);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthPercent(), 100);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMin(), 1);
+	// the maximum is never below the minimum
+	BOOST_CHECK_EQUAL(options.GetDupeHealthMax(), 10);
+	BOOST_CHECK_EQUAL(options.GetDupeBodyChecks(), 0);
+	BOOST_CHECK_EQUAL(options.GetDupeHealthBudget(), 5);
+	BOOST_CHECK_EQUAL(options.GetDupeMinAlive(), 100);
+	BOOST_CHECK_EQUAL(options.GetDupeFastDonors(), 0);
+
+	// a minimum above the maximum raises the maximum
+	Options::CmdOptList cmdOpts2;
+	cmdOpts2.push_back("DupeHealthMin=300");
+	cmdOpts2.push_back("DupeHealthMax=100");
+	Options options2(&cmdOpts2, &extender);
+	BOOST_CHECK_EQUAL(options2.GetDupeHealthMin(), 300);
+	BOOST_CHECK_EQUAL(options2.GetDupeHealthMax(), 300);
+}
+
+BOOST_AUTO_TEST_CASE(DupeSearchWithoutUrlStaysOffTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeSearch=yes");
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_CHECK(!options.GetDupeSearch());
+	BOOST_CHECK_EQUAL(options.GetDupeSearchUrl(), "");
+}
+
 BOOST_AUTO_TEST_CASE(ParseCategorySourceTest)
 {
 	Options::CmdOptList cmdOpts;
