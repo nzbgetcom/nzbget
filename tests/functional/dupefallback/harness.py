@@ -2476,6 +2476,56 @@ def scenario_xpackcorrupt(daemon, t):
             'status=%s corrupted_articles=%d integrity=%s' % (h['Status'], corrupted, integ))
 
 
+def scenario_xpackextensionless(daemon, t):
+    """An obfuscated bare movie posted without a file extension (par-rename
+    can't restore the name while the first article is missing), repaired from
+    rar volumes of the same movie. Before, only names with a media extension
+    became bare sets, so cross-packing never mapped the target."""
+    size, seg = 4_000_000, 250_000
+    data = _payload(size, 4960)
+    pp = _place_copy(t, 'xxA', data, 'movie.mkv')
+    members = []
+    for i, vol in enumerate(generators.rar3_store_volumes('movie.mkv', data, 1_500_000), 1):
+        rel = 'xxB/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 300_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXX', build_multi_nzb(members), True, 'xx-key', 50)
+    daemon.append(api, 'RelXX', build_nzb(pp, '848eddf3e2133c8a', size, seg, {1, 2, 9, 10}), False, 'xx-key', 100)
+    h = daemon.wait_history(api, 'RelXX')
+    integ = _verify_output(t, data, '848eddf3e2133c8a', dirs=(('main', 'dst'), ('main', 'inter')))
+    return ('xpackextensionless', integ and h['Status'].startswith('SUCCESS'),
+            'status=%s integrity=%s' % (h['Status'], integ))
+
+
+def scenario_xpackextensionlessneg(daemon, t):
+    """The negative: extensionless names that are really obfuscated rar
+    volumes are tried as bare files too, and the identity probes must reject
+    a bare duplicate of the movie inside them - nothing is written."""
+    size = 4_000_000
+    data = _payload(size, 4950)
+    vols = generators.rar3_store_volumes('movie.mkv', data, 1_500_000)
+    members, payloads = [], {}
+    for i, vol in enumerate(vols, 1):
+        rel = 'xnA/v%02d' % i
+        t.write_file(os.path.join('data', rel), vol)
+        name = '%016x' % (0x5eed0000 + i)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 250_000, {3, 4} if i == 2 else set()))
+    dp = _place_copy(t, 'xnB', data, 'movie.mkv')
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonXN', build_nzb(dp, 'movie.mkv', size, 300_000, set()), True, 'xn-key', 50)
+    daemon.append(api, 'RelXN', build_multi_nzb(members), False, 'xn-key', 100)
+    h = daemon.wait_history(api, 'RelXN')
+    recovered = _grep_log(t, 'Recovered')
+    both = (('main', 'dst'), ('main', 'inter'))
+    intact = [_verify_output(t, v, n, dirs=both) for n, v in payloads.items()]
+    # the damaged volume stays damaged, the others untouched
+    return ('xpackextensionlessneg', recovered == 0 and intact.count(False) == 1 and
+            h['Status'].startswith('FAILURE'),
+            'status=%s recovered_logs=%d intact=%s' % (h['Status'], recovered, intact))
+
+
 def scenario_xpackflaky(daemon, t):
     """Cross-packing while the provider drops every connection and turns new
     ones away for 4 s (a per-user connection limit, see FlakyNntpProxy):
@@ -3041,6 +3091,8 @@ SCENARIOS = {
     'dupefailoverchain': scenario_dupefailoverchain,
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
+    'xpackextensionless': scenario_xpackextensionless,
+    'xpackextensionlessneg': scenario_xpackextensionlessneg,
     'xpackcorrupt': scenario_xpackcorrupt,
     'xpackendhole_nodirect': scenario_xpackendhole_nodirect,
     'xpackdeadserver': scenario_xpackdeadserver,
@@ -3183,6 +3235,8 @@ SCENARIO_OPTIONS = {
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
+    'xpackextensionless': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackextensionlessneg': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackcorrupt': ['DupeArticleFallback=stream', 'ParCheck=auto', 'CrcCheck=no'],
     'xpackendhole_nodirect': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DirectWrite=no'],
     # Server2 (preferred level 0, behind a FlakyNntpProxy) serves the download

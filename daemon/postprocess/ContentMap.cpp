@@ -893,10 +893,14 @@ std::vector<MemberSet> ContentMapper::GroupSets(const std::vector<SetMember>& me
 		sets.push_back(std::move(set));
 	}
 
-	// bare media singletons from whatever no scheme consumed
+	// bare media singletons from whatever no scheme consumed: a media
+	// extension, or no extension at all - an obfuscated posting whose name
+	// par-rename could not restore yet (it needs the file's first 16 KB,
+	// which may be the missing part). The identity probes decide either way
 	for (size_t i = 0; i < members.size(); i++)
 	{
-		if (!consumed[i] && DupeStreamRepair::IsStreamEligible(members[i].Name.c_str()))
+		const char* baseName = FileSystem::BaseFileName(members[i].Name.c_str());
+		if (!consumed[i] && (DupeStreamRepair::IsStreamEligible(baseName) || !strchr(baseName, '.')))
 		{
 			MemberSet set;
 			set.Format = MemberSet::mfBare;

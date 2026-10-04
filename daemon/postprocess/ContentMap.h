@@ -287,7 +287,8 @@ public:
 	/* groups member files into container sets by their naming schemes;
 	 * incomplete sets (numbering gaps) are dropped - their members stay
 	 * un-mapped and par2 owns them. Bare singletons require a media
-	 * extension (DupeStreamRepair::IsStreamEligible). */
+	 * extension (DupeStreamRepair::IsStreamEligible) or no extension at all
+	 * (an obfuscated name). */
 	static std::vector<MemberSet> GroupSets(const std::vector<SetMember>& members);
 
 	/* builds the inner-content map for one set; nullptr + skipReason when
