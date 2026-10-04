@@ -40,6 +40,7 @@ struct NzbSummary
 	std::set<std::string> filenames;			// lowercase
 	std::string poster;
 	std::vector<std::string> messageIds;		// sorted, unique
+	std::vector<std::string> groups;			// newsgroups, sorted, unique
 	std::map<std::string, std::string> meta;	// lowercase type -> text
 	std::string mainName;						// the largest file that isn't par2
 

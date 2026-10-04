@@ -24,6 +24,10 @@
 #include <fstream>
 #include <sstream>
 #include "DupeSearch.h"
+#include "DonorHealth.h"
+#include "DonorScore.h"
+#include "NntpHealthServer.h"
+#include "Scanner.h"
 #include "HttpGet.h"
 #include "Newznab.h"
 #include "NzbReader.h"
@@ -460,6 +464,268 @@ void DupeSearch::Search(const Job& job)
 	rejected["parse"] += fetchStats.parse;
 	rejected["deadline"] += notTried;
 
+	// closest size first: the likeliest byte-identical repost; then the most grabbed
+	long long pickBytes = pick.totalBytes;
+	auto distance = [&](const NzbFetcher::Fetched& f)
+		{ return f.info.totalBytes > pickBytes ? f.info.totalBytes - pickBytes : pickBytes - f.info.totalBytes; };
+	std::stable_sort(verified.begin(), verified.end(), [&](const NzbFetcher::Fetched& x, const NzbFetcher::Fetched& y)
+		{
+			if (distance(x) != distance(y)) return distance(x) < distance(y);
+			if (x.listing.grabs != y.listing.grabs) return x.listing.grabs > y.listing.grabs;
+			return x.listing.date > y.listing.date;
+		});
+
+	DonorHealth::ServerList servers;
+	if (!verified.empty())
+	{
+		servers = NntpHealthServer::Servers();
+		if (servers.empty())
+		{
+			info("DupeSearch: %s: no active news servers, the postings are added unchecked", job.name.c_str());
+		}
+	}
+	DonorHealth::Options healthOptions;
+	healthOptions.sample.percent = g_Options->GetDupeHealthPercent();
+	healthOptions.sample.minimum = g_Options->GetDupeHealthMin();
+	healthOptions.sample.maximum = g_Options->GetDupeHealthMax();
+	healthOptions.sample.maxBody = g_Options->GetDupeBodyChecks();
+	healthOptions.budgetMs = g_Options->GetDupeHealthBudget() * 1000;
+
+	auto groupsOf = [](const NzbSummary& summary)
+		{ return std::make_shared<std::vector<std::string>>(summary.groups); };
+
+	// the pick's own posting: found dead, it is remembered (the dead-pick probe of
+	// the queue is what swaps it out)
+	std::thread pickCheck;
+	if (!servers.empty() && !pick.messageIds.empty())
+	{
+		pickCheck = std::thread([&]()
+			{
+				DonorHealth::Health health = DonorHealth::CheckPosting(servers, pick.messageIds,
+					groupsOf(pick), healthOptions, false);
+				if (DonorHealth::DeadProbe(health))
+				{
+					m_dead.Add(Posting::MakeSketch(pick.messageIds));
+					info("DupeSearch: %s: the pick is dead (%i of %i probe articles on no server)",
+						job.name.c_str(), health.missing, health.Answered());
+				}
+			});
+	}
+
+	int dead = 0;
+	int overCap = 0;
+	int rescoreFailed = 0;
+	int added = 0;
+	int cap = g_Options->GetDupeSearchMaxDonors();
+	std::mutex placeMutex;
+	std::map<size_t, DonorHealth::Health> probe;
+
+	// the quick probe of every posting
+	if (!servers.empty())
+	{
+		std::vector<DonorHealth::Posting> list;
+		for (size_t i = 0; i < verified.size(); i++)
+		{
+			list.push_back({ std::to_string(i), verified[i].info.messageIds, groupsOf(verified[i].info) });
+		}
+		DonorHealth::CheckPostings(servers, list, healthOptions, false, FetchParallel,
+			[&](const std::string& key, const DonorHealth::Health& health)
+			{
+				std::lock_guard<std::mutex> guard(placeMutex);
+				probe[(size_t)atoi(key.c_str())] = health;
+			});
+	}
+
+	std::vector<size_t> live;
+	for (size_t i = 0; i < verified.size(); i++)
+	{
+		auto it = probe.find(i);
+		if (it != probe.end() && DonorHealth::DeadProbe(it->second))
+		{
+			m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+			dead++;
+			info("DupeSearch: %s: dropping dead posting %s [%s] after the probe: %i of %i probe articles on no server",
+				job.name.c_str(), verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(),
+				it->second.missing, it->second.Answered());
+			continue;
+		}
+		live.push_back(i);
+	}
+
+	struct Placed
+	{
+		int id;
+		DonorScore::Entry entry;
+	};
+	std::map<size_t, Placed> placed;
+	DonorScore::Ranks ranks;
+	int base = DonorScore::Base(job.score);
+
+	auto twinOf = [&](const NzbFetcher::Fetched& f)
+		{ return f.info.files == pick.files && f.info.totalBytes == pick.totalBytes; };
+	auto aliveOf = [&](const DonorHealth::Health& health) { return health.Alive(); };
+	auto entryOf = [&](size_t i, int score, double alive)
+		{
+			DonorScore::Entry entry;
+			entry.score = score;
+			entry.alive = alive;
+			entry.twin = twinOf(verified[i]);
+			entry.bytes = verified[i].info.totalBytes;
+			entry.grabs = verified[i].listing.grabs;
+			return entry;
+		};
+	auto place = [&](size_t i, double alive, const char* how)
+		{
+			int score = ranks.Take(alive, twinOf(verified[i]));
+			int id = AddDonor(job, verified[i], base + score, alive);
+			if (id <= 0)
+			{
+				ranks.Release(score);
+				return;
+			}
+			added++;
+			placed[i] = { id, entryOf(i, score, alive) };
+			info("DupeSearch: %s: added %s [%s] score=%i alive=%i%% (%s)", job.name.c_str(),
+				verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(), base + score,
+				alive < 0 ? -1 : (int)std::lround(100 * alive), how);
+		};
+
+	// the probe-alive postings go in at once, then each is rescored when its
+	// full sample lands; the rest are added as their samples finish
+	size_t fast = std::min((size_t)g_Options->GetDupeFastDonors(), live.size());
+	if (cap > 0)
+	{
+		fast = std::min(fast, (size_t)cap);
+	}
+	std::set<size_t> fastSet;
+	for (size_t n = 0; n < fast; n++)
+	{
+		auto it = probe.find(live[n]);
+		place(live[n], it == probe.end() ? -1.0 : aliveOf(it->second), "fast");
+		fastSet.insert(live[n]);
+	}
+
+	std::set<size_t> todo(live.begin(), live.end());
+	if (!servers.empty() && !todo.empty())
+	{
+		std::vector<DonorHealth::Posting> list;
+		for (size_t i : todo)
+		{
+			list.push_back({ std::to_string(i), verified[i].info.messageIds, groupsOf(verified[i].info) });
+		}
+		DonorHealth::CheckPostings(servers, list, healthOptions, true, FetchParallel,
+			[&](const std::string& key, const DonorHealth::Health& health)
+			{
+				std::lock_guard<std::mutex> guard(placeMutex);
+				size_t i = (size_t)atoi(key.c_str());
+				if (!todo.erase(i))
+				{
+					return;
+				}
+				double alive = aliveOf(health);
+				bool isDead = alive >= 0 && alive * 100 < g_Options->GetDupeMinAlive() &&
+					health.missing >= DonorHealth::MinKnown;
+				info("DupeSearch: %s: %s [%s]: alive=%i%% (%i of %i articles)", job.name.c_str(),
+					verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(),
+					alive < 0 ? -1 : (int)std::lround(100 * alive), health.present, health.Answered());
+
+				auto it = placed.find(i);
+				if (it != placed.end())
+				{
+					// a fast donor: its real health moves its score
+					Placed& donor = it->second;
+					ranks.Release(donor.entry.score);
+					int score = isDead ? DonorScore::Dead : ranks.Take(alive, donor.entry.twin);
+					std::string param = std::string(AliveParam) + "=" + std::to_string(alive < 0 ? 100 : (int)std::lround(100 * alive));
+					if (alive < 0 || SetScore(donor.id, base + score, param))
+					{
+						donor.entry.score = alive < 0 ? donor.entry.score : score;
+						donor.entry.alive = alive;
+						if (isDead)
+						{
+							m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+							dead++;
+						}
+					}
+					else
+					{
+						ranks.Release(score);
+						ranks.Use(donor.entry.score);
+						rescoreFailed++;
+						warn("DupeSearch: could not rescore %s: keeps score %i", verified[i].listing.title.c_str(),
+							base + donor.entry.score);
+					}
+				}
+				else if (cap > 0 && added >= cap)
+				{
+					overCap++;
+				}
+				else if (isDead)
+				{
+					m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+					dead++;
+					info("DupeSearch: %s: dropping dead posting %s: alive=%i%%", job.name.c_str(),
+						verified[i].listing.title.c_str(), (int)std::lround(100 * alive));
+				}
+				else
+				{
+					place(i, alive, "checked");
+				}
+			});
+	}
+
+	// whatever no check reported on (no servers, a failed check) is added unchecked
+	for (size_t i : std::set<size_t>(todo))
+	{
+		todo.erase(i);
+		if (placed.count(i))
+		{
+			continue;
+		}
+		if (cap > 0 && added >= cap)
+		{
+			overCap++;
+			continue;
+		}
+		place(i, -1.0, "unchecked");
+	}
+
+	// once every check is in, the scores in order of wholeness
+	std::vector<size_t> order2;
+	std::vector<DonorScore::Entry> entries;
+	for (auto& entry : placed)
+	{
+		order2.push_back(entry.first);
+		entries.push_back(entry.second.entry);
+	}
+	std::vector<int> wanted = DonorScore::Rerank(entries, pickBytes);
+	for (size_t n = 0; n < order2.size(); n++)
+	{
+		Placed& donor = placed[order2[n]];
+		if (wanted[n] == donor.entry.score)
+		{
+			continue;
+		}
+		if (SetScore(donor.id, base + wanted[n], ""))
+		{
+			info("DupeSearch: %s: reranked %s: score %i -> %i", job.name.c_str(),
+				verified[order2[n]].listing.title.c_str(), base + donor.entry.score, base + wanted[n]);
+			donor.entry.score = wanted[n];
+		}
+		else
+		{
+			rescoreFailed++;
+		}
+	}
+
+	if (pickCheck.joinable())
+	{
+		pickCheck.join();
+	}
+
+	rejected["dead"] += dead;
+	rejected["over-cap"] += overCap;
+	rejected["rescore"] += rescoreFailed;
 	std::string outcome;
 	for (const auto& entry : rejected)
 	{
@@ -468,9 +734,68 @@ void DupeSearch::Search(const Job& job)
 			outcome += (outcome.empty() ? "" : ", ") + entry.first + ": " + std::to_string(entry.second);
 		}
 	}
-	info("DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i rejected={%s}",
+	info("DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i added=%i rejected={%s}",
 		job.name.c_str(), (int)results.size(), (int)candidates.size(), (int)order.size(),
-		(int)verified.size(), outcome.c_str());
+		(int)verified.size(), added, outcome.c_str());
+}
+
+int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive)
+{
+	std::string lowerKey = LowerKey(job.dupeKey);
+	std::string fingerprint = posting.info.Fingerprint();
+	{
+		std::lock_guard<std::mutex> guard(m_mutex);
+		if (!m_sent[lowerKey].insert(fingerprint).second)
+		{
+			return 0;
+		}
+	}
+
+	NzbParameterList parameters;
+	parameters.SetParameter(DonorParam, "yes");
+	if (alive >= 0)
+	{
+		parameters.SetParameter(AliveParam, std::to_string((int)std::lround(100 * alive)).c_str());
+	}
+	std::string name = posting.listing.title;
+	if (name.size() < 4 || strcasecmp(name.c_str() + name.size() - 4, ".nzb"))
+	{
+		name += ".nzb";
+	}
+
+	int nzbId = 0;
+	Scanner::EAddStatus status = g_Scanner->AddExternalFile(name.c_str(), job.category.c_str(), false, 0,
+		job.dupeKey.c_str(), score, dmScore, &parameters, false, false, nullptr, nullptr,
+		posting.data.data(), (int)posting.data.size(), &nzbId);
+	if (status != Scanner::asSuccess || nzbId <= 0)
+	{
+		std::lock_guard<std::mutex> guard(m_mutex);
+		m_sent[lowerKey].erase(fingerprint);
+		return 0;
+	}
+	return nzbId;
+}
+
+bool DupeSearch::SetScore(int id, int score, const std::string& param)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	IdList ids{ id };
+	std::string text = std::to_string(score);
+	const std::pair<DownloadQueue::EEditAction, DownloadQueue::EEditAction> kinds[] = {
+		{ DownloadQueue::eaHistorySetDupeScore, DownloadQueue::eaHistorySetParameter },
+		{ DownloadQueue::eaGroupSetDupeScore, DownloadQueue::eaGroupSetParameter } };
+	for (const auto& kind : kinds)
+	{
+		if (downloadQueue->EditList(&ids, nullptr, DownloadQueue::mmId, kind.first, text.c_str()))
+		{
+			if (!param.empty())
+			{
+				downloadQueue->EditList(&ids, nullptr, DownloadQueue::mmId, kind.second, param.c_str());
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 std::string DupeSearch::StatePath()

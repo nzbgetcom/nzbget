@@ -108,6 +108,14 @@ public:
 			ids.insert(Trim(m_text));
 			m_inSegment = false;
 		}
+		else if (name == "group" && m_inFile)
+		{
+			std::string group = Trim(m_text);
+			if (!group.empty())
+			{
+				groups.insert(group);
+			}
+		}
 		else if (name == "file")
 		{
 			m_inFile = false;
@@ -124,6 +132,7 @@ public:
 	std::string poster;
 	std::map<std::string, long long> sizes;
 	std::set<std::string> ids;
+	std::set<std::string> groups;
 	std::map<std::string, std::string> meta;
 
 private:
@@ -167,6 +176,7 @@ bool NzbReader::Parse(const std::string& data, NzbSummary& summary)
 	summary.poster = reader.poster;
 	summary.meta = reader.meta;
 	summary.messageIds.assign(reader.ids.begin(), reader.ids.end());
+	summary.groups.assign(reader.groups.begin(), reader.groups.end());
 
 	std::string mainName;
 	long long mainSize = -1;

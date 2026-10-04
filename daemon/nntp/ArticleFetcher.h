@@ -94,6 +94,12 @@ public:
 	/* messageId must include the angle brackets (as stored in ArticleInfo) */
 	FetchedArticle Fetch(const char* messageId, const std::vector<CString>& groups);
 
+	/* one request on the given connection, nothing else (no server walk, no
+	 * retry): the duplicate search checks with it that an article's data is
+	 * really there. The yEnc checksum is verified. */
+	FetchedArticle FetchFromConnection(NntpConnection* connection,
+		const char* messageId, const std::vector<CString>& groups);
+
 	void Stop();
 
 private:
@@ -108,8 +114,6 @@ private:
 	static void SetServerUnreachable(NewsServer* server, bool unreachable);
 	bool WaitBeforeRetry(int seconds);
 
-	FetchedArticle FetchFromConnection(NntpConnection* connection,
-		const char* messageId, const std::vector<CString>& groups);
 	void ReleaseConnection(NntpConnection* connection, bool keepConnected);
 	void AddServerStats(NntpConnection* connection);
 };

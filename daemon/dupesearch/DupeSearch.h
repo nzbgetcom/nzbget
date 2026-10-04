@@ -27,6 +27,7 @@
 #include <condition_variable>
 #include <map>
 #include <mutex>
+#include <set>
 #include "DeadPostings.h"
 #include "NzbFetcher.h"
 
@@ -110,12 +111,17 @@ private:
 	std::condition_variable m_cond;
 	std::map<int, time_t> m_pending;			// nzb id -> when to look at it
 	std::map<std::string, Searched> m_searched;	// lowercase dupe key -> last search
+	std::map<std::string, std::set<std::string>> m_sent;	// lowercase dupe key -> fingerprints queued
 
 	void DownloadQueueUpdate(void* aspect);
 	void Schedule(int nzbId, time_t due);
 	void ScanQueue();
 	bool Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job);
 	void Search(const Job& job);
+	/* queues a posting as a duplicate of the pick; the download id, 0 when not added */
+	int AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive);
+	/* the DupeScore (and a parameter "Name=Value") of a duplicate that sits in history or in the queue */
+	bool SetScore(int id, int score, const std::string& param);
 	void LoadState();
 	void SaveState();
 	std::string StatePath();
