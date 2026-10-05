@@ -503,6 +503,10 @@ void PrePostProcessor::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbIn
 	{
 		g_HistoryCoordinator->DeleteDiskFiles(nzbInfo);
 		downloadQueue->GetQueue()->Remove(nzbInfo);
+		// the removal must reach the disk: the saved queue may hold the download
+		// with its files already flagged deleted, which a restart before the next
+		// save brought back as a queued download without files (B42)
+		needSave = true;
 	}
 
 	if (saveQueue && needSave)

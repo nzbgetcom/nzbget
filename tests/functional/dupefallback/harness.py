@@ -1025,6 +1025,126 @@ def scenario_declaredcountnopair(daemon, t):
             % (h['Status'], recovered, borrowed, h.get('FailedArticles')))
 
 
+def _final_delete_midway(daemon, t, name, restart_at_once):
+    """A client cancels a download that is half done (nzbdavkodi's
+    cancel_jobs: GroupFinalDelete, then GroupFinalDelete and HistoryFinalDelete
+    again a moment later) while a lower-scored duplicate waits in history and
+    articles are being borrowed from it. The download must be gone for good:
+    not left in the queue without files (stuck QUEUED, never post-processed),
+    not in history, and not back after a restart."""
+    seg = 250_000
+    size = 3_000_000
+    members, backup = [], []
+    for i in range(6):
+        data = _payload(size, 9830 + i)
+        pp = _place_copy(t, 'fdA%d' % i, data, 'f%d.bin' % i)
+        bp = _place_copy(t, 'fdB%d' % i, data, 'f%d.bin' % i)
+        members.append((pp, 'Movie.part%02d.rar' % (i + 1), size, seg, {3, 7}))
+        backup.append((bp, 'Movie.part%02d.rar' % (i + 1), size, seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(members), True, 'fd-key', 100)
+    daemon.append(api, 'Backup', build_multi_nzb(backup), False, 'fd-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    pid = [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'][0]
+    api.editqueue('GroupResume', 0, '', [pid])
+    deadline = time.time() + 120
+    while time.time() < deadline:
+        g = [x for x in api.listgroups() if x['NZBID'] == pid]
+        if not g or g[0]['RemainingFileCount'] <= 4:
+            break
+        time.sleep(0.1)
+    cancelled_with = g[0]['RemainingFileCount'] if g else -1
+    api.editqueue('GroupFinalDelete', 0, '', [pid])
+    if not restart_at_once:
+        time.sleep(0.3)
+        api.editqueue('GroupFinalDelete', 0, '', [pid])
+        api.editqueue('HistoryFinalDelete', 0, '', [pid])
+        time.sleep(8)
+
+    def present():
+        queued = [x for x in api.listgroups() if x['NZBID'] == pid]
+        hist = [h for h in api.history(True) if h.get('NZBID') == pid or h.get('ID') == pid]
+        return queued, hist
+    queued, hist = present() if not restart_at_once else ([], [])
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    time.sleep(3)
+    queued2, hist2 = present()
+    ok = cancelled_with > 0 and not queued and not hist and not queued2 and not hist2
+    return (name, ok, 'remaining_files_at_cancel=%s queued=%s history=%d after_restart_queued=%s history=%d'
+            % (cancelled_with, [(x['Status'], x['RemainingFileCount']) for x in queued], len(hist),
+               [(x['Status'], x['RemainingFileCount']) for x in queued2], len(hist2)))
+
+
+def scenario_finaldeletemidway(daemon, t):
+    """B42: a client cancels a half-done download (nzbdavkodi's cancel_jobs:
+    GroupFinalDelete, then again with HistoryFinalDelete a moment later) while
+    articles are borrowed from a duplicate in history: it is gone for good,
+    before and after a restart."""
+    return _final_delete_midway(daemon, t, 'finaldeletemidway', False)
+
+
+def scenario_finaldeleterestart(daemon, t):
+    """B42: nzbget shuts down right after a half-done download was final-deleted,
+    before the files still downloading let the delete finish. The download
+    must not come back after the restart as a QUEUED item without files
+    (production 2425: never post-processed, never removed)."""
+    return _final_delete_midway(daemon, t, 'finaldeleterestart', True)
+
+
+def scenario_restartmidway(daemon, t):
+    """B42: nzbget shuts down while a download is half done, articles are
+    being borrowed from a duplicate in history (HealthCheck=dupe,
+    DupeArticleFallback=live). After the restart the download keeps the files
+    it hadn't finished and completes: it isn't left QUEUED without files
+    (then nothing ever starts its post-processing)."""
+    seg = 100_000
+    size = 6_000_000
+    members, backup, payloads = [], [], []
+    for i in range(6):
+        data = _payload(size, 9840 + i)
+        payloads.append(data)
+        pp = _place_copy(t, 'rmA%d' % i, data, 'f%d.bin' % i)
+        bp = _place_copy(t, 'rmB%d' % i, data, 'f%d.bin' % i)
+        members.append((pp, 'Movie.part%02d.rar' % (i + 1), size, seg, {3, 7}))
+        backup.append((bp, 'Movie.part%02d.rar' % (i + 1), size, seg, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(members), True, 'rm-key', 100)
+    daemon.append(api, 'Backup', build_multi_nzb(backup), False, 'rm-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    pid = [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'][0]
+    api.editqueue('GroupResume', 0, '', [pid])
+    deadline = time.time() + 120
+    g = []
+    while time.time() < deadline:
+        g = [x for x in api.listgroups() if x['NZBID'] == pid]
+        if not g or g[0]['RemainingFileCount'] <= 4:
+            break
+        time.sleep(0.1)
+    before = g[0]['RemainingFileCount'] if g else -1
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    time.sleep(1)
+    g = [x for x in api.listgroups() if x['NZBID'] == pid]
+    after = g[0]['RemainingFileCount'] if g else -1
+    files_after = len(api.listfiles(0, 0, pid)) if g else -1
+    h = daemon.wait_history(api, 'Primary', timeout=180)
+    # (each file takes seconds: at most one finishes before the count is taken)
+    ok = before > 1 and after >= before - 1 and files_after == after and h['Status'].startswith('SUCCESS')
+    return ('restartmidway', ok, 'remaining_before=%d remaining_after=%d listfiles_after=%d status=%s'
+            % (before, after, files_after, h['Status']))
+
+
 def scenario_recheckfailed(daemon, t):
     """Lesson 18: with ArticleRetries=0, three articles are lost to a single
     failed request each (the server answers their first request with a
@@ -4573,6 +4693,9 @@ SCENARIOS = {
     'complementary': scenario_complementary,
     'recheckfailed': scenario_recheckfailed,
     'nzbgapborrow': scenario_nzbgapborrow,
+    'finaldeletemidway': scenario_finaldeletemidway,
+    'finaldeleterestart': scenario_finaldeleterestart,
+    'restartmidway': scenario_restartmidway,
     'declaredcountnopair': scenario_declaredcountnopair,
     'rejectnextserver': scenario_rejectnextserver,
     'cutover': scenario_cutover,
@@ -4731,6 +4854,9 @@ SCENARIO_OPTIONS = {
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
+    'finaldeletemidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
+    'finaldeleterestart': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
+    'restartmidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe'],
     'declaredcountnopair': ['DupeArticleFallback=article'],
     'recheckfailed': ['DupeArticleFallback=article', 'ArticleRetries=0', 'Server1.Connections=2'],
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
@@ -4885,7 +5011,7 @@ DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 # scenarios that read nserv's request log (nserv.log)
 CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
-SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'], 'deadpickafterreload': ['-w', '500'],
+SCENARIO_NSERV_ARGS = {'finaldeletemidway': ['-w', '300'], 'finaldeleterestart': ['-w', '300'], 'restartmidway': ['-w', '300'], 'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'], 'deadpickafterreload': ['-w', '500'],
                        'deadpickpartial': ['-w', '100'], 'deadpickservers': ['-w', '200'],
                        'deadpickfewservers': ['-w', '200']}
 
