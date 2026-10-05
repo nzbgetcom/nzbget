@@ -39,6 +39,7 @@ SCENARIOS = (
     'hopeless_live', 'hopeless_stream',
     'partial_live', 'partial_stream',
     'no_par_live', 'no_par_stream',
+    'deferfailover_stream',
 )
 
 
@@ -252,6 +253,61 @@ def scenario_parity(daemon, target, name):
     return passed, detail
 
 
+def scenario_deferfailover(daemon, target, name):
+    """B36: HealthCheck=dupe while borrowing waits for par-check. Two of the
+    three recovery volumes are lost and five data articles are missing. Health
+    counts the data files only, so the lost volumes raise the critical health
+    (93.2%) above the health (92.4%), while the damage (9540 bytes) is still
+    within the good parity bytes (9920): the stream fallback defers and counts
+    no attempt. A healthy backup scored 99 waits in history. The download must
+    not fail over before borrowing had its turn: it completes, and the
+    backup's bytes repair what the one remaining recovery block can't."""
+    parity_names = ['testfile.par2', 'testfile.vol00+1.PAR2',
+                    'testfile.vol01+2.PAR2', 'testfile.vol03+3.PAR2']
+    block_size, _ = inspect_parity([FIXTURES / n for n in parity_names])
+    data = (FIXTURES / 'testfile.dat').read_bytes()
+    nfo = (FIXTURES / 'testfile.nfo').read_bytes()
+    members = []
+    for filename, content, holes, segment in (
+            ('testfile.dat', data, set(range(10, 15)), block_size * 3),
+            ('testfile.nfo', nfo, set(), 4096)):
+        served = harness._place_copy(target, 'defer-primary', content, filename)
+        members.append((served, filename, len(content), segment, holes))
+    for filename in parity_names:
+        content = (FIXTURES / filename).read_bytes()
+        served = harness._place_copy(target, 'defer-primary', content, filename)
+        segment = 2048
+        lost = filename in ('testfile.vol01+2.PAR2', 'testfile.vol03+3.PAR2')
+        holes = set(range(1, len(content) // segment + 2)) if lost else set()
+        members.append((served, filename, len(content), segment, holes))
+    backup_path = harness._place_copy(target, 'defer-backup', data, 'testfile.dat')
+    backup = harness.build_multi_nzb([(backup_path, 'testfile.dat', len(data),
+                                       block_size * 5, set())])
+    api = daemon.wait_ready()
+    key = 'par-first-' + name
+    primary_name = 'Primary-' + name
+    # the primary is queued paused first, so the lower-scored backup is
+    # deleted as duplicate into history instead of downloading
+    assert daemon.append(api, primary_name, harness.build_multi_nzb(members), True, key, 100) > 0
+    assert daemon.append(api, 'Backup-' + name, backup, False, key, 99) > 0
+    daemon.wait_history(api, 'Backup-' + name, timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == primary_name])
+    history = daemon.wait_history(api, primary_name, timeout=90)
+    log = target.read_file('nzbget.log').decode(errors='replace')
+    integrity = verify_named_outputs(target, {'testfile.dat': data, 'testfile.nfo': nfo})
+    detail = {
+        'status': history.get('Status'),
+        'failover_logs': log.count('Failing over ' + primary_name),
+        'deferred_logs': log.count('Deferring duplicate recovery for ' + primary_name),
+        'recovered_articles': int(history.get('DupeRecoveredArticles', 0)),
+        'integrity': integrity,
+    }
+    passed = (detail['deferred_logs'] == 1 and detail['failover_logs'] == 0 and history.get('Status', '').startswith('SUCCESS')
+              and detail['recovered_articles'] >= 1 and all(integrity.values()))
+    return passed, detail
+
+
 def run_one(binary, name, keep, par_quick='no'):
     workdir = tempfile.mkdtemp(prefix='nzbget-par-first-%s-' % name)
     target = harness.LocalTarget(binary, workdir)
@@ -263,9 +319,14 @@ def run_one(binary, name, keep, par_quick='no'):
     passed = False
     try:
         mode = 'live' if name.endswith('_live') else 'stream'
-        options = ['DupeArticleFallback=' + mode, 'ParCheck=auto',
+        # deferfailover: every par2 volume downloads (ParCheck=force), so
+        # the lost ones count against health
+        options = ['DupeArticleFallback=' + mode,
+                   'ParCheck=' + ('force' if name.startswith('deferfailover') else 'auto'),
                    'ParQuick=' + par_quick, 'ParScan=full', 'ParRepair=yes',
                    'ParCleanupQueue=no', 'DownloadRate=1024']
+        if name.startswith('deferfailover'):
+            options.append('HealthCheck=dupe')
         daemon.write_config(options)
         daemon.start_nserv()
         daemon.start()
@@ -273,6 +334,8 @@ def run_one(binary, name, keep, par_quick='no'):
             scenario = (harness.scenario_liveoverlap if mode == 'live'
                         else harness.scenario_stream)
             _, passed, detail = scenario(daemon, target)
+        elif name.startswith('deferfailover'):
+            passed, detail = scenario_deferfailover(daemon, target, name)
         else:
             passed, detail = scenario_parity(daemon, target, name)
         print('[%s] %s %s' % ('PASS' if passed else 'FAIL', name,

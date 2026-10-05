@@ -36,6 +36,7 @@
 #include "DupeCoordinator.h"
 #include "DupeProbe.h"
 #include "DupeStreamRepair.h"
+#include "DupeArticleFallback.h"
 #include "StreamRepair.h"
 
 bool QueueCoordinator::CoordinatorDownloadQueue::EditEntry(
@@ -1482,6 +1483,13 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 	int recovered = nzbInfo->GetDupeRecoveredArticles();
 	if (g_Options->GetDupeArticleFallback() != Options::dafNone && attempted > 0 &&
 		(attempted < DupeFailoverSample || recovered * 2 >= attempted))
+	{
+		return;
+	}
+	// borrowing waits for par-check while par2 may still cover the damage (its
+	// failures aren't counted then): no failover before it had its turn (B36)
+	if (g_Options->GetDupeArticleFallback() != Options::dafNone && attempted == 0 &&
+		nzbInfo->GetDupeParDeferState() == NzbInfo::dpDeferred && !DupeArticleFallback::ParCannotCover(nzbInfo))
 	{
 		return;
 	}
