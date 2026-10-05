@@ -265,6 +265,7 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 		{ "hdr10+", "hdr10plus" }, { "dd+", "ddp" }, { "e-ac-3", "eac3" }, { "e-ac3", "eac3" },
 		{ "blu-ray", "bluray" }, { "web-dl", "webdl" }, { "dts-hd", "dtshd" }, { "dts-x", "dtsx" },
 		{ "dts-es", "dtses" }, { "ac-3", "ac3" }, { "dolby vision", "dovi" }, { "dolby.vision", "dovi" },
+		{ "dolby-vision", "dovi" }, { "dolby_vision", "dovi" }, { "dolbyvision", "dovi" },
 		{ "hdr 10", "hdr10" }, { "web dl", "webdl" }, { "dts hd", "dtshd" }, { "blu ray", "bluray" } };
 	for (const auto& join : joins)
 	{
@@ -272,6 +273,20 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 		{
 			text.replace(pos, join.first.size(), join.second);
 		}
+	}
+
+	// "s01e01-e03" and "s01e01-03" are episodes 1, 2 and 3: written as "s01e01e02e03"
+	static const std::regex episodeRange("(s\\d{1,3}(?:e\\d{1,4})*e(\\d{1,4}))-e?(\\d{1,4})(?![0-9a-z])");
+	for (std::smatch range; std::regex_search(text, range, episodeRange);)
+	{
+		int first = atoi(range[2].str().c_str());
+		int last = atoi(range[3].str().c_str());
+		std::string episodes = range[1].str();
+		for (int episode = first + 1; episode <= last && last - first <= 50; episode++)
+		{
+			episodes += "e" + std::to_string(episode);
+		}
+		text = range.prefix().str() + episodes + range.suffix().str();
 	}
 
 	std::vector<std::string> tokens;
@@ -297,6 +312,8 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 	static const std::regex bitRegex("^(\\d{1,2})bit$|^hi10p?$");
 	static const std::regex seasonEpisode("^s(\\d{1,3})((?:e\\d{1,4})*)$");
 	static const std::regex altEpisode("^(\\d{1,2})x(\\d{2,3})$");
+	static const std::regex repackRegex("^(repack|rerip)\\d?$");
+	static const std::regex properRegex("^proper\\d?$");
 	static const std::set<std::string> networks = { "amzn", "nf", "max", "atvp", "dsnp", "hulu", "pcok", "pmtp",
 		"cr", "stan", "itv", "bbc", "red", "sho", "hbo", "pmnt", "ctv", "crav", "nbc", "abc", "cbs", "ifc" };
 	static const std::set<std::string> editions = { "extended", "unrated", "uncut", "remastered", "theatrical",
@@ -328,6 +345,12 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 			attrs.seasons.push_back(atoi(match[1].str().c_str()));
 			attrs.episodes.push_back(atoi(match[2].str().c_str()));
 		}
+		else if (IsYearToken(tok) && title.empty() && !titleDone)
+		{
+			// "2001.A.Space.Odyssey.1968", "1917.2019", "2012.1080p": a title can start with
+			// a year-like number; the release year, if any, follows it
+			marker = false;
+		}
 		else if (IsYearToken(tok))
 		{
 			if (!attrs.year)
@@ -351,7 +374,7 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 			}
 			else
 			{
-				attrs.resolution.insert(tok.substr(0, tok.size() - 1) + "p");
+				attrs.resolution.insert(tok);	// 1080i is another encode than 1080p
 			}
 		}
 		else if (tok == "webdl") { attrs.quality.insert("web"); attrs.quality.insert("dl"); }
@@ -410,8 +433,8 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 		else if (tok == "hdr10plus" || tok == "hdr10p") { attrs.hdr.insert("hdr10+"); }
 		else if (tok == "hlg") { attrs.hdr.insert("hlg"); }
 		else if (tok == "sdr") { /* a name without an HDR tag is SDR */ }
-		else if (tok == "repack" || tok == "rerip") { attrs.repack = true; }
-		else if (tok == "proper") { attrs.proper = true; }
+		else if (std::regex_match(tok, repackRegex)) { attrs.repack = true; }		// repack, repack2, rerip
+		else if (std::regex_match(tok, properRegex)) { attrs.proper = true; }
 		else if (tok == "netflix") { attrs.network.insert("nf"); }
 		else if (tok == "amazon") { attrs.network.insert("amzn"); }
 		else if (tok == "hmax") { attrs.network.insert("max"); }

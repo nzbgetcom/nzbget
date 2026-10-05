@@ -138,6 +138,67 @@ BOOST_AUTO_TEST_CASE(ReleaseNameReadableTest)
 	BOOST_CHECK(!ReleaseName::Readable("e630b420289687dc3c66cc3274207902.part01.rar"));
 }
 
+// B9: a ranged multi-episode posting is episodes 1 and 2, never episode 1 alone
+BOOST_AUTO_TEST_CASE(ReleaseNameEpisodeRangeTest)
+{
+	std::vector<int> both = { 1, 2 };
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01-E02.1080p.WEB.h264-GRP").episodes == both);
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01-02.1080p.WEB.h264-GRP").episodes == both);
+	std::vector<int> three = { 1, 2, 3 };
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01-E03.1080p.WEB.h264-GRP").episodes == three);
+	BOOST_CHECK(!ReleaseName::SameRelease("Show.S01E01-E02.1080p.WEB.h264-GRP", "Show.S01E01.1080p.WEB.h264-GRP"));
+	BOOST_CHECK(ReleaseName::SameRelease("Show.S01E01-E02.1080p.WEB.h264-GRP", "Show.S01E01E02.1080p.WEB.h264-GRP"));
+	// a number after the episode that isn't a range stays title or junk
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01.1080p.WEB.h264-GRP").episodes == std::vector<int>{ 1 });
+}
+
+// B10: numbered repacks and propers are repacks and propers
+BOOST_AUTO_TEST_CASE(ReleaseNameNumberedRepackTest)
+{
+	BOOST_CHECK(!ReleaseName::SameRelease("Show.S01E01.REPACK2.1080p.WEB.h264-GRP", "Show.S01E01.1080p.WEB.h264-GRP"));
+	BOOST_CHECK(!ReleaseName::SameRelease("Show.S01E01.PROPER2.1080p.WEB.h264-GRP", "Show.S01E01.1080p.WEB.h264-GRP"));
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01.RERIP3.1080p.WEB.h264-GRP").repack);
+	BOOST_CHECK(ReleaseName::SameRelease("Show.S01E01.REPACK2.1080p.WEB.h264-GRP", "Show S01E01 REPACK2 1080p WEB h264-GRP"));
+}
+
+// B11: every spelling of Dolby Vision is DV
+BOOST_AUTO_TEST_CASE(ReleaseNameDolbyVisionSpellingsTest)
+{
+	for (const char* name : { "Movie.2020.2160p.DolbyVision.WEB.h265-GRP", "Movie.2020.2160p.Dolby-Vision.WEB.h265-GRP",
+		"Movie.2020.2160p.Dolby_Vision.WEB.h265-GRP", "Movie 2020 2160p Dolby Vision WEB h265-GRP" })
+	{
+		BOOST_CHECK_MESSAGE(ReleaseName::Parse(name).hdr == std::set<std::string>{ "dv" }, name);
+		BOOST_CHECK_MESSAGE(ReleaseName::SameRelease(name, "Movie.2020.2160p.DV.WEB.h265-GRP"), name);
+		BOOST_CHECK_MESSAGE(!ReleaseName::SameRelease(name, "Movie.2020.2160p.WEB.h265-GRP"), name);
+	}
+}
+
+// B12: a title that starts with a year-like number keeps it as title
+BOOST_AUTO_TEST_CASE(ReleaseNameYearTitleTest)
+{
+	BOOST_CHECK(!ReleaseName::SameRelease("2001.A.Space.Odyssey.1968.1080p.BluRay.x264-GRP", "2001.Maniacs.2005.1080p.BluRay.x264-GRP"));
+	ReleaseName::Attrs odyssey = ReleaseName::Parse("2001.A.Space.Odyssey.1968.1080p.BluRay.x264-GRP");
+	BOOST_CHECK_EQUAL(odyssey.title, "2001aspaceodyssey");
+	BOOST_CHECK_EQUAL(odyssey.year, 1968);
+	ReleaseName::Attrs war = ReleaseName::Parse("1917.2019.1080p.BluRay.x264-GRP");
+	BOOST_CHECK_EQUAL(war.title, "1917");
+	BOOST_CHECK_EQUAL(war.year, 2019);
+	BOOST_CHECK_EQUAL(ReleaseName::Parse("2012.1080p.BluRay.x264-GRP").title, "2012");
+	BOOST_CHECK(ReleaseName::Readable("1917.2019.1080p.BluRay.x264-GRP.mkv"));
+	BOOST_CHECK(!ReleaseName::SameRelease("1917.2019.1080p.BluRay.x264-GRP", "2012.2009.1080p.BluRay.x264-GRP"));
+	// a show with a year after its title is unchanged
+	ReleaseName::Attrs show = ReleaseName::Parse("The.Paper.2025.S01E01.1080p.WEB.h264-GRP");
+	BOOST_CHECK_EQUAL(show.title, "thepaper");
+	BOOST_CHECK_EQUAL(show.year, 2025);
+}
+
+// B13: interlaced and progressive are different encodes
+BOOST_AUTO_TEST_CASE(ReleaseNameInterlacedTest)
+{
+	BOOST_CHECK(!ReleaseName::SameRelease("Show.S01E01.1080i.HDTV.h264-GRP", "Show.S01E01.1080p.HDTV.h264-GRP"));
+	BOOST_CHECK(ReleaseName::SameRelease("Show.S01E01.1080i.HDTV.h264-GRP", "Show S01E01 1080i HDTV h264-GRP"));
+}
+
 // 144 live indexer titles for three primaries: the verdict and the normalized name
 BOOST_AUTO_TEST_CASE(ReleaseNameVectorsTest)
 {
