@@ -88,9 +88,11 @@ BOOST_AUTO_TEST_CASE(DupeProbeIsDeadTest)
 	BOOST_CHECK(DupeProbe::IsDead(0, 3, 3));
 	BOOST_CHECK(!DupeProbe::IsDead(0, 2, 3));
 
-	// a posting with any article alive is never dead
-	BOOST_CHECK(!DupeProbe::IsDead(1, 8, 8));
+	// B45: one stray sample found doesn't make a posting alive, two do
+	BOOST_CHECK(DupeProbe::IsDead(1, 8, 8));
+	BOOST_CHECK(!DupeProbe::IsDead(2, 8, 8));
 	BOOST_CHECK(!DupeProbe::IsDead(3, 5, 5));
+	BOOST_CHECK(!DupeProbe::IsDead(1, 4, 8));
 
 	// no definitive server: no verdict
 	BOOST_CHECK(!DupeProbe::IsDead(0, 0, 0));

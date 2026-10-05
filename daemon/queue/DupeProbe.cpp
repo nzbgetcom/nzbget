@@ -85,10 +85,10 @@ DupeProbe::EAnswer DupeProbe::Classify(const char* response)
 	return daUnknown;
 }
 
-bool DupeProbe::IsDead(int existing, int missingServers, int activeServers)
+bool DupeProbe::IsDead(int existing, int definitiveServers, int activeServers)
 {
-	return existing == 0 && missingServers > 0 &&
-		missingServers >= std::min(MinMissingServers, activeServers);
+	return existing < MinAliveSamples && definitiveServers > 0 &&
+		definitiveServers >= std::min(MinMissingServers, activeServers);
 }
 
 void DupeProbe::Start(int nzbId, std::vector<Sample> samples, int recoveredAtStart)
@@ -122,6 +122,13 @@ void DupeProbe::Reset()
 {
 	Guard guard(g_probeMutex);
 	g_probesStopping = false;
+}
+
+bool DupeProbe::Probing(int nzbId)
+{
+	Guard guard(g_probeMutex);
+	return std::any_of(g_probes.begin(), g_probes.end(),
+		[nzbId](DupeProbe* probe) { return probe->m_nzbId == nzbId && !probe->m_countAll; });
 }
 
 bool DupeProbe::Register()
@@ -262,7 +269,7 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 				break;
 			}
 			remaining--;
-			if (m_countAll && m_found[index])
+			if (m_found[index])
 			{
 				continue;	// another server has it
 			}
@@ -307,9 +314,10 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 			{
 				case daExists:
 					result.Exists++;
-					if (m_countAll)
+					m_found[index] = 1;
+					if (m_foundOn.empty())
 					{
-						m_found[index] = 1;
+						m_foundOn = std::string(server->GetName()) + " (" + *sample.MessageId + ")";
 					}
 					break;
 				case daMissing:
@@ -320,9 +328,9 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 					break;
 			}
 
-			if (result.Exists > 0 && !m_countAll)
+			if (!m_countAll && std::count(m_found.begin(), m_found.end(), 1) >= MinAliveSamples)
 			{
-				break;
+				break;	// alive: no need to ask further
 			}
 		}
 		probedServer = true;
@@ -380,22 +388,22 @@ DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 		}
 		verdict.ReachedServers++;
 
-		verdict.Existing += result.Exists;
+		verdict.Existing = (int)std::count(m_found.begin(), m_found.end(), 1);
+		verdict.FoundOn = m_foundOn;
 		if (m_countAll)
 		{
 			// every sample is asked of every server until each was found somewhere
-			verdict.Existing = (int)std::count(m_found.begin(), m_found.end(), 1);
 			if (verdict.Existing == (int)m_samples.size())
 			{
 				break;
 			}
 			continue;
 		}
-		if (verdict.Existing > 0)
+		if (verdict.Existing >= MinAliveSamples)
 		{
 			break;
 		}
-		if (result.Missing == (int)m_samples.size())
+		if (result.Unknown == 0 && result.Exists + result.Missing > 0)
 		{
 			verdict.MissingServers++;
 		}
@@ -468,13 +476,18 @@ void DupeProbe::Run()
 		return;
 	}
 
+	int sampled = (int)m_samples.size();
 	if (verdict.Dead())
 	{
+		Note(Message::mkInfo, "Dupe probe: %i of %i sampled articles exist (%i of %i servers answered "
+			"definitively)%s%s: the posting is dead", verdict.Existing, sampled, verdict.MissingServers,
+			verdict.ActiveServers, verdict.FoundOn.empty() ? "" : ", found on ", verdict.FoundOn.c_str());
 		Abandon(verdict.MissingServers, verdict.ActiveServers);
 	}
-	else if (verdict.Existing > 0)
+	else if (verdict.Existing >= MinAliveSamples)
 	{
-		detail("Dupe probe of download %i: an article exists, not abandoning it", m_nzbId);
+		Note(Message::mkInfo, "Dupe probe: %i of %i sampled articles exist, the first on %s: not abandoning it",
+			verdict.Existing, sampled, verdict.FoundOn.c_str());
 	}
 	else if (verdict.Finished && verdict.ReachedServers == 0)
 	{
@@ -485,16 +498,37 @@ void DupeProbe::Run()
 		if (nzbInfo)
 		{
 			nzbInfo->SetDeadPickProbed(false);
+			// (under the queue lock already: not through Note, the lock isn't recursive)
+			nzbInfo->PrintMessage(Message::mkDetail, "Dupe probe: no server could be asked, will probe again");
 		}
-		detail("Dupe probe of download %i: no server could be asked, will probe again", m_nzbId);
 	}
 	else if (verdict.Finished)
 	{
-		detail("Dupe probe of download %i: no verdict (%i of %i servers answered definitively)",
-			m_nzbId, verdict.MissingServers, verdict.ActiveServers);
+		Note(Message::mkInfo, "Dupe probe: no verdict (%i of %i sampled articles exist, %i of %i servers "
+			"answered definitively)", verdict.Existing, sampled, verdict.MissingServers, verdict.ActiveServers);
 	}
 
 	Unregister();
+}
+
+void DupeProbe::Note(Message::EKind kind, const char* format, ...)
+{
+	char text[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(text, sizeof(text), format, args);
+	va_end(args);
+
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+	if (nzbInfo)
+	{
+		nzbInfo->PrintMessage(kind, "%s", text);
+	}
+	else
+	{
+		detail("Dupe probe of download %i: %s", m_nzbId, text);
+	}
 }
 
 void DupeProbe::Abandon(int missingServers, int activeServers)

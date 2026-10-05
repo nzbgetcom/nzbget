@@ -122,9 +122,13 @@ private:
 	void CheckHealth(DownloadQueue* downloadQueue, FileInfo* fileInfo);
 	void CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery
 	static constexpr int DupeFailoverSample = 32;
+	// failed articles beyond the first of each file, with none of its own downloaded,
+	// after which a download counts as dead (HealthCheck=dupe)
+	static constexpr int DeadDownloadFailures = 64;
 	// a download without a better duplicate is parked once this share of its
 	// articles was tried (percent) and fewer than this share of the tried
 	// ones existed (percent; the ParScan=dupe park ratio): nothing of it

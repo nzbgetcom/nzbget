@@ -891,6 +891,7 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 		nzbInfo->SetDownloadedSize(nzbInfo->GetDownloadedSize() + articleDownloader->GetDownloadedSize());
 
 		CheckHealth(downloadQueue, fileInfo);
+		CheckDeadDownload(downloadQueue, nzbInfo);
 
 		if (nzbInfo->GetParking() && fileInfo->GetActiveDownloads() == 1 && !fileInfo->GetDupeDeleted())
 		{
@@ -1538,6 +1539,47 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
 }
 
+/*
+ * A download (almost) none of whose own articles arrived, after DeadDownloadFailures failed
+ * ones on top of the first article of each file (direct-rename asks every file's
+ * first article first: a posting that lacks only those is repairable), is dead
+ * whatever the probe said - one stray article answering a STAT, or servers that
+ * didn't answer it, left it running until the health fell below critical, which
+ * takes thousands of failures in a large posting (B45). With HealthCheck=dupe it
+ * fails over to the best duplicate in history, as after a dead verdict of the probe.
+ */
+void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
+		nzbInfo->GetDupeMode() != dmScore || nzbInfo->GetKind() != NzbInfo::nkNzb ||
+		nzbInfo->GetDeleting() || nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone ||
+		nzbInfo->GetCurrentFailedArticles() < DeadDownloadFailures + nzbInfo->GetFileCount() ||
+		// fewer than 1 in 100 tried articles of its own arrived (a stray one may)
+		(nzbInfo->GetCurrentSuccessArticles() - std::max(0, nzbInfo->GetDupeRecoveredArticles())) * 100 >=
+			nzbInfo->GetCurrentFailedArticles() ||
+		// the probe, asking every server, knows better: its verdict comes first
+		DupeProbe::Probing(nzbInfo->GetId()))
+	{
+		return;
+	}
+
+	HistoryInfo* backup = g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo,
+		nzbInfo->GetName(), nzbInfo->GetDupeKey());
+	if (!backup || !DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), 0,
+		backup->GetNzbInfo()->GetDupeScore()))
+	{
+		return;
+	}
+
+	nzbInfo->PrintMessage(Message::mkWarning,
+		"Failing over %s to duplicate %s: %i of its own articles downloaded, %i failed",
+		nzbInfo->GetName(), backup->GetNzbInfo()->GetName(),
+		std::max(0, nzbInfo->GetCurrentSuccessArticles() - std::max(0, nzbInfo->GetDupeRecoveredArticles())),
+		nzbInfo->GetCurrentFailedArticles());
+	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
+	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
+}
+
 void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
 	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
@@ -1616,9 +1658,9 @@ void QueueCoordinator::FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId,
 	// something of its own arrived meanwhile: a partly alive posting is never
 	// abandoned here (the regular health check handles partial damage). Articles
 	// borrowed from duplicates since it started don't count: they say nothing
-	// about its own posting (B39)
+	// about its own posting (B39); nor does a single stray one (B45)
 	int borrowed = nzbInfo->GetDupeRecoveredArticles() - recoveredAtStart;
-	if (nzbInfo->GetCurrentSuccessArticles() - std::max(0, borrowed) > 0)
+	if (nzbInfo->GetCurrentSuccessArticles() - std::max(0, borrowed) >= DupeProbe::MinAliveSamples)
 	{
 		return;
 	}

@@ -4496,11 +4496,67 @@ def scenario_deadpickfewservers(daemon, t):
     the regular health check handles the dead posting later."""
     hp, hb, integ = _deadpick_servers(daemon, t, 'df')
     probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
-    no_verdict = _grep_log(t, 'no verdict (4 of 6 servers answered definitively)')
+    no_verdict = _grep_log(t, '4 of 6 servers answered definitively)')
     return ('deadpickfewservers', probed == 0 and no_verdict == 1 and integ and
             hb['Status'].startswith('SUCCESS'),
             'status=%s backup_status=%s probe_logs=%d no_verdict_logs=%d integrity=%s'
             % (hp['Status'], hb['Status'], probed, no_verdict, integ))
+
+
+def scenario_deadpickstray(daemon, t):
+    """B45: a dead posting with a single stray article alive, and that article is
+    one the probe samples (part 10 of the first file, the first of the ten
+    samples). One sample found doesn't make the posting alive: the probe calls
+    it dead, says where it found the stray article, and fails over to the
+    backup at once."""
+    primary, backup, data = _probe_fixture(t, 'ds')
+    m = primary[0]
+    primary[0] = (m[0], m[1], m[2], m[3], m[4] - {10})
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'ds-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'ds-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups()
+                                         if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    verdict = _grep_log(t, 'Dupe probe: 1 of 10 sampled articles exist')
+    dead = _grep_log(t, 'the posting is dead')
+    failed_over = _grep_log(t, 'Failing over Primary to duplicate Backup: none of 10 sampled')
+    return ('deadpickstray', verdict == 1 and dead == 1 and failed_over == 1,
+            'status=%s probe_one_found_logs=%d dead_logs=%d probe_failover_logs=%d'
+            % (hp['Status'], verdict, dead, failed_over))
+
+
+def scenario_deaddownloadlate(daemon, t):
+    """B45: a large dead posting (1,800 articles, no par2) whose backup arrives
+    only after the download started, so the probe had no backup to fail over to
+    and stepped aside. Once 64 articles beyond the first of each file failed and
+    none of its own arrived, the download fails over to the backup - long before
+    its health falls below the critical 85% (270 failures)."""
+    seg = 10_000
+    vol = 3_000_000
+    n = vol // seg
+    primary = [('dlA/d%d.bin' % i, 'Dead%d.bin' % i, vol, seg, set(range(1, n + 1))) for i in range(6)]
+    for m in primary:
+        t.write_file(os.path.join('data', m[0]), _payload(vol, 9720))
+    data = _payload(2_900_000, 9721)
+    bp = _place_copy(t, 'dlB', data)
+    backup = build_nzb(bp, 'Backup.bin', 2_900_000, 100_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), False, 'dl-key', 100)
+    time.sleep(1)
+    daemon.append(api, 'Backup', backup, False, 'dl-key', 90)
+    hp = daemon.wait_history(api, 'Primary')
+    deadline = time.time() + 120
+    hb = daemon.wait_history(api, 'Backup')
+    while not hb['Status'].startswith('SUCCESS') and time.time() < deadline:
+        time.sleep(0.5)
+        hb = daemon.wait_history(api, 'Backup')
+    rule = _grep_log(t, 'Failing over Primary to duplicate Backup: 0 of its own articles downloaded')
+    failed = int(hp.get('FailedArticles', 0))
+    ok = rule == 1 and failed < 270 and hb['Status'].startswith('SUCCESS') and _verify_output(t, data)
+    return ('deaddownloadlate', ok, 'status=%s backup=%s rule_failover_logs=%d failed_articles=%d'
+            % (hp['Status'], hb['Status'], rule, failed))
 
 
 def scenario_deadpickpartial(daemon, t):
@@ -4517,7 +4573,7 @@ def scenario_deadpickpartial(daemon, t):
                                          if g['NZBName'] == 'Primary'])
     hp = daemon.wait_history(api, 'Primary')
     failed_over = _grep_log(t, 'Failing over Primary')
-    alive_logs = _grep_log(t, 'an article exists, not abandoning it')
+    alive_logs = _grep_log(t, 'not abandoning it')
     return ('deadpickpartial', failed_over == 0 and alive_logs == 1,
             'status=%s failover_logs=%d alive_probe_logs=%d' % (hp['Status'], failed_over, alive_logs))
 
@@ -4760,6 +4816,8 @@ SCENARIOS = {
     'deadpickprobe': scenario_deadpickprobe,
     'deadpickafterreload': scenario_deadpickafterreload,
     'deadpickpartial': scenario_deadpickpartial,
+    'deadpickstray': scenario_deadpickstray,
+    'deaddownloadlate': scenario_deaddownloadlate,
     'dupesearchtrigger': scenario_dupesearchtrigger,
     'dupesearchkey': scenario_dupesearchkey,
     'dupesearchsearch': scenario_dupesearchsearch,
@@ -4946,6 +5004,8 @@ SCENARIO_OPTIONS = {
     'deadpickprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickafterreload': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickpartial': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deadpickstray': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deaddownloadlate': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchtrigger': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
@@ -5012,7 +5072,7 @@ DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
 SCENARIO_NSERV_ARGS = {'finaldeletemidway': ['-w', '300'], 'finaldeleterestart': ['-w', '300'], 'restartmidway': ['-w', '300'], 'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'], 'deadpickafterreload': ['-w', '500'],
-                       'deadpickpartial': ['-w', '100'], 'deadpickservers': ['-w', '200'],
+                       'deadpickpartial': ['-w', '100'], 'deadpickstray': ['-w', '500'], 'deaddownloadlate': ['-w', '300'], 'deadpickservers': ['-w', '200'],
                        'deadpickfewservers': ['-w', '200']}
 
 # extra news servers behind the same nserv: (servers answering, unreachable

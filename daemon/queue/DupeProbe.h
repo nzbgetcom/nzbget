@@ -22,10 +22,12 @@
 #define DUPEPROBE_H
 
 #include "NString.h"
+#include "Log.h"
 #include "Thread.h"
 #include <functional>
 #include <memory>
 #include <set>
+#include <string>
 #include <vector>
 
 class NntpConnection;
@@ -65,6 +67,9 @@ public:
 	static constexpr int MinArticles = 4;
 	// servers that must answer definitively for a verdict, if there are that many
 	static constexpr int MinMissingServers = 5;
+	// samples that must exist somewhere for a download to count as alive: a single
+	// stray article doesn't keep a dead posting going (B45)
+	static constexpr int MinAliveSamples = 2;
 
 	/* indexes of <count> samples spread evenly over <total> articles (at the
 	 * middle of each of <count> equal parts) */
@@ -75,10 +80,10 @@ public:
 	 * else is no evidence */
 	static EAnswer Classify(const char* response);
 
-	/* the verdict: no sampled article exists anywhere and at least
-	 * min(MinMissingServers, activeServers) servers found every sample
-	 * missing */
-	static bool IsDead(int existing, int missingServers, int activeServers);
+	/* the verdict: fewer than MinAliveSamples sampled articles exist anywhere,
+	 * and at least min(MinMissingServers, activeServers) servers answered every
+	 * sample they were asked definitively (<definitiveServers>) */
+	static bool IsDead(int existing, int definitiveServers, int activeServers);
 
 	/* samples spread over the articles of <files>, treated as one run;
 	 * <loadArticles> loads the article list of a file not started yet */
@@ -92,8 +97,9 @@ public:
 
 	struct Verdict
 	{
-		int Existing = 0;
-		int MissingServers = 0;
+		int Existing = 0;			// samples found on some server
+		int MissingServers = 0;		// servers that answered every sample asked definitively
+		std::string FoundOn;		// where the first sample found was, for the log
 		int ActiveServers = 0;
 		int ReachedServers = 0;	// servers asked at all (a free connection was had)
 		bool Finished = true;
@@ -119,6 +125,8 @@ public:
 	/* shutdown: cancels running probes and refuses new ones; WaitAll() returns
 	 * when they ended. Reset() allows probes again (a reload's new coordinator) */
 	static void StopAll();
+	/* a dead-pick probe of download <nzbId> is running (its verdict comes first) */
+	static bool Probing(int nzbId);
 	static void WaitAll();
 	static void Reset();
 
@@ -127,7 +135,7 @@ protected:
 
 private:
 	DupeProbe(int nzbId, std::vector<Sample> samples) :
-		m_nzbId(nzbId), m_samples(std::move(samples)) {}
+		m_nzbId(nzbId), m_samples(std::move(samples)), m_found(m_samples.size(), 0) {}
 
 	struct ServerResult
 	{
@@ -141,10 +149,15 @@ private:
 	std::vector<Sample> m_samples;
 	// recheck mode: every sample is asked of every server until found somewhere
 	bool m_countAll = false;
+	// samples found on some server: a later server isn't asked them again
 	std::vector<char> m_found;
+	std::string m_foundOn;
 	NntpConnection* m_connection = nullptr;
 
 	bool ProbeServer(int serverId, std::set<int>& probed, ServerResult& result);
+	/* writes to the download's own log (seen in the web interface even when
+	 * detail messages go nowhere); detail() if the download is gone */
+	void Note(Message::EKind kind, const char* format, ...);
 	Verdict Measure(int limitSec);
 	void Recheck();
 	/* false once StopAll ran: the probe must not run */
