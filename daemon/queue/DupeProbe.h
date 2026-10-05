@@ -101,9 +101,11 @@ public:
 	 * is checked this way before stream repair reads from it) */
 	static Verdict Check(std::vector<Sample> samples, int limitSec);
 
-	/* shutdown: cancels running probes, WaitAll() returns when they ended */
+	/* shutdown: cancels running probes and refuses new ones; WaitAll() returns
+	 * when they ended. Reset() allows probes again (a reload's new coordinator) */
 	static void StopAll();
 	static void WaitAll();
+	static void Reset();
 
 protected:
 	void Run() override;
@@ -125,7 +127,8 @@ private:
 
 	bool ProbeServer(int serverId, std::set<int>& probed, ServerResult& result);
 	Verdict Measure(int limitSec);
-	void Register();
+	/* false once StopAll ran: the probe must not run */
+	bool Register();
 	void Unregister();
 	void Cancel();
 	void Abandon(int missingServers, int activeServers);

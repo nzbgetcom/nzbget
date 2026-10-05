@@ -98,6 +98,8 @@ QueueCoordinator::QueueCoordinator()
 
 	CoordinatorDownloadQueue::Init(&m_downloadQueue);
 	g_WorkState->Attach(this);
+	// a reload creates a new coordinator: probes may run again
+	DupeProbe::Reset();
 }
 
 QueueCoordinator::~QueueCoordinator()

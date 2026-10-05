@@ -41,6 +41,8 @@ namespace
 	Mutex g_probeMutex;
 	std::set<DupeProbe*> g_probes;
 	std::atomic<int> g_probeCount{0};
+	// set by StopAll: no probe starts after it (it would outlive the server pool)
+	bool g_probesStopping = false;
 }
 
 std::vector<size_t> DupeProbe::SampleIndexes(size_t total, int count)
@@ -92,25 +94,45 @@ bool DupeProbe::IsDead(int existing, int missingServers, int activeServers)
 void DupeProbe::Start(int nzbId, std::vector<Sample> samples)
 {
 	DupeProbe* probe = new DupeProbe(nzbId, std::move(samples));
+	if (!probe->Register())
+	{
+		delete probe;
+		return;
+	}
 	probe->SetAutoDestroy(true);
-	probe->Register();
 	probe->Thread::Start();
 }
 
 DupeProbe::Verdict DupeProbe::Check(std::vector<Sample> samples, int limitSec)
 {
 	DupeProbe probe(0, std::move(samples));
-	probe.Register();
+	if (!probe.Register())
+	{
+		Verdict stopping;
+		stopping.Finished = false;
+		return stopping;
+	}
 	Verdict verdict = probe.Measure(limitSec);
 	probe.Unregister();
 	return verdict;
 }
 
-void DupeProbe::Register()
+void DupeProbe::Reset()
 {
 	Guard guard(g_probeMutex);
+	g_probesStopping = false;
+}
+
+bool DupeProbe::Register()
+{
+	Guard guard(g_probeMutex);
+	if (g_probesStopping)
+	{
+		return false;
+	}
 	g_probes.insert(this);
 	g_probeCount++;
+	return true;
 }
 
 void DupeProbe::Unregister()
@@ -167,6 +189,7 @@ std::vector<DupeProbe::Sample> DupeProbe::SamplesOf(const std::vector<FileInfo*>
 void DupeProbe::StopAll()
 {
 	Guard guard(g_probeMutex);
+	g_probesStopping = true;
 	for (DupeProbe* probe : g_probes)
 	{
 		probe->Thread::Stop();
@@ -176,7 +199,10 @@ void DupeProbe::StopAll()
 
 void DupeProbe::WaitAll()
 {
-	for (int waited = 0; g_probeCount > 0 && waited < 500; waited++)
+	// without a time limit, like the download threads (QueueCoordinator::WaitJobs):
+	// a probe that outlived the wait would use the server pool after it was freed.
+	// StopAll cancelled their connections, so they end quickly
+	while (g_probeCount > 0)
 	{
 		Util::Sleep(20);
 	}
@@ -353,12 +379,23 @@ DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 			verdict.MissingServers++;
 		}
 	}
+	if (IsStopped())
+	{
+		// stopped while asking the last server: its answers are incomplete
+		verdict.Finished = false;
+	}
 	return verdict;
 }
 
 void DupeProbe::Run()
 {
 	Verdict verdict = Measure(ProbeLimitSec);
+	if (IsStopped())
+	{
+		// shutting down: never park a download now
+		Unregister();
+		return;
+	}
 
 	if (verdict.Dead())
 	{

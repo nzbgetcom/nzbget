@@ -4084,6 +4084,18 @@ def _probe_fixture(t, tag, alive_every=0):
     return primary, backup, data
 
 
+def scenario_deadpickafterreload(daemon, t):
+    """B4: a reload stops the dead-pick probes (StopAll refuses new ones while
+    nzbget shuts its parts down); the new coordinator allows them again, so the
+    probe still abandons a dead pick after a reload."""
+    api = daemon.wait_ready()
+    api.reload()
+    time.sleep(3)
+    daemon.wait_ready()
+    name, ok, detail = scenario_deadpickprobe(daemon, t)
+    return ('deadpickafterreload', ok, detail)
+
+
 def scenario_deadpickprobe(daemon, t):
     """HealthCheck=dupe, a posting none of whose articles exists on the server
     and a healthy backup in history: the probe (STAT of 10 articles spread
@@ -4418,6 +4430,7 @@ SCENARIOS = {
     'xpacklatency': scenario_xpacklatency,
     'xpackflaky': scenario_xpackflaky,
     'deadpickprobe': scenario_deadpickprobe,
+    'deadpickafterreload': scenario_deadpickafterreload,
     'deadpickpartial': scenario_deadpickpartial,
     'dupesearchtrigger': scenario_dupesearchtrigger,
     'dupesearchkey': scenario_dupesearchkey,
@@ -4595,6 +4608,7 @@ SCENARIO_OPTIONS = {
     'xpacklatency': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=8'],
     'xpackflaky': ['DupeArticleFallback=stream', 'ParCheck=auto', 'Server1.Connections=4'],
     'deadpickprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deadpickafterreload': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deadpickpartial': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'dupesearchtrigger': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
@@ -4656,7 +4670,7 @@ DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 # scenarios that read nserv's request log (nserv.log)
 CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
-SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'],
+SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'], 'deadpickafterreload': ['-w', '500'],
                        'deadpickpartial': ['-w', '100'], 'deadpickservers': ['-w', '200'],
                        'deadpickfewservers': ['-w', '200']}
 
