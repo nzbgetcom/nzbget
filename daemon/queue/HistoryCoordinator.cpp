@@ -641,10 +641,19 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 				  g_DiskState->LoadFileState(fileInfo.get(), g_ServerPool->GetServers(), true) &&
 				  (resetFailed || fileInfo->GetRemainingSize() > 0))))
 			{
-				fileInfo->SetFilename(completedFile.GetFilename());
+				// a file parked while it downloaded is recorded by its temporary output
+				// name ("<id>.out.tmp"): its data is there, but it keeps the name its
+				// nzb-file gives it, which a recreation from a duplicate pairs by
+				std::string recordedName = completedFile.GetFilename();
+				bool temporaryName = recordedName.size() > 8 &&
+					recordedName.compare(recordedName.size() - 8, 8, ".out.tmp") == 0;
+				if (!temporaryName || Util::EmptyStr(fileInfo->GetFilename()))
+				{
+					fileInfo->SetFilename(recordedName.c_str());
+				}
 				fileInfo->SetNzbInfo(nzbInfo);
 
-				BString<1024> outputFilename("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, fileInfo->GetFilename());
+				BString<1024> outputFilename("%s%c%s", nzbInfo->GetDestDir(), PATH_SEPARATOR, recordedName.c_str());
 
 				if (fileInfo->GetSuccessArticles() == 0 || FileSystem::FileSize(outputFilename) == 0)
 				{
