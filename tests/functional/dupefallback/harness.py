@@ -3953,7 +3953,7 @@ def _ds_interrupt_pick(daemon, t, action):
     pick = _ds_group(api, DS_TITLE)
     if action == 'delete':
         api.editqueue('GroupDelete', '', [pick['NZBID']])
-    else:
+    elif action == 'key':
         api.editqueue('GroupSetDupeKey', 'another-key', [pick['NZBID']])
     while time.time() < deadline and _grep_log(t, ' added=') == 0:
         time.sleep(0.5)
@@ -3970,6 +3970,48 @@ def scenario_dupesearchpickdeleted(daemon, t):
     stopped = _grep_log(t, 'the pick was deleted')
     ok = not donors and stopped >= 1
     return ('dupesearchpickdeleted', ok, 'donors=%d stopped_logs=%d' % (len(donors), stopped))
+
+
+def scenario_dupesearchpickgoneadd(daemon, t):
+    """B33: the pick is deleted while its first donor is being added (a scan
+    extension, which runs inside the add, deletes it): the donor just added is
+    removed again, and no other donor is added."""
+    api, pick, donors = _ds_interrupt_pick(daemon, t, None)
+    deleted = _grep_log(t, 'deletepick: deleted')
+    removed = _grep_log(t, 'just added: the pick was deleted')
+    pick_left = [g for g in api.listgroups() if g['NZBID'] == pick['NZBID']]
+    ok = deleted == 1 and removed == 1 and not donors and not pick_left
+    return ('dupesearchpickgoneadd', ok, 'deleted_by_extension=%d removed_logs=%d donors=%d pick_queued=%d'
+            % (deleted, removed, len(donors), len(pick_left)))
+
+
+# a scan extension that deletes the pick while the first donor is being added
+DELETE_PICK_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET SCAN SCRIPT                                                     ###
+# Deletes the pick while a duplicate search adds its first donor.
+### NZBGET SCAN SCRIPT                                                     ###
+##############################################################################
+import json, os, sys, urllib.request
+
+if int(os.environ.get('NZBNP_DUPESCORE', '0')) == %d:
+    sys.exit(0)
+marker = os.path.join(os.environ['NZBOP_TEMPDIR'], 'deletepick.done')
+if os.path.exists(marker):
+    sys.exit(0)
+open(marker, 'w').close()
+url = 'http://127.0.0.1:%%s/jsonrpc' %% os.environ['NZBOP_CONTROLPORT']
+
+def call(method, *params):
+    body = json.dumps({'method': method, 'params': list(params)}).encode()
+    return json.loads(urllib.request.urlopen(url, body, timeout=10).read())['result']
+
+for group in call('listgroups', 0):
+    if group['DupeScore'] == %d:
+        call('editqueue', 'GroupDelete', '', [group['NZBID']])
+        print('[INFO] deletepick: deleted %%d' %% group['NZBID'])
+sys.exit(0)
+''' % (DS_PICK, DS_PICK)
 
 
 def scenario_dupesearchkeychanged(daemon, t):
@@ -4536,6 +4578,7 @@ SCENARIOS = {
     'dupesearchfastdead': scenario_dupesearchfastdead,
     'dupesearchgroup': scenario_dupesearchgroup,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
+    'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchkeychanged': scenario_dupesearchkeychanged,
     'dupesearchresume': scenario_dupesearchresume,
     'dupesearchresumedeleted': scenario_dupesearchresumedeleted,
@@ -4718,6 +4761,8 @@ SCENARIO_OPTIONS = {
     'dupesearchresumedeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchpickdeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchpickgoneadd': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2',
+                              'Extensions=deletepick'],
     'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4794,16 +4839,19 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)]}
 
 # scenarios with a FirstFailNntpProxy in front of Server1: (message-id markers,)
+# extensions a scenario installs into ScriptDir before the daemon starts
+SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION}}
+
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
@@ -4885,6 +4933,9 @@ def main():
                 daemon.newznab = FakeNewznab()
                 options.append('DupeSearchUrl=http://127.0.0.1:%d/api' % daemon.newznab.port)
             daemon.write_config(options)
+            for file_name, text in SCENARIO_EXTENSIONS.get(name, {}).items():
+                target.write_file(os.path.join('main', 'scripts', file_name), text.encode())
+                os.chmod(target.path('main', 'scripts', file_name), 0o755)
             if name in SCENARIO_FAKE_NNTP:
                 daemon.fake_nntp = FakeNntp(nserv_port)
             else:

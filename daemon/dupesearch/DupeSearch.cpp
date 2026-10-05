@@ -920,6 +920,24 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 		return 0;
 	}
 
+	// the pick may have been deleted, or have got another key, while the add ran
+	// (it takes the queue lock itself, after PickGone let it go): the new duplicate
+	// goes again (B33)
+	gone = PickGone(job);
+	if (!gone.empty())
+	{
+		{
+			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+			IdList ids{ nzbId };
+			bool queued = downloadQueue->GetQueue()->Find(nzbId) != nullptr;
+			downloadQueue->EditList(&ids, nullptr, DownloadQueue::mmId,
+				queued ? DownloadQueue::eaGroupFinalDelete : DownloadQueue::eaHistoryFinalDelete, nullptr);
+		}
+		Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: removed the duplicate %s just added: %s",
+			job.name.c_str(), posting.listing.title.c_str(), gone.c_str());
+		return 0;
+	}
+
 	// remembered with the search in progress: a resume after a restart must not add
 	// it again, even when the user deleted it meanwhile (then nzbget keeps only a
 	// hidden duplicate record, which the resume can't recognize)
