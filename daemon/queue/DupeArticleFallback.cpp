@@ -736,6 +736,25 @@ bool DupeArticleFallback::ArticleSizeStepsMatch(FileInfo* targetFile, FileInfo* 
 	return varying;
 }
 
+// The part count a yEnc subject declares, its last "(part/count)"; 0 if it has none
+// (an obfuscated subject). An nzb-file that lacks segments keeps the poster's count.
+static int DeclaredParts(FileInfo* fileInfo)
+{
+	const char* subject = fileInfo->GetSubject();
+	int declared = 0;
+	for (const char* p = subject ? strchr(subject, '(') : nullptr; p; p = strchr(p + 1, '('))
+	{
+		int part = 0;
+		int count = 0;
+		char close = 0;
+		if (sscanf(p, "(%d/%d%c", &part, &count, &close) == 3 && close == ')' && part >= 0 && count > 0)
+		{
+			declared = count;
+		}
+	}
+	return declared;
+}
+
 bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donorFile)
 {
 	ArticleList* targetArticles = targetFile->GetArticles();
@@ -744,6 +763,26 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 	if (targetArticles->empty())
 	{
 		return false;
+	}
+
+	// twins are posted in as many parts: a file whose subject counts other parts, or
+	// that has a part beyond the count the release's subject declares, is another file
+	// (B39: dead volumes of 29 parts paired with a healthy 30-part file)
+	int targetDeclared = DeclaredParts(targetFile);
+	int donorDeclared = DeclaredParts(donorFile);
+	if (targetDeclared > 0 && donorDeclared > 0 && targetDeclared != donorDeclared)
+	{
+		return false;
+	}
+	if (targetDeclared > 0)
+	{
+		for (ArticleInfo* donorArticle : donorFile->GetArticles())
+		{
+			if (donorArticle->GetPartNumber() > targetDeclared)
+			{
+				return false;
+			}
+		}
 	}
 
 	// The release's nzb-file may lack a few segments (an indexer that didn't

@@ -988,6 +988,48 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureGapStrictTest)
 	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(twoShort.get(), longer.get(), nullptr) == nullptr);
 }
 
+// B39: a release whose subject says it has 29 parts, all listed, is complete: a file of
+// 30 parts with the same article size is another one (a dead posting borrowed the
+// bytes of an unrelated healthy file into each of its volumes)
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureDeclaredPartsTest)
+{
+	auto parts = [](int last)
+		{
+			std::vector<std::pair<int, int>> list;
+			for (int part = 1; part <= last; part++)
+			{
+				list.emplace_back(part, 100000);
+			}
+			return list;
+		};
+	auto donorWith = [](std::vector<std::pair<int, int>> list, const char* subject)
+		{
+			std::unique_ptr<NzbInfo> donor = std::make_unique<NzbInfo>();
+			std::unique_ptr<FileInfo> file = BuildFile("Healthy.bin", std::move(list), "donor");
+			file->SetSubject(subject);
+			donor->GetFileList()->Add(std::move(file), false);
+			return donor;
+		};
+
+	std::unique_ptr<FileInfo> complete = BuildFile("chB0.bin", parts(29), "orig");
+	complete->SetSubject("\"chB0.bin\" yEnc (1/29)");
+	std::unique_ptr<NzbInfo> healthy = donorWith(parts(30), "\"Healthy.bin\" yEnc (1/30)");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(complete.get(), healthy.get(), nullptr) == nullptr);
+	// the duplicate's subject alone tells too
+	std::unique_ptr<NzbInfo> unnamed = donorWith(parts(30), "abc123");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(complete.get(), unnamed.get(), nullptr) == nullptr);
+
+	// a release that lacks its last part says so: its subject counts 30
+	std::unique_ptr<FileInfo> lacking = BuildFile("chB0.bin", parts(29), "orig");
+	lacking->SetSubject("\"chB0.bin\" yEnc (1/30)");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(lacking.get(), healthy.get(), nullptr) != nullptr);
+	// subjects that count no parts leave it to the sizes, as before
+	std::unique_ptr<FileInfo> obfuscated = BuildFile("chB0.bin", parts(29), "orig");
+	obfuscated->SetSubject("a1b2c3 [2019/2020]");
+	std::unique_ptr<NzbInfo> plain = donorWith(parts(30), "d4e5f6");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(obfuscated.get(), plain.get(), nullptr) != nullptr);
+}
+
 // B3: list neighbours are only the neighbouring parts when their part numbers say so
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentGapTest)
 {

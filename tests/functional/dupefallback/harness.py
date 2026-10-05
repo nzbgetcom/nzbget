@@ -1000,6 +1000,31 @@ def scenario_nzbgapborrow(daemon, t):
             % (h['Status'], recovered, unmatched, mismatch))
 
 
+def scenario_declaredcountnopair(daemon, t):
+    """B39: a release file of 29 parts (its subject says 1/29) and a duplicate's
+    file of 30 parts with the same article size, other content, both missing
+    parts. The release lists every part it declares, so the 30-part file is
+    another one: nothing is borrowed from it (it used to be paired - one
+    trailing extra part was allowed for an nzb-file that lost its last one -
+    and its bytes written into the release)."""
+    seg = 100_000
+    rel = _payload(2_900_000, 9810)
+    don = _payload(3_000_000, 9811)
+    rp = _place_copy(t, 'dcA', rel, 'rel.bin')
+    dp = _place_copy(t, 'dcB', don, 'don.bin')
+    primary = build_nzb(rp, 'Rel.bin', len(rel), seg, {5, 6, 20})
+    donor = build_nzb(dp, 'Don.bin', len(don), seg, {9})
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonCount', donor, True, 'dc-key', 50)
+    daemon.append(api, 'RelCount', primary, False, 'dc-key', 100)
+    h = daemon.wait_history(api, 'RelCount')
+    recovered = int(h.get('DupeRecoveredArticles', 0))
+    borrowed = _grep_log(t, 'from duplicate collections')
+    ok = recovered == 0 and borrowed == 0 and int(h.get('FailedArticles', 0)) == 3
+    return ('declaredcountnopair', ok, 'status=%s recovered=%d recovered_logs=%d failed_articles=%s'
+            % (h['Status'], recovered, borrowed, h.get('FailedArticles')))
+
+
 def scenario_recheckfailed(daemon, t):
     """Lesson 18: with ArticleRetries=0, three articles are lost to a single
     failed request each (the server answers their first request with a
@@ -4438,6 +4463,7 @@ SCENARIOS = {
     'complementary': scenario_complementary,
     'recheckfailed': scenario_recheckfailed,
     'nzbgapborrow': scenario_nzbgapborrow,
+    'declaredcountnopair': scenario_declaredcountnopair,
     'rejectnextserver': scenario_rejectnextserver,
     'cutover': scenario_cutover,
     'leadswitch': scenario_leadswitch,
@@ -4592,6 +4618,7 @@ SCENARIO_OPTIONS = {
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
+    'declaredcountnopair': ['DupeArticleFallback=article'],
     'recheckfailed': ['DupeArticleFallback=article', 'ArticleRetries=0', 'Server1.Connections=2'],
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],

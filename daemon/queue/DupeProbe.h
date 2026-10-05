@@ -85,14 +85,17 @@ public:
 	static std::vector<Sample> SamplesOf(const std::vector<FileInfo*>& files,
 		const std::function<void(FileInfo*)>& loadArticles = nullptr);
 
-	/* starts a probe of <samples> for download <nzbId>; the thread destroys itself */
-	static void Start(int nzbId, std::vector<Sample> samples);
+	/* starts a probe of <samples> for download <nzbId>; the thread destroys itself.
+	 * <recoveredAtStart>: the download's count of articles borrowed from duplicates
+	 * when it started - those prove nothing about its own posting */
+	static void Start(int nzbId, std::vector<Sample> samples, int recoveredAtStart = 0);
 
 	struct Verdict
 	{
 		int Existing = 0;
 		int MissingServers = 0;
 		int ActiveServers = 0;
+		int ReachedServers = 0;	// servers asked at all (a free connection was had)
 		bool Finished = true;
 		bool Dead() const { return Finished && IsDead(Existing, MissingServers, ActiveServers); }
 	};
@@ -134,6 +137,7 @@ private:
 	};
 
 	int m_nzbId;
+	int m_recoveredAtStart = 0;
 	std::vector<Sample> m_samples;
 	// recheck mode: every sample is asked of every server until found somewhere
 	bool m_countAll = false;

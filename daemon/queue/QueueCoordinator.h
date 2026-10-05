@@ -47,7 +47,7 @@ public:
 	/* the dead-pick probe (see DupeProbe) found none of the download's sampled
 	 * articles on any server: fail over to the best duplicate in history */
 	void FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId, int samples,
-		int missingServers, int activeServers);
+		int missingServers, int activeServers, int recoveredAtStart = 0);
 	void Update(Subject* caller, void* aspect) override;
 
 	// editing queue

@@ -1593,11 +1593,11 @@ void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo*
 		return;
 	}
 
-	DupeProbe::Start(nzbInfo->GetId(), std::move(samples));
+	DupeProbe::Start(nzbInfo->GetId(), std::move(samples), nzbInfo->GetDupeRecoveredArticles());
 }
 
 void QueueCoordinator::FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId, int samples,
-	int missingServers, int activeServers)
+	int missingServers, int activeServers, int recoveredAtStart)
 {
 	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
 	if (!nzbInfo || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
@@ -1605,9 +1605,12 @@ void QueueCoordinator::FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId,
 	{
 		return;
 	}
-	// something of it arrived meanwhile: a partly alive posting is never
-	// abandoned here (the regular health check handles partial damage)
-	if (nzbInfo->GetCurrentSuccessArticles() > 0)
+	// something of its own arrived meanwhile: a partly alive posting is never
+	// abandoned here (the regular health check handles partial damage). Articles
+	// borrowed from duplicates since it started don't count: they say nothing
+	// about its own posting (B39)
+	int borrowed = nzbInfo->GetDupeRecoveredArticles() - recoveredAtStart;
+	if (nzbInfo->GetCurrentSuccessArticles() - std::max(0, borrowed) > 0)
 	{
 		return;
 	}

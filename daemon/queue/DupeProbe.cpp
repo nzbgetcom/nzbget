@@ -91,9 +91,10 @@ bool DupeProbe::IsDead(int existing, int missingServers, int activeServers)
 		missingServers >= std::min(MinMissingServers, activeServers);
 }
 
-void DupeProbe::Start(int nzbId, std::vector<Sample> samples)
+void DupeProbe::Start(int nzbId, std::vector<Sample> samples, int recoveredAtStart)
 {
 	DupeProbe* probe = new DupeProbe(nzbId, std::move(samples));
+	probe->m_recoveredAtStart = recoveredAtStart;
 	if (!probe->Register())
 	{
 		delete probe;
@@ -377,6 +378,7 @@ DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 			// not reached (no connection, not asked): no evidence either way
 			continue;
 		}
+		verdict.ReachedServers++;
 
 		verdict.Existing += result.Exists;
 		if (m_countAll)
@@ -474,6 +476,18 @@ void DupeProbe::Run()
 	{
 		detail("Dupe probe of download %i: an article exists, not abandoning it", m_nzbId);
 	}
+	else if (verdict.Finished && verdict.ReachedServers == 0)
+	{
+		// no server could be asked (every connection busy): no verdict at all, so
+		// the download may be probed again when its next article starts
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(m_nzbId);
+		if (nzbInfo)
+		{
+			nzbInfo->SetDeadPickProbed(false);
+		}
+		detail("Dupe probe of download %i: no server could be asked, will probe again", m_nzbId);
+	}
 	else if (verdict.Finished)
 	{
 		detail("Dupe probe of download %i: no verdict (%i of %i servers answered definitively)",
@@ -487,5 +501,5 @@ void DupeProbe::Abandon(int missingServers, int activeServers)
 {
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 	g_QueueCoordinator->FailOverDeadPick(downloadQueue, m_nzbId, (int)m_samples.size(),
-		missingServers, activeServers);
+		missingServers, activeServers, m_recoveredAtStart);
 }

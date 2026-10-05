@@ -237,6 +237,12 @@ void HistoryCoordinator::RecheckFailedArticles(DownloadQueue* downloadQueue, Nzb
 			return;	// a duplicate downloads in its place
 		}
 	}
+	// a duplicate waits in history: nzbget fetches it in its place (B39)
+	if (g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() == dmScore &&
+		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()))
+	{
+		return;
+	}
 	// once per download
 	nzbInfo->GetParameters()->SetParameter("*DupeRecheck", "1");
 
