@@ -66,6 +66,9 @@ public:
 	// share of the posting found alive (percent)
 	static constexpr const char* DonorParam = "DupeSearch";
 	static constexpr const char* AliveParam = "DupeAlive";
+	// the measured share alive (percent) of a duplicate in history this search
+	// ranked but didn't add (a client's own backup, an earlier donor)
+	static constexpr const char* HealthParam = "DupeHealth";
 
 	/* "dupes:" + the normalized title: the duplicate key of a download that has none */
 	static std::string MakeDupeKey(const std::string& name);

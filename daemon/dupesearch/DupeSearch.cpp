@@ -345,7 +345,9 @@ void DupeSearch::Collect(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, Job& jo
 		{
 			NzbInfo* item = historyInfo->GetNzbInfo();
 			addKnown(item);
+			// the same release only: a client's key can be broad (one key for two editions)
 			if (item != nzbInfo && item->GetDeleteStatus() == NzbInfo::dsDupe && LowerKey(EffectiveKey(item)) == lowerKey &&
+				ReleaseName::SameRelease(nzbInfo->GetName(), item->GetName()) &&
 				!Util::EmptyStr(item->GetQueuedFilename()) && !strchr(item->GetQueuedFilename(), '|'))
 			{
 				job.members.emplace_back(item->GetId(), item->GetQueuedFilename());
@@ -796,7 +798,9 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		std::string param;
 		if (donor.member)
 		{
-			param = std::string(AliveParam) + "=" + std::to_string((int)std::lround(100 * donor.entry.alive));
+			// not DupeAlive: that marks a duplicate a dupe tool added, and this one
+			// may be a client's own backup
+			param = std::string(HealthParam) + "=" + std::to_string((int)std::lround(100 * donor.entry.alive));
 		}
 		if (SetScore(donor.id, base + wanted[n], param))
 		{
@@ -910,6 +914,16 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 		m_sent[lowerKey].erase(fingerprint);
 		return 0;
 	}
+
+	// remembered with the search in progress: a resume after a restart must not add
+	// it again, even when the user deleted it meanwhile (then nzbget keeps only a
+	// hidden duplicate record, which the resume can't recognize)
+	std::string sentPath = PendingDir(job.nzbId) + PATH_SEPARATOR + "sent";
+	if (FileSystem::DirectoryExists(PendingDir(job.nzbId).c_str()))
+	{
+		std::ofstream sent(fs::u8path(sentPath), std::ios::app);
+		sent << fingerprint << "\n";
+	}
 	return nzbId;
 }
 
@@ -921,6 +935,15 @@ bool DupeSearch::SetScore(int id, int score, const std::string& param)
 		return true;
 	}
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	// a duplicate the user deleted is kept as a hidden record (hkDup): its score
+	// edit succeeds but means nothing, so it counts as gone
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetId() == id && historyInfo->GetKind() == HistoryInfo::hkDup)
+		{
+			return false;
+		}
+	}
 	IdList ids{ id };
 	std::string text = std::to_string(score);
 	const std::pair<DownloadQueue::EEditAction, DownloadQueue::EEditAction> kinds[] = {
@@ -1119,6 +1142,15 @@ void DupeSearch::ResumePending()
 			}
 		}
 
+		std::set<std::string> sent;
+		{
+			std::stringstream lines(ReadAll(dir + PATH_SEPARATOR + "sent"));
+			for (std::string line; std::getline(lines, line);)
+			{
+				sent.insert(line);
+			}
+		}
+
 		std::vector<NzbFetcher::Fetched> verified;
 		std::map<std::string, int> rejected;
 		for (int i = 0;; i++)
@@ -1145,9 +1177,14 @@ void DupeSearch::ResumePending()
 				continue;
 			}
 			posting.reason = NzbFetcher::frOk;
-			// the postings added before the restart are in nzbget now: they are
-			// ranked with the key's other duplicates
+			// the postings added before the restart are in nzbget now (ranked with
+			// the key's other duplicates), or were deleted by the user since
 			Posting::Sketch sketch = Posting::MakeSketch(posting.info.messageIds);
+			if (sent.count(posting.info.Fingerprint()))
+			{
+				rejected["already-sent"]++;
+				continue;
+			}
 			if (std::any_of(known.begin(), known.end(), [&](const Posting::Sketch& k) { return Posting::SameSketch(sketch, k); }))
 			{
 				rejected["in-nzbget"]++;

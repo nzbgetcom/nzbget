@@ -3714,19 +3714,26 @@ def _ds_donor_env(daemon, t, postings, alive):
 
 def scenario_dupesearchgroup(daemon, t):
     """The whole duplicate key is ranked, not only the search's own donors: a
-    client sends the pick and three backups of its own, scored just below the
-    pick (so nzbget would try them first): one 50% alive, one dead, one whole.
-    The indexer has one more posting, 95% alive. After the search every
-    DELETED/DUPE member carries its measured DupeAlive and they are scored by
-    wholeness: whole backup base + 89, donor base + 85, half-dead backup
-    base + 49, dead backup base + 1. The pick keeps its score."""
+    client sends the pick and three backups of its own (other spellings of the
+    same release), scored just below the pick (so nzbget would try them first):
+    one 50% alive, one dead, one whole. The indexer has one more posting, 95%
+    alive. After the search the members carry their measured health (DupeHealth;
+    DupeAlive stays the mark of a duplicate a dupe tool added) and everything is
+    scored by wholeness: whole backup base + 89, donor base + 85, half-dead
+    backup base + 49, dead backup base + 1. The pick keeps its score. A backup
+    of another release under the same key (B20: 720p) is left alone."""
     ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
     postings = {'idx95': (ids('ix'), 420_000, 3, 11)}
-    alive = set(ids('ix')[:38]) | set(ids('half')[:20]) | set(ids('whole'))
+    alive = set(ids('ix')[:38]) | set(ids('half')[:20]) | set(ids('whole')) | set(ids('other'))
     api = _ds_donor_env(daemon, t, postings, alive)
-    backups = (('half', 1, 430_000), ('gone', 2, 440_000), ('whole', 3, 410_000))
-    for tag, below, size in backups:
-        _ds_append(api, DS_TITLE + '.' + tag, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+    backups = (('half', 'Show S01E01 1080p WEB H264-GRP', 1, 430_000),
+               ('gone', 'Show_S01E01_1080p_WEB_H264-GRP', 2, 440_000),
+               ('whole', 'show.s01e01.1080p.web.h264-grp', 3, 410_000),
+               ('other', 'Show.S01E01.720p.WEB.H264-GRP', 4, 300_000))
+    tags = {DS_TITLE: 'idx95'}
+    for tag, name, below, size in backups:
+        _ds_append(api, name, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+        tags[name] = tag
     deadline = time.time() + 60
     while time.time() < deadline and _grep_log(t, ' added=') == 0:
         time.sleep(0.5)
@@ -3734,12 +3741,14 @@ def scenario_dupesearchgroup(daemon, t):
     base = DS_PICK - 1000
     got = {}
     for h in api.history():
-        name = h.get('NZBName')
-        tag = name.rsplit('.', 1)[-1] if name != DS_TITLE else 'idx95'
+        tag = tags.get(h.get('NZBName'))
+        if not tag:
+            continue
         params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
-        got[tag] = (h.get('DupeScore') - base, params.get('DupeAlive'))
+        got[tag] = (h.get('DupeScore') - base, params.get('DupeAlive'), params.get('DupeHealth'))
     pick = _ds_group(api, DS_TITLE)
-    want = {'whole': (89, '100'), 'idx95': (85, '95'), 'half': (49, '50'), 'gone': (1, '0')}
+    want = {'whole': (89, None, '100'), 'idx95': (85, '95', None), 'half': (49, None, '50'),
+            'gone': (1, None, '0'), 'other': (1000 - 4, None, None)}
     ok = got == want and pick is not None and pick.get('DupeScore') == DS_PICK
     return ('dupesearchgroup', ok, 'got=%s pick_score=%s' % (sorted(got.items()), pick and pick.get('DupeScore')))
 
@@ -3835,6 +3844,46 @@ def scenario_dupesearchkeychanged(daemon, t):
     return ('dupesearchkeychanged', ok, 'donors=%d stopped_logs=%d' % (len(donors), stopped))
 
 
+def scenario_dupesearchresumedeleted(daemon, t):
+    """B21: a donor the user deleted from history before a crash (kept as a
+    hidden duplicate record) is not added again when the search resumes after
+    the restart; the other postings still are."""
+    n = 40
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(n)]
+    postings = {
+        'twin100': (ids('tw'), 400_000, 1, 11),
+        'other100': (ids('ot'), 410_000, 1, 12),
+        'other95': (ids('o5'), 420_000, 40, 13),
+        'twin90': (ids('t9'), 400_000, 50, 14),
+    }
+    alive = set(ids('tw')) | set(ids('ot')) | set(ids('o5')[:38]) | set(ids('t9')[:36])
+    daemon.fake_nntp.delays.update({'ot-': 0.3, 'o5-': 0.3})
+    api = _ds_donor_env(daemon, t, postings, alive)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, '(fast)') < 2:
+        time.sleep(0.2)
+    time.sleep(0.5)
+    fast = [h for h in api.history() if h.get('NZBName') == DS_TITLE]
+    deleted = fast[0]['NZBID'] if fast else 0
+    api.editqueue('HistoryDelete', '', [deleted])
+    time.sleep(0.5)
+    t.procs[-1].kill()
+    t.procs[-1].wait()
+    daemon.fake_nntp.delays.clear()
+    daemon.start()
+    api = daemon.wait_ready()
+    deadline = time.time() + 90
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    donors = [h for h in api.history() if h.get('NZBName') == DS_TITLE] + \
+        [g for g in api.listgroups() if g['NZBName'] == DS_TITLE and g.get('DupeScore') != DS_PICK]
+    resumed = _grep_log(t, 'resuming the search of')
+    ok = len(fast) == 2 and resumed == 1 and len(donors) == 3
+    return ('dupesearchresumedeleted', ok, 'fast=%d resumed=%d donors_after=%d (want 3: one fast kept, two resumed)'
+            % (len(fast), resumed, len(donors)))
+
+
 def scenario_dupesearchfastdead(daemon, t):
     """A posting the quick probe finds alive but its full sample finds mostly
     gone (30% alive, below DupeMinAlive) was already queued as a fast donor: it
@@ -3874,8 +3923,10 @@ def scenario_dupesearchrescorefail(daemon, t):
     while time.time() < deadline and _grep_log(t, '(fast)') == 0:
         time.sleep(0.2)
     donors = [h for h in api.history() if h.get('NZBName') == DS_TITLE]
+    # a plain delete: with DupeCheck nzbget keeps a hidden duplicate record (hkDup),
+    # whose score edit succeeds without meaning anything (B21)
     for h in donors:
-        api.editqueue('HistoryFinalDelete', '', [h['ID']])
+        api.editqueue('HistoryDelete', '', [h['ID']])
     while time.time() < deadline and _grep_log(t, ' added=') == 0:
         time.sleep(0.5)
     time.sleep(1)
@@ -4332,6 +4383,7 @@ SCENARIOS = {
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchkeychanged': scenario_dupesearchkeychanged,
     'dupesearchresume': scenario_dupesearchresume,
+    'dupesearchresumedeleted': scenario_dupesearchresumedeleted,
     'dupesearchdryrun': scenario_dupesearchdryrun,
     'dupesearchrescorefail': scenario_dupesearchrescorefail,
     'dupesearchfetcherror': scenario_dupesearchfetcherror,
@@ -4503,6 +4555,7 @@ SCENARIO_OPTIONS = {
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchresumedeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchpickdeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4583,10 +4636,11 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchkeychanged'}
+                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchkeychanged',
+                   'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchpickdeleted', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
