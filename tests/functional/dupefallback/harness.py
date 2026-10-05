@@ -4617,6 +4617,117 @@ def scenario_copybackup(daemon, t):
             % (copies[0]['Status'] if copies else None, bool(done), self_copy_back))
 
 
+def _big_dead(t, tag, alive=()):
+    """A 1,800-article posting (six files of 300 articles, no par2) whose
+    articles are all missing but the global indexes in <alive>, and a healthy
+    backup in another packing."""
+    seg, vol = 10_000, 3_000_000
+    n = vol // seg
+    primary = []
+    for i in range(6):
+        missing = {p for p in range(1, n + 1) if i * n + p - 1 not in alive}
+        primary.append(('%sA/d%d.bin' % (tag, i), 'Dead%d.bin' % i, vol, seg, missing))
+        t.write_file(os.path.join('data', primary[-1][0]), _payload(vol, 9730))
+    data = _payload(2_900_000, 9731)
+    bp = _place_copy(t, '%sB' % tag, data)
+    return primary, build_nzb(bp, 'Backup.bin', 2_900_000, 100_000, set()), data
+
+
+def _late_backup_run(daemon, t, tag, alive=(), restart_after=0):
+    primary, backup, data = _big_dead(t, tag, alive)
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), False, tag + '-key', 100)
+    time.sleep(1)
+    daemon.append(api, 'Backup', backup, False, tag + '-key', 90)
+    at_restart = 0
+    if restart_after:
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            g = [x for x in api.listgroups() if x['NZBName'] == 'Primary']
+            at_restart = g[0]['FailedArticles'] if g else -1
+            if not g or at_restart >= restart_after:
+                break
+            time.sleep(0.05)
+        try:
+            api.shutdown()
+        except Exception:
+            pass
+        t.procs[-1].wait(timeout=60)
+        daemon.start()
+        api = daemon.wait_ready()
+    hp = daemon.wait_history(api, 'Primary')
+    deadline = time.time() + 120
+    hb = daemon.wait_history(api, 'Backup')
+    while not hb['Status'].startswith('SUCCESS') and time.time() < deadline:
+        time.sleep(0.5)
+        hb = daemon.wait_history(api, 'Backup')
+    rule = _grep_log(t, 'Failing over Primary to duplicate Backup: ')
+    return hp, hb, rule, data, at_restart
+
+
+def scenario_deaddownloadstray2(daemon, t):
+    """R1c: 2 of the 1,800 articles of the posting exist (one stray in two
+    files): the early failover still fires - once fewer than 1 in 100 tried
+    articles arrived - long before the health check would (270 failures)."""
+    # the first articles of two files: direct-rename fetches those first
+    hp, hb, rule, data, _ = _late_backup_run(daemon, t, 'dt', alive={0, 300})
+    failed = int(hp.get('FailedArticles', 0))
+    ok = (rule == 1 and int(hp.get('SuccessArticles', 0)) >= 1 and failed < 270 and
+          hb['Status'].startswith('SUCCESS') and _verify_output(t, data))
+    return ('deaddownloadstray2', ok, 'status=%s backup=%s failover_logs=%d failed_articles=%d success=%s'
+            % (hp['Status'], hb['Status'], rule, failed, hp.get('SuccessArticles')))
+
+
+def scenario_deaddownloadrestart(daemon, t):
+    """R1f: nzbget restarts after 40 failed articles of a dead posting
+    (ContinuePartial=yes, as in production): it fails over promptly after the
+    restart - the kept failure count, or the probe that runs again - not
+    after another full run of failures."""
+    hp, hb, rule, data, at_restart = _late_backup_run(daemon, t, 'dr', restart_after=40)
+    failed = int(hp.get('FailedArticles', 0))
+    ok = (rule == 1 and at_restart >= 40 and failed < 105 and hb['Status'].startswith('SUCCESS')
+          and _verify_output(t, data))
+    return ('deaddownloadrestart', ok, 'status=%s backup=%s failover_logs=%d failed_at_restart=%d failed_articles=%d'
+            % (hp['Status'], hb['Status'], rule, at_restart, failed))
+
+
+def scenario_deadbackupsonly(daemon, t):
+    """R2c: every backup was found dead by a dupe tool (DupeAlive=0): none is
+    fetched, the dead pick fails as before."""
+    primary, backup, data = _probe_fixture(t, 'db')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'db-key', 100)
+    _ds_append(api, 'Backup', backup, 'db-key', 90, paused=False, params=[{'Name': 'DupeAlive', 'Value': '0'}])
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    time.sleep(3)
+    back = _grep_log(t, 'Found duplicate Backup') + _grep_log(t, 'Failing over Primary')
+    hb = daemon.wait_history(api, 'Backup')
+    ok = back == 0 and hb['Status'] == 'DELETED/DUPE' and hp['Status'].startswith('FAILURE')
+    return ('deadbackupsonly', ok, 'primary=%s backup=%s returned_logs=%d' % (hp['Status'], hb['Status'], back))
+
+
+def scenario_backuporder(daemon, t):
+    """R2f: two backups of equal score, one found 50% alive and one 90% alive
+    (DupeAlive): the more alive one takes the dead pick's place."""
+    primary, backup, data = _probe_fixture(t, 'bo')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'bo-key', 100)
+    _ds_append(api, 'Half', backup, 'bo-key', 90, paused=False, params=[{'Name': 'DupeAlive', 'Value': '50'}])
+    _ds_append(api, 'Most', backup.replace('Backup.bin', 'Backup2.bin'), 'bo-key', 90, paused=False,
+               params=[{'Name': 'DupeAlive', 'Value': '90'}])
+    daemon.wait_history(api, 'Half', timeout=60)
+    daemon.wait_history(api, 'Most', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    daemon.wait_history(api, 'Primary')
+    time.sleep(2)
+    most = _grep_log(t, 'to duplicate Most') + _grep_log(t, 'Found duplicate Most')
+    half = _grep_log(t, 'to duplicate Half') + _grep_log(t, 'Found duplicate Half')
+    ok = most >= 1 and half == 0
+    return ('backuporder', ok, 'most_alive_chosen_logs=%d half_alive_chosen_logs=%d' % (most, half))
+
+
 def scenario_deadpickpartial(daemon, t):
     """The probe never abandons a partly alive posting: 85% of the articles
     are missing but some exist, among them one the probe samples, and the
@@ -4877,6 +4988,10 @@ SCENARIOS = {
     'deadpickstray': scenario_deadpickstray,
     'forcefailover': scenario_forcefailover,
     'copybackup': scenario_copybackup,
+    'deaddownloadstray2': scenario_deaddownloadstray2,
+    'deaddownloadrestart': scenario_deaddownloadrestart,
+    'deadbackupsonly': scenario_deadbackupsonly,
+    'backuporder': scenario_backuporder,
     'deaddownloadlate': scenario_deaddownloadlate,
     'dupesearchtrigger': scenario_dupesearchtrigger,
     'dupesearchkey': scenario_dupesearchkey,
@@ -5068,6 +5183,10 @@ SCENARIO_OPTIONS = {
     'deaddownloadlate': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'forcefailover': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'copybackup': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'deaddownloadstray2': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'deaddownloadrestart': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ContinuePartial=yes'],
+    'deadbackupsonly': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'backuporder': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'dupesearchtrigger': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
@@ -5134,7 +5253,7 @@ DEFAULT_OPTIONS = ['DupeArticleFallback=yes']
 CAPTURE_REQUESTS = {'repost', 'wholefileproofcost'}
 # extra nserv arguments per scenario (-w: response latency in ms)
 SCENARIO_NSERV_ARGS = {'finaldeletemidway': ['-w', '300'], 'finaldeleterestart': ['-w', '300'], 'restartmidway': ['-w', '300'], 'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '500'], 'deadpickafterreload': ['-w', '500'],
-                       'deadpickpartial': ['-w', '100'], 'deadpickstray': ['-w', '500'], 'forcefailover': ['-w', '500'], 'copybackup': ['-w', '500'], 'deaddownloadlate': ['-w', '300'], 'deadpickservers': ['-w', '200'],
+                       'deadpickpartial': ['-w', '100'], 'deadpickstray': ['-w', '500'], 'forcefailover': ['-w', '500'], 'copybackup': ['-w', '500'], 'deaddownloadstray2': ['-w', '300'], 'deaddownloadrestart': ['-w', '300'], 'deadbackupsonly': ['-w', '500'], 'backuporder': ['-w', '500'], 'deaddownloadlate': ['-w', '300'], 'deadpickservers': ['-w', '200'],
                        'deadpickfewservers': ['-w', '200']}
 
 # extra news servers behind the same nserv: (servers answering, unreachable
