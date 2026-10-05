@@ -175,17 +175,21 @@ def run_scenario(daemon, target, name):
         'observed_download_labels': len(downloading),
         'unavailable_decompression_labels': unavailable_decompression,
     }
+    # a duplicate none of whose sampled articles exists is skipped before
+    # any BODY request (STAT check); otherwise its first volume aborts early
+    skipped = 'Skipping duplicate Unavailable' in log and 'none of 10 sampled articles' in log
     checks = {
         'single_output': len(outputs) == 1,
         'scratch_cleaned': not scratch,
-        'download_label_observed': bool(downloading),
+        # with only the unavailable duplicate queued, a skip means nothing downloads
+        'download_label_observed': bool(downloading) or (name == 'all_missing' and skipped),
         'incomplete_donor_never_decompresses': not unavailable_decompression,
     }
     if name in ('all_missing', 'repeated_then_healthy'):
         checks.update({
-            'missing_donor_aborted_early': 0 < len(bad_requests) <= 16,
+            'missing_donor_aborted_early': (skipped and not bad_requests) or 0 < len(bad_requests) <= 16,
             'same_posting_not_retried': len(first_bad_requests) <= 2,
-            'later_missing_volumes_not_downloaded': set(volume_counts) == {'001'},
+            'later_missing_volumes_not_downloaded': set(volume_counts) <= {'001'},
         })
     elif name == 'missing_middle':
         checks.update({
