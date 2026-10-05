@@ -22,10 +22,8 @@
 set -o nounset
 set -o errexit
 
-# unpackers versions defaults
-# can be overridden by environment variables
-UNRAR_VERSION="${UNRAR_VERSION-723}"
-ZIP7_VERSION="${ZIP7_VERSION-26.02}"
+# unpackers versions (nzbgetcom/7zip and nzbgetcom/unrar release tags)
+. "$PWD/unpackers.env"
 
 # make jobs
 JOBS=$(sysctl -n hw.ncpu)
@@ -151,22 +149,19 @@ for CONFIG in $CONFIGS; do
         rm -rf $DAEMON_PATH/etc
 
         # 7zip
-        URL_7Z="https://github.com/ip7z/7zip/releases/download/$ZIP7_VERSION/7z${ZIP7_VERSION//./}-mac.tar.xz"
-        curl -L -o 7z.tar.xz $URL_7Z
+        echo "Downloading 7zip version $ZIP7_VERSION for $ARCH"
+        URL_7Z="https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-macos-universal.tar.gz"
+        curl -L -o 7z.tar.gz $URL_7Z
         mkdir -p 7z
-        tar xf 7z.tar.xz -C 7z
-        cp 7z/7zz $DAEMON_PATH/bin/7za
+        tar xf 7z.tar.gz -C 7z
+        cp 7z/7za $DAEMON_PATH/bin/7za
 
         # unrar
-        if [ "$ARCH" == "arm64" ]; then
-            UNRAR_ARCH="arm"
-        else
-            UNRAR_ARCH=$ARCH
-        fi
-        URL_UNRAR=https://www.rarlab.com/rar/rarmacos-$UNRAR_ARCH-$UNRAR_VERSION.tar.gz
-        curl -o unrar.tar.gz $URL_UNRAR
+        echo "Downloading unrar version $UNRAR_VERSION for $ARCH"
+        URL_UNRAR="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR_VERSION/unrar-macos-$ARCH.tar.gz"
+        curl -L -o unrar.tar.gz $URL_UNRAR
         tar -xf unrar.tar.gz
-        cp rar/unrar $DAEMON_PATH/bin/unrar
+        cp unrar $DAEMON_PATH/bin/unrar
 
         # root certificates
         curl -o $DAEMON_PATH/bin/cacert.pem https://curl.se/ca/cacert.pem
