@@ -3,25 +3,6 @@ nzbget-v26.3
     - Version 26.3 is the final release supporting legacy platforms: Linux MIPS (mipseb/mipsel), PowerPC e500 (ppc500), and macOS < 12.0. Future versions (v27+) require C++20 and updated OS baselines.
 
   - Features:
-    - DupeArticleFallback—recover missing articles from duplicate collections
-    [#850](https://github.com/nzbgetcom/nzbget/pull/850)
-      - Article-level fallback substitutes a failed article's body from a duplicate posting during download; a file missing many articles cuts over to lead with the duplicate, and independently a duplicate that keeps missing articles is rotated out in favour of the next one;
-      - Stream-level repair (value "stream") patches missing byte ranges in post-processing from duplicates posted with different article segmentation or packaging—store-mode rar/zip/7z, raw splits and directly posted media can donate to each other, including password-protected store-mode archives when the password is known;
-      - Optional decompression-assisted recovery (option DupeStreamDecompress) extracts a compressed duplicate to bridge different compressions of the same inner file, including into a password-protected store-mode target (the extracted plaintext is re-encrypted under the target's stream context);
-      - Obfuscated duplicates whose equal-size files can't be told apart by name are probed file by file until one is verified byte-identical;
-      - A verification probe the duplicate can't supply (a repost missing articles of its own) is replaced by another article instead of rejecting the matching file;
-      - Post-processing fetches duplicate articles over a quarter of the primary servers' connections (4 to 16) instead of 4;
-      - A duplicate article fetch that ends without a server answer (a timeout, a lost or refused connection) is retried on the same server, spaced so that a brief per-user connection limit doesn't use up the attempts (pooled connections the server already closed don't count); a server that stays unreachable gets one attempt per article until it answers again;
-      - With ParCheck=auto, when the par2 files can't cover the bytes still missing from the files they protect, duplicates are tried before par-check, and par-check is skipped if they recover nothing; a par-check that already failed isn't repeated when duplicates wrote nothing, and one that follows a repair from duplicates verifies the files fully;
-      - Stop fetching an incomplete duplicate archive when a required article is unavailable, skip equivalent saved postings, and distinguish download progress from decompression;
-      - Health/statistics are recounted for stream-recovered bytes, so a fully repaired release without par-files completes normally (moved to its destination directory);
-      - Value "live" runs the byte-level repair concurrently with the download: a damaged file is repaired as soon as it completes, while the collection's remaining files still download, removing the end-of-download wait on large collections;
-      - A file none of whose articles is available anywhere is recreated whole from a duplicate proven byte-identical on the collection's other files, damaged or intact;
-      - A file fully repaired from duplicates is recorded as complete, so retrying failed articles no longer counts its repair twice and reports a damaged release as successful;
-      - Option HealthCheck value "dupe": a download the duplicates can't complete is parked as soon as its health drops below critical when a better duplicate waits in history, which is fetched right away instead of after every remaining article failed; a dead posting without a better duplicate is parked instead of failing every article;
-      - Option HealthCheck value "dupe" also checks a starting download that has a duplicate in history: about 10 articles spread over the posting are checked (STAT) on every active server, and a posting none of whose articles exists anywhere is parked at once for the duplicate;
-      - A "451" reply to an article request counts as "article not found", like "430", instead of an unknown error that is retried on the same server;
-      - Added DupeRecoveredArticles counter to the API (methods listgroups and history);
     - Added support for extension i18n
     [#872](https://github.com/nzbgetcom/nzbget/pull/872)
     - Added per-feed certificate verification option
@@ -30,7 +11,6 @@ nzbget-v26.3
     [#847](https://github.com/nzbgetcom/nzbget/pull/847)
 
   - Bug fixes:
-    - Fixed post-processing that never started after a reload (saving settings) while a download waited in the post-processing queue
     - Fixed missing path separator in auto-detected config template path
     [#902](https://github.com/nzbgetcom/nzbget/pull/902)
     - Fixed feed preview for new (unsaved) feeds
