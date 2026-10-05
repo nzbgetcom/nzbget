@@ -154,8 +154,11 @@ public:
 		bool Paused() const;
 		int MaxActive() const { return m_maxActive; }
 
-		/* the answers for a batch of articles; waits for a connection slot */
-		std::vector<Answer> Ask(const std::vector<Request>& batch);
+		/* the answers for a batch of articles; waits for a connection slot. Every
+		 * wait ends early, with Error answers and nothing asked, once <cancelled>
+		 * says so (the check is over) or DonorHealth::StopAll ran */
+		std::vector<Answer> Ask(const std::vector<Request>& batch,
+			const std::function<bool()>& cancelled = nullptr);
 
 		void SetRetryAfterMs(int ms) { m_retryAfterMs = ms; }
 
@@ -209,6 +212,13 @@ public:
 		const std::function<void(const std::string& key, const Health&)>& emit);
 
 	static long long NowMs();
+
+	/* shutdown: the walkers of every check stop asking and end; WaitAll returns
+	 * when they did (before the server pool goes away). Reset allows checks again */
+	static void StopAll();
+	static void WaitAll();
+	static void Reset();
+	static bool Stopping();
 };
 
 #endif

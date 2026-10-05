@@ -324,6 +324,48 @@ BOOST_AUTO_TEST_CASE(DonorHealthPausedServerAbstainsTest)
 	BOOST_CHECK_LT(DonorHealth::NowMs() - start, 5000);
 }
 
+// B5: a paused server's request ends at once, asking nothing, when its check is over
+// or nzbget shuts down; shutdown waits for every walker of a finished check
+BOOST_AUTO_TEST_CASE(DonorHealthPausedAskIsInterruptibleTest)
+{
+	auto paused = std::make_shared<FakeServer>();
+	paused->authFails = true;
+	paused->SetRetryAfterMs(30000);
+	std::vector<DonorHealth::Request> batch(1);
+	batch[0].messageId = "a@x";
+	for (int i = 0; i < DonorHealth::ServerGiveUp; i++)
+	{
+		paused->Ask(batch);		// three errors in a row: a 30 s pause
+	}
+	BOOST_REQUIRE(paused->Paused());
+	int before = paused->exchanges;
+
+	long long start = DonorHealth::NowMs();
+	std::vector<DonorHealth::Answer> answers = paused->Ask(batch, []() { return true; });
+	BOOST_CHECK_LT(DonorHealth::NowMs() - start, 1000);
+	BOOST_REQUIRE_EQUAL(answers.size(), 1u);
+	BOOST_CHECK(answers[0] == DonorHealth::Answer::Error);
+	BOOST_CHECK_EQUAL(paused->exchanges, before);
+
+	DonorHealth::StopAll();
+	start = DonorHealth::NowMs();
+	paused->Ask(batch);
+	BOOST_CHECK_LT(DonorHealth::NowMs() - start, 1000);
+	BOOST_CHECK_EQUAL(paused->exchanges, before);
+	DonorHealth::Reset();
+
+	// a check whose only server is paused ends by its budget; its walker, waiting out
+	// the pause, ends with it and WaitAll doesn't hang
+	auto good = std::make_shared<FakeServer>();
+	good->hasAll = true;
+	DonorHealth::CheckItems(List({ paused, good }), DonorHealth::Plan(Ids("w", 20), NoGroups(), Everything().sample), 200);
+	start = DonorHealth::NowMs();
+	DonorHealth::StopAll();
+	DonorHealth::WaitAll();
+	BOOST_CHECK_LT(DonorHealth::NowMs() - start, 2000);
+	DonorHealth::Reset();
+}
+
 BOOST_AUTO_TEST_CASE(DonorHealthSingleServerRecoversTest)
 {
 	// the only server fails three times, pauses briefly and recovers

@@ -115,18 +115,47 @@ DonorHealth::Answer DonorHealth::Server::BodyOnce(BodyGate* gate, const std::fun
 	return answer;
 }
 
-std::vector<DonorHealth::Answer> DonorHealth::Server::Ask(const std::vector<Request>& batch)
+namespace
 {
-	// a server that kept failing gets a pause, then another try
-	long long wait = m_downUntilMs - NowMs();
-	if (wait > 0)
+	std::atomic<bool> g_healthStopping{false};
+	std::atomic<int> g_walkers{0};
+}
+
+void DonorHealth::StopAll() { g_healthStopping = true; }
+void DonorHealth::Reset() { g_healthStopping = false; }
+bool DonorHealth::Stopping() { return g_healthStopping; }
+
+void DonorHealth::WaitAll()
+{
+	while (g_walkers > 0)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(wait));
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
+}
+
+std::vector<DonorHealth::Answer> DonorHealth::Server::Ask(const std::vector<Request>& batch,
+	const std::function<bool()>& cancelled)
+{
+	auto over = [&cancelled]() { return g_healthStopping || (cancelled && cancelled()); };
+
+	// a server that kept failing gets a pause, then another try
+	while (m_downUntilMs - NowMs() > 0 && !over())
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(
+			std::min<long long>(50, m_downUntilMs - NowMs())));
 	}
 
 	{
 		std::unique_lock<std::mutex> lock(m_slotMutex);
-		m_slotCond.wait(lock, [this]() { return m_active < m_cap; });
+		while (m_active >= m_cap && !over())
+		{
+			m_slotCond.wait_for(lock, std::chrono::milliseconds(50));
+		}
+		if (over())
+		{
+			// nothing asked: the check is over, or nzbget shuts down
+			return std::vector<Answer>(batch.size(), Answer::Error);
+		}
 		m_active++;
 		if (m_active > m_maxActive)
 		{
@@ -198,7 +227,7 @@ struct CheckState
 	std::mutex mutex;
 	std::condition_variable cond;
 	int left = 0;
-	bool stop = false;
+	std::atomic<bool> stop{false};
 };
 
 // with state->mutex held
@@ -217,6 +246,12 @@ void Settle(CheckState& state, size_t index, int verdict)
 // one server's pass over the articles, skipping the ones already found
 void Walk(std::shared_ptr<CheckState> state, size_t serverIndex)
 {
+	// counted from its start (CheckItems) until it ends: shutdown waits for every
+	// walker (DonorHealth::WaitAll)
+	struct Counted
+	{
+		~Counted() { g_walkers--; }
+	} counted;
 	DonorHealth::Server& server = *state->servers[serverIndex];
 	size_t count = state->items.size();
 	size_t cursor = 0;
@@ -224,7 +259,7 @@ void Walk(std::shared_ptr<CheckState> state, size_t serverIndex)
 	{
 		{
 			std::lock_guard<std::mutex> guard(state->mutex);
-			if (state->stop)
+			if (state->stop || DonorHealth::Stopping())
 			{
 				return;
 			}
@@ -267,7 +302,7 @@ void Walk(std::shared_ptr<CheckState> state, size_t serverIndex)
 				request.groups = state->items[index].groups;
 				batch.push_back(std::move(request));
 			}
-			answers = server.Ask(batch);
+			answers = server.Ask(batch, [&state]() { return state->stop.load(); });
 		}
 
 		std::lock_guard<std::mutex> guard(state->mutex);
@@ -339,6 +374,7 @@ Health DonorHealth::CheckItems(const ServerList& servers, const std::vector<Item
 	// budget ran out), and its answer is ignored
 	for (size_t s = 0; s < servers.size(); s++)
 	{
+		g_walkers++;
 		std::thread(Walk, state, s).detach();
 	}
 

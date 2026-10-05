@@ -84,6 +84,7 @@ bool DupeSearch::IsDonor(NzbInfo* nzbInfo)
 DupeSearch::DupeSearch()
 {
 	HttpGet::Reset();
+	DonorHealth::Reset();
 	m_observer.m_owner = this;
 	DownloadQueue::Guard()->Attach(&m_observer);
 }
@@ -97,6 +98,7 @@ void DupeSearch::Stop()
 {
 	Thread::Stop();
 	HttpGet::StopAll();
+	DonorHealth::StopAll();
 	std::lock_guard<std::mutex> guard(m_mutex);
 	m_cond.notify_all();
 }
@@ -203,6 +205,9 @@ void DupeSearch::Run()
 		}
 	}
 
+	// a health check's walkers may still be in a request: they end before this
+	// thread does, so before the server pool goes away
+	DonorHealth::WaitAll();
 	debug("Exiting DupeSearch-loop");
 }
 
