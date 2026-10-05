@@ -21,6 +21,8 @@
 #ifndef DISKSTATE_H
 #define DISKSTATE_H
 
+#include <functional>
+#include <vector>
 #include "DownloadInfo.h"
 #include "FeedInfo.h"
 #include "NewsServer.h"
@@ -58,6 +60,8 @@ public:
 	void LoadNzbMessages(int nzbId, MessageList* messages);
 
 private:
+	// the format version of the file state LoadFileState read last
+	int m_lastFileStateVersion = 0;
 	bool SaveFileInfo(FileInfo* fileInfo, StateDiskFile& outfile, bool articles);
 	bool LoadFileInfo(FileInfo* fileInfo, StateDiskFile& outfile, int formatVersion, bool fileSummary, bool articles);
 	bool SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool completed);
@@ -67,6 +71,11 @@ private:
 	void SaveProgress(NzbList* queue, StateDiskFile& outfile, int changedCount);
 	bool LoadProgress(NzbList* queue, Servers* servers, StateDiskFile& infile, int formatVersion);
 	void SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile);
+	// this build's own data (duplicate repair) after upstream's in a queue file
+	void SaveDupeExtras(NzbInfo* nzbInfo, StateDiskFile& outfile);
+	bool LoadDupeExtras(NzbInfo* nzbInfo, StateDiskFile& infile, int formatVersion);
+	void SaveDupeTrailer(const std::vector<NzbInfo*>& nzbs, StateDiskFile& outfile);
+	bool LoadDupeTrailer(const std::function<NzbInfo*(int)>& find, StateDiskFile& infile);
 	bool LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion);
 	void SaveDupInfo(DupInfo* dupInfo, StateDiskFile& outfile);
 	bool LoadDupInfo(DupInfo* dupInfo, StateDiskFile& infile, int formatVersion);

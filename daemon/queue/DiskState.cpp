@@ -28,8 +28,23 @@
 #include "FileSystem.h"
 
 static const char* FORMATVERSION_SIGNATURE = "nzbget diskstate file version ";
-const int DISKSTATE_QUEUE_VERSION = 66;
-const int DISKSTATE_FILE_VERSION = 9;
+// The queue, history and file-state files are written in upstream nzbget's formats
+// (64 and 7), so that an nzbget without duplicate repair still reads them: it ignores
+// the trailer that carries this build's own data (stream-repair jobs, recovery
+// counters, decoded file sizes). Earlier builds of this branch wrote that data inline
+// as formats 65/66 and 8/9: those are still read, once, and rewritten in the new form.
+const int DISKSTATE_QUEUE_VERSION = 64;
+const int DISKSTATE_QUEUE_LEGACY_VERSION = 66;
+const int DISKSTATE_FILE_VERSION = 7;
+const int DISKSTATE_FILE_LEGACY_VERSION = 9;
+// the line that starts this build's data after upstream's in a queue, history or progress file
+const char* DUPESTATE_TRAILER = "#dupestate 1";
+// the line that carries a file state's decoded file size after upstream's data
+const char* DECODED_TRAILER = "#decoded ";
+// a file this build keeps in QueueDir: queue files of a format above 64 found beside it
+// were not written by an earlier build of this branch (they write 64 since), so they're
+// a newer upstream format this build doesn't know - never read as the branch's 65/66
+const char* DUPESTATE_MARKER = "dupestate";
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
@@ -104,7 +119,8 @@ int StateDiskFile::ScanLine(const char* format, ...)
 class StateFile
 {
 public:
-	StateFile(const char* filename, int formatVersion, bool transactional);
+	/* readVersion: the newest version read (default: the one written) */
+	StateFile(const char* filename, int formatVersion, bool transactional, int readVersion = 0);
 	void Discard();
 	bool FileExists();
 	StateDiskFile* BeginWrite();
@@ -117,6 +133,7 @@ private:
 	BString<1024> m_destFilename;
 	BString<1024> m_tempFilename;
 	int m_formatVersion;
+	int m_readVersion;
 	bool m_transactional;
 	int m_fileVersion;
 	StateDiskFile m_file;
@@ -125,8 +142,9 @@ private:
 };
 
 
-StateFile::StateFile(const char* filename, int formatVersion, bool transactional) :
-	m_formatVersion(formatVersion), m_transactional(transactional)
+StateFile::StateFile(const char* filename, int formatVersion, bool transactional, int readVersion) :
+	m_formatVersion(formatVersion), m_readVersion(readVersion ? readVersion : formatVersion),
+	m_transactional(transactional)
 {
 	m_destFilename.Format("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, filename);
 	if (m_transactional)
@@ -244,7 +262,7 @@ StateDiskFile* StateFile::BeginRead()
 	char FileSignatur[128];
 	m_file.ReadLine(FileSignatur, sizeof(FileSignatur));
 	m_fileVersion = ParseFormatVersion(FileSignatur);
-	if (m_fileVersion > m_formatVersion)
+	if (m_fileVersion > m_readVersion)
 	{
 		error("Could not load diskstate file %s due to file version mismatch", *m_destFilename);
 		m_file.Close();
@@ -316,6 +334,12 @@ bool DiskState::SaveDownloadQueue(DownloadQueue* downloadQueue, bool saveHistory
 	StateFile progressStateFile("progress", DISKSTATE_QUEUE_VERSION, true);
 	progressStateFile.Discard();
 
+	BString<1024> markerFilename("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, DUPESTATE_MARKER);
+	if (!FileSystem::FileExists(markerFilename))
+	{
+		FileSystem::SaveBufferIntoFile(markerFilename, "1\n", 2);
+	}
+
 	return ok;
 }
 
@@ -326,8 +350,14 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 	bool ok = false;
 	int formatVersion = 0;
 
+	// formats 65/66 are this branch's earlier ones only where no build since wrote
+	// the marker; beside it they would be a newer upstream format (B28)
+	BString<1024> markerFilename("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, DUPESTATE_MARKER);
+	int queueReadVersion = FileSystem::FileExists(markerFilename) ?
+		DISKSTATE_QUEUE_VERSION : DISKSTATE_QUEUE_LEGACY_VERSION;
+
 	{
-		StateFile stateFile("queue", DISKSTATE_QUEUE_VERSION, true);
+		StateFile stateFile("queue", DISKSTATE_QUEUE_VERSION, true, queueReadVersion);
 		if (stateFile.FileExists())
 		{
 			StateDiskFile* infile = stateFile.BeginRead();
@@ -360,7 +390,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 	}
 
 	{
-		StateFile stateFile("progress", DISKSTATE_QUEUE_VERSION, true);
+		StateFile stateFile("progress", DISKSTATE_QUEUE_VERSION, true, queueReadVersion);
 		if (stateFile.FileExists())
 		{
 			StateDiskFile* infile = stateFile.BeginRead();
@@ -381,7 +411,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 
 	if (formatVersion == 0 || formatVersion >= 57)
 	{
-		StateFile stateFile("history", DISKSTATE_QUEUE_VERSION, true);
+		StateFile stateFile("history", DISKSTATE_QUEUE_VERSION, true, queueReadVersion);
 		if (stateFile.FileExists())
 		{
 			StateDiskFile* infile = stateFile.BeginRead();
@@ -468,6 +498,13 @@ void DiskState::SaveQueue(NzbList* queue, StateDiskFile& outfile)
 	{
 		SaveNzbInfo(nzbInfo, outfile);
 	}
+
+	std::vector<NzbInfo*> nzbs;
+	for (NzbInfo* nzbInfo : queue)
+	{
+		nzbs.push_back(nzbInfo);
+	}
+	SaveDupeTrailer(nzbs, outfile);
 }
 
 bool DiskState::LoadQueue(NzbList* queue, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -483,6 +520,10 @@ bool DiskState::LoadQueue(NzbList* queue, Servers* servers, StateDiskFile& infil
 		if (!LoadNzbInfo(nzbInfo.get(), servers, infile, formatVersion)) goto error;
 		queue->push_back(std::move(nzbInfo));
 	}
+
+	// (before format 57 the history follows in the same file: no trailer there)
+	if (formatVersion >= 57 && formatVersion <= DISKSTATE_QUEUE_VERSION &&
+		!LoadDupeTrailer([queue](int id) { return queue->Find(id); }, infile)) goto error;
 
 	return true;
 
@@ -504,6 +545,16 @@ void DiskState::SaveProgress(NzbList* queue, StateDiskFile& outfile, int changed
 			SaveNzbInfo(nzbInfo, outfile);
 		}
 	}
+
+	std::vector<NzbInfo*> changed;
+	for (NzbInfo* nzbInfo : queue)
+	{
+		if (nzbInfo->GetChanged())
+		{
+			changed.push_back(nzbInfo);
+		}
+	}
+	SaveDupeTrailer(changed, outfile);
 }
 
 bool DiskState::LoadProgress(NzbList* queue, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -528,10 +579,146 @@ bool DiskState::LoadProgress(NzbList* queue, Servers* servers, StateDiskFile& in
 		if (!LoadNzbInfo(nzbInfo, servers, infile, formatVersion)) goto error;
 	}
 
+	if (formatVersion <= DISKSTATE_QUEUE_VERSION &&
+		!LoadDupeTrailer([queue](int id) { return queue->Find(id); }, infile)) goto error;
+
 	return true;
 
 error:
 	error("Error reading nzb progress from disk");
+	return false;
+}
+
+void DiskState::SaveDupeExtras(NzbInfo* nzbInfo, StateDiskFile& outfile)
+{
+	uint32 recoveredHigh, recoveredLow;
+	Util::SplitInt64(nzbInfo->GetDupeRecoveredBytes(), &recoveredHigh, &recoveredLow);
+	outfile.PrintLine("%i,%u,%u,%i", nzbInfo->GetDupeRecoveredArticles(), recoveredHigh,
+		recoveredLow, nzbInfo->GetDupeRecoveredHoles());
+	const StreamRepairJobList* repairJobs = nzbInfo->GetStreamRepairJobs();
+	outfile.PrintLine("%i", (int)repairJobs->size());
+	for (const StreamRepairJob& job : *repairJobs)
+	{
+		uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
+		Util::SplitInt64(job.GetDecodedFileSize(), &decodedHigh, &decodedLow);
+		Util::SplitInt64(job.GetFailedSize(), &failedHigh, &failedLow);
+		Util::SplitInt64(job.GetMissedSize(), &missedHigh, &missedLow);
+		uint32 stepsHigh, stepsLow;
+		Util::SplitInt64((int64)job.GetStepsHash(), &stepsHigh, &stepsLow);
+		outfile.PrintLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", job.GetFileId(), decodedHigh,
+			decodedLow, failedHigh, failedLow, missedHigh, missedLow, (int)job.GetParFile(),
+			job.GetFailedArticles(), stepsHigh, stepsLow);
+		outfile.PrintLine("%s", job.GetFilename());
+		const StreamRangeList* holes = job.GetHoles();
+		outfile.PrintLine("%i", (int)holes->size());
+		for (const StreamRange& hole : *holes)
+		{
+			uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
+			Util::SplitInt64(hole.Offset, &offsetHigh, &offsetLow);
+			Util::SplitInt64(hole.Size, &sizeHigh, &sizeLow);
+			outfile.PrintLine("%u,%u,%u,%u", offsetHigh, offsetLow, sizeHigh, sizeLow);
+		}
+	}
+}
+
+bool DiskState::LoadDupeExtras(NzbInfo* nzbInfo, StateDiskFile& infile, int formatVersion)
+{
+	char buf[1024];
+	uint32 recoveredHigh, recoveredLow;
+	int recoveredArticles, recoveredHoles;
+	if (infile.ScanLine("%i,%u,%u,%i", &recoveredArticles, &recoveredHigh, &recoveredLow,
+		&recoveredHoles) != 4 || recoveredArticles < 0 || recoveredHoles < 0) goto error;
+	nzbInfo->SetDupeRecoveredArticles(recoveredArticles);
+	nzbInfo->SetDupeRecoveredBytes(Util::JoinInt64(recoveredHigh, recoveredLow));
+	nzbInfo->SetDupeRecoveredHoles(recoveredHoles);
+
+	int repairCount;
+	if (infile.ScanLine("%i", &repairCount) != 1 || repairCount < 0 || repairCount > 100000) goto error;
+	for (int i = 0; i < repairCount; i++)
+	{
+		int fileId, parFile, failedArticles;
+		uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
+		uint32 stepsHigh = 0, stepsLow = 0;
+		if (formatVersion >= 66)
+		{
+			if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", &fileId, &decodedHigh,
+				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+				&failedArticles, &stepsHigh, &stepsLow) != 11 || failedArticles < 0) goto error;
+		}
+		else if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
+			&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
+			&failedArticles) != 9 || failedArticles < 0) goto error;
+		if (fileId <= 0 || parFile < 0 || parFile > 1) goto error;
+		if (!infile.ReadLine(buf, sizeof(buf))) goto error;
+		int holeCount;
+		if (infile.ScanLine("%i", &holeCount) != 1 || holeCount < 0 || holeCount > 1000000) goto error;
+		int64 decodedSize = Util::JoinInt64(decodedHigh, decodedLow);
+		StreamRangeList holes;
+		holes.reserve(holeCount);
+		for (int j = 0; j < holeCount; j++)
+		{
+			uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
+			if (infile.ScanLine("%u,%u,%u,%u", &offsetHigh, &offsetLow, &sizeHigh, &sizeLow) != 4) goto error;
+			int64 offset = Util::JoinInt64(offsetHigh, offsetLow);
+			int64 size = Util::JoinInt64(sizeHigh, sizeLow);
+			if (offset < 0 || size <= 0 || decodedSize <= 0 || offset > decodedSize || size > decodedSize - offset) goto error;
+			holes.push_back({offset, size});
+		}
+		nzbInfo->GetStreamRepairJobs()->emplace_back(fileId, buf, decodedSize,
+			Util::JoinInt64(failedHigh, failedLow), Util::JoinInt64(missedHigh, missedLow),
+			failedArticles, parFile != 0, std::move(holes),
+			(uint64)Util::JoinInt64(stepsHigh, stepsLow));
+	}
+
+
+	return true;
+
+error:
+	return false;
+}
+
+// this build's data after upstream's: the extras of the nzbs that have any
+void DiskState::SaveDupeTrailer(const std::vector<NzbInfo*>& nzbs, StateDiskFile& outfile)
+{
+	std::vector<NzbInfo*> withExtras;
+	for (NzbInfo* nzbInfo : nzbs)
+	{
+		if (nzbInfo->GetDupeRecoveredArticles() || nzbInfo->GetDupeRecoveredBytes() ||
+			nzbInfo->GetDupeRecoveredHoles() || !nzbInfo->GetStreamRepairJobs()->empty())
+		{
+			withExtras.push_back(nzbInfo);
+		}
+	}
+	outfile.PrintLine("%s", DUPESTATE_TRAILER);
+	outfile.PrintLine("%i", (int)withExtras.size());
+	for (NzbInfo* nzbInfo : withExtras)
+	{
+		outfile.PrintLine("%i", nzbInfo->GetId());
+		SaveDupeExtras(nzbInfo, outfile);
+	}
+}
+
+bool DiskState::LoadDupeTrailer(const std::function<NzbInfo*(int)>& find, StateDiskFile& infile)
+{
+	char buf[1024];
+	if (!infile.ReadLine(buf, sizeof(buf)) || strcmp(buf, DUPESTATE_TRAILER))
+	{
+		return true;	// a file upstream nzbget wrote, or one without any
+	}
+	int count;
+	if (infile.ScanLine("%i", &count) != 1 || count < 0) goto error;
+	for (int i = 0; i < count; i++)
+	{
+		int id;
+		if (infile.ScanLine("%i", &id) != 1) goto error;
+		NzbInfo* nzbInfo = find(id);
+		NzbInfo unknown;	// an nzb no longer listed: its extras are read and dropped
+		if (!LoadDupeExtras(nzbInfo ? nzbInfo : &unknown, infile, DISKSTATE_QUEUE_LEGACY_VERSION)) goto error;
+	}
+	return true;
+
+error:
+	error("Error reading duplicate repair state from disk");
 	return false;
 }
 
@@ -637,35 +824,6 @@ void DiskState::SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile)
 		}
 	}
 
-	// Stream-repair state is appended so older queue versions remain readable.
-	uint32 recoveredHigh, recoveredLow;
-	Util::SplitInt64(nzbInfo->GetDupeRecoveredBytes(), &recoveredHigh, &recoveredLow);
-	outfile.PrintLine("%i,%u,%u,%i", nzbInfo->GetDupeRecoveredArticles(), recoveredHigh,
-		recoveredLow, nzbInfo->GetDupeRecoveredHoles());
-	const StreamRepairJobList* repairJobs = nzbInfo->GetStreamRepairJobs();
-	outfile.PrintLine("%i", (int)repairJobs->size());
-	for (const StreamRepairJob& job : *repairJobs)
-	{
-		uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
-		Util::SplitInt64(job.GetDecodedFileSize(), &decodedHigh, &decodedLow);
-		Util::SplitInt64(job.GetFailedSize(), &failedHigh, &failedLow);
-		Util::SplitInt64(job.GetMissedSize(), &missedHigh, &missedLow);
-		uint32 stepsHigh, stepsLow;
-		Util::SplitInt64((int64)job.GetStepsHash(), &stepsHigh, &stepsLow);
-		outfile.PrintLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", job.GetFileId(), decodedHigh,
-			decodedLow, failedHigh, failedLow, missedHigh, missedLow, (int)job.GetParFile(),
-			job.GetFailedArticles(), stepsHigh, stepsLow);
-		outfile.PrintLine("%s", job.GetFilename());
-		const StreamRangeList* holes = job.GetHoles();
-		outfile.PrintLine("%i", (int)holes->size());
-		for (const StreamRange& hole : *holes)
-		{
-			uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
-			Util::SplitInt64(hole.Offset, &offsetHigh, &offsetLow);
-			Util::SplitInt64(hole.Size, &sizeHigh, &sizeLow);
-			outfile.PrintLine("%u,%u,%u,%u", offsetHigh, offsetLow, sizeHigh, sizeLow);
-		}
-	}
 }
 
 bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -1054,54 +1212,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	}
 
 	nzbInfo->GetStreamRepairJobs()->clear();
-	if (formatVersion >= 65)
-	{
-		uint32 recoveredHigh, recoveredLow;
-		int recoveredArticles, recoveredHoles;
-		if (infile.ScanLine("%i,%u,%u,%i", &recoveredArticles, &recoveredHigh, &recoveredLow,
-			&recoveredHoles) != 4 || recoveredArticles < 0 || recoveredHoles < 0) goto error;
-		nzbInfo->SetDupeRecoveredArticles(recoveredArticles);
-		nzbInfo->SetDupeRecoveredBytes(Util::JoinInt64(recoveredHigh, recoveredLow));
-		nzbInfo->SetDupeRecoveredHoles(recoveredHoles);
-
-		int repairCount;
-		if (infile.ScanLine("%i", &repairCount) != 1 || repairCount < 0 || repairCount > 100000) goto error;
-		for (int i = 0; i < repairCount; i++)
-		{
-			int fileId, parFile, failedArticles;
-			uint32 decodedHigh, decodedLow, failedHigh, failedLow, missedHigh, missedLow;
-			uint32 stepsHigh = 0, stepsLow = 0;
-			if (formatVersion >= 66)
-			{
-				if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i,%u,%u", &fileId, &decodedHigh,
-					&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
-					&failedArticles, &stepsHigh, &stepsLow) != 11 || failedArticles < 0) goto error;
-			}
-			else if (infile.ScanLine("%i,%u,%u,%u,%u,%u,%u,%i,%i", &fileId, &decodedHigh,
-				&decodedLow, &failedHigh, &failedLow, &missedHigh, &missedLow, &parFile,
-				&failedArticles) != 9 || failedArticles < 0) goto error;
-			if (fileId <= 0 || parFile < 0 || parFile > 1) goto error;
-			if (!infile.ReadLine(buf, sizeof(buf))) goto error;
-			int holeCount;
-			if (infile.ScanLine("%i", &holeCount) != 1 || holeCount < 0 || holeCount > 1000000) goto error;
-			int64 decodedSize = Util::JoinInt64(decodedHigh, decodedLow);
-			StreamRangeList holes;
-			holes.reserve(holeCount);
-			for (int j = 0; j < holeCount; j++)
-			{
-				uint32 offsetHigh, offsetLow, sizeHigh, sizeLow;
-				if (infile.ScanLine("%u,%u,%u,%u", &offsetHigh, &offsetLow, &sizeHigh, &sizeLow) != 4) goto error;
-				int64 offset = Util::JoinInt64(offsetHigh, offsetLow);
-				int64 size = Util::JoinInt64(sizeHigh, sizeLow);
-				if (offset < 0 || size <= 0 || decodedSize <= 0 || offset > decodedSize || size > decodedSize - offset) goto error;
-				holes.push_back({offset, size});
-			}
-			nzbInfo->GetStreamRepairJobs()->emplace_back(fileId, buf, decodedSize,
-				Util::JoinInt64(failedHigh, failedLow), Util::JoinInt64(missedHigh, missedLow),
-				failedArticles, parFile != 0, std::move(holes),
-				(uint64)Util::JoinInt64(stepsHigh, stepsLow));
-		}
-	}
+	// earlier builds of this branch wrote it inline (formats 65 and 66); the trailer
+	// of the queue file carries it since
+	if (formatVersion >= 65 && !LoadDupeExtras(nzbInfo, infile, formatVersion)) goto error;
 
 	return true;
 
@@ -1215,7 +1328,7 @@ bool DiskState::LoadFile(FileInfo* fileInfo, bool fileSummary, bool articles)
 	debug("Loading FileInfo %i from disk", fileInfo->GetId());
 
 	BString<100> filename("%i", fileInfo->GetId());
-	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false, DISKSTATE_FILE_LEGACY_VERSION);
 
 	StateDiskFile* infile = stateFile.BeginRead();
 	if (!infile)
@@ -1341,9 +1454,6 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	Util::SplitInt64(fileInfo->GetSuccessSize(), &High2, &Low2);
 	Util::SplitInt64(fileInfo->GetFailedSize(), &High3, &Low3);
 	outfile.PrintLine("%u,%u,%u,%u,%u,%u", High1, Low1, High2, Low2, High3, Low3);
-	uint32 decodedHigh, decodedLow;
-	Util::SplitInt64(fileInfo->GetDecodedFileSize(), &decodedHigh, &decodedLow);
-	outfile.PrintLine("%u,%u", decodedHigh, decodedLow);
 
 	outfile.PrintLine("%s", fileInfo->GetFilename());
 	outfile.PrintLine("%s", fileInfo->GetHash16k() ? fileInfo->GetHash16k() : "");
@@ -1355,6 +1465,8 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	outfile.PrintLine("%i", (int)fileInfo->GetArticles()->size());
 	for (ArticleInfo* articleInfo : fileInfo->GetArticles())
 	{
+		// the fifth field (an article staged from a duplicate) is past what upstream's
+		// format 7 reads, which ignores it
 		int stagedFallback = !completed && articleInfo->GetStatus() == ArticleInfo::aiFinished &&
 			articleInfo->GetDupeFallbackRound() > 0 && articleInfo->GetResultFilename() ? 1 : 0;
 		outfile.PrintLine("%i,%" PRIi64 ",%i,%u,%i",
@@ -1366,6 +1478,11 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 		);
 	}
 
+	// after upstream's data, which upstream stops reading before
+	uint32 decodedHigh, decodedLow;
+	Util::SplitInt64(fileInfo->GetDecodedFileSize(), &decodedHigh, &decodedLow);
+	outfile.PrintLine("%s%u,%u", DECODED_TRAILER, decodedHigh, decodedLow);
+
 	outfile.Close();
 	return true;
 }
@@ -1375,7 +1492,7 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, bool complet
 	debug("Loading FileInfo %i from disk", fileInfo->GetId());
 
 	BString<100> filename("%i%s", fileInfo->GetId(), completed ? "c" : "s");
-	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false, DISKSTATE_FILE_LEGACY_VERSION);
 
 	StateDiskFile* infile = stateFile.BeginRead();
 	if (!infile)
@@ -1383,6 +1500,7 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, bool complet
 		return false;
 	}
 
+	m_lastFileStateVersion = stateFile.GetFileVersion();
 	return LoadFileState(fileInfo, servers, *infile, stateFile.GetFileVersion(), completed);
 }
 
@@ -1452,14 +1570,11 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			uint32 crc;
 			int segmentSize;
 			int stagedFallback = 0;
-			if (formatVersion >= 9)
-			{
-				if (infile.ScanLine("%i,%" PRIi64 ",%i,%u,%i", &statusInt, &segmentOffset,
-					&segmentSize, &crc, &stagedFallback) != 5 ||
-					(stagedFallback != 0 && stagedFallback != 1)) goto error;
-			}
-			else if (infile.ScanLine("%i,%" PRIi64 ",%i,%u", &statusInt, &segmentOffset,
-				&segmentSize, &crc) != 4) goto error;
+			int fields = infile.ScanLine("%i,%" PRIi64 ",%i,%u,%i", &statusInt, &segmentOffset,
+				&segmentSize, &crc, &stagedFallback);
+			// format 9 always has the fifth field; this build's format 7 has it, upstream's doesn't
+			if ((formatVersion >= 9 ? fields != 5 : fields < 4) ||
+				(stagedFallback != 0 && stagedFallback != 1)) goto error;
 			pa->SetSegmentOffset(segmentOffset);
 			pa->SetSegmentSize(segmentSize);
 			pa->SetCrc(crc);
@@ -1514,6 +1629,19 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 	}
 
 	fileInfo->SetCompletedArticles(completedArticles);
+
+	if (formatVersion < 8)
+	{
+		// the decoded file size after upstream's data, where this build wrote it
+		char trailer[1024];
+		uint32 decodedHigh, decodedLow;
+		if (infile.ReadLine(trailer, sizeof(trailer)) &&
+			!strncmp(trailer, DECODED_TRAILER, strlen(DECODED_TRAILER)) &&
+			sscanf(trailer + strlen(DECODED_TRAILER), "%u,%u", &decodedHigh, &decodedLow) == 2)
+		{
+			fileInfo->SetDecodedFileSize(Util::JoinInt64(decodedHigh, decodedLow));
+		}
+	}
 
 	infile.Close();
 	return true;
@@ -1605,6 +1733,16 @@ void DiskState::SaveHistory(HistoryList* history, StateDiskFile& outfile)
 			SaveDupInfo(historyInfo->GetDupInfo(), outfile);
 		}
 	}
+
+	std::vector<NzbInfo*> nzbs;
+	for (HistoryInfo* historyInfo : history)
+	{
+		if (historyInfo->GetKind() == HistoryInfo::hkNzb || historyInfo->GetKind() == HistoryInfo::hkUrl)
+		{
+			nzbs.push_back(historyInfo->GetNzbInfo());
+		}
+	}
+	SaveDupeTrailer(nzbs, outfile);
 }
 
 bool DiskState::LoadHistory(HistoryList* history, Servers* servers, StateDiskFile& infile, int formatVersion)
@@ -1649,6 +1787,20 @@ bool DiskState::LoadHistory(HistoryList* history, Servers* servers, StateDiskFil
 
 		history->push_back(std::move(historyInfo));
 	}
+
+	if (formatVersion <= DISKSTATE_QUEUE_VERSION && formatVersion >= 57 &&
+		!LoadDupeTrailer([history](int id) -> NzbInfo*
+			{
+				for (HistoryInfo* historyInfo : history)
+				{
+					if ((historyInfo->GetKind() == HistoryInfo::hkNzb || historyInfo->GetKind() == HistoryInfo::hkUrl) &&
+						historyInfo->GetNzbInfo()->GetId() == id)
+					{
+						return historyInfo->GetNzbInfo();
+					}
+				}
+				return nullptr;
+			}, infile)) goto error;
 
 	return true;
 
@@ -2071,7 +2223,7 @@ bool DiskState::LoadAllFileInfos(DownloadQueue* downloadQueue)
 		return true;
 	}
 
-	StateFile stateFile("files", DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile("files", DISKSTATE_FILE_VERSION, false, DISKSTATE_FILE_LEGACY_VERSION);
 	StateDiskFile* infile = nullptr;
 	bool useHibernate = false;
 
@@ -2132,7 +2284,7 @@ bool DiskState::LoadAllFileInfos(DownloadQueue* downloadQueue)
 
 void DiskState::DiscardQuickFileInfos()
 {
-	StateFile stateFile("files", DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile("files", DISKSTATE_FILE_VERSION, false, DISKSTATE_FILE_LEGACY_VERSION);
 	stateFile.Discard();
 }
 
@@ -2157,6 +2309,12 @@ bool DiskState::LoadAllFileStates(DownloadQueue* downloadQueue, Servers* servers
 						if (fileInfo->GetId() == id)
 						{
 							if (!LoadFileState(fileInfo, servers, suffix == 'c')) goto error;
+							if (m_lastFileStateVersion > DISKSTATE_FILE_VERSION)
+							{
+								// an earlier build of this branch wrote it: rewritten in the
+								// format an nzbget without duplicate repair reads too
+								SaveFileState(fileInfo, suffix == 'c');
+							}
 							fileInfo->GetArticles()->clear();
 							fileInfo->SetPartialState(suffix == 'c' ? FileInfo::psCompleted : FileInfo::psPartial);
 							goto next;
