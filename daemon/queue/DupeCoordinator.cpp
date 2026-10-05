@@ -439,7 +439,7 @@ bool DupeCoordinator::DupeFailoverWarranted(int itemScore, int health, int backu
 	// failure anyway, only without the wait.
 	health = std::max(0, std::min(1000, health));
 	int warranted = itemScore > 0 ? (int)((int64)itemScore * health / 1000) : 0;
-	return backupScore >= warranted;
+	return warranted == 0 || backupScore >= warranted;
 }
 
 void DupeCoordinator::HistoryMark(DownloadQueue* downloadQueue, HistoryInfo* historyInfo, NzbInfo::EMarkStatus markStatus)

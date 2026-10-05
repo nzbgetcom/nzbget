@@ -96,9 +96,11 @@ BOOST_AUTO_TEST_CASE(DupeFailoverWarrantedTest)
 	// a posting at 30% health warrants 30% of the score it was queued with
 	BOOST_CHECK(DupeCoordinator::DupeFailoverWarranted(90, 300, 27));
 	BOOST_CHECK(!DupeCoordinator::DupeFailoverWarranted(90, 300, 26));
-	// a dead posting warrants nothing: any backup not scored below zero is better
+	// a dead posting warrants nothing: any backup is better, even one scored below
+	// zero - the one ReturnBestDupe would fetch after the failure anyway (B27)
 	BOOST_CHECK(DupeCoordinator::DupeFailoverWarranted(90, 0, 0));
-	BOOST_CHECK(!DupeCoordinator::DupeFailoverWarranted(90, 0, -5));
+	BOOST_CHECK(DupeCoordinator::DupeFailoverWarranted(90, 0, -5));
+	BOOST_CHECK(DupeCoordinator::DupeFailoverWarranted(-10, 500, -20));
 	// at full health only an equal or better backup qualifies
 	BOOST_CHECK(DupeCoordinator::DupeFailoverWarranted(90, 1000, 90));
 	BOOST_CHECK(!DupeCoordinator::DupeFailoverWarranted(90, 1000, 89));
