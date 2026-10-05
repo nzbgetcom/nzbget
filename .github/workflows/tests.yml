@@ -120,11 +120,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install --formula boost sevenzip
-        curl -L https://github.com/nzbgetcom/unrar/releases/download/v7.23/unrar-7.23-macos-universal.tar.gz | sudo tar -xzf - -C /usr/local/bin
+        brew install --formula boost
 
     - name: Checkout
       uses: actions/checkout@v6
+
+    - name: Install unpackers
+      run: |
+        . ./unpackers.env
+        curl -L "https://github.com/nzbgetcom/unrar/releases/download/v${UNRAR_VERSION}/unrar-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        curl -L "https://github.com/nzbgetcom/7zip/releases/download/v${ZIP7_VERSION}/7zip-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        sudo ln -sf 7za /usr/local/bin/7z
 
     - name: Build
       run: |
