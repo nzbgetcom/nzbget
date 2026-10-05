@@ -79,19 +79,15 @@ Function DownloadUnpackers {
 
     # unrar
     Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\unrar32.zip
-    New-Item -ItemType Directory "$UnpackDir\unrar32" | Out-Null
-    tar -xf $UnpackDir\unrar32.zip -C $UnpackDir\unrar32
-
+    Expand-Archive -Path $UnpackDir\unrar32.zip -DestinationPath $UnpackDir\unrar32
     Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\unrar64.zip
-    New-Item -ItemType Directory "$UnpackDir\unrar64" | Out-Null
-    tar -xf $UnpackDir\unrar64.zip -C $UnpackDir\unrar64 --strip-components=6
+    Expand-Archive -Path $UnpackDir\unrar64.zip -DestinationPath $UnpackDir\unrar64
 
     # 7zip
-    New-Item -ItemType Directory "$UnpackDir\7zip" | Out-Null
     Invoke-WebRequest -Uri $Url7Z32 -OutFile $UnpackDir\7zip32.zip
-    tar -xf $UnpackDir\7zip32.zip -C $UnpackDir\7zip --strip-components=7
+    Expand-Archive -Path $UnpackDir\7zip32.zip -DestinationPath $UnpackDir\7zip
     Invoke-WebRequest -Uri $Url7Z64 -OutFile $UnpackDir\7zip64.zip
-    tar -xf $UnpackDir\7zip64.zip -C $UnpackDir\7zip --strip-components=6
+    Expand-Archive -Path $UnpackDir\7zip64.zip -DestinationPath $UnpackDir\7zip\x64
 
     # copy needed files
     If (Test-Path $ImageDir) {
