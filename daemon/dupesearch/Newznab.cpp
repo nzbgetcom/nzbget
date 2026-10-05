@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <map>
 #include <regex>
 #include <set>
 #include <thread>
@@ -196,54 +197,103 @@ bool Newznab::ParseResponse(const std::string& xml, Page& page)
 
 time_t Newznab::ParseDate(const std::string& text)
 {
-	// [Tue, ]10 Jun 2025 01:10:05 +0000
-	static const std::regex regex(
-		"^\\s*(?:[A-Za-z]{3},\\s*)?(\\d{1,2})\\s+([A-Za-z]{3})[a-z]*\\s+(\\d{4})\\s+(\\d{1,2}):(\\d{2}):(\\d{2})\\s*([+-]\\d{4}|[A-Za-z]+)?\\s*$");
-	std::smatch match;
-	if (!std::regex_match(text, match, regex))
-	{
-		return 0;
-	}
+	// ISO 8601: 2025-06-10T01:10:05Z, 2025-06-10T03:10:05+02:00, 2025-06-10 01:10:05 (UTC)
+	static const std::regex iso(
+		"^\\s*(\\d{4})-(\\d{2})-(\\d{2})[Tt ](\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?\\s*(Z|z|[+-]\\d{2}:?\\d{2})?\\s*$");
+	// RFC 822/2822: [Tue, ]10 Jun 2025 01:10:05 +0000, also with a 2-digit year or a zone name
+	static const std::regex rfc(
+		"^\\s*(?:[A-Za-z]{3},\\s*)?(\\d{1,2})\\s+([A-Za-z]{3})[a-z]*\\s+(\\d{4}|\\d{2})\\s+(\\d{1,2}):(\\d{2}):(\\d{2})\\s*([+-]\\d{4}|[A-Za-z]+)?\\s*$");
 
-	static const char* months[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
-	std::string monthName = match[2].str();
-	for (char& ch : monthName)
+	int year, month, day, hour, minute, second;
+	std::string zone;
+	std::smatch match;
+	if (std::regex_match(text, match, iso))
 	{
-		ch = (char)tolower((unsigned char)ch);
-	}
-	int month = 0;
-	for (int i = 0; i < 12; i++)
-	{
-		if (monthName == months[i])
+		year = atoi(match[1].str().c_str());
+		month = atoi(match[2].str().c_str());
+		day = atoi(match[3].str().c_str());
+		hour = atoi(match[4].str().c_str());
+		minute = atoi(match[5].str().c_str());
+		second = atoi(match[6].str().c_str());
+		zone = match[7].matched ? match[7].str() : "";
+		zone.erase(std::remove(zone.begin(), zone.end(), ':'), zone.end());
+		if (month < 1 || month > 12)
 		{
-			month = i + 1;
+			return 0;
 		}
 	}
-	if (!month)
+	else if (std::regex_match(text, match, rfc))
+	{
+		static const char* months[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
+		std::string monthName = match[2].str();
+		for (char& ch : monthName)
+		{
+			ch = (char)tolower((unsigned char)ch);
+		}
+		month = 0;
+		for (int i = 0; i < 12; i++)
+		{
+			if (monthName == months[i])
+			{
+				month = i + 1;
+			}
+		}
+		if (!month)
+		{
+			return 0;
+		}
+		year = atoi(match[3].str().c_str());
+		if (match[3].length() == 2)
+		{
+			year += year < 50 ? 2000 : 1900;	// RFC 2822 section 4.3
+		}
+		day = atoi(match[1].str().c_str());
+		hour = atoi(match[4].str().c_str());
+		minute = atoi(match[5].str().c_str());
+		second = atoi(match[6].str().c_str());
+		zone = match[7].matched ? match[7].str() : "";
+	}
+	else
 	{
 		return 0;
 	}
 
-	int day = atoi(match[1].str().c_str());
-	int hour = atoi(match[4].str().c_str());
-	int minute = atoi(match[5].str().c_str());
-	int second = atoi(match[6].str().c_str());
 	if (day < 1 || day > 31 || hour > 23 || minute > 59 || second > 60)
 	{
 		return 0;
 	}
 
-	long long seconds = DaysFromCivil(atoi(match[3].str().c_str()), month, day) * 86400 +
-		hour * 3600 + minute * 60 + second;
+	long long seconds = DaysFromCivil(year, month, day) * 86400 + hour * 3600 + minute * 60 + second;
 
-	// an offset like +0200; zone names (GMT, UT, Z) count as UTC
-	std::string zone = match[7].matched ? match[7].str() : "";
+	// an offset like +0200, or a zone name (RFC 822 section 5.1); military letters
+	// count as UTC (RFC 2822 section 4.3); another name can't be placed
+	int offset = 0;
 	if (zone.size() == 5 && (zone[0] == '+' || zone[0] == '-'))
 	{
-		int offset = atoi(zone.substr(1, 2).c_str()) * 3600 + atoi(zone.substr(3, 2).c_str()) * 60;
-		seconds -= zone[0] == '+' ? offset : -offset;
+		offset = (atoi(zone.substr(1, 2).c_str()) * 3600 + atoi(zone.substr(3, 2).c_str()) * 60) *
+			(zone[0] == '+' ? 1 : -1);
 	}
-	return (time_t)seconds;
+	else if (!zone.empty())
+	{
+		std::string name = zone;
+		for (char& ch : name)
+		{
+			ch = (char)toupper((unsigned char)ch);
+		}
+		static const std::map<std::string, int> zones = { { "UT", 0 }, { "UTC", 0 }, { "GMT", 0 }, { "Z", 0 },
+			{ "EST", -5 }, { "EDT", -4 }, { "CST", -6 }, { "CDT", -5 }, { "MST", -7 }, { "MDT", -6 },
+			{ "PST", -8 }, { "PDT", -7 } };
+		auto it = zones.find(name);
+		if (it != zones.end())
+		{
+			offset = it->second * 3600;
+		}
+		else if (name.size() != 1 || name == "J")
+		{
+			return 0;
+		}
+	}
+	return (time_t)(seconds - offset);
 }
 
 std::vector<Newznab::Params> Newznab::BuildQueries(const std::string& title, const std::string& imdb,

@@ -151,6 +151,19 @@ BOOST_AUTO_TEST_CASE(NewznabParseDateTest)
 	BOOST_CHECK_EQUAL(Newznab::ParseDate("Sun, 22 Sep 2024 00:00:00 +0000"), 1726963200);
 
 	// unreadable: 0
+	// B14: RFC 822 zone names, 2-digit years (RFC 2822: below 50 is 20xx) and ISO 8601
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 EST"), 1749517805 + 5 * 3600);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 EDT"), 1749517805 + 4 * 3600);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 PST"), 1749517805 + 8 * 3600);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 CDT"), 1749517805 + 5 * 3600);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 UT"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 Z"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("Tue, 10 Jun 25 01:10:05 +0000"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("2025-06-10T01:10:05Z"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("2025-06-10T03:10:05+02:00"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("2025-06-10 01:10:05"), 1749517805);
+	BOOST_CHECK_EQUAL(Newznab::ParseDate("10 Jun 2025 01:10:05 XYZ"), 0);	// an unknown zone isn't guessed
+
 	BOOST_CHECK_EQUAL(Newznab::ParseDate(""), 0);
 	BOOST_CHECK_EQUAL(Newznab::ParseDate("yesterday"), 0);
 	BOOST_CHECK_EQUAL(Newznab::ParseDate("Tue, 10 Foo 2025 01:10:05 +0000"), 0);
