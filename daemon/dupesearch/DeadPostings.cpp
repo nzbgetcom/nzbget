@@ -36,7 +36,7 @@ void DeadPostings::SetStatePath(const std::string& path)
 void DeadPostings::Load()
 {
 	std::lock_guard<std::mutex> guard(m_mutex);
-	std::ifstream file(m_statePath);
+	std::ifstream file(fs::u8path(m_statePath));
 	std::string line;
 	while (std::getline(file, line))
 	{
@@ -78,7 +78,7 @@ void DeadPostings::Save()
 	}
 	std::string temp = m_statePath + ".new";
 	{
-		std::ofstream file(temp, std::ios::trunc);
+		std::ofstream file(fs::u8path(temp), std::ios::trunc);
 		for (const auto& entry : m_dead)
 		{
 			file << (long long)entry.first << '\t';

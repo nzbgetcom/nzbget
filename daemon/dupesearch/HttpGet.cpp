@@ -74,7 +74,7 @@ HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoNam
 		int64 size = FileSystem::FileSize(path.c_str());
 		if (size >= 0 && (size_t)size <= maxBytes)
 		{
-			std::ifstream file(path, std::ios::binary);
+			std::ifstream file(fs::u8path(path), std::ios::binary);
 			reply.body.assign(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 			reply.ok = file.good() || file.eof();
 		}

@@ -27,9 +27,9 @@
 #include <zlib.h>
 #include <fstream>
 #include <mutex>
-#include <sys/stat.h>
 #include "Posting.h"
 #include "NzbReader.h"
+#include "FileSystem.h"
 
 Posting::Sketch Posting::MakeSketch(const std::vector<std::string>& messageIds)
 {
@@ -55,12 +55,15 @@ bool Posting::SketchOfFile(const std::string& path, Sketch& sketch)
 	static std::mutex mutex;
 	static std::map<std::string, std::pair<std::pair<long long, long long>, Sketch>> cache;
 
-	struct stat info;
-	if (stat(path.c_str(), &info) != 0)
+	std::error_code ec;
+	fs::path filePath = fs::u8path(path);
+	auto modified = fs::last_write_time(filePath, ec);
+	long long size = ec ? -1 : (long long)fs::file_size(filePath, ec);
+	if (ec)
 	{
 		return false;
 	}
-	std::pair<long long, long long> stamp((long long)info.st_mtime, (long long)info.st_size);
+	std::pair<long long, long long> stamp((long long)modified.time_since_epoch().count(), size);
 	{
 		std::lock_guard<std::mutex> guard(mutex);
 		auto it = cache.find(path);
@@ -71,7 +74,7 @@ bool Posting::SketchOfFile(const std::string& path, Sketch& sketch)
 		}
 	}
 
-	std::ifstream file(path, std::ios::binary);
+	std::ifstream file(fs::u8path(path), std::ios::binary);
 	std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	NzbSummary summary;
 	if (!NzbReader::Parse(data, summary))

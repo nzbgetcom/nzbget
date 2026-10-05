@@ -47,7 +47,7 @@ void NzbFetcher::SetStatePath(const std::string& path)
 void NzbFetcher::Load()
 {
 	std::lock_guard<std::mutex> guard(m_mutex);
-	std::ifstream file(m_statePath);
+	std::ifstream file(fs::u8path(m_statePath));
 	std::string line;
 	time_t now = Util::CurrentTime();
 	while (std::getline(file, line))
@@ -75,7 +75,7 @@ void NzbFetcher::Save()
 	}
 	std::string temp = m_statePath + ".new";
 	{
-		std::ofstream file(temp, std::ios::trunc);
+		std::ofstream file(fs::u8path(temp), std::ios::trunc);
 		time_t now = Util::CurrentTime();
 		for (const auto& entry : m_refusedUntil)
 		{

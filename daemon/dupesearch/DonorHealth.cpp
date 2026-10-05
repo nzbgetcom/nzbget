@@ -393,11 +393,12 @@ Health DonorHealth::CheckPosting(const ServerList& servers, const std::vector<st
 	}
 	else
 	{
-		SampleOptions small = options.sample;
-		small.percent = 0;
-		small.minimum = options.probe;
-		small.maximum = options.probe;
-		first = Plan(ids, groups, small);
+		// ("small" is a macro on Windows)
+		SampleOptions probeSample = options.sample;
+		probeSample.percent = 0;
+		probeSample.minimum = options.probe;
+		probeSample.maximum = options.probe;
+		first = Plan(ids, groups, probeSample);
 	}
 
 	long long deadline = NowMs() + options.budgetMs;

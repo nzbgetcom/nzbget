@@ -359,7 +359,7 @@ void DupeSearch::Search(const Job& job)
 	NzbSummary pick;
 	if (!job.queuedFile.empty())
 	{
-		std::ifstream file(job.queuedFile, std::ios::binary);
+		std::ifstream file(fs::u8path(job.queuedFile), std::ios::binary);
 		std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 		if (!NzbReader::Parse(data, pick))
 		{
@@ -730,7 +730,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		std::vector<DonorHealth::Posting> list;
 		for (size_t m = 0; m < job.members.size(); m++)
 		{
-			std::ifstream file(job.members[m].second, std::ios::binary);
+			std::ifstream file(fs::u8path(job.members[m].second), std::ios::binary);
 			std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 			if (NzbReader::Parse(data, summaries[m]) && !Posting::SamePosting(summaries[m].messageIds, pick.messageIds))
 			{
@@ -915,7 +915,7 @@ bool WriteAtomic(const std::string& path, const std::string& data)
 {
 	std::string temp = path + ".new";
 	{
-		std::ofstream file(temp, std::ios::binary | std::ios::trunc);
+		std::ofstream file(fs::u8path(temp), std::ios::binary | std::ios::trunc);
 		file.write(data.data(), data.size());
 		if (!file.good())
 		{
@@ -927,7 +927,7 @@ bool WriteAtomic(const std::string& path, const std::string& data)
 
 std::string ReadAll(const std::string& path)
 {
-	std::ifstream file(path, std::ios::binary);
+	std::ifstream file(fs::u8path(path), std::ios::binary);
 	return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 }
 
@@ -1090,7 +1090,7 @@ std::string DupeSearch::StatePath()
 
 void DupeSearch::LoadState()
 {
-	std::ifstream file(StatePath());
+	std::ifstream file(fs::u8path(StatePath()));
 	std::string line;
 	time_t now = Util::CurrentTime();
 	std::lock_guard<std::mutex> guard(m_mutex);
@@ -1117,7 +1117,7 @@ void DupeSearch::SaveState()
 	std::string temp = path + ".new";
 	{
 		std::lock_guard<std::mutex> guard(m_mutex);
-		std::ofstream file(temp, std::ios::trunc);
+		std::ofstream file(fs::u8path(temp), std::ios::trunc);
 		time_t now = Util::CurrentTime();
 		for (const auto& entry : m_searched)
 		{
