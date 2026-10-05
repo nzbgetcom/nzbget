@@ -180,12 +180,20 @@ void ArticleDownloader::Run()
 		if (m_contentRejected)
 		{
 			// the abandoned body still occupies the connection, so it must not
-			// serve another request; other servers would deliver the same
-			// rejected content, so the article fails here (a duplicate source,
-			// if any, is tried next by the queue coordinator)
+			// serve another request
 			FreeConnection(false);
 			status = adFailed;
-			break;
+			if (m_articleInfo->GetDupeFallbackRound() > 0)
+			{
+				// a duplicate's article that doesn't fit this file: every server
+				// serves the same content, so it fails here (the next duplicate
+				// source, if any, is tried by the queue coordinator)
+				break;
+			}
+			// the release's own article with malformed headers: that server's copy
+			// is bad, another server may have a good one - this server is done
+			m_contentRejected = false;
+			remainedRetries = 0;
 		}
 
 		if (!connected && m_connection)

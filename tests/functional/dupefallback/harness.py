@@ -917,6 +917,25 @@ def scenario_complementary(daemon, t):
             'status=%s recovered=%d integrity=%s' % (h['Status'], recov, integ))
 
 
+def scenario_rejectnextserver(daemon, t):
+    """B6: Server1 serves every article with a malformed yEnc part header (a
+    proxy turns "=ypart begin=" into "=ypart begxn="), Server2 serves them
+    intact. A rejected article is the server's fault, not the article's: the
+    next server is asked, and the download completes byte-identically without
+    a duplicate."""
+    size, seg = 1_000_000, 100_000
+    data = _payload(size, 9900)
+    pp = _place_copy(t, 'rejA', data, 'file.bin')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelRej', build_nzb(pp, 'Rej.bin', size, seg, set()), False, 'rej-key', 100)
+    h = daemon.wait_history(api, 'RelRej')
+    integ = _verify_output(t, data)
+    rejected = _grep_log(t, 'Malformed article') + _grep_log(t, 'could not be decoded')
+    ok = 'SUCCESS' in h['Status'] and integ and daemon.proxy.rewritten > 0
+    return ('rejectnextserver', ok, 'status=%s integrity=%s rewritten=%d rejected_logs=%d'
+            % (h['Status'], integ, daemon.proxy.rewritten, rejected))
+
+
 def scenario_cutover(daemon, t):
     """Primary missing 10 of 20 articles => file cuts over to the duplicate."""
     size, seg = 10_000_000, 500_000
@@ -4311,6 +4330,7 @@ def _log_before(t, first, second):
 
 SCENARIOS = {
     'complementary': scenario_complementary,
+    'rejectnextserver': scenario_rejectnextserver,
     'cutover': scenario_cutover,
     'leadswitch': scenario_leadswitch,
     'cutovertruth': scenario_cutovertruth,
@@ -4461,6 +4481,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
@@ -4613,7 +4634,7 @@ SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '
 
 # extra news servers behind the same nserv: (servers answering, unreachable
 # optional servers); Server1 counts among the answering ones
-SCENARIO_EXTRA_SERVERS = {'deadpickservers': (5, 1), 'deadpickfewservers': (4, 2)}
+SCENARIO_EXTRA_SERVERS = {'deadpickservers': (5, 1), 'deadpickfewservers': (4, 2), 'rejectnextserver': (2, 0)}
 
 # scenarios whose extra servers join Server1's group (the same account): Group=1
 SCENARIO_GROUPED_SERVERS = {'streamgrouped': 2}
@@ -4626,7 +4647,7 @@ SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, '
 SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
-SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 ')}
+SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
