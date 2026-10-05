@@ -11,8 +11,9 @@ to an nzbget without duplicate repair keeps the queue and the history.
   migrate    a queue directory an earlier build of the branch wrote (formats
              66/9, e.g. a backup of a production queue) is loaded by this build
              and rewritten; upstream then reads the same history
-  newer      a queue file of a format above 64 beside the marker of this build is
-             a newer upstream format: refused, never read as the branch's 65/66
+  newer      a queue file of a format newer than any this build knows is refused
+             and set aside, never overwritten by the next save
+  earlier    the queue goes to an earlier build of the branch and back
 
 Usage: queue_format_test.py --nzbget BUILD --upstream UPSTREAM_BUILD [--legacy-queue TAR]
 """
@@ -127,7 +128,6 @@ def roundtrip(build, upstream):
         detail['history_version'] = version(os.path.join(queue_dir, 'history'))
         states = [f for f in os.listdir(queue_dir) if re.match(r'^\d+[sc]$', f)]
         detail['state_versions'] = sorted({version(os.path.join(queue_dir, f)) for f in states})
-        detail['marker'] = os.path.exists(os.path.join(queue_dir, 'dupestate'))
         with open(os.path.join(queue_dir, 'history')) as f:
             detail['history_trailer'] = '#dupestate 1' in f.read()
 
@@ -167,7 +167,7 @@ def roundtrip(build, upstream):
         ok = (detail['done_recovered'] >= 1 and detail['restart_recovered'] == detail['done_recovered'] and
               detail['queue_version'] == 64 and
               detail['history_version'] == 64 and detail['state_versions'] == [7] and
-              detail['marker'] and detail['history_trailer'] and
+              detail['history_trailer'] and
               names_up == ['Partial'] and ('Done', 'SUCCESS/HEALTH') in hist_up and
               ('Donor', 'DELETED/DUPE') in hist_up and
               not detail['upstream_errors'] and detail['back_queue'] == names_up and
@@ -206,7 +206,6 @@ def migrate(build, upstream, legacy_tar):
         detail['ours_errors'] = errors_in_log(target, 0)
         stop(daemon, target)
         detail['history_version_after'] = version(os.path.join(queue_dir, 'history'))
-        detail['marker'] = os.path.exists(os.path.join(queue_dir, 'dupestate'))
 
         upstream_config(target.path(daemon.conf_rel))
         mark = log_size(target)
@@ -217,7 +216,7 @@ def migrate(build, upstream, legacy_tar):
         detail['upstream_errors'] = errors_in_log(target, mark)
         stop(daemon, target)
         detail['legacy_count'] = legacy_count
-        ok = (ours == legacy_count and detail['history_version_after'] == 64 and detail['marker'] and
+        ok = (ours == legacy_count and detail['history_version_after'] == 64 and
               detail['upstream_history'] == legacy_count and not detail['ours_errors'] and
               not detail['upstream_errors'])
         return ok, detail
@@ -226,6 +225,9 @@ def migrate(build, upstream, legacy_tar):
 
 
 def newer(build):
+    """B28, B35: a queue file of a format newer than any this build knows is
+    refused like any newer format, and set aside (renamed) instead of being
+    overwritten by the next save, so its data isn't lost."""
     stage = tempfile.mkdtemp(prefix='queueformat-newer-')
     target = harness.LocalTarget(build, stage)
     daemon = harness.Daemon(target, harness.free_port(), harness.free_port())
@@ -233,16 +235,66 @@ def newer(build):
     try:
         daemon.write_config(['Server1.Active=no'])
         queue_dir = target.path('main', 'queue')
-        with open(os.path.join(queue_dir, 'dupestate'), 'w') as f:
-            f.write('1\n')
-        with open(os.path.join(queue_dir, 'queue'), 'w') as f:
-            f.write('nzbget diskstate file version 65\n0\n')
+        content = 'nzbget diskstate file version 67\n1\nsomething this build cannot read\n'
+        with open(os.path.join(queue_dir, 'history'), 'w') as f:
+            f.write(content)
         start(target, build, daemon.conf_rel)
-        daemon.wait_ready()
+        api = daemon.wait_ready()
         time.sleep(1)
         detail['refused'] = bool(re.search(r'version mismatch', target.read_file('nzbget.log').decode(errors='replace')))
+        # a save: the history file is written anew
+        pp = harness._place_copy(target, 'nwA', harness._payload(100_000, 5), 'f.bin')
+        daemon.append(api, 'Fresh', harness.build_nzb(pp, 'F.bin', 100_000, 50_000, set()), True, 'nw', 1)
+        api.editqueue('GroupDelete', 0, '', [g['NZBID'] for g in api.listgroups()])
+        time.sleep(2)
         stop(daemon, target)
-        return detail['refused'], detail
+        kept = [f for f in os.listdir(queue_dir) if f.startswith('history.unreadable')]
+        detail['set_aside'] = kept
+        detail['content_kept'] = bool(kept) and open(os.path.join(queue_dir, kept[0])).read() == content
+        return detail['refused'] and detail['content_kept'], detail
+    finally:
+        target.teardown(False)
+
+
+def earlierbuild(build, earlier):
+    """B31: the queue goes from this build to an earlier build of the branch
+    (formats 66/9) and back: this build reads what the earlier one wrote, and
+    nothing is lost."""
+    stage = tempfile.mkdtemp(prefix='queueformat-earlier-')
+    target = harness.LocalTarget(build, stage)
+    nntp = harness.free_port()
+    daemon = harness.Daemon(target, nntp, harness.free_port())
+    detail = {}
+    try:
+        options = ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe']
+        daemon.write_config(options)
+        daemon.start_nserv(port=nntp)
+        time.sleep(1)
+        payload = harness._payload(300_000, 31)
+
+        def complete(binary, name):
+            start(target, binary, daemon.conf_rel)
+            api = daemon.wait_ready()
+            pp = harness._place_copy(target, name, payload, 'f.bin')
+            daemon.append(api, name, harness.build_nzb(pp, name + '.bin', 300_000, 100_000, set()), False, name, 1)
+            daemon.wait_history(api, name)
+            stop(daemon, target)
+
+        complete(build, 'One')
+        queue_dir = target.path('main', 'queue')
+        complete(earlier, 'Two')
+        detail['history_version_by_earlier'] = version(os.path.join(queue_dir, 'history'))
+        mark = log_size(target)
+        start(target, build, daemon.conf_rel)
+        api = daemon.wait_ready()
+        time.sleep(1)
+        names = sorted(h['NZBName'] for h in api.history(True))
+        detail['history'] = names
+        detail['errors'] = errors_in_log(target, mark)
+        stop(daemon, target)
+        ok = detail['history_version_by_earlier'] == 66 and names == ['One', 'Two'] and \
+            not detail['errors']
+        return ok, detail
     finally:
         target.teardown(False)
 
@@ -252,10 +304,13 @@ def main():
     ap.add_argument('--nzbget', required=True)
     ap.add_argument('--upstream', required=True)
     ap.add_argument('--legacy-queue', help='a tar of a queue directory an earlier build of the branch wrote')
+    ap.add_argument('--earlier', help='an earlier build of the branch (writes formats 66/9)')
     args = ap.parse_args()
     results = [('roundtrip',) + roundtrip(args.nzbget, args.upstream), ('newer',) + newer(args.nzbget)]
     if args.legacy_queue:
         results.append(('migrate',) + migrate(args.nzbget, args.upstream, args.legacy_queue))
+    if args.earlier:
+        results.append(('earlierbuild',) + earlierbuild(args.nzbget, args.earlier))
     for name, ok, detail in results:
         print('[%s] %s  %s' % ('PASS' if ok else 'FAIL', name, detail))
     print('%d/%d queue format checks passed' % (sum(r[1] for r in results), len(results)))

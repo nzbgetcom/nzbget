@@ -70,6 +70,9 @@ private:
 	bool LoadQueue(NzbList* queue, Servers* servers, StateDiskFile& infile, int formatVersion);
 	void SaveProgress(NzbList* queue, StateDiskFile& outfile, int changedCount);
 	bool LoadProgress(NzbList* queue, Servers* servers, StateDiskFile& infile, int formatVersion);
+	/* a queue, history or progress file that couldn't be read is renamed
+	 * "<name>.unreadable-<time>": the next save would overwrite it */
+	void SetAsideQueueFiles();
 	void SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile);
 	// this build's own data (duplicate repair) after upstream's in a queue file
 	void SaveDupeExtras(NzbInfo* nzbInfo, StateDiskFile& outfile);

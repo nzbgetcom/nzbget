@@ -41,10 +41,6 @@ const int DISKSTATE_FILE_LEGACY_VERSION = 9;
 const char* DUPESTATE_TRAILER = "#dupestate 1";
 // the line that carries a file state's decoded file size after upstream's data
 const char* DECODED_TRAILER = "#decoded ";
-// a file this build keeps in QueueDir: queue files of a format above 64 found beside it
-// were not written by an earlier build of this branch (they write 64 since), so they're
-// a newer upstream format this build doesn't know - never read as the branch's 65/66
-const char* DUPESTATE_MARKER = "dupestate";
 const int DISKSTATE_STATS_VERSION = 4;
 const int DISKSTATE_FEEDS_VERSION = 3;
 
@@ -334,11 +330,7 @@ bool DiskState::SaveDownloadQueue(DownloadQueue* downloadQueue, bool saveHistory
 	StateFile progressStateFile("progress", DISKSTATE_QUEUE_VERSION, true);
 	progressStateFile.Discard();
 
-	BString<1024> markerFilename("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, DUPESTATE_MARKER);
-	if (!FileSystem::FileExists(markerFilename))
-	{
-		FileSystem::SaveBufferIntoFile(markerFilename, "1\n", 2);
-	}
+
 
 	return ok;
 }
@@ -348,13 +340,13 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 	debug("Loading queue from disk");
 
 	bool ok = false;
+	bool queueFilesFailed = false;
 	int formatVersion = 0;
 
-	// formats 65/66 are this branch's earlier ones only where no build since wrote
-	// the marker; beside it they would be a newer upstream format (B28)
-	BString<1024> markerFilename("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, DUPESTATE_MARKER);
-	int queueReadVersion = FileSystem::FileExists(markerFilename) ?
-		DISKSTATE_QUEUE_VERSION : DISKSTATE_QUEUE_LEGACY_VERSION;
+	// formats 65/66 are read as an earlier build of this branch wrote them (it may
+	// run again after this one); a file that doesn't read so, or of a newer format,
+	// is set aside below rather than lost to the next save
+	int queueReadVersion = DISKSTATE_QUEUE_LEGACY_VERSION;
 
 	{
 		StateFile stateFile("queue", DISKSTATE_QUEUE_VERSION, true, queueReadVersion);
@@ -363,7 +355,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 			StateDiskFile* infile = stateFile.BeginRead();
 			if (!infile)
 			{
-				return false;
+				{ queueFilesFailed = true; goto error; }
 			}
 
 			formatVersion = stateFile.GetFileVersion();
@@ -371,20 +363,20 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 			if (formatVersion <= 0)
 			{
 				error("Failed to read queue: diskstate file is corrupted");
-				goto error;
+				{ queueFilesFailed = true; goto error; }
 			}
 			else if (formatVersion < 47)
 			{
 				error("Failed to read queue and history data. Only queue and history from NZBGet v13 or newer can be converted by this NZBGet version. "
 					"Old queue and history data still can be converted using NZBGet v16 as an intermediate version.");
-				goto error;
+				{ queueFilesFailed = true; goto error; }
 			}
 
-			if (!LoadQueue(downloadQueue->GetQueue(), servers, *infile, formatVersion)) goto error;
+			if (!LoadQueue(downloadQueue->GetQueue(), servers, *infile, formatVersion)) { queueFilesFailed = true; goto error; }
 
 			if (formatVersion < 57)
 			{
-				if (!LoadHistory(downloadQueue->GetHistory(), servers, *infile, formatVersion)) goto error;
+				if (!LoadHistory(downloadQueue->GetHistory(), servers, *infile, formatVersion)) { queueFilesFailed = true; goto error; }
 			}
 		}
 	}
@@ -396,16 +388,16 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 			StateDiskFile* infile = stateFile.BeginRead();
 			if (!infile)
 			{
-				return false;
+				{ queueFilesFailed = true; goto error; }
 			}
 
 			if (stateFile.GetFileVersion() <= 0)
 			{
 				error("Failed to read queue: diskstate file is corrupted");
-				goto error;
+				{ queueFilesFailed = true; goto error; }
 			}
 
-			if (!LoadProgress(downloadQueue->GetQueue(), servers, *infile, stateFile.GetFileVersion())) goto error;
+			if (!LoadProgress(downloadQueue->GetQueue(), servers, *infile, stateFile.GetFileVersion())) { queueFilesFailed = true; goto error; }
 		}
 	}
 
@@ -417,16 +409,16 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 			StateDiskFile* infile = stateFile.BeginRead();
 			if (!infile)
 			{
-				return false;
+				{ queueFilesFailed = true; goto error; }
 			}
 
 			if (stateFile.GetFileVersion() <= 0)
 			{
 				error("Failed to read queue: diskstate file is corrupted");
-				goto error;
+				{ queueFilesFailed = true; goto error; }
 			}
 
-			if (!LoadHistory(downloadQueue->GetHistory(), servers, *infile, stateFile.GetFileVersion())) goto error;
+			if (!LoadHistory(downloadQueue->GetHistory(), servers, *infile, stateFile.GetFileVersion())) { queueFilesFailed = true; goto error; }
 		}
 	}
 
@@ -443,6 +435,11 @@ error:
 	if (!ok)
 	{
 		error("Error reading diskstate for download queue and history");
+	}
+	if (queueFilesFailed)
+	{
+		// the next save would overwrite them: kept under another name instead
+		SetAsideQueueFiles();
 	}
 
 	NzbInfo::ResetGenId(true);
@@ -487,6 +484,24 @@ bool DiskState::SaveDownloadProgress(DownloadQueue* downloadQueue)
 	}
 
 	return ok;
+}
+
+void DiskState::SetAsideQueueFiles()
+{
+	time_t now = Util::CurrentTime();
+	for (const char* name : { "queue", "history", "progress" })
+	{
+		BString<1024> filename("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, name);
+		if (FileSystem::FileExists(filename))
+		{
+			BString<1024> keptName("%s.unreadable-%lli", *filename, (long long)now);
+			if (FileSystem::MoveFile(filename, keptName))
+			{
+				error("Diskstate file %s could not be read; it is kept as %s", name,
+					FileSystem::BaseFileName(keptName));
+			}
+		}
+	}
 }
 
 void DiskState::SaveQueue(NzbList* queue, StateDiskFile& outfile)
