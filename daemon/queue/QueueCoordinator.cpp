@@ -1507,7 +1507,7 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 	// failing over needs duplicate handling (a backup in history is returned
 	// by DupeCoordinator::NzbCompleted only then); parking a hopeless
 	// download does not
-	HistoryInfo* backup = g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() == dmScore ?
+	HistoryInfo* backup = DupeCoordinator::FailsOver(nzbInfo) ?
 		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()) :
 		nullptr;
 	if (backup && DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(),
@@ -1525,9 +1525,10 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 		int tried = nzbInfo->GetCurrentSuccessArticles() + nzbInfo->GetCurrentFailedArticles();
 		nzbInfo->PrintMessage(Message::mkWarning,
 			"Parking %s: health %.1f%% below critical %.1f%%, %i of %i missing article(s) "
-			"recovered from duplicates, %i of %i tried article(s) exist and no better duplicate in history",
+			"recovered from duplicates, %i of %i tried article(s) exist and no better duplicate in history (%s)",
 			nzbInfo->GetName(), nzbInfo->CalcHealth() / 10.0, nzbInfo->CalcCriticalHealth(true) / 10.0,
-			recovered, attempted, nzbInfo->GetCurrentSuccessArticles(), tried);
+			recovered, attempted, nzbInfo->GetCurrentSuccessArticles(), tried,
+			g_DupeCoordinator->NoBackupReason(downloadQueue, nzbInfo).c_str());
 	}
 	else
 	{
@@ -1551,7 +1552,7 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
 	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
-		nzbInfo->GetDupeMode() != dmScore || nzbInfo->GetKind() != NzbInfo::nkNzb ||
+		!DupeCoordinator::FailsOver(nzbInfo) || nzbInfo->GetKind() != NzbInfo::nkNzb ||
 		nzbInfo->GetDeleting() || nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone ||
 		nzbInfo->GetCurrentFailedArticles() < DeadDownloadFailures + nzbInfo->GetFileCount() ||
 		// fewer than 1 in 100 tried articles of its own arrived (a stray one may)
@@ -1583,7 +1584,7 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
 	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
-		nzbInfo->GetDeadPickProbed() || nzbInfo->GetDupeMode() != dmScore ||
+		nzbInfo->GetDeadPickProbed() || !DupeCoordinator::FailsOver(nzbInfo) ||
 		nzbInfo->GetKind() != NzbInfo::nkNzb || nzbInfo->GetDeleting() ||
 		nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
 	{
@@ -1665,7 +1666,7 @@ void QueueCoordinator::FailOverDeadPick(DownloadQueue* downloadQueue, int nzbId,
 		return;
 	}
 
-	HistoryInfo* backup = g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() == dmScore ?
+	HistoryInfo* backup = DupeCoordinator::FailsOver(nzbInfo) ?
 		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()) :
 		nullptr;
 	// the posting is dead, whatever score it was queued with: health 0

@@ -50,6 +50,12 @@ public:
 	 * <HealthCheck> value "dupe"): the backup's score must not fall below the
 	 * score the item still warrants at its remaining health. */
 	static bool DupeFailoverWarranted(int itemScore, int health, int backupScore);
+	/* the download gets a duplicate in its place when it fails or turns out dead:
+	 * DupeMode score; with HealthCheck=dupe a forced one too - it never fails
+	 * outright while a viable duplicate waits (B46) */
+	static bool FailsOver(NzbInfo* nzbInfo);
+	/* why no duplicate in history can take the download's place, for the log */
+	std::string NoBackupReason(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 
 private:
 	void ReturnBestDupe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* nzbName, const char* dupeKey);

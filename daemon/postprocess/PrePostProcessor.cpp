@@ -480,7 +480,7 @@ void PrePostProcessor::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbIn
 
 	bool needSave = addToHistory;
 
-	if (g_Options->GetDupeCheck() && nzbInfo->GetDupeMode() != dmForce &&
+	if (g_Options->GetDupeCheck() && (nzbInfo->GetDupeMode() != dmForce || DupeCoordinator::FailsOver(nzbInfo)) &&
 		(nzbInfo->GetDeleteStatus() == NzbInfo::dsNone ||
 		 nzbInfo->GetDeleteStatus() == NzbInfo::dsHealth ||
 		 nzbInfo->GetDeleteStatus() == NzbInfo::dsBad ||

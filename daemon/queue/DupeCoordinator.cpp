@@ -320,10 +320,47 @@ void DupeCoordinator::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInf
 {
 	debug("Processing duplicates for %s", nzbInfo->GetName());
 
-	if (nzbInfo->GetDupeMode() == dmScore && !nzbInfo->IsDupeSuccess())
+	if (FailsOver(nzbInfo) && !nzbInfo->IsDupeSuccess())
 	{
 		ReturnBestDupe(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey());
 	}
+}
+
+std::string DupeCoordinator::NoBackupReason(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (!FailsOver(nzbInfo))
+	{
+		return std::string("its DupeMode is ") + (nzbInfo->GetDupeMode() == dmForce ? "force" : "all");
+	}
+	int total = 0, notBackup = 0, forced = 0, noFile = 0, unhealthy = 0, bad = 0, dead = 0;
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetKind() != HistoryInfo::hkNzb ||
+			!SameNameOrKey(historyInfo->GetNzbInfo()->GetName(), historyInfo->GetNzbInfo()->GetDupeKey(),
+				nzbInfo->GetName(), nzbInfo->GetDupeKey()) || historyInfo->GetNzbInfo() == nzbInfo)
+		{
+			continue;
+		}
+		NzbInfo* item = historyInfo->GetNzbInfo();
+		total++;
+		NzbParameter* alive = item->GetParameters()->Find("DupeAlive");
+		if (item->GetDeleteStatus() != NzbInfo::dsDupe && item->GetDeleteStatus() != NzbInfo::dsCopy) notBackup++;
+		else if (item->GetDupeMode() == dmForce) forced++;
+		else if (!FileSystem::FileExists(item->GetQueuedFilename())) noFile++;
+		else if (item->CalcHealth() < item->CalcCriticalHealth(true)) unhealthy++;
+		else if (item->GetMarkStatus() == NzbInfo::ksBad) bad++;
+		else if (alive && atoi(alive->GetValue()) == 0) dead++;
+	}
+	return BString<1024>("%i other item(s) of the key in history: %i failed/succeeded/deleted, %i forced, "
+		"%i without nzb-file, %i unhealthy, %i marked bad, %i found dead; the rest scored below a queued or "
+		"successful duplicate, or were copies of this download", total, notBackup, forced, noFile, unhealthy,
+		bad, dead).Str();
+}
+
+bool DupeCoordinator::FailsOver(NzbInfo* nzbInfo)
+{
+	return g_Options->GetDupeCheck() && (nzbInfo->GetDupeMode() == dmScore ||
+		(nzbInfo->GetDupeMode() == dmForce && g_Options->GetHealthCheck() == Options::hcDupe));
 }
 
 /**
@@ -402,14 +439,36 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 	}
 
 	// find dupe-backup with highest score, whose score is also higher than other
-	// success-duplicates and higher than already queued items
+	// success-duplicates and higher than already queued items. With
+	// HealthCheck=dupe (B46) a copy (an nzb-file sent again, skipped as the same
+	// content as another one in history) is a backup too, unless it is a copy of
+	// the download that failed; one a dupe tool found dead (DupeAlive=0) is not;
+	// and of equal scores the one found more alive goes first
+	bool dupeHealth = g_Options->GetHealthCheck() == Options::hcDupe;
+	auto aliveOf = [](NzbInfo* item)
+		{
+			NzbParameter* alive = item->GetParameters()->Find("DupeAlive");
+			return alive ? atoi(alive->GetValue()) : -1;
+		};
 	HistoryInfo* historyDupe = nullptr;
 	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
 	{
+		// (a hidden duplicate record holds no NzbInfo)
+		NzbInfo* candidate = historyInfo->GetKind() == HistoryInfo::hkNzb ||
+			historyInfo->GetKind() == HistoryInfo::hkUrl ? historyInfo->GetNzbInfo() : nullptr;
+		bool backupStatus = candidate && (candidate->GetDeleteStatus() == NzbInfo::dsDupe ||
+			(dupeHealth && historyInfo->GetKind() == HistoryInfo::hkNzb &&
+			 candidate->GetDeleteStatus() == NzbInfo::dsCopy &&
+			 candidate->GetFullContentHash() != nzbInfo->GetFullContentHash()));
+		int candidateScore = candidate ? candidate->GetDupeScore() : 0;
+		bool better = candidate && (!historyDupe || candidateScore > historyDupe->GetNzbInfo()->GetDupeScore() ||
+			(candidateScore == historyDupe->GetNzbInfo()->GetDupeScore() &&
+			 aliveOf(candidate) > aliveOf(historyDupe->GetNzbInfo())));
 		if ((historyInfo->GetKind() == HistoryInfo::hkNzb ||
 			 historyInfo->GetKind() == HistoryInfo::hkUrl) &&
 			historyInfo->GetNzbInfo()->GetDupeMode() != dmForce &&
-			historyInfo->GetNzbInfo()->GetDeleteStatus() == NzbInfo::dsDupe &&
+			backupStatus && better &&
+			!(dupeHealth && aliveOf(candidate) == 0) &&
 			// a backup whose source nzb-file is gone (NzbCleanupDisk, or
 			// removed by hand) can't be downloaded again (the same check as
 			// HistoryCoordinator::HistoryRedownload's): the next one can
@@ -419,7 +478,6 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 			historyInfo->GetNzbInfo()->GetMarkStatus() != NzbInfo::ksBad &&
 			(!dupeFound || historyInfo->GetNzbInfo()->GetDupeScore() > historyScore) &&
 			(!queueDupe || historyInfo->GetNzbInfo()->GetDupeScore() > queueScore) &&
-			(!historyDupe || historyInfo->GetNzbInfo()->GetDupeScore() > historyDupe->GetNzbInfo()->GetDupeScore()) &&
 			SameNameOrKey(historyInfo->GetNzbInfo()->GetName(), historyInfo->GetNzbInfo()->GetDupeKey(), nzbName, dupeKey))
 		{
 			historyDupe = historyInfo;
