@@ -241,6 +241,33 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 	Attrs attrs;
 	std::string clean = Clean(name);
 
+	// "S01E01-E03" and "S01E01-03" are episodes 1, 2 and 3: written as "S01E01E02E03",
+	// before the release group is looked for (its hyphen isn't the group's). Only a
+	// forward range of at most 50 episodes: "S01E01-2023" keeps its year
+	static const std::regex episodeRange("([sS]\\d{1,3}(?:[eE]\\d{1,4})*[eE](\\d{1,4}))-[eE]?(\\d{1,4})(?![0-9A-Za-z])");
+	std::string rewritten;
+	std::string rest = clean;
+	for (std::smatch range; std::regex_search(rest, range, episodeRange);)
+	{
+		int first = atoi(range[2].str().c_str());
+		int last = atoi(range[3].str().c_str());
+		rewritten += range.prefix().str();
+		if (first < last && last - first <= 50)
+		{
+			rewritten += range[1].str();
+			for (int episode = first + 1; episode <= last; episode++)
+			{
+				rewritten += "e" + std::to_string(episode);
+			}
+		}
+		else
+		{
+			rewritten += range.str();
+		}
+		rest = range.suffix().str();
+	}
+	clean = rewritten + rest;
+
 	// the release group follows the last hyphen
 	std::string body = clean;
 	size_t hyphen = clean.rfind('-');
@@ -273,20 +300,6 @@ ReleaseName::Attrs ReleaseName::Parse(const std::string& name)
 		{
 			text.replace(pos, join.first.size(), join.second);
 		}
-	}
-
-	// "s01e01-e03" and "s01e01-03" are episodes 1, 2 and 3: written as "s01e01e02e03"
-	static const std::regex episodeRange("(s\\d{1,3}(?:e\\d{1,4})*e(\\d{1,4}))-e?(\\d{1,4})(?![0-9a-z])");
-	for (std::smatch range; std::regex_search(text, range, episodeRange);)
-	{
-		int first = atoi(range[2].str().c_str());
-		int last = atoi(range[3].str().c_str());
-		std::string episodes = range[1].str();
-		for (int episode = first + 1; episode <= last && last - first <= 50; episode++)
-		{
-			episodes += "e" + std::to_string(episode);
-		}
-		text = range.prefix().str() + episodes + range.suffix().str();
 	}
 
 	std::vector<std::string> tokens;

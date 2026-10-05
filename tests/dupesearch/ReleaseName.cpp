@@ -150,6 +150,17 @@ BOOST_AUTO_TEST_CASE(ReleaseNameEpisodeRangeTest)
 	BOOST_CHECK(ReleaseName::SameRelease("Show.S01E01-E02.1080p.WEB.h264-GRP", "Show.S01E01E02.1080p.WEB.h264-GRP"));
 	// a number after the episode that isn't a range stays title or junk
 	BOOST_CHECK(ReleaseName::Parse("Show.S01E01.1080p.WEB.h264-GRP").episodes == std::vector<int>{ 1 });
+
+	// B38: no range when it would run backwards or span more than 50 episodes - and then
+	// nothing after the dash is lost (a year stays the year)
+	ReleaseName::Attrs year = ReleaseName::Parse("Show.S01E01-2023.1080p.WEB.h264-GRP");
+	BOOST_CHECK(year.episodes == std::vector<int>{ 1 });
+	BOOST_CHECK_EQUAL(year.year, 2023);
+	ReleaseName::Attrs backwards = ReleaseName::Parse("Show.S01E05-03.1080p.WEB.h264-GRP");
+	BOOST_CHECK(backwards.episodes == std::vector<int>{ 5 });
+	// a range in a name without a release group isn't taken for the group
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01-E02").episodes == both);
+	BOOST_CHECK(ReleaseName::Parse("Show.S01E01-E02.1080p").episodes == both);
 }
 
 // B10: numbered repacks and propers are repacks and propers
