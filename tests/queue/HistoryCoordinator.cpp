@@ -66,7 +66,7 @@ struct HistoryRetryFixture
 		fs::remove_all(directory, ec);
 	}
 
-	void SavePartialFile(bool failedArticle, bool outputExists = true)
+	void SavePartialFile(bool failedArticle, bool outputExists = true, bool borrowedId = false)
 	{
 		auto nzbInfo = std::make_unique<NzbInfo>();
 		nzb = nzbInfo.get();
@@ -106,6 +106,12 @@ struct HistoryRetryFixture
 			article->SetPartNumber(part);
 			article->SetSize(4);
 			article->SetMessageId(BString<1024>("part-%i@example.test", part));
+			if (borrowedId && part == 3)
+			{
+				// the article's last duplicate source replaced its message-id
+				article->SetDupeOriginalMessageId(article->GetMessageId());
+				article->SetMessageId("donor-3@example.test");
+			}
 			article->SetStatus(part == 3 ? ArticleInfo::aiFailed : ArticleInfo::aiFinished);
 			article->SetSegmentOffset((part - 1) * 4);
 			article->SetSegmentSize(part == 3 ? 0 : 4);
@@ -169,6 +175,19 @@ BOOST_FIXTURE_TEST_CASE(HistoryRetryFailedArticleStillDownloads, HistoryRetryFix
 	BOOST_CHECK_EQUAL(file->GetCompletedArticles(), 2);
 	BOOST_CHECK_EQUAL(nzb->GetCurrentSuccessArticles(), 2);
 	BOOST_CHECK_EQUAL(nzb->GetCurrentFailedArticles(), 1);
+}
+
+// B23: a retry asks for the article's own message-id, not the duplicate's it was last
+// borrowed from
+BOOST_FIXTURE_TEST_CASE(HistoryRetryKeepsOriginalMessageId, HistoryRetryFixture)
+{
+	SavePartialFile(true, true, true);
+	RetryFailed();
+	BOOST_REQUIRE_EQUAL(nzb->GetFileList()->size(), 1u);
+	FileInfo* file = nzb->GetFileList()->at(0).get();
+	BOOST_REQUIRE(g_DiskState->LoadArticles(file));
+	BOOST_REQUIRE_EQUAL(file->GetArticles()->size(), 3u);
+	BOOST_CHECK_EQUAL(file->GetArticles()->at(1)->GetMessageId(), "part-3@example.test");
 }
 
 BOOST_FIXTURE_TEST_CASE(HistoryRetryMissingNzbArticlesIgnoresPausedRecoveryFiles, HistoryRetryFixture)

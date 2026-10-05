@@ -1195,7 +1195,10 @@ bool DiskState::SaveFileInfo(FileInfo* fileInfo, StateDiskFile& outfile, bool ar
 		for (ArticleInfo* articleInfo : fileInfo->GetArticles())
 		{
 			outfile.PrintLine("%i,%i", articleInfo->GetPartNumber(), articleInfo->GetSize());
-			outfile.PrintLine("%s", articleInfo->GetMessageId());
+			// an article borrowed from a duplicate is saved under its own message-id:
+			// a retry or a restart asks for that first, not for the duplicate's
+			outfile.PrintLine("%s", !Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) ?
+				articleInfo->GetDupeOriginalMessageId() : articleInfo->GetMessageId());
 		}
 	}
 

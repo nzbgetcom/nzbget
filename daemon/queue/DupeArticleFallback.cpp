@@ -170,6 +170,11 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 			// no duplicate carries this article's file at all
 			nzbInfo->SetDupeUnsourcedArticles(nzbInfo->GetDupeUnsourcedArticles() + 1);
 		}
+		else if (!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()))
+		{
+			// every source was tried: the article is the release's own again
+			articleInfo->SetMessageId(articleInfo->GetDupeOriginalMessageId());
+		}
 		return false;
 	}
 
