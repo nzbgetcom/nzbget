@@ -56,10 +56,20 @@ $ProgressPreference = "SilentlyContinue"
 
 # download 7z/unrar 32/64 bit to $ToolsRoot\image
 Function DownloadUnpackers {
-    $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
-    $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
-    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-723.exe"
-    $Url7Z="https://github.com/ip7z/7zip/releases/download/26.02/7z2602-extra.7z"
+
+    # read unpackers.env file and set variables
+    Get-Content "unpackers.env" | ForEach-Object {
+        if ($_ -match '^\s*([A-Z0-9_]+)=(.*)$') {
+            Set-Variable -Name $Matches[1] -Value $Matches[2]
+        }
+    }
+
+    # set urls for unpackers
+    # unrar 32 pinned in unpackers.env
+    $UrlRar32="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR_WIN32_VERSION/unrar-windows-x86.zip"
+    $UrlRar64="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR_VERSION/unrar-windows-x64.zip"
+    $Url7Z32="https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-windows-x86.zip"
+    $Url7Z64="https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-windows-x64.zip"
 
     $ImageDir="$ToolsRoot\image"
     Write-Host "Downloading unpackers to $ImageDir"
@@ -67,23 +77,21 @@ Function DownloadUnpackers {
     $UnpackDir="$BuildDir\unpack"
     New-Item -ItemType Directory $UnpackDir | Out-Null
 
-    # download unrar64
-    Invoke-WebRequest -Uri $UrlUnrar64 -OutFile $UnpackDir\unrarw64.exe
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrarw64.exe" -ArgumentList -d"$UnpackDir\unrar64",-s
+    # unrar
+    Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\unrar32.zip
+    New-Item -ItemType Directory "$UnpackDir\unrar32" | Out-Null
+    tar -xf $UnpackDir\unrar32.zip -C $UnpackDir\unrar32
 
-    # download specific releases of winrar 32/64 bit
-    Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\rar32.exe
-    New-Item -ItemType Directory "$UnpackDir\rar32" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar32.exe","$UnpackDir\rar32\"
-
-    Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\rar64.exe
-    New-Item -ItemType Directory "$UnpackDir\rar64" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar64.exe","$UnpackDir\rar64\"
+    Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\unrar64.zip
+    New-Item -ItemType Directory "$UnpackDir\unrar64" | Out-Null
+    tar -xf $UnpackDir\unrar64.zip -C $UnpackDir\unrar64 --strip-components=6
 
     # 7zip
-    Invoke-WebRequest -Uri $Url7Z -OutFile $UnpackDir\7zip.7z
     New-Item -ItemType Directory "$UnpackDir\7zip" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\rar64\winrar.exe" -ArgumentList x,"$UnpackDir\7zip.7z","$UnpackDir\7zip"
+    Invoke-WebRequest -Uri $Url7Z32 -OutFile $UnpackDir\7zip32.zip
+    tar -xf $UnpackDir\7zip32.zip -C $UnpackDir\7zip --strip-components=7
+    Invoke-WebRequest -Uri $Url7Z64 -OutFile $UnpackDir\7zip64.zip
+    tar -xf $UnpackDir\7zip64.zip -C $UnpackDir\7zip --strip-components=6
 
     # copy needed files
     If (Test-Path $ImageDir) {
@@ -91,8 +99,8 @@ Function DownloadUnpackers {
     }
     New-Item -ItemType Directory "$ImageDir\32" | Out-Null
     New-Item -ItemType Directory "$ImageDir\64" | Out-Null
-    Copy-Item "$UnpackDir\rar32\unrar.exe" "$ImageDir\32\unrar.exe"
-    Copy-Item "$UnpackDir\rar64\unrar.exe" "$ImageDir\64\unrar.exe"
+    Copy-Item "$UnpackDir\unrar32\unrar.exe" "$ImageDir\32\unrar.exe"
+    Copy-Item "$UnpackDir\unrar64\unrar.exe" "$ImageDir\64\unrar.exe"
     Copy-Item "$UnpackDir\7zip\7za.exe" "$ImageDir\32\7za.exe"
     Copy-Item "$UnpackDir\7zip\x64\7za.exe" "$ImageDir\64\7za.exe"
 
