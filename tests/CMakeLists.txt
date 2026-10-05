@@ -1,10 +1,7 @@
 find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 
 set(TESTS_TARGET nzbget_tests)
-set(TESTS_SRC ${CMAKE_SOURCE_DIR}/tests/main.cpp ${SRC})
-if(WIN32)
-	list(APPEND TESTS_SRC ${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp)
-endif()
+set(TESTS_SRC ${CMAKE_SOURCE_DIR}/tests/main.cpp)
 
 include(util/util.cmake)
 include(feed/feed.cmake)
@@ -23,16 +20,11 @@ if(EXTERNAL_DEPS)
 	add_dependencies(${TESTS_TARGET} ${EXTERNAL_DEPS})
 endif()
 
-target_link_libraries(${TESTS_TARGET} PRIVATE ${LIBS})
-target_include_directories(${TESTS_TARGET} PRIVATE ${INCLUDES})
+target_link_libraries(${TESTS_TARGET} PRIVATE libnzbget)
 
 apply_sanitizers(${TESTS_TARGET})
 
-if (TARGET ${PACKAGE})
-	target_precompile_headers(${TESTS_TARGET} REUSE_FROM ${PACKAGE})
-else()
-	target_precompile_headers(${TESTS_TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
-endif()
+target_precompile_headers(${TESTS_TARGET} REUSE_FROM libnzbget)
 
 add_test(NAME UtilTest         COMMAND ${TESTS_TARGET} --run_test=UtilTest --log_level=message)
 if(WIN32)
