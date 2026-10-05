@@ -900,6 +900,51 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentOffsetTest)
 	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), last), -1);
 }
 
+// B30: a release whose nzb-file lacks a segment still pairs with its twin, by part
+// number; a donor with many more parts, or other part sizes, doesn't
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureGapTest)
+{
+	std::vector<std::pair<int, int>> full;
+	for (int part = 1; part <= 20; part++)
+	{
+		full.emplace_back(part, part == 20 ? 70000 : 130000);
+	}
+	std::vector<std::pair<int, int>> gap = full;
+	gap.erase(gap.begin() + 3);	// part 4 isn't in the release's nzb-file
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01", gap, "orig");
+
+	auto donorWith = [](std::vector<std::pair<int, int>> parts)
+		{
+			std::unique_ptr<NzbInfo> donor = std::make_unique<NzbInfo>();
+			AddDonorFile(donor.get(), "other.r01", std::move(parts), "donor");
+			return donor;
+		};
+
+	std::unique_ptr<NzbInfo> twin = donorWith(full);
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), twin.get(), nullptr) != nullptr);
+
+	// the other way round (the duplicate lacks the segment) stays no match: it can't
+	// supply every part of the release
+	std::unique_ptr<FileInfo> fullTarget = BuildFile("release.r01", full, "orig");
+	std::unique_ptr<NzbInfo> lacking = donorWith(gap);
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(fullTarget.get(), lacking.get(), nullptr) == nullptr);
+
+	// a donor with many more parts is another file
+	std::vector<std::pair<int, int>> longer = full;
+	for (int part = 21; part <= 30; part++)
+	{
+		longer.emplace_back(part, 130000);
+	}
+	std::unique_ptr<NzbInfo> other = donorWith(longer);
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), other.get(), nullptr) == nullptr);
+
+	// a part size that differs is another file
+	std::vector<std::pair<int, int>> resized = full;
+	resized[10].second = 60000;
+	std::unique_ptr<NzbInfo> different = donorWith(resized);
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), different.get(), nullptr) == nullptr);
+}
+
 // B3: list neighbours are only the neighbouring parts when their part numbers say so
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentGapTest)
 {

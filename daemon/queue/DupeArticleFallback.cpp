@@ -21,6 +21,7 @@
 #include "nzbget.h"
 
 #include <algorithm>
+#include <map>
 #include "DupeArticleFallback.h"
 #include "DupeCoordinator.h"
 #include "NzbFile.h"
@@ -734,8 +735,46 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 	ArticleList* targetArticles = targetFile->GetArticles();
 	ArticleList* donorArticles = donorFile->GetArticles();
 
-	if (targetArticles->empty() ||
-		targetArticles->size() != donorArticles->size() ||
+	if (targetArticles->empty())
+	{
+		return false;
+	}
+
+	// The release's nzb-file may lack a few segments (an indexer that didn't
+	// capture them all): it still pairs with a twin that lists them, part by part.
+	// Every part the release lists must be in the duplicate at a matching size,
+	// and only a few more (at most one in 16) may be missing from the release,
+	// so a longer file never pairs.
+	if (targetArticles->size() < donorArticles->size())
+	{
+		size_t extra = donorArticles->size() - targetArticles->size();
+		if (extra > std::max<size_t>(1, donorArticles->size() / 16))
+		{
+			return false;
+		}
+		std::map<int, ArticleInfo*> donorParts;
+		for (ArticleInfo* donorArticle : donorFile->GetArticles())
+		{
+			donorParts[donorArticle->GetPartNumber()] = donorArticle;
+		}
+		int64 pairedSize = 0;
+		for (ArticleInfo* targetArticle : targetFile->GetArticles())
+		{
+			auto it = donorParts.find(targetArticle->GetPartNumber());
+			if (it == donorParts.end() ||
+				!SizesMatch(targetArticle->GetSize(), it->second->GetSize(), PartSizeToleranceDiv))
+			{
+				return false;
+			}
+			pairedSize += it->second->GetSize();
+		}
+		// nzbget counts a segment the nzb-file lacks as missed: the file's size then
+		// includes an estimate for it, close to the twin's full size
+		return SizesMatch(targetFile->GetSize(), pairedSize, TotalSizeToleranceDiv) ||
+			SizesMatch(targetFile->GetSize(), donorFile->GetSize(), TotalSizeToleranceDiv);
+	}
+
+	if (targetArticles->size() != donorArticles->size() ||
 		targetFile->GetTotalArticles() != donorFile->GetTotalArticles() ||
 		!SizesMatch(targetFile->GetSize(), donorFile->GetSize(), TotalSizeToleranceDiv))
 	{

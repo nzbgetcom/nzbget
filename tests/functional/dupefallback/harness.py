@@ -936,6 +936,32 @@ def scenario_rejectnextserver(daemon, t):
             % (h['Status'], integ, daemon.proxy.rewritten, rejected))
 
 
+def scenario_nzbgapborrow(daemon, t):
+    """B30 and B3: the release's nzb-file skips part 4 (an indexer that didn't
+    capture it) and part 5 is missing on the server; a twin duplicate lists
+    every part. The twin pairs by part number despite the gap (B30), and part 5
+    is borrowed: its expected place isn't taken from part 3, its list neighbour
+    but not the previous part (B3). Part 4, in no nzb-file of the release, stays
+    missing."""
+    size, seg = 1_000_000, 100_000
+    data = _payload(size, 9800)
+    pp = _place_copy(t, 'gapA', data, 'file.bin')
+    dp = _place_copy(t, 'gapB', data, 'file.bin')
+    primary = build_nzb(pp, 'Gap.bin', size, seg, {5})
+    primary = re.sub(r'<segment[^>]*number="4"[^>]*>[^<]*</segment>', '', primary)
+    donor = build_nzb(dp, 'Gap.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonGap', donor, True, 'gap-key', 50)
+    daemon.append(api, 'RelGap', primary, False, 'gap-key', 100)
+    h = daemon.wait_history(api, 'RelGap')
+    recovered = int(h.get('DupeRecoveredArticles', 0))
+    unmatched = _grep_log(t, 'none with a matching file')
+    mismatch = _grep_log(t, 'offset mismatch') + _grep_log(t, 'end mismatch')
+    ok = recovered >= 1 and unmatched == 0 and mismatch == 0
+    return ('nzbgapborrow', ok, 'status=%s recovered=%d unmatched_logs=%d mismatch_logs=%d'
+            % (h['Status'], recovered, unmatched, mismatch))
+
+
 def scenario_cutover(daemon, t):
     """Primary missing 10 of 20 articles => file cuts over to the duplicate."""
     size, seg = 10_000_000, 500_000
@@ -4330,6 +4356,7 @@ def _log_before(t, first, second):
 
 SCENARIOS = {
     'complementary': scenario_complementary,
+    'nzbgapborrow': scenario_nzbgapborrow,
     'rejectnextserver': scenario_rejectnextserver,
     'cutover': scenario_cutover,
     'leadswitch': scenario_leadswitch,
@@ -4482,6 +4509,7 @@ SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
+    'nzbgapborrow': ['DupeArticleFallback=article'],
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
