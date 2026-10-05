@@ -28,6 +28,7 @@
 #include "NzbFile.h"
 #include "HistoryCoordinator.h"
 #include "DupeCoordinator.h"
+#include <set>
 #include "QueueScript.h"
 
 bool DupeCoordinator::SameNameOrKey(const char* name1, const char* dupeKey1,
@@ -450,6 +451,23 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 			NzbParameter* alive = item->GetParameters()->Find("DupeAlive");
 			return alive ? atoi(alive->GetValue()) : -1;
 		};
+	// postings already tried and failed: a backup with exactly their content is the
+	// same dead posting again (B47: a copy of a failed pick was fetched next)
+	std::set<uint32> failedContent;
+	if (dupeHealth)
+	{
+		failedContent.insert(nzbInfo->GetFullContentHash());
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			NzbInfo* item = historyInfo->GetKind() == HistoryInfo::hkNzb ? historyInfo->GetNzbInfo() : nullptr;
+			if (item && item->GetFullContentHash() > 0 && !item->IsDupeSuccess() &&
+				item->GetDeleteStatus() != NzbInfo::dsDupe && item->GetDeleteStatus() != NzbInfo::dsCopy &&
+				item->GetDeleteStatus() != NzbInfo::dsManual)
+			{
+				failedContent.insert(item->GetFullContentHash());
+			}
+		}
+	}
 	HistoryInfo* historyDupe = nullptr;
 	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
 	{
@@ -458,8 +476,9 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 			historyInfo->GetKind() == HistoryInfo::hkUrl ? historyInfo->GetNzbInfo() : nullptr;
 		bool backupStatus = candidate && (candidate->GetDeleteStatus() == NzbInfo::dsDupe ||
 			(dupeHealth && historyInfo->GetKind() == HistoryInfo::hkNzb &&
-			 candidate->GetDeleteStatus() == NzbInfo::dsCopy &&
-			 candidate->GetFullContentHash() != nzbInfo->GetFullContentHash()));
+			 candidate->GetDeleteStatus() == NzbInfo::dsCopy)) &&
+			!(dupeHealth && candidate->GetFullContentHash() > 0 &&
+			  failedContent.count(candidate->GetFullContentHash()));
 		int candidateScore = candidate ? candidate->GetDupeScore() : 0;
 		bool better = candidate && (!historyDupe || candidateScore > historyDupe->GetNzbInfo()->GetDupeScore() ||
 			(candidateScore == historyDupe->GetNzbInfo()->GetDupeScore() &&
