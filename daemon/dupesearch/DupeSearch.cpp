@@ -325,7 +325,10 @@ void DupeSearch::Collect(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, Job& jo
 	// with this duplicate key, or whose name is the same release
 	auto addKnown = [&](NzbInfo* item)
 	{
-		if (item->GetKind() != NzbInfo::nkNzb || Util::EmptyStr(item->GetQueuedFilename()))
+		// one the user deleted is no duplicate nzbget would fetch: its posting may
+		// be found and added again (B41)
+		if (item->GetKind() != NzbInfo::nkNzb || Util::EmptyStr(item->GetQueuedFilename()) ||
+			item->GetDeleteStatus() == NzbInfo::dsManual)
 		{
 			return;
 		}
@@ -864,6 +867,10 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 	Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i added=%i rejected={%s}",
 		job.name.c_str(), results, candidates, postings, (int)verified.size(), added, outcome.c_str());
 	RemovePending(job.nzbId);
+	{
+		std::lock_guard<std::mutex> guard(m_mutex);
+		m_sent.erase(job.nzbId);
+	}
 }
 
 std::string DupeSearch::PickGone(const Job& job)
@@ -918,11 +925,10 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 			alive < 0 ? -1 : (int)std::lround(100 * alive));
 		return -1;
 	}
-	std::string lowerKey = LowerKey(job.dupeKey);
 	std::string fingerprint = posting.info.Fingerprint();
 	{
 		std::lock_guard<std::mutex> guard(m_mutex);
-		if (!m_sent[lowerKey].insert(fingerprint).second)
+		if (!m_sent[job.nzbId].insert(fingerprint).second)
 		{
 			return 0;
 		}
@@ -947,7 +953,7 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 	if (status != Scanner::asSuccess || nzbId <= 0)
 	{
 		std::lock_guard<std::mutex> guard(m_mutex);
-		m_sent[lowerKey].erase(fingerprint);
+		m_sent[job.nzbId].erase(fingerprint);
 		return 0;
 	}
 

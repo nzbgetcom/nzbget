@@ -770,7 +770,7 @@ class FakeNntp:
                                 outer.bare_ids += 1
                             self.wfile.write(b'501 message-id must be in angle brackets\r\n')
                         elif cmd == 'STAT' or cmd == 'BODY':
-                            for prefix, delay in outer.delays.items():
+                            for prefix, delay in list(outer.delays.items()):
                                 if mid.startswith(prefix):
                                     time.sleep(delay)
                             with outer.lock:
@@ -4046,6 +4046,42 @@ sys.exit(0)
 ''' % (DS_PICK, DS_PICK)
 
 
+def scenario_dupesearchresubmit(daemon, t):
+    """B41: a pick and its duplicates are deleted for good (final delete, as
+    nzbdavkodi cancels), then the same nzb-file is sent again as a new pick
+    with a higher score (a client re-grabbing it).
+    The new pick is searched, and the duplicates the first search added - all
+    gone now - are added again: what a search sent earlier for the key isn't
+    taken for something nzbget still holds."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    postings = {'twin100': (ids('tw'), 400_000, 1, 11), 'other100': (ids('ot'), 410_000, 1, 12)}
+    api = _ds_donor_env(daemon, t, postings, set(ids('tw')) | set(ids('ot')))
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    first = [h['NZBID'] for h in api.history() if h.get('NZBName') == DS_TITLE]
+    pick = _ds_group(api, DS_TITLE)
+    # as nzbdavkodi cancels: final deletes, nothing left in history
+    api.editqueue('GroupFinalDelete', '', [pick['NZBID']])
+    time.sleep(1)
+    api.editqueue('HistoryFinalDelete', '', first)
+    time.sleep(1)
+    _ds_append(api, DS_TITLE, _fake_nzb_ids(['pk-%d@x' % i for i in range(40)], 400_000).decode(),
+               DS_KEY, DS_PICK + 100)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') < 2:
+        time.sleep(0.5)
+    time.sleep(1)
+    searched = _grep_log(t, 'DupeSearch: searching duplicates of %s ' % DS_TITLE)
+    again = _grep_log(t, 'added=2 ')
+    donors = [h for h in api.history() if h.get('NZBName') == DS_TITLE and h['NZBID'] not in first
+              and h.get('DupeScore', 0) < DS_PICK]
+    ok = len(first) == 2 and searched == 2 and again == 2 and len(donors) == 2
+    return ('dupesearchresubmit', ok, 'first_donors=%d searches=%d summaries_added2=%d donors_after=%d'
+            % (len(first), searched, again, len(donors)))
+
+
 def scenario_dupesearchkeychanged(daemon, t):
     """B17: the pick gets another DupeKey while its search checks the postings:
     no donor is added under the old key (it would match nothing and download
@@ -4611,6 +4647,7 @@ SCENARIOS = {
     'dupesearchgroup': scenario_dupesearchgroup,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
+    'dupesearchresubmit': scenario_dupesearchresubmit,
     'dupesearchquickstop': scenario_dupesearchquickstop,
     'dupesearchkeychanged': scenario_dupesearchkeychanged,
     'dupesearchresume': scenario_dupesearchresume,
@@ -4793,6 +4830,7 @@ SCENARIO_OPTIONS = {
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresumedeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchresubmit': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchpickdeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchquickstop': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k',
                             'DupeFastDonors=0', 'DupeHealthBudget=120'],
@@ -4882,11 +4920,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

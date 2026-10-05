@@ -117,7 +117,9 @@ private:
 	std::condition_variable m_cond;
 	std::map<int, time_t> m_pending;			// nzb id -> when to look at it
 	std::map<std::string, Searched> m_searched;	// lowercase dupe key -> last search
-	std::map<std::string, std::set<std::string>> m_sent;	// lowercase dupe key -> fingerprints queued
+	// pick id -> fingerprints its search queued; per pick, not per key: a pick sent
+	// again after the user deleted it and its duplicates gets them back (B41)
+	std::map<int, std::set<std::string>> m_sent;
 
 	void DownloadQueueUpdate(void* aspect);
 	void Schedule(int nzbId, time_t due);
