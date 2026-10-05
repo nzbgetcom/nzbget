@@ -807,7 +807,7 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 	int64 protectedDamage = 0;
 	for (StreamRepairJob& job : *nzbInfo->GetStreamRepairJobs())
 	{
-		const char* filename = job.GetFilename();
+		std::string filename = job.GetFilename();
 		for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
 		{
 			if (completedFile.GetId() == job.GetFileId())
@@ -816,7 +816,7 @@ static bool ParCannotCover(NzbInfo* nzbInfo)
 				break;
 			}
 		}
-		const char* baseName = FileSystem::BaseFileName(filename);
+		const char* baseName = FileSystem::BaseFileName(filename.c_str());
 		if (std::any_of(parredFiles.begin(), parredFiles.end(),
 			[baseName](const std::string& parredFile) { return !strcasecmp(parredFile.c_str(), baseName); }))
 		{

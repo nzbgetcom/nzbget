@@ -728,8 +728,8 @@ bool ParseSevenZipStreamsInfo(SevenZipReader& reader, SevenZipStreams& streams)
 			uint64 digestCount = 0;
 			for (size_t f = 0; f < streamCounts.size(); f++)
 			{
-				bool folderCovered = streamCounts[f] == 1 &&
-					f < streams.FolderCrcDefined.size() && streams.FolderCrcDefined[f];
+				bool folderCovered = f < streams.FolderCrcDefined.size() &&
+					streams.FolderCrcDefined[f] && streamCounts[f] == 1;
 				digestCount += folderCovered ? 0 : streamCounts[f];
 			}
 			reader.SkipDigests(digestCount);

@@ -662,8 +662,9 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 				// A partial file may contain only entries missing from the NZB.
 				// They have no message IDs to retry. Keep its completed record and
 				// statistics intact instead of queueing an all-finished article list.
+				ArticleList* articles = fileInfo->GetArticles();
 				if (fileInfo->GetPartialState() == FileInfo::psCompleted &&
-					std::none_of(fileInfo->GetArticles()->begin(), fileInfo->GetArticles()->end(),
+					std::none_of(articles->begin(), articles->end(),
 						[resetFailed](const std::unique_ptr<ArticleInfo>& article)
 						{
 							return article->GetStatus() == ArticleInfo::aiUndefined ||

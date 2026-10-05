@@ -66,7 +66,7 @@ void RepairController::PostParChecker::RegisterVerifiedFile(const char* filename
 	jobs->erase(std::remove_if(jobs->begin(), jobs->end(),
 		[nzbInfo, &verifiedPath](const StreamRepairJob& job)
 		{
-			const char* currentName = job.GetFilename();
+			std::string currentName = job.GetFilename();
 			for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
 			{
 				if (completedFile.GetId() == job.GetFileId())
