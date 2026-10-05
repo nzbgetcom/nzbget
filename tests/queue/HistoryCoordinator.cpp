@@ -2,6 +2,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include <fstream>
+#include <algorithm>
 #include "DiskState.h"
 #include "FileSystem.h"
 #include "HistoryCoordinator.h"
@@ -175,6 +176,54 @@ BOOST_FIXTURE_TEST_CASE(HistoryRetryFailedArticleStillDownloads, HistoryRetryFix
 	BOOST_CHECK_EQUAL(file->GetCompletedArticles(), 2);
 	BOOST_CHECK_EQUAL(nzb->GetCurrentSuccessArticles(), 2);
 	BOOST_CHECK_EQUAL(nzb->GetCurrentFailedArticles(), 1);
+}
+
+// B34: an article staged from a duplicate (its bytes in a temporary file, not yet
+// in the output file) is saved as not downloaded where upstream reads it, so an
+// nzbget without duplicate repair downloads it again instead of leaving a hole;
+// this build still reads it back as staged
+BOOST_FIXTURE_TEST_CASE(StagedArticleSavedForUpstream, HistoryRetryFixture)
+{
+	FileInfo file;
+	file.SetFilename("staged.bin");
+	// (a partial state never loads with every article complete: part 3 is still to come)
+	for (int part : {1, 2, 3})
+	{
+		auto article = std::make_unique<ArticleInfo>();
+		article->SetPartNumber(part);
+		article->SetSize(4);
+		article->SetMessageId(BString<1024>("staged-%i@example.test", part));
+		article->SetStatus(part == 3 ? ArticleInfo::aiUndefined : ArticleInfo::aiFinished);
+		article->SetSegmentOffset((part - 1) * 4);
+		article->SetSegmentSize(4);
+		if (part == 2)
+		{
+			article->SetDupeFallbackRound(1);
+			article->SetResultFilename((directory / "staged.002").string().c_str());
+		}
+		file.GetArticles()->push_back(std::move(article));
+	}
+	BOOST_REQUIRE(g_DiskState->SaveFile(&file));
+	BOOST_REQUIRE(g_DiskState->SaveFileState(&file, false));
+
+	std::ifstream state((directory / "queue" / (std::to_string(file.GetId()) + "s")).string());
+	std::vector<std::string> lines;
+	for (std::string line; std::getline(state, line);)
+	{
+		lines.push_back(line);
+	}
+	// the article lines follow the article count "3"
+	auto count = std::find(lines.begin(), lines.end(), "3");
+	BOOST_REQUIRE(count != lines.end() && count + 2 < lines.end());
+	BOOST_CHECK_EQUAL((count + 1)->substr(0, 2), std::to_string((int)ArticleInfo::aiFinished) + ",");
+	BOOST_CHECK_EQUAL((count + 2)->substr(0, 2), std::to_string((int)ArticleInfo::aiUndefined) + ",");
+
+	FileInfo loaded(file.GetId());
+	BOOST_REQUIRE(g_DiskState->LoadFile(&loaded, false, true));
+	BOOST_REQUIRE(g_DiskState->LoadFileState(&loaded, g_ServerPool->GetServers(), false));
+	BOOST_REQUIRE_EQUAL(loaded.GetArticles()->size(), 3u);
+	BOOST_CHECK_EQUAL(loaded.GetArticles()->at(1)->GetStatus(), ArticleInfo::aiFinished);
+	BOOST_CHECK_EQUAL(loaded.GetArticles()->at(1)->GetDupeFallbackRound(), 1);
 }
 
 // B23: a retry asks for the article's own message-id, not the duplicate's it was last

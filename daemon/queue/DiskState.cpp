@@ -1481,11 +1481,13 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool c
 	for (ArticleInfo* articleInfo : fileInfo->GetArticles())
 	{
 		// the fifth field (an article staged from a duplicate) is past what upstream's
-		// format 7 reads, which ignores it
+		// format 7 reads, which ignores it. Upstream finds a staged article's bytes in
+		// the output file with direct write on, where they aren't yet: it reads the
+		// article as not downloaded and downloads it again
 		int stagedFallback = !completed && articleInfo->GetStatus() == ArticleInfo::aiFinished &&
 			articleInfo->GetDupeFallbackRound() > 0 && articleInfo->GetResultFilename() ? 1 : 0;
 		outfile.PrintLine("%i,%" PRIi64 ",%i,%u,%i",
-			(int)articleInfo->GetStatus(), 
+			stagedFallback ? (int)ArticleInfo::aiUndefined : (int)articleInfo->GetStatus(),
 			articleInfo->GetSegmentOffset(),
 			articleInfo->GetSegmentSize(), 
 			articleInfo->GetCrc(),
@@ -1590,6 +1592,10 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			// format 9 always has the fifth field; this build's format 7 has it, upstream's doesn't
 			if ((formatVersion >= 9 ? fields != 5 : fields < 4) ||
 				(stagedFallback != 0 && stagedFallback != 1)) goto error;
+			if (stagedFallback)
+			{
+				statusInt = ArticleInfo::aiFinished;	// saved as not downloaded for upstream's sake
+			}
 			pa->SetSegmentOffset(segmentOffset);
 			pa->SetSegmentSize(segmentSize);
 			pa->SetCrc(crc);
