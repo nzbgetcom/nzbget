@@ -830,8 +830,47 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 	RemovePending(job.nzbId);
 }
 
+std::string DupeSearch::PickGone(const Job& job)
+{
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	NzbInfo* pick = downloadQueue->GetQueue()->Find(job.nzbId);
+	if (pick && (pick->GetDeleting() || pick->GetDeleteStatus() == NzbInfo::dsManual))
+	{
+		return "the pick was deleted";
+	}
+	if (!pick)
+	{
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == job.nzbId)
+			{
+				pick = historyInfo->GetNzbInfo();
+			}
+		}
+		// in history after a download or a failure it still wants its duplicates;
+		// deleted by the user it doesn't: the first duplicate would download
+		if (!pick || pick->GetDeleteStatus() == NzbInfo::dsManual)
+		{
+			return "the pick was deleted";
+		}
+	}
+	// under another key the duplicates would match nothing and download beside it
+	if (LowerKey(EffectiveKey(pick)) != LowerKey(job.dupeKey))
+	{
+		return "the duplicate key of the pick changed";
+	}
+	return "";
+}
+
 int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive)
 {
+	std::string gone = PickGone(job);
+	if (!gone.empty())
+	{
+		Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: not adding %s [%s]: %s", job.name.c_str(),
+			posting.listing.title.c_str(), posting.listing.indexer.c_str(), gone.c_str());
+		return 0;
+	}
 	if (g_Options->GetDupeSearchDryRun())
 	{
 		Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dry run, would add %s [%s] score=%i alive=%i%%", job.name.c_str(),

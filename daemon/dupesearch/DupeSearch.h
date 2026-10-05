@@ -140,6 +140,9 @@ private:
 	void SavePending(const Job& job, const std::vector<NzbFetcher::Fetched>& verified);
 	void RemovePending(int nzbId);
 	void ResumePending();
+	/* why the search may no longer add duplicates for the pick (deleted by the user,
+	 * another duplicate key), empty while it may */
+	std::string PickGone(const Job& job);
 	/* queues a posting as a duplicate of the pick; the download id, 0 when not added */
 	int AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive);
 	/* the DupeScore (and a parameter "Name=Value") of a duplicate that sits in history or in the queue */

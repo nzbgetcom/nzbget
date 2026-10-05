@@ -3674,6 +3674,50 @@ def scenario_dupesearchresume(daemon, t):
             'pending_left=%s' % (killed_before_summary, got, grabs_after, searches_after, resumed, pending_left))
 
 
+def _ds_interrupt_pick(daemon, t, action):
+    """A search whose health checks are slow (each article 0.3 s); once it is
+    checking, the pick is deleted or gets another DupeKey. Returns the api, the
+    pick's id and the duplicates in history afterwards."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    postings = {'one': (ids('on'), 410_000, 1, 11), 'two': (ids('tt'), 420_000, 1, 12)}
+    daemon.fake_nntp.delays.update({'on-': 0.3, 'tt-': 0.3})
+    api = _ds_donor_env(daemon, t, postings, set(ids('on')) | set(ids('tt')))
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, 'result(s) from') == 0:
+        time.sleep(0.2)
+    time.sleep(1)
+    pick = _ds_group(api, DS_TITLE)
+    if action == 'delete':
+        api.editqueue('GroupDelete', '', [pick['NZBID']])
+    else:
+        api.editqueue('GroupSetDupeKey', 'another-key', [pick['NZBID']])
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(1)
+    donors = [h for h in api.history() if h.get('NZBName') == DS_TITLE and h['NZBID'] != pick['NZBID']]
+    queued = [g for g in api.listgroups() if g['NZBName'] == DS_TITLE and g['NZBID'] != pick['NZBID']]
+    return api, pick, donors + queued
+
+
+def scenario_dupesearchpickdeleted(daemon, t):
+    """B16: the user deletes the pick while its search checks the postings: no
+    donor is added (with the pick deleted, the first donor would download)."""
+    api, pick, donors = _ds_interrupt_pick(daemon, t, 'delete')
+    stopped = _grep_log(t, 'the pick was deleted')
+    ok = not donors and stopped >= 1
+    return ('dupesearchpickdeleted', ok, 'donors=%d stopped_logs=%d' % (len(donors), stopped))
+
+
+def scenario_dupesearchkeychanged(daemon, t):
+    """B17: the pick gets another DupeKey while its search checks the postings:
+    no donor is added under the old key (it would match nothing and download
+    beside the pick)."""
+    api, pick, donors = _ds_interrupt_pick(daemon, t, 'key')
+    stopped = _grep_log(t, 'the duplicate key of the pick changed')
+    ok = not donors and stopped >= 1
+    return ('dupesearchkeychanged', ok, 'donors=%d stopped_logs=%d' % (len(donors), stopped))
+
+
 def scenario_dupesearchfastdead(daemon, t):
     """A posting the quick probe finds alive but its full sample finds mostly
     gone (30% alive, below DupeMinAlive) was already queued as a fast donor: it
@@ -4164,6 +4208,8 @@ SCENARIOS = {
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
     'dupesearchgroup': scenario_dupesearchgroup,
+    'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
+    'dupesearchkeychanged': scenario_dupesearchkeychanged,
     'dupesearchresume': scenario_dupesearchresume,
     'dupesearchdryrun': scenario_dupesearchdryrun,
     'dupesearchrescorefail': scenario_dupesearchrescorefail,
@@ -4333,6 +4379,8 @@ SCENARIO_OPTIONS = {
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchdonors': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchpickdeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4407,10 +4455,10 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume'}
+                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchkeychanged'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchpickdeleted', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
