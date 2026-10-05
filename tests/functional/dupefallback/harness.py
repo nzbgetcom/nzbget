@@ -879,6 +879,44 @@ def newznab_xml(items, error=None):
     return '\n'.join(out).encode()
 
 
+class FirstFailNntpProxy(DelayingNntpProxy):
+    """A news server in front of nserv that answers the FIRST body request for
+    each message-id naming one of ``markers`` itself, with a transient error
+    ("503"), and passes every other request: articles a single failed request
+    loses (ArticleRetries=0) though they exist on the server."""
+
+    def __init__(self, listen_port, upstream_port, markers):
+        self.markers = markers
+        self.seen = set()
+        self.failed = 0
+        super().__init__(listen_port, upstream_port, [])
+
+    def _pipe(self, src, dst, rewrite):
+        try:
+            while True:
+                data = src.recv(65536)
+                if not data:
+                    break
+                if not rewrite:
+                    found = re.findall(rb'(?:BODY|ARTICLE) <([^>]+)>', data)
+                    first = [m for m in found if any(k in m for k in self.markers) and m not in self.seen]
+                    if first and len(found) == 1:
+                        self.seen.add(first[0])
+                        self.failed += 1
+                        src.sendall(b'503 temporarily unavailable\r\n')
+                        continue
+                dst.sendall(data)
+        except OSError:
+            pass
+        finally:
+            for sock in (src, dst):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+                sock.close()
+
+
 # --------------------------------------------------------------------------- #
 # Scenarios
 # --------------------------------------------------------------------------- #
@@ -960,6 +998,36 @@ def scenario_nzbgapborrow(daemon, t):
     ok = recovered >= 1 and unmatched == 0 and mismatch == 0
     return ('nzbgapborrow', ok, 'status=%s recovered=%d unmatched_logs=%d mismatch_logs=%d'
             % (h['Status'], recovered, unmatched, mismatch))
+
+
+def scenario_recheckfailed(daemon, t):
+    """Lesson 18: with ArticleRetries=0, three articles are lost to a single
+    failed request each (the server answers their first request with a
+    transient error) though they exist on the server. The release fails; its failed articles are
+    then asked of the server (STAT), all three exist, and they are retried once:
+    the release completes byte-identically."""
+    size, seg = 2_000_000, 100_000
+    data = _payload(size, 9950)
+    pp = _place_copy(t, 'rcA', data, 'file.bin')
+    nzb = build_nzb(pp, 'Rc.bin', size, seg, set())
+    # the proxy's markers pick articles 5, 10 and 15
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelRc', nzb, False, 'rc-key', 100)
+    first = daemon.wait_history(api, 'RelRc')
+    deadline = time.time() + 120
+    final = first
+    while time.time() < deadline:
+        h = [x for x in api.history() if x['NZBName'] == 'RelRc']
+        if h and 'SUCCESS' in h[0]['Status']:
+            final = h[0]
+            break
+        time.sleep(1)
+    rechecked = _grep_log(t, '3 of 3 failed articles exist on the servers; retrying them')
+    integ = _verify_output(t, data)
+    # (the retry can be over before the first look at the history: the log tells)
+    ok = rechecked == 1 and daemon.proxy.failed == 3 and 'SUCCESS' in final['Status'] and integ
+    return ('recheckfailed', ok, 'first=%s rechecked_logs=%d final=%s integrity=%s failed_requests=%d'
+            % (first['Status'], rechecked, final['Status'], integ, daemon.proxy.failed))
 
 
 def scenario_cutover(daemon, t):
@@ -4368,6 +4436,7 @@ def _log_before(t, first, second):
 
 SCENARIOS = {
     'complementary': scenario_complementary,
+    'recheckfailed': scenario_recheckfailed,
     'nzbgapborrow': scenario_nzbgapborrow,
     'rejectnextserver': scenario_rejectnextserver,
     'cutover': scenario_cutover,
@@ -4523,6 +4592,7 @@ SCENARIO_OPTIONS = {
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
+    'recheckfailed': ['DupeArticleFallback=article', 'ArticleRetries=0', 'Server1.Connections=2'],
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
@@ -4696,6 +4766,9 @@ SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
                         'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)]}
 
+# scenarios with a FirstFailNntpProxy in front of Server1: (message-id markers,)
+SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
+
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
@@ -4749,10 +4822,11 @@ def main():
             corrupt = SCENARIO_CORRUPT_PROXY.get(name)
             rewrite = SCENARIO_REWRITE_PROXY.get(name)
             delay = SCENARIO_DELAY_PROXY.get(name)
+            first_fail = SCENARIO_FIRST_FAIL_PROXY.get(name)
             options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
             nserv_port = nntp
             proxy_port = None
-            if flaky or corrupt or rewrite or delay:
+            if flaky or corrupt or rewrite or delay or first_fail:
                 # Server1 always is nntp: a proxy for it listens there and
                 # nserv moves to a port of its own; a proxy for Server2 gets a
                 # port of its own
@@ -4797,6 +4871,8 @@ def main():
                 daemon.proxy = RewritingNntpProxy(proxy_port, nserv_port, *rewrite)
             elif delay:
                 daemon.proxy = DelayingNntpProxy(proxy_port, nserv_port, delay)
+            elif first_fail:
+                daemon.proxy = FirstFailNntpProxy(proxy_port, nserv_port, *first_fail)
             time.sleep(1)
             daemon.start()
             if args.target == 'adb':

@@ -101,6 +101,18 @@ public:
 	 * is checked this way before stream repair reads from it) */
 	static Verdict Check(std::vector<Sample> samples, int limitSec);
 
+	/*
+	 * A download that failed with articles missing: <samples> of its failed
+	 * articles are asked of every server. When most of them exist after all (a
+	 * timeout or a dropped connection lost them, as ArticleRetries=0 makes
+	 * likely), its failed articles are retried once ("Retry failed articles").
+	 * Runs in its own thread; the download is in history by id <nzbId>.
+	 */
+	static void StartRecheck(int nzbId, std::vector<Sample> samples);
+	// the most failed articles asked of the servers, and the time for it
+	static constexpr int RecheckSampleCount = 10;
+	static constexpr int RecheckLimitSec = 60;
+
 	/* shutdown: cancels running probes and refuses new ones; WaitAll() returns
 	 * when they ended. Reset() allows probes again (a reload's new coordinator) */
 	static void StopAll();
@@ -123,10 +135,14 @@ private:
 
 	int m_nzbId;
 	std::vector<Sample> m_samples;
+	// recheck mode: every sample is asked of every server until found somewhere
+	bool m_countAll = false;
+	std::vector<char> m_found;
 	NntpConnection* m_connection = nullptr;
 
 	bool ProbeServer(int serverId, std::set<int>& probed, ServerResult& result);
 	Verdict Measure(int limitSec);
+	void Recheck();
 	/* false once StopAll ran: the probe must not run */
 	bool Register();
 	void Unregister();

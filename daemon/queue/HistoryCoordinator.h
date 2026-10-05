@@ -28,6 +28,7 @@ class HistoryCoordinator : public Service
 {
 public:
 	void AddToHistory(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	void RecheckFailedArticles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	bool EditList(DownloadQueue* downloadQueue, IdList* idList, DownloadQueue::EEditAction action, const char* args);
 	void DeleteDiskFiles(NzbInfo* nzbInfo);
 	void HistoryHide(DownloadQueue* downloadQueue, HistoryInfo* historyInfo, int rindex);

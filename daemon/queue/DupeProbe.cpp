@@ -253,13 +253,18 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 		}
 
 		int remaining = (int)m_samples.size();
-		for (const Sample& sample : m_samples)
+		for (size_t index = 0; index < m_samples.size(); index++)
 		{
+			const Sample& sample = m_samples[index];
 			if (IsStopped())
 			{
 				break;
 			}
 			remaining--;
+			if (m_countAll && m_found[index])
+			{
+				continue;	// another server has it
+			}
 
 			if (!connection->Connect())
 			{
@@ -301,6 +306,10 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 			{
 				case daExists:
 					result.Exists++;
+					if (m_countAll)
+					{
+						m_found[index] = 1;
+					}
 					break;
 				case daMissing:
 					result.Missing++;
@@ -310,7 +319,7 @@ bool DupeProbe::ProbeServer(int serverId, std::set<int>& probed, ServerResult& r
 					break;
 			}
 
-			if (result.Exists > 0)
+			if (result.Exists > 0 && !m_countAll)
 			{
 				break;
 			}
@@ -370,6 +379,16 @@ DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 		}
 
 		verdict.Existing += result.Exists;
+		if (m_countAll)
+		{
+			// every sample is asked of every server until each was found somewhere
+			verdict.Existing = (int)std::count(m_found.begin(), m_found.end(), 1);
+			if (verdict.Existing == (int)m_samples.size())
+			{
+				break;
+			}
+			continue;
+		}
 		if (verdict.Existing > 0)
 		{
 			break;
@@ -387,8 +406,58 @@ DupeProbe::Verdict DupeProbe::Measure(int limitSec)
 	return verdict;
 }
 
+void DupeProbe::StartRecheck(int nzbId, std::vector<Sample> samples)
+{
+	DupeProbe* probe = new DupeProbe(nzbId, std::move(samples));
+	probe->m_countAll = true;
+	probe->m_found.assign(probe->m_samples.size(), 0);
+	if (!probe->Register())
+	{
+		delete probe;
+		return;
+	}
+	probe->SetAutoDestroy(true);
+	probe->Thread::Start();
+}
+
+void DupeProbe::Recheck()
+{
+	Verdict verdict = Measure(RecheckLimitSec);
+	if (IsStopped() || !verdict.Finished)
+	{
+		return;
+	}
+
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetKind() != HistoryInfo::hkNzb || historyInfo->GetNzbInfo()->GetId() != m_nzbId)
+		{
+			continue;
+		}
+		NzbInfo* nzbInfo = historyInfo->GetNzbInfo();
+		int sampled = (int)m_samples.size();
+		bool retry = verdict.Existing * 2 >= sampled;
+		nzbInfo->PrintMessage(Message::mkInfo, "%i of %i failed articles exist on the servers%s",
+			verdict.Existing, sampled, retry ? "; retrying them" : "; not retrying");
+		if (retry)
+		{
+			IdList ids = { historyInfo->GetId() };
+			downloadQueue->EditList(&ids, nullptr, DownloadQueue::mmId, DownloadQueue::eaHistoryRetryFailed, nullptr);
+		}
+		break;
+	}
+}
+
 void DupeProbe::Run()
 {
+	if (m_countAll)
+	{
+		Recheck();
+		Unregister();
+		return;
+	}
+
 	Verdict verdict = Measure(ProbeLimitSec);
 	if (IsStopped())
 	{

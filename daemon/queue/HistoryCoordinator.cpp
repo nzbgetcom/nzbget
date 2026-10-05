@@ -34,6 +34,7 @@
 #include "PrePostProcessor.h"
 #include "DupeCoordinator.h"
 #include "ServerPool.h"
+#include "DupeProbe.h"
 
 /**
  * Removes old entries from (recent) history
@@ -207,6 +208,79 @@ void HistoryCoordinator::AddToHistory(DownloadQueue* downloadQueue, NzbInfo* nzb
 	nzbInfo->SetDupeHint(NzbInfo::dhNone);
 
 	nzbInfo->PrintMessage(Message::mkInfo, "Collection %s added to history", nzbInfo->GetName());
+
+	RecheckFailedArticles(downloadQueue, nzbInfo);
+}
+
+/*
+ * A download that failed with articles missing gets its failed articles asked of
+ * the servers once (DupeProbe::StartRecheck): when most of them exist after all,
+ * a timeout or a dropped connection lost them, and they are retried. Only where
+ * duplicate handling judges downloads by their article results (option
+ * <DupeArticleFallback>, HealthCheck=dupe), only from files whose state was kept,
+ * and not while a duplicate downloads in its place.
+ */
+void HistoryCoordinator::RecheckFailedArticles(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if ((g_Options->GetDupeArticleFallback() == Options::dafNone && g_Options->GetHealthCheck() != Options::hcDupe) ||
+		nzbInfo->GetKind() != NzbInfo::nkNzb || nzbInfo->GetFailedArticles() <= 0 ||
+		strncmp(nzbInfo->MakeTextStatus(true), "FAILURE", 7) || !strcmp(nzbInfo->MakeTextStatus(true), "FAILURE/BAD") ||
+		nzbInfo->GetParameters()->Find("*DupeRecheck"))
+	{
+		return;
+	}
+	for (NzbInfo* queued : downloadQueue->GetQueue())
+	{
+		if (DupeCoordinator::SameNameOrKey(queued->GetName(), queued->GetDupeKey(),
+			nzbInfo->GetName(), nzbInfo->GetDupeKey()))
+		{
+			return;	// a duplicate downloads in its place
+		}
+	}
+	// once per download
+	nzbInfo->GetParameters()->SetParameter("*DupeRecheck", "1");
+
+	std::vector<DupeProbe::Sample> failed;
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		if ((completedFile.GetStatus() != CompletedFile::cfPartial &&
+			 completedFile.GetStatus() != CompletedFile::cfFailure) || completedFile.GetId() <= 0)
+		{
+			continue;
+		}
+		FileInfo fileInfo(completedFile.GetId());
+		if (!g_DiskState->LoadFile(&fileInfo, false, true) ||
+			!g_DiskState->LoadFileState(&fileInfo, g_ServerPool->GetServers(), true))
+		{
+			continue;
+		}
+		auto groups = std::make_shared<std::vector<CString>>();
+		for (const CString& group : *fileInfo.GetGroups())
+		{
+			groups->emplace_back(*group);
+		}
+		for (ArticleInfo* article : fileInfo.GetArticles())
+		{
+			if (article->GetStatus() == ArticleInfo::aiFailed && !Util::EmptyStr(article->GetMessageId()))
+			{
+				DupeProbe::Sample sample;
+				sample.MessageId = article->GetMessageId();
+				sample.Groups = groups;
+				failed.push_back(std::move(sample));
+			}
+		}
+	}
+	if (failed.size() < 2)
+	{
+		return;
+	}
+
+	std::vector<DupeProbe::Sample> samples;
+	for (size_t index : DupeProbe::SampleIndexes(failed.size(), DupeProbe::RecheckSampleCount))
+	{
+		samples.push_back(std::move(failed[index]));	// the indexes are distinct
+	}
+	DupeProbe::StartRecheck(nzbInfo->GetId(), std::move(samples));
 }
 
 void HistoryCoordinator::HistoryHide(DownloadQueue* downloadQueue, HistoryInfo* historyInfo, int rindex)
