@@ -363,7 +363,7 @@ void DupeSearch::Search(const Job& job)
 		std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 		if (!NzbReader::Parse(data, pick))
 		{
-			detail("DupeSearch: could not read the nzb-file of %s", job.name.c_str());
+			Note(job.nzbId, Message::mkDetail, "DupeSearch: could not read the nzb-file of %s", job.name.c_str());
 		}
 	}
 	std::string imdb = pick.meta.count("imdb") ? pick.meta["imdb"] : "";
@@ -385,7 +385,7 @@ void DupeSearch::Search(const Job& job)
 		}
 	}
 
-	info("DupeSearch: %s: %i result(s) from %i search(es) (%i failed, %i page(s)), %i of them the same release",
+	Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: %i result(s) from %i search(es) (%i failed, %i page(s)), %i of them the same release",
 		job.name.c_str(), (int)results.size(), stats.queries, stats.failed, stats.pages, (int)candidates.size());
 
 	// the postings to fetch, best first: fetching each costs a grab of an indexer
@@ -509,7 +509,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		servers = NntpHealthServer::Servers();
 		if (servers.empty())
 		{
-			info("DupeSearch: %s: no active news servers, the postings are added unchecked", job.name.c_str());
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: no active news servers, the postings are added unchecked", job.name.c_str());
 		}
 	}
 	DonorHealth::Options healthOptions;
@@ -534,7 +534,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 				if (DonorHealth::DeadProbe(health))
 				{
 					m_dead.Add(Posting::MakeSketch(pick.messageIds));
-					info("DupeSearch: %s: the pick is dead (%i of %i probe articles on no server)",
+					Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: the pick is dead (%i of %i probe articles on no server)",
 						job.name.c_str(), health.missing, health.Answered());
 				}
 			});
@@ -572,7 +572,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		{
 			m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
 			dead++;
-			info("DupeSearch: %s: dropping dead posting %s [%s] after the probe: %i of %i probe articles on no server",
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dropping dead posting %s [%s] after the probe: %i of %i probe articles on no server",
 				job.name.c_str(), verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(),
 				it->second.missing, it->second.Answered());
 			continue;
@@ -615,7 +615,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			}
 			added++;
 			placed[i] = { id, entryOf(i, score, alive), verified[i].listing.title };
-			info("DupeSearch: %s: added %s [%s] score=%i alive=%i%% (%s)", job.name.c_str(),
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: added %s [%s] score=%i alive=%i%% (%s)", job.name.c_str(),
 				verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(), base + score,
 				alive < 0 ? -1 : (int)std::lround(100 * alive), how);
 		};
@@ -655,7 +655,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 				double alive = aliveOf(health);
 				bool isDead = alive >= 0 && alive * 100 < g_Options->GetDupeMinAlive() &&
 					health.missing >= DonorHealth::MinKnown;
-				info("DupeSearch: %s: %s [%s]: alive=%i%% (%i of %i articles)", job.name.c_str(),
+				Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: %s [%s]: alive=%i%% (%i of %i articles)", job.name.c_str(),
 					verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(),
 					alive < 0 ? -1 : (int)std::lround(100 * alive), health.present, health.Answered());
 
@@ -682,7 +682,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 						ranks.Release(score);
 						ranks.Use(donor.entry.score);
 						rescoreFailed++;
-						warn("DupeSearch: could not rescore %s: keeps score %i", verified[i].listing.title.c_str(),
+						Note(job.nzbId, Message::mkWarning, "DupeSearch: could not rescore %s: keeps score %i", verified[i].listing.title.c_str(),
 							base + donor.entry.score);
 					}
 				}
@@ -694,7 +694,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 				{
 					m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
 					dead++;
-					info("DupeSearch: %s: dropping dead posting %s: alive=%i%%", job.name.c_str(),
+					Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dropping dead posting %s: alive=%i%%", job.name.c_str(),
 						verified[i].listing.title.c_str(), (int)std::lround(100 * alive));
 				}
 				else
@@ -766,7 +766,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			member.entry.twin = summary.files == pick.files && summary.totalBytes == pick.totalBytes;
 			member.entry.bytes = summary.totalBytes;
 			placed[verified.size() + entry.first] = member;
-			info("DupeSearch: %s: duplicate %s in history: alive=%i%% (%i of %i articles)%s", job.name.c_str(),
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: duplicate %s in history: alive=%i%% (%i of %i articles)%s", job.name.c_str(),
 				member.title.c_str(), (int)std::lround(100 * alive), entry.second.present, entry.second.Answered(),
 				isDead ? ", dead" : "");
 		}
@@ -795,7 +795,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		}
 		if (SetScore(donor.id, base + wanted[n], param))
 		{
-			info("DupeSearch: %s: reranked %s: score %i", job.name.c_str(), donor.title.c_str(), base + wanted[n]);
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: reranked %s: score %i", job.name.c_str(), donor.title.c_str(), base + wanted[n]);
 			donor.entry.score = wanted[n];
 		}
 		else
@@ -820,7 +820,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			outcome += (outcome.empty() ? "" : ", ") + entry.first + ": " + std::to_string(entry.second);
 		}
 	}
-	info("DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i added=%i rejected={%s}",
+	Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: results=%i candidates=%i postings=%i verified=%i added=%i rejected={%s}",
 		job.name.c_str(), results, candidates, postings, (int)verified.size(), added, outcome.c_str());
 	RemovePending(job.nzbId);
 }
@@ -829,7 +829,7 @@ int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int
 {
 	if (g_Options->GetDupeSearchDryRun())
 	{
-		info("DupeSearch: %s: dry run, would add %s [%s] score=%i alive=%i%%", job.name.c_str(),
+		Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dry run, would add %s [%s] score=%i alive=%i%%", job.name.c_str(),
 			posting.listing.title.c_str(), posting.listing.indexer.c_str(), score,
 			alive < 0 ? -1 : (int)std::lround(100 * alive));
 		return -1;
@@ -894,6 +894,38 @@ bool DupeSearch::SetScore(int id, int score, const std::string& param)
 		}
 	}
 	return false;
+}
+
+void DupeSearch::Note(int nzbId, Message::EKind kind, const char* format, ...)
+{
+	char text[1024];
+	va_list ap;
+	va_start(ap, format);
+	vsnprintf(text, sizeof(text), format, ap);
+	va_end(ap);
+
+	// into the pick's own log as well (with InfoTarget=log and no log file,
+	// the global log keeps no info lines); the global log alone once it's gone
+	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (!nzbInfo && historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
+		{
+			nzbInfo = historyInfo->GetNzbInfo();
+		}
+	}
+	if (nzbInfo)
+	{
+		nzbInfo->AddMessage(kind, text);
+		return;
+	}
+	switch (kind)
+	{
+		case Message::mkWarning: warn("%s", text); break;
+		case Message::mkDetail: detail("%s", text); break;
+		default: info("%s", text); break;
+	}
 }
 
 std::string DupeSearch::PendingDir(int nzbId)
@@ -1030,7 +1062,7 @@ void DupeSearch::ResumePending()
 			continue;
 		}
 
-		info("DupeSearch: resuming the search of %s after a restart", job.name.c_str());
+		Note(job.nzbId, Message::mkInfo, "DupeSearch: resuming the search of %s after a restart", job.name.c_str());
 		NzbSummary pick;
 		NzbReader::Parse(ReadAll(job.queuedFile), pick);
 		std::vector<Posting::Sketch> known;

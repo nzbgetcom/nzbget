@@ -3736,8 +3736,14 @@ def scenario_dupesearchdryrun(daemon, t):
     would = _grep_log(t, 'dry run, would add')
     summary = _grep_log(t, 'verified=4 added=4')
     pick_ok = len(groups) == 1 and groups[0]['MaxPostTime'] is not None and groups[0].get('DupeScore') == DS_PICK
-    ok = not queued and would == 4 and summary == 1 and pick_ok
-    return ('dupesearchdryrun', ok, 'queued=%d would=%d summary=%d pick_ok=%s' % (len(queued), would, summary, pick_ok))
+    # the search's lines are in the pick's own log too (a server that writes no
+    # log file keeps no info lines in the global one)
+    item_log = [m['Text'] for m in api.loadlog(groups[0]['NZBID'], 0, 1000)] if groups else []
+    in_item = sum(1 for t in item_log if 'verified=4 added=4' in t) == 1 and \
+        sum(1 for t in item_log if 'dry run, would add' in t) == 4
+    ok = not queued and would == 4 and summary == 1 and pick_ok and in_item
+    return ('dupesearchdryrun', ok, 'queued=%d would=%d summary=%d pick_ok=%s in_item_log=%s'
+            % (len(queued), would, summary, pick_ok, in_item))
 
 
 def scenario_dupesearchdonor(daemon, t):

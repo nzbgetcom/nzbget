@@ -133,6 +133,8 @@ private:
 	 * resumes from the saved files (no search, no fetch: grabs are scarce); one
 	 * still searching is searched again; one whose pick is gone is dropped.
 	 */
+	/* a line of the search of pick <nzbId>: in the pick's own log and the global log */
+	void Note(int nzbId, Message::EKind kind, const char* format, ...) PRINTF_SYNTAX(4);
 	std::string PendingDir(int nzbId);
 	void MarkSearching(int nzbId);
 	void SavePending(const Job& job, const std::vector<NzbFetcher::Fetched>& verified);
