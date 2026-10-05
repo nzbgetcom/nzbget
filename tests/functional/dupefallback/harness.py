@@ -3136,6 +3136,50 @@ def scenario_streamretry(daemon, t):
             % (h['Status'], h['Health'], h2['Status'], h2['Health']))
 
 
+def scenario_retrykeepsjobs(daemon, t):
+    """B22: a release is parked for health (no par2, HealthCheck=park: a whole
+    volume is gone, health < 85%) after one finished volume kept a hole;
+    "Download remaining files" (HistoryReturn) downloads the rest, and
+    post-processing must still repair the finished volume's hole from the
+    duplicate. Retrying used to drop every saved repair job, so the finished
+    volume (not downloaded again) was never repaired."""
+    seg_primary, seg_donor = 500_000, 300_000
+    small, big = 1_500_000, 6_000_000
+    members = [
+        ('rkA/x.part01.rar', 'Rel.part01.rar', small, seg_primary, {3}),     # its last article is missing
+        # (the Recovered line names the duplicate; Queueing doesn't)
+        ('rkA/x.part02.rar', 'Rel.part02.rar', big, seg_primary, set(range(1, 13))),   # gone: health < 85%
+        ('rkA/x.part03.rar', 'Rel.part03.rar', big, seg_primary, set()),
+    ]
+    payloads = {}
+    for i, m in enumerate(members):
+        payloads[m[1]] = _payload(m[2], 9700 + i)
+        t.write_file(os.path.join('data', m[0]), payloads[m[1]])
+    donor = [(m[0].replace('rkA', 'rkB'), m[1].replace('Rel.', 'Other.'), m[2], seg_donor, set()) for m in members]
+    for dm, m in zip(donor, members):
+        t.write_file(os.path.join('data', dm[0]), payloads[m[1]])
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonRK', build_multi_nzb(donor), True, 'rk-key', 50)
+    daemon.append(api, 'RelRK', build_multi_nzb(members), False, 'rk-key', 100)
+    h = daemon.wait_history(api, 'RelRK')
+    nzbid = h['NZBID']
+    parked = h['Status']
+    api.editqueue('HistoryReturn', 0, '', [nzbid])
+    time.sleep(3)
+    deadline = time.time() + 180
+    while time.time() < deadline and any(g['NZBID'] == nzbid for g in api.listgroups()):
+        time.sleep(1)
+    h2 = [x for x in api.history() if x['NZBID'] == nzbid][0]
+    repaired = _grep_log(t, 'of Rel.part01.rar from duplicate DonRK')
+    def intact(name):
+        dst = [rel for rel in t.find_files('main') if rel.endswith(name)]
+        return bool(dst) and t.read_file(dst[0]) == payloads[name]
+    intact = intact('Rel.part01.rar')
+    ok = parked.startswith('FAILURE') and repaired >= 1 and intact
+    return ('retrykeepsjobs', ok, 'parked=%s status=%s repaired_logs=%d intact=%s'
+            % (parked, h2['Status'], repaired, intact))
+
+
 def scenario_wholefilelive(daemon, t):
     """Fix 2 under DupeArticleFallback=live: the zero-article volume
     completes while the rest still downloads (throttled), the live pass
@@ -4192,6 +4236,7 @@ SCENARIOS = {
     'wholefilefailretry': scenario_wholefilefailretry,
     'wholefilelive': scenario_wholefilelive,
     'streamretry': scenario_streamretry,
+    'retrykeepsjobs': scenario_retrykeepsjobs,
     'wholefilerestart': scenario_wholefilerestart,
     'wholefilenfoproof': scenario_wholefilenfoproof,
     'wholefilesampleproof': scenario_wholefilesampleproof,
@@ -4288,6 +4333,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtooslow': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],

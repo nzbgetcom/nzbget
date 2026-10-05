@@ -19,6 +19,8 @@
 
 
 #include "nzbget.h"
+
+#include <set>
 #include "HistoryCoordinator.h"
 #include "Options.h"
 #include "Log.h"
@@ -619,6 +621,9 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 		(resetFailed ? "Retrying failed articles for" : reprocess ? "Post-processing again" : "Downloading remaining files for"),
 		nzbInfo->GetName());
 
+	// the files that download again: their repair jobs describe the old attempt
+	std::set<int> requeued;
+
 	// move failed completed files to (parked) file list
 	for (CompletedFileList::iterator it = nzbInfo->GetCompletedFiles()->begin(); it != nzbInfo->GetCompletedFiles()->end(); )
 	{
@@ -684,6 +689,7 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 				}
 				fileInfo->GetArticles()->clear();
 
+				requeued.insert(fileInfo->GetId());
 				nzbInfo->GetFileList()->Add(std::move(fileInfo), false);
 
 				it = nzbInfo->GetCompletedFiles()->erase(it);
@@ -693,8 +699,12 @@ void HistoryCoordinator::HistoryRetry(DownloadQueue* downloadQueue, HistoryList:
 		++it;
 	}
 
-	// stream-repair jobs captured for the previous download attempt are stale
-	nzbInfo->GetStreamRepairJobs()->clear();
+	// the repair jobs of files that download again are stale (a new one is built
+	// when the file completes); the others keep their holes for post-processing:
+	// a finished file that isn't downloaded again would otherwise never be repaired
+	StreamRepairJobList* jobs = nzbInfo->GetStreamRepairJobs();
+	jobs->erase(std::remove_if(jobs->begin(), jobs->end(),
+		[&requeued](const StreamRepairJob& job) { return requeued.count(job.GetFileId()) > 0; }), jobs->end());
 
 	nzbInfo->UpdateCurrentStats();
 	if (!resetFailed && !reprocess)
