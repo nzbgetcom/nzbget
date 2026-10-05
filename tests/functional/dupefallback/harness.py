@@ -3289,6 +3289,36 @@ def scenario_dupefailovernofallback(daemon, t):
             'status=%s failover_logs=%d parked_logs=%d' % (hp['Status'], failed_over, parked))
 
 
+def scenario_dupefailoverraw(daemon, t):
+    """B25: HealthCheck=dupe with RawArticle=yes, where article borrowing never
+    applies (the articles stay encoded): the attempt count stays at 0, and the
+    gate that gives borrowing its 32-article sample must not block the failover
+    for good. The dead primary is abandoned early and the backup fetched."""
+    seg = 100_000
+    vol_dead, vol_backup = 2_900_000, 3_000_000
+    n = vol_dead // seg
+    # every 5th article exists: the dead-pick probe finds the posting alive and
+    # leaves it to the health check, and it isn't hopeless (20% alive)
+    dead = [('frA/d%d.bin' % i, 'Dead%d.bin' % i, vol_dead, seg,
+             set(k for k in range(1, n + 1) if k % 5)) for i in range(6)]
+    for m in dead:
+        t.write_file(os.path.join('data', m[0]), _payload(vol_dead, 9600))
+    bp = _place_copy(t, 'frB', _payload(vol_backup, 9601))
+    backup = build_nzb(bp, 'Backup.bin', vol_backup, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(dead), True, 'fr-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'fr-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary')
+    failed_over = _grep_log(t, 'Failing over Primary to duplicate Backup')
+    probed = _grep_log(t, 'Dupe probe of download') + _grep_log(t, 'probe articles on no server')
+    failed_articles = int(hp.get('FailedArticles', 0))
+    ok = failed_over == 1 and failed_articles < 6 * n * 4 // 5
+    return ('dupefailoverraw', ok, 'status=%s failover_logs=%d probe_logs=%d failed_articles=%d of %d'
+            % (hp['Status'], failed_over, probed, failed_articles, 6 * n * 4 // 5))
+
+
 def scenario_dupefailover(daemon, t):
     """HealthCheck=dupe: the primary is a dead posting (every article of
     every file missing) and no duplicate carries its files, while a healthy
@@ -4269,6 +4299,7 @@ SCENARIOS = {
     'xdecomp_off': scenario_xdecomp_off,
     'wholefile': scenario_wholefile,
     'dupefailover': scenario_dupefailover,
+    'dupefailoverraw': scenario_dupefailoverraw,
     'dupehopeless': scenario_dupehopeless,
     'dupehopelessretry': scenario_dupehopelessretry,
     'dupedeadstart': scenario_dupedeadstart,
@@ -4445,6 +4476,7 @@ SCENARIO_OPTIONS = {
     # HealthCheck=none; article recovery stays on so the failover's
     # "duplicates were asked first" sample gate is exercised too
     'dupefailover': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
+    'dupefailoverraw': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'RawArticle=yes'],
     'dupehopeless': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
     'dupehopelessretry': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupedeadstart': ['DupeArticleFallback=article', 'HealthCheck=dupe'],

@@ -1472,9 +1472,13 @@ void QueueCoordinator::CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* 
 		return;
 	}
 
+	// borrowing from duplicates gets its say first - but only where it applies:
+	// with RawArticle, DupeMode force or failures only in par2 files it never
+	// counts an attempt, and waiting for its sample would block the failover
+	// (and the hopeless park) for good
 	int attempted = nzbInfo->GetDupeAttemptedArticles() + nzbInfo->GetDupeUnsourcedArticles();
 	int recovered = nzbInfo->GetDupeRecoveredArticles();
-	if (g_Options->GetDupeArticleFallback() != Options::dafNone &&
+	if (g_Options->GetDupeArticleFallback() != Options::dafNone && attempted > 0 &&
 		(attempted < DupeFailoverSample || recovered * 2 >= attempted))
 	{
 		return;
