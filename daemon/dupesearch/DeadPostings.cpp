@@ -46,16 +46,29 @@ void DeadPostings::Load()
 		{
 			continue;
 		}
+		// a line that doesn't parse in full is skipped: a corrupt hash must not become 0
+		char* end = nullptr;
+		long long stamp = strtoll(when.c_str(), &end, 10);
+		if (when.empty() || *end)
+		{
+			continue;
+		}
 		Posting::Sketch sketch;
 		std::stringstream list(hashes);
 		std::string hash;
-		while (std::getline(list, hash, ','))
+		bool ok = true;
+		while (ok && std::getline(list, hash, ','))
 		{
-			sketch.push_back((uint32_t)strtoul(hash.c_str(), nullptr, 10));
+			unsigned long value = strtoul(hash.c_str(), &end, 10);
+			ok = !hash.empty() && !*end && value <= 0xFFFFFFFFUL;
+			sketch.push_back((uint32_t)value);
 		}
-		if (!sketch.empty())
+		// SameSketch intersects sorted lists
+		std::sort(sketch.begin(), sketch.end());
+		sketch.erase(std::unique(sketch.begin(), sketch.end()), sketch.end());
+		if (ok && !sketch.empty())
 		{
-			m_dead.emplace_back((time_t)atoll(when.c_str()), std::move(sketch));
+			m_dead.emplace_back((time_t)stamp, std::move(sketch));
 		}
 	}
 	Prune(Util::CurrentTime());
@@ -64,9 +77,12 @@ void DeadPostings::Load()
 // with m_mutex held
 void DeadPostings::Prune(time_t now)
 {
-	m_dead.erase(std::remove_if(m_dead.begin(), m_dead.end(),
-		[now](const std::pair<time_t, Posting::Sketch>& entry) { return now - entry.first >= DeadTtlSec; }),
-		m_dead.end());
+	// expired, or dated more than a day ahead (clock skew or a corrupt time, which
+	// would otherwise never expire)
+	auto stale = [now](const std::pair<time_t, Posting::Sketch>& entry)
+		{ return now - entry.first >= DeadTtlSec || entry.first - now > 24 * 3600; };
+	m_dead.erase(std::remove_if(m_dead.begin(), m_dead.end(), stale), m_dead.end());
+	m_unsaved.erase(std::remove_if(m_unsaved.begin(), m_unsaved.end(), stale), m_unsaved.end());
 }
 
 // with m_mutex held: a temporary file, renamed, so a crash can't leave half of the file
@@ -101,21 +117,27 @@ bool DeadPostings::IsDead(const Posting::Sketch& sketch, time_t now)
 {
 	std::lock_guard<std::mutex> guard(m_mutex);
 	now = now ? now : Util::CurrentTime();
-	for (const auto& entry : m_dead)
+	for (const auto* list : { &m_dead, &m_unsaved })
 	{
-		if (now - entry.first < DeadTtlSec && Posting::SameSketch(sketch, entry.second))
+		for (const auto& entry : *list)
 		{
-			return true;
+			if (now - entry.first < DeadTtlSec && Posting::SameSketch(sketch, entry.second))
+			{
+				return true;
+			}
 		}
 	}
 	return false;
 }
 
-void DeadPostings::Add(const Posting::Sketch& sketch, time_t now)
+void DeadPostings::Add(const Posting::Sketch& sketch, time_t now, bool save)
 {
 	std::lock_guard<std::mutex> guard(m_mutex);
 	now = now ? now : Util::CurrentTime();
 	Prune(now);
-	m_dead.emplace_back(now, sketch);
-	Save();
+	(save ? m_dead : m_unsaved).emplace_back(now, sketch);
+	if (save)
+	{
+		Save();
+	}
 }

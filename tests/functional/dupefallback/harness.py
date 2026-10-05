@@ -3730,7 +3730,8 @@ def scenario_dupesearchdryrun(daemon, t):
     n = 40
     ids = lambda p: ['%s-%d@x' % (p, i) for i in range(n)]
     postings = {'twin100': (ids('tw'), 400_000, 1, 11), 'other100': (ids('ot'), 410_000, 1, 12),
-                'other95': (ids('o5'), 420_000, 40, 13), 'twin90': (ids('t9'), 400_000, 50, 14)}
+                'other95': (ids('o5'), 420_000, 40, 13), 'twin90': (ids('t9'), 400_000, 50, 14),
+                'gone': (ids('gn'), 430_000, 5, 15)}
     alive = set(postings['twin100'][0]) | set(postings['other100'][0]) | set(postings['other95'][0][:38]) \
         | set(postings['twin90'][0][:36])
     api = _ds_donor_env(daemon, t, postings, alive)
@@ -3741,16 +3742,24 @@ def scenario_dupesearchdryrun(daemon, t):
     queued = [h for h in api.history() if h.get('NZBName') == DS_TITLE]
     groups = [g for g in api.listgroups() if g['NZBName'] == DS_TITLE]
     would = _grep_log(t, 'dry run, would add')
-    summary = _grep_log(t, 'verified=4 added=4')
+    summary = _grep_log(t, 'verified=5 added=4')
+    # a dry run leaves no state a real search would trust: the key isn't recorded
+    # as searched (B18) and the dead posting isn't recorded as dead (B19)
+    def state(name):
+        try:
+            return t.read_file(os.path.join('main', 'queue', name)).decode(errors='replace')
+        except Exception:
+            return ''
+    no_state = 'tvdbid=1-s01-e01' not in state('dupesearch') and not state('dupesearch-dead').strip()
     pick_ok = len(groups) == 1 and groups[0]['MaxPostTime'] is not None and groups[0].get('DupeScore') == DS_PICK
     # the search's lines are in the pick's own log too (a server that writes no
     # log file keeps no info lines in the global one)
     item_log = [m['Text'] for m in api.loadlog(groups[0]['NZBID'], 0, 1000)] if groups else []
-    in_item = sum(1 for t in item_log if 'verified=4 added=4' in t) == 1 and \
+    in_item = sum(1 for t in item_log if 'verified=5 added=4' in t) == 1 and \
         sum(1 for t in item_log if 'dry run, would add' in t) == 4
-    ok = not queued and would == 4 and summary == 1 and pick_ok and in_item
-    return ('dupesearchdryrun', ok, 'queued=%d would=%d summary=%d pick_ok=%s in_item_log=%s'
-            % (len(queued), would, summary, pick_ok, in_item))
+    ok = not queued and would == 4 and summary == 1 and pick_ok and in_item and no_state
+    return ('dupesearchdryrun', ok, 'queued=%d would=%d summary=%d pick_ok=%s in_item_log=%s no_state=%s'
+            % (len(queued), would, summary, pick_ok, in_item, no_state))
 
 
 def scenario_dupesearchdonor(daemon, t):

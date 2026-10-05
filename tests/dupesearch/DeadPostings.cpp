@@ -109,6 +109,64 @@ BOOST_AUTO_TEST_CASE(DeadPostingsPersistTest)
 	fs::remove(path);
 }
 
+// B19: a record kept in memory only (a dry run) counts now but is never saved
+BOOST_AUTO_TEST_CASE(DeadPostingsUnsavedTest)
+{
+	fs::path path = fs::temp_directory_path() / "nzbget-dead-postings-unsaved";
+	fs::remove(path);
+	Posting::Sketch tentative = Posting::MakeSketch(Ids("t", 500));
+	Posting::Sketch real = Posting::MakeSketch(Ids("r", 500));
+	{
+		DeadPostings dead;
+		dead.SetStatePath(path.string());
+		dead.Add(tentative, 0, false);
+		BOOST_CHECK(dead.IsDead(tentative));
+		BOOST_CHECK(!fs::exists(path));
+		dead.Add(real);	// a later saved record doesn't take the unsaved one along
+	}
+	DeadPostings reloaded;
+	reloaded.SetStatePath(path.string());
+	reloaded.Load();
+	BOOST_CHECK(reloaded.IsDead(real));
+	BOOST_CHECK(!reloaded.IsDead(tentative));
+	fs::remove(path);
+}
+
+// B15: a record from the future, a corrupt hash or unsorted hashes in the file
+BOOST_AUTO_TEST_CASE(DeadPostingsRobustLoadTest)
+{
+	fs::path path = fs::temp_directory_path() / "nzbget-dead-postings-robust";
+	time_t now = time(nullptr);
+	Posting::Sketch posting = Posting::MakeSketch(Ids("u", 500));
+	Posting::Sketch future = Posting::MakeSketch(Ids("f", 500));
+	{
+		std::ofstream file(path, std::ios::trunc);
+		// unsorted hashes: stored reversed
+		file << (long long)now << '\t';
+		for (size_t i = posting.size(); i-- > 0;)
+		{
+			file << posting[i] << (i ? "," : "");
+		}
+		file << "\t\n";
+		// a time years ahead (clock skew, corrupt digits): never expires, so it's dropped
+		file << (long long)now + 10LL * 365 * 24 * 3600 << '\t';
+		for (size_t i = 0; i < future.size(); i++)
+		{
+			file << (i ? "," : "") << future[i];
+		}
+		file << "\t\n";
+		// a corrupt hash: the line is skipped, it doesn't become hash 0
+		file << (long long)now << "\t12,x7,99\t\n";
+	}
+	DeadPostings loaded;
+	loaded.SetStatePath(path.string());
+	loaded.Load();
+	BOOST_CHECK(loaded.IsDead(posting));
+	BOOST_CHECK(!loaded.IsDead(future));
+	BOOST_CHECK(!loaded.IsDead(Posting::Sketch{ 0, 12, 99 }));
+	fs::remove(path);
+}
+
 BOOST_AUTO_TEST_CASE(PostingSketchOfFileTest)
 {
 	fs::path path = fs::temp_directory_path() / "nzbget-sketch-of-file-test.nzb";

@@ -270,7 +270,12 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 		}
 		m_searched[lowerKey] = { pickScore, now };
 	}
-	SaveState();
+	// a dry run's search is remembered in memory only: written down, it would hold
+	// off the real search for SearchWindowSec once the dry run is switched off
+	if (!g_Options->GetDupeSearchDryRun())
+	{
+		SaveState();
+	}
 
 	// a managed pick: it has a key and a score that leave room below it for
 	// duplicates (they score pick - 1000 + 2..90)
@@ -533,7 +538,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 					groupsOf(pick), healthOptions, false);
 				if (DonorHealth::DeadProbe(health))
 				{
-					m_dead.Add(Posting::MakeSketch(pick.messageIds));
+					m_dead.Add(Posting::MakeSketch(pick.messageIds), 0, !g_Options->GetDupeSearchDryRun());
 					Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: the pick is dead (%i of %i probe articles on no server)",
 						job.name.c_str(), health.missing, health.Answered());
 				}
@@ -570,7 +575,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		auto it = probe.find(i);
 		if (it != probe.end() && DonorHealth::DeadProbe(it->second))
 		{
-			m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+			m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds), 0, !g_Options->GetDupeSearchDryRun());
 			dead++;
 			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dropping dead posting %s [%s] after the probe: %i of %i probe articles on no server",
 				job.name.c_str(), verified[i].listing.title.c_str(), verified[i].listing.indexer.c_str(),
@@ -673,7 +678,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 						donor.entry.alive = alive;
 						if (isDead)
 						{
-							m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+							m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds), 0, !g_Options->GetDupeSearchDryRun());
 							dead++;
 						}
 					}
@@ -692,7 +697,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 				}
 				else if (isDead)
 				{
-					m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds));
+					m_dead.Add(Posting::MakeSketch(verified[i].info.messageIds), 0, !g_Options->GetDupeSearchDryRun());
 					dead++;
 					Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: dropping dead posting %s: alive=%i%%", job.name.c_str(),
 						verified[i].listing.title.c_str(), (int)std::lround(100 * alive));
@@ -755,7 +760,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			bool isDead = alive * 100 < g_Options->GetDupeMinAlive() && entry.second.missing >= DonorHealth::MinKnown;
 			if (isDead)
 			{
-				m_dead.Add(Posting::MakeSketch(summary.messageIds));
+				m_dead.Add(Posting::MakeSketch(summary.messageIds), 0, !g_Options->GetDupeSearchDryRun());
 			}
 			Placed member;
 			member.id = job.members[entry.first].first;
