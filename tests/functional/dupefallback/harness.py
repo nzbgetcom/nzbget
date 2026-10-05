@@ -744,6 +744,7 @@ class FakeNntp:
         self.reply451 = set()
         self.stats = 0
         self.bodies = 0
+        self.bare_ids = 0
         self.sessions = 0
         self.max_sessions = 0
         self.open_sessions = 0
@@ -761,8 +762,14 @@ class FakeNntp:
                         line = raw.decode('latin1').strip()
                         cmd, _, arg = line.partition(' ')
                         cmd = cmd.upper()
-                        mid = arg.strip().strip('<>')
-                        if cmd == 'STAT' or cmd == 'BODY':
+                        arg = arg.strip()
+                        mid = arg.strip('<>')
+                        if (cmd == 'STAT' or cmd == 'BODY') and not (arg.startswith('<') and arg.endswith('>')):
+                            # a real server takes a message-id only in angle brackets (RFC 3977 3.6)
+                            with outer.lock:
+                                outer.bare_ids += 1
+                            self.wfile.write(b'501 message-id must be in angle brackets\r\n')
+                        elif cmd == 'STAT' or cmd == 'BODY':
                             for prefix, delay in outer.delays.items():
                                 if mid.startswith(prefix):
                                     time.sleep(delay)

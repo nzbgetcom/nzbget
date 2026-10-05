@@ -31,6 +31,22 @@
 #include "ServerPool.h"
 #include "Util.h"
 
+namespace
+{
+
+// a message-id as NNTP commands take it: in angle brackets (RFC 3977 3.6); nzb-files
+// list it without them
+std::string Bracketed(const std::string& messageId)
+{
+	if (!messageId.empty() && messageId.front() == '<' && messageId.back() == '>')
+	{
+		return messageId;
+	}
+	return "<" + messageId + ">";
+}
+
+}
+
 using Answer = DonorHealth::Answer;
 
 int NntpHealthServer::CapFor(int connections)
@@ -132,7 +148,7 @@ std::vector<Answer> NntpHealthServer::Exchange(const std::vector<DonorHealth::Re
 	std::string commands;
 	for (const DonorHealth::Request& request : batch)
 	{
-		commands += "STAT " + request.messageId + "\r\n";
+		commands += "STAT " + Bracketed(request.messageId) + "\r\n";
 	}
 	if (!connection->Send(commands.c_str(), (int)commands.size()))
 	{
@@ -178,7 +194,7 @@ std::vector<Answer> NntpHealthServer::Exchange(const std::vector<DonorHealth::Re
 						}
 					}
 					ArticleFetcher fetcher;
-					ArticleFetcher::FetchedArticle article = fetcher.FetchFromConnection(connection, batch[i].messageId.c_str(), groups);
+					ArticleFetcher::FetchedArticle article = fetcher.FetchFromConnection(connection, Bracketed(batch[i].messageId).c_str(), groups);
 					if (article.Success)
 					{
 						return Answer::Present;
