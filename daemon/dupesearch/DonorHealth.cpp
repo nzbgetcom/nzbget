@@ -380,8 +380,13 @@ Health DonorHealth::CheckItems(const ServerList& servers, const std::vector<Item
 
 	{
 		std::unique_lock<std::mutex> lock(state->mutex);
-		state->cond.wait_for(lock, std::chrono::milliseconds(std::max(10, budgetMs)),
-			[&state]() { return state->left == 0; });
+		// until every article is settled or the budget is over - or nzbget shuts
+		// down (StopAll doesn't know this check's condition: polled)
+		auto end = std::chrono::steady_clock::now() + std::chrono::milliseconds(std::max(10, budgetMs));
+		while (state->left > 0 && !DonorHealth::Stopping() && std::chrono::steady_clock::now() < end)
+		{
+			state->cond.wait_until(lock, std::min(end, std::chrono::steady_clock::now() + std::chrono::milliseconds(100)));
+		}
 		state->stop = true;
 
 		// the budget is over: an unsettled article is missing where at least

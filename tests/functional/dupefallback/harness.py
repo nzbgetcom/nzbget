@@ -3985,6 +3985,38 @@ def scenario_dupesearchpickgoneadd(daemon, t):
             % (deleted, removed, len(donors), len(pick_left)))
 
 
+def scenario_dupesearchquickstop(daemon, t):
+    """B37: nzbget shuts down during a donor health check (each article takes
+    2 s, DupeHealthBudget=120): the check ends with the shutdown instead of
+    waiting out its budget, and the posting it cut short isn't added (the add
+    waited for the stopped scanner for good), so nzbget exits within seconds;
+    the search resumes after the restart."""
+    ids = ['qs-%d@x' % i for i in range(40)]
+    daemon.fake_nntp.delays.update({'qs-': 2.0})
+    api = _ds_donor_env(daemon, t, {'slow': (ids, 410_000, 1, 11)}, set(ids))
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, 'result(s) from') == 0:
+        time.sleep(0.2)
+    time.sleep(3)
+    checking = _grep_log(t, ' added=') == 0
+    started = time.time()
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    try:
+        t.procs[-1].wait(timeout=90)
+    except Exception:
+        pass
+    took = time.time() - started
+    # nothing is added from a check cut short: the search resumes after the restart
+    resumes = _grep_log(t, 'the search resumes after the restart')
+    added = _grep_log(t, ': added ')
+    ok = checking and took < 15 and resumes == 1 and added == 0
+    return ('dupesearchquickstop', ok, 'checking_at_shutdown=%s exit_took=%.1fs (want < 15 s) resume_logs=%d added_logs=%d'
+            % (checking, took, resumes, added))
+
+
 # a scan extension that deletes the pick while the first donor is being added
 DELETE_PICK_EXTENSION = '''#!/usr/bin/env python3
 ##############################################################################
@@ -4579,6 +4611,7 @@ SCENARIOS = {
     'dupesearchgroup': scenario_dupesearchgroup,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
+    'dupesearchquickstop': scenario_dupesearchquickstop,
     'dupesearchkeychanged': scenario_dupesearchkeychanged,
     'dupesearchresume': scenario_dupesearchresume,
     'dupesearchresumedeleted': scenario_dupesearchresumedeleted,
@@ -4761,6 +4794,8 @@ SCENARIO_OPTIONS = {
     'dupesearchresumedeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchresume': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchpickdeleted': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchquickstop': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k',
+                            'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchpickgoneadd': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2',
                               'Extensions=deletepick'],
     'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -4847,11 +4882,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

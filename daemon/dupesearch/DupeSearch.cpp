@@ -616,6 +616,23 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			entry.grabs = verified[i].listing.grabs;
 			return entry;
 		};
+	// nzbget shuts down: a check cut short knows nothing, and adding a duplicate now
+	// would wait for the stopped scanner for good (B37). The search keeps its saved
+	// postings and resumes after the restart.
+	auto interrupted = [&]()
+		{
+			if (!IsStopped())
+			{
+				return false;
+			}
+			if (pickCheck.joinable())
+			{
+				pickCheck.join();
+			}
+			Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: nzbget shuts down, the search resumes after the restart",
+				job.name.c_str());
+			return true;
+		};
 	auto place = [&](size_t i, double alive, const char* how)
 		{
 			int score = ranks.Take(alive, twinOf(verified[i]));
@@ -660,7 +677,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 			{
 				std::lock_guard<std::mutex> guard(placeMutex);
 				size_t i = (size_t)atoi(key.c_str());
-				if (!todo.erase(i))
+				if (IsStopped() || !todo.erase(i))
 				{
 					return;
 				}
@@ -714,6 +731,11 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 					place(i, alive, "checked");
 				}
 			});
+	}
+
+	if (interrupted())
+	{
+		return;
 	}
 
 	// whatever no check reported on (no servers, a failed check) is added unchecked
@@ -782,6 +804,11 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 				member.title.c_str(), (int)std::lround(100 * alive), entry.second.present, entry.second.Answered(),
 				isDead ? ", dead" : "");
 		}
+	}
+
+	if (interrupted())
+	{
+		return;
 	}
 
 	// once every check is in, the scores in order of wholeness
@@ -873,6 +900,10 @@ std::string DupeSearch::PickGone(const Job& job)
 
 int DupeSearch::AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive)
 {
+	if (IsStopped())
+	{
+		return 0;
+	}
 	std::string gone = PickGone(job);
 	if (!gone.empty())
 	{
