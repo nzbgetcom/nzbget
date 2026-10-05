@@ -3202,6 +3202,27 @@ def scenario_retryparkedname(daemon, t):
             % (parked, h2['Status'], intact('Rel.part01.rar'), intact('Rel.part02.rar'), temp_named))
 
 
+def scenario_streamgrouped(daemon, t):
+    """B2: two news servers of one group (the same account, Server1.Group =
+    Server2.Group = 1) and a duplicate that lacks an article stream repair asks
+    for. Once the first server says 430 the pool won't hand out the second
+    (same group and level), so it isn't worth waiting for: the repair moves on
+    at once instead of waiting ArticleTimeout (20 s) per missing article."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'sg')
+    members[2] = members[2][:4] + (set(),)               # part03 complete
+    members[3] = members[3][:4] + ({2},)                 # part04 article 2 missing ...
+    donor_members[3] = donor_members[3][:4] + (set(range(2, 4)),)  # ... on the duplicate too
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSG', build_multi_nzb(donor_members), True, 'sg-key', 50)
+    daemon.append(api, 'RelSG', build_multi_nzb(members), False, 'sg-key', 100)
+    start = time.time()
+    h = daemon.wait_history(api, 'RelSG', timeout=300)
+    took = time.time() - start
+    repaired = _grep_log(t, 'from duplicate DonSG')
+    ok = took < 18 and repaired >= 1
+    return ('streamgrouped', ok, 'status=%s took=%.0fs repaired_logs=%d' % (h['Status'], took, repaired))
+
+
 def scenario_wholefilelive(daemon, t):
     """Fix 2 under DupeArticleFallback=live: the zero-article volume
     completes while the rest still downloads (throttled), the live pass
@@ -4258,6 +4279,7 @@ SCENARIOS = {
     'wholefilefailretry': scenario_wholefilefailretry,
     'wholefilelive': scenario_wholefilelive,
     'streamretry': scenario_streamretry,
+    'streamgrouped': scenario_streamgrouped,
     'retrykeepsjobs': scenario_retrykeepsjobs,
     'retryparkedname': scenario_retryparkedname,
     'wholefilerestart': scenario_wholefilerestart,
@@ -4356,6 +4378,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
@@ -4507,6 +4530,9 @@ SCENARIO_NSERV_ARGS = {'xpacklatency': ['-w', '1000'], 'deadpickprobe': ['-w', '
 # optional servers); Server1 counts among the answering ones
 SCENARIO_EXTRA_SERVERS = {'deadpickservers': (5, 1), 'deadpickfewservers': (4, 2)}
 
+# scenarios whose extra servers join Server1's group (the same account): Group=1
+SCENARIO_GROUPED_SERVERS = {'streamgrouped': 2}
+
 # scenarios with a FlakyNntpProxy in front of a news server:
 # (server number, message-id trigger, window in s or None for good)
 SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, 'xdB/', None)}
@@ -4587,6 +4613,11 @@ def main():
                     nserv_port = free_port()
                 else:
                     options.append('Server%d.Port=%d' % (server, proxy_port))
+            if name in SCENARIO_GROUPED_SERVERS:
+                for number in range(2, SCENARIO_GROUPED_SERVERS[name] + 1):
+                    options += ['Server%d.Host=127.0.0.1' % number, 'Server%d.Port=%d' % (number, nserv_port),
+                                'Server%d.Connections=2' % number, 'Server%d.Level=0' % number,
+                                'Server%d.Encryption=no' % number, 'Server%d.Group=1' % number]
             if name in SCENARIO_EXTRA_SERVERS:
                 live, dead = SCENARIO_EXTRA_SERVERS[name]
                 number = 1

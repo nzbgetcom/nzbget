@@ -88,11 +88,17 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 		}
 		// count servers still worth trying on this level; without this check
 		// a fully failed level would spin the acquire loop until its timeout
+		// (the pool also skips a server of the same group and level as a failed
+		// one - the same account - so such a server isn't worth waiting for)
 		int eligible = 0;
 		for (NewsServer* server : g_ServerPool->GetServers())
 		{
 			if (server->GetActive() && server->GetNormLevel() == level &&
-				std::find(failedServers.begin(), failedServers.end(), server) == failedServers.end())
+				std::none_of(failedServers.begin(), failedServers.end(), [server](NewsServer* failed)
+					{
+						return failed == server || (failed->GetGroup() > 0 &&
+							failed->GetGroup() == server->GetGroup() && failed->GetNormLevel() == server->GetNormLevel());
+					}))
 			{
 				eligible++;
 			}
