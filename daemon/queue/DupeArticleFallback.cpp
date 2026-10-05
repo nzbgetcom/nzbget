@@ -796,14 +796,21 @@ int64 DupeArticleFallback::ExpectedSegmentOffset(FileInfo* fileInfo, ArticleInfo
 		return -1;
 	}
 
-	if (index == 0)
+	if (articleInfo->GetPartNumber() == 1)
 	{
-		// the first article of a file always decodes to offset 0
+		// the first part of a file always decodes to offset 0
 		return 0;
 	}
+	if (index == 0)
+	{
+		// earlier parts are missing from the nzb-file: the offset is unknown
+		return -1;
+	}
 
+	// a list neighbour is the previous part only when the nzb-file lists every part
 	ArticleInfo* prev = (*articles)[index - 1].get();
-	if (prev->GetStatus() == ArticleInfo::aiFinished && prev->GetSegmentSize() > 0)
+	if (prev->GetPartNumber() == articleInfo->GetPartNumber() - 1 &&
+		prev->GetStatus() == ArticleInfo::aiFinished && prev->GetSegmentSize() > 0)
 	{
 		return prev->GetSegmentOffset() + prev->GetSegmentSize();
 	}
@@ -828,7 +835,8 @@ int64 DupeArticleFallback::ExpectedSegmentEnd(FileInfo* fileInfo, ArticleInfo* a
 	}
 
 	ArticleInfo* next = (*articles)[index + 1].get();
-	if (next->GetStatus() == ArticleInfo::aiFinished && next->GetSegmentSize() > 0)
+	if (next->GetPartNumber() == articleInfo->GetPartNumber() + 1 &&
+		next->GetStatus() == ArticleInfo::aiFinished && next->GetSegmentSize() > 0)
 	{
 		return next->GetSegmentOffset();
 	}
@@ -875,8 +883,10 @@ ArticleInfo* DupeArticleFallback::FirstUntiledArticle(FileInfo* fileInfo)
 	}
 
 	int64 expected = 0;
-	for (ArticleInfo* article : fileInfo->GetArticles())
+	ArticleList* articles = fileInfo->GetArticles();
+	for (size_t index = 0; index < articles->size(); index++)
 	{
+		ArticleInfo* article = (*articles)[index].get();
 		if (article->GetStatus() != ArticleInfo::aiFinished || article->GetSegmentSize() <= 0)
 		{
 			// an unfinished article or one without a recorded decoded placement
@@ -886,7 +896,29 @@ ArticleInfo* DupeArticleFallback::FirstUntiledArticle(FileInfo* fileInfo)
 		}
 		if (article->GetSegmentOffset() != expected)
 		{
-			// a gap (offset > expected) or overlap (offset < expected) at this seam
+			// a gap (offset > expected) or overlap (offset < expected) at this seam.
+			// A duplicate's article is the likelier culprit than the release's own.
+			// Otherwise, at a gap, an article that ends exactly where the next one
+			// begins (or at the file's end) is placed right: the one before it
+			// decoded short. Anything else is this article's fault.
+			ArticleInfo* prev = index > 0 ? (*articles)[index - 1].get() : nullptr;
+			if (prev)
+			{
+				bool prevBorrowed = prev->GetDupeFallbackRound() > 0;
+				bool thisBorrowed = article->GetDupeFallbackRound() > 0;
+				if (prevBorrowed != thisBorrowed)
+				{
+					return prevBorrowed ? prev : article;
+				}
+				int64 end = article->GetSegmentOffset() + article->GetSegmentSize();
+				ArticleInfo* next = index + 1 < articles->size() ? (*articles)[index + 1].get() : nullptr;
+				bool placedRight = next ? next->GetStatus() == ArticleInfo::aiFinished &&
+					next->GetSegmentSize() > 0 && next->GetSegmentOffset() == end : end == decodedSize;
+				if (article->GetSegmentOffset() > expected && placedRight)
+				{
+					return prev;
+				}
+			}
 			return article;
 		}
 		expected = article->GetSegmentOffset() + article->GetSegmentSize();
@@ -895,7 +927,6 @@ ArticleInfo* DupeArticleFallback::FirstUntiledArticle(FileInfo* fileInfo)
 	if (expected != decodedSize)
 	{
 		// the assembled decoded bytes fall short of / exceed the file size
-		ArticleList* articles = fileInfo->GetArticles();
 		return articles->empty() ? nullptr : (*articles)[articles->size() - 1].get();
 	}
 

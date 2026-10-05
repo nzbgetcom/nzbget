@@ -900,6 +900,52 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentOffsetTest)
 	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), last), -1);
 }
 
+// B3: list neighbours are only the neighbouring parts when their part numbers say so
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackExpectedSegmentGapTest)
+{
+	// part 4 is missing from the nzb-file: parts 3 and 5 are list neighbours
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 1300}, {2, 1300}, {3, 1300}, {5, 700}}, "orig");
+	FinishArticle(target.get(), 0, 0, 1000);
+	FinishArticle(target.get(), 1, 1000, 1000);
+	FinishArticle(target.get(), 2, 2000, 1000);
+	ArticleInfo* third = target->GetArticles()->at(2).get();
+	ArticleInfo* fifth = target->GetArticles()->at(3).get();
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(target.get(), fifth), -1);
+	FinishArticle(target.get(), 3, 4000, 500);
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentEnd(target.get(), third), -1);
+
+	// part 1 is missing from the nzb-file: the first entry (part 2) isn't at offset 0
+	std::unique_ptr<FileInfo> noFirst = BuildFile("release.r01", {{2, 1300}, {3, 700}}, "orig");
+	BOOST_CHECK_EQUAL(DupeArticleFallback::ExpectedSegmentOffset(noFirst.get(), noFirst->GetArticles()->at(0).get()), -1);
+}
+
+// B7: a gap at a seam is the short article's fault, and a duplicate's article is
+// the likelier culprit than the release's own
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackFirstUntiledTest)
+{
+	std::unique_ptr<FileInfo> target = BuildFile("release.r01",
+		{{1, 1300}, {2, 1300}, {3, 700}}, "orig");
+	target->SetDecodedFileSize(2500);
+	ArticleInfo* middle = target->GetArticles()->at(1).get();
+	FinishArticle(target.get(), 0, 0, 1000);
+	FinishArticle(target.get(), 2, 2000, 500);
+
+	// tiled: nothing to blame
+	FinishArticle(target.get(), 1, 1000, 1000);
+	BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(target.get()) == nullptr);
+
+	// the middle article starts right but decodes short: it is the one at fault,
+	// not the good article after it
+	FinishArticle(target.get(), 1, 1000, 960);
+	BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(target.get()) == middle);
+
+	// a duplicate's article that runs into the next one is at fault
+	FinishArticle(target.get(), 1, 1000, 1040);
+	middle->SetDupeFallbackRound(1);
+	BOOST_CHECK(DupeArticleFallback::FirstUntiledArticle(target.get()) == middle);
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackSegmentAlignedTest)
 {
 	// target decoded tiling: 0..1000..2000..2500; the middle article was
