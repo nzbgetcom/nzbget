@@ -65,6 +65,30 @@ BOOST_AUTO_TEST_CASE(Rar3Test)
 	}
 }
 
+// B8: a RAR5 header whose size is a variable-length integer longer than 10 bytes
+// is corrupt; reading it must fail cleanly (it used to shift by 64 bits or more)
+BOOST_AUTO_TEST_CASE(Rar5OverlongVintTest)
+{
+	fs::path file = fs::temp_directory_path() / "nzbget-rar5-overlong-vint.rar";
+	{
+		std::ofstream out(file, std::ios::binary | std::ios::trunc);
+		const unsigned char signature[] = { 'R', 'a', 'r', '!', 0x1a, 0x07, 0x01, 0x00 };
+		out.write((const char*)signature, sizeof(signature));
+		const unsigned char crc[] = { 0, 0, 0, 0 };
+		out.write((const char*)crc, sizeof(crc));
+		for (int i = 0; i < 16; i++)
+		{
+			out.put((char)0xff);	// every byte continues the integer
+		}
+		out.put(0x01);
+		std::vector<char> padding(64, 0);
+		out.write(padding.data(), padding.size());
+	}
+	RarVolume volume(file.string().c_str());
+	BOOST_CHECK_EQUAL(volume.Read(), false);
+	fs::remove(file);
+}
+
 BOOST_AUTO_TEST_CASE(Rar5Test)
 {
 	{

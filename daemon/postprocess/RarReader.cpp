@@ -217,6 +217,9 @@ bool RarVolume::ReadV(RarSourceCursor& file, RarBlock* block, uint64* result)
 	uint8 bits = 0;
 	do
 	{
+		// a 64-bit value takes at most 10 bytes; a longer one is corrupt (and
+		// shifting by 64 bits or more is undefined)
+		if (bits >= 64) return false;
 		if (Read(file, block, &val, sizeof(val)) != sizeof(val)) return false;
 		*result += (uint64)(val & 0x7f) << bits;
 		bits += 7;
@@ -661,7 +664,7 @@ bool RarVolume::ReadVLimited(RarSourceCursor& file, RarBlock* block, uint64* res
 	uint8 bits = 0;
 	do
 	{
-		if (avail == 0) return false;
+		if (avail == 0 || bits >= 64) return false;
 		if (!Read(file, block, &val, sizeof(val))) return false;
 		avail -= 1;
 		*result += (uint64)(val & 0x7f) << bits;
