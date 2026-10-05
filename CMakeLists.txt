@@ -43,6 +43,9 @@ project(
 
 set(EXTERNAL_DEPS "")
 include(cmake/common.cmake)
+
+add_library(libnzbget STATIC)
+
 include(daemon/sources.cmake)
 
 if(WIN32)
@@ -56,17 +59,19 @@ configure_file(
 	${CMAKE_BINARY_DIR}/config.h
 )
 
+if(EXTERNAL_DEPS)
+	add_dependencies(libnzbget ${EXTERNAL_DEPS})
+endif()
+
+target_include_directories(libnzbget PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR} ${INCLUDES})
+target_link_libraries(libnzbget PUBLIC ${LIBS})
+target_precompile_headers(libnzbget PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
+apply_sanitizers(libnzbget)
+
 if(NOT BUILD_ONLY_TESTS)
-	add_executable(${PACKAGE} ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.cpp ${SRC})
-
-	if(EXTERNAL_DEPS)
-		add_dependencies(${PACKAGE} ${EXTERNAL_DEPS})
-	endif()
-
-	target_precompile_headers(${PACKAGE} PRIVATE ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.h)
-	target_link_libraries(${PACKAGE} PRIVATE ${LIBS})
-	target_include_directories(${PACKAGE} PRIVATE ${INCLUDES})
-
+	add_executable(${PACKAGE} ${CMAKE_SOURCE_DIR}/daemon/main/nzbget.cpp)
+	target_link_libraries(${PACKAGE} PRIVATE libnzbget)
+	target_precompile_headers(${PACKAGE} REUSE_FROM libnzbget)
 	apply_sanitizers(${PACKAGE})
 
 	if(NOT WIN32)
