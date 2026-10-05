@@ -4756,6 +4756,59 @@ def scenario_copyoffailed(daemon, t):
     return ('copyoffailed', ok, 'first_statuses=%s backup_done=%s dead_copy_chosen=%d' % (copies, bool(done), copy_back))
 
 
+def scenario_resendbackup(daemon, t):
+    """B43: a client cancels its pick and sends one of the backups' nzb-files
+    again as the new pick. Its content waits in history only as an untried
+    backup: it is downloaded, not skipped as a copy (before, nothing
+    downloaded and clients re-sent it in DupeMode force)."""
+    primary, backup, data = _probe_fixture(t, 'rb')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, 'rb-key', 100)
+    daemon.append(api, 'Backup', backup, False, 'rb-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupFinalDelete', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    time.sleep(1)
+    daemon.append(api, 'Resent', backup, False, 'rb-key', 100)
+    deadline = time.time() + 120
+    done = None
+    while time.time() < deadline and not done:
+        done = next((h for h in api.history() if h['NZBName'] == 'Resent' and h['Status'] != 'DELETED/COPY'
+                     and h['Status'].startswith('SUCCESS')), None)
+        copy = next((h for h in api.history() if h['NZBName'] == 'Resent' and h['Status'] == 'DELETED/COPY'), None)
+        if copy:
+            break
+        time.sleep(0.5)
+    ok = bool(done) and _grep_log(t, 'waits in history only as an untried backup') == 1 and _verify_output(t, data)
+    return ('resendbackup', ok, 'resent=%s' % (done['Status'] if done else (copy and copy['Status'])))
+
+
+def scenario_resendfailed(daemon, t):
+    """B43: the nzb-file of a pick that failed (a dead posting) is sent again
+    while a healthy backup waits in history and nothing of the key is queued:
+    it is skipped as the same dead posting, and the backup is fetched in its
+    place - the re-send still leads to a download."""
+    first, backup, data = _probe_fixture(t, 'rf')
+    other, _, _ = _probe_fixture(t, 'rg')
+    api = daemon.wait_ready()
+    daemon.append(api, 'Dead', build_multi_nzb(first), False, 'rf-key', 100)
+    daemon.wait_history(api, 'Dead')
+    daemon.append(api, 'Holder', build_multi_nzb(other), True, 'rf-key', 200)
+    daemon.append(api, 'Backup', backup, False, 'rf-key', 90)
+    daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupFinalDelete', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Holder'])
+    time.sleep(1)
+    daemon.append(api, 'Dead', build_multi_nzb(first), False, 'rf-key', 100)
+    deadline = time.time() + 120
+    done = []
+    while time.time() < deadline and not done:
+        done = [h for h in api.history() if h['NZBName'] == 'Backup' and h['Status'].startswith('SUCCESS')]
+        time.sleep(0.5)
+    skipped = [h['Status'] for h in api.history() if h['NZBName'] == 'Dead']
+    fetched = _grep_log(t, 'is the same posting as a failed download: fetching the best backup instead')
+    ok = 'DELETED/COPY' in skipped and fetched == 1 and bool(done) and _verify_output(t, data)
+    return ('resendfailed', ok, 'dead_statuses=%s fetch_logs=%d backup_done=%s' % (skipped, fetched, bool(done)))
+
+
 def scenario_deadpickpartial(daemon, t):
     """The probe never abandons a partly alive posting: 85% of the articles
     are missing but some exist, among them one the probe samples, and the
@@ -5017,6 +5070,8 @@ SCENARIOS = {
     'forcefailover': scenario_forcefailover,
     'copybackup': scenario_copybackup,
     'copyoffailed': scenario_copyoffailed,
+    'resendbackup': scenario_resendbackup,
+    'resendfailed': scenario_resendfailed,
     'deaddownloadstray2': scenario_deaddownloadstray2,
     'deaddownloadrestart': scenario_deaddownloadrestart,
     'deadbackupsonly': scenario_deadbackupsonly,
@@ -5213,6 +5268,8 @@ SCENARIO_OPTIONS = {
     'forcefailover': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'copybackup': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'copyoffailed': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'resendbackup': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'resendfailed': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'deaddownloadstray2': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'deaddownloadrestart': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ContinuePartial=yes'],
     'deadbackupsonly': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],

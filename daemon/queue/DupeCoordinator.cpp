@@ -206,6 +206,67 @@ void DupeCoordinator::NzbFound(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 		}
 	}
 
+	// With HealthCheck=dupe (B43) the same content in history decides by what became
+	// of it: only untried backups (and items the user deleted) - the nzb-file is
+	// downloaded as sent, not skipped as a copy (a client re-sending it would get
+	// nothing); a success - skipped, as before; a failure - skipped too (the same dead
+	// posting), but the best viable backup is fetched in its place when nothing of the
+	// key is queued, so the re-send still leads to a download
+	bool returnBackup = false;
+	if (skip && sameContent && g_Options->GetHealthCheck() == Options::hcDupe &&
+		nzbInfo->GetKind() == NzbInfo::nkNzb && nzbInfo->GetDupeHint() == NzbInfo::dhNone)
+	{
+		auto same = [nzbInfo](uint32 fullHash, uint32 filteredHash)
+			{
+				return (nzbInfo->GetFullContentHash() > 0 && nzbInfo->GetFullContentHash() == fullHash) ||
+					(nzbInfo->GetFilteredContentHash() > 0 && nzbInfo->GetFilteredContentHash() == filteredHash);
+			};
+		bool succeeded = false;
+		bool failed = false;
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() == HistoryInfo::hkNzb)
+			{
+				NzbInfo* item = historyInfo->GetNzbInfo();
+				if (!same(item->GetFullContentHash(), item->GetFilteredContentHash()) ||
+					item->GetDeleteStatus() == NzbInfo::dsDupe || item->GetDeleteStatus() == NzbInfo::dsCopy ||
+					item->GetDeleteStatus() == NzbInfo::dsManual)
+				{
+					continue;
+				}
+				(item->IsDupeSuccess() ? succeeded : failed) = true;
+			}
+			else if (historyInfo->GetKind() == HistoryInfo::hkDup &&
+				same(historyInfo->GetDupInfo()->GetFullContentHash(), historyInfo->GetDupInfo()->GetFilteredContentHash()))
+			{
+				DupInfo::EStatus status = historyInfo->GetDupInfo()->GetStatus();
+				if (status == DupInfo::dsSuccess || status == DupInfo::dsGood)
+				{
+					succeeded = true;
+				}
+				else if (status == DupInfo::dsFailed || status == DupInfo::dsBad)
+				{
+					failed = true;
+				}
+			}
+		}
+		if (!succeeded && !failed)
+		{
+			info("Adding %s: the same content waits in history only as an untried backup", nzbInfo->GetName());
+			skip = false;
+			sameContent = false;
+		}
+		else if (failed && !succeeded)
+		{
+			returnBackup = !std::any_of(downloadQueue->GetQueue()->begin(), downloadQueue->GetQueue()->end(),
+				[nzbInfo](std::unique_ptr<NzbInfo>& queued)
+				{
+					return queued.get() != nzbInfo && queued->GetDeleteStatus() == NzbInfo::dsNone &&
+						SameNameOrKey(queued->GetName(), queued->GetDupeKey(), nzbInfo->GetName(), nzbInfo->GetDupeKey());
+				});
+		}
+	}
+
 	if (!sameContent && nzbInfo->GetDupeHint() != NzbInfo::dhNone)
 	{
 		// dupe check when "download again" URLs: checking same content only
@@ -259,6 +320,12 @@ void DupeCoordinator::NzbFound(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 		{
 			nzbInfo->SetDeleteStatus(sameContent ? NzbInfo::dsCopy : NzbInfo::dsGood);
 			nzbInfo->AddMessage(Message::mkWarning, message);
+		}
+
+		if (returnBackup)
+		{
+			info("%s is the same posting as a failed download: fetching the best backup instead", nzbInfo->GetName());
+			ReturnBestDupe(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey());
 		}
 
 		return;
