@@ -21,6 +21,7 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include <set>
 #include "DownloadInfo.h"
 #include "DupeArticleFallback.h"
 #include "Options.h"
@@ -912,6 +913,8 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureGapTest)
 	std::vector<std::pair<int, int>> gap = full;
 	gap.erase(gap.begin() + 3);	// part 4 isn't in the release's nzb-file
 	std::unique_ptr<FileInfo> target = BuildFile("release.r01", gap, "orig");
+	// nzbget sizes the file with an estimate for the part its nzb-file lacks
+	target->SetSize(target->GetSize() + 130000);
 
 	auto donorWith = [](std::vector<std::pair<int, int>> parts)
 		{
@@ -943,6 +946,46 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureGapTest)
 	resized[10].second = 60000;
 	std::unique_ptr<NzbInfo> different = donorWith(resized);
 	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(target.get(), different.get(), nullptr) == nullptr);
+}
+
+// B32: the parts a twin has beyond the release's list must be gaps in it (at most one
+// more after its last part): a longer encode with the same article size isn't a twin
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackStructureGapStrictTest)
+{
+	auto parts = [](int first, int last, std::set<int> skip)
+		{
+			std::vector<std::pair<int, int>> list;
+			for (int part = first; part <= last; part++)
+			{
+				if (!skip.count(part))
+				{
+					list.emplace_back(part, 130000);
+				}
+			}
+			return list;
+		};
+	auto donorWith = [](std::vector<std::pair<int, int>> list)
+		{
+			std::unique_ptr<NzbInfo> donor = std::make_unique<NzbInfo>();
+			AddDonorFile(donor.get(), "other.r01", std::move(list), "donor");
+			return donor;
+		};
+
+	// a release of 160 parts and a different encode of 170 with the same article size
+	std::unique_ptr<FileInfo> short160 = BuildFile("release.r01", parts(1, 160, {}), "orig");
+	std::unique_ptr<NzbInfo> longer = donorWith(parts(1, 170, {}));
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(short160.get(), longer.get(), nullptr) == nullptr);
+
+	// gaps inside the release's list pair (nzbget sizes the file with an estimate for them)
+	std::unique_ptr<FileInfo> gaps = BuildFile("release.r01", parts(1, 170, {50, 51}), "orig");
+	gaps->SetSize(gaps->GetSize() + 2 * 130000);
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(gaps.get(), longer.get(), nullptr) != nullptr);
+
+	// one part missing after the release's last one pairs, two don't
+	std::unique_ptr<FileInfo> oneShort = BuildFile("release.r01", parts(1, 169, {}), "orig");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(oneShort.get(), longer.get(), nullptr) != nullptr);
+	std::unique_ptr<FileInfo> twoShort = BuildFile("release.r01", parts(1, 168, {}), "orig");
+	BOOST_CHECK(DupeArticleFallback::MatchDonorFile(twoShort.get(), longer.get(), nullptr) == nullptr);
 }
 
 // B3: list neighbours are only the neighbouring parts when their part numbers say so

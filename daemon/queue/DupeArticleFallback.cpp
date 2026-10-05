@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 #include "DupeArticleFallback.h"
 #include "DupeCoordinator.h"
 #include "NzbFile.h"
@@ -747,9 +748,10 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 
 	// The release's nzb-file may lack a few segments (an indexer that didn't
 	// capture them all): it still pairs with a twin that lists them, part by part.
-	// Every part the release lists must be in the duplicate at a matching size,
-	// and only a few more (at most one in 16) may be missing from the release,
-	// so a longer file never pairs.
+	// Every part the release lists must be in the duplicate at a matching size;
+	// the duplicate's other parts must be gaps in the release's list (at most one
+	// in 16), and at most one may follow the release's last part - more would be a
+	// longer encode with the same article size, not a twin.
 	if (targetArticles->size() < donorArticles->size())
 	{
 		size_t extra = donorArticles->size() - targetArticles->size();
@@ -762,7 +764,8 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 		{
 			donorParts[donorArticle->GetPartNumber()] = donorArticle;
 		}
-		int64 pairedSize = 0;
+		int lastTargetPart = 0;
+		std::set<int> targetParts;
 		for (ArticleInfo* targetArticle : targetFile->GetArticles())
 		{
 			auto it = donorParts.find(targetArticle->GetPartNumber());
@@ -771,12 +774,23 @@ bool DupeArticleFallback::StructureMatches(FileInfo* targetFile, FileInfo* donor
 			{
 				return false;
 			}
-			pairedSize += it->second->GetSize();
+			targetParts.insert(targetArticle->GetPartNumber());
+			lastTargetPart = std::max(lastTargetPart, targetArticle->GetPartNumber());
 		}
-		// nzbget counts a segment the nzb-file lacks as missed: the file's size then
-		// includes an estimate for it, close to the twin's full size
-		return SizesMatch(targetFile->GetSize(), pairedSize, TotalSizeToleranceDiv) ||
-			SizesMatch(targetFile->GetSize(), donorFile->GetSize(), TotalSizeToleranceDiv);
+		int trailing = 0;
+		int64 trailingSize = 0;
+		for (ArticleInfo* donorArticle : donorFile->GetArticles())
+		{
+			if (!targetParts.count(donorArticle->GetPartNumber()) && donorArticle->GetPartNumber() > lastTargetPart)
+			{
+				trailing++;
+				trailingSize += donorArticle->GetSize();
+			}
+		}
+		// nzbget counts a segment the nzb-file lacks between listed parts as missed,
+		// so the release's size includes an estimate for it, close to the twin's size
+		return trailing <= 1 &&
+			SizesMatch(targetFile->GetSize() + trailingSize, donorFile->GetSize(), TotalSizeToleranceDiv);
 	}
 
 	if (targetArticles->size() != donorArticles->size() ||
