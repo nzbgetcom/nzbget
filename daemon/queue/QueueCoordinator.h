@@ -136,6 +136,9 @@ private:
 	static constexpr int ProjectedFailureSample = 200;
 	// how much wholer (per mille) a backup must be than a doomed download's projection
 	static constexpr int BackupLead = 100;
+	// articles tried before a download projected below critical (not far below) is
+	// parked without a backup (B74)
+	static constexpr int ParkBelowCriticalSample = 1000;
 	// failed articles in a row (first articles of files aside) after which a download is dead (B49)
 	static constexpr int DeadRunFailures = 40;
 	// a download without a better duplicate is parked once this share of its

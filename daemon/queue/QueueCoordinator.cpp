@@ -1683,18 +1683,24 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 	{
 		// nothing to fail over to (B69: Ted Lasso S03E01 4253, 20% arriving, ran through
 		// 11,160 articles): one projected under half its critical health that borrowing
-		// doesn't fill is parked now, so a client can move on. Borrowing gets its say:
-		// while it waits for par-check, or recovers most of what it tries, no park.
+		// doesn't fill is parked now, so a client can move on; one projected below
+		// critical at all once ParkBelowCriticalSample articles were tried, as the
+		// projection is surer then (B74: Las Azules S02E05 4417, 79.3% against 80%, ran
+		// through 10 GB). Borrowing gets its say: while it waits for par-check, or
+		// recovers most of what it tries, no park.
 		int attempted = nzbInfo->GetDupeAttemptedArticles() + nzbInfo->GetDupeUnsourcedArticles();
 		bool borrowing = g_Options->GetDupeArticleFallback() != Options::dafNone &&
 			(nzbInfo->GetDupeParDeferState() == NzbInfo::dpDeferred ||
 			 (attempted > 0 && nzbInfo->GetDupeRecoveredArticles() * 2 >= attempted));
-		if (tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 && projected * 2 < critical && !borrowing)
+		bool far = projected * 2 < critical;
+		bool below = projected < critical && tried >= ParkBelowCriticalSample;
+		if (tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 && (far || below) && !borrowing)
 		{
 			nzbInfo->PrintMessage(Message::mkWarning,
 				"Parking %s: %i of %i tried article(s) of its own arrived, projected health %.1f%% "
-				"under half the critical %.1f%%, and no duplicate in history to fail over to (%s)",
-				nzbInfo->GetName(), own, tried, projected / 10.0, critical / 10.0,
+				"%s critical %.1f%%, and no duplicate in history to fail over to (%s)",
+				nzbInfo->GetName(), own, tried, projected / 10.0, far ? "under half the" : "below",
+				critical / 10.0,
 				g_DupeCoordinator->NoBackupReason(downloadQueue, nzbInfo).c_str());
 			nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
 			downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);

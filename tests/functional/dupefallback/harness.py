@@ -5079,11 +5079,27 @@ def scenario_projectednobackup(daemon, t):
 
 
 def scenario_projectedhalfnobackup(daemon, t):
-    """B69: 50% arrive and no backup waits: above half the critical 85%, so it
-    isn't parked early (its health check decides, as before)."""
+    """B69/B74: 50% arrive and no backup waits: above half the critical 85%, so
+    not parked after 200 tried, but below critical: parked once 1,000 were
+    tried (about 500 failed), not at the end (900)."""
     hp, _ = _projected_run(daemon, t, 'ph', 50, None)
-    parked = _grep_log(t, 'under half the critical')
-    return ('projectedhalfnobackup', parked == 0, 'status=%s park_logs=%d' % (hp['Status'], parked))
+    early = _grep_log(t, 'under half the critical')
+    parked = _grep_log(t, 'below critical')
+    failed = int(hp.get('FailedArticles', 0))
+    return ('projectedhalfnobackup', early == 0 and parked == 1 and 400 < failed < 700,
+            'status=%s early_park_logs=%d park_logs=%d failed_articles=%d' % (hp['Status'], early, parked, failed))
+
+
+def scenario_projectedbelownobackup(daemon, t):
+    """B74 (Las Azules S02E05 4417: 79.3% arriving against a critical 80%, ran
+    through 10 GB): 80% arrive against the critical 85%, no backup waits:
+    parked once 1,000 articles were tried (about 200 failed), instead of
+    running to the end (360)."""
+    hp, _ = _projected_run(daemon, t, 'pz', 80, None)
+    parked = _grep_log(t, 'below critical')
+    failed = int(hp.get('FailedArticles', 0))
+    return ('projectedbelownobackup', parked == 1 and failed < 300,
+            'status=%s park_logs=%d failed_articles=%d' % (hp['Status'], parked, failed))
 
 
 def scenario_keepreturned(daemon, t):
@@ -5511,6 +5527,7 @@ SCENARIOS = {
     'runreset': scenario_runreset,
     'projectednobackup': scenario_projectednobackup,
     'projectedhalfnobackup': scenario_projectedhalfnobackup,
+    'projectedbelownobackup': scenario_projectedbelownobackup,
     'keepreturned': scenario_keepreturned,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
@@ -5731,6 +5748,7 @@ SCENARIO_OPTIONS = {
     'runreset': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
     'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhalfnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectedbelownobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
