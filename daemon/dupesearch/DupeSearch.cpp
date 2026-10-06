@@ -562,6 +562,18 @@ void DupeSearch::Search(const Job& job)
 	rejected["parse"] += fetchStats.parse;
 	rejected["deadline"] += notTried;
 
+	// a search that learned nothing - every query failed, or no posting could be
+	// fetched (indexers refusing, the deadline) - doesn't hold the key for
+	// SearchWindowSec: the next add of the key, or a restart, searches it again
+	bool queriesFailed = stats.queries > 0 && stats.failed == stats.queries;
+	bool nothingFetched = fetched.empty() && fetchStats.refused + fetchStats.fetch + notTried > 0;
+	if (queriesFailed || nothingFetched)
+	{
+		ForgetSearch(job.dupeKey);
+		Note(job.nzbId, Message::mkInfo, "DupeSearch: %s: %s, the key may be searched again", job.name.c_str(),
+			queriesFailed ? "no indexer answered" : "no posting could be fetched");
+	}
+
 	// what was fetched is kept until it is placed: a restart resumes from it
 	// without fetching again (every fetch costs a grab)
 	SavePending(job, verified);
@@ -1336,6 +1348,18 @@ void DupeSearch::LoadState()
 				m_searched[key] = searched;
 			}
 		}
+	}
+}
+
+void DupeSearch::ForgetSearch(const std::string& dupeKey)
+{
+	{
+		std::lock_guard<std::mutex> guard(m_mutex);
+		m_searched.erase(LowerKey(dupeKey));
+	}
+	if (!g_Options->GetDupeSearchDryRun())
+	{
+		SaveState();
 	}
 }
 

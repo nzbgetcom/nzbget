@@ -159,6 +159,8 @@ private:
 	bool SetScore(int id, int score, const std::vector<std::string>& params);
 	void LoadState();
 	void SaveState();
+	// the key may be searched again (a search that learned nothing)
+	void ForgetSearch(const std::string& dupeKey);
 	std::string StatePath();
 };
 
