@@ -25,6 +25,7 @@
 
 #include <atomic>
 #include <algorithm>
+#include <set>
 #include <string>
 #include "NString.h"
 #include "Container.h"
@@ -114,6 +115,11 @@ public:
 	int64 GetDupeExpectedEnd() { return m_dupeExpectedEnd; }
 	void SetDupeExpectedEnd(int64 dupeExpectedEnd) { m_dupeExpectedEnd = dupeExpectedEnd; }
 	std::vector<CString>* GetDupeSources() { return &m_dupeSources; }
+	// the donor (nzb-id) behind each pinned source; the release's own message-id has none
+	std::vector<int>* GetDupeSourceDonors() { return &m_dupeSourceDonors; }
+	// the donor whose article filled this one (0: the release's own)
+	int GetDupeDonorId() { return m_dupeDonorId; }
+	void SetDupeDonorId(int dupeDonorId) { m_dupeDonorId = dupeDonorId; }
 	int GetDupeLeadSnapshot() { return m_dupeLeadSnapshot; }
 	void SetDupeLeadSnapshot(int dupeLeadSnapshot) { m_dupeLeadSnapshot = dupeLeadSnapshot; }
 	int GetDupeNextLead() { return m_dupeNextLead; }
@@ -148,6 +154,8 @@ private:
 	// fallback so no later queue/history change or lead rotation can shift the
 	// round->source mapping under the article (not persisted)
 	std::vector<CString> m_dupeSources;
+	std::vector<int> m_dupeSourceDonors;
+	int m_dupeDonorId = 0;
 	// the nzb-id of the donor whose article the pinned slot 0 fetches; a
 	// lead-round result only counts towards demotion while this donor is still
 	// the file's lead (not persisted)
@@ -705,6 +713,8 @@ public:
 	int GetCurrentFailedArticles() { return m_currentFailedArticles; }
 	void SetCurrentFailedArticles(int currentFailedArticles) { m_currentFailedArticles = currentFailedArticles; }
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
+	// duplicates whose articles failed the par2 checksums: no more articles from them (B40, not persisted)
+	std::set<int>* GetDupeBlockedDonors() { return &m_dupeBlockedDonors; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
 	int64 GetDupeRecoveredBytes() { return m_dupeRecoveredBytes; }
 	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
@@ -901,6 +911,7 @@ private:
 	int m_currentFailedArticles = 0;
 	// aggregate of FileInfo::m_dupeRecoveredArticles (persisted for restart)
 	int m_dupeRecoveredArticles = 0;
+	std::set<int> m_dupeBlockedDonors;
 	int64 m_dupeRecoveredBytes = 0;
 	int m_dupeRecoveredHoles = 0;
 	// failed articles that were tried from duplicates / that no duplicate

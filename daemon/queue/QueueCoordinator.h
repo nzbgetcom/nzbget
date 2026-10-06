@@ -123,6 +123,7 @@ private:
 	void CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	void RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery
 	static constexpr int DupeFailoverSample = 32;

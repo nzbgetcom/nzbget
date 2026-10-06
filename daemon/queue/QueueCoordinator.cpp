@@ -758,13 +758,21 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 					"); ignoring the declared size", fileInfo->GetFilename(), previousFileSize,
 					articleDownloader->GetDecodedFileSize());
 			}
+			// the duplicate whose article filled this one, checked against the
+			// file's par2 checksums once the file is complete (B40)
+			{
+				std::vector<int>& sourceDonors = *articleInfo->GetDupeSourceDonors();
+				int source = articleInfo->GetDupeFallbackRound() - 1;
+				articleInfo->SetDupeDonorId(source >= 0 && source < (int)sourceDonors.size() &&
+					strcmp(articleInfo->GetMessageId(), Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) ?
+						"" : articleInfo->GetDupeOriginalMessageId()) ? sourceDonors[source] : 0);
+			}
 			// count only proven duplicate recoveries: the article was
 			// substituted after genuinely failing on the primary (reactive)
 			// and the source that succeeded was not the primary (revert)
 			// message-id. Proactive (cutover) fetches never count - the
 			// duplicate is tried FIRST then, so a donor success proves
-			// nothing about the primary (documented in
-			// docs/api/LISTGROUPS.md under DupeRecoveredArticles)
+			// nothing about the primary
 			if (articleInfo->GetDupeFallbackRound() > 0 && !articleInfo->GetDupeProactive() &&
 				!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
 				strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
@@ -957,9 +965,63 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 		}
 		fileInfo->SetPartialChanged(false);
 
+		// the borrowed articles must hold the right bytes: checked against the par2
+		// block checksums of the file (B40), outside the lock - it reads the disk
+		std::string path = fileInfo->GetOutputFilename();
+		if (path.empty() || !FileSystem::FileExists(path.c_str()))
+		{
+			path = BString<1024>("%s%c%s", fileInfo->GetNzbInfo()->GetDestDir(), PATH_SEPARATOR,
+				fileInfo->GetFilename()).Str();
+		}
+		std::vector<ArticleInfo*> wrong = g_Options->GetDupeArticleFallback() != Options::dafNone ?
+			DupeArticleFallback::BorrowedPar2Mismatches(fileInfo, path.c_str()) : std::vector<ArticleInfo*>();
+
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		if (!wrong.empty())
+		{
+			RejectBorrowedArticles(fileInfo, wrong);
+		}
 		DeleteDownloader(downloadQueue, articleDownloader, true);
 	}
+}
+
+/*
+ * Borrowed articles of a completed file that failed its par2 checksums (B40): they
+ * count as failed (so par-check repairs them - with no failed article it might not
+ * even look), and their duplicates lend this download no more articles: a duplicate
+ * that passed the structural pairing but holds other bytes is a wrong pairing.
+ */
+void QueueCoordinator::RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles)
+{
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+	std::set<int> donors;
+	for (ArticleInfo* article : articles)
+	{
+		donors.insert(article->GetDupeDonorId());
+		if (article->GetStatus() != ArticleInfo::aiFinished)
+		{
+			continue;
+		}
+		article->SetStatus(ArticleInfo::aiFailed);
+		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
+		fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
+		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - article->GetSize());
+		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + article->GetSize());
+		nzbInfo->SetCurrentSuccessArticles(std::max(0, nzbInfo->GetCurrentSuccessArticles() - 1));
+		nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
+		nzbInfo->SetCurrentSuccessSize(std::max<int64>(0, nzbInfo->GetCurrentSuccessSize() - article->GetSize()));
+		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + article->GetSize());
+	}
+	BString<1024> names;
+	for (int donorId : donors)
+	{
+		nzbInfo->GetDupeBlockedDonors()->insert(donorId);
+		names.AppendFmt("%s%i", names.Empty() ? "" : ", ", donorId);
+	}
+	nzbInfo->PrintMessage(Message::mkWarning,
+		"%i article(s) of %s borrowed from duplicates don't match its par2 checksums: counted as "
+		"failed, and duplicate(s) %s lend this download no more articles",
+		(int)articles.size(), fileInfo->GetFilename(), *names);
 }
 
 void QueueCoordinator::DeleteDownloader(DownloadQueue* downloadQueue,

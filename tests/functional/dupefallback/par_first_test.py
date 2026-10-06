@@ -40,6 +40,7 @@ SCENARIOS = (
     'partial_live', 'partial_stream',
     'no_par_live', 'no_par_stream',
     'deferfailover_stream',
+    'wrongdonor_article',
 )
 
 
@@ -308,6 +309,51 @@ def scenario_deferfailover(daemon, target, name):
     return passed, detail
 
 
+def scenario_wrongdonor(daemon, target, name):
+    """B40: one article of testfile.dat is missing; the only duplicate pairs by
+    name and article sizes but holds other bytes in that article. The borrowed
+    article fails the file's par2 block checksums: it counts as failed (so
+    par-check repairs it - before, it counted as recovered and the wrong bytes
+    could stay), and the duplicate lends nothing more."""
+    parity_names = ['testfile.par2', 'testfile.vol00+1.PAR2',
+                    'testfile.vol01+2.PAR2', 'testfile.vol03+3.PAR2']
+    block_size, _ = inspect_parity([FIXTURES / n for n in parity_names])
+    data = (FIXTURES / 'testfile.dat').read_bytes()
+    nfo = (FIXTURES / 'testfile.nfo').read_bytes()
+    segment = block_size * 3
+    members = []
+    # the par2 files first: the check needs them on disk when the data file completes
+    for filename in parity_names:
+        content = (FIXTURES / filename).read_bytes()
+        served = harness._place_copy(target, 'wrong-primary', content, filename)
+        members.append((served, filename, len(content), 64 * 1024, set()))
+    for filename, content, holes, seg in (('testfile.dat', data, {10}, segment),
+                                          ('testfile.nfo', nfo, set(), 4096)):
+        served = harness._place_copy(target, 'wrong-primary', content, filename)
+        members.append((served, filename, len(content), seg, holes))
+    wrong = bytearray(data)
+    for i in range(9 * segment, 10 * segment):
+        wrong[i] ^= 0x5A
+    donor_path = harness._place_copy(target, 'wrong-donor', bytes(wrong), 'testfile.dat')
+    donor = harness.build_multi_nzb([(donor_path, 'testfile.dat', len(data), segment, set())])
+    api = daemon.wait_ready()
+    key = 'par-first-' + name
+    assert daemon.append(api, 'Donor-' + name, donor, True, key, 50) > 0
+    assert daemon.append(api, 'Primary-' + name, harness.build_multi_nzb(members), False, key, 100) > 0
+    history = daemon.wait_history(api, 'Primary-' + name, timeout=90)
+    log = target.read_file('nzbget.log').decode(errors='replace')
+    integrity = verify_named_outputs(target, {'testfile.dat': data, 'testfile.nfo': nfo})
+    detail = {
+        'status': history.get('Status'),
+        'par_status': history.get('ParStatus'),
+        'mismatch_logs': log.count("don't match its par2 checksums"),
+        'integrity': integrity,
+    }
+    passed = (detail['mismatch_logs'] == 1 and history.get('Status', '').startswith('SUCCESS')
+              and all(integrity.values()))
+    return passed, detail
+
+
 def run_one(binary, name, keep, par_quick='no'):
     workdir = tempfile.mkdtemp(prefix='nzbget-par-first-%s-' % name)
     target = harness.LocalTarget(binary, workdir)
@@ -318,7 +364,7 @@ def run_one(binary, name, keep, par_quick='no'):
     daemon = LoggedDaemon(target, nntp_port, rpc_port)
     passed = False
     try:
-        mode = 'live' if name.endswith('_live') else 'stream'
+        mode = 'live' if name.endswith('_live') else 'article' if name.endswith('_article') else 'stream'
         # deferfailover: every par2 volume downloads (ParCheck=force), so
         # the lost ones count against health
         options = ['DupeArticleFallback=' + mode,
@@ -336,6 +382,8 @@ def run_one(binary, name, keep, par_quick='no'):
             _, passed, detail = scenario(daemon, target)
         elif name.startswith('deferfailover'):
             passed, detail = scenario_deferfailover(daemon, target, name)
+        elif name.startswith('wrongdonor'):
+            passed, detail = scenario_wrongdonor(daemon, target, name)
         else:
             passed, detail = scenario_parity(daemon, target, name)
         print('[%s] %s %s' % ('PASS' if passed else 'FAIL', name,

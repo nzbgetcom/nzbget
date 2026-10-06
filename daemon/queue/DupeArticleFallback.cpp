@@ -31,6 +31,11 @@
 #include "Log.h"
 #include "Util.h"
 #include "FileSystem.h"
+#include <fstream>
+#ifndef DISABLE_PARCHECK
+#include <par2/libpar2.h>
+#include <par2/md5.h>
+#endif
 
 bool DupeArticleFallback::IsParFile(FileInfo* fileInfo)
 {
@@ -164,9 +169,17 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	}
 
 	std::vector<CString>& sources = *articleInfo->GetDupeSources();
+	// sources of a duplicate whose articles failed the par2 checksums are passed over (B40)
+	std::vector<int>& sourceDonors = *articleInfo->GetDupeSourceDonors();
+	int pinnedRound = round;
+	while (round < (int)sources.size() && round < (int)sourceDonors.size() &&
+		nzbInfo->GetDupeBlockedDonors()->count(sourceDonors[round]))
+	{
+		round++;
+	}
 	if (round >= (int)sources.size())
 	{
-		if (round == 0)
+		if (pinnedRound == 0)
 		{
 			// no duplicate carries this article's file at all
 			nzbInfo->SetDupeUnsourcedArticles(nzbInfo->GetDupeUnsourcedArticles() + 1);
@@ -183,7 +196,7 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	// (the denominator of the per-file recovered/attempted completion summary).
 	// No per-attempt log line: it would flood large files and, worse, read as a
 	// success when it is only an attempt - the recovery is counted on success.
-	if (round == 0)
+	if (pinnedRound == 0)
 	{
 		fileInfo->SetDupeAttemptedArticles(fileInfo->GetDupeAttemptedArticles() + 1);
 		nzbInfo->SetDupeAttemptedArticles(nzbInfo->GetDupeAttemptedArticles() + 1);
@@ -249,6 +262,232 @@ void DupeArticleFallback::RotateToLead(RawNzbList& donors, int leadNzbId)
 	}
 }
 
+namespace
+{
+
+// the block checksums par2 records for one file (packets Main, FileDesc, IFSC)
+struct Par2FileSums
+{
+	std::string hash16k;	// hex
+	std::string name;
+	uint64 length = 0;
+	std::vector<uint32> crcs;
+};
+
+uint64 ReadLe64(const uchar* p)
+{
+	uint64 value = 0;
+	for (int i = 7; i >= 0; i--)
+	{
+		value = (value << 8) | p[i];
+	}
+	return value;
+}
+
+uint32 ReadLe32(const uchar* p)
+{
+	return (uint32)p[0] | ((uint32)p[1] << 8) | ((uint32)p[2] << 16) | ((uint32)p[3] << 24);
+}
+
+std::string Hex(const uchar* p, int len)
+{
+	static const char* digits = "0123456789abcdef";
+	std::string hex;
+	for (int i = 0; i < len; i++)
+	{
+		hex += digits[p[i] >> 4];
+		hex += digits[p[i] & 15];
+	}
+	return hex;
+}
+
+// the par2 data of every par2 file in <dir> (recognized by its packet magic, so
+// obfuscated names count too); recovery packets are skipped, not read
+std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockSize)
+{
+	std::map<std::string, Par2FileSums> files;
+	blockSize = 0;
+	DirBrowser browser(dir);
+	while (const char* filename = browser.Next())
+	{
+		BString<1024> path("%s%c%s", dir, PATH_SEPARATOR, filename);
+		std::ifstream in(fs::u8path(*path), std::ios::binary);
+		uchar header[64];
+		uint64 pos = 0;
+		while (in.seekg((std::streamoff)pos) && in.read((char*)header, 64))
+		{
+			if (memcmp(header, "PAR2\0PKT", 8))
+			{
+				break;
+			}
+			uint64 length = ReadLe64(header + 8);
+			if (length < 64 || length % 4)
+			{
+				break;
+			}
+			const uchar* type = header + 48;
+			uint64 bodyLength = length - 64;
+			bool main = !memcmp(type, "PAR 2.0\0Main\0\0\0\0", 16);
+			bool desc = !memcmp(type, "PAR 2.0\0FileDesc", 16);
+			bool ifsc = !memcmp(type, "PAR 2.0\0IFSC\0\0\0\0", 16);
+			if ((main || desc || ifsc) && bodyLength <= 64 * 1024 * 1024)
+			{
+				std::vector<uchar> body((size_t)bodyLength);
+				if (!in.read((char*)body.data(), (std::streamsize)bodyLength))
+				{
+					break;
+				}
+				if (main && bodyLength >= 8)
+				{
+					blockSize = ReadLe64(body.data());
+				}
+				else if (desc && bodyLength >= 56)
+				{
+					Par2FileSums& sums = files[Hex(body.data(), 16)];
+					sums.hash16k = Hex(body.data() + 32, 16);
+					sums.length = ReadLe64(body.data() + 48);
+					sums.name.assign((const char*)body.data() + 56, (size_t)bodyLength - 56);
+					sums.name = sums.name.substr(0, sums.name.find('\0'));
+				}
+				else if (ifsc && bodyLength >= 16)
+				{
+					Par2FileSums& sums = files[Hex(body.data(), 16)];
+					sums.crcs.clear();
+					for (uint64 at = 16; at + 20 <= bodyLength; at += 20)
+					{
+						sums.crcs.push_back(ReadLe32(body.data() + at + 16));
+					}
+				}
+			}
+			pos += length;
+		}
+	}
+	return files;
+}
+
+std::string Hash16kOf(const char* path)
+{
+#ifndef DISABLE_PARCHECK
+	std::ifstream in(fs::u8path(path), std::ios::binary);
+	std::vector<char> buffer(16 * 1024);
+	in.read(buffer.data(), (std::streamsize)buffer.size());
+	Par2::MD5Context context;
+	context.Update(buffer.data(), (size_t)in.gcount());
+	Par2::MD5Hash hash;
+	context.Final(hash);
+	return hash.print();
+#else
+	return "";
+#endif
+}
+
+}
+
+std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path)
+{
+	std::vector<ArticleInfo*> mismatches;
+	ArticleList* articles = fileInfo->GetArticles();
+	if (std::none_of(articles->begin(), articles->end(), [](std::unique_ptr<ArticleInfo>& article)
+		{ return article->GetStatus() == ArticleInfo::aiFinished && article->GetDupeDonorId() > 0; }))
+	{
+		return mismatches;
+	}
+
+	uint64 blockSize = 0;
+	std::map<std::string, Par2FileSums> files = LoadPar2Sums(fileInfo->GetNzbInfo()->GetDestDir(), blockSize);
+	if (files.empty() || blockSize == 0)
+	{
+		return mismatches;
+	}
+	int64 fileSize = FileSystem::FileSize(path);
+	std::string hash16k = Hash16kOf(path);
+	const Par2FileSums* sums = nullptr;
+	for (auto& entry : files)
+	{
+		if ((int64)entry.second.length == fileSize && !entry.second.crcs.empty() &&
+			(!strcasecmp(entry.second.hash16k.c_str(), hash16k.c_str()) ||
+			 !strcmp(entry.second.name.c_str(), fileInfo->GetFilename())))
+		{
+			sums = &entry.second;
+			break;
+		}
+	}
+	if (!sums || sums->crcs.size() < (size_t)((fileSize + blockSize - 1) / blockSize))
+	{
+		return mismatches;
+	}
+
+	// the byte ranges of the file that arrived: a block is only judged when every
+	// byte of it did (a missing article's zeros would fail any block)
+	std::vector<std::pair<int64, int64>> arrived;
+	for (ArticleInfo* article : articles)
+	{
+		if (article->GetStatus() == ArticleInfo::aiFinished && article->GetSegmentSize() > 0)
+		{
+			arrived.emplace_back(article->GetSegmentOffset(), article->GetSegmentOffset() + article->GetSegmentSize());
+		}
+	}
+	std::sort(arrived.begin(), arrived.end());
+	auto covered = [&arrived](int64 from, int64 to)
+		{
+			for (const auto& range : arrived)
+			{
+				if (range.first > from)
+				{
+					return false;
+				}
+				from = std::max(from, range.second);
+				if (from >= to)
+				{
+					return true;
+				}
+			}
+			return from >= to;
+		};
+
+	std::ifstream in(fs::u8path(path), std::ios::binary);
+	std::vector<char> buffer((size_t)blockSize);
+	std::map<int64, bool> verdicts;	// block -> its bytes match
+	for (ArticleInfo* article : articles)
+	{
+		if (article->GetStatus() != ArticleInfo::aiFinished || article->GetDupeDonorId() <= 0 ||
+			article->GetSegmentSize() <= 0)
+		{
+			continue;
+		}
+		int64 first = article->GetSegmentOffset() / (int64)blockSize;
+		int64 last = (article->GetSegmentOffset() + article->GetSegmentSize() - 1) / (int64)blockSize;
+		bool bad = false;
+		for (int64 block = first; block <= last && !bad; block++)
+		{
+			int64 from = block * (int64)blockSize;
+			int64 to = std::min(from + (int64)blockSize, fileSize);
+			if (!covered(from, to))
+			{
+				continue;
+			}
+			auto known = verdicts.find(block);
+			if (known == verdicts.end())
+			{
+				std::fill(buffer.begin(), buffer.end(), 0);
+				in.clear();
+				in.seekg((std::streamoff)from);
+				in.read(buffer.data(), (std::streamsize)(to - from));
+				// par2 pads the last block with zeros
+				Crc32 crc;
+				crc.Append((uchar*)buffer.data(), (uint32)blockSize);
+				known = verdicts.emplace(block, crc.Finish() == sums->crcs[(size_t)block]).first;
+			}
+			bad = !known->second;
+		}
+		if (bad)
+		{
+			mismatches.push_back(article);
+		}
+	}
+	return mismatches;
+}
+
 void DupeArticleFallback::FinishPin(FileInfo* fileInfo, ArticleInfo* articleInfo,
 	const std::vector<CString>& candidates, const std::vector<int>& contributors,
 	bool cutover, const char* primaryMessageId)
@@ -278,6 +517,8 @@ void DupeArticleFallback::FinishPin(FileInfo* fileInfo, ArticleInfo* articleInfo
 	}
 
 	*articleInfo->GetDupeSources() = OrderSources(candidates, cutover, primaryMessageId);
+	// OrderSources keeps the candidates' order (the primary goes last)
+	*articleInfo->GetDupeSourceDonors() = contributors;
 }
 
 bool DupeArticleFallback::RegisterLeadFailure(FileInfo* fileInfo, ArticleInfo* articleInfo)
@@ -451,6 +692,12 @@ void DupeArticleFallback::PinSources(DownloadQueue* downloadQueue, FileInfo* fil
 
 	for (NzbInfo* donorNzbInfo : donors)
 	{
+		// one whose articles failed the par2 checksums of this download is out (B40)
+		if (nzbInfo->GetDupeBlockedDonors()->count(donorNzbInfo->GetId()))
+		{
+			continue;
+		}
+
 		// an exact copy of the same posting shares the message-ids and cannot help
 		if (nzbInfo->GetFullContentHash() > 0 &&
 			nzbInfo->GetFullContentHash() == donorNzbInfo->GetFullContentHash())

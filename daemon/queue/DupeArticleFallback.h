@@ -181,6 +181,11 @@ public:
 	 * (see ExpectedSegmentOffset/ExpectedSegmentEnd). A substituted article
 	 * failing this check would leave a zero-filled gap and/or overwrite a
 	 * neighbour's bytes, so it must not count as a successful download. */
+	/* B40: the borrowed articles of the completed file <path> whose bytes don't match the
+	 * block checksums of its par2 set (the par2 files already in the download's
+	 * directory); none if no par2 data describes the file. Reads the disk: call
+	 * without the queue lock, on a file no downloader writes any more */
+	static std::vector<ArticleInfo*> BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path);
 	static bool SegmentAligned(FileInfo* fileInfo, ArticleInfo* articleInfo);
 
 	/* Whole-file decoded-boundary check, independent of the (non-persisted)
