@@ -25,27 +25,13 @@
 #include "NzbReader.h"
 #include "XmlReader.h"
 
+#include "DupeUtil.h"
+
+using DupeUtil::Lower;
+using DupeUtil::Trim;
+
 namespace
 {
-
-std::string Trim(const std::string& text)
-{
-	size_t begin = text.find_first_not_of(" \t\r\n");
-	if (begin == std::string::npos)
-	{
-		return "";
-	}
-	return text.substr(begin, text.find_last_not_of(" \t\r\n") - begin + 1);
-}
-
-std::string Lower(std::string text)
-{
-	for (char& ch : text)
-	{
-		ch = (char)tolower((unsigned char)ch);
-	}
-	return text;
-}
 
 // the file name of a subject: the first quoted string, else the whole subject
 std::string NameOfSubject(const std::string& subject)

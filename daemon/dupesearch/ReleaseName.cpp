@@ -24,28 +24,13 @@
 #include <regex>
 #include "ReleaseName.h"
 
+#include "DupeUtil.h"
+
+using DupeUtil::Lower;
+using DupeUtil::Trim;
+
 namespace
 {
-
-std::string Lower(std::string text)
-{
-	for (char& ch : text)
-	{
-		ch = (char)tolower((unsigned char)ch);
-	}
-	return text;
-}
-
-std::string Trim(const std::string& text, const char* chars)
-{
-	size_t begin = text.find_first_not_of(chars);
-	if (begin == std::string::npos)
-	{
-		return "";
-	}
-	size_t end = text.find_last_not_of(chars);
-	return text.substr(begin, end - begin + 1);
-}
 
 bool IsDigits(const std::string& text)
 {

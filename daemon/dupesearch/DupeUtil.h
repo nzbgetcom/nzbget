@@ -44,6 +44,26 @@ namespace DupeUtil
 		return FileSystem::MoveFile(temp.c_str(), path.c_str());
 	}
 
+	inline std::string Lower(std::string text)
+	{
+		for (char& ch : text)
+		{
+			ch = (char)tolower((unsigned char)ch);
+		}
+		return text;
+	}
+
+	/* the text without any of chars at its start and end */
+	inline std::string Trim(const std::string& text, const char* chars = " \t\r\n")
+	{
+		size_t begin = text.find_first_not_of(chars);
+		if (begin == std::string::npos)
+		{
+			return "";
+		}
+		return text.substr(begin, text.find_last_not_of(chars) - begin + 1);
+	}
+
 	inline std::string ReadAll(const std::string& path)
 	{
 		std::ifstream file(fs::u8path(path), std::ios::binary);

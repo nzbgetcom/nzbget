@@ -33,18 +33,13 @@
 #include "Log.h"
 #include "Util.h"
 
+#include "DupeUtil.h"
+
+using DupeUtil::Lower;
+using DupeUtil::Trim;
+
 namespace
 {
-
-std::string Trim(const std::string& text)
-{
-	size_t begin = text.find_first_not_of(" \t\r\n");
-	if (begin == std::string::npos)
-	{
-		return "";
-	}
-	return text.substr(begin, text.find_last_not_of(" \t\r\n") - begin + 1);
-}
 
 long long ToInt(const std::string& text)
 {
@@ -225,11 +220,7 @@ time_t Newznab::ParseDate(const std::string& text)
 	else if (std::regex_match(text, match, rfc))
 	{
 		static const char* months[] = { "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec" };
-		std::string monthName = match[2].str();
-		for (char& ch : monthName)
-		{
-			ch = (char)tolower((unsigned char)ch);
-		}
+		std::string monthName = Lower(match[2].str());
 		month = 0;
 		for (int i = 0; i < 12; i++)
 		{
