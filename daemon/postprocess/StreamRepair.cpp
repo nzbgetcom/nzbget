@@ -771,6 +771,12 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 					m_slowReason.Format("nothing recovered for %i seconds", timeout);
 					break;
 				}
+				if (now - start >= std::chrono::seconds(timeout * MaxRunFactor))
+				{
+					m_slowReason.Format("still running after %i seconds, %i times the timeout",
+						timeout * MaxRunFactor, MaxRunFactor);
+					break;
+				}
 
 				double elapsed = std::chrono::duration<double>(now - start).count();
 				int64 recovered = progress - startProgress;

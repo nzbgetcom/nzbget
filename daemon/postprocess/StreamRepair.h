@@ -240,8 +240,10 @@ private:
 	// stops a repair that recovers so slowly that the rest would take more
 	// than SlowRepairFactor times as long as downloading it at nzbget's
 	// average download speed (checked once the pass ran half the timeout):
-	// another release is quicker then.
+	// another release is quicker then. Whatever its progress, a pass stops
+	// once it ran MaxRunFactor times the timeout (5 minutes at the default 60).
 	static constexpr int SlowRepairFactor = 3;
+	static constexpr int MaxRunFactor = 5;
 	std::thread m_watchdog;
 	std::mutex m_watchdogMutex;
 	std::condition_variable m_watchdogCond;

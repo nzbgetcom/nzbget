@@ -1449,6 +1449,33 @@ def scenario_streamtooslow(daemon, t):
     return ('streamtooslow', ok, 'status=%s too_slow_logs=%d stalled_logs=%d' % (h['Status'], slow, stalled))
 
 
+def scenario_streammaxrun(daemon, t):
+    """Whatever its progress, a stream repair stops once it ran 5 times
+    DupeStreamTimeout (Industry S04E02: a repair that never ended). The
+    duplicate delivers every 1 s, under the 8 s without progress, and the
+    download is slow too (2 s a request), so the repair isn't 3 times slower
+    than downloading either: only the 40 s cap stops it, with 62 MB to
+    recover. The download then ends as a failure (no par2 here), as any
+    download whose repair failed, instead of sitting in stream repair."""
+    size, seg_primary, seg_donor = 64_000_000, 500_000, 250_000
+    data = _payload(size, 4343)
+    pp = _place_copy(t, 'capA', data, 'file.mkv')
+    dp = _place_copy(t, 'capB', data, 'file.mkv')
+    primary = build_nzb(pp, 'CapA.mkv', size, seg_primary, set(range(2, 126)))
+    donor = build_nzb(dp, 'obf-cap.mkv', size, seg_donor, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonCap', donor, True, 'cap-key', 50)
+    daemon.append(api, 'CapA', primary, False, 'cap-key', 100)
+    start = time.time()
+    h = daemon.wait_history(api, 'CapA', timeout=240)
+    took = time.time() - start
+    capped = _grep_log(t, 'still running after 40 seconds, 5 times the timeout (option DupeStreamTimeout)')
+    other = _grep_log(t, 'nothing recovered for') + _grep_log(t, 'times a download at')
+    ok = capped == 1 and other == 0 and 'SUCCESS' not in h['Status'] and took < 120
+    return ('streammaxrun', ok, 'status=%s took=%.0fs capped_logs=%d other_stop_logs=%d delayed=%d'
+            % (h['Status'], took, capped, other, daemon.proxy.delayed))
+
+
 def scenario_streamdeaddonor(daemon, t):
     """Before stream repair reads from a duplicate, a few of its articles are
     checked (STAT) on the servers: a dead duplicate (none of its articles
@@ -5275,6 +5302,7 @@ SCENARIOS = {
     'streamdeaddonor': scenario_streamdeaddonor,
     'streamslowprogress': scenario_streamslowprogress,
     'streamtooslow': scenario_streamtooslow,
+    'streammaxrun': scenario_streammaxrun,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -5458,6 +5486,7 @@ SCENARIO_OPTIONS = {
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtooslow': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
+    'streammaxrun': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=8'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it
@@ -5654,7 +5683,8 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver':
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
-                        'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)]}
+                        'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)],
+                        'streammaxrun': [(b'capA/', 2.0), (b'capB/', 1.0)]}
 
 # scenarios with a FirstFailNntpProxy in front of Server1: (message-id markers,)
 # extensions a scenario installs into ScriptDir before the daemon starts
