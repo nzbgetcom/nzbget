@@ -5086,6 +5086,42 @@ def scenario_projectedhalfnobackup(daemon, t):
     return ('projectedhalfnobackup', parked == 0, 'status=%s park_logs=%d' % (hp['Status'], parked))
 
 
+def scenario_keepreturned(daemon, t):
+    """B73 (Las Azules S02E01 4404): a dead pick fails over to a backup, which
+    downloads in good health (slowly here). A duplicate scored higher arrives
+    meanwhile, as a dupe tool appends one: the returned backup keeps
+    downloading and succeeds; the newcomer waits in history as a backup.
+    Before, nzbget moved the downloading backup to history and started over."""
+    size, seg = 3_000_000, 100_000
+    data = _payload(size, 7373)
+    pick = build_nzb(_place_copy(t, 'krP', data), 'Pick.bin', size, seg, set(range(1, 31)))
+    backup = build_nzb(_place_copy(t, 'krA', data), 'BackA.bin', size, seg, set())
+    late = build_nzb(_place_copy(t, 'krC', data), 'LateC.bin', size, seg, set())
+    api = daemon.wait_ready()
+    pick_id = daemon.append(api, 'Pick', pick, True, 'kr-key', 100)
+    daemon.append(api, 'BackA', backup, False, 'kr-key', 90)
+    daemon.wait_history(api, 'BackA', timeout=30)
+    api.editqueue('GroupResume', 0, '', [pick_id])
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        g = _ds_group(api, 'BackA')
+        if g and int(g.get('SuccessArticles', 0)) >= 3:
+            break
+        time.sleep(0.2)
+    daemon.append(api, 'LateC', late, True, 'kr-key', 95)
+    deadline = time.time() + 120
+    a_status = c_status = None
+    while time.time() < deadline:
+        hist = {x['NZBName']: x['Status'] for x in api.history()}
+        a_status, c_status = hist.get('BackA'), hist.get('LateC')
+        if a_status and a_status.startswith(('SUCCESS', 'FAILURE')) and c_status:
+            break
+        time.sleep(0.5)
+    moved = _grep_log(t, 'Moving collection BackA with lower duplicate score')
+    ok = moved == 0 and (a_status or '').startswith('SUCCESS') and c_status == 'DELETED/DUPE'
+    return ('keepreturned', ok, 'backup=%s late=%s moved_logs=%d' % (a_status, c_status, moved))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -5475,6 +5511,7 @@ SCENARIOS = {
     'runreset': scenario_runreset,
     'projectednobackup': scenario_projectednobackup,
     'projectedhalfnobackup': scenario_projectedhalfnobackup,
+    'keepreturned': scenario_keepreturned,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -5694,6 +5731,7 @@ SCENARIO_OPTIONS = {
     'runreset': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
     'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhalfnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
@@ -5797,7 +5835,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'streamtimeout': [(b'slowB/', 8.0)],
+SCENARIO_DELAY_PROXY = {'keepreturned': [(b'krA/', 0.4)],
+                        'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
                         'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)],
                         'streammaxrun': [(b'capA/', 2.0), (b'capB/', 1.0)]}

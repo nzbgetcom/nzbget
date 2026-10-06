@@ -349,8 +349,16 @@ void DupeCoordinator::NzbFound(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 					nzbInfo->GetName(), nzbInfo->GetDupeKey()))
 			{
 				// if queue has a duplicate with the same or higher score - the new item
-				// is moved to history as dupe-backup
-				if (nzbInfo->GetDupeScore() <= queuedNzbInfo->GetDupeScore())
+				// is moved to history as dupe-backup. With HealthCheck=dupe so is one
+				// arriving while a backup that failover returned downloads in good
+				// health (B73: Las Azules S02E01 4404 lost its progress to a duplicate
+				// a dupe tool appended, scored higher but no better): it is tried next
+				// if that backup fails too
+				bool keepReturned = g_Options->GetHealthCheck() == Options::hcDupe &&
+					queuedNzbInfo->GetDupeHint() == NzbInfo::dhRedownloadAuto &&
+					queuedNzbInfo->GetCurrentSuccessArticles() > 0 &&
+					queuedNzbInfo->CalcHealth() >= queuedNzbInfo->CalcCriticalHealth(true);
+				if (nzbInfo->GetDupeScore() <= queuedNzbInfo->GetDupeScore() || keepReturned)
 				{
 					// Flag saying QueueCoordinator to skip nzb-file
 					nzbInfo->SetDeleteStatus(NzbInfo::dsDupe);
