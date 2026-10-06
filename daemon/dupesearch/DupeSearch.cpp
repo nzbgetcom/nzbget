@@ -120,7 +120,10 @@ void DupeSearch::Schedule(int nzbId, time_t due)
 	m_cond.notify_all();
 }
 
-// an event isn't fired for a download that was queued before a restart
+// an event isn't fired for a download that was queued before a restart; nor for
+// a pick that failed over while nzbget was stopping or starting (B64): one that
+// failed lately is asked again (Prepare searches it from history once, unless
+// its key was searched already)
 void DupeSearch::ScanQueue()
 {
 	std::vector<int> ids;
@@ -131,6 +134,15 @@ void DupeSearch::ScanQueue()
 			if (nzbInfo->GetKind() == NzbInfo::nkNzb)
 			{
 				ids.push_back(nzbInfo->GetId());
+			}
+		}
+		time_t recent = Util::CurrentTime() - RecentFailureSec;
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetTime() >= recent &&
+				!historyInfo->GetNzbInfo()->IsDupeSuccess())
+			{
+				ids.push_back(historyInfo->GetNzbInfo()->GetId());
 			}
 		}
 	}

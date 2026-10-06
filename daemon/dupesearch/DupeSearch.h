@@ -57,6 +57,8 @@ public:
 	static constexpr int SearchWindowSec = 6 * 3600;
 	// a pick still in post-processing when its search is due is asked again this much later
 	static constexpr int PostProcessRetrySec = 30;
+	// a pick that failed this recently is searched from history at start (B64)
+	static constexpr int RecentFailureSec = 3600;
 	// keys are forgotten after this long
 	static constexpr int StateTtlSec = 30 * 24 * 3600;
 	// the score of a managed pick, and the room below it for donors
