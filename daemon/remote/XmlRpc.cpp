@@ -21,6 +21,7 @@
 
 #include "nzbget.h"
 #include "XmlRpc.h"
+#include "Fleet.h"
 #include "Log.h"
 #include "Options.h"
 #include "WorkState.h"
@@ -211,6 +212,12 @@ public:
 };
 
 class DownloadXmlCommand final : public XmlCommand
+{
+public:
+	void Execute() override;
+};
+
+class AppendFleetXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -778,6 +785,7 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 
 	if (m_userAccess == uaAdd &&
 		!(!strcasecmp(methodName, "append") || !strcasecmp(methodName, "appendurl") ||
+		 !strcasecmp(methodName, "appendfleet") ||
 		 !strcasecmp(methodName, "version")))
 	{
 		command = std::make_unique<ErrorXmlCommand>(401, "Access denied");
@@ -849,6 +857,10 @@ std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodNam
 	else if (!strcasecmp(methodName, "append") || !strcasecmp(methodName, "appendurl"))
 	{
 		command = std::make_unique<DownloadXmlCommand>();
+	}
+	else if (!strcasecmp(methodName, "appendfleet"))
+	{
+		command = std::make_unique<AppendFleetXmlCommand>();
 	}
 	else if (!strcasecmp(methodName, "postqueue"))
 	{
@@ -2547,6 +2559,90 @@ void EditQueueXmlCommand::Execute()
 //   int append(string NZBFilename, string NZBContent, string Category, int Priority, bool AddToTop, bool AddPaused, string DupeKey, int DupeScore, string DupeMode)
 // v12 (backward compatible, some params are optional):
 //   bool append(string NZBFilename, string Category, int Priority, bool AddToTop, string Content, bool AddPaused, string DupeKey, int DupeScore, string DupeMode)
+// appendfleet(DupeKey, Category, Priority, Timeout, Name1, Content1, Name2, Content2, ...):
+// a content is the nzb-file in base64 or its url; see Fleet
+void AppendFleetXmlCommand::Execute()
+{
+	if (!IsJson())
+	{
+		BuildErrorResponse(2, "appendfleet needs JSON-RPC");
+		return;
+	}
+	Fleet::Request request;
+	char* dupeKey = nullptr;
+	char* category = nullptr;
+	if (!NextParamAsStr(&dupeKey) || !*dupeKey)
+	{
+		BuildErrorResponse(2, "Invalid parameter (DupeKey)");
+		return;
+	}
+	if (!NextParamAsStr(&category))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Category)");
+		return;
+	}
+	if (!NextParamAsInt(&request.priority))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Priority)");
+		return;
+	}
+	if (!NextParamAsInt(&request.timeoutSec))
+	{
+		BuildErrorResponse(2, "Invalid parameter (Timeout)");
+		return;
+	}
+	DecodeStr(dupeKey);
+	DecodeStr(category);
+	request.dupeKey = dupeKey;
+	request.category = category;
+	char* name = nullptr;
+	while (NextParamAsStr(&name))
+	{
+		char* content = nullptr;
+		if (!NextParamAsStr(&content))
+		{
+			BuildErrorResponse(2, "Invalid parameter (Content of %s)", name);
+			return;
+		}
+		if ((int)request.members.size() >= Fleet::MaxMembers)
+		{
+			BuildErrorResponse(2, "Too many members (at most %i)", Fleet::MaxMembers);
+			return;
+		}
+		DecodeStr(name);
+		DecodeStr(content);
+		Fleet::Member member;
+		member.name = name;
+		if (!strncasecmp(content, "http://", 7) || !strncasecmp(content, "https://", 8))
+		{
+			member.url = content;
+		}
+		else
+		{
+			int len = WebUtil::DecodeBase64(content, 0, content);
+			member.data.assign(content, len);
+		}
+		request.members.push_back(std::move(member));
+	}
+
+	Fleet::Result result = Fleet::Append(std::move(request));
+
+	BString<1024> head("{\"Chosen\" : %i, \"Complete\" : %s, \"Reason\" : \"%s\", \"Members\" : [",
+		result.chosen, result.complete ? "true" : "false", *EncodeStr(result.reason.c_str()));
+	AppendResponse(head);
+	for (size_t i = 0; i < result.members.size(); i++)
+	{
+		const Fleet::Entry& entry = result.members[i];
+		CString item;
+		item.Format("%s{\"NZBID\" : %i, \"Name\" : \"%s\", \"Rank\" : %i, \"Alive\" : %i, "
+			"\"Status\" : \"%s\", \"SameAs\" : %i, \"Reason\" : \"%s\"}",
+			i ? ", " : "", entry.nzbId, *EncodeStr(entry.name.c_str()), entry.rank, entry.alive,
+			entry.status.c_str(), entry.sameAs, *EncodeStr(entry.reason.c_str()));
+		AppendResponse(item);
+	}
+	AppendResponse("]}");
+}
+
 void DownloadXmlCommand::Execute()
 {
 	bool v13 = true;

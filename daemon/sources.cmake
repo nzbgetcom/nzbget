@@ -80,6 +80,7 @@ target_sources(libnzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DonorHealth.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DonorScore.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/DupeSearch.cpp
+	${CMAKE_SOURCE_DIR}/daemon/dupesearch/Fleet.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/HttpGet.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/Newznab.cpp
 	${CMAKE_SOURCE_DIR}/daemon/dupesearch/NntpHealthServer.cpp

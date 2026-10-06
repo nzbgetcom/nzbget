@@ -4516,6 +4516,133 @@ def scenario_dupesearchindexerdown(daemon, t):
     return ('dupesearchindexerdown', ok, 'released_logs=%d searches=%d donors=%d' % (released, searches, len(donors)))
 
 
+def _fleet(daemon, members, key='fleet-key', timeout=30, http_timeout=None):
+    """Calls appendfleet (JSON-RPC) with members [(name, nzb text)]; returns its result."""
+    import json as _json
+    import urllib.request as _req
+    params = [key, 'test', 0, timeout]
+    for name, nzb in members:
+        params += [name, base64.standard_b64encode(nzb.encode()).decode()]
+    body = _json.dumps({'method': 'appendfleet', 'params': params}).encode()
+    request = _req.Request('http://127.0.0.1:%d/jsonrpc' % daemon.rpc_port, body, {'Content-Type': 'application/json'})
+    with _req.urlopen(request, timeout=http_timeout or timeout + 30) as reply:
+        return _json.loads(reply.read().decode())['result']
+
+
+def _fleet_ids(prefix, n=40):
+    return ['%s-%d@x' % (prefix, i) for i in range(n)]
+
+
+def scenario_fleetdeadfirst(daemon, t):
+    """appendfleet: the client sends a dead copy first, then a half one, then a
+    whole one. The whole one is queued; the others wait in history ranked
+    (half before dead, the dead one marked DupeAlive=0); the dead copy never
+    downloads an article."""
+    daemon.fake_nntp.alive = set(_fleet_ids('fw')) | set(_fleet_ids('fh')[:20])
+    api = daemon.wait_ready()
+    reply = _fleet(daemon, [('Show.S01E01.dead', _fake_nzb_ids(_fleet_ids('fd'), 400_000).decode()),
+                            ('Show.S01E01.half', _fake_nzb_ids(_fleet_ids('fh'), 400_000).decode()),
+                            ('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('fw'), 400_000).decode())])
+    order = [(m['Name'], m['Status'], m['Alive']) for m in reply['Members']]
+    hw = daemon.wait_history(api, 'Show.S01E01.whole', timeout=120)
+    deadline = time.time() + 30
+    while time.time() < deadline and not hw['Status'].startswith(('SUCCESS', 'FAILURE')):
+        time.sleep(0.5)
+        hw = daemon.wait_history(api, 'Show.S01E01.whole', timeout=60)
+    dead = next((h for h in api.history() if h['NZBName'] == 'Show.S01E01.dead'), {})
+    tried = int(dead.get('SuccessArticles', 0)) + int(dead.get('FailedArticles', 0))
+    ok = ([o[0] for o in order] == ['Show.S01E01.whole', 'Show.S01E01.half', 'Show.S01E01.dead'] and
+          order[0][1] == 'QUEUED' and order[2][1] == 'DEAD' and reply['Chosen'] == reply['Members'][0]['NZBID'] and
+          hw['Status'].startswith('SUCCESS') and tried == 0)
+    return ('fleetdeadfirst', ok, 'order=%s whole=%s dead_tried=%d complete=%s' % (order, hw['Status'], tried, reply['Complete']))
+
+
+def scenario_fleettwins(daemon, t):
+    """appendfleet: two members are the same posting: it is checked once, added
+    once; the copy is reported SAME_POSTING with the id of the one added."""
+    daemon.fake_nntp.alive = set(_fleet_ids('tw')) | set(_fleet_ids('to'))
+    daemon.wait_ready()
+    reply = _fleet(daemon, [('Show.S01E01.a', _fake_nzb_ids(_fleet_ids('tw'), 400_000).decode()),
+                            ('Show.S01E01.b', _fake_nzb_ids(_fleet_ids('tw'), 400_000).decode()),
+                            ('Show.S01E01.c', _fake_nzb_ids(_fleet_ids('to'), 410_000).decode())])
+    byname = {m['Name']: m for m in reply['Members']}
+    ok = (byname['Show.S01E01.b']['Status'] == 'SAME_POSTING' and byname['Show.S01E01.b']['NZBID'] == 0 and
+          byname['Show.S01E01.b']['SameAs'] == byname['Show.S01E01.a']['NZBID'] and
+          byname['Show.S01E01.a']['NZBID'] > 0 and reply['Chosen'] > 0)
+    return ('fleettwins', ok, 'members=%s' % [(m['Name'], m['Status'], m['NZBID'], m['SameAs']) for m in reply['Members']])
+
+
+def scenario_fleettimeout(daemon, t):
+    """appendfleet: the news server answers slowly (2 s a request) and the fleet
+    allows 6 s: nzbget queues the best it knows when the time is up and says the
+    check was not complete."""
+    daemon.fake_nntp.alive = set(_fleet_ids('ts')) | set(_fleet_ids('tu'))
+    daemon.fake_nntp.delays.update({'ts-': 2.0, 'tu-': 2.0})
+    daemon.wait_ready()
+    start = time.time()
+    reply = _fleet(daemon, [('Show.S01E01.s', _fake_nzb_ids(_fleet_ids('ts'), 400_000).decode()),
+                            ('Show.S01E01.u', _fake_nzb_ids(_fleet_ids('tu'), 410_000).decode())], timeout=6)
+    took = time.time() - start
+    ok = reply['Chosen'] > 0 and not reply['Complete'] and took < 20
+    return ('fleettimeout', ok, 'chosen=%s complete=%s took=%.0fs' % (reply['Chosen'], reply['Complete'], took))
+
+
+def scenario_fleetone(daemon, t):
+    """appendfleet with a single whole member: it is queued and downloads."""
+    daemon.fake_nntp.alive = set(_fleet_ids('one'))
+    api = daemon.wait_ready()
+    reply = _fleet(daemon, [('Show.S01E01.one', _fake_nzb_ids(_fleet_ids('one'), 400_000).decode())])
+    h = daemon.wait_history(api, 'Show.S01E01.one', timeout=120)
+    ok = reply['Chosen'] > 0 and reply['Members'][0]['Status'] == 'QUEUED' and h['Status'].startswith('SUCCESS')
+    return ('fleetone', ok, 'reply=%s status=%s' % (reply, h['Status']))
+
+
+def scenario_fleetalldead(daemon, t):
+    """appendfleet: every member is dead: nothing is queued, the reply says ALL_DEAD."""
+    daemon.fake_nntp.alive = set()
+    api = daemon.wait_ready()
+    reply = _fleet(daemon, [('Show.S01E01.d1', _fake_nzb_ids(_fleet_ids('d1'), 400_000).decode()),
+                            ('Show.S01E01.d2', _fake_nzb_ids(_fleet_ids('d2'), 410_000).decode())])
+    time.sleep(2)
+    queued = [g['NZBName'] for g in api.listgroups()]
+    ok = reply['Chosen'] == 0 and reply['Reason'] == 'ALL_DEAD' and not queued and \
+        all(m['Status'] == 'DEAD' for m in reply['Members'])
+    return ('fleetalldead', ok, 'reply=%s queued=%s' % (reply, queued))
+
+
+def scenario_fleetshutdown(daemon, t):
+    """appendfleet: nzbget shuts down while it checks a fleet (slow server): the
+    call ends, nothing is half-added, and nzbget starts again cleanly."""
+    import threading
+    daemon.fake_nntp.alive = set(_fleet_ids('sd'))
+    daemon.fake_nntp.delays.update({'sd-': 2.0})
+    api = daemon.wait_ready()
+    box = {}
+
+    def send():
+        try:
+            box['reply'] = _fleet(daemon, [('Show.S01E01.sd', _fake_nzb_ids(_fleet_ids('sd'), 400_000).decode())],
+                                  timeout=60, http_timeout=90)
+        except Exception as e:
+            box['error'] = type(e).__name__
+    thread = threading.Thread(target=send)
+    thread.start()
+    time.sleep(3)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    thread.join(timeout=30)
+    daemon.fake_nntp.delays.clear()
+    daemon.start()
+    api = daemon.wait_ready()
+    queued = [g['NZBName'] for g in api.listgroups()]
+    history = [h['NZBName'] for h in api.history()]
+    ok = not thread.is_alive() and not queued and not history
+    return ('fleetshutdown', ok, 'reply=%s queued=%s history=%s' % (box, queued, history))
+
+
 def scenario_dupesearchwarnings(daemon, t):
     """Settings that hobble DupeSearch are warned about at start: HealthCheck
     isn't dupe (its duplicates wait for a failure), and a server with fewer than
@@ -5925,6 +6052,12 @@ SCENARIOS = {
     'dupesearchfailedrestart': scenario_dupesearchfailedrestart,
     'dupesearchtwopicks': scenario_dupesearchtwopicks,
     'dupesearchindexerdown': scenario_dupesearchindexerdown,
+    'fleetdeadfirst': scenario_fleetdeadfirst,
+    'fleettwins': scenario_fleettwins,
+    'fleettimeout': scenario_fleettimeout,
+    'fleetone': scenario_fleetone,
+    'fleetalldead': scenario_fleetalldead,
+    'fleetshutdown': scenario_fleetshutdown,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6161,6 +6294,12 @@ SCENARIO_OPTIONS = {
     'dupesearchambiguous': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchtwopicks': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchindexerdown': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
+    'fleetdeadfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleettwins': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleettimeout': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetalldead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetshutdown': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6260,7 +6399,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
