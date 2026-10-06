@@ -44,6 +44,23 @@ DupeSearch* g_DupeSearch = nullptr;
 
 namespace
 {
+// a download by id, in the queue or else in history
+NzbInfo* FindNzb(DownloadQueue* downloadQueue, int nzbId)
+{
+	if (NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId))
+	{
+		return nzbInfo;
+	}
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
+		{
+			return historyInfo->GetNzbInfo();
+		}
+	}
+	return nullptr;
+}
+
 
 std::string LowerKey(const std::string& key)
 {
@@ -959,26 +976,12 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 std::string DupeSearch::PickGone(const Job& job)
 {
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-	NzbInfo* pick = downloadQueue->GetQueue()->Find(job.nzbId);
-	if (pick && (pick->GetDeleting() || pick->GetDeleteStatus() == NzbInfo::dsManual))
+	// in history after a download or a failure it still wants its duplicates;
+	// deleted by the user it doesn't: the first duplicate would download
+	NzbInfo* pick = FindNzb(downloadQueue, job.nzbId);
+	if (!pick || pick->GetDeleting() || pick->GetDeleteStatus() == NzbInfo::dsManual)
 	{
 		return "the pick was deleted";
-	}
-	if (!pick)
-	{
-		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
-		{
-			if (historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == job.nzbId)
-			{
-				pick = historyInfo->GetNzbInfo();
-			}
-		}
-		// in history after a download or a failure it still wants its duplicates;
-		// deleted by the user it doesn't: the first duplicate would download
-		if (!pick || pick->GetDeleteStatus() == NzbInfo::dsManual)
-		{
-			return "the pick was deleted";
-		}
 	}
 	// under another key the duplicates would match nothing and download beside it
 	if (LowerKey(EffectiveKey(pick)) != LowerKey(job.dupeKey))
@@ -1122,14 +1125,7 @@ void DupeSearch::Note(int nzbId, Message::EKind kind, const char* format, ...)
 	// into the pick's own log as well (with InfoTarget=log and no log file,
 	// the global log keeps no info lines); the global log alone once it's gone
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
-	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
-	{
-		if (!nzbInfo && historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
-		{
-			nzbInfo = historyInfo->GetNzbInfo();
-		}
-	}
+	NzbInfo* nzbInfo = FindNzb(downloadQueue, nzbId);
 	if (nzbInfo)
 	{
 		nzbInfo->AddMessage(kind, text);
@@ -1251,14 +1247,7 @@ void DupeSearch::ResumePending()
 		Job job;
 		{
 			GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-			NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
-			for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
-			{
-				if (!nzbInfo && historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
-				{
-					nzbInfo = historyInfo->GetNzbInfo();
-				}
-			}
+			NzbInfo* nzbInfo = FindNzb(downloadQueue, nzbId);
 			if (nzbInfo && fetched)
 			{
 				Collect(downloadQueue, nzbInfo, job);
