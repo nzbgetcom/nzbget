@@ -5331,6 +5331,33 @@ def scenario_slowprobe(daemon, t):
     return ('slowprobe', ok, 'status=%s failed_articles=%d failover_logs=%d' % (h['Status'], failed, swapped))
 
 
+def scenario_runparcovers(daemon, t):
+    """A pick lacks one stretch of 60 articles in a row (a missing volume, 3% of
+    its data) while its par2 files hold 10%: par2 can repair it. The rule that
+    fails over after 40 failures in a row (B49) must not swap it for the live
+    backup waiting in history: the download completes. (The par2 files are
+    recognized by name; ParCheck=manual leaves them unread.)"""
+    seg, n = 4_000, 2_000
+    size = seg * n
+    data = _payload(size, 6161)
+    pp = _place_copy(t, 'rpA', data, 'show.mkv')
+    par_index = _place_copy(t, 'rpA', _payload(4_000, 6162), 'show.par2')
+    par_vol = _place_copy(t, 'rpA', _payload(seg * 200, 6163), 'show.vol00+200.par2')
+    primary = build_multi_nzb([(pp, 'show.mkv', size, seg, set(range(1000, 1060))),
+                               (par_index, 'show.par2', 4_000, seg, set()),
+                               (par_vol, 'show.vol00+200.par2', seg * 200, seg, set())])
+    backup = build_nzb(_place_copy(t, 'rpB', data, 'show.mkv'), 'show.mkv', size, seg, set())
+    api = daemon.wait_ready()
+    pick_id = daemon.append(api, 'PickRp', primary, True, 'rp-key', 100)
+    _ds_append(api, 'BackRp', backup, 'rp-key', 90, params=[{'Name': 'DupeAlive', 'Value': '100'}])
+    daemon.wait_history(api, 'BackRp', timeout=30)
+    api.editqueue('GroupResume', 0, '', [pick_id])
+    h = daemon.wait_history(api, 'PickRp', timeout=180)
+    swapped = _grep_log(t, 'Failing over PickRp')
+    ok = swapped == 0 and int(h.get('FailedArticles', 0)) == 60
+    return ('runparcovers', ok, 'status=%s failed_articles=%s failover_logs=%d' % (h['Status'], h.get('FailedArticles'), swapped))
+
+
 def _ondisk_first(daemon, t, tag):
     """A release downloaded once (SUCCESS, its file on disk), then another posting
     of it under the same key is sent, as when a client asks again."""
@@ -5817,6 +5844,7 @@ SCENARIOS = {
     'keepreturned': scenario_keepreturned,
     'restartfailover': scenario_restartfailover,
     'slowprobe': scenario_slowprobe,
+    'runparcovers': scenario_runparcovers,
     'ondiskskip': scenario_ondiskskip,
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
@@ -6048,6 +6076,7 @@ SCENARIO_OPTIONS = {
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'restartfailover': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'slowprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=4'],
+    'runparcovers': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ParCheck=manual'],
     'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],

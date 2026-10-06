@@ -838,7 +838,8 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			articleDownloader->GetStatus() == ArticleDownloader::adFatalError)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFailed);
-			if (articleInfo->GetPartNumber() != 1)
+			// par2 volumes aside: a lost one says nothing about the data
+			if (articleInfo->GetPartNumber() != 1 && !fileInfo->GetParFile())
 			{
 				nzbInfo->SetDupeFailedRun(nzbInfo->GetDupeFailedRun() + 1);
 			}
@@ -1657,7 +1658,11 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 	// dead: fewer than 1 in 100 tried articles of its own arrived (a stray one may),
 	// or DeadRunFailures in a row failed (B49) - every server was asked for each
 	bool deadRate = failed >= DeadDownloadFailures + nzbInfo->GetFileCount() && own * 100 < failed;
-	bool deadRun = nzbInfo->GetDupeFailedRun() >= DeadRunFailures;
+	// a run that par2 can still repair (one lost volume of a release that has par2
+	// for it) is no reason to fail over; judged without the margin that makes borrowing
+	// start early (failures in a run make the projection run high)
+	bool deadRun = nzbInfo->GetDupeFailedRun() >= DeadRunFailures &&
+		DupeArticleFallback::ParCannotCover(nzbInfo, false);
 	bool dead = deadRate || deadRun;
 
 	// doomed (B48): what arrived so far projects a final health below critical - the

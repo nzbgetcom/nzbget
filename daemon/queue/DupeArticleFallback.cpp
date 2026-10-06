@@ -83,7 +83,7 @@ bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 	return false;
 }
 
-bool DupeArticleFallback::ParCannotCover(NzbInfo* nzbInfo)
+bool DupeArticleFallback::ParCannotCover(NzbInfo* nzbInfo, bool withMargin)
 {
 	// Damaged data bytes beyond every recovery byte the collection has (minus
 	// its own failed parity) can never be repaired by its par2 set; waiting
@@ -110,7 +110,7 @@ bool DupeArticleFallback::ParCannotCover(NzbInfo* nzbInfo)
 		return false;
 	}
 	double projectedFailed = (double)dataFailed * dataTotal / dataTried;
-	return projectedFailed + (double)dataTotal * ParEdgeMargin / 1000 > parAvailable;
+	return projectedFailed + (withMargin ? (double)dataTotal * ParEdgeMargin / 1000 : 0) > parAvailable;
 }
 
 bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo)

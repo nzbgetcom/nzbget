@@ -87,10 +87,11 @@ public:
 	/* True when the collection's damaged data already exceeds all of its par2
 	 * recovery data, or is projected to (B59): once ProjectionSample articles
 	 * were tried, the failed share of the data tried so far, applied to all of
-	 * its data, plus ParEdgeMargin, exceeds the par2 recovery data. Par-check
+	 * its data, plus ParEdgeMargin (left out when withMargin is false: the
+	 * 40-in-a-row rule), exceeds the par2 recovery data. Par-check
 	 * can't be counted on then; download-time article fallback stops deferring.
 	 * Must be called within DownloadQueue-lock. */
-	static bool ParCannotCover(NzbInfo* nzbInfo);
+	static bool ParCannotCover(NzbInfo* nzbInfo, bool withMargin = true);
 	// articles tried before the damage of a download is projected
 	static constexpr int ProjectionSample = 200;
 	// damage within this share of the data (per mille) of all that par2 can repair
