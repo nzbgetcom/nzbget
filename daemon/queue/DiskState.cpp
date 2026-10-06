@@ -131,7 +131,7 @@ private:
 	int m_formatVersion;
 	int m_readVersion;
 	bool m_transactional;
-	int m_fileVersion;
+	int m_fileVersion = 0;
 	StateDiskFile m_file;
 
 	int ParseFormatVersion(const char* formatSignature);
