@@ -4434,6 +4434,24 @@ def scenario_dupesearchfailedrestart(daemon, t):
             % (before, searched, len(donors)))
 
 
+def scenario_dupesearchtwopicks(daemon, t):
+    """Two picks of one release arrive at once under the same key, with equal
+    scores (a client that sent its request twice): the second is filed in
+    history as a backup, only one downloads, and the key is searched once."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    api = _ds_donor_env(daemon, t, {}, set(ids('two')))
+    _ds_append(api, 'Show S01E01 1080p WEB H264-GRP', _fake_nzb_ids(ids('two'), 400_000).decode(), DS_KEY, DS_PICK)
+    deadline = time.time() + 30
+    while time.time() < deadline and _grep_log(t, 'DupeSearch: searching duplicates of') == 0:
+        time.sleep(0.2)
+    time.sleep(3)
+    queued = [g['NZBName'] for g in api.listgroups() if g.get('DupeKey') == DS_KEY]
+    second = [h['Status'] for h in api.history() if h['NZBName'] == 'Show S01E01 1080p WEB H264-GRP']
+    searched = _grep_log(t, 'DupeSearch: searching duplicates of')
+    ok = queued == [DS_TITLE] and second == ['DELETED/DUPE'] and searched == 1
+    return ('dupesearchtwopicks', ok, 'queued=%s second=%s searches=%d' % (queued, second, searched))
+
+
 def scenario_dupesearchwarnings(daemon, t):
     """Settings that hobble DupeSearch are warned about at start: HealthCheck
     isn't dupe (its duplicates wait for a failure), and a server with fewer than
@@ -5223,6 +5241,50 @@ def scenario_keepreturned(daemon, t):
     return ('keepreturned', ok, 'backup=%s late=%s moved_logs=%d' % (a_status, c_status, moved))
 
 
+def scenario_restartfailover(daemon, t):
+    """A dead pick fails over to a backup, and nzbget restarts while the backup
+    downloads (slowly here). After the restart the backup resumes and succeeds;
+    the pick stays failed and no other backup is fetched."""
+    size, seg = 3_000_000, 100_000
+    data = _payload(size, 7474)
+    pick = build_nzb(_place_copy(t, 'rfP', data), 'Pick.bin', size, seg, set(range(1, 31)))
+    backup = build_nzb(_place_copy(t, 'rfA', data), 'BackA.bin', size, seg, set())
+    other = build_nzb(_place_copy(t, 'rfB', data), 'BackB.bin', size, seg, set())
+    api = daemon.wait_ready()
+    pick_id = daemon.append(api, 'Pick', pick, True, 'rf-key', 100)
+    daemon.append(api, 'BackA', backup, False, 'rf-key', 90)
+    daemon.append(api, 'BackB', other, False, 'rf-key', 80)
+    deadline = time.time() + 30
+    while time.time() < deadline and len([h for h in api.history() if h['NZBName'].startswith('Back')]) < 2:
+        time.sleep(0.2)
+    api.editqueue('GroupResume', 0, '', [pick_id])
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        g = _ds_group(api, 'BackA')
+        if g and int(g.get('SuccessArticles', 0)) >= 3:
+            break
+        time.sleep(0.2)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    deadline = time.time() + 120
+    hist = {}
+    while time.time() < deadline:
+        hist = {x['NZBName']: x['Status'] for x in api.history()}
+        if hist.get('BackA', '').startswith(('SUCCESS', 'FAILURE')):
+            break
+        time.sleep(0.5)
+    integ = _verify_output(t, data)
+    ok = (hist.get('BackA', '').startswith('SUCCESS') and hist.get('Pick', '').startswith('FAILURE') and
+          hist.get('BackB') == 'DELETED/DUPE' and integ)
+    return ('restartfailover', ok, 'pick=%s backupA=%s backupB=%s integrity=%s'
+            % (hist.get('Pick'), hist.get('BackA'), hist.get('BackB'), integ))
+
+
 def _ondisk_first(daemon, t, tag):
     """A release downloaded once (SUCCESS, its file on disk), then another posting
     of it under the same key is sent, as when a client asks again."""
@@ -5706,6 +5768,7 @@ SCENARIOS = {
     'projectedhalfnobackup': scenario_projectedhalfnobackup,
     'projectedbelownobackup': scenario_projectedbelownobackup,
     'keepreturned': scenario_keepreturned,
+    'restartfailover': scenario_restartfailover,
     'ondiskskip': scenario_ondiskskip,
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
@@ -5736,6 +5799,7 @@ SCENARIOS = {
     'dupesearchrerank': scenario_dupesearchrerank,
     'dupesearchfailedfirst': scenario_dupesearchfailedfirst,
     'dupesearchfailedrestart': scenario_dupesearchfailedrestart,
+    'dupesearchtwopicks': scenario_dupesearchtwopicks,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -5933,6 +5997,7 @@ SCENARIO_OPTIONS = {
     'projectedhalfnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedbelownobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'restartfailover': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
@@ -5967,6 +6032,7 @@ SCENARIO_OPTIONS = {
     'dupesearchwarnings': ['DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'HealthCheck=none', 'Server1.Connections=2'],
     'dupesearchwarnnocheck': ['DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeCheck=no'],
     'dupesearchambiguous': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchtwopicks': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6041,7 +6107,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'ondiskstop': [(b'odB/', 1.0)],
+SCENARIO_DELAY_PROXY = {'restartfailover': [(b'rfA/', 0.4)],
+                        'ondiskstop': [(b'odB/', 1.0)],
                         'streamstarved': [(b'busy/', 2.0)],
                         'keepreturned': [(b'krA/', 0.4)],
                         'streamtimeout': [(b'slowB/', 8.0)],
@@ -6058,11 +6125,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
