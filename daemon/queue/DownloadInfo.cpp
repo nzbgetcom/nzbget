@@ -550,6 +550,13 @@ bool NzbInfo::IsDupeSuccess()
 		m_urlStatus == NzbInfo::lsScanFailed ||
 		(m_parStatus == NzbInfo::psSkipped &&
 		 m_unpackStatus == NzbInfo::usSkipped &&
+		 CalcHealth() < CalcCriticalHealth(true)) ||
+		// with HealthCheck=dupe as the status reads it (FAILURE/HEALTH): a download
+		// with neither par2 nor archives that lost articles failed too, and its
+		// backups are tried (B79: before, it counted as a success)
+		(g_Options->GetHealthCheck() == Options::hcDupe &&
+		 (m_parStatus == NzbInfo::psNone || m_parStatus == NzbInfo::psSkipped) &&
+		 (m_unpackStatus == NzbInfo::usNone || m_unpackStatus == NzbInfo::usSkipped) &&
 		 CalcHealth() < CalcCriticalHealth(true)));
 	return !failure;
 }
