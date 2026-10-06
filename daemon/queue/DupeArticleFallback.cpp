@@ -846,7 +846,10 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 {
 	int donorId = donorNzbInfo->GetId();
 
-	if (m_badDonors.find(donorId) != m_badDonors.end())
+	// a duplicate whose nzb-file couldn't be read is asked again after a while: the
+	// failure may have been passing (review item 9)
+	auto bad = m_badDonors.find(donorId);
+	if (bad != m_badDonors.end() && Util::CurrentTime() - bad->second < BadDonorRetrySec)
 	{
 		return nullptr;
 	}
@@ -862,7 +865,7 @@ NzbInfo* DupeArticleFallback::GetParsedDonor(NzbInfo* donorNzbInfo)
 	std::unique_ptr<NzbInfo> parsedNzb = ParseDonorNzb(donorNzbInfo->GetQueuedFilename());
 	if (!parsedNzb)
 	{
-		m_badDonors.insert(donorId);
+		m_badDonors[donorId] = Util::CurrentTime();
 		return nullptr;
 	}
 

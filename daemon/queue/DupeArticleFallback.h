@@ -241,7 +241,8 @@ private:
 	static constexpr int MinStepFingerprintArticles = 8;
 
 	std::map<int, std::unique_ptr<NzbInfo>> m_parsedDonors;
-	std::set<int> m_badDonors;
+	std::map<int, time_t> m_badDonors;	// donor id -> when its nzb-file couldn't be read
+	static constexpr int BadDonorRetrySec = 600;
 	static bool StructureMatches(FileInfo* targetFile, FileInfo* donorFile);
 	static void AppendDonorCandidate(std::vector<CString>& candidates,
 		std::vector<int>& contributors, int donorNzbId,
