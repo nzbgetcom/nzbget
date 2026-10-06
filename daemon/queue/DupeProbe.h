@@ -125,8 +125,9 @@ public:
 	/* shutdown: cancels running probes and refuses new ones; WaitAll() returns
 	 * when they ended. Reset() allows probes again (a reload's new coordinator) */
 	static void StopAll();
-	/* a dead-pick probe of download <nzbId> is running (its verdict comes first) */
-	static bool Probing(int nzbId);
+	/* seconds a dead-pick probe of download <nzbId> has been running (its verdict
+	 * comes first), or -1 when none runs */
+	static int ProbingFor(int nzbId);
 	static void WaitAll();
 	static void Reset();
 
@@ -145,6 +146,7 @@ private:
 	};
 
 	int m_nzbId;
+	time_t m_started = 0;
 	int m_recoveredAtStart = 0;
 	std::vector<Sample> m_samples;
 	// recheck mode: every sample is asked of every server until found somewhere

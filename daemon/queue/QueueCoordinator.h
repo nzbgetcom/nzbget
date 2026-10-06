@@ -140,6 +140,8 @@ private:
 	// articles tried before a download projected below critical (not far below) is
 	// parked without a backup (B74)
 	static constexpr int ParkBelowCriticalSample = 1000;
+	// seconds a dead-pick probe runs before a download nothing arrives of stops waiting for it (B83)
+	static constexpr int SlowProbeSec = 10;
 	// failed articles in a row (first articles of files aside) after which a download is dead (B49)
 	static constexpr int DeadRunFailures = 40;
 	// a download without a better duplicate is parked once this share of its

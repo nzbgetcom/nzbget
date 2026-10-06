@@ -124,11 +124,17 @@ void DupeProbe::Reset()
 	g_probesStopping = false;
 }
 
-bool DupeProbe::Probing(int nzbId)
+int DupeProbe::ProbingFor(int nzbId)
 {
 	Guard guard(g_probeMutex);
-	return std::any_of(g_probes.begin(), g_probes.end(),
-		[nzbId](DupeProbe* probe) { return probe->m_nzbId == nzbId && !probe->m_countAll; });
+	for (DupeProbe* probe : g_probes)
+	{
+		if (probe->m_nzbId == nzbId && !probe->m_countAll)
+		{
+			return (int)(Util::CurrentTime() - probe->m_started);
+		}
+	}
+	return -1;
 }
 
 bool DupeProbe::Register()
@@ -138,6 +144,7 @@ bool DupeProbe::Register()
 	{
 		return false;
 	}
+	m_started = Util::CurrentTime();
 	g_probes.insert(this);
 	g_probeCount++;
 	return true;

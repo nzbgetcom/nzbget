@@ -4829,12 +4829,14 @@ def scenario_deadpickservers(daemon, t):
 
 def scenario_deadpickfewservers(daemon, t):
     """Six news servers, two of them unreachable: only four answer
-    definitively, below the minimum of five, so the probe gives no verdict and
-    the regular health check handles the dead posting later."""
+    definitively, below the minimum of five, so the probe gives no verdict.
+    The dead posting fails over by the other rules: the health check, or
+    (while the slow probe still waits on the unreachable servers) 200 failed
+    articles with none of its own arrived; the probe never calls it dead."""
     hp, hb, integ = _deadpick_servers(daemon, t, 'df')
     probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
     no_verdict = _grep_log(t, '4 of 6 servers answered definitively)')
-    return ('deadpickfewservers', probed == 0 and no_verdict == 1 and integ and
+    return ('deadpickfewservers', probed == 0 and integ and
             hb['Status'].startswith('SUCCESS'),
             'status=%s backup_status=%s probe_logs=%d no_verdict_logs=%d integrity=%s'
             % (hp['Status'], hb['Status'], probed, no_verdict, integ))
@@ -5300,6 +5302,33 @@ def scenario_restartfailover(daemon, t):
           hist.get('BackB') == 'DELETED/DUPE' and integ)
     return ('restartfailover', ok, 'pick=%s backupA=%s backupB=%s integrity=%s'
             % (hist.get('Pick'), hist.get('BackA'), hist.get('BackB'), integ))
+
+
+def scenario_slowprobe(daemon, t):
+    """Physical S02E01 4948: a dead backup ran to 1,120 failed articles in 34 s,
+    none of its own arriving, while its dead-pick probe waited (here every STAT
+    takes 5 s, so the probe needs most of a minute; articles fail at about 20 a
+    second, as on a real server). The rules that fail over a dead download stood
+    aside while the probe ran. Now, once the probe ran 10 s with 200 articles
+    failed and none arrived, the download fails over without it."""
+    seg, vol = 10_000, 3_000_000
+    n = vol // seg
+    primary = []
+    for i in range(20):
+        primary.append(('spA/d%d.bin' % i, 'Dead%d.bin' % i, vol, seg, set(range(1, n + 1))))
+        t.write_file(os.path.join('data', primary[-1][0]), _payload(vol, 9800 + i))
+    data = _payload(2_900_000, 9821)
+    backup = build_nzb(_place_copy(t, 'spB', data), 'Backup.bin', 2_900_000, 100_000, set())
+    api = daemon.wait_ready()
+    pick_id = daemon.append(api, 'DeadSp', build_multi_nzb(primary), True, 'sp-key', 100)
+    daemon.append(api, 'BackSp', backup, False, 'sp-key', 90)
+    daemon.wait_history(api, 'BackSp', timeout=30)
+    api.editqueue('GroupResume', 0, '', [pick_id])
+    h = daemon.wait_history(api, 'DeadSp', timeout=240)
+    failed = int(h.get('FailedArticles', 0))
+    swapped = _grep_log(t, 'Failing over DeadSp')
+    ok = swapped == 1 and failed < 500
+    return ('slowprobe', ok, 'status=%s failed_articles=%d failover_logs=%d' % (h['Status'], failed, swapped))
 
 
 def _ondisk_first(daemon, t, tag):
@@ -5787,6 +5816,7 @@ SCENARIOS = {
     'projectedbelownobackup': scenario_projectedbelownobackup,
     'keepreturned': scenario_keepreturned,
     'restartfailover': scenario_restartfailover,
+    'slowprobe': scenario_slowprobe,
     'ondiskskip': scenario_ondiskskip,
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
@@ -6017,6 +6047,7 @@ SCENARIO_OPTIONS = {
     'projectedbelownobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'restartfailover': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'slowprobe': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=4'],
     'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
@@ -6127,7 +6158,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'restartfailover': [(b'rfA/', 0.4)],
+SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+                        'restartfailover': [(b'rfA/', 0.4)],
                         'ondiskstop': [(b'odB/', 1.0)],
                         'streamstarved': [(b'busy/', 2.0)],
                         'keepreturned': [(b'krA/', 0.4)],

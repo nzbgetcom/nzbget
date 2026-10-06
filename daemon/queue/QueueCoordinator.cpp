@@ -1670,9 +1670,13 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 	bool doomed = !dead && tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 &&
 		projected < critical + DupeArticleFallback::ParEdgeMargin;
 
-	if ((!dead && !doomed) ||
-		// the probe, asking every server, knows better: its verdict comes first
-		DupeProbe::Probing(nzbInfo->GetId()))
+	// the probe, asking every server, knows better: its verdict comes first - unless
+	// it is slow (SlowProbeSec, waiting for connections the download holds) while
+	// ProjectedFailureSample articles failed and none of its own arrived (Physical
+	// S02E01 4948: 1,120 failed in the 34 s its probe took)
+	int probing = DupeProbe::ProbingFor(nzbInfo->GetId());
+	bool hopeless = own == 0 && failed >= ProjectedFailureSample && probing >= SlowProbeSec;
+	if ((!dead && !doomed) || (probing >= 0 && !hopeless))
 	{
 		return;
 	}
