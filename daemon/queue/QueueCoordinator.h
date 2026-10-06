@@ -60,6 +60,8 @@ public:
 	bool SetQueueEntryName(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* name);
 	bool MergeQueueEntries(DownloadQueue* downloadQueue, NzbInfo* destNzbInfo, NzbInfo* srcNzbInfo);
 	bool SplitQueueEntries(DownloadQueue* downloadQueue, RawFileList* fileList, const char* name, NzbInfo** newNzbInfo);
+	// release info, checksums, images, links: no stream repair, no proof of a download
+	static bool SideFile(const char* filename);
 
 protected:
 	void LogDebugInfo() override;
@@ -124,7 +126,6 @@ private:
 	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	static int FilesTried(NzbInfo* nzbInfo);
-	static bool SideFile(const char* filename);
 	void RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery

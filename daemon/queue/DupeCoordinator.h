@@ -54,6 +54,11 @@ public:
 	 * DupeMode score; with HealthCheck=dupe a forced one too - it never fails
 	 * outright while a viable duplicate waits (B46) */
 	static bool FailsOver(NzbInfo* nzbInfo);
+	/* With HealthCheck=dupe: a successful item of the same (non-empty) duplicate key
+	 * whose files are still on disk, or nullptr (B70, B77). Within DownloadQueue-lock. */
+	static NzbInfo* DownloadedOnDisk(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	/* the item's final (or destination) directory holds a file other than a side file */
+	static bool FilesOnDisk(NzbInfo* nzbInfo);
 	/* why no duplicate in history can take the download's place, for the log */
 	std::string NoBackupReason(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 

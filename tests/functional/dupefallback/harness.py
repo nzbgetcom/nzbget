@@ -5163,6 +5163,44 @@ def scenario_keepreturned(daemon, t):
     return ('keepreturned', ok, 'backup=%s late=%s moved_logs=%d' % (a_status, c_status, moved))
 
 
+def _ondisk_first(daemon, t, tag):
+    """A release downloaded once (SUCCESS, its file on disk), then another posting
+    of it under the same key is sent, as when a client asks again."""
+    size, seg = 2_000_000, 100_000
+    data = _payload(size, 7070)
+    first = build_nzb(_place_copy(t, tag + '1', data, 'show.mkv'), 'show.mkv', size, seg, set())
+    again = build_nzb(_place_copy(t, tag + '2', data, 'show.mkv'), 'show.mkv', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'First', first, False, tag + '-key', 100)
+    h = daemon.wait_history(api, 'First')
+    return api, h, again
+
+
+def scenario_ondiskskip(daemon, t):
+    """B70 (Knife Edge S02E01): the release is downloaded and on disk; another
+    posting of it, scored higher, arrives under its key: it isn't downloaded,
+    but kept in history as a backup."""
+    api, h, again = _ondisk_first(daemon, t, 'os')
+    daemon.append(api, 'Again', again, False, 'os-key', 200)
+    h2 = daemon.wait_history(api, 'Again', timeout=60)
+    skipped = _grep_log(t, 'is downloaded and on disk')
+    ok = h['Status'].startswith('SUCCESS') and h2['Status'] == 'DELETED/DUPE' and skipped == 1
+    return ('ondiskskip', ok, 'first=%s again=%s skip_logs=%d' % (h['Status'], h2['Status'], skipped))
+
+
+def scenario_ondiskgone(daemon, t):
+    """B70: the release succeeded, but its files were deleted from disk since:
+    the success no longer counts, and the posting sent again downloads."""
+    api, h, again = _ondisk_first(daemon, t, 'og')
+    for rel in t.find_files('main', 'dst'):
+        os.remove(t.path(rel))
+    daemon.append(api, 'Again', again, False, 'og-key', 200)
+    h2 = daemon.wait_history(api, 'Again', timeout=120)
+    ok = h['Status'].startswith('SUCCESS') and h2['Status'].startswith('SUCCESS') and \
+        _grep_log(t, 'is downloaded and on disk') == 0
+    return ('ondiskgone', ok, 'first=%s again=%s' % (h['Status'], h2['Status']))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -5555,6 +5593,8 @@ SCENARIOS = {
     'projectedhalfnobackup': scenario_projectedhalfnobackup,
     'projectedbelownobackup': scenario_projectedbelownobackup,
     'keepreturned': scenario_keepreturned,
+    'ondiskskip': scenario_ondiskskip,
+    'ondiskgone': scenario_ondiskgone,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -5777,6 +5817,8 @@ SCENARIO_OPTIONS = {
     'projectedhalfnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedbelownobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],

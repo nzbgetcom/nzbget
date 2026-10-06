@@ -30,6 +30,7 @@
 #include "DupeCoordinator.h"
 #include <set>
 #include "QueueScript.h"
+#include "QueueCoordinator.h"
 
 bool DupeCoordinator::SameNameOrKey(const char* name1, const char* dupeKey1,
 	const char* name2, const char* dupeKey2)
@@ -53,9 +54,68 @@ bool DupeCoordinator::SameNameOrKey(const char* name1, const char* dupeKey1,
 	the new item is added to queue;
   - if queue doesn't have duplicates - the new item is added to queue.
 */
+bool DupeCoordinator::FilesOnDisk(NzbInfo* nzbInfo)
+{
+	const char* dir = !Util::EmptyStr(nzbInfo->GetFinalDir()) ? nzbInfo->GetFinalDir() : nzbInfo->GetDestDir();
+	if (Util::EmptyStr(dir) || !FileSystem::DirectoryExists(dir))
+	{
+		return false;
+	}
+	DirBrowser browser(dir);
+	while (const char* filename = browser.Next())
+	{
+		BString<1024> path("%s%c%s", dir, PATH_SEPARATOR, filename);
+		if (!QueueCoordinator::SideFile(filename) && !FileSystem::DirectoryExists(path) &&
+			FileSystem::FileSize(path) > 0)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+NzbInfo* DupeCoordinator::DownloadedOnDisk(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
+{
+	if (g_Options->GetHealthCheck() != Options::hcDupe || Util::EmptyStr(nzbInfo->GetDupeKey()))
+	{
+		return nullptr;
+	}
+	for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+	{
+		if (historyInfo->GetKind() != HistoryInfo::hkNzb)
+		{
+			continue;
+		}
+		NzbInfo* item = historyInfo->GetNzbInfo();
+		// a success the user deleted (or marked bad) from disk no longer counts
+		if (item != nzbInfo && item->GetDeleteStatus() == NzbInfo::dsNone && item->IsDupeSuccess() &&
+			item->GetMarkStatus() != NzbInfo::ksBad &&
+			!strcasecmp(item->GetDupeKey(), nzbInfo->GetDupeKey()) && FilesOnDisk(item))
+		{
+			return item;
+		}
+	}
+	return nullptr;
+}
+
 void DupeCoordinator::NzbFound(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
 {
 	debug("Checking duplicates for %s", nzbInfo->GetName());
+
+	// the release is already downloaded and on disk: another posting of it isn't
+	// needed (B70: Knife Edge S02E01 - asked again after its success, a different
+	// posting of the same release, scored higher, downloaded a second copy). Kept
+	// in history as a backup, in case the download on disk is deleted or marked bad.
+	if (nzbInfo->GetKind() == NzbInfo::nkNzb && nzbInfo->GetDupeMode() != dmForce)
+	{
+		if (NzbInfo* downloaded = DownloadedOnDisk(downloadQueue, nzbInfo))
+		{
+			nzbInfo->PrintMessage(Message::mkInfo, "Not downloading %s: %s is downloaded and on disk",
+				nzbInfo->GetName(), downloaded->GetName());
+			nzbInfo->SetDeleteStatus(NzbInfo::dsDupe);
+			return;
+		}
+	}
 
 	// find duplicates in download queue with exactly same content
 	for (NzbInfo* queuedNzbInfo : downloadQueue->GetQueue())
@@ -400,6 +460,7 @@ void DupeCoordinator::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInf
 	{
 		ReturnBestDupe(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey());
 	}
+
 }
 
 std::string DupeCoordinator::NoBackupReason(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)
