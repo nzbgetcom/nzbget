@@ -85,9 +85,17 @@ public:
 	static bool ShouldDeferToPar(NzbInfo* nzbInfo);
 
 	/* True when the collection's damaged data already exceeds all of its par2
-	 * recovery data, so par-check can never repair it; download-time article
-	 * fallback then stops deferring. Must be called within DownloadQueue-lock. */
+	 * recovery data, or is projected to (B59): once ProjectionSample articles
+	 * were tried, the failed share of the data tried so far, applied to all of
+	 * its data, plus ParEdgeMargin, exceeds the par2 recovery data. Par-check
+	 * can't be counted on then; download-time article fallback stops deferring.
+	 * Must be called within DownloadQueue-lock. */
 	static bool ParCannotCover(NzbInfo* nzbInfo);
+	// articles tried before the damage of a download is projected
+	static constexpr int ProjectionSample = 200;
+	// damage within this share of the data (per mille) of all that par2 can repair
+	// is not left to par-check: the projection is rough and par2 needs whole blocks
+	static constexpr int ParEdgeMargin = 50;
 
 	/* Finds the file of the duplicate collection which corresponds to the target
 	 * data file: preferably by filename, otherwise by unambiguous structural identity

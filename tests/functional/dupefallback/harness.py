@@ -5084,6 +5084,40 @@ def scenario_projectedworsebackup(daemon, t):
     return ('projectedworsebackup', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
 
 
+def scenario_parprojection(daemon, t):
+    """B59 (Dark Matter S02E05 4180): borrowing waits for par-check while par2 may
+    cover the damage, but 15% of the data is missing (evenly) and the par2 files
+    hold 14%. Judged by the articles tried so far, par2 can't cover it: the wait
+    ends once 200 were tried, and the missing articles are borrowed from the
+    whole duplicate from then on, and it doesn't come back when the articles
+    fetched from the lead duplicate lift the projection again. Before, it ended
+    only when the failures outgrew the par2 data, near the end of the download,
+    and about 140 articles failed; now only those that failed before 200 were
+    tried (about 30) are left to post-processing. (The par2 files are
+    recognized by name; ParCheck=manual leaves them unread.)"""
+    seg, n = 4_000, 1_000
+    size = seg * n
+    data = _payload(size, 5959)
+    missing = {p for p in range(2, n + 1) if (p * 37) % 100 < 15}
+    pp = _place_copy(t, 'projA', data, 'show.mkv')
+    par_index = _place_copy(t, 'projA', _payload(4_000, 5960), 'show.par2')
+    par_vol = _place_copy(t, 'projA', _payload(seg * 140, 5961), 'show.vol00+140.par2')
+    primary = build_multi_nzb([(pp, 'show.mkv', size, seg, missing),
+                               (par_index, 'show.par2', 4_000, seg, set()),
+                               (par_vol, 'show.vol00+140.par2', seg * 140, seg, set())])
+    dp = _place_copy(t, 'projB', data, 'show.mkv')
+    donor = build_multi_nzb([(dp, 'show.mkv', size, seg, set())])
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonProj', donor, True, 'proj-key', 50)
+    daemon.append(api, 'Proj', primary, False, 'proj-key', 100)
+    h = daemon.wait_history(api, 'Proj', timeout=180)
+    lifted = _grep_log(t, 'or will, judged by the articles tried so far')
+    failed = int(h.get('FailedArticles', 0))
+    ok = lifted == 1 and failed < 50
+    return ('parprojection', ok, 'status=%s missing=%d lifted_logs=%d failed_articles=%d'
+            % (h['Status'], len(missing), lifted, failed))
+
+
 def _run_case(daemon, t, tag, missing_of, backup):
     """Six files of 300 articles (no par2); <missing_of(index)> says which
     articles (by their index over the whole posting) are missing; <backup> adds
@@ -5409,6 +5443,7 @@ SCENARIOS = {
     'projectednobackup': scenario_projectednobackup,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
+    'parprojection': scenario_parprojection,
     'deaddownloadstray2': scenario_deaddownloadstray2,
     'deaddownloadrestart': scenario_deaddownloadrestart,
     'deadbackupsonly': scenario_deadbackupsonly,
@@ -5624,6 +5659,7 @@ SCENARIO_OPTIONS = {
     'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'parprojection': ['DupeArticleFallback=stream', 'ParCheck=manual'],
     'deaddownloadstray2': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'deaddownloadrestart': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ContinuePartial=yes'],
     'deadbackupsonly': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],

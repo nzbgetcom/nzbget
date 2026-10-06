@@ -91,7 +91,26 @@ bool DupeArticleFallback::ParCannotCover(NzbInfo* nzbInfo)
 	// granularity makes the real need larger still, so this is conservative.
 	int64 parAvailable = nzbInfo->GetParSize() - nzbInfo->GetParCurrentFailedSize();
 	int64 dataFailed = nzbInfo->GetCurrentFailedSize() - nzbInfo->GetParCurrentFailedSize();
-	return dataFailed > 0 && dataFailed > parAvailable;
+	if (dataFailed <= 0)
+	{
+		return false;
+	}
+	if (dataFailed > parAvailable)
+	{
+		return true;
+	}
+
+	// what the data tried so far projects (B59: Dark Matter S02E05 lost 21% of its
+	// data, its par2 covered 20%; the failures outgrew the par2 data only at the end)
+	int tried = nzbInfo->GetCurrentSuccessArticles() + nzbInfo->GetCurrentFailedArticles();
+	int64 dataTotal = nzbInfo->GetSize() - nzbInfo->GetParSize();
+	int64 dataTried = nzbInfo->GetCurrentSuccessSize() - nzbInfo->GetParCurrentSuccessSize() + dataFailed;
+	if (tried < ProjectionSample || dataTried <= 0 || dataTotal <= 0)
+	{
+		return false;
+	}
+	double projectedFailed = (double)dataFailed * dataTotal / dataTried;
+	return projectedFailed + (double)dataTotal * ParEdgeMargin / 1000 > parAvailable;
 }
 
 bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fileInfo, ArticleInfo* articleInfo)
@@ -117,8 +136,11 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		// Once the damage outgrows every recovery byte the collection has,
 		// single articles are borrowed again (whole-file stream recovery
 		// keeps waiting for par-check, which knows which files it protects).
+		// Once lifted, the wait stays lifted: a projection can fall back below the
+		// par2 data (articles fetched from a lead duplicate count as arrived).
 		bool parDefer = ShouldDeferToPar(nzbInfo);
-		bool defer = parDefer && articleInfo->GetPartNumber() != 1 && !ParCannotCover(nzbInfo);
+		bool defer = parDefer && articleInfo->GetPartNumber() != 1 &&
+			nzbInfo->GetDupeParDeferState() != NzbInfo::dpLifted && !ParCannotCover(nzbInfo);
 		// say once per collection which way the par-first rule went, so a
 		// download that borrowed nothing can be told apart from one that tried
 		if (defer && nzbInfo->GetDupeParDeferState() == NzbInfo::dpNone &&
@@ -134,7 +156,8 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 		{
 			nzbInfo->SetDupeParDeferState(NzbInfo::dpLifted);
 			nzbInfo->PrintMessage(Message::mkInfo,
-				"Damage of %s exceeds its par2 recovery data, recovering missing articles from duplicates",
+				"Damage of %s exceeds its par2 recovery data (or will, judged by the articles tried so far), "
+				"recovering missing articles from duplicates",
 				nzbInfo->GetName());
 		}
 		if (defer)
