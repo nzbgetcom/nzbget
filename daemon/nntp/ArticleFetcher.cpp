@@ -67,6 +67,8 @@ bool ArticleFetchLimits::AddDecodedBytes(int64 bytes, int64 begin, int64 end,
 	return true;
 }
 
+std::atomic<int> ArticleFetcher::s_waitingForConnection{0};
+
 ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	const std::vector<CString>& groups)
 {
@@ -109,17 +111,19 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 			continue;
 		}
 
-		// the pool is non-blocking: poll until a connection frees up, bounded
-		// so a saturated pool cannot stall the repair stage indefinitely
+		// the pool is non-blocking: poll until a connection frees up. A pool the
+		// queue's downloads keep busy says nothing about the article (B76: Las
+		// Azules S02E06 4440 - each fetch gave up after ArticleTimeout, so whole
+		// duplicates counted as missing): the fetch waits until it is stopped,
+		// and the repair's watchdog doesn't count the wait as lack of progress
+		// (its overall cap still bounds it)
 		NntpConnection* connection = nullptr;
-		time_t waitStart = Util::CurrentTime();
-		while (!connection && !m_stopped &&
-			Util::CurrentTime() - waitStart <= g_Options->GetArticleTimeout())
+		s_waitingForConnection++;
+		while (!connection && !m_stopped)
 		{
 			if (g_WorkState->GetQuotaReached())
 			{
 				Util::Sleep(100);
-				waitStart = Util::CurrentTime();
 				continue;
 			}
 			connection = g_ServerPool->GetConnection(level, nullptr, &failedServers);
@@ -128,6 +132,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 				Util::Sleep(5);
 			}
 		}
+		s_waitingForConnection--;
 
 		if (!connection)
 		{

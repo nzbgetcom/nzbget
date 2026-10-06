@@ -102,7 +102,12 @@ public:
 
 	void Stop();
 
+	/* fetches waiting for a free connection right now (all fetchers): time
+	 * spent waiting isn't a repair's lack of progress (B76) */
+	static int WaitingForConnection() { return s_waitingForConnection; }
+
 private:
+	static std::atomic<int> s_waitingForConnection;
 	std::atomic<bool> m_stopped{false};
 	Mutex m_connectionMutex;
 	NntpConnection* m_connection = nullptr;

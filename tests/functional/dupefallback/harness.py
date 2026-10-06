@@ -1476,6 +1476,31 @@ def scenario_streammaxrun(daemon, t):
             % (h['Status'], took, capped, other, daemon.proxy.delayed))
 
 
+def scenario_streamstarved(daemon, t):
+    """B76 (Las Azules S02E06 4440): the stream repair of a damaged download
+    competes with the next download for the server's 2 connections, which a
+    slow download holds (2 s a request) for about 40 s. Waiting for a
+    connection isn't a lack of progress: the repair waits, then repairs the
+    file from the whole duplicate. Before, each fetch gave up after waiting,
+    and the repair stopped with nothing recovered after DupeStreamTimeout."""
+    size, seg_primary, seg_donor = 6_000_000, 500_000, 250_000
+    data = _payload(size, 7676)
+    primary = build_nzb(_place_copy(t, 'stA', data, 'file.mkv'), 'StarvA.mkv', size, seg_primary, set(range(2, 6)))
+    donor = build_nzb(_place_copy(t, 'stB', data, 'file.mkv'), 'obf-starv.mkv', size, seg_donor, set())
+    busy_size = 4_000_000
+    busy = build_nzb(_place_copy(t, 'busy', _payload(busy_size, 7677)), 'Busy.bin', busy_size, 100_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonStarv', donor, True, 'starv-key', 50)
+    daemon.append(api, 'StarvA', primary, False, 'starv-key', 100)
+    daemon.append(api, 'Busy', busy, False, 'busy-key', 0)
+    h = daemon.wait_history(api, 'StarvA', timeout=240)
+    stopped = _grep_log(t, 'nothing recovered for')
+    integ = _verify_output(t, data, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    ok = stopped == 0 and integ and h['Status'].startswith('SUCCESS')
+    return ('streamstarved', ok, 'status=%s stopped_logs=%d integrity=%s delayed=%d'
+            % (h['Status'], stopped, integ, daemon.proxy.delayed))
+
+
 def scenario_streamdeaddonor(daemon, t):
     """Before stream repair reads from a duplicate, a few of its articles are
     checked (STAT) on the servers: a dead duplicate (none of its articles
@@ -5461,6 +5486,7 @@ SCENARIOS = {
     'streamslowprogress': scenario_streamslowprogress,
     'streamtooslow': scenario_streamtooslow,
     'streammaxrun': scenario_streammaxrun,
+    'streamstarved': scenario_streamstarved,
     'liveoverlap': scenario_liveoverlap,
     'livegate': scenario_livegate,
     'livelastfile': scenario_livelastfile,
@@ -5652,6 +5678,7 @@ SCENARIO_OPTIONS = {
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtooslow': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streammaxrun': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=8'],
+    'streamstarved': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5', 'Server1.Connections=2'],
     'streamtimeout': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     # liveoverlap: the DownloadRate throttle (KB/s) keeps the big FileB
     # downloading long enough that FileA's live repair provably overlaps it
@@ -5853,7 +5880,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'keepreturned': [(b'krA/', 0.4)],
+SCENARIO_DELAY_PROXY = {'streamstarved': [(b'busy/', 2.0)],
+                        'keepreturned': [(b'krA/', 0.4)],
                         'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
                         'streamtooslow': [(b'slowB/', 1.0), (b'warm/', 0.2)],
