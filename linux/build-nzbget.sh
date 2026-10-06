@@ -40,10 +40,9 @@ LIB_PATH=$BUILDROOT_HOME/lib
 FREEBSD_SYSROOT=/build/freebsd/sysroot
 FREEBSD_CLANG_VER=14
 
-# unpackers versions
-UNRAR6_VERSION=6.2.12
-UNRAR7_VERSION=7.2.7
-ZIP7_VERSION=26.02
+# unpackers versions (nzbgetcom/7zip and nzbgetcom/unrar release tags)
+. "$PWD/unpackers.env"
+UNRAR7_VERSION=$UNRAR_VERSION
 
 # libs versions
 # https://invisible-island.net/ncurses/announce.html
@@ -408,108 +407,65 @@ build_lib()
     cd $NZBGET_ROOT
 }
 
-build_7zip()
+download_7zip()
 {
-    if [ ! -d "$LIB_PATH/$ARCH/7zip" ]; then
+    # download when version file is missing or differs from unpackers.env
+    if [ ! -f "$LIB_PATH/$ARCH/7zip/version" ] || [ "`cat $LIB_PATH/$ARCH/7zip/version`" != "$ZIP7_VERSION" ]; then
+        echo "Downloading 7zip version $ZIP7_VERSION for $ARCH"
         rm -rf /tmp/7z
         mkdir -p /tmp/7z
-        curl -o /tmp/7z/7z.tar.xz -lL "https://github.com/ip7z/7zip/releases/download/$ZIP7_VERSION/7z${ZIP7_VERSION//./}-src.tar.xz"
-        cd /tmp/7z
-        tar xf 7z.tar.xz
-        rm 7z.tar.xz
-        cd CPP/7zip
-        sed "s|^LDFLAGS_STATIC =.*|LDFLAGS_STATIC = -static|" -i 7zip_gcc.mak
-        if [ "$PLATFORM" == "android" ]; then
-            sed "s|^#if defined(TIME_UTC)|#if defined(_TIME_UTC)|g" -i ../Windows/TimeUtils.cpp
-            sed "s|^LIB2 =.*|LIB2 = |g" -i 7zip_gcc.mak
-            sed "s|^CFLAGS_WARN_WALL =.*|CFLAGS_WARN_WALL = -Wall -Wextra|" -i 7zip_gcc.mak
-        fi
-        if [ "$PLATFORM" == "freebsd" ]; then
-            sed "s|^MY_ARCH_2 = .*|MY_ARCH_2 = \$(MY_ARCH) --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1|" -i 7zip_gcc.mak
-        fi
-        cd Bundles/Alone
-        make -j $COREX -f makefile.gcc
+        curl -o /tmp/7z/7z.tar.gz -lL "https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-$ARCH.tar.gz"
+        tar zxf /tmp/7z/7z.tar.gz -C /tmp/7z
+        rm /tmp/7z/7z.tar.gz
         mkdir -p $LIB_PATH/$ARCH/7zip
-        cp _o/7za $LIB_PATH/$ARCH/7zip/7za
-        cd /tmp/7z
-        cp DOC/License.txt $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        cp /tmp/7z/7za $LIB_PATH/$ARCH/7zip/7za
+        cp /tmp/7z/license-7zip.txt $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        chmod +x $LIB_PATH/$ARCH/7zip/7za
         chmod -x $LIB_PATH/$ARCH/7zip/license-7zip.txt
+        echo $ZIP7_VERSION > $LIB_PATH/$ARCH/7zip/version
         cd $NZBGET_ROOT
         rm -rf /tmp/7z
     fi
 }
 
-build_unrar_version()
+download_unrar_version()
 {
     UNRAR_VERSION=$1
     if [ "$UNRAR_VERSION" == "6" ]; then
-        UNRARSRC=https://www.rarlab.com/rar/unrarsrc-$UNRAR6_VERSION.tar.gz
+        UNRARSRC="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR6_VERSION/unrar-$ARCH.tar.gz"
+        UNRAR_FULL_VERSION=$UNRAR6_VERSION
     else
-        UNRARSRC=https://www.rarlab.com/rar/unrarsrc-$UNRAR7_VERSION.tar.gz
+        UNRARSRC="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR7_VERSION/unrar-$ARCH.tar.gz"
+        UNRAR_FULL_VERSION=$UNRAR7_VERSION
     fi
-    echo "Building unrar version $UNRAR_VERSION for $ARCH"
-    curl -o /tmp/unrar.tar.gz $UNRARSRC
-    cd /tmp
-    tar zxf unrar.tar.gz
-    rm unrar.tar.gz
-    cd unrar
-    sed "s|^CXX=.*|CXX=$CXX|" -i makefile
-    sed "s|^AR=.*|AR=$AR|" -i makefile
-    sed "s|^STRIP=.*|STRIP=$STRIP|" -i makefile
-    if [ "$PLATFORM" == "android" ] ; then
-        if [ "$UNRAR_VERSION" == "6" ]; then
-            sed 's:^#if defined(_EMX) || defined (__VMS)$:#if defined(_EMX) || defined (__VMS) || defined (__ANDROID__):' -i consio.cpp
-        else
-            sed 's:#ifdef __VMS$:#if defined (__VMS) || defined (__ANDROID__):' -i consio.cpp
-        fi
-        sed 's:^#define USE_LUTIMES$:#undef USE_LUTIMES:' -i os.hpp
-    fi
-    # some unrar7 optimizations
-    if [ "$UNRAR_VERSION" == "7" ]; then
-        sed "s|LDFLAGS=-pthread|LDFLAGS=-pthread -static|" -i makefile
-        case $ARCH in
-            x86_64)
-                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=x86-64|" -i makefile
-                ;;
-            aarch64)
-                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv8-a+crypto+crc|" -i makefile
-                ;;
-            armhf)
-                sed "s|CXXFLAGS=-march=native|CXXFLAGS=-march=armv7-a|" -i makefile
-                ;;
-            *)
-                sed "s|CXXFLAGS=-march=native |CXXFLAGS=|" -i makefile
-                ;;
-        esac
-    else
-        sed "s|^LDFLAGS=.*|LDFLAGS=-static|" -i makefile
-        sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2|" -i makefile
-    fi
-    if [ "$PLATFORM" == "freebsd" ]; then
-        sed "s|^CXXFLAGS=.*|CXXFLAGS=-std=c++11 -O2 -nostdlib --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -I$FREEBSD_SYSROOT/usr/include/c++/v1|" -i makefile
-        sed "s|^LDFLAGS=.*|LDFLAGS=-static --target=x86_64-pc-freebsd --sysroot=$FREEBSD_SYSROOT -pthread -lc++ -lm -fuse-ld=lld|" -i makefile
-        sed "s|^STRIP=.*|STRIP=strip|" -i makefile
-    fi
-    make clean
-    make -j $COREX
+    echo "Downloading unrar $UNRAR_VERSION version $UNRAR_FULL_VERSION for $ARCH"
+    rm -rf /tmp/unrar
+    mkdir -p /tmp/unrar
+    curl -o /tmp/unrar/unrar.tar.gz -lL $UNRARSRC
+    tar zxf /tmp/unrar/unrar.tar.gz -C /tmp/unrar
+    rm /tmp/unrar/unrar.tar.gz
     mkdir -p $LIB_PATH/$ARCH/unrar
     if [ "$UNRAR_VERSION" == "6" ]; then
-        cp unrar $LIB_PATH/$ARCH/unrar/unrar
-        cp license.txt $LIB_PATH/$ARCH/unrar/license-unrar.txt
+        cp /tmp/unrar/unrar $LIB_PATH/$ARCH/unrar/unrar
+        cp /tmp/unrar/license-unrar.txt $LIB_PATH/$ARCH/unrar/license-unrar.txt
+        chmod +x $LIB_PATH/$ARCH/unrar/unrar
     else
-        cp unrar $LIB_PATH/$ARCH/unrar/unrar7
-        cp license.txt $LIB_PATH/$ARCH/unrar/license-unrar7.txt
+        cp /tmp/unrar/unrar $LIB_PATH/$ARCH/unrar/unrar7
+        cp /tmp/unrar/license-unrar.txt $LIB_PATH/$ARCH/unrar/license-unrar7.txt
+        chmod +x $LIB_PATH/$ARCH/unrar/unrar7
     fi
     rm -rf /tmp/unrar
     cd $NZBGET_ROOT
 }
 
-build_unrar()
+download_unrar()
 {
-    if [ ! -d "$LIB_PATH/$ARCH/unrar" ]; then
+    # download when version file is missing or differs from unpackers.env
+    if [ ! -f "$LIB_PATH/$ARCH/unrar/version" ] || [ "`cat $LIB_PATH/$ARCH/unrar/version`" != "$UNRAR6_VERSION $UNRAR7_VERSION" ]; then
         for UNRAR_VERSION in 6 7; do
-            build_unrar_version $UNRAR_VERSION
+            download_unrar_version $UNRAR_VERSION
         done
+        echo $UNRAR6_VERSION $UNRAR7_VERSION > $LIB_PATH/$ARCH/unrar/version
     fi
 }
 
@@ -617,9 +573,6 @@ build_bin()
     build_lib "https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz"
     build_lib "https://github.com/boostorg/boost/releases/download/boost-$BOOST_VERSION/boost-$BOOST_VERSION.tar.gz"
 
-    build_7zip
-    build_unrar
-
     export INCLUDES="$NZBGET_INCLUDES"
     CMAKE_SYSTEM_NAME="Linux"
     CMAKE_EXTRA_ARGS=""
@@ -704,6 +657,11 @@ build_installer()
     if [ "$PLATFORM_ARCHS" == "" ]; then return; fi
 
     echo "Creating installer for $PLATFORM $CONFIG..."
+
+    for ARCH in $PLATFORM_ARCHS; do
+        download_7zip
+        download_unrar
+    done
 
     cd $OUTPUTDIR
     # checking if all targets exists

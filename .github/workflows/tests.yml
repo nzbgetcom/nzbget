@@ -25,8 +25,7 @@ jobs:
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
         Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
-        Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
+        Invoke-Expression "windows\build-nzbget.ps1 -DownloadUnpackers"
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
 
@@ -120,11 +119,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install --formula boost sevenzip
-        curl -L https://github.com/nzbgetcom/unrar/releases/download/v7.23/unrar-macos-universal.tar.gz | sudo tar -xzf - -C /usr/local/bin
+        brew install --formula boost
 
     - name: Checkout
       uses: actions/checkout@v6
+
+    - name: Install unpackers
+      run: |
+        . ./unpackers.env
+        curl -L "https://github.com/nzbgetcom/unrar/releases/download/v${UNRAR_VERSION}/unrar-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        curl -L "https://github.com/nzbgetcom/7zip/releases/download/v${ZIP7_VERSION}/7zip-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        sudo ln -sf 7za /usr/local/bin/7z
 
     - name: Build
       run: |

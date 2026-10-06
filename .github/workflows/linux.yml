@@ -80,8 +80,6 @@ jobs:
       run: |
         sudo mkdir -p /build
         sudo chown $USER:$USER /build
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v10.0/linux-unpack.tar.gz -o /build/unpack.tar.gz
-        tar zxf /build/unpack.tar.gz -C /build
 
     - name: Download build artifacts
       uses: actions/download-artifact@v8
