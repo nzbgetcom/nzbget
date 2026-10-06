@@ -32,6 +32,7 @@
 #include "Newznab.h"
 #include "NzbReader.h"
 #include "Posting.h"
+#include "DupeUtil.h"
 #include <algorithm>
 #include <thread>
 #include "ReleaseName.h"
@@ -439,9 +440,7 @@ void DupeSearch::Search(const Job& job)
 	NzbSummary pick;
 	if (!job.queuedFile.empty())
 	{
-		std::ifstream file(fs::u8path(job.queuedFile), std::ios::binary);
-		std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-		if (!NzbReader::Parse(data, pick))
+		if (!NzbReader::Parse(DupeUtil::ReadAll(job.queuedFile), pick))
 		{
 			Note(job.nzbId, Message::mkDetail, "DupeSearch: could not read the nzb-file of %s", job.name.c_str());
 		}
@@ -835,9 +834,7 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 		std::map<size_t, size_t> sameAs;	// a member whose posting another member already is
 		for (size_t m = 0; m < job.members.size(); m++)
 		{
-			std::ifstream file(fs::u8path(job.members[m].second), std::ios::binary);
-			std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-			if (!NzbReader::Parse(data, summaries[m]) || Posting::SamePosting(summaries[m].messageIds, pick.messageIds))
+			if (!NzbReader::Parse(DupeUtil::ReadAll(job.members[m].second), summaries[m]) || Posting::SamePosting(summaries[m].messageIds, pick.messageIds))
 			{
 				continue;
 			}
@@ -1154,25 +1151,6 @@ void RemoveDir(const std::string& dir)
 	FileSystem::DeleteDirectoryWithContent(dir.c_str(), errmsg);
 }
 
-bool WriteAtomic(const std::string& path, const std::string& data)
-{
-	std::string temp = path + ".new";
-	{
-		std::ofstream file(fs::u8path(temp), std::ios::binary | std::ios::trunc);
-		file.write(data.data(), data.size());
-		if (!file.good())
-		{
-			return false;
-		}
-	}
-	return FileSystem::MoveFile(temp.c_str(), path.c_str());
-}
-
-std::string ReadAll(const std::string& path)
-{
-	std::ifstream file(fs::u8path(path), std::ios::binary);
-	return std::string((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-}
 
 }
 
@@ -1185,7 +1163,7 @@ void DupeSearch::MarkSearching(int nzbId)
 	std::string dir = PendingDir(nzbId);
 	RemoveDir(dir);
 	CString errmsg;
-	if (!FileSystem::ForceDirectories(dir.c_str(), errmsg) || !WriteAtomic(dir + PATH_SEPARATOR + "phase", "searching\n"))
+	if (!FileSystem::ForceDirectories(dir.c_str(), errmsg) || !DupeUtil::WriteAtomic(dir + PATH_SEPARATOR + "phase", "searching\n"))
 	{
 		warn("Could not save the DupeSearch state to %s", dir.c_str());
 	}
@@ -1206,9 +1184,9 @@ void DupeSearch::SavePending(const Job& job, const std::vector<NzbFetcher::Fetch
 		std::stringstream meta;
 		meta << listing.title << '\t' << listing.indexer << '\t' << listing.grabs << '\t' << listing.size << '\t'
 			<< (long long)listing.date << "\t\n";
-		ok = WriteAtomic(base + ".nzb", verified[i].data) && WriteAtomic(base + ".meta", meta.str());
+		ok = DupeUtil::WriteAtomic(base + ".nzb", verified[i].data) && DupeUtil::WriteAtomic(base + ".meta", meta.str());
 	}
-	if (!ok || !WriteAtomic(dir + PATH_SEPARATOR + "phase", "fetched\n"))
+	if (!ok || !DupeUtil::WriteAtomic(dir + PATH_SEPARATOR + "phase", "fetched\n"))
 	{
 		warn("Could not save the DupeSearch state to %s", dir.c_str());
 	}
@@ -1242,7 +1220,7 @@ void DupeSearch::ResumePending()
 			return;
 		}
 		std::string dir = PendingDir(nzbId);
-		bool fetched = ReadAll(dir + PATH_SEPARATOR + "phase") == "fetched\n";
+		bool fetched = DupeUtil::ReadAll(dir + PATH_SEPARATOR + "phase") == "fetched\n";
 
 		Job job;
 		{
@@ -1268,7 +1246,7 @@ void DupeSearch::ResumePending()
 
 		Note(job.nzbId, Message::mkInfo, "DupeSearch: resuming the search of %s after a restart", job.name.c_str());
 		NzbSummary pick;
-		NzbReader::Parse(ReadAll(job.queuedFile), pick);
+		NzbReader::Parse(DupeUtil::ReadAll(job.queuedFile), pick);
 		std::vector<Posting::Sketch> known;
 		for (const std::string& path : job.knownFiles)
 		{
@@ -1281,7 +1259,7 @@ void DupeSearch::ResumePending()
 
 		std::set<std::string> sent;
 		{
-			std::stringstream lines(ReadAll(dir + PATH_SEPARATOR + "sent"));
+			std::stringstream lines(DupeUtil::ReadAll(dir + PATH_SEPARATOR + "sent"));
 			for (std::string line; std::getline(lines, line);)
 			{
 				sent.insert(line);
@@ -1298,7 +1276,7 @@ void DupeSearch::ResumePending()
 				break;
 			}
 			NzbFetcher::Fetched posting;
-			std::stringstream meta(ReadAll(base + ".meta"));
+			std::stringstream meta(DupeUtil::ReadAll(base + ".meta"));
 			std::string grabs, size, date;
 			std::getline(meta, posting.listing.title, '\t');
 			std::getline(meta, posting.listing.indexer, '\t');
@@ -1308,7 +1286,7 @@ void DupeSearch::ResumePending()
 			posting.listing.grabs = atoi(grabs.c_str());
 			posting.listing.size = atoll(size.c_str());
 			posting.listing.date = (time_t)atoll(date.c_str());
-			posting.data = ReadAll(base + ".nzb");
+			posting.data = DupeUtil::ReadAll(base + ".nzb");
 			if (!NzbReader::Parse(posting.data, posting.info))
 			{
 				continue;
@@ -1363,24 +1341,20 @@ void DupeSearch::LoadState()
 
 void DupeSearch::SaveState()
 {
-	std::string path = StatePath();
-	std::string temp = path + ".new";
+	std::ostringstream text;
 	{
 		std::lock_guard<std::mutex> guard(m_mutex);
-		std::ofstream file(fs::u8path(temp), std::ios::trunc);
 		time_t now = Util::CurrentTime();
 		for (const auto& entry : m_searched)
 		{
 			if (now - entry.second.time < StateTtlSec)
 			{
-				file << entry.first << '\t' << entry.second.score << '\t' << (long long)entry.second.time << "\t\n";
+				text << entry.first << '\t' << entry.second.score << '\t' << (long long)entry.second.time << "\t\n";
 			}
 		}
-		if (!file.good())
-		{
-			warn("Could not save the DupeSearch state to %s", temp.c_str());
-			return;
-		}
 	}
-	FileSystem::MoveFile(temp.c_str(), path.c_str());
+	if (!DupeUtil::WriteAtomic(StatePath(), text.str()))
+	{
+		warn("Could not save the DupeSearch state to %s", StatePath().c_str());
+	}
 }

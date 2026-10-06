@@ -28,6 +28,7 @@
 #include <fstream>
 #include <mutex>
 #include "Posting.h"
+#include "DupeUtil.h"
 #include "NzbReader.h"
 #include "FileSystem.h"
 
@@ -74,10 +75,8 @@ bool Posting::SketchOfFile(const std::string& path, Sketch& sketch)
 		}
 	}
 
-	std::ifstream file(fs::u8path(path), std::ios::binary);
-	std::string data((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	NzbSummary summary;
-	if (!NzbReader::Parse(data, summary))
+	if (!NzbReader::Parse(DupeUtil::ReadAll(path), summary))
 	{
 		return false;
 	}

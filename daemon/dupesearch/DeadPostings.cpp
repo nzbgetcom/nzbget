@@ -23,6 +23,7 @@
 #include <fstream>
 #include <sstream>
 #include "DeadPostings.h"
+#include "DupeUtil.h"
 #include "FileSystem.h"
 #include "Log.h"
 #include "Util.h"
@@ -92,25 +93,20 @@ void DeadPostings::Save()
 	{
 		return;
 	}
-	std::string temp = m_statePath + ".new";
+	std::ostringstream text;
+	for (const auto& entry : m_dead)
 	{
-		std::ofstream file(fs::u8path(temp), std::ios::trunc);
-		for (const auto& entry : m_dead)
+		text << (long long)entry.first << '\t';
+		for (size_t i = 0; i < entry.second.size(); i++)
 		{
-			file << (long long)entry.first << '\t';
-			for (size_t i = 0; i < entry.second.size(); i++)
-			{
-				file << (i ? "," : "") << entry.second[i];
-			}
-			file << "\t\n";
+			text << (i ? "," : "") << entry.second[i];
 		}
-		if (!file.good())
-		{
-			warn("Could not save the DupeSearch dead postings to %s", temp.c_str());
-			return;
-		}
+		text << "\t\n";
 	}
-	FileSystem::MoveFile(temp.c_str(), m_statePath.c_str());
+	if (!DupeUtil::WriteAtomic(m_statePath, text.str()))
+	{
+		warn("Could not save the DupeSearch dead postings to %s", m_statePath.c_str());
+	}
 }
 
 bool DeadPostings::IsDead(const Posting::Sketch& sketch, time_t now)

@@ -23,6 +23,7 @@
 #include <fstream>
 #include <sstream>
 #include "NzbFetcher.h"
+#include "DupeUtil.h"
 #include "HttpGet.h"
 #include "FileSystem.h"
 #include "Log.h"
@@ -73,24 +74,19 @@ void NzbFetcher::Save()
 	{
 		return;
 	}
-	std::string temp = m_statePath + ".new";
+	std::ostringstream text;
+	time_t now = Util::CurrentTime();
+	for (const auto& entry : m_refusedUntil)
 	{
-		std::ofstream file(fs::u8path(temp), std::ios::trunc);
-		time_t now = Util::CurrentTime();
-		for (const auto& entry : m_refusedUntil)
+		if (entry.second > now)
 		{
-			if (entry.second > now)
-			{
-				file << entry.first << '\t' << (long long)entry.second << "\t\n";
-			}
-		}
-		if (!file.good())
-		{
-			warn("Could not save the DupeSearch indexer state to %s", temp.c_str());
-			return;
+			text << entry.first << '\t' << (long long)entry.second << "\t\n";
 		}
 	}
-	FileSystem::MoveFile(temp.c_str(), m_statePath.c_str());
+	if (!DupeUtil::WriteAtomic(m_statePath, text.str()))
+	{
+		warn("Could not save the DupeSearch indexer state to %s", m_statePath.c_str());
+	}
 }
 
 std::mutex& NzbFetcher::IndexerLock(const std::string& indexer)
