@@ -184,6 +184,11 @@ Status ServerConnectionsValidator::Validate() const
 	if (maxConnections < 0 || maxConnections > 999)
 		return Status::Error("'Connections' value is invalid. It must be between 0 and 999");
 
+	if (maxConnections < 4 && g_Options && g_Options->GetDupeSearch())
+		// a duplicate search's health checks take half of a server's connections
+		return Status::Warning("A low number of connections may impact download performance, and "
+			"DupeSearch's health checks get only 1 connection to this server (4 or more give them 2)");
+
 	if (maxConnections < 8)
 		return Status::Warning("A low number of connections may impact download performance");
 

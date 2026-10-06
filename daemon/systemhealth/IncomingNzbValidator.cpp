@@ -33,6 +33,7 @@ IncomingNzbValidator::IncomingNzbValidator(const Options& options) : m_options(o
 	m_validators.push_back(std::make_unique<NzbDirArchiveScanValidator>(options));
 	m_validators.push_back(std::make_unique<NzbDirArchiveActionValidator>(options));
 	m_validators.push_back(std::make_unique<DupeCheckValidator>(options));
+	m_validators.push_back(std::make_unique<DupeSearchValidator>(options));
 }
 
 Status AppendCategoryDirValidator::Validate() const
@@ -105,6 +106,26 @@ Status DupeCheckValidator::Validate() const
 			"to unpause backup downloads if the primary one fails. "
 			"Consider using 'Delete', 'Park', or 'None' for '" +
 			healthCheckStr + "'");
+	}
+
+	return Status::Ok();
+}
+
+Status DupeSearchValidator::Validate() const
+{
+	if (!m_options.GetDupeSearch()) return Status::Ok();
+
+	if (!m_options.GetDupeCheck())
+	{
+		return Status::Warning("'DupeSearch' is enabled while '" + std::string(Options::DUPECHECK) +
+			"' is disabled. Nothing is searched: duplicates need duplicate handling");
+	}
+
+	if (m_options.GetHealthCheck() != Options::EHealthCheck::hcDupe)
+	{
+		return Status::Warning("'DupeSearch' is enabled while '" + std::string(Options::HEALTHCHECK) +
+			"' isn't 'Dupe'. The duplicates it finds are only fetched once a download has failed, "
+			"not as soon as it turns out dead");
 	}
 
 	return Status::Ok();

@@ -4283,6 +4283,23 @@ def scenario_dupesearchalldead(daemon, t):
     return ('dupesearchalldead', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
 
 
+def scenario_dupesearchwarnings(daemon, t):
+    """Settings that hobble DupeSearch are warned about at start: HealthCheck
+    isn't dupe (its duplicates wait for a failure), and a server with fewer than
+    4 connections leaves its health checks 1."""
+    daemon.wait_ready()
+    health = _grep_log(t, "'DupeSearch' is enabled while 'HealthCheck' isn't 'Dupe'")
+    conns = _grep_log(t, "DupeSearch's health checks get only 1 connection")
+    return ('dupesearchwarnings', health == 1 and conns == 1, 'healthcheck_warnings=%d connection_warnings=%d' % (health, conns))
+
+
+def scenario_dupesearchwarnnocheck(daemon, t):
+    """DupeSearch with DupeCheck=no is warned about: nothing would be searched."""
+    daemon.wait_ready()
+    warned = _grep_log(t, "'DupeSearch' is enabled while 'DupeCheck' is disabled")
+    return ('dupesearchwarnnocheck', warned == 1, 'warnings=%d' % warned)
+
+
 def scenario_dupesearchkeychanged(daemon, t):
     """B17: the pick gets another DupeKey while its search checks the postings:
     no donor is added under the old key (it would match nothing and download
@@ -5285,6 +5302,8 @@ SCENARIOS = {
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
     'dupesearchgroup': scenario_dupesearchgroup,
+    'dupesearchwarnings': scenario_dupesearchwarnings,
+    'dupesearchwarnnocheck': scenario_dupesearchwarnnocheck,
     'dupesearchalldead': scenario_dupesearchalldead,
     'dupesearchrerank': scenario_dupesearchrerank,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
@@ -5503,6 +5522,8 @@ SCENARIO_OPTIONS = {
                               'Extensions=deletepick'],
     'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchwarnings': ['DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'HealthCheck=none', 'Server1.Connections=2'],
+    'dupesearchwarnnocheck': ['DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeCheck=no'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchalldead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],

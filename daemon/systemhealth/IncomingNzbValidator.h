@@ -101,6 +101,17 @@ private:
 	const Options& m_options;
 };
 
+class DupeSearchValidator final : public Validator
+{
+public:
+	explicit DupeSearchValidator(const Options& options) : m_options(options) {}
+	std::string_view GetName() const override { return Options::DUPESEARCH; }
+	Status Validate() const override;
+
+private:
+	const Options& m_options;
+};
+
 }  // namespace SystemHealth::IncomingNzb
 
 #endif
