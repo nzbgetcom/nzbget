@@ -461,6 +461,34 @@ void DupeCoordinator::NzbCompleted(DownloadQueue* downloadQueue, NzbInfo* nzbInf
 		ReturnBestDupe(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey());
 	}
 
+	// one copy is downloaded and on disk: the others of its key still downloading,
+	// repairing or checking are stopped and kept as backups (B77: Sugar S01E01 - a
+	// copy kept repairing for minutes after another one had succeeded, then failed)
+	if (g_Options->GetHealthCheck() == Options::hcDupe && !Util::EmptyStr(nzbInfo->GetDupeKey()) &&
+		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone && nzbInfo->IsDupeSuccess() && FilesOnDisk(nzbInfo))
+	{
+		std::vector<std::pair<int, bool>> others;	// id, in post-processing
+		for (NzbInfo* queued : downloadQueue->GetQueue())
+		{
+			if (queued != nzbInfo && queued->GetKind() == NzbInfo::nkNzb && !queued->GetDeleting() &&
+				queued->GetDeleteStatus() == NzbInfo::dsNone && queued->GetDupeMode() != dmForce &&
+				!strcasecmp(queued->GetDupeKey(), nzbInfo->GetDupeKey()))
+			{
+				queued->PrintMessage(Message::mkInfo, "Stopping %s: %s is downloaded and on disk",
+					queued->GetName(), nzbInfo->GetName());
+				others.emplace_back(queued->GetId(), queued->GetPostInfo() != nullptr);
+				if (queued->GetPostInfo())
+				{
+					queued->SetDeleteStatus(NzbInfo::dsDupe);
+				}
+			}
+		}
+		for (const auto& other : others)
+		{
+			downloadQueue->EditEntry(other.first, other.second ? DownloadQueue::eaPostDelete :
+				DownloadQueue::eaGroupDupeDelete, nullptr);
+		}
+	}
 }
 
 std::string DupeCoordinator::NoBackupReason(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)

@@ -5201,6 +5201,32 @@ def scenario_ondiskgone(daemon, t):
     return ('ondiskgone', ok, 'first=%s again=%s' % (h['Status'], h2['Status']))
 
 
+def scenario_ondiskstop(daemon, t):
+    """B77 (Sugar S01E01): one copy is in stream repair (from a slow duplicate,
+    1 s a request) when another copy of the same key downloads whole and
+    succeeds: the repair is stopped, and the repairing copy is kept in history
+    as a backup instead of running on."""
+    size, seg = 20_000_000, 500_000
+    data = _payload(size, 7171)
+    damaged = build_nzb(_place_copy(t, 'odA', data, 'file.mkv'), 'odA.mkv', size, seg, set(range(2, 40, 2)))
+    donor = build_nzb(_place_copy(t, 'odB', data, 'file.mkv'), 'obf-od.mkv', size, 250_000, set())
+    clean = build_nzb(_place_copy(t, 'odC', data, 'file.mkv'), 'odC.mkv', size, seg, set())
+    api = daemon.wait_ready()
+    # a dupe tool found the duplicate dead (DupeAlive=0): no failover fetches it,
+    # so stream repair is the only option left (B78) - yet its articles exist
+    _ds_append(api, 'DonOd', donor, 'od-key', 50, params=[{'Name': 'DupeAlive', 'Value': '0'}])
+    daemon.append(api, 'Damaged', damaged, False, 'od-key', 100)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, 'Queueing Damaged for post-processing') == 0:
+        time.sleep(0.2)
+    daemon.append(api, 'Clean', clean, False, 'od-key', 110)
+    hc = daemon.wait_history(api, 'Clean', timeout=120)
+    hd = daemon.wait_history(api, 'Damaged', timeout=120)
+    stopped = _grep_log(t, 'Stopping Damaged')
+    ok = hc['Status'].startswith('SUCCESS') and hd['Status'] == 'DELETED/DUPE' and stopped == 1
+    return ('ondiskstop', ok, 'clean=%s damaged=%s stop_logs=%d' % (hc['Status'], hd['Status'], stopped))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -5595,6 +5621,7 @@ SCENARIOS = {
     'keepreturned': scenario_keepreturned,
     'ondiskskip': scenario_ondiskskip,
     'ondiskgone': scenario_ondiskgone,
+    'ondiskstop': scenario_ondiskstop,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -5819,6 +5846,7 @@ SCENARIO_OPTIONS = {
     'keepreturned': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
@@ -5922,7 +5950,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'streamstarved': [(b'busy/', 2.0)],
+SCENARIO_DELAY_PROXY = {'ondiskstop': [(b'odB/', 1.0)],
+                        'streamstarved': [(b'busy/', 2.0)],
                         'keepreturned': [(b'krA/', 0.4)],
                         'streamtimeout': [(b'slowB/', 8.0)],
                         'streamslowprogress': [(b'slowA/', 2.0), (b'slowB/', 0.5)],
