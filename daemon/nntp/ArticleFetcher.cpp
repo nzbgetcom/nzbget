@@ -67,8 +67,6 @@ bool ArticleFetchLimits::AddDecodedBytes(int64 bytes, int64 begin, int64 end,
 	return true;
 }
 
-std::atomic<int> ArticleFetcher::s_waitingForConnection{0};
-
 ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 	const std::vector<CString>& groups)
 {
@@ -116,9 +114,12 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 		// Azules S02E06 4440 - each fetch gave up after ArticleTimeout, so whole
 		// duplicates counted as missing): the fetch waits until it is stopped,
 		// and the repair's watchdog doesn't count the wait as lack of progress
-		// (its overall cap still bounds it)
+		// (it ends a pass that waited StreamRepairController::MaxConnectionWaitSec)
 		NntpConnection* connection = nullptr;
-		s_waitingForConnection++;
+		if (m_waitCounter)
+		{
+			(*m_waitCounter)++;
+		}
 		while (!connection && !m_stopped)
 		{
 			if (g_WorkState->GetQuotaReached())
@@ -132,7 +133,10 @@ ArticleFetcher::FetchedArticle ArticleFetcher::Fetch(const char* messageId,
 				Util::Sleep(5);
 			}
 		}
-		s_waitingForConnection--;
+		if (m_waitCounter)
+		{
+			(*m_waitCounter)--;
+		}
 
 		if (!connection)
 		{
@@ -498,6 +502,7 @@ void ArticleBatchFetcher::EnsureWorkers()
 	while ((int)m_workers.size() < m_workerCount)
 	{
 		m_workers.push_back(std::make_unique<Worker>(*this));
+		m_workers.back()->GetFetcher().SetWaitCounter(m_waitCounter);
 		m_workers.back()->SetAutoDestroy(false);
 		m_workers.back()->Start();
 	}

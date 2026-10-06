@@ -729,6 +729,8 @@ bool StreamRepairController::DonorDead(const DonorSource& donor, NzbInfo* donorN
 
 void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targets)
 {
+	m_fetcher.SetWaitCounter(&m_waitingForConnection);
+	m_batchFetcher.SetWaitCounter(&m_waitingForConnection);
 	int timeout = g_Options->GetDupeStreamTimeout();
 	if (timeout <= 0)
 	{
@@ -755,9 +757,10 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 			int64 startProgress = m_progressBytes;
 			int64 progress = startProgress;
 			auto start = std::chrono::steady_clock::now();
+			auto begun = start;	// not shifted by waits: bounds them
 			auto lastProgress = start;
 			auto lastTick = start;
-			auto waiting = [this]() { return ArticleFetcher::WaitingForConnection() > 0 || m_checkingDonor > 0; };
+			auto waiting = [this]() { return m_waitingForConnection > 0 || m_checkingDonor > 0; };
 			while (!m_watchdogDone)
 			{
 				m_watchdogCond.wait_for(lock, std::chrono::milliseconds(500));
@@ -781,6 +784,12 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 				else if (now - lastProgress >= std::chrono::seconds(timeout))
 				{
 					m_slowReason.Format("nothing recovered for %i seconds", timeout);
+					break;
+				}
+				if (now - begun >= std::chrono::seconds(timeout * MaxRunFactor + MaxConnectionWaitSec))
+				{
+					m_slowReason.Format("still waiting for news-server connections after %i seconds",
+						(int)std::chrono::duration_cast<std::chrono::seconds>(now - begun).count());
 					break;
 				}
 				if (now - start >= std::chrono::seconds(timeout * MaxRunFactor))

@@ -102,12 +102,12 @@ public:
 
 	void Stop();
 
-	/* fetches waiting for a free connection right now (all fetchers): time
-	 * spent waiting isn't a repair's lack of progress (B76) */
-	static int WaitingForConnection() { return s_waitingForConnection; }
+	/* counts this fetcher's waits for a free connection into counter (its
+	 * repair's): time spent waiting isn't the repair's lack of progress (B76) */
+	void SetWaitCounter(std::atomic<int>* counter) { m_waitCounter = counter; }
 
 private:
-	static std::atomic<int> s_waitingForConnection;
+	std::atomic<int>* m_waitCounter = nullptr;
 	std::atomic<bool> m_stopped{false};
 	Mutex m_connectionMutex;
 	NntpConnection* m_connection = nullptr;
@@ -168,6 +168,8 @@ public:
 	~ArticleBatchFetcher();
 
 	void SetWorkerCount(int workerCount) { m_workerCount = workerCount; }
+	/* the workers count their waits for a connection into counter (see ArticleFetcher) */
+	void SetWaitCounter(std::atomic<int>* counter) { m_waitCounter = counter; }
 	int GetWindowParts() const { return std::max(MaxWindowParts, m_workerCount * 2); }
 	void Begin(std::vector<Request> requests);
 	bool Next(ArticleFetcher::FetchedArticle& result);
@@ -193,6 +195,7 @@ private:
 	bool m_cancelled = false;
 	std::atomic<bool> m_stopped{false};
 	int m_workerCount = 0;
+	std::atomic<int>* m_waitCounter = nullptr;
 	std::vector<std::unique_ptr<Worker>> m_workers;
 	FetchFunc m_fetchFunc;			// test seam; production uses real fetchers
 	ArticleFetcher m_inlineFetcher;	// worker count 0 (live mode)

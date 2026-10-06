@@ -244,6 +244,9 @@ private:
 	// once it ran MaxRunFactor times the timeout (5 minutes at the default 60).
 	static constexpr int SlowRepairFactor = 3;
 	static constexpr int MaxRunFactor = 5;
+	// the most a pass waits for news-server connections in all (B76): beyond the
+	// MaxRunFactor cap of its working time, it ends then
+	static constexpr int MaxConnectionWaitSec = 1800;
 	std::thread m_watchdog;
 	std::mutex m_watchdogMutex;
 	std::condition_variable m_watchdogCond;
@@ -258,6 +261,8 @@ private:
 	std::map<std::string, bool> m_donorDead;
 	// donor checks running: their connection waits don't count against the watchdog
 	std::atomic<int> m_checkingDonor{0};
+	// this repair's fetches waiting for a free connection (B76: not a lack of progress)
+	std::atomic<int> m_waitingForConnection{0};
 	bool DonorDead(const DonorSource& donor, NzbInfo* donorNzb);
 	void StartWatchdog(const std::vector<RepairTarget>& targets);
 	void StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets);
