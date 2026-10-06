@@ -1134,7 +1134,16 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 		// (see option <DupeArticleFallback> value "stream"). A file none of
 		// whose articles arrived is captured whole: a duplicate proven on the
 		// collection's other files may still carry it
-		if (completed &&
+		bool sideFile = completed &&
+			(fileStatus == CompletedFile::cfPartial || fileStatus == CompletedFile::cfFailure) &&
+			SideFile(filename.c_str());
+		if (sideFile)
+		{
+			// an .nfo or .sfv is worth no repair from a duplicate: par2 rarely covers
+			// it, and repairing it held up a download whose data was whole (B53)
+			nzbInfo->PrintMessage(Message::mkDetail, "Not repairing side file %s from duplicates", filename.c_str());
+		}
+		if (completed && !sideFile &&
 			(fileStatus == CompletedFile::cfPartial || fileStatus == CompletedFile::cfFailure) &&
 			DupeStreamRepair::BuildRepairJob(fileInfo, filename.c_str()))
 		{
@@ -1709,6 +1718,35 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 	}
 	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
 	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
+}
+
+/*
+ * A file nobody plays and nothing unpacks: release info, checksums, images, links,
+ * and whatever option <ExtCleanupDisk> lists for deletion anyway.
+ */
+bool QueueCoordinator::SideFile(const char* filename)
+{
+	const char* extension = strrchr(filename, '.');
+	if (!extension)
+	{
+		return false;
+	}
+	for (const char* side : {".nfo", ".sfv", ".txt", ".url", ".srr", ".srs", ".nzb", ".jpg", ".jpeg", ".png"})
+	{
+		if (!strcasecmp(extension, side))
+		{
+			return true;
+		}
+	}
+	Tokenizer tok(g_Options->GetExtCleanupDisk(), ",; ");
+	while (const char* cleanup = tok.Next())
+	{
+		if (!strcasecmp(extension, cleanup) && strcasecmp(cleanup, ".par2"))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 int QueueCoordinator::FilesTried(NzbInfo* nzbInfo)

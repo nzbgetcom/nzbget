@@ -124,6 +124,7 @@ private:
 	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	static int FilesTried(NzbInfo* nzbInfo);
+	static bool SideFile(const char* filename);
 	void RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery

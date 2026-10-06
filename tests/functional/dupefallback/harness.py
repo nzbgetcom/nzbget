@@ -1145,6 +1145,31 @@ def scenario_restartmidway(daemon, t):
             % (before, after, files_after, h['Status']))
 
 
+def scenario_sidefilenorepair(daemon, t):
+    """B53: the data file is whole and only the .nfo's article is missing, from
+    the duplicate too. No repair from the duplicate is queued for
+    a side file (it held up Industry S04E06 4155, whose par2 had verified the
+    video): the download completes without one."""
+    data = _payload(2_000_000, 9860)
+    nfo = _payload(3_000, 9861)
+    dp = _place_copy(t, 'sfA', data, 'movie.mkv')
+    np_ = _place_copy(t, 'sfN', nfo, 'movie.nfo')
+    db = _place_copy(t, 'sfB', data, 'movie.mkv')
+    nb = _place_copy(t, 'sfM', nfo, 'movie.nfo')
+    primary = build_multi_nzb([(dp, 'Movie.mkv', len(data), 100_000, set()), (np_, 'Movie.nfo', len(nfo), 3_000, {1})])
+    # the duplicates lack the .nfo too (as in production): only a repair could bring it
+    donor = build_multi_nzb([(db, 'Movie.mkv', len(data), 100_000, set()), (nb, 'Movie.nfo', len(nfo), 3_000, {1})])
+    api = daemon.wait_ready()
+    daemon.append(api, 'Donor', donor, True, 'sf-key', 50)
+    daemon.append(api, 'Release', primary, False, 'sf-key', 100)
+    h = daemon.wait_history(api, 'Release')
+    queued = _grep_log(t, 'Queueing stream repair of Movie.nfo')
+    skipped = _grep_log(t, 'Not repairing side file Movie.nfo')
+    # (no par2 here: the missing .nfo leaves the download FAILURE/HEALTH, as without the fix)
+    ok = queued == 0 and skipped == 1
+    return ('sidefilenorepair', ok, 'status=%s nfo_repairs_queued=%d skipped_logs=%d' % (h['Status'], queued, skipped))
+
+
 def scenario_recheckfailed(daemon, t):
     """Lesson 18: with ArticleRetries=0, three articles are lost to a single
     failed request each (the server answers their first request with a
@@ -4608,7 +4633,9 @@ def scenario_deaddownloadlate(daemon, t):
     while not hb['Status'].startswith('SUCCESS') and time.time() < deadline:
         time.sleep(0.5)
         hb = daemon.wait_history(api, 'Backup')
-    rule = _grep_log(t, 'Failing over Primary to duplicate Backup: 0 of its own articles downloaded')
+    # the early failover: B45 (0 of its own arrived) or, first since B49, 40 failed in a row
+    rule = (_grep_log(t, 'Failing over Primary to duplicate Backup: 0 of its own articles downloaded') +
+            _grep_log(t, 'failed in a row'))
     failed = int(hp.get('FailedArticles', 0))
     ok = rule == 1 and failed < 270 and hb['Status'].startswith('SUCCESS') and _verify_output(t, data)
     return ('deaddownloadlate', ok, 'status=%s backup=%s rule_failover_logs=%d failed_articles=%d'
@@ -4667,8 +4694,10 @@ def scenario_copybackup(daemon, t):
         done = [h for h in api.history() if h['NZBName'] == 'Backup' and h['Status'].startswith('SUCCESS')]
         time.sleep(0.5)
     self_copy_back = _grep_log(t, 'Found duplicate Primary')
-    ok = (len(copies) == 1 and copies[0]['Status'] == 'DELETED/COPY' and done and self_copy_back == 0
-          and _verify_output(t, data))
+    # since B43 a re-sent backup's nzb-file is filed as a backup (DUPE), no longer
+    # skipped as a copy: either way it is a backup, and the pick's own copy isn't
+    ok = (len(copies) == 1 and copies[0]['Status'] in ('DELETED/COPY', 'DELETED/DUPE') and done and
+          self_copy_back == 0 and _verify_output(t, data))
     return ('copybackup', ok, 'copy=%s backup_done=%s self_copy_returned=%d'
             % (copies[0]['Status'] if copies else None, bool(done), self_copy_back))
 
@@ -5161,6 +5190,7 @@ SCENARIOS = {
     'complementary': scenario_complementary,
     'recheckfailed': scenario_recheckfailed,
     'nzbgapborrow': scenario_nzbgapborrow,
+    'sidefilenorepair': scenario_sidefilenorepair,
     'finaldeletemidway': scenario_finaldeletemidway,
     'finaldeleterestart': scenario_finaldeleterestart,
     'restartmidway': scenario_restartmidway,
@@ -5343,6 +5373,7 @@ SCENARIO_OPTIONS = {
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
+    'sidefilenorepair': ['DupeArticleFallback=stream'],
     'finaldeletemidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
     'finaldeleterestart': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
     'restartmidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe'],
