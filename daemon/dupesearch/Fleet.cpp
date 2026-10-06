@@ -32,6 +32,7 @@
 #include "NntpHealthServer.h"
 #include "NzbReader.h"
 #include "Posting.h"
+#include "ReleaseName.h"
 #include "Scanner.h"
 #include "DownloadInfo.h"
 #include "Options.h"
@@ -41,8 +42,10 @@ namespace
 {
 	// the largest nzb-file a member may be (as for the duplicate search's fetches)
 	constexpr size_t MaxNzbBytes = 64 * 1024 * 1024;
-	// postings checked at once (as the duplicate search does)
-	constexpr int FleetParallel = 4;
+	// postings checked at once at most (each news server limits its own connections)
+	constexpr int MaxParallel = 16;
+	// time kept from the limit for ranking and adding the members
+	constexpr long long FinishReserveMs = 2000;
 
 	struct Candidate
 	{
@@ -61,10 +64,17 @@ Fleet::Result Fleet::Append(Request request)
 {
 	Result result;
 	request.timeoutSec = std::max(5, std::min(request.timeoutSec, (int)MaxTimeoutSec));
+	// the whole call, fetches included, ends by the time limit (F1-b)
+	long long deadlineMs = DonorHealth::NowMs() + request.timeoutSec * 1000LL;
 	if (request.members.empty())
 	{
 		result.reason = "NO_MEMBERS";
 		return result;
+	}
+	// no key given: the one a single append would get (F1-d)
+	if (request.dupeKey.empty())
+	{
+		request.dupeKey = DupeSearch::MakeDupeKey(request.members[0].name);
 	}
 
 	// read every member: an nzb-file sent, or fetched from its url
@@ -79,7 +89,8 @@ Fleet::Result Fleet::Append(Request request)
 			HttpGet::Reply reply = HttpGet::Fetch(member.url, "fleet member " + member.name, MaxNzbBytes);
 			if (!reply.ok)
 			{
-				candidate.error = "the nzb-file could not be fetched (HTTP " + std::to_string(reply.status) + ")";
+				candidate.error = reply.status ? "the nzb-file could not be fetched (HTTP " + std::to_string(reply.status) + ")" :
+					std::string("the nzb-file could not be fetched (connection failed)");
 				continue;
 			}
 			member.data = std::move(reply.body);
@@ -119,9 +130,13 @@ Fleet::Result Fleet::Append(Request request)
 		options.sample.minimum = g_Options->GetDupeHealthMin();
 		options.sample.maximum = g_Options->GetDupeHealthMax();
 		options.sample.maxBody = g_Options->GetDupeBodyChecks();
-		options.budgetMs = request.timeoutSec * 1000;
+		// every posting at once, each with the time left: the check ends by the deadline
+		// (one after another, each with its own budget, it took 57 s for a 45 s limit)
+		long long checkStart = DonorHealth::NowMs();
+		options.budgetMs = (int)std::max(1000LL, deadlineMs - checkStart - FinishReserveMs);
 		std::mutex mutex;
-		DonorHealth::CheckPostings(servers, postings, options, true, FleetParallel,
+		DonorHealth::CheckPostings(servers, postings, options, true,
+			std::min((int)postings.size(), MaxParallel),
 			[&](const std::string& key, const DonorHealth::Health& health)
 			{
 				std::lock_guard<std::mutex> guard(mutex);
@@ -129,6 +144,8 @@ Fleet::Result Fleet::Append(Request request)
 				candidate.health = health;
 				candidate.checked = true;
 			});
+		// a check the deadline cut short knows less than it could
+		result.complete = DonorHealth::NowMs() - checkStart < options.budgetMs;
 	}
 	for (Candidate& candidate : candidates)
 	{
@@ -201,6 +218,46 @@ Fleet::Result Fleet::Append(Request request)
 		result.reason = "SHUTDOWN";
 		result.complete = false;
 		return result;
+	}
+
+	// the release downloaded under another key (another client's), its files on
+	// disk: nothing of the fleet downloads (F1-c); the same release by name, as
+	// strictly as the duplicate search compares them
+	{
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			NzbInfo* item = historyInfo->GetKind() == HistoryInfo::hkNzb ? historyInfo->GetNzbInfo() : nullptr;
+			if (!item || item->GetDeleteStatus() != NzbInfo::dsNone || !item->IsDupeSuccess() ||
+				item->GetMarkStatus() == NzbInfo::ksBad || !ReleaseName::Readable(item->GetName()))
+			{
+				continue;
+			}
+			bool same = std::any_of(ranked.begin(), ranked.end(), [&](const Candidate* c)
+				{
+					const std::string& name = request.members[c->index].name;
+					return c->error.empty() && ReleaseName::Readable(name) &&
+						ReleaseName::SameRelease(name, item->GetName());
+				});
+			if (same && DupeCoordinator::FilesOnDisk(item))
+			{
+				result.reason = "ALREADY_DOWNLOADED";
+				result.chosen = 0;
+				int rank = 0;
+				for (Candidate* candidate : ranked)
+				{
+					Entry entry;
+					entry.name = request.members[candidate->index].name;
+					entry.rank = ++rank;
+					entry.alive = candidate->alive;
+					entry.status = candidate->error.empty() ? "SKIPPED" : "ERROR";
+					entry.reason = candidate->error.empty() ? "downloaded as " + std::string(item->GetName()) : candidate->error;
+					result.members.push_back(entry);
+				}
+				info("Fleet for %s: %s is downloaded already", request.dupeKey.c_str(), item->GetName());
+				return result;
+			}
+		}
 	}
 
 	// scores above everything the key holds, in rank order, so the duplicate check
@@ -295,9 +352,11 @@ Fleet::Result Fleet::Append(Request request)
 			}
 		}
 	}
-	if (result.chosen == 0)
+	if (result.chosen == 0 && result.reason.empty())
 	{
-		result.reason = !anyAlive ? "ALL_DEAD" : "ALREADY_DOWNLOADED";
+		bool anyUsable = std::any_of(candidates.begin(), candidates.end(),
+			[](const Candidate& c) { return c.error.empty(); });
+		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? "ALL_DEAD" : "ALREADY_DOWNLOADED";
 	}
 	info("Fleet of %i nzb-file(s) for %s: %s%s", (int)request.members.size(), request.dupeKey.c_str(),
 		result.chosen ? ("queued #" + std::to_string(result.chosen)).c_str() : result.reason.c_str(),

@@ -2571,7 +2571,8 @@ void AppendFleetXmlCommand::Execute()
 	Fleet::Request request;
 	char* dupeKey = nullptr;
 	char* category = nullptr;
-	if (!NextParamAsStr(&dupeKey) || !*dupeKey)
+	// an empty key is derived from the first member's name (Fleet)
+	if (!NextParamAsStr(&dupeKey))
 	{
 		BuildErrorResponse(2, "Invalid parameter (DupeKey)");
 		return;

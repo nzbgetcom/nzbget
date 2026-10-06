@@ -54,7 +54,7 @@ public:
 		std::string name;
 		int rank = 0;
 		int alive = -1;			// percent of the sampled articles found, -1 unknown
-		std::string status;		// QUEUED, BACKUP, SAME_POSTING, DEAD, ERROR
+		std::string status;		// QUEUED, BACKUP, SAME_POSTING, DEAD, ERROR, SKIPPED
 		int sameAs = 0;			// SAME_POSTING: the member it is a copy of
 		std::string reason;
 	};
@@ -62,7 +62,7 @@ public:
 	{
 		int chosen = 0;			// the download now queued, 0 for none
 		bool complete = true;	// every posting was checked within the time limit
-		std::string reason;		// when chosen is 0: ALREADY_DOWNLOADED, ALL_DEAD, NO_MEMBERS, SHUTDOWN
+		std::string reason;		// when chosen is 0: ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN
 		std::vector<Entry> members;	// in rank order
 	};
 
