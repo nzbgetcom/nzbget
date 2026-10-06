@@ -127,6 +127,7 @@ private:
 	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	static int FilesTried(NzbInfo* nzbInfo);
 	void RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles);
+	void CountAsFailed(FileInfo* fileInfo, ArticleInfo* articleInfo);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery
 	static constexpr int DupeFailoverSample = 32;

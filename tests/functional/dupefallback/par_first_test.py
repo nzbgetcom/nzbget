@@ -360,9 +360,12 @@ def scenario_wrongdonor(daemon, target, name):
         'status': history.get('Status'),
         'par_status': history.get('ParStatus'),
         'mismatch_logs': log.count("don't match its par2 checksums"),
+        # the rejected article no longer counts as recovered (review item 4)
+        'recovered_articles': int(history.get('DupeRecoveredArticles', 0)),
         'integrity': integrity,
     }
-    passed = (detail['mismatch_logs'] == 1 and history.get('Status', '').startswith('SUCCESS')
+    passed = (detail['mismatch_logs'] == 1 and detail['recovered_articles'] == 0 and
+              history.get('Status', '').startswith('SUCCESS')
               and all(integrity.values()))
     return passed, detail
 

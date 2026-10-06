@@ -1019,19 +1019,11 @@ void QueueCoordinator::RejectBorrowedArticles(FileInfo* fileInfo, const std::vec
 	for (ArticleInfo* article : articles)
 	{
 		donors.insert(article->GetDupeDonorId());
-		if (article->GetStatus() != ArticleInfo::aiFinished)
+		if (article->GetStatus() == ArticleInfo::aiFinished)
 		{
-			continue;
+			// (not recovered any more: own articles are counted right again, review item 4)
+			CountAsFailed(fileInfo, article);
 		}
-		article->SetStatus(ArticleInfo::aiFailed);
-		fileInfo->SetSuccessArticles(fileInfo->GetSuccessArticles() - 1);
-		fileInfo->SetFailedArticles(fileInfo->GetFailedArticles() + 1);
-		fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - article->GetSize());
-		fileInfo->SetFailedSize(fileInfo->GetFailedSize() + article->GetSize());
-		nzbInfo->SetCurrentSuccessArticles(std::max(0, nzbInfo->GetCurrentSuccessArticles() - 1));
-		nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
-		nzbInfo->SetCurrentSuccessSize(std::max<int64>(0, nzbInfo->GetCurrentSuccessSize() - article->GetSize()));
-		nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + article->GetSize());
 	}
 	BString<1024> names;
 	for (int donorId : donors)
@@ -1323,11 +1315,18 @@ void QueueCoordinator::ValidateCompletedFileTiling(FileInfo* fileInfo)
  * it contributed are dropped; the file can then no longer classify cfSuccess.
  * Must be called within DownloadQueue-lock.
  */
-void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* articleInfo)
+/*
+ * A finished article turns out wrong: it counts as failed, and no longer as
+ * recovered from a duplicate if it was one - symmetric with the increment in
+ * ArticleCompleted, which excludes proactive (cutover) fetches: without the
+ * same exclusion here a demoted proactive article would decrement a count it
+ * never incremented. (The recovered part is a no-op after a restart, where the
+ * round/original-id state is not persisted and has already reset.)
+ * Must be called within DownloadQueue-lock.
+ */
+void QueueCoordinator::CountAsFailed(FileInfo* fileInfo, ArticleInfo* articleInfo)
 {
 	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
-
-	DiscardArticleSegment(fileInfo, articleInfo);
 	articleInfo->SetStatus(ArticleInfo::aiFailed);
 
 	fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() - articleInfo->GetSize());
@@ -1341,12 +1340,6 @@ void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* ar
 	nzbInfo->SetCurrentSuccessArticles(nzbInfo->GetCurrentSuccessArticles() - 1);
 	nzbInfo->SetCurrentFailedArticles(nzbInfo->GetCurrentFailedArticles() + 1);
 
-	// undo the "recovered from duplicate" count if this article was one -
-	// symmetric with the increment in ArticleCompleted, which excludes
-	// proactive (cutover) fetches: without the same exclusion here a demoted
-	// proactive article would decrement a count it never incremented. (A
-	// no-op after a restart, where the round/original-id/recovered state is
-	// not persisted and has already reset)
 	if (!articleInfo->GetDupeProactive() &&
 		!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) &&
 		strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()) != 0)
@@ -1354,6 +1347,14 @@ void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* ar
 		fileInfo->SetDupeRecoveredArticles(fileInfo->GetDupeRecoveredArticles() - 1);
 		nzbInfo->SetDupeRecoveredArticles(nzbInfo->GetDupeRecoveredArticles() - 1);
 	}
+}
+
+void QueueCoordinator::DemoteFinishedArticle(FileInfo* fileInfo, ArticleInfo* articleInfo)
+{
+	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
+
+	DiscardArticleSegment(fileInfo, articleInfo);
+	CountAsFailed(fileInfo, articleInfo);
 
 	// a lead-donor article accepted provisionally (its neighbours were still
 	// in flight) reset the lead-miss streak as a success; demoting it proves
