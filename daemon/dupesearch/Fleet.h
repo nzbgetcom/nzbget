@@ -29,7 +29,10 @@
  * sent at once (JSON-RPC method "appendfleet"). Nothing downloads before
  * their postings were checked on the configured news servers: the wholest
  * is queued, the others are kept in history as backups, already scored in
- * the order failover should try them. Same postings are checked once.
+ * the order failover should try them. Same postings are checked once. One
+ * fleet of a key at a time: a second waits for the first. With a download of
+ * the key running, a fleet only adds backups, below it; a posting the key
+ * holds already isn't added again.
  */
 class Fleet
 {
@@ -62,7 +65,8 @@ public:
 	{
 		int chosen = 0;			// the download now queued, 0 for none
 		bool complete = true;	// every posting was checked within the time limit
-		std::string reason;		// when chosen is 0: ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN
+		std::string reason;		// ALREADY_QUEUED (chosen: the key's running download); when chosen is 0:
+							// ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN, NOT_QUEUED
 		std::vector<Entry> members;	// in rank order
 	};
 

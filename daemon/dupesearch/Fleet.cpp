@@ -32,6 +32,7 @@
 #include "NntpHealthServer.h"
 #include "NzbReader.h"
 #include "Posting.h"
+#include "DupeUtil.h"
 #include "ReleaseName.h"
 #include "Scanner.h"
 #include "DownloadInfo.h"
@@ -56,16 +57,30 @@ namespace
 		int alive = -1;
 		bool dead = false;
 		int sameAs = -1;		// index of the member whose posting this one is
+		int existingId = 0;		// the item of the key already in nzbget whose posting this one is
 		std::string error;
 	};
+
+	// one fleet of a key at a time (F2: a client's retry raced the first call)
+	std::mutex g_keyLocksMutex;
+	std::map<std::string, std::shared_ptr<std::mutex>> g_keyLocks;
+
+	std::shared_ptr<std::mutex> KeyLock(const std::string& key)
+	{
+		std::lock_guard<std::mutex> guard(g_keyLocksMutex);
+		std::shared_ptr<std::mutex>& lock = g_keyLocks[DupeUtil::Lower(key)];
+		if (!lock)
+		{
+			lock = std::make_shared<std::mutex>();
+		}
+		return lock;
+	}
 }
 
 Fleet::Result Fleet::Append(Request request)
 {
 	Result result;
 	request.timeoutSec = std::max(5, std::min(request.timeoutSec, (int)MaxTimeoutSec));
-	// the whole call, fetches included, ends by the time limit (F1-b)
-	long long deadlineMs = DonorHealth::NowMs() + request.timeoutSec * 1000LL;
 	if (request.members.empty())
 	{
 		result.reason = "NO_MEMBERS";
@@ -76,6 +91,11 @@ Fleet::Result Fleet::Append(Request request)
 	{
 		request.dupeKey = DupeSearch::MakeDupeKey(request.members[0].name);
 	}
+	// a second fleet of the key waits for the first, then sees what it added (F2)
+	std::shared_ptr<std::mutex> keyLock = KeyLock(request.dupeKey);
+	std::lock_guard<std::mutex> keyGuard(*keyLock);
+	// the whole call, fetches included, ends by the time limit (F1-b)
+	long long deadlineMs = DonorHealth::NowMs() + request.timeoutSec * 1000LL;
 
 	// read every member: an nzb-file sent, or fetched from its url
 	std::vector<Candidate> candidates(request.members.size());
@@ -260,30 +280,65 @@ Fleet::Result Fleet::Append(Request request)
 		}
 	}
 
-	// scores above everything the key holds, in rank order, so the duplicate check
-	// queues the best and keeps the others as backups, tried in this order
+	// what the key holds already: a download running, and the nzb-files of all its items
 	int top = DupeSearch::BasePickScore;
+	int runningId = 0;
+	int runningScore = 0;
+	std::vector<std::pair<int, std::string>> existing;	// nzb id, its nzb-file
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-		auto consider = [&](NzbInfo* nzbInfo)
+		auto consider = [&](NzbInfo* nzbInfo, bool queued)
 			{
-				if (!strcasecmp(nzbInfo->GetDupeKey(), request.dupeKey.c_str()))
+				if (nzbInfo->GetKind() != NzbInfo::nkNzb || strcasecmp(nzbInfo->GetDupeKey(), request.dupeKey.c_str()))
 				{
-					top = std::max(top, nzbInfo->GetDupeScore() + 1000);
+					return;
+				}
+				top = std::max(top, nzbInfo->GetDupeScore() + 1000);
+				if (queued && !nzbInfo->GetDeleting() && nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+					(!runningId || nzbInfo->GetDupeScore() > runningScore))
+				{
+					runningId = nzbInfo->GetId();
+					runningScore = nzbInfo->GetDupeScore();
+				}
+				if (!Util::EmptyStr(nzbInfo->GetQueuedFilename()) && !strchr(nzbInfo->GetQueuedFilename(), '|'))
+				{
+					existing.emplace_back(nzbInfo->GetId(), nzbInfo->GetQueuedFilename());
 				}
 			};
 		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
 		{
-			consider(nzbInfo);
+			consider(nzbInfo, true);
 		}
 		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
 		{
 			if (historyInfo->GetKind() == HistoryInfo::hkNzb)
 			{
-				consider(historyInfo->GetNzbInfo());
+				consider(historyInfo->GetNzbInfo(), false);
 			}
 		}
 	}
+	// a member whose posting the key holds already isn't added again (F2: a resent
+	// fleet's copy of the whole posting was filed as a copy, and a worse one queued)
+	for (const auto& item : existing)
+	{
+		NzbSummary summary;
+		if (!NzbReader::Parse(DupeUtil::ReadAll(item.second), summary))
+		{
+			continue;
+		}
+		for (Candidate& candidate : candidates)
+		{
+			if (candidate.error.empty() && candidate.sameAs < 0 && !candidate.existingId &&
+				Posting::SamePosting(summary.messageIds, candidate.summary.messageIds))
+			{
+				candidate.existingId = item.first;
+			}
+		}
+	}
+	// a download of the key running: the fleet's members become its backups, scored
+	// below it; otherwise above everything the key holds, so the duplicate check
+	// queues the best and keeps the others as backups, tried in rank order
+	int base = runningId ? runningScore : top;
 
 	bool anyAlive = std::any_of(order.begin(), order.end(),
 		[&](const Candidate* c) { return tier(*c) <= 1; });
@@ -301,11 +356,11 @@ Fleet::Result Fleet::Append(Request request)
 			entry.status = "ERROR";
 			entry.reason = candidate->error;
 		}
-		else if (candidate->sameAs >= 0)
+		else if (candidate->sameAs >= 0 || candidate->existingId)
 		{
-			// its posting is in the fleet already: one copy of it is enough
+			// its posting is in the fleet or in nzbget already: one copy of it is enough
 			entry.status = "SAME_POSTING";
-			entry.sameAs = added[candidate->sameAs];
+			entry.sameAs = candidate->existingId ? candidate->existingId : added[candidate->sameAs];
 		}
 		else if (!anyAlive)
 		{
@@ -326,7 +381,7 @@ Fleet::Result Fleet::Append(Request request)
 				name += ".nzb";
 			}
 			Scanner::EAddStatus status = g_Scanner->AddExternalFile(name.c_str(), request.category.c_str(),
-				false, request.priority, request.dupeKey.c_str(), top - rank, dmScore, &parameters,
+				false, request.priority, request.dupeKey.c_str(), base - rank, dmScore, &parameters,
 				false, false, nullptr, nullptr, member.data.data(), (int)member.data.size(), &nzbId);
 			entry.nzbId = status == Scanner::asSuccess ? nzbId : 0;
 			added[candidate->index] = entry.nzbId;
@@ -339,24 +394,35 @@ Fleet::Result Fleet::Append(Request request)
 		result.members.push_back(entry);
 	}
 
-	// which one the duplicate check queued: the best, unless the release is on disk already
+	// which one downloads: the download already running, or the one the duplicate
+	// check queued (the best, unless the release is on disk already)
+	bool onDisk = false;
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		if (runningId && downloadQueue->GetQueue()->Find(runningId))
+		{
+			result.chosen = runningId;
+			result.reason = "ALREADY_QUEUED";
+		}
 		for (Entry& entry : result.members)
 		{
-			if (entry.nzbId > 0 && downloadQueue->GetQueue()->Find(entry.nzbId))
+			if (!runningId && entry.nzbId > 0 && downloadQueue->GetQueue()->Find(entry.nzbId))
 			{
 				entry.status = "QUEUED";
 				result.chosen = entry.nzbId;
 				break;
 			}
 		}
+		NzbInfo probe;
+		probe.SetDupeKey(request.dupeKey.c_str());
+		onDisk = DupeCoordinator::DownloadedOnDisk(downloadQueue, &probe) != nullptr;
 	}
 	if (result.chosen == 0 && result.reason.empty())
 	{
 		bool anyUsable = std::any_of(candidates.begin(), candidates.end(),
 			[](const Candidate& c) { return c.error.empty(); });
-		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? "ALL_DEAD" : "ALREADY_DOWNLOADED";
+		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? "ALL_DEAD" :
+			onDisk ? "ALREADY_DOWNLOADED" : "NOT_QUEUED";
 	}
 	info("Fleet of %i nzb-file(s) for %s: %s%s", (int)request.members.size(), request.dupeKey.c_str(),
 		result.chosen ? ("queued #" + std::to_string(result.chosen)).c_str() : result.reason.c_str(),

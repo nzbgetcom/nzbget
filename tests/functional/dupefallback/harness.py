@@ -4629,6 +4629,38 @@ def scenario_fleetnokey(daemon, t):
     return ('fleetnokey', ok, 'chosen=%s key=%s' % (reply['Chosen'], group.get('DupeKey')))
 
 
+def scenario_fleetresend(daemon, t):
+    """appendfleet (F2, Women in Blue S02E02): a client sends the same fleet twice,
+    1 s apart (a retry). The second call waits for the first: the whole posting
+    stays the one downloading, the second reply names it (ALREADY_QUEUED) and
+    reports its members as the same postings as the first's; the 12%-alive copy
+    is never queued. Before, the two raced: the whole copy went to history and
+    the 12% one downloaded."""
+    import threading
+    daemon.fake_nntp.alive = set(_fleet_ids('rw', 200)) | set(_fleet_ids('rl')[:5])
+    daemon.fake_nntp.delays.update({'rw-': 0.3, 'rl-': 0.3})
+    api = daemon.wait_ready()
+    # 200 slow articles: still downloading when the second call comes
+    members = [('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('rw', 200), 2_000_000).decode()),
+               ('Show.S01E01.low', _fake_nzb_ids(_fleet_ids('rl'), 410_000).decode())]
+    box = {}
+
+    def send(slot):
+        box[slot] = _fleet(daemon, members, key='fleet:resend', timeout=20)
+    first = threading.Thread(target=send, args=('a',))
+    first.start()
+    time.sleep(1)
+    send('b')
+    first.join(timeout=60)
+    a, b = box.get('a', {}), box.get('b', {})
+    whole = next((m for m in a.get('Members', []) if m['Name'] == 'Show.S01E01.whole'), {})
+    queued = [g['NZBName'] for g in api.listgroups()]
+    ok = (a.get('Chosen') and a['Chosen'] == whole.get('NZBID') and b.get('Chosen') == a['Chosen'] and
+          b.get('Reason') == 'ALREADY_QUEUED' and all(m['Status'] == 'SAME_POSTING' for m in b['Members']) and
+          queued == ['Show.S01E01.whole'])
+    return ('fleetresend', ok, 'a=%s b=%s queued=%s' % (a, b, queued))
+
+
 def scenario_fleetone(daemon, t):
     """appendfleet with a single whole member: it is queued and downloads."""
     daemon.fake_nntp.alive = set(_fleet_ids('one'))
@@ -6103,6 +6135,7 @@ SCENARIOS = {
     'fleetallerror': scenario_fleetallerror,
     'fleetotherkey': scenario_fleetotherkey,
     'fleetnokey': scenario_fleetnokey,
+    'fleetresend': scenario_fleetresend,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6348,6 +6381,7 @@ SCENARIO_OPTIONS = {
     'fleetallerror': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetotherkey': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetnokey': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetresend': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6447,7 +6481,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
