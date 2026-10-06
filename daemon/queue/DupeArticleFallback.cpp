@@ -435,7 +435,10 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 			break;
 		}
 	}
-	if (!sums || sums->crcs.size() < (size_t)((fileSize + blockSize - 1) / blockSize))
+	// a par2 block size no real set uses (a damaged packet) isn't trusted: the buffer
+	// for it would be too large to allocate
+	if (!sums || blockSize % 4 != 0 || blockSize > (uint64)MaxPar2BlockSize ||
+		sums->crcs.size() < (size_t)((fileSize + blockSize - 1) / blockSize))
 	{
 		return mismatches;
 	}
@@ -485,7 +488,8 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 		{
 			int64 from = block * (int64)blockSize;
 			int64 to = std::min(from + (int64)blockSize, fileSize);
-			if (!covered(from, to))
+			// a segment past the end of the file (a misplaced article) has no block
+			if (from >= fileSize || (size_t)block >= sums->crcs.size() || !covered(from, to))
 			{
 				continue;
 			}

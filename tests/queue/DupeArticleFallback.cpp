@@ -21,6 +21,7 @@
 #include "nzbget.h"
 
 #include <boost/test/unit_test.hpp>
+#include <fstream>
 #include <set>
 #include "DownloadInfo.h"
 #include "DupeArticleFallback.h"
@@ -64,6 +65,69 @@ struct FallbackOptionsGuard
 };
 
 } // namespace
+
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackRejectsDamagedPar2BlockSizeTest)
+{
+	// a par2 set whose Main packet gives a block size no real set uses: the check
+	// of borrowed articles must neither allocate it nor read past the checksums
+	fs::path dir = fs::temp_directory_path() / ("nzbget-par2-block-" + std::to_string(getpid()));
+	fs::create_directories(dir);
+	std::string data(100, 'x');
+	{
+		std::ofstream(dir / "f.bin", std::ios::binary).write(data.data(), data.size());
+	}
+	auto packet = [](const char* type, const std::string& body)
+		{
+			std::string header("PAR2\0PKT", 8);
+			uint64 length = 64 + body.size();
+			for (int i = 0; i < 8; i++) header += (char)((length >> (8 * i)) & 0xff);
+			header += std::string(32, '\0');
+			header += std::string(type, 16);
+			return header + body;
+		};
+	auto le64 = [](uint64 value)
+		{
+			std::string text;
+			for (int i = 0; i < 8; i++) text += (char)((value >> (8 * i)) & 0xff);
+			return text;
+		};
+	std::string fileId(16, '\1');
+	std::string desc = fileId + std::string(16, '\0') + std::string(16, '\0') + le64(data.size()) + std::string("f.bin\0\0\0", 8);
+	std::string ifsc = fileId + std::string(16, '\0') + std::string(4, '\0');
+	auto writePar = [&](uint64 blockSize)
+		{
+			std::string par = packet("PAR 2.0\0Main\0\0\0\0", le64(blockSize) + std::string(8, '\0')) +
+				packet("PAR 2.0\0FileDesc", desc) + packet("PAR 2.0\0IFSC\0\0\0\0", ifsc);
+			std::ofstream(dir / "f.par2", std::ios::binary | std::ios::trunc).write(par.data(), par.size());
+		};
+
+	NzbInfo nzb;
+	nzb.SetDestDir((dir.string()).c_str());
+	std::unique_ptr<FileInfo> target = BuildFile("f.bin", {{1, 100}}, "orig");
+	target->SetNzbInfo(&nzb);
+	ArticleInfo* article = target->GetArticles()->at(0).get();
+	article->SetStatus(ArticleInfo::aiFinished);
+	article->SetDupeDonorId(1);
+	article->SetSegmentOffset(0);
+	article->SetSegmentSize(100);
+
+	// a sound block size: the borrowed bytes don't match the (zero) checksum
+	writePar(100);
+	std::vector<ArticleInfo*> mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
+		(dir / "f.bin").string().c_str());
+	BOOST_CHECK_EQUAL(mismatches.size(), 1);
+
+	writePar(1ULL << 50);
+	BOOST_CHECK_NO_THROW(mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
+		(dir / "f.bin").string().c_str()));
+	BOOST_CHECK(mismatches.empty());
+
+	// an article reaching past the end of the file has no block to check
+	article->SetSegmentOffset(400);
+	BOOST_CHECK_NO_THROW(mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
+		(dir / "f.bin").string().c_str()));
+	fs::remove_all(dir);
+}
 
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackSizesMatchTest)
 {

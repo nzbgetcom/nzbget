@@ -96,6 +96,8 @@ public:
 	// damage within this share of the data (per mille) of all that par2 can repair
 	// is not left to par-check: the projection is rough and par2 needs whole blocks
 	static constexpr int ParEdgeMargin = 50;
+	// the largest par2 block size the check of borrowed articles reads (256 MiB)
+	static constexpr int64 MaxPar2BlockSize = 256LL * 1024 * 1024;
 
 	/* Finds the file of the duplicate collection which corresponds to the target
 	 * data file: preferably by filename, otherwise by unambiguous structural identity
