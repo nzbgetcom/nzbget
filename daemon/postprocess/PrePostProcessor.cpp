@@ -880,6 +880,18 @@ void PrePostProcessor::StartJob(DownloadQueue* downloadQueue, PostInfo* postInfo
 		!nzbInfo->GetStreamRepairJobs()->empty() &&
 		nzbInfo->GetDeleteStatus() == NzbInfo::dsNone;
 
+	// stream repair is the last option (B78): it can take longer than downloading
+	// a good backup whole, so with HealthCheck=dupe and a backup still untried in
+	// history the download fails over instead (par2 still gets its turn)
+	if (streamRepair && !postInfo->GetStreamRepairDone() && g_Options->GetHealthCheck() == Options::hcDupe &&
+		DupeCoordinator::FailsOver(nzbInfo) &&
+		g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo, nzbInfo->GetName(), nzbInfo->GetDupeKey()))
+	{
+		nzbInfo->PrintMessage(Message::mkInfo,
+			"Not repairing %s from duplicates: a backup in history is tried first", nzbInfo->GetName());
+		streamRepair = false;
+	}
+
 #ifndef DISABLE_PARCHECK
 	// A par-check that cannot succeed still reads the whole collection (and
 	// waits for every remaining par2-file): recover from duplicates first,

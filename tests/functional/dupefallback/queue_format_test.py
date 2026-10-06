@@ -104,7 +104,9 @@ def roundtrip(build, upstream):
         data = harness._payload(size, 4242)
         pp = harness._place_copy(target, 'rtA', data, 'file.mkv')
         dp = harness._place_copy(target, 'rtB', data, 'file.mkv')
-        daemon.append(api, 'Donor', harness.build_nzb(dp, 'obf.mkv', size, seg_donor, set()), True, 'rt-key', 50)
+        # marked dead (DupeAlive=0): stream repair stays the last option (B78) and runs
+        harness._ds_append(api, 'Donor', harness.build_nzb(dp, 'obf.mkv', size, seg_donor, set()), 'rt-key', 50,
+                           params=[{'Name': 'DupeAlive', 'Value': '0'}])
         daemon.append(api, 'Done', harness.build_nzb(pp, 'Done.mkv', size, seg_primary, {3}), False, 'rt-key', 100)
         done = daemon.wait_history(api, 'Done')
         detail['done_recovered'] = int(done.get('DupeRecoveredArticles', 0))

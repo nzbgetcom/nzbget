@@ -2683,7 +2683,10 @@ def scenario_wholefilewrongdonor(daemon, t):
 
 def _wholefile_run(daemon, t, tag, members, donor_members):
     api = daemon.wait_ready()
-    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    # marked dead by a dupe tool: no failover fetches it, so stream repair is the
+    # last option left (B78) - the repair itself is what these scenarios test
+    _ds_append(api, 'Don' + tag, build_multi_nzb(donor_members), tag + '-key', 50,
+               params=[{'Name': 'DupeAlive', 'Value': '0'}])
     daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
     return api, daemon.wait_history(api, 'Rel' + tag)
 
@@ -2914,7 +2917,10 @@ def _prod_wholefile(daemon, t, tag, damage):
     t.write_file(os.path.join('data', '%sA/rel.par2' % tag), par)
     members.append(('%sA/rel.par2' % tag, 'Rel.par2', len(par), seg, set()))
     api = daemon.wait_ready()
-    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    # marked dead by a dupe tool: no failover fetches it, so stream repair is the
+    # last option left (B78) - the repair itself is what these scenarios test
+    _ds_append(api, 'Don' + tag, build_multi_nzb(donor_members), tag + '-key', 50,
+               params=[{'Name': 'DupeAlive', 'Value': '0'}])
     daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
     h = daemon.wait_history(api, 'Rel' + tag, timeout=300)
     ok = _verify_output(t, movie, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
@@ -2961,7 +2967,10 @@ def _prod_rar(daemon, t, tag, damage):
     t.write_file(os.path.join('data', '%sA/rel.par2' % tag), par)
     members.append(('%sA/rel.par2' % tag, 'Rel.par2', len(par), seg, set()))
     api = daemon.wait_ready()
-    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    # marked dead by a dupe tool: no failover fetches it, so stream repair is the
+    # last option left (B78) - the repair itself is what these scenarios test
+    _ds_append(api, 'Don' + tag, build_multi_nzb(donor_members), tag + '-key', 50,
+               params=[{'Name': 'DupeAlive', 'Value': '0'}])
     daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
     h = daemon.wait_history(api, 'Rel' + tag, timeout=300)
     ok = _verify_output(t, movie, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
@@ -3292,7 +3301,10 @@ def _wholefile_named(daemon, t, tag, primary_names, donor_names):
     donor_members = [(m[0], donor_names[i]) + m[2:] for i, m in enumerate(donor_members)]
     payloads = {primary_names[i]: payloads['Rel.part%02d.rar' % (i + 1)] for i in range(4)}
     api = daemon.wait_ready()
-    daemon.append(api, 'Don' + tag, build_multi_nzb(donor_members), True, tag + '-key', 50)
+    # marked dead by a dupe tool: no failover fetches it, so stream repair is the
+    # last option left (B78) - the repair itself is what these scenarios test
+    _ds_append(api, 'Don' + tag, build_multi_nzb(donor_members), tag + '-key', 50,
+               params=[{'Name': 'DupeAlive', 'Value': '0'}])
     daemon.append(api, 'Rel' + tag, build_multi_nzb(members), False, tag + '-key', 100)
     h = daemon.wait_history(api, 'Rel' + tag)
     recreated = _grep_log(t, 'Recreating')
@@ -5227,6 +5239,33 @@ def scenario_ondiskstop(daemon, t):
     return ('ondiskstop', ok, 'clean=%s damaged=%s stop_logs=%d' % (hc['Status'], hd['Status'], stopped))
 
 
+def scenario_repairlast(daemon, t):
+    """B78: stream repair is the last option. A download is damaged beyond its
+    par2 (none here) while a whole backup waits in history: it isn't repaired
+    from the backup, it fails over to it, which then downloads whole. Before,
+    the download was stream-repaired first, which can take longer than
+    downloading a good posting."""
+    size, seg = 6_000_000, 500_000
+    data = _payload(size, 7272)
+    damaged = build_nzb(_place_copy(t, 'rlA', data, 'file.mkv'), 'rlA.mkv', size, seg, set(range(2, 10)))
+    backup = build_nzb(_place_copy(t, 'rlB', data, 'file.mkv'), 'obf-rl.mkv', size, 250_000, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DamagedRl', damaged, True, 'rl-key', 100)
+    daemon.append(api, 'BackRl', backup, False, 'rl-key', 90)
+    daemon.wait_history(api, 'BackRl', timeout=30)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'DamagedRl'])
+    deadline = time.time() + 180
+    hist = {}
+    while time.time() < deadline:
+        hist = {x['NZBName']: x['Status'] for x in api.history()}
+        if hist.get('BackRl', '').startswith(('SUCCESS', 'FAILURE')) and hist.get('DamagedRl', '').startswith('FAILURE'):
+            break
+        time.sleep(0.5)
+    skipped = _grep_log(t, 'a backup in history is tried first')
+    ok = skipped >= 1 and hist.get('DamagedRl', '').startswith('FAILURE') and hist.get('BackRl', '').startswith('SUCCESS')
+    return ('repairlast', ok, 'damaged=%s backup=%s skip_logs=%d' % (hist.get('DamagedRl'), hist.get('BackRl'), skipped))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -5622,6 +5661,7 @@ SCENARIOS = {
     'ondiskskip': scenario_ondiskskip,
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
+    'repairlast': scenario_repairlast,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -5847,6 +5887,7 @@ SCENARIO_OPTIONS = {
     'ondiskskip': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
+    'repairlast': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],

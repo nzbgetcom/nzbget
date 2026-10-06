@@ -261,8 +261,9 @@ def scenario_deferfailover(daemon, target, name):
     (93.2%) above the health (92.4%), while the damage (9540 bytes) is still
     within the good parity bytes (9920): the stream fallback defers and counts
     no attempt. A healthy backup scored 99 waits in history. The download must
-    not fail over before borrowing had its turn: it completes, and the
-    backup's bytes repair what the one remaining recovery block can't."""
+    not fail over before borrowing had its turn. After par-check it fails, and
+    the backup downloads whole: stream repair is the last option (B78), not
+    tried while a backup is untried."""
     parity_names = ['testfile.par2', 'testfile.vol00+1.PAR2',
                     'testfile.vol01+2.PAR2', 'testfile.vol03+3.PAR2']
     block_size, _ = inspect_parity([FIXTURES / n for n in parity_names])
@@ -304,8 +305,20 @@ def scenario_deferfailover(daemon, target, name):
         'recovered_articles': int(history.get('DupeRecoveredArticles', 0)),
         'integrity': integrity,
     }
-    passed = (detail['deferred_logs'] == 1 and detail['failover_logs'] == 0 and history.get('Status', '').startswith('SUCCESS')
-              and detail['recovered_articles'] >= 1 and all(integrity.values()))
+    # stream repair is the last option (B78): with the backup untried, the download
+    # fails after par-check and the backup downloads whole (no early failover)
+    deadline = time.time() + 120
+    backup = {}
+    while time.time() < deadline:
+        backup = next((h for h in api.history() if h['NZBName'] == 'Backup-' + name), {})
+        if backup.get('Status', '').startswith(('SUCCESS', 'FAILURE')):
+            break
+        time.sleep(0.5)
+    detail['backup_status'] = backup.get('Status')
+    detail['integrity'] = integrity = verify_named_outputs(target, {'testfile.dat': data})
+    passed = (detail['deferred_logs'] == 1 and detail['failover_logs'] == 0 and
+              history.get('Status', '').startswith('FAILURE') and
+              backup.get('Status', '').startswith('SUCCESS') and all(integrity.values()))
     return passed, detail
 
 
