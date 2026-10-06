@@ -118,6 +118,7 @@ public:
 	/* readVersion: the newest version read (default: the one written) */
 	StateFile(const char* filename, int formatVersion, bool transactional, int readVersion = 0);
 	void Discard();
+	void SetFlush(bool flush) { m_flush = flush; }
 	bool FileExists();
 	StateDiskFile* BeginWrite();
 	bool FinishWrite();
@@ -131,6 +132,7 @@ private:
 	int m_formatVersion;
 	int m_readVersion;
 	bool m_transactional;
+	bool m_flush = true;
 	int m_fileVersion = 0;
 	StateDiskFile m_file;
 
@@ -198,7 +200,7 @@ bool StateFile::FinishWrite()
 	}
 
 	// flush file content before renaming
-	if (g_Options->GetFlushQueue())
+	if (m_flush && g_Options->GetFlushQueue())
 	{
 		debug("Flushing data for file %s", FileSystem::BaseFileName(m_tempFilename));
 		m_file.Flush();
@@ -221,7 +223,7 @@ bool StateFile::FinishWrite()
 	}
 
 	// flush directory buffer after renaming
-	if (g_Options->GetFlushQueue())
+	if (m_flush && g_Options->GetFlushQueue())
 	{
 		debug("Flushing directory for file %s", FileSystem::BaseFileName(m_destFilename));
 		CString errmsg;
@@ -530,6 +532,10 @@ void DiskState::ConvertLegacyFileStates(Servers* servers)
 		return;
 	}
 
+	// each file is written anew and renamed over the old one: a file that another user
+	// owns (an earlier nzbget run under another account) can't be opened for writing,
+	// but in a writable QueueDir it can be replaced. Not flushed one by one: thousands
+	// of syncs would hold up the start for minutes.
 	int converted = 0;
 	for (const auto& entry : legacy)
 	{
@@ -538,13 +544,13 @@ void DiskState::ConvertLegacyFileStates(Servers* servers)
 		bool ok;
 		if (entry.second.empty())
 		{
-			ok = LoadFile(&fileInfo, true, true) && SaveFile(&fileInfo);
+			ok = LoadFile(&fileInfo, true, true) && SaveFile(&fileInfo, true);
 		}
 		else
 		{
 			bool completed = entry.second == "c";
 			ok = LoadFile(&fileInfo, false, true) && LoadFileState(&fileInfo, servers, completed) &&
-				SaveFileState(&fileInfo, completed);
+				SaveFileState(&fileInfo, completed, true);
 		}
 		converted += ok ? 1 : 0;
 	}
@@ -1341,12 +1347,13 @@ error:
 	return false;
 }
 
-bool DiskState::SaveFile(FileInfo* fileInfo)
+bool DiskState::SaveFile(FileInfo* fileInfo, bool replace)
 {
 	debug("Saving FileInfo %i to disk", fileInfo->GetId());
 
 	BString<100> filename("%i", fileInfo->GetId());
-	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, replace);
+	stateFile.SetFlush(!replace);
 
 	StateDiskFile* outfile = stateFile.BeginWrite();
 	if (!outfile)
@@ -1509,12 +1516,13 @@ error:
 	return false;
 }
 
-bool DiskState::SaveFileState(FileInfo* fileInfo, bool completed)
+bool DiskState::SaveFileState(FileInfo* fileInfo, bool completed, bool replace)
 {
 	debug("Saving FileState %i to disk", fileInfo->GetId());
 
 	BString<100> filename("%i%s", fileInfo->GetId(), completed ? "c" : "s");
-	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, false);
+	StateFile stateFile(filename, DISKSTATE_FILE_VERSION, replace);
+	stateFile.SetFlush(!replace);
 
 	StateDiskFile* outfile = stateFile.BeginWrite();
 	if (!outfile)
@@ -1522,7 +1530,7 @@ bool DiskState::SaveFileState(FileInfo* fileInfo, bool completed)
 		return false;
 	}
 
-	return SaveFileState(fileInfo, *outfile, completed);
+	return SaveFileState(fileInfo, *outfile, completed) && stateFile.FinishWrite();
 }
 
 bool DiskState::SaveFileState(FileInfo* fileInfo, StateDiskFile& outfile, bool completed)

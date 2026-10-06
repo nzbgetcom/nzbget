@@ -42,11 +42,11 @@ public:
 	 * branch wrote (formats 65/66): saving it again writes the upstream format */
 	bool LegacyQueueRead() { return m_legacyQueueRead; }
 	bool SaveDownloadProgress(DownloadQueue* downloadQueue);
-	bool SaveFile(FileInfo* fileInfo);
+	bool SaveFile(FileInfo* fileInfo, bool replace = false);
 	bool LoadFile(FileInfo* fileInfo, bool fileSummary, bool articles);
 	bool SaveAllFileInfos(DownloadQueue* downloadQueue);
 	void DiscardQuickFileInfos();
-	bool SaveFileState(FileInfo* fileInfo, bool completed);
+	bool SaveFileState(FileInfo* fileInfo, bool completed, bool replace = false);
 	bool LoadFileState(FileInfo* fileInfo, Servers* servers, bool completed);
 	bool LoadArticles(FileInfo* fileInfo);
 	void DiscardDownloadQueue();

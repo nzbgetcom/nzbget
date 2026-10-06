@@ -302,7 +302,9 @@ def earlierbuild(build, earlier):
 def legacystates(build, upstream, earlier):
     """A history item an earlier build of the branch wrote (file states in format
     9), never touched since: this build converts its file states to the upstream
-    format at the next start, so after a downgrade upstream can retry it."""
+    format at the next start, so after a downgrade upstream can retry it. The
+    files are read-only, as when another account wrote them: they are replaced,
+    not rewritten in place."""
     stage = tempfile.mkdtemp(prefix='queueformat-legacystates-')
     target = harness.LocalTarget(build, stage)
     nntp = harness.free_port()
@@ -322,6 +324,10 @@ def legacystates(build, upstream, earlier):
         daemon.wait_history(api, 'Damaged')
         stop(daemon, target)
         detail['versions_by_earlier'] = states()
+        # files nzbget can't open for writing, like those another account left behind
+        for f in os.listdir(queue_dir):
+            if re.match(r'^\d+[sc]?$', f):
+                os.chmod(os.path.join(queue_dir, f), 0o444)
 
         mark = log_size(target)
         start(target, build, daemon.conf_rel)
@@ -331,7 +337,9 @@ def legacystates(build, upstream, earlier):
         detail['versions_after'] = states()
         with open(target.path('nzbget.log'), errors='replace') as f:
             f.seek(mark)
-            detail['converted_logs'] = f.read().count('to the upstream format')
+            log = f.read()
+            detail['converted_logs'] = log.count('to the upstream format')
+            detail['save_errors'] = log.count('Error saving diskstate')
 
         upstream_config(target.path(daemon.conf_rel))
         mark = log_size(target)
@@ -348,7 +356,8 @@ def legacystates(build, upstream, earlier):
         detail['upstream_errors'] = errors_in_log(target, mark)
         stop(daemon, target)
         ok = (9 in detail['versions_by_earlier'] and detail['versions_after'] == [7] and
-              detail['converted_logs'] == 1 and detail['upstream_retry_logs'] == 1 and not detail['upstream_errors'])
+              detail['converted_logs'] == 1 and detail['save_errors'] == 0 and
+              detail['upstream_retry_logs'] == 1 and not detail['upstream_errors'])
         return ok, detail
     finally:
         target.teardown(False)
