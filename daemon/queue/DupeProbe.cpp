@@ -486,8 +486,9 @@ void DupeProbe::Run()
 	}
 	else if (verdict.Existing >= MinAliveSamples)
 	{
-		Note(Message::mkInfo, "Dupe probe: %i of %i sampled articles exist, the first on %s: not abandoning it",
-			verdict.Existing, sampled, verdict.FoundOn.c_str());
+		// the probe stops asking once MinAliveSamples were found: the rest weren't asked
+		Note(Message::mkInfo, "Dupe probe: %i of %i sampled articles found (it stops at %i), the first on %s: "
+			"not abandoning it", verdict.Existing, sampled, MinAliveSamples, verdict.FoundOn.c_str());
 	}
 	else if (verdict.Finished && verdict.ReachedServers == 0)
 	{
