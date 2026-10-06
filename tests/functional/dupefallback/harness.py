@@ -5329,9 +5329,10 @@ def scenario_ondiskstop(daemon, t):
     1 s a request) when another copy of the same key downloads whole and
     succeeds: the repair is stopped, and the repairing copy is kept in history
     as a backup instead of running on."""
-    size, seg = 20_000_000, 500_000
+    # about 80 requests to the slow duplicate: the repair outlasts the clean download
+    size, seg = 40_000_000, 500_000
     data = _payload(size, 7171)
-    damaged = build_nzb(_place_copy(t, 'odA', data, 'file.mkv'), 'odA.mkv', size, seg, set(range(2, 40, 2)))
+    damaged = build_nzb(_place_copy(t, 'odA', data, 'file.mkv'), 'odA.mkv', size, seg, set(range(2, 80, 2)))
     donor = build_nzb(_place_copy(t, 'odB', data, 'file.mkv'), 'obf-od.mkv', size, 250_000, set())
     clean = build_nzb(_place_copy(t, 'odC', data, 'file.mkv'), 'odC.mkv', size, seg, set())
     api = daemon.wait_ready()
