@@ -299,6 +299,61 @@ def earlierbuild(build, earlier):
         target.teardown(False)
 
 
+def legacystates(build, upstream, earlier):
+    """A history item an earlier build of the branch wrote (file states in format
+    9), never touched since: this build converts its file states to the upstream
+    format at the next start, so after a downgrade upstream can retry it."""
+    stage = tempfile.mkdtemp(prefix='queueformat-legacystates-')
+    target = harness.LocalTarget(build, stage)
+    nntp = harness.free_port()
+    daemon = harness.Daemon(target, nntp, harness.free_port())
+    detail = {}
+    try:
+        daemon.write_config(['ParCheck=manual', 'HealthCheck=none', 'ContinuePartial=yes'])
+        daemon.start_nserv(port=nntp)
+        time.sleep(1)
+        queue_dir = target.path('main', 'queue')
+        states = lambda: sorted({version(os.path.join(queue_dir, f)) for f in os.listdir(queue_dir)
+                                 if re.match(r'^\d+[sc]?$', f)})
+        start(target, earlier, daemon.conf_rel)
+        api = daemon.wait_ready()
+        pp = harness._place_copy(target, 'ls', harness._payload(600_000, 51), 'f.bin')
+        daemon.append(api, 'Damaged', harness.build_nzb(pp, 'Damaged.bin', 600_000, 100_000, {3}), False, 'ls-key', 1)
+        daemon.wait_history(api, 'Damaged')
+        stop(daemon, target)
+        detail['versions_by_earlier'] = states()
+
+        mark = log_size(target)
+        start(target, build, daemon.conf_rel)
+        daemon.wait_ready()
+        time.sleep(1)
+        stop(daemon, target)
+        detail['versions_after'] = states()
+        with open(target.path('nzbget.log'), errors='replace') as f:
+            f.seek(mark)
+            detail['converted_logs'] = f.read().count('to the upstream format')
+
+        upstream_config(target.path(daemon.conf_rel))
+        mark = log_size(target)
+        start(target, upstream, daemon.conf_rel)
+        api = daemon.wait_ready()
+        hid = [h['NZBID'] for h in api.history() if h['NZBName'] == 'Damaged']
+        api.editqueue('HistoryRetryFailed', 0, '', hid)
+        time.sleep(3)
+        # the article is still missing, so the retry fails again: what counts is that
+        # upstream read the file state and retried (an unreadable one is an error)
+        with open(target.path('nzbget.log'), errors='replace') as f:
+            f.seek(mark)
+            detail['upstream_retry_logs'] = f.read().count('Retrying failed articles for Damaged')
+        detail['upstream_errors'] = errors_in_log(target, mark)
+        stop(daemon, target)
+        ok = (9 in detail['versions_by_earlier'] and detail['versions_after'] == [7] and
+              detail['converted_logs'] == 1 and detail['upstream_retry_logs'] == 1 and not detail['upstream_errors'])
+        return ok, detail
+    finally:
+        target.teardown(False)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument('--nzbget', required=True)
@@ -311,6 +366,7 @@ def main():
         results.append(('migrate',) + migrate(args.nzbget, args.upstream, args.legacy_queue))
     if args.earlier:
         results.append(('earlierbuild',) + earlierbuild(args.nzbget, args.earlier))
+        results.append(('legacystates',) + legacystates(args.nzbget, args.upstream, args.earlier))
     for name, ok, detail in results:
         print('[%s] %s  %s' % ('PASS' if ok else 'FAIL', name, detail))
     print('%d/%d queue format checks passed' % (sum(r[1] for r in results), len(results)))

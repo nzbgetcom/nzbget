@@ -38,6 +38,9 @@ public:
 	bool DownloadQueueExists();
 	bool SaveDownloadQueue(DownloadQueue* downloadQueue, bool saveHistory);
 	bool LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers);
+	/* the last load read a queue, history or progress file an earlier build of the
+	 * branch wrote (formats 65/66): saving it again writes the upstream format */
+	bool LegacyQueueRead() { return m_legacyQueueRead; }
 	bool SaveDownloadProgress(DownloadQueue* downloadQueue);
 	bool SaveFile(FileInfo* fileInfo);
 	bool LoadFile(FileInfo* fileInfo, bool fileSummary, bool articles);
@@ -73,6 +76,8 @@ private:
 	/* a queue, history or progress file that couldn't be read is renamed
 	 * "<name>.unreadable-<time>": the next save would overwrite it */
 	void SetAsideQueueFiles();
+	void ConvertLegacyFileStates(Servers* servers);
+	bool m_legacyQueueRead = false;
 	void SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile);
 	// this build's own data (duplicate repair) after upstream's in a queue file
 	void SaveDupeExtras(NzbInfo* nzbInfo, StateDiskFile& outfile);

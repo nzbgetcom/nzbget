@@ -147,6 +147,15 @@ void QueueCoordinator::Load()
 		g_DiskState->CleanupTempDir(downloadQueue);
 	}
 
+	if (queueLoaded && g_DiskState->LegacyQueueRead())
+	{
+		// written again at once in the upstream format: until the next change it would
+		// stay in the earlier build's format, which upstream can't read after a downgrade
+		info("Saving the queue and history of an earlier build in the upstream format");
+		downloadQueue->HistoryChanged();
+		downloadQueue->Save();
+	}
+
 	if (queueLoaded && statLoaded && !perfectServerMatch)
 	{
 		debug("Changes in section <NEWS SERVERS> of config file detected, resaving queue");

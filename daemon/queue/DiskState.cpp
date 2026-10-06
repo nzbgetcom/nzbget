@@ -359,6 +359,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 			}
 
 			formatVersion = stateFile.GetFileVersion();
+			m_legacyQueueRead |= formatVersion > DISKSTATE_QUEUE_VERSION;
 
 			if (formatVersion <= 0)
 			{
@@ -397,6 +398,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 				{ queueFilesFailed = true; goto error; }
 			}
 
+			m_legacyQueueRead |= stateFile.GetFileVersion() > DISKSTATE_QUEUE_VERSION;
 			if (!LoadProgress(downloadQueue->GetQueue(), servers, *infile, stateFile.GetFileVersion())) { queueFilesFailed = true; goto error; }
 		}
 	}
@@ -418,6 +420,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 				{ queueFilesFailed = true; goto error; }
 			}
 
+			m_legacyQueueRead |= stateFile.GetFileVersion() > DISKSTATE_QUEUE_VERSION;
 			if (!LoadHistory(downloadQueue->GetHistory(), servers, *infile, stateFile.GetFileVersion())) { queueFilesFailed = true; goto error; }
 		}
 	}
@@ -427,6 +430,11 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 	CleanupQueueDir(downloadQueue);
 
 	if (!LoadAllFileStates(downloadQueue, servers)) goto error;
+
+	// file states an earlier build of this branch wrote (formats 8/9) are rewritten
+	// in the upstream format, history items' too, which are otherwise only rewritten
+	// when touched: after a downgrade upstream could not retry such an item
+	ConvertLegacyFileStates(servers);
 
 	ok = true;
 
@@ -484,6 +492,63 @@ bool DiskState::SaveDownloadProgress(DownloadQueue* downloadQueue)
 	}
 
 	return ok;
+}
+
+void DiskState::ConvertLegacyFileStates(Servers* servers)
+{
+	// "<id>" (file info), "<id>s" (partial state), "<id>c" (state of a completed file)
+	std::vector<std::pair<int, std::string>> legacy;
+	DirBrowser dir(g_Options->GetQueueDir());
+	while (const char* filename = dir.Next())
+	{
+		const char* end = filename;
+		while (*end >= '0' && *end <= '9')
+		{
+			end++;
+		}
+		if (end == filename || (*end && strcmp(end, "s") && strcmp(end, "c")))
+		{
+			continue;
+		}
+		BString<1024> path("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, filename);
+		DiskFile file;
+		char header[100] = {0};
+		if (!file.Open(path, DiskFile::omRead) || !file.ReadLine(header, sizeof(header)))
+		{
+			continue;
+		}
+		file.Close();
+		int version = 0;
+		if (sscanf(header, "nzbget diskstate file version %i", &version) == 1 &&
+			version > DISKSTATE_FILE_VERSION && version <= DISKSTATE_FILE_LEGACY_VERSION)
+		{
+			legacy.emplace_back(atoi(filename), end);
+		}
+	}
+	if (legacy.empty())
+	{
+		return;
+	}
+
+	int converted = 0;
+	for (const auto& entry : legacy)
+	{
+		FileInfo fileInfo;
+		fileInfo.SetId(entry.first);
+		bool ok;
+		if (entry.second.empty())
+		{
+			ok = LoadFile(&fileInfo, true, true) && SaveFile(&fileInfo);
+		}
+		else
+		{
+			bool completed = entry.second == "c";
+			ok = LoadFile(&fileInfo, false, true) && LoadFileState(&fileInfo, servers, completed) &&
+				SaveFileState(&fileInfo, completed);
+		}
+		converted += ok ? 1 : 0;
+	}
+	info("Converted %i of %i file state(s) of an earlier build to the upstream format", converted, (int)legacy.size());
 }
 
 void DiskState::SetAsideQueueFiles()
