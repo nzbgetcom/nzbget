@@ -256,6 +256,8 @@ private:
 	// skipped (checked once per pass, within DonorCheckSec)
 	static constexpr int DonorCheckSec = 20;
 	std::map<std::string, bool> m_donorDead;
+	// donor checks running: their connection waits don't count against the watchdog
+	std::atomic<int> m_checkingDonor{0};
 	bool DonorDead(const DonorSource& donor, NzbInfo* donorNzb);
 	void StartWatchdog(const std::vector<RepairTarget>& targets);
 	void StopWatchdog(const char* nzbName, const std::vector<RepairTarget>& targets);

@@ -711,7 +711,10 @@ bool StreamRepairController::DonorDead(const DonorSource& donor, NzbInfo* donorN
 	std::vector<DupeProbe::Sample> samples = DupeProbe::SamplesOf(files);
 	if (samples.size() >= (size_t)DupeProbe::MinArticles && !IsStopped())
 	{
+		// the check waits for connections too: not a lack of progress (B76)
+		m_checkingDonor++;
 		DupeProbe::Verdict verdict = DupeProbe::Check(std::move(samples), DonorCheckSec);
+		m_checkingDonor--;
 		dead = verdict.Dead();
 		if (dead)
 		{
@@ -754,6 +757,7 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 			auto start = std::chrono::steady_clock::now();
 			auto lastProgress = start;
 			auto lastTick = start;
+			auto waiting = [this]() { return ArticleFetcher::WaitingForConnection() > 0 || m_checkingDonor > 0; };
 			while (!m_watchdogDone)
 			{
 				m_watchdogCond.wait_for(lock, std::chrono::milliseconds(500));
@@ -762,14 +766,14 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 					break;
 				}
 				auto now = std::chrono::steady_clock::now();
-				if (ArticleFetcher::WaitingForConnection() > 0)
+				if (waiting())
 				{
 					// waiting for a connection the queue's downloads hold is neither a
 					// lack of progress nor running time (B76)
 					start += now - lastTick;
 				}
 				lastTick = now;
-				if (m_progressBytes != progress || ArticleFetcher::WaitingForConnection() > 0)
+				if (m_progressBytes != progress || waiting())
 				{
 					progress = m_progressBytes;
 					lastProgress = now;
