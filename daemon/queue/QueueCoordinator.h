@@ -134,6 +134,8 @@ private:
 	static constexpr int DeadDownloadFailures = 64;
 	// articles of its own tried before a download's final health is projected (B48)
 	static constexpr int ProjectedFailureSample = 200;
+	// how much wholer (per mille) a backup must be than a doomed download's projection
+	static constexpr int BackupLead = 100;
 	// failed articles in a row (first articles of files aside) after which a download is dead (B49)
 	static constexpr int DeadRunFailures = 40;
 	// a download without a better duplicate is parked once this share of its

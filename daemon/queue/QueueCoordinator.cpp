@@ -1662,10 +1662,13 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 
 	// doomed (B48): what arrived so far projects a final health below critical - the
 	// health itself falls slowly on a large posting (failures are a small share of
-	// it) and would reach critical only after hours of crawling
+	// it) and would reach critical only after hours of crawling. Within
+	// ParEdgeMargin of critical counts too (B58: Dark Matter S02E05 projected 79-81%
+	// against a critical 80% for its whole download): par-repair can't be counted on
 	int projected = tried > 0 ? (int)((int64)own * 1000 / tried) : 1000;
 	int critical = nzbInfo->CalcCriticalHealth(true);
-	bool doomed = !dead && tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 && projected < critical;
+	bool doomed = !dead && tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 &&
+		projected < critical + DupeArticleFallback::ParEdgeMargin;
 
 	if ((!dead && !doomed) ||
 		// the probe, asking every server, knows better: its verdict comes first
@@ -1702,8 +1705,9 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 	}
 	else
 	{
-		// a partly alive download is only swapped for a backup known to be wholer
-		// than its projection (by a dupe tool's or a duplicate search's health check)
+		// a partly alive download is only swapped for a backup known to be clearly
+		// wholer than its projection (by a dupe tool's or a duplicate search's health
+		// check): BackupLead more
 		int backupAlive = -1;
 		for (const char* name : {"DupeAlive", "DupeHealth"})
 		{
@@ -1713,7 +1717,7 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 				backupAlive = std::max(backupAlive, atoi(parameter->GetValue()) * 10);
 			}
 		}
-		if (backupAlive <= projected || backupAlive < critical ||
+		if (backupAlive < projected + BackupLead || backupAlive < critical ||
 			!DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), projected,
 				backup->GetNzbInfo()->GetDupeScore()))
 		{
@@ -1721,9 +1725,9 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 		}
 		nzbInfo->PrintMessage(Message::mkWarning,
 			"Failing over %s to duplicate %s: %i of %i tried article(s) of its own arrived, projected health "
-			"%.1f%% below critical %.1f%%; the duplicate is %.0f%% alive",
+			"%.1f%% %s critical %.1f%%; the duplicate is %.0f%% alive",
 			nzbInfo->GetName(), backup->GetNzbInfo()->GetName(), own, tried, projected / 10.0,
-			critical / 10.0, backupAlive / 10.0);
+			projected < critical ? "below" : "too close to", critical / 10.0, backupAlive / 10.0);
 	}
 	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
 	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);

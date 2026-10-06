@@ -5084,6 +5084,25 @@ def scenario_projectedworsebackup(daemon, t):
     return ('projectedworsebackup', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
 
 
+def scenario_projectededge(daemon, t):
+    """B58 (Dark Matter S02E05 4180): 87% arrive, within 5 points of the critical
+    85%, and a backup is known 100% alive: par-repair can't be counted on that
+    close to critical, so the pick is swapped once about 200 articles were
+    tried. Before, it ran to the end: its projection never fell below critical."""
+    hp, swaps = _projected_run(daemon, t, 'pe', 87, 100)
+    failed = int(hp.get('FailedArticles', 0))
+    close = _grep_log(t, 'too close to critical')
+    return ('projectededge', swaps == 1 and close == 1 and failed < 60,
+            'status=%s swap_logs=%d too_close_logs=%d failed_articles=%d' % (hp['Status'], swaps, close, failed))
+
+
+def scenario_projectededgelead(daemon, t):
+    """B58: 87% arrive, close to the critical 85%, but the backup is only 95%
+    alive, less than 10 points wholer: no swap."""
+    hp, swaps = _projected_run(daemon, t, 'pf', 87, 95)
+    return ('projectededgelead', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
+
+
 def scenario_parprojection(daemon, t):
     """B59 (Dark Matter S02E05 4180): borrowing waits for par-check while par2 may
     cover the damage, but 15% of the data is missing (evenly) and the par2 files
@@ -5443,6 +5462,8 @@ SCENARIOS = {
     'projectednobackup': scenario_projectednobackup,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
+    'projectededge': scenario_projectededge,
+    'projectededgelead': scenario_projectededgelead,
     'parprojection': scenario_parprojection,
     'deaddownloadstray2': scenario_deaddownloadstray2,
     'deaddownloadrestart': scenario_deaddownloadrestart,
@@ -5659,6 +5680,8 @@ SCENARIO_OPTIONS = {
     'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectededgelead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'parprojection': ['DupeArticleFallback=stream', 'ParCheck=manual'],
     'deaddownloadstray2': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'deaddownloadrestart': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ContinuePartial=yes'],
