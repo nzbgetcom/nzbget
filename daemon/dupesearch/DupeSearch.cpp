@@ -222,17 +222,46 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	}
 
 	// gone from the queue: a backup that the duplicate check filed in history,
-	// or a download that was deleted
+	// a download that was deleted, or one that already failed (B56: dead within
+	// DupeSearchDelay, it failed over before its search was due). A failed one is
+	// searched from history: its key's backups may not be enough.
 	NzbInfo* nzbInfo = downloadQueue->GetQueue()->Find(nzbId);
+	bool failed = false;
+	if (!nzbInfo)
+	{
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() == HistoryInfo::hkNzb && historyInfo->GetNzbInfo()->GetId() == nzbId)
+			{
+				NzbInfo* item = historyInfo->GetNzbInfo();
+				NzbInfo::EDeleteStatus status = item->GetDeleteStatus();
+				if (!item->IsDupeSuccess() && status != NzbInfo::dsManual && status != NzbInfo::dsDupe &&
+					status != NzbInfo::dsCopy && status != NzbInfo::dsGood)
+				{
+					nzbInfo = item;
+					failed = true;
+				}
+				break;
+			}
+		}
+	}
 	if (!nzbInfo || nzbInfo->GetKind() != NzbInfo::nkNzb)
 	{
 		return false;
 	}
 
-	// only before post-processing
-	if (nzbInfo->GetDeleting() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetPostInfo())
+	if (!failed)
 	{
-		return false;
+		if (nzbInfo->GetDeleting() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+		{
+			return false;
+		}
+		// in post-processing: asked again once it is done (searched if it failed)
+		if (nzbInfo->GetPostInfo())
+		{
+			Schedule(nzbId, Util::CurrentTime() + std::max(PostProcessRetrySec, g_Options->GetDupeSearchDelay()));
+			return false;
+		}
 	}
 
 	// the score decides which of several duplicates is the main one; a
@@ -285,15 +314,16 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 	}
 
 	// a managed pick: it has a key and a score that leave room below it for
-	// duplicates (they score pick - 1000 + 2..90)
+	// duplicates (they score pick - 1000 + 2..90). One in history keeps both: the
+	// duplicates are placed by the job's score, and a failed item isn't fetched again.
 	bool changed = false;
-	bool dryRun = g_Options->GetDupeSearchDryRun();
-	if (!dryRun && Util::EmptyStr(nzbInfo->GetDupeKey()))
+	bool edit = !g_Options->GetDupeSearchDryRun() && !failed;
+	if (edit && Util::EmptyStr(nzbInfo->GetDupeKey()))
 	{
 		nzbInfo->SetDupeKey(key.c_str());
 		changed = true;
 	}
-	if (!dryRun && nzbInfo->GetDupeScore() < BasePickScore)
+	if (edit && nzbInfo->GetDupeScore() < BasePickScore)
 	{
 		nzbInfo->SetDupeScore(BasePickScore);
 		changed = true;
@@ -305,8 +335,8 @@ bool DupeSearch::Prepare(DownloadQueue* downloadQueue, int nzbId, Job& job)
 
 	Collect(downloadQueue, nzbInfo, job);
 	job.score = pickScore;
-	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)",
-		nzbInfo->GetName(), key.c_str());
+	nzbInfo->PrintMessage(Message::mkInfo, "DupeSearch: searching duplicates of %s (key %s)%s",
+		nzbInfo->GetName(), key.c_str(), failed ? ": it failed before its search was due" : "");
 	return true;
 }
 

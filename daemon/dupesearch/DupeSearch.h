@@ -55,6 +55,8 @@ public:
 
 	// seconds a key is not searched again, unless a higher-scored pick arrives
 	static constexpr int SearchWindowSec = 6 * 3600;
+	// a pick still in post-processing when its search is due is asked again this much later
+	static constexpr int PostProcessRetrySec = 30;
 	// keys are forgotten after this long
 	static constexpr int StateTtlSec = 30 * 24 * 3600;
 	// the score of a managed pick, and the room below it for donors

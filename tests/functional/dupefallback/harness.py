@@ -4310,6 +4310,45 @@ def scenario_dupesearchalldead(daemon, t):
     return ('dupesearchalldead', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
 
 
+def scenario_dupesearchfailedfirst(daemon, t):
+    """B56 (Industry S04E07 4162): the pick is dead and fails over to the client's
+    one backup before its search is due (DupeSearchDelay=15). The search still
+    runs, from the failed pick in history, and adds the indexer's posting under
+    the key. Before, the search found the pick gone from the queue and gave up."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    daemon.fake_nntp.alive = set(ids('bk')) | set(ids('ix'))
+    results = [{'title': DS_TITLE, 'link': 'http://127.0.0.1:%d/getnzb/ix' % daemon.newznab.port,
+                'size': 420_000, 'grabs': 3, 'indexer': 'Idxix', 'date': 'Tue, 11 Jun 2025 01:10:05 +0000'}]
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            return 200, _fake_nzb_ids(ids('ix'), 420_000)
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    api = daemon.wait_ready()
+    daemon.newznab.respond = respond
+    # the pick waits until the duplicate check filed the backup in history
+    pick_id = _ds_append(api, DS_TITLE, _fake_nzb_ids(ids('pk'), 400_000).decode(), DS_KEY, DS_PICK)
+    _ds_append(api, 'Show S01E01 1080p WEB H264-GRP', _fake_nzb_ids(ids('bk'), 430_000).decode(), DS_KEY, DS_PICK - 1)
+    deadline = time.time() + 10
+    while time.time() < deadline and not any(h['NZBName'] == 'Show S01E01 1080p WEB H264-GRP' for h in api.history()):
+        time.sleep(0.2)
+    api.editqueue('GroupResume', 0, '', [pick_id])
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    failed_first = _log_before(t, 'Found duplicate Show S01E01', 'DupeSearch: searching duplicates of')
+    pick = [h for h in api.history() if h.get('NZBName') == DS_TITLE and h.get('DupeScore') == DS_PICK]
+    donors = [x for x in api.history() + api.listgroups()
+              if any(p['Name'] == 'DupeSearch' for p in x.get('Parameters', []))]
+    ok = failed_first and bool(pick) and 'SUCCESS' not in pick[0]['Status'] and len(donors) == 1 and \
+        _grep_log(t, 'it failed before its search was due') == 1
+    return ('dupesearchfailedfirst', ok, 'failed_first=%s pick=%s donors=%d searched_from_history=%d'
+            % (failed_first, pick and pick[0]['Status'], len(donors), _grep_log(t, 'it failed before its search was due')))
+
+
 def scenario_dupesearchwarnings(daemon, t):
     """Settings that hobble DupeSearch are warned about at start: HealthCheck
     isn't dupe (its duplicates wait for a failure), and a server with fewer than
@@ -5389,6 +5428,7 @@ SCENARIOS = {
     'dupesearchrestartcheck': scenario_dupesearchrestartcheck,
     'dupesearchalldead': scenario_dupesearchalldead,
     'dupesearchrerank': scenario_dupesearchrerank,
+    'dupesearchfailedfirst': scenario_dupesearchfailedfirst,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -5611,6 +5651,7 @@ SCENARIO_OPTIONS = {
     'dupesearchambiguous': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
     'dupesearchalldead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -5695,11 +5736,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
