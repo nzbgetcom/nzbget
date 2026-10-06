@@ -2826,9 +2826,8 @@ def scenario_wholefilerestart(daemon, t):
         api.shutdown()
     except Exception:
         pass
-    time.sleep(4)
+    t.procs[-1].wait(timeout=60)
     daemon.start()
-    time.sleep(3)
     api = daemon.wait_ready()
     api.resumepost()
     h = daemon.wait_history(api, 'RelRS')
@@ -3964,7 +3963,8 @@ def scenario_dupesearchfilters(daemon, t):
         api.shutdown()
     except Exception:
         pass
-    time.sleep(3)
+    # the record is written once nzbget has exited: on its way out it saves its own
+    t.procs[-1].wait(timeout=60)
     t.write_file(os.path.join('main', 'queue', 'dupesearch-dead'),
                  ('%d\t%s\t\n' % (int(time.time()), ','.join(str(h) for h in dead_sketch))).encode())
     daemon.start()
@@ -3980,7 +3980,8 @@ def scenario_dupesearchfilters(daemon, t):
     time.sleep(1)
     summary = _grep_log(t, 'DupeSearch: %s: results=6 candidates=6 postings=6 verified=2 added=0 '
                            'rejected={dead: 2, in-nzbget: 1, known-dead: 1, other-release: 1, same-posting: 1}' % DS_TITLE)
-    return ('dupesearchfilters', summary == 1, 'summary_logs=%d' % summary)
+    got = re.findall(r'results=\d+ [^\n]*', t.read_file('nzbget.log').decode(errors='replace'))
+    return ('dupesearchfilters', summary == 1, 'summary_logs=%d got=%s' % (summary, got))
 
 
 def scenario_dupesearchdonors(daemon, t):
@@ -4690,7 +4691,7 @@ def scenario_dupesearchrestart(daemon, t):
         api.shutdown()
     except Exception:
         pass
-    time.sleep(3)
+    t.procs[-1].wait(timeout=60)
     daemon.start()
     api = daemon.wait_ready()
     time.sleep(8)
@@ -4699,7 +4700,7 @@ def scenario_dupesearchrestart(daemon, t):
         api.shutdown()
     except Exception:
         pass
-    time.sleep(3)
+    t.procs[-1].wait(timeout=60)
     daemon.start()
     api = daemon.wait_ready()
     time.sleep(8)
