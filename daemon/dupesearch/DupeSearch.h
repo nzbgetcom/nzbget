@@ -104,6 +104,7 @@ private:
 		// the duplicates of the key nzbget keeps in history (DELETED/DUPE),
 		// whoever sent them: id and the item's own nzb-file
 		std::vector<std::pair<int, std::string>> members;
+		std::vector<int> memberScores;	// their scores when the search began
 		int score = 0;
 	};
 
@@ -151,7 +152,7 @@ private:
 	/* queues a posting as a duplicate of the pick; the download id, 0 when not added */
 	int AddDonor(const Job& job, const NzbFetcher::Fetched& posting, int score, double alive);
 	/* the DupeScore (and a parameter "Name=Value") of a duplicate that sits in history or in the queue */
-	bool SetScore(int id, int score, const std::string& param);
+	bool SetScore(int id, int score, const std::vector<std::string>& params);
 	void LoadState();
 	void SaveState();
 	std::string StatePath();

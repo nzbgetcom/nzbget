@@ -4006,7 +4006,7 @@ def scenario_dupesearchgroup(daemon, t):
         got[tag] = (h.get('DupeScore') - base, params.get('DupeAlive'), params.get('DupeHealth'))
     pick = _ds_group(api, DS_TITLE)
     want = {'whole': (89, None, '100'), 'idx95': (85, '95', None), 'half': (49, None, '50'),
-            'gone': (1, None, '0'), 'other': (1000 - 4, None, None)}
+            'gone': (1, '0', '0'), 'other': (1000 - 4, None, None)}
     ok = got == want and pick is not None and pick.get('DupeScore') == DS_PICK
     return ('dupesearchgroup', ok, 'got=%s pick_score=%s' % (sorted(got.items()), pick and pick.get('DupeScore')))
 
@@ -4200,6 +4200,62 @@ def scenario_dupesearchresubmit(daemon, t):
     ok = len(first) == 2 and searched == 2 and again == 2 and len(donors) == 2
     return ('dupesearchresubmit', ok, 'first_donors=%d searches=%d summaries_added2=%d donors_after=%d'
             % (len(first), searched, again, len(donors)))
+
+
+def _ds_members(daemon, t, backups, alive):
+    """A pick and the client's own backups (tag, name, below the pick, size), no
+    indexer results; returns {tag: (score, DupeAlive, DupeHealth)} after the
+    search, and the backups' scores before it."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    api = _ds_donor_env(daemon, t, {}, set(alive(ids)))
+    tags = {}
+    before = {}
+    for tag, name, below, size in backups:
+        _ds_append(api, name, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+        tags[name] = tag
+        before[tag] = DS_PICK - below
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    time.sleep(2)
+    got = {}
+    for h in api.history():
+        tag = tags.get(h.get('NZBName'))
+        if tag:
+            params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
+            got[tag] = (h.get('DupeScore'), params.get('DupeAlive'), params.get('DupeHealth'))
+    return got, before
+
+
+def scenario_dupesearchrerank(daemon, t):
+    """The client's own backups are ranked by wholeness, a twin of the pick
+    first among whole ones: the dead one - which the client scored highest -
+    sinks to the bottom and is marked DupeAlive=0; a dead one scored far below
+    keeps its score (B52: never raised)."""
+    backups = (('dead', 'Show S01E01 1080p WEB H264-GRP', 1, 430_000),
+               ('half', 'Show_S01E01_1080p_WEB_H264-GRP', 2, 440_000),
+               ('whole', 'show.s01e01.1080p.web.h264-grp', 3, 410_000),
+               ('twin', 'SHOW.S01E01.1080P.WEB.H264-GRP', 4, 400_000),
+               # B52: a dead backup scored far below the search's range keeps its score
+               ('deep', 'Show.S01E01.1080p.Web.H264-GRP', 2500, 450_000))
+    got, before = _ds_members(daemon, t, backups,
+                              lambda ids: ids('half')[:20] + ids('whole') + ids('twin'))
+    score = lambda tag: got.get(tag, (0,))[0]
+    ok = (score('twin') > score('whole') > score('half') > score('dead') and
+          score('dead') < before['dead'] and got.get('dead', (0, None))[1] == '0' and
+          got.get('half', (0, None))[1] is None and
+          score('deep') == before['deep'] and got.get('deep', (0, None))[1] == '0')
+    return ('dupesearchrerank', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
+
+
+def scenario_dupesearchalldead(daemon, t):
+    """Every backup of the pick is dead: nothing to order, so their scores stay;
+    each is marked dead (DupeAlive=0) so no failover fetches it."""
+    backups = (('d1', 'Show S01E01 1080p WEB H264-GRP', 1, 430_000),
+               ('d2', 'Show_S01E01_1080p_WEB_H264-GRP', 2, 440_000))
+    got, before = _ds_members(daemon, t, backups, lambda ids: [])
+    ok = all(got.get(tag, (None,))[0] == before[tag] and got[tag][1] == '0' for tag in before)
+    return ('dupesearchalldead', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
 
 
 def scenario_dupesearchkeychanged(daemon, t):
@@ -5199,6 +5255,8 @@ SCENARIOS = {
     'dupesearchdonors': scenario_dupesearchdonors,
     'dupesearchfastdead': scenario_dupesearchfastdead,
     'dupesearchgroup': scenario_dupesearchgroup,
+    'dupesearchalldead': scenario_dupesearchalldead,
+    'dupesearchrerank': scenario_dupesearchrerank,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -5414,6 +5472,8 @@ SCENARIO_OPTIONS = {
                               'Extensions=deletepick'],
     'dupesearchkeychanged': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchgroup': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchalldead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrescorefail': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -5496,11 +5556,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchalldead', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchalldead', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
