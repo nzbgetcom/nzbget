@@ -5067,9 +5067,23 @@ def scenario_projectedswap(daemon, t):
 
 
 def scenario_projectednobackup(daemon, t):
-    """B48b: 31% arrive and no backup waits: no swap."""
-    hp, swaps = _projected_run(daemon, t, 'pb', 31, None)
-    return ('projectednobackup', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
+    """B48b/B69: 31% arrive and no backup waits: no swap, but the download is
+    parked once about 200 articles were tried (projected under half the
+    critical 85%), instead of running through every article."""
+    hp, _ = _projected_run(daemon, t, 'pb', 31, None)
+    swaps = _grep_log(t, 'Failing over')
+    parked = _grep_log(t, 'under half the critical')
+    failed = int(hp.get('FailedArticles', 0))
+    return ('projectednobackup', swaps == 0 and parked == 1 and failed < 250,
+            'status=%s swap_logs=%d park_logs=%d failed_articles=%d' % (hp['Status'], swaps, parked, failed))
+
+
+def scenario_projectedhalfnobackup(daemon, t):
+    """B69: 50% arrive and no backup waits: above half the critical 85%, so it
+    isn't parked early (its health check decides, as before)."""
+    hp, _ = _projected_run(daemon, t, 'ph', 50, None)
+    parked = _grep_log(t, 'under half the critical')
+    return ('projectedhalfnobackup', parked == 0, 'status=%s park_logs=%d' % (hp['Status'], parked))
 
 
 def scenario_projectedhealthy(daemon, t):
@@ -5460,6 +5474,7 @@ SCENARIOS = {
     'runscattered': scenario_runscattered,
     'runreset': scenario_runreset,
     'projectednobackup': scenario_projectednobackup,
+    'projectedhalfnobackup': scenario_projectedhalfnobackup,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -5678,6 +5693,7 @@ SCENARIO_OPTIONS = {
     'runscattered': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
     'runreset': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
     'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectedhalfnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
