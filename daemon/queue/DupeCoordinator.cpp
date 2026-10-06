@@ -523,7 +523,11 @@ HistoryInfo* DupeCoordinator::FindDupeBackup(DownloadQueue* downloadQueue, NzbIn
 	std::set<uint32> failedContent;
 	if (dupeHealth)
 	{
-		failedContent.insert(nzbInfo->GetFullContentHash());
+		// (no download when a hidden duplicate record is marked bad)
+		if (nzbInfo)
+		{
+			failedContent.insert(nzbInfo->GetFullContentHash());
+		}
 		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
 		{
 			NzbInfo* item = historyInfo->GetKind() == HistoryInfo::hkNzb ? historyInfo->GetNzbInfo() : nullptr;
