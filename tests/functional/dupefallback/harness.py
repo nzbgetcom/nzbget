@@ -4079,8 +4079,9 @@ def scenario_dupesearchgroup(daemon, t):
                ('whole', 'show.s01e01.1080p.web.h264-grp', 3, 410_000),
                ('other', 'Show.S01E01.720p.WEB.H264-GRP', 4, 300_000))
     tags = {DS_TITLE: 'idx95'}
-    for tag, name, below, size in backups:
-        _ds_append(api, name, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+    for tag, name, below, size, *same in backups:
+        # a backup may be the same posting as another (same message ids)
+        _ds_append(api, name, _fake_nzb_ids(ids(same[0] if same else tag), size).decode(), DS_KEY, DS_PICK - below)
         tags[name] = tag
     deadline = time.time() + 60
     while time.time() < deadline and _grep_log(t, ' added=') == 0:
@@ -4300,8 +4301,9 @@ def _ds_members(daemon, t, backups, alive):
     api = _ds_donor_env(daemon, t, {}, set(alive(ids)))
     tags = {}
     before = {}
-    for tag, name, below, size in backups:
-        _ds_append(api, name, _fake_nzb_ids(ids(tag), size).decode(), DS_KEY, DS_PICK - below)
+    for tag, name, below, size, *same in backups:
+        # a backup may be the same posting as another (same message ids)
+        _ds_append(api, name, _fake_nzb_ids(ids(same[0] if same else tag), size).decode(), DS_KEY, DS_PICK - below)
         tags[name] = tag
         before[tag] = DS_PICK - below
     deadline = time.time() + 60
@@ -4346,6 +4348,20 @@ def scenario_dupesearchalldead(daemon, t):
     got, before = _ds_members(daemon, t, backups, lambda ids: [])
     ok = all(got.get(tag, (None,))[0] == before[tag] and got[tag][1] == '0' for tag in before)
     return ('dupesearchalldead', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
+
+
+def scenario_dupesearchtwinmember(daemon, t):
+    """Two of the client's backups are the same posting (Fury 2014: a twin the
+    check skipped kept its old score and outranked every checked backup). The
+    posting is checked once, and its twin is ranked with it: scored as half
+    alive, it never stays above the whole backup."""
+    backups = (('stale', 'Show S01E01 1080p WEB H264-GRP', 1, 440_000, 'half'),
+               ('half', 'Show_S01E01_1080p_WEB_H264-GRP', 3, 440_000),
+               ('whole', 'show.s01e01.1080p.web.h264-grp', 2, 410_000))
+    got, before = _ds_members(daemon, t, backups, lambda ids: ids('half')[:20] + ids('whole'))
+    score = lambda tag: got.get(tag, (0,))[0]
+    ok = score('whole') > score('stale') and score('whole') > score('half') and score('stale') < before['stale']
+    return ('dupesearchtwinmember', ok, 'got=%s before=%s' % (sorted(got.items()), sorted(before.items())))
 
 
 def scenario_dupesearchfailedfirst(daemon, t):
@@ -5798,6 +5814,7 @@ SCENARIOS = {
     'dupesearchambiguous': scenario_dupesearchambiguous,
     'dupesearchrestartcheck': scenario_dupesearchrestartcheck,
     'dupesearchalldead': scenario_dupesearchalldead,
+    'dupesearchtwinmember': scenario_dupesearchtwinmember,
     'dupesearchrerank': scenario_dupesearchrerank,
     'dupesearchfailedfirst': scenario_dupesearchfailedfirst,
     'dupesearchfailedrestart': scenario_dupesearchfailedrestart,
@@ -6040,6 +6057,7 @@ SCENARIO_OPTIONS = {
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
     'dupesearchfailedrestart': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
     'dupesearchalldead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
+    'dupesearchtwinmember': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfastdead': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchdryrun': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDryRun=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchrescorefail': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -6127,11 +6145,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
