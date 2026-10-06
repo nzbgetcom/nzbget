@@ -745,6 +745,13 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 		if (articleDownloader->GetStatus() == ArticleDownloader::adFinished && !misplaced)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFinished);
+			// one of its own arrived: the run of failures ends (a borrowed one says
+			// nothing about its posting)
+			if (articleInfo->GetDupeFallbackRound() == 0 || Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()) ||
+				!strcmp(articleInfo->GetMessageId(), articleInfo->GetDupeOriginalMessageId()))
+			{
+				nzbInfo->SetDupeFailedRun(0);
+			}
 			fileInfo->SetSuccessSize(fileInfo->GetSuccessSize() + articleInfo->GetSize());
 			nzbInfo->SetCurrentSuccessSize(nzbInfo->GetCurrentSuccessSize() + articleInfo->GetSize());
 			nzbInfo->SetParCurrentSuccessSize(nzbInfo->GetParCurrentSuccessSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
@@ -822,6 +829,10 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			articleDownloader->GetStatus() == ArticleDownloader::adFatalError)
 		{
 			articleInfo->SetStatus(ArticleInfo::aiFailed);
+			if (articleInfo->GetPartNumber() != 1)
+			{
+				nzbInfo->SetDupeFailedRun(nzbInfo->GetDupeFailedRun() + 1);
+			}
 			fileInfo->SetFailedSize(fileInfo->GetFailedSize() + articleInfo->GetSize());
 			nzbInfo->SetCurrentFailedSize(nzbInfo->GetCurrentFailedSize() + articleInfo->GetSize());
 			nzbInfo->SetParCurrentFailedSize(nzbInfo->GetParCurrentFailedSize() + (fileInfo->GetParFile() ? articleInfo->GetSize() : 0));
@@ -1615,11 +1626,30 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 {
 	if (g_Options->GetHealthCheck() != Options::hcDupe || !g_Options->GetDupeCheck() ||
 		!DupeCoordinator::FailsOver(nzbInfo) || nzbInfo->GetKind() != NzbInfo::nkNzb ||
-		nzbInfo->GetDeleting() || nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone ||
-		nzbInfo->GetCurrentFailedArticles() < DeadDownloadFailures + nzbInfo->GetFileCount() ||
-		// fewer than 1 in 100 tried articles of its own arrived (a stray one may)
-		(nzbInfo->GetCurrentSuccessArticles() - std::max(0, nzbInfo->GetDupeRecoveredArticles())) * 100 >=
-			nzbInfo->GetCurrentFailedArticles() ||
+		nzbInfo->GetDeleting() || nzbInfo->GetParking() || nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)
+	{
+		return;
+	}
+
+	// its own articles: those borrowed from duplicates say nothing about its posting
+	int own = std::max(0, nzbInfo->GetCurrentSuccessArticles() - std::max(0, nzbInfo->GetDupeRecoveredArticles()));
+	int failed = nzbInfo->GetCurrentFailedArticles();
+	int tried = own + failed;
+
+	// dead: fewer than 1 in 100 tried articles of its own arrived (a stray one may),
+	// or DeadRunFailures in a row failed (B49) - every server was asked for each
+	bool deadRate = failed >= DeadDownloadFailures + nzbInfo->GetFileCount() && own * 100 < failed;
+	bool deadRun = nzbInfo->GetDupeFailedRun() >= DeadRunFailures;
+	bool dead = deadRate || deadRun;
+
+	// doomed (B48): what arrived so far projects a final health below critical - the
+	// health itself falls slowly on a large posting (failures are a small share of
+	// it) and would reach critical only after hours of crawling
+	int projected = tried > 0 ? (int)((int64)own * 1000 / tried) : 1000;
+	int critical = nzbInfo->CalcCriticalHealth(true);
+	bool doomed = !dead && tried >= ProjectedFailureSample && FilesTried(nzbInfo) >= 3 && projected < critical;
+
+	if ((!dead && !doomed) ||
 		// the probe, asking every server, knows better: its verdict comes first
 		DupeProbe::Probing(nzbInfo->GetId()))
 	{
@@ -1628,19 +1658,67 @@ void QueueCoordinator::CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* 
 
 	HistoryInfo* backup = g_DupeCoordinator->FindDupeBackup(downloadQueue, nzbInfo,
 		nzbInfo->GetName(), nzbInfo->GetDupeKey());
-	if (!backup || !DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), 0,
-		backup->GetNzbInfo()->GetDupeScore()))
+	if (!backup)
 	{
 		return;
 	}
 
-	nzbInfo->PrintMessage(Message::mkWarning,
-		"Failing over %s to duplicate %s: %i of its own articles downloaded, %i failed",
-		nzbInfo->GetName(), backup->GetNzbInfo()->GetName(),
-		std::max(0, nzbInfo->GetCurrentSuccessArticles() - std::max(0, nzbInfo->GetDupeRecoveredArticles())),
-		nzbInfo->GetCurrentFailedArticles());
+	if (dead)
+	{
+		if (!DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), 0, backup->GetNzbInfo()->GetDupeScore()))
+		{
+			return;
+		}
+		if (deadRate)
+		{
+			nzbInfo->PrintMessage(Message::mkWarning,
+				"Failing over %s to duplicate %s: %i of its own articles downloaded, %i failed",
+				nzbInfo->GetName(), backup->GetNzbInfo()->GetName(), own, failed);
+		}
+		else
+		{
+			nzbInfo->PrintMessage(Message::mkWarning,
+				"Failing over %s to duplicate %s: %i of its articles failed in a row (%i of %i tried arrived)",
+				nzbInfo->GetName(), backup->GetNzbInfo()->GetName(), nzbInfo->GetDupeFailedRun(), own, tried);
+		}
+	}
+	else
+	{
+		// a partly alive download is only swapped for a backup known to be wholer
+		// than its projection (by a dupe tool's or a duplicate search's health check)
+		int backupAlive = -1;
+		for (const char* name : {"DupeAlive", "DupeHealth"})
+		{
+			NzbParameter* parameter = backup->GetNzbInfo()->GetParameters()->Find(name);
+			if (parameter)
+			{
+				backupAlive = std::max(backupAlive, atoi(parameter->GetValue()) * 10);
+			}
+		}
+		if (backupAlive <= projected || backupAlive < critical ||
+			!DupeCoordinator::DupeFailoverWarranted(nzbInfo->GetDupeScore(), projected,
+				backup->GetNzbInfo()->GetDupeScore()))
+		{
+			return;
+		}
+		nzbInfo->PrintMessage(Message::mkWarning,
+			"Failing over %s to duplicate %s: %i of %i tried article(s) of its own arrived, projected health "
+			"%.1f%% below critical %.1f%%; the duplicate is %.0f%% alive",
+			nzbInfo->GetName(), backup->GetNzbInfo()->GetName(), own, tried, projected / 10.0,
+			critical / 10.0, backupAlive / 10.0);
+	}
 	nzbInfo->SetDeleteStatus(NzbInfo::dsHealth);
 	downloadQueue->EditEntry(nzbInfo->GetId(), DownloadQueue::eaGroupParkDelete, nullptr);
+}
+
+int QueueCoordinator::FilesTried(NzbInfo* nzbInfo)
+{
+	int files = (int)nzbInfo->GetCompletedFiles()->size();
+	for (FileInfo* fileInfo : nzbInfo->GetFileList())
+	{
+		files += fileInfo->GetSuccessArticles() + fileInfo->GetFailedArticles() > 0 ? 1 : 0;
+	}
+	return files;
 }
 
 void QueueCoordinator::StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo)

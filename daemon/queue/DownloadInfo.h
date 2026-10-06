@@ -715,6 +715,9 @@ public:
 	int GetDupeRecoveredArticles() { return m_dupeRecoveredArticles; }
 	// duplicates whose articles failed the par2 checksums: no more articles from them (B40, not persisted)
 	std::set<int>* GetDupeBlockedDonors() { return &m_dupeBlockedDonors; }
+	// failed articles of its own in a row, first articles of files aside (B49, not persisted)
+	int GetDupeFailedRun() { return m_dupeFailedRun; }
+	void SetDupeFailedRun(int dupeFailedRun) { m_dupeFailedRun = dupeFailedRun; }
 	void SetDupeRecoveredArticles(int dupeRecoveredArticles) { m_dupeRecoveredArticles = dupeRecoveredArticles; }
 	int64 GetDupeRecoveredBytes() { return m_dupeRecoveredBytes; }
 	void SetDupeRecoveredBytes(int64 value) { m_dupeRecoveredBytes = value; }
@@ -912,6 +915,7 @@ private:
 	// aggregate of FileInfo::m_dupeRecoveredArticles (persisted for restart)
 	int m_dupeRecoveredArticles = 0;
 	std::set<int> m_dupeBlockedDonors;
+	int m_dupeFailedRun = 0;
 	int64 m_dupeRecoveredBytes = 0;
 	int m_dupeRecoveredHoles = 0;
 	// failed articles that were tried from duplicates / that no duplicate

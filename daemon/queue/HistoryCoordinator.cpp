@@ -512,6 +512,7 @@ void HistoryCoordinator::MoveToQueue(DownloadQueue* downloadQueue, HistoryList::
 	// the failover gate judges this attempt's borrowing, not the previous one's
 	nzbInfo->SetDupeAttemptedArticles(0);
 	nzbInfo->SetDupeUnsourcedArticles(0);
+	nzbInfo->SetDupeFailedRun(0);
 	nzbInfo->SetMarkStatus(NzbInfo::ksNone);
 	nzbInfo->GetScriptStatuses()->clear();
 	nzbInfo->SetParkedFileCount(0);

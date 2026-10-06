@@ -4809,6 +4809,112 @@ def scenario_resendfailed(daemon, t):
     return ('resendfailed', ok, 'dead_statuses=%s fetch_logs=%d backup_done=%s' % (skipped, fetched, bool(done)))
 
 
+def _projected_run(daemon, t, tag, alive_percent, backup_alive):
+    """A 1,800-article posting (twenty files, no par2: critical health 85%) of which
+    <alive_percent>% of the articles exist, spread evenly; a healthy backup marked
+    <backup_alive>% alive (DupeAlive) waits in history, or none if None."""
+    seg, vol = 10_000, 900_000
+    n = vol // seg
+    primary = []
+    # twenty files of 90 articles: 200 tried articles span three files
+    for i in range(20):
+        missing = {p for p in range(1, n + 1) if ((i * n + p - 1) * 37) % 100 >= alive_percent}
+        primary.append(('%sA/d%d.bin' % (tag, i), 'Part%d.bin' % i, vol, seg, missing))
+        t.write_file(os.path.join('data', primary[-1][0]), _payload(vol, 9740 + i))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, tag + '-key', 100)
+    if backup_alive is not None:
+        data = _payload(2_900_000, 9749)
+        bp = _place_copy(t, '%sB' % tag, data)
+        _ds_append(api, 'Backup', build_nzb(bp, 'Backup.bin', 2_900_000, 100_000, set()), tag + '-key', 90,
+                   paused=False, params=[{'Name': 'DupeAlive', 'Value': str(backup_alive)}])
+        daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary', timeout=300)
+    swaps = _grep_log(t, 'projected health')
+    return hp, swaps
+
+
+def scenario_projectedswap(daemon, t):
+    """B48a: 31% of the pick's articles arrive and a backup is known 100% alive:
+    the pick is swapped once about 200 articles were tried, long before its
+    health (which counts failures against the whole posting) reaches critical."""
+    hp, swaps = _projected_run(daemon, t, 'pa', 31, 100)
+    failed = int(hp.get('FailedArticles', 0))
+    return ('projectedswap', swaps == 1 and failed < 250,
+            'status=%s swap_logs=%d failed_articles=%d' % (hp['Status'], swaps, failed))
+
+
+def scenario_projectednobackup(daemon, t):
+    """B48b: 31% arrive and no backup waits: no swap."""
+    hp, swaps = _projected_run(daemon, t, 'pb', 31, None)
+    return ('projectednobackup', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
+
+
+def scenario_projectedhealthy(daemon, t):
+    """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
+    hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
+    return ('projectedhealthy', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
+
+
+def scenario_projectedworsebackup(daemon, t):
+    """B48d: 60% arrive and the only backup is 50% alive: no swap for a worse copy."""
+    hp, swaps = _projected_run(daemon, t, 'pd', 60, 50)
+    return ('projectedworsebackup', swaps == 0, 'status=%s swap_logs=%d' % (hp['Status'], swaps))
+
+
+def _run_case(daemon, t, tag, missing_of, backup):
+    """Six files of 300 articles (no par2); <missing_of(index)> says which
+    articles (by their index over the whole posting) are missing; <backup> adds
+    a healthy backup in history (DupeAlive unknown, so only the run rule applies)."""
+    seg, vol = 10_000, 3_000_000
+    n = vol // seg
+    primary = []
+    for i in range(6):
+        missing = {p for p in range(1, n + 1) if missing_of(i * n + p - 1)}
+        primary.append(('%sA/d%d.bin' % (tag, i), 'Part%d.bin' % i, vol, seg, missing))
+        t.write_file(os.path.join('data', primary[-1][0]), _payload(vol, 9760 + i))
+    api = daemon.wait_ready()
+    daemon.append(api, 'Primary', build_multi_nzb(primary), True, tag + '-key', 100)
+    if backup:
+        data = _payload(2_900_000, 9769)
+        bp = _place_copy(t, '%sB' % tag, data)
+        daemon.append(api, 'Backup', build_nzb(bp, 'Backup.bin', 2_900_000, 100_000, set()), False, tag + '-key', 90)
+        daemon.wait_history(api, 'Backup', timeout=60)
+    api.editqueue('GroupResume', 0, '', [g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'Primary'])
+    hp = daemon.wait_history(api, 'Primary', timeout=300)
+    return hp, _grep_log(t, 'failed in a row')
+
+
+def scenario_runswap(daemon, t):
+    """B49a: after its first article, 59 articles of the first file in a row are
+    missing, the rest exist; a backup waits: the pick is swapped at the 40th
+    failure in a row."""
+    hp, swaps = _run_case(daemon, t, 'ra', lambda k: 1 <= k <= 59, True)
+    failed = int(hp.get('FailedArticles', 0))
+    return ('runswap', swaps == 1 and failed <= 59, 'status=%s run_swap_logs=%d failed=%d' % (hp['Status'], swaps, failed))
+
+
+def scenario_runnobackup(daemon, t):
+    """B49b: the same run with no backup: the download goes on."""
+    hp, swaps = _run_case(daemon, t, 'rb', lambda k: 1 <= k <= 59, False)
+    return ('runnobackup', swaps == 0,
+            'status=%s run_swap_logs=%d' % (hp['Status'], swaps))
+
+
+def scenario_runscattered(daemon, t):
+    """B49c: failures scattered, never more than 8 in a row: no swap for a run."""
+    hp, swaps = _run_case(daemon, t, 'rc', lambda k: k % 12 < 8 and k % 300 != 0, True)
+    return ('runscattered', swaps == 0, 'status=%s run_swap_logs=%d' % (hp['Status'], swaps))
+
+
+def scenario_runreset(daemon, t):
+    """B49d: two runs of 30 failures with articles arriving between them: the
+    count starts again after the arrivals, so no swap."""
+    hp, swaps = _run_case(daemon, t, 'rd', lambda k: 1 <= k <= 30 or 61 <= k <= 90, True)
+    return ('runreset', swaps == 0, 'status=%s run_swap_logs=%d' % (hp['Status'], swaps))
+
+
 def scenario_deadpickpartial(daemon, t):
     """The probe never abandons a partly alive posting: 85% of the articles
     are missing but some exist, among them one the probe samples, and the
@@ -5072,6 +5178,14 @@ SCENARIOS = {
     'copyoffailed': scenario_copyoffailed,
     'resendbackup': scenario_resendbackup,
     'resendfailed': scenario_resendfailed,
+    'projectedswap': scenario_projectedswap,
+    'runswap': scenario_runswap,
+    'runnobackup': scenario_runnobackup,
+    'runscattered': scenario_runscattered,
+    'runreset': scenario_runreset,
+    'projectednobackup': scenario_projectednobackup,
+    'projectedhealthy': scenario_projectedhealthy,
+    'projectedworsebackup': scenario_projectedworsebackup,
     'deaddownloadstray2': scenario_deaddownloadstray2,
     'deaddownloadrestart': scenario_deaddownloadrestart,
     'deadbackupsonly': scenario_deadbackupsonly,
@@ -5270,6 +5384,14 @@ SCENARIO_OPTIONS = {
     'copyoffailed': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'resendbackup': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'resendfailed': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
+    'projectedswap': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'runswap': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
+    'runnobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
+    'runscattered': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
+    'runreset': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=1'],
+    'projectednobackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'deaddownloadstray2': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'deaddownloadrestart': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'ContinuePartial=yes'],
     'deadbackupsonly': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],

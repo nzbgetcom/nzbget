@@ -123,6 +123,7 @@ private:
 	void CheckDupeFailover(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void StartDeadPickProbe(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
 	void CheckDeadDownload(DownloadQueue* downloadQueue, NzbInfo* nzbInfo);
+	static int FilesTried(NzbInfo* nzbInfo);
 	void RejectBorrowedArticles(FileInfo* fileInfo, const std::vector<ArticleInfo*>& articles);
 	// failed articles the duplicates must have been asked for before the
 	// early dupe failover judges the download-time recovery
@@ -130,6 +131,10 @@ private:
 	// failed articles beyond the first of each file, with none of its own downloaded,
 	// after which a download counts as dead (HealthCheck=dupe)
 	static constexpr int DeadDownloadFailures = 64;
+	// articles of its own tried before a download's final health is projected (B48)
+	static constexpr int ProjectedFailureSample = 200;
+	// failed articles in a row (first articles of files aside) after which a download is dead (B49)
+	static constexpr int DeadRunFailures = 40;
 	// a download without a better duplicate is parked once this share of its
 	// articles was tried (percent) and fewer than this share of the tried
 	// ones existed (percent; the ParScan=dupe park ratio): nothing of it
