@@ -36,6 +36,11 @@ public:
 	bool GetPauseScan() const { return m_pauseScan; }
 	void SetTempPauseDownload(bool tempPauseDownload) { m_tempPauseDownload = tempPauseDownload; Changed(); }
 	bool GetTempPauseDownload() const { return m_tempPauseDownload; }
+	/* downloads hold off while a fleet (appendfleet) checks its postings: the
+	 * check needs connections the downloads would keep (F7) */
+	void HoldDownloadForFleet(bool hold) { m_fleetHold += hold ? 1 : -1; Changed(); }
+	/* new articles wait: a temporary pause, or a fleet's check */
+	bool GetDownloadHeld() const { return m_tempPauseDownload || m_fleetHold > 0; }
 	void SetTempPausePostprocess(bool tempPausePostprocess) { m_tempPausePostprocess = tempPausePostprocess; Changed(); }
 	bool GetTempPausePostprocess() const { return m_tempPausePostprocess; }
 	void SetPauseFrontend(bool pauseFrontend) { m_pauseFrontend = pauseFrontend; Changed(); }
@@ -56,6 +61,7 @@ private:
 	std::atomic<int> m_localTimeOffset{0};
 	std::atomic<int> m_speedLimit{0};
 	std::atomic<bool> m_tempPauseDownload{true};
+	std::atomic<int> m_fleetHold{0};
 	std::atomic<bool> m_tempPausePostprocess{true};
 	std::atomic<bool> m_pauseDownload{false};
 	std::atomic<bool> m_pausePostProcess{false};

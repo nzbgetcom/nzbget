@@ -112,7 +112,7 @@ void ArticleDownloader::Run()
 		SetStatus(adRunning);
 
 		if (IsStopped() || ((g_WorkState->GetPauseDownload() || g_WorkState->GetQuotaReached()) && !force) ||
-			(g_WorkState->GetTempPauseDownload() && !m_fileInfo->GetExtraPriority()) ||
+			(g_WorkState->GetDownloadHeld() && !m_fileInfo->GetExtraPriority()) ||
 			serverConfigGeneration != g_ServerPool->GetGeneration())
 		{
 			status = adRetry;
@@ -235,7 +235,7 @@ void ArticleDownloader::Run()
 		}
 
 		if (IsStopped() || ((g_WorkState->GetPauseDownload() || g_WorkState->GetQuotaReached()) && !force) ||
-			(g_WorkState->GetTempPauseDownload() && !m_fileInfo->GetExtraPriority()) ||
+			(g_WorkState->GetDownloadHeld() && !m_fileInfo->GetExtraPriority()) ||
 			serverConfigGeneration != g_ServerPool->GetGeneration())
 		{
 			status = adRetry;

@@ -228,7 +228,7 @@ void QueueCoordinator::Run()
 			m_hasMoreJobs = hasMoreArticles || articeDownloadsRunning;
 			bool canProceed = !IsStopped() && Util::SafeIntCast<size_t, int>(m_activeDownloads.size()) < m_downloadsLimit;
 
-			if (hasMoreArticles && canProceed && (!g_WorkState->GetTempPauseDownload() || fileInfo->GetExtraPriority()))
+			if (hasMoreArticles && canProceed && (!g_WorkState->GetDownloadHeld() || fileInfo->GetExtraPriority()))
 			{
 				NntpConnection* connection = nullptr;
 			

@@ -39,6 +39,7 @@
 #include "DownloadInfo.h"
 #include "Options.h"
 #include "Log.h"
+#include "WorkState.h"
 
 namespace
 {
@@ -225,6 +226,10 @@ Fleet::Result Fleet::Append(Request request)
 		long long checkStart = DonorHealth::NowMs();
 		options.budgetMs = (int)std::max(1000LL, deadlineMs - checkStart - FinishReserveMs);
 		std::mutex mutex;
+		// downloads hold off meanwhile: a download keeps taking the connections back
+		// after each article, and the check got none (F7: with a download running,
+		// every check used its whole time limit and measured nothing)
+		g_WorkState->HoldDownloadForFleet(true);
 		DonorHealth::CheckPostings(servers, postings, options, true,
 			std::min((int)postings.size(), MaxParallel),
 			[&](const std::string& key, const DonorHealth::Health& health)
@@ -234,6 +239,7 @@ Fleet::Result Fleet::Append(Request request)
 				candidate.health = health;
 				candidate.checked = true;
 			});
+		g_WorkState->HoldDownloadForFleet(false);
 		// a check the deadline cut short knows less than it could
 		result.complete = DonorHealth::NowMs() - checkStart < options.budgetMs;
 	}
@@ -243,9 +249,12 @@ Fleet::Result Fleet::Append(Request request)
 		{
 			continue;
 		}
-		double alive = candidate.checked ? candidate.health.Alive() : -1;
+		// cut short with nothing found present, a posting is unknown, not dead: its
+		// unsettled articles only count as missing at the limit (F7)
+		bool unknown = !candidate.checked || (!result.complete && candidate.health.present == 0);
+		double alive = unknown ? -1 : candidate.health.Alive();
 		candidate.alive = alive < 0 ? -1 : (int)std::lround(100 * alive);
-		candidate.dead = candidate.checked && (DonorHealth::DeadProbe(candidate.health) ||
+		candidate.dead = !unknown && (DonorHealth::DeadProbe(candidate.health) ||
 			(alive >= 0 && alive * 100 < g_Options->GetDupeMinAlive() &&
 			 candidate.health.missing >= DonorHealth::MinKnown));
 		result.complete &= candidate.checked && candidate.health.Answered() >= DonorHealth::MinKnown;
@@ -365,6 +374,7 @@ Fleet::Result Fleet::Append(Request request)
 	{
 		Member& member = request.members[candidate->index];
 		Entry entry;
+		entry.member = (int)candidate->index;
 		entry.name = member.name;
 		entry.rank = ++rank;
 		entry.alive = candidate->alive;
@@ -378,6 +388,14 @@ Fleet::Result Fleet::Append(Request request)
 			// its posting is in the fleet or in nzbget already: one copy of it is enough
 			entry.status = "SAME_POSTING";
 			entry.sameAs = candidate->existingId ? candidate->existingId : added[candidate->sameAs];
+			// the twin's rank, also when it wasn't added (dead: F8)
+			for (const Entry& other : result.members)
+			{
+				if (!candidate->existingId && other.member == candidate->sameAs)
+				{
+					entry.sameAsRank = other.rank;
+				}
+			}
 		}
 		else if (!anyAlive)
 		{

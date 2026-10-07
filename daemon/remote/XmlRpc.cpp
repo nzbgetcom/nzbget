@@ -2636,9 +2636,9 @@ void AppendFleetXmlCommand::Execute()
 		const Fleet::Entry& entry = result.members[i];
 		CString item;
 		item.Format("%s{\"NZBID\" : %i, \"Name\" : \"%s\", \"Rank\" : %i, \"Alive\" : %i, "
-			"\"Status\" : \"%s\", \"SameAs\" : %i, \"Reason\" : \"%s\"}",
+			"\"Status\" : \"%s\", \"SameAs\" : %i, \"SameAsRank\" : %i, \"Reason\" : \"%s\"}",
 			i ? ", " : "", entry.nzbId, *EncodeStr(entry.name.c_str()), entry.rank, entry.alive,
-			entry.status.c_str(), entry.sameAs, *EncodeStr(entry.reason.c_str()));
+			entry.status.c_str(), entry.sameAs, entry.sameAsRank, *EncodeStr(entry.reason.c_str()));
 		AppendResponse(item);
 	}
 	AppendResponse("]}");
