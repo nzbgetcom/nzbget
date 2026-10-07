@@ -4677,7 +4677,9 @@ def scenario_fleetotherkey(daemon, t):
                    key='fleet:key-b')
     time.sleep(1)
     ok = first['Status'].startswith('SUCCESS') and reply['Chosen'] == 0 and \
-        reply['Reason'] == 'ALREADY_DOWNLOADED' and reply['Members'][0]['Status'] == 'SKIPPED' and not api.listgroups()
+        reply['Reason'] == 'ALREADY_DOWNLOADED' and reply['Members'][0]['Status'] == 'SKIPPED' and not api.listgroups() and \
+        reply['Members'][0]['Alive'] == -1
+    # (never health-checked: it was measured first, and read as dead with Alive 0)
     return ('fleetotherkey', ok, 'first=%s reply=%s' % (first['Status'], reply))
 
 

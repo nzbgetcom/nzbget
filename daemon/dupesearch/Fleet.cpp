@@ -217,6 +217,53 @@ Fleet::Result Fleet::Append(Request request)
 			}
 		}
 	}
+	// the release downloaded under another key (another client's), its files on
+	// disk: nothing of the fleet downloads (F1-c); the same release by name, as
+	// strictly as the duplicate search compares them. Before the health check: it
+	// took up to the whole time limit for copies of a release on disk, and the
+	// members, never needed, read as measured (Alive 0)
+	{
+		std::vector<Candidate*> ranked;
+		for (Candidate& candidate : candidates)
+		{
+			ranked.push_back(&candidate);
+		}
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			NzbInfo* item = historyInfo->GetKind() == HistoryInfo::hkNzb ? historyInfo->GetNzbInfo() : nullptr;
+			if (!item || item->GetDeleteStatus() != NzbInfo::dsNone || !item->IsDupeSuccess() ||
+				item->GetMarkStatus() == NzbInfo::ksBad || !ReleaseName::Readable(item->GetName()))
+			{
+				continue;
+			}
+			bool same = std::any_of(ranked.begin(), ranked.end(), [&](const Candidate* c)
+				{
+					const std::string& name = request.members[c->index].name;
+					return c->error.empty() && ReleaseName::Readable(name) &&
+						ReleaseName::SameRelease(name, item->GetName());
+				});
+			if (same && DupeCoordinator::FilesOnDisk(item))
+			{
+				result.reason = "ALREADY_DOWNLOADED";
+				result.chosen = 0;
+				int rank = 0;
+				for (Candidate* candidate : ranked)
+				{
+					Entry entry;
+					entry.name = request.members[candidate->index].name;
+					entry.rank = ++rank;
+					entry.alive = candidate->alive;
+					entry.status = candidate->error.empty() ? "SKIPPED" : "ERROR";
+					entry.reason = candidate->error.empty() ? "downloaded as " + std::string(item->GetName()) : candidate->error;
+					result.members.push_back(entry);
+				}
+				info("Fleet for %s: %s is downloaded already", request.dupeKey.c_str(), item->GetName());
+				return result;
+			}
+		}
+	}
+
 	// the health of each posting, on the configured servers, within the time limit
 	std::vector<DonorHealth::Posting> postings;
 	for (Candidate& candidate : candidates)
@@ -353,45 +400,6 @@ Fleet::Result Fleet::Append(Request request)
 		return result;
 	}
 
-	// the release downloaded under another key (another client's), its files on
-	// disk: nothing of the fleet downloads (F1-c); the same release by name, as
-	// strictly as the duplicate search compares them
-	{
-		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
-		{
-			NzbInfo* item = historyInfo->GetKind() == HistoryInfo::hkNzb ? historyInfo->GetNzbInfo() : nullptr;
-			if (!item || item->GetDeleteStatus() != NzbInfo::dsNone || !item->IsDupeSuccess() ||
-				item->GetMarkStatus() == NzbInfo::ksBad || !ReleaseName::Readable(item->GetName()))
-			{
-				continue;
-			}
-			bool same = std::any_of(ranked.begin(), ranked.end(), [&](const Candidate* c)
-				{
-					const std::string& name = request.members[c->index].name;
-					return c->error.empty() && ReleaseName::Readable(name) &&
-						ReleaseName::SameRelease(name, item->GetName());
-				});
-			if (same && DupeCoordinator::FilesOnDisk(item))
-			{
-				result.reason = "ALREADY_DOWNLOADED";
-				result.chosen = 0;
-				int rank = 0;
-				for (Candidate* candidate : ranked)
-				{
-					Entry entry;
-					entry.name = request.members[candidate->index].name;
-					entry.rank = ++rank;
-					entry.alive = candidate->alive;
-					entry.status = candidate->error.empty() ? "SKIPPED" : "ERROR";
-					entry.reason = candidate->error.empty() ? "downloaded as " + std::string(item->GetName()) : candidate->error;
-					result.members.push_back(entry);
-				}
-				info("Fleet for %s: %s is downloaded already", request.dupeKey.c_str(), item->GetName());
-				return result;
-			}
-		}
-	}
 
 	// a download of the key running: the fleet's members become its backups, scored
 	// below everything the key holds (F5: just below the running download, they tied
