@@ -21,6 +21,8 @@
 
 #include "Json.h"
 
+#include <boost/json/src.hpp>
+
 namespace Json
 {
 	std::optional<JsonValue> Deserialize(std::basic_istream<char>& is) noexcept

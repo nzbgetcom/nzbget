@@ -141,7 +141,7 @@ if(WIN32)
 		${CMAKE_SOURCE_DIR}/daemon/windows/WinService.cpp
 		${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp
 	)
-	target_include_directories(libnzbget PUBLIC ${CMAKE_SOURCE_DIR}/windows)
+	target_include_directories(libnzbget PUBLIC ${CMAKE_SOURCE_DIR}/platforms/windows)
 endif()
 
 target_include_directories(libnzbget PUBLIC
