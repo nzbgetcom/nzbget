@@ -976,6 +976,10 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 			&addStatus,
 			nzbId
 		);
+		// requested under the lock: a periodic scan that took the lock first skipped
+		// the file (too young) and cleared its entry, and the file was added later
+		// without the name, key and score it was sent with (F14)
+		m_requestedNzbDirScan = true;
 	}
 	guard.unlock();
 
