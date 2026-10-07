@@ -24,6 +24,7 @@
 #include "DupeProbe.h"
 #include "DownloadInfo.h"
 #include "QueueCoordinator.h"
+#include "DupeCoordinator.h"
 #include "ServerPool.h"
 #include "NewsServer.h"
 #include "NntpConnection.h"
@@ -455,6 +456,18 @@ void DupeProbe::Recheck()
 		NzbInfo* nzbInfo = historyInfo->GetNzbInfo();
 		int sampled = (int)m_samples.size();
 		bool retry = verdict.Existing * 2 >= sampled;
+		// a duplicate queued while the probe ran (up to a minute) downloads in its
+		// place: retrying as well downloaded the release twice at once (F22)
+		for (NzbInfo* queued : downloadQueue->GetQueue())
+		{
+			if (retry && DupeCoordinator::SameNameOrKey(queued->GetName(), queued->GetDupeKey(),
+				nzbInfo->GetName(), nzbInfo->GetDupeKey()))
+			{
+				nzbInfo->PrintMessage(Message::mkInfo, "Not retrying failed articles: duplicate %s downloads in its place",
+					queued->GetName());
+				return;
+			}
+		}
 		nzbInfo->PrintMessage(Message::mkInfo, "%i of %i failed articles exist on the servers%s",
 			verdict.Existing, sampled, retry ? "; retrying them" : "; not retrying");
 		if (retry)
