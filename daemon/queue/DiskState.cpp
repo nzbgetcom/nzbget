@@ -1719,9 +1719,26 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			// format 9 always has the fifth field; this build's format 7 has it, upstream's doesn't
 			if ((formatVersion >= 9 ? fields != 5 : fields < 4) ||
 				(stagedFallback != 0 && stagedFallback != 1)) goto error;
-			if (stagedFallback)
+			// a saved range no article can have (a damaged line): the article downloads
+			// again, not written at that offset (F25)
+			if (!completed && (segmentOffset < 0 || segmentSize < 0 || segmentSize > 1024*1024*1024))
+			{
+				statusInt = ArticleInfo::aiUndefined;
+				stagedFallback = 0;
+				segmentOffset = 0;
+				segmentSize = 0;
+			}
+			// its staged file gone (temp dir cleaned, a write cut short), it downloads again;
+			// finished without it, the file's commit failed as a whole (F21)
+			if (stagedFallback && pa->GetPartNumber() > 0 &&
+				FileSystem::FileExists(BString<1024>("%s%c%i.%03i", g_Options->GetTempDir(),
+					PATH_SEPARATOR, fileInfo->GetId(), pa->GetPartNumber())))
 			{
 				statusInt = ArticleInfo::aiFinished;	// saved as not downloaded for upstream's sake
+			}
+			else
+			{
+				stagedFallback = 0;
 			}
 			pa->SetSegmentOffset(segmentOffset);
 			pa->SetSegmentSize(segmentSize);

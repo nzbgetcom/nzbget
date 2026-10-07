@@ -45,9 +45,12 @@ struct HistoryRetryFixture
 	{
 		fs::create_directories(directory / "queue");
 		fs::create_directories(directory / "download");
+		fs::create_directories(directory / "tmp");
 		const std::string queueDirOption = "QueueDir=" + (directory / "queue").string();
+		const std::string tempDirOption = "TempDir=" + (directory / "tmp").string();
 		Options::CmdOptList cmdOpts;
 		cmdOpts.emplace_back(queueDirOption.c_str());
+		cmdOpts.emplace_back(tempDirOption.c_str());
 		cmdOpts.emplace_back("NzbLog=no");
 		cmdOpts.emplace_back("WriteLog=none");
 		cmdOpts.emplace_back("ParCheck=force");
@@ -218,12 +221,24 @@ BOOST_FIXTURE_TEST_CASE(StagedArticleSavedForUpstream, HistoryRetryFixture)
 	BOOST_CHECK_EQUAL((count + 1)->substr(0, 2), std::to_string((int)ArticleInfo::aiFinished) + ",");
 	BOOST_CHECK_EQUAL((count + 2)->substr(0, 2), std::to_string((int)ArticleInfo::aiUndefined) + ",");
 
+	// read back as staged while its staged file exists
+	const fs::path stagedFile = directory / "tmp" / (std::to_string(file.GetId()) + ".002");
+	std::ofstream(stagedFile.string()) << "abcd";
 	FileInfo loaded(file.GetId());
 	BOOST_REQUIRE(g_DiskState->LoadFile(&loaded, false, true));
 	BOOST_REQUIRE(g_DiskState->LoadFileState(&loaded, g_ServerPool->GetServers(), false));
 	BOOST_REQUIRE_EQUAL(loaded.GetArticles()->size(), 3u);
 	BOOST_CHECK_EQUAL(loaded.GetArticles()->at(1)->GetStatus(), ArticleInfo::aiFinished);
 	BOOST_CHECK_EQUAL(loaded.GetArticles()->at(1)->GetDupeFallbackRound(), 1);
+
+	// F21: its staged file gone, it downloads again - finished without it, the
+	// file's commit failed as a whole
+	fs::remove(stagedFile);
+	FileInfo reloaded(file.GetId());
+	BOOST_REQUIRE(g_DiskState->LoadFile(&reloaded, false, true));
+	BOOST_REQUIRE(g_DiskState->LoadFileState(&reloaded, g_ServerPool->GetServers(), false));
+	BOOST_CHECK_EQUAL(reloaded.GetArticles()->at(1)->GetStatus(), ArticleInfo::aiUndefined);
+	BOOST_CHECK_EQUAL(reloaded.GetArticles()->at(1)->GetDupeFallbackRound(), 0);
 }
 
 // B23: a retry asks for the article's own message-id, not the duplicate's it was last

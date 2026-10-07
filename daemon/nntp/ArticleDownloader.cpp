@@ -526,12 +526,18 @@ bool ArticleDownloader::Write(char* buffer, int len)
 				}
 				articleFileSize = m_decoder.GetSize();
 				articleOffset = m_decoder.GetBeginPos() - 1;
-				articleSize = (int)(m_decoder.GetEndPos() - m_decoder.GetBeginPos() + 1);
-				if (articleSize <= 0 || articleSize > 1024*1024*1024)
+				// the range in 64 bits, inside the file size the article declares: cut
+				// to an int, a huge range could pass as a small one (F24), and an offset
+				// far past the file had the file filled with zeros up to it (F23)
+				int64 rangeSize = m_decoder.GetEndPos() - m_decoder.GetBeginPos() + 1;
+				if (articleOffset < 0 || rangeSize <= 0 || rangeSize > 1024*1024*1024 ||
+					(articleFileSize > 0 && articleOffset + rangeSize > articleFileSize))
 				{
-					warn("Malformed article %s: size %i out of range", *m_infoName, articleSize);
+					warn("Malformed article %s: range %lli-%lli out of range (file size %lli)", *m_infoName,
+						(long long)m_decoder.GetBeginPos(), (long long)m_decoder.GetEndPos(), (long long)articleFileSize);
 					return false;
 				}
+				articleSize = (int)rangeSize;
 				m_decodedFileSize = articleFileSize;
 				int64 expectedFileSize = m_fileInfo->GetDecodedFileSize();
 				if (m_articleInfo->GetDupeFallbackRound() > 0 && expectedFileSize > 0 &&
