@@ -5,29 +5,69 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_ARCHS: "aarch64-ndk armhf-ndk i686-ndk x86_64-ndk"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_ARCHS: "arm64 armv7 x86_64 x86"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
 jobs:
+  # 1. Prepare the hermetic toolchain (LLVM 19.1.7, Bionic sysroot, compiler-rt, static libc++) and cache it
+  build-toolchain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Cache Android toolchain
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/toolchains/android-llvm
+          build/toolchains/android-sysroot
+          build/toolchains/android-libcxx
+          build/toolchains/android-api-level
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled libraries when the toolchain script changes.
+        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/setup-android-toolchain.sh') }}
+
+    - name: Install build tools
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build cmake curl xz-utils unzip
+
+    - name: Prepare Android toolchain
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        bash toolchains/setup-android-toolchain.sh all
 
   prepare-build-matrix:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
+      build_date: ${{ steps.matrix-vars.outputs.BUILD_DATE }}
     steps:
 
-      - name: Calculate matrix variables
-        id: matrix-vars
-        run: |
-          echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
-          echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+    - name: Calculate matrix variables
+      id: matrix-vars
+      run: |
+        echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+        echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+        echo "BUILD_DATE=$(date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
 
+  # 2. Build Android binaries for each architecture and build type
   build-bin:
     runs-on: ubuntu-24.04
-    needs: prepare-build-matrix
+    timeout-minutes: 60
+    needs: [build-toolchain, prepare-build-matrix]
+    env:
+      BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
     strategy:
+      fail-fast: false
       matrix:
         arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
         type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
@@ -37,75 +77,84 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Prepare ${{ matrix.arch }} / ${{ matrix.type }} environment
-      run: |
-        sudo mkdir -p /build
-        sudo chown $USER:$USER /build
-        mkdir -p /build/android
-        mkdir -p /build/lib
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/android-${{ matrix.arch }}.tar.gz -o /build/android/ndk.tar.gz
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/lib-${{ matrix.arch }}.tar.gz -o /build/lib/lib.tar.gz
-        tar zxf /build/android/ndk.tar.gz -C /build/android
-        tar zxf /build/lib/lib.tar.gz -C /build/lib
-        sudo apt-get update
-        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6
+    - name: Restore Android toolchain
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          build/toolchains/android-llvm
+          build/toolchains/android-sysroot
+          build/toolchains/android-libcxx
+          build/toolchains/android-api-level
+        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/setup-android-toolchain.sh') }}
+        fail-on-cache-miss: true
 
-    - name: Build
-      run: bash linux/build-nzbget.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
+    - name: Cache FetchContent dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/ci-android${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/deps
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled binaries when toolchains, flags, or dependency configurations change.
+        key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android-llvm.cmake', 'toolchains/setup-android-toolchain.sh') }}
+
+    - name: Install build tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ninja-build cmake curl
+
+    - name: Build & Package ${{ matrix.arch }} / ${{ matrix.type }}
+      run: |
+        bash platforms/android/build.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-android-${{ matrix.arch }}-${{ matrix.type }}-build-log
-        path: build/*/build.log
+        path: build/ci-android${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/*.log
         retention-days: 5
 
-    - name: Upload build artifacts
+    - name: Upload architecture artifacts
       uses: actions/upload-artifact@v7
       with:
         name: nzbget-android-bin-${{ matrix.arch }}-${{ matrix.type }}
-        path: build/*.tar.gz
+        path: build/dist/*.tar.gz
         retention-days: 5
 
+  # 3. Combine per-architecture packages into a single multi-arch installer
   build-installer:
     runs-on: ubuntu-24.04
-    needs: build-bin
+    timeout-minutes: 15
+    needs: [prepare-build-matrix, build-bin]
+    env:
+      BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Prepare build environment
-      run: |
-        sudo mkdir -p /build
-        sudo chown $USER:$USER /build
-
     - name: Download build artifacts
       uses: actions/download-artifact@v8
       with:
         pattern: nzbget-android-bin-*
+        path: artifacts
 
     - name: Build installer
       run: |
-        mkdir -p build
-        for ARCH in ${{ env.BUILD_ARCHS }}; do
-          for TYPE in ${{ env.BUILD_TYPES }}; do
-            cp nzbget-android-bin-$ARCH-$TYPE/*.tar.gz build/
-          done
+        mkdir -p build/dist
+        find artifacts -name "*.tar.gz" -exec cp {} build/dist/ \;
+        for TYPE in ${{ env.BUILD_TYPES }}; do
+          bash platforms/android/build.sh installer all-arch $TYPE ${{ env.BUILD_TESTING }}
         done
-        bash linux/build-nzbget.sh android installer ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd build
+        cd build/dist
         SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-android"
         for FILE in *.run; do
-          [ -f $FILE ] || continue
-          NEW_FILE=${FILE/-bin-android/$SUFFIX}
-          mv $FILE $NEW_FILE
+          [ -f "$FILE" ] || continue
+          mv "$FILE" "${FILE/-bin-android/$SUFFIX}"
         done
 
     - name: Delete unneeded platform-specific artifacts
@@ -117,5 +166,5 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: nzbget-android-installers
-        path: build/*.run
+        path: build/dist/*.run
         retention-days: 5
