@@ -279,8 +279,11 @@ bool DupeStreamRepair::BuildRepairJob(FileInfo* fileInfo, const char* diskBasena
 	}
 
 	NzbInfo* nzbInfo = fileInfo->GetNzbInfo();
-	if (!nzbInfo || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
-		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone ||
+	// a health cancel keeps the files for "Download remaining files": the file
+	// whose last article set it off still takes its job
+	bool healthCancel = nzbInfo && nzbInfo->GetDeleteStatus() == NzbInfo::dsHealth;
+	if (!nzbInfo || (!healthCancel && (nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
+		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone)) ||
 		nzbInfo->GetPostInfo() != nullptr)
 	{
 		// the PostInfo check: files completing AFTER post-processing started

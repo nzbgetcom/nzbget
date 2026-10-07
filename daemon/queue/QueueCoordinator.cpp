@@ -919,6 +919,12 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 
 		nzbInfo->SetDownloadedSize(nzbInfo->GetDownloadedSize() + articleDownloader->GetDownloadedSize());
 
+		// the article that completes the file may be the one whose failure drops
+		// health below critical: the cancel then deletes a file that is finished
+		// but for its holes, which is assembled like any other (and its holes
+		// queued for stream repair), not dropped unassembled
+		bool finishedBeforeCancel = fileCompleted && !fileInfo->GetDeleted();
+
 		CheckHealth(downloadQueue, fileInfo);
 		CheckDeadDownload(downloadQueue, nzbInfo);
 
@@ -935,7 +941,8 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 			ValidateCompletedFileTiling(fileInfo);
 		}
 
-		completeFileParts = fileCompleted && (!fileInfo->GetDeleted() || nzbInfo->GetParking());
+		completeFileParts = fileCompleted &&
+			(!fileInfo->GetDeleted() || nzbInfo->GetParking() || finishedBeforeCancel);
 
 		if (!completeFileParts)
 		{

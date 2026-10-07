@@ -3557,6 +3557,28 @@ def scenario_retryparkedname(daemon, t):
             % (parked, h2['Status'], intact('Rel.part01.rar'), intact('Rel.part02.rar'), temp_named))
 
 
+def scenario_healthlastarticle(daemon, t):
+    """The failed article that drops health below critical is a file's last
+    one: the health cancel deletes the file inside that article's completion.
+    The file is still whole but for its hole, and must be finished like any
+    other (its hole queued for stream repair), not dropped unassembled with no
+    repair job (it was parked with its hole, and "Download remaining files"
+    never repaired it). One connection makes the order deterministic."""
+    seg_primary, seg_donor = 100_000, 60_000
+    payload = _payload(1_000_000, 9800)
+    t.write_file('data/hlA/x.part01.rar', payload)
+    t.write_file('data/hlB/x.part01.rar', payload)
+    daemon_api = daemon.wait_ready()
+    daemon.append(daemon_api, 'DonHL', build_multi_nzb(
+        [('hlB/x.part01.rar', 'Other.part01.rar', len(payload), seg_donor, set())]), True, 'hl-key', 50)
+    daemon.append(daemon_api, 'RelHL', build_multi_nzb(
+        [('hlA/x.part01.rar', 'Rel.part01.rar', len(payload), seg_primary, {9, 10})]), False, 'hl-key', 100)
+    h = daemon.wait_history(daemon_api, 'RelHL')
+    queued = _grep_log(t, 'Queueing stream repair of Rel.part01.rar')
+    return ('healthlastarticle', h['Status'].startswith('FAILURE') and queued >= 1,
+            'status=%s health=%d queued_logs=%d' % (h['Status'], h['Health'], queued))
+
+
 def scenario_streamgrouped(daemon, t):
     """B2: two news servers of one group (the same account, Server1.Group =
     Server2.Group = 1) and a duplicate that lacks an article stream repair asks
@@ -6355,6 +6377,7 @@ SCENARIOS = {
     'streamgrouped': scenario_streamgrouped,
     'retrykeepsjobs': scenario_retrykeepsjobs,
     'retryparkedname': scenario_retryparkedname,
+    'healthlastarticle': scenario_healthlastarticle,
     'wholefilerestart': scenario_wholefilerestart,
     'wholefilenfoproof': scenario_wholefilenfoproof,
     'wholefilesampleproof': scenario_wholefilesampleproof,
@@ -6532,6 +6555,7 @@ SCENARIO_OPTIONS = {
     'streamgrouped': ['DupeArticleFallback=stream', 'ParCheck=auto', 'ArticleTimeout=20', 'Server1.Group=1'],
     'retrykeepsjobs': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
     'retryparkedname': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park'],
+    'healthlastarticle': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=park', 'Server1.Connections=1'],
     'streamslowprogress': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streamtooslow': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=5'],
     'streammaxrun': ['DupeArticleFallback=stream', 'ParCheck=auto', 'DupeStreamTimeout=8'],
