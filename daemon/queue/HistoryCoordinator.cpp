@@ -43,7 +43,9 @@ void HistoryCoordinator::ServiceWork()
 {
 	GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 
-	time_t minTime = Util::CurrentTime() - g_Options->GetKeepHistory() * 60*60*24;
+	// in 64 bits: past 24,855 days the int product went negative, and every item was
+	// hidden as too old
+	time_t minTime = Util::CurrentTime() - (time_t)g_Options->GetKeepHistory() * 60*60*24;
 	bool changed = false;
 	int index = 0;
 
