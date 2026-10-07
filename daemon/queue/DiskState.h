@@ -76,6 +76,7 @@ private:
 	/* a queue, history or progress file that couldn't be read is renamed
 	 * "<name>.unreadable-<time>": the next save would overwrite it */
 	void SetAsideQueueFiles();
+	void RaiseIdsPastQueueDir();
 	void ConvertLegacyFileStates(Servers* servers);
 	bool m_legacyQueueRead = false;
 	void SaveNzbInfo(NzbInfo* nzbInfo, StateDiskFile& outfile);

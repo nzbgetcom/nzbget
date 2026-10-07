@@ -188,6 +188,7 @@ public:
 	int GetId() { return m_id; }
 	void SetId(int id);
 	static void ResetGenId(bool max);
+	static void RaiseIdFloor(int id) { m_idMax = std::max(m_idMax, id); }
 	NzbInfo* GetNzbInfo() { return m_nzbInfo; }
 	void SetNzbInfo(NzbInfo* nzbInfo) { m_nzbInfo = nzbInfo; }
 	ArticleList* GetArticles() { return &m_articles; }
@@ -647,6 +648,7 @@ public:
 	int GetId() { return m_id; }
 	void SetId(int id);
 	static void ResetGenId(bool max);
+	static void RaiseIdFloor(int id) { m_idMax = std::max(m_idMax, id); }
 	static int GenerateId();
 	EKind GetKind() { return m_kind; }
 	void SetKind(EKind kind) { m_kind = kind; }

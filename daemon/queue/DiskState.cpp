@@ -469,6 +469,7 @@ error:
 		// the next save would overwrite them: kept under another name instead
 		SetAsideQueueFiles();
 	}
+	RaiseIdsPastQueueDir();
 
 	NzbInfo::ResetGenId(true);
 	FileInfo::ResetGenId(true);
@@ -476,6 +477,41 @@ error:
 	CalcFileStats(downloadQueue, formatVersion);
 
 	return ok;
+}
+
+/*
+ * The ids the queue dir holds files for: new ids are counted on past them. With the
+ * queue and history set aside as unreadable, the ids restarted at the few items that
+ * loaded: new items got the ids of old ones and took over their logs, file states
+ * and dupe-search state (P0-c).
+ */
+void DiskState::RaiseIdsPastQueueDir()
+{
+	DirBrowser dir(g_Options->GetQueueDir());
+	while (const char* filename = dir.Next())
+	{
+		const char* p = filename;
+		bool nzbLog = *p == 'n';
+		p += nzbLog ? 1 : 0;
+		if (!isdigit((unsigned char)*p))
+		{
+			continue;
+		}
+		char* end = nullptr;
+		long id = strtol(p, &end, 10);
+		if (id <= 0 || id > INT_MAX)
+		{
+			continue;
+		}
+		if (nzbLog && !strcmp(end, ".log"))
+		{
+			NzbInfo::RaiseIdFloor((int)id);
+		}
+		else if (!nzbLog && (!strcmp(end, "") || !strcmp(end, "s") || !strcmp(end, "c")))
+		{
+			FileInfo::RaiseIdFloor((int)id);
+		}
+	}
 }
 
 bool DiskState::SaveDownloadProgress(DownloadQueue* downloadQueue)

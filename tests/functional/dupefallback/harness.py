@@ -5159,6 +5159,36 @@ def scenario_newlinestate(daemon, t):
         nid, hid, [(g['NZBName'], g['DupeKey'], g['Category']) for g in queued], in_history, unreadable))
 
 
+def scenario_idsafterunreadable(daemon, t):
+    """P0-c: with the history set aside as unreadable at a start, the ids
+    restarted at what loaded: production gave new fleets the ids of deleted test
+    items. New ids now count on past every id the queue dir holds files for."""
+    api = daemon.wait_ready()
+    ids = []
+    for i in range(4):
+        nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@id' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+        ids.append(_rpc(daemon, 'append', ['Ids.%d.nzb' % i, nzb, '', 0, False, True, 'ids-key-%d' % i, 0, 'SCORE', []]).get('result'))
+    _rpc(daemon, 'editqueue', ['GroupDelete', '', ids])
+    time.sleep(3)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    with open(t.path('main', 'queue', 'history'), 'r+b') as f:
+        lines = f.read().split(b'\n')
+        f.seek(0)
+        f.truncate()
+        f.write(b'\n'.join(lines[:1] + [b'garbage'] + lines[1:]))
+    daemon.start()
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@id' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    new_id = _rpc(daemon, 'append', ['Ids.new.nzb', nzb, '', 0, False, True, 'ids-key-new', 0, 'SCORE', []]).get('result')
+    unreadable = _grep_log(t, 'could not be read')
+    ok = unreadable >= 1 and new_id > max(ids)
+    return ('idsafterunreadable', ok, 'old=%s new=%s unreadable_logs=%d' % (ids, new_id, unreadable))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6743,6 +6773,7 @@ SCENARIOS = {
     'addstorm': scenario_addstorm,
     'longstateline': scenario_longstateline,
     'newlinestate': scenario_newlinestate,
+    'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
     'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
