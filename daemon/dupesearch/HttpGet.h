@@ -41,7 +41,11 @@ public:
 		std::string body;
 	};
 
-	static Reply Fetch(const std::string& url, const std::string& infoName, size_t maxBytes);
+	/* deadlineMs (DonorHealth::NowMs() time, 0 for none) ends the request, however
+	 * slowly the server answers: the read timeouts alone let a dripping server
+	 * hold it much longer */
+	static Reply Fetch(const std::string& url, const std::string& infoName, size_t maxBytes,
+		long long deadlineMs = 0);
 	static void StopAll();
 	/* allows requests again (nzbget reloads inside the same process) */
 	static void Reset();

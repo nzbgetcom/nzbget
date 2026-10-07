@@ -24,6 +24,9 @@
 #include <fstream>
 #include <set>
 #include "HttpGet.h"
+#include "DonorHealth.h"
+#include <thread>
+#include <condition_variable>
 #include "WebDownloader.h"
 #include "FileSystem.h"
 #include "Options.h"
@@ -36,7 +39,8 @@ namespace
 	std::atomic<int> g_counter{0};
 }
 
-HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoName, size_t maxBytes)
+HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoName, size_t maxBytes,
+	long long deadlineMs)
 {
 	Reply reply;
 	if (g_stopped)
@@ -62,7 +66,33 @@ HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoNam
 		}
 		g_active.insert(&downloader);
 	}
+	// the deadline: a watchdog stops the download when it passes (F13)
+	std::mutex doneMutex;
+	std::condition_variable doneCond;
+	bool done = false;
+	std::thread watchdog;
+	if (deadlineMs > 0)
+	{
+		watchdog = std::thread([&]()
+			{
+				std::unique_lock<std::mutex> lock(doneMutex);
+				long long left = deadlineMs - DonorHealth::NowMs();
+				if (left <= 0 || !doneCond.wait_for(lock, std::chrono::milliseconds(left), [&]() { return done; }))
+				{
+					downloader.Stop();
+				}
+			});
+	}
 	WebDownloader::EStatus status = downloader.DownloadWithRedirects(5);
+	if (watchdog.joinable())
+	{
+		{
+			std::lock_guard<std::mutex> lock(doneMutex);
+			done = true;
+		}
+		doneCond.notify_all();
+		watchdog.join();
+	}
 	{
 		Guard guard(g_mutex);
 		g_active.erase(&downloader);

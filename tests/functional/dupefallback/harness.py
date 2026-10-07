@@ -4819,6 +4819,43 @@ def scenario_fleetmostlydead(daemon, t):
     return ('fleetmostlydead', ok, 'reply=%s' % reply)
 
 
+def scenario_fleetslowurl(daemon, t):
+    """appendfleet (F13): a member's url answers only after 40 s; the fleet
+    allows 10 s. The call still returns within its limit (the fetch is stopped
+    at the deadline), the good member queued and the slow one an error."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    class Slow(BaseHTTPRequestHandler):
+        def do_GET(self):
+            time.sleep(40)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Slow)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    daemon.fake_nntp.alive = set(_fleet_ids('su'))
+    daemon.wait_ready()
+    import json as _json
+    import urllib.request as _req
+    params = ['fleet:slowurl', 'test', 0, 10,
+              'Show.S01E01.slow', 'http://127.0.0.1:%d/slow.nzb' % server.server_address[1],
+              'Show.S01E01.good', base64.standard_b64encode(_fake_nzb_ids(_fleet_ids('su'), 400_000)).decode()]
+    start = time.time()
+    request = _req.Request('http://127.0.0.1:%d/jsonrpc' % daemon.rpc_port,
+                           _json.dumps({'method': 'appendfleet', 'params': params}).encode(),
+                           {'Content-Type': 'application/json'})
+    with _req.urlopen(request, timeout=60) as reply:
+        result = _json.loads(reply.read().decode())['result']
+    took = time.time() - start
+    server.shutdown()
+    byname = {m['Name']: m for m in result['Members']}
+    ok = took < 12 and byname['Show.S01E01.good']['Status'] == 'QUEUED' and byname['Show.S01E01.slow']['Status'] == 'ERROR'
+    return ('fleetslowurl', ok, 'took=%.1f members=%s' % (took, [(m['Name'], m['Status']) for m in result['Members']]))
+
+
 def scenario_fleetone(daemon, t):
     """appendfleet with a single whole member: it is queued and downloads."""
     daemon.fake_nntp.alive = set(_fleet_ids('one'))
@@ -6308,6 +6345,7 @@ SCENARIOS = {
     'fleetlarge': scenario_fleetlarge,
     'fleetcopy': scenario_fleetcopy,
     'fleetmostlydead': scenario_fleetmostlydead,
+    'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6562,6 +6600,7 @@ SCENARIO_OPTIONS = {
     'fleetlarge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetslowurl': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6661,7 +6700,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetslowurl', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

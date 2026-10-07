@@ -119,7 +119,8 @@ Fleet::Result Fleet::Append(Request request)
 		candidate.index = i;
 		if (!member.url.empty())
 		{
-			HttpGet::Reply reply = HttpGet::Fetch(member.url, "fleet member " + member.name, MaxNzbBytes);
+			HttpGet::Reply reply = HttpGet::Fetch(member.url, "fleet member " + member.name, MaxNzbBytes,
+				deadlineMs - FinishReserveMs);
 			if (!reply.ok)
 			{
 				candidate.error = reply.status ? "the nzb-file could not be fetched (HTTP " + std::to_string(reply.status) + ")" :
