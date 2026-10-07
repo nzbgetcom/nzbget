@@ -2,9 +2,6 @@
 FROM alpine:3.22.2 AS build
 
 # args
-ARG UNRAR6_VERSION=6.2.12
-ARG UNRAR7_VERSION=7.2.7
-ARG ZIP7_VERSION=26.02
 ARG UNRAR7_NATIVE=false
 ARG MAKE_JOBS=1
 ARG TARGETPLATFORM
@@ -16,10 +13,12 @@ RUN \
   apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake
 
 #install archive packages
+COPY unpackers.env /tmp/unpackers.env
 RUN \
+  . /tmp/unpackers.env && \
   echo "**** install unrar7 from source ****" && \
   mkdir /tmp/unrar7 && \
-  curl -o /tmp/unrar7.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR7_VERSION}.tar.gz" && \
+  curl -o /tmp/unrar7.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR_SRC_VERSION}.tar.gz" && \
   tar xf /tmp/unrar7.tar.gz -C /tmp/unrar7 --strip-components=1 && \
   cd /tmp/unrar7 && \
   if [ "${UNRAR7_NATIVE}" != "true" ] && [ "${TARGETPLATFORM}" = "linux/amd64" ]; \
@@ -32,7 +31,7 @@ RUN \
   install -v -m755 unrar /usr/bin/unrar7 && \
   echo "**** install unrar6 from source ****" && \
   mkdir /tmp/unrar6 && \
-  curl -o /tmp/unrar6.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR6_VERSION}.tar.gz" && \
+  curl -o /tmp/unrar6.tar.gz -L "https://www.rarlab.com/rar/unrarsrc-${UNRAR6_SRC_VERSION}.tar.gz" && \
   tar xf /tmp/unrar6.tar.gz -C /tmp/unrar6 --strip-components=1 && \
   cd /tmp/unrar6 && \
   make -j ${MAKE_JOBS} && \

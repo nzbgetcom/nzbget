@@ -90,16 +90,15 @@ For development purposes the Docker Image can be build using the locally cloned 
 git clone https://github.com/nzbgetcom/nzbget.git
 docker compose -f docker/docker-compose.yml up --build
 -or-
-cd docker
-docker build . -t nzbget-local
+docker build -f docker/Dockerfile . -t nzbget-local
 ```
+
+Unpackers versions are taken from `unpackers.env` in the repository root.
 
 Dockerfile supports next build arguments:
 
 | Argument	      | Description
 |:----------------|-
-| UNRAR6_VERSION  | Unrar 6 version
-| UNRAR7_VERSION  | Unrar 7 version
 | UNRAR7_NATIVE   | Build native unrar (see below)
 | MAKE_JOBS       | Number of make jobs for speed up build
 
