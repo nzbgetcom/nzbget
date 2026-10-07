@@ -5189,6 +5189,79 @@ def scenario_idsafterunreadable(daemon, t):
     return ('idsafterunreadable', ok, 'old=%s new=%s unreadable_logs=%d' % (ids, new_id, unreadable))
 
 
+def scenario_fleetscoremax(daemon, t):
+    """F17: the key holds an item scored at the int limit (in history): the
+    fleet's scores were counted past it and wrapped around, negative, so a dead
+    member could outrank the whole one. The whole member now scores above the
+    dead one, and no score is negative."""
+    daemon.fake_nntp.alive = set(_fleet_ids('xw'))
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(_fleet_ids('xm'), 400_000)).decode()
+    top = _rpc(daemon, 'append', ['Show.S01E01.top.nzb', nzb, '', 0, False, True, 'fleet:max', 2147483647, 'SCORE', []]).get('result')
+    _rpc(daemon, 'editqueue', ['GroupDelete', '', [top]])
+    time.sleep(2)
+    reply = _fleet(daemon, [('Show.S01E01.dead', _fake_nzb_ids(_fleet_ids('xd'), 400_000).decode()),
+                            ('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('xw'), 410_000).decode())],
+                   key='fleet:max', timeout=20)
+    scores = {x['NZBName']: x['DupeScore'] for x in api.listgroups() + api.history()
+              if x['NZBName'].startswith('Show.S01E01.') and x['NZBID'] != top}
+    whole, dead = scores.get('Show.S01E01.whole'), scores.get('Show.S01E01.dead')
+    ok = whole is not None and whole > 0 and (dead is None or (dead > 0 and whole > dead))
+    return ('fleetscoremax', ok, 'scores=%s reply=%s' % (scores, [(m['Name'], m['Status']) for m in reply['Members']]))
+
+
+def scenario_fleetmerged(daemon, t):
+    """F20: two postings of a key merged into one item (GroupMerge) aren't added
+    again when the fleet is resent: its members are the postings the merged
+    item holds (SAME_POSTING). Before, a merged item's postings weren't seen."""
+    daemon.fake_nntp.alive = set(_fleet_ids('ga')) | set(_fleet_ids('gb'))
+    api = daemon.wait_ready()
+    na = _fake_nzb_ids(_fleet_ids('ga'), 400_000)
+    nb = _fake_nzb_ids(_fleet_ids('gb'), 410_000)
+    a = _rpc(daemon, 'append', ['Show.S01E01.a.nzb', base64.standard_b64encode(na).decode(), '', 0, False, True, 'fleet:merge', 10, 'SCORE', []]).get('result')
+    b = _rpc(daemon, 'append', ['Show.S01E01.b.nzb', base64.standard_b64encode(nb).decode(), '', 0, False, True, 'fleet:merge', 5, 'SCORE', []]).get('result')
+    merged = _rpc(daemon, 'editqueue', ['GroupMerge', '', [a, b]]).get('result')
+    reply = _fleet(daemon, [('Show.S01E01.a', na.decode()), ('Show.S01E01.b', nb.decode())], key='fleet:merge', timeout=20)
+    groups = [g['NZBName'] for g in api.listgroups()]
+    ok = merged and all(m['Status'] == 'SAME_POSTING' for m in reply['Members']) and len(groups) == 1
+    return ('fleetmerged', ok, 'merged=%s groups=%s reply=%s' % (merged, groups, [(m['Name'], m['Status'], m.get('SameAs')) for m in reply['Members']]))
+
+
+def scenario_readdafterdelete(daemon, t):
+    """F26 (the proxy's silent drop, checked on nzbget's side): an item of a key is
+    deleted, then the identical nzb-file is sent again under the key. nzbget skips
+    it by design (upstream: the same content in history, whatever its status, is
+    a duplicate); sent with DupeMode FORCE it queues. Nothing else - no id or
+    state remembered by this branch - swallows it."""
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@rd' % uuid.uuid4().hex for _ in range(5)], 50_000)).decode()
+    first = _rpc(daemon, 'append', ['Readd.Release.nzb', nzb, '', 0, False, True, 'readd-key', 100, 'SCORE', []]).get('result')
+    _rpc(daemon, 'editqueue', ['GroupDelete', '', [first]])
+    time.sleep(2)
+    skipped = _rpc(daemon, 'append', ['Readd.Release.nzb', nzb, '', 0, False, True, 'readd-key', 100, 'SCORE', []]).get('result')
+    forced = _rpc(daemon, 'append', ['Readd.Release.nzb', nzb, '', 0, False, True, 'readd-key', 100, 'FORCE', []]).get('result')
+    time.sleep(2)
+    queued = {g['NZBID'] for g in api.listgroups()}
+    ok = skipped > 0 and skipped not in queued and _grep_log(t, 'Skipping duplicate Readd.Release') >= 1 and forced in queued
+    return ('readdafterdelete', ok, 'first=%s skipped=%s forced=%s queued=%s' % (first, skipped, forced, sorted(queued)))
+
+
+def scenario_editscorerange(daemon, t):
+    """F27: editqueue GroupSetDupeScore with a score past the int range wrapped
+    around (2147483648 stored as -2147483648, the lowest score); it is an invalid
+    parameter now, the score unchanged, and a parameter without a name too."""
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@es' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    nid = _rpc(daemon, 'append', ['Edit.Score.nzb', nzb, '', 0, False, True, 'es-key', 500, 'SCORE', []]).get('result')
+    replies = [_rpc(daemon, 'editqueue', ['GroupSetDupeScore', v, [nid]]) for v in ('2147483648', '-2147483649')]
+    param = _rpc(daemon, 'editqueue', ['GroupSetParameter', '=y', [nid]])
+    good = _rpc(daemon, 'editqueue', ['GroupSetDupeScore', '700', [nid]]).get('result')
+    score = next((g['DupeScore'] for g in api.listgroups() if g['NZBID'] == nid), None)
+    rejected = all(not r.get('result') for r in replies + [param])
+    return ('editscorerange', rejected and good and score == 700, 'replies=%s param=%s good=%s score=%s' % (
+        [r.get('result', r.get('error')) for r in replies], param.get('result', param.get('error')), good, score))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6452,6 +6525,25 @@ def scenario_deadpickpartial(daemon, t):
             'status=%s failover_logs=%d alive_probe_logs=%d' % (hp['Status'], failed_over, alive_logs))
 
 
+def scenario_yencrangefar(daemon, t):
+    """F23/F24: an article's yEnc range lies far past the file size it declares
+    (here the last part says begin=9000001 end=9500000 of a 1.5 MB file). The
+    file was filled with zeros up to that offset (a crafted or damaged posting
+    could fill the disk); now the article is malformed: it fails, and the file
+    never grows past its declared size."""
+    size, seg = 1_500_000, 500_000
+    data = _payload(size, 5400)
+    pp = _place_copy(t, 'yrA', data, 'far.bin')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelYR', build_nzb(pp, 'far.bin', size, seg, set()), False, 'yr-key', 100)
+    h = daemon.wait_history(api, 'RelYR', timeout=120)
+    sizes = [os.path.getsize(t.path(rel)) for rel in t.find_files('main') if rel.endswith('far.bin')]
+    rewritten = daemon.proxy.rewritten if daemon.proxy else 0
+    ok = rewritten >= 1 and sizes and max(sizes) <= size
+    return ('yencrangefar', ok, 'status=%s rewritten=%d sizes=%s failed=%s' % (
+        h['Status'], rewritten, sizes, h.get('FailedArticles')))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -6766,12 +6858,17 @@ SCENARIOS = {
     'fleetmostlydead': scenario_fleetmostlydead,
     'fleetpaused': scenario_fleetpaused,
     'fleetparallel': scenario_fleetparallel,
+    'fleetscoremax': scenario_fleetscoremax,
+    'fleetmerged': scenario_fleetmerged,
     'appendconcurrent': scenario_appendconcurrent,
+    'readdafterdelete': scenario_readdafterdelete,
     'appendscorerange': scenario_appendscorerange,
+    'editscorerange': scenario_editscorerange,
     'appendlarge': scenario_appendlarge,
     'appendurlodd': scenario_appendurlodd,
     'addstorm': scenario_addstorm,
     'longstateline': scenario_longstateline,
+    'yencrangefar': scenario_yencrangefar,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -7033,6 +7130,9 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'yencrangefar': ['DupeArticleFallback=no', 'DirectWrite=no', 'ArticleRetries=0'],
+    'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
     'addstorm': ['NzbDirInterval=1', 'NzbDirFileAge=60', 'UrlConnections=4', 'UrlForce=yes', 'HealthCheck=dupe', 'DupeArticleFallback=live'],
     'fleetparallel': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -7110,7 +7210,8 @@ SCENARIO_FLAKY_PROXY = {'xpackflaky': (1, 'xfB/', 4.0), 'xpackdeadserver': (2, '
 SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
-SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
+SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
+                          'yencrangefar': (b'begin=1000001 end=1500000', b'begin=9000001 end=9500000'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
@@ -7137,7 +7238,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
