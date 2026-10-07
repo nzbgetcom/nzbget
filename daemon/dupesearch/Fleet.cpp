@@ -471,6 +471,7 @@ Fleet::Result Fleet::Append(Request request)
 		else
 		{
 			NzbParameterList parameters;
+			parameters.SetParameter(FleetParam, std::to_string(entry.rank).c_str());
 			if (candidate->alive >= 0)
 			{
 				parameters.SetParameter(DupeSearch::AliveParam, candidate->dead ? "0" :

@@ -77,6 +77,10 @@ public:
 	static constexpr int DefaultTimeoutSec = 45;
 	static constexpr int MaxTimeoutSec = 120;
 	static constexpr int MaxMembers = 50;
+	// a parameter of every item a fleet adds: its rank in the fleet. A queue extension
+	// (NZBPR_DupeFleet) can tell that nzbget ranked the key's copies already: ranking
+	// them again tied two live backups at one score
+	static constexpr const char* FleetParam = "DupeFleet";
 
 	/* checks, ranks and adds the members; blocks for up to request.timeoutSec */
 	static Result Append(Request request);

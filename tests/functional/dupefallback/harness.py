@@ -4630,10 +4630,16 @@ def scenario_fleettwins(daemon, t):
                             ('Show.S01E01.b', _fake_nzb_ids(_fleet_ids('tw'), 400_000).decode()),
                             ('Show.S01E01.c', _fake_nzb_ids(_fleet_ids('to'), 410_000).decode())])
     byname = {m['Name']: m for m in reply['Members']}
-    ok = (byname['Show.S01E01.b']['Status'] == 'SAME_POSTING' and byname['Show.S01E01.b']['NZBID'] == 0 and
+    # every item the fleet added carries its rank (DupeFleet), for queue extensions
+    api = daemon.wait_ready()
+    fleet_params = {x['NZBName']: {p['Name']: p['Value'] for p in x.get('Parameters', [])}.get('DupeFleet')
+                    for x in api.listgroups() + api.history()}
+    ranks_ok = (fleet_params.get('Show.S01E01.a') == str(byname['Show.S01E01.a']['Rank']) and
+                fleet_params.get('Show.S01E01.c') == str(byname['Show.S01E01.c']['Rank']))
+    ok = ranks_ok and (byname['Show.S01E01.b']['Status'] == 'SAME_POSTING' and byname['Show.S01E01.b']['NZBID'] == 0 and
           byname['Show.S01E01.b']['SameAs'] == byname['Show.S01E01.a']['NZBID'] and
           byname['Show.S01E01.a']['NZBID'] > 0 and reply['Chosen'] > 0)
-    return ('fleettwins', ok, 'members=%s' % [(m['Name'], m['Status'], m['NZBID'], m['SameAs']) for m in reply['Members']])
+    return ('fleettwins', ok, 'fleet_params=%s members=%s' % (fleet_params, [(m['Name'], m['Status'], m['NZBID'], m['SameAs']) for m in reply['Members']]))
 
 
 def scenario_fleettimeout(daemon, t):
