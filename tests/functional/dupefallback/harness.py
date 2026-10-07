@@ -5295,6 +5295,59 @@ def scenario_fleetsamekey(daemon, t):
         [(box.get(k, {}).get('Chosen'), box.get(k, {}).get('Reason'), box.get(k, {}).get('Complete')) for k in ('1', '2')]))
 
 
+def scenario_fleetwide(daemon, t):
+    """F30: a fleet of 40 dead postings, the server slow to answer, a 20 s limit:
+    the reply comes within the limit (production: 48 members, 30 s limit, 85 s),
+    Complete false, one member queued."""
+    daemon.fake_nntp.alive = set()
+    daemon.fake_nntp.delays.update({'fw': 0.5})
+    daemon.wait_ready()
+    members = [('Show.S01E01.v%02d' % i, _fake_nzb_ids(_fleet_ids('fw%02d' % i), 400_000).decode()) for i in range(40)]
+    start = time.time()
+    reply = _fleet(daemon, members, key='fleet:wide', timeout=20, http_timeout=200)
+    took = time.time() - start
+    ok = took < 23 and len(reply['Members']) == 40
+    return ('fleetwide', ok, 'took=%.1f complete=%s chosen=%s statuses=%s' % (
+        took, reply['Complete'], reply['Chosen'], sorted(set(m['Status'] for m in reply['Members']))))
+
+
+def scenario_fleetslowurlfirst(daemon, t):
+    """F29: both members are urls, the slow one (40 s) listed first, a 10 s limit.
+    The urls were fetched one after another: the slow one used up the limit and
+    the good one was never fetched (both ERROR, nothing chosen). Fetched at once,
+    the good one is queued within the limit."""
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    good = _fake_nzb_ids(_fleet_ids('sf'), 400_000)
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path.startswith('/slow'):
+                time.sleep(40)
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(good)))
+            self.end_headers()
+            self.wfile.write(good)
+
+        def log_message(self, *args):
+            pass
+    server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    daemon.fake_nntp.alive = set(_fleet_ids('sf'))
+    daemon.wait_ready()
+    base = 'http://127.0.0.1:%d' % server.server_address[1]
+    start = time.time()
+    reply = _rpc(daemon, 'appendfleet', ['fleet:slowfirst', 'test', 0, 10,
+                                         'Show.S01E01.slow', base + '/slow.nzb', 'Show.S01E01.good', base + '/good.nzb'],
+                 timeout=60).get('result', {})
+    took = time.time() - start
+    byname = {m['Name']: m for m in reply.get('Members', [])}
+    ok = took < 12 and byname.get('Show.S01E01.good', {}).get('Status') == 'QUEUED' and \
+        byname.get('Show.S01E01.slow', {}).get('Status') == 'ERROR'
+    return ('fleetslowurlfirst', ok, 'took=%.1f members=%s' % (took, [(m['Name'], m['Status']) for m in reply.get('Members', [])]))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6893,6 +6946,8 @@ SCENARIOS = {
     'fleetparallel': scenario_fleetparallel,
     'fleetscoremax': scenario_fleetscoremax,
     'fleetsamekey': scenario_fleetsamekey,
+    'fleetwide': scenario_fleetwide,
+    'fleetslowurlfirst': scenario_fleetslowurlfirst,
     'fleetmerged': scenario_fleetmerged,
     'appendconcurrent': scenario_appendconcurrent,
     'readdafterdelete': scenario_readdafterdelete,
@@ -7164,6 +7219,8 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetslowurlfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetwide': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetsamekey': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'yencrangefar': ['DupeArticleFallback=no', 'DirectWrite=no', 'ArticleRetries=0'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
@@ -7273,7 +7330,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

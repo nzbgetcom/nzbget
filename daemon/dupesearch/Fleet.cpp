@@ -25,6 +25,7 @@
 #include <map>
 #include <chrono>
 #include <mutex>
+#include <thread>
 #include "Fleet.h"
 #include "DonorHealth.h"
 #include "DupeCoordinator.h"
@@ -113,6 +114,29 @@ Fleet::Result Fleet::Append(Request request)
 		return result;
 	}
 
+	// the urls fetched at once, each within the time limit: one after another, a slow
+	// indexer listed first used up the limit, and a good member after it was never
+	// fetched (F29)
+	std::vector<HttpGet::Reply> fetched(request.members.size());
+	{
+		std::vector<std::thread> fetchers;
+		for (size_t i = 0; i < request.members.size(); i++)
+		{
+			if (!request.members[i].url.empty())
+			{
+				fetchers.emplace_back([&, i]()
+					{
+						fetched[i] = HttpGet::Fetch(request.members[i].url, "fleet member " + request.members[i].name,
+							MaxNzbBytes, deadlineMs - FinishReserveMs);
+					});
+			}
+		}
+		for (std::thread& fetcher : fetchers)
+		{
+			fetcher.join();
+		}
+	}
+
 	// read every member: an nzb-file sent, or fetched from its url
 	std::vector<Candidate> candidates(request.members.size());
 	for (size_t i = 0; i < request.members.size(); i++)
@@ -122,8 +146,7 @@ Fleet::Result Fleet::Append(Request request)
 		candidate.index = i;
 		if (!member.url.empty())
 		{
-			HttpGet::Reply reply = HttpGet::Fetch(member.url, "fleet member " + member.name, MaxNzbBytes,
-				deadlineMs - FinishReserveMs);
+			HttpGet::Reply& reply = fetched[i];
 			if (!reply.ok)
 			{
 				candidate.error = reply.status ? "the nzb-file could not be fetched (HTTP " + std::to_string(reply.status) + ")" :
@@ -299,6 +322,7 @@ Fleet::Result Fleet::Append(Request request)
 		// (one after another, each with its own budget, it took 57 s for a 45 s limit)
 		long long checkStart = DonorHealth::NowMs();
 		options.budgetMs = (int)std::max(1000LL, deadlineMs - checkStart - FinishReserveMs);
+		options.deadlineMs = checkStart + options.budgetMs;
 		std::mutex mutex;
 		// downloads hold off meanwhile: a download keeps taking the connections back
 		// after each article, and the check got none (F7: with a download running,

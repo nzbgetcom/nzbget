@@ -194,6 +194,7 @@ public:
 		SampleOptions sample;
 		int probe = 10;			// articles checked first; a posting with none found is dead
 		int budgetMs = 120000;	// for each posting, counted from when its check starts
+		long long deadlineMs = 0;	// CheckPostings: no posting checked past it (NowMs; 0: none)
 	};
 
 	/* a posting: a probe first; unless that proves it dead (and full is set)

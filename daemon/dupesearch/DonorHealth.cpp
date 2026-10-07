@@ -477,8 +477,21 @@ void DonorHealth::CheckPostings(const ServerList& servers, const std::vector<Pos
 	{
 		for (size_t index = next++; index < postings.size(); index = next++)
 		{
+			// a few at a time, each with the time left: with a budget of its own, the
+			// checks of a wide fleet added up past its limit (F30: 48 postings, 30 s
+			// limit, 85 s); one not started by the deadline stays unmeasured
+			Options own = options;
+			if (options.deadlineMs > 0)
+			{
+				long long left = options.deadlineMs - NowMs();
+				if (left <= 0)
+				{
+					continue;
+				}
+				own.budgetMs = (int)std::min<long long>(own.budgetMs, left);
+			}
 			const Posting& posting = postings[index];
-			emit(posting.key, CheckPosting(servers, posting.ids, posting.groups, options, full));
+			emit(posting.key, CheckPosting(servers, posting.ids, posting.groups, own, full));
 		}
 	};
 
