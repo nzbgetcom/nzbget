@@ -562,3 +562,22 @@ BOOST_AUTO_TEST_CASE(SanitizeLineTest)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_CASE(JsonDecodeStopsAtEndTest)
+{
+	// a short \u-escape or a backslash at the end: the decoder read and wrote past
+	// the end of the text (P0-b)
+	char shortEscape[] = "ab\\u4\0ZZZZZZ";
+	WebUtil::JsonDecode(shortEscape);
+	BOOST_CHECK_EQUAL(std::string(shortEscape), std::string("ab\x04"));
+	BOOST_CHECK_EQUAL(std::string(shortEscape + 6, 6), std::string("ZZZZZZ"));
+
+	char lastBackslash[] = "ab\\\0ZZZZZZ";
+	WebUtil::JsonDecode(lastBackslash);
+	BOOST_CHECK_EQUAL(std::string(lastBackslash), std::string("ab"));
+	BOOST_CHECK_EQUAL(std::string(lastBackslash + 4, 6), std::string("ZZZZZZ"));
+
+	char whole[] = "a\\u0041b";
+	WebUtil::JsonDecode(whole);
+	BOOST_CHECK_EQUAL(std::string(whole), std::string("aAb"));
+}

@@ -1335,6 +1335,12 @@ void WebUtil::JsonDecode(char* raw)
 			case '\\':
 				{
 					p++;
+					// a backslash or a short \u-escape at the end of the text: past it lay
+					// memory that isn't the text's (P0-b)
+					if (*p == '\0')
+					{
+						goto BreakLoop;
+					}
 					switch (*p)
 					{
 						case '"':
@@ -1367,7 +1373,7 @@ void WebUtil::JsonDecode(char* raw)
 								strncpy(hex, p + 1, 4);
 								unsigned int code = strtoul(hex, nullptr, 16);
 								*output++ = (char)code;
-								p += 4;
+								p += strlen(hex);
 							}
 							break;
 						default:
