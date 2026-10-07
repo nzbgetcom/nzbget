@@ -4804,6 +4804,21 @@ def scenario_fleetcopy(daemon, t):
     return ('fleetcopy', ok, 'members=%s' % [(m['Name'], m['Status'], m['NZBID']) for m in reply['Members']])
 
 
+def scenario_fleetmostlydead(daemon, t):
+    """appendfleet (F10, Slow Horses S04E02): one posting, 20% of it alive, on a
+    slow server: the check runs to the limit (missing articles settle slowly),
+    but the member is measured below the floor: the reason is ALL_DEAD, not
+    INCOMPLETE (which is kept for members not measured at all)."""
+    daemon.fake_nntp.alive = set(_fleet_ids('md', 200)[:40])
+    daemon.fake_nntp.delays.update({'md-': 0.3})
+    daemon.wait_ready()
+    reply = _fleet(daemon, [('Show.S01E01.md', _fake_nzb_ids(_fleet_ids('md', 200), 2_000_000).decode())],
+                   key='fleet:md', timeout=8)
+    m = reply['Members'][0]
+    ok = reply['Chosen'] == 0 and m['Alive'] >= 0 and m['Status'] == 'DEAD' and reply['Reason'] == 'ALL_DEAD'
+    return ('fleetmostlydead', ok, 'reply=%s' % reply)
+
+
 def scenario_fleetone(daemon, t):
     """appendfleet with a single whole member: it is queued and downloads."""
     daemon.fake_nntp.alive = set(_fleet_ids('one'))
@@ -6286,6 +6301,7 @@ SCENARIOS = {
     'fleetdeadtwins': scenario_fleetdeadtwins,
     'fleetlarge': scenario_fleetlarge,
     'fleetcopy': scenario_fleetcopy,
+    'fleetmostlydead': scenario_fleetmostlydead,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6539,6 +6555,7 @@ SCENARIO_OPTIONS = {
     'fleetdeadtwins': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetlarge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6638,7 +6655,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

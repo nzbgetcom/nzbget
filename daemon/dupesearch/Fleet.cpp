@@ -477,8 +477,11 @@ Fleet::Result Fleet::Append(Request request)
 	{
 		bool anyUsable = std::any_of(candidates.begin(), candidates.end(),
 			[](const Candidate& c) { return c.error.empty(); });
-		// dead only as far as the time limit let the check go (F6)
-		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? (result.complete ? "ALL_DEAD" : "INCOMPLETE") :
+		// INCOMPLETE only when a member wasn't measured at all (F6); one measured
+		// below the floor is dead, though the check of the rest ran to the limit (F10)
+		bool anyUnknown = std::any_of(order.begin(), order.end(),
+			[&](const Candidate* c) { return c->error.empty() && c->alive < 0; });
+		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? (anyUnknown ? "INCOMPLETE" : "ALL_DEAD") :
 			onDisk ? "ALREADY_DOWNLOADED" : "NOT_QUEUED";
 	}
 	info("Fleet of %i nzb-file(s) for %s: %s%s", (int)request.members.size(), request.dupeKey.c_str(),
