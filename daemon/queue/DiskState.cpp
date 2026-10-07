@@ -55,16 +55,29 @@ public:
 
 int64 StateDiskFile::PrintLine(const char* format, ...)
 {
+	// a line of any length: one of 1,024 characters or more (a long url sent with
+	// appendurl) was written past a fixed buffer, onto the stack, and the state file
+	// got garbage (unreadable at the next start) or nzbget crashed (SIGSEGV). The
+	// reader cuts a longer line to its buffer.
 	va_list ap;
 	va_start(ap, format);
-	BString<1024> str;
-	int len = str.FormatV(format, ap);
+	va_list ap2;
+	va_copy(ap2, ap);
+	int len = vsnprintf(nullptr, 0, format, ap);
 	va_end(ap);
+	if (len < 0)
+	{
+		va_end(ap2);
+		return 0;
+	}
+	std::vector<char> str(len + 1);
+	vsnprintf(str.data(), str.size(), format, ap2);
+	va_end(ap2);
 
 	// replacing terminating <NULL> with <LF>
 	str[len++] = '\n';
 
-	Write(*str, len);
+	Write(str.data(), len);
 
 	return len;
 }
