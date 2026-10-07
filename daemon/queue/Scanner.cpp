@@ -883,6 +883,10 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 	bool nzb = false;
 	BString<1024> tempFileName;
 
+	// the names are picked and taken under the lock: two appends at once picked the
+	// same temporary or queue file name, one overwrote the other and returned -1 (F14)
+	std::unique_lock<std::mutex> guard{m_scanMutex};
+
 	if (fileName)
 	{
 		tempFileName = fileName;
@@ -945,8 +949,6 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 	EAddStatus addStatus;
 
 	{
-		std::lock_guard<std::mutex> guard{m_scanMutex};
-
 		if (!FileSystem::MoveFile(tempFileName, scanFileName))
 		{
 			error("Could not move file %s to %s: %s", *tempFileName, *scanFileName,
@@ -975,6 +977,7 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 			nzbId
 		);
 	}
+	guard.unlock();
 
 	ScanNzbDir(true);
 
