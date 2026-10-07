@@ -141,6 +141,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import uuid
 import socketserver
 import threading
 import zlib
@@ -4973,6 +4974,165 @@ def scenario_appendscorerange(daemon, t):
          for k, v in replies.items()}, stored))
 
 
+def _many_files_nzb(n, tag, same_name=False):
+    """An nzb-file of n rar volumes, one article each (all named alike: obfuscated)."""
+    files = ''.join(
+        '<file poster="p" date="1" subject="&quot;%s&quot; yEnc (1/1)"><groups><group>a.b</group></groups>'
+        '<segments><segment bytes="700000" number="1">%s-%d@x</segment></segments></file>' % (
+            'edge.rar' if same_name else 'Big.Set.part%04d.rar' % (i + 1), tag, i)
+        for i in range(n))
+    return ('<?xml version="1.0" encoding="UTF-8"?><nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">%s</nzb>' % files).encode()
+
+
+def scenario_appendlarge(daemon, t):
+    """F15: appending an nzb-file of 2,000 files takes about as long per file as
+    one of 500 (production: 0.5 s for 500 files, 26 s for 2,000)."""
+    daemon.wait_ready()
+    took = {}
+    for n in (500, 2000):
+        nzb = base64.standard_b64encode(_many_files_nzb(n, 'al%d' % n, same_name=True)).decode()
+        start = time.time()
+        reply = _rpc(daemon, 'append', ['Big.Set.%d' % n, nzb, 'test', 0, False, True, 'big-%d' % n, 0, 'all', []], timeout=300)
+        took[n] = (time.time() - start, reply.get('result'))
+    ok = all(r > 0 for _, r in took.values()) and took[2000][0] < max(2.0, took[500][0] * 4 * 2)
+    return ('appendlarge', ok, ' '.join('%d files: %.1f s (id %s)' % (n, s_, r) for n, (s_, r) in took.items()))
+
+
+def scenario_appendurlodd(daemon, t):
+    """P0 (production crash, SIGSEGV): appendurl with odd urls - empty, not a url,
+    file://, ftp://, a 5,000-character one - is refused or fails cleanly, and the
+    daemon stays up with its state files readable after a restart."""
+    import http.server
+    import threading
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == '/loop':
+                self.send_response(302)
+                self.send_header('Location', '/loop')
+                self.end_headers()
+            elif self.path == '/redir':
+                self.send_response(302)
+                self.send_header('Location', '/ok')
+                self.end_headers()
+            else:
+                # production: the helper answered every other path with an nzb-file
+                body = _fake_nzb_ids(['%s-%d@srv' % (uuid.uuid4().hex, i) for i in range(20)], 15_000_000)
+                self.send_response(200)
+                self.send_header('Content-Length', str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = 'http://127.0.0.1:%d' % server.server_address[1]
+    daemon.wait_ready()
+    replies = {}
+    for label, url in [('ok', base + '/ok'), ('redir', base + '/redir'), ('loop', base + '/loop'), ('404', base + '/nope'),
+                       ('file', 'file:///etc/hostname'), ('ftp', 'ftp://127.0.0.1:9/x.nzb'), ('notaurl', 'notaurl'),
+                       ('long', base + '/' + 'a' * 5000), ('empty', '')]:
+        try:
+            # every call has the same name, as in production
+            r = _rpc(daemon, 'appendurl', ['Odd-u.nzb', url, '', 0, False, True, 'odd-key', 0, 'SCORE', []], timeout=60)
+            replies[label] = r.get('result', r.get('error'))
+        except Exception as e:
+            replies[label] = 'EXC %s' % str(e)[:60]
+    time.sleep(8)
+    server.shutdown()
+    try:
+        alive = bool(_rpc(daemon, 'version', [], timeout=10).get('result'))
+    except Exception:
+        alive = False
+    return ('appendurlodd', alive, 'alive=%s replies=%s' % (alive, replies))
+
+
+def scenario_addstorm(daemon, t):
+    """P0 (production SIGSEGV after an API storm): bursts of appendurl and append
+    with one name, at once, while the incoming directory is scanned every second:
+    the daemon stays up, every call gets an answer, and its state files read back
+    after a restart."""
+    import http.server
+    import threading
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = _fake_nzb_ids(['%s-%d@srv' % (uuid.uuid4().hex, i) for i in range(20)], 15_000_000)
+            time.sleep(random.random() * 0.3)
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    base = 'http://127.0.0.1:%d' % server.server_address[1]
+    daemon.wait_ready()
+    answers = []
+
+    def call(method, i):
+        try:
+            if method == 'appendurl':
+                r = _rpc(daemon, 'appendurl', ['Storm-u.nzb', base + '/x%d' % i, '', 0, False, True, 'storm-key', i, 'SCORE', []], timeout=60)
+            else:
+                nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@st' % uuid.uuid4().hex for _ in range(5)], 50_000)).decode()
+                r = _rpc(daemon, 'append', ['Storm.nzb', nzb, '', 0, False, True, 'storm-key', i, 'SCORE', []], timeout=60)
+            answers.append(r.get('result'))
+        except Exception as e:
+            answers.append('EXC %s' % str(e)[:40])
+    for burst in range(6):
+        threads = [threading.Thread(target=call, args=('appendurl' if i % 2 else 'append', burst * 100 + i)) for i in range(16)]
+        for th in threads:
+            th.start()
+        for th in threads:
+            th.join(timeout=90)
+        time.sleep(random.random() * 2)
+    time.sleep(10)
+    server.shutdown()
+    try:
+        alive = bool(_rpc(daemon, 'version', [], timeout=10).get('result'))
+    except Exception:
+        alive = False
+    exc = sum(1 for a in answers if isinstance(a, str))
+    lost = sum(1 for a in answers if a == -1 or a == 0)
+    return ('addstorm', alive and exc == 0 and lost == 0, 'alive=%s answers=%d exceptions=%d lost=%d' % (
+        alive, len(answers), exc, sum(1 for a in answers if a == -1 or a == 0)))
+
+
+def scenario_longstateline(daemon, t):
+    """P0 (production SIGSEGV, queue and history unreadable): a field of 1,024
+    characters or more in a state line - here a 5,000-character url (appendurl)
+    and a 3,000-character dupe key - was written past a fixed buffer onto the
+    stack: garbage in the history file (set aside as unreadable at the next
+    start) or a crash. Now both items survive a restart and the files load."""
+    api = daemon.wait_ready()
+    long_url = 'http://127.0.0.1:9/' + 'a' * 5000
+    url_id = _rpc(daemon, 'appendurl', ['Long.Url.nzb', long_url, '', 0, False, True, 'long-key', 0, 'SCORE', []]).get('result')
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@ls' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    key_id = _rpc(daemon, 'append', ['Long.Key.nzb', nzb, '', 0, False, True, 'k' * 3000, 0, 'SCORE', []]).get('result')
+    time.sleep(3)
+    alive_before = bool(_rpc(daemon, 'version', [], timeout=10).get('result'))
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    # queued or failed by now, the url item is still there, with its url
+    in_history = any(x['NZBID'] == url_id for x in api.history() + api.listgroups())
+    in_queue = any(g['NZBID'] == key_id and len(g['DupeKey']) == 3000 for g in api.listgroups())
+    unreadable = _grep_log(t, 'could not be read')
+    ok = alive_before and in_history and in_queue and unreadable == 0
+    return ('longstateline', ok, 'ids=%s/%s alive=%s url_kept=%s key_in_queue=%s unreadable_logs=%d' % (
+        url_id, key_id, alive_before, in_history, in_queue, unreadable))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6552,6 +6712,10 @@ SCENARIOS = {
     'fleetparallel': scenario_fleetparallel,
     'appendconcurrent': scenario_appendconcurrent,
     'appendscorerange': scenario_appendscorerange,
+    'appendlarge': scenario_appendlarge,
+    'appendurlodd': scenario_appendurlodd,
+    'addstorm': scenario_addstorm,
+    'longstateline': scenario_longstateline,
     'fleetduringpost': scenario_fleetduringpost,
     'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
@@ -6812,6 +6976,7 @@ SCENARIO_OPTIONS = {
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
+    'addstorm': ['NzbDirInterval=1', 'NzbDirFileAge=60', 'UrlConnections=4', 'UrlForce=yes', 'HealthCheck=dupe', 'DupeArticleFallback=live'],
     'fleetparallel': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'fleetslowurl': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
