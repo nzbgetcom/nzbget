@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
+#include <chrono>
 #include <mutex>
 #include "Fleet.h"
 #include "DonorHealth.h"
@@ -63,15 +64,15 @@ namespace
 
 	// one fleet of a key at a time (F2: a client's retry raced the first call)
 	std::mutex g_keyLocksMutex;
-	std::map<std::string, std::shared_ptr<std::mutex>> g_keyLocks;
+	std::map<std::string, std::shared_ptr<std::timed_mutex>> g_keyLocks;
 
-	std::shared_ptr<std::mutex> KeyLock(const std::string& key)
+	std::shared_ptr<std::timed_mutex> KeyLock(const std::string& key)
 	{
 		std::lock_guard<std::mutex> guard(g_keyLocksMutex);
-		std::shared_ptr<std::mutex>& lock = g_keyLocks[DupeUtil::Lower(key)];
+		std::shared_ptr<std::timed_mutex>& lock = g_keyLocks[DupeUtil::Lower(key)];
 		if (!lock)
 		{
-			lock = std::make_shared<std::mutex>();
+			lock = std::make_shared<std::timed_mutex>();
 		}
 		return lock;
 	}
@@ -91,11 +92,20 @@ Fleet::Result Fleet::Append(Request request)
 	{
 		request.dupeKey = DupeSearch::MakeDupeKey(request.members[0].name);
 	}
-	// a second fleet of the key waits for the first, then sees what it added (F2)
-	std::shared_ptr<std::mutex> keyLock = KeyLock(request.dupeKey);
-	std::lock_guard<std::mutex> keyGuard(*keyLock);
-	// the whole call, fetches included, ends by the time limit (F1-b)
+	// the whole call - the wait for the key, fetches and checks - ends by the time
+	// limit (F1-b, F4)
 	long long deadlineMs = DonorHealth::NowMs() + request.timeoutSec * 1000LL;
+	// a second fleet of the key waits for the first, then sees what it added (F2);
+	// not past the time limit (F4: it waited out the first, then checked anew)
+	std::shared_ptr<std::timed_mutex> keyLock = KeyLock(request.dupeKey);
+	std::unique_lock<std::timed_mutex> keyGuard(*keyLock, std::defer_lock);
+	if (!keyGuard.try_lock_for(std::chrono::milliseconds(std::max(0LL,
+		deadlineMs - DonorHealth::NowMs() - FinishReserveMs))))
+	{
+		result.reason = "KEY_BUSY";
+		result.complete = false;
+		return result;
+	}
 
 	// read every member: an nzb-file sent, or fetched from its url
 	std::vector<Candidate> candidates(request.members.size());
@@ -132,11 +142,67 @@ Fleet::Result Fleet::Append(Request request)
 		}
 	}
 
+	// what the key holds already: a download running, and the nzb-files of all its items
+	int top = DupeSearch::BasePickScore;
+	int runningId = 0;
+	int runningScore = 0;
+	std::vector<std::pair<int, std::string>> existing;	// nzb id, its nzb-file
+	{
+		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
+		auto consider = [&](NzbInfo* nzbInfo, bool queued)
+			{
+				if (nzbInfo->GetKind() != NzbInfo::nkNzb || strcasecmp(nzbInfo->GetDupeKey(), request.dupeKey.c_str()))
+				{
+					return;
+				}
+				top = std::max(top, nzbInfo->GetDupeScore() + 1000);
+				if (queued && !nzbInfo->GetDeleting() && nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
+					(!runningId || nzbInfo->GetDupeScore() > runningScore))
+				{
+					runningId = nzbInfo->GetId();
+					runningScore = nzbInfo->GetDupeScore();
+				}
+				if (!Util::EmptyStr(nzbInfo->GetQueuedFilename()) && !strchr(nzbInfo->GetQueuedFilename(), '|'))
+				{
+					existing.emplace_back(nzbInfo->GetId(), nzbInfo->GetQueuedFilename());
+				}
+			};
+		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
+		{
+			consider(nzbInfo, true);
+		}
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() == HistoryInfo::hkNzb)
+			{
+				consider(historyInfo->GetNzbInfo(), false);
+			}
+		}
+	}
+	// a member whose posting the key holds already isn't added again (F2: a resent
+	// fleet's copy of the whole posting was filed as a copy, and a worse one queued)
+	for (const auto& item : existing)
+	{
+		NzbSummary summary;
+		if (!NzbReader::Parse(DupeUtil::ReadAll(item.second), summary))
+		{
+			continue;
+		}
+		for (Candidate& candidate : candidates)
+		{
+			if (candidate.error.empty() && candidate.sameAs < 0 && !candidate.existingId &&
+				Posting::SamePosting(summary.messageIds, candidate.summary.messageIds))
+			{
+				candidate.existingId = item.first;
+			}
+		}
+	}
 	// the health of each posting, on the configured servers, within the time limit
 	std::vector<DonorHealth::Posting> postings;
 	for (Candidate& candidate : candidates)
 	{
-		if (candidate.error.empty() && candidate.sameAs < 0)
+		// a posting the key holds already needs no check: it isn't added again
+		if (candidate.error.empty() && candidate.sameAs < 0 && !candidate.existingId)
 		{
 			postings.push_back({ std::to_string(candidate.index), candidate.summary.messageIds,
 				std::make_shared<std::vector<std::string>>(candidate.summary.groups) });
@@ -280,61 +346,6 @@ Fleet::Result Fleet::Append(Request request)
 		}
 	}
 
-	// what the key holds already: a download running, and the nzb-files of all its items
-	int top = DupeSearch::BasePickScore;
-	int runningId = 0;
-	int runningScore = 0;
-	std::vector<std::pair<int, std::string>> existing;	// nzb id, its nzb-file
-	{
-		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
-		auto consider = [&](NzbInfo* nzbInfo, bool queued)
-			{
-				if (nzbInfo->GetKind() != NzbInfo::nkNzb || strcasecmp(nzbInfo->GetDupeKey(), request.dupeKey.c_str()))
-				{
-					return;
-				}
-				top = std::max(top, nzbInfo->GetDupeScore() + 1000);
-				if (queued && !nzbInfo->GetDeleting() && nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
-					(!runningId || nzbInfo->GetDupeScore() > runningScore))
-				{
-					runningId = nzbInfo->GetId();
-					runningScore = nzbInfo->GetDupeScore();
-				}
-				if (!Util::EmptyStr(nzbInfo->GetQueuedFilename()) && !strchr(nzbInfo->GetQueuedFilename(), '|'))
-				{
-					existing.emplace_back(nzbInfo->GetId(), nzbInfo->GetQueuedFilename());
-				}
-			};
-		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
-		{
-			consider(nzbInfo, true);
-		}
-		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
-		{
-			if (historyInfo->GetKind() == HistoryInfo::hkNzb)
-			{
-				consider(historyInfo->GetNzbInfo(), false);
-			}
-		}
-	}
-	// a member whose posting the key holds already isn't added again (F2: a resent
-	// fleet's copy of the whole posting was filed as a copy, and a worse one queued)
-	for (const auto& item : existing)
-	{
-		NzbSummary summary;
-		if (!NzbReader::Parse(DupeUtil::ReadAll(item.second), summary))
-		{
-			continue;
-		}
-		for (Candidate& candidate : candidates)
-		{
-			if (candidate.error.empty() && candidate.sameAs < 0 && !candidate.existingId &&
-				Posting::SamePosting(summary.messageIds, candidate.summary.messageIds))
-			{
-				candidate.existingId = item.first;
-			}
-		}
-	}
 	// a download of the key running: the fleet's members become its backups, scored
 	// below it; otherwise above everything the key holds, so the duplicate check
 	// queues the best and keeps the others as backups, tried in rank order

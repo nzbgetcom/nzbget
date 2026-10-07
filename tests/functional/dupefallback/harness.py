@@ -4661,6 +4661,36 @@ def scenario_fleetresend(daemon, t):
     return ('fleetresend', ok, 'a=%s b=%s queued=%s' % (a, b, queued))
 
 
+def scenario_fleetresendslow(daemon, t):
+    """appendfleet (F4): the same fleet sent twice, 1 s apart, against a slow
+    server, each call allowing 10 s: the first uses its time checking; the second
+    waits for the key, but its own limit counts from its arrival, so it replies
+    within about 10 s - its members the same postings as the first's, Chosen the
+    running download. Before, it waited out the first and then checked anew
+    (the client gave up)."""
+    import threading
+    daemon.fake_nntp.alive = set(_fleet_ids('sw', 200)) | set(_fleet_ids('sl'))
+    daemon.fake_nntp.delays.update({'sw-': 2.0, 'sl-': 2.0})
+    daemon.wait_ready()
+    members = [('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('sw', 200), 2_000_000).decode()),
+               ('Show.S01E01.other', _fake_nzb_ids(_fleet_ids('sl'), 410_000).decode())]
+    box = {}
+
+    def send(slot):
+        start = time.time()
+        box[slot] = _fleet(daemon, members, key='fleet:slow', timeout=10)
+        box[slot + 'took'] = time.time() - start
+    first = threading.Thread(target=send, args=('a',))
+    first.start()
+    time.sleep(1)
+    send('b')
+    first.join(timeout=60)
+    a, b = box.get('a', {}), box.get('b', {})
+    ok = (a.get('Chosen', 0) > 0 and box.get('btook', 99) < 13 and b.get('Chosen') == a.get('Chosen') and
+          b.get('Reason') == 'ALREADY_QUEUED' and all(m['Status'] == 'SAME_POSTING' for m in b.get('Members', [])))
+    return ('fleetresendslow', ok, 'a_took=%.1f b_took=%.1f a=%s b=%s' % (box.get('atook', -1), box.get('btook', -1), a, b))
+
+
 def scenario_fleetone(daemon, t):
     """appendfleet with a single whole member: it is queued and downloads."""
     daemon.fake_nntp.alive = set(_fleet_ids('one'))
@@ -6136,6 +6166,7 @@ SCENARIOS = {
     'fleetotherkey': scenario_fleetotherkey,
     'fleetnokey': scenario_fleetnokey,
     'fleetresend': scenario_fleetresend,
+    'fleetresendslow': scenario_fleetresendslow,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6382,6 +6413,7 @@ SCENARIO_OPTIONS = {
     'fleetotherkey': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetnokey': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetresend': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetresendslow': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6481,7 +6513,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

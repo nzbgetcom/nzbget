@@ -66,7 +66,8 @@ public:
 		int chosen = 0;			// the download now queued, 0 for none
 		bool complete = true;	// every posting was checked within the time limit
 		std::string reason;		// ALREADY_QUEUED (chosen: the key's running download); when chosen is 0:
-							// ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN, NOT_QUEUED
+							// ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN, NOT_QUEUED,
+							// KEY_BUSY (another fleet of the key held it past the time limit)
 		std::vector<Entry> members;	// in rank order
 	};
 
