@@ -5133,6 +5133,32 @@ def scenario_longstateline(daemon, t):
         url_id, key_id, alive_before, in_history, in_queue, unreadable))
 
 
+def scenario_newlinestate(daemon, t):
+    """A line break in a name, dupe key or category sent through the API split
+    its state record over two lines: at the next start the whole history (2,181
+    items in production) was set aside as unreadable. Now the items survive a
+    restart, the breaks kept as spaces."""
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@nl' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    nid = _rpc(daemon, 'append', ['Line\nBreak.nzb', nzb, 'cat\negory', 0, False, True, 'key\r\nbreak', 0, 'SCORE', []]).get('result')
+    hid = _rpc(daemon, 'append', ['Hist\nItem.nzb', nzb, '', 0, False, True, 'hist\nkey', 0, 'SCORE', []]).get('result')
+    _rpc(daemon, 'editqueue', ['GroupDelete', '', [hid]])
+    time.sleep(3)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    queued = [g for g in api.listgroups() if g['NZBID'] == nid]
+    in_history = any(h['NZBID'] == hid for h in api.history())
+    unreadable = _grep_log(t, 'could not be read')
+    ok = (nid > 0 and bool(queued) and '\n' not in queued[0]['DupeKey'] and in_history and unreadable == 0)
+    return ('newlinestate', ok, 'ids=%s/%s queued=%s in_history=%s unreadable_logs=%d' % (
+        nid, hid, [(g['NZBName'], g['DupeKey'], g['Category']) for g in queued], in_history, unreadable))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6716,6 +6742,7 @@ SCENARIOS = {
     'appendurlodd': scenario_appendurlodd,
     'addstorm': scenario_addstorm,
     'longstateline': scenario_longstateline,
+    'newlinestate': scenario_newlinestate,
     'fleetduringpost': scenario_fleetduringpost,
     'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,

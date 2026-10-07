@@ -74,6 +74,11 @@ int64 StateDiskFile::PrintLine(const char* format, ...)
 	vsnprintf(str.data(), str.size(), format, ap2);
 	va_end(ap2);
 
+	// a line break inside a value (a name, key or url sent through the API) split
+	// the record over two lines, and the whole file was set aside as unreadable at
+	// the next start: it is kept as a space
+	std::replace_if(str.begin(), str.begin() + len, [](char ch) { return ch == '\n' || ch == '\r'; }, ' ');
+
 	// replacing terminating <NULL> with <LF>
 	str[len++] = '\n';
 
