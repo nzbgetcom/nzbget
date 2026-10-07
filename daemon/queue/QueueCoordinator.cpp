@@ -469,41 +469,32 @@ void QueueCoordinator::CheckDupeFileInfos(NzbInfo* nzbInfo)
 {
 	debug("CheckDupeFileInfos");
 
-	RawFileList dupeList;
-
-	int index1 = 0;
+	// the files of each name, in list order: comparing every pair, and counting the
+	// name over the whole list for each, took 24 s for 2,000 files of one name (F15)
+	std::unordered_map<std::string, std::vector<std::pair<int, FileInfo*>>> byName;
+	int index = 0;
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
-		index1++;
-		bool dupe = false;
-		int index2 = 0;
-		for (FileInfo* fileInfo2 : nzbInfo->GetFileList())
+		byName[fileInfo->GetFilename()].emplace_back(++index, fileInfo);
+	}
+
+	RawFileList dupeList;
+	for (FileInfo* fileInfo : nzbInfo->GetFileList())
+	{
+		const auto& same = byName[fileInfo->GetFilename()];
+		// If more than two files have same filename we don't filter them out since that
+		// naming might be intentional and correct filenames must be read from article bodies.
+		if (same.size() != 2)
 		{
-			index2++;
-			if (fileInfo != fileInfo2 &&
-				!strcmp(fileInfo->GetFilename(), fileInfo2->GetFilename()) &&
-				(fileInfo->GetSize() < fileInfo2->GetSize() ||
-				 (fileInfo->GetSize() == fileInfo2->GetSize() && index2 < index1)))
-			{
-				// If more than two files have same filename we don't filter them out since that
-				// naming might be intentional and correct filenames must be read from article bodies.
-				int dupeCount = (int)std::count_if(nzbInfo->GetFileList()->begin(), nzbInfo->GetFileList()->end(),
-					[fileInfo2](std::unique_ptr<FileInfo>& fileInfo3)
-					{
-						return !strcmp(fileInfo3->GetFilename(), fileInfo2->GetFilename());
-					});
-				if (dupeCount == 2)
-				{
-					warn("File \"%s\" appears twice in collection, adding only the biggest file", fileInfo->GetFilename());
-					dupe = true;
-					break;
-				}
-			}
-		}
-		if (dupe)
-		{
-			dupeList.push_back(fileInfo);
 			continue;
+		}
+		const auto& self = same[0].second == fileInfo ? same[0] : same[1];
+		const auto& other = same[0].second == fileInfo ? same[1] : same[0];
+		if (fileInfo->GetSize() < other.second->GetSize() ||
+			(fileInfo->GetSize() == other.second->GetSize() && other.first < self.first))
+		{
+			warn("File \"%s\" appears twice in collection, adding only the biggest file", fileInfo->GetFilename());
+			dupeList.push_back(fileInfo);
 		}
 	}
 
