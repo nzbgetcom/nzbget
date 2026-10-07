@@ -32,7 +32,7 @@
  * the order failover should try them. Same postings are checked once. One
  * fleet of a key at a time: a second waits for the first. With a download of
  * the key running, a fleet only adds backups, below it; a posting the key
- * holds already isn't added again.
+ * holds already isn't added again. A member is dead below option DupeMinAlive.
  */
 class Fleet
 {
@@ -67,7 +67,8 @@ public:
 		bool complete = true;	// every posting was checked within the time limit
 		std::string reason;		// ALREADY_QUEUED (chosen: the key's running download); when chosen is 0:
 							// ALREADY_DOWNLOADED, ALL_DEAD, NO_USABLE_MEMBERS, NO_MEMBERS, SHUTDOWN, NOT_QUEUED,
-							// KEY_BUSY (another fleet of the key held it past the time limit)
+							// KEY_BUSY (another fleet of the key held it past the time limit),
+							// INCOMPLETE (none found alive, but the time limit cut the check short)
 		std::vector<Entry> members;	// in rank order
 	};
 

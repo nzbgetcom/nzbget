@@ -146,6 +146,8 @@ Fleet::Result Fleet::Append(Request request)
 	int top = DupeSearch::BasePickScore;
 	int runningId = 0;
 	int runningScore = 0;
+	int lowest = 0;		// the lowest score the key holds
+	bool any = false;
 	std::vector<std::pair<int, std::string>> existing;	// nzb id, its nzb-file
 	{
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
@@ -156,6 +158,8 @@ Fleet::Result Fleet::Append(Request request)
 					return;
 				}
 				top = std::max(top, nzbInfo->GetDupeScore() + 1000);
+				lowest = any ? std::min(lowest, nzbInfo->GetDupeScore()) : nzbInfo->GetDupeScore();
+				any = true;
 				if (queued && !nzbInfo->GetDeleting() && nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
 					(!runningId || nzbInfo->GetDupeScore() > runningScore))
 				{
@@ -347,9 +351,11 @@ Fleet::Result Fleet::Append(Request request)
 	}
 
 	// a download of the key running: the fleet's members become its backups, scored
-	// below it; otherwise above everything the key holds, so the duplicate check
-	// queues the best and keeps the others as backups, tried in rank order
-	int base = runningId ? runningScore : top;
+	// below everything the key holds (F5: just below the running download, they tied
+	// with the backups an earlier fleet left); otherwise above everything the key
+	// holds, so the duplicate check queues the best and keeps the others as backups,
+	// tried in rank order
+	int base = runningId ? lowest : top;
 
 	bool anyAlive = std::any_of(order.begin(), order.end(),
 		[&](const Candidate* c) { return tier(*c) <= 1; });
@@ -432,7 +438,8 @@ Fleet::Result Fleet::Append(Request request)
 	{
 		bool anyUsable = std::any_of(candidates.begin(), candidates.end(),
 			[](const Candidate& c) { return c.error.empty(); });
-		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? "ALL_DEAD" :
+		// dead only as far as the time limit let the check go (F6)
+		result.reason = !anyUsable ? "NO_USABLE_MEMBERS" : !anyAlive ? (result.complete ? "ALL_DEAD" : "INCOMPLETE") :
 			onDisk ? "ALREADY_DOWNLOADED" : "NOT_QUEUED";
 	}
 	info("Fleet of %i nzb-file(s) for %s: %s%s", (int)request.members.size(), request.dupeKey.c_str(),
