@@ -318,8 +318,11 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackAllowsDataWithoutUsableParTest)
 		article->GetDupeSources()->emplace_back("first@example.com");
 		article->GetDupeSources()->emplace_back("next@example.com");
 		article->SetDupeFallbackRound(1);
-		BOOST_CHECK(fallback.TryFallback(nullptr, target.get(), article));
-		BOOST_CHECK_EQUAL(article->GetMessageId(), "next@example.com");
+		// without any par2 nothing checks borrowed bytes (a duplicate of the same
+		// layout but other bytes ended SUCCESS with them): nothing is borrowed; with
+		// par2 that can't repair, borrowed articles are still checked against it
+		BOOST_CHECK_EQUAL(fallback.TryFallback(nullptr, target.get(), article), parFailed);
+		BOOST_CHECK_EQUAL(article->GetMessageId(), parFailed ? "next@example.com" : "orig-1@example.com");
 	}
 }
 

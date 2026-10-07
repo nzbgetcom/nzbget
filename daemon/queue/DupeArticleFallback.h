@@ -78,6 +78,8 @@ public:
 	/* PAR2 identity is not established by filenames, sizes, or partial byte
 	 * matches. Recognized parity must never be a duplicate target or donor. */
 	static bool IsParFile(FileInfo* fileInfo);
+	/* does the collection have par2 files (the only check a borrowed article's bytes get) */
+	static bool HasPar2(NzbInfo* nzbInfo);
 
 	/* Defer download-time donor recovery while parity is being discovered or
 	 * a known PAR set has not failed ordinary repair. Must be called within

@@ -44,6 +44,29 @@ bool DupeArticleFallback::IsParFile(FileInfo* fileInfo)
 		 Util::EndsWith(fileInfo->GetFilename(), ".par2", false));
 }
 
+bool DupeArticleFallback::HasPar2(NzbInfo* nzbInfo)
+{
+	if (nzbInfo->GetParSize() > 0)
+	{
+		return true;
+	}
+	for (FileInfo* fileInfo : nzbInfo->GetFileList())
+	{
+		if (IsParFile(fileInfo))
+		{
+			return true;
+		}
+	}
+	for (CompletedFile& completedFile : nzbInfo->GetCompletedFiles())
+	{
+		if (completedFile.GetParFile() || Util::EndsWith(completedFile.GetFilename(), ".par2", false))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool DupeArticleFallback::ShouldDeferToPar(NzbInfo* nzbInfo)
 {
 	if (!nzbInfo)
@@ -125,6 +148,24 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	if (fileInfo->GetDeleted() || nzbInfo->GetDeleting() || nzbInfo->GetParking() ||
 		nzbInfo->GetDeleteStatus() != NzbInfo::dsNone || nzbInfo->GetDupeMode() == dmForce)
 	{
+		return false;
+	}
+
+	// A borrowed article proves only that it arrived intact (its yEnc crc), not that
+	// it is this file's: a duplicate of the same size and article layout but other
+	// bytes (another encode) filled the holes, and the download ended SUCCESS with
+	// the wrong bytes. Its par2 files are what checks borrowed bytes (BorrowedPar2-
+	// Mismatches, par-check): without any, holes are left to stream repair, which
+	// proves a duplicate's bytes before it copies them
+	if (!HasPar2(nzbInfo))
+	{
+		if (!nzbInfo->GetDupeNoParNoted())
+		{
+			nzbInfo->SetDupeNoParNoted(true);
+			nzbInfo->PrintMessage(Message::mkInfo,
+				"Not borrowing articles of %s from duplicates: it has no par2 files to check them",
+				nzbInfo->GetName());
+		}
 		return false;
 	}
 

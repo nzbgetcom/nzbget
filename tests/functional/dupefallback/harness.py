@@ -196,6 +196,16 @@ def build_nzb(served_path, subject_name, file_size, seg_size, missing_parts,
                              missing_parts)], password=password)
 
 
+def build_nzb_with_par2(t, served_path, subject_name, data, seg_size, missing_parts):
+    """build_nzb plus a par2 index of the file (no recovery slices) in the same
+    collection: article borrowing needs par2 to check borrowed bytes against."""
+    par = generators.par2_index([(subject_name, data)])
+    par_path = served_path.rsplit('/', 1)[0] + '/rel.par2'
+    t.write_file(os.path.join('data', par_path), par)
+    return build_multi_nzb([(served_path, subject_name, len(data), seg_size, missing_parts),
+                            (par_path, subject_name.rsplit('.', 1)[0] + '.par2', len(par), 500_000, set())])
+
+
 def build_multi_nzb(members, password=None):
     """Return NZB XML containing one <file> block per member tuple
     (served_path, subject_name, file_size, seg_size, missing_parts).
@@ -952,7 +962,7 @@ def scenario_complementary(daemon, t):
     data = _payload(size, 849)
     pp = _place_copy(t, 'primA', data)
     dp = _place_copy(t, 'primB', data)
-    primary = build_nzb(pp, 'ReleaseA.bin', size, seg, {3, 5, 7})
+    primary = build_nzb_with_par2(t, pp, 'ReleaseA.bin', data, seg, {3, 5, 7})
     donor = build_nzb(dp, 'obf-b.bin', size, seg, {2, 8})
     api = daemon.wait_ready()
     daemon.append(api, 'DonorB', donor, True, 'comp-key', 50)
@@ -995,7 +1005,7 @@ def scenario_nzbgapborrow(daemon, t):
     data = _payload(size, 9800)
     pp = _place_copy(t, 'gapA', data, 'file.bin')
     dp = _place_copy(t, 'gapB', data, 'file.bin')
-    primary = build_nzb(pp, 'Gap.bin', size, seg, {5})
+    primary = build_nzb_with_par2(t, pp, 'Gap.bin', data, seg, {5})
     primary = re.sub(r'<segment[^>]*number="4"[^>]*>[^<]*</segment>', '', primary)
     donor = build_nzb(dp, 'Gap.bin', size, seg, set())
     api = daemon.wait_ready()
@@ -1216,7 +1226,7 @@ def scenario_cutover(daemon, t):
     data = _payload(size, 1206)
     pp = _place_copy(t, 'cutA', data)
     dp = _place_copy(t, 'cutB', data)
-    primary = build_nzb(pp, 'CutA.bin', size, seg, set(range(2, 12)))
+    primary = build_nzb_with_par2(t, pp, 'CutA.bin', data, seg, set(range(2, 12)))
     donor = build_nzb(dp, 'obf-cut.bin', size, seg, set())
     api = daemon.wait_ready()
     daemon.append(api, 'DonCut', donor, True, 'cut-key', 50)
@@ -1257,7 +1267,7 @@ def scenario_leadswitch(daemon, t):
     dhp = _place_copy(t, 'leadH', data)
     dlp = _place_copy(t, 'leadL', data)
     holes = set(range(2, 13))
-    primary = build_nzb(pp, 'LeadA.bin', size, seg, holes)
+    primary = build_nzb_with_par2(t, pp, 'LeadA.bin', data, seg, holes)
     donor_high = build_nzb(dhp, 'obf-lh.bin', size, seg, holes)
     donor_low = build_nzb(dlp, 'obf-ll.bin', size, seg, set())
     api = daemon.wait_ready()
@@ -1295,7 +1305,7 @@ def scenario_cutovertruth(daemon, t):
     pp = _place_copy(t, 'ctrA', data)
     dhp = _place_copy(t, 'ctrH', data)
     dlp = _place_copy(t, 'ctrL', data)
-    primary = build_nzb(pp, 'CtrA.bin', size, seg, set(range(2, 13)))       # 11 missing
+    primary = build_nzb_with_par2(t, pp, 'CtrA.bin', data, seg, set(range(2, 13)))       # 11 missing
     donor_high = build_nzb(dhp, 'obf-cth.bin', size, seg, set(range(20, 24)))
     donor_low = build_nzb(dlp, 'obf-ctl.bin', size, seg, set())
     api = daemon.wait_ready()
@@ -1322,7 +1332,7 @@ def scenario_manydonors(daemon, t, ndonors=18):
     size, seg = 3_000_000, 500_000
     data = _payload(size, 77)
     pp = _place_copy(t, 'manyPrim', data)
-    primary = build_nzb(pp, 'ManyPrim.bin', size, seg, {2, 3, 4})
+    primary = build_nzb_with_par2(t, pp, 'ManyPrim.bin', data, seg, {2, 3, 4})
     api = daemon.wait_ready()
     for i in range(ndonors):
         dp = _place_copy(t, 'manyD%02d' % i, data)
@@ -1342,6 +1352,48 @@ def scenario_manydonors(daemon, t, ndonors=18):
     return ('manydonors', ok and integ and recov >= 3 and alive,
             'status=%s recovered=%d integrity=%s daemon_alive=%s'
             % (h['Status'], recov, integ, alive))
+
+
+def scenario_articledecoy(daemon, t):
+    """Article borrowing from a duplicate of the same size and article layout but
+    other bytes (a different encode), no par2 to check against: the download must
+    not end SUCCESS with the decoy's bytes in its file."""
+    size, seg = 5_000_000, 500_000
+    data = _payload(size, 6100)
+    decoy = _payload(size, 6101)
+    pp = _place_copy(t, 'adA', data)
+    dp = _place_copy(t, 'adB', decoy)
+    primary = build_nzb(pp, 'Decoy.bin', size, seg, {3, 7})
+    donor = build_nzb(dp, 'Decoy.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonAD', donor, True, 'ad-key', 50)
+    daemon.append(api, 'RelAD', primary, False, 'ad-key', 100)
+    h = daemon.wait_history(api, 'RelAD')
+    integ = _verify_output(t, data)
+    wrong_success = h['Status'].startswith('SUCCESS') and not integ
+    return ('articledecoy', not wrong_success, 'status=%s integrity=%s recovered=%s' % (
+        h['Status'], integ, h.get('DupeRecoveredArticles')))
+
+
+def scenario_articledecoypar(daemon, t):
+    """The decoy of articledecoy (same size and article layout, other bytes), the
+    collection with a par2 index this time: articles are borrowed, but their
+    bytes fail the par2 checksums, so the download doesn't end SUCCESS with them."""
+    size, seg = 5_000_000, 500_000
+    data = _payload(size, 6200)
+    decoy = _payload(size, 6201)
+    pp = _place_copy(t, 'apA', data)
+    dp = _place_copy(t, 'apB', decoy)
+    primary = build_nzb_with_par2(t, pp, 'DecoyPar.bin', data, seg, {3, 7})
+    donor = build_nzb(dp, 'DecoyPar.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonAP', donor, True, 'ap-key', 50)
+    daemon.append(api, 'RelAP', primary, False, 'ap-key', 100)
+    h = daemon.wait_history(api, 'RelAP')
+    integ = _verify_output(t, data)
+    wrong_success = h['Status'].startswith('SUCCESS') and not integ
+    return ('articledecoypar', not wrong_success, 'status=%s integrity=%s recovered=%s rejected_logs=%d' % (
+        h['Status'], integ, h.get('DupeRecoveredArticles'), _grep_log(t, "don't match its par2 checksums")))
 
 
 def scenario_stream(daemon, t):
@@ -6969,6 +7021,8 @@ SCENARIOS = {
     'appendurlodd': scenario_appendurlodd,
     'addstorm': scenario_addstorm,
     'longstateline': scenario_longstateline,
+    'articledecoy': scenario_articledecoy,
+    'articledecoypar': scenario_articledecoypar,
     'yencrangefar': scenario_yencrangefar,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
@@ -7231,6 +7285,8 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
+    'articledecoypar': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'fleetslowurlfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetwide': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetsamekey': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],

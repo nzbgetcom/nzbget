@@ -736,6 +736,8 @@ public:
 	enum EDupeParDeferState { dpNone, dpDeferred, dpLifted };
 	EDupeParDeferState GetDupeParDeferState() { return m_dupeParDeferState; }
 	void SetDupeParDeferState(EDupeParDeferState state) { m_dupeParDeferState = state; }
+	bool GetDupeNoParNoted() { return m_dupeNoParNoted; }
+	void SetDupeNoParNoted(bool noted) { m_dupeNoParNoted = noted; }
 	StreamRepairJobList* GetStreamRepairJobs() { return &m_streamRepairJobs; }
 	int GetPriority() { return m_priority; }
 	void SetPriority(int priority) { m_priority = priority; }
@@ -932,6 +934,7 @@ private:
 	bool m_deadPickProbed = false;
 	// which way the par-first rule of duplicate recovery went, for logging once (not persisted)
 	EDupeParDeferState m_dupeParDeferState = dpNone;
+	bool m_dupeNoParNoted = false;	// "no par2: not borrowing" logged (not saved)
 	// missing byte ranges of completed media files awaiting stream repair
 	// from duplicate collections in post-processing (persisted)
 	StreamRepairJobList m_streamRepairJobs;
