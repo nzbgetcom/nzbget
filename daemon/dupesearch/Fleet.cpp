@@ -150,7 +150,8 @@ Fleet::Result Fleet::Append(Request request)
 	}
 
 	// what the key holds already: a download running, and the nzb-files of all its items
-	int top = DupeSearch::BasePickScore;
+	// counted in 64 bits: a score near the int limit wrapped around (F17)
+	long long top = DupeSearch::BasePickScore;
 	int runningId = 0;
 	int runningScore = 0;
 	int lowest = 0;		// the lowest score the key holds
@@ -164,7 +165,7 @@ Fleet::Result Fleet::Append(Request request)
 				{
 					return;
 				}
-				top = std::max(top, nzbInfo->GetDupeScore() + 1000);
+				top = std::max(top, nzbInfo->GetDupeScore() + 1000LL);
 				lowest = any ? std::min(lowest, nzbInfo->GetDupeScore()) : nzbInfo->GetDupeScore();
 				any = true;
 				if (queued && !nzbInfo->GetDeleting() && nzbInfo->GetDeleteStatus() == NzbInfo::dsNone &&
@@ -173,9 +174,17 @@ Fleet::Result Fleet::Append(Request request)
 					runningId = nzbInfo->GetId();
 					runningScore = nzbInfo->GetDupeScore();
 				}
-				if (!Util::EmptyStr(nzbInfo->GetQueuedFilename()) && !strchr(nzbInfo->GetQueuedFilename(), '|'))
+				// a merged item (GroupMerge) names its nzb-files joined with '|': each is
+				// one of its postings (F20: none was seen, and a resent fleet added them again)
+				std::string names = nzbInfo->GetQueuedFilename() ? nzbInfo->GetQueuedFilename() : "";
+				for (size_t start = 0; start < names.size(); )
 				{
-					existing.emplace_back(nzbInfo->GetId(), nzbInfo->GetQueuedFilename());
+					size_t end = std::min(names.find('|', start), names.size());
+					if (end > start)
+					{
+						existing.emplace_back(nzbInfo->GetId(), names.substr(start, end - start));
+					}
+					start = end + 1;
 				}
 			};
 		for (NzbInfo* nzbInfo : downloadQueue->GetQueue())
@@ -247,17 +256,24 @@ Fleet::Result Fleet::Append(Request request)
 		// downloads hold off meanwhile: a download keeps taking the connections back
 		// after each article, and the check got none (F7: with a download running,
 		// every check used its whole time limit and measured nothing)
-		g_WorkState->HoldDownloadForFleet(true);
-		DonorHealth::CheckPostings(servers, postings, options, true,
-			std::min((int)postings.size(), MaxParallel),
-			[&](const std::string& key, const DonorHealth::Health& health)
+		{
+			g_WorkState->HoldDownloadForFleet(true);
+			// released however the check ends: a throw left every download held until
+			// a restart (F18)
+			struct HoldRelease
 			{
-				std::lock_guard<std::mutex> guard(mutex);
-				Candidate& candidate = candidates[(size_t)atoi(key.c_str())];
-				candidate.health = health;
-				candidate.checked = true;
-			});
-		g_WorkState->HoldDownloadForFleet(false);
+				~HoldRelease() { g_WorkState->HoldDownloadForFleet(false); }
+			} holdRelease;
+			DonorHealth::CheckPostings(servers, postings, options, true,
+				std::min((int)postings.size(), MaxParallel),
+				[&](const std::string& key, const DonorHealth::Health& health)
+				{
+					std::lock_guard<std::mutex> guard(mutex);
+					Candidate& candidate = candidates[(size_t)atoi(key.c_str())];
+					candidate.health = health;
+					candidate.checked = true;
+				});
+		}
 		// a check the deadline cut short knows less than it could
 		result.complete = DonorHealth::NowMs() - checkStart < options.budgetMs;
 	}
@@ -382,7 +398,8 @@ Fleet::Result Fleet::Append(Request request)
 	// with the backups an earlier fleet left); otherwise above everything the key
 	// holds, so the duplicate check queues the best and keeps the others as backups,
 	// tried in rank order
-	int base = runningId ? lowest : top;
+	// at the int limit, members still rank below it in order, not tied at the limit
+	long long base = runningId ? lowest : std::min<long long>(top, INT_MAX);
 
 	bool anyAlive = std::any_of(order.begin(), order.end(),
 		[&](const Candidate* c) { return tier(*c) <= 1; });
@@ -434,7 +451,8 @@ Fleet::Result Fleet::Append(Request request)
 				name += ".nzb";
 			}
 			Scanner::EAddStatus status = g_Scanner->AddExternalFile(name.c_str(), request.category.c_str(),
-				false, request.priority, request.dupeKey.c_str(), base - rank, dmScore, &parameters,
+				false, request.priority, request.dupeKey.c_str(),
+				(int)std::clamp<long long>(base - rank, INT_MIN, INT_MAX), dmScore, &parameters,
 				false, false, nullptr, nullptr, member.data.data(), (int)member.data.size(), &nzbId);
 			entry.nzbId = status == Scanner::asSuccess ? nzbId : 0;
 			added[candidate->index] = entry.nzbId;
