@@ -779,7 +779,17 @@ void DupeSearch::Place(const Job& job, const NzbSummary& pick, std::vector<NzbFe
 					if (alive < 0 || SetScore(donor.id, base + score,
 						param.empty() ? std::vector<std::string>() : std::vector<std::string>{ param }))
 					{
-						donor.entry.score = alive < 0 ? donor.entry.score : score;
+						if (alive < 0)
+						{
+							// inconclusive: the donor keeps its score, and the rank taken for
+							// the new one is given back (F19: it stayed taken, the old one free)
+							ranks.Release(score);
+							ranks.Use(donor.entry.score);
+						}
+						else
+						{
+							donor.entry.score = score;
+						}
 						donor.entry.alive = alive;
 						if (isDead)
 						{
