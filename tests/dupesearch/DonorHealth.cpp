@@ -46,6 +46,7 @@ public:
 	int failFirst = 0;				// the first exchanges fail
 	int delayMs = 0;				// per command
 	bool dropOnFirstBody = false;	// the connection drops during the first BODY
+	bool poolBusy = false;			// no connection free in nzbget's pool (its downloads hold them)
 
 	std::atomic<int> stats{0};
 	std::atomic<int> bodies{0};
@@ -56,6 +57,13 @@ public:
 protected:
 	std::vector<Answer> Exchange(const std::vector<DonorHealth::Request>& batch) override
 	{
+		if (poolBusy)
+		{
+			exchanges++;
+			DonorHealth::ExchangeError busy;
+			busy.busy = true;
+			throw busy;
+		}
 		bool broken = authFails || exchanges++ < failFirst;
 		if (broken || !sessions)
 		{
@@ -322,6 +330,23 @@ BOOST_AUTO_TEST_CASE(DonorHealthPausedServerAbstainsTest)
 	Health h = DonorHealth::CheckItems(List({ bad, good }), DonorHealth::Plan(Ids("dead", 40), NoGroups(), Everything().sample), 10000);
 	BOOST_CHECK_EQUAL(h.missing, 40);
 	BOOST_CHECK_LT(DonorHealth::NowMs() - start, 5000);
+}
+
+// F12: a pool without a free connection (nzbget's downloads hold them) isn't the
+// server failing: however often it happens, the server isn't paused
+BOOST_AUTO_TEST_CASE(DonorHealthBusyPoolDoesNotPauseTest)
+{
+	auto busy = std::make_shared<FakeServer>();
+	busy->poolBusy = true;
+	busy->SetRetryAfterMs(30000);
+	std::vector<DonorHealth::Request> batch(1);
+	batch[0].messageId = "a@x";
+	for (int i = 0; i < DonorHealth::ServerGiveUp * 2; i++)
+	{
+		busy->Ask(batch);
+	}
+	BOOST_CHECK(!busy->Paused());
+	BOOST_CHECK_EQUAL(busy->exchanges, DonorHealth::ServerGiveUp * 2);
 }
 
 // B5: a paused server's request ends at once, asking nothing, when its check is over

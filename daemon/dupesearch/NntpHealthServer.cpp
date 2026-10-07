@@ -103,7 +103,9 @@ std::vector<Answer> NntpHealthServer::Exchange(const std::vector<DonorHealth::Re
 	}
 	if (!connection)
 	{
-		throw DonorHealth::ExchangeError();
+		DonorHealth::ExchangeError busy;
+		busy.busy = true;
+		throw busy;
 	}
 
 	struct Release

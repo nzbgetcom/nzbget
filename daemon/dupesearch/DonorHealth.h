@@ -136,6 +136,7 @@ public:
 	struct ExchangeError
 	{
 		std::vector<Answer> answers;	// the answers read before the connection broke (may be shorter)
+		bool busy = false;	// no connection was free (nzbget's own downloads): not the server's fault
 	};
 
 	/*

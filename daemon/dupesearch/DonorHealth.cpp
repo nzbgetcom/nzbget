@@ -182,7 +182,10 @@ std::vector<DonorHealth::Answer> DonorHealth::Server::Ask(const std::vector<Requ
 	}
 	catch (ExchangeError& error)
 	{
-		m_errors++;
+		// a busy pool says nothing about the server: it doesn't count toward the pause
+		// that keeps a failing server out of the checks (F12: starved checks paused
+		// every server, and the next fleet measured nothing)
+		m_errors += error.busy ? 0 : 1;
 		if (m_errors >= ServerGiveUp)
 		{
 			m_downUntilMs = NowMs() + m_retryAfterMs;
