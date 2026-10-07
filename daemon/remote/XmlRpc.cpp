@@ -29,6 +29,8 @@
 #include "FeedCoordinator.h"
 #include "ServerPool.h"
 #include "Util.h"
+#include <cerrno>
+#include <climits>
 #include "FileSystem.h"
 #include "Maintenance.h"
 #include "StatMeter.h"
@@ -1153,6 +1155,21 @@ int XmlCommand::JsonStep(const char* param, int len)
 	return (nextChar == ']' || nextChar == '\0') ? 0 : 1;
 }
 
+// an integer parameter: a number out of the int range is no valid value; it wrapped
+// around before (F16: DupeScore 2147483648 was stored as -2147483648)
+static bool ParseIntParam(const char* text, int* value)
+{
+	errno = 0;
+	char* end = nullptr;
+	long long number = strtoll(text, &end, 10);
+	if (end == text || errno == ERANGE || number < INT_MIN || number > INT_MAX)
+	{
+		return false;
+	}
+	*value = (int)number;
+	return true;
+}
+
 bool XmlCommand::NextParamAsInt(int* value)
 {
 	if (m_httpMethod == XmlRpcProcessor::hmGet)
@@ -1162,7 +1179,10 @@ bool XmlCommand::NextParamAsInt(int* value)
 		{
 			return false;
 		}
-		*value = atoi(param + 1);
+		if (!ParseIntParam(param + 1, value))
+		{
+			return false;
+		}
 		m_requestPtr = param + 1;
 		while (*m_requestPtr && strchr("-+0123456789&", *m_requestPtr))
 		{
@@ -1178,7 +1198,10 @@ bool XmlCommand::NextParamAsInt(int* value)
 		{
 			return false;
 		}
-		*value = atoi(param);
+		if (!ParseIntParam(param, value))
+		{
+			return false;
+		}
 		m_requestPtr = param + len + JsonStep(param, len);
 		return true;
 	}
@@ -1196,7 +1219,10 @@ bool XmlCommand::NextParamAsInt(int* value)
 		{
 			return false;
 		}
-		*value = atoi(param);
+		if (!ParseIntParam(param, value))
+		{
+			return false;
+		}
 		m_requestPtr = param + len + tagLen;
 		return true;
 	}
