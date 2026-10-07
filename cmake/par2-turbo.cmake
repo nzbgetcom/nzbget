@@ -1,77 +1,48 @@
-set(PAR2_ROOT ${CMAKE_BINARY_DIR}/par2-turbo/src)
-if(CMAKE_GENERATOR MATCHES "Visual Studio") 
-	set(PAR2_LIBS
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/par2-turbo.lib
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/gf16.lib
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/hasher.lib
-	)
-elseif(CMAKE_GENERATOR MATCHES "Xcode")
-	set(PAR2_LIBS
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libpar2-turbo.a
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libgf16.a
-		${PAR2_ROOT}/par2-turbo-build/${CMAKE_BUILD_TYPE}/libhasher.a
-	)
-else()
-	set(PAR2_LIBS
-		${PAR2_ROOT}/par2-turbo-build/libpar2-turbo.a
-		${PAR2_ROOT}/par2-turbo-build/libgf16.a
-		${PAR2_ROOT}/par2-turbo-build/libhasher.a
-	)
-endif()
+include(FetchContent)
 
-set(CMAKE_ARGS
-	-DBUILD_LIB=ON
-	-DBUILD_TOOL=OFF
-	-DENABLE_CREATOR=OFF
-	-DENABLE_PAR1=OFF
-	-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-	-DCMAKE_SYSTEM_PROCESSOR=${CMAKE_SYSTEM_PROCESSOR}
-	-DCMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}
-	-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+set(PAR2_TURBO_VERSION_TAG "v1.5.0-20261005")
+
+# Configure par2cmdline-turbo options before populating
+set(BUILD_LIB ON CACHE BOOL "" FORCE)
+set(BUILD_TOOL OFF CACHE BOOL "" FORCE)
+set(ENABLE_CREATOR OFF CACHE BOOL "" FORCE)
+set(ENABLE_PAR1 OFF CACHE BOOL "" FORCE)
+
+FetchContent_Declare(par2_turbo
+	GIT_REPOSITORY https://github.com/nzbgetcom/par2cmdline-turbo.git
+	GIT_TAG        ${PAR2_TURBO_VERSION_TAG}
+	GIT_SHALLOW    TRUE
+	GIT_PROGRESS   TRUE
+	EXCLUDE_FROM_ALL
 )
 
-if(DEFINED TOOLCHAIN_PREFIX)
-	set(CMAKE_ARGS ${CMAKE_ARGS} -DTOOLCHAIN_PREFIX=${TOOLCHAIN_PREFIX})
-endif()
+FetchContent_MakeAvailable(par2_turbo)
 
-if(APPLE)
-	set(CMAKE_ARGS ${CMAKE_ARGS}
-		-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+if(MSVC)
+	set_target_properties(par2-turbo gf16 hasher PROPERTIES
+		MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 	)
 endif()
 
-add_compile_definitions(
-	HAVE_CONFIG_H 
-	PARPAR_ENABLE_HASHER_MD5CRC 
-	PARPAR_INVERT_SUPPORT 
+if(USE_SANITIZERS)
+	apply_sanitizers(par2-turbo)
+	apply_sanitizers(gf16)
+	apply_sanitizers(hasher)
+endif()
+
+# The upstream project provides targets: par2-turbo, gf16, hasher
+# Create a convenient alias matching the existing interface
+add_library(par2-turbo::par2-turbo INTERFACE IMPORTED GLOBAL)
+target_link_libraries(par2-turbo::par2-turbo INTERFACE par2-turbo gf16 hasher)
+
+# Compile definitions required by the par2 headers used in ParChecker/ParRenamer
+target_compile_definitions(par2-turbo::par2-turbo INTERFACE
+	HAVE_CONFIG_H
+	PARPAR_ENABLE_HASHER_MD5CRC
+	PARPAR_INVERT_SUPPORT
 	PARPAR_SLIM_GF16
 )
 
-if(USE_SANITIZERS)
-	set(CMAKE_ARGS ${CMAKE_ARGS} -DUSE_SANITIZERS=${USE_SANITIZERS})
-endif()
-
-if(CMAKE_SYSROOT)
-	set(CMAKE_ARGS ${CMAKE_ARGS}
-		-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
-		-DCMAKE_SYSROOT=${CMAKE_SYSROOT}
-		-DCMAKE_CXX_FLAGS=-I${CMAKE_SYSROOT}/usr/include/c++/v1
-	)
-endif()
-
-ExternalProject_add(
-	par2-turbo
-	PREFIX			par2-turbo
-	GIT_REPOSITORY	https://github.com/nzbgetcom/par2cmdline-turbo.git
-	GIT_TAG			v1.5.0-20260914
-	TLS_VERIFY		TRUE
-	GIT_SHALLOW		TRUE
-	GIT_PROGRESS	TRUE
-	DOWNLOAD_EXTRACT_TIMESTAMP	TRUE
-	BUILD_BYPRODUCTS ${PAR2_LIBS}
-	CMAKE_ARGS		 ${CMAKE_ARGS}
-	INSTALL_COMMAND	""
-)
-
-set(LIBS ${LIBS} ${PAR2_LIBS})
-set(INCLUDES ${INCLUDES} ${PAR2_ROOT}/par2-turbo/include)
+# The upstream project provides targets: par2-turbo, gf16, hasher
+# Add these as build dependencies for the main target
+list(APPEND EXTERNAL_DEPS par2-turbo gf16 hasher)

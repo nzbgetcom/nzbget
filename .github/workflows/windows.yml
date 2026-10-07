@@ -14,6 +14,7 @@ env:
 jobs:
   prepare-build-matrix:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
@@ -33,6 +34,7 @@ jobs:
 
   build-bin:
     runs-on: windows-2022
+    timeout-minutes: 90
     needs: prepare-build-matrix
     strategy:
       matrix:
@@ -47,24 +49,41 @@ jobs:
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x${{ matrix.arch }}.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
-        Rename-Item -path "C:\vcpkg" -NewName "C:\vcpkg.old"
-        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath C:\
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
-        Invoke-Expression "windows\build-nzbget.ps1 -DownloadUnpackers"
+        Invoke-Expression "platforms\windows\build.ps1 -DownloadUnpackers"
+        $msvcVersion = Get-Content "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt"
+        "MSVC_VERSION=$msvcVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+    - name: Cache FetchContent dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/${{ matrix.type }}${{ matrix.arch }}/deps
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled binaries when toolchains, flags, or dependency configurations change.
+        key: deps-windows-${{ matrix.arch }}-${{ matrix.type }}-${{ env.MSVC_VERSION }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'platforms/windows/build.ps1') }}
 
     - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
-      run: Invoke-Expression "windows\build-nzbget.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}"
+      env:
+        LTO: ${{ matrix.type == 'Release' && 'yes' || 'no' }}
+      shell: cmd
+      run: |
+        choco install nasm --version=2.16.3 --no-progress
+        choco install ninja --no-progress
+        set PATH=%PATH%;C:\Program Files\NASM;C:\ProgramData\chocolatey\bin
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" ${{ matrix.arch == '64' && 'x64' || 'x86' }}
+        powershell -ExecutionPolicy Bypass -Command "& platforms\windows\build.ps1 -Build${{ matrix.type }} -Build${{ matrix.arch }} ${{ env.BUILD_TESTING }}; if (-not $?) { exit 1 }"
+        if errorlevel 1 exit /b %errorlevel%
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       id: upload-unsigned-artifact
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
+        if-no-files-found: error
         path: |
-          build\${{ matrix.type }}${{ matrix.arch }}\${{ matrix.type }}\*.exe
-          build\${{ matrix.type }}${{ matrix.arch }}\*.nsi
+          build/${{ matrix.type }}${{ matrix.arch }}/*.exe
+          build/${{ matrix.type }}${{ matrix.arch }}/*.nsi
         retention-days: 5
 
     - name: Submit signing request
@@ -92,6 +111,7 @@ jobs:
 
   build-installer:
     runs-on: windows-2022
+    timeout-minutes: 30
     needs: [build-bin, prepare-build-matrix]
 
     steps:
@@ -114,13 +134,13 @@ jobs:
         $ProgressPreference = "SilentlyContinue"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
-        Invoke-Expression "windows\build-nzbget.ps1 -DownloadUnpackers"
+        Invoke-Expression "platforms\windows\build.ps1 -DownloadUnpackers"
         New-Item build -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
         Copy-Item Release* build -Recurse -ErrorAction SilentlyContinue
         Copy-Item Debug* build -Recurse -ErrorAction SilentlyContinue
 
     - name: Build nzbget windows installer
-      run: Invoke-Expression "windows\build-nzbget.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
+      run: Invoke-Expression "platforms\windows\build.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
 
     - name: Rename build artifacts
       if: github.ref_name != 'main' && github.ref_name != 'develop'

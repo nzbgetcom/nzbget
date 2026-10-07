@@ -1,0 +1,275 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja"
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "description": "Debug build for rapid development (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "debug-tests",
+      "displayName": "Debug with Tests",
+      "description": "Debug build with unit tests enabled (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "debug-asan",
+      "displayName": "Debug with ASan & UBSan",
+      "description": "Debug build with AddressSanitizer and UndefinedBehaviorSanitizer (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-asan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "USE_SANITIZERS": "address,undefined",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "debug-tsan",
+      "displayName": "Debug with TSan",
+      "description": "Debug build with ThreadSanitizer (detect data races and deadlocks) (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/debug-tsan",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_TESTS": "ON",
+        "USE_SANITIZERS": "thread",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "description": "Optimized release build (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "reldebinfo",
+      "displayName": "Release with Debug Info",
+      "description": "Optimized build with debug symbols for profiling (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/reldebinfo",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "minsizerel",
+      "displayName": "Minimum Size Release",
+      "description": "Release build optimized for binary size (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/minsizerel",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "release-lto",
+      "displayName": "Release with LTO",
+      "description": "Release build with Link-Time Optimization (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/release-lto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "release-tests",
+      "displayName": "Release with Tests",
+      "description": "Optimized release build with unit tests enabled (uses system libraries when available)",
+      "binaryDir": "${sourceDir}/build/release-tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_TESTS": "ON",
+        "BUILD_DEPS_FROM_SOURCE": "OFF"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "ci-release-lto",
+      "displayName": "CI Release with LTO",
+      "description": "Full release build with Link-Time Optimization for CI/packaging (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-release-lto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "ci-windows-x64",
+      "displayName": "CI Windows x64",
+      "description": "Windows x64 CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_SYSTEM_PROCESSOR": "AMD64",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "ci-windows-x86",
+      "displayName": "CI Windows x86",
+      "description": "Windows x86 CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-x86",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_SYSTEM_PROCESSOR": "x86",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      },
+      "inherits": "base"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "configurePreset": "debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-tests",
+      "configurePreset": "debug-tests",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-asan",
+      "configurePreset": "debug-asan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "debug-tsan",
+      "configurePreset": "debug-tsan",
+      "configuration": "Debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "configuration": "Release"
+    },
+    {
+      "name": "reldebinfo",
+      "configurePreset": "reldebinfo",
+      "configuration": "RelWithDebInfo"
+    },
+    {
+      "name": "minsizerel",
+      "configurePreset": "minsizerel",
+      "configuration": "MinSizeRel"
+    },
+    {
+      "name": "release-lto",
+      "configurePreset": "release-lto",
+      "configuration": "Release"
+    },
+    {
+      "name": "release-tests",
+      "configurePreset": "release-tests",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-release-lto",
+      "configurePreset": "ci-release-lto",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-windows-x64",
+      "configurePreset": "ci-windows-x64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-windows-x86",
+      "configurePreset": "ci-windows-x86",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "debug-tests",
+      "configurePreset": "debug-tests",
+      "configuration": "Debug",
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-asan",
+      "configurePreset": "debug-asan",
+      "configuration": "Debug",
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "debug-tsan",
+      "configurePreset": "debug-tsan",
+      "configuration": "Debug",
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "release-tests",
+      "configurePreset": "release-tests",
+      "configuration": "Release",
+      "execution": {
+        "noTestsAction": "error"
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

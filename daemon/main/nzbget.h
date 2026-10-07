@@ -27,52 +27,32 @@
 /***************** DEFINES FOR WINDOWS *****************/
 #ifdef WIN32
 
-/* Suppress warnings */
-#define _CRT_SECURE_NO_DEPRECATE
-
-/* Suppress warnings */
-#define _CRT_NONSTDC_NO_WARNINGS
-
-#ifndef _WIN64
-#define _USE_32BIT_TIME_T
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
 #endif
 
-#if _WIN32_WINNT < 0x0501
-#undef _WIN32_WINNT
-#define _WIN32_WINNT 0x0501
+#ifndef WINVER
+#define WINVER 0x0601
 #endif
 
-#ifdef _WIN64
-#define __amd64__
-#else
-#define __i686__
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
 
-#ifdef _DEBUG
-// detection of memory leaks
-#define _CRTDBG_MAP_ALLOC
+#ifndef NOMINMAX
+#define NOMINMAX
 #endif
 
-#pragma warning(disable:4800) // 'type' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning(disable:4267) // 'var' : conversion from 'size_t' to 'type', possible loss of data
-
-#define popen _wpopen
-#define pclose _pclose
-
-#endif
 
 /***************** GLOBAL INCLUDES *****************/
 
-#ifdef WIN32
 // WINDOWS INCLUDES
 
-// Using "WIN32_LEAN_AND_MEAN" to disable including of many unneeded headers
-#define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-
-#include <windows.h>
+// Winsock2 MUST be included before windows.h
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <windows.h>
 
 #include <winsvc.h>
 #include <direct.h>
@@ -85,7 +65,6 @@
 #include <wincon.h>
 #include <shellapi.h>
 #include <winreg.h>
-#include <comutil.h>
 
 #ifdef _DEBUG
 #include <crtdbg.h>
@@ -183,7 +162,6 @@
 #include <regex>
 
 #include <libxml/parser.h>
-#include <libxml/xmlreader.h>
 #include <libxml/xmlerror.h>
 #include <libxml/entities.h>
 #include <libxml/tree.h>
@@ -191,6 +169,7 @@
 #include <rapidyenc.h>
 
 #include <boost/asio.hpp>
+#include <boost/json.hpp>
 #ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #include "OpenSSL.h"
@@ -327,21 +306,6 @@ typedef unsigned char uchar;
 #else
 #define PRINTF_SYNTAX(strindex)
 #define SCANF_SYNTAX(strindex)
-#endif
-
-// providing "std::make_unique" for GCC 4.8.x (only 4.8.x)
-#if __GNUC__ && __cplusplus < 201402L && __cpp_generic_lambdas < 201304
-namespace std {
-template<class T> struct _Unique_if { typedef unique_ptr<T> _Single_object; };
-template<class T> struct _Unique_if<T[]> { typedef unique_ptr<T[]> _Unknown_bound; };
-template<class T, class... Args> typename _Unique_if<T>::_Single_object make_unique(Args&&... args) {
-	return unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-template<class T> typename _Unique_if<T>::_Unknown_bound make_unique(size_t n) {
-	typedef typename remove_extent<T>::type U;
-	return unique_ptr<T>(new U[n]());
-}
-}
 #endif
 
 #endif /* NZBGET_H */

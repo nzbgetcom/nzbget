@@ -1,35 +1,44 @@
-set(BOOST_VERSION 1.84.0)
-set(BOOST_ROOT_DIR ${CMAKE_BINARY_DIR}/boost)
-set(BOOST_SOURCE_DIR ${BOOST_ROOT_DIR}/src/boost)
-set(BOOST_INSTALL_DIR ${BOOST_ROOT_DIR}/build)
+include(FetchContent)
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-	set(BOOST_BUILD_TYPE debug)
-else()
-	set(BOOST_BUILD_TYPE release)
+set(BOOST_VERSION "1.92.0")
+set(BOOST_SHA256 "e2a814b3a158ab482c7a3d330f8bf5a7a8423d258a4e2fb396996e00fcee2111")
+set(BOOST_URL "https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-b2-nodocs.tar.gz")
+
+if(NOT BUILD_DEPS_FROM_SOURCE)
+	# Local development: try system Boost first
+	find_package(Boost ${BOOST_VERSION} QUIET COMPONENTS json unit_test_framework)
+	if(Boost_FOUND)
+		message(STATUS "Using system Boost ${BOOST_VERSION} (found via find_package)")
+		list(APPEND EXTERNAL_DEPS Boost::headers Boost::json Boost::unit_test_framework)
+		set(BOOST_FROM_SYSTEM 1)
+	endif()
 endif()
 
-set(BOOST_JSON_LIB ${BOOST_INSTALL_DIR}/lib/libboost_json.a)
-set(BOOST_BYPRODUCTS ${BOOST_JSON_LIB})
+if(NOT BOOST_FROM_SYSTEM)
+	message(STATUS "Building Boost ${BOOST_VERSION} via FetchContent (header-only)")
 
-string(REPLACE ";" "," BOOST_NEEDED_COMPONENTS_WITH_COMMAS "${BOOST_NEEDED_COMPONENTS}")
+	# EXCLUDE_FROM_ALL: keep Boost install rules out of the nzbget install
+	FetchContent_Declare(boost
+		URL ${BOOST_URL}
+		URL_HASH SHA256=${BOOST_SHA256}
+		EXCLUDE_FROM_ALL
+	)
 
-ExternalProject_add(
-	boost
-	PREFIX ${BOOST_ROOT_DIR}
-	URL https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}.tar.xz
-	URL_HASH SHA256=2e64e5d79a738d0fa6fb546c6e5c2bd28f88d268a2a080546f74e5ff98f29d0e
-	TLS_VERIFY TRUE
-	BUILD_IN_SOURCE TRUE
-	DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-	USES_TERMINAL_DOWNLOAD TRUE
-	USES_TERMINAL_UPDATE TRUE
-	USES_TERMINAL_BUILD TRUE
-	BUILD_BYPRODUCTS ${BOOST_BYPRODUCTS}
-	CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=${BOOST_NEEDED_COMPONENTS_WITH_COMMAS} --prefix=${BOOST_INSTALL_DIR}
-	BUILD_COMMAND	  ./b2 link=static variant=${BOOST_BUILD_TYPE} install
-	INSTALL_COMMAND ""
-)
+	FetchContent_MakeAvailable(boost)
 
-set(LIBS ${LIBS} ${BOOST_JSON_LIB})
-set(INCLUDES ${INCLUDES} ${BOOST_INSTALL_DIR}/include)
+	add_library(Boost::headers INTERFACE IMPORTED GLOBAL)
+	target_include_directories(Boost::headers INTERFACE ${boost_SOURCE_DIR})
+	target_compile_definitions(Boost::headers INTERFACE BOOST_ALL_NO_LIB)
+
+	add_library(Boost::boost INTERFACE IMPORTED GLOBAL)
+	target_link_libraries(Boost::boost INTERFACE Boost::headers)
+
+	add_library(Boost::unit_test_framework INTERFACE IMPORTED GLOBAL)
+	target_link_libraries(Boost::unit_test_framework INTERFACE Boost::headers)
+
+	add_library(Boost::json INTERFACE IMPORTED GLOBAL)
+	target_link_libraries(Boost::json INTERFACE Boost::headers)
+endif()
+
+# nzbget uses header-only Boost
+add_compile_definitions(BOOST_ALL_NO_LIB)

@@ -728,7 +728,7 @@ std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::stri
 	auto res = Utf8::Utf8ToWide(cmd);
 	if (!res.has_value()) return nullptr;
 
-	FILE* pipe = popen(res.value().c_str(), L"r");
+	FILE* pipe = _wpopen(res.value().c_str(), L"r");
 #else
 	FILE* pipe = popen(cmd.c_str(), "r");
 #endif
@@ -737,7 +737,11 @@ std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::stri
 		{
 			if (pipe)
 			{
+#ifdef WIN32
+				std::ignore = _pclose(pipe);
+#else
 				std::ignore = pclose(pipe);
+#endif
 			}
 		}
 	);
