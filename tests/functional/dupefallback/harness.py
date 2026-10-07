@@ -842,7 +842,7 @@ class FakeNewznab:
                 parts = urllib.parse.urlsplit(self.path)
                 params = {k: v[0] for k, v in urllib.parse.parse_qs(parts.query).items()}
                 with outer.lock:
-                    outer.requests.append(dict(params, _path=parts.path))
+                    outer.requests.append(dict(params, _path=parts.path, _time=time.time()))
                 status, body = outer.respond(params, parts.path)
                 self.send_response(status)
                 self.send_header('Content-Type', 'application/xml')
@@ -5225,9 +5225,15 @@ def _deadpick_servers(daemon, t, tag):
 def scenario_deadpickservers(daemon, t):
     """Six news servers, one of them unreachable (an optional server nothing
     listens on): five servers answer definitively, which is the minimum for a
-    verdict, and the unreachable one is ignored, not counted as missing."""
+    verdict, and the unreachable one is ignored, not counted as missing. Under
+    load the probe can take over 10 s; the dead download then fails over by the
+    rule that doesn't wait for a slow probe (B83) - the probe still gives its
+    verdict, which is what this checks."""
     hp, hb, integ = _deadpick_servers(daemon, t, 'ds')
-    probed = _grep_log(t, 'none of 10 sampled articles exists on any server')
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, '5 of 6 servers answered definitively') == 0:
+        time.sleep(0.5)
+    probed = _grep_log(t, '0 of 10 sampled articles exist (5 of 6 servers answered definitively): the posting is dead')
     return ('deadpickservers', probed == 1 and integ and hb['Status'].startswith('SUCCESS'),
             'status=%s backup_status=%s probe_logs=%d failed_articles=%s integrity=%s'
             % (hp['Status'], hb['Status'], probed, hp.get('FailedArticles'), integ))
@@ -6668,12 +6674,16 @@ def main():
                     help='path to nzbget binary (local) or ON-DEVICE path (adb)')
     ap.add_argument('--target', choices=['local', 'adb'], default='local')
     ap.add_argument('--scenario', default='all',
-                    choices=['all'] + list(SCENARIOS))
+                    help="'all', a scenario name, or several separated by commas")
     ap.add_argument('--serial', help='adb device serial (adb target)')
     ap.add_argument('--keep', action='store_true', help='keep the workdir')
     args = ap.parse_args()
 
-    scenarios = list(SCENARIOS) if args.scenario == 'all' else [args.scenario]
+    # 'all', one name, or several separated by commas
+    scenarios = list(SCENARIOS) if args.scenario == 'all' else args.scenario.split(',')
+    unknown = [name for name in scenarios if name not in SCENARIOS]
+    if unknown:
+        ap.error('unknown scenario(s): %s' % ', '.join(unknown))
     results = []
 
     for name in scenarios:
@@ -6773,13 +6783,25 @@ def main():
             results.append((name, False, 'ERROR: %s' % e))
             print('[FAIL] %s  (ERROR: %s)' % (name, e))
         finally:
+            failed = not results or results[-1][1] is False
             if daemon.proxy:
                 daemon.proxy.close()
             if daemon.newznab:
                 daemon.newznab.close()
+                if failed:
+                    # what the indexer was asked, for reading a failed run
+                    try:
+                        target.write_file('newznab-requests.log', '\n'.join(
+                            '%.3f %s' % (r.get('_time', 0), {k: v for k, v in r.items() if k != '_time'})
+                            for r in daemon.newznab.requests).encode())
+                    except Exception:
+                        pass
             if daemon.fake_nntp:
                 daemon.fake_nntp.close()
-            target.teardown(args.keep)
+            # a failed scenario keeps its work directory
+            if failed and not args.keep and args.target == 'local':
+                print('       kept: %s' % target.work)
+            target.teardown(args.keep or failed)
 
     # tri-state result: True/False are real pass/fail, None is a graceful SKIP
     # (e.g. an xcrypt_* scenario when the cryptography module is not
