@@ -2556,6 +2556,18 @@ void EditQueueXmlCommand::Execute()
 
 	DecodeStr(args);
 
+	// a number past the int range wrapped around (F27: a score of 2147483648 was
+	// stored as -2147483648, the lowest), and a parameter needs a name
+	int number = 0;
+	if (((action == DownloadQueue::eaGroupSetDupeScore || action == DownloadQueue::eaHistorySetDupeScore ||
+		action == DownloadQueue::eaGroupSetPriority) && !ParseIntParam(args, &number)) ||
+		((action == DownloadQueue::eaGroupSetParameter || action == DownloadQueue::eaHistorySetParameter) &&
+		 (!*args || *args == '=')))
+	{
+		BuildErrorResponse(2, "Invalid parameter");
+		return;
+	}
+
 	BString<100> offsetStr("%i", offset);
 	if (hasOffset && (action == DownloadQueue::eaFileMoveOffset ||
 		action == DownloadQueue::eaGroupMoveOffset))
