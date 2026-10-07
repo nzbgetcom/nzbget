@@ -4882,6 +4882,97 @@ def scenario_fleetmostlydead(daemon, t):
     return ('fleetmostlydead', ok, 'reply=%s' % reply)
 
 
+SLOW_POST_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+# Keeps a download in post-processing for a while.
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+##############################################################################
+import sys, time
+time.sleep(25)
+sys.exit(93)
+'''
+
+
+def scenario_fleetduringpost(daemon, t):
+    """appendfleet: a fleet sent while another download is in post-processing
+    (production: one sent while an item unpacked came back in 3.7 s with every
+    member unmeasured, the first one queued by chance). Post-processing holds no
+    news-server connection: the fleet is checked and ranked as any other."""
+    daemon.fake_nntp.alive = set(_fleet_ids('qp')) | set(_fleet_ids('qw'))
+    api = daemon.wait_ready()
+    _ds_append(api, 'Post.Busy', _fake_nzb_ids(_fleet_ids('qp'), 400_000).decode(), 'post-key', 100, paused=False)
+    # the slow post-processing script runs (25 s)
+    def in_script():
+        return any(g['NZBName'] == 'Post.Busy' and g['Status'] == 'EXECUTING_SCRIPT' for g in api.listgroups())
+    deadline = time.time() + 60
+    while time.time() < deadline and not in_script():
+        time.sleep(0.3)
+    in_post = in_script()
+    start = time.time()
+    reply = _fleet(daemon, [('Show.S01E01.dead', _fake_nzb_ids(_fleet_ids('qd'), 400_000).decode()),
+                            ('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('qw'), 410_000).decode())],
+                   key='fleet:post', timeout=20)
+    took = time.time() - start
+    still_post = in_script()
+    byname = {m['Name']: m for m in reply['Members']}
+    ok = (in_post and still_post and reply['Complete'] and all(m['Alive'] >= 0 for m in reply['Members']) and
+          byname['Show.S01E01.whole']['Status'] == 'QUEUED' and byname['Show.S01E01.dead']['Status'] == 'DEAD')
+    return ('fleetduringpost', ok, 'in_post=%s/%s took=%.1f complete=%s reply=%s' % (
+        in_post, still_post, took, reply['Complete'], [(m['Name'], m['Status'], m['Alive']) for m in reply['Members']]))
+
+
+def _rpc(daemon, method, params, timeout=60):
+    """A JSON-RPC call; returns the reply (its 'result' or its 'error')."""
+    import json as _json
+    import urllib.request as _req
+    body = _json.dumps({'method': method, 'params': params}).encode()
+    request = _req.Request('http://127.0.0.1:%d/jsonrpc' % daemon.rpc_port, body, {'Content-Type': 'application/json'})
+    with _req.urlopen(request, timeout=timeout) as reply:
+        return _json.loads(reply.read().decode())
+
+
+def scenario_appendconcurrent(daemon, t):
+    """F14: appends at the same moment each get their own id. Ten with the same
+    name (distinct contents, one key) and twenty with distinct names: before,
+    most of the same-named ones and some others returned -1 - two appends picked
+    the same file name and one overwrote the other."""
+    import threading
+    daemon.wait_ready()
+    jobs = [('Same.Release', 'cs%d' % i) for i in range(10)] + [('Other.Release.%d' % i, 'co%d' % i) for i in range(20)]
+    ids = [None] * len(jobs)
+    barrier = threading.Barrier(len(jobs))
+
+    def send(i, name, tag):
+        nzb = base64.standard_b64encode(_fake_nzb_ids(_fleet_ids(tag, 5), 50_000)).decode()
+        barrier.wait()
+        ids[i] = _rpc(daemon, 'append', [name, nzb, 'test', 0, False, True, 'conc-key', 10 + i, 'all', []]).get('result')
+    threads = [threading.Thread(target=send, args=(i, name, tag)) for i, (name, tag) in enumerate(jobs)]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join(timeout=120)
+    lost = sum(1 for x in ids if not isinstance(x, int) or x <= 0)
+    distinct = len(set(x for x in ids if isinstance(x, int) and x > 0))
+    return ('appendconcurrent', lost == 0 and distinct == len(jobs), 'lost=%d distinct=%d ids=%s' % (lost, distinct, ids))
+
+
+def scenario_appendscorerange(daemon, t):
+    """F16: a DupeScore out of the int range is an invalid parameter; it wrapped
+    around before (2147483648 was stored as -2147483648, the lowest score)."""
+    daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(_fleet_ids('sr', 3), 30_000)).decode()
+    replies = {score: _rpc(daemon, 'append', ['Score.%d' % i, nzb, 'test', 0, False, True, 'sr-key', score, 'all', []])
+               for i, score in enumerate([2147483648, 4294967301, -2147483649])}
+    rejected = all('error' in r and r['error'] and not r.get('result') for r in replies.values())
+    ok_reply = _rpc(daemon, 'append', ['Score.ok', nzb, 'test', 0, False, True, 'sr-key', 2147483647, 'all', []])
+    stored = next((g['DupeScore'] for g in daemon.wait_ready().listgroups() if g['NZBName'] == 'Score.ok'), None)
+    ok = rejected and ok_reply.get('result', 0) > 0 and stored == 2147483647
+    return ('appendscorerange', ok, 'replies=%s stored=%s' % (
+        {k: (v.get('result'), (v.get('error') or {}).get('message') if isinstance(v.get('error'), dict) else v.get('error'))
+         for k, v in replies.items()}, stored))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -6459,6 +6550,9 @@ SCENARIOS = {
     'fleetmostlydead': scenario_fleetmostlydead,
     'fleetpaused': scenario_fleetpaused,
     'fleetparallel': scenario_fleetparallel,
+    'appendconcurrent': scenario_appendconcurrent,
+    'appendscorerange': scenario_appendscorerange,
+    'fleetduringpost': scenario_fleetduringpost,
     'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
@@ -6717,6 +6811,7 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
     'fleetparallel': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'fleetslowurl': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
@@ -6807,7 +6902,8 @@ SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
 
 # scenarios with a FirstFailNntpProxy in front of Server1: (message-id markers,)
 # extensions a scenario installs into ScriptDir before the daemon starts
-SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION}}
+SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
+                       'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION}}
 
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 
@@ -6818,7 +6914,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
