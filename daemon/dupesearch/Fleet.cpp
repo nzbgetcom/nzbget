@@ -65,6 +65,9 @@ namespace
 		std::string error;
 	};
 
+	// one fleet's health check at a time (F11)
+	std::timed_mutex g_checkMutex;
+
 	// one fleet of a key at a time (F2: a client's retry raced the first call)
 	std::mutex g_keyLocksMutex;
 	std::map<std::string, std::shared_ptr<std::timed_mutex>> g_keyLocks;
@@ -217,7 +220,17 @@ Fleet::Result Fleet::Append(Request request)
 		}
 	}
 	DonorHealth::ServerList servers = NntpHealthServer::Servers();
-	if (!servers.empty() && !postings.empty())
+	// one fleet's check at a time, whatever its key: two at once shared the
+	// connections and both used their whole limit (F11); a fleet waits for the
+	// other within its own limit
+	std::unique_lock<std::timed_mutex> checkGuard(g_checkMutex, std::defer_lock);
+	bool mayCheck = !servers.empty() && !postings.empty() && checkGuard.try_lock_for(
+		std::chrono::milliseconds(std::max(0LL, deadlineMs - DonorHealth::NowMs() - FinishReserveMs - 1000)));
+	if (!servers.empty() && !postings.empty() && !mayCheck)
+	{
+		result.complete = false;
+	}
+	if (mayCheck)
 	{
 		DonorHealth::Options options;
 		options.sample.percent = g_Options->GetDupeHealthPercent();

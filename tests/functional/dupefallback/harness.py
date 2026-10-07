@@ -4819,6 +4819,53 @@ def scenario_fleetmostlydead(daemon, t):
     return ('fleetmostlydead', ok, 'reply=%s' % reply)
 
 
+def scenario_fleetpaused(daemon, t):
+    """appendfleet (F12): with downloads paused by the user, a fleet is still
+    checked - the check doesn't download - and ranked: the whole copy is
+    chosen, the dead one measured dead; the queue stays paused."""
+    daemon.fake_nntp.alive = set(_fleet_ids('pw'))
+    api = daemon.wait_ready()
+    api.pausedownload()
+    reply = _fleet(daemon, [('Show.S01E01.dead', _fake_nzb_ids(_fleet_ids('pd'), 400_000).decode()),
+                            ('Show.S01E01.whole', _fake_nzb_ids(_fleet_ids('pw'), 410_000).decode())],
+                   key='fleet:paused', timeout=20)
+    byname = {m['Name']: m for m in reply['Members']}
+    ok = (reply['Complete'] and byname['Show.S01E01.whole']['Status'] == 'QUEUED' and
+          byname['Show.S01E01.dead']['Status'] == 'DEAD' and api.status()['DownloadPaused'])
+    return ('fleetpaused', ok, 'reply=%s' % [(m['Name'], m['Status'], m['Alive']) for m in reply['Members']])
+
+
+def scenario_fleetparallel(daemon, t):
+    """appendfleet (F11): two fleets for different keys at once, while a long
+    download holds both connections. One fleet's check runs at a time; the other
+    waits within its own limit: both finish well inside 20 s with every member
+    measured. Before, they shared the connections and both used the whole limit
+    with members unmeasured."""
+    import threading
+    daemon.fake_nntp.alive = set(_fleet_ids('pb', 600)) | set(_fleet_ids('p1')) | set(_fleet_ids('p2'))
+    daemon.fake_nntp.delays.update({'pb-': 3.0})
+    api = daemon.wait_ready()
+    _ds_append(api, 'Busy.Download', _fake_nzb_ids(_fleet_ids('pb', 600), 6_000_000).decode(), 'busy-key', 100, paused=False)
+    time.sleep(3)
+    box = {}
+
+    def send(slot, tag):
+        start = time.time()
+        box[slot] = _fleet(daemon, [('Show.S0%sE01.dead' % slot, _fake_nzb_ids(_fleet_ids(tag + 'd'), 400_000).decode()),
+                                    ('Show.S0%sE01.whole' % slot, _fake_nzb_ids(_fleet_ids(tag), 410_000).decode())],
+                           key='fleet:par%s' % slot, timeout=20)
+        box[slot + 'took'] = time.time() - start
+    threads = [threading.Thread(target=send, args=(slot, tag)) for slot, tag in (('1', 'p1'), ('2', 'p2'))]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join(timeout=90)
+    ok = all(box.get(slot, {}).get('Complete') and box.get(slot + 'took', 99) < 15 and
+             all(m['Alive'] >= 0 for m in box[slot]['Members']) for slot in ('1', '2'))
+    return ('fleetparallel', ok, 'took=%.1f/%.1f complete=%s/%s' % (box.get('1took', -1), box.get('2took', -1),
+            box.get('1', {}).get('Complete'), box.get('2', {}).get('Complete')))
+
+
 def scenario_fleetslowurl(daemon, t):
     """appendfleet (F13): a member's url answers only after 40 s; the fleet
     allows 10 s. The call still returns within its limit (the fetch is stopped
@@ -6345,6 +6392,8 @@ SCENARIOS = {
     'fleetlarge': scenario_fleetlarge,
     'fleetcopy': scenario_fleetcopy,
     'fleetmostlydead': scenario_fleetmostlydead,
+    'fleetpaused': scenario_fleetpaused,
+    'fleetparallel': scenario_fleetparallel,
     'fleetslowurl': scenario_fleetslowurl,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
@@ -6600,6 +6649,8 @@ SCENARIO_OPTIONS = {
     'fleetlarge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetparallel': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'fleetslowurl': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
@@ -6700,7 +6751,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetslowurl', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
