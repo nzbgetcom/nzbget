@@ -1234,9 +1234,15 @@ def scenario_cutover(daemon, t):
     # timing-dependent - it is the number of primary failures already in
     # flight when cutover trips (>= the 3 recoveries that trip it), which
     # grows under system load beyond the 4 concurrent connections.
-    return ('cutover', ok and integ and 3 <= recov <= 10 and cut == 1,
-            'status=%s recovered=%d cutover_logs=%d integrity=%s'
-            % (h['Status'], recov, cut, integ))
+    # the summary's "of N missing" counts only articles that failed: the ones the
+    # duplicate served first after the cutover were never missing (it read
+    # "of 19 missing" for a file missing 10)
+    with open(t.path('nzbget.log'), errors='replace') as f:
+        found = re.findall(r'Recovered (\d+) of (\d+) missing article\(s\) of CutA', f.read())
+    attempted = int(found[-1][1]) if found else -1
+    return ('cutover', ok and integ and 3 <= recov <= 10 and cut == 1 and 0 < attempted <= 10,
+            'status=%s recovered=%d attempted=%d cutover_logs=%d integrity=%s'
+            % (h['Status'], recov, attempted, cut, integ))
 
 
 def scenario_leadswitch(daemon, t):

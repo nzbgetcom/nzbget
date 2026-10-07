@@ -613,6 +613,8 @@ bool QueueCoordinator::GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &f
 				// full server sweep failing on the primary first
 				if (fileInfo->GetDupeCutover() && article->GetDupeFallbackRound() == 0)
 				{
+					// marked before the try: the try counts only articles that failed
+					article->SetDupeProactive(true);
 					article->SetDupeProactive(
 						m_dupeArticleFallback.TryFallback(downloadQueue, fileInfo, article));
 				}

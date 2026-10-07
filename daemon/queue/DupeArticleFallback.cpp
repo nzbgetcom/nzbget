@@ -219,7 +219,9 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	// (the denominator of the per-file recovered/attempted completion summary).
 	// No per-attempt log line: it would flood large files and, worse, read as a
 	// success when it is only an attempt - the recovery is counted on success.
-	if (pinnedRound == 0)
+	// A duplicate asked first after the cutover isn't an attempt on a missing article:
+	// counted, it read as "recovered 11 of 2853 missing" for a file missing ~20
+	if (pinnedRound == 0 && !articleInfo->GetDupeProactive())
 	{
 		fileInfo->SetDupeAttemptedArticles(fileInfo->GetDupeAttemptedArticles() + 1);
 		nzbInfo->SetDupeAttemptedArticles(nzbInfo->GetDupeAttemptedArticles() + 1);
