@@ -57,7 +57,7 @@ public:
 		std::string name;
 		int rank = 0;
 		int alive = -1;			// percent of the sampled articles found, -1 unknown
-		std::string status;		// QUEUED, BACKUP, SAME_POSTING, DEAD, ERROR, SKIPPED
+		std::string status;		// QUEUED, BACKUP, SAME_POSTING, DEAD, ERROR, SKIPPED, COPY
 		int sameAs = 0;			// SAME_POSTING: the NZBID of the item it is a copy of (0: not added)
 		int sameAsRank = 0;		// SAME_POSTING: the rank of the fleet member it is a copy of
 		int member = -1;		// its index in the request

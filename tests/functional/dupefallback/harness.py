@@ -4773,6 +4773,37 @@ def scenario_fleetdeadtwins(daemon, t):
     return ('fleetdeadtwins', ok, 'reply=%s' % reply)
 
 
+def scenario_fleetlarge(daemon, t):
+    """appendfleet (F7): five large postings (20,000 articles each). A fleet's
+    sample of each is capped at 200 articles after the probe, not 5% (1,000):
+    ranking a few copies needs less than measuring a donor."""
+    tags = ['L%d' % i for i in range(5)]
+    daemon.fake_nntp.alive = set().union(*(set(_fleet_ids(tag, 20000)) for tag in tags))
+    daemon.wait_ready()
+    before = daemon.fake_nntp.stats
+    reply = _fleet(daemon, [('Show.S01E01.%s' % tag, _fake_nzb_ids(_fleet_ids(tag, 20000), 200_000_000 + i).decode())
+                            for i, tag in enumerate(tags)], key='fleet:large', timeout=60)
+    asked = daemon.fake_nntp.stats - before
+    ok = reply['Complete'] and reply['Chosen'] > 0 and asked <= 5 * 220
+    return ('fleetlarge', ok, 'stats=%d complete=%s chosen=%s' % (asked, reply['Complete'], reply['Chosen']))
+
+
+def scenario_fleetcopy(daemon, t):
+    """appendfleet: a member that is the same nzb-file as an item under another
+    key, which the duplicate check files as a copy (DELETED/COPY), is reported
+    COPY, not BACKUP."""
+    daemon.fake_nntp.alive = set(_fleet_ids('cp')) | set(_fleet_ids('cq'))
+    api = daemon.wait_ready()
+    nzb = _fake_nzb_ids(_fleet_ids('cp'), 400_000).decode()
+    _ds_append(api, 'abcdef0123', nzb, 'other-key', 100, paused=False)
+    daemon.wait_history(api, 'abcdef0123', timeout=60)
+    reply = _fleet(daemon, [('0123abcdef', _fake_nzb_ids(_fleet_ids('cq'), 410_000).decode()),
+                            ('fedcba3210', nzb)], key='fleet:copy')
+    byname = {m['Name']: m for m in reply['Members']}
+    ok = byname['fedcba3210']['Status'] == 'COPY' and byname['0123abcdef']['Status'] == 'QUEUED'
+    return ('fleetcopy', ok, 'members=%s' % [(m['Name'], m['Status'], m['NZBID']) for m in reply['Members']])
+
+
 def scenario_fleetone(daemon, t):
     """appendfleet with a single whole member: it is queued and downloads."""
     daemon.fake_nntp.alive = set(_fleet_ids('one'))
@@ -6253,6 +6284,8 @@ SCENARIOS = {
     'fleetfailover': scenario_fleetfailover,
     'fleetbusy': scenario_fleetbusy,
     'fleetdeadtwins': scenario_fleetdeadtwins,
+    'fleetlarge': scenario_fleetlarge,
+    'fleetcopy': scenario_fleetcopy,
     'dupesearchpickdeleted': scenario_dupesearchpickdeleted,
     'dupesearchpickgoneadd': scenario_dupesearchpickgoneadd,
     'dupesearchresubmit': scenario_dupesearchresubmit,
@@ -6504,6 +6537,8 @@ SCENARIO_OPTIONS = {
     'fleetfailover': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetbusy': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'fleetdeadtwins': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetlarge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'dupesearchrestartcheck': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=0', 'DupeHealthBudget=120'],
     'dupesearchrerank': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchfailedfirst': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=15', 'DupeSearchApiKey=k', 'HealthCheck=dupe'],
@@ -6603,7 +6638,7 @@ SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

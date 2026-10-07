@@ -47,6 +47,8 @@ namespace
 	constexpr size_t MaxNzbBytes = 64 * 1024 * 1024;
 	// postings checked at once at most (each news server limits its own connections)
 	constexpr int MaxParallel = 16;
+	// articles sampled of each posting at most (after the probe)
+	constexpr int FleetSampleMax = 200;
 	// time kept from the limit for ranking and adding the members
 	constexpr long long FinishReserveMs = 2000;
 
@@ -219,7 +221,9 @@ Fleet::Result Fleet::Append(Request request)
 		DonorHealth::Options options;
 		options.sample.percent = g_Options->GetDupeHealthPercent();
 		options.sample.minimum = g_Options->GetDupeHealthMin();
-		options.sample.maximum = g_Options->GetDupeHealthMax();
+		// ranking a few copies needs less than measuring a donor: the sample of each
+		// posting is capped (F7: 5% of a 100,000-article posting took about 8 s each)
+		options.sample.maximum = std::min(g_Options->GetDupeHealthMax(), FleetSampleMax);
 		options.sample.maxBody = g_Options->GetDupeBodyChecks();
 		// every posting at once, each with the time left: the check ends by the deadline
 		// (one after another, each with its own budget, it took 57 s for a 45 s limit)
@@ -441,11 +445,28 @@ Fleet::Result Fleet::Append(Request request)
 		}
 		for (Entry& entry : result.members)
 		{
-			if (!runningId && entry.nzbId > 0 && downloadQueue->GetQueue()->Find(entry.nzbId))
+			if (!runningId && !result.chosen && entry.nzbId > 0 && downloadQueue->GetQueue()->Find(entry.nzbId))
 			{
 				entry.status = "QUEUED";
 				result.chosen = entry.nzbId;
-				break;
+			}
+		}
+		// the duplicate check filed a member as a copy of another item (the same
+		// nzb-file under another key): reported so, not as a backup
+		for (HistoryInfo* historyInfo : downloadQueue->GetHistory())
+		{
+			if (historyInfo->GetKind() != HistoryInfo::hkNzb ||
+				historyInfo->GetNzbInfo()->GetDeleteStatus() != NzbInfo::dsCopy)
+			{
+				continue;
+			}
+			for (Entry& entry : result.members)
+			{
+				if (entry.nzbId == historyInfo->GetNzbInfo()->GetId())
+				{
+					entry.status = "COPY";
+					entry.reason = "the same nzb-file as an item nzbget has already";
+				}
 			}
 		}
 		NzbInfo probe;
