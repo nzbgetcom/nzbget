@@ -1090,8 +1090,16 @@ void WebUtil::XmlDecode(char* raw)
 					else if (*p == '#')
 					{
 						int code = atoi((p++)+1);
-						while (strchr("0123456789;", *p)) p++;
+						// (strchr finds the terminating NUL too: "&#12" at the end of
+						// the text was read past its end)
+						while (*p && strchr("0123456789;", *p)) p++;
 						*output++ = (char)code;
+					}
+					else if (*p == '\0')
+					{
+						// an "&" at the end: past it lay memory that isn't the text's
+						*output++ = '&';
+						goto BreakLoop;
 					}
 					else
 					{

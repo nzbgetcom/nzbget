@@ -581,3 +581,22 @@ BOOST_AUTO_TEST_CASE(JsonDecodeStopsAtEndTest)
 	WebUtil::JsonDecode(whole);
 	BOOST_CHECK_EQUAL(std::string(whole), std::string("aAb"));
 }
+
+BOOST_AUTO_TEST_CASE(XmlDecodeStopsAtEndTest)
+{
+	// a numeric entity or an "&" at the end: the decoder read and wrote past the end
+	// of the text
+	char numeric[] = "ab&#65\0ZZZZZZ";
+	WebUtil::XmlDecode(numeric);
+	BOOST_CHECK_EQUAL(std::string(numeric), std::string("abA"));
+	BOOST_CHECK_EQUAL(std::string(numeric + 7, 6), std::string("ZZZZZZ"));
+
+	char ampersand[] = "ab&\0ZZZZZZ";
+	WebUtil::XmlDecode(ampersand);
+	BOOST_CHECK_EQUAL(std::string(ampersand), std::string("ab&"));
+	BOOST_CHECK_EQUAL(std::string(ampersand + 4, 6), std::string("ZZZZZZ"));
+
+	char whole[] = "a&lt;b&#65;c&amp;";
+	WebUtil::XmlDecode(whole);
+	BOOST_CHECK_EQUAL(std::string(whole), std::string("a<bAc&"));
+}
