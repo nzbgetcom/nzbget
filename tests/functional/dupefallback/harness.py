@@ -844,6 +844,10 @@ class FakeNewznab:
                 with outer.lock:
                     outer.requests.append(dict(params, _path=parts.path, _time=time.time()))
                 status, body = outer.respond(params, parts.path)
+                if status is None:
+                    # the connection drops without an answer
+                    self.close_connection = True
+                    return
                 self.send_response(status)
                 self.send_header('Content-Type', 'application/xml')
                 self.send_header('Content-Length', str(len(body)))
@@ -853,7 +857,12 @@ class FakeNewznab:
             def log_message(self, *args):
                 pass
 
-        self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        # nzbget asks its queries at once: the default accept queue (5) dropped one
+        # under load ("connection reset by peer") and its results with it
+        class Server(ThreadingHTTPServer):
+            request_queue_size = 64
+            daemon_threads = True
+        self.server = Server(('127.0.0.1', 0), Handler)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
 
@@ -4516,6 +4525,38 @@ def scenario_dupesearchindexerdown(daemon, t):
     return ('dupesearchindexerdown', ok, 'released_logs=%d searches=%d donors=%d' % (released, searches, len(donors)))
 
 
+def scenario_dupesearchquerydrop(daemon, t):
+    """The indexer drops the connection of the search that has the results,
+    once, without an answer (as an indexer under load does): the search asks it
+    once more and still finds the posting. Before, that query's results were
+    lost and nothing was added."""
+    ids = lambda p: ['%s-%d@x' % (p, i) for i in range(40)]
+    daemon.fake_nntp.alive = set(ids('qd')) | set(ids('pk'))
+    results = [{'title': DS_TITLE, 'link': 'http://127.0.0.1:%d/getnzb/qd' % daemon.newznab.port,
+                'size': 420_000, 'grabs': 3, 'indexer': 'Idxqd', 'date': 'Tue, 11 Jun 2025 01:10:05 +0000'}]
+    dropped = {'n': 0}
+
+    def respond(params, path):
+        if path.startswith('/getnzb/'):
+            return 200, _fake_nzb_ids(ids('qd'), 420_000)
+        if params.get('q') == 'show s01e01 1080p web h264 grp':
+            if not dropped['n']:
+                dropped['n'] += 1
+                return None, b''
+            return 200, newznab_xml(results)
+        return 200, newznab_xml([])
+
+    api = daemon.wait_ready()
+    daemon.newznab.respond = respond
+    _ds_append(api, DS_TITLE, _fake_nzb_ids(ids('pk'), 400_000).decode(), DS_KEY, DS_PICK)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, ' added=') == 0:
+        time.sleep(0.5)
+    added = _grep_log(t, 'added=1 ')
+    ok = dropped['n'] == 1 and added == 1
+    return ('dupesearchquerydrop', ok, 'dropped=%d added_logs=%d' % (dropped['n'], added))
+
+
 def _fleet(daemon, members, key='fleet-key', timeout=30, http_timeout=None):
     """Calls appendfleet (JSON-RPC) with members [(name, nzb text)]; returns its result."""
     import json as _json
@@ -6374,6 +6415,7 @@ SCENARIOS = {
     'dupesearchfailedrestart': scenario_dupesearchfailedrestart,
     'dupesearchtwopicks': scenario_dupesearchtwopicks,
     'dupesearchindexerdown': scenario_dupesearchindexerdown,
+    'dupesearchquerydrop': scenario_dupesearchquerydrop,
     'fleetdeadfirst': scenario_fleetdeadfirst,
     'fleettwins': scenario_fleettwins,
     'fleettimeout': scenario_fleettimeout,
@@ -6631,6 +6673,7 @@ SCENARIO_OPTIONS = {
     'dupesearchambiguous': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k', 'DupeFastDonors=2'],
     'dupesearchtwopicks': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'dupesearchindexerdown': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
+    'dupesearchquerydrop': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
     'fleetdeadfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleettwins': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleettimeout': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
@@ -6747,11 +6790,11 @@ SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
 SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
-                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
+                   'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

@@ -376,6 +376,12 @@ std::vector<Newznab::Result> Newznab::Search(const std::string& base, const std:
 				params.emplace_back("offset", std::to_string(page * PageSize));
 				std::string infoName = "DupeSearch " + label + " page " + std::to_string(page + 1);
 				HttpGet::Reply reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024);
+				// no answer at all (a dropped connection) is asked once more: one
+				// lost query lost every result only it had
+				if (!reply.ok && reply.status == 0 && !HttpGet::Stopped() && Util::CurrentTime() < deadline)
+				{
+					reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024);
+				}
 				pages++;
 
 				Page result;
