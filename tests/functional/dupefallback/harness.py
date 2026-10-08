@@ -8269,6 +8269,31 @@ def scenario_nntppercent(daemon, t):
     return ('nntppercent', ok, 'alive=%s literal_logs=%d' % (alive, literal))
 
 
+def scenario_joinequalpieces(daemon, t):
+    """Split pieces all of one size (the file an exact multiple of the piece
+    size), par-checked: the joined-size check took the expected size as
+    first * (count - 1) + the size of a different, shorter last piece, which
+    there wasn't - every such join failed with "joined X of Y bytes". The
+    file is joined now."""
+    data = _payload(3_000_000, 10710)
+    pieces = [data[i:i + 1_000_000] for i in range(0, len(data), 1_000_000)]
+    par = generators.par2_index([('eq.mkv.%03d' % (i + 1), piece) for i, piece in enumerate(pieces)])
+    members = []
+    for i, piece in enumerate(pieces, 1):
+        rel = 'jeA/eq.mkv.%03d' % i
+        t.write_file(os.path.join('data', rel), piece)
+        members.append((rel, 'eq.mkv.%03d' % i, len(piece), 500_000, set()))
+    t.write_file(os.path.join('data', 'jeA/eq.par2'), par)
+    members.append(('jeA/eq.par2', 'eq.par2', len(par), 500_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelJE', build_multi_nzb(members), False, 'je-key', 100)
+    h = daemon.wait_history(api, 'RelJE', timeout=180)
+    joined = [r for r in t.find_files('main', 'dst') if r.endswith('/eq.mkv')]
+    whole = bool(joined) and t.read_file(joined[0]) == data
+    ok = h['Status'].startswith('SUCCESS') and whole
+    return ('joinequalpieces', ok, 'status=%s par=%s joined=%s whole=%s' % (h['Status'], h.get('ParStatus'), joined, whole))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8648,6 +8673,7 @@ SCENARIOS = {
     'heldidle': scenario_heldidle,
     'filepausepars': scenario_filepausepars,
     'nntppercent': scenario_nntppercent,
+    'joinequalpieces': scenario_joinequalpieces,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8922,6 +8948,7 @@ SCENARIO_OPTIONS = {
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'jointwosets': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z'],
+    'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
     'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],

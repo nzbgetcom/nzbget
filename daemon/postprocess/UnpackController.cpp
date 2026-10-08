@@ -450,7 +450,6 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 
 	BString<1024> fullFilename("%s%c%s", *m_destDir, PATH_SEPARATOR, fragBaseName);
 	int64 firstSegmentSize = FileSystem::FileSize(fullFilename);
-	int64 difSegmentSize = 0;
 
 	// Validate joinable file:
 	//  - fragments have continuous numbers (no holes);
@@ -485,7 +484,6 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 			if (segmentSize != firstSegmentSize)
 			{
 				difSizeMin = segNum < difSizeMin ? segNum : difSizeMin;
-				difSegmentSize = segmentSize;
 			}
 		}
 	}
@@ -517,7 +515,18 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 		outFile.SetWriteBuffer(g_Options->GetWriteBuffer() * 1024);
 	}
 
-	int64 totalSize = firstSegmentSize * (count - 1) + difSegmentSize;
+	// the pieces' total, to check the joined size against: first * (count - 1) +
+	// the different one assumed a shorter last piece, and with all pieces of one
+	// size (common) every join failed the check
+	int64 totalSize = 0;
+	for (int i = min; i <= max; i++)
+	{
+		BString<1024> fragFilename("%s%c%s.%.3i", *m_destDir, PATH_SEPARATOR, *destBaseName, i);
+		if (FileSystem::FileExists(fragFilename))
+		{
+			totalSize += FileSystem::FileSize(fragFilename);
+		}
+	}
 	if (totalSize <= 0)
 	{
 		PrintMessage(Message::mkError, "Could not join splitted file %s: file segments are empty", *destBaseName);
