@@ -8294,6 +8294,14 @@ def scenario_joinequalpieces(daemon, t):
     return ('joinequalpieces', ok, 'status=%s par=%s joined=%s whole=%s' % (h['Status'], h.get('ParStatus'), joined, whole))
 
 
+def scenario_directunpackkeepnointer(daemon, t):
+    """As directunpackkeep without InterDir: the unpack folder is the
+    download's own folder there, and the failed direct unpack's cleanup
+    deleted it with everything downloaded so far."""
+    r = scenario_directunpackkeep(daemon, t)
+    return ('directunpackkeepnointer',) + tuple(r[1:])
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8674,6 +8682,7 @@ SCENARIOS = {
     'filepausepars': scenario_filepausepars,
     'nntppercent': scenario_nntppercent,
     'joinequalpieces': scenario_joinequalpieces,
+    'directunpackkeepnointer': scenario_directunpackkeepnointer,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8950,6 +8959,7 @@ SCENARIO_OPTIONS = {
     'jointwosets': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z'],
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
+    'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
     'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'articledecoypar': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
@@ -9066,6 +9076,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
+                        'directunpackkeepnointer': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],
                         'streamrestartcredit': [(b'srSlow/', 3.0)],
                         'restartfailover': [(b'rfA/', 0.4)],

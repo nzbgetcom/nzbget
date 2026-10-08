@@ -548,8 +548,11 @@ void DirectUnpack::Cleanup()
 {
 	debug("Cleanup for %s", *m_infoName);
 
+	// only a temporary unpack folder: without one (UseTempUnpackDir=no) it is the
+	// download's own folder (or the final one), and deleting it removed every file
+	// downloaded so far
 	CString errmsg;
-	if (FileSystem::DirectoryExists(m_unpackDir) &&
+	if (g_Options->GetUseTempUnpackDir() && FileSystem::DirectoryExists(m_unpackDir) &&
 		!FileSystem::DeleteDirectoryWithContent(m_unpackDir, errmsg))
 	{
 		PrintMessage(Message::mkError, "Could not delete temporary directory %s: %s", *m_unpackDir, *errmsg);
