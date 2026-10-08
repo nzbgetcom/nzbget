@@ -8228,6 +8228,47 @@ def scenario_directrenamesubdirjoin(daemon, t):
     return _direct_rename_subdir(daemon, t, 'directrenamesubdirjoin')
 
 
+_PERCENT_SERVER_PORT = []
+
+
+def _percent_server_options():
+    port = free_port()
+    _PERCENT_SERVER_PORT[:] = [port]
+    return ['Server1.Port=%d' % port, 'ArticleRetries=0', 'Server1.Retention=0']
+
+
+def scenario_nntppercent(daemon, t):
+    """A news server whose greeting is "400 busy %s%s%s...": the error message
+    holding the server's answer was used as a printf format. The daemon stays
+    up and logs the answer as sent."""
+    srv = socket.socket()
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(('127.0.0.1', _PERCENT_SERVER_PORT[0]))
+    srv.listen(16)
+
+    def serve():
+        while True:
+            try:
+                conn, _ = srv.accept()
+            except OSError:
+                return
+            try:
+                conn.sendall(b'400 busy %s%s%s%s%s%s%s%s%s%s\r\n')
+            except OSError:
+                pass
+            conn.close()
+    threading.Thread(target=serve, daemon=True).start()
+    api = daemon.wait_ready()
+    nzb = _fake_nzb_ids(['pc%d@x' % i for i in range(3)], 30_000).decode()
+    daemon.append(api, 'RelPC', nzb, False, 'pc-key', 100)
+    time.sleep(8)
+    alive = t.procs[-1].poll() is None
+    literal = _grep_log(t, 'busy %s%s%s')
+    srv.close()
+    ok = alive and literal >= 1
+    return ('nntppercent', ok, 'alive=%s literal_logs=%d' % (alive, literal))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8606,6 +8647,7 @@ SCENARIOS = {
     'uucache': scenario_uucache,
     'heldidle': scenario_heldidle,
     'filepausepars': scenario_filepausepars,
+    'nntppercent': scenario_nntppercent,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8892,6 +8934,7 @@ SCENARIO_OPTIONS = {
     'quotafutureday': ['DailyQuota=100000'],
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'tasktypo': lambda: _next_minute_task_options(),
+    'nntppercent': lambda: _percent_server_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'uucache': ['DirectWrite=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'directrenamesubdir': ['DirectRename=yes', 'DirectWrite=yes', 'ParCheck=auto'],

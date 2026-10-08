@@ -164,6 +164,12 @@ NntpConnection* ServerPool::GetConnection(int level, NewsServer* wantServer, Raw
 {
 	Guard guard(m_connectionsMutex);
 
+	// an inactive server's level is -1 (a desired server disabled since)
+	if (level < 0)
+	{
+		return nullptr;
+	}
+
 	for (; level < (int)m_levels.size() && m_levels[level] > 0; level++)
 	{
 		NntpConnection* connection = LockedGetConnection(level, wantServer, ignoreServers);

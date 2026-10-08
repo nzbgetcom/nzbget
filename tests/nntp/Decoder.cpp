@@ -297,4 +297,25 @@ BOOST_AUTO_TEST_CASE(UuDecodeOutputBoundTest)
 	BOOST_CHECK_LE(outlen, (int)next.size() + 63);
 }
 
+BOOST_AUTO_TEST_CASE(UuDecodeShortLineTest)
+{
+	// a line shorter than its length character says ("M" = 45 bytes in 60
+	// characters, here 46): the decoder read the missing characters from past
+	// the line. They count as spaces (zero bits) now, the same as the full line.
+	auto decode = [](const std::string& line)
+	{
+		Decoder decoder;
+		std::string text = "begin 644 f.bin\r\n" + line + "\r\n";
+		std::vector<char> buffer(text.size() + 128, 'Z');
+		memcpy(buffer.data(), text.data(), text.size());
+		int outlen = decoder.DecodeBuffer(buffer.data(), (int)text.size());
+		return std::string(buffer.data(), outlen > 0 ? outlen : 0);
+	};
+	std::string shortLine = "M" + std::string(46, '!');
+	std::string fullLine = shortLine + std::string(14, ' ');
+	std::string got = decode(shortLine);
+	BOOST_CHECK_EQUAL(got.size(), 45);
+	BOOST_CHECK(got == decode(fullLine));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

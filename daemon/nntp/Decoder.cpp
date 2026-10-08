@@ -393,6 +393,20 @@ int Decoder::DecodeUx(const char* inbuf, int len, char* outbuf)
 			return 0;
 		}
 
+		// a line shorter than its length character says (cut, or trailing spaces
+		// trimmed in transit): padded with spaces, which decode as zero bits,
+		// instead of reading past the line
+		int dataLen = len;
+		while (dataLen > 0 && (inbuf[dataLen - 1] == '\n' || inbuf[dataLen - 1] == '\r')) dataLen--;
+		int needLen = 1 + 4 * ((effLen + 2) / 3);
+		char padded[1 + 4 * 22];
+		if (dataLen < needLen)
+		{
+			memset(padded, ' ', sizeof(padded));
+			memcpy(padded, inbuf, static_cast<size_t>(dataLen));
+			inbuf = padded;
+		}
+
 		const char* iptr = inbuf;
 		char* optr = outbuf;
 		for (++iptr; effLen > 0; iptr += 4, effLen -= 3)

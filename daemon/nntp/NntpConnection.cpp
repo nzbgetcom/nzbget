@@ -244,5 +244,6 @@ bool NntpConnection::Disconnect()
 void NntpConnection::ReportErrorAnswer(const char* msgPrefix, const char* answer)
 {
 	BString<1024> errStr(msgPrefix, m_newsServer->GetName(), m_newsServer->GetHost(), answer);
-	ReportError(errStr, nullptr, false, 0);
+	// the server's answer is in it: not a format
+	ReportError("%s", errStr, false, 0);
 }

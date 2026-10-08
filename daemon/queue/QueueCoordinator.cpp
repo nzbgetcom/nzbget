@@ -236,7 +236,8 @@ void QueueCoordinator::Run()
 				{
 					int desiredServerId = fileInfo->GetNzbInfo()->GetDesiredServerId();
 					NewsServer* desiredServer = g_ServerPool->GetServerById(desiredServerId);
-					if (desiredServer)
+					// a desired server disabled since has no level (-1): any server then
+					if (desiredServer && desiredServer->GetActive() && desiredServer->GetNormLevel() >= 0)
 					{
 						connection = g_ServerPool->GetConnection(desiredServer->GetNormLevel(), desiredServer, nullptr);
 					}
