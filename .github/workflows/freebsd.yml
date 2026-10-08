@@ -5,57 +5,157 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_ARCHS: "x86_64-bsd"
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'release debug' || 'release' }}
+  BUILD_ARCHS: "x86_64 aarch64"
+  BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
+  FREEBSD_RELEASE: "13.0"
 
 jobs:
-  build:
+  prepare-build-matrix:
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      archs: ${{ steps.matrix-vars.outputs.ARCHS }}
+      types: ${{ steps.matrix-vars.outputs.TYPES }}
+      build_date: ${{ steps.matrix-vars.outputs.BUILD_DATE }}
+    steps:
+
+    - name: Calculate matrix variables
+      id: matrix-vars
+      run: |
+        echo ARCHS=[\"$BUILD_ARCHS\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+        echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
+        echo "BUILD_DATE=$(date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
+
+  build-sysroot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Cache FreeBSD sysroot
+      id: cache-sysroot
+      uses: actions/cache@v4
+      with:
+        path: build/toolchains/freebsd
+        key: freebsd-sysroot-${{ matrix.arch }}-${{ env.FREEBSD_RELEASE }}-${{ hashFiles('toolchains/build-freebsd.sh') }}
+
+    - name: Build FreeBSD sysroot
+      if: steps.cache-sysroot.outputs.cache-hit != 'true'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xz-utils curl
+        bash toolchains/build-freebsd.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
+
+  build-bin:
+    needs: [prepare-build-matrix, build-sysroot]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJSON(needs.prepare-build-matrix.outputs.archs) }}
+        type: ${{ fromJSON(needs.prepare-build-matrix.outputs.types) }}
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Prepare freebsd build environment
+    - name: Install LLVM Clang 19 & tools
       run: |
-        sudo mkdir -p /build
-        sudo chown $USER:$USER /build
-        mkdir -p /build/freebsd
-        mkdir -p /build/lib
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v1.0/freebsd-sysroot.tar.gz -o /build/freebsd/sysroot.tar.gz
-        curl -L https://github.com/nzbgetcom/build-files/releases/download/v8.0/lib-x86_64-bsd.tar.gz -o /build/lib/lib.tar.gz
-        tar zxf /build/freebsd/sysroot.tar.gz -C /build/freebsd
-        tar zxf /build/lib/lib.tar.gz -C /build/lib
         sudo apt-get update
-        sudo apt-get install -y autoconf automake bc build-essential cmake cpio curl file git libtool pkg-config rsync unzip wget libtinfo6 clang-14 lld-14
+        sudo apt-get install -y clang-19 lld-19 llvm-19 xz-utils curl
 
-    - name: Build
-      run: bash linux/build-nzbget.sh bin installer ${{ env.BUILD_ARCHS }} ${{ env.BUILD_TYPES }} ${{ env.BUILD_TESTING }}
+    - name: Restore FreeBSD sysroot
+      uses: actions/cache/restore@v4
+      with:
+        path: build/toolchains/freebsd
+        key: freebsd-sysroot-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ hashFiles('toolchains/build-freebsd.sh') }}
+        fail-on-cache-miss: true
+
+    - name: Cache FetchContent dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/ci-freebsd${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/deps
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled binaries when toolchains, flags, or dependency configurations change.
+        key: deps-freebsd-${{ matrix.arch }}-${{ matrix.type }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/freebsd-llvm.cmake') }}
+
+    - name: Build & Package
+      run: |
+        bash platforms/freebsd/build.sh bin ${{ matrix.arch }} ${{ matrix.type }} ${{ env.BUILD_TESTING }}
 
     - name: Upload full build log on failure
       uses: actions/upload-artifact@v7
       if: failure()
       with:
-        name: nzbget-freebsd-build-log
-        path: build/*/build.log
+        name: nzbget-freebsd-${{ matrix.arch }}-${{ matrix.type }}-build-log
+        path: build/ci-freebsd*/*.log
         retention-days: 5
 
-    - name: Rename build artifacts
+    - name: Upload binary artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: nzbget-freebsd-bin-${{ matrix.arch }}-${{ matrix.type }}
+        path: build/dist/*.tar.gz
+        retention-days: 5
+
+  build-installer:
+    needs: [prepare-build-matrix, build-bin]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v6
+
+    - name: Download all binary artifacts
+      uses: actions/download-artifact@v8
+      with:
+        pattern: nzbget-freebsd-bin-*
+        path: artifacts
+
+    - name: Prepare binary archives for installer
+      run: |
+        mkdir -p build/dist
+        find artifacts -name "*.tar.gz" -exec cp {} build/dist/ \;
+
+    - name: Build installer packages
+      run: |
+        for TYPE in ${{ env.BUILD_TYPES }}; do
+          bash platforms/freebsd/build.sh installer all-arch $TYPE ${{ env.BUILD_TESTING }}
+        done
+
+    - name: Rename build artifacts for feature branches
       if: github.ref_name != 'main' && github.ref_name != 'develop'
       run: |
-        cd build
+        cd build/dist
         SUFFIX="-${GITHUB_REF_NAME/\//-}-bin-freebsd"
         for FILE in *.run; do
-          [ -f $FILE ] || continue
+          [ -f "$FILE" ] || continue
           NEW_FILE=${FILE/-bin-freebsd/$SUFFIX}
-          mv $FILE $NEW_FILE
+          mv "$FILE" "$NEW_FILE"
         done
+
+    - name: Delete intermediate binary artifacts
+      uses: geekyeggo/delete-artifact@v6
+      with:
+        name: nzbget-freebsd-bin-*
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       with:
         name: nzbget-freebsd-installers
-        path: build/*.run
+        path: build/dist/*.run
         retention-days: 5

@@ -6,5 +6,6 @@ Articles below provide detailed information on manual compilation of NZBGet for 
  - [Windows](docs/WINDOWS.md)
  - [macOS](docs/MACOS.md)
  - [Android](docs/ANDROID.md)
+ - [FreeBSD](docs/FREEBSD.md)
  - [Synology](synology/build-info.md) 
  - [QNAP](qnap/build-info.md)

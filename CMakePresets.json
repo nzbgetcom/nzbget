@@ -269,6 +269,7 @@
         "ANDROID_API_LEVEL": "21",
         "ENABLE_LTO": "OFF",
         "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
         "BUILD_DEPS_FROM_SOURCE": "ON"
       }
     },
@@ -285,6 +286,7 @@
         "ANDROID_API_LEVEL": "21",
         "ENABLE_LTO": "OFF",
         "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
         "BUILD_DEPS_FROM_SOURCE": "ON"
       }
     },
@@ -301,6 +303,7 @@
         "ANDROID_API_LEVEL": "21",
         "ENABLE_LTO": "OFF",
         "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
         "BUILD_DEPS_FROM_SOURCE": "ON"
       }
     },
@@ -317,6 +320,7 @@
         "ANDROID_API_LEVEL": "21",
         "ENABLE_LTO": "OFF",
         "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
         "BUILD_DEPS_FROM_SOURCE": "ON"
       }
     },
@@ -356,6 +360,64 @@
       "description": "Android x86 Debug CI build",
       "inherits": "ci-android-x86",
       "binaryDir": "${sourceDir}/build/ci-android-debug-x86",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ci-freebsd-x86_64",
+      "displayName": "CI FreeBSD x86_64",
+      "description": "FreeBSD x86_64 release build with LLVM Clang 19",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-freebsd-x86_64",
+      "toolchainFile": "${sourceDir}/toolchains/freebsd-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "FreeBSD",
+        "CMAKE_SYSTEM_PROCESSOR": "x86_64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "FREEBSD_ARCH": "x86_64",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
+        "CMAKE_EXE_LINKER_FLAGS": "-static",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-freebsd-aarch64",
+      "displayName": "CI FreeBSD aarch64",
+      "description": "FreeBSD aarch64 release build with LLVM Clang 19",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-freebsd-aarch64",
+      "toolchainFile": "${sourceDir}/toolchains/freebsd-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "FreeBSD",
+        "CMAKE_SYSTEM_PROCESSOR": "aarch64",
+        "CMAKE_BUILD_TYPE": "Release",
+        "FREEBSD_ARCH": "aarch64",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
+        "CMAKE_EXE_LINKER_FLAGS": "-static",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-freebsd-debug-x86_64",
+      "displayName": "CI FreeBSD Debug x86_64",
+      "description": "FreeBSD x86_64 Debug CI build",
+      "inherits": "ci-freebsd-x86_64",
+      "binaryDir": "${sourceDir}/build/ci-freebsd-debug-x86_64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ci-freebsd-debug-aarch64",
+      "displayName": "CI FreeBSD Debug aarch64",
+      "description": "FreeBSD aarch64 Debug CI build",
+      "inherits": "ci-freebsd-aarch64",
+      "binaryDir": "${sourceDir}/build/ci-freebsd-debug-aarch64",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -490,6 +552,26 @@
     {
       "name": "ci-android-debug-x86",
       "configurePreset": "ci-android-debug-x86",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-freebsd-x86_64",
+      "configurePreset": "ci-freebsd-x86_64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-freebsd-aarch64",
+      "configurePreset": "ci-freebsd-aarch64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-freebsd-debug-x86_64",
+      "configurePreset": "ci-freebsd-debug-x86_64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-freebsd-debug-aarch64",
+      "configurePreset": "ci-freebsd-debug-aarch64",
       "configuration": "Debug"
     }
   ],
