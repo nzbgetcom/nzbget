@@ -73,6 +73,29 @@ BOOST_AUTO_TEST_CASE(EscapePathForShellTest)
 	BOOST_CHECK(FileSystem::EscapePathForShell("") == "");
 }
 
+BOOST_AUTO_TEST_CASE(DeleteDirectoryDoesNotFollowSymlink)
+{
+	// a download folder holding only a link to a folder elsewhere: the link
+	// was followed, and that folder's empty subfolders and hidden files deleted
+	const fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-deldir-outside-%%%%-%%%%");
+	const fs::path scratchDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-deldir-scratch-%%%%-%%%%");
+	BOOST_REQUIRE(fs::create_directories(outsideDir / "empty"));
+	BOOST_REQUIRE(fs::create_directories(outsideDir / "hidden"));
+	BOOST_REQUIRE(FileSystem::SaveBufferIntoFile((outsideDir / "hidden" / ".dotfile").string().c_str(), "safe", 4));
+	BOOST_REQUIRE(fs::create_directory(scratchDir));
+	fs::create_directory_symlink(outsideDir, scratchDir / "escape");
+
+	FileSystem::DeleteDirectory(scratchDir.string().c_str());
+	const bool emptyKept = fs::exists(outsideDir / "empty");
+	const bool hiddenKept = fs::exists(outsideDir / "hidden" / ".dotfile");
+
+	fs::remove_all(scratchDir);
+	fs::remove_all(outsideDir);
+
+	BOOST_CHECK(emptyKept);
+	BOOST_CHECK(hiddenKept);
+}
+
 BOOST_AUTO_TEST_CASE(DeleteDirectoryWithContentDoesNotFollowNestedSymlink)
 {
 	const fs::path outsideDir = fs::temp_directory_path() / fs::make_unique_filename("nzbget-delete-outside-%%%%-%%%%");

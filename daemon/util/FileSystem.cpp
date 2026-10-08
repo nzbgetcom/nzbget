@@ -862,45 +862,6 @@ std::optional<std::string> FileSystem::GetFileExtension(std::string_view filenam
 	return std::string(filename.substr(extIdx));
 }
 
-/* Delete directory which is empty or contains only hidden files or directories (whose names start with dot) */
-bool FileSystem::DeleteDirectory(const char* dirFilename)
-{
-	if (RemoveDirectory(dirFilename))
-	{
-		return true;
-	}
-
-	// check if directory contains only hidden files (whose names start with dot)
-	{
-		DirBrowser dir(dirFilename);
-		while (const char* filename = dir.Next())
-		{
-			BString<1024> fullFilename("%s%c%s", dirFilename, PATH_SEPARATOR, filename);
-
-			// Recursivly remove empty folder, useful in case of abort with direct rename and hardlinking
-			if (DirectoryExists(fullFilename) && DeleteDirectory(fullFilename))
-			{
-				continue;
-			}
-
-			if (*filename != '.')
-			{
-				// calling RemoveDirectory to set correct errno
-				return RemoveDirectory(dirFilename);
-			}
-		}
-	} // make sure "DirBrowser dir" is destroyed (and has closed its handle) before we trying to delete the directory
-
-	CString errmsg;
-	if (!DeleteDirectoryWithContent(dirFilename, errmsg))
-	{
-		// calling RemoveDirectory to set correct errno
-		return RemoveDirectory(dirFilename);
-	}
-
-	return true;
-}
-
 namespace
 {
 enum class PathType
@@ -953,6 +914,54 @@ bool DeleteLink(const char* filename, PathType pathType)
 #endif
 	return FileSystem::DeleteFile(filename);
 }
+}
+
+/* Delete directory which is empty or contains only hidden files or directories (whose names start with dot) */
+bool FileSystem::DeleteDirectory(const char* dirFilename)
+{
+	if (RemoveDirectory(dirFilename))
+	{
+		return true;
+	}
+
+	// a link is never followed: the folder it points to isn't this one's to clean
+	PathType rootType = GetPathTypeNoFollow(dirFilename);
+	if (rootType == PathType::Link || rootType == PathType::DirectoryLink)
+	{
+		return false;
+	}
+
+	// check if directory contains only hidden files (whose names start with dot)
+	{
+		DirBrowser dir(dirFilename);
+		while (const char* filename = dir.Next())
+		{
+			BString<1024> fullFilename("%s%c%s", dirFilename, PATH_SEPARATOR, filename);
+
+			// Recursivly remove empty folder, useful in case of abort with direct rename and hardlinking
+			// lstat: a link to a folder elsewhere (from an archive) was followed and
+			// that folder's empty subfolders and hidden files deleted
+			if (GetPathTypeNoFollow(fullFilename) == PathType::Directory && DeleteDirectory(fullFilename))
+			{
+				continue;
+			}
+
+			if (*filename != '.')
+			{
+				// calling RemoveDirectory to set correct errno
+				return RemoveDirectory(dirFilename);
+			}
+		}
+	} // make sure "DirBrowser dir" is destroyed (and has closed its handle) before we trying to delete the directory
+
+	CString errmsg;
+	if (!DeleteDirectoryWithContent(dirFilename, errmsg))
+	{
+		// calling RemoveDirectory to set correct errno
+		return RemoveDirectory(dirFilename);
+	}
+
+	return true;
 }
 
 bool FileSystem::DeleteDirectoryWithContent(const char* dirFilename, CString& errmsg)
