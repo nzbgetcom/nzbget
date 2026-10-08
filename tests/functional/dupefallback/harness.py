@@ -8012,6 +8012,31 @@ def scenario_scriptparcheck(daemon, t):
     ok = runs == 2 and requested == 1 and h['Status'].startswith('SUCCESS')
     return ('scriptparcheck', ok, 'status=%s par=%s script_runs=%d requests=%d' % (h['Status'], h.get('ParStatus'), runs, requested))
 
+def scenario_urlschemes(daemon, t):
+    """Only http and https are fetched: appendurl with file:// (a local nzb
+    that exists) and gopher:// fails to fetch, and file:///... sent as nzb
+    content is not followed either. Asked for by the proxy's review."""
+    data = _payload(90_000, 9999)
+    pp = _place_copy(t, 'usA', data)
+    local = t.path('main', 'local.nzb')
+    with open(local, 'w') as f:
+        f.write(build_nzb(pp, 'local.bin', len(data), 100_000, set()))
+    api = daemon.wait_ready()
+    _rpc(daemon, 'appendurl', ['RelUSF.nzb', 'file://' + local, '', 0, False, False, 'usf', 0, 'SCORE', []])
+    _rpc(daemon, 'appendurl', ['RelUSG.nzb', 'gopher://127.0.0.1:%d/x' % daemon.rpc_port, '', 0, False, False, 'usg', 0, 'SCORE', []])
+    content = base64.standard_b64encode(('file://' + local).encode()).decode()
+    _rpc(daemon, 'append', ['RelUSC.nzb', content, '', 0, False, False, 'usc', 0, 'SCORE', []])
+    statuses = {}
+    for name in ('RelUSF', 'RelUSG', 'RelUSC'):
+        try:
+            statuses[name] = daemon.wait_history(api, name, timeout=60)['Status']
+        except RuntimeError:
+            statuses[name] = 'TIMEOUT'
+    downloaded = [r for r in t.find_files('main', 'dst') if r.endswith('local.bin')]
+    ok = all(st.startswith('FAILURE') for st in statuses.values()) and not downloaded
+    return ('urlschemes', ok, 'statuses=%s downloaded=%s' % (statuses, downloaded))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8385,6 +8410,7 @@ SCENARIOS = {
     'pathtraversalnzb': scenario_pathtraversalnzb,
     'pathtraversalarticle': scenario_pathtraversalarticle,
     'scriptparcheck': scenario_scriptparcheck,
+    'urlschemes': scenario_urlschemes,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
