@@ -760,6 +760,8 @@ class FakeNntp:
         self.alive = set(alive)
         self.delays = {}
         self.reply451 = set()
+        # message-id -> article body sent as is (a uuencoded part, for one)
+        self.bodies_by_id = {}
         self.stats = 0
         self.bodies = 0
         self.bare_ids = 0
@@ -803,7 +805,8 @@ class FakeNntp:
                             elif cmd == 'STAT':
                                 self.wfile.write(('223 0 <%s>\r\n' % mid).encode())
                             else:
-                                self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + FakeNntp.article(mid) + b'.\r\n')
+                                body = outer.bodies_by_id.get(mid) or FakeNntp.article(mid)
+                                self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + body + b'.\r\n')
                         elif cmd == 'GROUP':
                             self.wfile.write(('211 1 1 1 %s\r\n' % arg).encode())
                         elif cmd == 'MODE':
@@ -8068,6 +8071,42 @@ def scenario_nzbentities(daemon, t):
     return ('nzbentities', ok, 'statuses=%s leaked=%d' % (statuses, leaked))
 
 
+def _uu_parts(data, name, parts):
+    """``data`` uuencoded and cut into ``parts`` article bodies (lines of 45
+    bytes; "begin" in the first, "end" in the last), dot-stuffed for NNTP."""
+    import binascii
+    lines = [binascii.b2a_uu(data[i:i + 45]).rstrip(b'\n') for i in range(0, len(data), 45)]
+    per = -(-len(lines) // parts)
+    bodies = []
+    for k in range(parts):
+        chunk = lines[k * per:(k + 1) * per]
+        if k == 0:
+            chunk = [b'begin 644 ' + name.encode()] + chunk
+        if k == parts - 1:
+            chunk = chunk + [b'`', b'end']
+        bodies.append(b''.join((b'.' + l if l.startswith(b'.') else l) + b'\r\n' for l in chunk))
+    return bodies
+
+
+def scenario_uucache(daemon, t):
+    """A uuencoded file of three articles with the article cache on and
+    DirectWrite=no: cached articles were written at their segment offset,
+    which is 0 for uuencoded ones (only yEnc tells where a part goes), so
+    each overwrote the one before. The file comes out whole now."""
+    data = _payload(45 * 300, 10202)
+    ids = ['uu%d@x' % i for i in range(3)]
+    for mid, body in zip(ids, _uu_parts(data, 'uu.bin', 3)):
+        daemon.fake_nntp.bodies_by_id[mid] = body
+    daemon.fake_nntp.alive = set(ids)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelUU', _fake_nzb_ids(ids, len(data), name='uu.bin').decode(), False, 'uu-key', 100)
+    h = daemon.wait_history(api, 'RelUU', timeout=60)
+    files = [r for r in t.find_files('main', 'dst') if r.endswith('uu.bin')]
+    got = t.read_file(files[0]) if files else b''
+    ok = h['Status'].startswith('SUCCESS') and got == data
+    return ('uucache', ok, 'status=%s files=%s size=%d/%d identical=%s' % (h['Status'], files, len(got), len(data), got == data))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8443,6 +8482,7 @@ SCENARIOS = {
     'scriptparcheck': scenario_scriptparcheck,
     'urlschemes': scenario_urlschemes,
     'nzbentities': scenario_nzbentities,
+    'uucache': scenario_uucache,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8727,6 +8767,7 @@ SCENARIO_OPTIONS = {
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
+    'uucache': ['DirectWrite=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
     'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],
@@ -8855,7 +8896,7 @@ SCENARIO_NEWZNAB = {'dupesearchbareurl', 'dupesearchgzip', 'dupesearchrestart', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'uucache', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

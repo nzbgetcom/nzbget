@@ -122,9 +122,11 @@ bool ArticleWriter::Start(Decoder::EFormat format, const char* filename, int64 f
 		}
 	}
 
-	// allocate cache buffer
+	// allocate cache buffer; yEnc only: a cached article is written at its offset,
+	// and only yEnc tells it (uuencoded parts all have 0 and overwrote each other,
+	// uncached they're appended in order)
 	if (g_Options->GetArticleCache() > 0 && !g_Options->GetRawArticle() &&
-		(!g_Options->GetDirectWrite() || m_format == Decoder::efYenc) &&
+		m_format == Decoder::efYenc &&
 		!IsDupeFallbackArticle())
 	{
 		m_articleData = g_ArticleCache->Alloc(m_articleSize);
