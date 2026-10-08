@@ -7661,6 +7661,38 @@ def scenario_urlredirects(daemon, t):
     return ('urlredirects', ok, 'statuses=%s' % statuses)
 
 
+def scenario_urlclosed(daemon, t):
+    """A server that closes the connection without answering: the first-line
+    check read the line buffer instead of the read's result, so the "closed by
+    remote host" case (a connection error) was never taken, and the url
+    failed with "URL ... failed: " and whatever the buffer held."""
+    srv = socket.socket()
+    srv.bind(('127.0.0.1', 0))
+    srv.listen(16)
+    port = srv.getsockname()[1]
+
+    def serve():
+        while True:
+            try:
+                conn, _ = srv.accept()
+            except OSError:
+                return
+            conn.recv(65536)
+            conn.close()
+    threading.Thread(target=serve, daemon=True).start()
+    api = daemon.wait_ready()
+    _rpc(daemon, 'appendurl', ['RelUC.nzb', 'http://127.0.0.1:%d/x.nzb' % port, '', 0, False, False, 'uc', 0, 'SCORE', []])
+    try:
+        status = daemon.wait_history(api, 'RelUC', timeout=90)['Status']
+    except RuntimeError:
+        status = 'TIMEOUT'
+    srv.close()
+    closed = _grep_log(t, 'Connection closed by remote host')
+    garbage = _grep_log(t, 'RelUC.nzb failed: ')
+    ok = status.startswith('FAILURE') and closed >= 1 and garbage == 0
+    return ('urlclosed', ok, 'status=%s closed_logs=%d failed_logs=%d' % (status, closed, garbage))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8021,6 +8053,7 @@ SCENARIOS = {
     'tasktypo': scenario_tasktypo,
     'scriptdirlist': scenario_scriptdirlist,
     'urlredirects': scenario_urlredirects,
+    'urlclosed': scenario_urlclosed,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8305,6 +8338,7 @@ SCENARIO_OPTIONS = {
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
+    'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
     'scanlongcommand': ['Extensions=longscan'],
     'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],

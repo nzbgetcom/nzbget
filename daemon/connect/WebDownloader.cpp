@@ -298,7 +298,7 @@ WebDownloader::EStatus WebDownloader::DownloadHeaders()
 
 		if (firstLine)
 		{
-			Status = CheckResponse(lineBuf);
+			Status = CheckResponse(line);
 			if (Status != adRunning)
 			{
 				break;
