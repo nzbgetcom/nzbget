@@ -24,6 +24,8 @@ set -o errexit
 
 NZBGET_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
+export MACOSX_DEPLOYMENT_TARGET="12.0"
+
 # Unpackers versions (nzbgetcom/7zip and nzbgetcom/unrar release tags)
 . "$NZBGET_ROOT/unpackers.env"
 
