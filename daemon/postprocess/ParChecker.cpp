@@ -118,7 +118,9 @@ Par2::Result Repairer::PreProcess(const std::string& parFilename)
 
 	if (g_Options->GetParScan() == Options::psFull)
 	{
-		BString<1024> wildcardParam(parFilename.c_str(), 1024);
+		// the path is the text, not a format (a "%" in a name)
+		BString<1024> wildcardParam;
+		wildcardParam.Set(parFilename.c_str());
 		char* basename = FileSystem::BaseFileName(wildcardParam);
 		if (basename != wildcardParam && strlen(basename) > 0)
 		{

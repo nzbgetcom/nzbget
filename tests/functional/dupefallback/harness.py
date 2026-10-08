@@ -8302,6 +8302,21 @@ def scenario_directunpackkeepnointer(daemon, t):
     return ('directunpackkeepnointer',) + tuple(r[1:])
 
 
+def scenario_parscanpercent(daemon, t):
+    """ParScan=full with "%" in the download's name: the par2 file's path was
+    used as a printf format for the scan wildcard - a garbled path (the
+    par-check couldn't find its files) or a crash. The repair works now."""
+    data = _payload(400_000, 10811)
+    name = 'pc%s%d%x.bin'
+    pp = _place_copy(t, 'ppA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'Rel%s%dPS', build_nzb_with_par2(t, pp, name, data, 100_000, set()), False, 'ps-key', 100)
+    h = daemon.wait_history(api, 'Rel%s%dPS', timeout=120)
+    alive = t.procs[-1].poll() is None
+    ok = alive and h.get('ParStatus') == 'SUCCESS'
+    return ('parscanpercent', ok, 'alive=%s status=%s par=%s' % (alive, h['Status'], h.get('ParStatus')))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8683,6 +8698,7 @@ SCENARIOS = {
     'nntppercent': scenario_nntppercent,
     'joinequalpieces': scenario_joinequalpieces,
     'directunpackkeepnointer': scenario_directunpackkeepnointer,
+    'parscanpercent': scenario_parscanpercent,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8958,6 +8974,7 @@ SCENARIO_OPTIONS = {
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'jointwosets': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z'],
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
+    'parscanpercent': ['ParCheck=force', 'ParScan=full'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
