@@ -291,9 +291,13 @@ void QueueCoordinator::Run()
 			// notifications from 'WorkState' and we also have periodical work to do here
 			waitInterval = std::min(waitInterval * 2, 2000);
 
+			// woken by WakeUp (new work), not by m_hasMoreJobs: queued articles that
+			// can't start (downloads held while post-processing pauses the queue, no
+			// server connection) kept it true, and the loop spun without sleeping
 			std::unique_lock<std::mutex> lk(m_waitMutex);
 			m_waitCond.wait_for(lk, std::chrono::milliseconds(waitInterval),
-								[&] { return m_hasMoreJobs || IsStopped(); });
+								[&] { return m_wakeUp || IsStopped(); });
+			m_wakeUp = false;
 		}
 		else
 		{
@@ -334,6 +338,7 @@ void QueueCoordinator::WakeUp()
 	// Resume Run()
 	std::lock_guard<std::mutex> guard(m_waitMutex);
 	m_hasMoreJobs = true;
+	m_wakeUp = true;
 	m_waitCond.notify_all();
 }
 

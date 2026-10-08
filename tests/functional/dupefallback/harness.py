@@ -8107,6 +8107,37 @@ def scenario_uucache(daemon, t):
     return ('uucache', ok, 'status=%s files=%s size=%d/%d identical=%s' % (h['Status'], files, len(got), len(data), got == data))
 
 
+def _cpu_seconds(pid):
+    with open('/proc/%d/stat' % pid) as f:
+        fields = f.read().rsplit(')', 1)[1].split()
+    return (int(fields[11]) + int(fields[12])) / os.sysconf('SC_CLK_TCK')
+
+
+def scenario_heldidle(daemon, t):
+    """ScriptPauseQueue=yes while a post-processing script runs, with another
+    download queued: the queue is held, its articles can't start, and the
+    coordinator's stand-by wait returned at once because "more jobs" stayed
+    true - a core at 100 % for as long as the script ran. It sleeps now."""
+    a = _payload(90_000, 10303)
+    b = _payload(400_000, 10304)
+    pa = _place_copy(t, 'hiA', a)
+    pb = _place_copy(t, 'hiB', b)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelHI1', build_nzb(pa, 'hi1.bin', len(a), 100_000, set()), False, 'hi-key1', 100)
+    deadline = time.time() + 60
+    while time.time() < deadline and _grep_log(t, 'Executing post-process-script slowpost for RelHI1') == 0:
+        time.sleep(0.5)
+    daemon.append(api, 'RelHI2', build_nzb(pb, 'hi2.bin', len(b), 100_000, set()), False, 'hi-key2', 100)
+    time.sleep(2)
+    pid = t.procs[-1].pid
+    before = _cpu_seconds(pid)
+    time.sleep(10)
+    used = _cpu_seconds(pid) - before
+    held = any(g['NZBName'] == 'RelHI2' and g.get('DownloadedSizeMB', 0) == 0 for g in api.listgroups())
+    ok = held and used < 2.0
+    return ('heldidle', ok, 'second_held=%s cpu_seconds_in_10s=%.1f' % (held, used))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8483,6 +8514,7 @@ SCENARIOS = {
     'urlschemes': scenario_urlschemes,
     'nzbentities': scenario_nzbentities,
     'uucache': scenario_uucache,
+    'heldidle': scenario_heldidle,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8768,6 +8800,7 @@ SCENARIO_OPTIONS = {
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'uucache': ['DirectWrite=no', 'ArticleCache=64', 'ArticleRetries=0'],
+    'heldidle': ['ScriptPauseQueue=yes', 'Extensions=slowpost'],
     'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
     'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],
@@ -8882,6 +8915,7 @@ SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
 # extensions a scenario installs into ScriptDir before the daemon starts
 SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
+                       'heldidle': {'slowpost.py': SLOW_POST_EXTENSION},
                        'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'scriptdirlist': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'scriptparcheck': {'askpar.py': PARCHECK_POST_EXTENSION},

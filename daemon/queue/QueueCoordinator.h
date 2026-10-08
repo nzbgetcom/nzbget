@@ -107,6 +107,8 @@ private:
 	int m_serverConfigGeneration = 0;
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;
+	// set by WakeUp (under m_waitMutex): ends the stand-by wait
+	bool m_wakeUp = false;
 
 	bool GetNextArticle(DownloadQueue* downloadQueue, FileInfo* &fileInfo, ArticleInfo* &articleInfo);
 	bool GetNextFirstArticle(NzbInfo* nzbInfo, FileInfo* &fileInfo, ArticleInfo* &articleInfo);
