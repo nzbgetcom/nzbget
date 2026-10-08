@@ -7592,6 +7592,75 @@ def scenario_scriptdirlist(daemon, t):
     return ('scriptdirlist', ok, 'scanmark=%s junk=%s scripts2=%s errors=%d' % (params.get('scanmark'), junk, second, errors))
 
 
+def scenario_urlredirects(daemon, t):
+    """URL downloads through three kinds of request:
+    - a relative redirect with "://" in its query (/get?u=https://...) was taken
+      for an absolute URL with the protocol "/get?u=https" and failed;
+    - a protocol-relative redirect (//host:port/path) was requested as a path on
+      the old host;
+    - a url of about 1,500 characters lost "HTTP/1.0" and its line end in a
+      1,024-byte buffer, a malformed request.
+    All three fetch their nzb now."""
+    import http.server
+    nzbs = {}
+    for tag, seed in (('A', 9191), ('B', 9192), ('C', 9193)):
+        data = _payload(90_000, seed)
+        pp = _place_copy(t, 'ur' + tag, data)
+        nzbs[tag] = build_nzb(pp, 'url%s.bin' % tag, len(data), 100_000, set()).encode()
+    port_box = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            path = self.path
+            if path == '/a':
+                self._redirect('/get?u=https://example.invalid/x.nzb')
+            elif path.startswith('/get?u='):
+                self._nzb('A')
+            elif path == '/b':
+                self._redirect('//127.0.0.1:%d/other/b.nzb' % port_box[0])
+            elif path == '/other/b.nzb':
+                self._nzb('B')
+            elif path.startswith('/long?'):
+                self._nzb('C')
+            else:
+                self.send_response(404)
+                self.end_headers()
+
+        def _redirect(self, location):
+            self.send_response(302)
+            self.send_header('Location', location)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+        def _nzb(self, tag):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/x-nzb')
+            self.send_header('Content-Length', str(len(nzbs[tag])))
+            self.end_headers()
+            self.wfile.write(nzbs[tag])
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    port_box.append(srv.server_address[1])
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = 'http://127.0.0.1:%d' % port_box[0]
+    api = daemon.wait_ready()
+    urls = {'RelURA': base + '/a', 'RelURB': base + '/b', 'RelURC': base + '/long?sig=' + 'q' * 1500}
+    for name, url in urls.items():
+        _rpc(daemon, 'appendurl', [name + '.nzb', url, '', 0, False, False, name.lower(), 0, 'SCORE', []])
+    statuses = {}
+    for name in urls:
+        try:
+            statuses[name] = daemon.wait_history(api, name, timeout=60)['Status']
+        except RuntimeError:
+            statuses[name] = 'TIMEOUT'
+    srv.shutdown()
+    ok = all(st.startswith('SUCCESS') for st in statuses.values())
+    return ('urlredirects', ok, 'statuses=%s' % statuses)
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7951,6 +8020,7 @@ SCENARIOS = {
     'feedpreviewparallel': scenario_feedpreviewparallel,
     'tasktypo': scenario_tasktypo,
     'scriptdirlist': scenario_scriptdirlist,
+    'urlredirects': scenario_urlredirects,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,

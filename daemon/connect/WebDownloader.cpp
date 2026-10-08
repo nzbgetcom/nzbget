@@ -254,7 +254,8 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 void WebDownloader::SendHeaders(URL *url)
 {
 	// retrieve file
-	m_connection->WriteLine(BString<1024>("GET %s HTTP/1.0\r\n", url->GetResource()));
+	// not cut to a fixed size: a long (signed) url lost its "HTTP/1.0" and line end
+	m_connection->WriteLine(CString::FormatStr("GET %s HTTP/1.0\r\n", url->GetResource()));
 	m_connection->WriteLine(BString<1024>("User-Agent: nzbget/%s\r\n", Util::VersionRevision()));
 
 	if ((!strcasecmp(url->GetProtocol(), "http") && (url->GetPort() == 80 || url->GetPort() == 0)) ||
@@ -510,13 +511,20 @@ void WebDownloader::ParseFilename(const char* contentDisposition)
 void WebDownloader::ParseRedirect(const char* location)
 {
 	const char* newLocation = location;
-	BString<1024> urlBuf;
+	CString urlBuf;
 	URL newUrl(newLocation);
-	if (!newUrl.IsValid())
+	if (!newUrl.IsValid() && !strncmp(location, "//", 2))
+	{
+		// protocol-relative: another host, same protocol
+		URL oldUrl(m_url);
+		urlBuf.Format("%s:%s", oldUrl.GetProtocol(), location);
+		newLocation = urlBuf;
+	}
+	else if (!newUrl.IsValid())
 	{
 		// redirect within host
 
-		BString<1024> resource;
+		CString resource;
 		URL oldUrl(m_url);
 
 		if (*location == '/')

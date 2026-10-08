@@ -1840,6 +1840,20 @@ void URL::ParseUrl()
 		return;
 	}
 
+	// a scheme is letters, digits, "+", "-" and "."; a "://" further on (a
+	// relative "/get?u=https://...") doesn't make an absolute URL
+	if (protEnd == m_address || !isalpha((unsigned char)m_address[0]))
+	{
+		return;
+	}
+	for (const char* p = m_address; p < protEnd; p++)
+	{
+		if (!isalnum((unsigned char)*p) && !strchr("+-.", *p))
+		{
+			return;
+		}
+	}
+
 	m_protocol.Set(m_address, (int)(protEnd - m_address));
 
 	char* hostStart = protEnd + 3;
