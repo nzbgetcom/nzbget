@@ -327,8 +327,10 @@ void ServerPool::CloseUnusedConnections()
 	// close all opened connections on levels not having any in-use connections
 	for (int level = 0; level <= m_maxNormLevel; level++)
 	{
-		// check if we have in-use connections on the level
+		// check if we have in-use connections on the level; the hold time counts
+		// from the most recently freed open connection (never used ones don't count)
 		bool hasInUseConnections = false;
+		bool hasOpenConnections = false;
 		int inactiveTime = 0;
 		for (PooledConnection* connection : &m_connections)
 		{
@@ -339,20 +341,21 @@ void ServerPool::CloseUnusedConnections()
 					hasInUseConnections = true;
 					break;
 				}
-				else
+				else if (connection->GetStatus() == Connection::csConnected)
 				{
 					int tdiff = (int)(curtime - connection->GetFreeTime());
-					if (tdiff > inactiveTime)
+					if (!hasOpenConnections || tdiff < inactiveTime)
 					{
 						inactiveTime = tdiff;
 					}
+					hasOpenConnections = true;
 				}
 			}
 		}
 
 		// if there are no in-use connections on the level and the hold time out has
 		// expired - close all connections of the level.
-		if (!hasInUseConnections && inactiveTime > CONNECTION_HOLD_SECODNS)
+		if (!hasInUseConnections && hasOpenConnections && inactiveTime > CONNECTION_HOLD_SECODNS)
 		{
 			for (PooledConnection* connection : &m_connections)
 			{

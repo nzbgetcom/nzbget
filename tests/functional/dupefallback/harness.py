@@ -667,6 +667,8 @@ class RewritingNntpProxy:
         self.upstream_port = upstream_port
         self.old, self.new = old, new
         self.rewritten = 0
+        self.accepted = 0
+        self.closed = 0
         self.srv = socket.socket()
         self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.srv.bind(('127.0.0.1', listen_port))
@@ -679,6 +681,7 @@ class RewritingNntpProxy:
                 client, _ = self.srv.accept()
             except OSError:
                 return
+            self.accepted += 1
             upstream = socket.create_connection(('127.0.0.1', self.upstream_port))
             threading.Thread(target=self._pipe, args=(client, upstream, False), daemon=True).start()
             threading.Thread(target=self._pipe, args=(upstream, client, True), daemon=True).start()
@@ -696,6 +699,8 @@ class RewritingNntpProxy:
         except OSError:
             pass
         finally:
+            if not rewrite:
+                self.closed += 1
             for sock in (src, dst):
                 try:
                     sock.shutdown(socket.SHUT_RDWR)
@@ -7378,6 +7383,26 @@ def scenario_quotafutureday(daemon, t):
     return ('quotafutureday', ok, 'moved=%d alive=%s status=%s' % (moved, alive, h['Status']))
 
 
+def scenario_connhold(daemon, t):
+    """Idle connections are held for 5 seconds before they're closed. The
+    hold took the longest idle time of a level's connections, and a connection
+    never used counts as idle since 1970: whenever none was in use, all were
+    closed at once (a download soon after logged in again). Now the
+    connection stays open 2 seconds after a one-article download and is
+    closed once the hold is over."""
+    data = _payload(90_000, 8686)
+    pa = _place_copy(t, 'chA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelCH1', build_nzb(pa, 'first.bin', len(data), 100_000, set()), False, 'ch-key1', 100)
+    h = daemon.wait_history(api, 'RelCH1', timeout=60)
+    time.sleep(2)
+    open_held = daemon.proxy.accepted - daemon.proxy.closed
+    time.sleep(8)
+    open_after = daemon.proxy.accepted - daemon.proxy.closed
+    ok = h['Status'].startswith('SUCCESS') and open_held >= 1 and open_after == 0
+    return ('connhold', ok, 'status=%s open 2s after=%d 10s after=%d (accepted=%d)' % (
+        h['Status'], open_held, open_after, daemon.proxy.accepted))
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7729,6 +7754,7 @@ SCENARIOS = {
     'yencrangefar': scenario_yencrangefar,
     'yencrangeshort': scenario_yencrangeshort,
     'quotafutureday': scenario_quotafutureday,
+    'connhold': scenario_connhold,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8091,7 +8117,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'yencrangefar': (b'begin=1000001 end=1500000', b'begin=9000001 end=9500000'),
-                          'yencrangeshort': (b'begin=1000001 end=1500000', b'begin=1000001 end=1000100'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
+                          'yencrangeshort': (b'begin=1000001 end=1500000', b'begin=1000001 end=1000100'),
+                          'connhold': (b'\x00no-such\x00', b'\x00no-such\x00'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
