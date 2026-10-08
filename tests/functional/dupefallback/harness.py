@@ -8156,6 +8156,42 @@ def scenario_filepausepars(daemon, t):
     return ('filepausepars', ok, 'files=%d allpars=%s extrapars=%s' % (len(ids), allpars, extra))
 
 
+def scenario_mergefinished(daemon, t):
+    """GroupMerge of a group with a file already downloaded: the merge set the
+    category and rebuilt the source's own directory, so the finished file
+    stayed there - the merged group's par-check and unpack never saw it and
+    the folder was left behind. It moves to the merged group's folder now."""
+    a = _payload(90_000, 10506)
+    b1 = _payload(30_000, 10507)
+    b2 = _payload(90_000, 10508)
+    for rel, data in (('mfA/a.bin', a), ('mfB/b1.bin', b1), ('mfB/b2.bin', b2)):
+        t.write_file(os.path.join('data', rel), data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelMFA', build_multi_nzb([('mfA/a.bin', 'a.bin', len(a), 100_000, set())]), True, 'mf-a', 100)
+    daemon.append(api, 'RelMFB', build_multi_nzb([('mfB/b1.bin', 'b1.bin', len(b1), 100_000, set()),
+                                                  ('mfB/b2.bin', 'b2.bin', len(b2), 100_000, set())]), True, 'mf-b', 100)
+    time.sleep(1)
+    groups = {g['NZBName']: g for g in api.listgroups()}
+    gid_a, gid_b = groups['RelMFA']['NZBID'], groups['RelMFB']['NZBID']
+    files_b = _rpc(daemon, 'listfiles', [0, 0, gid_b]).get('result', [])
+    b1_id = next(f['ID'] for f in files_b if 'b1' in f['Filename'])
+    _rpc(daemon, 'editqueue', ['FileResume', '', [b1_id]])
+    deadline = time.time() + 60
+    while time.time() < deadline and len(_rpc(daemon, 'listfiles', [0, 0, gid_b]).get('result', [])) > 1:
+        time.sleep(0.5)
+    merged = _rpc(daemon, 'editqueue', ['GroupMerge', '', [gid_a, gid_b]]).get('result')
+    _rpc(daemon, 'editqueue', ['GroupResume', '', [gid_a]])
+    h = daemon.wait_history(api, 'RelMFA', timeout=90)
+    found = {}
+    for rel in t.find_files('main', 'dst'):
+        found.setdefault(os.path.basename(rel), []).append(rel)
+    dest_dir = os.path.dirname(found.get('a.bin', [''])[0])
+    together = all(os.path.dirname(found.get(n, [''])[0]) == dest_dir for n in ('a.bin', 'b1.bin', 'b2.bin'))
+    whole = together and t.read_file(found['b1.bin'][0]) == b1
+    ok = merged is True and h['Status'].startswith('SUCCESS') and whole
+    return ('mergefinished', ok, 'merged=%s status=%s files=%s' % (merged, h['Status'], {k: v for k, v in found.items()}))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8534,6 +8570,7 @@ SCENARIOS = {
     'uucache': scenario_uucache,
     'heldidle': scenario_heldidle,
     'filepausepars': scenario_filepausepars,
+    'mergefinished': scenario_mergefinished,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,

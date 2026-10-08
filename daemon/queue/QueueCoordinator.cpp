@@ -2049,9 +2049,16 @@ bool QueueCoordinator::MergeQueueEntries(DownloadQueue* downloadQueue, NzbInfo* 
 		return false;
 	}
 
-	// set new dest directory, new category and move downloaded files to new dest directory
-	srcNzbInfo->SetFilename(srcNzbInfo->GetFilename());
-	SetQueueEntryCategory(downloadQueue, srcNzbInfo, destNzbInfo->GetCategory());
+	// the files downloaded so far move to the destination's directory: a category
+	// change rebuilt the source's own directory, so they stayed where the merged
+	// group never looks (par-check and unpack missed them)
+	BString<1024> oldDestDir = srcNzbInfo->GetDestDir();
+	srcNzbInfo->SetCategory(destNzbInfo->GetCategory());
+	srcNzbInfo->SetDestDir(destNzbInfo->GetDestDir());
+	if (strcmp(oldDestDir, srcNzbInfo->GetDestDir()))
+	{
+		ArticleWriter::MoveCompletedFiles(srcNzbInfo, oldDestDir);
+	}
 
 	// reattach file items to new NZBInfo-object
 	for (std::unique_ptr<FileInfo>& fileInfo : *srcNzbInfo->GetFileList())
