@@ -7552,6 +7552,46 @@ def scenario_feedpreviewparallel(daemon, t):
     return ('feedpreviewparallel', ok, 'previews=%s' % results)
 
 
+def _next_minute_task_options():
+    at = time.localtime(time.time() + 60)
+    return ['Task1.Time=%02d:%02d' % (at.tm_hour, at.tm_min), 'Task1.Command=unpausedownlaod']
+
+
+def scenario_tasktypo(daemon, t):
+    """A misspelled Task1.Command (unpausedownlaod) was logged as an invalid
+    value and then became the first command, pausedownload: once the user
+    resumed after the configuration error, the task paused downloads at its
+    time every day. The task is skipped now."""
+    api = daemon.wait_ready()
+    _rpc(daemon, 'resume', [])
+    resumed = not _rpc(daemon, 'status', []).get('result', {}).get('DownloadPaused')
+    time.sleep(75)
+    paused = _rpc(daemon, 'status', []).get('result', {}).get('DownloadPaused')
+    errors = _grep_log(t, 'Invalid value for option "Task1.Command"')
+    ok = resumed and not paused and errors >= 1
+    return ('tasktypo', ok, 'resumed=%s paused_after_task_time=%s invalid_logs=%d' % (resumed, paused, errors))
+
+
+def scenario_scriptdirlist(daemon, t):
+    """ScriptDir with two folders (scripts;scripts2, relative to MainDir): the
+    whole value was made absolute and created as one path, a junk folder
+    "scripts;scripts2" in MainDir, and the second folder was taken relative to
+    the working directory. Each folder is resolved and created on its own now,
+    and an extension in the first one still runs."""
+    data = _payload(90_000, 9090)
+    pp = _place_copy(t, 'sdA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelSD', build_nzb(pp, 'sd.bin', len(data), 100_000, set()), False, 'sd-key', 100)
+    h = daemon.wait_history(api, 'RelSD', timeout=60)
+    params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
+    main = t.path('main')
+    junk = [d for d in os.listdir(main) if ';' in d or ',' in d]
+    second = os.path.isdir(os.path.join(main, 'scripts2'))
+    errors = _grep_log(t, 'Invalid value for option "ScriptDir"')
+    ok = params.get('scanmark') == 'yes' and not junk and second and errors == 0
+    return ('scriptdirlist', ok, 'scanmark=%s junk=%s scripts2=%s errors=%d' % (params.get('scanmark'), junk, second, errors))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7909,6 +7949,8 @@ SCENARIOS = {
     'innerarchivekeep': scenario_innerarchivekeep,
     'innerarchivekeepdirect': scenario_innerarchivekeepdirect,
     'feedpreviewparallel': scenario_feedpreviewparallel,
+    'tasktypo': scenario_tasktypo,
+    'scriptdirlist': scenario_scriptdirlist,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8191,6 +8233,8 @@ SCENARIO_OPTIONS = {
     'yencrangeshort': ['DupeArticleFallback=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'quotafutureday': ['DailyQuota=100000'],
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
+    'tasktypo': lambda: _next_minute_task_options(),
+    'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'scanlongcommand': ['Extensions=longscan'],
     'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
@@ -8297,6 +8341,7 @@ SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
 SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
                        'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
+                       'scriptdirlist': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'scanlongcommand': {'longscan.py': LONG_COMMAND_EXTENSION}}
 
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
@@ -8359,7 +8404,9 @@ def main():
             rewrite = SCENARIO_REWRITE_PROXY.get(name)
             delay = SCENARIO_DELAY_PROXY.get(name)
             first_fail = SCENARIO_FIRST_FAIL_PROXY.get(name)
-            options = list(SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS))
+            options = SCENARIO_OPTIONS.get(name, DEFAULT_OPTIONS)
+            # a function gives options that depend on the start time
+            options = list(options() if callable(options) else options)
             nserv_port = nntp
             proxy_port = None
             if flaky or corrupt or rewrite or delay or first_fail:

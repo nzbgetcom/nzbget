@@ -592,6 +592,7 @@ public:
 
 private:
 	void CheckDirs();
+	void CheckScriptDir();
 
 	OptEntries m_optEntries;
 	Mutex m_optEntriesMutex;

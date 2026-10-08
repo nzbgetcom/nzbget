@@ -563,6 +563,39 @@ void Options::CheckDir(CString& dir, const char* optionName,
 	}
 }
 
+// ScriptDir may list several folders: each is made absolute and created on
+// its own (as one path, "a;b" created junk folders such as "a;")
+void Options::CheckScriptDir()
+{
+	const char* value = GetOption(SCRIPTDIR.data());
+	if (m_noDiskAccess || Util::EmptyStr(value) || !strpbrk(value, ",;"))
+	{
+		CheckDir(m_scriptDir, SCRIPTDIR.data(), m_mainDir, true, true);
+		return;
+	}
+
+	CString list = value;
+	CString result;
+	Tokenizer tok(list, ",;");
+	while (const char* item = tok.Next())
+	{
+		SetOption(SCRIPTDIR.data(), item);
+		CString dir;
+		CheckDir(dir, SCRIPTDIR.data(), m_mainDir, true, true);
+		if (!dir.Empty())
+		{
+			if (!result.Empty())
+			{
+				result.Append(";");
+			}
+			result.Append(dir);
+		}
+	}
+
+	SetOption(SCRIPTDIR.data(), result);
+	m_scriptDir = *result;
+}
+
 void Options::CheckDirs()
 {
 	m_mainDir = GetOption(MAINDIR.data());
@@ -572,7 +605,7 @@ void Options::CheckDirs()
 	CheckDir(m_tempDir, TEMPDIR.data(), m_mainDir, false, true);
 	CheckDir(m_queueDir, QUEUEDIR.data(), m_mainDir, false, true);
 	CheckDir(m_webDir, WEBDIR.data(), nullptr, true, false);
-	CheckDir(m_scriptDir, SCRIPTDIR.data(), m_mainDir, true, true);
+	CheckScriptDir();
 	CheckDir(m_nzbDir, NZBDIR.data(), m_mainDir, false, true);
 
 	m_mainDirPath = fs::u8path(*m_mainDir);
@@ -723,7 +756,7 @@ void Options::InitOptions()
 
 	const char* ParCheckNames[] = { "auto", "always", "force", "manual" };
 	const int ParCheckValues[] = { pcAuto, pcAlways, pcForce, pcManual };
-	const int ParCheckCount = 6;
+	const int ParCheckCount = (int)std::size(ParCheckNames);
 	m_parCheck = (EParCheck)ParseEnumValue(PARCHECK.data(), ParCheckCount, ParCheckNames, ParCheckValues);
 
 	const char* ParScanNames[] = { "limited", "extended", "full", "dupe" };
@@ -767,7 +800,7 @@ void Options::InitOptions()
 
 	const char* FileNamingNames[] = { "auto", "article", "nzb" };
 	const int FileNamingValues[] = { nfAuto, nfArticle, nfNzb };
-	const int FileNamingCount = 4;
+	const int FileNamingCount = (int)std::size(FileNamingNames);
 	m_fileNaming = (EFileNaming)ParseEnumValue(FILENAMING.data(), FileNamingCount, FileNamingNames, FileNamingValues);
 
 	const char* HealthCheckNames[] = { "pause", "delete", "park", "none", "dupe" };
@@ -1272,8 +1305,15 @@ void Options::InitScheduler()
 			scActivateServer, scActivateServer, scDeactivateServer,
 			scDeactivateServer, scFetchFeed, scFetchFeed };
 		const int CommandCount = 27;
+		// an unknown command is an error, not the first command (pausedownload)
+		bool knownCommand = std::any_of(std::begin(CommandNames), std::end(CommandNames),
+			[command](const char* name) { return !strcasecmp(name, command); });
 		ESchedulerCommand taskCommand = (ESchedulerCommand)ParseEnumValue(
 			BString<100>("Task%i.Command", n), CommandCount, CommandNames, CommandValues);
+		if (!knownCommand)
+		{
+			continue;
+		}
 
 		if (param && strlen(param) > 0 && taskCommand == scProcess &&
 			Util::SplitCommandLine(param).empty())
