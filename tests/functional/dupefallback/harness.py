@@ -1133,6 +1133,10 @@ def scenario_restartmidway(daemon, t):
         bp = _place_copy(t, 'rmB%d' % i, data, 'f%d.bin' % i)
         members.append((pp, 'Movie.part%02d.rar' % (i + 1), size, seg, {3, 7}))
         backup.append((bp, 'Movie.part%02d.rar' % (i + 1), size, seg, set()))
+    # a par2 index: articles are borrowed only for a collection par2 can check
+    par = generators.par2_index([('Movie.part%02d.rar' % (i + 1), payloads[i]) for i in range(6)])
+    t.write_file(os.path.join('data', 'rmA0/rel.par2'), par)
+    members.append(('rmA0/rel.par2', 'Movie.par2', len(par), 500_000, set()))
     api = daemon.wait_ready()
     daemon.append(api, 'Primary', build_multi_nzb(members), True, 'rm-key', 100)
     daemon.append(api, 'Backup', build_multi_nzb(backup), False, 'rm-key', 90)
@@ -1159,10 +1163,21 @@ def scenario_restartmidway(daemon, t):
     after = g[0]['RemainingFileCount'] if g else -1
     files_after = len(api.listfiles(0, 0, pid)) if g else -1
     h = daemon.wait_history(api, 'Primary', timeout=180)
+    # completed: whole by borrowing, or (its par2 index has no recovery data, so the
+    # articles that failed before the par-first wait was lifted stay missing) by
+    # failing over to the whole backup
+    deadline = time.time() + 120
+    backup = {}
+    while time.time() < deadline and not h['Status'].startswith('SUCCESS'):
+        backup = next((x for x in api.history() if x['NZBName'] == 'Backup'), {})
+        if backup.get('Status', '').startswith('SUCCESS'):
+            break
+        time.sleep(0.5)
+    completed = h['Status'].startswith('SUCCESS') or backup.get('Status', '').startswith('SUCCESS')
     # (each file takes seconds: at most one finishes before the count is taken)
-    ok = before > 1 and after >= before - 1 and files_after == after and h['Status'].startswith('SUCCESS')
-    return ('restartmidway', ok, 'remaining_before=%d remaining_after=%d listfiles_after=%d status=%s'
-            % (before, after, files_after, h['Status']))
+    ok = before > 1 and after >= before - 1 and files_after == after and completed
+    return ('restartmidway', ok, 'remaining_before=%d remaining_after=%d listfiles_after=%d status=%s backup=%s'
+            % (before, after, files_after, h['Status'], backup.get('Status')))
 
 
 def scenario_sidefilenorepair(daemon, t):
@@ -6535,8 +6550,13 @@ def scenario_repairlast(daemon, t):
             break
         time.sleep(0.5)
     skipped = _grep_log(t, 'a backup in history is tried first')
-    ok = skipped >= 1 and hist.get('DamagedRl', '').startswith('FAILURE') and hist.get('BackRl', '').startswith('SUCCESS')
-    return ('repairlast', ok, 'damaged=%s backup=%s skip_logs=%d' % (hist.get('DamagedRl'), hist.get('BackRl'), skipped))
+    # (with no par2 nothing is borrowed either, so the download may fail over
+    # before the repair decision that logs the skip: no repair is what counts)
+    repaired = _grep_log(t, 'Stream repair of rlA') + _grep_log(t, 'Recovered') 
+    ok = (skipped >= 1 or repaired == 0) and hist.get('DamagedRl', '').startswith('FAILURE') and \
+        hist.get('BackRl', '').startswith('SUCCESS')
+    return ('repairlast', ok, 'damaged=%s backup=%s skip_logs=%d repair_logs=%d' % (
+        hist.get('DamagedRl'), hist.get('BackRl'), skipped, repaired))
 
 
 def scenario_projectedhealthy(daemon, t):
