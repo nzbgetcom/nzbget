@@ -7494,6 +7494,54 @@ def scenario_innerarchivekeepdirect(daemon, t):
     return _inner_archive_keep(daemon, t, 'innerarchivekeepdirect')
 
 
+def _serve_rss(items, delay=0.0):
+    """A local http server answering every GET with an RSS feed of ``items``
+    (title, url); returns its port."""
+    import http.server
+    body = ('<?xml version="1.0"?><rss version="2.0"><channel><title>t</title>' + ''.join(
+        '<item><title>%s</title><link>%s</link><enclosure url="%s" length="1000" type="application/x-nzb"/></item>'
+        % (title, url, url) for title, url in items) + '</channel></rss>').encode()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            time.sleep(delay)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/rss+xml')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv.server_address[1]
+
+
+def scenario_feedpreviewparallel(daemon, t):
+    """Previews of a configured feed (id 1) at the same time as its fetch: the
+    previews wrote the feed's own temp file (feed-1.tmp), so parallel ones
+    read each other's half-written or deleted file. Every preview now gets
+    its own file and returns all items."""
+    import concurrent.futures
+    items = [('Item.%d' % i, 'http://127.0.0.1:9/item%d.nzb' % i) for i in range(5)]
+    port = _serve_rss(items, delay=0.3)
+    url = 'http://127.0.0.1:%d/rss' % port
+    daemon.wait_ready()
+
+    def preview(_):
+        r = _rpc(daemon, 'previewfeed', [1, 'f1', url, '', False, True, '', 0, 0, '', True, 0, ''], timeout=60)
+        return len(r.get('result') or []), r.get('error')
+
+    with concurrent.futures.ThreadPoolExecutor(8) as pool:
+        fetch = pool.submit(_rpc, daemon, 'fetchfeed', [1])
+        results = list(pool.map(preview, range(8)))
+        fetch.result()
+    ok = all(n == len(items) and not err for n, err in results)
+    return ('feedpreviewparallel', ok, 'previews=%s' % results)
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7850,6 +7898,7 @@ SCENARIOS = {
     'scanlongcommand': scenario_scanlongcommand,
     'innerarchivekeep': scenario_innerarchivekeep,
     'innerarchivekeepdirect': scenario_innerarchivekeepdirect,
+    'feedpreviewparallel': scenario_feedpreviewparallel,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,

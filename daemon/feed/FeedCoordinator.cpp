@@ -303,14 +303,17 @@ void FeedCoordinator::StartFeedDownload(FeedInfo* feedInfo, bool force)
 	feedDownloader->SetCertVerifLevel(feedInfo->GetCertVerificationLevel());
 #endif
 
+	// a preview of a configured feed must not share the file of that feed's own fetch
+	static std::atomic<int> previewNum{0};
 	BString<1024> outFilename;
-	if (feedInfo->GetId() > 0)
+	if (feedInfo->GetId() > 0 && !feedInfo->GetPreview())
 	{
 		outFilename.Format("%s%cfeed-%i.tmp", g_Options->GetTempDir(), PATH_SEPARATOR, feedInfo->GetId());
 	}
 	else
 	{
-		outFilename.Format("%s%cfeed-%i-%i.tmp", g_Options->GetTempDir(), PATH_SEPARATOR, (int)Util::CurrentTime(), rand());
+		outFilename.Format("%s%cfeed-%i-%i-%i.tmp", g_Options->GetTempDir(), PATH_SEPARATOR,
+			(int)Util::CurrentTime(), rand(), ++previewNum);
 	}
 	feedDownloader->SetOutputFilename(outFilename);
 
@@ -624,6 +627,8 @@ std::shared_ptr<FeedItemList> FeedCoordinator::PreviewFeed(int id,
 		feedItems = feedFile->DetachFeedItems();
 		feedFile.reset();
 
+		// the history grows while feeds are processed
+		std::lock_guard<std::mutex> guard(m_downloadsMutex);
 		for (FeedItemInfo& feedItemInfo : feedItems.get())
 		{
 			feedItemInfo.SetStatus(firstFetch && feedInfo->GetBacklog() ? FeedItemInfo::isBacklog : FeedItemInfo::isNew);
