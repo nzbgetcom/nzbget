@@ -288,7 +288,7 @@ var Statistics = new (function ($) {
 	function makeResetButton(server) {
 		var $btn = $(
 			'<button class="btn btn-default" data-i18n-title="btn_reset_counters_title">'
-			+ '<i class="material-icon">refresh</i>'
+			+ '<i class="material-icon"><svg><use href="img/icons.svg#refresh"></use></svg></i>'
 			+ '<span data-i18n="btn_reset_counters"></span>'
 			+ '</button>'
 		);
@@ -458,7 +458,7 @@ var Statistics = new (function ($) {
 	function makeConfigServerBtn(server) {
 		var $btn = $(
 			'<button class="btn btn-default" data-i18n-title="btn_server_config_title">'
-			+ '<i class="material-icon">settings</i>'
+			+ '<i class="material-icon"><svg><use href="img/icons.svg#settings"></use></svg></i>'
 			+ '<span data-i18n="btn_server_config"></span>'
 			+ '</button>'
 		);

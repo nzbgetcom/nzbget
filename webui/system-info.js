@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-var SPINNER = '<i class="material-icon spinner">progress_activity</i>';
+var SPINNER = '<i class="material-icon spinner"><svg><use href="img/icons.svg#progress_activity"></use></svg></i>';
 var TEST_BTN_DEFAULT_TEXT = 'Run test';
 var NETWORK_SPEED_TEST_RUNNING = false;
 
@@ -800,7 +800,7 @@ var SystemInfo = (new function($)
 
 	function makeTestServerSpinnerPlaceholder(id)
 	{
-		var spinner = $('<i id="' + id + '" class="material-icon spinner">progress_activity</i>');
+		var spinner = $('<i id="' + id + '" class="material-icon spinner"><svg><use href="img/icons.svg#progress_activity"></use></svg></i>');
 		spinner.css('display', 'none');
 		return spinner;
 	}

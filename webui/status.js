@@ -156,9 +156,9 @@ var Status = (new function($)
 
 	function redrawInfo()
 	{
-		$CHPauseDownload.text(status.DownloadPaused ? 'check_box' : 'check_box_outline_blank').show();
-		$CHPausePostProcess.text(status.PostPaused ? 'check_box' : 'check_box_outline_blank').show();
-		$CHPauseScan.text(status.ScanPaused ? 'check_box' : 'check_box_outline_blank').show();
+		$CHPauseDownload.find('use').attr('href', 'img/icons.svg#' + (status.DownloadPaused ? 'check_box' : 'check_box_outline_blank')).show();
+		$CHPausePostProcess.find('use').attr('href', 'img/icons.svg#' + (status.PostPaused ? 'check_box' : 'check_box_outline_blank')).show();
+		$CHPauseScan.find('use').attr('href', 'img/icons.svg#' + (status.ScanPaused ? 'check_box' : 'check_box_outline_blank')).show();
 
 		updatePlayAnim();
 		updatePlayButton();
@@ -801,7 +801,7 @@ var StatDialog = (new function($)
 
 		if (status.ResumeTime > 0)
 		{
-			content += '<tr><td data-i18n="stat_autoresume"></td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"/></td></tr>';
+			content += '<tr><td data-i18n="stat_autoresume"></td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i></td></tr>';
 		}
 
 		var $tbody = $('#StatusTable tbody');
@@ -1237,11 +1237,11 @@ var StatDialog = (new function($)
 
 			if (i === curServer-1)
 			{
-				a.html('<i class="material-icon">done</i>' + Util.textToHtml(name));
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + Util.textToHtml(name));
 			}
 			else
 			{
-				a.html('<i class="material-icon"></i>' + Util.textToHtml(name));
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + Util.textToHtml(name));
 			}
 
 			a.attr('data-id', server.ID);
@@ -1260,11 +1260,11 @@ var StatDialog = (new function($)
 		var serverMenuAllBtn = $('#StatDialog_ServerMenuAll i');
 		if (curServer === 0)
 		{
-			serverMenuAllBtn.text('done');
+			serverMenuAllBtn.find('use').attr('href', 'img/icons.svg#done');
 		}
 		else
 		{
-			serverMenuAllBtn.text('');
+			serverMenuAllBtn.find('use').attr('href', 'img/icons.svg#');
 		}
 	}
 
@@ -1336,11 +1336,11 @@ var StatDialog = (new function($)
 
 			if (monId === curMonth)
 			{
-				a.html('<i class="material-icon">done</i>' + name);
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + name);
 			}
 			else
 			{
-				a.html('<i class="material-icon"></i>' + name);
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + name);
 			}
 
 			a.attr('data-id', monId);
@@ -1371,11 +1371,11 @@ var StatDialog = (new function($)
 
 			if (monId === curMonth)
 			{
-				a.html('<i class="material-icon">done</i>' + name);
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + name);
 			}
 			else
 			{
-				a.html('<i class="material-icon"></i>' + name);
+				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + name);
 			}
 
 			a.attr('data-id', monId);

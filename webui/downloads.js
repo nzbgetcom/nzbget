@@ -688,8 +688,8 @@ var Downloads = (new function($)
 		var editIds = buildContextIdList(group);
 		$CategoryMenu.data('nzbids', editIds);
 		DownloadsUI.updateContextWarning($CategoryMenu, editIds);
-		$('i', $CategoryMenu).text('');
-		$('li[data="' + group.Category + '"] i', $CategoryMenu).text('done');
+		$('i use', $CategoryMenu).attr('href', 'img/icons.svg#');
+		$('li[data="' + group.Category + '"] i use', $CategoryMenu).attr('href', 'img/icons.svg#done');
 
 		Frontend.showPopupMenu($CategoryMenu, 'left',
 			{ left: $(this).offset().left - 30, top: $(this).offset().top,

@@ -178,7 +178,7 @@ var DownloadsEditDialog = (new function($)
 		table += '<tr><td>' +
 			(group.ServerStats.length > 0 ? '<a href="#" id="DownloadsEdit_ServStats" data-tab="DownloadsEdit_ServStatsTab" title="' + I18n.translate('tooltip_per_server_stats') + '">' : '') +
 			I18n.translate('label_articles_total_completion') +
-			(group.ServerStats.length > 0 ? ' <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
+			(group.ServerStats.length > 0 ? ' <i class="material-icon" style="opacity:0.6;"><svg><use href="img/icons.svg#arrow_right_alt"></use></svg></i></a>' : '') +
 			'</td><td class="text-right">' + group.TotalArticles + ' / ' + completion + '</td></tr>';
 		$('#DownloadsEdit_Statistics').html(table);
 
@@ -1467,7 +1467,7 @@ var DownloadsMergeDialog = (new function($)
 			if (nzbIdList.indexOf(group.NZBID) > -1)
 			{
 				mergeEditIDList.push(group.NZBID);
-				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;">draft</i></td><td>' +
+				var html = '<table><tr><td width="18px" valign="top"><i class="material-icon" style="vertical-align:top;margin-top:2px;"><svg><use href="img/icons.svg#draft"></use></svg></i></td><td>' +
 					Util.textToHtml(Util.formatNZBName(group.NZBName)) + '</td></tr></table>';
 				$tbody.append(html);
 			}
@@ -1722,13 +1722,13 @@ var HistoryEditDialog = (new function($)
 
 			var table = '';
 			table += '<tr><td><a href="#" id="HistoryEdit_TimeStats" data-tab="HistoryEdit_TimeStatsTab" title="' + I18n.translate('tooltip_history_total_stats') + '">' + I18n.translate('label_total') + ' ' +
-				'<i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' +
+				'<i class="material-icon" style="opacity:0.6;"><svg><use href="img/icons.svg#arrow_right_alt"></use></svg></i></a>' +
 				'</td><td class="text-center">' + size + '</td></tr>';
 			table += '<tr><td>' + I18n.translate('label_files_total_remaining') + '</td><td class="text-center">' + hist.FileCount + ' / ' + hist.RemainingFileCount + '</td></tr>';
 			table += '<tr><td>' +
 				(hist.ServerStats.length > 0 ? '<a href="#" id="HistoryEdit_ServStats" data-tab="HistoryEdit_ServStatsTab" title="' + I18n.translate('tooltip_history_server_stats') + '">' : '') +
 				I18n.translate('label_articles_total_completion') +
-				(hist.ServerStats.length > 0 ? '  <i class="material-icon" style="opacity:0.6;">arrow_right_alt</i></a>' : '') +
+				(hist.ServerStats.length > 0 ? '  <i class="material-icon" style="opacity:0.6;"><svg><use href="img/icons.svg#arrow_right_alt"></use></svg></i></a>' : '') +
 				'</td><td class="text-center">' + hist.TotalArticles + ' / ' + completion + '</td></tr>';
 			$('#HistoryEdit_Statistics').html(table);
 
