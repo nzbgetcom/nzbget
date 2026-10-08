@@ -8138,6 +8138,24 @@ def scenario_heldidle(daemon, t):
     return ('heldidle', ok, 'second_held=%s cpu_seconds_in_10s=%.1f' % (held, used))
 
 
+def scenario_filepausepars(daemon, t):
+    """editqueue FilePauseAllPars / FilePauseExtraPars on file ids paused the
+    par files but answered false (the list of items was emptied before the
+    result was taken). They answer true now."""
+    data = _payload(400_000, 10405)
+    pp = _place_copy(t, 'fpA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelFP', build_nzb_with_par2(t, pp, 'fp.bin', data, 100_000, set()), True, 'fp-key', 100)
+    time.sleep(1)
+    group = next(g for g in api.listgroups() if g['NZBName'] == 'RelFP')
+    files = _rpc(daemon, 'listfiles', [0, 0, group['NZBID']]).get('result', [])
+    ids = [f['ID'] for f in files]
+    allpars = _rpc(daemon, 'editqueue', ['FilePauseAllPars', '', ids]).get('result')
+    extra = _rpc(daemon, 'editqueue', ['FilePauseExtraPars', '', ids]).get('result')
+    ok = len(ids) >= 2 and allpars is True and extra is True
+    return ('filepausepars', ok, 'files=%d allpars=%s extrapars=%s' % (len(ids), allpars, extra))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8515,6 +8533,7 @@ SCENARIOS = {
     'nzbentities': scenario_nzbentities,
     'uucache': scenario_uucache,
     'heldidle': scenario_heldidle,
+    'filepausepars': scenario_filepausepars,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,

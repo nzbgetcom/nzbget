@@ -362,8 +362,13 @@ bool QueueEditor::InternEditList(ItemList* itemList,
 	{
 		case DownloadQueue::eaFilePauseAllPars:
 		case DownloadQueue::eaFilePauseExtraPars:
+		{
+			// PauseParsInGroups takes the items off the list: the result is
+			// whether there were any (an empty list answered false after pausing)
+			bool any = !itemList->empty();
 			PauseParsInGroups(itemList, action == DownloadQueue::eaFilePauseExtraPars);
-			break;
+			return any;
+		}
 
 		case DownloadQueue::eaGroupMerge:
 			return MergeGroups(itemList);
