@@ -1309,11 +1309,11 @@ var Config = (new function($)
 		let section = '<div class="option__check-section">';
 
 		if (check.Severity == "Error")
-			section += '<span class="option-alert alert alert-error"><i class="option-alert__icon material-icon">error</i><span>' + check.Message + '</span></span>';
+			section += '<span class="option-alert alert alert-error"><i class="option-alert__icon material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('error') + '"></use></svg></i><span>' + check.Message + '</span></span>';
 		else if (check.Severity == "Warning")
-			section += '<span class="option-alert alert alert-warning"><i class="option-alert__icon material-icon">warning</i><span>' + check.Message + '</span></span>';
+			section += '<span class="option-alert alert alert-warning"><i class="option-alert__icon material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('warning') + '"></use></svg></i><span>' + check.Message + '</span></span>';
 		else if (check.Severity == "Info")
-			section += '<span class="option-alert alert alert-success"><i class="option-alert__icon material-icon">info</i><span>' + check.Message + '</span></span>';
+			section += '<span class="option-alert alert alert-success"><i class="option-alert__icon material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('info') + '"></use></svg></i><span>' + check.Message + '</span></span>';
 
 		section += '</div>';
 
@@ -2022,11 +2022,11 @@ var Config = (new function($)
 	{
 		if (!compactMode)
 		{
-			$('#Config_ViewCompact > .material-icon').text('check_box_outline_blank');
+			$('#Config_ViewCompact > .material-icon use').attr('href', Util.iconUrl('check_box_outline_blank'));
 		}
 		else
 		{
-			$('#Config_ViewCompact > .material-icon').text('check_box');
+			$('#Config_ViewCompact > .material-icon use').attr('href', Util.iconUrl('check_box'));
 		}
 		
 		$ConfigContent.toggleClass('hide-help-block', compactMode);
@@ -2804,11 +2804,12 @@ var ScriptListDialog = (new function($)
 
 	function updateTable(selectedList)
 	{
+		var rowOrderTitles = Util.rowOrderTitles();
 		var reorderButtons = '<div class="btn-row-order-block">' +
-		'<i onclick="ScriptListDialog.move(this, \'top\')" class="material-icon btn-row-order">vertical_align_top</i>' + 
-		'<i onclick="ScriptListDialog.move(this, \'up\')" class="material-icon btn-row-order">north</i>' + 
-		'<i onclick="ScriptListDialog.move(this, \'down\')" class="material-icon btn-row-order">south</i>' +
-		'<i onclick="ScriptListDialog.move(this, \'bottom\')" class="material-icon btn-row-order">vertical_align_bottom</i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'top\')" class="material-icon btn-row-order" title="' + rowOrderTitles.top + '" aria-label="' + rowOrderTitles.top + '"><svg aria-hidden="true"><use href="' + Util.iconUrl('vertical_align_top') + '"></use></svg></i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'up\')" class="material-icon btn-row-order" title="' + rowOrderTitles.up + '" aria-label="' + rowOrderTitles.up + '"><svg aria-hidden="true"><use href="' + Util.iconUrl('north') + '"></use></svg></i>' + 
+		'<i onclick="ScriptListDialog.move(this, \'down\')" class="material-icon btn-row-order" title="' + rowOrderTitles.down + '" aria-label="' + rowOrderTitles.down + '"><svg aria-hidden="true"><use href="' + Util.iconUrl('south') + '"></use></svg></i>' +
+		'<i onclick="ScriptListDialog.move(this, \'bottom\')" class="material-icon btn-row-order" title="' + rowOrderTitles.bottom + '" aria-label="' + rowOrderTitles.bottom + '"><svg aria-hidden="true"><use href="' + Util.iconUrl('vertical_align_bottom') + '"></use></svg></i>' + 
 		'</div>';
 		var data = [];
 		for (var i=0; i < scriptList.length; i++)
@@ -4353,7 +4354,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" data-toggle="dropdown" class="btn btn-danger dropdown-toggle" id="DeleteBtn_' 
 			+ ext.name 
-			+ '" data-i18n-title="extman_btn_delete"><i class="material-icon">delete</i></button>')
+			+ '" data-i18n-title="extman_btn_delete"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('delete') + '"></use></svg></i></button>')
 			.off('click')
 			.on('click', function() { showDeleteExtensionDropdown(ext); });
 
@@ -4364,7 +4365,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-primary btn-group" id="DownloadBtn_' 
 			+ ext.name 
-			+ '" data-i18n-title="extman_btn_download"><i class="material-icon">download</i></button>')
+			+ '" data-i18n-title="extman_btn_download"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('download') + '"></use></svg></i></button>')
 			.off('click')
 			.on('click', function() { downloadExtension(ext); });
 
@@ -4375,7 +4376,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-info btn-group" id="UpdateBtn_' 
 			+ ext.name 
-			+ '" data-i18n-title="extman_btn_update"><i class="material-icon">update</i></button>');
+			+ '" data-i18n-title="extman_btn_update"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('update') + '"></use></svg></i></button>');
 		if (ext.outdated)
 		{
 			btn.off('click').on('click', function() { updateExtension(ext); });
@@ -4393,7 +4394,7 @@ var ExtensionManager = (new function($)
 	{
 		var btn = $('<button type="button" class="btn btn-default btn-group" id="ConfigureBtn_' 
 			+ ext.name 
-			+ '" data-i18n-title="extman_btn_configure"><i class="material-icon">settings</i></button>')
+			+ '" data-i18n-title="extman_btn_configure"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('settings') + '"></use></svg></i></button>')
 			.off('click')
 			.on('click', function() { Config.showSection(ext.id, true); });
 
@@ -4409,19 +4410,19 @@ var ExtensionManager = (new function($)
 			.on('click', function() { activateExt(ext); });
 		if (ext.isActive && !ext.testError)
 		{	
-			btn.append('<i class="material-icon">pause</i>');
+			btn.append('<i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('pause') + '"></use></svg></i>');
 			btn.attr({ 'data-i18n-title': "extman_btn_deactivate" });
 			btn.addClass('btn-warning');
 		}
 		else if(!ext.isActive && !ext.testError)
 		{
-			btn.append('<i class="material-icon">play_arrow</i>');
+			btn.append('<i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('play_arrow') + '"></use></svg></i>');
 			btn.attr({ 'data-i18n-title': "extman_btn_activate" });
 			btn.addClass('btn-success');
 		}
 		else
 		{
-			btn.append('<i class="material-icon">warning</i>');
+			btn.append('<i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('warning') + '"></use></svg></i>');
 			btn.attr({ title: ext.testError });
 			btn.addClass('btn-warning');
 		}
@@ -4463,7 +4464,7 @@ var ExtensionManager = (new function($)
 		if (ext.homepage)
 		{
 			var cell = $('<td class="extension-manager__td text-center">');
-			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" data-i18n-title="extman_tooltip_homepage">home</i></a>'));
+			cell.append($('<a href="' + ext.homepage + '" target="_blank"><i class="material-icon" data-i18n-title="extman_tooltip_homepage"><svg aria-hidden="true"><use href="' + Util.iconUrl('home') + '"></use></svg></i></a>'));
 			return cell;
 		}
 		
@@ -4510,25 +4511,25 @@ var ExtensionManager = (new function($)
 		}
 		var cell = $('<td class="extension-manager__td text-center">');
 		var container = $('<div class="btn-row-order-block" data-i18n-title="extman_tooltip_order">');
-		var title = I18n.translate ? I18n.translate('extman_tooltip_order') : "Modify execution order (restart needed)";
+		var orderTitles = Util.rowOrderTitles();
 		
-		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon">vertical_align_top</i></span>')
+		var mvTop = $('<span class="btn-row-order" id="MvTopBtn_' + ext.name +'"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('vertical_align_top') + '"></use></svg></i></span>')
 			.off('click')
 			.on('click', function() { moveTop(ext); });
-		var mvUp = $('<span class="btn-row-order" id="MvUpBtn_' + ext.name +'"><i class="material-icon">north</i></span>')
+		var mvUp = $('<span class="btn-row-order" id="MvUpBtn_' + ext.name +'"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('north') + '"></use></svg></i></span>')
 			.off('click')
 			.on('click', function() { moveUp(ext); });
-		var mvDown = $('<span class="btn-row-order" id="MvDownBtn_' + ext.name +'"><i class="material-icon">south</i></span>')
+		var mvDown = $('<span class="btn-row-order" id="MvDownBtn_' + ext.name +'"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('south') + '"></use></svg></i></span>')
 			.off('click')
 			.on('click', function() { moveDown(ext); });
-		var mvBottom = $('<span class="btn-row-order" id="MvBottomBtn_' + ext.name +'"><i class="material-icon">vertical_align_bottom</i></span>')
+		var mvBottom = $('<span class="btn-row-order" id="MvBottomBtn_' + ext.name +'"><i class="material-icon"><svg aria-hidden="true"><use href="' + Util.iconUrl('vertical_align_bottom') + '"></use></svg></i></span>')
 			.off('click')
 			.on('click', function() { moveBottom(ext); });
 		
-		mvTop.attr({ title: title});
-		mvUp.attr({ title: title});
-		mvDown.attr({ title: title});
-		mvBottom.attr({ title: title});
+		mvTop.attr({ title: orderTitles.top, 'aria-label': orderTitles.top });
+		mvUp.attr({ title: orderTitles.up, 'aria-label': orderTitles.up });
+		mvDown.attr({ title: orderTitles.down, 'aria-label': orderTitles.down });
+		mvBottom.attr({ title: orderTitles.bottom, 'aria-label': orderTitles.bottom });
 
 		if (isFirst)
 		{
