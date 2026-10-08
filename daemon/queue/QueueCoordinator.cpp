@@ -1125,6 +1125,15 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 		std::string filename = (completed && !outputFilename.empty())
 			? FileSystem::BaseFileName(outputFilename.c_str())
 			: (fileInfo->GetFilename() ? fileInfo->GetFilename() : "");
+		// a file in a folder of the download (a par2 name "Sub/file") is recorded
+		// by its path in the download: by its base name nothing found it on disk
+		std::string destPrefix = std::string(fileInfo->GetNzbInfo()->GetDestDir()) + PATH_SEPARATOR;
+		if (completed && !outputFilename.empty() && outputFilename.size() > destPrefix.size() &&
+			!outputFilename.compare(0, destPrefix.size(), destPrefix) &&
+			outputFilename.find(PATH_SEPARATOR, destPrefix.size()) != std::string::npos)
+		{
+			filename = outputFilename.substr(destPrefix.size());
+		}
 		// a file none of whose articles arrived never got past its temporary
 		// output name ("<id>.out.tmp"), and nothing exists on disk under it:
 		// record the file by the name its nzb-file gives it, which is what a

@@ -493,6 +493,20 @@ ArticleWriter::SetupOutputFile(DiskFile &outfile,
 
 	paths.tempPath = paths.finalPath + ".tmp";
 
+	// a name with a folder (DirectRename gives a file in progress the relative
+	// path par2 lists, "Sub/file"): the folder may not exist yet, and both the
+	// move of the temporary file and the creation of the joined file failed
+	if (filename.find(PATH_SEPARATOR) != std::string_view::npos)
+	{
+		CString errmsg;
+		std::string parentDir = paths.finalPath.substr(0, paths.finalPath.rfind(PATH_SEPARATOR));
+		if (!FileSystem::ForceDirectories(parentDir.c_str(), errmsg))
+		{
+			m_fileInfo->GetNzbInfo()->PrintMessage(Message::mkError, "Could not create directory %s: %s",
+				parentDir.c_str(), *errmsg);
+		}
+	}
+
 	// Scenario A: Standard Assembly (Write to .tmp)
 	if (!g_Options->GetRawArticle() && !directWrite)
 	{

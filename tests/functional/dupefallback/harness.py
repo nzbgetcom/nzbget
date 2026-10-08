@@ -8192,6 +8192,42 @@ def scenario_mergefinished(daemon, t):
     return ('mergefinished', ok, 'merged=%s status=%s files=%s' % (merged, h['Status'], {k: v for k, v in found.items()}))
 
 
+def _direct_rename_subdir(daemon, t, name):
+    """DirectRename=yes, a par2 naming its file "Sub/dr.bin" while the file
+    (posted as obf.bin) is still downloading: the rename of the file in
+    progress set its name to the relative path, but completing it never
+    created "Sub" - with DirectWrite the move of the temporary file failed
+    (the data stayed in <id>.out.tmp), without it the file couldn't be
+    created and failed. The completed file was recorded by its base name
+    too. Now the file lands in Sub/ and the download succeeds."""
+    data = _payload(600_000, 10609)
+    par = generators.par2_index([('Sub/dr.bin', data)])
+    t.write_file(os.path.join('data', 'drA/obf.bin'), data)
+    t.write_file(os.path.join('data', 'drA/rel.par2'), par)
+    members = [('drA/rel.par2', 'rel.par2', len(par), 500_000, set()),
+               ('drA/obf.bin', 'obf.bin', len(data), 100_000, set())]
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelDR', build_multi_nzb(members), False, 'dr-key', 100)
+    h = daemon.wait_history(api, 'RelDR', timeout=120)
+    files = {r: t.read_file(r) for r in t.find_files('main', 'dst')}
+    placed = [r for r in files if r.endswith('/Sub/dr.bin')]
+    whole = bool(placed) and files[placed[0]] == data
+    stranded = [r for r in t.find_files('main') if r.endswith('.out.tmp')]
+    renamed = _grep_log(t, 'Renaming in-progress file')
+    ok = h['Status'].startswith('SUCCESS') and whole and not stranded and renamed >= 1
+    return (name, ok, 'status=%s renamed_in_progress=%d placed=%s whole=%s stranded=%s files=%s' % (
+        h['Status'], renamed, placed, whole, stranded, sorted(files)[:6]))
+
+
+def scenario_directrenamesubdir(daemon, t):
+    return _direct_rename_subdir(daemon, t, 'directrenamesubdir')
+
+
+def scenario_directrenamesubdirjoin(daemon, t):
+    """As directrenamesubdir, with DirectWrite=no (the file is joined)."""
+    return _direct_rename_subdir(daemon, t, 'directrenamesubdirjoin')
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8571,6 +8607,8 @@ SCENARIOS = {
     'heldidle': scenario_heldidle,
     'filepausepars': scenario_filepausepars,
     'mergefinished': scenario_mergefinished,
+    'directrenamesubdir': scenario_directrenamesubdir,
+    'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8856,6 +8894,8 @@ SCENARIO_OPTIONS = {
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'uucache': ['DirectWrite=no', 'ArticleCache=64', 'ArticleRetries=0'],
+    'directrenamesubdir': ['DirectRename=yes', 'DirectWrite=yes', 'ParCheck=auto'],
+    'directrenamesubdirjoin': ['DirectRename=yes', 'DirectWrite=no', 'ParCheck=auto'],
     'heldidle': ['ScriptPauseQueue=yes', 'Extensions=slowpost'],
     'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
@@ -8954,7 +8994,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+SCENARIO_DELAY_PROXY = {'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],
                         'streamrestartcredit': [(b'srSlow/', 3.0)],
