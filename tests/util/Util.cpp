@@ -63,6 +63,42 @@ BOOST_AUTO_TEST_CASE(XmlRemoveEntitiesTest)
 	free(testString);
 }
 
+BOOST_AUTO_TEST_CASE(XmlRemoveEntitiesAtEndTest)
+{
+	// an "&" with no ";" after it, at the end of the text: the scan for the
+	// entity's end went past the terminator
+	char* testString = strdup("R&D AT&T");
+	WebUtil::XmlRemoveEntities(testString);
+	BOOST_CHECK_EQUAL(std::string(testString), std::string("R&D AT&T"));
+	free(testString);
+}
+
+BOOST_AUTO_TEST_CASE(HttpUnquoteEscapesTest)
+{
+	// an escaped character is taken once: an escaped quote ended the value,
+	// others came out twice
+	char quote[] = "\"a\\\"b.nzb\"";
+	WebUtil::HttpUnquote(quote);
+	BOOST_CHECK_EQUAL(std::string(quote), std::string("a\"b.nzb"));
+
+	char space[] = "\"my\\ file.nzb\"";
+	WebUtil::HttpUnquote(space);
+	BOOST_CHECK_EQUAL(std::string(space), std::string("my file.nzb"));
+
+	char backslash[] = "\"a\\\\b\"";
+	WebUtil::HttpUnquote(backslash);
+	BOOST_CHECK_EQUAL(std::string(backslash), std::string("a\\b"));
+}
+
+BOOST_AUTO_TEST_CASE(EncodeByte80Test)
+{
+	// a lone 0x80 byte (not UTF-8) is escaped like 0x81..0xff, not sent raw
+	CString json = WebUtil::JsonEncode("a\x80" "b");
+	CString xml = WebUtil::XmlEncode("a\x80" "b");
+	BOOST_CHECK(strchr(json, '\x80') == nullptr);
+	BOOST_CHECK(strchr(xml, '\x80') == nullptr);
+}
+
 BOOST_AUTO_TEST_CASE(URLEncodeTest)
 {
 	const char* badUrl = "http://www.example.com/nzb_get/12344/Debian V7 6 64 bit OS.nzb";

@@ -991,7 +991,7 @@ CString WebUtil::XmlEncode(const char* raw)
 				output += 6;
 				break;
 			default:
-				if (ch < 0x20 || ch > 0x80)
+				if (ch < 0x20 || ch >= 0x80)
 				{
 					uint32 cp = ch;
 
@@ -1255,7 +1255,8 @@ void WebUtil::XmlRemoveEntities(char* raw)
 			case '&':
 			{
 				char* p2 = p+1;
-				while (isalpha(*p2) || strchr("0123456789#", *p2)) p2++;
+				// strchr finds the terminator too: stop at the end of the string
+				while (*p2 && (isalpha(*p2) || strchr("0123456789#", *p2))) p2++;
 				if (*p2 == ';')
 				{
 					*output++ = ' ';
@@ -1350,7 +1351,7 @@ CString WebUtil::JsonEncode(const char* raw)
 				output += 2;
 				break;
 			default:
-				if (ch < 0x20 || ch > 0x80)
+				if (ch < 0x20 || ch >= 0x80)
 				{
 					uint32 cp = ch;
 
@@ -1564,8 +1565,13 @@ void WebUtil::HttpUnquote(char* raw)
 			case '"':
 				goto BreakLoop;
 			case '\\':
+				// the escaped character is taken once and skipped (it was read
+				// again: an escaped quote ended the string, others came twice)
 				p++;
-				*output++ = *p;
+				if (*p)
+				{
+					*output++ = *p++;
+				}
 				break;
 			default:
 				*output++ = *p++;
