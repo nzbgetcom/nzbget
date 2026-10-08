@@ -243,9 +243,12 @@ bool DupeArticleFallback::TryFallback(DownloadQueue* downloadQueue, FileInfo* fi
 	}
 	if (round >= (int)sources.size())
 	{
-		if (pinnedRound == 0)
+		if (pinnedRound == 0 && !articleInfo->GetDupeProactive())
 		{
-			// no duplicate carries this article's file at all
+			// no duplicate carries this article's file at all (an article asked of a
+			// duplicate first, after the cutover, hasn't failed: counted, every fresh
+			// article of a file whose lead was barred added one, and the download
+			// failed over early)
 			nzbInfo->SetDupeUnsourcedArticles(nzbInfo->GetDupeUnsourcedArticles() + 1);
 		}
 		else if (!Util::EmptyStr(articleInfo->GetDupeOriginalMessageId()))

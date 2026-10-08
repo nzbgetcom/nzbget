@@ -186,6 +186,41 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackPar2CheckUsesTheFilesOwnSetTest)
 	fs::remove_all(dir);
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackProactiveTryIsNotUnsourcedTest)
+{
+	// an article asked of a duplicate first (after the cutover) hasn't failed: when no
+	// duplicate carries its file it isn't counted unsourced (each fresh article of a
+	// file whose lead was barred added one, and the download failed over early)
+	FallbackOptionsGuard optionsGuard;
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("DupeArticleFallback=article");
+	Options options(&cmdOpts, nullptr);
+	DupeArticleFallback fallback;
+	class EmptyDownloadQueue final : public DownloadQueue
+	{
+	public:
+		EmptyDownloadQueue() { Init(this); }
+		~EmptyDownloadQueue() { Final(); }
+		bool EditEntry(int, EEditAction, const char*) override { return false; }
+		bool EditList(IdList*, NameList*, EMatchMode, EEditAction, const char*) override { return false; }
+		void HistoryChanged() override {}
+		void Save() override {}
+		void SaveChanged() override {}
+	} queue;
+	DownloadQueue* downloadQueue = &queue;
+	for (bool proactive : {true, false})
+	{
+		NzbInfo nzb;
+		nzb.SetParSize(500000);
+		std::unique_ptr<FileInfo> target = BuildFile("release.r01", {{1, 500000}, {2, 500000}}, "orig");
+		target->SetNzbInfo(&nzb);
+		ArticleInfo* article = target->GetArticles()->at(1).get();
+		article->SetDupeProactive(proactive);
+		BOOST_CHECK(!fallback.TryFallback(downloadQueue, target.get(), article));
+		BOOST_CHECK_EQUAL(nzb.GetDupeUnsourcedArticles(), proactive ? 0 : 1);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackSizesMatchTest)
 {
 	BOOST_CHECK(DupeArticleFallback::SizesMatch(100000, 100000, 64));
