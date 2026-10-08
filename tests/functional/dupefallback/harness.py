@@ -1549,6 +1549,37 @@ def scenario_streamrestartcredit(daemon, t):
         first_repaired, interrupted, h['Status'], h['Health'], integ))
 
 
+def scenario_truncatedstate(daemon, t):
+    """A file's partial state (<id>s, written in place) is cut short, as a power
+    loss leaves it: the download still completes, the file downloaded again. The
+    load left blank articles behind (they downloaded nothing, the file failed)
+    and stopped reading the remaining states."""
+    size, seg = 3_000_000, 100_000
+    data = _payload(size, 7979)
+    pp = _place_copy(t, 'tsA', data, 'f.bin')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelTS', build_nzb(pp, 'ts.bin', size, seg, set()), False, 'ts-key', 100)
+    queue_dir = t.path('main', 'queue')
+    deadline = time.time() + 60
+    state = None
+    while time.time() < deadline and not state:
+        state = next((f for f in os.listdir(queue_dir) if re.fullmatch(r'\d+s', f)), None)
+        time.sleep(0.2)
+    t.procs[-1].kill()
+    t.procs[-1].wait(timeout=30)
+    if state:
+        path = os.path.join(queue_dir, state)
+        content = open(path, 'rb').read()
+        open(path, 'wb').write(content[:len(content) // 2])
+    daemon.start()
+    api = daemon.wait_ready()
+    h = daemon.wait_history(api, 'RelTS', timeout=180)
+    integ = _verify_output(t, data)
+    ok = bool(state) and h['Status'].startswith('SUCCESS') and integ
+    return ('truncatedstate', ok, 'state_file=%s status=%s integrity=%s discarded_logs=%d' % (
+        state, h['Status'], integ, _grep_log(t, 'Discarding damaged download state')))
+
+
 def scenario_streamtimeout(daemon, t):
     """DupeStreamTimeout: the only duplicate is stalled (every request for its
     articles waits 8 s, longer than the timeout), so the repair of the
@@ -7332,6 +7363,7 @@ SCENARIOS = {
     'cutovertruth': scenario_cutovertruth,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
+    'truncatedstate': scenario_truncatedstate,
     'streamrestartcredit': scenario_streamrestartcredit,
     'streamtimeout': scenario_streamtimeout,
     'streamdeaddonor': scenario_streamdeaddonor,
@@ -7581,6 +7613,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'truncatedstate': ['ContinuePartial=yes', 'FlushQueue=yes', 'Server1.Connections=1'],
     'streamrestartcredit': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
@@ -7853,6 +7886,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+                        'truncatedstate': [(b'tsA/', 0.5)],
                         'streamrestartcredit': [(b'srSlow/', 3.0)],
                         'restartfailover': [(b'rfA/', 0.4)],
                         'ondiskstop': [(b'odB/', 1.0)],

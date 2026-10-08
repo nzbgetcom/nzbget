@@ -2480,7 +2480,27 @@ bool DiskState::LoadAllFileStates(DownloadQueue* downloadQueue, Servers* servers
 					{
 						if (fileInfo->GetId() == id)
 						{
-							if (!LoadFileState(fileInfo, servers, suffix == 'c')) goto error;
+							// a damaged state file (cut short by a power loss: partial states
+							// are written in place) costs only its own progress: the load left
+							// blank articles behind, which then downloaded nothing, and the rest
+							// of the queue dir's states weren't read
+							int successArticles = fileInfo->GetSuccessArticles();
+							int failedArticles = fileInfo->GetFailedArticles();
+							int64 remainingSize = fileInfo->GetRemainingSize();
+							int64 successSize = fileInfo->GetSuccessSize();
+							int64 failedSize = fileInfo->GetFailedSize();
+							if (!LoadFileState(fileInfo, servers, suffix == 'c'))
+							{
+								warn("Discarding damaged download state %s", filename);
+								fileInfo->GetArticles()->clear();
+								fileInfo->SetSuccessArticles(successArticles);
+								fileInfo->SetFailedArticles(failedArticles);
+								fileInfo->SetRemainingSize(remainingSize);
+								fileInfo->SetSuccessSize(successSize);
+								fileInfo->SetFailedSize(failedSize);
+								FileSystem::DeleteFile(BString<1024>("%s%c%s", g_Options->GetQueueDir(), PATH_SEPARATOR, filename));
+								goto next;
+							}
 							if (m_lastFileStateVersion > DISKSTATE_FILE_VERSION)
 							{
 								// an earlier build of this branch wrote it: rewritten in the
