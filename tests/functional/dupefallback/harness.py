@@ -5902,6 +5902,60 @@ def scenario_apiformat(daemon, t):
     return ('apiformat', ok, 'fetched=%r volumes_valid=%s id_echoed=%s' % (fetched, valid, echoed == long_id))
 
 
+def scenario_directunpackkeep(daemon, t):
+    """DirectUnpack=yes with UseTempUnpackDir=no: a direct unpack that fails (an
+    encrypted rar sent without its password) leaves the downloaded files alone.
+    Its cleanup deleted the unpack folder with its content - here the download's
+    own folder - so every volume downloaded so far vanished mid-download."""
+    data = _payload(4_000_000, 8080)
+    volumes = generators.rar3_store_volumes_encrypted('movie.mkv', data, 1_400_000, 'secretpw')
+    members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'duA/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 500_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelDU', build_multi_nzb(members), False, 'du-key', 100)
+    # the files right after the direct unpack failed, while the download goes on
+    deadline = time.time() + 120
+    while time.time() < deadline and _grep_log(t, 'Direct unpack for RelDU failed') == 0:
+        time.sleep(0.1)
+    at_failure = sorted(os.path.basename(rel) for rel in t.find_files('main') if re.search(r'Rel\.part\d+\.rar', rel))
+    h = daemon.wait_history(api, 'RelDU', timeout=240)
+    kept = sorted(os.path.basename(rel) for rel in t.find_files('main') if re.search(r'Rel\.part\d+\.rar$', rel))
+    ok = len(kept) == len(volumes) and 'Rel.part01.rar' in at_failure
+    return ('directunpackkeep', ok, 'status=%s at_failure=%s volumes_on_disk=%s of %d' % (
+        h['Status'], at_failure, len(kept), len(volumes)))
+
+
+def scenario_jointwosets(daemon, t):
+    """Two sets of split files in one download (a.mkv.001-003, b.srt.001-002): both
+    are joined. The fragment check counted the other set's pieces too, and the join
+    failed with "missing fragments detected" (upstream too)."""
+    a = _payload(2_500_000, 8181)
+    b = _payload(150_000, 8182)
+    pieces = [('a.mkv', a, 1_000_000), ('b.srt', b, 100_000)]
+    members = []
+    for name, data, size in pieces:
+        for i, start in enumerate(range(0, len(data), size), 1):
+            rel = 'jtA/%s.%03d' % (name, i)
+            chunk = data[start:start + size]
+            t.write_file(os.path.join('data', rel), chunk)
+            members.append((rel, '%s.%03d' % (name, i), len(chunk), 500_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelJT', build_multi_nzb(members), False, 'jt-key', 100)
+    h = daemon.wait_history(api, 'RelJT', timeout=180)
+    joined = {}
+    for rel in t.find_files('main'):
+        base = os.path.basename(rel)
+        # (the subtitle is renamed after the video by post-download renaming: a.srt)
+        if base in ('a.mkv', 'b.srt', 'a.srt'):
+            joined['a.mkv' if base == 'a.mkv' else 'srt'] = t.read_file(rel) == (a if base == 'a.mkv' else b)
+    ok = joined.get('a.mkv') is True and joined.get('srt') is True and h['Status'].startswith('SUCCESS')
+    return ('jointwosets', ok, 'status=%s joined=%s missing_logs=%d' % (
+        h['Status'], joined, _grep_log(t, 'missing fragments detected')))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7602,6 +7656,8 @@ SCENARIOS = {
     'apiformat': scenario_apiformat,
     'apiaccess': scenario_apiaccess,
     'queueedits': scenario_queueedits,
+    'directunpackkeep': scenario_directunpackkeep,
+    'jointwosets': scenario_jointwosets,
     'staleprogress': scenario_staleprogress,
     'authrejected': scenario_authrejected,
     'appendlongname': scenario_appendlongname,
@@ -7883,6 +7939,8 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'jointwosets': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z'],
+    'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
     'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'articledecoypar': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
@@ -7974,6 +8032,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+                        'directunpackkeep': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],
                         'streamrestartcredit': [(b'srSlow/', 3.0)],
                         'restartfailover': [(b'rfA/', 0.4)],

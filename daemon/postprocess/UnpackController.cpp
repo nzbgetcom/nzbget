@@ -463,7 +463,12 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 	{
 		fullFilename.Format("%s%c%s", *m_destDir, PATH_SEPARATOR, filename);
 
-		if (!FileSystem::DirectoryExists(fullFilename) && regExSplitExt.Match(filename))
+		// only this file's pieces (its name plus ".NNN"): with a second set of split
+		// files in the folder, their pieces were counted and compared too, and the join
+		// failed for "missing fragments"
+		size_t baseLen = strlen(destBaseName);
+		if (!FileSystem::DirectoryExists(fullFilename) && regExSplitExt.Match(filename) &&
+			strlen(filename) == baseLen + 4 && !strncasecmp(filename, destBaseName, baseLen))
 		{
 			const char* segExt = strrchr(filename, '.');
 			int segNum = atoi(segExt + 1);
@@ -532,15 +537,27 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 		DiskFile inFile;
 		if (inFile.Open(fragFilename, DiskFile::omRead))
 		{
+			// every write checked: with the disk full the joined file was cut short,
+			// reported a success, and the pieces were then deleted
 			int cnt = buffer.Size();
 			while (cnt == buffer.Size())
 			{
 				cnt = (int)inFile.Read(buffer, buffer.Size());
-				outFile.Write(buffer, cnt);
-				written += cnt;
+				if (cnt > 0 && outFile.Write(buffer, cnt) != cnt)
+				{
+					PrintMessage(Message::mkError, "Could not write file %s: %s", *destFilename,
+						*FileSystem::GetLastErrorMessage());
+					ok = false;
+					break;
+				}
+				written += std::max(cnt, 0);
 				m_postInfo->SetStageProgress(int(written * 1000 / totalSize));
 			}
 			inFile.Close();
+			if (!ok)
+			{
+				break;
+			}
 
 			CString fragFilename;
 			fragFilename.Format("%s.%.3i", *destBaseName, i);
@@ -554,7 +571,18 @@ bool UnpackController::JoinFile(const char* fragBaseName)
 		}
 	}
 
-	outFile.Close();
+	if (!outFile.Close() && ok)
+	{
+		PrintMessage(Message::mkError, "Could not write file %s: %s", *destFilename,
+			*FileSystem::GetLastErrorMessage());
+		ok = false;
+	}
+	if (ok && written != totalSize)
+	{
+		PrintMessage(Message::mkError, "Could not join splitted file %s: joined %lli of %lli bytes",
+			*destBaseName, (long long)written, (long long)totalSize);
+		ok = false;
+	}
 
 	return ok;
 }
