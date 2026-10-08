@@ -1436,8 +1436,18 @@ StreamRepairController::ERepairOutcome StreamRepairController::RepairWholeFile(c
 	BString<1024> filePath("%s%c%s", destDir, PATH_SEPARATOR, *target.Filename);
 	if (FileSystem::FileExists(filePath))
 	{
-		PrintMessage(Message::mkWarning, "Could not recreate %s: file already exists", *filePath);
-		return roNoCost;
+		// None of the file's own articles arrived, so a file of its name and of the
+		// recreated size is an earlier recreation a shutdown cut short (its job state
+		// not written back): it is started over. Refused, it stayed a sparse, partly
+		// zero file that every later pass reported as "no duplicate could supply"
+		int64 existing = FileSystem::FileSize(filePath);
+		if (existing != fetched.FileSize && existing != 0)
+		{
+			PrintMessage(Message::mkWarning, "Could not recreate %s: file already exists", *filePath);
+			return roNoCost;
+		}
+		PrintMessage(Message::mkInfo, "Recreating %s again: an earlier recreation was cut short", *filePath);
+		FileSystem::DeleteFile(filePath);
 	}
 	CString errmsg;
 	if (!FileSystem::AllocateFile(filePath, fetched.FileSize, true, errmsg))

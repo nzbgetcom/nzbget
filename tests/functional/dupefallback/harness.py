@@ -3076,6 +3076,40 @@ def scenario_wholefilerestart(daemon, t):
             % (h['Status'], queued_job, recreated, integ))
 
 
+def scenario_wholefilestale(daemon, t):
+    """A recreation of a missing volume was cut short by a shutdown: the volume is
+    on disk at its full size, mostly zeros, and its job wasn't written back. After
+    the restart it is recreated again and the release completes. Every later pass
+    refused it ("file already exists"), and the zeros stayed."""
+    members, donor_members, payloads = _wholefile_fixture(t, 'ws')
+    api = daemon.wait_ready()
+    api.pausepost()
+    daemon.append(api, 'DonWS', build_multi_nzb(donor_members), True, 'ws-key', 50)
+    daemon.append(api, 'RelWS', build_multi_nzb(members), False, 'ws-key', 100)
+    deadline = time.time() + 120
+    while time.time() < deadline and _grep_log(t, 'Collection RelWS completely downloaded') == 0:
+        time.sleep(0.5)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    part01 = next((rel for rel in t.find_files('main') if rel.endswith('Rel.part01.rar')), None)
+    if part01:
+        stale = os.path.join(os.path.dirname(t.path(part01)), 'Rel.part03.rar')
+        with open(stale, 'wb') as f:
+            f.truncate(len(payloads['Rel.part03.rar']))
+    daemon.start()
+    api = daemon.wait_ready()
+    api.resumepost()
+    h = daemon.wait_history(api, 'RelWS')
+    both_dirs = (('main', 'dst'), ('main', 'inter'))
+    integ = all(_verify_output(t, payloads[m[1]], '.rar', dirs=both_dirs) for m in members)
+    refused = _grep_log(t, 'file already exists')
+    ok = bool(part01) and integ and refused == 0
+    return ('wholefilestale', ok, 'status=%s integrity=%s refused_logs=%d' % (h['Status'], integ, refused))
+
+
 def scenario_reloadpostqueue(daemon, t):
     """nzbget reloads (saving settings in the web UI does) while a download
     waits in post-processing, three times: the reloaded post job must run.
@@ -7469,6 +7503,7 @@ SCENARIOS = {
     'retryparkedname': scenario_retryparkedname,
     'healthlastarticle': scenario_healthlastarticle,
     'wholefilerestart': scenario_wholefilerestart,
+    'wholefilestale': scenario_wholefilestale,
     'wholefilenfoproof': scenario_wholefilenfoproof,
     'wholefilesampleproof': scenario_wholefilesampleproof,
     'dupefailoverchain': scenario_dupefailoverchain,
@@ -7759,6 +7794,7 @@ SCENARIO_OPTIONS = {
     'wholefilelive': ['DupeArticleFallback=live', 'ParCheck=auto', 'DownloadRate=4000'],
     'streamretry': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilerestart': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'wholefilestale': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilenfoproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'wholefilesampleproof': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'dupefailoverchain': ['DupeArticleFallback=article', 'HealthCheck=dupe'],
