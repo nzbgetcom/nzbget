@@ -8372,6 +8372,25 @@ def scenario_joingroupreconnect(daemon, t):
         h['Status'], h.get('FailedArticles'), daemon.fake_nntp.no_group_replies, daemon.fake_nntp.sessions))
 
 
+def scenario_joingroupnogroups(daemon, t):
+    """JoinGroup=yes and an nzb whose file lists no group: the join loop never
+    ran, its empty answer counted as "connection closed", and the article was
+    retried forever - the download never ended. It downloads now."""
+    ids = ['ng%d@x' % i for i in range(3)]
+    for mid, body in zip(ids, _uu_parts(_payload(45 * 30, 11114), 'ng.bin', 3)):
+        daemon.fake_nntp.bodies_by_id[mid] = body
+    daemon.fake_nntp.alive = set(ids)
+    nzb = _fake_nzb_ids(ids, 45 * 30, name='ng.bin').decode().replace('<groups><group>alt.binaries.test</group></groups>', '')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelNG', nzb, False, 'ng-key', 100)
+    try:
+        status = daemon.wait_history(api, 'RelNG', timeout=60)['Status']
+    except RuntimeError:
+        status = 'STUCK'
+    ok = '<group>' not in nzb and status.startswith('SUCCESS')
+    return ('joingroupnogroups', ok, 'status=%s closed_logs=%d' % (status, _grep_log(t, 'Connection closed by remote host')))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8756,6 +8775,7 @@ SCENARIOS = {
     'parscanpercent': scenario_parscanpercent,
     'retentionnodate': scenario_retentionnodate,
     'joingroupreconnect': scenario_joingroupreconnect,
+    'joingroupnogroups': scenario_joingroupnogroups,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9034,6 +9054,7 @@ SCENARIO_OPTIONS = {
     'parscanpercent': ['ParCheck=force', 'ParScan=full'],
     'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
     'joingroupreconnect': ['Server1.JoinGroup=yes', 'Server1.Connections=1', 'ArticleRetries=0', 'DirectWrite=no'],
+    'joingroupnogroups': ['Server1.JoinGroup=yes', 'ArticleRetries=0', 'DirectWrite=no'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
@@ -9183,7 +9204,7 @@ SCENARIO_NEWZNAB = {'dupesearchbareurl', 'dupesearchgzip', 'dupesearchrestart', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'uucache', 'joingroupreconnect', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'uucache', 'joingroupreconnect', 'joingroupnogroups', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

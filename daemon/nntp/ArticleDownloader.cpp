@@ -355,7 +355,10 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		m_contentAnalyzer->Reset();
 	}
 
-	if (m_connection->GetNewsServer()->GetJoinGroup())
+	// a file without groups requests the article by its message-id alone: the
+	// join loop never ran, its empty answer counted as a connection error, and
+	// the article was retried forever
+	if (m_connection->GetNewsServer()->GetJoinGroup() && !m_fileInfo->GetGroups()->empty())
 	{
 		// change group
 		for (CString& group : m_fileInfo->GetGroups())
