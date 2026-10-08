@@ -6648,6 +6648,61 @@ def scenario_repairlast(daemon, t):
         hist.get('DamagedRl'), hist.get('BackRl'), skipped, repaired))
 
 
+def scenario_samepostingrepair(daemon, t):
+    """The proxy's stream-mode case: a pick without par2 missing a few articles,
+    and in history a donor that shares every other article's message-id (the
+    same posting with the missing articles intact). Before: the pick downloaded,
+    ended FAILURE/HEALTH, the donor was never used. The release must end up
+    complete: repaired from the donor, or the donor downloaded in its place."""
+    size, seg = 6_000_000, 500_000
+    data = _payload(size, 7373)
+    pp = _place_copy(t, 'spA', data, 'file.mkv')
+    pick = build_nzb(pp, 'sp.mkv', size, seg, {3, 7})
+    donor = build_nzb(pp, 'sp.mkv', size, seg, set())
+    api = daemon.wait_ready()
+    # (unpaused, as DupeDonors and appendfleet add their copies: a backup added
+    # paused comes back paused when it is failed over to, by design)
+    daemon.append(api, 'DonSP', donor, False, 'sp-key', 99)
+    daemon.append(api, 'PickSP', pick, False, 'sp-key', 100)
+    deadline = time.time() + 180
+    hist = {}
+    while time.time() < deadline:
+        hist = {x['NZBName']: x['Status'] for x in api.history()}
+        done = hist.get('PickSP', '').startswith('SUCCESS') or hist.get('DonSP', '').startswith('SUCCESS')
+        if done or (hist.get('PickSP', '').startswith('FAILURE') and not any(g['NZBName'] == 'DonSP' for g in api.listgroups())
+                    and time.time() > deadline - 150):
+            if done:
+                break
+        time.sleep(0.5)
+    ok = hist.get('PickSP', '').startswith('SUCCESS') or hist.get('DonSP', '').startswith('SUCCESS')
+    return ('samepostingrepair', ok, 'pick=%s donor=%s failover_logs=%d repair_logs=%d' % (
+        hist.get('PickSP'), hist.get('DonSP'), _grep_log(t, 'Failing over'), _grep_log(t, 'Stream repair')))
+
+
+def scenario_samepostinglate(daemon, t):
+    """As samepostingrepair, but only 1 of 24 articles missing (health 96%, above
+    critical: no failover while downloading), no par2: the pick ends damaged, and
+    the release must still end up complete through the donor."""
+    size, seg = 12_000_000, 500_000
+    data = _payload(size, 7474)
+    pp = _place_copy(t, 'slA', data, 'file.mkv')
+    pick = build_nzb(pp, 'sl.mkv', size, seg, {7})
+    donor = build_nzb(pp, 'sl.mkv', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSL', donor, False, 'sl-key', 99)
+    daemon.append(api, 'PickSL', pick, False, 'sl-key', 100)
+    deadline = time.time() + 180
+    hist = {}
+    while time.time() < deadline:
+        hist = {x['NZBName']: x['Status'] for x in api.history()}
+        if hist.get('PickSL', '').startswith('SUCCESS') or hist.get('DonSL', '').startswith('SUCCESS'):
+            break
+        time.sleep(0.5)
+    ok = hist.get('PickSL', '').startswith('SUCCESS') or hist.get('DonSL', '').startswith('SUCCESS')
+    return ('samepostinglate', ok, 'pick=%s donor=%s queued=%s' % (
+        hist.get('PickSL'), hist.get('DonSL'), [(g['NZBName'], g['Status']) for g in api.listgroups()]))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -7067,6 +7122,8 @@ SCENARIOS = {
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
     'repairlast': scenario_repairlast,
+    'samepostingrepair': scenario_samepostingrepair,
+    'samepostinglate': scenario_samepostinglate,
     'projectedhealthy': scenario_projectedhealthy,
     'projectedworsebackup': scenario_projectedworsebackup,
     'projectededge': scenario_projectededge,
@@ -7346,6 +7403,8 @@ SCENARIO_OPTIONS = {
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
     'repairlast': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
+    'samepostingrepair': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
+    'samepostinglate': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectedworsebackup': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'projectededge': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
