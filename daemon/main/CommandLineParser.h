@@ -153,6 +153,7 @@ private:
 	CString m_sigFilename;
 	bool m_pauseDownload = false;
 
+	std::vector<CString> m_args;
 	void InitCommandLine(int argc, const char* argv[]);
 	void InitFileArg(int argc, const char* argv[]);
 	void ParseFileIdList(int argc, const char* argv[], int optind);

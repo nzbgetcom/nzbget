@@ -84,4 +84,21 @@ BOOST_AUTO_TEST_CASE(ExtraOption2)
 	BOOST_CHECK(strcmp(commandLineParser.GetOptionList()->at(2), "myoption1=no") == 0);
 }
 
+BOOST_AUTO_TEST_CASE(OptionAfterArguments)
+{
+	// getopt moves the file and the ids behind the options: they were read
+	// from the original order, which gave the config file or "conf"
+	const char* addArgv[] = {"nzbget", "-A", "/tmp/file.nzb", "-c", "/etc/nzbget.conf"};
+	CommandLineParser addParser(5, addArgv);
+	BOOST_CHECK_EQUAL(std::string(addParser.GetArgFilename()), std::string("/tmp/file.nzb"));
+	BOOST_CHECK_EQUAL(std::string(addParser.GetConfigFilename()), std::string("/etc/nzbget.conf"));
+
+	const char* editArgv[] = {"nzbget", "-E", "G", "D", "1-3", "-c", "conf"};
+	CommandLineParser editParser(7, editArgv);
+	BOOST_CHECK(!editParser.GetErrors());
+	BOOST_REQUIRE_EQUAL(editParser.GetEditQueueIdList()->size(), 3);
+	BOOST_CHECK_EQUAL(editParser.GetEditQueueIdList()->at(0), 1);
+	BOOST_CHECK_EQUAL(editParser.GetEditQueueIdList()->at(2), 3);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

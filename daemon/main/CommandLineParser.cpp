@@ -73,7 +73,14 @@ CommandLineParser::CommandLineParser(int argc, const char* argv[])
 
 	if (!m_printOptions && !m_printUsage && !m_printVersion)
 	{
-		InitFileArg(argc, argv);
+		// the arguments in getopt's order: optind counts in it (with an option
+		// after the file, "-A file.nzb -c conf", the original order gave "conf")
+		std::vector<const char*> args;
+		for (CString& arg : m_args)
+		{
+			args.push_back(arg);
+		}
+		InitFileArg(argc, args.data());
 	}
 }
 
@@ -81,7 +88,10 @@ void CommandLineParser::InitCommandLine(int argc, const char* const_argv[])
 {
 	m_clientOperation = opClientNoOperation; // default
 
-	std::vector<CString> argv;
+	// getopt_long reorders it (non-options to the end): kept for InitFileArg,
+	// which reads the arguments from where getopt left optind
+	std::vector<CString>& argv = m_args;
+	argv.clear();
 	argv.reserve(argc);
 	for (int i = 0; i < argc; i++)
 	{
