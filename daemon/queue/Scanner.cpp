@@ -914,6 +914,21 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 
 	// move file into NzbDir, make sure the file name is unique
 	CString validNzbName = FileSystem::MakeValidFilename(FileSystem::BaseFileName(nzbName));
+	// a name past what a file system takes (255 bytes) couldn't be created, and the
+	// nzb-file was refused; the file is named by its first 200 bytes (cut on a whole
+	// UTF-8 character), the download keeps its full name
+	if (strlen(validNzbName) > 200)
+	{
+		std::string name = *validNzbName;
+		const char* dot = strrchr(*validNzbName, '.');
+		std::string extension = dot && strlen(dot) <= 16 ? dot : "";
+		size_t cut = 200 - extension.size();
+		while (cut > 0 && ((unsigned char)name[cut] & 0xC0) == 0x80)
+		{
+			cut--;
+		}
+		validNzbName = (name.substr(0, cut) + extension).c_str();
+	}
 
 	const char* extension = strrchr(nzbName, '.');
 	if (nzb && (!extension || strcasecmp(extension, ".nzb")))

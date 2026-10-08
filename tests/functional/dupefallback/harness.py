@@ -847,6 +847,9 @@ class FakeNewznab:
         self.requests = []
         self.lock = threading.Lock()
         self.respond = lambda params, path: (200, newznab_xml([]))
+        # answer as NZBHydra2 does when asked for gzip: compressed, no length, the
+        # end marked by closing the connection
+        self.gzip = False
 
         class Handler(BaseHTTPRequestHandler):
             def do_GET(self):
@@ -861,7 +864,13 @@ class FakeNewznab:
                     return
                 self.send_response(status)
                 self.send_header('Content-Type', 'application/xml')
-                self.send_header('Content-Length', str(len(body)))
+                if outer.gzip and 'gzip' in self.headers.get('Accept-Encoding', ''):
+                    import gzip as _gzip
+                    body = _gzip.compress(body)
+                    self.send_header('Content-Encoding', 'gzip')
+                    self.close_connection = True
+                else:
+                    self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
 
@@ -5427,6 +5436,86 @@ def scenario_fleetslowurlfirst(daemon, t):
     return ('fleetslowurlfirst', ok, 'took=%.1f members=%s' % (took, [(m['Name'], m['Status']) for m in reply.get('Members', [])]))
 
 
+def scenario_dupesearchgzip(daemon, t):
+    """B91: the indexer answers gzip-compressed, without a length (as NZBHydra2
+    does for nzbget's "Accept-Encoding: gzip"): the search still reads its
+    results. Production logged "isn't XML" for every search."""
+    daemon.newznab.gzip = True
+    _, ok, detail = scenario_dupesearchsearch(daemon, t)
+    not_xml = _grep_log(t, "isn't XML")
+    return ('dupesearchgzip', ok and not_xml == 0, 'not_xml_logs=%d %s' % (not_xml, detail))
+
+
+def scenario_appendurlgzip(daemon, t):
+    """B91: a url answered gzip-compressed without a length (as NZBHydra2 does),
+    the body compressing about 20 to 1 like a real search answer: nzbget reads
+    all of it. A compressed read that expanded past the decompressor's buffer
+    lost the rest."""
+    import gzip as _gzip
+    import http.server
+    import threading
+    segs = ''.join('<segment bytes="750000" number="%d">%s-%d@gz.test</segment>' % (i + 1, 'x' * 40, i) for i in range(4000))
+    body = ('<?xml version="1.0" encoding="UTF-8"?><nzb xmlns="http://www.newzbin.com/DTD/2003/nzb">'
+            '<file poster="p" date="1" subject="&quot;gz.bin&quot; yEnc (1/4000)"><groups><group>a.b</group></groups>'
+            '<segments>%s</segments></file></nzb>' % segs).encode()
+    packed = _gzip.compress(body)
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Encoding', 'gzip')
+            self.end_headers()
+            self.wfile.write(packed)
+
+        def log_message(self, *args):
+            pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    api = daemon.wait_ready()
+    nid = _rpc(daemon, 'appendurl', ['Gz.nzb', 'http://127.0.0.1:%d/gz.nzb' % server.server_address[1],
+                                     '', 0, False, True, 'gz-key', 0, 'SCORE', []]).get('result')
+    deadline = time.time() + 60
+    group = None
+    while time.time() < deadline:
+        group = next((g for g in api.listgroups() if g['NZBName'] == 'Gz' and g['Kind'] == 'NZB'), None)
+        if group or _grep_log(t, 'Gz'):
+            if group:
+                break
+        time.sleep(0.5)
+    server.shutdown()
+    articles = group['RemainingSizeMB'] if group else None
+    ok = group is not None and group['FileSizeMB'] >= 2800
+    return ('appendurlgzip', ok, 'compressed=%d plain=%d group=%s errors=%d' % (
+        len(packed), len(body), group and (group['FileSizeMB'], group['RemainingFileCount']), _grep_log(t, 'Error parsing')))
+
+
+
+def scenario_dupesearchbareurl(daemon, t):
+    """B91: DupeSearchUrl is the indexer's address without "/api"
+    (http://host:5076): its web page answers every search with HTML, and every
+    search was "isn't XML". nzbget asks the standard Newznab path "/api"."""
+    inner = daemon.newznab.respond
+    daemon.newznab.respond = lambda params, path: (200, b'<!doctype html><html><body>indexer</body></html>') \
+        if path.rstrip('/') != '/api' else inner(params, path)
+    _, ok, detail = scenario_dupesearchsearch(daemon, t)
+    not_xml = _grep_log(t, "isn't XML")
+    return ('dupesearchbareurl', ok and not_xml == 0, 'not_xml_logs=%d %s' % (not_xml, detail))
+
+
+def scenario_appendlongname(daemon, t):
+    """A name of 600 characters (a fleet member's, or an append's): the nzb-file
+    couldn't be created past the file system's 255 bytes and the download was
+    refused (ERROR, -1). It is added under its full name now."""
+    api = daemon.wait_ready()
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@ln' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    name = 'Long.' + 'n\u00e9' * 300 + '.nzb'
+    nid = _rpc(daemon, 'append', [name, nzb, '', 0, False, True, 'ln-key', 0, 'SCORE', []]).get('result')
+    group = next((g for g in api.listgroups() if g['NZBID'] == nid), None) if isinstance(nid, int) and nid > 0 else None
+    ok = group is not None and group['NZBName'].startswith('Long.n') and len(group['NZBName']) > 255
+    return ('appendlongname', ok, 'id=%s name_len=%s' % (nid, group and len(group['NZBName'])))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7034,8 +7123,12 @@ SCENARIOS = {
     'fleetslowurlfirst': scenario_fleetslowurlfirst,
     'fleetmerged': scenario_fleetmerged,
     'appendconcurrent': scenario_appendconcurrent,
+    'dupesearchgzip': scenario_dupesearchgzip,
+    'dupesearchbareurl': scenario_dupesearchbareurl,
+    'appendurlgzip': scenario_appendurlgzip,
     'readdafterdelete': scenario_readdafterdelete,
     'appendscorerange': scenario_appendscorerange,
+    'appendlongname': scenario_appendlongname,
     'editscorerange': scenario_editscorerange,
     'appendlarge': scenario_appendlarge,
     'appendurlodd': scenario_appendurlodd,
@@ -7266,6 +7359,8 @@ SCENARIO_OPTIONS = {
     'dupesearchkey': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchdonor': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchUrl=http://127.0.0.1:9/api', 'DupeSearchDelay=2'],
     'dupesearchsearch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
+    'dupesearchbareurl': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
+    'dupesearchgzip': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=SECRETKEY123'],
     'dupesearchfetch': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfetcherror': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=1', 'DupeSearchApiKey=k'],
     'dupesearchfilters': ['DupeArticleFallback=no', 'DupeSearch=yes', 'DupeSearchDelay=2', 'DupeSearchApiKey=k'],
@@ -7412,7 +7507,7 @@ SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EX
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 
 # scenarios with a FakeNewznab indexer (DupeSearchUrl points to it)
-SCENARIO_NEWZNAB = {'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
+SCENARIO_NEWZNAB = {'dupesearchbareurl', 'dupesearchgzip', 'dupesearchrestart', 'dupesearchsearch', 'dupesearchfetch', 'dupesearchfetcherror', 'dupesearchfilters', 'dupesearchdonors',
                    'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun',
                    'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchresume', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged',
                    'dupesearchresumedeleted'}
@@ -7502,7 +7597,9 @@ def main():
                                 'Server%d.Encryption=no' % number, 'Server%d.Optional=yes' % number]
             if name in SCENARIO_NEWZNAB:
                 daemon.newznab = FakeNewznab()
-                options.append('DupeSearchUrl=http://127.0.0.1:%d/api' % daemon.newznab.port)
+                # (dupesearchbareurl: the address without "/api", as users write it)
+                options.append('DupeSearchUrl=http://127.0.0.1:%d%s' % (daemon.newznab.port,
+                                                                       '' if name == 'dupesearchbareurl' else '/api'))
             daemon.write_config(options)
             for file_name, text in SCENARIO_EXTENSIONS.get(name, {}).items():
                 target.write_file(os.path.join('main', 'scripts', file_name), text.encode())
