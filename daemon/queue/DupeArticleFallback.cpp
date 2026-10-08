@@ -669,10 +669,14 @@ void DupeArticleFallback::RegisterLeadSuccess(FileInfo* fileInfo, ArticleInfo* a
 
 void DupeArticleFallback::VacateGhostLead(FileInfo* fileInfo, const RawNzbList& donors)
 {
+	// a lead gone from queue and history, or barred after its articles failed the
+	// par2 check (B40), is vacated: a barred one was passed over when sources were
+	// pinned, so no article's lead matched it again and the lead rotation froze
 	int leadNzbId = fileInfo->GetDupeLeadDonorId();
-	if (leadNzbId == 0 ||
+	bool barred = fileInfo->GetNzbInfo() && fileInfo->GetNzbInfo()->GetDupeBlockedDonors()->count(leadNzbId);
+	if (leadNzbId == 0 || (!barred &&
 		std::find_if(donors.begin(), donors.end(),
-			[leadNzbId](NzbInfo* donor) { return donor->GetId() == leadNzbId; }) != donors.end())
+			[leadNzbId](NzbInfo* donor) { return donor->GetId() == leadNzbId; }) != donors.end()))
 	{
 		return;
 	}
