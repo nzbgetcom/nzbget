@@ -350,7 +350,8 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 	decoder.SetCrcCheck(true);
 	decoder.SetRawMode(false);
 
-	CharBuffer recvBuf(g_Options->GetArticleReadChunkSize());
+	int readChunk = g_Options->GetArticleReadChunkSize();
+	CharBuffer recvBuf(readChunk + 128);	// (decoder slack, see ArticleDownloader)
 	ArticleFetchLimits limits;
 
 	while (!m_stopped && !decoder.GetEof())
@@ -387,7 +388,7 @@ ArticleFetcher::FetchedArticle ArticleFetcher::FetchFromConnection(NntpConnectio
 		connection->ReadBuffer(&buffer, &len);
 		if (len == 0)
 		{
-			len = connection->TryRecv(recvBuf, recvBuf.Size());
+			len = connection->TryRecv(recvBuf, readChunk);
 			buffer = recvBuf;
 		}
 

@@ -272,4 +272,29 @@ BOOST_AUTO_TEST_CASE(BufferOverflowTest)
 	BOOST_CHECK_EQUAL(decoder.GetEof(), false);
 }
 
+
+BOOST_AUTO_TEST_CASE(UuDecodeOutputBoundTest)
+{
+	// A uuencoded line decodes to fewer bytes than it has characters, but a line
+	// carried over from the previous read decodes on top of what the call was given:
+	// the output can exceed the input by up to one line (63 bytes). Callers keep 128
+	// bytes past what they read into the buffer for it (it was written past its end).
+	Decoder decoder;
+	std::string first = "begin 644 f.bin\r\n_" + std::string(62, 'A');	// a partial line
+	std::vector<char> buffer(first.size() + 128);
+	memcpy(buffer.data(), first.data(), first.size());
+	decoder.DecodeBuffer(buffer.data(), (int)first.size());
+
+	std::string next = std::string(22, 'A') + "\r\n";
+	while (next.size() < 512 - 87)
+	{
+		next += "_" + std::string(84, 'A') + "\r\n";
+	}
+	std::vector<char> second(next.size() + 128, 'Z');
+	memcpy(second.data(), next.data(), next.size());
+	int outlen = decoder.DecodeBuffer(second.data(), (int)next.size());
+	BOOST_CHECK_GT(outlen, 0);
+	BOOST_CHECK_LE(outlen, (int)next.size() + 63);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

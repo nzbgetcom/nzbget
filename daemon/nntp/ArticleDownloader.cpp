@@ -386,7 +386,10 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	m_decoder.SetRawMode(g_Options->GetRawArticle());
 
 	status = adRunning;
-	CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
+	// (128 bytes past what is read into it: the decoder may write up to one uuencoded
+	// line's worth more than it was given)
+	int readChunk = g_Options->GetArticleReadChunkSize();
+	CharBuffer lineBuf(readChunk + 128);
 
 	while (!IsStopped() && !m_decoder.GetEof())
 	{
@@ -404,7 +407,7 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		m_connection->ReadBuffer(&buffer, &len);
 		if (len == 0)
 		{
-			len = m_connection->TryRecv(lineBuf, lineBuf.Size());
+			len = m_connection->TryRecv(lineBuf, readChunk);
 			buffer = lineBuf;
 		}
 
@@ -415,6 +418,10 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 			{
 				detail("Article %s @ %s failed: Unexpected end of article", *m_infoName, *m_connectionName);
 			}
+			// the rest of this body may still arrive: the connection isn't used again (it
+			// was, and late body bytes were read as the reply to the next request - at
+			// worst another article's body decoded into this file)
+			m_connection->Disconnect();
 			status = adFailed;
 			break;
 		}

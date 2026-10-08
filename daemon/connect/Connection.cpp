@@ -27,6 +27,9 @@
 #include "Options.h"
 
 static const int CONNECTION_READBUFFER_SIZE = 1024;
+// past the data read into a buffer: a decoder writing into it (uuencoded lines) may
+// write up to one line's worth more than it was given
+static const int DECODE_SLACK = 128;
 
 #if defined(__linux__) && !defined(__ANDROID__)
 // Activate DNS resolving workaround for Android:
@@ -110,7 +113,7 @@ Connection::Connection(const char* host, int port, bool tls) :
 {
 	debug("Creating Connection");
 
-	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1);
+	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1 + DECODE_SLACK);
 #ifndef DISABLE_TLS
 	m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
 #endif
@@ -128,7 +131,7 @@ Connection::Connection(SOCKET socket, bool tls)
 	m_bufAvail = 0;
 	m_timeout = 60;
 	m_suppressErrors = true;
-	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1);
+	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1 + DECODE_SLACK);
 #ifndef DISABLE_TLS
 	m_tlsSocket = nullptr;
 	m_tlsError = false;
@@ -402,7 +405,7 @@ char* Connection::ReadLine(char* buffer, int size, int* bytesReadOut)
 	{
 		if (!bufAvail)
 		{
-			bufAvail = recv(m_socket, m_readBuf, m_readBuf.Size() - 1, 0);
+			bufAvail = recv(m_socket, m_readBuf, CONNECTION_READBUFFER_SIZE, 0);
 			if (bufAvail < 0)
 			{
 				ReportError("Could not receive data on socket from %s", m_host.c_str(), true);
