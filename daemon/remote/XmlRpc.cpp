@@ -549,8 +549,13 @@ protected:
 
 void XmlRpcProcessor::SetUrl(const char* url)
 {
-	m_url = url;
-	WebUtil::UrlDecode(m_url);
+	// the path is decoded here, each query parameter after it is split off: decoded
+	// first, an encoded "&" (%26) inside a value split that value in two
+	const char* query = strchr(url, '?');
+	CString path;
+	path.Set(url, query ? (int)(query - url) : 0);
+	WebUtil::UrlDecode(path);
+	m_url = CString::FormatStr("%s%s", *path, query ? query : "");
 }
 
 bool XmlRpcProcessor::IsRpcRequest(const char* url)
@@ -589,7 +594,9 @@ void XmlRpcProcessor::Dispatch()
 	char* request = m_request;
 
 	BString<100> methodName;
-	BString<100> requestId;
+	// echoed as sent: cut to 99 characters it made the response invalid JSON (an id
+	// past 4 KB is left out rather than cut)
+	CString requestId;
 
 	if (m_httpMethod == hmGet)
 	{
@@ -625,8 +632,10 @@ void XmlRpcProcessor::Dispatch()
 		}
 		if (const char* requestIdPtr = WebUtil::JsonFindField(m_request, "id", &valueLen))
 		{
-			valueLen = valueLen >= (int)sizeof(requestId) ? (int)sizeof(requestId) - 1 : valueLen;
-			requestId.Set(requestIdPtr, valueLen);
+			if (valueLen <= 4096)
+			{
+				requestId.Set(requestIdPtr, valueLen);
+			}
 		}
 	}
 
@@ -1326,6 +1335,7 @@ bool XmlCommand::NextParamAsStr(char** value)
 			len = strlen(param) - 1;
 		}
 		m_requestPtr = param + len + 1;
+		WebUtil::UrlDecode(param);
 		*value = param;
 		return true;
 	}
@@ -3940,10 +3950,12 @@ void ServerVolumesXmlCommand::Execute()
 	"\"SecSlot\" : %i,\n"
 	"\"MinSlot\" : %i,\n"
 	"\"HourSlot\" : %i,\n"
-	"\"DaySlot\" : %i,\n";
+	"\"DaySlot\" : %i\n";
 
+	// (every optional array is preceded by its comma: with one turned off, the
+	// fields ended in a stray comma or two commas in a row - invalid JSON)
 	const char* JSON_ARRAY_START =
-	"\"%s\" : [\n";
+	",\n\"%s\" : [\n";
 
 	const char* JSON_BYTES_ARRAY_ITEM =
 	"{\n"
@@ -4037,13 +4049,11 @@ void ServerVolumesXmlCommand::Execute()
 				}
 
 				AppendResponse(IsJson() ? JSON_ARRAY_END : XML_ARRAY_END);
-				AppendCondResponse(",\n", IsJson() && i < 3);
 			}
 		}
 
 		if (articlesPerDays)
 		{
-			AppendCondResponse(",\n", IsJson());
 			AppendFmtResponse(IsJson() ? JSON_ARRAY_START : XML_ARRAY_START, "ArticlesPerDays");
 
 			const auto& articles = serverVolume.GetArticlesPerDays();

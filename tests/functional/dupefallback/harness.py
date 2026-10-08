@@ -5817,6 +5817,57 @@ def scenario_staleprogress(daemon, t):
         unreadable, sorted(groups), _grep_log(t, 'no longer queued')))
 
 
+def scenario_apiformat(daemon, t):
+    """Response and GET edge cases (upstream too): a GET parameter holding an encoded
+    "&" (%26) stays one value (the whole query was decoded before it was split);
+    servervolumes with some arrays turned off is valid JSON (stray and doubled
+    commas); a JSON-RPC id over 99 characters comes back whole (it was cut, and the
+    response wasn't valid JSON)."""
+    import json as _json
+    import urllib.request as _req
+    api = daemon.wait_ready()
+    base = 'http://127.0.0.1:%d' % daemon.rpc_port
+    import http.server
+    import threading
+    import urllib.parse as _parse
+
+    class Echo(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            body = self.path.encode()
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+    echo = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Echo)
+    echo.daemon_threads = True
+    threading.Thread(target=echo.serve_forever, daemon=True).start()
+    target = 'http://127.0.0.1:%d/p?x=1&y=2' % echo.server_address[1]
+    # (GET is only for read-only methods: readurl takes a string)
+    with _req.urlopen(base + '/jsonrpc/readurl?1=%s&2=echo' % _parse.quote(target, safe=''), timeout=20) as r:
+        fetched = _json.loads(r.read().decode()).get('result')
+    echo.shutdown()
+    valid = True
+    for flags in ([False, True, False, True, False], [True, True, True, False, True], [False, False, False, False, False]):
+        body = _json.dumps({'method': 'servervolumes', 'params': flags}).encode()
+        with _req.urlopen(_req.Request(base + '/jsonrpc', body), timeout=10) as r:
+            try:
+                _json.loads(r.read().decode())
+            except ValueError:
+                valid = False
+    long_id = 'i' * 300
+    body = _json.dumps({'method': 'version', 'params': [], 'id': long_id}).encode()
+    with _req.urlopen(_req.Request(base + '/jsonrpc', body), timeout=10) as r:
+        try:
+            echoed = _json.loads(r.read().decode()).get('id')
+        except ValueError:
+            echoed = None
+    ok = fetched == '/p?x=1&y=2' and valid and echoed == long_id
+    return ('apiformat', ok, 'fetched=%r volumes_valid=%s id_echoed=%s' % (fetched, valid, echoed == long_id))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7513,6 +7564,7 @@ SCENARIOS = {
     'readdafterdelete': scenario_readdafterdelete,
     'appendscorerange': scenario_appendscorerange,
     'apiedges': scenario_apiedges,
+    'apiformat': scenario_apiformat,
     'apiaccess': scenario_apiaccess,
     'queueedits': scenario_queueedits,
     'staleprogress': scenario_staleprogress,
