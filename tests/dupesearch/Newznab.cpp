@@ -205,6 +205,11 @@ BOOST_AUTO_TEST_CASE(NewznabBuildUrlAndMaskTest)
 	std::string url = Newznab::BuildUrl("http://127.0.0.1:5076/api", params, "k&y 1");
 	BOOST_CHECK_EQUAL(url, "http://127.0.0.1:5076/api?t=search&q=show+s01e02+1080p&limit=100&apikey=k%26y+1");
 	BOOST_CHECK_EQUAL(Newznab::BuildUrl("http://h/api?x=1", {}, "key"), "http://h/api?x=1&apikey=key");
+	// an address without a path is the indexer's web page (B91): its api is at /api
+	BOOST_CHECK_EQUAL(Newznab::BuildUrl("http://h:5076", {}, "key"), "http://h:5076/api?apikey=key");
+	BOOST_CHECK_EQUAL(Newznab::BuildUrl("http://h:5076/", {}, "key"), "http://h:5076/api?apikey=key");
+	BOOST_CHECK_EQUAL(Newznab::BuildUrl("https://h?x=1", {}, "key"), "https://h/api?x=1&apikey=key");
+	BOOST_CHECK_EQUAL(Newznab::BuildUrl("http://h/nzbhydra/api", {}, "key"), "http://h/nzbhydra/api?apikey=key");
 
 	BOOST_CHECK_EQUAL(Newznab::Mask("http://h/api?t=search&apikey=SECRET&q=x"), "http://h/api?t=search&apikey=***&q=x");
 	BOOST_CHECK_EQUAL(Newznab::Mask("http://h/api?APIKEY=SECRET"), "http://h/api?APIKEY=***");

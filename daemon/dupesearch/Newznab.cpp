@@ -328,6 +328,20 @@ std::vector<Newznab::Params> Newznab::BuildQueries(const std::string& title, con
 std::string Newznab::BuildUrl(const std::string& base, const Params& params, const std::string& apiKey)
 {
 	std::string url = base;
+	// an address without a path ("http://host:5076") is the indexer's web page,
+	// which answers every search with HTML (B91: every search "isn't XML"): the
+	// api of a Newznab indexer is at "/api"
+	size_t scheme = url.find("://");
+	if (scheme != std::string::npos)
+	{
+		size_t hostEnd = std::min(url.find_first_of("/?", scheme + 3), url.size());
+		size_t queryStart = std::min(url.find('?', hostEnd), url.size());
+		std::string path = url.substr(hostEnd, queryStart - hostEnd);
+		if (path.empty() || path == "/")
+		{
+			url = url.substr(0, hostEnd) + "/api" + url.substr(queryStart);
+		}
+	}
 	url += url.find('?') == std::string::npos ? '?' : '&';
 	for (const auto& param : params)
 	{
@@ -393,7 +407,8 @@ std::vector<Newznab::Result> Newznab::Search(const std::string& base, const std:
 				}
 				if (!ParseResponse(reply.body, result))
 				{
-					warn("DupeSearch: the answer to the search %s isn't XML", label.c_str());
+					warn("DupeSearch: the answer to the search %s isn't XML (is option DupeSearchUrl the "
+						"indexer's api address, like http://host:5076/api?)", label.c_str());
 					failed++;
 					break;
 				}
