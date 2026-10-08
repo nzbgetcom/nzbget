@@ -569,7 +569,7 @@ BOOST_AUTO_TEST_CASE(JsonDecodeStopsAtEndTest)
 	// the end of the text (P0-b)
 	char shortEscape[] = "ab\\u4\0ZZZZZZ";
 	WebUtil::JsonDecode(shortEscape);
-	BOOST_CHECK_EQUAL(std::string(shortEscape), std::string("ab\x04"));
+	BOOST_CHECK_EQUAL(std::string(shortEscape), std::string("ab"));
 	BOOST_CHECK_EQUAL(std::string(shortEscape + 6, 6), std::string("ZZZZZZ"));
 
 	char lastBackslash[] = "ab\\\0ZZZZZZ";
@@ -599,4 +599,16 @@ BOOST_AUTO_TEST_CASE(XmlDecodeStopsAtEndTest)
 	char whole[] = "a&lt;b&#65;c&amp;";
 	WebUtil::XmlDecode(whole);
 	BOOST_CHECK_EQUAL(std::string(whole), std::string("a<bAc&"));
+}
+
+BOOST_AUTO_TEST_CASE(NumericEscapesDecodeToUtf8Test)
+{
+	// one byte per escape was wrong past 127, and a NUL cut the text off
+	char json[] = "Caf\\u00e9 \\u4e2d \\ud83d\\ude00!";
+	WebUtil::JsonDecode(json);
+	BOOST_CHECK_EQUAL(std::string(json), std::string("Caf\xc3\xa9 \xe4\xb8\xad \xf0\x9f\x98\x80!"));
+
+	char xml[] = "Caf&#xE9; Society &#38;1080p &#233;";
+	WebUtil::XmlDecode(xml);
+	BOOST_CHECK_EQUAL(std::string(xml), std::string("Caf\xc3\xa9 Society &1080p \xc3\xa9"));
 }

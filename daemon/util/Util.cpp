@@ -1050,6 +1050,57 @@ BreakLoop:
 	return result;
 }
 
+namespace
+{
+	// a code point as UTF-8 (never longer than the escape it stands for: the
+	// decoders write in place); a NUL or a value past Unicode becomes U+FFFD
+	char* AppendUtf8(char* output, uint32 code)
+	{
+		if (code == 0 || code > 0x10FFFF || (code >= 0xD800 && code <= 0xDFFF))
+		{
+			code = 0xFFFD;
+		}
+		if (code < 0x80)
+		{
+			*output++ = (char)code;
+		}
+		else if (code < 0x800)
+		{
+			*output++ = (char)(0xC0 | (code >> 6));
+			*output++ = (char)(0x80 | (code & 0x3F));
+		}
+		else if (code < 0x10000)
+		{
+			*output++ = (char)(0xE0 | (code >> 12));
+			*output++ = (char)(0x80 | ((code >> 6) & 0x3F));
+			*output++ = (char)(0x80 | (code & 0x3F));
+		}
+		else
+		{
+			*output++ = (char)(0xF0 | (code >> 18));
+			*output++ = (char)(0x80 | ((code >> 12) & 0x3F));
+			*output++ = (char)(0x80 | ((code >> 6) & 0x3F));
+			*output++ = (char)(0x80 | (code & 0x3F));
+		}
+		return output;
+	}
+
+	// four hex digits at p, or -1
+	int Hex4(const char* p)
+	{
+		int code = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			if (!isxdigit((unsigned char)p[i]))
+			{
+				return -1;
+			}
+			code = code * 16 + (isdigit((unsigned char)p[i]) ? p[i] - '0' : (tolower((unsigned char)p[i]) - 'a' + 10));
+		}
+		return code;
+	}
+}
+
 void WebUtil::XmlDecode(char* raw)
 {
 	char* output = raw;
@@ -1089,11 +1140,27 @@ void WebUtil::XmlDecode(char* raw)
 					}
 					else if (*p == '#')
 					{
-						int code = atoi((p++)+1);
-						// (strchr finds the terminating NUL too: "&#12" at the end of
-						// the text was read past its end)
-						while (*p && strchr("0123456789;", *p)) p++;
-						*output++ = (char)code;
+						// decimal or (with "x") hex, written as UTF-8: as one byte it was
+						// wrong past 127, a hex entity became a NUL that cut the text off,
+						// and digits after the ";" were swallowed (strchr also finds the
+						// terminating NUL: "&#12" at the end read past it)
+						p++;
+						bool hex = *p == 'x' || *p == 'X';
+						p += hex ? 1 : 0;
+						uint32 code = 0;
+						bool any = false;
+						while (hex ? isxdigit((unsigned char)*p) : isdigit((unsigned char)*p))
+						{
+							code = std::min<uint32>(code * (hex ? 16 : 10) +
+								(isdigit((unsigned char)*p) ? *p - '0' : tolower((unsigned char)*p) - 'a' + 10), 0x110000);
+							any = true;
+							p++;
+						}
+						if (*p == ';')
+						{
+							p++;
+						}
+						output = any ? AppendUtf8(output, code) : output;
 					}
 					else if (*p == '\0')
 					{
@@ -1377,11 +1444,30 @@ void WebUtil::JsonDecode(char* raw)
 							break;
 						case 'u':
 							{
-								char hex[5] = {0};
-								strncpy(hex, p + 1, 4);
-								unsigned int code = strtoul(hex, nullptr, 16);
-								*output++ = (char)code;
-								p += strlen(hex);
+								// written as UTF-8, a surrogate pair as one character: as one
+								// byte it was wrong past 127, and a NUL cut the text off
+								int code = Hex4(p + 1);
+								if (code < 0)
+								{
+									// not four hex digits (a short one at the end too): skip
+									// what is there of them
+									while (p[1] && isxdigit((unsigned char)p[1]))
+									{
+										p++;
+									}
+									break;
+								}
+								p += 4;
+								if (code >= 0xD800 && code <= 0xDBFF && p[1] == '\\' && p[2] == 'u')
+								{
+									int low = Hex4(p + 3);
+									if (low >= 0xDC00 && low <= 0xDFFF)
+									{
+										code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
+										p += 6;
+									}
+								}
+								output = AppendUtf8(output, (uint32)code);
 							}
 							break;
 						default:
