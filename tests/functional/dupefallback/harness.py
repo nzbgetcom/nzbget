@@ -7813,6 +7813,29 @@ def scenario_errorpercent(daemon, t):
     return ('errorpercent', ok, 'alive=%s message=%r' % (alive, message[:120]))
 
 
+def scenario_getunsafe(daemon, t):
+    """Commands that change state or reach out (extension download/update/
+    delete, readurl, the speed tests) ran over GET as "safe" methods; they
+    need POST now, as every other changing command does. Reading commands
+    still work over GET."""
+    import json as _json
+    import urllib.request as _req
+    daemon.wait_ready()
+
+    def get(path):
+        with _req.urlopen('http://127.0.0.1:%d/jsonrpc/%s' % (daemon.rpc_port, path), timeout=30) as reply:
+            return _json.loads(reply.read().decode())
+
+    refused = {}
+    for method in ('deleteextension?=nosuch', 'readurl?=http%3A%2F%2F127.0.0.1%3A9%2F&=x', 'testdiskspeed?=/tmp&=1&=1'):
+        err = get(method).get('error') or {}
+        refused[method.split('?')[0]] = err.get('code')
+    version = get('version').get('result')
+    posted = _rpc(daemon, 'deleteextension', ['nosuch']).get('error', {}).get('code')
+    ok = all(code == 4 for code in refused.values()) and bool(version) and posted not in (None, 4)
+    return ('getunsafe', ok, 'get_error_codes=%s version_over_get=%s post_error=%s' % (refused, version, posted))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8178,6 +8201,7 @@ SCENARIOS = {
     'historyeditlist': scenario_historyeditlist,
     'speedtestnohistory': scenario_speedtestnohistory,
     'errorpercent': scenario_errorpercent,
+    'getunsafe': scenario_getunsafe,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,

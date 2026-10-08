@@ -847,13 +847,7 @@ var Refresher = (new function($)
 			'loadconfig',
 			'configtemplates', 
 			'loadextensions', 
-			'downloadextension',
-			'updateextension',
-			'deleteextension',
-			'readurl', 
 			'servervolumes',
-			'testserverspeed',
-			'testdiskspeed',
 		];
 
 		$('#RefreshSelect').click(function(e) { e.stopPropagation(); });

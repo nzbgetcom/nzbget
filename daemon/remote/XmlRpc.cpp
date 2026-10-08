@@ -281,25 +281,25 @@ public:
 	void Execute() override;
 };
 
-class DownloadExtensionXmlCommand final : public SafeXmlCommand
+class DownloadExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class UpdateExtensionXmlCommand final : public SafeXmlCommand
+class UpdateExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DeleteExtensionXmlCommand final : public SafeXmlCommand
+class DeleteExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class TestExtensionXmlCommand final : public SafeXmlCommand
+class TestExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -338,7 +338,7 @@ public:
 	void Execute() override;
 };
 
-class ReadUrlXmlCommand final : public SafeXmlCommand
+class ReadUrlXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -452,13 +452,13 @@ private:
 	}
 };
 
-class TestServerSpeedXmlCommand final: public SafeXmlCommand
+class TestServerSpeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class TestDiskSpeedXmlCommand final : public SafeXmlCommand
+class TestDiskSpeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -499,7 +499,7 @@ public:
 	}
 };
 
-class TestNetworkSpeedXmlCommand final : public SafeXmlCommand
+class TestNetworkSpeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
