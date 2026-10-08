@@ -2025,6 +2025,33 @@ def scenario_xpackrar(daemon, t):
                {k: v for k, v in integ.items()}))
 
 
+def scenario_xpackgapdonor(daemon, t):
+    """Cross-packing repair from a donor missing one article inside the hole: the
+    rest of the hole is still recovered from it. A read fails as a whole when any
+    donor article in it is missing, and that gave up the entire hole."""
+    size = 6_000_000
+    data = _payload(size, 6150)
+    volumes = generators.rar3_store_volumes('movie.mkv', data, 2_000_000)
+    payloads, members = {}, []
+    missing = [set(), {2, 3, 4}, set()]        # vol2: a 1.5 MB data hole
+    for i, (vol, miss) in enumerate(zip(volumes, missing), 1):
+        rel = 'xgdA/rel.part%02d.rar' % i
+        name = 'Rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        payloads[name] = vol
+        members.append((rel, name, len(vol), 500_000, miss))
+    dp = _place_copy(t, 'xgdB', data, 'movie.mkv')
+    # the donor lacks one 300 KB article inside the hole (inner offset about 2.7 MB)
+    donor_members = [(dp, 'movie.mkv', size, 300_000, {10})]
+    h, integ, c = _xpack_run(daemon, t, 'Xgd', members, donor_members, payloads)
+    with open(t.path('nzbget.log'), errors='replace') as f:
+        found = re.findall(r'Recovered ([\d.]+) MB .*?of movie\.mkv from duplicate', f.read())
+    recovered_mb = max((float(x) for x in found), default=0.0)
+    ok = recovered_mb >= 1.0 and integ['Rel.part01.rar'] and integ['Rel.part03.rar']
+    return ('xpackgapdonor', ok, 'status=%s recovered_mb=%.1f repaired=%d' % (
+        h['Status'], recovered_mb, c['repaired']))
+
+
 def scenario_xpackrar2rar(daemon, t):
     """rar-to-rar with DIFFERENT volume sizes (3x2MB target, 4x1.5MB donor):
     member-wise M1 cannot window these (sizes differ by 25%), the inner
@@ -7226,6 +7253,7 @@ SCENARIOS = {
     'repostdonorgaps': scenario_repostdonorgaps,
     'xpackbare': scenario_xpackbare,
     'xpackrar': scenario_xpackrar,
+    'xpackgapdonor': scenario_xpackgapdonor,
     'xpackrar2rar': scenario_xpackrar2rar,
     'xpack2sets': scenario_xpack2sets,
     'xpackzip': scenario_xpackzip,
@@ -7493,6 +7521,7 @@ SCENARIO_OPTIONS = {
     'xpackbare': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     # xpack*: no real par2 anywhere; ParCheck=auto ends in "Nothing to par-check"
     'xpackrar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'xpackgapdonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackrar2rar': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpack2sets': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'xpackzip': ['DupeArticleFallback=stream', 'ParCheck=auto'],

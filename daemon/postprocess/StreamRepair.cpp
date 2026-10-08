@@ -2437,17 +2437,38 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 	int64 written = 0;
 	std::vector<char> donorData;
 
+	// A read fails as a whole when any donor article inside it is missing: one missing
+	// article ~2 MB into a 120 MB hole gave up the whole hole. A failed range is read
+	// again in smaller pieces; a piece that still fails is skipped, and only a run of
+	// failed pieces ends this donor's part in the hole.
+	constexpr int64 FullChunk = 4 * 1024 * 1024;
+	constexpr int64 MinChunk = 64 * 1024;
+	constexpr int MaxFailedPieces = 8;
 	StreamRangeList holes = repairSet.InnerHoles;	// iterate a stable copy
 	for (const StreamRange& hole : holes)
 	{
 		int64 pos = hole.Offset;
+		int64 size = FullChunk;
+		int failedPieces = 0;
 		while (pos < hole.End() && !IsStopped())
 		{
-			int64 chunk = std::min<int64>(hole.End() - pos, 4 * 1024 * 1024);
+			int64 chunk = std::min<int64>(hole.End() - pos, size);
 			if (!ReadDonorInner(donorMap, donorSources, {pos, chunk}, donorData))
 			{
-				break;	// this donor cannot supply the rest of this hole
+				if (chunk > MinChunk)
+				{
+					size = std::max(MinChunk, chunk / 4);
+					continue;
+				}
+				if (++failedPieces >= MaxFailedPieces)
+				{
+					break;	// this donor cannot supply the rest of this hole
+				}
+				pos += chunk;
+				continue;
 			}
+			failedPieces = 0;
+			size = FullChunk;
 			int64 wrote = WriteInnerRange(targetMap, targetFiles, targets,
 				memberTargets, setMembers, {pos, chunk}, donorData.data());
 			if (wrote < 0)
