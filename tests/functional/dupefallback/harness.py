@@ -7403,6 +7403,34 @@ def scenario_connhold(daemon, t):
     return ('connhold', ok, 'status=%s open 2s after=%d 10s after=%d (accepted=%d)' % (
         h['Status'], open_held, open_after, daemon.proxy.accepted))
 
+# a scan extension that marks every nzb it sees
+CATEGORY_SCAN_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET SCAN SCRIPT                                                     ###
+# Marks the nzb.
+### NZBGET SCAN SCRIPT                                                     ###
+##############################################################################
+import sys
+print('[NZB] NZBPR_scanmark=yes')
+sys.exit(0)
+'''
+
+
+def scenario_categoryscan(daemon, t):
+    """A scan extension set only in a category's Extensions (none in the
+    global Extensions) never ran: the scanner checked the global list alone
+    to decide whether scan scripts exist. Now it runs for the category's
+    nzbs."""
+    data = _payload(90_000, 8787)
+    pp = _place_copy(t, 'csA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelCS', build_nzb(pp, 'cat.bin', len(data), 100_000, set()), False, 'cs-key', 100)
+    h = daemon.wait_history(api, 'RelCS', timeout=60)
+    params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
+    ok = h['Status'].startswith('SUCCESS') and params.get('scanmark') == 'yes'
+    return ('categoryscan', ok, 'status=%s category=%s params=%s' % (h['Status'], h.get('Category'), params))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7755,6 +7783,7 @@ SCENARIOS = {
     'yencrangeshort': scenario_yencrangeshort,
     'quotafutureday': scenario_quotafutureday,
     'connhold': scenario_connhold,
+    'categoryscan': scenario_categoryscan,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8036,6 +8065,7 @@ SCENARIO_OPTIONS = {
     'yencrangefar': ['DupeArticleFallback=no', 'DirectWrite=no', 'ArticleRetries=0'],
     'yencrangeshort': ['DupeArticleFallback=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'quotafutureday': ['DailyQuota=100000'],
+    'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
@@ -8137,7 +8167,8 @@ SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
 # scenarios with a FirstFailNntpProxy in front of Server1: (message-id markers,)
 # extensions a scenario installs into ScriptDir before the daemon starts
 SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
-                       'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION}}
+                       'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
+                       'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION}}
 
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 

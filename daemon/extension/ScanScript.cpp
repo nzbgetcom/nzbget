@@ -39,6 +39,11 @@ bool ScanScriptController::HasScripts()
 {
 	ScanScriptCheck check;
 	check.ExecuteScriptList(g_Options->GetExtensions());
+	// a category's extensions replace the global ones for its nzbs
+	for (Options::Category& category : g_Options->GetCategories())
+	{
+		check.ExecuteScriptList(category.GetExtensions());
+	}
 	return check.has;
 }
 
