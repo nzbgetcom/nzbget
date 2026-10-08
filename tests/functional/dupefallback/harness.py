@@ -7942,6 +7942,44 @@ def scenario_xmlparamdecode(daemon, t):
     return ('xmlparamdecode', bool(ok), 'fetched=%s jsonp=%s' % (hits[:1], jsonp[:160].replace('\n', ' ')))
 
 
+def _path_traversal(daemon, t, name):
+    """A hostile NZB or article names a file outside the destination: the nzb
+    subject is "../../../escape.bin", the article's yEnc name (rewritten by a
+    proxy) "../../ab.bin", and a rar member "../../escape2.bin". Every file
+    stays inside the destination folder."""
+    data = _payload(90_000, 9797)
+    t.write_file(os.path.join('data', 'ptA/aaaaaaaa.bin'), data)
+    inner = _payload(120_000, 9798)
+    volumes = generators.rar3_store_volumes_valid('../../escape2.bin', inner, 200_000)
+    members = [('ptA/aaaaaaaa.bin', '../../../escape.bin', len(data), 100_000, set())]
+    for i, vol in enumerate(volumes, 1):
+        rel = 'ptA/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 500_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelPT', build_multi_nzb(members), False, 'pt-key', 100)
+    h = daemon.wait_history(api, 'RelPT', timeout=120)
+    dst = os.path.join(t.work, 'main', 'dst')
+    outside = []
+    for dp, _, files in os.walk(os.path.dirname(t.work.rstrip('/'))):
+        for fn in files:
+            full = os.path.join(dp, fn)
+            if (fn.startswith('escape') or fn == 'ab.bin') and not full.startswith(dst + os.sep):
+                outside.append(full)
+    inside = sorted(os.path.basename(r) for r in t.find_files('main', 'dst'))
+    ok = not outside and bool(inside)
+    return (name, ok, 'status=%s outside_dst=%s inside=%s' % (h['Status'], outside, inside))
+
+
+def scenario_pathtraversalnzb(daemon, t):
+    return _path_traversal(daemon, t, 'pathtraversalnzb')
+
+
+def scenario_pathtraversalarticle(daemon, t):
+    """As pathtraversalnzb, with FileNaming=article (the yEnc name counts)."""
+    return _path_traversal(daemon, t, 'pathtraversalarticle')
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8312,6 +8350,8 @@ SCENARIOS = {
     'httpedge': scenario_httpedge,
     'volumereset': scenario_volumereset,
     'xmlparamdecode': scenario_xmlparamdecode,
+    'pathtraversalnzb': scenario_pathtraversalnzb,
+    'pathtraversalarticle': scenario_pathtraversalarticle,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8596,6 +8636,8 @@ SCENARIO_OPTIONS = {
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
+    'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
+    'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],
     'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
     'urlretrywait': ['UrlTimeout=2', 'UrlInterval=20', 'UrlRetries=2'],
     'historyeditlist': ['DupeCheck=yes'],
@@ -8685,7 +8727,9 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'yencrangefar': (b'begin=1000001 end=1500000', b'begin=9000001 end=9500000'),
                           'yencrangeshort': (b'begin=1000001 end=1500000', b'begin=1000001 end=1000100'),
-                          'connhold': (b'\x00no-such\x00', b'\x00no-such\x00'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
+                          'connhold': (b'\x00no-such\x00', b'\x00no-such\x00'),
+                          'pathtraversalnzb': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'),
+                          'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
