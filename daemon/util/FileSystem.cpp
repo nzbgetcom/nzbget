@@ -129,7 +129,8 @@ bool FileSystem::ForceDirectories(const char* path, CString& errmsg)
 	{
 		BString<1024> parentPath = *normPath;
 		char* p = (char*)strrchr(parentPath, PATH_SEPARATOR);
-		if (p)
+		// a directory right under "/" has the root as its parent, which exists
+		if (p && p != (char*)parentPath)
 		{
 			if (p - parentPath == 2 && parentPath[1] == ':' && strlen(parentPath) > 2)
 			{
@@ -705,17 +706,34 @@ bool FileSystem::CopyFile(const char* srcFilename, const char* dstFilename)
 
 	CharBuffer buffer(1024 * 50);
 
-	int cnt = buffer.Size();
-	while (cnt == buffer.Size())
+	// a failed write (disk full) or read must fail the copy: MoveFile deletes
+	// the source after it
+	bool ok = true;
+	int64 copied = 0;
+	while (true)
 	{
-		cnt = (int)infile.Read(buffer, buffer.Size());
-		outfile.Write(buffer, cnt);
+		int64 cnt = infile.Read(buffer, buffer.Size());
+		if (cnt <= 0)
+		{
+			break;
+		}
+		if (outfile.Write(buffer, cnt) != cnt)
+		{
+			ok = false;
+			break;
+		}
+		copied += cnt;
 	}
 
 	infile.Close();
-	outfile.Close();
+	ok = outfile.Close() && ok && copied == FileSize(srcFilename);
 
-	return true;
+	if (!ok)
+	{
+		DeleteFile(dstFilename);
+	}
+
+	return ok;
 }
 
 bool FileSystem::DeleteFile(const char* filename)

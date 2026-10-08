@@ -25,6 +25,12 @@
 
 #include "FileSystem.h"
 
+#ifndef WIN32
+#include <sys/resource.h>
+#include <csignal>
+#include <fstream>
+#endif
+
 BOOST_AUTO_TEST_SUITE(UtilTest)
 
 #ifdef WIN32
@@ -291,5 +297,37 @@ BOOST_AUTO_TEST_CASE(DeleteReadOnlyFileUtf8PathTest)
 	BOOST_CHECK(FileSystem::DeleteFile(fs::u8string(file).c_str()));
 	BOOST_CHECK(!fs::exists(file));
 }
+
+#ifndef WIN32
+BOOST_AUTO_TEST_CASE(CopyFileFailsOnFailedWrite)
+{
+	// a file size limit makes writes past 64 KB fail, as a full disk does
+	const fs::path dir = fs::temp_directory_path() / "nzbget-copyfile-test";
+	fs::remove_all(dir);
+	fs::create_directories(dir);
+	const std::string src = (dir / "src.bin").string();
+	const std::string dst = (dir / "dst.bin").string();
+	std::ofstream(src, std::ios::binary) << std::string(300 * 1024, 'x');
+
+	struct rlimit oldLimit;
+	getrlimit(RLIMIT_FSIZE, &oldLimit);
+	struct rlimit limit = oldLimit;
+	limit.rlim_cur = 64 * 1024;
+	auto oldHandler = signal(SIGXFSZ, SIG_IGN);
+	setrlimit(RLIMIT_FSIZE, &limit);
+
+	bool copied = FileSystem::CopyFile(src.c_str(), dst.c_str());
+
+	setrlimit(RLIMIT_FSIZE, &oldLimit);
+	signal(SIGXFSZ, oldHandler);
+
+	BOOST_CHECK(!copied);
+	BOOST_CHECK(!fs::exists(dst));
+	BOOST_CHECK(FileSystem::CopyFile(src.c_str(), dst.c_str()));
+	BOOST_CHECK_EQUAL(fs::file_size(dst), 300 * 1024);
+
+	fs::remove_all(dir);
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
