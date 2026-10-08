@@ -3287,7 +3287,7 @@ void LoadExtensionsXmlCommand::Execute()
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
-			BuildErrorResponse(3, error.value().c_str());
+			BuildErrorResponse(3, "%s", error.value().c_str());
 			return;
 		}
 	}
@@ -3352,7 +3352,7 @@ void DownloadExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->InstallExtension(filename, g_Options->GetScriptDirPaths().front());
 	if (error)
 	{
-		BuildErrorResponse(3, error.value().c_str());
+		BuildErrorResponse(3, "%s", error.value().c_str());
 		return;
 	}
 
@@ -3389,7 +3389,7 @@ void UpdateExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->UpdateExtension(filename, extName);
 	if (error)
 	{
-		BuildErrorResponse(3, error.value().c_str());
+		BuildErrorResponse(3, "%s", error.value().c_str());
 		return;
 	}
 
@@ -3409,7 +3409,7 @@ void DeleteExtensionXmlCommand::Execute()
 	const auto error = g_ExtensionManager->DeleteExtension(extName);
 	if (error)
 	{
-		BuildErrorResponse(2, error.value().c_str());
+		BuildErrorResponse(2, "%s", error.value().c_str());
 		return;
 	}
 
@@ -4393,7 +4393,7 @@ void TestDiskSpeedXmlCommand::Execute()
 	catch (const std::exception& e)
 	{
 		warn("Disk speed test for %s failed: %s", dirPath, e.what());
-		BuildErrorResponse(2, e.what());
+		BuildErrorResponse(2, "%s", e.what());
 	}
 }
 
@@ -4415,7 +4415,7 @@ void TestNetworkSpeedXmlCommand::Execute()
 	}
 	catch (const std::exception& e)
 	{
-		BuildErrorResponse(2, e.what());
+		BuildErrorResponse(2, "%s", e.what());
 		g_WorkState->SetPauseDownload(false);
 	}
 }

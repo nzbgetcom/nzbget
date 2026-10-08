@@ -7800,6 +7800,19 @@ def scenario_speedtestnohistory(daemon, t):
     return ('speedtestnohistory', ok, 'reply=%s fetched=%d done=%s alive=%s' % (reply.get('result', reply.get('error')), len(hits), empty, alive))
 
 
+def scenario_errorpercent(daemon, t):
+    """An extension name with % in it (deleteextension "50%s%s%s%s"): the error
+    text, which holds the name, was used as a printf format - garbage in the
+    message, or a crash. The message holds the name as sent now."""
+    daemon.wait_ready()
+    name = '50%s%s%s%s%s%s%s%s'
+    reply = _rpc(daemon, 'deleteextension', [name])
+    message = (reply.get('error') or {}).get('message', '')
+    alive = t.procs[-1].poll() is None and bool(_rpc(daemon, 'version', []).get('result'))
+    ok = alive and name in message
+    return ('errorpercent', ok, 'alive=%s message=%r' % (alive, message[:120]))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8164,6 +8177,7 @@ SCENARIOS = {
     'urlretrywait': scenario_urlretrywait,
     'historyeditlist': scenario_historyeditlist,
     'speedtestnohistory': scenario_speedtestnohistory,
+    'errorpercent': scenario_errorpercent,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
