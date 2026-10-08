@@ -766,6 +766,8 @@ class FakeNntp:
         # connection drops after every ``drop_every`` bodies (0: never)
         self.require_group = False
         self.drop_every = 0
+        # message-ids whose BODY sends half the article and then stalls (once each)
+        self.stall_ids = set()
         self.no_group_replies = 0
         self.stats = 0
         self.bodies = 0
@@ -815,6 +817,13 @@ class FakeNntp:
                                 with outer.lock:
                                     outer.no_group_replies += 1
                                 self.wfile.write(b'412 no newsgroup selected\r\n')
+                            elif mid in outer.stall_ids:
+                                outer.stall_ids.discard(mid)
+                                body = outer.bodies_by_id.get(mid) or FakeNntp.article(mid)
+                                self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + body[:len(body) // 2])
+                                self.wfile.flush()
+                                time.sleep(30)
+                                break
                             else:
                                 body = outer.bodies_by_id.get(mid) or FakeNntp.article(mid)
                                 self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + body + b'.\r\n')
@@ -8391,6 +8400,24 @@ def scenario_joingroupnogroups(daemon, t):
     return ('joingroupnogroups', ok, 'status=%s closed_logs=%d' % (status, _grep_log(t, 'Connection closed by remote host')))
 
 
+def scenario_stallquit(daemon, t):
+    """A server stalls in the middle of an article (ArticleTimeout=5): after
+    the timeout the connection was closed with QUIT and waited for its answer
+    (7.6 s in all before, 6.1 s now). It's closed at once now."""
+    ids = ['sq%d@x' % i for i in range(2)]
+    for mid, body in zip(ids, _uu_parts(_payload(45 * 200, 11215), 'sq.bin', 2)):
+        daemon.fake_nntp.bodies_by_id[mid] = body
+    daemon.fake_nntp.alive = set(ids)
+    daemon.fake_nntp.stall_ids = {ids[0]}
+    api = daemon.wait_ready()
+    started = time.time()
+    daemon.append(api, 'RelSQ', _fake_nzb_ids(ids, 45 * 200, name='sq.bin').decode(), False, 'sq-key', 100)
+    h = daemon.wait_history(api, 'RelSQ', timeout=90)
+    took = time.time() - started
+    ok = h['Status'].startswith('SUCCESS') and took < 7
+    return ('stallquit', ok, 'status=%s took=%.1fs (one timeout is 5 s)' % (h['Status'], took))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8776,6 +8803,7 @@ SCENARIOS = {
     'retentionnodate': scenario_retentionnodate,
     'joingroupreconnect': scenario_joingroupreconnect,
     'joingroupnogroups': scenario_joingroupnogroups,
+    'stallquit': scenario_stallquit,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9055,6 +9083,7 @@ SCENARIO_OPTIONS = {
     'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
     'joingroupreconnect': ['Server1.JoinGroup=yes', 'Server1.Connections=1', 'ArticleRetries=0', 'DirectWrite=no'],
     'joingroupnogroups': ['Server1.JoinGroup=yes', 'ArticleRetries=0', 'DirectWrite=no'],
+    'stallquit': ['ArticleTimeout=5', 'ArticleRetries=2', 'ArticleInterval=0', 'DirectWrite=no', 'Server1.Connections=1'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
@@ -9204,7 +9233,7 @@ SCENARIO_NEWZNAB = {'dupesearchbareurl', 'dupesearchgzip', 'dupesearchrestart', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'uucache', 'joingroupreconnect', 'joingroupnogroups', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'uucache', 'stallquit', 'joingroupreconnect', 'joingroupnogroups', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #

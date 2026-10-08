@@ -426,7 +426,9 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 			}
 			// the rest of this body may still arrive: the connection isn't used again (it
 			// was, and late body bytes were read as the reply to the next request - at
-			// worst another article's body decoded into this file)
+			// worst another article's body decoded into this file). Marked broken first:
+			// a QUIT to a server that stalled waited out another full timeout
+			m_connection->SetBroken();
 			m_connection->Disconnect();
 			status = adFailed;
 			break;

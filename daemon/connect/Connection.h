@@ -73,6 +73,9 @@ public:
 	void SetTimeout(int timeout) { m_timeout = timeout; }
 	void SetIPVersion(EIPVersion ipVersion) { m_ipVersion = ipVersion; }
 	EStatus GetStatus() { return m_status; }
+	// the peer can't be relied on any more (a timeout mid-reply): Disconnect sends
+	// nothing and waits for nothing
+	void SetBroken() { m_status = csBroken; }
 	void SetSuppressErrors(bool suppressErrors);
 	bool GetSuppressErrors() { return m_suppressErrors; }
 	const char* GetRemoteAddr();
