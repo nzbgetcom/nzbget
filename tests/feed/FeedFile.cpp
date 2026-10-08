@@ -124,4 +124,28 @@ BOOST_AUTO_TEST_CASE(FeedFile2Test)
 	xmlCleanupParser();
 }
 
+BOOST_AUTO_TEST_CASE(FeedFileNoAttributesTest)
+{
+	// elements without attributes, and a size at the very end of a description
+	const fs::path testFile = fs::temp_directory_path() / "nzbget-feed-noatts.xml";
+	{
+		std::ofstream out(testFile);
+		out << "<?xml version=\"1.0\"?><rss xmlns:newznab=\"http://www.newznab.com/DTD/2010/feeds/attributes/\">"
+			"<channel><item><title>a</title><description>Size: 300</description>"
+			"<enclosure/><newznab:attr/>"
+			"<enclosure url=\"http://x/a.nzb\"/></item></channel></rss>";
+	}
+	FeedFile file(testFile.string().c_str(), "feedName");
+
+	BOOST_CHECK_EQUAL(file.Parse(), true);
+
+	std::unique_ptr<FeedItemList> items = file.DetachFeedItems();
+	BOOST_REQUIRE_EQUAL(items->size(), 1);
+	BOOST_CHECK_EQUAL(items->back().GetUrl(), std::string("http://x/a.nzb"));
+	BOOST_CHECK_EQUAL(items->back().GetSize(), 300);
+
+	fs::remove(testFile);
+	xmlCleanupParser();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

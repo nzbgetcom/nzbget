@@ -139,7 +139,7 @@ int64 FeedFile::ExtractSizeFromDescription(std::string_view description)
 			{
 				foundSize = true;
 				size = res.value();
-				for(; !std::isspace(description[pos]); ++pos);
+				for (; pos < description.size() && !std::isspace(description[pos]); ++pos);
 				continue;
 			}
 		}
@@ -175,6 +175,11 @@ void FeedFile::Parse_StartElement(const char* name, const char **atts)
 {
 	if (!name)
 		return;
+
+	// libxml2 passes no array for an element without attributes
+	static const char* noAtts[] = { nullptr };
+	if (!atts)
+		atts = noAtts;
 
 	m_currentElement = name;
 	ResetTagContent();
