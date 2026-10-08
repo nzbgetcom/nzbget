@@ -152,9 +152,8 @@ Status ControlUsernameValidator::Validate() const
 
 Status ControlPasswordValidator::Validate() const
 {
-	std::string_view username = m_options.GetControlUsername();
-	if (username.empty()) return Status::Ok();
-
+	// the password gates access, with or without a username (an empty username
+	// takes any): it was skipped when the username was empty
 	std::string_view password = m_options.GetControlPassword();
 	if (password == "tegbzn6789")
 		return Status::Info("Using default password is not recommended for security");
@@ -272,9 +271,12 @@ Status FormAuthValidator::Validate() const
 							   "credentials may be transmitted in plaintext");
 	}
 
-	const bool hasAdd = Util::EmptyStr(m_options.GetAddUsername());
-	const bool hasRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
-	if (hasAdd && hasRestricted)
+	// the control user logs in by form too (with an empty username any name
+	// goes); without its password there is no login at all
+	const bool noControl = Util::EmptyStr(m_options.GetControlPassword());
+	const bool noAdd = Util::EmptyStr(m_options.GetAddUsername());
+	const bool noRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
+	if (noControl && noAdd && noRestricted)
 	{
 		return Status::Warning(
 			"'" + std::string(Options::FORMAUTH) +
