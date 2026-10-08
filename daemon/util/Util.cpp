@@ -1778,16 +1778,62 @@ CString WebUtil::Latin1ToUtf8(const char* str)
    26 Jun 2013 01:02:54 -0600
    26 Jun 2013 01:02 -0600
    26 Jun 2013 01:02 A
- This function however supports only the first format!
+ The day name and the seconds are optional; the zone is an offset (+hhmm or
+ -hhmm) or a name (UT, GMT, UTC, Z and the US zones). Military zones and
+ unknown names count as UTC. Only the first format was read before: the others
+ (GMT is common in feeds) gave no time at all.
 */
 time_t WebUtil::ParseRfc822DateTime(const char* dateTimeStr)
 {
-	char month[4];
-	int day, year, hours, minutes, seconds, zonehours, zoneminutes;
-	int r = sscanf(dateTimeStr, "%*s %d %3s %d %d:%d:%d %3d %2d", &day, &month[0], &year, &hours, &minutes, &seconds, &zonehours, &zoneminutes);
-	if (r != 8)
+	const char* p = dateTimeStr;
+	while (*p == ' ') p++;
+
+	// optional day name ("Wed,")
+	if (isalpha((unsigned char)*p))
+	{
+		while (*p && *p != ',' && *p != ' ') p++;
+		if (*p == ',') p++;
+	}
+
+	char month[4] = "";
+	int day, year, hours, minutes, seconds = 0;
+	int len = 0;
+	if (sscanf(p, "%d %3s %d %d:%d%n", &day, month, &year, &hours, &minutes, &len) != 5)
 	{
 		return 0;
+	}
+	p += len;
+	if (*p == ':')
+	{
+		int secLen = 0;
+		if (sscanf(p + 1, "%d%n", &seconds, &secLen) != 1)
+		{
+			return 0;
+		}
+		p += 1 + secLen;
+	}
+	while (*p == ' ') p++;
+
+	int zoneOffset = 0; // minutes east of UTC
+	if ((*p == '+' || *p == '-') && isdigit((unsigned char)p[1]))
+	{
+		int zone = atoi(p + 1);
+		zoneOffset = (zone / 100) * 60 + zone % 100;
+		if (*p == '-') zoneOffset = -zoneOffset;
+	}
+	else
+	{
+		struct { const char* name; int hours; } zones[] = {
+			{"EST", -5}, {"EDT", -4}, {"CST", -6}, {"CDT", -5},
+			{"MST", -7}, {"MDT", -6}, {"PST", -8}, {"PDT", -7}};
+		for (auto& zone : zones)
+		{
+			if (!strncasecmp(p, zone.name, 3))
+			{
+				zoneOffset = zone.hours * 60;
+				break;
+			}
+		}
 	}
 
 	int mon = 0;
@@ -1815,7 +1861,7 @@ time_t WebUtil::ParseRfc822DateTime(const char* dateTimeStr)
 	rawtime.tm_sec = seconds;
 
 	time_t enctime = Util::Timegm(&rawtime);
-	enctime -= (zonehours * 60 + (zonehours > 0 ? zoneminutes : -zoneminutes)) * 60;
+	enctime -= zoneOffset * 60;
 
 	return enctime;
 }

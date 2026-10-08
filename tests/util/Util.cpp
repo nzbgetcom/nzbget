@@ -99,6 +99,20 @@ BOOST_AUTO_TEST_CASE(EncodeByte80Test)
 	BOOST_CHECK(strchr(xml, '\x80') == nullptr);
 }
 
+BOOST_AUTO_TEST_CASE(ParseRfc822DateTimeTest)
+{
+	const time_t t = 1372208574; // 26 Jun 2013 01:02:54 UTC
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Wed, 26 Jun 2013 01:02:54 +0000"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Wed, 26 Jun 2013 01:02:54 GMT"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("26 Jun 2013 01:02:54 +0000"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Wed, 26 Jun 2013 03:02:54 +0200"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Tue, 25 Jun 2013 19:02:54 -0600"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Wed, 26 Jun 2013 00:32:54 -0030"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("Tue, 25 Jun 2013 21:02:54 EDT"), t);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("26 Jun 2013 01:02 +0000"), t - 54);
+	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("not a date"), 0);
+}
+
 BOOST_AUTO_TEST_CASE(URLEncodeTest)
 {
 	const char* badUrl = "http://www.example.com/nzb_get/12344/Debian V7 6 64 bit OS.nzb";
