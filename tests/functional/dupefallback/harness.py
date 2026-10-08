@@ -8317,6 +8317,22 @@ def scenario_parscanpercent(daemon, t):
     return ('parscanpercent', ok, 'alive=%s status=%s par=%s' % (alive, h['Status'], h.get('ParStatus')))
 
 
+def scenario_retentionnodate(daemon, t):
+    """An nzb whose files have no date, a server with a retention: the file
+    time defaults to 0, its age came out at about 20,000 days, and every
+    article failed "out of server retention" without a request. Now an
+    unknown age doesn't count against the retention."""
+    data = _payload(300_000, 10912)
+    pp = _place_copy(t, 'rnA', data)
+    nzb = re.sub(r' date="[0-9]*"', '', build_nzb(pp, 'rn.bin', len(data), 100_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelRN', nzb, False, 'rn-key', 100)
+    h = daemon.wait_history(api, 'RelRN', timeout=60)
+    out_of_retention = _grep_log(t, 'out of server retention')
+    ok = 'date=' not in nzb and h['Status'].startswith('SUCCESS') and out_of_retention == 0
+    return ('retentionnodate', ok, 'status=%s retention_failures=%d' % (h['Status'], out_of_retention))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8699,6 +8715,7 @@ SCENARIOS = {
     'joinequalpieces': scenario_joinequalpieces,
     'directunpackkeepnointer': scenario_directunpackkeepnointer,
     'parscanpercent': scenario_parscanpercent,
+    'retentionnodate': scenario_retentionnodate,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8975,6 +8992,7 @@ SCENARIO_OPTIONS = {
     'jointwosets': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z'],
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'parscanpercent': ['ParCheck=force', 'ParScan=full'],
+    'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],

@@ -132,7 +132,10 @@ void ArticleDownloader::Run()
 			m_connection->GetNewsServer()->GetName(), m_connection->GetHost());
 
 		// check server retention
+		// a file without a date (none in the nzb) has time 0: its age isn't known,
+		// and counting from 1970 failed every article on a server with a retention
 		bool retentionFailure = m_connection->GetNewsServer()->GetRetention() > 0 &&
+			m_fileInfo->GetTime() > 0 &&
 			(Util::CurrentTime() - m_fileInfo->GetTime()) / 86400 > m_connection->GetNewsServer()->GetRetention();
 		if (retentionFailure)
 		{
