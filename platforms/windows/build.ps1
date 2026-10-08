@@ -169,48 +169,42 @@ Function BuildTarget($Type, $Bits) {
 
     If ($Bits -eq "32") {
         $Arch="x86"
-        $SystemProcessor="x86"
     } Else {
         $Arch="x64"
-        $SystemProcessor="AMD64"
     }
 
-    New-Item -Path "$BuildDir\$Type$Bits" -ItemType Directory -Force | Out-Null
-    Set-Location "$BuildDir\$Type$Bits"
+    $TargetDir="$BuildDir\$Type$Bits"
+    New-Item -Path $TargetDir -ItemType Directory -Force | Out-Null
 
-    If (-not (Test-Path "nzbget.exe")) {
-        $CMakeCmd="cmake ..\.. -G Ninja -DCMAKE_SYSTEM_PROCESSOR=$SystemProcessor"
-
-        # Always pass CMAKE_BUILD_TYPE to ensure libxml2/FindZLIB resolves correctly
-        $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=$Type"
-
-        If ($BuildDepsFromSource) {
-            $CMakeCmd="$CMakeCmd -DBUILD_DEPS_FROM_SOURCE=ON"
+    If (-not (Test-Path "$TargetDir\$Type\nzbget.exe")) {
+        If ($Type -eq "Debug") {
+            $Preset = "ci-windows-debug-$Arch"
+        } Else {
+            $Preset = "ci-windows-$Arch"
         }
 
-        If ($Type -eq "Debug" ) {
-            $CMakeCmd="$CMakeCmd -DENABLE_TESTS=ON"
-        } ElseIf ($env:LTO -eq "yes") {
-            # LTO for release builds (opt-in with LTO=yes)
-            $CMakeCmd="$CMakeCmd -DENABLE_LTO=ON"
-        }
+        $CMakeArgs = @("-S", ".", "--preset", $Preset, "-B", $TargetDir)
 
         if ($BuildTesting) {
-            $CMakeCmd="$CMakeCmd -DVERSION_SUFFIX=$VersionSuffix"
+            $CMakeArgs += "-DVERSION_SUFFIX=$VersionSuffix"
+        }
+        if (-not $BuildDepsFromSource) {
+            $CMakeArgs += "-DBUILD_DEPS_FROM_SOURCE=OFF"
         }
 
-        Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix"
-        Write-Host $CMakeCmd
+        Write-Host "Configuring nzbget binary for $Type-$Arch$VersionSuffix (preset: $Preset)..."
+        & cmake @CMakeArgs
+        If (-not $?) { Exit 1 }
 
-        Invoke-Expression "& $CMakeCmd"
-        If (-not $?) { Set-Location $SrcDir; Exit 1 }
+        Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix..."
+        & cmake --build $TargetDir -j $Jobs
+        If (-not $?) { Exit 1 }
 
-        & cmake --build . -j $Jobs
-        If (-not $?) { Set-Location $SrcDir; Exit 1 }
+        New-Item -Path "$TargetDir\$Type" -ItemType Directory -Force | Out-Null
+        Copy-Item "$TargetDir\nzbget.exe" "$TargetDir\$Type\nzbget.exe" -Force
     }
 
-    Copy-Item "nzbget.exe" "$SrcDir\$PackageDir\$Bits\"
-    Set-Location $SrcDir
+    Copy-Item "$TargetDir\$Type\nzbget.exe" "$PackageDir\$Bits\" -Force
 }
 
 # build nsis installer

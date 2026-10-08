@@ -167,6 +167,32 @@
       "inherits": "base"
     },
     {
+      "name": "ci-windows-debug-x64",
+      "displayName": "CI Windows Debug x64",
+      "description": "Windows x64 Debug CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-debug-x64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_SYSTEM_PROCESSOR": "AMD64",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      },
+      "inherits": "base"
+    },
+    {
+      "name": "ci-windows-debug-x86",
+      "displayName": "CI Windows Debug x86",
+      "description": "Windows x86 Debug CI build (hermetic, all deps from source/cache)",
+      "binaryDir": "${sourceDir}/build/ci-windows-debug-x86",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_SYSTEM_PROCESSOR": "x86",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      },
+      "inherits": "base"
+    },
+    {
       "name": "ci-macos-arm64",
       "displayName": "CI macOS arm64",
       "description": "macOS Apple Silicon CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
@@ -259,6 +285,16 @@
       "name": "ci-windows-x86",
       "configurePreset": "ci-windows-x86",
       "configuration": "Release"
+    },
+    {
+      "name": "ci-windows-debug-x64",
+      "configurePreset": "ci-windows-debug-x64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-windows-debug-x86",
+      "configurePreset": "ci-windows-debug-x86",
+      "configuration": "Debug"
     },
     {
       "name": "ci-macos-arm64",
