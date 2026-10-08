@@ -121,6 +121,8 @@ public:
 	void IntervalCheck();
 	void EnterLeaveStandBy(bool enter);
 	GuardedServerVolumes GuardServerVolumes();
+	// the next interval check saves the volumes (changed through the guard)
+	void MarkChanged() { m_statChanged = true; }
 	void Save();
 	bool Load(bool* perfectServerMatch);
 

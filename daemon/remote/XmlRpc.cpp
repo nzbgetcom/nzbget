@@ -4128,6 +4128,13 @@ void ResetServerVolumeXmlCommand::Execute()
 		index++;
 	}
 
+	// saved like a download's counts: a restart before the next download
+	// brought the old counters back
+	if (ok)
+	{
+		g_StatMeter->MarkChanged();
+	}
+
 	BuildBoolResponse(ok);
 }
 

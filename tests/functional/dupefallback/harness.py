@@ -7884,6 +7884,29 @@ def scenario_httpedge(daemon, t):
         post.split(b'\r\n')[0], post_took, responses, redirect.split(b'\r\n')[0]))
 
 
+def scenario_volumereset(daemon, t):
+    """resetservervolume reset the counters in memory only: the stats are
+    saved when a download changes them, so after a reset with nothing
+    downloaded since, a restart (here a kill) brought the old counters back.
+    The reset is saved now."""
+    data = _payload(300_000, 9696)
+    pp = _place_copy(t, 'vrA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelVR', build_nzb(pp, 'vr.bin', len(data), 100_000, set()), False, 'vr-key', 100)
+    daemon.wait_history(api, 'RelVR', timeout=60)
+    time.sleep(3)
+    before = _rpc(daemon, 'servervolumes', []).get('result', [{}])[0].get('TotalSizeLo', 0)
+    reset = _rpc(daemon, 'resetservervolume', [-1, '']).get('result')
+    time.sleep(4)
+    t.procs[-1].kill()
+    t.procs[-1].wait(timeout=30)
+    daemon.start()
+    daemon.wait_ready()
+    after = _rpc(daemon, 'servervolumes', []).get('result', [{}])[0].get('TotalSizeLo', 0)
+    ok = before > 0 and reset is True and after == 0
+    return ('volumereset', ok, 'total_before=%d reset=%s total_after_restart=%d' % (before, reset, after))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8252,6 +8275,7 @@ SCENARIOS = {
     'getunsafe': scenario_getunsafe,
     'netspeedpause': scenario_netspeedpause,
     'httpedge': scenario_httpedge,
+    'volumereset': scenario_volumereset,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
