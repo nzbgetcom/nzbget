@@ -85,6 +85,9 @@ void WebDownloader::Run()
 			while (!IsStopped() && (msec < g_Options->GetUrlInterval() * 1000) &&
 				!(!m_force && g_WorkState->GetPauseDownload()))
 			{
+				// waiting isn't hanging: an interval longer than UrlTimeout got the
+				// download cancelled and restarted with all its retries again
+				SetLastUpdateTimeNow();
 				Util::Sleep(100);
 				msec += 100;
 			}

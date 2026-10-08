@@ -7693,6 +7693,36 @@ def scenario_urlclosed(daemon, t):
     return ('urlclosed', ok, 'status=%s closed_logs=%d failed_logs=%d' % (status, closed, garbage))
 
 
+def scenario_urlretrywait(daemon, t):
+    """UrlInterval (20 s) longer than UrlTimeout + 10 (12 s), a server that always
+    answers 500, UrlRetries=2: the wait between tries didn't count as
+    activity, so the download was cancelled as hanging and restarted with
+    all its retries again - forever. Now it fails after its two tries."""
+    import http.server
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(500)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    api = daemon.wait_ready()
+    _rpc(daemon, 'appendurl', ['RelUW.nzb', 'http://127.0.0.1:%d/x.nzb' % srv.server_address[1], '', 0, False, False, 'uw', 0, 'SCORE', []])
+    try:
+        status = daemon.wait_history(api, 'RelUW', timeout=60)['Status']
+    except RuntimeError:
+        status = 'TIMEOUT'
+    srv.shutdown()
+    hanging = _grep_log(t, 'Cancelling hanging url download')
+    ok = status.startswith('FAILURE') and hanging == 0
+    return ('urlretrywait', ok, 'status=%s hanging_cancels=%d' % (status, hanging))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8054,6 +8084,7 @@ SCENARIOS = {
     'scriptdirlist': scenario_scriptdirlist,
     'urlredirects': scenario_urlredirects,
     'urlclosed': scenario_urlclosed,
+    'urlretrywait': scenario_urlretrywait,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8339,6 +8370,7 @@ SCENARIO_OPTIONS = {
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
+    'urlretrywait': ['UrlTimeout=2', 'UrlInterval=20', 'UrlRetries=2'],
     'scanlongcommand': ['Extensions=longscan'],
     'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
