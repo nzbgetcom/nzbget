@@ -5926,9 +5926,11 @@ def scenario_apiformat(daemon, t):
     echo.daemon_threads = True
     threading.Thread(target=echo.serve_forever, daemon=True).start()
     target = 'http://127.0.0.1:%d/p?x=1&y=2' % echo.server_address[1]
-    # (GET is only for read-only methods: readurl takes a string)
-    with _req.urlopen(base + '/jsonrpc/readurl?1=%s&2=echo' % _parse.quote(target, safe=''), timeout=20) as r:
-        fetched = _json.loads(r.read().decode()).get('result')
+    # over JSON-P, which takes every method by GET (plain GET is for reading
+    # methods only, and readurl reaches out: it needs POST there since 658acb11)
+    with _req.urlopen(base + '/jsonprpc/readurl?=cb&1=%s&2=echo' % _parse.quote(target, safe=''), timeout=20) as r:
+        reply = r.read().decode()
+        fetched = _json.loads(reply[reply.index('(') + 1:reply.rindex(')')]).get('result')
     echo.shutdown()
     valid = True
     for flags in ([False, True, False, True, False], [True, True, True, False, True], [False, False, False, False, False]):
