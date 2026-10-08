@@ -5595,6 +5595,38 @@ def scenario_apiaccess(daemon, t):
         leaked, masked, huge.split(b'\r\n', 1)[0][:40], alive))
 
 
+def scenario_queueedits(daemon, t):
+    """Queue edits and state (upstream too): an item's DupeMode survives a restart
+    (the hint was loaded into it: FORCE came back as SCORE); GroupMerge with an id
+    given twice doesn't use the item it already freed and reports success (it
+    reported false on success); FileDelete with a file given twice doesn't crash;
+    FileSplit of files from two collections is refused (it crashed)."""
+    api = daemon.wait_ready()
+
+    def add(name, n, mode='SCORE'):
+        nzb = base64.standard_b64encode(_many_files_nzb(n, uuid.uuid4().hex[:8])).decode()
+        return _rpc(daemon, 'append', [name + '.nzb', nzb, '', 0, False, True, 'qe-' + name, 0, mode, []]).get('result')
+    forced = add('Forced', 1, 'FORCE')
+    a, b, c, d = add('MergeA', 2), add('MergeB', 2), add('SplitC', 2), add('SplitD', 2)
+    merged = _rpc(daemon, 'editqueue', ['GroupMerge', '', [a, b, b]]).get('result')
+    files_c = [f['ID'] for f in api.listfiles(0, 0, c)]
+    files_d = [f['ID'] for f in api.listfiles(0, 0, d)]
+    deleted = _rpc(daemon, 'editqueue', ['FileDelete', '', [files_c[0], files_c[0]]]).get('result')
+    split = _rpc(daemon, 'editqueue', ['FileSplit', 'Mixed', [files_c[1], files_d[0]]]).get('result')
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    groups = {g['NZBID']: g for g in api.listgroups()}
+    mode = groups.get(forced, {}).get('DupeMode')
+    ok = mode == 'FORCE' and merged is True and deleted is True and split is False and b not in groups
+    return ('queueedits', ok, 'mode_after_restart=%s merged=%s deleted=%s split=%s groups=%d' % (
+        mode, merged, deleted, split, len(groups)))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7266,6 +7298,7 @@ SCENARIOS = {
     'appendscorerange': scenario_appendscorerange,
     'apiedges': scenario_apiedges,
     'apiaccess': scenario_apiaccess,
+    'queueedits': scenario_queueedits,
     'appendlongname': scenario_appendlongname,
     'editscorerange': scenario_editscorerange,
     'appendlarge': scenario_appendlarge,

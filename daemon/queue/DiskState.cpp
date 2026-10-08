@@ -1179,7 +1179,9 @@ bool DiskState::LoadNzbInfo(NzbInfo* nzbInfo, Servers* servers, StateDiskFile& i
 	}
 	nzbInfo->SetDupeMode((EDupeMode)dupeMode);
 	nzbInfo->SetDupeScore(dupeScore);
-	nzbInfo->SetDupeMode((EDupeMode)dupeHint);
+	// (the hint went into the mode: every item came back from a restart with its
+	// mode replaced by its hint - FORCE and ALL read SCORE)
+	nzbInfo->SetDupeHint((NzbInfo::EDupeHint)dupeHint);
 
 	if (formatVersion >= 48)
 	{

@@ -2138,6 +2138,13 @@ bool QueueCoordinator::SplitQueueEntries(DownloadQueue* downloadQueue, RawFileLi
 		{
 			srcNzbInfo = fileInfo->GetNzbInfo();
 		}
+		else if (fileInfo->GetNzbInfo() != srcNzbInfo)
+		{
+			// files of two collections: the ones not in the first were moved as null
+			// entries, and nzbget crashed
+			error("Could not split %s. The files belong to different collections", fileInfo->GetFilename());
+			return false;
+		}
 	}
 
 	if (!srcNzbInfo)
@@ -2208,7 +2215,7 @@ bool QueueCoordinator::SplitQueueEntries(DownloadQueue* downloadQueue, RawFileLi
 			srcNzbInfo->SetPausedFileCount(srcNzbInfo->GetPausedFileCount() - 1);
 			srcNzbInfo->SetPausedSize(srcNzbInfo->GetPausedSize() - fileInfo->GetRemainingSize());
 
-			nzbInfo->SetPausedFileCount(srcNzbInfo->GetPausedFileCount() + 1);
+			nzbInfo->SetPausedFileCount(nzbInfo->GetPausedFileCount() + 1);
 			nzbInfo->SetPausedSize(nzbInfo->GetPausedSize() + fileInfo->GetRemainingSize());
 		}
 	}

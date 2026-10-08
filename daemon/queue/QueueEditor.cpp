@@ -334,6 +334,21 @@ bool QueueEditor::EditList(DownloadQueue* downloadQueue, IdList* idList, NameLis
 bool QueueEditor::InternEditList(ItemList* itemList,
 	IdList* idList, DownloadQueue::EEditAction action, const char* args)
 {
+	// an id given twice was edited twice: a merge or file delete used the item it had
+	// just freed
+	IdList uniqueIds;
+	if (idList)
+	{
+		for (int id : *idList)
+		{
+			if (std::find(uniqueIds.begin(), uniqueIds.end(), id) == uniqueIds.end())
+			{
+				uniqueIds.push_back(id);
+			}
+		}
+		idList = &uniqueIds;
+	}
+
 	ItemList workItems;
 	if (!itemList)
 	{
@@ -1016,7 +1031,8 @@ bool QueueEditor::MergeGroups(ItemList* itemList)
 		if (item.m_nzbInfo != destItem.m_nzbInfo)
 		{
 			debug("merge %s to %s", item.m_nzbInfo->GetFilename(), destItem.m_nzbInfo->GetFilename());
-			if (g_QueueCoordinator->MergeQueueEntries(m_downloadQueue, destItem.m_nzbInfo, item.m_nzbInfo))
+			// (MergeQueueEntries returns true on success: the result was inverted)
+			if (!g_QueueCoordinator->MergeQueueEntries(m_downloadQueue, destItem.m_nzbInfo, item.m_nzbInfo))
 			{
 				ok = false;
 			}
