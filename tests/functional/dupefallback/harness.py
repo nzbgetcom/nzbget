@@ -7431,6 +7431,37 @@ def scenario_categoryscan(daemon, t):
     return ('categoryscan', ok, 'status=%s category=%s params=%s' % (h['Status'], h.get('Category'), params))
 
 
+# a scan extension that sends a 3,000-character parameter and dupe key
+LONG_COMMAND_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET SCAN SCRIPT                                                     ###
+# Sends long commands.
+### NZBGET SCAN SCRIPT                                                     ###
+##############################################################################
+import sys
+print('[NZB] NZBPR_longmark=' + 'v' * 3000 + 'end')
+print('[NZB] DUPEKEY=' + 'k' * 3000 + 'end')
+sys.exit(0)
+'''
+
+
+def scenario_scanlongcommand(daemon, t):
+    """[NZB] commands from a script longer than about 1,000 characters were
+    cut to fit a 1,024-byte log buffer before they were parsed: a long
+    parameter value or dupe key was silently shortened. Now they arrive
+    whole."""
+    data = _payload(90_000, 8888)
+    pp = _place_copy(t, 'lcA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelLC', build_nzb(pp, 'long.bin', len(data), 100_000, set()), False, 'lc-key', 100)
+    h = daemon.wait_history(api, 'RelLC', timeout=60)
+    params = {p['Name']: p['Value'] for p in h.get('Parameters', [])}
+    mark = params.get('longmark', '')
+    key = h.get('DupeKey', '')
+    ok = h['Status'].startswith('SUCCESS') and mark == 'v' * 3000 + 'end' and key == 'k' * 3000 + 'end'
+    return ('scanlongcommand', ok, 'status=%s param_len=%d key_len=%d' % (h['Status'], len(mark), len(key)))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7784,6 +7815,7 @@ SCENARIOS = {
     'quotafutureday': scenario_quotafutureday,
     'connhold': scenario_connhold,
     'categoryscan': scenario_categoryscan,
+    'scanlongcommand': scenario_scanlongcommand,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8066,6 +8098,7 @@ SCENARIO_OPTIONS = {
     'yencrangeshort': ['DupeArticleFallback=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'quotafutureday': ['DailyQuota=100000'],
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
+    'scanlongcommand': ['Extensions=longscan'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
@@ -8168,7 +8201,8 @@ SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
 # extensions a scenario installs into ScriptDir before the daemon starts
 SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
-                       'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION}}
+                       'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
+                       'scanlongcommand': {'longscan.py': LONG_COMMAND_EXTENSION}}
 
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
 

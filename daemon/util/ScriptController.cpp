@@ -968,7 +968,8 @@ void ScriptController::AddMessage(Message::EKind kind, const char* text)
 
 void ScriptController::PrintMessage(Message::EKind kind, const char* format, ...)
 {
-	BString<1024> tmp2;
+	// not cut to a fixed size: subclasses parse commands ("[NZB] ...") from it
+	CString tmp2;
 
 	va_list ap;
 	va_start(ap, format);
@@ -977,7 +978,7 @@ void ScriptController::PrintMessage(Message::EKind kind, const char* format, ...
 
 	if (m_logPrefix)
 	{
-		AddMessage(kind, BString<1024>("%s: %s", m_logPrefix, *tmp2));
+		AddMessage(kind, CString::FormatStr("%s: %s", m_logPrefix, *tmp2));
 	}
 	else
 	{
