@@ -6,7 +6,7 @@ on:
 
 env:
   BUILD_ARCHS: '32 64'
-  BUILD_TYPES: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'Release Debug' || 'Release' }}
+  BUILD_TYPES: 'Release'
   BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
   SIGN: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'true' || 'false' }}
   SIGNING_POLICY: 'release-signing'
@@ -64,8 +64,6 @@ jobs:
         key: deps-windows-${{ matrix.arch }}-${{ matrix.type }}-${{ env.MSVC_VERSION }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'platforms/windows/build.ps1') }}
 
     - name: Build nzbget ${{ matrix.arch }}-bit / ${{ matrix.type }} binary
-      env:
-        LTO: ${{ matrix.type == 'Release' && 'yes' || 'no' }}
       shell: cmd
       run: |
         choco install nasm --version=2.16.3 --no-progress
@@ -82,13 +80,13 @@ jobs:
         name: ${{ matrix.type }}${{ matrix.arch }}
         if-no-files-found: error
         path: |
-          build/${{ matrix.type }}${{ matrix.arch }}/*.exe
+          build/${{ matrix.type }}${{ matrix.arch }}/${{ matrix.type }}/*.exe
           build/${{ matrix.type }}${{ matrix.arch }}/*.nsi
         retention-days: 5
 
     - name: Submit signing request
       id: submit-signing-request
-      if: env.SIGN == 'true' && matrix.type == 'Release'
+      if: env.SIGN == 'true'
       uses: signpath/github-action-submit-signing-request@v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -100,8 +98,13 @@ jobs:
         wait-for-completion: true
         output-artifact-directory: build\${{ matrix.type }}${{ matrix.arch }}\signed
 
+    - name: Copy installer metadata to signed output
+      if: env.SIGN == 'true'
+      shell: cmd
+      run: copy /y build\${{ matrix.type }}${{ matrix.arch }}\*.nsi build\${{ matrix.type }}${{ matrix.arch }}\signed\
+
     - name: Upload signed build artifacts
-      if: env.SIGN == 'true' && matrix.type == 'Release'
+      if: env.SIGN == 'true'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
@@ -124,11 +127,6 @@ jobs:
       with:
         pattern: Release*
 
-    - name: Download debug build artifacts
-      uses: actions/download-artifact@v8
-      with:
-        pattern: Debug*
-
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
@@ -137,7 +135,6 @@ jobs:
         Invoke-Expression "platforms\windows\build.ps1 -DownloadUnpackers"
         New-Item build -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
         Copy-Item Release* build -Recurse -ErrorAction SilentlyContinue
-        Copy-Item Debug* build -Recurse -ErrorAction SilentlyContinue
 
     - name: Build nzbget windows installer
       run: Invoke-Expression "platforms\windows\build.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
@@ -187,4 +184,3 @@ jobs:
       with:
         name: |
           Release*
-          Debug*
