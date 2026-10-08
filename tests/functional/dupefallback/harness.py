@@ -7340,6 +7340,44 @@ def scenario_yencrangeshort(daemon, t):
         h['Status'], integ, h.get('FailedArticles'), rewritten))
 
 
+def scenario_quotafutureday(daemon, t):
+    """The clock went back a day or more since the volume stats were saved
+    (here the saved first day and save time are moved 5 days ahead), with a
+    daily quota set:
+    the quota check read day slot -1 (std::out_of_range) and the daemon died
+    at the start. Now it stays up and downloads."""
+    data = _payload(300_000, 8484)
+    pp = _place_copy(t, 'qfA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelQF1', build_nzb(pp, 'first.bin', len(data), 100_000, set()), False, 'qf-key1', 100)
+    daemon.wait_history(api, 'RelQF1', timeout=60)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    stats = t.path('main', 'queue', 'stats')
+    today = int(time.time()) // 86400
+    lines = open(stats).read().split('\n')
+    moved = 0
+    for i, line in enumerate(lines):
+        m = re.match(r'^(\d+),(-?\d+),(-?\d+),(-?\d+)$', line)
+        if m and abs(int(m.group(1)) - today) <= 2:
+            lines[i] = '%d,%d,%s,%s' % (today + 5, int(m.group(2)) + 5 * 86400, m.group(3), m.group(4))
+            moved += 1
+    open(stats, 'w').write('\n'.join(lines))
+    daemon.start()
+    api = daemon.wait_ready()
+    time.sleep(4)
+    data2 = _payload(300_000, 8485)
+    pp2 = _place_copy(t, 'qfB', data2)
+    daemon.append(api, 'RelQF2', build_nzb(pp2, 'second.bin', len(data2), 100_000, set()), False, 'qf-key2', 100)
+    h = daemon.wait_history(api, 'RelQF2', timeout=60)
+    alive = t.procs[-1].poll() is None
+    ok = moved >= 1 and alive and h['Status'].startswith('SUCCESS')
+    return ('quotafutureday', ok, 'moved=%d alive=%s status=%s' % (moved, alive, h['Status']))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7690,6 +7728,7 @@ SCENARIOS = {
     'articledecoypar': scenario_articledecoypar,
     'yencrangefar': scenario_yencrangefar,
     'yencrangeshort': scenario_yencrangeshort,
+    'quotafutureday': scenario_quotafutureday,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -7970,6 +8009,7 @@ SCENARIO_OPTIONS = {
     'fleetsamekey': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'yencrangefar': ['DupeArticleFallback=no', 'DirectWrite=no', 'ArticleRetries=0'],
     'yencrangeshort': ['DupeArticleFallback=no', 'ArticleCache=64', 'ArticleRetries=0'],
+    'quotafutureday': ['DailyQuota=100000'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],

@@ -536,7 +536,8 @@ void StatMeter::CalcQuotaUsage(int64& monthBytes, int64& dayBytes)
 	int daySlot = (int)(locTime / 86400) - totalVolume.GetFirstDay();
 
 	dayBytes = 0;
-	if (daySlot < (int)totalVolume.BytesPerDays()->size())
+	// negative after the clock went back past the first recorded day
+	if (daySlot >= 0 && daySlot < (int)totalVolume.BytesPerDays()->size())
 	{
 		dayBytes = totalVolume.BytesPerDays()->at(daySlot);
 	}
