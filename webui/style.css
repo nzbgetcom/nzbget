@@ -3157,19 +3157,6 @@ input[type="date"] {
         padding-left: 10px;
     }
 
-    .modal {
-        position: absolute;
-        top: 0px;
-        right: 0px;
-        left: 0px;
-        width: auto;
-        margin: 0;
-    }
-
-    .modal.fade.in {
-        top: auto;
-    }
-
     .modal .input-xlarge,
     .modal .input-xxlarge,
     .modal.modal-padded .input-xxlarge,
@@ -3180,11 +3167,6 @@ input[type="date"] {
     .modal-body,
     .modal.no-footer .modal-body {
         max-height: none;
-    }
-
-    .modal-center {
-        right: 20px;
-        left: 20px;
     }
 
     .alert-center-small,
@@ -3232,6 +3214,23 @@ input[type="date"] {
 @media (max-width: 480px) {
     .dialog-transmit {
         display: none;
+    }
+}
+/* Center dialogs on small screens: Bootstrap 2 hardcodes a desktop geometry
+   (top:50% with -250px margin, 560px width), which pins the dialog to the very
+   top of the page on short viewports. */
+@media (max-width: 767px) {
+    .modal:not(.modal-max) {
+        top: 50%;
+        left: 10px;
+        right: 10px;
+        bottom: auto;
+        width: auto;
+        margin: 0;
+        -webkit-transform: translateY(-50%);
+        transform: translateY(-50%);
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 }
 /* END: MEDIA SMALL SCREENS */
