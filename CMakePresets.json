@@ -9,7 +9,10 @@
     {
       "name": "base",
       "hidden": true,
-      "generator": "Ninja"
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_SCAN_FOR_MODULES": "OFF"
+      }
     },
     {
       "name": "debug",
@@ -162,6 +165,38 @@
         "BUILD_DEPS_FROM_SOURCE": "ON"
       },
       "inherits": "base"
+    },
+    {
+      "name": "ci-macos-arm64",
+      "displayName": "CI macOS arm64",
+      "description": "macOS Apple Silicon CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-macos-arm64",
+      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "arm64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-macos-x64",
+      "displayName": "CI macOS x64",
+      "description": "macOS Intel CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-macos-x64",
+      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_OSX_ARCHITECTURES": "x86_64",
+        "CMAKE_OSX_DEPLOYMENT_TARGET": "12.0",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -223,6 +258,16 @@
     {
       "name": "ci-windows-x86",
       "configurePreset": "ci-windows-x86",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-macos-arm64",
+      "configurePreset": "ci-macos-arm64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-macos-x64",
+      "configurePreset": "ci-macos-x64",
       "configuration": "Release"
     }
   ],
