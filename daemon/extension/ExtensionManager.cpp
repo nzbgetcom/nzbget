@@ -89,24 +89,41 @@ namespace ExtensionManager
 			return "Update failed: Extension '" + extName + "' is currently in use or running";
 		}
 
-		const auto deleteExtError = DeleteExtension(*(*extensionIt));
-		if (deleteExtError)
+		// the installed extension is moved aside, not deleted, until the new one
+		// is in place: a failed install puts it back
+		fs::path targetPath;
+		auto moveAsideError = GetExtensionPath(*(*extensionIt), targetPath);
+		fs::path backupPath = targetPath;
+		backupPath += ".update-backup";
+		if (!moveAsideError)
+		{
+			fs::error_code ec;
+			fs::remove_all(backupPath, ec);
+			fs::rename(targetPath, backupPath, ec);
+			if (ec)
+			{
+				moveAsideError = "Failed to move aside " + fs::u8string(targetPath) + ": " + ec.message();
+			}
+		}
+		if (moveAsideError)
 		{
 			fs::error_code ec;
 			fs::remove(filename, ec);
 			if (ec)
 			{
-				return "Failed to remove existing extension (Error: " + deleteExtError.value() + 
+				return "Failed to remove existing extension (Error: " + moveAsideError.value() + 
 									") and failed to cleanup temporary file '" + fs::u8string(filename) + 
 									"' (Error: " + ec.message() + ")";
 			}
 
-			return deleteExtError;
+			return moveAsideError;
 		}
 #ifdef _WIN32
 		const auto wRootDir = Utf8::Utf8ToWide((*extensionIt)->GetRootDir());
 		if (!wRootDir)
 		{
+			fs::error_code ec;
+			fs::rename(backupPath, targetPath, ec);
 			return std::string("Failed to install ") + extName +
 				   ": couldn't convert path to wide string.";
 		}
@@ -117,9 +134,20 @@ namespace ExtensionManager
 #endif
 		if (installExtError)
 		{
+			fs::error_code ec;
+			fs::remove(filename, ec);
+			fs::remove_all(targetPath, ec);
+			fs::rename(backupPath, targetPath, ec);
+			if (ec)
+			{
+				return installExtError.value() + "; failed to restore " + fs::u8string(targetPath) +
+					" from " + fs::u8string(backupPath) + ": " + ec.message();
+			}
 			return installExtError;
 		}
 
+		fs::error_code ec;
+		fs::remove_all(backupPath, ec);
 		m_extensions.erase(extensionIt);
 		return std::nullopt;
 	}
@@ -206,6 +234,26 @@ namespace ExtensionManager
 	std::optional<std::string>
 	Manager::DeleteExtension(const Extension::Script& extension)
 	{
+		fs::path targetPath;
+		const auto err = GetExtensionPath(extension, targetPath);
+		if (err)
+		{
+			return err;
+		}
+
+		fs::error_code ec;
+		fs::remove_all(targetPath, ec);
+		if (ec)
+		{
+			return std::string("Failed to delete ") + fs::u8string(targetPath) + ": " + ec.message();
+		}
+
+		return std::nullopt;
+	}
+
+	std::optional<std::string>
+	Manager::GetExtensionPath(const Extension::Script& extension, fs::path& path)
+	{
 		const char* location = extension.GetLocation();
 
 		ptrdiff_t count = std::count_if(
@@ -233,13 +281,7 @@ namespace ExtensionManager
 		fs::path targetPath(location);
 #endif
 
-		fs::error_code ec;
-		fs::remove_all(targetPath, ec);
-		if (ec)
-		{
-			return std::string("Failed to delete ") + location + ": " + ec.message();
-		}
-
+		path = std::move(targetPath);
 		return std::nullopt;
 	}
 	

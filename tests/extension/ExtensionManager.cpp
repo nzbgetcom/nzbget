@@ -114,4 +114,46 @@ BOOST_AUTO_TEST_CASE(DeleteExtensionTest)
 	fs::remove_all(workingDir);
 }
 
+BOOST_AUTO_TEST_CASE(FailedUpdateKeepsExtensionTest)
+{
+	const fs::path workingDir = CURRENT_PATH / "FailedUpdateKeepsExtensionTest_dir";
+	const std::string scriptDirOpt = "ScriptDir=" + workingDir.string();
+
+	fs::remove_all(workingDir);
+	BOOST_REQUIRE(fs::create_directory(workingDir));
+	fs::copy(SCRIPTS_DIR, workingDir, fs::copy_options::recursive);
+
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back(scriptDirOpt.c_str());
+	cmdOpts.push_back(EXTENSIONS.c_str());
+	cmdOpts.push_back(ORDER.c_str());
+	cmdOpts.push_back("NzbLog=no");
+	Options options(&cmdOpts, nullptr);
+	g_Options = &options;
+	ExtensionManager::Manager manager;
+
+	BOOST_REQUIRE(manager.LoadExtensions() == std::nullopt);
+
+	std::string location;
+	{
+		const auto email = manager.FindIf([](auto script) { return std::string("email") == script->GetName(); });
+		BOOST_REQUIRE(email.has_value());
+		location = (*email)->GetLocation();
+	}
+	BOOST_REQUIRE(fs::exists(location));
+
+	// a download that isn't an archive
+	const fs::path archive = workingDir / "update.zip";
+	std::ofstream(archive) << "not an archive";
+
+	auto res = manager.UpdateExtension(archive, "email");
+
+	BOOST_CHECK_EQUAL(res.has_value(), true);
+	BOOST_CHECK_EQUAL(fs::exists(location), true);
+	BOOST_CHECK_EQUAL(fs::exists(location + ".update-backup"), false);
+	BOOST_CHECK_EQUAL(manager.FindIf([](auto script) { return std::string("email") == script->GetName(); }).has_value(), true);
+
+	fs::remove_all(workingDir);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

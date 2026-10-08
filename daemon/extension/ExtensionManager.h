@@ -76,6 +76,8 @@ namespace ExtensionManager
 		std::string GetExtensionName(const std::string& fileName) const;
 		std::optional<std::string>
 		DeleteExtension(const Extension::Script& ext);
+		std::optional<std::string>
+		GetExtensionPath(const Extension::Script& ext, fs::path& path);
 
 		Extensions m_extensions;
 		mutable std::shared_mutex m_mutex;
