@@ -1464,6 +1464,43 @@ def scenario_stream(daemon, t):
             % (h['Status'], recov, queued, repaired, rejected, integ))
 
 
+def scenario_streamrestartcredit(daemon, t):
+    """A stream repair interrupted by a shutdown after it fully repaired one file
+    (the other's duplicate is slow): after the restart the other file is repaired
+    too, and the release ends SUCCESS. The fully repaired file's failed size was
+    never credited back to health (its job was dropped as done), so the release
+    stayed short of full health though its files were complete."""
+    size, seg_primary, seg_donor = 2_000_000, 500_000, 300_000
+    d1, d2 = _payload(size, 7676), _payload(size, 7677)
+    p1 = _place_copy(t, 'srA', d1, 'f1.mkv')
+    p2 = _place_copy(t, 'srC', d2, 'f2.mkv')
+    b1 = _place_copy(t, 'srB', d1, 'f1.mkv')
+    b2 = _place_copy(t, 'srSlow', d2, 'f2.mkv')
+    primary = build_multi_nzb([(p1, 'Sr1.mkv', size, seg_primary, {2}), (p2, 'Sr2.mkv', size, seg_primary, {3})])
+    donor = build_multi_nzb([(b1, 'obf-sr1.mkv', size, seg_donor, set()), (b2, 'obf-sr2.mkv', size, seg_donor, set())])
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonSR', donor, True, 'sr2-key', 50)
+    daemon.append(api, 'RelSR2', primary, False, 'sr2-key', 100)
+    deadline = time.time() + 120
+    while time.time() < deadline and _grep_log(t, 'of Sr1.mkv from duplicate') == 0:
+        time.sleep(0.3)
+    first_repaired = _grep_log(t, 'of Sr1.mkv from duplicate')
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    h = daemon.wait_history(api, 'RelSR2', timeout=240)
+    integ = _verify_output(t, d1, '.mkv', dirs=(('main', 'dst'), ('main', 'inter'))) and \
+        _verify_output(t, d2, '.mkv', dirs=(('main', 'dst'), ('main', 'inter')))
+    interrupted = _grep_log(t, 'Stream repair interrupted')
+    ok = first_repaired >= 1 and interrupted >= 1 and h['Status'].startswith('SUCCESS') and h['Health'] == 1000 and integ
+    return ('streamrestartcredit', ok, 'first_repaired=%d interrupted=%d status=%s health=%s integrity=%s' % (
+        first_repaired, interrupted, h['Status'], h['Health'], integ))
+
+
 def scenario_streamtimeout(daemon, t):
     """DupeStreamTimeout: the only duplicate is stalled (every request for its
     articles waits 8 s, longer than the timeout), so the repair of the
@@ -7173,6 +7210,7 @@ SCENARIOS = {
     'cutovertruth': scenario_cutovertruth,
     'manydonors': scenario_manydonors,
     'stream': scenario_stream,
+    'streamrestartcredit': scenario_streamrestartcredit,
     'streamtimeout': scenario_streamtimeout,
     'streamdeaddonor': scenario_streamdeaddonor,
     'streamslowprogress': scenario_streamslowprogress,
@@ -7418,6 +7456,7 @@ _SEVENZIP_OPTION = ['SevenZipCmd=%s' % generators.SEVENZIP_PATH] if generators.H
 
 SCENARIO_OPTIONS = {
     'stream': ['DupeArticleFallback=stream', 'ParCheck=auto'],
+    'streamrestartcredit': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'streamdeaddonor': ['DupeArticleFallback=stream', 'ParCheck=auto'],
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
@@ -7688,6 +7727,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+                        'streamrestartcredit': [(b'srSlow/', 3.0)],
                         'restartfailover': [(b'rfA/', 0.4)],
                         'ondiskstop': [(b'odB/', 1.0)],
                         'streamstarved': [(b'busy/', 2.0)],
