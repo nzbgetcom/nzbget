@@ -52,6 +52,8 @@ private:
 class ArticleWriter
 {
 public:
+	// more bytes decoded than the article's range holds (they weren't written)
+	bool GetRangeExceeded() { return m_articlePtr > m_articleSize; }
 	struct OutputPaths 
 	{
 	    std::string finalPath;

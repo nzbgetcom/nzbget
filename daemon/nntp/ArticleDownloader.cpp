@@ -614,6 +614,16 @@ ArticleDownloader::EStatus ArticleDownloader::DecodeCheck()
 	{
 		Decoder::EStatus status = m_decoder.Check();
 
+		// an article decoding to more bytes than its range holds: the bytes past it were
+		// dropped, but its size counted them, and the cache padded the segment with
+		// memory never written - into the file, past its end or over the next article
+		if (status == Decoder::dsFinished && m_decoder.GetFormat() == Decoder::efYenc &&
+			!g_Options->GetRawArticle() && m_articleWriter.GetRangeExceeded())
+		{
+			detail("Decoding %s failed: more data than its range", *m_infoName);
+			return adFailed;
+		}
+
 		if (status == Decoder::dsFinished)
 		{
 			if (m_decoder.GetArticleFilename())

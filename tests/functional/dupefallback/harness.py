@@ -7320,6 +7320,26 @@ def scenario_yencrangefar(daemon, t):
         h['Status'], rewritten, sizes, h.get('FailedArticles')))
 
 
+def scenario_yencrangeshort(daemon, t):
+    """An article's yEnc range is shorter than its data (the last part says
+    end=1000100 of 1,000,001..1,500,000, its body decodes to 500 KB with a valid
+    crc), the article cache on: the article fails. It counted as finished, its
+    size counted the bytes past the range, and the cache padded the segment with
+    memory never written (into the file)."""
+    size, seg = 1_500_000, 500_000
+    data = _payload(size, 8383)
+    pp = _place_copy(t, 'ysA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelYS', build_nzb(pp, 'short.bin', size, seg, set()), False, 'ys-key', 100)
+    h = daemon.wait_history(api, 'RelYS', timeout=120)
+    integ = _verify_output(t, data)
+    wrong_success = h['Status'].startswith('SUCCESS') and not integ
+    rewritten = daemon.proxy.rewritten if daemon.proxy else 0
+    ok = rewritten >= 1 and not wrong_success and int(h.get('FailedArticles', 0)) >= 1
+    return ('yencrangeshort', ok, 'status=%s integrity=%s failed=%s rewritten=%d' % (
+        h['Status'], integ, h.get('FailedArticles'), rewritten))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7669,6 +7689,7 @@ SCENARIOS = {
     'articledecoy': scenario_articledecoy,
     'articledecoypar': scenario_articledecoypar,
     'yencrangefar': scenario_yencrangefar,
+    'yencrangeshort': scenario_yencrangeshort,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -7948,6 +7969,7 @@ SCENARIO_OPTIONS = {
     'fleetwide': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetsamekey': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
     'yencrangefar': ['DupeArticleFallback=no', 'DirectWrite=no', 'ArticleRetries=0'],
+    'yencrangeshort': ['DupeArticleFallback=no', 'ArticleCache=64', 'ArticleRetries=0'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],
@@ -8028,7 +8050,8 @@ SCENARIO_CORRUPT_PROXY = {'xpackcorrupt': 'xcB/'}
 
 # scenarios with a RewritingNntpProxy in front of Server1: (old, new) reply bytes
 SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
-                          'yencrangefar': (b'begin=1000001 end=1500000', b'begin=9000001 end=9500000'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
+                          'yencrangefar': (b'begin=1000001 end=1500000', b'begin=9000001 end=9500000'),
+                          'yencrangeshort': (b'begin=1000001 end=1500000', b'begin=1000001 end=1000100'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
 SCENARIO_DELAY_PROXY = {'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
