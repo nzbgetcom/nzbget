@@ -6814,6 +6814,28 @@ def scenario_samepostinglate(daemon, t):
         hist.get('PickSL'), hist.get('DonSL'), [(g['NZBName'], g['Status']) for g in api.listgroups()]))
 
 
+def scenario_recheckwholefail(daemon, t):
+    """The failed-article recheck (HealthCheck=dupe, no backup) samples a file none
+    of whose articles arrived too: it read a saved state such a file never has
+    ("could not open file .../<id>c"), and left its articles out."""
+    size, seg = 2_000_000, 500_000
+    a = _place_copy(t, 'rwA', _payload(size, 7575), 'a.bin')
+    b = _place_copy(t, 'rwB', _payload(size, 7576), 'b.bin')
+    nzb = build_multi_nzb([(a, 'a.bin', size, seg, {2}), (b, 'b.bin', size, seg, {1, 2, 3, 4})])
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelRW', nzb, False, 'rw-key', 100)
+    h = daemon.wait_history(api, 'RelRW', timeout=120)
+    deadline = time.time() + 30
+    while time.time() < deadline and _grep_log(t, 'failed articles exist on the servers') == 0:
+        time.sleep(0.5)
+    with open(t.path('nzbget.log'), errors='replace') as f:
+        found = re.findall(r'(\d+) of (\d+) failed articles exist on the servers', f.read())
+    sampled = int(found[-1][1]) if found else -1
+    no_state = _grep_log(t, 'could not open file')
+    ok = no_state == 0 and sampled >= 5
+    return ('recheckwholefail', ok, 'status=%s sampled=%d state_errors=%d' % (h['Status'], sampled, no_state))
+
+
 def scenario_projectedhealthy(daemon, t):
     """B48c: 96% arrive (above the critical 85%): no swap, though a whole backup waits."""
     hp, swaps = _projected_run(daemon, t, 'pc', 96, 100)
@@ -7233,6 +7255,7 @@ SCENARIOS = {
     'ondiskgone': scenario_ondiskgone,
     'ondiskstop': scenario_ondiskstop,
     'repairlast': scenario_repairlast,
+    'recheckwholefail': scenario_recheckwholefail,
     'samepostingrepair': scenario_samepostingrepair,
     'samepostinglate': scenario_samepostinglate,
     'projectedhealthy': scenario_projectedhealthy,
@@ -7517,6 +7540,7 @@ SCENARIO_OPTIONS = {
     'ondiskgone': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'ondiskstop': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe', 'DupeStreamTimeout=60', 'PostStrategy=rocket'],
     'repairlast': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
+    'recheckwholefail': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ArticleRetries=0'],
     'samepostingrepair': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
     'samepostinglate': ['DupeArticleFallback=stream', 'ParCheck=auto', 'HealthCheck=dupe'],
     'projectedhealthy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],

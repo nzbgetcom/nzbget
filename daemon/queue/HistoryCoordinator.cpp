@@ -256,9 +256,13 @@ void HistoryCoordinator::RecheckFailedArticles(DownloadQueue* downloadQueue, Nzb
 		{
 			continue;
 		}
+		// a file none of whose articles arrived has no saved state ("<id>c" is written
+		// for a partial file only): reading one logged an error, and its failed
+		// articles were never sampled. All its articles failed
+		bool partial = completedFile.GetStatus() == CompletedFile::cfPartial;
 		FileInfo fileInfo(completedFile.GetId());
 		if (!g_DiskState->LoadFile(&fileInfo, false, true) ||
-			!g_DiskState->LoadFileState(&fileInfo, g_ServerPool->GetServers(), true))
+			(partial && !g_DiskState->LoadFileState(&fileInfo, g_ServerPool->GetServers(), true)))
 		{
 			continue;
 		}
@@ -269,7 +273,7 @@ void HistoryCoordinator::RecheckFailedArticles(DownloadQueue* downloadQueue, Nzb
 		}
 		for (ArticleInfo* article : fileInfo.GetArticles())
 		{
-			if (article->GetStatus() == ArticleInfo::aiFailed && !Util::EmptyStr(article->GetMessageId()))
+			if ((!partial || article->GetStatus() == ArticleInfo::aiFailed) && !Util::EmptyStr(article->GetMessageId()))
 			{
 				DupeProbe::Sample sample;
 				sample.MessageId = article->GetMessageId();
