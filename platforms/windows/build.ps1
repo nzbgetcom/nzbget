@@ -169,10 +169,8 @@ Function BuildTarget($Type, $Bits) {
 
     If ($Bits -eq "32") {
         $Arch="x86"
-        $SystemProcessor="x86"
     } Else {
         $Arch="x64"
-        $SystemProcessor="AMD64"
     }
 
     $TargetDir="$BuildDir\$Type$Bits"
@@ -180,7 +178,7 @@ Function BuildTarget($Type, $Bits) {
 
     If (-not (Test-Path "$TargetDir\$Type\nzbget.exe")) {
         If ($Type -eq "Debug") {
-            $Preset = "debug"
+            $Preset = "ci-windows-debug-$Arch"
         } Else {
             $Preset = "ci-windows-$Arch"
         }
@@ -192,9 +190,6 @@ Function BuildTarget($Type, $Bits) {
         }
         if (-not $BuildDepsFromSource) {
             $CMakeArgs += "-DBUILD_DEPS_FROM_SOURCE=OFF"
-        }
-        if ($Type -eq "Debug") {
-            $CMakeArgs += @("-DCMAKE_SYSTEM_PROCESSOR=$SystemProcessor", "-DENABLE_TESTS=ON", "-DBUILD_DEPS_FROM_SOURCE=ON")
         }
 
         Write-Host "Configuring nzbget binary for $Type-$Arch$VersionSuffix (preset: $Preset)..."

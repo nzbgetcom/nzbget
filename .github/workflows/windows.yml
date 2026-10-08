@@ -6,7 +6,7 @@ on:
 
 env:
   BUILD_ARCHS: '32 64'
-  BUILD_TYPES: 'Release'
+  BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'Release Debug' || 'Release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && '-BuildTesting' || '' }}
   SIGN: ${{ (github.ref_name == 'develop' || github.ref_name == 'main') && 'true' || 'false' }}
   SIGNING_POLICY: 'release-signing'
@@ -86,7 +86,7 @@ jobs:
 
     - name: Submit signing request
       id: submit-signing-request
-      if: env.SIGN == 'true'
+      if: env.SIGN == 'true' && matrix.type == 'Release'
       uses: signpath/github-action-submit-signing-request@v2
       with:
         api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -99,12 +99,12 @@ jobs:
         output-artifact-directory: build\${{ matrix.type }}${{ matrix.arch }}\signed
 
     - name: Copy installer metadata to signed output
-      if: env.SIGN == 'true'
+      if: env.SIGN == 'true' && matrix.type == 'Release'
       shell: cmd
       run: copy /y build\${{ matrix.type }}${{ matrix.arch }}\*.nsi build\${{ matrix.type }}${{ matrix.arch }}\signed\
 
     - name: Upload signed build artifacts
-      if: env.SIGN == 'true'
+      if: env.SIGN == 'true' && matrix.type == 'Release'
       uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.type }}${{ matrix.arch }}
@@ -127,6 +127,12 @@ jobs:
       with:
         pattern: Release*
 
+    - name: Download debug build artifacts
+      if: contains(env.BUILD_TYPES, 'Debug')
+      uses: actions/download-artifact@v8
+      with:
+        pattern: Debug*
+
     - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
@@ -135,6 +141,9 @@ jobs:
         Invoke-Expression "platforms\windows\build.ps1 -DownloadUnpackers"
         New-Item build -ItemType Directory -ErrorAction SilentlyContinue | Out-Null
         Copy-Item Release* build -Recurse -ErrorAction SilentlyContinue
+        If (Test-Path "Debug*") {
+            Copy-Item Debug* build -Recurse -ErrorAction SilentlyContinue
+        }
 
     - name: Build nzbget windows installer
       run: Invoke-Expression "platforms\windows\build.ps1 -BuildSetup ${{ needs.prepare-build-matrix.outputs.build-args }}"
@@ -148,12 +157,13 @@ jobs:
           Rename-Item -Path "$Output\$($File.Name)" -NewName $File.Name.Replace("-bin-windows-", "-$Suffix-bin-windows-")
         }
 
-    - name: Upload build artifacts
+    - name: Upload unsigned release installer for signing
       uses: actions/upload-artifact@v7
       id: upload-unsigned-installer-artifact
+      if: env.SIGN == 'true'
       with:
-        name: nzbget-windows-installers
-        path: build\*.exe
+        name: nzbget-windows-installer-unsigned
+        path: build\*bin-windows-setup.exe
         retention-days: 5
 
     - name: Submit signing request for windows installers
@@ -170,13 +180,16 @@ jobs:
         wait-for-completion: true
         output-artifact-directory: build\signed
 
-    - name: Upload signed build artifacts
+    - name: Copy signed installer to distrib folder
       if: env.SIGN == 'true'
+      shell: cmd
+      run: copy /y build\signed\*.exe build\
+
+    - name: Upload build artifacts
       uses: actions/upload-artifact@v7
       with:
         name: nzbget-windows-installers
-        overwrite: true
-        path: build\signed\*.exe
+        path: build\*.exe
         retention-days: 5
 
     - name: Delete unneeded platform-specific artifacts
@@ -184,3 +197,4 @@ jobs:
       with:
         name: |
           Release*
+          Debug*
