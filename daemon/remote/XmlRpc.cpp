@@ -4197,7 +4197,8 @@ void TestServerXmlCommand::Execute()
 	int timeout;
 	int certVerifLevel;
 
-	if (IsJson() && m_request)
+	// a JSON body only with POST: over GET (JSON-P) m_request is the query string
+	if (IsJson() && m_request && m_httpMethod == XmlRpcProcessor::hmPost)
 	{
 		const auto jsonResult = Json::Deserialize(m_request);
 		if (!jsonResult)
@@ -4223,6 +4224,10 @@ void TestServerXmlCommand::Execute()
 	}
 	else
 	{
+		DecodeStr(host);
+		DecodeStr(username);
+		DecodeStr(password);
+		DecodeStr(cipher);
 		params.host = host;
 		params.port = port;
 		params.username = username;
@@ -4297,6 +4302,7 @@ void TestServerSpeedXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid parameter: NZB file url");
 		return;
 	}
+	DecodeStr(nzbFileUrl);
 
 	int serverId;
 	if (!NextParamAsInt(&serverId))
@@ -4351,6 +4357,7 @@ void TestDiskSpeedXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid argument (Path)");
 		return;
 	}
+	DecodeStr(dirPath);
 
 	if (!NextParamAsInt(&writeBufferKiB))
 	{
@@ -4448,6 +4455,9 @@ void StartScriptXmlCommand::Execute()
 		BuildErrorResponse(2, "Invalid parameter");
 		return;
 	}
+	DecodeStr(script);
+	DecodeStr(command);
+	DecodeStr(context);
 
 	std::unique_ptr<Options::OptEntries> optEntries = std::make_unique<Options::OptEntries>();
 

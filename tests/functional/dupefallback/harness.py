@@ -7907,6 +7907,41 @@ def scenario_volumereset(daemon, t):
     return ('volumereset', ok, 'total_before=%d reset=%s total_after_restart=%d' % (before, reset, after))
 
 
+def scenario_xmlparamdecode(daemon, t):
+    """String parameters of testserver, testserverspeed, testdiskspeed and
+    startscript weren't decoded: over XML-RPC a url with "&" (sent as
+    "&amp;") was fetched with "&amp;" in it. And testserver over JSON-P (GET)
+    parsed the query string as a JSON body and always answered "Invalid
+    JSON"."""
+    import http.server
+    import urllib.request as _req
+    hits = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits.append(self.path)
+            self.send_response(404)
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    api = daemon.wait_ready()
+    api.testserverspeed('http://127.0.0.1:%d/x.nzb?a=1&b=2' % srv.server_address[1], 1)
+    deadline = time.time() + 20
+    while time.time() < deadline and not hits:
+        time.sleep(0.5)
+    srv.shutdown()
+    url = 'http://127.0.0.1:%d/jsonprpc/testserver?=cb&=127.0.0.1&=%d&=&=&=false&=&=5&=0' % (daemon.rpc_port, daemon.nntp_port)
+    with _req.urlopen(url, timeout=30) as reply:
+        jsonp = reply.read().decode()
+    ok = hits and hits[0] == '/x.nzb?a=1&b=2' and 'Invalid JSON' not in jsonp
+    return ('xmlparamdecode', bool(ok), 'fetched=%s jsonp=%s' % (hits[:1], jsonp[:160].replace('\n', ' ')))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8276,6 +8311,7 @@ SCENARIOS = {
     'netspeedpause': scenario_netspeedpause,
     'httpedge': scenario_httpedge,
     'volumereset': scenario_volumereset,
+    'xmlparamdecode': scenario_xmlparamdecode,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
