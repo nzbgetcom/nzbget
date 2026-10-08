@@ -2457,6 +2457,20 @@ int64 StreamRepairController::PatchFromDonorSet(RepairSetData& repairSet, Conten
 	StreamRangeList holes = repairSet.InnerHoles;	// iterate a stable copy
 	for (const StreamRange& hole : holes)
 	{
+		// a hole of a file that isn't a target of this pass (in a second live pass,
+		// a file that had its one live attempt) is declared, not written: it is
+		// passed over. Written to, it was refused, and the pass gave up the holes of
+		// the files that were its targets too
+		bool targetHole = true;
+		for (const MemberRange& piece : targetMap.MapFromInner(hole))
+		{
+			targetHole &= memberTargets[piece.MemberIndex] >= 0;
+		}
+		if (!targetHole)
+		{
+			continue;
+		}
+
 		int64 pos = hole.Offset;
 		int64 size = FullChunk;
 		int failedPieces = 0;
