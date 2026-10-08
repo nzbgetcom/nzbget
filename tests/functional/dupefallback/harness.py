@@ -7462,6 +7462,38 @@ def scenario_scanlongcommand(daemon, t):
     return ('scanlongcommand', ok, 'status=%s param_len=%d key_len=%d' % (h['Status'], len(mark), len(key)))
 
 
+def _inner_archive_keep(daemon, t, name):
+    """A rar whose content is itself an archive (setup.7z), UseTempUnpackDir=no,
+    UnpackCleanupDisk=yes, no InterDir: the cleanup deleted every *.7z/*.rar in the
+    folder, the extracted setup.7z too, and reported success. Now only the
+    downloaded volumes are deleted."""
+    inner = _payload(600_000, 8989)
+    volumes = generators.rar3_store_volumes_valid('setup.7z', inner, 300_000)
+    members = []
+    for i, vol in enumerate(volumes, 1):
+        rel = 'iaA/rel.part%02d.rar' % i
+        t.write_file(os.path.join('data', rel), vol)
+        members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 500_000, set()))
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelIA', build_multi_nzb(members), False, 'ia-key', 100)
+    h = daemon.wait_history(api, 'RelIA', timeout=180)
+    files = {os.path.basename(rel): rel for rel in t.find_files('main', 'dst')}
+    kept = 'setup.7z' in files and t.read_file(files['setup.7z']) == inner
+    volumes_left = [f for f in files if re.search(r'Rel\.part\d+\.rar$', f)]
+    ok = h['Status'].startswith('SUCCESS') and kept and not volumes_left
+    return (name, ok, 'status=%s setup.7z_kept=%s volumes_left=%s files=%s' % (
+        h['Status'], kept, volumes_left, sorted(files)))
+
+
+def scenario_innerarchivekeep(daemon, t):
+    return _inner_archive_keep(daemon, t, 'innerarchivekeep')
+
+
+def scenario_innerarchivekeepdirect(daemon, t):
+    """As innerarchivekeep, with the archive extracted by direct unpack."""
+    return _inner_archive_keep(daemon, t, 'innerarchivekeepdirect')
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -7816,6 +7848,8 @@ SCENARIOS = {
     'connhold': scenario_connhold,
     'categoryscan': scenario_categoryscan,
     'scanlongcommand': scenario_scanlongcommand,
+    'innerarchivekeep': scenario_innerarchivekeep,
+    'innerarchivekeepdirect': scenario_innerarchivekeepdirect,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8099,6 +8133,8 @@ SCENARIO_OPTIONS = {
     'quotafutureday': ['DailyQuota=100000'],
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'scanlongcommand': ['Extensions=longscan'],
+    'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
+    'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'fleetscoremax': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmerged': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetduringpost': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Extensions=slowpost'],

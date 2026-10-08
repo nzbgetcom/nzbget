@@ -93,11 +93,13 @@ private:
 	bool m_unpackDirCreated = false;
 	bool m_passListTried = false;
 	FileList m_joinedFiles;
+	FileList m_downloadedFiles;
 
 	void ExecuteUnpack(EUnpacker unpacker, const char* password, bool multiVolumes);
 	void ExecuteUnrar(const char* password);
 	void ExecuteSevenZip(const char* password, bool multiVolumes);
 	void UnpackArchives(EUnpacker unpacker, bool multiVolumes);
+	bool IsDownloadedFile(const char* filename);
 	void JoinSplittedFiles();
 	bool JoinFile(const char* fragBaseName);
 	void Completed();

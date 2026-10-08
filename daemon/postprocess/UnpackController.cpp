@@ -68,6 +68,11 @@ void UnpackController::Run()
 		m_finalDir = m_postInfo->GetNzbInfo()->GetFinalDir();
 		m_name = m_postInfo->GetNzbInfo()->GetName();
 
+		for (CompletedFile& completedFile : m_postInfo->GetNzbInfo()->GetCompletedFiles())
+		{
+			m_downloadedFiles.emplace_back(completedFile.GetFilename());
+		}
+
 		NzbParameter* parameter = m_postInfo->GetNzbInfo()->GetParameters()->Find("*Unpack:");
 		unpack = !(parameter && !strcasecmp(parameter->GetValue(), "no"));
 
@@ -695,7 +700,7 @@ void UnpackController::CheckArchiveFiles()
 	{
 		BString<1024> fullFilename("%s%c%s", *m_destDir, PATH_SEPARATOR, filename);
 
-		if (!FileSystem::DirectoryExists(fullFilename))
+		if (!FileSystem::DirectoryExists(fullFilename) && IsDownloadedFile(filename))
 		{
 			const char* ext = strrchr(filename, '.');
 			int extNum = ext ? atoi(ext + 1) : -1;
@@ -727,6 +732,15 @@ void UnpackController::CheckArchiveFiles()
 			}
 		}
 	}
+}
+
+// Without a temporary unpack folder, extracted files land next to the downloaded
+// ones (and an archive may hold archives): only the download's own files count as
+// its archives. Without a record of them, every file does.
+bool UnpackController::IsDownloadedFile(const char* filename)
+{
+	return g_Options->GetUseTempUnpackDir() || m_downloadedFiles.empty() ||
+		m_downloadedFiles.Exists(filename);
 }
 
 bool UnpackController::FileHasRarSignature(const char* filename)
@@ -825,7 +839,7 @@ bool UnpackController::Cleanup()
 			BString<1024> fullFilename("%s%c%s", *m_destDir, PATH_SEPARATOR, filename);
 
 			if (!FileSystem::DirectoryExists(fullFilename) &&
-				(m_interDir || !extractedFiles.Exists(filename)) &&
+				(m_interDir || !extractedFiles.Exists(filename)) && IsDownloadedFile(filename) &&
 				(regExRar.Match(filename) || regExSevenZip.Match(filename) ||
 				 (regExRarMultiSeq.Match(filename) && FileHasRarSignature(fullFilename)) ||
 				 (m_hasSplittedFiles && regExSplitExt.Match(filename) && m_joinedFiles.Exists(filename))))
