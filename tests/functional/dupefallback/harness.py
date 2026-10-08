@@ -839,6 +839,54 @@ class FakeNntp:
         self.server.server_close()
 
 
+class RejectingNntp:
+    """A news server that refuses every login for good (502), as a server with a
+    broken or expired account does."""
+
+    def __init__(self):
+        self.logins = 0
+        self.srv = socket.socket()
+        self.srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.srv.bind(('127.0.0.1', 0))
+        self.srv.listen(64)
+        self.port = self.srv.getsockname()[1]
+        threading.Thread(target=self._serve, daemon=True).start()
+
+    def _serve(self):
+        while True:
+            try:
+                conn, _ = self.srv.accept()
+            except OSError:
+                return
+            threading.Thread(target=self._client, args=(conn,), daemon=True).start()
+
+    def _client(self, conn):
+        try:
+            conn.sendall(b'200 reject server ready\r\n')
+            data = b''
+            while True:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                data += chunk
+                while b'\r\n' in data:
+                    line, data = data.split(b'\r\n', 1)
+                    if line.upper().startswith(b'AUTHINFO USER'):
+                        conn.sendall(b'381 password required\r\n')
+                    elif line.upper().startswith(b'AUTHINFO PASS'):
+                        self.logins += 1
+                        conn.sendall(b'502 Authentication Failed\r\n')
+                    else:
+                        conn.sendall(b'480 authentication required\r\n')
+        except OSError:
+            pass
+        finally:
+            conn.close()
+
+    def close(self):
+        self.srv.close()
+
+
 class FakeNewznab:
     """A Newznab indexer for the duplicate search: an HTTP server whose
     ``respond(params, path)`` returns (status, body bytes); every request is
@@ -5691,6 +5739,28 @@ def scenario_queueedits(daemon, t):
         mode, merged, deleted, split, len(groups)))
 
 
+def scenario_authrejected(daemon, t):
+    """A second level-0 server refuses every login with 502 (a broken account),
+    and an article is missing on the first: the article counts as failed on the
+    refusing server and the download completes. It waited for that server for
+    good, and every download that needed it stalled (production: 0 KB/s for over
+    an hour with eight working servers)."""
+    size, seg = 2_000_000, 500_000
+    pp = _place_copy(t, 'arA', _payload(size, 7878), 'f.bin')
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelAR', build_nzb(pp, 'ar.bin', size, seg, {2}), False, 'ar-key', 100)
+    deadline = time.time() + 90
+    h = None
+    while time.time() < deadline:
+        h = next((x for x in api.history() if x['NZBName'] == 'RelAR'), None)
+        if h:
+            break
+        time.sleep(0.5)
+    logins = daemon.reject_nntp.logins
+    ok = h is not None and logins >= 1
+    return ('authrejected', ok, 'completed=%s status=%s refused_logins=%d' % (h is not None, h and h['Status'], logins))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7388,6 +7458,7 @@ SCENARIOS = {
     'apiedges': scenario_apiedges,
     'apiaccess': scenario_apiaccess,
     'queueedits': scenario_queueedits,
+    'authrejected': scenario_authrejected,
     'appendlongname': scenario_appendlongname,
     'editscorerange': scenario_editscorerange,
     'appendlarge': scenario_appendlarge,
@@ -7862,6 +7933,11 @@ def main():
                     options += ['Server%d.Host=127.0.0.1' % number, 'Server%d.Port=1' % number,
                                 'Server%d.Connections=2' % number, 'Server%d.Level=0' % number,
                                 'Server%d.Encryption=no' % number, 'Server%d.Optional=yes' % number]
+            if name == 'authrejected':
+                daemon.reject_nntp = RejectingNntp()
+                options += ['Server2.Active=yes', 'Server2.Host=127.0.0.1', 'Server2.Port=%d' % daemon.reject_nntp.port,
+                            'Server2.Username=u', 'Server2.Password=p', 'Server2.Level=0', 'Server2.Connections=2',
+                            'Server2.Encryption=no', 'ArticleRetries=0', 'ArticleInterval=0']
             if name in SCENARIO_NEWZNAB:
                 daemon.newznab = FakeNewznab()
                 # (dupesearchbareurl: the address without "/api", as users write it)

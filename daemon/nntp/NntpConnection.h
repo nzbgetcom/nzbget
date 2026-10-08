@@ -36,12 +36,15 @@ public:
 	const char* Request(const char* req);
 	const char* JoinGroup(const char* grp);
 	bool GetAuthError() { return m_authError; }
+	// the server refused the login for good (502), not for now (481: too many connections)
+	bool GetAuthRejected() { return m_authRejected; }
 
 private:
 	NewsServer* m_newsServer;
 	CString m_activeGroup;
 	CharBuffer m_lineBuf;
 	bool m_authError = false;
+	bool m_authRejected = false;
 
 	void Clear();
 	void ReportErrorAnswer(const char* msgPrefix, const char* answer);

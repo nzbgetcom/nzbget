@@ -48,6 +48,7 @@ const char* NntpConnection::Request(const char* req)
 	}
 
 	m_authError = false;
+	m_authRejected = false;
 
 	WriteLine(req);
 
@@ -120,6 +121,7 @@ bool NntpConnection::AuthInfoUser(int recur)
 	}
 
 	if (char* p = strrchr(answer, '\r')) *p = '\0'; // remove last CRLF from error message
+	m_authRejected = !strncmp(answer, "502", 3);
 
 	if (GetStatus() != csCancelled)
 	{
@@ -154,6 +156,7 @@ bool NntpConnection::AuthInfoPass(int recur)
 	}
 
 	if (char* p = strrchr(answer, '\r')) *p = '\0'; // remove last CRLF from error message
+	m_authRejected = !strncmp(answer, "502", 3);
 
 	if (GetStatus() != csCancelled)
 	{
@@ -194,6 +197,7 @@ bool NntpConnection::Connect()
 	{
 		return true;
 	}
+	m_authRejected = false;
 
 	if (!Connection::Connect())
 	{

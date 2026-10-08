@@ -151,6 +151,10 @@ void ArticleDownloader::Run()
 
 		// test connection
 		bool connected = m_connection && m_connection->Connect();
+		// a server that refuses the login for good (502) can't serve this article: it
+		// counts as tried. Waited for, a server with a broken account stalled every
+		// download that had failed on the other servers of its level
+		bool authRejected = !connected && m_connection && m_connection->GetAuthRejected();
 		if (connected && !IsStopped())
 		{
 			NewsServer* newsServer = m_connection->GetNewsServer();
@@ -248,7 +252,7 @@ void ArticleDownloader::Run()
 			break;
 		}
 
-		if (!wantServer && (connected || retentionFailure || optionalBlocked))
+		if (!wantServer && (connected || retentionFailure || optionalBlocked || authRejected))
 		{
 			if (!optionalBlocked)
 			{
