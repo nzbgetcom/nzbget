@@ -2576,12 +2576,15 @@ void EditQueueXmlCommand::Execute()
 	DecodeStr(args);
 
 	// a number past the int range wrapped around (F27: a score of 2147483648 was
-	// stored as -2147483648, the lowest), and a parameter needs a name
+	// stored as -2147483648, the lowest), a parameter needs a name and a value,
+	// and a dupe mode is one of three (the edit refused others, but the call said true)
 	int number = 0;
 	if (((action == DownloadQueue::eaGroupSetDupeScore || action == DownloadQueue::eaHistorySetDupeScore ||
 		action == DownloadQueue::eaGroupSetPriority) && !ParseIntParam(args, &number)) ||
 		((action == DownloadQueue::eaGroupSetParameter || action == DownloadQueue::eaHistorySetParameter) &&
-		 (!*args || *args == '=')))
+		 (!*args || *args == '=' || !strchr(args, '='))) ||
+		((action == DownloadQueue::eaGroupSetDupeMode || action == DownloadQueue::eaHistorySetDupeMode) &&
+		 strcasecmp(args, "SCORE") && strcasecmp(args, "ALL") && strcasecmp(args, "FORCE")))
 	{
 		BuildErrorResponse(2, "Invalid parameter");
 		return;

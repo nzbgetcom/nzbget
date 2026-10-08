@@ -5523,17 +5523,27 @@ def scenario_readdafterdelete(daemon, t):
 def scenario_editscorerange(daemon, t):
     """F27: editqueue GroupSetDupeScore with a score past the int range wrapped
     around (2147483648 stored as -2147483648, the lowest score); it is an invalid
-    parameter now, the score unchanged, and a parameter without a name too."""
+    parameter now, the score unchanged, and a parameter without a name too, a
+    parameter without a value, and an unknown dupe mode."""
     api = daemon.wait_ready()
     nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@es' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
     nid = _rpc(daemon, 'append', ['Edit.Score.nzb', nzb, '', 0, False, True, 'es-key', 500, 'SCORE', []]).get('result')
     replies = [_rpc(daemon, 'editqueue', ['GroupSetDupeScore', v, [nid]]) for v in ('2147483648', '-2147483649')]
     param = _rpc(daemon, 'editqueue', ['GroupSetParameter', '=y', [nid]])
+    # a parameter without a value and an unknown dupe mode: refused by the edit
+    # (logged), but the call answered true
+    noequals = _rpc(daemon, 'editqueue', ['GroupSetParameter', 'novalue', [nid]])
+    badmode = _rpc(daemon, 'editqueue', ['GroupSetDupeMode', 'BOGUS', [nid]])
+    goodmode = _rpc(daemon, 'editqueue', ['GroupSetDupeMode', 'all', [nid]]).get('result')
     good = _rpc(daemon, 'editqueue', ['GroupSetDupeScore', '700', [nid]]).get('result')
-    score = next((g['DupeScore'] for g in api.listgroups() if g['NZBID'] == nid), None)
-    rejected = all(not r.get('result') for r in replies + [param])
-    return ('editscorerange', rejected and good and score == 700, 'replies=%s param=%s good=%s score=%s' % (
-        [r.get('result', r.get('error')) for r in replies], param.get('result', param.get('error')), good, score))
+    group = next((g for g in api.listgroups() if g['NZBID'] == nid), {})
+    score, mode = group.get('DupeScore'), group.get('DupeMode')
+    rejected = all(not r.get('result') for r in replies + [param, noequals, badmode])
+    ok = rejected and good and goodmode and score == 700 and mode == 'ALL'
+    return ('editscorerange', ok, 'replies=%s param=%s noequals=%s badmode=%s good=%s/%s score=%s mode=%s' % (
+        [r.get('result', r.get('error')) for r in replies], param.get('result', param.get('error')),
+        noequals.get('result', noequals.get('error')), badmode.get('result', badmode.get('error')),
+        good, goodmode, score, mode))
 
 
 def scenario_fleetsamekey(daemon, t):
