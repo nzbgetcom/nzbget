@@ -50,23 +50,36 @@
 
 namespace
 {
-	// Pauses downloads for the duration of the disk test and restores the previous state.
+	// Pauses downloads for the duration of a speed test and restores the previous
+	// state. Tests at the same time share it: the first saves the state, the last
+	// restores it (a second test restored "paused", saved while the first ran).
 	class PauseGuard
 	{
 	public:
-		PauseGuard() : m_wasPaused(g_WorkState->GetPauseDownload())
+		PauseGuard()
 		{
-			g_WorkState->SetPauseDownload(true);
+			std::lock_guard<std::mutex> lock(Mutex());
+			if (Active()++ == 0)
+			{
+				WasPaused() = g_WorkState->GetPauseDownload();
+				g_WorkState->SetPauseDownload(true);
+			}
 		}
 		PauseGuard(const PauseGuard&) = delete;
 		PauseGuard& operator=(const PauseGuard&) = delete;
 		~PauseGuard()
 		{
-			g_WorkState->SetPauseDownload(m_wasPaused);
+			std::lock_guard<std::mutex> lock(Mutex());
+			if (--Active() == 0)
+			{
+				g_WorkState->SetPauseDownload(WasPaused());
+			}
 		}
 
 	private:
-		bool m_wasPaused;
+		static std::mutex& Mutex() { static std::mutex mutex; return mutex; }
+		static int& Active() { static int active = 0; return active; }
+		static bool& WasPaused() { static bool wasPaused = false; return wasPaused; }
 	};
 
 	double MiBPerSec(uint64_t bytes, double ms)
@@ -4399,10 +4412,10 @@ void TestDiskSpeedXmlCommand::Execute()
 
 void TestNetworkSpeedXmlCommand::Execute()
 {
+	// a pause that was on before the test stays on
+	PauseGuard pauseGuard;
 	try
 	{
-		g_WorkState->SetPauseDownload(true);
-
 		Network::SpeedTest sp;
 		double speedMbps = sp.RunTest();
 		std::string respStr = IsJson() ?
@@ -4410,13 +4423,10 @@ void TestNetworkSpeedXmlCommand::Execute()
 			ToXmlStr(speedMbps);
 
 		AppendResponse(respStr.c_str());
-
-		g_WorkState->SetPauseDownload(false);
 	}
 	catch (const std::exception& e)
 	{
 		BuildErrorResponse(2, "%s", e.what());
-		g_WorkState->SetPauseDownload(false);
 	}
 }
 

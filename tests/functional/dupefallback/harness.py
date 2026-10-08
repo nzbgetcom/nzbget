@@ -7836,6 +7836,21 @@ def scenario_getunsafe(daemon, t):
     return ('getunsafe', ok, 'get_error_codes=%s version_over_get=%s post_error=%s' % (refused, version, posted))
 
 
+def scenario_netspeedpause(daemon, t):
+    """testnetworkspeed paused downloads for the test and then always
+    unpaused them, also when they had been paused before (by the user or
+    for low disk space). A pause from before the test stays now."""
+    daemon.wait_ready()
+    _rpc(daemon, 'pausedownload', [])
+    started = time.time()
+    reply = _rpc(daemon, 'testnetworkspeed', [], timeout=180)
+    took = time.time() - started
+    paused = _rpc(daemon, 'status', []).get('result', {}).get('DownloadPaused')
+    ok = paused is True
+    return ('netspeedpause', ok, 'paused_after=%s took=%.0fs reply=%s' % (
+        paused, took, str(reply.get('result', reply.get('error')))[:80]))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8202,6 +8217,7 @@ SCENARIOS = {
     'speedtestnohistory': scenario_speedtestnohistory,
     'errorpercent': scenario_errorpercent,
     'getunsafe': scenario_getunsafe,
+    'netspeedpause': scenario_netspeedpause,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
