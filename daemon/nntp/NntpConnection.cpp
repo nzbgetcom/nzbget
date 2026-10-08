@@ -198,6 +198,7 @@ bool NntpConnection::Connect()
 		return true;
 	}
 	m_authRejected = false;
+	m_activeGroup = nullptr;
 
 	if (!Connection::Connect())
 	{
@@ -236,8 +237,11 @@ bool NntpConnection::Disconnect()
 	if (m_status == csConnected)
 	{
 		Request("quit\r\n");
-		m_activeGroup = nullptr;
 	}
+	// also when the connection broke (a timeout, a reset) or was cancelled: kept,
+	// the next connection skipped GROUP for that group, and a server that needs
+	// it answered "no such article"
+	m_activeGroup = nullptr;
 	return Connection::Disconnect();
 }
 

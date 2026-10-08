@@ -762,6 +762,11 @@ class FakeNntp:
         self.reply451 = set()
         # message-id -> article body sent as is (a uuencoded part, for one)
         self.bodies_by_id = {}
+        # BODY needs a GROUP first on the connection (412 otherwise), and the
+        # connection drops after every ``drop_every`` bodies (0: never)
+        self.require_group = False
+        self.drop_every = 0
+        self.no_group_replies = 0
         self.stats = 0
         self.bodies = 0
         self.bare_ids = 0
@@ -776,6 +781,8 @@ class FakeNntp:
                     outer.sessions += 1
                     outer.open_sessions += 1
                     outer.max_sessions = max(outer.max_sessions, outer.open_sessions)
+                group_joined = False
+                bodies_sent = 0
                 try:
                     self.wfile.write(b'200 fake\r\n')
                     for raw in self.rfile:
@@ -804,10 +811,23 @@ class FakeNntp:
                                 self.wfile.write(b'430 no such article\r\n')
                             elif cmd == 'STAT':
                                 self.wfile.write(('223 0 <%s>\r\n' % mid).encode())
+                            elif outer.require_group and not group_joined:
+                                with outer.lock:
+                                    outer.no_group_replies += 1
+                                self.wfile.write(b'412 no newsgroup selected\r\n')
                             else:
                                 body = outer.bodies_by_id.get(mid) or FakeNntp.article(mid)
                                 self.wfile.write(('222 0 <%s>\r\n' % mid).encode() + body + b'.\r\n')
+                                bodies_sent += 1
+                                if outer.drop_every and bodies_sent % outer.drop_every == 0:
+                                    # a reset (not a clean close): the client's next
+                                    # read fails, the connection is broken
+                                    self.wfile.flush()
+                                    import struct
+                                    self.request.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, struct.pack('ii', 1, 0))
+                                    break
                         elif cmd == 'GROUP':
+                            group_joined = True
                             self.wfile.write(('211 1 1 1 %s\r\n' % arg).encode())
                         elif cmd == 'MODE':
                             self.wfile.write(b'200 reader\r\n')
@@ -8333,6 +8353,25 @@ def scenario_retentionnodate(daemon, t):
     return ('retentionnodate', ok, 'status=%s retention_failures=%d' % (h['Status'], out_of_retention))
 
 
+def scenario_joingroupreconnect(daemon, t):
+    """JoinGroup=yes with a server that needs GROUP before BODY and drops the
+    connection every 2 articles: the connection kept its group across the
+    break, the reconnected one skipped GROUP, and the server answered 412 -
+    articles that exist counted as missing. Every article arrives now."""
+    ids = ['jg%d@x' % i for i in range(8)]
+    for mid, body in zip(ids, _uu_parts(_payload(45 * 80, 11013), 'jg.bin', 8)):
+        daemon.fake_nntp.bodies_by_id[mid] = body
+    daemon.fake_nntp.alive = set(ids)
+    daemon.fake_nntp.require_group = True
+    daemon.fake_nntp.drop_every = 2
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelJG', _fake_nzb_ids(ids, 45 * 80, name='jg.bin').decode(), False, 'jg-key', 100)
+    h = daemon.wait_history(api, 'RelJG', timeout=90)
+    ok = h['Status'].startswith('SUCCESS') and daemon.fake_nntp.no_group_replies == 0
+    return ('joingroupreconnect', ok, 'status=%s failed_articles=%s no_group_replies=%d sessions=%d' % (
+        h['Status'], h.get('FailedArticles'), daemon.fake_nntp.no_group_replies, daemon.fake_nntp.sessions))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8716,6 +8755,7 @@ SCENARIOS = {
     'directunpackkeepnointer': scenario_directunpackkeepnointer,
     'parscanpercent': scenario_parscanpercent,
     'retentionnodate': scenario_retentionnodate,
+    'joingroupreconnect': scenario_joingroupreconnect,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -8993,6 +9033,7 @@ SCENARIO_OPTIONS = {
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'parscanpercent': ['ParCheck=force', 'ParScan=full'],
     'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
+    'joingroupreconnect': ['Server1.JoinGroup=yes', 'Server1.Connections=1', 'ArticleRetries=0', 'DirectWrite=no'],
     'directunpackkeep': ['Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'directunpackkeepnointer': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'UnpackCleanupDisk=yes', 'ParCheck=auto'],
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
@@ -9142,7 +9183,7 @@ SCENARIO_NEWZNAB = {'dupesearchbareurl', 'dupesearchgzip', 'dupesearchrestart', 
                    'dupesearchresumedeleted'}
 
 # scenarios with a FakeNntp news server in place of nserv
-SCENARIO_FAKE_NNTP = {'uucache', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
+SCENARIO_FAKE_NNTP = {'uucache', 'joingroupreconnect', 'fleetparallel', 'fleetduringpost', 'fleetslowurlfirst', 'fleetwide', 'fleetsamekey', 'fleetscoremax', 'fleetmerged', 'fleetslowurl', 'fleetpaused', 'fleetmostlydead', 'fleetlarge', 'fleetcopy', 'fleetbusy', 'fleetdeadtwins', 'fleetfailover', 'fleetaddbackup', 'fleetresendslow', 'fleetresend', 'fleetallerror', 'fleetotherkey', 'fleetnokey', 'fleetdeadfirst', 'fleettwins', 'fleettimeout', 'fleetone', 'fleetalldead', 'fleetshutdown', 'dupesearchresumedeleted', 'dupesearchpickdeleted', 'dupesearchpickgoneadd', 'dupesearchquickstop', 'dupesearchresubmit', 'dupesearchkeychanged', 'dupesearchresume', 'dupesearchgroup', 'dupesearchrerank', 'dupesearchfailedfirst', 'dupesearchfailedrestart', 'dupesearchtwopicks', 'dupesearchindexerdown', 'dupesearchquerydrop', 'dupesearchalldead', 'dupesearchtwinmember', 'dupesearchambiguous', 'dupesearchrestartcheck', 'dupesearchdonors', 'dupesearchfastdead', 'dupesearchrescorefail', 'dupesearchdryrun'}
 
 
 # --------------------------------------------------------------------------- #
