@@ -588,6 +588,10 @@ void PrePostProcessor::CheckRequestPar(DownloadQueue* downloadQueue)
 			postInfo->GetNzbInfo()->SetParStatus(NzbInfo::psNone);
 			postInfo->SetRequestParCheck(false);
 			postInfo->GetNzbInfo()->GetScriptStatuses()->clear();
+			// the job starts over (par-check, then the scripts again): a script
+			// asking for it (exit 92) had finished the job, which then went to
+			// the history without the par-check
+			postInfo->SetStage(PostInfo::ptQueued);
 			postInfo->SetWorking(false);
 		}
 		else if (postInfo->GetRequestParCheck() &&

@@ -7980,6 +7980,38 @@ def scenario_pathtraversalarticle(daemon, t):
     return _path_traversal(daemon, t, 'pathtraversalarticle')
 
 
+# a post-processing extension that asks for a par-check on its first run
+PARCHECK_POST_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+# Requests a par-check once (exit 92).
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+##############################################################################
+import os, sys
+marker = os.path.join(os.environ['NZBOP_TEMPDIR'], 'askpar.count')
+runs = int(open(marker).read()) if os.path.exists(marker) else 0
+open(marker, 'w').write(str(runs + 1))
+print('[INFO] askpar: run %d, parstatus %s' % (runs + 1, os.environ.get('NZBPP_PARSTATUS')))
+sys.exit(92 if runs == 0 else 93)
+'''
+
+
+def scenario_scriptparcheck(daemon, t):
+    """A post-processing script exits 92 (POSTPROCESS_PARCHECK) for a download
+    whose par-check was skipped: the request was accepted, but the job had
+    finished and went to the history - no par-check, the scripts didn't run
+    again. Now the job starts over: par-check, then the script a second
+    time (it exits 93 then)."""
+    data = _payload(400_000, 9898)
+    pp = _place_copy(t, 'spA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelSP', build_nzb(pp, 'sp.bin', len(data), 100_000, set()), False, 'sp-key', 100)
+    h = daemon.wait_history(api, 'RelSP', timeout=120)
+    runs = _grep_log(t, 'askpar: run ')
+    requested = _grep_log(t, 'requested par-check/repair')
+    ok = runs == 2 and requested == 1 and h['Status'].startswith('SUCCESS')
+    return ('scriptparcheck', ok, 'status=%s par=%s script_runs=%d requests=%d' % (h['Status'], h.get('ParStatus'), runs, requested))
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8352,6 +8384,7 @@ SCENARIOS = {
     'xmlparamdecode': scenario_xmlparamdecode,
     'pathtraversalnzb': scenario_pathtraversalnzb,
     'pathtraversalarticle': scenario_pathtraversalarticle,
+    'scriptparcheck': scenario_scriptparcheck,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8636,6 +8669,7 @@ SCENARIO_OPTIONS = {
     'categoryscan': ['Category1.Name=test', 'Category1.Extensions=catscan'],
     'tasktypo': lambda: _next_minute_task_options(),
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
+    'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
     'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],
     'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
@@ -8751,6 +8785,7 @@ SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EX
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
                        'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'scriptdirlist': {'catscan.py': CATEGORY_SCAN_EXTENSION},
+                       'scriptparcheck': {'askpar.py': PARCHECK_POST_EXTENSION},
                        'scanlongcommand': {'longscan.py': LONG_COMMAND_EXTENSION}}
 
 SCENARIO_FIRST_FAIL_PROXY = {'recheckfailed': ((b'?5=', b'?10=', b'?15='),)}
