@@ -546,8 +546,10 @@ void RepairController::UpdateParCheckProgress()
 				((g_Options->GetParTimeLimit() > 5 && current - postInfo->GetStageTime() > 5 * 60) ||
 					(g_Options->GetParTimeLimit() <= 5 && current - postInfo->GetStageTime() > 1 * 60)))
 			{
-				// first five (or one) minutes elapsed, now can check the estimated time
-				int estimatedRepairTime = (int)((current - postInfo->GetStartTime()) * 1000 /
+				// first five (or one) minutes elapsed, now can check the estimated time: of
+				// the repair stage, whose progress this is (from the job's start, loading
+				// pars and verification counted against the limit, contrary to the option)
+				int estimatedRepairTime = (int)((current - postInfo->GetStageTime()) * 1000 /
 					(postInfo->GetStageProgress() > 0 ? postInfo->GetStageProgress() : 1));
 				if (estimatedRepairTime > g_Options->GetParTimeLimit() * 60)
 				{
