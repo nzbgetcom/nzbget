@@ -233,7 +233,7 @@ var SystemHealth = (new function ($) {
 			$toggle.attr('href', '#' + section.id);
 			
 			$toggle.html(
-				'<i class="material-icon ' + section.cssClass + '">' + section.icon + '</i> ' +
+				'<i class="material-icon ' + section.cssClass + '"><svg><use href="img/icons.svg#' + section.icon + '"></use></svg></i> ' +
 				'<span class="' + section.cssClass + '" data-i18n="' + section.key + '" data-i18n-arg-1="' + section.data.length + '">' +
 				I18n.translate(section.key, section.data.length) + '</span>'
 			);

@@ -215,10 +215,10 @@ var Upload = (new function($)
 			var filename = file.name.replace(/\.queued$/g, '');
 			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="' + I18n.translate('label_click_to_rename') + '">'+
 				'<table><tr><td width="18px" valign="top">'+
-				'<i class="material-icon material-icon--draft">draft</i>'+
-				'<i class="material-icon material-icon--success hide">check_circle</i>'+
-				'<i class="material-icon material-icon--error hide">error</i>'+
-				'<i class="material-icon material-icon--progress spinner hide">progress_activity</i>'+
+				'<i class="material-icon material-icon--draft"><svg><use href="img/icons.svg#draft"></use></svg></i>'+
+				'<i class="material-icon material-icon--success hide"><svg><use href="img/icons.svg#check_circle"></use></svg></i>'+
+				'<i class="material-icon material-icon--error hide"><svg><use href="img/icons.svg#error"></use></svg></i>'+
+				'<i class="material-icon material-icon--progress spinner hide"><svg><use href="img/icons.svg#progress_activity"></use></svg></i>'+
 				'</td><td id="AddDialog_File' + files.length + '">' + Util.textToHtml(Util.formatNZBName(filename)) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);
@@ -258,8 +258,8 @@ var Upload = (new function($)
 		$('#AddDialog_Files').empty();
 		$('#AddDialog_URL').val('');
 		$('#AddDialog_FilesHelp').show();
-		$('#AddDialog_URLLabel img').hide();
-		$('#AddDialog_URLLabel i').hide();
+		$('#AddDialog_URLLabel .url-loading').hide();
+		$('#AddDialog_URLLabel .url-icon').hide();
 		$('#AddDialog_AutoCategory').prop('checked', false);
 		$('#AddDialog_Paused').prop('checked', false);
 		$('#AddDialog_DupeForce').prop('checked', false);
@@ -417,8 +417,8 @@ var Upload = (new function($)
 
 	function urlNext()
 	{
-		$('#AddDialog_URLLabel img').show();
-		$('#AddDialog_URLLabel i').hide();
+		$('#AddDialog_URLLabel .url-loading').show();
+		$('#AddDialog_URLLabel .url-icon').hide();
 
 		var name = urlInfo.name.toLowerCase();
 		if (name !== '' && !(Util.endsWith(name, '.nzb') || Util.endsWith(name, '.zip') ||
@@ -457,8 +457,8 @@ var Upload = (new function($)
 		{
 			$('#AddDialog_URL').empty();
 		}
-		$('#AddDialog_URLLabel img').hide();
-		$('#AddDialog_URLLabel i').removeClass('icon-ok').removeClass('icon-remove').addClass(
+		$('#AddDialog_URLLabel .url-loading').hide();
+		$('#AddDialog_URLLabel .url-icon').removeClass('icon-ok').removeClass('icon-remove').addClass(
 			result ? 'icon-ok' : 'icon-remove').show();
 
 		fileNext();

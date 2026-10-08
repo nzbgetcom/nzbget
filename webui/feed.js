@@ -831,11 +831,11 @@ var FeedFilterDialog = (new function($)
 
 		if (autoUpdate)
 		{
-			$RematchIcon.text('sync');
+			$RematchIcon.find('use').attr('href', 'img/icons.svg#sync');
 			return;
 		}
 
-		$RematchIcon.text('sync_disabled');
+		$RematchIcon.find('use').attr('href', 'img/icons.svg#sync_disabled');
 	}
 
 	function filterKeyPress(event)
