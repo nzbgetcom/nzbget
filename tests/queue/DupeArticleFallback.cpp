@@ -129,6 +129,63 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackRejectsDamagedPar2BlockSizeTest)
 	fs::remove_all(dir);
 }
 
+BOOST_AUTO_TEST_CASE(DupeArticleFallbackPar2CheckUsesTheFilesOwnSetTest)
+{
+	// two par2 sets in one folder (a season pack): f.bin's set has 100-byte blocks,
+	// another set 200-byte ones. A right borrowed article of f.bin passes whichever
+	// set's Main packet is read last (one block size for all judged it with the
+	// other set's 200-byte blocks: the right bytes failed)
+	fs::path dir = fs::temp_directory_path() / ("nzbget-par2-sets-" + std::to_string(getpid()));
+	fs::create_directories(dir);
+	std::string data(100, 'x');
+	{
+		std::ofstream(dir / "f.bin", std::ios::binary).write(data.data(), data.size());
+	}
+	auto le = [](uint64 value, int bytes)
+		{
+			std::string text;
+			for (int i = 0; i < bytes; i++) text += (char)((value >> (8 * i)) & 0xff);
+			return text;
+		};
+	auto packet = [&](const std::string& setId, const char* type, const std::string& body)
+		{
+			return std::string("PAR2\0PKT", 8) + le(64 + body.size(), 8) + std::string(16, '\0') + setId +
+				std::string(type, 16) + body;
+		};
+	Crc32 crc;
+	crc.Append((uchar*)data.data(), (uint32)data.size());
+	uint32 blockCrc = crc.Finish();
+	std::string fileId(16, '\1');
+	std::string setA(16, 'A');
+	std::string setB(16, 'B');
+	std::string parA = packet(setA, "PAR 2.0\0Main\0\0\0\0", le(100, 8) + le(0, 8)) +
+		packet(setA, "PAR 2.0\0FileDesc", fileId + std::string(32, '\0') + le(data.size(), 8) + std::string("f.bin\0\0\0", 8)) +
+		packet(setA, "PAR 2.0\0IFSC\0\0\0\0", fileId + std::string(16, '\0') + le(blockCrc, 4));
+	std::string parB = packet(setB, "PAR 2.0\0Main\0\0\0\0", le(200, 8) + le(0, 8)) +
+		packet(setB, "PAR 2.0\0FileDesc", std::string(16, '\2') + std::string(32, '\0') + le(64, 8) + std::string("g.bin\0\0\0", 8)) +
+		packet(setB, "PAR 2.0\0IFSC\0\0\0\0", std::string(16, '\2') + std::string(16, '\0') + le(0, 4));
+
+	NzbInfo nzb;
+	nzb.SetDestDir(dir.string().c_str());
+	std::unique_ptr<FileInfo> target = BuildFile("f.bin", {{1, 100}}, "orig");
+	target->SetNzbInfo(&nzb);
+	ArticleInfo* article = target->GetArticles()->at(0).get();
+	article->SetStatus(ArticleInfo::aiFinished);
+	article->SetDupeDonorId(1);
+	article->SetSegmentOffset(0);
+	article->SetSegmentSize(100);
+
+	// both orders: the sets in one file, A first and B first
+	for (const std::string& par : {parA + parB, parB + parA})
+	{
+		std::ofstream(dir / "set.par2", std::ios::binary | std::ios::trunc).write(par.data(), par.size());
+		std::vector<ArticleInfo*> mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
+			(dir / "f.bin").string().c_str());
+		BOOST_CHECK(mismatches.empty());
+	}
+	fs::remove_all(dir);
+}
+
 BOOST_AUTO_TEST_CASE(DupeArticleFallbackSizesMatchTest)
 {
 	BOOST_CHECK(DupeArticleFallback::SizesMatch(100000, 100000, 64));

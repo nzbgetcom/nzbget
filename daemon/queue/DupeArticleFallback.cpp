@@ -338,6 +338,8 @@ struct Par2FileSums
 	std::string name;
 	uint64 length = 0;
 	std::vector<uint32> crcs;
+	std::string setId;		// hex: the recovery set the file belongs to
+	uint64 blockSize = 0;	// that set's block size
 };
 
 uint64 ReadLe64(const uchar* p)
@@ -372,6 +374,11 @@ std::string Hex(const uchar* p, int len)
 std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockSize)
 {
 	std::map<std::string, Par2FileSums> files;
+	// every set's own block size: a folder can hold several par2 sets (a season
+	// pack, one per episode), and one block size for all of them judged a file
+	// with another set's blocks (B40 rejected right borrowed articles, or let
+	// wrong ones through)
+	std::map<std::string, uint64> setBlockSizes;
 	blockSize = 0;
 	DirBrowser browser(dir);
 	while (const char* filename = browser.Next())
@@ -392,6 +399,7 @@ std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockS
 				break;
 			}
 			const uchar* type = header + 48;
+			std::string setId = Hex(header + 32, 16);
 			uint64 bodyLength = length - 64;
 			bool main = !memcmp(type, "PAR 2.0\0Main\0\0\0\0", 16);
 			bool desc = !memcmp(type, "PAR 2.0\0FileDesc", 16);
@@ -406,10 +414,12 @@ std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockS
 				if (main && bodyLength >= 8)
 				{
 					blockSize = ReadLe64(body.data());
+					setBlockSizes[setId] = blockSize;
 				}
 				else if (desc && bodyLength >= 56)
 				{
 					Par2FileSums& sums = files[Hex(body.data(), 16)];
+					sums.setId = setId;
 					sums.hash16k = Hex(body.data() + 32, 16);
 					sums.length = ReadLe64(body.data() + 48);
 					sums.name.assign((const char*)body.data() + 56, (size_t)bodyLength - 56);
@@ -418,6 +428,7 @@ std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockS
 				else if (ifsc && bodyLength >= 16)
 				{
 					Par2FileSums& sums = files[Hex(body.data(), 16)];
+					sums.setId = setId;
 					sums.crcs.clear();
 					for (uint64 at = 16; at + 20 <= bodyLength; at += 20)
 					{
@@ -427,6 +438,11 @@ std::map<std::string, Par2FileSums> LoadPar2Sums(const char* dir, uint64& blockS
 			}
 			pos += length;
 		}
+	}
+	for (auto& entry : files)
+	{
+		auto it = setBlockSizes.find(entry.second.setId);
+		entry.second.blockSize = it != setBlockSizes.end() ? it->second : 0;
 	}
 	return files;
 }
@@ -461,7 +477,7 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 
 	uint64 blockSize = 0;
 	std::map<std::string, Par2FileSums> files = LoadPar2Sums(fileInfo->GetNzbInfo()->GetDestDir(), blockSize);
-	if (files.empty() || blockSize == 0)
+	if (files.empty())
 	{
 		return mismatches;
 	}
@@ -478,9 +494,11 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 			break;
 		}
 	}
+	// the block size of the file's own set
+	blockSize = sums ? sums->blockSize : 0;
 	// a par2 block size no real set uses (a damaged packet) isn't trusted: the buffer
 	// for it would be too large to allocate
-	if (!sums || blockSize % 4 != 0 || blockSize > (uint64)MaxPar2BlockSize ||
+	if (!sums || blockSize == 0 || blockSize % 4 != 0 || blockSize > (uint64)MaxPar2BlockSize ||
 		sums->crcs.size() < (size_t)((fileSize + blockSize - 1) / blockSize))
 	{
 		return mismatches;
