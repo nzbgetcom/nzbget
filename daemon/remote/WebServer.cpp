@@ -128,8 +128,23 @@ void WebProcessor::Execute()
 
 	if (m_httpMethod == hmPost)
 	{
+		// a body of a size no request has: the buffer for it couldn't be allocated
+		// (its size + 1 overflowed at INT_MAX) and was written through anyway. A
+		// request without credentials (the login form) is small
+		int maxContentLen = m_authorized ? 768 * 1024 * 1024 : 64 * 1024;
+		if (m_contentLen < 0 || m_contentLen > maxContentLen)
+		{
+			SendErrorResponse(ERR_HTTP_BAD_REQUEST, true);
+			return;
+		}
+
 		// reading http body (request content)
 		m_request.Reserve(m_contentLen);
+		if (!m_request)
+		{
+			SendErrorResponse(ERR_HTTP_SERVICE_UNAVAILABLE, true);
+			return;
+		}
 		m_request[m_contentLen] = '\0';
 
 		if (!m_connection->Recv(m_request, m_contentLen))

@@ -684,7 +684,14 @@ void XmlRpcProcessor::MutliCall()
 		debug("MutliCall, MethodName=%s", methodName);
 
 		std::unique_ptr<XmlCommand> command = CreateCommand(methodName);
-		command->SetRequest(requestPtr);
+		// a call of the multicall runs as the caller, with the caller's access: it ran
+		// with full control access (a restricted user read the passwords through it);
+		// its parameters are its "params" member, not the start of the call
+		command->SetProtocol(m_protocol);
+		command->SetHttpMethod(m_httpMethod);
+		command->SetUserAccess(m_userAccess);
+		char* paramsStart = strstr(nameEnd, "params</name>");
+		command->SetRequest(paramsStart ? paramsStart : requestPtr);
 		m_safeMethod |= command->IsSafeMethod();
 		command->Execute();
 
@@ -1470,7 +1477,8 @@ void DumpDebugXmlCommand::Execute()
 void SetDownloadRateXmlCommand::Execute()
 {
 	int rate = 0;
-	if (!NextParamAsInt(&rate) || rate < 0)
+	// in KB/s: a rate past INT_MAX / 1024 wrapped around to a tiny limit
+	if (!NextParamAsInt(&rate) || rate < 0 || rate > INT_MAX / 1024)
 	{
 		BuildErrorResponse(2, "Invalid parameter");
 		return;
@@ -2300,7 +2308,8 @@ void NzbInfoXmlCommand::AppendPostInfoFields(PostInfo* postInfo, int logEntries,
 	}
 	else
 	{
-		AppendFmtResponse(itemStart, "NONE", "", 0, 0, 0, 0);
+		// (the progress is a number: "" in its place printed a pointer's bits)
+		AppendFmtResponse(itemStart, "NONE", 0, 0, 0);
 	}
 
 	AppendResponse(IsJson() ? JSON_LOG_START : XML_LOG_START);
@@ -2779,6 +2788,10 @@ void DownloadXmlCommand::Execute()
 				BuildErrorResponse(2, "Invalid parameter (Parameters)");
 				return;
 			}
+			// decoded like every other string: a password with a quote or a
+			// backslash was stored escaped, and unpacking failed
+			DecodeStr(paramName);
+			DecodeStr(paramValue);
 			Params.SetParameter(paramName, paramValue);
 		}
 	}
@@ -3415,16 +3428,59 @@ void SaveConfigXmlCommand::Execute()
 {
 	Options::OptEntries optEntries;
 
+	// The file is rewritten from the entries given: options left out are dropped.
+	// An entry that doesn't read as a name and a string value (a number, or "Value"
+	// before "Name") ended the list where it stood, and every option after it - all
+	// of them for an empty list - was deleted, the call reporting success.
 	char* name;
 	char* value;
-	char* dummy;
-	while ((IsJson() && NextParamAsStr(&dummy) && NextParamAsStr(&name) &&
-			NextParamAsStr(&dummy) && NextParamAsStr(&value)) ||
-		   (!IsJson() && NextParamAsStr(&name) && NextParamAsStr(&value)))
+	bool malformed = false;
+	while (true)
 	{
+		if (IsJson())
+		{
+			char* key1;
+			char* key2;
+			if (!NextParamAsStr(&key1))
+			{
+				break;
+			}
+			if (!NextParamAsStr(&name) || !NextParamAsStr(&key2) || !NextParamAsStr(&value))
+			{
+				malformed = true;
+				break;
+			}
+			if (!strcasecmp(key1, "Value") && !strcasecmp(key2, "Name"))
+			{
+				std::swap(name, value);
+			}
+			else if (strcasecmp(key1, "Name") || strcasecmp(key2, "Value"))
+			{
+				malformed = true;
+				break;
+			}
+		}
+		else
+		{
+			if (!NextParamAsStr(&name))
+			{
+				break;
+			}
+			if (!NextParamAsStr(&value))
+			{
+				malformed = true;
+				break;
+			}
+		}
 		DecodeStr(name);
 		DecodeStr(value);
 		optEntries.emplace_back(name, value);
+	}
+
+	if (malformed || optEntries.empty())
+	{
+		BuildErrorResponse(2, "Invalid parameter");
+		return;
 	}
 
 	// save to config file
@@ -3498,7 +3554,7 @@ void ViewFeedXmlCommand::Execute()
 		bool backlog = true;
 		bool pauseNzb;
 		char* category;
-		char* categorySourceStr;
+		char* categorySourceStr = nullptr;	// optional: unset when not sent
 		auto categorySource = FeedInfo::CategorySource::NZBFile;
 		int interval = 0;
 		int priority;

@@ -480,7 +480,9 @@ class Daemon:
 
     def api(self):
         host = self.t.rpc_host()
-        return ServerProxy('http://%s:%d/xmlrpc' % (host, self.rpc_port))
+        # (a scenario that sets ControlPassword sets creds "user:password" too)
+        creds = getattr(self, 'creds', None)
+        return ServerProxy('http://%s%s:%d/xmlrpc' % (creds + '@' if creds else '', host, self.rpc_port))
 
     def wait_ready(self, timeout=30):
         api = self.api()
@@ -5516,6 +5518,83 @@ def scenario_appendlongname(daemon, t):
     return ('appendlongname', ok, 'id=%s name_len=%s' % (nid, group and len(group['NZBName'])))
 
 
+def scenario_apiedges(daemon, t):
+    """API edge cases (all upstream too):
+    rate past INT_MAX/1024 is rejected (it wrapped to a 1 KB/s limit);
+    listgroups' PostStageProgress is 0 for a queued item (it printed a pointer);
+    a post-processing parameter with a quote and a backslash is stored as sent
+    (it was stored escaped: a password with them failed to unpack);
+    saveconfig with an empty or malformed list is refused and the file keeps every
+    option (it was rewritten without them, reporting success); with "Value"
+    before "Name" the right option is saved."""
+    api = daemon.wait_ready()
+    rate = _rpc(daemon, 'rate', [4194305])
+    limit = api.status()['DownloadLimit']
+    nzb = base64.standard_b64encode(_fake_nzb_ids(['%s@ae' % uuid.uuid4().hex for _ in range(3)], 30_000)).decode()
+    nid = _rpc(daemon, 'append', ['Api.Edges.nzb', nzb, '', 0, False, True, 'ae-key', 0, 'SCORE',
+                                  [{'*Unpack:Password': 'pa"ss\\x'}]]).get('result')
+    group = next((g for g in api.listgroups() if g['NZBID'] == nid), {})
+    password = {p['Name']: p['Value'] for p in group.get('Parameters', [])}.get('*Unpack:Password')
+    conf_path = t.path(daemon.conf_rel)
+    before = open(conf_path).read()
+    empty = _rpc(daemon, 'saveconfig', [[]])
+    bad = _rpc(daemon, 'saveconfig', [[{'Name': 'ControlPort', 'Value': 1}, {'Name': 'NzbDirInterval', 'Value': '7'}]])
+    kept = open(conf_path).read() == before
+    swapped = _rpc(daemon, 'saveconfig', [[{'Value': '9', 'Name': 'NzbDirInterval'}]])
+    after = open(conf_path).read()
+    ok = (not rate.get('result') and limit == 0 and group.get('PostStageProgress') == 0 and password == 'pa"ss\\x' and
+          'error' in empty and 'error' in bad and kept and swapped.get('result') and 'NzbDirInterval=9' in after)
+    # (saveconfig replaces the whole option list, as the web interface sends every
+    # option: the swapped-key call leaves only NzbDirInterval, by design)
+    return ('apiedges', ok, 'rate=%s limit=%s progress=%s password=%r empty=%s bad=%s kept=%s swapped=%s interval9=%s' % (
+        rate.get('result', rate.get('error')), limit, group.get('PostStageProgress'), password,
+        'error' in empty, 'error' in bad, kept, swapped.get('result'), 'NzbDirInterval=9' in after))
+
+
+def scenario_apiaccess(daemon, t):
+    """Access and request-size edges (upstream too). A restricted user's
+    system.multicall ran its calls with full control access: config returned the
+    control password in plain text, where a direct call masks it. A POST that
+    declares a 2 GB body crashed the server (the buffer couldn't be allocated and
+    was written through anyway); it is refused now and nzbget stays up."""
+    import socket
+    daemon.creds = 'nzbget:ctlpass'
+    daemon.wait_ready()
+
+    def post(path, body, auth, length=None):
+        sock = socket.create_connection(('127.0.0.1', daemon.rpc_port), timeout=10)
+        head = ('POST %s HTTP/1.1\r\nHost: x\r\nAuthorization: Basic %s\r\nContent-Length: %d\r\n\r\n' %
+                (path, base64.b64encode(auth.encode()).decode(), len(body) if length is None else length))
+        sock.sendall(head.encode() + body)
+        data = b''
+        try:
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        except socket.timeout:
+            pass
+        sock.close()
+        return data
+    call = (b'<?xml version="1.0"?><methodCall><methodName>system.multicall</methodName><params><param><value>'
+            b'<array><data><value><struct><member><name>methodName</name><value><string>config</string></value>'
+            b'</member><member><name>params</name><value><array><data></data></array></value></member></struct>'
+            b'</value></data></array></value></param></params></methodCall>')
+    reply = post('/xmlrpc', call, 'ro:ropass')
+    leaked = b'ctlpass' in reply
+    masked = b'***' in reply
+    huge = post('/jsonrpc', b'{}', 'nzbget:ctlpass', length=2147483647)
+    time.sleep(1)
+    try:
+        alive = bool(daemon.api().version())
+    except Exception:
+        alive = False
+    ok = not leaked and masked and b' 400' in huge.split(b'\r\n', 1)[0] and alive
+    return ('apiaccess', ok, 'leaked=%s masked=%s huge_status=%r alive=%s' % (
+        leaked, masked, huge.split(b'\r\n', 1)[0][:40], alive))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7185,6 +7264,8 @@ SCENARIOS = {
     'appendurlgzip': scenario_appendurlgzip,
     'readdafterdelete': scenario_readdafterdelete,
     'appendscorerange': scenario_appendscorerange,
+    'apiedges': scenario_apiedges,
+    'apiaccess': scenario_apiaccess,
     'appendlongname': scenario_appendlongname,
     'editscorerange': scenario_editscorerange,
     'appendlarge': scenario_appendlarge,
@@ -7459,6 +7540,7 @@ SCENARIO_OPTIONS = {
     'fleetcopy': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetmostlydead': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetpaused': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
+    'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
     'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'articledecoypar': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'fleetslowurlfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
