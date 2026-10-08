@@ -8037,6 +8037,37 @@ def scenario_urlschemes(daemon, t):
     return ('urlschemes', ok, 'statuses=%s downloaded=%s' % (statuses, downloaded))
 
 
+def scenario_nzbentities(daemon, t):
+    """NZB XML with entity declarations: an external entity (a local file)
+    and an expansion bomb are refused at the scan, and the file's content
+    shows up nowhere. A plain nzb with the standard DOCTYPE still downloads.
+    Asked for by the proxy's review."""
+    data = _payload(90_000, 10101)
+    pp = _place_copy(t, 'neA', data)
+    plain = build_nzb(pp, 'ne.bin', len(data), 100_000, set())
+    secret_path = t.path('main', 'secret.txt')
+    with open(secret_path, 'w') as f:
+        f.write('SECRET-CONTENT-12345')
+    body = plain[plain.index('<nzb'):]
+    doctype = '<!DOCTYPE nzb PUBLIC "-//newzBin//DTD NZB 1.0//EN" "http://www.newzbin.com/DTD/nzb/nzb-1.0.dtd">\n'
+    xxe = ('<?xml version="1.0"?>\n<!DOCTYPE nzb [<!ENTITY x SYSTEM "file://%s">]>\n' % secret_path +
+           body.replace('<file ', '<file note="&x;" ', 1))
+    lol = ('<?xml version="1.0"?>\n<!DOCTYPE nzb [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;">'
+           '<!ENTITY c "&b;&b;&b;&b;&b;&b;&b;&b;&b;&b;"><!ENTITY d "&c;&c;&c;&c;&c;&c;&c;&c;&c;&c;">]>\n' +
+           body.replace('<file ', '<file note="&d;" ', 1))
+    std = '<?xml version="1.0"?>\n' + doctype + body
+    api = daemon.wait_ready()
+    for name, xml in (('RelNEX', xxe), ('RelNEL', lol), ('RelNES', std)):
+        daemon.append(api, name, xml, False, name.lower(), 100)
+    statuses = {name: daemon.wait_history(api, name, timeout=60)['Status'] for name in ('RelNEX', 'RelNEL', 'RelNES')}
+    leaked = _grep_log(t, 'SECRET-CONTENT')
+    for h in api.history():
+        leaked += str(h).count('SECRET-CONTENT')
+    ok = (statuses['RelNEX'].startswith('FAILURE') and statuses['RelNEL'].startswith('FAILURE') and
+          statuses['RelNES'].startswith('SUCCESS') and leaked == 0)
+    return ('nzbentities', ok, 'statuses=%s leaked=%d' % (statuses, leaked))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8411,6 +8442,7 @@ SCENARIOS = {
     'pathtraversalarticle': scenario_pathtraversalarticle,
     'scriptparcheck': scenario_scriptparcheck,
     'urlschemes': scenario_urlschemes,
+    'nzbentities': scenario_nzbentities,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
