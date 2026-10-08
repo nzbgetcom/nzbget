@@ -5761,6 +5761,31 @@ def scenario_authrejected(daemon, t):
     return ('authrejected', ok, 'completed=%s status=%s refused_logins=%d' % (h is not None, h and h['Status'], logins))
 
 
+def scenario_staleprogress(daemon, t):
+    """The progress file names a collection the queue no longer holds (nzbget
+    stopped between saving the queue and discarding the progress file): the
+    queue loads anyway. The whole load was aborted ("NZB with id N could not
+    be found"), and queue and history were set aside as unreadable."""
+    api = daemon.wait_ready()
+    _ds_append(api, 'Kept.Item', _fake_nzb_ids(_fleet_ids('kp', 5), 50_000).decode(), 'kp-key', 100)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    # a progress record is the collection's id, then its full record as in the queue
+    # file: the queue's only record, under an id the queue doesn't have
+    queue_lines = open(t.path('main', 'queue', 'queue')).read().split('\n')
+    open(t.path('main', 'queue', 'progress'), 'w').write('\n'.join(queue_lines[:1] + ['1', '99999'] + queue_lines[2:]))
+    daemon.start()
+    api = daemon.wait_ready()
+    groups = {g['NZBName'] for g in api.listgroups()}
+    unreadable = _grep_log(t, 'could not be read')
+    ok = unreadable == 0 and 'Kept.Item' in groups
+    return ('staleprogress', ok, 'unreadable_logs=%d groups=%s skipped_logs=%d' % (
+        unreadable, sorted(groups), _grep_log(t, 'no longer queued')))
+
+
 def scenario_fleetpaused(daemon, t):
     """appendfleet (F12): with downloads paused by the user, a fleet is still
     checked - the check doesn't download - and ranked: the whole copy is
@@ -7458,6 +7483,7 @@ SCENARIOS = {
     'apiedges': scenario_apiedges,
     'apiaccess': scenario_apiaccess,
     'queueedits': scenario_queueedits,
+    'staleprogress': scenario_staleprogress,
     'authrejected': scenario_authrejected,
     'appendlongname': scenario_appendlongname,
     'editscorerange': scenario_editscorerange,

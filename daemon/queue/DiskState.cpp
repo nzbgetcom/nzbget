@@ -712,8 +712,13 @@ bool DiskState::LoadProgress(NzbList* queue, Servers* servers, StateDiskFile& in
 		NzbInfo* nzbInfo = queue->Find(id);
 		if (!nzbInfo)
 		{
-			error("NZB with id %i could not be found", id);
-			goto error;
+			// a progress record of a collection no longer queued (the queue was saved,
+			// then nzbget stopped before the progress file was discarded): read past it.
+			// It aborted the whole load, and queue and history were set aside
+			warn("Skipping saved progress of NZB with id %i, which is no longer queued", id);
+			NzbInfo stale;
+			if (!LoadNzbInfo(&stale, servers, infile, formatVersion)) goto error;
+			continue;
 		}
 
 		if (!LoadNzbInfo(nzbInfo, servers, infile, formatVersion)) goto error;
