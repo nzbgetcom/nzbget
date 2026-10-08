@@ -35,6 +35,8 @@ if(ENABLE_CCACHE AND NOT WIN32)
 	endif()
 endif()
 
+option(BUILD_DEPS_FROM_SOURCE "Build third-party dependencies from source via FetchContent" OFF)
+
 option(ENABLE_LTO "Enable Link-Time Optimization (IPO)" OFF)
 if(ENABLE_LTO)
 	if(CMAKE_CROSSCOMPILING)

@@ -1,0 +1,162 @@
+#!/bin/sh
+#
+#  This file is part of nzbget. See <https://nzbget.com>.
+#
+#  Copyright (C) 2026 Denis <denis@nzbget.com>
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+
+# This script must be started by NZBGet so that the required environment
+# variables are available.
+if [ -z "$NZBUP_PROCESSID" ]; then
+    echo "This file is not supposed to be executed directly. To update NZBGet please choose Settings -> SYSTEM -> Check for update in the web-interface."
+    exit 1
+fi
+
+# Make sure the installer configuration exists in the application directory.
+INSTALLERCFG=$(cat "$NZBOP_APPDIR/installer.cfg" 2>/dev/null)
+if [ -z "$INSTALLERCFG" ]; then
+    echo '[ERROR] File "installer.cfg" is missing in the installation directory. Please reinstall NZBGet.'
+    exit 1
+fi
+
+# Read the URL of the update information file.
+echo "Downloading version information..."
+UPDATE_INFO_LINK=$(sed -n 's/^.*update-info-link.*: "\(.*\)".*/\1/p' \
+    "$NZBOP_APPDIR/webui/package-info.json" 2>/dev/null)
+
+if [ -z "$UPDATE_INFO_LINK" ]; then
+    echo "[ERROR] Update information link is missing"
+    exit 1
+fi
+
+"$NZBOP_APPBIN" -B webget \
+    "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt" "$UPDATE_INFO_LINK" 2>/dev/null
+if [ "$?" -ne 0 ]; then
+    echo "[ERROR] Download failed, please try again later"
+    exit 1
+fi
+
+# Select the version, download, and signature fields for the requested branch.
+if [ "$NZBUP_BRANCH" = "TESTING" ]; then
+    VER_FIELD="testing-version"
+    DNL_FIELD="testing-download"
+    SIG_FIELD="testing-signature"
+elif [ "$NZBUP_BRANCH" = "STABLE" ]; then
+    VER_FIELD="stable-version"
+    DNL_FIELD="stable-download"
+    SIG_FIELD="stable-signature"
+else
+    echo "[ERROR] Unsupported branch $NZBUP_BRANCH"
+    rm -f "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt"
+    exit 1
+fi
+
+VER=$(sed -n "s/^.*$VER_FIELD.*: \"\(.*\)\".*/\1/p" \
+    "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt")
+DNL_LINK=$(sed -n "s/^.*$DNL_FIELD.*: \"\(.*\)\".*/\1/p" \
+    "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt")
+SIG_LINK=$(sed -n "s/^.*$SIG_FIELD.*: \"\(.*\)\".*/\1/p" \
+    "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt")
+rm -f "$NZBOP_TEMPDIR/NZBGET_UPDATE.txt"
+
+if [ -z "$VER" ] || [ -z "$DNL_LINK" ] || [ -z "$SIG_LINK" ]; then
+    echo "[ERROR] Version information is incomplete"
+    exit 1
+fi
+
+# Download the package signature.
+SIGNATURE="nzbget-$VER.sig.txt"
+echo "Downloading verification signature..."
+rm -f "$NZBOP_TEMPDIR/$SIGNATURE"
+
+"$NZBOP_APPBIN" -B webget \
+    "$NZBOP_TEMPDIR/$SIGNATURE" "$SIG_LINK" 2>/dev/null
+if [ "$?" -ne 0 ]; then
+    echo "[ERROR] Download failed, please try again later"
+    exit 1
+fi
+
+# Download the FreeBSD installer package.
+INSTALLER="nzbget-$VER-bin-freebsd.run"
+echo "Downloading $INSTALLER..."
+rm -f "$NZBOP_TEMPDIR/$INSTALLER"
+
+"$NZBOP_APPBIN" -B webget \
+    "$NZBOP_TEMPDIR/$INSTALLER" "$DNL_LINK" 2>/dev/null
+if [ "$?" -ne 0 ]; then
+    echo "[ERROR] Download failed, please try again later"
+    rm -f "$NZBOP_TEMPDIR/$SIGNATURE"
+    exit 1
+fi
+
+# Verify the installer package before running it.
+echo "Verifying package authenticity..."
+"$NZBOP_APPBIN" -B verify \
+    "$NZBOP_APPDIR/pubkey.pem" \
+    "$NZBOP_TEMPDIR/$SIGNATURE" \
+    "$NZBOP_TEMPDIR/$INSTALLER" 2>/dev/null
+if [ "$?" -ne 93 ]; then
+    echo "[ERROR] Package authenticity verification failed"
+    rm -f "$NZBOP_TEMPDIR/$INSTALLER"
+    rm -f "$NZBOP_TEMPDIR/$SIGNATURE"
+    exit 1
+fi
+rm -f "$NZBOP_TEMPDIR/$SIGNATURE"
+
+# Install the new version into the existing application directory.
+echo "Updating NZBGet..."
+echo "..."
+sh "$NZBOP_TEMPDIR/$INSTALLER" --update --destdir "$NZBOP_APPDIR"
+if [ "$?" -ne 0 ]; then
+    echo "[ERROR] Update failed, installer terminated with error status"
+    exit 1
+fi
+rm -f "$NZBOP_TEMPDIR/$INSTALLER"
+echo "..."
+echo "Update completed"
+
+# Recreating command line used to start NZBGet
+CMDLINE=
+N=1
+while true
+do
+    PARAMNAME="NZBUP_CMDLINE$N"
+    eval PARAM="\$NZBUP_CMDLINE${N}"
+    if test "$PARAM" = ""; then
+        break
+    fi
+    if test "$CMDLINE" != ""; then
+        CMDLINE="$CMDLINE "
+    fi
+    CMDLINE="$CMDLINE\"$PARAM\""
+    N=$((N + 1))
+done
+
+echo "Restarting NZBGet..."
+sleep 1
+echo "[NZB] QUIT"
+
+echo "Waiting for NZBGet to terminate"
+while kill -0 "$NZBUP_PROCESSID" 2>/dev/null; do
+    sleep 1
+done
+
+echo "Starting NZBGet..."
+
+# Starting NZBGet
+eval "$NZBOP_APPBIN" $CMDLINE
+
+exit 0
