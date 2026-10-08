@@ -827,7 +827,12 @@ bool ParChecker::AddMissingFiles()
 
 bool ParChecker::AddDupeFiles()
 {
+	// the folder of the par2 file, not the file itself (which is no folder to scan)
 	BString<1024> directory = m_parFilename.c_str();
+	if (char* slash = strrchr(directory, PATH_SEPARATOR))
+	{
+		*slash = '\0';
+	}
 
 	bool added = AddExtraFiles(false, false, directory);
 
@@ -892,7 +897,9 @@ void ParChecker::SortExtraFiles(std::vector<std::string>& extrafiles)
 	);
 }
 
-void ParChecker::FindExtraFiles(std::vector<std::string> extrafiles, const char* directory, bool externalDir)
+// (the list by reference: taken by value, every file found was thrown away, and the
+// extended and dupe par-scans never added a block)
+void ParChecker::FindExtraFiles(std::vector<std::string>& extrafiles, const char* directory, bool externalDir)
 {
 	DirBrowser dir(directory);
 	while (const char* filename = dir.Next())
