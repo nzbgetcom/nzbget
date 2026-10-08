@@ -869,7 +869,11 @@ void ArticleWriter::FlushCache()
 {
 	detail("Flushing cache for %s", m_infoName.c_str());
 
-	bool directWrite = g_Options->GetDirectWrite() && m_fileInfo->GetOutputInitialized();
+	// a file being retried writes into its existing output (ForceDirectWrite), as
+	// Start and Finish do: flushed to temporary files instead, its cached articles
+	// were never written to the file although marked done
+	bool directWrite = (g_Options->GetDirectWrite() || m_fileInfo->GetForceDirectWrite()) &&
+		m_fileInfo->GetOutputInitialized();
 	DiskFile outfile;
 	bool needBufFile = false;
 	int flushedArticles = 0;
