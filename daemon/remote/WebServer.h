@@ -81,7 +81,7 @@ private:
 	const char* DetectContentType(const char* filename);
 	bool IsAuthorizedIp(const char* remoteAddr);
 	void ParseHeaders();
-	void ParseUrl();
+	bool ParseUrl();
 	bool CheckCredentials();
 };
 

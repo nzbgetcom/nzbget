@@ -105,7 +105,11 @@ void WebProcessor::Execute()
 
 	if (m_httpMethod == hmPost && m_contentLen <= 0)
 	{
+		// answered and closed: without an answer a kept-alive client waited until
+		// its timeout, and a body (chunked) left unread would be the next request
 		error("Invalid-request: content length is 0");
+		m_keepAlive = false;
+		SendErrorResponse(ERR_HTTP_BAD_REQUEST, false);
 		return;
 	}
 
@@ -115,7 +119,10 @@ void WebProcessor::Execute()
 		return;
 	}
 
-	ParseUrl();
+	if (!ParseUrl())
+	{
+		return;
+	}
 
 	m_rpcRequest = XmlRpcProcessor::IsRpcRequest(m_url);
 	m_authorized = CheckCredentials();
@@ -150,6 +157,7 @@ void WebProcessor::Execute()
 		if (!m_connection->Recv(m_request, m_contentLen))
 		{
 			error("Invalid-request: could not read data");
+			m_keepAlive = false;
 			return;
 		}
 		debug("Request=%s", *m_request);
@@ -233,7 +241,8 @@ void WebProcessor::ParseHeaders()
 	debug("URL=%s", *m_url);
 }
 
-void WebProcessor::ParseUrl()
+// false when it answered the request itself (a redirect)
+bool WebProcessor::ParseUrl()
 {
 	// remove subfolder "nzbget" from the path (if exists)
 	// http://localhost:6789/nzbget/username:password/jsonrpc -> http://localhost:6789/username:password/jsonrpc
@@ -245,7 +254,7 @@ void WebProcessor::ParseUrl()
 	if (!strcmp(m_url, "/nzbget"))
 	{
 		SendRedirectResponse(BString<1024>("%s/", *m_url));
-		return;
+		return false;
 	}
 
 	// authorization via URL in format:
@@ -264,6 +273,7 @@ void WebProcessor::ParseUrl()
 	}
 
 	debug("Final URL=%s", *m_url);
+	return true;
 }
 
 bool WebProcessor::CheckCredentials()

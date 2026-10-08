@@ -7851,6 +7851,39 @@ def scenario_netspeedpause(daemon, t):
         paused, took, str(reply.get('result', reply.get('error')))[:80]))
 
 
+def scenario_httpedge(daemon, t):
+    """Two answers of the web server on a kept-alive connection:
+    - POST with Content-Length: 0 got no answer at all, the client waited
+      until its timeout; it gets 400 now (and the connection is closed);
+    - GET /nzbget got the redirect and then a second, stray response, which a
+      client reads as the answer to its next request; it gets one now."""
+    daemon.wait_ready()
+
+    def exchange(request, wait):
+        sock = socket.create_connection(('127.0.0.1', daemon.rpc_port), timeout=wait)
+        sock.sendall(request)
+        data = b''
+        try:
+            while True:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    break
+                data += chunk
+        except socket.timeout:
+            pass
+        sock.close()
+        return data
+
+    started = time.time()
+    post = exchange(b'POST /jsonrpc HTTP/1.1\r\nHost: x\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n', 5)
+    post_took = time.time() - started
+    redirect = exchange(b'GET /nzbget HTTP/1.1\r\nHost: x\r\nConnection: keep-alive\r\n\r\n', 3)
+    responses = redirect.count(b'HTTP/1.')
+    ok = post.startswith(b'HTTP/1.') and b' 400' in post.split(b'\r\n')[0] and post_took < 4 and responses == 1 and b' 301' in redirect.split(b'\r\n')[0]
+    return ('httpedge', ok, 'post=%r took=%.1fs redirect_responses=%d first=%r' % (
+        post.split(b'\r\n')[0], post_took, responses, redirect.split(b'\r\n')[0]))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8218,6 +8251,7 @@ SCENARIOS = {
     'errorpercent': scenario_errorpercent,
     'getunsafe': scenario_getunsafe,
     'netspeedpause': scenario_netspeedpause,
+    'httpedge': scenario_httpedge,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
