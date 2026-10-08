@@ -361,9 +361,10 @@ void PrePostProcessor::NzbDownloaded(DownloadQueue* downloadQueue, NzbInfo* nzbI
 			nzbInfo->SetLiveRepairThread(nullptr);
 			liveRepairThread->Stop();
 		}
-		NzbCompleted(downloadQueue, nzbInfo, true);
+		// cleanup first: without history NzbCompleted frees the nzb
 		nzbInfo->SetCleanupDisk(true);
 		DeleteCleanup(nzbInfo);
+		NzbCompleted(downloadQueue, nzbInfo, true);
 		return;
 	}
 

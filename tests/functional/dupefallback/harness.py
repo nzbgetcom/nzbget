@@ -7753,6 +7753,53 @@ def scenario_historyeditlist(daemon, t):
     return ('historyeditlist', ok, 'hidden=%d reply=%s category_after_crash=%s' % (len(hidden), reply, category))
 
 
+def scenario_speedtestnohistory(daemon, t):
+    """testserverspeed with KeepHistory=0: the finished test download (no
+    scripts, no disk writes) was removed from the queue and freed, and the
+    cleanup then used it (use after free, a crash under AddressSanitizer).
+    The cleanup runs first now; the daemon stays up."""
+    import http.server
+    data = _payload(300_000, 9595)
+    pp = _place_copy(t, 'stA', data)
+    nzb = build_nzb(pp, 'speed.bin', len(data), 100_000, set()).encode()
+
+    hits = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits.append(self.path)
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/x-nzb')
+            self.send_header('Content-Length', str(len(nzb)))
+            self.end_headers()
+            self.wfile.write(nzb)
+
+        def log_message(self, *args):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    api = daemon.wait_ready()
+    url = 'http://127.0.0.1:%d/speed.nzb' % srv.server_address[1]
+    reply = _rpc(daemon, 'testserverspeed', [url, 1])
+    # the test download is quick: wait until the nzb was fetched and the queue is empty
+    deadline = time.time() + 60
+    empty = False
+    while time.time() < deadline and t.procs[-1].poll() is None:
+        time.sleep(1)
+        try:
+            empty = bool(hits) and not api.listgroups()
+        except Exception:
+            break
+        if empty:
+            time.sleep(3)
+            break
+    srv.shutdown()
+    alive = t.procs[-1].poll() is None
+    ok = alive and empty and reply.get('result') is True
+    return ('speedtestnohistory', ok, 'reply=%s fetched=%d done=%s alive=%s' % (reply.get('result', reply.get('error')), len(hits), empty, alive))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8116,6 +8163,7 @@ SCENARIOS = {
     'urlclosed': scenario_urlclosed,
     'urlretrywait': scenario_urlretrywait,
     'historyeditlist': scenario_historyeditlist,
+    'speedtestnohistory': scenario_speedtestnohistory,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8403,6 +8451,7 @@ SCENARIO_OPTIONS = {
     'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
     'urlretrywait': ['UrlTimeout=2', 'UrlInterval=20', 'UrlRetries=2'],
     'historyeditlist': ['DupeCheck=yes'],
+    'speedtestnohistory': ['KeepHistory=0'],
     'scanlongcommand': ['Extensions=longscan'],
     'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
