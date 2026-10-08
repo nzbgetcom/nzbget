@@ -359,7 +359,9 @@ bool HistoryCoordinator::EditList(DownloadQueue* downloadQueue, IdList* idList,
 			HistoryInfo* historyInfo = (*itHistory).get();
 			if (historyInfo->GetId() == id)
 			{
-				ok = true;
+				// one item's edit failing doesn't undo (or leave unsaved) the
+				// others: the list counts as edited when any item was
+				bool done = true;
 
 				switch (action)
 				{
@@ -385,15 +387,15 @@ bool HistoryCoordinator::EditList(DownloadQueue* downloadQueue, IdList* idList,
 						break;
 
 					case DownloadQueue::eaHistorySetParameter:
-						ok = HistorySetParameter(historyInfo, args);
+						done = HistorySetParameter(historyInfo, args);
 						break;
 
  					case DownloadQueue::eaHistorySetCategory:
-						ok = HistorySetCategory(historyInfo, args);
+						done = HistorySetCategory(historyInfo, args);
 						break;
 
  					case DownloadQueue::eaHistorySetName:
-						ok = HistorySetName(historyInfo, args);
+						done = HistorySetName(historyInfo, args);
 						break;
 
 					case DownloadQueue::eaHistorySetDupeKey:
@@ -420,6 +422,7 @@ bool HistoryCoordinator::EditList(DownloadQueue* downloadQueue, IdList* idList,
 						break;
 				}
 
+				ok = ok || done;
 				break;
 			}
 		}

@@ -7723,6 +7723,36 @@ def scenario_urlretrywait(daemon, t):
     return ('urlretrywait', ok, 'status=%s hanging_cancels=%d' % (status, hanging))
 
 
+def scenario_historyeditlist(daemon, t):
+    """HistorySetCategory for [a normal item, a hidden duplicate record]: the
+    record can't take a category, and its failure, the last in the list,
+    replaced the first item's success - the call answered false and the
+    change wasn't saved (gone after a crash). Now it answers true and the
+    change is on disk."""
+    data = _payload(90_000, 9393)
+    pp = _place_copy(t, 'heA', data)
+    data2 = _payload(90_000, 9394)
+    pp2 = _place_copy(t, 'heB', data2)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelHE1', build_nzb(pp, 'he1.bin', len(data), 100_000, set()), False, 'he-key1', 100)
+    daemon.append(api, 'RelHE2', build_nzb(pp2, 'he2.bin', len(data2), 100_000, set()), False, 'he-key2', 100)
+    h1 = daemon.wait_history(api, 'RelHE1', timeout=60)
+    h2 = daemon.wait_history(api, 'RelHE2', timeout=60)
+    # deleting a finished item keeps a hidden duplicate record of it
+    _rpc(daemon, 'editqueue', ['HistoryDelete', '', [h2['NZBID']]])
+    time.sleep(1)
+    hidden = [x for x in _rpc(daemon, 'history', [True]).get('result', []) if x.get('Kind') == 'DUP']
+    dup_id = hidden[0]['NZBID'] if hidden else h2['NZBID']
+    reply = _rpc(daemon, 'editqueue', ['HistorySetCategory', 'newcat', [h1['NZBID'], dup_id]]).get('result')
+    t.procs[-1].kill()
+    t.procs[-1].wait(timeout=30)
+    daemon.start()
+    api = daemon.wait_ready()
+    category = next((x.get('Category') for x in api.history() if x['NZBID'] == h1['NZBID']), None)
+    ok = bool(hidden) and reply is True and category == 'newcat'
+    return ('historyeditlist', ok, 'hidden=%d reply=%s category_after_crash=%s' % (len(hidden), reply, category))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8085,6 +8115,7 @@ SCENARIOS = {
     'urlredirects': scenario_urlredirects,
     'urlclosed': scenario_urlclosed,
     'urlretrywait': scenario_urlretrywait,
+    'historyeditlist': scenario_historyeditlist,
     'newlinestate': scenario_newlinestate,
     'idsafterunreadable': scenario_idsafterunreadable,
     'fleetduringpost': scenario_fleetduringpost,
@@ -8371,6 +8402,7 @@ SCENARIO_OPTIONS = {
     'scriptdirlist': ['ScriptDir=scripts;scripts2', 'Extensions=catscan'],
     'urlclosed': ['UrlRetries=1', 'UrlInterval=1'],
     'urlretrywait': ['UrlTimeout=2', 'UrlInterval=20', 'UrlRetries=2'],
+    'historyeditlist': ['DupeCheck=yes'],
     'scanlongcommand': ['Extensions=longscan'],
     'innerarchivekeep': ['InterDir=', 'Unpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
     'innerarchivekeepdirect': ['InterDir=', 'Unpack=yes', 'DirectUnpack=yes', 'UseTempUnpackDir=no', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'UnpackCleanupDisk=yes'],
