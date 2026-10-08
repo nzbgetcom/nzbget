@@ -49,65 +49,47 @@ void NzbFile::LogDebugInfo()
 
 ArticleInfo* NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo)
 {
-	size_t index = Util::SafeIntCast<int, size_t>(articleInfo->GetPartNumber() - 1);
-
-	// make Article-List big enough
-	if (index >= fileInfo->GetArticles()->size())
-	{
-		fileInfo->GetArticles()->resize(index + 1);
-	}
-
-	(*fileInfo->GetArticles())[index] = std::move(articleInfo);
-	
-	return (*fileInfo->GetArticles())[index].get();
+	// kept in file order and put in part-number order when the file ends: a
+	// list indexed by the part number took the memory a huge number asks for
+	fileInfo->GetArticles()->push_back(std::move(articleInfo));
+	return fileInfo->GetArticles()->back().get();
 }
 
 void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 {
 	// calculate file size and delete empty articles
 
-	int64 size = 0;
-	int64 missedSize = 0;
-	int64 oneSize = 0;
-	int uncountedArticles = 0;
-	int missedArticles = 0;
-	int totalArticles = (int)fileInfo->GetArticles()->size();
-	int i = 0;
-	for (ArticleList::iterator it = fileInfo->GetArticles()->begin(); it != fileInfo->GetArticles()->end(); )
+	// part-number order; of two segments with one number the later counts
+	ArticleList* articles = fileInfo->GetArticles();
+	std::stable_sort(articles->begin(), articles->end(),
+		[](const std::unique_ptr<ArticleInfo>& a, const std::unique_ptr<ArticleInfo>& b)
+		{
+			return a->GetPartNumber() < b->GetPartNumber();
+		});
+	for (size_t i = 0; i + 1 < articles->size(); i++)
 	{
-		ArticleInfo* article = (*it).get();
-		if (!article)
+		if ((*articles)[i]->GetPartNumber() == (*articles)[i + 1]->GetPartNumber())
 		{
-			fileInfo->GetArticles()->erase(it);
-			it = fileInfo->GetArticles()->begin() + i;
-			missedArticles++;
-			if (oneSize > 0)
-			{
-				missedSize += oneSize;
-			}
-			else
-			{
-				uncountedArticles++;
-			}
-		}
-		else
-		{
-			size += article->GetSize();
-			if (oneSize == 0)
-			{
-				oneSize = article->GetSize();
-			}
-			++it;
-			i++;
+			(*articles)[i].reset();
 		}
 	}
+	articles->erase(std::remove(articles->begin(), articles->end(), nullptr), articles->end());
 
-	if (fileInfo->GetArticles()->empty())
+	if (articles->empty())
 	{
 		return;
 	}
 
-	missedSize += uncountedArticles * oneSize;
+	// every missing number counts with the size of the first segment present
+	int totalArticles = articles->back()->GetPartNumber();
+	int missedArticles = totalArticles - (int)articles->size();
+	int64 oneSize = articles->front()->GetSize();
+	int64 size = 0;
+	for (std::unique_ptr<ArticleInfo>& article : *articles)
+	{
+		size += article->GetSize();
+	}
+	int64 missedSize = missedArticles * oneSize;
 	size += missedSize;
 	fileInfo->SetNzbInfo(m_nzbInfo.get());
 	fileInfo->SetSize(size);

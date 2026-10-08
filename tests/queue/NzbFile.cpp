@@ -291,6 +291,58 @@ BOOST_AUTO_TEST_CASE(NzbFileCategoryControlCharsTest)
 	fs::remove(tempNzb);
 }
 
+BOOST_AUTO_TEST_CASE(NzbFileSegmentNumbersTest)
+{
+	// segments out of order, a number twice (the later one counts), a gap, and
+	// a huge number: the article list was indexed by the number (2 billion
+	// entries for the last file)
+	const fs::path tempNzb = fs::temp_directory_path() / "nzbget_test_segment_numbers.nzb";
+	{
+		std::ofstream out(tempNzb.string());
+		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			<< "<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
+			<< "<file poster=\"p\" date=\"1335508618\" subject=\"&quot;a.mkv&quot; yEnc (1/4)\">\n"
+			<< "<groups><group>alt.binaries.test</group></groups><segments>\n"
+			<< "<segment bytes=\"100\" number=\"4\">d@x</segment>\n"
+			<< "<segment bytes=\"100\" number=\"1\">a@x</segment>\n"
+			<< "<segment bytes=\"100\" number=\"1\">a2@x</segment>\n"
+			<< "<segment bytes=\"100\" number=\"2\">b@x</segment>\n"
+			<< "</segments></file>\n"
+			<< "<file poster=\"p\" date=\"1335508618\" subject=\"&quot;b.mkv&quot; yEnc (1/1)\">\n"
+			<< "<groups><group>alt.binaries.test</group></groups><segments>\n"
+			<< "<segment bytes=\"100\" number=\"2000000000\">z@x</segment>\n"
+			<< "</segments></file>\n"
+			<< "</nzb>\n";
+	}
+
+	NzbFile nzbFile(tempNzb.string().c_str(), "");
+	BOOST_REQUIRE(nzbFile.Parse());
+	auto nzbInfo = nzbFile.DetachNzbInfo();
+	BOOST_REQUIRE(nzbInfo);
+	BOOST_REQUIRE_EQUAL(nzbInfo->GetFileList()->size(), 2);
+
+	FileInfo* first = nullptr;
+	FileInfo* second = nullptr;
+	for (auto& fileInfo : *nzbInfo->GetFileList())
+	{
+		(fileInfo->GetTotalArticles() == 4 ? first : second) = fileInfo.get();
+	}
+	BOOST_REQUIRE(first && second);
+
+	BOOST_REQUIRE_EQUAL(first->GetArticles()->size(), 3);
+	BOOST_CHECK_EQUAL((*first->GetArticles())[0]->GetMessageId(), std::string("<a2@x>"));
+	BOOST_CHECK_EQUAL((*first->GetArticles())[1]->GetMessageId(), std::string("<b@x>"));
+	BOOST_CHECK_EQUAL((*first->GetArticles())[2]->GetMessageId(), std::string("<d@x>"));
+	BOOST_CHECK_EQUAL(first->GetMissedArticles(), 1);
+	BOOST_CHECK_EQUAL(first->GetSize(), 400);
+	BOOST_CHECK_EQUAL(first->GetMissedSize(), 100);
+
+	BOOST_CHECK_EQUAL(second->GetArticles()->size(), 1);
+	BOOST_CHECK_EQUAL(second->GetTotalArticles(), 2000000000);
+
+	fs::remove(tempNzb);
+}
+
 BOOST_AUTO_TEST_CASE(EmptyNzbNameFallbackTest)
 {
 	// MakeNiceNzbName must never return empty string
