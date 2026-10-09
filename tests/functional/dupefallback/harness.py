@@ -8848,6 +8848,29 @@ def scenario_xmlrpccdata(daemon, t):
     return ('xmlrpccdata', ok, 'names=%s reply=%s' % (names, reply[:80].replace('\n', ' ')))
 
 
+def scenario_webdirget(daemon, t):
+    """GET of a directory of the web interface by its name (/js, no trailing
+    slash), no login needed: the file loader opened the directory as a file,
+    took a size it couldn't read for, and wrote through a null buffer or sent
+    unread memory as the answer. It's a 404 now."""
+    import urllib.request as _req
+    import urllib.error as _err
+    os.makedirs(t.path('main', 'web', 'js'), exist_ok=True)
+    daemon.wait_ready()
+    code = None
+    try:
+        with _req.urlopen('http://127.0.0.1:%d/js' % daemon.rpc_port, timeout=15) as r:
+            code = r.status
+    except _err.HTTPError as e:
+        code = e.code
+    except Exception as e:
+        code = 'error: %s' % e
+    time.sleep(1)
+    alive = t.procs[-1].poll() is None
+    ok = alive and code == 404
+    return ('webdirget', ok, 'status=%s alive=%s' % (code, alive))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9249,6 +9272,7 @@ SCENARIOS = {
     'failedloadfileinfos': scenario_failedloadfileinfos,
     'clientthreads': scenario_clientthreads,
     'xmlrpccdata': scenario_xmlrpccdata,
+    'webdirget': scenario_webdirget,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

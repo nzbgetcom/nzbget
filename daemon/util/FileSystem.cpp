@@ -286,6 +286,14 @@ bool FileSystem::DirEmpty(const char* dirFilename)
 
 bool FileSystem::LoadFileIntoBuffer(const char* filename, CharBuffer& buffer, bool addTrailingNull)
 {
+	// a regular file only: a directory opens too, and its "size" (-1, or a block
+	// size it can't be read for) gave a null buffer written through, or unread
+	// bytes passed on as its content
+	if (!FileExists(filename))
+	{
+		return false;
+	}
+
 	DiskFile file;
 	if (!file.Open(filename, DiskFile::omRead))
 	{
@@ -294,14 +302,27 @@ bool FileSystem::LoadFileIntoBuffer(const char* filename, CharBuffer& buffer, bo
 
 	// obtain file size.
 	file.Seek(0, DiskFile::soEnd);
-	int size  = (int)file.Position();
+	int64 fileSize = file.Position();
 	file.Seek(0);
+	if (fileSize < 0 || fileSize > INT_MAX - 1)
+	{
+		return false;
+	}
+	int size = (int)fileSize;
 
 	// allocate memory to contain the whole file.
-	buffer.Reserve(size + (addTrailingNull ? 1 : 0));
+	int bufSize = size + (addTrailingNull ? 1 : 0);
+	buffer.Reserve(bufSize);
+	if (bufSize > 0 && !buffer)
+	{
+		return false;
+	}
 
 	// copy the file into the buffer.
-	file.Read(buffer, size);
+	if (size > 0 && file.Read(buffer, size) != size)
+	{
+		return false;
+	}
 	file.Close();
 
 	if (addTrailingNull)
