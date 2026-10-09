@@ -293,7 +293,12 @@ void ScriptController::PrepareArgs()
 		else
 		{
 			strncpy(m_cmdLine, found.value().c_str(), sizeof(m_cmdLine) - 1);
-			m_cmdArgs.emplace_back(found.value().c_str());
+			// an interpreter goes before the script; a script run directly is
+			// argv[0] already (m_args), not its own first argument too
+			if (found.value() != m_args[0].Str())
+			{
+				m_cmdArgs.emplace_back(found.value().c_str());
+			}
 		}
 
 		debug("CmdLine: %s", m_cmdLine);
@@ -333,7 +338,10 @@ int ScriptController::Execute()
 	{
 		PrintMessage(Message::mkError, "Could not open read pipe to %s", *m_infoName);
 		close(pipein);
-		close(pipeout);
+		if (pipeout != -1)
+		{
+			close(pipeout);
+		}
 		m_completed = true;
 		return -1;
 	}
@@ -346,8 +354,7 @@ int ScriptController::Execute()
 		if (!m_writepipe)
 		{
 			PrintMessage(Message::mkError, "Could not open write pipe to %s", *m_infoName);
-			fclose(m_readpipe);
-			m_readpipe = nullptr;
+			fclose(m_readpipe.exchange(nullptr));
 			close(pipeout);
 			m_completed = true;
 			return -1;
@@ -368,9 +375,14 @@ int ScriptController::Execute()
 	debug("Entering pipe-loop");
 	bool firstLine = true;
 	bool startError = false;
-	while (!m_terminated && !m_detached && !feof(m_readpipe))
+	while (!m_terminated && !m_detached)
 	{
-		if (ReadLine(buf, buf.Size(), m_readpipe) && m_readpipe)
+		FILE* readpipe = m_readpipe;
+		if (!readpipe || feof(readpipe))
+		{
+			break;
+		}
+		if (ReadLine(buf, buf.Size(), readpipe) && m_readpipe)
 		{
 #ifdef CHILD_WATCHDOG
 			if (!childConfirmed)
@@ -403,9 +415,9 @@ int ScriptController::Execute()
 	}
 #endif
 
-	if (m_readpipe)
+	if (FILE* readpipe = m_readpipe.exchange(nullptr))
 	{
-		fclose(m_readpipe);
+		fclose(readpipe);
 	}
 
 	if (m_writepipe)
@@ -648,25 +660,39 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 #else
 
-	int pin[] = {0, 0};
-	int pout[] = {0, 0};
+	int pin[] = {-1, -1};
+	int pout[] = {-1, -1};
 
-	// create the pipes
-	if (pipe(pin))
+	// create the pipes, close-on-exec: a script another thread starts at the
+	// same time would otherwise inherit our write end and keep it open for as
+	// long as it runs - we'd see no end of output until that script ended too.
+	// dup2() onto the child's stdin/stdout/stderr clears the flag there.
+	auto makePipe = [](int fds[2])
+	{
+#ifdef __linux__
+		return pipe2(fds, O_CLOEXEC);
+#else
+		if (pipe(fds))
+		{
+			return -1;
+		}
+		fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+		fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+		return 0;
+#endif
+	};
+	if (makePipe(pin))
 	{
 		PrintMessage(Message::mkError, "Could not open read pipe: errno %i", errno);
 		return;
 	}
-	if (m_needWrite && pipe(pout))
+	if (m_needWrite && makePipe(pout))
 	{
 		PrintMessage(Message::mkError, "Could not open write pipe: errno %i", errno);
 		close(pin[0]);
 		close(pin[1]);
 		return;
 	}
-
-	*pipein = pin[0];
-	*pipeout = pout[1];
 
 	std::vector<char*> environmentStrings = m_environmentStrings.GetStrings();
 	char** envdata = environmentStrings.data();
@@ -763,12 +789,15 @@ void ScriptController::StartProcess(int* pipein, int* pipeout)
 
 	m_processId = pid;
 
-	// close unused pipe ends
+	// close unused pipe ends; the caller gets the others only now: on a
+	// failed fork they were closed already
 	close(pin[1]);
 	if (m_needWrite)
 	{
 		close(pout[0]);
 	}
+	*pipein = pin[0];
+	*pipeout = pout[1];
 #endif
 }
 
@@ -782,13 +811,31 @@ int ScriptController::WaitProcess()
 	return exitCode;
 #else
 	int status = 0;
-	waitpid(m_processId, &status, 0);
+	pid_t res;
+	do
+	{
+		res = waitpid(m_processId, &status, 0);
+	} while (res == -1 && errno == EINTR);
+	if (res == -1)
+	{
+		return -1;
+	}
 	if (WIFEXITED(status))
 	{
 		int exitCode = WEXITSTATUS(status);
 		return exitCode;
 	}
-	return 0;
+	if (WIFSIGNALED(status))
+	{
+		// not a success: a crashed or killed program used to read as exit
+		// code 0. The shell's convention, 128 + signal.
+		if (!m_terminated)
+		{
+			PrintMessage(Message::mkWarning, "%s was killed by signal %i", *m_infoName, WTERMSIG(status));
+		}
+		return 128 + WTERMSIG(status);
+	}
+	return -1;
 #endif
 }
 
@@ -879,9 +926,10 @@ void ScriptController::Detach()
 {
 	debug("Detaching %s", *m_infoName);
 	m_detached = true;
-	FILE* readpipe = m_readpipe;
-	m_readpipe = nullptr;
-	fclose(readpipe);
+	if (FILE* readpipe = m_readpipe.exchange(nullptr))
+	{
+		fclose(readpipe);
+	}
 }
 
 void ScriptController::Resume()

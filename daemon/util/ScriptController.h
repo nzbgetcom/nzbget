@@ -22,6 +22,7 @@
 #ifndef SCRIPTCONTROLLER_H
 #define SCRIPTCONTROLLER_H
 
+#include <atomic>
 #include "NString.h"
 #include "Thread.h"
 #include "Log.h"
@@ -106,7 +107,9 @@ private:
 	std::atomic<bool> m_completed{false};
 	std::atomic<bool> m_detached{false};
 	std::atomic<bool> m_needWrite{false};
-	FILE* m_readpipe = 0;
+	// taken with exchange(): Detach() from another thread and Execute() each
+	// close it, and only the one that gets it may
+	std::atomic<FILE*> m_readpipe{nullptr};
 	FILE* m_writepipe = 0;
 	char m_cmdLine[2048];
 #ifdef WIN32

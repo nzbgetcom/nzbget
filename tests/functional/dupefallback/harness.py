@@ -9030,6 +9030,47 @@ def scenario_daemonlock(daemon, t):
     return ('daemonlock', ok, 'up=%s pid=%r kept=%s removed=%s' % (first_up, pid, kept, removed))
 
 
+ARGCOUNT_EXTENSION = '''#!/bin/sh
+##############################################################################
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+# Reports how many arguments it got.
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+##############################################################################
+echo "[INFO] argcount=$#"
+exit 93
+'''
+
+SELFKILL_EXTENSION = '''#!/bin/sh
+##############################################################################
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+# Dies of a signal.
+### NZBGET POST-PROCESSING SCRIPT                                          ###
+##############################################################################
+kill -9 $$
+'''
+
+
+def scenario_scriptargs(daemon, t):
+    """A script nzbget runs directly, with no interpreter (a shell script
+    named .pl here, or one without an extension), got its own path as its
+    first argument: argv was [script, script]. And a script that died of a
+    signal read as exit code 0; it's logged as killed now and doesn't count
+    as success anywhere an exit code 0 would."""
+    data = _payload(90_000, 12438)
+    pp = _place_copy(t, 'saA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelSA', build_nzb(pp, 'sa.bin', len(data), 100_000, set()), False, 'sa-key', 100)
+    daemon.wait_history(api, 'RelSA')
+    deadline = time.time() + 30
+    while time.time() < deadline and _grep_log(t, 'selfkill') < 2:
+        time.sleep(0.5)
+    time.sleep(1)
+    argzero = _grep_log(t, 'argcount=0')
+    killed = _grep_log(t, 'was killed by signal 9')
+    ok = argzero == 1 and killed == 1
+    return ('scriptargs', ok, 'argcount0=%d killed=%d' % (argzero, killed))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9459,6 +9500,7 @@ SCENARIOS = {
     'partialnzb': scenario_partialnzb,
     'partialnzbdeclared': scenario_partialnzbdeclared,
     'daemonlock': scenario_daemonlock,
+    'scriptargs': scenario_scriptargs,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
@@ -9765,6 +9807,7 @@ SCENARIO_OPTIONS = {
     'directrenamesubdir': ['DirectRename=yes', 'DirectWrite=yes', 'ParCheck=auto'],
     'directrenamesubdirjoin': ['DirectRename=yes', 'DirectWrite=no', 'ParCheck=auto'],
     'heldidle': ['ScriptPauseQueue=yes', 'Extensions=slowpost'],
+    'scriptargs': ['Extensions=argcount, selfkill'],
     'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
     'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],
@@ -9881,6 +9924,7 @@ SCENARIO_DELAY_PROXY = {'clientthreads': [(b'ctA/', 3.0)], 'xdecomp_slow': [(b'x
 SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EXTENSION},
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
                        'heldidle': {'slowpost.py': SLOW_POST_EXTENSION},
+                       'scriptargs': {'argcount.pl': ARGCOUNT_EXTENSION, 'selfkill.pl': SELFKILL_EXTENSION},
                        'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'extbaresignature': {'bare.py': BARE_SIGNATURE_EXTENSION},
                        'scriptdirlist': {'catscan.py': CATEGORY_SCAN_EXTENSION},
