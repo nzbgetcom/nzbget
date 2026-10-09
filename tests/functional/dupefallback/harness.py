@@ -8971,6 +8971,65 @@ def scenario_partialnzbdeclared(daemon, t):
     return ('partialnzbdeclared', ok, 'health=%d warned=%d' % (health, warned))
 
 
+def scenario_daemonlock(daemon, t):
+    """Daemon mode (-D) and its lock-file. A second daemon on a config whose
+    lock is held exits, but on its way out deleted the lock-file of the
+    running one, so a third start got a fresh file and ran beside it. A
+    daemon that had reloaded never deleted its lock-file at shutdown, and an
+    old longer pid left digits behind ours."""
+    import re as _re
+    import subprocess as _sp
+    daemon.wait_ready()
+    lock = t.path('main', 'd.lock')
+    port = free_port()
+    conf = t.read_file(daemon.conf_rel).decode()
+    for key, value in (('ControlPort', str(port)), ('LockFile', lock),
+                       ('QueueDir', t.path('main', 'dqueue')), ('LogFile', t.path('d.log')),
+                       ('NzbDir', t.path('main', 'dnzb'))):
+        conf = _re.sub(r'(?m)^%s=.*$' % key, '%s=%s' % (key, value), conf)
+    dconf = t.path('main', 'd.conf')
+    with open(dconf, 'w') as f:
+        f.write(conf)
+    with open(lock, 'w') as f:
+        f.write('99999999\n')
+    base = [t.nzbget, '-c', dconf]
+
+    def wait_up(want):
+        import urllib.request as _req
+        deadline = time.time() + 30
+        while time.time() < deadline:
+            try:
+                _req.urlopen('http://127.0.0.1:%d/jsonrpc/version' % port, timeout=2).read()
+                up = True
+            except Exception:
+                up = False
+            if up == want:
+                return True
+            time.sleep(0.3)
+        return False
+
+    _sp.run(base + ['-D'], timeout=30)
+    first_up = wait_up(True)
+    pid = open(lock).read()
+    _sp.run(base + ['-D'], timeout=30)
+    time.sleep(2)
+    kept = os.path.exists(lock) and open(lock).read() == pid
+    _sp.run(base + ['-O'], timeout=30)
+    time.sleep(3)
+    wait_up(True)
+    _sp.run(base + ['-Q'], timeout=30)
+    wait_up(False)
+    time.sleep(2)
+    removed = not os.path.exists(lock)
+    if not removed and pid.strip().isdigit():
+        try:
+            os.kill(int(pid), 9)
+        except OSError:
+            pass
+    ok = first_up and _re.fullmatch(r'\d+\n', pid) is not None and kept and removed
+    return ('daemonlock', ok, 'up=%s pid=%r kept=%s removed=%s' % (first_up, pid, kept, removed))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9399,6 +9458,7 @@ SCENARIOS = {
     'web404warn': scenario_web404warn,
     'partialnzb': scenario_partialnzb,
     'partialnzbdeclared': scenario_partialnzbdeclared,
+    'daemonlock': scenario_daemonlock,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,

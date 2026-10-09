@@ -237,7 +237,6 @@ private:
 	std::unique_ptr<CommandLineParser> m_commandLineParser;
 
 	bool m_reloading = false;
-	bool m_daemonized = false;
 	bool m_stopped = false;
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;
@@ -264,6 +263,11 @@ private:
 };
 
 std::unique_ptr<NZBGet> g_NZBGet;
+
+// the daemon holds the lock on the lock-file: only then is it ours to delete
+// at shutdown. Not a member: a reload makes a new NZBGet without daemonizing,
+// and a second daemon that fails to get the lock must leave it in place.
+static bool g_LockFileOwned = false;
 
 NZBGet::~NZBGet()
 {
@@ -510,7 +514,7 @@ void NZBGet::Cleanup()
 {
 	debug("Cleaning up global objects");
 
-	if (m_options && m_commandLineParser->GetDaemonMode() && !m_reloading && m_daemonized)
+	if (m_options && !m_reloading && g_LockFileOwned)
 	{
 		info("Deleting lock file");
 		FileSystem::DeleteFile(m_options->GetLockFile());
@@ -1023,7 +1027,6 @@ void NZBGet::Daemonize()
 	if (f > 0) exit(0); /* parent exits */
 
 	/* child (daemon) continues */
-	m_daemonized = true;
 
 	// obtain a new process group
 	setsid();
@@ -1069,6 +1072,13 @@ void NZBGet::Daemonize()
 		{
 			error("Starting daemon failed: could not acquire lock on lock-file %s", m_options->GetLockFile());
 			exit(1);
+		}
+		g_LockFileOwned = true;
+
+		// the pid of an earlier daemon may be longer than ours
+		if (ftruncate(lfp, 0) != 0)
+		{
+			warn("Could not truncate lock-file %s", m_options->GetLockFile());
 		}
 	}
 
