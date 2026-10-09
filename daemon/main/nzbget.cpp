@@ -533,6 +533,9 @@ void NZBGet::Cleanup()
 	g_FeedCoordinator = nullptr;
 	g_ArticleCache = nullptr;
 	g_QueueScriptCoordinator = nullptr;
+	// destroyed while the global still points to it: its destructor waits for
+	// a running update-script, whose thread finishes through g_Maintenance
+	m_maintenance.reset();
 	g_Maintenance = nullptr;
 	g_StatMeter = nullptr;
 	g_CommandScriptLog = nullptr;

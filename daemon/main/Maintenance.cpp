@@ -92,13 +92,11 @@ void Maintenance::AddMessage(Message::EKind kind, time_t time, const char * text
 
 bool Maintenance::StartUpdate(EBranch branch)
 {
-	bool alreadyUpdating;
-	{
-		Guard guard(m_controllerMutex);
-		alreadyUpdating = m_updateScriptController != nullptr;
-	}
+	// held to the end: two requests at once both found no script running and
+	// started two (and lost track of the first)
+	Guard guard(m_controllerMutex);
 
-	if (alreadyUpdating)
+	if (m_updateScriptController)
 	{
 		error("Could not start update-script: update-script is already running");
 		return false;
@@ -119,7 +117,10 @@ bool Maintenance::StartUpdate(EBranch branch)
 		m_updateScript = CString::FormatStr("%s%c%s", g_Options->GetAppDir(), PATH_SEPARATOR, *m_updateScript);
 	}
 
-	m_messages.clear();
+	{
+		Guard logGuard(m_logMutex);
+		m_messages.clear();
+	}
 
 	m_updateScriptController = new UpdateScriptController();
 	m_updateScriptController->SetArgs({*m_updateScript});
