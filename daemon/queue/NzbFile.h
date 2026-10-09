@@ -52,6 +52,7 @@ private:
 
 	ArticleInfo* AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo> articleInfo);
 	void AddFileInfo(std::unique_ptr<FileInfo> fileInfo);
+	int DeclaredTail(FileInfo* fileInfo);
 	void ParseSubject(FileInfo* fileInfo, bool TryQuotes);
 	void BuildFilenames();
 	void ProcessFiles();

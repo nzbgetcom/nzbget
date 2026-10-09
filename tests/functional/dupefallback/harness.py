@@ -8950,23 +8950,25 @@ def scenario_partialnzb(daemon, t):
 
 
 def scenario_partialnzbdeclared(daemon, t):
-    """The same half-listed file, its subject declaring all 20 parts
-    ("yEnc (1/20)"): the 10 parts the nzb doesn't list count as failed from
-    the start, as gaps between listed parts always did, so health shows the
-    damage before anything downloads, and a warning says so when it's added."""
+    """A file the nzb lists only the first half of, its subject declaring all
+    200 parts ("yEnc (1/200)"): the 100 parts the nzb doesn't list count as
+    failed from the start, as gaps between listed parts always did, so health
+    shows the damage before anything downloads, and a warning says so when
+    it's added. (Parts are counted only when the nzb plainly stops short:
+    100 or more missing, under two thirds listed, a full last segment.)"""
     import re as _re
-    size, seg = 4_000_000, 200_000
+    size, seg = 4_000_000, 20_000
     data = _payload(size, 12437)
     pp = _place_copy(t, 'pdA', data, 'movie.mkv')
     nzb = build_nzb(pp, 'movie.mkv', size, seg, set())
-    nzb = _re.sub(r'<segment bytes="\d+" number="(1[1-9]|20)">[^<]*</segment>\n?', '', nzb)
+    nzb = _re.sub(r'<segment bytes="\d+" number="(10[1-9]|1[1-9]\d|200)">[^<]*</segment>\n?', '', nzb)
     api = daemon.wait_ready()
     api.pausedownload()
     daemon.append(api, 'RelPD', nzb, False, 'pd-key', 100)
     time.sleep(2)
     group = next(g for g in api.listgroups() if g['NZBName'] == 'RelPD')
     health = int(group['Health'])
-    warned = _grep_log(t, 'lists only 10 of the 20 articles of movie.mkv')
+    warned = _grep_log(t, 'lists only 100 of the 200 articles of movie.mkv')
     ok = warned == 1 and health <= 550
     return ('partialnzbdeclared', ok, 'health=%d warned=%d' % (health, warned))
 

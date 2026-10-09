@@ -396,14 +396,14 @@ BOOST_AUTO_TEST_CASE(DeclaredPartsTest)
 
 BOOST_AUTO_TEST_CASE(PartlyListedFileTest)
 {
-	// the subject declares 10 parts, the nzb lists 1, 2 and 4: part 3 (a gap)
-	// and parts 5..10 (past the last listed) are all missing
+	// the subject declares 300 parts, the nzb lists 1, 2 and 4: part 3 (a gap)
+	// and parts 5..300 (past the last listed) are all missing
 	const fs::path tempNzb = fs::temp_directory_path() / "nzbget_test_partly_listed.nzb";
 	{
 		std::ofstream out(tempNzb);
 		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 			<< "<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
-			<< "<file poster=\"p\" date=\"1\" subject=\"&quot;movie.mkv&quot; yEnc (1/10)\">\n"
+			<< "<file poster=\"p\" date=\"1\" subject=\"&quot;movie.mkv&quot; yEnc (1/300)\">\n"
 			<< "<groups><group>alt.binaries.test</group></groups>\n<segments>\n"
 			<< "<segment bytes=\"100\" number=\"1\">a1@test</segment>\n"
 			<< "<segment bytes=\"100\" number=\"2\">a2@test</segment>\n"
@@ -417,13 +417,58 @@ BOOST_AUTO_TEST_CASE(PartlyListedFileTest)
 	BOOST_REQUIRE(nzbInfo);
 	BOOST_REQUIRE_EQUAL(nzbInfo->GetFileList()->size(), 1);
 	FileInfo* fileInfo = nzbInfo->GetFileList()->front().get();
-	BOOST_CHECK_EQUAL(fileInfo->GetTotalArticles(), 10);
-	BOOST_CHECK_EQUAL(fileInfo->GetMissedArticles(), 7);
-	BOOST_CHECK_EQUAL(fileInfo->GetSize(), 1000);
-	BOOST_CHECK_EQUAL(fileInfo->GetMissedSize(), 700);
-	BOOST_CHECK_EQUAL(nzbInfo->GetFailedSize(), 700);
+	BOOST_CHECK_EQUAL(fileInfo->GetTotalArticles(), 300);
+	BOOST_CHECK_EQUAL(fileInfo->GetMissedArticles(), 297);
+	BOOST_CHECK_EQUAL(fileInfo->GetSize(), 30000);
+	BOOST_CHECK_EQUAL(fileInfo->GetMissedSize(), 29700);
+	BOOST_CHECK_EQUAL(nzbInfo->GetFailedSize(), 29700);
 
 	fs::remove(tempNzb);
+}
+
+BOOST_AUTO_TEST_CASE(DeclaredTailGuardTest)
+{
+	auto parse = [](const char* name, int declared, const std::vector<std::pair<int, int>>& segments)
+	{
+		const fs::path tempNzb = fs::temp_directory_path() / "nzbget_test_declared_tail.nzb";
+		{
+			std::ofstream out(tempNzb);
+			out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+				<< "<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
+				<< "<file poster=\"p\" date=\"1\" subject=\"&quot;" << name << "&quot; yEnc (1/" << declared << ")\">\n"
+				<< "<groups><group>alt.binaries.test</group></groups>\n<segments>\n";
+			for (const auto& [number, bytes] : segments)
+			{
+				out << "<segment bytes=\"" << bytes << "\" number=\"" << number << "\">a" << number << "@test</segment>\n";
+			}
+			out << "</segments>\n</file>\n</nzb>\n";
+		}
+		NzbFile nzbFile(tempNzb.string().c_str(), "");
+		BOOST_REQUIRE(nzbFile.Parse());
+		auto nzbInfo = nzbFile.DetachNzbInfo();
+		fs::remove(tempNzb);
+		return nzbInfo->GetFileList()->front()->GetTotalArticles();
+	};
+
+	std::vector<std::pair<int, int>> nine;
+	for (int i = 1; i <= 9; i++) nine.emplace_back(i, 100);
+	// padded counts: a whole posting
+	BOOST_CHECK_EQUAL(parse("a.rar", 10, nine), 9);
+	BOOST_CHECK_EQUAL(parse("a.rar", 100, nine), 9); // 91 missing: under 100
+	// 9 of 200, ending on a full segment: cut short
+	BOOST_CHECK_EQUAL(parse("a.rar", 200, nine), 200);
+	// but not for a par2 file
+	BOOST_CHECK_EQUAL(parse("a.vol00+10.par2", 200, nine), 9);
+	// a short last segment: the file ends there
+	nine.back().second = 99;
+	BOOST_CHECK_EQUAL(parse("a.rar", 200, nine), 9);
+	// sizes that vary (encoded sizes): within 1 % counts as full
+	std::vector<std::pair<int, int>> varied = {{1, 1000}, {2, 1003}, {3, 998}, {4, 995}};
+	BOOST_CHECK_EQUAL(parse("a.mkv", 300, varied), 300);
+	varied.back().second = 960;
+	BOOST_CHECK_EQUAL(parse("a.mkv", 300, varied), 4);
+	// one segment: never trusted
+	BOOST_CHECK_EQUAL(parse("a.rar", 200, {{1, 100}}), 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
