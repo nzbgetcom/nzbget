@@ -137,7 +137,7 @@ void Scanner::ServiceWork()
 
 	if (g_Options->GetNzbDirArchiveScan())
 	{
-		CheckIncomingArchives(g_Options->GetNzbDirPath());
+		CheckIncomingArchives(g_Options->GetNzbDirPath(), checkStat);
 	}
 
 	CheckIncomingNzbs(g_Options->GetNzbDir(), "", checkStat);
@@ -172,38 +172,50 @@ void Scanner::ServiceWork()
 	m_queueList.clear();
 }
 
-void Scanner::CheckIncomingArchives(const fs::path& dir)
+void Scanner::CheckIncomingArchives(const fs::path& dir, bool checkStat)
 {
-	const auto archives = FindArchives(dir);
+	const auto archives = FindArchives(dir, checkStat);
 	UnpackArchives(archives);
 }
 
-std::vector<fs::path> Scanner::FindArchives(const fs::path& dir)
+std::vector<fs::path> Scanner::FindArchives(const fs::path& dir, bool checkStat)
 {
+	// the non-throwing forms: an unreadable subdirectory (lost+found, a
+	// folder of another user) or one removed during the walk threw out of
+	// the scanner thread and ended the program
 	std::vector<fs::path> archives;
-	for (auto it = fs::recursive_directory_iterator(dir); it != fs::recursive_directory_iterator(); ++it)
+	fs::error_code ec;
+	auto it = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, ec);
+	for (; !ec && it != fs::recursive_directory_iterator(); it.increment(ec))
 	{
 		const auto& path = it->path();
 		const std::string filename = fs::u8string(path.filename());
+		fs::error_code typeEc;
 
 		if (ShouldSkipItem(filename))
 		{
-			if (it->is_directory()) 
+			if (it->is_directory(typeEc))
 			{
 				it.disable_recursion_pending();
 			}
 			continue;
 		}
 
-		if (!it->is_regular_file())
+		if (!it->is_regular_file(typeEc))
 		{
 			continue;
 		}
 
-		if (Unpack::IsArchive(path))
+		// like an nzb, an archive is taken once it stopped changing: one
+		// still being copied in failed to extract and was moved aside for good
+		if (Unpack::IsArchive(path) && CanProcessFile(fs::u8string(path).c_str(), checkStat))
 		{
 			archives.push_back(path);
 		}
+	}
+	if (ec)
+	{
+		warn("Could not scan %s for archives: %s", fs::u8string(dir).c_str(), ec.message().c_str());
 	}
 
 	archives.shrink_to_fit();
@@ -319,9 +331,11 @@ bool Scanner::CanProcessFile(const char* fullFilename, bool checkStat)
 			}
 			else
 			{
-				fileData.SetSize(size);
+				// a size change restarts the wait (the check came after the
+				// new size was set, so it never did)
 				if (fileData.GetSize() != size)
 				{
+					fileData.SetSize(size);
 					fileData.SetLastChange(current);
 				}
 			}
@@ -794,6 +808,7 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 		return EAddStatus::asSkipped;
 	}
 
+	std::vector<EAddStatus> statuses;
 	{
 		std::lock_guard<std::mutex> guard{m_scanMutex};
 
@@ -815,6 +830,12 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 			return EAddStatus::asSkipped;
 		}
 
+		// the url item goes with the first nzb only: adding it takes the item
+		// out of the queue and frees it, and the next nzb of the archive read
+		// the freed item (and could take another queue entry out with it).
+		// Each nzb reports how it went (sized up front: the entries point here)
+		statuses.assign(nzbFiles->size(), EAddStatus::asSkipped);
+		size_t index = 0;
 		for (const auto& nzbFile : *nzbFiles)
 		{
 			const auto nzbFilePathStr = fs::u8string(nzbFile);
@@ -823,12 +844,27 @@ Scanner::EAddStatus Scanner::AddArchive(const char* filename, const char* catego
 			m_queueList.emplace_back(
 				nzbFilePathStr.c_str(), fileName.c_str(), useCategory,
 				autoCategory, priority, dupeKey, dupeScore, dupeMode,
-				parameters, addTop, addPaused, urlInfo, nullptr, nullptr);
+				parameters, addTop, addPaused, index == 0 ? urlInfo : nullptr,
+				&statuses[index], nullptr);
+			index++;
 		}
+		// requested under the lock, as in AddExternalFile: a periodic scan
+		// waiting for the lock skipped the young files, cleared their entries
+		// and they were added later without category, key, score or url (F14)
+		m_requestedNzbDirScan = true;
 	}
-	
+
 	ScanNzbDir(true);
-	return EAddStatus::asSuccess;
+
+	// a url item stays queued unless its nzb was added: report that one's
+	// result, else the item was taken as done and stuck in the queue for good
+	if (urlInfo)
+	{
+		return statuses[0];
+	}
+	bool anyAdded = std::any_of(statuses.begin(), statuses.end(),
+		[](EAddStatus status) { return status == EAddStatus::asSuccess; });
+	return anyAdded ? EAddStatus::asSuccess : statuses[0];
 }
 
 Scanner::EAddStatus Scanner::AddArchive(

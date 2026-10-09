@@ -191,8 +191,8 @@ private:
 	 * Otherwise, the detected category (if any) is set directly.
 	 */
 	void DetectAndSetCategory(const NzbFile& nzbFile, NzbInfo& nzbInfo, const char* nzbName);
-	void CheckIncomingArchives(const fs::path& dir);
-	std::vector<fs::path> FindArchives(const fs::path& dir);
+	void CheckIncomingArchives(const fs::path& dir, bool checkStat);
+	std::vector<fs::path> FindArchives(const fs::path& dir, bool checkStat);
 	void UnpackArchives(const std::vector<fs::path>& archives);
 	void CleanupStaleUnpackDir();
 	void CheckIncomingNzbs(const char* directory, const char* category, bool checkStat);
