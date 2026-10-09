@@ -8480,6 +8480,35 @@ def scenario_parrenamebad(daemon, t):
     return ('parrenamebad', ok, 'status=%s renamed=%s damaged_logs=%d failed_renames=%d' % (h['Status'], renamed, damaged, failed))
 
 
+def scenario_longnamedir(daemon, t):
+    """A download name past 255 bytes (and one starting with "."): its
+    directory "<name>.#<id>" couldn't be created (ENAMETOOLONG), every file
+    write failed and counted as failed articles - a healthy posting ended
+    FAILURE/HEALTH. The directory name is cut to fit now (on a whole UTF-8
+    character), and a leading "." gets "_" (no hidden directory)."""
+    a = _payload(200_000, 11521)
+    b = _payload(200_000, 11522)
+    pa = _place_copy(t, 'lnA', a)
+    pb = _place_copy(t, 'lnB', b)
+    api = daemon.wait_ready()
+    long_name = 'L' * 250 + '\u00e9' * 30 + '.S01E01'
+    for name, pp, data in ((long_name, pa, a), ('.hiddenname', pb, b)):
+        content = base64.standard_b64encode(build_nzb(pp, name[:8].strip('.') + '.bin', len(data), 100_000, set()).encode()).decode()
+        _rpc(daemon, 'append', [name + '.nzb', content, '', 0, False, False, name[:8], 100, 'SCORE', []])
+    results = []
+    deadline = time.time() + 90
+    while time.time() < deadline and len(results) < 2:
+        results = [x for x in api.history()]
+        time.sleep(0.5)
+    statuses = sorted(x['Status'] for x in results)
+    dirs = [d for d in os.listdir(t.path('main', 'dst')) if os.path.isdir(t.path('main', 'dst', d))]
+    sub = [os.path.join(dp, d) for dp, ds, _ in os.walk(t.path('main', 'dst')) for d in ds]
+    hidden = [d for d in sub if os.path.basename(d).startswith('.')]
+    longest = max((len(os.path.basename(d).encode()) for d in sub), default=0)
+    ok = len(results) == 2 and all(st.startswith('SUCCESS') for st in statuses) and not hidden and longest <= 255
+    return ('longnamedir', ok, 'statuses=%s longest_dir_bytes=%d hidden=%s' % (statuses, longest, hidden))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8868,6 +8897,7 @@ SCENARIOS = {
     'stallquit': scenario_stallquit,
     'appendslashname': scenario_appendslashname,
     'parrenamebad': scenario_parrenamebad,
+    'longnamedir': scenario_longnamedir,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

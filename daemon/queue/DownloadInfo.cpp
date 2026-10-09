@@ -246,6 +246,35 @@ CString NzbInfo::MakeNiceUrlName(const char* urlStr, const char* nzbFilename)
 	return urlNicename;
 }
 
+// The name as a directory name: a file system takes 255 bytes for a name, and
+// a longer one couldn't be created - the download's files failed to write and
+// counted as failed articles. Cut on a whole UTF-8 character, leaving room for
+// "reserve" more bytes; a name starting with "." gets "_" in front (hidden).
+static std::string DirNameOf(const char* name, size_t reserve)
+{
+	std::string dirName = Util::EmptyStr(name) ? "nzb" : name;
+	if (dirName[0] == '.')
+	{
+		dirName.insert(0, "_");
+	}
+	size_t maxLen = 255 - reserve;
+	if (dirName.size() > maxLen)
+	{
+		size_t cut = maxLen;
+		while (cut > 0 && ((unsigned char)dirName[cut] & 0xC0) == 0x80)
+		{
+			cut--;
+		}
+		dirName.resize(cut);
+		// no trailing dot or space (not allowed on Windows, see MakeValidFilename)
+		while (!dirName.empty() && (dirName.back() == '.' || dirName.back() == ' '))
+		{
+			dirName.pop_back();
+		}
+	}
+	return dirName;
+}
+
 void NzbInfo::BuildDestDirName()
 {
 	if (Util::EmptyStr(g_Options->GetInterDir()))
@@ -254,8 +283,9 @@ void NzbInfo::BuildDestDirName()
 	}
 	else
 	{
-		m_destDir.Format("%s%c%s.#%i", g_Options->GetInterDir(), PATH_SEPARATOR,
-			Util::EmptyStr(GetName()) ? "nzb" : GetName(), GetId());
+		BString<100> idSuffix(".#%i", GetId());
+		m_destDir.Format("%s%c%s%s", g_Options->GetInterDir(), PATH_SEPARATOR,
+			DirNameOf(GetName(), strlen(idSuffix)).c_str(), *idSuffix);
 	}
 }
 
@@ -290,7 +320,7 @@ CString NzbInfo::BuildFinalDirName()
 	}
 	else
 	{
-		finalDir.AppendFmt("%c%s", PATH_SEPARATOR, GetName());
+		finalDir.AppendFmt("%c%s", PATH_SEPARATOR, DirNameOf(GetName(), 0).c_str());
 	}
 
 	return finalDir;
