@@ -913,7 +913,17 @@ Scanner::EAddStatus Scanner::AddExternalFile(
 	}
 
 	// move file into NzbDir, make sure the file name is unique
-	CString validNzbName = FileSystem::MakeValidFilename(FileSystem::BaseFileName(nzbName));
+	// a name that is a full path (a client passing its file) drops the folder; any
+	// other "/" belongs to the name (indexers post "[hash] [16/22] - Title"), and it
+	// lost everything up to it ("22] - Title"). MakeValidFilename makes it safe
+	bool absolutePath = nzbName[0] == '/' || nzbName[0] == '\\' ||
+		(isalpha((unsigned char)nzbName[0]) && nzbName[1] == ':' && (nzbName[2] == '\\' || nzbName[2] == '/'));
+	CString validNzbName = FileSystem::MakeValidFilename(absolutePath ? FileSystem::BaseFileName(nzbName) : nzbName);
+	// a file name starting with "." is hidden, and the scanner skips it ("../x.nzb")
+	if (validNzbName[0] == '.')
+	{
+		validNzbName = CString::FormatStr("_%s", *validNzbName);
+	}
 	// a name past what a file system takes (255 bytes) couldn't be created, and the
 	// nzb-file was refused; the file is named by its first 200 bytes (cut on a whole
 	// UTF-8 character), the download keeps its full name

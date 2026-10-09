@@ -7991,6 +7991,7 @@ def _path_traversal(daemon, t, name):
         t.write_file(os.path.join('data', rel), vol)
         members.append((rel, 'Rel.part%02d.rar' % i, len(vol), 500_000, set()))
     api = daemon.wait_ready()
+    started = time.time()
     daemon.append(api, 'RelPT', build_multi_nzb(members), False, 'pt-key', 100)
     h = daemon.wait_history(api, 'RelPT', timeout=120)
     dst = os.path.join(t.work, 'main', 'dst')
@@ -7998,7 +7999,8 @@ def _path_traversal(daemon, t, name):
     for dp, _, files in os.walk(os.path.dirname(t.work.rstrip('/'))):
         for fn in files:
             full = os.path.join(dp, fn)
-            if (fn.startswith('escape') or fn == 'ab.bin') and not full.startswith(dst + os.sep):
+            if fn in ('escape.bin', 'escape2.bin', 'ab.bin') \
+                    and not full.startswith(dst + os.sep) and os.path.getmtime(full) >= started:
                 outside.append(full)
     inside = sorted(os.path.basename(r) for r in t.find_files('main', 'dst'))
     ok = not outside and bool(inside)
@@ -8420,6 +8422,42 @@ def scenario_stallquit(daemon, t):
     return ('stallquit', ok, 'status=%s took=%.1fs (one timeout is 5 s)' % (h['Status'], took))
 
 
+def scenario_appendslashname(daemon, t):
+    """append with a name holding "/" ("[abc123] [16/22] - Show.S01E05.nzb", as
+    indexers name postings): the name was taken as a path, everything up to
+    the last "/" dropped - "22] - _Show.S01E05". The whole name is kept now,
+    with the "/" made safe; a name climbing out ("../../../x") stays inside
+    the destination and isn't taken for a hidden file."""
+    data = _payload(90_000, 11316)
+    pp = _place_copy(t, 'snA', data)
+    api = daemon.wait_ready()
+    name = '[abc123] [16/22] - Show.S01E05.nzb'
+    content = base64.standard_b64encode(build_nzb(pp, 'sn.bin', len(data), 100_000, set()).encode()).decode()
+    nid = _rpc(daemon, 'append', [name, content, '', 0, False, True, 'sn-key', 100, 'SCORE', []]).get('result')
+    time.sleep(1)
+    got = next((g['NZBName'] for g in api.listgroups() if g['NZBID'] == nid), None)
+    # a name climbing out of the destination stays inside it
+    data2 = _payload(90_000, 11317)
+    pp2 = _place_copy(t, 'snB', data2)
+    token = uuid.uuid4().hex[:8]
+    content2 = base64.standard_b64encode(build_nzb(pp2, 'sn2-%s.bin' % token, len(data2), 100_000, set()).encode()).decode()
+    nid2 = _rpc(daemon, 'append', ['../../../escapename.nzb', content2, '', 0, False, False, 'sn-key2', 100, 'SCORE', []]).get('result')
+    h = {'Status': 'TIMEOUT', 'NZBName': None}
+    deadline = time.time() + 60
+    while time.time() < deadline:
+        found = [x for x in api.history() if x['NZBID'] == nid2]
+        if found:
+            h = found[0]
+            break
+        time.sleep(0.5)
+    dst = os.path.join(t.work, 'main', 'dst')
+    outside = [os.path.join(dp, f) for dp, _, fs in os.walk(os.path.dirname(t.work.rstrip('/')))
+               for f in fs if f == 'sn2-%s.bin' % token and not os.path.join(dp, f).startswith(dst + os.sep)]
+    ok = (got is not None and got.startswith('[abc123]') and 'Show.S01E05' in got and
+          h['Status'].startswith('SUCCESS') and not outside)
+    return ('appendslashname', ok, 'name=%r escape_name=%r status=%s outside=%s' % (got, h['NZBName'], h['Status'], outside))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8806,6 +8844,7 @@ SCENARIOS = {
     'joingroupreconnect': scenario_joingroupreconnect,
     'joingroupnogroups': scenario_joingroupnogroups,
     'stallquit': scenario_stallquit,
+    'appendslashname': scenario_appendslashname,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

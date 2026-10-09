@@ -200,7 +200,13 @@ void NzbInfo::SetFilename(const char* filename)
 
 CString NzbInfo::MakeNiceNzbName(const char * nzbFilename, bool removeExt)
 {
-	std::string nicename = FileSystem::BaseFileName(nzbFilename);
+	// only a full path drops its folder: other "/" belong to the name (indexers
+	// post "[hash] [16/22] - Title", which became "22] - Title"); the sanitizing
+	// below makes them safe
+	bool absolutePath = nzbFilename[0] == '/' || nzbFilename[0] == '\\' ||
+		(isalpha((unsigned char)nzbFilename[0]) && nzbFilename[1] == ':' &&
+		 (nzbFilename[2] == '\\' || nzbFilename[2] == '/'));
+	std::string nicename = absolutePath ? FileSystem::BaseFileName(nzbFilename) : nzbFilename;
 	if (removeExt)
 	{
 		// wipe out ".nzb"
