@@ -1000,7 +1000,9 @@ void NCursesFrontend::PrintGroupname(NzbInfo* nzbInfo, int row, bool selected, b
 		}
 		else
 		{
-			buffer.Format("%-*s  %*s  %*s  %*s  %8s", nameLen, *nameWithIds,
+			// the name cut to its column: longer, it pushed the size and time
+			// columns past the screen's edge
+			buffer.Format("%-*.*s  %*s  %*s  %*s  %8s", nameLen, nameLen, *nameWithIds,
 				m_colWidthFiles, *files, m_colWidthTotal, *total, m_colWidthLeft, *remaining, *time);
 		}
 	}
