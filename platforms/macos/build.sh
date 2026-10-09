@@ -24,8 +24,6 @@ set -o errexit
 
 NZBGET_ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 
-export MACOSX_DEPLOYMENT_TARGET="12.0"
-
 # Unpackers versions (nzbgetcom/7zip and nzbgetcom/unrar release tags)
 . "$NZBGET_ROOT/unpackers.env"
 
@@ -120,9 +118,13 @@ fetch_unpackers() {
 	local DEST_BIN=$2
 	mkdir -p "$DEST_BIN" "$SOURCE_DIR"
 
-	# 1. 7zip (universal binary from nzbgetcom/7zip)
-	local TAR_7Z="$SOURCE_DIR/7zip-macos-universal-v${ZIP7_VERSION}.tar.gz"
-	download "https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-macos-universal.tar.gz" "$TAR_7Z"
+	# 1. 7zip (universal binary from nzbgetcom/7zip; x64 uses Mojave-compatible release)
+	local ZIP7_VER="$ZIP7_VERSION"
+	if [ "$ARCH" = "x64" ] && [ -n "${ZIP7_MACOS_X64_VERSION:-}" ]; then
+		ZIP7_VER="$ZIP7_MACOS_X64_VERSION"
+	fi
+	local TAR_7Z="$SOURCE_DIR/7zip-macos-universal-v${ZIP7_VER}.tar.gz"
+	download "https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VER/7zip-macos-universal.tar.gz" "$TAR_7Z"
 	rm -rf "$SOURCE_DIR/7z_tmp"
 	mkdir -p "$SOURCE_DIR/7z_tmp"
 	tar -xzf "$TAR_7Z" -C "$SOURCE_DIR/7z_tmp"
@@ -176,18 +178,29 @@ for CONFIG in $CONFIGS; do
 		TARGET_NAME="macos-$ARCH-$CONFIG"
 		STAGING_DIR="$STAGING_BASE/$TARGET_NAME"
 		
-		# Determine CMake preset name and build type
-		PRESET_NAME="ci-macos-$ARCH"
+		# Determine target deployment version
+		if [ "$ARCH" = "x64" ] || [ "$ARCH" = "x86_64" ]; then
+			TARGET_DEPLOYMENT="10.14"
+		else
+			TARGET_DEPLOYMENT="11.0"
+		fi
+		export MACOSX_DEPLOYMENT_TARGET="$TARGET_DEPLOYMENT"
+
+		# Determine CMake preset name, build type, and Xcode configuration
 		if [ "$CONFIG" == "debug" ]; then
+			PRESET_NAME="ci-macos-debug-$ARCH"
 			CMAKE_BUILD_TYPE="Debug"
 			SUFFIX="-debug"
+			XCODE_CONFIG="Debug"
 		else
+			PRESET_NAME="ci-macos-$ARCH"
 			CMAKE_BUILD_TYPE="Release"
 			SUFFIX=""
+			XCODE_CONFIG="Release"
 		fi
 
 		echo "=========================================================="
-		echo "Building $TARGET_NAME (preset: $PRESET_NAME)..."
+		echo "Building $TARGET_NAME (preset: $PRESET_NAME, deployment target: macOS $TARGET_DEPLOYMENT)..."
 		echo "=========================================================="
 
 		rm -rf "$STAGING_DIR"
@@ -201,7 +214,7 @@ for CONFIG in $CONFIGS; do
 			-DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
 			-DVERSION_SUFFIX="$VERSION_SUFFIX" \
 			-DCMAKE_INSTALL_PREFIX="$STAGING_DIR" \
-			-DCMAKE_OSX_DEPLOYMENT_TARGET="12.0"
+			-DCMAKE_OSX_DEPLOYMENT_TARGET="$TARGET_DEPLOYMENT"
 
 		# Build
 		BUILD_STATUS=""
@@ -282,8 +295,13 @@ for CONFIG in $CONFIGS; do
 				# Copy share (webui, doc, nzbget.conf)
 				cp -r "$STAGING_DIR/share/nzbget" "$APP_DAEMON_ROOT/share/"
 
+				XCODE_ARCH="x86_64"
+				if [ "$ARCH" == "arm64" ]; then
+					XCODE_ARCH="arm64"
+				fi
+
 				cd "$XCODE_STAGE"
-				xcodebuild -project "$XCODE_STAGE/NZBGet.xcodeproj" -configuration "Release" -destination "platform=macOS" SYMROOT="$XCODE_STAGE/build" build >xcodebuild.log 2>&1 || {
+				xcodebuild -project "$XCODE_STAGE/NZBGet.xcodeproj" -configuration "$XCODE_CONFIG" ARCHS="$XCODE_ARCH" ONLY_ACTIVE_ARCH=NO MACOSX_DEPLOYMENT_TARGET="$TARGET_DEPLOYMENT" -destination "platform=macOS" SYMROOT="$XCODE_STAGE/build" build >xcodebuild.log 2>&1 || {
 					tail -30 xcodebuild.log
 					exit 1
 				}
@@ -322,12 +340,16 @@ for CONFIG in $CONFIGS; do
 		
 		lipo -create "$X64_DIR/bin/nzbget" "$ARM64_DIR/bin/nzbget" -output "$UNI_DIR/bin/nzbget"
 		lipo -create "$X64_DIR/bin/unrar" "$ARM64_DIR/bin/unrar" -output "$UNI_DIR/bin/unrar"
-		cp "$ARM64_DIR/bin/7za" "$UNI_DIR/bin/7za"
+		lipo -thin x86_64 "$X64_DIR/bin/7za" -output "$UNI_DIR/bin/7za_x64"
+		lipo -thin arm64 "$ARM64_DIR/bin/7za" -output "$UNI_DIR/bin/7za_arm64"
+		lipo -create "$UNI_DIR/bin/7za_x64" "$UNI_DIR/bin/7za_arm64" -output "$UNI_DIR/bin/7za"
+		rm -f "$UNI_DIR/bin/7za_x64" "$UNI_DIR/bin/7za_arm64"
 		cp "$ARM64_DIR/bin/cacert.pem" "$UNI_DIR/bin/cacert.pem"
 
 		echo "Universal artifacts created in: $UNI_DIR/bin"
 		lipo -info "$UNI_DIR/bin/nzbget"
 		lipo -info "$UNI_DIR/bin/unrar"
+		lipo -info "$UNI_DIR/bin/7za"
 
 		BUILD_UNI_APP="no"
 		BUILD_UNI_BIN="no"
@@ -384,10 +406,19 @@ for CONFIG in $CONFIGS; do
 				DAEMON_REL="Contents/Resources/daemon/usr/local/bin"
 				lipo -create "NZBGet.x64.app/$DAEMON_REL/nzbget" "NZBGet.arm64.app/$DAEMON_REL/nzbget" -output "$UNI_TMP/nzbget"
 				lipo -create "NZBGet.x64.app/$DAEMON_REL/unrar" "NZBGet.arm64.app/$DAEMON_REL/unrar" -output "$UNI_TMP/unrar"
+				lipo -thin x86_64 "NZBGet.x64.app/$DAEMON_REL/7za" -output "$UNI_TMP/7za_x64"
+				lipo -thin arm64 "NZBGet.arm64.app/$DAEMON_REL/7za" -output "$UNI_TMP/7za_arm64"
+				lipo -create "$UNI_TMP/7za_x64" "$UNI_TMP/7za_arm64" -output "$UNI_TMP/7za"
+				rm -f "$UNI_TMP/7za_x64" "$UNI_TMP/7za_arm64"
+				lipo -create "NZBGet.x64.app/Contents/MacOS/NZBGet" "NZBGet.arm64.app/Contents/MacOS/NZBGet" -output "$UNI_TMP/NZBGet"
 				
 				mv NZBGet.arm64.app NZBGet.app
 				mv "$UNI_TMP/nzbget" "NZBGet.app/$DAEMON_REL/nzbget"
 				mv "$UNI_TMP/unrar" "NZBGet.app/$DAEMON_REL/unrar"
+				mv "$UNI_TMP/7za" "NZBGet.app/$DAEMON_REL/7za"
+				mv "$UNI_TMP/NZBGet" "NZBGet.app/Contents/MacOS/NZBGet"
+				# Use Info.plist from x64 build to preserve LSMinimumSystemVersion = 10.14
+				cp "NZBGet.x64.app/Contents/Info.plist" "NZBGet.app/Contents/Info.plist"
 
 				zip -r "$UNI_APP_ARCHIVE" NZBGet.app >/dev/null
 				mv "$UNI_APP_ARCHIVE" "$DIST_BASE/$UNI_APP_ARCHIVE"

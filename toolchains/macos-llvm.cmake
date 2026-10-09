@@ -1,5 +1,11 @@
 set(CMAKE_SYSTEM_NAME Darwin)
-set(CMAKE_OSX_DEPLOYMENT_TARGET 12.0 CACHE STRING "Minimum OS X deployment version")
+if(NOT CMAKE_OSX_DEPLOYMENT_TARGET)
+	if("x86_64" IN_LIST CMAKE_OSX_ARCHITECTURES OR (NOT CMAKE_OSX_ARCHITECTURES AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64"))
+		set(CMAKE_OSX_DEPLOYMENT_TARGET 10.14 CACHE STRING "Minimum OS X deployment version")
+	else()
+		set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "Minimum OS X deployment version")
+	endif()
+endif()
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 
 if(NOT CMAKE_C_COMPILER)
@@ -104,8 +110,11 @@ endif()
 #   4) none found -> system libc++ (dynamic; std::format unavailable on macOS 12)
 set(NZBGET_STATIC_LIBCXX "")
 foreach(_libcxx_candidate IN ITEMS "${NZBGET_LIBCXX_DIR}" "$ENV{NZBGET_LIBCXX_DIR}"
+		"${CMAKE_CURRENT_LIST_DIR}/../build/toolchains/macos-libcxx"
 		"${CMAKE_CURRENT_LIST_DIR}/../build/toolchains/macos12-libcxx"
+		"/opt/macos-libcxx"
 		"/opt/macos12-libcxx"
+		"/tmp/macos-libcxx"
 		"/tmp/macos12-libcxx")
 	if(_libcxx_candidate
 			AND EXISTS "${_libcxx_candidate}/lib/libc++.a"

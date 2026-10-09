@@ -17,7 +17,8 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program. If not, see <https://www.gnu.org/licenses/>.
 #
-# Build a static universal (arm64 + x86_64) libc++/libc++abi for macOS 12+.
+# Build a static universal (arm64 + x86_64) libc++/libc++abi for macOS
+# (macOS 10.14+ for x86_64, macOS 11.0+ for arm64).
 # Compiled with the same upstream LLVM clang that toolchains/macos-llvm.cmake
 # uses to build NZBGet itself (one compiler for the runtime and the project).
 #
@@ -39,7 +40,8 @@ OUTPUT_PREFIX=${2:-$NZBGET_ROOT/build/toolchains/macos12-libcxx}
 SOURCE_DIR="$NZBGET_ROOT/build/dl"
 OBJ_BASE="$NZBGET_ROOT/build/obj"
 LLVM_SRC=${LLVM_SRC:-$SOURCE_DIR/llvm-project}
-DEPLOYMENT_TARGET=12.0
+DEPLOYMENT_TARGET_X86_64=${MACOSX_DEPLOYMENT_TARGET_X86_64:-10.14}
+DEPLOYMENT_TARGET_ARM64=${MACOSX_DEPLOYMENT_TARGET_ARM64:-11.0}
 
 if [ "$(uname -s)" != "Darwin" ]; then
 	echo "ERROR: this script must be run on macOS"
@@ -104,11 +106,17 @@ cd "$LLVM_SRC"
 #     and friends work on a macOS 12 deployment target
 build_arch () {
 	local ARCH=$1
+	local TARGET_DEPLOYMENT
+	if [ "$ARCH" = "x86_64" ]; then
+		TARGET_DEPLOYMENT="$DEPLOYMENT_TARGET_X86_64"
+	else
+		TARGET_DEPLOYMENT="$DEPLOYMENT_TARGET_ARM64"
+	fi
 	local COMPILER_ARGS=()
 	if [ -n "$LLVM_CC" ]; then
 		COMPILER_ARGS=(-DCMAKE_C_COMPILER="$LLVM_CC" -DCMAKE_CXX_COMPILER="$LLVM_CXX")
 	fi
-	echo "Building libc++ for $ARCH ..."
+	echo "Building libc++ for $ARCH (targeting macOS $TARGET_DEPLOYMENT)..."
 	local BUILD_DIR="$OBJ_BASE/libcxx-$ARCH"
 	rm -rf "$BUILD_DIR"
 	cmake -G Ninja -S runtimes -B "$BUILD_DIR" \
@@ -117,7 +125,7 @@ build_arch () {
 		-Wno-author -Wno-deprecated \
 		"${COMPILER_ARGS[@]}" \
 		-DCMAKE_OSX_ARCHITECTURES="$ARCH" \
-		-DCMAKE_OSX_DEPLOYMENT_TARGET="$DEPLOYMENT_TARGET" \
+		-DCMAKE_OSX_DEPLOYMENT_TARGET="$TARGET_DEPLOYMENT" \
 		-DLIBCXX_ENABLE_STATIC=ON \
 		-DLIBCXX_ENABLE_SHARED=OFF \
 		-DLIBCXX_ENABLE_STATIC_ABI_LIBRARY=ON \

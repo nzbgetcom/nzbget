@@ -103,8 +103,10 @@ For cross-compiling or building standalone redistributable binaries, dedicated C
 
 | Preset Name | Target Architecture | Source Deps | LTO | Compiler | Notes |
 |---|---|---|---|---|---|
-| `ci-macos-arm64` | `arm64` (Apple Silicon) | `ON` | `ON` | LLVM Clang 19 | Static libc++, deployment target macOS 12.0, curses disabled |
-| `ci-macos-x64` | `x86_64` (Intel Mac) | `ON` | `ON` | LLVM Clang 19 | Static libc++, deployment target macOS 12.0, curses disabled |
+| `ci-macos-arm64` | `arm64` (Apple Silicon) | `ON` | `ON` | LLVM Clang 19 | Static libc++, deployment target macOS 11.0 (Big Sur), curses disabled |
+| `ci-macos-x64` | `x86_64` (Intel Mac) | `ON` | `ON` | LLVM Clang 19 | Static libc++, deployment target macOS 10.14 (Mojave), curses disabled |
+| `ci-macos-debug-arm64` | `arm64` (Apple Silicon) | `ON` | `OFF` | LLVM Clang 19 | Debug build, static libc++, deployment target macOS 11.0 |
+| `ci-macos-debug-x64` | `x86_64` (Intel Mac) | `ON` | `OFF` | LLVM Clang 19 | Debug build, static libc++, deployment target macOS 10.14 |
 | `ci-release-lto` | Host architecture | `ON` | `ON` | Host compiler | Generic release with full LTO |
 
 ### Building with a CI Preset
@@ -116,9 +118,9 @@ cmake --build --preset ci-macos-arm64 -j$(sysctl -n hw.ncpu)
 
 ---
 
-## 5. Toolchains and Static libc++ (macOS 12+ Compatibility)
+## 5. Toolchains and Static libc++ (macOS 10.14+ / 11.0+ Compatibility)
 
-To support macOS versions older than the host runner (targeting macOS 12.0+), NZBGet provides a custom LLVM Clang toolchain and static runtime builder.
+To support macOS versions older than the host runner (targeting macOS 10.14+ on Intel and macOS 11.0+ on Apple Silicon), NZBGet provides a custom LLVM Clang toolchain and static runtime builder.
 
 ### Static libc++ Workflow
 1. **Build Static libc++ / libc++abi**:
@@ -126,12 +128,12 @@ To support macOS versions older than the host runner (targeting macOS 12.0+), NZ
    ```bash
    bash toolchains/build-macos-libcxx.sh
    ```
-   This compiles LLVM 19 libc++ and libc++abi statically for both `arm64` and `x86_64`, deploying to `build/toolchains/macos12-libcxx` (or a custom path passed as the second argument, e.g. `/opt/macos12-libcxx`).
+   This compiles LLVM 19 libc++ and libc++abi statically for both `arm64` (targeting macOS 11.0) and `x86_64` (targeting macOS 10.14), deploying to `build/toolchains/macos12-libcxx` (or a custom path passed as the second argument, e.g. `/opt/macos12-libcxx`).
 2. **Toolchain Integration**:
    `toolchains/macos-llvm.cmake` automatically discovers LLVM Clang from Homebrew (`/opt/homebrew/opt/llvm` or `/usr/local/opt/llvm`) and links against the static libc++ runtime:
    - `-nostdlib++`
    - Statically linked `libc++.a` and `libc++abi.a`
-   - Explicit deployment target `-mmacosx-version-min=12.0`
+   - Explicit deployment target (`-mmacosx-version-min=10.14` for x86_64, `-mmacosx-version-min=11.0` for arm64)
 
 ---
 
@@ -186,6 +188,12 @@ NZBGet.app/
                     ├── doc/        # ChangeLog and license files
                     └── webui/      # WebUI frontend (HTML, JS, CSS)
 ```
+
+### Official Release Distribution Packages
+
+NZBGet publishes two standard macOS packages for releases:
+- **`nzbget-<version>-universal.dmg`**: Notarized Apple Disk Image containing a Universal 2 application bundle (`arm64` + `x86_64`) for macOS 11.0 Big Sur and newer (Apple Silicon and modern Intel Macs).
+- **`nzbget-<version>-bin-macos-x64.zip`**: Standalone (unsigned) Intel 64-bit application package for macOS 10.14 Mojave and macOS 10.15 Catalina users, where Universal 2 binaries are not supported by the OS loader.
 
 ---
 
