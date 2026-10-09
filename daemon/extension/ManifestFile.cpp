@@ -46,13 +46,29 @@ namespace ManifestFile
 			return false;
 		}
 
-		Json::JsonValue jsonValue = std::move(desRes.value());
-		Json::JsonObject json = jsonValue.as_object();
+		// a value of another type than expected ("[]" for the whole file, a
+		// string among the commands) threw out of the extension loading and
+		// ended the daemon at start: the extension is refused instead
+		try
+		{
+			Json::JsonValue jsonValue = std::move(desRes.value());
+			if (!jsonValue.is_object())
+			{
+				error("Failed to parse %s. The manifest isn't a JSON object.", path.c_str());
+				return false;
+			}
+			Json::JsonObject json = jsonValue.as_object();
 
-		if (!ValidateAndSet(json, manifest))
+			if (!ValidateAndSet(json, manifest))
+				return false;
+
+			CheckKeyAndSet(json, "nzbgetMinVersion", manifest.nzbgetMinVersion);
+		}
+		catch (const std::exception& e)
+		{
+			error("Failed to parse %s: %s", path.c_str(), e.what());
 			return false;
-
-		CheckKeyAndSet(json, "nzbgetMinVersion", manifest.nzbgetMinVersion);
+		}
 
 		return true;
 	}

@@ -23,6 +23,7 @@
 #include <boost/test/unit_test.hpp>
 #include "FileSystem.h"
 #include "ManifestFile.h"
+#include <fstream>
 
 BOOST_AUTO_TEST_SUITE(ExtensionTest)
 
@@ -110,6 +111,31 @@ BOOST_AUTO_TEST_CASE(ManifestFileTest)
 	BOOST_CHECK(command2.action == "SendToTask");
 	BOOST_CHECK(command2.displayName == "ConnectionTestTask");
 	BOOST_CHECK(command2.description == std::vector<std::string>({ "Feeds command" }));
+}
+
+BOOST_AUTO_TEST_CASE(ManifestWrongTypesTest)
+{
+	// a value of another type than expected threw out of the loading (the
+	// daemon ended at start); the manifest is refused now
+	const fs::path validFile = fs::current_path() / "manifest" / "valid" / "manifest.json";
+	std::ifstream in(validFile.string());
+	std::string valid((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+	size_t pos = valid.find("\"commands\"");
+	BOOST_REQUIRE(pos != std::string::npos);
+	std::string badCommands = valid.substr(0, pos) + "\"commands\": [\"a\"], \"x-replaced\"" + valid.substr(pos + 10);
+
+	for (const std::string& content : {std::string("[]"), std::string("\"x\""), badCommands})
+	{
+		const fs::path dir = fs::temp_directory_path() / "nzbget-manifest-types";
+		fs::remove_all(dir);
+		fs::create_directories(dir);
+		std::ofstream(dir / "manifest.json") << content;
+		ManifestFile::Manifest manifest;
+		bool loaded = true;
+		BOOST_CHECK_NO_THROW(loaded = ManifestFile::Load(manifest, dir.string().c_str()));
+		BOOST_CHECK(!loaded);
+		fs::remove_all(dir);
+	}
 }
 
 BOOST_AUTO_TEST_SUITE_END()
