@@ -468,9 +468,16 @@ void DirectUnpack::WaitNextVolume(const char* filename)
 	}
 	else
 	{
-		Guard guard(m_volumeMutex);
-		m_waitingFile = filename;
-		if (m_nzbCompleted)
+		bool nzbCompleted;
+		{
+			Guard guard(m_volumeMutex);
+			m_waitingFile = filename;
+			nzbCompleted = m_nzbCompleted;
+		}
+		// the queue lock only after the volume lock is released: the queue side
+		// takes them the other way round (a file completing takes the volume lock
+		// under the queue lock), and the two threads could wait on each other
+		if (nzbCompleted)
 		{
 			// nzb completed but unrar waits for another volume
 			PrintMessage(Message::mkWarning, "Could not find volume %s", filename);
