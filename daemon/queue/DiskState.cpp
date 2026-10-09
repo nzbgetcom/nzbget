@@ -374,6 +374,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 
 	bool ok = false;
 	bool queueFilesFailed = false;
+	bool fileInfosLoaded = false;
 	int formatVersion = 0;
 
 	// formats 65/66 are read as an earlier build of this branch wrote them (it may
@@ -459,6 +460,7 @@ bool DiskState::LoadDownloadQueue(DownloadQueue* downloadQueue, Servers* servers
 	}
 
 	LoadAllFileInfos(downloadQueue);
+	fileInfosLoaded = true;
 
 	CleanupQueueDir(downloadQueue);
 
@@ -476,6 +478,13 @@ error:
 	if (!ok)
 	{
 		error("Error reading diskstate for download queue and history");
+	}
+	if (!fileInfosLoaded && !downloadQueue->GetQueue()->empty())
+	{
+		// the downloads that did load keep running: with only the stubs the queue
+		// file holds (no name, size or groups) they showed blank and the next save
+		// wrote the stubs over their file infos
+		LoadAllFileInfos(downloadQueue);
 	}
 	if (queueFilesFailed)
 	{

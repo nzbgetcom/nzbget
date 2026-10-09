@@ -8751,6 +8751,42 @@ def scenario_xdecomp_slow(daemon, t):
     return ('xdecomp_slow', r[1] and stopped == 0, '%s stall_stops=%d' % (r[2], stopped))
 
 
+def scenario_failedloadfileinfos(daemon, t):
+    """The history file is damaged, so loading fails after the queue loaded:
+    the queued download kept only the stubs the queue file holds - files
+    without name or size in the web interface, and the next save wrote the
+    stubs over their file infos. Their file infos load now."""
+    a = _payload(90_000, 12029)
+    b = _payload(300_000, 12030)
+    pa = _place_copy(t, 'flA', a)
+    pb = _place_copy(t, 'flB', b)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelFL1', build_nzb(pa, 'fl1.bin', len(a), 100_000, set()), False, 'fl-key1', 100)
+    daemon.wait_history(api, 'RelFL1', timeout=60)
+    daemon.append(api, 'RelFL2', build_nzb(pb, 'fl2.bin', len(b), 100_000, set()), True, 'fl-key2', 100)
+    time.sleep(2)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    path = t.path('main', 'queue', 'history')
+    lines = open(path).read().split('\n')
+    for i, line in enumerate(lines):
+        m = re.match(r'^(\d+),1,(\d{9,10})$', line)
+        if m:
+            lines[i] = '%s,9,%s' % (m.group(1), m.group(2))
+            break
+    open(path, 'w').write('\n'.join(lines))
+    daemon.start()
+    api = daemon.wait_ready()
+    group = next((g for g in api.listgroups() if g['NZBName'] == 'RelFL2'), None)
+    files = _rpc(daemon, 'listfiles', [0, 0, group['NZBID']]).get('result', []) if group else []
+    named = [f for f in files if f.get('Filename') and f.get('FileSizeLo', 0) > 0]
+    ok = group is not None and len(files) >= 1 and len(named) == len(files)
+    return ('failedloadfileinfos', ok, 'queued=%s files=%d named_with_size=%d' % (bool(group), len(files), len(named)))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9148,6 +9184,7 @@ SCENARIOS = {
     'emptyconfigread': scenario_emptyconfigread,
     'damagedfilestate': scenario_damagedfilestate,
     'staletempstate': scenario_staletempstate,
+    'failedloadfileinfos': scenario_failedloadfileinfos,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
