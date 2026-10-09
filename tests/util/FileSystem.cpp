@@ -353,4 +353,44 @@ BOOST_AUTO_TEST_CASE(CopyFileFailsOnFailedWrite)
 }
 #endif
 
+#ifndef WIN32
+BOOST_AUTO_TEST_CASE(MoveFileCrossDeviceFailedCopy)
+{
+	// a cross-device move whose copy fails (here a file size limit, as a full disk)
+	// leaves no partial file under the destination name and keeps the source
+	const fs::path srcDir = fs::path("/dev/shm") / fs::make_unique_filename("nzbget-move-src-%%%%-%%%%");
+	const fs::path destDir = fs::current_path() / fs::make_unique_filename("nzbget-move-dest-%%%%-%%%%");
+	fs::error_code ec;
+	if (!fs::create_directory(srcDir, ec) || ec)
+	{
+		BOOST_TEST_MESSAGE("no /dev/shm, skipped");
+		return;
+	}
+	fs::create_directory(destDir);
+	const fs::path src = srcDir / "file.bin";
+	const fs::path dest = destDir / "file.bin";
+	std::ofstream(src.string(), std::ios::binary) << std::string(300 * 1024, 'x');
+
+	struct rlimit oldLimit;
+	getrlimit(RLIMIT_FSIZE, &oldLimit);
+	struct rlimit limit = oldLimit;
+	limit.rlim_cur = 64 * 1024;
+	auto oldHandler = signal(SIGXFSZ, SIG_IGN);
+	setrlimit(RLIMIT_FSIZE, &limit);
+
+	fs::error_code moveEc;
+	fs::move_file(src, dest, moveEc);
+
+	setrlimit(RLIMIT_FSIZE, &oldLimit);
+	signal(SIGXFSZ, oldHandler);
+
+	BOOST_CHECK(moveEc);
+	BOOST_CHECK(!fs::exists(dest));
+	BOOST_CHECK(fs::exists(src));
+
+	fs::remove_all(srcDir);
+	fs::remove_all(destDir);
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()
