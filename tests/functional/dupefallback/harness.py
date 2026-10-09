@@ -8509,6 +8509,70 @@ def scenario_longnamedir(daemon, t):
     return ('longnamedir', ok, 'statuses=%s longest_dir_bytes=%d hidden=%s' % (statuses, longest, hidden))
 
 
+def _damaged_state_restart(daemon, t, damage):
+    """Download one item, stop, damage a state file with ``damage(queue_dir)``,
+    start again: returns (damaged, alive, api)."""
+    data = _payload(90_000, 11623)
+    pp = _place_copy(t, 'dsA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelDS', build_nzb(pp, 'ds.bin', len(data), 100_000, set()), False, 'ds-key', 100)
+    daemon.wait_history(api, 'RelDS', timeout=60)
+    time.sleep(2)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    damaged = damage(t.path('main', 'queue'))
+    daemon.start()
+    try:
+        api = daemon.wait_ready()
+        time.sleep(2)
+        alive = t.procs[-1].poll() is None and bool(_rpc(daemon, 'version', []).get('result'))
+    except Exception:
+        alive = False
+    return damaged, alive
+
+
+def scenario_damagedstats(daemon, t):
+    """A stats file whose seconds array count is -1 (damaged): the count sized
+    the array, which threw and ended the daemon at every start (a count below
+    60 left the array too short for the counters). Now the file is refused
+    and the daemon runs."""
+    def damage(queue_dir):
+        path = os.path.join(queue_dir, 'stats')
+        lines = open(path).read().split('\n')
+        for i, line in enumerate(lines):
+            if line == '60':
+                lines[i] = '-1'
+                open(path, 'w').write('\n'.join(lines))
+                return True
+        return False
+    damaged, alive = _damaged_state_restart(daemon, t, damage)
+    ok = damaged and alive
+    return ('damagedstats', ok, 'damaged=%s alive=%s' % (damaged, alive))
+
+
+def scenario_damagedhistorykind(daemon, t):
+    """A history record of a kind no version writes (9, a damaged file): the
+    record was used without being created (a crash at every start). Now the
+    history file is set aside as unreadable and the daemon runs."""
+    def damage(queue_dir):
+        path = os.path.join(queue_dir, 'history')
+        lines = open(path).read().split('\n')
+        for i, line in enumerate(lines):
+            m = re.match(r'^(\d+),1,(\d{9,10})$', line)
+            if m:
+                lines[i] = '%s,9,%s' % (m.group(1), m.group(2))
+                open(path, 'w').write('\n'.join(lines))
+                return True
+        return False
+    damaged, alive = _damaged_state_restart(daemon, t, damage)
+    set_aside = _grep_log(t, 'could not be read')
+    ok = damaged and alive
+    return ('damagedhistorykind', ok, 'damaged=%s alive=%s set_aside_logs=%d' % (damaged, alive, set_aside))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8898,6 +8962,8 @@ SCENARIOS = {
     'appendslashname': scenario_appendslashname,
     'parrenamebad': scenario_parrenamebad,
     'longnamedir': scenario_longnamedir,
+    'damagedstats': scenario_damagedstats,
+    'damagedhistorykind': scenario_damagedhistorykind,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

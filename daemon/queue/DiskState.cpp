@@ -1954,6 +1954,12 @@ bool DiskState::LoadHistory(HistoryList* history, Servers* servers, StateDiskFil
 			dupInfo->SetId(id);
 			historyInfo = std::make_unique<HistoryInfo>(std::move(dupInfo));
 		}
+		else
+		{
+			// a kind no version writes (a damaged record): the file can't be read on
+			error("Unknown history record kind %i", kindval);
+			goto error;
+		}
 
 		historyInfo->SetTime((time_t)time);
 
@@ -2933,14 +2939,20 @@ bool DiskState::LoadVolumeStat(Servers* servers, ServerVolumes* serverVolumes, S
 		{
 			ServerVolume::VolumeArray* volumeArray = VolumeArrays[k];
 
+			// the seconds, minutes and hours arrays have fixed sizes (the counters
+			// index them by the clock), the days one grows: a count from the file
+			// sized them, and a wrong one (damaged file) threw at every start or
+			// left them too short for the counters
+			static const int fixedSize[] = { 60, 60, 24, 0 };
 			int arrSize;
 			if (infile.ScanLine("%i", &arrSize) != 1) goto error;
-			if (volumeArray) volumeArray->resize(arrSize);
+			if (arrSize < 0 || arrSize > 100000) goto error;
+			if (volumeArray) volumeArray->assign(fixedSize[k] > 0 ? fixedSize[k] : arrSize, 0);
 
 			for (int j = 0; j < arrSize; j++)
 			{
 				if (infile.ScanLine("%u,%u", &High1, &Low1) != 2) goto error;
-				if (volumeArray) (*volumeArray)[j] = Util::JoinInt64(High1, Low1);
+				if (volumeArray && j < (int)volumeArray->size()) (*volumeArray)[j] = Util::JoinInt64(High1, Low1);
 			}
 		}
 
@@ -2948,6 +2960,7 @@ bool DiskState::LoadVolumeStat(Servers* servers, ServerVolumes* serverVolumes, S
 		{
 			uint32 arrSize;
 			if (infile.ScanLine("%u", &arrSize) != 1) goto error;
+			if (arrSize > 100000) goto error;
 
 			ServerVolume::ArticlesArray articlesArr;
 			articlesArr.reserve(arrSize);
