@@ -261,6 +261,9 @@ private:
 	std::map<std::string, bool> m_donorDead;
 	// donor checks running: their connection waits don't count against the watchdog
 	std::atomic<int> m_checkingDonor{0};
+	// fetching and extracting a compressed duplicate (the decompression rung):
+	// work without patched bytes, not a stall
+	std::atomic<int> m_materializing{0};
 	// this repair's fetches waiting for a free connection (B76: not a lack of progress)
 	std::atomic<int> m_waitingForConnection{0};
 	bool DonorDead(const DonorSource& donor, NzbInfo* donorNzb);

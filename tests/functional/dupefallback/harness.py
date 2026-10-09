@@ -8740,6 +8740,17 @@ def scenario_staletempstate(daemon, t):
     return ('staletempstate', ok, 'history=%s unreadable_logs=%d' % (history, unreadable))
 
 
+def scenario_xdecomp_slow(daemon, t):
+    """xdecomp_zip with a slow donor (every donor article held 0.7 s, one
+    connection) and DupeStreamTimeout=5: fetching and extracting a compressed
+    donor patches no byte for a while, which the stall watchdog could take
+    for no progress. That work counts as activity now (the run caps still
+    apply). This donor is small enough to pass before too."""
+    r = scenario_xdecomp_zip(daemon, t)
+    stopped = _grep_log(t, 'nothing recovered for')
+    return ('xdecomp_slow', r[1] and stopped == 0, '%s stall_stops=%d' % (r[2], stopped))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8952,6 +8963,7 @@ SCENARIOS = {
     'xcrypt_diffpass': scenario_xcrypt_diffpass,
     'xcrypt_wrongpass': scenario_xcrypt_wrongpass,
     'xdecomp_zip': scenario_xdecomp_zip,
+    'xdecomp_slow': scenario_xdecomp_slow,
     'xdecomp_7z': scenario_xdecomp_7z,
     'xdecomp_storetarget': scenario_xdecomp_storetarget,
     'xdecomp_enc7z': scenario_xdecomp_enc7z,
@@ -9290,6 +9302,8 @@ SCENARIO_OPTIONS = {
     # about its fixture matches xdecomp_7z.
     'xdecomp_zip': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                     'ParCheck=auto'] + _SEVENZIP_OPTION,
+    'xdecomp_slow': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes', 'DupeStreamTimeout=5', 'Server1.Connections=1',
+                     'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_7z': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
                    'ParCheck=auto'] + _SEVENZIP_OPTION,
     'xdecomp_storetarget': ['DupeArticleFallback=stream', 'DupeStreamDecompress=yes',
@@ -9535,7 +9549,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'damagedfilestate': [(b'?6=500000:', 20.0, True)], 'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+SCENARIO_DELAY_PROXY = {'xdecomp_slow': [(b'xdzB/', 0.7)], 'damagedfilestate': [(b'?6=500000:', 20.0, True)], 'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
                         'directunpackkeepnointer': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],

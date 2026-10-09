@@ -776,7 +776,7 @@ void StreamRepairController::StartWatchdog(const std::vector<RepairTarget>& targ
 					start += now - lastTick;
 				}
 				lastTick = now;
-				if (m_progressBytes != progress || waiting())
+				if (m_progressBytes != progress || waiting() || m_materializing > 0)
 				{
 					progress = m_progressBytes;
 					lastProgress = now;
@@ -3017,6 +3017,16 @@ void StreamRepairController::ExecDecompressRepair(const char* destDir,
 			"Downloading duplicate %s", *donor.InfoName));
 		m_postInfo->SetStageProgress(0);
 	}
+
+	// downloading and extracting the donor patches no byte for minutes: without
+	// this the stall timeout stopped the rung before it could work (the run caps
+	// still apply)
+	struct MaterializingGuard
+	{
+		std::atomic<int>& counter;
+		explicit MaterializingGuard(std::atomic<int>& c) : counter(c) { counter++; }
+		~MaterializingGuard() { counter--; }
+	} materializingGuard{m_materializing};
 
 	int64 totalBytes = 0;
 	if (!MaterializeDonorSet(donorNzb, donorMembers, donorSet, tempDir,
