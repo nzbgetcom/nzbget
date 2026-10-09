@@ -1876,19 +1876,25 @@ bool StreamRepairController::CompareToFile(DiskFile& file, int64 offset, const c
 
 void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& targets)
 {
-	if (Interrupted())
+	bool interrupted = Interrupted();
+	if (interrupted)
 	{
 		// a reload or shutdown interrupted the pass, which says nothing about
-		// what the duplicates carry: the pass runs again after the restart
+		// what the duplicates carry: the pass runs again after the restart (for
+		// the unfinished files only - the finished ones are marked repaired and
+		// their jobs dropped, so they're credited below, now or never)
 		int unfinished = (int)std::count_if(targets.begin(), targets.end(),
 			[](const RepairTarget& target) { return target.DecodedFileSize <= 0 || !target.Holes.empty(); });
 		m_holesRemain |= unfinished > 0;
 		PrintMessage(Message::mkInfo, "Stream repair interrupted with %i file(s) still incomplete", unfinished);
-		return;
 	}
 
 	for (RepairTarget& target : targets)
 	{
+		if (interrupted && (target.DecodedFileSize <= 0 || !target.Holes.empty()))
+		{
+			continue;
+		}
 		if (target.DecodedFileSize <= 0)
 		{
 			// never sized: no duplicate carried the file (nothing was written)
