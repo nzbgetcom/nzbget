@@ -6,9 +6,9 @@ set(BOOST_URL "https://github.com/boostorg/boost/releases/download/boost-${BOOST
 
 if(NOT BUILD_DEPS_FROM_SOURCE)
 	# Local development: try system Boost first
-	find_package(Boost ${BOOST_VERSION} QUIET COMPONENTS json unit_test_framework)
+	find_package(Boost QUIET COMPONENTS json unit_test_framework)
 	if(Boost_FOUND)
-		message(STATUS "Using system Boost ${BOOST_VERSION} (found via find_package)")
+		message(STATUS "Using system Boost ${Boost_VERSION} (found via find_package)")
 		list(APPEND EXTERNAL_DEPS Boost::headers Boost::json Boost::unit_test_framework)
 		set(BOOST_FROM_SYSTEM 1)
 	endif()
