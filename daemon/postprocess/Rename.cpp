@@ -211,7 +211,15 @@ void RenameController::UpdateRarRenameProgress()
 */
 void RenameController::RegisterRenamedFile(const char* oldFilename, const char* newFilename)
 {
-	if (!m_postInfo->GetNzbInfo()->RenameCompletedFile(oldFilename, newFilename))
+	// under the queue lock: a queue save (another download added, an edit) reads
+	// the completed-file names this changes (the message is printed outside it:
+	// printing takes the lock too)
+	bool found;
+	{
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		found = m_postInfo->GetNzbInfo()->RenameCompletedFile(oldFilename, newFilename);
+	}
+	if (!found)
 	{
 		PrintMessage(Message::mkWarning,
 			"Could not find completed-file entry for %s while renaming to %s",

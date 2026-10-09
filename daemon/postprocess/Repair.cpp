@@ -100,29 +100,38 @@ bool RepairController::PostParChecker::IsParredFile(const char* filename)
 ParChecker::EFileStatus RepairController::PostParChecker::FindFileCrc(const char* filename,
 	uint32* crc, SegmentList* segments)
 {
-	CompletedFile* completedFile = nullptr;
-
-	for (CompletedFile& completedFile2 : *m_postInfo->GetNzbInfo()->GetCompletedFiles())
+	// read under the queue lock and copied out: the par-check runs while other par
+	// volumes complete (appending to the list) or get renamed; the file state is
+	// loaded from disk after the lock is released
+	int id = 0;
+	CompletedFile::EStatus status;
+	bool reprocess;
 	{
-		if (!strcasecmp(completedFile2.GetFilename(), filename))
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		CompletedFile* completedFile = nullptr;
+		for (CompletedFile& completedFile2 : *m_postInfo->GetNzbInfo()->GetCompletedFiles())
 		{
-			completedFile = &completedFile2;
-			break;
+			if (!strcasecmp(completedFile2.GetFilename(), filename))
+			{
+				completedFile = &completedFile2;
+				break;
+			}
 		}
+		if (!completedFile)
+		{
+			return ParChecker::fsUnknown;
+		}
+		id = completedFile->GetId();
+		*crc = completedFile->GetCrc();
+		status = completedFile->GetStatus();
+		reprocess = m_postInfo->GetNzbInfo()->GetReprocess();
 	}
-	if (!completedFile)
+
+	debug("Found completed file: %s, CRC: %.8x, Status: %i", filename, *crc, (int)status);
+
+	if (status == CompletedFile::cfPartial && id > 0 && !reprocess)
 	{
-		return ParChecker::fsUnknown;
-	}
-
-	debug("Found completed file: %s, CRC: %.8x, Status: %i", FileSystem::BaseFileName(completedFile->GetFilename()), completedFile->GetCrc(), (int)completedFile->GetStatus());
-
-	*crc = completedFile->GetCrc();
-
-	if (completedFile->GetStatus() == CompletedFile::cfPartial && completedFile->GetId() > 0 &&
-		!m_postInfo->GetNzbInfo()->GetReprocess())
-	{
-		FileInfo tmpFileInfo(completedFile->GetId());
+		FileInfo tmpFileInfo(id);
 
 		if (!g_DiskState->LoadFileState(&tmpFileInfo, nullptr, true))
 		{
@@ -136,21 +145,28 @@ ParChecker::EFileStatus RepairController::PostParChecker::FindFileCrc(const char
 		}
 	}
 
-	return completedFile->GetStatus() == CompletedFile::cfSuccess ? ParChecker::fsSuccess :
-		completedFile->GetStatus() == CompletedFile::cfFailure &&
-			!m_postInfo->GetNzbInfo()->GetReprocess() ? ParChecker::fsFailure :
-		completedFile->GetStatus() == CompletedFile::cfPartial && segments->size() > 0 &&
-			!m_postInfo->GetNzbInfo()->GetReprocess()? ParChecker::fsPartial :
+	return status == CompletedFile::cfSuccess ? ParChecker::fsSuccess :
+		status == CompletedFile::cfFailure && !reprocess ? ParChecker::fsFailure :
+		status == CompletedFile::cfPartial && segments->size() > 0 && !reprocess ? ParChecker::fsPartial :
 		ParChecker::fsUnknown;
 }
 
 const char* RepairController::PostParChecker::FindFileOrigname(const char* filename)
 {
+	// a copy (per thread, valid until its next call): the list's string can be
+	// replaced by a rename while the caller reads it
+	thread_local std::string origname;
+	GuardedDownloadQueue guard = DownloadQueue::Guard();
 	for (CompletedFile& completedFile : *m_postInfo->GetNzbInfo()->GetCompletedFiles())
 	{
 		if (!strcasecmp(completedFile.GetFilename(), filename))
 		{
-			return completedFile.GetOrigname();
+			if (!completedFile.GetOrigname())
+			{
+				return nullptr;
+			}
+			origname = completedFile.GetOrigname();
+			return origname.c_str();
 		}
 	}
 
