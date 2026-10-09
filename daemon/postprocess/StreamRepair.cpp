@@ -869,6 +869,8 @@ void StreamRepairController::CollectTargets(NzbInfo* nzbInfo, std::vector<Repair
 {
 	// the target's own archive password enables encrypted store-rar target
 	// sets to map (M3); an empty parameter means plain M2 behavior
+	m_hasParFiles = nzbInfo->GetParSize() > 0;
+
 	NzbParameter* parameter = nzbInfo->GetParameters()->Find("*Unpack:Password");
 	if (parameter)
 	{
@@ -1900,15 +1902,28 @@ void StreamRepairController::ReportRemainingHoles(std::vector<RepairTarget>& tar
 			// never sized: no duplicate carried the file (nothing was written)
 			m_holesRemain = true;
 			PrintMessage(Message::mkInfo,
-				"Stream repair of %s: no duplicate could supply the file (left to par-repair)",
-				*target.Filename);
+				"Stream repair of %s: no duplicate could supply the file (%s)",
+				*target.Filename, m_hasParFiles ? "left to par-repair" : "no par2 files to repair it");
 		}
 		else if (!target.Holes.empty())
 		{
 			m_holesRemain = true;
+			int64 missing = DupeStreamRepair::TotalSize(target.Holes);
 			PrintMessage(Message::mkInfo,
-				"Stream repair of %s: %.1f MB still missing after stream repair (left to par-repair)",
-				*target.Filename, DupeStreamRepair::TotalSize(target.Holes) / 1024.0 / 1024.0);
+				"Stream repair of %s: %.1f MB still missing after stream repair (%s)",
+				*target.Filename, missing / 1024.0 / 1024.0,
+				m_hasParFiles ? "left to par-repair" : "no par2 files to repair it");
+			// far more missing than the failed articles held: the yEnc headers
+			// declare a larger file than the nzb's articles add up to - the nzb
+			// lists only part of the file, and no article retry can fix that
+			if (missing > target.EncodedSize + target.EncodedSize / 10 + 1024 * 1024)
+			{
+				PrintMessage(Message::mkWarning,
+					"%s is %.1f MB according to its articles, but the nzb's articles cover only "
+					"%.1f MB of it: the nzb is incomplete",
+					*target.Filename, target.DecodedFileSize / 1024.0 / 1024.0,
+					(target.DecodedFileSize - missing) / 1024.0 / 1024.0);
+			}
 		}
 		else
 		{

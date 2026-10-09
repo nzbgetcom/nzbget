@@ -8922,6 +8922,31 @@ def scenario_web404warn(daemon, t):
     return ('web404warn', ok, 'missing=%d favicon=%d' % (missing, favicon))
 
 
+def scenario_partialnzb(daemon, t):
+    """An nzb listing only the first half of a file's articles (no par2, no
+    duplicate): one article fails, stream repair finds nothing to repair from,
+    and its log says what's wrong. The yEnc headers declare the full size, so
+    the missing figure is the absent half, not the failed article: a warning
+    names the nzb as incomplete, and with no par2 nothing claims "left to
+    par-repair"."""
+    import re as _re
+    size, seg = 4_000_000, 200_000
+    data = _payload(size, 12436)
+    pp = _place_copy(t, 'pnA', data, 'movie.mkv')
+    nzb = build_nzb(pp, 'movie.mkv', size, seg, {3})
+    # drop parts 11..20 from the nzb
+    nzb = _re.sub(r'<segment bytes="\d+" number="(1[1-9]|20)">[^<]*</segment>\n?', '', nzb)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelPN', nzb, False, 'pn-key', 100)
+    h = daemon.wait_history(api, 'RelPN')
+    missing = _grep_log(t, 'still missing after stream repair (no par2 files to repair it)')
+    parclaim = _grep_log(t, 'left to par-repair')
+    incomplete = _grep_log(t, "the nzb is incomplete")
+    ok = missing == 1 and parclaim == 0 and incomplete == 1
+    return ('partialnzb', ok, 'status=%s missing=%d parclaim=%d incomplete=%d'
+            % (h['Status'], missing, parclaim, incomplete))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9348,6 +9373,7 @@ SCENARIOS = {
     'webdirget': scenario_webdirget,
     'webetag': scenario_webetag,
     'web404warn': scenario_web404warn,
+    'partialnzb': scenario_partialnzb,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
@@ -9445,6 +9471,7 @@ SCENARIO_OPTIONS = {
     'rejectnextserver': ['DupeArticleFallback=article', 'ArticleRetries=0'],
     'nzbgapborrow': ['DupeArticleFallback=article'],
     'sidefilenorepair': ['DupeArticleFallback=stream'],
+    'partialnzb': ['DupeArticleFallback=stream'],
     'finaldeletemidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
     'finaldeleterestart': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe', 'ArticleCache=8192', 'ContinuePartial=yes', 'DirectUnpack=yes'],
     'restartmidway': ['DupeArticleFallback=live', 'DirectRename=yes', 'HealthCheck=dupe'],

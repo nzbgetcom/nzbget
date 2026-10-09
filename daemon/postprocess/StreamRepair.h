@@ -285,6 +285,7 @@ private:
 	int64 m_recoveredFailedSize = 0;
 	int64 m_recoveredFailedParSize = 0;
 	bool m_holesRemain = false;
+	bool m_hasParFiles = false;
 	std::vector<RepairTarget> m_targets;
 
 	// a donor whose files keep failing identity verification is almost
