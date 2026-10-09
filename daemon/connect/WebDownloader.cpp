@@ -565,7 +565,10 @@ void WebDownloader::ParseRedirect(const char* location)
 		}
 		newLocation = urlBuf;
 	}
-	detail("URL %s redirected to %s", *m_url, newLocation);
+	// without the query: it carries api keys and passwords (indexer links do),
+	// and this went into the log
+	auto noQuery = [](const char* url) { return std::string(url, strcspn(url, "?")); };
+	detail("URL %s redirected to %s", noQuery(m_url).c_str(), noQuery(newLocation).c_str());
 	SetUrl(newLocation);
 }
 

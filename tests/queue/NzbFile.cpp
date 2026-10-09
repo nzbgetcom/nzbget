@@ -471,4 +471,28 @@ BOOST_AUTO_TEST_CASE(DeclaredTailGuardTest)
 	BOOST_CHECK_EQUAL(parse("a.rar", 200, {{1, 100}}), 1);
 }
 
+BOOST_AUTO_TEST_CASE(MessageIdControlCharsTest)
+{
+	// a line break in a message-id would send a command of the nzb's choosing
+	const fs::path tempNzb = fs::temp_directory_path() / "nzbget_test_msgid.nzb";
+	{
+		std::ofstream out(tempNzb);
+		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			<< "<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
+			<< "<file poster=\"p\" date=\"1\" subject=\"&quot;a.rar&quot; yEnc (1/1)\">\n"
+			<< "<groups><group>alt.binaries.test</group></groups>\n<segments>\n"
+			<< "<segment bytes=\"100\" number=\"1\">a&#13;&#10;QUIT&#13;&#10;b@test</segment>\n"
+			<< "</segments>\n</file>\n</nzb>\n";
+	}
+	NzbFile nzbFile(tempNzb.string().c_str(), "");
+	BOOST_REQUIRE(nzbFile.Parse());
+	auto nzbInfo = nzbFile.DetachNzbInfo();
+	fs::remove(tempNzb);
+	FileInfo* fileInfo = nzbInfo->GetFileList()->front().get();
+	BOOST_REQUIRE_EQUAL(fileInfo->GetArticles()->size(), 1);
+	std::string id = fileInfo->GetArticles()->front()->GetMessageId();
+	BOOST_CHECK(id.find('\r') == std::string::npos && id.find('\n') == std::string::npos);
+	BOOST_CHECK_EQUAL(id, "<a__QUIT__b@test>");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

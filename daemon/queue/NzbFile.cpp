@@ -555,8 +555,18 @@ void NzbFile::Parse_EndElement(const char *name)
 			return;
 		}
 
-		// Get the #text part
+		// Get the #text part; it goes into NNTP commands as is, so a line break
+		// in it would send a command of the nzb's choosing on our connection.
+		// Spaces and control characters can't be in a message-id: replaced, the
+		// article is simply not found
 		BString<1024> id("<%s>", *m_tagContent);
+		for (char* p = id; *p; p++)
+		{
+			if ((unsigned char)*p <= ' ' || *p == 0x7f)
+			{
+				*p = '_';
+			}
+		}
 		m_article->SetMessageId(id);
 		m_article = nullptr;
 	}

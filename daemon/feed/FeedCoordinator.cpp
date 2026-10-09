@@ -748,7 +748,9 @@ void FeedCoordinator::CleanupHistory()
 		{
 			if (feedHistoryInfo.GetLastSeen() < borderDate)
 			{
-				detail("Deleting %s from feed history", feedHistoryInfo.GetUrl());
+				// without the query: feed item links carry api keys
+				detail("Deleting %.*s from feed history",
+					(int)strcspn(feedHistoryInfo.GetUrl(), "?"), feedHistoryInfo.GetUrl());
 				m_save = true;
 				return true;
 			}
