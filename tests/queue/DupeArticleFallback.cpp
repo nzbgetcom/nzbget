@@ -114,18 +114,18 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackRejectsDamagedPar2BlockSizeTest)
 	// a sound block size: the borrowed bytes don't match the (zero) checksum
 	writePar(100);
 	std::vector<ArticleInfo*> mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
-		(dir / "f.bin").string().c_str());
+		(dir / "f.bin").string().c_str(), dir.string().c_str(), target->GetFilename());
 	BOOST_CHECK_EQUAL(mismatches.size(), 1);
 
 	writePar(1ULL << 50);
 	BOOST_CHECK_NO_THROW(mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
-		(dir / "f.bin").string().c_str()));
+		(dir / "f.bin").string().c_str(), dir.string().c_str(), target->GetFilename()));
 	BOOST_CHECK(mismatches.empty());
 
 	// an article reaching past the end of the file has no block to check
 	article->SetSegmentOffset(400);
 	BOOST_CHECK_NO_THROW(mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
-		(dir / "f.bin").string().c_str()));
+		(dir / "f.bin").string().c_str(), dir.string().c_str(), target->GetFilename()));
 	fs::remove_all(dir);
 }
 
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(DupeArticleFallbackPar2CheckUsesTheFilesOwnSetTest)
 	{
 		std::ofstream(dir / "set.par2", std::ios::binary | std::ios::trunc).write(par.data(), par.size());
 		std::vector<ArticleInfo*> mismatches = DupeArticleFallback::BorrowedPar2Mismatches(target.get(),
-			(dir / "f.bin").string().c_str());
+			(dir / "f.bin").string().c_str(), dir.string().c_str(), target->GetFilename());
 		BOOST_CHECK(mismatches.empty());
 	}
 	fs::remove_all(dir);

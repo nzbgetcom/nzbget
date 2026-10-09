@@ -198,7 +198,8 @@ public:
 	 * block checksums of its par2 set (the par2 files already in the download's
 	 * directory); none if no par2 data describes the file. Reads the disk: call
 	 * without the queue lock, on a file no downloader writes any more */
-	static std::vector<ArticleInfo*> BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path);
+	static std::vector<ArticleInfo*> BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path,
+		const char* destDir, const char* filename);
 	static bool SegmentAligned(FileInfo* fileInfo, ArticleInfo* articleInfo);
 
 	/* Whole-file decoded-boundary check, independent of the (non-persisted)

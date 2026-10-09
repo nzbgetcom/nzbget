@@ -993,15 +993,23 @@ void QueueCoordinator::ArticleCompleted(ArticleDownloader* articleDownloader)
 		fileInfo->SetPartialChanged(false);
 
 		// the borrowed articles must hold the right bytes: checked against the par2
-		// block checksums of the file (B40), outside the lock - it reads the disk
-		std::string path = fileInfo->GetOutputFilename();
+		// block checksums of the file (B40), outside the lock - it reads the disk.
+		// The names are copied under the lock first: a rename (DirectRename, an
+		// edit of the nzb) replaces them meanwhile
+		std::string path, destDir, filename;
+		{
+			GuardedDownloadQueue guard = DownloadQueue::Guard();
+			path = fileInfo->GetOutputFilename();
+			destDir = fileInfo->GetNzbInfo()->GetDestDir();
+			filename = fileInfo->GetFilename() ? fileInfo->GetFilename() : "";
+		}
 		if (path.empty() || !FileSystem::FileExists(path.c_str()))
 		{
-			path = BString<1024>("%s%c%s", fileInfo->GetNzbInfo()->GetDestDir(), PATH_SEPARATOR,
-				fileInfo->GetFilename()).Str();
+			path = destDir + PATH_SEPARATOR + filename;
 		}
 		std::vector<ArticleInfo*> wrong = g_Options->GetDupeArticleFallback() != Options::dafNone ?
-			DupeArticleFallback::BorrowedPar2Mismatches(fileInfo, path.c_str()) : std::vector<ArticleInfo*>();
+			DupeArticleFallback::BorrowedPar2Mismatches(fileInfo, path.c_str(), destDir.c_str(), filename.c_str()) :
+			std::vector<ArticleInfo*>();
 
 		GuardedDownloadQueue downloadQueue = DownloadQueue::Guard();
 		if (!wrong.empty())

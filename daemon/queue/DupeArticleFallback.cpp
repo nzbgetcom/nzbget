@@ -468,7 +468,8 @@ std::string Hash16kOf(const char* path)
 
 }
 
-std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path)
+std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* fileInfo, const char* path,
+	const char* destDir, const char* filename)
 {
 	std::vector<ArticleInfo*> mismatches;
 	ArticleList* articles = fileInfo->GetArticles();
@@ -485,7 +486,7 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 	}
 
 	uint64 blockSize = 0;
-	std::map<std::string, Par2FileSums> files = LoadPar2Sums(fileInfo->GetNzbInfo()->GetDestDir(), blockSize);
+	std::map<std::string, Par2FileSums> files = LoadPar2Sums(destDir, blockSize);
 	if (files.empty())
 	{
 		return mismatches;
@@ -497,7 +498,7 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 	{
 		if ((int64)entry.second.length == fileSize && !entry.second.crcs.empty() &&
 			(!strcasecmp(entry.second.hash16k.c_str(), hash16k.c_str()) ||
-			 !strcmp(entry.second.name.c_str(), fileInfo->GetFilename())))
+			 !strcmp(entry.second.name.c_str(), filename)))
 		{
 			sums = &entry.second;
 			break;
