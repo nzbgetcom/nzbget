@@ -177,7 +177,7 @@ jobs:
           sudo pkg_add git cmake libxml boost unrar p7zip
           mkdir build
           cd build
-          cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+          cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
           ctest -C Release
 
@@ -304,7 +304,7 @@ jobs:
           sudo pkg_add git cmake libxml boost
           mkdir build
           cd build
-          cmake .. -DCURSES_INCLUDE_PATH=/usr/include
+          cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
 
   build-macos-brew-head:
