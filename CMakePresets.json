@@ -223,6 +223,110 @@
         "ENABLE_TESTS": "OFF",
         "BUILD_DEPS_FROM_SOURCE": "ON"
       }
+    },
+    {
+      "name": "ci-android-arm64",
+      "displayName": "CI Android arm64",
+      "description": "Android arm64-v8a CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-android-arm64",
+      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_ARCH": "arm64",
+        "ANDROID_API_LEVEL": "21",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-android-armv7",
+      "displayName": "CI Android armv7",
+      "description": "Android armeabi-v7a CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-android-armv7",
+      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_ARCH": "armv7",
+        "ANDROID_API_LEVEL": "21",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-android-x86_64",
+      "displayName": "CI Android x86_64",
+      "description": "Android x86_64 CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-android-x86_64",
+      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_ARCH": "x86_64",
+        "ANDROID_API_LEVEL": "21",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-android-x86",
+      "displayName": "CI Android x86",
+      "description": "Android i686 CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/ci-android-x86",
+      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ANDROID_ARCH": "x86",
+        "ANDROID_API_LEVEL": "21",
+        "ENABLE_LTO": "OFF",
+        "ENABLE_TESTS": "OFF",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-android-debug-arm64",
+      "displayName": "CI Android Debug arm64",
+      "description": "Android arm64 Debug CI build",
+      "inherits": "ci-android-arm64",
+      "binaryDir": "${sourceDir}/build/ci-android-debug-arm64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ci-android-debug-armv7",
+      "displayName": "CI Android Debug armv7",
+      "description": "Android armv7 Debug CI build",
+      "inherits": "ci-android-armv7",
+      "binaryDir": "${sourceDir}/build/ci-android-debug-armv7",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ci-android-debug-x86_64",
+      "displayName": "CI Android Debug x86_64",
+      "description": "Android x86_64 Debug CI build",
+      "inherits": "ci-android-x86_64",
+      "binaryDir": "${sourceDir}/build/ci-android-debug-x86_64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "ci-android-debug-x86",
+      "displayName": "CI Android Debug x86",
+      "description": "Android x86 Debug CI build",
+      "inherits": "ci-android-x86",
+      "binaryDir": "${sourceDir}/build/ci-android-debug-x86",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [
@@ -305,6 +409,46 @@
       "name": "ci-macos-x64",
       "configurePreset": "ci-macos-x64",
       "configuration": "Release"
+    },
+    {
+      "name": "ci-android-arm64",
+      "configurePreset": "ci-android-arm64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-android-armv7",
+      "configurePreset": "ci-android-armv7",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-android-x86_64",
+      "configurePreset": "ci-android-x86_64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-android-x86",
+      "configurePreset": "ci-android-x86",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-android-debug-arm64",
+      "configurePreset": "ci-android-debug-arm64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-android-debug-armv7",
+      "configurePreset": "ci-android-debug-armv7",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-android-debug-x86_64",
+      "configurePreset": "ci-android-debug-x86_64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-android-debug-x86",
+      "configurePreset": "ci-android-debug-x86",
+      "configuration": "Debug"
     }
   ],
   "testPresets": [

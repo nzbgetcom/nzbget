@@ -30,6 +30,14 @@ if(USE_SANITIZERS)
 	apply_sanitizers(hasher)
 endif()
 
+if(ANDROID AND (CMAKE_SIZEOF_VOID_P EQUAL 4 OR ANDROID_ARCH MATCHES "armv7|x86"))
+	foreach(target par2-turbo gf16 hasher)
+		if(TARGET ${target})
+			target_compile_options(${target} PRIVATE -U_FILE_OFFSET_BITS -D_FILE_OFFSET_BITS=32)
+		endif()
+	endforeach()
+endif()
+
 # The upstream project provides targets: par2-turbo, gf16, hasher
 # Create a convenient alias matching the existing interface
 add_library(par2-turbo::par2-turbo INTERFACE IMPORTED GLOBAL)
