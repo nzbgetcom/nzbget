@@ -66,23 +66,26 @@ HttpGet::Reply HttpGet::Fetch(const std::string& url, const std::string& infoNam
 		}
 		g_active.insert(&downloader);
 	}
-	// the deadline: a watchdog stops the download when it passes (F13)
+	// a watchdog stops the download when the deadline passes (F13) or the file
+	// grows past maxBytes: the size was checked only once all of it was on
+	// disk, and a server that kept sending (or a gzip bomb) filled TempDir
 	std::mutex doneMutex;
 	std::condition_variable doneCond;
 	bool done = false;
-	std::thread watchdog;
-	if (deadlineMs > 0)
-	{
-		watchdog = std::thread([&]()
+	std::thread watchdog([&]()
+		{
+			std::unique_lock<std::mutex> lock(doneMutex);
+			while (!done)
 			{
-				std::unique_lock<std::mutex> lock(doneMutex);
-				long long left = deadlineMs - DonorHealth::NowMs();
-				if (left <= 0 || !doneCond.wait_for(lock, std::chrono::milliseconds(left), [&]() { return done; }))
+				long long left = deadlineMs > 0 ? deadlineMs - DonorHealth::NowMs() : 250;
+				if (left <= 0 || FileSystem::FileSize(path.c_str()) > (int64)maxBytes)
 				{
 					downloader.Stop();
+					return;
 				}
-			});
-	}
+				doneCond.wait_for(lock, std::chrono::milliseconds(std::min(left, 250LL)), [&]() { return done; });
+			}
+		});
 	WebDownloader::EStatus status = downloader.DownloadWithRedirects(5);
 	if (watchdog.joinable())
 	{

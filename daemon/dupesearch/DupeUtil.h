@@ -36,8 +36,13 @@ namespace DupeUtil
 		{
 			std::ofstream file(fs::u8path(temp), std::ios::binary | std::ios::trunc);
 			file.write(data.data(), data.size());
-			if (!file.good())
+			// checked after the close: a small file is still in the stream's
+			// buffer before it, and a failed write (disk full) went unseen and
+			// the good file was replaced by an empty one
+			file.close();
+			if (file.fail())
 			{
+				FileSystem::DeleteFile(temp.c_str());
 				return false;
 			}
 		}

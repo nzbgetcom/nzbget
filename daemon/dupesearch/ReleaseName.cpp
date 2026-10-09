@@ -67,7 +67,9 @@ bool NotAGroup(const std::string& word)
 
 std::string ReleaseName::Clean(const std::string& name)
 {
-	std::string text = Trim(name, " \t\r\n");
+	// std::regex recurses once per repeated character: an indexer's title of
+	// a megabyte ran the thread out of stack. No release name is this long
+	std::string text = Trim(name.substr(0, MaxNameLength), " \t\r\n");
 
 	for (;;)
 	{

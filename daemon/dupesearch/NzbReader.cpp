@@ -48,10 +48,29 @@ std::string NameOfSubject(const std::string& subject)
 	return Trim(subject);
 }
 
+bool ValidMessageId(const std::string& id)
+{
+	if (id.empty() || id.size() > 250)
+	{
+		return false;
+	}
+	for (size_t i = 0; i < id.size(); i++)
+	{
+		unsigned char ch = (unsigned char)id[i];
+		bool edge = i == 0 || i + 1 == id.size();
+		if (ch <= ' ' || ch == 0x7f || ((ch == '<' || ch == '>') && !edge))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
 bool IsParName(const std::string& name)
 {
 	static const std::regex regex("\\.par2$|\\.vol\\d+[+-]\\d+", std::regex::icase);
-	return std::regex_search(name, regex);
+	// the end is what counts; a subject of any length isn't run through a regex
+	return std::regex_search(name.size() > 512 ? name.substr(name.size() - 512) : name, regex);
 }
 
 class Reader : public XmlReader::Handler
@@ -90,8 +109,15 @@ public:
 		}
 		else if (name == "segment" && m_inSegment)
 		{
-			sizes[m_name] += m_segmentBytes;
-			ids.insert(Trim(m_text));
+			// a message-id with a line break, a space or brackets inside would
+			// write more than one command into the STAT batch: the replies came
+			// out of step on a connection that went back to the pool
+			std::string id = Trim(m_text);
+			if (ValidMessageId(id))
+			{
+				sizes[m_name] += m_segmentBytes;
+				ids.insert(id);
+			}
 			m_inSegment = false;
 		}
 		else if (name == "group" && m_inFile)

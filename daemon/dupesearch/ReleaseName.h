@@ -37,6 +37,8 @@
 class ReleaseName
 {
 public:
+	// longer input is cut before any regex sees it (std::regex recursion)
+	static constexpr size_t MaxNameLength = 512;
 	struct Attrs
 	{
 		std::set<std::string> resolution;

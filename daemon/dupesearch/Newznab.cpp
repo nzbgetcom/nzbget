@@ -28,6 +28,7 @@
 #include <thread>
 #include "Newznab.h"
 #include "HttpGet.h"
+#include "DonorHealth.h"
 #include "ReleaseName.h"
 #include "XmlReader.h"
 #include "Log.h"
@@ -192,6 +193,12 @@ bool Newznab::ParseResponse(const std::string& xml, Page& page)
 
 time_t Newznab::ParseDate(const std::string& text)
 {
+	// no date is this long, and std::regex recurses per character (a run of a
+	// megabyte of spaces from an indexer ran the thread out of stack)
+	if (text.size() > 64)
+	{
+		return 0;
+	}
 	// ISO 8601: 2025-06-10T01:10:05Z, 2025-06-10T03:10:05+02:00, 2025-06-10 01:10:05 (UTC)
 	static const std::regex iso(
 		"^\\s*(\\d{4})-(\\d{2})-(\\d{2})[Tt ](\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?\\s*(Z|z|[+-]\\d{2}:?\\d{2})?\\s*$");
@@ -355,7 +362,8 @@ std::string Newznab::Mask(const std::string& text)
 {
 	static const std::regex apiKey("(apikey=)[^&\\s]+", std::regex::icase);
 	static const std::regex credentials("//[^/@\\s:]+:[^/@\\s]+@");
-	std::string masked = std::regex_replace(text, apiKey, "$1***");
+	// cut first: std::regex recurses per character of a match
+	std::string masked = std::regex_replace(text.substr(0, 1024), apiKey, "$1***");
 	return std::regex_replace(masked, credentials, "//***@");
 }
 
@@ -389,12 +397,15 @@ std::vector<Newznab::Result> Newznab::Search(const std::string& base, const std:
 				params.emplace_back("limit", std::to_string(PageSize));
 				params.emplace_back("offset", std::to_string(page * PageSize));
 				std::string infoName = "DupeSearch " + label + " page " + std::to_string(page + 1);
-				HttpGet::Reply reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024);
+				long long deadlineMs = DonorHealth::NowMs() + (long long)(deadline - Util::CurrentTime()) * 1000;
+				HttpGet::Reply reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024,
+					std::max(1LL, deadlineMs));
 				// no answer at all (a dropped connection) is asked once more: one
 				// lost query lost every result only it had
 				if (!reply.ok && reply.status == 0 && !HttpGet::Stopped() && Util::CurrentTime() < deadline)
 				{
-					reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024);
+					reply = HttpGet::Fetch(BuildUrl(base, params, apiKey), infoName, 16 * 1024 * 1024,
+						std::max(1LL, deadlineMs));
 				}
 				pages++;
 

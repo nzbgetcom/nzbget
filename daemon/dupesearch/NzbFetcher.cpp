@@ -25,6 +25,7 @@
 #include "NzbFetcher.h"
 #include "DupeUtil.h"
 #include "HttpGet.h"
+#include "DonorHealth.h"
 #include "FileSystem.h"
 #include "Log.h"
 #include "Util.h"
@@ -131,7 +132,10 @@ NzbFetcher::Fetched NzbFetcher::Fetch(const Newznab::Result& listing, time_t dea
 	for (int attempt = 0; attempt <= retries; attempt++)
 	{
 		std::string why;
-		HttpGet::Reply reply = HttpGet::Fetch(listing.link, "DupeSearch nzb of " + listing.indexer, MaxNzbBytes);
+		// the deadline ends a download that drips, not only the retries
+		long long deadlineMs = DonorHealth::NowMs() + (long long)(deadline - Util::CurrentTime()) * 1000;
+		HttpGet::Reply reply = HttpGet::Fetch(listing.link, "DupeSearch nzb of " + listing.indexer, MaxNzbBytes,
+			std::max(1LL, deadlineMs));
 		if (reply.ok)
 		{
 			status = 0;
@@ -157,8 +161,14 @@ NzbFetcher::Fetched NzbFetcher::Fetch(const Newznab::Result& listing, time_t dea
 		info("DupeSearch: the nzb-file of %s from %s failed (attempt %i): %s",
 			listing.title.c_str(), listing.indexer.c_str(), attempt + 1, why.c_str());
 
-		if (attempt < retries && Util::CurrentTime() + RetryDelaySec < deadline)
+		if (attempt < retries)
 		{
+			// no time for the pause: no more attempts (they went out at once,
+			// each one an indexer grab, and a 429 was asked again unpaused)
+			if (Util::CurrentTime() + RetryDelaySec >= deadline)
+			{
+				break;
+			}
 			for (int waited = 0; waited < RetryDelaySec * 10 && !HttpGet::Stopped(); waited++)
 			{
 				Util::Sleep(100);

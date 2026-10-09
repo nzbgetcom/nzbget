@@ -26,6 +26,8 @@
 #include <sstream>
 #include "Newznab.h"
 #include "XmlReader.h"
+#include "NzbReader.h"
+#include "ReleaseName.h"
 
 namespace fs = std::filesystem;
 
@@ -215,6 +217,38 @@ BOOST_AUTO_TEST_CASE(NewznabBuildUrlAndMaskTest)
 	BOOST_CHECK_EQUAL(Newznab::Mask("http://h/api?APIKEY=SECRET"), "http://h/api?APIKEY=***");
 	BOOST_CHECK_EQUAL(Newznab::Mask("http://u:p@h/jsonrpc /admin:pw/jsonrpc"), "http://***@h/jsonrpc /admin:pw/jsonrpc");
 	BOOST_CHECK_EQUAL(Newznab::Mask("nothing to hide"), "nothing to hide");
+}
+
+BOOST_AUTO_TEST_CASE(HostileLengthsTest)
+{
+	// std::regex recurses once per repeated character: indexer strings of a
+	// megabyte ran the thread out of stack. They're cut or refused first
+	std::string spaces(1000000, ' ');
+	BOOST_CHECK_EQUAL(Newznab::ParseDate(spaces + "2025-06-10T01:10:05Z"), 0);
+	std::string longKey = "apikey=" + std::string(1000000, 'k');
+	BOOST_CHECK(Newznab::Mask(longKey).size() <= 1024);
+	std::string title = "Some.Release.2025.1080p-rakuv" + std::string(1000000, 'a');
+	BOOST_CHECK(ReleaseName::Clean(title).size() <= ReleaseName::MaxNameLength);
+	ReleaseName::Parse(title);
+}
+
+BOOST_AUTO_TEST_CASE(NzbReaderMessageIdTest)
+{
+	// a message-id with a line break would write a second command into the
+	// STAT batch: it isn't taken
+	std::string nzb =
+		"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+		"<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
+		"<file poster=\"p\" date=\"1\" subject=\"&quot;a.rar&quot; yEnc (1/3)\">\n"
+		"<groups><group>alt.binaries.test</group></groups>\n<segments>\n"
+		"<segment bytes=\"100\" number=\"1\">good1@test</segment>\n"
+		"<segment bytes=\"100\" number=\"2\">bad&#13;&#10;QUIT&#13;&#10;x@test</segment>\n"
+		"<segment bytes=\"100\" number=\"3\">bad space@test</segment>\n"
+		"</segments>\n</file>\n</nzb>\n";
+	NzbSummary info;
+	BOOST_REQUIRE(NzbReader::Parse(nzb, info));
+	BOOST_REQUIRE_EQUAL(info.messageIds.size(), 1);
+	BOOST_CHECK_EQUAL(info.messageIds[0], "good1@test");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
