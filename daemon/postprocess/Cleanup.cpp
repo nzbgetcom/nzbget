@@ -76,6 +76,12 @@ void MoveController::Run()
 				m_postInfo->GetNzbInfo()->SetFinalDir("");
 				m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msSuccess);
 			}
+			else if (IsStopped())
+			{
+				// a shutdown stopped it: the move runs again after the restart (as a
+				// failure it was skipped then, the files split between both folders)
+				PrintMessage(Message::mkInfo, "%s interrupted, resumes after the restart", *infoName);
+			}
 			else
 			{
 				PrintMessage(Message::mkError, "%s failed", *infoName);
