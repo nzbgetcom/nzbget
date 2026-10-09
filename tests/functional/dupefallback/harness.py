@@ -8787,6 +8787,22 @@ def scenario_failedloadfileinfos(daemon, t):
     return ('failedloadfileinfos', ok, 'queued=%s files=%d named_with_size=%d' % (bool(group), len(files), len(named)))
 
 
+def scenario_clientthreads(daemon, t):
+    """nzbget -L G (the command-line client) while a download runs: the group's
+    active downloads were never summed from its files on the client, so the
+    "N threads" note never showed. It shows now."""
+    import subprocess as _sp
+    data = _payload(2_000_000, 12232)
+    pp = _place_copy(t, 'ctA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelCT', build_nzb(pp, 'ct.bin', len(data), 200_000, set()), False, 'ct-key', 100)
+    time.sleep(2)
+    out = _sp.run([t.nzbget, '-c', t.path(daemon.conf_rel), '-L', 'G'], capture_output=True, text=True, timeout=30).stdout
+    line = next((l for l in out.splitlines() if 'RelCT' in l), '')
+    ok = 'thread' in line
+    return ('clientthreads', ok, 'line=%r' % line[:160])
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9185,6 +9201,7 @@ SCENARIOS = {
     'damagedfilestate': scenario_damagedfilestate,
     'staletempstate': scenario_staletempstate,
     'failedloadfileinfos': scenario_failedloadfileinfos,
+    'clientthreads': scenario_clientthreads,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9586,7 +9603,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'xdecomp_slow': [(b'xdzB/', 0.7)], 'damagedfilestate': [(b'?6=500000:', 20.0, True)], 'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+SCENARIO_DELAY_PROXY = {'clientthreads': [(b'ctA/', 3.0)], 'xdecomp_slow': [(b'xdzB/', 0.7)], 'damagedfilestate': [(b'?6=500000:', 20.0, True)], 'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
                         'directunpackkeepnointer': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],

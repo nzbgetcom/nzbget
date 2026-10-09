@@ -179,7 +179,7 @@ bool Frontend::RequestMessages()
 		return false;
 	}
 
-	SNzbLogRequest LogRequest;
+	SNzbLogRequest LogRequest = {};
 	InitMessageBase(&LogRequest.m_messageBase, rrLog, sizeof(LogRequest));
 	LogRequest.m_lines = htonl(m_neededLogEntries);
 	if (m_neededLogEntries == 0)
@@ -247,7 +247,7 @@ bool Frontend::RequestFileList()
 		return false;
 	}
 
-	SNzbListRequest ListRequest;
+	SNzbListRequest ListRequest = {};
 	InitMessageBase(&ListRequest.m_messageBase, rrList, sizeof(ListRequest));
 	ListRequest.m_fileList = htonl(m_fileList);
 	ListRequest.m_serverState = htonl(m_summary);

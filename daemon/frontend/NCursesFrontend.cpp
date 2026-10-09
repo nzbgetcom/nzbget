@@ -304,6 +304,9 @@ void NCursesFrontend::CalcWindowSizes()
 #else
 	getmaxyx(stdscr, nrRows, nrColumns);
 #endif
+	// the line buffers hold MAX_SCREEN_WIDTH columns (a wider terminal wrote past
+	// them), and messages wrap at the width less 8 (a divisor of zero at 8)
+	nrColumns = std::clamp(nrColumns, 9, MAX_SCREEN_WIDTH);
 	if (nrRows != m_screenHeight || nrColumns != m_screenWidth)
 	{
 #ifdef WIN32
