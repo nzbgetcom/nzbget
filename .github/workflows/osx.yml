@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUILD_TYPES: 'release'
+  BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
   LLVM_TAG: llvmorg-19.1.7
 
@@ -240,15 +240,26 @@ jobs:
         mkdir -p "$DAEMON_REL"
         lipo -create "NZBGet.x64.app/$DAEMON_REL/nzbget" "NZBGet.arm64.app/$DAEMON_REL/nzbget" -output "$DAEMON_REL/nzbget"
         lipo -create "NZBGet.x64.app/$DAEMON_REL/unrar" "NZBGet.arm64.app/$DAEMON_REL/unrar" -output "$DAEMON_REL/unrar"
+        lipo -thin x86_64 "NZBGet.x64.app/$DAEMON_REL/7za" -output "$DAEMON_REL/7za_x64"
+        lipo -thin arm64 "NZBGet.arm64.app/$DAEMON_REL/7za" -output "$DAEMON_REL/7za_arm64"
+        lipo -create "$DAEMON_REL/7za_x64" "$DAEMON_REL/7za_arm64" -output "$DAEMON_REL/7za"
+        rm -f "$DAEMON_REL/7za_x64" "$DAEMON_REL/7za_arm64"
+        lipo -create "NZBGet.x64.app/Contents/MacOS/NZBGet" "NZBGet.arm64.app/Contents/MacOS/NZBGet" -output "NZBGet_universal"
         
         # Use arm64 app as base, replace binaries
         mv NZBGet.arm64.app NZBGet.app
         mv "$DAEMON_REL/nzbget" "NZBGet.app/$DAEMON_REL/nzbget"
         mv "$DAEMON_REL/unrar" "NZBGet.app/$DAEMON_REL/unrar"
+        mv "$DAEMON_REL/7za" "NZBGet.app/$DAEMON_REL/7za"
+        mv "NZBGet_universal" "NZBGet.app/Contents/MacOS/NZBGet"
+        # Use Info.plist from x64 build to preserve LSMinimumSystemVersion = 10.14
+        cp "NZBGet.x64.app/Contents/Info.plist" "NZBGet.app/Contents/Info.plist"
         
         # Verify
         lipo -info "NZBGet.app/$DAEMON_REL/nzbget"
         lipo -info "NZBGet.app/$DAEMON_REL/unrar"
+        lipo -info "NZBGet.app/$DAEMON_REL/7za"
+        lipo -info "NZBGet.app/Contents/MacOS/NZBGet"
         
         # Create universal zip with .app bundle
         mkdir -p "$GITHUB_WORKSPACE/build/dist"
@@ -367,10 +378,17 @@ jobs:
         name: nzbget-macos-installers-universal-signed
         path: nzbget-macos-installers-universal-signed
 
+    - name: Download x64 build artifacts
+      uses: actions/download-artifact@v8
+      with:
+        name: nzbget-macos-installers-x64
+        path: nzbget-macos-installers-x64
+
     - name: Combine artifacts
       run: |
         mkdir -p nzbget-osx-installers
-        cp -v nzbget-macos-installers-universal-signed/* nzbget-osx-installers/
+        cp -v nzbget-macos-installers-universal-signed/*.dmg nzbget-osx-installers/
+        cp -v nzbget-macos-installers-x64/*-x64*.zip nzbget-osx-installers/
 
     - name: Upload combined build artifacts
       uses: actions/upload-artifact@v7
