@@ -68,7 +68,7 @@ private:
 	CString m_forwardedFor;
 	CString m_oldETag;
 	bool m_keepAlive = false;
-	std::hash<std::string> m_hasher;
+	std::hash<std::string_view> m_hasher;
 
 	void Dispatch();
 	void SendAuthResponse();

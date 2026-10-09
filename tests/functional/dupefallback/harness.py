@@ -8871,6 +8871,36 @@ def scenario_webdirget(daemon, t):
     return ('webdirget', ok, 'status=%s alive=%s' % (code, alive))
 
 
+def scenario_webetag(daemon, t):
+    """The ETag of a web file is a hash of the whole file. It was a hash of
+    the file as a C string, which ends at the first zero byte: every PNG has
+    one at offset 11, so images got the same ETag and a browser holding one
+    was told "not modified" for another."""
+    import urllib.request as _req
+    import urllib.error as _err
+    for name, tail in (('a.png', b'AAAA'), ('b.png', b'BBBB')):
+        with open(t.path('main', 'web', name), 'wb') as f:
+            f.write(b'\x89PNG\r\n\x1a\n\x00\x00\x00' + tail)
+    daemon.wait_ready()
+    base = 'http://127.0.0.1:%d/' % daemon.rpc_port
+    with _req.urlopen(base + 'a.png', timeout=15) as r:
+        etag_a = r.headers.get('ETag')
+    with _req.urlopen(base + 'b.png', timeout=15) as r:
+        etag_b = r.headers.get('ETag')
+    # b.png asked for with a.png's ETag must come back in full
+    code = None
+    try:
+        req = _req.Request(base + 'b.png', headers={'If-None-Match': etag_a or ''})
+        with _req.urlopen(req, timeout=15) as r:
+            code = r.status
+            body = r.read()
+    except _err.HTTPError as e:
+        code = e.code
+        body = b''
+    ok = bool(etag_a) and etag_a != etag_b and code == 200 and body.endswith(b'BBBB')
+    return ('webetag', ok, 'etags=%s,%s status=%s' % (etag_a, etag_b, code))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9295,6 +9325,7 @@ SCENARIOS = {
     'clientthreads': scenario_clientthreads,
     'xmlrpccdata': scenario_xmlrpccdata,
     'webdirget': scenario_webdirget,
+    'webetag': scenario_webetag,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,

@@ -577,7 +577,10 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 	{
 		BString<1024> newETag;
 
-		size_t hash = m_hasher(body);
+		// over the whole body: as a C string it ended at the first zero byte, and
+		// every image (PNG, ICO...) had the same ETag - a changed one was answered
+		// "not modified"
+		size_t hash = m_hasher(std::string_view(body, bodyLen));
 		newETag.Format("\"%zx\"", hash);
 
 		unchanged = m_oldETag && !strcmp(newETag, m_oldETag);
