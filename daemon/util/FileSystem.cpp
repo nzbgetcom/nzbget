@@ -916,6 +916,12 @@ bool DeleteLink(const char* filename, PathType pathType)
 }
 }
 
+bool FileSystem::IsLink(const char* filename)
+{
+	PathType type = GetPathTypeNoFollow(filename);
+	return type == PathType::Link || type == PathType::DirectoryLink;
+}
+
 /* Delete directory which is empty or contains only hidden files or directories (whose names start with dot) */
 bool FileSystem::DeleteDirectory(const char* dirFilename)
 {

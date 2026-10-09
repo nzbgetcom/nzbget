@@ -327,7 +327,9 @@ bool CleanupController::Cleanup(const char* destDir, bool *deleted)
 	{
 		BString<1024> fullFilename("%s%c%s", destDir, PATH_SEPARATOR, filename);
 
-		bool isDir = FileSystem::DirectoryExists(fullFilename);
+		// a link to a directory (from an archive) isn't entered: the cleanup
+		// deleted the matching files of the directory it points to
+		bool isDir = FileSystem::DirectoryExists(fullFilename) && !FileSystem::IsLink(fullFilename);
 
 		if (isDir)
 		{

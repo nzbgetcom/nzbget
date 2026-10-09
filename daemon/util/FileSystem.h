@@ -145,6 +145,8 @@ public:
 	static bool DeleteFile(const char* filename);
 	static bool FileExists(const char* filename);
 	static bool DirectoryExists(const char* dirFilename);
+	// a symbolic link (or a reparse point on Windows), not followed
+	static bool IsLink(const char* filename);
 	static bool CreateDirectory(const char* dirFilename);
 	static bool CreateDirectoryExclusive(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
