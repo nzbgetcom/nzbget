@@ -221,4 +221,28 @@ BOOST_AUTO_TEST_CASE(SaveConfigNormalizesOptionNameCasing)
 		"Server2.Active=no\n");
 }
 
+BOOST_AUTO_TEST_CASE(SaveConfigLastLineWithoutLineEnd)
+{
+	// a last line without a line end had the first new option glued onto it
+	TempConfigFile configFile;
+	{
+		std::ofstream output(configFile.path);
+		output << "# existing config";
+	}
+
+	OptionsGuard optionsGuard;
+	Options options("nzbget", configFile.path.string().c_str(), true, nullptr, nullptr);
+	g_Options = &options;
+
+	Options::OptEntries optEntries;
+	optEntries.emplace_back("Extension.Option", "value");
+	ScriptConfig scriptConfig;
+
+	BOOST_REQUIRE(scriptConfig.SaveConfig(&optEntries));
+	std::ifstream file(configFile.path);
+	std::stringstream contents;
+	contents << file.rdbuf();
+	BOOST_CHECK_EQUAL(contents.str(), "# existing config\nExtension.Option=value\n");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

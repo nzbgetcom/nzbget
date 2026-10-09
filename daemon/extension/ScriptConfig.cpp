@@ -148,7 +148,10 @@ bool ScriptConfig::SaveConfig(Options::OptEntries* optEntries)
 		}
 		else
 		{
-			infile.Print("%s", *buf);
+			// every line ends: a last line without a line end (a comment, typically)
+			// had the first new option glued onto it, and that option was lost
+			int len = buf.Length();
+			infile.Print("%s%s", *buf, len > 0 && buf[len - 1] == '\n' ? "" : "\n");
 		}
 	}
 
