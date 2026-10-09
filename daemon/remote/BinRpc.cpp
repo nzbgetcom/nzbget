@@ -39,7 +39,7 @@ extern void Reload();
 const char* g_MessageRequestNames[] =
 	{ "N/A", "Download", "Pause/Unpause", "List", "Set download rate", "Dump debug",
 		"Edit queue", "Log", "Quit", "Reload", "Version", "Post-queue", "Write log", "Scan",
-		"Pause/Unpause postprocessor", "History" };
+		"History" };
 
 const uint32 g_MessageRequestSizes[] =
 	{ 0,
@@ -58,6 +58,9 @@ const uint32 g_MessageRequestSizes[] =
 		sizeof(SNzbScanRequest),
 		sizeof(SNzbHistoryRequest)
 	};
+
+static_assert(sizeof(g_MessageRequestNames) / sizeof(g_MessageRequestNames[0]) == rrHistory + 1);
+static_assert(sizeof(g_MessageRequestSizes) / sizeof(g_MessageRequestSizes[0]) == rrHistory + 1);
 
 
 class BinCommand
@@ -188,7 +191,9 @@ void BinRpcProcessor::Execute()
 		return;
 	}
 
-	debug("%s request received from %s", g_MessageRequestNames[ntohl(m_messageBase.m_type)], m_connection->GetRemoteAddr());
+	uint32 type = ntohl(m_messageBase.m_type);
+	debug("%s request received from %s",
+		type <= (uint32)rrHistory ? g_MessageRequestNames[type] : "Unknown", m_connection->GetRemoteAddr());
 
 	Dispatch();
 }
