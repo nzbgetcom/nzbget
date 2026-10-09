@@ -25,6 +25,16 @@
 #include "ScriptConfig.h"
 #include "FileSystem.h"
 
+namespace
+{
+	// the text after a signature; a line that is the signature alone ends there
+	// (substr past the end threw, and an extension file ended the daemon at start)
+	std::string TextAfter(const std::string& line, size_t pos)
+	{
+		return line.size() > pos ? line.substr(pos) : std::string();
+	}
+}
+
 namespace ExtensionLoader
 {
 	const char* DEFAULT_SECTION_NAME = "options";
@@ -98,7 +108,7 @@ namespace ExtensionLoader
 				// if TASK TIME, e.g. ### TASK TIME: *;*:00;*:30	###
 				if (!strncmp(line.c_str(), TASK_TIME_SIGNATURE, TASK_TIME_SIGNATURE_LEN))
 				{
-					taskTime = line.substr(TASK_TIME_SIGNATURE_LEN + 1);
+					taskTime = TextAfter(line, TASK_TIME_SIGNATURE_LEN + 1);
 					RemoveTailAndTrim(taskTime, "###");
 					continue;
 				}
@@ -118,7 +128,7 @@ namespace ExtensionLoader
 				// if QUEUE EVENTS, e.g. ### QUEUE EVENTS: NZB_ADDED, NZB_DOWNLOADED	###
 				if (!strncmp(line.c_str(), QUEUE_EVENTS_SIGNATURE, QUEUE_EVENTS_SIGNATURE_LEN))
 				{
-					queueEvents = line.substr(QUEUE_EVENTS_SIGNATURE_LEN + 1);
+					queueEvents = TextAfter(line, QUEUE_EVENTS_SIGNATURE_LEN + 1);
 					RemoveTailAndTrim(queueEvents, "###");
 					continue;
 				}
@@ -230,7 +240,7 @@ namespace ExtensionLoader
 
 				if (!strncmp(line.c_str(), DEFINITION_SIGNATURE, DEFINITION_SIGNATURE_LEN))
 				{
-					currSectionName = line.substr(DEFINITION_SIGNATURE_LEN + 1);
+					currSectionName = TextAfter(line, DEFINITION_SIGNATURE_LEN + 1);
 					RemoveTailAndTrim(currSectionName, "###");
 					continue;
 				}

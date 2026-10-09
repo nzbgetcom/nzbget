@@ -8573,6 +8573,31 @@ def scenario_damagedhistorykind(daemon, t):
     return ('damagedhistorykind', ok, 'damaged=%s alive=%s set_aside_logs=%d' % (damaged, alive, set_aside))
 
 
+# an extension (V1 header) whose TASK TIME line ends at the signature
+BARE_SIGNATURE_EXTENSION = '''#!/usr/bin/env python3
+##############################################################################
+### NZBGET SCHEDULER SCRIPT                                                ###
+# Bare signature lines.
+### TASK TIME:
+### NZBGET SCHEDULER SCRIPT                                                ###
+##############################################################################
+import sys
+sys.exit(93)
+'''
+
+
+def scenario_extbaresignature(daemon, t):
+    """An extension file in ScriptDir with a line that is a signature alone
+    ("### TASK TIME:"): reading what follows it threw std::out_of_range, and
+    the daemon ended at start. It starts now."""
+    try:
+        daemon.wait_ready()
+        alive = t.procs[-1].poll() is None
+    except Exception:
+        alive = False
+    return ('extbaresignature', alive, 'alive=%s' % alive)
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8964,6 +8989,7 @@ SCENARIOS = {
     'longnamedir': scenario_longnamedir,
     'damagedstats': scenario_damagedstats,
     'damagedhistorykind': scenario_damagedhistorykind,
+    'extbaresignature': scenario_extbaresignature,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9381,6 +9407,7 @@ SCENARIO_EXTENSIONS = {'dupesearchpickgoneadd': {'deletepick.py': DELETE_PICK_EX
                        'fleetduringpost': {'slowpost.py': SLOW_POST_EXTENSION},
                        'heldidle': {'slowpost.py': SLOW_POST_EXTENSION},
                        'categoryscan': {'catscan.py': CATEGORY_SCAN_EXTENSION},
+                       'extbaresignature': {'bare.py': BARE_SIGNATURE_EXTENSION},
                        'scriptdirlist': {'catscan.py': CATEGORY_SCAN_EXTENSION},
                        'scriptparcheck': {'askpar.py': PARCHECK_POST_EXTENSION},
                        'scanlongcommand': {'longscan.py': LONG_COMMAND_EXTENSION}}
