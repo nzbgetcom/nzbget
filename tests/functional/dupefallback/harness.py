@@ -133,6 +133,7 @@ Usage:
 
 import argparse
 import base64
+import io
 import os
 import random
 import re
@@ -9073,6 +9074,130 @@ def scenario_scriptargs(daemon, t):
     return ('scriptargs', ok, 'argcount0=%d killed=%d' % (argzero, killed))
 
 
+def scenario_urlarchive(daemon, t):
+    """A url that serves a zip with two nzb-files: both are added. The url
+    item went with every nzb of the archive; adding the first took it out of
+    the queue and freed it, and the second read the freed item."""
+    import http.server
+    import threading
+    import zipfile
+    a = _payload(90_000, 12439)
+    b = _payload(90_000, 12440)
+    pa = _place_copy(t, 'uaA', a)
+    pb = _place_copy(t, 'uaB', b)
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, 'w') as z:
+        z.writestr('RelUA1.nzb', build_nzb(pa, 'ua1.bin', len(a), 100_000, set()))
+        z.writestr('RelUA2.nzb', build_nzb(pb, 'ua2.bin', len(b), 100_000, set()))
+    body = zbuf.getvalue()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/zip')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+    server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    api = daemon.wait_ready()
+    _rpc(daemon, 'appendurl', ['RelUA.zip', 'http://127.0.0.1:%d/rel.zip' % server.server_address[1],
+                               '', 0, False, True, '', 0, 'SCORE', []])
+    deadline = time.time() + 30
+    names = []
+    while time.time() < deadline:
+        names = sorted(g['NZBName'] for g in api.listgroups())
+        if 'RelUA1' in names and 'RelUA2' in names:
+            break
+        time.sleep(0.5)
+    time.sleep(2)
+    names = sorted(g['NZBName'] for g in api.listgroups())
+    server.shutdown()
+    alive = t.procs[-1].poll() is None
+    ok = alive and names == ['RelUA1', 'RelUA2']
+    return ('urlarchive', ok, 'queued=%s alive=%s' % (names, alive))
+
+
+def scenario_movemissingtarget(daemon, t):
+    """GroupMoveBefore/After with a target id that isn't queued: refused, the
+    order kept. It moved the groups to the bottom and answered true."""
+    api = daemon.wait_ready()
+    for i, n in enumerate(('RelMM1', 'RelMM2', 'RelMM3')):
+        a = _payload(90_000, 12441 + 100 * i)
+        pa = _place_copy(t, 'mm%d' % i, a)
+        daemon.append(api, n, build_nzb(pa, n + '.bin', len(a), 100_000, set()), True, n, 0)
+    time.sleep(1)
+    before = [g['NZBName'] for g in api.listgroups()]
+    gid = next(g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'RelMM1')
+    res = _rpc(daemon, 'editqueue', ['GroupMoveBefore', '99999', [gid]]).get('result')
+    after = [g['NZBName'] for g in api.listgroups()]
+    ok = res is False and before == after
+    return ('movemissingtarget', ok, 'result=%s before=%s after=%s' % (res, before, after))
+
+
+def scenario_scangrowing(daemon, t):
+    """An nzb-file copied into NzbDir in pieces, with pauses: a size change
+    restarts the NzbDirFileAge wait. It never did (the check came after the new
+    size was set), so a file that held one size for two scans once it had been
+    seen for NzbDirFileAge was taken half-written and renamed .error."""
+    a = _payload(90_000, 12442)
+    pa = _place_copy(t, 'sgA', a)
+    data = build_nzb(pa, 'sg.bin', len(a), 100_000, set()).encode()
+    dest = t.path('main', 'nzb', 'RelSG.nzb')
+    api = daemon.wait_ready()
+    third = len(data) // 3
+    with open(dest, 'wb') as f:
+        f.write(data[:third])
+    time.sleep(2.5)
+    with open(dest, 'ab') as f:
+        f.write(data[third:2 * third])
+    time.sleep(3.5)
+    with open(dest, 'ab') as f:
+        f.write(data[2 * third:])
+    deadline = time.time() + 30
+    found = False
+    while time.time() < deadline and not found:
+        found = any(g['NZBName'] == 'RelSG' for g in api.listgroups()) or \
+            any(h.get('NZBName') == 'RelSG' for h in api.history())
+        time.sleep(0.5)
+    errors = [n for n in os.listdir(t.path('main', 'nzb')) if n.endswith('.error')]
+    ok = found and not errors
+    return ('scangrowing', ok, 'added=%s error_files=%s' % (found, errors))
+
+
+def scenario_archiveyoung(daemon, t):
+    """A zip copied into NzbDir in pieces: it's extracted once it stopped
+    changing for NzbDirFileAge, like an nzb-file. It was taken on the first
+    scan that saw it, failed to extract half-written and was moved aside for
+    good."""
+    import zipfile
+    a = _payload(90_000, 12443)
+    pa = _place_copy(t, 'ayA', a)
+    zbuf = io.BytesIO()
+    with zipfile.ZipFile(zbuf, 'w') as z:
+        z.writestr('RelAY.nzb', build_nzb(pa, 'ay.bin', len(a), 100_000, set()))
+    body = zbuf.getvalue()
+    dest = t.path('main', 'nzb', 'RelAY.zip')
+    api = daemon.wait_ready()
+    with open(dest, 'wb') as f:
+        f.write(body[:len(body) // 2])
+    time.sleep(2.5)
+    with open(dest, 'ab') as f:
+        f.write(body[len(body) // 2:])
+    deadline = time.time() + 30
+    found = False
+    while time.time() < deadline and not found:
+        found = any(g['NZBName'] == 'RelAY' for g in api.listgroups()) or \
+            any(h.get('NZBName') == 'RelAY' for h in api.history())
+        time.sleep(0.5)
+    ok = found
+    return ('archiveyoung', ok, 'added=%s nzbdir=%s' % (found, sorted(os.listdir(t.path('main', 'nzb')))))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9503,6 +9628,10 @@ SCENARIOS = {
     'partialnzbdeclared': scenario_partialnzbdeclared,
     'daemonlock': scenario_daemonlock,
     'scriptargs': scenario_scriptargs,
+    'urlarchive': scenario_urlarchive,
+    'movemissingtarget': scenario_movemissingtarget,
+    'scangrowing': scenario_scangrowing,
+    'archiveyoung': scenario_archiveyoung,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
@@ -9810,6 +9939,8 @@ SCENARIO_OPTIONS = {
     'directrenamesubdirjoin': ['DirectRename=yes', 'DirectWrite=no', 'ParCheck=auto'],
     'heldidle': ['ScriptPauseQueue=yes', 'Extensions=slowpost'],
     'scriptargs': ['Extensions=argcount, selfkill'],
+    'scangrowing': ['NzbDirInterval=1', 'NzbDirFileAge=4'],
+    'archiveyoung': ['NzbDirInterval=1', 'NzbDirFileAge=4'],
     'scriptparcheck': ['ParCheck=auto', 'Extensions=askpar'],
     'pathtraversalnzb': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=nzb'],
     'pathtraversalarticle': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'FileNaming=article'],

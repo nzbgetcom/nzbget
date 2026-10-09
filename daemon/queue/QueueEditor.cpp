@@ -303,6 +303,14 @@ bool QueueEditor::EditEntry(DownloadQueue* downloadQueue, int ID, DownloadQueue:
 bool QueueEditor::EditList(DownloadQueue* downloadQueue, IdList* idList, NameList* nameList, DownloadQueue::EMatchMode matchMode,
 	DownloadQueue::EEditAction action, const char* args)
 {
+	if ((action == DownloadQueue::eaPostDelete ||
+		(DownloadQueue::eaHistoryDelete <= action && action <= DownloadQueue::eaHistorySetName)) && !idList)
+	{
+		// by name (no ids) these never had a way to match and used the missing
+		// id list; take names for the queue only
+		return false;
+	}
+
 	if (action == DownloadQueue::eaPostDelete)
 	{
 		return g_PrePostProcessor->EditList(downloadQueue, idList, action, args);
@@ -1135,6 +1143,13 @@ bool QueueEditor::MoveGroupsTo(ItemList* itemList, IdList* idList, bool before, 
 
 	int targetId = atoi(args);
 	int offset = 0;
+
+	// a target that isn't queued: the offset below counted to the end of the
+	// queue, moved the groups to the bottom and reported success
+	if (!m_downloadQueue->GetQueue()->Find(targetId))
+	{
+		return false;
+	}
 
 	// check if target is in list of moved items
 	if (ItemListContainsItem(itemList, targetId))
