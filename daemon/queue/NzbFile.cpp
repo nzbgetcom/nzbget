@@ -55,6 +55,43 @@ ArticleInfo* NzbFile::AddArticle(FileInfo* fileInfo, std::unique_ptr<ArticleInfo
 	return fileInfo->GetArticles()->back().get();
 }
 
+int NzbFile::DeclaredParts(const char* subject)
+{
+	// the part count posters put at the very end of the subject: "(1/N)"
+	if (Util::EmptyStr(subject))
+	{
+		return 0;
+	}
+	const char* end = subject + strlen(subject);
+	while (end > subject && isspace((unsigned char)end[-1])) end--;
+	if (end == subject || end[-1] != ')')
+	{
+		return 0;
+	}
+	const char* p = end - 1;
+	int64 total = 0;
+	int64 scale = 1;
+	while (p > subject && isdigit((unsigned char)p[-1]) && scale <= 1000000)
+	{
+		p--;
+		total += (*p - '0') * scale;
+		scale *= 10;
+	}
+	if (scale == 1 || p == subject || p[-1] != '/')
+	{
+		return 0;
+	}
+	p--;
+	const char* digits = p;
+	while (p > subject && isdigit((unsigned char)p[-1])) p--;
+	if (p == digits || p == subject || p[-1] != '(')
+	{
+		return 0;
+	}
+	// a bound against nonsense, not a limit for real postings
+	return total <= 1000000 ? (int)total : 0;
+}
+
 void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 {
 	// calculate file size and delete empty articles
@@ -80,8 +117,12 @@ void NzbFile::AddFileInfo(std::unique_ptr<FileInfo> fileInfo)
 		return;
 	}
 
-	// every missing number counts with the size of the first segment present
-	int totalArticles = articles->back()->GetPartNumber();
+	// every missing number counts with the size of the first segment present;
+	// so do the parts past the last one listed that the subject declares
+	// ("... yEnc (1/3709)" with segments 1..1510 only): without them a file
+	// the nzb lists only partly looked complete until it was downloaded
+	int totalArticles = std::max(articles->back()->GetPartNumber(),
+		DeclaredParts(fileInfo->GetSubject()));
 	int missedArticles = totalArticles - (int)articles->size();
 	int64 oneSize = articles->front()->GetSize();
 	int64 size = 0;

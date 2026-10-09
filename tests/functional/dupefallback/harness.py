@@ -8934,8 +8934,10 @@ def scenario_partialnzb(daemon, t):
     data = _payload(size, 12436)
     pp = _place_copy(t, 'pnA', data, 'movie.mkv')
     nzb = build_nzb(pp, 'movie.mkv', size, seg, {3})
-    # drop parts 11..20 from the nzb
+    # drop parts 11..20 from the nzb, and the part count from the subject:
+    # nothing tells the missing half at add time (partialnzbdeclared has it)
     nzb = _re.sub(r'<segment bytes="\d+" number="(1[1-9]|20)">[^<]*</segment>\n?', '', nzb)
+    nzb = nzb.replace(' yEnc (1/20)', ' yEnc')
     api = daemon.wait_ready()
     daemon.append(api, 'RelPN', nzb, False, 'pn-key', 100)
     h = daemon.wait_history(api, 'RelPN')
@@ -8945,6 +8947,28 @@ def scenario_partialnzb(daemon, t):
     ok = missing == 1 and parclaim == 0 and incomplete == 1
     return ('partialnzb', ok, 'status=%s missing=%d parclaim=%d incomplete=%d'
             % (h['Status'], missing, parclaim, incomplete))
+
+
+def scenario_partialnzbdeclared(daemon, t):
+    """The same half-listed file, its subject declaring all 20 parts
+    ("yEnc (1/20)"): the 10 parts the nzb doesn't list count as failed from
+    the start, as gaps between listed parts always did, so health shows the
+    damage before anything downloads, and a warning says so when it's added."""
+    import re as _re
+    size, seg = 4_000_000, 200_000
+    data = _payload(size, 12437)
+    pp = _place_copy(t, 'pdA', data, 'movie.mkv')
+    nzb = build_nzb(pp, 'movie.mkv', size, seg, set())
+    nzb = _re.sub(r'<segment bytes="\d+" number="(1[1-9]|20)">[^<]*</segment>\n?', '', nzb)
+    api = daemon.wait_ready()
+    api.pausedownload()
+    daemon.append(api, 'RelPD', nzb, False, 'pd-key', 100)
+    time.sleep(2)
+    group = next(g for g in api.listgroups() if g['NZBName'] == 'RelPD')
+    health = int(group['Health'])
+    warned = _grep_log(t, 'lists only 10 of the 20 articles of movie.mkv')
+    ok = warned == 1 and health <= 550
+    return ('partialnzbdeclared', ok, 'health=%d warned=%d' % (health, warned))
 
 
 def scenario_clientcommands(daemon, t):
@@ -9374,6 +9398,7 @@ SCENARIOS = {
     'webetag': scenario_webetag,
     'web404warn': scenario_web404warn,
     'partialnzb': scenario_partialnzb,
+    'partialnzbdeclared': scenario_partialnzbdeclared,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,

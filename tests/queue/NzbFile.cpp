@@ -380,4 +380,50 @@ BOOST_AUTO_TEST_CASE(BuildFinalDirNameUniqueIdTest)
 	BOOST_CHECK_NE(finalDir1, finalDir2);
 }
 
+BOOST_AUTO_TEST_CASE(DeclaredPartsTest)
+{
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("\"movie.mkv\" yEnc (1/3709)"), 3709);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("[01/12] - \"a.rar\" yEnc (1/50) "), 50);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("[01/12] - \"a.rar\" yEnc"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("\"a.rar\" yEnc (1/50) 52428800"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("(/50)"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("(1/)"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("1/50)"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts("x (1/99999999999)"), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts(""), 0);
+	BOOST_CHECK_EQUAL(NzbFile::DeclaredParts(nullptr), 0);
+}
+
+BOOST_AUTO_TEST_CASE(PartlyListedFileTest)
+{
+	// the subject declares 10 parts, the nzb lists 1, 2 and 4: part 3 (a gap)
+	// and parts 5..10 (past the last listed) are all missing
+	const fs::path tempNzb = fs::temp_directory_path() / "nzbget_test_partly_listed.nzb";
+	{
+		std::ofstream out(tempNzb);
+		out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+			<< "<nzb xmlns=\"http://www.newzbin.com/DTD/2003/nzb\">\n"
+			<< "<file poster=\"p\" date=\"1\" subject=\"&quot;movie.mkv&quot; yEnc (1/10)\">\n"
+			<< "<groups><group>alt.binaries.test</group></groups>\n<segments>\n"
+			<< "<segment bytes=\"100\" number=\"1\">a1@test</segment>\n"
+			<< "<segment bytes=\"100\" number=\"2\">a2@test</segment>\n"
+			<< "<segment bytes=\"100\" number=\"4\">a4@test</segment>\n"
+			<< "</segments>\n</file>\n</nzb>\n";
+	}
+
+	NzbFile nzbFile(tempNzb.string().c_str(), "");
+	BOOST_REQUIRE(nzbFile.Parse());
+	auto nzbInfo = nzbFile.DetachNzbInfo();
+	BOOST_REQUIRE(nzbInfo);
+	BOOST_REQUIRE_EQUAL(nzbInfo->GetFileList()->size(), 1);
+	FileInfo* fileInfo = nzbInfo->GetFileList()->front().get();
+	BOOST_CHECK_EQUAL(fileInfo->GetTotalArticles(), 10);
+	BOOST_CHECK_EQUAL(fileInfo->GetMissedArticles(), 7);
+	BOOST_CHECK_EQUAL(fileInfo->GetSize(), 1000);
+	BOOST_CHECK_EQUAL(fileInfo->GetMissedSize(), 700);
+	BOOST_CHECK_EQUAL(nzbInfo->GetFailedSize(), 700);
+
+	fs::remove(tempNzb);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

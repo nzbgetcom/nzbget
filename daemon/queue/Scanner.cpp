@@ -645,6 +645,20 @@ bool Scanner::AddFileToQueue(
 		nzbInfo->BuildDestDirName();
 	}
 
+	if (ok)
+	{
+		for (FileInfo* fileInfo : nzbInfo->GetFileList())
+		{
+			if (fileInfo->GetMissedArticles() > 0)
+			{
+				nzbInfo->PrintMessage(Message::mkWarning,
+					"Collection %s lists only %i of the %i articles of %s: the missing ones count as failed",
+					nzbInfo->GetName(), fileInfo->GetTotalArticles() - fileInfo->GetMissedArticles(),
+					fileInfo->GetTotalArticles(), fileInfo->GetFilename());
+			}
+		}
+	}
+
 	nzbInfo->SetDupeKey(dupeKey);
 	nzbInfo->SetDupeScore(dupeScore);
 	nzbInfo->SetDupeMode(dupeMode);

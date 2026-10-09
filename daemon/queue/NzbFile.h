@@ -39,6 +39,8 @@ public:
 	const std::string& GetMetaTitle() const { return m_metaTitle; }
 
 	void LogDebugInfo();
+	// part count declared at the end of a subject ("... yEnc (1/N)"), or 0
+	static int DeclaredParts(const char* subject);
 
 private:
 	std::unique_ptr<NzbInfo> m_nzbInfo;
