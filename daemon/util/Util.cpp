@@ -1110,6 +1110,25 @@ void WebUtil::XmlDecode(char* raw)
 		{
 			case '\0':
 				goto BreakLoop;
+			case '<':
+				// a CDATA section (some XML-RPC clients wrap strings in one) is its
+				// text as is: it was kept with its markers
+				if (!strncmp(p, "<![CDATA[", 9))
+				{
+					p += 9;
+					char* end = strstr(p, "]]>");
+					char* stop = end ? end : p + strlen(p);
+					while (p < stop)
+					{
+						*output++ = *p++;
+					}
+					p = end ? end + 3 : stop;
+				}
+				else
+				{
+					*output++ = *p++;
+				}
+				break;
 			case '&':
 				{
 					p++;

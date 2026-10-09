@@ -124,6 +124,18 @@ BOOST_AUTO_TEST_CASE(JsonEncodeNonBmpTest)
 	BOOST_CHECK_EQUAL(std::string(decoded), std::string("x\xF0\x9F\x98\x80y"));
 }
 
+BOOST_AUTO_TEST_CASE(XmlDecodeCdataTest)
+{
+	// a CDATA section is its text as is, entities and all
+	char text[] = "a<![CDATA[x<&amp;>y]]>b&amp;c";
+	WebUtil::XmlDecode(text);
+	BOOST_CHECK_EQUAL(std::string(text), std::string("ax<&amp;>yb&c"));
+
+	char open[] = "a<![CDATA[x";
+	WebUtil::XmlDecode(open);
+	BOOST_CHECK_EQUAL(std::string(open), std::string("ax"));
+}
+
 BOOST_AUTO_TEST_CASE(URLEncodeTest)
 {
 	const char* badUrl = "http://www.example.com/nzb_get/12344/Debian V7 6 64 bit OS.nzb";

@@ -8822,6 +8822,32 @@ def scenario_redownloadresetsrecovered(daemon, t):
     return ('redownloadresetsrecovered', ok, 'recovered_before=%s after_redownload=%s' % (before, after))
 
 
+def scenario_xmlrpccdata(daemon, t):
+    """An XML-RPC append whose name is wrapped in CDATA (some client libraries
+    do that): the markers were kept and sanitized into the name
+    ("_![CDATA[x_&_y]]_"). The CDATA text is the name now."""
+    import urllib.request as _req
+    data = _payload(90_000, 12333)
+    pp = _place_copy(t, 'xcA', data)
+    api = daemon.wait_ready()
+    content = base64.standard_b64encode(build_nzb(pp, 'xc.bin', len(data), 100_000, set()).encode()).decode()
+    body = ('<?xml version="1.0"?><methodCall><methodName>append</methodName><params>'
+            '<param><value><string><![CDATA[Rel&XC.nzb]]></string></value></param>'
+            '<param><value><string>%s</string></value></param>'
+            '<param><value><string></string></value></param><param><value><i4>0</i4></value></param>'
+            '<param><value><boolean>0</boolean></value></param><param><value><boolean>1</boolean></value></param>'
+            '<param><value><string>xc-key</string></value></param><param><value><i4>0</i4></value></param>'
+            '<param><value><string>SCORE</string></value></param><param><value><array><data></data></array></value></param>'
+            '</params></methodCall>') % content
+    req = _req.Request('http://127.0.0.1:%d/xmlrpc' % daemon.rpc_port, body.encode(), {'Content-Type': 'text/xml'})
+    with _req.urlopen(req, timeout=20) as r:
+        reply = r.read().decode()
+    time.sleep(1)
+    names = [g['NZBName'] for g in api.listgroups()]
+    ok = 'Rel&XC' in names
+    return ('xmlrpccdata', ok, 'names=%s reply=%s' % (names, reply[:80].replace('\n', ' ')))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9222,6 +9248,7 @@ SCENARIOS = {
     'staletempstate': scenario_staletempstate,
     'failedloadfileinfos': scenario_failedloadfileinfos,
     'clientthreads': scenario_clientthreads,
+    'xmlrpccdata': scenario_xmlrpccdata,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
