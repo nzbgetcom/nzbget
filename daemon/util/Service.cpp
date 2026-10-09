@@ -76,7 +76,11 @@ void ServiceCoordinator::Run()
 			int remaining = Service::Sleep;
 			if (serviceInterval >= Service::Now)
 			{
-				remaining = serviceInterval - static_cast<int>(curTime - service->m_lastWork);
+				// never longer than the interval: after the clock is set back the
+				// last work is "in the future", and the wait grew by the step
+				// (up to a day without services, the scheduler too)
+				remaining = std::min(serviceInterval,
+					serviceInterval - static_cast<int>(curTime - service->m_lastWork));
 				waitInterval = std::min(waitInterval, remaining);
 			}
 			debug("serviceInterval: %i, remaining: %i", serviceInterval, remaining);

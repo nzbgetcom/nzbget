@@ -107,11 +107,15 @@ void Thread::thread_handler()
 
 	debug("Thread-func exited");
 
-	m_running = false;
+	// read before m_running goes false: an owner waiting for that may destroy
+	// the object right away
+	const bool autoDestroy = m_autoDestroy;
 
 	--m_threadCount;
 
-	if (m_autoDestroy)
+	m_running = false;
+
+	if (autoDestroy)
 	{
 		debug("Autodestroying Thread-object");
 		delete this;
