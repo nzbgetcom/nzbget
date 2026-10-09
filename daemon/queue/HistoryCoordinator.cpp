@@ -642,6 +642,16 @@ void HistoryCoordinator::HistoryRedownload(DownloadQueue* downloadQueue, History
 	nzbInfo->GetCompletedFiles()->clear();
 	// stream-repair jobs captured for the previous download attempt are stale
 	nzbInfo->GetStreamRepairJobs()->clear();
+	// and so are its duplicate recoveries: the failover gates weigh them against
+	// this attempt's article counts, which start at 0 - a stale count made a
+	// download that arrives look dead (failed over to the next backup), or a dead
+	// one look borrowed enough to be spared. Blocked donors stay blocked: they
+	// were proven to hold other bytes
+	nzbInfo->SetDupeRecoveredArticles(0);
+	nzbInfo->SetDupeRecoveredBytes(0);
+	nzbInfo->SetDupeRecoveredHoles(0);
+	nzbInfo->SetDupeParDeferState(NzbInfo::dpNone);
+	nzbInfo->SetDupeNoParNoted(false);
 	nzbInfo->GetServerStats()->clear();
 	nzbInfo->GetCurrentServerStats()->clear();
 

@@ -8803,6 +8803,25 @@ def scenario_clientthreads(daemon, t):
     return ('clientthreads', ok, 'line=%r' % line[:160])
 
 
+def scenario_redownloadresetsrecovered(daemon, t):
+    """complementary (3 articles borrowed from a duplicate), then "Download
+    again" from the history: the new attempt kept the previous attempt's
+    count of borrowed articles while its own article counts start at 0 -
+    the failover gates weighed one against the other (a download arriving
+    looked dead, or a dead one looked borrowed enough). It starts at 0 now."""
+    r = scenario_complementary(daemon, t)
+    api = daemon.api()
+    h = next(x for x in api.history() if x['NZBName'] == 'ReleaseA')
+    before = h.get('DupeRecoveredArticles')
+    _rpc(daemon, 'pausedownload', [])
+    _rpc(daemon, 'editqueue', ['HistoryRedownload', '', [h['NZBID']]])
+    time.sleep(1)
+    g = next((x for x in api.listgroups() if x['NZBName'] == 'ReleaseA'), {})
+    after = g.get('DupeRecoveredArticles')
+    ok = r[1] and before == 3 and after == 0
+    return ('redownloadresetsrecovered', ok, 'recovered_before=%s after_redownload=%s' % (before, after))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8972,6 +8991,7 @@ def _log_before(t, first, second):
 
 SCENARIOS = {
     'complementary': scenario_complementary,
+    'redownloadresetsrecovered': scenario_redownloadresetsrecovered,
     'recheckfailed': scenario_recheckfailed,
     'nzbgapborrow': scenario_nzbgapborrow,
     'sidefilenorepair': scenario_sidefilenorepair,
