@@ -8871,6 +8871,28 @@ def scenario_webdirget(daemon, t):
     return ('webdirget', ok, 'status=%s alive=%s' % (code, alive))
 
 
+def scenario_clientcommands(daemon, t):
+    """The command-line client over the binary protocol after its requests got
+    stricter checks: list, edit (pause a group) and write-log still work."""
+    import subprocess as _sp
+    data = _payload(300_000, 12434)
+    pp = _place_copy(t, 'ccA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelCC', build_nzb(pp, 'cc.bin', len(data), 100_000, set()), True, 'cc-key', 100)
+    time.sleep(1)
+    gid = next(g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'RelCC')
+    base = [t.nzbget, '-c', t.path(daemon.conf_rel)]
+    listed = _sp.run(base + ['-L', 'G'], capture_output=True, text=True, timeout=30).stdout
+    _sp.run(base + ['-E', 'G', 'T', str(gid)], capture_output=True, text=True, timeout=30)
+    _sp.run(base + ['-W', 'I', 'client log line 12434'], capture_output=True, text=True, timeout=30)
+    time.sleep(1)
+    group = next(g for g in api.listgroups() if g['NZBID'] == gid)
+    logged = _grep_log(t, 'client log line 12434')
+    alive = t.procs[-1].poll() is None
+    ok = alive and 'RelCC' in listed and logged >= 1
+    return ('clientcommands', ok, 'listed=%s logged=%d alive=%s' % ('RelCC' in listed, logged, alive))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9273,6 +9295,7 @@ SCENARIOS = {
     'clientthreads': scenario_clientthreads,
     'xmlrpccdata': scenario_xmlrpccdata,
     'webdirget': scenario_webdirget,
+    'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

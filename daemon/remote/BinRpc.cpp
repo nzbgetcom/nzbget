@@ -73,8 +73,12 @@ protected:
 	SNzbRequestBase* m_messageBase;
 
 	bool ReceiveRequest(void* buffer, int size);
+	bool ReceiveTrailing(CharBuffer& buffer, int64 len, int64 maxLen);
 	void SendBoolResponse(bool success, const char* text);
 };
+
+// a fixed-size string field of a request ends within its field
+template <size_t N> void TerminateField(char (&field)[N]) { field[N - 1] = '\0'; }
 
 class DownloadBinCommand: public BinCommand
 {
@@ -307,6 +311,32 @@ bool BinCommand::ReceiveRequest(void* buffer, int size)
 	return true;
 }
 
+// The data following a request: its length is the client's and is checked (no
+// buffer was allocated for 0 or a negative one, and the data was used all the
+// same); the buffer gets a terminator after it, as its strings are read with
+// the C string functions
+bool BinCommand::ReceiveTrailing(CharBuffer& buffer, int64 len, int64 maxLen)
+{
+	if (len < 0 || len > maxLen)
+	{
+		error("invalid request: data length %" PRIi64, len);
+		return false;
+	}
+	buffer.Reserve((int)len + 1);
+	if (!buffer)
+	{
+		error("invalid request: no memory for %" PRIi64 " bytes", len);
+		return false;
+	}
+	if (len > 0 && !m_connection->Recv(buffer, (int)len))
+	{
+		error("invalid request");
+		return false;
+	}
+	buffer[(int)len] = '\0';
+	return true;
+}
+
 void PauseUnpauseBinCommand::Execute()
 {
 	SNzbPauseUnpauseRequest PauseUnpauseRequest;
@@ -402,10 +432,13 @@ void DownloadBinCommand::Execute()
 		return;
 	}
 
-	int bufLen = ntohl(DownloadRequest.m_trailingDataLength);
-	CharBuffer nzbContent(bufLen);
+	TerminateField(DownloadRequest.m_nzbFilename);
+	TerminateField(DownloadRequest.m_category);
+	TerminateField(DownloadRequest.m_dupeKey);
 
-	if (!m_connection->Recv(nzbContent, nzbContent.Size()))
+	int bufLen = (int)ntohl(DownloadRequest.m_trailingDataLength);
+	CharBuffer nzbContent;
+	if (bufLen <= 0 || !ReceiveTrailing(nzbContent, bufLen, 768 * 1024 * 1024))
 	{
 		error("invalid request");
 		return;
@@ -487,6 +520,7 @@ void ListBinCommand::Execute()
 	{
 		ERemoteMatchMode matchMode = (ERemoteMatchMode)ntohl(ListRequest.m_matchMode);
 		bool matchGroup = ntohl(ListRequest.m_matchGroup);
+		TerminateField(ListRequest.m_pattern);
 		const char* pattern = ListRequest.m_pattern;
 
 		std::unique_ptr<RegEx> regEx;
@@ -829,18 +863,24 @@ void EditQueueBinCommand::Execute()
 	int textLen = ntohl(EditQueueRequest.m_textLen);
 	uint32 bufLength = ntohl(EditQueueRequest.m_trailingDataLength);
 
-	if (nrIdEntries * sizeof(int32) + textLen + nameEntriesLen != bufLength)
+	// the parts' sizes from the client, checked against each other in 64 bits
+	// (the unsigned sum wrapped for negative counts) and against the data
+	if (nrIdEntries < 0 || nrNameEntries < 0 || textLen < 0 || nameEntriesLen < 0 ||
+		nrIdEntries > 10000000 || nrNameEntries > nameEntriesLen ||
+		(int64)nrIdEntries * (int64)sizeof(int32) + textLen + nameEntriesLen != (int64)bufLength)
 	{
 		error("Invalid struct size");
 		return;
 	}
 
-	CharBuffer buf(bufLength);
-
-	if (!m_connection->Recv(buf, buf.Size()))
+	CharBuffer buf;
+	if (!ReceiveTrailing(buf, bufLength, 64 * 1024 * 1024))
 	{
-		error("invalid request");
 		return;
+	}
+	if (textLen > 0)
+	{
+		buf[textLen - 1] = '\0';
 	}
 
 	if (nrIdEntries <= 0 && nrNameEntries <= 0)
@@ -849,7 +889,8 @@ void EditQueueBinCommand::Execute()
 		return;
 	}
 
-	char* text = textLen > 0 ? *buf : nullptr;
+	// no text is an empty one: the edits read it as a string (a priority, a name)
+	const char* text = textLen > 0 ? *buf : "";
 	int32* ids = (int32*)(buf + textLen);
 	char* names = (buf + textLen + nrIdEntries * sizeof(int32));
 
@@ -868,10 +909,18 @@ void EditQueueBinCommand::Execute()
 	if (nrNameEntries > 0)
 	{
 		cNameList.reserve(nrNameEntries);
+		char* namesEnd = names + nameEntriesLen;
 		for (int i = 0; i < nrNameEntries; i++)
 		{
+			// each name ends within the names' part
+			char* end = names < namesEnd ? (char*)memchr(names, '\0', namesEnd - names) : nullptr;
+			if (!end)
+			{
+				error("Invalid struct size");
+				return;
+			}
 			cNameList.push_back(names);
-			names += strlen(names) + 1;
+			names = end + 1;
 		}
 	}
 
@@ -1006,11 +1055,9 @@ void WriteLogBinCommand::Execute()
 		return;
 	}
 
-	CharBuffer recvBuffer(ntohl(WriteLogRequest.m_trailingDataLength));
-
-	if (!m_connection->Recv(recvBuffer, recvBuffer.Size()))
+	CharBuffer recvBuffer;
+	if (!ReceiveTrailing(recvBuffer, (int)ntohl(WriteLogRequest.m_trailingDataLength), 1024 * 1024))
 	{
-		error("invalid request");
 		return;
 	}
 
