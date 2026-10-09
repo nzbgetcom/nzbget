@@ -725,6 +725,7 @@ class DelayingNntpProxy(RewritingNntpProxy):
     def __init__(self, listen_port, upstream_port, delays):
         self.delays = delays
         self.delayed = 0
+        self.fired = set()
         super().__init__(listen_port, upstream_port, b'', b'')
 
     def _pipe(self, src, dst, rewrite):
@@ -734,9 +735,12 @@ class DelayingNntpProxy(RewritingNntpProxy):
                 if not data:
                     break
                 if not rewrite:
-                    for marker, delay in self.delays:
-                        if marker in data:
+                    for entry in self.delays:
+                        marker, delay = entry[0], entry[1]
+                        # a third element True: the first request only
+                        if marker in data and not (len(entry) > 2 and entry[2] and marker in self.fired):
                             self.delayed += 1
+                            self.fired.add(marker)
                             time.sleep(delay)
                             break
                 dst.sendall(data)
@@ -8598,6 +8602,45 @@ def scenario_extbaresignature(daemon, t):
     return ('extbaresignature', alive, 'alive=%s' % alive)
 
 
+def scenario_articledecoyparrestart(daemon, t):
+    """articledecoypar with a restart while the file still downloads, after
+    the decoy's articles were borrowed: the duplicate an article came from
+    isn't saved, so after the restart no article counted as borrowed and the
+    par2 check of borrowed bytes was skipped - SUCCESS with the decoy's bytes
+    in the file. Articles fetched in a fallback round count as borrowed now.
+    (Here the borrowed articles are fetched again after the restart; the
+    case of a staged borrowed article restored as done isn't set up.)"""
+    size, seg = 5_000_000, 500_000
+    data = _payload(size, 11724)
+    decoy = _payload(size, 11725)
+    pp = _place_copy(t, 'arA', data)
+    dp = _place_copy(t, 'arB', decoy)
+    primary = build_nzb_with_par2(t, pp, 'DecoyRs.bin', data, seg, {3, 7})
+    donor = build_nzb(dp, 'DecoyRs.bin', size, seg, set())
+    api = daemon.wait_ready()
+    daemon.append(api, 'DonAR', donor, True, 'ar-key', 50)
+    daemon.append(api, 'RelAR', primary, False, 'ar-key', 100)
+    time.sleep(7)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    daemon.start()
+    api = daemon.wait_ready()
+    try:
+        h = daemon.wait_history(api, 'RelAR', timeout=120)
+    except RuntimeError:
+        groups = [(g['NZBName'], g['Status'], g['RemainingSizeMB'], g.get('FailedArticles')) for g in api.listgroups()]
+        logs = [l[-110:] for l in t.read_file('nzbget.log').decode(errors='replace').splitlines() if 'RelAR' in l][-6:]
+        return ('articledecoyparrestart', False, 'stuck groups=%s logs=%s' % (groups, logs))
+    integ = _verify_output(t, data)
+    wrong_success = h['Status'].startswith('SUCCESS') and not integ
+    rejected = _grep_log(t, "don't match its par2 checksums")
+    ok = not wrong_success
+    return ('articledecoyparrestart', ok, 'status=%s integrity=%s rejected_logs=%d' % (h['Status'], integ, rejected))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8946,6 +8989,7 @@ SCENARIOS = {
     'longstateline': scenario_longstateline,
     'articledecoy': scenario_articledecoy,
     'articledecoypar': scenario_articledecoypar,
+    'articledecoyparrestart': scenario_articledecoyparrestart,
     'yencrangefar': scenario_yencrangefar,
     'yencrangeshort': scenario_yencrangeshort,
     'quotafutureday': scenario_quotafutureday,
@@ -9276,6 +9320,7 @@ SCENARIO_OPTIONS = {
     'apiaccess': ['ControlPassword=ctlpass', 'RestrictedUsername=ro', 'RestrictedPassword=ropass'],
     'articledecoy': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
     'articledecoypar': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto'],
+    'articledecoyparrestart': ['DupeArticleFallback=article', 'HealthCheck=dupe', 'ParCheck=auto', 'Server1.Connections=2'],
     'fleetslowurlfirst': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetwide': ['DupeArticleFallback=no', 'HealthCheck=dupe'],
     'fleetsamekey': ['DupeArticleFallback=no', 'HealthCheck=dupe', 'Server1.Connections=2'],
@@ -9387,7 +9432,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+SCENARIO_DELAY_PROXY = {'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
                         'directunpackkeepnointer': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],

@@ -472,8 +472,14 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 {
 	std::vector<ArticleInfo*> mismatches;
 	ArticleList* articles = fileInfo->GetArticles();
-	if (std::none_of(articles->begin(), articles->end(), [](std::unique_ptr<ArticleInfo>& article)
-		{ return article->GetStatus() == ArticleInfo::aiFinished && article->GetDupeDonorId() > 0; }))
+	// borrowed: the duplicate it came from is known, or (restored from the saved
+	// state, which keeps the fallback round but not the duplicate) it was fetched
+	// in a fallback round - after a restart, with the donor unknown, none counted
+	// and the check was skipped. An own article in the list just passes the check.
+	auto borrowed = [](ArticleInfo* article)
+		{ return article->GetDupeDonorId() > 0 || article->GetDupeFallbackRound() > 0; };
+	if (std::none_of(articles->begin(), articles->end(), [&borrowed](std::unique_ptr<ArticleInfo>& article)
+		{ return article->GetStatus() == ArticleInfo::aiFinished && borrowed(article.get()); }))
 	{
 		return mismatches;
 	}
@@ -540,7 +546,7 @@ std::vector<ArticleInfo*> DupeArticleFallback::BorrowedPar2Mismatches(FileInfo* 
 	std::map<int64, bool> verdicts;	// block -> its bytes match
 	for (ArticleInfo* article : articles)
 	{
-		if (article->GetStatus() != ArticleInfo::aiFinished || article->GetDupeDonorId() <= 0 ||
+		if (article->GetStatus() != ArticleInfo::aiFinished || !borrowed(article) ||
 			article->GetSegmentSize() <= 0)
 		{
 			continue;
