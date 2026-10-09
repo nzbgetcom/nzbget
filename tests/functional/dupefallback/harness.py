@@ -8700,6 +8700,46 @@ def scenario_damagedfilestate(daemon, t):
     return ('damagedfilestate', ok, 'damaged=%s alive=%s before=%s' % (damaged, alive, before))
 
 
+def scenario_staletempstate(daemon, t):
+    """A "queue.new" left by an interrupted write next to a good "queue": it
+    stayed, and once the queue file was discarded (the queue emptied) the next
+    start "restored" it as if the write had finished - a broken file, and all
+    queue state (history too) set aside as unreadable. The stale temp file is
+    dropped now and the history survives."""
+    a = _payload(90_000, 11927)
+    b = _payload(90_000, 11928)
+    pa = _place_copy(t, 'stA', a)
+    pb = _place_copy(t, 'stB', b)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelST1', build_nzb(pa, 'st1.bin', len(a), 100_000, set()), False, 'st-key1', 100)
+    daemon.wait_history(api, 'RelST1', timeout=60)
+    daemon.append(api, 'RelST2', build_nzb(pb, 'st2.bin', len(b), 100_000, set()), True, 'st-key2', 100)
+    time.sleep(2)
+
+    def restart():
+        try:
+            api.shutdown()
+        except Exception:
+            pass
+        t.procs[-1].wait(timeout=60)
+
+    restart()
+    with open(t.path('main', 'queue', 'queue.new'), 'w') as f:
+        f.write('nzbget diskstate file version 1\ngarbage from an interrupted write\n')
+    daemon.start()
+    api = daemon.wait_ready()
+    gid = next(g['NZBID'] for g in api.listgroups() if g['NZBName'] == 'RelST2')
+    _rpc(daemon, 'editqueue', ['GroupFinalDelete', '', [gid]])
+    time.sleep(2)
+    restart()
+    daemon.start()
+    api = daemon.wait_ready()
+    history = [h['NZBName'] for h in api.history()]
+    unreadable = _grep_log(t, 'could not be read')
+    ok = 'RelST1' in history and unreadable == 0
+    return ('staletempstate', ok, 'history=%s unreadable_logs=%d' % (history, unreadable))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9095,6 +9135,7 @@ SCENARIOS = {
     'extbaresignature': scenario_extbaresignature,
     'emptyconfigread': scenario_emptyconfigread,
     'damagedfilestate': scenario_damagedfilestate,
+    'staletempstate': scenario_staletempstate,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

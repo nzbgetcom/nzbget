@@ -176,6 +176,12 @@ StateFile::StateFile(const char* filename, int formatVersion, bool transactional
 void StateFile::Discard()
 {
 	FileSystem::DeleteFile(m_destFilename);
+	// a temp file left from an interrupted write would be "restored" at the next
+	// start as if the write had finished (a partial file, all state set aside)
+	if (m_transactional)
+	{
+		FileSystem::DeleteFile(m_tempFilename);
+	}
 }
 
 /* Parse signature and return format version number
@@ -256,6 +262,13 @@ bool StateFile::FinishWrite()
 
 StateDiskFile* StateFile::BeginRead()
 {
+	// with the dest-file there, a temp-file is what an interrupted write left (the
+	// dest-file is deleted only right before the temp-file takes its place)
+	if (m_transactional && FileSystem::FileExists(m_destFilename) && FileSystem::FileExists(m_tempFilename))
+	{
+		FileSystem::DeleteFile(m_tempFilename);
+	}
+
 	if (!FileSystem::FileExists(m_destFilename) && FileSystem::FileExists(m_tempFilename))
 	{
 		// disaster recovery: temp-file exists but the dest-file doesn't
