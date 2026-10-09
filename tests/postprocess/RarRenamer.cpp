@@ -349,4 +349,45 @@ BOOST_AUTO_TEST_CASE(RenameRar3EncryptedTest)
 
 #endif
 
+class RarRenamerErrorCounter : public RarRenamerMock
+{
+public:
+	using RarRenamerMock::RarRenamerMock;
+	int errors = 0;
+protected:
+	void PrintMessage(Message::EKind kind, const char* format, ...) override
+	{
+		if (kind == Message::mkError) errors++;
+	}
+};
+
+BOOST_AUTO_TEST_CASE(RarRenameSubfolderTest)
+{
+	// an obfuscated set in the folder and another in a subfolder: the folder's
+	// volumes stayed listed and the subfolder's pass tried to rename them again
+	// (from their old names, which no longer existed) into the subfolder
+	const fs::path workingDir = CURR_DIR / "RarRenameSubfolderTest";
+	RarRenamerErrorCounter rarRenamer(workingDir);
+	const fs::path sub = workingDir / "sub";
+	BOOST_REQUIRE(fs::create_directory(sub));
+	const char* names[] = {"12348", "12342", "12346"};
+	for (int i = 0; i < 3; i++)
+	{
+		BOOST_CHECK(fs::copy_file(workingDir / ("testfile3.part0" + std::to_string(i + 1) + ".rar"), workingDir / names[i]));
+		BOOST_CHECK(fs::copy_file(workingDir / ("testfile5.part0" + std::to_string(i + 1) + ".rar"), sub / names[i]));
+	}
+	for (const char* original : {"testfile3.part01.rar", "testfile3.part02.rar", "testfile3.part03.rar"})
+	{
+		fs::remove(workingDir / original);
+	}
+
+	rarRenamer.Execute();
+
+	BOOST_CHECK_EQUAL(rarRenamer.GetRenamedCount(), 6);
+	BOOST_CHECK(fs::exists(workingDir / "testfile3.part0001.rar"));
+	BOOST_CHECK(fs::exists(sub / "testfile5.part0001.rar"));
+	BOOST_CHECK(!fs::exists(sub / "testfile3.part0001.rar"));
+	BOOST_CHECK_EQUAL(rarRenamer.errors, 0);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

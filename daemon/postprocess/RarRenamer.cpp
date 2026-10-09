@@ -88,6 +88,10 @@ void RarRenamer::CheckFiles(const char* destDir)
 	{
 		RenameFiles(destDir);
 	}
+
+	// the next directory starts afresh: kept, this one's volumes (under the
+	// names they had before the rename) were renamed again into each subfolder
+	m_volumes.clear();
 }
 
 void RarRenamer::CheckOneFile(const char* filename)
