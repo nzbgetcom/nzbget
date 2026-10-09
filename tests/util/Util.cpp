@@ -113,6 +113,17 @@ BOOST_AUTO_TEST_CASE(ParseRfc822DateTimeTest)
 	BOOST_CHECK_EQUAL(WebUtil::ParseRfc822DateTime("not a date"), 0);
 }
 
+BOOST_AUTO_TEST_CASE(JsonEncodeNonBmpTest)
+{
+	// U+1F600 (4 bytes in UTF-8) is a surrogate pair in JSON; it came out as "."
+	CString json = WebUtil::JsonEncode("x\xF0\x9F\x98\x80y");
+	BOOST_CHECK_EQUAL(std::string(json), std::string("x\\ud83d\\ude00y"));
+	// and decodes back to the same bytes
+	CString decoded = *json;
+	WebUtil::JsonDecode(decoded);
+	BOOST_CHECK_EQUAL(std::string(decoded), std::string("x\xF0\x9F\x98\x80y"));
+}
+
 BOOST_AUTO_TEST_CASE(URLEncodeTest)
 {
 	const char* badUrl = "http://www.example.com/nzb_get/12344/Debian V7 6 64 bit OS.nzb";

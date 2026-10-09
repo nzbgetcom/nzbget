@@ -1381,9 +1381,19 @@ CString WebUtil::JsonEncode(const char* raw)
 						cp += ch & 0x3f;
 					}
 
-					// we support only Unicode range U+0000-U+FFFF
-					sprintf(output, "\\u%04x", cp <= 0xFFFF ? cp : '.');
-					output += 6;
+					if (cp <= 0xFFFF)
+					{
+						sprintf(output, "\\u%04x", cp);
+						output += 6;
+					}
+					else
+					{
+						// past U+FFFF (an emoji, CJK extension B): a UTF-16 surrogate pair,
+						// the JSON form - written as "." it lost the character
+						cp -= 0x10000;
+						sprintf(output, "\\u%04x\\u%04x", 0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+						output += 12;
+					}
 				}
 				else
 				{
