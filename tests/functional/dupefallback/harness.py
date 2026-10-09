@@ -8641,6 +8641,22 @@ def scenario_articledecoyparrestart(daemon, t):
     return ('articledecoyparrestart', ok, 'status=%s integrity=%s rejected_logs=%d' % (h['Status'], integ, rejected))
 
 
+def scenario_emptyconfigread(daemon, t):
+    """The config file emptied while the daemon runs (0 bytes), then the
+    "loadconfig" call: reading it with a one-byte line buffer returned an empty
+    line forever, the request never answered and a thread spun at 100 %
+    CPU. It answers now."""
+    daemon.wait_ready()
+    open(t.path(daemon.conf_rel), 'w').close()
+    try:
+        reply = _rpc(daemon, 'loadconfig', [], timeout=15)
+        answered = 'result' in reply or 'error' in reply
+    except Exception:
+        answered = False
+    ok = answered
+    return ('emptyconfigread', ok, 'answered=%s' % answered)
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9034,6 +9050,7 @@ SCENARIOS = {
     'damagedstats': scenario_damagedstats,
     'damagedhistorykind': scenario_damagedhistorykind,
     'extbaresignature': scenario_extbaresignature,
+    'emptyconfigread': scenario_emptyconfigread,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,

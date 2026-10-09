@@ -43,6 +43,11 @@ bool ScriptConfig::LoadConfig(Options::OptEntries* optEntries)
 	}
 
 	int fileLen = (int)FileSystem::FileSize(g_Options->GetConfigFilename());
+	if (fileLen <= 0)
+	{
+		// nothing to read: a buffer of one byte read an empty line forever
+		return true;
+	}
 	CString buf;
 	buf.Reserve(fileLen);
 
