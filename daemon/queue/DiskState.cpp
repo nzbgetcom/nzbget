@@ -1705,6 +1705,12 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 
 	int size;
 	if (infile.ScanLine("%i", &size) != 1) goto error;
+	// the state of a file with its articles loaded must list as many (a stale or
+	// damaged state file listed more: at() threw out of the queue coordinator)
+	if (size < 0 || (hasArticles && size != (int)fileInfo->GetArticles()->size()) || size > 10000000)
+	{
+		goto error;
+	}
 	for (int i = 0; i < size; i++)
 	{
 		if (!hasArticles)

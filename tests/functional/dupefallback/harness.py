@@ -8657,6 +8657,49 @@ def scenario_emptyconfigread(daemon, t):
     return ('emptyconfigread', ok, 'answered=%s' % answered)
 
 
+def scenario_damagedfilestate(daemon, t):
+    """A partial file's saved state listing more articles than the file has
+    (a stale or damaged "<id>s"): the article list was indexed with at(),
+    which threw out of the queue coordinator and ended the daemon when the
+    file was scheduled again. The state is refused now and the daemon runs.
+    (Here the articles aren't loaded before the state, so the old code
+    failed on the missing lines instead; the throw needs them loaded first.)"""
+    size, seg = 1_000_000, 100_000
+    data = _payload(size, 11826)
+    pp = _place_copy(t, 'fsA', data)
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelFS', build_nzb(pp, 'fs.bin', size, seg, set()), False, 'fs-key', 100)
+    time.sleep(4)
+    try:
+        api.shutdown()
+    except Exception:
+        pass
+    t.procs[-1].wait(timeout=60)
+    queue_dir = t.path('main', 'queue')
+    damaged = False
+    before = sorted(os.listdir(queue_dir))
+    for name in os.listdir(queue_dir):
+        if not re.match(r'^\d+s$', name):
+            continue
+        path = os.path.join(queue_dir, name)
+        lines = open(path).read().split('\n')
+        for i, line in enumerate(lines):
+            if re.match(r'^\d+$', line) and int(line) == 10 and i + 1 < len(lines) and lines[i + 1].count(',') >= 3:
+                lines[i] = '15'
+                open(path, 'w').write('\n'.join(lines))
+                damaged = True
+                break
+    daemon.start()
+    try:
+        api = daemon.wait_ready()
+        time.sleep(25)
+        alive = t.procs[-1].poll() is None and bool(_rpc(daemon, 'version', []).get('result'))
+    except Exception:
+        alive = False
+    ok = damaged and alive
+    return ('damagedfilestate', ok, 'damaged=%s alive=%s before=%s' % (damaged, alive, before))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -9051,6 +9094,7 @@ SCENARIOS = {
     'damagedhistorykind': scenario_damagedhistorykind,
     'extbaresignature': scenario_extbaresignature,
     'emptyconfigread': scenario_emptyconfigread,
+    'damagedfilestate': scenario_damagedfilestate,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9328,6 +9372,7 @@ SCENARIO_OPTIONS = {
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'parscanpercent': ['ParCheck=force', 'ParScan=full'],
     'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
+    'damagedfilestate': ['ContinuePartial=yes', 'ArticleRetries=0', 'DupeArticleFallback=no'],
     'parrenamebad': ['ParRename=yes', 'DirectRename=no', 'ParCheck=auto'],
     'joingroupreconnect': ['Server1.JoinGroup=yes', 'Server1.Connections=1', 'ArticleRetries=0', 'DirectWrite=no'],
     'joingroupnogroups': ['Server1.JoinGroup=yes', 'ArticleRetries=0', 'DirectWrite=no'],
@@ -9449,7 +9494,7 @@ SCENARIO_REWRITE_PROXY = {'notfound451': (b'430 ', b'451 '),
                           'pathtraversalarticle': (b'name=aaaaaaaa.bin', b'name=../../ab.bin'), 'rejectnextserver': (b'=ypart begin=', b'=ypart begxn=')}
 
 # scenarios with a DelayingNntpProxy in front of Server1: [(message-id marker, delay in s)]
-SCENARIO_DELAY_PROXY = {'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
+SCENARIO_DELAY_PROXY = {'damagedfilestate': [(b'?6=500000:', 20.0, True)], 'articledecoyparrestart': [(b'?9=4000000:', 15.0, True), (b'?10=4500000:', 15.0, True)], 'directrenamesubdir': [(b'drA/obf', 0.4)], 'directrenamesubdirjoin': [(b'drA/obf', 0.4)], 'slowprobe': [(b'STAT ', 5.0), (b'spA/', 0.2)],
                         'directunpackkeep': [(b'rel.part03', 2.0)],
                         'directunpackkeepnointer': [(b'rel.part03', 2.0)],
                         'truncatedstate': [(b'tsA/', 0.5)],
