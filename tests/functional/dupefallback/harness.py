@@ -8458,6 +8458,28 @@ def scenario_appendslashname(daemon, t):
     return ('appendslashname', ok, 'name=%r escape_name=%r status=%s outside=%s' % (got, h['NZBName'], h['Status'], outside))
 
 
+def scenario_parrenamebad(daemon, t):
+    """Par-rename with a par2 index missing the description of two files (a
+    damaged index) and one file to rename: the index was listed as damaged
+    once per missing description, renamed to .bad once and then failed to
+    rename again for each other listing. It's listed once now."""
+    a = _payload(200_000, 11418)
+    b = _payload(100_000, 11419)
+    c = _payload(100_000, 11420)
+    par = generators.par2_index([('real.mkv', a), ('b.mkv', b), ('c.mkv', c)], no_desc=('b.mkv', 'c.mkv'))
+    t.write_file(os.path.join('data', 'prA/obf.bin'), a)
+    t.write_file(os.path.join('data', 'prA/rel.par2'), par)
+    members = [('prA/obf.bin', 'obf.bin', len(a), 100_000, set()), ('prA/rel.par2', 'rel.par2', len(par), 500_000, set())]
+    api = daemon.wait_ready()
+    daemon.append(api, 'RelPR', build_multi_nzb(members), False, 'pr-key', 100)
+    h = daemon.wait_history(api, 'RelPR', timeout=120)
+    damaged = _grep_log(t, 'Damaged par2-file detected')
+    failed = _grep_log(t, 'Failed to rename file')
+    renamed = bool([r for r in t.find_files('main', 'dst') if r.endswith('/real.mkv')])
+    ok = renamed and damaged == 1 and failed == 0
+    return ('parrenamebad', ok, 'status=%s renamed=%s damaged_logs=%d failed_renames=%d' % (h['Status'], renamed, damaged, failed))
+
+
 def scenario_notfound451(daemon, t):
     """A news server that answers 451 for a missing article (as some
     providers do) is treated like 430: the article is asked for once on that
@@ -8845,6 +8867,7 @@ SCENARIOS = {
     'joingroupnogroups': scenario_joingroupnogroups,
     'stallquit': scenario_stallquit,
     'appendslashname': scenario_appendslashname,
+    'parrenamebad': scenario_parrenamebad,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,
     'directrenamesubdirjoin': scenario_directrenamesubdirjoin,
@@ -9122,6 +9145,7 @@ SCENARIO_OPTIONS = {
     'joinequalpieces': ['Unpack=yes', 'UnrarCmd=/usr/bin/unrar', 'SevenZipCmd=/usr/bin/7z', 'ParCheck=force'],
     'parscanpercent': ['ParCheck=force', 'ParScan=full'],
     'retentionnodate': ['Server1.Retention=30', 'ArticleRetries=0'],
+    'parrenamebad': ['ParRename=yes', 'DirectRename=no', 'ParCheck=auto'],
     'joingroupreconnect': ['Server1.JoinGroup=yes', 'Server1.Connections=1', 'ArticleRetries=0', 'DirectWrite=no'],
     'joingroupnogroups': ['Server1.JoinGroup=yes', 'ArticleRetries=0', 'DirectWrite=no'],
     'stallquit': ['ArticleTimeout=5', 'ArticleRetries=2', 'ArticleInterval=0', 'DirectWrite=no', 'Server1.Connections=1'],

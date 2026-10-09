@@ -356,13 +356,14 @@ def split_bytes(data, sizes):
     return [piece for piece in pieces if piece]
 
 
-def par2_index(files, slice_size=65536, creator=b'dupefallback harness', pad=200_000):
+def par2_index(files, slice_size=65536, creator=b'dupefallback harness', pad=200_000, no_desc=()):
     """A par2 index (main, file descriptions, slice checksums, creator; no
     recovery slices) for [(name, data)]: enough for a par-check to verify
     every file byte for byte, and to report a damaged file as unrepairable.
     The creator packet is padded to `pad` bytes: nzbget's direct-rename
     content check misses the par2 signature of a file whose first article
-    arrives in one decoded buffer, which a few-KB index would."""
+    arrives in one decoded buffer, which a few-KB index would. Files named in
+    `no_desc` get no description packet (a damaged index)."""
     creator = creator + b' ' * max(0, pad - len(creator))
     import hashlib as _hashlib
     import struct as _struct
@@ -384,8 +385,9 @@ def par2_index(files, slice_size=65536, creator=b'dupefallback harness', pad=200
     out = packet(b'PAR 2.0\0Main\0\0\0\0', main)
     for name, data in files:
         f = fid(name, data)
-        out += packet(b'PAR 2.0\0FileDesc', f + _hashlib.md5(data).digest() +
-                      _hashlib.md5(data[:16384]).digest() + _struct.pack('<Q', len(data)) + name.encode())
+        if name not in no_desc:
+            out += packet(b'PAR 2.0\0FileDesc', f + _hashlib.md5(data).digest() +
+                          _hashlib.md5(data[:16384]).digest() + _struct.pack('<Q', len(data)) + name.encode())
         checks = b''
         for off in range(0, len(data), slice_size):
             chunk = data[off:off + slice_size].ljust(slice_size, b'\0')
