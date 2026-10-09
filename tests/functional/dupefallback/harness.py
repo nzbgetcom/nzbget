@@ -8901,6 +8901,27 @@ def scenario_webetag(daemon, t):
     return ('webetag', ok, 'etags=%s,%s status=%s' % (etag_a, etag_b, code))
 
 
+def scenario_web404warn(daemon, t):
+    """A missing web file is warned about in the log, except the few a
+    browser asks for on its own (favicon.ico...). The ignore list compared the
+    full path, so it never matched, and its result was passed on as "print
+    warning": no missing file was ever logged."""
+    import urllib.request as _req
+    import urllib.error as _err
+    daemon.wait_ready()
+    base = 'http://127.0.0.1:%d/' % daemon.rpc_port
+    for name in ('missing-12435.js', 'favicon.ico'):
+        try:
+            _req.urlopen(base + name, timeout=15).read()
+        except _err.HTTPError:
+            pass
+    time.sleep(2)
+    missing = _grep_log(t, 'Resource: /missing-12435.js')
+    favicon = _grep_log(t, 'Resource: /favicon.ico')
+    ok = missing == 1 and favicon == 0
+    return ('web404warn', ok, 'missing=%d favicon=%d' % (missing, favicon))
+
+
 def scenario_clientcommands(daemon, t):
     """The command-line client over the binary protocol after its requests got
     stricter checks: list, edit (pause a group) and write-log still work."""
@@ -9326,6 +9347,7 @@ SCENARIOS = {
     'xmlrpccdata': scenario_xmlrpccdata,
     'webdirget': scenario_webdirget,
     'webetag': scenario_webetag,
+    'web404warn': scenario_web404warn,
     'clientcommands': scenario_clientcommands,
     'mergefinished': scenario_mergefinished,
     'directrenamesubdir': scenario_directrenamesubdir,

@@ -655,12 +655,15 @@ void WebProcessor::SendSingleFileResponse()
 	CharBuffer body;
 	if (!FileSystem::LoadFileIntoBuffer(filename, body, true))
 	{
-		// do not print warnings "404 not found" for certain files
-		bool ignorable = !strcmp(filename, "package-info.json") ||
-			!strcmp(filename, "favicon.ico") ||
-			!strncmp(filename, "apple-touch-icon", 16);
+		// do not print warnings "404 not found" for certain files (by base
+		// name: the full path never matched them; and the flag passed on is
+		// "print warning", so no missing file was ever warned about)
+		const char* baseName = FileSystem::BaseFileName(filename);
+		bool ignorable = !strcmp(baseName, "package-info.json") ||
+			!strcmp(baseName, "favicon.ico") ||
+			!strncmp(baseName, "apple-touch-icon", 16);
 
-		SendErrorResponse(ERR_HTTP_NOT_FOUND, ignorable);
+		SendErrorResponse(ERR_HTTP_NOT_FOUND, !ignorable);
 		return;
 	}
 
