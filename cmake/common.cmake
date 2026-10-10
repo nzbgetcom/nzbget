@@ -96,9 +96,9 @@ if(NOT MSVC)
 	endif()
 
 	if(NOT APPLE)
-		# Stack clash protection (Linux only; Darwin kernel provides guard pages)
+		# Stack clash protection is enabled on Linux only.
 		# Not supported by the 32-bit ARM Android target (flag is ignored with a warning)
-		if(NOT (ANDROID AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm"))
+		if((CMAKE_SYSTEM_NAME STREQUAL "Linux" OR ANDROID) AND NOT (ANDROID AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm"))
 			check_cxx_compiler_flag("-fstack-clash-protection" HAVE_STACK_CLASH_PROTECT)
 		endif()
 
