@@ -20,8 +20,8 @@
 #
 
 # FreeBSD sysroot parameters
-FREEBSD_VERSION="13.0"
-FREEBSDIMAGE_URL="http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/$FREEBSD_VERSION-RELEASE/base.txz"
+FREEBSD_VERSION="13.2"
+FREEBSDIMAGE_URL="https://archive.freebsd.org/old-releases/amd64/$FREEBSD_VERSION-RELEASE/base.txz"
 
 ### START OF THE SCRIPT
 
