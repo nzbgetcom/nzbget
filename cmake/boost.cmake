@@ -38,7 +38,11 @@ if(NOT BOOST_FROM_SYSTEM)
 
 	add_library(Boost::json INTERFACE IMPORTED GLOBAL)
 	target_link_libraries(Boost::json INTERFACE Boost::headers)
+
+	target_compile_definitions(libnzbget PUBLIC NZBGET_BOOST_JSON_SOURCE)
 endif()
 
-# nzbget uses header-only Boost
+# Disable Boost auto-linking; dependencies are linked explicitly via CMake targets.
 add_compile_definitions(BOOST_ALL_NO_LIB)
+
+target_link_libraries(libnzbget PUBLIC Boost::json)

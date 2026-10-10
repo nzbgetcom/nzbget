@@ -21,7 +21,9 @@
 
 #include "Json.h"
 
+#ifdef NZBGET_BOOST_JSON_SOURCE
 #include <boost/json/src.hpp>
+#endif
 
 namespace Json
 {
