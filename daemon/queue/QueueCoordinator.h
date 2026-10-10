@@ -97,6 +97,7 @@ private:
 	std::atomic<bool> m_hasMoreJobs{true};
 	int m_downloadsLimit;
 	int m_serverConfigGeneration = 0;
+	int m_propagationWaitLoggedId = 0;
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;
 
