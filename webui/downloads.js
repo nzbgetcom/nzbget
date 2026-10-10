@@ -255,9 +255,10 @@ var Downloads = (new function($)
 		var progress = DownloadsUI.buildProgress(group, item.data.size, item.data.left, item.data.estimated);
 		var dupe = DownloadsUI.buildDupe(group.DupeKey, group.DupeScore, group.DupeMode);
 
-		var age = new Date().getTime() / 1000 - (group.MinPostTime + UISettings.timeZoneCorrection*60*60);
+		// files are held back individually, so the newest file (often a par2) decides whether the group still waits
+		var newestAge = new Date().getTime() / 1000 - (group.MaxPostTime + UISettings.timeZoneCorrection*60*60);
 		var propagation = '';
-		if (group.ActiveDownloads == 0 && age < parseInt(Options.option('PropagationDelay')) * 60)
+		if (group.ActiveDownloads == 0 && newestAge < parseInt(Options.option('PropagationDelay')) * 60)
 		{
 			propagation = '<span class="label label-warning text-uppercase" title="' + I18n.translate('desc_propagation_delayed') + '">' + I18n.translate('label_propagation_delayed') + '</span> ';
 		}
