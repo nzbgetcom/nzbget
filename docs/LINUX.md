@@ -56,6 +56,14 @@ NZBGet requires **C++20** (`CMAKE_CXX_STANDARD 20`, `CMAKE_CXX_STANDARD_REQUIRED
 
 NZBGet is built with curses terminal dashboard support (`nzbget -s`) by default. For headless environments (containers, NAS) that only need the WebUI and RPC daemon mode, configure with `-DDISABLE_CURSES=ON`; the `ncurses` development packages are then not required.
 
+The async engine uses `epoll` on Linux by default. Optionally, `-DENABLE_IO_URING=ON` switches it to `io_uring`, which requires **Linux 5.10+** and the `liburing` development package:
+
+- **Debian / Ubuntu / Mint**: `sudo apt-get install -y liburing-dev`
+- **Fedora / RHEL / CentOS Stream**: `sudo dnf install -y liburing-devel`
+- **Arch Linux / Manjaro**: `sudo pacman -S --needed liburing`
+
+> **Note on io_uring**: the option is Linux-only and is `OFF` by default. `liburing` is always taken from the system, even with `BUILD_DEPS_FROM_SOURCE=ON`; it is not downloaded by FetchContent. When enabled, `epoll` support is compiled out, so the resulting binary requires a kernel where the `io_uring` syscalls are available and not blocked (for example by a container's seccomp profile). Leave it `OFF` if you ship one binary for a range of kernels or run inside restricted containers.
+
 ## 3. Dependency Management: Source vs System
 
 The CMake cache variable `BUILD_DEPS_FROM_SOURCE` selects between two dependency resolution models:
@@ -167,9 +175,16 @@ cmake --build build --target uninstall
 | `ENABLE_STATIC` | `OFF` | Build a 100% statically linked executable (`-static`) |
 | `ENABLE_TESTS` | `OFF` | Build unit test suites (`tests/`) |
 | `ENABLE_CLANG_TIDY` | `OFF` | Enable the Clang-Tidy static code analyzer during compilation |
+| `ENABLE_IO_URING` | `OFF` | Linux only: use `io_uring` as the default async I/O reactor instead of `epoll` (requires `liburing` and Linux 5.10+) |
 | `DISABLE_CURSES` | `OFF` | Disable the curses terminal UI (headless servers / containers) |
 | `DISABLE_GZIP` | `OFF` | Disable gzip compression (zlib) |
 | `DISABLE_PARCHECK` | `OFF` | Disable built-in par2 verification and repair |
+
+`ENABLE_IO_URING` can be enabled on top of any preset without a dedicated one:
+
+```bash
+cmake --preset release -DENABLE_IO_URING=ON
+```
 
 ## 5. Cross-Compilation with Musl Toolchains
 

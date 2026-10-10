@@ -160,6 +160,7 @@
 #include <iomanip>
 #include <span>
 #include <regex>
+#include <coroutine>
 
 #include <libxml/parser.h>
 #include <libxml/xmlerror.h>
