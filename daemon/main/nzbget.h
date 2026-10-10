@@ -31,6 +31,11 @@
 #define _WIN32_WINNT 0x0601
 #endif
 
+#if _WIN32_WINNT < 0x0601
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
+#endif
+
 #ifndef WINVER
 #define WINVER 0x0601
 #endif
@@ -160,6 +165,7 @@
 #include <iomanip>
 #include <span>
 #include <regex>
+#include <coroutine> 
 
 #include <libxml/parser.h>
 #include <libxml/xmlerror.h>
