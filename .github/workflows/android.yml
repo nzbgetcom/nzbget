@@ -30,7 +30,7 @@ jobs:
           build/toolchains/android-api-level
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when the toolchain script changes.
-        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/setup-android-toolchain.sh') }}
+        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/android/build-toolchain.sh') }}
 
     - name: Install build tools
       if: steps.cache.outputs.cache-hit != 'true'
@@ -41,7 +41,7 @@ jobs:
     - name: Prepare Android toolchain
       if: steps.cache.outputs.cache-hit != 'true'
       run: |
-        bash toolchains/setup-android-toolchain.sh all
+        bash toolchains/android/build-toolchain.sh all
 
   prepare-build-matrix:
     runs-on: ubuntu-24.04
@@ -85,7 +85,7 @@ jobs:
           build/toolchains/android-sysroot
           build/toolchains/android-libcxx
           build/toolchains/android-api-level
-        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/setup-android-toolchain.sh') }}
+        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/android/build-toolchain.sh') }}
         fail-on-cache-miss: true
 
     - name: Cache FetchContent dependencies
@@ -94,7 +94,7 @@ jobs:
         path: ${{ github.workspace }}/build/ci-android${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled binaries when toolchains, flags, or dependency configurations change.
-        key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android-llvm.cmake', 'toolchains/setup-android-toolchain.sh') }}
+        key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android/android-llvm.cmake', 'toolchains/android/build-toolchain.sh') }}
 
     - name: Install build tools
       run: |

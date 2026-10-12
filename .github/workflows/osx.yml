@@ -28,7 +28,7 @@ jobs:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when toolchain or build scripts change.
-        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/macos/build-libcxx.sh') }}
 
     - name: Install LLVM Clang 19 and Ninja
       if: steps.cache.outputs.cache-hit != 'true'
@@ -41,7 +41,7 @@ jobs:
         mkdir -p ${{ runner.temp }}/macos12-libcxx
         sudo mkdir -p /opt/macos12-libcxx
         sudo chown -R runner:admin /opt/macos12-libcxx
-        bash toolchains/build-macos-libcxx.sh ${{ env.LLVM_TAG }} /opt/macos12-libcxx
+        bash toolchains/macos/build-libcxx.sh ${{ env.LLVM_TAG }} /opt/macos12-libcxx
         # Mirror to cache location
         cp -R /opt/macos12-libcxx/* ${{ runner.temp }}/macos12-libcxx/
 
@@ -68,7 +68,7 @@ jobs:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when toolchain or build scripts change.
-        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/macos/build-libcxx.sh') }}
 
     - name: Cache FetchContent dependencies
       uses: actions/cache@v4
@@ -76,7 +76,7 @@ jobs:
         path: ${{ github.workspace }}/build/ci-macos-arm64/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled binaries when toolchains, flags, or dependency configurations change.
-        key: deps-macos-arm64-${{ env.LLVM_TAG }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'platforms/macos/build.sh', 'toolchains/macos-llvm.cmake') }}
+        key: deps-macos-arm64-${{ env.LLVM_TAG }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'platforms/macos/build.sh', 'toolchains/macos/macos-llvm.cmake') }}
 
     - name: Restore static libc++ to system location
       run: |
@@ -138,7 +138,7 @@ jobs:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when toolchain or build scripts change.
-        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/build-macos-libcxx.sh') }}
+        key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/macos/build-libcxx.sh') }}
 
     - name: Cache FetchContent dependencies
       uses: actions/cache@v4
@@ -146,7 +146,7 @@ jobs:
         path: ${{ github.workspace }}/build/ci-macos-x64/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled binaries when toolchains, flags, or dependency configurations change.
-        key: deps-macos-x64-${{ env.LLVM_TAG }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'platforms/macos/build.sh', 'toolchains/macos-llvm.cmake') }}
+        key: deps-macos-x64-${{ env.LLVM_TAG }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'platforms/macos/build.sh', 'toolchains/macos/macos-llvm.cmake') }}
 
     - name: Restore static libc++ to system location
       run: |

@@ -198,7 +198,7 @@
       "description": "macOS Apple Silicon CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-macos-arm64",
-      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/macos/macos-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_OSX_ARCHITECTURES": "arm64",
@@ -214,7 +214,7 @@
       "description": "macOS Intel CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-macos-x64",
-      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/macos/macos-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_OSX_ARCHITECTURES": "x86_64",
@@ -230,7 +230,7 @@
       "description": "macOS Apple Silicon CI debug build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-macos-debug-arm64",
-      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/macos/macos-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_OSX_ARCHITECTURES": "arm64",
@@ -246,7 +246,7 @@
       "description": "macOS Intel CI debug build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-macos-debug-x64",
-      "toolchainFile": "${sourceDir}/toolchains/macos-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/macos/macos-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_OSX_ARCHITECTURES": "x86_64",
@@ -262,7 +262,7 @@
       "description": "Android arm64-v8a CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-android-arm64",
-      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/android/android-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ANDROID_ARCH": "arm64",
@@ -278,7 +278,7 @@
       "description": "Android armeabi-v7a CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-android-armv7",
-      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/android/android-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ANDROID_ARCH": "armv7",
@@ -294,7 +294,7 @@
       "description": "Android x86_64 CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-android-x86_64",
-      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/android/android-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ANDROID_ARCH": "x86_64",
@@ -310,7 +310,7 @@
       "description": "Android i686 CI build with LLVM Clang 19+ (hermetic, all deps from source/cache)",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/ci-android-x86",
-      "toolchainFile": "${sourceDir}/toolchains/android-llvm.cmake",
+      "toolchainFile": "${sourceDir}/toolchains/android/android-llvm.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "ANDROID_ARCH": "x86",

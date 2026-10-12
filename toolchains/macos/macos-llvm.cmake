@@ -110,8 +110,8 @@ endif()
 #   4) none found -> system libc++ (dynamic; std::format unavailable on macOS 12)
 set(NZBGET_STATIC_LIBCXX "")
 foreach(_libcxx_candidate IN ITEMS "${NZBGET_LIBCXX_DIR}" "$ENV{NZBGET_LIBCXX_DIR}"
-		"${CMAKE_CURRENT_LIST_DIR}/../build/toolchains/macos-libcxx"
-		"${CMAKE_CURRENT_LIST_DIR}/../build/toolchains/macos12-libcxx"
+		"${CMAKE_CURRENT_LIST_DIR}/../../build/toolchains/macos-libcxx"
+		"${CMAKE_CURRENT_LIST_DIR}/../../build/toolchains/macos12-libcxx"
 		"/opt/macos-libcxx"
 		"/opt/macos12-libcxx"
 		"/tmp/macos-libcxx"

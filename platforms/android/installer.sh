@@ -273,6 +273,21 @@ Unpack()
     ) || Error "Unpacking failed."
 }
 
+ConfigureAndroid()
+{
+    # Adjusting config file to current system memory on Android
+    Info "  Activating article cache (ArticleCache=100)"
+    sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf 2>/dev/null || sed 's:^ArticleCache=.*:ArticleCache=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    Info "  Increasing write buffer (WriteBuffer=1024)"
+    sed 's:^WriteBuffer=.*:WriteBuffer=1024:' -i nzbget.conf 2>/dev/null || sed 's:^WriteBuffer=.*:WriteBuffer=1024:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    Info "  Increasing par repair buffer (ParBuffer=100)"
+    sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf 2>/dev/null || sed 's:^ParBuffer=.*:ParBuffer=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    Info "  Activating direct rename (DirectRename=yes)"
+    sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectRename=.*:DirectRename=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    Info "  Activating direct unpack (DirectUnpack=yes)"
+    sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectUnpack=.*:DirectUnpack=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+}
+
 Configure()
 {
     cd "$OUTDIR"
@@ -280,6 +295,7 @@ Configure()
 
     if test ! -f nzbget.conf; then
         cp ./webui/nzbget.conf.template nzbget.conf
+        ConfigureAndroid
         QUICKHELP=yes
     fi
 }
