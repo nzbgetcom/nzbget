@@ -186,7 +186,7 @@ download_cacert() {
 # Ensure LLVM 19.1.7, Bionic sysroot, compiler-rt and static libc++ are available
 ensure_toolchain() {
 	local ARCH=$1
-	ANDROID_API_LEVEL="$API_LEVEL" bash "$NZBGET_ROOT/toolchains/setup-android-toolchain.sh" "$ARCH"
+	ANDROID_API_LEVEL="$API_LEVEL" bash "$NZBGET_ROOT/toolchains/android/build-toolchain.sh" "$ARCH"
 }
 
 # Download a nzbgetcom unpacker release asset and copy the requested files
@@ -260,6 +260,10 @@ package_bin() {
 	sed_i 's|^LogFile=.*|LogFile=${MainDir}/nzbget.log|' "$CONF"
 	sed_i 's|^ConfigTemplate=.*|ConfigTemplate=${AppDir}/webui/nzbget.conf.template|' "$CONF"
 	sed_i 's|^AuthorizedIP=.*|AuthorizedIP=127.0.0.1|' "$CONF"
+	sed_i 's:^UnrarCmd=unrar:UnrarCmd=${AppDir}/unrar:' "$CONF"
+	sed_i 's:^SevenZipCmd=7z:SevenZipCmd=${AppDir}/7za:' "$CONF"
+	sed_i 's:^CertStore=.*:CertStore=${AppDir}/cacert.pem:' "$CONF"
+	sed_i 's:^CertCheck=.*:CertCheck=yes:' "$CONF"
 
 	rm -f "$TAR_PKG"
 	tar -czf "$TAR_PKG" -C "$STAGING_DIR" nzbget

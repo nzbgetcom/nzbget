@@ -64,6 +64,7 @@ set(EXTERNAL_DEPS "")
 include(cmake/common.cmake)
 
 add_library(libnzbget STATIC)
+set_target_properties(libnzbget PROPERTIES OUTPUT_NAME nzbget)
 target_include_directories(libnzbget PUBLIC ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
 
 include(daemon/sources.cmake)

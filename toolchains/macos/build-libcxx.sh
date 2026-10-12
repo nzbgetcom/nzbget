@@ -33,7 +33,7 @@ set -e
 
 # resolve script and repository location
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-NZBGET_ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
+NZBGET_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 
 LLVM_TAG=${1:-llvmorg-19.1.7}
 OUTPUT_PREFIX=${2:-$NZBGET_ROOT/build/toolchains/macos12-libcxx}

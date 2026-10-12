@@ -30,7 +30,7 @@ Historically, Android builds relied on NDK standalone toolchains or Google's bun
 To guarantee **Android 5.0+ (API 21)** backward compatibility while enabling full **C++20** language features (`std::format`, ranges, concepts):
 1. **Upstream LLVM 19.1.7**: NZBGet cross-compiles directly with upstream Clang 19 and LLD 19 targeting `*-linux-android21`.
 2. **Bionic Sysroot**: Header files and platform libraries are sourced from Google's Android NDK r26b sysroot.
-3. **Isolated Static libc++**: `toolchains/setup-android-toolchain.sh` compiles compiler-rt builtins and static `libc++.a`, `libc++abi.a`, and `libunwind.a` from the LLVM 19.1.7 source tree with:
+3. **Isolated Static libc++**: `toolchains/android/build-toolchain.sh` compiles compiler-rt builtins and static `libc++.a`, `libc++abi.a`, and `libunwind.a` from the LLVM 19.1.7 source tree with:
    - `-D_LIBCPP_DISABLE_AVAILABILITY`: Disables OS-level availability guards, unlocking modern C++20 on Android API 21.
    - `-DLIBCXXABI_HAS_CXA_THREAD_ATEXIT_IMPL=OFF`: Falls back to thread-local storage (TLS) keys, avoiding undefined `__cxa_thread_atexit_impl` references on Bionic API 21.
    - `-fvisibility=hidden -fvisibility-inlines-hidden`: Ensures all standard library symbols remain internal to the binary, preventing symbol collisions with Android system runtimes.
@@ -43,16 +43,16 @@ To guarantee **Android 5.0+ (API 21)** backward compatibility while enabling ful
 
 ### Cryptographic Checksum Verification
 To ensure supply-chain security and reproducible builds, all external dependencies downloaded during toolchain setup and packaging are verified against cryptographic SHA256 checksums or immutable commit anchors:
-- **LLVM 19.1.7 Release Archives**: Verified against published cryptographic SHA256 release checksums (`toolchains/setup-android-toolchain.sh`).
-- **Android NDK r26b Archives**: Verified against Google's published repository hashes (`toolchains/setup-android-toolchain.sh`).
-- **LLVM Runtime Sources (`compiler-rt`, `libc++`)**: Cloned from the official repository and anchored to the immutable Git commit SHA `cd708029e0b2869e80abe31ddb175f7c35361f90` (GPG-signed release tag `llvmorg-19.1.7` by Tobias Hieta), preventing risks from moved or compromised Git tags (`toolchains/setup-android-toolchain.sh`).
+- **LLVM 19.1.7 Release Archives**: Verified against published cryptographic SHA256 release checksums (`toolchains/android/build-toolchain.sh`).
+- **Android NDK r26b Archives**: Verified against Google's published repository hashes (`toolchains/android/build-toolchain.sh`).
+- **LLVM Runtime Sources (`compiler-rt`, `libc++`)**: Cloned from the official repository and anchored to the immutable Git commit SHA `cd708029e0b2869e80abe31ddb175f7c35361f90` (GPG-signed release tag `llvmorg-19.1.7` by Tobias Hieta), preventing risks from moved or compromised Git tags (`toolchains/android/build-toolchain.sh`).
 - **CA Root Certificates (`cacert.pem`)**: Downloaded alongside official `https://curl.se/ca/cacert.pem.sha256` and validated before bundling into installer packages (`platforms/android/build.sh`).
 
 ### Android API Level Synchronization & Safety
 The minimum Android API level defaults to **21** (Android 5.0 Lollipop). To avoid subtle ABI mismatches between the prebuilt C++ runtimes (`libc++`, `compiler-rt`) and the main NZBGet binary, the build system enforces a single source of truth:
-- `toolchains/setup-android-toolchain.sh` accepts `ANDROID_API_LEVEL` via environment or `--api-level=<num>` (e.g., `--api-level=21`) and records the targeted level in `build/toolchains/android-api-level`.
+- `toolchains/build-android.sh` accepts `ANDROID_API_LEVEL` via environment or `--api-level=<num>` (e.g., `--api-level=21`) and records the targeted level in `build/toolchains/android-api-level`.
 - `toolchains/android-llvm.cmake` checks this file during CMake configure time. If CMake's `ANDROID_API_LEVEL` cache variable deviates from the toolchain runtime API level, configuration fails with a clear diagnostic instructing how to re-target the toolchain runtimes or align the preset.
-- If the toolchain API level changes, `toolchains/setup-android-toolchain.sh` automatically invalidates and cleans older incompatible runtime artifacts before rebuilding.
+- If the toolchain API level changes, `toolchains/build-android.sh` automatically invalidates and cleans older incompatible runtime artifacts before rebuilding.
 
 ### Embedded ncurses Terminal Support
 Android lacks standard terminal terminfo databases in `/usr/share/terminfo`. NZBGet builds a custom static `ncursesw 6.5` (`cmake/ncurses.cmake`) compiled with `--with-fallbacks=xterm,xterm-color,xterm-256color,xterm-16color,vt100,vt200,linux,ansi,screen,screen-256color,tmux,tmux-256color`. This ensures that NZBGet's interactive curses console mode (`nzbget -C`) works out of the box in ADB shells, SSH sessions, Termux, and tmux/screen without requiring external terminfo files.
@@ -84,7 +84,7 @@ Because Android targets are cross-compiled in a hermetic environment without pac
 
 ```bash
 # 1. Setup the Hermetic Toolchain (one-time setup; accepts arm64, armv7, x86_64, x86, or all)
-bash toolchains/setup-android-toolchain.sh arm64
+bash toolchains/android/build-toolchain.sh arm64
 
 # 2. Configure with CMake Preset
 cmake --preset ci-android-arm64

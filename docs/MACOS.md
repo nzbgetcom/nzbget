@@ -126,7 +126,7 @@ To support macOS versions older than the host runner (targeting macOS 10.14+ on 
 1. **Build Static libc++ / libc++abi**:
    Run the runtime builder script:
    ```bash
-   bash toolchains/build-macos-libcxx.sh
+   bash toolchains/macos/build-libcxx.sh
    ```
    This compiles LLVM 19 libc++ and libc++abi statically for both `arm64` (targeting macOS 11.0) and `x86_64` (targeting macOS 10.14), deploying to `build/toolchains/macos12-libcxx` (or a custom path passed as the second argument, e.g. `/opt/macos12-libcxx`).
 2. **Toolchain Integration**:

@@ -258,11 +258,11 @@ bool TlsSocket::ValidateCert()
 		if (common_name_loc >= 0)
 		{
 			// Extract the CN field
-			X509_NAME_ENTRY* common_name_entry = X509_NAME_get_entry(X509_get_subject_name(cert.get()), common_name_loc);
+			const X509_NAME_ENTRY* common_name_entry = X509_NAME_get_entry(X509_get_subject_name(cert.get()), common_name_loc);
 			if (common_name_entry != nullptr)
 			{
 				// Convert the CN field to a C string
-				ASN1_STRING* common_name_asn1 = X509_NAME_ENTRY_get_data(common_name_entry);
+				const ASN1_STRING* common_name_asn1 = X509_NAME_ENTRY_get_data(common_name_entry);
 				if (common_name_asn1 != nullptr)
 				{
 					certHost = ASN1_STRING_get0_data(common_name_asn1);
