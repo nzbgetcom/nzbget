@@ -523,6 +523,7 @@ BOOST_AUTO_TEST_CASE(TestAppendRPCJsonParsing)
 	}
 }
 
+#ifndef WIN32
 BOOST_AUTO_TEST_CASE(SetCloseOnExecTest)
 {
 	int fds[2];
@@ -540,6 +541,7 @@ BOOST_AUTO_TEST_CASE(SetCloseOnExecTest)
 	close(fds[0]);
 	close(fds[1]);
 }
+#endif
 
 BOOST_AUTO_TEST_CASE(SanitizeLineTest)
 {
