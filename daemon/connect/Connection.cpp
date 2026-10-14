@@ -492,9 +492,9 @@ std::unique_ptr<Connection> Connection::Accept()
 		return nullptr;
 	}
 
-	if (!InitSocketOpts(m_socket))
+	if (!InitSocketOpts(socket))
 	{
-		closesocket(m_socket);
+		closesocket(socket);
 		return nullptr;
 	}
 
