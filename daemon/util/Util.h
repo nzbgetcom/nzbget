@@ -110,8 +110,16 @@ public:
 	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
 	static void Trim(std::string& str);
+	static constexpr bool IsControlChar(char c) noexcept
+	{
+		constexpr unsigned char ASCII_SPACE = 32;
+		constexpr unsigned char ASCII_DEL = 127;
+		return static_cast<unsigned char>(c) < ASCII_SPACE || static_cast<unsigned char>(c) == ASCII_DEL;
+	}
+	static void SanitizeLine(std::string& str);
 	static bool EmptyStr(const char* str) { return !str || !*str; }
 	static std::vector<CString> SplitStr(const char* str, const char* separators);
+	static bool EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive);
 	static bool EndsWith(const char* str, const char* suffix, bool caseSensitive);
 	static bool AlphaNum(const char* str);
 
@@ -233,7 +241,7 @@ public:
 	/* cross platform version of GNU timegm, which is similar to mktime but takes an UTC time as parameter */
 	static time_t Timegm(tm const *t);
 
-	static bool StrCaseCmp(const std::string& a, const std::string& b);
+	static bool StrCaseCmp(std::string_view a, std::string_view b);
 
 	static void FormatTime(time_t timeSec, char* buffer, int bufsize);
 	static CString FormatTime(time_t timeSec);

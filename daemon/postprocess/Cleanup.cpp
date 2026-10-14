@@ -40,46 +40,50 @@ void MoveController::StartJob(PostInfo* postInfo)
 
 void MoveController::Run()
 {
-	std::string nzbName;
+	BString<1024> nzbName;
 	{
 		GuardedDownloadQueue guard = DownloadQueue::Guard();
 		nzbName = m_postInfo->GetNzbInfo()->GetName();
-		m_interDir = m_postInfo->GetNzbInfo()->GetDestDir();
-		m_destDir = m_postInfo->GetNzbInfo()->GetFinalDir();
+		m_interDir = fs::u8path(m_postInfo->GetNzbInfo()->GetDestDir());
+		m_destDir = fs::u8path(m_postInfo->GetNzbInfo()->GetFinalDir());
+		if (m_destDir.empty())
+		{
+			m_destDir = fs::u8path(m_postInfo->GetNzbInfo()->BuildFinalDirName().Str());
+		}
 	}
 
-	std::string infoName = "move for " + nzbName;
-	SetInfoName(infoName.c_str());
-
-	if (m_destDir.empty())
-	{
-		m_destDir = m_postInfo->GetNzbInfo()->BuildFinalDirName();
-	}
-
-	PrintMessage(Message::mkInfo, "Moving completed files for %s", nzbName.c_str());
+	BString<1024> infoName("move for %s", *nzbName);
+	SetInfoName(*infoName);
+	PrintMessage(Message::mkInfo, "Moving completed files for %s", *nzbName);
 
 	bool ok = MoveFiles();
-
-	RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 
 	infoName[0] = 'M'; // uppercase
 
 	if (ok)
 	{
-		PrintMessage(Message::mkInfo, "%s successful", infoName.c_str());
-		// save new dest dir
-		GuardedDownloadQueue guard = DownloadQueue::Guard();
-		m_postInfo->GetNzbInfo()->SetDestDir(m_destDir.c_str());
-		m_postInfo->GetNzbInfo()->SetFinalDir("");
-		m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msSuccess);
-	}
-	else
-	{
-		PrintMessage(Message::mkError, "%s failed", infoName.c_str());
-		m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msFailure);
+		RemoveStaleHardlinks(*m_postInfo->GetNzbInfo(), m_destDir);
 	}
 
-	m_postInfo->SetWorking(false);
+	{
+		GuardedDownloadQueue guard = DownloadQueue::Guard();
+		if (m_postInfo && m_postInfo->GetNzbInfo())
+		{
+			if (ok)
+			{
+				PrintMessage(Message::mkInfo, "%s successful", *infoName);
+				m_postInfo->GetNzbInfo()->SetDestDir(fs::u8string(m_destDir).c_str());
+				m_postInfo->GetNzbInfo()->SetFinalDir("");
+				m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msSuccess);
+			}
+			else
+			{
+				PrintMessage(Message::mkError, "%s failed", *infoName);
+				m_postInfo->GetNzbInfo()->SetMoveStatus(NzbInfo::msFailure);
+			}
+			m_postInfo->SetWorking(false);
+		}
+	}
 }
 
 bool MoveController::MoveFiles()
@@ -87,61 +91,141 @@ bool MoveController::MoveFiles()
 	if (m_interDir == m_destDir)
 		return true;
 
-	CString errmsg;
-	if (!FileSystem::ForceDirectories(m_destDir.c_str(), errmsg))
+	fs::error_code ec;
+	if (fs::exists(m_interDir, ec) && fs::exists(m_destDir, ec))
 	{
-		PrintMessage(Message::mkError, "Could not create directory %s: %s", m_destDir.c_str(), *errmsg);
+		if (fs::equivalent(m_interDir, m_destDir, ec))
+			return true;
+	}
+
+	ec.clear();
+
+	fs::create_directories(m_destDir, ec);
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not create directory %s: %s",
+			fs::u8string(m_destDir).c_str(), ec.message().c_str());
 		return false;
 	}
 
-	bool ok = true;
-	MoveFiles(m_interDir, m_destDir, ok);
-	
-	if (ok && FileSystem::DirectoryExists(m_interDir.c_str()) &&
-		!FileSystem::DeleteDirectoryWithContent(m_interDir.c_str(), errmsg))
+	if (!MoveFiles(m_interDir, m_destDir))
+		return false;
+
+	if (fs::exists(m_interDir, ec) && !ec)
 	{
-		PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s", m_interDir.c_str(), *errmsg);
+		fs::remove_all(m_interDir, ec);
+		if (ec)
+		{
+			PrintMessage(Message::mkWarning, "Could not delete intermediate directory %s: %s",
+				fs::u8string(m_interDir).c_str(), ec.message().c_str());
+		}
 	}
 
-	return ok;
+	return true;
 }
 
-void MoveController::MoveFiles(const std::string& src, const std::string& dest, bool& isOk)
+bool MoveController::MoveFiles(const fs::path& src, const fs::path& dest)
 {
-	DirBrowser dir(src.c_str());
-	while (const char* filename = dir.Next())
+	fs::error_code ec;
+	auto it = fs::recursive_directory_iterator(src, fs::directory_options::skip_permission_denied, ec);
+	auto end = fs::recursive_directory_iterator();
+
+	if (ec)
 	{
-		const std::string srcFile = src + PATH_SEPARATOR + filename;
-		const std::string dstFile = dest + PATH_SEPARATOR + filename;
-		if (FileSystem::DirectoryExists(srcFile.c_str()))
-		{
-			CString errmsg;
-			if (FileSystem::ForceDirectories(dstFile.c_str(), errmsg))
-			{
-				MoveFiles(srcFile, dstFile, isOk);
-			}
-			else
-			{
-				isOk = false;
-				PrintMessage(Message::mkError, "Could not create directory %s: %s", dest.c_str(), *errmsg);
-			}
-		}
-		else
-		{
-			bool hiddenFile = srcFile[0] == '.';
-			if (hiddenFile)
-				continue;
-
-			PrintMessage(Message::mkInfo, "Moving file %s to %s", filename, dest.c_str());
-
-			if (!FileSystem::MoveFile(srcFile.c_str(), dstFile.c_str()))
-			{
-				isOk = false;
-				PrintMessage(Message::mkError, "Could not move file %s to %s: %s",
-					srcFile.c_str(), dstFile.c_str(), *FileSystem::GetLastErrorMessage());
-			}
-		}
+		PrintMessage(Message::mkError, "Could not open directory %s: %s",
+			fs::u8string(src).c_str(), ec.message().c_str());
+		return false;
 	}
+
+	while (it != end)
+	{
+		if (IsStopped() || ec) return false;
+
+		const auto& entry = *it;
+		auto relPath = entry.path().lexically_relative(src);
+		fs::path dstPath = dest / relPath;
+
+		if (entry.is_directory(ec))
+		{
+			fs::create_directories(dstPath, ec);
+			if (ec) return false;
+		}
+		else 
+		{
+			std::string filename = fs::u8string(entry.path().filename());
+			bool isDotFile = !filename.empty() && filename[0] == '.';
+
+			if (!isDotFile)
+			{
+				PrintMessage(Message::mkInfo, "Moving file %s to %s",
+					filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+			}
+
+			fs::move_file(entry.path(), dstPath, ec);
+			if (ec && ec == std::errc::file_exists)
+			{
+				ec.clear();
+
+				if (entry.path() == dstPath)
+				{
+					it.increment(ec);
+					continue;
+				}
+
+				if (fs::equivalent(entry.path(), dstPath, ec))
+				{
+					fs::remove(entry.path(), ec);
+					it.increment(ec);
+					continue;
+				}
+				ec.clear();
+
+				dstPath = fs::make_unique_filename(dstPath);
+				if (!isDotFile)
+				{
+					PrintMessage(Message::mkWarning, "File %s already exists, renaming to %s",
+						filename.c_str(), fs::u8string(dstPath.filename()).c_str());
+				}
+
+				fs::move_file(entry.path(), dstPath, ec);
+				if (ec) return false;
+			}
+			else if (ec)
+			{
+				PrintMessage(Message::mkError, "Could not move file %s: %s",
+					filename.c_str(), ec.message().c_str());
+				return false;
+			}
+
+			if (dstPath.filename() != entry.path().filename())
+			{
+				std::string newName = fs::u8string(dstPath.lexically_relative(dest));
+				std::string oldRelName = fs::u8string(relPath);
+				
+				GuardedDownloadQueue guard = DownloadQueue::Guard();
+				if (m_postInfo && m_postInfo->GetNzbInfo())
+				{
+					m_postInfo->GetNzbInfo()->RenameCompletedFile(oldRelName.c_str(), newName.c_str());
+				}
+			}
+		}
+
+		it.increment(ec);
+	}
+
+	if (ec)
+	{
+		PrintMessage(Message::mkError, "Could not read directory %s: %s",
+			fs::u8string(src).c_str(), ec.message().c_str());
+		return false;
+	}
+
+	if (IsStopped())
+	{
+		return false;
+	}
+
+	return true;
 }
 
 void MoveController::AddMessage(Message::EKind kind, const char* text)
@@ -173,7 +257,7 @@ void CleanupController::Run()
 	}
 
 	BString<1024> infoName("cleanup for %s", *nzbName);
-	SetInfoName(infoName);
+	SetInfoName(*infoName);
 
 	PrintMessage(Message::mkInfo, "Cleaning up %s", *nzbName);
 
@@ -208,13 +292,24 @@ void CleanupController::Run()
 	m_postInfo->SetWorking(false);
 }
 
-void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, std::string_view destDir)
+void MoveController::RemoveStaleHardlinks(NzbInfo& nzbInfo, const fs::path& destDir)
 {
 	const auto& hardLinkPath = nzbInfo.GetHardLinkPath();
-	if (hardLinkPath.empty() || hardLinkPath == destDir) return;
+	if (hardLinkPath.empty()) return;
+
+	const auto path = fs::u8path(hardLinkPath);
+	if (path == destDir)
+		return;
 
 	fs::error_code ec;
-	const auto path = fs::u8path(hardLinkPath);
+	if (fs::exists(path, ec) && fs::exists(destDir, ec))
+	{
+		if (fs::equivalent(path, destDir, ec))
+			return;
+	}
+
+	ec.clear();
+
 	fs::remove_all(path, ec);
 	if (ec)
 	{

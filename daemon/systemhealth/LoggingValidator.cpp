@@ -43,14 +43,16 @@ Status WriteLogValidator::Validate() const
 	switch (writeLog)
 	{
 		case Options::EWriteLog::wlAppend:
+			if (File::NullOrConsoleDevice(m_options.GetLogFilePath()))
+				return Status::Ok();
 			return Status::Warning("'" + std::string(Options::WRITELOG) +
 								   "' is set to 'Append'. The log file may grow indefinitely");
 		case Options::EWriteLog::wlNone:
 		case Options::EWriteLog::wlReset:
 		case Options::EWriteLog::wlRotate:
 			return Status::Ok();
+		default: return Status::Ok();
 	}
-	return Status::Ok();
 }
 
 Status RotateLogValidator::Validate() const

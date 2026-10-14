@@ -137,14 +137,5 @@
 /* Determine what socket length (socklen_t) data type is */
 #cmakedefine SOCKLEN_T @SOCKLEN_T@
 
-/* Define if AMD64 */
-#cmakedefine __amd64__
-
-/* Define if i686 */
-#cmakedefine __i686__
-
-/* Use 32BIT TIME_T */
-#cmakedefine _USE_32BIT_TIME_T
-
 /* detection of memory leaks */
 #cmakedefine _CRTDBG_MAP_ALLOC

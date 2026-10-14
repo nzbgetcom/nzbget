@@ -25,6 +25,10 @@
 #include "FileSystem.h"
 #include "Validators.h"
 
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
+
 BOOST_AUTO_TEST_SUITE(SystemHealthTest)
 
 using namespace SystemHealth;
@@ -114,20 +118,59 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(NetworkValidatorsSuite)
 
-BOOST_AUTO_TEST_CASE(TestValidHostname)
+BOOST_AUTO_TEST_CASE(TestValidHost)
 {
 	using namespace SystemHealth::Network;
 
-	BOOST_CHECK(ValidHostname("localhost").IsOk());
-	BOOST_CHECK(ValidHostname("google.com").IsOk());
-	BOOST_CHECK(ValidHostname("my-server_1").IsOk());
+	// Hostnames
+	BOOST_CHECK(ValidHost("localhost", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("google.com", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("my-server-1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("sub.domain.example.com", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("my_server_1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("_leading", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("trailing_", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("foo_bar.baz", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("my-server_1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("a", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost(std::string(63, 'a'), Connection::ipAuto).IsOk());
 
-	// Errors
-	BOOST_CHECK(ValidHostname("").IsError());
-	BOOST_CHECK(ValidHostname("invalid char!").IsError());
+	// IP literals
+	BOOST_CHECK(ValidHost("192.168.0.1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("10.0.0.1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("::1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("2001:db8:1234:12:321::1", Connection::ipAuto).IsOk());
+	BOOST_CHECK(ValidHost("::ffff:192.168.0.1", Connection::ipAuto).IsOk());
+
+	BOOST_CHECK(ValidHost("", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("invalid char!", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("-foo", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("foo-", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("example..com", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("[foo]", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost("[::1]", Connection::ipAuto).IsError());
+	SystemHealth::Status bracketedStatus = ValidHost("[2001:db8:1234:12:321::1]", Connection::ipAuto);
+	BOOST_CHECK(bracketedStatus.IsError());
+	BOOST_CHECK(bracketedStatus.GetMessage().find("2001:db8:1234:12:321::1") != std::string::npos);
+	BOOST_CHECK(ValidHost("2001:db8::1::1", Connection::ipAuto).IsError());
+	BOOST_CHECK(ValidHost(std::string(64, 'a'), Connection::ipAuto).IsError());
 
 	std::string longHost(300, 'a');
-	BOOST_CHECK(ValidHostname(longHost).IsError());
+	BOOST_CHECK(ValidHost(longHost, Connection::ipAuto).IsError());
+
+	// IPv4 / IPv6 version constraints
+	BOOST_CHECK(ValidHost("192.168.0.1", Connection::ipV4).IsOk());
+	BOOST_CHECK(ValidHost("2001:db8:1234:12:321::1", Connection::ipV6).IsOk());
+	BOOST_CHECK(ValidHost("news.valid.com", Connection::ipV4).IsOk());
+	BOOST_CHECK(ValidHost("news.valid.com", Connection::ipV6).IsOk());
+	BOOST_CHECK(ValidHost("192.168.0.1", Connection::ipV6).IsError());
+	BOOST_CHECK(ValidHost("2001:db8:1234:12:321::1", Connection::ipV4).IsError());
+	BOOST_CHECK(ValidHost("::ffff:192.168.0.1", Connection::ipV4).IsError());
+
+	SystemHealth::Status ipv4Mismatch = ValidHost("2001:db8:1234:12:321::1", Connection::ipV4);
+	BOOST_CHECK(ipv4Mismatch.GetMessage().find("IPv4") != std::string::npos);
+	SystemHealth::Status ipv6Mismatch = ValidHost("192.168.0.1", Connection::ipV6);
+	BOOST_CHECK(ipv6Mismatch.GetMessage().find("IPv6") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(TestValidPort)
@@ -164,6 +207,37 @@ BOOST_AUTO_TEST_CASE(TestFileExists)
 	Status s2 = SystemHealth::File::Exists(d);
 	BOOST_CHECK(s2.IsError());
 	BOOST_CHECK(s2.GetMessage().find("not a regular file") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFileNullOrConsoleDevice)
+{
+	fs::path f = tempPath / "testfile.txt";
+
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(f));
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(""));
+
+	{
+		std::ofstream(f.c_str()) << "content";
+	}
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(f));
+
+	fs::path d = tempPath / "subdir";
+	fs::create_directory(d);
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice(d));
+
+#ifdef _WIN32
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("NUL"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("nul"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("CON"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("con"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("CONOUT$"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("C:\\path\\NUL"));
+	BOOST_CHECK(!SystemHealth::File::NullOrConsoleDevice("C:\\path\\random.txt"));
+#else
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/null"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/stdout"));
+	BOOST_CHECK(SystemHealth::File::NullOrConsoleDevice("/dev/stderr"));
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestFileReadable)

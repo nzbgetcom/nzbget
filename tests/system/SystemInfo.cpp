@@ -22,6 +22,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include "SystemInfo.h"
+#include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(SystemTest)
 
@@ -136,6 +137,13 @@ std::string GetNetworkXmlStr(const System::Network& network)
 
 BOOST_AUTO_TEST_CASE(SystemInfoTest)
 {
+	// SystemInfo reads g_Options; earlier tests destroy their own Options instances,
+	// which resets g_Options to nullptr, so the test sets up a dedicated instance.
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("SevenZipCmd=7z");
+	cmdOpts.push_back("UnrarCmd=unrar");
+	Options options(&cmdOpts, nullptr);
+
 	// inject a deterministic network fetcher so the test makes no network calls
 	auto sysInfo = std::make_unique<System::SystemInfo>(
 		[] { return System::Network{ "1.2.3.4", "192.168.1.5" }; }

@@ -56,6 +56,9 @@ public:
 	bool MergeQueueEntries(DownloadQueue* downloadQueue, NzbInfo* destNzbInfo, NzbInfo* srcNzbInfo);
 	bool SplitQueueEntries(DownloadQueue* downloadQueue, RawFileList* fileList, const char* name, NzbInfo** newNzbInfo);
 
+	// files posted less than propagationDelay seconds ago are held back from downloading
+	static bool IsPropagationWait(time_t postTime, int propagationDelay, time_t curDate);
+
 protected:
 	void LogDebugInfo() override;
 
@@ -97,6 +100,7 @@ private:
 	std::atomic<bool> m_hasMoreJobs{true};
 	int m_downloadsLimit;
 	int m_serverConfigGeneration = 0;
+	int m_propagationWaitLoggedId = 0;
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;
 

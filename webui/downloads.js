@@ -64,6 +64,7 @@ var Downloads = (new function($)
 		'VERIFYING_REPAIRED': { Text: 'status_verifying_cap', PostProcess: true },
 		'RENAMING': { Text: 'status_renaming_cap', PostProcess: true },
 		'MOVING': { Text: 'status_moving_cap', PostProcess: true },
+		'POST_DOWNLOAD_RENAMING': { Text: 'status_post_download_renaming_cap', PostProcess: true },
 		'POST_UNPACK_RENAMING': { Text: 'status_post_unpack_renaming_cap', PostProcess: true },
 		'UNPACKING': { Text: 'status_unpacking_cap', PostProcess: true },
 		'EXECUTING_SCRIPT': { Text: 'status_processing_cap', PostProcess: true },
@@ -254,9 +255,10 @@ var Downloads = (new function($)
 		var progress = DownloadsUI.buildProgress(group, item.data.size, item.data.left, item.data.estimated);
 		var dupe = DownloadsUI.buildDupe(group.DupeKey, group.DupeScore, group.DupeMode);
 
-		var age = new Date().getTime() / 1000 - (group.MinPostTime + UISettings.timeZoneCorrection*60*60);
+		// files are held back individually, so the newest file (often a par2) decides whether the group still waits
+		var newestAge = new Date().getTime() / 1000 - (group.MaxPostTime + UISettings.timeZoneCorrection*60*60);
 		var propagation = '';
-		if (group.ActiveDownloads == 0 && age < parseInt(Options.option('PropagationDelay')) * 60)
+		if (group.ActiveDownloads == 0 && newestAge < parseInt(Options.option('PropagationDelay')) * 60)
 		{
 			propagation = '<span class="label label-warning text-uppercase" title="' + I18n.translate('desc_propagation_delayed') + '">' + I18n.translate('label_propagation_delayed') + '</span> ';
 		}
@@ -895,6 +897,8 @@ var DownloadsUI = (new function($)
 				case "VERIFYING_REPAIRED":
 				case "UNPACKING":
 				case "RENAMING":
+				case "POST_UNPACK_RENAMING":
+				case "POST_DOWNLOAD_RENAMING":
 				case "EXECUTING_SCRIPT":
 					text = DownloadsUI.formatProgressLabel(group.PostInfoText);
 					break;

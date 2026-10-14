@@ -24,6 +24,7 @@
 #include <optional>
 #include <sstream>
 #include <array>
+#include <algorithm>
 #include "Util.h"
 
 #ifdef WIN32
@@ -573,6 +574,12 @@ void Util::Trim(std::string& str)
 	TrimRight(str);
 }
 
+void Util::SanitizeLine(std::string& str)
+{
+	std::replace_if(str.begin(), str.end(), IsControlChar, ' ');
+	Trim(str);
+}
+
 char* Util::ReduceStr(char* str, const char* from, const char* to)
 {
 	int lenFrom = strlen(from);
@@ -602,34 +609,34 @@ std::vector<CString> Util::SplitStr(const char* str, const char* separators)
 	return result;
 }
 
+bool Util::EndsWith(std::string_view str, std::string_view suffix, bool caseSensitive)
+{
+	if (suffix.empty())
+	{
+		return true;
+	}
+	if (str.size() < suffix.size())
+	{
+		return false;
+	}
+	if (caseSensitive)
+	{
+		return str.ends_with(suffix);
+	}
+	return StrCaseCmp(str.substr(str.size() - suffix.size()), suffix);
+}
+
 bool Util::EndsWith(const char* str, const char* suffix, bool caseSensitive)
 {
 	if (!str)
 	{
 		return false;
 	}
-
 	if (EmptyStr(suffix))
 	{
 		return true;
 	}
-
-	int lenStr = strlen(str);
-	int lenSuf = strlen(suffix);
-
-	if (lenSuf > lenStr)
-	{
-		return false;
-	}
-
-	if (caseSensitive)
-	{
-		return !strcmp(str + lenStr - lenSuf, suffix);
-	}
-	else
-	{
-		return !strcasecmp(str + lenStr - lenSuf, suffix);
-	}
+	return EndsWith(std::string_view(str), std::string_view(suffix), caseSensitive);
 }
 
 bool Util::AlphaNum(const char* str)
@@ -746,7 +753,7 @@ std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::stri
 	auto res = Utf8::Utf8ToWide(cmd);
 	if (!res.has_value()) return nullptr;
 
-	FILE* pipe = popen(res.value().c_str(), L"r");
+	FILE* pipe = _wpopen(res.value().c_str(), L"r");
 #else
 	FILE* pipe = popen(cmd.c_str(), "r");
 #endif
@@ -755,7 +762,11 @@ std::unique_ptr<FILE, std::function<void(FILE*)>> Util::MakePipe(const std::stri
 		{
 			if (pipe)
 			{
+#ifdef WIN32
+				std::ignore = _pclose(pipe);
+#else
 				std::ignore = pclose(pipe);
+#endif
 			}
 		}
 	);
@@ -861,14 +872,14 @@ time_t Util::Timegm(tm const *t)
 	return internal_timegm(t);
 }
 
-bool Util::StrCaseCmp(const std::string& a, const std::string& b)
+bool Util::StrCaseCmp(std::string_view a, std::string_view b)
 {
-	auto comparator = [](unsigned char a, unsigned char b)
-	{
-		return std::tolower(a) == std::tolower(b);
-	};
-
-    return std::equal(a.begin(), a.end(), b.begin(), b.end(), comparator);
+	return std::equal(a.begin(), a.end(), b.begin(), b.end(),
+		[](unsigned char ca, unsigned char cb)
+		{
+			return std::tolower(ca) == std::tolower(cb);
+		}
+	);
 }
 
 // prevent PC from going to sleep

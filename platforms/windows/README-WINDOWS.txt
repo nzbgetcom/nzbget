@@ -3,7 +3,7 @@
 =====================================
 
 This is a short documentation. For more info visit
-https://nzbget.com/documentation/installation-on-windows/
+https://nzbget.com/documentation/installation-on-platforms/windows/
 
 =====================================
 

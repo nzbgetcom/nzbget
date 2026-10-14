@@ -175,6 +175,107 @@ th {
 .dist-speedtest__controls {
     display: flex;
     gap: 10px;
+    flex-wrap: wrap;
+    align-items: stretch;
+}
+
+.dist-speedtest__select-wrapper,
+.dist-speedtest__input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+#DiskSpeedTest_Modal .control-group {
+    margin-bottom: 10px;
+}
+
+#DiskSpeedTest_Modal .control-label {
+    margin-bottom: 4px;
+}
+
+.dist-speedtest__select--width {
+    flex: 1;
+    min-width: 80px;
+    max-width: 200px;
+}
+
+.dist-speedtest__path-input {
+    flex: 1;
+    min-width: 200px;
+}
+
+.dist-speedtest__run-btn {
+    min-width: 150px;
+    white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+    #DiskSpeedTest_Modal .modal-body {
+        padding: 12px;
+    }
+    
+    #DiskSpeedTest_Modal .control-group {
+        margin-bottom: 10px;
+    }
+    
+    #DiskSpeedTest_Modal .control-label {
+        float: none;
+        width: auto;
+        text-align: left;
+        padding-top: 0;
+        margin-bottom: 4px;
+        font-weight: bold;
+    }
+    
+    #DiskSpeedTest_Modal .controls {
+        margin-left: 0;
+    }
+    
+    .dist-speedtest__select-wrapper,
+    .dist-speedtest__input-wrapper {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    
+    .dist-speedtest__select--width {
+        width: 100%;
+        max-width: none;
+    }
+    
+    .dist-speedtest__controls {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .dist-speedtest__path-input {
+        width: 100%;
+        min-width: 0;
+    }
+    
+    .dist-speedtest__run-btn {
+        width: 100%;
+        min-width: 0;
+    }
+    
+    .dist-speedtest__run-btn .spinner {
+        display: inline-block;
+        margin-right: 6px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 979px) {
+    .dist-speedtest__path-input {
+        min-width: 180px;
+    }
+}
+
+.dist-speedtest__select-wrapper .add-on,
+.dist-speedtest__input-wrapper .add-on {
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .help-text-error {

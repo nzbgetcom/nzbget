@@ -115,6 +115,7 @@ private:
 	bool NeedRenameParFiles();
 	void RenameFile(const char* srcFilename, const char* destFileName);
 	void RenameBadParFiles();
+	std::string MakeRelativeName(const char* fullFilename);
 };
 
 #endif

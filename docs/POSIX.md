@@ -1,7 +1,8 @@
 ## To build NZBGet you will need:
 
   - For configuring and building:
-    - [CMake](https://cmake.org/) (3.13+)
+    - [CMake](https://cmake.org/) (3.13+; 3.25+ to use `CMakePresets.json`)
+    - [Ninja](https://ninja-build.org/) (the generator used by all CMake presets; the plain `cmake ..` flow below works with any generator)
     - [GCC](https://gcc.gnu.org/) (GCC 11+ required for C++20, GCC 13+ recommended)
       or
     - [Clang](https://clang.llvm.org/) (Clang 14+ / Apple Clang 13+ required for C++20)
@@ -38,7 +39,7 @@ download the libraries at the given URLs and compile them (see hints below).
 
 ### Debian:  
 ```bash
-apt install cmake build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev
+apt install cmake ninja-build build-essential libncurses-dev libssl-dev libxml2-dev zlib1g-dev
 ```
   - Debian 12 (bookworm)
 ```bash
@@ -56,12 +57,12 @@ apt install clang-tidy
 ```
 ### FreeBSD: 
 ```bash
-pkg install cmake ncurses openssl libxml2 zlib boost-libs
+pkg install cmake ninja ncurses openssl libxml2 zlib boost-libs
 ```
 ### macOS:
 ```bash
 xcode-select --install
-brew install cmake ncurses openssl libxml2 zlib boost
+brew install cmake ninja ncurses openssl libxml2 zlib boost
 ```
 
 ## 4. Installation on POSIX

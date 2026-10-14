@@ -340,8 +340,9 @@ void Options::InitDefaults()
 	SetOption(PARQUICK.data(), "yes");
 	SetOption(POSTSTRATEGY.data(), "sequential");
 	SetOption(FILENAMING.data(), "article");
+	SetOption(POSTDOWNLOADRENAME.data(), "yes");
 	SetOption(RENAMEAFTERUNPACK.data(), "yes");
-	SetOption(RENAMEIGNOREEXT.data(), ".zip, .7z, .rar, .par2");
+	SetOption(RENAMEIGNOREEXT.data(), "");
 	SetOption(PARRENAME.data(), "yes");
 	SetOption(PARBUFFER.data(), "16");
 	SetOption(PARTHREADS.data(), "0");
@@ -696,6 +697,7 @@ void Options::InitOptions()
 	m_urlForce				= (bool)ParseEnumValue(URLFORCE.data(), BoolCount, BoolNames, BoolValues);
 	m_certCheck				= (bool)ParseEnumValue(CERTCHECK.data(), BoolCount, BoolNames, BoolValues);
 	m_reorderFiles			= (bool)ParseEnumValue(REORDERFILES.data(), BoolCount, BoolNames, BoolValues);
+	m_postDownloadRename    = (bool)ParseEnumValue(POSTDOWNLOADRENAME.data(), BoolCount, BoolNames, BoolValues);
 	m_renameAfterUnpack     = (bool)ParseEnumValue(RENAMEAFTERUNPACK.data(), BoolCount, BoolNames, BoolValues);
 
 	const char* OutputModeNames[] = { "loggable", "logable", "log", "colored", "color", "ncurses", "curses" };

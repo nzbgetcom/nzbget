@@ -15,39 +15,48 @@ jobs:
 
   tests-windows:
     runs-on: windows-2022
+    timeout-minutes: 60
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Download and extract vcpkg cache and unpackers
+    - name: Prepare build environment
       run: |
         $ProgressPreference = "SilentlyContinue"
-        Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v5.0/vcpkg-windows-x64.zip -OutFile "${{ github.workspace }}\vcpkg.zip"
-        Expand-Archive -Path "${{ github.workspace }}\vcpkg.zip" -DestinationPath "${{ github.workspace }}"
         Invoke-WebRequest https://github.com/nzbgetcom/build-files/releases/download/v10.0/nzbget-windows-tools.zip -OutFile "${{ github.workspace }}\tools.zip"
         Expand-Archive -Path "${{ github.workspace }}\tools.zip" -DestinationPath C:\
+        Invoke-Expression "platforms\windows\build.ps1 -DownloadUnpackers"
         Copy-Item "C:\nzbget\image\64\unrar.exe" -Destination "C:\Windows\System32"
         Copy-Item "C:\nzbget\image\64\7za.exe" -Destination "C:\Windows\System32\7z.exe"
+        $msvcVersion = Get-Content "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt"
+        "MSVC_VERSION=$msvcVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
 
-    - name: Build
-      run: |
-        New-Item build -ItemType Directory -Force | Out-Null
-        cd build
-        cmake .. -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static -DBUILD_ONLY_TESTS=ON
-        cmake --build . --config Release -j 4
+    - name: Cache FetchContent dependencies
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/build/release-tests/deps
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled binaries when toolchains, flags, or dependency configurations change.
+        key: deps-windows-test-${{ env.MSVC_VERSION }}-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json') }}
 
-    - name: Test
+    - name: Build and Test
+      shell: cmd
       run: |
-        cd build
-        ctest -C Release
+        choco install nasm --version=2.16.3 --no-progress
+        choco install ninja --no-progress
+        set PATH=%PATH%;C:\Program Files\NASM;C:\ProgramData\chocolatey\bin
+        call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+        cmake --preset=release-tests -DBUILD_DEPS_FROM_SOURCE=ON -DBUILD_ONLY_TESTS=ON
+        cmake --build --preset=release-tests
+        ctest --preset=release-tests
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v7
       if: failure()
       with:
         name: nzbget-windows-test-log
-        path: build/Testing/Temporary/LastTest.log
+        path: build/release-tests/Testing/Temporary/LastTest.log
         retention-days: 5
 
   tests-linux:
@@ -120,11 +129,17 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install --formula boost sevenzip
-        curl -L https://github.com/nzbgetcom/unrar/releases/download/v7.23/unrar-7.23-macos-universal.tar.gz | sudo tar -xzf - -C /usr/local/bin
+        brew install --formula boost
 
     - name: Checkout
       uses: actions/checkout@v6
+
+    - name: Install unpackers
+      run: |
+        . ./unpackers.env
+        curl -L "https://github.com/nzbgetcom/unrar/releases/download/v${UNRAR_VERSION}/unrar-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        curl -L "https://github.com/nzbgetcom/7zip/releases/download/v${ZIP7_VERSION}/7zip-macos-universal.tar.gz" | sudo tar -xzf - -C /usr/local/bin
+        sudo ln -sf 7za /usr/local/bin/7z
 
     - name: Build
       run: |
@@ -151,20 +166,20 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: OpenBSD build and test
-      uses: cross-platform-actions/action@v0.28.0
+      uses: cross-platform-actions/action@v1.6.0
       with:
         operating_system: openbsd
-        version: '7.7'
+        version: '7.9'
         run: |
           sudo pkg_add git cmake libxml boost unrar p7zip
           mkdir build
           cd build
-          cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+          cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
-          ctest -C Release --repeat until-pass:5
+          ctest -C Release
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v7
@@ -230,12 +245,10 @@ jobs:
           --suppress=uninitMemberVarNoCtor \
           --suppress=unmatchedSuppression \
           --suppress=unknownMacro:tests/ \
-          --suppress=preprocessorErrorDirective:build/par2-turbo/ \
+          --suppress=preprocessorErrorDirective \
           -ilib \
           -itests \
-          -ibuild/rapidyenc \
-          -ibuild/boost \
-          -ibuild/par2-turbo
+          -ibuild
 
   build-disabled-parcheck:
     runs-on: ubuntu-24.04
@@ -280,18 +293,18 @@ jobs:
     steps:
 
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: OpenBSD build
-      uses: cross-platform-actions/action@v0.28.0
+      uses: cross-platform-actions/action@v1.6.0
       with:
         operating_system: openbsd
-        version: '7.7'
+        version: '7.9'
         run: |
           sudo pkg_add git cmake libxml boost
           mkdir build
           cd build
-          cmake .. -DCURSES_INCLUDE_PATH=/usr/include
+          cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include
           cmake --build . --config Release -j 4
 
   build-macos-brew-head:

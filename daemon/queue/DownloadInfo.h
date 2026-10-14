@@ -286,6 +286,7 @@ public:
 	void SetHash16k(std::string hash16k) { m_hash16k = std::move(hash16k); }
 	const char* GetParSetId() { return m_parSetId.c_str(); }
 	void SetParSetId(std::string parSetId) { m_parSetId = std::move(parSetId); }
+	bool SameFilename(const char* name) const;
 
 private:
 	int m_id;
@@ -433,6 +434,14 @@ public:
 		Skipped
 	};
 
+	enum class PostDownloadRenamingStatus
+	{
+		None,
+		Failure,
+		Success,
+		Skipped
+	};
+
 	enum EDeleteStatus
 	{
 		dsNone,
@@ -499,6 +508,8 @@ public:
 	void SetHardLinkPath(std::string hardLinkPath) { m_hardLinkPath = std::move(hardLinkPath); }
 	const std::string& GetHardLinkPath() const { return m_hardLinkPath; }
 	void SetName(const char* name) { m_name = name; }
+	const std::string& GetMetaName() const { return m_metaName; }
+	void SetMetaName(std::string metaName) { m_metaName = std::move(metaName); }
 	int GetFileCount() { return m_fileCount; }
 	void SetFileCount(int fileCount) { m_fileCount = fileCount; }
 	int GetParkedFileCount() { return m_parkedFileCount; }
@@ -556,6 +567,7 @@ public:
 	void BuildDestDirName();
 	CString BuildFinalDirName();
 	CompletedFileList* GetCompletedFiles() { return &m_completedFiles; }
+	bool RenameCompletedFile(const char* oldName, const char* newName);
 	void SetDirectRenameStatus(EDirectRenameStatus renameStatus) { m_directRenameStatus = renameStatus; }
 	EDirectRenameStatus GetDirectRenameStatus() { return m_directRenameStatus; }
 	EPostRenameStatus GetParRenameStatus() { return m_parRenameStatus; }
@@ -573,6 +585,8 @@ public:
 	EMoveStatus GetMoveStatus() { return m_moveStatus; }
 	void SetPostUnpackRenamingStatus(PostUnpackRenamingStatus status) { m_postUnpackRenamingStatus = status; }
 	PostUnpackRenamingStatus GetPostUnpackRenamingStatus() { return m_postUnpackRenamingStatus; }
+	void SetPostDownloadRenamingStatus(PostDownloadRenamingStatus status) { m_postDownloadRenamingStatus = status; }
+	PostDownloadRenamingStatus GetPostDownloadRenamingStatus() { return m_postDownloadRenamingStatus; }
 	void SetMoveStatus(EMoveStatus moveStatus) { m_moveStatus = moveStatus; }
 	EDeleteStatus GetDeleteStatus() { return m_deleteStatus; }
 	void SetDeleteStatus(EDeleteStatus deleteStatus) { m_deleteStatus = deleteStatus; }
@@ -692,6 +706,7 @@ private:
 	CString m_finalDir = "";
 	CString m_category = "";
 	std::string m_hardLinkPath;
+	std::string m_metaName;
 	int m_fileCount = 0;
 	int m_parkedFileCount = 0;
 	int64 m_size = 0;
@@ -728,6 +743,7 @@ private:
 	ECleanupStatus m_cleanupStatus = csNone;
 	EMoveStatus m_moveStatus = msNone;
 	PostUnpackRenamingStatus m_postUnpackRenamingStatus = PostUnpackRenamingStatus::None;
+	PostDownloadRenamingStatus m_postDownloadRenamingStatus = PostDownloadRenamingStatus::None;
 	EDeleteStatus m_deleteStatus = dsNone;
 	EMarkStatus m_markStatus = ksNone;
 	EUrlStatus m_urlStatus = lsNone;
@@ -810,7 +826,8 @@ public:
 		ptMoving,
 		ptPostUnpackRenaming,
 		ptExecutingScript,
-		ptFinished
+		ptFinished,
+		ptPostDownloadRenaming
 	};
 
 	typedef std::vector<CString> ParredFiles;

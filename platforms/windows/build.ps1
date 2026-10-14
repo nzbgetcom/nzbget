@@ -25,7 +25,8 @@ Param (
     [switch]$Build64=$False,
     [switch]$BuildSetup=$False,
     [switch]$BuildTesting=$False,
-    [switch]$DownloadUnpackers=$False
+    [switch]$DownloadUnpackers=$False,
+    [switch]$BuildDepsFromSource=$True
 )
 
 If (-not $BuildDebug -and
@@ -46,7 +47,6 @@ If (-not $BuildDebug -and
 $ToolsRoot="C:\nzbget"
 $Sed="$ToolsRoot\sed\sed.exe"
 $Nsis="$ToolsRoot\nsis"
-$VcpkgDir="c:\vcpkg"
 
 # global ps params
 # stop on error
@@ -56,34 +56,38 @@ $ProgressPreference = "SilentlyContinue"
 
 # download 7z/unrar 32/64 bit to $ToolsRoot\image
 Function DownloadUnpackers {
-    $UrlUnrar64="https://www.rarlab.com/rar/unrarw64.exe"
-    $UrlRar32="https://www.rarlab.com/rar/winrar-x32-701.exe"
-    $UrlRar64="https://www.rarlab.com/rar/winrar-x64-723.exe"
-    $Url7Z="https://github.com/ip7z/7zip/releases/download/26.02/7z2602-extra.7z"
+
+    # read unpackers.env file and set variables
+    Get-Content "unpackers.env" | ForEach-Object {
+        if ($_ -match '^\s*([A-Z0-9_]+)=(.*)$') {
+            Set-Variable -Name $Matches[1] -Value $Matches[2]
+        }
+    }
+
+    # set urls for unpackers
+    # unrar 32 pinned in unpackers.env
+    $UrlRar32="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR_WIN32_VERSION/unrar-windows-x86.zip"
+    $UrlRar64="https://github.com/nzbgetcom/unrar/releases/download/v$UNRAR_VERSION/unrar-windows-x64.zip"
+    $Url7Z32="https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-windows-x86.zip"
+    $Url7Z64="https://github.com/nzbgetcom/7zip/releases/download/v$ZIP7_VERSION/7zip-windows-x64.zip"
 
     $ImageDir="$ToolsRoot\image"
     Write-Host "Downloading unpackers to $ImageDir"
 
     $UnpackDir="$BuildDir\unpack"
-    New-Item -ItemType Directory $UnpackDir | Out-Null
+    New-Item -ItemType Directory $UnpackDir -Force | Out-Null
 
-    # download unrar64
-    Invoke-WebRequest -Uri $UrlUnrar64 -OutFile $UnpackDir\unrarw64.exe
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrarw64.exe" -ArgumentList -d"$UnpackDir\unrar64",-s
-
-    # download specific releases of winrar 32/64 bit
-    Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\rar32.exe
-    New-Item -ItemType Directory "$UnpackDir\rar32" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar32.exe","$UnpackDir\rar32\"
-
-    Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\rar64.exe
-    New-Item -ItemType Directory "$UnpackDir\rar64" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\unrar64\unrar.exe" -ArgumentList x,"$UnpackDir\rar64.exe","$UnpackDir\rar64\"
+    # unrar
+    Invoke-WebRequest -Uri $UrlRar32 -OutFile $UnpackDir\unrar32.zip
+    Expand-Archive -Path $UnpackDir\unrar32.zip -DestinationPath $UnpackDir\unrar32
+    Invoke-WebRequest -Uri $UrlRar64 -OutFile $UnpackDir\unrar64.zip
+    Expand-Archive -Path $UnpackDir\unrar64.zip -DestinationPath $UnpackDir\unrar64
 
     # 7zip
-    Invoke-WebRequest -Uri $Url7Z -OutFile $UnpackDir\7zip.7z
-    New-Item -ItemType Directory "$UnpackDir\7zip" | Out-Null
-    Start-Process -NoNewWindow -Wait "$UnpackDir\rar64\winrar.exe" -ArgumentList x,"$UnpackDir\7zip.7z","$UnpackDir\7zip"
+    Invoke-WebRequest -Uri $Url7Z32 -OutFile $UnpackDir\7zip32.zip
+    Expand-Archive -Path $UnpackDir\7zip32.zip -DestinationPath $UnpackDir\7zip
+    Invoke-WebRequest -Uri $Url7Z64 -OutFile $UnpackDir\7zip64.zip
+    Expand-Archive -Path $UnpackDir\7zip64.zip -DestinationPath $UnpackDir\7zip\x64
 
     # copy needed files
     If (Test-Path $ImageDir) {
@@ -91,8 +95,8 @@ Function DownloadUnpackers {
     }
     New-Item -ItemType Directory "$ImageDir\32" | Out-Null
     New-Item -ItemType Directory "$ImageDir\64" | Out-Null
-    Copy-Item "$UnpackDir\rar32\unrar.exe" "$ImageDir\32\unrar.exe"
-    Copy-Item "$UnpackDir\rar64\unrar.exe" "$ImageDir\64\unrar.exe"
+    Copy-Item "$UnpackDir\unrar32\unrar.exe" "$ImageDir\32\unrar.exe"
+    Copy-Item "$UnpackDir\unrar64\unrar.exe" "$ImageDir\64\unrar.exe"
     Copy-Item "$UnpackDir\7zip\7za.exe" "$ImageDir\32\7za.exe"
     Copy-Item "$UnpackDir\7zip\x64\7za.exe" "$ImageDir\64\7za.exe"
 
@@ -119,16 +123,14 @@ Function PrepareFiles {
         Write-Output "This test setup doesn't include binaries for 64 bit platform" | Out-File "$PackageDir\64\README-WARNING.txt"
     }
 
-    Copy-Item windows\nzbget-command-shell.bat $PackageDir
-    Copy-Item windows\install-update.bat $PackageDir
-    Copy-Item windows\README-WINDOWS.txt $PackageDir
+    Copy-Item platforms\windows\nzbget-command-shell.bat $PackageDir
+    Copy-Item platforms\windows\install-update.bat $PackageDir
+    Copy-Item platforms\windows\README-WINDOWS.txt $PackageDir
     Copy-Item ChangeLog.md $PackageDir
-    # not needeed anymore
-    # Copy-Item INSTALLATION.md $PackageDir
     Copy-Item COPYING $PackageDir
     Copy-Item pubkey.pem $PackageDir
     Copy-Item webui $PackageDir -Recurse
-    Copy-Item windows\package-info.json $PackageDir\webui
+    Copy-Item platforms\windows\package-info.json $PackageDir\webui
 
     Write-Host "Updating root certificates"
     Invoke-WebRequest -Uri "https://curl.se/ca/cacert.pem" -OutFile "$PackageDir\cacert.pem"
@@ -167,51 +169,55 @@ Function BuildTarget($Type, $Bits) {
 
     If ($Bits -eq "32") {
         $Arch="x86"
-        $Platform="Win32"
     } Else {
         $Arch="x64"
-        $Platform="x64"
     }
 
-    New-Item -Path "$BuildDir\$Type$Bits" -ItemType Directory -Force | Out-Null
-    Set-Location "$BuildDir\$Type$Bits"
+    $TargetDir="$BuildDir\$Type$Bits"
+    New-Item -Path $TargetDir -ItemType Directory -Force | Out-Null
 
-    If (-not (Test-Path "$Type\nzbget.exe")) {
-        $CMakeCmd="cmake ..\.. -DCMAKE_TOOLCHAIN_FILE=$VcpkgDir\scripts\buildsystems\vcpkg.cmake -DVCPKG_TARGET_TRIPLET=$Arch-windows-static -A $Platform"
-
-        If ($Type -eq "Debug" ) {
-            $CMakeCmd="$CMakeCmd -DCMAKE_BUILD_TYPE=Debug"
+    If (-not (Test-Path "$TargetDir\$Type\nzbget.exe")) {
+        If ($Type -eq "Debug") {
+            $Preset = "ci-windows-debug-$Arch"
+        } Else {
+            $Preset = "ci-windows-$Arch"
         }
+
+        $CMakeArgs = @("-S", ".", "--preset", $Preset, "-B", $TargetDir)
 
         if ($BuildTesting) {
-            $CMakeCmd="$CMakeCmd -DVERSION_SUFFIX=$VersionSuffix"
+            $CMakeArgs += "-DVERSION_SUFFIX=$VersionSuffix"
+        }
+        if (-not $BuildDepsFromSource) {
+            $CMakeArgs += "-DBUILD_DEPS_FROM_SOURCE=OFF"
         }
 
-        Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix"
-        Write-Host $CMakeCmd
+        Write-Host "Configuring nzbget binary for $Type-$Arch$VersionSuffix (preset: $Preset)..."
+        & cmake @CMakeArgs
+        If (-not $?) { Exit 1 }
 
-        Invoke-Expression "& $CMakeCmd"
-        If (-not $?) { Set-Location $SrcDir; Exit 1 }
+        Write-Host "Building nzbget binary for $Type-$Arch$VersionSuffix..."
+        & cmake --build $TargetDir -j $Jobs
+        If (-not $?) { Exit 1 }
 
-        & cmake --build . --config $Type -j $Jobs
-        If (-not $?) { Set-Location $SrcDir; Exit 1 }
+        New-Item -Path "$TargetDir\$Type" -ItemType Directory -Force | Out-Null
+        Copy-Item "$TargetDir\nzbget.exe" "$TargetDir\$Type\nzbget.exe" -Force
     }
 
-    Copy-Item "$Type\nzbget.exe" "$SrcDir\$PackageDir\$Bits\"
-    Set-Location $SrcDir
+    Copy-Item "$TargetDir\$Type\nzbget.exe" "$PackageDir\$Bits\" -Force
 }
 
 # build nsis installer
 Function BuildSetup($Type) {
     Write-Host "Building NSIS setup package ($Type)"
 
-    Copy-Item -Recurse -Force windows\resources $DistribDir
+    Copy-Item -Recurse -Force platforms\windows\resources $DistribDir
     If ($Build32) {
         $Bits="32"
     } Else {
         $Bits="64"
     }
-    Copy-Item "windows\nzbget-setup.nsi" $DistribDir
+    Copy-Item "platforms\windows\nzbget-setup.nsi" $DistribDir
     Copy-Item "$BuildDir\$Type$Bits\version.nsi" $DistribDir
     Copy-Item "$BuildDir\$Type$Bits\version-uninstall.nsi" $DistribDir
     Set-Location $DistribDir
@@ -225,7 +231,7 @@ Function BuildSetup($Type) {
         $InstallerFile="nzbget-$Version$VersionSuffix-bin-windows-debug-setup.exe"
     }
 
-    Move-Item "$DistribDir\nzbget-setup.exe" "$BuildDir\$InstallerFile" -Force
+    Move-Item "$DistribDir\nzbget-setup.exe" "$DistDir\$InstallerFile" -Force
 }
 
 # build package release/debug
@@ -245,6 +251,7 @@ Function Build($Type) {
 # script begins here
 $SrcDir=Get-Location | Select-Object -ExpandProperty Path
 $BuildDir="build"
+$DistDir="build"
 $DistribDir="$BuildDir\distrib"
 $PackageDir="$DistribDir\nzbget"
 $Jobs=(Get-ComputerInfo).CsProcessors.NumberOfCores
@@ -259,23 +266,23 @@ $Version = ((Select-String -Path CMakeLists.txt -Pattern "set\(VERSION ")[0] -sp
 If (Test-Path $DistribDir) {
     Remove-Item $DistribDir -Force -Recurse
 }
-New-Item -ItemType Directory $BuildDir -ErrorAction SilentlyContinue | Out-Null
+New-Item -ItemType Directory $BuildDir,$DistDir -Force -ErrorAction SilentlyContinue | Out-Null
 
 # download 7z/unrar
 if ($DownloadUnpackers) {
     DownloadUnpackers
 }
 
+# build binaries if requested
 if ($BuildRelease -or $BuildDebug) {
     Write-Host "Building nzbget version $Version (Release:$BuildRelease Debug:$BuildDebug 32-bit:$Build32 64-bit:$Build64 Setup:$BuildSetup Testing:$BuildTesting)"
     New-Item -ItemType Directory $PackageDir | Out-Null
+    if ($BuildRelease) {
+        Build("Release")
+    }
+    if ($BuildDebug) {
+        Build("Debug")
+    }
 }
 
-# build
-if ($BuildRelease) {
-    Build("Release")
-}
 
-if ($BuildDebug) {
-    Build("Debug")
-}

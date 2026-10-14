@@ -32,7 +32,7 @@ More information available at https://nzbget.com
 | Platform | Installation                                                                                                                                                                                             | Supported Architectures / OS Versions                                                                                                                                 |
 |------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Windows** | [Releases](https://github.com/nzbgetcom/nzbget/releases) <br>[Winget](https://github.com/nzbgetcom/nzbget/blob/develop/windows/pkgs-info.md#winget) <br>[Chocolatey](https://github.com/nzbgetcom/nzbget/blob/develop/windows/pkgs-info.md#chocolatey) | Windows 7 and later, 32 or 64 bit |
-| **macOS** | [Releases](https://github.com/nzbgetcom/nzbget/releases) <br>[Homebrew](https://github.com/nzbgetcom/nzbget/blob/develop/osx/brew-info.md)  | macOS Monterey 12+ and later (Intel / Apple Silicon) | 
+| **macOS** | [Releases](https://github.com/nzbgetcom/nzbget/releases) <br>[Homebrew](https://github.com/nzbgetcom/nzbget/blob/develop/platforms/macos/brew-info.md)  | macOS Mojave 10.14+ (Intel) / macOS Big Sur 11+ (Apple Silicon) | 
 | **Linux** | [Releases](https://github.com/nzbgetcom/nzbget/releases) <br>[DEB/RPM](https://github.com/nzbgetcom/nzbget/releases) [Repositories](https://nzbgetcom.github.io/) <br>[Flatpack](https://github.com/nzbgetcom/nzbget/releases) [Flatpack readme](https://github.com/nzbgetcom/nzbget/blob/develop/linux/flatpak/README.md) <br>[snap](https://snapcraft.io/nzbget) | Linux kernel 3.2 and later, x86 (32 or 64 Bit), ARM 32-bit (armel armhf), ARM 64-bit (aarch64), PowerPC (ppc6xx), RISC-V 64-bit (riscv64) |
 | **FreeBSD** | [Releases](https://github.com/nzbgetcom/nzbget/releases) | FreeBSD 13.0+ x86_64 |
 | **Docker** | [Official images](docker/README.md) <br>[LinuxServer.io](https://github.com/linuxserver/docker-nzbget) | x86-64 / arm64 / armv7  |
@@ -40,7 +40,7 @@ More information available at https://nzbget.com
 | <nobr>**ASUSTOR NAS** | [nzbget-asustor](https://github.com/nzbgetcom/nzbget-asustor) <br>[App Central](https://www.asustor.com/app_central/app_detail?id=1671&type=) [ASUSTOR readme](https://github.com/nzbgetcom/nzbget-asustor/blob/main/README.md) | ADM 4.3+ |
 | <nobr>**QNAP NAS** | [package manager](https://github.com/nzbgetcom/nzbget/blob/develop/qnap/README.md#install-via-sherpa-package-manager) <br>[manual installation](https://github.com/nzbgetcom/nzbget/blob/develop/qnap/README.md#manual-install)  | QTS 4.1.0+ (x86_64 / x86 / arm_64 / arm-x19 / arm-x31 / arm-x41) |
 | <nobr>**TrueNAS SCALE** | [TrueNAS App catalog](https://apps.truenas.com/catalog/nzbget/) | x86-64 (amd64) |
-| **Android** | [Instructions](docs/ANDROID.md) | Android 5.0+ aarch64 |
+| **Android** | [Releases](https://github.com/nzbgetcom/nzbget/releases) <br>[Android App](https://github.com/nzbgetcom/android/releases) <br>[Instructions](docs/ANDROID.md) | Android 5.0+ (arm64 / armv7 / x86_64 / x86) |
 
 ## Migration from older NZBGet versions
 

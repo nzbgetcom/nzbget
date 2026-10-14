@@ -1,4 +1,4 @@
-set(SRC
+target_sources(libnzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
@@ -63,6 +63,8 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/Repair.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/UnpackController.cpp
 	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostUnpackRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/PostDownloadRenamer.cpp
+	${CMAKE_SOURCE_DIR}/daemon/postprocess/CollectionAnalyzer.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/queue/DirectRenamer.cpp
 	${CMAKE_SOURCE_DIR}/daemon/queue/DiskState.cpp
@@ -85,6 +87,7 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/remote/MessageBase.h
 
 	${CMAKE_SOURCE_DIR}/daemon/util/FileSystem.cpp
+	${CMAKE_SOURCE_DIR}/daemon/util/FileTypes.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Log.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/NString.cpp
 	${CMAKE_SOURCE_DIR}/daemon/util/Observer.cpp
@@ -131,19 +134,17 @@ set(SRC
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/DisplayValidator.cpp
 )
 
-set(WIN32_SRC
-	${CMAKE_SOURCE_DIR}/daemon/windows/StdAfx.cpp
-	${CMAKE_SOURCE_DIR}/daemon/windows/WinConsole.cpp
-	${CMAKE_SOURCE_DIR}/daemon/windows/WinService.cpp
-	${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp
-)
-
 if(WIN32)
-	set(SRC ${SRC} ${WIN32_SRC})
-	set(INCLUDES ${INCLUDES} ${CMAKE_SOURCE_DIR}/windows)
+	target_sources(libnzbget PRIVATE
+		${CMAKE_SOURCE_DIR}/daemon/windows/StdAfx.cpp
+		${CMAKE_SOURCE_DIR}/daemon/windows/WinConsole.cpp
+		${CMAKE_SOURCE_DIR}/daemon/windows/WinService.cpp
+		${CMAKE_SOURCE_DIR}/daemon/util/Utf8.cpp
+	)
+	target_include_directories(libnzbget PUBLIC ${CMAKE_SOURCE_DIR}/platforms/windows)
 endif()
 
-set(INCLUDES ${INCLUDES}
+target_include_directories(libnzbget PUBLIC
 	${CMAKE_SOURCE_DIR}/daemon/connect
 	${CMAKE_SOURCE_DIR}/daemon/extension
 	${CMAKE_SOURCE_DIR}/daemon/feed

@@ -84,7 +84,7 @@ inline fs::path make_unique_filename(const fs::path& targetPath)
 	fs::path uniquePath;
 	do
 	{
-		uniquePath = baseDir / (stem + " (" + std::to_string(counter++) + ")" + ext);
+		uniquePath = baseDir / u8path(stem + " (" + std::to_string(counter++) + ")" + ext);
 	} while (fs::exists(uniquePath, ec) && !ec);
 
 	return uniquePath;
@@ -92,6 +92,13 @@ inline fs::path make_unique_filename(const fs::path& targetPath)
 
 inline void move_file(const fs::path& src, const fs::path& dest, fs::error_code& ec) noexcept
 {
+	if (fs::exists(dest, ec))
+	{
+		ec = std::make_error_code(std::errc::file_exists);
+		return;
+	}
+	if (ec) return;
+
 	fs::rename(src, dest, ec);
 	if (ec == std::errc::cross_device_link)
 	{
@@ -129,6 +136,8 @@ public:
 	static bool AllocateFile(const char* filename, int64 size, bool sparse, CString& errmsg);
 	static bool TruncateFile(const char* filename, int size);
 	static CString MakeValidFilename(const char* filename, bool allowSlashes = false);
+	static std::string SanitizePathSegment(std::string_view name);
+	static std::string SanitizeRelativePath(std::string_view path);
 	static bool ReservedChar(char ch);
 	static CString MakeUniqueFilename(const char* destDir, const char* basename);
 	static bool MoveFile(const char* srcFilename, const char* dstFilename);
@@ -139,7 +148,7 @@ public:
 	static bool CreateDirectory(const char* dirFilename);
 	static std::string ExtractFilePathFromCmd(const std::string& path);
 	static std::string EscapePathForShell(const std::string& path);
-	static std::optional<std::string> GetFileExtension(const std::string& filename);
+	static std::optional<std::string> GetFileExtension(std::string_view filename);
 
 	/* Delete empty directory */
 	static bool RemoveDirectory(const char* dirFilename);

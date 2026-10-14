@@ -458,7 +458,23 @@ void ParRenamer::RenameFile(const char* srcFilename, const char* destFileName)
 	++m_renamedCount;
 
 	// notify about new file name
-	RegisterRenamedFile(oldName.c_str(), newName.c_str());
+	std::string oldRelName = MakeRelativeName(srcFilename);
+	std::string newRelName = MakeRelativeName(destFileName);
+	RegisterRenamedFile(oldRelName.c_str(), newRelName.c_str());
+}
+
+std::string ParRenamer::MakeRelativeName(const char* fullFilename)
+{
+	fs::path canonicalDest = fs::weakly_canonical(fs::u8path(m_destDir.Str()));
+	fs::path canonicalFile = fs::weakly_canonical(fs::u8path(fullFilename));
+	fs::path rel = canonicalFile.lexically_relative(canonicalDest);
+
+	if (rel.empty() || *rel.begin() == "..")
+	{
+		return fs::u8string(canonicalFile.filename());
+	}
+
+	return fs::u8string(rel);
 }
 
 void ParRenamer::RenameBadParFiles()
