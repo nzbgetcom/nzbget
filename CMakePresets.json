@@ -417,6 +417,175 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_LTO": "OFF"
       }
+    },
+    {
+      "name": "ci-linux-base",
+      "hidden": true,
+      "inherits": "base",
+      "toolchainFile": "${sourceDir}/toolchains/linux/linux-musl.cmake",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Linux",
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_LTO": "ON",
+        "ENABLE_TESTS": "OFF",
+        "ENABLE_STATIC": "ON",
+        "BUILD_DEPS_FROM_SOURCE": "ON"
+      }
+    },
+    {
+      "name": "ci-linux-x86_64",
+      "displayName": "CI Linux x86_64",
+      "description": "Linux x86_64 static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-x86_64",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "x86_64",
+        "LINUX_ARCH": "x86_64"
+      }
+    },
+    {
+      "name": "ci-linux-aarch64",
+      "displayName": "CI Linux aarch64",
+      "description": "Linux aarch64 static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-aarch64",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "aarch64",
+        "LINUX_ARCH": "aarch64"
+      }
+    },
+    {
+      "name": "ci-linux-armhf",
+      "displayName": "CI Linux armhf",
+      "description": "Linux armhf static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-armhf",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "arm",
+        "LINUX_ARCH": "armhf"
+      }
+    },
+    {
+      "name": "ci-linux-armel",
+      "displayName": "CI Linux armel",
+      "description": "Linux armel static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-armel",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "arm",
+        "LINUX_ARCH": "armel"
+      }
+    },
+    {
+      "name": "ci-linux-i686",
+      "displayName": "CI Linux i686",
+      "description": "Linux i686 static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-i686",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "i686",
+        "LINUX_ARCH": "i686"
+      }
+    },
+    {
+      "name": "ci-linux-ppc6xx",
+      "displayName": "CI Linux ppc6xx",
+      "description": "Linux ppc6xx static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-ppc6xx",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "powerpc",
+        "LINUX_ARCH": "ppc6xx"
+      }
+    },
+    {
+      "name": "ci-linux-riscv64",
+      "displayName": "CI Linux riscv64",
+      "description": "Linux riscv64 static musl release build",
+      "inherits": "ci-linux-base",
+      "binaryDir": "${sourceDir}/build/ci-linux-riscv64",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_PROCESSOR": "riscv64",
+        "LINUX_ARCH": "riscv64",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-x86_64",
+      "displayName": "CI Linux Debug x86_64",
+      "description": "Linux x86_64 Debug CI build",
+      "inherits": "ci-linux-x86_64",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-x86_64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-aarch64",
+      "displayName": "CI Linux Debug aarch64",
+      "description": "Linux aarch64 Debug CI build",
+      "inherits": "ci-linux-aarch64",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-aarch64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-armhf",
+      "displayName": "CI Linux Debug armhf",
+      "description": "Linux armhf Debug CI build",
+      "inherits": "ci-linux-armhf",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-armhf",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-armel",
+      "displayName": "CI Linux Debug armel",
+      "description": "Linux armel Debug CI build",
+      "inherits": "ci-linux-armel",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-armel",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-i686",
+      "displayName": "CI Linux Debug i686",
+      "description": "Linux i686 Debug CI build",
+      "inherits": "ci-linux-i686",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-i686",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-ppc6xx",
+      "displayName": "CI Linux Debug ppc6xx",
+      "description": "Linux ppc6xx Debug CI build",
+      "inherits": "ci-linux-ppc6xx",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-ppc6xx",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "ci-linux-debug-riscv64",
+      "displayName": "CI Linux Debug riscv64",
+      "description": "Linux riscv64 Debug CI build",
+      "inherits": "ci-linux-riscv64",
+      "binaryDir": "${sourceDir}/build/ci-linux-debug-riscv64",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_LTO": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -568,6 +737,76 @@
     {
       "name": "ci-freebsd-debug-aarch64",
       "configurePreset": "ci-freebsd-debug-aarch64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-x86_64",
+      "configurePreset": "ci-linux-x86_64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-aarch64",
+      "configurePreset": "ci-linux-aarch64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-armhf",
+      "configurePreset": "ci-linux-armhf",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-armel",
+      "configurePreset": "ci-linux-armel",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-i686",
+      "configurePreset": "ci-linux-i686",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-ppc6xx",
+      "configurePreset": "ci-linux-ppc6xx",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-riscv64",
+      "configurePreset": "ci-linux-riscv64",
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-linux-debug-x86_64",
+      "configurePreset": "ci-linux-debug-x86_64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-aarch64",
+      "configurePreset": "ci-linux-debug-aarch64",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-armhf",
+      "configurePreset": "ci-linux-debug-armhf",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-armel",
+      "configurePreset": "ci-linux-debug-armel",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-i686",
+      "configurePreset": "ci-linux-debug-i686",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-ppc6xx",
+      "configurePreset": "ci-linux-debug-ppc6xx",
+      "configuration": "Debug"
+    },
+    {
+      "name": "ci-linux-debug-riscv64",
+      "configurePreset": "ci-linux-debug-riscv64",
       "configuration": "Debug"
     }
   ],

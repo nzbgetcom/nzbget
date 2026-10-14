@@ -26,11 +26,11 @@ NZBGET_ROOT=$PWD
 # $1 - installer
 # if empty - find installer file in artifacts dir
 INSTALLER="$1"
-if [ -z $INSTALLER ]; then
-    INSTALLER=$(find $NZBGET_ROOT/nzbget-linux-installers/ -name *linux.run 2>/dev/null) || true
+if [ -z "$INSTALLER" ]; then
+    INSTALLER=$(find "$NZBGET_ROOT/nzbget-linux-installers/" -name "*linux.run" 2>/dev/null | head -n 1) || true
 fi
-if [ -z $INSTALLER ]; then
-    echo "Cannot find linux installer file. Exitig."
+if [ -z "$INSTALLER" ]; then
+    echo "Cannot find linux installer file. Exiting."
     exit 1
 fi
 
@@ -112,7 +112,9 @@ for ARCH in $ARCHS; do
     mkdir -p $CONTENTS/usr/share/nzbget
     cp $PWD/$ARCH/nzbget $CONTENTS/usr/bin
     for DOCFILE in ChangeLog.md COPYING; do
-        cp $PWD/$ARCH/$DOCFILE $SHAREDOC
+        if [ -f "$PWD/$ARCH/$DOCFILE" ]; then
+            cp "$PWD/$ARCH/$DOCFILE" "$SHAREDOC"
+        fi
     done    
     mv $PWD/$ARCH/webui $SHARE
     cp $PWD/$ARCH/nzbget.conf $SHARE
@@ -139,12 +141,12 @@ for ARCH in $ARCHS; do
     # build debian package
     if [ "$DEB" == "yes" ]; then
         mkdir -p $CONTENTS/DEBIAN/
-        cp $NZBGET_ROOT/linux/pkg/deb/DEBIAN/* "$CONTENTS/DEBIAN/"
+        cp $NZBGET_ROOT/platforms/linux/pkg/deb/DEBIAN/* "$CONTENTS/DEBIAN/"
         # copy additional CONTENTS files
-        cp -r $NZBGET_ROOT/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
-        eval "echo \"$(cat ../linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
+        cp -r $NZBGET_ROOT/platforms/linux/pkg/deb/CONTENTS "$PWD/$ARCH/" 2>/dev/null || true
+        eval "echo \"$(cat ../platforms/linux/pkg/deb/DEBIAN/control)\"" > "$CONTENTS/DEBIAN/control"
         mkdir -p "$CONTENTS/lib/systemd/system/"
-        cp ../linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
+        cp ../platforms/linux/pkg/nzbget.service "$CONTENTS/lib/systemd/system/"
         # fix permissions
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/usr"
         chmod -R u+rwX,go+rX,go-w "$CONTENTS/lib"
@@ -157,7 +159,7 @@ for ARCH in $ARCHS; do
     if [ "$RPM" == "yes" ]; then
         if [ "$ARCH" == "riscv64" ]; then continue; fi
         # prepare spec
-        cat ../linux/pkg/rpm/nzbget.spec | sed "s|^Version:.*|Version: $RPM_VERSION|" > "$ARCH/nzbget.spec"
+        cat ../platforms/linux/pkg/rpm/nzbget.spec | sed "s|^Version:.*|Version: $RPM_VERSION|" > "$ARCH/nzbget.spec"
         # prepare directories
         if [ "$ARCH" == "armel" ] || [ "$ARCH" == "armhf" ]; then
             ARCH_PATH="arm"
@@ -170,7 +172,7 @@ for ARCH in $ARCHS; do
         # replace 7zz with 7za (p7zip-full)
         sed -i -e "s|^SevenZipCmd=.*|SevenZipCmd=7za|g" "$RPM_SRC/usr/share/nzbget/nzbget.conf"
         mkdir -p "$RPM_SRC/usr/lib/systemd/system/"
-        cp ../linux/pkg/nzbget.service "$RPM_SRC/usr/lib/systemd/system/"
+        cp ../platforms/linux/pkg/nzbget.service "$RPM_SRC/usr/lib/systemd/system/"
         # remove unneeded files
         find $PWD/$ARCH/ -maxdepth 1 -type f ! -name "nzbget.spec" -delete
         rpmbuild --define "_topdir $PWD/$ARCH" -bb $PWD/$ARCH/nzbget.spec --target $RPM_ARCH

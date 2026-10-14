@@ -1,0 +1,123 @@
+--- a/src/internal/syscall.h	2026-03-20 18:40:00.000000000 +0300
++++ b/src/internal/syscall.h	2026-10-04 07:45:00.000000000 +0300
+@@ -26,6 +26,7 @@
+ hidden long __syscall_ret(unsigned long),
+ 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
+ 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
++extern hidden int __has_time64;
+ 
+ #define __syscall1(n,a) __syscall1(n,__scc(a))
+ #define __syscall2(n,a,b) __syscall2(n,__scc(a),__scc(b))
+--- a/src/internal/libc.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/internal/libc.c	2026-10-04 07:45:00.000000000 +0300
+@@ -1,5 +1,7 @@
+ #include "libc.h"
+ 
++hidden int __has_time64 = 1;
++
+ struct __libc __libc;
+ 
+ size_t __hwcap;
+--- a/src/time/clock_gettime.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/time/clock_gettime.c	2026-10-04 07:45:00.000000000 +0300
+@@ -77,9 +77,11 @@
+ 
+ #ifdef SYS_clock_gettime64
+ 	r = -ENOSYS;
+-	if (sizeof(time_t) > 4)
++	if (sizeof(time_t) > 4 && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED)) {
+ 		r = __syscall(SYS_clock_gettime64, clk, ts);
+-	if (SYS_clock_gettime == SYS_clock_gettime64 || r!=-ENOSYS)
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_clock_gettime == SYS_clock_gettime64 || (r!=-ENOSYS && r!=-EINVAL))
+ 		return __syscall_ret(r);
+ 	long ts32[2];
+ 	r = __syscall(SYS_clock_gettime, clk, ts32);
+--- a/src/time/clock_nanosleep.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/time/clock_nanosleep.c	2026-10-04 07:45:00.000000000 +0300
+@@ -12,10 +12,12 @@
+ 	time_t s = req->tv_sec;
+ 	long ns = req->tv_nsec;
+ 	int r = -ENOSYS;
+-	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || !IS32BIT(s))
++	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || (!IS32BIT(s) && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED))) {
+ 		r = __syscall_cp(SYS_clock_nanosleep_time64, clk, flags,
+ 			((long long[]){s, ns}), rem);
+-	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || r!=-ENOSYS)
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || (r!=-ENOSYS && r!=-EINVAL))
+ 		return -r;
+ 	long long extra = s - CLAMP(s);
+ 	long ts32[2] = { CLAMP(s), ns };
+--- a/src/thread/__timedwait.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/thread/__timedwait.c	2026-10-04 07:45:00.000000000 +0300
+@@ -15,10 +15,12 @@
+ 	time_t s = to ? to->tv_sec : 0;
+ 	long ns = to ? to->tv_nsec : 0;
+ 	r = -ENOSYS;
+-	if (SYS_futex == SYS_futex_time64 || !IS32BIT(s))
++	if (SYS_futex == SYS_futex_time64 || (!IS32BIT(s) && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED))) {
+ 		r = __syscall_cp(SYS_futex_time64, addr, op, val,
+ 			to ? ((long long[]){s, ns}) : 0);
+-	if (SYS_futex == SYS_futex_time64 || r!=-ENOSYS) return r;
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_futex == SYS_futex_time64 || (r!=-ENOSYS && r!=-EINVAL)) return r;
+ 	to = to ? (void *)(long[]){CLAMP(s), ns} : 0;
+ #endif
+ 	r = __syscall_cp(SYS_futex, addr, op, val, to);
+--- a/src/select/ppoll.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/select/ppoll.c	2026-10-04 07:45:00.000000000 +0300
+@@ -13,11 +13,13 @@
+ 	long ns = to ? to->tv_nsec : 0;
+ #ifdef SYS_ppoll_time64
+ 	int r = -ENOSYS;
+-	if (SYS_ppoll == SYS_ppoll_time64 || !IS32BIT(s))
++	if (SYS_ppoll == SYS_ppoll_time64 || (!IS32BIT(s) && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED))) {
+ 		r = __syscall_cp(SYS_ppoll_time64, fds, n,
+ 			to ? ((long long[]){s, ns}) : 0,
+ 			mask, _NSIG/8);
+-	if (SYS_ppoll == SYS_ppoll_time64 || r != -ENOSYS)
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_ppoll == SYS_ppoll_time64 || (r != -ENOSYS && r != -EINVAL))
+ 		return __syscall_ret(r);
+ 	s = CLAMP(s);
+ #endif
+--- a/src/select/pselect.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/select/pselect.c	2026-10-04 07:45:00.000000000 +0300
+@@ -14,10 +14,12 @@
+ 	long ns = ts ? ts->tv_nsec : 0;
+ #ifdef SYS_pselect6_time64
+ 	int r = -ENOSYS;
+-	if (SYS_pselect6 == SYS_pselect6_time64 || !IS32BIT(s))
++	if (SYS_pselect6 == SYS_pselect6_time64 || (!IS32BIT(s) && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED))) {
+ 		r = __syscall_cp(SYS_pselect6_time64, n, rfds, wfds, efds,
+ 			ts ? ((long long[]){s, ns}) : 0, data);
+-	if (SYS_pselect6 == SYS_pselect6_time64 || r!=-ENOSYS)
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_pselect6 == SYS_pselect6_time64 || (r!=-ENOSYS && r!=-EINVAL))
+ 		return __syscall_ret(r);
+ 	s = CLAMP(s);
+ #endif
+--- a/src/select/select.c	2026-03-20 18:40:00.000000000 +0300
++++ b/src/select/select.c	2026-10-04 07:45:00.000000000 +0300
+@@ -27,11 +27,13 @@
+ 
+ #ifdef SYS_pselect6_time64
+ 	int r = -ENOSYS;
+-	if (SYS_pselect6 == SYS_pselect6_time64 || !IS32BIT(s))
++	if (SYS_pselect6 == SYS_pselect6_time64 || (!IS32BIT(s) && __atomic_load_n(&__has_time64, __ATOMIC_RELAXED))) {
+ 		r = __syscall_cp(SYS_pselect6_time64, n, rfds, wfds, efds,
+ 			tv ? ((long long[]){s, ns}) : 0,
+ 			((syscall_arg_t[]){ 0, _NSIG/8 }));
+-	if (SYS_pselect6 == SYS_pselect6_time64 || r!=-ENOSYS)
++		if (r == -ENOSYS || r == -EINVAL) __atomic_store_n(&__has_time64, 0, __ATOMIC_RELAXED);
++	}
++	if (SYS_pselect6 == SYS_pselect6_time64 || (r!=-ENOSYS && r!=-EINVAL))
+ 		return __syscall_ret(r);
+ 	s = CLAMP(s);
+ #endif

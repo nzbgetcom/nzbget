@@ -27,7 +27,7 @@ jobs:
       env:
         SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
       run: |
-        cd linux/snap
+        cd platforms/linux/snap
         sudo -u $USER snapcraft -v
         snapcraft whoami
         for SNAP in *.snap; do
@@ -38,5 +38,5 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: nzbget-snaps
-        path: linux/snap/*.snap
+        path: platforms/linux/snap/*.snap
         retention-days: 5

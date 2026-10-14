@@ -38,11 +38,36 @@ else()
 		set(NCURSES_JOBS "${NCORES}")
 	endif()
 
-	# Android has no terminfo database: compile in fallbacks for common terminals
+	# Terminfo fallback database: compile in fallbacks for common terminals
 	set(NCURSES_FALLBACKS "xterm,xterm-color,xterm-256color,xterm-16color,vt100,vt200,linux,ansi,screen,screen-256color,tmux,tmux-256color")
 
 	file(MAKE_DIRECTORY "${NCURSES_INSTALL_DIR}/include")
 	file(MAKE_DIRECTORY "${NCURSES_INSTALL_DIR}/lib")
+
+	if(ANDROID)
+		set(NCURSES_HOST "${ANDROID_TARGET_TRIPLE}")
+		set(NCURSES_LDFLAGS "--target=${CMAKE_C_COMPILER_TARGET} --sysroot=${CMAKE_SYSROOT} -fuse-ld=lld -rtlib=compiler-rt --unwindlib=none")
+	elseif(LINUX_TARGET_TRIPLE)
+		set(NCURSES_HOST "${LINUX_TARGET_TRIPLE}")
+		set(NCURSES_LDFLAGS "-static")
+		if(CMAKE_SYSROOT)
+			string(APPEND NCURSES_LDFLAGS " --sysroot=${CMAKE_SYSROOT}")
+		endif()
+	elseif(CMAKE_C_COMPILER_TARGET)
+		set(NCURSES_HOST "${CMAKE_C_COMPILER_TARGET}")
+		set(NCURSES_LDFLAGS "-static")
+		if(CMAKE_SYSROOT)
+			string(APPEND NCURSES_LDFLAGS " --sysroot=${CMAKE_SYSROOT}")
+		endif()
+	else()
+		set(NCURSES_HOST "${CMAKE_SYSTEM_PROCESSOR}-linux-musl")
+		set(NCURSES_LDFLAGS "-static")
+	endif()
+
+	set(NCURSES_CFLAGS "${CMAKE_C_FLAGS} -O2 -ffunction-sections -fdata-sections")
+	if(LINUX_ARCH_FLAGS AND NOT "${NCURSES_CFLAGS}" MATCHES "${LINUX_ARCH_FLAGS}")
+		string(PREPEND NCURSES_CFLAGS "${LINUX_ARCH_FLAGS} ")
+	endif()
 
 	ExternalProject_Add(ncurses_build
 		PREFIX            "${CMAKE_BINARY_DIR}/deps/ncurses-${NCURSES_VERSION}-ep"
@@ -55,11 +80,11 @@ else()
 				"CPP=${CMAKE_C_COMPILER} -E"
 				"AR=${CMAKE_AR}"
 				"RANLIB=${CMAKE_RANLIB}"
-				"CFLAGS=${CMAKE_C_FLAGS} -O2 -ffunction-sections -fdata-sections"
-				"CPPFLAGS=${CMAKE_C_FLAGS}"
-				"LDFLAGS=--target=${CMAKE_C_COMPILER_TARGET} --sysroot=${CMAKE_SYSROOT} -fuse-ld=lld -rtlib=compiler-rt --unwindlib=none"
+				"CFLAGS=${NCURSES_CFLAGS}"
+				"CPPFLAGS=${NCURSES_CFLAGS}"
+				"LDFLAGS=${NCURSES_LDFLAGS}"
 			<SOURCE_DIR>/configure
-				--host=${ANDROID_TARGET_TRIPLE}
+				--host=${NCURSES_HOST}
 				--prefix=${NCURSES_INSTALL_DIR}
 				--with-tic-path=${TIC_EXECUTABLE}
 				--with-infocmp-path=${INFOCMP_EXECUTABLE}
@@ -85,7 +110,7 @@ else()
 				--without-gpm
 				"--with-fallbacks=${NCURSES_FALLBACKS}"
 		BUILD_COMMAND     make -j${NCURSES_JOBS} all
-		INSTALL_COMMAND   sh -c "make -C include install.includes && make -C ncurses install.libs"
+		INSTALL_COMMAND   sh -c "make -C include install.includes && make -C ncurses install.libs && (ln -sf libncursesw.a ${NCURSES_INSTALL_DIR}/lib/libncurses.a 2>/dev/null || true)"
 		BUILD_BYPRODUCTS  "${NCURSES_LIBRARY}"
 	)
 endif()

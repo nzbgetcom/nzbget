@@ -35,14 +35,18 @@ if(ENABLE_CCACHE AND NOT WIN32)
 	endif()
 endif()
 
-option(BUILD_DEPS_FROM_SOURCE "Build third-party dependencies from source via FetchContent" OFF)
-
 option(ENABLE_LTO "Enable Link-Time Optimization (IPO)" OFF)
+# Disable LTO on RISC-V when using GCC due to upstream bug PR target/110812 ("target specific builtin not available")
+if(ENABLE_LTO AND CMAKE_SYSTEM_PROCESSOR MATCHES "riscv" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+	message(STATUS "Disabling LTO on RISC-V with GCC due to upstream PR target/110812")
+	set(ENABLE_LTO OFF CACHE BOOL "Enable Link-Time Optimization (IPO)" FORCE)
+endif()
+
 if(ENABLE_LTO)
 	if(CMAKE_CROSSCOMPILING)
 		# Cross-compilation: try_compile cannot run test binaries
-		# LTO is known to work on supported platforms with LLVM Clang
-		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang")
+		# LTO is known to work on supported platforms with LLVM Clang and modern GCC
+		if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
 			set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 			message(STATUS "Link-Time Optimization (LTO/IPO) enabled (cross-compiling, assuming supported)")
 		else()
