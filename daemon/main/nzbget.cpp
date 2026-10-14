@@ -475,6 +475,7 @@ void NZBGet::BootConfig()
 		m_commandLineParser->GetNoConfig(), (Options::CmdOptList*)m_commandLineParser->GetOptionList(), this);
 	m_options->SetRemoteClientMode(m_commandLineParser->GetRemoteClientMode());
 	m_options->SetServerMode(m_commandLineParser->GetServerMode());
+	m_options->SetDaemonMode(m_commandLineParser->GetDaemonMode());
 	m_workState->SetPauseDownload(m_commandLineParser->GetPauseDownload());
 	m_workState->SetSpeedLimit(g_Options->GetDownloadRate());
 
