@@ -312,16 +312,8 @@ package_installer() {
 		SHORT=$(short_arch "$ARCH")
 		local TAR_PKG="$DIST_BASE/$BASENAME-bin-$PLATFORM-$SHORT$SUFFIX.tar.gz"
 		if [ ! -f "$TAR_PKG" ]; then
-			# Fallback: look for any matching testing package for this architecture if date differed
-			local CANDIDATE
-			CANDIDATE=$(find "$DIST_BASE" -maxdepth 1 -name "nzbget-${VERSION}-*-bin-${PLATFORM}-${SHORT}${SUFFIX}.tar.gz" 2>/dev/null | head -n 1)
-			if [ -n "$CANDIDATE" ] && [ -f "$CANDIDATE" ]; then
-				echo "Notice: using matched package archive: $CANDIDATE"
-				TAR_PKG="$CANDIDATE"
-			else
-				echo "ERROR: required package archive not found: $TAR_PKG"
-				exit 1
-			fi
+			echo "ERROR: required package archive not found: $TAR_PKG"
+			exit 1
 		fi
 		tar -xzf "$TAR_PKG" -C "$STAGING_DIR"
 		mv "$STAGING_DIR/nzbget/nzbget" "$STAGING_DIR/nzbget/nzbget-$SHORT"
