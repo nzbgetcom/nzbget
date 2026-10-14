@@ -801,7 +801,7 @@ var StatDialog = (new function($)
 
 		if (status.ResumeTime > 0)
 		{
-			content += '<tr><td data-i18n="stat_autoresume"></td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i></td></tr>';
+			content += '<tr><td data-i18n="stat_autoresume"></td><td class="text-right">' + Util.formatTimeHMS(status.ResumeTime - status.ServerTime) + '<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#"></use></svg></i></td></tr>';
 		}
 
 		var $tbody = $('#StatusTable tbody');
@@ -1237,11 +1237,11 @@ var StatDialog = (new function($)
 
 			if (i === curServer-1)
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + Util.textToHtml(name));
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#done"></use></svg></i>' + Util.textToHtml(name));
 			}
 			else
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + Util.textToHtml(name));
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#"></use></svg></i>' + Util.textToHtml(name));
 			}
 
 			a.attr('data-id', server.ID);
@@ -1336,11 +1336,11 @@ var StatDialog = (new function($)
 
 			if (monId === curMonth)
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + name);
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#done"></use></svg></i>' + name);
 			}
 			else
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + name);
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#"></use></svg></i>' + name);
 			}
 
 			a.attr('data-id', monId);
@@ -1371,11 +1371,11 @@ var StatDialog = (new function($)
 
 			if (monId === curMonth)
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#done"></use></svg></i>' + name);
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#done"></use></svg></i>' + name);
 			}
 			else
 			{
-				a.html('<i class="material-icon"><svg><use href="img/icons.svg#"></use></svg></i>' + name);
+				a.html('<i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#"></use></svg></i>' + name);
 			}
 
 			a.attr('data-id', monId);

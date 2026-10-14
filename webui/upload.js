@@ -215,10 +215,10 @@ var Upload = (new function($)
 			var filename = file.name.replace(/\.queued$/g, '');
 			var html = '<a class="link-black" href="#" onclick="Upload.renameClick(' + files.length + ')" title="' + I18n.translate('label_click_to_rename') + '">'+
 				'<table><tr><td width="18px" valign="top">'+
-				'<i class="material-icon material-icon--draft"><svg><use href="img/icons.svg#draft"></use></svg></i>'+
-				'<i class="material-icon material-icon--success hide"><svg><use href="img/icons.svg#check_circle"></use></svg></i>'+
-				'<i class="material-icon material-icon--error hide"><svg><use href="img/icons.svg#error"></use></svg></i>'+
-				'<i class="material-icon material-icon--progress spinner hide"><svg><use href="img/icons.svg#progress_activity"></use></svg></i>'+
+				'<i class="material-icon material-icon--draft"><svg aria-hidden="true"><use href="img/icons.svg#draft"></use></svg></i>'+
+				'<i class="material-icon material-icon--success hide"><svg aria-hidden="true"><use href="img/icons.svg#check_circle"></use></svg></i>'+
+				'<i class="material-icon material-icon--error hide"><svg aria-hidden="true"><use href="img/icons.svg#error"></use></svg></i>'+
+				'<i class="material-icon material-icon--progress spinner hide"><svg aria-hidden="true"><use href="img/icons.svg#progress_activity"></use></svg></i>'+
 				'</td><td id="AddDialog_File' + files.length + '">' + Util.textToHtml(Util.formatNZBName(filename)) + '</td></tr></table></a>';
 			$('#AddDialog_Files').append(html);
 			files.push(file);
