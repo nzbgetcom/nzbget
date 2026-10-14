@@ -491,7 +491,12 @@ std::unique_ptr<Connection> Connection::Accept()
 	{
 		return nullptr;
 	}
-	InitSocketOpts(socket);
+
+	if (!InitSocketOpts(m_socket))
+	{
+		closesocket(m_socket);
+		return nullptr;
+	}
 
 	return std::make_unique<Connection>(socket, m_tls);
 }
