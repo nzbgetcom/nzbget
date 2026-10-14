@@ -40,7 +40,7 @@ VERSION=$(bash "$INSTALLER" --help | grep 'Installer for' | cut -d ' ' -f 3 | se
 # prepare build files
 rm -rf build/flatpak
 mkdir -p build/flatpak
-cp -r linux/flatpak/* build/flatpak
+cp -r platforms/linux/flatpak/* build/flatpak
 cp $INSTALLER build/flatpak/nzbget-bin-linux.run
 
 # correct version in metainfo file

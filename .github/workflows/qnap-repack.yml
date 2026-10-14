@@ -43,7 +43,7 @@ jobs:
     - name: Repack linux installer for QNAP
       run: |
         export PATH="$PATH:$HOME/QDK/bin"
-        bash qnap/repack-nzbget.sh
+        bash platforms/linux/qnap/repack-nzbget.sh
 
     - name: Rename build artifacts
       if: github.ref_name != 'main'

@@ -75,78 +75,72 @@ if(ENABLE_STATIC)
 	endif()
 endif()
 
-# Dependency resolution
-if(ENABLE_STATIC AND (DEFINED ENV{LIBS} OR DEFINED ENV{INCLUDES}) AND NOT CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-	# Legacy static environment (e.g. legacy Linux buildroot using external ENV{LIBS} / ENV{INCLUDES})
-	set(BUILD_SHARED_LIBS OFF)
-	set(LIBS ${LIBS} $ENV{LIBS})
-	set(INCLUDES ${INCLUDES} $ENV{INCLUDES})
-	include_directories($ENV{INCLUDES})
-else()
-	# Modern dependency resolution:
-	# - When BUILD_DEPS_FROM_SOURCE=ON: builds all dependencies hermetically from source via FetchContent
-	# - When BUILD_DEPS_FROM_SOURCE=OFF: uses system packages (find_package) for fast local development
-	if(NOT DISABLE_TLS)
-		include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
+# Build external dependencies via FetchContent
+if(NOT DISABLE_TLS)
+	include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
+endif()
+if(NOT DISABLE_GZIP)
+	include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
+endif()
+include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
+
+find_package(Threads REQUIRED)
+
+target_link_libraries(libnzbget PUBLIC
+	Threads::Threads
+	LibXml2::LibXml2
+	Boost::boost
+)
+
+if(NOT DISABLE_TLS)
+	target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+	set(HAVE_X509_CHECK_HOST 1)
+	if(OPENSSL_INCLUDE_DIR)
+		target_include_directories(libnzbget PUBLIC ${OPENSSL_INCLUDE_DIR})
 	endif()
-	if(NOT DISABLE_GZIP)
-		include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
-	endif()
-	include(${CMAKE_SOURCE_DIR}/cmake/libxml2.cmake)
-	include(${CMAKE_SOURCE_DIR}/cmake/boost.cmake)
+endif()
 
-	find_package(Threads REQUIRED)
-
-	set(LIBS ${LIBS} Threads::Threads)
-
-	if(NOT DISABLE_TLS)
-		set(LIBS ${LIBS} OpenSSL::SSL OpenSSL::Crypto)
-		set(HAVE_X509_CHECK_HOST 1)
-		if(OPENSSL_INCLUDE_DIR)
-			set(INCLUDES ${INCLUDES} ${OPENSSL_INCLUDE_DIR})
-		endif()
-	endif()
-
-	if(NOT DISABLE_CURSES)
-		if(ANDROID)
-			include(${CMAKE_SOURCE_DIR}/cmake/ncurses.cmake)
-			set(LIBS ${LIBS} Curses::ncursesw)
-		elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
-			if(ENABLE_STATIC)
-				find_library(NCURSESW_LIB NAMES libncursesw.a libncurses.a ncursesw ncurses PATHS ${CMAKE_SYSROOT}/usr/lib NO_DEFAULT_PATH)
-				if(NOT NCURSESW_LIB)
-					find_library(NCURSESW_LIB NAMES libncursesw.a libncurses.a ncursesw ncurses)
-				endif()
-			else()
-				find_library(NCURSESW_LIB NAMES ncursesw ncurses cursesw curses)
-			endif()
-			find_path(NCURSESW_INCLUDE_DIR NAMES ncurses.h curses.h PATHS ${CMAKE_SYSROOT}/usr/include PATH_SUFFIXES ncurses ncursesw NO_DEFAULT_PATH)
-			if(NOT NCURSESW_INCLUDE_DIR)
-				find_path(NCURSESW_INCLUDE_DIR NAMES ncurses.h curses.h PATH_SUFFIXES ncurses ncursesw)
-			endif()
-			if(NCURSESW_LIB AND NCURSESW_INCLUDE_DIR)
-				set(LIBS ${LIBS} ${NCURSESW_LIB})
-				set(INCLUDES ${INCLUDES} ${NCURSESW_INCLUDE_DIR})
-				set(HAVE_NCURSES_H 1)
-				set(HAVE_CURSES_H 1)
-			else()
-				message(FATAL_ERROR "Could NOT find ncursesw/ncurses on FreeBSD sysroot (missing library or header). For headless builds without terminal UI, pass -DDISABLE_CURSES=ON")
+if(NOT DISABLE_CURSES)
+	if(ANDROID)
+		include(${CMAKE_SOURCE_DIR}/cmake/ncurses.cmake)
+		target_link_libraries(libnzbget PUBLIC Curses::ncursesw)
+	elseif(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+		if(ENABLE_STATIC)
+			find_library(NCURSESW_LIB NAMES libncursesw.a libncurses.a ncursesw ncurses PATHS ${CMAKE_SYSROOT}/usr/lib NO_DEFAULT_PATH)
+			if(NOT NCURSESW_LIB)
+				find_library(NCURSESW_LIB NAMES libncursesw.a libncurses.a ncursesw ncurses)
 			endif()
 		else()
-			set(CURSES_NEED_NCURSES TRUE)
-			if(NOT APPLE)
-				set(CURSES_NEED_WIDE TRUE)
-			endif()
-			find_package(Curses REQUIRED)
-			set(LIBS ${LIBS} ${CURSES_LIBRARIES})
+			find_library(NCURSESW_LIB NAMES ncursesw ncurses cursesw curses)
 		endif()
+		find_path(NCURSESW_INCLUDE_DIR NAMES ncurses.h curses.h PATHS ${CMAKE_SYSROOT}/usr/include PATH_SUFFIXES ncurses ncursesw NO_DEFAULT_PATH)
+		if(NOT NCURSESW_INCLUDE_DIR)
+			find_path(NCURSESW_INCLUDE_DIR NAMES ncurses.h curses.h PATH_SUFFIXES ncurses ncursesw)
+		endif()
+		if(NCURSESW_LIB AND NCURSESW_INCLUDE_DIR)
+			target_link_libraries(libnzbget PUBLIC ${NCURSESW_LIB})
+			target_include_directories(libnzbget PUBLIC ${NCURSESW_INCLUDE_DIR})
+			set(HAVE_NCURSES_H 1)
+			set(HAVE_CURSES_H 1)
+		else()
+			message(FATAL_ERROR "Could NOT find ncursesw/ncurses on FreeBSD sysroot (missing library or header). For headless builds without terminal UI, pass -DDISABLE_CURSES=ON")
+		endif()
+	elseif(NZBGET_BUILD_PLATFORM STREQUAL "linux" AND ENABLE_STATIC)
+		include(${CMAKE_SOURCE_DIR}/cmake/ncurses.cmake)
+		target_link_libraries(libnzbget PUBLIC Curses::ncursesw)
+	else()
+		set(CURSES_NEED_NCURSES TRUE)
+		if(NOT APPLE)
+			set(CURSES_NEED_WIDE TRUE)
+		endif()
+		find_package(Curses REQUIRED)
+		target_link_libraries(libnzbget PUBLIC ${CURSES_LIBRARIES})
 	endif()
+endif()
 
-	if(NOT DISABLE_GZIP)
-		set(LIBS ${LIBS} ZLIB::ZLIB)
-	endif()
-
-	set(LIBS ${LIBS} LibXml2::LibXml2 Boost::boost)
+if(NOT DISABLE_GZIP)
+	target_link_libraries(libnzbget PUBLIC ZLIB::ZLIB)
 endif()
 
 # Platform-specific system libraries
@@ -156,28 +150,28 @@ if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
 		find_library(ELF_LIB NAMES libelf.a elf)
 		find_library(PTHREAD_LIB NAMES libpthread.a libthr.a pthread thr)
 		if(PTHREAD_LIB)
-			set(LIBS ${LIBS} ${PTHREAD_LIB})
+			target_link_libraries(libnzbget PUBLIC ${PTHREAD_LIB})
 		endif()
 	else()
 		find_library(EXECINFO_LIB execinfo)
 		find_library(ELF_LIB elf)
 	endif()
 	if(EXECINFO_LIB)
-		set(LIBS ${LIBS} ${EXECINFO_LIB})
+		target_link_libraries(libnzbget PUBLIC ${EXECINFO_LIB})
 	endif()
 	if(ELF_LIB)
-		set(LIBS ${LIBS} ${ELF_LIB})
+		target_link_libraries(libnzbget PUBLIC ${ELF_LIB})
 	endif()
 endif()
 
 include(${CMAKE_SOURCE_DIR}/cmake/rapidyenc.cmake)
-set(LIBS ${LIBS} rapidyenc::rapidyenc)
+target_link_libraries(libnzbget PUBLIC rapidyenc::rapidyenc)
 
 include(${CMAKE_SOURCE_DIR}/lib/sources.cmake)
 
 if(NOT DISABLE_PARCHECK)
 	include(${CMAKE_SOURCE_DIR}/cmake/par2-turbo.cmake)
-	set(LIBS ${LIBS} par2-turbo::par2-turbo)
+	target_link_libraries(libnzbget PUBLIC par2-turbo::par2-turbo)
 endif()
 
 check_include_files(regex.h HAVE_SYSTEM_REGEX_H)
@@ -408,17 +402,43 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
 		}" HAVE_BACKTRACE)
 endif()
 
+# Check whether 64-bit atomic operations work natively or require libatomic
+set(_SAVED_TRY_COMPILE_TARGET_TYPE ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+
 check_cxx_source_compiles("
 	#include <atomic>
+	#include <cstdint>
 	int main()
 	{
 		std::atomic<uint64_t> x{ 0 };
 		x.load(std::memory_order_acquire);
+		x.store(1, std::memory_order_release);
 		return 0;
 	}
 " HAVE_NATIVE_ATOMICS_SUPPORT)
 
 if(NOT HAVE_NATIVE_ATOMICS_SUPPORT)
-	message(STATUS "Compiler lacks native support for C++ atomics. Linking against libatomic.")
-	set(LIBS ${LIBS} -latomic)
+	set(CMAKE_REQUIRED_LIBRARIES -latomic)
+	check_cxx_source_compiles("
+		#include <atomic>
+		#include <cstdint>
+		int main()
+		{
+			std::atomic<uint64_t> x{ 0 };
+			x.load(std::memory_order_acquire);
+			x.store(1, std::memory_order_release);
+			return 0;
+		}
+	" HAVE_LIBATOMIC_SUPPORT)
+	unset(CMAKE_REQUIRED_LIBRARIES)
+	if(HAVE_LIBATOMIC_SUPPORT)
+		message(STATUS "64-bit atomics require libatomic. Linking against libatomic.")
+		target_link_libraries(libnzbget PUBLIC -latomic)
+	else()
+		message(WARNING "Neither native 64-bit atomics nor libatomic support found.")
+	endif()
 endif()
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE ${_SAVED_TRY_COMPILE_TARGET_TYPE})
+unset(_SAVED_TRY_COMPILE_TARGET_TYPE)

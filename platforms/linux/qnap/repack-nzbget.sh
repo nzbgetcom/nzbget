@@ -25,7 +25,7 @@ QNAP_ROOT=/qnap
 
 # cleanup shared and build directories
 rm -rf $QNAP_ROOT/nzbget
-cp -r qnap/package $QNAP_ROOT/nzbget
+cp -r platforms/linux/qnap/package $QNAP_ROOT/nzbget
 NZBGET_ROOT=$PWD
 
 # installer - first param

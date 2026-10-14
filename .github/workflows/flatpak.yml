@@ -37,7 +37,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install flatpak flatpak-builder appstream-compose -y
-        bash linux/flatpak/build-flatpak.sh
+        bash platforms/linux/flatpak/build-flatpak.sh
 
     - name: Upload build artifacts
       uses: actions/upload-artifact@v7

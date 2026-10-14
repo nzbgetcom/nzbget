@@ -14,7 +14,7 @@ sudo apt install flatpak flatpak-builder appstream-compose
 
 From the cloned repository, run:
 ```
-bash linux/flatpak/build-flatpak.sh [nzbget_installer]
+bash platforms/linux/flatpak/build-flatpak.sh [nzbget_installer]
 ```
 
 # Output files

@@ -19,7 +19,7 @@ sudo ./InstallToUbuntu.sh install
 
 From cloned repository run
 ```
-bash qnap/repack-nzbget.sh <path_to_installer>
+bash platforms/linux/qnap/repack-nzbget.sh <path_to_installer>
 ```
 
 ## Output files

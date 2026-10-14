@@ -15,7 +15,7 @@ sudo apt install rpm dpkg fakeroot
 
 From cloned repository run
 ```
-bash linux/pkg/build-pkg.sh [type] [arch]
+bash platforms/linux/pkg/build-pkg.sh [type] [arch]
 ```
 
 Optional arguments:
