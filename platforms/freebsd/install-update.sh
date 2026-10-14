@@ -145,6 +145,27 @@ do
     N=$((N + 1))
 done
 
+# If started in interactive curses console mode, automatic restart cannot re-attach to the terminal
+IS_CURSES=no
+if [ "$NZBUP_RUNMODE" != "DAEMON" ]; then
+    MODE=$(echo "${NZBOP_OUTPUTMODE:-curses}" | tr '[:upper:]' '[:lower:]')
+    case "$MODE" in
+        curses|ncurses|"")
+            IS_CURSES=yes
+            ;;
+    esac
+fi
+
+if [ "$IS_CURSES" = "yes" ]; then
+    echo "[WARNING] NZBGet was started in interactive curses console mode."
+    echo "[WARNING] Automatic restart cannot re-attach to the terminal."
+    echo "[WARNING] Please restart NZBGet manually from your terminal."
+    echo "Terminating NZBGet..."
+    sleep 1
+    echo "[NZB] QUIT"
+    exit 0
+fi
+
 echo "Restarting NZBGet..."
 sleep 1
 echo "[NZB] QUIT"
