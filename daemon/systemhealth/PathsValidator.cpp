@@ -314,19 +314,30 @@ Status LockFileValidator::Validate() const
 
 Status LockFileValidator::Validate(const fs::path& path, bool daemonMode)
 {
-	if (path.empty() && daemonMode)
+	if (!daemonMode)
+	{
+		return Status::Ok();
+	}
+
+	if (path.empty())
 	{
 		return Status::Warning(
 			"'" + std::string(Options::LOCKFILE) +
 			"' is set to empty. The check for another running instance is disabled");
 	}
 
-	if (daemonMode)
+	if (File::Exists(path).IsOk())
 	{
-		return File::Exists(path);
+		return File::Writable(path);
 	}
 
-	return Status::Ok();
+	auto parent = path.parent_path();
+	if (parent.empty())
+	{
+		parent = fs::current_path();
+	}
+
+	return Directory::Exists(parent).And(&Directory::Writable, parent);
 }
 #endif
 }  // namespace SystemHealth::Paths
