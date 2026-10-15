@@ -1,7 +1,6 @@
 option(ENABLE_STATIC "Build static executable")
 option(ENABLE_TESTS "Build tests")
 option(ENABLE_CLANG_TIDY "Enable Clang-Tidy static analyzer")
-option(DISABLE_TLS "Disable TLS")
 option(DISABLE_CURSES "Disable curses")
 option(DISABLE_GZIP "Disable gzip")
 option(DISABLE_PARCHECK "Disable parcheck")
@@ -15,7 +14,6 @@ message(STATUS "  BUILD TYPE:        ${CMAKE_BUILD_TYPE}")
 message(STATUS "  ENABLE STATIC:     ${ENABLE_STATIC}")
 message(STATUS "  ENABLE TESTS:      ${ENABLE_TESTS}")
 message(STATUS "  ENABLE LTO:        ${ENABLE_LTO}")
-message(STATUS "  DISABLE TLS:       ${DISABLE_TLS}")
 message(STATUS "  DISABLE CURSES:    ${DISABLE_CURSES}")
 message(STATUS "  DISABLE GZIP:      ${DISABLE_GZIP}")
 message(STATUS "  DISABLE PARCHECK:  ${DISABLE_PARCHECK}")
@@ -76,9 +74,7 @@ if(ENABLE_STATIC)
 endif()
 
 # Build external dependencies via FetchContent
-if(NOT DISABLE_TLS)
-	include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
 if(NOT DISABLE_GZIP)
 	include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
 endif()
@@ -93,12 +89,10 @@ target_link_libraries(libnzbget PUBLIC
 	Boost::boost
 )
 
-if(NOT DISABLE_TLS)
-	target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
-	set(HAVE_X509_CHECK_HOST 1)
-	if(OPENSSL_INCLUDE_DIR)
-		target_include_directories(libnzbget PUBLIC ${OPENSSL_INCLUDE_DIR})
-	endif()
+target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+set(HAVE_X509_CHECK_HOST 1)
+if(OPENSSL_INCLUDE_DIR)
+	target_include_directories(libnzbget PUBLIC ${OPENSSL_INCLUDE_DIR})
 endif()
 
 if(NOT DISABLE_CURSES)
@@ -345,9 +339,9 @@ check_cxx_source_compiles("
 	}" HAVE_SC_NPROCESSORS_ONLN)
 
 # Check TLS/SSL
-if(NOT DISABLE_TLS AND NOT ENABLE_STATIC)
+if(NOT ENABLE_STATIC)
 	check_library_exists(OpenSSL::Crypto X509_check_host "" HAVE_X509_CHECK_HOST)
-elseif(NOT DISABLE_TLS AND ENABLE_STATIC)
+else()
 	set(HAVE_X509_CHECK_HOST 1)
 endif()
 

@@ -975,14 +975,6 @@ void Options::InitServers()
 		if (ntls)
 		{
 			tls = (bool)ParseEnumValue(BString<100>("Server%i.Encryption", n), BoolCount, BoolNames, BoolValues);
-#ifdef DISABLE_TLS
-			if (tls)
-			{
-				ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support",
-					*BString<100>("Server%i.Encryption", n));
-				tls = false;
-			}
-#endif
 			m_tls |= tls;
 		}
 
@@ -1785,21 +1777,6 @@ void Options::CheckOptions()
 	}
 #endif
 
-#ifdef DISABLE_TLS
-	if (m_secureControl)
-	{
-		LocateOptionSrcPos(SECURECONTROL.data());
-		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", SECURECONTROL.data());
-	}
-
-	if (m_certCheck)
-	{
-		LocateOptionSrcPos(CERTCHECK.data());
-		ConfigError("Invalid value for option \"%s\": program was compiled without TLS/SSL-support", CERTCHECK.data());
-	}
-#endif
-
-#ifndef DISABLE_TLS
 #ifndef HAVE_X509_CHECK_HOST
 	if (m_certCheck)
 	{
@@ -1807,7 +1784,6 @@ void Options::CheckOptions()
 		ConfigWarn("TLS certificate verification (option \"%s\") is limited because the program "
 			"was compiled with older OpenSSL version not supporting hostname validation (at least OpenSSL 1.0.2d is required)", CERTCHECK.data());
 	}
-#endif
 #endif
 
 	if (m_certCheck && m_certStore.Empty())

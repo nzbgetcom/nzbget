@@ -299,9 +299,7 @@ void FeedCoordinator::StartFeedDownload(FeedInfo* feedInfo, bool force)
 	feedDownloader->SetUrl(feedInfo->GetUrl());
 	feedDownloader->SetInfoName(feedInfo->GetName());
 	feedDownloader->SetForce(force || g_Options->GetUrlForce());
-#ifndef DISABLE_TLS
 	feedDownloader->SetCertVerifLevel(feedInfo->GetCertVerificationLevel());
-#endif
 
 	BString<1024> outFilename;
 	if (feedInfo->GetId() > 0)

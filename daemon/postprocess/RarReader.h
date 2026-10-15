@@ -25,10 +25,7 @@
 #include <string>
 #include "Log.h"
 #include "FileSystem.h"
-
-#ifndef DISABLE_TLS
 #include "OpenSSL.h"
-#endif
 
 class RarFile
 {
@@ -59,9 +56,7 @@ public:
 		, m_decryptKey{}
 		, m_decryptIV{}
 		, m_decryptBuf{}
-#ifndef DISABLE_TLS
 		, m_context{ nullptr, &EVP_CIPHER_CTX_free }
-#endif
 		{}
 
 	bool Read();
@@ -103,9 +98,7 @@ private:
 	uint8 m_decryptBuf[16];
 	uint8 m_decryptPos = 16;
 
-#ifndef DISABLE_TLS
 	OpenSSL::EVPCipherCtxPtr m_context;
-#endif
 
 	int DetectRarVersion(DiskFile& file);
 	void LogDebugInfo();

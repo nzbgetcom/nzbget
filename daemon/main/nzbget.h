@@ -170,10 +170,8 @@
 
 #include <boost/asio.hpp>
 #include <boost/json.hpp>
-#ifndef DISABLE_TLS
 #include <boost/asio/ssl.hpp>
 #include "OpenSSL.h"
-#endif
 
 // NOTE: do not include <iostream> in "nzbget.h". <iostream> contains objects requiring
 // initialization, causing every unit in nzbget to have initialization routine. This in particular

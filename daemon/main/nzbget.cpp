@@ -277,9 +277,7 @@ void NZBGet::Init()
 	if (!m_reloading)
 	{
 		Connection::Init();
-#ifndef DISABLE_TLS
 		TlsSocket::Init();
-#endif
 	}
 
 	CreateGlobals();
@@ -326,9 +324,7 @@ void NZBGet::Init()
 
 	m_scanner->InitOptions();
 	m_queueScriptCoordinator->InitOptions();
-#ifndef DISABLE_TLS
 	TlsSocket::InitOptions(g_Options->GetCertCheck() ? g_Options->GetCertStore() : "");
-#endif
 
 	if (m_commandLineParser->GetDaemonMode())
 	{
@@ -379,9 +375,7 @@ void NZBGet::Final()
 {
 	if (!m_reloading)
 	{
-#ifndef DISABLE_TLS
 		TlsSocket::Final();
-#endif
 		Connection::Final();
 	}
 }
@@ -944,14 +938,9 @@ void NZBGet::ProcessWebGet()
 
 void NZBGet::ProcessSigVerify()
 {
-#ifndef DISABLE_TLS
 	bool ok = Maintenance::VerifySignature(m_commandLineParser->GetLastArg(),
 		m_commandLineParser->GetSigFilename(), m_commandLineParser->GetPubKeyFilename());
 	exit(ok ? 93 : 1);
-#else
-	printf("ERROR: Could not verify signature, the program was compiled without OpenSSL support\n");
-	exit(1);
-#endif
 }
 
 void NZBGet::Stop(bool reload)

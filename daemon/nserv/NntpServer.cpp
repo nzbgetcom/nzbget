@@ -24,10 +24,7 @@
 #include "Log.h"
 #include "Util.h"
 #include "YEncoder.h"
-
-#ifndef DISABLE_TLS
 #include "OpenSSL.h"
-#endif
 
 class NntpProcessor : public Thread
 {
@@ -42,9 +39,7 @@ public:
 	{
 		m_connection->Disconnect();
 
-#ifndef DISABLE_TLS
 		OpenSSL::StopSSLThread();
-#endif
 	}
 	void Run() override;
 	void SetConnection(std::unique_ptr<Connection>&& connection) { m_connection = std::move(connection); }
@@ -154,13 +149,11 @@ void NntpProcessor::Run()
 {
 	m_connection->SetSuppressErrors(false);
 
-#ifndef DISABLE_TLS
 	if (m_secureCert && !m_connection->StartTls(false, m_secureCert, m_secureKey))
 	{
 		error("Could not establish secure connection to nntp-client: Start TLS failed");
 		return;
 	}
-#endif
 
 	info("%s [%i] Incoming connection from: %s", *Util::FormatTime(Util::CurrentTime()),m_id, m_connection->GetHost() );
 	m_connection->WriteLine("200 Welcome (NServ)\r\n");

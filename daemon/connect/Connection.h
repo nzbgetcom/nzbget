@@ -26,9 +26,7 @@
 #include <atomic>
 #include <string>
 #include "NString.h"
-#ifndef DISABLE_TLS
 #include "TlsSocket.h"
-#endif
 
 class Connection
 {
@@ -79,10 +77,8 @@ public:
 	bool GetGracefull() { return m_gracefull; }
 	void SetGracefull(bool gracefull) { m_gracefull = gracefull; }
 	void SetForceClose(bool forceClose) { m_forceClose = forceClose; }
-#ifndef DISABLE_TLS
 	bool StartTls(bool isClient, const char* certFile, const char* keyFile);
 	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
-#endif
 	int FetchTotalBytesRead();
 
 protected:
@@ -102,9 +98,7 @@ protected:
 	int m_totalBytesRead = 0;
 	bool m_gracefull = false;
 	bool m_forceClose = false;
-#ifndef DISABLE_TLS
 	unsigned int m_certVerifLevel;
-#endif
 
 	struct SockAddr
 	{
@@ -115,10 +109,8 @@ protected:
 			{ return memcmp(this, &rhs, sizeof(SockAddr)) == 0; }
 	};
 
-#ifndef DISABLE_TLS
 	std::unique_ptr<TlsSocket> m_tlsSocket;
 	bool m_tlsError = false;
-#endif
 #ifndef HAVE_GETADDRINFO
 #ifndef HAVE_GETHOSTBYNAME_R
 	inline static std::mutex m_getHostByNameMutex;
@@ -136,11 +128,9 @@ protected:
 #ifndef HAVE_GETADDRINFO
 	in_addr_t ResolveHostAddr(const char* host);
 #endif
-#ifndef DISABLE_TLS
 	int recv(SOCKET s, char* buf, int len, int flags);
 	int send(SOCKET s, const char* buf, int len, int flags);
 	void CloseTls();
-#endif
 };
 
 #endif

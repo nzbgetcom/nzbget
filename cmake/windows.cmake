@@ -1,5 +1,4 @@
 option(ENABLE_TESTS "Enable tests")
-option(DISABLE_TLS "Disable TLS")
 option(DISABLE_GZIP "Disable gzip")
 
 # Ensure CMAKE_SYSTEM_PROCESSOR matches the target architecture (x86 vs AMD64)
@@ -12,9 +11,7 @@ endif()
 add_compile_definitions(_WIN32_WINNT=0x0601 WINVER=0x0601 _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS NOMINMAX WIN32_LEAN_AND_MEAN)
 
 # Build external dependencies via FetchContent
-if(NOT DISABLE_TLS)
-	include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
-endif()
+include(${CMAKE_SOURCE_DIR}/cmake/openssl.cmake)
 if(NOT DISABLE_GZIP)
 	include(${CMAKE_SOURCE_DIR}/cmake/zlib.cmake)
 endif()
@@ -36,10 +33,8 @@ target_link_libraries(libnzbget PUBLIC
 	$<$<CONFIG:Debug>:dbghelp.lib>
 )
 
-if(NOT DISABLE_TLS)
-	target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
-	set(HAVE_X509_CHECK_HOST 1)
-endif()
+target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
+set(HAVE_X509_CHECK_HOST 1)
 
 if(NOT DISABLE_GZIP)
 	target_link_libraries(libnzbget PUBLIC ZLIB::ZLIB)
