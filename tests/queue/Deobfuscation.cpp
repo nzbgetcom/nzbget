@@ -230,6 +230,18 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("macOSVentura.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("eBayPlus.mkv"));
 
+	// False positive protection for release tags and compact episode identifiers
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.x264Hi10P.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.S01E01E02.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.S01E01v2.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.1080p60fps.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.1080p10bit.mkv"));
+
+	// False positive protection for compound German words
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.schlittschuhschritt.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.kraftfahrzeugpflicht.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("qwrtypsdfghjklzxcvbnmqwerty.mkv"));
+
 	// Numeric stems: 16+ digits is a hash, shorter IDs/timestamps/ISBNs are legitimate
 	BOOST_CHECK(IsExcessivelyObfuscated("18446744073709551615.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("1234567890123456.mkv"));

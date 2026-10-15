@@ -30,16 +30,17 @@ namespace
 	constexpr size_t MAX_PLAUSIBLE_EXT_LEN = 4;
 	constexpr size_t MIN_DEOBFUSCATE_SIZE = 3;
 	constexpr size_t RE_PREFIX_LEN = 4;
-	constexpr size_t MIN_MIXED_ALNUM_HASH_LEN = 8;
+	constexpr size_t MIN_MIXED_ALNUM_HASH_LEN = 10;
 	constexpr size_t MIN_ALNUM_HASH_LEN = 12;
 	constexpr size_t MIN_CAPS_HASH_LEN = 8;
 	constexpr size_t MIN_VOWELLESS_HASH_LEN = 8;
-	constexpr size_t MIN_LOW_VOWEL_HASH_LEN = 14;
+	constexpr size_t MIN_LOW_VOWEL_HASH_LEN = 24;
 	constexpr size_t MIN_VOWEL_RATIO_DIVISOR = 5;
 	constexpr size_t MAX_MOVIE_TITLE_LEN = 15;
 	constexpr size_t MIN_NUMERIC_HASH_LEN = 16;
 	constexpr size_t MIN_INTERIOR_CAPS_COUNT = 2;
 	constexpr size_t MIN_CASE_TRANSITIONS_FOR_HASH = 3;
+	constexpr size_t MIN_ALNUM_ALTERNATIONS_FOR_HASH = 6;
 
 	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- \[\]()]+)" };
 	static const std::regex EXCLUDED_MULTIPART_REGEX{ 
@@ -289,15 +290,30 @@ namespace
 			if (std::isdigit(uc)) ++digits;
 		}
 
-		// 1. Mixed alphanumeric token of 12+ chars with no punctuation (e.g. 5KzdcWdGVGUG83Q9jv8KXht4O2k57w)
-		if (tok.size() >= MIN_ALNUM_HASH_LEN && alpha > 0 && digits > 0 &&
-			alpha + digits == tok.size())
+		// 1. Mixed-case alphanumeric token of 10+ chars without CamelCase
+		// or 8+ chars if starting with lowercase directly followed by uppercase
+		// or single-case alphanumeric token of 12+ chars
+		if (alpha > 0 && digits > 0 && alpha + digits == tok.size())
 		{
-			return true;
+			bool isLowerUpperAlnumHash = (tok.size() >= MIN_CAPS_HASH_LEN &&
+				std::islower(static_cast<unsigned char>(tok[0])) &&
+				std::isupper(static_cast<unsigned char>(tok[1])) &&
+				uppers >= MIN_INTERIOR_CAPS_COUNT);
+			if (isLowerUpperAlnumHash)
+			{
+				return true;
+			}
+
+			bool isMixedCase = (lowers > 0 && uppers > 0);
+			size_t minLen = isMixedCase ? MIN_MIXED_ALNUM_HASH_LEN : MIN_ALNUM_HASH_LEN;
+			if (tok.size() >= minLen)
+			{
+				return true;
+			}
 		}
 
-		// 2. Alphanumeric token of 8+ chars with high alpha-digit alternation (e.g. xK1RT5Ervcw, a4f9c2e1b8)
-		// Distinguishes random hashes from real tags/brands (hevc10bit, x264bluray, iPhone13Pro have <= 2 transitions)
+		// 2. Alphanumeric token of 8+ chars with high alpha-digit alternation (e.g. a4f9c2e1b8, k3m9p2x7q1)
+		// Distinguishes random alternating hashes from real tags/brands (hevc10bit, x264bluray, x264Hi10P, S01E01E02 have <= 5 transitions)
 		if (tok.size() >= MIN_MIXED_ALNUM_HASH_LEN && alpha > 0 && digits > 0 && alpha + digits == tok.size())
 		{
 			size_t transitions = 0;
@@ -310,7 +326,7 @@ namespace
 					++transitions;
 				}
 			}
-			if (transitions >= MIN_CASE_TRANSITIONS_FOR_HASH)
+			if (transitions >= MIN_ALNUM_ALTERNATIONS_FOR_HASH)
 			{
 				return true;
 			}
@@ -520,13 +536,18 @@ namespace Deobfuscation
 
 		auto isMixed = [](std::string_view tok)
 		{
-			bool hasUpper = false, hasLower = false;
+			if (tok.empty()) return false;
+			size_t uppers = 0, lowers = 0;
 			for (char c : tok)
 			{
-				if (std::isupper(static_cast<unsigned char>(c))) hasUpper = true;
-				if (std::islower(static_cast<unsigned char>(c))) hasLower = true;
+				if (std::isupper(static_cast<unsigned char>(c))) ++uppers;
+				if (std::islower(static_cast<unsigned char>(c))) ++lowers;
 			}
-			return hasUpper && hasLower;
+			if (uppers == 0 || lowers == 0) return false;
+			// Standard Capitalized words (e.g. "Show", "Movie") have 1 capital at start and are not hash fragments
+			if (uppers == 1 && std::isupper(static_cast<unsigned char>(tok.front())))
+				return false;
+			return true;
 		};
 
 		auto tokBegin = std::cregex_iterator(stem.data(), stem.data() + stem.size(), TOKEN_SPLIT_REGEX);
