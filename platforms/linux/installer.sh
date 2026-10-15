@@ -46,6 +46,7 @@ JUSTUNPACK=no
 UPDATE=no
 VERIFY=yes
 OS=""
+CPU=""
 
 Info()
 {
@@ -83,12 +84,7 @@ PrintHelp()
         Info "Installer for $TITLE"
         Info ""
     fi
-    if test "$PLATFORM" = "linux"; then
-        Info "This installer supports Linux kernel 2.6 or newer and the following CPU architectures:"
-    fi
-    if test "$PLATFORM" = "freebsd"; then
-        Info "This installer supports FreeBSD 13 or newer and the following CPU architectures:"
-    fi
+    Info "This installer supports Linux kernel 3.2 or newer and the following CPU architectures:"
     PrintArch "i686"     "    i686     - x86, 32 or 64 Bit"
     PrintArch "x86_64"   "    x86_64   - x86, 64 Bit"
     PrintArch "armel"    "    armel    - ARMv5/v6 (ARM9 and ARM11 families)"
@@ -121,8 +117,11 @@ Verify()
 {
     # Checking installer package file size
     REQSIZE=$TOTAL
-    # Trying to get the size via 'stat' command, fallback to 'ls -l' if 'stat' isn't available
-    ACTSIZE=`stat -c%s "$0" 2>/dev/null | cat`
+    # Trying to get the size via 'stat' command, fallback to 'wc -c' or 'ls -l'
+    ACTSIZE=`stat -c%s "$0" 2>/dev/null || stat -f%z "$0" 2>/dev/null || true`
+    if test "$ACTSIZE" = ""; then
+        ACTSIZE=`wc -c < "$0" 2>/dev/null | tr -d ' ' || true`
+    fi
     if test "$ACTSIZE" = ""; then
         NUM=
         for FIELD in `ls -l "$0" 2>/dev/null`
@@ -149,11 +148,12 @@ Verify()
 DetectArch()
 {
     OS=`uname -s`
-    if test "(" "$PLATFORM" = "linux" -a "$OS" != "Linux" -a "$OS" != "FreeBSD" ")" -o \
-            "(" "$PLATFORM" = "freebsd" -a "$OS" != "FreeBSD" ")" ; then
+    if test "$OS" != "Linux"; then
         PrintHelp
         Error "Operating system ($OS) isn't supported by this installer."
     fi
+
+    CPU=`uname -m`
 
     if test "$UPDATE" = "yes"; then
         ARCH=`cat "$OUTDIR/installer.cfg" 2>/dev/null | sed -n 's/^arch=\(.*\)$/\1/p'`
@@ -161,7 +161,6 @@ DetectArch()
     fi
 
     if test "$ARCH" = ""; then
-        CPU=`uname -m`
         case $CPU in
             i386|i686)
                 ARCH=i686
@@ -169,19 +168,16 @@ DetectArch()
             x86_64|amd64)
                 ARCH=x86_64
                 ;;
-            mips)
-                ARCH=mipsx
-                ;;
             armv5*|armv6*|armel)
                 ARCH=armel
                 ;;
-            armv7*|armv8*)
+            armv7*|armv8*|armhf)
                 ARCH=armhf
                 ;;
-            aarch64)
+            aarch64|arm64)
                 ARCH=aarch64
                 ;;
-            ppc)
+            ppc|powerpc*)
                 ARCH=ppc6xx
                 ;;
             riscv64)
@@ -192,10 +188,10 @@ DetectArch()
 
     if test "$ARCH" = ""; then
         PrintHelp
-        Error "CPU architecture ($CPU) isn't supported by this installer."
+        Error "Could not detect target CPU architecture ($CPU)."
     fi
 
-    if ! ValidArch $ARCH; then
+    if ! ValidArch "$ARCH"; then
         Error "CPU architecture ($ARCH) isn't supported by this installer."
     fi
 }
@@ -236,9 +232,16 @@ Unpack()
         rm -f unrar7
         rm -f 7za
         mv nzbget-$ARCH nzbget
-        mv unrar-$ARCH unrar
-        mv unrar7-$ARCH unrar7
-        mv 7za-$ARCH 7za
+        if test -f "unrar-$ARCH"; then
+            mv unrar-$ARCH unrar
+        fi
+        if test -f "unrar7-$ARCH"; then
+            mv unrar7-$ARCH unrar7
+        fi
+        if test -f "7za-$ARCH"; then
+            mv 7za-$ARCH 7za
+        fi
+        chmod +x nzbget unrar 7za 2>/dev/null || true
         echo "arch=$ARCH" > "installer.cfg"
         echo "select=$SELECT" >> "installer.cfg"
         cd "$OLDDIR"
@@ -312,6 +315,8 @@ ConfigureLinux()
             sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf
             Info "  Activating direct rename (DirectRename=yes)"
             sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf
+            Info "  Activating direct unpack (DirectUnpack=yes)"
+            sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf
         elif test $TOTALFREE -gt 25000 -o $MEMFREE -gt 25000 -o $MEMCACHED -gt 25000; then
             Info "  Increasing write buffer (WriteBuffer=256)"
             sed 's:^WriteBuffer=.*:WriteBuffer=256:' -i nzbget.conf
@@ -345,24 +350,6 @@ ConfigureLinux()
     fi
 }
 
-ConfigureFreeBSD()
-{
-    # Adjusting config file to current system
-
-    # No memory check, assuming all supported FreeBSD machines have enough memory
-
-    Info "  Activating article cache (ArticleCache=100)"
-    sed -i '' 's:^ArticleCache=.*:ArticleCache=100:' nzbget.conf
-    Info "  Increasing write buffer (WriteBuffer=1024)"
-    sed -i '' 's:^WriteBuffer=.*:WriteBuffer=1024:' nzbget.conf
-    Info "  Increasing par repair buffer (ParBuffer=100)"
-    sed -i '' 's:^ParBuffer=.*:ParBuffer=100:' nzbget.conf
-    Info "  Activating direct rename (DirectRename=yes)"
-    sed -i '' 's:^DirectRename=.*:DirectRename=yes:' nzbget.conf
-    Info "  Activating direct unpack (DirectUnpack=yes)"
-    sed -i '' 's:^DirectUnpack=.*:DirectUnpack=yes:' nzbget.conf
-}
-
 Configure()
 {
     cd "$OUTDIR"
@@ -370,42 +357,8 @@ Configure()
 
     if test ! -f nzbget.conf; then
         cp ./webui/nzbget.conf.template nzbget.conf
-
-        if test "$OS" = "Linux"; then
-            ConfigureLinux
-        fi
-
-        if test "$OS" = "FreeBSD"; then
-            ConfigureFreeBSD
-        fi
-
+        ConfigureLinux
         QUICKHELP=yes
-    fi
-}
-
-Linux2FreeBSD()
-{
-    if test "$PLATFORM" = "linux" -a "$OS" = "FreeBSD" ; then
-        # Using Linux installer on FreeBSD machine
-
-        if test "$1" = "brand" ; then
-            Info "  Branding Linux binaries for use on FreeBSD"
-            brandelf -t Linux nzbget
-            brandelf -t Linux unrar
-            brandelf -t Linux unrar7
-            brandelf -t Linux 7za
-        fi
-
-        if test "$1" = "kernel-check" ; then
-            MODLINUX=`kldstat | sed -n 's/\(linux.ko\)/\1/p'`
-            if test "$ARCH" = "x86_64"; then
-                MODLINUX=`kldstat | sed -n 's/\(linux64.ko\)/\1/p'`
-            fi
-            if test "$MODLINUX" = ""; then
-                Info ""
-                Info "WARNING: Linux kernel module isn't loaded. See https://nzbget.com/documentation/installation-on-freebsd/"
-            fi
-        fi
     fi
 }
 
@@ -506,7 +459,6 @@ ABSOUTDIR=`cd "$OUTDIR"; pwd`
 if test "$JUSTUNPACK" = "no"; then
     Info "Configuring..."
     Configure
-    Linux2FreeBSD "brand"
 
     Info "Installation completed"
 
@@ -543,11 +495,10 @@ if test "$JUSTUNPACK" = "no"; then
     else
         Info "Successfully installed into $ABSOUTDIR"
     fi
-    Info "For support please visit https://nzbget.com/forum/"
-    Linux2FreeBSD "kernel-check"
+    Info "For support please visit https://nzbget.com/"
 else
     Info "Unpacked into $ABSOUTDIR"
 fi
 
-exit
+exit 0
 #END-OF-INSTALLER

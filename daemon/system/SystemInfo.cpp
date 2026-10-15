@@ -67,7 +67,6 @@ namespace System
 		m_libraries.push_back({ "Gzip", ZLIB_VERSION });
 #endif
 
-#ifndef DISABLE_TLS
 #ifdef LIBRESSL_VERSION_TEXT
 		std::string str = LIBRESSL_VERSION_TEXT;
 		m_libraries.push_back({ "LibreSSL", str.substr(str.find(" ") + 1) });
@@ -76,7 +75,6 @@ namespace System
 #else 
 		std::string str = OPENSSL_VERSION_TEXT;
 		m_libraries.push_back({ "OpenSSL", str.substr(str.find(" ") + 1) });
-#endif
 #endif
 
 #ifndef DISABLE_PARCHECK 

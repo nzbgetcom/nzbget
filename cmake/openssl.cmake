@@ -45,8 +45,7 @@ else()
 	if(NOT PERL_EXECUTABLE)
 		message(FATAL_ERROR
 			"Building OpenSSL from source requires Perl.\n"
-			"Please install Perl (e.g. Strawberry Perl on Windows: 'winget install StrawberryPerl.StrawberryPerl' or 'choco install strawberryperl')\n"
-			"or configure with -DDISABLE_TLS=ON if TLS is not needed."
+			"Please install Perl (e.g. Strawberry Perl on Windows: 'winget install StrawberryPerl.StrawberryPerl' or 'choco install strawberryperl')."
 		)
 	endif()
 
@@ -243,6 +242,9 @@ else()
 			if(ANDROID AND ANDROID_ARCH_FLAGS)
 				separate_arguments(_ANDROID_ARCH_FLAGS_LIST NATIVE_COMMAND "${ANDROID_ARCH_FLAGS}")
 				list(APPEND OPENSSL_CONFIGURE_OPTIONS ${_ANDROID_ARCH_FLAGS_LIST})
+			elseif(LINUX_ARCH_FLAGS)
+				separate_arguments(_LINUX_ARCH_FLAGS_LIST NATIVE_COMMAND "${LINUX_ARCH_FLAGS}")
+				list(APPEND OPENSSL_CONFIGURE_OPTIONS ${_LINUX_ARCH_FLAGS_LIST})
 			endif()
 		endif()
 

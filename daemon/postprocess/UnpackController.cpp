@@ -29,9 +29,7 @@
 
 UnpackController::~UnpackController()
 {
-#ifndef DISABLE_TLS
 	OpenSSL::StopSSLThread();
-#endif
 }
 
 bool UnpackController::FileList::Exists(const char* filename)

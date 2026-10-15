@@ -27,9 +27,7 @@
 #include "Util.h"
 #include "FileSystem.h"
 
-#ifndef DISABLE_TLS
 #include <openssl/rand.h>
-#endif
 
 static const char* ERR_HTTP_OK = "200 OK";
 static const char* ERR_HTTP_NOT_MODIFIED = "304 Not Modified";
@@ -46,7 +44,6 @@ static void GenerateSecureToken(char* token)
 	// For a token string of size TOKEN_SIZE (including \0), we need half that many random bytes.
 	constexpr size_t BYTES_NEEDED = (TOKEN_SIZE - 1) / 2;
 
-#ifndef DISABLE_TLS
 	unsigned char randBytes[BYTES_NEEDED];
 	if (RAND_bytes(randBytes, static_cast<int>(BYTES_NEEDED)) == 1)
 	{
@@ -58,7 +55,6 @@ static void GenerateSecureToken(char* token)
 		token[TOKEN_SIZE - 1] = '\0';
 		return;
 	}
-#endif
 
 	try
 	{

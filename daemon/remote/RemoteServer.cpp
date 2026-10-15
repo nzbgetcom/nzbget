@@ -33,16 +33,13 @@
 
 RemoteServer::~RemoteServer()
 {
-#ifndef DISABLE_TLS
 	OpenSSL::StopSSLThread();
-#endif
 }
 
 void RemoteServer::Run()
 {
 	debug("Entering RemoteServer-loop");
 
-#ifndef DISABLE_TLS
 	if (m_tls)
 	{
 		if (strlen(g_Options->GetSecureCert()) == 0 || !FileSystem::FileExists(g_Options->GetSecureCert()))
@@ -57,7 +54,6 @@ void RemoteServer::Run()
 			return;
 		}
 	}
-#endif
 
 	while (!IsStopped())
 	{
@@ -96,9 +92,7 @@ void RemoteServer::Run()
 			RequestProcessor* commandThread = new RequestProcessor();
 			commandThread->SetAutoDestroy(true);
 			commandThread->SetConnection(std::move(acceptedConnection));
-#ifndef DISABLE_TLS
 			commandThread->SetTls(m_tls);
-#endif
 			Guard guard(m_processorsMutex);
 			m_activeProcessors.push_back(commandThread);
 			commandThread->Attach(this);
@@ -175,9 +169,7 @@ RequestProcessor::~RequestProcessor()
 {
 	m_connection->Disconnect();
 
-#ifndef DISABLE_TLS
 	OpenSSL::StopSSLThread();
-#endif
 }
 
 void RequestProcessor::Run()
@@ -200,13 +192,11 @@ void RequestProcessor::Execute()
 	bool ok = false;
 	m_connection->SetSuppressErrors(true);
 
-#ifndef DISABLE_TLS
 	if (m_tls && !m_connection->StartTls(false, g_Options->GetSecureCert(), g_Options->GetSecureKey()))
 	{
 		debug("Could not establish secure connection to web-client: Start TLS failed");
 		return;
 	}
-#endif
 
 	// Read the first 4 bytes to determine request type
 	uint32 signature = 0;

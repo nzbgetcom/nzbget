@@ -203,12 +203,18 @@ BOOST_AUTO_TEST_CASE(TestLockFileValidator)
 	BOOST_CHECK(validator.Validate("", false).IsOk());
 	BOOST_CHECK(validator.Validate("random/path", false).IsOk());
 
+	// Lock file does not exist yet, but parent directory exists and is writable -> Ok
+	fs::path nonExistentLock = tempPath / "not_yet_created.lock";
+	BOOST_CHECK(validator.Validate(nonExistentLock, true).IsOk());
+
+	// Lock file exists and is writable -> Ok
 	{
 		std::ofstream(lock.c_str()) << "pid";
 	}
 	BOOST_CHECK(validator.Validate(lock, true).IsOk());
 
-	BOOST_CHECK(validator.Validate(tempPath / "nolock", true).IsError());
+	// Parent directory does not exist -> Error
+	BOOST_CHECK(validator.Validate(tempPath / "missing_dir" / "nzbget.lock", true).IsError());
 }
 #endif
 

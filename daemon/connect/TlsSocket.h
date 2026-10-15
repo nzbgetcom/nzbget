@@ -21,8 +21,6 @@
 #ifndef TLSSOCKET_H
 #define TLSSOCKET_H
 
-#ifndef DISABLE_TLS
-
 #include <string_view>
 #include "OpenSSL.h"
 
@@ -100,5 +98,4 @@ private:
 	bool ValidateCert();
 };
 
-#endif
 #endif

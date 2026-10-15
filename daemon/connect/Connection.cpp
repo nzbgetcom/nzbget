@@ -112,9 +112,7 @@ Connection::Connection(const char* host, int port, bool tls) :
 	debug("Creating Connection");
 
 	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1);
-#ifndef DISABLE_TLS
 	m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
-#endif
 }
 
 Connection::Connection(SOCKET socket, bool tls)
@@ -130,11 +128,9 @@ Connection::Connection(SOCKET socket, bool tls)
 	m_timeout = 60;
 	m_suppressErrors = true;
 	m_readBuf.Reserve(CONNECTION_READBUFFER_SIZE + 1);
-#ifndef DISABLE_TLS
 	m_tlsSocket = nullptr;
 	m_tlsError = false;
 	m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
-#endif
 }
 
 Connection::~Connection()
@@ -147,12 +143,10 @@ Connection::~Connection()
 void Connection::SetSuppressErrors(bool suppressErrors)
 {
 	m_suppressErrors = suppressErrors;
-#ifndef DISABLE_TLS
 	if (m_tlsSocket)
 	{
 		m_tlsSocket->SetSuppressErrors(suppressErrors);
 	}
-#endif
 }
 
 bool Connection::Connect()
@@ -716,12 +710,10 @@ bool Connection::DoConnect()
 		return false;
 	}
 
-#ifndef DISABLE_TLS
 	if (m_tls && !StartTls(true, "", ""))
 	{
 		return false;
 	}
-#endif
 
 	return true;
 }
@@ -874,9 +866,7 @@ void Connection::DoDisconnect()
 
 	if (m_socket != INVALID_SOCKET)
 	{
-#ifndef DISABLE_TLS
 		CloseTls();
-#endif
 #ifndef WIN32
 		int is_listening;
 		socklen_t len = sizeof(is_listening);
@@ -939,14 +929,12 @@ int Connection::GetLastNetworkError()
 
 void Connection::ReportError(const char* msgPrefix, const char* msgArg, bool printErrCode, int errCode, const char* errMsg)
 {
-#ifndef DISABLE_TLS
 	if (m_tlsError)
 	{
 		// TLS-Error was already reported
 		m_tlsError = false;
 		return;
 	}
-#endif
 
 	BString<1024> errPrefix(msgPrefix, msgArg);
 
@@ -998,7 +986,6 @@ void Connection::PrintError(const char* errMsg)
 	error("%s", errMsg);
 }
 
-#ifndef DISABLE_TLS
 bool Connection::StartTls(bool isClient, const char* certFile, const char* keyFile)
 {
 	debug("Starting TLS");
@@ -1060,7 +1047,6 @@ int Connection::send(SOCKET s, const char* buf, int len, int flags)
 		return sent;
 	}
 }
-#endif
 
 #ifndef HAVE_GETADDRINFO
 in_addr_t Connection::ResolveHostAddr(const char* host)

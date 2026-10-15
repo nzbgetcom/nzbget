@@ -23,7 +23,6 @@
 #cmakedefine DISABLE_PARCHECK
 
 /* Define to 1 to not use TLS/SSL */
-#cmakedefine DISABLE_TLS
 
 /* Define to 1 to install an empty signal handler for SIGCHLD */
 #cmakedefine SIGCHLD_HANDLER @SIGCHLD_HANDLER@

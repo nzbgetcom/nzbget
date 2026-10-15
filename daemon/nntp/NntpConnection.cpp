@@ -35,9 +35,7 @@ NntpConnection::NntpConnection(NewsServer* newsServer) :
 	SetIPVersion(newsServer->GetIpVersion() == 4 ? Connection::ipV4 :
 		newsServer->GetIpVersion() == 6 ? Connection::ipV6 : Connection::ipAuto);
 	
-#ifndef DISABLE_TLS
 	SetCertVerifLevel(newsServer->GetCertVerificationLevel());
-#endif
 }
 
 const char* NntpConnection::Request(const char* req)

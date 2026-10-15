@@ -37,7 +37,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install rpm -y
-        bash linux/pkg/build-pkg.sh
+        bash platforms/linux/pkg/build-pkg.sh
 
     - name: Upload DEB build artifacts
       uses: actions/upload-artifact@v7

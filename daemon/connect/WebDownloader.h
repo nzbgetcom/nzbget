@@ -63,9 +63,7 @@ public:
 	const char* GetOriginalFilename() { return m_originalFilename; }
 	void SetForce(bool force) { m_force = force; }
 	void SetRetry(bool retry) { m_retry = retry; }
-#ifndef DISABLE_TLS
 	void SetCertVerifLevel(unsigned int level) { m_certVerifLevel = level; }
-#endif
 
 	void LogDebugInfo();
 
@@ -89,9 +87,7 @@ private:
 	bool m_redirected;
 	bool m_gzip;
 	bool m_retry = true;
-#ifndef DISABLE_TLS
 	unsigned int m_certVerifLevel = Options::ECertVerifLevel::cvStrict;
-#endif
 #ifndef DISABLE_GZIP
 	std::unique_ptr<GUnzipStream> m_gUnzipStream;
 #endif

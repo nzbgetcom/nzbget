@@ -16,7 +16,7 @@ Main documentation is available on the NZBGet.com website - [https://nzbget.com/
 
 NZBGet natively supports for multiple platforms and build options, so each platform has their own development documenation, including:
 
-- [POSIX](POSIX.md)
+- [Linux](LINUX.md)
 - [macOS](MACOS.md)
 - [Windows](WINDOWS.md)
 - [Android](ANDROID.md)
