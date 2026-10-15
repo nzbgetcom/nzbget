@@ -212,21 +212,32 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("(xK1RT5Ervcw).mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("Release.[deadbeefcafe1234].mkv"));
 
-	// Random case transitions without digits starting lowercase (6-9 chars)
-	BOOST_CHECK(IsExcessivelyObfuscated("xKRTvErc.mkv"));
-	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeFgH.mkv"));
-
-	// Frequent alpha-digit alternations (single-case 8-11 chars)
+	// Frequent alpha-digit alternations in alphanumeric tokens (8+ chars)
 	BOOST_CHECK(IsExcessivelyObfuscated("a4f9c2e1b8.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("k3m9p2x7q1.mkv"));
 
-	// Vowelless strings of 8+ characters
+	// Obfuscated pure-alpha tokens with random case transitions (lowercase start)
+	BOOST_CHECK(IsExcessivelyObfuscated("xKRTvErc.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeFgH.mkv"));
+
+	// Obfuscated consonant-only tokens (8+ chars) or low-vowel runs (14+ chars)
 	BOOST_CHECK(IsExcessivelyObfuscated("bcdfghjklmnpq.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("qwrtypsdfghjklzxc.mkv"));
 
-	// Numeric stems >= 7 digits (excluding year/date)
-	BOOST_CHECK(IsExcessivelyObfuscated("8492017364.mkv"));
-	BOOST_CHECK(IsExcessivelyObfuscated("1234567890.mkv"));
+	// False positive protection for product names with case or digits
+	BOOST_CHECK(!IsExcessivelyObfuscated("iPhone13Pro.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("iPhoneSE.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("macOSVentura.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("eBayPlus.mkv"));
+
+	// Numeric stems: 16+ digits is a hash, shorter IDs/timestamps/ISBNs are legitimate
+	BOOST_CHECK(IsExcessivelyObfuscated("18446744073709551615.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("1234567890123456.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("8492017364.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1234567890.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1712345678.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Stream.1712345678.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Book.9780141036144.epub"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("1917.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("2012.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("20240102.mkv"));
