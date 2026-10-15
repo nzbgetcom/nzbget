@@ -45,9 +45,7 @@ ArticleDownloader::~ArticleDownloader()
 {
 	debug("Destroying ArticleDownloader");
 
-#ifndef DISABLE_TLS
 	OpenSSL::StopSSLThread();
-#endif
 }
 
 void ArticleDownloader::SetInfoName(const char* infoName)
@@ -124,9 +122,7 @@ void ArticleDownloader::Run()
 
 		m_connection->SetSuppressErrors(false);
 
-#ifndef DISABLE_TLS
 		m_connection->SetCertVerifLevel(lastServer->GetCertVerificationLevel());
-#endif
 
 		m_connectionName.Format("%s (%s)",
 			m_connection->GetNewsServer()->GetName(), m_connection->GetHost());

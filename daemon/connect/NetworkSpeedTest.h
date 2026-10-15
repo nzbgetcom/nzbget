@@ -82,13 +82,8 @@ namespace Network
 		bool HasExceededMaxFailures(int failures, int iterations) const;
 		double GetFinalSpeed() const;
 
-#ifdef DISABLE_TLS
-		bool m_useTls = false;
-		int m_port = 80;
-#else
 		bool m_useTls = true;
 		int m_port = 443;
-#endif
 		std::vector<DataAnalytics> m_dataset;
 	};
 }

@@ -45,8 +45,7 @@ else()
 	if(NOT PERL_EXECUTABLE)
 		message(FATAL_ERROR
 			"Building OpenSSL from source requires Perl.\n"
-			"Please install Perl (e.g. Strawberry Perl on Windows: 'winget install StrawberryPerl.StrawberryPerl' or 'choco install strawberryperl')\n"
-			"or configure with -DDISABLE_TLS=ON if TLS is not needed."
+			"Please install Perl (e.g. Strawberry Perl on Windows: 'winget install StrawberryPerl.StrawberryPerl' or 'choco install strawberryperl')."
 		)
 	endif()
 

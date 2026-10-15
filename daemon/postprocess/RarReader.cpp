@@ -569,51 +569,39 @@ bool RarVolume::DecryptRar3Prepare(const uint8 salt[8])
 
 	debug("seed: %s", *Util::FormatBuffer((const char*)seed, seed.Size()));
 
-#ifndef DISABLE_TLS
 	OpenSSL::EVPMdCtxPtr context{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
 	if (!context || !EVP_DigestInit(context.get(), EVP_sha1()))
 	{
 		return false;
 	}
-#else
-	return false;
-#endif
 
 	uint8 digest[20];
 	const int rounds = 0x40000;
 
 	for (int i = 0; i < rounds; i++)
 	{
-#ifndef DISABLE_TLS
 		EVP_DigestUpdate(context.get(), *seed, seed.Size());
-#endif
 
 		uint8 buf[3];
 		buf[0] = (uint8)i;
 		buf[1] = (uint8)(i >> 8);
 		buf[2] = (uint8)(i >> 16);
 
-#ifndef DISABLE_TLS
 		EVP_DigestUpdate(context.get(), buf, sizeof(buf));
-#endif
 
 		if (i % (rounds / 16) == 0)
 		{
-#ifndef DISABLE_TLS
 			OpenSSL::EVPMdCtxPtr ivContext{ EVP_MD_CTX_new(), &EVP_MD_CTX_free };
 			if (ivContext)
 			{
 				EVP_MD_CTX_copy(ivContext.get(), context.get());
 				EVP_DigestFinal(ivContext.get(), digest, nullptr);
 			}
-#endif
 			m_decryptIV[i / (rounds / 16)] = digest[sizeof(digest) - 1];
 		}
 	}
 
-#ifndef DISABLE_TLS
 	EVP_DigestFinal(context.get(), digest, nullptr);
-#endif
 
 	debug("digest: %s", *Util::FormatBuffer((const char*)digest, sizeof(digest)));
 
@@ -637,18 +625,13 @@ bool RarVolume::DecryptRar5Prepare(uint8 kdfCount, const uint8 salt[16])
 
 	int iterations = 1 << kdfCount;
 
-#ifndef DISABLE_TLS
 	if (!PKCS5_PBKDF2_HMAC(m_password.c_str(), m_password.size(), salt, 16,
 		iterations, EVP_sha256(), sizeof(m_decryptKey), m_decryptKey)) return false;
 	return true;
-#else
-	return false;
-#endif
 }
 
 bool RarVolume::DecryptInit(int keyLength)
 {
-#ifndef DISABLE_TLS
 	m_context.reset(EVP_CIPHER_CTX_new());
 	if (!m_context) 
 		return false;
@@ -658,30 +641,21 @@ bool RarVolume::DecryptInit(int keyLength)
 		m_decryptKey, m_decryptIV))
 		return false;
 	return true;
-#else
-	return false;
-#endif
 }
 
 bool RarVolume::DecryptBuf(const uint8 in[16], uint8 out[16])
 {
-#ifndef DISABLE_TLS
 	uint8 outbuf[32];
 	int outlen = 0;
 	if (!EVP_DecryptUpdate(m_context.get(), outbuf, &outlen, in, 16)) return false;
 	memcpy(out, outbuf + outlen, 16);
 	debug("decrypted: %s", *Util::FormatBuffer((const char*)out, 16));
 	return true;
-#else
-	return false;
-#endif
 }
 
 void RarVolume::DecryptFree()
 {
-#ifndef DISABLE_TLS
 	m_context.reset();
-#endif
 }
 
 bool RarVolume::DecryptRead(DiskFile& file, void* buffer, int64 size)

@@ -232,21 +232,10 @@ WebDownloader::EStatus WebDownloader::CreateConnection(URL *url)
 		return adFatalError;
 	}
 
-#ifdef DISABLE_TLS
-	if (!strcasecmp(url->GetProtocol(), "https"))
-	{
-		error("Program was compiled without TLS/SSL-support. Cannot download using https protocol. URL: %s", url->GetAddress());
-		return adFatalError;
-	}
-#endif
-
 	bool tls = !strcasecmp(url->GetProtocol(), "https");
 
 	m_connection = std::make_unique<Connection>(url->GetHost(), port, tls);
-
-#ifndef DISABLE_TLS
 	m_connection->SetCertVerifLevel(m_certVerifLevel);
-#endif
 
 	return adRunning;
 }

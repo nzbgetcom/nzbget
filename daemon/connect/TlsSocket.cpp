@@ -21,8 +21,6 @@
 
 #include "nzbget.h"
 
-#ifndef DISABLE_TLS
-
 #include "TlsSocket.h"
 #include "Log.h"
 #include "Util.h"
@@ -158,7 +156,7 @@ bool TlsSocket::Start()
 
 	if (!SetCipherSuite(m_cipher))
 	{
-		ReportError("Could not set cipher suite for SSL/TLS connection", false);
+		ReportError("Could not set cipher suite for TLS connection", false);
 		Close();
 		return false;
 	}
@@ -174,12 +172,6 @@ bool TlsSocket::Start()
 	{
 		ReportError("Could not set the file descriptor for TLS");
 		Close();
-		return false;
-	}
-
-	if (!SSL_CTX_set_min_proto_version(m_context.get(), SSL3_VERSION))
-	{
-		ReportError("Could not set minimum protocol to SSL3", false);
 		return false;
 	}
 
@@ -331,5 +323,3 @@ int TlsSocket::Recv(char* buffer, int size)
 
 	return m_retCode;
 }
-
-#endif

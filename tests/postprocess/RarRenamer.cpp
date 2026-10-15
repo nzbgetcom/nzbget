@@ -296,8 +296,6 @@ BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 	BOOST_CHECK_EQUAL(rarRenamer.GetRenamedCount(), 3);
 }
 
-#ifndef DISABLE_TLS
-
 // BOOST_AUTO_TEST_CASE(RenameRar5EncryptedTest)
 // {
 // 	std::string workingDir = currDir / "RenameRar5EncryptedTest";
@@ -343,7 +341,5 @@ BOOST_AUTO_TEST_CASE(RenameDuplicateTest)
 
 // 	BOOST_CHECK(rarRenamer.GetRenamedCount() == 3);
 // }
-
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()

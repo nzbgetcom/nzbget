@@ -123,8 +123,6 @@ BOOST_AUTO_TEST_CASE(Rar3OldNamingTest)
 	}
 }
 
-#ifndef DISABLE_TLS
-
 BOOST_AUTO_TEST_CASE(Rar3EncryptedDataTest)
 {
 	{
@@ -263,7 +261,5 @@ BOOST_AUTO_TEST_CASE(Rar3EcryptedNamesTest)
 // 		BOOST_CHECK_EQUAL(volume.GetEncrypted(), true);
 // 	}
 // }
-
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()

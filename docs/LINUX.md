@@ -189,7 +189,6 @@ NZBGet provides standard CMake install targets for system-wide or user-local ins
 | `ENABLE_TESTS` | `OFF` | Build unit test suites (`tests/`) |
 | `ENABLE_CLANG_TIDY` | `OFF` | Enable Clang-Tidy static code analyzer during compilation |
 | `DISABLE_CURSES` | `OFF` | Disable curses terminal UI (useful for headless servers / containers) |
-| `DISABLE_TLS` | `OFF` | Disable TLS/OpenSSL support |
 | `DISABLE_GZIP` | `OFF` | Disable gzip compression (zlib) |
 | `DISABLE_PARCHECK` | `OFF` | Disable built-in par2 verification and repair |
 

@@ -20,8 +20,6 @@
 
 #include "nzbget.h"
 
-#ifndef DISABLE_TLS
-
 namespace OpenSSL
 {
 	void StopSSLThread()
@@ -33,5 +31,3 @@ namespace OpenSSL
 #endif
 	}
 }
-
-#endif
