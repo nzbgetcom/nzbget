@@ -30,15 +30,16 @@ namespace
 	constexpr size_t MAX_PLAUSIBLE_EXT_LEN = 4;
 	constexpr size_t MIN_DEOBFUSCATE_SIZE = 3;
 	constexpr size_t RE_PREFIX_LEN = 4;
+	constexpr size_t MIN_MIXED_ALNUM_HASH_LEN = 8;
 	constexpr size_t MIN_ALNUM_HASH_LEN = 12;
 	constexpr size_t MIN_CAPS_HASH_LEN = 10;
 	constexpr size_t MAX_MOVIE_TITLE_LEN = 15;
-	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 24;
-	constexpr size_t MIN_NUMERIC_HASH_LEN = 16;
+	constexpr size_t MIN_ALPHA_RUN_HASH_LEN = 14;
+	constexpr size_t MIN_NUMERIC_HASH_LEN = 7;
 	constexpr size_t MIN_INTERIOR_CAPS_COUNT = 3;
 	constexpr size_t MIN_CASE_TRANSITIONS_FOR_HASH = 3;
 
-	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- ]+)" };
+	static const std::regex TOKEN_SPLIT_REGEX{ R"([^._\- \[\]()]+)" };
 	static const std::regex EXCLUDED_MULTIPART_REGEX{ 
 		R"((part\d+\.(rar|par2)$)|(vol\d+\+\d+\.par2$))", std::regex::icase 
 	};
@@ -139,8 +140,15 @@ namespace
 			return (end - p >= 3) ? end : std::string_view::npos;
 		};
 
+		size_t pos = 0;
+		if (tok.size() >= 4 && (tok.starts_with("1080p") || tok.starts_with("720p") ||
+			tok.starts_with("2160p") || tok.starts_with("480p")))
+		{
+			pos = (tok[0] == '1' || tok[0] == '2') ? 5 : 4;
+		}
+
 		// Title must start with a capitalized word or preposition
-		size_t pos = matchWordFn(0);
+		pos = matchWordFn(pos);
 		if (pos == std::string_view::npos) return false;
 
 		// Consume intermediate segments: optional digits followed by a title word
@@ -217,15 +225,47 @@ namespace
 			if (std::isdigit(uc)) ++digits;
 		}
 
-		// 1. Mixed alphanumeric token of 10+ chars with no punctuation (e.g. 5KzdcWdGVGUG83Q9jv8KXht4O2k57w)
+		// 1. Mixed-case alphanumeric token of 8+ chars (e.g. xK1RT5Ervcw, HFg3BYe1unWxVw)
+		if (tok.size() >= MIN_MIXED_ALNUM_HASH_LEN && uppers > 0 && lowers > 0 && digits > 0 &&
+			alpha + digits == tok.size()) return true;
+
+		// 2. Single-case alphanumeric token of 12+ chars with no punctuation (e.g. abcdefghij12)
 		if (tok.size() >= MIN_ALNUM_HASH_LEN && alpha > 0 && digits > 0 &&
 			alpha + digits == tok.size()) return true;
 
-		// 2. Embedded 16+ digit numeric hash token (e.g. 1234567890123456)
-		if (digits >= MIN_NUMERIC_HASH_LEN && digits == tok.size())
-			return true;
+		// Frequent alpha-digit alternations in alphanumeric tokens (e.g. a4f9c2e1b8, k3m9p2x7q1)
+		if (tok.size() >= MIN_MIXED_ALNUM_HASH_LEN && alpha > 0 && digits > 0 && alpha + digits == tok.size())
+		{
+			size_t alphaDigitTransitions = 0;
+			for (size_t i = 1; i < tok.size(); ++i)
+			{
+				bool prevDigit = std::isdigit(static_cast<unsigned char>(tok[i - 1]));
+				bool currDigit = std::isdigit(static_cast<unsigned char>(tok[i]));
+				if (prevDigit != currDigit)
+				{
+					++alphaDigitTransitions;
+				}
+			}
+			if (alphaDigitTransitions >= 3) return true;
+		}
 
-		// 3. Whitelist short all-caps movie/show titles up to 15 chars with plausible vowels (e.g. INTERSTELLAR, OPPENHEIMER)
+		// 3. Numeric ID / hash token of 7+ digits (excluding dates like YYYYMMDD)
+		if (digits >= MIN_NUMERIC_HASH_LEN && digits == tok.size())
+		{
+			auto isDate = [](std::string_view s)
+			{
+				if (s.size() == 8 && (s.starts_with("19") || s.starts_with("20")))
+				{
+					auto m = static_cast<unsigned>((s[4] - '0') * 10 + (s[5] - '0'));
+					auto d = static_cast<unsigned>((s[6] - '0') * 10 + (s[7] - '0'));
+					return m >= 1 && m <= 12 && d >= 1 && d <= 31;
+				}
+				return false;
+			};
+			if (!isDate(tok)) return true;
+		}
+
+		// 4. Whitelist short all-caps movie/show titles up to 15 chars with plausible vowels (e.g. INTERSTELLAR, OPPENHEIMER)
 		if (tok.size() <= MAX_MOVIE_TITLE_LEN && alpha > 0 && digits == 0 && uppers == alpha)
 		{
 			// Allow short acronyms <= 3 chars (e.g. "TV", "DL", "HDR") or words with >= 20% vowels
@@ -233,7 +273,7 @@ namespace
 				return false;
 		}
 
-		// 4. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs) or all-caps consonant string (e.g. BCDFGHJKLMNP)
+		// 5. Random interior-caps hash with 3+ uppercase letters inside (e.g. MQHeRbSCIoPs) or all-caps consonant string (e.g. BCDFGHJKLMNP)
 		size_t interiorAllowed = MIN_INTERIOR_CAPS_COUNT + (std::isupper(static_cast<unsigned char>(tok.front())) ? 1 : 0);
 		if (tok.size() >= MIN_CAPS_HASH_LEN && digits == 0 && uppers >= interiorAllowed)
 		{
@@ -257,9 +297,30 @@ namespace
 			}
 		}
 
-		// 5. Long single-case alphabetic hash with < 20% vowels (differentiates random hashes from real words)
-		if (tok.size() >= MIN_ALPHA_RUN_HASH_LEN && alpha == tok.size() &&
-			(lowers == alpha || uppers == alpha))
+		// 6. Lowercase start with random case transitions (e.g. xKRTvErc, aBcDeFgH)
+		if (tok.size() >= 6 && digits == 0 && std::islower(static_cast<unsigned char>(tok.front())) && uppers >= 2)
+		{
+			size_t caseTransitions = 0;
+			for (size_t i = 1; i < tok.size(); ++i)
+			{
+				bool prevUpper = std::isupper(static_cast<unsigned char>(tok[i - 1]));
+				bool currUpper = std::isupper(static_cast<unsigned char>(tok[i]));
+				if (prevUpper != currUpper)
+				{
+					++caseTransitions;
+				}
+			}
+			if (caseTransitions >= 3) return true;
+		}
+
+		// 7. Vowelless alphabetic string of 8+ chars (e.g. bcdfghjklmnpq)
+		if (tok.size() >= 8 && alpha == tok.size() && CountVowels(tok) == 0)
+		{
+			return true;
+		}
+
+		// 8. Long single-case alphabetic hash with < 20% vowels (differentiates random hashes from real words)
+		if (tok.size() >= MIN_ALPHA_RUN_HASH_LEN && alpha == tok.size() && (lowers == alpha || uppers == alpha))
 		{
 			if (CountVowels(tok) * 5 < tok.size())
 				return true;
