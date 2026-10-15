@@ -1354,6 +1354,12 @@ table.table-hidecheck thead > tr > th:first-child,
 table.table-hidecheck tbody > tr > td:first-child {
     display: none;
 }
+/* .phone datatables force display:block with specificity (0,2,4);
+   this rule's (0,3,4) wins regardless of source order */
+.phone table.table-hidecheck thead > tr > th:first-child,
+.phone table.table-hidecheck tbody > tr > td:first-child {
+    display: none;
+}
 /* END: Checkmarks in the table */
 
 /* BEGIN: Progress bars */
@@ -1418,6 +1424,25 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover {
 
 .dropdown-menu {
     z-index: 3000;
+}
+
+/* Mobile action-sheet: popup menus pinned to the viewport bottom instead of
+   the anchor (anchors can live inside transformed/scrolled modals).
+   Specificity (0,2,0) beats .dropdown-menu (0,1,0), and the JS clears the
+   inline coordinates, so no !important is needed. */
+.dropdown-menu.popup-bottom-sheet {
+    position: fixed;
+    top: auto;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    margin: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 4000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
 
 table th.priority-cell {
@@ -2035,7 +2060,11 @@ ul.help > li {
 
 @media (max-width: 768px) {
     body {
-        overflow: auto;
+        height: auto;
+        min-height: 100%;
+        width: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 
     .container-fluid {
@@ -2047,23 +2076,22 @@ ul.help > li {
     #StatisticsTab,
     #MessagesTab,
     .config__container {
-        height: 100%;
+        height: auto;
+        overflow: visible;
     }
 
-    #DownloadsTab,
-    #HistoryTab,
-    #StatisticsTab,
-    #MessagesTab {
-        overflow: auto;
+    .tab-content {
+        overflow: visible;
     }
 
     .config__container {
         display: flex;
         flex-direction: column;
         gap: 0px;
-        overflow-y: auto;
+        overflow-y: visible;
         overflow-x: hidden;
         padding-top: 0px;
+        padding-bottom: 70px;
     }
 
     .config__aside {
@@ -2077,6 +2105,27 @@ ul.help > li {
         width: auto;
         padding: 0 5px;
         overflow-x: auto;
+    }
+
+    .config-save-mobile {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 8px 12px;
+        background-color: #ffffff;
+        border-top: 1px solid #e5e5e5;
+        text-align: center;
+        z-index: 1000;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .config-save-mobile .btn {
+        width: 100%;
+        max-width: 400px;
+        margin: 0 auto;
+        display: block;
     }
 }
 
@@ -2303,10 +2352,6 @@ div.multiset-toolbar button {
 #ScriptListDialog_ScriptTable .btn-row-order {
     float: none;
     width: 20px;
-    display: none;
-}
-
-#ScriptListDialog_ScriptTable tr:hover .btn-row-order {
     display: inline-block;
     cursor: pointer;
 }
@@ -2726,6 +2771,12 @@ body.phone,
 
 .phone table.table-check > tbody > tr > td {
     padding-left: 60px;
+}
+
+/* Reorder dialog has no checkbox column on phones (rule above), so restore
+   the row separator on the first visible cell */
+.phone table.table-hidecheck > tbody > tr > td:nth-child(2) {
+    border-top: 1px solid #dddddd;
 }
 
 /* CHECKMARKS IN DATATABLE */
@@ -3164,11 +3215,6 @@ input[type="date"] {
         width: 95%;
     }
 
-    .modal-body,
-    .modal.no-footer .modal-body {
-        max-height: none;
-    }
-
     .alert-center-small,
     .alert-center-medium {
         right: 20px;
@@ -3216,21 +3262,56 @@ input[type="date"] {
         display: none;
     }
 }
-/* Center dialogs on small screens: Bootstrap 2 hardcodes a desktop geometry
-   (top:50% with -250px margin, 560px width), which pins the dialog to the very
-   top of the page on short viewports. */
+/* Bottom-sheet dialogs on small screens: Bootstrap 2 hardcodes a desktop
+   geometry (top:50% with -250px margin, 560px width), which pins the dialog
+   to the very top of the page on short viewports. Anchor every dialog to the
+   bottom edge instead. */
 @media (max-width: 767px) {
-    .modal:not(.modal-max) {
-        top: 50%;
-        left: 10px;
-        right: 10px;
-        bottom: auto;
-        width: auto;
+    .modal {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
         margin: 0;
-        -webkit-transform: translateY(-50%);
-        transform: translateY(-50%);
+        max-height: calc(100vh - 30px);
+        border-radius: 12px 12px 0 0;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
         overflow-x: hidden;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .modal .modal-footer {
+        border-radius: 0;
+        padding-bottom: 20px;
+    }
+
+    .modal.no-footer .modal-body {
+        padding-bottom: 20px;
+    }
+
+    /* .modal-max lays out its body/footer/scroll areas absolutely against the
+       dialog box; a bottom sheet grows with content, so use normal flow (the
+       same reset .phone already applies below 560px) */
+    .modal .modal-body,
+    .modal .modal-footer {
+        position: static;
+    }
+
+    .modal .modal-inner-scroll {
+        position: static;
+        top: inherit;
+        left: 0;
+        right: 0;
+        padding-right: 0;
+    }
+
+    .modal .modal-body,
+    .modal.no-footer .modal-body {
+        max-height: none;
     }
 }
 /* END: MEDIA SMALL SCREENS */

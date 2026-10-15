@@ -694,3 +694,11 @@ tr.drag-source > td {
 .table-striped tbody tr.drag-finish td a {
 	background-color: #E6FAE4 !important;
 }
+
+@media (max-width: 768px) {
+	.config-save-mobile {
+		background-color: #212529;
+		border-top: 1px solid #626262;
+		box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
+	}
+}
