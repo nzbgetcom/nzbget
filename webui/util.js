@@ -424,7 +424,9 @@ var Util = (new function($)
 	this.centerDialog = function(dialog, center)
 	{
 		var $elem = $(dialog);
-		if (center)
+		// On small screens dialogs are centered by CSS (see the max-width: 767px
+		// block in style.css); an inline top would only pin them to the top.
+		if (center && $(window).width() > 767)
 		{
 			var top = ($(window).height() - $elem.outerHeight()) * 0.4;
 			top = top > 0 ? top : 0;

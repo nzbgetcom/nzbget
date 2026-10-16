@@ -133,3 +133,15 @@ Use `snake_case` and keep keys short but descriptive.
 2. Detects the browser language or reads a saved preference from `localStorage`.
 3. If non-English, fetches `_locales/<code>/messages.json` and merges it on top of English.
 4. Calls `I18n.translatePage()` which scans the DOM for `data-i18n` attributes and replaces content accordingly.
+
+### WebUI Icons
+
+#### Adding a new icon
+
+1. Find the icon name on https://fonts.google.com/icons (Material Symbols, Outlined).
+2. Download the SVG:
+   `https://raw.githubusercontent.com/google/material-design-icons/master/symbols/web/<name>/materialsymbolsoutlined/<name>_24px.svg`
+3. Take the `<path d="..."/>` from it and append to `webui/img/icons.svg`:
+   `<symbol id="<name>" viewBox="0 -960 960 960"><path d="..."/></symbol>`
+4. Use it: `<i class="material-icon"><svg><use href="img/icons.svg#<name>"></use></svg></i>`
+
