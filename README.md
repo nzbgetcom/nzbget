@@ -45,7 +45,7 @@ This is a fork of the original NZBGet project, formerly maintained by [hugbug](h
 - [Performance tips](docs/PERFORMANCE.md)
 - [RSS feeds](docs/usage/RSS.md)
 - [API reference](docs/api/API.md)
-- [Extensions](docs/extensions/EXTENSIONS.md)
+- [Extensions](docs/extensions/EXTENSIONS.md) (V2, v23 and above) · [Legacy extensions](docs/extensions/EXTENSIONS_LEGACY.md) (V1, v22 and below)
 - [Building from sources](INSTALLATION.md)
 
 ## Support

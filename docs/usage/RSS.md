@@ -45,8 +45,10 @@ Because options in the configuration file cannot span multiple lines, rules of a
 A rule has the form:
 
 ```
-[A:|A(options):|R:|Q:|O(options):|#] search-string
+[A:|A(options):|Accept:|Accept(options):|R:|Reject:|Q:|Require:|O(options):|Options(options):|#] search-string
 ```
+
+The command names may be written in full: `Accept`, `Reject`, `Require` and `Options` are synonyms of `A`, `R`, `Q` and `O`. Command names are not case-sensitive.
 
 The search string is a list of terms. A term has the form `[+|-][field:][command]param`:
 
