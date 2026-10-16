@@ -126,7 +126,7 @@ Unrar 7 built with next march parameters:
 - arm64:  armv8-a+crypto+crc
 - armhf:  armv7-a
 
-More information about unrar performance: [Performance tips](https://github.com/nzbgetcom/nzbget/blob/develop/docs/PERFORMANCE.md#unrar)
+More information about unrar performance: [Unpacking](https://github.com/nzbgetcom/nzbget/blob/develop/docs/UNPACKING.md)
 
 # Native unrar 7 build support
 

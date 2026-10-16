@@ -440,7 +440,8 @@ if test "$JUSTUNPACK" = "no"; then
     else
         Info "Successfully installed into $ABSOUTDIR"
     fi
-    Info "For support please visit https://nzbget.com/forum/"
+    Info "For support please visit https://github.com/nzbgetcom/nzbget/discussions"
+    Info "To report a bug use https://github.com/nzbgetcom/nzbget/issues/new/choose"
 else
     Info "Unpacked into $ABSOUTDIR"
 fi

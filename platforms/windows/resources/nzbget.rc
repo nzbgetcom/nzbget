@@ -44,7 +44,7 @@ BEGIN
         BEGIN
             MENUITEM "Home Page",                   ID_INFO_HOMEPAGE
             MENUITEM "Downloads",                   ID_INFO_DOWNLOADS
-            MENUITEM "Forum",                       ID_INFO_FORUM
+            MENUITEM "Discussions",                 ID_INFO_FORUM
         END
         POPUP "Troubleshooting"
         BEGIN

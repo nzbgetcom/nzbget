@@ -381,7 +381,7 @@ void WinConsole::ShowMenu()
 			break;
 
 		case ID_INFO_FORUM:
-			ShellExecute(0, "open", "https://nzbget.com/forum/", nullptr, nullptr, SW_SHOWNORMAL);
+			ShellExecute(0, "open", "https://github.com/nzbgetcom/nzbget/discussions", nullptr, nullptr, SW_SHOWNORMAL);
 			break;
 
 		case ID_ABOUT:

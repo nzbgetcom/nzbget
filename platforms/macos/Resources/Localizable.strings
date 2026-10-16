@@ -40,7 +40,7 @@
 
 "Menu.LinkHomePage"="https://nzbget.com";
 "Menu.LinkDownloads"="https://nzbget.com/download/";
-"Menu.LinkForum"="https://nzbget.com/forum/";
+"Menu.LinkDiscussions"="https://github.com/nzbgetcom/nzbget/discussions";
 
 "ShowWebUINoConnection.MessageText"="Could not establish connection to downloader (background process).";
 "ShowWebUINoConnection.InformativeText"="Try to restart the program via Troubleshooting-menu.";
