@@ -1,12 +1,12 @@
 # How to Contribute #
 
-While we are working on NZBGet project all the time, we still would really like and need help on many areas:
+We are always working on NZBGet and welcome help in many areas:
 
-- Major - code contributions on features and bugs
-- Improvements in tests 
-- Improvements on documentation
+- New features and bug fixes
+- Tests
+- Documentation
 
-We entice our users to participate in the project, please don't hesitate to get involved - create a [new issue](https://github.com/nzbgetcom/nzbget/issues/new) or [pull request](https://github.com/nzbgetcom/nzbget/compare) - that would also greatly help if you'll share your usage experience.
+We welcome contributions from our users too: open a [new issue](https://github.com/nzbgetcom/nzbget/issues/new/choose), send a [pull request](https://github.com/nzbgetcom/nzbget/compare), or share your usage experience in [discussions](https://github.com/nzbgetcom/nzbget/discussions).
 
 ## Documentation ##
 
@@ -14,14 +14,14 @@ Main documentation is available on the NZBGet.com website - [https://nzbget.com/
 
 ## Development ##
 
-NZBGet natively supports for multiple platforms and build options, so each platform has their own development documenation, including:
+NZBGet supports multiple platforms and build options. Each platform has its own development documentation:
 
 - [Linux](LINUX.md)
 - [macOS](MACOS.md)
 - [Windows](WINDOWS.md)
 - [Android](ANDROID.md)
 - [FreeBSD](FREEBSD.md)
-- [Docker](https://github.com/nzbgetcom/nzbget/blob/develop/docker/README.md)
+- [Docker](../docker/README.md)
 
 ### Branches naming policy ###
 
@@ -39,7 +39,7 @@ NZBGet natively supports for multiple platforms and build options, so each platf
 3. For release PR (`develop` -> `main`) `Create a merge commit` mode must be used.
 4. After merging `develop` -> `main`, must be back merge `main` -> `develop` before any changes in `develop` branch.
 
-This flow results to the fact that in the PR to master branch we see only the squashed commits that correspond to the PRs in the develop branch in current release cycle.
+As a result, a PR to `main` contains only the squashed commits corresponding to the PRs merged into `develop` in the current release cycle.
 
 ### Version changes in release cycle
 

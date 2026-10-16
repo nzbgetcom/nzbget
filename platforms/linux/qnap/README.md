@@ -1,6 +1,6 @@
 # QNAP nzbget packages
 
-We support QNAP via buildroot qpkg, repacked from linux installer.
+QNAP packages are QPKGs repacked from the Linux installer.
 
 ## Installing
 
@@ -8,8 +8,8 @@ We support QNAP via buildroot qpkg, repacked from linux installer.
 
 Prerequisites: Enable installation of applications without digital signature (`AppCenter` - `Settings` - `Allow installation of applications without a valid digital signature`)
 
-To install nzbget for QNAP download qpkg for your architecture, then from QNAP AppCenter select `Install Manually` - browse for downloaded qpkg and press `Install`
-For digital signature warning select `I understand the risks and want to install this application` and press `Install`.
+To install NZBGet on QNAP, download the QPKG for your architecture, then in QNAP AppCenter select `Install Manually`, browse for the downloaded QPKG and press `Install`.
+For the digital signature warning select `I understand the risks and want to install this application` and press `Install`.
 
 ### Install via sherpa package manager
 
@@ -33,11 +33,11 @@ Change `PATHS` - `MainDir` to point to shared folder location, for example
 ```
 /share/CACHEDEV1_DATA/Public/nzbget
 ```
-By default, nzbget will download all files to package directory, inaccessible from shares.
+By default, NZBGet downloads all files into the package directory, which is not accessible from shares.
 
 ## Extensions
 
-QNAP packaged with python2. To support python3 extensions, need to install Python3 package from QNAP Store, and add to `EXTENSION SCRIPTS` - `ShellOverride` path to python3 executable like this:
+The QNAP package is built with Python 2. To use Python 3 extensions, install the Python 3 package from the QNAP Store and add the Python 3 executable to `EXTENSION SCRIPTS` - `ShellOverride`:
 ```
 .py=/share/CACHEDEV1_DATA/.qpkg/Python3/python3/bin/python3;
 ```

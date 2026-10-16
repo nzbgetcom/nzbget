@@ -364,7 +364,7 @@ void InstallSignalHandlers()
 		url = NSLocalizedString(@"Menu.LinkDownloads", nil);
 	}
 	else if (sender == forumItem) {
-		url = NSLocalizedString(@"Menu.LinkForum", nil);
+		url = NSLocalizedString(@"Menu.LinkDiscussions", nil);
 	}
 
 	[[NSWorkspace sharedWorkspace] openURL: [NSURL URLWithString:url]];

@@ -8,7 +8,7 @@ Flatpak for [NZBGet](https://nzbget.com/).
 
 `Flatpak` is installed and the `Flathub` repository is added.
 
-https://flatpak.org/setup/ - instructions based on your Linux distribution.
+See [Flatpak setup instructions](https://flatpak.org/setup/) for your Linux distribution.
 
 Ubuntu/Debian example:
 ```
@@ -34,7 +34,7 @@ flatpak install com.nzbget.nzbget.*.flatpak
 
 ### GNOME Software install
 
-From File Explorer, double-click on the previously downloaded file, the Gnome Software application will open, just click on `Install` and follow the instructions on the screen.
+From File Explorer, double-click on the previously downloaded file, GNOME Software opens, just click on `Install` and follow the instructions on the screen.
 
 ### Run
 
@@ -50,4 +50,4 @@ From command line:
 ```
 flatpak uninstall com.nzbget.nzbget
 ```
-Or from Gnome Software, select the installed NZBGet application and click `Uninstall`
+Or open GNOME Software, select the installed NZBGet application and click `Uninstall`.

@@ -1,6 +1,6 @@
 # Building NZBGet for FreeBSD
 
-Guide for configuring, building, testing, and packaging NZBGet on FreeBSD 13.0+ across `x86_64` (amd64) and `aarch64` (arm64).
+This document describes how to configure, build, test and package NZBGet for FreeBSD 13.0+ on `x86_64` (amd64) and `aarch64` (arm64).
 
 Supported workflows:
 1. **Native Build**: Direct compilation on FreeBSD using system tools and packages.
@@ -187,7 +187,7 @@ load_rc_config $name
 command="${nzbget_dir}/nzbget"
 command_args="-D -c ${nzbget_conf}"
 stop_cmd="${command} -Q -c ${nzbget_conf}"
-status_cmd="${command} -L -c ${nzbget_conf}"
+status_cmd="${command} -L S -c ${nzbget_conf}"
 
 run_rc_command "$1"
 ```
@@ -215,3 +215,5 @@ Configure in `nzbget.conf`:
 UnrarCmd=/usr/local/bin/unrar
 SevenZipCmd=/usr/local/bin/7z
 ```
+
+Depending on the FreeBSD release, the 7-Zip package installs the binary as `7zz` instead of `7z`. Check with `pkg info -l 7-zip` and set `SevenZipCmd` to the installed path.
