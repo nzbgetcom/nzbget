@@ -186,11 +186,15 @@ load_rc_config $name
 
 command="${nzbget_dir}/nzbget"
 command_args="-D -c ${nzbget_conf}"
+# Quit the running server.
 stop_cmd="${command} -Q -c ${nzbget_conf}"
+# Ask the running server for its status (see the note below).
 status_cmd="${command} -L S -c ${nzbget_conf}"
 
 run_rc_command "$1"
 ```
+
+`status_cmd` uses the `S` selector of the `-L` (`--list`) option (`nzbget -L S`, see `nzbget -h`): it asks the running server for its status and exits with `0` when the server responds, with a non-zero code when it does not. This is what the rc.d `status` action expects; without a selector the same option lists the files of the download queue instead.
 
 Enable and start:
 ```bash

@@ -60,7 +60,7 @@ Response:
     "URL" : "https://indexer.example.com/api?t=get&id=1a2b3c",
     "SizeHi" : 0,
     "SizeLo" : 1234567,
-    "SizeMB" : 1234,
+    "SizeMB" : 1,
     "Category" : "my series",
     "AddCategory" : "my series",
     "PauseNzb" : false,
