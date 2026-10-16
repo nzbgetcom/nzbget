@@ -182,6 +182,10 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(!IsExcessivelyObfuscated("Release.2024.01.02.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pRemux.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("Show.2024.1080pBluRay.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.2024.1080p.hevc10bit.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.2024.1080p.x264bluray.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.720p.dts51audio.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Title.2024.webdl2024.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("LIGHTSWITCH.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("BLACKKNIGHTS.mkv"));
 	BOOST_CHECK(!IsExcessivelyObfuscated("PSYCHOPATHS.mkv"));
@@ -200,6 +204,55 @@ BOOST_AUTO_TEST_CASE(IsExcessivelyObfuscatedTest)
 	BOOST_CHECK(IsExcessivelyObfuscated("abcdefghijklm001.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("ABCDEFGHIJ01.mkv"));
 	BOOST_CHECK(IsExcessivelyObfuscated("abcdefghijkl01.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("xK1RT5Ervcw.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("xK1RT5Er.mkv"));
+
+	// Brackets and parentheses around obfuscated tokens
+	BOOST_CHECK(IsExcessivelyObfuscated("[xK1RT5Ervcw].mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("(xK1RT5Ervcw).mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("Release.[deadbeefcafe1234].mkv"));
+
+	// Frequent alpha-digit alternations in alphanumeric tokens (8+ chars)
+	BOOST_CHECK(IsExcessivelyObfuscated("a4f9c2e1b8.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("k3m9p2x7q1.mkv"));
+
+	// Obfuscated pure-alpha tokens with random case transitions (lowercase start)
+	BOOST_CHECK(IsExcessivelyObfuscated("xKRTvErc.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("aBcDeFgH.mkv"));
+
+	// Obfuscated consonant-only tokens (8+ chars) or low-vowel runs (14+ chars)
+	BOOST_CHECK(IsExcessivelyObfuscated("bcdfghjklmnpq.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("qwrtypsdfghjklzxc.mkv"));
+
+	// False positive protection for product names with case or digits
+	BOOST_CHECK(!IsExcessivelyObfuscated("iPhone13Pro.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("iPhoneSE.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("macOSVentura.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("eBayPlus.mkv"));
+
+	// False positive protection for release tags and compact episode identifiers
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.x264Hi10P.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.S01E01E02.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Show.S01E01v2.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.1080p60fps.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Movie.1080p10bit.mkv"));
+
+	// False positive protection for compound German words
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.schlittschuhschritt.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Doku.kraftfahrzeugpflicht.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("qwrtypsdfghjklzxcvbnmqwerty.mkv"));
+
+	// Numeric stems: 16+ digits is a hash, shorter IDs/timestamps/ISBNs are legitimate
+	BOOST_CHECK(IsExcessivelyObfuscated("18446744073709551615.mkv"));
+	BOOST_CHECK(IsExcessivelyObfuscated("1234567890123456.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("8492017364.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1234567890.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1712345678.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Stream.1712345678.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("Book.9780141036144.epub"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("1917.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("2012.mkv"));
+	BOOST_CHECK(!IsExcessivelyObfuscated("20240102.mkv"));
 
 	BOOST_CHECK(IsExcessivelyObfuscated("ABC"));
 	BOOST_CHECK(IsExcessivelyObfuscated("AbC-XyZ"));
