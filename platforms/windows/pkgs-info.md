@@ -1,4 +1,4 @@
-# Install NZBGet for WIndows via package managers
+# Install NZBGet for Windows via package managers
 
 - [Winget](#winget)
 - [Chocolatey](#chocolatey)

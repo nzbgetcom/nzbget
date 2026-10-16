@@ -1,0 +1,41 @@
+title: "[Q&A] "
+body:
+- type: checkboxes
+  attributes:
+    label: Is there already a discussion about it?
+    description: Search the <a href="https://github.com/nzbgetcom/nzbget/discussions">discussions</a> and the <a href="https://github.com/nzbgetcom/nzbget/issues?q=is%3Aissue">issues</a> before asking.
+    options:
+      - label: I have searched existing discussions and issues
+        required: true
+- type: textarea
+  attributes:
+    label: Environment
+    description: Optional. The system NZBGet runs on helps to answer your question.
+    placeholder: |
+      Device:
+      OS version: platform n.nn (32bit/64bit)
+      CPU architecture: (32bit/64bit)
+      NZBGet version: n.nn
+      Includes libs or tool that apply: 7zip x.x, unrar x.x, python3.11
+      Running in Docker: No/Yes
+    render: markdown
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Question
+    description: What are you trying to do, and what do you need help with?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: What have you tried?
+    description: Optional. Options you changed, documentation you already read, results of tests.
+  validations:
+    required: false
+- type: textarea
+  attributes:
+    label: Logs or extra information
+    description: Optional. Relevant log lines, your configuration (remove user names and passwords), attached files or images.
+  validations:
+    required: false

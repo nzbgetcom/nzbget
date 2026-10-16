@@ -54,6 +54,12 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 - [editqueue](EDITQUEUE.md)
 - [scan](SCAN.md)
 
+## Feeds
+
+- [fetchfeed](FETCHFEED.md)
+- [viewfeed](VIEWFEED.md)
+- [previewfeed](PREVIEWFEED.md)
+
 ## Status, logging and statistics
 
 - [status](STATUS.md)

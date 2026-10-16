@@ -6,4 +6,4 @@
 
 If you run NZBGet v22 or older - following information may be helpful:
  - [Extension scripts](https://nzbget.net/extension-scripts)
- - [Extension scripts forum](https://forum.nzbget.net/viewforum.php?f=8&sid=dc9d094d3efcafe6c217cbceae9ea721)
+ - [Questions and help](https://github.com/nzbgetcom/nzbget/discussions)

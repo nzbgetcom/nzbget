@@ -1,9 +1,9 @@
 # Building NZBGet for Windows
 
-NZBGet for Windows supports two build strategies depending on your workflow:
+NZBGet for Windows supports two build strategies:
 
 1. **Strategy 1: Build All Dependencies from Source (Recommended)**
-   CMake automatically downloads and builds all dependencies (`OpenSSL`, `zlib`, `libxml2`, `Boost`, `par2-turbo`, `rapidyenc`) from source via **FetchContent** with static CRT (`/MT`). No package manager or pre-installed libraries required. This is the recommended approach for clean, reproducible builds matching official release artifacts.
+   CMake downloads and builds all dependencies (`OpenSSL`, `zlib`, `libxml2`, `Boost`, `par2-turbo`, `rapidyenc`) from source via **FetchContent** with static CRT (`/MT`). No package manager or pre-installed libraries required.
 2. **Strategy 2: Fast Local Dev with System Libraries / vcpkg**
    Reuses pre-compiled static libraries from `vcpkg` or existing system installations, compiling only NZBGet and project-specific forks (`rapidyenc`, `par2-turbo`). Ideal for fast incremental iteration without waiting for OpenSSL compilation.
 
@@ -64,7 +64,7 @@ OpenSSL 3.x uses its own Configure script on Windows, which requires Perl and an
 
 ## 2. Strategy 1: Build All Dependencies from Source (Recommended)
 
-This strategy builds the entire dependency chain from source with identical compiler flags and static CRT (`/MT` in Release, `/MTd` in Debug). This is the recommended approach: it is completely self-contained and guarantees reproducible builds matching official release artifacts without needing manual package configuration.
+This strategy builds the entire dependency chain from source with identical compiler flags and static CRT (`/MT` in Release, `/MTd` in Debug). It is self-contained and produces reproducible builds matching the official release artifacts.
 
 The target architecture is selected by the MSVC environment: open a **Developer Command Prompt for VS 2022** (x64 or x86 Native Tools) in the repository root. To ensure a fully reproducible build, the CI presets enable `BUILD_DEPS_FROM_SOURCE=ON`.
 
@@ -127,11 +127,11 @@ The standard developer presets (`debug`, `debug-tests`, `release`, `release-lto`
 
 ---
 
-## 4. Complete CMake Presets Reference
+## 4. CMake Presets Reference
 
 Defined in `CMakePresets.json`:
 
-All presets use the **Ninja** generator (inherited from the hidden `base` preset) and must be run from a Visual Studio Developer Command Prompt that matches the target architecture.
+All presets use the **Ninja** generator (inherited from the hidden `base` preset).
 
 #### Developer Presets (Daily Local Development)
 Optimized for rapid local developer iteration (LTO disabled for fast linking, uses pre-installed libraries or falls back to FetchContent):
@@ -156,17 +156,7 @@ Configured specifically for GitHub Actions runners to produce identical official
 | `ci-windows-x86` | x86 Native Tools | Release | **ON** | OFF | **FetchContent (Force)** | Official 32-bit CI release build (`build/ci-windows-x86`) |
 | `ci-release-lto` | Native | Release | **ON** | OFF | **FetchContent (Force)** | Universal CI release preset with LTO |
 
-> **Understanding CI Presets & Reproducing CI Locally**:
-> The `ci-*` presets are tailored for automated pipelines:
-> 1. They enforce `BUILD_DEPS_FROM_SOURCE=ON` to guarantee hermetic, clean dependency building.
-> 2. They enable Link-Time Optimization (`ENABLE_LTO=ON`) for maximum binary runtime performance (which takes longer to link).
-> 3. They output to isolated directories (`build/ci-windows-x64`) matching CI runner cache keys.
-> 
-> If a CI build fails or you need to inspect the exact binary output produced by the GitHub Actions runner, you can execute:
-> ```powershell
-> cmake --preset ci-windows-x64
-> cmake --build --preset ci-windows-x64
-> ```
+> **CI presets** enforce `BUILD_DEPS_FROM_SOURCE=ON` (hermetic dependency builds), enable Link-Time Optimization (`ENABLE_LTO=ON`, slower to link) and write to isolated output directories (`build/ci-windows-x64`) matching the CI runner cache keys. To reproduce a CI build locally, run the two commands above with the matching `ci-*` preset.
 
 ---
 

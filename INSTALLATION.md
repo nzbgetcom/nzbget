@@ -1,11 +1,11 @@
 ## Platforms
 
-Articles below provide detailed information on manual compilation of NZBGet for specific platforms:
+Instructions for manual compilation of NZBGet on specific platforms:
 
  - [Linux](docs/LINUX.md)
  - [FreeBSD](docs/FREEBSD.md)
  - [macOS](docs/MACOS.md)
  - [Windows](docs/WINDOWS.md)
  - [Android](docs/ANDROID.md)
- - [Synology](synology/build-info.md) 
+ - [Synology](docs/SYNOLOGY.md)
  - [QNAP](platforms/linux/qnap/repack-info.md)
