@@ -355,11 +355,11 @@ void NntpProcessor::SendSegment()
 
 	if (m_sendStat)
 	{
-		m_connection->WriteLine(CString::FormatStr("223 %s\r\n", m_messageid));
+		m_connection->WriteLine(CString::FormatStr("223 0 %s\r\n", m_messageid));
 		return; // done
 	}
 
-	m_connection->WriteLine(CString::FormatStr("%i, 0 %s\r\n", m_sendHeaders ? 222 : 220, m_messageid));
+	m_connection->WriteLine(CString::FormatStr("%i 0 %s\r\n", m_sendHeaders ? 220 : 222, m_messageid));
 	if (m_sendHeaders)
 	{
 		m_connection->WriteLine(CString::FormatStr("Message-ID: %s\r\n", m_messageid));
