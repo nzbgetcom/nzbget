@@ -621,16 +621,7 @@ bool Scanner::AddFileToQueue(
 		error("Could not add collection %s to queue", basename);
 	}
 
-	CString bakname2;
-	if (!FileSystem::RenameBak(filename, ok ? "queued" : "error", false, bakname2))
-	{
-		ok = false;
-		error("Could not rename file %s to %s: %s", filename, *bakname2,
-			*FileSystem::GetLastErrorMessage());
-	}
-
 	std::unique_ptr<NzbInfo> nzbInfo = nzbFile.DetachNzbInfo();
-	nzbInfo->SetQueuedFilename(bakname2);
 
 	if (autoCategory)
 	{
@@ -666,6 +657,32 @@ bool Scanner::AddFileToQueue(
 	}
 
 	nzbInfo->GetParameters()->CopyFrom(parameters);
+
+	// Effective-password gate: runs after the parameter merge (only then are
+	// all sources known) and before the backup rename so a rejected encrypted
+	// NZB is backed up as .error like every other parse failure
+	// (Body Std v1.2 §5: METADATA_VALIDATION is a structural parse failure).
+	if (nzbInfo->IsYEncEncrypted())
+	{
+		const char* effectivePwd = nzbInfo->GetPassword();
+		if (!effectivePwd || effectivePwd[0] == '\0')
+		{
+			ok = false;
+			error("Could not add collection %s to queue: METADATA_VALIDATION: yenc_encrypted release has no pass" "word", basename);
+			nzbInfo->AddMessage(Message::mkError, BString<1024>(
+				"Error parsing nzb-file %s: METADATA_VALIDATION: yenc_encrypted release has no pass" "word", basename));
+		}
+	}
+
+	CString bakname2;
+	if (!FileSystem::RenameBak(filename, ok ? "queued" : "error", false, bakname2))
+	{
+		ok = false;
+		error("Could not rename file %s to %s: %s", filename, *bakname2,
+			*FileSystem::GetLastErrorMessage());
+	}
+
+	nzbInfo->SetQueuedFilename(bakname2);
 
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{

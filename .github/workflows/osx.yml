@@ -88,7 +88,7 @@ jobs:
         sudo cp -R ${{ runner.temp }}/macos12-libcxx/* /opt/macos12-libcxx/
 
     - name: Install LLVM Clang 19 and Ninja
-      run: brew install llvm@19 ninja
+      run: brew install llvm@19 ninja libsodium argon2 pkg-config
 
     - name: Build arm64
       env:
@@ -158,7 +158,7 @@ jobs:
         sudo cp -R ${{ runner.temp }}/macos12-libcxx/* /opt/macos12-libcxx/
 
     - name: Install LLVM Clang 19 and Ninja
-      run: brew install llvm@19 ninja
+      run: brew install llvm@19 ninja libsodium argon2 pkg-config
 
     - name: Build x64
       env:

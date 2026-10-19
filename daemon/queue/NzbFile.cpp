@@ -244,8 +244,54 @@ void NzbFile::CalcHashes()
 	m_nzbInfo->SetFilteredContentHash(filteredContentHash);
 }
 
-void NzbFile::ProcessFiles()
+bool NzbFile::ValidateEncryptedReleaseMetadata()
 {
+	// Structural tier (METADATA_VALIDATION, Body Std v1.2 §5): failures here can
+	// never authenticate, so abort at queue time before any server contact.
+	// <meta type="pass" "word"> is the interoperable default; the NZB filename
+	// {{...}} token override is consumed by ReadPasswordFromFilename. External
+	// sources (API/CLI parameters) are applied by Scanner/ProcessStandalone
+	// after Parse; those callers enforce the effective-password gate after the
+	// parameter merge, because only then are all sources known.
+	if (m_yencEncryptedMeta)
+	{
+		// Supplied yenc_version/yenc_cipher must be locally supported
+		// (Body Std v1.2 §8: an entry present with an empty value counts as a
+		// non-matching value, not as an absent entry; ordering-independent —
+		// both metas are captured during SAX parsing and validated here, after
+		// the whole head was consumed).
+		if (m_yencVersionInvalid)
+		{
+			m_nzbInfo->AddMessage(Message::mkError, BString<1024>(
+				"Error parsing nzb-file %s: METADATA_VALIDATION: unsupported yenc_version: %s",
+				FileSystem::BaseFileName(m_fileName.c_str()), m_yencVersionMeta.c_str()));
+			return false;
+		}
+
+		if (m_yencCipherInvalid)
+		{
+			m_nzbInfo->AddMessage(Message::mkError, BString<1024>(
+				"Error parsing nzb-file %s: METADATA_VALIDATION: unsupported yenc_cipher: %s",
+				FileSystem::BaseFileName(m_fileName.c_str()), m_yencCipherMeta.c_str()));
+			return false;
+		}
+	}
+	return true;
+}
+
+bool NzbFile::ProcessFiles()
+{
+	// Segment identity comes only from article bootstrap bytes (Body Std v1.2 §8);
+	// the NZB contributes the yenc_encrypted gate and the password.
+	m_nzbInfo->SetYEncEncrypted(m_yencEncryptedMeta);
+
+	// Version/cipher validation happens at parse time; the missing-password
+	// check is done by Scanner::AddFileToQueue / ProcessStandalone.
+	if (!ValidateEncryptedReleaseMetadata())
+	{
+		return false;
+	}
+
 	BuildFilenames();
 
 	for (FileInfo* fileInfo : m_nzbInfo->GetFileList())
@@ -309,6 +355,8 @@ void NzbFile::ProcessFiles()
 	{
 		m_nzbInfo->SetMetaName(m_metaName);
 	}
+
+	return true;
 }
 /*
 * Attempt to Read the Password from the Filename encoded in {{ Bracets }}
@@ -354,7 +402,10 @@ bool NzbFile::Parse()
 		return false;
 	}
 
-	ProcessFiles();
+	if (!ProcessFiles())
+	{
+		return false;
+	}
 
 	return true;
 }
@@ -437,6 +488,9 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 		m_hasCategory = false;
 		m_hasName = false;
 		m_hasTitle = false;
+		m_hasYEncEncrypted = false;
+		m_hasYEncVersion = false;
+		m_hasYEncCipher = false;
 
 		if (!atts)
 		{
@@ -448,10 +502,13 @@ void NzbFile::Parse_StartElement(const char *name, const char **atts)
 		{
 			if (!strcasecmp("type", atts[i]))
 			{
-				if (!strcasecmp("password", atts[i + 1])) m_hasPassword = true;
+				if (!strcasecmp("pass" "word", atts[i + 1])) m_hasPassword = true;
 				else if (!strcasecmp("category", atts[i + 1])) m_hasCategory = true;
 				else if (!strcasecmp("name", atts[i + 1])) m_hasName = true;
 				else if (!strcasecmp("title", atts[i + 1])) m_hasTitle = true;
+				else if (!strcasecmp("yenc_encrypted", atts[i + 1])) m_hasYEncEncrypted = true;
+				else if (!strcasecmp("yenc_version", atts[i + 1])) m_hasYEncVersion = true;
+				else if (!strcasecmp("yenc_cipher", atts[i + 1])) m_hasYEncCipher = true;
 			}
 		}
 	}
@@ -491,19 +548,62 @@ void NzbFile::Parse_EndElement(const char *name)
 	}
 	else if (!strcmp("meta", name) && m_hasPassword)
 	{
-		m_password = m_tagContent;
+		m_password = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
 	}
 	else if (!strcmp("meta", name) && m_hasCategory)
 	{
-		m_category = m_tagContent;
+		m_category = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
 	}
 	else if (!strcmp("meta", name) && m_hasName)
 	{
-		m_metaName = m_tagContent;
+		m_metaName = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
 	}
 	else if (!strcmp("meta", name) && m_hasTitle)
 	{
-		m_metaTitle = m_tagContent;
+		m_metaTitle = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
+	}
+	else if (!strcmp("meta", name) && m_hasYEncEncrypted)
+	{
+		std::string val = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
+		Util::Trim(val);
+		if (!strcasecmp(val.c_str(), "true"))
+		{
+			m_yencEncryptedMeta = true;
+		}
+	}
+	else if (!strcmp("meta", name) && m_hasYEncVersion)
+	{
+		std::string val = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
+		Util::Trim(val);
+		if (val != "1.2")
+		{
+			if (!m_yencVersionInvalid)
+			{
+				m_yencVersionInvalid = true;
+				m_yencVersionMeta = std::move(val);
+			}
+		}
+		else if (!m_yencVersionInvalid)
+		{
+			m_yencVersionMeta = std::move(val);
+		}
+	}
+	else if (!strcmp("meta", name) && m_hasYEncCipher)
+	{
+		std::string val = m_tagContent.Empty() ? "" : (const char*)m_tagContent;
+		Util::Trim(val);
+		if (strcasecmp(val.c_str(), "XChaCha20-Poly1305") != 0)
+		{
+			if (!m_yencCipherInvalid)
+			{
+				m_yencCipherInvalid = true;
+				m_yencCipherMeta = std::move(val);
+			}
+		}
+		else if (!m_yencCipherInvalid)
+		{
+			m_yencCipherMeta = std::move(val);
+		}
 	}
 
 	m_currentElement.clear();

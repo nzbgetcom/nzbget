@@ -24,6 +24,7 @@
 #define ARTICLEDOWNLOADER_H
 
 #include <atomic>
+#include <memory>
 #include "NString.h"
 #include "Observer.h"
 #include "DownloadInfo.h"
@@ -32,6 +33,7 @@
 #include "Decoder.h"
 #include "ArticleWriter.h"
 #include "Util.h"
+#include "YEncDecryptor.h"
 
 class ArticleContentAnalyzer
 {
@@ -76,9 +78,26 @@ public:
 	const char* GetConnectionName() { return m_connectionName; }
 	void SetConnection(NntpConnection* connection) { m_connection = connection; }
 	void CompleteFileParts() { m_articleWriter.CompleteFileParts(); }
+
+	// Authenticated commit geometry gate (Body Std v1.2 §8, provider failover
+	// tier): zero/negative/out-of-file offsets and span-size mismatch must be
+	// rejected before Start()/CommitAuthenticatedData(). DecodeCheck and the
+	// unit tests share this predicate so a production edit cannot silently
+	// diverge from the tested behavior.
+	static bool ValidCommitGeometry(int64 fileSize, int64 beginPos, int64 endPos,
+		int64 decryptedSize);
+
 	int GetDownloadedSize() { return m_downloadedSize; }
 	void SetContentAnalyzer(std::unique_ptr<ArticleContentAnalyzer> contentAnalyzer) { m_contentAnalyzer = std::move(contentAnalyzer); }
 	ArticleContentAnalyzer* GetContentAnalyzer() { return m_contentAnalyzer.get(); }
+
+#ifdef NZBGET_TESTING_HOOKS
+	// Test-only surface: Download() is private; the encrypted RawArticle
+	// rejection and commit-geometry tests drive it directly to observe the raw
+	// status before Run() normalizes failure to adFailed. Never compiled into
+	// release builds (define NZBGET_TESTING_HOOKS in the test target only).
+	EStatus TestDownload() { return Download(); }
+#endif
 
 	void LogDebugInfo();
 
@@ -94,6 +113,7 @@ private:
 	std::atomic<time_t> m_lastUpdateTime;
 	Decoder m_decoder;
 	ArticleWriter m_articleWriter;
+	std::unique_ptr<YEncDecryptor> m_decryptor;
 	ServerStatList m_serverStats;
 	bool m_writingStarted;
 	int m_downloadedSize = 0;

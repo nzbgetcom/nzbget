@@ -250,3 +250,18 @@ http://localhost:6789/username:password/
 Please note, that in this case the password is saved in a bookmark or in
 browser history in plain text and is easy to find by persons having
 access to your computer.
+
+### Encrypted Releases (yEnc body & control-line encryption)
+-----------------------------------------------------------
+
+NZBGet automatically downloads, authenticates, and decrypts releases protected by
+yEnc body and control-line encryption according to the experimental yEnc Body and
+Control Lines Encryption Standards v1.2.
+
+When an NZB contains `<meta type="yenc_encrypted">true</meta>` and `<meta type="password">`,
+the embedded password is used automatically without user intervention. NZBGet extracts
+segment identity directly from article wire bytes; segments are standard NZB 1.1.
+
+The decryption password is the job's password: `<meta type="password">` from the NZB, which
+can be changed like any other job password (`*Unpack:Password`). An encrypted NZB without a
+password is rejected when it is added to the queue.

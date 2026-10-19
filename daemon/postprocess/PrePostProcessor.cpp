@@ -285,6 +285,11 @@ void PrePostProcessor::DownloadQueueUpdate(void* aspect)
 		{
 			queueAspect->nzbInfo->PrintMessage(Message::mkInfo,
 				"Collection %s completely downloaded", queueAspect->nzbInfo->GetName());
+			// No further articles can be fetched for this job, so drop the
+			// cached Argon2id master keys now instead of keeping them in
+			// memory while the job sits in history. A resumed parked job
+			// re-derives its key on demand (one KDF per salt).
+			queueAspect->nzbInfo->GetKeyCache()->Clear();
 			g_QueueScriptCoordinator->EnqueueScript(queueAspect->nzbInfo, QueueScriptCoordinator::qeNzbDownloaded);
 			NzbDownloaded(queueAspect->downloadQueue, queueAspect->nzbInfo);
 		}
@@ -296,6 +301,9 @@ void PrePostProcessor::DownloadQueueUpdate(void* aspect)
 		{
 			queueAspect->nzbInfo->PrintMessage(Message::mkInfo,
 				"Collection %s deleted from queue", queueAspect->nzbInfo->GetName());
+			// Deleted/cancelled encrypted jobs also land in history with keys
+			// resident; drop them the same way as the completed branch above.
+			queueAspect->nzbInfo->GetKeyCache()->Clear();
 			NzbDeleted(queueAspect->downloadQueue, queueAspect->nzbInfo);
 		}
 	}

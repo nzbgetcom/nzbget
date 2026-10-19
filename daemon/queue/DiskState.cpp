@@ -1363,8 +1363,8 @@ bool DiskState::LoadFileState(FileInfo* fileInfo, Servers* servers, StateDiskFil
 			status = ArticleInfo::aiUndefined;
 		}
 
-		if (status == ArticleInfo::aiFinished && !g_Options->GetDirectWrite() &&
-			!fileInfo->GetForceDirectWrite() && !pa->GetResultFilename())
+		if (status == ArticleInfo::aiFinished &&
+			(fileInfo->GetNzbInfo()->IsYEncEncrypted() || !fileInfo->DirectWriteActive()) && !pa->GetResultFilename())
 		{
 			pa->SetResultFilename(BString<1024>("%s%c%i.%03i", g_Options->GetTempDir(),
 				PATH_SEPARATOR, fileInfo->GetId(), pa->GetPartNumber()));

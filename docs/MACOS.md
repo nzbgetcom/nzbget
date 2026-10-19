@@ -15,7 +15,7 @@ brew install ninja       # Ninja, the generator used by all CMake presets (overr
 ### Optional Dependencies & Tools
 
 ```bash
-brew install openssl@3 zlib libxml2 boost   # system libraries for local development
+brew install openssl@3 zlib libxml2 boost libsodium argon2 pkg-config   # system libraries for local development
 brew install create-dmg                     # used by platforms/macos/sign/nzbget-sign.sh to build .dmg packages
 brew install llvm@19                        # LLVM toolchain used in release CI for hermetic builds with static libc++
 ```

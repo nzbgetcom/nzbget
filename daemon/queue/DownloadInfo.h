@@ -31,6 +31,7 @@
 #include "Observer.h"
 #include "Log.h"
 #include "Thread.h"
+#include "YEncKeyCache.h"
 
 class NzbInfo;
 class DownloadQueue;
@@ -196,6 +197,7 @@ public:
 	void SetPartialChanged(bool partialChanged) { m_partialChanged = partialChanged; }
 	bool GetForceDirectWrite() { return m_forceDirectWrite; }
 	void SetForceDirectWrite(bool forceDirectWrite) { m_forceDirectWrite = forceDirectWrite; }
+	bool DirectWriteActive();
 	EPartialState GetPartialState() { return m_partialState; }
 	void SetPartialState(EPartialState partialState) { m_partialState = partialState; }
 	uint32 GetCrc() { return m_crc; }
@@ -618,6 +620,24 @@ public:
 	void SetAddUrlPaused(bool addUrlPaused) { m_addUrlPaused = addUrlPaused; }
 	FileList* GetFileList() { return &m_fileList; }
 	NzbParameterList* GetParameters() { return &m_ppParameters; }
+	YEncKeyCache* GetKeyCache() { return &m_keyCache; }
+	const char* GetPassword()
+	{
+		NzbParameter* param = m_ppParameters.Find("*Unpack:Password");
+		return (param && param->GetValue() && param->GetValue()[0] != '\0') ? param->GetValue() : "";
+	}
+	// Stored as a pp-parameter so it persists in DiskState unchanged. Clearing it
+	// fails closed: without the flag the decryptor is not enabled, so encrypted
+	// articles are rejected (no =ybegin) instead of ciphertext being written.
+	bool IsYEncEncrypted()
+	{
+		NzbParameter* param = m_ppParameters.Find("*Unpack:YEncEncrypted");
+		return param && param->GetValue() && !strcasecmp(param->GetValue(), "yes");
+	}
+	void SetYEncEncrypted(bool encrypted)
+	{
+		m_ppParameters.SetParameter("*Unpack:YEncEncrypted", encrypted ? "yes" : "");
+	}
 	ScriptStatusList* GetScriptStatuses() { return &m_scriptStatuses; }
 	ServerStatList* GetServerStats() { return &m_serverStats; }
 	ServerStatList* GetCurrentServerStats() { return &m_currentServerStats; }
@@ -767,6 +787,7 @@ private:
 	uint32 m_filteredContentHash = 0;
 	FileList m_fileList;
 	NzbParameterList m_ppParameters;
+	YEncKeyCache m_keyCache;
 	ScriptStatusList m_scriptStatuses;
 	ServerStatList m_serverStats;
 	ServerStatList m_currentServerStats;

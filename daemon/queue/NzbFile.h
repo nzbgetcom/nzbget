@@ -52,7 +52,8 @@ private:
 	void AddFileInfo(std::unique_ptr<FileInfo> fileInfo);
 	void ParseSubject(FileInfo* fileInfo, bool TryQuotes);
 	void BuildFilenames();
-	void ProcessFiles();
+	bool ProcessFiles();
+	bool ValidateEncryptedReleaseMetadata();
 	void CalcHashes();
 	bool HasDuplicateFilenames();
 	void ReadPasswordFromFilename();
@@ -65,6 +66,14 @@ private:
 	bool m_hasCategory = false;
 	bool m_hasName = false;
 	bool m_hasTitle = false;
+	bool m_hasYEncEncrypted = false;
+	bool m_hasYEncVersion = false;
+	bool m_hasYEncCipher = false;
+	bool m_yencEncryptedMeta = false;
+	bool m_yencVersionInvalid = false;
+	bool m_yencCipherInvalid = false;
+	std::string m_yencVersionMeta;
+	std::string m_yencCipherMeta;
 	std::string m_currentElement;
 
 	static void SAX_StartElement(NzbFile* file, const char *name, const char **atts);

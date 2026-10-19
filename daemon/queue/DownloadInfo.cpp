@@ -888,6 +888,18 @@ bool FileInfo::IsHardLinked()
 	return !m_hardLinkPath.empty();
 }
 
+bool FileInfo::DirectWriteActive()
+{
+	// Body Std v1.2 §8 (Zero-Output Guarantee): encrypted releases always
+	// stage articles; direct write would commit ciphertext at final offsets
+	// before authentication. Use only where adding the encrypted guard to the
+	// upstream `(GetDirectWrite() || GetForceDirectWrite())` term is
+	// semantics-identical; sites needing plain upstream semantics test
+	// IsYEncEncrypted()/GetDirectWrite() directly.
+	return !m_nzbInfo->IsYEncEncrypted() &&
+		(g_Options->GetDirectWrite() || m_forceDirectWrite);
+}
+
 
 CompletedFile::CompletedFile(int id, std::string filename, std::string origname, EStatus status,
 	uint32 crc, bool parFile, std::string hash16k, std::string parSetId) 
