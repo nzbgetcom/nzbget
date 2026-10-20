@@ -56,7 +56,7 @@ jobs:
         "MSVC_VERSION=$msvcVersion" | Out-File -FilePath $env:GITHUB_ENV -Append
 
     - name: Cache FetchContent dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/build/${{ matrix.type }}${{ matrix.arch }}/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring

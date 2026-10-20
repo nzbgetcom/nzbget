@@ -23,7 +23,7 @@ jobs:
 
     - name: Cache static libc++
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
@@ -63,7 +63,7 @@ jobs:
       uses: actions/checkout@v6
 
     - name: Cache static libc++
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
@@ -71,7 +71,7 @@ jobs:
         key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/macos/build-libcxx.sh') }}
 
     - name: Cache FetchContent dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/build/ci-macos-arm64/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
@@ -133,7 +133,7 @@ jobs:
       uses: actions/checkout@v6
 
     - name: Cache static libc++
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/macos12-libcxx
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
@@ -141,7 +141,7 @@ jobs:
         key: macos-static-libcxx-${{ env.LLVM_TAG }}-${{ hashFiles('toolchains/macos/build-libcxx.sh') }}
 
     - name: Cache FetchContent dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/build/ci-macos-x64/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
