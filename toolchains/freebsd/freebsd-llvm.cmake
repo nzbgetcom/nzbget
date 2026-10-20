@@ -65,7 +65,7 @@ endif()
 
 set(CMAKE_SYSROOT "${FREEBSD_SYSROOT}" CACHE PATH "Sysroot" FORCE)
 
-# 2b. Static C++ runtime detection (built by toolchains/freebsd/build-toolchain.sh)
+# 3. Static C++ runtime detection (built by toolchains/freebsd/build-toolchain.sh)
 if(NOT DEFINED FREEBSD_LIBCXX OR FREEBSD_LIBCXX STREQUAL "")
 	get_filename_component(_FREEBSD_TOOLCHAIN_DIR "${FREEBSD_SYSROOT}" DIRECTORY)
 	set(FREEBSD_LIBCXX "${_FREEBSD_TOOLCHAIN_DIR}/${LIBCXX_DIR_NAME}")
@@ -79,7 +79,7 @@ endif()
 
 set(FREEBSD_LIBCXX "${FREEBSD_LIBCXX}" CACHE PATH "Static libc++ runtime" FORCE)
 
-# 3. Compilers detection
+# 4. Compilers detection
 find_program(CLANG_C NAMES clang)
 find_program(CLANG_CXX NAMES clang++)
 find_program(LLD_LINKER NAMES ld.lld lld)
@@ -108,7 +108,7 @@ if(LLVM_STRIP)
 	set(CMAKE_STRIP "${LLVM_STRIP}" CACHE FILEPATH "Strip" FORCE)
 endif()
 
-# 4. Target flags configuration
+# 5. Target flags configuration
 set(CMAKE_C_COMPILER_TARGET "${FREEBSD_TARGET_TRIPLE}")
 set(CMAKE_CXX_COMPILER_TARGET "${FREEBSD_TARGET_TRIPLE}")
 set(CMAKE_ASM_COMPILER_TARGET "${FREEBSD_TARGET_TRIPLE}")
@@ -127,7 +127,7 @@ endif()
 # Prefer static libraries (.a) during dependency discovery on FreeBSD sysroot
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" CACHE STRING "Search only static archives on FreeBSD sysroot" FORCE)
 
-# 5. Search path modes
+# 6. Search path modes
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
