@@ -23,6 +23,11 @@ NZBGet targets **FreeBSD 13.0+** across two CPU architectures:
 | `x86_64` / `amd64` | `amd64` | `x86_64-pc-freebsd13` |
 | `aarch64` / `arm64` | `arm64` | `aarch64-pc-freebsd13` |
 
+The base C library and headers come from a pinned FreeBSD 13.0 sysroot, while the
+C++ runtime is a static libc++/libc++abi/libunwind built from LLVM 19.1.7 sources
+for the FreeBSD 13.0 target. Binaries are statically linked and require no
+libc++ on the target system.
+
 ### CMake Presets
 - Release: `ci-freebsd-x86_64`, `ci-freebsd-aarch64`
 - Debug: `ci-freebsd-debug-x86_64`, `ci-freebsd-debug-aarch64`

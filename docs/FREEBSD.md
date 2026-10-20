@@ -77,17 +77,32 @@ sudo apt-get update
 sudo apt-get install -y clang lld llvm xz-utils curl cmake ninja-build git
 ```
 
-### 3.2 Prepare FreeBSD Sysroot
+### 3.2 Prepare FreeBSD Sysroot and C++ Runtime
 
-Download and extract official FreeBSD base distributions (`base.txz`):
+The cross toolchain consists of two parts:
+
+1. **FreeBSD 13.0 base sysroot** — `libc`, `libthr`, `libm` and OS headers. It is
+   taken from the pinned, SHA-256 verified assets of the
+   [nzbgetcom/build-files](https://github.com/nzbgetcom/build-files) repository,
+   because the official FreeBSD 13.x distributions are no longer downloadable
+   (FreeBSD 13 is EOL and `archive.freebsd.org` is unreachable).
+2. **Static libc++/libc++abi/libunwind** — built from the pinned llvm-project
+   sources for the `*-pc-freebsd13` target. The base FreeBSD 13.0 sysroot ships
+   libc++ 11, which has no `<coroutine>`, `<format>`, `<span>` or `<concepts>`.
+
+Both parts are produced by the same script (requires `clang`, `clang++`,
+`llvm-ar`, `llvm-ranlib`, `llvm-nm`, CMake and Ninja):
 
 ```bash
-# x86_64 sysroot (build/toolchains/freebsd/sysroot)
+# x86_64 (build/toolchains/freebsd/sysroot + libcxx)
 bash toolchains/freebsd/build-toolchain.sh amd64 13.0
 
-# aarch64 sysroot (build/toolchains/freebsd/sysroot-aarch64)
+# aarch64 (build/toolchains/freebsd/sysroot-aarch64 + libcxx-aarch64)
 bash toolchains/freebsd/build-toolchain.sh arm64 13.0
 ```
+
+The target stays FreeBSD 13.0: the resulting binaries use the FreeBSD 13.0 C
+library and only the C++ runtime is taken from LLVM.
 
 ### 3.3 Build with CMake Presets
 
