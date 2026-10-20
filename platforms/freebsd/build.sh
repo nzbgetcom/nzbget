@@ -196,15 +196,53 @@ freebsd_sysroot_dir() {
 	echo "$PREFIX/$LEGACY_NAME"
 }
 
+# Cached and local builds keep the runtime in the repo tree: libcxx / libcxx-aarch64.
+freebsd_libcxx_dir() {
+	local ARCH=$1
+	local NAME="libcxx"
+	if [ "$ARCH" = "aarch64" ]; then
+		NAME="libcxx-aarch64"
+	fi
+	local CACHED="$NZBGET_ROOT/build/toolchains/freebsd/$NAME"
+	if [ -d "$CACHED/include/c++/v1" ]; then
+		echo "$CACHED"
+		return
+	fi
+	local PREFIX="${FREEBSD_PREFIX:-$NZBGET_ROOT/build/toolchains/freebsd}"
+	echo "$PREFIX/$NAME"
+}
+
+# The builder image sysroot uses sysroot-<arch>. build-toolchain.sh looks for
+# sysroot (x86_64) or sysroot-aarch64, then compiles libc++ beside it.
+stage_image_sysroot() {
+	local ARCH=$1
+	local PREFIX="${FREEBSD_PREFIX:-}"
+	[ -n "$PREFIX" ] || return 0
+	local SRC="$PREFIX/sysroot-$ARCH"
+	local DEST_NAME="sysroot"
+	if [ "$ARCH" = "aarch64" ]; then
+		DEST_NAME="sysroot-aarch64"
+	fi
+	local DEST="$NZBGET_ROOT/build/toolchains/freebsd/$DEST_NAME"
+	if [ -e "$DEST" ] || [ ! -d "$SRC/usr/include" ]; then
+		return 0
+	fi
+	mkdir -p "$NZBGET_ROOT/build/toolchains/freebsd"
+	ln -sfn "$SRC" "$DEST"
+}
+
 ensure_toolchain() {
 	local ARCH=$1
-	local SYSROOT_DIR
+	local SYSROOT_DIR LIBCXX_DIR
 	SYSROOT_DIR=$(freebsd_sysroot_dir "$ARCH")
+	LIBCXX_DIR=$(freebsd_libcxx_dir "$ARCH")
 
-	if [ ! -d "$SYSROOT_DIR/usr/include" ]; then
-		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
-		bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
+	if [ -d "$SYSROOT_DIR/usr/include" ] && [ -d "$LIBCXX_DIR/include/c++/v1" ]; then
+		return 0
 	fi
+	echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
+	stage_image_sysroot "$ARCH"
+	env -u FREEBSD_PREFIX bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
 }
 
 build_arch() {
@@ -213,14 +251,15 @@ build_arch() {
 	SHORT=$(short_arch "$ARCH")
 	local PRESET="${PRESET_PREFIX}-${SHORT}"
 	local BUILD_DIR="$NZBGET_ROOT/build/$PRESET"
-	local SYSROOT_DIR
+	local SYSROOT_DIR LIBCXX_DIR
 	SYSROOT_DIR=$(freebsd_sysroot_dir "$SHORT")
 
 	echo "--- Building binary for $ARCH ($CONFIG, preset: $PRESET) ---"
 	ensure_toolchain "$SHORT"
+	LIBCXX_DIR=$(freebsd_libcxx_dir "$SHORT")
 	mkdir -p "$BUILD_DIR"
 
-	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" -DFREEBSD_SYSROOT="$SYSROOT_DIR" -DVERSION_SUFFIX="$VERSION_SUFFIX"
+	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" -DFREEBSD_SYSROOT="$SYSROOT_DIR" -DFREEBSD_LIBCXX="$LIBCXX_DIR" -DVERSION_SUFFIX="$VERSION_SUFFIX"
 	cmake --build --preset "$PRESET" 2>&1 | tee "$BUILD_DIR/build.log"
 
 	if [ ! -f "$BUILD_DIR/nzbget" ]; then
