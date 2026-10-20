@@ -118,7 +118,12 @@ set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL "Disable C++20 module scanning" FO
 # Static libc++ headers/runtime built for the FreeBSD 13.0 target & static LLD linkage.
 # -nostdinc++ keeps the ancient libc++ 11 headers of the base sysroot out of the build.
 set(CMAKE_CXX_FLAGS_INIT "-nostdinc++ -isystem ${FREEBSD_LIBCXX}/include/c++/v1")
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld -static -L${FREEBSD_LIBCXX}/lib -lc++ -lc++abi -lunwind -lclang_rt.builtins")
+# libunwind.a is linked as a whole archive on purpose: FreeBSD's static libthr.a
+# references _Unwind_ForcedUnwind and _Unwind_GetCFA as *weak* symbols, and a weak
+# reference never extracts a lazy archive member. Without this, _Unwind_GetCFA
+# resolves to NULL while _Unwind_ForcedUnwind does not, so every thread crashes on
+# exit when libthr's thread_unwind_stop() calls the NULL pointer.
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld -static -L${FREEBSD_LIBCXX}/lib -lc++ -lc++abi -Wl,--whole-archive ${FREEBSD_LIBCXX}/lib/libunwind.a -Wl,--no-whole-archive -lclang_rt.builtins")
 
 if(DEFINED CMAKE_EXE_LINKER_FLAGS AND NOT CMAKE_EXE_LINKER_FLAGS MATCHES "-fuse-ld=")
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld" CACHE STRING "Linker flags" FORCE)
