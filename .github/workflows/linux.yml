@@ -5,6 +5,7 @@ on:
   workflow_dispatch:
 
 env:
+  MUSL_BUILDER_VERSION: "1.0"
   BUILD_ARCHS: "x86_64 aarch64 armhf armel i686 ppc6xx riscv64"
   BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
@@ -17,6 +18,7 @@ jobs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
       build_date: ${{ steps.matrix-vars.outputs.BUILD_DATE }}
+      musl_builder_version: ${{ env.MUSL_BUILDER_VERSION }}
     steps:
 
     - name: Calculate matrix variables
@@ -30,6 +32,8 @@ jobs:
     needs: [prepare-build-matrix]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    container:
+      image: ghcr.io/nzbgetcom/nzbget-musl-builder:linux-${{ matrix.arch }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}
     env:
       BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
     strategy:
@@ -42,31 +46,6 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v6
-
-    - name: Install build prerequisites
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential cmake ninja-build curl git
-
-    - name: Restore Musl cross toolchain
-      id: cache-toolchain
-      uses: actions/cache@v4
-      with:
-        path: build/toolchains/linux/${{ matrix.arch }}
-        key: linux-musl-toolchain-${{ matrix.arch }}-v11.0
-
-    - name: Download Musl cross toolchain on cache miss
-      if: steps.cache-toolchain.outputs.cache-hit != 'true'
-      run: |
-        TOOLCHAIN_URL="https://github.com/nzbgetcom/build-files/releases/download/v11.0"
-        ARCHIVE="linux-musl-toolchain-${{ matrix.arch }}.tar.gz"
-        mkdir -p build/toolchains/linux
-        cd build/toolchains/linux
-        curl -fsSL -O "${TOOLCHAIN_URL}/${ARCHIVE}"
-        curl -fsSL -O "${TOOLCHAIN_URL}/${ARCHIVE}.sha256"
-        sha256sum -c "${ARCHIVE}.sha256"
-        tar -xzf "${ARCHIVE}"
-        rm -f "${ARCHIVE}" "${ARCHIVE}.sha256"
 
     - name: Cache unpackers and certificates
       uses: actions/cache@v4

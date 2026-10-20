@@ -183,9 +183,28 @@ download_cacert() {
 	fi
 }
 
-# Ensure LLVM 19.1.7, Bionic sysroot, compiler-rt and static libc++ are available
+# Ensure LLVM 19.1.7, Bionic sysroot, compiler-rt and static libc++ are available.
+# The musl-builder image installs llvm/, sysroot/ and libcxx/ under NZBGET_ANDROID_TOOLCHAIN_DIR.
+# Local builds still use android-llvm/, android-sysroot/ and android-libcxx/.
+toolchain_ready() {
+	local ARCH=$1
+	local DIR="${NZBGET_ANDROID_TOOLCHAIN_DIR:-$NZBGET_ROOT/build/toolchains}"
+	local LLVM="$DIR/llvm/bin/clang"
+	local SYSROOT="$DIR/sysroot/usr/include"
+	local LIBCXX="$DIR/libcxx/$ARCH/lib/libc++.a"
+	if [ ! -x "$LLVM" ]; then
+		LLVM="$DIR/android-llvm/bin/clang"
+		SYSROOT="$DIR/android-sysroot/usr/include"
+		LIBCXX="$DIR/android-libcxx/$ARCH/lib/libc++.a"
+	fi
+	[ -x "$LLVM" ] && [ -d "$SYSROOT" ] && [ -f "$LIBCXX" ]
+}
+
 ensure_toolchain() {
 	local ARCH=$1
+	if toolchain_ready "$ARCH"; then
+		return
+	fi
 	ANDROID_API_LEVEL="$API_LEVEL" bash "$NZBGET_ROOT/toolchains/android/build-toolchain.sh" "$ARCH"
 }
 

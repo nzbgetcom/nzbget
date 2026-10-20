@@ -180,13 +180,26 @@ download_cacert() {
 	fi
 }
 
+# Image layout: $FREEBSD_PREFIX/sysroot-<arch>. Older trees use sysroot / sysroot-aarch64.
+freebsd_sysroot_dir() {
+	local ARCH=$1
+	local PREFIX="${FREEBSD_PREFIX:-$NZBGET_ROOT/build/toolchains/freebsd}"
+	local IMAGE_DIR="$PREFIX/sysroot-$ARCH"
+	if [ -d "$IMAGE_DIR/usr/include" ]; then
+		echo "$IMAGE_DIR"
+		return
+	fi
+	local LEGACY_NAME="sysroot"
+	if [ "$ARCH" = "aarch64" ]; then
+		LEGACY_NAME="sysroot-aarch64"
+	fi
+	echo "$PREFIX/$LEGACY_NAME"
+}
+
 ensure_toolchain() {
 	local ARCH=$1
-	local SYSROOT_NAME="sysroot"
-	if [ "$ARCH" = "aarch64" ]; then
-		SYSROOT_NAME="sysroot-aarch64"
-	fi
-	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
+	local SYSROOT_DIR
+	SYSROOT_DIR=$(freebsd_sysroot_dir "$ARCH")
 
 	if [ ! -d "$SYSROOT_DIR/usr/include" ]; then
 		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
@@ -200,11 +213,8 @@ build_arch() {
 	SHORT=$(short_arch "$ARCH")
 	local PRESET="${PRESET_PREFIX}-${SHORT}"
 	local BUILD_DIR="$NZBGET_ROOT/build/$PRESET"
-	local SYSROOT_NAME="sysroot"
-	if [ "$SHORT" = "aarch64" ]; then
-		SYSROOT_NAME="sysroot-aarch64"
-	fi
-	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
+	local SYSROOT_DIR
+	SYSROOT_DIR=$(freebsd_sysroot_dir "$SHORT")
 
 	echo "--- Building binary for $ARCH ($CONFIG, preset: $PRESET) ---"
 	ensure_toolchain "$SHORT"

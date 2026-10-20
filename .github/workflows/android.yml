@@ -5,44 +5,12 @@ on:
   workflow_dispatch:
 
 env:
+  MUSL_BUILDER_VERSION: "1.0"
   BUILD_ARCHS: "arm64 armv7 x86_64 x86"
   BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
 
 jobs:
-  # 1. Prepare the hermetic toolchain (LLVM 19.1.7, Bionic sysroot, compiler-rt, static libc++) and cache it
-  build-toolchain:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    steps:
-
-    - name: Checkout
-      uses: actions/checkout@v6
-
-    - name: Cache Android toolchain
-      id: cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          build/toolchains/android-llvm
-          build/toolchains/android-sysroot
-          build/toolchains/android-libcxx
-          build/toolchains/android-api-level
-        # Exact match only: restore-keys is intentionally omitted to avoid restoring
-        # stale compiled libraries when the toolchain script changes.
-        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/android/build-toolchain.sh') }}
-
-    - name: Install build tools
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build cmake curl xz-utils unzip
-
-    - name: Prepare Android toolchain
-      if: steps.cache.outputs.cache-hit != 'true'
-      run: |
-        bash toolchains/android/build-toolchain.sh all
-
   prepare-build-matrix:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -50,6 +18,7 @@ jobs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
       build_date: ${{ steps.matrix-vars.outputs.BUILD_DATE }}
+      musl_builder_version: ${{ env.MUSL_BUILDER_VERSION }}
     steps:
 
     - name: Calculate matrix variables
@@ -59,11 +28,12 @@ jobs:
         echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
         echo "BUILD_DATE=$(date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
 
-  # 2. Build Android binaries for each architecture and build type
   build-bin:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    needs: [build-toolchain, prepare-build-matrix]
+    needs: [prepare-build-matrix]
+    container:
+      image: ghcr.io/nzbgetcom/nzbget-musl-builder:android-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}
     env:
       BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
     strategy:
@@ -77,17 +47,6 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Restore Android toolchain
-      uses: actions/cache/restore@v4
-      with:
-        path: |
-          build/toolchains/android-llvm
-          build/toolchains/android-sysroot
-          build/toolchains/android-libcxx
-          build/toolchains/android-api-level
-        key: android-toolchain-llvm19.1.7-${{ hashFiles('toolchains/android/build-toolchain.sh') }}
-        fail-on-cache-miss: true
-
     - name: Cache FetchContent dependencies
       uses: actions/cache@v4
       with:
@@ -95,11 +54,6 @@ jobs:
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled binaries when toolchains, flags, or dependency configurations change.
         key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android/android-llvm.cmake', 'toolchains/android/build-toolchain.sh') }}
-
-    - name: Install build tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build cmake curl
 
     - name: Build & Package ${{ matrix.arch }} / ${{ matrix.type }}
       run: |
@@ -120,7 +74,6 @@ jobs:
         path: build/dist/*.tar.gz
         retention-days: 5
 
-  # 3. Combine per-architecture packages into a single multi-arch installer
   build-installer:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

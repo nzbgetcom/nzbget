@@ -39,7 +39,14 @@ if(NOT DEFINED NZBGET_ANDROID_TOOLCHAIN_DIR OR NZBGET_ANDROID_TOOLCHAIN_DIR STRE
 endif()
 
 # 2. Architecture & API level configuration (Synchronized with toolchains/setup-android-toolchain.sh)
-set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx/android-api-level")
+# Image layout: llvm/, sysroot/, libcxx/, api-level. Local builds still use the android-* names.
+set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/libcxx/api-level")
+if(NOT EXISTS "${_API_LEVEL_FILE}")
+	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/api-level")
+endif()
+if(NOT EXISTS "${_API_LEVEL_FILE}")
+	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx/android-api-level")
+endif()
 if(NOT EXISTS "${_API_LEVEL_FILE}")
 	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-api-level")
 endif()
@@ -102,7 +109,10 @@ set(ANDROID_TARGET_FULL "${ANDROID_TARGET_TRIPLE}${ANDROID_API_LEVEL}")
 
 # 3. Hermetic LLVM Clang/LLD 19.1.7 prepared by toolchains/setup-android-toolchain.sh
 
-set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-llvm/bin")
+set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/llvm/bin")
+if(NOT EXISTS "${_LLVM_BIN}/clang" OR NOT EXISTS "${_LLVM_BIN}/ld.lld")
+	set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-llvm/bin")
+endif()
 if(NOT EXISTS "${_LLVM_BIN}/clang" OR NOT EXISTS "${_LLVM_BIN}/ld.lld")
 	message(FATAL_ERROR
 		"Android LLVM toolchain not found in ${_LLVM_BIN}. "
@@ -118,7 +128,10 @@ set(CMAKE_STRIP "${_LLVM_BIN}/llvm-strip" CACHE FILEPATH "Strip" FORCE)
 set(CMAKE_LINKER "${_LLVM_BIN}/ld.lld" CACHE FILEPATH "Linker" FORCE)
 
 # 3. Bionic API 21 sysroot
-set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-sysroot")
+set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/sysroot")
+if(NOT EXISTS "${ANDROID_SYSROOT}/usr/include")
+	set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-sysroot")
+endif()
 if(NOT EXISTS "${ANDROID_SYSROOT}/usr/include")
 	message(FATAL_ERROR
 		"Android sysroot not found in ${ANDROID_SYSROOT}. "
@@ -156,7 +169,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Flags used by the C++ com
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}" CACHE STRING "Flags used by the ASM compiler" FORCE)
 
 # 5. Isolated static libc++ runtime
-set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx")
+set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/libcxx")
+if(NOT IS_DIRECTORY "${NZBGET_STATIC_LIBCXX}/include/c++/v1")
+	set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx")
+endif()
 set(_LIBCXX_ARCH_LIB "${NZBGET_STATIC_LIBCXX}/${ANDROID_ARCH}/lib")
 if(NOT EXISTS "${_LIBCXX_ARCH_LIB}/libc++.a" OR NOT IS_DIRECTORY "${NZBGET_STATIC_LIBCXX}/include/c++/v1")
 	message(FATAL_ERROR
