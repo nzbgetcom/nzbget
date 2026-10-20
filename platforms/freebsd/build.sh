@@ -183,12 +183,15 @@ download_cacert() {
 ensure_toolchain() {
 	local ARCH=$1
 	local SYSROOT_NAME="sysroot"
+	local LIBCXX_NAME="libcxx"
 	if [ "$ARCH" = "aarch64" ]; then
 		SYSROOT_NAME="sysroot-aarch64"
+		LIBCXX_NAME="libcxx-aarch64"
 	fi
 	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
+	local LIBCXX_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$LIBCXX_NAME"
 
-	if [ ! -d "$SYSROOT_DIR/usr/include" ]; then
+	if [ ! -d "$SYSROOT_DIR/usr/include" ] || [ ! -d "$LIBCXX_DIR/include/c++/v1" ]; then
 		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
 		bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
 	fi

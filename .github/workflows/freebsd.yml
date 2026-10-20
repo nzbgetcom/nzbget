@@ -45,11 +45,12 @@ jobs:
         path: build/toolchains/freebsd
         key: freebsd-sysroot-${{ matrix.arch }}-${{ env.FREEBSD_RELEASE }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
 
-    - name: Build FreeBSD sysroot
+    - name: Build FreeBSD sysroot and static libc++
       if: steps.cache-sysroot.outputs.cache-hit != 'true'
       run: |
         sudo apt-get update
-        sudo apt-get install -y xz-utils curl
+        sudo apt-get install -y clang-19 lld-19 llvm-19 ninja-build cmake xz-utils curl
+        echo "/usr/lib/llvm-19/bin" >> "$GITHUB_PATH"
         bash toolchains/freebsd/build-toolchain.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
 
   build-bin:
