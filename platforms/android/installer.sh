@@ -273,19 +273,42 @@ Unpack()
     ) || Error "Unpacking failed."
 }
 
+# Paths the Android app expects. LockFile must stay ${AppDir}/nzbget.lock
+# or the app keeps "Show Web-Interface" disabled.
+ConfigureAndroidPaths()
+{
+    Info "  Setting data directory (MainDir=/sdcard/data/nzbget)"
+    sed 's:^MainDir=.*:MainDir=/sdcard/data/nzbget:' -i nzbget.conf
+    Info "  Setting script directory (ScriptDir=/sdcard/data/nzbget/scripts)"
+    sed 's:^ScriptDir=.*:ScriptDir=/sdcard/data/nzbget/scripts:' -i nzbget.conf
+    Info "  Setting lock file (LockFile=\${AppDir}/nzbget.lock)"
+    sed 's:^LockFile=.*:LockFile=${AppDir}/nzbget.lock:' -i nzbget.conf
+}
+
 ConfigureAndroid()
 {
+    ConfigureAndroidPaths
+
     # Adjusting config file to current system memory on Android
     Info "  Activating article cache (ArticleCache=100)"
-    sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf 2>/dev/null || sed 's:^ArticleCache=.*:ArticleCache=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf
     Info "  Increasing write buffer (WriteBuffer=1024)"
-    sed 's:^WriteBuffer=.*:WriteBuffer=1024:' -i nzbget.conf 2>/dev/null || sed 's:^WriteBuffer=.*:WriteBuffer=1024:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    sed 's:^WriteBuffer=.*:WriteBuffer=1024:' -i nzbget.conf
     Info "  Increasing par repair buffer (ParBuffer=100)"
-    sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf 2>/dev/null || sed 's:^ParBuffer=.*:ParBuffer=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf
     Info "  Activating direct rename (DirectRename=yes)"
-    sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectRename=.*:DirectRename=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf
     Info "  Activating direct unpack (DirectUnpack=yes)"
-    sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectUnpack=.*:DirectUnpack=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf
+}
+
+# True when nzbget.conf is still the package template, before the app
+# has rewritten MainDir and LockFile. A failed install can leave this behind.
+ConfIsTemplate()
+{
+    maindir=`sed -n 's/^MainDir=//p' nzbget.conf`
+    lockfile=`sed -n 's/^LockFile=//p' nzbget.conf`
+    test "$maindir" = '${AppDir}/downloads' && test "$lockfile" = '${MainDir}/nzbget.lock'
 }
 
 Configure()
@@ -297,6 +320,8 @@ Configure()
         cp ./webui/nzbget.conf.template nzbget.conf
         ConfigureAndroid
         QUICKHELP=yes
+    elif ConfIsTemplate; then
+        ConfigureAndroidPaths
     fi
 }
 
