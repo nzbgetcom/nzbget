@@ -1,6 +1,6 @@
 include(FetchContent)
 
-set(RAPIDYENC_VERSION_TAG "v1.1.1-20261006")
+set(RAPIDYENC_VERSION_TAG "v1.1.1-20261021")
 
 # Set CMake options for rapidyenc subproject (must be set before FetchContent_MakeAvailable)
 set(DISABLE_SHARED ON CACHE BOOL "" FORCE)
