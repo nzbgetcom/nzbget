@@ -90,6 +90,10 @@ ROOTDIR="${FREEBSD_PREFIX:-$NZBGET_ROOT/build/toolchains/freebsd}"
 SRCDIR="${SRCDIR:-$NZBGET_ROOT/build/dl}"
 OBJDIR="${OBJDIR:-$NZBGET_ROOT/build/obj}"
 SYSROOT="$ROOTDIR/$SYSROOT_NAME"
+# Builder image names the x86_64 tree sysroot-x86_64. Local installs use "sysroot".
+if [ ! -d "$SYSROOT/usr/include" ] && [ -d "$ROOTDIR/sysroot-x86_64/usr/include" ]; then
+    SYSROOT="$ROOTDIR/sysroot-x86_64"
+fi
 LIBCXX_DIR="$ROOTDIR/$LIBCXX_NAME"
 mkdir -p "$ROOTDIR" "$SRCDIR" "$OBJDIR"
 

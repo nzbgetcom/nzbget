@@ -180,69 +180,32 @@ download_cacert() {
 	fi
 }
 
-# Image layout: $FREEBSD_PREFIX/sysroot-<arch>. Older trees use sysroot / sysroot-aarch64.
-freebsd_sysroot_dir() {
-	local ARCH=$1
-	local PREFIX="${FREEBSD_PREFIX:-$NZBGET_ROOT/build/toolchains/freebsd}"
-	local IMAGE_DIR="$PREFIX/sysroot-$ARCH"
-	if [ -d "$IMAGE_DIR/usr/include" ]; then
-		echo "$IMAGE_DIR"
-		return
-	fi
-	local LEGACY_NAME="sysroot"
-	if [ "$ARCH" = "aarch64" ]; then
-		LEGACY_NAME="sysroot-aarch64"
-	fi
-	echo "$PREFIX/$LEGACY_NAME"
-}
-
-# Cached and local builds keep the runtime in the repo tree: libcxx / libcxx-aarch64.
-freebsd_libcxx_dir() {
-	local ARCH=$1
-	local NAME="libcxx"
-	if [ "$ARCH" = "aarch64" ]; then
-		NAME="libcxx-aarch64"
-	fi
-	local CACHED="$NZBGET_ROOT/build/toolchains/freebsd/$NAME"
-	if [ -d "$CACHED/include/c++/v1" ]; then
-		echo "$CACHED"
-		return
-	fi
-	local PREFIX="${FREEBSD_PREFIX:-$NZBGET_ROOT/build/toolchains/freebsd}"
-	echo "$PREFIX/$NAME"
-}
-
-# The builder image sysroot uses sysroot-<arch>. build-toolchain.sh looks for
-# sysroot (x86_64) or sysroot-aarch64, then compiles libc++ beside it.
-stage_image_sysroot() {
-	local ARCH=$1
-	local PREFIX="${FREEBSD_PREFIX:-}"
-	[ -n "$PREFIX" ] || return 0
-	local SRC="$PREFIX/sysroot-$ARCH"
-	local DEST_NAME="sysroot"
-	if [ "$ARCH" = "aarch64" ]; then
-		DEST_NAME="sysroot-aarch64"
-	fi
-	local DEST="$NZBGET_ROOT/build/toolchains/freebsd/$DEST_NAME"
-	if [ -e "$DEST" ] || [ ! -d "$SRC/usr/include" ]; then
-		return 0
-	fi
-	mkdir -p "$NZBGET_ROOT/build/toolchains/freebsd"
-	ln -sfn "$SRC" "$DEST"
-}
-
 ensure_toolchain() {
 	local ARCH=$1
-	local SYSROOT_DIR LIBCXX_DIR
-	SYSROOT_DIR=$(freebsd_sysroot_dir "$ARCH")
-	LIBCXX_DIR=$(freebsd_libcxx_dir "$ARCH")
-
-	if [ -d "$SYSROOT_DIR/usr/include" ] && [ -d "$LIBCXX_DIR/include/c++/v1" ]; then
-		return 0
+	local SYSROOT_NAME="sysroot"
+	local LIBCXX_NAME="libcxx"
+	if [ "$ARCH" = "aarch64" ]; then
+		SYSROOT_NAME="sysroot-aarch64"
+		LIBCXX_NAME="libcxx-aarch64"
 	fi
-	echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
-	stage_image_sysroot "$ARCH"
-	env -u FREEBSD_PREFIX bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
+	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
+	local LIBCXX_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$LIBCXX_NAME"
+	# Builder image keeps the same names under $FREEBSD_PREFIX, except x86_64
+	# sysroot is sysroot-x86_64. libc++ sits next to that sysroot.
+	if [ -n "${FREEBSD_PREFIX:-}" ]; then
+		local IMAGE_SYSROOT="$FREEBSD_PREFIX/$SYSROOT_NAME"
+		if [ ! -d "$IMAGE_SYSROOT/usr/include" ] && [ -d "$FREEBSD_PREFIX/sysroot-x86_64/usr/include" ]; then
+			IMAGE_SYSROOT="$FREEBSD_PREFIX/sysroot-x86_64"
+		fi
+		if [ -d "$IMAGE_SYSROOT/usr/include" ] && [ -d "$FREEBSD_PREFIX/$LIBCXX_NAME/include/c++/v1" ]; then
+			return 0
+		fi
+	fi
+
+	if [ ! -d "$SYSROOT_DIR/usr/include" ] || [ ! -d "$LIBCXX_DIR/include/c++/v1" ]; then
+		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
+		bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
+	fi
 }
 
 build_arch() {
@@ -251,15 +214,23 @@ build_arch() {
 	SHORT=$(short_arch "$ARCH")
 	local PRESET="${PRESET_PREFIX}-${SHORT}"
 	local BUILD_DIR="$NZBGET_ROOT/build/$PRESET"
-	local SYSROOT_DIR LIBCXX_DIR
-	SYSROOT_DIR=$(freebsd_sysroot_dir "$SHORT")
+	local SYSROOT_NAME="sysroot"
+	if [ "$SHORT" = "aarch64" ]; then
+		SYSROOT_NAME="sysroot-aarch64"
+	fi
+	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
 
 	echo "--- Building binary for $ARCH ($CONFIG, preset: $PRESET) ---"
 	ensure_toolchain "$SHORT"
-	LIBCXX_DIR=$(freebsd_libcxx_dir "$SHORT")
 	mkdir -p "$BUILD_DIR"
 
-	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" -DFREEBSD_SYSROOT="$SYSROOT_DIR" -DFREEBSD_LIBCXX="$LIBCXX_DIR" -DVERSION_SUFFIX="$VERSION_SUFFIX"
+	# Pass the repo sysroot only when it exists. Inside the builder image,
+	# freebsd-llvm.cmake finds $FREEBSD_PREFIX instead.
+	local SYSROOT_ARG=()
+	if [ -d "$SYSROOT_DIR/usr/include" ]; then
+		SYSROOT_ARG=(-DFREEBSD_SYSROOT="$SYSROOT_DIR")
+	fi
+	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" "${SYSROOT_ARG[@]}" -DVERSION_SUFFIX="$VERSION_SUFFIX"
 	cmake --build --preset "$PRESET" 2>&1 | tee "$BUILD_DIR/build.log"
 
 	if [ ! -f "$BUILD_DIR/nzbget" ]; then

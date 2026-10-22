@@ -5,10 +5,10 @@ on:
   workflow_dispatch:
 
 env:
-  MUSL_BUILDER_VERSION: "1.0"
   BUILD_ARCHS: "x86_64 aarch64 armhf armel i686 ppc6xx riscv64"
   BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
+  MUSL_BUILDER_VERSION: "1.0"
 
 jobs:
   prepare-build-matrix:

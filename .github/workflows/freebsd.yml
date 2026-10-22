@@ -5,11 +5,11 @@ on:
   workflow_dispatch:
 
 env:
-  MUSL_BUILDER_VERSION: "1.0"
-  FREEBSD_RELEASE: "13.0"
   BUILD_ARCHS: "x86_64 aarch64"
   BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
+  FREEBSD_RELEASE: "13.0"
+  MUSL_BUILDER_VERSION: "1.0"
 
 jobs:
   prepare-build-matrix:
@@ -48,7 +48,7 @@ jobs:
       id: cache-cxx
       uses: actions/cache@v6
       with:
-        path: build/toolchains/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
+        path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when the runtime script or builder image changes.
         key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
@@ -56,19 +56,6 @@ jobs:
     - name: Build static libc++
       if: steps.cache-cxx.outputs.cache-hit != 'true'
       run: |
-        # The builder image already has the sysroot, Clang, CMake and Ninja.
-        # Stage the sysroot under the name build-toolchain.sh expects so it
-        # builds only the C++ runtime into the cached workspace tree.
-        unset FREEBSD_PREFIX
-        mkdir -p build/toolchains/freebsd
-        case "${{ matrix.arch }}" in
-          x86_64)
-            ln -sfn /opt/nzbget/freebsd/sysroot-x86_64 build/toolchains/freebsd/sysroot
-            ;;
-          aarch64)
-            ln -sfn /opt/nzbget/freebsd/sysroot-aarch64 build/toolchains/freebsd/sysroot-aarch64
-            ;;
-        esac
         bash toolchains/freebsd/build-toolchain.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
 
   build-bin:
@@ -93,7 +80,7 @@ jobs:
     - name: Restore FreeBSD C++ runtime
       uses: actions/cache/restore@v6
       with:
-        path: build/toolchains/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
+        path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
         key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
         fail-on-cache-miss: true
 

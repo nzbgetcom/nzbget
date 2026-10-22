@@ -76,17 +76,7 @@ set(CMAKE_SYSROOT "${FREEBSD_SYSROOT}" CACHE PATH "Sysroot" FORCE)
 # 3. Static C++ runtime detection (built by toolchains/freebsd/build-toolchain.sh)
 if(NOT DEFINED FREEBSD_LIBCXX OR FREEBSD_LIBCXX STREQUAL "")
 	get_filename_component(_FREEBSD_TOOLCHAIN_DIR "${FREEBSD_SYSROOT}" DIRECTORY)
-	set(_FREEBSD_LIBCXX_SIBLING "${_FREEBSD_TOOLCHAIN_DIR}/${LIBCXX_DIR_NAME}")
-	# CI caches the runtime in the repo tree. The image sysroot lives elsewhere,
-	# so the sibling of that sysroot is not where libc++ was built.
-	get_filename_component(_FREEBSD_LIBCXX_CACHED "${CMAKE_CURRENT_LIST_DIR}/../../build/toolchains/freebsd/${LIBCXX_DIR_NAME}" ABSOLUTE)
-	if(EXISTS "${_FREEBSD_LIBCXX_SIBLING}/include/c++/v1" AND EXISTS "${_FREEBSD_LIBCXX_SIBLING}/lib/libc++.a")
-		set(FREEBSD_LIBCXX "${_FREEBSD_LIBCXX_SIBLING}")
-	elseif(EXISTS "${_FREEBSD_LIBCXX_CACHED}/include/c++/v1" AND EXISTS "${_FREEBSD_LIBCXX_CACHED}/lib/libc++.a")
-		set(FREEBSD_LIBCXX "${_FREEBSD_LIBCXX_CACHED}")
-	else()
-		set(FREEBSD_LIBCXX "${_FREEBSD_LIBCXX_SIBLING}")
-	endif()
+	set(FREEBSD_LIBCXX "${_FREEBSD_TOOLCHAIN_DIR}/${LIBCXX_DIR_NAME}")
 endif()
 
 if(NOT EXISTS "${FREEBSD_LIBCXX}/include/c++/v1" OR NOT EXISTS "${FREEBSD_LIBCXX}/lib/libc++.a")
