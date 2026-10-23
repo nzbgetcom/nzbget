@@ -408,16 +408,39 @@
 				oldTR.className = newTR.className;
 				oldTR.fasttableID = newTR.fasttableID;
 
-				for (var j=0, n = 0; j < oldTDs.length; j++, n++)
+				if (oldTDs.length !== newTDs.length)
 				{
-					var oldTD = oldTDs[j];
-					var newTD = newTDs[n];
-					var oldHtml = oldTD.outerHTML;
-					var newHtml = newTD.outerHTML;
-					if (oldHtml !== newHtml)
+					// The number of cells can change between updates (e.g. desktop
+					// and phone layouts of NZBGet tables have different columns).
+					// The cell-by-cell diff below assumes equal counts; on a
+					// mismatch it would read past the end of newTDs. Replace the
+					// whole row content instead.
+					while (oldTR.firstChild)
 					{
-						oldTR.replaceChild(newTD, oldTD);
-						n--;
+						oldTR.removeChild(oldTR.firstChild);
+					}
+					while (newTR.firstChild)
+					{
+						oldTR.appendChild(newTR.firstChild);
+					}
+				}
+				else
+				{
+					for (var j=0, n = 0; j < oldTDs.length; j++, n++)
+					{
+						var oldTD = oldTDs[j];
+						var newTD = newTDs[n];
+						if (!oldTD || !newTD)
+						{
+							break;
+						}
+						var oldHtml = oldTD.outerHTML;
+						var newHtml = newTD.outerHTML;
+						if (oldHtml !== newHtml)
+						{
+							oldTR.replaceChild(newTD, oldTD);
+							n--;
+						}
 					}
 				}
 				i++;

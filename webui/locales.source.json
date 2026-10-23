@@ -1094,6 +1094,10 @@
     "message": "Custom",
     "description": "Label for a custom, user-resettable data volume counter, shown in the statistics dialog."
   },
+  "stat_dialog_reset": {
+    "message": "Reset counter",
+    "description": "Accessible name for the button that resets the custom counter in the statistics dialog."
+  },
   "stat_dialog_reset_on": {
     "message": "reset on $1",
     "description": "Status text showing when a counter was last reset. $1 is a placeholder for the date/time. (e.g. 'Reset in $1' or 'Reset on $1' depending on natural phrasing)."
@@ -1433,6 +1437,22 @@
   "btn_move_down": {
     "message": "Down",
     "description": "Button to move item down"
+  },
+  "btn_row_order_to_top": {
+    "message": "Move to top",
+    "description": "Accessible name for the reorder button that moves an item to the top of the list"
+  },
+  "btn_row_order_up": {
+    "message": "Move up",
+    "description": "Accessible name for the reorder button that moves an item one position up"
+  },
+  "btn_row_order_down": {
+    "message": "Move down",
+    "description": "Accessible name for the reorder button that moves an item one position down"
+  },
+  "btn_row_order_to_bottom": {
+    "message": "Move to bottom",
+    "description": "Accessible name for the reorder button that moves an item to the bottom of the list"
   },
   "btn_preview_feed": {
     "message": "Preview feed",

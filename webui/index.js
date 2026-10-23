@@ -588,47 +588,68 @@ var Frontend = (new function($)
 	}
 	this.alignPopupMenu = alignPopupMenu;
 
+	function hidePopupMenu()
+	{
+		if (lastMenu.length)
+		{
+			lastMenu.hide();
+			lastMenu.removeClass('popup-bottom-sheet');
+			lastMenu = $();
+		}
+		$('html').off('click.PopupMenu');
+	}
+
 	function showPopupMenu(menu, anchor, rect)
 	{
 		var $menu = $(menu);
 		if ($menu.is(':visible'))
 		{
-			$menu.hide();
+			hidePopupMenu();
 			return;
 		}
 
-		lastMenu.hide();
+		hidePopupMenu();
 		lastMenu = $menu;
 
-		$menu.css({
-			left: rect.left + (anchor.indexOf('right') > -1 ? rect.width - $menu.outerWidth() : 0),
-			top: rect.top + (anchor.indexOf('top') > -1 ? - $menu.outerHeight() : rect.height)
-		});
-		$menu.show();
+		// On small screens the anchor can live inside a transformed, scrolled
+		// modal (document offsets become unreliable) and any scroll event used
+		// to close the menu instantly on touch devices. Pin the menu to the
+		// viewport bottom instead (action-sheet style); clicks anywhere close it.
+		var bottomSheet = $(window).width() <= 767;
+		$menu.toggleClass('popup-bottom-sheet', bottomSheet);
+		if (bottomSheet)
+		{
+			$menu.css({ left: '', top: '', right: '', bottom: '' });
+			$menu.show();
+		}
+		else
+		{
+			$menu.css({
+				left: rect.left + (anchor.indexOf('right') > -1 ? rect.width - $menu.outerWidth() : 0),
+				top: rect.top + (anchor.indexOf('top') > -1 ? - $menu.outerHeight() : rect.height)
+			});
+			$menu.show();
 
-		if ($menu.offset().top < $(window).scrollTop())
-		{
-			$menu.css({ top: rect.top + rect.height });
-		}
-		if ($menu.offset().left + $menu.outerWidth() > $(window).width())
-		{
-			$menu.css({ left: $(window).width() - $menu.outerWidth() });
-		}
-		if ($menu.offset().top + $menu.outerHeight() > $(window).height() + $(window).scrollTop())
-		{
-			$menu.css({ top: rect.top - $menu.outerHeight() });
-		}
-		if ($menu.offset().top < $(window).scrollTop())
-		{
-			$menu.css({ top: $(window).scrollTop() });
-		}
-
-		if (UISettings.miniTheme)
-		{
-			alignPopupMenu($menu);
+			// collision detection runs on a visible menu (offset() is 0 otherwise)
+			if ($menu.offset().top < $(window).scrollTop())
+			{
+				$menu.css({ top: rect.top + rect.height });
+			}
+			if ($menu.offset().left + $menu.outerWidth() > $(window).width())
+			{
+				$menu.css({ left: $(window).width() - $menu.outerWidth() });
+			}
+			if ($menu.offset().top + $menu.outerHeight() > $(window).height() + $(window).scrollTop())
+			{
+				$menu.css({ top: rect.top - $menu.outerHeight() });
+			}
+			if ($menu.offset().top < $(window).scrollTop())
+			{
+				$menu.css({ top: $(window).scrollTop() });
+			}
 		}
 
-		$('html').on('click.PopupMenu', function () { $menu.hide(); $('html').off('click.PopupMenu'); });
+		$('html').on('click.PopupMenu', hidePopupMenu);
 	}
 	this.showPopupMenu = showPopupMenu;
 

@@ -424,7 +424,9 @@ var Util = (new function($)
 	this.centerDialog = function(dialog, center)
 	{
 		var $elem = $(dialog);
-		if (center)
+		// On small screens dialogs are centered by CSS (see the max-width: 767px
+		// block in style.css); an inline top would only pin them to the top.
+		if (center && $(window).width() > 767)
 		{
 			var top = ($(window).height() - $elem.outerHeight()) * 0.4;
 			top = top > 0 ? top : 0;
@@ -521,6 +523,23 @@ var Util = (new function($)
 	{
 		return (hi << 32) + lo;
 	}
+
+	// Sprite URL for an icon name; an empty name yields a deliberately blank icon
+	this.iconUrl = function(name)
+	{
+		return 'img/icons.svg#' + (name || '');
+	};
+
+	// Titles shared by the two reorder button blocks (ScriptListDialog, ExtensionManager)
+	this.rowOrderTitles = function()
+	{
+		return {
+			top: I18n.translate('btn_row_order_to_top'),
+			up: I18n.translate('btn_row_order_up'),
+			down: I18n.translate('btn_row_order_down'),
+			bottom: I18n.translate('btn_row_order_to_bottom')
+		};
+	};
 
 }(jQuery));
 
