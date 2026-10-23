@@ -51,12 +51,12 @@ jobs:
         path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled libraries when the runtime script or builder image changes.
-        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
+        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-cxx-runtime.sh') }}
 
     - name: Build static libc++
       if: steps.cache-cxx.outputs.cache-hit != 'true'
       run: |
-        bash toolchains/freebsd/build-toolchain.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
+        bash toolchains/freebsd/build-cxx-runtime.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
 
   build-bin:
     needs: [prepare-build-matrix, build-cxx-runtime]
@@ -81,7 +81,7 @@ jobs:
       uses: actions/cache/restore@v6
       with:
         path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
-        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
+        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-cxx-runtime.sh') }}
         fail-on-cache-miss: true
 
     - name: Cache FetchContent dependencies

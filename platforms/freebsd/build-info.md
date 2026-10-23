@@ -32,23 +32,51 @@ libc++ on the target system.
 - Release: `ci-freebsd-x86_64`, `ci-freebsd-aarch64`
 - Debug: `ci-freebsd-debug-x86_64`, `ci-freebsd-debug-aarch64`
 
+### Toolchain layout
+
+`$FREEBSD_PREFIX` (default `build/toolchains/freebsd`, builder image `/opt/nzbget/freebsd`):
+
+```text
+sysroot/usr/include              x86_64
+sysroot-x86_64/usr/include       x86_64, alternate name
+sysroot-aarch64/usr/include      aarch64
+libcxx/include/c++/v1            x86_64 C++ runtime
+libcxx/lib/libc++.a
+libcxx-aarch64/include/c++/v1    aarch64 C++ runtime
+libcxx-aarch64/lib/libc++.a
+```
+
+The [nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder) images already contain the sysroot. `toolchains/freebsd/build-cxx-runtime.sh` builds the C++ runtime next to it.
+
 ### Building Packages with `build.sh`
+
+One architecture uses its own image. Commands that build both architectures use `all-1.0`.
 
 ```bash
 # Build binary package for x86_64 (release) -> build/dist/*-bin-freebsd-x86_64.tar.gz
-bash platforms/freebsd/build.sh bin x86_64 release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-x86_64-1.0 \
+  bash platforms/freebsd/build.sh bin x86_64 release
 
 # Build debug binary package for aarch64
-bash platforms/freebsd/build.sh bin aarch64 debug
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-aarch64-1.0 \
+  bash platforms/freebsd/build.sh bin aarch64 debug
 
 # Build binary packages for all architectures
-bash platforms/freebsd/build.sh bin all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh bin all-arch release
 
 # Combine existing binary packages into a single multi-arch installer (.run)
-bash platforms/freebsd/build.sh installer all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh installer all-arch release
 
 # Build everything in one go
-bash platforms/freebsd/build.sh all all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh all all-arch release
 ```
 
 Artifacts are written to `build/dist/`:

@@ -20,26 +20,21 @@
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# FreeBSD 13.0 cross toolchain for NZBGet
+# Static FreeBSD C++20 runtime for NZBGet.
 #
-#   1. Base sysroot: FreeBSD 13.0 libc/libthr/libm and OS headers from the
-#      pinned nzbgetcom/build-files release assets (immutable, SHA-256 verified).
-#      The official FreeBSD 13.x distributions are no longer downloadable
-#      (FreeBSD 13 is EOL, archive.freebsd.org is unreachable), so the sysroot
-#      comes from our own verified mirror instead of base.txz.
-#   2. C++ runtime: static libc++/libc++abi/libunwind and compiler-rt builtins
-#      built from the pinned llvm-project sources. The base sysroot ships
-#      libc++ 11, which lacks <coroutine>, <format>, <span> and <concepts>.
+# The FreeBSD 13.0 sysroot (libc, libthr, libm, headers) must already be
+# on disk. That sysroot ships libc++ 11, which lacks <coroutine>,
+# <format>, <span> and <concepts>, so this script builds static
+# libc++/libc++abi/libunwind and compiler-rt builtins from pinned
+# llvm-project sources.
 #
-# Usage: build-toolchain.sh [amd64|arm64|x86_64|aarch64] [version]
+# Usage: build-cxx-runtime.sh [amd64|arm64|x86_64|aarch64] [version]
 #
 # Requires clang/clang++ (override with CC/CXX), llvm-ar, llvm-ranlib, llvm-nm,
-# cmake and ninja in PATH. The runtime is built with the same LLVM version as
-# the clang used by the FreeBSD CI job (LLVM_VERSION below).
+# cmake and ninja in PATH.
 #
-# Output:
-#   build/toolchains/freebsd/sysroot[-aarch64]   base sysroot
-#   build/toolchains/freebsd/libcxx[-aarch64]    static C++ runtime
+# Output (next to the sysroot, under $FREEBSD_PREFIX or build/toolchains/freebsd):
+#   libcxx[-aarch64]    static C++ runtime
 
 SYSROOT_ARCH="${1:-amd64}"
 FREEBSD_VERSION="${2:-13.0}"
@@ -62,16 +57,12 @@ case "$SYSROOT_ARCH" in
         SYSROOT_NAME="sysroot"
         LIBCXX_NAME="libcxx"
         TARGET_TRIPLE="x86_64-pc-freebsd13"
-        SYSROOT_URL="https://github.com/nzbgetcom/build-files/releases/download/v1.0/freebsd-sysroot.tar.gz"
-        SYSROOT_SHA256="7bbf36b593e57f49667c15829f05535a1c6389e25afa7266c61dbe303802c150"
         ;;
     arm64|aarch64)
         SYSROOT_ARCH="arm64"
         SYSROOT_NAME="sysroot-aarch64"
         LIBCXX_NAME="libcxx-aarch64"
         TARGET_TRIPLE="aarch64-pc-freebsd13"
-        SYSROOT_URL="https://github.com/nzbgetcom/build-files/releases/download/v8.0/freebsd-sysroot-aarch64.tar.gz"
-        SYSROOT_SHA256="73a05832dfab487dc38fcdf023c6705f6e764a6933c34fd06ab262ed1a0cc226"
         ;;
     *)
         die "unknown architecture: $SYSROOT_ARCH (expected amd64/x86_64 or arm64/aarch64)"
@@ -79,10 +70,9 @@ case "$SYSROOT_ARCH" in
 esac
 
 if [ "$FREEBSD_VERSION" != "13.0" ]; then
-    die "only the FreeBSD 13.0 base sysroot is pinned and verified (got $FREEBSD_VERSION)"
+    die "only FreeBSD 13.0 is supported (got $FREEBSD_VERSION)"
 fi
 
-# resolve script and repository location
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 NZBGET_ROOT=$(cd "$SCRIPT_DIR/../.." && pwd)
 
@@ -96,6 +86,10 @@ if [ ! -d "$SYSROOT/usr/include" ] && [ -d "$ROOTDIR/sysroot-x86_64/usr/include"
 fi
 LIBCXX_DIR="$ROOTDIR/$LIBCXX_NAME"
 mkdir -p "$ROOTDIR" "$SRCDIR" "$OBJDIR"
+
+if [ ! -d "$SYSROOT/usr/include" ]; then
+    die "FreeBSD sysroot not found. Expected location: $SYSROOT/usr/include"
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
     SHA256_CMD="sha256sum"
@@ -117,7 +111,6 @@ verify_sha256() {
     echo "  SHA-256 checksum verified: $actual"
 }
 
-# Reuse a cached archive after re-verifying it, download and verify it otherwise
 ensure_asset() {
     local url="$1"
     local dest="$2"
@@ -135,32 +128,6 @@ ensure_asset() {
     mv "$dest.part" "$dest"
 }
 
-# 1. FreeBSD base sysroot (libc, libthr, libm, OS headers)
-install_sysroot() {
-    if [ -d "$SYSROOT/usr/include" ] && [ -d "$SYSROOT/lib" ] && [ -d "$SYSROOT/usr/lib" ]; then
-        echo "FreeBSD $FREEBSD_VERSION base sysroot already present ($SYSROOT)"
-        return 0
-    fi
-
-    local asset="$SRCDIR/freebsd-base-$SYSROOT_NAME.tar.gz"
-    ensure_asset "$SYSROOT_URL" "$asset" "$SYSROOT_SHA256"
-
-    local tmp="$ROOTDIR/.$SYSROOT_NAME.tmp"
-    rm -rf "$tmp"
-    mkdir -p "$tmp"
-    trap 'rm -rf "$tmp"' ERR
-    tar -xf "$asset" -C "$tmp" --strip-components=1
-    # the image has a single dangling absolute symlink (FreeBSD test data);
-    # dropping absolute links keeps the sysroot relocatable
-    find "$tmp" -type l -lname '/*' -delete
-    trap - ERR
-
-    rm -rf "$SYSROOT"
-    mv "$tmp" "$SYSROOT"
-    echo "  sysroot: $SYSROOT"
-}
-
-# 2. Static libc++/libc++abi/libunwind and compiler-rt builtins
 build_libcxx() {
     if [ -f "$LIBCXX_DIR/lib/libc++.a" ] && [ -f "$LIBCXX_DIR/lib/libc++abi.a" ] \
         && [ -f "$LIBCXX_DIR/lib/libunwind.a" ] && [ -f "$LIBCXX_DIR/lib/libclang_rt.builtins.a" ] \
@@ -262,7 +229,6 @@ build_libcxx() {
     echo "  libc++: $LIBCXX_DIR (LLVM $LLVM_VERSION, $TARGET_TRIPLE)"
 }
 
-install_sysroot
 build_libcxx
 
 echo "Done."

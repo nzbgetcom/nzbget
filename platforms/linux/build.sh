@@ -186,8 +186,9 @@ ensure_toolchain() {
 	local ARCH=$1
 	local TOOLCHAIN_DIR="${NZBGET_LINUX_TOOLCHAIN_DIR:-$NZBGET_ROOT/build/toolchains/linux}"
 	if [ ! -d "$TOOLCHAIN_DIR/$ARCH/bin" ]; then
-		echo "Musl toolchain for $ARCH missing. Running toolchains/linux/build-toolchain.sh..."
-		bash "$NZBGET_ROOT/toolchains/linux/build-toolchain.sh" "$ARCH"
+		echo "ERROR: Linux toolchain for $ARCH not found."
+		echo "Expected location: $TOOLCHAIN_DIR/$ARCH/bin"
+		exit 1
 	fi
 }
 

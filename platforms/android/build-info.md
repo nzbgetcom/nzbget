@@ -29,26 +29,53 @@ NZBGet targets **Android 5.0+ (API 21 Lollipop)** through modern **Android 15+**
 - Release: `ci-android-<arch>` (LTO OFF, hermetic dependencies from source/cache).
 - Debug: `ci-android-debug-<arch>` (CMAKE_BUILD_TYPE Debug).
 
+### Toolchain layout
+
+`$NZBGET_ANDROID_TOOLCHAIN_DIR` (default `build/toolchains`, builder image `/opt/nzbget/android`):
+
+```text
+llvm/bin/clang
+sysroot/usr/include
+libcxx/<arch>/lib/libc++.a
+libcxx/include/c++/v1
+```
+
+`<arch>` is `arm64`, `armv7`, `x86_64`, or `x86`. The same directory also accepts the legacy names `android-llvm`, `android-sysroot`, and `android-libcxx`.
+
+The [nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder) images already contain this layout.
+
 ### Building Packages with `build.sh`
 
 ```bash
 # Build the 64-bit ARM binary package (default release) -> build/dist/*-bin-android-aarch64.tar.gz
-bash platforms/android/build.sh bin arm64
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin arm64
 
 # Build debug binary package for arm64
-bash platforms/android/build.sh bin arm64 debug
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin arm64 debug
 
 # Build binary packages for all 4 architectures
-bash platforms/android/build.sh bin all-arch
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin all-arch
 
 # Combine existing binary packages into a single multi-arch installer
-bash platforms/android/build.sh installer all-arch
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh installer all-arch
 
 # Build installer for debug configuration
-bash platforms/android/build.sh installer all-arch debug
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh installer all-arch debug
 
 # Build everything (binaries + installer) for the listed architectures, as a testing prerelease
-bash platforms/android/build.sh all arm64 armv7 testing
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh all arm64 armv7 testing
 ```
 
 Artifacts are written to `build/dist/`:

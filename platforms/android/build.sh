@@ -205,7 +205,10 @@ ensure_toolchain() {
 	if toolchain_ready "$ARCH"; then
 		return
 	fi
-	ANDROID_API_LEVEL="$API_LEVEL" bash "$NZBGET_ROOT/toolchains/android/build-toolchain.sh" "$ARCH"
+	local DIR="${NZBGET_ANDROID_TOOLCHAIN_DIR:-$NZBGET_ROOT/build/toolchains}"
+	echo "ERROR: Android toolchain for $ARCH not found."
+	echo "Expected locations: $DIR/llvm | $DIR/android-llvm, $DIR/sysroot | $DIR/android-sysroot, $DIR/libcxx/$ARCH | $DIR/android-libcxx/$ARCH"
+	exit 1
 }
 
 # Download a nzbgetcom unpacker release asset and copy the requested files

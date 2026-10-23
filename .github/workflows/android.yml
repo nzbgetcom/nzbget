@@ -53,7 +53,7 @@ jobs:
         path: ${{ github.workspace }}/build/ci-android${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring
         # stale compiled binaries when toolchains, flags, or dependency configurations change.
-        key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android/android-llvm.cmake', 'toolchains/android/build-toolchain.sh') }}
+        key: deps-android-${{ matrix.arch }}-${{ matrix.type }}-llvm19.1.7-api21-${{ hashFiles('cmake/*.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'toolchains/android/android-llvm.cmake') }}
 
     - name: Build & Package ${{ matrix.arch }} / ${{ matrix.type }}
       run: |

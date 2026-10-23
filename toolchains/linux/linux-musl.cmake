@@ -3,7 +3,8 @@
 # Universal hermetic CMake toolchain for cross-compiling NZBGet for Linux (musl libc)
 # across 7 architectures: x86_64, aarch64, armhf, armel, i686, ppc6xx, riscv64.
 #
-# Toolchains prepared by toolchains/linux/build-toolchain.sh (musl-cross-make with GCC 14.3.0 + musl 1.2.6).
+# Compilers are taken from NZBGET_LINUX_TOOLCHAIN_DIR/<arch>/bin
+# (default: build/toolchains/linux). GCC 14.3.0 + musl 1.2.6.
 #
 # Usage:
 #   cmake --preset ci-linux-x86_64
@@ -140,12 +141,11 @@ if(NOT _NZBGET_PREFIX)
 		string(REGEX REPLACE "-gcc$" "" _NZBGET_PREFIX "${_PATH_GCC}")
 	else()
 		message(FATAL_ERROR
-			"Musl cross toolchain not found for target '${LINUX_TARGET_TRIPLE}'.\n"
-			"Checked candidate paths:\n"
+			"Linux toolchain for '${LINUX_ARCH}' not found.\n"
+			"Expected location:\n"
 			"  ${NZBGET_LINUX_TOOLCHAIN_DIR}/${LINUX_ARCH}/bin/${LINUX_TARGET_TRIPLE}-gcc\n"
 			"  ${NZBGET_LINUX_TOOLCHAIN_DIR}/${LINUX_TARGET_TRIPLE}/bin/${LINUX_TARGET_TRIPLE}-gcc\n"
-			"  /opt/cross/${LINUX_TARGET_TRIPLE}/bin/${LINUX_TARGET_TRIPLE}-gcc\n"
-			"Please run 'bash toolchains/linux/build-toolchain.sh ${LINUX_ARCH}' first.")
+			"  /opt/cross/${LINUX_TARGET_TRIPLE}/bin/${LINUX_TARGET_TRIPLE}-gcc")
 	endif()
 endif()
 

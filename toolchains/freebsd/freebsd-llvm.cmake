@@ -67,13 +67,13 @@ endif()
 
 if(NOT EXISTS "${FREEBSD_SYSROOT}/usr/include")
 	message(FATAL_ERROR
-		"FreeBSD sysroot not found in '${FREEBSD_SYSROOT}'. "
-		"Run 'bash toolchains/freebsd/build-toolchain.sh ${FREEBSD_ARCH}' first.")
+		"FreeBSD sysroot not found.\n"
+		"Expected location: ${FREEBSD_SYSROOT}/usr/include")
 endif()
 
 set(CMAKE_SYSROOT "${FREEBSD_SYSROOT}" CACHE PATH "Sysroot" FORCE)
 
-# 3. Static C++ runtime detection (built by toolchains/freebsd/build-toolchain.sh)
+# 3. Static C++ runtime detection (built by toolchains/freebsd/build-cxx-runtime.sh)
 if(NOT DEFINED FREEBSD_LIBCXX OR FREEBSD_LIBCXX STREQUAL "")
 	get_filename_component(_FREEBSD_TOOLCHAIN_DIR "${FREEBSD_SYSROOT}" DIRECTORY)
 	set(FREEBSD_LIBCXX "${_FREEBSD_TOOLCHAIN_DIR}/${LIBCXX_DIR_NAME}")
@@ -81,8 +81,8 @@ endif()
 
 if(NOT EXISTS "${FREEBSD_LIBCXX}/include/c++/v1" OR NOT EXISTS "${FREEBSD_LIBCXX}/lib/libc++.a")
 	message(FATAL_ERROR
-		"Static libc++ runtime not found in '${FREEBSD_LIBCXX}'. "
-		"Run 'bash toolchains/freebsd/build-toolchain.sh ${FREEBSD_ARCH}' first.")
+		"FreeBSD C++ runtime not found.\n"
+		"Expected location: ${FREEBSD_LIBCXX}/include/c++/v1")
 endif()
 
 set(FREEBSD_LIBCXX "${FREEBSD_LIBCXX}" CACHE PATH "Static libc++ runtime" FORCE)

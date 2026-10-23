@@ -5,6 +5,18 @@ This directory contains Linux platform-specific assets, packaging configurations
 For comprehensive build instructions, CMake presets, toolchain details, and dependency options, see the primary documentation:
 **[Linux Platform Guide (docs/LINUX.md)](../../docs/LINUX.md)**
 
+## Toolchain layout
+
+`$NZBGET_LINUX_TOOLCHAIN_DIR` (default `build/toolchains/linux`, builder image `/opt/nzbget/linux`):
+
+```text
+<arch>/bin/<triple>-gcc
+```
+
+`<arch>` is `x86_64`, `aarch64`, `armhf`, `armel`, `i686`, `ppc6xx`, or `riscv64`. `<triple>` is the matching musl triplet (`x86_64-linux-musl`, `aarch64-linux-musl`, `arm-linux-musleabihf`, `arm-linux-musleabi`, `i686-linux-musl`, `powerpc-linux-musl`, `riscv64-linux-musl`).
+
+The [nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder) images already contain this layout.
+
 ---
 
 ## Directory Layout

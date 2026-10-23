@@ -203,8 +203,8 @@ ensure_toolchain() {
 	fi
 
 	if [ ! -d "$SYSROOT_DIR/usr/include" ] || [ ! -d "$LIBCXX_DIR/include/c++/v1" ]; then
-		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
-		bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
+		echo "Building FreeBSD C++ runtime for $ARCH..."
+		bash "$NZBGET_ROOT/toolchains/freebsd/build-cxx-runtime.sh" "$ARCH"
 	fi
 }
 
