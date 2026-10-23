@@ -324,12 +324,9 @@ bool Connection::Bind()
 		return false;
 	}
 
-	if (!InitSocketOpts(m_socket))
-	{
-		closesocket(m_socket);
-		m_socket = INVALID_SOCKET;
-		return false;
-	}
+#ifndef WIN32
+	Util::SetCloseOnExec((int)m_socket);
+#endif
 
 	if (listen(m_socket, 100) < 0)
 	{
@@ -481,6 +478,7 @@ std::unique_ptr<Connection> Connection::Accept()
 	{
 		ReportError("Could not accept connection for %s", m_host.c_str(), true);
 	}
+
 	if (socket == INVALID_SOCKET)
 	{
 		return nullptr;
@@ -492,7 +490,9 @@ std::unique_ptr<Connection> Connection::Accept()
 		return nullptr;
 	}
 
-	return std::make_unique<Connection>(socket, m_tls);
+	auto acceptedConnection = std::make_unique<Connection>(socket, m_tls);
+	acceptedConnection->SetTimeout(m_timeout);
+	return acceptedConnection;
 }
 
 int Connection::TryRecv(char* buffer, int size)
