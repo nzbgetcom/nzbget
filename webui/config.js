@@ -440,6 +440,30 @@ var Options = (new function($)
 		var firstdescrline = '';
 
 		var data = filedata.split('\n');
+
+		// Splits "Category2.Unpack" into family "category.unpack" and index "2".
+		function multiOptionIndex(name)
+		{
+			var m = /^([^\s=@#]*?)([0-9]+)\.([^\s=@]+)$/.exec(name.trim());
+			return m ? { family: (m[1] + '.' + m[3]).toLowerCase(), index: m[2] } : null;
+		}
+
+		// Multi-section options are declared with index "1"; other instances are appended at EOF.
+		var multiOptionFamilies = {};
+		for (var mi=0; mi < data.length; mi++)
+		{
+			var nameline = data[mi].replace(/\r+$/,'').trim().replace(/^#\s*/, '');
+			var eqpos = nameline.search(/[=@]/);
+			if (eqpos > 0)
+			{
+				var m = multiOptionIndex(nameline.substring(0, eqpos));
+				if (m && m.index === '1')
+				{
+					multiOptionFamilies[m.family] = true;
+				}
+			}
+		}
+
 		for (var i=0, len=data.length; i < len; i++)
 		{
 			var line = data[i].replace(/\r+$/,''); // remove possible trailing CR-characters
@@ -502,6 +526,16 @@ var Options = (new function($)
 					option.commandopts = optpos > -1 ? option.caption.substring(optpos + 1, option.caption.indexOf(']')).toLowerCase() : 'settings';
 					option.caption = optpos > -1 ? option.caption.substring(0, optpos) : option.caption;
 				}
+
+				// A value line of a non-first instance is not a declaration: it would duplicate the option.
+				var inst = multiOptionIndex(option.caption);
+				if (inst && inst.index !== '1' && multiOptionFamilies[inst.family])
+				{
+					description = '';
+					firstdescrline = '';
+					continue;
+				}
+
 				option.name = (nameprefix != '' ? nameprefix : '') + option.caption;
 				option.defvalue = line.substr(line.indexOf(command ? '@' : '=') + 1, 1000).trim();
 				option.value = null;
@@ -2294,6 +2328,17 @@ var Config = (new function($)
 		return false;
 	}
 
+	// Enum values are matched case-insensitively in the UI: compare the same way.
+	function isSameOptionValue(option, value1, value2)
+	{
+		if (option.select && option.select.length > 1 &&
+			typeof value1 === 'string' && typeof value2 === 'string')
+		{
+			return value1.toLowerCase() === value2.toLowerCase();
+		}
+		return value1 == value2;
+	}
+
 	function prepareSaveRequest(onlyUserChanges, webSettings, onlyChangedOptions)
 	{
 		var modified = false;
@@ -2321,11 +2366,11 @@ var Config = (new function($)
 							{
 								if (onlyUserChanges)
 								{
-									var optmodified = oldValue != newValue && oldValue !== null;
+									var optmodified = !isSameOptionValue(option, oldValue, newValue) && oldValue !== null;
 								}
 								else
 								{
-									var optmodified = (oldValue != newValue) || (option.value === null);
+									var optmodified = !isSameOptionValue(option, oldValue, newValue) || (option.value === null);
 								}
 								modified = modified || optmodified;
 								if (optmodified || !onlyChangedOptions)
@@ -2431,6 +2476,8 @@ var Config = (new function($)
 		if (result)
 		{
 			$ConfigContent.fadeOut(function() { $('#ConfigSaved').fadeIn(); });
+			// The values are saved now: stop forcing a full save on every leave-tab check.
+			restored = false;
 		}
 		else
 		{
@@ -2477,6 +2524,7 @@ var Config = (new function($)
 	this.discardChanges = function()
 	{
 		configSaved = true;
+		restored = false;
 		$LeaveConfigDialog.modal('hide');
 		leaveTarget.click();
 	}
