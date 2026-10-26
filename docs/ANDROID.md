@@ -63,21 +63,26 @@ Android targets have no package manager, so every dependency is compiled from so
 ### Step-by-Step Compilation
 
 ```bash
-# Configure
+# Release: configure
 docker run --rm -v "$PWD:/src" -w /src \
   ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
   cmake --preset ci-android-arm64
-# Release
+# Release: build
 docker run --rm -v "$PWD:/src" -w /src \
   ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
   cmake --build --preset ci-android-arm64
-# Debug:
+
+# Debug: configure
 docker run --rm -v "$PWD:/src" -w /src \
   ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
   cmake --preset ci-android-debug-arm64
+# Debug: build
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  cmake --build --preset ci-android-debug-arm64
 ```
 
-The resulting binary is located at `build/ci-android-arm64/nzbget`.
+The resulting binary is located at `build/ci-android-arm64/nzbget` (Release) or `build/ci-android-debug-arm64/nzbget` (Debug).
 
 ## 4. Packaging with `platforms/android/build.sh`
 

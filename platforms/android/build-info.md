@@ -38,9 +38,12 @@ llvm/bin/clang
 sysroot/usr/include
 libcxx/<arch>/lib/libc++.a
 libcxx/include/c++/v1
+libcxx/api-level
 ```
 
 `<arch>` is `arm64`, `armv7`, `x86_64`, or `x86`. The same directory also accepts the legacy names `android-llvm`, `android-sysroot`, and `android-libcxx`.
+
+`libcxx/api-level` is a text file with the Android API level the static runtimes were built for (for example `21`). CMake reads it to default `ANDROID_API_LEVEL` and stops with an error if a different level is configured. When the file is missing, that check is skipped and the level defaults to `21`, so a custom toolchain should provide it. Older locations are also accepted: `api-level`, `android-libcxx/android-api-level` and `android-api-level`.
 
 The [nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder) images already contain this layout.
 

@@ -273,19 +273,25 @@ Unpack()
     ) || Error "Unpacking failed."
 }
 
+# Replaces the value of an option in nzbget.conf: SetConf Name value
+# 'sed -i' is intentionally not used: its syntax differs between GNU, BusyBox,
+# toybox and BSD sed. Writing to a temp file works with all of them.
+# The commands are on separate lines so that a failure stops the installer (errexit).
+SetConf()
+{
+    Info "  Setting $1 to $2"
+    sed "s:^$1=.*:$1=$2:" nzbget.conf > nzbget.conf.tmp
+    mv nzbget.conf.tmp nzbget.conf
+}
+
 ConfigureAndroid()
 {
     # Adjusting config file to current system memory on Android
-    Info "  Activating article cache (ArticleCache=100)"
-    sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf
-    Info "  Increasing write buffer (WriteBuffer=1024)"
-    sed 's:^WriteBuffer=.*:WriteBuffer=1024:' -i nzbget.conf
-    Info "  Increasing par repair buffer (ParBuffer=100)"
-    sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf
-    Info "  Activating direct rename (DirectRename=yes)"
-    sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf
-    Info "  Activating direct unpack (DirectUnpack=yes)"
-    sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf
+    SetConf ArticleCache 100
+    SetConf WriteBuffer 1024
+    SetConf ParBuffer 100
+    SetConf DirectRename yes
+    SetConf DirectUnpack yes
 }
 
 # The Android app looks for ${AppDir}/nzbget.lock to detect the running daemon.
@@ -293,8 +299,7 @@ ConfigureAndroid()
 ConfigureLockFile()
 {
     if grep -qxF 'LockFile=${MainDir}/nzbget.lock' nzbget.conf; then
-        Info "  Setting lock file (LockFile=\${AppDir}/nzbget.lock)"
-        sed 's:^LockFile=.*:LockFile=${AppDir}/nzbget.lock:' -i nzbget.conf
+        SetConf LockFile '${AppDir}/nzbget.lock'
     fi
 }
 
