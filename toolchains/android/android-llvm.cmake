@@ -2,7 +2,8 @@
 #
 # CMake toolchain for cross-compiling NZBGet for Android API 21+ using upstream
 # LLVM Clang 19.1.7 with compiler-rt builtins, isolated static libc++/libc++abi/libunwind
-# and Bionic sysroot. Prepare everything with: bash toolchains/setup-android-toolchain.sh
+# and Bionic sysroot. Files are taken from NZBGET_ANDROID_TOOLCHAIN_DIR
+# (default: build/toolchains): llvm/, sysroot/, libcxx/<arch>/.
 #
 # Architecture options (pass via -DANDROID_ARCH=<arch> or CMakePresets.json):
 #   arm64   -> aarch64-linux-android21 (arm64-v8a)
@@ -38,8 +39,15 @@ if(NOT DEFINED NZBGET_ANDROID_TOOLCHAIN_DIR OR NZBGET_ANDROID_TOOLCHAIN_DIR STRE
 	endif()
 endif()
 
-# 2. Architecture & API level configuration (Synchronized with toolchains/setup-android-toolchain.sh)
-set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx/android-api-level")
+# 2. Architecture & API level configuration (API level recorded in the Android image)
+# Image layout: llvm/, sysroot/, libcxx/, api-level. Local builds still use the android-* names.
+set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/libcxx/api-level")
+if(NOT EXISTS "${_API_LEVEL_FILE}")
+	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/api-level")
+endif()
+if(NOT EXISTS "${_API_LEVEL_FILE}")
+	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx/android-api-level")
+endif()
 if(NOT EXISTS "${_API_LEVEL_FILE}")
 	set(_API_LEVEL_FILE "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-api-level")
 endif()
@@ -64,9 +72,7 @@ if(_TOOLCHAIN_API_LEVEL AND NOT "${ANDROID_API_LEVEL}" STREQUAL "${_TOOLCHAIN_AP
 		"Configured ANDROID_API_LEVEL (${ANDROID_API_LEVEL}) does not match the toolchain runtime API level "
 		"(${_TOOLCHAIN_API_LEVEL}) recorded in ${_API_LEVEL_FILE}.\n"
 		"The static libc++/compiler-rt runtimes were compiled targeting API ${_TOOLCHAIN_API_LEVEL}.\n"
-		"To re-target the toolchain runtimes, run:\n"
-		"  ANDROID_API_LEVEL=${ANDROID_API_LEVEL} bash toolchains/setup-android-toolchain.sh\n"
-		"Or configure CMake with matching API level: -DANDROID_API_LEVEL=${_TOOLCHAIN_API_LEVEL}")
+		"Configure CMake with the matching API level: -DANDROID_API_LEVEL=${_TOOLCHAIN_API_LEVEL}")
 endif()
 
 if(NOT DEFINED ANDROID_ARCH OR ANDROID_ARCH STREQUAL "")
@@ -100,13 +106,18 @@ set(ANDROID_ARCH_FLAGS "${_ARCH_FLAGS}" CACHE STRING "Target architecture flags 
 
 set(ANDROID_TARGET_FULL "${ANDROID_TARGET_TRIPLE}${ANDROID_API_LEVEL}")
 
-# 3. Hermetic LLVM Clang/LLD 19.1.7 prepared by toolchains/setup-android-toolchain.sh
+# 3. Hermetic LLVM Clang/LLD 19.1.7
 
-set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-llvm/bin")
+set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/llvm/bin")
+if(NOT EXISTS "${_LLVM_BIN}/clang" OR NOT EXISTS "${_LLVM_BIN}/ld.lld")
+	set(_LLVM_BIN "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-llvm/bin")
+endif()
 if(NOT EXISTS "${_LLVM_BIN}/clang" OR NOT EXISTS "${_LLVM_BIN}/ld.lld")
 	message(FATAL_ERROR
-		"Android LLVM toolchain not found in ${_LLVM_BIN}. "
-		"Run 'bash toolchains/setup-android-toolchain.sh' first.")
+		"Android toolchain not found.\n"
+		"Expected location:\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/llvm/bin/clang\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-llvm/bin/clang")
 endif()
 
 set(CMAKE_C_COMPILER "${_LLVM_BIN}/clang" CACHE FILEPATH "C compiler" FORCE)
@@ -118,11 +129,16 @@ set(CMAKE_STRIP "${_LLVM_BIN}/llvm-strip" CACHE FILEPATH "Strip" FORCE)
 set(CMAKE_LINKER "${_LLVM_BIN}/ld.lld" CACHE FILEPATH "Linker" FORCE)
 
 # 3. Bionic API 21 sysroot
-set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-sysroot")
+set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/sysroot")
+if(NOT EXISTS "${ANDROID_SYSROOT}/usr/include")
+	set(ANDROID_SYSROOT "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-sysroot")
+endif()
 if(NOT EXISTS "${ANDROID_SYSROOT}/usr/include")
 	message(FATAL_ERROR
-		"Android sysroot not found in ${ANDROID_SYSROOT}. "
-		"Run 'bash toolchains/setup-android-toolchain.sh' first.")
+		"Android sysroot not found.\n"
+		"Expected location:\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/sysroot/usr/include\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-sysroot/usr/include")
 endif()
 set(CMAKE_SYSROOT "${ANDROID_SYSROOT}" CACHE PATH "Sysroot" FORCE)
 message(STATUS "NZBGet: Android LLVM -> ${_LLVM_BIN}, sysroot -> ${ANDROID_SYSROOT}")
@@ -156,12 +172,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "Flags used by the C++ com
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS}" CACHE STRING "Flags used by the ASM compiler" FORCE)
 
 # 5. Isolated static libc++ runtime
-set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx")
+set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/libcxx")
+if(NOT IS_DIRECTORY "${NZBGET_STATIC_LIBCXX}/include/c++/v1")
+	set(NZBGET_STATIC_LIBCXX "${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx")
+endif()
 set(_LIBCXX_ARCH_LIB "${NZBGET_STATIC_LIBCXX}/${ANDROID_ARCH}/lib")
 if(NOT EXISTS "${_LIBCXX_ARCH_LIB}/libc++.a" OR NOT IS_DIRECTORY "${NZBGET_STATIC_LIBCXX}/include/c++/v1")
 	message(FATAL_ERROR
-		"Static Android libc++ not found for '${ANDROID_ARCH}' in ${NZBGET_STATIC_LIBCXX}. "
-		"Run 'bash toolchains/setup-android-toolchain.sh ${ANDROID_ARCH}' first.")
+		"Android C++ runtime for '${ANDROID_ARCH}' not found.\n"
+		"Expected location:\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/libcxx/${ANDROID_ARCH}/lib/libc++.a\n"
+		"  ${NZBGET_ANDROID_TOOLCHAIN_DIR}/android-libcxx/${ANDROID_ARCH}/lib/libc++.a")
 endif()
 
 if(NOT CMAKE_CXX_FLAGS MATCHES "-nostdinc\\+\\+")

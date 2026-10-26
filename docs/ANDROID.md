@@ -4,16 +4,11 @@ How to configure, cross-compile, test, package and deploy NZBGet for Android. NZ
 
 ## 1. Prerequisites & Host Environment
 
-The Android cross-compilation pipeline runs on Linux (`ubuntu-22.04`, `ubuntu-24.04`, Debian, Arch, Fedora) and macOS (Apple Silicon and Intel).
+Cross-compilation uses the Android image published by [nzbgetcom/nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder):
 
-### Host Tools
+`ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0`
 
-- **CMake** 3.25 or newer and **Ninja**
-- **curl**, **tar** (with xz support), **unzip**, **git**
-- **tic** (terminfo compiler, needed by the ncurses build)
-  - Ubuntu/Debian: `sudo apt install -y cmake ninja-build curl tar xz-utils unzip git ncurses-bin`
-  - macOS (Homebrew): `brew install cmake ninja ncurses`
-  - Arch Linux: `sudo pacman -S cmake ninja curl tar xz unzip git ncurses`
+The tag suffix is the `VERSION` file in that repository (currently `1.0`). The image is `linux/amd64` and already contains LLVM 19.1.7, the API 21 sysroot, the static libc++ runtimes, CMake, Ninja, and the host tools the build needs. On Apple Silicon pass `--platform linux/amd64`. Mount the NZBGet sources on `/src`. The image sets `NZBGET_ANDROID_TOOLCHAIN_DIR=/opt/nzbget/android`.
 
 ## 2. Hermetic Toolchain Design & Security
 
@@ -23,7 +18,7 @@ Android builds historically used NDK standalone toolchains or Google's bundled `
 
 1. **Upstream LLVM 19.1.7**: cross-compilation uses upstream Clang 19 and LLD 19 targeting `*-linux-android21`.
 2. **Bionic Sysroot**: headers and platform libraries come from the Android NDK r26b sysroot.
-3. **Isolated Static libc++**: `toolchains/android/build-toolchain.sh` compiles compiler-rt builtins and static `libc++.a`, `libc++abi.a` and `libunwind.a` from the LLVM 19.1.7 source tree with `-D_LIBCPP_DISABLE_AVAILABILITY` (unlocks modern C++20 on API 21), `-DLIBCXXABI_HAS_CXA_THREAD_ATEXIT_IMPL=OFF` (uses TLS keys instead of the missing `__cxa_thread_atexit_impl`) and `-fvisibility=hidden -fvisibility-inlines-hidden` (keeps the bundled runtime symbols internal, avoiding collisions with Android system libraries).
+3. **Isolated Static libc++**: the Android image includes compiler-rt builtins and static `libc++.a`, `libc++abi.a` and `libunwind.a` built from the LLVM 19.1.7 source tree with `-D_LIBCPP_DISABLE_AVAILABILITY` (unlocks modern C++20 on API 21), `-DLIBCXXABI_HAS_CXA_THREAD_ATEXIT_IMPL=OFF` (uses TLS keys instead of the missing `__cxa_thread_atexit_impl`) and `-fvisibility=hidden -fvisibility-inlines-hidden` (keeps the bundled runtime symbols internal, avoiding collisions with Android system libraries).
 4. **Hermetic Linkage**: the toolchain links with `-fuse-ld=lld -rtlib=compiler-rt --unwindlib=none -nostdlib++` and `-Wl,--whole-archive libc++.a -Wl,--no-whole-archive libc++abi.a libunwind.a -ldl -lm -llog`.
 5. **Runtime Hardening**: as on macOS and Windows, `-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST` is applied in `cmake/common.cmake` to every Clang compilation unit, enforcing O(1) runtime bounds and container integrity checks.
 6. **Global Architecture Flags (SIGILL Prevention)**: 32-bit ARM (`armv7`) builds use `-march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -mthumb`; limiting the FPU to `vfpv3-d16` (16 double-precision registers `d0`-`d15`) keeps NEON and 32-register instructions out of the binary, preventing SIGILL (Illegal Instruction) crashes on non-NEON and early Cortex-A9/Tegra 2 hardware. 32-bit x86 (`x86`) uses `-march=i686`. The flags are applied to all runtimes (`compiler-rt`, `libc++`), CMake subprojects (`zlib`, `libxml2`, `rapidyenc`, `par2-turbo`, `boost`) and ExternalProject builds (`openssl`, `ncurses`).
@@ -31,16 +26,16 @@ Android builds historically used NDK standalone toolchains or Google's bundled `
 
 ### Cryptographic Checksum Verification
 
-Every dependency downloaded during toolchain setup and packaging is verified against SHA256 checksums or immutable commit anchors:
+Every dependency downloaded while the Android image is built, and while packages are assembled, is verified against SHA256 checksums or immutable commit anchors:
 
-- **LLVM 19.1.7 release archives**: published SHA256 release checksums (`toolchains/android/build-toolchain.sh`).
-- **Android NDK r26b archives**: Google's published repository hashes (`toolchains/android/build-toolchain.sh`).
-- **LLVM runtime sources (`compiler-rt`, `libc++`)**: the official repository pinned to the immutable commit `cd708029e0b2869e80abe31ddb175f7c35361f90` (GPG-signed release tag `llvmorg-19.1.7` by Tobias Hieta), so moved or compromised tags cannot affect the build (`toolchains/android/build-toolchain.sh`).
+- **LLVM 19.1.7 release archives**: published SHA256 release checksums, checked in [nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder).
+- **Android NDK r26b archives**: Google's published repository hashes, checked in the same repository.
+- **LLVM runtime sources (`compiler-rt`, `libc++`)**: the official repository pinned to the immutable commit `cd708029e0b2869e80abe31ddb175f7c35361f90` (GPG-signed release tag `llvmorg-19.1.7` by Tobias Hieta), so moved or compromised tags cannot affect the image.
 - **CA root certificates (`cacert.pem`)**: downloaded together with the official `https://curl.se/ca/cacert.pem.sha256` and validated before bundling into the installer packages (`platforms/android/build.sh`).
 
 ### Android API Level Synchronization
 
-The minimum API level defaults to **21** (Android 5.0 Lollipop). `toolchains/android/build-toolchain.sh` takes `ANDROID_API_LEVEL` from the environment or `--api-level=<num>` (e.g. `--api-level=21`) and records it in `build/toolchains/android-api-level`; `toolchains/android/android-llvm.cmake` reads that file at configure time and fails with a diagnostic if CMake's `ANDROID_API_LEVEL` cache variable deviates from it, and a changed level makes the toolchain script remove the older incompatible runtime artifacts before rebuilding.
+The minimum API level is **21** (Android 5.0 Lollipop). The Android image records that level next to the static runtimes. `toolchains/android/android-llvm.cmake` reads it at configure time and fails if CMake's `ANDROID_API_LEVEL` does not match.
 
 ### Third-Party Dependencies
 
@@ -68,20 +63,26 @@ Android targets have no package manager, so every dependency is compiled from so
 ### Step-by-Step Compilation
 
 ```bash
-# 1. Setup the Hermetic Toolchain (one-time setup; accepts arm64, armv7, x86_64, x86, or all)
-bash toolchains/android/build-toolchain.sh arm64
+# Release: configure
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  cmake --preset ci-android-arm64
+# Release: build
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  cmake --build --preset ci-android-arm64
 
-# 2. Configure with CMake Preset
-cmake --preset ci-android-arm64
-
-# Or for Debug builds:
-# cmake --preset ci-android-debug-arm64
-
-# 3. Build with Ninja
-cmake --build --preset ci-android-arm64 -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+# Debug: configure
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  cmake --preset ci-android-debug-arm64
+# Debug: build
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  cmake --build --preset ci-android-debug-arm64
 ```
 
-The resulting binary is located at `build/ci-android-arm64/nzbget`.
+The resulting binary is located at `build/ci-android-arm64/nzbget` (Release) or `build/ci-android-debug-arm64/nzbget` (Debug).
 
 ## 4. Packaging with `platforms/android/build.sh`
 
@@ -89,19 +90,29 @@ The runner script `platforms/android/build.sh` verifies the toolchain, compiles 
 
 ```bash
 # Build 64-bit ARM binary package (Release)
-bash platforms/android/build.sh bin arm64 release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin arm64 release
 
 # Build 64-bit ARM binary package (Debug)
-bash platforms/android/build.sh bin arm64 debug
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin arm64 debug
 
 # Build binary packages for all 4 architectures
-bash platforms/android/build.sh bin all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh bin all-arch release
 
 # Build unified multi-architecture self-extracting .run installer (combining all 4 ABIs)
-bash platforms/android/build.sh installer all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh installer all-arch release
 
 # Build both binaries and installer in one command
-bash platforms/android/build.sh all all-arch release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:android-1.0 \
+  bash platforms/android/build.sh all all-arch release
 ```
 
 Generated artifacts in `build/dist/`:

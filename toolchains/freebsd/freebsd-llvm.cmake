@@ -52,6 +52,14 @@ endif()
 if(NOT DEFINED FREEBSD_SYSROOT OR FREEBSD_SYSROOT STREQUAL "")
 	if(DEFINED CMAKE_SYSROOT AND NOT "${CMAKE_SYSROOT}" STREQUAL "")
 		set(FREEBSD_SYSROOT "${CMAKE_SYSROOT}")
+	elseif(DEFINED ENV{FREEBSD_PREFIX} AND NOT "$ENV{FREEBSD_PREFIX}" STREQUAL "")
+		# Image layout is sysroot-<arch>. Older trees use sysroot / sysroot-aarch64.
+		set(_FREEBSD_IMAGE_SYSROOT "$ENV{FREEBSD_PREFIX}/sysroot-${CMAKE_SYSTEM_PROCESSOR}")
+		if(EXISTS "${_FREEBSD_IMAGE_SYSROOT}/usr/include")
+			set(FREEBSD_SYSROOT "${_FREEBSD_IMAGE_SYSROOT}")
+		else()
+			get_filename_component(FREEBSD_SYSROOT "$ENV{FREEBSD_PREFIX}/${SYSROOT_DIR_NAME}" ABSOLUTE)
+		endif()
 	else()
 		get_filename_component(FREEBSD_SYSROOT "${CMAKE_CURRENT_LIST_DIR}/../../build/toolchains/freebsd/${SYSROOT_DIR_NAME}" ABSOLUTE)
 	endif()
@@ -59,13 +67,13 @@ endif()
 
 if(NOT EXISTS "${FREEBSD_SYSROOT}/usr/include")
 	message(FATAL_ERROR
-		"FreeBSD sysroot not found in '${FREEBSD_SYSROOT}'. "
-		"Run 'bash toolchains/freebsd/build-toolchain.sh ${FREEBSD_ARCH}' first.")
+		"FreeBSD sysroot not found.\n"
+		"Expected location: ${FREEBSD_SYSROOT}/usr/include")
 endif()
 
 set(CMAKE_SYSROOT "${FREEBSD_SYSROOT}" CACHE PATH "Sysroot" FORCE)
 
-# 3. Static C++ runtime detection (built by toolchains/freebsd/build-toolchain.sh)
+# 3. Static C++ runtime detection (built by toolchains/freebsd/build-cxx-runtime.sh)
 if(NOT DEFINED FREEBSD_LIBCXX OR FREEBSD_LIBCXX STREQUAL "")
 	get_filename_component(_FREEBSD_TOOLCHAIN_DIR "${FREEBSD_SYSROOT}" DIRECTORY)
 	set(FREEBSD_LIBCXX "${_FREEBSD_TOOLCHAIN_DIR}/${LIBCXX_DIR_NAME}")
@@ -73,8 +81,8 @@ endif()
 
 if(NOT EXISTS "${FREEBSD_LIBCXX}/include/c++/v1" OR NOT EXISTS "${FREEBSD_LIBCXX}/lib/libc++.a")
 	message(FATAL_ERROR
-		"Static libc++ runtime not found in '${FREEBSD_LIBCXX}'. "
-		"Run 'bash toolchains/freebsd/build-toolchain.sh ${FREEBSD_ARCH}' first.")
+		"FreeBSD C++ runtime not found.\n"
+		"Expected location: ${FREEBSD_LIBCXX}/include/c++/v1")
 endif()
 
 set(FREEBSD_LIBCXX "${FREEBSD_LIBCXX}" CACHE PATH "Static libc++ runtime" FORCE)

@@ -9,6 +9,7 @@ env:
   BUILD_TYPES: ${{ (github.ref_name == 'develop') && 'release debug' || 'release' }}
   BUILD_TESTING: ${{ (github.ref_name != 'main') && 'testing' || '' }}
   FREEBSD_RELEASE: "13.0"
+  MUSL_BUILDER_VERSION: "1.0"
 
 jobs:
   prepare-build-matrix:
@@ -18,6 +19,7 @@ jobs:
       archs: ${{ steps.matrix-vars.outputs.ARCHS }}
       types: ${{ steps.matrix-vars.outputs.TYPES }}
       build_date: ${{ steps.matrix-vars.outputs.BUILD_DATE }}
+      musl_builder_version: ${{ env.MUSL_BUILDER_VERSION }}
     steps:
 
     - name: Calculate matrix variables
@@ -27,36 +29,41 @@ jobs:
         echo TYPES=[\"$BUILD_TYPES\"] | sed 's| |","|g' >> "$GITHUB_OUTPUT"
         echo "BUILD_DATE=$(date '+%Y%m%d')" >> "$GITHUB_OUTPUT"
 
-  build-sysroot:
+  build-cxx-runtime:
+    needs: [prepare-build-matrix]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    container:
+      image: ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-${{ matrix.arch }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}
     strategy:
+      fail-fast: false
       matrix:
-        arch: [amd64, arm64]
+        arch: [x86_64, aarch64]
     steps:
 
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Cache FreeBSD sysroot
-      id: cache-sysroot
-      uses: actions/cache@v4
+    - name: Cache FreeBSD C++ runtime
+      id: cache-cxx
+      uses: actions/cache@v6
       with:
-        path: build/toolchains/freebsd
-        key: freebsd-toolchain-v1-${{ matrix.arch }}-${{ env.FREEBSD_RELEASE }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
+        path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
+        # Exact match only: restore-keys is intentionally omitted to avoid restoring
+        # stale compiled libraries when the runtime script or builder image changes.
+        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-cxx-runtime.sh') }}
 
-    - name: Build FreeBSD sysroot and static libc++
-      if: steps.cache-sysroot.outputs.cache-hit != 'true'
+    - name: Build static libc++
+      if: steps.cache-cxx.outputs.cache-hit != 'true'
       run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-19 lld-19 llvm-19 ninja-build cmake xz-utils curl
-        export PATH="/usr/lib/llvm-19/bin:$PATH"
-        bash toolchains/freebsd/build-toolchain.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
+        bash toolchains/freebsd/build-cxx-runtime.sh ${{ matrix.arch }} ${{ env.FREEBSD_RELEASE }}
 
   build-bin:
-    needs: [prepare-build-matrix, build-sysroot]
+    needs: [prepare-build-matrix, build-cxx-runtime]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    container:
+      image: ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-${{ matrix.arch }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}
     env:
       BUILD_DATE: ${{ needs.prepare-build-matrix.outputs.build_date }}
     strategy:
@@ -70,21 +77,15 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: Install LLVM Clang 19 & tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-19 lld-19 llvm-19 xz-utils curl
-        echo "/usr/lib/llvm-19/bin" >> "$GITHUB_PATH"
-
-    - name: Restore FreeBSD sysroot
-      uses: actions/cache/restore@v4
+    - name: Restore FreeBSD C++ runtime
+      uses: actions/cache/restore@v6
       with:
-        path: build/toolchains/freebsd
-        key: freebsd-toolchain-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ hashFiles('toolchains/freebsd/build-toolchain.sh') }}
+        path: /opt/nzbget/freebsd/${{ matrix.arch == 'aarch64' && 'libcxx-aarch64' || 'libcxx' }}
+        key: freebsd-cxx-runtime-v1-${{ matrix.arch == 'aarch64' && 'arm64' || 'amd64' }}-${{ env.FREEBSD_RELEASE }}-${{ needs.prepare-build-matrix.outputs.musl_builder_version }}-${{ hashFiles('toolchains/freebsd/build-cxx-runtime.sh') }}
         fail-on-cache-miss: true
 
     - name: Cache FetchContent dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ github.workspace }}/build/ci-freebsd${{ matrix.type == 'debug' && '-debug' || '' }}-${{ matrix.arch }}/deps
         # Exact match only: restore-keys is intentionally omitted to avoid restoring

@@ -273,19 +273,34 @@ Unpack()
     ) || Error "Unpacking failed."
 }
 
+# Replaces the value of an option in nzbget.conf: SetConf Name value
+# 'sed -i' is intentionally not used: its syntax differs between GNU, BusyBox,
+# toybox and BSD sed. Writing to a temp file works with all of them.
+# The commands are on separate lines so that a failure stops the installer (errexit).
+SetConf()
+{
+    Info "  Setting $1 to $2"
+    sed "s:^$1=.*:$1=$2:" nzbget.conf > nzbget.conf.tmp
+    mv nzbget.conf.tmp nzbget.conf
+}
+
 ConfigureAndroid()
 {
     # Adjusting config file to current system memory on Android
-    Info "  Activating article cache (ArticleCache=100)"
-    sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf 2>/dev/null || sed 's:^ArticleCache=.*:ArticleCache=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
-    Info "  Increasing write buffer (WriteBuffer=1024)"
-    sed 's:^WriteBuffer=.*:WriteBuffer=1024:' -i nzbget.conf 2>/dev/null || sed 's:^WriteBuffer=.*:WriteBuffer=1024:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
-    Info "  Increasing par repair buffer (ParBuffer=100)"
-    sed 's:^ParBuffer=.*:ParBuffer=100:' -i nzbget.conf 2>/dev/null || sed 's:^ParBuffer=.*:ParBuffer=100:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
-    Info "  Activating direct rename (DirectRename=yes)"
-    sed 's:^DirectRename=.*:DirectRename=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectRename=.*:DirectRename=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
-    Info "  Activating direct unpack (DirectUnpack=yes)"
-    sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf 2>/dev/null || sed 's:^DirectUnpack=.*:DirectUnpack=yes:' nzbget.conf > nzbget.conf.tmp && mv nzbget.conf.tmp nzbget.conf
+    SetConf ArticleCache 100
+    SetConf WriteBuffer 1024
+    SetConf ParBuffer 100
+    SetConf DirectRename yes
+    SetConf DirectUnpack yes
+}
+
+# The Android app looks for ${AppDir}/nzbget.lock to detect the running daemon.
+# Only the untouched template value is replaced; custom values are left alone.
+ConfigureLockFile()
+{
+    if grep -qxF 'LockFile=${MainDir}/nzbget.lock' nzbget.conf; then
+        SetConf LockFile '${AppDir}/nzbget.lock'
+    fi
 }
 
 Configure()
@@ -298,6 +313,8 @@ Configure()
         ConfigureAndroid
         QUICKHELP=yes
     fi
+
+    ConfigureLockFile
 }
 
 # ParseCommandLine

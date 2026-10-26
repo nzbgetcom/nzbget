@@ -67,62 +67,33 @@ Run options:
 
 ## 3. Cross-Compilation (from Linux / macOS)
 
-### 3.1 Host Prerequisites
+Cross-compilation uses the FreeBSD images published by [nzbgetcom/nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder). The tag suffix is the `VERSION` file in that repository (currently `1.0`). Images are `linux/amd64`; on Apple Silicon pass `--platform linux/amd64`. Mount the NZBGet sources on `/src`.
 
-Requires LLVM (Clang, LLD), CMake, and archive utilities:
+| Architecture | Image |
+|---|---|
+| `x86_64` | `ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-x86_64-1.0` |
+| `aarch64` | `ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-aarch64-1.0` |
+| both architectures | `ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0` |
 
-```bash
-# Ubuntu / Debian
-sudo apt-get update
-sudo apt-get install -y clang lld llvm xz-utils curl cmake ninja-build git
-```
+The image contains Clang 19 and the FreeBSD 13.0 base sysroot (`libc`, `libthr`, `libm`, and the OS headers) under `/opt/nzbget/freebsd`. That sysroot ships libc++ 11, which has no `<coroutine>`, `<format>`, `<span>` or `<concepts>`. `toolchains/freebsd/build-cxx-runtime.sh`, run inside the image, builds the static libc++/libc++abi/libunwind and compiler-rt builtins from pinned LLVM 19.1.7 sources and leaves them next to that sysroot. It does not download a sysroot. The target stays FreeBSD 13.0: binaries use the FreeBSD 13.0 C library, and only the C++ runtime comes from LLVM.
 
-### 3.2 Prepare FreeBSD Sysroot and C++ Runtime
+### 3.1 Build with CMake Presets
 
-The cross toolchain consists of two parts:
-
-1. **FreeBSD 13.0 base sysroot** — `libc`, `libthr`, `libm` and OS headers. It is
-   taken from the pinned, SHA-256 verified assets of the
-   [nzbgetcom/build-files](https://github.com/nzbgetcom/build-files) repository,
-   because the official FreeBSD 13.x distributions are no longer downloadable
-   (FreeBSD 13 is EOL and `archive.freebsd.org` is unreachable).
-2. **Static libc++/libc++abi/libunwind** — built from the pinned llvm-project
-   sources for the `*-pc-freebsd13` target. The base FreeBSD 13.0 sysroot ships
-   libc++ 11, which has no `<coroutine>`, `<format>`, `<span>` or `<concepts>`.
-
-Both parts are produced by the same script (requires `clang`, `clang++`,
-`llvm-ar`, `llvm-ranlib`, `llvm-nm`, CMake and Ninja):
+One container builds the C++ runtime and then NZBGet. A second `docker run` does not keep the runtime, because it is written inside the image filesystem.
 
 ```bash
-# x86_64 (build/toolchains/freebsd/sysroot + libcxx)
-bash toolchains/freebsd/build-toolchain.sh amd64 13.0
+# x86_64 release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-x86_64-1.0 \
+  bash -c 'bash toolchains/freebsd/build-cxx-runtime.sh x86_64 13.0 && cmake --preset ci-freebsd-x86_64 && cmake --build --preset ci-freebsd-x86_64'
 
-# aarch64 (build/toolchains/freebsd/sysroot-aarch64 + libcxx-aarch64)
-bash toolchains/freebsd/build-toolchain.sh arm64 13.0
+# aarch64 release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-aarch64-1.0 \
+  bash -c 'bash toolchains/freebsd/build-cxx-runtime.sh aarch64 13.0 && cmake --preset ci-freebsd-aarch64 && cmake --build --preset ci-freebsd-aarch64'
 ```
 
-The target stays FreeBSD 13.0: the resulting binaries use the FreeBSD 13.0 C
-library and only the C++ runtime is taken from LLVM.
-
-### 3.3 Build with CMake Presets
-
-```bash
-# Release (Static + LTO)
-cmake --preset ci-freebsd-x86_64
-cmake --build --preset ci-freebsd-x86_64
-
-cmake --preset ci-freebsd-aarch64
-cmake --build --preset ci-freebsd-aarch64
-
-# Debug
-cmake --preset ci-freebsd-debug-x86_64
-cmake --build --preset ci-freebsd-debug-x86_64
-
-cmake --preset ci-freebsd-debug-aarch64
-cmake --build --preset ci-freebsd-debug-aarch64
-```
-
-Binaries are located at `build/ci-freebsd-<arch>/nzbget`.
+Debug presets are `ci-freebsd-debug-x86_64` and `ci-freebsd-debug-aarch64`. Binaries are located at `build/ci-freebsd-<arch>/nzbget`.
 
 ---
 
@@ -130,15 +101,28 @@ Binaries are located at `build/ci-freebsd-<arch>/nzbget`.
 
 Builds distribution packages (`.tar.gz` and `.run`):
 
+`platforms/freebsd/build.sh` builds the C++ runtime when it is missing, then compiles and packages. Use `all-1.0` when one command builds both architectures.
+
 ```bash
-# Build per-architecture binary packages (.tar.gz)
-bash platforms/freebsd/build.sh bin all-arch release
+# Per-architecture binary packages (.tar.gz)
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh bin all-arch release
 
-# Build unified multi-arch installer (.run)
-bash platforms/freebsd/build.sh installer all-arch release
+# One architecture
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:freebsd-x86_64-1.0 \
+  bash platforms/freebsd/build.sh bin x86_64 release
 
-# Build all packages in one command
-bash platforms/freebsd/build.sh all all-arch release
+# Unified multi-arch installer (.run)
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh installer all-arch release
+
+# All packages in one command
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/freebsd/build.sh all all-arch release
 ```
 
 Output directory: `build/dist/`

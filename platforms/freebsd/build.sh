@@ -190,10 +190,21 @@ ensure_toolchain() {
 	fi
 	local SYSROOT_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$SYSROOT_NAME"
 	local LIBCXX_DIR="$NZBGET_ROOT/build/toolchains/freebsd/$LIBCXX_NAME"
+	# Builder image keeps the same names under $FREEBSD_PREFIX, except x86_64
+	# sysroot is sysroot-x86_64. libc++ sits next to that sysroot.
+	if [ -n "${FREEBSD_PREFIX:-}" ]; then
+		local IMAGE_SYSROOT="$FREEBSD_PREFIX/$SYSROOT_NAME"
+		if [ ! -d "$IMAGE_SYSROOT/usr/include" ] && [ -d "$FREEBSD_PREFIX/sysroot-x86_64/usr/include" ]; then
+			IMAGE_SYSROOT="$FREEBSD_PREFIX/sysroot-x86_64"
+		fi
+		if [ -d "$IMAGE_SYSROOT/usr/include" ] && [ -d "$FREEBSD_PREFIX/$LIBCXX_NAME/include/c++/v1" ]; then
+			return 0
+		fi
+	fi
 
 	if [ ! -d "$SYSROOT_DIR/usr/include" ] || [ ! -d "$LIBCXX_DIR/include/c++/v1" ]; then
-		echo "Preparing FreeBSD toolchain/sysroot for $ARCH..."
-		bash "$NZBGET_ROOT/toolchains/freebsd/build-toolchain.sh" "$ARCH" 13.0
+		echo "Building FreeBSD C++ runtime for $ARCH..."
+		bash "$NZBGET_ROOT/toolchains/freebsd/build-cxx-runtime.sh" "$ARCH"
 	fi
 }
 
@@ -213,7 +224,13 @@ build_arch() {
 	ensure_toolchain "$SHORT"
 	mkdir -p "$BUILD_DIR"
 
-	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" -DFREEBSD_SYSROOT="$SYSROOT_DIR" -DVERSION_SUFFIX="$VERSION_SUFFIX"
+	# Pass the repo sysroot only when it exists. Inside the builder image,
+	# freebsd-llvm.cmake finds $FREEBSD_PREFIX instead.
+	local SYSROOT_ARG=()
+	if [ -d "$SYSROOT_DIR/usr/include" ]; then
+		SYSROOT_ARG=(-DFREEBSD_SYSROOT="$SYSROOT_DIR")
+	fi
+	cmake --preset "$PRESET" -DFREEBSD_ARCH="$SHORT" "${SYSROOT_ARG[@]}" -DVERSION_SUFFIX="$VERSION_SUFFIX"
 	cmake --build --preset "$PRESET" 2>&1 | tee "$BUILD_DIR/build.log"
 
 	if [ ! -f "$BUILD_DIR/nzbget" ]; then

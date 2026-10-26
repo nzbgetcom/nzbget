@@ -173,110 +173,28 @@ cmake --build build --target uninstall
 
 ## 5. Cross-Compilation with Musl Toolchains
 
-NZBGet cross-compiles fully static binaries with **GCC 14.3.0 + Musl 1.2.6 + Binutils 2.44** toolchains built via `musl-cross-make`.
+NZBGet cross-compiles fully static binaries with **GCC 14.3.0 + Musl 1.2.6 + Binutils 2.44**. Those compilers are published as images from [nzbgetcom/nzbget-musl-builder](https://github.com/nzbgetcom/nzbget-musl-builder). The tag suffix is the `VERSION` file in that repository (currently `1.0`). Images are `linux/amd64`; on Apple Silicon pass `--platform linux/amd64`.
+
+| Architecture | Image |
+|---|---|
+| `x86_64` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-x86_64-1.0` |
+| `aarch64` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-aarch64-1.0` |
+| `armhf` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-armhf-1.0` |
+| `armel` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-armel-1.0` |
+| `i686` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-i686-1.0` |
+| `ppc6xx` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-ppc6xx-1.0` |
+| `riscv64` | `ghcr.io/nzbgetcom/nzbget-musl-builder:linux-riscv64-1.0` |
+| every Linux arch, or a multi-arch installer | `ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0` |
+
+Mount the NZBGet sources on `/src`. The image sets `NZBGET_LINUX_TOOLCHAIN_DIR=/opt/nzbget/linux`.
 
 ### 5.1 Kernel Time64 Compatibility (NAS and Legacy Kernels)
 
-Musl 1.2+ uses 64-bit `time_t` on 32-bit platforms. On older Linux kernels (2.6.x, 3.x, 4.x) of older NAS devices (Synology, QNAP, D-Link, Netgear) the 64-bit time syscalls (`clock_gettime64`, `futex_time64`, `ppoll_time64`, etc.) return `-EINVAL` or fail. NZBGet ships `toolchains/linux/patches/musl-1.2.6/0010-time64-kernel-compat.patch`, which falls back to the 32-bit time syscalls on `-EINVAL` and caches the kernel capabilities in an atomic `__has_time64` flag, preventing recurring failed syscalls.
+Musl 1.2+ uses 64-bit `time_t` on 32-bit platforms. On older Linux kernels (2.6.x, 3.x, 4.x) of older NAS devices (Synology, QNAP, D-Link, Netgear) the 64-bit time syscalls (`clock_gettime64`, `futex_time64`, `ppoll_time64`, etc.) return `-EINVAL` or fail. The published toolchains include a musl patch that falls back to the 32-bit time syscalls on `-EINVAL` and caches the kernel capabilities in an atomic `__has_time64` flag, preventing recurring failed syscalls.
 
-### 5.2 Building and Packaging Toolchains with Docker
+### 5.2 Building NZBGet with CMake Presets
 
-The Docker builder is based on `debian:trixie-slim`, so the cross-compilers can be built on macOS (Intel or Apple Silicon), Windows WSL2 or Linux without installing anything on the host. All examples in this section and in the following ones use Docker; on a Linux host the same commands run directly, without the `docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder` prefix.
-
-> **macOS Apple Silicon (M1/M2/M3/M4) / ARM hosts:** GitHub Actions runners (`ubuntu-24.04`) are **x86_64**. Pass `--platform linux/amd64` to `docker build` and `docker run`, so that the cross-compiler binaries are built for `x86_64` Linux hosts.
-
-Build the Docker image:
-
-```bash
-# On x86_64 hosts (or native builds):
-docker build -t nzbget-musl-builder toolchains/linux
-
-# On non x86_64 hosts when building x86_64 toolchains for CI runners:
-docker build --platform linux/amd64 -t nzbget-musl-builder toolchains/linux
-```
-
-Build toolchains into `build/toolchains/linux/<arch>`:
-
-```bash
-# A single architecture
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh aarch64
-
-# All 7 architectures sequentially
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh all
-```
-
-Build and package in one step (`--package`), creating compressed tarballs and SHA-256 checksums in `build/`:
-
-```bash
-# A single architecture
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh armhf --package
-
-# All 7 architectures
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh all --package
-```
-
-Package already built toolchains without rebuilding:
-
-```bash
-# A single architecture
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh package armhf
-
-# All 7 architectures
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash toolchains/linux/build-toolchain.sh package all
-```
-
-Prerequisites for running the script on a host (Debian / Ubuntu):
-
-```bash
-sudo apt-get update && sudo apt-get install -y build-essential bison flex texinfo wget git
-```
-
-The resulting archives are placed in `build/`:
-
-- `build/linux-musl-toolchain-<arch>.tar.gz`
-- `build/linux-musl-toolchain-<arch>.tar.gz.sha256`
-
-### 5.3 Manual Toolchain Setup with musl-cross-make
-
-1. Clone musl-cross-make:
-   ```bash
-   git clone https://github.com/richfelker/musl-cross-make.git
-   cd musl-cross-make
-   git checkout fe915821b652a7fa37b34a596f47d8e20bc72338
-   ```
-
-2. Copy the time64 kernel compatibility patch:
-   ```bash
-   mkdir -p patches/musl-1.2.6
-   cp /path/to/nzbget/toolchains/linux/patches/musl-1.2.6/0010-time64-kernel-compat.patch patches/musl-1.2.6/
-   ```
-
-3. Create `config.mak`:
-   ```makefile
-   TARGET = x86_64-linux-musl
-   OUTPUT = /path/to/nzbget/build/toolchains/linux/x86_64
-   GCC_VER = 14.3.0
-   BINUTILS_VER = 2.44
-   MUSL_VER = 1.2.6
-   COMMON_CONFIG += CFLAGS="-g0 -O2" CXXFLAGS="-g0 -O2" LDFLAGS="-s"
-   ```
-
-   CPU baselines for the architectures where they are needed (prevents `SIGILL` on older devices):
-   - **armhf**: `COMMON_CONFIG += --with-arch=armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-mode=thumb`
-   - **armel**: `COMMON_CONFIG += --with-arch=armv5te --with-float=soft`
-   - **ppc6xx**: `COMMON_CONFIG += --with-cpu=powerpc`
-   - **riscv64**: `COMMON_CONFIG += --with-arch=rv64gc --with-abi=lp64d`
-   - **i686**: `COMMON_CONFIG += --with-arch=i686 --with-tune=generic`
-
-4. Compile and install:
-   ```bash
-   make
-   make install
-   ```
-
-### 5.4 Building NZBGet with CMake Presets
-
-With the toolchains installed in `build/toolchains/linux/<arch>` (or in a custom path pointed to by `NZBGET_LINUX_TOOLCHAIN_DIR`), NZBGet is built with the presets from `CMakePresets.json`:
+NZBGet is built with the presets from `CMakePresets.json`:
 
 | Architecture | Release Preset | Debug Preset |
 |---|---|---|
@@ -288,11 +206,15 @@ With the toolchains installed in `build/toolchains/linux/<arch>` (or in a custom
 | `ppc6xx` | `cmake --preset ci-linux-ppc6xx` | `cmake --preset ci-linux-debug-ppc6xx` |
 | `riscv64` | `cmake --preset ci-linux-riscv64` | `cmake --preset ci-linux-debug-riscv64` |
 
-With Docker (example: aarch64 release):
+Example: aarch64 release. Use the image for the architecture you are building.
 
 ```bash
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder cmake --preset ci-linux-aarch64
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder cmake --build --preset ci-linux-aarch64
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:linux-aarch64-1.0 \
+  cmake --preset ci-linux-aarch64
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:linux-aarch64-1.0 \
+  cmake --build --preset ci-linux-aarch64
 ```
 
 ## 6. Automated Packaging (`platforms/linux/build.sh`)
@@ -303,16 +225,24 @@ docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder cmake --build --prese
 
 ```bash
 # Binary package for one architecture
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash platforms/linux/build.sh bin armhf release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:linux-armhf-1.0 \
+  bash platforms/linux/build.sh bin armhf release
 
 # Binary packages for all 7 architectures
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash platforms/linux/build.sh bin all release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/linux/build.sh bin all release
 
 # Universal multi-architecture installer
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash platforms/linux/build.sh installer all release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/linux/build.sh installer all release
 
 # Everything at once: all 7 architectures, .tar.gz packages and the .run installer
-docker run --rm -v "$(pwd):/workspace" nzbget-musl-builder bash platforms/linux/build.sh all all release
+docker run --rm -v "$PWD:/src" -w /src \
+  ghcr.io/nzbgetcom/nzbget-musl-builder:all-1.0 \
+  bash platforms/linux/build.sh all all release
 ```
 
 - Binary packages (`.tar.gz`) contain NZBGet and the pre-built unpackers (`unrar` and `7za`): `build/dist/nzbget-<version>-bin-linux-<arch>.tar.gz`
