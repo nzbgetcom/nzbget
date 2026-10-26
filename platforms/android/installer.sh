@@ -273,22 +273,8 @@ Unpack()
     ) || Error "Unpacking failed."
 }
 
-# Paths the Android app expects. LockFile must stay ${AppDir}/nzbget.lock
-# or the app keeps "Show Web-Interface" disabled.
-ConfigureAndroidPaths()
-{
-    Info "  Setting data directory (MainDir=/sdcard/data/nzbget)"
-    sed 's:^MainDir=.*:MainDir=/sdcard/data/nzbget:' -i nzbget.conf
-    Info "  Setting script directory (ScriptDir=/sdcard/data/nzbget/scripts)"
-    sed 's:^ScriptDir=.*:ScriptDir=/sdcard/data/nzbget/scripts:' -i nzbget.conf
-    Info "  Setting lock file (LockFile=\${AppDir}/nzbget.lock)"
-    sed 's:^LockFile=.*:LockFile=${AppDir}/nzbget.lock:' -i nzbget.conf
-}
-
 ConfigureAndroid()
 {
-    ConfigureAndroidPaths
-
     # Adjusting config file to current system memory on Android
     Info "  Activating article cache (ArticleCache=100)"
     sed 's:^ArticleCache=.*:ArticleCache=100:' -i nzbget.conf
@@ -302,13 +288,14 @@ ConfigureAndroid()
     sed 's:^DirectUnpack=.*:DirectUnpack=yes:' -i nzbget.conf
 }
 
-# True when nzbget.conf is still the package template, before the app
-# has rewritten MainDir and LockFile. A failed install can leave this behind.
-ConfIsTemplate()
+# The Android app looks for ${AppDir}/nzbget.lock to detect the running daemon.
+# Only the untouched template value is replaced; custom values are left alone.
+ConfigureLockFile()
 {
-    maindir=`sed -n 's/^MainDir=//p' nzbget.conf`
-    lockfile=`sed -n 's/^LockFile=//p' nzbget.conf`
-    test "$maindir" = '${AppDir}/downloads' && test "$lockfile" = '${MainDir}/nzbget.lock'
+    if grep -qxF 'LockFile=${MainDir}/nzbget.lock' nzbget.conf; then
+        Info "  Setting lock file (LockFile=\${AppDir}/nzbget.lock)"
+        sed 's:^LockFile=.*:LockFile=${AppDir}/nzbget.lock:' -i nzbget.conf
+    fi
 }
 
 Configure()
@@ -320,9 +307,9 @@ Configure()
         cp ./webui/nzbget.conf.template nzbget.conf
         ConfigureAndroid
         QUICKHELP=yes
-    elif ConfIsTemplate; then
-        ConfigureAndroidPaths
     fi
+
+    ConfigureLockFile
 }
 
 # ParseCommandLine
