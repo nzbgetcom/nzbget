@@ -197,6 +197,14 @@ void WebProcessor::ParseHeaders()
 		{
 			m_forwardedFor = p + 17;
 		}
+		else if (!strncasecmp(p, "X-Forwarded-Proto: ", 19))
+		{
+			m_forwardedProto = p + 19;
+		}
+		else if (!strncasecmp(p, "X-NZBGet-Client: ", 17))
+		{
+			m_uiClient = !strncasecmp(p + 17, "webui", 5);
+		}
 		else if (!strncasecmp(p, "If-None-Match: ", 15))
 		{
 			m_oldETag = p + 15;
@@ -299,6 +307,24 @@ bool WebProcessor::CheckCredentials()
 	}
 
 	return true;
+}
+
+bool WebProcessor::IsSecureConnection()
+{
+	if (m_connection->GetTls())
+	{
+		return true;
+	}
+
+	// A reverse proxy may terminate TLS: trust the forwarded protocol for the cookie flag.
+	if (!m_forwardedProto.Empty())
+	{
+		const char* proto = m_forwardedProto;
+		return !strncasecmp(proto, "https", 5) &&
+			   (proto[5] == '\0' || proto[5] == ',' || proto[5] == ' ');
+	}
+
+	return false;
 }
 
 bool WebProcessor::IsAuthorizedIp(const char* remoteAddr)
@@ -445,8 +471,10 @@ void WebProcessor::SendAuthResponse()
 		"Server: nzbget-%s\r\n"
 		"\r\n";
 
+	// Form-authentication: no basic-auth challenge for browsers, but keep it for RPC clients.
+	const bool sendChallenge = !g_Options->GetFormAuth() || !m_uiClient;
 	BString<1024> responseHeader(AUTH_RESPONSE_HEADER,
-		g_Options->GetFormAuth() ? "" : "WWW-Authenticate: Basic realm=\"NZBGet\"\r\n",
+		sendChallenge ? "WWW-Authenticate: Basic realm=\"NZBGet\"\r\n" : "",
 		m_keepAlive ? "keep-alive" : "close", Util::VersionRevision());
 
 	// Send the response answer
@@ -465,7 +493,7 @@ void WebProcessor::SendOptionsResponse()
 		"Access-Control-Allow-Origin: %s\r\n"
 		"Access-Control-Allow-Credentials: true\r\n"
 		"Access-Control-Max-Age: 86400\r\n"
-		"Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
+		"Access-Control-Allow-Headers: Content-Type, Authorization, X-NZBGet-Client\r\n"
 		"Server: nzbget-%s\r\n"
 		"\r\n";
 	BString<1024> responseHeader(OPTIONS_RESPONSE_HEADER,
@@ -531,9 +559,9 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		"Access-Control-Allow-Origin: %s\r\n"
 		"Access-Control-Allow-Credentials: true\r\n"
 		"Access-Control-Max-Age: 86400\r\n"
-		"Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
-		"Set-Cookie: Auth-Type=%s; SameSite=Lax\r\n"
-		"Set-Cookie: Auth-Token=%s; HttpOnly; SameSite=Lax\r\n"
+		"Access-Control-Allow-Headers: Content-Type, Authorization, X-NZBGet-Client\r\n"
+		"Set-Cookie: Auth-Type=%s; SameSite=Lax%s\r\n"
+		"Set-Cookie: Auth-Token=%s; HttpOnly; SameSite=Lax%s\r\n"
 		"Content-Length: %i\r\n"
 		"%s"					// Content-Type: xxx
 		"%s"					// Content-Encoding: gzip
@@ -588,12 +616,15 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		contentTypeHeader.Format("Content-Type: %s\r\n", contentType);
 	}
 
+	const char* secureCookie = IsSecureConnection() ? "; Secure" : "";
 	BString<1024> responseHeader(RESPONSE_HEADER,
 		unchanged ? ERR_HTTP_NOT_MODIFIED : ERR_HTTP_OK,
 		m_keepAlive ? "keep-alive" : "close",
 		m_origin.Str(),
 		g_Options->GetFormAuth() ? "form" : "http",
+		secureCookie,
 		m_authorized ? m_serverAuthToken[m_userAccess] : "",
+		secureCookie,
 		bodyLen,
 		*contentTypeHeader,
 		gzip ? "Content-Encoding: gzip\r\n" : "",

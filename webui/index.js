@@ -762,43 +762,49 @@ var Frontend = (new function($)
 	
 	function authorize()
 	{
-		var formAuth = document.cookie.indexOf('Auth-Type=form') > -1;
-		if (!formAuth)
+		if (document.cookie.indexOf('Auth-Type=form') < 0)
 		{
+			// Form-authentication is disabled: the browser handles the login itself.
 			Refresher.update();
 			return;
 		}
 
+		function showLogin()
+		{
+			$('html').removeClass('auth-checking').addClass('auth-pending');
+			$('#Login_Error').hide();
+			$('#Login_Username').focus();
+		}
+
 		function sendAuth()
 		{
-			var username = $('#LoginDialog_Username').val();
-			var password = $('#LoginDialog_Password').val();
+			var username = $('#Login_Username').val();
+			var password = $('#Login_Password').val();
 			var headers = [{name: 'X-Authorization', value: 'Basic ' + window.btoa(username + ':' + password)}];
+			$('#Login_Submit').prop('disabled', true);
 			RPC.call('version', [],
 				function(version)
 				{
-					$('#LoginDialog').modal('hide');
 					// reloading of page is needed for certain browsers to force save-password-dialog
 					document.location.reload();
 				},
 				function(err, result)
 				{
-					$('#LoginDialog_PasswordBlock').removeClass('last-group');
-					$('#LoginDialog_Error').show();
-					if (!$('#LoginDialog_Password').is(":focus"))
+					$('#Login_Submit').prop('disabled', false);
+					$('#Login_Error').show();
+					if (!$('#Login_Password').is(":focus"))
 					{
-						$('#LoginDialog_Username').focus();
+						$('#Login_Username').focus();
 					}
 				},
 				{ custom_headers: headers });
 		}
 
-		$('#LoginDialog_Form').submit(function(e)
+		$('#LoginForm').submit(function(e)
 			{
-				if ($('#LoginDialog_Error').is(":visible"))
+				if ($('#Login_Error').is(":visible"))
 				{
-					$('#LoginDialog_Error').hide();
-					$('#LoginDialog_PasswordBlock').addClass('last-group');
+					$('#Login_Error').hide();
 					setTimeout(sendAuth, 500);
 				}
 				else
@@ -809,12 +815,23 @@ var Frontend = (new function($)
 				return false;
 			});
 
-		// try RPC call, it may work without extra authorization
-		RPC.call('version', [], Refresher.update, function()
+		$('#Login_TogglePassword').click(function(e)
 			{
-				$('#LoginDialog').modal({backdrop: 'static'});
-				$('#LoginDialog_Username').focus();
-			}, { timeout: 10000 } );
+				var $password = $('#Login_Password');
+				var hidden = $password.attr('type') === 'password';
+				$password.attr('type', hidden ? 'text' : 'password');
+				$(this).toggleClass('active', hidden);
+				e.preventDefault();
+			});
+
+		// try RPC call, it may work without extra authorization
+		RPC.call('version', [], function()
+			{
+				$('html').removeClass('auth-checking');
+				Refresher.update();
+			},
+			showLogin,
+			{ timeout: 10000 } );
 	}
 }(jQuery));
 
@@ -868,9 +885,6 @@ var Refresher = (new function($)
 			'loadconfig',
 			'configtemplates', 
 			'loadextensions', 
-			'downloadextension',
-			'updateextension',
-			'deleteextension',
 			'readurl', 
 			'servervolumes',
 			'testserverspeed',

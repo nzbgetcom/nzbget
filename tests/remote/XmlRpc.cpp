@@ -22,6 +22,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include "XmlRpc.h"
+#include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(RemoteTest)
 
@@ -288,6 +289,75 @@ BOOST_AUTO_TEST_CASE(TestWhitespaceAfterLastParam)
 		BOOST_CHECK_EQUAL(std::string(val), "abc");
 		BOOST_CHECK(!cmd.TestNextParamAsStr(&val));
 	}
+}
+
+BOOST_AUTO_TEST_CASE(TestMethodDeniedForAddUser)
+{
+	using EUserAccess = XmlRpcProcessor::EUserAccess;
+
+	// The add-user may only add downloads and query the version.
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "append"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "appendurl"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "version"));
+	BOOST_CHECK(XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "status"));
+	BOOST_CHECK(XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "saveconfig"));
+}
+
+BOOST_AUTO_TEST_CASE(TestMethodDeniedForControlUser)
+{
+	using EUserAccess = XmlRpcProcessor::EUserAccess;
+
+	// The control (admin) user may call every method.
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaControl, "shutdown"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaControl, "saveconfig"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaControl, "startscript"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaControl, "downloadextension"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaControl, "loadextensions"));
+}
+
+BOOST_AUTO_TEST_CASE(TestMethodDeniedForRestrictedUser)
+{
+	using EUserAccess = XmlRpcProcessor::EUserAccess;
+
+	const char* unsafeMethods[] =
+	{
+		"saveconfig", "editserver", "resetservervolume",
+		"shutdown", "reload", "startupdate", "logupdate", "dump", "clearlog",
+		"downloadextension", "updateextension", "deleteextension", "testextension",
+		"startscript", "logscript",
+		// "previewfeed" accepts a client-supplied URL: administrators only.
+		"previewfeed",
+	};
+	const char* safeMethods[] =
+	{
+		"status", "listgroups", "listfiles", "history", "postqueue", "urlqueue",
+		"log", "loadlog", "loadconfig", "config", "configtemplates", "loadextensions",
+		"systemhealth", "sysinfo", "servervolumes", "readurl", "checkupdates",
+		"testserver", "testserverspeed", "testdiskspeed", "testnetworkspeed",
+		"version", "append", "appendurl", "pause", "resume", "editqueue", "rate",
+		"scan", "scheduleresume", "viewfeed", "fetchfeed", "writelog",
+	};
+
+	for (const char* method : unsafeMethods)
+	{
+		BOOST_CHECK_MESSAGE(XmlRpcProcessor::IsMethodDenied(EUserAccess::uaRestricted, method),
+			"Expected \"" << method << "\" to be denied for restricted user");
+	}
+
+	for (const char* method : safeMethods)
+	{
+		BOOST_CHECK_MESSAGE(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaRestricted, method),
+			"Expected \"" << method << "\" to be allowed for restricted user");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TestMethodNotDeniedForUnknownMethod)
+{
+	using EUserAccess = XmlRpcProcessor::EUserAccess;
+
+	// An unknown method is not an access problem: it must yield "invalid procedure".
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaRestricted, "nosuchmethod"));
+	BOOST_CHECK(!XmlRpcProcessor::IsMethodDenied(EUserAccess::uaAdd, "nosuchmethod"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

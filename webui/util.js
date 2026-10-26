@@ -807,6 +807,9 @@ var RPC = (new function($)
 			xhr.setRequestHeader(options['custom_headers'][i].name, options['custom_headers'][i].value);
 		}
 
+		// Marks the request as coming from the web-interface, so the server omits the challenge.
+		xhr.setRequestHeader('X-NZBGet-Client', 'webui');
+
 		return xhr;
 	}
 

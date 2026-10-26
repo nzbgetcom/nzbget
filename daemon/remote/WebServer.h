@@ -66,7 +66,9 @@ private:
 	char m_authToken[TOKEN_SIZE];
 	static char m_serverAuthToken[3][TOKEN_SIZE];
 	CString m_forwardedFor;
+	CString m_forwardedProto;
 	CString m_oldETag;
+	bool m_uiClient = false;
 	bool m_keepAlive = false;
 	std::hash<std::string> m_hasher;
 
@@ -80,6 +82,7 @@ private:
 	void SendRedirectResponse(const char* url);
 	const char* DetectContentType(const char* filename);
 	bool IsAuthorizedIp(const char* remoteAddr);
+	bool IsSecureConnection();
 	void ParseHeaders();
 	void ParseUrl();
 	bool CheckCredentials();

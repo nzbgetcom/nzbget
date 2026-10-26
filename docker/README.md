@@ -71,6 +71,10 @@ NZBGet container can be configured by passing environment variables to it. This 
 | TZ          | Timezone
 | NZBGET_USER | User name for web auth
 | NZBGET_PASS | Password for web auth
+| NZBGET_CONTROLIP | Address the web/RPC server binds to (default: 0.0.0.0)
+
+The web/RPC server listens on all interfaces, otherwise published container ports
+would be unreachable. Set `NZBGET_CONTROLIP` to bind a specific address instead.
 
 # User / Group Identifiers
 

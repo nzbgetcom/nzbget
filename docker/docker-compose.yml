@@ -11,6 +11,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=Europe/London
+      # Change the default credentials below before exposing port 6789 to the network.
       - NZBGET_USER=nzbget
       - NZBGET_PASS=tegbzn6789
     volumes:

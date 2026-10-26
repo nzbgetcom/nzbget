@@ -702,3 +702,28 @@ tr.drag-source > td {
 		box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
 	}
 }
+
+/* *** WEB LOGIN SCREEN *************************************************** */
+
+#LoginScreen,
+#AuthSpinner {
+	background-color: #333333;
+}
+
+html.auth-checking #AuthSpinner .material-icon {
+	color: #f5f5f5;
+}
+
+#LoginScreen .login-card {
+	background-color: #414141;
+	color: #f5f5f5;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+	-webkit-box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+#LoginScreen #Login_Username,
+#LoginScreen #Login_Password {
+	background-color: #212529;
+	color: inherit;
+	border: 1px solid #626262;
+}

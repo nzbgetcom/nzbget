@@ -93,6 +93,14 @@
   <!-- android -->
   <link rel="icon" type="image/png" sizes="256x256" href="img/favicon-256x256.png">
 
+	<script language="javascript" type="text/javascript">
+		// Hide the app-shell before rendering to avoid flashing unauthenticated content.
+		if (document.cookie.indexOf('Auth-Type=form') > -1)
+		{
+			document.documentElement.className += ' auth-checking';
+		}
+	</script>
+
 </head>
 
 <body>
@@ -3108,40 +3116,38 @@
 	<div id="ShutdownConfirmDialog_OK" data-i18n="btn_shutdown_confirm"></div>
 </div>
 
-<!-- *** WEB LOGIN DIALOG ************************************** -->
+<!-- *** WEB LOGIN SCREEN ************************************** -->
 
-<div class="modal modal-mini modal-center hide" id="LoginDialog">
-	<div class="modal-header">
-		<h3 data-i18n="login_dialog_title"></h3>
-	</div>
+<div id="AuthSpinner"><i class="material-icon spinner"><svg aria-hidden="true"><use href="img/icons.svg#progress_activity"></use></svg></i></div>
 
-    <form name="LoginDialog_Form" id="LoginDialog_Form" action="index.html">
-	<div class="modal-body">
-		<div class="form-horizontal">
-			<fieldset>
-				<div class="control-group">
-					<label class="control-label" for="LoginDialog_UsernameGroup" data-i18n="login_dialog_username"></label>
-					<div class="controls" id="LoginDialog_UsernameGroup">
-						<input class="input-medium" id="LoginDialog_Username" type="text" autocapitalize="none" autocorrect="off" autocomplete="username">
-					</div>
-				</div>
-
-				<div class="control-group last-group" id="LoginDialog_PasswordBlock">
-					<label class="control-label" for="LoginDialog_PasswordGroup" data-i18n="login_dialog_password"></label>
-					<div class="controls" id="LoginDialog_PasswordGroup">
-						<input class="input-medium" id="LoginDialog_Password" type="password">
-					</div>
-				</div>
-
-				<p class="alert alert-danger hide text-center" id="LoginDialog_Error" data-i18n="login_dialog_error"></p>
-			</fieldset>
+<div id="LoginScreen">
+	<div class="login-card">
+		<div class="login-header">
+			<img class="login-logo" src="img/nzbget.svg" alt="NZBGet">
+			<h3 data-i18n="login_dialog_title"></h3>
 		</div>
-	</div>
 
-	<div class="modal-footer">
-	    <button type="submit" class="btn btn-primary" id="LoginDialog_Login" data-i18n="login_dialog_btn"></button>
+		<form id="LoginForm" name="LoginForm" action="index.html" autocomplete="on">
+			<input id="Login_Username" name="username" type="text"
+				data-i18n-placeholder="login_dialog_username" aria-label="Username"
+				autocapitalize="none" autocorrect="off" spellcheck="false"
+				autocomplete="username" required>
+
+			<div class="login-password-wrapper">
+				<input id="Login_Password" name="password" type="password"
+					data-i18n-placeholder="login_dialog_password" aria-label="Password"
+					autocomplete="current-password" required>
+				<button type="button" class="login-password-toggle" id="Login_TogglePassword" tabindex="-1"
+					title="Show/hide password" aria-label="Show/hide password"><i class="material-icon"><svg aria-hidden="true"><use href="img/icons.svg#visibility"></use></svg></i></button>
+			</div>
+
+			<p class="alert alert-danger hide" id="Login_Error" data-i18n="login_dialog_error"></p>
+
+			<button type="submit" class="btn btn-primary btn-block" id="Login_Submit">
+				<span data-i18n="login_dialog_btn"></span>
+			</button>
+		</form>
 	</div>
-	</form>
 </div>
 
 <!-- ***  DRAG-N-DROP ************************************************************ -->

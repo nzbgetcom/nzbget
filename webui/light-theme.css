@@ -551,3 +551,17 @@ tr.drag-source > td {
 .table-striped tbody tr.drag-finish td a {
 	background-color: #E6FAE4 !important;
 }
+
+/* *** WEB LOGIN SCREEN *************************************************** */
+
+#LoginScreen,
+#AuthSpinner {
+	background-color: #f5f5f5;
+}
+
+#LoginScreen .login-card {
+	background-color: #ffffff;
+	color: #333333;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+	-webkit-box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+}
