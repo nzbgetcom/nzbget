@@ -1572,12 +1572,14 @@ void StatusXmlCommand::Execute()
 		"<value><struct>\n"
 		"<member><name>ID</name><value><i4>%i</i4></value></member>\n"
 		"<member><name>Active</name><value><boolean>%s</boolean></value></member>\n"
+		"<member><name>QuotaReached</name><value><boolean>%s</boolean></value></member>\n"
 		"</struct></value>\n";
 
 	const char* JSON_NEWSSERVER_ITEM =
 		"{\n"
 		"\"ID\" : %i,\n"
-		"\"Active\" : %s\n"
+		"\"Active\" : %s,\n"
+		"\"QuotaReached\" : %s\n"
 		"}";
 
 	int postJobCount = 0;
@@ -1734,7 +1736,7 @@ void StatusXmlCommand::Execute()
 	{
 		AppendCondResponse(",\n", IsJson() && index++ > 0);
 		AppendFmtResponse(IsJson() ? JSON_NEWSSERVER_ITEM : XML_NEWSSERVER_ITEM,
-			server->GetId(), BoolToStr(server->GetActive()));
+			server->GetId(), BoolToStr(server->GetActive()), BoolToStr(server->GetQuotaReached()));
 	}
 
 	AppendResponse(IsJson() ? JSON_STATUS_END : XML_STATUS_END);
@@ -3879,18 +3881,25 @@ void ResetServerVolumeXmlCommand::Execute()
 	}
 
 	bool ok = false;
-	int index = 0;
-	for (ServerVolume& serverVolume : g_StatMeter->GuardServerVolumes())
 	{
-		if (index == serverId || serverId == -1)
+		int index = 0;
+		for (ServerVolume& serverVolume : g_StatMeter->GuardServerVolumes())
 		{
-			if (reset)
-				serverVolume.Reset();
-			else
-				serverVolume.ResetCustom();
-			ok = true;
+			if (index == serverId || serverId == -1)
+			{
+				if (reset)
+					serverVolume.Reset();
+				else
+					serverVolume.ResetCustom();
+				ok = true;
+			}
+			index++;
 		}
-		index++;
+	}
+
+	if (ok)
+	{
+		g_StatMeter->IntervalCheck();
 	}
 
 	BuildBoolResponse(ok);
@@ -4072,6 +4081,11 @@ void TestServerSpeedXmlCommand::Execute()
 	if (!server->GetActive())
 	{
 		BuildErrorResponse(2, "Server is not active");
+		return;
+	}
+	if (server->GetQuotaReached())
+	{
+		BuildErrorResponse(2, "Server quota has been reached");
 		return;
 	}
 	if (server->GetMaxConnections() == 0)

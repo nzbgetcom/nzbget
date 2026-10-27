@@ -240,7 +240,8 @@ void ArticleDownloader::Run()
 			{
 				if (candidateServer->GetNormLevel() == level)
 				{
-					bool serverFailed = !candidateServer->GetActive() || candidateServer->GetMaxConnections() == 0 ||
+					bool serverFailed = !candidateServer->GetActive() || candidateServer->GetQuotaReached() ||
+						candidateServer->GetMaxConnections() == 0 ||
 						(candidateServer->GetOptional() && g_ServerPool->IsServerBlocked(candidateServer));
 					if (!serverFailed)
 					{

@@ -3798,6 +3798,14 @@
     "message": "Server retention time.\n\nHow long the articles are stored on the news server. The articles\nwhose age exceed the defined server retention time are not tried on\nthis news server, the articles are instead considered failed on this\nnews server.\n\nValue \"0\" disables retention check.",
     "description": "Description for the option Server1.Retention DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
+  "config_desc_server_quota": {
+    "message": "Download quota for this news server.\n\nUseful for block accounts with a fixed data allowance. When the server's\ndownloaded volume reaches this limit, the server is automatically stopped\nfrom being used until its volume counter is reset (in the Statistics tab\nor Status dialog) or the quota is increased.\n\nValue \"0\" disables quota check.",
+    "description": "Description for the option Server1.Quota DO NOT translate technical values enclosed in quotes. If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
+  },
+  "stat_quota": {
+    "message": "Quota",
+    "description": "Table row header in server statistics for server download quota usage"
+  },
   "config_desc_server_certverification": {
     "message": "Certificate verification level.\n\nNone - NO certificate signing check, NO certificate hostname check\n\nMinimal - certificate signing check, NO certificate hostname check\n\nStrict - certificate signing check, certificate hostname check",
     "description": "Description for the option Server1.CertVerification DO NOT translate configuration option values (Minimal, None, Strict) as they are fixed configuration values."

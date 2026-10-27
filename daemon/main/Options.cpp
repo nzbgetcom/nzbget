@@ -1001,9 +1001,16 @@ void Options::InitServers()
 		const char* ncipher = GetOption(BString<100>("Server%i.Cipher", n));
 		const char* nconnections = GetOption(BString<100>("Server%i.Connections", n));
 		const char* nretention = GetOption(BString<100>("Server%i.Retention", n));
+		const char* nquota = GetOption(BString<100>("Server%i.Quota", n));
+		int quota = nquota ? atoi(nquota) : 0;
+		if (quota < 0)
+		{
+			ConfigError("Invalid value for option \"Server%i.Quota\": %i", n, quota);
+			quota = 0;
+		}
 
 		bool definition = nactive || nname || nlevel || ngroup || nhost || nport || noptional ||
-			nusername || npassword || nconnections || njoingroup || ntls || ncipher || nretention;
+			nusername || npassword || nconnections || njoingroup || ntls || ncipher || nretention || nquota;
 		bool completed = nhost && nport && nconnections;
 
 		if (!definition)
@@ -1025,7 +1032,7 @@ void Options::InitServers()
 					nretention ? atoi(nretention) : 0,
 					nlevel ? atoi(nlevel) : 0,
 					ngroup ? atoi(ngroup) : 0,
-					optional, certveriflevel);
+					optional, certveriflevel, quota);
 			}
 		}
 		else
@@ -1540,9 +1547,9 @@ bool Options::ValidateOptionName(const char* optname, const char* optvalue)
 			!strcasecmp(p, ".password") || !strcasecmp(p, ".joingroup") ||
 			!strcasecmp(p, ".encryption") || !strcasecmp(p, ".connections") ||
 			!strcasecmp(p, ".cipher") || !strcasecmp(p, ".group") ||
-			!strcasecmp(p, ".retention") || !strcasecmp(p, ".optional") ||
-			!strcasecmp(p, ".notes") || !strcasecmp(p, ".ipversion") ||
-			!strcasecmp(p, ".certverification")))
+			!strcasecmp(p, ".retention") || !strcasecmp(p, ".quota") ||
+			!strcasecmp(p, ".optional") || !strcasecmp(p, ".notes") ||
+			!strcasecmp(p, ".ipversion") || !strcasecmp(p, ".certverification")))
 		{
 			return true;
 		}
