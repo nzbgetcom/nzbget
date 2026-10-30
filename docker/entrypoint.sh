@@ -34,6 +34,8 @@ fi
 if [ ! -z "${NZBGET_PASS}" ]; then
     OPTIONS="${OPTIONS}-o ControlPassword=${NZBGET_PASS} "
 fi
+# Published ports are useless unless the web/RPC server listens on all interfaces.
+OPTIONS="${OPTIONS}-o ControlIP=${NZBGET_CONTROLIP:-0.0.0.0} "
 
 if [ "$(id -u)" -eq 0 ]; then
     chown user:users /config/nzbget.conf

@@ -24,6 +24,8 @@
 #include <string>
 #include "FileSystem.h"
 #include "Validators.h"
+#include "SecurityValidator.h"
+#include "Options.h"
 
 #ifndef _WIN32
 #include <sys/stat.h>
@@ -343,4 +345,87 @@ BOOST_AUTO_TEST_CASE(TestDirectoryReadable)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(SecurityValidatorsSuite)
+
+namespace
+{
+	Status ValidateFormAuth(std::vector<const char*> options)
+	{
+		Options::CmdOptList cmdOpts = std::move(options);
+		Options opts(&cmdOpts, nullptr);
+
+		Options* oldOptions = g_Options;
+		g_Options = &opts;
+		SystemHealth::Security::FormAuthValidator validator(opts);
+		Status status = validator.Validate();
+		g_Options = oldOptions;
+
+		return status;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthDisabledIsInfo)
+{
+	Status s = ValidateFormAuth({"FormAuth=no", "ControlUsername=nzbget", "ControlPassword=secret"});
+	BOOST_CHECK(s.IsInfo());
+	BOOST_CHECK(s.GetMessage().find("is disabled") != std::string::npos);
+	BOOST_CHECK(s.GetMessage().find("web-form login and session logout") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthNoUsersConfigured)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "ControlUsername=", "ControlPassword=",
+		"RestrictedUsername=", "RestrictedPassword=", "AddUsername=", "AddPassword=",
+		"ControlIP=127.0.0.1"});
+	BOOST_CHECK(s.IsWarning());
+	BOOST_CHECK(s.GetMessage().find("no users are configured") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthControlUserConfigured)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "ControlUsername=nzbget",
+		"ControlPassword=secret", "ControlIP=127.0.0.1"});
+	BOOST_CHECK(s.IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthRestrictedUserOnly)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "ControlUsername=", "ControlPassword=",
+		"RestrictedUsername=guest", "RestrictedPassword=guestpw", "ControlIP=127.0.0.1"});
+	BOOST_CHECK(s.IsInfo());
+	BOOST_CHECK(s.GetMessage().find("restricted user") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthAddUserOnly)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "ControlUsername=", "ControlPassword=",
+		"AddUsername=dropper", "AddPassword=dropperpw", "ControlIP=127.0.0.1"});
+	BOOST_CHECK(s.IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthLocalOnlyIsNotWarned)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "SecureControl=no", "ControlIP=127.0.0.1",
+		"ControlUsername=nzbget", "ControlPassword=secret"});
+	BOOST_CHECK(s.IsOk());
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthExposedWithoutTlsIsWarned)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "SecureControl=no", "ControlIP=0.0.0.0",
+		"ControlUsername=nzbget", "ControlPassword=secret"});
+	BOOST_CHECK(s.IsWarning());
+	BOOST_CHECK(s.GetMessage().find("plaintext connection") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(TestFormAuthSecureControlExposedIsOk)
+{
+	Status s = ValidateFormAuth({"FormAuth=yes", "SecureControl=yes", "SecurePort=6791",
+		"ControlIP=0.0.0.0", "ControlUsername=nzbget", "ControlPassword=secret"});
+	BOOST_CHECK(s.IsOk());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()

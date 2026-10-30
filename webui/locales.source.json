@@ -246,9 +246,21 @@
     "message": "View",
     "description": "Dropdown button for view options"
   },
+  "btn_logout": {
+    "message": "Logout",
+    "description": "Button to log out and return to the login screen"
+  },
   "btn_show": {
     "message": "Show",
     "description": "Button to show hidden content (e.g., show password)"
+  },
+  "user_role_control": {
+    "message": "Administrator",
+    "description": "Access level of the logged in user with full permissions"
+  },
+  "user_role_restricted": {
+    "message": "Restricted",
+    "description": "Access level of the logged in user with limited permissions"
   },
   "time_days_short": {
     "message": "d",
@@ -2791,7 +2803,7 @@
     "description": "Input label"
   },
   "login_dialog_error": {
-    "message": "It didn't work. Try again.",
+    "message": "Invalid username or password",
     "description": "Error message"
   },
   "login_dialog_btn": {
@@ -3811,7 +3823,7 @@
     "description": "Description for the option Server1.Notes"
   },
   "config_desc_controlip": {
-    "message": "IP on which NZBGet server listen and which clients use to contact NZBGet.\n\nIt could be a dns-hostname (e. g. \"mypc\") or an IP address (e. g. \"192.168.1.2\" or\n\"127.0.0.1\").\n\nYour computer may have multiple network interfaces and therefore multiple IP\naddresses. If you want NZBGet to listen to all interfaces and be available from\nall IP-addresses use value \"0.0.0.0\".\n\nNOTE: When you start NZBGet as client (to send remote commands to NZBGet server) and\nthe option <ControlIP> is set to \"0.0.0.0\" the client will use IP \"127.0.0.1\".\n\nNOTE: If you set the option to \"127.0.0.1\" you will be able to connect to NZBGet\nonly from the computer running NZBGet. This restriction applies to web-interface too.\n\nNOTE: NZBGet also supports listening on Unix domain sockets instead of TCP/IP\nsockets. To activate this mode set option <ControlIP> to a local path\n(e. g. \"ControlIP=/var/sock\").",
+    "message": "IP on which NZBGet server listen and which clients use to contact NZBGet.\n\nIt could be a dns-hostname (e. g. \"mypc\") or an IP address (e. g. \"192.168.1.2\" or\n\"127.0.0.1\").\n\nThe default value \"127.0.0.1\" allows connections only from the local computer\nrunning NZBGet. This restriction applies to the web-interface too.\n\nIf you want to access NZBGet from other computers on your network, set this option\nto the IP address of this computer or to \"0.0.0.0\" to listen on all network interfaces.\n\nNOTE: NZBGet also supports listening on Unix domain sockets instead of TCP/IP\nsockets. To activate this mode set option <ControlIP> to a local path\n(e. g. \"ControlIP=/var/sock\").",
     "description": "Description for the option ControlIP DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_controlport": {
@@ -3827,7 +3839,7 @@
     "description": "Description for the option ControlPassword"
   },
   "config_desc_restrictedusername": {
-    "message": "User name for restricted access.\n\nThe restricted user can control the program with a few restrictions.\nThey have access to the web-interface and can see most of the program\nsettings. They however, can not change program settings, view security\nrelated options or options provided by extension scripts.\n\nUse this user to connect to NZBGet from other programs and web-sites.\n\nIn terms of RPC-API the user:\n- cannot use method \"saveconfig\";\n- methods \"config\" and \"saveconfig\" return string \"***\" for\n  options those content is protected from the user.\n\nSet to empty value to disable restricted user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
+    "message": "User name for restricted access.\n\nThe restricted user can control the program with a few restrictions.\nThey have access to the web-interface and can see most of the program\nsettings. They however, can not change program settings, view security\nrelated options or options provided by extension scripts.\n\nUse this user to connect to NZBGet from other programs and web-sites.\n\nIn terms of RPC-API the user:\n- cannot change settings or use method \"saveconfig\";\n- cannot manage extensions, execute scripts or control the server;\n- methods \"config\" and \"loadconfig\" return string \"***\" for options whose\n  content is protected from the user.\n\nSet to empty value to disable restricted user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
     "description": "Description for the option RestrictedUsername DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_restrictedpassword": {
@@ -3835,7 +3847,7 @@
     "description": "Description for the option RestrictedPassword"
   },
   "config_desc_addusername": {
-    "message": "User name to add downloads via RPC-API.\n\nUse the AddUsername/AddPassword to give other programs or web-services\naccess to NZBGet with only two permissions:\n- add new downloads using RPC-method \"append\";\n- check program version using RPC-method \"version\".\n\nIn a case the program/web-service needs more rights use the restricted\nuser instead (options <RestrictedUsername> and <RestrictedPassword>).\n\nSet to empty value to disable add-user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
+    "message": "User name to add downloads via RPC-API.\n\nUse the AddUsername/AddPassword to give other programs or web-services\naccess to NZBGet with only two permissions:\n- add new downloads using RPC-methods \"append\" and \"appendurl\";\n- check program version using RPC-method \"version\".\n\nIn a case the program/web-service needs more rights use the restricted\nuser instead (options <RestrictedUsername> and <RestrictedPassword>).\n\nSet to empty value to disable add-user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
     "description": "Description for the option AddUsername DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_addpassword": {
@@ -3843,7 +3855,7 @@
     "description": "Description for the option AddPassword"
   },
   "config_desc_formauth": {
-    "message": "Authenticate using web-form.\n\nThe preferred and default way to authenticate in web-interface is using\nHTTP authentication. Web-browsers show a special dialog to enter username\nand password which they then send back to NZBGet. Sometimes browser plugins\naided at storing and filling of passwords do not work properly with browser's\nbuilt-in dialog. To help with such tools NZBGet provide an alternative\nauthentication mechanism via web form.",
+    "message": "Authenticate using web-form.\n\nWhen enabled (yes), the web-interface uses an HTML login form.\nWhen disabled (no), the browser uses its built-in HTTP authentication prompt.\n\nNOTE: Third-party applications and RPC clients are not affected and continue\nto use HTTP authentication.",
     "description": "Description for the option FormAuth"
   },
   "config_desc_securecontrol": {

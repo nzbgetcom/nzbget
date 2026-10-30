@@ -190,6 +190,20 @@ $(document).ready(function()
 		I18n.setLanguage($(this).val());
 	});
 
+	// Only with the login form: with browser auth the logout is undone by the cached credentials.
+	$('#HeaderUserItem, #HeaderUserDivider, #HeaderLogoutItem, #HeaderLogoutDivider')
+		.toggle(document.cookie.indexOf('Auth-Type=form') >= 0);
+
+	$('#HeaderLogout').click(function() {
+		Util.removeFromLocalStorage('LoginUsername');
+		$.ajax({ url: 'logout', cache: false }).always(function() {
+			document.location.reload();
+		});
+		return false;
+	});
+
+	I18n.subscribe(Frontend.updateUserInfo);
+
 	// 3. Unit Setup
 	function updateUnitUI() {
 		$('.unit-btn').removeClass('btn-active');
@@ -367,11 +381,23 @@ var Frontend = (new function($)
 			$('#Navbar').show();
 			$('#MainTabContent').show();
 			$('#version').text(Options.option('Version'));
+			updateUserInfo();
 			selectInitialTab();
 			windowResized();
 			firstLoad = false;
 			UpdateDialog.checkUpdate();
 		}
+	}
+
+	this.updateUserInfo = updateUserInfo;
+
+	function updateUserInfo()
+	{
+		// Auth-Token is HttpOnly and there is no "who am I" RPC: the name comes from login.
+		var name = Util.getFromLocalStorage('LoginUsername');
+		var role = I18n.translate(Options.restricted ? 'user_role_restricted' : 'user_role_control');
+		$('#HeaderUserName').text(name ? name : role);
+		$('#HeaderUserRole').text(name ? role : '').toggle(!!name);
 	}
 
 	function selectInitialTab()
@@ -762,43 +788,70 @@ var Frontend = (new function($)
 	
 	function authorize()
 	{
-		var formAuth = document.cookie.indexOf('Auth-Type=form') > -1;
-		if (!formAuth)
+		function showLogin()
 		{
+			$('html').removeClass('auth-checking').addClass('auth-pending');
+			$('#Login_Error').hide();
+			$('#Login_ShowPassword').prop('checked', false);
+			$('#Login_Password').prop('type', 'password');
+			$('#Login_Username').focus();
+		}
+
+		if (document.cookie.indexOf('Auth-Type=form') < 0)
+		{
+			// Form-authentication is disabled: the browser handles the login itself.
 			Refresher.update();
 			return;
 		}
 
+		// The session can be lost at any time (server restart, logout). Switch back to the
+		// login form instead of leaving the page with a "401" error.
+		$(document).bind('WebUI:unauthorized', function()
+			{
+				if (!$('html').hasClass('auth-pending'))
+				{
+					Refresher.pause();
+					showLogin();
+				}
+			});
+
 		function sendAuth()
 		{
-			var username = $('#LoginDialog_Username').val();
-			var password = $('#LoginDialog_Password').val();
+			var username = $('#Login_Username').val();
+			var password = $('#Login_Password').val();
 			var headers = [{name: 'X-Authorization', value: 'Basic ' + window.btoa(username + ':' + password)}];
-			RPC.call('version', [],
-				function(version)
+			$('#Login_Submit').prop('disabled', true);
+			// "status" not "version": an add-only user may call "version" and would loop.
+			RPC.call('status', [],
+				function(status)
 				{
-					$('#LoginDialog').modal('hide');
+					// Keep the name for the session indicator in the settings menu.
+					Util.saveToLocalStorage('LoginUsername', username);
 					// reloading of page is needed for certain browsers to force save-password-dialog
 					document.location.reload();
 				},
 				function(err, result)
 				{
-					$('#LoginDialog_PasswordBlock').removeClass('last-group');
-					$('#LoginDialog_Error').show();
-					if (!$('#LoginDialog_Password').is(":focus"))
+					$('#Login_Submit').prop('disabled', false);
+					$('#Login_Error').show();
+					if (!$('#Login_Password').is(":focus"))
 					{
-						$('#LoginDialog_Username').focus();
+						$('#Login_Username').focus();
 					}
 				},
 				{ custom_headers: headers });
 		}
 
-		$('#LoginDialog_Form').submit(function(e)
+		$('#Login_ShowPassword').change(function()
 			{
-				if ($('#LoginDialog_Error').is(":visible"))
+				$('#Login_Password').prop('type', this.checked ? 'text' : 'password');
+			});
+
+		$('#LoginForm').submit(function(e)
+			{
+				if ($('#Login_Error').is(":visible"))
 				{
-					$('#LoginDialog_Error').hide();
-					$('#LoginDialog_PasswordBlock').addClass('last-group');
+					$('#Login_Error').hide();
 					setTimeout(sendAuth, 500);
 				}
 				else
@@ -810,11 +863,13 @@ var Frontend = (new function($)
 			});
 
 		// try RPC call, it may work without extra authorization
-		RPC.call('version', [], Refresher.update, function()
+		RPC.call('version', [], function()
 			{
-				$('#LoginDialog').modal({backdrop: 'static'});
-				$('#LoginDialog_Username').focus();
-			}, { timeout: 10000 } );
+				$('html').removeClass('auth-checking');
+				Refresher.update();
+			},
+			showLogin,
+			{ timeout: 10000 } );
 	}
 }(jQuery));
 
@@ -868,9 +923,6 @@ var Refresher = (new function($)
 			'loadconfig',
 			'configtemplates', 
 			'loadextensions', 
-			'downloadextension',
-			'updateextension',
-			'deleteextension',
 			'readurl', 
 			'servervolumes',
 			'testserverspeed',

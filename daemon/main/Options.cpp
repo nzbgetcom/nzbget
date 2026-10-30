@@ -78,7 +78,8 @@ bool Options::OptEntry::Restricted()
 		!strcasecmp(m_name, UMASK.data()) ||
 		strchr(m_name, ':') ||			// All extension script options
 		strstr(loName, "username") ||	// ServerX.Username, ControlUsername, etc.
-		strstr(loName, "password");		// ServerX.Password, ControlPassword, etc.
+		strstr(loName, "password") ||	// ServerX.Password, ControlPassword, etc.
+		(!strncasecmp(m_name, "Feed", 4) && strstr(loName, ".url") && !Util::EmptyStr(m_value));
 
 	return restricted;
 }
@@ -297,7 +298,7 @@ void Options::InitDefaults()
 #endif
 	SetOption(DUPECHECK.data(), "yes");
 	SetOption(DOWNLOADRATE.data(), "0");
-	SetOption(CONTROLIP.data(), "0.0.0.0");
+	SetOption(CONTROLIP.data(), "127.0.0.1");
 	SetOption(CONTROLUSERNAME.data(), "nzbget");
 	SetOption(CONTROLPASSWORD.data(), "tegbzn6789");
 	SetOption(RESTRICTEDUSERNAME.data(), "");
@@ -305,7 +306,7 @@ void Options::InitDefaults()
 	SetOption(ADDUSERNAME.data(), "");
 	SetOption(ADDPASSWORD.data(), "");
 	SetOption(CONTROLPORT.data(), "6789");
-	SetOption(FORMAUTH.data(), "no");
+	SetOption(FORMAUTH.data(), "yes");
 	SetOption(SECURECONTROL.data(), "no");
 	SetOption(SECUREPORT.data(), "6791");
 	SetOption(SECURECERT.data(), "");
