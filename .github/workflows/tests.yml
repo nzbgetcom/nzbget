@@ -168,18 +168,21 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
 
-    - name: OpenBSD build and test
-      uses: cross-platform-actions/action@v1.6.0
+    - name: Start OpenBSD VM
+      uses: cross-platform-actions/action@v1.7.0
       with:
         operating_system: openbsd
         version: '7.9'
-        run: |
-          sudo pkg_add git cmake libxml boost unrar p7zip
-          mkdir build
-          cd build
-          cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
-          cmake --build . --config Release -j 4
-          ctest -C Release
+
+    - name: OpenBSD build and test
+      shell: cpa.sh {0}
+      run: |
+        sudo pkg_add git cmake libxml boost unrar p7zip
+        mkdir build
+        cd build
+        cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+        cmake --build . --config Release -j 4
+        ctest -C Release
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v7
@@ -196,18 +199,21 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v6
 
-    - name: FreeBSD build and test
-      uses: cross-platform-actions/action@v0.27.0
+    - name: Start FreeBSD VM
+      uses: cross-platform-actions/action@v1.7.0
       with:
         operating_system: freebsd
-        version: '14.2'
-        run: |
-          sudo pkg install -y git cmake libxml2 boost-all unrar 7-zip
-          mkdir build
-          cd build
-          cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
-          cmake --build . --config Release -j 4
-          ctest -C Release
+        version: '14.5'
+
+    - name: FreeBSD build and test
+      shell: cpa.sh {0}
+      run: |
+        sudo pkg install -y git cmake-core libxml2 boost-all unrar 7-zip
+        mkdir build
+        cd build
+        cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+        cmake --build . --config Release -j 4
+        ctest -C Release
 
     - name: Upload test artifacts
       uses: actions/upload-artifact@v7
@@ -295,17 +301,20 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
 
-    - name: OpenBSD build
-      uses: cross-platform-actions/action@v1.6.0
+    - name: Start OpenBSD VM
+      uses: cross-platform-actions/action@v1.7.0
       with:
         operating_system: openbsd
         version: '7.9'
-        run: |
-          sudo pkg_add git cmake libxml boost
-          mkdir build
-          cd build
-          cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include
-          cmake --build . --config Release -j 4
+
+    - name: OpenBSD build
+      shell: cpa.sh {0}
+      run: |
+        sudo pkg_add git cmake libxml boost
+        mkdir build
+        cd build
+        cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include
+        cmake --build . --config Release -j 4
 
   build-macos-brew-head:
     runs-on: macos-latest

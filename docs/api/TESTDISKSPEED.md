@@ -29,5 +29,5 @@ The test file size is limited so that at least 100 MiB of free space always rema
 ### Return value
 - **SizeMB** `(int)` - Written data size (in MiB).
 - **DurationMS** `(int)` - Write phase duration (in milliseconds).
-- **ReadSizeMB** `(int)` - Read data size (in MiB). Since `v27.0`.
-- **ReadDurationMS** `(int)` - Read phase duration (in milliseconds). Since `v27.0`.
+- **ReadSizeMB** `(int)` - Read data size (in MiB). Since `v27.0.0`.
+- **ReadDurationMS** `(int)` - Read phase duration (in milliseconds). Since `v27.0.0`.
