@@ -337,4 +337,45 @@ BOOST_AUTO_TEST_CASE(VerifyNormLevelCorrectness)
 	if (con) pool.FreeConnection(con, false);
 }
 
+BOOST_AUTO_TEST_CASE(ServerQuotaReachedTest)
+{
+	ServerPool pool;
+	AddTestServer(&pool, 1, true, 0, false, 0, 2);
+	AddTestServer(&pool, 2, true, 1, false, 0, 1);
+	pool.InitConnections();
+
+	NewsServer* serv1 = pool.GetServers()->at(0).get();
+	NewsServer* serv2 = pool.GetServers()->at(1).get();
+	serv1->SetQuota(500);
+
+	// Initially quota is not reached: level 0 has 2 connections from serv1
+	NntpConnection* con1 = pool.GetConnection(0, nullptr, nullptr);
+	NntpConnection* con2 = pool.GetConnection(0, nullptr, nullptr);
+	BOOST_REQUIRE(con1 != nullptr);
+	BOOST_REQUIRE(con2 != nullptr);
+	BOOST_CHECK(con1->GetNewsServer() == serv1);
+	BOOST_CHECK(con2->GetNewsServer() == serv1);
+	pool.FreeConnection(con1, false);
+	pool.FreeConnection(con2, false);
+
+	// Reach quota on serv1 and re-init pool
+	serv1->SetQuotaReached(true);
+	pool.Changed();
+
+	// Level 0 should now yield no connections from serv1, and serv2 should normalize or be used
+	BOOST_CHECK(pool.GetConnection(0, serv1, nullptr) == nullptr);
+	NntpConnection* conFallback = pool.GetConnection(serv2->GetNormLevel(), nullptr, nullptr);
+	BOOST_REQUIRE(conFallback != nullptr);
+	BOOST_CHECK(conFallback->GetNewsServer() == serv2);
+	pool.FreeConnection(conFallback, false);
+
+	// Lifting quota restores serv1 connections
+	serv1->SetQuotaReached(false);
+	pool.Changed();
+	NntpConnection* conRestored = pool.GetConnection(0, serv1, nullptr);
+	BOOST_REQUIRE(conRestored != nullptr);
+	BOOST_CHECK(conRestored->GetNewsServer() == serv1);
+	pool.FreeConnection(conRestored, false);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -353,7 +353,8 @@ public:
 		virtual void AddNewsServer(int id, bool active, const char* name, const char* host,
 			int port, int ipVersion, const char* user, const char* pass, bool joinGroup,
 			bool tls, const char* cipher, int maxConnections, int retention,
-			int level, int group, bool optional, unsigned int certVerificationfLevel) = 0;
+			int level, int group, bool optional, unsigned int certVerificationfLevel,
+			int quota = 0) = 0;
 		virtual ~Extender();
 		virtual void AddFeed(
 			int id,
