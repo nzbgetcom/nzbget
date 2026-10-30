@@ -24,7 +24,7 @@ option(BUILD_DEPS_FROM_SOURCE "Build external dependencies from source via Fetch
 # Required so libxml2's find_package(ZLIB) finds the FetchContent zlibstatic target
 list(PREPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
 
-set(VERSION "27.0")
+set(VERSION "27.0.0")
 set(PACKAGE "nzbget")
 
 set(PACKAGE_BUGREPORT "https://github.com/nzbgetcom/nzbget/issues")
@@ -40,9 +40,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Controlled by CMP0091 (NEW). Set before project() to initialize all targets.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "MSVC runtime library" FORCE)
 
-string(REGEX MATCH "^([0-9]+)\\.([0-9]+)" VERSION_MATCH ${VERSION})
+string(REGEX MATCH "^([0-9]+)\\.([0-9]+)\\.([0-9]+)$" VERSION_MATCH "${VERSION}")
+if(NOT VERSION_MATCH)
+	message(FATAL_ERROR "VERSION must be major.minor.patch, got \"${VERSION}\"")
+endif()
 set(VERSION_MAJOR ${CMAKE_MATCH_1})
 set(VERSION_MINOR ${CMAKE_MATCH_2})
+set(VERSION_PATCH ${CMAKE_MATCH_3})
 
 if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE "Release")
