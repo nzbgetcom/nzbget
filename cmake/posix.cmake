@@ -95,6 +95,17 @@ if(OPENSSL_INCLUDE_DIR)
 	target_include_directories(libnzbget PUBLIC ${OPENSSL_INCLUDE_DIR})
 endif()
 
+# libsodium (XChaCha20-Poly1305) and libargon2 (Argon2id) are hard
+# dependencies of the yEnc encryption support (Std v1.2).
+# IMPORTED_TARGET carries the pkg-config-resolved library paths and
+# link flags: bare ${SODIUM_LIBRARIES}/${ARGON2_LIBRARIES} are plain
+# library names ("sodium"/"argon2") and lose the -L search path,
+# breaking non-default prefixes discovered via PKG_CONFIG_PATH.
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SODIUM REQUIRED IMPORTED_TARGET libsodium)
+pkg_check_modules(ARGON2 REQUIRED IMPORTED_TARGET libargon2)
+target_link_libraries(libnzbget PUBLIC PkgConfig::SODIUM PkgConfig::ARGON2)
+
 if(NOT DISABLE_CURSES)
 	if(ANDROID)
 		include(${CMAKE_SOURCE_DIR}/cmake/ncurses.cmake)

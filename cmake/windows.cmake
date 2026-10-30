@@ -36,6 +36,19 @@ target_link_libraries(libnzbget PUBLIC
 target_link_libraries(libnzbget PUBLIC OpenSSL::SSL OpenSSL::Crypto)
 set(HAVE_X509_CHECK_HOST 1)
 
+# libsodium / libargon2: hard dependencies of yEnc encryption (Std v1.2);
+# provided via vcpkg (unofficial-sodium / unofficial-argon2 ports).
+find_package(unofficial-sodium CONFIG QUIET)
+find_package(unofficial-argon2 CONFIG QUIET)
+if(TARGET unofficial-sodium::sodium AND TARGET unofficial::argon2::libargon2)
+	target_link_libraries(libnzbget PUBLIC unofficial-sodium::sodium unofficial::argon2::libargon2)
+else()
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(SODIUM REQUIRED IMPORTED_TARGET libsodium)
+	pkg_check_modules(ARGON2 REQUIRED IMPORTED_TARGET libargon2)
+	target_link_libraries(libnzbget PUBLIC PkgConfig::SODIUM PkgConfig::ARGON2)
+endif()
+
 if(NOT DISABLE_GZIP)
 	target_link_libraries(libnzbget PUBLIC ZLIB::ZLIB)
 endif()

@@ -97,6 +97,31 @@ public:
 	void InitPPParameters(const char* category, NzbParameterList* parameters, bool reset);
 	CString ResolveCategory(const char* category, const char* filename);
 
+#ifdef NZBGET_TESTING_HOOKS
+	// Test-only surface: AddFileToQueue is private; the effective-password gate
+	// tests drive it directly. Never compiled into release builds (define
+	// NZBGET_TESTING_HOOKS in the test target only).
+	bool TestAddFileToQueue(
+		const char* filename,
+		const char* nzbName,
+		const char* category,
+		bool autoCategory,
+		int priority,
+		const char* dupeKey,
+		int dupeScore,
+		EDupeMode dupeMode,
+		NzbParameterList* parameters,
+		bool addTop,
+		bool addPaused,
+		NzbInfo* urlInfo,
+		int* nzbId
+	)
+	{
+		return AddFileToQueue(filename, nzbName, category, autoCategory, priority,
+			dupeKey, dupeScore, dupeMode, parameters, addTop, addPaused, urlInfo, nzbId);
+	}
+#endif
+
 protected:
 	int ServiceInterval() override;
 	void ServiceWork() override;

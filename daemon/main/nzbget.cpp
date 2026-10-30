@@ -700,6 +700,17 @@ void NZBGet::ProcessStandalone()
 		nzbInfo->GetParameters()->SetParameter("*Unpack:Password", nzbFile.GetPassword().c_str());
 	}
 
+	// Body Std v1.2 §5: same effective-password gate as Scanner::AddFileToQueue —
+	// an encrypted release with no password from any source (meta, filename
+	// token, or API parameters) is a structural METADATA_VALIDATION failure.
+	if (nzbInfo->IsYEncEncrypted() && Util::EmptyStr(nzbInfo->GetPassword()))
+	{
+		error("Could not add %s to queue: METADATA_VALIDATION: yenc_encrypted release has no password",
+			FileSystem::BaseFileName(m_commandLineParser->GetArgFilename()));
+		printf("yenc_encrypted release has no password (METADATA_VALIDATION)\n\n");
+		return;
+	}
+
 	m_scanner->InitPPParameters(category, nzbInfo->GetParameters(), false);
 	m_queueCoordinator->AddNzbFileToQueue(std::move(nzbInfo), nullptr, false);
 }

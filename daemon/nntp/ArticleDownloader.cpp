@@ -342,6 +342,29 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		}
 	}
 
+	// Body Std v1.2 §8: RawArticle mode cannot decode an encrypted body (raw
+	// articles bypass the decryptor entirely and ciphertext would be committed
+	// or discarded as content). Reject BEFORE the BODY/ARTICLE request — no
+	// bytes are fetched and nothing is committed.
+	bool declaredEncrypted = m_fileInfo && m_fileInfo->GetNzbInfo() &&
+		m_fileInfo->GetNzbInfo()->IsYEncEncrypted();
+	if (g_Options->GetRawArticle() && declaredEncrypted)
+	{
+		error("Article %s: RawArticle mode is unsupported for encrypted releases", *m_infoName);
+		return adFatalError;
+	}
+
+	// Body Std v1.2 §5: "no available password" is METADATA_VALIDATION — a
+	// structural failure, not provider corruption. An encrypted job whose
+	// password became empty after queueing (e.g. API edit of *Unpack:Password)
+	// can never authenticate any article from any provider, so fail the job
+	// instead of burning every server with futile retries.
+	if (declaredEncrypted && m_fileInfo->GetNzbInfo()->GetPassword()[0] == '\0')
+	{
+		error("Article %s: encrypted release has no password, failing structurally", *m_infoName);
+		return adFatalError;
+	}
+
 	// retrieve article
 	response = m_connection->Request(BString<1024>("%s %s\r\n",
 		g_Options->GetRawArticle() ? "ARTICLE" : "BODY", m_articleInfo->GetMessageId()));
@@ -355,6 +378,25 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 	m_decoder.Clear();
 	m_decoder.SetCrcCheck(g_Options->GetCrcCheck());
 	m_decoder.SetRawMode(g_Options->GetRawArticle());
+
+	// Body Std v1.2 §8: gate the decryptor on the yEnc-encryption metadata only —
+	// an archive password (HasPassword) must never turn on ciphertext handling.
+	bool isEncrypted = m_fileInfo && m_fileInfo->GetNzbInfo() &&
+		m_fileInfo->GetNzbInfo()->IsYEncEncrypted();
+	if (isEncrypted)
+	{
+		const char* pwd = m_fileInfo->GetNzbInfo()->GetPassword();
+		YEncKeyCache* keyCache = m_fileInfo->GetNzbInfo()->GetKeyCache();
+		if (!m_decryptor || m_decryptor->GetPassword() != pwd)
+		{
+			m_decryptor = std::make_unique<YEncDecryptor>(pwd, keyCache);
+		}
+		m_decoder.SetDecryptor(m_decryptor.get());
+	}
+	else
+	{
+		m_decoder.SetDecryptor(nullptr);
+	}
 
 	status = adRunning;
 	CharBuffer lineBuf(g_Options->GetArticleReadChunkSize());
@@ -416,7 +458,8 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 
 	if (status == adRunning)
 	{
-		FreeConnection(true);
+		bool keepConnected = !m_decoder.GetDecryptor() || m_decoder.IsWireTerminated();
+		FreeConnection(keepConnected);
 		status = DecodeCheck();
 	}
 
@@ -513,6 +556,29 @@ bool ArticleDownloader::Write(char* buffer, int len)
 	return ok;
 }
 
+bool ArticleDownloader::ValidCommitGeometry(int64 fileSize, int64 beginPos, int64 endPos,
+	int64 decryptedSize)
+{
+	if (fileSize <= 0 || beginPos <= 0 || endPos < beginPos)
+	{
+		return false;
+	}
+
+	int64 expectedSpan = endPos - beginPos + 1;
+	if (decryptedSize <= 0 || decryptedSize != expectedSpan)
+	{
+		return false;
+	}
+
+	int64 articleOffset = beginPos - 1;
+	if (articleOffset < 0 || articleOffset + decryptedSize > fileSize)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 ArticleDownloader::EStatus ArticleDownloader::DecodeCheck()
 {
 	if (!g_Options->GetRawArticle())
@@ -526,13 +592,93 @@ ArticleDownloader::EStatus ArticleDownloader::DecodeCheck()
 				m_articleFilename = m_decoder.GetArticleFilename();
 			}
 
-			if (m_decoder.GetFormat() == Decoder::efYenc)
+			// Body Std v1.2 §8: an encrypted job always carries a non-empty
+			// password here (the empty-password structural gate in Download()
+			// runs first) and always fetches through the decryptor's wire path,
+			// so a decoded article is either encrypted or the job is not
+			// declared encrypted — an encrypted job can never produce an
+			// unencrypted decode result.
+			if (m_decoder.GetFormat() == Decoder::efYenc && !m_decoder.IsEncrypted())
 			{
 				m_articleInfo->SetCrc(g_Options->GetCrcCheck() ?
 					m_decoder.GetCalculatedCrc() : m_decoder.GetExpectedCrc());
 			}
 
+			bool isEncrypted = m_decoder.IsEncrypted();
+			if (isEncrypted)
+			{
+				int64 articleFileSize = m_decoder.GetSize();
+				int64 beginPos = m_decoder.GetBeginPos();
+				int64 endPos = m_decoder.GetEndPos();
+				int articleSize = static_cast<int>(m_decoder.GetDecryptedData().size());
+
+				// Authenticated commit geometry validation
+				// zero/negative/out-of-file offsets and span-size mismatch must fail
+				// before calling Start() or CommitAuthenticatedData() (provider failover tier).
+				// The shared predicate is used by the geometry unit tests too.
+				if (!ValidCommitGeometry(articleFileSize, beginPos, endPos, articleSize))
+				{
+					warn("Malformed encrypted article geometry %s: begin=%" PRIi64 " end=%" PRIi64
+						" size=%" PRIi64 " decrypted=%i",
+						*m_infoName, beginPos, endPos, articleFileSize, articleSize);
+					return adNotFound;
+				}
+
+				int64 articleOffset = beginPos - 1;
+				if (!m_articleWriter.Start(m_decoder.GetFormat(), m_decoder.GetArticleFilename(),
+					articleFileSize, articleOffset, articleSize))
+				{
+					return adFatalError;
+				}
+				m_writingStarted = true;
+
+				if (!m_articleWriter.CommitAuthenticatedData(
+					m_decoder.GetDecryptedData().data(),
+					m_decoder.GetDecryptedData().size()))
+				{
+					return adFatalError;
+				}
+
+				Crc32 plaintextCrc;
+				plaintextCrc.Append(const_cast<uchar*>(m_decoder.GetDecryptedData().data()),
+					static_cast<uint32>(m_decoder.GetDecryptedData().size()));
+				m_articleInfo->SetCrc(plaintextCrc.Finish());
+
+				// DL-2: the encrypted commit path bypasses Write() (the sole
+				// production analyzer feed), so DirectRenamer would otherwise
+				// hash empty input and lose PAR2 classification. Feed the
+				// authenticated plaintext to the attached analyzer exactly once
+				// as a 64-byte header boundary plus body remainder — mirroring
+				// the ordinary chunked-feed pattern RenameContentAnalyzer's
+				// post-header signature check is built for. Failed auth,
+				// geometry, start or commit paths above never reach this line.
+				if (m_contentAnalyzer)
+				{
+					const char* data = reinterpret_cast<const char*>(m_decoder.GetDecryptedData().data());
+					int total = static_cast<int>(m_decoder.GetDecryptedData().size());
+					if (total >= 64)
+					{
+						m_contentAnalyzer->Append(data, 64);
+						m_contentAnalyzer->Append(data + 64, total - 64);
+					}
+					else
+					{
+						m_contentAnalyzer->Append(data, total);
+					}
+				}
+			}
+
 			return adFinished;
+		}
+		else if (status == Decoder::dsFatalError)
+		{
+			error("Article %s: local decryption failure, aborting", *m_infoName);
+			return adFatalError;
+		}
+		else if (status == Decoder::dsAuthFailed)
+		{
+			warn("Article %s failed authentication, retrying...", *m_infoName);
+			return adNotFound;
 		}
 		else if (status == Decoder::dsCrcError)
 		{

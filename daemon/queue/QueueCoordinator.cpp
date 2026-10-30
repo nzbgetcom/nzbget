@@ -941,7 +941,7 @@ void QueueCoordinator::DeleteFileInfo(DownloadQueue* downloadQueue, FileInfo* fi
 
 void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 {
-	if (!g_Options->GetDirectWrite() && !fileInfo->GetForceDirectWrite())
+	if (fileInfo->GetNzbInfo()->IsYEncEncrypted() || !fileInfo->DirectWriteActive())
 	{
 		for (ArticleInfo* pa : fileInfo->GetArticles())
 		{
@@ -953,7 +953,7 @@ void QueueCoordinator::DiscardTempFiles(FileInfo* fileInfo)
 	}
 
 	const std::string& outputFilename = fileInfo->GetOutputFilename();
-	if (g_Options->GetDirectWrite() && !outputFilename.empty() && !fileInfo->GetForceDirectWrite())
+	if (!fileInfo->GetNzbInfo()->IsYEncEncrypted() && g_Options->GetDirectWrite() && !outputFilename.empty() && !fileInfo->GetForceDirectWrite())
 	{
 		FileSystem::DeleteFile(outputFilename.c_str());
 		if (fileInfo->IsHardLinked())

@@ -57,7 +57,7 @@ OpenSSL 3.x uses its own Configure script on Windows, which requires Perl and an
 1. [vcpkg](https://github.com/microsoft/vcpkg) installed and registered (`VCPKG_ROOT` environment variable or global integration).
 2. Required static libraries:
    ```powershell
-   vcpkg install openssl:x64-windows-static zlib:x64-windows-static libxml2:x64-windows-static boost-json:x64-windows-static boost-test:x64-windows-static
+   vcpkg install openssl:x64-windows-static zlib:x64-windows-static libxml2:x64-windows-static boost-json:x64-windows-static boost-test:x64-windows-static libsodium:x64-windows-static argon2:x64-windows-static
    ```
 
 ---
@@ -105,7 +105,9 @@ To avoid building `OpenSSL`, `libxml2`, `zlib`, and `Boost` from source every ti
      zlib:x64-windows-static `
      libxml2:x64-windows-static `
      boost-json:x64-windows-static `
-     boost-test:x64-windows-static
+     boost-test:x64-windows-static `
+     libsodium:x64-windows-static `
+     argon2:x64-windows-static
    ```
 
 2. Configure CMake with the vcpkg toolchain:

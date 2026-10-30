@@ -61,6 +61,18 @@ This is a fork of the original NZBGet project, formerly maintained by [hugbug](h
 - [Migrating from NZBGet v21 or older](https://github.com/nzbgetcom/nzbget/discussions/100#discussioncomment-8080102)
 - [Migrating from older Docker images](https://github.com/nzbgetcom/nzbget/issues/84#issuecomment-1884846500)
 
+## yEnc Header and Body Decryption
+
+NZBGet supports downloading releases protected by yEnc body and control-line encryption
+(XChaCha20-Poly1305 and Radix 253 FF1) conforming to the experimental yEnc Body and
+Control Lines Encryption Standards v1.2. Releases marked with
+`<meta type="yenc_encrypted">true</meta>` in the NZB are authenticated and decrypted
+automatically with the job's password (`<meta type="password">` from the NZB, editable as
+`*Unpack:Password`); an encrypted NZB without a password is rejected when it is added to the queue. Unauthenticated
+ciphertext is buffered only in decoder memory and never written to disk or cache.
+
+See [Encrypted Releases](docs/HOW_TO_USE.md) for details.
+
 ## Contribution
 
 Contributions are welcome — from developers and users alike. See [Contributing](docs/CONTRIBUTING.md) for the development setup, coding rules and pull request workflow.

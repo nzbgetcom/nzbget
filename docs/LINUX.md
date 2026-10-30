@@ -41,7 +41,7 @@ NZBGet requires **C++20** (`CMAKE_CXX_STANDARD 20`, `CMAKE_CXX_STANDARD_REQUIRED
 
 - **Debian / Ubuntu / Mint**:
   ```bash
-  sudo apt-get install -y libssl-dev libxml2-dev zlib1g-dev libncurses-dev libboost-dev libboost-json-dev
+  sudo apt-get install -y libssl-dev libxml2-dev zlib1g-dev libncurses-dev libboost-dev libboost-json-dev libsodium-dev libargon2-dev pkg-config
   ```
 - **Fedora / RHEL / CentOS Stream**:
   ```bash
