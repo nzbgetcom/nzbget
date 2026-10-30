@@ -180,7 +180,7 @@ Official macOS builds require Developer ID code signing and Apple notarization t
 
 ### Headless CI Keychain Setup
 
-On headless CI runners (e.g. GitHub Actions `macos-14`) Keychain access for `codesign` must be authorized non-interactively, otherwise GUI permission prompts hang the build:
+On headless CI runners (e.g. GitHub Actions `macos-15`) Keychain access for `codesign` must be authorized non-interactively, otherwise GUI permission prompts hang the build:
 
 ```bash
 security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
