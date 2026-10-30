@@ -12,7 +12,7 @@ env:
 jobs:
   # Build static libc++ once and cache it
   build-static-libcxx:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 45
     outputs:
       cache-hit: ${{ steps.cache.outputs.cache-hit }}
@@ -53,7 +53,7 @@ jobs:
         file /opt/macos12-libcxx/lib/libc++abi.a
 
   build-arm64:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
     needs: build-static-libcxx
 
@@ -123,7 +123,7 @@ jobs:
         retention-days: 5
 
   build-x64:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 60
     needs: build-static-libcxx
 
@@ -193,7 +193,7 @@ jobs:
         retention-days: 5
 
   build-universal:
-    runs-on: macos-14
+    runs-on: macos-15
     timeout-minutes: 15
     needs: [build-arm64, build-x64]
 
@@ -301,7 +301,7 @@ jobs:
         retention-days: 5
 
   sign-universal:
-    runs-on: macos-14
+    runs-on: macos-15
     needs: [build-universal]
 
     steps:
