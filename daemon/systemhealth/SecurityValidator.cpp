@@ -157,7 +157,7 @@ Status ControlPasswordValidator::Validate() const
 
 	std::string_view password = m_options.GetControlPassword();
 	if (password == "tegbzn6789")
-		return Status::Info("Using default password is not recommended for security");
+		return Status::Info("Using default password is not recommended for security reasons");
 
 	Status s = CheckPassword(password);
 	if (!s.IsOk()) return s;
@@ -262,23 +262,32 @@ Status UpdateCheckValidator::Validate() const { return Status::Ok(); }
 
 Status FormAuthValidator::Validate() const
 {
-	if (!m_options.GetFormAuth()) return Status::Ok();
-
-	if (!m_options.GetSecureControl())
+	if (!m_options.GetFormAuth())
 	{
-		return Status::Warning("'" + std::string(Options::FORMAUTH) + "' is enabled but '" +
-							   std::string(Options::SECURECONTROL) +
-							   "' is disabled. Form "
-							   "credentials may be transmitted in plaintext");
+		return Status::Info("'" + std::string(Options::FORMAUTH) +
+							"' is disabled. The web-interface uses HTTP basic authentication. "
+							"Enable '" + std::string(Options::FORMAUTH) +
+							"' for web-form login and session logout");
 	}
 
-	const bool hasAdd = Util::EmptyStr(m_options.GetAddUsername());
-	const bool hasRestricted = Util::EmptyStr(m_options.GetRestrictedUsername());
-	if (hasAdd && hasRestricted)
+	const bool hasControl = !Util::EmptyStr(m_options.GetControlUsername()) ||
+							!Util::EmptyStr(m_options.GetControlPassword());
+	const bool hasRestricted = !Util::EmptyStr(m_options.GetRestrictedUsername());
+
+	if (!hasControl && !hasRestricted)
 	{
-		return Status::Warning(
-			"'" + std::string(Options::FORMAUTH) +
-			"' is enabled but no form users are configured. Users cannot log in via forms");
+		return Status::Warning("'" + std::string(Options::CONTROLUSERNAME) + "' and '" +
+							   std::string(Options::RESTRICTEDUSERNAME) +
+							   "' are both empty: no web users are configured, so nobody can log in "
+							   "via web form");
+	}
+
+	if (!hasControl && hasRestricted)
+	{
+		return Status::Info("'" + std::string(Options::CONTROLUSERNAME) +
+							"' is empty. Only the restricted user ('" +
+							std::string(Options::RESTRICTEDUSERNAME) +
+							"') can log in via web form and will not have administrative permissions");
 	}
 
 	return Status::Ok();

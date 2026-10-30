@@ -410,6 +410,11 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
 	color: #bbb;
 }
 
+/* The panel is a dark surface, so it must not inherit the navbar's grey text. */
+.settings-menu-panel {
+	color: #f5f5f5;
+}
+
 .dropdown-warning {
 	text-align: center;
 	background: repeating-linear-gradient(-45deg, #1a1a1a, #333 6px, #666 6px, #666 12px);
@@ -701,4 +706,34 @@ tr.drag-source > td {
 		border-top: 1px solid #626262;
 		box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.4);
 	}
+}
+
+/* *** WEB LOGIN SCREEN *************************************************** */
+
+#LoginScreen,
+#AuthSpinner {
+	background-color: #333333;
+}
+
+html.auth-checking #AuthSpinner .material-icon {
+	color: #f5f5f5;
+}
+
+#LoginScreen .login-card {
+	background-color: #414141;
+	color: #f5f5f5;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+	-webkit-box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+
+#LoginScreen #Login_Username,
+#LoginScreen #Login_Password {
+	background-color: #212529;
+	color: inherit;
+	border: 1px solid #626262;
+}
+
+#LoginScreen .login-password-append .add-on {
+	background-color: #626262;
+	border-color: #626262;
 }

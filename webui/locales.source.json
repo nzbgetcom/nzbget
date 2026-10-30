@@ -246,9 +246,21 @@
     "message": "View",
     "description": "Dropdown button for view options"
   },
+  "btn_logout": {
+    "message": "Logout",
+    "description": "Button to log out and return to the login screen"
+  },
   "btn_show": {
     "message": "Show",
     "description": "Button to show hidden content (e.g., show password)"
+  },
+  "user_role_control": {
+    "message": "Administrator",
+    "description": "Access level of the logged in user with full permissions"
+  },
+  "user_role_restricted": {
+    "message": "Restricted",
+    "description": "Access level of the logged in user with limited permissions"
   },
   "time_days_short": {
     "message": "d",
@@ -2791,7 +2803,7 @@
     "description": "Input label"
   },
   "login_dialog_error": {
-    "message": "It didn't work. Try again.",
+    "message": "Invalid username or password",
     "description": "Error message"
   },
   "login_dialog_btn": {
@@ -3827,7 +3839,7 @@
     "description": "Description for the option ControlPassword"
   },
   "config_desc_restrictedusername": {
-    "message": "User name for restricted access.\n\nThe restricted user can control the program with a few restrictions.\nThey have access to the web-interface and can see most of the program\nsettings. They however, can not change program settings, view security\nrelated options or options provided by extension scripts.\n\nUse this user to connect to NZBGet from other programs and web-sites.\n\nIn terms of RPC-API the user:\n- cannot use method \"saveconfig\";\n- methods \"config\" and \"saveconfig\" return string \"***\" for\n  options those content is protected from the user.\n\nSet to empty value to disable restricted user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
+    "message": "User name for restricted access.\n\nThe restricted user can control the program with a few restrictions.\nThey have access to the web-interface and can see most of the program\nsettings. They however, can not change program settings, view security\nrelated options or options provided by extension scripts.\n\nUse this user to connect to NZBGet from other programs and web-sites.\n\nIn terms of RPC-API the user:\n- cannot change settings or use method \"saveconfig\";\n- cannot manage extensions, execute scripts or control the server;\n- methods \"config\" and \"loadconfig\" return string \"***\" for options whose\n  content is protected from the user.\n\nSet to empty value to disable restricted user.\n\nNOTE: Don't forget to change default username/password of the control\nuser (options <ControlUsername> and <ControlPassword>).",
     "description": "Description for the option RestrictedUsername DO NOT translate option names enclosed in angle brackets (e.g., <OptionName>). DO NOT translate technical values enclosed in quotes. DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_restrictedpassword": {
@@ -3843,8 +3855,8 @@
     "description": "Description for the option AddPassword"
   },
   "config_desc_formauth": {
-    "message": "Authenticate using web-form.\n\nThe preferred and default way to authenticate in web-interface is using\nHTTP authentication. Web-browsers show a special dialog to enter username\nand password which they then send back to NZBGet. Sometimes browser plugins\naided at storing and filling of passwords do not work properly with browser's\nbuilt-in dialog. To help with such tools NZBGet provide an alternative\nauthentication mechanism via web form.",
-    "description": "Description for the option FormAuth"
+    "message": "Authenticate using web-form.\n\nWhen enabled (yes), the web-interface uses an HTML login form.\nWhen disabled (no), the browser uses its built-in HTTP authentication prompt.\n\nNOTE: Third-party applications and RPC clients are not affected and continue\nto use HTTP authentication.",
+    "description": "Description for the option FormAuth DO NOT translate the exact uppercase keywords (NOTE:, WARNING:, INFO:, INFO FOR DEVELOPERS:, MORE INFO:) as they are used to render UI badges."
   },
   "config_desc_securecontrol": {
     "message": "Secure control of NZBGet server.\n\nActivate the option if you want to access NZBGet built-in web-server\nvia HTTPS (web-interface and RPC). You should also provide certificate\nand key files, see option <SecureCert> and option <SecureKey>.",
