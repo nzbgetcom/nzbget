@@ -2198,6 +2198,10 @@ ul.help > li {
     line-height: 16px;
 }
 
+.config-system .help-block {
+    padding: 8.5px;
+}
+
 #ConfigContent.hide-help-block .help-block {
     display: none;
 }
@@ -2957,17 +2961,65 @@ body.phone,
 }
 
 .settings-menu-panel {
-    width: 181px;
-    padding: 10px;
+    width: 220px;
+    padding: 12px;
 }
 
 .settings-menu-header {
     padding-left: 0;
-    padding-bottom: 5px;
+    padding-bottom: 6px;
 }
 
 .settings-menu-divider {
     margin-top: 10px;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0;
+}
+
+.logout-btn span {
+    line-height: 1;
+}
+
+/* The icon box and the text line box are both centered, but font metrics put the
+   text glyphs slightly lower; nudge the icon to match. */
+.logout-btn .material-icon {
+    position: relative;
+    top: 1px;
+}
+
+.settings-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.settings-user .material-icon {
+    flex: none;
+    width: 20px;
+    height: 20px;
+}
+
+.settings-user #HeaderUserName {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.settings-user-role {
+    flex: none;
+    margin-left: auto;
+    font-size: 12px;
+    opacity: 0.65;
+    white-space: nowrap;
 }
 
 .switch-container {
@@ -2976,13 +3028,26 @@ body.phone,
     gap: 5px;
 }
 
-.switch-group {
+#HeaderSettingsMenu .switch-group {
     display: flex;
     width: 100%;
 }
 
-.switch-group.flex-wrap {
-    flex-wrap: wrap;
+#HeaderSettingsMenu .switch-btn {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+    text-align: center;
+}
+
+/* The base .material-icon is 16px, too small next to a full-width toggle button. */
+#HeaderSettingsMenu .switch-btn .material-icon {
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
 }
 
 .scrollable-menu {
@@ -3242,8 +3307,66 @@ input[type="date"] {
         padding-left: 0px !important;
     }
     
-    .settings-menu-panel {
-        width: 225px;
+    /* The settings menu is a 220px desktop popup — far too small to hit with a
+       finger. Below 560px open it as a bottom sheet instead, like the dialogs.
+       The id selector is needed to beat .dropdown-menu.pull-right (left: auto). */
+    #HeaderSettingsMenu {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: auto;
+        min-width: 0;
+        max-height: calc(100vh - 30px);
+        margin: 0;
+        padding: 12px 16px 16px;
+        border-left: none;
+        border-right: none;
+        border-bottom: none;
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        z-index: 1050;
+    }
+
+    .settings-menu-panel select,
+    .settings-menu-panel .btn {
+        min-height: 44px;
+    }
+
+    #HeaderSettingsMenu .switch-btn .material-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .settings-menu-panel .switch-btn,
+    .settings-menu-panel .logout-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1.2;
+    }
+
+    .settings-menu-panel .settings-menu-divider {
+        margin: 12px 0;
+    }
+
+    /* Dim the page behind the sheet; a tap on it closes the menu through the
+       dropdown's own outside-click handler. "display: block" overrides the
+       clearfix Bootstrap puts on .btn-group:before. */
+    .btn-group.open::before {
+        content: '';
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 1040;
     }
 }
 
@@ -3323,4 +3446,239 @@ input[type="date"] {
 }
 
 #ConfigInfo p a.option,
-#ConfigInfo p em strong,
+#ConfigInfo p em strong {
+    font-weight: 600;
+}
+
+/* *** WEB LOGIN SCREEN *************************************************** */
+
+#AuthSpinner {
+    display: none;
+}
+
+html.auth-checking #AuthSpinner {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5000;
+    background-color: #f5f5f5;
+    /* Fades in with a short delay: a fast session check shows no spinner at all. */
+    -webkit-animation: auth-spinner-appear 0.2s ease 0.15s both;
+    animation: auth-spinner-appear 0.2s ease 0.15s both;
+}
+
+html.auth-checking #AuthSpinner .material-icon {
+    width: 40px;
+    height: 40px;
+    color: #333333;
+}
+
+@-webkit-keyframes auth-spinner-appear {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes auth-spinner-appear {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#LoginScreen {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 5000;
+    padding: 20px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    background-color: #f5f5f5;
+}
+
+html.auth-pending #LoginScreen {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    -webkit-box-pack: center;
+    -webkit-justify-content: center;
+    justify-content: center;
+}
+
+html.auth-checking #Navbar,
+html.auth-checking #MainContent,
+html.auth-pending #Navbar,
+html.auth-pending #MainContent {
+    display: none !important;
+}
+
+#LoginScreen .login-card {
+    width: 100%;
+    max-width: 320px;
+    padding: 24px 20px;
+    border-radius: 10px;
+    -webkit-border-radius: 10px;
+    text-align: center;
+    background-color: #ffffff;
+    color: #333333;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    -webkit-box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* The logo and the title share one compact row, so the card stays small. */
+#LoginScreen .login-header {
+    margin-bottom: 16px;
+}
+
+#LoginScreen .login-logo {
+    width: 40px;
+    height: 40px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+#LoginScreen .login-header h3 {
+    display: inline;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 400;
+    vertical-align: middle;
+}
+
+#LoginScreen #Login_Username,
+#LoginScreen #Login_Password {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    height: 44px;
+    margin-bottom: 12px;
+    padding: 0 12px;
+    border-radius: 6px;
+    -webkit-border-radius: 6px;
+    /* 16px prevents iOS Safari from zooming in when the field is focused */
+    font-size: 16px;
+    -webkit-appearance: none;
+}
+
+/* The password input and the Show checkbox form one control, as in Settings. */
+#LoginScreen .login-password-append {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: stretch;
+    -webkit-align-items: stretch;
+    align-items: stretch;
+    margin-bottom: 12px;
+}
+
+#LoginScreen .login-password-append #Login_Password {
+    -webkit-box-flex: 1;
+    -webkit-flex: 1 1 auto;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    height: 44px;
+    margin-bottom: 0;
+    border-radius: 6px 0 0 6px;
+    -webkit-border-radius: 6px 0 0 6px;
+}
+
+#LoginScreen .login-password-append .add-on {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    /* No fixed height: the box stretches to the height of the input. */
+    height: auto;
+    padding: 0 10px;
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-left-width: 0;
+    border-radius: 0 6px 6px 0;
+    -webkit-border-radius: 0 6px 6px 0;
+    background-color: #eeeeee;
+    text-align: left;
+    text-shadow: none;
+    white-space: nowrap;
+}
+
+#LoginScreen .login-show-password {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-box-align: center;
+    -webkit-align-items: center;
+    align-items: center;
+    margin: 0;
+    padding-left: 0;
+    font-size: 13px;
+    line-height: 18px;
+    white-space: nowrap;
+}
+
+#LoginScreen .login-show-password input[type="checkbox"] {
+    float: none;
+    /* Keeps the box square on phones, where .phone input forces a height. */
+    width: 13px;
+    height: 13px;
+    margin: 0 5px 0 0;
+}
+
+#LoginScreen #Login_Error {
+    margin: 0 0 12px 0;
+    padding: 10px;
+    font-size: 13px;
+    text-align: center;
+}
+
+#LoginScreen #Login_Submit {
+    width: 100%;
+    height: 44px;
+    font-size: 16px;
+}
+
+#LoginScreen #Login_Submit[disabled] {
+    opacity: 0.65;
+    cursor: wait;
+}
+
+/* On phones the card sits at the bottom edge, where it is easy to reach. */
+@media (max-width: 480px) {
+    #LoginScreen {
+        padding: 0;
+    }
+
+    html.auth-pending #LoginScreen {
+        -webkit-box-align: end;
+        -webkit-align-items: flex-end;
+        align-items: flex-end;
+    }
+
+    #LoginScreen .login-card {
+        max-width: none;
+        border-radius: 16px 16px 0 0;
+        -webkit-border-radius: 16px 16px 0 0;
+        padding: 20px;
+        padding-bottom: 20px;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    }
+}

@@ -11,15 +11,14 @@ NZBGet supports `XML-RPC`, `JSON-RPC` and `JSON-P-RPC`. RPC-protocols allow to c
 NZBGet has three pairs of username/password:
 
 - options `ControlUsername` and `ControlPassword` - Full access, usually used when connecting to web-interface;
-- options `RestrictedUsername` and `RestrictedPassword` - `v15.0` Restricted user can control the program with few restrictions. He has access to web-interface and can see most program settings. He can not change program settings and can not view security related options or options provided by extension scripts. In terms of RPC-API the user:
-  - cannot use method `saveconfig`;
-  - methods `config` and `loadconfig` return string `***` for options those content is protected from the user.
+- options `RestrictedUsername` and `RestrictedPassword` - `v15.0` Restricted user can control the program with few restrictions. He has access to web-interface and can see most program settings. He can not change program settings and can not view security related options or options provided by extension scripts. In terms of RPC-API see [Restricted user](#restricted-user).
 - options `AddUsername` and `AddPassword` - `v15.0` This user has only two permissions:
-  - add new downloads using RPC-method `append`;
+  - add new downloads using RPC-methods `append` and `appendurl`;
   - check program version using RPC-method `version`.
 
+### HTTP basic authentication
 
-The RPC server uses HTTP basic authentication. The URL would be something like:
+The RPC server uses HTTP basic authentication by default. The URL would be something like:
 
 - for **XML-RPC**: `http://username:password@localhost:6789/xmlrpc`
 - for **JSON-RPC**: `http://username:password@localhost:6789/jsonrpc`
@@ -29,7 +28,22 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 
 - `http://localhost:6789/username:password/xmlrpc`
 
-`Security warning`: HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS (needs to be explicitly enabled in NZBGet settings by user).
+It is also possible to send the credentials in the header `X-Authorization: Basic <base64(username:password)>` (used by the web-interface) or in the standard `Authorization: Basic ...` header.
+
+With the option `FormAuth` enabled (the default) the web-interface shows its own login form instead of the browser's built-in dialog. This does not affect RPC clients: the server still replies to non-web-interface requests with `HTTP 401` and the `WWW-Authenticate: Basic realm="NZBGet"` challenge, so tools that do not send credentials preemptively (curl, wget, Sonarr/Radarr and other integrations) keep working as before. Only requests marked as coming from the web-interface (header `X-NZBGet-Client: webui`) receive the `401` response without the challenge, which prevents the browser from popping up its own dialog. With `FormAuth=no` the web-interface falls back to the browser's built-in dialog. The web-interface ends the session with `GET /logout`, which expires the session cookies.
+
+### Restricted user
+
+For scripts, automation and third-party applications (for example the *arr suite) use the separate user with restricted access instead of the administrator credentials. Set the options `RestrictedUsername` and `RestrictedPassword` and pass them with any of the methods described above (the user-name/password part in the URL, basic authentication or `X-Authorization: Basic ...`). Such a user can read the queue and history and control downloads, but has no access to the administrator-only methods listed below. Each call to them fails with `faultCode 401` and `faultString "Access denied"`; the same check is applied to every method called inside `system.multicall`.
+
+Specifically, the restricted user:
+
+- cannot change the configuration: `saveconfig`, `editserver`, `resetservervolume`. Methods `config` and `loadconfig` work, but return `***` for the protected options (passwords and feed URLs containing credentials);
+- cannot control the daemon: `shutdown`, `reload`, `dump`, `clearlog`, `startupdate`, `logupdate`;
+- cannot manage extensions or run scripts: `downloadextension`, `updateextension`, `deleteextension`, `testextension`, `startscript`, `logscript`. Listing the cached extensions via `loadextensions` is allowed, but reloading them from disk (`loadextensions` with `loadFromDisk=true`) is administrator-only;
+- can view the configured feeds (`viewfeed`), but cannot preview a feed from an arbitrary client-supplied URL (`previewfeed`).
+
+`Security warning`: HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS: either enable the built-in TLS in NZBGet (`SecureControl=yes`, see options `SecureCert`, `SecureKey`, `SecurePort`) or put NZBGet behind a reverse proxy that terminates TLS (Traefik, Caddy, Nginx). When a reverse proxy forwards the header `X-Forwarded-Proto: https`, NZBGet marks the web-interface session cookie as `Secure`.
 
 ## Features and limitations
 

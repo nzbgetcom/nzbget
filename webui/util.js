@@ -807,6 +807,9 @@ var RPC = (new function($)
 			xhr.setRequestHeader(options['custom_headers'][i].name, options['custom_headers'][i].value);
 		}
 
+		// Marks the request as coming from the web-interface, so the server omits the challenge.
+		xhr.setRequestHeader('X-NZBGet-Client', 'webui');
+
 		return xhr;
 	}
 
@@ -875,6 +878,16 @@ var RPC = (new function($)
 					else if (xhr.status === 0)
 					{
 						res = _this.connectErrorMessage;
+					}
+					else if (xhr.status === 401)
+					{
+						// Session lost (server restart, logout): show the login form, not an error.
+						$(document).trigger('WebUI:unauthorized');
+						if (failure_callback)
+						{
+							failure_callback('Invalid Status: ' + xhr.status, result);
+						}
+						return;
 					}
 					else
 					{

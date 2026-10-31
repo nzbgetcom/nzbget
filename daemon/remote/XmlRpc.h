@@ -62,6 +62,13 @@ public:
 	static bool IsRpcRequest(const char* url);
 	bool IsSafeMethod() { return m_safeMethod; }
 
+	static bool CheckAccess(EUserAccess userAccess, EUserAccess requiredAccess)
+	{
+		return static_cast<int>(userAccess) <= static_cast<int>(requiredAccess);
+	}
+
+	static bool IsMethodDenied(EUserAccess userAccess, const char* methodName);
+
 private:
 	char* m_request = nullptr;
 	const char* m_contentType = nullptr;
@@ -73,7 +80,11 @@ private:
 	bool m_safeMethod = false;
 
 	void Dispatch();
-	std::unique_ptr<XmlCommand> CreateCommand(const char* methodName);
+	static std::unique_ptr<XmlCommand> CreateCommand(const char* methodName);
+	// Returns an error command when the access level is not sufficient.
+	static std::unique_ptr<XmlCommand> CreateCheckedCommand(const char* methodName,
+		EUserAccess userAccess);
+	static bool IsCommandAllowed(XmlCommand* command, EUserAccess userAccess);
 	void MutliCall();
 	void BuildResponse(const char* response, const char* callbackFunc, bool fault, const char* requestId);
 	void BuildErrorResponse(int errCode, const char* errText);
@@ -95,6 +106,8 @@ public:
 	bool GetFault() { return m_fault; }
 	virtual bool IsSafeMethod() { return false; };
 	virtual bool IsError() { return false; };
+	// Minimum access level to run a command; the default is the most privileged.
+	virtual XmlRpcProcessor::EUserAccess GetRequiredAccess() const { return XmlRpcProcessor::uaControl; }
 
 protected:
 	char* m_request = nullptr;

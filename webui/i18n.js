@@ -385,7 +385,12 @@
 		return $.ajax({
 			url: 'extensions/' + extName + '/_locales/' + currentLocale + '/messages.json',
 			dataType: 'json',
-			cache: true
+			cache: true,
+			// Marked as a web-interface request so the server omits the Basic Auth
+			// challenge; the directory itself still requires authentication.
+			beforeSend: function(xhr) {
+				xhr.setRequestHeader('X-NZBGet-Client', 'webui');
+			}
 		});
 	}
 

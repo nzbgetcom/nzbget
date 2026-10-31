@@ -95,7 +95,10 @@ void WebProcessor::Execute()
 	m_gzip =false;
 	m_userAccess = uaControl;
 	m_authInfo[0] = '\0';
-	m_authToken[0] = '\0';
+	m_cookieHeader.Clear();
+	m_authInfoFromUi = false;
+	m_uiClient = false;
+	m_forwardedProto.Clear();
 
 	ParseHeaders();
 
@@ -112,6 +115,12 @@ void WebProcessor::Execute()
 	}
 
 	ParseUrl();
+
+	if (!strncmp(m_url, "/logout", 7) && (m_url[7] == '\0' || m_url[7] == '?'))
+	{
+		SendLogoutResponse();
+		return;
+	}
 
 	m_rpcRequest = XmlRpcProcessor::IsRpcRequest(m_url);
 	m_authorized = CheckCredentials();
@@ -155,19 +164,21 @@ void WebProcessor::ParseHeaders()
 		{
 			m_contentLen = atoi(p + 16);
 		}
-		else if (!strncasecmp(p, "Authorization: Basic ", 21) && Util::EmptyStr(m_authInfo))
+		else if (!strncasecmp(p, "X-Authorization: Basic ", 23) && !m_authInfoFromUi)
 		{
-			char* authInfo64 = p + 21;
+			// The web-interface credentials win over the browser's cached HTTP auth.
+			char* authInfo64 = p + 23;
 			if (strlen(authInfo64) > sizeof(m_authInfo))
 			{
 				error("Invalid-request: auth-info too big");
 				return;
 			}
 			m_authInfo[WebUtil::DecodeBase64(authInfo64, 0, m_authInfo)] = '\0';
+			m_authInfoFromUi = true;
 		}
-		else if (!strncasecmp(p, "X-Authorization: Basic ", 23))
+		else if (!strncasecmp(p, "Authorization: Basic ", 21) && Util::EmptyStr(m_authInfo))
 		{
-			char* authInfo64 = p + 23;
+			char* authInfo64 = p + 21;
 			if (strlen(authInfo64) > sizeof(m_authInfo))
 			{
 				error("Invalid-request: auth-info too big");
@@ -185,17 +196,20 @@ void WebProcessor::ParseHeaders()
 		}
 		else if (!strncasecmp(p, "Cookie: ", 8))
 		{
-			debug("%s", p);
-			const char* tok = strstr(p, "Auth-Token=");
-			if (tok && tok[11] != ';' && tok[11] != '\0')
-			{
-				strncpy(m_authToken, tok + 11, sizeof(m_authToken)-1);
-				m_authToken[sizeof(m_authToken)-1] = '\0';
-			}
+			// Kept whole: browsers may send several Auth-Token cookies for stale paths.
+			m_cookieHeader = p + 8;
 		}
 		else if (!strncasecmp(p, "X-Forwarded-For: ", 17))
 		{
 			m_forwardedFor = p + 17;
+		}
+		else if (!strncasecmp(p, "X-Forwarded-Proto: ", 19))
+		{
+			m_forwardedProto = p + 19;
+		}
+		else if (!strncasecmp(p, "X-NZBGet-Client: ", 17))
+		{
+			m_uiClient = !strncasecmp(p + 17, "webui", 5);
 		}
 		else if (!strncasecmp(p, "If-None-Match: ", 15))
 		{
@@ -255,15 +269,7 @@ bool WebProcessor::CheckCredentials()
 		if (Util::EmptyStr(m_authInfo))
 		{
 			// Authorization via X-Auth-Token
-			for (int j = uaControl; j <= uaAdd; j++)
-			{
-				if (!strcmp(m_authToken, m_serverAuthToken[j]))
-				{
-					m_userAccess = (EUserAccess)j;
-					return true;
-				}
-			}
-			return false;
+			return CheckAuthToken();
 		}
 
 		// Authorization via username:password
@@ -299,6 +305,49 @@ bool WebProcessor::CheckCredentials()
 	}
 
 	return true;
+}
+
+bool WebProcessor::CheckAuthToken()
+{
+	// Accept any valid token: a stale cookie must not shadow a fresh one.
+	const char* p = m_cookieHeader.Str();
+	while ((p = strstr(p, "Auth-Token=")) != nullptr)
+	{
+		p += 11;
+		const char* end = strchr(p, ';');
+		const size_t len = end ? (size_t)(end - p) : strlen(p);
+		if (len > 0 && len < TOKEN_SIZE)
+		{
+			for (int j = uaControl; j <= uaAdd; j++)
+			{
+				if (len == strlen(m_serverAuthToken[j]) && !strncmp(p, m_serverAuthToken[j], len))
+				{
+					m_userAccess = (EUserAccess)j;
+					return true;
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
+bool WebProcessor::IsSecureConnection()
+{
+	if (m_connection->GetTls())
+	{
+		return true;
+	}
+
+	// A reverse proxy may terminate TLS: trust the forwarded protocol for the cookie flag.
+	if (!m_forwardedProto.Empty())
+	{
+		const char* proto = m_forwardedProto;
+		return !strncasecmp(proto, "https", 5) &&
+			   (proto[5] == '\0' || proto[5] == ',' || proto[5] == ' ');
+	}
+
+	return false;
 }
 
 bool WebProcessor::IsAuthorizedIp(const char* remoteAddr)
@@ -445,8 +494,31 @@ void WebProcessor::SendAuthResponse()
 		"Server: nzbget-%s\r\n"
 		"\r\n";
 
+	// Form-authentication: no basic-auth challenge for browsers, but keep it for RPC clients.
+	const bool sendChallenge = !g_Options->GetFormAuth() || !m_uiClient;
 	BString<1024> responseHeader(AUTH_RESPONSE_HEADER,
-		g_Options->GetFormAuth() ? "" : "WWW-Authenticate: Basic realm=\"NZBGet\"\r\n",
+		sendChallenge ? "WWW-Authenticate: Basic realm=\"NZBGet\"\r\n" : "",
+		m_keepAlive ? "keep-alive" : "close", Util::VersionRevision());
+
+	// Send the response answer
+	debug("ResponseHeader=%s", *responseHeader);
+	m_connection->Send(responseHeader, responseHeader.Length());
+}
+
+void WebProcessor::SendLogoutResponse()
+{
+	const char* LOGOUT_RESPONSE_HEADER =
+		"HTTP/1.1 200 OK\r\n"
+		"Connection: %s\r\n"
+		"Set-Cookie: Auth-Type=; Max-Age=0; Path=/\r\n"
+		"Set-Cookie: Auth-Type=; Max-Age=0; Path=/xmlrpc\r\n"
+		"Set-Cookie: Auth-Token=; Max-Age=0; HttpOnly; Path=/\r\n"
+		"Set-Cookie: Auth-Token=; Max-Age=0; HttpOnly; Path=/xmlrpc\r\n"
+		"Content-Type: text/plain\r\n"
+		"Content-Length: 0\r\n"
+		"Server: nzbget-%s\r\n"
+		"\r\n";
+	BString<1024> responseHeader(LOGOUT_RESPONSE_HEADER,
 		m_keepAlive ? "keep-alive" : "close", Util::VersionRevision());
 
 	// Send the response answer
@@ -465,7 +537,7 @@ void WebProcessor::SendOptionsResponse()
 		"Access-Control-Allow-Origin: %s\r\n"
 		"Access-Control-Allow-Credentials: true\r\n"
 		"Access-Control-Max-Age: 86400\r\n"
-		"Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
+		"Access-Control-Allow-Headers: Content-Type, Authorization, X-NZBGet-Client\r\n"
 		"Server: nzbget-%s\r\n"
 		"\r\n";
 	BString<1024> responseHeader(OPTIONS_RESPONSE_HEADER,
@@ -531,9 +603,9 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		"Access-Control-Allow-Origin: %s\r\n"
 		"Access-Control-Allow-Credentials: true\r\n"
 		"Access-Control-Max-Age: 86400\r\n"
-		"Access-Control-Allow-Headers: Content-Type, Authorization\r\n"
-		"Set-Cookie: Auth-Type=%s; SameSite=Lax\r\n"
-		"Set-Cookie: Auth-Token=%s; HttpOnly; SameSite=Lax\r\n"
+		"Access-Control-Allow-Headers: Content-Type, Authorization, X-NZBGet-Client\r\n"
+		"Set-Cookie: Auth-Type=%s; SameSite=Lax; Path=/%s\r\n"
+		"Set-Cookie: Auth-Token=%s; HttpOnly; SameSite=Lax; Path=/%s\r\n"
 		"Content-Length: %i\r\n"
 		"%s"					// Content-Type: xxx
 		"%s"					// Content-Encoding: gzip
@@ -588,12 +660,15 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 		contentTypeHeader.Format("Content-Type: %s\r\n", contentType);
 	}
 
+	const char* secureCookie = IsSecureConnection() ? "; Secure" : "";
 	BString<1024> responseHeader(RESPONSE_HEADER,
 		unchanged ? ERR_HTTP_NOT_MODIFIED : ERR_HTTP_OK,
 		m_keepAlive ? "keep-alive" : "close",
 		m_origin.Str(),
 		g_Options->GetFormAuth() ? "form" : "http",
+		secureCookie,
 		m_authorized ? m_serverAuthToken[m_userAccess] : "",
+		secureCookie,
 		bodyLen,
 		*contentTypeHeader,
 		gzip ? "Content-Encoding: gzip\r\n" : "",
