@@ -380,6 +380,12 @@ ArticleDownloader::EStatus ArticleDownloader::Download()
 		{
 			len = m_connection->TryRecv(lineBuf, chunkSize);
 			buffer = lineBuf;
+			if (len > 0)
+			{
+				// TryRecv terminates partial reads only; a read that fills
+				// chunkSize bytes is terminated here, in the spare byte.
+				lineBuf[len] = '\0';
+			}
 		}
 
 		// have we encountered a timeout?
