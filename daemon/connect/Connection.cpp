@@ -499,8 +499,6 @@ int Connection::TryRecv(char* buffer, int size)
 {
 	//debug("Receiving data");
 
-	memset(buffer, 0, size);
-
 	int received = recv(m_socket, buffer, size, 0);
 
 	if (received < 0)
@@ -510,6 +508,14 @@ int Connection::TryRecv(char* buffer, int size)
 	else
 	{
 		m_totalBytesRead += received;
+
+		// Terminate the received data instead of clearing the whole buffer
+		// up front: clearing costs O(size) per call, while recv() usually
+		// returns far less than size (at most one TLS record per call).
+		if (received < size)
+		{
+			buffer[received] = '\0';
+		}
 	}
 
 	return received;

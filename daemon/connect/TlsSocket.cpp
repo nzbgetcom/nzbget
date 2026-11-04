@@ -146,6 +146,15 @@ bool TlsSocket::Start()
 		}
 	}
 
+	if (m_isClient)
+	{
+		// Without read-ahead OpenSSL issues two recv() calls per TLS record
+		// (5-byte header, then the body). With read-ahead it fills its own
+		// buffer and can decrypt several records from one recv() call.
+		SSL_CTX_set_read_ahead(m_context.get(), 1);
+		SSL_CTX_set_default_read_buffer_len(m_context.get(), READ_AHEAD_BUFFER_SIZE);
+	}
+
 	m_session.reset(SSL_new(m_context.get()));
 	if (!m_session)
 	{
@@ -307,6 +316,25 @@ int TlsSocket::Send(const char* buffer, int size)
 int TlsSocket::Recv(char* buffer, int size)
 {
 	m_retCode = SSL_read(m_session.get(), buffer, size);
+
+	if (m_retCode > 0)
+	{
+		// SSL_read() returns at most one TLS record (16 KB). Hand out more
+		// data that is already in OpenSSL's buffer, so callers with larger
+		// buffers process it in one go. Errors are left for the next call.
+		int total = m_retCode;
+		while (total < size && SSL_has_pending(m_session.get()))
+		{
+			int received = SSL_read(m_session.get(), buffer + total, size - total);
+			if (received <= 0)
+			{
+				ERR_clear_error();
+				break;
+			}
+			total += received;
+		}
+		m_retCode = total;
+	}
 
 	if (m_retCode < 0)
 	{

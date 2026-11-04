@@ -62,6 +62,10 @@ protected:
 	virtual void PrintError(const char* errMsg);
 
 private:
+	// Size of OpenSSL's read-ahead buffer for client connections
+	// (room for several 16 KB TLS records per recv() call).
+	static constexpr size_t READ_AHEAD_BUFFER_SIZE = 64 * 1024;
+
 	static void InitX509Store(std::string_view certStore);
 	static OpenSSL::X509StorePtr m_X509Store;
 
