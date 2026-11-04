@@ -88,17 +88,24 @@ Status ArticleTimeoutValidator::Validate() const
 
 Status ArticleReadChunkSizeValidator::Validate() const
 {
-	int val = m_options.GetArticleReadChunkSize();
+	// Options stores the value in bytes, the thresholds below are in KB.
+	int val = m_options.GetArticleReadChunkSize() / 1024;
 	Status s = CheckPositiveNum(Options::ARTICLEREADCHUNKSIZE, val);
 	if (!s.IsOk()) return s;
 
-	if (val < 4)
+	if (val == 0)
+	{
+		return Status::Ok(); // automatic
+	}
+
+	if (val < 16)
 	{
 		return Status::Warning(
 			"'" + std::string(Options::ARTICLEREADCHUNKSIZE) + "' is set to " +
 			std::to_string(val) +
 			" KB. "
-			"This is very low and may reduce download speed due to network overhead");
+			"Values below 16 KB may reduce download speed on encrypted connections. "
+			"Use 0 to choose the size automatically");
 	}
 
 	if (val > 10240)

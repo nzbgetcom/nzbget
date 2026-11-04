@@ -603,7 +603,7 @@ private:
 	bool m_nzbLog = false;
 	bool m_systemHealthCheck = true;
 	int m_articleTimeout = 0;
-	int m_articleReadChunkSize = 4;
+	int m_articleReadChunkSize = 0;
 	int m_urlTimeout = 0;
 	int m_remoteTimeout = 0;
 	bool m_appendCategoryDir = false;

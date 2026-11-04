@@ -314,7 +314,7 @@ void Options::InitDefaults()
 	SetOption(CERTCHECK.data(), "no");
 	SetOption(AUTHORIZEDIP.data(), "");
 	SetOption(ARTICLETIMEOUT.data(), "60");
-	SetOption(ARTICLEREADCHUNKSIZE.data(), "4");
+	SetOption(ARTICLEREADCHUNKSIZE.data(), "0");
 	SetOption(URLTIMEOUT.data(), "60");
 	SetOption(REMOTETIMEOUT.data(), "90");
 	SetOption(FLUSHQUEUE.data(), "yes");

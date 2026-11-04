@@ -82,6 +82,18 @@ public:
 
 	void LogDebugInfo();
 
+	/**
+	 * Size of the buffer used to read an article body from the server.
+	 * @param configuredSize value of option ArticleReadChunkSize in bytes, 0 = auto.
+	 * @param articleSize    article size from the nzb-file in bytes, 0 if unknown.
+	 * In auto mode the size follows the article size, but is never smaller than
+	 * one TLS record (16 KB) and never larger than 256 KB per connection.
+	 */
+	static int CalcReadChunkSize(int configuredSize, int articleSize);
+
+	static constexpr int AUTO_READ_CHUNK_MIN = 16 * 1024;
+	static constexpr int AUTO_READ_CHUNK_MAX = 256 * 1024;
+
 private:
 	FileInfo* m_fileInfo;
 	ArticleInfo* m_articleInfo;

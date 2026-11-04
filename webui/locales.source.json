@@ -4047,7 +4047,7 @@
     "description": "Description for the option ArticleTimeout"
   },
   "config_desc_articlereadchunksize": {
-    "message": "Chunk size when reading data from the news server.",
+    "message": "Chunk size when reading data from the news server.\n\nValue \"0\" chooses the size automatically: it follows the article size, between 16 KB and 256 KB per connection. Values below 16 KB reduce download speed on encrypted connections, because one TLS record (up to 16 KB) can no longer be read at once.",
     "description": "Description for the option ArticleReadChunkSize If 'News server' sounds like 'Newspaper' in your language, use 'Usenet server'."
   },
   "config_desc_urlretries": {
