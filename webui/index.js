@@ -197,7 +197,7 @@ $(document).ready(function()
 	$('#HeaderLogout').click(function() {
 		Refresher.pause();
 		Util.removeFromLocalStorage('LoginUsername');
-		$.ajax({ url: 'logout', cache: false }).always(function() {
+		$.ajax({ url: 'logout', type: 'POST', cache: false }).always(function() {
 			document.location.reload();
 		});
 		return false;
@@ -396,6 +396,14 @@ var Frontend = (new function($)
 	{
 		// Auth-Token is HttpOnly and there is no "who am I" RPC: the name comes from login.
 		var name = Util.getFromLocalStorage('LoginUsername');
+		if (!name && !Options.restricted)
+		{
+			name = Options.option('ControlUsername');
+			if (name)
+			{
+				Util.saveToLocalStorage('LoginUsername', name);
+			}
+		}
 		var role = I18n.translate(Options.restricted ? 'user_role_restricted' : 'user_role_control');
 		$('#HeaderUserName').text(name ? name : role);
 		$('#HeaderUserRole').text(name ? role : '').toggle(!!name);

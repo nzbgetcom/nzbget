@@ -30,7 +30,7 @@ If HTTP basic authentication is somewhat problematic the username/password can a
 
 It is also possible to send the credentials in the header `X-Authorization: Basic <base64(username:password)>` (used by the web-interface) or in the standard `Authorization: Basic ...` header.
 
-With the option `FormAuth` enabled (the default) the web-interface shows its own login form instead of the browser's built-in dialog. This does not affect RPC clients: the server still replies to non-web-interface requests with `HTTP 401` and the `WWW-Authenticate: Basic realm="NZBGet"` challenge, so tools that do not send credentials preemptively (curl, wget, Sonarr/Radarr and other integrations) keep working as before. Only requests marked as coming from the web-interface (header `X-NZBGet-Client: nzbget-webui`) receive the `401` response without the challenge, which prevents the browser from popping up its own dialog. With `FormAuth=no` the web-interface falls back to the browser's built-in dialog. The web-interface ends the session with `GET /logout`, which expires the session cookies.
+With the option `FormAuth` enabled (the default) the web-interface shows its own login form instead of the browser's built-in dialog. This does not affect RPC clients: the server still replies to non-web-interface requests with `HTTP 401` and the `WWW-Authenticate: Basic realm="NZBGet"` challenge, so tools that do not send credentials preemptively (curl, wget, Sonarr/Radarr and other integrations) keep working as before. Only requests marked as coming from the web-interface (header `X-NZBGet-Client: nzbget-webui`) receive the `401` response without the challenge, which prevents the browser from popping up its own dialog. With `FormAuth=no` the web-interface falls back to the browser's built-in dialog. The web-interface ends the session with `POST /logout`, which expires the session cookies.
 
 ### Restricted user
 
@@ -38,13 +38,13 @@ For scripts, automation and third-party applications (for example the *arr suite
 
 Specifically, the restricted user:
 
-- cannot change the configuration: `saveconfig`, `editserver`, `resetservervolume`, `testserver`. Methods `config` and `loadconfig` work, but return `***` for the protected options (passwords, feed URLs, extension options, and security settings);
+- cannot change the configuration: `saveconfig`, `editserver`, `resetservervolume`, `testserver`. Methods `config` and `loadconfig` work, but return `***` for the protected options (passwords, all feed URLs to prevent leaking indexer API keys and credentials, extension options, and security settings);
 - cannot control the daemon: `shutdown`, `reload`, `dump`, `clearlog`, `startupdate`, `logupdate`, `checkupdates`;
 - cannot manage extensions or run scripts: `downloadextension`, `updateextension`, `deleteextension`, `testextension`, `startscript`, `logscript`. Listing the cached extensions via `loadextensions` is allowed, but reloading them from disk (`loadextensions` with `loadFromDisk=true`) is administrator-only;
 - cannot fetch arbitrary URLs or execute speed tests: `readurl`, `testserverspeed`, `testdiskspeed`, `testnetworkspeed`;
 - can view the configured feeds (`viewfeed`), but cannot preview a feed from an arbitrary client-supplied URL (`previewfeed`).
 
-`Security warning`: HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS: either enable the built-in TLS in NZBGet (`SecureControl=yes`, see options `SecureCert`, `SecureKey`, `SecurePort`) or put NZBGet behind a reverse proxy that terminates TLS (Traefik, Caddy, Nginx). When a reverse proxy forwards the header `X-Forwarded-Proto: https`, NZBGet marks the web-interface session cookie as `Secure`.
+`Security warning`: HTTP authentication is not secure. Although the password is encoded using Base64 it is not encrypted. For secure communication use HTTPS: either enable the built-in TLS in NZBGet (`SecureControl=yes`, see options `SecureCert`, `SecureKey`, `SecurePort`) or put NZBGet behind a reverse proxy that terminates TLS (Traefik, Caddy, Nginx). When a trusted reverse proxy (running on the local host or listed in `AuthorizedIP`) forwards the header `X-Forwarded-Proto: https`, NZBGet marks the web-interface session cookie as `Secure`.
 
 ## Features and limitations
 

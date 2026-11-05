@@ -104,6 +104,19 @@ void WebProcessor::Execute()
 
 	ParseHeaders();
 
+	ParseUrl();
+
+	if (!strncmp(m_url, "/logout", 7) && (m_url[7] == '\0' || m_url[7] == '?'))
+	{
+		if (m_httpMethod != hmPost || !CheckCredentials())
+		{
+			SendAuthResponse();
+			return;
+		}
+		SendLogoutResponse();
+		return;
+	}
+
 	if (m_httpMethod == hmPost && m_contentLen <= 0)
 	{
 		error("Invalid-request: content length is 0");
@@ -116,15 +129,11 @@ void WebProcessor::Execute()
 		return;
 	}
 
-	ParseUrl();
-
-	if (!strncmp(m_url, "/logout", 7) && (m_url[7] == '\0' || m_url[7] == '?'))
-	{
-		SendLogoutResponse();
-		return;
-	}
-
 	m_rpcRequest = XmlRpcProcessor::IsRpcRequest(m_url);
+	if (g_Options->GetFormAuth() && (!m_rpcRequest || m_uiClient) && !m_authInfoFromUi)
+	{
+		m_authInfo[0] = '\0';
+	}
 	m_authorized = CheckCredentials();
 
 	if ((!g_Options->GetFormAuth() || m_rpcRequest) && !m_authorized)
@@ -211,7 +220,7 @@ void WebProcessor::ParseHeaders()
 		}
 		else if (!strncasecmp(p, "X-NZBGet-Client: ", 17))
 		{
-			m_uiClient = !strncasecmp(p + 17, "nzbget-webui", 12);
+			m_uiClient = !strcasecmp(p + 17, "nzbget-webui");
 		}
 		else if (!strncasecmp(p, "If-None-Match: ", 15))
 		{
@@ -311,6 +320,11 @@ bool WebProcessor::CheckCredentials()
 
 bool WebProcessor::CheckAuthToken()
 {
+	if (!g_Options->GetFormAuth())
+	{
+		return false;
+	}
+
 	// Accept any valid token: a stale cookie must not shadow a fresh one.
 	const char* p = m_cookieHeader.c_str();
 	while ((p = strstr(p, "Auth-Token=")) != nullptr)
@@ -341,12 +355,21 @@ bool WebProcessor::IsSecureConnection()
 		return true;
 	}
 
-	// A reverse proxy may terminate TLS: trust the forwarded protocol for the cookie flag.
+	// A reverse proxy may terminate TLS: trust the forwarded protocol for the cookie flag
+	// only if the request originated from a trusted source (loopback or AuthorizedIP).
 	if (!m_forwardedProto.empty())
 	{
-		const char* proto = m_forwardedProto.c_str();
-		return !strncasecmp(proto, "https", 5) &&
-			   (proto[5] == '\0' || proto[5] == ',' || proto[5] == ' ');
+		const char* remoteIp = m_connection->GetRemoteAddr();
+		const bool trustedProxy = remoteIp && (!strcmp(remoteIp, "127.0.0.1") ||
+											   !strcmp(remoteIp, "::1") ||
+											   !strcmp(remoteIp, "localhost") ||
+											   (!Util::EmptyStr(g_Options->GetAuthorizedIp()) && IsAuthorizedIp(remoteIp)));
+		if (trustedProxy)
+		{
+			const char* proto = m_forwardedProto.c_str();
+			return !strncasecmp(proto, "https", 5) &&
+				   (proto[5] == '\0' || proto[5] == ',' || proto[5] == ' ');
+		}
 	}
 
 	return false;
@@ -669,10 +692,21 @@ void WebProcessor::SendBodyResponse(const char* body, int bodyLen, const char* c
 
 	const char* secureCookie = IsSecureConnection() ? "; Secure" : "";
 	std::string authTokenHeader;
-	if (!m_authorized || !Util::EmptyStr(m_authInfo))
+	if (g_Options->GetFormAuth())
 	{
-		authTokenHeader = std::format("Set-Cookie: Auth-Token={}; HttpOnly; SameSite=Lax; Path=/{}\r\n",
-			m_authorized ? m_serverAuthToken[m_userAccess] : "", secureCookie);
+		if (!m_authorized || !Util::EmptyStr(m_authInfo))
+		{
+			authTokenHeader = std::format("Set-Cookie: Auth-Token={}; HttpOnly; SameSite=Lax; Path=/{}\r\n",
+				m_authorized ? m_serverAuthToken[m_userAccess] : "", secureCookie);
+		}
+	}
+	else
+	{
+		authTokenHeader = std::format(
+			"Set-Cookie: Auth-Token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/{}\r\n"
+			"Set-Cookie: Auth-Token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/jsonrpc{}\r\n"
+			"Set-Cookie: Auth-Token=; Max-Age=0; HttpOnly; SameSite=Lax; Path=/xmlrpc{}\r\n",
+			secureCookie, secureCookie, secureCookie);
 	}
 	BString<1024> responseHeader(RESPONSE_HEADER,
 		unchanged ? ERR_HTTP_NOT_MODIFIED : ERR_HTTP_OK,

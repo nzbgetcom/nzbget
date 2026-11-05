@@ -2708,8 +2708,15 @@ var Config = (new function($)
 					document.location.reload(true);
 				}
 			},
-			function()
+			function(error)
 			{
+				if (error && error.indexOf('401') > -1)
+				{
+					// restarted successfully, authentication required
+					$('#ConfigReloadAction').text(I18n.translate('msg_reloaded_refreshing'));
+					document.location.reload(true);
+					return;
+				}
 				// Failure, waiting 0.5 sec. and retrying
 				setTimeout(reloadCheckStatus, 500);
 				reloadCheckNotes();
@@ -3718,8 +3725,18 @@ var UpdateDialog = (new function($)
 						}, 1000);
 				}
 			},
-			function()
+			function(error)
 			{
+				if (error && error.indexOf('401') > -1)
+				{
+					// restarted successfully, authentication required
+					setLogContentAndScroll($UpdateProgressDialog_Log.html() + '\n' + I18n.translate('msg_started_refreshing'));
+					setTimeout(function()
+						{
+							document.location.reload(true);
+						}, 1000);
+					return;
+				}
 				// Failure, waiting 0.5 sec. and retrying
 				if ($('#UpdateProgressDialog').is(':visible'))
 				{

@@ -3143,8 +3143,14 @@ void LoadExtensionsXmlCommand::Execute()
 	}
 
 	// Reloading extensions registers scripts with the scheduler: administrators only.
-	if (loadFromDisk && m_userAccess == XmlRpcProcessor::uaControl)
+	if (loadFromDisk)
 	{
+		if (m_userAccess != XmlRpcProcessor::uaControl)
+		{
+			BuildErrorResponse(401, "Access denied");
+			return;
+		}
+
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{
