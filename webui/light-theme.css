@@ -258,6 +258,11 @@ td.dropdown-cell > div:not(.dropdown-disabled):hover::after {
 	color: #bbb;
 }
 
+/* The panel is a light surface, so it must not inherit the navbar's grey text. */
+.settings-menu-panel {
+	color: #333;
+}
+
 .dropdown-warning {
 	text-align: center;
 	background: repeating-linear-gradient(-45deg, #FFFFD8, #FFFFD8 6px, #E7E8D1 6px, #E7E8D1 12px);
@@ -550,4 +555,18 @@ tr.drag-source > td {
 .table-striped tbody tr.drag-finish .progress,
 .table-striped tbody tr.drag-finish td a {
 	background-color: #E6FAE4 !important;
+}
+
+/* *** WEB LOGIN SCREEN *************************************************** */
+
+#LoginScreen,
+#AuthSpinner {
+	background-color: #f5f5f5;
+}
+
+#LoginScreen .login-card {
+	background-color: #ffffff;
+	color: #333333;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+	-webkit-box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
 }

@@ -242,6 +242,11 @@ For login credentials type username and the password defined by
 options "ControlUsername" (default `"nzbget"`) and "ControlPassword"
 (default `"tegbzn6789"`).
 
+The web-interface asks for the login credentials in its own login form. This is
+controlled by the option "FormAuth" (enabled by default). If the option is
+disabled the browser shows its built-in login dialog instead. To end the session
+use the "Logout" item in the settings menu of the web-interface.
+
 In a case your browser forget credentials, to prevent typing them each
 time, there is a workaround - use URL in the form:
 ```

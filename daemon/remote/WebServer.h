@@ -22,6 +22,7 @@
 #ifndef WEBSERVER_H
 #define WEBSERVER_H
 
+#include <string>
 #include "NString.h"
 #include "Connection.h"
 
@@ -63,15 +64,19 @@ private:
 	CString m_origin;
 	int m_contentLen;
 	char m_authInfo[256+1];
-	char m_authToken[TOKEN_SIZE];
+	std::string m_cookieHeader;
+	bool m_authInfoFromUi = false;
 	static char m_serverAuthToken[3][TOKEN_SIZE];
 	CString m_forwardedFor;
+	std::string m_forwardedProto;
 	CString m_oldETag;
+	bool m_uiClient = false;
 	bool m_keepAlive = false;
 	std::hash<std::string> m_hasher;
 
 	void Dispatch();
 	void SendAuthResponse();
+	void SendLogoutResponse();
 	void SendOptionsResponse();
 	void SendErrorResponse(const char* errCode, bool printWarning);
 	void SendSingleFileResponse();
@@ -80,9 +85,11 @@ private:
 	void SendRedirectResponse(const char* url);
 	const char* DetectContentType(const char* filename);
 	bool IsAuthorizedIp(const char* remoteAddr);
+	bool IsSecureConnection();
 	void ParseHeaders();
 	void ParseUrl();
 	bool CheckCredentials();
+	bool CheckAuthToken();
 };
 
 #endif
