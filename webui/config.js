@@ -34,6 +34,7 @@ function Server()
 	this.name = '';
 	this.port = 0;
 	this.connections = 0;
+	this.quota = 0;
 }
 
 var Options = (new function($)
@@ -131,6 +132,10 @@ var Options = (new function($)
 		var connectionsOpt = findOption(this.options, serverId + '.Connections');
 		if (connectionsOpt)
 			server.connections = connectionsOpt.Value;
+
+		var quotaOpt = findOption(this.options, serverId + '.Quota');
+		if (quotaOpt)
+			server.quota = parseInt(quotaOpt.Value, 10) || 0;
 
 		return server;
 	}

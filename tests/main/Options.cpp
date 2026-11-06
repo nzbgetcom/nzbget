@@ -42,6 +42,7 @@ public:
 	int m_tasks;
 	std::vector<FeedInfo::CategorySource> m_categorySources;
 	std::vector<unsigned int> m_certVerifLevels;
+	std::vector<int> m_serverQuotas;
 
 	OptionsExtenderMock() : m_newsServers(0), m_feeds(0), m_tasks(0) {}
 
@@ -49,9 +50,11 @@ protected:
 	void AddNewsServer(int id, bool active, const char* name, const char* host,
 		int port, int ipVersion, const char* user, const char* pass, bool joinGroup, bool tls,
 		const char* cipher, int maxConnections, int retention, 
-		int level, int group, bool optional, unsigned int certVerificationfLevel) override
+		int level, int group, bool optional, unsigned int certVerificationfLevel,
+		int quota = 0) override
 	{
 		m_newsServers++;
+		m_serverQuotas.push_back(quota);
 	}
 
 	void AddFeed(
@@ -270,6 +273,33 @@ BOOST_AUTO_TEST_CASE(ParseFeedCertVerificationTest)
 	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[2], Options::ECertVerifLevel::cvStrict);
 	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[3], Options::ECertVerifLevel::cvNone);
 	BOOST_CHECK_EQUAL(extender.m_certVerifLevels[4], Options::ECertVerifLevel::cvStrict);
+}
+
+BOOST_AUTO_TEST_CASE(ParseServerQuotaTest)
+{
+	Options::CmdOptList cmdOpts;
+
+	cmdOpts.push_back("Server1.Host=news1.mynewsserver.com");
+	cmdOpts.push_back("Server1.Port=563");
+	cmdOpts.push_back("Server1.Connections=4");
+	cmdOpts.push_back("Server1.Quota=1048576");
+
+	cmdOpts.push_back("Server2.Host=news2.mynewsserver.com");
+	cmdOpts.push_back("Server2.Port=563");
+	cmdOpts.push_back("Server2.Connections=4");
+
+	cmdOpts.push_back("Server3.Host=news3.mynewsserver.com");
+	cmdOpts.push_back("Server3.Port=563");
+	cmdOpts.push_back("Server3.Connections=4");
+	cmdOpts.push_back("Server3.Quota=-500");
+
+	OptionsExtenderMock extender;
+	Options options(&cmdOpts, &extender);
+
+	BOOST_REQUIRE_EQUAL(extender.m_serverQuotas.size(), 3);
+	BOOST_CHECK_EQUAL(extender.m_serverQuotas[0], 1048576);
+	BOOST_CHECK_EQUAL(extender.m_serverQuotas[1], 0);
+	BOOST_CHECK_EQUAL(extender.m_serverQuotas[2], 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

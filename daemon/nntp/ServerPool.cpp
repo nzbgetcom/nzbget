@@ -92,7 +92,7 @@ void ServerPool::NormalizeLevels()
 	int lastLevel = minLevel;
 	for (NewsServer* newsServer : m_sortedServers)
 	{
-		if ((newsServer->GetActive() && newsServer->GetMaxConnections() > 0) ||
+		if ((newsServer->GetActive() && !newsServer->GetQuotaReached() && newsServer->GetMaxConnections() > 0) ||
 			(newsServer->GetLevel() == minLevel))
 		{
 			if (newsServer->GetLevel() != lastLevel)
@@ -129,7 +129,7 @@ void ServerPool::InitConnections()
 				m_levels.push_back(0);
 			}
 
-			if (newsServer->GetActive())
+			if (newsServer->GetActive() && !newsServer->GetQuotaReached())
 			{
 				int connections = 0;
 
@@ -175,6 +175,7 @@ NntpConnection* ServerPool::GetConnection(int level, NewsServer* wantServer, Raw
 		for (NewsServer* newsServer : m_sortedServers)
 		{
 			if (newsServer->GetNormLevel() == level && newsServer->GetActive() &&
+				!newsServer->GetQuotaReached() &&
 				!(newsServer->GetOptional() && IsServerBlocked(newsServer)))
 			{
 				return nullptr;
@@ -200,6 +201,7 @@ NntpConnection* ServerPool::LockedGetConnection(int level, NewsServer* wantServe
 	{
 		NewsServer* candidateServer = candidateConnection->GetNewsServer();
 		if (!candidateConnection->GetInUse() && candidateServer->GetActive() &&
+			!candidateServer->GetQuotaReached() &&
 			candidateServer->GetNormLevel() == level &&
 			(!wantServer || candidateServer == wantServer ||
 			 (wantServer->GetGroup() > 0 && wantServer->GetGroup() == candidateServer->GetGroup())) &&
@@ -264,7 +266,9 @@ void ServerPool::FreeConnection(NntpConnection* connection, bool used)
 		((PooledConnection*)connection)->SetFreeTimeNow();
 	}
 
-	if (connection->GetNewsServer()->GetNormLevel() > -1 && connection->GetNewsServer()->GetActive())
+	if (connection->GetNewsServer()->GetNormLevel() > -1 &&
+		connection->GetNewsServer()->GetActive() &&
+		!connection->GetNewsServer()->GetQuotaReached())
 	{
 		m_levels[connection->GetNewsServer()->GetNormLevel()]++;
 	}
@@ -311,7 +315,8 @@ void ServerPool::CloseUnusedConnections()
 		{
 			if (!connection->GetInUse() &&
 				(connection->GetNewsServer()->GetNormLevel() == -1 ||
-				 !connection->GetNewsServer()->GetActive()))
+				 !connection->GetNewsServer()->GetActive() ||
+				 connection->GetNewsServer()->GetQuotaReached()))
 			{
 				debug("Closing (and deleting) unused connection to server%i", connection->GetNewsServer()->GetId());
 				if (connection->GetStatus() == Connection::csConnected)

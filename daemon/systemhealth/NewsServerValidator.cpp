@@ -27,7 +27,7 @@ namespace SystemHealth::NewsServer
 NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 	: m_server(server), m_name("Server" + std::to_string(server.GetId()))
 {
-	m_validators.reserve(15);
+	m_validators.reserve(16);
 	m_validators.push_back(std::make_unique<ServerActiveValidator>(server));
 	m_validators.push_back(std::make_unique<ServerNameValidator>(server));
 	m_validators.push_back(std::make_unique<ServerLevelValidator>(server));
@@ -41,6 +41,7 @@ NewsServerValidator::NewsServerValidator(const ::NewsServer& server)
 	m_validators.push_back(std::make_unique<ServerCipherValidator>(server));
 	m_validators.push_back(std::make_unique<ServerConnectionsValidator>(server));
 	m_validators.push_back(std::make_unique<ServerRetentionValidator>(server));
+	m_validators.push_back(std::make_unique<ServerQuotaValidator>(server));
 	m_validators.push_back(std::make_unique<ServerCertVerificationValidator>(server));
 	m_validators.push_back(std::make_unique<ServerIpVersionValidator>(server));
 }
@@ -209,6 +210,24 @@ Status ServerRetentionValidator::Validate() const
 		ss << "Retention (" << retention << ") is unrealistically high "
 		   << "and will be limited by the server's actual retention";
 		return Status::Info(ss.str());
+	}
+
+	return Status::Ok();
+}
+
+Status ServerQuotaValidator::Validate() const
+{
+	if (!m_server.GetActive()) return Status::Ok();
+
+	int quota = m_server.GetQuota();
+	if (quota < 0)
+	{
+		return Status::Error("'Quota' value is invalid. It must not be negative");
+	}
+
+	if (quota > 0 && m_server.GetQuotaReached())
+	{
+		return Status::Warning("Server download quota has been reached");
 	}
 
 	return Status::Ok();
