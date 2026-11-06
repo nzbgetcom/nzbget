@@ -270,7 +270,7 @@ Status FormAuthValidator::Validate() const
 							"' for web-form login and session logout");
 	}
 
-	const bool hasControl = !Util::EmptyStr(m_options.GetControlUsername()) ||
+	const bool hasControl = !Util::EmptyStr(m_options.GetControlUsername()) &&
 							!Util::EmptyStr(m_options.GetControlPassword());
 	const bool hasRestricted = !Util::EmptyStr(m_options.GetRestrictedUsername());
 

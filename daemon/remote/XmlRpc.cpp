@@ -88,11 +88,17 @@ public:
 	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaRestricted; }
 };
 
-class SafeXmlCommand : public RestrictedXmlCommand
+class SafeXmlCommand : public XmlCommand
 {
 public:
 	~SafeXmlCommand() override;
 	bool IsSafeMethod() override { return true; }
+};
+
+class RestrictedSafeXmlCommand : public SafeXmlCommand
+{
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaRestricted; }
 };
 
 class ErrorXmlCommand final : public XmlCommand
@@ -164,25 +170,25 @@ public:
 	void Execute() override;
 };
 
-class StatusXmlCommand final : public SafeXmlCommand
+class StatusXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SysInfoXmlCommand final : public SafeXmlCommand
+class SysInfoXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SystemHealthXmlCommand final : public SafeXmlCommand
+class SystemHealthXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LogXmlCommand: public SafeXmlCommand
+class LogXmlCommand: public RestrictedSafeXmlCommand
 {
 public:
 	~LogXmlCommand() override;
@@ -194,7 +200,7 @@ protected:
 	virtual GuardedMessageList GuardMessages();
 };
 
-class NzbInfoXmlCommand: public SafeXmlCommand
+class NzbInfoXmlCommand: public RestrictedSafeXmlCommand
 {
 public:
 	~NzbInfoXmlCommand() override;
@@ -204,7 +210,7 @@ protected:
 	void AppendPostInfoFields(PostInfo* postInfo, int logEntries, bool postQueue);
 };
 
-class ListFilesXmlCommand final : public SafeXmlCommand
+class ListFilesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -262,25 +268,25 @@ private:
 	const char* DetectStatus(HistoryInfo* historyInfo);
 };
 
-class UrlQueueXmlCommand final : public SafeXmlCommand
+class UrlQueueXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ConfigXmlCommand final : public SafeXmlCommand
+class ConfigXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadConfigXmlCommand final : public SafeXmlCommand
+class LoadConfigXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadExtensionsXmlCommand final : public SafeXmlCommand
+class LoadExtensionsXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -316,7 +322,7 @@ public:
 	void Execute() override;
 };
 
-class ConfigTemplatesXmlCommand final : public SafeXmlCommand
+class ConfigTemplatesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -374,7 +380,7 @@ protected:
 	GuardedMessageList GuardMessages() override;
 };
 
-class ServerVolumesXmlCommand final : public SafeXmlCommand
+class ServerVolumesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;

@@ -381,6 +381,17 @@ BOOST_AUTO_TEST_CASE(TestFormAuthNoUsersConfigured)
 	BOOST_CHECK(s.GetMessage().find("no web users are configured") != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(TestFormAuthControlUserPartiallyConfiguredWarns)
+{
+	Status s1 = ValidateFormAuth({"FormAuth=yes", "ControlUsername=admin", "ControlPassword="});
+	BOOST_CHECK(s1.IsWarning());
+	BOOST_CHECK(s1.GetMessage().find("no web users are configured") != std::string::npos);
+
+	Status s2 = ValidateFormAuth({"FormAuth=yes", "ControlUsername=", "ControlPassword=secret"});
+	BOOST_CHECK(s2.IsWarning());
+	BOOST_CHECK(s2.GetMessage().find("no web users are configured") != std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(TestFormAuthControlUserConfigured)
 {
 	Status s = ValidateFormAuth({"FormAuth=yes", "ControlIP=127.0.0.1", "ControlUsername=nzbget",
