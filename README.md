@@ -19,7 +19,7 @@ NZBGet is written in C++ and is designed for performance and efficiency.
 
 NZBGet can run on almost any device — classic PC, NAS, media player, satellite receiver, WLAN router, etc. The download area provides precompiled binaries for Windows, macOS, Linux, FreeBSD and Android. For other platforms the program can be compiled from source.
 
-This is a fork of the original NZBGet project, formerly maintained by [hugbug](https://github.com/hugbug). The nzbget.com project continues where the original left off, in honor of and with respect for its maintainer of many years.
+This is a fork of the original NZBGet project, formerly maintained by [hugbug](https://github.com/hugbug). The nzbget.com project continues where the original left off, in honor of and with respect for its maintainer of many years. The complete original Git history is preserved here; see [Project history](docs/HISTORY.md) for how this repository relates to [nzbget/nzbget](https://github.com/nzbget/nzbget).
 
 - Website: https://nzbget.com
 - Downloads: https://nzbget.com/download/
