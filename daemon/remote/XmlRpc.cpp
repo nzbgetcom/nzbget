@@ -70,16 +70,35 @@ namespace
 	{
 		return ms > 0.0 ? (static_cast<double>(bytes) / 1024.0 / 1024.0) / (ms / 1000.0) : 0.0;
 	}
+
 }
 
 extern void ExitProc();
 extern void Reload();
+
+class AddXmlCommand : public XmlCommand
+{
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaAdd; }
+};
+
+class RestrictedXmlCommand : public XmlCommand
+{
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaRestricted; }
+};
 
 class SafeXmlCommand : public XmlCommand
 {
 public:
 	~SafeXmlCommand() override;
 	bool IsSafeMethod() override { return true; }
+};
+
+class RestrictedSafeXmlCommand : public SafeXmlCommand
+{
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaRestricted; }
 };
 
 class ErrorXmlCommand final : public XmlCommand
@@ -95,7 +114,7 @@ private:
 	const char* m_errText;
 };
 
-class PauseUnpauseXmlCommand final : public XmlCommand
+class PauseUnpauseXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	enum EPauseAction
@@ -114,7 +133,7 @@ private:
 	EPauseAction m_pauseAction;
 };
 
-class ScheduleResumeXmlCommand final : public XmlCommand
+class ScheduleResumeXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
@@ -132,43 +151,44 @@ public:
 	void Execute() override;
 };
 
-class VersionXmlCommand final : public SafeXmlCommand
+class VersionXmlCommand final : public AddXmlCommand
+{
+public:
+	void Execute() override;
+	bool IsSafeMethod() override { return true; }
+};
+
+class DumpDebugXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DumpDebugXmlCommand final : public SafeXmlCommand
+class SetDownloadRateXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SetDownloadRateXmlCommand final : public XmlCommand
+class StatusXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class StatusXmlCommand final : public SafeXmlCommand
+class SysInfoXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SysInfoXmlCommand final : public SafeXmlCommand
+class SystemHealthXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class SystemHealthXmlCommand final : public SafeXmlCommand
-{
-public:
-	void Execute() override;
-};
-
-class LogXmlCommand: public SafeXmlCommand
+class LogXmlCommand: public RestrictedSafeXmlCommand
 {
 public:
 	~LogXmlCommand() override;
@@ -180,7 +200,7 @@ protected:
 	virtual GuardedMessageList GuardMessages();
 };
 
-class NzbInfoXmlCommand: public SafeXmlCommand
+class NzbInfoXmlCommand: public RestrictedSafeXmlCommand
 {
 public:
 	~NzbInfoXmlCommand() override;
@@ -190,7 +210,7 @@ protected:
 	void AppendPostInfoFields(PostInfo* postInfo, int logEntries, bool postQueue);
 };
 
-class ListFilesXmlCommand final : public SafeXmlCommand
+class ListFilesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -204,13 +224,13 @@ private:
 	const char* DetectStatus(NzbInfo* nzbInfo);
 };
 
-class EditQueueXmlCommand final : public XmlCommand
+class EditQueueXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DownloadXmlCommand final : public XmlCommand
+class DownloadXmlCommand final : public AddXmlCommand
 {
 public:
 	void Execute() override;
@@ -222,7 +242,7 @@ public:
 	void Execute() override;
 };
 
-class WriteLogXmlCommand final : public XmlCommand
+class WriteLogXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
@@ -234,7 +254,7 @@ public:
 	void Execute() override;
 };
 
-class ScanXmlCommand final : public XmlCommand
+class ScanXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
@@ -248,49 +268,49 @@ private:
 	const char* DetectStatus(HistoryInfo* historyInfo);
 };
 
-class UrlQueueXmlCommand final : public SafeXmlCommand
+class UrlQueueXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ConfigXmlCommand final : public SafeXmlCommand
+class ConfigXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadConfigXmlCommand final : public SafeXmlCommand
+class LoadConfigXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class LoadExtensionsXmlCommand final : public SafeXmlCommand
+class LoadExtensionsXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DownloadExtensionXmlCommand final : public SafeXmlCommand
+class DownloadExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class UpdateExtensionXmlCommand final : public SafeXmlCommand
+class UpdateExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class DeleteExtensionXmlCommand final : public SafeXmlCommand
+class DeleteExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class TestExtensionXmlCommand final : public SafeXmlCommand
+class TestExtensionXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -302,22 +322,27 @@ public:
 	void Execute() override;
 };
 
-class ConfigTemplatesXmlCommand final : public SafeXmlCommand
+class ConfigTemplatesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class ViewFeedXmlCommand final : public XmlCommand
+class ViewFeedXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	ViewFeedXmlCommand(bool preview) : m_preview(preview) {}
+	// Preview uses a client-supplied URL (may embed credentials): administrators only.
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override
+	{
+		return m_preview ? XmlRpcProcessor::uaControl : XmlRpcProcessor::uaRestricted;
+	}
 	void Execute() override;
 private:
 	bool m_preview;
 };
 
-class FetchFeedXmlCommand final : public XmlCommand
+class FetchFeedXmlCommand final : public RestrictedXmlCommand
 {
 public:
 	void Execute() override;
@@ -329,7 +354,7 @@ public:
 	void Execute() override;
 };
 
-class ReadUrlXmlCommand final : public SafeXmlCommand
+class ReadUrlXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -349,11 +374,13 @@ public:
 
 class LogUpdateXmlCommand final : public LogXmlCommand
 {
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaControl; }
 protected:
 	GuardedMessageList GuardMessages() override;
 };
 
-class ServerVolumesXmlCommand final : public SafeXmlCommand
+class ServerVolumesXmlCommand final : public RestrictedSafeXmlCommand
 {
 public:
 	void Execute() override;
@@ -443,13 +470,13 @@ private:
 	}
 };
 
-class TestServerSpeedXmlCommand final: public SafeXmlCommand
+class TestServerSpeedXmlCommand final: public XmlCommand
 {
 public:
 	void Execute() override;
 };
 
-class TestDiskSpeedXmlCommand final : public SafeXmlCommand
+class TestDiskSpeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -490,7 +517,7 @@ public:
 	}
 };
 
-class TestNetworkSpeedXmlCommand final : public SafeXmlCommand
+class TestNetworkSpeedXmlCommand final : public XmlCommand
 {
 public:
 	void Execute() override;
@@ -530,6 +557,8 @@ public:
 
 class LogScriptXmlCommand final : public LogXmlCommand
 {
+public:
+	XmlRpcProcessor::EUserAccess GetRequiredAccess() const override { return XmlRpcProcessor::uaControl; }
 protected:
 	virtual GuardedMessageList GuardMessages();
 };
@@ -629,7 +658,7 @@ void XmlRpcProcessor::Dispatch()
 	}
 	else
 	{
-		std::unique_ptr<XmlCommand> command = CreateCommand(methodName);
+		std::unique_ptr<XmlCommand> command = CreateCheckedCommand(methodName, m_userAccess);
 		command->SetRequest(request);
 		command->SetProtocol(m_protocol);
 		command->SetHttpMethod(m_httpMethod);
@@ -674,8 +703,11 @@ void XmlRpcProcessor::MutliCall()
 		WebUtil::XmlParseTagValue(nameEnd, "string", methodName, sizeof(methodName), nullptr);
 		debug("MutliCall, MethodName=%s", methodName);
 
-		std::unique_ptr<XmlCommand> command = CreateCommand(methodName);
+		std::unique_ptr<XmlCommand> command = CreateCheckedCommand(methodName, m_userAccess);
 		command->SetRequest(requestPtr);
+		command->SetProtocol(m_protocol);
+		command->SetHttpMethod(m_httpMethod);
+		command->SetUserAccess(m_userAccess);
 		m_safeMethod |= command->IsSafeMethod();
 		command->Execute();
 
@@ -772,23 +804,36 @@ void XmlRpcProcessor::BuildErrorResponse(int errCode, const char* errText)
 	BuildResponse(command.GetResponse(), "", command.GetFault(), nullptr);
 }
 
+bool XmlRpcProcessor::IsCommandAllowed(XmlCommand* command, EUserAccess userAccess)
+{
+	// Error commands pass through: an unknown method reports "invalid procedure".
+	return command->IsError() || CheckAccess(userAccess, command->GetRequiredAccess());
+}
+
+std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCheckedCommand(const char* methodName,
+	EUserAccess userAccess)
+{
+	std::unique_ptr<XmlCommand> command = CreateCommand(methodName);
+	if (!IsCommandAllowed(command.get(), userAccess))
+	{
+		warn("Received request \"%s\" from %s, access denied", methodName,
+			userAccess == uaAdd ? "add-user" : "restricted user");
+		command = std::make_unique<ErrorXmlCommand>(401, "Access denied");
+	}
+	return command;
+}
+
+bool XmlRpcProcessor::IsMethodDenied(EUserAccess userAccess, const char* methodName)
+{
+	std::unique_ptr<XmlCommand> command = CreateCommand(methodName);
+	return !IsCommandAllowed(command.get(), userAccess);
+}
+
 std::unique_ptr<XmlCommand> XmlRpcProcessor::CreateCommand(const char* methodName)
 {
 	std::unique_ptr<XmlCommand> command;
 
-	if (m_userAccess == uaAdd &&
-		!(!strcasecmp(methodName, "append") || !strcasecmp(methodName, "appendurl") ||
-		 !strcasecmp(methodName, "version")))
-	{
-		command = std::make_unique<ErrorXmlCommand>(401, "Access denied");
-		warn("Received request \"%s\" from add-user, access denied", methodName);
-	}
-	else if (m_userAccess == uaRestricted && !strcasecmp(methodName, "saveconfig"))
-	{
-		command = std::make_unique<ErrorXmlCommand>(401, "Access denied");
-		warn("Received request \"%s\" from restricted user, access denied", methodName);
-	}
-	else if (!strcasecmp(methodName, "pause") || !strcasecmp(methodName, "pausedownload") ||
+	if (!strcasecmp(methodName, "pause") || !strcasecmp(methodName, "pausedownload") ||
 		!strcasecmp(methodName, "pausedownload2"))
 	{
 		command = std::make_unique<PauseUnpauseXmlCommand>(true, PauseUnpauseXmlCommand::paDownload);
@@ -3103,8 +3148,15 @@ void LoadExtensionsXmlCommand::Execute()
 		return;
 	}
 
+	// Reloading extensions registers scripts with the scheduler: administrators only.
 	if (loadFromDisk)
 	{
+		if (m_userAccess != XmlRpcProcessor::uaControl)
+		{
+			BuildErrorResponse(401, "Access denied");
+			return;
+		}
+
 		const auto& error = g_ExtensionManager->LoadExtensions();
 		if (error)
 		{

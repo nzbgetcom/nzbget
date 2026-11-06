@@ -634,6 +634,7 @@ var SystemInfo = (new function($)
 				{
 					$SysInfo_NetworkSpeedTestBtn
 						.attr('data-i18n', 'sysinfo_run_test')
+						.removeData('i18n-last')
 						.text('')
 						.removeClass('btn--disabled');
 					I18n.translatePage($SysInfo_NetworkSpeedTestBtn);
@@ -736,6 +737,7 @@ var SystemInfo = (new function($)
 				var testServerSpeedBtn = makeTestServerSpeedBtn(server.id);
 				var lastTestStatsBtn = makeLastTestStatsBtnPlaceholder(lastTestStatsId + server.id);
 				var spinner = makeTestServerSpinnerPlaceholder(serverTestSpinnerId + newsServer.ID);
+				var testErrorTxt = $('<span class="help-text-error"></span>');
 
 				lastTestStatsBtns[lastTestStatsId + server.id] = lastTestStatsBtn;
 				spinners[serverTestSpinnerId + newsServer.ID] = spinner;
@@ -743,7 +745,7 @@ var SystemInfo = (new function($)
 				testServerSpeedBtn.on('click', function(e)
 				{
 					e.preventDefault();
-					var listOfTestNZB = makeListOfTestNZB(server.id);
+					var listOfTestNZB = makeListOfTestNZB(server.id, testErrorTxt);
 					var alreadyExists = $('#' + testNZBListId + server.id);
 					if (alreadyExists.length > 0)
 					{
@@ -778,6 +780,7 @@ var SystemInfo = (new function($)
 				tdTests.append(testServerSpeedBtn);
 				tdTests.append(lastTestStatsBtn);
 				tdTests.append(spinner);
+				tdTests.append(testErrorTxt);
 				tr.append(tdName);
 				tr.append(tdActive);
 				tr.append(tdTests);
@@ -835,7 +838,7 @@ var SystemInfo = (new function($)
 		return container;
 	}
 
-	function makeListOfTestNZB(serverid)
+	function makeListOfTestNZB(serverid, testErrorTxt)
 	{
 		var list = $('<ul class="test-server-dropdwon-menu dropdown-menu" id="' + testNZBListId + serverid + '"></ul>');
 		getTestNZBFiles().forEach(function(item)
@@ -848,7 +851,7 @@ var SystemInfo = (new function($)
 			var btn = $('<a href="#">' + item.label + '</a>').on('click', function(e) 
 				{
 					e.preventDefault();
-					testServerSpeed(fullName, serverid);
+					testServerSpeed(fullName, serverid, testErrorTxt);
 				}
 			);
 
@@ -901,14 +904,28 @@ var SystemInfo = (new function($)
 		return statsBtn;
 	}
 
-	function testServerSpeed(nzbFileName, serverId)
+	function testServerSpeed(nzbFileName, serverId, testErrorTxt)
 	{
+		if (testErrorTxt)
+		{
+			testErrorTxt.empty();
+		}
 		RPC.call('testserverspeed', [
 				testNZBUrl + nzbFileName, 
 				serverId
 			], 
 			function() { }, 
-			errorHandler,
+			function(res)
+			{
+				if (testErrorTxt)
+				{
+					testErrorTxt.html(res.split('<br>')[0]);
+				}
+				else
+				{
+					errorHandler(res);
+				}
+			},
 		);
 	}
 

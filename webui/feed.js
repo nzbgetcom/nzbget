@@ -39,8 +39,10 @@ var Feeds = (new function($)
 	this.redraw = function()
 	{
 		var menu = $('#RssMenu');
-		var menuItemTemplate = $('.feed-menu-template', menu);
-		menuItemTemplate.removeClass('feed-menu-template').removeClass('hide').addClass('feed-menu');
+		// Clone the hidden template instead of restyling it in place: the template
+		// must stay in the DOM for the next redraw and for I18n.
+		var menuItemTemplate = $('.feed-menu-template', menu).clone()
+			.removeClass('feed-menu-template').removeClass('hide').addClass('feed-menu');
 		var insertPos = $('#RssMenu_Divider', menu);
 
 		$('.feed-menu', menu).remove();
@@ -56,13 +58,17 @@ var Feeds = (new function($)
 			{
 				var item = menuItemTemplate.clone();
 				var name = Options.option('Feed' + i + '.Name');
-				var a = $('span', item);
-				a.text(name !== '' ? name : 'Feed' + i);
-				a.attr('data-id', i);
-				a.click(viewFeed);
-				var im = $('button', item);
-				im.click(fetchFeed);
-				im.attr('data-id', i);
+				var span = $('.feed-menu-name', item);
+				span.text(name !== '' ? name : 'Feed' + i);
+
+				var btnShow = $('.feed-btn-show', item);
+				btnShow.attr('data-id', i);
+				btnShow.click(viewFeed);
+
+				var btnFetch = $('.feed-btn-fetch', item);
+				btnFetch.attr('data-id', i);
+				btnFetch.click(fetchFeed);
+
 				insertPos.before(item);
 			}
 		}
@@ -70,14 +76,23 @@ var Feeds = (new function($)
 		Util.show('#RssMenuBlock', $('.feed-menu', menu).length > 0);
 	}
 
-	function viewFeed()
+	function viewFeed(e)
 	{
+		if (e)
+		{
+			e.preventDefault();
+		}
 		var id = parseInt($(this).attr('data-id'));
 		FeedDialog.showModal(id);
 	}
 
-	function fetchFeed()
+	function fetchFeed(e)
 	{
+		if (e)
+		{
+			e.preventDefault();
+			e.stopPropagation();
+		}
 		var id = parseInt($(this).attr('data-id'));
 		RPC.call('fetchfeed', [id], function()
 		{
