@@ -5,12 +5,26 @@ set(BOOST_SHA256 "e2a814b3a158ab482c7a3d330f8bf5a7a8423d258a4e2fb396996e00fcee21
 set(BOOST_URL "https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-b2-nodocs.tar.gz")
 
 if(NOT BUILD_DEPS_FROM_SOURCE)
-	# Local development: try system Boost first
-	find_package(Boost QUIET COMPONENTS json unit_test_framework)
+	# Local development: try system Boost first.
+	# Only Boost.JSON needs a compiled library. Boost.Test is used header-only
+	# (tests/main.cpp includes boost/test/included/unit_test.hpp), so the
+	# compiled unit_test_framework library is not required.
+	find_package(Boost QUIET COMPONENTS json)
 	if(Boost_FOUND)
 		message(STATUS "Using system Boost ${Boost_VERSION} (found via find_package)")
+		if(NOT TARGET Boost::unit_test_framework)
+			add_library(Boost::unit_test_framework INTERFACE IMPORTED)
+			target_link_libraries(Boost::unit_test_framework INTERFACE Boost::headers)
+		endif()
 		list(APPEND EXTERNAL_DEPS Boost::headers Boost::json Boost::unit_test_framework)
 		set(BOOST_FROM_SYSTEM 1)
+	elseif(TARGET Boost::headers)
+		# find_package() leaves Boost::headers behind when a requested component
+		# is missing, which would clash with the FetchContent fallback below.
+		message(FATAL_ERROR
+			"System Boost ${Boost_VERSION} was found, but without Boost.JSON. "
+			"Install the Boost.JSON development package (e.g. libboost-json-dev) "
+			"or configure with -DBUILD_DEPS_FROM_SOURCE=ON.")
 	endif()
 endif()
 
