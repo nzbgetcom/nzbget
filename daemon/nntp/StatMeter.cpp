@@ -485,21 +485,64 @@ void StatMeter::Save()
 
 bool StatMeter::Load(bool* perfectServerMatch)
 {
-	Guard guard(m_volumeMutex);
-
-	bool ok = g_DiskState->LoadStats(g_ServerPool->GetServers(), &m_serverVolumes, perfectServerMatch);
-
-	for (ServerVolume& serverVolume : m_serverVolumes)
+	bool ok = false;
 	{
-		serverVolume.CalcSlots(serverVolume.GetDataTime() + g_WorkState->GetLocalTimeOffset());
+		Guard guard(m_volumeMutex);
+
+		ok = g_DiskState->LoadStats(g_ServerPool->GetServers(), &m_serverVolumes, perfectServerMatch);
+
+		for (ServerVolume& serverVolume : m_serverVolumes)
+		{
+			serverVolume.CalcSlots(serverVolume.GetDataTime() + g_WorkState->GetLocalTimeOffset());
+		}
 	}
+
+	CheckQuota();
 
 	return ok;
 }
 
 void StatMeter::CheckQuota()
 {
-	if ((g_Options->GetDailyQuota() == 0 && g_Options->GetMonthlyQuota() == 0))
+	if (g_ServerPool)
+	{
+		bool serverPoolChanged = false;
+		{
+			Guard guard(m_volumeMutex);
+			for (NewsServer* server : g_ServerPool->GetServers())
+			{
+				int serverId = server->GetId();
+				if (serverId <= 0 || serverId >= (int)m_serverVolumes.size())
+				{
+					continue;
+				}
+
+				int64 quotaBytes = (int64)server->GetQuota() * 1024 * 1024;
+				int64 usedBytes = m_serverVolumes[serverId].GetCustomBytes();
+				bool serverQuotaReached = server->GetQuota() > 0 && usedBytes >= quotaBytes;
+
+				if (serverQuotaReached && !server->GetQuotaReached())
+				{
+					warn("Quota reached on %s (%s) at %s", server->GetName(), server->GetHost(), *Util::FormatSize(usedBytes));
+					server->SetQuotaReached(true);
+					serverPoolChanged = true;
+				}
+				else if (!serverQuotaReached && server->GetQuotaReached())
+				{
+					info("Quota lifted on %s (%s)", server->GetName(), server->GetHost());
+					server->SetQuotaReached(false);
+					serverPoolChanged = true;
+				}
+			}
+		}
+
+		if (serverPoolChanged)
+		{
+			g_ServerPool->Changed();
+		}
+	}
+
+	if (!g_Options || (g_Options->GetDailyQuota() == 0 && g_Options->GetMonthlyQuota() == 0))
 	{
 		return;
 	}

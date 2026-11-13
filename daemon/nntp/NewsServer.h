@@ -28,6 +28,7 @@
 #ifndef NEWSSERVER_H
 #define NEWSSERVER_H
 
+#include <atomic>
 #include "NString.h"
 
 class NewsServer
@@ -36,12 +37,15 @@ public:
 	NewsServer(int id, bool active, const char* name, const char* host, int port, int ipVersion,
 		const char* user, const char* pass, bool joinGroup,
 		bool tls, const char* cipher, int maxConnections, int retention,
-		int level, int group, bool optional, unsigned int certVerificationfLevel);
+		int level, int group, bool optional, unsigned int certVerificationfLevel,
+		int quota = 0);
 	int GetId() const { return m_id; }
 	int GetStateId() const { return m_stateId; }
 	void SetStateId(int stateId) { m_stateId = stateId; }
 	bool GetActive() const { return m_active; }
 	void SetActive(bool active) { m_active = active; }
+	bool GetQuotaReached() const { return m_quotaReached; }
+	void SetQuotaReached(bool quotaReached) { m_quotaReached = quotaReached; }
 	const char* GetName() const { return m_name; }
 	int GetGroup() const { return m_group; }
 	const char* GetHost() const { return m_host; }
@@ -57,6 +61,8 @@ public:
 	bool GetTls() const { return m_tls; }
 	const char* GetCipher() const { return m_cipher; }
 	int GetRetention() const { return m_retention; }
+	int GetQuota() const { return m_quota; }
+	void SetQuota(int quota) { m_quota = quota; }
 	bool GetOptional() const { return m_optional; }
 	time_t GetBlockTime() const { return m_blockTime; }
 	void SetBlockTime(time_t blockTime) { m_blockTime = blockTime; }
@@ -66,6 +72,7 @@ private:
 	int m_id;
 	int m_stateId = 0;
 	bool m_active;
+	std::atomic<bool> m_quotaReached{false};
 	CString m_name;
 	CString m_host;
 	int m_port;
@@ -77,6 +84,7 @@ private:
 	CString m_cipher;
 	int m_maxConnections;
 	int m_retention;
+	int m_quota = 0;
 	int m_level;
 	int m_normLevel;
 	int m_group;

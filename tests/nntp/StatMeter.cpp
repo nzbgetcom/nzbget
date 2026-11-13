@@ -22,6 +22,8 @@
 #include <boost/test/unit_test.hpp>
 #include "StatMeter.h"
 #include "DiskState.h"
+#include "ServerPool.h"
+#include "Options.h"
 
 BOOST_AUTO_TEST_SUITE(NNTPTest)
 
@@ -99,6 +101,46 @@ BOOST_AUTO_TEST_CASE(ServerVolumeTest)
 	BOOST_CHECK_EQUAL(articlesPerDay2.failed, 0);
 	BOOST_CHECK_EQUAL(articlesPerDay2.success, 0);
 	BOOST_CHECK_EQUAL(volume.GetTotalBytes(), 0);
+}
+
+BOOST_AUTO_TEST_CASE(PerServerQuotaEnforcementTest)
+{
+	ServerPool pool;
+	pool.AddServer(std::make_unique<NewsServer>(1, true, "BlockServer", "block.example.com", 563, 0,
+		"user", "pass", false, true, nullptr, 4, 0, 0, 0, false, Options::cvStrict, 1));
+	pool.InitConnections();
+
+	ServerPool* prevPool = g_ServerPool;
+	g_ServerPool = &pool;
+
+	StatMeter statMeter;
+	statMeter.Init();
+
+	NewsServer* server = pool.GetServers()->at(0).get();
+	BOOST_CHECK_EQUAL(server->GetQuota(), 1);
+	BOOST_CHECK(!server->GetQuotaReached());
+
+	// Add 512 KB (below 1 MB quota)
+	ServerVolume::Stats halfMb = { 512 * 1024, {1, 0} };
+	statMeter.AddServerStats(halfMb, 1);
+	statMeter.IntervalCheck();
+	BOOST_CHECK(!server->GetQuotaReached());
+
+	// Add another 600 KB (total > 1 MB quota)
+	ServerVolume::Stats overMb = { 600 * 1024, {1, 0} };
+	statMeter.AddServerStats(overMb, 1);
+	statMeter.IntervalCheck();
+	BOOST_CHECK(server->GetQuotaReached());
+
+	// Reset custom counter -> quota should be lifted on next check
+	{
+		GuardedServerVolumes volumes = statMeter.GuardServerVolumes();
+		volumes->at(1).ResetCustom();
+	}
+	statMeter.IntervalCheck();
+	BOOST_CHECK(!server->GetQuotaReached());
+
+	g_ServerPool = prevPool;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
