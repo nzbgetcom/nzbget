@@ -226,16 +226,6 @@ void SignalProc(int signum)
 {
 	switch (signum)
 	{
-		case SIGINT:
-			signal(SIGINT, SIG_DFL);   // Reset the signal handler
-			ExitProc();
-			break;
-
-		case SIGTERM:
-			signal(SIGTERM, SIG_DFL);   // Reset the signal handler
-			ExitProc();
-			break;
-
 		case SIGCHLD:
 			// ignoring
 			break;
@@ -258,8 +248,6 @@ void InstallErrorHandler()
 	}
 #endif
 
-	signal(SIGINT, SignalProc);
-	signal(SIGTERM, SignalProc);
 	signal(SIGPIPE, SIG_IGN);
 #ifdef DEBUG
 	if (g_Options->GetCrashTrace())

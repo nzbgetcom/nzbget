@@ -22,6 +22,7 @@
 
 #include "nzbget.h"
 
+#include "Async.h"
 #include "ServerPool.h"
 #include "Log.h"
 #include "NzbFile.h"
@@ -177,8 +178,11 @@ int main(int argc, char *argv[], char *argp[])
 class NZBGet final : public Options::Extender
 {
 public:
+	using AsyncRuntime = async::Runtime<NZBGet>;
+
 	~NZBGet() override;
-	void Run(bool reload);
+	void Init(bool reload, AsyncRuntime& runtime);
+	void Run();
 	void Stop(bool reload);
 	bool GetReloading() { return m_reloading; }
 
@@ -198,6 +202,8 @@ public:
 #endif
 
 private:
+	AsyncRuntime* m_runtime = nullptr;
+
 	// globals
 	std::unique_ptr<Log> m_log;
 	std::unique_ptr<Options> m_options;
@@ -240,7 +246,6 @@ private:
 	std::mutex m_waitMutex;
 	std::condition_variable m_waitCond;
 
-	void Init();
 	void Final();
 	void BootConfig();
 	void CreateGlobals();
@@ -268,8 +273,11 @@ NZBGet::~NZBGet()
 	Cleanup();
 }
 
-void NZBGet::Init()
+void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 {
+	m_runtime = &runtime;
+	m_reloading = reload;
+
 	m_log = std::make_unique<Log>();
 
 	debug("nzbget %s", Util::VersionRevision());
@@ -776,12 +784,8 @@ void NZBGet::DoMainLoop()
 	debug("Main program loop terminated");
 }
 
-void NZBGet::Run(bool reload)
+void NZBGet::Run()
 {
-	m_reloading = reload;
-
-	Init();
-
 	ProcessDirect();
 
 	StartRemoteServer();
@@ -945,12 +949,13 @@ void NZBGet::ProcessSigVerify()
 
 void NZBGet::Stop(bool reload)
 {
-	m_reloading = reload;
-
-	if (!m_reloading)
+	if (m_runtime)
 	{
-		info("Stopping, please wait...");
+		m_runtime->BeginShutdown();
 	}
+
+	m_reloading = reload;
+	info(m_reloading ? "Reloading, please wait..." : "Stopping, please wait...");
 	if (m_commandLineParser->GetRemoteClientMode())
 	{
 		if (m_frontend)
@@ -1128,20 +1133,21 @@ void NZBGet::SetupFirstStart()
 
 void RunMain()
 {
-	bool reload = false;
-	while (!g_NZBGet || g_NZBGet->GetReloading())
+	NZBGet::AsyncRuntime runtime(g_NZBGet);
+	try
 	{
-		g_NZBGet = std::make_unique<NZBGet>();
-		g_NZBGet->Run(reload);
-		reload = true;
+		runtime.Run();
 	}
-
+	catch (const std::exception& e)
+	{
+		error("Could not start NZBGet: %s", e.what());
+		exit(EXIT_FAILURE);
+	}
 	g_NZBGet.reset();
 }
 
 void Reload()
 {
-	info("Reloading...");
 	g_NZBGet->Stop(true);
 }
 
