@@ -20,17 +20,15 @@
 #ifndef ASYNC_RUNTIME_H
 #define ASYNC_RUNTIME_H
 
+#include <algorithm>
 #include <array>
-#include <cassert>
-#include <chrono>
 #include <concepts>
+#include <condition_variable>
 #include <csignal>
-#include <cstdlib>
+#include <format>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
-#include <string>
-#include <thread>
 #include <utility>
 
 #include "Component.h"
@@ -42,32 +40,34 @@ namespace async
 template<class App>
 class Runtime;
 
+/// What the application must do next. A stop outranks a reload, so a reload never cancels a stop.
+enum class ShutdownRequest { None, Reload, Stop };
+
 /// Interface Runtime requires from the application it drives.
 template<class T>
 concept Application = requires(T& app, bool reload, Runtime<T>& runtime) {
 	{ app.Init(reload, runtime) } -> std::same_as<void>;
 	{ app.Run() } -> std::same_as<void>;
-	{ app.Stop(reload) } -> std::same_as<void>;
-	{ app.GetReloading() } -> std::convertible_to<bool>;
 };
 
-/// Drives an application: signals, components, shutdown watchdog.
-/// A stop slower than the grace period, or a second stop signal, ends the process with _Exit.
+/// Drives an application: signals, components, shutdown requests.
+/// Signals are handled on their own thread, so a second stop signal still gets through a hung teardown.
 /// AddComponent() only inside App::Init(); GetComponent() is read-only afterwards.
 template<class App>
 class Runtime final
 {
 public:
-	/// @param app    Caller-owned slot; Runtime (re)creates the application in it.
-	/// @param grace  Time allowed for stopping the application and its components.
-	explicit Runtime(std::unique_ptr<App>& app, std::chrono::seconds grace = std::chrono::seconds{3}) :
-		m_app(app), m_grace(grace)
+	Runtime()
 	{
 		static_assert(Application<App>);
 	}
 
-	/// Stops leftover components, e.g. after Init() threw.
-	~Runtime() { StopComponents(Clock::now()); }
+	/// Stops leftover components, e.g. after Init() or App::Run() threw.
+	~Runtime()
+	{
+		StopComponents();
+		m_app.reset();
+	}
 
 	Runtime(const Runtime&) = delete;
 	Runtime& operator=(const Runtime&) = delete;
@@ -92,179 +92,146 @@ public:
 		return static_cast<T&>(*slot);
 	}
 
-	/// @return The registered T or nullptr; valid until components are stopped, do not cache.
+	/// @return The registered T; call only after Init() registered it, do not cache.
 	template<ComponentType T>
-	T* GetComponent() const noexcept
+	T& GetComponent() const noexcept
 	{
-		return static_cast<T*>(m_components[Index<T>()].get());
+		return static_cast<T&>(*m_components[Index<T>()]);
 	}
+
+	/// Records a stop or reload request; any thread. The application reacts on its own thread.
+	void Stop(ShutdownRequest request) noexcept
+	{
+		std::lock_guard<std::mutex> lock(m_requestMutex);
+		m_request = std::max(m_request, request);
+		m_requestCond.notify_all();
+	}
+
+	/// Blocks until a stop or reload is requested.
+	void WaitForShutdown()
+	{
+		std::unique_lock<std::mutex> lock(m_requestMutex);
+		m_requestCond.wait(lock, [this] { return m_request != ShutdownRequest::None; });
+	}
+
+	ShutdownRequest GetShutdownRequest()
+	{
+		std::lock_guard<std::mutex> lock(m_requestMutex);
+		return m_request;
+	}
+
+	bool HasShutdownRequest() { return GetShutdownRequest() != ShutdownRequest::None; }
 
 	/// Runs the application until it stops, recreating it on reload.
-	/// The first Init() runs before any thread exists (it may fork); signals are handled only after it.
-	/// @throws whatever App::Init() or AddComponent() throws.
+	/// The first Init() runs before the signal thread exists, because it may fork (Daemonize).
+	/// @throws whatever App::Init(), App::Run() or AddComponent() throws.
 	void Run()
 	{
-		m_app = std::make_unique<App>();
-		m_app->Init(false, *this);
+		CreateApp(false);
 
-		m_supervisor = std::make_unique<Supervisor>(m_app, m_grace);
-		for (;;)
+		ExecutorPool signalThread{1};
+		asio::signal_set signals(signalThread.Next(), SIGINT, SIGTERM);
+#ifndef WIN32
+		signals.add(SIGQUIT);
+		signals.add(SIGHUP);
+#endif
+		AwaitSignal(signals);
+
+		try
 		{
-			std::thread worker([this]
+			for (;;)
 			{
 				m_app->Run();
-				m_supervisor->Quit();
-			});
-			m_supervisor->Wait();
-			worker.join();
-
-			m_supervisor->BeginShutdown();
-			StopComponents(Clock::now() + m_grace);
-			m_supervisor->Reset();
-
-			if (!m_app->GetReloading())
-			{
-				return;
+				StopComponents();
+				m_app.reset();
+				if (!TakeReload())
+				{
+					break;
+				}
+				CreateApp(true);
 			}
-			m_app = std::make_unique<App>();
-			m_app->Init(true, *this);
 		}
-	}
-
-	/// Starts the shutdown countdown (idempotent, any thread); expiry ends the process with _Exit.
-	/// App::Stop() must call it first: every stop path, signal or not, then has the same deadline.
-	void BeginShutdown() noexcept
-	{
-		if (m_supervisor)
+		catch (...)
 		{
-			m_supervisor->BeginShutdown();
+			signalThread.Stop();
+			throw;
 		}
+		// a handler already queued must not run after signals is destroyed
+		signalThread.Stop();
 	}
 
 private:
-	/// Maps SIGINT/SIGTERM (POSIX: SIGQUIT) to stop and POSIX SIGHUP to reload.
-	/// The watchdog has its own thread: Stop() blocks the control thread that delivers signals.
-	class Supervisor
+	/// Maps stop signals to a stop and SIGHUP to a reload. A stop signal received while a stop is
+	/// already pending restores the default action and re-raises it, which ends the process.
+	void AwaitSignal(asio::signal_set& signals)
 	{
-	public:
-		Supervisor(std::unique_ptr<App>& app, std::chrono::seconds grace) :
-			m_app(app), m_grace(grace), m_signals(m_control, SIGINT, SIGTERM)
+		signals.async_wait([this, &signals](const ErrorCode& ec, int signum)
 		{
-#ifndef WIN32
-			m_signals.add(SIGQUIT);
-			m_signals.add(SIGHUP);
-#endif
-			WaitForSignal();
-		}
-
-		/// Dispatches signals on the calling thread until Quit().
-		void Wait() { m_control.run(); }
-
-		/// Ends Wait(); called when App::Run() returns.
-		void Quit() { m_control.stop(); }
-
-		/// Starts the countdown unless already running; expiry calls _Exit(EXIT_FAILURE).
-		void BeginShutdown() noexcept
-		{
-			std::lock_guard<std::mutex> lock(m_mutex);
-			if (m_stopping)
+			if (ec)
 			{
 				return;
 			}
-			m_stopping = true;
-			m_watchdog.expires_after(m_grace);
-			m_watchdog.async_wait([](const ErrorCode& ec)
-			{
-				// A cancelled wait completes with an error: not an expiry.
-				if (!ec)
-				{
-					std::_Exit(EXIT_FAILURE);
-				}
-			});
-		}
-
-		/// Cancels the countdown and readies the next run.
-		void Reset()
-		{
-			{
-				std::lock_guard<std::mutex> lock(m_mutex);
-				m_watchdog.cancel();
-				m_stopping = false;
-			}
-			m_control.restart();
-		}
-
-	private:
-		/// Waits for one signal; every handler path waits again.
-		void WaitForSignal()
-		{
-			m_signals.async_wait([this](const ErrorCode& ec, int signum)
-			{
-				if (ec)
-				{
-					return;
-				}
+			// re-arm first: a signal arriving while this one is handled must not be lost
+			AwaitSignal(signals);
 #ifndef WIN32
-				if (signum == SIGHUP)
-				{
-					// Reload is ignored while stopping.
-					if (!IsStopping())
-					{
-						m_app->Stop(true);
-					}
-					WaitForSignal();
-					return;
-				}
+			if (signum == SIGHUP)
+			{
+				Stop(ShutdownRequest::Reload);
+				return;
+			}
 #endif
-				// A stop signal while already stopping is an impatient operator: die now.
-				if (IsStopping())
-				{
-					std::_Exit(EXIT_FAILURE);
-				}
-				m_app->Stop(false);
-				WaitForSignal();
-			});
-		}
+			if (GetShutdownRequest() == ShutdownRequest::Stop)
+			{
+				std::signal(signum, SIG_DFL);
+				std::raise(signum);
+			}
+			Stop(ShutdownRequest::Stop);
+		});
+	}
 
-		bool IsStopping()
-		{
-			std::lock_guard<std::mutex> lock(m_mutex);
-			return m_stopping;
-		}
-
-		std::unique_ptr<App>& m_app;
-		std::chrono::seconds m_grace;
-		asio::io_context m_control{1};
-		asio::signal_set m_signals;
-		ExecutorPool m_guard{1};
-		asio::steady_timer m_watchdog{m_guard.Next()};
-		std::mutex m_mutex;
-		bool m_stopping = false;
-	};
-
-	/// Stops and destroys components in reverse slot order; the only caller of Component::Stop().
-	void StopComponents(Clock::time_point deadline) noexcept
+	/// Consumes a pending reload; a stop stays pending.
+	/// @return true if the application must be recreated.
+	bool TakeReload()
 	{
-		for (std::size_t i = m_components.size(); i-- > 0;)
+		std::lock_guard<std::mutex> lock(m_requestMutex);
+		if (m_request != ShutdownRequest::Reload)
+		{
+			return false;
+		}
+		m_request = ShutdownRequest::None;
+		return true;
+	}
+
+	void CreateApp(bool reload)
+	{
+		m_app = std::make_unique<App>();
+		m_app->Init(reload, *this);
+	}
+
+	/// Stops and destroys components in reverse slot order.
+	void StopComponents() noexcept
+	{
+		for (size_t i = m_components.size(); i-- > 0;)
 		{
 			if (m_components[i])
 			{
-				m_components[i]->Stop(deadline);
+				m_components[i]->Stop();
 				m_components[i].reset();
 			}
 		}
 	}
 
 	template<ComponentType T>
-	static constexpr std::size_t Index() noexcept
+	static constexpr size_t Index() noexcept
 	{
-		return static_cast<std::size_t>(ComponentTraits<T>::Id);
+		return static_cast<size_t>(ComponentTraits<T>::Id);
 	}
 
-	std::unique_ptr<App>& m_app;
-	std::chrono::seconds m_grace;
-	std::array<std::unique_ptr<Component>, static_cast<std::size_t>(ComponentId::Count)> m_components;
-	std::unique_ptr<Supervisor> m_supervisor;
+	std::array<std::unique_ptr<Component>, static_cast<size_t>(ComponentId::Count)> m_components;
+	std::unique_ptr<App> m_app;
+	std::mutex m_requestMutex;
+	std::condition_variable m_requestCond;
+	ShutdownRequest m_request = ShutdownRequest::None;
 };
 
 } // namespace async

@@ -22,12 +22,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include <atomic>
-#include <condition_variable>
 #include <csignal>
-#include <mutex>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
+#include <vector>
 
 #ifndef WIN32
 #include <sys/wait.h>
@@ -37,6 +36,7 @@
 #include "Async.h"
 
 using namespace std::chrono_literals;
+using ::async::ShutdownRequest;
 
 namespace
 {
@@ -75,6 +75,7 @@ template<> struct ComponentTraits<BrokenComponent>
 namespace
 {
 
+// Run() blocks until a request, then records it as its teardown; the teardown may be slow or hang.
 class FakeApp
 {
 public:
@@ -83,63 +84,71 @@ public:
 		++inits;
 		m_runtime = &runtime;
 		reloadFlags.push_back(reload);
+		if (reload && failReloadInit)
+		{
+			throw std::runtime_error("reload boom");
+		}
 		if (failInit)
 		{
 			runtime.AddComponent<BrokenComponent>();
 		}
 		ProbeComponent& added = runtime.AddComponent<ProbeComponent>();
-		lookupMatches = runtime.GetComponent<ProbeComponent>() == &added;
+		lookupMatches = &runtime.GetComponent<ProbeComponent>() == &added;
 	}
 
 	void Run()
 	{
 		++runs;
-		std::unique_lock<std::mutex> lock(m_mutex);
-		m_cond.wait(lock, [this] { return m_stopped; });
-	}
-
-	void Stop(bool reload)
-	{
-		m_runtime->BeginShutdown();
+		if (failRun)
+		{
+			throw std::runtime_error("run boom");
+		}
+		if (finishWithoutRequest)
+		{
+			return;
+		}
+		m_runtime->WaitForShutdown();
+		requests.push_back(m_runtime->GetShutdownRequest());
+		teardownStarted = true;
+		std::this_thread::sleep_for(teardownDelay);
 		if (hangStop)
 		{
 			std::this_thread::sleep_for(30s);
 		}
-		std::lock_guard<std::mutex> lock(m_mutex);
-		m_reloading = reload;
-		stopArgs.push_back(reload);
-		m_stopped = true;
-		m_cond.notify_all();
 	}
 
-	bool GetReloading() const { return m_reloading; }
-
 	static inline std::atomic<int> runs{0};
+	static inline std::atomic<bool> teardownStarted{false};
 	static inline int inits{0};
 	static inline bool failInit{false};
 	static inline bool hangStop{false};
+	static inline bool failReloadInit{false};
+	static inline bool failRun{false};
+	static inline bool finishWithoutRequest{false};
+	static inline std::chrono::milliseconds teardownDelay{0};
 	static inline bool lookupMatches{false};
 	static inline std::vector<bool> reloadFlags;
-	static inline std::vector<bool> stopArgs;
+	static inline std::vector<ShutdownRequest> requests;
 
 	static void Reset()
 	{
 		runs = 0;
+		teardownStarted = false;
 		inits = 0;
 		failInit = false;
 		hangStop = false;
+		failReloadInit = false;
+		failRun = false;
+		finishWithoutRequest = false;
+		teardownDelay = std::chrono::milliseconds{0};
 		lookupMatches = false;
 		reloadFlags.clear();
-		stopArgs.clear();
+		requests.clear();
 		g_componentStops = 0;
 	}
 
 private:
 	::async::Runtime<FakeApp>* m_runtime = nullptr;
-	std::mutex m_mutex;
-	std::condition_variable m_cond;
-	bool m_stopped = false;
-	bool m_reloading = false;
 };
 
 void WaitForRuns(int count)
@@ -153,7 +162,7 @@ void WaitForRuns(int count)
 }
 
 #ifndef WIN32
-// Runs `body` in a forked child; returns its exit status (-1 if it did not exit normally).
+// Runs `body` in a forked child; returns its exit code, or 128 + signal if it was killed by a signal.
 template<class Body>
 int RunInChild(Body body)
 {
@@ -165,23 +174,7 @@ int RunInChild(Body body)
 	}
 	int status = 0;
 	waitpid(pid, &status, 0);
-	return WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-}
-
-// Hung App::Stop() must end the process with EXIT_FAILURE once the grace expires.
-template<class Trigger>
-int HungStopExitStatus(Trigger trigger)
-{
-	return RunInChild([&]
-	{
-		FakeApp::Reset();
-		FakeApp::hangStop = true;
-		std::unique_ptr<FakeApp> app;
-		::async::Runtime<FakeApp> runtime(app, 1s);
-		std::thread signaller([&] { WaitForRuns(1); trigger(app.get()); });
-		runtime.Run();
-		signaller.join();
-	});
+	return WIFSIGNALED(status) ? 128 + WTERMSIG(status) : WEXITSTATUS(status);
 }
 #endif
 
@@ -190,17 +183,15 @@ BOOST_AUTO_TEST_SUITE(AsyncTest)
 BOOST_AUTO_TEST_CASE(Runtime_SigtermStopsAppAndComponents)
 {
 	FakeApp::Reset();
-	std::unique_ptr<FakeApp> app;
-	::async::Runtime<FakeApp> runtime(app, 1s);
+	::async::Runtime<FakeApp> runtime;
 
 	std::thread signaller([] { WaitForRuns(1); std::raise(SIGTERM); });
 	runtime.Run();
 	signaller.join();
 
 	BOOST_CHECK_EQUAL(FakeApp::inits, 1);
-	BOOST_CHECK(FakeApp::stopArgs == std::vector<bool>{false});
+	BOOST_CHECK((FakeApp::requests == std::vector<ShutdownRequest>{ShutdownRequest::Stop}));
 	BOOST_CHECK_EQUAL(g_componentStops.load(), 1);
-	BOOST_CHECK(runtime.GetComponent<ProbeComponent>() == nullptr);
 	BOOST_CHECK(FakeApp::lookupMatches);
 }
 
@@ -208,8 +199,7 @@ BOOST_AUTO_TEST_CASE(Runtime_SigtermStopsAppAndComponents)
 BOOST_AUTO_TEST_CASE(Runtime_SighupRecreatesAppAndComponents)
 {
 	FakeApp::Reset();
-	std::unique_ptr<FakeApp> app;
-	::async::Runtime<FakeApp> runtime(app, 1s);
+	::async::Runtime<FakeApp> runtime;
 
 	std::thread signaller([]
 	{
@@ -223,7 +213,7 @@ BOOST_AUTO_TEST_CASE(Runtime_SighupRecreatesAppAndComponents)
 
 	BOOST_CHECK_EQUAL(FakeApp::inits, 2);
 	BOOST_CHECK((FakeApp::reloadFlags == std::vector<bool>{false, true}));
-	BOOST_CHECK((FakeApp::stopArgs == std::vector<bool>{true, false}));
+	BOOST_CHECK((FakeApp::requests == std::vector<ShutdownRequest>{ShutdownRequest::Reload, ShutdownRequest::Stop}));
 	BOOST_CHECK_EQUAL(g_componentStops.load(), 2);
 }
 #endif
@@ -231,45 +221,144 @@ BOOST_AUTO_TEST_CASE(Runtime_SighupRecreatesAppAndComponents)
 BOOST_AUTO_TEST_CASE(Runtime_StopFromAnyThreadStopsComponents)
 {
 	FakeApp::Reset();
-	std::unique_ptr<FakeApp> app;
-	::async::Runtime<FakeApp> runtime(app, 1s);
+	::async::Runtime<FakeApp> runtime;
 
-	std::thread stopper([&] { WaitForRuns(1); app->Stop(false); });
+	std::thread stopper([&] { WaitForRuns(1); runtime.Stop(ShutdownRequest::Stop); });
 	runtime.Run();
 	stopper.join();
 
 	BOOST_CHECK_EQUAL(g_componentStops.load(), 1);
 }
 
-#ifndef WIN32
-BOOST_AUTO_TEST_CASE(Runtime_HungStopFromSignalExitsWithFailure)
+BOOST_AUTO_TEST_CASE(Runtime_StopBeforeRunIsNotLost)
 {
-	BOOST_CHECK_EQUAL(HungStopExitStatus([](FakeApp*) { std::raise(SIGTERM); }), EXIT_FAILURE);
+	FakeApp::Reset();
+	::async::Runtime<FakeApp> runtime;
+
+	runtime.Stop(ShutdownRequest::Stop);
+	runtime.Run();
+
+	BOOST_CHECK_EQUAL(FakeApp::inits, 1);
+	BOOST_CHECK((FakeApp::requests == std::vector<ShutdownRequest>{ShutdownRequest::Stop}));
 }
 
-BOOST_AUTO_TEST_CASE(Runtime_HungStopFromRpcExitsWithFailure)
+BOOST_AUTO_TEST_CASE(Runtime_ReloadAfterStopIsIgnored)
 {
-	BOOST_CHECK_EQUAL(HungStopExitStatus([](FakeApp* app) { app->Stop(false); }), EXIT_FAILURE);
+	FakeApp::Reset();
+	::async::Runtime<FakeApp> runtime;
+
+	runtime.Stop(ShutdownRequest::Stop);
+	runtime.Stop(ShutdownRequest::Reload);
+	runtime.Run();
+
+	BOOST_CHECK_EQUAL(FakeApp::inits, 1);
+	BOOST_CHECK((FakeApp::requests == std::vector<ShutdownRequest>{ShutdownRequest::Stop}));
 }
 
-BOOST_AUTO_TEST_CASE(Runtime_SecondSignalWhileStoppingExitsWithFailure)
+BOOST_AUTO_TEST_CASE(Runtime_StopOutranksReloadDuringTeardown)
 {
-	BOOST_CHECK_EQUAL(HungStopExitStatus([](FakeApp* app)
+	FakeApp::Reset();
+	FakeApp::teardownDelay = 300ms;
+	::async::Runtime<FakeApp> runtime;
+
+	std::thread runner([&] { runtime.Run(); });
+	WaitForRuns(1);
+	runtime.Stop(ShutdownRequest::Reload);
+	while (!FakeApp::teardownStarted)
 	{
-		std::thread first([app] { app->Stop(false); });
-		std::this_thread::sleep_for(50ms);
-		std::raise(SIGTERM);
-		first.join();
-	}), EXIT_FAILURE);
+		std::this_thread::sleep_for(1ms);
+	}
+	runtime.Stop(ShutdownRequest::Stop);
+	runner.join();
+
+	BOOST_CHECK_EQUAL(FakeApp::inits, 1);
+	BOOST_CHECK((FakeApp::requests == std::vector<ShutdownRequest>{ShutdownRequest::Reload}));
+	BOOST_CHECK_EQUAL(g_componentStops.load(), 1);
+}
+
+BOOST_AUTO_TEST_CASE(Runtime_AppFinishingWithoutRequestEndsRun)
+{
+	FakeApp::Reset();
+	FakeApp::finishWithoutRequest = true;
+	::async::Runtime<FakeApp> runtime;
+
+	runtime.Run();
+
+	BOOST_CHECK_EQUAL(FakeApp::inits, 1);
+	BOOST_CHECK_EQUAL(g_componentStops.load(), 1);
+}
+
+#ifndef WIN32
+// A hung teardown ignores the first stop; a second stop signal kills the process, as in develop.
+BOOST_AUTO_TEST_CASE(Runtime_SecondSignalWhileStoppingKillsProcess)
+{
+	BOOST_CHECK_EQUAL(RunInChild([]
+	{
+		FakeApp::Reset();
+		FakeApp::hangStop = true;
+		::async::Runtime<FakeApp> runtime;
+		std::thread signaller([&]
+		{
+			WaitForRuns(1);
+			runtime.Stop(ShutdownRequest::Stop);
+			std::this_thread::sleep_for(100ms);
+			std::raise(SIGTERM);
+		});
+		runtime.Run();
+		signaller.join();
+	}), 128 + SIGTERM);
 }
 #endif
+
+BOOST_AUTO_TEST_CASE(Runtime_ReloadFailurePropagatesToCaller)
+{
+	FakeApp::Reset();
+	FakeApp::failReloadInit = true;
+	::async::Runtime<FakeApp> runtime;
+
+	std::thread stopper([&] { WaitForRuns(1); runtime.Stop(ShutdownRequest::Reload); });
+	std::string error;
+	try
+	{
+		runtime.Run();
+	}
+	catch (const std::runtime_error& e)
+	{
+		error = e.what();
+	}
+	stopper.join();
+
+	BOOST_CHECK_EQUAL(error, "reload boom");
+	BOOST_CHECK_EQUAL(FakeApp::inits, 2);
+}
+
+BOOST_AUTO_TEST_CASE(Runtime_RunExceptionStopsComponentsOnDestruction)
+{
+	FakeApp::Reset();
+	FakeApp::failRun = true;
+	std::string error;
+	{
+		::async::Runtime<FakeApp> runtime;
+		try
+		{
+			runtime.Run();
+		}
+		catch (const std::runtime_error& e)
+		{
+			error = e.what();
+		}
+		BOOST_CHECK_EQUAL(g_componentStops.load(), 0);
+	}
+
+	BOOST_CHECK_EQUAL(error, "run boom");
+	BOOST_CHECK_EQUAL(g_componentStops.load(), 1);
+}
 
 BOOST_AUTO_TEST_CASE(Runtime_ComponentFailureIsReportedWithItsName)
 {
 	FakeApp::Reset();
 	FakeApp::failInit = true;
-	std::unique_ptr<FakeApp> app;
-	::async::Runtime<FakeApp> runtime(app, 1s);
+	::async::Runtime<FakeApp> runtime;
 
 	try
 	{

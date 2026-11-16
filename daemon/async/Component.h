@@ -20,15 +20,12 @@
 #ifndef DAEMON_ASYNC_COMPONENT_H
 #define DAEMON_ASYNC_COMPONENT_H
 
-#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <string_view>
 
 namespace async
 {
-
-using Clock = std::chrono::steady_clock;
 
 /// One slot per component; Runtime stops them in reverse order.
 enum class ComponentId : std::size_t
@@ -53,11 +50,8 @@ public:
 	Component(Component&&) = delete;
 	Component& operator=(Component&&) = delete;
 
-	/// Releases resources at once.
+	/// Releases resources.
 	virtual void Stop() noexcept = 0;
-
-	/// Graceful stop that must finish by @p deadline; defaults to Stop().
-	virtual void Stop(Clock::time_point /* deadline */) noexcept { Stop(); }
 };
 
 /// A Component subclass with ComponentTraits<T>::Id and ::Name.

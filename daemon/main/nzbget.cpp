@@ -75,6 +75,7 @@
 #include <iostream>
 #endif
 
+#include <atomic>
 #include <locale>
 
 // Prototypes
@@ -183,8 +184,6 @@ public:
 	~NZBGet() override;
 	void Init(bool reload, AsyncRuntime& runtime);
 	void Run();
-	void Stop(bool reload);
-	bool GetReloading() { return m_reloading; }
 
 	// Options::Extender
 	void AddNewsServer(int id, bool active, const char* name, const char* host,
@@ -240,11 +239,7 @@ private:
 	std::unique_ptr<Scheduler> m_scheduler;
 	std::unique_ptr<CommandLineParser> m_commandLineParser;
 
-	bool m_reloading = false;
 	bool m_daemonized = false;
-	bool m_stopped = false;
-	std::mutex m_waitMutex;
-	std::condition_variable m_waitCond;
 
 	void Final();
 	void BootConfig();
@@ -261,12 +256,14 @@ private:
 	void StopFrontend();
 	void ProcessStandalone();
 	void DoMainLoop();
+	void AnnounceShutdown();
+	void StopServices();
 #ifndef WIN32
 	void Daemonize();
 #endif
 };
 
-std::unique_ptr<NZBGet> g_NZBGet;
+std::atomic<NZBGet::AsyncRuntime*> g_App{nullptr};
 
 NZBGet::~NZBGet()
 {
@@ -276,13 +273,12 @@ NZBGet::~NZBGet()
 void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 {
 	m_runtime = &runtime;
-	m_reloading = reload;
 
 	m_log = std::make_unique<Log>();
 
 	debug("nzbget %s", Util::VersionRevision());
 
-	if (!m_reloading)
+	if (!reload)
 	{
 		Connection::Init();
 		TlsSocket::Init();
@@ -339,7 +335,7 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 #ifdef WIN32
 		info("nzbget %s service-mode", Util::VersionRevision());
 #else
-		if (!m_reloading)
+		if (!reload)
 		{
 			Daemonize();
 		}
@@ -368,8 +364,6 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 	}
 #endif
 
-	m_reloading = false;
-
 	if (!m_commandLineParser->GetRemoteClientMode())
 	{
 		m_serverPool->InitConnections();
@@ -381,7 +375,7 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 
 void NZBGet::Final()
 {
-	if (!m_reloading)
+	if (m_runtime->GetShutdownRequest() != async::ShutdownRequest::Reload)
 	{
 		TlsSocket::Final();
 		Connection::Final();
@@ -508,7 +502,7 @@ void NZBGet::Cleanup()
 {
 	debug("Cleaning up global objects");
 
-	if (m_options && m_commandLineParser->GetDaemonMode() && !m_reloading && m_daemonized)
+	if (m_options && m_commandLineParser->GetDaemonMode() && m_runtime->GetShutdownRequest() != async::ShutdownRequest::Reload && m_daemonized)
 	{
 		info("Deleting lock file");
 		FileSystem::DeleteFile(m_options->GetLockFile());
@@ -678,13 +672,16 @@ void NZBGet::StopFrontend()
 {
 	if (m_frontend)
 	{
-		if (!m_commandLineParser->GetRemoteClientMode())
-		{
-			debug("Stopping Frontend");
-			m_frontend->Stop();
-		}
+		// a remote client's frontend is the user's UI: it ends by itself, or on a shutdown request
+		const bool remoteClient = m_commandLineParser->GetRemoteClientMode();
+		bool stopSent = false;
 		while (m_frontend->IsRunning())
 		{
+			if (!stopSent && (!remoteClient || m_runtime->HasShutdownRequest()))
+			{
+				m_frontend->Stop();
+				stopSent = true;
+			}
 			Util::Sleep(50);
 		}
 		debug("Frontend stopped");
@@ -730,6 +727,7 @@ void NZBGet::DoMainLoop()
 	}
 
 	// enter main program-loop
+	bool servicesStopping = false;
 	while (m_queueCoordinator->IsRunning() ||
 		m_urlCoordinator->IsRunning() ||
 		m_prePostProcessor->IsRunning() ||
@@ -740,6 +738,13 @@ void NZBGet::DoMainLoop()
 #endif
 		m_articleCache->IsRunning())
 	{
+		if (!servicesStopping && m_runtime->HasShutdownRequest())
+		{
+			AnnounceShutdown();
+			StopServices();
+			servicesStopping = true;
+		}
+
 		if (!m_options->GetServerMode() &&
 			!m_queueCoordinator->HasMoreJobs() &&
 			!m_urlCoordinator->HasMoreJobs() &&
@@ -773,11 +778,9 @@ void NZBGet::DoMainLoop()
 		}
 		Util::Sleep(100);
 
-		if (m_options->GetServerMode() && !m_stopped)
+		if (m_options->GetServerMode() && !servicesStopping)
 		{
-			// wait for stop signal
-			std::unique_lock<std::mutex> lk(m_waitMutex);
-			m_waitCond.wait(lk, [&]{ return m_stopped; });
+			m_runtime->WaitForShutdown();
 		}
 	}
 
@@ -947,45 +950,24 @@ void NZBGet::ProcessSigVerify()
 	exit(ok ? 93 : 1);
 }
 
-void NZBGet::Stop(bool reload)
+void NZBGet::AnnounceShutdown()
 {
-	if (m_runtime)
-	{
-		m_runtime->BeginShutdown();
-	}
+	info(m_runtime->GetShutdownRequest() == async::ShutdownRequest::Reload ? "Reloading, please wait..." : "Stopping, please wait...");
+}
 
-	m_reloading = reload;
-	info(m_reloading ? "Reloading, please wait..." : "Stopping, please wait...");
-	if (m_commandLineParser->GetRemoteClientMode())
-	{
-		if (m_frontend)
-		{
-			debug("Stopping Frontend");
-			m_frontend->Stop();
-		}
-	}
-	else
-	{
-		if (m_queueCoordinator)
-		{
-			debug("Stopping QueueCoordinator");
-			m_serviceCoordinator->Stop();
-			m_queueCoordinator->Stop();
-			m_urlCoordinator->Stop();
-			m_prePostProcessor->Stop();
-			m_feedCoordinator->Stop();
-			m_articleCache->Stop();
-			m_queueScriptCoordinator->Stop();
+void NZBGet::StopServices()
+{
+	debug("Stopping QueueCoordinator");
+	m_serviceCoordinator->Stop();
+	m_queueCoordinator->Stop();
+	m_urlCoordinator->Stop();
+	m_prePostProcessor->Stop();
+	m_feedCoordinator->Stop();
+	m_articleCache->Stop();
+	m_queueScriptCoordinator->Stop();
 #ifdef WIN32
-			m_winConsole->Stop();
+	m_winConsole->Stop();
 #endif
-		}
-	}
-
-	// trigger stop/reload signal
-	std::lock_guard<std::mutex> guard(m_waitMutex);
-	m_stopped = true;
-	m_waitCond.notify_all();
 }
 
 void NZBGet::PrintOptions()
@@ -1133,25 +1115,46 @@ void NZBGet::SetupFirstStart()
 
 void RunMain()
 {
-	NZBGet::AsyncRuntime runtime(g_NZBGet);
-	try
+	bool failed = false;
 	{
-		runtime.Run();
+		NZBGet::AsyncRuntime runtime;
+		g_App = &runtime;
+		try
+		{
+			runtime.Run();
+		}
+		catch (const std::exception& e)
+		{
+			error("Could not start NZBGet: %s", e.what());
+			failed = true;
+		}
+		catch (...)
+		{
+			error("Could not start NZBGet: unknown error");
+			failed = true;
+		}
+		g_App = nullptr;
 	}
-	catch (const std::exception& e)
+	if (failed)
 	{
-		error("Could not start NZBGet: %s", e.what());
 		exit(EXIT_FAILURE);
 	}
-	g_NZBGet.reset();
 }
 
 void Reload()
 {
-	g_NZBGet->Stop(true);
+	NZBGet::AsyncRuntime* runtime = g_App.load();
+	if (runtime)
+	{
+		runtime->Stop(async::ShutdownRequest::Reload);
+	}
 }
 
 void ExitProc()
 {
-	g_NZBGet->Stop(false);
+	NZBGet::AsyncRuntime* runtime = g_App.load();
+	if (runtime)
+	{
+		runtime->Stop(async::ShutdownRequest::Stop);
+	}
 }

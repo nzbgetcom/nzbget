@@ -25,32 +25,17 @@
 
 #include "Async.h"
 
-using namespace std::chrono_literals;
-
 namespace
 {
 
 class TestComponent final : public ::async::Component
 {
 public:
-	void Stop() noexcept override { ++stops; }
-
-	void Stop(::async::Clock::time_point deadline) noexcept override
-	{
-		Stop();
-		lastDeadline = deadline;
-	}
-
-	int stops = 0;
-	::async::Clock::time_point lastDeadline{};
+	void Stop() noexcept override {}
 };
 
-class ImmediateOnlyComponent final : public ::async::Component
+class NotAComponent
 {
-public:
-	void Stop() noexcept override { ++stops; }
-
-	int stops = 0;
 };
 
 } // namespace
@@ -70,33 +55,11 @@ BOOST_AUTO_TEST_SUITE(AsyncTest)
 BOOST_AUTO_TEST_CASE(ComponentTraits_MapTypeToIdAndName)
 {
 	static_assert(::async::ComponentType<TestComponent>);
-	static_assert(!::async::ComponentType<ImmediateOnlyComponent>);
+	static_assert(!::async::ComponentType<NotAComponent>);
 	static_assert(!::async::ComponentType<int>);
 	BOOST_CHECK(::async::ComponentTraits<TestComponent>::Id == ::async::ComponentId::Network);
 	BOOST_CHECK_EQUAL(std::string(::async::ComponentTraits<TestComponent>::Name), "test");
 	BOOST_CHECK(::async::ComponentId::Network < ::async::ComponentId::Count);
-}
-
-BOOST_AUTO_TEST_CASE(Stop_DeadlineOverloadIsForwardedToTheComponent)
-{
-	TestComponent component;
-	::async::Component& base = component;
-	const auto deadline = ::async::Clock::now() + 5s;
-
-	base.Stop(deadline);
-
-	BOOST_CHECK_EQUAL(component.stops, 1);
-	BOOST_CHECK(component.lastDeadline == deadline);
-}
-
-BOOST_AUTO_TEST_CASE(Stop_DeadlineOverloadFallsBackToImmediateStop)
-{
-	ImmediateOnlyComponent component;
-	::async::Component& base = component;
-
-	base.Stop(::async::Clock::now() + 5s);
-
-	BOOST_CHECK_EQUAL(component.stops, 1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
