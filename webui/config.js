@@ -1834,6 +1834,7 @@ var Config = (new function($)
 		var categoryName = I18n.defaultValue(('config_section_' + section.name.replace(/ /g, '_').replace(/-/g, '_')).toLowerCase(), sectionText);
 		$ConfigTitle.removeAttr('data-i18n');
 		$ConfigTitle.text(categoryName);
+		$ConfigTitle.removeData('i18n-last');
 		I18n.translatePage($ConfigTitle.parent());
 		$ConfigTitleStatus.hide();
 
