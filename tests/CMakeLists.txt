@@ -5,6 +5,7 @@ endif()
 set(TESTS_TARGET nzbget_tests)
 set(TESTS_SRC ${CMAKE_SOURCE_DIR}/tests/main.cpp)
 
+include(async/async.cmake)
 include(util/util.cmake)
 include(feed/feed.cmake)
 include(queue/queue.cmake)
@@ -28,6 +29,7 @@ apply_sanitizers(${TESTS_TARGET})
 
 target_precompile_headers(${TESTS_TARGET} REUSE_FROM libnzbget)
 
+add_test(NAME AsyncTest        COMMAND ${TESTS_TARGET} --run_test=AsyncTest --log_level=message)
 add_test(NAME UtilTest         COMMAND ${TESTS_TARGET} --run_test=UtilTest --log_level=message)
 if(WIN32)
 	add_test(NAME ScriptControllerTest COMMAND ${TESTS_TARGET} --run_test=ScriptControllerTest --log_level=message)

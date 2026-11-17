@@ -56,6 +56,14 @@ NZBGet requires **C++20** (`CMAKE_CXX_STANDARD 20`, `CMAKE_CXX_STANDARD_REQUIRED
 
 NZBGet is built with curses terminal dashboard support (`nzbget -s`) by default. For headless environments (containers, NAS) that only need the WebUI and RPC daemon mode, configure with `-DDISABLE_CURSES=ON`; the `ncurses` development packages are then not required.
 
+The async runtime uses `epoll` on Linux by default. Optionally, `-DENABLE_IO_URING=ON` switches it to `io_uring`, which requires **Linux 5.10+** and the `liburing` development package:
+
+- **Debian / Ubuntu / Mint**: `sudo apt-get install -y liburing-dev`
+- **Fedora / RHEL / CentOS Stream**: `sudo dnf install -y liburing-devel`
+- **Arch Linux / Manjaro**: `sudo pacman -S --needed liburing`
+
+> **Note on io_uring**: the option is Linux-only and is `OFF` by default. `liburing` is always taken from the system, even with `BUILD_DEPS_FROM_SOURCE=ON`; it is not downloaded by FetchContent. When enabled, `epoll` support is compiled out, so the resulting binary requires a kernel where the `io_uring` syscalls are available and not blocked (for example by a container's seccomp profile). Leave it `OFF` if you ship one binary for a range of kernels or run inside restricted containers.
+
 ## 3. Dependency Management: Source vs System
 
 The CMake cache variable `BUILD_DEPS_FROM_SOURCE` selects between two dependency resolution models:
