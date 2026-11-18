@@ -34,11 +34,11 @@ struct ServerFixture
 		int port = 563, bool tls = true, const char* user = "user", const char* pass = "pass",
 		int maxConn = 50, int level = 0, int retention = 0, const char* cipher = "",
 		int ipVersion = Connection::ipAuto, bool optional = false, int group = 0, int joinGroup = 0,
-		unsigned int certLevel = Options::cvStrict)
+		unsigned int certLevel = Options::cvStrict, int quota = 0)
 	{
 		return std::make_unique<NewsServer>(1, active, name, host, port, ipVersion, user, pass,
 											(bool)joinGroup, tls, cipher, maxConn, retention, level,
-											group, optional, certLevel);
+											group, optional, certLevel, quota);
 	}
 };
 
@@ -237,6 +237,23 @@ BOOST_AUTO_TEST_CASE(TestRetention)
 					*CreateServer(true, "", "", 0, true, "", "", 50, 0, 20000))
 					.Validate()
 					.IsInfo());
+}
+
+BOOST_AUTO_TEST_CASE(TestQuota)
+{
+	auto sUnlimited = CreateServer(true);
+	BOOST_CHECK(SystemHealth::NewsServer::ServerQuotaValidator(*sUnlimited).Validate().IsOk());
+
+	auto sWithQuota = CreateServer(true);
+	sWithQuota->SetQuota(1048576);
+	BOOST_CHECK(SystemHealth::NewsServer::ServerQuotaValidator(*sWithQuota).Validate().IsOk());
+
+	sWithQuota->SetQuotaReached(true);
+	BOOST_CHECK(SystemHealth::NewsServer::ServerQuotaValidator(*sWithQuota).Validate().IsWarning());
+
+	auto sNegative = CreateServer(true);
+	sNegative->SetQuota(-100);
+	BOOST_CHECK(SystemHealth::NewsServer::ServerQuotaValidator(*sNegative).Validate().IsError());
 }
 
 BOOST_AUTO_TEST_CASE(TestOptional)

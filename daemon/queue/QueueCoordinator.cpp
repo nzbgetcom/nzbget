@@ -355,7 +355,8 @@ void QueueCoordinator::AdjustDownloadsLimit()
 	// allow one thread per 0-level (main) and 1-level (backup) server connection
 	for (NewsServer* newsServer : g_ServerPool->GetServers())
 	{
-		if ((newsServer->GetNormLevel() == 0 || newsServer->GetNormLevel() == 1) && newsServer->GetActive())
+		if ((newsServer->GetNormLevel() == 0 || newsServer->GetNormLevel() == 1) &&
+			newsServer->GetActive() && !newsServer->GetQuotaReached())
 		{
 			downloadsLimit += newsServer->GetMaxConnections();
 		}
