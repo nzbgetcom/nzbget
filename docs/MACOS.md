@@ -20,6 +20,8 @@ brew install create-dmg                     # used by platforms/macos/sign/nzbge
 brew install llvm@19                        # LLVM toolchain used in release CI for hermetic builds with static libc++
 ```
 
+> **Note on Boost**: Boost 1.89 or newer is required. If the installed Boost is older, configure with `-DBUILD_BOOST_FROM_SOURCE=ON` (pinned Boost 1.92 via FetchContent).
+
 ## 2. Dependency Management: Source vs System
 
 Two dependency resolution models are available, controlled by the CMake cache variable `BUILD_DEPS_FROM_SOURCE`:
@@ -28,6 +30,7 @@ Two dependency resolution models are available, controlled by the CMake cache va
 |---|---|---|---|
 | `BUILD_DEPS_FROM_SOURCE` | `OFF` (default in dev presets) | Tries to find system/Homebrew libraries first (`FindOpenSSL`, `FindZLIB`, `FindLibXml2`, `FindBoost`). If not found, falls back automatically to FetchContent. `rapidyenc` and `par2-turbo` are always built from source via FetchContent. | Local development, rapid iteration |
 | `BUILD_DEPS_FROM_SOURCE` | `ON` (default in `ci-*` presets) | Pure hermetic build: fetches and compiles all dependencies from source via CMake FetchContent. | CI, release builds, redistributable binaries |
+| `BUILD_BOOST_FROM_SOURCE` | `OFF` | Ignores Homebrew Boost and builds the pinned Boost 1.92 via FetchContent | Local development with an older Boost |
 
 ### Dependencies Managed via FetchContent
 

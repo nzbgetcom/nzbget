@@ -4,13 +4,20 @@ set(BOOST_VERSION "1.92.0")
 set(BOOST_SHA256 "e2a814b3a158ab482c7a3d330f8bf5a7a8423d258a4e2fb396996e00fcee2111")
 set(BOOST_URL "https://github.com/boostorg/boost/releases/download/boost-${BOOST_VERSION}/boost-${BOOST_VERSION}-b2-nodocs.tar.gz")
 
-if(NOT BUILD_DEPS_FROM_SOURCE)
+option(BUILD_BOOST_FROM_SOURCE "Build the pinned Boost with FetchContent even when a system copy exists" OFF)
+
+if(NOT BUILD_DEPS_FROM_SOURCE AND NOT BUILD_BOOST_FROM_SOURCE)
 	# Local development: try system Boost first.
 	# Only Boost.JSON needs a compiled library. Boost.Test is used header-only
 	# (tests/main.cpp includes boost/test/included/unit_test.hpp), so the
 	# compiled unit_test_framework library is not required.
 	find_package(Boost QUIET COMPONENTS json)
-	if(Boost_FOUND)
+	if(Boost_FOUND AND TARGET Boost::json)
+		if(Boost_VERSION VERSION_LESS 1.89)
+			message(FATAL_ERROR
+				"Boost ${Boost_VERSION} is too old: needs 1.89 or newer. "
+				"Configure with -DBUILD_BOOST_FROM_SOURCE=ON to build the pinned Boost.")
+		endif()
 		message(STATUS "Using system Boost ${Boost_VERSION} (found via find_package)")
 		if(NOT TARGET Boost::unit_test_framework)
 			add_library(Boost::unit_test_framework INTERFACE IMPORTED)
@@ -24,7 +31,7 @@ if(NOT BUILD_DEPS_FROM_SOURCE)
 		message(FATAL_ERROR
 			"System Boost ${Boost_VERSION} was found, but without Boost.JSON. "
 			"Install the Boost.JSON development package (e.g. libboost-json-dev) "
-			"or configure with -DBUILD_DEPS_FROM_SOURCE=ON.")
+			"or configure with -DBUILD_BOOST_FROM_SOURCE=ON.")
 	endif()
 endif()
 

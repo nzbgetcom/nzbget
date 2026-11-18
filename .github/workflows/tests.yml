@@ -75,7 +75,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DBUILD_ONLY_TESTS=ON
+        cmake .. -DBUILD_ONLY_TESTS=ON -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
 
     - name: Test
@@ -107,7 +107,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DBUILD_ONLY_TESTS=ON -DDISABLE_PARCHECK=yes
+        cmake .. -DBUILD_ONLY_TESTS=ON -DDISABLE_PARCHECK=yes -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
 
     - name: Test
@@ -180,7 +180,7 @@ jobs:
         sudo pkg_add git cmake libxml boost unrar p7zip
         mkdir build
         cd build
-        cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+        cmake .. -DENABLE_CCACHE=OFF -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
         ctest -C Release
 
@@ -211,7 +211,7 @@ jobs:
         sudo pkg install -y git cmake-core libxml2 boost-all unrar 7-zip
         mkdir build
         cd build
-        cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include
+        cmake .. -DBUILD_ONLY_TESTS=ON -DCURSES_INCLUDE_PATH=/usr/include -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
         ctest -C Release
 
@@ -238,7 +238,7 @@ jobs:
     - name: cppcheck
       run: |
         mkdir build
-        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_BOOST_FROM_SOURCE=ON
         cppcheck --error-exitcode=1 \
           --project=build/compile_commands.json \
           --enable=warning,performance,portability,information \
@@ -272,7 +272,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DDISABLE_PARCHECK=yes
+        cmake .. -DDISABLE_PARCHECK=yes -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
 
   build-disabled-pch:
@@ -291,7 +291,7 @@ jobs:
       run: |
         mkdir build
         cd build
-        cmake .. -DCMAKE_DISABLE_PRECOMPILE_HEADERS=yes
+        cmake .. -DCMAKE_DISABLE_PRECOMPILE_HEADERS=yes -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
 
   build-openbsd:
@@ -313,7 +313,7 @@ jobs:
         sudo pkg_add git cmake libxml boost
         mkdir build
         cd build
-        cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include
+        cmake .. -DENABLE_CCACHE=OFF -DCURSES_INCLUDE_PATH=/usr/include -DBUILD_BOOST_FROM_SOURCE=ON
         cmake --build . --config Release -j 4
 
   build-macos-brew-head:

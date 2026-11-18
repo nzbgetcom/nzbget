@@ -52,7 +52,7 @@ NZBGet requires **C++20** (`CMAKE_CXX_STANDARD 20`, `CMAKE_CXX_STANDARD_REQUIRED
   sudo pacman -S --needed openssl libxml2 zlib ncurses boost
   ```
 
-> **Note on Boost**: NZBGet uses Boost.JSON for JSON parsing and serialization. If system Boost is missing or lacks Boost.JSON, CMake fetches Boost.JSON header-only via FetchContent.
+> **Note on Boost**: NZBGet requires Boost 1.89 or newer. If the system Boost is older or lacks Boost.JSON, configure with `-DBUILD_BOOST_FROM_SOURCE=ON` (pinned Boost 1.92 via FetchContent).
 
 NZBGet is built with curses terminal dashboard support (`nzbget -s`) by default. For headless environments (containers, NAS) that only need the WebUI and RPC daemon mode, configure with `-DDISABLE_CURSES=ON`; the `ncurses` development packages are then not required.
 
@@ -172,6 +172,7 @@ cmake --build build --target uninstall
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_DEPS_FROM_SOURCE` | `OFF` (dev) / `ON` (CI) | When `ON`, downloads and builds all dependencies via CMake FetchContent |
+| `BUILD_BOOST_FROM_SOURCE` | `OFF` | When `ON`, ignores system Boost and builds the pinned Boost 1.92 via FetchContent |
 | `ENABLE_STATIC` | `OFF` | Build a 100% statically linked executable (`-static`) |
 | `ENABLE_TESTS` | `OFF` | Build unit test suites (`tests/`) |
 | `ENABLE_CLANG_TIDY` | `OFF` | Enable the Clang-Tidy static code analyzer during compilation |
