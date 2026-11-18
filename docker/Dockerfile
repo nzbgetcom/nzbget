@@ -10,7 +10,7 @@ ARG CMAKE_BUILD_TYPE=Release
 #install build packages
 RUN \
   echo "**** install build packages ****" && \
-  apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl cmake
+  apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl cmake linux-headers
 
 #install archive packages
 COPY unpackers.env /tmp/unpackers.env
