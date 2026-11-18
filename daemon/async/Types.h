@@ -22,6 +22,7 @@
 
 #include <boost/asio.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/asio/experimental/parallel_group.hpp>
 
 namespace async
 {
@@ -30,6 +31,11 @@ namespace asio = boost::asio;
 using ErrorCode = boost::system::error_code;
 using Executor = asio::any_io_executor;
 using ExecutorGuard = asio::executor_work_guard<Executor>;
+using ConstBuffer = asio::const_buffer;
+using MutableBuffer = asio::mutable_buffer;
+using SteadyTimer = asio::steady_timer;
+template <typename T, typename Exec = Executor>
+using Awaitable = asio::awaitable<T, Exec>;
 
 }
 

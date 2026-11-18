@@ -59,6 +59,7 @@
 #include "ExtensionManager.h"
 #include "SystemInfo.h"
 #include "SystemHealth.h"
+#include "NetworkComponent.h"
 
 #ifdef WIN32
 #include "WinService.h"
@@ -224,6 +225,8 @@ private:
 	std::unique_ptr<ScriptConfig> m_scriptConfig;
 	std::unique_ptr<CommandScriptLog> m_commandScriptLog;
 	std::unique_ptr<ExtensionManager::Manager> m_extensionManager;
+	std::unique_ptr<async::ExecutorPool> m_networkPool;
+	std::shared_ptr<network::http::HttpClient> m_httpClient;
 	std::unique_ptr<System::SystemInfo> m_systemInfo;
 	std::unique_ptr<SystemHealth::Service> m_systemHealth;
 
@@ -281,7 +284,6 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 	if (!reload)
 	{
 		Connection::Init();
-		TlsSocket::Init();
 	}
 
 	CreateGlobals();
@@ -328,7 +330,6 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 
 	m_scanner->InitOptions();
 	m_queueScriptCoordinator->InitOptions();
-	TlsSocket::InitOptions(g_Options->GetCertCheck() ? g_Options->GetCertStore() : "");
 
 	if (m_commandLineParser->GetDaemonMode())
 	{
@@ -350,6 +351,15 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 	{
 		info("nzbget %s remote-mode", Util::VersionRevision());
 	}
+
+	m_networkPool = std::make_unique<async::ExecutorPool>(1);
+	network::NetworkComponent& networkComponent = runtime.AddComponent<network::NetworkComponent>(
+		network::NetworkComponent::Config{
+			.certStore = m_options->GetCertStorePath(),
+			.certCheck = m_options->GetCertCheck()},
+		m_networkPool->Next());
+	TlsSocket::SetCertStore(networkComponent.GetCertStore());
+	m_httpClient = networkComponent.GetHttpClient();
 
 	info("using %s", m_options->GetConfigFilename());
 	info("nzbget runs on %s:%i", m_options->GetControlIp(), m_options->GetControlPort());
@@ -377,7 +387,6 @@ void NZBGet::Final()
 {
 	if (m_runtime->GetShutdownRequest() != async::ShutdownRequest::Reload)
 	{
-		TlsSocket::Final();
 		Connection::Final();
 	}
 }
@@ -443,7 +452,10 @@ void NZBGet::CreateGlobals()
 	m_extensionManager = std::make_unique<ExtensionManager::Manager>();
 	g_ExtensionManager = m_extensionManager.get();
 
-	m_systemInfo = std::make_unique<System::SystemInfo>();
+	m_systemInfo = std::make_unique<System::SystemInfo>([this]
+	{
+		return m_httpClient ? System::FetchNetworkInfo(*m_httpClient) : System::Network{};
+	});
 	g_SystemInfo = m_systemInfo.get();
 
 	m_scheduler = std::make_unique<Scheduler>();

@@ -574,6 +574,14 @@ void Util::Trim(std::string& str)
 	TrimRight(str);
 }
 
+std::string_view Util::TrimView(std::string_view str) noexcept
+{
+	constexpr std::string_view blanks = " \t\r\n";
+	str.remove_prefix(std::min(str.find_first_not_of(blanks), str.size()));
+	str.remove_suffix(str.size() - (str.find_last_not_of(blanks) + 1));
+	return str;
+}
+
 void Util::SanitizeLine(std::string& str)
 {
 	std::replace_if(str.begin(), str.end(), IsControlChar, ' ');

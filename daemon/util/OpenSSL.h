@@ -28,7 +28,6 @@
 
 namespace OpenSSL
 {
-	using X509StorePtr = std::unique_ptr<X509_STORE, decltype(&X509_STORE_free)>;
 	using X509Ptr = std::unique_ptr<X509, decltype(&X509_free)>;
 	using EVPMdCtxPtr = std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)>;
 	using EVPCipherCtxPtr = std::unique_ptr<EVP_CIPHER_CTX, decltype(&EVP_CIPHER_CTX_free)>;

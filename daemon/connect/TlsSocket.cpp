@@ -23,50 +23,13 @@
 
 #include "TlsSocket.h"
 #include "Log.h"
-#include "Util.h"
 #include "Options.h"
 
-OpenSSL::X509StorePtr TlsSocket::m_X509Store{ nullptr, &X509_STORE_free };
+std::shared_ptr<X509_STORE> TlsSocket::m_X509Store;
 
-void TlsSocket::Init()
+void TlsSocket::SetCertStore(std::shared_ptr<X509_STORE> store)
 {
-	debug("Initializing TLS library");
-
-	if (OPENSSL_init_ssl(0, nullptr) == 0)
-	{
-		error("Could not initialize the OpenSSL library");
-	}
-}
-
-void TlsSocket::InitOptions(const char* certStore)
-{
-	if (Util::EmptyStr(certStore)) 
-		return;
-
-	InitX509Store(certStore);
-}
-
-void TlsSocket::InitX509Store(std::string_view certStore)
-{
-	m_X509Store.reset(X509_STORE_new());
-
-	if (!m_X509Store)
-	{
-		error("Could not create certificate store");
-		return;
-	}
-
-	if (!X509_STORE_load_locations(m_X509Store.get(), certStore.data(), nullptr))
-	{
-		error("Could not load certificate store location from %s", certStore.data());
-		return;
-	}
-}
-
-void TlsSocket::Final()
-{
-	m_X509Store.reset();
-	OPENSSL_cleanup();
+	m_X509Store = std::move(store);
 }
 
 TlsSocket::~TlsSocket()

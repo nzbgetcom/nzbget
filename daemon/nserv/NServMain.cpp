@@ -84,7 +84,6 @@ int NServMain(int argc, char* argv[])
 
 	log.InitOptions();
 	Connection::Init();
-	TlsSocket::Init();
 
 #ifndef WIN32
 	signal(SIGPIPE, SIG_IGN);

@@ -21,6 +21,7 @@
 #ifndef TLSSOCKET_H
 #define TLSSOCKET_H
 
+#include <memory>
 #include <string_view>
 #include "OpenSSL.h"
 
@@ -47,10 +48,7 @@ public:
 		, m_session{ nullptr, &SSL_free } {}
 
 	virtual ~TlsSocket();
-
-	static void Init();
-	static void InitOptions(const char* certStore);
-	static void Final();
+	static void SetCertStore(std::shared_ptr<X509_STORE> store);
 
 	bool Start();
 	void Close();
@@ -62,8 +60,7 @@ protected:
 	virtual void PrintError(const char* errMsg);
 
 private:
-	static void InitX509Store(std::string_view certStore);
-	static OpenSSL::X509StorePtr m_X509Store;
+	static std::shared_ptr<X509_STORE> m_X509Store;
 
 	/**
 	 * This function configures the allowed ciphers for both TLSv1.3 and

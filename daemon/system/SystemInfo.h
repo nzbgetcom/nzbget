@@ -24,10 +24,27 @@
 #include <functional>
 #include "OS.h"
 #include "CPU.h"
-#include "Network.h"
+
+namespace network
+{
+namespace http
+{
+class HttpClient;
+}
+}
 
 namespace System
 {
+	inline constexpr const char* IP_SERVICE = "https://ip.nzbget.com";
+
+	struct Network
+	{
+		std::string publicIP;
+		std::string privateIP;
+	};
+
+	Network FetchNetworkInfo(network::http::HttpClient& client, std::string url = IP_SERVICE);
+
 	struct Library
 	{
 		std::string name;
@@ -44,7 +61,7 @@ namespace System
 	class SystemInfo final
 	{
 	public:
-		SystemInfo(std::function<Network()> networkFetcher = GetNetwork);
+		SystemInfo(std::function<Network()> networkFetcher = [] { return Network{}; });
 		~SystemInfo() = default;
 		std::vector<Tool> GetTools() const;
 		Network GetNetworkInfo() const;
