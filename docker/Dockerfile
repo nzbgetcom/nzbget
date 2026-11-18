@@ -10,7 +10,7 @@ ARG CMAKE_BUILD_TYPE=Release
 #install build packages
 RUN \
   echo "**** install build packages ****" && \
-  apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev boost-dev curl cmake
+  apk add --no-cache g++ gcc git libxml2-dev libxslt-dev make ncurses-dev openssl-dev curl cmake linux-headers
 
 #install archive packages
 COPY unpackers.env /tmp/unpackers.env
@@ -52,7 +52,7 @@ RUN \
   mkdir -p /app/nzbget && \
   mkdir -p /nzbget/build && \
   cd /nzbget/build && \
-  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} && \
+  cmake .. -DCMAKE_INSTALL_PREFIX=/app/nzbget -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -DBUILD_BOOST_FROM_SOURCE=ON && \
   cmake --build . -j ${MAKE_JOBS} && \
   cmake --install . && \
   cmake --build . --target install-conf && \
@@ -97,7 +97,7 @@ COPY --from=build /usr/bin/7z /usr/bin/7z
 COPY --from=build /app/nzbget/ /app/nzbget/
 RUN \
   echo "**** install packages ****" && \
-  apk add --no-cache --update shadow su-exec libxml2 libxslt openssl python3 boost1.84-json boost1.84-filesystem tzdata && \
+  apk add --no-cache --update shadow su-exec libxml2 libxslt openssl python3 tzdata && \
   ln -sf /usr/bin/python3 /usr/bin/python && \
   ln -s /usr/bin/7z /app/nzbget/7za && \
   ln -s /usr/bin/unrar /app/nzbget/unrar && \

@@ -27,6 +27,8 @@ FreeBSD base includes Clang, `libc++`, and `zlib`. Install required tools and li
 pkg install -y git cmake ninja openssl libxml2 boost-all ncurses
 ```
 
+> **Note on Boost**: Boost 1.89 or newer is required. If the installed Boost is older, configure with `-DBUILD_BOOST_FROM_SOURCE=ON` to build the pinned Boost 1.92 via FetchContent.
+
 *Note*: For headless environments (jails, servers) without terminal UI, pass `-DDISABLE_CURSES=ON` to CMake; in that case, `ncurses` is not required.
 
 ### 2.2 Build

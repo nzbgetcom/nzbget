@@ -60,6 +60,8 @@ OpenSSL 3.x uses its own Configure script on Windows, which requires Perl and an
    vcpkg install openssl:x64-windows-static zlib:x64-windows-static libxml2:x64-windows-static boost-json:x64-windows-static boost-test:x64-windows-static
    ```
 
+> **Note on Boost**: Boost 1.89 or newer is required. The source-build strategy below uses the pinned Boost 1.92 automatically; when using vcpkg, make sure its Boost port is at least 1.89.
+
 ---
 
 ## 2. Strategy 1: Build All Dependencies from Source (Recommended)
@@ -167,6 +169,7 @@ Customize your build with `-D<OPTION>=<VALUE>`:
 | Option | Default | Description |
 |---|---|---|
 | `BUILD_DEPS_FROM_SOURCE` | `OFF` | `ON` forces building all dependencies from source via FetchContent (guaranteeing hermetic builds; default in `build.ps1` and CI presets). `OFF` (CMake default) checks `find_package()` first with automatic fallback to FetchContent. |
+| `BUILD_BOOST_FROM_SOURCE` | `OFF` | When `ON`, ignores system/vcpkg Boost and builds the pinned Boost 1.92 via FetchContent |
 | `DISABLE_PARCHECK` | `OFF` | Build without par2-turbo repair support |
 | `DISABLE_GZIP` | `OFF` | Build without zlib compression support |
 | `ENABLE_TESTS` | `OFF` | Build unit tests target (`nzbget_tests`) |

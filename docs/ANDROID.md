@@ -44,7 +44,7 @@ Android targets have no package manager, so every dependency is compiled from so
 - **OpenSSL** (3.5.x): built from source with the `linux-*` configure targets (`linux-aarch64`, `linux-armv4`, `linux-x86_64-clang`, `linux-x86-clang`) instead of the upstream `android-*` targets, which require a full Google NDK installation (`$ANDROID_NDK_ROOT`) and invoke legacy NDK toolchains. Supplying `--target`, `--sysroot` and `ANDROID_ARCH_FLAGS` makes Clang define the Bionic preprocessor macros (`__ANDROID__=1`, `__ANDROID_API__=21`) and emit architecture-safe instructions.
 - **zlib**: compression library from CMake FetchContent (`madler/zlib`).
 - **libxml2**: XML parser from CMake FetchContent (GNOME GitLab), configured without Python bindings or tests.
-- **Boost**: header-only FetchContent integration (`Boost.JSON`, `Boost.Asio`, `Boost.Beast`).
+- **Boost**: header-only FetchContent integration (`Boost.JSON`, `Boost.Asio`).
 - **par2-turbo**: PAR2 verification and repair engine from CMake FetchContent.
 - **rapidyenc**: SIMD-accelerated yEnc decoding from CMake FetchContent.
 - **ncursesw**: `ncurses 6.5` (`cmake/ncurses.cmake`), static, compiled with `--with-fallbacks=xterm,xterm-color,xterm-256color,xterm-16color,vt100,vt200,linux,ansi,screen,screen-256color,tmux,tmux-256color` because Android has no terminfo databases in `/usr/share/terminfo`; the curses console mode (`nzbget -C`) therefore works in ADB shells, SSH sessions, Termux and tmux/screen.
