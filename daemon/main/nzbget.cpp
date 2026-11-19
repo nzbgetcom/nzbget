@@ -358,7 +358,13 @@ void NZBGet::Init(bool reload, AsyncRuntime& runtime)
 			.certStore = m_options->GetCertStorePath(),
 			.certCheck = m_options->GetCertCheck()},
 		m_networkPool->Next());
-	TlsSocket::SetCertStore(networkComponent.GetCertStore());
+	auto certStore = networkComponent.GetCertStore();
+	if (!certStore && m_options->GetCertCheck())
+	{
+		// Empty store, not nullptr: legacy TLS must fail verification instead of running unverified.
+		certStore.reset(X509_STORE_new(), &X509_STORE_free);
+	}
+	TlsSocket::SetCertStore(certStore);
 	m_httpClient = networkComponent.GetHttpClient();
 
 	info("using %s", m_options->GetConfigFilename());
