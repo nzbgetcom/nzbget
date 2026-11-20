@@ -28,6 +28,8 @@
 #include "Log.h"
 #include "Json.h"
 #include "Xml.h"
+#include "Util.h"
+#include "http/HttpClient.h"
 
 #ifdef HAVE_NCURSES_H
 #include <ncurses.h>
@@ -42,6 +44,40 @@
 namespace System
 {
 	constexpr size_t BUFFER_SIZE = 512;
+
+	Network FetchNetworkInfo(network::http::HttpClient& client, std::string url)
+	{
+		Network network;
+
+		try
+		{
+			auto result = client.SyncGet(std::move(url), std::chrono::seconds{10});
+			if (result.has_error())
+			{
+				error("Failed to get public and private IP: %s", network::ToString(result.error()).data());
+				return network;
+			}
+
+			const auto& response = result.value();
+			const network::Error status = network::FromHttpStatus(response.status);
+			if (status != network::Error::None)
+			{
+				error("Failed to get public and private IP: %s", network::ToString(status).data());
+				return network;
+			}
+
+			std::string publicIP = response.body;
+			Util::Trim(publicIP);
+			network.publicIP = std::move(publicIP);
+			network.privateIP = response.localAddress;
+		}
+		catch (const std::exception& ex)
+		{
+			error("Failed to get public and private IP: %s", ex.what());
+		}
+
+		return network;
+	}
 
 	SystemInfo::SystemInfo(std::function<Network()> networkFetcher)
 		: m_networkFetcher{std::move(networkFetcher)}

@@ -4,8 +4,18 @@ target_sources(libnzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/connect/Connection.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/TlsSocket.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/WebDownloader.cpp
-	${CMAKE_SOURCE_DIR}/daemon/connect/HttpClient.cpp
 	${CMAKE_SOURCE_DIR}/daemon/connect/NetworkSpeedTest.cpp
+
+	${CMAKE_SOURCE_DIR}/daemon/network/Connection.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/LineReader.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/Url.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/Dial.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/HostResolver.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/TlsContexts.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/DnsCache.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/http/Parser.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/http/HttpClient.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/NetworkComponent.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/extension/CommandScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/FeedScript.cpp
@@ -109,7 +119,6 @@ target_sources(libnzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/system/SystemInfo.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/OS.cpp
 	${CMAKE_SOURCE_DIR}/daemon/system/CPU.cpp
-	${CMAKE_SOURCE_DIR}/daemon/system/Network.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/SystemHealthService.cpp
 	${CMAKE_SOURCE_DIR}/daemon/systemhealth/Status.cpp
@@ -153,6 +162,8 @@ target_include_directories(libnzbget PUBLIC
 	${CMAKE_SOURCE_DIR}/daemon/feed
 	${CMAKE_SOURCE_DIR}/daemon/frontend
 	${CMAKE_SOURCE_DIR}/daemon/main
+	${CMAKE_SOURCE_DIR}/daemon/network
+	${CMAKE_SOURCE_DIR}/daemon/network/http
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/nserv
 	${CMAKE_SOURCE_DIR}/daemon/postprocess

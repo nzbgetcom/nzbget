@@ -110,6 +110,7 @@ public:
 	static void TrimLeft(std::string& str);
 	static char* Trim(char* str);
 	static void Trim(std::string& str);
+	static std::string_view TrimView(std::string_view str) noexcept;
 	static constexpr bool IsControlChar(char c) noexcept
 	{
 		constexpr unsigned char ASCII_SPACE = 32;
