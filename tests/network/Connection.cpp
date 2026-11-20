@@ -191,13 +191,14 @@ BOOST_AUTO_TEST_CASE(Connection_Read_WhenNotConnected_ReturnsInvalidState)
 BOOST_AUTO_TEST_CASE(Connection_Connect_Timeout_ReturnsTimeout)
 {
 	asio::io_context ctx;
+	tcp::acceptor acceptor(ctx, tcp::endpoint(asio::ip::make_address("127.0.0.1"), 0));
 	Options options = TestOptions();
 	options.connectTimeout = 100ms;
-	auto conn = std::make_shared<Connection>(ctx.get_executor(), options, nullptr);
+	auto tls = std::make_shared<ssl::context>(ssl::context::tls_client);
+	auto conn = std::make_shared<Connection>(ctx.get_executor(), options, tls);
 
-	// RFC 5737 TEST-NET-1: reserved, never routed, no SYN-ACK will arrive.
-	auto result = RunBlocking(ctx, conn->Connect(
-		tcp::endpoint(asio::ip::make_address("192.0.2.1"), 81)));
+	// TCP connects locally, but the unanswered TLS handshake times out.
+	auto result = RunBlocking(ctx, conn->Connect(acceptor.local_endpoint()));
 
 	BOOST_CHECK(!result);
 	BOOST_CHECK(result.error() == Error::Timeout);
@@ -442,14 +443,16 @@ BOOST_AUTO_TEST_CASE(Connection_StateMachine_Transitions)
 		}
 	}
 
-	// Timeout: TEST-NET-1 is never routed, so no SYN-ACK arrives.
+	// Timeout during an unanswered local TLS handshake.
 	{
 		asio::io_context ctx;
+		tcp::acceptor acceptor(ctx, endpoint(0));
 		Options options = TestOptions();
 		options.connectTimeout = 100ms;
-		auto conn = std::make_shared<Connection>(ctx.get_executor(), std::move(options), nullptr);
+		auto tls = std::make_shared<ssl::context>(ssl::context::tls_client);
+		auto conn = std::make_shared<Connection>(ctx.get_executor(), std::move(options), tls);
 		const auto result = RunBlocking(ctx,
-			conn->Connect(tcp::endpoint(asio::ip::make_address("192.0.2.1"), 81)));
+			conn->Connect(acceptor.local_endpoint()));
 
 		BOOST_TEST_CONTEXT("Disconnected.Connect.Timeout")
 		{
@@ -462,14 +465,16 @@ BOOST_AUTO_TEST_CASE(Connection_StateMachine_Transitions)
 	// Cancel while the connect is still pending.
 	{
 		asio::io_context ctx;
+		tcp::acceptor acceptor(ctx, endpoint(0));
 		Options options = TestOptions();
 		options.connectTimeout = 5s;
-		auto conn = std::make_shared<Connection>(ctx.get_executor(), std::move(options), nullptr);
+		auto tls = std::make_shared<ssl::context>(ssl::context::tls_client);
+		auto conn = std::make_shared<Connection>(ctx.get_executor(), std::move(options), tls);
 
 		asio::co_spawn(ctx, CancelAfter(*conn, 50ms), asio::detached);
 
 		const auto result = RunBlocking(ctx,
-			conn->Connect(tcp::endpoint(asio::ip::make_address("192.0.2.1"), 81)));
+			conn->Connect(acceptor.local_endpoint()));
 
 		BOOST_TEST_CONTEXT("Connecting.Cancel")
 		{
