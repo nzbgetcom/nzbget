@@ -36,6 +36,14 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# clangd looks for compile_commands.json in build/
+add_custom_target(compile_commands ALL
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+		"${CMAKE_BINARY_DIR}/compile_commands.json"
+		"${CMAKE_SOURCE_DIR}/build/compile_commands.json"
+	VERBATIM
+)
+
 # MSVC runtime library: static (/MT for Release/MinSizeRel/RelWithDebInfo, /MTd for Debug)
 # Controlled by CMP0091 (NEW). Set before project() to initialize all targets.
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "MSVC runtime library" FORCE)
