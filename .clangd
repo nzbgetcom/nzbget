@@ -9,6 +9,12 @@ CompileFlags:
     - "/guard:cf"
     - "/diagnostics:*"
     - "/Zc:inline"
+  # Show every compiler warning for any build type, not only for Debug.
+  Add:
+    - "-Weverything"
+    - "-Wno-c++98-compat"
+    - "-Wno-c++98-compat-pedantic"
+    - "-Wno-unused-parameter"
 
 Index:
   Background: Build
