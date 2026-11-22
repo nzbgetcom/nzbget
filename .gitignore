@@ -92,5 +92,6 @@ docker/config
 .*
 !/.gitignore
 !/.gitattributes
+!/.clang-format
 !.github/
 !.github/**

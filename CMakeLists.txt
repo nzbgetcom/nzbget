@@ -131,6 +131,17 @@ else()
 	endif()
 endif()
 
+# clangd looks for compile_commands.json in build/ for any preset.
+# Multi-config generators (Xcode, Visual Studio) never write it.
+if(NOT CMAKE_CONFIGURATION_TYPES)
+	add_custom_target(compile_commands ALL
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_BINARY_DIR}/compile_commands.json"
+			"${CMAKE_SOURCE_DIR}/build/compile_commands.json"
+		VERBATIM
+	)
+endif()
+
 if(ENABLE_TESTS OR BUILD_ONLY_TESTS)
 	include(CTest)
 	add_subdirectory(tests)

@@ -46,7 +46,7 @@ WarningsAsErrors: ''
 
 HeaderFilterRegex: '.*/daemon/.*'
 
-FormatStyle: none
+FormatStyle: file
 
 CheckOptions:
   - key:   readability-qualified-auto.AddConstToQualified
@@ -65,6 +65,8 @@ CheckOptions:
     value: camelBack
   - key:   readability-identifier-naming.MemberPrefix
     value: m_
+  - key:   readability-identifier-naming.PublicMemberPrefix
+    value: ''
   - key:   readability-identifier-naming.ParameterCase
     value: camelBack
   - key:   readability-identifier-naming.VariableCase
@@ -78,6 +80,8 @@ CheckOptions:
   - key:   readability-identifier-naming.StaticVariablePrefix
     value: s_
   - key:   readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+  - key:   readability-identifier-naming.ConstexprVariableCase
     value: UPPER_CASE
   - key:   readability-identifier-naming.IgnoreMainLikeFunctions
     value: '1'
