@@ -78,19 +78,25 @@ public:
 	size_t Size() const noexcept { return m_size; }
 	void Clear() noexcept { m_size = 0; }
 
-	void Assign(std::string_view data) noexcept
+	/// Returns false and writes nothing if data does not fit.
+	bool Assign(std::string_view data) noexcept
 	{
 		m_size = 0;
-		Append(data);
+		return Append(data);
 	}
 
-	void Append(std::string_view data) noexcept
+	bool Append(std::string_view data) noexcept
 	{
+		if (data.size() > Capacity - m_size)
+		{
+			return false;
+		}
 		if (!data.empty())
 		{
 			std::memcpy(m_data.data() + m_size, data.data(), data.size());
 			m_size += data.size();
 		}
+		return true;
 	}
 
 	std::string_view View() const noexcept { return {m_data.data(), m_size}; }

@@ -535,12 +535,6 @@ CString FileSystem::MakeValidFilename(const char* filename, bool allowSlashes)
 namespace
 {
 
-// Includes the "_" device-name prefix; the rest of the 255-byte limit holds ".duplicateN" from CollectionAnalyzer.
-constexpr size_t MAX_SEGMENT_LENGTH = 240;
-// "-" and 12 hex digits of SHA-256 over the original name; a truncated name stays
-// unique even when its first bytes match another name's.
-constexpr size_t HASH_SUFFIX_LENGTH = 13;
-
 void CollapseConsecutiveDots(std::string& str)
 {
 	if (str.find("..") == std::string::npos)
@@ -590,23 +584,44 @@ std::string SanitizeSegment(std::string_view name)
 {
 	std::string result = FileSystem::MakeValidFilename(std::string(name).c_str(), false).Str();
 	CollapseConsecutiveDots(result);
-	while (!result.empty() && (result.back() == '.' || result.back() == ' '))
+	while (!result.empty() && std::isspace(static_cast<unsigned char>(result.back())))
 	{
 		result.pop_back();
 	}
 	return result == "." ? "" : result;
 }
 
+constexpr bool IsUtf8Continuation(char c)
+{
+	// UTF-8 continuation byte (10xxxxxx): back up so the cut does not split a character.
+	return (static_cast<unsigned char>(c) & 0xC0) == 0x80;
+}
+
 } // namespace
 
 std::string FileSystem::SanitizePathSegment(std::string_view name)
 {
+	constexpr size_t MAX_SEGMENT_LENGTH = 240;
+	constexpr size_t MAX_INPUT_LENGTH = 1024;
+	constexpr size_t HASH_SUFFIX_LENGTH = 13;
+	constexpr size_t MAX_KEPT_EXTENSION_LENGTH = 16;
+
 	const size_t firstNonSpace = name.find_first_not_of(" \t");
 	if (firstNonSpace == std::string_view::npos)
 	{
 		return "";
 	}
 	name.remove_prefix(firstNonSpace);
+
+	if (name.size() > MAX_INPUT_LENGTH)
+	{
+		size_t cut = MAX_INPUT_LENGTH;
+		while (cut > 0 && IsUtf8Continuation(name[cut]))
+		{
+			--cut;
+		}
+		name = name.substr(0, cut);
+	}
 
 	if (name.size() <= MAX_SEGMENT_LENGTH)
 	{
@@ -618,10 +633,9 @@ std::string FileSystem::SanitizePathSegment(std::string_view name)
 	}
 
 	// Hash and extension come from the whole name, so names that differ only past the cut stay distinct.
-	// Only the kept prefix and the extension are copied, so a huge name costs no extra memory.
 	std::string_view ext;
 	const size_t dot = name.rfind('.');
-	if (dot != std::string_view::npos && dot > 0 && name.size() - dot <= 16)
+	if (dot != std::string_view::npos && dot > 0 && name.size() - dot <= MAX_KEPT_EXTENSION_LENGTH)
 	{
 		ext = name.substr(dot);
 	}
@@ -634,7 +648,7 @@ std::string FileSystem::SanitizePathSegment(std::string_view name)
 
 	// The extra byte is for the "_" a Windows device name may get, so the result stays within MAX_SEGMENT_LENGTH.
 	size_t keep = MAX_SEGMENT_LENGTH - HASH_SUFFIX_LENGTH - ext.size() - 1;
-	while (keep > 0 && (static_cast<unsigned char>(name[keep]) & 0xC0) == 0x80)
+	while (keep > 0 && IsUtf8Continuation(name[keep]))
 	{
 		--keep;
 	}

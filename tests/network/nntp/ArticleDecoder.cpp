@@ -188,6 +188,18 @@ BOOST_AUTO_TEST_CASE(FixedBuffer_FillsCapacityAndAcceptsEmptyData)
 	BOOST_CHECK_EQUAL(buf.Size(), 0u);
 }
 
+BOOST_AUTO_TEST_CASE(FixedBuffer_RejectsOverflow)
+{
+	nntp::FixedBuffer<4> buf;
+	BOOST_TEST(buf.Append("ab"));
+	BOOST_TEST(!buf.Append("cde"));
+	BOOST_CHECK(buf.View() == "ab");
+	BOOST_TEST(buf.Append("cd"));
+	BOOST_CHECK(buf.View() == "abcd");
+	BOOST_TEST(!buf.Assign("abcde"));
+	BOOST_CHECK_EQUAL(buf.Size(), 0u);
+}
+
 BOOST_AUTO_TEST_CASE(Create_SwitchesFormatsBetweenArticles)
 {
 	const std::string payload = yenc_fixtures::MakePayload();

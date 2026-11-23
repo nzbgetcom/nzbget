@@ -357,4 +357,22 @@ BOOST_AUTO_TEST_CASE(SanitizePathSegmentRejectsDotOnlyLongName)
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(std::string(300, '.')), "");
 }
 
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentCapsUntrustedInput)
+{
+	// Bytes past the input bound must not change the result, so a huge name costs bounded work.
+	const std::string head(1024, 'a');
+	const std::string huge = head + std::string(1 << 20, 'b') + ".mkv";
+	const std::string result = FileSystem::SanitizePathSegment(huge);
+	BOOST_CHECK_LE(result.size(), 240u);
+	BOOST_CHECK_EQUAL(result, FileSystem::SanitizePathSegment(head));
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentCapsAtUtf8Boundary)
+{
+	// The bound falls inside "é" (two bytes), so the whole character is dropped, not half of it.
+	const std::string head(1023, 'a');
+	const std::string name = head + "\xC3\xA9" + std::string(100, 'b');
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(name), FileSystem::SanitizePathSegment(head));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
