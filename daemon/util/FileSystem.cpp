@@ -23,6 +23,7 @@
 #include "FileSystem.h"
 #include "Util.h"
 #include "Log.h"
+#include <openssl/sha.h>
 
 #ifdef WIN32
 #include "utf8.h"
@@ -472,21 +473,19 @@ bool FileSystem::ReservedChar(char ch)
 	{
 		return true;
 	}
-	else
+
+	switch (ch)
 	{
-		switch (ch)
-		{
-			case '"':
-			case '*':
-			case '/':
-			case ':':
-			case '<':
-			case '>':
-			case '?':
-			case '\\':
-			case '|':
-				return true;
-		}
+		case '"':
+		case '*':
+		case '/':
+		case ':':
+		case '<':
+		case '>':
+		case '?':
+		case '\\':
+		case '|':
+			return true;
 	}
 
 	return false;
@@ -533,50 +532,31 @@ CString FileSystem::MakeValidFilename(const char* filename, bool allowSlashes)
 	return result;
 }
 
-std::string FileSystem::SanitizePathSegment(std::string_view name)
+namespace
 {
-	// Bound input length to prevent excessive allocations from untrusted metadata
-	if (name.size() > 1024)
+
+// Includes the "_" device-name prefix; the rest of the 255-byte limit holds ".duplicateN" from CollectionAnalyzer.
+constexpr size_t MAX_SEGMENT_LENGTH = 240;
+// "-" and 12 hex digits of SHA-256 over the original name; a truncated name stays
+// unique even when its first bytes match another name's.
+constexpr size_t HASH_SUFFIX_LENGTH = 13;
+
+void CollapseConsecutiveDots(std::string& str)
+{
+	if (str.find("..") == std::string::npos)
 	{
-		size_t cut = 1024;
-		// Back up over any trailing UTF-8 continuation bytes (10xxxxxx) to avoid
-		// splitting a multi-byte sequence
-		while (cut > 0 && (static_cast<unsigned char>(name[cut]) & 0xC0) == 0x80)
-		{
-			--cut;
-		}
-		name = name.substr(0, cut);
+		return;
 	}
 
-	// 1. Trim leading whitespace
-	while (!name.empty() && (name.front() == ' ' || name.front() == '\t'))
-	{
-		name.remove_prefix(1);
-	}
-	
-	// 2. Trim trailing whitespace and dots
-	while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '.'))
-	{
-		name.remove_suffix(1);
-	}
-
-	if (name.empty())
-	{
-		return "";
-	}
-
-	// 3. Remove illegal filesystem characters
-	std::string result = MakeValidFilename(std::string(name).c_str(), false).Str();
-
-	// 4. Safely collapse consecutive dots to normalize relative paths.
 	std::string collapsed;
-	collapsed.reserve(result.size());
+	collapsed.reserve(str.size());
+
 	size_t dotRun = 0;
-	for (char c : result)
+	for (char c : str)
 	{
 		if (c == '.')
 		{
-			dotRun++;
+			++dotRun;
 		}
 		else
 		{
@@ -592,6 +572,7 @@ std::string FileSystem::SanitizePathSegment(std::string_view name)
 			collapsed += c;
 		}
 	}
+
 	if (dotRun >= 2)
 	{
 		collapsed += '_';
@@ -600,21 +581,70 @@ std::string FileSystem::SanitizePathSegment(std::string_view name)
 	{
 		collapsed += '.';
 	}
-	result = std::move(collapsed);
 
-	// 5. Trim trailing dots/spaces that might have been exposed by MakeValidFilename or replacement
+	str = std::move(collapsed);
+}
+
+// Replaces illegal chars, neutralizes dot runs and trailing dots/spaces; the result is at most name.size() + 1 bytes.
+std::string SanitizeSegment(std::string_view name)
+{
+	std::string result = FileSystem::MakeValidFilename(std::string(name).c_str(), false).Str();
+	CollapseConsecutiveDots(result);
 	while (!result.empty() && (result.back() == '.' || result.back() == ' '))
 	{
 		result.pop_back();
 	}
+	return result == "." ? "" : result;
+}
 
-	// 6. Final safety check against Windows reserved names or empty path segments
-	if (result.empty() || result == "." || result == "..")
+} // namespace
+
+std::string FileSystem::SanitizePathSegment(std::string_view name)
+{
+	const size_t firstNonSpace = name.find_first_not_of(" \t");
+	if (firstNonSpace == std::string_view::npos)
 	{
 		return "";
 	}
+	name.remove_prefix(firstNonSpace);
 
-	return result;
+	if (name.size() <= MAX_SEGMENT_LENGTH)
+	{
+		std::string result = SanitizeSegment(name);
+		if (result.size() <= MAX_SEGMENT_LENGTH)
+		{
+			return result;
+		}
+	}
+
+	// Hash and extension come from the whole name, so names that differ only past the cut stay distinct.
+	// Only the kept prefix and the extension are copied, so a huge name costs no extra memory.
+	std::string_view ext;
+	const size_t dot = name.rfind('.');
+	if (dot != std::string_view::npos && dot > 0 && name.size() - dot <= 16)
+	{
+		ext = name.substr(dot);
+	}
+
+	unsigned char digest[SHA256_DIGEST_LENGTH];
+	SHA256(reinterpret_cast<const unsigned char*>(name.data()), name.size(), digest);
+	const std::string hash = std::format(
+		"-{:02x}{:02x}{:02x}{:02x}{:02x}{:02x}",
+		digest[0], digest[1], digest[2], digest[3], digest[4], digest[5]);
+
+	// The extra byte is for the "_" a Windows device name may get, so the result stays within MAX_SEGMENT_LENGTH.
+	size_t keep = MAX_SEGMENT_LENGTH - HASH_SUFFIX_LENGTH - ext.size() - 1;
+	while (keep > 0 && (static_cast<unsigned char>(name[keep]) & 0xC0) == 0x80)
+	{
+		--keep;
+	}
+
+	const std::string prefix = SanitizeSegment(name.substr(0, keep));
+	if (prefix.empty())
+	{
+		return "";
+	}
+	return prefix + hash + SanitizeSegment(ext);
 }
 
 std::string FileSystem::SanitizeRelativePath(std::string_view path)

@@ -255,4 +255,106 @@ BOOST_AUTO_TEST_CASE(DeleteReadOnlyFileUtf8PathTest)
 	BOOST_CHECK(!fs::exists(file));
 }
 
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentLimitsLengthTest)
+{
+	// A truncated name ends with "-" and 12 hex digits of SHA-256 over the original name.
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(std::string(300, 'a') + ".mkv"),
+		std::string(222, 'a') + "-2de2dc2b16e9.mkv");
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(std::string(300, 'b')),
+		std::string(226, 'b') + "-dccc1450d6fc");
+	// An extension longer than 16 bytes is not kept.
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(std::string(300, 'x') + ".very-long-extension"),
+		std::string(226, 'x') + "-3d451f497dae");
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentTruncatedReservedNameStaysAtLimit)
+{
+	// The device prefix "_" must fit in the reserved byte, so a cut name never exceeds 240.
+	const std::string result = FileSystem::SanitizePathSegment("CON." + std::string(300, 'a') + ".mkv");
+	BOOST_CHECK_EQUAL(result.size(), 240u);
+	BOOST_CHECK(result.starts_with("_CON."));
+	BOOST_CHECK(result.ends_with(".mkv"));
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentKeepsLongNamesDistinct)
+{
+	// Same first 240 bytes, different tails: plain prefix truncation would map both to one name.
+	const std::string prefix(250, 'a');
+	const std::string one = FileSystem::SanitizePathSegment(prefix + "-one.mkv");
+	const std::string two = FileSystem::SanitizePathSegment(prefix + "-two.mkv");
+	BOOST_CHECK_EQUAL(one.size(), 239u);
+	BOOST_CHECK_EQUAL(two.size(), 239u);
+	BOOST_CHECK(one != two);
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(prefix + "-one.mkv"), one);
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentKeepsUtf8CharactersWhole)
+{
+	// "é" is two bytes; the cut backs up to a character boundary instead of splitting one.
+	std::string name = "a";
+	for (int i = 0; i < 200; i++)
+	{
+		name += "é";
+	}
+
+	const std::string result = FileSystem::SanitizePathSegment(name + ".mkv");
+	BOOST_CHECK_EQUAL(result.size(), 238u);
+	std::string expectedPrefix = "a";
+	for (int i = 0; i < 110; i++)
+	{
+		expectedPrefix += "é";
+	}
+	BOOST_CHECK_EQUAL(result.substr(0, 221), expectedPrefix);
+	BOOST_CHECK(result.ends_with(".mkv"));
+}
+
+BOOST_AUTO_TEST_CASE(SanitizeRelativePathLimitsEachSegmentTest)
+{
+	const std::string input = std::string(300, 'x') + "/" + std::string(300, 'y') + ".mkv";
+	const std::string expected = std::string(226, 'x') + "-0d4e2ca9e9cb" + PATH_SEPARATOR +
+		std::string(222, 'y') + "-82c25194a6d9.mkv";
+	BOOST_CHECK_EQUAL(FileSystem::SanitizeRelativePath(input), expected);
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentLengthBoundaryTest)
+{
+	// 240 bytes is the last length that passes through untouched.
+	const std::string atLimit(240, 'a');
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(atLimit), atLimit);
+
+	// One byte more gets a hash suffix and is cut back to 240.
+	const std::string overLimit(241, 'a');
+	const std::string limited = FileSystem::SanitizePathSegment(overLimit);
+	BOOST_CHECK_EQUAL(limited.size(), 239u);
+	BOOST_CHECK(limited.starts_with(std::string(226, 'a')));
+	BOOST_CHECK(limited != overLimit);
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentPrefixedReservedNameStaysWithinLimit)
+{
+	// The Windows device prefix adds one byte, so a 240-byte reserved name must be cut to fit.
+	const std::string name = "CON." + std::string(236, 'a');
+	BOOST_REQUIRE_EQUAL(name.size(), 240u);
+	const std::string result = FileSystem::SanitizePathSegment(name);
+	BOOST_CHECK_LE(result.size(), 240u);
+	BOOST_CHECK(result.starts_with("_CON."));
+	BOOST_CHECK(result != "_" + name);
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentCleansLongPrefixAndExtension)
+{
+	// Illegal chars survive in neither the kept prefix nor the extension.
+	const std::string name = std::string(150, 'a') + ":" + std::string(150, 'b') + ".t?t";
+	const std::string result = FileSystem::SanitizePathSegment(name);
+	BOOST_CHECK_EQUAL(result.size(), 239u);
+	BOOST_CHECK(result.find(':') == std::string::npos);
+	BOOST_CHECK(result.find('?') == std::string::npos);
+	BOOST_CHECK(result.ends_with(".t_t"));
+}
+
+BOOST_AUTO_TEST_CASE(SanitizePathSegmentRejectsDotOnlyLongName)
+{
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(std::string(300, '.')), "");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

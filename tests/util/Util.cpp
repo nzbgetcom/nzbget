@@ -581,4 +581,56 @@ BOOST_AUTO_TEST_CASE(SanitizeLineTest)
 	BOOST_CHECK_EQUAL(s5, "Mädchen  4K");
 }
 
+BOOST_AUTO_TEST_CASE(Crc32KnownVectorTest)
+{
+	std::string data = "123456789";
+	Crc32 crc;
+	crc.Append((uchar*)data.data(), (uint32)data.size());
+	BOOST_CHECK_EQUAL(crc.Finish(), 0xCBF43926u);
+}
+
+BOOST_AUTO_TEST_CASE(Crc32AppendInPiecesTest)
+{
+	std::string data = "The quick brown fox jumps over the lazy dog";
+	Crc32 whole;
+	whole.Append((uchar*)data.data(), (uint32)data.size());
+	Crc32 pieces;
+	pieces.Append((uchar*)data.data(), 5);
+	pieces.Append((uchar*)data.data() + 5, (uint32)data.size() - 5);
+	BOOST_CHECK_EQUAL(pieces.Finish(), whole.Finish());
+}
+
+BOOST_AUTO_TEST_CASE(Crc32CombineTest)
+{
+	std::string a = "The quick brown fox ";
+	std::string b = "jumps over the lazy dog";
+	std::string ab = a + b;
+	Crc32 crcA, crcB, crcAB;
+	crcA.Append((uchar*)a.data(), (uint32)a.size());
+	crcB.Append((uchar*)b.data(), (uint32)b.size());
+	crcAB.Append((uchar*)ab.data(), (uint32)ab.size());
+	BOOST_CHECK_EQUAL(Crc32::Combine(crcA.Finish(), crcB.Finish(), (uint32)b.size()), crcAB.Finish());
+}
+
+BOOST_AUTO_TEST_CASE(Crc32CombineLongSegmentTest)
+{
+	std::string a(70000, 'x');
+	std::string b;
+	for (int i = 0; i < 100000; i++)
+	{
+		b += (char)(i * 31 + 7);
+	}
+	std::string ab = a + b;
+	Crc32 crcA, crcB, crcAB;
+	crcA.Append((uchar*)a.data(), (uint32)a.size());
+	crcB.Append((uchar*)b.data(), (uint32)b.size());
+	crcAB.Append((uchar*)ab.data(), (uint32)ab.size());
+	BOOST_CHECK_EQUAL(Crc32::Combine(crcA.Finish(), crcB.Finish(), (uint32)b.size()), crcAB.Finish());
+}
+
+BOOST_AUTO_TEST_CASE(Crc32CombineEmptySecondTest)
+{
+	BOOST_CHECK_EQUAL(Crc32::Combine(0xCBF43926u, 0, 0), 0xCBF43926u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

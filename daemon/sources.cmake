@@ -16,6 +16,10 @@ target_sources(libnzbget PRIVATE
 	${CMAKE_SOURCE_DIR}/daemon/network/http/Parser.cpp
 	${CMAKE_SOURCE_DIR}/daemon/network/http/HttpClient.cpp
 	${CMAKE_SOURCE_DIR}/daemon/network/NetworkComponent.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/nntp/ArticleDecoder.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/nntp/RawDecoder.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/nntp/UuDecoder.cpp
+	${CMAKE_SOURCE_DIR}/daemon/network/nntp/YencDecoder.cpp
 
 	${CMAKE_SOURCE_DIR}/daemon/extension/CommandScript.cpp
 	${CMAKE_SOURCE_DIR}/daemon/extension/FeedScript.cpp
@@ -164,6 +168,7 @@ target_include_directories(libnzbget PUBLIC
 	${CMAKE_SOURCE_DIR}/daemon/main
 	${CMAKE_SOURCE_DIR}/daemon/network
 	${CMAKE_SOURCE_DIR}/daemon/network/http
+	${CMAKE_SOURCE_DIR}/daemon/network/nntp
 	${CMAKE_SOURCE_DIR}/daemon/nntp
 	${CMAKE_SOURCE_DIR}/daemon/nserv
 	${CMAKE_SOURCE_DIR}/daemon/postprocess

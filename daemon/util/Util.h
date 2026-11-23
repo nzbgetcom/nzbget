@@ -498,21 +498,13 @@ private:
 class Crc32
 {
 public:
-	Crc32() { Reset(); }
 	void Reset();
-	void Append(uchar* block, uint32 length);
-	uint32 Finish();
+	void Append(const void* block, uint32 length);
+	uint32 Finish() const;
 	static uint32 Combine(uint32 crc1, uint32 crc2, uint32 len2);
 
 private:
-#if defined(WIN32) && !defined(_WIN64)
-	// VC++ in 32 bit mode can not "alignas(16)" dynamically allocated objects
-	alignas(8) uint32_t m_state[4 * 5 + 8]; // = YEncode::crc_state
-	void* State() { void* p = &m_state; size_t s = sizeof(m_state); return std::align(16, 4 * 5, p, s); }
-#else
-	alignas(16) uint32_t m_state[4 * 5]; // = YEncode::crc_state
-	void* State() { return &m_state; }
-#endif
+	uint32 m_crc{0};
 };
 
 #endif

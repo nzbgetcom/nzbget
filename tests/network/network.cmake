@@ -11,4 +11,8 @@ list(APPEND TESTS_SRC
 	${CMAKE_CURRENT_SOURCE_DIR}/network/http/HttpClient.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/network/http/HttpClientTls.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/network/NetworkComponent.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/network/nntp/ArticleDecoder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/network/nntp/RawDecoder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/network/nntp/UuDecoder.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/network/nntp/YencDecoder.cpp
 )
