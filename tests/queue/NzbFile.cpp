@@ -131,19 +131,20 @@ BOOST_AUTO_TEST_CASE(SanitizePathSegmentTest)
 	std::string longDots(10000, '.');
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(longDots), "");
 	std::string longName(2000, 'a');
-	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(longName).size(), 1024u);
+	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment(longName).size(), 239u);
 
-	// UTF-8 boundary truncation: multi-byte character straddling byte 1024
-	std::string splitUtf8 = std::string(1023, 'a') + "\xC3\xA9" + "tail";
+	// UTF-8 boundary truncation: the kept prefix (226 bytes) would end inside "é", so it backs up
+	std::string splitUtf8 = std::string(226, 'a') + "\xC3\xA9" + std::string(20, 'z');
 	std::string cleanSplit = FileSystem::SanitizePathSegment(splitUtf8);
-	BOOST_CHECK_EQUAL(cleanSplit.size(), 1023u);
-	BOOST_CHECK_EQUAL(cleanSplit.back(), 'a');
+	BOOST_CHECK_EQUAL(cleanSplit.size(), 239u);
+	BOOST_CHECK_EQUAL(cleanSplit.substr(0, 226), std::string(226, 'a'));
+	BOOST_CHECK_EQUAL(cleanSplit[226], '-');
 
-	// UTF-8 multi-byte character entirely within 1024 limit is preserved
-	std::string intactUtf8 = std::string(1022, 'a') + "\xC3\xA9" + "tail";
+	// UTF-8 multi-byte character entirely within the kept prefix is preserved
+	std::string intactUtf8 = std::string(224, 'a') + "\xC3\xA9" + std::string(20, 'z');
 	std::string cleanIntact = FileSystem::SanitizePathSegment(intactUtf8);
-	BOOST_CHECK_EQUAL(cleanIntact.size(), 1024u);
-	BOOST_CHECK_EQUAL(cleanIntact.substr(1022), "\xC3\xA9");
+	BOOST_CHECK_EQUAL(cleanIntact.size(), 239u);
+	BOOST_CHECK_EQUAL(cleanIntact.substr(224, 2), "\xC3\xA9");
 
 	// Drive and UNC paths
 	BOOST_CHECK_EQUAL(FileSystem::SanitizePathSegment("C:\\Windows"), "C__Windows");
