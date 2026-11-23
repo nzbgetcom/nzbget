@@ -2342,6 +2342,12 @@ ul.help > li {
     width: 150px;
 }
 
+@media (max-width: 768px) {
+    #ConfigContent .editsmall {
+        width: 200px;
+    }
+}
+
 #ConfigContent table.editor {
     width: 100%;
 }
@@ -2444,7 +2450,6 @@ div.control-group.last-group {
 }
 
 div.multiset-toolbar button {
-    margin-right: 15px;
     margin-bottom: 5px;
 }
 
