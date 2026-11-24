@@ -1248,9 +1248,11 @@ var Config = (new function($)
 			// Try translation first, fallback to original unit string
 			var translatedUnit = I18n.defaultValue(unitKey, unitStr);
 
+			var inputClass = unitStr === 'HH:MM' ? 'editsmall' : 'editnumeric';
+
 			option.type = 'numeric';
 			html += '<div class="input-append">'+
-				'<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="editnumeric">'+
+				'<input type="text" id="' + option.formId + '" value="' + Util.textToAttr(value) + '" class="' + inputClass + '">'+
 				'<span class="add-on text-lowercase">'+ translatedUnit +'</span>'+
 				'</div>';
 		}
