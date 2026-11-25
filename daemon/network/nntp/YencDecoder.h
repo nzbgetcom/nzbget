@@ -50,9 +50,6 @@ public:
 	DecodeStatus Finish();
 	const ArticleMeta& Meta() const noexcept { return m_meta; }
 
-	/// Parses one control line; public for tests.
-	bool ParseControlLine(std::string_view line);
-
 	bool HasBegin() const noexcept { return m_seenBegin; }
 	bool HasEnd() const noexcept { return m_seenEnd; }
 	/// False when a header line contradicts another or the declared sizes; see ParseControlLine().
@@ -78,16 +75,15 @@ private:
 		bool endControl{false};
 	};
 
-	/// Longest keyword plus separator ("=ybegin "): a line is classified once this many bytes are in.
-	static constexpr size_t CONTROL_WINDOW = 8;
 	/// A longer control line is refused, never decoded as data.
 	static constexpr size_t MAX_CONTROL_LINE = 8192;
 
+	/// Parses one control line; false when the line is not a recognized control line.
+	bool ParseControlLine(std::string_view line);
 	DataStep DecodeData(std::span<const char> src, std::span<char> dest) noexcept;
 	void ResolveControlLine();
-	void StartControlLineFromFront();
 	/// Consumes the ".\r\n" line which follows =yend, so the connection stays in sync.
-	bool ConsumeEndSequence(std::span<const char> src, size_t& pos) noexcept;
+	void ConsumeEndSequence(std::span<const char> src, size_t& pos) noexcept;
 
 	bool m_crcCheck;
 	bool m_seenBegin{false};
@@ -95,22 +91,17 @@ private:
 	bool m_headerValid{true};
 	bool m_beginPart{false};
 	bool m_hasPart{false};
-	bool m_complete{false};
-	bool m_afterEnd{false};
-	bool m_terminated{false};
+	bool m_complete{false}; // the NNTP "." terminator has been consumed
+	bool m_afterEnd{false}; // =yend seen, waiting for the terminator
 	bool m_controlPending{false};
-	bool m_pendingByte{false};
-	int m_termState{0};
+	int m_termState{0}; // 0 line start, 1 ".", 2 ".\r", 3 mid-line
 	int64_t m_produced{0};
 	int64_t m_endSize{-1};
 	ArticleMeta m_meta;
 
 	RapidYencDecoderState m_state{RYDEC_STATE_CRLF};
 
-	FixedBuffer<CONTROL_WINDOW> m_front;
-	size_t m_frontPos{0};
 	FixedBuffer<MAX_CONTROL_LINE> m_control;
-	FixedBuffer<2> m_marker;
 };
 
 } // namespace network::nntp

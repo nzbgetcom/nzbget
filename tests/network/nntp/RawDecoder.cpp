@@ -1,77 +1,18 @@
 #include "nzbget.h"
 
-#include <algorithm>
-#include <boost/test/unit_test.hpp>
-#include <vector>
 #include "ArticleDecoder.h"
+#include "DecoderTestHelpers.h"
+#include <boost/test/unit_test.hpp>
+#include <string>
+#include <utility>
 
 BOOST_AUTO_TEST_SUITE(RawDecoderSuite)
 
 namespace
 {
-
-struct Run
-{
-	std::string out;
-	bool complete{false};
-};
-
-template <network::nntp::DecoderImpl T>
-Run Decode(T& decoder, const std::string& article, size_t piece)
-{
-	Run run;
-	char buf[256];
-	size_t pos = 0;
-	while (pos < article.size())
-	{
-		const size_t take = std::min(piece, article.size() - pos);
-		const network::nntp::DecodeStep step = decoder.Decode({article.data() + pos, take}, {buf, sizeof(buf)});
-		run.out.append(buf, step.produced);
-		pos += step.consumed;
-		if (step.complete)
-		{
-			run.complete = true;
-			break;
-		}
-		if (step.consumed == 0 && step.produced == 0)
-		{
-			break;
-		}
-	}
-	return run;
-}
-
-// Decodes inside one buffer: input is read at pos, output is written at outPos,
-// and outPos must never pass pos.
-std::string DecodeInPlace(const std::string& article, size_t piece)
-{
-	std::vector<char> buf(article.begin(), article.end());
-	buf.resize(article.size() + 64);
-	network::nntp::RawDecoder decoder;
-
-	size_t pos = 0;
-	size_t outPos = 0;
-	while (pos < article.size())
-	{
-		const size_t take = std::min(piece, article.size() - pos);
-		const network::nntp::DecodeStep step = decoder.Decode(
-			std::span<const char>(buf.data() + pos, take),
-			std::span<char>(buf.data() + outPos, buf.size() - outPos));
-		outPos += step.produced;
-		pos += step.consumed;
-		BOOST_REQUIRE_LE(outPos, pos);
-		if (step.complete)
-		{
-			break;
-		}
-		if (step.consumed == 0 && step.produced == 0)
-		{
-			BOOST_FAIL("decoder stalled at " << pos);
-		}
-	}
-	return std::string(buf.data(), outPos);
-}
-
+using nntp_test::Decode;
+using nntp_test::DecodeAtSourceStart;
+using nntp_test::Run;
 } // namespace
 
 BOOST_AUTO_TEST_CASE(RawDecoder_PassesBodyAndDropsTerminator)
@@ -103,13 +44,40 @@ BOOST_AUTO_TEST_CASE(RawDecoder_KeepsPartialTerminatorLookalikes)
 	BOOST_CHECK_EQUAL(run.out, "a\rb\r\n.x\r\n");
 }
 
-BOOST_AUTO_TEST_CASE(RawDecoder_KeepsDotStuffing)
+BOOST_AUTO_TEST_CASE(RawDecoder_UnstuffsDotAtLineStart)
 {
 	network::nntp::RawDecoder decoder;
 	const Run run = Decode(decoder, "a\r\n..b\r\n.\r\n", 64);
 
 	BOOST_CHECK(run.complete);
-	BOOST_CHECK_EQUAL(run.out, "a\r\n..b\r\n");
+	BOOST_CHECK_EQUAL(run.out, "a\r\n.b\r\n");
+}
+
+BOOST_AUTO_TEST_CASE(RawDecoder_UnstuffsWithOneByteOutputBuffer)
+{
+	const std::string article = "..\r\n.\r\n";
+	network::nntp::RawDecoder decoder;
+	char buf[1];
+	std::string out;
+	size_t pos = 0;
+	while (pos < article.size())
+	{
+		const network::nntp::DecodeStep step =
+			decoder.Decode({article.data() + pos, article.size() - pos}, {buf, sizeof(buf)});
+		out.append(buf, step.produced);
+		pos += step.consumed;
+		if (step.complete)
+		{
+			break;
+		}
+		if (step.consumed == 0 && step.produced == 0)
+		{
+			BOOST_FAIL("decoder stalled at " << pos);
+		}
+	}
+
+	BOOST_CHECK_EQUAL(out, ".\r\n");
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
 }
 
 BOOST_AUTO_TEST_CASE(RawDecoder_MissingTerminatorIsIncomplete)
@@ -207,13 +175,40 @@ BOOST_AUTO_TEST_CASE(RawDecoder_TinyOutputBufferFlushesFalseTerminator)
 	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
 }
 
-BOOST_AUTO_TEST_CASE(RawDecoder_DecodesInPlace)
+BOOST_AUTO_TEST_CASE(RawDecoder_DecodesInPlaceAtSourceStartAcrossChunks)
 {
-	const std::string article = "hello\r\nworld\r\n.\r\n";
+	const std::string article = "hello\r\n..world\r\n.\r\n";
 
-	for (size_t piece : {size_t(1), size_t(2), size_t(64)})
+	for (const auto& [capacity, piece] : {std::pair{size_t(8), size_t(3)}, std::pair{size_t(16), size_t(1)},
+			std::pair{size_t(64 * 1024), size_t(4096)}})
 	{
-		BOOST_REQUIRE_EQUAL(DecodeInPlace(article, piece), "hello\r\nworld\r\n");
+		const Run run = DecodeAtSourceStart<network::nntp::RawDecoder>(article, capacity, piece);
+		BOOST_REQUIRE_MESSAGE(run.complete, "capacity=" << capacity << " piece=" << piece);
+		BOOST_REQUIRE_EQUAL(run.out, "hello\r\n.world\r\n");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(RawDecoder_InSituWaitsForTerminatorLookalikeAcrossChunks)
+{
+	// The window ends on ".\r", which only the next byte can resolve as data.
+	const std::string article = "a\r\n.\rx\r\n.\r\n";
+
+	const Run run = DecodeAtSourceStart<network::nntp::RawDecoder>(article, 5, 5);
+	BOOST_REQUIRE(run.complete);
+	BOOST_REQUIRE_EQUAL(run.out, "a\r\n.\rx\r\n");
+}
+
+BOOST_AUTO_TEST_CASE(RawDecoder_DecodesWithMinimalWindow)
+{
+	// ".\r" at the start of a full window must not stall: MinBufferSize leaves room for the third byte.
+	const std::string article = ".\rx\r\n.\r\n";
+
+	for (size_t piece : {size_t(1), size_t(3)})
+	{
+		const Run run =
+			DecodeAtSourceStart<network::nntp::RawDecoder>(article, network::nntp::RawDecoder::MinBufferSize, piece);
+		BOOST_REQUIRE_MESSAGE(run.complete, "piece=" << piece);
+		BOOST_REQUIRE_EQUAL(run.out, ".\rx\r\n");
 	}
 }
 

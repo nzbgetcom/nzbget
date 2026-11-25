@@ -20,10 +20,13 @@
 #include "nzbget.h"
 #include <boost/test/unit_test.hpp>
 
+#include "DecoderTestHelpers.h"
 #include "YencDecoder.h"
 #include "YencFixtures.h"
 
+#include <cstring>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace yenc_fixtures;
@@ -34,11 +37,13 @@ namespace
 struct DecodeResult
 {
 	std::string decoded;
+	std::string name;
 	bool complete{false};
 	bool finished{false};
 	bool headerValid{false};
 	int64_t beginOffset{-1};
 	int64_t partSize{-1};
+	int64_t fileSize{-1};
 	int64_t produced{-1};
 	int64_t endSize{-1};
 };
@@ -75,8 +80,10 @@ DecodeResult DecodeArticle(const std::string& article, size_t piece, bool crcChe
 
 	result.finished = decoder.Finish() == network::nntp::DecodeStatus::Finished;
 	result.headerValid = decoder.HeaderValid();
+	result.name = decoder.Name();
 	result.beginOffset = decoder.BeginOffset();
 	result.partSize = decoder.PartSize();
+	result.fileSize = decoder.FileSize();
 	result.produced = decoder.Produced();
 	result.endSize = decoder.EndSize();
 	return result;
@@ -87,12 +94,12 @@ DecodeResult DecodeArticle(const std::string& article, size_t piece, bool crcChe
 namespace
 {
 
-// Decodes inside one buffer: input is read at pos, output is written at outPos,
-// and outPos must never pass pos.
-std::string DecodeInPlace(const std::string& article, size_t piece)
+// Decodes into a separate output buffer: input is read at pos, output is written at
+// outPos, and outPos must never pass pos.
+std::string DecodeWithSeparateOutput(const std::string& article, size_t piece)
 {
 	std::vector<char> buf(article.begin(), article.end());
-	buf.resize(article.size() + 64); // output room past the article, as a real buffer has
+	std::vector<char> out(article.size() + 64);
 	network::nntp::YencDecoder decoder(true);
 
 	size_t pos = 0;
@@ -102,7 +109,7 @@ std::string DecodeInPlace(const std::string& article, size_t piece)
 		const size_t take = std::min(piece, article.size() - pos);
 		const auto step = decoder.Decode(
 			std::span<const char>(buf.data() + pos, take),
-			std::span<char>(buf.data() + outPos, buf.size() - outPos));
+			std::span<char>(out.data() + outPos, out.size() - outPos));
 		outPos += step.produced;
 		pos += step.consumed;
 		BOOST_REQUIRE_LE(outPos, pos);
@@ -115,9 +122,11 @@ std::string DecodeInPlace(const std::string& article, size_t piece)
 			BOOST_FAIL("decoder stalled at " << pos);
 		}
 	}
-	return std::string(buf.data(), outPos);
+	return std::string(out.data(), outPos);
 }
 
+using nntp_test::DecodeAtSourceStart;
+using nntp_test::Run;
 } // namespace
 
 BOOST_AUTO_TEST_SUITE(YencDecoderSuite)
@@ -197,7 +206,7 @@ BOOST_AUTO_TEST_CASE(YencDecoder_FillsOutputBufferAndResumes)
 
 	// Small output buffer: every call stops on a full buffer and resumes.
 	const std::string body = EncodeYenc(payload) + "=yend size=" +
-		std::to_string(payload.size()) + " part=1\r\n";
+		std::to_string(payload.size()) + " part=1\r\n.\r\n";
 
 	std::vector<char> out(16);
 	std::string decoded;
@@ -258,14 +267,42 @@ BOOST_AUTO_TEST_CASE(YencDecoder_SinglePartIgnoresPcrc32)
 BOOST_AUTO_TEST_CASE(YencDecoder_ReadsBeginLineMetadata)
 {
 	const std::string payload = MakePayload();
-	network::nntp::YencDecoder decoder(true);
 	const std::string article = MakeArticle(payload, 1);
-	decoder.ParseControlLine(std::string_view(article).substr(0, article.find("\r\n")));
+	const DecodeResult result = DecodeArticle(article.substr(0, article.find("\r\n") + 2), 7, true);
 
-	BOOST_TEST(decoder.HasBegin());
-	BOOST_TEST(decoder.Multipart());
-	BOOST_TEST(decoder.FileSize() == static_cast<int64_t>(payload.size()));
-	BOOST_TEST(decoder.Name() == "test.bin");
+	BOOST_TEST(result.name == "test.bin");
+	BOOST_TEST(result.fileSize == static_cast<int64_t>(payload.size()));
+	BOOST_TEST(!result.complete);
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_DecodesUtf8Name)
+{
+	const std::string article =
+		"=ybegin line=128 size=3 name=caf\xc3\xa9.bin\r\n" + EncodeYenc("Cat") + "=yend size=3\r\n.\r\n";
+
+	network::nntp::YencDecoder decoder(true);
+	std::vector<char> out(16);
+	const auto step =
+		decoder.Decode(std::span<const char>(article.data(), article.size()), std::span<char>(out.data(), out.size()));
+
+	BOOST_TEST(step.complete);
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
+	BOOST_CHECK_EQUAL(decoder.Meta().name, "caf\xc3\xa9.bin");
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_DecodesLatin1Name)
+{
+	const std::string article =
+		"=ybegin line=128 size=3 name=caf\xe9.bin\r\n" + EncodeYenc("Cat") + "=yend size=3\r\n.\r\n";
+
+	network::nntp::YencDecoder decoder(true);
+	std::vector<char> out(16);
+	const auto step =
+		decoder.Decode(std::span<const char>(article.data(), article.size()), std::span<char>(out.data(), out.size()));
+
+	BOOST_TEST(step.complete);
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
+	BOOST_CHECK_EQUAL(decoder.Meta().name, "caf\xc3\xa9.bin");
 }
 
 BOOST_AUTO_TEST_CASE(YencDecoder_TakesYpartFromBeginLine)
@@ -334,19 +371,21 @@ BOOST_AUTO_TEST_CASE(YencDecoder_RefusesControlLineOverLimitWithoutDecodingIt)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(YencDecoder_KeepsDataLinesStartingWithYAsData)
+BOOST_AUTO_TEST_CASE(YencDecoder_RejectsDataLineStartingWithY)
 {
-	// "=y" is an escape for byte 0x0F; "=yabc" and "=yendabc" are data, not control lines.
+	// A conforming encoder escapes only 0x00, 0x0A, 0x0D and 0x3D, so 0x0F is never
+	// encoded as "=y". A line that is not =ybegin/=ypart/=yend is refused and skipped
+	// whole instead of being replayed as data.
 	const std::string article = "=ybegin part=1 total=1 line=128 size=11 name=test.bin\r\n"
 		"=ypart begin=1 end=11\r\n=yabc\r\n=yendabc\r\n=yend size=11 part=1\r\n.\r\n";
-	const std::string expected = std::string("\x0f" "789" "\x0f" ";D:789");
 
 	for (size_t piece : {size_t(1), size_t(2), size_t(3), size_t(5), size_t(7), size_t(4096)})
 	{
 		const DecodeResult result = DecodeArticle(article, piece, true);
 		BOOST_REQUIRE_MESSAGE(result.complete, "piece=" << piece);
-		BOOST_REQUIRE_MESSAGE(result.headerValid, "piece=" << piece);
-		BOOST_REQUIRE_MESSAGE(result.decoded == expected, "piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(!result.headerValid, "piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(!result.finished, "piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(result.produced == 0, "piece=" << piece);
 	}
 }
 
@@ -409,8 +448,63 @@ BOOST_AUTO_TEST_CASE(YencDecoder_EndWithoutTerminatorIsProtocolIncomplete)
 	const DecodeResult result = DecodeArticle(article, 5, true);
 
 	BOOST_TEST(!result.complete);
-	BOOST_TEST(result.finished);
+	BOOST_TEST(!result.finished);
 	BOOST_TEST(result.decoded == payload);
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_StopsAtTerminatorWithoutYend)
+{
+	// Without =yend rapidyenc reports the "." terminator itself. Bytes after it belong
+	// to the next response and must not be decoded.
+	const std::string payload(20, 't');
+	const std::string head = "=ybegin line=128 size=20 name=a.bin\r\n" + EncodeYenc(payload);
+	const std::string trailing = "TRAILING\r\n";
+	const std::string article = head + ".\r\n" + trailing;
+
+	network::nntp::YencDecoder decoder(true);
+	std::vector<char> out(128);
+	const auto step = decoder.Decode(std::span<const char>(article), std::span<char>(out));
+
+	BOOST_TEST(step.complete);
+	BOOST_TEST(step.produced == payload.size());
+	BOOST_TEST(step.consumed == head.size() + 3);
+	BOOST_TEST(std::string(out.data(), step.produced) == payload);
+	BOOST_TEST((decoder.Finish() == network::nntp::DecodeStatus::ArticleIncomplete));
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_IgnoresDotsInsideLineAfterEnd)
+{
+	const std::string payload = "Cat";
+	for (const std::string& line : {std::string("foo.\r\n"), std::string("..\r\n")})
+	{
+		const std::string article =
+			"=ybegin line=128 size=3 name=a.bin\r\n" + EncodeYenc(payload) + "=yend size=3\r\n" + line + ".\r\nNEXT";
+		network::nntp::YencDecoder decoder(true);
+		std::vector<char> out(64);
+
+		const auto step = decoder.Decode(std::span<const char>(article), out);
+
+		BOOST_REQUIRE_MESSAGE(step.complete, line);
+		BOOST_TEST((decoder.Finish() == network::nntp::DecodeStatus::Finished));
+		BOOST_TEST(std::string_view(article).substr(step.consumed) == "NEXT");
+	}
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_RejectsNegativeSizes)
+{
+	const std::string body = EncodeYenc("Cat");
+	const std::vector<std::string> articles = {
+		"=ybegin line=128 size=-1 name=a.bin\r\n" + body + "=yend size=3\r\n.\r\n",
+		"=ybegin line=128 size=3 name=a.bin\r\n" + body + "=yend size=-1\r\n.\r\n",
+	};
+
+	for (const std::string& article : articles)
+	{
+		const DecodeResult result = DecodeArticle(article, 7, true);
+		BOOST_TEST(result.complete);
+		BOOST_TEST(!result.headerValid);
+		BOOST_TEST(!result.finished);
+	}
 }
 
 BOOST_AUTO_TEST_CASE(YencDecoder_ConsumesEndAndTerminatorSplitAtEveryPoint)
@@ -445,6 +539,7 @@ BOOST_AUTO_TEST_CASE(YencDecoder_ConsumesEndAndTerminatorSplitAtEveryPoint)
 
 		BOOST_REQUIRE_MESSAGE(complete, "cut=" << cut);
 		BOOST_REQUIRE_MESSAGE(decoded == payload, "cut=" << cut << " got=" << decoded.size());
+		BOOST_REQUIRE_MESSAGE(decoder.Finish() == network::nntp::DecodeStatus::Finished, "cut=" << cut);
 	}
 }
 
@@ -519,28 +614,30 @@ BOOST_AUTO_TEST_CASE(YencDecoder_ReadsOnlyWithinInputSpan)
 	}
 }
 
-BOOST_AUTO_TEST_CASE(YencDecoder_DecodesInPlace)
+BOOST_AUTO_TEST_CASE(YencDecoder_DecodesWithSeparateOutput)
 {
 	const std::string payload = MakePayload();
 	const std::string article = MakeArticle(payload);
 
 	for (size_t piece : {size_t(1), size_t(3), size_t(64), size_t(4096)})
 	{
-		BOOST_REQUIRE_MESSAGE(DecodeInPlace(article, piece) == payload, "piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(DecodeWithSeparateOutput(article, piece) == payload, "piece=" << piece);
 	}
 }
 
-BOOST_AUTO_TEST_CASE(YencDecoder_InPlaceReplayNeverPassesUnconsumedInput)
+BOOST_AUTO_TEST_CASE(YencDecoder_DecodesInPlaceAtSourceStartAcrossChunks)
 {
-	// Replayed "=y" data lines are written after their bytes were already consumed; the
-	// in-place output must still stay behind the input position.
-	const std::string article = "=ybegin part=1 total=1 line=128 size=11 name=test.bin\r\n"
-		"=ypart begin=1 end=11\r\n=yabc\r\n=yendabc\r\n=yend size=11 part=1\r\n.\r\n";
-	const std::string expected = std::string("\x0f" "789" "\x0f" ";D:789");
+	// Input and output share one window that starts at the first unconsumed byte;
+	// control lines and data span several windows.
+	const std::string payload = MakePayload();
+	const std::string article = MakeArticle(payload);
 
-	for (size_t piece : {size_t(1), size_t(2), size_t(3), size_t(5), size_t(7), size_t(4096)})
+	const std::pair<size_t, size_t> cases[] = {{8, 3}, {16, 1}, {64 * 1024, 4096}};
+	for (const auto& [capacity, piece] : cases)
 	{
-		BOOST_REQUIRE_MESSAGE(DecodeInPlace(article, piece) == expected, "piece=" << piece);
+		const Run run = DecodeAtSourceStart<network::nntp::YencDecoder>(article, capacity, piece, true);
+		BOOST_REQUIRE_MESSAGE(run.complete, "capacity=" << capacity << " piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(run.out == payload, "capacity=" << capacity << " piece=" << piece);
 	}
 }
 
@@ -611,6 +708,76 @@ BOOST_AUTO_TEST_CASE(YencDecoder_NeverFinishesOnHostileHeaderValues)
 			BOOST_REQUIRE_MESSAGE(!result.finished, "article=" << i << " piece=" << piece);
 		}
 	}
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_AcceptsTrailingJunkInNumericParams)
+{
+	const std::string payload(10, 'h');
+	const std::vector<std::string> articles = {
+		"=ybegin size=10x\r\n" + EncodeYenc(payload) + "=yend size=10\r\n.\r\n",
+		"=ybegin size=10\r\n" + EncodeYenc(payload) + "=yend size=10x\r\n.\r\n",
+		"=ybegin part=1 total=1 line=128 size=10 name=a.bin\r\n=ypart begin=1 end=10x\r\n" + EncodeYenc(payload) +
+			"=yend size=10 part=1\r\n.\r\n",
+	};
+
+	for (size_t i = 0; i < articles.size(); i++)
+	{
+		for (size_t piece : {size_t(1), size_t(7), size_t(4096)})
+		{
+			const DecodeResult result = DecodeArticle(articles[i], piece, true);
+			BOOST_REQUIRE_MESSAGE(result.complete, "article=" << i << " piece=" << piece);
+			BOOST_REQUIRE_MESSAGE(result.finished, "article=" << i << " piece=" << piece);
+			BOOST_REQUIRE_MESSAGE(result.decoded == payload, "article=" << i << " piece=" << piece);
+		}
+	}
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_ParsesParamsAfterName)
+{
+	const std::string payload(10, 'h');
+	const std::string article = "=ybegin line=128 name=foo.bin size=10 pcrc32=deadbeef\r\n" +
+		EncodeYenc(payload) + "=yend size=10\r\n.\r\n";
+
+	const DecodeResult result = DecodeArticle(article, 7, true);
+	BOOST_REQUIRE(result.complete);
+	BOOST_REQUIRE(result.finished);
+	BOOST_CHECK_EQUAL(result.name, "foo.bin");
+	BOOST_CHECK_EQUAL(result.fileSize, 10);
+	BOOST_CHECK(result.decoded == payload);
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_KeepsSpacesInName)
+{
+	const std::string article =
+		"=ybegin line=128 size=3 name=my file.bin\r\n" + EncodeYenc("Cat") + "=yend size=3\r\n.\r\n";
+
+	const DecodeResult result = DecodeArticle(article, 5, true);
+	BOOST_REQUIRE(result.complete);
+	BOOST_REQUIRE(result.finished);
+	BOOST_CHECK_EQUAL(result.name, "my file.bin");
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_RejectsEndWithoutSize)
+{
+	const std::string payload(10, 'h');
+	const std::string article =
+		"=ybegin line=128 size=10 name=a.bin\r\n" + EncodeYenc(payload) + "=yend\r\n.\r\n";
+
+	const DecodeResult result = DecodeArticle(article, 7, true);
+	BOOST_REQUIRE(result.complete);
+	BOOST_REQUIRE(!result.finished);
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_AcceptsNumberAtEndOfLine)
+{
+	const std::string payload(10, 'h');
+	const std::string article = "=ybegin size=10\r\n" + EncodeYenc(payload) + "=yend size=10\r\n.\r\n";
+
+	const DecodeResult result = DecodeArticle(article, 7, true);
+	BOOST_REQUIRE(result.complete);
+	BOOST_REQUIRE(result.headerValid);
+	BOOST_REQUIRE(result.finished);
+	BOOST_CHECK(result.decoded == payload);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

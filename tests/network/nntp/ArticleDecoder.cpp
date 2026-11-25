@@ -35,22 +35,35 @@ namespace nntp = network::nntp;
 namespace
 {
 
-/// Feeds the article in pieces, reusing dest for every call; fails on a stall.
+/// Feeds the article in pieces into a window that keeps the unconsumed tail, like the
+/// async caller does; output goes to dest. Fails only when no more input can be added.
 std::string DecodeAll(nntp::ArticleDecoder& decoder, const std::string& article, std::span<char> dest, size_t piece)
 {
 	std::string out;
-	size_t pos = 0;
-	while (pos < article.size())
+	std::vector<char> src(article.size() + 1);
+	size_t fed = 0;
+	size_t end = 0;
+	while (fed < article.size() || end > 0)
 	{
-		const size_t take = std::min(piece, article.size() - pos);
-		const nntp::DecodeStep step = decoder.Decode(std::span<const char>(article.data() + pos, take), dest);
+		if (fed < article.size())
+		{
+			const size_t take = std::min(piece, article.size() - fed);
+			std::memcpy(src.data() + end, article.data() + fed, take);
+			end += take;
+			fed += take;
+		}
+
+		const nntp::DecodeStep step = decoder.Decode(std::span<const char>(src.data(), end), dest);
 		out.append(dest.data(), step.produced);
-		pos += step.consumed;
+		std::memmove(src.data(), src.data() + step.consumed, end - step.consumed);
+		end -= step.consumed;
 		if (step.complete)
 		{
 			break;
 		}
-		BOOST_REQUIRE_MESSAGE(step.consumed > 0 || step.produced > 0, "stalled at " << pos << " take=" << take << " dest=" << dest.size() << " article=" << article.size());
+		BOOST_REQUIRE_MESSAGE(step.consumed > 0 || step.produced > 0 || fed < article.size(),
+							  "stalled at " << fed << " take=" << piece << " dest=" << dest.size()
+											<< " article=" << article.size());
 	}
 	return out;
 }
@@ -145,7 +158,7 @@ BOOST_AUTO_TEST_CASE(Create_ReusesDecoderForNextArticle)
 
 BOOST_AUTO_TEST_CASE(Decoder_ProgressesWithMinBufferSize)
 {
-	BOOST_CHECK_EQUAL(nntp::ArticleDecoder::MinBufferSize, 45u);
+	BOOST_CHECK_EQUAL(nntp::ArticleDecoder::MinBufferSize, nntp::UuDecoder::MAX_LINE);
 
 	const std::string payload = yenc_fixtures::MakePayload();
 	const std::string article = yenc_fixtures::MakeArticle(payload);
@@ -200,6 +213,25 @@ BOOST_AUTO_TEST_CASE(FixedBuffer_RejectsOverflow)
 	BOOST_CHECK_EQUAL(buf.Size(), 0u);
 }
 
+BOOST_AUTO_TEST_CASE(MetaIsReadyBeforeFirstData)
+{
+	// The caller must be able to reject a foreign article before writing anything.
+	const std::string header =
+		"=ybegin part=2 total=3 line=128 size=1000 name=test.bin\r\n=ypart begin=101 end=200\r\n";
+	nntp::ArticleDecoder decoder;
+	decoder.Create(nntp::ArticleFormat::Yenc, false);
+	std::vector<char> dest(16);
+
+	const nntp::DecodeStep step =
+		decoder.Decode(std::span<const char>(header.data(), header.size()), std::span<char>(dest.data(), dest.size()));
+
+	BOOST_CHECK_EQUAL(step.produced, 0u);
+	BOOST_CHECK_EQUAL(decoder.Meta().offset, 100);
+	BOOST_CHECK_EQUAL(decoder.Meta().size, 100);
+	BOOST_CHECK_EQUAL(decoder.Meta().fileSize, 1000);
+	BOOST_CHECK_EQUAL(decoder.Meta().name, "test.bin");
+}
+
 BOOST_AUTO_TEST_CASE(Create_SwitchesFormatsBetweenArticles)
 {
 	const std::string payload = yenc_fixtures::MakePayload();
@@ -249,6 +281,32 @@ BOOST_AUTO_TEST_CASE(Decoder_SplitAtAnyPositionGivesSameResult)
 					"format=" << static_cast<int>(format) << " piece=" << piece);
 			}
 		}
+	}
+}
+
+BOOST_AUTO_TEST_CASE(Decoder_IgnoresInputAfterComplete)
+{
+	const std::vector<std::pair<nntp::ArticleFormat, std::pair<std::string, std::string>>> cases = {
+		{nntp::ArticleFormat::Yenc, {yenc_fixtures::MakeArticle("Cat"), "Cat"}},
+		{nntp::ArticleFormat::Ux, {"begin 644 cat.txt\r\n#0V%T\r\n`\r\nend\r\n.\r\n", "Cat"}},
+		{nntp::ArticleFormat::Raw, {"Hello\r\n.\r\n", "Hello\r\n"}},
+	};
+
+	for (const auto& [format, articleAndExpected] : cases)
+	{
+		const auto& [article, expected] = articleAndExpected;
+		nntp::ArticleDecoder decoder;
+		decoder.Create(format, true);
+		std::vector<char> dest(nntp::ArticleDecoder::MinBufferSize);
+
+		BOOST_REQUIRE_EQUAL(DecodeAll(decoder, article, dest, 7), expected);
+		BOOST_REQUIRE(decoder.Finish() == nntp::DecodeStatus::Finished);
+
+		const std::span<const char> next("NEXT", 4);
+		const nntp::DecodeStep step = decoder.Decode(next, dest);
+		BOOST_CHECK_EQUAL(step.consumed, 0u);
+		BOOST_CHECK_EQUAL(step.produced, 0u);
+		BOOST_CHECK(step.complete);
 	}
 }
 

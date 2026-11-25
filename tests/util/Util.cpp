@@ -633,4 +633,85 @@ BOOST_AUTO_TEST_CASE(Crc32CombineEmptySecondTest)
 	BOOST_CHECK_EQUAL(Crc32::Combine(0xCBF43926u, 0, 0), 0xCBF43926u);
 }
 
+BOOST_AUTO_TEST_CASE(Latin1ToUtf8IntoBufferTest)
+{
+	std::string out = "stale";
+	WebUtil::Latin1ToUtf8("", out);
+	BOOST_CHECK_EQUAL(out, "");
+
+	WebUtil::Latin1ToUtf8("abc", out);
+	BOOST_CHECK_EQUAL(out, "abc");
+
+	WebUtil::Latin1ToUtf8(std::string_view("\xe9", 1), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa9");
+
+	WebUtil::Latin1ToUtf8(std::string_view("a\xe9z\xff", 4), out);
+	BOOST_CHECK_EQUAL(out, "a\xc3\xa9z\xc3\xbf");
+
+	WebUtil::Latin1ToUtf8(std::string_view("a\0b", 3), out);
+	BOOST_CHECK_EQUAL(out, "a");
+}
+
+BOOST_AUTO_TEST_CASE(Latin1ToUtf8IntoBufferKeepsCapacityTest)
+{
+	std::string out;
+	WebUtil::Latin1ToUtf8(std::string(100, 'x') + "\xe9", out);
+	const size_t capacity = out.capacity();
+	const char* data = out.data();
+
+	WebUtil::Latin1ToUtf8(std::string_view("short"), out);
+	BOOST_CHECK_EQUAL(out, "short");
+	BOOST_CHECK_EQUAL(out.capacity(), capacity);
+	BOOST_CHECK_EQUAL(out.data(), data);
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameKeepsValidUtf8Test)
+{
+	std::string out;
+	WebUtil::DecodeName("caf\xc3\xa9", out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+
+	WebUtil::DecodeName("\xf0\x9f\x98\x80", out);
+	BOOST_CHECK_EQUAL(out, "\xf0\x9f\x98\x80");
+
+	WebUtil::DecodeName("", out);
+	BOOST_CHECK_EQUAL(out, "");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameFallsBackToLatin1Test)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("caf\xe9", 4), out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+
+	WebUtil::DecodeName(std::string_view("\xff", 1), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xbf");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameRejectsMalformedUtf8Test)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("\xc0\xaf", 2), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\x80\xc2\xaf");
+
+	WebUtil::DecodeName(std::string_view("\xed\xa0\x80", 3), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xad\xc2\xa0\xc2\x80");
+
+	WebUtil::DecodeName(std::string_view("\xe2\x82", 2), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa2\xc2\x82");
+
+	WebUtil::DecodeName(std::string_view("\xf4\x90\x80\x80", 4), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xb4\xc2\x90\xc2\x80\xc2\x80");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameStripsNulTest)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("a\0b", 3), out);
+	BOOST_CHECK_EQUAL(out, "a");
+
+	WebUtil::DecodeName(std::string_view("caf\xc3\xa9\0x", 7), out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
