@@ -1680,10 +1680,7 @@ BreakLoop:
 	return result;
 }
 
-namespace
-{
-
-bool IsValidUtf8(std::string_view in) noexcept
+bool WebUtil::IsValidUtf8(std::string_view in) noexcept
 {
 	const auto* p = reinterpret_cast<const unsigned char*>(in.data());
 	const size_t size = in.size();
@@ -1754,13 +1751,26 @@ bool IsValidUtf8(std::string_view in) noexcept
 	return true;
 }
 
-} // namespace
-
 CString WebUtil::Latin1ToUtf8(const char* str)
 {
-	std::string out;
-	Latin1ToUtf8(std::string_view(str), out);
-	return CString(out.c_str());
+	CString res;
+	res.Reserve(strlen(str) * 2);
+	const uchar *in = (const uchar*)str;
+	uchar *out = (uchar*)(char*)res;
+	while (*in)
+	{
+		if (*in < 128)
+		{
+			*out++ = *in++;
+		}
+		else
+		{
+			*out++ = 0xc2 + (*in > 0xbf);
+			*out++ = (*in++ & 0x3f) + 0x80;
+		}
+	}
+	*out = '\0';
+	return res;
 }
 
 void WebUtil::Latin1ToUtf8(std::string_view in, std::string& out)

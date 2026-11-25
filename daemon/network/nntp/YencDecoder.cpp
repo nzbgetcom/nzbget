@@ -30,7 +30,7 @@
 namespace
 {
 
-/// rapidyenc_crc reads 64-bit words, so only a start aligned to them is safe; the unaligned head goes through a copy.
+/// rapidyenc_crc loads words without aligning short inputs, so the unaligned head goes through a copy.
 uint32_t UpdateCrc(uint32_t crc, const char* data, size_t size) noexcept
 {
 	constexpr size_t ALIGN = alignof(uint64_t);
@@ -61,58 +61,64 @@ const char* FindParam(const char* begin, const char* end, std::string_view key) 
 	return nullptr;
 }
 
-const char* ValueEnd(const char* value, const char* end) noexcept
-{
-	return std::find(value, end, ' ');
-}
-
+/// from_chars stops at the first non-digit, so a value ends at the next space or at the line end.
 template <typename T> bool ParseNumber(const char* begin, const char* end, T& out, int base = 10) noexcept
 {
-	const std::from_chars_result result = std::from_chars(begin, end, out, base);
-	return result.ec == std::errc();
+	return std::from_chars(begin, end, out, base).ec == std::errc();
 }
 
 template <typename T> bool ParseParam(const char* begin, const char* end, std::string_view key, T& out, int base = 10) noexcept
 {
 	const char* value = FindParam(begin, end, key);
-	return value && ParseNumber(value, ValueEnd(value, end), out, base);
+	return value && ParseNumber(value, end, out, base);
 }
 
-/// The name runs to the next known key, so "name=foo.bin size=10" keeps only "foo.bin".
-const char* FindNameEnd(const char* begin, const char* end) noexcept
+/// A missing key is fine; a present key must hold a non-negative number, written to out only then.
+bool ReadSize(const char* begin, const char* end, std::string_view key, int64_t& out) noexcept
 {
-	constexpr std::string_view KEYS[] = {"size=", "part=", "total=", "line=", "pcrc32=", "crc32="};
-	const char* cut = end;
-	for (const std::string_view key : KEYS)
+	const char* value = FindParam(begin, end, key);
+	if (!value)
 	{
-		if (const char* value = FindParam(begin, end, key))
-		{
-			const char* token = value - key.size();
-			if (token < cut)
-			{
-				cut = token;
-			}
-		}
+		return true;
 	}
-	constexpr std::string_view YPART = "=ypart ";
-	if (const char* pos = std::search(begin, end, YPART.begin(), YPART.end()); pos != end && pos < cut)
+	int64_t size = 0;
+	if (!ParseNumber(value, end, size) || size < 0)
 	{
-		cut = pos;
+		return false;
 	}
-	return cut;
+	out = size;
+	return true;
 }
 
-bool IsControlLine(std::string_view line) noexcept
+enum class LineStart
 {
-	for (const std::string_view keyword : {"=ybegin", "=ypart", "=yend"})
+	NeedMore,
+	Control,
+	Data
+};
+
+/// Decides whether the bytes after "=y" are a control keyword, a prefix that still needs input, or data.
+LineStart ClassifyLine(std::string_view afterY) noexcept
+{
+	for (const std::string_view keyword : {"begin", "part", "end"})
 	{
-		if (line.starts_with(keyword))
+		const size_t n = std::min(afterY.size(), keyword.size());
+		if (afterY.substr(0, n) != keyword.substr(0, n))
 		{
-			return line.size() == keyword.size() || line[keyword.size()] == ' ' ||
-				line[keyword.size()] == '\r' || line[keyword.size()] == '\n';
+			continue;
 		}
+		if (afterY.size() <= keyword.size())
+		{
+			return LineStart::NeedMore;
+		}
+		const char sep = afterY[keyword.size()];
+		if (sep == ' ' || sep == '\r' || sep == '\n')
+		{
+			return LineStart::Control;
+		}
+		return LineStart::Data;
 	}
-	return false;
+	return LineStart::Data;
 }
 
 } // namespace
@@ -125,119 +131,98 @@ YencDecoder::YencDecoder(bool crcCheck) noexcept : m_crcCheck(crcCheck)
 	m_meta.format = ArticleFormat::Yenc;
 }
 
-bool YencDecoder::ParseControlLine(std::string_view line)
+void YencDecoder::ParseControlLine(std::string_view line)
 {
-	if (!IsControlLine(line))
-	{
-		return false;
-	}
-
+	// Only lines the classifier passed here: keyword followed by a space or line end.
 	const char* const begin = line.data();
 	const char* const end = begin + line.size();
 
 	if (line.starts_with("=ybegin"))
 	{
-		if (m_seenBegin)
+		if (m_stage != Stage::Header)
 		{
 			m_headerValid = false;
-			return true;
+			return;
 		}
-		m_seenBegin = true;
-		m_beginPart = FindParam(begin, end, "part=") != nullptr;
-
-		int64_t size = 0;
-		if (const char* value = FindParam(begin, end, "size="))
+		m_stage = Stage::Body;
+		const char* nameValue = FindParam(begin, end, "name=");
+		// part= counts only before name=: a file name may contain "part=".
+		if (m_part == Part::None && FindParam(begin, nameValue ? nameValue - 5 : end, "part="))
 		{
-			if (!ParseNumber(value, ValueEnd(value, end), size) || size < 0)
-			{
-				m_headerValid = false;
-			}
-			else
-			{
-				m_meta.fileSize = size;
-			}
+			m_part = Part::Declared;
 		}
 
-		if (const char* value = FindParam(begin, end, "name="))
+		if (!ReadSize(begin, end, "size=", m_meta.fileSize))
 		{
-			const char* nameEnd = FindNameEnd(value, end);
+			m_headerValid = false;
+		}
+
+		if (const char* value = nameValue)
+		{
+			// Name runs to the end of the line; only an appended "=ypart " ends it, and that suffix is parsed as well.
+			constexpr std::string_view YPART = "=ypart ";
+			const char* nameEnd = std::search(value, end, YPART.begin(), YPART.end());
 			while (nameEnd > value && nameEnd[-1] == ' ')
 			{
 				--nameEnd;
 			}
-			// Some encoders append "=ypart ..." to the same line, right after the name.
-			if (std::string_view(nameEnd, end - nameEnd).starts_with("=ypart "))
+			if (nameEnd < end)
 			{
 				ParseControlLine(std::string_view(nameEnd, end - nameEnd));
 			}
 			WebUtil::DecodeName(std::string_view(value, nameEnd - value), m_meta.name);
 		}
 
-		if (!m_beginPart && !m_hasPart)
+		if (m_part == Part::None)
 		{
 			m_meta.offset = 0;
 			m_meta.size = m_meta.fileSize;
 		}
-		return true;
+		return;
 	}
 
 	if (line.starts_with("=ypart"))
 	{
 		int64_t first = 0;
 		int64_t last = 0;
-		if (!ParseParam(begin, end, "begin=", first) || !ParseParam(begin, end, "end=", last))
-		{
-			m_headerValid = false;
-			return true;
-		}
 		// Data already decoded cannot be moved, so a part line after it or a second one is refused.
-		if (first < 1 || last < first || m_hasPart || m_produced > 0)
+		if (!ParseParam(begin, end, "begin=", first) || !ParseParam(begin, end, "end=", last) ||
+			first < 1 || last < first || m_part == Part::Ranged || m_produced > 0)
 		{
 			m_headerValid = false;
-			return true;
+			return;
 		}
 
 		// The =ypart range is the truth even when =ybegin size= carries the part size.
-		m_hasPart = true;
+		m_part = Part::Ranged;
 		m_meta.offset = first - 1;
 		m_meta.size = last - first + 1;
-		return true;
+		return;
 	}
 
-	if (line.starts_with("=yend"))
+	if (m_stage == Stage::Body)
 	{
-		m_seenEnd = true;
-		int64_t size = 0;
-		if (const char* value = FindParam(begin, end, "size="))
-		{
-			if (!ParseNumber(value, ValueEnd(value, end), size) || size < 0)
-			{
-				m_headerValid = false;
-			}
-			else
-			{
-				m_endSize = size;
-			}
-		}
-		// On a part crc32= is the whole-file CRC, so only pcrc32= applies there.
-		const std::string_view crcName = Multipart() ? "pcrc32=" : "crc32=";
-		if (const char* value = FindParam(begin, end, crcName))
-		{
-			uint32_t crc = 0;
-			if (!ParseNumber(value, ValueEnd(value, end), crc, 16))
-			{
-				m_headerValid = false;
-			}
-			else
-			{
-				m_meta.crc = crc;
-				m_meta.hasCrc = true;
-			}
-		}
-		return true;
+		m_stage = Stage::Trailer;
 	}
-
-	return false;
+	if (!ReadSize(begin, end, "size=", m_endSize))
+	{
+		m_headerValid = false;
+	}
+	// On a part crc32= is the whole-file CRC, so only pcrc32= applies there.
+	const std::string_view crcName = Multipart() ? "pcrc32=" : "crc32=";
+	if (const char* value = FindParam(begin, end, crcName))
+	{
+		uint32_t crc = 0;
+		if (!ParseNumber(value, end, crc, 16))
+		{
+			m_headerValid = false;
+		}
+		else
+		{
+			m_meta.crc = crc;
+			m_meta.hasCrc = true;
+		}
+	}
 }
 
 YencDecoder::DataStep YencDecoder::DecodeData(std::span<const char> src, std::span<char> dest) noexcept
@@ -279,7 +264,7 @@ YencDecoder::DataStep YencDecoder::DecodeData(std::span<const char> src, std::sp
 
 void YencDecoder::ResolveControlLine()
 {
-	m_controlPending = false;
+	m_line = Line::Data;
 
 	std::string_view line = m_control.View();
 	while (!line.empty() && (line.back() == '\r' || line.back() == '\n'))
@@ -287,12 +272,7 @@ void YencDecoder::ResolveControlLine()
 		line.remove_suffix(1);
 	}
 
-	if (!ParseControlLine(line))
-	{
-		// shortcut: a data line may legally start with the escaped 0x0F ("=y"), but conforming
-		// encoders do not emit it; refuse the line. Upgrade by replaying it if one shows up.
-		m_headerValid = false;
-	}
+	ParseControlLine(line);
 	// rapidyenc leaves its state at NONE after END_CONTROL; the next line starts fresh.
 	m_state = RYDEC_STATE_CRLF;
 	m_control.Clear();
@@ -310,11 +290,9 @@ DecodeStep YencDecoder::Decode(std::span<const char> src, std::span<char> dest)
 
 	for (;;)
 	{
-		if (m_afterEnd)
+		if (m_stage == Stage::Trailer)
 		{
-			size_t pos = step.consumed;
-			ConsumeEndSequence(src, pos);
-			step.consumed = pos;
+			ConsumeEndSequence(src, step.consumed);
 			break; // without the end sequence the caller must read more
 		}
 
@@ -324,7 +302,38 @@ DecodeStep YencDecoder::Decode(std::span<const char> src, std::span<char> dest)
 			break;
 		}
 
-		if (m_controlPending)
+		if (m_line == Line::Candidate)
+		{
+			const LineStart kind = ClassifyLine(std::string_view(input.data() + 1, input.size() - 1));
+			if (kind == LineStart::NeedMore)
+			{
+				break; // the caller keeps 'y' and reads more
+			}
+			if (kind == LineStart::Control)
+			{
+				m_control.Assign("=y");
+				m_line = Line::Control;
+				step.consumed += 1;
+				continue;
+			}
+			// Data: "=y" is the escape for 0x0F; write it and consume the 'y'.
+			if (destPos >= dest.size())
+			{
+				break; // keep 'y' for the next call
+			}
+			const char escape = '\x0f';
+			dest[destPos++] = escape;
+			if (m_crcCheck)
+			{
+				m_meta.calculatedCrc = UpdateCrc(m_meta.calculatedCrc, &escape, 1);
+			}
+			++m_produced;
+			step.consumed += 1;
+			m_line = Line::Data;
+			continue;
+		}
+
+		if (m_line == Line::Control)
 		{
 			const size_t nl = IndexOf(input, '\n');
 			const size_t take = nl == std::string_view::npos ? input.size() : nl + 1;
@@ -346,10 +355,6 @@ DecodeStep YencDecoder::Decode(std::span<const char> src, std::span<char> dest)
 			}
 
 			ResolveControlLine();
-			if (m_seenEnd)
-			{
-				m_afterEnd = true;
-			}
 			continue;
 		}
 
@@ -372,8 +377,9 @@ DecodeStep YencDecoder::Decode(std::span<const char> src, std::span<char> dest)
 
 		if (data.endControl)
 		{
-			m_control.Assign("=y");
-			m_controlPending = true;
+			// rapidyenc consumed "=y" (at least 'y'); keep 'y' so the line can be classified first.
+			step.consumed -= 1;
+			m_line = Line::Candidate;
 			continue;
 		}
 
@@ -399,30 +405,47 @@ void YencDecoder::ConsumeEndSequence(std::span<const char> src, size_t& pos) noe
 	while (pos < src.size())
 	{
 		const char ch = src[pos++];
-		switch (m_termState)
+		switch (m_term)
 		{
-			case 0: // line start
-				if (ch == '.') m_termState = 1;
+			case Term::AtLineStart:
+				if (ch == '.')
+				{
+					m_term = Term::AfterDot;
+				}
 				else if (ch != '\n')
-					m_termState = 3;
+				{
+					m_term = Term::MidLine;
+				}
 				break;
-			case 1: // "."
-				if (ch == '\r') m_termState = 2;
+			case Term::AfterDot:
+				if (ch == '\r')
+				{
+					m_term = Term::AfterDotCr;
+				}
 				else if (ch == '\n')
+				{
 					m_complete = true;
+				}
 				else
-					m_termState = 3; // ".." or ".x" is body text, not a terminator
+				{
+					m_term = Term::MidLine; // ".." or ".x" is body text, not a terminator
+				}
 				break;
-			case 2: // ".\r"
+			case Term::AfterDotCr:
 				if (ch == '\n')
+				{
 					m_complete = true;
+				}
 				else
-					m_termState = 3;
+				{
+					m_term = Term::MidLine;
+				}
 				break;
-			case 3: // mid-line: ignore dots until the next line
-				if (ch == '\n') m_termState = 0;
-				break;
-			default:
+			case Term::MidLine: // ignore dots until the next line
+				if (ch == '\n')
+				{
+					m_term = Term::AtLineStart;
+				}
 				break;
 		}
 		if (m_complete)
@@ -435,21 +458,21 @@ void YencDecoder::ConsumeEndSequence(std::span<const char> src, size_t& pos) noe
 DecodeStatus YencDecoder::Finish()
 {
 	const int64_t endSize = std::max<int64_t>(0, m_endSize);
-	if (!m_seenBegin)
+	if (m_stage == Stage::Header)
 	{
 		return DecodeStatus::NoBinaryData;
 	}
-	if (!m_seenEnd || !m_complete)
+	if (m_stage != Stage::Trailer || !m_complete)
 	{
 		return DecodeStatus::ArticleIncomplete;
 	}
-	if (!m_headerValid || (Multipart() && !m_hasPart) || (m_hasPart && m_meta.size != m_produced))
+	if (!m_headerValid || m_part == Part::Declared || (m_part == Part::Ranged && m_meta.size != m_produced))
 	{
 		return DecodeStatus::InvalidHeader;
 	}
 
 	const bool sizeOk = Multipart()
-		? (endSize == m_produced || (m_hasPart && m_meta.fileSize > 0 && endSize == m_meta.fileSize))
+		? (endSize == m_produced || (m_part == Part::Ranged && m_meta.fileSize > 0 && endSize == m_meta.fileSize))
 		: (m_meta.fileSize == endSize && endSize == m_produced);
 	if (!sizeOk)
 	{

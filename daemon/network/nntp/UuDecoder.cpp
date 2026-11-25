@@ -121,12 +121,14 @@ DecodeStep UuDecoder::Decode(std::span<const char> src, std::span<char> dest)
 		}
 
 		const size_t nl = IndexOf(src.subspan(pos), '\n');
-		if (nl == std::string_view::npos)
+		const size_t rest = src.size() - pos;
+		if (nl == std::string_view::npos && rest < MAX_LINE)
 		{
-			if (src.size() - pos < MAX_LINE)
-			{
-				break; // the rest of the line is in the next chunk
-			}
+			break; // the rest of the line is in the next chunk
+		}
+		const size_t take = nl == std::string_view::npos ? rest : nl + 1;
+		if (nl == std::string_view::npos || take > MAX_LINE)
+		{
 			// A line longer than any valid uuencode line is dropped. Before begin it is
 			// a preamble; in the body it makes the article invalid, so Finish() cannot
 			// report a truncated payload as complete.
@@ -134,19 +136,8 @@ DecodeStep UuDecoder::Decode(std::span<const char> src, std::span<char> dest)
 			{
 				m_valid = false;
 			}
-			pos = src.size();
-			m_discardLine = true;
-			continue;
-		}
-
-		const size_t take = nl + 1;
-		if (take > MAX_LINE)
-		{
-			if (m_body)
-			{
-				m_valid = false;
-			}
 			pos += take;
+			m_discardLine = nl == std::string_view::npos;
 			continue;
 		}
 		if (destPos + take > dest.size())

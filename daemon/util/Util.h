@@ -372,6 +372,12 @@ public:
 	 */
 	static void DecodeName(std::string_view in, std::string& out);
 
+	/*
+	 * True if in is well-formed UTF-8 (Unicode Table 3-7): no overlong forms, no surrogates,
+	 * nothing above U+10FFFF. Empty input and embedded NUL are valid.
+	 */
+	static bool IsValidUtf8(std::string_view in) noexcept;
+
 	static time_t ParseRfc822DateTime(const char* dateTimeStr);
 };
 

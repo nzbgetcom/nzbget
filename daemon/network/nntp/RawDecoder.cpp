@@ -40,6 +40,7 @@ DecodeStep RawDecoder::Decode(std::span<const char> src, std::span<char> dest)
 
 	// The caller keeps the tail; a partial terminator stays in src, so dest == src is safe.
 	// ".." at line start is unstuffed to "."; the ".\r\n" terminator is not output.
+	// A bare LF does not end the article: a cut article stays incomplete instead of being truncated.
 	while (pos < src.size())
 	{
 		if (m_lineStart && src[pos] == '.')

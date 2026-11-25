@@ -21,7 +21,6 @@
 #define NETWORK_NNTP_DECODE_TYPES_H
 
 #include <array>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <span>

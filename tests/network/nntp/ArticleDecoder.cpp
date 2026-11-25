@@ -117,6 +117,24 @@ BOOST_AUTO_TEST_CASE(DetectFormat_EmptyLineIsUnknown)
 	BOOST_CHECK(nntp::ArticleDecoder::DetectFormat("\r\n", false) == nntp::ArticleFormat::Unknown);
 }
 
+BOOST_AUTO_TEST_CASE(DetectFormat_RecognizesDotStuffedUuBodyLine)
+{
+	// 14 zero bytes: the length char is '.', and dot-stuffing doubles it to "..".
+	BOOST_CHECK(nntp::ArticleDecoder::DetectFormat("..`" + std::string(19, '`') + "\r\n", false) == nntp::ArticleFormat::Ux);
+}
+
+BOOST_AUTO_TEST_CASE(Create_DecodesHeaderlessUuWithStuffedFirstLine)
+{
+	const std::string article = "..`" + std::string(19, '`') + "\r\n`\r\nend\r\n.\r\n";
+	nntp::ArticleDecoder decoder;
+	BOOST_REQUIRE(nntp::ArticleDecoder::DetectFormat(article.substr(0, article.find('\n') + 1), false) == nntp::ArticleFormat::Ux);
+
+	decoder.Create(nntp::ArticleFormat::Ux, false);
+	char dest[64];
+	BOOST_CHECK(DecodeAll(decoder, article, dest, article.size()) == std::string(14, '\0'));
+	BOOST_CHECK(decoder.Finish() == nntp::DecodeStatus::Finished);
+}
+
 BOOST_AUTO_TEST_CASE(Create_SelectsDecoderForFormat)
 {
 	nntp::ArticleDecoder decoder;
@@ -128,15 +146,16 @@ BOOST_AUTO_TEST_CASE(Create_SelectsDecoderForFormat)
 	BOOST_CHECK(decoder.Meta().format == nntp::ArticleFormat::Raw);
 }
 
-BOOST_AUTO_TEST_CASE(Create_UnknownDecodesNothing)
+BOOST_AUTO_TEST_CASE(Create_UnknownStaysIdle)
 {
 	nntp::ArticleDecoder decoder;
 	decoder.Create(nntp::ArticleFormat::Unknown, false);
-	const std::string article = "abc\r\n";
+	const std::string article = "abc\r\n.\r\n";
 	char out[8];
 	const nntp::DecodeStep step = decoder.Decode(article, out);
-	BOOST_CHECK_EQUAL(step.produced, 0u);
 	BOOST_CHECK_EQUAL(step.consumed, 0u);
+	BOOST_CHECK_EQUAL(step.produced, 0u);
+	BOOST_CHECK(!step.complete);
 	BOOST_CHECK(decoder.Meta().format == nntp::ArticleFormat::Unknown);
 	BOOST_CHECK(decoder.Finish() == nntp::DecodeStatus::NoBinaryData);
 }
