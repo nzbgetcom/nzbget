@@ -29,6 +29,8 @@ class ParParser
 public:
 	typedef std::vector<std::string> ParFileList;
 
+	static constexpr int UNKNOWN_BLOCKS = -1;
+
 	static bool FindMainPars(const char* path, ParFileList* fileList);
 	static bool ParseParFilename(const char* parFilename, bool confirmedFilename, int* baseNameLen, int* blocks);
 	static bool SameParCollection(const char* filename1, const char* filename2, bool confirmedFilenames);

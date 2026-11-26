@@ -76,6 +76,7 @@ public:
 	void SetParFull(bool parFull) { m_parFull = parFull; }
 	bool GetParFull() { return m_parFull; }
 	EStatus GetStatus() { return m_status; }
+	uint64 GetBlockSize() const;
 	void AddParFile(const char* parFilename);
 	void QueueChanged();
 	void Cancel();
@@ -198,7 +199,7 @@ private:
 	std::ostream m_parCout{&m_parOutStream};
 	std::ostream m_parCerr{&m_parErrStream};
 	std::mutex m_queuedParFilesMtx;
-	std::mutex m_repairerMtx;
+	mutable std::mutex m_repairerMtx;
 	std::mutex m_signalMtx;
 
 	// "m_repairer" should be of type "Par2::Par2Repairer", however to prevent the

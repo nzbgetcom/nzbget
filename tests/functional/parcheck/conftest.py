@@ -22,6 +22,12 @@ def prepare_testdata(request, check_config):
 		shutil.copytree(testdata_dir +'/parchecker', nserv_datadir + '/parchecker')
 	if not os.path.exists(nserv_datadir + '/parchecker2'):
 		shutil.copytree(testdata_dir +'/parchecker2', nserv_datadir + '/parchecker2')
+	vol_dash_dir = nserv_datadir + '/parchecker_vol_dash'
+	if not os.path.exists(vol_dash_dir):
+		shutil.copytree(testdata_dir + '/parchecker2', vol_dash_dir)
+		os.rename(vol_dash_dir + '/testfile.7z.vol0+1.PAR2', vol_dash_dir + '/testfile.7z.vol-00.par2')
+		os.rename(vol_dash_dir + '/testfile.7z.vol1+2.PAR2', vol_dash_dir + '/testfile.7z.vol-01.par2')
+		os.rename(vol_dash_dir + '/testfile.7z.vol3+3.PAR2', vol_dash_dir + '/testfile.7z.vol-02.par2')
 
 	if 0 != subprocess.call([nzbget_bin, '--nserv', '-d', nserv_datadir, '-v', '2', '-z', '3000', '-q']):
 		pytest.exit('Test file generation failed')

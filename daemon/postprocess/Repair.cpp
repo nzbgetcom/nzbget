@@ -41,6 +41,11 @@ void RepairController::PostParChecker::UpdateProgress()
 
 void RepairController::PostParChecker::PrintMessage(Message::EKind kind, const char* format, ...)
 {
+	if (!m_postInfo || !m_postInfo->GetNzbInfo())
+	{
+		return;
+	}
+
 	char text[1024];
 	va_list args;
 	va_start(args, format);
@@ -304,6 +309,34 @@ void RepairController::ParCheckCompleted()
 	postInfo->SetWorking(false);
 }
 
+int RepairController::EstimateParBlocks(int64 fileSize, uint64 blockSize)
+{
+	if (fileSize <= 0)
+	{
+		return 0;
+	}
+
+	if (blockSize == 0)
+	{
+		return 1;
+	}
+
+	if (blockSize > std::numeric_limits<uint64>::max() - PAR2_RECOVERY_SLICE_OVERHEAD)
+	{
+		return 1;
+	}
+
+	uint64 sliceSize = blockSize + PAR2_RECOVERY_SLICE_OVERHEAD;
+	uint64 estimated = static_cast<uint64>(fileSize) / sliceSize;
+	if (estimated < 1)
+	{
+		return 1;
+	}
+
+	constexpr uint64 maxBlocks = static_cast<uint64>(std::numeric_limits<int>::max());
+	return estimated > maxBlocks ? std::numeric_limits<int>::max() : static_cast<int>(estimated);
+}
+
 /**
 * Unpause par2-files
 * returns true, if the files with required number of blocks were unpaused,
@@ -317,26 +350,42 @@ bool RepairController::RequestMorePars(NzbInfo* nzbInfo, const char* parFilename
 
 	Blocks availableBlocks;
 	Blocks selectedBlocks;
+	uint64 blockSize = GetParBlockSize();
 	int blockFound = 0;
 	int curBlockFound = 0;
+	auto addBlocks = [](int& total, int added)
+	{
+		if (total > std::numeric_limits<int>::max() - added)
+		{
+			total = std::numeric_limits<int>::max();
+		}
+		else
+		{
+			total += added;
+		}
+	};
 
-	FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, true, true, &curBlockFound);
-	blockFound += curBlockFound;
+	FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, true, true, &curBlockFound, blockSize);
+	addBlocks(blockFound, curBlockFound);
 	if (blockFound < blockNeeded)
 	{
-		FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, true, false, &curBlockFound);
-		blockFound += curBlockFound;
+		FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, true, false, &curBlockFound, blockSize);
+		addBlocks(blockFound, curBlockFound);
 	}
 	if (blockFound < blockNeeded)
 	{
-		FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, false, false, &curBlockFound);
-		blockFound += curBlockFound;
+		FindPars(downloadQueue, nzbInfo, parFilename, availableBlocks, false, false, &curBlockFound, blockSize);
+		addBlocks(blockFound, curBlockFound);
 	}
 
 	std::sort(availableBlocks.begin(), availableBlocks.end(),
 		[](const BlockInfo& block1, const BlockInfo& block2)
 		{
-			return block1.m_blockCount < block2.m_blockCount;
+			if (block1.m_blockCount != block2.m_blockCount)
+			{
+				return block1.m_blockCount < block2.m_blockCount;
+			}
+			return block1.m_fileInfo->GetSize() < block2.m_fileInfo->GetSize();
 		});
 
 	if (blockFound >= blockNeeded)
@@ -397,7 +446,7 @@ bool RepairController::RequestMorePars(NzbInfo* nzbInfo, const char* parFilename
 }
 
 void RepairController::FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* parFilename,
-	Blocks& blocks, bool strictParName, bool exactParName, int* blockFound)
+	Blocks& blocks, bool strictParName, bool exactParName, int* blockFound, uint64 blockSize)
 {
 	*blockFound = 0;
 
@@ -417,9 +466,18 @@ void RepairController::FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, 
 	for (FileInfo* fileInfo : nzbInfo->GetFileList())
 	{
 		int blockCount = 0;
-		if (ParParser::ParseParFilename(fileInfo->GetFilename(), fileInfo->GetFilenameConfirmed(), nullptr, &blockCount) &&
-			blockCount > 0)
+		if (ParParser::ParseParFilename(fileInfo->GetFilename(), fileInfo->GetFilenameConfirmed(), nullptr, &blockCount))
 		{
+			if (blockCount == ParParser::UNKNOWN_BLOCKS)
+			{
+				blockCount = EstimateParBlocks(fileInfo->GetSize(), blockSize);
+			}
+
+			if (blockCount <= 0)
+			{
+				continue;
+			}
+
 			bool useFile = true;
 
 			if (exactParName)
@@ -463,7 +521,14 @@ void RepairController::FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, 
 			if (useFile && !alreadyAdded)
 			{
 				blocks.emplace_back(fileInfo, blockCount);
-				*blockFound += blockCount;
+				if (*blockFound > std::numeric_limits<int>::max() - blockCount)
+				{
+					*blockFound = std::numeric_limits<int>::max();
+				}
+				else
+				{
+					*blockFound += blockCount;
+				}
 			}
 		}
 	}

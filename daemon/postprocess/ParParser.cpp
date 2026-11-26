@@ -101,18 +101,57 @@ bool ParParser::ParseParFilename(const char* parFilename, bool confirmedFilename
 	*(filename + len - 5) = '\0';
 
 	int blockcnt = 0;
+	char* start = filename;
 	char* p = strrchr(filename, '.');
-	if (p && !strncasecmp(p, ".vol", 4))
+	if (p && p > start && !strncasecmp(p, ".vol", 4))
 	{
-		char* b = strchr(p, '+');
-		if (!b)
+		const char* v = p + 4;
+		if (*v == '-')
 		{
-			b = strchr(p, '-');
+			const char* cur = v + 1;
+			while (std::isdigit(static_cast<unsigned char>(*cur)))
+			{
+				++cur;
+			}
+			if (cur > v + 1 && *cur == '\0')
+			{
+				blockcnt = UNKNOWN_BLOCKS;
+				*p = '\0';
+			}
 		}
-		if (b)
+		else if (std::isdigit(static_cast<unsigned char>(*v)))
 		{
-			blockcnt = atoi(b+1);
-			*p = '\0';
+			const char* cur = v;
+			while (std::isdigit(static_cast<unsigned char>(*cur)))
+			{
+				++cur;
+			}
+
+			if (*cur == '\0')
+			{
+				blockcnt = UNKNOWN_BLOCKS;
+				*p = '\0';
+			}
+			else if ((*cur == '+' || *cur == '-') && std::isdigit(static_cast<unsigned char>(cur[1])))
+			{
+				const char* countStart = cur + 1;
+				const char* countEnd = countStart;
+				while (std::isdigit(static_cast<unsigned char>(*countEnd)))
+				{
+					++countEnd;
+				}
+				if (*countEnd == '\0')
+				{
+					errno = 0;
+					unsigned long long parsed = strtoull(countStart, nullptr, 10);
+					constexpr unsigned long long maxBlocks =
+						static_cast<unsigned long long>(std::numeric_limits<int>::max());
+					blockcnt = (errno == ERANGE || parsed > maxBlocks)
+						? std::numeric_limits<int>::max()
+						: static_cast<int>(parsed);
+					*p = '\0';
+				}
+			}
 		}
 	}
 
