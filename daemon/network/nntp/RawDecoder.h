@@ -20,7 +20,6 @@
 #ifndef NETWORK_NNTP_RAW_DECODER_H
 #define NETWORK_NNTP_RAW_DECODER_H
 
-#include <array>
 #include <span>
 
 #include "DecodeTypes.h"
@@ -28,11 +27,12 @@
 namespace network::nntp
 {
 
-/// Pass-through for raw (--raw) articles; drops only the NNTP end sequence ".\r\n".
+/// Pass-through for raw (--raw) articles; removes NNTP dot-stuffing and the end sequence ".\r\n".
 class RawDecoder final
 {
 public:
-	static constexpr size_t MinBufferSize = 1;
+	/// A possible ".\r\n" terminator must fit; 3 bytes guarantee progress.
+	static constexpr size_t MinBufferSize = 3;
 
 	RawDecoder() noexcept { m_meta.format = ArticleFormat::Raw; }
 
@@ -43,10 +43,6 @@ public:
 private:
 	bool m_complete{false};
 	bool m_lineStart{true};
-	size_t m_pendingLen{0};
-	size_t m_pendingPos{0};
-	bool m_pendingData{false};
-	std::array<char, 2> m_pending{}; // ".\r" held while it may still be the end sequence
 	ArticleMeta m_meta;
 };
 

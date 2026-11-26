@@ -633,4 +633,149 @@ BOOST_AUTO_TEST_CASE(Crc32CombineEmptySecondTest)
 	BOOST_CHECK_EQUAL(Crc32::Combine(0xCBF43926u, 0, 0), 0xCBF43926u);
 }
 
+BOOST_AUTO_TEST_CASE(Latin1ToUtf8IntoBufferTest)
+{
+	std::string out = "stale";
+	WebUtil::Latin1ToUtf8("", out);
+	BOOST_CHECK_EQUAL(out, "");
+
+	WebUtil::Latin1ToUtf8("abc", out);
+	BOOST_CHECK_EQUAL(out, "abc");
+
+	WebUtil::Latin1ToUtf8(std::string_view("\xe9", 1), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa9");
+
+	WebUtil::Latin1ToUtf8(std::string_view("a\xe9z\xff", 4), out);
+	BOOST_CHECK_EQUAL(out, "a\xc3\xa9z\xc3\xbf");
+
+	WebUtil::Latin1ToUtf8(std::string_view("a\0b", 3), out);
+	BOOST_CHECK_EQUAL(out, "a");
+}
+
+BOOST_AUTO_TEST_CASE(Latin1ToUtf8IntoBufferKeepsCapacityTest)
+{
+	std::string out;
+	WebUtil::Latin1ToUtf8(std::string(100, 'x') + "\xe9", out);
+	const size_t capacity = out.capacity();
+	const char* data = out.data();
+
+	WebUtil::Latin1ToUtf8(std::string_view("short"), out);
+	BOOST_CHECK_EQUAL(out, "short");
+	BOOST_CHECK_EQUAL(out.capacity(), capacity);
+	BOOST_CHECK_EQUAL(out.data(), data);
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameKeepsValidUtf8Test)
+{
+	std::string out;
+	WebUtil::DecodeName("caf\xc3\xa9", out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+
+	WebUtil::DecodeName("\xf0\x9f\x98\x80", out);
+	BOOST_CHECK_EQUAL(out, "\xf0\x9f\x98\x80");
+
+	WebUtil::DecodeName("", out);
+	BOOST_CHECK_EQUAL(out, "");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameFallsBackToLatin1Test)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("caf\xe9", 4), out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+
+	WebUtil::DecodeName(std::string_view("\xff", 1), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xbf");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameRejectsMalformedUtf8Test)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("\xc0\xaf", 2), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\x80\xc2\xaf");
+
+	WebUtil::DecodeName(std::string_view("\xed\xa0\x80", 3), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xad\xc2\xa0\xc2\x80");
+
+	WebUtil::DecodeName(std::string_view("\xe2\x82", 2), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa2\xc2\x82");
+
+	WebUtil::DecodeName(std::string_view("\xf4\x90\x80\x80", 4), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xb4\xc2\x90\xc2\x80\xc2\x80");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameStripsNulTest)
+{
+	std::string out;
+	WebUtil::DecodeName(std::string_view("a\0b", 3), out);
+	BOOST_CHECK_EQUAL(out, "a");
+
+	WebUtil::DecodeName(std::string_view("caf\xc3\xa9\0x", 7), out);
+	BOOST_CHECK_EQUAL(out, "caf\xc3\xa9");
+}
+
+BOOST_AUTO_TEST_CASE(DecodeNameUtf8BoundariesTest)
+{
+	std::string out;
+	// Edges of the valid ranges are kept as is
+	WebUtil::DecodeName(std::string_view("\xed\x9f\xbf", 3), out);      // U+D7FF
+	BOOST_CHECK_EQUAL(out, "\xed\x9f\xbf");
+	WebUtil::DecodeName(std::string_view("\xee\x80\x80", 3), out);      // U+E000
+	BOOST_CHECK_EQUAL(out, "\xee\x80\x80");
+	WebUtil::DecodeName(std::string_view("\xf0\x90\x80\x80", 4), out);  // U+10000
+	BOOST_CHECK_EQUAL(out, "\xf0\x90\x80\x80");
+	WebUtil::DecodeName(std::string_view("\xf4\x8f\xbf\xbf", 4), out);  // U+10FFFF
+	BOOST_CHECK_EQUAL(out, "\xf4\x8f\xbf\xbf");
+
+	// Overlong, bad continuation, out of range and lone bytes fall back to Latin-1
+	WebUtil::DecodeName(std::string_view("\xe0\x9f\xbf", 3), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa0\xc2\x9f\xc2\xbf");
+	WebUtil::DecodeName(std::string_view("\xf0\x8f\xbf\xbf", 4), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xb0\xc2\x8f\xc2\xbf\xc2\xbf");
+	WebUtil::DecodeName(std::string_view("\xe2\x82\x41", 3), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xa2\xc2\x82" "A");
+	WebUtil::DecodeName(std::string_view("\xf0\x9f\x98\x41", 4), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xb0\xc2\x9f\xc2\x98" "A");
+	WebUtil::DecodeName(std::string_view("\xf5\x80\x80\x80", 4), out);
+	BOOST_CHECK_EQUAL(out, "\xc3\xb5\xc2\x80\xc2\x80\xc2\x80");
+	WebUtil::DecodeName(std::string_view("\x80", 1), out);
+	BOOST_CHECK_EQUAL(out, "\xc2\x80");
+}
+
+BOOST_AUTO_TEST_CASE(IsValidUtf8Test)
+{
+	// Valid: empty, ASCII, embedded NUL, first and last code point of each length
+	BOOST_CHECK(WebUtil::IsValidUtf8(""));
+	BOOST_CHECK(WebUtil::IsValidUtf8(std::string_view("a\0b", 3)));
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xc2\x80"));          // U+0080
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xdf\xbf"));          // U+07FF
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xe0\xa0\x80"));      // U+0800
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xed\x9f\xbf"));      // U+D7FF
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xee\x80\x80"));      // U+E000
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xef\xbf\xbf"));      // U+FFFF
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xf0\x90\x80\x80"));  // U+10000
+	BOOST_CHECK(WebUtil::IsValidUtf8("\xf4\x8f\xbf\xbf"));  // U+10FFFF
+	BOOST_CHECK(WebUtil::IsValidUtf8("caf\xc3\xa9 \xf0\x9f\x98\x80"));
+
+	// Invalid: overlong, surrogates, above U+10FFFF, bad lead or continuation bytes, truncated
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xc0\xaf"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xc1\xbf"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xe0\x9f\xbf"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xed\xa0\x80"));      // U+D800
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf0\x8f\xbf\xbf"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf4\x90\x80\x80"));  // U+110000
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf5\x80\x80\x80"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf8\x88\x80\x80\x80"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\x80"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xbf"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xff"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xc3"));              // truncated at end
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xe2\x82"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf0\x9f\x98"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xe2\x82\x41"));      // bad continuation
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xf0\x9f\x98\x41"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("\xc3\x41"));
+	BOOST_CHECK(!WebUtil::IsValidUtf8("ok\xe9"));            // Latin-1 tail after valid text
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -21,7 +21,7 @@
 #include "UuDecoder.h"
 #include "Util.h"
 
-#include <cstring>
+#include <array>
 
 namespace network::nntp
 {
@@ -30,23 +30,23 @@ namespace
 {
 
 /// uuencode digit: 0..63, backtick is an alternative zero. -1 marks a broken line.
-int UuChar(char ch) noexcept
+constexpr std::array<int8_t, 256> MakeUuTable() noexcept
 {
-	if (ch == '`')
+	std::array<int8_t, 256> table{};
+	table.fill(-1);
+	for (int ch = ' '; ch <= '_'; ++ch)
 	{
-		return 0;
+		table[static_cast<size_t>(ch)] = static_cast<int8_t>((ch - ' ') & 077);
 	}
-	if (ch < ' ' || ch > '_')
-	{
-		return -1;
-	}
-	return (ch - ' ') & 077;
+	table[static_cast<size_t>('`')] = 0;
+	return table;
 }
 
-size_t IndexOf(std::span<const char> src, char ch) noexcept
+constexpr std::array<int8_t, 256> UU_TABLE = MakeUuTable();
+
+int UuChar(char ch) noexcept
 {
-	const void* found = std::memchr(src.data(), ch, src.size());
-	return found ? static_cast<size_t>(static_cast<const char*>(found) - src.data()) : std::string_view::npos;
+	return UU_TABLE[static_cast<unsigned char>(ch)];
 }
 
 std::string_view StripEol(std::string_view line) noexcept
@@ -96,17 +96,17 @@ bool UuDecoder::IsUuBody(std::string_view line)
 DecodeStep UuDecoder::Decode(std::span<const char> src, std::span<char> dest)
 {
 	DecodeStep step;
+	if (m_complete)
+	{
+		step.complete = true;
+		return step;
+	}
 	size_t destPos = 0;
 	size_t pos = 0;
 
+	// A line is decoded only when fully in src; the caller keeps the tail, so dest == src is safe.
 	while (pos < src.size())
 	{
-		// One line never writes more than MAX_DECODED_LINE bytes.
-		if (dest.size() - destPos < MAX_DECODED_LINE)
-		{
-			break;
-		}
-
 		if (m_discardLine)
 		{
 			const size_t nl = IndexOf(src.subspan(pos), '\n');
@@ -121,41 +121,32 @@ DecodeStep UuDecoder::Decode(std::span<const char> src, std::span<char> dest)
 		}
 
 		const size_t nl = IndexOf(src.subspan(pos), '\n');
-		const size_t take = nl == std::string_view::npos ? src.size() - pos : nl + 1;
-
-		if (nl != std::string_view::npos && m_line.Size() == 0 && take <= MAX_LINE)
+		const size_t rest = src.size() - pos;
+		if (nl == std::string_view::npos && rest < MAX_LINE)
 		{
-			// A whole line already in the input: decode it there, no copy. In-place is
-			// safe because each group is read before its bytes are written, and output never passes input.
-			HandleLine(std::string_view(src.data() + pos, take), dest, destPos);
-			pos += take;
-			if (m_complete)
-			{
-				break;
-			}
-			continue;
+			break; // the rest of the line is in the next chunk
 		}
-
-		if (m_line.Size() + take > MAX_LINE)
+		const size_t take = nl == std::string_view::npos ? rest : nl + 1;
+		if (nl == std::string_view::npos || take > MAX_LINE)
 		{
-			// A line longer than any valid uuencode line is dropped, not buffered.
-			m_line.Clear();
+			// A line longer than any valid uuencode line is dropped. Before begin it is
+			// a preamble; in the body it makes the article invalid, so Finish() cannot
+			// report a truncated payload as complete.
+			if (m_body)
+			{
+				m_valid = false;
+			}
 			pos += take;
 			m_discardLine = nl == std::string_view::npos;
 			continue;
 		}
-
-		m_line.Append(std::string_view(src.data() + pos, take));
-		pos += take;
-
-		if (nl == std::string_view::npos)
+		if (destPos + take > dest.size())
 		{
-			break; // the line continues in the next chunk
+			break; // the whole line must fit in dest; the caller drains and comes back
 		}
 
-		HandleLine(m_line.View(), dest, destPos);
-		m_line.Clear();
-
+		HandleLine(std::string_view(src.data() + pos, take), dest, destPos);
+		pos += take;
 		if (m_complete)
 		{
 			break;
@@ -192,7 +183,7 @@ void UuDecoder::HandleLine(std::string_view line, std::span<char> dest, size_t& 
 			if (nameStart != std::string_view::npos)
 			{
 				const std::string_view name = content.substr(nameStart + 1);
-				m_meta.name = WebUtil::Latin1ToUtf8(std::string(name).c_str());
+				WebUtil::DecodeName(name, m_meta.name);
 			}
 			m_body = true;
 			return;
@@ -274,9 +265,9 @@ DecodeStatus UuDecoder::Finish()
 	{
 		return DecodeStatus::InvalidHeader;
 	}
-	if (!m_end)
+	if (!m_end || !m_complete)
 	{
-		// Without the "end" line a cut-off article would pass as complete.
+		// Without the "end" line or the NNTP terminator a cut-off article would pass.
 		return DecodeStatus::ArticleIncomplete;
 	}
 	return DecodeStatus::Finished;

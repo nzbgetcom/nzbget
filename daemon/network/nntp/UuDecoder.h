@@ -29,15 +29,16 @@
 namespace network::nntp
 {
 
-/// Streaming uuencode decoder; keeps at most one unterminated line. complete waits for the NNTP end sequence.
+/// Streaming uuencode decoder; a partial line stays in the caller's window. complete waits for the NNTP end sequence.
 class UuDecoder final
 {
 public:
 	static constexpr size_t MAX_LINE = 1024;
 	static constexpr size_t MAX_DECODED_LINE = 45;
 
-	/// A whole decoded line must fit in dest.
-	static constexpr size_t MinBufferSize = MAX_DECODED_LINE;
+	/// A whole encoded line must fit in dest. An in-place caller needs a window of at
+	/// least MAX_LINE and must keep the unconsumed tail between calls.
+	static constexpr size_t MinBufferSize = MAX_LINE;
 
 	UuDecoder() noexcept { m_meta.format = ArticleFormat::Ux; }
 
@@ -58,7 +59,6 @@ private:
 	bool m_complete{false};
 	bool m_valid{true};
 	bool m_discardLine{false};
-	FixedBuffer<MAX_LINE> m_line;
 	ArticleMeta m_meta;
 };
 

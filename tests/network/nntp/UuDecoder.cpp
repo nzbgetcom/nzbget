@@ -1,45 +1,18 @@
 #include "nzbget.h"
 
-#include <algorithm>
-#include <boost/test/unit_test.hpp>
-#include <vector>
 #include "ArticleDecoder.h"
+#include "DecoderTestHelpers.h"
+#include <boost/test/unit_test.hpp>
+#include <string>
+#include <utility>
 
 BOOST_AUTO_TEST_SUITE(UuDecoderSuite)
 
 namespace
 {
-
-struct Run
-{
-	std::string out;
-	bool complete{false};
-};
-
-template <network::nntp::DecoderImpl T>
-Run Decode(T& decoder, const std::string& article, size_t piece)
-{
-	Run run;
-	char buf[256];
-	size_t pos = 0;
-	while (pos < article.size())
-	{
-		const size_t take = std::min(piece, article.size() - pos);
-		const network::nntp::DecodeStep step = decoder.Decode({article.data() + pos, take}, {buf, sizeof(buf)});
-		run.out.append(buf, step.produced);
-		pos += step.consumed;
-		if (step.complete)
-		{
-			run.complete = true;
-			break;
-		}
-		if (step.consumed == 0 && step.produced == 0)
-		{
-			break;
-		}
-	}
-	return run;
-}
+using nntp_test::Decode;
+using nntp_test::DecodeAtSourceStart;
+using nntp_test::Run;
 
 // Canonical uuencode: a length byte and 6-bit digits offset by 32, zero written as '`'.
 std::string EncodeUuLine(const std::string& data)
@@ -66,38 +39,6 @@ std::string EncodeUuLine(const std::string& data)
 	}
 	return line;
 }
-
-// Decodes inside one buffer: input is read at pos, output is written at outPos,
-// and outPos must never pass pos.
-std::string DecodeInPlace(const std::string& article, size_t piece)
-{
-	std::vector<char> buf(article.begin(), article.end());
-	buf.resize(article.size() + 64); // a line needs 45 bytes of output room
-	network::nntp::UuDecoder decoder;
-
-	size_t pos = 0;
-	size_t outPos = 0;
-	while (pos < article.size())
-	{
-		const size_t take = std::min(piece, article.size() - pos);
-		const network::nntp::DecodeStep step = decoder.Decode(
-			std::span<const char>(buf.data() + pos, take),
-			std::span<char>(buf.data() + outPos, buf.size() - outPos));
-		outPos += step.produced;
-		pos += step.consumed;
-		BOOST_REQUIRE_LE(outPos, pos);
-		if (step.complete)
-		{
-			break;
-		}
-		if (step.consumed == 0 && step.produced == 0)
-		{
-			BOOST_FAIL("decoder stalled at " << pos);
-		}
-	}
-	return std::string(buf.data(), outPos);
-}
-
 } // namespace
 
 BOOST_AUTO_TEST_CASE(UuDecoder_DecodesOneByteAtATime)
@@ -125,6 +66,32 @@ BOOST_AUTO_TEST_CASE(UuDecoder_DecodesWholeArticleAtOnce)
 	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
 }
 
+BOOST_AUTO_TEST_CASE(UuDecoder_DecodesUtf8Name)
+{
+	const std::string article = "begin 644 caf\xc3\xa9.bin\r\n#0V%T\r\n`\r\nend\r\n.\r\n";
+
+	network::nntp::UuDecoder decoder;
+	const Run run = Decode(decoder, article, 1);
+
+	BOOST_CHECK(run.complete);
+	BOOST_CHECK_EQUAL(run.out, "Cat");
+	BOOST_CHECK_EQUAL(decoder.Meta().name, "caf\xc3\xa9.bin");
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
+}
+
+BOOST_AUTO_TEST_CASE(UuDecoder_DecodesLatin1Name)
+{
+	const std::string article = "begin 644 caf\xe9.bin\r\n#0V%T\r\n`\r\nend\r\n.\r\n";
+
+	network::nntp::UuDecoder decoder;
+	const Run run = Decode(decoder, article, 1);
+
+	BOOST_CHECK(run.complete);
+	BOOST_CHECK_EQUAL(run.out, "Cat");
+	BOOST_CHECK_EQUAL(decoder.Meta().name, "caf\xc3\xa9.bin");
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
+}
+
 BOOST_AUTO_TEST_CASE(UuDecoder_ReportsNoBinaryDataWithoutBeginLine)
 {
 	network::nntp::UuDecoder decoder;
@@ -142,6 +109,18 @@ BOOST_AUTO_TEST_CASE(UuDecoder_RejectsArticleWithoutEndLine)
 	const Run run = Decode(decoder, article, 64);
 
 	BOOST_CHECK(run.complete);
+	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::ArticleIncomplete);
+}
+
+BOOST_AUTO_TEST_CASE(UuDecoder_FinishRequiresTerminator)
+{
+	const std::string article = "begin 644 cat.txt\r\n#0V%T\r\n`\r\nend\r\n";
+
+	network::nntp::UuDecoder decoder;
+	const Run run = Decode(decoder, article, 4);
+
+	BOOST_CHECK(!run.complete);
+	BOOST_CHECK_EQUAL(run.out, "Cat");
 	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::ArticleIncomplete);
 }
 
@@ -204,9 +183,9 @@ BOOST_AUTO_TEST_CASE(UuDecoder_DecodesWithMinimalOutputBuffer)
 	const std::string payload(45, 'm');
 	const std::string article = "begin 644 min.bin\r\n" + EncodeUuLine(payload) + "\r\n`\r\nend\r\n.\r\n";
 
-	// The decoder needs room for one whole line (45 bytes).
+	// The decoder needs room for one whole encoded line (MAX_LINE bytes).
 	network::nntp::UuDecoder decoder;
-	char buf[45];
+	char buf[network::nntp::UuDecoder::MinBufferSize];
 	std::string decoded;
 	size_t pos = 0;
 	while (pos < article.size())
@@ -252,35 +231,60 @@ BOOST_AUTO_TEST_CASE(UuDecoder_RejectsBodyLineShorterThanDeclared)
 	BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::InvalidHeader);
 }
 
-BOOST_AUTO_TEST_CASE(UuDecoder_DropsLineLongerThanLimit)
+BOOST_AUTO_TEST_CASE(UuDecoder_RejectsLineLongerThanLimit)
 {
 	const std::string article = "begin 644 x.bin\r\n" + std::string(2000, 'A') + "\r\nend\r\n.\r\n";
 
-	network::nntp::UuDecoder decoder;
-	const Run run = Decode(decoder, article, 128);
+	for (const size_t piece : {size_t(128), article.size()})
+	{
+		network::nntp::UuDecoder decoder;
+		const Run run = Decode(decoder, article, piece);
 
-	BOOST_CHECK(run.complete);
-	BOOST_CHECK(run.out.empty());
+		BOOST_CHECK(run.complete);
+		BOOST_CHECK(run.out.empty());
+		BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::InvalidHeader);
+	}
 }
 
-BOOST_AUTO_TEST_CASE(UuDecoder_DecodesInPlace)
+BOOST_AUTO_TEST_CASE(UuDecoder_IgnoresLongPreambleBeforeBegin)
+{
+	const std::string article = std::string(2000, 'A') + "\r\nbegin 644 x.bin\r\n#0V%T\r\n`\r\nend\r\n.\r\n";
+
+	for (const size_t piece : {size_t(128), article.size()})
+	{
+		network::nntp::UuDecoder decoder;
+		const Run run = Decode(decoder, article, piece);
+
+		BOOST_CHECK(run.complete);
+		BOOST_CHECK_EQUAL(run.out, "Cat");
+		BOOST_CHECK(decoder.Finish() == network::nntp::DecodeStatus::Finished);
+	}
+}
+
+BOOST_AUTO_TEST_CASE(UuDecoder_DecodesInPlaceAtSourceStartAcrossChunks)
 {
 	std::string payload;
-	for (size_t i = 0; i < 100; i++)
+	for (size_t i = 0; i < 300; i++)
 	{
-		payload.push_back(static_cast<char>('A' + i % 26));
+		payload.push_back(static_cast<char>(i * 7 + 1));
 	}
 
-	std::string article = "begin 644 inplace.bin\r\n";
+	std::string article = "begin 644 chunks.bin\r\n";
 	for (size_t i = 0; i < payload.size(); i += 45)
 	{
 		article += EncodeUuLine(payload.substr(i, 45)) + "\r\n";
 	}
 	article += "`\r\nend\r\n.\r\n";
 
-	for (size_t piece : {size_t(1), size_t(7), size_t(64), size_t(4096)})
+	// An in-place window must hold a whole encoded line; these are at or above MAX_LINE.
+	for (const auto [capacity, piece] : {std::pair<size_t, size_t>{network::nntp::UuDecoder::MAX_LINE, 37},
+										 {network::nntp::UuDecoder::MAX_LINE, 61},
+										 {2 * network::nntp::UuDecoder::MAX_LINE, 1},
+										 {64 * 1024, 4096}})
 	{
-		BOOST_REQUIRE_MESSAGE(DecodeInPlace(article, piece) == payload, "piece=" << piece);
+		const Run run = DecodeAtSourceStart<network::nntp::UuDecoder>(article, capacity, piece);
+		BOOST_REQUIRE_MESSAGE(run.complete, "capacity=" << capacity << " piece=" << piece);
+		BOOST_REQUIRE_MESSAGE(run.out == payload, "capacity=" << capacity << " piece=" << piece);
 	}
 }
 

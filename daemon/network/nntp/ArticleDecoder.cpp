@@ -43,12 +43,9 @@ ArticleFormat ArticleDecoder::DetectFormat(std::string_view line, bool rawMode)
 		return ArticleFormat::Yenc;
 	}
 
-	if (line.empty())
-	{
-		return ArticleFormat::Unknown;
-	}
-
-	if (UuDecoder::IsUuBegin(line) || UuDecoder::IsUuBody(line))
+	// Dot-stuffing doubles a leading '.', which is also the length char of a 14-byte line.
+	const std::string_view body = line.starts_with("..") ? line.substr(1) : line;
+	if (UuDecoder::IsUuBegin(line) || UuDecoder::IsUuBody(body))
 	{
 		return ArticleFormat::Ux;
 	}

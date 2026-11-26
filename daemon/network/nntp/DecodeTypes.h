@@ -21,9 +21,9 @@
 #define NETWORK_NNTP_DECODE_TYPES_H
 
 #include <array>
-#include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -53,7 +53,7 @@ enum class DecodeStatus
 struct ArticleMeta
 {
 	ArticleFormat format{ArticleFormat::Unknown};
-	std::string name;
+	std::string name; // untrusted metadata; sanitize before using it as a path
 	int64_t offset{0};
 	int64_t size{0};
 	int64_t fileSize{0};
@@ -69,6 +69,17 @@ struct DecodeStep
 	size_t produced{0};
 	bool complete{false};
 };
+
+/// Index of ch in src, or std::string_view::npos.
+inline size_t IndexOf(std::span<const char> src, char ch) noexcept
+{
+	if (src.empty())
+	{
+		return std::string_view::npos;
+	}
+	const void* found = std::memchr(src.data(), ch, src.size());
+	return found ? static_cast<size_t>(static_cast<const char*>(found) - src.data()) : std::string_view::npos;
+}
 
 /// Fixed-capacity buffer on the object itself, no heap. Only [0, Size()) is read, so storage is not zeroed.
 template <size_t Capacity>

@@ -358,6 +358,26 @@ public:
 	*/
 	static CString Latin1ToUtf8(const char* str);
 
+	/*
+	* Same conversion into out, which is cleared first. Keeps out's capacity,
+	* so a reused buffer does not allocate once it has grown.
+	* in must not point into out's storage: out is cleared and may be reallocated.
+	*/
+	static void Latin1ToUtf8(std::string_view in, std::string& out);
+
+	/*
+	 * Converts an article name: valid UTF-8 is kept as is, otherwise the bytes are
+	 * treated as Latin-1. The result is untrusted metadata; sanitize it before using
+	 * it as a path. in must not point into out's storage.
+	 */
+	static void DecodeName(std::string_view in, std::string& out);
+
+	/*
+	 * True if in is well-formed UTF-8 (Unicode Table 3-7): no overlong forms, no surrogates,
+	 * nothing above U+10FFFF. Empty input and embedded NUL are valid.
+	 */
+	static bool IsValidUtf8(std::string_view in) noexcept;
+
 	static time_t ParseRfc822DateTime(const char* dateTimeStr);
 };
 

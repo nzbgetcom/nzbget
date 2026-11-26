@@ -50,25 +50,11 @@ public:
 	DecodeStatus Finish();
 	const ArticleMeta& Meta() const noexcept { return m_meta; }
 
-	/// Parses one control line; public for tests.
-	bool ParseControlLine(std::string_view line);
-
-	bool HasBegin() const noexcept { return m_seenBegin; }
-	bool HasEnd() const noexcept { return m_seenEnd; }
 	/// False when a header line contradicts another or the declared sizes; see ParseControlLine().
 	bool HeaderValid() const noexcept { return m_headerValid; }
-	bool Multipart() const noexcept { return m_beginPart || m_hasPart; }
-	int64_t FileSize() const noexcept { return m_meta.fileSize; }
-	std::string_view Name() const noexcept { return m_meta.name; }
-	bool HasPart() const noexcept { return m_hasPart; }
-	int64_t BeginOffset() const noexcept { return m_meta.offset; }
-	int64_t PartSize() const noexcept { return m_meta.size; }
 	bool IsComplete() const noexcept { return m_complete; }
 	int64_t Produced() const noexcept { return m_produced; }
 	int64_t EndSize() const noexcept { return m_endSize; }
-	bool HasEndCrc() const noexcept { return m_meta.hasCrc; }
-	uint32_t ExpectedCrc() const noexcept { return m_meta.crc; }
-	uint32_t CalculatedCrc() const noexcept { return m_meta.calculatedCrc; }
 
 private:
 	struct DataStep
@@ -78,39 +64,61 @@ private:
 		bool endControl{false};
 	};
 
-	/// Longest keyword plus separator ("=ybegin "): a line is classified once this many bytes are in.
-	static constexpr size_t CONTROL_WINDOW = 8;
 	/// A longer control line is refused, never decoded as data.
 	static constexpr size_t MAX_CONTROL_LINE = 8192;
 
+	enum class Stage
+	{
+		Header,  // before =ybegin
+		Body,    // between =ybegin and =yend
+		Trailer  // =yend seen, waiting for the NNTP terminator
+	};
+
+	enum class Line
+	{
+		Data,      // plain body data
+		Candidate, // rapidyenc saw "\r\n=y"; the line is not classified yet
+		Control    // a control line is being collected into m_control
+	};
+
+	enum class Term
+	{
+		AtLineStart,
+		AfterDot,
+		AfterDotCr,
+		MidLine
+	};
+
+	/// How =ybegin part= and =ypart begin=/end= declare the article's range.
+	enum class Part
+	{
+		None,     // single-file article
+		Declared, // =ybegin part= seen, =ypart not yet
+		Ranged    // =ypart seen
+	};
+
+	bool Multipart() const noexcept { return m_part != Part::None; }
+	/// Sets m_headerValid = false on a malformed or contradicting line.
+	void ParseControlLine(std::string_view line);
 	DataStep DecodeData(std::span<const char> src, std::span<char> dest) noexcept;
 	void ResolveControlLine();
-	void StartControlLineFromFront();
 	/// Consumes the ".\r\n" line which follows =yend, so the connection stays in sync.
-	bool ConsumeEndSequence(std::span<const char> src, size_t& pos) noexcept;
+	void ConsumeEndSequence(std::span<const char> src, size_t& pos) noexcept;
 
 	bool m_crcCheck;
-	bool m_seenBegin{false};
-	bool m_seenEnd{false};
 	bool m_headerValid{true};
-	bool m_beginPart{false};
-	bool m_hasPart{false};
-	bool m_complete{false};
-	bool m_afterEnd{false};
-	bool m_terminated{false};
-	bool m_controlPending{false};
-	bool m_pendingByte{false};
-	int m_termState{0};
+	Part m_part{Part::None};
+	bool m_complete{false}; // the NNTP "." terminator has been consumed
+	Stage m_stage{Stage::Header};
+	Line m_line{Line::Data};
+	Term m_term{Term::AtLineStart};
 	int64_t m_produced{0};
 	int64_t m_endSize{-1};
 	ArticleMeta m_meta;
 
 	RapidYencDecoderState m_state{RYDEC_STATE_CRLF};
 
-	FixedBuffer<CONTROL_WINDOW> m_front;
-	size_t m_frontPos{0};
 	FixedBuffer<MAX_CONTROL_LINE> m_control;
-	FixedBuffer<2> m_marker;
 };
 
 } // namespace network::nntp

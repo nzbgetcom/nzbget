@@ -1680,6 +1680,77 @@ BreakLoop:
 	return result;
 }
 
+bool WebUtil::IsValidUtf8(std::string_view in) noexcept
+{
+	const auto* p = reinterpret_cast<const unsigned char*>(in.data());
+	const size_t size = in.size();
+	size_t i = 0;
+
+	while (i < size)
+	{
+		const unsigned char c = p[i];
+		if (c < 0x80)
+		{
+			++i;
+			continue;
+		}
+
+		size_t length = 0;
+		unsigned char lo = 0x80;
+		unsigned char hi = 0xbf;
+		if (c >= 0xc2 && c <= 0xdf)
+		{
+			length = 2;
+		}
+		else if (c == 0xe0)
+		{
+			length = 3;
+			lo = 0xa0;
+		}
+		else if ((c >= 0xe1 && c <= 0xec) || c == 0xee || c == 0xef)
+		{
+			length = 3;
+		}
+		else if (c == 0xed)
+		{
+			length = 3;
+			hi = 0x9f;
+		}
+		else if (c == 0xf0)
+		{
+			length = 4;
+			lo = 0x90;
+		}
+		else if (c >= 0xf1 && c <= 0xf3)
+		{
+			length = 4;
+		}
+		else if (c == 0xf4)
+		{
+			length = 4;
+			hi = 0x8f;
+		}
+		else
+		{
+			return false;
+		}
+
+		if (i + length > size || p[i + 1] < lo || p[i + 1] > hi)
+		{
+			return false;
+		}
+		for (size_t j = 2; j < length; ++j)
+		{
+			if ((p[i + j] & 0xc0) != 0x80)
+			{
+				return false;
+			}
+		}
+		i += length;
+	}
+	return true;
+}
+
 CString WebUtil::Latin1ToUtf8(const char* str)
 {
 	CString res;
@@ -1700,6 +1771,37 @@ CString WebUtil::Latin1ToUtf8(const char* str)
 	}
 	*out = '\0';
 	return res;
+}
+
+void WebUtil::Latin1ToUtf8(std::string_view in, std::string& out)
+{
+	in = in.substr(0, in.find('\0'));
+	out.clear();
+	out.reserve(in.size() * 2);
+	for (const char ch : in)
+	{
+		const auto c = static_cast<unsigned char>(ch);
+		if (c < 128)
+		{
+			out.push_back(ch);
+		}
+		else
+		{
+			out.push_back(static_cast<char>(0xc2 + (c > 0xbf)));
+			out.push_back(static_cast<char>((c & 0x3f) + 0x80));
+		}
+	}
+}
+
+void WebUtil::DecodeName(std::string_view in, std::string& out)
+{
+	in = in.substr(0, in.find('\0'));
+	if (IsValidUtf8(in))
+	{
+		out.assign(in);
+		return;
+	}
+	Latin1ToUtf8(in, out);
 }
 
 /*

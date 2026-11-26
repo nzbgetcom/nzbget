@@ -20,73 +20,67 @@
 #include "nzbget.h"
 #include "RawDecoder.h"
 
+#include <algorithm>
+#include <cstring>
+#include <string_view>
+
 namespace network::nntp
 {
 
 DecodeStep RawDecoder::Decode(std::span<const char> src, std::span<char> dest)
 {
 	DecodeStep step;
+	if (m_complete)
+	{
+		step.complete = true;
+		return step;
+	}
 	size_t destPos = 0;
 	size_t pos = 0;
 
-	// The end sequence is ".\r\n" at the start of a line; the CRLF that ends the last
-	// body line stays in the output.
+	// The caller keeps the tail; a partial terminator stays in src, so dest == src is safe.
+	// ".." at line start is unstuffed to "."; the ".\r\n" terminator is not output.
+	// A bare LF does not end the article: a cut article stays incomplete instead of being truncated.
 	while (pos < src.size())
 	{
-		// A held prefix that turned out to be body data is flushed one byte at a time,
-		// so a tiny output buffer can never stall the decoder.
-		if (m_pendingData)
+		if (m_lineStart && src[pos] == '.')
 		{
-			if (destPos >= dest.size())
+			const size_t left = src.size() - pos;
+			if (left < 2 || (src[pos + 1] == '\r' && left < 3))
 			{
+				break; // the rest of a possible terminator is in the next chunk
+			}
+			if (src[pos + 1] == '\r' && src[pos + 2] == '\n')
+			{
+				m_complete = true;
+				pos += 3;
 				break;
 			}
-			dest[destPos++] = m_pending[m_pendingPos++];
-			if (m_pendingPos == m_pendingLen)
+			if (src[pos + 1] == '.')
 			{
-				m_pendingData = false;
-				m_pendingLen = 0;
-				m_pendingPos = 0;
-			}
-			continue;
-		}
-
-		const char ch = src[pos];
-
-		if (m_pendingLen > 0)
-		{
-			const char expected = m_pendingLen == 1 ? '\r' : '\n';
-			if (ch == expected)
-			{
-				++pos;
-				if (m_pendingLen == 2)
+				if (destPos >= dest.size())
 				{
-					m_complete = true;
-					break;
+					break; // no room for the unstuffed dot; the caller drains and comes back
 				}
-				m_pending[m_pendingLen++] = ch;
+				dest[destPos++] = '.';
+				pos += 2;
+				m_lineStart = false;
 				continue;
 			}
-
-			m_pendingData = true; // not the end sequence: flush it, then look at ch again
-			continue;
 		}
 
-		if (m_lineStart && ch == '.')
-		{
-			m_pending[m_pendingLen++] = ch;
-			m_lineStart = false;
-			++pos;
-			continue;
-		}
-
-		if (destPos + 1 > dest.size())
+		if (destPos >= dest.size())
 		{
 			break;
 		}
-		dest[destPos++] = ch;
-		m_lineStart = ch == '\n';
-		++pos;
+
+		const size_t nl = IndexOf(src.subspan(pos), '\n');
+		size_t take = nl == std::string_view::npos ? src.size() - pos : nl + 1;
+		take = std::min(take, dest.size() - destPos);
+		std::memmove(dest.data() + destPos, src.data() + pos, take);
+		m_lineStart = src[pos + take - 1] == '\n';
+		pos += take;
+		destPos += take;
 	}
 
 	step.consumed = pos;
