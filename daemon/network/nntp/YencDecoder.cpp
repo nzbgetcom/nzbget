@@ -159,16 +159,16 @@ void YencDecoder::ParseControlLine(std::string_view line)
 
 		if (const char* value = nameValue)
 		{
-			// Name runs to the end of the line; only an appended "=ypart " ends it, and that suffix is parsed as well.
 			constexpr std::string_view YPART = "=ypart ";
-			const char* nameEnd = std::search(value, end, YPART.begin(), YPART.end());
+			const char* ypartStart = std::search(value, end, YPART.begin(), YPART.end());
+			const char* nameEnd = ypartStart;
 			while (nameEnd > value && nameEnd[-1] == ' ')
 			{
 				--nameEnd;
 			}
-			if (nameEnd < end)
+			if (ypartStart < end)
 			{
-				ParseControlLine(std::string_view(nameEnd, end - nameEnd));
+				ParseControlLine(std::string_view(ypartStart, end - ypartStart));
 			}
 			WebUtil::DecodeName(std::string_view(value, nameEnd - value), m_meta.name);
 		}

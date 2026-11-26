@@ -326,6 +326,48 @@ BOOST_AUTO_TEST_CASE(YencDecoder_KeepsYpartFromBeginLineWithoutPartParam)
 	BOOST_TEST(result.partSize == 50);
 }
 
+BOOST_AUTO_TEST_CASE(YencDecoder_TakesYpartFromBeginLineAfterSpaces)
+{
+	// Spaces between the name and the appended "=ypart" are not part of the name,
+	// and the ypart range must still be applied.
+	const std::string payload(50, 'q');
+	for (const char* gap : {" ", "   "})
+	{
+		const std::string article = std::string("=ybegin part=1 total=1 line=128 size=150 name=test.bin") + gap +
+			"=ypart begin=101 end=150\r\n" + EncodeYenc(payload) +
+			"=yend size=50 part=1 pcrc32=" + CrcHex(Crc32Of(payload)) + "\r\n.\r\n";
+
+		for (size_t piece : {size_t(1), size_t(9), size_t(4096)})
+		{
+			const DecodeResult result = DecodeArticle(article, piece, true);
+			BOOST_REQUIRE_MESSAGE(result.complete, "gap=" << gap << " piece=" << piece);
+			BOOST_CHECK_MESSAGE(result.finished, "gap=" << gap << " piece=" << piece);
+			BOOST_CHECK(result.headerValid);
+			BOOST_CHECK_EQUAL(result.name, "test.bin");
+			BOOST_CHECK_EQUAL(result.beginOffset, 100);
+			BOOST_CHECK_EQUAL(result.partSize, 50);
+			BOOST_CHECK(result.decoded == payload);
+		}
+	}
+}
+
+BOOST_AUTO_TEST_CASE(YencDecoder_TrailingSpacesAfterNameAreNotAYpart)
+{
+	// Trailing spaces with no "=ypart" must only be trimmed from the name; the body still decodes.
+	const std::string payload(10, 'h');
+	const std::string article = "=ybegin line=128 size=10 name=a.bin   \r\n" + EncodeYenc(payload) +
+		"=yend size=10 crc32=" + CrcHex(Crc32Of(payload)) + "\r\n.\r\n";
+
+	for (size_t piece : {size_t(1), size_t(7), size_t(4096)})
+	{
+		const DecodeResult result = DecodeArticle(article, piece, true);
+		BOOST_REQUIRE_MESSAGE(result.complete, "piece=" << piece);
+		BOOST_CHECK_MESSAGE(result.finished, "piece=" << piece);
+		BOOST_CHECK_EQUAL(result.name, "a.bin");
+		BOOST_CHECK(result.decoded == payload);
+	}
+}
+
 BOOST_AUTO_TEST_CASE(YencDecoder_PartParamInNameIsNotMultipart)
 {
 	// part= after name= belongs to the file name, so the article is a single part.
