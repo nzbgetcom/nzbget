@@ -35,3 +35,14 @@ def test_parchecker_last_unpack(nserv, nzbget):
 	nzb_content = nzb_content.replace('<segment bytes="3000" number="18">parchecker2/testfile.7z.001?18=51000:200</segment>', '')
 	hist = nzbget.download_nzb('parchecker.last.unpack.nzb', nzb_content, unpack=True)
 	assert hist['Status'] == 'SUCCESS/UNPACK'
+
+def test_parchecker_vol_dash_repair(nserv, nzbget):
+	nzb_content = nzbget.load_nzb('parchecker_vol_dash.nzb')
+	# Corrupt segment 16 (6 bad blocks; requires all 1+2+3=6 blocks across vol-00..vol-02)
+	nzb_content = nzb_content.replace(
+		'parchecker_vol_dash/testfile.7z.001?16=45000:3000',
+		'parchecker_vol_dash/testfile.7z.001?16=45000:3000!0'
+	)
+	assert 'parchecker_vol_dash/testfile.7z.001?16=45000:3000!0' in nzb_content
+	hist = nzbget.download_nzb('parchecker.vol_dash.repair.nzb', nzb_content)
+	assert hist['Status'] == 'SUCCESS/PAR'

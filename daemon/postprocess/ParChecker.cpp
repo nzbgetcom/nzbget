@@ -271,6 +271,18 @@ void ParChecker::Cleanup()
 	m_errMsg = "";
 }
 
+uint64 ParChecker::GetBlockSize() const
+{
+	std::lock_guard guard{ m_repairerMtx };
+	if (!m_repairer)
+	{
+		return 0;
+	}
+
+	Repairer* repairer = m_repairer->GetRepairer();
+	return (repairer && repairer->mainpacket) ? repairer->mainpacket->BlockSize() : 0;
+}
+
 void ParChecker::Execute()
 {
 	m_status = RunParCheckAll();

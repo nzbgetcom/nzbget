@@ -37,18 +37,24 @@ public:
 	ParCheckerMock(const fs::path& workingDir);
 	void Execute();
 	void CorruptFile(const char* filename, int offset);
+	uint64 GetObservedBlockSize() const { return m_observedBlockSize; }
 	~ParCheckerMock() override
 	{
 		fs::remove_all(m_workingDir);
 	}
 
 protected:
-	bool RequestMorePars(int blockNeeded, int* blockFound) override { return false; }
+	bool RequestMorePars(int blockNeeded, int* blockFound) override
+	{
+		m_observedBlockSize = GetBlockSize();
+		return false;
+	}
 	EFileStatus FindFileCrc(const char* filename, uint32* crc, SegmentList* segments) override;
 
 private:
 	uint32 CalcFileCrc(const char* filename);
 	const fs::path& m_workingDir;
+	uint64 m_observedBlockSize = 0;
 };
 
 ParCheckerMock::ParCheckerMock(const fs::path& workingDir) : m_workingDir(workingDir)
@@ -285,6 +291,30 @@ BOOST_AUTO_TEST_CASE(ExtCleanupDiskDatTest)
 	parChecker.Execute();
 
 	BOOST_CHECK_EQUAL(parChecker.GetStatus(), expectedStatus);
+}
+
+BOOST_AUTO_TEST_CASE(ParCheckerGetBlockSizeTest)
+{
+	Options::CmdOptList cmdOpts;
+	cmdOpts.push_back("ParRepair=no");
+	Options options(&cmdOpts, nullptr);
+
+	const fs::path testFile = CURR_DIR / "ParCheckerGetBlockSizeTest";
+	ParCheckerMock parChecker(testFile);
+	BOOST_CHECK_EQUAL(parChecker.GetBlockSize(), 0u);
+
+	parChecker.CorruptFile("testfile.dat", 20000);
+	parChecker.CorruptFile("testfile.dat", 30000);
+	parChecker.CorruptFile("testfile.dat", 40000);
+	parChecker.CorruptFile("testfile.dat", 50000);
+	parChecker.CorruptFile("testfile.dat", 60000);
+	parChecker.CorruptFile("testfile.dat", 70000);
+	parChecker.CorruptFile("testfile.dat", 80000);
+	parChecker.Execute();
+
+	BOOST_CHECK_EQUAL(parChecker.GetStatus(), ParChecker::psFailed);
+	BOOST_CHECK_EQUAL(parChecker.GetObservedBlockSize(), 636u);
+	BOOST_CHECK_EQUAL(parChecker.GetBlockSize(), 0u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

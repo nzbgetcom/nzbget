@@ -38,15 +38,31 @@ public:
 	virtual void Stop();
 
 #ifndef DISABLE_PARCHECK
+	static constexpr uint64 PAR2_RECOVERY_SLICE_OVERHEAD = 68;
+	static int EstimateParBlocks(int64 fileSize, uint64 blockSize);
+
 	virtual void Run();
 	static void StartJob(PostInfo* postInfo);
 	bool AddPar(FileInfo* fileInfo, bool deleted);
 
 protected:
+	struct BlockInfo
+	{
+		FileInfo* m_fileInfo;
+		int m_blockCount;
+		BlockInfo(FileInfo* fileInfo, int blockCount) :
+			m_fileInfo(fileInfo), m_blockCount(blockCount) {}
+	};
+
+	typedef std::deque<BlockInfo> Blocks;
+
 	void UpdateParCheckProgress();
 	void ParCheckCompleted();
 	void CheckPauseState(PostInfo* postInfo);
+	virtual uint64 GetParBlockSize() const { return m_parChecker.GetBlockSize(); }
 	bool RequestMorePars(NzbInfo* nzbInfo, const char* parFilename, int blockNeeded, int* blockFound);
+	void FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* parFilename,
+		Blocks& blocks, bool strictParName, bool exactParName, int* blockFound, uint64 blockSize);
 
 private:
 	class PostParChecker final : public ParChecker
@@ -73,11 +89,11 @@ private:
 		virtual void RequestDupeSources(DupeSourceList* dupeSourceList);
 		virtual void StatDupeSources(DupeSourceList* dupeSourceList);
 	private:
-		RepairController* m_owner;
-		PostInfo* m_postInfo;
-		time_t m_parTime;
-		time_t m_repairTime;
-		int m_downloadSec;
+		RepairController* m_owner = nullptr;
+		PostInfo* m_postInfo = nullptr;
+		time_t m_parTime = 0;
+		time_t m_repairTime = 0;
+		int m_downloadSec = 0;
 
 		friend class RepairController;
 	};
@@ -95,21 +111,8 @@ private:
 		PostInfo* m_postInfo;
 	};
 
-	struct BlockInfo
-	{
-		FileInfo* m_fileInfo;
-		int m_blockCount;
-		BlockInfo(FileInfo* fileInfo, int blockCount) :
-			m_fileInfo(fileInfo), m_blockCount(blockCount) {}
-	};
-
-	typedef std::deque<BlockInfo> Blocks;
-
-	PostInfo* m_postInfo;
+	PostInfo* m_postInfo = nullptr;
 	PostParChecker m_parChecker;
-
-	void FindPars(DownloadQueue* downloadQueue, NzbInfo* nzbInfo, const char* parFilename,
-		Blocks& blocks, bool strictParName, bool exactParName, int* blockFound);
 #endif
 };
 
