@@ -33,6 +33,9 @@ var Statistics = new (function ($) {
 		this.name = "";
 		this.port = "";
 		this.active = false;
+		this.quota = 0;
+		this.customSizeMB = 0;
+		this.customSizeLo = 0;
 		this.weekSizeMB = 0;
 		this.weekSizeLo = 0;
 		this.monthSizeMB = 0;
@@ -169,6 +172,7 @@ var Statistics = new (function ($) {
 				newServer.name = server.name;
 				newServer.port = server.port;
 				newServer.active = server.active;
+				newServer.quota = server.quota || 0;
 				serverStats[newServer.id] = newServer;
 				++id;
 				server = Options.getServerById(id);
@@ -400,6 +404,8 @@ var Statistics = new (function ($) {
 		server.todaySizeLo = serverVolume.BytesPerDays[daySlot].SizeLo;
 		server.totalSizeMB = serverVolume.TotalSizeMB;
 		server.totalSizeLo = serverVolume.TotalSizeLo;
+		server.customSizeMB = serverVolume.CustomSizeMB;
+		server.customSizeLo = serverVolume.CustomSizeLo;
 		server.lastResetDate = Util.formatDateTime(serverVolume.CountersResetTime);
 
 		var successSum = 0;
@@ -445,6 +451,18 @@ var Statistics = new (function ($) {
 		server.$details.find(".server-details__total").text(
 			Util.formatSizeMB(server.totalSizeMB, server.totalSizeLo)
 		);
+		if (server.quota > 0) {
+			var quotaText = Util.formatSizeMB(server.customSizeMB, server.customSizeLo) + " / " + Util.formatSizeMB(server.quota, 0);
+			var $quotaCell = server.$details.find(".server-details__quota").text(quotaText);
+			if (server.customSizeMB >= server.quota) {
+				$quotaCell.addClass("txt-important");
+			} else {
+				$quotaCell.removeClass("txt-important");
+			}
+			server.$details.find(".server-details__quota-row").removeClass("hide");
+		} else {
+			server.$details.find(".server-details__quota-row").addClass("hide");
+		}
 		server.$details.find(".server-details__completion").text(completion);
 		server.showDetails();
 	}

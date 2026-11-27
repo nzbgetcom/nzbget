@@ -192,6 +192,18 @@ private:
 	const ::NewsServer& m_server;
 };
 
+class ServerQuotaValidator final : public Validator
+{
+public:
+	explicit ServerQuotaValidator(const ::NewsServer& server) : m_server(server) {}
+
+	std::string_view GetName() const override { return "Quota"; }
+	Status Validate() const override;
+
+private:
+	const ::NewsServer& m_server;
+};
+
 class ServerCertVerificationValidator final : public Validator
 {
 public:
