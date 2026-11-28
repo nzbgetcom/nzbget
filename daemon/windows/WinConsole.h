@@ -30,7 +30,7 @@ public:
 	virtual void Stop();
 	void InitAppMode();
 	bool GetAppMode() { return m_appMode; }
-	void SetupFirstStart();
+	void SetupFirstStart(const char* configFilename);
 
 protected:
 	virtual void Run();
@@ -81,7 +81,6 @@ private:
 	void UpdateTrayIcon();
 	void BuildMenu();
 	void ShowCategoryDir(int catIndex);
-	void SetupConfigFile();
 	void ShowFactoryResetDialog();
 	void ResetFactoryDefaults();
 	void RunAnotherInstance();

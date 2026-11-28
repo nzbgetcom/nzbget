@@ -152,6 +152,7 @@ adjust_conf() {
 	sed -i '' 's:^DestDir=.*:DestDir=~/Downloads/NZBGet/complete:' "$CONF_FILE"
 	sed -i '' 's:^InterDir=.*:InterDir=~/Downloads/NZBGet/intermediate:' "$CONF_FILE"
 	sed -i '' 's:^NzbDir=.*:NzbDir=~/Downloads/NZBGet/nzb:' "$CONF_FILE"
+	sed -i '' 's:^TempDir=.*:TempDir=~/Downloads/NZBGet/tmp:' "$CONF_FILE"
 	sed -i '' 's:^WebDir=.*:# NOTE\: option WebDir cannot be changed because it is hardcoded in OSX version.:' "$CONF_FILE"
 	sed -i '' 's:^LockFile=.*:# NOTE\: option LockFile cannot be changed because it is hardcoded in OSX version.:' "$CONF_FILE"
 	sed -i '' 's:^LogFile=.*:LogFile=~/Library/Logs/NZBGet.log:' "$CONF_FILE"

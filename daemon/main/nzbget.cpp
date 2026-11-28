@@ -198,7 +198,7 @@ public:
 	void AddTask(int id, int hours, int minutes, int weekDaysBits,
 		Options::ESchedulerCommand command, const char* param) override;
 #ifdef WIN32
-	void SetupFirstStart() override;
+	void SetupFirstStart(const char* configFilename) override;
 #endif
 
 private:
@@ -1125,9 +1125,9 @@ void NZBGet::AddTask(int id, int hours, int minutes, int weekDaysBits,
 }
 
 #ifdef WIN32
-void NZBGet::SetupFirstStart()
+void NZBGet::SetupFirstStart(const char* configFilename)
 {
-	m_winConsole->SetupFirstStart();
+	m_winConsole->SetupFirstStart(configFilename);
 }
 #endif
 

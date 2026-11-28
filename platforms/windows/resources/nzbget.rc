@@ -125,7 +125,7 @@ BEGIN
     PUSHBUTTON      "Erase and Reset",IDC_FACTORYRESET_RESET,131,55,90,14
     LTEXT           "Reset to factory defaults?",IDC_FACTORYRESET_TITLE,54,7,236,13
     ICON            "",IDC_FACTORYRESET_ICON,7,7,20,20
-    LTEXT           "All settings will be reset to defaults. The download queue, history, statistics, log-file, default incoming nzb-directory and default scripts-directory will be erased.",IDC_FACTORYRESET_TEXT,54,21,236,27
+    LTEXT           "All settings will be reset to defaults. The download queue, history, statistics, incoming nzb-directory and scripts-directory will be erased.",IDC_FACTORYRESET_TEXT,54,21,236,27
     DEFPUSHBUTTON   "Cancel",IDC_FACTORYRESET_CANCEL,227,55,63,14
 END
 

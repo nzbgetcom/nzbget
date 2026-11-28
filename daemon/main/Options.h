@@ -377,7 +377,7 @@ public:
 			ESchedulerCommand command,
 			const char* param
 		) = 0;
-		virtual void SetupFirstStart() {}
+		virtual void SetupFirstStart(const char*) {}
 	};
 
 	Options(const char* exeName, const char* configFilename, bool noConfig,

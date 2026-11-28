@@ -415,13 +415,26 @@ void Options::InitOptFile()
 
 		if (!FileSystem::FileExists(filename))
 		{
-			char appDataPath[MAX_PATH];
-			SHGetFolderPath(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, appDataPath);
-			filename.Format("%s\\NZBGet\\nzbget.conf", appDataPath);
+			char commonAppDataPath[MAX_PATH];
+			SHGetFolderPath(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, commonAppDataPath);
+			BString<1024> sharedFilename("%s\\NZBGet\\nzbget.conf", commonAppDataPath);
+
+			// New installs get a per-user config; a service (session 0) and
+			// existing installs keep the shared one.
+			if (!Util::IsSessionZero() && !FileSystem::FileExists(sharedFilename))
+			{
+				char localAppDataPath[MAX_PATH];
+				SHGetFolderPath(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppDataPath);
+				filename.Format("%s\\NZBGet\\nzbget.conf", localAppDataPath);
+			}
+			else
+			{
+				filename = *sharedFilename;
+			}
 
 			if (m_extender && !FileSystem::FileExists(filename))
 			{
-				m_extender->SetupFirstStart();
+				m_extender->SetupFirstStart(*filename);
 			}
 		}
 

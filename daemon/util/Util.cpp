@@ -794,6 +794,12 @@ bool Util::RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, 
 	}
 	return false;
 }
+
+bool Util::IsSessionZero()
+{
+	DWORD sessionId = 0;
+	return ProcessIdToSessionId(GetCurrentProcessId(), &sessionId) != FALSE && sessionId == 0;
+}
 #endif
 
 time_t Util::CurrentTime()

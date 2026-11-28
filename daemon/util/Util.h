@@ -231,6 +231,7 @@ public:
 
 #ifdef WIN32
 	static bool RegReadStr(HKEY keyRoot, const char* keyName, const char* valueName, char* buffer, int* bufLen);
+	static bool IsSessionZero();
 #endif
 
 	static void SetStandByMode(bool standBy);

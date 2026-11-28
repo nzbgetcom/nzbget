@@ -868,50 +868,145 @@ void WinConsole::OpenConfigFileInTextEdit()
 	ShellExecute(0, "open", "notepad.exe", BString<1024>("\"%s\"", g_Options->GetConfigFilename()), nullptr, SW_SHOWNORMAL);
 }
 
-void WinConsole::SetupFirstStart()
+struct ConfigValue
 {
-	SetupConfigFile();
+	const char* Name;
+	const char* Value;
+};
+
+static void SetConfigValues(const char* filename, const ConfigValue* values, int count)
+{
+	CharBuffer buffer;
+	if (!FileSystem::LoadFileIntoBuffer(filename, buffer, true))
+	{
+		return;
+	}
+
+	CString content;
+	const char* line = buffer;
+	while (*line)
+	{
+		const char* lineEnd = strchr(line, '\n');
+		int lineLen = lineEnd ? (int)(lineEnd - line) : (int)strlen(line);
+
+		bool crlf = lineLen > 0 && line[lineLen - 1] == '\r';
+		if (crlf)
+		{
+			lineLen--;
+		}
+
+		bool replaced = false;
+		for (int i = 0; i < count; i++)
+		{
+			int nameLen = (int)strlen(values[i].Name);
+			if (lineLen > nameLen && !strncmp(line, values[i].Name, nameLen) && line[nameLen] == '=')
+			{
+				content.AppendFmt("%s=%s", values[i].Name, values[i].Value);
+				replaced = true;
+				break;
+			}
+		}
+
+		if (!replaced && lineLen > 0)
+		{
+			content.Append(line, lineLen);
+		}
+		content.Append(crlf ? "\r\n" : "\n");
+
+		if (!lineEnd)
+		{
+			break;
+		}
+		line = lineEnd + 1;
+	}
+
+	FileSystem::SaveBufferIntoFile(filename, content, content.Length());
 }
 
-void WinConsole::SetupConfigFile()
+static void GetDownloadsDir(BString<1024>& dir)
+{
+	PWSTR path = nullptr;
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Downloads, KF_FLAG_DEFAULT, nullptr, &path)))
+	{
+		auto utf8Path = Utf8::WideToUtf8(path);
+		CoTaskMemFree(path);
+		if (utf8Path)
+		{
+			dir.Set(utf8Path->c_str());
+		}
+	}
+}
+
+static bool IsRootDir(const char* dir)
+{
+	// Drive root (C:\) or UNC share root (\\server\share).
+	if (strlen(dir) <= 3)
+	{
+		return true;
+	}
+	if (dir[0] != '\\' || dir[1] != '\\')
+	{
+		return false;
+	}
+	const char* share = strchr(dir + 2, '\\');
+	if (!share)
+	{
+		return true;
+	}
+	const char* sub = strchr(share + 1, '\\');
+	return !sub || !sub[1];
+}
+
+void WinConsole::SetupFirstStart(const char* configFilename)
 {
 	// create new config-file from config template
 
-	char commonAppDataPath[MAX_PATH];
-	SHGetFolderPath(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, commonAppDataPath);
-
-	BString<1024> filename("%s\\NZBGet\\nzbget.conf", commonAppDataPath);
-
-	BString<1024> appDataPath("%s\\NZBGet", commonAppDataPath);
+	// MainDir is the config directory: ProgramData for a service or an
+	// existing install, %LOCALAPPDATA% for a new per-user install.
+	BString<1024> appDataPath = configFilename;
+	char* appDataPathStr = *appDataPath;
+	char* baseName = FileSystem::BaseFileName(appDataPathStr);
+	if (baseName > appDataPathStr)
+	{
+		baseName[-1] = '\0';
+	}
 	FileSystem::CreateDirectory(appDataPath);
 
 	BString<1024> confTemplateFilename("%s\\nzbget.conf.template", g_Options->GetAppDir());
-	CopyFile(confTemplateFilename, filename, FALSE);
+	CopyFile(confTemplateFilename, configFilename, FALSE);
 
-	// set MainDir in the config-file
-	int size = 0;
-	CharBuffer config;
-	if (FileSystem::LoadFileIntoBuffer(filename, config, true))
+	// Downloads go to the user's Downloads folder; a service runs in session 0
+	// and has no user profile, so it keeps them in the app-data directory.
+	BString<1024> downloadsDir;
+	if (!Util::IsSessionZero())
 	{
-		const char* SIGNATURE = "MainDir=${AppDir}\\downloads";
-		char* p = strstr(config, SIGNATURE);
-		if (p)
-		{
-			DiskFile outfile;
-			if (outfile.Open(filename, DiskFile::omWrite))
-			{
-				outfile.Write(config, p - config);
-				outfile.Write("MainDir=", 8);
-				outfile.Write(appDataPath, strlen(appDataPath));
-				outfile.Write(p + strlen(SIGNATURE), config.Size() - 1 - (p + strlen(SIGNATURE) - config) - 1);
-				outfile.Close();
-			}
-		}
+		GetDownloadsDir(downloadsDir);
 	}
 
-	// create default destination directory (which is not created on start automatically)
-	BString<1024> completeDir("%s\\NZBGet\\complete", commonAppDataPath);
-	FileSystem::CreateDirectory(completeDir);
+	BString<1024> baseDir;
+	if (!downloadsDir.Empty())
+	{
+		baseDir.Format("%s\\NZBGet", *downloadsDir);
+	}
+	const char* destBase = baseDir.Empty() ? "${MainDir}" : *baseDir;
+
+	BString<1024> destDir("%s\\complete", destBase);
+	BString<1024> interDir("%s\\intermediate", destBase);
+	BString<1024> nzbDir("%s\\nzb", destBase);
+	BString<1024> tempDir("%s\\tmp", destBase);
+	const ConfigValue values[] = {
+		{"MainDir", *appDataPath},
+		{"DestDir", *destDir},
+		{"InterDir", *interDir},
+		{"NzbDir", *nzbDir},
+		{"TempDir", *tempDir},
+	};
+	SetConfigValues(configFilename, values, 5);
+
+	// DestDir is not created on start.
+	BString<1024> completeDir("%s\\complete", baseDir.Empty() ? *appDataPath : *baseDir);
+	CString dirErrmsg;
+	FileSystem::ForceDirectories(completeDir, dirErrmsg);
 }
 
 void WinConsole::ShowFactoryResetDialog()
@@ -958,83 +1053,90 @@ INT_PTR WinConsole::FactoryResetDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 
 void WinConsole::ResetFactoryDefaults()
 {
-	BString<1024> path;
-	CString errmsg;
-
 	g_WorkState->SetPauseDownload(true);
 	g_WorkState->SetPausePostProcess(true);
 
-	char commonAppDataPath[MAX_PATH];
-	SHGetFolderPath(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, commonAppDataPath);
+	CString failures;
 
-	// delete default directories
-	const char* DefDirs[] = {"nzb", "tmp", "queue", "scripts"};
-	for (int i=0; i < 4; i++)
+	// The layout may be customized, so use the configured directories.
+	auto deleteDirectory = [&failures](const char* dir)
 	{
-		path.Format("%s\\NZBGet\\%s", commonAppDataPath, DefDirs[i]);
-
-		// try to delete the directory
-		int retry = 10;
-		while (retry > 0 && FileSystem::DirectoryExists(path) &&
-			!FileSystem::DeleteDirectoryWithContent(path, errmsg))
+		// Never erase a drive or share root.
+		if (Util::EmptyStr(dir) || IsRootDir(dir) || !FileSystem::DirectoryExists(dir))
 		{
-			Util::Sleep(200);
-			retry--;
-		}
-
-		if (FileSystem::DirectoryExists(path))
-		{
-			MessageBox(m_trayWindow,
-				BString<1024>("Could not delete directory %s:\n%s.\nPlease delete the directory manually and try again.", *path, *errmsg),
-				"NZBGet", MB_ICONERROR);
 			return;
 		}
-	}
 
-	// delete old config file in the program's directory
-	path.Format("%s\\nzbget.conf", g_Options->GetAppDir());
-
-	FileSystem::DeleteFile(path);
-	errmsg = FileSystem::GetLastErrorMessage();
-
-	if (FileSystem::FileExists(path))
-	{
-		MessageBox(m_trayWindow,
-			BString<1024>("Could not delete file %s:\n%s.\nPlease delete the file manually and try again.", *path, *errmsg),
-			"NZBGet", MB_ICONERROR);
-		return;
-	}
-
-	// delete config file in default directory
-	path.Format("%s\\NZBGet\\nzbget.conf", commonAppDataPath);
-
-	FileSystem::DeleteFile(path);
-	errmsg = FileSystem::GetLastErrorMessage();
-
-	if (FileSystem::FileExists(path))
-	{
-		MessageBox(m_trayWindow,
-			BString<1024>("Could not delete file %s:\n%s.\nPlease delete the file manually and try again.", *path, *errmsg),
-			"NZBGet", MB_ICONERROR);
-		return;
-	}
-
-	// delete log files in default directory
-	path.Format("%s\\NZBGet", commonAppDataPath);
-
-	DirBrowser dir(path);
-	while (const char* filename = dir.Next())
-	{
-		if (Util::MatchFileExt(filename, ".log", ","))
+		CString errmsg;
+		for (int retry = 10; retry > 0; retry--)
 		{
-			BString<1024> fullFilename("%s%c%s", *path, PATH_SEPARATOR, filename);
-			FileSystem::DeleteFile(fullFilename);
-			// ignore errors
+			if (FileSystem::DeleteDirectoryWithContent(dir, errmsg))
+			{
+				return;
+			}
+
+			// An empty directory is recreated on start, not an error.
+			DirBrowser dirBrowser(dir);
+			if (!dirBrowser.Next())
+			{
+				return;
+			}
+
+			Util::Sleep(200);
+		}
+
+		failures.AppendFmt("%s: %s\n", dir, *errmsg);
+	};
+
+	deleteDirectory(g_Options->GetQueueDir());
+	deleteDirectory(g_Options->GetTempDir());
+	deleteDirectory(g_Options->GetNzbDir());
+
+	Tokenizer tokDir(g_Options->GetScriptDir(), ",;");
+	while (const char* scriptDir = tokDir.Next())
+	{
+		deleteDirectory(scriptDir);
+	}
+
+	// Delete the config last; a config passed with "-c" is not in these locations.
+	char commonAppDataPath[MAX_PATH];
+	SHGetFolderPath(nullptr, CSIDL_COMMON_APPDATA, nullptr, 0, commonAppDataPath);
+	char localAppDataPath[MAX_PATH];
+	SHGetFolderPath(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, localAppDataPath);
+
+	BString<1024> configFiles[3];
+	configFiles[0].Format("%s\\nzbget.conf", g_Options->GetAppDir());
+	configFiles[1].Format("%s\\NZBGet\\nzbget.conf", localAppDataPath);
+	configFiles[2].Format("%s\\NZBGet\\nzbget.conf", commonAppDataPath);
+
+	for (auto& configFile : configFiles)
+	{
+		if (!FileSystem::FileExists(configFile))
+		{
+			continue;
+		}
+
+		if (!FileSystem::DeleteFile(configFile))
+		{
+			CString errmsg = FileSystem::GetLastErrorMessage();
+			failures.AppendFmt("%s: %s\n", *configFile, *errmsg);
 		}
 	}
 
-	MessageBox(m_trayWindow, "The program has been reset to factory defaults.",
-		"NZBGet", MB_ICONINFORMATION);
+	CString msg;
+	if (failures.Empty())
+	{
+		msg = "The program has been reset to factory defaults.";
+	}
+	else
+	{
+		msg.AppendFmt(
+			"The program could not be reset completely. The following items could not be deleted:\n\n%s\n"
+			"Please delete them manually and try again.",
+			*failures);
+	}
+
+	MessageBox(m_trayWindow, *msg, "NZBGet", failures.Empty() ? MB_ICONINFORMATION : MB_ICONWARNING);
 
 	mayStartBrowser = true;
 	Reload();
